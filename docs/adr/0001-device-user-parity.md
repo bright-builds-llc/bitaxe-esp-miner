@@ -1,0 +1,3 @@
+# Device-User Parity Defines Rewrite Scope
+
+The Rust rewrite targets device-user parity with upstream ESP-Miner: mining behavior, supported Bitaxe boards/configs, ASIC support, Stratum v1/v2 behavior, AxeOS HTTP/WebSocket API, NVS/settings behavior, OTA/update flow, self-test, display/input behavior, power/thermal/fan control, logging/statistics, image packaging, and USB flashing ergonomics must match the observable upstream behavior. The rewrite does not preserve C module boundaries, FreeRTOS task structure, or internal implementation quirks unless they affect observable behavior, because preserving internals would make the Rust code a transliteration instead of a maintainable firmware implementation.
