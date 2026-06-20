@@ -138,78 +138,78 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| FND-01 | TBD | Pending |
-| FND-02 | TBD | Pending |
-| FND-03 | TBD | Pending |
-| FND-04 | TBD | Pending |
-| FND-05 | TBD | Pending |
-| FND-06 | TBD | Pending |
-| FND-07 | TBD | Pending |
-| FND-08 | TBD | Pending |
-| FND-09 | TBD | Pending |
-| FND-10 | TBD | Pending |
-| FND-11 | TBD | Pending |
-| CFG-01 | TBD | Pending |
-| CFG-02 | TBD | Pending |
-| CFG-03 | TBD | Pending |
-| CFG-04 | TBD | Pending |
-| CFG-05 | TBD | Pending |
-| CFG-06 | TBD | Pending |
-| ASIC-01 | TBD | Pending |
-| ASIC-02 | TBD | Pending |
-| ASIC-03 | TBD | Pending |
-| ASIC-04 | TBD | Pending |
-| ASIC-05 | TBD | Pending |
-| ASIC-06 | TBD | Pending |
-| ASIC-07 | TBD | Pending |
-| ASIC-08 | TBD | Pending |
-| STR-01 | TBD | Pending |
-| STR-02 | TBD | Pending |
-| STR-03 | TBD | Pending |
-| STR-04 | TBD | Pending |
-| STR-05 | TBD | Pending |
-| STR-06 | TBD | Pending |
-| STR-07 | TBD | Pending |
-| API-01 | TBD | Pending |
-| API-02 | TBD | Pending |
-| API-03 | TBD | Pending |
-| API-04 | TBD | Pending |
-| API-05 | TBD | Pending |
-| API-06 | TBD | Pending |
-| API-07 | TBD | Pending |
-| API-08 | TBD | Pending |
-| API-09 | TBD | Pending |
-| API-10 | TBD | Pending |
-| SAFE-01 | TBD | Pending |
-| SAFE-02 | TBD | Pending |
-| SAFE-03 | TBD | Pending |
-| SAFE-04 | TBD | Pending |
-| SAFE-05 | TBD | Pending |
-| SAFE-06 | TBD | Pending |
-| SAFE-07 | TBD | Pending |
-| SAFE-08 | TBD | Pending |
-| SAFE-09 | TBD | Pending |
-| REL-01 | TBD | Pending |
-| REL-02 | TBD | Pending |
-| REL-03 | TBD | Pending |
-| REL-04 | TBD | Pending |
-| REL-05 | TBD | Pending |
-| REL-06 | TBD | Pending |
-| REL-07 | TBD | Pending |
-| REL-08 | TBD | Pending |
-| EVD-01 | TBD | Pending |
-| EVD-02 | TBD | Pending |
-| EVD-03 | TBD | Pending |
-| EVD-04 | TBD | Pending |
-| EVD-05 | TBD | Pending |
+| FND-01 | Phase 1 | Pending |
+| FND-02 | Phase 1 | Pending |
+| FND-03 | Phase 1 | Pending |
+| FND-04 | Phase 1 | Pending |
+| FND-05 | Phase 1 | Pending |
+| FND-06 | Phase 1 | Pending |
+| FND-07 | Phase 1 | Pending |
+| FND-08 | Phase 1 | Pending |
+| FND-09 | Phase 1 | Pending |
+| FND-10 | Phase 1 | Pending |
+| FND-11 | Phase 1 | Pending |
+| CFG-01 | Phase 2 | Pending |
+| CFG-02 | Phase 2 | Pending |
+| CFG-03 | Phase 2 | Pending |
+| CFG-04 | Phase 2 | Pending |
+| CFG-05 | Phase 2 | Pending |
+| CFG-06 | Phase 2 | Pending |
+| ASIC-01 | Phase 3 | Pending |
+| ASIC-02 | Phase 3 | Pending |
+| ASIC-03 | Phase 3 | Pending |
+| ASIC-04 | Phase 3 | Pending |
+| ASIC-05 | Phase 3 | Pending |
+| ASIC-06 | Phase 3 | Pending |
+| ASIC-07 | Phase 3 | Pending |
+| ASIC-08 | Phase 3 | Pending |
+| STR-01 | Phase 4 | Pending |
+| STR-02 | Phase 4 | Pending |
+| STR-03 | Phase 4 | Pending |
+| STR-04 | Phase 4 | Pending |
+| STR-05 | Phase 4 | Pending |
+| STR-06 | Phase 4 | Pending |
+| STR-07 | Phase 4 | Pending |
+| API-01 | Phase 5 | Pending |
+| API-02 | Phase 5 | Pending |
+| API-03 | Phase 5 | Pending |
+| API-04 | Phase 5 | Pending |
+| API-05 | Phase 5 | Pending |
+| API-06 | Phase 5 | Pending |
+| API-07 | Phase 5 | Pending |
+| API-08 | Phase 5 | Pending |
+| API-09 | Phase 5 | Pending |
+| API-10 | Phase 5 | Pending |
+| SAFE-01 | Phase 6 | Pending |
+| SAFE-02 | Phase 6 | Pending |
+| SAFE-03 | Phase 6 | Pending |
+| SAFE-04 | Phase 6 | Pending |
+| SAFE-05 | Phase 6 | Pending |
+| SAFE-06 | Phase 6 | Pending |
+| SAFE-07 | Phase 6 | Pending |
+| SAFE-08 | Phase 6 | Pending |
+| SAFE-09 | Phase 6 | Pending |
+| REL-01 | Phase 7 | Pending |
+| REL-02 | Phase 7 | Pending |
+| REL-03 | Phase 7 | Pending |
+| REL-04 | Phase 7 | Pending |
+| REL-05 | Phase 7 | Pending |
+| REL-06 | Phase 7 | Pending |
+| REL-07 | Phase 7 | Pending |
+| REL-08 | Phase 7 | Pending |
+| EVD-01 | Phase 8 | Pending |
+| EVD-02 | Phase 8 | Pending |
+| EVD-03 | Phase 8 | Pending |
+| EVD-04 | Phase 8 | Pending |
+| EVD-05 | Phase 8 | Pending |
 
 **Coverage:**
 
 - v1 requirements: 64 total
-- Mapped to phases: 0
-- Unmapped: 64
+- Mapped to phases: 64
+- Unmapped: 0
 
 ______________________________________________________________________
 
 *Requirements defined: 2026-06-20*\
-*Last updated: 2026-06-20 after initial definition*
+*Last updated: 2026-06-20 after roadmap traceability mapping*
