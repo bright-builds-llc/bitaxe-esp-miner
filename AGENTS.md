@@ -30,3 +30,227 @@ Use this routing map when deciding what to load next:
 - If instructions elsewhere in `AGENTS.md` conflict with `AGENTS.bright-builds.md`, follow the repo-local instructions and treat them as an explicit local exception.
 
 <!-- bright-builds-rules-managed:end -->
+
+<!-- GSD:project-start source:PROJECT.md -->
+
+## Project
+
+**Bitaxe Rust Firmware**
+
+Bitaxe Rust Firmware is a new Rust firmware monorepo for Bitaxe ESP-Miner. It builds a Rust implementation of the Bitaxe ESP32 miner firmware with device-user parity against upstream `bitaxeorg/ESP-Miner`, while keeping the upstream C code as a pinned read-only reference implementation.
+
+The project is for Bitaxe owners and firmware contributors who need a maintainable Rust firmware that can be built, flashed, configured, monitored, and updated with the same observable behavior as upstream ESP-Miner.
+
+**Core Value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
+
+### Constraints
+
+- **Tech stack**: Use ESP-IDF Rust bindings for the first production firmware stack - upstream ESP-Miner depends heavily on ESP-IDF services such as Wi-Fi, HTTP serving, NVS, SPIFFS, OTA, FreeRTOS tasks, PSRAM-aware allocation, logging, partition images, and ESP flashing conventions.
+- **Build orchestration**: Use Bazel as the canonical automation graph and `just` as the human command surface - local development and CI should route through the same graph where practical.
+- **Reference implementation**: Keep upstream ESP-Miner pinned and read-only at `reference/esp-miner` - it is behavioral evidence, not a workspace for project changes.
+- **Parity evidence**: Maintain a parity checklist with breadcrumbs, implementation pointers, statuses, and verification evidence - implemented code is not enough to claim parity.
+- **Hardware priority**: Optimize first bring-up for Gamma 601 BM1370 - other upstream boards remain in scope but require their own evidence before verification claims.
+- **Architecture**: Prefer functional core and imperative shell - pure logic belongs in testable crates, while ESP-IDF, FreeRTOS, Wi-Fi, NVS, SPIFFS, OTA, serial, GPIO, I2C, ADC, power, display, and task orchestration stay in firmware adapters.
+- **Licensing**: Keep original work MIT-first where legally possible, but mark intentionally ported GPL-covered source expression as GPL-3.0-compatible and review distributed firmware artifacts before release.
+- **Safety**: Hardware-control surfaces such as voltage, fan, thermal, power, and ASIC initialization require hardware evidence before verified parity.
+
+<!-- GSD:project-end -->
+
+<!-- GSD:stack-start source:research/STACK.md -->
+
+## Technology Stack
+
+## Summary
+
+## Recommended Stack
+
+### Firmware Toolchain
+
+| Layer | Recommendation | Version / Pin | Confidence | Why |
+| --- | --- | --- | --- | --- |
+| ESP-IDF | Pin ESP-IDF tag through `esp-idf-sys` metadata | `v5.5.4` | HIGH | Current released Rust crates support ESP-IDF `v5.5.x`; ESP-IDF 6 support is not yet a safe baseline. |
+| Rust ESP toolchain | Install with `espup` and use the `esp` toolchain for firmware Cargo builds | `espup v0.17.1`, `espup install --targets esp32s3 --std` | HIGH | Gamma 601 is expected to use ESP32-S3-class Xtensa firmware tooling; `espup` owns the custom toolchain setup. |
+| Firmware target | Build first firmware for ESP32-S3 ESP-IDF | `xtensa-esp32s3-espidf`, `MCU=esp32s3` | MEDIUM | Project docs prioritize Gamma 601; confirm with upstream reference once the submodule exists. |
+| Rust firmware crates | Depend primarily on `esp-idf-svc`; use `hal` and `sys` through re-exports unless direct dependency is required | `esp-idf-svc 0.52.1`, resolving `esp-idf-hal 0.46.2`, `esp-idf-sys 0.37.2` | HIGH | `esp-idf-svc` wraps Wi-Fi, HTTP, NVS, OTA, logging, MQTT, event loop, timers, and re-exports lower layers. |
+| Rust edition | Use Rust 2021 for all firmware and shared crates initially | `edition = "2021"` | MEDIUM | The ESP-IDF Rust ecosystem still documents and publishes crates on 2021; upgrade to 2024 only after firmware build/flash is stable. |
+| Firmware logging | Use the `log` facade with `esp_idf_svc::log::EspLogger` in firmware; avoid `println!` | crate-managed | HIGH | This matches ESP-IDF logging integration. Host tools may use `tracing`. |
+
+### Bazel Automation
+
+| Layer | Recommendation | Version / Pin | Confidence | Why |
+| --- | --- | --- | --- | --- |
+| Bazel launcher | Use Bazelisk and check in `.bazelversion` | `9.1.1` | HIGH | Bazel 9 is the current active LTS; Bazelisk is the official recommended version manager. |
+| Bazel modules | Use Bzlmod, not WORKSPACE-first setup | `MODULE.bazel` | HIGH | `rules_rust` and Bazel Central Registry are Bzlmod-first in current docs. |
+| Rust rules | Use `rules_rust` for pure crates and host tools | `rules_rust 0.70.0` | HIGH | Current BCR release supports Bazel 7, 8, and 9. |
+| Cargo dependency mirror | Use `crate_universe` from `rules_rust` against the repo `Cargo.lock` | `rules_rust 0.70.0` | MEDIUM-HIGH | Current official path for Cargo dependencies in Bazel. |
+| Firmware build target | Use Bazel targets that invoke repo-owned Cargo/ESP-IDF scripts for `firmware/bitaxe` | project-owned wrapper | MEDIUM | No mature official Bazel ESP-IDF Rust rule was found; wrapping is the lowest-risk integration. |
+| Packaging | Produce flashable `.bin` images as declared Bazel outputs | project-owned wrapper around `espflash save-image` or Cargo build artifacts | MEDIUM | Keeps artifacts visible in Bazel without replacing ESP-IDF image construction. |
+
+### Human Command Surface
+
+| Command | Backing implementation | Required behavior |
+| --- | --- | --- |
+| `just build` | `bazel build //firmware/bitaxe:firmware` | Build the canonical firmware target. |
+| `just test` | `bazel test //...` or a scoped test target group | Run pure crate, host tool, and script tests. Hardware tests stay explicit. |
+| `just package` | `bazel build //firmware/bitaxe:firmware_image` | Produce image artifacts and print paths. |
+| `just flash board=601 [port=...]` | `bazel run //tools/flash -- flash --board 601 ...` | Build/package first unless image override is provided; fail clearly on missing/ambiguous port. |
+| `just monitor [port=...]` | `bazel run //tools/flash -- monitor ...` | Open serial monitor without flashing. |
+| `just flash-monitor board=601 [port=...]` | `bazel run //tools/flash -- flash-monitor ...` | Flash then monitor, capture command/log evidence when requested. |
+| `just verify-reference` | `bazel run //scripts:verify_reference_clean` | Fail if `reference/esp-miner` is missing or locally modified. |
+| `just parity` | `bazel run //tools/parity:report` | Summarize checklist status and missing evidence. |
+
+### Host Tools And Parity Tooling
+
+| Tool / Crate | Use | Recommendation |
+| --- | --- | --- |
+| `espflash` / `cargo-espflash` | USB flash, monitor, image save, port list, board info | Use as the flashing backend. Prefer `espflash` when Bazel already produced an ELF/image; allow `cargo-espflash` for developer diagnostics. |
+| `espup` | ESP Rust toolchain installer | Use `cargo install espup --locked` or release binary, then `espup install --targets esp32s3 --std`. |
+| `ldproxy` | ESP-IDF Rust linker proxy | Install through the ESP Rust setup path; configure as linker for `xtensa-esp32s3-espidf`. |
+| `clap` | Host CLI parsing | Use for `tools/flash`, `tools/parity`, and optional `tools/xtask`. |
+| `serde`, `serde_json`, `csv`, `toml` | API/config/parity fixtures | Use typed parsing for upstream config, API models, and checklist/golden data. |
+| `camino`, `ignore`, `walkdir` | Host tooling paths and scans | Prefer over ad hoc path/string walking in parity tools. |
+| `thiserror` / `anyhow` | Errors | `thiserror` for library crates, `anyhow` for CLI/tools. |
+| `heapless` | Firmware/protocol buffers | Use for fixed-size ASIC/protocol buffers where allocation should be explicit. |
+| `insta` or explicit checked-in golden fixtures | Host snapshot/golden tests | Use for host-only parity reports and API/model snapshots; do not treat snapshots as hardware evidence. |
+
+## Tooling Details
+
+### Rust + ESP-IDF Build
+
+### Bazel + Cargo Boundary
+
+- `Cargo.toml` and `Cargo.lock` define Rust package versions.
+- `rules_rust` + `crate_universe` mirror Cargo dependencies into Bazel.
+- Bazel `rust_library` and `rust_test` build pure crates and host tools directly.
+- Bazel firmware targets call a repo-owned script or `xtask` that runs Cargo with the `esp` toolchain and writes declared artifacts.
+- `just` calls Bazel only.
+
+### USB Flashing
+
+- Map `board=601` to Gamma 601 defaults and target image.
+- Accept explicit `port`.
+- If `port` is omitted, call `espflash list-ports` and apply project heuristics.
+- On zero ports, fail with install/permission hints.
+- On multiple likely ports, fail with a chooser-style message and exact `port=` examples.
+- Print the underlying `espflash` command before executing.
+- Write optional smoke logs into a parity evidence path when requested.
+
+### Test Strategy
+
+| Layer | Tooling | Required evidence |
+| --- | --- | --- |
+| Pure unit tests | Bazel `rust_test` and/or Cargo tests for `crates/*` | Deterministic Arrange/Act/Assert tests for ASIC packet formats, config parsing, Stratum messages, API model serialization, and parity report logic. |
+| Golden/fixture tests | Checked-in JSON/CSV/binary fixtures; optional `insta` for host snapshots | Rust outputs match upstream-derived fixtures. Each fixture must record provenance. |
+| Firmware compile/package | Bazel firmware wrapper target | ESP32-S3 firmware builds and produces ELF/bin artifacts with ESP-IDF `v5.5.4`. |
+| USB smoke | `just flash-monitor board=601 port=...` | Captured log shows boot, app identity, ESP-IDF version, reset reason, and safe no-op/minimal hardware state. |
+| Hardware regression | Explicit `just hardware-smoke` or `just hil board=601 port=...` later | Repeatable tests for voltage, fan, thermal, ASIC init, and mining behavior. Required before safety-critical parity is `verified`. |
+
+## Version/Source Notes
+
+### Primary Sources
+
+- Local project decisions: `.planning/PROJECT.md`, `docs/project/gsd-new-project-brief.md`, `docs/project/seed-layout.md`, `PROVENANCE.md`.
+- Bright Builds local rules: `AGENTS.md`, `AGENTS.bright-builds.md`, `standards/core/architecture.md`, `standards/core/verification.md`, `standards/core/testing.md`, `standards/languages/rust.md`.
+- ESP-IDF versions and support policy: https://docs.espressif.com/projects/esp-idf/en/stable/esp32/versions.html
+- ESP-IDF releases: https://github.com/espressif/esp-idf/releases
+- ESP-IDF build system: https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/build-system.html
+- ESP-IDF Build System v2: https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/build-system-v2.html
+- `esp-idf-sys` docs/readme/build options: https://docs.rs/crate/esp-idf-sys/latest and https://github.com/esp-rs/esp-idf-sys
+- `esp-idf-sys` changelog: https://raw.githubusercontent.com/esp-rs/esp-idf-sys/master/CHANGELOG.md
+- `esp-idf-hal` changelog: https://raw.githubusercontent.com/esp-rs/esp-idf-hal/master/CHANGELOG.md
+- `esp-idf-svc` changelog: https://raw.githubusercontent.com/esp-rs/esp-idf-svc/master/CHANGELOG.md
+- `espup` README and releases: https://github.com/esp-rs/espup and https://github.com/esp-rs/espup/releases
+- `espflash` README: https://github.com/esp-rs/espflash and raw package READMEs under `espflash/` and `cargo-espflash/`.
+- Bazel release model: https://bazel.build/release
+- Bazelisk docs: https://bazel.build/install/bazelisk
+- `rules_rust` docs and BCR: https://bazelbuild.github.io/rules_rust/ and https://registry.bazel.build/modules/rules_rust
+- `just` manual and releases: https://just.systems/man/en/ and https://github.com/casey/just/releases
+- Rust latest release: https://blog.rust-lang.org/releases/latest/
+
+### Important Source Interpretation
+
+## What Not To Use
+
+| Do not use | Why | Use instead |
+| --- | --- | --- |
+| ESP-IDF `v6.0.1` as first baseline | Latest stable, but Rust crate support is not fully released and IDF 6 moves some drivers/components. | ESP-IDF `v5.5.4`; schedule a reassessment when `esp-idf-svc`/`hal`/`sys` release full IDF 6 support. |
+| ESP-IDF `master`, release branches, or unpinned IDF | Breaks reproducibility and parity evidence. | Pin exact tags/commits in Cargo metadata and record them in evidence. |
+| `esp-idf-sys` default ESP-IDF version | Current docs still show an old default. | Explicit `esp_idf_version = "tag:v5.5.4"`. |
+| PlatformIO (`pio`) builder for production | `esp-idf-sys` documents it as a backup and less flexible than native. | Native ESP-IDF builder through `esp-idf-sys`. |
+| Bare-metal `esp-hal`/`no_std` as first stack | Project needs ESP-IDF services for parity; bare-metal path would rebuild too much platform behavior. | ESP-IDF Rust `std` stack. |
+| Embassy/async-first firmware architecture | Adds scheduler/executor complexity before parity surfaces are known. | FreeRTOS/task-oriented imperative shell first; introduce async only for clear service needs. |
+| Full Bazel-native ESP-IDF cross-toolchain on day one | High integration risk; fights Cargo build scripts and ESP-IDF CMake/component flow. | Bazel-owned wrapper around Cargo/ESP-IDF for firmware, direct Bazel for pure crates/tools. |
+| Direct `esptool.py` as normal UX | Lower-level and less integrated with Rust ESP-IDF artifacts. | `espflash` backend behind `tools/flash` and `just`. |
+| `cargo-espmonitor` | Functionality has moved into `espflash`/`cargo-espflash` monitor commands. | `espflash monitor` or `cargo espflash monitor`. |
+| `defmt` as initial logging format | Mainly useful in no_std ESP stacks; ESP-IDF std path already has serial ESP logging. | `log` facade with `EspLogger`. |
+| Copying upstream C expression into MIT Rust files | GPL provenance risk. | Use breadcrumbs, independent Rust design, isolated GPL-marked files if porting expression is intentional. |
+| Snapshot/golden tests as hardware parity proof | They prove deterministic outputs only, not real device behavior. | Hardware smoke/regression evidence for verified safety and hardware-control parity. |
+
+## Risks
+
+| Risk | Severity | Mitigation | Confidence |
+| --- | --- | --- | --- |
+| ESP-IDF 5.5 baseline falls behind latest security/feature changes | Medium | Track ESP-IDF releases; add a roadmap phase to trial ESP-IDF 6 after Rust crates release support. | MEDIUM |
+| Rust ESP-IDF crates lack HIL coverage | High | Treat hardware smoke/regression evidence as mandatory for parity; keep firmware shell thin. | HIGH |
+| Bazel/Cargo dual graph drifts | Medium | Make Cargo.lock authoritative; use `crate_universe`; add `just repin`/Bazel repin workflow later; CI checks generated lock consistency. | MEDIUM |
+| First build downloads large toolchains and IDF sources | Medium | Use `espup --targets esp32s3 --std`; cache Cargo, `.embuild`, Bazel repository cache in CI; add `just doctor`. | HIGH |
+| Firmware Bazel wrapper has non-hermetic edges | Medium | Keep wrapper narrow, declare outputs, print versions, and isolate mutable tool caches outside source paths. | MEDIUM |
+| USB serial behavior varies by OS and cable/chip bridge | Medium | Use `espflash list-ports`, clear `port=` errors, Linux `dialout` hint, WSL warning, and explicit port override. | HIGH |
+| Gamma 601 SoC details need confirmation from reference tree | Medium | Once `reference/esp-miner` exists, verify board config and IDF target before implementation. | MEDIUM |
+| Power/voltage/fan/ASIC bring-up can damage hardware if guessed | High | First milestone should boot/log only; require hardware evidence and safety guards before enabling control paths. | HIGH |
+| GPL provenance contaminates MIT-only files | High | Keep reference read-only, use breadcrumbs, isolate intentionally ported expression, perform release artifact review. | HIGH |
+
+## Confidence
+
+| Area | Confidence | Notes |
+| --- | --- | --- |
+| ESP-IDF Rust stack | HIGH | Confirmed by accepted project decision plus `esp-idf-svc` coverage and ESP-IDF service needs. |
+| ESP-IDF `v5.5.4` baseline | MEDIUM-HIGH | Prescriptive choice based on released crate compatibility. Newer ESP-IDF 6 exists, but Rust release support is not yet the safer baseline. |
+| Bazel 9 + `rules_rust 0.70.0` | HIGH | Current official/BCR sources show Bazel 9 active and `rules_rust` tested on Bazel 9. |
+| Bazel wrapper around Cargo/ESP-IDF firmware build | MEDIUM | No mature official Bazel ESP-IDF Rust stack found; wrapper approach is pragmatic and aligned with `esp-idf-sys`. |
+| `just` command surface | HIGH | Matches accepted project decision and `just` is explicitly a command runner, not a build system. |
+| USB flashing stack | HIGH | `espflash` directly supports ESP32-S3 and provides required list/flash/monitor/save-image commands. |
+| Test strategy | MEDIUM-HIGH | Pure/fixture/hardware layering is strongly aligned with local Bright Builds rules and parity policy; exact HIL harness can be refined after first boot. |
+| Gamma 601 target triple | MEDIUM | Project docs point to Gamma 601 BM1370; the local `reference/esp-miner` submodule is not present yet, so confirm ESP32-S3 target when adding it. |
+
+<!-- GSD:stack-end -->
+
+<!-- GSD:conventions-start source:CONVENTIONS.md -->
+
+## Conventions
+
+Conventions not yet established. Will populate as patterns emerge during development.
+
+<!-- GSD:conventions-end -->
+
+<!-- GSD:architecture-start source:ARCHITECTURE.md -->
+
+## Architecture
+
+Architecture not yet mapped. Follow existing patterns found in the codebase.
+
+<!-- GSD:architecture-end -->
+
+<!-- GSD:skills-start source:skills/ -->
+
+## Project Skills
+
+No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skills/`, `.cursor/skills/`, or `.github/skills/` with a `SKILL.md` index file.
+
+<!-- GSD:skills-end -->
+
+<!-- GSD:workflow-start source:GSD defaults -->
+
+## GSD Workflow Enforcement
+
+Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+
+Use these entry points:
+
+- `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
+- `/gsd-debug` for investigation and bug fixing
+- `/gsd-execute-phase` for planned phase work
+
+Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+
+<!-- GSD:workflow-end -->
