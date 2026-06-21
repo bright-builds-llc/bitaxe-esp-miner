@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-foundation-and-gamma-601-boot-log-08-PLAN.md
-last_updated: "2026-06-21T03:59:10.977Z"
+status: verifying
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-06-21T04:12:49.100Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 9
-  completed_plans: 8
-  percent: 89
+  completed_plans: 9
+  percent: 100
 ---
 
 # Project State
@@ -25,31 +25,31 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 
 ## Current Position
 
-Phase: 01 (Foundation And Gamma 601 Boot/Log) — EXECUTING
+Phase: 01 (Foundation And Gamma 601 Boot/Log) — VERIFYING
 Plan: 9 of 9
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-21
 
-Progress: [██████░░░░] 56%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 5
-- Average duration: 7 min
-- Total execution time: 0.6 hours
+- Total plans completed: 9
+- Average duration: 10 min
+- Total execution time: 1.5 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | --- | --- | --- |
-| 1. Foundation And Gamma 601 Boot/Log | 5/9 | 0.6h | 7 min |
+| 1. Foundation And Gamma 601 Boot/Log | 9/9 | 1.5h | 10 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (10 min), 01-02 (4 min), 01-03 (7 min), 01-04 (4 min), 01-05 (8 min)
-- Trend: Foundation setup progressing
+- Last 5 plans: 01-05 (8 min), 01-06 (16 min), 01-07 (11 min), 01-08 (20 min), 01-09 (10 min)
+- Trend: Phase 1 plan execution complete; hardware smoke remains explicit missing evidence until a Gamma 601 serial port is visible.
 
 *Updated after each plan completion*
 | Phase 01 P03 | 7 min | 2 tasks | 11 files |
@@ -58,6 +58,7 @@ Progress: [██████░░░░] 56%
 | Phase 01-foundation-and-gamma-601-boot-log P06 | 16 | 2 tasks | 11 files |
 | Phase 01-foundation-and-gamma-601-boot-log P07 | 11 | 2 tasks | 6 files |
 | Phase 01-foundation-and-gamma-601-boot-log P08 | 20 | 2 tasks | 11 files |
+| Phase 01-foundation-and-gamma-601-boot-log P09 | 10 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation-and-gamma-601-boot-log]: Run package and flash Bazel subprocesses from the real workspace path when Bazel actions or bazel run start in execroot/output directories.
 - [Phase 01-foundation-and-gamma-601-boot-log]: Keep default_flash_image resolved to bitaxe-gamma601.elf; factory bin is additional metadata only.
 - [Phase 01-foundation-and-gamma-601-boot-log]: Honor AGENTS.md Rust pre-commit rules by recording TDD RED failures without committing failing intermediate states.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Use workflow evidence for command-surface rows proved by Plan 09 Just/Bazel command output.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Keep boot/log and safety-critical hardware rows below verified until captured Gamma 601 logs exist.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Record missing Gamma 601 hardware-smoke evidence when espflash list-ports succeeds but reports no serial ports.
 
 ### Pending Todos
 
@@ -105,6 +109,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-21T03:59:10.974Z
-Stopped at: Completed 01-foundation-and-gamma-601-boot-log-08-PLAN.md
+Last session: 2026-06-21T04:12:49.098Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None

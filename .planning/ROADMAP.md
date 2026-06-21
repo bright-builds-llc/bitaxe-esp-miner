@@ -47,7 +47,7 @@ Plans:
 - [x] 01-06-PLAN.md - Build the safe Gamma 601 ESP-IDF boot/log firmware target.
 - [x] 01-07-PLAN.md - Wire parity/provenance reporting without false verification.
 - [x] 01-08-PLAN.md - Generate the package manifest/default flash image and implement safe flash/monitor tooling.
-- [ ] 01-09-PLAN.md - Wire Just commands and record Gamma 601 hardware-smoke evidence.
+- [x] 01-09-PLAN.md - Wire Just commands and record Gamma 601 hardware-smoke evidence.
 **Verification expectations**: Run `just verify-reference`, `just build`, `just test`, `just package`, `just parity`, and a Gamma 601 flash/monitor smoke where hardware is available. Confirm the package manifest records image paths, offsets when applicable, checksums, tool versions, firmware commit, and reference commit. Review the diff to confirm `reference/esp-miner` is not modified.
 **Research flags**: Mostly standard setup work. The Bazel wrapper around Cargo/ESP-IDF and the flashable image manifest may need an implementation spike.
 
@@ -178,7 +178,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
-| 1. Foundation And Gamma 601 Boot/Log | 2/9 | In Progress | - |
+| 1. Foundation And Gamma 601 Boot/Log | 9/9 | Complete | 2026-06-21 |
 | 2. Gamma 601 Config And NVS Model | 0/TBD | Not started | - |
 | 3. BM1370 ASIC Protocol And Safe Initialization | 0/TBD | Not started | - |
 | 4. Stratum V1 And First Mining Loop | 0/TBD | Not started | - |
