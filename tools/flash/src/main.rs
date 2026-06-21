@@ -1,2 +1,916 @@
-// Plan 08 replaces this entrypoint with the typed USB workflow tool.
-fn main() {}
+use std::collections::BTreeSet;
+use std::env;
+use std::fmt;
+use std::fs;
+use std::io::{self, Write};
+use std::process::Command;
+use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use anyhow::{bail, Context, Result};
+use camino::{Utf8Path, Utf8PathBuf};
+use clap::{Args, Parser, Subcommand};
+use serde::{Deserialize, Serialize};
+
+const PACKAGE_BUILD_DISPLAY: &str = "bazel build //firmware/bitaxe:firmware_image";
+const PACKAGE_BUILD_TARGET: &str = "//firmware/bitaxe:firmware_image";
+const PACKAGE_MANIFEST_RELATIVE_PATH: &str = "firmware/bitaxe/bitaxe-gamma601-package.json";
+const DEFAULT_ELF_NAME: &str = "bitaxe-gamma601.elf";
+const FACTORY_IMAGE_NAME: &str = "bitaxe-gamma601-factory.bin";
+const UNAVAILABLE: &str = "Unavailable";
+
+#[derive(Debug, Parser)]
+#[command(name = "bitaxe-flash")]
+#[command(about = "Safe Bitaxe Gamma 601 flash and monitor workflow.")]
+struct Cli {
+    #[command(subcommand)]
+    command: CliCommand,
+}
+
+#[derive(Debug, Subcommand)]
+enum CliCommand {
+    Flash(FlashCommand),
+    Monitor(MonitorCommand),
+    #[command(name = "flash-monitor")]
+    FlashMonitor(FlashMonitorCommand),
+}
+
+#[derive(Debug, Args, Clone)]
+struct CommonArgs {
+    #[arg(long, default_value = "601", value_parser = parse_board)]
+    board: BoardId,
+
+    #[arg(long)]
+    port: Option<String>,
+
+    #[arg(long)]
+    dry_run: bool,
+
+    #[arg(long = "evidence-dir", value_parser = parse_utf8_path)]
+    evidence_dir: Option<Utf8PathBuf>,
+}
+
+#[derive(Debug, Parser, Clone)]
+struct FlashCommand {
+    #[command(flatten)]
+    common: CommonArgs,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    image: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    manifest: Option<Utf8PathBuf>,
+}
+
+#[derive(Debug, Parser, Clone)]
+struct MonitorCommand {
+    #[command(flatten)]
+    common: CommonArgs,
+}
+
+#[derive(Debug, Parser, Clone)]
+struct FlashMonitorCommand {
+    #[command(flatten)]
+    common: CommonArgs,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    image: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    manifest: Option<Utf8PathBuf>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum BoardId {
+    Gamma601,
+}
+
+impl FromStr for BoardId {
+    type Err = String;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        match value {
+            "601" => Ok(Self::Gamma601),
+            other => Err(format!(
+                "unsupported board {other}; Phase 1 supports board=601 only"
+            )),
+        }
+    }
+}
+
+impl fmt::Display for BoardId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Gamma601 => formatter.write_str("601"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct CommandSpec {
+    program: String,
+    args: Vec<String>,
+}
+
+impl CommandSpec {
+    fn new<I, S>(program: &str, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        Self {
+            program: program.to_owned(),
+            args: args
+                .into_iter()
+                .map(|arg| arg.as_ref().to_owned())
+                .collect(),
+        }
+    }
+
+    fn display(&self) -> String {
+        let mut parts = Vec::with_capacity(self.args.len() + 1);
+        parts.push(self.program.clone());
+        parts.extend(self.args.iter().cloned());
+        parts.join(" ")
+    }
+}
+
+#[derive(Debug)]
+struct FlashOutcome {
+    manifest: Option<Utf8PathBuf>,
+    flash_image: Utf8PathBuf,
+    command: CommandSpec,
+}
+
+#[derive(Debug, Deserialize)]
+struct PackageManifest {
+    default_flash_image: String,
+}
+
+trait FlashEnvironment {
+    fn build_package(&self) -> Result<()>;
+    fn bazel_bin(&self) -> Result<Utf8PathBuf>;
+    fn read_to_string(&self, path: &Utf8Path) -> Result<String>;
+    fn path_exists(&self, path: &Utf8Path) -> bool;
+    fn list_ports(&self) -> Result<String>;
+    fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
+    fn firmware_commit(&self) -> String;
+    fn reference_commit(&self) -> String;
+    fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()>;
+}
+
+#[derive(Debug)]
+struct LocalFlashEnvironment {
+    workspace_dir: Utf8PathBuf,
+}
+
+impl LocalFlashEnvironment {
+    fn detect() -> Result<Self> {
+        Ok(Self {
+            workspace_dir: detect_workspace_dir()?,
+        })
+    }
+}
+
+impl FlashEnvironment for LocalFlashEnvironment {
+    fn build_package(&self) -> Result<()> {
+        let status = Command::new("bazel")
+            .current_dir(self.workspace_dir.as_std_path())
+            .arg("build")
+            .arg(PACKAGE_BUILD_TARGET)
+            .status()
+            .context("failed to run bazel build for firmware package")?;
+        if !status.success() {
+            bail!("{PACKAGE_BUILD_DISPLAY} failed with {status}");
+        }
+
+        Ok(())
+    }
+
+    fn bazel_bin(&self) -> Result<Utf8PathBuf> {
+        let output = Command::new("bazel")
+            .current_dir(self.workspace_dir.as_std_path())
+            .arg("info")
+            .arg("bazel-bin")
+            .output()
+            .context("failed to run bazel info bazel-bin")?;
+        command_output_to_string(output, "bazel info bazel-bin").map(Utf8PathBuf::from)
+    }
+
+    fn read_to_string(&self, path: &Utf8Path) -> Result<String> {
+        fs::read_to_string(path.as_std_path()).with_context(|| format!("failed to read {path}"))
+    }
+
+    fn path_exists(&self, path: &Utf8Path) -> bool {
+        path.is_file()
+    }
+
+    fn list_ports(&self) -> Result<String> {
+        let output = Command::new("espflash")
+            .arg("list-ports")
+            .output()
+            .context("failed to run espflash list-ports")?;
+        command_output_to_string(output, "espflash list-ports")
+    }
+
+    fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
+        if command_spec.program != "espflash" {
+            bail!("unsupported command program: {}", command_spec.program);
+        }
+
+        let mut command = Command::new("espflash");
+        for arg in &command_spec.args {
+            command.arg(arg);
+        }
+
+        let status = command
+            .status()
+            .with_context(|| format!("failed to run {}", command_spec.display()))?;
+        if !status.success() {
+            bail!("{} failed with {status}", command_spec.display());
+        }
+
+        Ok(())
+    }
+
+    fn firmware_commit(&self) -> String {
+        git_output(&self.workspace_dir, ["rev-parse", "HEAD"])
+            .unwrap_or_else(|| UNAVAILABLE.to_owned())
+    }
+
+    fn reference_commit(&self) -> String {
+        git_output(
+            &self.workspace_dir,
+            ["-C", "reference/esp-miner", "rev-parse", "HEAD"],
+        )
+        .unwrap_or_else(|| UNAVAILABLE.to_owned())
+    }
+
+    fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()> {
+        let maybe_parent = path.parent();
+        if let Some(parent) = maybe_parent {
+            fs::create_dir_all(parent.as_std_path())
+                .with_context(|| format!("failed to create evidence directory {parent}"))?;
+        }
+
+        fs::write(path.as_std_path(), contents)
+            .with_context(|| format!("failed to write evidence {path}"))
+    }
+}
+
+fn main() -> Result<()> {
+    let cli = parse_cli(env::args())?;
+    let environment = LocalFlashEnvironment::detect()?;
+
+    match cli.command {
+        CliCommand::Flash(command) => {
+            run_flash(&command, &environment)?;
+        }
+        CliCommand::Monitor(command) => {
+            run_monitor(&command, &environment)?;
+        }
+        CliCommand::FlashMonitor(command) => {
+            run_flash_monitor(&command, &environment)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn parse_cli<I, S>(args: I) -> Result<Cli>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    let normalized = normalize_args(args);
+    Cli::try_parse_from(normalized).map_err(anyhow::Error::new)
+}
+
+fn normalize_args<I, S>(args: I) -> Vec<String>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    let mut normalized = Vec::new();
+    for arg in args {
+        let arg = arg.into();
+        if arg.starts_with("--") {
+            normalized.push(arg);
+            continue;
+        }
+
+        let Some((key, value)) = arg.split_once('=') else {
+            normalized.push(arg);
+            continue;
+        };
+
+        match key {
+            "board" => push_flag_value(&mut normalized, "--board", value),
+            "port" => push_flag_value(&mut normalized, "--port", value),
+            "image" => push_flag_value(&mut normalized, "--image", value),
+            "manifest" => push_flag_value(&mut normalized, "--manifest", value),
+            "evidence-dir" | "evidence_dir" => {
+                push_flag_value(&mut normalized, "--evidence-dir", value)
+            }
+            "dry-run" | "dry_run" => {
+                if parse_bool_alias(value) {
+                    normalized.push("--dry-run".to_owned());
+                }
+            }
+            _ => normalized.push(arg),
+        }
+    }
+
+    normalized
+}
+
+fn push_flag_value(args: &mut Vec<String>, flag: &str, value: &str) {
+    args.push(flag.to_owned());
+    args.push(value.to_owned());
+}
+
+fn parse_bool_alias(value: &str) -> bool {
+    matches!(value, "true" | "1" | "yes" | "on")
+}
+
+fn run_flash(command: &FlashCommand, environment: &impl FlashEnvironment) -> Result<FlashOutcome> {
+    let outcome = prepare_flash(command, environment)?;
+    emit_flash_outcome(&outcome)?;
+
+    if !command.common.dry_run {
+        environment.execute(&outcome.command)?;
+    }
+
+    write_evidence_if_requested(&command.common, &outcome, "flash", environment)?;
+    Ok(outcome)
+}
+
+fn run_monitor(command: &MonitorCommand, environment: &impl FlashEnvironment) -> Result<()> {
+    ensure_gamma_601(command.common.board)?;
+    let port = resolve_port(command.common.port.as_deref(), environment)?;
+    let command_spec = CommandSpec::new("espflash", ["monitor", "--port", port.as_str()]);
+    emit_command("monitor_command", &command_spec)?;
+
+    if !command.common.dry_run {
+        environment.execute(&command_spec)?;
+    }
+
+    Ok(())
+}
+
+fn run_flash_monitor(
+    command: &FlashMonitorCommand,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    let flash_command = FlashCommand {
+        common: command.common.clone(),
+        image: command.image.clone(),
+        manifest: command.manifest.clone(),
+    };
+    run_flash(&flash_command, environment)?;
+
+    let monitor_command = MonitorCommand {
+        common: command.common.clone(),
+    };
+    run_monitor(&monitor_command, environment)
+}
+
+fn prepare_flash(
+    command: &FlashCommand,
+    environment: &impl FlashEnvironment,
+) -> Result<FlashOutcome> {
+    ensure_gamma_601(command.common.board)?;
+    let port = resolve_port(command.common.port.as_deref(), environment)?;
+    let (maybe_manifest, flash_image) = resolve_flash_image(command, environment)?;
+    let command = CommandSpec::new(
+        "espflash",
+        [
+            "flash",
+            "--chip",
+            "esp32s3",
+            "--port",
+            port.as_str(),
+            flash_image.as_str(),
+        ],
+    );
+
+    Ok(FlashOutcome {
+        manifest: maybe_manifest,
+        flash_image,
+        command,
+    })
+}
+
+fn resolve_flash_image(
+    command: &FlashCommand,
+    environment: &impl FlashEnvironment,
+) -> Result<(Option<Utf8PathBuf>, Utf8PathBuf)> {
+    if let Some(image) = &command.image {
+        return Ok((None, image.clone()));
+    }
+
+    environment.build_package()?;
+    let manifest = match &command.manifest {
+        Some(path) => path.clone(),
+        None => environment
+            .bazel_bin()?
+            .join(PACKAGE_MANIFEST_RELATIVE_PATH),
+    };
+    let manifest_contents = environment.read_to_string(&manifest)?;
+    let package_manifest: PackageManifest = serde_json::from_str(&manifest_contents)
+        .with_context(|| format!("failed to parse package manifest {manifest}"))?;
+    let default_flash_image = Utf8PathBuf::from(package_manifest.default_flash_image);
+    let flash_image = resolve_manifest_default(&manifest, &default_flash_image)?;
+
+    if !environment.path_exists(&flash_image) {
+        bail!("manifest default flash image does not exist: {flash_image}");
+    }
+
+    Ok((Some(manifest), flash_image))
+}
+
+fn resolve_manifest_default(
+    manifest: &Utf8Path,
+    default_flash_image: &Utf8Path,
+) -> Result<Utf8PathBuf> {
+    let Some(file_name) = default_flash_image.file_name() else {
+        bail!("default_flash_image must resolve to {DEFAULT_ELF_NAME}");
+    };
+
+    if file_name != DEFAULT_ELF_NAME {
+        if file_name == FACTORY_IMAGE_NAME {
+            bail!(
+                "default_flash_image must resolve to {DEFAULT_ELF_NAME}; {FACTORY_IMAGE_NAME} is only an additional artifact"
+            );
+        }
+
+        bail!("default_flash_image must resolve to {DEFAULT_ELF_NAME}, not {file_name}");
+    }
+
+    if default_flash_image.is_absolute() {
+        return Ok(default_flash_image.to_owned());
+    }
+
+    let Some(manifest_dir) = manifest.parent() else {
+        bail!("manifest path has no parent directory: {manifest}");
+    };
+
+    Ok(manifest_dir.join(default_flash_image))
+}
+
+fn resolve_port(maybe_port: Option<&str>, environment: &impl FlashEnvironment) -> Result<String> {
+    if let Some(port) = maybe_port {
+        return Ok(port.to_owned());
+    }
+
+    let ports_output = environment.list_ports()?;
+    let candidates = likely_port_candidates(&ports_output);
+    match candidates.len() {
+        0 => bail!(
+            "No serial ports found. Connect a Gamma 601 over USB or pass an explicit port, for example: --port /dev/cu.usbmodem101"
+        ),
+        1 => Ok(candidates[0].clone()),
+        _ => bail!(
+            "Ambiguous serial ports:\n{}",
+            candidates
+                .iter()
+                .map(|port| format!("- use --port {port}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        ),
+    }
+}
+
+fn likely_port_candidates(ports_output: &str) -> Vec<String> {
+    let mut candidates = BTreeSet::new();
+    for token in ports_output.split_whitespace() {
+        let port = token.trim_matches(|character: char| {
+            matches!(character, ',' | ';' | ':' | '(' | ')' | '[' | ']')
+        });
+
+        if is_likely_port(port) {
+            candidates.insert(port.to_owned());
+        }
+    }
+
+    candidates.into_iter().collect()
+}
+
+fn is_likely_port(port: &str) -> bool {
+    port.starts_with("/dev/cu.usbmodem")
+        || port.starts_with("/dev/cu.usbserial")
+        || port.starts_with("/dev/ttyUSB")
+        || port.starts_with("/dev/ttyACM")
+        || (port.starts_with("COM")
+            && port[3..]
+                .chars()
+                .all(|character| character.is_ascii_digit()))
+}
+
+fn ensure_gamma_601(board: BoardId) -> Result<()> {
+    if board != BoardId::Gamma601 {
+        bail!("Phase 1 supports board=601 only");
+    }
+
+    Ok(())
+}
+
+fn emit_flash_outcome(outcome: &FlashOutcome) -> Result<()> {
+    if let Some(manifest) = &outcome.manifest {
+        emit_line("manifest", manifest.as_str())?;
+    }
+    emit_line("default_flash_image", outcome.flash_image.as_str())?;
+    emit_command("flash_command", &outcome.command)
+}
+
+fn emit_command(label: &str, command: &CommandSpec) -> Result<()> {
+    emit_line(label, &command.display())
+}
+
+fn emit_line(label: &str, value: &str) -> Result<()> {
+    let mut stdout = io::stdout().lock();
+    writeln!(stdout, "{label}: {value}").context("failed to write command output")
+}
+
+fn write_evidence_if_requested(
+    common: &CommonArgs,
+    outcome: &FlashOutcome,
+    command_kind: &str,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    let Some(evidence_dir) = &common.evidence_dir else {
+        return Ok(());
+    };
+
+    let log_path = evidence_dir.join("flash-monitor.log");
+    let record = EvidenceRecord {
+        command: outcome.command.display(),
+        command_kind: command_kind.to_owned(),
+        board: common.board.to_string(),
+        port: command_port(&outcome.command).unwrap_or_else(|| UNAVAILABLE.to_owned()),
+        firmware_commit: environment.firmware_commit(),
+        reference_commit: environment.reference_commit(),
+        manifest_path: outcome
+            .manifest
+            .as_ref()
+            .map(|path| path.as_str().to_owned())
+            .unwrap_or_else(|| UNAVAILABLE.to_owned()),
+        default_flash_image_path: outcome.flash_image.as_str().to_owned(),
+        timestamp: unix_timestamp(),
+        log_path: log_path.as_str().to_owned(),
+    };
+    let json = serde_json::to_string_pretty(&record).context("failed to serialize evidence")?;
+    environment.write_evidence(&evidence_dir.join("flash-command-evidence.json"), &json)
+}
+
+fn command_port(command: &CommandSpec) -> Option<String> {
+    command
+        .args
+        .windows(2)
+        .find(|window| window[0] == "--port")
+        .map(|window| window[1].clone())
+}
+
+#[derive(Debug, Serialize)]
+struct EvidenceRecord {
+    command: String,
+    command_kind: String,
+    board: String,
+    port: String,
+    firmware_commit: String,
+    reference_commit: String,
+    manifest_path: String,
+    default_flash_image_path: String,
+    timestamp: String,
+    log_path: String,
+}
+
+fn unix_timestamp() -> String {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs().to_string())
+        .unwrap_or_else(|_| UNAVAILABLE.to_owned())
+}
+
+fn parse_board(value: &str) -> std::result::Result<BoardId, String> {
+    value.parse()
+}
+
+fn parse_utf8_path(value: &str) -> std::result::Result<Utf8PathBuf, String> {
+    Ok(Utf8PathBuf::from(value))
+}
+
+fn command_output_to_string(output: std::process::Output, description: &str) -> Result<String> {
+    if !output.status.success() {
+        bail!(
+            "{description} failed: {}",
+            command_stderr_or_status(&output)
+        );
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .with_context(|| format!("{description} output was not valid UTF-8"))?;
+    Ok(stdout.trim().to_owned())
+}
+
+fn command_stderr_or_status(output: &std::process::Output) -> String {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let trimmed_stderr = stderr.trim();
+    if !trimmed_stderr.is_empty() {
+        return trimmed_stderr.to_owned();
+    }
+
+    format!("exit status {}", output.status)
+}
+
+fn detect_workspace_dir() -> Result<Utf8PathBuf> {
+    if let Ok(workspace_dir) = env::var("BUILD_WORKSPACE_DIRECTORY") {
+        if !workspace_dir.is_empty() {
+            return Ok(Utf8PathBuf::from(workspace_dir));
+        }
+    }
+
+    let output = Command::new("git")
+        .arg("rev-parse")
+        .arg("--show-toplevel")
+        .output()
+        .context("failed to detect workspace directory with git rev-parse --show-toplevel")?;
+
+    command_output_to_string(output, "git rev-parse --show-toplevel").map(Utf8PathBuf::from)
+}
+
+fn git_output<const N: usize>(workspace_dir: &Utf8Path, args: [&str; N]) -> Option<String> {
+    let output = Command::new("git")
+        .current_dir(workspace_dir.as_std_path())
+        .args(args)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8(output.stdout).ok()?;
+    let trimmed = stdout.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    Some(trimmed.to_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+    use tempfile::{tempdir, TempDir};
+
+    #[test]
+    fn parses_key_value_aliases_for_flash() {
+        // Arrange
+        let args = [
+            "bitaxe-flash",
+            "flash",
+            "board=601",
+            "dry-run=true",
+            "port=/dev/cu.usbmodem101",
+            "image=/tmp/bitaxe-gamma601.elf",
+        ];
+
+        // Act
+        let cli = parse_cli(args).expect("cli");
+
+        // Assert
+        let CliCommand::Flash(command) = cli.command else {
+            panic!("expected flash command");
+        };
+        assert_eq!(command.common.board, BoardId::Gamma601);
+        assert_eq!(command.common.port.as_deref(), Some("/dev/cu.usbmodem101"));
+        assert!(command.common.dry_run);
+        assert_eq!(
+            command.image.as_deref(),
+            Some(Utf8Path::new("/tmp/bitaxe-gamma601.elf"))
+        );
+    }
+
+    #[test]
+    fn dry_run_flash_with_explicit_image_renders_vector_command() {
+        // Arrange
+        let command = FlashCommand {
+            common: common_args(),
+            image: Some(Utf8PathBuf::from("/tmp/bitaxe-gamma601.elf")),
+            manifest: None,
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let outcome = run_flash(&command, &environment).expect("flash");
+
+        // Assert
+        assert_eq!(
+            outcome.command,
+            CommandSpec::new(
+                "espflash",
+                [
+                    "flash",
+                    "--chip",
+                    "esp32s3",
+                    "--port",
+                    "/dev/cu.usbmodem101",
+                    "/tmp/bitaxe-gamma601.elf",
+                ],
+            )
+        );
+        assert!(environment.executed_commands().is_empty());
+    }
+
+    #[test]
+    fn dry_run_flash_resolves_manifest_default_elf() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest(&dir, DEFAULT_ELF_NAME);
+        let command = FlashCommand {
+            common: common_args(),
+            image: None,
+            manifest: Some(manifest.clone()),
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let outcome = run_flash(&command, &environment).expect("flash");
+
+        // Assert
+        assert_eq!(outcome.manifest.as_ref(), Some(&manifest));
+        assert_eq!(
+            outcome.flash_image,
+            manifest.parent().expect("parent").join(DEFAULT_ELF_NAME)
+        );
+        assert_eq!(
+            outcome.command.args,
+            vec![
+                "flash",
+                "--chip",
+                "esp32s3",
+                "--port",
+                "/dev/cu.usbmodem101",
+                outcome.flash_image.as_str(),
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_manifest_default_factory_bin() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest(&dir, FACTORY_IMAGE_NAME);
+        let command = FlashCommand {
+            common: common_args(),
+            image: None,
+            manifest: Some(manifest),
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        assert!(format!("{result:#?}").contains(DEFAULT_ELF_NAME));
+    }
+
+    #[test]
+    fn zero_ports_error_includes_actionable_example() {
+        // Arrange
+        let environment = FakeFlashEnvironment::with_ports("");
+
+        // Act
+        let result = resolve_port(None, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("No serial ports found"));
+        assert!(error.contains("--port /dev/"));
+    }
+
+    #[test]
+    fn ambiguous_ports_error_lists_each_candidate() {
+        // Arrange
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbserial-110 USB serial\n",
+        );
+
+        // Act
+        let result = resolve_port(None, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("Ambiguous serial ports"));
+        assert!(error.contains("--port /dev/cu.usbmodem101"));
+        assert!(error.contains("--port /dev/cu.usbserial-110"));
+    }
+
+    #[test]
+    fn rejects_unsupported_board() {
+        // Arrange
+        let input = "205";
+
+        // Act
+        let result = input.parse::<BoardId>();
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+    fn common_args() -> CommonArgs {
+        CommonArgs {
+            board: BoardId::Gamma601,
+            port: Some("/dev/cu.usbmodem101".to_owned()),
+            dry_run: true,
+            evidence_dir: None,
+        }
+    }
+
+    fn dir_path(dir: &TempDir) -> Utf8PathBuf {
+        Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).expect("utf8 path")
+    }
+
+    fn write_manifest(dir: &TempDir, default_flash_image: &str) -> Utf8PathBuf {
+        let dir_path = dir_path(dir);
+        let manifest = dir_path.join(PACKAGE_MANIFEST_RELATIVE_PATH);
+        let manifest_dir = manifest.parent().expect("parent");
+        std::fs::create_dir_all(manifest_dir.as_std_path()).expect("create manifest dir");
+        let default_image = manifest_dir.join(default_flash_image);
+        std::fs::write(default_image.as_std_path(), b"image").expect("write image");
+        std::fs::write(
+            manifest.as_std_path(),
+            format!(r#"{{"default_flash_image":"{default_flash_image}"}}"#),
+        )
+        .expect("write manifest");
+        manifest
+    }
+
+    #[derive(Debug)]
+    struct FakeFlashEnvironment {
+        ports: String,
+        executed_commands: RefCell<Vec<CommandSpec>>,
+    }
+
+    impl Default for FakeFlashEnvironment {
+        fn default() -> Self {
+            Self::with_ports("/dev/cu.usbmodem101 USB JTAG")
+        }
+    }
+
+    impl FakeFlashEnvironment {
+        fn with_ports(ports: &str) -> Self {
+            Self {
+                ports: ports.to_owned(),
+                executed_commands: RefCell::new(Vec::new()),
+            }
+        }
+
+        fn executed_commands(&self) -> Vec<CommandSpec> {
+            self.executed_commands.borrow().clone()
+        }
+    }
+
+    impl FlashEnvironment for FakeFlashEnvironment {
+        fn build_package(&self) -> Result<()> {
+            Ok(())
+        }
+
+        fn bazel_bin(&self) -> Result<Utf8PathBuf> {
+            Ok(Utf8PathBuf::from("/tmp/bazel-bin"))
+        }
+
+        fn read_to_string(&self, path: &Utf8Path) -> Result<String> {
+            std::fs::read_to_string(path.as_std_path())
+                .with_context(|| format!("failed to read fake manifest {path}"))
+        }
+
+        fn path_exists(&self, path: &Utf8Path) -> bool {
+            path.is_file()
+        }
+
+        fn list_ports(&self) -> Result<String> {
+            Ok(self.ports.clone())
+        }
+
+        fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
+            self.executed_commands
+                .borrow_mut()
+                .push(command_spec.clone());
+            Ok(())
+        }
+
+        fn firmware_commit(&self) -> String {
+            "firmware-commit".to_owned()
+        }
+
+        fn reference_commit(&self) -> String {
+            "reference-commit".to_owned()
+        }
+
+        fn write_evidence(&self, _path: &Utf8Path, _contents: &str) -> Result<()> {
+            Ok(())
+        }
+    }
+}

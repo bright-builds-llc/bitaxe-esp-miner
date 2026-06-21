@@ -1,0 +1,22 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
+
+rust_binary(
+    name = "flash",
+    srcs = ["src/main.rs"],
+    crate_name = "bitaxe_flash",
+    edition = "2021",
+    deps = [
+        "@crates//:anyhow",
+        "@crates//:camino",
+        "@crates//:clap",
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:tempfile",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "tests",
+    crate = ":flash",
+)

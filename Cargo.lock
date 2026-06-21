@@ -160,6 +160,14 @@ dependencies = [
 [[package]]
 name = "bitaxe-flash"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "camino",
+ "clap",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
 
 [[package]]
 name = "bitaxe-parity"
