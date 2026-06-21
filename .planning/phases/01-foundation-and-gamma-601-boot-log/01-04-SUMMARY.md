@@ -111,7 +111,7 @@ Each task was committed atomically:
 - **Verification:** `cargo metadata --format-version=1 --no-deps` resolved all workspace members after Task 2.
 - **Committed in:** `a49578a`, `c95aa98`
 
----
+***
 
 **Total deviations:** 2 auto-fixed (1 missing critical, 1 blocking)
 **Impact on plan:** The deviations preserved repo-level commit guarantees and kept each committed workspace state reproducible. No active ASIC, Stratum, or API behavior was added.
@@ -159,7 +159,7 @@ None.
 
 Ready for `01-05-PLAN.md`. The planned pure crate package surface now exists for core, config, test-support, ASIC, Stratum, and API contracts, while active mining, transport, hardware control, HTTP, OTA, and web asset behavior remain deferred to their owning later phases.
 
----
+***
 
 *Phase: 01-foundation-and-gamma-601-boot-log*
 *Completed: 2026-06-21*
