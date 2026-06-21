@@ -1,0 +1,17 @@
+genrule(
+    name = "firmware",
+    srcs = glob(["src/**/*.rs"]) + [
+        "Cargo.toml",
+        "build.rs",
+        "sdkconfig.defaults",
+    ],
+    outs = ["bitaxe-firmware.elf"],
+    cmd = "$(location //scripts:build_firmware) $(@D)",
+    local = True,
+    tags = [
+        "local",
+        "no-sandbox",
+    ],
+    tools = ["//scripts:build_firmware"],
+    visibility = ["//visibility:public"],
+)

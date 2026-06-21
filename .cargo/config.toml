@@ -3,3 +3,6 @@ linker = "ldproxy"
 
 [env]
 MCU = "esp32s3"
+
+[unstable]
+build-std = ["std", "panic_abort"]

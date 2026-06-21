@@ -72,12 +72,13 @@ fn maybe_partition_label() -> Option<String> {
 }
 
 fn psram_status() -> &'static str {
-    // ESP-IDF reports whether external memory setup completed.
-    if unsafe { sys::esp_psram_is_initialized() } {
-        return "initialized";
+    // ESP-IDF heap capabilities expose whether external memory is present.
+    let psram_bytes = unsafe { sys::heap_caps_get_total_size(sys::MALLOC_CAP_SPIRAM) };
+    if psram_bytes > 0 {
+        return "available";
     }
 
-    "not_initialized"
+    "unavailable"
 }
 
 fn firmware_commit() -> &'static str {

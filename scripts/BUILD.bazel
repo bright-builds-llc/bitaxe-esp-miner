@@ -4,6 +4,11 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 package(default_visibility = ["//visibility:public"])
 
 sh_binary(
+    name = "build_firmware",
+    srcs = ["build-firmware.sh"],
+)
+
+sh_binary(
     name = "verify_reference_clean",
     srcs = ["verify-reference-clean.sh"],
 )
