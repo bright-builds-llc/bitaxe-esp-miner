@@ -1,0 +1,23 @@
+build:
+    bazel build //firmware/bitaxe:firmware
+
+test:
+    bazel test //...
+
+package:
+    bazel build //firmware/bitaxe:firmware_image
+
+flash *args:
+    bazel run //tools/flash:flash -- flash {{ args }}
+
+monitor *args:
+    bazel run //tools/flash:flash -- monitor {{ args }}
+
+flash-monitor *args:
+    bazel run //tools/flash:flash -- flash-monitor {{ args }}
+
+verify-reference:
+    bazel run //scripts:verify_reference_clean
+
+parity:
+    bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
