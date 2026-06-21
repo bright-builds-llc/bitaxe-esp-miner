@@ -109,7 +109,7 @@ completed: 2026-06-21
 - **Verification:** `cargo test -p bitaxe-parity`, `bazel test //tools/parity:tests`, and `bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified` passed.
 - **Committed in:** `fa983ed`
 
----
+***
 
 **Total deviations:** 2 auto-fixed (2 blocking)
 **Impact on plan:** Both were workflow/correctness requirements. No feature scope was added beyond the planned parity report and checklist ledger.
@@ -143,7 +143,7 @@ None.
 - Plan 08 can build on the parity report guard pattern for package manifest provenance.
 - Later hardware plans still need actual Gamma 601 `hardware-smoke` or `hardware-regression` evidence before any ASIC, voltage, fan, thermal, power, or mining parity row can be marked `verified`.
 
----
+***
 *Phase: 01-foundation-and-gamma-601-boot-log*
 *Completed: 2026-06-21*
 

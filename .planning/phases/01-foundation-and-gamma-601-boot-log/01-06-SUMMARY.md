@@ -138,7 +138,7 @@ completed: 2026-06-21
 - **Verification:** `git status --short` no longer reported `.embuild/`.
 - **Committed in:** `48b35a4`
 
----
+***
 
 **Total deviations:** 5 auto-fixed (1 bug, 4 blocking)
 **Impact on plan:** All fixes were required to make the planned firmware and Bazel target build in the local ESP/Bazel environment. No scope was added beyond safe boot/log and build integration.
@@ -177,7 +177,7 @@ No external services. Local firmware builds require the ESP Rust setup expected 
 - Plan 08 can build from `//firmware/bitaxe:firmware` when creating package/image manifests.
 - Plan 09 still needs live Gamma 601 flash/monitor evidence before any hardware-smoke parity claim.
 
----
+***
 *Phase: 01-foundation-and-gamma-601-boot-log*
 *Completed: 2026-06-21*
 

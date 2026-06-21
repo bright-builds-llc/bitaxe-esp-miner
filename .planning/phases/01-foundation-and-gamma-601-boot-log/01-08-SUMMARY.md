@@ -119,7 +119,7 @@ completed: 2026-06-21
 - **Verification:** Manifest-default dry-run built `//firmware/bitaxe:firmware_image`, printed the manifest path, resolved `bitaxe-gamma601.elf`, and printed the `espflash flash` vector.
 - **Committed in:** `1fa494f`
 
----
+***
 
 **Total deviations:** 3 auto-fixed (3 blocking)
 **Impact on plan:** All fixes were required for the planned Bazel/package/flash commands to work in the local Bazel execution environment. No new product scope was added.
@@ -172,7 +172,7 @@ No new external services. Local package generation requires the already-establis
 - Plan 09 can wire `just package`, `just flash`, `just monitor`, and `just flash-monitor` to the Bazel package and flash targets.
 - Hardware smoke evidence is still pending; this plan only proves build/package/dry-run command behavior.
 
----
+***
 *Phase: 01-foundation-and-gamma-601-boot-log*
 *Completed: 2026-06-21*
 

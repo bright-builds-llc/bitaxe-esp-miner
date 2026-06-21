@@ -95,7 +95,7 @@ completed: 2026-06-21
 - **Verification:** `just parity` passed with `validation_errors: none`; safety-critical rows remained unverified.
 - **Committed in:** `239d395`
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 missing critical)
 **Impact on plan:** The deviation clarified evidence semantics without expanding product scope or marking hardware behavior verified.
@@ -154,7 +154,7 @@ None for command verification. Live smoke still requires connecting a Gamma 601 
 
 Phase 1 command, package, parity, and missing-hardware evidence paths are complete. Phase 2 can proceed with configuration/NVS modeling, while hardware smoke remains explicit missing evidence until a Gamma 601 serial port is available.
 
----
+***
 *Phase: 01-foundation-and-gamma-601-boot-log*
 *Completed: 2026-06-21*
 
