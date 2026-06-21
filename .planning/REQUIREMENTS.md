@@ -19,7 +19,7 @@ V1 targets device-user parity for the Bitaxe Gamma 601 with BM1370 ASIC. Other u
 - [ ] **FND-08**: USB flashing ergonomics support `board=601`, optional `port=...`, likely-port discovery, clear ambiguous-port errors, build-before-flash by default, and printing the underlying flashing command.
 - [ ] **FND-09**: Firmware packaging records image paths, offsets when applicable, checksums, tool versions, firmware commit, and reference commit in a machine-readable manifest.
 - [x] **FND-10**: Provenance and license guardrails keep original project work MIT-first where possible while marking upstream-derived GPL-compatible expression explicitly.
-- [ ] **FND-11**: Parity tooling reports checklist status, evidence gaps, implementation pointers, and reference breadcrumbs without treating implementation alone as verification.
+- [x] **FND-11**: Parity tooling reports checklist status, evidence gaps, implementation pointers, and reference breadcrumbs without treating implementation alone as verification.
 
 ### Config And NVS
 
@@ -148,7 +148,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-08 | Phase 1 | Pending |
 | FND-09 | Phase 1 | Pending |
 | FND-10 | Phase 1 | Complete |
-| FND-11 | Phase 1 | Pending |
+| FND-11 | Phase 1 | Complete |
 | CFG-01 | Phase 2 | Pending |
 | CFG-02 | Phase 2 | Pending |
 | CFG-03 | Phase 2 | Pending |
