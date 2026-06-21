@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "bitaxe-api"
+version = "0.1.0"
+
+[[package]]
 name = "bitaxe-asic"
 version = "0.1.0"
 
