@@ -468,20 +468,20 @@ Source: Behavior is locked by Phase 1 decisions; available espflash commands are
 |---|-------|---------|---------------|
 | - | No unverified assumptions were used as planning requirements; claims are tagged as local verification, registry verification, official docs citation, or user constraints. | All | None from assumptions; open execution constraints remain below. [VERIFIED: source review in this research] |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Is Gamma 601 hardware available for the Phase 1 hardware-smoke gate?**
-   - What we know: `espflash list-ports` currently reports no known serial ports. [VERIFIED: local command `espflash list-ports`]
-   - What's unclear: Whether the user can connect a Gamma 601 during implementation or verification. [VERIFIED: local environment audit]
-   - Recommendation: Plan build/package/parity as automated gates and add a separate hardware evidence task that remains incomplete until `just flash-monitor board=601 port=...` captures logs. [VERIFIED: `.planning/phases/01-foundation-and-gamma-601-boot-log/01-CONTEXT.md`]
+   - Resolution: Local execution has no visible Gamma 601 serial port; `espflash list-ports` currently reports no known serial ports. [VERIFIED: local command `espflash list-ports`]
+   - Planning disposition: Phase 1 plans must build, package, run parity tooling, and prepare the evidence record through automated gates, but hardware smoke remains a manual/evidence checkpoint. Plans must not claim the Gamma 601 flash-monitor smoke passed unless `just flash-monitor board=601 port=...` captures the required boot/log lines on connected hardware. [VERIFIED: `.planning/phases/01-foundation-and-gamma-601-boot-log/01-CONTEXT.md` D-10 and D-15]
+   - Status: RESOLVED - no hardware smoke is assumed in planning; missing hardware remains explicit evidence status.
 2. **Should implementation upgrade local esp tools before first build?**
-   - What we know: local `espup 0.15.1` and `espflash 4.0.1` are installed, while crates.io latest versions are `espup 0.17.1` and `espflash/cargo-espflash 4.4.0`. [VERIFIED: local commands; VERIFIED: crates.io API]
-   - What's unclear: Whether the implementer should upgrade tools or support the already-installed command surface. [VERIFIED: local environment audit]
-   - Recommendation: Add a `just doctor` or setup check that reports versions and suggests upgrades, but do not block Phase 1 planning because installed espflash commands already cover required operations. [VERIFIED: local command `espflash --help`; VERIFIED: crates.io API]
+   - Resolution: Support the installed tools first when they satisfy required commands. Local `espup 0.15.1` and `espflash 4.0.1` are behind crates.io latest versions, but installed `espflash` exposes the required `list-ports`, `flash`, `monitor`, and `save-image` command surfaces, and installed `espup` exposes the required install flow. [VERIFIED: local commands `espup install --help`, `espflash --help`, `espflash save-image --help`; VERIFIED: crates.io API]
+   - Planning disposition: Plans may print local versions and fail with install/upgrade guidance when required commands are missing or too old, but they must not require an upgrade without proof that the installed command surface is insufficient. [VERIFIED: `.planning/phases/01-foundation-and-gamma-601-boot-log/01-CONTEXT.md` D-07 and D-12]
+   - Status: RESOLVED - no unconditional espup/espflash upgrade is required by Phase 1 plans.
 3. **Should the first package image be a complete merged factory image or a staged manifest over Cargo/ESP-IDF outputs?**
-   - What we know: upstream merge behavior includes bootloader, partition table, app, web image, OTA data, optional config, and fixed offsets. [VERIFIED: upstream `merge_bin.sh`; VERIFIED: upstream `partitions.csv`]
-   - What's unclear: Whether Phase 1 can produce every upstream-like partition artifact before static assets exist. [VERIFIED: `docs/project/first-milestone.md`]
-   - Recommendation: Produce a flashable app/factory artifact if possible, and always produce a manifest that marks unavailable fields as `Unavailable` rather than inventing fake artifacts. [VERIFIED: `.planning/phases/01-foundation-and-gamma-601-boot-log/01-CONTEXT.md`; VERIFIED: `AGENTS.bright-builds.md` visible provenance guidance]
+   - Resolution: Phase 1 must produce a declared default flash input, not only metadata. The package target should produce declared outputs for the firmware ELF and a saved/merged image when `espflash save-image` succeeds, and the manifest must include a top-level `default_flash_image` field pointing to the default flash input produced by `//firmware/bitaxe:firmware_image`. [VERIFIED: local command `espflash save-image --help`; VERIFIED: `.planning/phases/01-foundation-and-gamma-601-boot-log/01-CONTEXT.md` D-12 and D-13]
+   - Planning disposition: `tools/flash` must read the package manifest and use `default_flash_image` when `--image` or `image=` is omitted. The manifest may still mark non-critical unavailable fields as `Unavailable`, but `default_flash_image` itself must point to an existing declared package artifact before default flashing proceeds. [VERIFIED: `.planning/REQUIREMENTS.md` FND-08 and FND-09]
+   - Status: RESOLVED - package and flash plans must wire `//firmware/bitaxe:firmware_image` -> manifest `default_flash_image` -> `tools/flash` default image consumption.
 
 ## Environment Availability
 

@@ -37,14 +37,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 1. Bitaxe owner can observe Gamma 601 boot logs showing firmware identity, platform status, reset reason, partition/image identity, selected board/ASIC target, and an explicit safe no-mining/no-control state.
 1. Developer can inspect parity and provenance tooling output showing checklist status, evidence gaps, implementation pointers, reference breadcrumbs, package metadata, and license guardrails without treating implementation as verification.
 
-**Plans**: 6 plans
+**Plans**: 9 plans
 Plans:
 - [ ] 01-01-PLAN.md - Pin the upstream reference submodule and add the Bazel-visible reference guard.
-- [ ] 01-02-PLAN.md - Create the Rust workspace, ESP toolchain pins, and pure crate contracts.
-- [ ] 01-03-PLAN.md - Build the safe Gamma 601 ESP-IDF boot/log firmware target.
-- [ ] 01-04-PLAN.md - Generate the package manifest and implement safe flash/monitor tooling.
-- [ ] 01-05-PLAN.md - Wire parity/provenance reporting without false verification.
-- [ ] 01-06-PLAN.md - Wire Just commands and record Gamma 601 hardware-smoke evidence.
+- [ ] 01-02-PLAN.md - Create the Rust workspace root, ESP toolchain pins, and Bazel crate mirror contract.
+- [ ] 01-03-PLAN.md - Create foundational pure crates for Gamma 601 identity, safe state, config selection, and test support.
+- [ ] 01-04-PLAN.md - Create deferred pure crate contracts for ASIC, Stratum, and API surfaces.
+- [ ] 01-05-PLAN.md - Create compile-only firmware and host tool package contracts.
+- [ ] 01-06-PLAN.md - Build the safe Gamma 601 ESP-IDF boot/log firmware target.
+- [ ] 01-07-PLAN.md - Wire parity/provenance reporting without false verification.
+- [ ] 01-08-PLAN.md - Generate the package manifest/default flash image and implement safe flash/monitor tooling.
+- [ ] 01-09-PLAN.md - Wire Just commands and record Gamma 601 hardware-smoke evidence.
 **Verification expectations**: Run `just verify-reference`, `just build`, `just test`, `just package`, `just parity`, and a Gamma 601 flash/monitor smoke where hardware is available. Confirm the package manifest records image paths, offsets when applicable, checksums, tool versions, firmware commit, and reference commit. Review the diff to confirm `reference/esp-miner` is not modified.
 **Research flags**: Mostly standard setup work. The Bazel wrapper around Cargo/ESP-IDF and the flashable image manifest may need an implementation spike.
 
@@ -175,7 +178,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
-| 1. Foundation And Gamma 601 Boot/Log | 0/6 | Not started | - |
+| 1. Foundation And Gamma 601 Boot/Log | 0/9 | Not started | - |
 | 2. Gamma 601 Config And NVS Model | 0/TBD | Not started | - |
 | 3. BM1370 ASIC Protocol And Safe Initialization | 0/TBD | Not started | - |
 | 4. Stratum V1 And First Mining Loop | 0/TBD | Not started | - |
