@@ -3,5 +3,19 @@
 version = 4
 
 [[package]]
+name = "bitaxe-config"
+version = "0.1.0"
+dependencies = [
+ "bitaxe-core",
+]
+
+[[package]]
 name = "bitaxe-core"
 version = "0.1.0"
+
+[[package]]
+name = "bitaxe-test-support"
+version = "0.1.0"
+dependencies = [
+ "bitaxe-core",
+]

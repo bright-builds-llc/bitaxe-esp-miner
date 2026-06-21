@@ -1,7 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/bitaxe-config",
     "crates/bitaxe-core",
+    "crates/bitaxe-test-support",
 ]
 
 [workspace.package]
