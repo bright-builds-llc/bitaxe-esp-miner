@@ -3,7 +3,7 @@ use std::env;
 use std::fmt;
 use std::fs;
 use std::io::{self, Write};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -154,6 +154,7 @@ trait FlashEnvironment {
     fn path_exists(&self, path: &Utf8Path) -> bool;
     fn list_ports(&self) -> Result<String>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
+    fn execute_capturing(&self, command_spec: &CommandSpec, log_path: &Utf8Path) -> Result<()>;
     fn firmware_commit(&self) -> String;
     fn reference_commit(&self) -> String;
     fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()>;
@@ -182,6 +183,39 @@ impl FlashEnvironment for LocalFlashEnvironment {
             .context("failed to run bazel build for firmware package")?;
         if !status.success() {
             bail!("{PACKAGE_BUILD_DISPLAY} failed with {status}");
+        }
+
+        Ok(())
+    }
+
+    fn execute_capturing(&self, command_spec: &CommandSpec, log_path: &Utf8Path) -> Result<()> {
+        if command_spec.program != "espflash" {
+            bail!("unsupported command program: {}", command_spec.program);
+        }
+
+        if let Some(parent) = log_path.parent() {
+            fs::create_dir_all(parent.as_std_path())
+                .with_context(|| format!("failed to create log directory {parent}"))?;
+        }
+
+        let log_file = fs::File::create(log_path.as_std_path())
+            .with_context(|| format!("failed to create monitor log {log_path}"))?;
+        let stderr_log = log_file
+            .try_clone()
+            .with_context(|| format!("failed to clone monitor log handle {log_path}"))?;
+
+        let mut command = Command::new("espflash");
+        for arg in &command_spec.args {
+            command.arg(arg);
+        }
+
+        let status = command
+            .stdout(Stdio::from(log_file))
+            .stderr(Stdio::from(stderr_log))
+            .status()
+            .with_context(|| format!("failed to run {}", command_spec.display()))?;
+        if !status.success() {
+            bail!("{} failed with {status}", command_spec.display());
         }
 
         Ok(())
@@ -346,9 +380,7 @@ fn run_flash(command: &FlashCommand, environment: &impl FlashEnvironment) -> Res
 }
 
 fn run_monitor(command: &MonitorCommand, environment: &impl FlashEnvironment) -> Result<()> {
-    ensure_gamma_601(command.common.board)?;
-    let port = resolve_port(command.common.port.as_deref(), environment)?;
-    let command_spec = CommandSpec::new("espflash", ["monitor", "--port", port.as_str()]);
+    let command_spec = prepare_monitor_command(&command.common, environment)?;
     emit_command("monitor_command", &command_spec)?;
 
     if !command.common.dry_run {
@@ -362,17 +394,43 @@ fn run_flash_monitor(
     command: &FlashMonitorCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
+    let mut flash_common = command.common.clone();
+    flash_common.evidence_dir = None;
     let flash_command = FlashCommand {
-        common: command.common.clone(),
+        common: flash_common,
         image: command.image.clone(),
         manifest: command.manifest.clone(),
     };
-    run_flash(&flash_command, environment)?;
+    let flash_outcome = run_flash(&flash_command, environment)?;
 
-    let monitor_command = MonitorCommand {
-        common: command.common.clone(),
-    };
-    run_monitor(&monitor_command, environment)
+    let monitor_command = prepare_monitor_command(&command.common, environment)?;
+    emit_command("monitor_command", &monitor_command)?;
+
+    if let Some(evidence_dir) = &command.common.evidence_dir {
+        let log_path = evidence_dir.join("flash-monitor.log");
+        if command.common.dry_run {
+            environment.write_evidence(
+                &log_path,
+                "dry-run: espflash monitor was not executed; no hardware log captured\n",
+            )?;
+        } else {
+            environment.execute_capturing(&monitor_command, &log_path)?;
+        }
+        write_flash_monitor_evidence_if_requested(
+            &command.common,
+            &flash_outcome,
+            &monitor_command,
+            &log_path,
+            environment,
+        )?;
+        return Ok(());
+    }
+
+    if !command.common.dry_run {
+        environment.execute(&monitor_command)?;
+    }
+
+    Ok(())
 }
 
 fn prepare_flash(
@@ -481,6 +539,18 @@ fn resolve_port(maybe_port: Option<&str>, environment: &impl FlashEnvironment) -
     }
 }
 
+fn prepare_monitor_command(
+    common: &CommonArgs,
+    environment: &impl FlashEnvironment,
+) -> Result<CommandSpec> {
+    ensure_gamma_601(common.board)?;
+    let port = resolve_port(common.port.as_deref(), environment)?;
+    Ok(CommandSpec::new(
+        "espflash",
+        ["monitor", "--port", port.as_str()],
+    ))
+}
+
 fn likely_port_candidates(ports_output: &str) -> Vec<String> {
     let mut candidates = BTreeSet::new();
     for token in ports_output.split_whitespace() {
@@ -497,14 +567,19 @@ fn likely_port_candidates(ports_output: &str) -> Vec<String> {
 }
 
 fn is_likely_port(port: &str) -> bool {
-    port.starts_with("/dev/cu.usbmodem")
+    if port.starts_with("/dev/cu.usbmodem")
         || port.starts_with("/dev/cu.usbserial")
         || port.starts_with("/dev/ttyUSB")
         || port.starts_with("/dev/ttyACM")
-        || (port.starts_with("COM")
-            && port[3..]
-                .chars()
-                .all(|character| character.is_ascii_digit()))
+    {
+        return true;
+    }
+
+    let Some(suffix) = port.strip_prefix("COM") else {
+        return false;
+    };
+
+    !suffix.is_empty() && suffix.chars().all(|character| character.is_ascii_digit())
 }
 
 fn ensure_gamma_601(board: BoardId) -> Result<()> {
@@ -543,8 +618,56 @@ fn write_evidence_if_requested(
     };
 
     let log_path = evidence_dir.join("flash-monitor.log");
+    write_evidence_record(
+        common,
+        outcome,
+        command_kind,
+        &outcome.command.display(),
+        &log_path,
+        environment,
+    )
+}
+
+fn write_flash_monitor_evidence_if_requested(
+    common: &CommonArgs,
+    outcome: &FlashOutcome,
+    monitor_command: &CommandSpec,
+    log_path: &Utf8Path,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    let Some(_evidence_dir) = &common.evidence_dir else {
+        return Ok(());
+    };
+
+    let command = format!(
+        "flash: {}\nmonitor: {}",
+        outcome.command.display(),
+        monitor_command.display()
+    );
+    write_evidence_record(
+        common,
+        outcome,
+        "flash-monitor",
+        &command,
+        log_path,
+        environment,
+    )
+}
+
+fn write_evidence_record(
+    common: &CommonArgs,
+    outcome: &FlashOutcome,
+    command_kind: &str,
+    command: &str,
+    log_path: &Utf8Path,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    let Some(evidence_dir) = &common.evidence_dir else {
+        return Ok(());
+    };
+
     let record = EvidenceRecord {
-        command: outcome.command.display(),
+        command: command.to_owned(),
         command_kind: command_kind.to_owned(),
         board: common.board.to_string(),
         port: command_port(&outcome.command).unwrap_or_else(|| UNAVAILABLE.to_owned()),
@@ -808,6 +931,59 @@ mod tests {
     }
 
     #[test]
+    fn bare_com_is_not_a_likely_port() {
+        // Arrange
+        let port = "COM";
+
+        // Act
+        let likely = is_likely_port(port);
+
+        // Assert
+        assert!(!likely);
+    }
+
+    #[test]
+    fn numbered_com_is_a_likely_port() {
+        // Arrange
+        let port = "COM3";
+
+        // Act
+        let likely = is_likely_port(port);
+
+        // Assert
+        assert!(likely);
+    }
+
+    #[test]
+    fn flash_monitor_evidence_points_to_created_log() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = FlashMonitorCommand {
+            common: CommonArgs {
+                evidence_dir: Some(evidence_dir.clone()),
+                dry_run: false,
+                ..common_args()
+            },
+            image: Some(Utf8PathBuf::from("/tmp/bitaxe-gamma601.elf")),
+            manifest: None,
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        run_flash_monitor(&command, &environment).expect("flash-monitor");
+
+        // Assert
+        let log_path = evidence_dir.join("flash-monitor.log");
+        let evidence_path = evidence_dir.join("flash-command-evidence.json");
+        assert!(log_path.is_file());
+        assert!(evidence_path.is_file());
+        let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
+        assert!(evidence.contains(r#""command_kind": "flash-monitor""#));
+        assert!(evidence.contains(log_path.as_str()));
+    }
+
+    #[test]
     fn rejects_unsupported_board() {
         // Arrange
         let input = "205";
@@ -851,6 +1027,7 @@ mod tests {
     struct FakeFlashEnvironment {
         ports: String,
         executed_commands: RefCell<Vec<CommandSpec>>,
+        captured_commands: RefCell<Vec<CommandSpec>>,
     }
 
     impl Default for FakeFlashEnvironment {
@@ -864,6 +1041,7 @@ mod tests {
             Self {
                 ports: ports.to_owned(),
                 executed_commands: RefCell::new(Vec::new()),
+                captured_commands: RefCell::new(Vec::new()),
             }
         }
 
@@ -901,6 +1079,18 @@ mod tests {
             Ok(())
         }
 
+        fn execute_capturing(&self, command_spec: &CommandSpec, log_path: &Utf8Path) -> Result<()> {
+            self.captured_commands
+                .borrow_mut()
+                .push(command_spec.clone());
+            if let Some(parent) = log_path.parent() {
+                std::fs::create_dir_all(parent.as_std_path()).expect("create fake log dir");
+            }
+            std::fs::write(log_path.as_std_path(), b"captured monitor log\n")
+                .expect("write fake monitor log");
+            Ok(())
+        }
+
         fn firmware_commit(&self) -> String {
             "firmware-commit".to_owned()
         }
@@ -909,7 +1099,11 @@ mod tests {
             "reference-commit".to_owned()
         }
 
-        fn write_evidence(&self, _path: &Utf8Path, _contents: &str) -> Result<()> {
+        fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()> {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent.as_std_path()).expect("create fake evidence dir");
+            }
+            std::fs::write(path.as_std_path(), contents).expect("write fake evidence");
             Ok(())
         }
     }

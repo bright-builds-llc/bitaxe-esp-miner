@@ -361,9 +361,12 @@ fn is_safety_critical(row: &ChecklistRow) -> bool {
     )
     .to_ascii_lowercase();
 
-    ["voltage", "fan", "thermal", "power"]
-        .iter()
-        .any(|term| haystack.contains(term))
+    haystack.contains("safety-critical")
+        || row.id.starts_with("PWR-")
+        || row.id.starts_with("THR-")
+        || ["voltage", "fan", "thermal", "power"]
+            .iter()
+            .any(|term| haystack.contains(term))
         || haystack.contains("asic initialization")
         || (row.id.starts_with("ASIC") && haystack.contains("initialization"))
 }
@@ -520,6 +523,26 @@ mod tests {
 
         // Assert
         assert_eq!(errors.len(), 1);
+        assert!(errors[0].message.contains("hardware-smoke"));
+        assert!(errors[0].message.contains("hardware-regression"));
+    }
+
+    #[test]
+    fn safety_critical_notes_require_hardware_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| PWR-001 | ASIC reset behavior | `reference/esp-miner/main/power/asic_reset.c` | `firmware/bitaxe` | verified | unit | Safety-critical; requires hardware evidence. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].id, "PWR-001");
         assert!(errors[0].message.contains("hardware-smoke"));
         assert!(errors[0].message.contains("hardware-regression"));
     }
