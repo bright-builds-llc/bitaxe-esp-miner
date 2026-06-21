@@ -1,2 +1,85 @@
-// Plan 06 replaces this entrypoint with the safe ESP-IDF boot/log firmware.
-fn main() {}
+use std::ffi::CStr;
+
+use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState};
+use esp_idf_svc::sys;
+
+const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Gamma 601 asic=BM1370";
+const ESP_IDF_VERSION: &str = "v5.5.4";
+const REFERENCE_COMMIT: &str = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
+const REFERENCE_COMMIT_LOG_LINE: &str = "reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50";
+const RUST_TARGET: &str = "xtensa-esp32s3-espidf";
+const SAFE_STATE_LOG_LINE: &str =
+    "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled";
+const UNAVAILABLE: &str = "Unavailable";
+
+fn main() -> anyhow::Result<()> {
+    sys::link_patches();
+    esp_idf_svc::log::EspLogger::initialize_default();
+
+    let safe_state = Phase1SafeState::default();
+
+    let boot_log_line = format!(
+        "bitaxe-rust boot: board={} asic={}",
+        BoardTarget::Gamma601.display_name(),
+        AsicTarget::Bm1370.display_name()
+    );
+    debug_assert_eq!(boot_log_line, BOOT_LOG_LINE);
+
+    let safe_state_log_line = safe_state.log_line();
+    debug_assert_eq!(safe_state_log_line, SAFE_STATE_LOG_LINE);
+
+    log::info!("{boot_log_line}");
+    log::info!("{safe_state_log_line}");
+    log::info!("reset_reason={}", reset_reason());
+    log::info!("partition={}", partition_label());
+    log::info!("psram_status={}", psram_status());
+    log::info!("firmware_commit={}", firmware_commit());
+    debug_assert_eq!(
+        REFERENCE_COMMIT_LOG_LINE,
+        format!("reference_commit={REFERENCE_COMMIT}")
+    );
+
+    log::info!("{REFERENCE_COMMIT_LOG_LINE}");
+    log::info!("esp_idf_version={ESP_IDF_VERSION}");
+    log::info!("rust_target={RUST_TARGET}");
+
+    Ok(())
+}
+
+fn reset_reason() -> i32 {
+    // ESP-IDF owns the reset register interpretation at this boundary.
+    unsafe { sys::esp_reset_reason() as i32 }
+}
+
+fn partition_label() -> String {
+    let Some(label) = maybe_partition_label() else {
+        return UNAVAILABLE.to_owned();
+    };
+
+    label
+}
+
+fn maybe_partition_label() -> Option<String> {
+    // ESP-IDF returns a static partition pointer for the running image.
+    let maybe_partition = unsafe { sys::esp_ota_get_running_partition() };
+    if maybe_partition.is_null() {
+        return None;
+    }
+
+    // The partition label is a null-terminated field owned by ESP-IDF.
+    let label = unsafe { CStr::from_ptr((*maybe_partition).label.as_ptr()) };
+    Some(label.to_string_lossy().into_owned())
+}
+
+fn psram_status() -> &'static str {
+    // ESP-IDF reports whether external memory setup completed.
+    if unsafe { sys::esp_psram_is_initialized() } {
+        return "initialized";
+    }
+
+    "not_initialized"
+}
+
+fn firmware_commit() -> &'static str {
+    option_env!("BITAXE_FIRMWARE_COMMIT").unwrap_or(UNAVAILABLE)
+}

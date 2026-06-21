@@ -5,3 +5,17 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+bitaxe-core = { path = "../../crates/bitaxe-core" }
+esp-idf-svc.workspace = true
+esp-idf-sys.workspace = true
+log.workspace = true
+
+[build-dependencies]
+embuild.workspace = true
+
+[package.metadata.esp-idf-sys]
+esp_idf_version = "tag:v5.5.4"
+esp_idf_tools_install_dir = "workspace"
+esp_idf_sdkconfig = "sdkconfig"
+esp_idf_sdkconfig_defaults = ["sdkconfig.defaults"]
