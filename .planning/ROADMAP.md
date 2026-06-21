@@ -46,7 +46,7 @@ Plans:
 - [x] 01-05-PLAN.md - Create compile-only firmware and host tool package contracts.
 - [x] 01-06-PLAN.md - Build the safe Gamma 601 ESP-IDF boot/log firmware target.
 - [x] 01-07-PLAN.md - Wire parity/provenance reporting without false verification.
-- [ ] 01-08-PLAN.md - Generate the package manifest/default flash image and implement safe flash/monitor tooling.
+- [x] 01-08-PLAN.md - Generate the package manifest/default flash image and implement safe flash/monitor tooling.
 - [ ] 01-09-PLAN.md - Wire Just commands and record Gamma 601 hardware-smoke evidence.
 **Verification expectations**: Run `just verify-reference`, `just build`, `just test`, `just package`, `just parity`, and a Gamma 601 flash/monitor smoke where hardware is available. Confirm the package manifest records image paths, offsets when applicable, checksums, tool versions, firmware commit, and reference commit. Review the diff to confirm `reference/esp-miner` is not modified.
 **Research flags**: Mostly standard setup work. The Bazel wrapper around Cargo/ESP-IDF and the flashable image manifest may need an implementation spike.

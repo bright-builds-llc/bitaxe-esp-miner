@@ -16,8 +16,8 @@ V1 targets device-user parity for the Bitaxe Gamma 601 with BM1370 ASIC. Other u
 - [x] **FND-05**: The monorepo contains the planned pure Rust crates for core state, config, ASIC, Stratum, API, and test support.
 - [x] **FND-06**: The ESP-IDF Rust firmware app can boot on Gamma 601 and log firmware identity, platform status, reset reason, partition/image identity, and selected board/ASIC target while mining and hardware control remain disabled.
 - [ ] **FND-07**: `just build`, `just test`, `just package`, `just flash`, `just monitor`, `just flash-monitor`, `just verify-reference`, and `just parity` are available and route through Bazel or repo-owned scripts represented in the automation graph.
-- [ ] **FND-08**: USB flashing ergonomics support `board=601`, optional `port=...`, likely-port discovery, clear ambiguous-port errors, build-before-flash by default, and printing the underlying flashing command.
-- [ ] **FND-09**: Firmware packaging records image paths, offsets when applicable, checksums, tool versions, firmware commit, and reference commit in a machine-readable manifest.
+- [x] **FND-08**: USB flashing ergonomics support `board=601`, optional `port=...`, likely-port discovery, clear ambiguous-port errors, build-before-flash by default, and printing the underlying flashing command.
+- [x] **FND-09**: Firmware packaging records image paths, offsets when applicable, checksums, tool versions, firmware commit, and reference commit in a machine-readable manifest.
 - [x] **FND-10**: Provenance and license guardrails keep original project work MIT-first where possible while marking upstream-derived GPL-compatible expression explicitly.
 - [x] **FND-11**: Parity tooling reports checklist status, evidence gaps, implementation pointers, and reference breadcrumbs without treating implementation alone as verification.
 
@@ -145,8 +145,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-05 | Phase 1 | Complete |
 | FND-06 | Phase 1 | Complete |
 | FND-07 | Phase 1 | Pending |
-| FND-08 | Phase 1 | Pending |
-| FND-09 | Phase 1 | Pending |
+| FND-08 | Phase 1 | Complete |
+| FND-09 | Phase 1 | Complete |
 | FND-10 | Phase 1 | Complete |
 | FND-11 | Phase 1 | Complete |
 | CFG-01 | Phase 2 | Pending |

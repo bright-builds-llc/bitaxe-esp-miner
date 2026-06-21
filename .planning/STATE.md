@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation-and-gamma-601-boot-log-07-PLAN.md
-last_updated: "2026-06-21T03:34:37.238Z"
+stopped_at: Completed 01-foundation-and-gamma-601-boot-log-08-PLAN.md
+last_updated: "2026-06-21T03:59:10.977Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 01 (Foundation And Gamma 601 Boot/Log) — EXECUTING
-Plan: 8 of 9
+Plan: 9 of 9
 Status: Ready to execute
 Last activity: 2026-06-21
 
@@ -57,6 +57,7 @@ Progress: [██████░░░░] 56%
 | Phase 01-foundation-and-gamma-601-boot-log P05 | 8 min | 2 tasks | 11 files |
 | Phase 01-foundation-and-gamma-601-boot-log P06 | 16 | 2 tasks | 11 files |
 | Phase 01-foundation-and-gamma-601-boot-log P07 | 11 | 2 tasks | 6 files |
+| Phase 01-foundation-and-gamma-601-boot-log P08 | 20 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation-and-gamma-601-boot-log]: Keep implemented checklist rows at Evidence = pending until command or hardware evidence is recorded.
 - [Phase 01-foundation-and-gamma-601-boot-log]: Keep Justfile and //firmware/bitaxe:firmware_image rows not-started because those artifacts do not exist yet.
 - [Phase 01-foundation-and-gamma-601-boot-log]: Honor AGENTS.md Rust pre-commit rules by recording TDD RED failures without committing failing intermediate states.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Run package and flash Bazel subprocesses from the real workspace path when Bazel actions or bazel run start in execroot/output directories.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Keep default_flash_image resolved to bitaxe-gamma601.elf; factory bin is additional metadata only.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Honor AGENTS.md Rust pre-commit rules by recording TDD RED failures without committing failing intermediate states.
 
 ### Pending Todos
 
@@ -101,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-21T03:34:37.236Z
-Stopped at: Completed 01-foundation-and-gamma-601-boot-log-07-PLAN.md
+Last session: 2026-06-21T03:59:10.974Z
+Stopped at: Completed 01-foundation-and-gamma-601-boot-log-08-PLAN.md
 Resume file: None
