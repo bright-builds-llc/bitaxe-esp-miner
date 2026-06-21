@@ -13,6 +13,11 @@ sh_binary(
     srcs = ["verify-reference-clean.sh"],
 )
 
+sh_binary(
+    name = "package_firmware",
+    srcs = ["package-firmware.sh"],
+)
+
 sh_test(
     name = "verify_reference_clean_test",
     srcs = ["verify-reference-clean-test.sh"],

@@ -1,0 +1,23 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
+
+rust_binary(
+    name = "xtask",
+    srcs = ["src/main.rs"],
+    crate_name = "xtask",
+    edition = "2021",
+    deps = [
+        "@crates//:anyhow",
+        "@crates//:camino",
+        "@crates//:clap",
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:sha2",
+        "@crates//:tempfile",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "tests",
+    crate = ":xtask",
+)

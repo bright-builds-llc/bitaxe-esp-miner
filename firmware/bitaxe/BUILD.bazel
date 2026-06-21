@@ -15,3 +15,24 @@ genrule(
     tools = ["//scripts:build_firmware"],
     visibility = ["//visibility:public"],
 )
+
+genrule(
+    name = "firmware_image",
+    srcs = ["//firmware/bitaxe:firmware"],
+    outs = [
+        "bitaxe-gamma601.elf",
+        "bitaxe-gamma601-factory.bin",
+        "bitaxe-gamma601-package.json",
+    ],
+    cmd = "$(location //scripts:package_firmware) --reference-guard $(location //scripts:verify_reference_clean) --firmware-elf $(location //firmware/bitaxe:firmware) --out-dir $(@D) --manifest $(@D)/bitaxe-gamma601-package.json",
+    local = True,
+    tags = [
+        "local",
+        "no-sandbox",
+    ],
+    tools = [
+        "//scripts:package_firmware",
+        "//scripts:verify_reference_clean",
+    ],
+    visibility = ["//visibility:public"],
+)
