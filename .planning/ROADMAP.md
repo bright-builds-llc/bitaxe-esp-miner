@@ -39,7 +39,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Plans**: 9 plans
 Plans:
-- [ ] 01-01-PLAN.md - Pin the upstream reference submodule and add the Bazel-visible reference guard.
+- [x] 01-01-PLAN.md - Pin the upstream reference submodule and add the Bazel-visible reference guard.
 - [ ] 01-02-PLAN.md - Create the Rust workspace root, ESP toolchain pins, and Bazel crate mirror contract.
 - [ ] 01-03-PLAN.md - Create foundational pure crates for Gamma 601 identity, safe state, config selection, and test support.
 - [ ] 01-04-PLAN.md - Create deferred pure crate contracts for ASIC, Stratum, and API surfaces.
