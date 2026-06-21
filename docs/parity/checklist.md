@@ -17,6 +17,7 @@ This checklist is the audit source of truth for device-user parity against `refe
 - `api-compare`: Rust firmware response matches upstream OpenAPI/schema or captured upstream response.
 - `hardware-smoke`: Behavior observed on Gamma 601 hardware, with command/log captured.
 - `hardware-regression`: Repeatable hardware test or scripted probe passes.
+- `workflow`: Repo-owned command, build, package, flash-shaped, or report workflow passes with captured plan evidence.
 - `deferred`: Accepted gap with reason and owner.
 
 Safety-critical and hardware-control surfaces require hardware evidence before `verified`: voltage, fan, thermal, power, and ASIC initialization.
@@ -25,18 +26,18 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| WF-001 | Read-only reference submodule | `reference/esp-miner` | `scripts/verify-reference-clean.sh`, `tools/parity` | implemented | pending | Guard exists and parity report runs it before trusted output; command evidence still pending. |
-| WF-002 | Bazel build graph | `reference/esp-miner/CMakeLists.txt` | `MODULE.bazel`, `tools/parity/BUILD.bazel` | implemented | pending | Bazel owns local build/test/package graph; parity target is Bazel-visible. |
-| WF-003 | Human command surface | `reference/esp-miner/README.md` | `Justfile` | not-started | pending | `Justfile` is not present yet; do not claim `just` workflow parity. |
-| WF-004 | Firmware image packaging | `reference/esp-miner/merge_bin.sh` | `//firmware/bitaxe:firmware_image` | not-started | pending | Image packaging target is still pending; match user-facing image behavior, not script internals. |
-| WF-005 | USB flash workflow | `reference/esp-miner/flashing.md`, `reference/esp-miner/tools/upload2device.py` | `tools/flash` | in-progress | pending | Host package stub exists; USB flash workflow behavior remains pending. |
+| WF-001 | Read-only reference submodule | `reference/esp-miner` | `scripts/verify-reference-clean.sh`, `tools/parity` | verified | workflow | `just verify-reference` passed in Phase 01 Plan 09 and printed `reference clean: c1915b0a63bfabebdb95a515cedfee05146c1d50`; package and parity targets run the guard before trusted output. |
+| WF-002 | Bazel build graph | `reference/esp-miner/CMakeLists.txt` | `MODULE.bazel`, `tools/parity/BUILD.bazel` | verified | workflow | `just build`, `just test`, `just package`, `just parity`, and guard dependency queries passed in Phase 01 Plan 09. |
+| WF-003 | Human command surface | `reference/esp-miner/README.md` | `Justfile` | verified | workflow | `Justfile` exposes `build`, `test`, `package`, `flash`, `monitor`, `flash-monitor`, `verify-reference`, and `parity` as thin Bazel wrappers. |
+| WF-004 | Firmware image packaging | `reference/esp-miner/merge_bin.sh` | `//firmware/bitaxe:firmware_image` | verified | workflow | `just package` produced `bitaxe-gamma601.elf`, `bitaxe-gamma601-factory.bin`, and `bitaxe-gamma601-package.json`; the manifest default remains `bitaxe-gamma601.elf`. |
+| WF-005 | USB flash workflow | `reference/esp-miner/flashing.md`, `reference/esp-miner/tools/upload2device.py` | `tools/flash`, `Justfile` | implemented | workflow | `just flash`, `just monitor`, and `just flash-monitor` route through `//tools/flash:flash`; live Gamma 601 flash-monitor evidence is missing because no serial port was visible. |
 
 ## Boot And System Runtime
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| SYS-001 | App entrypoint boot order | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | implemented | pending | Safe boot/log entrypoint exists; Gamma 601 boot observation remains pending hardware evidence. |
-| SYS-002 | PSRAM availability handling | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | implemented | pending | Firmware logs PSRAM/platform status; hardware evidence remains pending. |
+| SYS-001 | App entrypoint boot order | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | implemented | pending | Safe boot/log entrypoint exists; missing Gamma 601 hardware-smoke evidence is recorded in `docs/parity/evidence/phase-01-gamma-601-boot-log.md`. |
+| SYS-002 | PSRAM availability handling | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | implemented | pending | Firmware logs PSRAM/platform status; hardware evidence remains pending in `docs/parity/evidence/phase-01-gamma-601-boot-log.md`. |
 | SYS-003 | Global system status model | `reference/esp-miner/main/global_state.h` | `crates/bitaxe-core` | implemented | pending | Phase 1 safe-state model makes mining, ASIC work submission, and hardware control disabled by default. |
 | SYS-004 | Version reporting | `reference/esp-miner/main/system.c` | `firmware/bitaxe`, `crates/bitaxe-core`, `crates/bitaxe-api`, `tools/parity` | in-progress | pending | Firmware logs and parity reports include source/reference identifiers; API version surface remains later-phase work. |
 | SYS-005 | Task orchestration behavior | `reference/esp-miner/main/tasks/*.c` | `firmware/bitaxe` | not-started | pending | Internal task layout may differ if observable behavior matches. |
