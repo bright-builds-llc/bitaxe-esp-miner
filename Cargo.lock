@@ -26,6 +26,14 @@ name = "bitaxe-firmware"
 version = "0.1.0"
 
 [[package]]
+name = "bitaxe-flash"
+version = "0.1.0"
+
+[[package]]
+name = "bitaxe-parity"
+version = "0.1.0"
+
+[[package]]
 name = "bitaxe-stratum"
 version = "0.1.0"
 
@@ -35,3 +43,7 @@ version = "0.1.0"
 dependencies = [
  "bitaxe-core",
 ]
+
+[[package]]
+name = "xtask"
+version = "0.1.0"
