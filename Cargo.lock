@@ -22,6 +22,10 @@ name = "bitaxe-core"
 version = "0.1.0"
 
 [[package]]
+name = "bitaxe-firmware"
+version = "0.1.0"
+
+[[package]]
 name = "bitaxe-stratum"
 version = "0.1.0"
 
