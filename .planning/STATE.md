@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 1 context gathered
-last_updated: "2026-06-21T01:54:15.364Z"
-last_activity: 2026-06-21 -- Phase 1 planning complete
+last_updated: "2026-06-21T01:55:07.937Z"
+last_activity: 2026-06-21 -- Phase 01 execution started
 progress:
   total_phases: 8
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Phase 1: Foundation And Gamma 601 Boot/Log
+**Current focus:** Phase 01 — Foundation And Gamma 601 Boot/Log
 
 ## Current Position
 
-Phase: 1 of 8 (Foundation And Gamma 601 Boot/Log)
-Plan: TBD of TBD in current phase
-Status: Ready to execute
-Last activity: 2026-06-21 -- Phase 1 planning complete
+Phase: 01 (Foundation And Gamma 601 Boot/Log) — EXECUTING
+Plan: 1 of 9
+Status: Executing Phase 01
+Last activity: 2026-06-21 -- Phase 01 execution started
 
 Progress: [----------] 0%
 
