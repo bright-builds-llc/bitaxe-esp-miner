@@ -1,0 +1,7 @@
+module(
+    name = "bitaxe_esp_miner",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "rules_rust", version = "0.70.0")
+bazel_dep(name = "rules_shell", version = "0.8.0")
