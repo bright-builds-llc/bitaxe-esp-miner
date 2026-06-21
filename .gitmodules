@@ -1,0 +1,3 @@
+[submodule "reference/esp-miner"]
+	path = reference/esp-miner
+	url = https://github.com/bitaxeorg/ESP-Miner.git
