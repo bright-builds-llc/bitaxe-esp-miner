@@ -25,20 +25,20 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| WF-001 | Read-only reference submodule | `reference/esp-miner` | `scripts/verify-reference-clean.sh` | not-started | pending | Fail on local submodule modifications. |
-| WF-002 | Bazel build graph | `reference/esp-miner/CMakeLists.txt` | `MODULE.bazel` | not-started | pending | Bazel owns local build/test/package graph. |
-| WF-003 | Human command surface | `reference/esp-miner/README.md` | `Justfile` | not-started | pending | `just` wraps Bazel-backed workflows. |
-| WF-004 | Firmware image packaging | `reference/esp-miner/merge_bin.sh` | `//firmware/bitaxe:firmware_image` | not-started | pending | Match user-facing image behavior, not script internals. |
-| WF-005 | USB flash workflow | `reference/esp-miner/flashing.md`, `reference/esp-miner/tools/upload2device.py` | `tools/flash` | not-started | pending | Prioritize `just flash board=601`. |
+| WF-001 | Read-only reference submodule | `reference/esp-miner` | `scripts/verify-reference-clean.sh`, `tools/parity` | implemented | pending | Guard exists and parity report runs it before trusted output; command evidence still pending. |
+| WF-002 | Bazel build graph | `reference/esp-miner/CMakeLists.txt` | `MODULE.bazel`, `tools/parity/BUILD.bazel` | implemented | pending | Bazel owns local build/test/package graph; parity target is Bazel-visible. |
+| WF-003 | Human command surface | `reference/esp-miner/README.md` | `Justfile` | not-started | pending | `Justfile` is not present yet; do not claim `just` workflow parity. |
+| WF-004 | Firmware image packaging | `reference/esp-miner/merge_bin.sh` | `//firmware/bitaxe:firmware_image` | not-started | pending | Image packaging target is still pending; match user-facing image behavior, not script internals. |
+| WF-005 | USB flash workflow | `reference/esp-miner/flashing.md`, `reference/esp-miner/tools/upload2device.py` | `tools/flash` | in-progress | pending | Host package stub exists; USB flash workflow behavior remains pending. |
 
 ## Boot And System Runtime
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| SYS-001 | App entrypoint boot order | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | not-started | pending | Preserve observable init behavior and safe failure modes. |
-| SYS-002 | PSRAM availability handling | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | not-started | pending | Log and memory behavior must be user-observable compatible. |
-| SYS-003 | Global system status model | `reference/esp-miner/main/global_state.h` | `crates/bitaxe-core` | not-started | pending | Rust model should make invalid states unrepresentable where practical. |
-| SYS-004 | Version reporting | `reference/esp-miner/main/system.c` | `crates/bitaxe-core`, `crates/bitaxe-api` | not-started | pending | API and logs should expose expected version fields. |
+| SYS-001 | App entrypoint boot order | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | implemented | pending | Safe boot/log entrypoint exists; Gamma 601 boot observation remains pending hardware evidence. |
+| SYS-002 | PSRAM availability handling | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | implemented | pending | Firmware logs PSRAM/platform status; hardware evidence remains pending. |
+| SYS-003 | Global system status model | `reference/esp-miner/main/global_state.h` | `crates/bitaxe-core` | implemented | pending | Phase 1 safe-state model makes mining, ASIC work submission, and hardware control disabled by default. |
+| SYS-004 | Version reporting | `reference/esp-miner/main/system.c` | `firmware/bitaxe`, `crates/bitaxe-core`, `crates/bitaxe-api`, `tools/parity` | in-progress | pending | Firmware logs and parity reports include source/reference identifiers; API version surface remains later-phase work. |
 | SYS-005 | Task orchestration behavior | `reference/esp-miner/main/tasks/*.c` | `firmware/bitaxe` | not-started | pending | Internal task layout may differ if observable behavior matches. |
 
 ## Board Config And NVS
