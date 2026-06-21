@@ -44,7 +44,7 @@ Plans:
 - [x] 01-03-PLAN.md - Create foundational pure crates for Gamma 601 identity, safe state, config selection, and test support.
 - [x] 01-04-PLAN.md - Create deferred pure crate contracts for ASIC, Stratum, and API surfaces.
 - [x] 01-05-PLAN.md - Create compile-only firmware and host tool package contracts.
-- [ ] 01-06-PLAN.md - Build the safe Gamma 601 ESP-IDF boot/log firmware target.
+- [x] 01-06-PLAN.md - Build the safe Gamma 601 ESP-IDF boot/log firmware target.
 - [ ] 01-07-PLAN.md - Wire parity/provenance reporting without false verification.
 - [ ] 01-08-PLAN.md - Generate the package manifest/default flash image and implement safe flash/monitor tooling.
 - [ ] 01-09-PLAN.md - Wire Just commands and record Gamma 601 hardware-smoke evidence.

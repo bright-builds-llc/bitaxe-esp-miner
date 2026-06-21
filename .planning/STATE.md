@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation-and-gamma-601-boot-log-05-PLAN.md
-last_updated: "2026-06-21T02:56:34.452Z"
+stopped_at: Completed 01-foundation-and-gamma-601-boot-log-06-PLAN.md
+last_updated: "2026-06-21T03:18:46.730Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 9
-  completed_plans: 5
-  percent: 56
+  completed_plans: 6
+  percent: 67
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 01 (Foundation And Gamma 601 Boot/Log) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-06-21
 
@@ -55,6 +55,7 @@ Progress: [██████░░░░] 56%
 | Phase 01 P03 | 7 min | 2 tasks | 11 files |
 | Phase 01-foundation-and-gamma-601-boot-log P04 | 4 min | 2 tasks | 11 files |
 | Phase 01-foundation-and-gamma-601-boot-log P05 | 8 min | 2 tasks | 11 files |
+| Phase 01-foundation-and-gamma-601-boot-log P06 | 16 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation-and-gamma-601-boot-log]: Keep firmware and host tool entrypoints empty until their owning implementation plans add behavior.
 - [Phase 01-foundation-and-gamma-601-boot-log]: Do not add a firmware Bazel target in Plan 05 because Plan 06 owns the ESP-IDF firmware Bazel integration.
 - [Phase 01-foundation-and-gamma-601-boot-log]: Keep Plan 05 host tools free of process execution, package generation, parity mutation, flashing, monitoring, and hardware-control behavior.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Use Cargo build-std for xtensa-esp32s3-espidf so plain target commands work with the checked-in esp rust-src component.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Export ESP_IDF_VERSION and related esp-idf-sys settings in the Bazel wrapper so Bazel cannot fall back to the crate default ESP-IDF v5.2.3.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Use heap_caps_get_total_size(MALLOC_CAP_SPIRAM) for PSRAM status because the direct esp_psram_is_initialized symbol did not link in this build.
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-21T02:56:34.450Z
-Stopped at: Completed 01-foundation-and-gamma-601-boot-log-05-PLAN.md
+Last session: 2026-06-21T03:18:46.729Z
+Stopped at: Completed 01-foundation-and-gamma-601-boot-log-06-PLAN.md
 Resume file: None
