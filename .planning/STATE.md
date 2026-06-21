@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation-and-gamma-601-boot-log-04-PLAN.md
-last_updated: "2026-06-21T02:43:47.160Z"
+stopped_at: Completed 01-foundation-and-gamma-601-boot-log-05-PLAN.md
+last_updated: "2026-06-21T02:56:34.452Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 9
-  completed_plans: 4
-  percent: 44
+  completed_plans: 5
+  percent: 56
 ---
 
 # Project State
@@ -26,34 +26,35 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 01 (Foundation And Gamma 601 Boot/Log) — EXECUTING
-Plan: 5 of 9
+Plan: 6 of 9
 Status: Ready to execute
 Last activity: 2026-06-21
 
-Progress: [████░░░░░░] 44%
+Progress: [██████░░░░] 56%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
-- Average duration: 6 min
-- Total execution time: 0.4 hours
+- Total plans completed: 5
+- Average duration: 7 min
+- Total execution time: 0.6 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | --- | --- | --- |
-| 1. Foundation And Gamma 601 Boot/Log | 4/9 | 0.4h | 6 min |
+| 1. Foundation And Gamma 601 Boot/Log | 5/9 | 0.6h | 7 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (10 min), 01-02 (4 min), 01-03 (7 min), 01-04 (4 min)
+- Last 5 plans: 01-01 (10 min), 01-02 (4 min), 01-03 (7 min), 01-04 (4 min), 01-05 (8 min)
 - Trend: Foundation setup progressing
 
 *Updated after each plan completion*
 | Phase 01 P03 | 7 min | 2 tasks | 11 files |
 | Phase 01-foundation-and-gamma-601-boot-log P04 | 4 min | 2 tasks | 11 files |
+| Phase 01-foundation-and-gamma-601-boot-log P05 | 8 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation-and-gamma-601-boot-log]: Represent deferred ASIC, Stratum, and API surfaces as explicit single-variant enums instead of empty modules or active skeletons.
 - [Phase 01-foundation-and-gamma-601-boot-log]: Keep Phase 1 deferred surface crates dependency-free and side-effect-free; later phases add behavior with evidence.
 - [Phase 01-foundation-and-gamma-601-boot-log]: Honor AGENTS.md Rust pre-commit rule by recording TDD RED failures without committing failing intermediate states.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Keep firmware and host tool entrypoints empty until their owning implementation plans add behavior.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Do not add a firmware Bazel target in Plan 05 because Plan 06 owns the ESP-IDF firmware Bazel integration.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Keep Plan 05 host tools free of process execution, package generation, parity mutation, flashing, monitoring, and hardware-control behavior.
 
 ### Pending Todos
 
@@ -88,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-21T02:43:47.158Z
-Stopped at: Completed 01-foundation-and-gamma-601-boot-log-04-PLAN.md
+Last session: 2026-06-21T02:56:34.450Z
+Stopped at: Completed 01-foundation-and-gamma-601-boot-log-05-PLAN.md
 Resume file: None
