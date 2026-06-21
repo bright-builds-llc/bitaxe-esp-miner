@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-06-21T02:34:16.021Z"
+stopped_at: Completed 01-foundation-and-gamma-601-boot-log-04-PLAN.md
+last_updated: "2026-06-21T02:43:47.160Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 9
-  completed_plans: 3
-  percent: 33
+  completed_plans: 4
+  percent: 44
 ---
 
 # Project State
@@ -26,33 +26,34 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 01 (Foundation And Gamma 601 Boot/Log) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-06-21
 
-Progress: [██░░░░░░░░] 22%
+Progress: [████░░░░░░] 44%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 2
-- Average duration: 7 min
-- Total execution time: 0.2 hours
+- Total plans completed: 4
+- Average duration: 6 min
+- Total execution time: 0.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | --- | --- | --- |
-| 1. Foundation And Gamma 601 Boot/Log | 2/9 | 0.2h | 7 min |
+| 1. Foundation And Gamma 601 Boot/Log | 4/9 | 0.4h | 6 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (10 min), 01-02 (4 min)
+- Last 5 plans: 01-01 (10 min), 01-02 (4 min), 01-03 (7 min), 01-04 (4 min)
 - Trend: Foundation setup progressing
 
 *Updated after each plan completion*
 | Phase 01 P03 | 7 min | 2 tasks | 11 files |
+| Phase 01-foundation-and-gamma-601-boot-log P04 | 4 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation-and-gamma-601-boot-log]: Represent Gamma 601, BM1370, and Phase 1 disabled mining/work/hardware-control state as pure domain values in bitaxe-core.
 - [Phase 01-foundation-and-gamma-601-boot-log]: Keep Phase1BoardSelection identity-only; NVS, Wi-Fi, mining, ASIC behavior, voltage, fan, thermal, and power stay outside the pure config crate.
 - [Phase 01-foundation-and-gamma-601-boot-log]: Honor the AGENTS.md Rust pre-commit rule by recording TDD RED failures without committing failing intermediate states.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Represent deferred ASIC, Stratum, and API surfaces as explicit single-variant enums instead of empty modules or active skeletons.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Keep Phase 1 deferred surface crates dependency-free and side-effect-free; later phases add behavior with evidence.
+- [Phase 01-foundation-and-gamma-601-boot-log]: Honor AGENTS.md Rust pre-commit rule by recording TDD RED failures without committing failing intermediate states.
 
 ### Pending Todos
 
@@ -84,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-21T02:34:16.018Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-06-21T02:43:47.158Z
+Stopped at: Completed 01-foundation-and-gamma-601-boot-log-04-PLAN.md
 Resume file: None

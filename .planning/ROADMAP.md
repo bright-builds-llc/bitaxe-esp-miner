@@ -42,7 +42,7 @@ Plans:
 - [x] 01-01-PLAN.md - Pin the upstream reference submodule and add the Bazel-visible reference guard.
 - [x] 01-02-PLAN.md - Create the Rust workspace root, ESP toolchain pins, and Bazel crate mirror contract.
 - [x] 01-03-PLAN.md - Create foundational pure crates for Gamma 601 identity, safe state, config selection, and test support.
-- [ ] 01-04-PLAN.md - Create deferred pure crate contracts for ASIC, Stratum, and API surfaces.
+- [x] 01-04-PLAN.md - Create deferred pure crate contracts for ASIC, Stratum, and API surfaces.
 - [ ] 01-05-PLAN.md - Create compile-only firmware and host tool package contracts.
 - [ ] 01-06-PLAN.md - Build the safe Gamma 601 ESP-IDF boot/log firmware target.
 - [ ] 01-07-PLAN.md - Wire parity/provenance reporting without false verification.
