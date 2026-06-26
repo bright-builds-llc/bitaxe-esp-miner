@@ -6,3 +6,9 @@ license.workspace = true
 
 [dependencies]
 bitaxe-core = { path = "../bitaxe-core" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+csv = "1.4.0"
+serde_json = { workspace = true }

@@ -6,10 +6,15 @@ rust_library(
     crate_name = "bitaxe_config",
     edition = "2021",
     visibility = ["//visibility:public"],
-    deps = ["//crates/bitaxe-core:bitaxe_core"],
+    deps = [
+        "//crates/bitaxe-core:bitaxe_core",
+        "@crates//:serde",
+        "@crates//:thiserror",
+    ],
 )
 
 rust_test(
     name = "tests",
     crate = ":bitaxe_config",
+    data = glob(["fixtures/**"]),
 )

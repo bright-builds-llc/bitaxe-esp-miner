@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "source": "reference/esp-miner/main/nvs_config.c",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived GPL-3.0 source data; do not treat as MIT-only until release review"
+  },
+  "valid": [
+    { "field": "frequency", "value": 485, "nvs_key_name": "asicfrequency_f" },
+    { "field": "coreVoltage", "value": 1200, "nvs_key_name": "asicvoltage" },
+    { "field": "manualFanSpeed", "value": 42, "nvs_key_name": "manualfanspeed" },
+    { "field": "autofanspeed", "value": true, "nvs_key_name": "autofanspeed" },
+    { "field": "hostname", "value": "bitaxe", "nvs_key_name": "hostname" },
+    { "field": "stratumPort", "value": 3333, "nvs_key_name": "stratumport" },
+    { "field": "stratumTLS", "value": 0, "nvs_key_name": "stratumtls" }
+  ],
+  "invalid": [
+    { "field": "frequency", "value": 0, "reason": "below_minimum" },
+    { "field": "coreVoltage", "value": 0, "reason": "below_minimum" },
+    { "field": "manualFanSpeed", "value": 101, "reason": "above_maximum" },
+    { "field": "temptarget", "value": 67, "reason": "above_maximum" },
+    { "field": "hostname", "value": "", "reason": "below_minimum_length" },
+    { "field": "stratumPort", "value": 65536, "reason": "above_u16_maximum" },
+    { "field": "stratumTLS", "value": 4, "reason": "above_maximum" },
+    { "field": "stratumProtocol", "value": "SV3", "reason": "unknown_enum_value" },
+    { "field": "stratumV2ChannelType", "value": "bad", "reason": "unknown_enum_value" }
+  ]
+}

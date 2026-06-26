@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "source": "reference/esp-miner/main/nvs_config.c",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived GPL-3.0 source data; do not treat as MIT-only until release review"
+  },
+  "cases": [
+    {
+      "name": "asicfrequency -> asicfrequency_f",
+      "legacy_key": "asicfrequency",
+      "active_key": "asicfrequency_f",
+      "input_type": "u16",
+      "input": 485,
+      "output_type": "float_string",
+      "output": "485"
+    },
+    {
+      "name": "fanspeed -> manualfanspeed",
+      "legacy_key": "fanspeed",
+      "active_key": "manualfanspeed",
+      "input_type": "u16",
+      "input": 100,
+      "output_type": "u16",
+      "output": 100
+    },
+    {
+      "name": "stratumprot u16 0 -> SV1",
+      "key": "stratumprot",
+      "input_type": "u16",
+      "input": 0,
+      "output_type": "str",
+      "output": "SV1"
+    },
+    {
+      "name": "stratumprot u16 1 -> SV2",
+      "key": "stratumprot",
+      "input_type": "u16",
+      "input": 1,
+      "output_type": "str",
+      "output": "SV2"
+    },
+    {
+      "name": "fbstratumprot u16 0 -> SV1",
+      "key": "fbstratumprot",
+      "input_type": "u16",
+      "input": 0,
+      "output_type": "str",
+      "output": "SV1"
+    },
+    {
+      "name": "fbstratumprot u16 1 -> SV2",
+      "key": "fbstratumprot",
+      "input_type": "u16",
+      "input": 1,
+      "output_type": "str",
+      "output": "SV2"
+    },
+    {
+      "name": "sv2chantype u16 0 -> extended",
+      "key": "sv2chantype",
+      "input_type": "u16",
+      "input": 0,
+      "output_type": "str",
+      "output": "extended"
+    },
+    {
+      "name": "sv2chantype u16 1 -> standard",
+      "key": "sv2chantype",
+      "input_type": "u16",
+      "input": 1,
+      "output_type": "str",
+      "output": "standard"
+    },
+    {
+      "name": "fbsv2chantype u16 0 -> extended",
+      "key": "fbsv2chantype",
+      "input_type": "u16",
+      "input": 0,
+      "output_type": "str",
+      "output": "extended"
+    },
+    {
+      "name": "fbsv2chantype u16 1 -> standard",
+      "key": "fbsv2chantype",
+      "input_type": "u16",
+      "input": 1,
+      "output_type": "str",
+      "output": "standard"
+    },
+    {
+      "name": "legacy fbSv2ChanType -> fbsv2chantype",
+      "legacy_key": "fbSv2ChanType",
+      "active_key": "fbsv2chantype",
+      "input_type": "u16",
+      "input": 1,
+      "output_type": "str",
+      "output": "standard"
+    }
+  ]
+}

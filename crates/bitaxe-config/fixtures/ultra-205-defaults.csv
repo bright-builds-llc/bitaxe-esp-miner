@@ -1,0 +1,34 @@
+# source=reference/esp-miner/config-205.cvs
+# reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50
+# license_posture=reference-derived GPL-3.0 source data; do not treat as MIT-only until release review
+key,type,encoding,value
+main,namespace,,
+hostname,data,string,bitaxe
+wifissid,data,string,
+wifipass,data,string,
+stratumurl,data,string,public-pool.io
+stratumport,data,u16,3333
+stratumtls,data,u16,0
+stratumcert,data,string,x
+stratumuser,data,string,bc1qnp980s5fpp8l94p5cvttmtdqy8rvrq74qly2yrfmzkdsntqzlc5qkc4rkq.bitaxe
+stratumpass,data,string,x
+stratumdiff,data,u16,1000
+stratumxnsub,data,u16,0
+fbstratumurl,data,string,solo.ckpool.org
+fbstratumport,data,u16,3333
+fbstratumtls,data,u16,0
+fbstratumcert,data,string,x
+fbstratumuser,data,string,bc1qnp980s5fpp8l94p5cvttmtdqy8rvrq74qly2yrfmzkdsntqzlc5qkc4rkq.bitaxe
+fbstratumpass,data,string,x
+fbstratumdiff,data,u16,1000
+fbstratumxnsum,data,u16,0
+asicfrequency,data,u16,485
+asicvoltage,data,u16,1200
+asicmodel,data,string,BM1366
+devicemodel,data,string,ultra
+boardversion,data,string,205
+rotation,data,u16,0
+autofanspeed,data,u16,1
+fanspeed,data,u16,100
+selftest,data,u16,1
+overheat_mode,data,u16,0
