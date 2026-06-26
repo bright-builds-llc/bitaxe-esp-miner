@@ -141,6 +141,171 @@ pub struct SettingSchema {
     pub provenance: &'static str,
 }
 
+/// Raw NVS value read by a future adapter and passed into the pure model.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredValue {
+    /// Exact NVS key name for this stored value.
+    pub key: NvsKeyName,
+    /// Raw storage payload.
+    pub value: StoredValueKind,
+}
+
+impl StoredValue {
+    /// Creates a string stored value for a static upstream key.
+    #[must_use]
+    pub fn string(key: &'static str, value: impl Into<String>) -> Self {
+        Self {
+            key: self::key(key),
+            value: StoredValueKind::String(value.into()),
+        }
+    }
+
+    /// Creates a `u16` stored value for a static upstream key.
+    #[must_use]
+    pub fn u16(key: &'static str, value: u16) -> Self {
+        Self {
+            key: self::key(key),
+            value: StoredValueKind::U16(value),
+        }
+    }
+
+    /// Creates an `i32` stored value for a static upstream key.
+    #[must_use]
+    pub fn i32(key: &'static str, value: i32) -> Self {
+        Self {
+            key: self::key(key),
+            value: StoredValueKind::I32(value),
+        }
+    }
+
+    /// Creates a `u64` stored value for a static upstream key.
+    #[must_use]
+    pub fn u64(key: &'static str, value: u64) -> Self {
+        Self {
+            key: self::key(key),
+            value: StoredValueKind::U64(value),
+        }
+    }
+}
+
+/// Raw NVS value payload.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StoredValueKind {
+    /// NVS string payload.
+    String(String),
+    /// NVS `u16` payload.
+    U16(u16),
+    /// NVS `i32` payload.
+    I32(i32),
+    /// NVS `u64` payload.
+    U64(u64),
+}
+
+/// Loaded typed value after applying missing-key and corrupt-value defaults.
+#[derive(Debug, Clone, PartialEq)]
+pub enum LoadedValue {
+    /// Loaded string value.
+    Str(String),
+    /// Loaded `u16` value.
+    U16(u16),
+    /// Loaded `i32` value.
+    I32(i32),
+    /// Loaded `u64` value.
+    U64(u64),
+    /// Loaded float value from a string-backed NVS value.
+    Float(f32),
+    /// Loaded boolean value from a `u16`-backed NVS value.
+    Bool(bool),
+}
+
+/// Inert NVS write decision for a future adapter to apply.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NvsWrite {
+    /// Write an NVS string.
+    String { key: NvsKeyName, value: String },
+    /// Write an NVS `u16`.
+    U16 { key: NvsKeyName, value: u16 },
+    /// Write an NVS `i32`.
+    I32 { key: NvsKeyName, value: i32 },
+    /// Write an NVS `u64`.
+    U64 { key: NvsKeyName, value: u64 },
+}
+
+impl NvsWrite {
+    /// Creates a string write for a static upstream key.
+    #[must_use]
+    pub fn string(key: &'static str, value: impl Into<String>) -> Self {
+        Self::String {
+            key: self::key(key),
+            value: value.into(),
+        }
+    }
+
+    /// Creates a `u16` write for a static upstream key.
+    #[must_use]
+    pub fn u16(key: &'static str, value: u16) -> Self {
+        Self::U16 {
+            key: self::key(key),
+            value,
+        }
+    }
+
+    /// Creates an `i32` write for a static upstream key.
+    #[must_use]
+    pub fn i32(key: &'static str, value: i32) -> Self {
+        Self::I32 {
+            key: self::key(key),
+            value,
+        }
+    }
+
+    /// Creates a `u64` write for a static upstream key.
+    #[must_use]
+    pub fn u64(key: &'static str, value: u64) -> Self {
+        Self::U64 {
+            key: self::key(key),
+            value,
+        }
+    }
+}
+
+/// Inert NVS erase decision for a future adapter to apply.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NvsErase {
+    /// Exact NVS key to erase.
+    pub key: NvsKeyName,
+}
+
+impl NvsErase {
+    /// Creates an erase decision for a static upstream key.
+    #[must_use]
+    pub fn key(key: &'static str) -> Self {
+        Self {
+            key: self::key(key),
+        }
+    }
+}
+
+/// Metadata describing a pure migration rule.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MigrationRule {
+    /// Source key inspected by the migration.
+    pub source_key: NvsKeyName,
+    /// Target key written by the migration.
+    pub target_key: NvsKeyName,
+    /// Human-readable rule description.
+    pub description: &'static str,
+}
+
+/// Ordered pure migration decision.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MigrationDecision {
+    /// Erase a key before writing replacement storage.
+    Erase(NvsErase),
+    /// Write replacement storage.
+    Write(NvsWrite),
+}
+
 const SETTINGS_PROVENANCE: &str = "reference/esp-miner/main/nvs_config.c settings table";
 const MIGRATION_PROVENANCE: &str = "reference/esp-miner/main/nvs_config.c fallback migration";
 
@@ -150,6 +315,290 @@ fn key(value: &'static str) -> NvsKeyName {
 
 fn rest(value: &'static str) -> RestFieldName {
     RestFieldName::parse(value).expect("static upstream REST field names must be non-empty")
+}
+
+/// Returns the upstream legacy migration rules captured by this model.
+#[must_use]
+pub fn migration_rules() -> Vec<MigrationRule> {
+    vec![
+        MigrationRule {
+            source_key: key("asicfrequency"),
+            target_key: key("asicfrequency_f"),
+            description: "legacy u16 ASIC frequency to active float string key",
+        },
+        MigrationRule {
+            source_key: key("fanspeed"),
+            target_key: key("manualfanspeed"),
+            description: "legacy manual fan speed key to active u16 key",
+        },
+        MigrationRule {
+            source_key: key("stratumprot"),
+            target_key: key("stratumprot"),
+            description: "stratum protocol u16 storage to string storage",
+        },
+        MigrationRule {
+            source_key: key("fbstratumprot"),
+            target_key: key("fbstratumprot"),
+            description: "fallback stratum protocol u16 storage to string storage",
+        },
+        MigrationRule {
+            source_key: key("sv2chantype"),
+            target_key: key("sv2chantype"),
+            description: "SV2 channel type u16 storage to string storage",
+        },
+        MigrationRule {
+            source_key: key("fbsv2chantype"),
+            target_key: key("fbsv2chantype"),
+            description: "fallback SV2 channel type u16 storage to string storage",
+        },
+        MigrationRule {
+            source_key: key("fbSv2ChanType"),
+            target_key: key("fbsv2chantype"),
+            description: "legacy mixed-case fallback SV2 channel type key to active key",
+        },
+    ]
+}
+
+/// Returns ordered migration decisions for raw values already read from NVS.
+#[must_use]
+pub fn migration_decisions(stored_values: &[StoredValue]) -> Vec<MigrationDecision> {
+    let mut decisions = Vec::new();
+
+    if !has_key(stored_values, "asicfrequency_f") {
+        if let Some(value) = maybe_u16(stored_values, "asicfrequency") {
+            decisions.push(MigrationDecision::Write(NvsWrite::string(
+                "asicfrequency_f",
+                value.to_string(),
+            )));
+        }
+    }
+
+    if !has_key(stored_values, "manualfanspeed") {
+        if let Some(value) = maybe_u16(stored_values, "fanspeed") {
+            decisions.push(MigrationDecision::Write(NvsWrite::u16(
+                "manualfanspeed",
+                value,
+            )));
+        }
+    }
+
+    for protocol_key in ["stratumprot", "fbstratumprot"] {
+        if let Some(value) = maybe_u16(stored_values, protocol_key) {
+            decisions.push(MigrationDecision::Erase(NvsErase::key(protocol_key)));
+            decisions.push(MigrationDecision::Write(NvsWrite::string(
+                protocol_key,
+                stratum_protocol_name(value),
+            )));
+        }
+    }
+
+    for channel_type_key in ["sv2chantype", "fbsv2chantype"] {
+        if let Some(value) = maybe_u16(stored_values, channel_type_key) {
+            decisions.push(MigrationDecision::Erase(NvsErase::key(channel_type_key)));
+            decisions.push(MigrationDecision::Write(NvsWrite::string(
+                channel_type_key,
+                sv2_channel_type_name(value),
+            )));
+        }
+    }
+
+    if !has_key(stored_values, "fbsv2chantype") {
+        if let Some(value) = maybe_u16(stored_values, "fbSv2ChanType") {
+            decisions.push(MigrationDecision::Erase(NvsErase::key("fbSv2ChanType")));
+            decisions.push(MigrationDecision::Write(NvsWrite::string(
+                "fbsv2chantype",
+                sv2_channel_type_name(value),
+            )));
+        }
+    }
+
+    decisions
+}
+
+/// Returns legacy compatibility writes for an active write decision.
+#[must_use]
+pub fn compatibility_writes_for_active(write: &NvsWrite) -> Vec<NvsWrite> {
+    match write {
+        NvsWrite::String { key, value } if key.as_str() == "asicfrequency_f" => value
+            .parse::<f32>()
+            .ok()
+            .map(|frequency| NvsWrite::u16("asicfrequency", frequency as u16))
+            .into_iter()
+            .collect(),
+        NvsWrite::U16 { key, value } if key.as_str() == "manualfanspeed" => {
+            vec![NvsWrite::u16("fanspeed", *value)]
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// Loads a raw stored value through schema defaults without any NVS side effect.
+#[must_use]
+pub fn load_setting_value(
+    schema: &SettingSchema,
+    maybe_stored: Option<&StoredValue>,
+) -> LoadedValue {
+    match schema.stored_type {
+        StoredType::Str => load_string(schema, maybe_stored),
+        StoredType::U16 => load_u16(schema, maybe_stored),
+        StoredType::I32 => load_i32(schema, maybe_stored),
+        StoredType::U64 => load_u64(schema, maybe_stored),
+        StoredType::FloatString => load_float_string(schema, maybe_stored),
+        StoredType::BoolAsU16 => load_bool_as_u16(schema, maybe_stored),
+    }
+}
+
+fn maybe_stored_value<'a>(stored_values: &'a [StoredValue], key: &str) -> Option<&'a StoredValue> {
+    stored_values
+        .iter()
+        .find(|stored| stored.key.as_str() == key)
+}
+
+fn has_key(stored_values: &[StoredValue], key: &str) -> bool {
+    maybe_stored_value(stored_values, key).is_some()
+}
+
+fn maybe_u16(stored_values: &[StoredValue], key: &str) -> Option<u16> {
+    let stored = maybe_stored_value(stored_values, key)?;
+
+    match stored.value {
+        StoredValueKind::U16(value) => Some(value),
+        _ => None,
+    }
+}
+
+fn stratum_protocol_name(value: u16) -> &'static str {
+    if value == 1 {
+        return "SV2";
+    }
+
+    "SV1"
+}
+
+fn sv2_channel_type_name(value: u16) -> &'static str {
+    if value == 1 {
+        return "standard";
+    }
+
+    "extended"
+}
+
+fn load_string(schema: &SettingSchema, maybe_stored: Option<&StoredValue>) -> LoadedValue {
+    if let Some(StoredValue {
+        value: StoredValueKind::String(value),
+        ..
+    }) = maybe_stored
+    {
+        if !value.is_empty() {
+            return LoadedValue::Str(value.clone());
+        }
+    }
+
+    LoadedValue::Str(default_string(schema))
+}
+
+fn load_u16(schema: &SettingSchema, maybe_stored: Option<&StoredValue>) -> LoadedValue {
+    if let Some(StoredValue {
+        value: StoredValueKind::U16(value),
+        ..
+    }) = maybe_stored
+    {
+        return LoadedValue::U16(*value);
+    }
+
+    LoadedValue::U16(default_u16(schema))
+}
+
+fn load_i32(schema: &SettingSchema, maybe_stored: Option<&StoredValue>) -> LoadedValue {
+    if let Some(StoredValue {
+        value: StoredValueKind::I32(value),
+        ..
+    }) = maybe_stored
+    {
+        return LoadedValue::I32(*value);
+    }
+
+    LoadedValue::I32(default_i32(schema))
+}
+
+fn load_u64(schema: &SettingSchema, maybe_stored: Option<&StoredValue>) -> LoadedValue {
+    if let Some(StoredValue {
+        value: StoredValueKind::U64(value),
+        ..
+    }) = maybe_stored
+    {
+        return LoadedValue::U64(*value);
+    }
+
+    LoadedValue::U64(default_u64(schema))
+}
+
+fn load_float_string(schema: &SettingSchema, maybe_stored: Option<&StoredValue>) -> LoadedValue {
+    if let Some(StoredValue {
+        value: StoredValueKind::String(value),
+        ..
+    }) = maybe_stored
+    {
+        if let Ok(parsed) = value.parse::<f32>() {
+            return LoadedValue::Float(parsed);
+        }
+    }
+
+    LoadedValue::Float(default_float(schema))
+}
+
+fn load_bool_as_u16(schema: &SettingSchema, maybe_stored: Option<&StoredValue>) -> LoadedValue {
+    if let Some(StoredValue {
+        value: StoredValueKind::U16(value),
+        ..
+    }) = maybe_stored
+    {
+        return LoadedValue::Bool(*value != 0);
+    }
+
+    LoadedValue::Bool(default_bool(schema))
+}
+
+fn default_string(schema: &SettingSchema) -> String {
+    match schema.default_value {
+        Some(SettingDefault::Str(value)) => value.to_owned(),
+        _ => String::new(),
+    }
+}
+
+fn default_u16(schema: &SettingSchema) -> u16 {
+    match schema.default_value {
+        Some(SettingDefault::U16(value)) => value,
+        _ => 0,
+    }
+}
+
+fn default_i32(schema: &SettingSchema) -> i32 {
+    match schema.default_value {
+        Some(SettingDefault::I32(value)) => value,
+        _ => 0,
+    }
+}
+
+fn default_u64(schema: &SettingSchema) -> u64 {
+    match schema.default_value {
+        Some(SettingDefault::U64(value)) => value,
+        _ => 0,
+    }
+}
+
+fn default_float(schema: &SettingSchema) -> f32 {
+    match schema.default_value {
+        Some(SettingDefault::Float(value)) => value,
+        _ => 0.0,
+    }
+}
+
+fn default_bool(schema: &SettingSchema) -> bool {
+    match schema.default_value {
+        Some(SettingDefault::Bool(value)) => value,
+        _ => false,
+    }
 }
 
 /// Returns typed settings schema rows derived from the pinned upstream table.
@@ -861,7 +1310,18 @@ pub fn all_settings_schema() -> Vec<SettingSchema> {
 
 #[cfg(test)]
 mod tests {
-    use super::{all_settings_schema, NvsKeyName, StoredType, NVS_NAMESPACE};
+    use super::{
+        all_settings_schema, compatibility_writes_for_active, load_setting_value,
+        migration_decisions, LoadedValue, MigrationDecision, NvsErase, NvsKeyName, NvsWrite,
+        SettingSchema, StoredType, StoredValue, NVS_NAMESPACE,
+    };
+
+    fn setting_for_key(key: &str) -> SettingSchema {
+        all_settings_schema()
+            .into_iter()
+            .find(|setting| setting.key.as_str() == key)
+            .expect("test key must exist in schema")
+    }
 
     #[test]
     fn nvs_schema_uses_upstream_namespace_main() {
@@ -934,5 +1394,142 @@ mod tests {
         // Assert
         assert_eq!(stratum_xnsub, Some(StoredType::BoolAsU16));
         assert_eq!(frequency, Some(StoredType::FloatString));
+    }
+
+    #[test]
+    fn nvs_schema_migrates_legacy_asicfrequency_to_float_string() {
+        // Arrange
+        let stored = [StoredValue::u16("asicfrequency", 485)];
+
+        // Act
+        let decisions = migration_decisions(&stored);
+
+        // Assert
+        assert_eq!(
+            decisions,
+            vec![MigrationDecision::Write(NvsWrite::string(
+                "asicfrequency_f",
+                "485"
+            ))]
+        );
+    }
+
+    #[test]
+    fn nvs_schema_migrates_legacy_fanspeed_to_manualfanspeed() {
+        // Arrange
+        let stored = [StoredValue::u16("fanspeed", 42)];
+
+        // Act
+        let decisions = migration_decisions(&stored);
+
+        // Assert
+        assert_eq!(
+            decisions,
+            vec![MigrationDecision::Write(NvsWrite::u16(
+                "manualfanspeed",
+                42
+            ))]
+        );
+    }
+
+    #[test]
+    fn nvs_schema_migrates_stratum_protocol_u16_to_string() {
+        // Arrange
+        let cases = [
+            ("stratumprot", 0, "SV1"),
+            ("stratumprot", 1, "SV2"),
+            ("fbstratumprot", 0, "SV1"),
+            ("fbstratumprot", 1, "SV2"),
+        ];
+
+        for (key, stored_value, expected_value) in cases {
+            // Act
+            let decisions = migration_decisions(&[StoredValue::u16(key, stored_value)]);
+
+            // Assert
+            assert_eq!(
+                decisions,
+                vec![
+                    MigrationDecision::Erase(NvsErase::key(key)),
+                    MigrationDecision::Write(NvsWrite::string(key, expected_value)),
+                ]
+            );
+        }
+    }
+
+    #[test]
+    fn nvs_schema_migrates_sv2_channel_type_u16_to_string() {
+        // Arrange
+        let cases = [
+            ("sv2chantype", 0, "extended"),
+            ("sv2chantype", 1, "standard"),
+            ("fbsv2chantype", 0, "extended"),
+            ("fbsv2chantype", 1, "standard"),
+            ("fbSv2ChanType", 1, "standard"),
+        ];
+
+        for (key, stored_value, expected_value) in cases {
+            // Act
+            let decisions = migration_decisions(&[StoredValue::u16(key, stored_value)]);
+
+            // Assert
+            if key == "fbSv2ChanType" {
+                assert_eq!(
+                    decisions,
+                    vec![
+                        MigrationDecision::Erase(NvsErase::key("fbSv2ChanType")),
+                        MigrationDecision::Write(NvsWrite::string("fbsv2chantype", expected_value)),
+                    ]
+                );
+            } else {
+                assert_eq!(
+                    decisions,
+                    vec![
+                        MigrationDecision::Erase(NvsErase::key(key)),
+                        MigrationDecision::Write(NvsWrite::string(key, expected_value)),
+                    ]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn nvs_schema_writes_active_frequency_legacy_compatibility_key() {
+        // Arrange
+        let write = NvsWrite::string("asicfrequency_f", "485");
+
+        // Act
+        let compatibility_writes = compatibility_writes_for_active(&write);
+
+        // Assert
+        assert_eq!(
+            compatibility_writes,
+            vec![NvsWrite::u16("asicfrequency", 485)]
+        );
+    }
+
+    #[test]
+    fn nvs_schema_writes_active_manual_fan_legacy_compatibility_key() {
+        // Arrange
+        let write = NvsWrite::u16("manualfanspeed", 42);
+
+        // Act
+        let compatibility_writes = compatibility_writes_for_active(&write);
+
+        // Assert
+        assert_eq!(compatibility_writes, vec![NvsWrite::u16("fanspeed", 42)]);
+    }
+
+    #[test]
+    fn nvs_schema_corrupt_float_uses_default() {
+        // Arrange
+        let schema = setting_for_key("asicfrequency_f");
+        let stored = StoredValue::string("asicfrequency_f", "bad");
+
+        // Act
+        let loaded = load_setting_value(&schema, Some(&stored));
+
+        // Assert
+        assert_eq!(loaded, LoadedValue::Float(485.0));
     }
 }

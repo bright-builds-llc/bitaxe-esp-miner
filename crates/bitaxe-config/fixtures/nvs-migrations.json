@@ -12,16 +12,22 @@
       "input_type": "u16",
       "input": 485,
       "output_type": "float_string",
-      "output": "485"
+      "output": "485",
+      "operations": [
+        { "operation": "write", "nvs_key_name": "asicfrequency_f", "type": "str", "value": "485" }
+      ]
     },
     {
       "name": "fanspeed -> manualfanspeed",
       "legacy_key": "fanspeed",
       "active_key": "manualfanspeed",
       "input_type": "u16",
-      "input": 100,
+      "input": 42,
       "output_type": "u16",
-      "output": 100
+      "output": 42,
+      "operations": [
+        { "operation": "write", "nvs_key_name": "manualfanspeed", "type": "u16", "value": 42 }
+      ]
     },
     {
       "name": "stratumprot u16 0 -> SV1",
@@ -29,7 +35,11 @@
       "input_type": "u16",
       "input": 0,
       "output_type": "str",
-      "output": "SV1"
+      "output": "SV1",
+      "operations": [
+        { "operation": "erase", "nvs_key_name": "stratumprot" },
+        { "operation": "write", "nvs_key_name": "stratumprot", "type": "str", "value": "SV1" }
+      ]
     },
     {
       "name": "stratumprot u16 1 -> SV2",
@@ -37,7 +47,11 @@
       "input_type": "u16",
       "input": 1,
       "output_type": "str",
-      "output": "SV2"
+      "output": "SV2",
+      "operations": [
+        { "operation": "erase", "nvs_key_name": "stratumprot" },
+        { "operation": "write", "nvs_key_name": "stratumprot", "type": "str", "value": "SV2" }
+      ]
     },
     {
       "name": "fbstratumprot u16 0 -> SV1",
@@ -45,7 +59,11 @@
       "input_type": "u16",
       "input": 0,
       "output_type": "str",
-      "output": "SV1"
+      "output": "SV1",
+      "operations": [
+        { "operation": "erase", "nvs_key_name": "fbstratumprot" },
+        { "operation": "write", "nvs_key_name": "fbstratumprot", "type": "str", "value": "SV1" }
+      ]
     },
     {
       "name": "fbstratumprot u16 1 -> SV2",
@@ -53,7 +71,11 @@
       "input_type": "u16",
       "input": 1,
       "output_type": "str",
-      "output": "SV2"
+      "output": "SV2",
+      "operations": [
+        { "operation": "erase", "nvs_key_name": "fbstratumprot" },
+        { "operation": "write", "nvs_key_name": "fbstratumprot", "type": "str", "value": "SV2" }
+      ]
     },
     {
       "name": "sv2chantype u16 0 -> extended",
@@ -61,7 +83,11 @@
       "input_type": "u16",
       "input": 0,
       "output_type": "str",
-      "output": "extended"
+      "output": "extended",
+      "operations": [
+        { "operation": "erase", "nvs_key_name": "sv2chantype" },
+        { "operation": "write", "nvs_key_name": "sv2chantype", "type": "str", "value": "extended" }
+      ]
     },
     {
       "name": "sv2chantype u16 1 -> standard",
@@ -69,7 +95,11 @@
       "input_type": "u16",
       "input": 1,
       "output_type": "str",
-      "output": "standard"
+      "output": "standard",
+      "operations": [
+        { "operation": "erase", "nvs_key_name": "sv2chantype" },
+        { "operation": "write", "nvs_key_name": "sv2chantype", "type": "str", "value": "standard" }
+      ]
     },
     {
       "name": "fbsv2chantype u16 0 -> extended",
@@ -77,7 +107,11 @@
       "input_type": "u16",
       "input": 0,
       "output_type": "str",
-      "output": "extended"
+      "output": "extended",
+      "operations": [
+        { "operation": "erase", "nvs_key_name": "fbsv2chantype" },
+        { "operation": "write", "nvs_key_name": "fbsv2chantype", "type": "str", "value": "extended" }
+      ]
     },
     {
       "name": "fbsv2chantype u16 1 -> standard",
@@ -85,7 +119,11 @@
       "input_type": "u16",
       "input": 1,
       "output_type": "str",
-      "output": "standard"
+      "output": "standard",
+      "operations": [
+        { "operation": "erase", "nvs_key_name": "fbsv2chantype" },
+        { "operation": "write", "nvs_key_name": "fbsv2chantype", "type": "str", "value": "standard" }
+      ]
     },
     {
       "name": "legacy fbSv2ChanType -> fbsv2chantype",
@@ -94,7 +132,36 @@
       "input_type": "u16",
       "input": 1,
       "output_type": "str",
-      "output": "standard"
+      "output": "standard",
+      "operations": [
+        { "operation": "erase", "nvs_key_name": "fbSv2ChanType" },
+        { "operation": "write", "nvs_key_name": "fbsv2chantype", "type": "str", "value": "standard" }
+      ]
+    },
+    {
+      "name": "active asicfrequency_f writes legacy asicfrequency",
+      "active_key": "asicfrequency_f",
+      "input_type": "str",
+      "input": "485",
+      "operations": [
+        { "operation": "write", "nvs_key_name": "asicfrequency", "type": "u16", "value": 485 }
+      ]
+    },
+    {
+      "name": "active manualfanspeed writes legacy fanspeed",
+      "active_key": "manualfanspeed",
+      "input_type": "u16",
+      "input": 42,
+      "operations": [
+        { "operation": "write", "nvs_key_name": "fanspeed", "type": "u16", "value": 42 }
+      ]
+    },
+    {
+      "name": "corrupt asicfrequency_f uses default",
+      "key": "asicfrequency_f",
+      "input_type": "str",
+      "input": "bad",
+      "loaded": { "type": "float", "value": 485.0 }
     }
   ]
 }

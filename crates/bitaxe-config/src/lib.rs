@@ -10,8 +10,10 @@ pub use catalog::{
 };
 pub use defaults::{ultra_205_defaults, Ultra205Defaults};
 pub use nvs::{
-    all_settings_schema, NvsKeyName, NvsSchemaError, RestFieldName, SettingDefault, SettingSchema,
-    StoredType, NVS_KEY_NAME_MAX_BYTES, NVS_NAMESPACE,
+    all_settings_schema, compatibility_writes_for_active, load_setting_value, migration_decisions,
+    migration_rules, LoadedValue, MigrationDecision, MigrationRule, NvsErase, NvsKeyName,
+    NvsSchemaError, NvsWrite, RestFieldName, SettingDefault, SettingSchema, StoredType,
+    StoredValue, NVS_KEY_NAME_MAX_BYTES, NVS_NAMESPACE,
 };
 
 /// Phase 1 board and ASIC identity selection.
