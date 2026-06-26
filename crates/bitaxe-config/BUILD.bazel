@@ -2,7 +2,11 @@ load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 rust_library(
     name = "bitaxe_config",
-    srcs = ["src/lib.rs"],
+    srcs = [
+        "src/catalog.rs",
+        "src/defaults.rs",
+        "src/lib.rs",
+    ],
     crate_name = "bitaxe_config",
     edition = "2021",
     visibility = ["//visibility:public"],
