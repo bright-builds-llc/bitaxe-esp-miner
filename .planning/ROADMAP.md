@@ -88,7 +88,14 @@ Plans:
 1. Firmware translates typed ASIC commands and observations through a narrow UART adapter without leaking raw protocol details into user-facing control logic.
 1. Developer can inspect reference breadcrumbs and parity checklist rows for BM1366 behavior, including hardware-smoke evidence before release parity is claimed.
 
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+
+- [ ] 03-01-PLAN.md - Establish BM1366 protocol module contracts, CRC, packet framing, register codecs, and provenance fixtures.
+- [ ] 03-02-PLAN.md - Implement BM1366 diagnostic work encoding, job ID semantics, result parsing, and nonce/register fault handling.
+- [ ] 03-03-PLAN.md - Add active BM1366 dispatch, semantic command/observation types, and fake UART transcript coverage.
+- [ ] 03-04-PLAN.md - Implement fail-closed staged init planning and pure frequency/voltage transition decisions.
+- [ ] 03-05-PLAN.md - Add the narrow firmware UART/reset/status adapter, evidence records, checklist updates, and human-gated chip-detect smoke review.
 **Verification expectations**: Pure unit and golden tests for BM1366 codecs, fake UART adapter tests, staged hardware-smoke evidence for reset/init/work-send/result-receive, and explicit unverified status for frequency/voltage transitions until hardware evidence exists.
 **Research flags**: Needs phase research for BM1366 sequencing, timing, reset behavior, voltage dependencies, UART behavior, and hardware evidence planning.
 
@@ -187,7 +194,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | --- | --- | --- | --- |
 | 1. Foundation And Ultra 205 Boot/Log | 9/9 | Complete | 2026-06-21 |
 | 2. Ultra 205 Config And NVS Model | 4/4 | Complete | 2026-06-26 |
-| 3. BM1366 ASIC Protocol And Safe Initialization | 0/TBD | Not started | - |
+| 3. BM1366 ASIC Protocol And Safe Initialization | 0/5 | Not started | - |
 | 4. Stratum V1 And First Mining Loop | 0/TBD | Not started | - |
 | 5. AxeOS API, Logs, And Telemetry | 0/TBD | Not started | - |
 | 6. Safety Controllers And Self-Test | 0/TBD | Not started | - |
