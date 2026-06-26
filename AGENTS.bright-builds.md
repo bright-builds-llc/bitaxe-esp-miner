@@ -65,6 +65,7 @@ Record recurring repo-specific workflow facts in `AGENTS.md` under `## Repo-Loca
 - Unit test pure code and business logic.
 - Structure unit tests as Arrange, Act, Assert and keep each test focused on one concern.
 
+
 ## Local overrides and exceptions
 
 Document repo-specific deviations in `standards-overrides.md`.
