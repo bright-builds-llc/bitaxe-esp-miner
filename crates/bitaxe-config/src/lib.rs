@@ -3,6 +3,7 @@ use bitaxe_core::{AsicTarget, BoardTarget};
 pub mod catalog;
 pub mod defaults;
 pub mod nvs;
+pub mod validation;
 
 pub use catalog::{
     board_catalog, ultra_205_catalog_entry, AsicProfile, BoardCapabilities, BoardCatalogEntry,
@@ -14,6 +15,11 @@ pub use nvs::{
     migration_rules, LoadedValue, MigrationDecision, MigrationRule, NvsErase, NvsKeyName,
     NvsSchemaError, NvsWrite, RestFieldName, SettingDefault, SettingSchema, StoredType,
     StoredValue, NVS_KEY_NAME_MAX_BYTES, NVS_NAMESPACE,
+};
+pub use validation::{
+    validate_nvs_key_name, AsicFrequencyMhz, BoardVersion, BoolLike, ConfigValidationError,
+    CoreVoltageMv, FanDutyPercent, Hostname, MinFanDutyPercent, PortNumber, StratumProtocol,
+    Sv2ChannelType, TemperatureCelsius, TlsMode,
 };
 
 /// Phase 1 board and ASIC identity selection.
