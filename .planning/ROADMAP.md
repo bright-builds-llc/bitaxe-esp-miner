@@ -70,7 +70,7 @@ Plans:
 
 - [x] 02-01-PLAN.md - Establish Phase 2 fixtures, Ultra 205 defaults, and scoped board/ASIC catalog.
 - [x] 02-02-PLAN.md - Implement pure NVS schema, key constraints, migrations, defaults, and corrupt-float fallback.
-- [ ] 02-03-PLAN.md - Implement typed validation and pure settings update decisions.
+- [x] 02-03-PLAN.md - Implement typed validation and pure settings update decisions.
 - [ ] 02-04-PLAN.md - Implement pure persistence reload semantics and record parity evidence.
 **Verification expectations**: Unit and golden fixture coverage for config defaults, NVS schemas, validation ranges, and persistence semantics. Reboot reload smoke should be added once the firmware storage adapter exists. Parity checklist rows must record reference breadcrumbs and fixture evidence.
 **Research flags**: Standard Rust domain modeling. Use the pinned reference tree and golden fixtures; do targeted research only if upstream config extraction or NVS migration behavior is ambiguous.

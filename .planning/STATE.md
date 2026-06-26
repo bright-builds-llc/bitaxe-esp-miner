@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-06-26T17:06:10.298Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-06-26T17:24:26.088Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 13
-  completed_plans: 11
-  percent: 85
+  completed_plans: 12
+  percent: 92
 ---
 
 ______________________________________________________________________
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 02 (ultra-205-config-and-nvs-model) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-26
 
@@ -65,6 +65,7 @@ Progress: [██████████] 100%
 | Phase 01-foundation-and-gamma-601-boot-log P09 | 10 | 3 tasks | 4 files |
 | Phase 02-ultra-205-config-and-nvs-model P01 | 14 min | 2 tasks | 15 files |
 | Phase 02-ultra-205-config-and-nvs-model P02 | 13 | 2 tasks | 5 files |
+| Phase 02-ultra-205-config-and-nvs-model P03 | 13 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,9 @@ Recent decisions affecting current work:
 - [Phase 02-ultra-205-config-and-nvs-model]: NVS schema and migrations remain pure data/functions; ESP-IDF reads, writes, erases, and commits stay deferred to a future firmware adapter.
 - [Phase 02-ultra-205-config-and-nvs-model]: Legacy keys asicfrequency, fanspeed, and fbSv2ChanType are represented explicitly so migration decisions preserve upstream compatibility.
 - [Phase 02-ultra-205-config-and-nvs-model]: Corrupt FloatString values fall back to schema defaults, including Ultra 205 asicfrequency_f = 485.0.
+- [Phase 02-ultra-205-config-and-nvs-model]: Keep frequency, voltage, fan, thermal, and settings validation as pure data checks with no ESP-IDF or hardware side effects.
+- [Phase 02-ultra-205-config-and-nvs-model]: Use all_settings_schema() as the settings update authority so future API handlers do not duplicate validation or mapping logic.
+- [Phase 02-ultra-205-config-and-nvs-model]: Preserve upstream legacy mirror writes for frequency and manual fan updates.
 
 ### Pending Todos
 
@@ -124,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-26T17:06:10.295Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-06-26T17:24:26.086Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
