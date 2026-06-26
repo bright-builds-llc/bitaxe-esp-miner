@@ -10,7 +10,7 @@
       "value": 485,
       "nvs_key_name": "asicfrequency_f",
       "expected_writes": [
-        { "type": "string", "nvs_key_name": "asicfrequency_f", "value": "485" },
+        { "type": "string", "nvs_key_name": "asicfrequency_f", "value": "485.000000" },
         { "type": "u16", "nvs_key_name": "asicfrequency", "value": 485 }
       ]
     },

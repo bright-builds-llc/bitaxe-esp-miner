@@ -295,7 +295,7 @@ mod tests {
         assert_eq!(
             updated.writes(),
             [
-                NvsWrite::string("asicfrequency_f", "485"),
+                NvsWrite::string("asicfrequency_f", "485.000000"),
                 NvsWrite::u16("asicfrequency", 485),
                 NvsWrite::u16("manualfanspeed", 42),
                 NvsWrite::u16("fanspeed", 42),

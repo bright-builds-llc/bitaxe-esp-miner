@@ -1496,7 +1496,7 @@ mod tests {
     #[test]
     fn nvs_schema_writes_active_frequency_legacy_compatibility_key() {
         // Arrange
-        let write = NvsWrite::string("asicfrequency_f", "485");
+        let write = NvsWrite::string("asicfrequency_f", "485.000000");
 
         // Act
         let compatibility_writes = compatibility_writes_for_active(&write);

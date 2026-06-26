@@ -246,7 +246,7 @@ fn validate_float_string_setting(
 
     Ok(NvsWrite::String {
         key: schema.key.clone(),
-        value: format_float_string(value),
+        value: format_active_float_string(value),
     })
 }
 
@@ -347,20 +347,8 @@ fn validate_float_schema_range(
     Ok(())
 }
 
-fn maybe_integer_float(value: f64) -> Option<i64> {
-    if !value.is_finite() || value.fract() != 0.0 {
-        return None;
-    }
-
-    Some(value as i64)
-}
-
-fn format_float_string(value: f64) -> String {
-    if let Some(integer_value) = maybe_integer_float(value) {
-        return integer_value.to_string();
-    }
-
-    value.to_string()
+fn format_active_float_string(value: f64) -> String {
+    format!("{value:.6}")
 }
 
 fn invalid_type(schema: &SettingSchema, raw_value: &RawSettingValue) -> ConfigValidationError {
@@ -572,7 +560,7 @@ mod tests {
             decision,
             SettingsUpdateDecision::Accepted {
                 writes: vec![
-                    NvsWrite::string("asicfrequency_f", "485"),
+                    NvsWrite::string("asicfrequency_f", "485.000000"),
                     NvsWrite::u16("asicfrequency", 485),
                     NvsWrite::u16("manualfanspeed", 42),
                     NvsWrite::u16("fanspeed", 42),
