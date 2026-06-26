@@ -3,6 +3,7 @@ use bitaxe_core::{AsicTarget, BoardTarget};
 pub mod catalog;
 pub mod defaults;
 pub mod nvs;
+pub mod persistence;
 pub mod settings;
 pub mod validation;
 
@@ -16,6 +17,9 @@ pub use nvs::{
     migration_rules, LoadedValue, MigrationDecision, MigrationRule, NvsErase, NvsKeyName,
     NvsSchemaError, NvsWrite, RestFieldName, SettingDefault, SettingSchema, StoredType,
     StoredValue, NVS_KEY_NAME_MAX_BYTES, NVS_NAMESPACE,
+};
+pub use persistence::{
+    apply_patch_to_snapshot, load_snapshot, reload_snapshot, NvsSnapshot, PersistenceDecision,
 };
 pub use settings::{
     apply_settings_patch, RawSettingValue, SettingsPatch, SettingsUpdateDecision,
