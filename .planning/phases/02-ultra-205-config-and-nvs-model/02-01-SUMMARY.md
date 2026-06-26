@@ -123,8 +123,6 @@ _Note: The TDD RED failure was run and recorded, but not committed because AGENT
 - **Fix:** Ran the RED test and recorded the expected unresolved import failure, then committed only the passing GREEN implementation.
 - **Verification:** RED failure: `bazel test //crates/bitaxe-config:tests --test_filter=ultra_205_defaults`; GREEN checks passed before commit.
 
----
-
 **Total deviations:** 1 auto-fixed (1 missing critical evidence update), 1 process adjustment.
 **Impact on plan:** The implementation scope stayed within the plan; the added checklist update keeps parity evidence aligned with the completed pure config work.
 
