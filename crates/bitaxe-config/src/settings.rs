@@ -6,10 +6,9 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    all_settings_schema, compatibility_writes_for_active, AsicFrequencyMhz, BoolLike,
-    ConfigValidationError, CoreVoltageMv, FanDutyPercent, Hostname, MinFanDutyPercent, NvsWrite,
-    PortNumber, SettingSchema, StoredType, StratumProtocol, Sv2ChannelType, TemperatureCelsius,
-    TlsMode,
+    all_settings_schema, compatibility_writes_for_active, BoolLike, ConfigValidationError,
+    FanDutyPercent, Hostname, MinFanDutyPercent, NvsWrite, PortNumber, SettingSchema, StoredType,
+    StratumProtocol, Sv2ChannelType, TemperatureCelsius, TlsMode,
 };
 
 /// Raw setting value accepted at the pure update boundary.
@@ -173,9 +172,6 @@ fn validate_u16_setting(
     validate_schema_range(schema, value)?;
 
     match schema.key.as_str() {
-        "asicvoltage" => {
-            CoreVoltageMv::ultra_205_bm1366(value)?;
-        }
         "manualfanspeed" => {
             FanDutyPercent::parse(value)?;
         }
@@ -247,16 +243,6 @@ fn validate_float_string_setting(
 ) -> Result<NvsWrite, ConfigValidationError> {
     let value = float_value(schema, raw_value)?;
     validate_float_schema_range(schema, value)?;
-
-    if schema.key.as_str() == "asicfrequency_f" {
-        let Some(integer_value) = maybe_integer_float(value) else {
-            return Err(ConfigValidationError::InvalidEnum {
-                field: field_name(schema),
-                value: value.to_string(),
-            });
-        };
-        AsicFrequencyMhz::ultra_205_bm1366(integer_value)?;
-    }
 
     Ok(NvsWrite::String {
         key: schema.key.clone(),
@@ -549,6 +535,25 @@ mod tests {
             };
             assert!(!errors.is_empty());
         }
+    }
+
+    #[test]
+    fn validation_accepts_schema_valid_custom_frequency_and_voltage() {
+        // Arrange
+        let patch = SettingsPatch::from_pairs([
+            ("frequency", RawSettingValue::Number(486)),
+            ("coreVoltage", RawSettingValue::Number(1199)),
+        ]);
+
+        // Act
+        let decision = apply_settings_patch(&patch);
+
+        // Assert
+        let SettingsUpdateDecision::Accepted { writes } = decision else {
+            panic!("schema-valid custom frequency and voltage should be accepted");
+        };
+        assert!(writes_contain_key(&writes, "asicfrequency_f"));
+        assert!(writes.contains(&NvsWrite::u16("asicvoltage", 1199)));
     }
 
     #[test]
