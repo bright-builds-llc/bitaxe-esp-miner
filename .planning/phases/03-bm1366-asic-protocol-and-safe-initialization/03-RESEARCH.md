@@ -399,22 +399,24 @@ This test shape follows the project Arrange/Act/Assert testing rule and the Phas
 |---|-------|---------|---------------|
 | - | No `[ASSUMED]` claims are intentionally used in this research. | All sections | Planner should still re-check live hardware state before running any hardware smoke. [VERIFIED: docs/adr/0012-parity-verification-evidence.md] |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Which exact power and thermal tokens are sufficient for full live init in Phase 3?** [VERIFIED: .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-CONTEXT.md]
    - What we know: Full init requires board, config, power, thermal, and safety preflight tokens. [VERIFIED: .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-CONTEXT.md]
-   - What's unclear: The exact Phase 3 token schema and whether Phase 3 should block full init unless Phase 6-style safety signals already exist. [VERIFIED: .planning/ROADMAP.md]
-   - Recommendation: Plan chip-detect-only as the first hardware smoke, then add full-init as a separate gate that can remain blocked with a typed `PreflightMissing` status. [VERIFIED: .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-CONTEXT.md]
+   - Resolution: Phase 3 token schema is explicit: `BoardPreflightEvidence`, `ConfigPreflightEvidence`, `PowerPreflightEvidence`, `ThermalPreflightEvidence`, and `SafetyPreflightEvidence`. `chip_detect_only()` may run with board and config evidence only; `full_init()` must require all five tokens and fail closed before reset/register/frequency/max-baud/initialized stages when any token is absent. [VERIFIED: .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-CONTEXT.md]
+   - Resolution: Missing safety evidence uses a distinct typed reason, `safety_preflight_evidence_missing`, and safe action `HoldResetLow`; unit fixtures must include a missing-safety case. [VERIFIED: .planning/REQUIREMENTS.md]
+   - Recommendation retained: Plan chip-detect-only as the first hardware smoke, then allow full-init to remain blocked with typed `PreflightMissing` statuses until all preflight tokens are evidenced. [VERIFIED: .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-CONTEXT.md]
 
 2. **Should the firmware depend directly on `esp-idf-hal` or only use `esp_idf_svc::hal` re-exports?** [VERIFIED: firmware/bitaxe/Cargo.toml; VERIFIED: local cargo registry esp-idf-svc-0.52.1]
    - What we know: `esp-idf-svc` re-exports `hal`, and the firmware already depends on `esp-idf-svc`. [VERIFIED: local cargo registry esp-idf-svc-0.52.1; VERIFIED: firmware/bitaxe/Cargo.toml]
-   - What's unclear: Whether compiler ergonomics or Bazel crate mapping will be cleaner with a direct `esp-idf-hal` dependency. [VERIFIED: MODULE.bazel; VERIFIED: Cargo.toml]
-   - Recommendation: Start with `esp_idf_svc::hal` and add a direct dependency only if code or Bazel integration requires it. [VERIFIED: local cargo registry esp-idf-svc-0.52.1]
+   - Resolution: Use `esp_idf_svc::hal` re-exports for Phase 3 firmware UART/GPIO work. Do not add a direct `esp-idf-hal` dependency unless implementation proves the re-export path cannot satisfy a concrete compiler or Bazel crate-mapping requirement. [VERIFIED: local cargo registry esp-idf-svc-0.52.1]
+   - Recommendation retained: Keep the adapter thin and HAL-facing; raw `esp-idf-sys` UART calls remain a fallback only for missing HAL coverage. [VERIFIED: local cargo registry esp-idf-hal-0.46.2]
 
 3. **Can the visible serial port be treated as an Ultra 205 for evidence?** [VERIFIED: `espflash list-ports`]
    - What we know: `/dev/cu.usbmodem1101` is visible as an Espressif USB JTAG/serial debug unit. [VERIFIED: `espflash list-ports`]
-   - What's unclear: The port listing alone does not prove the connected board is the intended Ultra 205 in a safe setup. [VERIFIED: docs/adr/0012-parity-verification-evidence.md]
-   - Recommendation: Require hardware evidence files to record board identity, port, command, logs, observed result, and fail-closed conclusion before updating verified rows. [VERIFIED: .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-CONTEXT.md]
+   - Resolution: A visible serial port is not sufficient evidence of an Ultra 205 board or safe bench setup. Hardware evidence may cite a port only after the evidence file records board identity, port, command, firmware commit, reference commit, relevant logs, observed result, skipped gates, and fail-closed conclusion. [VERIFIED: docs/adr/0012-parity-verification-evidence.md]
+   - Resolution: If user approval, board identity, or safe setup evidence is missing, the evidence conclusion remains `not run - hardware verification pending` and safety-critical ASIC rows remain below `verified`. [VERIFIED: .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-CONTEXT.md]
+   - Recommendation retained: Require hardware evidence files to record board identity, port, command, logs, observed result, and fail-closed conclusion before updating verified rows. [VERIFIED: .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-CONTEXT.md]
 
 ## Environment Availability
 

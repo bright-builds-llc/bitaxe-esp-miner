@@ -44,7 +44,7 @@ created: 2026-06-26
 | 03-02-02 | 02 | 1 | ASIC-02 | T-03-02 | Nonce-derived ASIC/core/domain decoding is typed and bounded | unit/golden | `cargo test -p bitaxe-asic bm1366_result --all-features` | no - Wave 0 module gap | pending |
 | 03-03-01 | 03 | 2 | ASIC-03 | T-03-03 | BM1366 is the only active V1 dispatch path; other ASICs are deferred/not verified | unit | `cargo test -p bitaxe-asic dispatch --all-features` | no - Wave 0 module gap | pending |
 | 03-03-02 | 03 | 2 | ASIC-04 | T-03-01 | Firmware receives typed adapter actions, not raw BM1366 command bytes | unit/adapter | `cargo test -p bitaxe-asic transcript --all-features` | no - Wave 0 module gap | pending |
-| 03-04-01 | 04 | 2 | ASIC-05 | T-03-03 | Missing board/config/power/thermal gates fail closed with no mining/work submission | unit | `cargo test -p bitaxe-asic init_plan --all-features` | no - Wave 0 module gap | pending |
+| 03-04-01 | 04 | 2 | ASIC-05 | T-03-03 | Missing board/config/power/thermal/safety gates fail closed with no mining/work submission | unit | `cargo test -p bitaxe-asic init_plan --all-features` | no - Wave 0 module gap | pending |
 | 03-04-02 | 04 | 2 | ASIC-06 | T-03-03 | Frequency and voltage are range-checked as pure decisions, not verified effects | unit | `cargo test -p bitaxe-asic frequency_voltage --all-features` | partial in `bitaxe-config` | pending |
 | 03-05-01 | 05 | 3 | ASIC-07 | T-03-04 | Live init, work-send, and result-receive claims remain below verified without Ultra 205 evidence | evidence/static | `rg -n "ASIC-00[2-7]|BM1366" docs/parity docs/parity/evidence` | checklist exists, Phase 3 evidence gap | pending |
 | 03-05-02 | 05 | 3 | ASIC-08 | T-03-05 | Breadcrumbs point to pinned reference behavior without copying C expression into MIT files | static review | `rg -n "reference/esp-miner|ASIC-00|BM1366" crates/bitaxe-asic firmware/bitaxe docs/parity` | no Phase 3 breadcrumbs yet | pending |
@@ -66,7 +66,7 @@ created: 2026-06-26
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | Ultra 205 chip-detect smoke | ASIC-05, ASIC-07 | Requires connected Ultra 205 hardware, safe bench setup, serial port, and board-named log evidence | Run the plan-defined chip-detect command, record board, port, firmware commit, reference commit, logs, observed chip count, skipped gates, and fail-closed conclusion in `docs/parity/evidence/` |
-| Full staged init smoke | ASIC-05, ASIC-07 | Safety-critical reset/UART/frequency/init behavior cannot be verified by unit tests | Run only after board/config/power/thermal preflight tokens exist; capture logs and leave checklist below `verified` if any gate is missing |
+| Full staged init smoke | ASIC-05, ASIC-07 | Safety-critical reset/UART/frequency/init behavior cannot be verified by unit tests | Run only after board/config/power/thermal/safety preflight tokens exist; capture logs and leave checklist below `verified` if any gate is missing |
 | Diagnostic work-send/result-receive smoke | ASIC-02, ASIC-07 | Production mining is Phase 4; any Phase 3 work path must be diagnostic-only and fail-closed | Run only if a plan explicitly adds diagnostic work mode; confirm no Stratum pool mining or accepted-share claim is made |
 
 ---
