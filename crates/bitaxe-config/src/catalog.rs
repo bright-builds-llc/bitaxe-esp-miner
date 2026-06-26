@@ -12,6 +12,7 @@ pub enum VerificationScope {
 /// ASIC profile values copied into typed, pure Rust data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AsicProfile {
+    profile_id: &'static str,
     model: &'static str,
     chip_id: u16,
     default_frequency_mhz: u16,
@@ -25,6 +26,13 @@ pub struct AsicProfile {
 }
 
 impl AsicProfile {
+    /// Returns the internal profile identity used to distinguish upstream
+    /// variants that share a runtime model string.
+    #[must_use]
+    pub const fn profile_id(&self) -> &'static str {
+        self.profile_id
+    }
+
     /// Returns the ASIC model name.
     #[must_use]
     pub const fn model(&self) -> &'static str {
@@ -196,6 +204,7 @@ const BM1368_VOLTAGE_OPTIONS: &[u16] = &[1100, 1150, 1166, 1200, 1250, 1300];
 const BM1370_VOLTAGE_OPTIONS: &[u16] = &[1000, 1060, 1100, 1150, 1200, 1250];
 
 const ASIC_BM1397: AsicProfile = AsicProfile {
+    profile_id: "BM1397",
     model: "BM1397",
     chip_id: 1397,
     default_frequency_mhz: 425,
@@ -209,6 +218,7 @@ const ASIC_BM1397: AsicProfile = AsicProfile {
 };
 
 const ASIC_BM1366: AsicProfile = AsicProfile {
+    profile_id: "BM1366",
     model: "BM1366",
     chip_id: 1366,
     default_frequency_mhz: 485,
@@ -222,6 +232,7 @@ const ASIC_BM1366: AsicProfile = AsicProfile {
 };
 
 const ASIC_BM1368: AsicProfile = AsicProfile {
+    profile_id: "BM1368",
     model: "BM1368",
     chip_id: 1368,
     default_frequency_mhz: 490,
@@ -235,6 +246,7 @@ const ASIC_BM1368: AsicProfile = AsicProfile {
 };
 
 const ASIC_BM1370: AsicProfile = AsicProfile {
+    profile_id: "BM1370",
     model: "BM1370",
     chip_id: 1370,
     default_frequency_mhz: 525,
@@ -248,7 +260,8 @@ const ASIC_BM1370: AsicProfile = AsicProfile {
 };
 
 const ASIC_BM1370_XP: AsicProfile = AsicProfile {
-    model: "BM1370XP",
+    profile_id: "BM1370XP",
+    model: "BM1370",
     chip_id: 1370,
     default_frequency_mhz: 400,
     frequency_options: BM1370_XP_FREQUENCY_OPTIONS,

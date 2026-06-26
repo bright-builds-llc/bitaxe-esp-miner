@@ -27,6 +27,7 @@ struct CatalogFixture {
 
 #[derive(Debug, Deserialize)]
 struct CatalogAsicProfileFixture {
+    profile_id: String,
     asic_model: String,
     chip_id: u16,
     default_frequency_mhz: u16,
@@ -43,6 +44,7 @@ struct CatalogAsicProfileFixture {
 struct CatalogBoardFixture {
     board_version: String,
     family: String,
+    asic_profile_id: Option<String>,
     asic_model: String,
     asic_count: u8,
     power_consumption_target: u16,
@@ -214,10 +216,10 @@ fn ultra_205_defaults_match_golden_fixture() {
 fn board_catalog_matches_golden_fixture() {
     // Arrange
     let fixture = catalog_fixture();
-    let profile_by_model = fixture
+    let profile_by_id = fixture
         .asic_profiles
         .iter()
-        .map(|profile| (profile.asic_model.as_str(), profile))
+        .map(|profile| (profile.profile_id.as_str(), profile))
         .collect::<BTreeMap<_, _>>();
 
     // Act
@@ -226,7 +228,7 @@ fn board_catalog_matches_golden_fixture() {
     // Assert
     assert_eq!(catalog.len(), fixture.boards.len());
     for (entry, fixture_board) in catalog.iter().zip(fixture.boards.iter()) {
-        assert_board_matches_fixture(*entry, fixture_board, &profile_by_model);
+        assert_board_matches_fixture(*entry, fixture_board, &profile_by_id);
     }
 }
 
@@ -330,13 +332,17 @@ fn bool_as_fixture_u16(value: bool) -> &'static str {
 fn assert_board_matches_fixture(
     entry: BoardCatalogEntry,
     fixture: &CatalogBoardFixture,
-    profile_by_model: &BTreeMap<&str, &CatalogAsicProfileFixture>,
+    profile_by_id: &BTreeMap<&str, &CatalogAsicProfileFixture>,
 ) {
     let asic = entry.asic();
     let capabilities = entry.capabilities();
-    let fixture_profile = profile_by_model
-        .get(fixture.asic_model.as_str())
-        .unwrap_or_else(|| panic!("fixture profile missing for {}", fixture.asic_model));
+    let profile_id = fixture
+        .asic_profile_id
+        .as_deref()
+        .unwrap_or(fixture.asic_model.as_str());
+    let fixture_profile = profile_by_id
+        .get(profile_id)
+        .unwrap_or_else(|| panic!("fixture profile missing for {profile_id}"));
 
     assert_eq!(entry.board_version(), fixture.board_version);
     assert_eq!(entry.family(), fixture.family);
@@ -361,6 +367,7 @@ fn assert_board_matches_fixture(
 }
 
 fn assert_asic_profile_matches_fixture(asic: AsicProfile, fixture: &CatalogAsicProfileFixture) {
+    assert_eq!(asic.profile_id(), fixture.profile_id);
     assert_eq!(asic.model(), fixture.asic_model);
     assert_eq!(asic.chip_id(), fixture.chip_id);
     assert_eq!(asic.default_frequency_mhz(), fixture.default_frequency_mhz);

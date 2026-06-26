@@ -53,4 +53,3 @@ The fixtures used by this phase are derived from public upstream defaults and sc
 | CFG-003 | `crates/bitaxe-config/src/catalog.rs`, `crates/bitaxe-config/fixtures/catalog.json` | Catalog representation only; non-205 entries are not hardware-verified. |
 | CFG-004 | `crates/bitaxe-config/src/nvs.rs`, `crates/bitaxe-config/src/persistence.rs`, `crates/bitaxe-config/fixtures/nvs-schema.json`, `crates/bitaxe-config/fixtures/nvs-migrations.json` | Pure schema, default-load, migration, and snapshot reload semantics only. |
 | CFG-005 | `crates/bitaxe-config/src/settings.rs`, `crates/bitaxe-config/src/persistence.rs`, `crates/bitaxe-config/fixtures/settings-updates.json` | Pure update/reload decisions only; API PATCH route and firmware NVS adapter evidence remain later work. |
-| CFG-06 | All Phase 2 fixtures under `crates/bitaxe-config/fixtures/` | Fixture and golden coverage for defaults, catalog, NVS schema, migrations, and settings update cases. |

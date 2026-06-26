@@ -6,6 +6,7 @@
   },
   "asic_profiles": [
     {
+      "profile_id": "BM1397",
       "asic_model": "BM1397",
       "chip_id": 1397,
       "default_frequency_mhz": 425,
@@ -18,6 +19,7 @@
       "default_asic_timeout": 20
     },
     {
+      "profile_id": "BM1366",
       "asic_model": "BM1366",
       "chip_id": 1366,
       "default_frequency_mhz": 485,
@@ -30,6 +32,7 @@
       "default_asic_timeout": 2000
     },
     {
+      "profile_id": "BM1368",
       "asic_model": "BM1368",
       "chip_id": 1368,
       "default_frequency_mhz": 490,
@@ -42,6 +45,7 @@
       "default_asic_timeout": 500
     },
     {
+      "profile_id": "BM1370",
       "asic_model": "BM1370",
       "chip_id": 1370,
       "default_frequency_mhz": 525,
@@ -54,7 +58,8 @@
       "default_asic_timeout": 500
     },
     {
-      "asic_model": "BM1370XP",
+      "profile_id": "BM1370XP",
+      "asic_model": "BM1370",
       "chip_id": 1370,
       "default_frequency_mhz": 400,
       "frequency_options": [350, 375, 380, 400, 410],
@@ -325,7 +330,8 @@
     {
       "board_version": "650",
       "family": "GammaDuo",
-      "asic_model": "BM1370XP",
+      "asic_profile_id": "BM1370XP",
+      "asic_model": "BM1370",
       "asic_count": 2,
       "power_consumption_target": 35,
       "DS4432U": false,

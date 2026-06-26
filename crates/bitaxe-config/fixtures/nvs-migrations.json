@@ -126,16 +126,16 @@
       ]
     },
     {
-      "name": "legacy fbSv2ChanType -> fbsv2chantype",
+      "name": "legacy fbSv2ChanType -> sv2chantype",
       "legacy_key": "fbSv2ChanType",
-      "active_key": "fbsv2chantype",
+      "active_key": "sv2chantype",
       "input_type": "u16",
       "input": 1,
       "output_type": "str",
       "output": "standard",
       "operations": [
         { "operation": "erase", "nvs_key_name": "fbSv2ChanType" },
-        { "operation": "write", "nvs_key_name": "fbsv2chantype", "type": "str", "value": "standard" }
+        { "operation": "write", "nvs_key_name": "sv2chantype", "type": "str", "value": "standard" }
       ]
     },
     {

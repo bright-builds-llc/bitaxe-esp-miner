@@ -392,6 +392,7 @@ pub fn migration_decisions(stored_values: &[StoredValue]) -> Vec<MigrationDecisi
         }
     }
 
+    let mut mixed_case_sv2_channel_type_consumed = false;
     for channel_type_key in ["sv2chantype", "fbsv2chantype"] {
         if let Some(value) = maybe_u16(stored_values, channel_type_key) {
             decisions.push(MigrationDecision::Erase(NvsErase::key(channel_type_key)));
@@ -399,16 +400,22 @@ pub fn migration_decisions(stored_values: &[StoredValue]) -> Vec<MigrationDecisi
                 channel_type_key,
                 sv2_channel_type_name(value),
             )));
+            continue;
         }
-    }
 
-    if !has_key(stored_values, "fbsv2chantype") {
-        if let Some(value) = maybe_u16(stored_values, "fbSv2ChanType") {
-            decisions.push(MigrationDecision::Erase(NvsErase::key("fbSv2ChanType")));
-            decisions.push(MigrationDecision::Write(NvsWrite::string(
-                "fbsv2chantype",
-                sv2_channel_type_name(value),
-            )));
+        if has_key(stored_values, channel_type_key) {
+            continue;
+        }
+
+        if !mixed_case_sv2_channel_type_consumed {
+            if let Some(value) = maybe_u16(stored_values, "fbSv2ChanType") {
+                mixed_case_sv2_channel_type_consumed = true;
+                decisions.push(MigrationDecision::Erase(NvsErase::key("fbSv2ChanType")));
+                decisions.push(MigrationDecision::Write(NvsWrite::string(
+                    channel_type_key,
+                    sv2_channel_type_name(value),
+                )));
+            }
         }
     }
 
@@ -1478,7 +1485,7 @@ mod tests {
                     decisions,
                     vec![
                         MigrationDecision::Erase(NvsErase::key("fbSv2ChanType")),
-                        MigrationDecision::Write(NvsWrite::string("fbsv2chantype", expected_value)),
+                        MigrationDecision::Write(NvsWrite::string("sv2chantype", expected_value)),
                     ]
                 );
             } else {
@@ -1491,6 +1498,27 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn nvs_schema_migrates_mixed_case_sv2_channel_type_after_primary_exists() {
+        // Arrange
+        let stored_values = [
+            StoredValue::string("sv2chantype", "extended"),
+            StoredValue::u16("fbSv2ChanType", 1),
+        ];
+
+        // Act
+        let decisions = migration_decisions(&stored_values);
+
+        // Assert
+        assert_eq!(
+            decisions,
+            vec![
+                MigrationDecision::Erase(NvsErase::key("fbSv2ChanType")),
+                MigrationDecision::Write(NvsWrite::string("fbsv2chantype", "standard")),
+            ]
+        );
     }
 
     #[test]
