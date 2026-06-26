@@ -7,8 +7,10 @@ rust_library(
         "src/defaults.rs",
         "src/lib.rs",
         "src/nvs.rs",
+        "src/settings.rs",
         "src/validation.rs",
     ],
+    compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_config",
     edition = "2021",
     visibility = ["//visibility:public"],
@@ -23,4 +25,7 @@ rust_test(
     name = "tests",
     crate = ":bitaxe_config",
     data = glob(["fixtures/**"]),
+    deps = [
+        "@crates//:serde_json",
+    ],
 )

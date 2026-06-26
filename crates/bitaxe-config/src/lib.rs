@@ -3,6 +3,7 @@ use bitaxe_core::{AsicTarget, BoardTarget};
 pub mod catalog;
 pub mod defaults;
 pub mod nvs;
+pub mod settings;
 pub mod validation;
 
 pub use catalog::{
@@ -15,6 +16,10 @@ pub use nvs::{
     migration_rules, LoadedValue, MigrationDecision, MigrationRule, NvsErase, NvsKeyName,
     NvsSchemaError, NvsWrite, RestFieldName, SettingDefault, SettingSchema, StoredType,
     StoredValue, NVS_KEY_NAME_MAX_BYTES, NVS_NAMESPACE,
+};
+pub use settings::{
+    apply_settings_patch, RawSettingValue, SettingsPatch, SettingsUpdateDecision,
+    SettingsUpdateError,
 };
 pub use validation::{
     validate_nvs_key_name, AsicFrequencyMhz, BoardVersion, BoolLike, ConfigValidationError,

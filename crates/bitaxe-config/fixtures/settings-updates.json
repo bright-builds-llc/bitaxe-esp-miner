@@ -5,13 +5,64 @@
     "license_posture": "reference-derived GPL-3.0 source data; do not treat as MIT-only until release review"
   },
   "valid": [
-    { "field": "frequency", "value": 485, "nvs_key_name": "asicfrequency_f" },
-    { "field": "coreVoltage", "value": 1200, "nvs_key_name": "asicvoltage" },
-    { "field": "manualFanSpeed", "value": 42, "nvs_key_name": "manualfanspeed" },
-    { "field": "autofanspeed", "value": true, "nvs_key_name": "autofanspeed" },
-    { "field": "hostname", "value": "bitaxe", "nvs_key_name": "hostname" },
-    { "field": "stratumPort", "value": 3333, "nvs_key_name": "stratumport" },
-    { "field": "stratumTLS", "value": 0, "nvs_key_name": "stratumtls" }
+    {
+      "field": "frequency",
+      "value": 485,
+      "nvs_key_name": "asicfrequency_f",
+      "expected_writes": [
+        { "type": "string", "nvs_key_name": "asicfrequency_f", "value": "485" },
+        { "type": "u16", "nvs_key_name": "asicfrequency", "value": 485 }
+      ]
+    },
+    {
+      "field": "coreVoltage",
+      "value": 1200,
+      "nvs_key_name": "asicvoltage",
+      "expected_writes": [
+        { "type": "u16", "nvs_key_name": "asicvoltage", "value": 1200 }
+      ]
+    },
+    {
+      "field": "manualFanSpeed",
+      "value": 42,
+      "nvs_key_name": "manualfanspeed",
+      "expected_writes": [
+        { "type": "u16", "nvs_key_name": "manualfanspeed", "value": 42 },
+        { "type": "u16", "nvs_key_name": "fanspeed", "value": 42 }
+      ]
+    },
+    {
+      "field": "autofanspeed",
+      "value": true,
+      "nvs_key_name": "autofanspeed",
+      "expected_writes": [
+        { "type": "u16", "nvs_key_name": "autofanspeed", "value": 1 }
+      ]
+    },
+    {
+      "field": "hostname",
+      "value": "bitaxe",
+      "nvs_key_name": "hostname",
+      "expected_writes": [
+        { "type": "string", "nvs_key_name": "hostname", "value": "bitaxe" }
+      ]
+    },
+    {
+      "field": "stratumPort",
+      "value": 3333,
+      "nvs_key_name": "stratumport",
+      "expected_writes": [
+        { "type": "u16", "nvs_key_name": "stratumport", "value": 3333 }
+      ]
+    },
+    {
+      "field": "stratumTLS",
+      "value": 0,
+      "nvs_key_name": "stratumtls",
+      "expected_writes": [
+        { "type": "u16", "nvs_key_name": "stratumtls", "value": 0 }
+      ]
+    }
   ],
   "invalid": [
     { "field": "frequency", "value": 0, "reason": "below_minimum" },
