@@ -1,14 +1,14 @@
-# Phase 1: Foundation And Gamma 601 Boot/Log - Discussion Log
+# Phase 1: Foundation And Ultra 205 Boot/Log - Discussion Log
 
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
 > Decisions are captured in CONTEXT.md; this log preserves the alternatives considered.
 
-**Date:** 2026-06-21T00:32:31.453Z
-**Phase:** 1 - Foundation And Gamma 601 Boot/Log
+**Date:** 2026-06-26T14:20:22Z
+**Phase:** 1 - Foundation And Ultra 205 Boot/Log
 **Mode:** Yolo
-**Areas discussed:** Reference guardrails, Automation and workspace skeleton, Safe Gamma 601 boot/log, Package/flash/monitor ergonomics, Parity and provenance evidence
+**Areas discussed:** Reference guardrails, Automation and workspace skeleton, Safe Ultra 205 boot/log, Package/flash/monitor ergonomics, Parity and provenance evidence
 
----
+______________________________________________________________________
 
 ## Reference Guardrails
 
@@ -21,7 +21,7 @@
 **User's choice:** Auto-selected pinned read-only submodule.
 **Notes:** This matches ADR-0005 and the Phase 1 blocker recorded in `.planning/STATE.md`.
 
----
+______________________________________________________________________
 
 ## Automation And Workspace Skeleton
 
@@ -34,9 +34,9 @@
 **User's choice:** Auto-selected Bazel graph with Just wrapper.
 **Notes:** This matches ADR-0004 and the stack research recommendation to wrap Cargo/ESP-IDF for firmware initially.
 
----
+______________________________________________________________________
 
-## Safe Gamma 601 Boot/Log
+## Safe Ultra 205 Boot/Log
 
 | Option | Description | Selected |
 | --- | --- | --- |
@@ -45,22 +45,22 @@
 | Enable early hardware control | Start ASIC, voltage, fan, or thermal effects in Phase 1. | no |
 
 **User's choice:** Auto-selected boot/log only with safe disabled state.
-**Notes:** This preserves the first milestone boundary and avoids unsafe hardware bring-up.
+**Notes:** This preserves the first milestone boundary and avoids unsafe hardware bring-up. ADR-0014 supersedes the earlier Gamma 601-first choice; the verified Phase 1 smoke target is Ultra 205/BM1366.
 
----
+______________________________________________________________________
 
 ## Package/Flash/Monitor Ergonomics
 
 | Option | Description | Selected |
 | --- | --- | --- |
-| First-class Gamma 601 commands | Provide `just package`, `just flash board=601`, `just monitor`, and `just flash-monitor` with port discovery and printed backend commands. | yes |
+| First-class Ultra 205 commands | Provide `just package`, `just flash board=205`, `just monitor`, and `just flash-monitor` with port discovery and printed backend commands. | yes |
 | Manual espflash commands | Leave flashing to developer hand-run commands outside the repo graph. | no |
 | Package later | Defer image/package manifest work until after firmware behavior exists. | no |
 
-**User's choice:** Auto-selected first-class Gamma 601 commands.
+**User's choice:** Auto-selected first-class Ultra 205 commands.
 **Notes:** This matches ADR-0011 and Phase 1 FND-07 through FND-09.
 
----
+______________________________________________________________________
 
 ## Parity And Provenance Evidence
 
@@ -73,7 +73,7 @@
 **User's choice:** Auto-selected evidence ledger from day one.
 **Notes:** This matches ADR-0006, ADR-0012, ADR-0013, `docs/parity/checklist.md`, and `PROVENANCE.md`.
 
----
+______________________________________________________________________
 
 ## the agent's Discretion
 
@@ -90,4 +90,4 @@
 - Voltage, fan, thermal, power, and safety-controller parity.
 - AxeOS API/WebSocket compatibility.
 - OTA, filesystem, and release packaging beyond the first package manifest.
-- Non-601 board verification.
+- Gamma 601/BM1370 and other non-205 board verification.
