@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
+stopped_at: Completed 02-ultra-205-config-and-nvs-model-01-PLAN.md
+last_updated: "2026-06-26T16:46:01.996Z"
+last_activity: 2026-06-26
+progress:
+  total_phases: 8
+  completed_phases: 1
+  total_plans: 13
+  completed_plans: 10
+  percent: 77
+---
+
 ______________________________________________________________________
 
 ## gsd_state_version: 1.0 milestone: v1.0 milestone_name: milestone status: complete stopped_at: Ultra 205 safe-state boot/flash verified last_updated: "2026-06-26T13:37:28.000Z" last_activity: 2026-06-26 progress: total_phases: 8 completed_phases: 1 total_plans: 9 completed_plans: 9 percent: 100
@@ -9,13 +25,13 @@ ______________________________________________________________________
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Ultra 205-first parity pivot after Phase 01 foundation
+**Current focus:** Phase 02 — ultra-205-config-and-nvs-model
 
 ## Current Position
 
-Phase: 01 (Foundation And Ultra 205 Boot/Log) — VERIFIED
-Plan: 9 of 9
-Status: Phase complete — Ultra 205 safe-state boot/flash verified
+Phase: 02 (ultra-205-config-and-nvs-model) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-06-26
 
 Progress: [██████████] 100%
@@ -47,6 +63,7 @@ Progress: [██████████] 100%
 | Phase 01-foundation-and-gamma-601-boot-log P07 | 11 | 2 tasks | 6 files |
 | Phase 01-foundation-and-gamma-601-boot-log P08 | 20 | 2 tasks | 11 files |
 | Phase 01-foundation-and-gamma-601-boot-log P09 | 10 | 3 tasks | 4 files |
+| Phase 02-ultra-205-config-and-nvs-model P01 | 14 min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -88,6 +105,9 @@ Recent decisions affecting current work:
 - \[Phase 01-foundation-and-gamma-601-boot-log\]: Use workflow evidence for command-surface rows proved by Plan 09 Just/Bazel command output.
 - \[Phase 01-foundation-and-gamma-601-boot-log\]: Historical Gamma-first hardware evidence note superseded by ADR-0014; active safe-state boot/log rows are verified by Ultra 205 hardware smoke, while safety-critical hardware-control rows remain below verified.
 - \[Phase 01-foundation-and-gamma-601-boot-log\]: Historical missing Gamma 601 hardware-smoke evidence is preserved in Phase 1 artifacts and does not apply to Ultra 205 verification.
+- [Phase 02-ultra-205-config-and-nvs-model]: Keep Phase1BoardSelection::ultra_205() as a compatibility shim while exposing Phase 2 defaults/catalog modules.
+- [Phase 02-ultra-205-config-and-nvs-model]: Represent all non-205 upstream boards in the catalog as NotHardwareVerified so Ultra 205 evidence cannot be inherited.
+- [Phase 02-ultra-205-config-and-nvs-model]: Treat reference-derived fixture files as GPL-risk source data with explicit provenance metadata.
 
 ### Pending Todos
 
@@ -100,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-26T13:23:46.029Z
-Stopped at: Pivoted V1 target to Ultra 205 safe-state boot/flash
+Last session: 2026-06-26T16:46:01.994Z
+Stopped at: Completed 02-ultra-205-config-and-nvs-model-01-PLAN.md
 Resume file: None

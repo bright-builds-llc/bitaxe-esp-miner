@@ -46,9 +46,9 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| CFG-001 | Ultra 205 defaults | `reference/esp-miner/config-205.cvs` | `crates/bitaxe-config` | implemented | unit | `Phase1BoardSelection::ultra_205()` exposes `devicemodel=ultra`, `boardversion=205`, `asicmodel=BM1366`, `asicfrequency=485`, and `asicvoltage=1200`, with unit coverage. Hardware use of frequency/voltage remains unverified until safety-critical evidence exists. |
+| CFG-001 | Ultra 205 defaults | `reference/esp-miner/config-205.cvs` | `crates/bitaxe-config` | implemented | unit | `Ultra205Defaults` and `Phase1BoardSelection::ultra_205()` expose Ultra 205 hostname, pool, ASIC, fan, self-test, device, and board defaults from `config-205.cvs`, with unit/golden coverage in `//crates/bitaxe-config:tests`. Hardware use of frequency/voltage remains unverified until safety-critical evidence exists. |
 | CFG-002 | Deferred Gamma 601 defaults | `reference/esp-miner/config-601.cvs` | `crates/bitaxe-config` | deferred | deferred | Gamma 601/BM1370 remains in project scope but is deferred until after the Ultra 205 evidence-backed path. |
-| CFG-003 | Board/device model table | `reference/esp-miner/main/device_config.h` | `crates/bitaxe-config` | not-started | pending | Include all upstream board configs in parity scope. |
+| CFG-003 | Board/device model table | `reference/esp-miner/main/device_config.h` | `crates/bitaxe-config` | implemented | unit | `BoardCatalogEntry`, `AsicProfile`, and `VerificationScope` model Ultra 205/BM1366 plus upstream non-205 boards. `//crates/bitaxe-config:tests --test_filter=board_catalog` proves board `205` is the only active Ultra 205 evidence target and every non-205 entry remains not hardware verified. |
 | CFG-004 | NVS key model | `reference/esp-miner/main/nvs_config.c` | `crates/bitaxe-config`, `firmware/bitaxe` | not-started | pending | Preserve settings names and defaults. |
 | CFG-005 | Runtime settings update behavior | `reference/esp-miner/main/http_server/system_api_json.c` | `crates/bitaxe-api`, `crates/bitaxe-config` | not-started | pending | PATCH behavior must match API clients. |
 
