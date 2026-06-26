@@ -2,8 +2,14 @@ load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 rust_library(
     name = "bitaxe_asic",
-    srcs = ["src/lib.rs"],
+    srcs = [
+        "src/bm1366.rs",
+        "src/error.rs",
+        "src/lib.rs",
+    ],
+    compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_asic",
+    deps = ["@crates//:thiserror"],
     edition = "2021",
     visibility = ["//visibility:public"],
 )

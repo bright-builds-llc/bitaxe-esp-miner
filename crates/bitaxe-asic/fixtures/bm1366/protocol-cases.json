@@ -1,0 +1,22 @@
+{
+  "checklist_ids": ["ASIC-001", "ASIC-006", "ASIC-008"],
+  "source_file": "reference/esp-miner/components/asic/crc.c",
+  "source_behavior": "BM1366 command CRC5 over header, length, and payload bytes",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "license_posture": "Reference-derived fixture metadata and values; not MIT source expression.",
+  "derivation": "Manually derived from pinned reference behavior and command-frame constants.",
+  "cases": [
+    {
+      "id": "crc5-read-register-00",
+      "kind": "crc5",
+      "checklist_ids": ["ASIC-006"],
+      "source_file": "reference/esp-miner/components/asic/crc.c",
+      "source_behavior": "CRC5 for a BM1366 read-register command payload",
+      "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+      "license_posture": "Reference-derived fixture bytes; not MIT source expression.",
+      "derivation": "Manual fixture seed for Task 1; exact frame asserted in Task 2.",
+      "input_hex": "52 05 00 00",
+      "expected_crc_hex": "0a"
+    }
+  ]
+}
