@@ -414,19 +414,25 @@ fn assert_schema_row_matches_fixture(actual: &SettingSchema, expected: &NvsSetti
         actual.rest_name.as_ref().map(|name| name.as_str()),
         expected.rest_name.as_deref()
     );
-    if expected.default.is_some() {
-        assert_setting_default_matches_fixture(
-            actual.default_value.as_ref(),
-            expected.default.as_ref(),
-        );
-    }
-    if expected.min.is_some() {
-        assert_eq!(actual.min, expected.min);
-    }
-    if expected.max.is_some() {
-        assert_eq!(actual.max, expected.max);
-    }
-    assert_eq!(actual.array_size, expected.array_size);
+    assert_setting_default_matches_fixture(
+        actual.default_value.as_ref(),
+        expected.default.as_ref(),
+    );
+    assert_eq!(
+        actual.min, expected.min,
+        "schema min mismatch for {}",
+        expected.nvs_key_name
+    );
+    assert_eq!(
+        actual.max, expected.max,
+        "schema max mismatch for {}",
+        expected.nvs_key_name
+    );
+    assert_eq!(
+        actual.array_size, expected.array_size,
+        "schema array_size mismatch for {}",
+        expected.nvs_key_name
+    );
 }
 
 fn stored_type_name(stored_type: StoredType) -> &'static str {

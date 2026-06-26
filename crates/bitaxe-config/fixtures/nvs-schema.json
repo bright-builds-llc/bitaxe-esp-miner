@@ -8,7 +8,7 @@
   "settings": [
     { "nvs_key_name": "wifissid", "type": "str", "rest_name": "ssid", "min": 1, "max": 32 },
     { "nvs_key_name": "wifipass", "type": "str", "rest_name": "wifiPass", "min": 0, "max": 63 },
-    { "nvs_key_name": "hostname", "type": "str", "rest_name": "hostname", "min": 1, "max": 32 },
+    { "nvs_key_name": "hostname", "type": "str", "rest_name": "hostname", "default": "bitaxe", "min": 1, "max": 32 },
     { "nvs_key_name": "stratumprot", "type": "str", "rest_name": "stratumProtocol", "default": "SV1", "min": 3, "max": 3 },
     { "nvs_key_name": "stratumurl", "type": "str", "rest_name": "stratumURL", "min": 0, "max": 3999 },
     { "nvs_key_name": "stratumport", "type": "u16", "rest_name": "stratumPort", "min": 0, "max": 65535 },
@@ -38,7 +38,7 @@
     { "nvs_key_name": "asicvoltage", "type": "u16", "rest_name": "coreVoltage", "default": 1200, "min": 1, "max": 65535 },
     { "nvs_key_name": "oc_enabled", "type": "bool_as_u16", "rest_name": "overclockEnabled", "min": 0, "max": 1 },
     { "nvs_key_name": "display", "type": "str", "rest_name": "display", "min": 0, "max": 3999 },
-    { "nvs_key_name": "rotation", "type": "u16", "rest_name": "rotation", "min": 0, "max": 270 },
+    { "nvs_key_name": "rotation", "type": "u16", "rest_name": "rotation", "default": 0, "min": 0, "max": 270 },
     { "nvs_key_name": "invertscreen", "type": "bool_as_u16", "rest_name": "invertscreen", "min": 0, "max": 1 },
     { "nvs_key_name": "displayOffset", "type": "u16", "rest_name": "displayOffset", "min": 0, "max": 255 },
     { "nvs_key_name": "displayTimeout", "type": "i32", "rest_name": "displayTimeout", "default": -1, "min": -1, "max": 65535 },
@@ -46,10 +46,10 @@
     { "nvs_key_name": "manualfanspeed", "type": "u16", "rest_name": "manualFanSpeed", "default": 100, "min": 0, "max": 100 },
     { "nvs_key_name": "minfanspeed", "type": "u16", "rest_name": "minFanSpeed", "default": 25, "min": 0, "max": 99 },
     { "nvs_key_name": "temptarget", "type": "u16", "rest_name": "temptarget", "default": 60, "min": 35, "max": 66 },
-    { "nvs_key_name": "overheat_mode", "type": "bool_as_u16", "rest_name": "overheat_mode", "min": 0, "max": 0 },
+    { "nvs_key_name": "overheat_mode", "type": "bool_as_u16", "rest_name": "overheat_mode", "default": false, "min": 0, "max": 0 },
     { "nvs_key_name": "statsFrequency", "type": "u16", "rest_name": "statsFrequency", "min": 0, "max": 65535 },
     { "nvs_key_name": "bestdiff", "type": "u64" },
-    { "nvs_key_name": "selftest", "type": "bool_as_u16" },
+    { "nvs_key_name": "selftest", "type": "bool_as_u16", "default": true },
     { "nvs_key_name": "swarmconfig", "type": "str" },
     { "nvs_key_name": "themescheme", "type": "str" },
     { "nvs_key_name": "themecolors", "type": "str" },
@@ -74,7 +74,7 @@
     { "nvs_key_name": "selftest_temp", "type": "u16", "default": 65 },
     { "nvs_key_name": "selftest_warm", "type": "u16", "default": 55 },
     { "nvs_key_name": "selftest_max", "type": "u16", "default": 70 },
-    { "nvs_key_name": "asicfrequency", "type": "u16", "default": 485, "legacy_for": "asicfrequency_f" },
-    { "nvs_key_name": "fanspeed", "type": "u16", "default": 100, "legacy_for": "manualfanspeed" }
+    { "nvs_key_name": "asicfrequency", "type": "u16", "default": 485, "min": 1, "max": 65535, "legacy_for": "asicfrequency_f" },
+    { "nvs_key_name": "fanspeed", "type": "u16", "default": 100, "min": 0, "max": 100, "legacy_for": "manualfanspeed" }
   ]
 }

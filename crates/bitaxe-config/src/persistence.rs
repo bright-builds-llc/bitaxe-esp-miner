@@ -140,13 +140,17 @@ pub fn apply_patch_to_snapshot(
             decision.writes = all_writes;
             decision
         }
-        SettingsUpdateDecision::Rejected { errors } => PersistenceDecision {
-            snapshot: snapshot.clone(),
-            values: load_values(snapshot),
-            writes: Vec::new(),
-            erases: Vec::new(),
-            errors,
-        },
+        SettingsUpdateDecision::Rejected { errors } => {
+            let reloaded = reload_snapshot(snapshot);
+
+            PersistenceDecision {
+                snapshot: snapshot.clone(),
+                values: reloaded.values,
+                writes: Vec::new(),
+                erases: Vec::new(),
+                errors,
+            }
+        }
     }
 }
 
@@ -336,6 +340,34 @@ mod tests {
 
         // Assert
         assert_eq!(rejected.snapshot(), &snapshot);
+        assert!(matches!(
+            rejected.errors(),
+            [crate::ConfigValidationError::OutOfRange {
+                field: "manualFanSpeed",
+                min: 0,
+                max: 100,
+                actual: 101,
+            }]
+        ));
+        assert!(rejected.writes().is_empty());
+        assert!(rejected.erases().is_empty());
+    }
+
+    #[test]
+    fn persistence_invalid_update_reports_migration_aware_current_values() {
+        // Arrange
+        let snapshot = NvsSnapshot::from_values([StoredValue::u16("asicfrequency", 486)]);
+        let patch = SettingsPatch::from_pairs([("manualFanSpeed", RawSettingValue::Number(101))]);
+
+        // Act
+        let rejected = apply_patch_to_snapshot(&snapshot, &patch);
+
+        // Assert
+        assert_eq!(rejected.snapshot(), &snapshot);
+        assert_eq!(
+            rejected.loaded_value("asicfrequency_f"),
+            Some(&LoadedValue::Float(486.0))
+        );
         assert!(matches!(
             rejected.errors(),
             [crate::ConfigValidationError::OutOfRange {
