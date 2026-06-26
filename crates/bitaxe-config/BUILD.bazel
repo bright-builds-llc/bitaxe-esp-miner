@@ -5,6 +5,7 @@ rust_library(
     srcs = [
         "src/catalog.rs",
         "src/defaults.rs",
+        "src/golden_tests.rs",
         "src/lib.rs",
         "src/nvs.rs",
         "src/persistence.rs",
@@ -27,6 +28,7 @@ rust_test(
     crate = ":bitaxe_config",
     data = glob(["fixtures/**"]),
     deps = [
+        "@crates//:csv",
         "@crates//:serde_json",
     ],
 )

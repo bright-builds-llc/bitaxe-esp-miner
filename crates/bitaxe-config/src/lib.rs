@@ -7,6 +7,9 @@ pub mod persistence;
 pub mod settings;
 pub mod validation;
 
+#[cfg(test)]
+mod golden_tests;
+
 pub use catalog::{
     board_catalog, ultra_205_catalog_entry, AsicProfile, BoardCapabilities, BoardCatalogEntry,
     VerificationScope,
