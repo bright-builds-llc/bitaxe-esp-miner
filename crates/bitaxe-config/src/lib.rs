@@ -2,12 +2,17 @@ use bitaxe_core::{AsicTarget, BoardTarget};
 
 pub mod catalog;
 pub mod defaults;
+pub mod nvs;
 
 pub use catalog::{
     board_catalog, ultra_205_catalog_entry, AsicProfile, BoardCapabilities, BoardCatalogEntry,
     VerificationScope,
 };
 pub use defaults::{ultra_205_defaults, Ultra205Defaults};
+pub use nvs::{
+    all_settings_schema, NvsKeyName, NvsSchemaError, RestFieldName, SettingDefault, SettingSchema,
+    StoredType, NVS_KEY_NAME_MAX_BYTES, NVS_NAMESPACE,
+};
 
 /// Phase 1 board and ASIC identity selection.
 ///

@@ -34,8 +34,8 @@
     { "nvs_key_name": "fbsv2authpubk", "type": "str", "rest_name": "fallbackStratumV2AuthorityPubkey", "default": "", "min": 0, "max": 52 },
     { "nvs_key_name": "fbstratumdecode", "type": "bool_as_u16", "rest_name": "fallbackStratumDecodeCoinbase", "default": true, "min": 0, "max": 1 },
     { "nvs_key_name": "usefbstartum", "type": "bool_as_u16", "rest_name": "useFallbackStratum", "min": 0, "max": 1 },
-    { "nvs_key_name": "asicfrequency_f", "type": "float_string", "rest_name": "frequency", "min": 1, "max": 65535 },
-    { "nvs_key_name": "asicvoltage", "type": "u16", "rest_name": "coreVoltage", "min": 1, "max": 65535 },
+    { "nvs_key_name": "asicfrequency_f", "type": "float_string", "rest_name": "frequency", "default": 485.0, "min": 1, "max": 65535 },
+    { "nvs_key_name": "asicvoltage", "type": "u16", "rest_name": "coreVoltage", "default": 1200, "min": 1, "max": 65535 },
     { "nvs_key_name": "oc_enabled", "type": "bool_as_u16", "rest_name": "overclockEnabled", "min": 0, "max": 1 },
     { "nvs_key_name": "display", "type": "str", "rest_name": "display", "min": 0, "max": 3999 },
     { "nvs_key_name": "rotation", "type": "u16", "rest_name": "rotation", "min": 0, "max": 270 },
@@ -53,7 +53,7 @@
     { "nvs_key_name": "swarmconfig", "type": "str" },
     { "nvs_key_name": "themescheme", "type": "str" },
     { "nvs_key_name": "themecolors", "type": "str" },
-    { "nvs_key_name": "scoreboard", "type": "str", "array_size": 10 },
+    { "nvs_key_name": "scoreboard", "type": "str", "array_size": 20 },
     { "nvs_key_name": "boardversion", "type": "str", "default": "000" },
     { "nvs_key_name": "devicemodel", "type": "str", "default": "unknown" },
     { "nvs_key_name": "asicmodel", "type": "str", "default": "unknown" },
@@ -73,6 +73,8 @@
     { "nvs_key_name": "power_cons_tgt", "type": "u16" },
     { "nvs_key_name": "selftest_temp", "type": "u16", "default": 65 },
     { "nvs_key_name": "selftest_warm", "type": "u16", "default": 55 },
-    { "nvs_key_name": "selftest_max", "type": "u16", "default": 70 }
+    { "nvs_key_name": "selftest_max", "type": "u16", "default": 70 },
+    { "nvs_key_name": "asicfrequency", "type": "u16", "default": 485, "legacy_for": "asicfrequency_f" },
+    { "nvs_key_name": "fanspeed", "type": "u16", "default": 100, "legacy_for": "manualfanspeed" }
   ]
 }

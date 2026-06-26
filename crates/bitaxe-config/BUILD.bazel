@@ -6,6 +6,7 @@ rust_library(
         "src/catalog.rs",
         "src/defaults.rs",
         "src/lib.rs",
+        "src/nvs.rs",
     ],
     crate_name = "bitaxe_config",
     edition = "2021",
