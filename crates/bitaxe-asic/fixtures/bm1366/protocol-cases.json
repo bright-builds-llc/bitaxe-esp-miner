@@ -16,7 +16,30 @@
       "license_posture": "Reference-derived fixture bytes; not MIT source expression.",
       "derivation": "Manual fixture seed for Task 1; exact frame asserted in Task 2.",
       "input_hex": "52 05 00 00",
-      "expected_crc_hex": "0a"
+      "expected_crc_hex": "0a",
+      "frame_hex": "55 aa 52 05 00 00 0a"
+    },
+    {
+      "id": "command-frame-read-register-00",
+      "kind": "command_frame",
+      "checklist_ids": ["ASIC-001", "ASIC-006"],
+      "source_file": "reference/esp-miner/components/asic/bm1366.c",
+      "source_behavior": "Read register 0x00 on all BM1366 chips",
+      "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+      "license_posture": "Reference-derived fixture bytes; not MIT source expression.",
+      "derivation": "Manual derivation from TYPE_CMD | GROUP_ALL | CMD_READ and CRC5 over header/length/payload.",
+      "frame_hex": "55 aa 52 05 00 00 0a"
+    },
+    {
+      "id": "register-write-version-mask-all-ffff",
+      "kind": "register_write_frame",
+      "checklist_ids": ["ASIC-001", "ASIC-006"],
+      "source_file": "reference/esp-miner/components/asic/bm1366.c",
+      "source_behavior": "Write BM1366 version-mask register 0xa4 to all chips",
+      "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+      "license_posture": "Reference-derived fixture bytes; not MIT source expression.",
+      "derivation": "Manual derivation from version-mask register payload and CRC5 over header/length/payload.",
+      "frame_hex": "55 aa 51 09 00 a4 90 00 ff ff 1c"
     }
   ]
 }

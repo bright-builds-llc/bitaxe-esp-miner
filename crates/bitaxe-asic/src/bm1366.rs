@@ -5,5 +5,9 @@
 //! - `reference/esp-miner/components/asic/crc.c`
 //! - parity checklist rows `ASIC-001`, `ASIC-002`, and `ASIC-006`
 
+pub mod crc;
+pub mod packet;
+pub mod registers;
+
 pub const BM1366_CHIP_ID: u16 = 0x1366;
 pub const BM1366_RESULT_FRAME_LEN: usize = 11;

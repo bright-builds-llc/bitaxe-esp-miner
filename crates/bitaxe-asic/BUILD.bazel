@@ -3,6 +3,9 @@ load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 rust_library(
     name = "bitaxe_asic",
     srcs = [
+        "src/bm1366/crc.rs",
+        "src/bm1366/packet.rs",
+        "src/bm1366/registers.rs",
         "src/bm1366.rs",
         "src/error.rs",
         "src/lib.rs",
