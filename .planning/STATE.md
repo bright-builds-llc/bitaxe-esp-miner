@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-ultra-205-config-and-nvs-model-01-PLAN.md
-last_updated: "2026-06-26T16:46:01.996Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-06-26T17:06:10.298Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 13
-  completed_plans: 10
-  percent: 77
+  completed_plans: 11
+  percent: 85
 ---
 
 ______________________________________________________________________
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 02 (ultra-205-config-and-nvs-model) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-26
 
@@ -64,6 +64,7 @@ Progress: [██████████] 100%
 | Phase 01-foundation-and-gamma-601-boot-log P08 | 20 | 2 tasks | 11 files |
 | Phase 01-foundation-and-gamma-601-boot-log P09 | 10 | 3 tasks | 4 files |
 | Phase 02-ultra-205-config-and-nvs-model P01 | 14 min | 2 tasks | 15 files |
+| Phase 02-ultra-205-config-and-nvs-model P02 | 13 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,9 @@ Recent decisions affecting current work:
 - [Phase 02-ultra-205-config-and-nvs-model]: Keep Phase1BoardSelection::ultra_205() as a compatibility shim while exposing Phase 2 defaults/catalog modules.
 - [Phase 02-ultra-205-config-and-nvs-model]: Represent all non-205 upstream boards in the catalog as NotHardwareVerified so Ultra 205 evidence cannot be inherited.
 - [Phase 02-ultra-205-config-and-nvs-model]: Treat reference-derived fixture files as GPL-risk source data with explicit provenance metadata.
+- [Phase 02-ultra-205-config-and-nvs-model]: NVS schema and migrations remain pure data/functions; ESP-IDF reads, writes, erases, and commits stay deferred to a future firmware adapter.
+- [Phase 02-ultra-205-config-and-nvs-model]: Legacy keys asicfrequency, fanspeed, and fbSv2ChanType are represented explicitly so migration decisions preserve upstream compatibility.
+- [Phase 02-ultra-205-config-and-nvs-model]: Corrupt FloatString values fall back to schema defaults, including Ultra 205 asicfrequency_f = 485.0.
 
 ### Pending Todos
 
@@ -120,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-26T16:46:01.994Z
-Stopped at: Completed 02-ultra-205-config-and-nvs-model-01-PLAN.md
+Last session: 2026-06-26T17:06:10.295Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None

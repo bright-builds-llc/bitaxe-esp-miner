@@ -25,7 +25,7 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 
 - [x] **CFG-01**: Ultra 205 defaults match the reference config for device model, board version, ASIC model, ASIC frequency, ASIC voltage, pool defaults, fan defaults, and self-test defaults.
 - [x] **CFG-02**: Board, device, and ASIC identifiers are represented as typed Rust domain values, including non-205 upstream boards as scoped but not hardware-verified entries.
-- [ ] **CFG-03**: NVS key names, default values, missing-key behavior, and migration behavior match upstream observable behavior for V1 settings.
+- [x] **CFG-03**: NVS key names, default values, missing-key behavior, and migration behavior match upstream observable behavior for V1 settings.
 - [ ] **CFG-04**: Runtime settings use typed validation for ranges and units such as frequency, millivolts, temperatures, fan duty, hostnames, ports, and pool credentials.
 - [ ] **CFG-05**: Settings changed through user-facing surfaces persist and reload across reboot with upstream-compatible semantics.
 - [x] **CFG-06**: Reference-derived golden fixtures cover Ultra 205 defaults, NVS schemas, and representative valid/invalid settings updates.
@@ -151,7 +151,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-11 | Phase 1 | Complete |
 | CFG-01 | Phase 2 | Complete |
 | CFG-02 | Phase 2 | Complete |
-| CFG-03 | Phase 2 | Pending |
+| CFG-03 | Phase 2 | Complete |
 | CFG-04 | Phase 2 | Pending |
 | CFG-05 | Phase 2 | Pending |
 | CFG-06 | Phase 2 | Complete |
