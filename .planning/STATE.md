@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-06-26T17:24:26.088Z"
+status: verifying
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-06-26T17:39:21.632Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 ______________________________________________________________________
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 Phase: 02 (ultra-205-config-and-nvs-model) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-26
 
 Progress: [██████████] 100%
@@ -66,6 +66,7 @@ Progress: [██████████] 100%
 | Phase 02-ultra-205-config-and-nvs-model P01 | 14 min | 2 tasks | 15 files |
 | Phase 02-ultra-205-config-and-nvs-model P02 | 13 | 2 tasks | 5 files |
 | Phase 02-ultra-205-config-and-nvs-model P03 | 13 min | 2 tasks | 5 files |
+| Phase 02-ultra-205-config-and-nvs-model P04 | 10 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,9 @@ Recent decisions affecting current work:
 - [Phase 02-ultra-205-config-and-nvs-model]: Keep frequency, voltage, fan, thermal, and settings validation as pure data checks with no ESP-IDF or hardware side effects.
 - [Phase 02-ultra-205-config-and-nvs-model]: Use all_settings_schema() as the settings update authority so future API handlers do not duplicate validation or mapping logic.
 - [Phase 02-ultra-205-config-and-nvs-model]: Preserve upstream legacy mirror writes for frequency and manual fan updates.
+- [Phase 02-ultra-205-config-and-nvs-model]: Keep persistence in crates/bitaxe-config pure: no ESP-IDF NVS calls, HTTP handlers, flashing, mining, ASIC, voltage, fan, thermal, power, or hardware side effects.
+- [Phase 02-ultra-205-config-and-nvs-model]: Use SettingsUpdateDecision and existing NvsWrite/NvsErase data as the adapter contract for future firmware storage work.
+- [Phase 02-ultra-205-config-and-nvs-model]: Leave CFG-001 and CFG-005 implemented rather than verified where the checklist row would otherwise overclaim hardware-control or API route evidence.
 
 ### Pending Todos
 
@@ -128,6 +132,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-26T17:24:26.086Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-06-26T17:38:46.056Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
