@@ -353,8 +353,9 @@ pub fn migration_rules() -> Vec<MigrationRule> {
         },
         MigrationRule {
             source_key: key("fbSv2ChanType"),
-            target_key: key("fbsv2chantype"),
-            description: "legacy mixed-case fallback SV2 channel type key to active key",
+            target_key: key("sv2chantype"),
+            description:
+                "legacy mixed-case fallback SV2 channel type key to first missing SV2 channel key",
         },
     ]
 }
@@ -1319,8 +1320,8 @@ pub fn all_settings_schema() -> Vec<SettingSchema> {
 mod tests {
     use super::{
         all_settings_schema, compatibility_writes_for_active, load_setting_value,
-        migration_decisions, LoadedValue, MigrationDecision, NvsErase, NvsKeyName, NvsWrite,
-        SettingSchema, StoredType, StoredValue, NVS_NAMESPACE,
+        migration_decisions, migration_rules, LoadedValue, MigrationDecision, NvsErase, NvsKeyName,
+        NvsWrite, SettingSchema, StoredType, StoredValue, NVS_NAMESPACE,
     };
 
     fn setting_for_key(key: &str) -> SettingSchema {
@@ -1519,6 +1520,22 @@ mod tests {
                 MigrationDecision::Write(NvsWrite::string("fbsv2chantype", "standard")),
             ]
         );
+    }
+
+    #[test]
+    fn nvs_schema_mixed_case_sv2_rule_names_primary_target() {
+        // Arrange
+        let rules = migration_rules();
+
+        // Act
+        let rule = rules
+            .iter()
+            .find(|rule| rule.source_key.as_str() == "fbSv2ChanType")
+            .expect("mixed-case SV2 migration rule must exist");
+
+        // Assert
+        assert_eq!(rule.target_key.as_str(), "sv2chantype");
+        assert!(rule.description.contains("first missing SV2 channel key"));
     }
 
     #[test]
