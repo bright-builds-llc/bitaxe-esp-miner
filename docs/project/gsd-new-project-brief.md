@@ -24,7 +24,7 @@ Device-user parity includes:
 
 - Mining behavior and work submission.
 - Supported Bitaxe board configs.
-- ASIC support, with Gamma 601 BM1370 prioritized first.
+- ASIC support, with Ultra 205 BM1366 prioritized first.
 - Stratum v1 and Stratum v2 behavior.
 - AxeOS HTTP API, WebSocket API, OTA routes, recovery behavior, and static asset packaging compatibility.
 - NVS/settings behavior.
@@ -38,22 +38,22 @@ Device-user parity does not require preserving C module boundaries, FreeRTOS tas
 
 ## First Hardware Target
 
-Prioritize Bitaxe Gamma 601 with BM1370 ASIC for early hardware bring-up, smoke tests, and flash ergonomics. The user also has access to a Bitaxe 205, but 601 is preferred.
+Prioritize Bitaxe Ultra 205 with BM1366 ASIC for early hardware bring-up, smoke tests, and flash ergonomics. This supersedes the original Gamma 601-first handoff; see `docs/adr/0014-pivot-to-ultra-205-bm1366-first-parity.md`.
 
 Reference breadcrumbs:
 
-- `reference/esp-miner/config-601.cvs`
+- `reference/esp-miner/config-205.cvs`
 - `reference/esp-miner/main/device_config.h`
-- `reference/esp-miner/components/asic/bm1370.c`
-- `reference/esp-miner/components/asic/include/bm1370.h`
+- `reference/esp-miner/components/asic/bm1366.c`
+- `reference/esp-miner/components/asic/include/bm1366.h`
 
-At inspection time, upstream `config-601.cvs` defines:
+At inspection time, upstream `config-205.cvs` defines:
 
-- `devicemodel`: `gamma`
-- `boardversion`: `601`
-- `asicmodel`: `BM1370`
-- `asicfrequency`: `525`
-- `asicvoltage`: `1150`
+- `devicemodel`: `ultra`
+- `boardversion`: `205`
+- `asicmodel`: `BM1366`
+- `asicfrequency`: `485`
+- `asicvoltage`: `1200`
 
 ## Accepted Architecture And Workflow Decisions
 
@@ -78,13 +78,14 @@ Decision records:
 - `docs/adr/0004-bazel-automation-with-just-wrapper.md`
 - `docs/adr/0005-read-only-reference-implementation.md`
 - `docs/adr/0006-parity-checklist-as-audit-evidence.md`
-- `docs/adr/0007-prioritize-gamma-601-bm1370-bring-up.md`
+- `docs/adr/0007-prioritize-gamma-601-bm1370-bring-up.md` (superseded)
 - `docs/adr/0008-reference-breadcrumb-comments.md`
 - `docs/adr/0009-monorepo-package-layout.md`
 - `docs/adr/0010-axeos-api-and-asset-compatibility.md`
 - `docs/adr/0011-usb-flashing-ergonomics.md`
 - `docs/adr/0012-parity-verification-evidence.md`
 - `docs/adr/0013-mit-first-with-gpl-guardrails.md`
+- `docs/adr/0014-pivot-to-ultra-205-bm1366-first-parity.md`
 
 ## Seed Repository Layout
 
@@ -130,26 +131,26 @@ The Rust implementation should prefer a functional core with thin imperative she
 just build
 just test
 just package
-just flash board=601
-just flash board=601 port=/dev/cu.usbmodem...
+just flash board=205
+just flash board=205 port=/dev/cu.usbmodem...
 just monitor port=/dev/cu.usbmodem...
-just flash-monitor board=601 port=/dev/cu.usbmodem...
+just flash-monitor board=205 port=/dev/cu.usbmodem...
 just verify-reference
 just parity
 ```
 
 Flashing behavior:
 
-- `board=601` maps to Gamma 601 BM1370 behavior.
+- `board=205` maps to Ultra 205 BM1366 behavior.
 - If `port` is omitted, discover likely ESP serial ports.
 - If discovery is ambiguous, fail with a clear chooser-style message.
 - Build/package first by default unless an explicit image path is supplied.
 - Print the underlying flashing command for debugging.
-- Do not claim non-601 boards are hardware-verified until evidence exists.
+- Do not claim other boards are hardware-verified until evidence exists.
 
 ## First Milestone
 
-The first milestone should be project foundation plus Gamma 601 bring-up path, not full firmware parity.
+The first milestone should be project foundation plus Ultra 205 bring-up path, not full firmware parity.
 
 It should produce:
 
@@ -160,7 +161,7 @@ It should produce:
 - Justfile commands for build, test, package, flash, monitor, flash-monitor, reference verification, and parity reporting.
 - Seed parity checklist and helper tooling.
 - Provenance and licensing docs.
-- A minimal firmware image that can boot and log on Gamma 601.
+- A minimal firmware image that can boot and log on Ultra 205.
 
 Mining does not need to work in the first milestone. Full device-user parity remains the overall project goal and should be split into later roadmap phases.
 
@@ -180,7 +181,7 @@ Evidence types:
 - `unit`: pure Rust unit tests compare behavior to reference-derived fixtures.
 - `golden`: generated output matches checked-in golden data derived from upstream behavior.
 - `api-compare`: Rust firmware response matches upstream OpenAPI/schema or captured upstream response.
-- `hardware-smoke`: behavior observed on Gamma 601 hardware, with command/log captured.
+- `hardware-smoke`: behavior observed on named physical hardware, with command/log captured.
 - `hardware-regression`: repeatable hardware test or scripted probe passes.
 - `deferred`: accepted gap with reason and owner.
 
@@ -191,14 +192,14 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 Rust modules that port reference behavior should include module-level breadcrumbs:
 
 ```rust
-// Reference: reference/esp-miner/components/asic/bm1370.c
-// Parity: docs/parity/checklist.md#asic-bm1370-initialization
+// Reference: reference/esp-miner/components/asic/bm1366.c
+// Parity: docs/parity/checklist.md#asic-bm1366-initialization
 ```
 
 Use narrower breadcrumbs for tricky functions, constants, register sequences, protocol edge cases, or API response details:
 
 ```rust
-// Reference: reference/esp-miner/components/asic/bm1370.c:BM1370_init
+// Reference: reference/esp-miner/components/asic/bm1366.c:BM1366_init
 ```
 
 Do not add line-by-line translation comments.

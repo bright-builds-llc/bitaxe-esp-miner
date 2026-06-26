@@ -10,19 +10,22 @@ This index summarizes accepted decisions for the GSD New Project handoff. ADRs r
 | ADR-0004 | Use Bazel as the automation graph and `just` as command surface. | Accepted |
 | ADR-0005 | Keep upstream ESP-Miner read-only at `reference/esp-miner`. | Accepted |
 | ADR-0006 | Treat the parity checklist as audit evidence. | Accepted |
-| ADR-0007 | Prioritize Bitaxe Gamma 601 BM1370 for hardware bring-up. | Accepted |
+| ADR-0007 | Prioritize Bitaxe Gamma 601 BM1370 for hardware bring-up. | Superseded by ADR-0014 |
 | ADR-0008 | Use reference breadcrumbs at module and behavior boundaries. | Accepted |
 | ADR-0009 | Seed the monorepo with firmware, core crates, tools, docs, and reference. | Accepted |
 | ADR-0010 | Target AxeOS API and asset compatibility before UI rewrite. | Accepted |
 | ADR-0011 | Make USB flashing a first-class `just` workflow. | Accepted |
 | ADR-0012 | Require explicit verification evidence for parity. | Accepted |
 | ADR-0013 | Use MIT-first original code with GPL guardrails. | Accepted |
-| PLAN-0001 | First milestone is project foundation plus Gamma 601 bring-up path. | Accepted |
+| ADR-0014 | Pivot first parity target to Bitaxe Ultra 205 BM1366. | Accepted |
+| PLAN-0001 | First milestone is project foundation plus Gamma 601 bring-up path. | Superseded by ADR-0014 |
+| PLAN-0002 | First milestone is project foundation plus Ultra 205 safe-state boot/flash path. | Verified for safe-state boot/flash on 2026-06-26 |
 
 ## Planning Implications
 
 - Full device-user parity is the overall project goal, not the first milestone.
-- Gamma 601 BM1370 is the hardware path that should become easy first.
+- Ultra 205 BM1366 is the hardware path that should become easy first.
+- Gamma 601 BM1370 remains in scope but deferred until after Ultra 205 evidence-backed parity.
 - Other upstream-supported boards stay in scope, but they are not verified until evidence exists.
 - The upstream submodule is an input and audit target, not a workspace for project changes.
 - GSD should create requirements and roadmap phases from the parity surfaces in `docs/parity/checklist.md`.
@@ -43,3 +46,4 @@ This index summarizes accepted decisions for the GSD New Project handoff. ADRs r
 - [ADR-0011](../adr/0011-usb-flashing-ergonomics.md)
 - [ADR-0012](../adr/0012-parity-verification-evidence.md)
 - [ADR-0013](../adr/0013-mit-first-with-gpl-guardrails.md)
+- [ADR-0014](../adr/0014-pivot-to-ultra-205-bm1366-first-parity.md)

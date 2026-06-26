@@ -14,14 +14,14 @@ use serde::{Deserialize, Serialize};
 
 const PACKAGE_BUILD_DISPLAY: &str = "bazel build //firmware/bitaxe:firmware_image";
 const PACKAGE_BUILD_TARGET: &str = "//firmware/bitaxe:firmware_image";
-const PACKAGE_MANIFEST_RELATIVE_PATH: &str = "firmware/bitaxe/bitaxe-gamma601-package.json";
-const DEFAULT_ELF_NAME: &str = "bitaxe-gamma601.elf";
-const FACTORY_IMAGE_NAME: &str = "bitaxe-gamma601-factory.bin";
+const PACKAGE_MANIFEST_RELATIVE_PATH: &str = "firmware/bitaxe/bitaxe-ultra205-package.json";
+const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
+const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
 const UNAVAILABLE: &str = "Unavailable";
 
 #[derive(Debug, Parser)]
 #[command(name = "bitaxe-flash")]
-#[command(about = "Safe Bitaxe Gamma 601 flash and monitor workflow.")]
+#[command(about = "Safe Bitaxe Ultra 205 flash and monitor workflow.")]
 struct Cli {
     #[command(subcommand)]
     command: CliCommand,
@@ -37,7 +37,7 @@ enum CliCommand {
 
 #[derive(Debug, Args, Clone)]
 struct CommonArgs {
-    #[arg(long, default_value = "601", value_parser = parse_board)]
+    #[arg(long, default_value = "205", value_parser = parse_board)]
     board: BoardId,
 
     #[arg(long)]
@@ -82,7 +82,7 @@ struct FlashMonitorCommand {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum BoardId {
-    Gamma601,
+    Ultra205,
 }
 
 impl FromStr for BoardId {
@@ -90,9 +90,13 @@ impl FromStr for BoardId {
 
     fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
         match value {
-            "601" => Ok(Self::Gamma601),
+            "205" => Ok(Self::Ultra205),
+            "601" => Err(
+                "board 601 is deferred after the Ultra 205 pivot; Phase 1 supports board=205 only"
+                    .to_owned(),
+            ),
             other => Err(format!(
-                "unsupported board {other}; Phase 1 supports board=601 only"
+                "unsupported board {other}; Phase 1 supports board=205 only"
             )),
         }
     }
@@ -101,7 +105,7 @@ impl FromStr for BoardId {
 impl fmt::Display for BoardId {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Gamma601 => formatter.write_str("601"),
+            Self::Ultra205 => formatter.write_str("205"),
         }
     }
 }
@@ -437,7 +441,7 @@ fn prepare_flash(
     command: &FlashCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<FlashOutcome> {
-    ensure_gamma_601(command.common.board)?;
+    ensure_ultra_205(command.common.board)?;
     let port = resolve_port(command.common.port.as_deref(), environment)?;
     let (maybe_manifest, flash_image) = resolve_flash_image(command, environment)?;
     let command = CommandSpec::new(
@@ -525,7 +529,7 @@ fn resolve_port(maybe_port: Option<&str>, environment: &impl FlashEnvironment) -
     let candidates = likely_port_candidates(&ports_output);
     match candidates.len() {
         0 => bail!(
-            "No serial ports found. Connect a Gamma 601 over USB or pass an explicit port, for example: --port /dev/cu.usbmodem101"
+            "No serial ports found. Connect an Ultra 205 over USB or pass an explicit port, for example: --port /dev/cu.usbmodem101"
         ),
         1 => Ok(candidates[0].clone()),
         _ => bail!(
@@ -543,7 +547,7 @@ fn prepare_monitor_command(
     common: &CommonArgs,
     environment: &impl FlashEnvironment,
 ) -> Result<CommandSpec> {
-    ensure_gamma_601(common.board)?;
+    ensure_ultra_205(common.board)?;
     let port = resolve_port(common.port.as_deref(), environment)?;
     Ok(CommandSpec::new(
         "espflash",
@@ -582,9 +586,9 @@ fn is_likely_port(port: &str) -> bool {
     !suffix.is_empty() && suffix.chars().all(|character| character.is_ascii_digit())
 }
 
-fn ensure_gamma_601(board: BoardId) -> Result<()> {
-    if board != BoardId::Gamma601 {
-        bail!("Phase 1 supports board=601 only");
+fn ensure_ultra_205(board: BoardId) -> Result<()> {
+    if board != BoardId::Ultra205 {
+        bail!("Phase 1 supports board=205 only");
     }
 
     Ok(())
@@ -793,10 +797,10 @@ mod tests {
         let args = [
             "bitaxe-flash",
             "flash",
-            "board=601",
+            "board=205",
             "dry-run=true",
             "port=/dev/cu.usbmodem101",
-            "image=/tmp/bitaxe-gamma601.elf",
+            "image=/tmp/bitaxe-ultra205.elf",
         ];
 
         // Act
@@ -806,12 +810,12 @@ mod tests {
         let CliCommand::Flash(command) = cli.command else {
             panic!("expected flash command");
         };
-        assert_eq!(command.common.board, BoardId::Gamma601);
+        assert_eq!(command.common.board, BoardId::Ultra205);
         assert_eq!(command.common.port.as_deref(), Some("/dev/cu.usbmodem101"));
         assert!(command.common.dry_run);
         assert_eq!(
             command.image.as_deref(),
-            Some(Utf8Path::new("/tmp/bitaxe-gamma601.elf"))
+            Some(Utf8Path::new("/tmp/bitaxe-ultra205.elf"))
         );
     }
 
@@ -820,7 +824,7 @@ mod tests {
         // Arrange
         let command = FlashCommand {
             common: common_args(),
-            image: Some(Utf8PathBuf::from("/tmp/bitaxe-gamma601.elf")),
+            image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
             manifest: None,
         };
         let environment = FakeFlashEnvironment::default();
@@ -839,7 +843,7 @@ mod tests {
                     "esp32s3",
                     "--port",
                     "/dev/cu.usbmodem101",
-                    "/tmp/bitaxe-gamma601.elf",
+                    "/tmp/bitaxe-ultra205.elf",
                 ],
             )
         );
@@ -965,7 +969,7 @@ mod tests {
                 dry_run: false,
                 ..common_args()
             },
-            image: Some(Utf8PathBuf::from("/tmp/bitaxe-gamma601.elf")),
+            image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
             manifest: None,
         };
         let environment = FakeFlashEnvironment::default();
@@ -984,7 +988,20 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unsupported_board() {
+    fn rejects_deferred_gamma_601_board() {
+        // Arrange
+        let input = "601";
+
+        // Act
+        let result = input.parse::<BoardId>();
+
+        // Assert
+        let error = result.expect_err("deferred board");
+        assert!(error.contains("deferred"));
+    }
+
+    #[test]
+    fn accepts_ultra_205_board() {
         // Arrange
         let input = "205";
 
@@ -992,12 +1009,12 @@ mod tests {
         let result = input.parse::<BoardId>();
 
         // Assert
-        assert!(result.is_err());
+        assert_eq!(result.expect("board"), BoardId::Ultra205);
     }
 
     fn common_args() -> CommonArgs {
         CommonArgs {
-            board: BoardId::Gamma601,
+            board: BoardId::Ultra205,
             port: Some("/dev/cu.usbmodem101".to_owned()),
             dry_run: true,
             evidence_dir: None,

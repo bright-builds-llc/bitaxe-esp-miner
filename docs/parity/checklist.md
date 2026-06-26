@@ -15,7 +15,7 @@ This checklist is the audit source of truth for device-user parity against `refe
 - `unit`: Pure Rust unit tests compare behavior to reference-derived fixtures.
 - `golden`: Generated output matches checked-in golden data derived from upstream behavior.
 - `api-compare`: Rust firmware response matches upstream OpenAPI/schema or captured upstream response.
-- `hardware-smoke`: Behavior observed on Gamma 601 hardware, with command/log captured.
+- `hardware-smoke`: Behavior observed on named physical Bitaxe hardware, with board, command, firmware commit, reference commit, and log captured.
 - `hardware-regression`: Repeatable hardware test or scripted probe passes.
 - `workflow`: Repo-owned command, build, package, flash-shaped, or report workflow passes with captured plan evidence.
 - `deferred`: Accepted gap with reason and owner.
@@ -27,18 +27,18 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | WF-001 | Read-only reference submodule | `reference/esp-miner` | `scripts/verify-reference-clean.sh`, `tools/parity` | verified | workflow | `just verify-reference` passed in Phase 01 Plan 09 and printed `reference clean: c1915b0a63bfabebdb95a515cedfee05146c1d50`; package and parity targets run the guard before trusted output. |
-| WF-002 | Bazel build graph | `reference/esp-miner/CMakeLists.txt` | `MODULE.bazel`, `tools/parity/BUILD.bazel` | verified | workflow | `just build`, `just test`, `just package`, `just parity`, and guard dependency queries passed in Phase 01 Plan 09. |
+| WF-002 | Bazel build graph | `reference/esp-miner/CMakeLists.txt` | `MODULE.bazel`, `tools/parity/BUILD.bazel` | verified | workflow | `just build`, `just test`, `just package`, and `just parity` passed after the Ultra 205 pivot; see `docs/parity/evidence/ultra-205-pivot-safe-state-smoke-2026-06-26.md`. |
 | WF-003 | Human command surface | `reference/esp-miner/README.md` | `Justfile` | verified | workflow | `Justfile` exposes `build`, `test`, `package`, `flash`, `monitor`, `flash-monitor`, `verify-reference`, and `parity` as thin Bazel wrappers. |
-| WF-004 | Firmware image packaging | `reference/esp-miner/merge_bin.sh` | `//firmware/bitaxe:firmware_image` | verified | workflow | `just package` produced `bitaxe-gamma601.elf`, `bitaxe-gamma601-factory.bin`, and `bitaxe-gamma601-package.json`; the manifest default remains `bitaxe-gamma601.elf`. |
-| WF-005 | USB flash workflow | `reference/esp-miner/flashing.md`, `reference/esp-miner/tools/upload2device.py` | `tools/flash`, `Justfile` | implemented | workflow | `just flash`, `just monitor`, and `just flash-monitor` route through `//tools/flash:flash`; live Gamma 601 flash-monitor evidence is missing because no serial port was visible. |
+| WF-004 | Firmware image packaging | `reference/esp-miner/merge_bin.sh` | `//firmware/bitaxe:firmware_image` | verified | workflow | `just package` produced `bitaxe-ultra205.elf`, `bitaxe-ultra205-factory.bin`, and `bitaxe-ultra205-package.json` after the pivot; see `docs/parity/evidence/ultra-205-pivot-safe-state-smoke-2026-06-26.md`. |
+| WF-005 | USB flash workflow | `reference/esp-miner/flashing.md`, `reference/esp-miner/tools/upload2device.py` | `tools/flash`, `Justfile` | verified | hardware-smoke | `tools/flash` defaults to `board=205`, rejects deferred `board=601`, and `just flash-monitor board=205 port=/dev/cu.usbmodem1101` flashed and monitored the connected Ultra 205; see `docs/parity/evidence/ultra-205-pivot-safe-state-smoke-2026-06-26.md`. |
 
 ## Boot And System Runtime
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| SYS-001 | App entrypoint boot order | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | implemented | pending | Safe boot/log entrypoint exists; missing Gamma 601 hardware-smoke evidence is recorded in `docs/parity/evidence/phase-01-gamma-601-boot-log.md`. |
-| SYS-002 | PSRAM availability handling | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | implemented | pending | Firmware logs PSRAM/platform status; hardware evidence remains pending in `docs/parity/evidence/phase-01-gamma-601-boot-log.md`. |
-| SYS-003 | Global system status model | `reference/esp-miner/main/global_state.h` | `crates/bitaxe-core` | implemented | pending | Phase 1 safe-state model makes mining, ASIC work submission, and hardware control disabled by default. |
+| SYS-001 | App entrypoint boot order | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | verified | hardware-smoke | Connected Ultra 205 boot log contains `bitaxe-rust boot: board=Ultra 205 asic=BM1366`; see `docs/parity/evidence/ultra-205-pivot-safe-state-smoke-2026-06-26.md`. |
+| SYS-002 | PSRAM availability handling | `reference/esp-miner/main/main.c` | `firmware/bitaxe` | verified | hardware-smoke | Connected Ultra 205 boot log contains `psram_status=unavailable` and platform boot details; see `docs/parity/evidence/ultra-205-pivot-safe-state-smoke-2026-06-26.md`. |
+| SYS-003 | Global system status model | `reference/esp-miner/main/global_state.h` | `crates/bitaxe-core` | verified | hardware-smoke | Connected Ultra 205 boot log contains `safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled`. This remains the only allowed Ultra 205 firmware behavior until hardware-control phases add evidence. |
 | SYS-004 | Version reporting | `reference/esp-miner/main/system.c` | `firmware/bitaxe`, `crates/bitaxe-core`, `crates/bitaxe-api`, `tools/parity` | in-progress | pending | Firmware logs and parity reports include source/reference identifiers; API version surface remains later-phase work. |
 | SYS-005 | Task orchestration behavior | `reference/esp-miner/main/tasks/*.c` | `firmware/bitaxe` | not-started | pending | Internal task layout may differ if observable behavior matches. |
 
@@ -46,8 +46,8 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| CFG-001 | Gamma 601 defaults | `reference/esp-miner/config-601.cvs` | `crates/bitaxe-config` | not-started | pending | First hardware target: gamma, 601, BM1370, 525 MHz, 1150 mV. |
-| CFG-002 | Secondary 205 defaults | `reference/esp-miner/config-205.cvs` | `crates/bitaxe-config` | not-started | pending | Available secondary device, not first priority. |
+| CFG-001 | Ultra 205 defaults | `reference/esp-miner/config-205.cvs` | `crates/bitaxe-config` | implemented | unit | `Phase1BoardSelection::ultra_205()` exposes `devicemodel=ultra`, `boardversion=205`, `asicmodel=BM1366`, `asicfrequency=485`, and `asicvoltage=1200`, with unit coverage. Hardware use of frequency/voltage remains unverified until safety-critical evidence exists. |
+| CFG-002 | Deferred Gamma 601 defaults | `reference/esp-miner/config-601.cvs` | `crates/bitaxe-config` | deferred | deferred | Gamma 601/BM1370 remains in project scope but is deferred until after the Ultra 205 evidence-backed path. |
 | CFG-003 | Board/device model table | `reference/esp-miner/main/device_config.h` | `crates/bitaxe-config` | not-started | pending | Include all upstream board configs in parity scope. |
 | CFG-004 | NVS key model | `reference/esp-miner/main/nvs_config.c` | `crates/bitaxe-config`, `firmware/bitaxe` | not-started | pending | Preserve settings names and defaults. |
 | CFG-005 | Runtime settings update behavior | `reference/esp-miner/main/http_server/system_api_json.c` | `crates/bitaxe-api`, `crates/bitaxe-config` | not-started | pending | PATCH behavior must match API clients. |
@@ -57,13 +57,13 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | ASIC-001 | ASIC dispatch by model | `reference/esp-miner/components/asic/asic.c` | `crates/bitaxe-asic` | not-started | pending | BM1366, BM1368, BM1370, BM1397 in scope. |
-| ASIC-002 | BM1370 initialization | `reference/esp-miner/components/asic/bm1370.c:BM1370_init` | `crates/bitaxe-asic`, `firmware/bitaxe` | not-started | pending | Requires hardware evidence before verified. |
-| ASIC-003 | BM1370 work send | `reference/esp-miner/components/asic/bm1370.c:BM1370_send_work` | `crates/bitaxe-asic` | not-started | pending | Use breadcrumbs for packet layout and constants. |
-| ASIC-004 | BM1370 result parsing | `reference/esp-miner/components/asic/bm1370.c:BM1370_process_work` | `crates/bitaxe-asic` | not-started | pending | Unit fixtures plus hardware evidence. |
+| ASIC-002 | BM1366 initialization | `reference/esp-miner/components/asic/bm1366.c:BM1366_init` | `crates/bitaxe-asic`, `firmware/bitaxe` | not-started | pending | Ultra 205 first hardware-control target; requires hardware evidence before verified. |
+| ASIC-003 | BM1366 work send | `reference/esp-miner/components/asic/bm1366.c:BM1366_send_work` | `crates/bitaxe-asic` | not-started | pending | Use breadcrumbs for packet layout and constants. |
+| ASIC-004 | BM1366 result parsing | `reference/esp-miner/components/asic/bm1366.c:BM1366_process_work` | `crates/bitaxe-asic` | not-started | pending | Unit fixtures plus hardware evidence. |
 | ASIC-005 | ASIC serial transport | `reference/esp-miner/components/asic/serial.c` | `firmware/bitaxe` | not-started | pending | Hardware-bound adapter. |
 | ASIC-006 | ASIC CRC behavior | `reference/esp-miner/components/asic/crc.c` | `crates/bitaxe-asic` | not-started | pending | Good early unit/golden target. |
 | ASIC-007 | Frequency transition behavior | `reference/esp-miner/components/asic/frequency_transition_bmXX.c` | `crates/bitaxe-asic`, `firmware/bitaxe` | not-started | pending | Hardware-control surface. |
-| ASIC-008 | BM1366 parity | `reference/esp-miner/components/asic/bm1366.c` | `crates/bitaxe-asic` | not-started | pending | Needed for 205 and other boards, but after 601 path. |
+| ASIC-008 | BM1370 parity | `reference/esp-miner/components/asic/bm1370.c` | `crates/bitaxe-asic` | deferred | deferred | Needed for Gamma 601 and related boards after the Ultra 205/BM1366 path. |
 | ASIC-009 | BM1368 parity | `reference/esp-miner/components/asic/bm1368.c` | `crates/bitaxe-asic` | not-started | pending | Later board expansion. |
 | ASIC-010 | BM1397 parity | `reference/esp-miner/components/asic/bm1397.c` | `crates/bitaxe-asic` | not-started | pending | Later board expansion. |
 
@@ -98,9 +98,9 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 | PWR-001 | ASIC reset behavior | `reference/esp-miner/main/power/asic_reset.c` | `firmware/bitaxe` | not-started | pending | Safety-critical; requires hardware evidence. |
 | PWR-002 | ASIC power initialization | `reference/esp-miner/main/power/asic_init.c` | `firmware/bitaxe` | not-started | pending | Safety-critical; requires hardware evidence. |
 | PWR-003 | Core voltage control | `reference/esp-miner/main/power/vcore.c` | `firmware/bitaxe` | not-started | pending | Safety-critical; requires hardware evidence. |
-| PWR-004 | TPS546 support | `reference/esp-miner/main/power/TPS546.c` | `firmware/bitaxe` | not-started | pending | Relevant to Gamma 601. |
-| PWR-005 | DS4432U support | `reference/esp-miner/main/power/DS4432U.c` | `firmware/bitaxe` | not-started | pending | Relevant to 205 and other boards. |
-| PWR-006 | INA260 support | `reference/esp-miner/main/power/INA260.c` | `firmware/bitaxe` | not-started | pending | Current/power telemetry. |
+| PWR-004 | TPS546 support | `reference/esp-miner/main/power/TPS546.c` | `firmware/bitaxe` | deferred | deferred | Relevant to deferred Gamma 601 and related boards. |
+| PWR-005 | DS4432U support | `reference/esp-miner/main/power/DS4432U.c` | `firmware/bitaxe` | not-started | pending | Relevant to Ultra 205 first path; safety-critical. |
+| PWR-006 | INA260 support | `reference/esp-miner/main/power/INA260.c` | `firmware/bitaxe` | not-started | pending | Current/power telemetry for Ultra 205 first path. |
 | THR-001 | Thermal model | `reference/esp-miner/main/thermal/thermal.c` | `firmware/bitaxe`, `crates/bitaxe-core` | not-started | pending | Safety-critical. |
 | THR-002 | Fan controller task | `reference/esp-miner/main/tasks/fan_controller_task.c` | `firmware/bitaxe`, `crates/bitaxe-core` | not-started | pending | Safety-critical. |
 | THR-003 | PID behavior | `reference/esp-miner/main/thermal/PID.c` | `crates/bitaxe-core` | not-started | pending | Good pure unit target before hardware. |
@@ -144,4 +144,4 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 - Add Rust-owned implementation pointers as crates and modules are created.
 - Add evidence links or command summaries when statuses advance.
 - Do not mark safety-critical hardware surfaces `verified` without hardware evidence.
-- Do not mark non-601 boards `verified` until those boards have evidence.
+- Do not mark boards other than the current Ultra 205 target `verified` until those boards have their own evidence.

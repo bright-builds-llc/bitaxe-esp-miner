@@ -2,9 +2,9 @@
 set -euo pipefail
 
 readonly DEFAULT_REFERENCE_GUARD="scripts/verify-reference-clean.sh"
-readonly PACKAGE_ELF_NAME="bitaxe-gamma601.elf"
-readonly FACTORY_IMAGE_NAME="bitaxe-gamma601-factory.bin"
-readonly MANIFEST_NAME="bitaxe-gamma601-package.json"
+readonly PACKAGE_ELF_NAME="bitaxe-ultra205.elf"
+readonly FACTORY_IMAGE_NAME="bitaxe-ultra205-factory.bin"
+readonly MANIFEST_NAME="bitaxe-ultra205-package.json"
 
 detect_workspace_dir() {
 	local maybe_git_dir
@@ -164,7 +164,7 @@ cargo_cmd=(
 	--
 	package-firmware
 	--board
-	601
+	205
 	--firmware-elf
 	"$package_elf"
 	--default-flash-image

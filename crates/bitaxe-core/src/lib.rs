@@ -1,8 +1,8 @@
 /// First Phase 1 board target for boot/log bring-up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoardTarget {
-    /// Bitaxe Gamma 601 board.
-    Gamma601,
+    /// Bitaxe Ultra 205 board.
+    Ultra205,
 }
 
 impl BoardTarget {
@@ -10,16 +10,16 @@ impl BoardTarget {
     #[must_use]
     pub const fn display_name(self) -> &'static str {
         match self {
-            Self::Gamma601 => "Gamma 601",
+            Self::Ultra205 => "Ultra 205",
         }
     }
 }
 
-/// First Phase 1 ASIC target for Gamma 601 bring-up.
+/// First Phase 1 ASIC target for Ultra 205 bring-up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AsicTarget {
-    /// Bitmain BM1370 ASIC.
-    Bm1370,
+    /// Bitmain BM1366 ASIC.
+    Bm1366,
 }
 
 impl AsicTarget {
@@ -27,7 +27,7 @@ impl AsicTarget {
     #[must_use]
     pub const fn display_name(self) -> &'static str {
         match self {
-            Self::Bm1370 => "BM1370",
+            Self::Bm1366 => "BM1366",
         }
     }
 }
@@ -102,27 +102,27 @@ mod tests {
     };
 
     #[test]
-    fn gamma_601_display_name_matches_user_visible_board_name() {
+    fn ultra_205_display_name_matches_user_visible_board_name() {
         // Arrange
-        let board = BoardTarget::Gamma601;
+        let board = BoardTarget::Ultra205;
 
         // Act
         let display_name = board.display_name();
 
         // Assert
-        assert_eq!(display_name, "Gamma 601");
+        assert_eq!(display_name, "Ultra 205");
     }
 
     #[test]
-    fn bm1370_display_name_matches_user_visible_asic_name() {
+    fn bm1366_display_name_matches_user_visible_asic_name() {
         // Arrange
-        let asic = AsicTarget::Bm1370;
+        let asic = AsicTarget::Bm1366;
 
         // Act
         let display_name = asic.display_name();
 
         // Assert
-        assert_eq!(display_name, "BM1370");
+        assert_eq!(display_name, "BM1366");
     }
 
     #[test]

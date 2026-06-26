@@ -20,11 +20,11 @@ genrule(
     name = "firmware_image",
     srcs = ["//firmware/bitaxe:firmware"],
     outs = [
-        "bitaxe-gamma601.elf",
-        "bitaxe-gamma601-factory.bin",
-        "bitaxe-gamma601-package.json",
+        "bitaxe-ultra205.elf",
+        "bitaxe-ultra205-factory.bin",
+        "bitaxe-ultra205-package.json",
     ],
-    cmd = "$(location //scripts:package_firmware) --reference-guard $(location //scripts:verify_reference_clean) --firmware-elf $(location //firmware/bitaxe:firmware) --out-dir $(@D) --manifest $(@D)/bitaxe-gamma601-package.json",
+    cmd = "$(location //scripts:package_firmware) --reference-guard $(location //scripts:verify_reference_clean) --firmware-elf $(location //firmware/bitaxe:firmware) --out-dir $(@D) --manifest $(@D)/bitaxe-ultra205-package.json",
     local = True,
     tags = [
         "local",

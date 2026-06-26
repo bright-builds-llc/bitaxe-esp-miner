@@ -3,7 +3,7 @@ use std::ffi::CStr;
 use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState};
 use esp_idf_svc::sys;
 
-const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Gamma 601 asic=BM1370";
+const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
 const ESP_IDF_VERSION: &str = "v5.5.4";
 const REFERENCE_COMMIT: &str = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const REFERENCE_COMMIT_LOG_LINE: &str = "reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50";
@@ -20,8 +20,8 @@ fn main() -> anyhow::Result<()> {
 
     let boot_log_line = format!(
         "bitaxe-rust boot: board={} asic={}",
-        BoardTarget::Gamma601.display_name(),
-        AsicTarget::Bm1370.display_name()
+        BoardTarget::Ultra205.display_name(),
+        AsicTarget::Bm1366.display_name()
     );
     debug_assert_eq!(boot_log_line, BOOT_LOG_LINE);
 

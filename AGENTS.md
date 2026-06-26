@@ -51,7 +51,7 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 - **Build orchestration**: Use Bazel as the canonical automation graph and `just` as the human command surface - local development and CI should route through the same graph where practical.
 - **Reference implementation**: Keep upstream ESP-Miner pinned and read-only at `reference/esp-miner` - it is behavioral evidence, not a workspace for project changes.
 - **Parity evidence**: Maintain a parity checklist with breadcrumbs, implementation pointers, statuses, and verification evidence - implemented code is not enough to claim parity.
-- **Hardware priority**: Optimize first bring-up for Gamma 601 BM1370 - other upstream boards remain in scope but require their own evidence before verification claims.
+- **Hardware priority**: Optimize first bring-up for Ultra 205 BM1366 - other upstream boards remain in scope but require their own evidence before verification claims.
 - **Architecture**: Prefer functional core and imperative shell - pure logic belongs in testable crates, while ESP-IDF, FreeRTOS, Wi-Fi, NVS, SPIFFS, OTA, serial, GPIO, I2C, ADC, power, display, and task orchestration stay in firmware adapters.
 - **Licensing**: Keep original work MIT-first where legally possible, but mark intentionally ported GPL-covered source expression as GPL-3.0-compatible and review distributed firmware artifacts before release.
 - **Safety**: Hardware-control surfaces such as voltage, fan, thermal, power, and ASIC initialization require hardware evidence before verified parity.
@@ -71,8 +71,8 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 | Layer | Recommendation | Version / Pin | Confidence | Why |
 | --- | --- | --- | --- | --- |
 | ESP-IDF | Pin ESP-IDF tag through `esp-idf-sys` metadata | `v5.5.4` | HIGH | Current released Rust crates support ESP-IDF `v5.5.x`; ESP-IDF 6 support is not yet a safe baseline. |
-| Rust ESP toolchain | Install with `espup` and use the `esp` toolchain for firmware Cargo builds | `espup v0.17.1`, `espup install --targets esp32s3 --std` | HIGH | Gamma 601 is expected to use ESP32-S3-class Xtensa firmware tooling; `espup` owns the custom toolchain setup. |
-| Firmware target | Build first firmware for ESP32-S3 ESP-IDF | `xtensa-esp32s3-espidf`, `MCU=esp32s3` | MEDIUM | Project docs prioritize Gamma 601; confirm with upstream reference once the submodule exists. |
+| Rust ESP toolchain | Install with `espup` and use the `esp` toolchain for firmware Cargo builds | `espup v0.17.1`, `espup install --targets esp32s3 --std` | HIGH | Ultra 205 uses ESP32-S3-class Xtensa firmware tooling; `espup` owns the custom toolchain setup. |
+| Firmware target | Build first firmware for ESP32-S3 ESP-IDF | `xtensa-esp32s3-espidf`, `MCU=esp32s3` | MEDIUM | Project docs now prioritize Ultra 205 after ADR-0014; confirm board-specific details from the reference tree during hardware phases. |
 | Rust firmware crates | Depend primarily on `esp-idf-svc`; use `hal` and `sys` through re-exports unless direct dependency is required | `esp-idf-svc 0.52.1`, resolving `esp-idf-hal 0.46.2`, `esp-idf-sys 0.37.2` | HIGH | `esp-idf-svc` wraps Wi-Fi, HTTP, NVS, OTA, logging, MQTT, event loop, timers, and re-exports lower layers. |
 | Rust edition | Use Rust 2021 for all firmware and shared crates initially | `edition = "2021"` | MEDIUM | The ESP-IDF Rust ecosystem still documents and publishes crates on 2021; upgrade to 2024 only after firmware build/flash is stable. |
 | Firmware logging | Use the `log` facade with `esp_idf_svc::log::EspLogger` in firmware; avoid `println!` | crate-managed | HIGH | This matches ESP-IDF logging integration. Host tools may use `tracing`. |
@@ -95,9 +95,9 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 | `just build` | `bazel build //firmware/bitaxe:firmware` | Build the canonical firmware target. |
 | `just test` | `bazel test //...` or a scoped test target group | Run pure crate, host tool, and script tests. Hardware tests stay explicit. |
 | `just package` | `bazel build //firmware/bitaxe:firmware_image` | Produce image artifacts and print paths. |
-| `just flash board=601 [port=...]` | `bazel run //tools/flash -- flash --board 601 ...` | Build/package first unless image override is provided; fail clearly on missing/ambiguous port. |
+| `just flash board=205 [port=...]` | `bazel run //tools/flash -- flash --board 205 ...` | Build/package first unless image override is provided; fail clearly on missing/ambiguous port. |
 | `just monitor [port=...]` | `bazel run //tools/flash -- monitor ...` | Open serial monitor without flashing. |
-| `just flash-monitor board=601 [port=...]` | `bazel run //tools/flash -- flash-monitor ...` | Flash then monitor, capture command/log evidence when requested. |
+| `just flash-monitor board=205 [port=...]` | `bazel run //tools/flash -- flash-monitor ...` | Flash then monitor, capture command/log evidence when requested. |
 | `just verify-reference` | `bazel run //scripts:verify_reference_clean` | Fail if `reference/esp-miner` is missing or locally modified. |
 | `just parity` | `bazel run //tools/parity:report` | Summarize checklist status and missing evidence. |
 
@@ -129,7 +129,7 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 
 ### USB Flashing
 
-- Map `board=601` to Gamma 601 defaults and target image.
+- Map `board=205` to Ultra 205 defaults and target image.
 - Accept explicit `port`.
 - If `port` is omitted, call `espflash list-ports` and apply project heuristics.
 - On zero ports, fail with install/permission hints.
@@ -144,8 +144,8 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 | Pure unit tests | Bazel `rust_test` and/or Cargo tests for `crates/*` | Deterministic Arrange/Act/Assert tests for ASIC packet formats, config parsing, Stratum messages, API model serialization, and parity report logic. |
 | Golden/fixture tests | Checked-in JSON/CSV/binary fixtures; optional `insta` for host snapshots | Rust outputs match upstream-derived fixtures. Each fixture must record provenance. |
 | Firmware compile/package | Bazel firmware wrapper target | ESP32-S3 firmware builds and produces ELF/bin artifacts with ESP-IDF `v5.5.4`. |
-| USB smoke | `just flash-monitor board=601 port=...` | Captured log shows boot, app identity, ESP-IDF version, reset reason, and safe no-op/minimal hardware state. |
-| Hardware regression | Explicit `just hardware-smoke` or `just hil board=601 port=...` later | Repeatable tests for voltage, fan, thermal, ASIC init, and mining behavior. Required before safety-critical parity is `verified`. |
+| USB smoke | `just flash-monitor board=205 port=...` | Captured log shows boot, app identity, ESP-IDF version, reset reason, and safe no-op/minimal hardware state. |
+| Hardware regression | Explicit `just hardware-smoke` or `just hil board=205 port=...` later | Repeatable tests for voltage, fan, thermal, ASIC init, and mining behavior. Required before safety-critical parity is `verified`. |
 
 ## Version/Source Notes
 
@@ -198,7 +198,7 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 | First build downloads large toolchains and IDF sources | Medium | Use `espup --targets esp32s3 --std`; cache Cargo, `.embuild`, Bazel repository cache in CI; add `just doctor`. | HIGH |
 | Firmware Bazel wrapper has non-hermetic edges | Medium | Keep wrapper narrow, declare outputs, print versions, and isolate mutable tool caches outside source paths. | MEDIUM |
 | USB serial behavior varies by OS and cable/chip bridge | Medium | Use `espflash list-ports`, clear `port=` errors, Linux `dialout` hint, WSL warning, and explicit port override. | HIGH |
-| Gamma 601 SoC details need confirmation from reference tree | Medium | Once `reference/esp-miner` exists, verify board config and IDF target before implementation. | MEDIUM |
+| Ultra 205 board details need confirmation from reference tree | Medium | Verify board-specific config, ASIC, sensor, and power paths before enabling hardware control. | MEDIUM |
 | Power/voltage/fan/ASIC bring-up can damage hardware if guessed | High | First milestone should boot/log only; require hardware evidence and safety guards before enabling control paths. | HIGH |
 | GPL provenance contaminates MIT-only files | High | Keep reference read-only, use breadcrumbs, isolate intentionally ported expression, perform release artifact review. | HIGH |
 
@@ -213,7 +213,7 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 | `just` command surface | HIGH | Matches accepted project decision and `just` is explicitly a command runner, not a build system. |
 | USB flashing stack | HIGH | `espflash` directly supports ESP32-S3 and provides required list/flash/monitor/save-image commands. |
 | Test strategy | MEDIUM-HIGH | Pure/fixture/hardware layering is strongly aligned with local Bright Builds rules and parity policy; exact HIL harness can be refined after first boot. |
-| Gamma 601 target triple | MEDIUM | Project docs point to Gamma 601 BM1370; the local `reference/esp-miner` submodule is not present yet, so confirm ESP32-S3 target when adding it. |
+| Ultra 205 target triple | MEDIUM | Project docs point to Ultra 205 BM1366; the current safe-state firmware target is `xtensa-esp32s3-espidf`. |
 
 <!-- GSD:stack-end -->
 

@@ -13,8 +13,8 @@ use sha2::{Digest, Sha256};
 
 const EXPECTED_REFERENCE_COMMIT: &str = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const UNAVAILABLE: &str = "Unavailable";
-const DEFAULT_ELF_NAME: &str = "bitaxe-gamma601.elf";
-const FACTORY_IMAGE_NAME: &str = "bitaxe-gamma601-factory.bin";
+const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
+const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
 const DEFAULT_REFERENCE_GUARD: &str = "scripts/verify-reference-clean.sh";
 const DEFAULT_REFERENCE_DIR: &str = "reference/esp-miner";
 const ESP_IDF_VERSION: &str = "v5.5.4";
@@ -80,7 +80,7 @@ impl From<PackageArgs> for PackageRequest {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum BoardId {
-    Gamma601,
+    Ultra205,
 }
 
 impl FromStr for BoardId {
@@ -88,9 +88,13 @@ impl FromStr for BoardId {
 
     fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
         match value {
-            "601" => Ok(Self::Gamma601),
+            "205" => Ok(Self::Ultra205),
+            "601" => Err(
+                "board 601 is deferred after the Ultra 205 pivot; Phase 1 supports board=205 only"
+                    .to_owned(),
+            ),
             other => Err(format!(
-                "unsupported board {other}; Phase 1 supports board 601 only"
+                "unsupported board {other}; Phase 1 supports board=205 only"
             )),
         }
     }
@@ -99,7 +103,7 @@ impl FromStr for BoardId {
 impl fmt::Display for BoardId {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Gamma601 => formatter.write_str("601"),
+            Self::Ultra205 => formatter.write_str("205"),
         }
     }
 }
@@ -280,8 +284,8 @@ fn build_manifest(
     Ok(PackageManifest {
         schema_version: 1,
         board: package_request.board.to_string(),
-        device_model: "Gamma 601".to_owned(),
-        asic: "BM1370".to_owned(),
+        device_model: "Ultra 205".to_owned(),
+        asic: "BM1366".to_owned(),
         firmware_commit,
         reference_commit,
         esp_idf_version: ESP_IDF_VERSION.to_owned(),
@@ -296,9 +300,9 @@ fn build_manifest(
 }
 
 fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
-    if package_request.board != BoardId::Gamma601 {
+    if package_request.board != BoardId::Ultra205 {
         bail!(
-            "unsupported board {}; Phase 1 supports board 601 only",
+            "unsupported board {}; Phase 1 supports board=205 only",
             package_request.board
         );
     }
@@ -508,7 +512,7 @@ mod tests {
     use tempfile::{tempdir, TempDir};
 
     #[test]
-    fn manifest_serializes_gamma601_default_elf_and_factory_artifact() {
+    fn manifest_serializes_ultra205_default_elf_and_factory_artifact() {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let package_elf = temp_path(&dir, DEFAULT_ELF_NAME);
@@ -524,9 +528,9 @@ mod tests {
 
         // Assert
         assert_eq!(manifest.schema_version, 1);
-        assert_eq!(manifest.board, "601");
-        assert_eq!(manifest.device_model, "Gamma 601");
-        assert_eq!(manifest.asic, "BM1370");
+        assert_eq!(manifest.board, "205");
+        assert_eq!(manifest.device_model, "Ultra 205");
+        assert_eq!(manifest.asic, "BM1366");
         assert_eq!(manifest.reference_commit, EXPECTED_REFERENCE_COMMIT);
         assert_eq!(manifest.default_flash_image, DEFAULT_ELF_NAME);
         assert!(manifest
@@ -585,7 +589,20 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unsupported_board() {
+    fn rejects_deferred_gamma_601_board() {
+        // Arrange
+        let input = "601";
+
+        // Act
+        let result = input.parse::<BoardId>();
+
+        // Assert
+        let error = result.expect_err("deferred board");
+        assert!(error.contains("deferred"));
+    }
+
+    #[test]
+    fn accepts_ultra_205_board() {
         // Arrange
         let input = "205";
 
@@ -593,7 +610,7 @@ mod tests {
         let result = input.parse::<BoardId>();
 
         // Assert
-        assert!(result.is_err());
+        assert_eq!(result.expect("board"), BoardId::Ultra205);
     }
 
     #[test]
@@ -647,11 +664,11 @@ mod tests {
         factory_image: Option<Utf8PathBuf>,
     ) -> PackageRequest {
         PackageRequest {
-            board: BoardId::Gamma601,
+            board: BoardId::Ultra205,
             firmware_elf: temp_path(dir, DEFAULT_ELF_NAME),
             default_flash_image,
             factory_image,
-            manifest: temp_path(dir, "bitaxe-gamma601-package.json"),
+            manifest: temp_path(dir, "bitaxe-ultra205-package.json"),
             out_dir: temp_dir_path(dir),
         }
     }

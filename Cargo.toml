@@ -12,6 +12,17 @@ members = [
     "tools/parity",
     "tools/xtask",
 ]
+default-members = [
+    "crates/bitaxe-api",
+    "crates/bitaxe-asic",
+    "crates/bitaxe-config",
+    "crates/bitaxe-core",
+    "crates/bitaxe-stratum",
+    "crates/bitaxe-test-support",
+    "tools/flash",
+    "tools/parity",
+    "tools/xtask",
+]
 
 [workspace.package]
 edition = "2021"

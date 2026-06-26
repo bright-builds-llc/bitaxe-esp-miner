@@ -26,20 +26,20 @@ A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmwa
 - [ ] Include upstream ESP-Miner as a pinned read-only reference implementation at `reference/esp-miner`.
 - [ ] Preserve device-user parity as the canonical rewrite scope and maintain parity evidence in `docs/parity/checklist.md`.
 - [ ] Use ESP-IDF Rust bindings for the first production firmware stack.
-- [ ] Prioritize Bitaxe Gamma 601 BM1370 for first hardware bring-up, USB flashing, smoke tests, and early acceptance.
+- [ ] Prioritize Bitaxe Ultra 205 BM1366 for first hardware bring-up, USB flashing, smoke tests, and early acceptance.
 - [ ] Split the implementation into an ESP-IDF firmware app plus pure Rust crates for core logic, ASIC behavior, Stratum behavior, config, API models, and test support.
 - [ ] Provide provenance and license guardrails so original work stays MIT-first where possible while GPL-3.0 upstream-derived work is handled explicitly.
-- [ ] Deliver the first milestone as project foundation plus a minimal Gamma 601 boot/log firmware path, not full mining parity.
+- [ ] Deliver the first milestone as project foundation plus a minimal Ultra 205 boot/log firmware path, not full mining parity.
 
 ### Out of Scope
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
 - Rewriting the Angular AxeOS UI in the initial project scope - the first Rust firmware scope targets API and static asset compatibility.
-- Full mining parity in the first milestone - the first milestone exists to establish foundation, build/package/flash flow, and Gamma 601 boot logging.
+- Full mining parity in the first milestone - the first milestone exists to establish foundation, build/package/flash flow, and Ultra 205 boot logging.
 - Bare-metal `no_std` firmware as the first production stack - ESP-IDF Rust is the practical stack for matching upstream device-user behavior.
 - Modifying upstream ESP-Miner files inside `reference/esp-miner` - that tree is read-only reference evidence.
-- Claiming non-601 boards are hardware-verified before evidence exists - all upstream boards remain in parity scope, but verification requires recorded evidence.
+- Claiming boards other than the current Ultra 205 target are hardware-verified before evidence exists - all upstream boards remain in parity scope, but verification requires recorded evidence.
 - Marking parity items verified without explicit evidence - release readiness must be derived from audit evidence, not implementation status alone.
 
 ## Context
@@ -48,7 +48,7 @@ The repository currently contains Bright Builds rules and a prerequisite documen
 
 Device-user parity is the canonical definition of "full parity." The Rust firmware must match observable behavior that a Bitaxe user, administrator, mining pool, API client, or flashing tool relies on from upstream ESP-Miner. This includes mining behavior, supported Bitaxe board configs, ASIC support, Stratum v1/v2 behavior, AxeOS HTTP/WebSocket API compatibility, NVS/settings behavior, OTA/update flow, self-test, display/input, power/thermal/fan control, logging/statistics, image packaging, and USB flashing ergonomics.
 
-The first hardware target is Bitaxe Gamma 601 with BM1370 ASIC. The user also has access to a Bitaxe 205, but Gamma 601 is preferred for early build, flash, monitor, and hardware smoke workflows. Upstream breadcrumbs for the first target include `reference/esp-miner/config-601.cvs`, `reference/esp-miner/main/device_config.h`, `reference/esp-miner/components/asic/bm1370.c`, and `reference/esp-miner/components/asic/include/bm1370.h`.
+The first hardware target is Bitaxe Ultra 205 with BM1366 ASIC. This supersedes the earlier Gamma 601-first decision because the available verified hardware is the Ultra 205. Upstream breadcrumbs for the first target include `reference/esp-miner/config-205.cvs`, `reference/esp-miner/main/device_config.h`, `reference/esp-miner/components/asic/bm1366.c`, and `reference/esp-miner/components/asic/include/bm1366.h`. Gamma 601 with BM1370 remains in parity scope but is deferred until it has its own evidence set.
 
 The accepted seed layout separates hardware-bound firmware from testable Rust logic:
 
@@ -69,7 +69,7 @@ The accepted seed layout separates hardware-bound firmware from testable Rust lo
 - **Build orchestration**: Use Bazel as the canonical automation graph and `just` as the human command surface - local development and CI should route through the same graph where practical.
 - **Reference implementation**: Keep upstream ESP-Miner pinned and read-only at `reference/esp-miner` - it is behavioral evidence, not a workspace for project changes.
 - **Parity evidence**: Maintain a parity checklist with breadcrumbs, implementation pointers, statuses, and verification evidence - implemented code is not enough to claim parity.
-- **Hardware priority**: Optimize first bring-up for Gamma 601 BM1370 - other upstream boards remain in scope but require their own evidence before verification claims.
+- **Hardware priority**: Optimize first bring-up for Ultra 205 BM1366 - other upstream boards remain in scope but require their own evidence before verification claims.
 - **Architecture**: Prefer functional core and imperative shell - pure logic belongs in testable crates, while ESP-IDF, FreeRTOS, Wi-Fi, NVS, SPIFFS, OTA, serial, GPIO, I2C, ADC, power, display, and task orchestration stay in firmware adapters.
 - **Licensing**: Keep original work MIT-first where legally possible, but mark intentionally ported GPL-covered source expression as GPL-3.0-compatible and review distributed firmware artifacts before release.
 - **Safety**: Hardware-control surfaces such as voltage, fan, thermal, power, and ASIC initialization require hardware evidence before verified parity.
@@ -86,7 +86,8 @@ The accepted seed layout separates hardware-bound firmware from testable Rust lo
 | Bazel owns automation and `just` owns ergonomics. | Build, test, package, flash, and release workflows need a shared graph with convenient commands. | - Pending |
 | Upstream ESP-Miner is read-only at `reference/esp-miner`. | Normal project work must not hide local patches inside the reference implementation. | - Pending |
 | The parity checklist is audit evidence. | Release readiness should be proved by evidence, not task completion claims. | - Pending |
-| Gamma 601 BM1370 is first hardware target. | The user has this device and wants it prioritized for early bring-up. | - Pending |
+| Ultra 205 BM1366 is first hardware target. | The available connected hardware is an Ultra 205, and recent evidence confirms safe flash/boot workflows on that board. | Accepted in ADR-0014; safe-state flash/boot verified in `docs/parity/evidence/ultra-205-pivot-safe-state-smoke-2026-06-26.md`. |
+| Gamma 601 BM1370 is deferred. | Gamma 601 remains in scope, but it should not block the first evidence-backed V1 path or inherit Ultra 205 verification. | Accepted in ADR-0014. |
 | Reference breadcrumbs appear at module and behavior boundaries. | Breadcrumbs preserve provenance without forcing line-by-line translation comments. | - Pending |
 | AxeOS scope is API and asset compatibility first. | Rewriting the Angular UI would expand the first project beyond firmware parity. | - Pending |
 | USB flashing is a first-class `just` workflow. | A connected Bitaxe should be easy to build, flash, and monitor over USB. | - Pending |
@@ -113,4 +114,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-06-20 after initialization*
+*Last updated: 2026-06-26 after Ultra 205 parity pivot*
