@@ -14,7 +14,7 @@ Record recurring repo-specific workflow facts in `AGENTS.md` under `## Repo-Loca
 
 - Standards repository: `https://github.com/bright-builds-llc/bright-builds-rules`
 - Version pin: `main`
-- Exact commit: `8e80a01de51b614923e20e3b76a0c703ffd7be69`
+- Exact commit: `7dbfb5cfe6f197f035ebc6d253505b7f865e3c86`
 - Canonical entrypoint: `https://github.com/bright-builds-llc/bright-builds-rules/blob/main/standards/index.md`
 - Audit manifest path: `bright-builds-rules.audit.md`
 
@@ -64,7 +64,6 @@ Record recurring repo-specific workflow facts in `AGENTS.md` under `## Repo-Loca
 - Make illegal states unrepresentable when the language makes that practical.
 - Unit test pure code and business logic.
 - Structure unit tests as Arrange, Act, Assert and keep each test focused on one concern.
-
 
 ## Local overrides and exceptions
 
