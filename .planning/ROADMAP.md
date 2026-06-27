@@ -91,7 +91,7 @@ Plans:
 **Plans**: 5 plans
 Plans:
 
-- [ ] 03-01-PLAN.md - Establish BM1366 protocol module contracts, CRC, packet framing, register codecs, and provenance fixtures.
+- [x] 03-01-PLAN.md - Establish BM1366 protocol module contracts, CRC, packet framing, register codecs, and provenance fixtures.
 - [ ] 03-02-PLAN.md - Implement BM1366 diagnostic work encoding, job ID semantics, result parsing, and nonce/register fault handling.
 - [ ] 03-03-PLAN.md - Add active BM1366 dispatch, semantic command/observation types, and fake UART transcript coverage.
 - [ ] 03-04-PLAN.md - Implement fail-closed staged init planning and pure frequency/voltage transition decisions.

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 3 context gathered
-last_updated: "2026-06-26T22:54:02.367Z"
-last_activity: 2026-06-26
+status: executing
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-06-27T00:01:02.589Z"
+last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 13
-  completed_plans: 13
-  percent: 100
+  total_plans: 18
+  completed_plans: 14
+  percent: 78
 ---
 
 ______________________________________________________________________
@@ -25,14 +25,14 @@ ______________________________________________________________________
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Phase 03 — bm1366-asic-protocol-and-safe-initialization
+**Current focus:** Phase 03 — BM1366 ASIC Protocol And Safe Initialization
 
 ## Current Position
 
-Phase: 3 (bm1366-asic-protocol-and-safe-initialization)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-06-26
+Phase: 03 (BM1366 ASIC Protocol And Safe Initialization) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-06-27
 
 Progress: [██████████] 100%
 
@@ -68,6 +68,7 @@ Progress: [██████████] 100%
 | Phase 02-ultra-205-config-and-nvs-model P02 | 13 | 2 tasks | 5 files |
 | Phase 02-ultra-205-config-and-nvs-model P03 | 13 min | 2 tasks | 5 files |
 | Phase 02-ultra-205-config-and-nvs-model P04 | 10 min | 2 tasks | 5 files |
+| Phase 03-bm1366-asic-protocol-and-safe-initialization P01 | 11 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,9 @@ Recent decisions affecting current work:
 - [Phase 02-ultra-205-config-and-nvs-model]: Keep persistence in crates/bitaxe-config pure: no ESP-IDF NVS calls, HTTP handlers, flashing, mining, ASIC, voltage, fan, thermal, power, or hardware side effects.
 - [Phase 02-ultra-205-config-and-nvs-model]: Use SettingsUpdateDecision and existing NvsWrite/NvsErase data as the adapter contract for future firmware storage work.
 - [Phase 02-ultra-205-config-and-nvs-model]: Leave CFG-001 and CFG-005 implemented rather than verified where the checklist row would otherwise overclaim hardware-control or API route evidence.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Keep raw BM1366 frame construction inside bitaxe-asic through CommandFrame, JobFrame, and FrameBytes. — Firmware adapters should translate typed ASIC actions instead of constructing preambles, lengths, payload bytes, or CRCs.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Compute CRC16-FALSE bitwise instead of copying the upstream GPL CRC table. — This preserves MIT-first source posture while matching the pinned reference behavior.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Run TDD RED failures but avoid committing failing RED states under the Rust pre-commit rule. — AGENTS.md requires passing format, clippy, build, and tests before every commit.
 
 ### Pending Todos
 
@@ -133,6 +137,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-26T22:54:02.328Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-CONTEXT.md
+Last session: 2026-06-27T00:00:49.925Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None
