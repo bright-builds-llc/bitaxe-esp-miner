@@ -7,13 +7,14 @@ use std::ptr;
 use bitaxe_api::{
     asic_settings_from_snapshot, block_found_dismiss_plan, empty_statistics_response,
     execute_settings_persistence_plan, identify_plan, log_download_headers,
-    maybe_origin_ip_from_header, pause_mining_plan, phase05_routes, plan_http_access,
+    origin_gate_from_header, pause_mining_plan, phase05_routes, plan_http_access,
     plan_settings_patch_body, plan_settings_patch_body_size, plan_websocket_upgrade, restart_plan,
     resume_mining_plan, scoreboard_response, system_info_from_snapshot, unknown_api_route_response,
     unsupported_update_response, BlockFoundNotificationState, CommandEffect, CommandPlan,
-    HttpAccessDecision, IdentifyMode, IdentifyModeEffect, PublicHttpResponse, RouteAccessInput,
-    SettingsPatchBodyDecision, SettingsPatchPublicError, SettingsPersistenceEffect,
-    SettingsPersistencePlan, SettingsPublicResponse, WebSocketRouteKind, WebSocketUpgradeDecision,
+    HttpAccessDecision, IdentifyMode, IdentifyModeEffect, OriginGate, PublicHttpResponse,
+    RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchPublicError,
+    SettingsPersistenceEffect, SettingsPersistencePlan, SettingsPublicResponse, WebSocketRouteKind,
+    WebSocketUpgradeDecision,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
@@ -31,6 +32,7 @@ const API_WS_PATH: &[u8] = b"/api/ws\0";
 const API_WS_LIVE_PATH: &[u8] = b"/api/ws/live\0";
 const APPLICATION_JSON_CSTR: &[u8] = b"application/json\0";
 const ORIGIN_HEADER: &[u8] = b"Origin\0";
+const ORIGIN_HEADER_BUFFER_BYTES: usize = 128;
 const TEXT_PLAIN_CSTR: &[u8] = b"text/plain\0";
 const HTTPD_401: &[u8] = b"401 Unauthorized\0";
 
@@ -311,7 +313,7 @@ fn access_input_from_raw(request: *mut sys::httpd_req_t) -> RouteAccessInput {
     RouteAccessInput {
         ap_mode_enabled: ap_mode_enabled(),
         request_ip,
-        maybe_origin_ip: origin_ip_from_raw(request),
+        origin: origin_gate_from_raw(request),
     }
 }
 
@@ -466,8 +468,8 @@ fn send_websocket_text_frame(request: *mut sys::httpd_req_t, body: &str) -> sys:
     unsafe { sys::httpd_ws_send_frame(request, &mut frame) }
 }
 
-fn origin_ip_from_raw(request: *mut sys::httpd_req_t) -> Option<Ipv4Addr> {
-    let mut buffer = [0; 128];
+fn origin_gate_from_raw(request: *mut sys::httpd_req_t) -> OriginGate {
+    let mut buffer = [0; ORIGIN_HEADER_BUFFER_BYTES];
     let result = unsafe {
         sys::httpd_req_get_hdr_value_str(
             request,
@@ -476,12 +478,18 @@ fn origin_ip_from_raw(request: *mut sys::httpd_req_t) -> Option<Ipv4Addr> {
             buffer.len(),
         )
     };
-    if result != sys::ESP_OK {
-        return None;
+    match result {
+        sys::ESP_OK => {}
+        sys::ESP_ERR_NOT_FOUND => return OriginGate::Missing,
+        sys::ESP_ERR_HTTPD_RESULT_TRUNC => return OriginGate::Invalid,
+        _ => return OriginGate::Invalid,
     }
 
-    let origin = unsafe { CStr::from_ptr(buffer.as_ptr()) }.to_str().ok()?;
-    maybe_origin_ip_from_header(origin)
+    let Ok(origin) = (unsafe { CStr::from_ptr(buffer.as_ptr()) }).to_str() else {
+        return OriginGate::Invalid;
+    };
+
+    origin_gate_from_header(origin)
 }
 
 fn send_raw_public_response(

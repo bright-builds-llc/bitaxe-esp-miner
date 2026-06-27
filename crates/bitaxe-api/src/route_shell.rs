@@ -155,8 +155,19 @@ pub struct RouteAccessInput {
     pub ap_mode_enabled: bool,
     /// Client peer IPv4 address.
     pub request_ip: Ipv4Addr,
-    /// Optional parsed Origin host IP.
-    pub maybe_origin_ip: Option<Ipv4Addr>,
+    /// Origin header state.
+    pub origin: OriginGate,
+}
+
+/// Parsed request Origin state for the private-network access gate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OriginGate {
+    /// The request did not include an Origin header.
+    Missing,
+    /// The Origin header host parsed as an IPv4 address.
+    Parsed(Ipv4Addr),
+    /// The Origin header was present but could not be accepted.
+    Invalid,
 }
 
 /// HTTP access decision.
@@ -276,13 +287,30 @@ pub fn maybe_origin_ip_from_header(origin: &str) -> Option<Ipv4Addr> {
     host.parse().ok()
 }
 
+/// Classifies a present request Origin header for access-gate decisions.
+#[must_use]
+pub fn origin_gate_from_header(origin: &str) -> OriginGate {
+    let Some(origin_ip) = maybe_origin_ip_from_header(origin) else {
+        return OriginGate::Invalid;
+    };
+
+    OriginGate::Parsed(origin_ip)
+}
+
 fn is_access_allowed(input: RouteAccessInput) -> bool {
     if input.ap_mode_enabled {
         return true;
     }
 
-    let origin_ip = input.maybe_origin_ip.unwrap_or(input.request_ip);
-    is_private_ipv4(input.request_ip) && is_private_ipv4(origin_ip)
+    if !is_private_ipv4(input.request_ip) {
+        return false;
+    }
+
+    match input.origin {
+        OriginGate::Missing => true,
+        OriginGate::Parsed(origin_ip) => is_private_ipv4(origin_ip),
+        OriginGate::Invalid => false,
+    }
 }
 
 fn is_private_ipv4(ip: Ipv4Addr) -> bool {
@@ -304,18 +332,26 @@ mod tests {
     use std::net::Ipv4Addr;
 
     use super::{
-        maybe_origin_ip_from_header, phase05_routes, plan_http_access,
+        maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, plan_http_access,
         plan_settings_patch_body_size, plan_websocket_upgrade, unknown_api_route_response,
-        HttpAccessDecision, RouteAccessInput, RouteKind, RouteMethod, SettingsPatchBodyDecision,
-        WebSocketRouteKind, WebSocketUpgradeDecision, MAX_SETTINGS_PATCH_BODY_BYTES,
-        UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
+        HttpAccessDecision, OriginGate, RouteAccessInput, RouteKind, RouteMethod,
+        SettingsPatchBodyDecision, WebSocketRouteKind, WebSocketUpgradeDecision,
+        MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
     };
 
     fn denied_public_client_input() -> RouteAccessInput {
         RouteAccessInput {
             ap_mode_enabled: false,
             request_ip: Ipv4Addr::new(8, 8, 8, 8),
-            maybe_origin_ip: Some(Ipv4Addr::new(203, 0, 113, 10)),
+            origin: OriginGate::Parsed(Ipv4Addr::new(203, 0, 113, 10)),
+        }
+    }
+
+    fn private_client_input(origin: OriginGate) -> RouteAccessInput {
+        RouteAccessInput {
+            ap_mode_enabled: false,
+            request_ip: Ipv4Addr::new(192, 168, 1, 25),
+            origin,
         }
     }
 
@@ -401,7 +437,7 @@ mod tests {
         let input = RouteAccessInput {
             ap_mode_enabled: false,
             request_ip: Ipv4Addr::new(192, 168, 1, 25),
-            maybe_origin_ip: Some(Ipv4Addr::new(192, 168, 1, 2)),
+            origin: OriginGate::Parsed(Ipv4Addr::new(192, 168, 1, 2)),
         };
 
         // Act
@@ -416,6 +452,67 @@ mod tests {
                 route: WebSocketRouteKind::Logs,
             })
         );
+    }
+
+    #[test]
+    fn missing_origin_from_private_client_is_allowed_for_http_and_websocket() {
+        // Arrange
+        let input = private_client_input(OriginGate::Missing);
+
+        // Act
+        let http_decision = plan_http_access(input);
+        let ws_decision = plan_websocket_upgrade(input, WebSocketRouteKind::LiveTelemetry);
+
+        // Assert
+        assert_eq!(http_decision, HttpAccessDecision::Allow);
+        assert!(matches!(
+            ws_decision,
+            WebSocketUpgradeDecision::Accept(super::WebSocketClientRegistrationPlan {
+                route: WebSocketRouteKind::LiveTelemetry
+            })
+        ));
+    }
+
+    #[test]
+    fn public_named_origin_is_denied_for_http_and_websocket() {
+        // Arrange
+        let input = private_client_input(origin_gate_from_header("https://example.com"));
+
+        // Act
+        let http_decision = plan_http_access(input);
+        let ws_decision = plan_websocket_upgrade(input, WebSocketRouteKind::Logs);
+
+        // Assert
+        assert!(matches!(http_decision, HttpAccessDecision::Deny(_)));
+        assert!(matches!(ws_decision, WebSocketUpgradeDecision::Reject(_)));
+    }
+
+    #[test]
+    fn public_ipv4_origin_is_denied_for_http_and_websocket() {
+        // Arrange
+        let input = private_client_input(origin_gate_from_header("https://203.0.113.10/dashboard"));
+
+        // Act
+        let http_decision = plan_http_access(input);
+        let ws_decision = plan_websocket_upgrade(input, WebSocketRouteKind::Logs);
+
+        // Assert
+        assert!(matches!(http_decision, HttpAccessDecision::Deny(_)));
+        assert!(matches!(ws_decision, WebSocketUpgradeDecision::Reject(_)));
+    }
+
+    #[test]
+    fn invalid_or_overlong_origin_is_denied_for_http_and_websocket() {
+        // Arrange
+        let input = private_client_input(OriginGate::Invalid);
+
+        // Act
+        let http_decision = plan_http_access(input);
+        let ws_decision = plan_websocket_upgrade(input, WebSocketRouteKind::LiveTelemetry);
+
+        // Assert
+        assert!(matches!(http_decision, HttpAccessDecision::Deny(_)));
+        assert!(matches!(ws_decision, WebSocketUpgradeDecision::Reject(_)));
     }
 
     #[test]
@@ -442,6 +539,18 @@ mod tests {
 
         // Assert
         assert_eq!(maybe_origin_ip, Some(Ipv4Addr::new(192, 168, 1, 2)));
+    }
+
+    #[test]
+    fn origin_gate_marks_non_ipv4_header_hosts_invalid() {
+        // Arrange
+        let origin = "https://example.com";
+
+        // Act
+        let gate = origin_gate_from_header(origin);
+
+        // Assert
+        assert_eq!(gate, OriginGate::Invalid);
     }
 
     #[test]
