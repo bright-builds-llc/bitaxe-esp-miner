@@ -1,0 +1,25 @@
+{
+  "currentTimestamp": 0,
+  "labels": [
+    "hashrate",
+    "hashrate_1m",
+    "hashrate_10m",
+    "hashrate_1h",
+    "errorPercentage",
+    "asicTemp",
+    "asicTemp2",
+    "vrTemp",
+    "asicVoltage",
+    "voltage",
+    "power",
+    "current",
+    "fanSpeed",
+    "fanRpm",
+    "fan2Rpm",
+    "wifiRssi",
+    "freeHeap",
+    "responseTime",
+    "timestamp"
+  ],
+  "statistics": []
+}

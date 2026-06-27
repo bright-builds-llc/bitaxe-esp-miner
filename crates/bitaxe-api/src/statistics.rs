@@ -1,0 +1,280 @@
+//! Pure `/api/system/statistics` response mapping.
+//!
+//! Reference breadcrumbs:
+//! - `reference/esp-miner/main/tasks/statistics_task.h`
+//! - `reference/esp-miner/main/http_server/http_server.c:GET_system_statistics`
+//! - `reference/esp-miner/main/http_server/axe-os/src/models/enum/eChartLabel.ts`
+
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+
+const TIMESTAMP_LABEL: &str = "timestamp";
+
+const ALL_COLUMNS: [StatisticsColumn; 18] = [
+    StatisticsColumn::Hashrate,
+    StatisticsColumn::Hashrate1m,
+    StatisticsColumn::Hashrate10m,
+    StatisticsColumn::Hashrate1h,
+    StatisticsColumn::ErrorPercentage,
+    StatisticsColumn::AsicTemp,
+    StatisticsColumn::AsicTemp2,
+    StatisticsColumn::VrTemp,
+    StatisticsColumn::AsicVoltage,
+    StatisticsColumn::Voltage,
+    StatisticsColumn::Power,
+    StatisticsColumn::Current,
+    StatisticsColumn::FanSpeed,
+    StatisticsColumn::FanRpm,
+    StatisticsColumn::Fan2Rpm,
+    StatisticsColumn::WifiRssi,
+    StatisticsColumn::FreeHeap,
+    StatisticsColumn::ResponseTime,
+];
+
+/// Upstream-compatible statistics response.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StatisticsWire {
+    #[serde(rename = "currentTimestamp")]
+    pub current_timestamp: u64,
+    pub labels: Vec<String>,
+    pub statistics: Vec<Vec<Value>>,
+}
+
+/// One historical statistics sample before column projection.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StatisticsSample {
+    pub timestamp: u64,
+    pub hashrate: f64,
+    pub hashrate_1m: f64,
+    pub hashrate_10m: f64,
+    pub hashrate_1h: f64,
+    pub error_percentage: f64,
+    pub asic_temp: f64,
+    pub asic_temp2: f64,
+    pub vr_temp: f64,
+    pub asic_voltage: i16,
+    pub voltage: f64,
+    pub power: f64,
+    pub current: f64,
+    pub fan_speed: f64,
+    pub fan_rpm: u16,
+    pub fan2_rpm: u16,
+    pub wifi_rssi: i8,
+    pub free_heap: u32,
+    pub response_time: f64,
+}
+
+impl Default for StatisticsSample {
+    fn default() -> Self {
+        Self {
+            timestamp: 0,
+            hashrate: 0.0,
+            hashrate_1m: 0.0,
+            hashrate_10m: 0.0,
+            hashrate_1h: 0.0,
+            error_percentage: 0.0,
+            asic_temp: 0.0,
+            asic_temp2: 0.0,
+            vr_temp: 0.0,
+            asic_voltage: 0,
+            voltage: 0.0,
+            power: 0.0,
+            current: 0.0,
+            fan_speed: 0.0,
+            fan_rpm: 0,
+            fan2_rpm: 0,
+            wifi_rssi: 0,
+            free_heap: 0,
+            response_time: 0.0,
+        }
+    }
+}
+
+/// Returns a statistics response with no historical samples.
+#[must_use]
+pub fn empty_statistics_response(
+    current_timestamp: u64,
+    maybe_columns: Option<&str>,
+) -> StatisticsWire {
+    statistics_response(current_timestamp, maybe_columns, &[])
+}
+
+/// Projects optional statistics columns and appends `timestamp` to every row.
+#[must_use]
+pub fn statistics_response(
+    current_timestamp: u64,
+    maybe_columns: Option<&str>,
+    samples: &[StatisticsSample],
+) -> StatisticsWire {
+    let columns = selected_columns(maybe_columns);
+    let mut labels = columns
+        .iter()
+        .map(|column| column.label().to_owned())
+        .collect::<Vec<_>>();
+    labels.push(TIMESTAMP_LABEL.to_owned());
+
+    let statistics = samples
+        .iter()
+        .map(|sample| sample_row(sample, &columns))
+        .collect();
+
+    StatisticsWire {
+        current_timestamp,
+        labels,
+        statistics,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StatisticsColumn {
+    Hashrate,
+    Hashrate1m,
+    Hashrate10m,
+    Hashrate1h,
+    ErrorPercentage,
+    AsicTemp,
+    AsicTemp2,
+    VrTemp,
+    AsicVoltage,
+    Voltage,
+    Power,
+    Current,
+    FanSpeed,
+    FanRpm,
+    Fan2Rpm,
+    WifiRssi,
+    FreeHeap,
+    ResponseTime,
+}
+
+impl StatisticsColumn {
+    const fn label(self) -> &'static str {
+        match self {
+            Self::Hashrate => "hashrate",
+            Self::Hashrate1m => "hashrate_1m",
+            Self::Hashrate10m => "hashrate_10m",
+            Self::Hashrate1h => "hashrate_1h",
+            Self::ErrorPercentage => "errorPercentage",
+            Self::AsicTemp => "asicTemp",
+            Self::AsicTemp2 => "asicTemp2",
+            Self::VrTemp => "vrTemp",
+            Self::AsicVoltage => "asicVoltage",
+            Self::Voltage => "voltage",
+            Self::Power => "power",
+            Self::Current => "current",
+            Self::FanSpeed => "fanSpeed",
+            Self::FanRpm => "fanRpm",
+            Self::Fan2Rpm => "fan2Rpm",
+            Self::WifiRssi => "wifiRssi",
+            Self::FreeHeap => "freeHeap",
+            Self::ResponseTime => "responseTime",
+        }
+    }
+
+    fn value(self, sample: &StatisticsSample) -> Value {
+        match self {
+            Self::Hashrate => json!(sample.hashrate),
+            Self::Hashrate1m => json!(sample.hashrate_1m),
+            Self::Hashrate10m => json!(sample.hashrate_10m),
+            Self::Hashrate1h => json!(sample.hashrate_1h),
+            Self::ErrorPercentage => json!(sample.error_percentage),
+            Self::AsicTemp => json!(sample.asic_temp),
+            Self::AsicTemp2 => json!(sample.asic_temp2),
+            Self::VrTemp => json!(sample.vr_temp),
+            Self::AsicVoltage => json!(sample.asic_voltage),
+            Self::Voltage => json!(sample.voltage),
+            Self::Power => json!(sample.power),
+            Self::Current => json!(sample.current),
+            Self::FanSpeed => json!(sample.fan_speed),
+            Self::FanRpm => json!(sample.fan_rpm),
+            Self::Fan2Rpm => json!(sample.fan2_rpm),
+            Self::WifiRssi => json!(sample.wifi_rssi),
+            Self::FreeHeap => json!(sample.free_heap),
+            Self::ResponseTime => json!(sample.response_time),
+        }
+    }
+}
+
+fn selected_columns(maybe_columns: Option<&str>) -> Vec<StatisticsColumn> {
+    let Some(columns) = maybe_columns else {
+        return ALL_COLUMNS.to_vec();
+    };
+
+    let mut selected = Vec::new();
+    for column in columns.split(',').filter_map(column_from_label) {
+        if !selected.contains(&column) {
+            selected.push(column);
+        }
+    }
+
+    if selected.is_empty() {
+        return ALL_COLUMNS.to_vec();
+    }
+
+    selected
+}
+
+fn column_from_label(label: &str) -> Option<StatisticsColumn> {
+    ALL_COLUMNS
+        .iter()
+        .copied()
+        .find(|column| column.label() == label.trim())
+}
+
+fn sample_row(sample: &StatisticsSample, columns: &[StatisticsColumn]) -> Vec<Value> {
+    let mut row = columns
+        .iter()
+        .map(|column| column.value(sample))
+        .collect::<Vec<_>>();
+    row.push(json!(sample.timestamp));
+    row
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::{json, Value};
+
+    use crate::statistics::{empty_statistics_response, statistics_response, StatisticsSample};
+
+    #[test]
+    fn statistics_response_applies_optional_columns_and_keeps_timestamp_last() {
+        // Arrange
+        let sample = StatisticsSample {
+            timestamp: 10,
+            hashrate: 1.5,
+            power: 2.5,
+            fan_rpm: 3,
+            ..StatisticsSample::default()
+        };
+
+        // Act
+        let response = statistics_response(20, Some("hashrate,power,fanRpm"), &[sample]);
+
+        // Assert
+        assert_eq!(response.current_timestamp, 20);
+        assert_eq!(
+            response.labels,
+            vec!["hashrate", "power", "fanRpm", "timestamp"]
+        );
+        assert_eq!(
+            response.statistics,
+            vec![vec![json!(1.5), json!(2.5), json!(3), json!(10)]]
+        );
+    }
+
+    #[test]
+    fn empty_statistics_history_uses_fixture_shape_without_fake_history() {
+        // Arrange
+        let fixture = include_str!("../fixtures/api/statistics-empty-compatible.json");
+        let expected: Value =
+            serde_json::from_str(fixture).expect("statistics fixture should be valid JSON");
+
+        // Act
+        let response = empty_statistics_response(0, None);
+        let actual = serde_json::to_value(response).expect("statistics should serialize");
+
+        // Assert
+        assert_eq!(actual, expected);
+        assert_eq!(actual["statistics"], json!([]));
+    }
+}
