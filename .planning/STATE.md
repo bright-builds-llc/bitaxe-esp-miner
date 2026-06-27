@@ -3,20 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-06-27T00:38:46.624Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-06-27T00:57:50.417Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 18
-  completed_plans: 16
-  percent: 89
+  completed_plans: 17
+  percent: 94
 ---
-
-______________________________________________________________________
-
-## gsd_state_version: 1.0 milestone: v1.0 milestone_name: milestone status: complete stopped_at: Ultra 205 safe-state boot/flash verified last_updated: "2026-06-26T13:37:28.000Z" last_activity: 2026-06-26 progress: total_phases: 8 completed_phases: 1 total_plans: 9 completed_plans: 9 percent: 100
 
 # Project State
 
@@ -30,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 03 (BM1366 ASIC Protocol And Safe Initialization) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-06-27
 
@@ -39,20 +35,17 @@ Progress: [██████████] 100%
 ## Performance Metrics
 
 **Velocity:**
-
 - Total plans completed: 13
 - Average duration: 10 min
 - Total execution time: 1.5 hours
 
 **By Phase:**
-
 | Phase | Plans | Total | Avg/Plan |
 | --- | --- | --- | --- |
 | 1. Foundation And Ultra 205 Boot/Log | 9/9 | 1.5h | 10 min |
 | 2 | 4 | - | - |
 
 **Recent Trend:**
-
 - Last 5 plans: 01-05 (8 min), 01-06 (16 min), 01-07 (11 min), 01-08 (20 min), 01-09 (10 min)
 - Trend: Phase 1 plan execution complete; post-pivot Ultra 205 hardware smoke passed after ADR-0014.
 
@@ -71,6 +64,7 @@ Progress: [██████████] 100%
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P01 | 11 min | 2 tasks | 11 files |
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P02 | 10 min | 2 tasks | 6 files |
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P03 | 16 min | 2 tasks | 12 files |
+| Phase 03-bm1366-asic-protocol-and-safe-initialization P04 | 14 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -133,6 +127,10 @@ Recent decisions affecting current work:
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Only board version 205, family Ultra, ASIC model BM1366, count 1, and ActiveUltra205 scope return ActiveBm1366.
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Firmware-facing ASIC behavior is expressed as Bm1366Command, Bm1366AdapterAction, Bm1366Observation, and AsicInitStatus while raw frames stay inside bitaxe-asic.
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Fake UART transcripts fail closed on timeout, partial read, bad preamble, bad CRC, unknown register, invalid job ID, and chip-count mismatch.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Run TDD RED failures but avoid committing failing RED states because AGENTS.md requires passing Rust checks before every commit.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Use Phase 2 Ultra 205 BM1366 catalog/default facts as init preflight gates instead of duplicating board identity in firmware.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Keep voltage transitions as pure data only and mark both frequency and voltage effects below verified until Ultra 205 hardware evidence exists.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Use an independently written pure PLL search for BM1366 frequency command data while preserving MissingHardwareEvidence status.
 
 ### Pending Todos
 
@@ -145,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T00:38:46.621Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-06-27T00:57:50.404Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
