@@ -18,4 +18,8 @@ pub enum Bm1366ProtocolFault {
     ChipCountMismatch { expected: u8, actual: u8 },
     #[error("BM1366 preflight missing: {reason}")]
     PreflightMissing { reason: &'static str },
+    #[error("BM1366 UART timeout after {timeout_ms} ms")]
+    Timeout { timeout_ms: u32 },
+    #[error("BM1366 transcript write mismatch")]
+    TranscriptWriteMismatch,
 }

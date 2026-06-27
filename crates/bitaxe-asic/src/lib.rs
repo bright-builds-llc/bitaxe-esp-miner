@@ -18,10 +18,11 @@ mod tests {
 
     use super::{
         bm1366::{
-            self, command::Bm1366AdapterAction, command::Bm1366Command, packet::CommandFrame,
+            self, command::Bm1366AdapterAction, command::Bm1366Command, observation::AsicIndex,
+            observation::Bm1366Observation, observation::ChipId, packet::CommandFrame,
             packet::CMD_READ, packet::COMMAND_HEADER_TYPE, packet::GROUP_ALL,
-            registers::read_register_payload, work::Bm1366JobId, work::Bm1366WorkFields,
-            work::Bm1366WorkPayload,
+            registers::read_register_payload, result::Bm1366ValidJobIds, work::Bm1366JobId,
+            work::Bm1366WorkFields, work::Bm1366WorkPayload, BM1366_CHIP_ID,
         },
         dispatch::{dispatch_catalog_entry, AsicDispatch, DeferredAsicModel},
         AsicRuntimeStatus, Bm1366ProtocolFault,
@@ -238,5 +239,259 @@ mod tests {
 
         // Assert
         assert!(matches!(command, Bm1366Command::SendDiagnosticWork(_)));
+    }
+
+    fn chip_id_response_frame(chip_id: u16, core_count: u8, asic_address: u8) -> Vec<u8> {
+        let mut frame = vec![
+            0xaa,
+            0x55,
+            (chip_id >> 8) as u8,
+            (chip_id & 0xff) as u8,
+            core_count,
+            asic_address,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+        ];
+
+        for crc in 0..32 {
+            frame[10] = crc;
+            if bm1366::crc::crc5(&frame[2..]) == 0 {
+                return frame;
+            }
+        }
+
+        panic!("chip-id fixture must have a CRC5 residue byte");
+    }
+
+    fn transcript_result_frame(body: [u8; 8], is_job_response: bool) -> Vec<u8> {
+        let response_bit = if is_job_response { 0x80 } else { 0x00 };
+        let mut frame = vec![0xaa, 0x55, 0, 0, 0, 0, 0, 0, 0, 0, response_bit];
+        frame[2..10].copy_from_slice(&body);
+
+        for crc in 0..32 {
+            frame[10] = response_bit | crc;
+            if bm1366::crc::crc5(&frame[2..]) == 0 {
+                return frame;
+            }
+        }
+
+        panic!("result fixture must have a CRC5 residue byte");
+    }
+
+    #[test]
+    fn transcript_exact_chip_id_emits_read_command_actions_and_observation() {
+        // Arrange
+        let expected_frame = Bm1366Command::ReadChipId
+            .frame_bytes()
+            .expect("read chip-id frame should encode");
+        let transcript = bm1366::transcript::FakeUartTranscript::with_expected_chips(
+            vec![
+                bm1366::transcript::FakeUartEvent::ExpectWrite(expected_frame.clone()),
+                bm1366::transcript::FakeUartEvent::ReadBytes(chip_id_response_frame(
+                    BM1366_CHIP_ID,
+                    0x70,
+                    0x00,
+                )),
+            ],
+            1,
+        );
+
+        // Act
+        let outcome = transcript.run_read_chip_id();
+
+        // Assert
+        assert_eq!(outcome.commands(), &[Bm1366Command::ReadChipId]);
+        assert!(outcome
+            .actions()
+            .contains(&Bm1366AdapterAction::WriteFrame(expected_frame)));
+        assert!(outcome
+            .actions()
+            .contains(&Bm1366AdapterAction::read_result_frame()));
+        assert!(outcome.observations().contains(&Bm1366Observation::ChipId {
+            chip_id: ChipId::new(BM1366_CHIP_ID),
+            asic_index: AsicIndex::new(0),
+        }));
+        assert_eq!(
+            outcome.status(),
+            bm1366::transcript::TranscriptStatus::Complete
+        );
+    }
+
+    #[test]
+    fn transcript_timeout_returns_protocol_fault_and_fail_closed_status() {
+        // Arrange
+        let transcript = bm1366::transcript::FakeUartTranscript::new(vec![
+            bm1366::transcript::FakeUartEvent::Timeout,
+        ]);
+
+        // Act
+        let outcome = transcript.run_read_chip_id();
+
+        // Assert
+        assert_eq!(
+            outcome.status(),
+            bm1366::transcript::TranscriptStatus::FailClosed
+        );
+        assert!(outcome
+            .observations()
+            .contains(&Bm1366Observation::ProtocolFault(
+                Bm1366ProtocolFault::Timeout { timeout_ms: 1_000 }
+            )));
+    }
+
+    #[test]
+    fn transcript_partial_read_returns_invalid_length_and_clears_rx() {
+        // Arrange
+        let transcript = bm1366::transcript::FakeUartTranscript::new(vec![
+            bm1366::transcript::FakeUartEvent::PartialRead(vec![0xaa, 0x55, 0x13]),
+        ]);
+
+        // Act
+        let outcome = transcript.run_read_chip_id();
+
+        // Assert
+        assert_eq!(
+            outcome.status(),
+            bm1366::transcript::TranscriptStatus::FailClosed
+        );
+        assert!(outcome.actions().contains(&Bm1366AdapterAction::ClearRx));
+        assert!(outcome
+            .observations()
+            .contains(&Bm1366Observation::ProtocolFault(
+                Bm1366ProtocolFault::InvalidLength {
+                    expected: 11,
+                    actual: 3
+                }
+            )));
+    }
+
+    #[test]
+    fn transcript_bad_preamble_and_bad_crc_return_faults_without_chip_observation() {
+        // Arrange
+        let mut bad_preamble = chip_id_response_frame(BM1366_CHIP_ID, 0x70, 0x00);
+        bad_preamble[0] = 0x00;
+        let mut bad_crc = chip_id_response_frame(BM1366_CHIP_ID, 0x70, 0x00);
+        bad_crc[10] ^= 0x01;
+
+        // Act
+        let preamble = bm1366::transcript::FakeUartTranscript::new(vec![
+            bm1366::transcript::FakeUartEvent::MalformedPreamble(bad_preamble),
+        ])
+        .run_read_chip_id();
+        let crc = bm1366::transcript::FakeUartTranscript::new(vec![
+            bm1366::transcript::FakeUartEvent::BadCrc(bad_crc),
+        ])
+        .run_read_chip_id();
+
+        // Assert
+        assert!(preamble.observations().iter().any(|observation| matches!(
+            observation,
+            Bm1366Observation::ProtocolFault(Bm1366ProtocolFault::BadPreamble { .. })
+        )));
+        assert!(crc
+            .observations()
+            .contains(&Bm1366Observation::ProtocolFault(
+                Bm1366ProtocolFault::BadCrc
+            )));
+        assert!(!preamble
+            .observations()
+            .iter()
+            .any(|observation| matches!(observation, Bm1366Observation::ChipId { .. })));
+        assert!(!crc
+            .observations()
+            .iter()
+            .any(|observation| matches!(observation, Bm1366Observation::ChipId { .. })));
+    }
+
+    #[test]
+    fn transcript_chip_count_mismatch_fails_closed() {
+        // Arrange
+        let expected_frame = Bm1366Command::ReadChipId
+            .frame_bytes()
+            .expect("read chip-id frame should encode");
+        let transcript = bm1366::transcript::FakeUartTranscript::with_expected_chips(
+            vec![bm1366::transcript::FakeUartEvent::ExpectWrite(
+                expected_frame,
+            )],
+            1,
+        );
+
+        // Act
+        let outcome = transcript.run_read_chip_id();
+
+        // Assert
+        assert_eq!(
+            outcome.status(),
+            bm1366::transcript::TranscriptStatus::FailClosed
+        );
+        assert!(outcome
+            .observations()
+            .contains(&Bm1366Observation::ProtocolFault(
+                Bm1366ProtocolFault::ChipCountMismatch {
+                    expected: 1,
+                    actual: 0
+                }
+            )));
+    }
+
+    #[test]
+    fn transcript_unknown_register_returns_protocol_fault() {
+        // Arrange
+        let frame =
+            transcript_result_frame([0x01, 0x02, 0x03, 0x04, 0x20, 0xff, 0x00, 0x00], false);
+        let transcript = bm1366::transcript::FakeUartTranscript::with_result_context(
+            vec![bm1366::transcript::FakeUartEvent::ReadBytes(frame)],
+            Bm1366ValidJobIds::empty(),
+            16,
+        );
+
+        // Act
+        let outcome = transcript.run_result_read();
+
+        // Assert
+        assert_eq!(
+            outcome.status(),
+            bm1366::transcript::TranscriptStatus::FailClosed
+        );
+        assert!(outcome
+            .observations()
+            .contains(&Bm1366Observation::ProtocolFault(
+                Bm1366ProtocolFault::UnknownRegister { register: 0xff }
+            )));
+    }
+
+    #[test]
+    fn transcript_invalid_job_id_returns_protocol_fault() {
+        // Arrange
+        let nonce_be = (2_u32 << 25) | (0x20_u32 << 17) | 0x1234;
+        let mut body = [0; 8];
+        body[0..4].copy_from_slice(&nonce_be.to_be_bytes());
+        body[4] = 0x01;
+        body[5] = 0x28;
+        body[6..8].copy_from_slice(&0x0003_u16.to_be_bytes());
+        let transcript = bm1366::transcript::FakeUartTranscript::with_result_context(
+            vec![bm1366::transcript::FakeUartEvent::ReadBytes(
+                transcript_result_frame(body, true),
+            )],
+            Bm1366ValidJobIds::empty(),
+            16,
+        );
+
+        // Act
+        let outcome = transcript.run_result_read();
+
+        // Assert
+        assert_eq!(
+            outcome.status(),
+            bm1366::transcript::TranscriptStatus::FailClosed
+        );
+        assert!(outcome
+            .observations()
+            .contains(&Bm1366Observation::ProtocolFault(
+                Bm1366ProtocolFault::InvalidJobId { job_id: 0x28 }
+            )));
     }
 }

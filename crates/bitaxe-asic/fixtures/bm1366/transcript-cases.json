@@ -1,0 +1,65 @@
+[
+  {
+    "case": "exact read",
+    "checklist_ids": ["ASIC-004", "ASIC-005"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "count_asic_chips reads exactly 11 bytes, validates chip ID, and counts the detected BM1366",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual transcript case from pinned count_asic_chips behavior"
+  },
+  {
+    "case": "timeout",
+    "checklist_ids": ["ASIC-004", "ASIC-005"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "SERIAL_rx returning 0 terminates chip counting without a chip response",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual timeout case from pinned count_asic_chips and receive_work behavior"
+  },
+  {
+    "case": "partial read",
+    "checklist_ids": ["ASIC-004"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "receive_work rejects responses whose length is not the expected 11 bytes and clears RX",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual malformed-length case from pinned receive_work behavior"
+  },
+  {
+    "case": "malformed preamble",
+    "checklist_ids": ["ASIC-004"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "receive_work rejects preambles other than 0xaa55 and clears RX",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual bad-preamble case from pinned receive_work behavior"
+  },
+  {
+    "case": "bad CRC",
+    "checklist_ids": ["ASIC-004", "ASIC-008"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "receive_work rejects response frames whose CRC5 residue is nonzero",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual bad-CRC case from pinned receive_work behavior"
+  },
+  {
+    "case": "unknown register",
+    "checklist_ids": ["ASIC-002", "ASIC-004"],
+    "source_file": "reference/esp-miner/components/asic/bm1366.c",
+    "source_behavior": "BM1366_process_work rejects register responses whose register address is not mapped",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual unknown-register case from pinned BM1366_process_work behavior"
+  },
+  {
+    "case": "chip-count mismatch",
+    "checklist_ids": ["ASIC-005"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "count_asic_chips returns zero when detected chip count differs from expected chip count",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual expected-one-actual-zero case from pinned count_asic_chips behavior"
+  }
+]
