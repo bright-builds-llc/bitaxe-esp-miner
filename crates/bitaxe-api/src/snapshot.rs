@@ -10,12 +10,15 @@ use bitaxe_config::{
 };
 use bitaxe_stratum::v1::state::MiningRuntimeState;
 
+use crate::BlockFoundNotificationState;
+
 /// Complete pure input snapshot for the initial AxeOS API contract slice.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ApiSnapshot {
     pub config: ConfigSnapshot,
     pub catalog: BoardCatalogEntry,
     pub mining: MiningRuntimeState,
+    pub block_found: BlockFoundNotificationState,
     pub asic: AsicSnapshot,
     pub platform: PlatformSnapshot,
     pub safe_telemetry: SafeTelemetrySnapshot,
@@ -31,6 +34,10 @@ impl ApiSnapshot {
             config: ConfigSnapshot::ultra_205(),
             catalog: ultra_205_catalog_entry(),
             mining: MiningRuntimeState::default(),
+            block_found: BlockFoundNotificationState {
+                block_found: 0,
+                show_new_block: false,
+            },
             asic: AsicSnapshot::chip_detect_only(),
             platform: PlatformSnapshot::safe_ultra_205(),
             safe_telemetry: SafeTelemetrySnapshot::unavailable_until_phase_6(),
@@ -179,6 +186,7 @@ mod tests {
         let config = snapshot.config;
         let catalog = snapshot.catalog;
         let mining = snapshot.mining;
+        let block_found = snapshot.block_found;
         let asic = snapshot.asic;
         let platform = snapshot.platform;
 
@@ -186,6 +194,8 @@ mod tests {
         assert_eq!(config.defaults.asic_model(), "BM1366");
         assert_eq!(catalog.board_version(), "205");
         assert_eq!(mining.counters.accepted, 0);
+        assert_eq!(block_found.block_found, 0);
+        assert!(!block_found.show_new_block);
         assert_eq!(asic.maybe_detected_chips, Some(1));
         assert_eq!(platform.hostname, "bitaxe");
     }

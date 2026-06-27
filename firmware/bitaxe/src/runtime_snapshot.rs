@@ -1,14 +1,103 @@
 //! Firmware collection boundary for pure AxeOS API response snapshots.
 
-use bitaxe_api::{ApiSnapshot, PlatformSnapshot};
+use std::sync::{Mutex, OnceLock};
+
+use bitaxe_api::{
+    apply_block_found_dismiss_effect, apply_mining_activity_effect, ApiSnapshot,
+    BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect,
+    MiningActivityEffect, PlatformSnapshot,
+};
+use bitaxe_stratum::v1::state::MiningRuntimeState;
 use esp_idf_svc::sys;
+
+static COMMAND_VISIBLE_STATE: OnceLock<Mutex<CommandVisibleState>> = OnceLock::new();
+
+#[derive(Debug, Clone, PartialEq)]
+struct CommandVisibleState {
+    mining: MiningRuntimeState,
+    identify: IdentifyMode,
+    block_found: BlockFoundNotificationState,
+}
+
+impl Default for CommandVisibleState {
+    fn default() -> Self {
+        Self {
+            mining: MiningRuntimeState::default(),
+            identify: IdentifyMode::Inactive,
+            block_found: BlockFoundNotificationState {
+                block_found: 0,
+                show_new_block: false,
+            },
+        }
+    }
+}
 
 /// Collects current firmware facts and overlays them on the safe Ultra 205 API
 /// snapshot used by the pure contract mappers.
 pub fn collect_api_snapshot() -> ApiSnapshot {
     let mut snapshot = ApiSnapshot::safe_ultra_205();
+    let command_state = command_visible_state();
+    snapshot.mining = command_state.mining;
+    snapshot.block_found = command_state.block_found;
     snapshot.platform = collect_platform_snapshot(snapshot.platform);
     snapshot
+}
+
+/// Returns the current command-visible mining state.
+pub fn mining_runtime_state() -> MiningRuntimeState {
+    command_visible_state().mining
+}
+
+/// Returns the current identify mode used to plan the next identify command.
+pub fn identify_mode() -> IdentifyMode {
+    command_visible_state().identify
+}
+
+/// Returns the current block-found notification state.
+pub fn block_found_notification_state() -> BlockFoundNotificationState {
+    command_visible_state().block_found
+}
+
+/// Applies an API-visible mining command effect.
+pub fn apply_mining_activity_command(effect: MiningActivityEffect) {
+    mutate_command_visible_state(|state| apply_mining_activity_effect(&mut state.mining, effect));
+}
+
+/// Applies an API-visible identify command effect.
+pub fn apply_identify_mode_command(effect: IdentifyModeEffect) {
+    mutate_command_visible_state(|state| {
+        state.identify = match effect {
+            IdentifyModeEffect::Enable { .. } => IdentifyMode::Active,
+            IdentifyModeEffect::Disable => IdentifyMode::Inactive,
+        };
+    });
+}
+
+/// Applies an API-visible block-found dismiss command effect.
+pub fn apply_block_found_dismiss_command(effect: BlockFoundDismissEffect) {
+    mutate_command_visible_state(|state| {
+        state.block_found = apply_block_found_dismiss_effect(effect);
+    });
+}
+
+fn command_visible_state() -> CommandVisibleState {
+    let state = COMMAND_VISIBLE_STATE.get_or_init(|| Mutex::new(CommandVisibleState::default()));
+    let Ok(state) = state.lock() else {
+        log::warn!("axeos_runtime_state=unavailable reason=mutex_poisoned");
+        return CommandVisibleState::default();
+    };
+
+    state.clone()
+}
+
+fn mutate_command_visible_state(mutate: impl FnOnce(&mut CommandVisibleState)) {
+    let state = COMMAND_VISIBLE_STATE.get_or_init(|| Mutex::new(CommandVisibleState::default()));
+    let Ok(mut state) = state.lock() else {
+        log::warn!("axeos_runtime_state=unavailable reason=mutex_poisoned");
+        return;
+    };
+
+    mutate(&mut state);
 }
 
 fn collect_platform_snapshot(mut platform: PlatformSnapshot) -> PlatformSnapshot {

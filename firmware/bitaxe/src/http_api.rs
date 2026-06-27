@@ -11,11 +11,11 @@ use bitaxe_api::{
     origin_gate_from_header, pause_mining_plan, phase05_routes, plan_http_access,
     plan_settings_patch_body, plan_settings_patch_body_size, plan_websocket_upgrade, restart_plan,
     resume_mining_plan, scoreboard_response, system_info_from_snapshot, unknown_api_route_response,
-    unsupported_update_response, BlockFoundNotificationState, CommandEffect, CommandPlan,
-    HttpAccessDecision, IdentifyMode, IdentifyModeEffect, OriginGate, PublicHttpResponse,
-    RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchPublicError,
-    SettingsPersistenceEffect, SettingsPersistencePlan, SettingsPublicResponse, WebSocketRouteKind,
-    WebSocketUpgradeDecision, LIVE_TELEMETRY_CADENCE_MS,
+    unsupported_update_response, CommandEffect, CommandPlan, HttpAccessDecision,
+    IdentifyModeEffect, OriginGate, PublicHttpResponse, RouteAccessInput,
+    SettingsPatchBodyDecision, SettingsPatchPublicError, SettingsPersistenceEffect,
+    SettingsPersistencePlan, SettingsPublicResponse, WebSocketRouteKind, WebSocketUpgradeDecision,
+    LIVE_TELEMETRY_CADENCE_MS,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
@@ -24,7 +24,10 @@ use esp_idf_svc::io::Write;
 use esp_idf_svc::sys;
 use serde::Serialize;
 
-use crate::runtime_snapshot::collect_api_snapshot;
+use crate::runtime_snapshot::{
+    apply_block_found_dismiss_command, apply_identify_mode_command, apply_mining_activity_command,
+    block_found_notification_state, collect_api_snapshot, identify_mode, mining_runtime_state,
+};
 use crate::{log_buffer, settings_adapter, websocket_api};
 
 type ApiRequest<'request, 'connection> = Request<&'request mut EspHttpConnection<'connection>>;
@@ -289,8 +292,8 @@ fn handle_pause<'request, 'connection>(
 fn handle_resume<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
-    let snapshot = collect_api_snapshot();
-    handle_command(request, resume_mining_plan(&snapshot.mining))
+    let mining = mining_runtime_state();
+    handle_command(request, resume_mining_plan(&mining))
 }
 
 fn handle_restart<'request, 'connection>(
@@ -302,17 +305,16 @@ fn handle_restart<'request, 'connection>(
 fn handle_identify<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
-    handle_command(request, identify_plan(IdentifyMode::Inactive))
+    handle_command(request, identify_plan(identify_mode()))
 }
 
 fn handle_block_found_dismiss<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
-    let state = BlockFoundNotificationState {
-        block_found: 0,
-        show_new_block: false,
-    };
-    handle_command(request, block_found_dismiss_plan(state))
+    handle_command(
+        request,
+        block_found_dismiss_plan(block_found_notification_state()),
+    )
 }
 
 fn handle_command<'request, 'connection>(
@@ -721,6 +723,7 @@ fn apply_hostname_effect(hostname: &str) {
 fn apply_command_effect(effect: CommandEffect) {
     match effect {
         CommandEffect::MiningActivity(effect) => {
+            apply_mining_activity_command(effect);
             log::info!(
                 "axeos_command_effect=mining_activity next_activity={:?}",
                 effect.next_activity
@@ -732,13 +735,16 @@ fn apply_command_effect(effect: CommandEffect) {
         }
         CommandEffect::Identify(effect) => match effect {
             IdentifyModeEffect::Enable { duration_ms } => {
+                apply_identify_mode_command(effect);
                 log::info!("axeos_command_effect=identify_enable duration_ms={duration_ms}");
             }
             IdentifyModeEffect::Disable => {
+                apply_identify_mode_command(effect);
                 log::info!("axeos_command_effect=identify_disable");
             }
         },
         CommandEffect::BlockFoundDismiss(effect) => {
+            apply_block_found_dismiss_command(effect);
             log::info!(
                 "axeos_command_effect=block_found_dismiss block_found={} show_new_block={}",
                 effect.next_state.block_found,

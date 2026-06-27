@@ -178,8 +178,8 @@ impl SystemInfoWire {
             mining_paused: mining_state.mining_paused,
             ap_enabled: numeric_bool(platform.ap_enabled),
             auto_fan_speed: numeric_bool(defaults.auto_fan_speed()),
-            show_new_block: false,
-            block_found: 0,
+            show_new_block: snapshot.block_found.show_new_block,
+            block_found: snapshot.block_found.block_found,
             frequency: f64::from(defaults.asic_frequency_mhz()),
             actual_frequency: telemetry.actual_frequency_mhz,
             core_voltage: defaults.asic_voltage_mv(),
@@ -326,6 +326,21 @@ mod tests {
             ],
         )
         .is_ok());
+    }
+
+    #[test]
+    fn system_info_wire_uses_block_found_notification_snapshot() {
+        // Arrange
+        let mut snapshot = ApiSnapshot::safe_ultra_205();
+        snapshot.block_found.block_found = 840_000;
+        snapshot.block_found.show_new_block = true;
+
+        // Act
+        let wire = SystemInfoWire::from_snapshot(&snapshot);
+
+        // Assert
+        assert_eq!(wire.block_found, 840_000);
+        assert!(wire.show_new_block);
     }
 
     #[test]

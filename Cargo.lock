@@ -176,6 +176,7 @@ dependencies = [
  "bitaxe-asic",
  "bitaxe-config",
  "bitaxe-core",
+ "bitaxe-stratum",
  "embedded-graphics",
  "embuild",
  "esp-idf-svc",
