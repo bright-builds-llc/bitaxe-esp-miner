@@ -203,6 +203,7 @@ name = "bitaxe-parity"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitaxe-api",
  "camino",
  "clap",
  "serde",

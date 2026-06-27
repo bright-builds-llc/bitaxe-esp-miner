@@ -1,0 +1,191 @@
+{
+  "metadata": {
+    "source": "reference/esp-miner/main/http_server/openapi.yaml plus Phase 05 Rust route shell",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "behavioral route/property manifest; no upstream source expression copied"
+  },
+  "rust_route_manifest_routes": [
+    {"method": "GET", "path": "/api/system/info"},
+    {"method": "PATCH", "path": "/api/system"},
+    {"method": "GET", "path": "/api/system/logs"},
+    {"method": "GET", "path": "/api/system/asic"},
+    {"method": "GET", "path": "/api/system/statistics"},
+    {"method": "GET", "path": "/api/system/scoreboard"},
+    {"method": "POST", "path": "/api/system/pause"},
+    {"method": "POST", "path": "/api/system/resume"},
+    {"method": "POST", "path": "/api/system/restart"},
+    {"method": "POST", "path": "/api/system/identify"},
+    {"method": "POST", "path": "/api/system/blockFound/dismiss"},
+    {"method": "POST", "path": "/api/system/OTA"},
+    {"method": "POST", "path": "/api/system/OTAWWW"},
+    {"method": "GET", "path": "/api/ws"},
+    {"method": "GET", "path": "/api/ws/live"}
+  ],
+  "schema_routes": [
+    {
+      "method": "GET",
+      "path": "/api/system/info",
+      "schema": "SystemInfo",
+      "required_properties": ["ASICModel", "hashRate_1m", "fanspeed", "fanrpm", "miningPaused", "sharesRejectedReasons", "poolDifficulty", "responseTime"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/asic",
+      "schema": "SystemASIC",
+      "required_properties": ["ASICModel", "deviceModel", "asicCount", "defaultFrequency", "frequencyOptions", "defaultVoltage", "voltageOptions"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/statistics",
+      "schema": "SystemStatistics",
+      "required_properties": ["currentTimestamp", "labels", "statistics"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/scoreboard",
+      "schema": "SystemScoreboardEntry",
+      "required_properties": ["difficulty", "job_id", "extranonce2", "ntime", "nonce", "version_bits"]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/system",
+      "schema": "Settings",
+      "required_properties": ["frequency", "coreVoltage", "hostname", "fanspeed", "autofanspeed", "statsFrequency"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/logs",
+      "schema": "text/plain",
+      "required_properties": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/pause",
+      "schema": "GenericResponse",
+      "required_properties": ["message"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/resume",
+      "schema": "GenericResponse",
+      "required_properties": ["message"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/restart",
+      "schema": "GenericResponse",
+      "required_properties": ["message"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/identify",
+      "schema": "GenericResponse",
+      "required_properties": ["message"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/blockFound/dismiss",
+      "schema": "BlockFoundDismiss",
+      "required_properties": ["blockFound", "showNewBlock", "message"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/OTA",
+      "schema": "Phase7OwnedUnsupportedUpdate",
+      "required_properties": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/OTAWWW",
+      "schema": "Phase7OwnedUnsupportedUpdate",
+      "required_properties": []
+    }
+  ],
+  "captured_response_checks": [
+    {
+      "name": "system_info_safe_ultra205",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/system-info-ultra205-safe.json",
+      "json_pointer": "",
+      "expected_kind": "object",
+      "required_properties": ["ASICModel", "hashRate_1m", "fanspeed", "fanrpm", "miningPaused", "sharesRejectedReasons", "poolDifficulty", "responseTime"]
+    },
+    {
+      "name": "asic_settings_safe_ultra205",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/asic-settings-ultra205.json",
+      "json_pointer": "",
+      "expected_kind": "object",
+      "required_properties": ["ASICModel", "deviceModel", "asicCount", "defaultFrequency", "frequencyOptions", "defaultVoltage", "voltageOptions"]
+    },
+    {
+      "name": "statistics_empty_compatible",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/statistics-empty-compatible.json",
+      "json_pointer": "",
+      "expected_kind": "object",
+      "required_properties": ["currentTimestamp", "labels", "statistics"]
+    },
+    {
+      "name": "scoreboard_empty",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/scoreboard-empty.json",
+      "json_pointer": "",
+      "expected_kind": "array",
+      "required_properties": []
+    },
+    {
+      "name": "settings_patch_errors",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/settings-patch-cases.json",
+      "json_pointer": "",
+      "expected_kind": "object",
+      "required_properties": ["valid", "unknown_only", "invalid_known", "invalid_json_public_error", "wrong_input_public_error"]
+    },
+    {
+      "name": "logs_download_headers",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/log-buffer-cases.json",
+      "json_pointer": "/download_headers",
+      "expected_kind": "object",
+      "required_properties": ["content_type", "content_disposition"]
+    },
+    {
+      "name": "logs_raw_websocket_payload",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/log-buffer-cases.json",
+      "json_pointer": "/raw_stream",
+      "expected_kind": "object",
+      "required_properties": ["payload", "json_enveloped"]
+    },
+    {
+      "name": "live_websocket_connect_frame",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/live-telemetry-cases.json",
+      "json_pointer": "/expected_connect_frame",
+      "expected_kind": "object",
+      "required_properties": ["event", "data"]
+    },
+    {
+      "name": "live_websocket_diff_frame",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/live-telemetry-cases.json",
+      "json_pointer": "/expected_diff_frame",
+      "expected_kind": "object",
+      "required_properties": ["event", "data"]
+    },
+    {
+      "name": "command_responses",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/command-responses.json",
+      "json_pointer": "",
+      "expected_kind": "object",
+      "required_properties": ["pause", "resume", "restart", "identify_on", "identify_off", "block_found_dismiss"]
+    }
+  ],
+  "firmware_smoke": {
+    "evidence_type": "firmware-smoke",
+    "status": "not-run",
+    "reason": "No live Ultra 205 API/WebSocket smoke was run by Phase 05 Plan 07; hardware smoke remains separate evidence."
+  }
+}

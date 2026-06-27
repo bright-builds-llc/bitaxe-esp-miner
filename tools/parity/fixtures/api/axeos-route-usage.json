@@ -1,0 +1,201 @@
+{
+  "metadata": {
+    "source": "reference/esp-miner/main/http_server/axe-os/src/app/services plus reference/esp-miner/main/filesystem.c",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "behavioral route usage fixture; no upstream source expression copied"
+  },
+  "service_calls": [
+    {
+      "surface": "system_info",
+      "source": "system.service.ts getInfo",
+      "method": "GET",
+      "path": "/api/system/info",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "asic_settings",
+      "source": "system.service.ts getAsicSettings",
+      "method": "GET",
+      "path": "/api/system/asic",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "statistics",
+      "source": "system.service.ts getStatistics",
+      "method": "GET",
+      "path": "/api/system/statistics",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "scoreboard",
+      "source": "system.service.ts getScoreboard",
+      "method": "GET",
+      "path": "/api/system/scoreboard",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "logs_download",
+      "source": "system.service.ts downloadLogs",
+      "method": "GET",
+      "path": "/api/system/logs",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "settings_patch",
+      "source": "system.service.ts updateSystem",
+      "method": "PATCH",
+      "path": "/api/system",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "pause",
+      "source": "system.service.ts pauseMining",
+      "method": "POST",
+      "path": "/api/system/pause",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "resume",
+      "source": "system.service.ts resumeMining",
+      "method": "POST",
+      "path": "/api/system/resume",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "restart",
+      "source": "system.service.ts restart",
+      "method": "POST",
+      "path": "/api/system/restart",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "identify",
+      "source": "system.service.ts identify",
+      "method": "POST",
+      "path": "/api/system/identify",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "block_found_dismiss",
+      "source": "system.service.ts dismissBlockFound",
+      "method": "POST",
+      "path": "/api/system/blockFound/dismiss",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "raw_log_websocket",
+      "source": "web-socket.service.ts",
+      "method": "GET",
+      "path": "/api/ws",
+      "evidence_type": "static-route",
+      "category": "websocket-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "live_telemetry_websocket",
+      "source": "live-data.service.ts",
+      "method": "GET",
+      "path": "/api/ws/live",
+      "evidence_type": "static-route",
+      "category": "websocket-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "firmware_ota",
+      "source": "system.service.ts performOTAUpdate",
+      "method": "POST",
+      "path": "/api/system/OTA",
+      "evidence_type": "static-route",
+      "category": "update-route",
+      "phase_owner": "phase07",
+      "phase05_behavior": "unsafe-success-blocked",
+      "counts_as_phase05_success": false
+    },
+    {
+      "surface": "axeos_otawww",
+      "source": "system.service.ts performWWWOTAUpdate",
+      "method": "POST",
+      "path": "/api/system/OTAWWW",
+      "evidence_type": "static-route",
+      "category": "update-route",
+      "phase_owner": "phase07",
+      "phase05_behavior": "unsafe-success-blocked",
+      "counts_as_phase05_success": false
+    },
+    {
+      "surface": "recovery_page",
+      "source": "reference/esp-miner/main/http_server/recovery_page.html and filesystem.c SPIFFS availability",
+      "method": "GET",
+      "path": "/recovery",
+      "evidence_type": "static-route",
+      "category": "recovery-route",
+      "phase_owner": "phase07",
+      "phase05_behavior": "packaging-pending",
+      "counts_as_phase05_success": false
+    },
+    {
+      "surface": "static_fallback",
+      "source": "filesystem.c SPIFFS availability and HTTP static serving fallback",
+      "method": "GET",
+      "path": "/*",
+      "evidence_type": "static-route",
+      "category": "static-fallback",
+      "phase_owner": "phase07",
+      "phase05_behavior": "packaging-pending",
+      "counts_as_phase05_success": false
+    }
+  ],
+  "static_packaging": {
+    "phase05_success_claim": false,
+    "phase07_owner": true,
+    "reason": "Phase 05 proves existing AxeOS API/log/WebSocket route usage and fail-closed update routes only; recovery/static filesystem packaging remains Phase 7 pending."
+  }
+}

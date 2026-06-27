@@ -2,11 +2,16 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 
 rust_binary(
     name = "report",
-    srcs = ["src/main.rs"],
+    srcs = [
+        "src/api_compare.rs",
+        "src/main.rs",
+    ],
+    compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_parity",
     data = ["//scripts:verify_reference_clean"],
     edition = "2021",
     deps = [
+        "//crates/bitaxe-api:bitaxe_api",
         "@crates//:anyhow",
         "@crates//:camino",
         "@crates//:clap",

@@ -10,6 +10,11 @@ use serde::Serialize;
 const BAZEL_REFERENCE_GUARD_TARGET: &str = "//scripts:verify_reference_clean";
 const DEFAULT_REFERENCE_GUARD_PATH: &str = "scripts/verify-reference-clean.sh";
 const DEFAULT_REFERENCE_DIR: &str = "reference/esp-miner";
+const DEFAULT_OPENAPI_PATH: &str = "reference/esp-miner/main/http_server/openapi.yaml";
+const DEFAULT_API_COMPARE_MANIFEST: &str = "tools/parity/fixtures/api/phase05-required-routes.json";
+const DEFAULT_AXEOS_ROUTE_USAGE: &str = "tools/parity/fixtures/api/axeos-route-usage.json";
+
+mod api_compare;
 
 #[derive(Debug, Parser)]
 #[command(name = "bitaxe-parity")]
@@ -22,6 +27,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum CliCommand {
     Report(ReportArgs),
+    ApiCompare(ApiCompareArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -34,6 +40,18 @@ struct ReportArgs {
 
     #[arg(long = "fail-on-invalid-verified")]
     fail_on_invalid_verified: bool,
+}
+
+#[derive(Debug, Parser)]
+struct ApiCompareArgs {
+    #[arg(long, default_value = DEFAULT_OPENAPI_PATH, value_parser = parse_utf8_path)]
+    openapi: Utf8PathBuf,
+
+    #[arg(long, default_value = DEFAULT_API_COMPARE_MANIFEST, value_parser = parse_utf8_path)]
+    route_manifest: Utf8PathBuf,
+
+    #[arg(long, default_value = DEFAULT_AXEOS_ROUTE_USAGE, value_parser = parse_utf8_path)]
+    static_usage: Utf8PathBuf,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -192,12 +210,41 @@ fn main() -> Result<()> {
             let request = ReportRequest::from(args);
             run_report(&request, &environment)?
         }
+        CliCommand::ApiCompare(args) => run_api_compare_command(args, &environment)?,
     };
 
     let mut stdout = io::stdout().lock();
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_api_compare_command(args: ApiCompareArgs, environment: &LocalEnvironment) -> Result<String> {
+    let openapi_path = environment.workspace_path(&args.openapi);
+    let route_manifest_path = environment.workspace_path(&args.route_manifest);
+    let static_usage_path = environment.workspace_path(&args.static_usage);
+
+    let openapi_yaml = std::fs::read_to_string(openapi_path.as_std_path())
+        .with_context(|| format!("failed to read OpenAPI contract {openapi_path}"))?;
+    let route_manifest_json = std::fs::read_to_string(route_manifest_path.as_std_path())
+        .with_context(|| format!("failed to read API compare manifest {route_manifest_path}"))?;
+    let static_usage_json = std::fs::read_to_string(static_usage_path.as_std_path())
+        .with_context(|| format!("failed to read AxeOS route usage fixture {static_usage_path}"))?;
+
+    let request = api_compare::ApiCompareRequest {
+        openapi_yaml: &openapi_yaml,
+        route_manifest_json: &route_manifest_json,
+        static_usage_json: &static_usage_json,
+    };
+    let loader = api_compare::WorkspaceFixtureLoader::new(environment.workspace_dir.clone());
+    let report = api_compare::run_api_compare(&request, &loader)?;
+    let output = api_compare::render_api_compare_report(&report);
+
+    if report.has_validation_errors() {
+        bail!("api compare failed:\n{output}");
+    }
+
+    Ok(output)
 }
 
 fn run_report(
