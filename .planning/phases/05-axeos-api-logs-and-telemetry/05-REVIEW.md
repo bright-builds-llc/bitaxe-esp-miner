@@ -1,6 +1,6 @@
 ---
 phase: 05-axeos-api-logs-and-telemetry
-reviewed: 2026-06-27T22:53:59Z
+reviewed: 2026-06-27T23:17:15Z
 depth: standard
 files_reviewed: 40
 files_reviewed_list:
@@ -54,79 +54,69 @@ status: issues_found
 
 # Phase 05: Code Review Report
 
-**Reviewed:** 2026-06-27T22:53:59Z
+**Reviewed:** 2026-06-27T23:17:15Z
 **Depth:** standard
 **Files Reviewed:** 40
 **Status:** issues_found
 
 ## Summary
 
-Re-reviewed the explicit Phase 05 source, fixture, firmware adapter, parity tooling, and parity documentation scope after code-review fixes. This review was materially informed by `AGENTS.md`, `AGENTS.bright-builds.md`, `standards-overrides.md`, `standards/index.md`, `standards/core/architecture.md`, `standards/core/code-shape.md`, `standards/core/testing.md`, `standards/core/verification.md`, and `standards/languages/rust.md`.
+Re-reviewed the explicit Phase 05 scope after iteration 2 fixes. This review was materially informed by `AGENTS.md`, `AGENTS.bright-builds.md`, `standards-overrides.md`, `standards/index.md`, `standards/core/architecture.md`, `standards/core/code-shape.md`, `standards/core/testing.md`, `standards/core/verification.md`, and `standards/languages/rust.md`.
 
-Prior `CR-01` is resolved: Origin handling now distinguishes missing, parsed, and invalid headers, and tests cover public named origins, public IPv4 origins, invalid origins, private origins, and WebSocket rejection. Prior `WR-01`, `WR-05`, and `WR-06` are resolved: live telemetry has a cadence task, API compare checks are schema-scoped, and failed/stale WebSocket sessions are unregistered. Prior `WR-02` was fixed for retained-history replay, but the raw log WebSocket now has no live broadcast path. Prior `WR-03` command-visible state is mostly resolved, but identify mode still ignores its advertised 30 second duration. Prior `WR-04` remains unsafe around NVS reload/persisted snapshot behavior.
+Prior `CR-01` remains resolved: Origin handling now distinguishes missing, parsed, invalid, public named, public IPv4, and private Origin cases for both HTTP and WebSocket gates. Prior remaining warnings are resolved in their direct failure modes: settings reload reuses the held NVS partition, normal raw log cadence broadcast exists, and identify mode now stores and checks a 30 second expiry. The second fix pass introduced or exposed the WebSocket shared-baseline edge cases below.
+
+Automated Bazel verification was not run because this re-review was constrained to review-only with `.planning/phases/05-axeos-api-logs-and-telemetry/05-REVIEW.md` as the only allowed write. Read-only checks confirmed the scoped JSON fixtures parse and the reviewed files are not Git-ignored.
 
 ## Warnings
 
-### WR-01: Settings PATCH Reload Re-Takes The Default NVS Partition After Commit
+### WR-01: New Live Telemetry Clients Reset The Shared Diff Baseline
 
-**File:** `firmware/bitaxe/src/settings_adapter.rs:80`
-**Issue:** `FirmwareSettingsAdapter::open()` takes the singleton default NVS partition at line 23 and stores it inside `self.nvs`. `reload()` then calls `EspDefaultNvsPartition::take()` again while the first partition is still owned by the same adapter. In `esp-idf-svc 0.52.1`, `take()` is guarded by a single `DEFAULT_TAKEN` flag and returns `ESP_ERR_INVALID_STATE` until the existing `NvsDefault` is dropped. That means a valid settings PATCH can write and commit NVS values, then fail at reload, return `Wrong API input`, and skip `apply_persisted_settings_writes()`. The client sees a failed request even though persistent settings may already have changed.
+**File:** `firmware/bitaxe/src/websocket_api.rs:118`
+**Issue:** `live_connect_frame()` uses the single route-level `LiveTelemetryPlanner` to build a new client's full connect frame. If an existing `/api/ws/live` client has baseline A, the runtime state changes to B, and a second live client connects before the 500 ms cadence tick, this call overwrites the shared baseline with B for all clients. The new client receives B, but the original client never receives the A-to-B diff.
 **Fix:**
 ```rust
-pub struct FirmwareSettingsAdapter {
-    partition: EspDefaultNvsPartition,
-    nvs: EspNvs<NvsDefault>,
-}
-
-pub fn open() -> Result<Self, SettingsAdapterFailure> {
-    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
-    let nvs = EspNvs::new(partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
-    Ok(Self { partition, nvs })
-}
-
-fn reload(&mut self) -> Result<(), SettingsAdapterFailure> {
-    let _reloaded = EspNvs::new(self.partition.clone(), NVS_NAMESPACE, false)
-        .map_err(settings_failure)?;
-    Ok(())
+// Keep connect-time full frames separate from the shared cadence baseline.
+pub fn live_connect_frame(current: Value) -> Option<Value> {
+    Some(bitaxe_api::live_telemetry_update_envelope(current))
 }
 ```
 
-Also make reload or startup populate the shared `NvsSnapshot` from actual NVS values, then add an adapter test/fake proving a committed PATCH returns success and is visible in the next API snapshot.
+Then initialize or clear the cadence planner only on zero-to-one and one-to-zero live-client transitions, or move to per-client live telemetry planners so each session has its own baseline. Add a test for "client 1 baseline A, state B, client 2 connects, next cadence still sends B diff to client 1."
 
-### WR-02: Raw Log WebSocket Clients Never Receive Live Log Chunks
+### WR-02: Log WebSocket Connect Drains Pending Chunks And Drops Them
 
-**File:** `firmware/bitaxe/src/http_api.rs:75`
-**Issue:** The `/api/ws` fix removed retained-history replay on connect, which resolves the old no-backlog violation. However, the only background loop now calls `broadcast_live_telemetry_cadence()` and `prune_stale_websocket_sessions()`. The log connect path at line 527 only initializes `websocket_api::raw_log_chunks(&buffer)` and discards the result, and `append_runtime_log_line()` does not notify WebSocket clients. As a result, accepted `/api/ws` clients receive neither retained history nor new live logs, so the Phase 05 raw log WebSocket route is effectively inert.
-**Fix:**
+**File:** `firmware/bitaxe/src/http_api.rs:540`
+**Issue:** On `/api/ws` connect, the handler calls `websocket_api::raw_log_chunks(&buffer)` and discards the returned chunks. That is safe only for the first client when the stream is inactive. If a log line is appended after an existing client is connected but before the next cadence broadcast, a second client connecting during that interval drains the shared cursor and drops the pending live log for the already-connected client.
+**Fix:** Replace the connect-time drain with a state update that only establishes the baseline when the log route transitions from zero clients to one client. Do not call a draining API from the connect path unless the returned chunks are intentionally broadcast.
+
 ```rust
-fn live_telemetry_cadence_loop(server_addr: usize) {
-    let server = server_addr as sys::httpd_handle_t;
-    loop {
-        std::thread::sleep(Duration::from_millis(LIVE_TELEMETRY_CADENCE_MS));
-        broadcast_live_telemetry_cadence(server);
-        broadcast_raw_log_chunks(server);
-        prune_stale_websocket_sessions(server);
+match route {
+    WebSocketRouteKind::Logs => {
+        websocket_api::log_client_connected(&log_buffer::retained_log_buffer());
+        sys::ESP_OK
     }
-}
-
-fn broadcast_raw_log_chunks(server: sys::httpd_handle_t) {
-    let buffer = log_buffer::retained_log_buffer();
-    for chunk in websocket_api::raw_log_chunks(&buffer) {
-        broadcast_websocket_text_frame(server, WebSocketRouteKind::Logs, &chunk);
-    }
+    WebSocketRouteKind::LiveTelemetry => { /* unchanged full-frame send */ }
 }
 ```
 
-Keep the baseline-at-current-end behavior on connect, and add a firmware adapter test or live smoke proving an old retained line is not sent while a new appended line is sent to `/api/ws`.
+Add a regression test for "client 1 connected, one line pending, client 2 connects, next raw-log cadence still emits the pending line."
 
-### WR-03: Identify Mode Ignores The Advertised 30 Second Duration
+### WR-03: Log WebSocket Unregister Can Rewind The Shared Cursor
 
-**File:** `firmware/bitaxe/src/runtime_snapshot.rs:69`
-**Issue:** `identify_plan()` returns `IdentifyModeEffect::Enable { duration_ms: 30_000 }` and the public response says the device says "Hi!" for 30 seconds, but the firmware state application only sets `IdentifyMode::Active` and drops `duration_ms`. There is no timer, deadline, or expiry check, so the next identify request after 30 seconds still sees active mode and disables it instead of starting a fresh 30 second identify window. This leaves the command-visible state inconsistent with the response contract.
-**Fix:** Store an expiry deadline in `CommandVisibleState` or schedule a timer after the response is sent. `identify_mode()` should return `Inactive` once the deadline has passed, and explicit disable should cancel the pending expiry. Add a focused test for enable, post-duration expiry, and explicit disable before expiry.
+**File:** `firmware/bitaxe/src/websocket_api.rs:96`
+**Issue:** `unregister_client()` updates the raw log planner with `RetainedLogBuffer::new()`. When one log client drops while another remains connected, `set_active_client_count()` sees an empty buffer with `total_written() == 0` and can clamp `next_abs` back to zero. The next broadcast with the real retained buffer can replay old retained logs to the remaining client instead of only new live lines.
+**Fix:** Do not update the log planner with a synthetic empty buffer. Either leave the planner untouched during unregister and let the next `raw_log_chunks(&actual_buffer)` call reconcile the real client count, or pass the current retained buffer into unregister.
+
+```rust
+pub fn unregister_client(session: i32) {
+    // remove session sets only; do not mutate RawLogStreamPlanner with an empty buffer
+}
+```
+
+Add a regression test for "two log clients active, stream cursor after line N, one unregisters, next broadcast does not replay lines before N."
 
 ---
 
-_Reviewed: 2026-06-27T22:53:59Z_
+_Reviewed: 2026-06-27T23:17:15Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_
