@@ -148,6 +148,14 @@ pub fn apply_mining_activity_effect(state: &mut MiningRuntimeState, effect: Mini
     state.set_mining_activity(effect.next_activity);
 }
 
+/// Applies a pure block-found dismiss effect.
+#[must_use]
+pub const fn apply_block_found_dismiss_effect(
+    effect: BlockFoundDismissEffect,
+) -> BlockFoundNotificationState {
+    effect.next_state
+}
+
 fn message_response(message: &'static str) -> Value {
     json!({ "message": message })
 }
@@ -159,9 +167,10 @@ mod tests {
     use serde_json::Value;
 
     use crate::commands::{
-        apply_mining_activity_effect, block_found_dismiss_plan, identify_plan, pause_mining_plan,
-        restart_plan, resume_mining_plan, BlockFoundNotificationState, CommandEffect, IdentifyMode,
-        IdentifyModeEffect, IDENTIFY_DURATION_MS,
+        apply_block_found_dismiss_effect, apply_mining_activity_effect, block_found_dismiss_plan,
+        identify_plan, pause_mining_plan, restart_plan, resume_mining_plan,
+        BlockFoundNotificationState, CommandEffect, IdentifyMode, IdentifyModeEffect,
+        IDENTIFY_DURATION_MS,
     };
 
     #[derive(Debug, Deserialize)]
@@ -281,6 +290,121 @@ mod tests {
                     show_new_block: false,
                 },
             })
+        );
+    }
+
+    #[test]
+    fn pause_effect_only_changes_visible_activity_for_active_mining_state() {
+        // Arrange
+        let mut state = MiningRuntimeState {
+            mining_activity: MiningActivityStatus::Active,
+            work_submission: WorkSubmissionGate::Ready,
+            ..Default::default()
+        };
+
+        // Act
+        let plan = pause_mining_plan();
+        let CommandEffect::MiningActivity(effect) = plan.effect else {
+            panic!("pause should plan a mining activity effect");
+        };
+        apply_mining_activity_effect(&mut state, effect);
+
+        // Assert
+        assert_eq!(state.mining_activity, MiningActivityStatus::Paused);
+        assert_eq!(state.work_submission, WorkSubmissionGate::Ready);
+    }
+
+    #[test]
+    fn pause_effect_only_changes_visible_activity_for_safe_blocked_state() {
+        // Arrange
+        let mut state = MiningRuntimeState {
+            mining_activity: MiningActivityStatus::SafeBlocked,
+            work_submission: WorkSubmissionGate::Blocked,
+            ..Default::default()
+        };
+
+        // Act
+        let plan = pause_mining_plan();
+        let CommandEffect::MiningActivity(effect) = plan.effect else {
+            panic!("pause should plan a mining activity effect");
+        };
+        apply_mining_activity_effect(&mut state, effect);
+
+        // Assert
+        assert_eq!(state.mining_activity, MiningActivityStatus::Paused);
+        assert_eq!(state.work_submission, WorkSubmissionGate::Blocked);
+    }
+
+    #[test]
+    fn resume_effect_restores_active_only_when_prior_gate_was_ready() {
+        // Arrange
+        let mut state = MiningRuntimeState {
+            mining_activity: MiningActivityStatus::Paused,
+            work_submission: WorkSubmissionGate::Ready,
+            ..Default::default()
+        };
+
+        // Act
+        let plan = resume_mining_plan(&state);
+        let CommandEffect::MiningActivity(effect) = plan.effect else {
+            panic!("resume should plan a mining activity effect");
+        };
+        apply_mining_activity_effect(&mut state, effect);
+
+        // Assert
+        assert_eq!(state.mining_activity, MiningActivityStatus::Active);
+        assert_eq!(state.work_submission, WorkSubmissionGate::Ready);
+    }
+
+    #[test]
+    fn resume_effect_restores_safe_blocked_when_prior_gate_was_blocked() {
+        // Arrange
+        let mut state = MiningRuntimeState {
+            mining_activity: MiningActivityStatus::Paused,
+            work_submission: WorkSubmissionGate::Blocked,
+            ..Default::default()
+        };
+
+        // Act
+        let plan = resume_mining_plan(&state);
+        let CommandEffect::MiningActivity(effect) = plan.effect else {
+            panic!("resume should plan a mining activity effect");
+        };
+        apply_mining_activity_effect(&mut state, effect);
+
+        // Assert
+        assert_eq!(state.mining_activity, MiningActivityStatus::SafeBlocked);
+        assert_eq!(state.work_submission, WorkSubmissionGate::Blocked);
+    }
+
+    #[test]
+    fn block_found_dismiss_effect_is_idempotent_for_repeated_requests() {
+        // Arrange
+        let initial = BlockFoundNotificationState {
+            block_found: 840_000,
+            show_new_block: true,
+        };
+        let first_plan = block_found_dismiss_plan(initial);
+        let CommandEffect::BlockFoundDismiss(first_effect) = first_plan.effect else {
+            panic!("block-found dismiss should plan a block-found effect");
+        };
+
+        // Act
+        let first_state = apply_block_found_dismiss_effect(first_effect);
+        let second_plan = block_found_dismiss_plan(first_state);
+        let CommandEffect::BlockFoundDismiss(second_effect) = second_plan.effect else {
+            panic!("block-found dismiss should plan a block-found effect");
+        };
+        let second_state = apply_block_found_dismiss_effect(second_effect);
+
+        // Assert
+        assert_eq!(first_state, second_state);
+        assert_eq!(
+            second_state,
+            BlockFoundNotificationState {
+                block_found: 840_000,
+                show_new_block: false,
+            }
         );
     }
 }
