@@ -79,6 +79,10 @@ impl MiningWorkQueue {
 
     pub fn enqueue_work(&mut self, work: MiningWork) -> Result<(), StratumV1Error> {
         let asic_job_id = work.asic_job_id;
+        if work.clean_jobs {
+            self.clear_jobs();
+        }
+
         self.queue.enqueue(work)?;
         self.valid_jobs.insert(asic_job_id);
         Ok(())
@@ -190,7 +194,37 @@ mod work_queue_tests {
         assert!(!queue.valid_jobs().contains(stale_job_id));
     }
 
+    #[test]
+    fn mining_work_queue_enqueue_clean_jobs_replaces_stale_work_and_valid_jobs() {
+        // Arrange
+        let mut queue = MiningWorkQueue::new();
+        let stale_job_id = Bm1366JobId::new(0x28);
+        let clean_job_id = Bm1366JobId::new(0x30);
+        queue
+            .enqueue_work(sample_work(stale_job_id.raw()))
+            .expect("stale work should enqueue");
+
+        // Act
+        queue
+            .enqueue_work(sample_work_with_clean_jobs(clean_job_id.raw(), true))
+            .expect("clean work should replace stale work");
+
+        // Assert
+        assert_eq!(queue.len(), 1);
+        assert!(!queue.valid_jobs().contains(stale_job_id));
+        assert!(queue.valid_jobs().contains(clean_job_id));
+        let remaining = queue
+            .dequeue_work()
+            .expect("clean work should be the only queued item");
+        assert_eq!(remaining.asic_job_id, clean_job_id);
+        assert!(queue.is_empty());
+    }
+
     fn sample_work(job_id: u8) -> MiningWork {
+        sample_work_with_clean_jobs(job_id, false)
+    }
+
+    fn sample_work_with_clean_jobs(job_id: u8, clean_jobs: bool) -> MiningWork {
         MiningWorkBuilder::new(
             MiningNotify {
                 job_id: format!("job-{job_id}"),
@@ -201,7 +235,7 @@ mod work_queue_tests {
                 version: 0x2000_0004,
                 nbits: 0x1705_ae3a,
                 ntime: 0x6470_25b5,
-                clean_jobs: false,
+                clean_jobs,
             },
             ExtranonceAssignment {
                 extranonce1: "4de05269".to_owned(),
