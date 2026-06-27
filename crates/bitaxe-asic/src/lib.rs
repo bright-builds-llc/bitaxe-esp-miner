@@ -8,8 +8,8 @@ pub use error::Bm1366ProtocolFault;
 /// ASIC runtime status contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AsicRuntimeStatus {
-    /// ASIC behavior is deferred to Phase 3.
-    DeferredUntilPhase3,
+    /// ASIC behavior is available only through the fail-closed diagnostic gate.
+    FailClosedDiagnosticGate,
 }
 
 #[cfg(test)]
@@ -29,15 +29,15 @@ mod tests {
     };
 
     #[test]
-    fn asic_runtime_status_defers_active_behavior_until_phase_3() {
+    fn asic_runtime_status_reports_fail_closed_diagnostic_gate() {
         // Arrange
-        let status = AsicRuntimeStatus::DeferredUntilPhase3;
+        let status = AsicRuntimeStatus::FailClosedDiagnosticGate;
 
         // Act
         let observed = status;
 
         // Assert
-        assert_eq!(observed, AsicRuntimeStatus::DeferredUntilPhase3);
+        assert_eq!(observed, AsicRuntimeStatus::FailClosedDiagnosticGate);
     }
 
     #[test]
