@@ -70,5 +70,68 @@
     "derivation": "manual chip-detect success case from pinned init and chip-count behavior",
     "expected_status": "ChipDetectOnly",
     "expected_detected_status": "ChipDetectedNoMining"
+  },
+  {
+    "id": "accepted-485-mhz-frequency-decision",
+    "kind": "frequency_transition_decision",
+    "checklist_ids": ["ASIC-006", "ASIC-007", "ASIC-008"],
+    "source_file": "reference/esp-miner/components/asic/bm1366.c",
+    "source_behavior": "BM1366_send_hash_frequency accepts Ultra 205 default 485 MHz and writes frequency register 0x08 through a BM1366 command frame",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual metadata case tied to Phase 2 validation and pinned BM1366 frequency command behavior",
+    "frequency_mhz": 485,
+    "register_hex": "0x08",
+    "expected_command": "SetFrequency",
+    "effect_status": "MissingHardwareEvidence"
+  },
+  {
+    "id": "accepted-1200-mv-voltage-decision",
+    "kind": "voltage_transition_decision",
+    "checklist_ids": ["ASIC-007", "ASIC-008"],
+    "source_file": "reference/esp-miner/main/device_config.h",
+    "source_behavior": "Ultra 205 BM1366 catalog accepts 1200 mV as the default voltage option, but this phase emits pure data only",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual metadata case tied to Phase 2 voltage validation",
+    "voltage_mv": 1200,
+    "expected_command": null,
+    "parity_status": "ImplementedNotVerified"
+  },
+  {
+    "id": "rejected-390-mhz-frequency-decision",
+    "kind": "frequency_transition_rejection",
+    "checklist_ids": ["ASIC-007"],
+    "source_file": "reference/esp-miner/main/device_config.h",
+    "source_behavior": "Ultra 205 BM1366 frequency options reject 390 MHz because it is absent from the catalog option list",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual invalid-value metadata case tied to Phase 2 validation",
+    "frequency_mhz": 390,
+    "expected_error": "InvalidEnum"
+  },
+  {
+    "id": "rejected-1400-mv-voltage-decision",
+    "kind": "voltage_transition_rejection",
+    "checklist_ids": ["ASIC-007"],
+    "source_file": "reference/esp-miner/main/device_config.h",
+    "source_behavior": "Ultra 205 BM1366 voltage options reject 1400 mV because it is absent from the catalog option list",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual invalid-value metadata case tied to Phase 2 validation",
+    "voltage_mv": 1400,
+    "expected_error": "InvalidEnum"
+  },
+  {
+    "id": "unverified-hardware-effect-status",
+    "kind": "evidence_status",
+    "checklist_ids": ["ASIC-007", "ASIC-008"],
+    "source_file": "docs/adr/0012-parity-verification-evidence.md",
+    "source_behavior": "hardware-sensitive frequency and voltage transition effects cannot be marked verified without Ultra 205 hardware smoke evidence",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "project evidence policy metadata; not upstream source expression",
+    "derivation": "manual policy fixture tied to ADR-0012",
+    "effect_status": "MissingHardwareEvidence",
+    "parity_status": "ImplementedNotVerified"
   }
 ]

@@ -5,6 +5,7 @@ rust_library(
     srcs = [
         "src/bm1366/crc.rs",
         "src/bm1366/command.rs",
+        "src/bm1366/frequency_voltage.rs",
         "src/bm1366/init_plan.rs",
         "src/bm1366/observation.rs",
         "src/bm1366/packet.rs",
