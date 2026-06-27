@@ -3,6 +3,11 @@ linker = "ldproxy"
 
 [env]
 MCU = "esp32s3"
+ESP_IDF_SDKCONFIG = "firmware/bitaxe/sdkconfig"
+ESP_IDF_SDKCONFIG_DEFAULTS = "firmware/bitaxe/sdkconfig.defaults"
+ESP_IDF_SYS_ROOT_CRATE = "bitaxe-firmware"
+ESP_IDF_TOOLS_INSTALL_DIR = "workspace"
+ESP_IDF_VERSION = "tag:v5.5.4"
 
 [unstable]
 build-std = ["std", "panic_abort"]

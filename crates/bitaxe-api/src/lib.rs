@@ -9,6 +9,7 @@ pub mod asic;
 pub mod commands;
 pub mod logs;
 pub mod mining;
+pub mod route_shell;
 pub mod scoreboard;
 pub mod settings;
 pub mod snapshot;
@@ -29,6 +30,12 @@ pub use logs::{
     DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
 };
 pub use mining::{mining_state_from_runtime, MiningStateWire, SharesRejectedReasonWire};
+pub use route_shell::{
+    maybe_origin_ip_from_header, phase05_routes, plan_http_access, plan_websocket_upgrade,
+    unknown_api_route_response, unsupported_update_response, AxeosRoute, HttpAccessDecision,
+    PublicHttpResponse, RouteAccessInput, RouteKind, RouteMethod, WebSocketClientRegistrationPlan,
+    WebSocketRouteKind, WebSocketUpgradeDecision, UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
+};
 pub use scoreboard::{scoreboard_response, ScoreboardEntry, ScoreboardEntryWire};
 pub use settings::{
     execute_settings_persistence_plan, plan_settings_patch_body, plan_settings_patch_value,

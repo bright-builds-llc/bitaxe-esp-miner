@@ -172,6 +172,7 @@ name = "bitaxe-firmware"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitaxe-api",
  "bitaxe-asic",
  "bitaxe-config",
  "bitaxe-core",
@@ -180,6 +181,8 @@ dependencies = [
  "esp-idf-svc",
  "esp-idf-sys",
  "log",
+ "serde",
+ "serde_json",
  "ssd1306",
 ]
 

@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+bitaxe-api = { path = "../../crates/bitaxe-api" }
 bitaxe-asic = { path = "../../crates/bitaxe-asic" }
 bitaxe-config = { path = "../../crates/bitaxe-config" }
 bitaxe-core = { path = "../../crates/bitaxe-core" }
@@ -13,6 +14,8 @@ embedded-graphics.workspace = true
 esp-idf-svc.workspace = true
 esp-idf-sys.workspace = true
 log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 ssd1306.workspace = true
 
 [build-dependencies]

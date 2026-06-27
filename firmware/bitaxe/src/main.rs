@@ -5,6 +5,8 @@ use esp_idf_svc::{hal::peripherals::Peripherals, sys};
 
 mod asic_adapter;
 mod display_adapter;
+mod http_api;
+mod runtime_snapshot;
 
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
 const ESP_IDF_VERSION: &str = "v5.5.4";
@@ -65,6 +67,9 @@ fn main() -> anyhow::Result<()> {
         }
     }
     asic_adapter::publish_mining_loop_blocked_status("hardware_evidence_ack_missing");
+    if let Err(error) = http_api::start_http_api() {
+        log::warn!("axeos_api_route_shell=unavailable error={error:#}");
+    }
     log::info!("reset_reason={}", reset_reason());
     log::info!("partition={}", partition_label());
     log::info!("psram_status={}", psram_status());
