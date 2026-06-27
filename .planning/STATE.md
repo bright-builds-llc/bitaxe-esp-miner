@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-06-27T20:11:03.820Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-06-27T20:29:02.360Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 29
-  completed_plans: 24
-  percent: 83
+  completed_plans: 25
+  percent: 86
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 05 (axeos-api-logs-and-telemetry) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-06-27
 
@@ -76,6 +76,7 @@ Progress: [██████████] 100%
 | Phase 04-stratum-v1-and-first-mining-loop P04 | 10 min | 3 tasks | 10 files |
 | Phase 05-axeos-api-logs-and-telemetry P01 | 11 min | 2 tasks | 9 files |
 | Phase 05-axeos-api-logs-and-telemetry P02 | 10 min | 2 tasks | 4 files |
+| Phase 05-axeos-api-logs-and-telemetry P03 | 12 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,9 @@ Recent decisions affecting current work:
 - [Phase 05-axeos-api-logs-and-telemetry]: Keep bitaxe-config as the only settings validation authority; bitaxe-api only parses JSON, ignores unknown fields, and maps public errors.
 - [Phase 05-axeos-api-logs-and-telemetry]: Require write, commit, and reload completion before the settings route can produce an empty public success response.
 - [Phase 05-axeos-api-logs-and-telemetry]: Represent hostname live apply as a best-effort post-persistence effect, not as a validation or persistence prerequisite.
+- [Phase 05-axeos-api-logs-and-telemetry]: System, ASIC, mining, statistics, and scoreboard mappers stay pure and do not introduce ESP-IDF, HTTP, NVS, file, or hardware effects.
+- [Phase 05-axeos-api-logs-and-telemetry]: Mining-visible share counters, rejected reasons, pool difficulty, fallback state, hashrate, and blocked status derive from MiningRuntimeState.
+- [Phase 05-axeos-api-logs-and-telemetry]: Statistics and scoreboard empty states are explicit compatible response shapes, not fake historical mining data.
 
 ### Pending Todos
 
@@ -185,6 +189,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T20:11:03.817Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-06-27T20:28:48.029Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
