@@ -6,6 +6,7 @@
 //! - parity checklist rows `ASIC-001`, `ASIC-002`, and `ASIC-006`
 
 pub mod adapter_gate;
+pub mod chip_detect;
 pub mod command;
 pub mod crc;
 pub mod frequency_voltage;

@@ -8,14 +8,12 @@
 use crate::Bm1366ProtocolFault;
 
 use super::{
-    crc::crc5,
-    observation::{AsicIndex, AsicInitStatus, Bm1366Observation, ChipId},
+    chip_detect::parse_chip_id_response,
+    observation::{AsicInitStatus, Bm1366Observation},
     packet::FrameBytes,
     result::{
-        parse_bm1366_result_frame, Bm1366ParsedResult, Bm1366ValidJobIds, BM1366_RECEIVE_PREAMBLE,
-        BM1366_RESULT_FRAME_LEN,
+        parse_bm1366_result_frame, Bm1366ParsedResult, Bm1366ValidJobIds, BM1366_RESULT_FRAME_LEN,
     },
-    BM1366_CHIP_ID,
 };
 
 use super::command::{Bm1366AdapterAction, Bm1366Command, ADAPTER_TIMEOUT_MS};
@@ -341,37 +339,4 @@ fn verify_expected_write<I>(
             "transcript_write_mismatch",
         );
     }
-}
-
-fn parse_chip_id_response(bytes: &[u8]) -> Result<Bm1366Observation, Bm1366ProtocolFault> {
-    if bytes.len() != BM1366_RESULT_FRAME_LEN {
-        return Err(Bm1366ProtocolFault::InvalidLength {
-            expected: BM1366_RESULT_FRAME_LEN,
-            actual: bytes.len(),
-        });
-    }
-
-    let actual_preamble = u16::from_be_bytes([bytes[0], bytes[1]]);
-    if actual_preamble != BM1366_RECEIVE_PREAMBLE {
-        return Err(Bm1366ProtocolFault::BadPreamble {
-            expected: BM1366_RECEIVE_PREAMBLE,
-            actual: actual_preamble,
-        });
-    }
-
-    if crc5(&bytes[2..]) != 0 {
-        return Err(Bm1366ProtocolFault::BadCrc);
-    }
-
-    let chip_id = u16::from_be_bytes([bytes[2], bytes[3]]);
-    if chip_id != BM1366_CHIP_ID {
-        return Err(Bm1366ProtocolFault::PreflightMissing {
-            reason: "unexpected_chip_id",
-        });
-    }
-
-    Ok(Bm1366Observation::ChipId {
-        chip_id: ChipId::new(chip_id),
-        asic_index: AsicIndex::new(0),
-    })
 }

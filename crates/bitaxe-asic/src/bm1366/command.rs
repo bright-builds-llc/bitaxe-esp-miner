@@ -17,6 +17,7 @@ use super::{
         frequency_payload, hash_counting_payload, read_register_payload, set_address_payload,
         version_mask_payload, write_register_payload,
     },
+    result::BM1366_RESULT_FRAME_LEN,
     work::Bm1366WorkPayload,
 };
 
@@ -162,6 +163,7 @@ pub enum Bm1366AdapterAction {
     ClearRx,
     WriteFrame(FrameBytes),
     ReadExact { len: usize, timeout_ms: u32 },
+    ReadChipId { expected_chips: u8, timeout_ms: u32 },
     DelayMs(u32),
     ResetPulse { low_ms: u32, high_ms: u32 },
     HoldResetLow,
@@ -174,7 +176,7 @@ impl Bm1366AdapterAction {
     pub const WAIT_TX_DONE: Self = Self::WaitTxDone { timeout_ms: 1_000 };
     /// Adapter constant: ReadExact len 11 with timeout_ms 1_000 for result frames.
     pub const READ_RESULT_FRAME: Self = Self::ReadExact {
-        len: 11,
+        len: BM1366_RESULT_FRAME_LEN,
         timeout_ms: 1_000,
     };
     /// Adapter constant: ResetPulse low_ms 100 and high_ms 100.
@@ -187,8 +189,16 @@ impl Bm1366AdapterAction {
     #[must_use]
     pub const fn read_result_frame() -> Self {
         Self::ReadExact {
-            len: 11,
+            len: BM1366_RESULT_FRAME_LEN,
             timeout_ms: 1_000,
+        }
+    }
+
+    #[must_use]
+    pub const fn read_chip_id_response(expected_chips: u8) -> Self {
+        Self::ReadChipId {
+            expected_chips,
+            timeout_ms: ADAPTER_TIMEOUT_MS,
         }
     }
 

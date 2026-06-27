@@ -49,11 +49,8 @@ impl Bm1366InitPlan {
         };
 
         actions.extend(read_chip_id_actions);
-        actions.push(Bm1366AdapterAction::read_result_frame());
-        actions.push(Bm1366AdapterAction::PublishStatus(
-            AsicInitStatus::ChipDetectedNoMining {
-                chips: preflight.expected_chips(),
-            },
+        actions.push(Bm1366AdapterAction::read_chip_id_response(
+            preflight.expected_chips(),
         ));
 
         Bm1366InitDecision {
@@ -410,7 +407,7 @@ mod tests {
     };
 
     #[test]
-    fn init_plan_chip_detect_only_emits_reset_default_baud_read_chip_id_and_exact_read_actions() {
+    fn init_plan_chip_detect_only_emits_reset_default_baud_and_validating_chip_id_read_actions() {
         // Arrange
         let preflight = Bm1366Preflight::chip_detect(
             BoardPreflightEvidence::active_ultra_205(),
@@ -441,12 +438,11 @@ mod tests {
             .contains(&Bm1366AdapterAction::WriteFrame(read_chip_id)));
         assert!(decision
             .actions()
-            .contains(&Bm1366AdapterAction::read_result_frame()));
-        assert!(decision
-            .actions()
-            .contains(&Bm1366AdapterAction::PublishStatus(
-                AsicInitStatus::ChipDetectedNoMining { chips: 1 }
-            )));
+            .contains(&Bm1366AdapterAction::read_chip_id_response(1)));
+        assert!(!decision.actions().iter().any(|action| matches!(
+            action,
+            Bm1366AdapterAction::PublishStatus(AsicInitStatus::ChipDetectedNoMining { .. })
+        )));
     }
 
     #[test]

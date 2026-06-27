@@ -4,6 +4,7 @@ rust_library(
     name = "bitaxe_asic",
     srcs = [
         "src/bm1366/adapter_gate.rs",
+        "src/bm1366/chip_detect.rs",
         "src/bm1366/crc.rs",
         "src/bm1366/command.rs",
         "src/bm1366/frequency_voltage.rs",
