@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-06-27T00:57:50.417Z"
+status: verifying
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-06-27T01:21:42.948Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 18
-  completed_plans: 17
-  percent: 94
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 Phase: 03 (BM1366 ASIC Protocol And Safe Initialization) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-27
 
 Progress: [██████████] 100%
@@ -35,6 +35,7 @@ Progress: [██████████] 100%
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 13
 - Average duration: 10 min
 - Total execution time: 1.5 hours
@@ -46,6 +47,7 @@ Progress: [██████████] 100%
 | 2 | 4 | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: 01-05 (8 min), 01-06 (16 min), 01-07 (11 min), 01-08 (20 min), 01-09 (10 min)
 - Trend: Phase 1 plan execution complete; post-pivot Ultra 205 hardware smoke passed after ADR-0014.
 
@@ -65,6 +67,7 @@ Progress: [██████████] 100%
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P02 | 10 min | 2 tasks | 6 files |
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P03 | 16 min | 2 tasks | 12 files |
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P04 | 14 min | 2 tasks | 5 files |
+| Phase 03-bm1366-asic-protocol-and-safe-initialization P05 | 5 | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -131,6 +134,10 @@ Recent decisions affecting current work:
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Use Phase 2 Ultra 205 BM1366 catalog/default facts as init preflight gates instead of duplicating board identity in firmware.
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Keep voltage transitions as pure data only and mark both frequency and voltage effects below verified until Ultra 205 hardware evidence exists.
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Use an independently written pure PLL search for BM1366 frequency command data while preserving MissingHardwareEvidence status.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Use the safe skip path for the human-gated checkpoint because no live Ultra 205 flashing/monitoring approval or port was provided.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Do not run flash, monitor, chip-detect, or port detection during Plan 03-05 checkpoint continuation.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Keep phase-03-ultra-205-bm1366-chip-detect.md concluded as not run - hardware verification pending.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Keep ASIC-002 through ASIC-007 below verified until board-named Ultra 205 chip-detect hardware-smoke evidence exists.
 
 ### Pending Todos
 
@@ -143,6 +150,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T00:57:50.404Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-06-27T01:21:42.945Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None

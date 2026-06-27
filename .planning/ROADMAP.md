@@ -95,7 +95,7 @@ Plans:
 - [x] 03-02-PLAN.md - Implement BM1366 diagnostic work encoding, job ID semantics, result parsing, and nonce/register fault handling.
 - [x] 03-03-PLAN.md - Add active BM1366 dispatch, semantic command/observation types, and fake UART transcript coverage.
 - [x] 03-04-PLAN.md - Implement fail-closed staged init planning and pure frequency/voltage transition decisions.
-- [ ] 03-05-PLAN.md - Add the narrow firmware UART/reset/status adapter, evidence records, checklist updates, and human-gated chip-detect smoke review.
+- [x] 03-05-PLAN.md - Add the narrow firmware UART/reset/status adapter, evidence records, checklist updates, and human-gated chip-detect smoke review.
 **Verification expectations**: Pure unit and golden tests for BM1366 codecs, fake UART adapter tests, staged hardware-smoke evidence for reset/init/work-send/result-receive, and explicit unverified status for frequency/voltage transitions until hardware evidence exists.
 **Research flags**: Needs phase research for BM1366 sequencing, timing, reset behavior, voltage dependencies, UART behavior, and hardware evidence planning.
 
