@@ -1,6 +1,6 @@
 ---
 phase: 05-axeos-api-logs-and-telemetry
-reviewed: 2026-06-27T22:13:49Z
+reviewed: 2026-06-27T22:53:59Z
 depth: standard
 files_reviewed: 40
 files_reviewed_list:
@@ -45,115 +45,88 @@ files_reviewed_list:
   - tools/parity/src/api_compare.rs
   - tools/parity/src/main.rs
 findings:
-  critical: 1
-  warning: 6
+  critical: 0
+  warning: 3
   info: 0
-  total: 7
+  total: 3
 status: issues_found
 ---
 
 # Phase 05: Code Review Report
 
-**Reviewed:** 2026-06-27T22:13:49Z
+**Reviewed:** 2026-06-27T22:53:59Z
 **Depth:** standard
 **Files Reviewed:** 40
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the explicit Phase 05 source, fixture, and parity-doc scope. Generated lockfiles were loaded from the requested context but excluded from the reviewable source count per workflow rules. This review was materially informed by `AGENTS.md`, `AGENTS.bright-builds.md`, `standards-overrides.md`, `standards/index.md`, `standards/core/architecture.md`, `standards/core/code-shape.md`, `standards/core/testing.md`, `standards/core/verification.md`, and `standards/languages/rust.md`.
+Re-reviewed the explicit Phase 05 source, fixture, firmware adapter, parity tooling, and parity documentation scope after code-review fixes. This review was materially informed by `AGENTS.md`, `AGENTS.bright-builds.md`, `standards-overrides.md`, `standards/index.md`, `standards/core/architecture.md`, `standards/core/code-shape.md`, `standards/core/testing.md`, `standards/core/verification.md`, and `standards/languages/rust.md`.
 
-The pure API crate is generally shaped well around fixture-backed planning and DTO mapping. The higher-risk gaps are in firmware adapter behavior and parity evidence: the Origin gate can allow cross-origin private-network requests, WebSocket live telemetry has no firmware cadence loop, raw log WebSockets replay retained history despite the pure planner claiming no backlog, command/settings effects are not reflected in runtime state, and the API compare tool can miss schema-specific property removals.
-
-## Critical Issues
-
-### CR-01: Origin Parse Failures Bypass The Private-Origin Gate
-
-**File:** `crates/bitaxe-api/src/route_shell.rs:284`
-**Issue:** `maybe_origin_ip_from_header()` returns `None` for any Origin host that is not an IPv4 literal, and `is_access_allowed()` treats `None` as if the origin were the private request IP. In firmware, `origin_ip_from_raw()` also returns `None` for truncated or otherwise unparseable Origin headers at `firmware/bitaxe/src/http_api.rs:469`. A browser request from a public origin such as `https://example.com` to a miner on `192.168.x.x` therefore passes the gate because the request IP is private, even though the Origin is not. That exposes unauthenticated POST/WebSocket surfaces such as restart, settings, and logs to cross-origin request forgery from any public web page a LAN user visits. The pinned reference keeps "Origin header present but invalid" distinct from "Origin header absent" by leaving the origin IP as `0`, which then fails the private-range check.
-**Fix:**
-```rust
-pub enum OriginGate {
-    Missing,
-    Parsed(Ipv4Addr),
-    Invalid,
-}
-
-pub struct RouteAccessInput {
-    pub ap_mode_enabled: bool,
-    pub request_ip: Ipv4Addr,
-    pub origin: OriginGate,
-}
-
-fn is_access_allowed(input: RouteAccessInput) -> bool {
-    if input.ap_mode_enabled {
-        return true;
-    }
-
-    if !is_private_ipv4(input.request_ip) {
-        return false;
-    }
-
-    match input.origin {
-        OriginGate::Missing => true,
-        OriginGate::Parsed(origin_ip) => is_private_ipv4(origin_ip),
-        OriginGate::Invalid => false,
-    }
-}
-```
-
-Update the firmware header reader to return `Missing` only when `Origin` is absent, `Invalid` when the header exists but cannot be parsed as an allowed private origin, and add HTTP/WebSocket tests for `Origin: https://example.com`, overlong Origin, public IPv4 Origin, missing Origin, and private IPv4 Origin.
+Prior `CR-01` is resolved: Origin handling now distinguishes missing, parsed, and invalid headers, and tests cover public named origins, public IPv4 origins, invalid origins, private origins, and WebSocket rejection. Prior `WR-01`, `WR-05`, and `WR-06` are resolved: live telemetry has a cadence task, API compare checks are schema-scoped, and failed/stale WebSocket sessions are unregistered. Prior `WR-02` was fixed for retained-history replay, but the raw log WebSocket now has no live broadcast path. Prior `WR-03` command-visible state is mostly resolved, but identify mode still ignores its advertised 30 second duration. Prior `WR-04` remains unsafe around NVS reload/persisted snapshot behavior.
 
 ## Warnings
 
-### WR-01: Live WebSocket Telemetry Never Runs The 500 ms Cadence
+### WR-01: Settings PATCH Reload Re-Takes The Default NVS Partition After Commit
 
-**File:** `firmware/bitaxe/src/http_api.rs:438`
-**Issue:** `/api/ws/live` sends one full frame during the WebSocket connect path and then calls `websocket_api::live_cadence_frame(current)` once only to seed the baseline. There is no timer, FreeRTOS task, or broadcast loop that runs `LIVE_TELEMETRY_CADENCE_MS` and sends subsequent diff frames to registered live clients. The checklist and evidence say full/diff/cadence fixtures are covered, but the firmware route currently cannot deliver live updates after connection.
-**Fix:** Add a firmware-owned cadence task after HTTP startup that sleeps for `LIVE_TELEMETRY_CADENCE_MS`, collects `collect_api_snapshot()`, computes `websocket_api::live_cadence_frame(...)`, serializes any returned frame, and broadcasts it to every registered `/api/ws/live` session using the ESP-IDF async WebSocket send API. Add a firmware adapter test or live smoke that observes a connect frame followed by at least one diff frame.
-
-### WR-02: Raw Log WebSocket Replays Retained History Despite The No-Backlog Contract
-
-**File:** `firmware/bitaxe/src/http_api.rs:423`
-**Issue:** On `/api/ws` connect, the firmware loops over `log_buffer::download_chunks()` and sends the retained log history before initializing the raw stream baseline. That contradicts the pure `RawLogStreamPlanner` tests in `crates/bitaxe-api/src/logs.rs`, which assert that raw WebSocket clients start at the current end and receive no retained backlog. It also makes `LOG-001` overstate "raw WebSocket baseline semantics" for firmware, because the actual adapter sends retained history on connect.
-**Fix:** Keep retained history delivery only on `GET /api/system/logs`. For `/api/ws`, initialize the `RawLogStreamPlanner` with the current retained buffer and do not send download chunks during connect; subsequent log pump iterations should send only `websocket_api::raw_log_chunks(&buffer)` output to active clients. Add a firmware-level test/smoke for "retained old line before connect is not sent over `/api/ws`".
-
-### WR-03: Non-Restart Command Effects Are Dropped Instead Of Mutating Visible State
-
-**File:** `firmware/bitaxe/src/http_api.rs:654`
-**Issue:** The pure command layer models pause/resume, identify, and block-found dismiss as effects, but the firmware `apply_command_effect()` only logs those effects. `handle_identify()` always plans from `IdentifyMode::Inactive`, `handle_block_found_dismiss()` builds a hardcoded already-dismissed state, and `collect_api_snapshot()` starts from a fresh safe snapshot each request. As a result, command routes return success messages while `GET /api/system/info` and later command calls cannot reflect the requested visible state changes.
-**Fix:** Add a small firmware runtime-state store, for example a `Mutex` holding `MiningRuntimeState`, `IdentifyMode`, and `BlockFoundNotificationState`. Apply `apply_mining_activity_effect()` and `apply_block_found_dismiss_effect()` to that state after the response is sent, toggle identify mode from the stored value, and have `collect_api_snapshot()` merge the stored command-visible state into the returned `ApiSnapshot`. Add route-level tests for pause then info, resume then info, identify on/off, and block-found dismiss.
-
-### WR-04: Settings PATCH Persistence Is Not Reflected In Runtime Snapshots
-
-**File:** `firmware/bitaxe/src/settings_adapter.rs:85`
-**Issue:** `current_settings_snapshot()` always returns `NvsSnapshot::new()`, and `collect_api_snapshot()` always starts from `ApiSnapshot::safe_ultra_205()`. A successful `PATCH /api/system` can write and commit NVS values, but subsequent API snapshots still report defaults such as hostname/frequency/fan settings. The empty current snapshot also makes hostname effect planning unreliable because no-op hostname patches look like changes every time.
-**Fix:** Implement `current_settings_snapshot()` by reading the actual ESP-IDF NVS namespace into a typed `NvsSnapshot`, and make `reload()` update a shared loaded-settings state that `collect_api_snapshot()` uses. Add an integration-style firmware adapter test with a fake NVS snapshot proving that accepted PATCH writes are visible in the next system-info snapshot and that unchanged hostname patches do not emit a live hostname effect.
-
-### WR-05: API Compare Checks Required Properties Globally, Not In The Target Schema
-
-**File:** `tools/parity/src/api_compare.rs:324`
-**Issue:** `validate_schema_evidence()` passes `schema_route.schema` into the error message but `openapi_has_property()` searches the entire OpenAPI text for `property:`. If a required property exists in any other schema, the check passes even when the specific schema named by the route is missing that property. That can produce a false `API-001` verified claim for schema compatibility.
+**File:** `firmware/bitaxe/src/settings_adapter.rs:80`
+**Issue:** `FirmwareSettingsAdapter::open()` takes the singleton default NVS partition at line 23 and stores it inside `self.nvs`. `reload()` then calls `EspDefaultNvsPartition::take()` again while the first partition is still owned by the same adapter. In `esp-idf-svc 0.52.1`, `take()` is guarded by a single `DEFAULT_TAKEN` flag and returns `ESP_ERR_INVALID_STATE` until the existing `NvsDefault` is dropped. That means a valid settings PATCH can write and commit NVS values, then fail at reload, return `Wrong API input`, and skip `apply_persisted_settings_writes()`. The client sees a failed request even though persistent settings may already have changed.
 **Fix:**
 ```rust
-if !openapi_schema_has_property(openapi_yaml, &schema_route.schema, property) {
-    validation_errors.push(format!(
-        "OpenAPI schema {} for {} {} missing property {property}",
-        schema_route.schema, schema_route.method, schema_route.path
-    ));
+pub struct FirmwareSettingsAdapter {
+    partition: EspDefaultNvsPartition,
+    nvs: EspNvs<NvsDefault>,
+}
+
+pub fn open() -> Result<Self, SettingsAdapterFailure> {
+    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+    let nvs = EspNvs::new(partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
+    Ok(Self { partition, nvs })
+}
+
+fn reload(&mut self) -> Result<(), SettingsAdapterFailure> {
+    let _reloaded = EspNvs::new(self.partition.clone(), NVS_NAMESPACE, false)
+        .map_err(settings_failure)?;
+    Ok(())
 }
 ```
 
-Implement `openapi_schema_has_property()` with a structured YAML parser if available, or at minimum restrict the search to the `components.schemas.<schema>.properties` block. Add a negative test where `message` or another required property exists only in a different schema and verify the compare fails.
+Also make reload or startup populate the shared `NvsSnapshot` from actual NVS values, then add an adapter test/fake proving a committed PATCH returns success and is visible in the next API snapshot.
 
-### WR-06: WebSocket Sessions Can Leak After Failed Sends Or Abrupt Disconnects
+### WR-02: Raw Log WebSocket Clients Never Receive Live Log Chunks
 
-**File:** `firmware/bitaxe/src/http_api.rs:373`
-**Issue:** The upgrade handler registers the session before sending connect frames. If `send_websocket_connect_frames()` fails, the function returns the ESP error without unregistering the session. After a successful upgrade, the only unregister path is receipt of a CLOSE frame at `firmware/bitaxe/src/http_api.rs:411`; abrupt socket drops can leave stale session IDs in `WEBSOCKET_STATE`. Stale entries inflate active-client counts and can eventually reject real clients with the max-client guard.
-**Fix:** Unregister the session when connect-frame sending fails, and configure an ESP-IDF close callback or periodic prune that removes sessions whose sockets are no longer valid. Add a test around `register_client()` plus failed connect send to prove active-client count is restored.
+**File:** `firmware/bitaxe/src/http_api.rs:75`
+**Issue:** The `/api/ws` fix removed retained-history replay on connect, which resolves the old no-backlog violation. However, the only background loop now calls `broadcast_live_telemetry_cadence()` and `prune_stale_websocket_sessions()`. The log connect path at line 527 only initializes `websocket_api::raw_log_chunks(&buffer)` and discards the result, and `append_runtime_log_line()` does not notify WebSocket clients. As a result, accepted `/api/ws` clients receive neither retained history nor new live logs, so the Phase 05 raw log WebSocket route is effectively inert.
+**Fix:**
+```rust
+fn live_telemetry_cadence_loop(server_addr: usize) {
+    let server = server_addr as sys::httpd_handle_t;
+    loop {
+        std::thread::sleep(Duration::from_millis(LIVE_TELEMETRY_CADENCE_MS));
+        broadcast_live_telemetry_cadence(server);
+        broadcast_raw_log_chunks(server);
+        prune_stale_websocket_sessions(server);
+    }
+}
+
+fn broadcast_raw_log_chunks(server: sys::httpd_handle_t) {
+    let buffer = log_buffer::retained_log_buffer();
+    for chunk in websocket_api::raw_log_chunks(&buffer) {
+        broadcast_websocket_text_frame(server, WebSocketRouteKind::Logs, &chunk);
+    }
+}
+```
+
+Keep the baseline-at-current-end behavior on connect, and add a firmware adapter test or live smoke proving an old retained line is not sent while a new appended line is sent to `/api/ws`.
+
+### WR-03: Identify Mode Ignores The Advertised 30 Second Duration
+
+**File:** `firmware/bitaxe/src/runtime_snapshot.rs:69`
+**Issue:** `identify_plan()` returns `IdentifyModeEffect::Enable { duration_ms: 30_000 }` and the public response says the device says "Hi!" for 30 seconds, but the firmware state application only sets `IdentifyMode::Active` and drops `duration_ms`. There is no timer, deadline, or expiry check, so the next identify request after 30 seconds still sees active mode and disables it instead of starting a fresh 30 second identify window. This leaves the command-visible state inconsistent with the response contract.
+**Fix:** Store an expiry deadline in `CommandVisibleState` or schedule a timer after the response is sent. `identify_mode()` should return `Inactive` once the deadline has passed, and explicit disable should cancel the pending expiry. Add a focused test for enable, post-duration expiry, and explicit disable before expiry.
 
 ---
 
-_Reviewed: 2026-06-27T22:13:49Z_
+_Reviewed: 2026-06-27T22:53:59Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_
