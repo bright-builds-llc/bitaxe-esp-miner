@@ -6,6 +6,7 @@
 //! - `reference/esp-miner/main/http_server/axe-os/api/system/asic_settings.c`
 
 pub mod asic;
+pub mod commands;
 pub mod logs;
 pub mod mining;
 pub mod scoreboard;
@@ -17,6 +18,12 @@ pub mod telemetry;
 pub mod wire;
 
 pub use asic::asic_settings_from_snapshot;
+pub use commands::{
+    apply_mining_activity_effect, block_found_dismiss_plan, identify_plan, pause_mining_plan,
+    restart_plan, resume_mining_plan, BlockFoundDismissEffect, BlockFoundNotificationState,
+    CommandEffect, CommandPlan, IdentifyMode, IdentifyModeEffect, MiningActivityEffect,
+    IDENTIFY_DURATION_MS,
+};
 pub use logs::{
     log_download_headers, LogDownloadHeaders, RawLogStreamPlanner, RetainedLogBuffer,
     DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,

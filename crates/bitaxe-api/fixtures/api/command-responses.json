@@ -1,0 +1,22 @@
+{
+  "pause": {
+    "message": "Mining paused"
+  },
+  "resume": {
+    "message": "Mining resumed"
+  },
+  "restart": {
+    "message": "System will restart shortly."
+  },
+  "identify_on": {
+    "message": "The device says \"Hi!\" for 30 seconds."
+  },
+  "identify_off": {
+    "message": "The device no longer says \"Hi!\"."
+  },
+  "block_found_dismiss": {
+    "blockFound": 840000,
+    "showNewBlock": false,
+    "message": "Block found notification dismissed"
+  }
+}
