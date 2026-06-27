@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-06-27T19:54:52.397Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-06-27T20:11:03.820Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 29
-  completed_plans: 23
-  percent: 79
+  completed_plans: 24
+  percent: 83
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 05 (axeos-api-logs-and-telemetry) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-06-27
 
@@ -75,6 +75,7 @@ Progress: [██████████] 100%
 | Phase 04-stratum-v1-and-first-mining-loop P03 | 10 min | 2 tasks | 9 files |
 | Phase 04-stratum-v1-and-first-mining-loop P04 | 10 min | 3 tasks | 10 files |
 | Phase 05-axeos-api-logs-and-telemetry P01 | 11 min | 2 tasks | 9 files |
+| Phase 05-axeos-api-logs-and-telemetry P02 | 10 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,9 @@ Recent decisions affecting current work:
 - [Phase 04-stratum-v1-and-first-mining-loop]: Firmware publishes mining_loop_status=blocked reason=hardware_evidence_ack_missing work_submission=disabled while main.rs remains free of live pool sockets and BM1366 work submission.
 - [Phase 05-axeos-api-logs-and-telemetry]: AxeOS wire DTOs are handwritten and independent from internal runtime/domain structs. — This preserves upstream field names, casing, units, and mixed encodings while allowing config, Stratum, ASIC, and platform structs to evolve behind ApiSnapshot.
 - [Phase 05-axeos-api-logs-and-telemetry]: Safe Ultra 205 API fixtures use zeroed Phase 6-owned hardware telemetry. — Plan 05-01 proves field names and encodings without claiming live voltage, fan, thermal, power, or actual-frequency evidence before the safety-controller phase.
+- [Phase 05-axeos-api-logs-and-telemetry]: Keep bitaxe-config as the only settings validation authority; bitaxe-api only parses JSON, ignores unknown fields, and maps public errors.
+- [Phase 05-axeos-api-logs-and-telemetry]: Require write, commit, and reload completion before the settings route can produce an empty public success response.
+- [Phase 05-axeos-api-logs-and-telemetry]: Represent hostname live apply as a best-effort post-persistence effect, not as a validation or persistence prerequisite.
 
 ### Pending Todos
 
@@ -181,6 +185,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T19:54:52.394Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-06-27T20:11:03.817Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

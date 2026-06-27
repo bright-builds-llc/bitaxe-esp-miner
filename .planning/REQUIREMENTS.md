@@ -55,7 +55,7 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 
 - [x] **API-01**: Rust API models are compatible with the upstream OpenAPI schema for V1 user-facing routes.
 - [x] **API-02**: System info and settings responses expose upstream-compatible fields, names, units, defaults, and encoding.
-- [ ] **API-03**: Settings PATCH behavior validates, persists, rejects, reloads, and reports errors with upstream-compatible observable semantics.
+- [x] **API-03**: Settings PATCH behavior validates, persists, rejects, reloads, and reports errors with upstream-compatible observable semantics.
 - [ ] **API-04**: ASIC, statistics, scoreboard, and mining-state endpoints report values derived from the Rust runtime state model.
 - [ ] **API-05**: Log buffer, log download, and log retention behavior support the user-facing API and WebSocket surfaces.
 - [ ] **API-06**: `/api/ws` streams log events in a client-compatible format.
@@ -172,7 +172,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STR-07 | Phase 4 | Complete |
 | API-01 | Phase 5 | Complete |
 | API-02 | Phase 5 | Complete |
-| API-03 | Phase 5 | Pending |
+| API-03 | Phase 5 | Complete |
 | API-04 | Phase 5 | Pending |
 | API-05 | Phase 5 | Pending |
 | API-06 | Phase 5 | Pending |
