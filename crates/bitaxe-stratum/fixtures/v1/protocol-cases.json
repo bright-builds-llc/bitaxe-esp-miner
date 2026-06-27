@@ -1,0 +1,50 @@
+{
+  "checklist_ids": ["STR-001"],
+  "source_file": "reference/esp-miner/components/stratum/stratum_api.c",
+  "source_behavior": "Stratum v1 JSON-RPC client request and pool notification method shapes",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "license_posture": "reference-derived facts only; Rust implementation remains independently authored MIT-first code",
+  "derivation": "Method names, field categories, and representative synthetic values were derived from upstream Stratum behavior without copying GPL source expression.",
+  "cases": [
+    {
+      "name": "client-subscribe",
+      "method": "mining.subscribe",
+      "direction": "client-to-pool",
+      "json": {
+        "id": 1,
+        "method": "mining.subscribe",
+        "params": ["bitaxe/ultra/205"]
+      }
+    },
+    {
+      "name": "client-authorize",
+      "method": "mining.authorize",
+      "direction": "client-to-pool",
+      "json": {
+        "id": 2,
+        "method": "mining.authorize",
+        "params": ["synthetic-user", "x"]
+      }
+    },
+    {
+      "name": "pool-notify",
+      "method": "mining.notify",
+      "direction": "pool-to-client",
+      "json": {
+        "id": null,
+        "method": "mining.notify",
+        "params": [
+          "0",
+          "010000000000000000000000000000000000000000000000000000000000000000000000",
+          "ffffffff",
+          "ffffffff",
+          [],
+          "20000004",
+          "1705ae3a",
+          "647025b5",
+          true
+        ]
+      }
+    }
+  ]
+}

@@ -201,6 +201,11 @@ dependencies = [
 [[package]]
 name = "bitaxe-stratum"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "bitaxe-test-support"

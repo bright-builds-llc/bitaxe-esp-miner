@@ -2,10 +2,22 @@ load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 rust_library(
     name = "bitaxe_stratum",
-    srcs = ["src/lib.rs"],
+    srcs = [
+        "src/error.rs",
+        "src/jsonrpc.rs",
+        "src/lib.rs",
+        "src/v1.rs",
+        "src/v1/messages.rs",
+    ],
+    compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_stratum",
     edition = "2021",
     visibility = ["//visibility:public"],
+    deps = [
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:thiserror",
+    ],
 )
 
 rust_test(
