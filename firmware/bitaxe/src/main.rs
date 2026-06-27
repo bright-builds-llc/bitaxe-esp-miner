@@ -64,6 +64,7 @@ fn main() -> anyhow::Result<()> {
             asic_adapter::run_boot_gate_without_peripherals("peripherals_unavailable")?;
         }
     }
+    asic_adapter::publish_mining_loop_blocked_status("hardware_evidence_ack_missing");
     log::info!("reset_reason={}", reset_reason());
     log::info!("partition={}", partition_label());
     log::info!("psram_status={}", psram_status());

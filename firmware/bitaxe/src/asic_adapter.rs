@@ -26,6 +26,8 @@ mod reset;
 mod status;
 mod uart;
 
+pub use status::publish_mining_loop_blocked_status;
+
 pub struct AsicBootPeripherals<UART, RESET, TX, RX> {
     pub uart: UART,
     pub reset: RESET,
