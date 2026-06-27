@@ -1,12 +1,10 @@
 ---
 phase: 03-bm1366-asic-protocol-and-safe-initialization
-reviewed: 2026-06-27T01:51:44Z
+reviewed: "2026-06-27T02:00:22Z"
 depth: standard
-files_reviewed: 12
+files_reviewed: 11
 files_reviewed_list:
-  - crates/bitaxe-asic/BUILD.bazel
   - crates/bitaxe-asic/src/lib.rs
-  - crates/bitaxe-asic/src/bm1366.rs
   - crates/bitaxe-asic/src/bm1366/chip_detect.rs
   - crates/bitaxe-asic/src/bm1366/command.rs
   - crates/bitaxe-asic/src/bm1366/init_plan.rs
@@ -16,86 +14,46 @@ files_reviewed_list:
   - firmware/bitaxe/src/asic_adapter/status.rs
   - firmware/bitaxe/src/asic_adapter/uart.rs
   - firmware/bitaxe/src/main.rs
+  - .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-REVIEW-FIX.md
 findings:
   critical: 0
-  warning: 1
-  info: 1
-  total: 2
-status: issues_found
+  warning: 0
+  info: 0
+  total: 0
+status: clean
 ---
 
 # Phase 03: Code Review Report
 
-**Reviewed:** 2026-06-27T01:51:44Z
+**Reviewed:** 2026-06-27T02:00:22Z
 **Depth:** standard
-**Files Reviewed:** 12
-**Status:** issues_found
+**Files Reviewed:** 11
+**Status:** clean
 
 ## Summary
 
-Re-reviewed the Phase 03 warning fixes from `d11667f` and `5e5a0ed` against `AGENTS.md`, `AGENTS.bright-builds.md`, `standards-overrides.md`, the Rust/core Bright Builds standards, the Phase 03 context/validation artifacts, and the prior `03-REVIEW.md` / `03-REVIEW-FIX.md`.
+Final re-review covered the requested Phase 03 ASIC protocol, chip-detect, init-plan, transcript, firmware adapter, and updated fix-report files. Review was informed by `AGENTS.md`, `AGENTS.bright-builds.md`, `standards-overrides.md`, `standards/index.md`, `standards/core/architecture.md`, `standards/core/code-shape.md`, `standards/core/testing.md`, `standards/core/verification.md`, `standards/languages/rust.md`, `03-CONTEXT.md`, `03-VALIDATION.md`, the prior `03-REVIEW.md`, and the updated `03-REVIEW-FIX.md`.
 
-Previous WR-01 is resolved: `Bm1366InitPlan::chip_detect_only` no longer publishes `ChipDetectedNoMining` unconditionally, and the live firmware path validates chip-id response length, preamble, CRC, chip id, and expected chip count before publishing success.
+All prior findings are resolved:
 
-Previous WR-02 is resolved: action-loop errors now transition through `chip_detect_adapter_error`, attempt reset-low, publish `asic_status=fail_closed`, and return without escaping through `main`.
+- Original WR-01 is resolved: chip-detect success is now gated by typed chip-id response validation, including length, preamble, CRC, chip id, and expected chip count.
+- Original WR-02 is resolved: adapter I/O failures publish fail-closed status, best-effort hold reset low, and stop without silently escaping through `main`.
+- Re-review setup-failure warning is resolved: reset setup and UART setup failures now publish visible fail-closed statuses, with reset held low when the reset adapter is available.
+- Stale placeholder info is resolved: the public runtime status now reports `FailClosedDiagnosticGate` instead of the old Phase 3 deferral placeholder.
 
-No regressions were found in those fixed paths. One separate fail-closed setup edge remains in the firmware adapter before the action-loop handler is available, and the stale Phase 3 runtime placeholder remains.
-
-## Warnings
-
-### WR-01: Adapter setup failures can bypass fail-closed reset/status before the action loop
-
-**File:** `firmware/bitaxe/src/asic_adapter.rs:55`
-**Issue:** `AsicUart::new(...)?` and `AsicReset::new(...)?` still propagate errors before the action-loop error handler at `firmware/bitaxe/src/asic_adapter.rs:64` exists. A UART setup failure exits without acquiring reset or publishing `asic_status=fail_closed`, and a reset setup failure exits without a visible fail-closed status. That leaves a Phase 03 adapter stage error outside the fail-closed/status contract.
-**Fix:** Initialize reset first, convert adapter setup errors into explicit fail-closed statuses, and hold reset low on UART setup failure once reset is available.
-
-```rust
-let mut reset = match reset::AsicReset::new(peripherals.pins.gpio1) {
-    Ok(reset) => reset,
-    Err(error) => {
-        log::warn!("asic_status=fail_closed reason=reset_adapter_unavailable error={error}");
-        status::publish_status(AsicInitStatus::FailClosed {
-            reason: "reset_adapter_unavailable",
-        });
-        return Ok(());
-    }
-};
-
-let mut uart = match uart::AsicUart::new(
-    peripherals.uart1,
-    peripherals.pins.gpio17,
-    peripherals.pins.gpio18,
-) {
-    Ok(uart) => uart,
-    Err(error) => {
-        best_effort_hold_reset_low(&mut reset, "uart_adapter_unavailable");
-        log::warn!("asic_status=fail_closed reason=uart_adapter_unavailable error={error}");
-        status::publish_status(AsicInitStatus::FailClosed {
-            reason: "uart_adapter_unavailable",
-        });
-        return Ok(());
-    }
-};
-```
-
-## Info
-
-### IN-01: Phase 3 API still exposes a stale deferred runtime status
-
-**File:** `crates/bitaxe-asic/src/lib.rs:8`
-**Issue:** `AsicRuntimeStatus::DeferredUntilPhase3` and its test still describe active ASIC behavior as deferred until Phase 3, even though Phase 03 now includes BM1366 protocol logic and diagnostic chip-detect gates. This is not a runtime bug, but it leaves a stale public placeholder in the crate surface.
-**Fix:** Remove the placeholder if no caller needs it, or rename it to match the current fail-closed/gated Phase 03 behavior.
+No new critical, warning, or info findings were found in the reviewed files.
 
 ## Verification
 
-- Targeted anti-pattern scan for secrets, dangerous functions, debug artifacts, and empty catches found no matches in reviewed files.
-- `git check-ignore -v` produced no ignored-file matches for reviewed source files.
-- `cargo test -p bitaxe-asic --all-features` passed: 47 unit tests, 0 failures; doc tests passed.
+- Targeted anti-pattern scan found no hardcoded-secret, dangerous-function, debug-artifact, or empty-catch matches in the reviewed source scope.
+- `git check-ignore -v` produced no ignored-file matches for the reviewed source files.
+- `cargo test -p bitaxe-asic --all-features` passed: 48 unit tests, 0 failures; doc tests passed.
 - `source "$HOME/export-esp.sh" && cargo check -p bitaxe-firmware --target xtensa-esp32s3-espidf` passed.
 - `bazel test //crates/bitaxe-asic:tests` passed.
+- `just parity` passed with `validation_errors: none`.
 
 ---
 
-_Reviewed: 2026-06-27T01:51:44Z_
+_Reviewed: 2026-06-27T02:00:22Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_

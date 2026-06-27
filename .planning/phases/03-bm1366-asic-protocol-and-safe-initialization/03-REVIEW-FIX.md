@@ -1,23 +1,23 @@
 ---
 phase: 03-bm1366-asic-protocol-and-safe-initialization
-fixed_at: 2026-06-27T01:46:23Z
+fixed_at: 2026-06-27T01:56:22Z
 review_path: .planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-REVIEW.md
-iteration: 1
-findings_in_scope: 2
-fixed: 2
+iteration: 2
+findings_in_scope: 4
+fixed: 4
 skipped: 0
 status: all_fixed
 ---
 
 # Phase 03: Code Review Fix Report
 
-**Fixed at:** 2026-06-27T01:46:23Z
+**Fixed at:** 2026-06-27T01:56:22Z
 **Source review:** `.planning/phases/03-bm1366-asic-protocol-and-safe-initialization/03-REVIEW.md`
-**Iteration:** 1
+**Iteration:** 2
 
 **Summary:**
-- Findings in scope: 2
-- Fixed: 2
+- Findings in scope: 4
+- Fixed: 4
 - Skipped: 0
 
 ## Fixed Issues
@@ -40,13 +40,31 @@ status: all_fixed
 **Verification:** Added a host seam test proving partial-read and UART-write failure categories produce hold-reset-low plus fail-closed status actions; `cargo test -p bitaxe-asic --all-features` passed; the required pre-commit gate passed before commit.
 **Residual risk:** The fail-closed transition is unit-tested through the pure seam and firmware-compiles, but the physical reset-low effect still requires live hardware evidence.
 
+### WR-03: Adapter setup failures can bypass fail-closed reset/status before the action loop
+
+**Status:** fixed: requires human verification
+**Commit:** `7a5d25b` (`fix(03): fail closed on adapter setup errors`)
+**Files modified:** `crates/bitaxe-asic/src/bm1366/chip_detect.rs`, `firmware/bitaxe/src/asic_adapter.rs`
+**Applied fix:** Added pure setup-failure actions for reset and UART adapter initialization failures. The firmware adapter now initializes reset before UART, publishes `reset_adapter_unavailable` when reset setup fails, and best-effort holds reset low plus publishes `uart_adapter_unavailable` when UART setup fails.
+**Verification:** Added a host seam test proving setup failures publish visible fail-closed status and, when reset is available, include hold-reset-low. The full Rust pre-commit gate, firmware `cargo check`, and `just parity` passed before commit.
+**Residual risk:** The fail-closed transition is unit-tested through the pure seam and firmware-compiles, but physical GPIO behavior still requires live hardware evidence.
+
+### IN-01: Phase 3 API still exposes a stale deferred runtime status
+
+**Status:** fixed
+**Commit:** `77b682e` (`refactor(03): update ASIC runtime gate status`)
+**Files modified:** `crates/bitaxe-asic/src/lib.rs`
+**Applied fix:** Renamed the stale `DeferredUntilPhase3` placeholder to `FailClosedDiagnosticGate` and updated the unit test to match Phase 03 behavior.
+**Verification:** The full Rust pre-commit gate passed before commit.
+**Residual risk:** None.
+
 ## Verification
 
-- `cargo fmt --all` passed before both fix commits.
-- `cargo clippy --all-targets --all-features -- -D warnings` passed before both fix commits.
-- `cargo build --all-targets --all-features` passed before both fix commits.
-- `cargo test --all-features` passed before both fix commits and again after both commits.
-- `cargo test -p bitaxe-asic --all-features` passed after both commits.
+- `cargo fmt --all` passed before all fix commits.
+- `cargo clippy --all-targets --all-features -- -D warnings` passed before all fix commits.
+- `cargo build --all-targets --all-features` passed before all fix commits.
+- `cargo test --all-features` passed before all fix commits and after the warning fixes.
+- `cargo test -p bitaxe-asic --all-features` passed after the warning fixes.
 - `source "$HOME/export-esp.sh" && cargo check -p bitaxe-firmware --target xtensa-esp32s3-espidf` passed.
 - `just parity` passed with `validation_errors: none`.
 - `git status --short reference/esp-miner` produced no output.
@@ -55,8 +73,8 @@ status: all_fixed
 
 None.
 
----
+___
 
-_Fixed: 2026-06-27T01:46:23Z_
+_Fixed: 2026-06-27T01:56:22Z_
 _Fixer: the agent (gsd-code-fixer)_
-_Iteration: 1_
+_Iteration: 2_
