@@ -77,6 +77,7 @@ fn live_telemetry_cadence_loop(server_addr: usize) {
     loop {
         std::thread::sleep(Duration::from_millis(LIVE_TELEMETRY_CADENCE_MS));
         broadcast_live_telemetry_cadence(server);
+        prune_stale_websocket_sessions(server);
     }
 }
 
@@ -95,6 +96,25 @@ fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
     };
 
     broadcast_websocket_text_frame(server, WebSocketRouteKind::LiveTelemetry, &body);
+}
+
+fn prune_stale_websocket_sessions(server: sys::httpd_handle_t) {
+    ping_websocket_route(server, WebSocketRouteKind::Logs);
+    ping_websocket_route(server, WebSocketRouteKind::LiveTelemetry);
+}
+
+fn ping_websocket_route(server: sys::httpd_handle_t, route: WebSocketRouteKind) {
+    for session in websocket_api::client_sessions(route) {
+        let result = send_websocket_ping_frame_async(server, session);
+        if result == sys::ESP_OK {
+            continue;
+        }
+
+        log::warn!(
+            "axeos_websocket_ping=unregistering_stale route={route:?} session={session} error={result}"
+        );
+        websocket_api::unregister_client(session);
+    }
 }
 
 fn broadcast_websocket_text_frame(
@@ -429,13 +449,27 @@ fn handle_websocket_upgrade(
     match plan_websocket_upgrade(access_input_from_raw(request), route) {
         WebSocketUpgradeDecision::Accept(plan) => {
             let session = unsafe { sys::httpd_req_to_sockfd(request) };
+            if session < 0 {
+                log::warn!("axeos_websocket_upgrade=rejected route={route:?} reason=no_session");
+                return sys::ESP_FAIL;
+            }
+
             match websocket_api::register_client(session, plan.route) {
                 websocket_api::WebSocketRegisterOutcome::Accepted { active_clients } => {
                     log::info!(
                         "axeos_websocket_upgrade=accepted route={:?} active_clients={active_clients}",
                         plan.route
                     );
-                    send_websocket_connect_frames(request, plan.route)
+                    let result = send_websocket_connect_frames(request, plan.route);
+                    if result != sys::ESP_OK {
+                        log::warn!(
+                            "axeos_websocket_upgrade=connect_send_failed route={:?} session={session} error={result}",
+                            plan.route
+                        );
+                        websocket_api::unregister_client(session);
+                    }
+
+                    result
                 }
                 websocket_api::WebSocketRegisterOutcome::RejectedMaxClients { max_clients } => {
                     log::warn!(
@@ -463,15 +497,26 @@ fn handle_websocket_frame(request: *mut sys::httpd_req_t) -> sys::esp_err_t {
     let mut frame = sys::httpd_ws_frame_t::default();
     let result = unsafe { sys::httpd_ws_recv_frame(request, &mut frame, 0) };
     if result != sys::ESP_OK {
+        unregister_request_websocket_session(request, "recv_error");
         return result;
     }
 
     if frame.type_ == sys::httpd_ws_type_t_HTTPD_WS_TYPE_CLOSE {
-        let session = unsafe { sys::httpd_req_to_sockfd(request) };
-        websocket_api::unregister_client(session);
+        unregister_request_websocket_session(request, "close_frame");
     }
 
     sys::ESP_OK
+}
+
+fn unregister_request_websocket_session(request: *mut sys::httpd_req_t, reason: &str) {
+    let session = unsafe { sys::httpd_req_to_sockfd(request) };
+    if session < 0 {
+        log::warn!("axeos_websocket_session=unregister_skipped reason={reason} session=missing");
+        return;
+    }
+
+    websocket_api::unregister_client(session);
+    log::info!("axeos_websocket_session=unregistered reason={reason} session={session}");
 }
 
 fn send_websocket_connect_frames(
@@ -526,6 +571,17 @@ fn send_websocket_text_frame_async(
         type_: sys::httpd_ws_type_t_HTTPD_WS_TYPE_TEXT,
         payload: body.as_ptr() as *mut u8,
         len: body.len(),
+    };
+    unsafe { sys::httpd_ws_send_frame_async(server, session, &mut frame) }
+}
+
+fn send_websocket_ping_frame_async(server: sys::httpd_handle_t, session: i32) -> sys::esp_err_t {
+    let mut frame = sys::httpd_ws_frame_t {
+        final_: true,
+        fragmented: false,
+        type_: sys::httpd_ws_type_t_HTTPD_WS_TYPE_PING,
+        payload: ptr::null_mut(),
+        len: 0,
     };
     unsafe { sys::httpd_ws_send_frame_async(server, session, &mut frame) }
 }
