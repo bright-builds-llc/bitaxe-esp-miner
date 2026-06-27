@@ -84,14 +84,14 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| API-001 | OpenAPI schema compatibility | `reference/esp-miner/main/http_server/openapi.yaml` | `crates/bitaxe-api` | not-started | pending | Schema is the API contract. |
-| API-002 | System info response | `reference/esp-miner/main/http_server/system_api_json.c` | `crates/bitaxe-api` | not-started | pending | Compare fields and encoding. |
-| API-003 | System settings PATCH | `reference/esp-miner/main/http_server/system_api_json.c` | `crates/bitaxe-api`, `crates/bitaxe-config` | not-started | pending | Settings update behavior. |
-| API-004 | HTTP server routes | `reference/esp-miner/main/http_server/http_server.c` | `firmware/bitaxe` | not-started | pending | Include restart, identify, OTA, OTAWWW, logs. |
-| API-005 | WebSocket logs | `reference/esp-miner/main/http_server/websocket_log.c` | `firmware/bitaxe`, `crates/bitaxe-api` | not-started | pending | Preserve client-facing stream behavior. |
-| API-006 | Live WebSocket telemetry | `reference/esp-miner/main/http_server/websocket_api.c` | `firmware/bitaxe`, `crates/bitaxe-api` | not-started | pending | API compare plus hardware smoke. |
-| API-007 | Recovery page | `reference/esp-miner/main/http_server/recovery_page.html` | `firmware/bitaxe` | not-started | pending | Asset compatibility, not UI rewrite. |
-| API-008 | Static AxeOS asset packaging | `reference/esp-miner/main/http_server/axe-os` | `firmware/bitaxe` | not-started | pending | Serve compatible assets or packaged equivalent. |
+| API-001 | OpenAPI schema compatibility | `reference/esp-miner/main/http_server/openapi.yaml` | `crates/bitaxe-api`, `tools/parity` | verified | api-compare | `bazel run //tools/parity:report -- api-compare` in [Phase 05 evidence](evidence/phase-05-axeos-api-logs-and-telemetry.md) checked Phase 05 route/property coverage against upstream OpenAPI and the Rust route manifest with `validation_errors: none`. |
+| API-002 | System info response | `reference/esp-miner/main/http_server/system_api_json.c` | `crates/bitaxe-api`, `firmware/bitaxe` | implemented | unit,api-compare | Pure DTO/mappers, safe Ultra 205 fixture, firmware route shell, and API compare coverage exist; live firmware HTTP smoke was not run in Phase 05 evidence. |
+| API-003 | System settings PATCH | `reference/esp-miner/main/http_server/system_api_json.c` | `crates/bitaxe-api`, `crates/bitaxe-config`, `firmware/bitaxe` | implemented | unit,api-compare | Pure PATCH validation/persistence planning, firmware NVS adapter, body-cap route-shell tests, and API compare coverage exist; live firmware PATCH smoke was not run in Phase 05 evidence. |
+| API-004 | HTTP server routes | `reference/esp-miner/main/http_server/http_server.c` | `firmware/bitaxe`, `crates/bitaxe-api`, `tools/parity` | implemented | unit,workflow,api-compare | Phase 05 route shell and firmware build cover API/log/command routes; OTA and OTAWWW remain fail-closed Phase 7-owned unsupported routes, and live firmware HTTP smoke was not run. |
+| API-005 | WebSocket logs | `reference/esp-miner/main/http_server/websocket_log.c` | `firmware/bitaxe`, `crates/bitaxe-api`, `tools/parity` | implemented | unit,api-compare | Retained log/raw `/api/ws` semantics and static AxeOS route usage are covered by unit fixtures and API compare; live WebSocket smoke was not run. |
+| API-006 | Live WebSocket telemetry | `reference/esp-miner/main/http_server/websocket_api.c` | `firmware/bitaxe`, `crates/bitaxe-api`, `tools/parity` | implemented | unit,api-compare | Full-on-connect, diff, and 500 ms cadence fixtures plus `/api/ws/live` static usage are covered; live firmware WebSocket smoke was not run. |
+| API-007 | Recovery page | `reference/esp-miner/main/http_server/recovery_page.html` | `firmware/bitaxe`, `tools/parity` | deferred | deferred | Phase 05 API compare records `/recovery` separately from ordinary API/static success and marks recovery/static packaging evidence Phase 7 pending; no recovery smoke was run. |
+| API-008 | Static AxeOS asset packaging | `reference/esp-miner/main/http_server/axe-os` | `firmware/bitaxe`, `tools/parity` | implemented | api-compare | Static route usage fixture proves existing AxeOS API/log/WebSocket service calls remain administrable without an Angular rewrite; SPIFFS/static release packaging remains Phase 7 pending and is not counted as Phase 05 success. |
 
 ## Power, Thermal, Fan, And Peripherals
 
@@ -124,19 +124,19 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| LOG-001 | Log buffer behavior | `reference/esp-miner/main/log_buffer.c` | `firmware/bitaxe`, `crates/bitaxe-core` | not-started | pending | Needed by API log download and WebSocket logs. |
-| STAT-001 | Hashrate monitor | `reference/esp-miner/main/tasks/hashrate_monitor_task.c` | `crates/bitaxe-core`, `firmware/bitaxe` | not-started | pending | API-visible behavior. |
-| STAT-002 | Statistics task | `reference/esp-miner/main/tasks/statistics_task.c` | `crates/bitaxe-core`, `firmware/bitaxe` | not-started | pending | API-visible behavior. |
-| STAT-003 | Scoreboard | `reference/esp-miner/main/tasks/scoreboard.c` | `crates/bitaxe-core` | not-started | pending | Good pure unit target. |
+| LOG-001 | Log buffer behavior | `reference/esp-miner/main/log_buffer.c` | `firmware/bitaxe`, `crates/bitaxe-api` | implemented | unit,api-compare | Phase 05 implements retained log contracts, download headers, raw WebSocket baseline semantics, firmware retained log shell, and API compare log fixture coverage; live firmware log smoke was not run. |
+| STAT-001 | Hashrate monitor | `reference/esp-miner/main/tasks/hashrate_monitor_task.c` | `crates/bitaxe-core`, `firmware/bitaxe` | not-started | pending | API fixtures expose safe zero/unavailable hashrate fields only; the live hashrate monitor task remains future work. |
+| STAT-002 | Statistics task | `reference/esp-miner/main/tasks/statistics_task.c` | `crates/bitaxe-api`, `firmware/bitaxe` | in-progress | unit,api-compare | Phase 05 implements compatible statistics response shape and empty-history fixture; a live firmware statistics history producer remains pending. |
+| STAT-003 | Scoreboard | `reference/esp-miner/main/tasks/scoreboard.c` | `crates/bitaxe-api` | in-progress | unit,api-compare | Phase 05 implements scoreboard response shape and empty-array fixture; live scoreboard population remains pending. |
 | STAT-004 | Work queue behavior | `reference/esp-miner/main/work_queue.c` | `crates/bitaxe-stratum/src/v1/queue.rs`, `crates/bitaxe-stratum/src/v1/mining_loop.rs` | implemented | unit | Bounded queue capacity, FIFO dequeue, clean-jobs clearing, valid-job invalidation, and guarded dispatch planning are covered by host tests. See [Phase 4 evidence](evidence/phase-04-stratum-v1-mining-loop.md). |
 
 ## OTA, Filesystem, And Release Artifacts
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| FS-001 | SPIFFS/filesystem behavior | `reference/esp-miner/main/filesystem.c` | `firmware/bitaxe` | not-started | pending | Includes web asset partition behavior. |
-| OTA-001 | Firmware OTA route | `reference/esp-miner/main/http_server/http_server.c` | `firmware/bitaxe` | not-started | pending | API and hardware evidence needed. |
-| OTA-002 | AxeOS OTAWWW route | `reference/esp-miner/main/http_server/http_server.c` | `firmware/bitaxe` | not-started | pending | Asset update behavior. |
+| FS-001 | SPIFFS/filesystem behavior | `reference/esp-miner/main/filesystem.c` | `firmware/bitaxe`, `tools/parity` | not-started | pending | Phase 05 static fixture records `/recovery` and static fallback as Phase 7 packaging pending; no SPIFFS/static packaging success is claimed. |
+| OTA-001 | Firmware OTA route | `reference/esp-miner/main/http_server/http_server.c` | `firmware/bitaxe`, `tools/parity` | deferred | deferred | Phase 05 records `/api/system/OTA` only as a Phase 7-owned unsafe-success-blocked route; firmware OTA upload/apply behavior remains Phase 7. |
+| OTA-002 | AxeOS OTAWWW route | `reference/esp-miner/main/http_server/http_server.c` | `firmware/bitaxe`, `tools/parity` | deferred | deferred | Phase 05 records `/api/system/OTAWWW` only as a Phase 7-owned unsafe-success-blocked route; AxeOS asset update behavior remains Phase 7. |
 | REL-001 | Partition layout | `reference/esp-miner/partitions.csv` | `firmware/bitaxe` | not-started | pending | Must support flash/OTA behavior. |
 | REL-002 | SDK config parity | `reference/esp-miner/sdkconfig.defaults` | `firmware/bitaxe` | not-started | pending | ESP-IDF Rust equivalent must be explicit. |
 | REL-003 | Release image behavior | `reference/esp-miner/.github/workflows/release.yml` | `MODULE.bazel`, `tools/flash` | not-started | pending | Later release parity. |
