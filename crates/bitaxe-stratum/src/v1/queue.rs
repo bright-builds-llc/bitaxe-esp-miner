@@ -6,9 +6,9 @@
 //! - `reference/esp-miner/main/system.h`
 //! - Parity checklist rows `STR-003` and `STR-006`
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
-use bitaxe_asic::bm1366::result::Bm1366ValidJobIds;
+use bitaxe_asic::bm1366::{result::Bm1366ValidJobIds, work::Bm1366JobId};
 
 use crate::error::StratumV1Error;
 use crate::v1::mining::MiningWork;
@@ -67,6 +67,7 @@ impl<T, const N: usize> Default for BoundedWorkQueue<T, N> {
 pub struct MiningWorkQueue {
     queue: BoundedWorkQueue<MiningWork, STRATUM_WORK_QUEUE_CAPACITY>,
     valid_jobs: Bm1366ValidJobIds,
+    active_work: HashMap<Bm1366JobId, MiningWork>,
 }
 
 impl MiningWorkQueue {
@@ -74,6 +75,7 @@ impl MiningWorkQueue {
         Self {
             queue: BoundedWorkQueue::new(),
             valid_jobs: Bm1366ValidJobIds::empty(),
+            active_work: HashMap::new(),
         }
     }
 
@@ -89,12 +91,16 @@ impl MiningWorkQueue {
     }
 
     pub fn dequeue_work(&mut self) -> Result<MiningWork, StratumV1Error> {
-        self.queue.dequeue()
+        let work = self.queue.dequeue()?;
+        self.active_work
+            .insert(work.asic_job_id.lookup_key(), work.clone());
+        Ok(work)
     }
 
     pub fn clear_jobs(&mut self) {
         self.queue.clear();
         self.valid_jobs = Bm1366ValidJobIds::empty();
+        self.active_work.clear();
     }
 
     pub fn len(&self) -> usize {
@@ -111,6 +117,10 @@ impl MiningWorkQueue {
 
     pub const fn valid_jobs(&self) -> &Bm1366ValidJobIds {
         &self.valid_jobs
+    }
+
+    pub fn maybe_active_work(&self, job_id: Bm1366JobId) -> Option<&MiningWork> {
+        self.active_work.get(&job_id.lookup_key())
     }
 }
 

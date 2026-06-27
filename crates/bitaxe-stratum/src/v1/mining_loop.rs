@@ -125,13 +125,23 @@ impl GuardedMiningLoopInputs {
                 difficulty: f64::from(self.pool_defaults.primary_pool().difficulty()),
             });
 
+        let maybe_share_submission = self
+            .maybe_nonce_result
+            .and_then(|result| {
+                self.work_queue
+                    .maybe_active_work(result.job_id)
+                    .map(|work| (work, result))
+            })
+            .map(|(work, result)| ShareSubmission::from_nonce_result(work, result))
+            .transpose()?;
+
         if self.work_queue.is_empty() {
             return Ok(GuardedMiningLoopPlan {
                 source: self.source,
                 runtime_state: self.runtime_state,
                 work_queue: self.work_queue,
                 maybe_dispatch: None,
-                maybe_share_submission: None,
+                maybe_share_submission,
             });
         }
 
@@ -139,13 +149,6 @@ impl GuardedMiningLoopInputs {
         if let Some(pool_difficulty) = work.maybe_pool_difficulty {
             self.runtime_state.set_pool_difficulty(pool_difficulty);
         }
-
-        let maybe_share_submission = match self.maybe_nonce_result {
-            Some(result) if self.work_queue.valid_jobs().contains(result.job_id) => {
-                Some(ShareSubmission::from_nonce_result(&work, result)?)
-            }
-            Some(_) | None => None,
-        };
 
         Ok(GuardedMiningLoopPlan {
             source: self.source,
@@ -278,27 +281,74 @@ mod mining_loop_tests {
     }
 
     #[test]
-    fn ready_mining_loop_converts_valid_nonce_result_into_share_submission() {
+    fn ready_mining_loop_converts_active_nonce_result_with_empty_pending_queue_into_share() {
         // Arrange
         let mut queue = MiningWorkQueue::new();
         let job_id = Bm1366JobId::new(0x28);
         queue
             .enqueue_work(sample_work(job_id))
             .expect("sample work should enqueue");
+        let dispatch_plan = GuardedMiningLoopInputs {
+            gate: ready_gate(),
+            pool_defaults: ultra_205_defaults(),
+            source: GuardedMiningLoopSource::Notify,
+            work_queue: queue,
+            runtime_state: MiningRuntimeState::default(),
+            maybe_nonce_result: None,
+        }
+        .plan()
+        .expect("queued work should dispatch first");
+        let inputs = GuardedMiningLoopInputs {
+            gate: ready_gate(),
+            pool_defaults: ultra_205_defaults(),
+            source: GuardedMiningLoopSource::Notify,
+            work_queue: dispatch_plan.work_queue,
+            runtime_state: MiningRuntimeState::default(),
+            maybe_nonce_result: Some(sample_nonce_result(job_id)),
+        };
+
+        // Act
+        let plan = inputs.plan().expect("valid result should produce a plan");
+
+        // Assert
+        assert!(plan.maybe_dispatch.is_none());
+        let share = plan
+            .maybe_share_submission
+            .expect("valid tracked job should produce a share submission");
+        assert_eq!(share.job_id, "job-40");
+        assert_eq!(share.nonce, 0x1234_5678);
+    }
+
+    #[test]
+    fn ready_mining_loop_converts_active_nonce_result_when_pending_front_job_differs() {
+        // Arrange
+        let active_job_id = Bm1366JobId::new(0x28);
+        let pending_job_id = Bm1366JobId::new(0x30);
+        let mut queue = MiningWorkQueue::new();
+        queue
+            .enqueue_work(sample_work(active_job_id))
+            .expect("active sample work should enqueue");
+        let mut queue = GuardedMiningLoopInputs {
+            gate: ready_gate(),
+            pool_defaults: ultra_205_defaults(),
+            source: GuardedMiningLoopSource::Notify,
+            work_queue: queue,
+            runtime_state: MiningRuntimeState::default(),
+            maybe_nonce_result: None,
+        }
+        .plan()
+        .expect("active work should dispatch")
+        .work_queue;
+        queue
+            .enqueue_work(sample_work(pending_job_id))
+            .expect("pending sample work should enqueue");
         let inputs = GuardedMiningLoopInputs {
             gate: ready_gate(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
             work_queue: queue,
             runtime_state: MiningRuntimeState::default(),
-            maybe_nonce_result: Some(Bm1366NonceResult {
-                job_id,
-                nonce: 0x1234_5678,
-                asic_index: 0,
-                core_id: 1,
-                small_core_id: 0,
-                version_bits: 0x0000_2000,
-            }),
+            maybe_nonce_result: Some(sample_nonce_result(active_job_id)),
         };
 
         // Act
@@ -307,9 +357,12 @@ mod mining_loop_tests {
         // Assert
         let share = plan
             .maybe_share_submission
-            .expect("valid tracked job should produce a share submission");
+            .expect("active work should produce a share submission");
         assert_eq!(share.job_id, "job-40");
-        assert_eq!(share.nonce, 0x1234_5678);
+        let dispatch = plan
+            .maybe_dispatch
+            .expect("pending work should still dispatch");
+        assert_eq!(dispatch.fields.nbits, 0x1705_ae3a_u32.to_le_bytes());
     }
 
     #[test]
@@ -327,14 +380,7 @@ mod mining_loop_tests {
             source: GuardedMiningLoopSource::Notify,
             work_queue: queue,
             runtime_state: MiningRuntimeState::default(),
-            maybe_nonce_result: Some(Bm1366NonceResult {
-                job_id,
-                nonce: 0x1234_5678,
-                asic_index: 0,
-                core_id: 1,
-                small_core_id: 0,
-                version_bits: 0x0000_2000,
-            }),
+            maybe_nonce_result: Some(sample_nonce_result(job_id)),
         };
 
         // Act
@@ -376,5 +422,16 @@ mod mining_loop_tests {
         .with_pool_difficulty(PoolDifficulty { difficulty: 1000.0 })
         .build(job_id)
         .expect("sample work should build")
+    }
+
+    fn sample_nonce_result(job_id: Bm1366JobId) -> Bm1366NonceResult {
+        Bm1366NonceResult {
+            job_id,
+            nonce: 0x1234_5678,
+            asic_index: 0,
+            core_id: 1,
+            small_core_id: 0,
+            version_bits: 0x0000_2000,
+        }
     }
 }
