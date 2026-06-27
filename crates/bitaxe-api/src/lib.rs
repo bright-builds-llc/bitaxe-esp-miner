@@ -16,6 +16,7 @@ pub mod snapshot;
 pub mod statistics;
 pub mod system;
 pub mod telemetry;
+pub mod websocket_state;
 pub mod wire;
 
 pub use asic::asic_settings_from_snapshot;
@@ -58,6 +59,7 @@ pub use telemetry::{
     live_telemetry_diff, live_telemetry_update_envelope, LiveTelemetryPlanner,
     LIVE_TELEMETRY_CADENCE_MS,
 };
+pub use websocket_state::{WebSocketRegisterOutcome, WebSocketState, MAX_WEBSOCKET_CLIENTS};
 pub use wire::{SystemAsicWire, SystemInfoWire};
 
 #[cfg(test)]
