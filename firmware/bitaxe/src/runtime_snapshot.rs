@@ -3,9 +3,9 @@
 use std::sync::{Mutex, OnceLock};
 
 use bitaxe_api::{
-    apply_block_found_dismiss_effect, apply_mining_activity_effect, ApiSnapshot,
-    BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect,
-    MiningActivityEffect, PlatformSnapshot,
+    apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
+    ApiSnapshot, BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode,
+    IdentifyModeEffect, IdentifyModeState, MiningActivityEffect, PlatformSnapshot,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::state::MiningRuntimeState;
@@ -16,7 +16,7 @@ static COMMAND_VISIBLE_STATE: OnceLock<Mutex<CommandVisibleState>> = OnceLock::n
 #[derive(Debug, Clone, PartialEq)]
 struct CommandVisibleState {
     mining: MiningRuntimeState,
-    identify: IdentifyMode,
+    identify: IdentifyModeState,
     block_found: BlockFoundNotificationState,
 }
 
@@ -24,7 +24,7 @@ impl Default for CommandVisibleState {
     fn default() -> Self {
         Self {
             mining: MiningRuntimeState::default(),
-            identify: IdentifyMode::Inactive,
+            identify: IdentifyModeState::inactive(),
             block_found: BlockFoundNotificationState {
                 block_found: 0,
                 show_new_block: false,
@@ -52,7 +52,7 @@ pub fn mining_runtime_state() -> MiningRuntimeState {
 
 /// Returns the current identify mode used to plan the next identify command.
 pub fn identify_mode() -> IdentifyMode {
-    command_visible_state().identify
+    command_visible_state().identify.mode_at(uptime_millis())
 }
 
 /// Returns the current block-found notification state.
@@ -67,11 +67,9 @@ pub fn apply_mining_activity_command(effect: MiningActivityEffect) {
 
 /// Applies an API-visible identify command effect.
 pub fn apply_identify_mode_command(effect: IdentifyModeEffect) {
+    let now_ms = uptime_millis();
     mutate_command_visible_state(|state| {
-        state.identify = match effect {
-            IdentifyModeEffect::Enable { .. } => IdentifyMode::Active,
-            IdentifyModeEffect::Disable => IdentifyMode::Inactive,
-        };
+        apply_identify_mode_effect(&mut state.identify, effect, now_ms);
     });
 }
 
@@ -161,4 +159,13 @@ fn uptime_seconds() -> u64 {
     }
 
     (uptime_micros as u64) / 1_000_000
+}
+
+fn uptime_millis() -> u64 {
+    let uptime_micros = unsafe { sys::esp_timer_get_time() };
+    if uptime_micros <= 0 {
+        return 0;
+    }
+
+    (uptime_micros as u64) / 1_000
 }

@@ -58,6 +58,36 @@ pub enum IdentifyModeEffect {
     Disable,
 }
 
+/// Firmware-owned identify state with a monotonic expiry deadline.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct IdentifyModeState {
+    maybe_expires_at_ms: Option<u64>,
+}
+
+impl IdentifyModeState {
+    /// Creates an inactive identify state.
+    #[must_use]
+    pub const fn inactive() -> Self {
+        Self {
+            maybe_expires_at_ms: None,
+        }
+    }
+
+    /// Returns the public identify mode at a monotonic timestamp.
+    #[must_use]
+    pub fn mode_at(&self, now_ms: u64) -> IdentifyMode {
+        let Some(expires_at_ms) = self.maybe_expires_at_ms else {
+            return IdentifyMode::Inactive;
+        };
+
+        if expires_at_ms <= now_ms {
+            return IdentifyMode::Inactive;
+        }
+
+        IdentifyMode::Active
+    }
+}
+
 /// Block-found notification state owned by the firmware shell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BlockFoundNotificationState {
@@ -148,6 +178,18 @@ pub fn apply_mining_activity_effect(state: &mut MiningRuntimeState, effect: Mini
     state.set_mining_activity(effect.next_activity);
 }
 
+/// Applies a pure identify-mode effect against a monotonic timestamp.
+pub fn apply_identify_mode_effect(
+    state: &mut IdentifyModeState,
+    effect: IdentifyModeEffect,
+    now_ms: u64,
+) {
+    state.maybe_expires_at_ms = match effect {
+        IdentifyModeEffect::Enable { duration_ms } => Some(now_ms.saturating_add(duration_ms)),
+        IdentifyModeEffect::Disable => None,
+    };
+}
+
 /// Applies a pure block-found dismiss effect.
 #[must_use]
 pub const fn apply_block_found_dismiss_effect(
@@ -167,10 +209,10 @@ mod tests {
     use serde_json::Value;
 
     use crate::commands::{
-        apply_block_found_dismiss_effect, apply_mining_activity_effect, block_found_dismiss_plan,
-        identify_plan, pause_mining_plan, restart_plan, resume_mining_plan,
-        BlockFoundNotificationState, CommandEffect, IdentifyMode, IdentifyModeEffect,
-        IDENTIFY_DURATION_MS,
+        apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
+        block_found_dismiss_plan, identify_plan, pause_mining_plan, restart_plan,
+        resume_mining_plan, BlockFoundNotificationState, CommandEffect, IdentifyMode,
+        IdentifyModeEffect, IdentifyModeState, IDENTIFY_DURATION_MS,
     };
 
     #[derive(Debug, Deserialize)]
@@ -265,6 +307,55 @@ mod tests {
         assert_eq!(
             off_plan.effect,
             CommandEffect::Identify(IdentifyModeEffect::Disable)
+        );
+    }
+
+    #[test]
+    fn identify_mode_state_returns_inactive_after_duration_deadline() {
+        // Arrange
+        let enabled_at_ms = 1_000;
+        let mut state = IdentifyModeState::inactive();
+        let effect = IdentifyModeEffect::Enable {
+            duration_ms: IDENTIFY_DURATION_MS,
+        };
+
+        // Act
+        apply_identify_mode_effect(&mut state, effect, enabled_at_ms);
+
+        // Assert
+        assert_eq!(state.mode_at(enabled_at_ms), IdentifyMode::Active);
+        assert_eq!(
+            state.mode_at(enabled_at_ms + IDENTIFY_DURATION_MS - 1),
+            IdentifyMode::Active
+        );
+        assert_eq!(
+            state.mode_at(enabled_at_ms + IDENTIFY_DURATION_MS),
+            IdentifyMode::Inactive
+        );
+    }
+
+    #[test]
+    fn identify_mode_state_disable_cancels_pending_expiry() {
+        // Arrange
+        let enabled_at_ms = 1_000;
+        let disabled_at_ms = 2_000;
+        let mut state = IdentifyModeState::inactive();
+        apply_identify_mode_effect(
+            &mut state,
+            IdentifyModeEffect::Enable {
+                duration_ms: IDENTIFY_DURATION_MS,
+            },
+            enabled_at_ms,
+        );
+
+        // Act
+        apply_identify_mode_effect(&mut state, IdentifyModeEffect::Disable, disabled_at_ms);
+
+        // Assert
+        assert_eq!(state.mode_at(disabled_at_ms), IdentifyMode::Inactive);
+        assert_eq!(
+            state.mode_at(enabled_at_ms + IDENTIFY_DURATION_MS - 1),
+            IdentifyMode::Inactive
         );
     }
 

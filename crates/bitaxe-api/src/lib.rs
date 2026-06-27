@@ -20,10 +20,10 @@ pub mod wire;
 
 pub use asic::asic_settings_from_snapshot;
 pub use commands::{
-    apply_block_found_dismiss_effect, apply_mining_activity_effect, block_found_dismiss_plan,
-    identify_plan, pause_mining_plan, restart_plan, resume_mining_plan, BlockFoundDismissEffect,
-    BlockFoundNotificationState, CommandEffect, CommandPlan, IdentifyMode, IdentifyModeEffect,
-    MiningActivityEffect, IDENTIFY_DURATION_MS,
+    apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
+    block_found_dismiss_plan, identify_plan, pause_mining_plan, restart_plan, resume_mining_plan,
+    BlockFoundDismissEffect, BlockFoundNotificationState, CommandEffect, CommandPlan, IdentifyMode,
+    IdentifyModeEffect, IdentifyModeState, MiningActivityEffect, IDENTIFY_DURATION_MS,
 };
 pub use logs::{
     log_download_headers, LogDownloadHeaders, RawLogStreamPlanner, RetainedLogBuffer,
