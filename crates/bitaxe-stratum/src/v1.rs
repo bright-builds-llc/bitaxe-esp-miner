@@ -9,5 +9,6 @@ pub mod coinbase;
 pub mod fake_pool;
 pub mod messages;
 pub mod mining;
+pub mod mining_loop;
 pub mod queue;
 pub mod state;

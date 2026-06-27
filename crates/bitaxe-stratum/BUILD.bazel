@@ -10,6 +10,7 @@ rust_library(
         "src/v1/coinbase.rs",
         "src/v1/fake_pool.rs",
         "src/v1/mining.rs",
+        "src/v1/mining_loop.rs",
         "src/v1/messages.rs",
         "src/v1/queue.rs",
         "src/v1/state.rs",
