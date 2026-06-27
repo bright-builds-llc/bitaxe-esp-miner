@@ -57,9 +57,9 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 - [x] **API-02**: System info and settings responses expose upstream-compatible fields, names, units, defaults, and encoding.
 - [x] **API-03**: Settings PATCH behavior validates, persists, rejects, reloads, and reports errors with upstream-compatible observable semantics.
 - [x] **API-04**: ASIC, statistics, scoreboard, and mining-state endpoints report values derived from the Rust runtime state model.
-- [ ] **API-05**: Log buffer, log download, and log retention behavior support the user-facing API and WebSocket surfaces.
-- [ ] **API-06**: `/api/ws` streams log events in a client-compatible format.
-- [ ] **API-07**: `/api/ws/live` streams live telemetry with upstream-compatible payload shape, cadence, and state transitions.
+- [x] **API-05**: Log buffer, log download, and log retention behavior support the user-facing API and WebSocket surfaces.
+- [x] **API-06**: `/api/ws` streams log events in a client-compatible format.
+- [x] **API-07**: `/api/ws/live` streams live telemetry with upstream-compatible payload shape, cadence, and state transitions.
 - [ ] **API-08**: Pause, resume, restart, identify, and related command routes preserve user-visible behavior and safe failure modes.
 - [ ] **API-09**: Static AxeOS assets and recovery page behavior remain compatible enough for device administration without requiring an Angular rewrite in V1.
 - [x] **API-10**: API compare fixtures prove Rust responses match the upstream schema or captured upstream responses for representative success and error cases.
@@ -174,9 +174,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-02 | Phase 5 | Complete |
 | API-03 | Phase 5 | Complete |
 | API-04 | Phase 5 | Complete |
-| API-05 | Phase 5 | Pending |
-| API-06 | Phase 5 | Pending |
-| API-07 | Phase 5 | Pending |
+| API-05 | Phase 5 | Complete |
+| API-06 | Phase 5 | Complete |
+| API-07 | Phase 5 | Complete |
 | API-08 | Phase 5 | Pending |
 | API-09 | Phase 5 | Pending |
 | API-10 | Phase 5 | Complete |

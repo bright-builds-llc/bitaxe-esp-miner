@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-06-27T20:29:02.360Z"
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-06-27T20:44:27.280Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 29
-  completed_plans: 25
-  percent: 86
+  completed_plans: 26
+  percent: 90
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 05 (axeos-api-logs-and-telemetry) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-06-27
 
-Progress: [██████████] 100%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Progress: [██████████] 100%
 | Phase 05-axeos-api-logs-and-telemetry P01 | 11 min | 2 tasks | 9 files |
 | Phase 05-axeos-api-logs-and-telemetry P02 | 10 min | 2 tasks | 4 files |
 | Phase 05-axeos-api-logs-and-telemetry P03 | 12 min | 2 tasks | 11 files |
+| Phase 05-axeos-api-logs-and-telemetry P04 | 9 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,9 @@ Recent decisions affecting current work:
 - [Phase 05-axeos-api-logs-and-telemetry]: System, ASIC, mining, statistics, and scoreboard mappers stay pure and do not introduce ESP-IDF, HTTP, NVS, file, or hardware effects.
 - [Phase 05-axeos-api-logs-and-telemetry]: Mining-visible share counters, rejected reasons, pool difficulty, fallback state, hashrate, and blocked status derive from MiningRuntimeState.
 - [Phase 05-axeos-api-logs-and-telemetry]: Statistics and scoreboard empty states are explicit compatible response shapes, not fake historical mining data.
+- [Phase 05-axeos-api-logs-and-telemetry]: Keep retained log buffering and raw log stream cursor behavior pure in bitaxe-api; ESP log hooks, mutexes, notifications, and WebSocket sends remain firmware adapter work.
+- [Phase 05-axeos-api-logs-and-telemetry]: Start raw log WebSocket streams at the current absolute log end and reset that cursor while no clients are active to avoid retained-history replay.
+- [Phase 05-axeos-api-logs-and-telemetry]: Model live telemetry as full update envelopes on connect, diff-only cadence frames after baseline, and baseline clearing while no live clients are active.
 
 ### Pending Todos
 
@@ -189,6 +193,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T20:28:48.029Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-06-27T20:44:27.277Z
+Stopped at: Completed 05-04-PLAN.md
 Resume file: None
