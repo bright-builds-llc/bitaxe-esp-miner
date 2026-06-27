@@ -6,6 +6,12 @@ This evidence covers Phase 04 Stratum v1 parser, fake-pool lifecycle, mining job
 
 It does not record a live pool socket run, real BM1366 production work submission, accepted live share, or long-running soak. No pool credentials, wallet usernames, or secret-bearing logs are included.
 
+## Status Boundary
+
+- Smoke and soak criteria: implemented as documentation criteria.
+- Live mining smoke evidence: not-started - hardware evidence pending.
+- Live mining soak evidence: not-started - hardware evidence pending.
+
 ## Commands
 
 | Command | Result | Evidence Boundary |
@@ -61,9 +67,9 @@ Required soak record before live mining stability can be claimed:
 
 ## Conclusion
 
-Phase 04 has pure and fake-pool evidence for Stratum v1 parsing, lifecycle state, mining job construction, work queue behavior, share-submission mapping, and the fail-closed first mining-loop gate.
+Phase 04 has pure and fake-pool evidence for Stratum v1 parsing, lifecycle state, mining job construction, work queue behavior, share-submission mapping, and the fail-closed first mining-loop gate. Smoke and soak criteria are recorded as documentation only.
 
-Live pool socket use and real BM1366 production work submission remain disabled in firmware main. Live hardware mining smoke and soak are not run - hardware evidence pending.
+Live pool socket use and real BM1366 production work submission remain disabled in firmware main. Live hardware mining smoke and soak are not-started - hardware evidence pending.
 
 ## Residual Risk
 
