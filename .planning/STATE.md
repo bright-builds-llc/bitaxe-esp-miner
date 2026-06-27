@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-06-27T14:06:13.296Z"
-last_activity: 2026-06-27 -- Phase 04 execution started
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-06-27T14:20:37.796Z"
+last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 22
-  completed_plans: 18
-  percent: 82
+  completed_plans: 19
+  percent: 86
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 04 (stratum-v1-and-first-mining-loop) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 04
-Last activity: 2026-06-27 -- Phase 04 execution started
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-27
 
 Progress: [██████████] 100%
 
@@ -69,6 +69,7 @@ Progress: [██████████] 100%
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P03 | 16 min | 2 tasks | 12 files |
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P04 | 14 min | 2 tasks | 5 files |
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P05 | 5 | 3 tasks | 14 files |
+| Phase 04-stratum-v1-and-first-mining-loop P01 | 10 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Recent decisions affecting current work:
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Do not run flash, monitor, chip-detect, or port detection during Plan 03-05 checkpoint continuation.
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Keep phase-03-ultra-205-bm1366-chip-detect.md concluded as not run - hardware verification pending.
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Keep ASIC-002 through ASIC-007 below verified until board-named Ultra 205 chip-detect hardware-smoke evidence exists.
+- [Phase 04-stratum-v1-and-first-mining-loop]: Stratum v1 parser rejects unknown methods, invalid hex fields, malformed params, malformed responses, and oversized extranonce2 lengths before mining state can consume pool data.
+- [Phase 04-stratum-v1-and-first-mining-loop]: Protocol tests and fixtures use synthetic usernames/passwords only, keeping real pool credentials out of source and evidence.
+- [Phase 04-stratum-v1-and-first-mining-loop]: TDD RED failures were run but not committed because AGENTS.md requires passing Rust verification before every commit.
 
 ### Pending Todos
 
@@ -158,6 +162,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T13:19:26.556Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-stratum-v1-and-first-mining-loop/04-CONTEXT.md
+Last session: 2026-06-27T14:20:37.794Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
