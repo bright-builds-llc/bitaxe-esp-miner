@@ -12,6 +12,7 @@ rust_library(
         "src/snapshot.rs",
         "src/statistics.rs",
         "src/system.rs",
+        "src/telemetry.rs",
         "src/wire.rs",
     ],
     compile_data = glob(["fixtures/**"], allow_empty = True),

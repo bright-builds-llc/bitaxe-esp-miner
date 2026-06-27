@@ -1,0 +1,62 @@
+{
+  "cadence_ms": 500,
+  "full_state": {
+    "version": "v1.0.0",
+    "uptimeSeconds": 42,
+    "miningPaused": true,
+    "mining": {
+      "hashRate": 0,
+      "sharesAccepted": 0,
+      "pool": {
+        "connected": false,
+        "fallback": false
+      }
+    }
+  },
+  "changed_state": {
+    "version": "v1.0.0",
+    "uptimeSeconds": 43,
+    "miningPaused": true,
+    "mining": {
+      "hashRate": 1.25,
+      "sharesAccepted": 0,
+      "pool": {
+        "connected": false,
+        "fallback": false
+      }
+    }
+  },
+  "expected_connect_frame": {
+    "event": "update",
+    "data": {
+      "version": "v1.0.0",
+      "uptimeSeconds": 42,
+      "miningPaused": true,
+      "mining": {
+        "hashRate": 0,
+        "sharesAccepted": 0,
+        "pool": {
+          "connected": false,
+          "fallback": false
+        }
+      }
+    }
+  },
+  "expected_diff_frame": {
+    "event": "update",
+    "data": {
+      "uptimeSeconds": 43,
+      "mining": {
+        "hashRate": 1.25
+      }
+    }
+  },
+  "expected_nested_diff": {
+    "mining": {
+      "sharesAccepted": 3,
+      "nested": {
+        "changed": "new"
+      }
+    }
+  }
+}
