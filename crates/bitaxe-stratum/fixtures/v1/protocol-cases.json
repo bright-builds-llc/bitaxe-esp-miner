@@ -45,6 +45,113 @@
           true
         ]
       }
+    },
+    {
+      "name": "client-configure-version-rolling",
+      "method": "mining.configure",
+      "direction": "client-to-pool",
+      "json": {
+        "id": 3,
+        "method": "mining.configure",
+        "params": [["version-rolling"], {"version-rolling.mask": "ffffffff"}]
+      }
+    },
+    {
+      "name": "client-suggest-difficulty",
+      "method": "mining.suggest_difficulty",
+      "direction": "client-to-pool",
+      "json": {
+        "id": 4,
+        "method": "mining.suggest_difficulty",
+        "params": [1000]
+      }
+    },
+    {
+      "name": "client-extranonce-subscribe",
+      "method": "mining.extranonce.subscribe",
+      "direction": "client-to-pool",
+      "json": {
+        "id": 5,
+        "method": "mining.extranonce.subscribe",
+        "params": []
+      }
+    },
+    {
+      "name": "client-submit",
+      "method": "mining.submit",
+      "direction": "client-to-pool",
+      "json": {
+        "id": 6,
+        "method": "mining.submit",
+        "params": [
+          "synthetic-user",
+          "job",
+          "00000000",
+          "647025b5",
+          "12345678",
+          "00000000"
+        ]
+      }
+    },
+    {
+      "name": "pool-set-difficulty",
+      "method": "mining.set_difficulty",
+      "direction": "pool-to-client",
+      "json": {
+        "id": null,
+        "method": "mining.set_difficulty",
+        "params": [4294967295]
+      }
+    },
+    {
+      "name": "pool-set-extranonce",
+      "method": "mining.set_extranonce",
+      "direction": "pool-to-client",
+      "json": {
+        "id": null,
+        "method": "mining.set_extranonce",
+        "params": ["deadbeef", 8]
+      }
+    },
+    {
+      "name": "pool-set-version-mask",
+      "method": "mining.set_version_mask",
+      "direction": "pool-to-client",
+      "json": {
+        "id": 7,
+        "method": "mining.set_version_mask",
+        "params": ["1fffe000"]
+      }
+    },
+    {
+      "name": "pool-subscribe-result",
+      "method": "result",
+      "direction": "pool-to-client",
+      "json": {
+        "result": [[["mining.notify", "695482c0"]], "4de05269", 8],
+        "id": 2,
+        "error": null
+      }
+    },
+    {
+      "name": "pool-success-result",
+      "method": "result",
+      "direction": "pool-to-client",
+      "json": {
+        "id": 8,
+        "result": true,
+        "error": null
+      }
+    },
+    {
+      "name": "pool-error-result",
+      "method": "error",
+      "direction": "pool-to-client",
+      "json": {
+        "id": 9,
+        "result": null,
+        "error": [21, "Job not found", ""]
+      }
     }
   ]
 }
