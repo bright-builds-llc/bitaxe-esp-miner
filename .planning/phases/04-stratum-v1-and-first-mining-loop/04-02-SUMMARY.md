@@ -101,8 +101,6 @@ Each task was committed atomically:
 - **Verification:** Task-scoped RED failures were observed before implementation; final task commits were made only after passing `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo build --all-targets --all-features`, and `cargo test --all-features`.
 - **Committed in:** `022343f`, `a323836`
 
----
-
 **Total deviations:** 1 auto-fixed (1 missing critical)
 **Impact on plan:** The adjustment enforces repo commit safety without changing the planned runtime state or fake-pool behavior.
 

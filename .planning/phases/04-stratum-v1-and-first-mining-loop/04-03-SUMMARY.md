@@ -112,8 +112,6 @@ Each task was committed atomically:
 - **Verification:** RED failures were observed for missing mining helpers and queue types; final task commits passed targeted tests and the full Rust pre-commit sequence.
 - **Committed in:** `ac915c7`, `f6b62fa`
 
----
-
 **Total deviations:** 1 auto-fixed (1 missing critical)
 **Impact on plan:** The adjustment enforces repo commit safety without changing the planned Stratum mining job or queue behavior.
 

@@ -117,8 +117,6 @@ Each task was committed atomically:
 - **Verification:** Task-scoped RED failures were observed before implementation; all final pre-commit checks passed before each task commit.
 - **Committed in:** `d0be610`, `ea612e9`
 
----
-
 **Total deviations:** 2 auto-fixed (2 missing critical)
 **Impact on plan:** Both adjustments enforce repo safety and threat-model correctness without expanding beyond the planned Stratum v1 protocol core.
 

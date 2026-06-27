@@ -132,8 +132,6 @@ Each task was committed atomically:
 - **Verification:** `bazel test //crates/bitaxe-stratum:tests`; `just parity`; full Rust pre-commit sequence.
 - **Committed in:** `5274071`
 
----
-
 **Total deviations:** 3 auto-fixed (1 missing critical, 2 blocking)
 **Impact on plan:** All deviations preserved repo rules, module visibility, and reproducible Bazel verification. No live mining behavior or reference-tree mutation was introduced.
 
