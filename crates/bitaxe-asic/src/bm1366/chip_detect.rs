@@ -15,6 +15,14 @@ use super::{
 };
 
 pub const CHIP_DETECT_RESPONSE_INVALID: &str = "chip_detect_response_invalid";
+pub const CHIP_DETECT_ADAPTER_ERROR: &str = "chip_detect_adapter_error";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Bm1366AdapterIoFault {
+    AdapterError,
+    PartialRead,
+    UartWrite,
+}
 
 pub fn parse_chip_id_response(bytes: &[u8]) -> Result<Bm1366Observation, Bm1366ProtocolFault> {
     if bytes.len() != BM1366_RESULT_FRAME_LEN {
@@ -77,6 +85,11 @@ pub fn chip_detect_response_actions(bytes: &[u8], expected_chips: u8) -> Vec<Bm1
 }
 
 #[must_use]
+pub fn adapter_io_failure_actions(_fault: Bm1366AdapterIoFault) -> Vec<Bm1366AdapterAction> {
+    fail_closed_actions(CHIP_DETECT_ADAPTER_ERROR)
+}
+
+#[must_use]
 pub fn fail_closed_actions(reason: &'static str) -> Vec<Bm1366AdapterAction> {
     vec![
         Bm1366AdapterAction::HoldResetLow,
@@ -86,7 +99,10 @@ pub fn fail_closed_actions(reason: &'static str) -> Vec<Bm1366AdapterAction> {
 
 #[cfg(test)]
 mod tests {
-    use super::{chip_detect_response_actions, fail_closed_actions, CHIP_DETECT_RESPONSE_INVALID};
+    use super::{
+        adapter_io_failure_actions, chip_detect_response_actions, fail_closed_actions,
+        Bm1366AdapterIoFault, CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID,
+    };
     use crate::bm1366::{
         command::Bm1366AdapterAction, crc::crc5, observation::AsicInitStatus, BM1366_CHIP_ID,
         BM1366_RESULT_FRAME_LEN,
@@ -150,5 +166,22 @@ mod tests {
                 AsicInitStatus::ChipDetectedNoMining { chips: 1 }
             )]
         );
+    }
+
+    #[test]
+    fn adapter_io_failures_hold_reset_low_and_publish_fail_closed() {
+        // Arrange
+        let faults = [
+            Bm1366AdapterIoFault::PartialRead,
+            Bm1366AdapterIoFault::UartWrite,
+        ];
+
+        // Act
+        let observed: Vec<_> = faults.into_iter().map(adapter_io_failure_actions).collect();
+
+        // Assert
+        for actions in observed {
+            assert_eq!(actions, fail_closed_actions(CHIP_DETECT_ADAPTER_ERROR));
+        }
     }
 }

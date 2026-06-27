@@ -8,7 +8,9 @@
 use anyhow::{Context, Result};
 use bitaxe_asic::bm1366::{
     adapter_gate::AsicAdapterMode,
-    chip_detect::{self, CHIP_DETECT_RESPONSE_INVALID},
+    chip_detect::{
+        self, Bm1366AdapterIoFault, CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID,
+    },
     command::Bm1366AdapterAction,
     init_plan::{Bm1366InitPlan, Bm1366Preflight, BoardPreflightEvidence, ConfigPreflightEvidence},
     observation::AsicInitStatus,
@@ -60,8 +62,13 @@ fn run_chip_detect_only() -> Result<()> {
         .context("initialize ASIC reset GPIO adapter")?;
 
     for action in decision.actions() {
-        if interpret_action(action, &mut uart, &mut reset)? == ActionOutcome::Stop {
-            return Ok(());
+        match interpret_action(action, &mut uart, &mut reset) {
+            Ok(ActionOutcome::Continue) => {}
+            Ok(ActionOutcome::Stop) => return Ok(()),
+            Err(error) => {
+                fail_closed_adapter_error(&mut reset, &error);
+                return Ok(());
+            }
         }
     }
 
@@ -144,5 +151,20 @@ fn interpret_action(
 fn best_effort_hold_reset_low(reset: &mut reset::AsicReset<'_>, reason: &'static str) {
     if let Err(error) = reset.hold_reset_low() {
         log::warn!("asic_status=fail_closed reason={reason} hold_reset_low_error={error}");
+    }
+}
+
+fn fail_closed_adapter_error(reset: &mut reset::AsicReset<'_>, error: &anyhow::Error) {
+    log::warn!("asic_status=fail_closed reason={CHIP_DETECT_ADAPTER_ERROR} error={error:#}");
+    for action in chip_detect::adapter_io_failure_actions(Bm1366AdapterIoFault::AdapterError) {
+        match action {
+            Bm1366AdapterAction::HoldResetLow => {
+                best_effort_hold_reset_low(reset, CHIP_DETECT_ADAPTER_ERROR);
+            }
+            Bm1366AdapterAction::PublishStatus(init_status) => {
+                status::publish_status(init_status);
+            }
+            _ => {}
+        }
     }
 }
