@@ -5,9 +5,14 @@
 //! - `reference/esp-miner/main/http_server/system_api_json.c`
 //! - `reference/esp-miner/main/http_server/axe-os/api/system/asic_settings.c`
 
+pub mod settings;
 pub mod snapshot;
 pub mod wire;
 
+pub use settings::{
+    plan_settings_patch_body, plan_settings_patch_value, AcceptedSettingsPatch,
+    SettingsPatchFailure, SettingsPatchFailureReason, SettingsPatchPublicError,
+};
 pub use snapshot::{
     ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, SafeTelemetrySnapshot,
 };

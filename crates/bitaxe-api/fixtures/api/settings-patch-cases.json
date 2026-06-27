@@ -1,0 +1,36 @@
+{
+  "metadata": {
+    "source": "reference/esp-miner/main/http_server/http_server.c PATCH_update_settings and check_settings_and_update",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "behavioral fixture; no upstream source expression copied"
+  },
+  "valid": {
+    "body": {
+      "frequency": 485,
+      "manualFanSpeed": 42,
+      "unknownFutureField": "ignored"
+    },
+    "expected_writes": [
+      { "type": "string", "key": "asicfrequency_f", "value": "485.000000" },
+      { "type": "u16", "key": "asicfrequency", "value": 485 },
+      { "type": "u16", "key": "manualfanspeed", "value": 42 },
+      { "type": "u16", "key": "fanspeed", "value": 42 }
+    ]
+  },
+  "unknown_only": {
+    "body": {
+      "unknownFutureField": "ignored"
+    },
+    "expected_writes": []
+  },
+  "invalid_known": {
+    "body": {
+      "frequency": 485,
+      "manualFanSpeed": 101,
+      "unknownFutureField": "ignored"
+    },
+    "public_error": "Wrong API input"
+  },
+  "invalid_json_public_error": "Invalid JSON",
+  "wrong_input_public_error": "Wrong API input"
+}

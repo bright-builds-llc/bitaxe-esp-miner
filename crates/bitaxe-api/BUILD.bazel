@@ -4,6 +4,7 @@ rust_library(
     name = "bitaxe_api",
     srcs = [
         "src/lib.rs",
+        "src/settings.rs",
         "src/snapshot.rs",
         "src/wire.rs",
     ],
