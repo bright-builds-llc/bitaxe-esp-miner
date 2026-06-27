@@ -9,7 +9,8 @@ use anyhow::{Context, Result};
 use bitaxe_asic::bm1366::{
     adapter_gate::AsicAdapterMode,
     chip_detect::{
-        self, Bm1366AdapterIoFault, CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID,
+        self, Bm1366AdapterIoFault, Bm1366AdapterSetupFault, CHIP_DETECT_ADAPTER_ERROR,
+        CHIP_DETECT_RESPONSE_INVALID, RESET_ADAPTER_UNAVAILABLE, UART_ADAPTER_UNAVAILABLE,
     },
     command::Bm1366AdapterAction,
     init_plan::{Bm1366InitPlan, Bm1366Preflight, BoardPreflightEvidence, ConfigPreflightEvidence},
@@ -52,14 +53,32 @@ fn run_chip_detect_only() -> Result<()> {
         ConfigPreflightEvidence::ultra_205_defaults(),
     );
     let decision = Bm1366InitPlan::chip_detect_only(preflight);
-    let mut uart = uart::AsicUart::new(
+    let mut reset = match reset::AsicReset::new(peripherals.pins.gpio1)
+        .context("initialize ASIC reset GPIO adapter")
+    {
+        Ok(reset) => reset,
+        Err(error) => {
+            fail_closed_setup_error(Bm1366AdapterSetupFault::ResetUnavailable, None, &error);
+            return Ok(());
+        }
+    };
+    let mut uart = match uart::AsicUart::new(
         peripherals.uart1,
         peripherals.pins.gpio17,
         peripherals.pins.gpio18,
     )
-    .context("initialize BM1366 UART1 adapter")?;
-    let mut reset = reset::AsicReset::new(peripherals.pins.gpio1)
-        .context("initialize ASIC reset GPIO adapter")?;
+    .context("initialize BM1366 UART1 adapter")
+    {
+        Ok(uart) => uart,
+        Err(error) => {
+            fail_closed_setup_error(
+                Bm1366AdapterSetupFault::UartUnavailable,
+                Some(&mut reset),
+                &error,
+            );
+            return Ok(());
+        }
+    };
 
     for action in decision.actions() {
         match interpret_action(action, &mut uart, &mut reset) {
@@ -160,6 +179,31 @@ fn fail_closed_adapter_error(reset: &mut reset::AsicReset<'_>, error: &anyhow::E
         match action {
             Bm1366AdapterAction::HoldResetLow => {
                 best_effort_hold_reset_low(reset, CHIP_DETECT_ADAPTER_ERROR);
+            }
+            Bm1366AdapterAction::PublishStatus(init_status) => {
+                status::publish_status(init_status);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn fail_closed_setup_error(
+    fault: Bm1366AdapterSetupFault,
+    mut maybe_reset: Option<&mut reset::AsicReset<'_>>,
+    error: &anyhow::Error,
+) {
+    let reason = match fault {
+        Bm1366AdapterSetupFault::ResetUnavailable => RESET_ADAPTER_UNAVAILABLE,
+        Bm1366AdapterSetupFault::UartUnavailable => UART_ADAPTER_UNAVAILABLE,
+    };
+    log::warn!("asic_status=fail_closed reason={reason} error={error:#}");
+    for action in chip_detect::adapter_setup_failure_actions(fault) {
+        match action {
+            Bm1366AdapterAction::HoldResetLow => {
+                if let Some(reset) = maybe_reset.as_deref_mut() {
+                    best_effort_hold_reset_low(reset, reason);
+                }
             }
             Bm1366AdapterAction::PublishStatus(init_status) => {
                 status::publish_status(init_status);

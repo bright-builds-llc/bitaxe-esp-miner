@@ -16,12 +16,20 @@ use super::{
 
 pub const CHIP_DETECT_RESPONSE_INVALID: &str = "chip_detect_response_invalid";
 pub const CHIP_DETECT_ADAPTER_ERROR: &str = "chip_detect_adapter_error";
+pub const RESET_ADAPTER_UNAVAILABLE: &str = "reset_adapter_unavailable";
+pub const UART_ADAPTER_UNAVAILABLE: &str = "uart_adapter_unavailable";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bm1366AdapterIoFault {
     AdapterError,
     PartialRead,
     UartWrite,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Bm1366AdapterSetupFault {
+    ResetUnavailable,
+    UartUnavailable,
 }
 
 pub fn parse_chip_id_response(bytes: &[u8]) -> Result<Bm1366Observation, Bm1366ProtocolFault> {
@@ -90,6 +98,20 @@ pub fn adapter_io_failure_actions(_fault: Bm1366AdapterIoFault) -> Vec<Bm1366Ada
 }
 
 #[must_use]
+pub fn adapter_setup_failure_actions(fault: Bm1366AdapterSetupFault) -> Vec<Bm1366AdapterAction> {
+    match fault {
+        Bm1366AdapterSetupFault::ResetUnavailable => {
+            vec![Bm1366AdapterAction::PublishStatus(
+                AsicInitStatus::FailClosed {
+                    reason: RESET_ADAPTER_UNAVAILABLE,
+                },
+            )]
+        }
+        Bm1366AdapterSetupFault::UartUnavailable => fail_closed_actions(UART_ADAPTER_UNAVAILABLE),
+    }
+}
+
+#[must_use]
 pub fn fail_closed_actions(reason: &'static str) -> Vec<Bm1366AdapterAction> {
     vec![
         Bm1366AdapterAction::HoldResetLow,
@@ -100,8 +122,10 @@ pub fn fail_closed_actions(reason: &'static str) -> Vec<Bm1366AdapterAction> {
 #[cfg(test)]
 mod tests {
     use super::{
-        adapter_io_failure_actions, chip_detect_response_actions, fail_closed_actions,
-        Bm1366AdapterIoFault, CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID,
+        adapter_io_failure_actions, adapter_setup_failure_actions, chip_detect_response_actions,
+        fail_closed_actions, Bm1366AdapterIoFault, Bm1366AdapterSetupFault,
+        CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID, RESET_ADAPTER_UNAVAILABLE,
+        UART_ADAPTER_UNAVAILABLE,
     };
     use crate::bm1366::{
         command::Bm1366AdapterAction, crc::crc5, observation::AsicInitStatus, BM1366_CHIP_ID,
@@ -183,5 +207,27 @@ mod tests {
         for actions in observed {
             assert_eq!(actions, fail_closed_actions(CHIP_DETECT_ADAPTER_ERROR));
         }
+    }
+
+    #[test]
+    fn adapter_setup_failures_publish_visible_fail_closed_status() {
+        // Arrange
+        let reset_unavailable = Bm1366AdapterSetupFault::ResetUnavailable;
+        let uart_unavailable = Bm1366AdapterSetupFault::UartUnavailable;
+
+        // Act
+        let reset_actions = adapter_setup_failure_actions(reset_unavailable);
+        let uart_actions = adapter_setup_failure_actions(uart_unavailable);
+
+        // Assert
+        assert_eq!(
+            reset_actions,
+            vec![Bm1366AdapterAction::PublishStatus(
+                AsicInitStatus::FailClosed {
+                    reason: RESET_ADAPTER_UNAVAILABLE,
+                }
+            )]
+        );
+        assert_eq!(uart_actions, fail_closed_actions(UART_ADAPTER_UNAVAILABLE));
     }
 }
