@@ -173,11 +173,6 @@ impl RawLogStreamPlanner {
 
         if active_clients == 0 || was_inactive {
             self.next_abs = buffer.total_written();
-            return;
-        }
-
-        if self.next_abs > buffer.total_written() {
-            self.next_abs = buffer.total_written();
         }
     }
 
@@ -326,6 +321,26 @@ mod tests {
 
         // Assert
         assert_eq!(chunks, vec!["pending live line\n"]);
+    }
+
+    #[test]
+    fn raw_ws_active_client_drop_with_empty_buffer_does_not_replay_history() {
+        // Arrange
+        let mut buffer = RetainedLogBuffer::new();
+        buffer.append("retained old line\n");
+        let mut stream = RawLogStreamPlanner::new(&buffer);
+        stream.set_active_client_count(2, &buffer);
+        buffer.append("delivered live line\n");
+        let delivered_chunks = stream.drain_raw_chunks(&buffer);
+        stream.set_active_client_count(1, &RetainedLogBuffer::new());
+        buffer.append("next live line\n");
+
+        // Act
+        let chunks = stream.drain_raw_chunks(&buffer);
+
+        // Assert
+        assert_eq!(delivered_chunks, vec!["delivered live line\n"]);
+        assert_eq!(chunks, vec!["next live line\n"]);
     }
 
     #[test]

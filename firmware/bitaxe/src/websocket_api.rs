@@ -90,11 +90,10 @@ pub fn unregister_client(session: i32) {
 
     state.log_clients.remove(&session);
     state.live_clients.remove(&session);
-    let log_clients = state.log_clients.len();
     let live_clients = state.live_clients.len();
     state.live_telemetry.set_active_client_count(live_clients);
-    if let Some(planner) = state.maybe_log_stream.as_mut() {
-        planner.set_active_client_count(log_clients, &RetainedLogBuffer::new());
+    if state.log_clients.is_empty() {
+        state.maybe_log_stream = None;
     }
 }
 
