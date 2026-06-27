@@ -1,0 +1,74 @@
+[
+  {
+    "id": "board-mismatch-fails-closed",
+    "kind": "init_preflight_fault",
+    "checklist_ids": ["ASIC-005", "ASIC-008"],
+    "source_file": "reference/esp-miner/main/device_config.h",
+    "source_behavior": "Only board 205, family Ultra, BM1366, one chip, ActiveUltra205 scope, DS4432U, INA260, and asic_enable satisfy BM1366 init preflight",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual metadata case from pinned device catalog facts",
+    "expected_reason": "board_preflight_evidence_missing",
+    "expected_safe_action": "HoldResetLow"
+  },
+  {
+    "id": "missing-config-fails-closed",
+    "kind": "init_preflight_fault",
+    "checklist_ids": ["ASIC-005", "ASIC-008"],
+    "source_file": "reference/esp-miner/config-205.cvs",
+    "source_behavior": "Ultra 205 config evidence must match BM1366 defaults, 485 MHz, 1200 mV, board 205, and device model ultra",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual metadata case from pinned Ultra 205 defaults",
+    "expected_reason": "config_preflight_evidence_missing",
+    "expected_safe_action": "HoldResetLow"
+  },
+  {
+    "id": "missing-power-thermal-fails-closed",
+    "kind": "init_preflight_fault",
+    "checklist_ids": ["ASIC-005", "ASIC-008"],
+    "source_file": "reference/esp-miner/main/power/asic_init.c",
+    "source_behavior": "Full init must not pass reset, register init, frequency, nonce, max-baud, or initialized status without power and thermal evidence",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual fail-closed metadata case from staged init safety boundary",
+    "expected_reason": "power_thermal_evidence_missing",
+    "expected_safe_action": "HoldResetLow"
+  },
+  {
+    "id": "missing-safety-fails-closed",
+    "kind": "init_preflight_fault",
+    "checklist_ids": ["ASIC-005", "ASIC-008"],
+    "source_file": "reference/esp-miner/main/power/asic_reset.c",
+    "source_behavior": "missing safety preflight evidence must hold reset low before full BM1366 initialization",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual missing safety case from Phase 3 safety gate",
+    "expected_reason": "safety_preflight_evidence_missing",
+    "expected_safe_action": "HoldResetLow"
+  },
+  {
+    "id": "chip-count-mismatch-fails-closed",
+    "kind": "chip_detect_fault",
+    "checklist_ids": ["ASIC-002", "ASIC-005"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "chip-count mismatch during count_asic_chips fails detection and prevents initialized mining state",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual chip-count mismatch metadata case from pinned receive behavior",
+    "expected_fault": "ChipCountMismatch",
+    "expected_safe_action": "HoldResetLow"
+  },
+  {
+    "id": "chip-detect-success",
+    "kind": "chip_detect_only_success",
+    "checklist_ids": ["ASIC-005", "ASIC-008"],
+    "source_file": "reference/esp-miner/main/power/asic_init.c",
+    "source_behavior": "chip-detect success metadata covers reset, default baud, read chip id, exact 11-byte read, and no mining state",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture metadata; not MIT source expression",
+    "derivation": "manual chip-detect success case from pinned init and chip-count behavior",
+    "expected_status": "ChipDetectOnly",
+    "expected_detected_status": "ChipDetectedNoMining"
+  }
+]

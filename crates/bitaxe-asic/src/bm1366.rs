@@ -7,6 +7,7 @@
 
 pub mod command;
 pub mod crc;
+pub mod init_plan;
 pub mod observation;
 pub mod packet;
 pub mod registers;
