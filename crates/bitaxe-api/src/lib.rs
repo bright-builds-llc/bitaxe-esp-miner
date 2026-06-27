@@ -1,23 +1,46 @@
-/// Phase 1 API status contract.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ApiRuntimeStatus {
-    /// API behavior is deferred to Phase 5.
-    DeferredUntilPhase5,
-}
+//! AxeOS API wire contracts and pure adapter input boundaries.
+//!
+//! Reference breadcrumbs:
+//! - `reference/esp-miner/main/http_server/openapi.yaml`
+//! - `reference/esp-miner/main/http_server/system_api_json.c`
+//! - `reference/esp-miner/main/http_server/axe-os/api/system/asic_settings.c`
+
+pub mod snapshot;
+pub mod wire;
+
+pub use snapshot::{
+    ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, SafeTelemetrySnapshot,
+};
+pub use wire::{SystemAsicWire, SystemInfoWire};
 
 #[cfg(test)]
 mod tests {
-    use super::ApiRuntimeStatus;
+    use super::{ApiSnapshot, SystemInfoWire};
 
     #[test]
-    fn api_runtime_status_defers_active_behavior_until_phase_5() {
+    fn api_contract_no_longer_exposes_phase_1_deferral_status() {
         // Arrange
-        let status = ApiRuntimeStatus::DeferredUntilPhase5;
+        let public_contract_count = 3;
 
         // Act
-        let observed = status;
+        let expected_contract_count =
+            [ApiSnapshot::safe_ultra_205()].len() + ["SystemInfoWire", "SystemAsicWire"].len();
 
         // Assert
-        assert_eq!(observed, ApiRuntimeStatus::DeferredUntilPhase5);
+        assert_eq!(expected_contract_count, public_contract_count);
+    }
+
+    #[test]
+    fn api_snapshot_maps_to_system_info_wire_contract() {
+        // Arrange
+        let snapshot = ApiSnapshot::safe_ultra_205();
+
+        // Act
+        let wire = SystemInfoWire::from_snapshot(&snapshot);
+
+        // Assert
+        assert_eq!(wire.asic_model, "BM1366");
+        assert_eq!(wire.frequency, 485.0);
+        assert!(wire.mining_paused);
     }
 }

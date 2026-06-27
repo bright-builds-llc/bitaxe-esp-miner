@@ -1,0 +1,320 @@
+//! Handwritten AxeOS wire DTOs for the initial system and ASIC contracts.
+//!
+//! Reference breadcrumbs:
+//! - `reference/esp-miner/main/http_server/system_api_json.c`
+//! - `reference/esp-miner/main/http_server/openapi.yaml`
+//! - `reference/esp-miner/main/http_server/axe-os/api/system/asic_settings.c`
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use thiserror::Error;
+
+use crate::ApiSnapshot;
+
+/// Error type for host-side fixture compatibility helpers.
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum WireCompatibilityError {
+    #[error("missing required AxeOS wire field {field}")]
+    MissingRequiredField { field: &'static str },
+}
+
+/// Verifies that a structured JSON value contains required AxeOS fields.
+pub fn require_wire_keys(
+    value: &Value,
+    keys: &[&'static str],
+) -> Result<(), WireCompatibilityError> {
+    for field in keys {
+        if value.get(field).is_none() {
+            return Err(WireCompatibilityError::MissingRequiredField { field });
+        }
+    }
+
+    Ok(())
+}
+
+/// Initial `/api/system/info` wire DTO slice.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SystemInfoWire {
+    #[serde(rename = "ASICModel")]
+    pub asic_model: String,
+    #[serde(rename = "boardVersion")]
+    pub board_version: String,
+    #[serde(rename = "hashRate")]
+    pub hash_rate: f64,
+    #[serde(rename = "hashRate_1m")]
+    pub hash_rate_1m: f64,
+    #[serde(rename = "hashRate_10m")]
+    pub hash_rate_10m: f64,
+    #[serde(rename = "hashRate_1h")]
+    pub hash_rate_1h: f64,
+    #[serde(rename = "fanspeed")]
+    pub fan_speed: u16,
+    #[serde(rename = "fanrpm")]
+    pub fan_rpm: u16,
+    #[serde(rename = "fan2rpm")]
+    pub fan2_rpm: u16,
+    #[serde(rename = "miningPaused")]
+    pub mining_paused: bool,
+    #[serde(rename = "apEnabled")]
+    pub ap_enabled: u8,
+    #[serde(rename = "autofanspeed")]
+    pub auto_fan_speed: u8,
+    #[serde(rename = "showNewBlock")]
+    pub show_new_block: bool,
+    #[serde(rename = "blockFound")]
+    pub block_found: u64,
+    #[serde(rename = "frequency")]
+    pub frequency: f64,
+    #[serde(rename = "actualFrequency")]
+    pub actual_frequency: f64,
+    #[serde(rename = "coreVoltage")]
+    pub core_voltage: u16,
+    #[serde(rename = "coreVoltageActual")]
+    pub core_voltage_actual: f64,
+    #[serde(rename = "power")]
+    pub power: f64,
+    #[serde(rename = "voltage")]
+    pub voltage: f64,
+    #[serde(rename = "current")]
+    pub current: f64,
+    #[serde(rename = "temp")]
+    pub temp: f64,
+    #[serde(rename = "temp2")]
+    pub temp2: f64,
+    #[serde(rename = "vrTemp")]
+    pub vr_temp: f64,
+    #[serde(rename = "expectedHashrate")]
+    pub expected_hashrate: f64,
+    #[serde(rename = "sharesAccepted")]
+    pub shares_accepted: u64,
+    #[serde(rename = "sharesRejected")]
+    pub shares_rejected: u64,
+    #[serde(rename = "poolDifficulty")]
+    pub pool_difficulty: f64,
+    #[serde(rename = "isUsingFallbackStratum")]
+    pub is_using_fallback_stratum: u8,
+    #[serde(rename = "isPSRAMAvailable")]
+    pub is_psram_available: u8,
+    #[serde(rename = "wifiRSSI")]
+    pub wifi_rssi: i16,
+    #[serde(rename = "wifiStatus")]
+    pub wifi_status: String,
+    #[serde(rename = "version")]
+    pub version: String,
+    #[serde(rename = "axeOSVersion")]
+    pub axe_os_version: String,
+    #[serde(rename = "idfVersion")]
+    pub idf_version: String,
+    #[serde(rename = "resetReason")]
+    pub reset_reason: String,
+    #[serde(rename = "runningPartition")]
+    pub running_partition: String,
+    #[serde(rename = "macAddr")]
+    pub mac_addr: String,
+    #[serde(rename = "hostname")]
+    pub hostname: String,
+    #[serde(rename = "ssid")]
+    pub ssid: String,
+    #[serde(rename = "ipv4")]
+    pub ipv4: String,
+    #[serde(rename = "ipv6")]
+    pub ipv6: String,
+    #[serde(rename = "uptimeSeconds")]
+    pub uptime_seconds: u64,
+    #[serde(rename = "freeHeap")]
+    pub free_heap: u64,
+    #[serde(rename = "freeHeapInternal")]
+    pub free_heap_internal: u64,
+    #[serde(rename = "freeHeapSpiram")]
+    pub free_heap_spiram: u64,
+    #[serde(rename = "minFreeHeap")]
+    pub min_free_heap: u64,
+    #[serde(rename = "maxAllocHeap")]
+    pub max_alloc_heap: u64,
+}
+
+impl SystemInfoWire {
+    /// Maps typed runtime facts into the initial AxeOS system info DTO.
+    #[must_use]
+    pub fn from_snapshot(snapshot: &ApiSnapshot) -> Self {
+        let defaults = snapshot.config.defaults;
+        let telemetry = snapshot.safe_telemetry;
+        let mining = &snapshot.mining;
+        let platform = &snapshot.platform;
+        let hashrate_ghs = mining.hashrate_inputs.rolling_hashrate_hs / 1_000_000_000.0;
+        let maybe_pool_difficulty = mining
+            .maybe_pool_difficulty
+            .map(|difficulty| difficulty.difficulty)
+            .unwrap_or(0.0);
+
+        Self {
+            asic_model: snapshot.catalog.asic().model().to_owned(),
+            board_version: snapshot.catalog.board_version().to_owned(),
+            hash_rate: hashrate_ghs,
+            hash_rate_1m: hashrate_ghs,
+            hash_rate_10m: 0.0,
+            hash_rate_1h: 0.0,
+            fan_speed: telemetry.fan_speed_percent,
+            fan_rpm: telemetry.fan_rpm,
+            fan2_rpm: telemetry.fan2_rpm,
+            mining_paused: !matches!(
+                mining.mining_activity,
+                bitaxe_stratum::v1::state::MiningActivityStatus::Active
+            ),
+            ap_enabled: numeric_bool(platform.ap_enabled),
+            auto_fan_speed: numeric_bool(defaults.auto_fan_speed()),
+            show_new_block: false,
+            block_found: 0,
+            frequency: f64::from(defaults.asic_frequency_mhz()),
+            actual_frequency: telemetry.actual_frequency_mhz,
+            core_voltage: defaults.asic_voltage_mv(),
+            core_voltage_actual: telemetry.core_voltage_actual_mv,
+            power: telemetry.power_watts,
+            voltage: telemetry.voltage_volts,
+            current: telemetry.current_amps,
+            temp: telemetry.chip_temp_celsius,
+            temp2: telemetry.chip_temp2_celsius,
+            vr_temp: telemetry.vr_temp_celsius,
+            expected_hashrate: telemetry.expected_hashrate_ghs,
+            shares_accepted: mining.counters.accepted,
+            shares_rejected: mining.counters.rejected,
+            pool_difficulty: maybe_pool_difficulty,
+            is_using_fallback_stratum: numeric_bool(mining.fallback_active),
+            is_psram_available: numeric_bool(platform.psram_available),
+            wifi_rssi: telemetry.wifi_rssi_dbm,
+            wifi_status: platform.wifi_status.clone(),
+            version: platform.version.clone(),
+            axe_os_version: platform.axe_os_version.clone(),
+            idf_version: platform.idf_version.clone(),
+            reset_reason: platform.reset_reason.clone(),
+            running_partition: platform.running_partition.clone(),
+            mac_addr: platform.mac_addr.clone(),
+            hostname: platform.hostname.clone(),
+            ssid: platform.ssid.clone(),
+            ipv4: platform.ipv4.clone(),
+            ipv6: platform.ipv6.clone(),
+            uptime_seconds: platform.uptime_seconds,
+            free_heap: platform.free_heap,
+            free_heap_internal: platform.free_heap_internal,
+            free_heap_spiram: platform.free_heap_spiram,
+            min_free_heap: platform.min_free_heap,
+            max_alloc_heap: platform.max_alloc_heap,
+        }
+    }
+}
+
+/// Initial `/api/system/asic` wire DTO.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SystemAsicWire {
+    #[serde(rename = "ASICModel")]
+    pub asic_model: String,
+    #[serde(rename = "deviceModel")]
+    pub device_model: String,
+    #[serde(rename = "swarmColor")]
+    pub swarm_color: String,
+    #[serde(rename = "asicCount")]
+    pub asic_count: u8,
+    #[serde(rename = "hashDomains")]
+    pub hash_domains: u8,
+    #[serde(rename = "defaultFrequency")]
+    pub default_frequency: u16,
+    #[serde(rename = "frequencyOptions")]
+    pub frequency_options: Vec<u16>,
+    #[serde(rename = "defaultVoltage")]
+    pub default_voltage: u16,
+    #[serde(rename = "voltageOptions")]
+    pub voltage_options: Vec<u16>,
+}
+
+impl SystemAsicWire {
+    /// Maps typed Ultra 205 catalog facts into the AxeOS ASIC DTO.
+    #[must_use]
+    pub fn from_snapshot(snapshot: &ApiSnapshot) -> Self {
+        let asic = snapshot.catalog.asic();
+
+        Self {
+            asic_model: asic.model().to_owned(),
+            device_model: snapshot.catalog.family().to_owned(),
+            swarm_color: swarm_color_for_family(snapshot.catalog.family()).to_owned(),
+            asic_count: snapshot.catalog.asic_count(),
+            hash_domains: asic.hash_domains(),
+            default_frequency: asic.default_frequency_mhz(),
+            frequency_options: asic.frequency_options().to_vec(),
+            default_voltage: asic.default_voltage_mv(),
+            voltage_options: asic.voltage_options().to_vec(),
+        }
+    }
+}
+
+fn numeric_bool(value: bool) -> u8 {
+    u8::from(value)
+}
+
+fn swarm_color_for_family(family: &str) -> &'static str {
+    match family {
+        "Ultra" => "purple",
+        "Max" => "red",
+        "Hex" => "orange",
+        "Supra" => "blue",
+        "Gamma" | "GammaDuo" => "green",
+        "SupraHex" => "darkblue",
+        "GammaTurbo" => "cyan",
+        _ => "",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::{json, Value};
+
+    use super::require_wire_keys;
+    use crate::{ApiSnapshot, SystemAsicWire, SystemInfoWire};
+
+    #[test]
+    fn system_info_wire_serializes_upstream_field_names_and_encodings() {
+        // Arrange
+        let snapshot = ApiSnapshot::safe_ultra_205();
+        let wire = SystemInfoWire::from_snapshot(&snapshot);
+
+        // Act
+        let value = serde_json::to_value(wire).expect("system info should serialize");
+
+        // Assert
+        assert!(value.get("ASICModel").is_some());
+        assert!(value.get("hashRate_1m").is_some());
+        assert!(value.get("fanspeed").is_some());
+        assert!(value.get("fanrpm").is_some());
+        assert_eq!(value.get("miningPaused"), Some(&Value::Bool(true)));
+        assert_eq!(value.get("apEnabled"), Some(&json!(0)));
+        assert_eq!(value.get("autofanspeed"), Some(&json!(1)));
+        assert_eq!(value.get("showNewBlock"), Some(&Value::Bool(false)));
+        assert!(require_wire_keys(
+            &value,
+            &[
+                "ASICModel",
+                "hashRate_1m",
+                "fanspeed",
+                "fanrpm",
+                "miningPaused",
+                "apEnabled",
+            ],
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn system_asic_wire_serializes_upstream_asic_contract_names() {
+        // Arrange
+        let snapshot = ApiSnapshot::safe_ultra_205();
+        let wire = SystemAsicWire::from_snapshot(&snapshot);
+
+        // Act
+        let value = serde_json::to_value(wire).expect("system asic should serialize");
+
+        // Assert
+        assert_eq!(value.get("ASICModel"), Some(&json!("BM1366")));
+        assert_eq!(value.get("deviceModel"), Some(&json!("Ultra")));
+        assert_eq!(value.get("swarmColor"), Some(&json!("purple")));
+        assert_eq!(value.get("asicCount"), Some(&json!(1)));
+    }
+}

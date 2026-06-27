@@ -2,13 +2,27 @@ load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 rust_library(
     name = "bitaxe_api",
-    srcs = ["src/lib.rs"],
+    srcs = [
+        "src/lib.rs",
+        "src/snapshot.rs",
+        "src/wire.rs",
+    ],
+    compile_data = glob(["fixtures/**"], allow_empty = True),
     crate_name = "bitaxe_api",
     edition = "2021",
+    deps = [
+        "//crates/bitaxe-asic:bitaxe_asic",
+        "//crates/bitaxe-config:bitaxe_config",
+        "//crates/bitaxe-stratum:bitaxe_stratum",
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:thiserror",
+    ],
     visibility = ["//visibility:public"],
 )
 
 rust_test(
     name = "tests",
     crate = ":bitaxe_api",
+    data = glob(["fixtures/**"], allow_empty = True),
 )
