@@ -10,8 +10,12 @@ pub mod snapshot;
 pub mod wire;
 
 pub use settings::{
-    plan_settings_patch_body, plan_settings_patch_value, AcceptedSettingsPatch,
-    SettingsPatchFailure, SettingsPatchFailureReason, SettingsPatchPublicError,
+    execute_settings_persistence_plan, plan_settings_patch_body, plan_settings_patch_value,
+    AcceptedSettingsPatch, SettingsAdapterFailure, SettingsPatchFailure,
+    SettingsPatchFailureReason, SettingsPatchPublicError, SettingsPersistenceAdapter,
+    SettingsPersistenceEffect, SettingsPersistenceFailure, SettingsPersistenceFailureReport,
+    SettingsPersistencePlan, SettingsPersistenceStep, SettingsPersistenceSuccess,
+    SettingsPublicResponse,
 };
 pub use snapshot::{
     ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, SafeTelemetrySnapshot,

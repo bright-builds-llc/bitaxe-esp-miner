@@ -7,8 +7,8 @@
 use std::collections::BTreeSet;
 
 use bitaxe_config::{
-    all_settings_schema, apply_settings_patch, ConfigValidationError, NvsWrite, RawSettingValue,
-    SettingsPatch, SettingsUpdateDecision,
+    all_settings_schema, apply_settings_patch, reload_snapshot, ConfigValidationError, LoadedValue,
+    NvsSnapshot, NvsWrite, RawSettingValue, SettingsPatch, SettingsUpdateDecision,
 };
 use serde_json::{Map, Value};
 use thiserror::Error;
@@ -113,6 +113,234 @@ impl AcceptedSettingsPatch {
     pub fn maybe_hostname(&self) -> Option<&str> {
         self.maybe_hostname.as_deref()
     }
+}
+
+/// Public settings route response shape.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingsPublicResponse {
+    /// Upstream-compatible empty response body on success.
+    EmptySuccess,
+    /// Upstream-compatible generic error body.
+    Error(SettingsPatchPublicError),
+}
+
+/// Internal persistence plan for a firmware adapter.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SettingsPersistencePlan {
+    writes: Vec<NvsWrite>,
+    effects: Vec<SettingsPersistenceEffect>,
+}
+
+impl SettingsPersistencePlan {
+    /// Builds a persistence plan from an accepted settings patch and current snapshot.
+    #[must_use]
+    pub fn from_accepted_patch(snapshot: &NvsSnapshot, accepted: AcceptedSettingsPatch) -> Self {
+        let effects = hostname_effect(snapshot, accepted.maybe_hostname.as_deref());
+
+        Self {
+            writes: accepted.writes,
+            effects,
+        }
+    }
+
+    /// Returns the inert NVS writes that must be persisted before success.
+    #[must_use]
+    pub fn writes(&self) -> &[NvsWrite] {
+        &self.writes
+    }
+
+    /// Returns best-effort effects that firmware may attempt after persistence success.
+    #[must_use]
+    pub fn effects(&self) -> &[SettingsPersistenceEffect] {
+        &self.effects
+    }
+}
+
+/// Best-effort firmware effects emitted only after persistence success.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SettingsPersistenceEffect {
+    /// Attempt to apply the new hostname live after NVS commit/reload succeeds.
+    BestEffortApplyHostname { hostname: String },
+}
+
+/// Ordered settings persistence execution steps.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SettingsPersistenceStep {
+    /// Accepted validation was acknowledged before storage mutation.
+    Validate,
+    /// A single inert NVS write was passed to the adapter.
+    Write { key: String },
+    /// All writes were committed.
+    Commit,
+    /// Settings were reloaded from storage after commit.
+    Reload,
+    /// The route may return an upstream-compatible empty success body.
+    PublicSuccess,
+}
+
+impl SettingsPersistenceStep {
+    /// Creates a write step from an NVS write decision.
+    #[must_use]
+    pub fn write(write: &NvsWrite) -> Self {
+        Self::Write {
+            key: nvs_write_key(write).to_owned(),
+        }
+    }
+}
+
+/// Thin firmware adapter used by the pure settings executor.
+pub trait SettingsPersistenceAdapter {
+    /// Acknowledge that pure validation has accepted the plan.
+    fn validate_accepted(&mut self) -> Result<(), SettingsAdapterFailure>;
+
+    /// Persist one write decision.
+    fn write(&mut self, write: &NvsWrite) -> Result<(), SettingsAdapterFailure>;
+
+    /// Commit all writes.
+    fn commit(&mut self) -> Result<(), SettingsAdapterFailure>;
+
+    /// Reload settings after commit.
+    fn reload(&mut self) -> Result<(), SettingsAdapterFailure>;
+}
+
+/// Adapter-local failure detail for firmware logs.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("{message}")]
+pub struct SettingsAdapterFailure {
+    message: String,
+}
+
+impl SettingsAdapterFailure {
+    /// Creates a typed adapter failure without exposing it publicly.
+    #[must_use]
+    pub fn failed(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+}
+
+/// Firmware-visible persistence failure reason.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SettingsPersistenceFailure {
+    /// Accepted validation failed in the adapter shell.
+    Validation,
+    /// A write failed for the given NVS key.
+    Write { key: String },
+    /// Commit failed.
+    Commit,
+    /// Reload failed.
+    Reload,
+}
+
+/// Successful settings persistence execution.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SettingsPersistenceSuccess {
+    steps: Vec<SettingsPersistenceStep>,
+    effects: Vec<SettingsPersistenceEffect>,
+    public_response: SettingsPublicResponse,
+}
+
+impl SettingsPersistenceSuccess {
+    /// Returns the complete ordered sequence including public success.
+    #[must_use]
+    pub fn steps(&self) -> &[SettingsPersistenceStep] {
+        &self.steps
+    }
+
+    /// Returns the adapter-facing steps before public response.
+    #[must_use]
+    pub fn steps_without_public_response(&self) -> Vec<SettingsPersistenceStep> {
+        self.steps
+            .iter()
+            .filter(|step| **step != SettingsPersistenceStep::PublicSuccess)
+            .cloned()
+            .collect()
+    }
+
+    /// Returns the public response shape.
+    #[must_use]
+    pub const fn public_response(&self) -> SettingsPublicResponse {
+        self.public_response
+    }
+
+    /// Returns effects available only after persistence success.
+    #[must_use]
+    pub fn effects(&self) -> &[SettingsPersistenceEffect] {
+        &self.effects
+    }
+}
+
+/// Failed settings persistence execution.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SettingsPersistenceFailureReport {
+    reason: SettingsPersistenceFailure,
+    public_error: SettingsPatchPublicError,
+    completed_steps: Vec<SettingsPersistenceStep>,
+}
+
+impl SettingsPersistenceFailureReport {
+    /// Returns the firmware-visible typed failure reason.
+    #[must_use]
+    pub const fn reason(&self) -> &SettingsPersistenceFailure {
+        &self.reason
+    }
+
+    /// Returns the generic upstream-compatible public error mapping.
+    #[must_use]
+    pub const fn public_error(&self) -> SettingsPatchPublicError {
+        self.public_error
+    }
+
+    /// Returns steps completed or attempted before failure.
+    #[must_use]
+    pub fn completed_steps(&self) -> &[SettingsPersistenceStep] {
+        &self.completed_steps
+    }
+}
+
+/// Executes an accepted persistence plan and only returns success after reload.
+pub fn execute_settings_persistence_plan(
+    plan: &SettingsPersistencePlan,
+    adapter: &mut impl SettingsPersistenceAdapter,
+) -> Result<SettingsPersistenceSuccess, SettingsPersistenceFailureReport> {
+    let mut steps = Vec::new();
+
+    steps.push(SettingsPersistenceStep::Validate);
+    adapter
+        .validate_accepted()
+        .map_err(|_| persistence_failure(SettingsPersistenceFailure::Validation, &steps))?;
+
+    for write in plan.writes() {
+        let step = SettingsPersistenceStep::write(write);
+        steps.push(step);
+        adapter.write(write).map_err(|_| {
+            persistence_failure(
+                SettingsPersistenceFailure::Write {
+                    key: nvs_write_key(write).to_owned(),
+                },
+                &steps,
+            )
+        })?;
+    }
+
+    steps.push(SettingsPersistenceStep::Commit);
+    adapter
+        .commit()
+        .map_err(|_| persistence_failure(SettingsPersistenceFailure::Commit, &steps))?;
+
+    steps.push(SettingsPersistenceStep::Reload);
+    adapter
+        .reload()
+        .map_err(|_| persistence_failure(SettingsPersistenceFailure::Reload, &steps))?;
+
+    steps.push(SettingsPersistenceStep::PublicSuccess);
+
+    Ok(SettingsPersistenceSuccess {
+        steps,
+        effects: plan.effects.clone(),
+        public_response: SettingsPublicResponse::EmptySuccess,
+    })
 }
 
 /// Parses a raw PATCH body string and plans accepted writes without side effects.
@@ -254,6 +482,47 @@ fn wrong_input(errors: Vec<SettingsPatchFieldError>) -> SettingsPatchFailure {
     }
 }
 
+fn hostname_effect(
+    snapshot: &NvsSnapshot,
+    maybe_hostname: Option<&str>,
+) -> Vec<SettingsPersistenceEffect> {
+    let Some(hostname) = maybe_hostname else {
+        return Vec::new();
+    };
+
+    let reloaded = reload_snapshot(snapshot);
+    if matches!(
+        reloaded.loaded_value("hostname"),
+        Some(LoadedValue::Str(current)) if current == hostname
+    ) {
+        return Vec::new();
+    }
+
+    vec![SettingsPersistenceEffect::BestEffortApplyHostname {
+        hostname: hostname.to_owned(),
+    }]
+}
+
+fn persistence_failure(
+    reason: SettingsPersistenceFailure,
+    completed_steps: &[SettingsPersistenceStep],
+) -> SettingsPersistenceFailureReport {
+    SettingsPersistenceFailureReport {
+        reason,
+        public_error: SettingsPatchPublicError::WrongApiInput,
+        completed_steps: completed_steps.to_vec(),
+    }
+}
+
+fn nvs_write_key(write: &NvsWrite) -> &str {
+    match write {
+        NvsWrite::String { key, .. }
+        | NvsWrite::U16 { key, .. }
+        | NvsWrite::I32 { key, .. }
+        | NvsWrite::U64 { key, .. } => key.as_str(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bitaxe_config::{NvsSnapshot, NvsWrite, StoredValue};
@@ -261,8 +530,10 @@ mod tests {
     use serde_json::{json, Value};
 
     use super::{
-        plan_settings_patch_body, plan_settings_patch_value, SettingsPatchFailureReason,
-        SettingsPatchPublicError,
+        execute_settings_persistence_plan, plan_settings_patch_body, plan_settings_patch_value,
+        SettingsAdapterFailure, SettingsPatchFailureReason, SettingsPatchPublicError,
+        SettingsPersistenceAdapter, SettingsPersistenceEffect, SettingsPersistenceFailure,
+        SettingsPersistencePlan, SettingsPersistenceStep, SettingsPublicResponse,
     };
 
     #[derive(Debug, Deserialize)]
@@ -427,5 +698,195 @@ mod tests {
         assert!(!diagnostics.contains("secret-password-that-must-not-appear"));
         assert!(!diagnostics.contains("secret-cert-that-must-not-appear"));
         assert!(!diagnostics.contains("secret-user-that-must-not-appear"));
+    }
+
+    #[derive(Debug, Default)]
+    struct RecordingAdapter {
+        steps: Vec<SettingsPersistenceStep>,
+        maybe_failure: Option<AdapterFailurePoint>,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum AdapterFailurePoint {
+        FirstWrite,
+        Commit,
+        Reload,
+    }
+
+    impl RecordingAdapter {
+        fn failing_at(failure: AdapterFailurePoint) -> Self {
+            Self {
+                steps: Vec::new(),
+                maybe_failure: Some(failure),
+            }
+        }
+    }
+
+    impl SettingsPersistenceAdapter for RecordingAdapter {
+        fn validate_accepted(&mut self) -> Result<(), SettingsAdapterFailure> {
+            self.steps.push(SettingsPersistenceStep::Validate);
+            Ok(())
+        }
+
+        fn write(&mut self, write: &NvsWrite) -> Result<(), SettingsAdapterFailure> {
+            let step = SettingsPersistenceStep::write(write);
+            self.steps.push(step);
+
+            if self.maybe_failure == Some(AdapterFailurePoint::FirstWrite) {
+                return Err(SettingsAdapterFailure::failed("fake write failure"));
+            }
+
+            Ok(())
+        }
+
+        fn commit(&mut self) -> Result<(), SettingsAdapterFailure> {
+            self.steps.push(SettingsPersistenceStep::Commit);
+
+            if self.maybe_failure == Some(AdapterFailurePoint::Commit) {
+                return Err(SettingsAdapterFailure::failed("fake commit failure"));
+            }
+
+            Ok(())
+        }
+
+        fn reload(&mut self) -> Result<(), SettingsAdapterFailure> {
+            self.steps.push(SettingsPersistenceStep::Reload);
+
+            if self.maybe_failure == Some(AdapterFailurePoint::Reload) {
+                return Err(SettingsAdapterFailure::failed("fake reload failure"));
+            }
+
+            Ok(())
+        }
+    }
+
+    fn accepted_persistence_plan(body: &str) -> SettingsPersistencePlan {
+        let accepted = plan_settings_patch_body(body).expect("test PATCH should parse");
+        SettingsPersistencePlan::from_accepted_patch(&NvsSnapshot::new(), accepted)
+    }
+
+    #[test]
+    fn settings_persistence_plan_requires_write_commit_reload_before_public_success() {
+        // Arrange
+        let plan = accepted_persistence_plan(r#"{"frequency":485,"manualFanSpeed":42}"#);
+        let mut adapter = RecordingAdapter::default();
+
+        // Act
+        let success = execute_settings_persistence_plan(&plan, &mut adapter)
+            .expect("accepted persistence plan should complete");
+
+        // Assert
+        assert_eq!(
+            success.steps(),
+            [
+                SettingsPersistenceStep::Validate,
+                SettingsPersistenceStep::write(&NvsWrite::string("asicfrequency_f", "485.000000")),
+                SettingsPersistenceStep::write(&NvsWrite::u16("asicfrequency", 485)),
+                SettingsPersistenceStep::write(&NvsWrite::u16("manualfanspeed", 42)),
+                SettingsPersistenceStep::write(&NvsWrite::u16("fanspeed", 42)),
+                SettingsPersistenceStep::Commit,
+                SettingsPersistenceStep::Reload,
+                SettingsPersistenceStep::PublicSuccess,
+            ]
+        );
+        assert_eq!(adapter.steps, success.steps_without_public_response());
+        assert_eq!(
+            success.public_response(),
+            SettingsPublicResponse::EmptySuccess
+        );
+    }
+
+    #[test]
+    fn settings_persistence_failures_are_typed_but_public_response_stays_generic() {
+        // Arrange
+        let cases = [
+            (
+                AdapterFailurePoint::FirstWrite,
+                SettingsPersistenceFailure::Write {
+                    key: "asicfrequency_f".to_owned(),
+                },
+            ),
+            (
+                AdapterFailurePoint::Commit,
+                SettingsPersistenceFailure::Commit,
+            ),
+            (
+                AdapterFailurePoint::Reload,
+                SettingsPersistenceFailure::Reload,
+            ),
+        ];
+
+        for (failure_point, expected_reason) in cases {
+            let plan = accepted_persistence_plan(r#"{"frequency":485}"#);
+            let mut adapter = RecordingAdapter::failing_at(failure_point);
+
+            // Act
+            let failure = execute_settings_persistence_plan(&plan, &mut adapter)
+                .expect_err("configured fake failure must reject route success");
+
+            // Assert
+            assert_eq!(failure.reason(), &expected_reason);
+            assert_eq!(
+                failure.public_error(),
+                SettingsPatchPublicError::WrongApiInput
+            );
+            assert_eq!(failure.public_error().body(), "Wrong API input");
+            assert!(!failure
+                .completed_steps()
+                .contains(&SettingsPersistenceStep::PublicSuccess));
+        }
+    }
+
+    #[test]
+    fn settings_persistence_hostname_live_apply_is_best_effort_after_persistence() {
+        // Arrange
+        let snapshot = NvsSnapshot::from_values([StoredValue::string("hostname", "bitaxe")]);
+        let accepted =
+            plan_settings_patch_body(r#"{"hostname":"axe-205"}"#).expect("hostname patch parses");
+        let plan = SettingsPersistencePlan::from_accepted_patch(&snapshot, accepted);
+        let mut adapter = RecordingAdapter::default();
+
+        // Act
+        let success = execute_settings_persistence_plan(&plan, &mut adapter)
+            .expect("hostname persistence must succeed before live apply");
+
+        // Assert
+        assert_eq!(
+            plan.effects(),
+            [SettingsPersistenceEffect::BestEffortApplyHostname {
+                hostname: "axe-205".to_owned(),
+            }]
+        );
+        assert_eq!(success.effects(), plan.effects());
+        assert!(
+            success
+                .steps()
+                .iter()
+                .position(|step| *step == SettingsPersistenceStep::Reload)
+                < success
+                    .steps()
+                    .iter()
+                    .position(|step| *step == SettingsPersistenceStep::PublicSuccess)
+        );
+    }
+
+    #[test]
+    fn settings_persistence_hostname_effect_cannot_override_reload_failure() {
+        // Arrange
+        let snapshot = NvsSnapshot::from_values([StoredValue::string("hostname", "bitaxe")]);
+        let accepted =
+            plan_settings_patch_body(r#"{"hostname":"axe-205"}"#).expect("hostname patch parses");
+        let plan = SettingsPersistencePlan::from_accepted_patch(&snapshot, accepted);
+        let mut adapter = RecordingAdapter::failing_at(AdapterFailurePoint::Reload);
+
+        // Act
+        let failure = execute_settings_persistence_plan(&plan, &mut adapter)
+            .expect_err("reload failure must prevent public success");
+
+        // Assert
+        assert_eq!(failure.reason(), &SettingsPersistenceFailure::Reload);
+        assert!(!failure
+            .completed_steps()
+            .contains(&SettingsPersistenceStep::PublicSuccess));
     }
 }
