@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-06-27T14:34:42.570Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-06-27T14:49:57.521Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 22
-  completed_plans: 20
-  percent: 91
+  completed_plans: 21
+  percent: 95
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 04 (stratum-v1-and-first-mining-loop) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-27
 
@@ -71,6 +71,7 @@ Progress: [██████████] 100%
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P05 | 5 | 3 tasks | 14 files |
 | Phase 04-stratum-v1-and-first-mining-loop P01 | 10 min | 2 tasks | 10 files |
 | Phase 04-stratum-v1-and-first-mining-loop P02 | 8 min | 2 tasks | 5 files |
+| Phase 04-stratum-v1-and-first-mining-loop P03 | 10 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,10 @@ Recent decisions affecting current work:
 - [Phase 04-stratum-v1-and-first-mining-loop]: Fake-pool transcripts update state only from typed Stratum client/server messages and fail on unexpected client messages instead of advancing silently.
 - [Phase 04-stratum-v1-and-first-mining-loop]: Timeout transitions represent fallback activation in the deterministic fake-pool harness, while disconnect and client.reconnect map to Reconnecting lifecycle state.
 - [Phase 04-stratum-v1-and-first-mining-loop]: TDD RED failures were run but not committed because AGENTS.md requires passing Rust verification before every commit.
+- [Phase 04-stratum-v1-and-first-mining-loop]: Stratum mining job construction produces typed Bm1366WorkFields and never constructs raw ASIC JobFrame or CommandFrame values.
+- [Phase 04-stratum-v1-and-first-mining-loop]: Malformed hex and oversized extranonce2 lengths fail with StratumV1Error before pool data can become mining work.
+- [Phase 04-stratum-v1-and-first-mining-loop]: Clean-jobs behavior is explicit through MiningWorkQueue::clear_jobs, which clears both queued work and Bm1366ValidJobIds.
+- [Phase 04-stratum-v1-and-first-mining-loop]: TDD RED failures were run but not committed because AGENTS.md requires passing Rust verification before every commit.
 
 ### Pending Todos
 
@@ -167,6 +172,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T14:34:42.568Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-06-27T14:49:57.518Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None

@@ -45,10 +45,10 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 
 - [x] **STR-01**: Stratum v1 message parsing and serialization match upstream-compatible request and response behavior.
 - [x] **STR-02**: Subscribe, authorize, notify, set-difficulty, and submit flows work against a deterministic fake pool harness.
-- [ ] **STR-03**: Mining job construction, coinbase decoding, extranonce handling, and work queue integration match reference-observable behavior.
+- [x] **STR-03**: Mining job construction, coinbase decoding, extranonce handling, and work queue integration match reference-observable behavior.
 - [x] **STR-04**: Pool socket lifecycle, fallback pool behavior, reconnect behavior, and error logging match upstream user-visible behavior.
 - [x] **STR-05**: Accepted shares, rejected shares, share difficulty, hashrate inputs, and pool result counters update consistently across mining, API, and telemetry surfaces.
-- [ ] **STR-06**: The first Ultra 205 mining loop connects config, Stratum v1, BM1366 work dispatch, result parsing, and global state without bypassing safety gates.
+- [x] **STR-06**: The first Ultra 205 mining loop connects config, Stratum v1, BM1366 work dispatch, result parsing, and global state without bypassing safety gates.
 - [ ] **STR-07**: Mining parity has hardware-smoke and soak criteria that record command, board, port, firmware commit, reference commit, logs, observed result, and conclusion.
 
 ### AxeOS API, Logs, And Telemetry
@@ -165,10 +165,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASIC-08 | Phase 3 | Complete |
 | STR-01 | Phase 4 | Complete |
 | STR-02 | Phase 4 | Complete |
-| STR-03 | Phase 4 | Pending |
+| STR-03 | Phase 4 | Complete |
 | STR-04 | Phase 4 | Complete |
 | STR-05 | Phase 4 | Complete |
-| STR-06 | Phase 4 | Pending |
+| STR-06 | Phase 4 | Complete |
 | STR-07 | Phase 4 | Pending |
 | API-01 | Phase 5 | Pending |
 | API-02 | Phase 5 | Pending |

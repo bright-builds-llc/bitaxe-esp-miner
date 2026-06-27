@@ -195,7 +195,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 1. Foundation And Ultra 205 Boot/Log | 9/9 | Complete | 2026-06-21 |
 | 2. Ultra 205 Config And NVS Model | 4/4 | Complete | 2026-06-26 |
 | 3. BM1366 ASIC Protocol And Safe Initialization | 0/5 | Not started | - |
-| 4. Stratum V1 And First Mining Loop | 0/TBD | Not started | - |
+| 4. Stratum V1 And First Mining Loop | 3/4 | In Progress|  |
 | 5. AxeOS API, Logs, And Telemetry | 0/TBD | Not started | - |
 | 6. Safety Controllers And Self-Test | 0/TBD | Not started | - |
 | 7. OTA, Filesystem, And Release Packaging | 0/TBD | Not started | - |
