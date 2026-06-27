@@ -6,6 +6,7 @@
 //! - `reference/esp-miner/main/http_server/axe-os/api/system/asic_settings.c`
 
 pub mod asic;
+pub mod logs;
 pub mod mining;
 pub mod scoreboard;
 pub mod settings;
@@ -15,6 +16,10 @@ pub mod system;
 pub mod wire;
 
 pub use asic::asic_settings_from_snapshot;
+pub use logs::{
+    log_download_headers, LogDownloadHeaders, RawLogStreamPlanner, RetainedLogBuffer,
+    DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
+};
 pub use mining::{mining_state_from_runtime, MiningStateWire, SharesRejectedReasonWire};
 pub use scoreboard::{scoreboard_response, ScoreboardEntry, ScoreboardEntryWire};
 pub use settings::{

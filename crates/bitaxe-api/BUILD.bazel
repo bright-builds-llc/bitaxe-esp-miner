@@ -5,6 +5,7 @@ rust_library(
     srcs = [
         "src/asic.rs",
         "src/lib.rs",
+        "src/logs.rs",
         "src/mining.rs",
         "src/scoreboard.rs",
         "src/settings.rs",

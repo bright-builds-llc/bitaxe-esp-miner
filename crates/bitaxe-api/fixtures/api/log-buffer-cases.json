@@ -1,0 +1,10 @@
+{
+  "download_headers": {
+    "content_type": "text/plain",
+    "content_disposition": "attachment; filename=\"bitaxe-logs.txt\""
+  },
+  "raw_stream": {
+    "payload": "I (123) bitaxe: live log line\n",
+    "json_enveloped": false
+  }
+}
