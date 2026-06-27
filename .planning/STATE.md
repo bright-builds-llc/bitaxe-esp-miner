@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-06-27T14:49:57.521Z"
+status: verifying
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-06-27T15:06:59.742Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 22
-  completed_plans: 21
-  percent: 95
+  completed_plans: 22
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 Phase: 04 (stratum-v1-and-first-mining-loop) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-27
 
 Progress: [██████████] 100%
@@ -72,6 +72,7 @@ Progress: [██████████] 100%
 | Phase 04-stratum-v1-and-first-mining-loop P01 | 10 min | 2 tasks | 10 files |
 | Phase 04-stratum-v1-and-first-mining-loop P02 | 8 min | 2 tasks | 5 files |
 | Phase 04-stratum-v1-and-first-mining-loop P03 | 10 min | 2 tasks | 9 files |
+| Phase 04-stratum-v1-and-first-mining-loop P04 | 10 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,10 @@ Recent decisions affecting current work:
 - [Phase 04-stratum-v1-and-first-mining-loop]: Malformed hex and oversized extranonce2 lengths fail with StratumV1Error before pool data can become mining work.
 - [Phase 04-stratum-v1-and-first-mining-loop]: Clean-jobs behavior is explicit through MiningWorkQueue::clear_jobs, which clears both queued work and Bm1366ValidJobIds.
 - [Phase 04-stratum-v1-and-first-mining-loop]: TDD RED failures were run but not committed because AGENTS.md requires passing Rust verification before every commit.
+- [Phase 04-stratum-v1-and-first-mining-loop]: Mining-loop work submission defaults to hardware_evidence_ack_missing and reaches Ready only when ASIC initialization, safety evidence, and hardware-evidence acknowledgement are all present.
+- [Phase 04-stratum-v1-and-first-mining-loop]: Stratum v2 remains deferred by Phase 4 scope; Plan 04 records the Stratum v1 first-loop boundary only.
+- [Phase 04-stratum-v1-and-first-mining-loop]: Phase 4 checklist rows advance pure Stratum v1, fake-pool, job, queue, and fail-closed coordination surfaces to implemented, while live hardware mining smoke and soak remain not run - hardware evidence pending.
+- [Phase 04-stratum-v1-and-first-mining-loop]: Firmware publishes mining_loop_status=blocked reason=hardware_evidence_ack_missing work_submission=disabled while main.rs remains free of live pool sockets and BM1366 work submission.
 
 ### Pending Todos
 
@@ -172,6 +177,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T14:49:57.518Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-06-27T15:06:59.728Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
