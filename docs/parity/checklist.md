@@ -71,12 +71,13 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| STR-001 | Stratum v1 socket behavior | `reference/esp-miner/components/stratum/stratum_socket.c` | `crates/bitaxe-stratum`, `firmware/bitaxe` | not-started | pending | Include reconnect/fallback behavior. |
-| STR-002 | Stratum v1 API messages | `reference/esp-miner/components/stratum/stratum_api.c` | `crates/bitaxe-stratum` | not-started | pending | Unit/golden fixtures from upstream tests. |
-| STR-003 | Mining job construction | `reference/esp-miner/components/stratum/mining.c` | `crates/bitaxe-stratum`, `crates/bitaxe-core` | not-started | pending | Pure logic should be heavily unit tested. |
-| STR-004 | Coinbase decoding | `reference/esp-miner/components/stratum/coinbase_decoder.c` | `crates/bitaxe-stratum` | not-started | pending | Good unit/golden target. |
-| STR-005 | Stratum v2 protocol | `reference/esp-miner/components/stratum_v2/*.c` | `crates/bitaxe-stratum` | not-started | pending | Later parity path if not needed for first mining loop. |
-| STR-006 | Protocol coordinator | `reference/esp-miner/main/tasks/protocol_coordinator.c` | `firmware/bitaxe`, `crates/bitaxe-core` | not-started | pending | Observable protocol selection and fallback behavior. |
+| STR-001 | Stratum v1 socket behavior | `reference/esp-miner/components/stratum/stratum_socket.c` | `crates/bitaxe-stratum/src/v1/fake_pool.rs`, `crates/bitaxe-stratum/src/v1/state.rs`, `firmware/bitaxe/src/main.rs` | implemented | unit,workflow | Deterministic fake-pool reconnect/fallback lifecycle and firmware blocked mining-loop status are implemented; live socket adapter remains a later hardware-gated shell. See [Phase 4 evidence](evidence/phase-04-stratum-v1-mining-loop.md). |
+| STR-002 | Stratum v1 API messages | `reference/esp-miner/components/stratum/stratum_api.c` | `crates/bitaxe-stratum/src/v1/messages.rs`, `crates/bitaxe-stratum/fixtures/v1/protocol-cases.json` | implemented | unit,golden | Typed Stratum v1 subscribe, authorize, configure, difficulty, extranonce, notify, submit, response, error, ping, and reconnect-relevant messages are parsed or serialized. See [Phase 4 evidence](evidence/phase-04-stratum-v1-mining-loop.md). |
+| STR-003 | Mining job construction | `reference/esp-miner/components/stratum/mining.c` | `crates/bitaxe-stratum/src/v1/coinbase.rs`, `crates/bitaxe-stratum/src/v1/mining.rs`, `crates/bitaxe-stratum/src/v1/mining_loop.rs` | implemented | unit,golden | Stratum notify/extranonce/difficulty state produces typed BM1366 work fields and guarded dispatch plans without raw ASIC frame construction in Stratum. See [Phase 4 evidence](evidence/phase-04-stratum-v1-mining-loop.md). |
+| STR-004 | Coinbase decoding | `reference/esp-miner/components/stratum/coinbase_decoder.c` | `crates/bitaxe-stratum/src/v1/coinbase.rs`, `crates/bitaxe-stratum/fixtures/v1/mining-job-cases.json` | implemented | unit,golden | Coinbase/extranonce hex handling, double SHA-256, merkle folding, and malformed input rejection are covered by host tests. See [Phase 4 evidence](evidence/phase-04-stratum-v1-mining-loop.md). |
+| STR-005 | Stratum v2 protocol | `reference/esp-miner/components/stratum_v2/*.c` | `crates/bitaxe-stratum/src/v1.rs` | deferred | deferred | Phase 4 intentionally covers Stratum v1 first-loop behavior only; Stratum v2 remains deferred by scope decision. See [Phase 4 evidence](evidence/phase-04-stratum-v1-mining-loop.md). |
+| STR-006 | Protocol coordinator | `reference/esp-miner/main/tasks/protocol_coordinator.c` | `crates/bitaxe-stratum/src/v1/mining_loop.rs`, `firmware/bitaxe/src/main.rs`, `firmware/bitaxe/src/asic_adapter/status.rs` | implemented | unit,workflow | First-loop coordination is fail-closed unless ASIC initialization, safety evidence, and hardware-evidence acknowledgment are all present; firmware publishes `mining_loop_status=blocked`. See [Phase 4 evidence](evidence/phase-04-stratum-v1-mining-loop.md). |
+| STR-007 | Mining smoke and soak evidence | `reference/esp-miner/main/tasks/protocol_coordinator.c`, `reference/esp-miner/main/system.c` | `docs/parity/evidence/phase-04-stratum-v1-mining-loop.md` | implemented | workflow | Smoke and soak criteria are recorded, with live hardware mining marked `not run - hardware evidence pending`. No pool credentials or secret-bearing logs are recorded. |
 
 ## AxeOS API And Web Compatibility
 
@@ -126,7 +127,7 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 | STAT-001 | Hashrate monitor | `reference/esp-miner/main/tasks/hashrate_monitor_task.c` | `crates/bitaxe-core`, `firmware/bitaxe` | not-started | pending | API-visible behavior. |
 | STAT-002 | Statistics task | `reference/esp-miner/main/tasks/statistics_task.c` | `crates/bitaxe-core`, `firmware/bitaxe` | not-started | pending | API-visible behavior. |
 | STAT-003 | Scoreboard | `reference/esp-miner/main/tasks/scoreboard.c` | `crates/bitaxe-core` | not-started | pending | Good pure unit target. |
-| STAT-004 | Work queue behavior | `reference/esp-miner/main/work_queue.c` | `crates/bitaxe-core` | not-started | pending | Pure queue semantics where possible. |
+| STAT-004 | Work queue behavior | `reference/esp-miner/main/work_queue.c` | `crates/bitaxe-stratum/src/v1/queue.rs`, `crates/bitaxe-stratum/src/v1/mining_loop.rs` | implemented | unit | Bounded queue capacity, FIFO dequeue, clean-jobs clearing, valid-job invalidation, and guarded dispatch planning are covered by host tests. See [Phase 4 evidence](evidence/phase-04-stratum-v1-mining-loop.md). |
 
 ## OTA, Filesystem, And Release Artifacts
 
