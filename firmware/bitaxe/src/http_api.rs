@@ -53,6 +53,10 @@ pub fn start_http_api() -> anyhow::Result<()> {
     };
     let mut server = EspHttpServer::new(&config)?;
 
+    if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
+        log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
+    }
+
     register_http_handlers(&mut server)?;
     start_live_telemetry_cadence_task(server.handle())?;
     log::info!(
@@ -229,8 +233,6 @@ fn handle_settings_patch<'request, 'connection>(
             }
         };
 
-        let snapshot = settings_adapter::current_settings_snapshot();
-        let plan = SettingsPersistencePlan::from_accepted_patch(&snapshot, accepted);
         let mut adapter = match settings_adapter::FirmwareSettingsAdapter::open() {
             Ok(adapter) => adapter,
             Err(error) => {
@@ -242,6 +244,8 @@ fn handle_settings_patch<'request, 'connection>(
                 );
             }
         };
+        let snapshot = settings_adapter::current_settings_snapshot();
+        let plan = SettingsPersistencePlan::from_accepted_patch(&snapshot, accepted);
         let success = match execute_settings_persistence_plan(&plan, &mut adapter) {
             Ok(success) => success,
             Err(error) => {

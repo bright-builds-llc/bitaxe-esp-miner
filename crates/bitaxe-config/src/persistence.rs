@@ -52,6 +52,13 @@ impl NvsSnapshot {
         self.values.values().cloned().collect()
     }
 
+    /// Applies committed write decisions to this snapshot.
+    pub fn apply_writes(&mut self, writes: &[NvsWrite]) {
+        for write in writes {
+            self.apply_write(write);
+        }
+    }
+
     fn apply_write(&mut self, write: &NvsWrite) {
         let stored_value = stored_value_from_write(write);
         self.values
@@ -407,5 +414,32 @@ mod tests {
         );
         assert!(corrupt_loaded.writes().is_empty());
         assert!(corrupt_loaded.erases().is_empty());
+    }
+
+    #[test]
+    fn nvs_snapshot_apply_writes_overlays_committed_settings_for_next_reload() {
+        // Arrange
+        let mut snapshot = NvsSnapshot::from_values([
+            StoredValue::string("hostname", "bitaxe"),
+            StoredValue::u16("manualfanspeed", 42),
+        ]);
+        let writes = [
+            NvsWrite::string("hostname", "axe-205"),
+            NvsWrite::u16("manualfanspeed", 55),
+        ];
+
+        // Act
+        snapshot.apply_writes(&writes);
+        let reloaded = reload_snapshot(&snapshot);
+
+        // Assert
+        assert_eq!(
+            reloaded.loaded_value("hostname"),
+            Some(&LoadedValue::Str("axe-205".to_owned()))
+        );
+        assert_eq!(
+            reloaded.loaded_value("manualfanspeed"),
+            Some(&LoadedValue::U16(55))
+        );
     }
 }
