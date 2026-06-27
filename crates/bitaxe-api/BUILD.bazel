@@ -3,9 +3,12 @@ load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 rust_library(
     name = "bitaxe_api",
     srcs = [
+        "src/asic.rs",
         "src/lib.rs",
+        "src/mining.rs",
         "src/settings.rs",
         "src/snapshot.rs",
+        "src/system.rs",
         "src/wire.rs",
     ],
     compile_data = glob(["fixtures/**"], allow_empty = True),

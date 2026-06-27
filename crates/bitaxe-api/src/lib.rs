@@ -5,10 +5,15 @@
 //! - `reference/esp-miner/main/http_server/system_api_json.c`
 //! - `reference/esp-miner/main/http_server/axe-os/api/system/asic_settings.c`
 
+pub mod asic;
+pub mod mining;
 pub mod settings;
 pub mod snapshot;
+pub mod system;
 pub mod wire;
 
+pub use asic::asic_settings_from_snapshot;
+pub use mining::{mining_state_from_runtime, MiningStateWire, SharesRejectedReasonWire};
 pub use settings::{
     execute_settings_persistence_plan, plan_settings_patch_body, plan_settings_patch_value,
     AcceptedSettingsPatch, SettingsAdapterFailure, SettingsPatchFailure,
@@ -20,6 +25,7 @@ pub use settings::{
 pub use snapshot::{
     ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, SafeTelemetrySnapshot,
 };
+pub use system::system_info_from_snapshot;
 pub use wire::{SystemAsicWire, SystemInfoWire};
 
 #[cfg(test)]

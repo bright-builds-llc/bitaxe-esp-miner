@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
+use crate::mining::{mining_state_from_runtime, SharesRejectedReasonWire};
 use crate::ApiSnapshot;
 
 /// Error type for host-side fixture compatibility helpers.
@@ -89,10 +90,32 @@ pub struct SystemInfoWire {
     pub shares_accepted: u64,
     #[serde(rename = "sharesRejected")]
     pub shares_rejected: u64,
+    #[serde(rename = "sharesRejectedReasons")]
+    pub shares_rejected_reasons: Vec<SharesRejectedReasonWire>,
+    #[serde(rename = "bestDiff")]
+    pub best_diff: f64,
+    #[serde(rename = "bestSessionDiff")]
+    pub best_session_diff: f64,
     #[serde(rename = "poolDifficulty")]
     pub pool_difficulty: f64,
+    #[serde(rename = "poolConnectionInfo")]
+    pub pool_connection_info: String,
+    #[serde(rename = "responseTime")]
+    pub response_time: f64,
+    #[serde(rename = "responseShareBatch")]
+    pub response_share_batch: u64,
+    #[serde(rename = "processTime")]
+    pub process_time: f64,
+    #[serde(rename = "errorPercentage")]
+    pub error_percentage: f64,
     #[serde(rename = "isUsingFallbackStratum")]
     pub is_using_fallback_stratum: u8,
+    #[serde(rename = "maxPower")]
+    pub max_power: u16,
+    #[serde(rename = "nominalVoltage")]
+    pub nominal_voltage: u16,
+    #[serde(rename = "smallCoreCount")]
+    pub small_core_count: u16,
     #[serde(rename = "isPSRAMAvailable")]
     pub is_psram_available: u8,
     #[serde(rename = "wifiRSSI")]
@@ -139,28 +162,20 @@ impl SystemInfoWire {
     pub fn from_snapshot(snapshot: &ApiSnapshot) -> Self {
         let defaults = snapshot.config.defaults;
         let telemetry = snapshot.safe_telemetry;
-        let mining = &snapshot.mining;
+        let mining_state = mining_state_from_runtime(&snapshot.mining);
         let platform = &snapshot.platform;
-        let hashrate_ghs = mining.hashrate_inputs.rolling_hashrate_hs / 1_000_000_000.0;
-        let maybe_pool_difficulty = mining
-            .maybe_pool_difficulty
-            .map(|difficulty| difficulty.difficulty)
-            .unwrap_or(0.0);
 
         Self {
             asic_model: snapshot.catalog.asic().model().to_owned(),
             board_version: snapshot.catalog.board_version().to_owned(),
-            hash_rate: hashrate_ghs,
-            hash_rate_1m: hashrate_ghs,
-            hash_rate_10m: 0.0,
-            hash_rate_1h: 0.0,
+            hash_rate: mining_state.hash_rate,
+            hash_rate_1m: mining_state.hash_rate_1m,
+            hash_rate_10m: mining_state.hash_rate_10m,
+            hash_rate_1h: mining_state.hash_rate_1h,
             fan_speed: telemetry.fan_speed_percent,
             fan_rpm: telemetry.fan_rpm,
             fan2_rpm: telemetry.fan2_rpm,
-            mining_paused: !matches!(
-                mining.mining_activity,
-                bitaxe_stratum::v1::state::MiningActivityStatus::Active
-            ),
+            mining_paused: mining_state.mining_paused,
             ap_enabled: numeric_bool(platform.ap_enabled),
             auto_fan_speed: numeric_bool(defaults.auto_fan_speed()),
             show_new_block: false,
@@ -176,10 +191,21 @@ impl SystemInfoWire {
             temp2: telemetry.chip_temp2_celsius,
             vr_temp: telemetry.vr_temp_celsius,
             expected_hashrate: telemetry.expected_hashrate_ghs,
-            shares_accepted: mining.counters.accepted,
-            shares_rejected: mining.counters.rejected,
-            pool_difficulty: maybe_pool_difficulty,
-            is_using_fallback_stratum: numeric_bool(mining.fallback_active),
+            shares_accepted: mining_state.shares_accepted,
+            shares_rejected: mining_state.shares_rejected,
+            shares_rejected_reasons: mining_state.shares_rejected_reasons,
+            best_diff: mining_state.best_diff,
+            best_session_diff: mining_state.best_session_diff,
+            pool_difficulty: mining_state.pool_difficulty,
+            pool_connection_info: mining_state.pool_connection_info,
+            response_time: mining_state.response_time,
+            response_share_batch: mining_state.response_share_batch,
+            process_time: mining_state.process_time,
+            error_percentage: 0.0,
+            is_using_fallback_stratum: mining_state.is_using_fallback_stratum,
+            max_power: snapshot.catalog.power_consumption_target(),
+            nominal_voltage: 0,
+            small_core_count: snapshot.catalog.asic().small_core_count(),
             is_psram_available: numeric_bool(platform.psram_available),
             wifi_rssi: telemetry.wifi_rssi_dbm,
             wifi_status: platform.wifi_status.clone(),
