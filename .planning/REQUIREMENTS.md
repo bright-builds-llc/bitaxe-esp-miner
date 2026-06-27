@@ -53,8 +53,8 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 
 ### AxeOS API, Logs, And Telemetry
 
-- [ ] **API-01**: Rust API models are compatible with the upstream OpenAPI schema for V1 user-facing routes.
-- [ ] **API-02**: System info and settings responses expose upstream-compatible fields, names, units, defaults, and encoding.
+- [x] **API-01**: Rust API models are compatible with the upstream OpenAPI schema for V1 user-facing routes.
+- [x] **API-02**: System info and settings responses expose upstream-compatible fields, names, units, defaults, and encoding.
 - [ ] **API-03**: Settings PATCH behavior validates, persists, rejects, reloads, and reports errors with upstream-compatible observable semantics.
 - [ ] **API-04**: ASIC, statistics, scoreboard, and mining-state endpoints report values derived from the Rust runtime state model.
 - [ ] **API-05**: Log buffer, log download, and log retention behavior support the user-facing API and WebSocket surfaces.
@@ -62,7 +62,7 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 - [ ] **API-07**: `/api/ws/live` streams live telemetry with upstream-compatible payload shape, cadence, and state transitions.
 - [ ] **API-08**: Pause, resume, restart, identify, and related command routes preserve user-visible behavior and safe failure modes.
 - [ ] **API-09**: Static AxeOS assets and recovery page behavior remain compatible enough for device administration without requiring an Angular rewrite in V1.
-- [ ] **API-10**: API compare fixtures prove Rust responses match the upstream schema or captured upstream responses for representative success and error cases.
+- [x] **API-10**: API compare fixtures prove Rust responses match the upstream schema or captured upstream responses for representative success and error cases.
 
 ### Safety, Power, Thermal, Self-Test, And Peripherals
 
@@ -170,8 +170,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STR-05 | Phase 4 | Complete |
 | STR-06 | Phase 4 | Complete |
 | STR-07 | Phase 4 | Complete |
-| API-01 | Phase 5 | Pending |
-| API-02 | Phase 5 | Pending |
+| API-01 | Phase 5 | Complete |
+| API-02 | Phase 5 | Complete |
 | API-03 | Phase 5 | Pending |
 | API-04 | Phase 5 | Pending |
 | API-05 | Phase 5 | Pending |
@@ -179,7 +179,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-07 | Phase 5 | Pending |
 | API-08 | Phase 5 | Pending |
 | API-09 | Phase 5 | Pending |
-| API-10 | Phase 5 | Pending |
+| API-10 | Phase 5 | Complete |
 | SAFE-01 | Phase 6 | Pending |
 | SAFE-02 | Phase 6 | Pending |
 | SAFE-03 | Phase 6 | Pending |

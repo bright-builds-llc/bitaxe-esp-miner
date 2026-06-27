@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 UI-SPEC approved
-last_updated: "2026-06-27T19:37:59.136Z"
-last_activity: 2026-06-27 -- Phase 05 execution started
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-06-27T19:54:52.397Z"
+last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 29
-  completed_plans: 22
-  percent: 76
+  completed_plans: 23
+  percent: 79
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 05 (axeos-api-logs-and-telemetry) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 05
-Last activity: 2026-06-27 -- Phase 05 execution started
+Plan: 2 of 7
+Status: Ready to execute
+Last activity: 2026-06-27
 
 Progress: [██████████] 100%
 
@@ -74,6 +74,7 @@ Progress: [██████████] 100%
 | Phase 04-stratum-v1-and-first-mining-loop P02 | 8 min | 2 tasks | 5 files |
 | Phase 04-stratum-v1-and-first-mining-loop P03 | 10 min | 2 tasks | 9 files |
 | Phase 04-stratum-v1-and-first-mining-loop P04 | 10 min | 3 tasks | 10 files |
+| Phase 05-axeos-api-logs-and-telemetry P01 | 11 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,8 @@ Recent decisions affecting current work:
 - [Phase 04-stratum-v1-and-first-mining-loop]: Stratum v2 remains deferred by Phase 4 scope; Plan 04 records the Stratum v1 first-loop boundary only.
 - [Phase 04-stratum-v1-and-first-mining-loop]: Phase 4 checklist rows advance pure Stratum v1, fake-pool, job, queue, and fail-closed coordination surfaces to implemented, while live hardware mining smoke and soak remain not run - hardware evidence pending.
 - [Phase 04-stratum-v1-and-first-mining-loop]: Firmware publishes mining_loop_status=blocked reason=hardware_evidence_ack_missing work_submission=disabled while main.rs remains free of live pool sockets and BM1366 work submission.
+- [Phase 05-axeos-api-logs-and-telemetry]: AxeOS wire DTOs are handwritten and independent from internal runtime/domain structs. — This preserves upstream field names, casing, units, and mixed encodings while allowing config, Stratum, ASIC, and platform structs to evolve behind ApiSnapshot.
+- [Phase 05-axeos-api-logs-and-telemetry]: Safe Ultra 205 API fixtures use zeroed Phase 6-owned hardware telemetry. — Plan 05-01 proves field names and encodings without claiming live voltage, fan, thermal, power, or actual-frequency evidence before the safety-controller phase.
 
 ### Pending Todos
 
@@ -178,6 +181,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T18:44:59.434Z
-Stopped at: Phase 5 UI-SPEC approved
-Resume file: .planning/phases/05-axeos-api-logs-and-telemetry/05-UI-SPEC.md
+Last session: 2026-06-27T19:54:52.394Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
