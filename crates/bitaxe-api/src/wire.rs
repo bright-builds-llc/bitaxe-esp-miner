@@ -317,4 +317,74 @@ mod tests {
         assert_eq!(value.get("swarmColor"), Some(&json!("purple")));
         assert_eq!(value.get("asicCount"), Some(&json!(1)));
     }
+
+    #[test]
+    fn wire_system_info_fixture_from_reference_safe_ultra_205_defaults_round_trips() {
+        // Arrange
+        let fixture = include_str!("../fixtures/api/system-info-ultra205-safe.json");
+        let original: Value =
+            serde_json::from_str(fixture).expect("system info fixture should be valid JSON");
+
+        // Act
+        let parsed: SystemInfoWire =
+            serde_json::from_str(fixture).expect("system info fixture should parse");
+        let round_trip =
+            serde_json::to_value(parsed).expect("system info fixture should serialize");
+
+        // Assert
+        assert_eq!(round_trip, original);
+    }
+
+    #[test]
+    fn wire_system_info_fixture_preserves_mixed_numeric_and_boolean_encodings() {
+        // Arrange
+        let fixture = include_str!("../fixtures/api/system-info-ultra205-safe.json");
+
+        // Act
+        let value: Value =
+            serde_json::from_str(fixture).expect("system info fixture should be valid JSON");
+
+        // Assert
+        assert!(value["apEnabled"].is_number());
+        assert!(value["autofanspeed"].is_number());
+        assert_eq!(value["miningPaused"], Value::Bool(true));
+        assert_eq!(value["showNewBlock"], Value::Bool(false));
+    }
+
+    #[test]
+    fn wire_system_info_fixture_keeps_phase_6_hardware_telemetry_safe() {
+        // Arrange
+        let fixture = include_str!("../fixtures/api/system-info-ultra205-safe.json");
+
+        // Act
+        let value: Value =
+            serde_json::from_str(fixture).expect("system info fixture should be valid JSON");
+
+        // Assert
+        assert_eq!(value["power"], json!(0.0));
+        assert_eq!(value["voltage"], json!(0.0));
+        assert_eq!(value["current"], json!(0.0));
+        assert_eq!(value["temp"], json!(0.0));
+        assert_eq!(value["fanspeed"], json!(0));
+        assert_eq!(value["fanrpm"], json!(0));
+        assert_eq!(value["actualFrequency"], json!(0.0));
+        assert_eq!(value["expectedHashrate"], json!(0.0));
+    }
+
+    #[test]
+    fn wire_system_asic_fixture_from_reference_safe_ultra_205_defaults_round_trips() {
+        // Arrange
+        let fixture = include_str!("../fixtures/api/asic-settings-ultra205.json");
+        let original: Value =
+            serde_json::from_str(fixture).expect("ASIC settings fixture should be valid JSON");
+
+        // Act
+        let parsed: SystemAsicWire =
+            serde_json::from_str(fixture).expect("ASIC settings fixture should parse");
+        let round_trip =
+            serde_json::to_value(parsed).expect("ASIC settings fixture should serialize");
+
+        // Assert
+        assert_eq!(round_trip, original);
+    }
 }
