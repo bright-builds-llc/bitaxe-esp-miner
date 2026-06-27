@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-06-PLAN.md
-last_updated: "2026-06-27T20:59:19.308Z"
+stopped_at: Completed 05-05-PLAN.md
+last_updated: "2026-06-27T21:43:13.950Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 29
-  completed_plans: 27
-  percent: 93
+  completed_plans: 28
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 05 (axeos-api-logs-and-telemetry) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-06-27
 
@@ -79,6 +79,7 @@ Progress: [█████████░] 90%
 | Phase 05-axeos-api-logs-and-telemetry P03 | 12 min | 2 tasks | 11 files |
 | Phase 05-axeos-api-logs-and-telemetry P04 | 9 min | 2 tasks | 6 files |
 | Phase 05-axeos-api-logs-and-telemetry P06 | 8 min | 2 tasks | 4 files |
+| Phase 05-axeos-api-logs-and-telemetry P05 | 38 | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -180,6 +181,10 @@ Recent decisions affecting current work:
 - [Phase 05-axeos-api-logs-and-telemetry]: Pause and resume only plan MiningActivityStatus updates; resume derives Active versus SafeBlocked from the existing WorkSubmissionGate and never sets work submission readiness.
 - [Phase 05-axeos-api-logs-and-telemetry]: Identify is represented as a typed on/off display effect with the upstream 30000 ms duration, while restart is represented only as an after-response effect.
 - [Phase 05-axeos-api-logs-and-telemetry]: Block-found dismiss preserves blockFound, clears showNewBlock, and remains deterministic across repeated dismiss requests.
+- [Phase 05-axeos-api-logs-and-telemetry]: Use raw ESP-IDF WebSocket handler registration for /api/ws and /api/ws/live while keeping unsafe calls behind small firmware helpers.
+- [Phase 05-axeos-api-logs-and-telemetry]: Use raw ESP-IDF NVS calls in the firmware settings adapter so writes do not auto-commit before the pure executor commit step.
+- [Phase 05-axeos-api-logs-and-telemetry]: Apply hostname changes best-effort through ESP-IDF netif handles after successful settings persistence; unavailable netifs are logged, not exposed publicly.
+- [Phase 05-axeos-api-logs-and-telemetry]: Keep OTA/OTAWWW fail-closed in Phase 05; static assets and recovery-page parity remain Phase 07 scope.
 
 ### Pending Todos
 
@@ -198,6 +203,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T20:59:19.305Z
-Stopped at: Completed 05-06-PLAN.md
+Last session: 2026-06-27T21:43:13.948Z
+Stopped at: Completed 05-05-PLAN.md
 Resume file: None
