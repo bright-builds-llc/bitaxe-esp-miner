@@ -234,6 +234,7 @@ fn handle_settings_patch<'request, 'connection>(
             }
         };
         let effects = success.effects().to_vec();
+        settings_adapter::apply_persisted_settings_writes(plan.writes());
         send_settings_response(request, success.public_response())?;
         apply_settings_effects(&effects);
         Ok(())

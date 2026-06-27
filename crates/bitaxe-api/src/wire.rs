@@ -160,7 +160,7 @@ impl SystemInfoWire {
     /// Maps typed runtime facts into the initial AxeOS system info DTO.
     #[must_use]
     pub fn from_snapshot(snapshot: &ApiSnapshot) -> Self {
-        let defaults = snapshot.config.defaults;
+        let config = snapshot.config;
         let telemetry = snapshot.safe_telemetry;
         let mining_state = mining_state_from_runtime(&snapshot.mining);
         let platform = &snapshot.platform;
@@ -177,12 +177,12 @@ impl SystemInfoWire {
             fan2_rpm: telemetry.fan2_rpm,
             mining_paused: mining_state.mining_paused,
             ap_enabled: numeric_bool(platform.ap_enabled),
-            auto_fan_speed: numeric_bool(defaults.auto_fan_speed()),
+            auto_fan_speed: numeric_bool(config.auto_fan_speed),
             show_new_block: snapshot.block_found.show_new_block,
             block_found: snapshot.block_found.block_found,
-            frequency: f64::from(defaults.asic_frequency_mhz()),
+            frequency: config.asic_frequency_mhz,
             actual_frequency: telemetry.actual_frequency_mhz,
-            core_voltage: defaults.asic_voltage_mv(),
+            core_voltage: config.asic_voltage_mv,
             core_voltage_actual: telemetry.core_voltage_actual_mv,
             power: telemetry.power_watts,
             voltage: telemetry.voltage_volts,
@@ -341,6 +341,23 @@ mod tests {
         // Assert
         assert_eq!(wire.block_found, 840_000);
         assert!(wire.show_new_block);
+    }
+
+    #[test]
+    fn system_info_wire_uses_runtime_config_snapshot() {
+        // Arrange
+        let mut snapshot = ApiSnapshot::safe_ultra_205();
+        snapshot.config.asic_frequency_mhz = 500.0;
+        snapshot.config.asic_voltage_mv = 1_250;
+        snapshot.config.auto_fan_speed = false;
+
+        // Act
+        let wire = SystemInfoWire::from_snapshot(&snapshot);
+
+        // Assert
+        assert_eq!(wire.frequency, 500.0);
+        assert_eq!(wire.core_voltage, 1_250);
+        assert_eq!(wire.auto_fan_speed, 0);
     }
 
     #[test]

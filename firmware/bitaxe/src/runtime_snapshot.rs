@@ -7,6 +7,7 @@ use bitaxe_api::{
     BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect,
     MiningActivityEffect, PlatformSnapshot,
 };
+use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::state::MiningRuntimeState;
 use esp_idf_svc::sys;
 
@@ -40,6 +41,7 @@ pub fn collect_api_snapshot() -> ApiSnapshot {
     snapshot.mining = command_state.mining;
     snapshot.block_found = command_state.block_found;
     snapshot.platform = collect_platform_snapshot(snapshot.platform);
+    apply_settings_snapshot(&mut snapshot);
     snapshot
 }
 
@@ -98,6 +100,31 @@ fn mutate_command_visible_state(mutate: impl FnOnce(&mut CommandVisibleState)) {
     };
 
     mutate(&mut state);
+}
+
+fn apply_settings_snapshot(snapshot: &mut ApiSnapshot) {
+    let settings = crate::settings_adapter::current_settings_snapshot();
+    let loaded = reload_snapshot(&settings);
+
+    if let Some(LoadedValue::Str(hostname)) = loaded.loaded_value("hostname") {
+        snapshot.platform.hostname = hostname.clone();
+    }
+
+    if let Some(LoadedValue::Float(frequency)) = loaded.loaded_value("asicfrequency_f") {
+        snapshot.config.asic_frequency_mhz = f64::from(*frequency);
+    }
+
+    if let Some(LoadedValue::U16(voltage)) = loaded.loaded_value("asicvoltage") {
+        snapshot.config.asic_voltage_mv = *voltage;
+    }
+
+    if let Some(LoadedValue::Bool(auto_fan_speed)) = loaded.loaded_value("autofanspeed") {
+        snapshot.config.auto_fan_speed = *auto_fan_speed;
+    }
+
+    if let Some(LoadedValue::U16(manual_fan_speed)) = loaded.loaded_value("manualfanspeed") {
+        snapshot.config.manual_fan_speed = *manual_fan_speed;
+    }
 }
 
 fn collect_platform_snapshot(mut platform: PlatformSnapshot) -> PlatformSnapshot {

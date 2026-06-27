@@ -47,17 +47,27 @@ impl ApiSnapshot {
 
 /// Config facts that feed API DTOs without exposing the whole config crate as
 /// the public wire contract.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ConfigSnapshot {
     pub defaults: Ultra205Defaults,
+    pub asic_frequency_mhz: f64,
+    pub asic_voltage_mv: u16,
+    pub auto_fan_speed: bool,
+    pub manual_fan_speed: u16,
 }
 
 impl ConfigSnapshot {
     /// Returns the Ultra 205 defaults sourced from `config-205.cvs`.
     #[must_use]
     pub const fn ultra_205() -> Self {
+        let defaults = ultra_205_defaults();
+
         Self {
-            defaults: ultra_205_defaults(),
+            defaults,
+            asic_frequency_mhz: defaults.asic_frequency_mhz() as f64,
+            asic_voltage_mv: defaults.asic_voltage_mv(),
+            auto_fan_speed: defaults.auto_fan_speed(),
+            manual_fan_speed: defaults.manual_fan_speed(),
         }
     }
 }

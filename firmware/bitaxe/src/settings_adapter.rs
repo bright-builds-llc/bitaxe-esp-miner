@@ -1,12 +1,16 @@
 //! ESP-IDF NVS adapter for accepted AxeOS settings PATCH plans.
 
 use std::ffi::CString;
+use std::sync::{Mutex, OnceLock};
 
 use bitaxe_api::{SettingsAdapterFailure, SettingsPersistenceAdapter};
-use bitaxe_config::{NvsSnapshot, NvsWrite, NVS_NAMESPACE};
+use bitaxe_config::nvs::StoredValueKind;
+use bitaxe_config::{NvsSnapshot, NvsWrite, StoredValue, NVS_NAMESPACE};
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
 use esp_idf_svc::sys;
+
+static CURRENT_SETTINGS_SNAPSHOT: OnceLock<Mutex<NvsSnapshot>> = OnceLock::new();
 
 /// Firmware adapter that applies pure settings write plans to ESP-IDF NVS.
 pub struct FirmwareSettingsAdapter {
@@ -83,7 +87,69 @@ impl SettingsPersistenceAdapter for FirmwareSettingsAdapter {
 /// Returns the current settings snapshot boundary used for pure effect planning.
 #[must_use]
 pub fn current_settings_snapshot() -> NvsSnapshot {
-    NvsSnapshot::new()
+    let snapshot = current_snapshot_cell();
+    let Ok(snapshot) = snapshot.lock() else {
+        log::warn!("axeos_settings_snapshot=unavailable reason=mutex_poisoned");
+        return NvsSnapshot::new();
+    };
+
+    snapshot.clone()
+}
+
+/// Records successfully persisted writes in the runtime settings snapshot.
+pub fn apply_persisted_settings_writes(writes: &[NvsWrite]) {
+    if writes.is_empty() {
+        return;
+    }
+
+    let snapshot = current_snapshot_cell();
+    let Ok(mut snapshot) = snapshot.lock() else {
+        log::warn!("axeos_settings_snapshot=update_failed reason=mutex_poisoned");
+        return;
+    };
+
+    let mut stored_values = snapshot.stored_values();
+    stored_values.retain(|value| {
+        !writes
+            .iter()
+            .any(|write| nvs_write_key(write) == value.key.as_str())
+    });
+    stored_values.extend(writes.iter().map(stored_value_from_write));
+    *snapshot = NvsSnapshot::from_values(stored_values);
+}
+
+fn current_snapshot_cell() -> &'static Mutex<NvsSnapshot> {
+    CURRENT_SETTINGS_SNAPSHOT.get_or_init(|| Mutex::new(NvsSnapshot::new()))
+}
+
+fn stored_value_from_write(write: &NvsWrite) -> StoredValue {
+    match write {
+        NvsWrite::String { key, value } => StoredValue {
+            key: key.clone(),
+            value: StoredValueKind::String(value.clone()),
+        },
+        NvsWrite::U16 { key, value } => StoredValue {
+            key: key.clone(),
+            value: StoredValueKind::U16(*value),
+        },
+        NvsWrite::I32 { key, value } => StoredValue {
+            key: key.clone(),
+            value: StoredValueKind::I32(*value),
+        },
+        NvsWrite::U64 { key, value } => StoredValue {
+            key: key.clone(),
+            value: StoredValueKind::U64(*value),
+        },
+    }
+}
+
+fn nvs_write_key(write: &NvsWrite) -> &str {
+    match write {
+        NvsWrite::String { key, .. }
+        | NvsWrite::U16 { key, .. }
+        | NvsWrite::I32 { key, .. }
+        | NvsWrite::U64 { key, .. } => key.as_str(),
+    }
 }
 
 fn c_string(value: &str) -> Result<CString, SettingsAdapterFailure> {
