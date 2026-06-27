@@ -477,15 +477,6 @@ fn send_websocket_connect_frames(
 ) -> sys::esp_err_t {
     match route {
         WebSocketRouteKind::Logs => {
-            for chunk in log_buffer::download_chunks() {
-                if chunk.is_empty() {
-                    continue;
-                }
-                let result = send_websocket_text_frame(request, &chunk);
-                if result != sys::ESP_OK {
-                    return result;
-                }
-            }
             let buffer = log_buffer::retained_log_buffer();
             let _ = websocket_api::raw_log_chunks(&buffer);
             sys::ESP_OK
