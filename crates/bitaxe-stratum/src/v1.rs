@@ -5,5 +5,6 @@
 //! - `reference/esp-miner/components/stratum/include/stratum_api.h`
 //! - Parity checklist row `STR-001`
 
+pub mod fake_pool;
 pub mod messages;
 pub mod state;

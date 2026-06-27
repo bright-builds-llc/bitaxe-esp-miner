@@ -1,0 +1,49 @@
+{
+  "checklist_ids": ["STR-002", "STR-004", "STR-005"],
+  "source_file": "reference/esp-miner/components/stratum/test/test_stratum_json.c",
+  "source_behavior": "Stratum v1 subscribe, authorize, notify, set-difficulty, submit result, reconnect, and fallback lifecycle behaviors represented as deterministic pure fake-pool transcripts.",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "license_posture": "reference-derived facts only; Rust implementation remains independently structured and MIT-first",
+  "derivation": "Transcript names and message classes are derived from upstream parser and socket lifecycle evidence; usernames and passwords are synthetic fixture values, not real pool credentials.",
+  "cases": [
+    {
+      "name": "subscribe_authorize_notify_submit_accepted",
+      "client_messages": [
+        "mining.subscribe bitaxe/ultra/205",
+        "mining.authorize synthetic-user x",
+        "mining.submit synthetic-user job 00000000 647025b5 12345678 00000000"
+      ],
+      "server_events": [
+        "subscribe result extranonce1=4de05269 extranonce2_len=8",
+        "authorize result true",
+        "mining.set_difficulty 42",
+        "mining.notify job clean_jobs=true",
+        "submit result true"
+      ],
+      "expected_lifecycle": "Active",
+      "expected_accepted": 1,
+      "expected_rejected": 0
+    },
+    {
+      "name": "submit_rejected",
+      "client_messages": [
+        "mining.submit synthetic-user job 00000000 647025b5 12345678 00000000"
+      ],
+      "server_events": ["submit result false low difficulty"],
+      "expected_rejected_reason": "low difficulty"
+    },
+    {
+      "name": "disconnect_reconnect",
+      "client_messages": [],
+      "server_events": ["disconnect"],
+      "expected_lifecycle": "Reconnecting"
+    },
+    {
+      "name": "fallback_pool_active",
+      "client_messages": [],
+      "server_events": ["timeout"],
+      "expected_lifecycle": "FallbackActive",
+      "fallback_active": true
+    }
+  ]
+}
