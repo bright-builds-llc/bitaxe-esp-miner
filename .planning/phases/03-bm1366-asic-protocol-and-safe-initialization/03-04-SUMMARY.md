@@ -114,7 +114,7 @@ _Note: TDD RED failures were run and recorded before implementation, but failing
 - **Verification:** `cargo test -p bitaxe-asic frequency_voltage --all-features` passed, and the full Rust pre-commit sequence passed.
 - **Committed in:** `5804c55`
 
----
+___
 
 **Total deviations:** 2 auto-fixed (1 missing critical, 1 bug)
 **Impact on plan:** No scope change. Both adjustments preserved repo rules and correctness for the pure decision core.
@@ -149,7 +149,7 @@ None - source and fixture files touched by this plan have no placeholder or stub
 
 Ready for Plan 03-05 to add the narrow firmware UART/reset/status adapter, evidence records, checklist updates, and human-gated chip-detect smoke review. Safety-critical init/frequency/voltage behavior remains below verified until Ultra 205 hardware evidence exists.
 
----
+___
 *Phase: 03-bm1366-asic-protocol-and-safe-initialization*
 *Completed: 2026-06-27*
 

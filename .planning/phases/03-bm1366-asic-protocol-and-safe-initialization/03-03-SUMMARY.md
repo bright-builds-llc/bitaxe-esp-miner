@@ -126,7 +126,7 @@ _Note: TDD RED failures were run and recorded before implementation, but failing
 - **Verification:** `cargo test -p bitaxe-asic transcript --all-features` passed with timeout and write-verification paths covered.
 - **Committed in:** `445b3c8`
 
----
+___
 
 **Total deviations:** 2 auto-fixed (2 missing critical)
 **Impact on plan:** Both deviations preserve stricter repo rules or required fail-closed behavior. No mining, firmware side effects, or hardware verification claims were added.
@@ -162,7 +162,7 @@ None - source and fixture files touched by this plan have no placeholder or stub
 
 Ready for Plan 03-04 to consume the active dispatch and semantic adapter contracts while building fail-closed staged init and frequency/voltage transition decisions.
 
----
+___
 *Phase: 03-bm1366-asic-protocol-and-safe-initialization*
 *Completed: 2026-06-27*
 

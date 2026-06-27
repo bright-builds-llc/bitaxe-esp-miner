@@ -115,7 +115,7 @@ _Note: TDD RED failures were run and recorded before implementation, but failing
 - **Verification:** Full Rust pre-commit sequence passed before both task commits.
 - **Committed in:** `73bcf40`, `2846870`
 
----
+___
 
 **Total deviations:** 1 instruction-driven adjustment
 **Impact on plan:** No scope change. The implementation still followed TDD behavior while respecting stricter repo commit rules.
@@ -146,7 +146,7 @@ None - no external service configuration required.
 
 Ready for Plan 03-02 to build BM1366 work encoding, job ID semantics, result parsing, and nonce/register fault handling on top of the protocol foundation.
 
----
+___
 
 *Phase: 03-bm1366-asic-protocol-and-safe-initialization*
 *Completed: 2026-06-27*

@@ -132,7 +132,7 @@ None. The `not run - hardware verification pending` text is the intentional evid
 
 Phase 03 is complete for safe, non-live work. The residual risk is hardware evidence: ASIC init, serial chip-detect, frequency transition, diagnostic work-send, result receive, voltage, fan, thermal, power, and production mining remain unverified until a future approved Ultra 205 hardware-smoke or regression run records logs.
 
----
+___
 
 *Phase: 03-bm1366-asic-protocol-and-safe-initialization*
 *Completed: 2026-06-27*

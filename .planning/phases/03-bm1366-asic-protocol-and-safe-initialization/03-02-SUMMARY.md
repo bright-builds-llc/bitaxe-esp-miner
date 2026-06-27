@@ -113,7 +113,7 @@ _Note: TDD RED failures were run and recorded before implementation, but failing
 - **Verification:** `cargo test -p bitaxe-asic bm1366_result --all-features` passed and includes the out-of-range core case.
 - **Committed in:** `c55aa69`
 
----
+___
 
 **Total deviations:** 2 auto-fixed (2 missing critical)
 **Impact on plan:** Both deviations preserve stricter repo rules or required fail-closed behavior. No scope was added beyond pure BM1366 protocol handling.
@@ -143,7 +143,7 @@ None - no external service configuration required.
 
 Ready for Plan 03-03 to add active BM1366 dispatch, semantic command/observation types, and fake UART transcript coverage on top of the work/result codecs.
 
----
+___
 
 *Phase: 03-bm1366-asic-protocol-and-safe-initialization*
 *Completed: 2026-06-27*
