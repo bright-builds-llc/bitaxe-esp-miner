@@ -6,3 +6,4 @@
 //! - Parity checklist row `STR-001`
 
 pub mod messages;
+pub mod state;

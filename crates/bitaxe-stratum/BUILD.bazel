@@ -8,6 +8,7 @@ rust_library(
         "src/lib.rs",
         "src/v1.rs",
         "src/v1/messages.rs",
+        "src/v1/state.rs",
     ],
     compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_stratum",
