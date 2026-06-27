@@ -442,35 +442,39 @@ pub fn log_ws_initial_position(total_written: u64) -> u64 {
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | Warning signs in the pitfalls section are planning heuristics rather than verified bugs in this repo. [ASSUMED] | Common Pitfalls | Planner may need to refine those warnings after implementation details are chosen. |
-| A2 | Whether high-level `esp-idf-svc` route APIs cover exact async WebSocket send/client tracking behavior without raw `esp_idf_sys` calls was not fully verified. [ASSUMED] | Open Questions | Planner may choose the wrong binding layer unless it starts with a compile spike. |
-| A3 | Stricter-than-upstream controls for V1 settings/command routes are a product/security decision. [ASSUMED] | Open Questions / Security Domain | Planner may need user confirmation before diverging from upstream-compatible behavior. |
-| A4 | Whether a small static fixture is enough or firmware must serve a recovery page in Phase 5 is unresolved. [ASSUMED] | Open Questions | Planner may overbuild static serving or under-cover AxeOS administration smoke. |
+| A2 | Whether high-level `esp-idf-svc` route APIs cover exact async WebSocket send/client tracking behavior without raw `esp_idf_sys` calls was not fully verified. [ASSUMED] | Resolved by plan task | Plan 05-05 Task 1 starts with an ESP-IDF HTTP/WebSocket compile spike and falls back to narrow `esp_idf_sys::httpd_*` wrappers only if the high-level route API cannot compile the required `/api/ws` and `/api/ws/live` behavior. |
+| A3 | Stricter-than-upstream controls for V1 settings/command routes are a product/security decision. [ASSUMED] | Resolved by plan scope | Plans preserve upstream-compatible private-network/AP-origin gating as the minimum ASVS L1 control and do not introduce stricter public auth semantics. Plan 05-05 Task 1 and Task 2 require HTTP and WebSocket denial response-shape tests. |
+| A4 | Whether a small static fixture is enough or firmware must serve a recovery page in Phase 5 is unresolved. [ASSUMED] | Resolved by plan/evidence boundary | Plan 05-07 Task 1 fixture-tests `/recovery` and static fallback behavior, while Plan 05-07 Task 2 records static/recovery packaging as Phase 7 pending if firmware packaging cannot support it in Phase 5. |
 | A5 | Hardware smoke still depends on a connected Ultra 205 board and serial port, which were not probed by this research. [ASSUMED] | Environment Availability | Planner must not require hardware smoke without checking board/port availability. |
 | A6 | A Wave 0 ESP-IDF HTTP/WebSocket compile spike is needed before broad firmware handler work. [ASSUMED] | Validation Architecture | Planner may skip a low-cost integration risk reducer. |
 | A7 | Pool certificate/key settings should be treated as persisted settings only, and Phase 5 code should avoid logging secrets. [ASSUMED] | Security Domain | Planner may miss a log disclosure regression test. |
 | A8 | New Phase 5 code should add tests that settings secrets are not logged. [ASSUMED] | Security Domain | Planner may omit a useful information-disclosure guard. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Which ESP-IDF Rust binding layer should own WebSocket route plumbing?**
    - What we know: Firmware already uses `esp-idf-svc` and `esp-idf-sys`, and upstream uses ESP-IDF HTTP server WebSocket APIs. [VERIFIED: firmware/bitaxe/Cargo.toml] [VERIFIED: reference/esp-miner/main/http_server/websocket.c]
    - What's unclear: Whether high-level `esp-idf-svc` route APIs cover the exact async send/client tracking behavior without raw `esp_idf_sys` calls was not fully verified in this session. [ASSUMED]
    - Recommendation: Plan a Wave 0 compile spike that registers `/api/system/info`, `/api/ws`, and `/api/ws/live` with the chosen binding layer before broad implementation. [VERIFIED: .planning/phases/05-axeos-api-logs-and-telemetry/05-CONTEXT.md]
+   - RESOLVED: Plan 05-05 Task 1 owns this as an adapter compile spike. It must attempt the highest-level `esp-idf-svc` route API first and use narrow `esp_idf_sys::httpd_*` wrappers only if the required WebSocket compile path fails. No human checkpoint is required because the plan defines the fallback decision and verification command.
 
 2. **Where should captured upstream JSON fixtures come from?**
    - What we know: Phase 5 requires captured upstream responses and distinguishes captured response compatibility from schema and firmware smoke. [VERIFIED: .planning/phases/05-axeos-api-logs-and-telemetry/05-CONTEXT.md]
    - What's unclear: The repo does not yet contain captured Phase 5 response fixtures. [VERIFIED: rg captured fixtures 2026-06-27]
    - Recommendation: Plan an explicit fixture capture/curation task with provenance comments and avoid marking routes verified from schema-only tests. [VERIFIED: docs/adr/0012-parity-verification-evidence.md] [VERIFIED: PROVENANCE.md]
+   - RESOLVED: Plan 05-01 Task 2 creates the first system and ASIC captured-response fixtures with provenance, and Plan 05-07 Task 1 extends comparison coverage across representative success and error routes. Plan 05-07 Task 2 records schema, captured-response, static-route, and firmware-smoke evidence as separate evidence types.
 
 3. **How strict should LAN access control be relative to upstream CORS behavior?**
    - What we know: Upstream applies a private-network/AP-origin allow check and sets permissive CORS headers. [VERIFIED: reference/esp-miner/main/http_server/http_server.c]
    - What's unclear: Whether the project wants stricter-than-upstream controls for V1 settings/command routes is a product/security decision. [ASSUMED]
    - Recommendation: Preserve upstream-compatible local-network gating as the minimum and block planning if any route skips the gate. [VERIFIED: reference/esp-miner/main/http_server/http_server.c]
+   - RESOLVED: Plan 05-05 Task 1 and Task 2 preserve the upstream-compatible private-network/AP-origin gate and require HTTP and WebSocket denial response-shape tests. No stricter authentication or session semantics are introduced in Phase 5, so no product checkpoint is needed.
 
 4. **How much static serving belongs in Phase 5?**
    - What we know: Static AxeOS compatibility is required, while Angular rewrite and full OTA/SPIFFS/release packaging are deferred. [VERIFIED: .planning/phases/05-axeos-api-logs-and-telemetry/05-CONTEXT.md]
    - What's unclear: Whether serving a small static fixture is enough or whether firmware must serve a recovery page in this phase. [ASSUMED]
    - Recommendation: Plan fixture tests against existing AxeOS API usage first, then add the smallest firmware static/recovery behavior needed for administration smoke. [VERIFIED: reference/esp-miner/main/http_server/http_server.c]
+   - RESOLVED: Plan 05-07 Task 1 adds explicit `/recovery` and static fallback fixture coverage. Plan 05-07 Task 2 must either record fixture/smoke evidence for recovery/static behavior or explicitly mark static/recovery packaging evidence as Phase 7 pending while proving Phase 5 cannot falsely claim OTA/static update success.
 
 ## Environment Availability
 
