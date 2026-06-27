@@ -5,6 +5,8 @@
 //! - `reference/esp-miner/components/stratum/include/stratum_api.h`
 //! - Parity checklist row `STR-001`
 
+pub mod coinbase;
 pub mod fake_pool;
 pub mod messages;
+pub mod mining;
 pub mod state;

@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "checklist_ids": ["STR-003", "STR-006"],
+    "source_files": [
+      "reference/esp-miner/components/stratum/mining.c",
+      "reference/esp-miner/components/stratum/include/mining.h",
+      "reference/esp-miner/components/stratum/utils.c",
+      "crates/bitaxe-asic/src/bm1366/work.rs",
+      "crates/bitaxe-asic/src/bm1366/result.rs"
+    ],
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture data; not MIT source expression",
+    "derivation": "manual independent Rust implementation with upstream behavior breadcrumbs"
+  },
+  "cases": [
+    {
+      "name": "extranonce_2_generate",
+      "input": {
+        "value": 1,
+        "len": 4
+      },
+      "expected": {
+        "hex": "01000000"
+      }
+    },
+    {
+      "name": "coinbase_hash",
+      "input": {
+        "hex_parts": ["00", "01"]
+      },
+      "expected": {
+        "algorithm": "double_sha256"
+      }
+    },
+    {
+      "name": "merkle_root",
+      "input": {
+        "coinbase_hash": "synthetic double-sha256 coinbase hash",
+        "branches": ["1111111111111111111111111111111111111111111111111111111111111111"]
+      },
+      "expected": {
+        "algorithm": "iterative double_sha256(parent || branch)"
+      }
+    },
+    {
+      "name": "notify_to_bm1366_work_fields",
+      "input": {
+        "job_id": "job",
+        "extranonce1": "4de05269",
+        "extranonce2": "00000000",
+        "nbits": "1705ae3a",
+        "ntime": "647025b5",
+        "asic_job_id": 0
+      },
+      "expected": {
+        "starting_nonce": "00000000",
+        "nbits_little_endian": "3aae0517",
+        "ntime_little_endian": "b5257064",
+        "work_type": "Bm1366WorkFields"
+      }
+    }
+  ]
+}

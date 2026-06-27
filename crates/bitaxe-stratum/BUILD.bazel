@@ -7,7 +7,9 @@ rust_library(
         "src/jsonrpc.rs",
         "src/lib.rs",
         "src/v1.rs",
+        "src/v1/coinbase.rs",
         "src/v1/fake_pool.rs",
+        "src/v1/mining.rs",
         "src/v1/messages.rs",
         "src/v1/state.rs",
     ],
@@ -16,8 +18,11 @@ rust_library(
     edition = "2021",
     visibility = ["//visibility:public"],
     deps = [
+        "//crates/bitaxe-asic:bitaxe_asic",
+        "//crates/bitaxe-config:bitaxe_config",
         "@crates//:serde",
         "@crates//:serde_json",
+        "@crates//:sha2",
         "@crates//:thiserror",
     ],
 )
