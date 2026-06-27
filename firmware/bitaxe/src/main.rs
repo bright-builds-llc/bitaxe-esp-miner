@@ -3,6 +3,8 @@ use std::ffi::CStr;
 use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState};
 use esp_idf_svc::sys;
 
+mod asic_adapter;
+
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
 const ESP_IDF_VERSION: &str = "v5.5.4";
 const REFERENCE_COMMIT: &str = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
@@ -30,6 +32,7 @@ fn main() -> anyhow::Result<()> {
 
     log::info!("{boot_log_line}");
     log::info!("{safe_state_log_line}");
+    asic_adapter::run_boot_gate()?;
     log::info!("reset_reason={}", reset_reason());
     log::info!("partition={}", partition_label());
     log::info!("psram_status={}", psram_status());

@@ -158,6 +158,8 @@ name = "bitaxe-firmware"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitaxe-asic",
+ "bitaxe-config",
  "bitaxe-core",
  "embuild",
  "esp-idf-svc",

@@ -4,3 +4,7 @@ CONFIG_LOG_DEFAULT_LEVEL_INFO=y
 CONFIG_ESP_CONSOLE_UART_DEFAULT=y
 CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=y
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+# Reference: reference/esp-miner/main/Kconfig.projbuild GPIO_ASIC_RESET default.
+CONFIG_GPIO_ASIC_RESET=1
+# Reference: reference/esp-miner/main/Kconfig.projbuild GPIO_ASIC_ENABLE default.
+CONFIG_GPIO_ASIC_ENABLE=10
