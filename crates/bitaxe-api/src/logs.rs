@@ -312,6 +312,23 @@ mod tests {
     }
 
     #[test]
+    fn raw_ws_additional_client_connect_preserves_pending_live_chunks() {
+        // Arrange
+        let mut buffer = RetainedLogBuffer::new();
+        buffer.append("retained old line\n");
+        let mut stream = RawLogStreamPlanner::new(&buffer);
+        stream.set_active_client_count(1, &buffer);
+        buffer.append("pending live line\n");
+        stream.set_active_client_count(2, &buffer);
+
+        // Act
+        let chunks = stream.drain_raw_chunks(&buffer);
+
+        // Assert
+        assert_eq!(chunks, vec!["pending live line\n"]);
+    }
+
+    #[test]
     fn raw_ws_chunks_are_text_payloads_without_json_envelope() {
         // Arrange
         let fixture = fixture_cases();

@@ -144,6 +144,21 @@ pub fn live_cadence_frame(current: Value) -> Option<Value> {
     state.live_telemetry.cadence_frame(current)
 }
 
+/// Updates raw retained-log stream state after a `/api/ws` client connects.
+pub fn log_client_connected(buffer: &RetainedLogBuffer) {
+    let state = WEBSOCKET_STATE.get_or_init(|| Mutex::new(WebSocketState::default()));
+    let Ok(mut state) = state.lock() else {
+        log::warn!("axeos_websocket_state=unavailable reason=mutex_poisoned");
+        return;
+    };
+
+    let log_clients = state.log_clients.len();
+    let planner = state
+        .maybe_log_stream
+        .get_or_insert_with(|| RawLogStreamPlanner::new(buffer));
+    planner.set_active_client_count(log_clients, buffer);
+}
+
 /// Drains raw retained-log chunks when `/api/ws` clients are active.
 #[must_use]
 pub fn raw_log_chunks(buffer: &RetainedLogBuffer) -> Vec<String> {

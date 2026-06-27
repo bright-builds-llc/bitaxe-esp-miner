@@ -538,7 +538,7 @@ fn send_websocket_connect_frames(
     match route {
         WebSocketRouteKind::Logs => {
             let buffer = log_buffer::retained_log_buffer();
-            let _ = websocket_api::raw_log_chunks(&buffer);
+            websocket_api::log_client_connected(&buffer);
             sys::ESP_OK
         }
         WebSocketRouteKind::LiveTelemetry => {
