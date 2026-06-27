@@ -54,11 +54,15 @@ impl LiveTelemetryPlanner {
         }
     }
 
-    /// Plans the full connect-time update frame.
+    /// Plans the full connect-time update frame without changing cadence state.
     #[must_use]
-    pub fn connect_frame(&mut self, current: Value) -> Value {
-        self.maybe_baseline = Some(current.clone());
+    pub fn connect_frame(&self, current: Value) -> Value {
         live_telemetry_update_envelope(current)
+    }
+
+    /// Seeds the shared cadence baseline after the first active client connects.
+    pub fn seed_cadence_baseline(&mut self, current: Value) {
+        self.maybe_baseline = Some(current);
     }
 
     /// Plans a cadence update, returning no frame for unchanged state or no clients.
@@ -118,7 +122,10 @@ mod tests {
     use serde::Deserialize;
     use serde_json::{json, Value};
 
-    use crate::telemetry::{live_telemetry_diff, LiveTelemetryPlanner, LIVE_TELEMETRY_CADENCE_MS};
+    use crate::telemetry::{
+        live_telemetry_diff, live_telemetry_update_envelope, LiveTelemetryPlanner,
+        LIVE_TELEMETRY_CADENCE_MS,
+    };
 
     #[derive(Debug, Deserialize)]
     struct LiveTelemetryFixture {
@@ -157,7 +164,7 @@ mod tests {
         let fixture = fixture();
         let mut planner = LiveTelemetryPlanner::default();
         planner.set_active_client_count(1);
-        let _ = planner.connect_frame(fixture.full_state.clone());
+        planner.seed_cadence_baseline(fixture.full_state.clone());
 
         // Act
         let frame = planner.cadence_frame(fixture.full_state);
@@ -172,7 +179,7 @@ mod tests {
         let fixture = fixture();
         let mut planner = LiveTelemetryPlanner::default();
         planner.set_active_client_count(1);
-        let _ = planner.connect_frame(fixture.full_state);
+        planner.seed_cadence_baseline(fixture.full_state);
 
         // Act
         let frame = planner.cadence_frame(fixture.changed_state);
@@ -187,7 +194,7 @@ mod tests {
         let fixture = fixture();
         let mut planner = LiveTelemetryPlanner::default();
         planner.set_active_client_count(1);
-        let _ = planner.connect_frame(fixture.full_state.clone());
+        planner.seed_cadence_baseline(fixture.full_state.clone());
         planner.set_active_client_count(0);
         let idle_frame = planner.cadence_frame(fixture.changed_state);
         planner.set_active_client_count(1);
@@ -198,6 +205,25 @@ mod tests {
         // Assert
         assert_eq!(idle_frame, None);
         assert_eq!(reconnect_frame, fixture.expected_connect_frame);
+    }
+
+    #[test]
+    fn connect_time_telemetry_does_not_replace_cadence_baseline() {
+        // Arrange
+        let fixture = fixture();
+        let mut planner = LiveTelemetryPlanner::default();
+        planner.set_active_client_count(1);
+        planner.seed_cadence_baseline(fixture.full_state);
+        let changed_state = fixture.changed_state.clone();
+        let expected_connect_frame = live_telemetry_update_envelope(changed_state.clone());
+        let connect_frame = planner.connect_frame(changed_state.clone());
+
+        // Act
+        let cadence_frame = planner.cadence_frame(changed_state);
+
+        // Assert
+        assert_eq!(connect_frame, expected_connect_frame);
+        assert_eq!(cadence_frame, Some(fixture.expected_diff_frame));
     }
 
     #[test]

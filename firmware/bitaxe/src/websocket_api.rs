@@ -124,6 +124,9 @@ pub fn live_connect_frame(current: Value) -> Option<Value> {
 
     let live_clients = state.live_clients.len();
     state.live_telemetry.set_active_client_count(live_clients);
+    if live_clients == 1 {
+        state.live_telemetry.seed_cadence_baseline(current.clone());
+    }
     Some(state.live_telemetry.connect_frame(current))
 }
 

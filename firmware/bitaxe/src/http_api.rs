@@ -546,17 +546,13 @@ fn send_websocket_connect_frames(
             let Ok(current) = serde_json::to_value(system_info_from_snapshot(&snapshot)) else {
                 return sys::ESP_FAIL;
             };
-            let Some(frame) = websocket_api::live_connect_frame(current.clone()) else {
+            let Some(frame) = websocket_api::live_connect_frame(current) else {
                 return sys::ESP_FAIL;
             };
             let Ok(body) = serde_json::to_string(&frame) else {
                 return sys::ESP_FAIL;
             };
-            let result = send_websocket_text_frame(request, &body);
-            if result == sys::ESP_OK {
-                let _ = websocket_api::live_cadence_frame(current);
-            }
-            result
+            send_websocket_text_frame(request, &body)
         }
     }
 }
