@@ -81,6 +81,7 @@ fn live_telemetry_cadence_loop(server_addr: usize) {
     loop {
         std::thread::sleep(Duration::from_millis(LIVE_TELEMETRY_CADENCE_MS));
         broadcast_live_telemetry_cadence(server);
+        broadcast_raw_log_chunks(server);
         prune_stale_websocket_sessions(server);
     }
 }
@@ -100,6 +101,13 @@ fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
     };
 
     broadcast_websocket_text_frame(server, WebSocketRouteKind::LiveTelemetry, &body);
+}
+
+fn broadcast_raw_log_chunks(server: sys::httpd_handle_t) {
+    let buffer = log_buffer::retained_log_buffer();
+    for chunk in websocket_api::raw_log_chunks(&buffer) {
+        broadcast_websocket_text_frame(server, WebSocketRouteKind::Logs, &chunk);
+    }
 }
 
 fn prune_stale_websocket_sessions(server: sys::httpd_handle_t) {
