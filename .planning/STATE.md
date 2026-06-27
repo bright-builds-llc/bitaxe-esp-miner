@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 context gathered
-last_updated: "2026-06-27T14:04:22.170Z"
-last_activity: 2026-06-27 -- Phase 04 planning complete
+last_updated: "2026-06-27T14:06:13.296Z"
+last_activity: 2026-06-27 -- Phase 04 execution started
 progress:
   total_phases: 8
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Phase 03 — BM1366 ASIC Protocol And Safe Initialization
+**Current focus:** Phase 04 — stratum-v1-and-first-mining-loop
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-27 -- Phase 04 planning complete
+Phase: 04 (stratum-v1-and-first-mining-loop) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 04
+Last activity: 2026-06-27 -- Phase 04 execution started
 
 Progress: [██████████] 100%
 
