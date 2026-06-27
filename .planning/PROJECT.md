@@ -63,6 +63,10 @@ The accepted seed layout separates hardware-bound firmware from testable Rust lo
 - `tools/flash` and `tools/parity` for workflow support.
 - `scripts/verify-reference-clean.sh` for reference guard verification.
 
+## Current State
+
+Phase 04 is complete: the repo now has a typed Stratum v1 core, deterministic fake-pool coverage, mining job and queue integration, a fail-closed first mining-loop gate, firmware-visible blocked mining-loop status, and Phase 4 parity evidence. Live Ultra 205 mining smoke and soak remain pending and are not claimed as verified.
+
 ## Constraints
 
 - **Tech stack**: Use ESP-IDF Rust bindings for the first production firmware stack - upstream ESP-Miner depends heavily on ESP-IDF services such as Wi-Fi, HTTP serving, NVS, SPIFFS, OTA, FreeRTOS tasks, PSRAM-aware allocation, logging, partition images, and ESP flashing conventions.
@@ -114,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-06-26 after Ultra 205 parity pivot*
+*Last updated: 2026-06-27 after Phase 04 Stratum v1 mining-loop verification*
