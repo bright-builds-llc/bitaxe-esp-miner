@@ -116,7 +116,7 @@ completed: 2026-06-27
 - **Verification:** `cargo build --all-targets --all-features`, `bazel test //crates/bitaxe-api:tests`
 - **Committed in:** `1d254a6`
 
----
+***
 
 **Total deviations:** 2 auto-fixed (2 blocking)
 **Impact on plan:** Both fixes kept the planned foundation reproducible and compilable without expanding route/module scope.
@@ -162,6 +162,6 @@ Ready for Plan 05-02. The shared API crate now has module ownership, dependency 
 - Found task commit `1d254a6`
 - Found task commit `18a093e`
 
----
+***
 *Phase: 05-axeos-api-logs-and-telemetry*
 *Completed: 2026-06-27*

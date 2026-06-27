@@ -141,7 +141,7 @@ TDD RED failures were run and recorded in execution notes but not committed beca
 - **Verification:** `cargo build -p bitaxe-firmware --target xtensa-esp32s3-espidf`, full Rust gate
 - **Committed in:** `e5f8ae7`
 
----
+***
 
 **Total deviations:** 3 auto-fixed (3 blocking)
 **Impact on plan:** All fixes were required to make the planned firmware route shell compile and preserve the settings/command ordering contracts. No architecture change was introduced.
@@ -183,6 +183,6 @@ Phase 05 API pure contracts now have firmware route entrypoints. Phase 06 can pr
 - Task commit `bf07665` is present in git history.
 - Task commit `e5f8ae7` is present in git history.
 
----
+***
 *Phase: 05-axeos-api-logs-and-telemetry*
 *Completed: 2026-06-27*

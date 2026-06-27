@@ -123,7 +123,7 @@ completed: 2026-06-27
 - **Adjustment:** Ran failing RED tests for both tasks and committed only the passing GREEN implementations after the required Rust gate.
 - **Impact:** Preserved the higher-priority repo rule without changing feature scope.
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 missing critical), 1 process adjustment.
 **Impact on plan:** The auto-fix completed the planned system mapper contract without adding route, firmware, hardware-control, or persistence scope.
@@ -179,6 +179,6 @@ Ready for Plan 05-04. The API crate now has pure read-response mappers for syste
 - Found task commit `65b8642`
 - Reference implementation remains unmodified.
 
----
+***
 *Phase: 05-axeos-api-logs-and-telemetry*
 *Completed: 2026-06-27*

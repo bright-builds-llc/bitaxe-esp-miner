@@ -114,7 +114,7 @@ completed: 2026-06-27
 - **Adjustment:** Ran RED failures locally, then committed only passing GREEN task states after the required Rust gate.
 - **Impact:** Preserved higher-priority repo policy without changing command behavior.
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 blocking), 1 process adjustment.
 **Impact on plan:** The auto-fix was limited to test fixture shape. Scope stayed within pure command route planning and safety regressions.
@@ -166,6 +166,6 @@ Ready for firmware route wiring and comparison evidence. The API crate now expos
 - Found task commit `d13ec80`
 - Reference implementation remains unmodified.
 
----
+***
 *Phase: 05-axeos-api-logs-and-telemetry*
 *Completed: 2026-06-27*
