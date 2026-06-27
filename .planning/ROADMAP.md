@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation And Ultra 205 Boot/Log** - Establish the monorepo, reference guardrails, automation graph, package/flash/monitor workflow, parity tooling, and safe Ultra 205 boot logs with mining and hardware control disabled.
 - [x] **Phase 2: Ultra 205 Config And NVS Model** - Deliver typed Ultra 205 defaults, scoped board/ASIC identities, NVS semantics, validation, persistence, and reference-derived config fixtures. (completed 2026-06-26)
 - [ ] **Phase 3: BM1366 ASIC Protocol And Safe Initialization** - Deliver pure BM1366 protocol logic plus a narrow UART adapter and gated Ultra 205 initialization evidence.
-- [ ] **Phase 4: Stratum V1 And First Mining Loop** - Deliver deterministic Stratum v1 behavior, fake pool coverage, work queue integration, and first evidence-backed Ultra 205 mining loop.
+- [x] **Phase 4: Stratum V1 And First Mining Loop** - Deliver deterministic Stratum v1 behavior, fake pool coverage, work queue integration, and first evidence-backed Ultra 205 mining loop. (completed 2026-06-27)
 - [ ] **Phase 5: AxeOS API, Logs, And Telemetry** - Deliver upstream-compatible API models, handlers, logs, WebSocket telemetry, commands, static asset compatibility, and API comparison evidence.
 - [ ] **Phase 6: Safety Controllers And Self-Test** - Deliver Ultra 205 power, voltage, thermal, fan, fault, display/input, watchdog, and self-test parity with hardware evidence gates.
 - [ ] **Phase 7: OTA, Filesystem, And Release Packaging** - Deliver partition/filesystem behavior, OTA/recovery flows, static asset updates, release artifacts, license inventory, and safe operator docs.
@@ -195,7 +195,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 1. Foundation And Ultra 205 Boot/Log | 9/9 | Complete | 2026-06-21 |
 | 2. Ultra 205 Config And NVS Model | 4/4 | Complete | 2026-06-26 |
 | 3. BM1366 ASIC Protocol And Safe Initialization | 0/5 | Not started | - |
-| 4. Stratum V1 And First Mining Loop | 3/4 | In Progress|  |
+| 4. Stratum V1 And First Mining Loop | 4/4 | Complete    | 2026-06-27 |
 | 5. AxeOS API, Logs, And Telemetry | 0/TBD | Not started | - |
 | 6. Safety Controllers And Self-Test | 0/TBD | Not started | - |
 | 7. OTA, Filesystem, And Release Packaging | 0/TBD | Not started | - |
