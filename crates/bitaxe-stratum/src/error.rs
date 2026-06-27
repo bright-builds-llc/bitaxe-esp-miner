@@ -16,6 +16,10 @@ pub enum StratumV1Error {
     UnknownMethod { method: String },
     #[error("invalid Stratum v1 params for {method}")]
     InvalidParams { method: &'static str },
+    #[error("Stratum v1 work queue is full")]
+    QueueFull,
+    #[error("Stratum v1 work queue is empty")]
+    QueueEmpty,
     #[error("failed to serialize Stratum v1 message")]
     SerializationFailed,
 }
