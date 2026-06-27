@@ -12,6 +12,8 @@ pub enum Bm1366ProtocolFault {
     UnknownRegister { register: u8 },
     #[error("invalid BM1366 job id 0x{job_id:02x}")]
     InvalidJobId { job_id: u8 },
+    #[error("invalid BM1366 core id {core_id}")]
+    InvalidCoreId { core_id: u8 },
     #[error("BM1366 chip count mismatch: expected {expected}, got {actual}")]
     ChipCountMismatch { expected: u8, actual: u8 },
     #[error("BM1366 preflight missing: {reason}")]

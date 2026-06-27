@@ -14,5 +14,84 @@
     "job_id_step": 8,
     "job_id_modulus": 128,
     "job_id_lookup_mask_hex": "f8"
+  },
+  {
+    "id": "job-nonce-result-frame",
+    "kind": "result_job_nonce",
+    "checklist_ids": ["ASIC-004", "ASIC-006"],
+    "source_file": "reference/esp-miner/components/asic/bm1366.c",
+    "source_behavior": "BM1366_process_work job nonce result parsing",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture data; not MIT source expression",
+    "derivation": "manual",
+    "expected_job_lookup_hex": "28",
+    "expected_small_core_id": 7
+  },
+  {
+    "id": "register-read-total-count-result-frame",
+    "kind": "result_register_read",
+    "checklist_ids": ["ASIC-004", "ASIC-006"],
+    "source_file": "reference/esp-miner/components/asic/bm1366.c",
+    "source_behavior": "BM1366_process_work register response maps register 0x8c to total count",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture data; not MIT source expression",
+    "derivation": "manual",
+    "register_hex": "8c",
+    "expected_register": "total_count"
+  },
+  {
+    "id": "invalid-job-result-frame",
+    "kind": "result_fault",
+    "checklist_ids": ["ASIC-004"],
+    "source_file": "reference/esp-miner/components/asic/bm1366.c",
+    "source_behavior": "Invalid job nonce found when BM1366 result job ID is not marked valid",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture data; not MIT source expression",
+    "derivation": "manual",
+    "expected_fault": "InvalidJobId"
+  },
+  {
+    "id": "timeout-result-frame",
+    "kind": "result_fault",
+    "checklist_ids": ["ASIC-004"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "UART timeout in receive_work produces no observation",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture data; not MIT source expression",
+    "derivation": "manual",
+    "expected_fault": "InvalidLength"
+  },
+  {
+    "id": "partial-length-result-frame",
+    "kind": "result_fault",
+    "checklist_ids": ["ASIC-004"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "partial length result frame is rejected before parsing",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture data; not MIT source expression",
+    "derivation": "manual",
+    "expected_fault": "InvalidLength"
+  },
+  {
+    "id": "bad-preamble-result-frame",
+    "kind": "result_fault",
+    "checklist_ids": ["ASIC-004"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "bad preamble result frame is rejected before parsing",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture data; not MIT source expression",
+    "derivation": "manual",
+    "expected_fault": "BadPreamble"
+  },
+  {
+    "id": "bad-crc-result-frame",
+    "kind": "result_fault",
+    "checklist_ids": ["ASIC-006"],
+    "source_file": "reference/esp-miner/components/asic/asic_common.c",
+    "source_behavior": "bad CRC result frame is rejected before parsing",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture data; not MIT source expression",
+    "derivation": "manual",
+    "expected_fault": "BadCrc"
   }
 ]

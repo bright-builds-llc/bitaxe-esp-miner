@@ -8,6 +8,7 @@
 pub mod crc;
 pub mod packet;
 pub mod registers;
+pub mod result;
 pub mod work;
 
 pub const BM1366_CHIP_ID: u16 = 0x1366;
