@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-06-27T20:44:27.280Z"
+stopped_at: Completed 05-06-PLAN.md
+last_updated: "2026-06-27T20:59:19.308Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 29
-  completed_plans: 26
-  percent: 90
+  completed_plans: 27
+  percent: 93
 ---
 
 # Project State
@@ -78,6 +78,7 @@ Progress: [█████████░] 90%
 | Phase 05-axeos-api-logs-and-telemetry P02 | 10 min | 2 tasks | 4 files |
 | Phase 05-axeos-api-logs-and-telemetry P03 | 12 min | 2 tasks | 11 files |
 | Phase 05-axeos-api-logs-and-telemetry P04 | 9 min | 2 tasks | 6 files |
+| Phase 05-axeos-api-logs-and-telemetry P06 | 8 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,10 @@ Recent decisions affecting current work:
 - [Phase 05-axeos-api-logs-and-telemetry]: Keep retained log buffering and raw log stream cursor behavior pure in bitaxe-api; ESP log hooks, mutexes, notifications, and WebSocket sends remain firmware adapter work.
 - [Phase 05-axeos-api-logs-and-telemetry]: Start raw log WebSocket streams at the current absolute log end and reset that cursor while no clients are active to avoid retained-history replay.
 - [Phase 05-axeos-api-logs-and-telemetry]: Model live telemetry as full update envelopes on connect, diff-only cadence frames after baseline, and baseline clearing while no live clients are active.
+- [Phase 05-axeos-api-logs-and-telemetry]: Command planners return response JSON separately from typed effects so firmware route code can send the public response before executing restart, display, or state mutations.
+- [Phase 05-axeos-api-logs-and-telemetry]: Pause and resume only plan MiningActivityStatus updates; resume derives Active versus SafeBlocked from the existing WorkSubmissionGate and never sets work submission readiness.
+- [Phase 05-axeos-api-logs-and-telemetry]: Identify is represented as a typed on/off display effect with the upstream 30000 ms duration, while restart is represented only as an after-response effect.
+- [Phase 05-axeos-api-logs-and-telemetry]: Block-found dismiss preserves blockFound, clears showNewBlock, and remains deterministic across repeated dismiss requests.
 
 ### Pending Todos
 
@@ -193,6 +198,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T20:44:27.277Z
-Stopped at: Completed 05-04-PLAN.md
+Last session: 2026-06-27T20:59:19.305Z
+Stopped at: Completed 05-06-PLAN.md
 Resume file: None
