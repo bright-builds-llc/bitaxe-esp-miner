@@ -98,6 +98,21 @@ pub fn unregister_client(session: i32) {
     }
 }
 
+/// Returns a point-in-time list of active sessions for a WebSocket route.
+#[must_use]
+pub fn client_sessions(route: WebSocketRouteKind) -> Vec<i32> {
+    let state = WEBSOCKET_STATE.get_or_init(|| Mutex::new(WebSocketState::default()));
+    let Ok(state) = state.lock() else {
+        log::warn!("axeos_websocket_state=unavailable reason=mutex_poisoned");
+        return Vec::new();
+    };
+
+    match route {
+        WebSocketRouteKind::Logs => state.log_clients.iter().copied().collect(),
+        WebSocketRouteKind::LiveTelemetry => state.live_clients.iter().copied().collect(),
+    }
+}
+
 /// Plans the full live telemetry frame sent immediately after connection.
 #[must_use]
 pub fn live_connect_frame(current: Value) -> Option<Value> {

@@ -3,6 +3,7 @@
 use std::ffi::{CStr, CString};
 use std::net::Ipv4Addr;
 use std::ptr;
+use std::time::Duration;
 
 use bitaxe_api::{
     asic_settings_from_snapshot, block_found_dismiss_plan, empty_statistics_response,
@@ -14,7 +15,7 @@ use bitaxe_api::{
     HttpAccessDecision, IdentifyMode, IdentifyModeEffect, OriginGate, PublicHttpResponse,
     RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchPublicError,
     SettingsPersistenceEffect, SettingsPersistencePlan, SettingsPublicResponse, WebSocketRouteKind,
-    WebSocketUpgradeDecision,
+    WebSocketUpgradeDecision, LIVE_TELEMETRY_CADENCE_MS,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
@@ -50,6 +51,7 @@ pub fn start_http_api() -> anyhow::Result<()> {
     let mut server = EspHttpServer::new(&config)?;
 
     register_http_handlers(&mut server)?;
+    start_live_telemetry_cadence_task(server.handle())?;
     log::info!(
         "axeos_api_route_shell=started registered_routes={}",
         phase05_routes().len()
@@ -57,6 +59,57 @@ pub fn start_http_api() -> anyhow::Result<()> {
 
     core::mem::forget(server);
     Ok(())
+}
+
+fn start_live_telemetry_cadence_task(server: sys::httpd_handle_t) -> anyhow::Result<()> {
+    let server_addr = server as usize;
+    std::thread::Builder::new()
+        .name("axeos-live-ws".to_owned())
+        .spawn(move || live_telemetry_cadence_loop(server_addr))?;
+    Ok(())
+}
+
+fn live_telemetry_cadence_loop(server_addr: usize) {
+    let server = server_addr as sys::httpd_handle_t;
+    loop {
+        std::thread::sleep(Duration::from_millis(LIVE_TELEMETRY_CADENCE_MS));
+        broadcast_live_telemetry_cadence(server);
+    }
+}
+
+fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
+    let snapshot = collect_api_snapshot();
+    let Ok(current) = serde_json::to_value(system_info_from_snapshot(&snapshot)) else {
+        log::warn!("axeos_websocket_live_cadence=skipped reason=serialize_current");
+        return;
+    };
+    let Some(frame) = websocket_api::live_cadence_frame(current) else {
+        return;
+    };
+    let Ok(body) = serde_json::to_string(&frame) else {
+        log::warn!("axeos_websocket_live_cadence=skipped reason=serialize_frame");
+        return;
+    };
+
+    broadcast_websocket_text_frame(server, WebSocketRouteKind::LiveTelemetry, &body);
+}
+
+fn broadcast_websocket_text_frame(
+    server: sys::httpd_handle_t,
+    route: WebSocketRouteKind,
+    body: &str,
+) {
+    for session in websocket_api::client_sessions(route) {
+        let result = send_websocket_text_frame_async(server, session, body);
+        if result == sys::ESP_OK {
+            continue;
+        }
+
+        log::warn!(
+            "axeos_websocket_broadcast=unregistering_stale route={route:?} session={session} error={result}"
+        );
+        websocket_api::unregister_client(session);
+    }
 }
 
 fn register_http_handlers(server: &mut EspHttpServer<'static>) -> anyhow::Result<()> {
@@ -466,6 +519,21 @@ fn send_websocket_text_frame(request: *mut sys::httpd_req_t, body: &str) -> sys:
         len: body.len(),
     };
     unsafe { sys::httpd_ws_send_frame(request, &mut frame) }
+}
+
+fn send_websocket_text_frame_async(
+    server: sys::httpd_handle_t,
+    session: i32,
+    body: &str,
+) -> sys::esp_err_t {
+    let mut frame = sys::httpd_ws_frame_t {
+        final_: true,
+        fragmented: false,
+        type_: sys::httpd_ws_type_t_HTTPD_WS_TYPE_TEXT,
+        payload: body.as_ptr() as *mut u8,
+        len: body.len(),
+    };
+    unsafe { sys::httpd_ws_send_frame_async(server, session, &mut frame) }
 }
 
 fn origin_gate_from_raw(request: *mut sys::httpd_req_t) -> OriginGate {
