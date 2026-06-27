@@ -34,8 +34,8 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 
 - [x] **ASIC-01**: BM1366 packet, register, and CRC codecs are implemented as pure Rust logic with reference-derived fixtures.
 - [x] **ASIC-02**: BM1366 work encoding and result parsing match upstream behavior for job payloads, nonces, domains, and error cases.
-- [ ] **ASIC-03**: ASIC model dispatch supports BM1366 as the V1 active path and represents other upstream ASIC families as deferred or not-yet-verified paths.
-- [ ] **ASIC-04**: The firmware contains a narrow UART adapter boundary that translates typed ASIC commands and observations between pure Rust logic and ESP-IDF serial I/O.
+- [x] **ASIC-03**: ASIC model dispatch supports BM1366 as the V1 active path and represents other upstream ASIC families as deferred or not-yet-verified paths.
+- [x] **ASIC-04**: The firmware contains a narrow UART adapter boundary that translates typed ASIC commands and observations between pure Rust logic and ESP-IDF serial I/O.
 - [ ] **ASIC-05**: Ultra 205 BM1366 reset, preflight, and staged initialization fail closed unless required board, power, thermal, and config gates pass.
 - [ ] **ASIC-06**: Frequency and voltage transition decisions are range-checked in pure Rust and require explicit hardware evidence before being marked verified.
 - [ ] **ASIC-07**: BM1366 initialization, work-send, and result-receive behavior have hardware-smoke evidence before release parity is claimed.
@@ -157,8 +157,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CFG-06 | Phase 2 | Complete |
 | ASIC-01 | Phase 3 | Complete |
 | ASIC-02 | Phase 3 | Complete |
-| ASIC-03 | Phase 3 | Pending |
-| ASIC-04 | Phase 3 | Pending |
+| ASIC-03 | Phase 3 | Complete |
+| ASIC-04 | Phase 3 | Complete |
 | ASIC-05 | Phase 3 | Pending |
 | ASIC-06 | Phase 3 | Pending |
 | ASIC-07 | Phase 3 | Pending |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-06-27T00:17:19.601Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-06-27T00:38:46.624Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 18
-  completed_plans: 15
-  percent: 83
+  completed_plans: 16
+  percent: 89
 ---
 
 ______________________________________________________________________
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 03 (BM1366 ASIC Protocol And Safe Initialization) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-06-27
 
@@ -70,6 +70,7 @@ Progress: [██████████] 100%
 | Phase 02-ultra-205-config-and-nvs-model P04 | 10 min | 2 tasks | 5 files |
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P01 | 11 min | 2 tasks | 11 files |
 | Phase 03-bm1366-asic-protocol-and-safe-initialization P02 | 10 min | 2 tasks | 6 files |
+| Phase 03-bm1366-asic-protocol-and-safe-initialization P03 | 16 min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,9 @@ Recent decisions affecting current work:
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Keep work construction explicitly diagnostic through diagnostic_job_frame.
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Reject stale or unknown result job IDs through Bm1366ValidJobIds before producing nonce observations.
 - [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Add InvalidCoreId so nonce-derived core IDs outside the BM1366 normal-core range fail as typed protocol faults.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Only board version 205, family Ultra, ASIC model BM1366, count 1, and ActiveUltra205 scope return ActiveBm1366.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Firmware-facing ASIC behavior is expressed as Bm1366Command, Bm1366AdapterAction, Bm1366Observation, and AsicInitStatus while raw frames stay inside bitaxe-asic.
+- [Phase 03-bm1366-asic-protocol-and-safe-initialization]: Fake UART transcripts fail closed on timeout, partial read, bad preamble, bad CRC, unknown register, invalid job ID, and chip-count mismatch.
 
 ### Pending Todos
 
@@ -141,6 +145,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T00:17:19.599Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-06-27T00:38:46.621Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
