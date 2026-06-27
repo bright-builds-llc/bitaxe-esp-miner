@@ -134,6 +134,7 @@ version = "0.1.0"
 name = "bitaxe-asic"
 version = "0.1.0"
 dependencies = [
+ "bitaxe-config",
  "thiserror 2.0.18",
 ]
 

@@ -5,7 +5,9 @@
 //! - `reference/esp-miner/components/asic/crc.c`
 //! - parity checklist rows `ASIC-001`, `ASIC-002`, and `ASIC-006`
 
+pub mod command;
 pub mod crc;
+pub mod observation;
 pub mod packet;
 pub mod registers;
 pub mod result;
