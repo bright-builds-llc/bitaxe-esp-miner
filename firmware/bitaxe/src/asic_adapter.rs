@@ -17,13 +17,31 @@ use bitaxe_asic::bm1366::{
     observation::AsicInitStatus,
     BM1366_RESULT_FRAME_LEN,
 };
-use esp_idf_svc::hal::peripherals::Peripherals;
+use esp_idf_svc::hal::{
+    gpio::{InputPin, OutputPin},
+    uart::Uart,
+};
 
 mod reset;
 mod status;
 mod uart;
 
-pub fn run_boot_gate() -> Result<()> {
+pub struct AsicBootPeripherals<UART, RESET, TX, RX> {
+    pub uart: UART,
+    pub reset: RESET,
+    pub tx: TX,
+    pub rx: RX,
+}
+
+pub fn run_boot_gate_with_peripherals<UART, RESET, TX, RX>(
+    peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
+) -> Result<()>
+where
+    UART: Uart + 'static,
+    RESET: OutputPin + 'static,
+    TX: OutputPin + 'static,
+    RX: InputPin + 'static,
+{
     match AsicAdapterMode::from_compile_env(
         option_env!("BITAXE_ASIC_DIAGNOSTIC"),
         option_env!("BITAXE_HARDWARE_EVIDENCE_ACK"),
@@ -32,28 +50,42 @@ pub fn run_boot_gate() -> Result<()> {
             status::publish_default_fail_closed_status();
             Ok(())
         }
-        AsicAdapterMode::ChipDetectOnly => run_chip_detect_only(),
+        AsicAdapterMode::ChipDetectOnly => run_chip_detect_only(peripherals),
     }
 }
 
-fn run_chip_detect_only() -> Result<()> {
-    let peripherals = match Peripherals::take() {
-        Ok(peripherals) => peripherals,
-        Err(error) => {
-            log::warn!("asic_status=fail_closed reason=peripherals_unavailable error={error}");
-            status::publish_status(AsicInitStatus::FailClosed {
-                reason: "peripherals_unavailable",
-            });
-            return Ok(());
+pub fn run_boot_gate_without_peripherals(reason: &'static str) -> Result<()> {
+    match AsicAdapterMode::from_compile_env(
+        option_env!("BITAXE_ASIC_DIAGNOSTIC"),
+        option_env!("BITAXE_HARDWARE_EVIDENCE_ACK"),
+    ) {
+        AsicAdapterMode::FailClosed => {
+            status::publish_default_fail_closed_status();
+            Ok(())
         }
-    };
+        AsicAdapterMode::ChipDetectOnly => {
+            log::warn!("asic_status=fail_closed reason={reason}");
+            status::publish_status(AsicInitStatus::FailClosed { reason });
+            Ok(())
+        }
+    }
+}
 
+fn run_chip_detect_only<UART, RESET, TX, RX>(
+    peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
+) -> Result<()>
+where
+    UART: Uart + 'static,
+    RESET: OutputPin + 'static,
+    TX: OutputPin + 'static,
+    RX: InputPin + 'static,
+{
     let preflight = Bm1366Preflight::chip_detect(
         BoardPreflightEvidence::active_ultra_205(),
         ConfigPreflightEvidence::ultra_205_defaults(),
     );
     let decision = Bm1366InitPlan::chip_detect_only(preflight);
-    let mut reset = match reset::AsicReset::new(peripherals.pins.gpio1)
+    let mut reset = match reset::AsicReset::new(peripherals.reset)
         .context("initialize ASIC reset GPIO adapter")
     {
         Ok(reset) => reset,
@@ -62,12 +94,8 @@ fn run_chip_detect_only() -> Result<()> {
             return Ok(());
         }
     };
-    let mut uart = match uart::AsicUart::new(
-        peripherals.uart1,
-        peripherals.pins.gpio17,
-        peripherals.pins.gpio18,
-    )
-    .context("initialize BM1366 UART1 adapter")
+    let mut uart = match uart::AsicUart::new(peripherals.uart, peripherals.tx, peripherals.rx)
+        .context("initialize BM1366 UART1 adapter")
     {
         Ok(uart) => uart,
         Err(error) => {

@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-06-27T02:11:06.601Z"
+last_updated: "2026-06-27T13:10:05.000Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 8
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 Phase: 4
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-06-27
+Last activity: 2026-06-27 - Completed quick task 260627-b0q: Display startup debug text on Ultra 205 OLED
 
 Progress: [██████████] 100%
 
@@ -83,6 +83,7 @@ Recent decisions affecting current work:
 - \[Quick 260626-bnt\]: ADR-0014 supersedes the Gamma 601-first decision. Ultra 205/BM1366 is the initial parity target; Gamma 601/BM1370 remains deferred until it has its own evidence set.
 - \[Quick 260626-bnt\]: `Phase1BoardSelection::ultra_205()` now exposes the `config-205.cvs` identity/default values (`ultra`, `205`, `BM1366`, `485`, `1200`) while still avoiding NVS, Wi-Fi, mining, ASIC behavior, voltage, fan, thermal, and power side effects.
 - \[Quick 260626-bnt\]: Post-pivot evidence in `docs/parity/evidence/ultra-205-pivot-safe-state-smoke-2026-06-26.md` verifies Ultra 205 package artifacts, `board=205` dry-runs, deferred `board=601` rejection, real flash-monitor, boot identity, PSRAM/platform logging, and safe-state disabled mining/work/control.
+- [Quick 260627-b0q]: Ultra 205 startup display debug text is startup-only SSD1306 output, not full LVGL/screen parity. Serial hardware smoke verified `display_status=startup_text_rendered`; user confirmed the OLED text is visible.
 - \[Phase 01-foundation-and-gamma-601-boot-log\]: Track MODULE.bazel.lock and ignore bazel-\* output trees so Bzlmod resolution is reproducible without committing generated build output.
 - \[Phase 01-foundation-and-gamma-601-boot-log\]: Use rules_shell 0.8.0 for Bazel-visible shell targets because Bazel 9.1.1 did not expose native sh_binary/sh_test in this workspace.
 - \[Phase 01-foundation-and-gamma-601-boot-log\]: Pin reference/esp-miner to c1915b0a63bfabebdb95a515cedfee05146c1d50 and initialize nested upstream submodules for recursive cleanliness.
@@ -148,6 +149,12 @@ None yet.
 
 - Hardware evidence: Mining, ASIC init, voltage, fan, thermal, power, and safety-critical verification still need Ultra 205 hardware-smoke or regression evidence before `verified` parity claims.
 - Release scope: Non-205 boards and ASICs must remain unverified or deferred until each has its own evidence set.
+
+### Quick Tasks Completed
+
+| ID | Date | Task | Result | Evidence |
+| --- | --- | --- | --- | --- |
+| 260627-b0q | 2026-06-27 | Display startup debug text on Ultra 205 OLED | implemented, serial-smoked, user-visible on OLED | `.planning/quick/260627-b0q-display-startup-debug-text-on-ultra-205-/260627-b0q-SUMMARY.md`, `docs/parity/evidence/ultra-205-startup-display-debug-2026-06-27.md` |
 
 ## Session Continuity
 

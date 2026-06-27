@@ -104,15 +104,15 @@ Safety-critical and hardware-control surfaces require hardware evidence before `
 | THR-001 | Thermal model | `reference/esp-miner/main/thermal/thermal.c` | `firmware/bitaxe`, `crates/bitaxe-core` | not-started | pending | Safety-critical. |
 | THR-002 | Fan controller task | `reference/esp-miner/main/tasks/fan_controller_task.c` | `firmware/bitaxe`, `crates/bitaxe-core` | not-started | pending | Safety-critical. |
 | THR-003 | PID behavior | `reference/esp-miner/main/thermal/PID.c` | `crates/bitaxe-core` | not-started | pending | Good pure unit target before hardware. |
-| IO-001 | I2C initialization | `reference/esp-miner/main/i2c_bitaxe.c` | `firmware/bitaxe` | not-started | pending | Hardware adapter. |
+| IO-001 | I2C initialization | `reference/esp-miner/main/i2c_bitaxe.c` | `firmware/bitaxe/src/display_adapter.rs` | in-progress | unit,workflow,hardware-smoke | Startup debug display initializes I2C0 on SDA GPIO47/SCL GPIO48 at 400 kHz for SSD1306 address `0x3c` only; shared I2C device map and other I2C peripherals remain pending. |
 | IO-002 | ADC behavior | `reference/esp-miner/main/adc.c` | `firmware/bitaxe` | not-started | pending | Hardware adapter. |
 
 ## Display, Input, Self-Test, And BAP
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| UI-001 | Display behavior | `reference/esp-miner/main/display.c` | `firmware/bitaxe` | not-started | pending | User-visible surface. |
-| UI-002 | Screen rendering flow | `reference/esp-miner/main/screen.c` | `firmware/bitaxe` | not-started | pending | User-visible surface. |
+| UI-001 | Display behavior | `reference/esp-miner/main/display.c` | `firmware/bitaxe/src/display_adapter.rs` | in-progress | unit,workflow,hardware-smoke | Startup debug text display adapter renders four fixed SSD1306 128x32 lines; upstream display config, inversion, rotation options, timeout handling, and LVGL remain pending. |
+| UI-002 | Screen rendering flow | `reference/esp-miner/main/screen.c` | `firmware/bitaxe/src/display_adapter.rs` | in-progress | unit,workflow,hardware-smoke | Startup-only four-line screen is drawn once and left on; upstream carousel, screen task, page flow, and runtime display updates remain pending. |
 | UI-003 | Input behavior | `reference/esp-miner/main/input.c` | `firmware/bitaxe` | not-started | pending | Hardware smoke required for verified. |
 | SELF-001 | Self-test lifecycle | `reference/esp-miner/main/self_test/self_test.c` | `firmware/bitaxe` | not-started | pending | First boot user experience. |
 | BAP-001 | BAP interface initialization | `reference/esp-miner/main/bap/bap.c` | `firmware/bitaxe` | not-started | pending | Preserve observable interface behavior. |

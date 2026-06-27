@@ -59,6 +59,26 @@ pub enum HardwareControlState {
 /// Exact safe-state log line required before any mining or hardware control exists.
 pub const PHASE1_SAFE_STATE_LOG_LINE: &str =
     "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled";
+/// Startup debug screen width in pixels for the Ultra 205 SSD1306 display.
+pub const STARTUP_DEBUG_SCREEN_WIDTH_PX: usize = 128;
+/// Startup debug screen height in pixels for the Ultra 205 SSD1306 display.
+pub const STARTUP_DEBUG_SCREEN_HEIGHT_PX: usize = 32;
+/// Selected startup debug font width in pixels.
+pub const STARTUP_DEBUG_FONT_WIDTH_PX: usize = 5;
+/// Selected startup debug font height in pixels.
+pub const STARTUP_DEBUG_FONT_HEIGHT_PX: usize = 7;
+/// Vertical stride between startup debug text baselines.
+pub const STARTUP_DEBUG_LINE_STRIDE_PX: usize = 8;
+/// Number of lines rendered on the startup debug screen.
+pub const STARTUP_DEBUG_LINE_COUNT: usize = 4;
+/// Maximum ASCII characters that fit on one startup debug line.
+pub const STARTUP_DEBUG_MAX_LINE_CHARS: usize =
+    STARTUP_DEBUG_SCREEN_WIDTH_PX / STARTUP_DEBUG_FONT_WIDTH_PX;
+/// Maximum startup debug lines that fit on the display.
+pub const STARTUP_DEBUG_MAX_LINES: usize =
+    STARTUP_DEBUG_SCREEN_HEIGHT_PX / STARTUP_DEBUG_LINE_STRIDE_PX;
+/// Maximum source commit characters shown on the startup debug screen.
+pub const STARTUP_DEBUG_COMMIT_CHARS: usize = 12;
 
 /// Safe boot/log state for Phase 1.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -92,13 +112,83 @@ impl Phase1SafeState {
     pub const fn log_line(&self) -> &'static str {
         PHASE1_SAFE_STATE_LOG_LINE
     }
+
+    /// Returns the safe-state startup debug screen line.
+    #[must_use]
+    pub const fn startup_debug_line(&self) -> &'static str {
+        "SAFE no mining"
+    }
+}
+
+/// Four-line startup debug text for the Ultra 205 OLED.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StartupDebugText {
+    lines: [String; STARTUP_DEBUG_LINE_COUNT],
+}
+
+impl StartupDebugText {
+    /// Builds startup debug lines for the current firmware boot target.
+    #[must_use]
+    pub fn new(
+        board: BoardTarget,
+        asic: AsicTarget,
+        safe_state: Phase1SafeState,
+        maybe_firmware_commit: Option<&str>,
+    ) -> Self {
+        let firmware_commit = startup_debug_commit(maybe_firmware_commit);
+        let lines = [
+            "Bitaxe Rust".to_owned(),
+            format!("{} {}", board.display_name(), asic.display_name()),
+            safe_state.startup_debug_line().to_owned(),
+            format!("fw {firmware_commit}"),
+        ];
+
+        Self { lines }
+    }
+
+    /// Returns the startup debug lines in render order.
+    #[must_use]
+    pub fn lines(&self) -> [&str; STARTUP_DEBUG_LINE_COUNT] {
+        [
+            self.lines[0].as_str(),
+            self.lines[1].as_str(),
+            self.lines[2].as_str(),
+            self.lines[3].as_str(),
+        ]
+    }
+
+    /// Returns whether the current line set fits the selected display geometry.
+    #[must_use]
+    pub fn fits_ultra_205_display(&self) -> bool {
+        self.lines.len() <= STARTUP_DEBUG_MAX_LINES
+            && self
+                .lines
+                .iter()
+                .all(|line| line.chars().count() <= STARTUP_DEBUG_MAX_LINE_CHARS)
+    }
+}
+
+fn startup_debug_commit(maybe_firmware_commit: Option<&str>) -> String {
+    let Some(firmware_commit) = maybe_firmware_commit else {
+        return "Unavailable".to_owned();
+    };
+    let firmware_commit = firmware_commit.trim();
+    if firmware_commit.is_empty() || firmware_commit == "Unavailable" {
+        return "Unavailable".to_owned();
+    }
+
+    firmware_commit
+        .chars()
+        .take(STARTUP_DEBUG_COMMIT_CHARS)
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         AsicTarget, AsicWorkSubmissionState, BoardTarget, HardwareControlState, MiningState,
-        Phase1SafeState,
+        Phase1SafeState, StartupDebugText, STARTUP_DEBUG_LINE_COUNT, STARTUP_DEBUG_MAX_LINES,
+        STARTUP_DEBUG_MAX_LINE_CHARS,
     };
 
     #[test]
@@ -177,5 +267,83 @@ mod tests {
             log_line,
             "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled"
         );
+    }
+
+    #[test]
+    fn startup_debug_text_renders_exact_identity_state_and_commit_lines() {
+        // Arrange
+        let safe_state = Phase1SafeState::default();
+
+        // Act
+        let text = StartupDebugText::new(
+            BoardTarget::Ultra205,
+            AsicTarget::Bm1366,
+            safe_state,
+            Some("abcdef123456"),
+        );
+
+        // Assert
+        assert_eq!(
+            text.lines(),
+            [
+                "Bitaxe Rust",
+                "Ultra 205 BM1366",
+                "SAFE no mining",
+                "fw abcdef123456",
+            ]
+        );
+    }
+
+    #[test]
+    fn startup_debug_text_uses_unavailable_when_commit_is_absent() {
+        // Arrange
+        let safe_state = Phase1SafeState::default();
+
+        // Act
+        let text =
+            StartupDebugText::new(BoardTarget::Ultra205, AsicTarget::Bm1366, safe_state, None);
+
+        // Assert
+        assert_eq!(text.lines()[3], "fw Unavailable");
+    }
+
+    #[test]
+    fn startup_debug_text_truncates_commit_to_twelve_characters() {
+        // Arrange
+        let safe_state = Phase1SafeState::default();
+
+        // Act
+        let text = StartupDebugText::new(
+            BoardTarget::Ultra205,
+            AsicTarget::Bm1366,
+            safe_state,
+            Some("abcdef1234567890"),
+        );
+
+        // Assert
+        assert_eq!(text.lines()[3], "fw abcdef123456");
+    }
+
+    #[test]
+    fn startup_debug_text_fits_ultra_205_display_geometry() {
+        // Arrange
+        let safe_state = Phase1SafeState::default();
+        let text = StartupDebugText::new(
+            BoardTarget::Ultra205,
+            AsicTarget::Bm1366,
+            safe_state,
+            Some("abcdef123456"),
+        );
+
+        // Act
+        let lines = text.lines();
+
+        // Assert
+        assert_eq!(lines.len(), STARTUP_DEBUG_LINE_COUNT);
+        assert!(lines.len() <= STARTUP_DEBUG_MAX_LINES);
+        for line in lines {
+            assert!(line.chars().count() <= STARTUP_DEBUG_MAX_LINE_CHARS);
+        }
+        assert!(text.fits_ultra_205_display());
     }
 }

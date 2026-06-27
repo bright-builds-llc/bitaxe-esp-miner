@@ -1,9 +1,10 @@
 use std::ffi::CStr;
 
-use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState};
-use esp_idf_svc::sys;
+use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState, StartupDebugText};
+use esp_idf_svc::{hal::peripherals::Peripherals, sys};
 
 mod asic_adapter;
+mod display_adapter;
 
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
 const ESP_IDF_VERSION: &str = "v5.5.4";
@@ -32,7 +33,37 @@ fn main() -> anyhow::Result<()> {
 
     log::info!("{boot_log_line}");
     log::info!("{safe_state_log_line}");
-    asic_adapter::run_boot_gate()?;
+    let startup_debug_text = StartupDebugText::new(
+        BoardTarget::Ultra205,
+        AsicTarget::Bm1366,
+        safe_state,
+        Some(firmware_commit()),
+    );
+    match Peripherals::take() {
+        Ok(peripherals) => {
+            let pins = peripherals.pins;
+            if let Err(error) = display_adapter::render_startup_debug_text(
+                peripherals.i2c0,
+                pins.gpio47,
+                pins.gpio48,
+                &startup_debug_text,
+            ) {
+                log::warn!(
+                    "display_status=unavailable reason=startup_text_render_failed error={error:#}"
+                );
+            }
+            asic_adapter::run_boot_gate_with_peripherals(asic_adapter::AsicBootPeripherals {
+                uart: peripherals.uart1,
+                reset: pins.gpio1,
+                tx: pins.gpio17,
+                rx: pins.gpio18,
+            })?;
+        }
+        Err(error) => {
+            log::warn!("display_status=unavailable reason=peripherals_unavailable error={error}");
+            asic_adapter::run_boot_gate_without_peripherals("peripherals_unavailable")?;
+        }
+    }
     log::info!("reset_reason={}", reset_reason());
     log::info!("partition={}", partition_label());
     log::info!("psram_status={}", psram_status());
