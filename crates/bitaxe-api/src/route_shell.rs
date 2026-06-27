@@ -6,10 +6,14 @@
 
 use std::net::Ipv4Addr;
 
+use crate::settings::SettingsPatchPublicError;
+
 /// Public denial body used by HTTP and WebSocket upgrade rejection.
 pub const UNAUTHORIZED_BODY: &str = "Unauthorized";
 /// Unknown API route body expected by AxeOS clients.
 pub const UNKNOWN_API_ROUTE_BODY: &str = r#"{"error":"unknown route"}"#;
+/// Upstream scratch buffer accepts at most 10 KiB minus one null terminator.
+pub const MAX_SETTINGS_PATCH_BODY_BYTES: usize = (10 * 1024) - 1;
 const APPLICATION_JSON: &str = "application/json";
 const TEXT_PLAIN: &str = "text/plain";
 
@@ -180,6 +184,15 @@ pub enum WebSocketUpgradeDecision {
     Reject(PublicHttpResponse),
 }
 
+/// Settings PATCH body-size decision before JSON parsing or persistence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingsPatchBodyDecision {
+    /// Body length is within the bounded scratch-buffer contract.
+    Accept,
+    /// Body length must be rejected before reading/parsing side effects.
+    Reject(PublicHttpResponse),
+}
+
 /// Returns every Phase 05 firmware API/WebSocket route.
 #[must_use]
 pub const fn phase05_routes() -> &'static [AxeosRoute] {
@@ -209,6 +222,16 @@ pub fn plan_websocket_upgrade(
     WebSocketUpgradeDecision::Accept(WebSocketClientRegistrationPlan { route })
 }
 
+/// Applies the settings PATCH body cap before JSON parsing or NVS access.
+#[must_use]
+pub const fn plan_settings_patch_body_size(body_len: usize) -> SettingsPatchBodyDecision {
+    if body_len > MAX_SETTINGS_PATCH_BODY_BYTES {
+        return SettingsPatchBodyDecision::Reject(settings_patch_body_too_large_response());
+    }
+
+    SettingsPatchBodyDecision::Accept
+}
+
 /// Returns the public 404 shape for unknown `/api/*` routes.
 #[must_use]
 pub const fn unknown_api_route_response() -> PublicHttpResponse {
@@ -225,6 +248,14 @@ pub const fn unsupported_update_response() -> PublicHttpResponse {
     PublicHttpResponse {
         status: 400,
         body: "Wrong API input",
+        content_type: Some(TEXT_PLAIN),
+    }
+}
+
+const fn settings_patch_body_too_large_response() -> PublicHttpResponse {
+    PublicHttpResponse {
+        status: 400,
+        body: SettingsPatchPublicError::WrongApiInput.body(),
         content_type: Some(TEXT_PLAIN),
     }
 }
@@ -273,9 +304,11 @@ mod tests {
     use std::net::Ipv4Addr;
 
     use super::{
-        maybe_origin_ip_from_header, phase05_routes, plan_http_access, plan_websocket_upgrade,
-        unknown_api_route_response, HttpAccessDecision, RouteAccessInput, RouteKind, RouteMethod,
-        WebSocketRouteKind, WebSocketUpgradeDecision, UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
+        maybe_origin_ip_from_header, phase05_routes, plan_http_access,
+        plan_settings_patch_body_size, plan_websocket_upgrade, unknown_api_route_response,
+        HttpAccessDecision, RouteAccessInput, RouteKind, RouteMethod, SettingsPatchBodyDecision,
+        WebSocketRouteKind, WebSocketUpgradeDecision, MAX_SETTINGS_PATCH_BODY_BYTES,
+        UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
     };
 
     fn denied_public_client_input() -> RouteAccessInput {
@@ -409,5 +442,75 @@ mod tests {
 
         // Assert
         assert_eq!(maybe_origin_ip, Some(Ipv4Addr::new(192, 168, 1, 2)));
+    }
+
+    #[test]
+    fn settings_patch_body_cap_rejects_oversized_body_before_json_parse() {
+        // Arrange
+        let oversized_len = MAX_SETTINGS_PATCH_BODY_BYTES + 1;
+
+        // Act
+        let decision = plan_settings_patch_body_size(oversized_len);
+
+        // Assert
+        let SettingsPatchBodyDecision::Reject(response) = decision else {
+            panic!("oversized settings PATCH body must be rejected before parsing");
+        };
+        assert_eq!(response.status, 400);
+        assert_eq!(response.body, "Wrong API input");
+        assert_eq!(response.content_type, Some("text/plain"));
+        assert!(!response.body.contains("Invalid JSON"));
+        assert!(!response.body.contains("content too long"));
+        assert!(!response.body.contains(&oversized_len.to_string()));
+    }
+
+    #[test]
+    fn settings_patch_body_cap_rejection_performs_zero_parser_or_persistence_calls() {
+        // Arrange
+        let body = "{".repeat(MAX_SETTINGS_PATCH_BODY_BYTES + 1);
+        let mut counters = SettingsPatchPipelineCounters::default();
+
+        // Act
+        let response = run_counted_settings_patch_pipeline(&body, &mut counters);
+
+        // Assert
+        assert_eq!(response.status, 400);
+        assert_eq!(response.body, "Wrong API input");
+        assert_eq!(counters.parser_calls, 0);
+        assert_eq!(counters.writes, 0);
+        assert_eq!(counters.commits, 0);
+        assert_eq!(counters.reloads, 0);
+        assert!(!response.body.contains("parser"));
+        assert!(!response.body.contains("size"));
+        assert!(!response.body.contains("field"));
+        assert!(!response.body.contains("adapter"));
+    }
+
+    #[derive(Default)]
+    struct SettingsPatchPipelineCounters {
+        parser_calls: usize,
+        writes: usize,
+        commits: usize,
+        reloads: usize,
+    }
+
+    fn run_counted_settings_patch_pipeline(
+        body: &str,
+        counters: &mut SettingsPatchPipelineCounters,
+    ) -> super::PublicHttpResponse {
+        match plan_settings_patch_body_size(body.len()) {
+            SettingsPatchBodyDecision::Accept => {
+                counters.parser_calls += 1;
+                counters.writes += 1;
+                counters.commits += 1;
+                counters.reloads += 1;
+                super::PublicHttpResponse {
+                    status: 200,
+                    body: "",
+                    content_type: None,
+                }
+            }
+            SettingsPatchBodyDecision::Reject(response) => response,
+        }
     }
 }

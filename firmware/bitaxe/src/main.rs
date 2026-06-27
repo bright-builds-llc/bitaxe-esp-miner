@@ -6,7 +6,10 @@ use esp_idf_svc::{hal::peripherals::Peripherals, sys};
 mod asic_adapter;
 mod display_adapter;
 mod http_api;
+mod log_buffer;
 mod runtime_snapshot;
+mod settings_adapter;
+mod websocket_api;
 
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
 const ESP_IDF_VERSION: &str = "v5.5.4";
@@ -33,8 +36,8 @@ fn main() -> anyhow::Result<()> {
     let safe_state_log_line = safe_state.log_line();
     debug_assert_eq!(safe_state_log_line, SAFE_STATE_LOG_LINE);
 
-    log::info!("{boot_log_line}");
-    log::info!("{safe_state_log_line}");
+    info_retained(&boot_log_line);
+    info_retained(&safe_state_log_line);
     let startup_debug_text = StartupDebugText::new(
         BoardTarget::Ultra205,
         AsicTarget::Bm1366,
@@ -70,18 +73,18 @@ fn main() -> anyhow::Result<()> {
     if let Err(error) = http_api::start_http_api() {
         log::warn!("axeos_api_route_shell=unavailable error={error:#}");
     }
-    log::info!("reset_reason={}", reset_reason());
-    log::info!("partition={}", partition_label());
-    log::info!("psram_status={}", psram_status());
-    log::info!("firmware_commit={}", firmware_commit());
+    info_retained(&format!("reset_reason={}", reset_reason()));
+    info_retained(&format!("partition={}", partition_label()));
+    info_retained(&format!("psram_status={}", psram_status()));
+    info_retained(&format!("firmware_commit={}", firmware_commit()));
     debug_assert_eq!(
         REFERENCE_COMMIT_LOG_LINE,
         format!("reference_commit={REFERENCE_COMMIT}")
     );
 
-    log::info!("{REFERENCE_COMMIT_LOG_LINE}");
-    log::info!("esp_idf_version={ESP_IDF_VERSION}");
-    log::info!("rust_target={RUST_TARGET}");
+    info_retained(REFERENCE_COMMIT_LOG_LINE);
+    info_retained(&format!("esp_idf_version={ESP_IDF_VERSION}"));
+    info_retained(&format!("rust_target={RUST_TARGET}"));
 
     Ok(())
 }
@@ -123,4 +126,9 @@ fn psram_status() -> &'static str {
 
 fn firmware_commit() -> &'static str {
     option_env!("BITAXE_FIRMWARE_COMMIT").unwrap_or(UNAVAILABLE)
+}
+
+fn info_retained(line: &str) {
+    log::info!("{line}");
+    log_buffer::append_runtime_log_line(line);
 }

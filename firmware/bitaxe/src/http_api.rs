@@ -1,17 +1,19 @@
 //! ESP-IDF HTTP shell for the Phase 05 AxeOS API route table.
 
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::net::Ipv4Addr;
 use std::ptr;
 
 use bitaxe_api::{
     asic_settings_from_snapshot, block_found_dismiss_plan, empty_statistics_response,
-    identify_plan, log_download_headers, maybe_origin_ip_from_header, pause_mining_plan,
-    phase05_routes, plan_http_access, plan_websocket_upgrade, restart_plan, resume_mining_plan,
-    scoreboard_response, system_info_from_snapshot, unknown_api_route_response,
-    unsupported_update_response, BlockFoundNotificationState, CommandPlan, HttpAccessDecision,
-    IdentifyMode, PublicHttpResponse, RouteAccessInput, SettingsPatchPublicError,
-    WebSocketRouteKind, WebSocketUpgradeDecision,
+    execute_settings_persistence_plan, identify_plan, log_download_headers,
+    maybe_origin_ip_from_header, pause_mining_plan, phase05_routes, plan_http_access,
+    plan_settings_patch_body, plan_settings_patch_body_size, plan_websocket_upgrade, restart_plan,
+    resume_mining_plan, scoreboard_response, system_info_from_snapshot, unknown_api_route_response,
+    unsupported_update_response, BlockFoundNotificationState, CommandEffect, CommandPlan,
+    HttpAccessDecision, IdentifyMode, IdentifyModeEffect, PublicHttpResponse, RouteAccessInput,
+    SettingsPatchBodyDecision, SettingsPatchPublicError, SettingsPersistenceEffect,
+    SettingsPersistencePlan, SettingsPublicResponse, WebSocketRouteKind, WebSocketUpgradeDecision,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
@@ -21,6 +23,7 @@ use esp_idf_svc::sys;
 use serde::Serialize;
 
 use crate::runtime_snapshot::collect_api_snapshot;
+use crate::{log_buffer, settings_adapter, websocket_api};
 
 type ApiRequest<'request, 'connection> = Request<&'request mut EspHttpConnection<'connection>>;
 
@@ -127,8 +130,55 @@ fn handle_settings_patch<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        log::warn!("axeos_settings_patch=deferred reason=task2_persistence_adapter_pending");
-        send_text_error(request, 400, SettingsPatchPublicError::WrongApiInput.body())
+        let mut request = request;
+        let body_len = request_body_len(&mut request);
+        if let SettingsPatchBodyDecision::Reject(response) = plan_settings_patch_body_size(body_len)
+        {
+            return send_public_response(request, response);
+        }
+
+        let body = match read_body_string(&mut request, body_len) {
+            Ok(body) => body,
+            Err(public_error) => {
+                return send_text_error(request, 400, public_error.body());
+            }
+        };
+        let accepted = match plan_settings_patch_body(&body) {
+            Ok(accepted) => accepted,
+            Err(error) => {
+                log::warn!("axeos_settings_patch=rejected reason={:?}", error.reason());
+                return send_text_error(request, 400, error.public_error().body());
+            }
+        };
+
+        let snapshot = settings_adapter::current_settings_snapshot();
+        let plan = SettingsPersistencePlan::from_accepted_patch(&snapshot, accepted);
+        let mut adapter = match settings_adapter::FirmwareSettingsAdapter::open() {
+            Ok(adapter) => adapter,
+            Err(error) => {
+                log::warn!("axeos_settings_patch=adapter_open_failed error={error}");
+                return send_text_error(
+                    request,
+                    400,
+                    SettingsPatchPublicError::WrongApiInput.body(),
+                );
+            }
+        };
+        let success = match execute_settings_persistence_plan(&plan, &mut adapter) {
+            Ok(success) => success,
+            Err(error) => {
+                log::warn!(
+                    "axeos_settings_patch=persistence_failed reason={:?} steps={:?}",
+                    error.reason(),
+                    error.completed_steps()
+                );
+                return send_text_error(request, 400, error.public_error().body());
+            }
+        };
+        let effects = success.effects().to_vec();
+        send_settings_response(request, success.public_response())?;
+        apply_settings_effects(&effects);
+        Ok(())
     })
 }
 
@@ -141,9 +191,10 @@ fn handle_logs_download<'request, 'connection>(
             ("Content-Type", headers.content_type),
             ("Content-Disposition", headers.content_disposition),
         ];
-        request
-            .into_response(200, Some("OK"), &response_headers)?
-            .write_all(b"")?;
+        let mut response = request.into_response(200, Some("OK"), &response_headers)?;
+        for chunk in log_buffer::download_chunks() {
+            response.write_all(chunk.as_bytes())?;
+        }
         Ok(())
     })
 }
@@ -214,8 +265,10 @@ fn handle_command<'request, 'connection>(
     plan: CommandPlan,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        log::info!("axeos_command_effect=deferred effect={:?}", plan.effect);
-        send_json(request, &plan.response)
+        let effect = plan.effect;
+        send_json(request, &plan.response)?;
+        apply_command_effect(effect);
+        Ok(())
     })
 }
 
@@ -312,19 +365,105 @@ fn handle_websocket_upgrade(
     route: WebSocketRouteKind,
 ) -> sys::esp_err_t {
     if unsafe { (*request).method } != sys::http_method_HTTP_GET as i32 {
-        return sys::ESP_OK;
+        return handle_websocket_frame(request);
     }
 
     match plan_websocket_upgrade(access_input_from_raw(request), route) {
         WebSocketUpgradeDecision::Accept(plan) => {
-            log::info!("axeos_websocket_upgrade=accepted route={:?}", plan.route);
-            sys::ESP_OK
+            let session = unsafe { sys::httpd_req_to_sockfd(request) };
+            match websocket_api::register_client(session, plan.route) {
+                websocket_api::WebSocketRegisterOutcome::Accepted { active_clients } => {
+                    log::info!(
+                        "axeos_websocket_upgrade=accepted route={:?} active_clients={active_clients}",
+                        plan.route
+                    );
+                    send_websocket_connect_frames(request, plan.route)
+                }
+                websocket_api::WebSocketRegisterOutcome::RejectedMaxClients { max_clients } => {
+                    log::warn!(
+                        "axeos_websocket_upgrade=rejected route={route:?} reason=max_clients max_clients={max_clients}"
+                    );
+                    send_raw_public_response(
+                        request,
+                        PublicHttpResponse {
+                            status: 400,
+                            body: SettingsPatchPublicError::WrongApiInput.body(),
+                            content_type: Some("text/plain"),
+                        },
+                    )
+                }
+            }
         }
         WebSocketUpgradeDecision::Reject(response) => {
             log::warn!("axeos_websocket_upgrade=rejected route={route:?}");
             send_raw_public_response(request, response)
         }
     }
+}
+
+fn handle_websocket_frame(request: *mut sys::httpd_req_t) -> sys::esp_err_t {
+    let mut frame = sys::httpd_ws_frame_t::default();
+    let result = unsafe { sys::httpd_ws_recv_frame(request, &mut frame, 0) };
+    if result != sys::ESP_OK {
+        return result;
+    }
+
+    if frame.type_ == sys::httpd_ws_type_t_HTTPD_WS_TYPE_CLOSE {
+        let session = unsafe { sys::httpd_req_to_sockfd(request) };
+        websocket_api::unregister_client(session);
+    }
+
+    sys::ESP_OK
+}
+
+fn send_websocket_connect_frames(
+    request: *mut sys::httpd_req_t,
+    route: WebSocketRouteKind,
+) -> sys::esp_err_t {
+    match route {
+        WebSocketRouteKind::Logs => {
+            for chunk in log_buffer::download_chunks() {
+                if chunk.is_empty() {
+                    continue;
+                }
+                let result = send_websocket_text_frame(request, &chunk);
+                if result != sys::ESP_OK {
+                    return result;
+                }
+            }
+            let buffer = log_buffer::retained_log_buffer();
+            let _ = websocket_api::raw_log_chunks(&buffer);
+            sys::ESP_OK
+        }
+        WebSocketRouteKind::LiveTelemetry => {
+            let snapshot = collect_api_snapshot();
+            let Ok(current) = serde_json::to_value(system_info_from_snapshot(&snapshot)) else {
+                return sys::ESP_FAIL;
+            };
+            let Some(frame) = websocket_api::live_connect_frame(current.clone()) else {
+                return sys::ESP_FAIL;
+            };
+            let Ok(body) = serde_json::to_string(&frame) else {
+                return sys::ESP_FAIL;
+            };
+            let result = send_websocket_text_frame(request, &body);
+            if result == sys::ESP_OK {
+                let _ = websocket_api::live_cadence_frame(current);
+            }
+            result
+        }
+    }
+}
+
+fn send_websocket_text_frame(request: *mut sys::httpd_req_t, body: &str) -> sys::esp_err_t {
+    let mut frame = sys::httpd_ws_frame_t {
+        final_: true,
+        fragmented: false,
+        type_: sys::httpd_ws_type_t_HTTPD_WS_TYPE_TEXT,
+        payload: body.as_ptr() as *mut u8,
+        len: body.len(),
+    };
+    unsafe { sys::httpd_ws_send_frame(request, &mut frame) }
 }
 
 fn origin_ip_from_raw(request: *mut sys::httpd_req_t) -> Option<Ipv4Addr> {
@@ -402,6 +541,21 @@ fn send_json<'request, 'connection, T: Serialize>(
     Ok(())
 }
 
+fn send_settings_response<'request, 'connection>(
+    request: ApiRequest<'request, 'connection>,
+    response: SettingsPublicResponse,
+) -> anyhow::Result<()> {
+    match response {
+        SettingsPublicResponse::EmptySuccess => {
+            request
+                .into_response(200, Some("OK"), &[])?
+                .write_all(b"")?;
+            Ok(())
+        }
+        SettingsPublicResponse::Error(error) => send_text_error(request, 400, error.body()),
+    }
+}
+
 fn send_text_error<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
     status: u16,
@@ -429,6 +583,102 @@ fn send_public_response(
         .into_status_response(response.status)?
         .write_all(response.body.as_bytes())?;
     Ok(())
+}
+
+fn request_body_len(request: &mut ApiRequest<'_, '_>) -> usize {
+    let raw_request = (*request.connection()).handle();
+    unsafe { (*raw_request).content_len }
+}
+
+fn read_body_string(
+    request: &mut ApiRequest<'_, '_>,
+    body_len: usize,
+) -> Result<String, SettingsPatchPublicError> {
+    let mut body = vec![0; body_len];
+    let mut offset = 0;
+    while offset < body_len {
+        let read = request
+            .read(&mut body[offset..])
+            .map_err(|_| SettingsPatchPublicError::WrongApiInput)?;
+        if read == 0 {
+            return Err(SettingsPatchPublicError::WrongApiInput);
+        }
+        offset += read;
+    }
+
+    String::from_utf8(body).map_err(|_| SettingsPatchPublicError::InvalidJson)
+}
+
+fn apply_settings_effects(effects: &[SettingsPersistenceEffect]) {
+    for effect in effects {
+        match effect {
+            SettingsPersistenceEffect::BestEffortApplyHostname { hostname } => {
+                apply_hostname_effect(hostname);
+            }
+        }
+    }
+}
+
+fn apply_hostname_effect(hostname: &str) {
+    const NETIF_KEYS: [&[u8]; 2] = [b"WIFI_STA_DEF\0", b"WIFI_AP_DEF\0"];
+
+    let Ok(hostname_cstr) = CString::new(hostname) else {
+        log::warn!("axeos_settings_effect=hostname_failed reason=interior_nul");
+        return;
+    };
+
+    let mut applied = false;
+    for key in NETIF_KEYS {
+        let netif = unsafe { sys::esp_netif_get_handle_from_ifkey(key.as_ptr().cast()) };
+        if netif.is_null() {
+            continue;
+        }
+
+        let result = unsafe { sys::esp_netif_set_hostname(netif, hostname_cstr.as_ptr()) };
+        if result == sys::ESP_OK {
+            applied = true;
+            continue;
+        }
+
+        log::warn!("axeos_settings_effect=hostname_failed esp_err={result}");
+    }
+
+    if applied {
+        log::info!("axeos_settings_effect=hostname_applied");
+        return;
+    }
+
+    log::warn!("axeos_settings_effect=hostname_skipped reason=netif_unavailable");
+}
+
+fn apply_command_effect(effect: CommandEffect) {
+    match effect {
+        CommandEffect::MiningActivity(effect) => {
+            log::info!(
+                "axeos_command_effect=mining_activity next_activity={:?}",
+                effect.next_activity
+            );
+        }
+        CommandEffect::RestartAfterResponse => {
+            log::info!("axeos_command_effect=restart_after_response");
+            unsafe { sys::esp_restart() };
+        }
+        CommandEffect::Identify(effect) => match effect {
+            IdentifyModeEffect::Enable { duration_ms } => {
+                log::info!("axeos_command_effect=identify_enable duration_ms={duration_ms}");
+            }
+            IdentifyModeEffect::Disable => {
+                log::info!("axeos_command_effect=identify_disable");
+            }
+        },
+        CommandEffect::BlockFoundDismiss(effect) => {
+            log::info!(
+                "axeos_command_effect=block_found_dismiss block_found={} show_new_block={}",
+                effect.next_state.block_found,
+                effect.next_state.show_new_block
+            );
+        }
+    }
 }
 
 fn uptime_millis() -> u64 {
