@@ -69,10 +69,11 @@ language until each live surface has the required evidence class.
 
 | Field | Value |
 | --- | --- |
-| `/` HTTP status | not run - Phase 8 evidence pending |
-| `/assets/app.css.gz` HTTP status | not run - Phase 8 evidence pending |
-| missing static redirect behavior | not run - Phase 8 evidence pending |
-| `/recovery` HTTP status | not run - Phase 8 evidence pending |
+| `/` HTTP status | not run - no reachable DEVICE_URL |
+| `/assets/app.css.gz` HTTP status | not run - no reachable DEVICE_URL |
+| missing static redirect behavior | not run - no reachable DEVICE_URL |
+| `/recovery` HTTP status | not run - no reachable DEVICE_URL |
+| blocker | blocked - no IP, DHCP, Wi-Fi association, AP address, mDNS, hostname, or operator-supplied reachable URL |
 | conclusion | not run - no reachable DEVICE_URL |
 
 ## Firmware OTA Accepted Upload
@@ -123,7 +124,8 @@ language until each live surface has the required evidence class.
 | route | `/api/system/OTAWWW` |
 | upload artifact | `www.bin` |
 | expected public gap response | `Wrong API input` |
-| observed response | not run - Phase 8 evidence pending |
+| observed response | not run - no reachable DEVICE_URL |
+| blocker | blocked - no IP, DHCP, Wi-Fi association, AP address, mDNS, hostname, or operator-supplied reachable URL |
 | conclusion | not run - no reachable DEVICE_URL |
 
 ## Large Erase Recovery
