@@ -178,6 +178,7 @@ dependencies = [
  "bitaxe-asic",
  "bitaxe-config",
  "bitaxe-core",
+ "bitaxe-safety",
  "bitaxe-stratum",
  "embedded-graphics",
  "embuild",

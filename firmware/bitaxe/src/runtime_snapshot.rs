@@ -6,6 +6,7 @@ use bitaxe_api::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
     ApiSnapshot, BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode,
     IdentifyModeEffect, IdentifyModeState, MiningActivityEffect, PlatformSnapshot,
+    SafeTelemetrySnapshot,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::state::MiningRuntimeState;
@@ -41,6 +42,8 @@ pub fn collect_api_snapshot() -> ApiSnapshot {
     snapshot.mining = command_state.mining;
     snapshot.block_found = command_state.block_found;
     snapshot.platform = collect_platform_snapshot(snapshot.platform);
+    snapshot.safe_telemetry =
+        SafeTelemetrySnapshot::from_report(crate::safety_adapter::collect_safety_report());
     apply_settings_snapshot(&mut snapshot);
     snapshot
 }

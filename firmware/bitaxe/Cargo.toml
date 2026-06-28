@@ -10,6 +10,7 @@ bitaxe-api = { path = "../../crates/bitaxe-api" }
 bitaxe-asic = { path = "../../crates/bitaxe-asic" }
 bitaxe-config = { path = "../../crates/bitaxe-config" }
 bitaxe-core = { path = "../../crates/bitaxe-core" }
+bitaxe-safety = { path = "../../crates/bitaxe-safety" }
 bitaxe-stratum = { path = "../../crates/bitaxe-stratum" }
 embedded-graphics.workspace = true
 esp-idf-svc.workspace = true

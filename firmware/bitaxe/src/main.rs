@@ -8,6 +8,7 @@ mod display_adapter;
 mod http_api;
 mod log_buffer;
 mod runtime_snapshot;
+mod safety_adapter;
 mod settings_adapter;
 mod websocket_api;
 

@@ -475,7 +475,7 @@
           "REPO_MAPPING:rules_rust+,bazel_tools bazel_tools",
           "REPO_MAPPING:rules_rust+,rules_cc rules_cc+",
           "REPO_MAPPING:rules_rust+,rules_rust rules_rust+",
-          "FILE:@@//Cargo.lock 8ee014f166c7505ba3b90337f9f64674a37164fc7db99d7cee5be6ad51c4f6e1",
+          "FILE:@@//Cargo.lock b3b928d77c31e7472ef0c9ff8c0c9c62d13503869b3b68304148295fda34569c",
           "FILE:@@//Cargo.toml 04675fe0f287e5d03385b7a9d75d5f3801658219c4fd4a61afbc509e95de4d64",
           "FILE:@@//crates/bitaxe-api/Cargo.toml 4806cc4ec2b1fb1c04627698f3a8313267e0271542e3bea7cdb7b053aefe5057",
           "FILE:@@//crates/bitaxe-asic/Cargo.toml fe5bd66a4a2a2162d9204acc2d2222eddabf8392bbf98ad9efc52c38779b84ea",
@@ -484,7 +484,7 @@
           "FILE:@@//crates/bitaxe-safety/Cargo.toml 4aacd7e59827396efe66ce28449d455f5477aebfaa3f6db1cc0276468edf89a1",
           "FILE:@@//crates/bitaxe-stratum/Cargo.toml 02805c837dada213ca64fe8f3fde804a632b18a2ab74ccfa764b1d3f1394a9c2",
           "FILE:@@//crates/bitaxe-test-support/Cargo.toml cdefda371a942a3104e1a4961847f7eababb9cf2639d82beff1ed0099a5a8280",
-          "FILE:@@//firmware/bitaxe/Cargo.toml acf8856db0b951fe4906b85777c738bbe8b3bb2d53901d4b964ca3871c4a2553",
+          "FILE:@@//firmware/bitaxe/Cargo.toml 5257d11677d893bbfc259ecf4b59408fbe5634b90844d2e45c6b9dc569bcd7fd",
           "FILE:@@//tools/flash/Cargo.toml 35c6ce211a7bee14445090cb2d70d8ef4c5cba78ac8844d6926d7e058322eb13",
           "FILE:@@//tools/parity/Cargo.toml 6eeeaabbdc846bbfba7d7acac256567856c91ef3cd938bc927ecee5c7982a237",
           "FILE:@@//tools/xtask/Cargo.toml 43c0bf31a039104d93919f67b885d9391767351692fb6a3909e54d526184bdd8"

@@ -1,5 +1,7 @@
 genrule(
     name = "firmware",
+    # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by
+    # //scripts:build_firmware.
     srcs = glob(["src/**/*.rs"]) + [
         "Cargo.toml",
         "build.rs",
