@@ -136,22 +136,38 @@ language until each live surface has the required evidence class.
 
 ## Large Erase Recovery
 
+### Destructive Procedure Gate
+
 | Field | Value |
 | --- | --- |
-| erase command | not run - Phase 8 evidence pending |
-| recovery flash command | not run - Phase 8 evidence pending |
-| post-recovery boot | not run - Phase 8 evidence pending |
-| conclusion | not run - no reachable DEVICE_URL |
+| manifest path | `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` |
+| factory artifact | `bitaxe-ultra205-factory.bin` |
+| recovery command | `just flash board=205 port=/dev/cu.usbmodem1101` |
+| monitor command | `just monitor port=/dev/cu.usbmodem1101` |
+| erase command | `espflash erase-flash --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive` |
+| expected recovery observations | `partition table present`; `spiffs_mount=available`; `ota_boot_validation=`; `axeos_api_route_shell=started` |
+| stop criteria | `no detected port`; `missing factory artifact checksum`; `no reachable DEVICE_URL after non-destructive smoke`; `valid OTA did not return to an operable state`; `operator recovery instructions missing` |
+| gate result | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
+
+| Field | Value |
+| --- | --- |
+| erase command | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
+| recovery flash command | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
+| post-recovery boot | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
+| recovery outcome | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
+| conclusion | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
 
 ## Interrupted Update Recovery
 
 | Field | Value |
 | --- | --- |
-| interrupted route | not run - Phase 8 evidence pending |
-| interruption point | not run - Phase 8 evidence pending |
-| post-interruption reachability | not run - Phase 8 evidence pending |
-| recovery procedure | not run - Phase 8 evidence pending |
-| conclusion | not run - no reachable DEVICE_URL |
+| interrupted route | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
+| interruption point | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke; no deterministic interruption point was exercised |
+| post-interruption reachability | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
+| recovery procedure | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
+| recovery outcome | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
+| final boot/static/recovery status | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
+| conclusion | not run - recovery gate blocked: no reachable DEVICE_URL after non-destructive smoke |
 
 ## Deferred Scope Review
 
