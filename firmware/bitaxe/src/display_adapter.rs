@@ -26,6 +26,12 @@ pub const DISPLAY_I2C_SDA_GPIO: i32 = 47;
 pub const DISPLAY_I2C_SCL_GPIO: i32 = 48;
 pub const DISPLAY_I2C_SPEED_HZ: u32 = 400_000;
 
+pub fn publish_runtime_display_input_boundary() {
+    log::warn!(
+        "display_input_status=runtime_gap reason=hardware_evidence_pending startup_only=true"
+    );
+}
+
 pub fn render_startup_debug_text<I2C, SDA, SCL>(
     i2c: I2C,
     sda: SDA,

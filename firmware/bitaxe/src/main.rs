@@ -58,6 +58,7 @@ fn main() -> anyhow::Result<()> {
                     "display_status=unavailable reason=startup_text_render_failed error={error:#}"
                 );
             }
+            display_adapter::publish_runtime_display_input_boundary();
             asic_adapter::run_boot_gate_with_peripherals(asic_adapter::AsicBootPeripherals {
                 uart: peripherals.uart1,
                 reset: pins.gpio1,
@@ -67,10 +68,12 @@ fn main() -> anyhow::Result<()> {
         }
         Err(error) => {
             log::warn!("display_status=unavailable reason=peripherals_unavailable error={error}");
+            display_adapter::publish_runtime_display_input_boundary();
             asic_adapter::run_boot_gate_without_peripherals("peripherals_unavailable")?;
         }
     }
     asic_adapter::publish_mining_loop_blocked_status("hardware_evidence_ack_missing");
+    safety_adapter::start_safety_supervisor();
     if let Err(error) = http_api::start_http_api() {
         log::warn!("axeos_api_route_shell=unavailable error={error:#}");
     }

@@ -6,6 +6,7 @@
 
 mod power;
 mod thermal;
+mod watchdog;
 
 use bitaxe_api::{SafetyTelemetryReport, SafetyTelemetryStatus};
 use bitaxe_safety::{
@@ -25,6 +26,12 @@ pub fn collect_safety_report() -> SafetyTelemetryReport {
 pub fn interpret_safety_effects(effects: &[SafetyEffect]) {
     for effect in effects {
         interpret_safety_effect(effect);
+    }
+}
+
+pub fn start_safety_supervisor() {
+    if let Err(error) = watchdog::start_safety_supervisor_thread() {
+        log::warn!("safety_supervisor=unavailable reason=spawn_failed error={error}");
     }
 }
 
