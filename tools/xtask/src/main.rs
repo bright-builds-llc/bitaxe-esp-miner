@@ -9,6 +9,7 @@ use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
 
 mod package_manifest;
+mod partition_contract;
 
 use package_manifest::{build_manifest, validate_default_flash_image, write_manifest};
 
@@ -18,6 +19,7 @@ const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
 const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
 const DEFAULT_REFERENCE_GUARD: &str = "scripts/verify-reference-clean.sh";
 const DEFAULT_REFERENCE_DIR: &str = "reference/esp-miner";
+const DEFAULT_ULTRA205_PARTITION_TABLE: &str = "firmware/bitaxe/partitions-ultra205.csv";
 const ESP_IDF_VERSION: &str = "v5.5.4";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";
 
@@ -207,6 +209,9 @@ fn run_package_firmware(
     package_request: &PackageRequest,
     environment: &impl PackageEnvironment,
 ) -> Result<()> {
+    let partition_table = detect_workspace_dir()?.join(DEFAULT_ULTRA205_PARTITION_TABLE);
+    partition_contract::validate_ultra205_partition_contract(&partition_table)?;
+
     let manifest = build_manifest(package_request, environment)?;
     fs::create_dir_all(package_request.out_dir.as_std_path()).with_context(|| {
         format!(

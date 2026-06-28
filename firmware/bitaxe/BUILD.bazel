@@ -1,3 +1,5 @@
+exports_files(["partitions-ultra205.csv"])
+
 genrule(
     name = "firmware",
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by

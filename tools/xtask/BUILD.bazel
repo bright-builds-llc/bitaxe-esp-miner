@@ -5,6 +5,7 @@ rust_binary(
     srcs = [
         "src/main.rs",
         "src/package_manifest.rs",
+        "src/partition_contract.rs",
     ],
     crate_name = "xtask",
     edition = "2021",
@@ -12,6 +13,7 @@ rust_binary(
         "@crates//:anyhow",
         "@crates//:camino",
         "@crates//:clap",
+        "@crates//:esp-idf-part",
         "@crates//:serde",
         "@crates//:serde_json",
         "@crates//:sha2",
@@ -23,4 +25,5 @@ rust_binary(
 rust_test(
     name = "tests",
     crate = ":xtask",
+    data = ["//firmware/bitaxe:partitions-ultra205.csv"],
 )
