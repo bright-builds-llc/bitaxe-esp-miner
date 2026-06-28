@@ -178,7 +178,7 @@ Plans:
 **Plans**: 9 plans
 Plans:
 
-- [ ] 07-01-PLAN.md - Create pure update/static route contracts and tests.
+- [x] 07-01-PLAN.md - Create pure update/static route contracts and tests.
 - [ ] 07-02-PLAN.md - Define manifest v2 and partition validation contracts.
 - [ ] 07-03-PLAN.md - Create release docs, license, provenance, and evidence contracts.
 - [ ] 07-04-PLAN.md - Implement SPIFFS mount, static serving, and recovery page behavior.

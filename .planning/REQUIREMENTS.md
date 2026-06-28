@@ -78,14 +78,14 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 
 ### OTA, Filesystem, And Release Packaging
 
-- [ ] **REL-01**: Partition layout, filesystem layout, SPIFFS/static assets, and recovery assets support the same user-facing flash and administration flows expected from upstream.
-- [ ] **REL-02**: Firmware OTA route behavior accepts, rejects, applies, logs, and recovers from updates with upstream-compatible observable behavior.
-- [ ] **REL-03**: OTAWWW or static-asset update behavior is implemented or explicitly reported as a V1 parity gap with evidence and owner.
+- [x] **REL-01**: Partition layout, filesystem layout, SPIFFS/static assets, and recovery assets support the same user-facing flash and administration flows expected from upstream.
+- [x] **REL-02**: Firmware OTA route behavior accepts, rejects, applies, logs, and recovers from updates with upstream-compatible observable behavior.
+- [x] **REL-03**: OTAWWW or static-asset update behavior is implemented or explicitly reported as a V1 parity gap with evidence and owner.
 - [ ] **REL-04**: Release packaging produces named artifacts with checksums, manifests, image metadata, installation notes, and source/reference commit identifiers.
 - [ ] **REL-05**: Release preparation includes dependency license inventory, reference provenance manifest, and explicit review of GPL-derived materials.
 - [ ] **REL-06**: Flashable image production is reachable through `just package` and `just flash board=205` without requiring manual artifact discovery.
 - [ ] **REL-07**: Build, flash, monitor, OTA, and recovery documentation is sufficient for a developer with a connected Ultra 205 to operate the firmware safely.
-- [ ] **REL-08**: Rollback, recovery, large erase, failed update, and interrupted update cases have verification evidence before release parity is claimed.
+- [x] **REL-08**: Rollback, recovery, large erase, failed update, and interrupted update cases have verification evidence before release parity is claimed.
 
 ### Evidence And Governance
 
@@ -189,14 +189,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAFE-07 | Phase 6 | Complete |
 | SAFE-08 | Phase 6 | Complete |
 | SAFE-09 | Phase 6 | Complete |
-| REL-01 | Phase 7 | Pending |
-| REL-02 | Phase 7 | Pending |
-| REL-03 | Phase 7 | Pending |
+| REL-01 | Phase 7 | Complete |
+| REL-02 | Phase 7 | Complete |
+| REL-03 | Phase 7 | Complete |
 | REL-04 | Phase 7 | Pending |
 | REL-05 | Phase 7 | Pending |
 | REL-06 | Phase 7 | Pending |
 | REL-07 | Phase 7 | Pending |
-| REL-08 | Phase 7 | Pending |
+| REL-08 | Phase 7 | Complete |
 | EVD-01 | Phase 8 | Pending |
 | EVD-02 | Phase 8 | Pending |
 | EVD-03 | Phase 8 | Pending |
