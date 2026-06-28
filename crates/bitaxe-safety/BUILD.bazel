@@ -5,8 +5,13 @@ rust_library(
     srcs = [
         "src/effects.rs",
         "src/evidence.rs",
+        "src/fault.rs",
         "src/lib.rs",
+        "src/power.rs",
+        "src/self_test.rs",
         "src/status.rs",
+        "src/thermal.rs",
+        "src/watchdog.rs",
     ],
     compile_data = glob(["fixtures/**"], allow_empty = True),
     crate_name = "bitaxe_safety",
