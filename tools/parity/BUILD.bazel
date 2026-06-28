@@ -5,6 +5,7 @@ rust_binary(
     srcs = [
         "src/api_compare.rs",
         "src/main.rs",
+        "src/release_gate.rs",
     ],
     compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_parity",

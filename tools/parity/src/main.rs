@@ -5,7 +5,12 @@ use std::process::Command as ProcessCommand;
 use anyhow::{bail, Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
+use release_gate::{
+    render_release_gate_report, validate_release_gate, ReleaseGateDocuments,
+    DEFAULT_CARGO_ABOUT_PATH, DEFAULT_LICENSE_INVENTORY_PATH, DEFAULT_PROVENANCE_PATH,
+};
 use serde::Serialize;
+use std::io::ErrorKind;
 
 const BAZEL_REFERENCE_GUARD_TARGET: &str = "//scripts:verify_reference_clean";
 const DEFAULT_REFERENCE_GUARD_PATH: &str = "scripts/verify-reference-clean.sh";
@@ -15,6 +20,7 @@ const DEFAULT_API_COMPARE_MANIFEST: &str = "tools/parity/fixtures/api/phase05-re
 const DEFAULT_AXEOS_ROUTE_USAGE: &str = "tools/parity/fixtures/api/axeos-route-usage.json";
 
 mod api_compare;
+mod release_gate;
 
 #[derive(Debug, Parser)]
 #[command(name = "bitaxe-parity")]
@@ -28,6 +34,7 @@ struct Cli {
 enum CliCommand {
     Report(ReportArgs),
     ApiCompare(ApiCompareArgs),
+    ReleaseGate(ReleaseGateArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -52,6 +59,21 @@ struct ApiCompareArgs {
 
     #[arg(long, default_value = DEFAULT_AXEOS_ROUTE_USAGE, value_parser = parse_utf8_path)]
     static_usage: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct ReleaseGateArgs {
+    #[arg(long, default_value = DEFAULT_LICENSE_INVENTORY_PATH, value_parser = parse_utf8_path)]
+    license_inventory: Utf8PathBuf,
+
+    #[arg(long, default_value = DEFAULT_PROVENANCE_PATH, value_parser = parse_utf8_path)]
+    provenance: Utf8PathBuf,
+
+    #[arg(long, default_value = DEFAULT_CARGO_ABOUT_PATH, value_parser = parse_utf8_path)]
+    cargo_about: Utf8PathBuf,
+
+    #[arg(long, value_name = "package-json", value_parser = parse_utf8_path)]
+    manifest: Option<Utf8PathBuf>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -211,12 +233,56 @@ fn main() -> Result<()> {
             run_report(&request, &environment)?
         }
         CliCommand::ApiCompare(args) => run_api_compare_command(args, &environment)?,
+        CliCommand::ReleaseGate(args) => run_release_gate_command(args, &environment)?,
     };
 
     let mut stdout = io::stdout().lock();
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_release_gate_command(
+    args: ReleaseGateArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    let license_inventory_path = environment.workspace_path(&args.license_inventory);
+    let provenance_path = environment.workspace_path(&args.provenance);
+    let cargo_about_path = environment.workspace_path(&args.cargo_about);
+    let maybe_manifest_path = args
+        .manifest
+        .as_ref()
+        .map(|manifest| environment.workspace_path(manifest));
+
+    let license_inventory_markdown = std::fs::read_to_string(license_inventory_path.as_std_path())
+        .with_context(|| format!("failed to read license inventory {license_inventory_path}"))?;
+    let provenance_markdown = std::fs::read_to_string(provenance_path.as_std_path())
+        .with_context(|| format!("failed to read provenance manifest {provenance_path}"))?;
+    let maybe_cargo_about_html = read_optional_text(&cargo_about_path)?;
+    let maybe_manifest_json = if let Some(manifest_path) = &maybe_manifest_path {
+        read_optional_text(manifest_path)?
+    } else {
+        None
+    };
+
+    let documents = ReleaseGateDocuments {
+        license_inventory_path: args.license_inventory,
+        license_inventory_markdown,
+        provenance_path: args.provenance,
+        provenance_markdown,
+        cargo_about_path: args.cargo_about,
+        maybe_cargo_about_html,
+        maybe_manifest_path: args.manifest,
+        maybe_manifest_json,
+    };
+    let report = validate_release_gate(&documents);
+    let output = render_release_gate_report(&report);
+
+    if !report.passed() {
+        bail!("release gate failed:\n{output}");
+    }
+
+    Ok(output)
 }
 
 fn run_api_compare_command(args: ApiCompareArgs, environment: &LocalEnvironment) -> Result<String> {
@@ -445,6 +511,14 @@ fn parse_utf8_path(value: &str) -> std::result::Result<Utf8PathBuf, String> {
     }
 
     Ok(Utf8PathBuf::from(value))
+}
+
+fn read_optional_text(path: &Utf8Path) -> Result<Option<String>> {
+    match std::fs::read_to_string(path.as_std_path()) {
+        Ok(contents) => Ok(Some(contents)),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error).with_context(|| format!("failed to read {path}")),
+    }
 }
 
 fn detect_workspace_dir() -> Result<Utf8PathBuf> {
