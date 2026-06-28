@@ -1,57 +1,96 @@
 # Phase 7 Release Provenance Manifest
 
-This manifest records the provenance fields required before Ultra 205 release
-artifacts can be described publicly. It follows PROVENANCE.md and ADR-0013:
-original project work is MIT-first where possible, while upstream ESP-Miner
-inputs remain GPL-risk-reviewed release material.
+This manifest records the source, reference, static asset, recovery page, GPL,
+and artifact-review facts required before Ultra 205 release artifacts are
+published. It follows PROVENANCE.md and ADR-0013: original project work is
+MIT-first where possible, while upstream ESP-Miner remains GPL-3.0 reference
+material with explicit review boundaries.
 
-## source commit
+## Source commit
 
-- Field owner: release packaging workflow.
-- Required value: short and full commit for the Rust firmware source tree.
-- Evidence source: package manifest v2 and release gate output.
-- Current state: pending package-generation evidence.
+- Owner: release packaging workflow.
+- Command: `git rev-parse --short HEAD && git rev-parse HEAD`.
+- Required value: the short and full source tree commit at package generation
+  time.
+- Evidence source: package manifest v2, release gate output, and release notes.
+- Review status: source commit is command-derived so release artifacts do not
+  depend on a stale hand-written hash in this document.
+- Follow-up: rerun release packaging after any source, static asset, license, or
+  provenance change.
 
-## reference commit
+## Reference commit
 
-- Field owner: reference guard and package manifest workflow.
-- Required value: pinned `reference/esp-miner` commit.
+- Owner: reference guard and package manifest workflow.
+- Pinned reference commit: `c1915b0a63bfabebdb95a515cedfee05146c1d50`.
 - Evidence source: `just verify-reference`, package manifest v2, and parity
   report output.
-- Current state: pending release-gate evidence for this phase.
+- Review status: `reference/esp-miner` is read-only GPL-3.0 behavioral
+  evidence and is not a workspace for project edits.
+- Follow-up: any reference refresh must update this manifest, PROVENANCE.md
+  evidence, and parity breadcrumbs.
 
-## static asset source
+## Static asset source
 
-- Field owner: static/SPIFFS packaging workflow.
-- Required value: source tree or fixture path used to generate `www.bin`.
-- Review requirement: identify whether the asset source is independently
-  authored, generated from upstream GPL-covered AxeOS source, or mixed.
-- Current state: pending later Phase 7 static asset package plan.
+| Release input | Source path | Provenance status |
+| --- | --- | --- |
+| Fallback web index | `firmware/bitaxe/static/www/index.html` | Rust-owned compatibility fallback, not copied from upstream ESP-Miner. |
+| Fallback stylesheet | `firmware/bitaxe/static/www/assets/app.css` | Rust-owned fallback styling. |
+| Deterministic gzip stylesheet | `firmware/bitaxe/static/www/assets/app.css.gz` | Generated from `firmware/bitaxe/static/www/assets/app.css` using deterministic gzip settings. |
+| Release metadata fixture | `firmware/bitaxe/static/www/assets/release.json` | Rust-owned static metadata fixture. |
+| Static filesystem source tree | `firmware/bitaxe/static/www` | Source tree for future `www.bin` generation. |
 
-## recovery page source
+- Owner: static/SPIFFS packaging workflow.
+- No upstream-generated static assets included in Phase 7 package source.
+- Follow-up: if a future release includes reference-built AxeOS assets, record
+  the generated asset source path, upstream attribution, and GPL review decision
+  before the release gate can pass.
 
-- Field owner: recovery/static firmware workflow.
-- Required value: source path for the embedded `/recovery` page and the
-  generated artifact or embedded bytes included in firmware.
-- Review requirement: record whether the page is independently authored or
-  upstream-derived, and keep any GPL-covered expression out of MIT-only claims.
-- Current state: pending recovery/static implementation evidence.
+## Recovery page source
+
+- Owner: recovery/static firmware workflow.
+- Source path: `firmware/bitaxe/static/recovery_page.html`.
+- Firmware inclusion path: embedded by `firmware/bitaxe/src/static_files.rs` for
+  the `/recovery` handler.
+- Provenance status: Rust-owned re-authored recovery page with upstream-visible
+  labels and behavior, not copied from
+  `reference/esp-miner/main/http_server/recovery_page.html`.
+- Follow-up: if recovery HTML is replaced with upstream-derived expression,
+  isolate the source and record a GPL-compatible license decision before
+  publishing firmware images.
 
 ## GPL review status
 
-- Field owner: release reviewer.
-- Required value: release decision for upstream-derived source expression,
-  reference-built assets, linked components, and distributed firmware images.
-- Review requirement: do not describe firmware images as MIT-only until this
-  review records that claim explicitly.
-- Current state: not complete for release publication.
+- Owner: release reviewer.
+- Upstream reference status: `reference/esp-miner` remains GPL-3.0 read-only
+  behavioral evidence pinned at `c1915b0a63bfabebdb95a515cedfee05146c1d50`.
+- Static/recovery asset status: Phase 7 package source uses Rust-owned fallback
+  static and recovery assets; no upstream-generated static assets included in
+  Phase 7 package source.
+- Distributed firmware status: firmware images remain GPL-risk-reviewed release
+  artifacts until artifact checksums, linked component notices, source
+  availability obligations, and installation information obligations are
+  approved.
+- Publication status: do not describe distributed firmware images as MIT-only
+  unless this section is updated with an explicit release approval.
+- Follow-up: final V1 publication must pair this review with the release
+  artifact table below.
 
-## release artifact review
+## Release artifact review
 
-- Field owner: release gate.
-- Required value: per-artifact path, checksum, source commit, reference commit,
-  generation command, license posture, provenance note, and publication status.
-- Review requirement: cover `esp-miner.bin`, `www.bin`, merged factory/recovery
-  image, package manifest, `cargo-about.html`, license inventory, provenance
-  manifest, and install notes.
-- Current state: structure present; detailed rows are pending package outputs.
+| Artifact | Required evidence | Current review status |
+| --- | --- | --- |
+| `esp-miner.bin` | Source commit, reference commit, generation command, offset, SHA-256, ESP-IDF version, linked component notice review | Awaiting package output evidence. |
+| `www.bin` | Static source tree, generation command, size, SHA-256, static asset provenance review | Awaiting package output evidence. |
+| `bitaxe-ultra205-factory.bin` | Merge command, offsets, included artifacts, SHA-256, installation notes | Awaiting package output evidence. |
+| `bitaxe-ultra205-package.json` | Manifest v2 validation, artifact paths, checksums, tool versions, install notes, license/provenance links | Awaiting package output evidence. |
+| `docs/release/cargo-about.html` | Generated Cargo dependency report with accepted license policy | Present and required by release gate. |
+| `docs/release/license-inventory.md` | Non-Cargo inventory rows and artifact review scope | Present and required by release gate. |
+| `docs/release/provenance-manifest.md` | Source/reference/static/recovery/GPL/artifact review records | Present and required by release gate. |
+| `docs/release/ultra-205.md` | Operator package, flash, monitor, OTA, OTAWWW gap, recovery, and rollback procedures | Present release documentation input. |
+
+- Owner: release gate.
+- Required decision before publication: each generated artifact must have a
+  package manifest checksum, source path, reference pin, license posture, and
+  publication status.
+- Follow-up: run `tools/parity release-gate` after package output evidence is
+  added and before any public release candidate is announced.

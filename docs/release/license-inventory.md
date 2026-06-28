@@ -1,65 +1,94 @@
 # Phase 7 Release License Inventory
 
-This inventory separates the Cargo report from the non-Cargo release inputs
-required by PROVENANCE.md and ADR-0013. `docs/release/cargo-about.html` is an
-input to release review, not a substitute for this full release inventory.
+This inventory separates generated Cargo license output from the full release
+review required by PROVENANCE.md and ADR-0013. `docs/release/cargo-about.html`
+is required input, but it does not satisfy release compliance by itself.
 
 ## Cargo crates
 
-- Report: `docs/release/cargo-about.html`
-- Tool: `cargo-about 0.9.0`
-- Policy: `about.toml`
-- Scope: Cargo workspace dependency graph.
-- Current accepted license identifiers: `Apache-2.0`, `BSD-3-Clause`, `ISC`,
-  `MIT`, `Unicode-3.0`, and `Zlib`.
-- Review note: Cargo crates do not cover Bazel, ESP-IDF, flashing tools,
-  static assets, upstream reference material, or release artifacts.
+| Input | Path or pin | License source | Release status |
+| --- | --- | --- | --- |
+| Generated Cargo report | `docs/release/cargo-about.html` | `cargo-about 0.9.0` using `about.toml` | Required for every release-gate run. |
+| Cargo lockfile | `Cargo.lock` | crates.io package metadata mirrored into the generated report | Required source for dependency version evidence. |
+| Workspace Rust crates | `crates/*`, `firmware/bitaxe`, `tools/flash`, `tools/parity`, `tools/xtask` | Root workspace MIT posture plus per-crate dependencies in `Cargo.lock` | Original project code is MIT-first unless a file is explicitly marked otherwise. |
+| ESP-IDF Rust bindings in Cargo graph | `esp-idf-sys 0.37.2`, `esp-idf-hal 0.46.2`, `esp-idf-svc 0.52.1` | Cargo metadata and `docs/release/cargo-about.html` | Covered as Cargo crates; linked ESP-IDF components are reviewed below. |
 
-## Bazel And Rules
+- Accepted license identifiers in the current Cargo report: `Apache-2.0`,
+  `BSD-3-Clause`, `ISC`, `MIT`, `Unicode-3.0`, and `Zlib`.
+- Owner: release tooling.
+- Follow-up: regenerate `docs/release/cargo-about.html` whenever `Cargo.lock`,
+  `about.toml`, or workspace membership changes.
 
-- Scope: `MODULE.bazel`, `MODULE.bazel.lock`, Bzlmod modules, and rules used by
-  package, test, firmware, and host-tool targets.
-- Required review: record rule/module license notices, source URLs, and version
-  pins before a release artifact is published.
-- Current state: inventory structure present; detailed Bazel/rules license rows
-  are pending release-gate validation.
+## Bazel and rules
 
-## ESP-IDF And esp-rs Components
+| Input | Path or pin | License source | Release status |
+| --- | --- | --- | --- |
+| Bzlmod root | `MODULE.bazel` | Local module declarations | Canonical Bazel dependency source for release review. |
+| Bzlmod lockfile | `MODULE.bazel.lock` | Bazel Central Registry module and source records | Required for exact module source evidence. |
+| Rust build rules | `rules_rust 0.70.0` | Bazel Central Registry record in `MODULE.bazel.lock` | Build-time rules; not bundled as firmware source. |
+| Shell build rules | `rules_shell 0.8.0` | Bazel Central Registry record in `MODULE.bazel.lock` | Build-time rules for script targets. |
+| Cargo mirror extension | `crate_universe` from `rules_rust` | `MODULE.bazel` extension declaration and lockfile-generated repos | Mirrors `Cargo.lock`; it does not replace the Cargo report. |
 
-- Scope: ESP-IDF `v5.5.4`, `esp-idf-sys`, `esp-idf-hal`, `esp-idf-svc`, ESP-IDF
-  components linked into firmware, and related build metadata.
-- Required review: source availability, notices, linked component obligations,
-  and whether firmware images include mixed-license inputs.
-- Current state: component review is pending the package/release gate.
+- Owner: release tooling.
+- Follow-up: before publication, verify any additional Bzlmod modules introduced
+  after this inventory have license/source rows here.
 
-## espflash And esptool Tooling
+## ESP-IDF and esp-rs
 
-- Scope: `espflash`, optional `cargo-espflash`, optional `esptool.py`, and any
-  scripts or wrappers used to create merged images, write binaries, monitor
-  serial output, or erase flash regions.
-- Required review: tool licenses, generated artifact assumptions, and whether
-  exact upstream `esptool.py` output is required for a release.
-- Current state: normal Phase 7 flows use `espflash`; exact `esptool.py`
-  update-only HEX output is not required by the current plan set.
+| Input | Path or pin | License source | Release status |
+| --- | --- | --- | --- |
+| ESP-IDF version | `v5.5.4` through `esp-idf-sys` metadata | ESP-IDF source checkout and component notices | Required for firmware image source-availability review. |
+| ESP-IDF Rust sys crate | `esp-idf-sys 0.37.2` | `docs/release/cargo-about.html` plus `esp-idf-sys` metadata | Cargo license covered; native ESP-IDF download reviewed separately. |
+| ESP-IDF HAL crate | `esp-idf-hal 0.46.2` | `docs/release/cargo-about.html` | Cargo license covered. |
+| ESP-IDF service crate | `esp-idf-svc 0.52.1` | `docs/release/cargo-about.html` | Cargo license covered. |
+| ESP-IDF components | Wi-Fi, HTTP server, NVS, SPIFFS, OTA, partition table, FreeRTOS, logging, and C runtime components selected by firmware build | ESP-IDF component notices from the pinned source tree | Release image review must preserve required notices and source references. |
 
-## Firmware And Static Assets
+- Owner: firmware release.
+- Follow-up: package evidence must record the ESP-IDF checkout/tag and the
+  firmware image review decision before public release.
 
-- Scope: Rust firmware, firmware metadata, recovery page source, AxeOS/static
-  assets, generated `www.bin`, and any upstream-derived or reference-built
-  asset inputs.
-- Required review: separate independently authored Rust-owned assets from
-  GPL-covered upstream reference expression. Do not call static assets MIT-only
-  without source and license evidence.
-- Current state: static asset provenance is pending `docs/release/provenance-manifest.md`
-  completion by later Phase 7 package/static plans.
+## Flashing tools
 
-## Release Artifacts
+| Input | Path or pin | License source | Release status |
+| --- | --- | --- | --- |
+| `espflash` | Backend for `just flash`, `just monitor`, `just flash-monitor`, and `scripts/package-firmware.sh` image generation | Tool project metadata and installed binary version output | Normal Phase 7 package and operator workflow tool. |
+| `cargo-espflash` | Developer diagnostic tool when used outside the canonical Bazel/Just flow | Tool project metadata and installed binary version output | Optional diagnostic input; not required for release packaging. |
+| `esptool.py` | Not used by current Phase 7 package generation | ESP-IDF toolchain source if a future plan invokes it | Include only when a package script or release command calls it directly. |
+| `scripts/package-firmware.sh` | `scripts/package-firmware.sh` | Project MIT-first script plus invoked tool metadata | Prints package inputs and writes manifest evidence. |
 
-- Scope: `esp-miner.bin`, `www.bin`, merged factory/recovery image, update-only
-  image if present, package manifest, checksums, install notes, license report,
-  and provenance manifest.
-- Required review: every release artifact needs a source path, generation
-  command, checksum, source commit, reference commit, license posture, and
-  publication decision.
-- Current state: artifact rows are defined here so Plan 07-06 can enforce the
-  release gate against package, provenance, and evidence files.
+- Owner: release tooling.
+- Follow-up: release notes must include the exact flashing/package tool versions
+  emitted by the package manifest or operator evidence.
+
+## Static assets
+
+| Input | Path or pin | License source | Release status |
+| --- | --- | --- | --- |
+| Fallback index page | `firmware/bitaxe/static/www/index.html` | Rust-owned source comment in the file | MIT-first original fallback, not copied from upstream ESP-Miner. |
+| Fallback stylesheet | `firmware/bitaxe/static/www/assets/app.css` | Rust-owned source comment in the file | MIT-first original fallback stylesheet. |
+| Deterministic gzip stylesheet | `firmware/bitaxe/static/www/assets/app.css.gz` | Generated from `firmware/bitaxe/static/www/assets/app.css` with deterministic gzip settings | Same source posture as `app.css`; generated binary input to `www.bin`. |
+| Release metadata fixture | `firmware/bitaxe/static/www/assets/release.json` | Rust-owned Phase 7 static source | MIT-first static metadata fixture. |
+| Recovery page | `firmware/bitaxe/static/recovery_page.html` | Rust-owned source comment in the file | MIT-first re-authored recovery page, not copied from upstream recovery HTML. |
+
+- No upstream-generated static assets included in Phase 7 package source.
+- Owner: firmware release.
+- Follow-up: if a later package includes reference-built AxeOS assets, add
+  attributed GPL-reviewed rows here before publishing.
+
+## Release artifacts
+
+| Artifact | Source path or generator | License/provenance source | Publication status |
+| --- | --- | --- | --- |
+| Cargo license report | `docs/release/cargo-about.html` | `about.toml`, `about.hbs`, `Cargo.lock` | Required release-gate input. |
+| License inventory | `docs/release/license-inventory.md` | This file | Required release-gate input. |
+| Provenance manifest | `docs/release/provenance-manifest.md` | Source/reference/static/recovery review records | Required release-gate input. |
+| Operator guide | `docs/release/ultra-205.md` | Phase 7 release documentation | Required operator documentation input. |
+| Firmware app image | `esp-miner.bin` from package workflow | Package manifest checksum and source commit | Publication waits for package output evidence. |
+| Static filesystem image | `www.bin` from `firmware/bitaxe/static/www` | Static asset rows above plus package manifest checksum | Publication waits for package output evidence. |
+| Factory/recovery image | `bitaxe-ultra205-factory.bin` from package workflow | Package manifest offsets and checksums | Publication waits for package output evidence. |
+| Package manifest | `bitaxe-ultra205-package.json` from package workflow | Package manifest v2 validation | Publication waits for package output evidence. |
+
+- Owner: release gate.
+- Follow-up: final release approval requires artifact checksums, source commit,
+  reference commit, tool versions, installation notes, and the GPL review status
+  recorded in `docs/release/provenance-manifest.md`.
