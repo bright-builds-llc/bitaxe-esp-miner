@@ -185,7 +185,7 @@ Plans:
 - [x] 07-05-PLAN.md - Expand release artifact generation and manifest v2 packaging.
 - [x] 07-06-PLAN.md - Implement license/provenance release-gate validation.
 - [x] 07-07-PLAN.md - Implement firmware OTA, rollback validation, and OTAWWW gap behavior.
-- [ ] 07-08-PLAN.md - Complete operator docs and Phase 7 evidence records.
+- [x] 07-08-PLAN.md - Complete operator docs and Phase 7 evidence records.
 - [ ] 07-09-PLAN.md - Add parity gates and final hardware verification checkpoint.
 **UI hint**: yes
 **Verification expectations**: Package manifest checks, flash/install smoke, OTA success and failure tests, rollback/recovery/interrupted-update evidence, static asset/recovery checks, release license inventory, and operator documentation review.

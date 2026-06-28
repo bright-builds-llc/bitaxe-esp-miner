@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 06-10-PLAN.md
-last_updated: "2026-06-28T05:07:37.105Z"
+status: executing
+stopped_at: Completed 07-08-PLAN.md
+last_updated: "2026-06-28T18:04:20.822Z"
 last_activity: 2026-06-28
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 39
-  completed_plans: 39
-  percent: 100
+  total_plans: 48
+  completed_plans: 47
+  percent: 98
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Phase 06 — safety-controllers-and-self-test
+**Current focus:** Phase 07 — ota-filesystem-and-release-packaging
 
 ## Current Position
 
-Phase: 06 (safety-controllers-and-self-test) — EXECUTING
-Plan: 10 of 10
-Status: Phase complete — ready for verification
+Phase: 07 (ota-filesystem-and-release-packaging) — EXECUTING
+Plan: 9 of 9
+Status: Ready to execute
 Last activity: 2026-06-28
 
 Progress: [████████░░] 77%
@@ -92,6 +92,14 @@ Progress: [████████░░] 77%
 | Phase 06 P08 | 7 min | 1 tasks | 9 files |
 | Phase 06 P09 | 5 min | 1 tasks | 4 files |
 | Phase 06 P10 | 6 min | 2 tasks | 5 files |
+| Phase 07-ota-filesystem-and-release-packaging P01 | 11 min | 3 tasks | 5 files |
+| Phase 07-ota-filesystem-and-release-packaging P02 | 21m02s | 3 tasks | 11 files |
+| Phase 07-ota-filesystem-and-release-packaging P03 | 11m21s | 3 tasks | 8 files |
+| Phase 07-ota-filesystem-and-release-packaging P04 | 19m49s | 3 tasks | 11 files |
+| Phase 07-ota-filesystem-and-release-packaging P06 | 10m17s | 2 tasks | 5 files |
+| Phase 07-ota-filesystem-and-release-packaging P05 | 20min | 3 tasks | 7 files |
+| Phase 07-ota-filesystem-and-release-packaging P07 | 18min | 3 tasks | 6 files |
+| Phase 07-ota-filesystem-and-release-packaging P08 | 6m28s | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -203,6 +211,31 @@ Recent decisions affecting current work:
 - [Phase 06-safety-controllers-and-self-test]: Use a focused pure bitaxe-safety crate for Phase 6 contracts before firmware hardware effects are touched.
 - [Phase 06-safety-controllers-and-self-test]: Only hardware-smoke and hardware-regression evidence satisfy safety-critical hardware verification.
 - [Phase 06-safety-controllers-and-self-test]: Fail-closed safety plans explicitly hold reset low, disable ASIC enable, suppress voltage writes, block work submission, and publish visible status.
+- [Phase 07-ota-filesystem-and-release-packaging]: Preserve phase05_routes() for Phase 5 API compare while adding phase07_routes() for release/static/update ownership.
+- [Phase 07-ota-filesystem-and-release-packaging]: Keep OTAWWW fail-closed as an explicit REL-03 gap until interruption and recovery evidence exists.
+- [Phase 07-ota-filesystem-and-release-packaging]: Reject static path traversal in the pure resolver before any firmware file adapter can open a path.
+- [Phase 07-ota-filesystem-and-release-packaging]: Keep existing package generation on the current v1 manifest while defining and validating the v2 release package contract for later packaging work.
+- [Phase 07-ota-filesystem-and-release-packaging]: Validate the checked-in Ultra 205 partition CSV before package manifest generation so release packaging fails on partition drift.
+- [Phase 07-ota-filesystem-and-release-packaging]: Keep flash compatibility anchored on top-level default_flash_image so tools/flash can read v2 manifests without adopting the full release schema.
+- [Phase 07-ota-filesystem-and-release-packaging]: Keep cargo-about scoped to Cargo dependencies and require separate non-Cargo inventory for Bazel, ESP-IDF, tools, static assets, and artifacts.
+- [Phase 07-ota-filesystem-and-release-packaging]: Preserve OTAWWW as an explicit REL-03 evidence gap until D-16 recovery/interruption evidence exists.
+- [Phase 07-ota-filesystem-and-release-packaging]: Initialize Phase 7 evidence with not-run/live-hardware-pending conclusions instead of release parity claims.
+- [Phase 07-ota-filesystem-and-release-packaging]: 07-04: Serve static HTTP paths through bitaxe-api::resolve_static_request before opening SPIFFS files.
+- [Phase 07-ota-filesystem-and-release-packaging]: 07-04: Keep /recovery explicitly registered and register the static wildcard after API, OTA, and websocket routes.
+- [Phase 07-ota-filesystem-and-release-packaging]: 07-04: Use Rust-owned minimal fallback and recovery assets instead of copying upstream AxeOS or recovery HTML.
+- [Phase 07-ota-filesystem-and-release-packaging]: 07-04: Use an ESP-IDF-resolvable relative partition CSV path because custom partition filenames are resolved from the generated CMake project.
+- [Phase 07-ota-filesystem-and-release-packaging]: 07-06: Keep release-gate validation in tools/parity with filesystem access isolated to the CLI adapter.
+- [Phase 07-ota-filesystem-and-release-packaging]: 07-06: Require non-Cargo license/provenance sections so docs/release/cargo-about.html cannot satisfy REL-05 alone.
+- [Phase 07-ota-filesystem-and-release-packaging]: 07-06: Record source commit provenance as the release-time git command while pinning the reference commit explicitly.
+- [Phase 07-ota-filesystem-and-release-packaging]: Keep bitaxe-ultra205.elf as default_flash_image while manifest v2 lists loose OTA, SPIFFS, otadata, partition, and factory artifacts.
+- [Phase 07-ota-filesystem-and-release-packaging]: Use Unavailable for the checked-in CSV partition-table offset and reserve 0x8000 for a future binary partition-table artifact.
+- [Phase 07-ota-filesystem-and-release-packaging]: Declare .git/HEAD and .git/refs/heads/main as package action inputs so manifest source_commit refreshes when the main branch advances.
+- [Phase 07-ota-filesystem-and-release-packaging]: Validate pending OTA images only after startup diagnostics and keep rollback evidence below verified until hardware logs exist.
+- [Phase 07-ota-filesystem-and-release-packaging]: Stream firmware uploads directly from httpd_req_recv into ESP-IDF OTA APIs instead of buffering images in RAM.
+- [Phase 07-ota-filesystem-and-release-packaging]: Keep OTAWWW fail-closed as an explicit REL-03 gap because interruption/recovery hardware evidence is not part of this plan.
+- [Phase 07-ota-filesystem-and-release-packaging]: 07-08: Keep OTAWWW as an explicit REL-03 release gap with required UI-SPEC copy and public response `Wrong API input`.
+- [Phase 07-ota-filesystem-and-release-packaging]: 07-08: Keep live OTA, rollback, recovery, erase, failed update, and interrupted-update conclusions at `not run - hardware verification pending` until Ultra 205 evidence exists.
+- [Phase 07-ota-filesystem-and-release-packaging]: 07-08: Treat the hardware-smoke document as a capture template only; it does not verify checklist rows without command and log evidence.
 
 ### Pending Todos
 
@@ -221,6 +254,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-28T05:06:58.424Z
-Stopped at: Completed 06-10-PLAN.md
+Last session: 2026-06-28T18:04:20.818Z
+Stopped at: Completed 07-08-PLAN.md
 Resume file: None
