@@ -26,6 +26,9 @@ genrule(
     srcs = ["//firmware/bitaxe:firmware"],
     outs = [
         "bitaxe-ultra205.elf",
+        "esp-miner.bin",
+        "www.bin",
+        "otadata-initial.bin",
         "bitaxe-ultra205-factory.bin",
         "bitaxe-ultra205-package.json",
     ],
