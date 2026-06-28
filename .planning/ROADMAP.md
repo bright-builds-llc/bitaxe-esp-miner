@@ -182,7 +182,7 @@ Plans:
 - [x] 07-02-PLAN.md - Define manifest v2 and partition validation contracts.
 - [x] 07-03-PLAN.md - Create release docs, license, provenance, and evidence contracts.
 - [x] 07-04-PLAN.md - Implement SPIFFS mount, static serving, and recovery page behavior.
-- [ ] 07-05-PLAN.md - Expand release artifact generation and manifest v2 packaging.
+- [x] 07-05-PLAN.md - Expand release artifact generation and manifest v2 packaging.
 - [x] 07-06-PLAN.md - Implement license/provenance release-gate validation.
 - [ ] 07-07-PLAN.md - Implement firmware OTA, rollback validation, and OTAWWW gap behavior.
 - [ ] 07-08-PLAN.md - Complete operator docs and Phase 7 evidence records.
