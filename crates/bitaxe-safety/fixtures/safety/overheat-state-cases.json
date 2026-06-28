@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "checklist_ids": ["THR-001", "THR-002", "PWR-001", "PWR-002", "SAFE-04", "SAFE-08"],
+    "source_files": [
+      "reference/esp-miner/main/tasks/power_management_task.c",
+      "reference/esp-miner/main/tasks/fan_controller_task.c"
+    ],
+    "source_behavior": "Overheat, cool-down, restart candidate, fan zero RPM, fan set failure, power fault, thermal fault, and ASIC fault paths stay fail-closed and not verified without hardware evidence.",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived behavioral fixture data; not MIT source expression",
+    "derivation": "manual independent Rust fixture cases from pinned safety task behavior"
+  },
+  "cases": [
+    { "name": "normal", "state": "Normal" },
+    { "name": "overheat-stop", "state": "SafeStopped", "reason": "overheat_safe_stop" },
+    { "name": "cool-down", "state": "Cooling" },
+    { "name": "restart-candidate", "state": "RestartCandidate", "reason": "restart_requires_hardware_gates" },
+    { "name": "fan-zero-rpm", "fault": "FanZeroRpm", "verification": "not verified" },
+    { "name": "fan-set-failure", "fault": "FanSetFailed", "verification": "not verified" },
+    { "name": "power-fault", "fault": "PowerFault", "verification": "not verified" },
+    { "name": "thermal-fault", "fault": "ThermalSensorFault", "verification": "not verified" },
+    { "name": "asic-fault", "fault": "AsicFault", "verification": "not verified" }
+  ]
+}

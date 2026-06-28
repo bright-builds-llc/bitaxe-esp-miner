@@ -1,0 +1,16 @@
+{
+  "metadata": {
+    "checklist_ids": ["THR-001", "THR-002", "THR-003", "SAFE-02", "SAFE-03", "SAFE-07"],
+    "source_file": "reference/esp-miner/main/thermal/thermal.c",
+    "source_behavior": "Thermal sentinel, diode fault, non-finite, and implausible readings fail closed before fan or PID decisions.",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived behavioral fixture data; not MIT source expression",
+    "derivation": "manual independent Rust fixture cases from pinned reference sentinel behavior"
+  },
+  "cases": [
+    { "name": "unavailable-sentinel", "raw_celsius": -1.0, "expected_reason": "thermal_reading_unavailable" },
+    { "name": "diode-fault-sentinel", "raw_celsius": 127.0, "expected_reason": "thermal_reading_invalid" },
+    { "name": "below-plausible", "raw_celsius": -41.0, "expected_reason": "thermal_reading_invalid" },
+    { "name": "above-plausible", "raw_celsius": 151.0, "expected_reason": "thermal_reading_invalid" }
+  ]
+}

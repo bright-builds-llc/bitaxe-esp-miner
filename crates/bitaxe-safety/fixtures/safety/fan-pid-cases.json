@@ -1,0 +1,20 @@
+{
+  "metadata": {
+    "checklist_ids": ["THR-001", "THR-002", "THR-003", "SAFE-02", "SAFE-03", "SAFE-07"],
+    "source_files": [
+      "reference/esp-miner/main/thermal/PID.c",
+      "reference/esp-miner/main/tasks/fan_controller_task.c"
+    ],
+    "source_behavior": "Fan modes and PID output are modeled as pure duty-percent decisions before firmware PWM effects.",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived behavioral fixture data; not MIT source expression",
+    "derivation": "manual independent Rust fixture cases from pinned reference constants and Phase 6 fan policy"
+  },
+  "cases": [
+    { "name": "overheat", "expected_duty_percent": 100 },
+    { "name": "startup", "expected_duty_percent": 70 },
+    { "name": "paused-or-no-pool", "expected_duty_percent": 30 },
+    { "name": "manual", "manual_percent": 42 },
+    { "name": "auto-clamped-to-minimum", "minimum_percent": 25 }
+  ]
+}
