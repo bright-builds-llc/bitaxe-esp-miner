@@ -66,15 +66,15 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 
 ### Safety, Power, Thermal, Self-Test, And Peripherals
 
-- [ ] **SAFE-01**: Ultra 205 voltage and power-control surfaces use bounded typed decisions and fail closed on invalid configuration, communication failure, or unsafe readings.
-- [ ] **SAFE-02**: Thermal sensor and fan control surfaces expose upstream-compatible readings, fan duty behavior, RPM behavior, and failure reporting.
-- [ ] **SAFE-03**: PID and thermal-control decisions are covered by pure unit tests before hardware effects are enabled.
-- [ ] **SAFE-04**: Overheat, fan, power, thermal, and ASIC fault paths enter safe states and expose user-visible status compatible with upstream behavior.
-- [ ] **SAFE-05**: Self-test lifecycle behavior covers factory flags, start, pass, fail, restart, cancel, and user-visible result reporting.
+- [x] **SAFE-01**: Ultra 205 voltage and power-control surfaces use bounded typed decisions and fail closed on invalid configuration, communication failure, or unsafe readings.
+- [x] **SAFE-02**: Thermal sensor and fan control surfaces expose upstream-compatible readings, fan duty behavior, RPM behavior, and failure reporting.
+- [x] **SAFE-03**: PID and thermal-control decisions are covered by pure unit tests before hardware effects are enabled.
+- [x] **SAFE-04**: Overheat, fan, power, thermal, and ASIC fault paths enter safe states and expose user-visible status compatible with upstream behavior.
+- [x] **SAFE-05**: Self-test lifecycle behavior covers factory flags, start, pass, fail, restart, cancel, and user-visible result reporting.
 - [ ] **SAFE-06**: Display and input status surfaces needed for normal Ultra 205 administration are preserved or explicitly documented as deferred gaps.
-- [ ] **SAFE-07**: Power, current, voltage, fan, and temperature telemetry are captured where Ultra 205 hardware exposes them.
-- [ ] **SAFE-08**: Safety-critical surfaces cannot be marked `verified` without `hardware-smoke` or `hardware-regression` evidence.
-- [ ] **SAFE-09**: Mining, control, API, and telemetry tasks avoid watchdog starvation and preserve observable responsiveness under load.
+- [x] **SAFE-07**: Power, current, voltage, fan, and temperature telemetry are captured where Ultra 205 hardware exposes them.
+- [x] **SAFE-08**: Safety-critical surfaces cannot be marked `verified` without `hardware-smoke` or `hardware-regression` evidence.
+- [x] **SAFE-09**: Mining, control, API, and telemetry tasks avoid watchdog starvation and preserve observable responsiveness under load.
 
 ### OTA, Filesystem, And Release Packaging
 
@@ -180,15 +180,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-08 | Phase 5 | Complete |
 | API-09 | Phase 5 | Complete |
 | API-10 | Phase 5 | Complete |
-| SAFE-01 | Phase 6 | Pending |
-| SAFE-02 | Phase 6 | Pending |
-| SAFE-03 | Phase 6 | Pending |
-| SAFE-04 | Phase 6 | Pending |
-| SAFE-05 | Phase 6 | Pending |
+| SAFE-01 | Phase 6 | Complete |
+| SAFE-02 | Phase 6 | Complete |
+| SAFE-03 | Phase 6 | Complete |
+| SAFE-04 | Phase 6 | Complete |
+| SAFE-05 | Phase 6 | Complete |
 | SAFE-06 | Phase 6 | Pending |
-| SAFE-07 | Phase 6 | Pending |
-| SAFE-08 | Phase 6 | Pending |
-| SAFE-09 | Phase 6 | Pending |
+| SAFE-07 | Phase 6 | Complete |
+| SAFE-08 | Phase 6 | Complete |
+| SAFE-09 | Phase 6 | Complete |
 | REL-01 | Phase 7 | Pending |
 | REL-02 | Phase 7 | Pending |
 | REL-03 | Phase 7 | Pending |

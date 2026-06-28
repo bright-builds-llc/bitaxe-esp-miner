@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 05-07-PLAN.md
-last_updated: "2026-06-28T00:02:01.498Z"
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-06-28T04:12:21.525Z"
 last_activity: 2026-06-28
 progress:
   total_phases: 8
   completed_phases: 5
-  total_plans: 29
-  completed_plans: 29
-  percent: 100
+  total_plans: 39
+  completed_plans: 30
+  percent: 77
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 06 (safety-controllers-and-self-test) — EXECUTING
+Plan: 2 of 10
+Status: Ready to execute
 Last activity: 2026-06-28
 
-Progress: [██████████] 100%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -82,6 +82,7 @@ Progress: [██████████] 100%
 | Phase 05-axeos-api-logs-and-telemetry P06 | 8 min | 2 tasks | 4 files |
 | Phase 05-axeos-api-logs-and-telemetry P05 | 38 | 2 tasks | 14 files |
 | Phase 05-axeos-api-logs-and-telemetry P07 | 16m57s | 2 tasks | 10 files |
+| Phase 06-safety-controllers-and-self-test P01 | 9 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -190,6 +191,9 @@ Recent decisions affecting current work:
 - [Phase 05-axeos-api-logs-and-telemetry]: 05-07: Keep OpenAPI checks narrow and dependency-free rather than adding a deprecated YAML/OpenAPI parser dependency.
 - [Phase 05-axeos-api-logs-and-telemetry]: 05-07: Use bitaxe-api's exported phase05_routes() as the Rust route manifest source of truth for API compare checks.
 - [Phase 05-axeos-api-logs-and-telemetry]: 05-07: Record AxeOS static route compatibility separately from Phase 7-owned recovery/static packaging and OTA/OTAWWW success.
+- [Phase 06-safety-controllers-and-self-test]: Use a focused pure bitaxe-safety crate for Phase 6 contracts before firmware hardware effects are touched.
+- [Phase 06-safety-controllers-and-self-test]: Only hardware-smoke and hardware-regression evidence satisfy safety-critical hardware verification.
+- [Phase 06-safety-controllers-and-self-test]: Fail-closed safety plans explicitly hold reset low, disable ASIC enable, suppress voltage writes, block work submission, and publish visible status.
 
 ### Pending Todos
 
@@ -208,6 +212,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T22:06:08.288Z
-Stopped at: Completed 05-07-PLAN.md
+Last session: 2026-06-28T04:11:43.450Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None

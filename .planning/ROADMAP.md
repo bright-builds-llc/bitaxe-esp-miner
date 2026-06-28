@@ -146,7 +146,19 @@ Plans:
 1. User can run the self-test lifecycle for factory flags, start, pass, fail, restart, cancel, and result reporting with upstream-compatible behavior.
 1. Display and input status surfaces needed for normal Ultra 205 administration work, or are explicitly documented as V1 parity gaps with evidence.
 
-**Plans**: TBD
+**Plans**: 10 plans
+Plans:
+
+- [x] 06-01-PLAN.md - Create the pure safety crate and shared status/evidence/effect contracts.
+- [ ] 06-02-PLAN.md - Create the safety crate feature module graph.
+- [ ] 06-03-PLAN.md - Implement power, voltage, current, and observe-only DS4432U/INA260 decisions.
+- [ ] 06-04-PLAN.md - Implement thermal, fan, PID, overheat, and fault decisions.
+- [ ] 06-05-PLAN.md - Implement self-test lifecycle and watchdog-friendly step supervision.
+- [ ] 06-06-PLAN.md - Wire power, thermal, and safety evidence tokens into ASIC and mining gates.
+- [ ] 06-07-PLAN.md - Replace zeroed API telemetry with explicit safety telemetry status.
+- [ ] 06-08-PLAN.md - Add firmware observe-only safety adapters and runtime snapshot integration.
+- [ ] 06-09-PLAN.md - Add firmware safety supervisor and display/input runtime gap status.
+- [ ] 06-10-PLAN.md - Enforce parity evidence gates and record Phase 6 checklist/evidence status.
 **Verification expectations**: Pure unit tests for safety decisions, hardware-smoke and hardware-regression evidence for voltage/fan/thermal/power paths, self-test smoke, watchdog/load responsiveness checks, and parity checklist enforcement that safety-critical rows cannot be `verified` without hardware evidence.
 **Research flags**: Needs deeper research and hardware planning for DS4432U, INA260, EMC2101, fan/PID behavior, fault paths, self-test sequencing, and soak protocol.
 
@@ -197,6 +209,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 3. BM1366 ASIC Protocol And Safe Initialization | 0/5 | Not started | - |
 | 4. Stratum V1 And First Mining Loop | 4/4 | Complete    | 2026-06-27 |
 | 5. AxeOS API, Logs, And Telemetry | 0/TBD | Not started | - |
-| 6. Safety Controllers And Self-Test | 0/TBD | Not started | - |
+| 6. Safety Controllers And Self-Test | 1/10 | In Progress | - |
 | 7. OTA, Filesystem, And Release Packaging | 0/TBD | Not started | - |
 | 8. Parity Evidence And Ultra 205 Release Gate | 0/TBD | Not started | - |
