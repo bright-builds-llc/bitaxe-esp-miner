@@ -284,6 +284,14 @@ cargo_cmd=(
 	205
 	--firmware-elf
 	"$package_elf"
+	--firmware-ota-image
+	"$firmware_ota_image"
+	--www-bin
+	"$www_image"
+	--partition-table
+	"$ULTRA205_PARTITION_TABLE"
+	--otadata-initial
+	"$otadata_initial"
 	--default-flash-image
 	"$package_elf"
 	--out-dir
@@ -292,6 +300,16 @@ cargo_cmd=(
 	"$manifest"
 	--factory-image
 	"$factory_image"
+	--release-name
+	"bitaxe-ultra205"
+	--install-notes
+	"docs/release/ultra-205.md"
+	--license-inventory
+	"docs/release/license-inventory.md"
+	--provenance-manifest
+	"docs/release/provenance-manifest.md"
+	--otadata-source
+	"$otadata_source"
 )
 
 printf '[package-firmware] cargo_command='

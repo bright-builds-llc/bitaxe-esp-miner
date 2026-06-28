@@ -22,7 +22,6 @@ const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
 const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
 const DEFAULT_REFERENCE_GUARD: &str = "scripts/verify-reference-clean.sh";
 const DEFAULT_REFERENCE_DIR: &str = "reference/esp-miner";
-const DEFAULT_ULTRA205_PARTITION_TABLE: &str = "firmware/bitaxe/partitions-ultra205.csv";
 const ESP_IDF_VERSION: &str = "v5.5.4";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";
 
@@ -37,7 +36,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum CliCommand {
     #[command(name = "package-firmware")]
-    PackageFirmware(PackageArgs),
+    PackageFirmware(Box<PackageArgs>),
     #[command(name = "validate-package")]
     ValidatePackage(ValidatePackageArgs),
 }
@@ -50,6 +49,18 @@ struct PackageArgs {
     #[arg(long = "firmware-elf", value_parser = parse_utf8_path)]
     firmware_elf: Utf8PathBuf,
 
+    #[arg(long = "firmware-ota-image", value_parser = parse_utf8_path)]
+    firmware_ota_image: Utf8PathBuf,
+
+    #[arg(long = "www-bin", value_parser = parse_utf8_path)]
+    www_bin: Utf8PathBuf,
+
+    #[arg(long = "partition-table", value_parser = parse_utf8_path)]
+    partition_table: Utf8PathBuf,
+
+    #[arg(long = "otadata-initial", value_parser = parse_utf8_path)]
+    otadata_initial: Utf8PathBuf,
+
     #[arg(long = "default-flash-image", value_parser = parse_utf8_path)]
     default_flash_image: Utf8PathBuf,
 
@@ -61,6 +72,21 @@ struct PackageArgs {
 
     #[arg(long = "factory-image", value_parser = parse_utf8_path)]
     factory_image: Option<Utf8PathBuf>,
+
+    #[arg(long = "release-name")]
+    release_name: String,
+
+    #[arg(long = "install-notes", value_parser = parse_utf8_path)]
+    install_notes: Utf8PathBuf,
+
+    #[arg(long = "license-inventory", value_parser = parse_utf8_path)]
+    license_inventory: Utf8PathBuf,
+
+    #[arg(long = "provenance-manifest", value_parser = parse_utf8_path)]
+    provenance_manifest: Utf8PathBuf,
+
+    #[arg(long = "otadata-source", default_value = UNAVAILABLE)]
+    otadata_source: String,
 }
 
 #[derive(Debug, Parser)]
@@ -76,10 +102,19 @@ struct ValidatePackageArgs {
 struct PackageRequest {
     board: BoardId,
     firmware_elf: Utf8PathBuf,
+    firmware_ota_image: Utf8PathBuf,
+    www_bin: Utf8PathBuf,
+    partition_table: Utf8PathBuf,
+    otadata_initial: Utf8PathBuf,
     default_flash_image: Utf8PathBuf,
     out_dir: Utf8PathBuf,
     manifest: Utf8PathBuf,
     factory_image: Option<Utf8PathBuf>,
+    release_name: String,
+    install_notes: Utf8PathBuf,
+    license_inventory: Utf8PathBuf,
+    provenance_manifest: Utf8PathBuf,
+    otadata_source: String,
 }
 
 impl From<PackageArgs> for PackageRequest {
@@ -87,10 +122,19 @@ impl From<PackageArgs> for PackageRequest {
         Self {
             board: args.board,
             firmware_elf: args.firmware_elf,
+            firmware_ota_image: args.firmware_ota_image,
+            www_bin: args.www_bin,
+            partition_table: args.partition_table,
+            otadata_initial: args.otadata_initial,
             default_flash_image: args.default_flash_image,
             out_dir: args.out_dir,
             manifest: args.manifest,
             factory_image: args.factory_image,
+            release_name: args.release_name,
+            install_notes: args.install_notes,
+            license_inventory: args.license_inventory,
+            provenance_manifest: args.provenance_manifest,
+            otadata_source: args.otadata_source,
         }
     }
 }
@@ -211,7 +255,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         CliCommand::PackageFirmware(args) => {
-            let request = PackageRequest::from(args);
+            let request = PackageRequest::from(*args);
             run_package_firmware(&request, &environment)?;
         }
         CliCommand::ValidatePackage(args) => {
@@ -226,8 +270,7 @@ fn run_package_firmware(
     package_request: &PackageRequest,
     environment: &impl PackageEnvironment,
 ) -> Result<()> {
-    let partition_table = detect_workspace_dir()?.join(DEFAULT_ULTRA205_PARTITION_TABLE);
-    partition_contract::validate_ultra205_partition_contract(&partition_table)?;
+    partition_contract::validate_ultra205_partition_contract(&package_request.partition_table)?;
 
     let manifest = build_manifest(package_request, environment)?;
     fs::create_dir_all(package_request.out_dir.as_std_path()).with_context(|| {
@@ -236,7 +279,12 @@ fn run_package_firmware(
             package_request.out_dir
         )
     })?;
-    write_manifest(&package_request.manifest, &manifest)
+    validate_package_manifest_v2(&manifest)?;
+    write_manifest(&package_request.manifest, &manifest)?;
+    run_validate_package(&ValidatePackageArgs {
+        manifest: package_request.manifest.clone(),
+        partition_table: package_request.partition_table.clone(),
+    })
 }
 
 fn run_validate_package(args: &ValidatePackageArgs) -> Result<()> {
@@ -260,6 +308,31 @@ fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
         );
     }
 
+    if !package_request.firmware_ota_image.is_file() {
+        bail!(
+            "firmware OTA image does not exist: {}",
+            package_request.firmware_ota_image
+        );
+    }
+
+    if !package_request.www_bin.is_file() {
+        bail!("www.bin does not exist: {}", package_request.www_bin);
+    }
+
+    if !package_request.partition_table.is_file() {
+        bail!(
+            "partition table does not exist: {}",
+            package_request.partition_table
+        );
+    }
+
+    if !package_request.otadata_initial.is_file() {
+        bail!(
+            "otadata initial image does not exist: {}",
+            package_request.otadata_initial
+        );
+    }
+
     validate_default_flash_image(&package_request.default_flash_image)?;
     if !package_request.default_flash_image.is_file() {
         bail!(
@@ -272,6 +345,33 @@ fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
         if !factory_image.is_file() {
             bail!("factory image does not exist: {factory_image}");
         }
+    } else {
+        bail!("factory image is required for package manifest v2");
+    }
+
+    if package_request.release_name.trim().is_empty() {
+        bail!("release name must not be empty");
+    }
+
+    if !package_request.install_notes.is_file() {
+        bail!(
+            "install notes do not exist: {}",
+            package_request.install_notes
+        );
+    }
+
+    if !package_request.license_inventory.is_file() {
+        bail!(
+            "license inventory does not exist: {}",
+            package_request.license_inventory
+        );
+    }
+
+    if !package_request.provenance_manifest.is_file() {
+        bail!(
+            "provenance manifest does not exist: {}",
+            package_request.provenance_manifest
+        );
     }
 
     Ok(())
@@ -355,7 +455,7 @@ mod tests {
     use tempfile::{tempdir, TempDir};
 
     #[test]
-    fn manifest_serializes_ultra205_default_elf_and_factory_artifact() {
+    fn manifest_serializes_ultra205_default_elf_and_release_artifacts() {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let package_elf = temp_path(&dir, DEFAULT_ELF_NAME);
@@ -370,16 +470,32 @@ mod tests {
         let manifest = build_manifest(&request, &environment).expect("manifest");
 
         // Assert
-        assert_eq!(manifest.schema_version, 1);
-        assert_eq!(manifest.board, "205");
-        assert_eq!(manifest.device_model, "Ultra 205");
-        assert_eq!(manifest.asic, "BM1366");
+        assert_eq!(manifest.schema_version, 2);
+        assert_eq!(manifest.image_metadata.board, "205");
+        assert_eq!(manifest.image_metadata.device_model, "Ultra 205");
+        assert_eq!(manifest.image_metadata.asic, "BM1366");
         assert_eq!(manifest.reference_commit, EXPECTED_REFERENCE_COMMIT);
         assert_eq!(manifest.default_flash_image, DEFAULT_ELF_NAME);
         assert!(manifest
             .artifacts
             .iter()
-            .any(|artifact| artifact.path == FACTORY_IMAGE_NAME && artifact.offset == "0x0"));
+            .any(
+                |artifact| artifact.kind.to_string() == "factory_merged_image"
+                    && artifact.path == FACTORY_IMAGE_NAME
+                    && artifact.offset == "0x0"
+            ));
+        assert!(manifest
+            .artifacts
+            .iter()
+            .any(|artifact| artifact.kind.to_string() == "firmware_ota_image"
+                && artifact.path == "esp-miner.bin"
+                && artifact.offset == "0x10000"));
+        assert!(manifest
+            .artifacts
+            .iter()
+            .any(|artifact| artifact.kind.to_string() == "www_spiffs_image"
+                && artifact.path == "www.bin"
+                && artifact.offset == "0x410000"));
     }
 
     #[test]
@@ -599,6 +715,8 @@ mod tests {
         let mut manifest = serde_json::json!({
             "schema_version": 2,
             "release_name": "bitaxe-ultra205-v1",
+            "source_commit": "source-commit",
+            "reference_commit": EXPECTED_REFERENCE_COMMIT,
             "default_flash_image": "bitaxe-ultra205.elf",
             "image_metadata": {
                 "board": "205",
@@ -607,8 +725,15 @@ mod tests {
                 "esp_idf_version": "v5.5.4",
                 "rust_target": "xtensa-esp32s3-espidf"
             },
+            "tool_versions": {
+                "cargo": "cargo 1.0.0",
+                "rustc": "rustc 1.0.0",
+                "bazel": "bazel 1.0.0",
+                "espflash": "espflash 1.0.0"
+            },
             "license_inventory": "docs/release/license-inventory.json",
             "provenance_manifest": "docs/release/provenance-manifest.json",
+            "otadata_source": "generated-erased-flash",
             "artifacts": artifacts
         });
         if include_install_notes {
@@ -659,13 +784,43 @@ mod tests {
         default_flash_image: Utf8PathBuf,
         factory_image: Option<Utf8PathBuf>,
     ) -> PackageRequest {
+        let firmware_ota_image = temp_path(dir, "esp-miner.bin");
+        let www_bin = temp_path(dir, "www.bin");
+        let partition_table = temp_path(dir, "partitions-ultra205.csv");
+        let otadata_initial = temp_path(dir, "otadata-initial.bin");
+        let install_notes = temp_path(dir, "ultra-205.md");
+        let license_inventory = temp_path(dir, "license-inventory.md");
+        let provenance_manifest = temp_path(dir, "provenance-manifest.md");
+        for path in [
+            &firmware_ota_image,
+            &www_bin,
+            &partition_table,
+            &otadata_initial,
+            &install_notes,
+            &license_inventory,
+            &provenance_manifest,
+        ] {
+            if !path.is_file() {
+                write_fixture(path, path.as_str().as_bytes());
+            }
+        }
+
         PackageRequest {
             board: BoardId::Ultra205,
             firmware_elf: temp_path(dir, DEFAULT_ELF_NAME),
+            firmware_ota_image,
+            www_bin,
+            partition_table,
+            otadata_initial,
             default_flash_image,
             factory_image,
             manifest: temp_path(dir, "bitaxe-ultra205-package.json"),
             out_dir: temp_dir_path(dir),
+            release_name: "bitaxe-ultra205".to_owned(),
+            install_notes,
+            license_inventory,
+            provenance_manifest,
+            otadata_source: "generated-erased-flash".to_owned(),
         }
     }
 

@@ -12,30 +12,19 @@ use crate::{
     EXPECTED_REFERENCE_COMMIT, FACTORY_IMAGE_NAME, RUST_TARGET, UNAVAILABLE,
 };
 
-#[derive(Debug, Serialize)]
-pub(crate) struct PackageManifest {
-    pub(crate) schema_version: u32,
-    pub(crate) board: String,
-    pub(crate) device_model: String,
-    pub(crate) asic: String,
-    pub(crate) firmware_commit: String,
-    pub(crate) reference_commit: String,
-    pub(crate) esp_idf_version: String,
-    pub(crate) rust_target: String,
-    pub(crate) tool_versions: ToolVersions,
-    pub(crate) default_flash_image: String,
-    pub(crate) artifacts: Vec<ManifestArtifact>,
-}
-
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct PackageManifestV2 {
     pub(crate) schema_version: u32,
     pub(crate) release_name: String,
+    pub(crate) source_commit: String,
+    pub(crate) reference_commit: String,
     pub(crate) default_flash_image: String,
     pub(crate) image_metadata: ImageMetadata,
+    pub(crate) tool_versions: ToolVersions,
     pub(crate) install_notes: ReleaseNotes,
     pub(crate) license_inventory: String,
     pub(crate) provenance_manifest: String,
+    pub(crate) otadata_source: String,
     pub(crate) artifacts: Vec<ReleaseArtifact>,
 }
 
@@ -94,7 +83,7 @@ pub(crate) struct ReleaseNotes {
     pub(crate) summary: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct ToolVersions {
     pub(crate) cargo: String,
     pub(crate) rustc: String,
@@ -102,22 +91,14 @@ pub(crate) struct ToolVersions {
     pub(crate) espflash: String,
 }
 
-#[derive(Debug, Serialize)]
-pub(crate) struct ManifestArtifact {
-    pub(crate) kind: String,
-    pub(crate) path: String,
-    pub(crate) offset: String,
-    pub(crate) sha256: String,
-}
-
 pub(crate) fn build_manifest(
     package_request: &PackageRequest,
     environment: &impl PackageEnvironment,
-) -> Result<PackageManifest> {
+) -> Result<PackageManifestV2> {
     environment.run_reference_guard()?;
     validate_package_request(package_request)?;
 
-    let firmware_commit = environment
+    let source_commit = environment
         .firmware_commit()
         .unwrap_or_else(|_| UNAVAILABLE.to_owned());
     let reference_commit = environment.reference_commit()?;
@@ -127,37 +108,79 @@ pub(crate) fn build_manifest(
         );
     }
 
-    let mut artifacts = Vec::new();
-    artifacts.push(artifact_entry(
-        "firmware_elf",
-        &package_request.firmware_elf,
-        UNAVAILABLE,
-        &package_request.manifest,
-    )?);
+    let Some(factory_image) = &package_request.factory_image else {
+        bail!("factory image is required for package manifest v2");
+    };
 
-    if let Some(factory_image) = &package_request.factory_image {
-        artifacts.push(artifact_entry(
-            "factory_image",
+    let artifacts = vec![
+        artifact_entry(
+            ArtifactKind::FirmwareElf,
+            &package_request.firmware_elf,
+            UNAVAILABLE,
+            &package_request.manifest,
+        )?,
+        artifact_entry(
+            ArtifactKind::FirmwareOtaImage,
+            &package_request.firmware_ota_image,
+            "0x10000",
+            &package_request.manifest,
+        )?,
+        artifact_entry(
+            ArtifactKind::WwwSpiffsImage,
+            &package_request.www_bin,
+            "0x410000",
+            &package_request.manifest,
+        )?,
+        artifact_entry(
+            ArtifactKind::FactoryMergedImage,
             factory_image,
             "0x0",
             &package_request.manifest,
-        )?);
-    }
+        )?,
+        artifact_entry(
+            ArtifactKind::PartitionTable,
+            &package_request.partition_table,
+            partition_table_offset(&package_request.partition_table),
+            &package_request.manifest,
+        )?,
+        artifact_entry(
+            ArtifactKind::OtadataInitial,
+            &package_request.otadata_initial,
+            "0xf10000",
+            &package_request.manifest,
+        )?,
+    ];
 
-    Ok(PackageManifest {
-        schema_version: 1,
-        board: package_request.board.to_string(),
-        device_model: "Ultra 205".to_owned(),
-        asic: "BM1366".to_owned(),
-        firmware_commit,
+    Ok(PackageManifestV2 {
+        schema_version: 2,
+        release_name: package_request.release_name.clone(),
+        source_commit,
         reference_commit,
-        esp_idf_version: crate::ESP_IDF_VERSION.to_owned(),
-        rust_target: RUST_TARGET.to_owned(),
-        tool_versions: tool_versions(environment),
         default_flash_image: manifest_relative_path(
             &package_request.manifest,
             &package_request.default_flash_image,
         ),
+        image_metadata: ImageMetadata {
+            board: package_request.board.to_string(),
+            device_model: "Ultra 205".to_owned(),
+            asic: "BM1366".to_owned(),
+            esp_idf_version: crate::ESP_IDF_VERSION.to_owned(),
+            rust_target: RUST_TARGET.to_owned(),
+        },
+        tool_versions: tool_versions(environment),
+        install_notes: ReleaseNotes {
+            path: manifest_relative_path(&package_request.manifest, &package_request.install_notes),
+            summary: "Ultra 205 release operator guide".to_owned(),
+        },
+        license_inventory: manifest_relative_path(
+            &package_request.manifest,
+            &package_request.license_inventory,
+        ),
+        provenance_manifest: manifest_relative_path(
+            &package_request.manifest,
+            &package_request.provenance_manifest,
+        ),
+        otadata_source: package_request.otadata_source.clone(),
         artifacts,
     })
 }
@@ -197,6 +220,8 @@ pub(crate) fn validate_package_manifest_v2(manifest: &PackageManifestV2) -> Resu
 
     validate_default_flash_image(Utf8Path::new(&manifest.default_flash_image))?;
     require_non_empty("release_name", &manifest.release_name)?;
+    require_non_empty("source_commit", &manifest.source_commit)?;
+    require_non_empty("reference_commit", &manifest.reference_commit)?;
     require_non_empty("image_metadata.board", &manifest.image_metadata.board)?;
     require_non_empty(
         "image_metadata.device_model",
@@ -215,6 +240,11 @@ pub(crate) fn validate_package_manifest_v2(manifest: &PackageManifestV2) -> Resu
     require_non_empty("install_notes.summary", &manifest.install_notes.summary)?;
     require_non_empty("license_inventory", &manifest.license_inventory)?;
     require_non_empty("provenance_manifest", &manifest.provenance_manifest)?;
+    require_non_empty("otadata_source", &manifest.otadata_source)?;
+    require_non_empty("tool_versions.cargo", &manifest.tool_versions.cargo)?;
+    require_non_empty("tool_versions.rustc", &manifest.tool_versions.rustc)?;
+    require_non_empty("tool_versions.bazel", &manifest.tool_versions.bazel)?;
+    require_non_empty("tool_versions.espflash", &manifest.tool_versions.espflash)?;
 
     for kind in [
         ArtifactKind::FirmwareElf,
@@ -233,11 +263,17 @@ pub(crate) fn validate_package_manifest_v2(manifest: &PackageManifestV2) -> Resu
         require_non_empty("artifact.offset", &artifact.offset)?;
     }
 
-    let factory = require_artifact_kind(manifest, ArtifactKind::FactoryMergedImage)?;
-    if factory.offset != "0x0" {
+    require_artifact_offset(manifest, ArtifactKind::FirmwareElf, UNAVAILABLE)?;
+    require_artifact_offset(manifest, ArtifactKind::FirmwareOtaImage, "0x10000")?;
+    require_artifact_offset(manifest, ArtifactKind::WwwSpiffsImage, "0x410000")?;
+    require_artifact_offset(manifest, ArtifactKind::FactoryMergedImage, "0x0")?;
+    require_artifact_offset(manifest, ArtifactKind::OtadataInitial, "0xf10000")?;
+
+    let partition_table = require_artifact_kind(manifest, ArtifactKind::PartitionTable)?;
+    if partition_table.offset != "0x8000" && partition_table.offset != UNAVAILABLE {
         bail!(
-            "factory_merged_image artifact must use factory offset 0x0, found {}",
-            factory.offset
+            "partition_table artifact offset must be 0x8000 for a binary table or {UNAVAILABLE} for CSV-only, found {}",
+            partition_table.offset
         );
     }
 
@@ -275,6 +311,22 @@ fn validate_sha256(kind: &ArtifactKind, sha256: &str) -> Result<()> {
     bail!("{kind} sha256 must be a 64 character hex string");
 }
 
+fn require_artifact_offset(
+    manifest: &PackageManifestV2,
+    kind: ArtifactKind,
+    expected_offset: &str,
+) -> Result<()> {
+    let artifact = require_artifact_kind(manifest, kind)?;
+    if artifact.offset == expected_offset {
+        return Ok(());
+    }
+
+    bail!(
+        "{kind} artifact must use offset {expected_offset}, found {}",
+        artifact.offset
+    );
+}
+
 fn required_artifact_message(kind: ArtifactKind) -> String {
     match kind {
         ArtifactKind::FirmwareElf => "required artifact kind firmware_elf missing".to_owned(),
@@ -296,17 +348,29 @@ fn required_artifact_message(kind: ArtifactKind) -> String {
 }
 
 fn artifact_entry(
-    kind: &str,
+    kind: ArtifactKind,
     path: &Utf8Path,
     offset: &str,
     manifest_path: &Utf8Path,
-) -> Result<ManifestArtifact> {
-    Ok(ManifestArtifact {
-        kind: kind.to_owned(),
+) -> Result<ReleaseArtifact> {
+    Ok(ReleaseArtifact {
+        kind,
         path: manifest_relative_path(manifest_path, path),
         offset: offset.to_owned(),
         sha256: sha256_file(path)?,
     })
+}
+
+fn partition_table_offset(path: &Utf8Path) -> &'static str {
+    let Some(file_name) = path.file_name() else {
+        return UNAVAILABLE;
+    };
+
+    if file_name.ends_with(".bin") {
+        return "0x8000";
+    }
+
+    UNAVAILABLE
 }
 
 fn manifest_relative_path(manifest_path: &Utf8Path, artifact_path: &Utf8Path) -> String {
@@ -364,7 +428,7 @@ pub(crate) fn tool_versions(environment: &impl PackageEnvironment) -> ToolVersio
     }
 }
 
-pub(crate) fn write_manifest(path: &Utf8Path, manifest: &PackageManifest) -> Result<()> {
+pub(crate) fn write_manifest(path: &Utf8Path, manifest: &PackageManifestV2) -> Result<()> {
     let mut json =
         serde_json::to_string_pretty(manifest).context("failed to serialize package manifest")?;
     json.push('\n');
@@ -384,6 +448,12 @@ pub(crate) fn write_manifest(path: &Utf8Path, manifest: &PackageManifest) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        BoardId, PackageEnvironment, PackageRequest, DEFAULT_ELF_NAME, EXPECTED_REFERENCE_COMMIT,
+        FACTORY_IMAGE_NAME, RUST_TARGET,
+    };
+    use camino::Utf8PathBuf;
+    use tempfile::{tempdir, TempDir};
 
     #[test]
     fn package_manifest_v2_requires_release_metadata_and_artifact_kinds() {
@@ -402,6 +472,8 @@ mod tests {
         let manifest = PackageManifestV2 {
             schema_version: 2,
             release_name: "bitaxe-ultra205-v1".to_owned(),
+            source_commit: "source-commit".to_owned(),
+            reference_commit: EXPECTED_REFERENCE_COMMIT.to_owned(),
             default_flash_image: "bitaxe-ultra205.elf".to_owned(),
             image_metadata: ImageMetadata {
                 board: "205".to_owned(),
@@ -410,12 +482,19 @@ mod tests {
                 esp_idf_version: "v5.5.4".to_owned(),
                 rust_target: "xtensa-esp32s3-espidf".to_owned(),
             },
+            tool_versions: ToolVersions {
+                cargo: "cargo 1.0.0".to_owned(),
+                rustc: "rustc 1.0.0".to_owned(),
+                bazel: "bazel 1.0.0".to_owned(),
+                espflash: "espflash 1.0.0".to_owned(),
+            },
             install_notes: ReleaseNotes {
                 path: "docs/release/ultra-205.md".to_owned(),
                 summary: "Flash with just flash board=205".to_owned(),
             },
             license_inventory: "docs/release/license-inventory.json".to_owned(),
             provenance_manifest: "docs/release/provenance-manifest.json".to_owned(),
+            otadata_source: "generated-erased-flash".to_owned(),
             artifacts: artifact_kinds
                 .iter()
                 .map(|kind| ReleaseArtifact {
@@ -442,5 +521,135 @@ mod tests {
             .artifacts
             .iter()
             .any(|artifact| artifact.kind == ArtifactKind::FactoryMergedImage));
+    }
+
+    #[test]
+    fn package_manifest_v2_builds_release_artifacts_from_real_outputs() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let package_elf = write_fixture(&dir, DEFAULT_ELF_NAME, b"elf");
+        let firmware_ota_image = write_fixture(&dir, "esp-miner.bin", b"ota");
+        let www_bin = write_fixture(&dir, "www.bin", b"www");
+        let factory_image = write_fixture(&dir, FACTORY_IMAGE_NAME, b"factory");
+        let otadata_initial = write_fixture(&dir, "otadata-initial.bin", b"otadata");
+        let partition_table = write_fixture(&dir, "partitions-ultra205.csv", b"partition-csv");
+        let install_notes = write_fixture(&dir, "ultra-205.md", b"install");
+        let license_inventory = write_fixture(&dir, "license-inventory.md", b"license");
+        let provenance_manifest = write_fixture(&dir, "provenance-manifest.md", b"provenance");
+        let request = PackageRequest {
+            board: BoardId::Ultra205,
+            firmware_elf: package_elf.clone(),
+            firmware_ota_image: firmware_ota_image.clone(),
+            www_bin: www_bin.clone(),
+            partition_table: partition_table.clone(),
+            otadata_initial: otadata_initial.clone(),
+            default_flash_image: package_elf,
+            out_dir: dir_path(&dir),
+            manifest: dir_path(&dir).join("bitaxe-ultra205-package.json"),
+            factory_image: Some(factory_image),
+            release_name: "bitaxe-ultra205".to_owned(),
+            install_notes,
+            license_inventory,
+            provenance_manifest,
+            otadata_source: "generated-erased-flash".to_owned(),
+        };
+        let environment = FakePackageEnvironment;
+
+        // Act
+        let manifest = build_manifest(&request, &environment).expect("manifest");
+
+        // Assert
+        assert_eq!(manifest.schema_version, 2);
+        assert_eq!(manifest.release_name, "bitaxe-ultra205");
+        assert_eq!(manifest.default_flash_image, DEFAULT_ELF_NAME);
+        assert_eq!(manifest.source_commit, "source-commit");
+        assert_eq!(manifest.reference_commit, EXPECTED_REFERENCE_COMMIT);
+        assert_eq!(
+            manifest.image_metadata.esp_idf_version,
+            crate::ESP_IDF_VERSION
+        );
+        assert_eq!(manifest.image_metadata.rust_target, RUST_TARGET);
+        assert_eq!(manifest.install_notes.path, "ultra-205.md");
+        assert_eq!(manifest.license_inventory, "license-inventory.md");
+        assert_eq!(manifest.provenance_manifest, "provenance-manifest.md");
+        assert_eq!(manifest.otadata_source, "generated-erased-flash");
+        assert_artifact(
+            &manifest,
+            ArtifactKind::FirmwareElf,
+            DEFAULT_ELF_NAME,
+            UNAVAILABLE,
+        );
+        assert_artifact(
+            &manifest,
+            ArtifactKind::FirmwareOtaImage,
+            "esp-miner.bin",
+            "0x10000",
+        );
+        assert_artifact(
+            &manifest,
+            ArtifactKind::WwwSpiffsImage,
+            "www.bin",
+            "0x410000",
+        );
+        assert_artifact(
+            &manifest,
+            ArtifactKind::FactoryMergedImage,
+            FACTORY_IMAGE_NAME,
+            "0x0",
+        );
+        assert_artifact(
+            &manifest,
+            ArtifactKind::PartitionTable,
+            "partitions-ultra205.csv",
+            UNAVAILABLE,
+        );
+        assert_artifact(
+            &manifest,
+            ArtifactKind::OtadataInitial,
+            "otadata-initial.bin",
+            "0xf10000",
+        );
+    }
+
+    fn write_fixture(dir: &TempDir, file_name: &str, contents: &[u8]) -> Utf8PathBuf {
+        let path = dir_path(dir).join(file_name);
+        std::fs::write(path.as_std_path(), contents).expect("write fixture");
+        path
+    }
+
+    fn dir_path(dir: &TempDir) -> Utf8PathBuf {
+        Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).expect("utf8 path")
+    }
+
+    fn assert_artifact(manifest: &PackageManifestV2, kind: ArtifactKind, path: &str, offset: &str) {
+        let artifact = manifest
+            .artifacts
+            .iter()
+            .find(|artifact| artifact.kind == kind)
+            .expect("artifact kind");
+        assert_eq!(artifact.path, path);
+        assert_eq!(artifact.offset, offset);
+        assert_eq!(artifact.sha256.len(), 64);
+    }
+
+    #[derive(Debug)]
+    struct FakePackageEnvironment;
+
+    impl PackageEnvironment for FakePackageEnvironment {
+        fn run_reference_guard(&self) -> Result<()> {
+            Ok(())
+        }
+
+        fn firmware_commit(&self) -> Result<String> {
+            Ok("source-commit".to_owned())
+        }
+
+        fn reference_commit(&self) -> Result<String> {
+            Ok(EXPECTED_REFERENCE_COMMIT.to_owned())
+        }
+
+        fn maybe_tool_version(&self, tool: &str) -> Option<String> {
+            Some(format!("{tool} 1.0.0"))
+        }
     }
 }
