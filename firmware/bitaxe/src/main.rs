@@ -9,6 +9,7 @@ mod display_adapter;
 mod filesystem;
 mod http_api;
 mod log_buffer;
+mod ota_update;
 mod runtime_snapshot;
 mod safety_adapter;
 mod settings_adapter;

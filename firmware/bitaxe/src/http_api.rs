@@ -9,13 +9,14 @@ use bitaxe_api::{
     asic_settings_from_snapshot, block_found_dismiss_plan, empty_statistics_response,
     execute_settings_persistence_plan, identify_plan, log_download_headers,
     origin_gate_from_header, pause_mining_plan, phase05_routes, plan_http_access,
-    plan_settings_patch_body, plan_settings_patch_body_size, plan_websocket_upgrade, restart_plan,
-    resume_mining_plan, scoreboard_response, system_info_from_snapshot, unknown_api_route_response,
-    unsupported_update_response, CommandEffect, CommandPlan, HttpAccessDecision,
-    IdentifyModeEffect, OriginGate, PublicHttpResponse, RouteAccessInput,
-    SettingsPatchBodyDecision, SettingsPatchPublicError, SettingsPersistenceEffect,
-    SettingsPersistencePlan, SettingsPublicResponse, WebSocketRouteKind, WebSocketUpgradeDecision,
-    LIVE_TELEMETRY_CADENCE_MS,
+    plan_settings_patch_body, plan_settings_patch_body_size, plan_update_request,
+    plan_websocket_upgrade, restart_plan, resume_mining_plan, scoreboard_response,
+    system_info_from_snapshot, unknown_api_route_response, unsupported_update_response,
+    CommandEffect, CommandPlan, HttpAccessDecision, IdentifyModeEffect, OriginGate,
+    PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchPublicError,
+    SettingsPersistenceEffect, SettingsPersistencePlan, SettingsPublicResponse,
+    UpdateRequestDecision, UpdateRequestInput, UpdateRouteKind, WebSocketRouteKind,
+    WebSocketUpgradeDecision, LIVE_TELEMETRY_CADENCE_MS,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
@@ -25,6 +26,7 @@ use esp_idf_svc::sys;
 use serde::Serialize;
 
 use crate::filesystem::FilesystemStatus;
+use crate::ota_update::{FirmwareOtaApplyResult, FirmwareOtaStatus};
 use crate::runtime_snapshot::{
     apply_block_found_dismiss_command, apply_identify_mode_command, apply_mining_activity_command,
     block_found_notification_state, collect_api_snapshot, identify_mode, mining_runtime_state,
@@ -170,7 +172,7 @@ fn register_http_handlers(
         Method::Post,
         handle_block_found_dismiss,
     )?;
-    server.fn_handler("/api/system/OTA", Method::Post, handle_unsupported_update)?;
+    server.fn_handler("/api/system/OTA", Method::Post, handle_firmware_ota_update)?;
     server.fn_handler(
         "/api/system/OTAWWW",
         Method::Post,
@@ -381,6 +383,55 @@ fn handle_unsupported_update<'request, 'connection>(
     handle_with_access_gate(request, |request| {
         send_public_response(request, unsupported_update_response())
     })
+}
+
+fn handle_firmware_ota_update<'request, 'connection>(
+    mut request: ApiRequest<'request, 'connection>,
+) -> anyhow::Result<()> {
+    let decision = plan_update_request(UpdateRequestInput {
+        route: UpdateRouteKind::FirmwareOta,
+        access: access_input(&mut request),
+    });
+
+    let plan = match decision {
+        UpdateRequestDecision::AcceptFirmwareOta(plan) => plan,
+        UpdateRequestDecision::Reject(response) => return send_public_response(request, response),
+        UpdateRequestDecision::OtaWwwGap(gap) => {
+            return send_public_response(request, gap.public_response);
+        }
+    };
+
+    debug_assert_eq!(
+        plan.success_response.body,
+        "Firmware update complete, rebooting now!"
+    );
+    debug_assert_eq!(
+        plan.validation_error_response.body,
+        "Validation / Activation Error"
+    );
+
+    let raw_request = (*request.connection()).handle();
+    let result = crate::ota_update::stream_firmware_ota(raw_request, record_firmware_ota_status);
+    match result {
+        FirmwareOtaApplyResult::Complete { bytes_written } => {
+            log::info!("firmware_ota_update=complete bytes_written={bytes_written}");
+            send_public_response(request, plan.success_response)?;
+            schedule_firmware_ota_restart();
+            Ok(())
+        }
+        FirmwareOtaApplyResult::ProtocolError { code } => {
+            log::warn!("firmware_ota_update=protocol_error code={code}");
+            send_text_error(request, 500, "Protocol Error")
+        }
+        FirmwareOtaApplyResult::WriteError { esp_err } => {
+            log::warn!("firmware_ota_update=write_error esp_err={esp_err}");
+            send_text_error(request, 500, "Write Error")
+        }
+        FirmwareOtaApplyResult::ValidationError { esp_err } => {
+            log::warn!("firmware_ota_update=validation_error esp_err={esp_err}");
+            send_public_response(request, plan.validation_error_response)
+        }
+    }
 }
 
 fn handle_unknown_api_route<'request, 'connection>(
@@ -829,6 +880,27 @@ fn apply_command_effect(effect: CommandEffect) {
                 effect.next_state.show_new_block
             );
         }
+    }
+}
+
+fn record_firmware_ota_status(status: FirmwareOtaStatus) {
+    let text = status.status_text();
+    log::info!("firmware_ota_status={text}");
+    log_buffer::append_runtime_log_line(&format!("firmware_ota_status={text}"));
+}
+
+fn schedule_firmware_ota_restart() {
+    let result = std::thread::Builder::new()
+        .name("firmware-ota-restart".to_owned())
+        .spawn(|| {
+            std::thread::sleep(Duration::from_millis(1000));
+            log::info!("firmware_ota_update=restart_now");
+            unsafe { sys::esp_restart() };
+        });
+
+    if let Err(error) = result {
+        log::warn!("firmware_ota_update=restart_thread_failed error={error}");
+        unsafe { sys::esp_restart() };
     }
 }
 
