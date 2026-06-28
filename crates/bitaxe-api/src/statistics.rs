@@ -8,6 +8,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+use crate::mining::mining_state_from_runtime;
+use crate::ApiSnapshot;
+
 const TIMESTAMP_LABEL: &str = "timestamp";
 
 const ALL_COLUMNS: [StatisticsColumn; 18] = [
@@ -86,6 +89,36 @@ impl Default for StatisticsSample {
             wifi_rssi: 0,
             free_heap: 0,
             response_time: 0.0,
+        }
+    }
+}
+
+impl StatisticsSample {
+    #[must_use]
+    pub fn from_snapshot(snapshot: &ApiSnapshot, timestamp: u64, response_time: f64) -> Self {
+        let mining = mining_state_from_runtime(&snapshot.mining);
+        let safe_telemetry = snapshot.safe_telemetry;
+
+        Self {
+            timestamp,
+            hashrate: mining.hash_rate,
+            hashrate_1m: mining.hash_rate_1m,
+            hashrate_10m: mining.hash_rate_10m,
+            hashrate_1h: mining.hash_rate_1h,
+            error_percentage: 0.0,
+            asic_temp: safe_telemetry.chip_temp_celsius,
+            asic_temp2: safe_telemetry.chip_temp2_celsius,
+            vr_temp: safe_telemetry.vr_temp_celsius,
+            asic_voltage: safe_telemetry.core_voltage_actual_mv.round() as i16,
+            voltage: safe_telemetry.voltage_volts,
+            power: safe_telemetry.power_watts,
+            current: safe_telemetry.current_amps,
+            fan_speed: f64::from(safe_telemetry.fan_speed_percent),
+            fan_rpm: safe_telemetry.fan_rpm,
+            fan2_rpm: safe_telemetry.fan2_rpm,
+            wifi_rssi: clamp_wifi_rssi(safe_telemetry.wifi_rssi_dbm),
+            free_heap: snapshot.platform.free_heap.min(u64::from(u32::MAX)) as u32,
+            response_time,
         }
     }
 }
@@ -230,11 +263,17 @@ fn sample_row(sample: &StatisticsSample, columns: &[StatisticsColumn]) -> Vec<Va
     row
 }
 
+fn clamp_wifi_rssi(value: i16) -> i8 {
+    value.clamp(i16::from(i8::MIN), i16::from(i8::MAX)) as i8
+}
+
 #[cfg(test)]
 mod tests {
+    use bitaxe_safety::evidence::SafetyCriticalEvidence;
     use serde_json::{json, Value};
 
     use crate::statistics::{empty_statistics_response, statistics_response, StatisticsSample};
+    use crate::{ApiSnapshot, SafeTelemetrySnapshot, SafetyTelemetryReport, SafetyTelemetryStatus};
 
     #[test]
     fn statistics_response_applies_optional_columns_and_keeps_timestamp_last() {
@@ -276,5 +315,67 @@ mod tests {
         // Assert
         assert_eq!(actual, expected);
         assert_eq!(actual["statistics"], json!([]));
+    }
+
+    #[test]
+    fn safety_telemetry_projection_statistics_sample_uses_safe_telemetry_values() {
+        // Arrange
+        let mut snapshot = ApiSnapshot::safe_ultra_205();
+        snapshot.platform.free_heap = 4_096;
+        snapshot.safe_telemetry = SafeTelemetrySnapshot::from_report(fresh_report());
+
+        // Act
+        let sample = StatisticsSample::from_snapshot(&snapshot, 123, 7.5);
+
+        // Assert
+        assert_eq!(sample.timestamp, 123);
+        assert_eq!(sample.asic_temp, 56.0);
+        assert_eq!(sample.vr_temp, 45.0);
+        assert_eq!(sample.asic_voltage, 1_198);
+        assert_eq!(sample.voltage, 5.1);
+        assert_eq!(sample.power, 11.5);
+        assert_eq!(sample.current, 2.25);
+        assert_eq!(sample.fan_speed, 70.0);
+        assert_eq!(sample.fan_rpm, 3_200);
+        assert_eq!(sample.wifi_rssi, -50);
+        assert_eq!(sample.free_heap, 4_096);
+        assert_eq!(sample.response_time, 7.5);
+    }
+
+    #[test]
+    fn safety_telemetry_projection_statistics_sample_keeps_unavailable_numeric_compatibility() {
+        // Arrange
+        let snapshot = ApiSnapshot::safe_ultra_205();
+
+        // Act
+        let sample = StatisticsSample::from_snapshot(&snapshot, 123, 7.5);
+
+        // Assert
+        assert_eq!(snapshot.safe_telemetry.power_watts, 0.0);
+        assert_eq!(sample.asic_temp, 0.0);
+        assert_eq!(sample.power, 0.0);
+        assert_eq!(sample.voltage, 0.0);
+        assert_eq!(sample.current, 0.0);
+        assert_eq!(sample.fan_rpm, 0);
+    }
+
+    fn fresh_report() -> SafetyTelemetryReport {
+        SafetyTelemetryReport {
+            status: SafetyTelemetryStatus::Fresh,
+            evidence: SafetyCriticalEvidence::hardware_smoke("phase-06-statistics-telemetry-smoke"),
+            power_watts: 11.5,
+            voltage_volts: 5.1,
+            current_amps: 2.25,
+            chip_temp_celsius: 56.0,
+            chip_temp2_celsius: 57.0,
+            vr_temp_celsius: 45.0,
+            core_voltage_actual_mv: 1_198.0,
+            actual_frequency_mhz: 485.0,
+            expected_hashrate_ghs: 525.0,
+            fan_speed_percent: 70,
+            fan_rpm: 3_200,
+            fan2_rpm: 0,
+            wifi_rssi_dbm: -50,
+        }
     }
 }

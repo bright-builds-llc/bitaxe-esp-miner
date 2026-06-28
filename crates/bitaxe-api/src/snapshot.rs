@@ -8,6 +8,7 @@ use bitaxe_asic::bm1366::observation::AsicInitStatus;
 use bitaxe_config::{
     ultra_205_catalog_entry, ultra_205_defaults, BoardCatalogEntry, Ultra205Defaults,
 };
+use bitaxe_safety::evidence::SafetyCriticalEvidence;
 use bitaxe_stratum::v1::state::MiningRuntimeState;
 
 use crate::BlockFoundNotificationState;
@@ -26,8 +27,8 @@ pub struct ApiSnapshot {
 
 impl ApiSnapshot {
     /// Returns a safe Ultra 205 snapshot for contract tests and early firmware
-    /// wiring. Hardware-control telemetry is deliberately zeroed until Phase 6
-    /// owns live voltage, fan, thermal, and power evidence.
+    /// wiring. Hardware-control telemetry is explicit unavailable status until
+    /// live voltage, fan, thermal, and power evidence exists.
     #[must_use]
     pub fn safe_ultra_205() -> Self {
         Self {
@@ -40,7 +41,7 @@ impl ApiSnapshot {
             },
             asic: AsicSnapshot::chip_detect_only(),
             platform: PlatformSnapshot::safe_ultra_205(),
-            safe_telemetry: SafeTelemetrySnapshot::unavailable_until_phase_6(),
+            safe_telemetry: SafeTelemetrySnapshot::unavailable("safety_telemetry_unavailable"),
         }
     }
 }
@@ -143,9 +144,40 @@ impl PlatformSnapshot {
     }
 }
 
+/// Explicit status for Phase 6-owned hardware-control telemetry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SafetyTelemetryStatus {
+    Fresh,
+    Stale { reason: &'static str },
+    Fault { reason: &'static str },
+    Unavailable { reason: &'static str },
+}
+
+/// Adapter-owned safety telemetry before API numeric projection.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SafetyTelemetryReport {
+    pub status: SafetyTelemetryStatus,
+    pub evidence: SafetyCriticalEvidence,
+    pub power_watts: f64,
+    pub voltage_volts: f64,
+    pub current_amps: f64,
+    pub chip_temp_celsius: f64,
+    pub chip_temp2_celsius: f64,
+    pub vr_temp_celsius: f64,
+    pub core_voltage_actual_mv: f64,
+    pub actual_frequency_mhz: f64,
+    pub expected_hashrate_ghs: f64,
+    pub fan_speed_percent: u16,
+    pub fan_rpm: u16,
+    pub fan2_rpm: u16,
+    pub wifi_rssi_dbm: i16,
+}
+
 /// Explicit safe values for Phase 6-owned hardware-control telemetry.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SafeTelemetrySnapshot {
+    pub status: SafetyTelemetryStatus,
+    pub evidence: SafetyCriticalEvidence,
     pub power_watts: f64,
     pub voltage_volts: f64,
     pub current_amps: f64,
@@ -162,10 +194,59 @@ pub struct SafeTelemetrySnapshot {
 }
 
 impl SafeTelemetrySnapshot {
-    /// Returns safe zeroed values until Phase 6 records hardware evidence.
+    /// Returns safe zero-compatible values with a visible unavailable reason.
     #[must_use]
-    pub const fn unavailable_until_phase_6() -> Self {
+    pub const fn unavailable(reason: &'static str) -> Self {
         Self {
+            status: SafetyTelemetryStatus::Unavailable { reason },
+            evidence: SafetyCriticalEvidence::Missing,
+            ..Self::zero_compatible()
+        }
+    }
+
+    /// Projects a report into upstream-compatible numeric fields.
+    #[must_use]
+    pub const fn from_report(report: SafetyTelemetryReport) -> Self {
+        if matches!(report.status, SafetyTelemetryStatus::Fresh)
+            && report.evidence.is_hardware_verified()
+        {
+            return Self {
+                status: SafetyTelemetryStatus::Fresh,
+                evidence: report.evidence,
+                power_watts: report.power_watts,
+                voltage_volts: report.voltage_volts,
+                current_amps: report.current_amps,
+                chip_temp_celsius: report.chip_temp_celsius,
+                chip_temp2_celsius: report.chip_temp2_celsius,
+                vr_temp_celsius: report.vr_temp_celsius,
+                core_voltage_actual_mv: report.core_voltage_actual_mv,
+                actual_frequency_mhz: report.actual_frequency_mhz,
+                expected_hashrate_ghs: report.expected_hashrate_ghs,
+                fan_speed_percent: report.fan_speed_percent,
+                fan_rpm: report.fan_rpm,
+                fan2_rpm: report.fan2_rpm,
+                wifi_rssi_dbm: report.wifi_rssi_dbm,
+            };
+        }
+
+        let mut snapshot = Self::zero_compatible();
+        snapshot.status = if matches!(report.status, SafetyTelemetryStatus::Fresh) {
+            SafetyTelemetryStatus::Unavailable {
+                reason: "safety_telemetry_unverified",
+            }
+        } else {
+            report.status
+        };
+        snapshot.evidence = report.evidence;
+        snapshot
+    }
+
+    const fn zero_compatible() -> Self {
+        Self {
+            status: SafetyTelemetryStatus::Unavailable {
+                reason: "safety_telemetry_unavailable",
+            },
+            evidence: SafetyCriticalEvidence::Missing,
             power_watts: 0.0,
             voltage_volts: 0.0,
             current_amps: 0.0,
@@ -185,7 +266,12 @@ impl SafeTelemetrySnapshot {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ApiSnapshot, ConfigSnapshot};
+    use bitaxe_safety::evidence::SafetyCriticalEvidence;
+
+    use crate::{
+        ApiSnapshot, ConfigSnapshot, SafeTelemetrySnapshot, SafetyTelemetryReport,
+        SafetyTelemetryStatus,
+    };
 
     #[test]
     fn api_snapshot_contains_typed_input_fields_without_platform_sdk_dependencies() {
@@ -222,5 +308,128 @@ mod tests {
         assert_eq!(defaults.board_version(), "205");
         assert_eq!(defaults.asic_frequency_mhz(), 485);
         assert_eq!(defaults.asic_voltage_mv(), 1200);
+    }
+
+    #[test]
+    fn safety_telemetry_model_safe_ultra_205_is_explicit_unavailable() {
+        // Arrange
+        let snapshot = ApiSnapshot::safe_ultra_205();
+
+        // Act
+        let telemetry = snapshot.safe_telemetry;
+
+        // Assert
+        assert_eq!(
+            telemetry.status,
+            SafetyTelemetryStatus::Unavailable {
+                reason: "safety_telemetry_unavailable"
+            }
+        );
+        assert_eq!(telemetry.evidence, SafetyCriticalEvidence::Missing);
+        assert_eq!(telemetry.power_watts, 0.0);
+        assert_eq!(telemetry.fan_rpm, 0);
+    }
+
+    #[test]
+    fn safety_telemetry_model_fresh_hardware_report_preserves_values_and_evidence() {
+        // Arrange
+        let report = fresh_report(SafetyCriticalEvidence::hardware_smoke(
+            "phase-06-api-telemetry-smoke",
+        ));
+
+        // Act
+        let snapshot = SafeTelemetrySnapshot::from_report(report);
+
+        // Assert
+        assert_eq!(snapshot.status, SafetyTelemetryStatus::Fresh);
+        assert_eq!(snapshot.evidence, report.evidence);
+        assert_eq!(snapshot.power_watts, 11.5);
+        assert_eq!(snapshot.voltage_volts, 5.1);
+        assert_eq!(snapshot.current_amps, 2.25);
+        assert_eq!(snapshot.chip_temp_celsius, 56.0);
+        assert_eq!(snapshot.fan_rpm, 3_200);
+    }
+
+    #[test]
+    fn safety_telemetry_model_d17_stale_fault_unavailable_zero_numeric_projection() {
+        // Arrange
+        let stale = SafetyTelemetryReport {
+            status: SafetyTelemetryStatus::Stale {
+                reason: "power_sample_stale",
+            },
+            ..fresh_report(SafetyCriticalEvidence::hardware_smoke(
+                "phase-06-api-telemetry-smoke",
+            ))
+        };
+        let fault = SafetyTelemetryReport {
+            status: SafetyTelemetryStatus::Fault {
+                reason: "thermal_reading_invalid",
+            },
+            ..fresh_report(SafetyCriticalEvidence::hardware_smoke(
+                "phase-06-api-telemetry-smoke",
+            ))
+        };
+        let unavailable = SafetyTelemetryReport {
+            status: SafetyTelemetryStatus::Unavailable {
+                reason: "safety_telemetry_unavailable",
+            },
+            ..fresh_report(SafetyCriticalEvidence::Missing)
+        };
+
+        // Act
+        let projections = [
+            SafeTelemetrySnapshot::from_report(stale),
+            SafeTelemetrySnapshot::from_report(fault),
+            SafeTelemetrySnapshot::from_report(unavailable),
+        ];
+
+        // Assert
+        for projection in projections {
+            assert_eq!(projection.power_watts, 0.0);
+            assert_eq!(projection.voltage_volts, 0.0);
+            assert_eq!(projection.current_amps, 0.0);
+            assert_eq!(projection.fan_rpm, 0);
+            assert_ne!(projection.status, SafetyTelemetryStatus::Fresh);
+        }
+    }
+
+    #[test]
+    fn safety_telemetry_model_d18_fresh_unit_evidence_does_not_claim_hardware_values() {
+        // Arrange
+        let report = fresh_report(SafetyCriticalEvidence::implemented_not_verified("unit"));
+
+        // Act
+        let snapshot = SafeTelemetrySnapshot::from_report(report);
+
+        // Assert
+        assert_eq!(
+            snapshot.status,
+            SafetyTelemetryStatus::Unavailable {
+                reason: "safety_telemetry_unverified"
+            }
+        );
+        assert_eq!(snapshot.evidence, report.evidence);
+        assert_eq!(snapshot.power_watts, 0.0);
+        assert_eq!(snapshot.chip_temp_celsius, 0.0);
+    }
+
+    fn fresh_report(evidence: SafetyCriticalEvidence) -> SafetyTelemetryReport {
+        SafetyTelemetryReport {
+            status: SafetyTelemetryStatus::Fresh,
+            evidence,
+            power_watts: 11.5,
+            voltage_volts: 5.1,
+            current_amps: 2.25,
+            chip_temp_celsius: 56.0,
+            chip_temp2_celsius: 57.0,
+            vr_temp_celsius: 45.0,
+            core_voltage_actual_mv: 1_198.0,
+            actual_frequency_mhz: 485.0,
+            expected_hashrate_ghs: 525.0,
+            fan_speed_percent: 70,
+            fan_rpm: 3_200,
+            fan2_rpm: 0,
+            wifi_rssi_dbm: -50,
+        }
     }
 }

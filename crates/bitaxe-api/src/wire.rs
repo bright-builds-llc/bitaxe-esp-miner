@@ -161,7 +161,7 @@ impl SystemInfoWire {
     #[must_use]
     pub fn from_snapshot(snapshot: &ApiSnapshot) -> Self {
         let config = snapshot.config;
-        let telemetry = snapshot.safe_telemetry;
+        let safe_telemetry = snapshot.safe_telemetry;
         let mining_state = mining_state_from_runtime(&snapshot.mining);
         let platform = &snapshot.platform;
 
@@ -172,25 +172,25 @@ impl SystemInfoWire {
             hash_rate_1m: mining_state.hash_rate_1m,
             hash_rate_10m: mining_state.hash_rate_10m,
             hash_rate_1h: mining_state.hash_rate_1h,
-            fan_speed: telemetry.fan_speed_percent,
-            fan_rpm: telemetry.fan_rpm,
-            fan2_rpm: telemetry.fan2_rpm,
+            fan_speed: safe_telemetry.fan_speed_percent,
+            fan_rpm: safe_telemetry.fan_rpm,
+            fan2_rpm: safe_telemetry.fan2_rpm,
             mining_paused: mining_state.mining_paused,
             ap_enabled: numeric_bool(platform.ap_enabled),
             auto_fan_speed: numeric_bool(config.auto_fan_speed),
             show_new_block: snapshot.block_found.show_new_block,
             block_found: snapshot.block_found.block_found,
             frequency: config.asic_frequency_mhz,
-            actual_frequency: telemetry.actual_frequency_mhz,
+            actual_frequency: safe_telemetry.actual_frequency_mhz,
             core_voltage: config.asic_voltage_mv,
-            core_voltage_actual: telemetry.core_voltage_actual_mv,
-            power: telemetry.power_watts,
-            voltage: telemetry.voltage_volts,
-            current: telemetry.current_amps,
-            temp: telemetry.chip_temp_celsius,
-            temp2: telemetry.chip_temp2_celsius,
-            vr_temp: telemetry.vr_temp_celsius,
-            expected_hashrate: telemetry.expected_hashrate_ghs,
+            core_voltage_actual: safe_telemetry.core_voltage_actual_mv,
+            power: safe_telemetry.power_watts,
+            voltage: safe_telemetry.voltage_volts,
+            current: safe_telemetry.current_amps,
+            temp: safe_telemetry.chip_temp_celsius,
+            temp2: safe_telemetry.chip_temp2_celsius,
+            vr_temp: safe_telemetry.vr_temp_celsius,
+            expected_hashrate: safe_telemetry.expected_hashrate_ghs,
             shares_accepted: mining_state.shares_accepted,
             shares_rejected: mining_state.shares_rejected,
             shares_rejected_reasons: mining_state.shares_rejected_reasons,
@@ -207,7 +207,7 @@ impl SystemInfoWire {
             nominal_voltage: 0,
             small_core_count: snapshot.catalog.asic().small_core_count(),
             is_psram_available: numeric_bool(platform.psram_available),
-            wifi_rssi: telemetry.wifi_rssi_dbm,
+            wifi_rssi: safe_telemetry.wifi_rssi_dbm,
             wifi_status: platform.wifi_status.clone(),
             version: platform.version.clone(),
             axe_os_version: platform.axe_os_version.clone(),
@@ -291,10 +291,14 @@ fn swarm_color_for_family(family: &str) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    use bitaxe_safety::evidence::SafetyCriticalEvidence;
     use serde_json::{json, Value};
 
     use super::require_wire_keys;
-    use crate::{ApiSnapshot, SystemAsicWire, SystemInfoWire};
+    use crate::{
+        ApiSnapshot, SafeTelemetrySnapshot, SafetyTelemetryReport, SafetyTelemetryStatus,
+        SystemAsicWire, SystemInfoWire,
+    };
 
     #[test]
     fn system_info_wire_serializes_upstream_field_names_and_encodings() {
@@ -358,6 +362,46 @@ mod tests {
         assert_eq!(wire.frequency, 500.0);
         assert_eq!(wire.core_voltage, 1_250);
         assert_eq!(wire.auto_fan_speed, 0);
+    }
+
+    #[test]
+    fn safety_telemetry_projection_system_info_reads_safe_telemetry_values() {
+        // Arrange
+        let mut snapshot = ApiSnapshot::safe_ultra_205();
+        snapshot.safe_telemetry = SafeTelemetrySnapshot::from_report(SafetyTelemetryReport {
+            status: SafetyTelemetryStatus::Fresh,
+            evidence: SafetyCriticalEvidence::hardware_smoke(
+                "phase-06-system-info-telemetry-smoke",
+            ),
+            power_watts: 11.5,
+            voltage_volts: 5.1,
+            current_amps: 2.25,
+            chip_temp_celsius: 56.0,
+            chip_temp2_celsius: 57.0,
+            vr_temp_celsius: 45.0,
+            core_voltage_actual_mv: 1_198.0,
+            actual_frequency_mhz: 485.0,
+            expected_hashrate_ghs: 525.0,
+            fan_speed_percent: 70,
+            fan_rpm: 3_200,
+            fan2_rpm: 0,
+            wifi_rssi_dbm: -50,
+        });
+
+        // Act
+        let wire = SystemInfoWire::from_snapshot(&snapshot);
+
+        // Assert
+        assert_eq!(wire.power, 11.5);
+        assert_eq!(wire.voltage, 5.1);
+        assert_eq!(wire.current, 2.25);
+        assert_eq!(wire.fan_speed, 70);
+        assert_eq!(wire.fan_rpm, 3_200);
+        assert_eq!(wire.temp, 56.0);
+        assert_eq!(wire.vr_temp, 45.0);
+        assert_eq!(wire.core_voltage_actual, 1_198.0);
+        assert_eq!(wire.expected_hashrate, 525.0);
+        assert_eq!(wire.wifi_rssi, -50);
     }
 
     #[test]

@@ -26,6 +26,49 @@
       }
     }
   },
+  "safety_telemetry_cases": [
+    {
+      "name": "fresh",
+      "status": "Fresh",
+      "evidence": "hardware-smoke",
+      "power": 11.5,
+      "voltage": 5.1,
+      "current": 2.25,
+      "fanrpm": 3200,
+      "temp": 56.0,
+      "vrTemp": 45.0
+    },
+    {
+      "name": "stale",
+      "status": { "Stale": { "reason": "power_sample_stale" } },
+      "power": 0.0,
+      "voltage": 0.0,
+      "current": 0.0,
+      "fanrpm": 0,
+      "temp": 0.0,
+      "vrTemp": 0.0
+    },
+    {
+      "name": "fault",
+      "status": { "Fault": { "reason": "thermal_reading_invalid" } },
+      "power": 0.0,
+      "voltage": 0.0,
+      "current": 0.0,
+      "fanrpm": 0,
+      "temp": 0.0,
+      "vrTemp": 0.0
+    },
+    {
+      "name": "unavailable",
+      "status": { "Unavailable": { "reason": "safety_telemetry_unavailable" } },
+      "power": 0.0,
+      "voltage": 0.0,
+      "current": 0.0,
+      "fanrpm": 0,
+      "temp": 0.0,
+      "vrTemp": 0.0
+    }
+  ],
   "expected_connect_frame": {
     "event": "update",
     "data": {

@@ -50,6 +50,7 @@ pub use settings::{
 };
 pub use snapshot::{
     ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, SafeTelemetrySnapshot,
+    SafetyTelemetryReport, SafetyTelemetryStatus,
 };
 pub use statistics::{
     empty_statistics_response, statistics_response, StatisticsSample, StatisticsWire,
