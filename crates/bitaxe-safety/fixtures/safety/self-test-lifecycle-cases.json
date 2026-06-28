@@ -1,0 +1,22 @@
+{
+  "metadata": {
+    "checklist_ids": ["SELF-001", "SAFE-05", "SAFE-08", "SAFE-09"],
+    "source_file": "reference/esp-miner/main/self_test/self_test.c",
+    "source_behavior": "Factory flag, boot button, manual API, diagnostic work, fake nonce, and mock Stratum self-test paths are modeled as blocked-production lifecycle decisions.",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived behavioral fixture data; not MIT source expression",
+    "derivation": "manual independent Rust fixture cases from pinned self-test lifecycle behavior"
+  },
+  "cases": [
+    { "name": "factory-start", "command": "StartFactory", "expected_state": "Running", "expected_effects": ["BlockProductionMining", "UseDiagnosticWorkOnly", "SetFactoryFlag"] },
+    { "name": "boot-button-start", "command": "StartBootButton", "expected_state": "Running", "expected_effects": ["BlockProductionMining", "UseDiagnosticWorkOnly"] },
+    { "name": "manual-start", "command": "StartManual", "expected_state": "Running", "expected_effects": ["BlockProductionMining", "UseDiagnosticWorkOnly"] },
+    { "name": "pass-clears-factory-flag", "command": "Pass", "expected_effects": ["RecordResult(true)", "ClearFactoryFlag"] },
+    { "name": "fail-records-result", "command": "Fail", "expected_effects": ["BlockProductionMining", "RecordResult(false)"] },
+    { "name": "restart", "command": "Restart", "expected_effects": ["BlockProductionMining", "RestartSelfTest"] },
+    { "name": "cancel-clears-factory-flag", "command": "Cancel", "expected_effects": ["BlockProductionMining", "ClearFactoryFlag"] },
+    { "name": "missing-evidence", "expected_reason": "self_test_hardware_evidence_missing", "expected_effects": ["BlockProductionMining"] },
+    { "name": "fake nonce injection", "source_note": "self_test_record_nonce remains diagnostic-only and cannot become production work submission" },
+    { "name": "mock Stratum work", "source_note": "mock mining.set_difficulty and mining.notify are diagnostic-only self-test inputs" }
+  ]
+}

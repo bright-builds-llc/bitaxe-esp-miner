@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "requirement_ids": ["SAFE-09"],
+    "source_files": [
+      "reference/esp-miner/main/tasks/power_management_task.c",
+      "reference/esp-miner/main/tasks/fan_controller_task.c",
+      "reference/esp-miner/main/self_test/self_test.c"
+    ],
+    "source_behavior": "Upstream task loops include 100 ms poll/yield patterns; Rust safety work is represented as bounded pure steps instead of blocking loops.",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived behavioral fixture data; not MIT source expression",
+    "derivation": "manual independent Rust fixture cases from pinned watchdog and task-loop behavior"
+  },
+  "cases": [
+    { "kind": "Power", "elapsed_ms": 25, "consecutive_steps": 1, "expected_decision": "Continue" },
+    { "kind": "Thermal", "elapsed_ms": 26, "consecutive_steps": 1, "expected_decision": "ResetOrFeedWatchdog", "reason": "step_budget_exceeded" },
+    { "kind": "Fan", "elapsed_ms": 25, "consecutive_steps": 4, "expected_decision": "YieldNow", "reason": "yield_interval_reached" },
+    { "kind": "SelfTest", "elapsed_ms": 1, "consecutive_steps": 4, "expected_decision": "YieldNow", "reason": "consecutive_step_limit_reached" },
+    { "kind": "Telemetry", "elapsed_ms": 5, "consecutive_steps": 2, "expected_decision": "Continue" }
+  ]
+}
