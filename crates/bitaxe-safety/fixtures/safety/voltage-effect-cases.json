@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "checklist_ids": ["PWR-003", "PWR-005", "SAFE-01", "SAFE-08"],
+    "source_files": [
+      "reference/esp-miner/main/power/DS4432U.c",
+      "reference/esp-miner/main/power/vcore.c",
+      "reference/esp-miner/main/tasks/power_management_task.c"
+    ],
+    "source_behavior": "Ultra 205 DS4432U voltage writes are safety-sensitive and require valid setpoints, fresh power observations, board capabilities, and hardware evidence.",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived behavioral fixture data; not MIT source expression",
+    "derivation": "manual independent Rust fixture cases; no DS4432U transfer formula or firmware I2C write is implemented"
+  },
+  "cases": [
+    {
+      "name": "supported-observe-only",
+      "requested_mv": 1200,
+      "evidence": "unit",
+      "actuation_mode": "observe-only",
+      "expected_plan": "NoWrite",
+      "expected_reason": "observe_only_hardware_evidence_missing"
+    },
+    {
+      "name": "invalid-setpoint",
+      "requested_mv": 999,
+      "expected_plan": "SuppressWrite",
+      "expected_reason": "invalid_voltage_setpoint"
+    },
+    {
+      "name": "stale-observation",
+      "requested_mv": 1200,
+      "expected_plan": "SuppressWrite",
+      "expected_reason": "power_sample_stale"
+    },
+    {
+      "name": "missing-capability",
+      "requested_mv": 1200,
+      "missing_capability": "DS4432U",
+      "expected_plan": "SuppressWrite"
+    },
+    {
+      "name": "hardware-smoke-armed-write",
+      "requested_mv": 1200,
+      "evidence": "hardware-smoke",
+      "actuation_mode": "ArmedWithHardwareEvidence",
+      "expected_plan": "WriteDs4432u"
+    },
+    {
+      "name": "hardware-regression-armed-write",
+      "requested_mv": 1200,
+      "evidence": "hardware-regression",
+      "actuation_mode": "ArmedWithHardwareEvidence",
+      "expected_plan": "WriteDs4432u"
+    }
+  ]
+}

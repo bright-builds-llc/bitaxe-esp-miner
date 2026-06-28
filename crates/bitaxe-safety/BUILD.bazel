@@ -28,4 +28,7 @@ rust_test(
     name = "tests",
     crate = ":bitaxe_safety",
     compile_data = glob(["fixtures/**"], allow_empty = True),
+    deps = [
+        "@crates//:serde_json",
+    ],
 )

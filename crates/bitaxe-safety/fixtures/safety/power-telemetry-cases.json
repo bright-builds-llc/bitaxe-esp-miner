@@ -1,0 +1,57 @@
+{
+  "metadata": {
+    "checklist_ids": ["PWR-006", "SAFE-01", "SAFE-07"],
+    "source_file": "reference/esp-miner/main/power/INA260.c",
+    "source_behavior": "INA260 current, bus voltage, and power readings feed power safety classification before voltage or mining effects.",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived behavioral fixture data; not MIT source expression",
+    "derivation": "manual independent Rust fixture cases from pinned reference behavior and Phase 6 safety decisions"
+  },
+  "cases": [
+    {
+      "name": "fresh-safe",
+      "age_ms": 100,
+      "bus_voltage_volts": 5.0,
+      "current_amps": 2.0,
+      "power_watts": 10.0,
+      "board_power_target_watts": 12.0,
+      "expected_status": "Fresh"
+    },
+    {
+      "name": "stale",
+      "age_ms": 1001,
+      "expected_reason": "power_sample_stale"
+    },
+    {
+      "name": "missing",
+      "sample": null,
+      "expected_reason": "power_sample_unavailable"
+    },
+    {
+      "name": "i2c-read-failure",
+      "read_failed": true,
+      "expected_reason": "ina260_read_failed"
+    },
+    {
+      "name": "high-input-voltage",
+      "bus_voltage_volts": 5.6,
+      "expected_reason": "input_voltage_unsafe"
+    },
+    {
+      "name": "low-input-voltage",
+      "bus_voltage_volts": 4.4,
+      "expected_reason": "input_voltage_unsafe"
+    },
+    {
+      "name": "high-power",
+      "power_watts": 16.0,
+      "board_power_target_watts": 12.0,
+      "expected_reason": "power_limit_exceeded"
+    },
+    {
+      "name": "non-finite-reading",
+      "current_amps": "NaN",
+      "expected_reason": "power_reading_invalid"
+    }
+  ]
+}
