@@ -429,24 +429,28 @@ match result {
 
 All claims in this research were verified from local project files, local commands, or cited official documentation; no `[ASSUMED]` claims were intentionally used.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **How will Phase 8 establish `DEVICE_URL`?**
+   - RESOLVED: Phase 8 establishes `DEVICE_URL` in Plan 08-02 after the Phase 8 evidence ledger exists and `just detect-ultra205` has run. If detection passes, Plan 08-02 runs package/flash-monitor evidence and derives a sanitized reachable URL from boot logs, mDNS/hostname/IP output, or an operator-supplied reachable address; if detection or reachability fails, it records a concrete blocker and later live HTTP/OTA rows stay unpromoted per D-05 and D-08.
    - What we know: Phase 7 serial evidence registered HTTP routes but found no reachable URL because the firmware did not expose Wi-Fi/AP/DHCP/mDNS/IP logs. [VERIFIED: docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke.md]
    - What's unclear: Whether Phase 8 should add a minimal network setup/logging step, use a known operator-supplied address, or record HTTP evidence pending. [VERIFIED: 08-CONTEXT.md]
    - Recommendation: Plan `DEVICE_URL` discovery as Wave 1 before any HTTP/OTA row promotion. [VERIFIED: docs/release/ultra-205.md]
 
 2. **Will Phase 8 keep OTAWWW as a gap or implement full static update?**
+   - RESOLVED: Phase 8 keeps OTAWWW as an explicit REL-03 gap unless the existing evidence path unexpectedly includes whole-`www` update behavior plus recovery access and interrupted-update hardware-regression evidence. The current plans capture the public `Wrong API input` gap response and forbid checklist promotion without the D-14 evidence class; they do not add a full static-update implementation plan.
    - What we know: Current `OTAWWW` returns `Wrong API input` and is documented as REL-03 gap. [VERIFIED: crates/bitaxe-api/src/update_plan.rs] [VERIFIED: docs/release/ultra-205.md]
    - What's unclear: Whether full whole-`www` partition update can be implemented and proven safely in this phase without violating no-expansion intent. [VERIFIED: 08-CONTEXT.md]
    - Recommendation: Keep OTAWWW as explicit gap and capture the gap response unless the planner creates a dedicated recovery-safe implementation plan with hardware-regression evidence. [VERIFIED: 08-CONTEXT.md]
 
 3. **What exact destructive/fault-injection procedure should be used for interrupted update and large erase?**
+   - RESOLVED: Plan 08-03 writes a `Destructive Procedure Gate` before any destructive command, including the package manifest, factory artifact, `just flash board=205 port=<port>`, `just monitor port=<port>`, the `espflash erase-flash --chip esp32s3 --port <port> --non-interactive` command, expected recovery observations, and stop criteria. Large erase runs only after that gate passes; interrupted-update evidence runs only when a deterministic interruption point is recorded, otherwise the evidence is `not run` with the concrete blocker per D-07 and D-08.
    - What we know: Operator docs list required evidence fields and recovery sequence. [VERIFIED: docs/release/ultra-205.md]
    - What's unclear: Exact interruption point, command sequence, and acceptable timeout/recovery thresholds are not yet encoded as a runnable repo command. [VERIFIED: codebase rg]
    - Recommendation: Plan destructive checks only after packaging and non-destructive HTTP/OTA smoke pass, and record "not run" if recovery cannot be made explicit. [VERIFIED: AGENTS.md] [VERIFIED: 08-CONTEXT.md]
 
 4. **Should release artifact review rows in `docs/release/provenance-manifest.md` be closed in Phase 8?**
+   - RESOLVED: Plan 08-04 closes release artifact review rows only for artifacts present in the Phase 8 package manifest and only by citing the Phase 8 release summary and manifest/checksum evidence. It keeps publication posture conservative with `GPL-risk-reviewed release artifact` and leaves legal approval text conservative unless explicit approval evidence exists, satisfying D-10, D-11, and D-12 without inventing publication scope.
    - What we know: Current artifact review table still says "Awaiting package output evidence" for generated release artifacts. [VERIFIED: docs/release/provenance-manifest.md]
    - What's unclear: Whether Phase 8 will update the table with concrete package manifest values or add a separate release summary that cites them. [VERIFIED: 08-CONTEXT.md]
    - Recommendation: Update provenance/license docs only where Phase 8 produces concrete manifest/checksum/review evidence, and add a factual release summary if it reduces checklist ambiguity. [VERIFIED: 08-CONTEXT.md]
