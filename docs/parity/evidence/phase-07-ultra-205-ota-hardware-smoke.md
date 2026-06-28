@@ -10,8 +10,8 @@ conclusion.
 | Field | Value |
 | --- | --- |
 | board | Ultra 205 |
-| port | TBD |
-| firmware commit | TBD |
+| port | not provided |
+| firmware commit | `e32c47f167b5d695d84fe1a8cb22dc227e008b50` |
 | reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | package manifest path | `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` |
 | app OTA image path | `bazel-bin/firmware/bitaxe/esp-miner.bin` |
@@ -31,6 +31,20 @@ just monitor port=<port>
 just flash-monitor board=205 port=<port> evidence-dir=docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke
 ```
 
+Automated checkpoint commands run on 2026-06-28:
+
+- `just test` - passed.
+- `just package` - passed and produced `bitaxe-ultra205.elf`,
+  `esp-miner.bin`, `www.bin`, `otadata-initial.bin`,
+  `bitaxe-ultra205-factory.bin`, and `bitaxe-ultra205-package.json`.
+- `just parity` - passed with `validation_errors: none`.
+- `bazel run //tools/parity:report -- release-gate` - passed.
+
+Hardware commands were not run. No connected Ultra 205 serial port or hardware
+approval was provided, so `just flash`, `just monitor`, `just flash-monitor`,
+`/api/system/OTA`, `/api/system/OTAWWW`, large erase, rollback injection, and
+interrupted-update tests remain pending.
+
 Command conclusion: not run - hardware verification pending.
 
 ## Package Manifest
@@ -39,11 +53,11 @@ Record values from `bitaxe-ultra205-package.json`:
 
 | Artifact | Path | SHA-256 | Offset | Notes |
 | --- | --- | --- | --- | --- |
-| `bitaxe-ultra205.elf` | TBD | TBD | TBD | Default flash image. |
-| `esp-miner.bin` | TBD | TBD | TBD | App OTA image. |
-| `www.bin` | TBD | TBD | TBD | Static filesystem image. |
-| `otadata-initial.bin` | TBD | TBD | TBD | OTA data image. |
-| `bitaxe-ultra205-factory.bin` | TBD | TBD | TBD | Merged factory image. |
+| `bitaxe-ultra205.elf` | `bazel-bin/firmware/bitaxe/bitaxe-ultra205.elf` | `b817f9463aa962baa1d475be093a48f6fad5e1dca6308c81d30d57271036c4f5` | `Unavailable` | Default flash image. |
+| `esp-miner.bin` | `bazel-bin/firmware/bitaxe/esp-miner.bin` | `6c494c8c2b9b426940502843e923b25c4e40d70b8aa6b02a2ffbfbc9c0bc5079` | `0x10000` | App OTA image. |
+| `www.bin` | `bazel-bin/firmware/bitaxe/www.bin` | `0dbb0eba0cc4198186d0175557ec134d7829f3426faf35d8baf263ee0a7c65a0` | `0x410000` | Static filesystem image. |
+| `otadata-initial.bin` | `bazel-bin/firmware/bitaxe/otadata-initial.bin` | `7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f` | `0xf10000` | OTA data image. |
+| `bitaxe-ultra205-factory.bin` | `bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin` | `0129c5ae2cabfeb3479d168b6c6c49f114d87db4d5e292e11725514032984ea8` | `0x0` | Merged factory image. |
 
 Manifest conclusion: not run - hardware verification pending.
 
