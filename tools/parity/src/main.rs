@@ -402,6 +402,7 @@ fn validate_rows(rows: &[ChecklistRow]) -> Vec<ValidationError> {
         }
 
         errors.extend(validate_release_ota_verified_row(row));
+        errors.extend(validate_deferred_scope_verified_row(row));
     }
 
     errors
@@ -512,27 +513,49 @@ fn validate_release_ota_verified_row(row: &ChecklistRow) -> Vec<ValidationError>
 }
 
 fn validate_filesystem_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
-    if has_hardware_evidence(row) && has_live_recovery_static_smoke_note(row) {
+    let missing_terms = missing_required_terms(
+        row,
+        &[
+            RequiredTerm::new("live static", "live static"),
+            RequiredTerm::new("/assets/app.css.gz", "/assets/app.css.gz"),
+            RequiredTerm::new("missing static redirect", "missing static redirect"),
+            RequiredTerm::new("/recovery", "/recovery"),
+        ],
+    );
+
+    if has_hardware_evidence(row) && missing_terms.is_empty() {
         return Vec::new();
     }
 
     vec![ValidationError {
         id: row.id.clone(),
-        message:
-            "FS-001 verified requires live recovery/static smoke evidence; package-only evidence is insufficient"
-                .to_owned(),
+        message: format!(
+            "FS-001 verified requires hardware-smoke or hardware-regression evidence with live recovery/static smoke covering {}; package-only evidence is insufficient",
+            format_required_terms(&missing_terms)
+        ),
     }]
 }
 
 fn validate_firmware_ota_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
-    if has_hardware_evidence(row) {
+    let missing_terms = missing_required_terms(
+        row,
+        &[
+            RequiredTerm::new("valid OTA", "valid ota"),
+            RequiredTerm::new("invalid image rejection", "invalid image rejection"),
+            RequiredTerm::new("boot-validation", "boot-validation"),
+        ],
+    );
+
+    if has_hardware_evidence(row) && missing_terms.is_empty() {
         return Vec::new();
     }
 
     vec![ValidationError {
         id: row.id.clone(),
-        message: "OTA-001 verified requires hardware-smoke or hardware-regression evidence"
-            .to_owned(),
+        message: format!(
+            "OTA-001 verified requires hardware-smoke or hardware-regression evidence with {}",
+            format_required_terms(&missing_terms)
+        ),
     }]
 }
 
@@ -567,25 +590,58 @@ fn validate_release_image_verified_row(row: &ChecklistRow) -> Vec<ValidationErro
     let has_release_gate = haystack.contains("release-gate");
     let has_provenance = haystack.contains("provenance");
     let has_package_workflow = has_evidence_token(row, "workflow") && haystack.contains("package");
+    let missing_terms = missing_required_terms(
+        row,
+        &[
+            RequiredTerm::new("rollback", "rollback"),
+            RequiredTerm::new("recovery", "recovery"),
+            RequiredTerm::new("large erase", "large erase"),
+            RequiredTerm::new("failed update", "failed update"),
+            RequiredTerm::new("interrupted-update", "interrupted-update"),
+        ],
+    );
 
-    if has_release_gate && has_provenance && has_package_workflow {
+    if has_release_gate && has_provenance && has_package_workflow && missing_terms.is_empty() {
         return Vec::new();
     }
 
     vec![ValidationError {
         id: row.id.clone(),
-        message:
-            "REL-003 verified requires release-gate, provenance, and package workflow evidence"
-                .to_owned(),
+        message: format!(
+            "REL-003 verified requires release-gate, provenance, package workflow, and {} evidence",
+            format_required_terms(&missing_terms)
+        ),
     }]
 }
 
-fn has_live_recovery_static_smoke_note(row: &ChecklistRow) -> bool {
-    let haystack = row_haystack(row);
-    let has_recovery = haystack.contains("live recovery");
-    let has_static = haystack.contains("static smoke") || haystack.contains("live static");
+fn validate_deferred_scope_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    if !is_deferred_or_non_205_scope(row) || !uses_ultra_205_evidence(row) {
+        return Vec::new();
+    }
 
-    has_recovery && has_static
+    vec![ValidationError {
+        id: row.id.clone(),
+        message: "deferred or non-205 verified rows cannot reuse Ultra 205 evidence".to_owned(),
+    }]
+}
+
+fn is_deferred_or_non_205_scope(row: &ChecklistRow) -> bool {
+    let haystack = row_haystack(row);
+    let row_id = normalize(&row.id);
+
+    matches!(
+        row_id.as_str(),
+        "cfg-002" | "asic-008" | "asic-009" | "asic-010" | "str-005"
+    ) || row_id.starts_with("bap-")
+        || haystack.contains("bap")
+        || haystack.contains("all-board")
+        || haystack.contains("all board")
+        || haystack.contains("angular")
+}
+
+fn uses_ultra_205_evidence(row: &ChecklistRow) -> bool {
+    let haystack = row_haystack(row);
+    haystack.contains("ultra 205") || haystack.contains("ultra205")
 }
 
 fn has_evidence_token(row: &ChecklistRow, expected: &str) -> bool {
@@ -601,6 +657,38 @@ fn row_haystack(row: &ChecklistRow) -> String {
         row.id, row.surface, row.rust_owned_target, row.status, row.evidence, row.notes
     )
     .to_ascii_lowercase()
+}
+
+struct RequiredTerm {
+    label: &'static str,
+    needle: &'static str,
+}
+
+impl RequiredTerm {
+    const fn new(label: &'static str, needle: &'static str) -> Self {
+        Self { label, needle }
+    }
+}
+
+fn missing_required_terms(
+    row: &ChecklistRow,
+    required_terms: &[RequiredTerm],
+) -> Vec<&'static str> {
+    let haystack = row_haystack(row);
+
+    required_terms
+        .iter()
+        .filter(|term| !haystack.contains(term.needle))
+        .map(|term| term.label)
+        .collect()
+}
+
+fn format_required_terms(missing_terms: &[&'static str]) -> String {
+    if missing_terms.is_empty() {
+        return "required release evidence terms".to_owned();
+    }
+
+    missing_terms.join(", ")
 }
 
 fn normalize(value: &str) -> String {
@@ -944,6 +1032,92 @@ mod tests {
         assert_validation_error_contains(&errors, "REL-003", "release-gate");
         assert_validation_error_contains(&errors, "REL-003", "provenance");
         assert_validation_error_contains(&errors, "REL-003", "package workflow");
+    }
+
+    #[test]
+    fn release_image_verified_requires_rel08_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| REL-003 | Release image behavior | `reference/esp-miner/.github/workflows/release.yml` | `MODULE.bazel`, `tools/flash` | verified | workflow | release-gate provenance package workflow evidence is present, but only package output was reviewed. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "REL-003", "rollback");
+        assert_validation_error_contains(&errors, "REL-003", "recovery");
+        assert_validation_error_contains(&errors, "REL-003", "large erase");
+        assert_validation_error_contains(&errors, "REL-003", "failed update");
+        assert_validation_error_contains(&errors, "REL-003", "interrupted-update");
+    }
+
+    #[test]
+    fn firmware_ota_verified_requires_valid_invalid_and_boot_validation() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| OTA-001 | Firmware OTA route | `reference/esp-miner/main/http_server/http_server.c` | `firmware/bitaxe`, `tools/parity` | verified | hardware-smoke | Ultra 205 route registration and OTA compile evidence only. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "OTA-001", "valid OTA");
+        assert_validation_error_contains(&errors, "OTA-001", "invalid image rejection");
+        assert_validation_error_contains(&errors, "OTA-001", "boot-validation");
+    }
+
+    #[test]
+    fn filesystem_verified_requires_live_static_recovery_surfaces() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| FS-001 | SPIFFS/filesystem behavior | `reference/esp-miner/main/filesystem.c` | `firmware/bitaxe`, `tools/parity` | verified | hardware-smoke | Live recovery and live static smoke passed on Ultra 205. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "FS-001", "/assets/app.css.gz");
+        assert_validation_error_contains(&errors, "FS-001", "missing static redirect");
+        assert_validation_error_contains(&errors, "FS-001", "/recovery");
+    }
+
+    #[test]
+    fn deferred_scope_verified_rows_reject_ultra205_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| CFG-002 | Deferred Gamma 601 defaults | `reference/esp-miner/config-601.cvs` | `crates/bitaxe-config` | verified | hardware-smoke | Ultra 205 evidence was reused for a non-205 board. |
+| ASIC-008 | BM1370 parity | `reference/esp-miner/components/asic/bm1370.c` | `crates/bitaxe-asic` | verified | hardware-smoke | Ultra 205 evidence was reused for BM1370. |
+| STR-005 | Stratum v2 protocol | `reference/esp-miner/components/stratum_v2/*.c` | `crates/bitaxe-stratum` | verified | hardware-smoke | Ultra 205 Stratum v1 evidence was reused. |
+| BAP-001 | BAP interface initialization | `reference/esp-miner/main/bap/bap.c` | `firmware/bitaxe` | verified | hardware-smoke | Ultra 205 evidence was reused for BAP. |
+| V2-FACTORY-001 | all-board factory image matrix | `reference/esp-miner` | `tools/xtask` | verified | hardware-smoke | Ultra 205 evidence was reused for an all-board release matrix. |
+| V2-UI-001 | Angular UI rewrite | `reference/esp-miner/main/http_server/axe-os` | `firmware/bitaxe/static/www` | verified | hardware-smoke | Ultra 205 evidence was reused for an Angular rewrite. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "CFG-002", "Ultra 205 evidence");
+        assert_validation_error_contains(&errors, "ASIC-008", "Ultra 205 evidence");
+        assert_validation_error_contains(&errors, "STR-005", "Ultra 205 evidence");
+        assert_validation_error_contains(&errors, "BAP-001", "Ultra 205 evidence");
+        assert_validation_error_contains(&errors, "V2-FACTORY-001", "Ultra 205 evidence");
+        assert_validation_error_contains(&errors, "V2-UI-001", "Ultra 205 evidence");
     }
 
     #[test]
