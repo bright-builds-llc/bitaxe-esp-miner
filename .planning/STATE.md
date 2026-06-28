@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 05-07-PLAN.md
-last_updated: "2026-06-27T22:06:08.290Z"
-last_activity: 2026-06-27
+last_updated: "2026-06-28T00:02:01.498Z"
+last_activity: 2026-06-28
 progress:
   total_phases: 8
   completed_phases: 5
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Phase 05 — axeos-api-logs-and-telemetry
+**Current focus:** Phase 06 — safety-controllers-and-self-test
 
 ## Current Position
 
-Phase: 05 (axeos-api-logs-and-telemetry) — VERIFYING
-Plan: 7 of 7
+Phase: 6
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-06-27
+Last activity: 2026-06-28
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 22
+- Total plans completed: 29
 - Average duration: 10 min
 - Total execution time: 1.5 hours
 
@@ -47,6 +47,7 @@ Progress: [██████████] 100%
 | 2 | 4 | - | - |
 | 03 | 5 | - | - |
 | 04 | 4 | - | - |
+| 05 | 7 | - | - |
 
 **Recent Trend:**
 

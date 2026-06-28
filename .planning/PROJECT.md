@@ -65,7 +65,7 @@ The accepted seed layout separates hardware-bound firmware from testable Rust lo
 
 ## Current State
 
-Phase 04 is complete: the repo now has a typed Stratum v1 core, deterministic fake-pool coverage, mining job and queue integration, a fail-closed first mining-loop gate, firmware-visible blocked mining-loop status, and Phase 4 parity evidence. Live Ultra 205 mining smoke and soak remain pending and are not claimed as verified.
+Phase 05 is complete: the repo now has AxeOS-compatible API route contracts, handwritten wire DTOs, settings PATCH planning and firmware persistence, retained log download/raw WebSocket behavior, live telemetry cadence planning, safe command routes, static AxeOS route usage evidence, and Phase 5 parity evidence. Live Ultra 205 HTTP/WebSocket smoke, SPIFFS/static packaging, recovery, OTA, and safety-controller hardware behavior remain later-phase work and are not claimed as verified.
 
 ## Constraints
 
@@ -118,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-06-27 after Phase 04 Stratum v1 mining-loop verification*
+*Last updated: 2026-06-27 after Phase 05 AxeOS API, logs, and telemetry verification*
