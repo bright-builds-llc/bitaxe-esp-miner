@@ -15,6 +15,7 @@ rust_library(
         "src/statistics.rs",
         "src/system.rs",
         "src/telemetry.rs",
+        "src/update_plan.rs",
         "src/websocket_state.rs",
         "src/wire.rs",
     ],

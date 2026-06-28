@@ -16,6 +16,7 @@ pub mod snapshot;
 pub mod statistics;
 pub mod system;
 pub mod telemetry;
+pub mod update_plan;
 pub mod websocket_state;
 pub mod wire;
 
@@ -59,6 +60,10 @@ pub use system::system_info_from_snapshot;
 pub use telemetry::{
     live_telemetry_diff, live_telemetry_update_envelope, LiveTelemetryPlanner,
     LIVE_TELEMETRY_CADENCE_MS,
+};
+pub use update_plan::{
+    plan_update_request, FirmwareOtaDecision, OtaWwwGapDecision, UpdateRequestDecision,
+    UpdateRequestInput, UpdateRouteKind, UpdateStatusLabel,
 };
 pub use websocket_state::{WebSocketRegisterOutcome, WebSocketState, MAX_WEBSOCKET_CLIENTS};
 pub use wire::{SystemAsicWire, SystemInfoWire};
