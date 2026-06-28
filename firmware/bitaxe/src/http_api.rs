@@ -24,6 +24,7 @@ use esp_idf_svc::io::Write;
 use esp_idf_svc::sys;
 use serde::Serialize;
 
+use crate::filesystem::FilesystemStatus;
 use crate::runtime_snapshot::{
     apply_block_found_dismiss_command, apply_identify_mode_command, apply_mining_activity_command,
     block_found_notification_state, collect_api_snapshot, identify_mode, mining_runtime_state,
@@ -42,7 +43,7 @@ const HTTPD_401: &[u8] = b"401 Unauthorized\0";
 
 /// Starts the HTTP route shell and intentionally leaks the server so ESP-IDF's
 /// server task keeps running for the lifetime of the firmware process.
-pub fn start_http_api() -> anyhow::Result<()> {
+pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()> {
     let config = Configuration {
         stack_size: 8192,
         max_open_sockets: 8,
@@ -57,7 +58,7 @@ pub fn start_http_api() -> anyhow::Result<()> {
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
     }
 
-    register_http_handlers(&mut server)?;
+    register_http_handlers(&mut server, filesystem_status)?;
     start_live_telemetry_cadence_task(server.handle())?;
     log::info!(
         "axeos_api_route_shell=started registered_routes={}",
@@ -147,7 +148,10 @@ fn broadcast_websocket_text_frame(
     }
 }
 
-fn register_http_handlers(server: &mut EspHttpServer<'static>) -> anyhow::Result<()> {
+fn register_http_handlers(
+    server: &mut EspHttpServer<'static>,
+    _filesystem_status: FilesystemStatus,
+) -> anyhow::Result<()> {
     server.fn_handler("/api/system/info", Method::Get, handle_system_info)?;
     server.fn_handler("/api/system", Method::Patch, handle_settings_patch)?;
     server.fn_handler("/api/system/logs", Method::Get, handle_logs_download)?;

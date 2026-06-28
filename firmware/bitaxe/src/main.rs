@@ -5,6 +5,7 @@ use esp_idf_svc::{hal::peripherals::Peripherals, sys};
 
 mod asic_adapter;
 mod display_adapter;
+mod filesystem;
 mod http_api;
 mod log_buffer;
 mod runtime_snapshot;
@@ -74,7 +75,8 @@ fn main() -> anyhow::Result<()> {
     }
     asic_adapter::publish_mining_loop_blocked_status("hardware_evidence_ack_missing");
     safety_adapter::start_safety_supervisor();
-    if let Err(error) = http_api::start_http_api() {
+    let filesystem_status = filesystem::mount_www_spiffs();
+    if let Err(error) = http_api::start_http_api(filesystem_status) {
         log::warn!("axeos_api_route_shell=unavailable error={error:#}");
     }
     info_retained(&format!("reset_reason={}", reset_reason()));

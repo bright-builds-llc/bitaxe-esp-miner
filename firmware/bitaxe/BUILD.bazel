@@ -7,8 +7,9 @@ genrule(
     srcs = glob(["src/**/*.rs"]) + [
         "Cargo.toml",
         "build.rs",
+        "partitions-ultra205.csv",
         "sdkconfig.defaults",
-    ],
+    ] + glob(["static/**"]),
     outs = ["bitaxe-firmware.elf"],
     cmd = "$(location //scripts:build_firmware) $(@D)",
     local = True,
