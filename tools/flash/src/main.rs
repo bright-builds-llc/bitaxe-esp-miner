@@ -927,6 +927,27 @@ mod tests {
     }
 
     #[test]
+    fn manifest_v2_rejects_factory_image_as_default_flash_image() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v2(&dir, FACTORY_IMAGE_NAME);
+        let command = FlashCommand {
+            common: common_args(),
+            image: None,
+            manifest: Some(manifest),
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains(DEFAULT_ELF_NAME));
+        assert!(error.contains(FACTORY_IMAGE_NAME));
+    }
+
+    #[test]
     fn zero_ports_error_includes_actionable_example() {
         // Arrange
         let environment = FakeFlashEnvironment::with_ports("");
@@ -1070,18 +1091,53 @@ mod tests {
         std::fs::create_dir_all(manifest_dir.as_std_path()).expect("create manifest dir");
         let default_image = manifest_dir.join(default_flash_image);
         std::fs::write(default_image.as_std_path(), b"image").expect("write image");
+        for file_name in [
+            DEFAULT_ELF_NAME,
+            "esp-miner.bin",
+            "www.bin",
+            "otadata-initial.bin",
+            FACTORY_IMAGE_NAME,
+        ] {
+            let path = manifest_dir.join(file_name);
+            if !path.is_file() {
+                std::fs::write(path.as_std_path(), b"artifact").expect("write artifact");
+            }
+        }
+
         std::fs::write(
             manifest.as_std_path(),
             format!(
                 r#"{{
   "schema_version": 2,
+  "release_name": "bitaxe-ultra205",
+  "source_commit": "source-commit",
+  "reference_commit": "reference-commit",
   "default_flash_image": "{default_flash_image}",
-  "release_name": "bitaxe-ultra205-v1",
-  "image_metadata": {{"board": "205"}},
-  "install_notes": {{"path": "docs/release/ultra-205.md"}},
-  "license_inventory": "docs/release/license-inventory.json",
-  "provenance_manifest": "docs/release/provenance-manifest.json",
-  "artifacts": []
+  "image_metadata": {{
+    "board": "205",
+    "device_model": "Ultra 205",
+    "asic": "BM1366",
+    "esp_idf_version": "v5.5.4",
+    "rust_target": "xtensa-esp32s3-espidf"
+  }},
+  "tool_versions": {{
+    "cargo": "cargo 1.0.0",
+    "rustc": "rustc 1.0.0",
+    "bazel": "bazel 1.0.0",
+    "espflash": "espflash 1.0.0"
+  }},
+  "install_notes": {{"path": "docs/release/ultra-205.md", "summary": "Ultra 205 guide"}},
+  "license_inventory": "docs/release/license-inventory.md",
+  "provenance_manifest": "docs/release/provenance-manifest.md",
+  "otadata_source": "generated-erased-flash",
+  "artifacts": [
+    {{"kind": "firmware_elf", "path": "bitaxe-ultra205.elf", "offset": "Unavailable", "sha256": "00"}},
+    {{"kind": "firmware_ota_image", "path": "esp-miner.bin", "offset": "0x10000", "sha256": "11"}},
+    {{"kind": "www_spiffs_image", "path": "www.bin", "offset": "0x410000", "sha256": "22"}},
+    {{"kind": "factory_merged_image", "path": "bitaxe-ultra205-factory.bin", "offset": "0x0", "sha256": "33"}},
+    {{"kind": "partition_table", "path": "firmware/bitaxe/partitions-ultra205.csv", "offset": "Unavailable", "sha256": "44"}},
+    {{"kind": "otadata_initial", "path": "otadata-initial.bin", "offset": "0xf10000", "sha256": "55"}}
+  ]
 }}"#
             ),
         )
