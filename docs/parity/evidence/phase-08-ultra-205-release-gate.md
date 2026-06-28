@@ -82,9 +82,10 @@ language until each live surface has the required evidence class.
 | --- | --- |
 | route | `/api/system/OTA` |
 | upload artifact | `esp-miner.bin` |
-| upload response | not run - Phase 8 evidence pending |
-| reboot observed | not run - Phase 8 evidence pending |
-| post-reboot identity | not run - Phase 8 evidence pending |
+| upload response | not run - no reachable DEVICE_URL |
+| reboot observed | not run - no reachable DEVICE_URL |
+| post-reboot identity | not run - no reachable DEVICE_URL |
+| blocker | blocked - no IP, DHCP, Wi-Fi association, AP address, mDNS, hostname, or operator-supplied reachable URL |
 | conclusion | not run - no reachable DEVICE_URL |
 
 ## Invalid Image Rejection
@@ -92,29 +93,34 @@ language until each live surface has the required evidence class.
 | Field | Value |
 | --- | --- |
 | route | `/api/system/OTA` |
-| invalid artifact | not run - Phase 8 evidence pending |
-| public response | not run - Phase 8 evidence pending |
-| device remained operable | not run - Phase 8 evidence pending |
+| invalid artifact | not run - no reachable DEVICE_URL |
+| public response | not run - no reachable DEVICE_URL |
+| device remained operable | not run - no reachable DEVICE_URL |
+| blocker | blocked - no IP, DHCP, Wi-Fi association, AP address, mDNS, hostname, or operator-supplied reachable URL |
 | conclusion | not run - no reachable DEVICE_URL |
 
 ## Failed Update Recovery
 
 | Field | Value |
 | --- | --- |
-| failure class | not run - Phase 8 evidence pending |
-| running partition after failure | not run - Phase 8 evidence pending |
-| recovery procedure | not run - Phase 8 evidence pending |
+| failure class | not run - no reachable DEVICE_URL |
+| running partition after failure | not run - no reachable DEVICE_URL |
+| post-failed-update operability | not run - no reachable DEVICE_URL |
+| recovery outcome | not run - no reachable DEVICE_URL |
+| recovery procedure | not run - no reachable DEVICE_URL |
+| blocker | blocked - no IP, DHCP, Wi-Fi association, AP address, mDNS, hostname, or operator-supplied reachable URL |
 | conclusion | not run - no reachable DEVICE_URL |
 
 ## Rollback And Boot Validation
 
 | Field | Value |
 | --- | --- |
-| pending image state | not run - Phase 8 evidence pending |
-| boot-validation output | not run - Phase 8 evidence pending |
-| marked-valid observation | not run - Phase 8 evidence pending |
-| marked-invalid observation | not run - Phase 8 evidence pending |
+| pending image state | not run - no reachable DEVICE_URL |
+| boot-validation output | not run - no reachable DEVICE_URL |
+| marked-valid observation | not run - no reachable DEVICE_URL |
+| marked-invalid observation | not run - no reachable DEVICE_URL |
 | serial boot-validation output | `ota_boot_validation=not_pending state=factory` observed before HTTP/OTA probes |
+| blocker | blocked - no IP, DHCP, Wi-Fi association, AP address, mDNS, hostname, or operator-supplied reachable URL |
 | conclusion | not run - no reachable DEVICE_URL |
 
 ## OTAWWW Gap Response
