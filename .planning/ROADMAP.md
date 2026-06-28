@@ -150,7 +150,7 @@ Plans:
 Plans:
 
 - [x] 06-01-PLAN.md - Create the pure safety crate and shared status/evidence/effect contracts.
-- [ ] 06-02-PLAN.md - Create the safety crate feature module graph.
+- [x] 06-02-PLAN.md - Create the safety crate feature module graph.
 - [ ] 06-03-PLAN.md - Implement power, voltage, current, and observe-only DS4432U/INA260 decisions.
 - [ ] 06-04-PLAN.md - Implement thermal, fan, PID, overheat, and fault decisions.
 - [ ] 06-05-PLAN.md - Implement self-test lifecycle and watchdog-friendly step supervision.
