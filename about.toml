@@ -1,0 +1,22 @@
+# Phase 7 release license inventory policy.
+# Required tool: cargo-about 0.9.0.
+#
+# This config covers Cargo dependency licenses only. It does not approve
+# GPL-covered upstream reference code, ESP-IDF components, Bazel/rules inputs,
+# flashing tools, static assets, or release artifacts. Those release inputs are
+# reviewed separately under PROVENANCE.md and docs/release/license-inventory.md.
+
+accepted = [
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+]
+
+# cargo-about 0.9.0 supports private.ignore. Keep private workspace crates from
+# turning the third-party Cargo dependency inventory into a project-license claim.
+[private]
+ignore = true
+registries = []
