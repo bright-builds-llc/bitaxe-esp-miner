@@ -17,82 +17,68 @@ pub const MAX_SETTINGS_PATCH_BODY_BYTES: usize = (10 * 1024) - 1;
 const APPLICATION_JSON: &str = "application/json";
 const TEXT_PLAIN: &str = "text/plain";
 
+macro_rules! axeos_route {
+    ($path:literal, $method:ident, $kind:expr) => {
+        AxeosRoute {
+            path: $path,
+            method: RouteMethod::$method,
+            kind: $kind,
+        }
+    };
+}
+
 const PHASE05_ROUTES: &[AxeosRoute] = &[
-    AxeosRoute {
-        path: "/api/system/info",
-        method: RouteMethod::Get,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system",
-        method: RouteMethod::Patch,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system/logs",
-        method: RouteMethod::Get,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system/asic",
-        method: RouteMethod::Get,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system/statistics",
-        method: RouteMethod::Get,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system/scoreboard",
-        method: RouteMethod::Get,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system/pause",
-        method: RouteMethod::Post,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system/resume",
-        method: RouteMethod::Post,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system/restart",
-        method: RouteMethod::Post,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system/identify",
-        method: RouteMethod::Post,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system/blockFound/dismiss",
-        method: RouteMethod::Post,
-        kind: RouteKind::Http,
-    },
-    AxeosRoute {
-        path: "/api/system/OTA",
-        method: RouteMethod::Post,
-        kind: RouteKind::SafeUnsupportedUpdate,
-    },
-    AxeosRoute {
-        path: "/api/system/OTAWWW",
-        method: RouteMethod::Post,
-        kind: RouteKind::SafeUnsupportedUpdate,
-    },
-    AxeosRoute {
-        path: "/api/ws",
-        method: RouteMethod::Get,
-        kind: RouteKind::WebSocket(WebSocketRouteKind::Logs),
-    },
-    AxeosRoute {
-        path: "/api/ws/live",
-        method: RouteMethod::Get,
-        kind: RouteKind::WebSocket(WebSocketRouteKind::LiveTelemetry),
-    },
+    axeos_route!("/api/system/info", Get, RouteKind::Http),
+    axeos_route!("/api/system", Patch, RouteKind::Http),
+    axeos_route!("/api/system/logs", Get, RouteKind::Http),
+    axeos_route!("/api/system/asic", Get, RouteKind::Http),
+    axeos_route!("/api/system/statistics", Get, RouteKind::Http),
+    axeos_route!("/api/system/scoreboard", Get, RouteKind::Http),
+    axeos_route!("/api/system/pause", Post, RouteKind::Http),
+    axeos_route!("/api/system/resume", Post, RouteKind::Http),
+    axeos_route!("/api/system/restart", Post, RouteKind::Http),
+    axeos_route!("/api/system/identify", Post, RouteKind::Http),
+    axeos_route!("/api/system/blockFound/dismiss", Post, RouteKind::Http),
+    axeos_route!("/api/system/OTA", Post, RouteKind::SafeUnsupportedUpdate),
+    axeos_route!("/api/system/OTAWWW", Post, RouteKind::SafeUnsupportedUpdate),
+    axeos_route!(
+        "/api/ws",
+        Get,
+        RouteKind::WebSocket(WebSocketRouteKind::Logs)
+    ),
+    axeos_route!(
+        "/api/ws/live",
+        Get,
+        RouteKind::WebSocket(WebSocketRouteKind::LiveTelemetry)
+    ),
+];
+
+const PHASE07_ROUTES: &[AxeosRoute] = &[
+    axeos_route!("/api/system/info", Get, RouteKind::Http),
+    axeos_route!("/api/system", Patch, RouteKind::Http),
+    axeos_route!("/api/system/logs", Get, RouteKind::Http),
+    axeos_route!("/api/system/asic", Get, RouteKind::Http),
+    axeos_route!("/api/system/statistics", Get, RouteKind::Http),
+    axeos_route!("/api/system/scoreboard", Get, RouteKind::Http),
+    axeos_route!("/api/system/pause", Post, RouteKind::Http),
+    axeos_route!("/api/system/resume", Post, RouteKind::Http),
+    axeos_route!("/api/system/restart", Post, RouteKind::Http),
+    axeos_route!("/api/system/identify", Post, RouteKind::Http),
+    axeos_route!("/api/system/blockFound/dismiss", Post, RouteKind::Http),
+    axeos_route!("/api/system/OTA", Post, RouteKind::FirmwareUpdate),
+    axeos_route!("/api/system/OTAWWW", Post, RouteKind::AxeOsStaticUpdateGap),
+    axeos_route!(
+        "/api/ws",
+        Get,
+        RouteKind::WebSocket(WebSocketRouteKind::Logs)
+    ),
+    axeos_route!(
+        "/api/ws/live",
+        Get,
+        RouteKind::WebSocket(WebSocketRouteKind::LiveTelemetry)
+    ),
+    axeos_route!("/recovery", Get, RouteKind::Recovery),
+    axeos_route!("/*", Get, RouteKind::StaticFiles),
 ];
 
 /// Firmware-visible HTTP method for route registration.
@@ -115,6 +101,14 @@ pub enum RouteKind {
     WebSocket(WebSocketRouteKind),
     /// OTA/OTAWWW route that must not apply updates in Phase 5.
     SafeUnsupportedUpdate,
+    /// Phase 7 firmware OTA route owner.
+    FirmwareUpdate,
+    /// Phase 7 AxeOS static OTAWWW gap owner.
+    AxeOsStaticUpdateGap,
+    /// Phase 7 embedded recovery route owner.
+    Recovery,
+    /// Phase 7 static wildcard route owner.
+    StaticFiles,
 }
 
 /// WebSocket route type.
@@ -208,6 +202,12 @@ pub enum SettingsPatchBodyDecision {
 #[must_use]
 pub const fn phase05_routes() -> &'static [AxeosRoute] {
     PHASE05_ROUTES
+}
+
+/// Returns Phase 7 firmware API, update, recovery, and static routes.
+#[must_use]
+pub const fn phase07_routes() -> &'static [AxeosRoute] {
+    PHASE07_ROUTES
 }
 
 /// Applies the private-network/AP-origin gate to an HTTP route.
@@ -332,10 +332,10 @@ mod tests {
     use std::net::Ipv4Addr;
 
     use super::{
-        maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, plan_http_access,
-        plan_settings_patch_body_size, plan_websocket_upgrade, unknown_api_route_response,
-        HttpAccessDecision, OriginGate, RouteAccessInput, RouteKind, RouteMethod,
-        SettingsPatchBodyDecision, WebSocketRouteKind, WebSocketUpgradeDecision,
+        maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, phase07_routes,
+        plan_http_access, plan_settings_patch_body_size, plan_websocket_upgrade,
+        unknown_api_route_response, HttpAccessDecision, OriginGate, RouteAccessInput, RouteKind,
+        RouteMethod, SettingsPatchBodyDecision, WebSocketRouteKind, WebSocketUpgradeDecision,
         MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
     };
 
@@ -391,6 +391,62 @@ mod tests {
         assert!(routes
             .iter()
             .any(|route| matches!(route.kind, RouteKind::SafeUnsupportedUpdate)));
+    }
+
+    #[test]
+    fn phase05_update_routes_keep_safe_unsupported_owner_for_api_compare() {
+        // Arrange
+        let routes = phase05_routes();
+
+        // Act
+        let firmware_ota = routes
+            .iter()
+            .find(|route| route.path == "/api/system/OTA")
+            .expect("Phase 05 route manifest should include firmware OTA");
+        let otawww = routes
+            .iter()
+            .find(|route| route.path == "/api/system/OTAWWW")
+            .expect("Phase 05 route manifest should include OTAWWW");
+
+        // Assert
+        assert_eq!(firmware_ota.kind, RouteKind::SafeUnsupportedUpdate);
+        assert_eq!(otawww.kind, RouteKind::SafeUnsupportedUpdate);
+    }
+
+    #[test]
+    fn phase07_routes_assign_update_recovery_and_static_owners() {
+        // Arrange
+        let routes = phase07_routes();
+
+        // Act
+        let firmware_ota = routes
+            .iter()
+            .find(|route| route.path == "/api/system/OTA")
+            .expect("Phase 7 route manifest should include firmware OTA");
+        let otawww = routes
+            .iter()
+            .find(|route| route.path == "/api/system/OTAWWW")
+            .expect("Phase 7 route manifest should include OTAWWW");
+        let recovery = routes
+            .iter()
+            .find(|route| route.path == "/recovery")
+            .expect("Phase 7 route manifest should include recovery");
+        let static_files = routes
+            .iter()
+            .find(|route| route.path == "/*")
+            .expect("Phase 7 route manifest should include static wildcard");
+
+        // Assert
+        assert_eq!(firmware_ota.method, RouteMethod::Post);
+        assert_eq!(firmware_ota.kind, RouteKind::FirmwareUpdate);
+        assert_eq!(otawww.method, RouteMethod::Post);
+        assert_eq!(otawww.kind, RouteKind::AxeOsStaticUpdateGap);
+        assert_eq!(recovery.method, RouteMethod::Get);
+        assert_eq!(recovery.kind, RouteKind::Recovery);
+        assert_eq!(static_files.method, RouteMethod::Get);
+        assert_eq!(static_files.kind, RouteKind::StaticFiles);
+        assert_ne!(firmware_ota.kind, RouteKind::SafeUnsupportedUpdate);
+        assert_ne!(otawww.kind, RouteKind::SafeUnsupportedUpdate);
     }
 
     #[test]
