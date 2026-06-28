@@ -400,6 +400,8 @@ fn validate_rows(rows: &[ChecklistRow]) -> Vec<ValidationError> {
                 message: "safety-critical verified rows require hardware-smoke or hardware-regression evidence".to_owned(),
             });
         }
+
+        errors.extend(validate_release_ota_verified_row(row));
     }
 
     errors
@@ -495,10 +497,110 @@ fn is_safety_critical(row: &ChecklistRow) -> bool {
 }
 
 fn has_hardware_evidence(row: &ChecklistRow) -> bool {
-    matches!(
-        normalize(&row.evidence).as_str(),
-        "hardware-smoke" | "hardware-regression"
+    has_evidence_token(row, "hardware-smoke") || has_evidence_token(row, "hardware-regression")
+}
+
+fn validate_release_ota_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    match row.id.as_str() {
+        "FS-001" => validate_filesystem_verified_row(row),
+        "OTA-001" => validate_firmware_ota_verified_row(row),
+        "OTA-002" => validate_otawww_verified_row(row),
+        "REL-001" | "REL-002" => validate_release_sensitive_verified_row(row),
+        "REL-003" => validate_release_image_verified_row(row),
+        _ => Vec::new(),
+    }
+}
+
+fn validate_filesystem_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    if has_hardware_evidence(row) && has_live_recovery_static_smoke_note(row) {
+        return Vec::new();
+    }
+
+    vec![ValidationError {
+        id: row.id.clone(),
+        message:
+            "FS-001 verified requires live recovery/static smoke evidence; package-only evidence is insufficient"
+                .to_owned(),
+    }]
+}
+
+fn validate_firmware_ota_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    if has_hardware_evidence(row) {
+        return Vec::new();
+    }
+
+    vec![ValidationError {
+        id: row.id.clone(),
+        message: "OTA-001 verified requires hardware-smoke or hardware-regression evidence"
+            .to_owned(),
+    }]
+}
+
+fn validate_otawww_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    if has_evidence_token(row, "hardware-regression")
+        && row_haystack(row).contains("interrupted-update")
+    {
+        return Vec::new();
+    }
+
+    vec![ValidationError {
+        id: row.id.clone(),
+        message:
+            "OTA-002 verified requires hardware-regression evidence with an interrupted-update note"
+                .to_owned(),
+    }]
+}
+
+fn validate_release_sensitive_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    if has_hardware_evidence(row) || row_haystack(row).contains("release-gate") {
+        return Vec::new();
+    }
+
+    vec![ValidationError {
+        id: row.id.clone(),
+        message: "release-sensitive verified rows require hardware-smoke, hardware-regression, or release-gate evidence beyond unit/workflow/api-compare/package-only evidence".to_owned(),
+    }]
+}
+
+fn validate_release_image_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    let haystack = row_haystack(row);
+    let has_release_gate = haystack.contains("release-gate");
+    let has_provenance = haystack.contains("provenance");
+    let has_package_workflow = has_evidence_token(row, "workflow") && haystack.contains("package");
+
+    if has_release_gate && has_provenance && has_package_workflow {
+        return Vec::new();
+    }
+
+    vec![ValidationError {
+        id: row.id.clone(),
+        message:
+            "REL-003 verified requires release-gate, provenance, and package workflow evidence"
+                .to_owned(),
+    }]
+}
+
+fn has_live_recovery_static_smoke_note(row: &ChecklistRow) -> bool {
+    let haystack = row_haystack(row);
+    let has_recovery = haystack.contains("live recovery");
+    let has_static = haystack.contains("static smoke") || haystack.contains("live static");
+
+    has_recovery && has_static
+}
+
+fn has_evidence_token(row: &ChecklistRow, expected: &str) -> bool {
+    row.evidence
+        .split(',')
+        .map(normalize)
+        .any(|token| token == expected)
+}
+
+fn row_haystack(row: &ChecklistRow) -> String {
+    format!(
+        "{} {} {} {} {} {}",
+        row.id, row.surface, row.rust_owned_target, row.status, row.evidence, row.notes
     )
+    .to_ascii_lowercase()
 }
 
 fn normalize(value: &str) -> String {
@@ -736,6 +838,134 @@ mod tests {
     }
 
     #[test]
+    fn release_ota_verified_guard_rejects_filesystem_verified_without_live_static_recovery() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| FS-001 | SPIFFS/filesystem behavior | `reference/esp-miner/main/filesystem.c` | `firmware/bitaxe`, `tools/parity` | verified | workflow | Package evidence only. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "FS-001", "live recovery/static smoke");
+    }
+
+    #[test]
+    fn release_ota_verified_guard_rejects_firmware_ota_verified_without_hardware() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| OTA-001 | Firmware OTA route | `reference/esp-miner/main/http_server/http_server.c` | `firmware/bitaxe`, `tools/parity` | verified | workflow | Firmware OTA compile and package evidence only. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(
+            &errors,
+            "OTA-001",
+            "hardware-smoke or hardware-regression",
+        );
+    }
+
+    #[test]
+    fn release_ota_verified_guard_rejects_otawww_verified_without_interrupted_update_regression() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| OTA-002 | AxeOS OTAWWW route | `reference/esp-miner/main/http_server/http_server.c` | `firmware/bitaxe`, `tools/parity` | verified | hardware-smoke | Live static update smoke only. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "OTA-002", "interrupted-update");
+        assert_validation_error_contains(&errors, "OTA-002", "hardware-regression");
+    }
+
+    #[test]
+    fn release_ota_verified_guard_rejects_partition_verified_from_package_only_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| REL-001 | Partition layout | `reference/esp-miner/partitions.csv` | `firmware/bitaxe` | verified | workflow | Package evidence only. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "REL-001", "release-sensitive");
+    }
+
+    #[test]
+    fn release_ota_verified_guard_rejects_sdk_config_verified_from_unit_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| REL-002 | SDK config parity | `reference/esp-miner/sdkconfig.defaults` | `firmware/bitaxe` | verified | unit | SDK config fixture evidence only. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "REL-002", "release-sensitive");
+    }
+
+    #[test]
+    fn release_ota_verified_guard_rejects_release_image_verified_without_gate_and_package() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| REL-003 | Release image behavior | `reference/esp-miner/.github/workflows/release.yml` | `MODULE.bazel`, `tools/flash` | verified | workflow | Package workflow evidence only. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "REL-003", "release-gate");
+        assert_validation_error_contains(&errors, "REL-003", "provenance");
+        assert_validation_error_contains(&errors, "REL-003", "package workflow");
+    }
+
+    #[test]
+    fn release_ota_verified_guard_allows_implemented_package_evidence_below_verified() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| FS-001 | SPIFFS/filesystem behavior | `reference/esp-miner/main/filesystem.c` | `firmware/bitaxe`, `tools/parity` | implemented | unit,workflow | Package evidence only; live smoke pending. |
+| OTA-001 | Firmware OTA route | `reference/esp-miner/main/http_server/http_server.c` | `firmware/bitaxe`, `tools/parity` | implemented | workflow | Firmware OTA compile and package evidence only. |
+| REL-003 | Release image behavior | `reference/esp-miner/.github/workflows/release.yml` | `MODULE.bazel`, `tools/flash` | implemented | workflow | Release-gate and package workflow evidence exist; hardware remains pending. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert!(errors.is_empty());
+    }
+
+    #[test]
     fn missing_reference_guard_failure_blocks_report_output() {
         // Arrange
         let env = FakeEnvironment::failing_guard("reference missing or not initialized");
@@ -777,6 +1007,19 @@ mod tests {
             .to_string()
             .contains("reference dirty"));
         assert!(!env.read_called.get());
+    }
+
+    fn assert_validation_error_contains(
+        errors: &[ValidationError],
+        expected_id: &str,
+        expected_message: &str,
+    ) {
+        assert!(
+            errors.iter().any(|error| {
+                error.id == expected_id && error.message.contains(expected_message)
+            }),
+            "expected {expected_id} validation error containing {expected_message:?}, got {errors:#?}"
+        );
     }
 
     struct FakeEnvironment {
