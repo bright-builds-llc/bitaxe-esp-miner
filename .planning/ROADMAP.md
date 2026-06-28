@@ -180,7 +180,7 @@ Plans:
 
 - [x] 07-01-PLAN.md - Create pure update/static route contracts and tests.
 - [x] 07-02-PLAN.md - Define manifest v2 and partition validation contracts.
-- [ ] 07-03-PLAN.md - Create release docs, license, provenance, and evidence contracts.
+- [x] 07-03-PLAN.md - Create release docs, license, provenance, and evidence contracts.
 - [ ] 07-04-PLAN.md - Implement SPIFFS mount, static serving, and recovery page behavior.
 - [ ] 07-05-PLAN.md - Expand release artifact generation and manifest v2 packaging.
 - [ ] 07-06-PLAN.md - Implement license/provenance release-gate validation.
