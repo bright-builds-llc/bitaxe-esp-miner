@@ -13,6 +13,7 @@ rust_library(
         "src/settings.rs",
         "src/snapshot.rs",
         "src/statistics.rs",
+        "src/static_plan.rs",
         "src/system.rs",
         "src/telemetry.rs",
         "src/update_plan.rs",

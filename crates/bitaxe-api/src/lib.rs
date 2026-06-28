@@ -13,6 +13,7 @@ pub mod route_shell;
 pub mod scoreboard;
 pub mod settings;
 pub mod snapshot;
+pub mod static_plan;
 pub mod statistics;
 pub mod system;
 pub mod telemetry;
@@ -52,6 +53,12 @@ pub use settings::{
 pub use snapshot::{
     ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, SafeTelemetrySnapshot,
     SafetyTelemetryReport, SafetyTelemetryStatus,
+};
+pub use static_plan::{
+    resolve_static_request, FilesystemAvailability, RecoveryFallback, RecoverySource,
+    RedirectToRoot, RejectPathTraversal, ServeRecovery, ServeStatic, StaticFileCatalog,
+    StaticRequest, StaticRouteDecision, CONTENT_ENCODING_HEADER, GZIP_CONTENT_ENCODING,
+    STATIC_CACHE_CONTROL, STATIC_REDIRECT_BODY,
 };
 pub use statistics::{
     empty_statistics_response, statistics_response, StatisticsSample, StatisticsWire,
