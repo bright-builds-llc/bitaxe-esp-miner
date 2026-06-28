@@ -411,9 +411,19 @@ fn is_safety_critical(row: &ChecklistRow) -> bool {
     haystack.contains("safety-critical")
         || row.id.starts_with("PWR-")
         || row.id.starts_with("THR-")
-        || ["voltage", "fan", "thermal", "power"]
-            .iter()
-            .any(|term| haystack.contains(term))
+        || row.id.starts_with("SELF-")
+        || [
+            "voltage",
+            "fan",
+            "thermal",
+            "power",
+            "self-test hardware",
+            "hardware-control",
+            "runtime input",
+            "runtime display",
+        ]
+        .iter()
+        .any(|term| haystack.contains(term))
         || haystack.contains("asic initialization")
         || (row.id.starts_with("ASIC") && haystack.contains("initialization"))
 }
@@ -592,6 +602,63 @@ mod tests {
         assert_eq!(errors[0].id, "PWR-001");
         assert!(errors[0].message.contains("hardware-smoke"));
         assert!(errors[0].message.contains("hardware-regression"));
+    }
+
+    #[test]
+    fn safety_critical_self_test_verified_rows_require_hardware_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| SELF-001 | Self-test lifecycle | `reference/esp-miner/main/self_test/self_test.c` | `crates/bitaxe-safety`, `firmware/bitaxe` | verified | unit | Self-test hardware requires Ultra 205 hardware smoke before verification. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].id, "SELF-001");
+        assert!(errors[0].message.contains("hardware-smoke"));
+        assert!(errors[0].message.contains("hardware-regression"));
+    }
+
+    #[test]
+    fn safety_critical_runtime_input_display_verified_rows_require_hardware_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| UI-003 | Input behavior | `reference/esp-miner/main/input.c` | `firmware/bitaxe` | verified | workflow | Runtime input and runtime display hardware-control rows require hardware-smoke evidence. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].id, "UI-003");
+        assert!(errors[0].message.contains("hardware-smoke"));
+        assert!(errors[0].message.contains("hardware-regression"));
+    }
+
+    #[test]
+    fn safety_critical_implemented_rows_do_not_require_hardware_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| THR-003 | PID behavior | `reference/esp-miner/main/thermal/PID.c` | `crates/bitaxe-safety/src/thermal.rs` | implemented | unit | Pure PID behavior is covered by unit tests; hardware fan and thermal verification remains separate. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert!(errors.is_empty());
     }
 
     #[test]
