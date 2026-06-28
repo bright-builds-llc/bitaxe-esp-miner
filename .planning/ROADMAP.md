@@ -175,7 +175,18 @@ Plans:
 1. OTAWWW or static-asset update behavior is implemented or explicitly reported as a V1 parity gap with evidence and owner.
 1. Developer can review dependency license inventory, reference provenance manifest, and build/flash/monitor/OTA/recovery docs before public release.
 
-**Plans**: TBD
+**Plans**: 9 plans
+Plans:
+
+- [ ] 07-01-PLAN.md - Create pure update/static route contracts and tests.
+- [ ] 07-02-PLAN.md - Define manifest v2 and partition validation contracts.
+- [ ] 07-03-PLAN.md - Create release docs, license, provenance, and evidence contracts.
+- [ ] 07-04-PLAN.md - Implement SPIFFS mount, static serving, and recovery page behavior.
+- [ ] 07-05-PLAN.md - Expand release artifact generation and manifest v2 packaging.
+- [ ] 07-06-PLAN.md - Implement license/provenance release-gate validation.
+- [ ] 07-07-PLAN.md - Implement firmware OTA, rollback validation, and OTAWWW gap behavior.
+- [ ] 07-08-PLAN.md - Complete operator docs and Phase 7 evidence records.
+- [ ] 07-09-PLAN.md - Add parity gates and final hardware verification checkpoint.
 **UI hint**: yes
 **Verification expectations**: Package manifest checks, flash/install smoke, OTA success and failure tests, rollback/recovery/interrupted-update evidence, static asset/recovery checks, release license inventory, and operator documentation review.
 **Research flags**: Needs phase research for ESP-IDF OTA/partition details, rollback/recovery testing, large erase behavior, static asset packaging, image manifests, and release compliance.
@@ -210,5 +221,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 4. Stratum V1 And First Mining Loop | 4/4 | Complete    | 2026-06-27 |
 | 5. AxeOS API, Logs, And Telemetry | 0/TBD | Not started | - |
 | 6. Safety Controllers And Self-Test | 1/10 | In Progress | - |
-| 7. OTA, Filesystem, And Release Packaging | 0/TBD | Not started | - |
+| 7. OTA, Filesystem, And Release Packaging | 0/9 | Not started | - |
 | 8. Parity Evidence And Ultra 205 Release Gate | 0/TBD | Not started | - |
