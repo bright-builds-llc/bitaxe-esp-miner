@@ -4,6 +4,7 @@ use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState, StartupDebugText};
 use esp_idf_svc::{hal::peripherals::Peripherals, sys};
 
 mod asic_adapter;
+mod boot_validation;
 mod display_adapter;
 mod filesystem;
 mod http_api;
@@ -47,7 +48,7 @@ fn main() -> anyhow::Result<()> {
         safe_state,
         Some(firmware_commit()),
     );
-    match Peripherals::take() {
+    let startup_diagnostics = match Peripherals::take() {
         Ok(peripherals) => {
             let pins = peripherals.pins;
             if let Err(error) = display_adapter::render_startup_debug_text(
@@ -66,14 +67,19 @@ fn main() -> anyhow::Result<()> {
                 reset: pins.gpio1,
                 tx: pins.gpio17,
                 rx: pins.gpio18,
-            })?;
+            })
         }
         Err(error) => {
             log::warn!("display_status=unavailable reason=peripherals_unavailable error={error}");
             display_adapter::publish_runtime_display_input_boundary();
-            asic_adapter::run_boot_gate_without_peripherals("peripherals_unavailable")?;
+            asic_adapter::run_boot_gate_without_peripherals("peripherals_unavailable")
         }
+    };
+    let startup_diagnostics_passed = startup_diagnostics.is_ok();
+    if let Err(error) = boot_validation::validate_boot(startup_diagnostics_passed) {
+        log::warn!("ota_boot_validation=error error={error:#}");
     }
+    startup_diagnostics?;
     asic_adapter::publish_mining_loop_blocked_status("hardware_evidence_ack_missing");
     safety_adapter::start_safety_supervisor();
     let filesystem_status = filesystem::mount_www_spiffs();

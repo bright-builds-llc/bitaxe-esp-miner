@@ -21,11 +21,15 @@ evidence so release-readiness language does not outrun the available proof.
 
 ## firmware OTA evidence
 
-- Conclusion: firmware OTA evidence record is initialized.
+- Conclusion: firmware OTA runtime upload evidence remains pending, while
+  rollback-capable boot validation is now implemented in firmware.
 - Current state: `/api/system/OTA` success, rejection, AP/APSTA rejection,
-  progress/status, validation/activation errors, reboot scheduling, and boot
-  validation are not recorded here yet.
-- Evidence status: not run - hardware verification pending.
+  progress/status, validation/activation errors, and reboot scheduling are not
+  recorded here yet. Boot validation now logs `ota_boot_validation=not_pending`,
+  `ota_boot_validation=marked_valid`, or
+  `ota_boot_validation=marked_invalid_reboot` from the ESP-IDF OTA state path.
+- Evidence status: implemented/compiled path planned for host verification;
+  live OTA and hardware rollback verification pending.
 
 ## OTAWWW REL-03 gap
 
@@ -37,10 +41,15 @@ evidence so release-readiness language does not outrun the available proof.
 
 ## rollback/recovery evidence
 
-- Conclusion: rollback/recovery evidence record is initialized.
-- Current state: boot validation, rollback observation, recovery-page access,
-  and return-to-operable-state proof are not recorded here yet.
-- Evidence status: not run - hardware verification pending.
+- Conclusion: rollback boot validation is implemented but not hardware
+  verified.
+- Current state: firmware calls `esp_ota_get_state_partition` on the running
+  partition at startup, marks pending images valid after startup diagnostics,
+  and marks pending images invalid with reboot when diagnostics fail. Recovery
+  page access, rollback observation, and return-to-operable-state proof are not
+  recorded here yet.
+- Evidence status: implemented/compiled path planned for host verification;
+  live rollback and recovery verification pending.
 
 ## interrupted-update evidence
 
