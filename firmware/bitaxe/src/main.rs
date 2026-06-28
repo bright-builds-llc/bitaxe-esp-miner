@@ -11,6 +11,7 @@ mod log_buffer;
 mod runtime_snapshot;
 mod safety_adapter;
 mod settings_adapter;
+mod static_files;
 mod websocket_api;
 
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";

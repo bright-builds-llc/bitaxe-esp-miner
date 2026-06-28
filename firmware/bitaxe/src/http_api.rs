@@ -29,10 +29,12 @@ use crate::runtime_snapshot::{
     apply_block_found_dismiss_command, apply_identify_mode_command, apply_mining_activity_command,
     block_found_notification_state, collect_api_snapshot, identify_mode, mining_runtime_state,
 };
-use crate::{log_buffer, settings_adapter, websocket_api};
+use crate::{log_buffer, settings_adapter, static_files, websocket_api};
 
 type ApiRequest<'request, 'connection> = Request<&'request mut EspHttpConnection<'connection>>;
 
+const API_WS_ROUTE: &str = "/api/ws";
+const API_WS_LIVE_ROUTE: &str = "/api/ws/live";
 const API_WS_PATH: &[u8] = b"/api/ws\0";
 const API_WS_LIVE_PATH: &[u8] = b"/api/ws/live\0";
 const APPLICATION_JSON_CSTR: &[u8] = b"application/json\0";
@@ -150,8 +152,9 @@ fn broadcast_websocket_text_frame(
 
 fn register_http_handlers(
     server: &mut EspHttpServer<'static>,
-    _filesystem_status: FilesystemStatus,
+    filesystem_status: FilesystemStatus,
 ) -> anyhow::Result<()> {
+    static_files::register_recovery(server, filesystem_status)?;
     server.fn_handler("/api/system/info", Method::Get, handle_system_info)?;
     server.fn_handler("/api/system", Method::Patch, handle_settings_patch)?;
     server.fn_handler("/api/system/logs", Method::Get, handle_logs_download)?;
@@ -177,19 +180,26 @@ fn register_http_handlers(
     server.fn_handler("/api/*", Method::Get, handle_unknown_api_route)?;
     server.fn_handler("/api/*", Method::Post, handle_unknown_api_route)?;
     server.fn_handler("/api/*", Method::Patch, handle_unknown_api_route)?;
+    static_files::register_static(server, filesystem_status)?;
 
     Ok(())
 }
 
 fn register_websocket_handlers(server: &mut EspHttpServer<'static>) -> anyhow::Result<()> {
-    register_websocket_handler(server, API_WS_PATH, websocket_logs_handler)?;
-    register_websocket_handler(server, API_WS_LIVE_PATH, websocket_live_handler)?;
+    register_websocket_handler(server, API_WS_PATH, API_WS_ROUTE, websocket_logs_handler)?;
+    register_websocket_handler(
+        server,
+        API_WS_LIVE_PATH,
+        API_WS_LIVE_ROUTE,
+        websocket_live_handler,
+    )?;
     Ok(())
 }
 
 fn register_websocket_handler(
     server: &mut EspHttpServer<'static>,
     path: &'static [u8],
+    display_path: &'static str,
     handler: unsafe extern "C" fn(*mut sys::httpd_req_t) -> sys::esp_err_t,
 ) -> anyhow::Result<()> {
     let uri = sys::httpd_uri_t {
@@ -206,8 +216,7 @@ fn register_websocket_handler(
     }
 
     Err(anyhow::anyhow!(
-        "failed to register websocket route {}: esp_err={result}",
-        String::from_utf8_lossy(&path[..path.len().saturating_sub(1)])
+        "failed to register websocket route {display_path}: esp_err={result}"
     ))
 }
 
