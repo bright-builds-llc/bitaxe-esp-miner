@@ -4,8 +4,23 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 package(default_visibility = ["//visibility:public"])
 
 sh_binary(
+    name = "bootstrap_esp",
+    srcs = ["bootstrap-esp.sh"],
+)
+
+sh_binary(
     name = "build_firmware",
     srcs = ["build-firmware.sh"],
+)
+
+sh_binary(
+    name = "detect_ultra205",
+    srcs = ["detect-ultra205.sh"],
+)
+
+sh_binary(
+    name = "esp_doctor",
+    srcs = ["esp-doctor.sh"],
 )
 
 sh_binary(
@@ -16,6 +31,23 @@ sh_binary(
 sh_binary(
     name = "package_firmware",
     srcs = ["package-firmware.sh"],
+)
+
+sh_test(
+    name = "detect_ultra205_test",
+    srcs = ["detect-ultra205-test.sh"],
+    data = ["detect-ultra205.sh"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "esp_doctor_test",
+    srcs = ["esp-doctor-test.sh"],
+    data = [
+        "bootstrap-esp.sh",
+        "esp-doctor.sh",
+    ],
+    tags = ["local"],
 )
 
 sh_test(

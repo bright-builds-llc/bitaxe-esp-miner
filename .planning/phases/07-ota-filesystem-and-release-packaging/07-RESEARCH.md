@@ -635,22 +635,22 @@ Security enforcement is enabled because `.planning/config.json` does not set `se
 | A2 | A Rust-owned or reference-built static asset source can be selected without rewriting Angular AxeOS and without violating provenance policy. [ASSUMED] | Recommended Project Structure / Open Questions | If wrong, REL-01/REL-03 must be scoped to package/recovery fixtures or recorded as release gaps. |
 | A3 | `esp-idf-part` can cover the host-side partition validation needs without needing custom parser extensions. [ASSUMED] | Standard Stack / Pattern 3 | If wrong, planner may need a small typed validation wrapper around generated ESP-IDF partition artifacts. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **What exact source should produce `www.bin` for V1?**
    - What we know: Phase 7 must not rewrite Angular AxeOS, and upstream builds `www.bin` from AxeOS assets into a SPIFFS partition. [VERIFIED: 07-CONTEXT.md D-10; reference/esp-miner/main/CMakeLists.txt]
-   - What's unclear: Whether V1 should use reference-built assets with GPL/provenance handling, Rust-owned compatibility fixtures, or generated assets from earlier Phase 5 work. [ASSUMED]
-   - Recommendation: Plan a Wave 0 decision task that selects the asset source and records provenance before implementing package generation. [VERIFIED: 07-CONTEXT.md D-19/D-20]
+   - Resolution: Use a Rust-owned minimal AxeOS-compatible static asset source for Phase 7 package and recovery validation, and record provenance explicitly in `docs/release/provenance-manifest.md`. Do not rewrite Angular AxeOS or treat reference-built GPL assets as MIT-owned release inputs. [RESOLVED: 07-03/07-04/07-05 plans]
+   - Plan alignment: `07-04` creates the static/recovery asset surface, `07-05` packages `www.bin`, and `07-06` validates provenance/release-gate records. [RESOLVED: 07-04-PLAN.md; 07-05-PLAN.md; 07-06-PLAN.md]
 
 2. **Will OTAWWW be implemented in Phase 7 or recorded as REL-03 gap?**
    - What we know: Full OTAWWW parity requires whole-`www` partition update behavior and interruption/recovery evidence; otherwise it must stay fail-closed with a documented V1 gap. [VERIFIED: 07-CONTEXT.md D-15/D-16]
-   - What's unclear: Whether hardware time is available for safe interrupted-update evidence. [ASSUMED]
-   - Recommendation: Plan OTAWWW as a decision gate after package/static/recovery is working; default to explicit gap if hardware interruption evidence is not scheduled. [VERIFIED: 07-CONTEXT.md D-16/D-23]
+   - Resolution: Record OTAWWW as an explicit REL-03 V1 parity gap in this plan set. Keep `/api/system/OTAWWW` fail-closed with public response `Wrong API input` and the exact operator copy required by `07-UI-SPEC.md`; do not implement whole-partition SPIFFS erase/write without scheduled interruption/recovery hardware evidence. [RESOLVED: 07-07-PLAN.md; 07-08-PLAN.md]
+   - Plan alignment: `07-07` implements the fail-closed route and evidence entry; `07-08` documents the operator impact and follow-up; `07-09` keeps checklist status below verified. [RESOLVED: 07-07-PLAN.md; 07-08-PLAN.md; 07-09-PLAN.md]
 
 3. **Does Phase 7 need exact upstream update-only HEX output?**
    - What we know: Upstream has `merge_bin.sh -u` using esptool `--format hex`, but current project packaging uses `espflash`, and `esptool.py` is not installed locally. [VERIFIED: reference/esp-miner/merge_bin.sh; scripts/package-firmware.sh; `command -v esptool.py`]
-   - What's unclear: Whether owners need a combined update-only HEX artifact in addition to direct firmware image and `www.bin`. [ASSUMED]
-   - Recommendation: Keep loose app and `www.bin` as first-class outputs; add update-only artifact only if planning confirms a concrete operator workflow. [VERIFIED: 07-CONTEXT.md D-03/D-04]
+   - Resolution: Do not require exact upstream update-only HEX output for Phase 7. Keep loose app OTA image and `www.bin` as first-class manifest v2 outputs, keep the merged factory image for recovery/USB flash, and defer update-only HEX until a concrete operator workflow requires it. [RESOLVED: 07-05-PLAN.md]
+   - Plan alignment: `07-05` deepens the manifest/package contract without adding esptool HEX as a required artifact. [RESOLVED: 07-05-PLAN.md]
 
 ## Sources
 
@@ -684,7 +684,7 @@ Security enforcement is enabled because `.planning/config.json` does not set `se
 **Confidence breakdown:**
 
 - Standard stack: HIGH - package versions and tool availability were verified through Cargo registry, lockfile, local commands, and project stack docs. [VERIFIED: Cargo.lock; cargo registry; local commands; AGENTS.md]
-- Architecture: MEDIUM-HIGH - integration points and upstream behavior are verified, but static asset source and OTAWWW evidence scope remain open decisions. [VERIFIED: local code/reference inventory; ASSUMED]
+- Architecture: MEDIUM-HIGH - integration points and upstream behavior are verified; static asset source and OTAWWW evidence scope were resolved in the Phase 7 plan set. [VERIFIED: local code/reference inventory; 07-04-PLAN.md; 07-07-PLAN.md]
 - Pitfalls: HIGH - risks are grounded in Phase 7 decisions, upstream behavior, ESP-IDF official docs, and current repo code. [VERIFIED: 07-CONTEXT.md; reference/esp-miner; CITED: ESP-IDF v5.5.4 docs]
 - Validation: MEDIUM-HIGH - existing test infrastructure is present, but Phase 7-specific tests and evidence docs are Wave 0 gaps. [VERIFIED: Justfile; Cargo.toml; tools/xtask; docs/parity/checklist.md]
 

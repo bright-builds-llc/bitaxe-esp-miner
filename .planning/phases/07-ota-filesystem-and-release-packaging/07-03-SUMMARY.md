@@ -175,7 +175,7 @@ Ready for `07-04-PLAN.md`. Later Phase 7 plans can append package, static/SPIFFS
 - Focused stub scan found only required operator-guide wording that OTAWWW is "not available" for parity until D-16 evidence closes; this is intentional gap documentation, not a placeholder or unwired UI stub.
 - Threat surface scan found documentation references to routes, partitions, erases, and release trust boundaries only; no new runtime endpoint, auth path, filesystem implementation, schema, partition write, or firmware effect was introduced.
 
----
+***
 
 *Phase: 07-ota-filesystem-and-release-packaging*
 *Completed: 2026-06-28*

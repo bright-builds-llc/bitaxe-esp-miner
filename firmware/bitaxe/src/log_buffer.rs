@@ -5,10 +5,11 @@ use std::sync::{Mutex, OnceLock};
 use bitaxe_api::RetainedLogBuffer;
 
 static LOG_BUFFER: OnceLock<Mutex<RetainedLogBuffer>> = OnceLock::new();
+const FALLBACK_LOG_RETENTION_BYTES: usize = 32 * 1024;
 
 /// Appends one runtime log line to the API-visible retained buffer.
 pub fn append_runtime_log_line(line: &str) {
-    let buffer = LOG_BUFFER.get_or_init(|| Mutex::new(RetainedLogBuffer::new()));
+    let buffer = LOG_BUFFER.get_or_init(|| Mutex::new(firmware_log_buffer()));
     let Ok(mut buffer) = buffer.lock() else {
         log::warn!("retained_log_buffer=unavailable reason=mutex_poisoned");
         return;
@@ -29,11 +30,38 @@ pub fn download_chunks() -> Vec<String> {
 /// Returns a point-in-time copy for WebSocket stream planning.
 #[must_use]
 pub fn retained_log_buffer() -> RetainedLogBuffer {
-    let buffer = LOG_BUFFER.get_or_init(|| Mutex::new(RetainedLogBuffer::new()));
+    let buffer = LOG_BUFFER.get_or_init(|| Mutex::new(firmware_log_buffer()));
     let Ok(buffer) = buffer.lock() else {
         log::warn!("retained_log_buffer=unavailable reason=mutex_poisoned");
-        return RetainedLogBuffer::new();
+        return RetainedLogBuffer::empty();
     };
 
     buffer.clone()
+}
+
+fn firmware_log_buffer() -> RetainedLogBuffer {
+    match RetainedLogBuffer::try_new() {
+        Ok(buffer) => buffer,
+        Err(error) => {
+            log::warn!(
+                "retained_log_buffer=degraded reason=allocation_failed requested_bytes={} fallback_bytes={} error={error:?}",
+                bitaxe_api::LOG_RETENTION_BYTES,
+                FALLBACK_LOG_RETENTION_BYTES
+            );
+            fallback_log_buffer()
+        }
+    }
+}
+
+fn fallback_log_buffer() -> RetainedLogBuffer {
+    match RetainedLogBuffer::try_with_capacity(FALLBACK_LOG_RETENTION_BYTES) {
+        Ok(buffer) => buffer,
+        Err(error) => {
+            log::warn!(
+                "retained_log_buffer=unavailable reason=fallback_allocation_failed requested_bytes={} error={error:?}",
+                FALLBACK_LOG_RETENTION_BYTES
+            );
+            RetainedLogBuffer::empty()
+        }
+    }
 }

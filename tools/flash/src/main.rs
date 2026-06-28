@@ -149,6 +149,14 @@ struct FlashOutcome {
 #[derive(Debug, Deserialize)]
 struct PackageManifest {
     default_flash_image: String,
+    #[serde(default)]
+    artifacts: Vec<PackageArtifact>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PackageArtifact {
+    kind: String,
+    path: String,
 }
 
 trait FlashEnvironment {
@@ -444,23 +452,43 @@ fn prepare_flash(
     ensure_ultra_205(command.common.board)?;
     let port = resolve_port(command.common.port.as_deref(), environment)?;
     let (maybe_manifest, flash_image) = resolve_flash_image(command, environment)?;
-    let command = CommandSpec::new(
-        "espflash",
-        [
-            "flash",
-            "--chip",
-            "esp32s3",
-            "--port",
-            port.as_str(),
-            flash_image.as_str(),
-        ],
-    );
+    let command = flash_command_for_image(&port, &flash_image)?;
 
     Ok(FlashOutcome {
         manifest: maybe_manifest,
         flash_image,
         command,
     })
+}
+
+fn flash_command_for_image(port: &str, flash_image: &Utf8Path) -> Result<CommandSpec> {
+    let file_name = flash_image.file_name().unwrap_or_default();
+    if file_name == FACTORY_IMAGE_NAME {
+        return Ok(CommandSpec::new(
+            "espflash",
+            [
+                "write-bin",
+                "--chip",
+                "esp32s3",
+                "--port",
+                port,
+                "0x0",
+                flash_image.as_str(),
+            ],
+        ));
+    }
+
+    Ok(CommandSpec::new(
+        "espflash",
+        [
+            "flash",
+            "--chip",
+            "esp32s3",
+            "--port",
+            port,
+            flash_image.as_str(),
+        ],
+    ))
 }
 
 fn resolve_flash_image(
@@ -481,14 +509,29 @@ fn resolve_flash_image(
     let manifest_contents = environment.read_to_string(&manifest)?;
     let package_manifest: PackageManifest = serde_json::from_str(&manifest_contents)
         .with_context(|| format!("failed to parse package manifest {manifest}"))?;
-    let default_flash_image = Utf8PathBuf::from(package_manifest.default_flash_image);
-    let flash_image = resolve_manifest_default(&manifest, &default_flash_image)?;
+    let flash_image = resolve_manifest_flash_image(&manifest, &package_manifest)?;
 
     if !environment.path_exists(&flash_image) {
         bail!("manifest default flash image does not exist: {flash_image}");
     }
 
     Ok((Some(manifest), flash_image))
+}
+
+fn resolve_manifest_flash_image(
+    manifest: &Utf8Path,
+    package_manifest: &PackageManifest,
+) -> Result<Utf8PathBuf> {
+    if let Some(factory_artifact) = package_manifest
+        .artifacts
+        .iter()
+        .find(|artifact| artifact.kind == "factory_merged_image")
+    {
+        return resolve_manifest_factory_artifact(manifest, Utf8Path::new(&factory_artifact.path));
+    }
+
+    let default_flash_image = Utf8PathBuf::from(&package_manifest.default_flash_image);
+    resolve_manifest_default(manifest, &default_flash_image)
 }
 
 fn resolve_manifest_default(
@@ -509,15 +552,36 @@ fn resolve_manifest_default(
         bail!("default_flash_image must resolve to {DEFAULT_ELF_NAME}, not {file_name}");
     }
 
-    if default_flash_image.is_absolute() {
-        return Ok(default_flash_image.to_owned());
+    resolve_manifest_sibling(manifest, default_flash_image)
+}
+
+fn resolve_manifest_factory_artifact(
+    manifest: &Utf8Path,
+    factory_image: &Utf8Path,
+) -> Result<Utf8PathBuf> {
+    let Some(file_name) = factory_image.file_name() else {
+        bail!("factory_merged_image artifact must resolve to {FACTORY_IMAGE_NAME}");
+    };
+
+    if file_name != FACTORY_IMAGE_NAME {
+        bail!(
+            "factory_merged_image artifact must resolve to {FACTORY_IMAGE_NAME}, not {file_name}"
+        );
+    }
+
+    resolve_manifest_sibling(manifest, factory_image)
+}
+
+fn resolve_manifest_sibling(manifest: &Utf8Path, image: &Utf8Path) -> Result<Utf8PathBuf> {
+    if image.is_absolute() {
+        return Ok(image.to_owned());
     }
 
     let Some(manifest_dir) = manifest.parent() else {
         bail!("manifest path has no parent directory: {manifest}");
     };
 
-    Ok(manifest_dir.join(default_flash_image))
+    Ok(manifest_dir.join(image))
 }
 
 fn resolve_port(maybe_port: Option<&str>, environment: &impl FlashEnvironment) -> Result<String> {
@@ -598,7 +662,7 @@ fn emit_flash_outcome(outcome: &FlashOutcome) -> Result<()> {
     if let Some(manifest) = &outcome.manifest {
         emit_line("manifest", manifest.as_str())?;
     }
-    emit_line("default_flash_image", outcome.flash_image.as_str())?;
+    emit_line("flash_image", outcome.flash_image.as_str())?;
     emit_command("flash_command", &outcome.command)
 }
 
@@ -682,7 +746,7 @@ fn write_evidence_record(
             .as_ref()
             .map(|path| path.as_str().to_owned())
             .unwrap_or_else(|| UNAVAILABLE.to_owned()),
-        default_flash_image_path: outcome.flash_image.as_str().to_owned(),
+        flash_image_path: outcome.flash_image.as_str().to_owned(),
         timestamp: unix_timestamp(),
         log_path: log_path.as_str().to_owned(),
     };
@@ -707,7 +771,7 @@ struct EvidenceRecord {
     firmware_commit: String,
     reference_commit: String,
     manifest_path: String,
-    default_flash_image_path: String,
+    flash_image_path: String,
     timestamp: String,
     log_path: String,
 }
@@ -904,7 +968,7 @@ mod tests {
     }
 
     #[test]
-    fn manifest_v2_default_flash_image_is_compatible() {
+    fn manifest_v2_uses_factory_artifact_for_full_flash() {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let manifest = write_manifest_v2(&dir, DEFAULT_ELF_NAME);
@@ -922,15 +986,27 @@ mod tests {
         assert_eq!(outcome.manifest.as_ref(), Some(&manifest));
         assert_eq!(
             outcome.flash_image,
-            manifest.parent().expect("parent").join(DEFAULT_ELF_NAME)
+            manifest.parent().expect("parent").join(FACTORY_IMAGE_NAME)
+        );
+        assert_eq!(
+            outcome.command.args,
+            vec![
+                "write-bin",
+                "--chip",
+                "esp32s3",
+                "--port",
+                "/dev/cu.usbmodem101",
+                "0x0",
+                outcome.flash_image.as_str(),
+            ]
         );
     }
 
     #[test]
-    fn manifest_v2_rejects_factory_image_as_default_flash_image() {
+    fn manifest_v2_rejects_wrong_factory_artifact_name() {
         // Arrange
         let dir = tempdir().expect("tempdir");
-        let manifest = write_manifest_v2(&dir, FACTORY_IMAGE_NAME);
+        let manifest = write_manifest_v2_with_factory_artifact(&dir, DEFAULT_ELF_NAME, "wrong.bin");
         let command = FlashCommand {
             common: common_args(),
             image: None,
@@ -943,8 +1019,8 @@ mod tests {
 
         // Assert
         let error = format!("{result:#?}");
-        assert!(error.contains(DEFAULT_ELF_NAME));
         assert!(error.contains(FACTORY_IMAGE_NAME));
+        assert!(error.contains("wrong.bin"));
     }
 
     #[test]
@@ -1085,6 +1161,14 @@ mod tests {
     }
 
     fn write_manifest_v2(dir: &TempDir, default_flash_image: &str) -> Utf8PathBuf {
+        write_manifest_v2_with_factory_artifact(dir, default_flash_image, FACTORY_IMAGE_NAME)
+    }
+
+    fn write_manifest_v2_with_factory_artifact(
+        dir: &TempDir,
+        default_flash_image: &str,
+        factory_artifact_path: &str,
+    ) -> Utf8PathBuf {
         let dir_path = dir_path(dir);
         let manifest = dir_path.join(PACKAGE_MANIFEST_RELATIVE_PATH);
         let manifest_dir = manifest.parent().expect("parent");
@@ -1134,7 +1218,7 @@ mod tests {
     {{"kind": "firmware_elf", "path": "bitaxe-ultra205.elf", "offset": "Unavailable", "sha256": "00"}},
     {{"kind": "firmware_ota_image", "path": "esp-miner.bin", "offset": "0x10000", "sha256": "11"}},
     {{"kind": "www_spiffs_image", "path": "www.bin", "offset": "0x410000", "sha256": "22"}},
-    {{"kind": "factory_merged_image", "path": "bitaxe-ultra205-factory.bin", "offset": "0x0", "sha256": "33"}},
+	    {{"kind": "factory_merged_image", "path": "{factory_artifact_path}", "offset": "0x0", "sha256": "33"}},
     {{"kind": "partition_table", "path": "firmware/bitaxe/partitions-ultra205.csv", "offset": "Unavailable", "sha256": "44"}},
     {{"kind": "otadata_initial", "path": "otadata-initial.bin", "offset": "0xf10000", "sha256": "55"}}
   ]

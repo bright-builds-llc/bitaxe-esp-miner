@@ -7,6 +7,7 @@ readonly FIRMWARE_OTA_IMAGE_NAME="esp-miner.bin"
 readonly WWW_IMAGE_NAME="www.bin"
 readonly OTADATA_INITIAL_NAME="otadata-initial.bin"
 readonly FACTORY_IMAGE_NAME="bitaxe-ultra205-factory.bin"
+readonly FACTORY_BASE_IMAGE_NAME="bitaxe-ultra205-factory-base.bin"
 readonly MANIFEST_NAME="bitaxe-ultra205-package.json"
 readonly ULTRA205_PARTITION_TABLE="firmware/bitaxe/partitions-ultra205.csv"
 readonly WWW_SOURCE_DIR="firmware/bitaxe/static/www"
@@ -51,7 +52,29 @@ find_spiffsgen() {
 		fi
 	done
 
-	printf 'error: spiffsgen.py not found; set IDF_PATH so IDF_PATH/components/spiffs/spiffsgen.py exists\n' >&2
+	printf 'error: spiffsgen.py not found; run `just doctor` to inspect ESP dependencies\n' >&2
+	printf 'advanced override: set IDF_PATH so IDF_PATH/components/spiffs/spiffsgen.py exists\n' >&2
+	return 1
+}
+
+find_esptool() {
+	if command -v esptool.py >/dev/null 2>&1; then
+		command -v esptool.py
+		return 0
+	fi
+
+	local candidate
+	for candidate in \
+		"${workspace_dir}"/.embuild/espressif/python_env/idf5.5*_env/bin/esptool.py \
+		"${workspace_dir}/.embuild/espressif/esp-idf/v5.5.4/components/esptool_py/esptool/esptool.py"; do
+		if [[ -f "$candidate" ]]; then
+			printf '%s\n' "$candidate"
+			return 0
+		fi
+	done
+
+	printf 'error: esptool.py not found; run `just doctor` to inspect ESP dependencies\n' >&2
+	printf 'expected managed Esptool under .embuild/espressif after the first ESP-IDF firmware build\n' >&2
 	return 1
 }
 
@@ -173,17 +196,24 @@ cd "$workspace_dir"
 "$reference_guard"
 
 if ! command -v espflash >/dev/null; then
-	printf 'error: espflash not found; install or upgrade it with: cargo install espflash --locked\n' >&2
+	printf 'error: espflash not found; run `just doctor` to inspect ESP dependencies\n' >&2
+	printf 'run `just bootstrap-esp` to install espflash through Cargo\n' >&2
 	exit 1
 fi
 
 mkdir -p "$out_dir"
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/bitaxe-package.XXXXXX")"
+cleanup() {
+	rm -rf "$tmp_dir"
+}
+trap cleanup EXIT
 
 package_elf="${out_dir}/${PACKAGE_ELF_NAME}"
 firmware_ota_image="${out_dir}/${FIRMWARE_OTA_IMAGE_NAME}"
 www_image="${out_dir}/${WWW_IMAGE_NAME}"
 otadata_initial="${out_dir}/${OTADATA_INITIAL_NAME}"
 factory_image="${out_dir}/${FACTORY_IMAGE_NAME}"
+factory_base_image="${tmp_dir}/${FACTORY_BASE_IMAGE_NAME}"
 
 cp "$firmware_elf" "$package_elf"
 
@@ -250,7 +280,7 @@ printf '%q ' "${firmware_ota_cmd[@]}"
 printf '\n'
 
 if ! "${firmware_ota_cmd[@]}"; then
-	printf 'error: espflash save-image failed for %s; install or upgrade espflash with: cargo install espflash --locked\n' "$FIRMWARE_OTA_IMAGE_NAME" >&2
+	printf 'error: espflash save-image failed for %s; run `just doctor` to inspect ESP dependencies\n' "$FIRMWARE_OTA_IMAGE_NAME" >&2
 	exit 1
 fi
 
@@ -259,17 +289,57 @@ espflash_cmd=(
 	save-image
 	--chip
 	esp32s3
+	--flash-size
+	16mb
+	--flash-mode
+	dio
+	--flash-freq
+	80mhz
+	--partition-table
+	"$ULTRA205_PARTITION_TABLE"
+	--skip-padding
 	--merge
 	"$package_elf"
-	"$factory_image"
+	"$factory_base_image"
 )
 
-printf '[package-firmware] espflash_command='
+printf '[package-firmware] factory_base_command='
 printf '%q ' "${espflash_cmd[@]}"
 printf '\n'
 
 if ! "${espflash_cmd[@]}"; then
-	printf 'error: espflash save-image failed; install or upgrade espflash with: cargo install espflash --locked\n' >&2
+	printf 'error: espflash save-image failed for base factory image; run `just doctor` to inspect ESP dependencies\n' >&2
+	exit 1
+fi
+
+esptool="$(find_esptool)"
+factory_merge_cmd=(
+	"$esptool"
+	--chip
+	esp32s3
+	merge_bin
+	--flash_mode
+	dio
+	--flash_size
+	16MB
+	--flash_freq
+	80m
+	0x0
+	"$factory_base_image"
+	0x410000
+	"$www_image"
+	0xf10000
+	"$otadata_initial"
+	-o
+	"$factory_image"
+)
+
+printf '[package-firmware] factory_merge_command='
+printf '%q ' "${factory_merge_cmd[@]}"
+printf '\n'
+
+if ! "${factory_merge_cmd[@]}"; then
+	printf 'error: esptool.py merge_bin failed for %s; run `just doctor` to inspect managed .embuild ESP tools\n' "$FACTORY_IMAGE_NAME" >&2
 	exit 1
 fi
 

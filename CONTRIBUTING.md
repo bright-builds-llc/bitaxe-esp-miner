@@ -46,3 +46,30 @@ This managed block is owned upstream by `bright-builds-rules`. If this block nee
 - Note any residual risks or follow-up work.
 
 <!-- bright-builds-rules-contributing:end -->
+
+## Repo-Local Setup
+
+Use the repo-owned dependency workflow before building firmware:
+
+```bash
+just doctor
+```
+
+If the doctor reports missing ESP Rust tooling, run:
+
+```bash
+just bootstrap-esp
+source "$HOME/export-esp.sh"
+just doctor
+```
+
+`just bootstrap-esp` is the explicit opt-in installer for `espup`, the ESP Rust
+toolchain, `ldproxy`, and `espflash`. Normal firmware work should use the
+repo-pinned `esp-idf-sys` ESP-IDF `tag:v5.5.4` setup rather than a manual
+ESP-IDF checkout.
+
+Firmware builds may populate `.embuild/` with the pinned ESP-IDF checkout,
+Python environment, and managed ESP tools. `.embuild/` is local generated state
+and must not be committed. Repo scripts may use tools from it, such as
+`spiffsgen.py`, `gen_esp32part.py`, and `esptool.py`, when those tools are not
+available on `PATH` or when the pinned ESP-IDF copy is the more reliable source.

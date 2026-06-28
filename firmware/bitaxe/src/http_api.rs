@@ -45,13 +45,16 @@ const ORIGIN_HEADER_BUFFER_BYTES: usize = 128;
 const TEXT_PLAIN_CSTR: &[u8] = b"text/plain\0";
 const HTTPD_401: &[u8] = b"401 Unauthorized\0";
 const UPDATE_AP_MODE_REJECTION_BODY: &str = "Not allowed in AP mode";
+const LIVE_TELEMETRY_THREAD_STACK_BYTES: usize = 16 * 1024;
 
 /// Starts the HTTP route shell and intentionally leaks the server so ESP-IDF's
 /// server task keeps running for the lifetime of the firmware process.
 pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()> {
+    initialize_network_stack()?;
+
     let config = Configuration {
         stack_size: 8192,
-        max_open_sockets: 8,
+        max_open_sockets: 7,
         max_uri_handlers: 32,
         max_resp_headers: 8,
         uri_match_wildcard: true,
@@ -74,10 +77,25 @@ pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()>
     Ok(())
 }
 
+fn initialize_network_stack() -> anyhow::Result<()> {
+    let netif_result = unsafe { sys::esp_netif_init() };
+    if !matches!(netif_result, sys::ESP_OK | sys::ESP_ERR_INVALID_STATE) {
+        anyhow::bail!("esp_netif_init failed: esp_err={netif_result}");
+    }
+
+    let event_loop_result = unsafe { sys::esp_event_loop_create_default() };
+    if !matches!(event_loop_result, sys::ESP_OK | sys::ESP_ERR_INVALID_STATE) {
+        anyhow::bail!("esp_event_loop_create_default failed: esp_err={event_loop_result}");
+    }
+
+    Ok(())
+}
+
 fn start_live_telemetry_cadence_task(server: sys::httpd_handle_t) -> anyhow::Result<()> {
     let server_addr = server as usize;
     std::thread::Builder::new()
         .name("axeos-live-ws".to_owned())
+        .stack_size(LIVE_TELEMETRY_THREAD_STACK_BYTES)
         .spawn(move || live_telemetry_cadence_loop(server_addr))?;
     Ok(())
 }

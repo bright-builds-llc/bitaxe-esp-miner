@@ -127,10 +127,11 @@ fn stream_request_body_to_ota(
             });
         }
 
+        let progress = progress_after_write(total, remaining, read);
         status_sink(FirmwareOtaStatus::Working {
-            percent: progress_percent(total, remaining),
+            percent: progress.percent,
         });
-        remaining = remaining.saturating_sub(read);
+        remaining = progress.remaining;
         bytes_written += read;
         chunks += 1;
         if chunks % YIELD_EVERY_CHUNKS == 0 {
@@ -181,4 +182,37 @@ fn progress_percent(total: usize, remaining: usize) -> u8 {
 
     let percent = 100usize.saturating_sub((remaining.saturating_mul(100)) / total);
     percent.min(100) as u8
+}
+
+struct OtaProgress {
+    remaining: usize,
+    percent: u8,
+}
+
+fn progress_after_write(total: usize, remaining: usize, written: usize) -> OtaProgress {
+    let remaining = remaining.saturating_sub(written);
+    OtaProgress {
+        remaining,
+        percent: progress_percent(total, remaining),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn progress_after_write_reports_final_chunk_complete() {
+        // Arrange
+        let total = 1_000;
+        let remaining = 1_000;
+        let written = 1_000;
+
+        // Act
+        let progress = progress_after_write(total, remaining, written);
+
+        // Assert
+        assert_eq!(progress.remaining, 0);
+        assert_eq!(progress.percent, 100);
+    }
 }

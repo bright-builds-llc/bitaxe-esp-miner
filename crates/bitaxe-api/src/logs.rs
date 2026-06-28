@@ -5,6 +5,8 @@
 //! - `reference/esp-miner/main/log_buffer.h`
 //! - `reference/esp-miner/main/http_server/websocket_log.c`
 
+use std::collections::TryReserveError;
+
 /// Upstream retained log buffer size: 512 KiB.
 pub const LOG_RETENTION_BYTES: usize = 512 * 1024;
 /// Upstream log read and WebSocket chunk size.
@@ -47,8 +49,54 @@ impl RetainedLogBuffer {
         }
     }
 
+    /// Creates an empty retained log buffer, returning allocation failure instead of aborting.
+    pub fn try_new() -> Result<Self, TryReserveError> {
+        Self::try_with_capacity(LOG_RETENTION_BYTES)
+    }
+
+    /// Creates an empty retained log buffer with a specific capacity.
+    #[must_use]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            buffer: vec![0; capacity],
+            total_written: 0,
+        }
+    }
+
+    /// Creates an empty retained log buffer with a specific capacity.
+    pub fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError> {
+        let mut buffer = Vec::new();
+        buffer.try_reserve_exact(capacity)?;
+        buffer.resize(capacity, 0);
+
+        Ok(Self {
+            buffer,
+            total_written: 0,
+        })
+    }
+
+    /// Creates an unavailable retained log buffer that drops appended bytes.
+    #[must_use]
+    pub const fn empty() -> Self {
+        Self {
+            buffer: Vec::new(),
+            total_written: 0,
+        }
+    }
+
+    /// Returns the retained byte capacity.
+    #[must_use]
+    pub fn capacity(&self) -> usize {
+        self.buffer.len()
+    }
+
     /// Appends raw log text to the retained buffer.
     pub fn append(&mut self, text: &str) {
+        if self.buffer.is_empty() {
+            self.total_written = self.total_written.saturating_add(text.len() as u64);
+            return;
+        }
+
         let mut remaining = text.as_bytes();
         while !remaining.is_empty() {
             let write_offset = self.total_written as usize % self.buffer.len();
@@ -95,11 +143,17 @@ impl RetainedLogBuffer {
             return Vec::new();
         }
 
+        let capacity = self.buffer.len();
+        if capacity == 0 {
+            *cursor = (*cursor).min(self.total_written);
+            return Vec::new();
+        }
+
         let total = self.total_written;
         let mut req_pos = (*cursor).min(total);
 
-        if total >= LOG_RETENTION_BYTES as u64 && req_pos < total - LOG_RETENTION_BYTES as u64 {
-            req_pos = total - LOG_RETENTION_BYTES as u64;
+        if total >= capacity as u64 && req_pos < total - capacity as u64 {
+            req_pos = total - capacity as u64;
             req_pos = self.resync_to_next_line(req_pos, total);
         }
 
@@ -270,6 +324,40 @@ mod tests {
         // Assert
         assert!(!chunk.starts_with("stale partial line"));
         assert!(chunk.starts_with("kept line\n"));
+    }
+
+    #[test]
+    fn retained_buffer_uses_configured_capacity_for_clamping() {
+        // Arrange
+        let mut buffer = RetainedLogBuffer::with_capacity(20);
+        buffer.append("discarded-line\n");
+        buffer.append("kept-line\n");
+        buffer.append("tail");
+        let mut cursor = 0;
+
+        // Act
+        let chunk = buffer.read_absolute_chunk(&mut cursor, LOG_CHUNK_BYTES);
+
+        // Assert
+        assert_eq!(buffer.capacity(), 20);
+        assert!(!chunk.contains("discarded-line"));
+        assert!(chunk.starts_with("kept-line\n"));
+    }
+
+    #[test]
+    fn empty_retained_buffer_drops_bytes_without_panicking() {
+        // Arrange
+        let mut buffer = RetainedLogBuffer::empty();
+        let mut cursor = 0;
+
+        // Act
+        buffer.append("not retained\n");
+        let chunk = buffer.read_absolute_chunk(&mut cursor, LOG_CHUNK_BYTES);
+
+        // Assert
+        assert_eq!(buffer.capacity(), 0);
+        assert_eq!(buffer.total_written(), 13);
+        assert_eq!(chunk, "");
     }
 
     #[test]

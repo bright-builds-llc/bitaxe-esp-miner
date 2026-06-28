@@ -24,6 +24,8 @@ const DEFAULT_REFERENCE_GUARD: &str = "scripts/verify-reference-clean.sh";
 const DEFAULT_REFERENCE_DIR: &str = "reference/esp-miner";
 const ESP_IDF_VERSION: &str = "v5.5.4";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";
+const WWW_IMAGE_OFFSET: usize = 0x410000;
+const OTADATA_IMAGE_OFFSET: usize = 0xf10000;
 
 #[derive(Debug, Parser)]
 #[command(name = "xtask")]
@@ -345,6 +347,18 @@ fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
         if !factory_image.is_file() {
             bail!("factory image does not exist: {factory_image}");
         }
+        validate_factory_payload(
+            factory_image,
+            &package_request.www_bin,
+            WWW_IMAGE_OFFSET,
+            "www.bin",
+        )?;
+        validate_factory_payload(
+            factory_image,
+            &package_request.otadata_initial,
+            OTADATA_IMAGE_OFFSET,
+            "otadata-initial.bin",
+        )?;
     } else {
         bail!("factory image is required for package manifest v2");
     }
@@ -372,6 +386,31 @@ fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
             "provenance manifest does not exist: {}",
             package_request.provenance_manifest
         );
+    }
+
+    Ok(())
+}
+
+fn validate_factory_payload(
+    factory_image: &Utf8PathBuf,
+    payload_path: &Utf8PathBuf,
+    offset: usize,
+    label: &str,
+) -> Result<()> {
+    let factory_bytes = fs::read(factory_image.as_std_path())
+        .with_context(|| format!("failed to read factory image {factory_image}"))?;
+    let payload_bytes = fs::read(payload_path.as_std_path())
+        .with_context(|| format!("failed to read {label} payload {payload_path}"))?;
+    let end = offset
+        .checked_add(payload_bytes.len())
+        .with_context(|| format!("{label} offset overflow"))?;
+    if factory_bytes.len() < end {
+        bail!(
+            "factory image {factory_image} is too small to contain {label} at offset 0x{offset:x}"
+        );
+    }
+    if factory_bytes[offset..end] != payload_bytes {
+        bail!("factory image {factory_image} does not contain {label} at offset 0x{offset:x}");
     }
 
     Ok(())
@@ -461,9 +500,9 @@ mod tests {
         let package_elf = temp_path(&dir, DEFAULT_ELF_NAME);
         let factory_image = temp_path(&dir, FACTORY_IMAGE_NAME);
         write_fixture(&package_elf, b"elf");
-        std::fs::write(factory_image.as_std_path(), b"factory").expect("write factory");
 
         let request = package_request(&dir, package_elf, Some(factory_image));
+        write_factory_fixture(&request);
         let environment = FakePackageEnvironment::clean();
 
         // Act
@@ -570,6 +609,25 @@ mod tests {
 
         // Assert
         assert_eq!(result.expect("board"), BoardId::Ultra205);
+    }
+
+    #[test]
+    fn package_manifest_rejects_factory_image_without_static_payloads() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let package_elf = temp_path(&dir, DEFAULT_ELF_NAME);
+        let factory_image = temp_path(&dir, FACTORY_IMAGE_NAME);
+        write_fixture(&package_elf, b"elf");
+        write_fixture(&factory_image, b"factory");
+        let request = package_request(&dir, package_elf, Some(factory_image));
+
+        // Act
+        let result = validate_package_request(&request);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("factory image"));
+        assert!(error.contains("www.bin"));
     }
 
     #[test]
@@ -689,6 +747,20 @@ mod tests {
 
     fn write_fixture(path: &Utf8Path, bytes: &[u8]) {
         std::fs::write(path.as_std_path(), bytes).expect("write fixture");
+    }
+
+    fn write_factory_fixture(request: &PackageRequest) {
+        let factory_image = request.factory_image.clone().expect("factory image");
+        let www_bin = std::fs::read(request.www_bin.as_std_path()).expect("read www.bin");
+        let otadata_initial =
+            std::fs::read(request.otadata_initial.as_std_path()).expect("read otadata");
+        let www_end = WWW_IMAGE_OFFSET + www_bin.len();
+        let otadata_end = OTADATA_IMAGE_OFFSET + otadata_initial.len();
+        let mut factory = b"factory".to_vec();
+        factory.resize(www_end.max(otadata_end), 0xff);
+        factory[WWW_IMAGE_OFFSET..www_end].copy_from_slice(&www_bin);
+        factory[OTADATA_IMAGE_OFFSET..otadata_end].copy_from_slice(&otadata_initial);
+        std::fs::write(factory_image.as_std_path(), factory).expect("write factory");
     }
 
     fn write_validate_manifest(

@@ -530,8 +530,8 @@ mod tests {
         let package_elf = write_fixture(&dir, DEFAULT_ELF_NAME, b"elf");
         let firmware_ota_image = write_fixture(&dir, "esp-miner.bin", b"ota");
         let www_bin = write_fixture(&dir, "www.bin", b"www");
-        let factory_image = write_fixture(&dir, FACTORY_IMAGE_NAME, b"factory");
         let otadata_initial = write_fixture(&dir, "otadata-initial.bin", b"otadata");
+        let factory_image = write_factory_fixture(&dir, &www_bin, &otadata_initial);
         let partition_table = write_fixture(&dir, "partitions-ultra205.csv", b"partition-csv");
         let install_notes = write_fixture(&dir, "ultra-205.md", b"install");
         let license_inventory = write_fixture(&dir, "license-inventory.md", b"license");
@@ -615,6 +615,22 @@ mod tests {
         let path = dir_path(dir).join(file_name);
         std::fs::write(path.as_std_path(), contents).expect("write fixture");
         path
+    }
+
+    fn write_factory_fixture(
+        dir: &TempDir,
+        www_bin: &Utf8Path,
+        otadata_initial: &Utf8Path,
+    ) -> Utf8PathBuf {
+        let www = std::fs::read(www_bin.as_std_path()).expect("read www");
+        let otadata = std::fs::read(otadata_initial.as_std_path()).expect("read otadata");
+        let mut factory = b"factory".to_vec();
+        let www_end = crate::WWW_IMAGE_OFFSET + www.len();
+        let otadata_end = crate::OTADATA_IMAGE_OFFSET + otadata.len();
+        factory.resize(otadata_end.max(www_end), 0xff);
+        factory[crate::WWW_IMAGE_OFFSET..www_end].copy_from_slice(&www);
+        factory[crate::OTADATA_IMAGE_OFFSET..otadata_end].copy_from_slice(&otadata);
+        write_fixture(dir, FACTORY_IMAGE_NAME, &factory)
     }
 
     fn dir_path(dir: &TempDir) -> Utf8PathBuf {

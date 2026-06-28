@@ -123,6 +123,6 @@ Plan 07-09 can use `docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke.m
 - Confirmed summary, operator guide, evidence rollup, and hardware-smoke template files exist.
 - Confirmed task commits `887a3e4`, `c705c06`, and `6f40964` exist in git history.
 
----
+***
 *Phase: 07-ota-filesystem-and-release-packaging*
 *Completed: 2026-06-28*

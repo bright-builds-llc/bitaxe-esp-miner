@@ -167,21 +167,25 @@ fn validate_unknown_follow_up(
     sections: &[MarkdownSection],
 ) {
     for section in sections {
-        let body = section.body.to_ascii_lowercase();
-        if !body.contains("unknown") {
-            continue;
-        }
+        for (line_index, line) in section.body.lines().enumerate() {
+            let normalized = line.to_ascii_lowercase();
+            if !normalized.contains("unknown") {
+                continue;
+            }
 
-        let has_owner = body.contains("owner");
-        let has_follow_up = body.contains("follow-up") || body.contains("follow up");
-        if has_owner && has_follow_up {
-            continue;
-        }
+            let has_owner = normalized.contains("owner");
+            let has_follow_up =
+                normalized.contains("follow-up") || normalized.contains("follow up");
+            if has_owner && has_follow_up {
+                continue;
+            }
 
-        errors.push(format!(
-            "{label} `{path}` section `{}` line {} says `unknown` without explicit owner and follow-up",
-            section.name, section.start_line
-        ));
+            errors.push(format!(
+                "{label} `{path}` section `{}` line {} says `unknown` without row-level owner and follow-up",
+                section.name,
+                section.start_line + line_index
+            ));
+        }
     }
 }
 
@@ -501,6 +505,27 @@ mod tests {
         assert!(!report.passed());
         assert!(report.errors.iter().any(|error| {
             error.contains("unknown") && error.contains("owner") && error.contains("follow-up")
+        }));
+    }
+
+    #[test]
+    fn release_gate_checks_unknown_follow_up_per_row() {
+        // Arrange
+        let mut documents = complete_documents();
+        documents.license_inventory_markdown = LICENSE_INVENTORY.replace(
+            "## Release artifacts\n\n- Owner: release tooling",
+            "## Release artifacts\n\n- Status: unknown\n- Owner: release tooling",
+        );
+
+        // Act
+        let report = validate_release_gate(&documents);
+
+        // Assert
+        assert!(!report.passed());
+        assert!(report.errors.iter().any(|error| {
+            error.contains("unknown")
+                && error.contains("row-level owner")
+                && error.contains("follow-up")
         }));
     }
 

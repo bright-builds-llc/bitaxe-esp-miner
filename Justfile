@@ -1,3 +1,12 @@
+doctor:
+    ./scripts/esp-doctor.sh
+
+bootstrap-esp *args:
+    ./scripts/bootstrap-esp.sh {{ args }}
+
+detect-ultra205:
+    ./scripts/detect-ultra205.sh
+
 build:
     bazel build //firmware/bitaxe:firmware
 

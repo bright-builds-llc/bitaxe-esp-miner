@@ -3,6 +3,12 @@
 This rollup separates package, manifest, compile, live hardware, compliance, and
 gap evidence so release-readiness language does not outrun the available proof.
 
+Phase 7 now includes live serial hardware evidence for corrected factory flash,
+partition layout, SPIFFS mount, PSRAM, boot-validation entry, safe startup, and
+HTTP route registration on Ultra 205. Live network HTTP requests, OTA uploads,
+rollback, large erase, failed update, and interrupted-update recovery are
+deferred to the Phase 8 release evidence gate.
+
 Relevant implementation evidence:
 
 - `.planning/phases/07-ota-filesystem-and-release-packaging/07-04-SUMMARY.md`
@@ -27,7 +33,8 @@ Relevant implementation evidence:
   `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`.
 - Expected artifacts: `bitaxe-ultra205.elf`, `esp-miner.bin`, `www.bin`,
   `otadata-initial.bin`, and `bitaxe-ultra205-factory.bin`.
-- Live hardware conclusion: not run - hardware verification pending.
+- Live hardware conclusion: Phase 7 factory flash and serial boot smoke passed;
+  live network HTTP/OTA verification is deferred to Phase 8.
 
 ## Command: manifest v2 validation
 
@@ -39,7 +46,9 @@ Relevant implementation evidence:
 - Flash impact: `tools/flash` still resolves the top-level
   `default_flash_image` to `bitaxe-ultra205.elf`, while the manifest lists
   loose OTA, SPIFFS, otadata, partition, and factory artifacts.
-- Live hardware conclusion: not run - hardware verification pending.
+- Live hardware conclusion: Phase 7 manifest-backed factory flashing was
+  verified with `espflash write-bin 0x0`; live network HTTP/OTA verification is
+  deferred to Phase 8.
 
 ## Command: partition/SPIFFS/static/recovery compile evidence
 
@@ -51,8 +60,10 @@ Relevant implementation evidence:
   assets, and representative gzip smoke path `/assets/app.css.gz`.
 - Package source: `07-05-SUMMARY.md` records `www.bin` generation from the
   static filesystem tree.
+- Serial hardware conclusion: the Ultra 205 boot log showed the expected
+  partition table, `spiffs_mount=available`, and HTTP route registration.
 - Live `/`, `/assets/app.css.gz`, missing static redirect, `/recovery`, and
-  filesystem-unavailable conclusions: not run - hardware verification pending.
+  filesystem-unavailable HTTP response conclusions: deferred to Phase 8.
 
 ## Command: firmware OTA compile evidence
 
@@ -64,8 +75,7 @@ Relevant implementation evidence:
 - Artifact source: `07-05-SUMMARY.md` records `esp-miner.bin` as the app OTA
   image in manifest v2.
 - Live `/api/system/OTA` accepted upload, invalid image rejection, AP/APSTA
-  rejection, reboot, and post-update identity conclusions:
-  not run - hardware verification pending.
+  rejection, reboot, and post-update identity conclusions: deferred to Phase 8.
 
 ## Command: boot validation compile evidence
 
@@ -75,7 +85,7 @@ Relevant implementation evidence:
   valid-image marking, invalid-image rollback/reboot, and retained boot
   validation logs.
 - Live rollback, bad-pending-image, failed update recovery, and return to
-  operable-state conclusions: not run - hardware verification pending.
+  operable-state conclusions: deferred to Phase 8.
 
 ## Command: `just parity`
 
@@ -114,12 +124,11 @@ AxeOS update is not available in this release candidate. Use just package to cre
 - Follow-up: implement and prove whole-partition SPIFFS erase/write, size
   checks, successful update, `/recovery` availability, and interrupted-update
   recovery on Ultra 205 before moving REL-03 above explicit gap status.
-- Live static update and interrupted-update conclusions:
-  not run - hardware verification pending.
+- Live static update and interrupted-update conclusions: deferred to Phase 8.
 
 ## Live Firmware OTA
 
-- Conclusion: not run - hardware verification pending.
+- Conclusion: deferred to Phase 8.
 - Required future evidence: board `Ultra 205`, port, firmware commit,
   reference commit, package manifest path, `esp-miner.bin` checksum, accepted
   upload response, invalid image rejection, reboot logs, running partition, and
@@ -127,37 +136,38 @@ AxeOS update is not available in this release candidate. Use just package to cre
 
 ## Live Rollback And Failed Update Recovery
 
-- Conclusion: not run - hardware verification pending.
+- Conclusion: deferred to Phase 8.
 - Required future evidence: pending-image state, validation pass/failure logs,
   invalid-image rollback/reboot logs, resulting running partition, and recovery
   steps that return the device to an operable state.
 
 ## Live Static And Recovery Smoke
 
-- Conclusion: not run - hardware verification pending.
+- Conclusion: deferred to Phase 8.
 - Required future evidence: `/`, `/assets/app.css.gz`, missing static redirect,
   `/recovery`, and API coexistence responses from the packaged firmware running
   on Ultra 205.
 
 ## Large Erase
 
-- Conclusion: not run - hardware verification pending.
+- Conclusion: deferred to Phase 8.
 - Required future evidence: erase command, port, package manifest path,
   `bitaxe-ultra205-factory.bin`, flash command, boot logs, static/recovery
   reachability, and final device state.
 
 ## Interrupted Update
 
-- Conclusion: not run - hardware verification pending.
+- Conclusion: deferred to Phase 8.
 - Required future evidence: point of interruption, route (`/api/system/OTA` or
   `/api/system/OTAWWW`), artifact checksum, post-interruption reachability,
   recovery procedure, and final conclusion.
 
 ## Final Release-Readiness Status
 
-- Conclusion: release-readiness status is not established.
+- Conclusion: Phase 7 release packaging and serial factory-boot readiness are
+  established; final V1 release readiness is deferred to Phase 8.
 - Package, manifest v2, partition/SPIFFS/static/recovery compile, firmware OTA
   compile, boot validation compile, release-gate, license, provenance, and
   REL-03 gap evidence are documented separately above.
 - Live firmware OTA, rollback, recovery, large erase, failed update, and
-  interrupted update remain not run - hardware verification pending.
+  interrupted update are explicit Phase 8 release-gate evidence.

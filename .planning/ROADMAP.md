@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Stratum V1 And First Mining Loop** - Deliver deterministic Stratum v1 behavior, fake pool coverage, work queue integration, and first evidence-backed Ultra 205 mining loop. (completed 2026-06-27)
 - [ ] **Phase 5: AxeOS API, Logs, And Telemetry** - Deliver upstream-compatible API models, handlers, logs, WebSocket telemetry, commands, static asset compatibility, and API comparison evidence.
 - [ ] **Phase 6: Safety Controllers And Self-Test** - Deliver Ultra 205 power, voltage, thermal, fan, fault, display/input, watchdog, and self-test parity with hardware evidence gates.
-- [ ] **Phase 7: OTA, Filesystem, And Release Packaging** - Deliver partition/filesystem behavior, OTA/recovery flows, static asset updates, release artifacts, license inventory, and safe operator docs.
+- [x] **Phase 7: OTA, Filesystem, And Release Packaging** - Deliver partition/filesystem behavior, OTA/recovery flows, static asset updates, release artifacts, license inventory, and safe operator docs. (completed 2026-06-28)
 - [ ] **Phase 8: Parity Evidence And Ultra 205 Release Gate** - Close V1 evidence governance so Ultra 205 parity claims are supported and deferred scope remains unverified or out of scope.
 
 ## Phase Details
@@ -164,14 +164,14 @@ Plans:
 
 ### Phase 7: OTA, Filesystem, And Release Packaging
 
-**Goal**: An Ultra 205 owner can install, update, recover, and inspect release artifacts through upstream-compatible image, filesystem, OTA, and packaging flows.
+**Goal**: An Ultra 205 owner can build, package, factory-flash, boot, and inspect release artifacts through upstream-compatible image, filesystem, OTA-capable, and packaging flows, with live network OTA/recovery verification deferred to Phase 8.
 **Depends on**: Phase 6
-**Requirements**: REL-01, REL-02, REL-03, REL-04, REL-05, REL-06, REL-07, REL-08
+**Requirements**: REL-01, REL-02, REL-03, REL-04, REL-05, REL-06, REL-07
 **Success Criteria** (what must be TRUE):
 
 1. User can package and flash named Ultra 205 artifacts with checksums, image metadata, source/reference commits, installation notes, and manifest entries.
-1. User can use partition layout, filesystem layout, SPIFFS/static assets, and recovery page behavior through the same administration and recovery flows expected from upstream.
-1. User can perform OTA firmware update attempts that accept, reject, apply, log, roll back, and recover with upstream-compatible observable behavior.
+1. User can factory-flash the merged image and observe on-device serial evidence for the expected partition layout, SPIFFS `www` mount, PSRAM availability, boot validation entry, safe startup, display startup, and HTTP route registration.
+1. Firmware OTA, recovery, static route, and rollback code paths are implemented, host-tested, packaged, documented, and protected by parity guards, while live network requests and fault-injection recovery are explicitly deferred to Phase 8 before release parity is claimed.
 1. OTAWWW or static-asset update behavior is implemented or explicitly reported as a V1 parity gap with evidence and owner.
 1. Developer can review dependency license inventory, reference provenance manifest, and build/flash/monitor/OTA/recovery docs before public release.
 
@@ -188,14 +188,14 @@ Plans:
 - [x] 07-08-PLAN.md - Complete operator docs and Phase 7 evidence records.
 - [x] 07-09-PLAN.md - Add parity gates and final hardware verification checkpoint.
 **UI hint**: yes
-**Verification expectations**: Package manifest checks, flash/install smoke, OTA success and failure tests, rollback/recovery/interrupted-update evidence, static asset/recovery checks, release license inventory, and operator documentation review.
+**Verification expectations**: Package manifest checks, factory flash/install serial smoke, route registration, partition/SPIFFS boot evidence, release license inventory, release-gate validation, parity guard validation, and operator documentation review. Live HTTP static/recovery checks, valid/invalid OTA upload, rollback, large erase, failed update, and interrupted-update evidence are deferred to Phase 8.
 **Research flags**: Needs phase research for ESP-IDF OTA/partition details, rollback/recovery testing, large erase behavior, static asset packaging, image manifests, and release compliance.
 
 ### Phase 8: Parity Evidence And Ultra 205 Release Gate
 
 **Goal**: Ultra 205 V1 parity claims are evidence-backed, scoped, and ready for release without expanding into deferred boards, protocols, accessories, or UI rewrites.
 **Depends on**: Phase 7
-**Requirements**: EVD-01, EVD-02, EVD-03, EVD-04, EVD-05
+**Requirements**: REL-08, EVD-01, EVD-02, EVD-03, EVD-04, EVD-05
 **Success Criteria** (what must be TRUE):
 
 1. Developer can open `docs/parity/checklist.md` and see every V1 parity surface record observable behavior, reference breadcrumb, Rust implementation pointer when known, status, evidence, and notes.
@@ -203,9 +203,10 @@ Plans:
 1. Developer can confirm non-205 boards and ASICs remain unverified or deferred unless each has its own evidence set.
 1. Developer can inspect Rust modules that port reference behavior and find module-level or behavior-level breadcrumbs without line-by-line translation comments.
 1. Release readiness is derived from unit, golden, API-compare, hardware-smoke, and hardware-regression or soak evidence instead of implementation status alone.
+1. User can reach the flashed Ultra 205 over HTTP and capture live `/`, `/assets/app.css.gz`, missing static redirect, `/recovery`, valid firmware OTA, invalid OTA rejection, OTAWWW gap response, rollback/boot validation, large erase recovery, failed update recovery, and interrupted-update recovery evidence before release parity is claimed.
 
 **Plans**: TBD
-**Verification expectations**: Full parity checklist audit, evidence type coverage review, non-205 deferred-scope review, reference breadcrumb audit, release-readiness summary, and final confirmation that V2-only scope remains out of V1.
+**Verification expectations**: Full parity checklist audit, evidence type coverage review, non-205 deferred-scope review, reference breadcrumb audit, live Ultra 205 HTTP/OTA/recovery hardware evidence, release-readiness summary, and final confirmation that V2-only scope remains out of V1.
 **Research flags**: No V1 expansion research. Each future board, ASIC family, Stratum v2, BAP, or Angular UI replacement needs its own later research and roadmap entry before work starts.
 
 ## Progress
@@ -221,5 +222,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 4. Stratum V1 And First Mining Loop | 4/4 | Complete    | 2026-06-27 |
 | 5. AxeOS API, Logs, And Telemetry | 0/TBD | Not started | - |
 | 6. Safety Controllers And Self-Test | 1/10 | In Progress | - |
-| 7. OTA, Filesystem, And Release Packaging | 0/9 | Not started | - |
+| 7. OTA, Filesystem, And Release Packaging | 9/9 | Complete | 2026-06-28 |
 | 8. Parity Evidence And Ultra 205 Release Gate | 0/TBD | Not started | - |

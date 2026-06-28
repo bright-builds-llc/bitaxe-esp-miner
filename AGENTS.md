@@ -256,3 +256,29 @@ Use these entry points:
 Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
 
 <!-- GSD:workflow-end -->
+
+## Repo-Local Guidance
+
+### ESP-IDF Tooling Preference
+
+- Treat ESP-IDF as a standard repository dependency through the pinned `esp-idf-sys` metadata, the checked-in `.cargo/config.toml`, and the ESP Rust toolchain installed by `espup`.
+- Prefer ESP-IDF and esp-rs tooling when it satisfies firmware build, package, flash, monitor, partition, image-generation, OTA, SPIFFS, NVS, FreeRTOS, and logging needs. Use `esp-idf-sys`/`embuild`, `espup`, `ldproxy`, and `espflash` before custom CMake, PlatformIO, or manually managed ESP-IDF installs.
+- Treat `.embuild/` as local, gitignored, generated ESP-IDF/esp-rs tool state. Do not commit or hand-edit it, but repo automation may use managed tools from `.embuild/espressif`, including `spiffsgen.py`, `gen_esp32part.py`, and `esptool.py`, when the pinned ESP-IDF workflow has generated them.
+- Prefer `espflash` where it suffices for flashing, monitoring, and ELF/app image generation. When `espflash` cannot cover an ESP-supported workflow such as arbitrary address/data-partition image merging, use managed `.embuild` ESP-IDF tools such as `esptool.py merge_bin` before adding custom binary manipulation.
+- If ESP-IDF/esp-rs tooling is insufficient for a concrete workflow, document the reason in repo-local guidance, an ADR, or the relevant phase artifact before adding an alternate tool path.
+- Use `just doctor` for read-only contributor dependency checks and `just bootstrap-esp` for the explicit opt-in ESP tooling installer. `just doctor` intentionally calls a script directly because it must diagnose missing Bazel or ESP prerequisites before Bazel can run.
+
+### Autonomous Ultra 205 Hardware Verification
+
+- The user grants standing permission for agents to autonomously interact with a connected Bitaxe Ultra 205 over USB for current phase verification.
+- Before autonomous hardware use, run `just detect-ultra205`. Treat detection as successful only when it finds exactly one likely ESP USB serial port and `espflash board-info --chip esp32s3 --port <port> --non-interactive` succeeds.
+- If detection succeeds, use the printed `port=<path>` with repo commands such as `just flash-monitor board=205 port=<path> evidence-dir=<path>` and record the detector output in evidence.
+- Stop and ask or record hardware evidence pending when there are zero likely ports, multiple likely ports, `board-info` fails, the target is not board `205`, or required recovery/evidence instructions are missing.
+- Phase-gated destructive or fault-injection verification is allowed only when the active phase plan documents the recovery path and required evidence. Do not run ad hoc erase, rollback, interrupted-update, voltage/fan/mining stress, or raw write commands outside documented phase-gated procedures.
+- Every hardware run must record board `205`, selected port, source commit, reference commit, package manifest/artifacts when applicable, exact commands, `board-info` output, captured logs, observed behavior, and conclusion. Do not commit secrets, pool credentials, Wi-Fi credentials, private endpoints, or NVS secret values in evidence.
+
+### Frontmatter-Parsed Markdown
+
+- In GSD artifacts and other Markdown files parsed with YAML frontmatter, use standalone `---` only for the opening and closing frontmatter delimiters at the top of the file.
+- Do not use standalone `---` as a body separator after frontmatter; the GSD parser scans all such blocks and may treat the last pair as frontmatter, breaking lifecycle validation. Use headings or `***` for body breaks instead.
+- Markdown table separator rows such as `| --- | --- |` are valid and are not affected by this rule.

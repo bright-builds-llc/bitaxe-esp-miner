@@ -6,10 +6,9 @@ paths a developer needs before using package, flash, OTA, recovery, rollback,
 or erase workflows on connected hardware.
 
 Do not treat package generation as live OTA, rollback, recovery, large erase,
-failed update, or interrupted update verification. Use
-`not run - hardware verification pending` until the matching Ultra 205 evidence
-record names the board, port, commits, artifacts, commands, observed behavior,
-and conclusion.
+failed update, or interrupted update verification. Phase 8 owns that live
+network and recovery evidence gate; until it runs, use explicit Phase 8
+deferral language and keep affected parity rows below `verified`.
 
 ## Build And Package
 
@@ -112,9 +111,9 @@ The upstream AxeOS static update route is:
 AxeOS update is not available in this release candidate. Use just package to create www.bin and flash the factory image, or use /recovery only after the documented evidence gate is complete.
 
 This is the D-16 OTAWWW gap. Do not claim static update parity from `www.bin`
-package generation alone. REL-03 remains an explicit release gap until a later
-evidence record proves whole-`www` partition write behavior, recovery access,
-and interrupted-update recovery on Ultra 205.
+package generation alone. REL-03 remains an explicit release gap until Phase 8
+evidence proves whole-`www` partition write behavior, recovery access, and
+interrupted-update recovery on Ultra 205.
 
 ## Static And Recovery Smoke
 
@@ -193,8 +192,8 @@ For interrupted static update evidence, capture:
 - Recovery procedure that restores AxeOS or the factory image.
 - Final conclusion.
 
-Until this record exists, interrupted static update remains
-`not run - hardware verification pending` and OTAWWW remains the REL-03 gap.
+Until the Phase 8 record exists, interrupted static update remains deferred and
+OTAWWW remains the REL-03 gap.
 
 ## Rollback And Boot Validation
 

@@ -25,7 +25,8 @@ readonly ESP_EXPORT="${HOME}/export-esp.sh"
 
 if [[ ! -f "$ESP_EXPORT" ]]; then
   printf 'error: missing ESP environment export at %s\n' "$ESP_EXPORT" >&2
-  printf 'install the ESP Rust toolchain with: espup install --targets esp32s3 --std\n' >&2
+  printf 'run `just doctor` to inspect ESP dependencies\n' >&2
+  printf 'run `just bootstrap-esp` to install ESP Rust tooling, then source %s or open a new shell\n' "$ESP_EXPORT" >&2
   exit 1
 fi
 
@@ -51,6 +52,8 @@ fi
 
 if ! command -v cargo >/dev/null; then
   printf 'error: cargo not found after sourcing %s\n' "$ESP_EXPORT" >&2
+  printf 'run `just doctor` to inspect ESP dependencies\n' >&2
+  printf 'run `just bootstrap-esp` after installing Rust/Cargo with rustup\n' >&2
   exit 1
 fi
 

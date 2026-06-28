@@ -53,7 +53,7 @@ is required input, but it does not satisfy release compliance by itself.
 | --- | --- | --- | --- |
 | `espflash` | Backend for `just flash`, `just monitor`, `just flash-monitor`, and `scripts/package-firmware.sh` image generation | Tool project metadata and installed binary version output | Normal Phase 7 package and operator workflow tool. |
 | `cargo-espflash` | Developer diagnostic tool when used outside the canonical Bazel/Just flow | Tool project metadata and installed binary version output | Optional diagnostic input; not required for release packaging. |
-| `esptool.py` | Not used by current Phase 7 package generation | ESP-IDF toolchain source if a future plan invokes it | Include only when a package script or release command calls it directly. |
+| `esptool.py` | Managed ESP-IDF merge backend for `scripts/package-firmware.sh` factory image data-partition assembly | ESP-IDF toolchain source from the pinned `.embuild/espressif` workflow or installed tool metadata | Required when `scripts/package-firmware.sh` assembles `bitaxe-ultra205-factory.bin`. |
 | `scripts/package-firmware.sh` | `scripts/package-firmware.sh` | Project MIT-first script plus invoked tool metadata | Prints package inputs and writes manifest evidence. |
 
 - Owner: release tooling.

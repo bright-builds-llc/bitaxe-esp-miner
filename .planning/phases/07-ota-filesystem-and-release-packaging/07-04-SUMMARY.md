@@ -154,6 +154,6 @@ None - no external service configuration required.
 - Created summary and firmware/static asset files exist.
 - Task commits `1d173f1`, `9c37885`, and `3c4c536` exist in git history.
 
----
+***
 *Phase: 07-ota-filesystem-and-release-packaging*
 *Completed: 2026-06-28*

@@ -136,6 +136,6 @@ None - no external service configuration required.
 - Stub scan found no release-doc or UI/data stubs. The only pattern hit was an existing format string in `tools/parity/src/main.rs`.
 - Threat surface scan found only the planned local release-document read path in the CLI; no unplanned network, auth, firmware, schema, or write surface was introduced.
 
----
+***
 *Phase: 07-ota-filesystem-and-release-packaging*
 *Completed: 2026-06-28*
