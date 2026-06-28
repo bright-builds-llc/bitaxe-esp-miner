@@ -904,6 +904,29 @@ mod tests {
     }
 
     #[test]
+    fn manifest_v2_default_flash_image_is_compatible() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v2(&dir, DEFAULT_ELF_NAME);
+        let command = FlashCommand {
+            common: common_args(),
+            image: None,
+            manifest: Some(manifest.clone()),
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let outcome = run_flash(&command, &environment).expect("flash");
+
+        // Assert
+        assert_eq!(outcome.manifest.as_ref(), Some(&manifest));
+        assert_eq!(
+            outcome.flash_image,
+            manifest.parent().expect("parent").join(DEFAULT_ELF_NAME)
+        );
+    }
+
+    #[test]
     fn zero_ports_error_includes_actionable_example() {
         // Arrange
         let environment = FakeFlashEnvironment::with_ports("");
@@ -1035,6 +1058,32 @@ mod tests {
         std::fs::write(
             manifest.as_std_path(),
             format!(r#"{{"default_flash_image":"{default_flash_image}"}}"#),
+        )
+        .expect("write manifest");
+        manifest
+    }
+
+    fn write_manifest_v2(dir: &TempDir, default_flash_image: &str) -> Utf8PathBuf {
+        let dir_path = dir_path(dir);
+        let manifest = dir_path.join(PACKAGE_MANIFEST_RELATIVE_PATH);
+        let manifest_dir = manifest.parent().expect("parent");
+        std::fs::create_dir_all(manifest_dir.as_std_path()).expect("create manifest dir");
+        let default_image = manifest_dir.join(default_flash_image);
+        std::fs::write(default_image.as_std_path(), b"image").expect("write image");
+        std::fs::write(
+            manifest.as_std_path(),
+            format!(
+                r#"{{
+  "schema_version": 2,
+  "default_flash_image": "{default_flash_image}",
+  "release_name": "bitaxe-ultra205-v1",
+  "image_metadata": {{"board": "205"}},
+  "install_notes": {{"path": "docs/release/ultra-205.md"}},
+  "license_inventory": "docs/release/license-inventory.json",
+  "provenance_manifest": "docs/release/provenance-manifest.json",
+  "artifacts": []
+}}"#
+            ),
         )
         .expect("write manifest");
         manifest

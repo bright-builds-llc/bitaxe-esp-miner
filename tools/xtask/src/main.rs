@@ -1,15 +1,16 @@
 use std::env;
 use std::fmt;
 use std::fs;
-use std::io::{Read, Write};
 use std::process::Command as ProcessCommand;
 use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
-use serde::Serialize;
-use sha2::{Digest, Sha256};
+
+mod package_manifest;
+
+use package_manifest::{build_manifest, validate_default_flash_image, write_manifest};
 
 const EXPECTED_REFERENCE_COMMIT: &str = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const UNAVAILABLE: &str = "Unavailable";
@@ -106,37 +107,6 @@ impl fmt::Display for BoardId {
             Self::Ultra205 => formatter.write_str("205"),
         }
     }
-}
-
-#[derive(Debug, Serialize)]
-struct PackageManifest {
-    schema_version: u32,
-    board: String,
-    device_model: String,
-    asic: String,
-    firmware_commit: String,
-    reference_commit: String,
-    esp_idf_version: String,
-    rust_target: String,
-    tool_versions: ToolVersions,
-    default_flash_image: String,
-    artifacts: Vec<ManifestArtifact>,
-}
-
-#[derive(Debug, Serialize)]
-struct ToolVersions {
-    cargo: String,
-    rustc: String,
-    bazel: String,
-    espflash: String,
-}
-
-#[derive(Debug, Serialize)]
-struct ManifestArtifact {
-    kind: String,
-    path: String,
-    offset: String,
-    sha256: String,
 }
 
 trait PackageEnvironment {
@@ -247,58 +217,6 @@ fn run_package_firmware(
     write_manifest(&package_request.manifest, &manifest)
 }
 
-fn build_manifest(
-    package_request: &PackageRequest,
-    environment: &impl PackageEnvironment,
-) -> Result<PackageManifest> {
-    environment.run_reference_guard()?;
-    validate_package_request(package_request)?;
-
-    let firmware_commit = environment
-        .firmware_commit()
-        .unwrap_or_else(|_| UNAVAILABLE.to_owned());
-    let reference_commit = environment.reference_commit()?;
-    if reference_commit != EXPECTED_REFERENCE_COMMIT {
-        bail!(
-            "reference commit mismatch after guard: expected {EXPECTED_REFERENCE_COMMIT}, found {reference_commit}"
-        );
-    }
-
-    let mut artifacts = Vec::new();
-    artifacts.push(artifact_entry(
-        "firmware_elf",
-        &package_request.firmware_elf,
-        UNAVAILABLE,
-        &package_request.manifest,
-    )?);
-
-    if let Some(factory_image) = &package_request.factory_image {
-        artifacts.push(artifact_entry(
-            "factory_image",
-            factory_image,
-            "0x0",
-            &package_request.manifest,
-        )?);
-    }
-
-    Ok(PackageManifest {
-        schema_version: 1,
-        board: package_request.board.to_string(),
-        device_model: "Ultra 205".to_owned(),
-        asic: "BM1366".to_owned(),
-        firmware_commit,
-        reference_commit,
-        esp_idf_version: ESP_IDF_VERSION.to_owned(),
-        rust_target: RUST_TARGET.to_owned(),
-        tool_versions: tool_versions(environment),
-        default_flash_image: manifest_relative_path(
-            &package_request.manifest,
-            &package_request.default_flash_image,
-        ),
-        artifacts,
-    })
-}
-
 fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
     if package_request.board != BoardId::Ultra205 {
         bail!(
@@ -329,111 +247,6 @@ fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn validate_default_flash_image(default_flash_image: &Utf8Path) -> Result<()> {
-    let maybe_file_name = default_flash_image.file_name();
-    let Some(file_name) = maybe_file_name else {
-        bail!("default_flash_image must resolve to {DEFAULT_ELF_NAME}");
-    };
-
-    if file_name != DEFAULT_ELF_NAME {
-        if file_name == FACTORY_IMAGE_NAME {
-            bail!(
-                "default_flash_image must resolve to {DEFAULT_ELF_NAME}; {FACTORY_IMAGE_NAME} is only an additional artifact"
-            );
-        }
-
-        bail!("default_flash_image must resolve to {DEFAULT_ELF_NAME}, not {file_name}");
-    }
-
-    Ok(())
-}
-
-fn artifact_entry(
-    kind: &str,
-    path: &Utf8Path,
-    offset: &str,
-    manifest_path: &Utf8Path,
-) -> Result<ManifestArtifact> {
-    Ok(ManifestArtifact {
-        kind: kind.to_owned(),
-        path: manifest_relative_path(manifest_path, path),
-        offset: offset.to_owned(),
-        sha256: sha256_file(path)?,
-    })
-}
-
-fn manifest_relative_path(manifest_path: &Utf8Path, artifact_path: &Utf8Path) -> String {
-    let maybe_manifest_dir = manifest_path.parent();
-    if let Some(manifest_dir) = maybe_manifest_dir {
-        if artifact_path.parent() == Some(manifest_dir) {
-            if let Some(file_name) = artifact_path.file_name() {
-                return file_name.to_owned();
-            }
-        }
-    }
-
-    artifact_path.as_str().to_owned()
-}
-
-fn sha256_file(path: &Utf8Path) -> Result<String> {
-    let mut file = fs::File::open(path.as_std_path())
-        .with_context(|| format!("failed to open artifact for checksum: {path}"))?;
-    let mut hasher = Sha256::new();
-    let mut buffer = [0_u8; 8192];
-
-    loop {
-        let byte_count = file
-            .read(&mut buffer)
-            .with_context(|| format!("failed to read artifact for checksum: {path}"))?;
-        if byte_count == 0 {
-            break;
-        }
-        hasher.update(&buffer[..byte_count]);
-    }
-
-    let digest = hasher.finalize();
-    let mut encoded = String::with_capacity(digest.len() * 2);
-    for byte in digest.iter() {
-        encoded.push_str(&format!("{byte:02x}"));
-    }
-
-    Ok(encoded)
-}
-
-fn tool_versions(environment: &impl PackageEnvironment) -> ToolVersions {
-    ToolVersions {
-        cargo: environment
-            .maybe_tool_version("cargo")
-            .unwrap_or_else(|| UNAVAILABLE.to_owned()),
-        rustc: environment
-            .maybe_tool_version("rustc")
-            .unwrap_or_else(|| UNAVAILABLE.to_owned()),
-        bazel: environment
-            .maybe_tool_version("bazel")
-            .unwrap_or_else(|| UNAVAILABLE.to_owned()),
-        espflash: environment
-            .maybe_tool_version("espflash")
-            .unwrap_or_else(|| UNAVAILABLE.to_owned()),
-    }
-}
-
-fn write_manifest(path: &Utf8Path, manifest: &PackageManifest) -> Result<()> {
-    let mut json =
-        serde_json::to_string_pretty(manifest).context("failed to serialize package manifest")?;
-    json.push('\n');
-
-    let maybe_parent = path.parent();
-    if let Some(parent) = maybe_parent {
-        fs::create_dir_all(parent.as_std_path())
-            .with_context(|| format!("failed to create manifest directory {parent}"))?;
-    }
-
-    let mut file = fs::File::create(path.as_std_path())
-        .with_context(|| format!("failed to create package manifest {path}"))?;
-    file.write_all(json.as_bytes())
-        .with_context(|| format!("failed to write package manifest {path}"))
 }
 
 fn parse_board(value: &str) -> std::result::Result<BoardId, String> {
@@ -509,6 +322,8 @@ fn command_stderr_or_status(output: &std::process::Output) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::package_manifest::{sha256_file, tool_versions};
+    use camino::Utf8Path;
     use tempfile::{tempdir, TempDir};
 
     #[test]
