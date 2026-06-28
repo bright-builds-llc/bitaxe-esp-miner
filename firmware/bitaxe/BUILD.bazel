@@ -23,7 +23,11 @@ genrule(
 
 genrule(
     name = "firmware_image",
-    srcs = ["//firmware/bitaxe:firmware"],
+    srcs = [
+        "//firmware/bitaxe:firmware",
+        "//:.git/HEAD",
+        "//:.git/refs/heads/main",
+    ],
     outs = [
         "bitaxe-ultra205.elf",
         "esp-miner.bin",

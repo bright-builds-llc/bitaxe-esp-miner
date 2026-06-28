@@ -1,1 +1,8 @@
 package(default_visibility = ["//visibility:public"])
+
+# Package manifests record git HEAD, so package-producing actions need HEAD as
+# an explicit input instead of only reading it from git at execution time.
+exports_files([
+    ".git/HEAD",
+    ".git/refs/heads/main",
+])
