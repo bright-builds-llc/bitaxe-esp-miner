@@ -154,7 +154,7 @@ Plans:
 - [x] 06-03-PLAN.md - Implement power, voltage, current, and observe-only DS4432U/INA260 decisions.
 - [x] 06-04-PLAN.md - Implement thermal, fan, PID, overheat, and fault decisions.
 - [x] 06-05-PLAN.md - Implement self-test lifecycle and watchdog-friendly step supervision.
-- [ ] 06-06-PLAN.md - Wire power, thermal, and safety evidence tokens into ASIC and mining gates.
+- [x] 06-06-PLAN.md - Wire power, thermal, and safety evidence tokens into ASIC and mining gates.
 - [ ] 06-07-PLAN.md - Replace zeroed API telemetry with explicit safety telemetry status.
 - [ ] 06-08-PLAN.md - Add firmware observe-only safety adapters and runtime snapshot integration.
 - [ ] 06-09-PLAN.md - Add firmware safety supervisor and display/input runtime gap status.
