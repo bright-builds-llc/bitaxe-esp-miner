@@ -22,12 +22,7 @@ use crate::filesystem::FilesystemStatus;
 type StaticHttpRequest<'request, 'connection> =
     Request<&'request mut EspHttpConnection<'connection>>;
 
-const RECOVERY_PAGE_HTML: &str = r#"<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>AxeOS Recovery</title></head>
-<body><h1>AxeOS Recovery</h1><p>Please upload www.bin to recover AxeOS.</p></body>
-</html>
-"#;
+const RECOVERY_PAGE_HTML: &str = include_str!("../static/recovery_page.html");
 const TEXT_PLAIN: &str = "text/plain";
 const WWW_BASE_PATH: &str = "/www";
 

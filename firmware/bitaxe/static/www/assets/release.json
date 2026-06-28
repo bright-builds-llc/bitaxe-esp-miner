@@ -1,0 +1,8 @@
+{
+  "name": "bitaxe-rust-phase-07-static-compatibility",
+  "board": "Ultra 205",
+  "asset_scope": "AxeOS compatibility fallback and recovery source",
+  "provenance": "Rust-owned static asset; not copied from upstream ESP-Miner.",
+  "ota_www_route": "/api/system/OTAWWW",
+  "recovery_route": "/recovery"
+}
