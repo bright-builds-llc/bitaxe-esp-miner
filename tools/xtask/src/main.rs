@@ -11,7 +11,10 @@ use clap::{Parser, Subcommand};
 mod package_manifest;
 mod partition_contract;
 
-use package_manifest::{build_manifest, validate_default_flash_image, write_manifest};
+use package_manifest::{
+    build_manifest, read_manifest_v2, validate_default_flash_image, validate_package_manifest_v2,
+    write_manifest,
+};
 
 const EXPECTED_REFERENCE_COMMIT: &str = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const UNAVAILABLE: &str = "Unavailable";
@@ -35,6 +38,8 @@ struct Cli {
 enum CliCommand {
     #[command(name = "package-firmware")]
     PackageFirmware(PackageArgs),
+    #[command(name = "validate-package")]
+    ValidatePackage(ValidatePackageArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -56,6 +61,15 @@ struct PackageArgs {
 
     #[arg(long = "factory-image", value_parser = parse_utf8_path)]
     factory_image: Option<Utf8PathBuf>,
+}
+
+#[derive(Debug, Parser)]
+struct ValidatePackageArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    manifest: Utf8PathBuf,
+
+    #[arg(long = "partition-table", value_parser = parse_utf8_path)]
+    partition_table: Utf8PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -200,6 +214,9 @@ fn main() -> Result<()> {
             let request = PackageRequest::from(args);
             run_package_firmware(&request, &environment)?;
         }
+        CliCommand::ValidatePackage(args) => {
+            run_validate_package(&args)?;
+        }
     }
 
     Ok(())
@@ -220,6 +237,12 @@ fn run_package_firmware(
         )
     })?;
     write_manifest(&package_request.manifest, &manifest)
+}
+
+fn run_validate_package(args: &ValidatePackageArgs) -> Result<()> {
+    let manifest = read_manifest_v2(&args.manifest)?;
+    validate_package_manifest_v2(&manifest)?;
+    partition_contract::validate_ultra205_partition_contract(&args.partition_table)
 }
 
 fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
@@ -466,6 +489,80 @@ mod tests {
         assert!(format!("{result:#?}").contains("reference dirty"));
     }
 
+    #[test]
+    fn validate_package_accepts_required_manifest_and_partition_table() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_validate_manifest(&dir, true, true, "0x0");
+        let partition_table = write_valid_partition_table(&dir);
+        let args = ValidatePackageArgs {
+            manifest,
+            partition_table,
+        };
+
+        // Act
+        let result = run_validate_package(&args);
+
+        // Assert
+        assert!(result.is_ok(), "{result:#?}");
+    }
+
+    #[test]
+    fn validate_package_rejects_missing_www_spiffs_image() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_validate_manifest(&dir, false, true, "0x0");
+        let partition_table = write_valid_partition_table(&dir);
+        let args = ValidatePackageArgs {
+            manifest,
+            partition_table,
+        };
+
+        // Act
+        let result = run_validate_package(&args);
+
+        // Assert
+        assert!(format!("{result:#?}").contains("www_spiffs_image"));
+    }
+
+    #[test]
+    fn validate_package_rejects_missing_install_notes() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_validate_manifest(&dir, true, false, "0x0");
+        let partition_table = write_valid_partition_table(&dir);
+        let args = ValidatePackageArgs {
+            manifest,
+            partition_table,
+        };
+
+        // Act
+        let result = run_validate_package(&args);
+
+        // Assert
+        assert!(format!("{result:#?}").contains("install_notes"));
+    }
+
+    #[test]
+    fn validate_package_rejects_factory_image_without_zero_offset() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_validate_manifest(&dir, true, true, "0x10000");
+        let partition_table = write_valid_partition_table(&dir);
+        let args = ValidatePackageArgs {
+            manifest,
+            partition_table,
+        };
+
+        // Act
+        let result = run_validate_package(&args);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("factory"));
+        assert!(error.contains("0x0"));
+    }
+
     fn temp_path(dir: &TempDir, file_name: &str) -> Utf8PathBuf {
         Utf8PathBuf::from_path_buf(dir.path().join(file_name)).expect("utf8 path")
     }
@@ -476,6 +573,85 @@ mod tests {
 
     fn write_fixture(path: &Utf8Path, bytes: &[u8]) {
         std::fs::write(path.as_std_path(), bytes).expect("write fixture");
+    }
+
+    fn write_validate_manifest(
+        dir: &TempDir,
+        include_www_spiffs_image: bool,
+        include_install_notes: bool,
+        factory_offset: &str,
+    ) -> Utf8PathBuf {
+        let mut artifacts = vec![
+            artifact_json("firmware_elf", "bitaxe-ultra205.elf", "Unavailable"),
+            artifact_json("firmware_ota_image", "bitaxe-ultra205.bin", "0x10000"),
+            artifact_json(
+                "factory_merged_image",
+                "bitaxe-ultra205-factory.bin",
+                factory_offset,
+            ),
+            artifact_json("partition_table", "partition-table.bin", "0x8000"),
+            artifact_json("otadata_initial", "ota_data_initial.bin", "0xf10000"),
+        ];
+        if include_www_spiffs_image {
+            artifacts.push(artifact_json("www_spiffs_image", "www.bin", "0x410000"));
+        }
+
+        let mut manifest = serde_json::json!({
+            "schema_version": 2,
+            "release_name": "bitaxe-ultra205-v1",
+            "default_flash_image": "bitaxe-ultra205.elf",
+            "image_metadata": {
+                "board": "205",
+                "device_model": "Ultra 205",
+                "asic": "BM1366",
+                "esp_idf_version": "v5.5.4",
+                "rust_target": "xtensa-esp32s3-espidf"
+            },
+            "license_inventory": "docs/release/license-inventory.json",
+            "provenance_manifest": "docs/release/provenance-manifest.json",
+            "artifacts": artifacts
+        });
+        if include_install_notes {
+            manifest["install_notes"] = serde_json::json!({
+                "path": "docs/release/ultra-205.md",
+                "summary": "Flash with just flash board=205"
+            });
+        }
+
+        let path = temp_path(dir, "manifest-v2.json");
+        std::fs::write(
+            path.as_std_path(),
+            serde_json::to_string_pretty(&manifest).expect("manifest json"),
+        )
+        .expect("write manifest");
+        path
+    }
+
+    fn artifact_json(kind: &str, path: &str, offset: &str) -> serde_json::Value {
+        serde_json::json!({
+            "kind": kind,
+            "path": path,
+            "offset": offset,
+            "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        })
+    }
+
+    fn write_valid_partition_table(dir: &TempDir) -> Utf8PathBuf {
+        let path = temp_path(dir, "partitions-ultra205.csv");
+        std::fs::write(
+            path.as_std_path(),
+            "# Name, Type, SubType, Offset, Size, Flags\n\
+             nvs, data, nvs, 0x9000, 0x6000\n\
+             phy_init, data, phy, 0xf000, 0x1000\n\
+             factory, app, factory, 0x10000, 4M\n\
+             www, data, spiffs, 0x410000, 3M\n\
+             ota_0, app, ota_0, 0x710000, 4M\n\
+             ota_1, app, ota_1, 0xb10000, 4M\n\
+             otadata, data, ota, 0xf10000, 8k\n\
+             coredump, data, coredump, , 64K\n",
+        )
+        .expect("write partition table");
+        path
     }
 
     fn package_request(

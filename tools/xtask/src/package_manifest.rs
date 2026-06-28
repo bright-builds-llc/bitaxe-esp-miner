@@ -181,6 +181,120 @@ pub(crate) fn validate_default_flash_image(default_flash_image: &Utf8Path) -> Re
     Ok(())
 }
 
+pub(crate) fn read_manifest_v2(path: &Utf8Path) -> Result<PackageManifestV2> {
+    let contents = fs::read_to_string(path.as_std_path())
+        .with_context(|| format!("failed to read package manifest {path}"))?;
+    serde_json::from_str(&contents).with_context(|| format!("failed to parse manifest v2 {path}"))
+}
+
+pub(crate) fn validate_package_manifest_v2(manifest: &PackageManifestV2) -> Result<()> {
+    if manifest.schema_version != 2 {
+        bail!(
+            "package manifest schema_version must be 2, found {}",
+            manifest.schema_version
+        );
+    }
+
+    validate_default_flash_image(Utf8Path::new(&manifest.default_flash_image))?;
+    require_non_empty("release_name", &manifest.release_name)?;
+    require_non_empty("image_metadata.board", &manifest.image_metadata.board)?;
+    require_non_empty(
+        "image_metadata.device_model",
+        &manifest.image_metadata.device_model,
+    )?;
+    require_non_empty("image_metadata.asic", &manifest.image_metadata.asic)?;
+    require_non_empty(
+        "image_metadata.esp_idf_version",
+        &manifest.image_metadata.esp_idf_version,
+    )?;
+    require_non_empty(
+        "image_metadata.rust_target",
+        &manifest.image_metadata.rust_target,
+    )?;
+    require_non_empty("install_notes.path", &manifest.install_notes.path)?;
+    require_non_empty("install_notes.summary", &manifest.install_notes.summary)?;
+    require_non_empty("license_inventory", &manifest.license_inventory)?;
+    require_non_empty("provenance_manifest", &manifest.provenance_manifest)?;
+
+    for kind in [
+        ArtifactKind::FirmwareElf,
+        ArtifactKind::FirmwareOtaImage,
+        ArtifactKind::WwwSpiffsImage,
+        ArtifactKind::FactoryMergedImage,
+        ArtifactKind::PartitionTable,
+        ArtifactKind::OtadataInitial,
+    ] {
+        require_artifact_kind(manifest, kind)?;
+    }
+
+    for artifact in &manifest.artifacts {
+        validate_sha256(&artifact.kind, &artifact.sha256)?;
+        require_non_empty("artifact.path", &artifact.path)?;
+        require_non_empty("artifact.offset", &artifact.offset)?;
+    }
+
+    let factory = require_artifact_kind(manifest, ArtifactKind::FactoryMergedImage)?;
+    if factory.offset != "0x0" {
+        bail!(
+            "factory_merged_image artifact must use factory offset 0x0, found {}",
+            factory.offset
+        );
+    }
+
+    Ok(())
+}
+
+fn require_non_empty(label: &str, value: &str) -> Result<()> {
+    if value.trim().is_empty() {
+        bail!("{label} must not be empty");
+    }
+
+    Ok(())
+}
+
+fn require_artifact_kind(
+    manifest: &PackageManifestV2,
+    kind: ArtifactKind,
+) -> Result<&ReleaseArtifact> {
+    manifest
+        .artifacts
+        .iter()
+        .find(|artifact| artifact.kind == kind)
+        .with_context(|| required_artifact_message(kind))
+}
+
+fn validate_sha256(kind: &ArtifactKind, sha256: &str) -> Result<()> {
+    if sha256.len() == 64
+        && sha256
+            .chars()
+            .all(|character| character.is_ascii_hexdigit())
+    {
+        return Ok(());
+    }
+
+    bail!("{kind} sha256 must be a 64 character hex string");
+}
+
+fn required_artifact_message(kind: ArtifactKind) -> String {
+    match kind {
+        ArtifactKind::FirmwareElf => "required artifact kind firmware_elf missing".to_owned(),
+        ArtifactKind::FirmwareOtaImage => {
+            "required artifact kind firmware_ota_image missing".to_owned()
+        }
+        ArtifactKind::WwwSpiffsImage => {
+            "required artifact kind www_spiffs_image missing".to_owned()
+        }
+        ArtifactKind::FactoryMergedImage => {
+            "required artifact kind factory_merged_image missing".to_owned()
+        }
+        ArtifactKind::PartitionTable => "required artifact kind partition_table missing".to_owned(),
+        ArtifactKind::OtadataInitial => "required artifact kind otadata_initial missing".to_owned(),
+        ArtifactKind::UpdateOnlyImage => {
+            "required artifact kind update_only_image missing".to_owned()
+        }
+    }
+}
+
 fn artifact_entry(
     kind: &str,
     path: &Utf8Path,
