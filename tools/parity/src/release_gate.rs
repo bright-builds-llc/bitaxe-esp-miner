@@ -1,4 +1,5 @@
 use camino::Utf8PathBuf;
+use serde_json::Value;
 
 pub(crate) const DEFAULT_LICENSE_INVENTORY_PATH: &str = "docs/release/license-inventory.md";
 pub(crate) const DEFAULT_PROVENANCE_PATH: &str = "docs/release/provenance-manifest.md";
@@ -82,6 +83,12 @@ pub(crate) fn validate_release_gate(documents: &ReleaseGateDocuments) -> Release
         &mut errors,
         documents.maybe_manifest_path.as_ref(),
         documents.maybe_manifest_json.as_deref(),
+    );
+    validate_manifest_artifact_review_closure(
+        &mut errors,
+        documents.maybe_manifest_path.as_ref(),
+        &documents.provenance_path,
+        &documents.provenance_markdown,
     );
 
     ReleaseGateReport { errors }
@@ -198,15 +205,159 @@ fn validate_manifest_if_provided(
         return;
     };
 
-    match maybe_manifest_json {
-        Some(contents) if !contents.trim().is_empty() => {}
-        Some(_) => {
-            errors.push(format!("package manifest `{manifest_path}` is empty"));
-        }
-        None => {
-            errors.push(format!("package manifest `{manifest_path}` is missing"));
-        }
+    let Some(contents) = maybe_manifest_json else {
+        errors.push(format!("package manifest `{manifest_path}` is missing"));
+        return;
+    };
+
+    if contents.trim().is_empty() {
+        errors.push(format!("package manifest `{manifest_path}` is empty"));
+        return;
     }
+
+    let manifest: Value = match serde_json::from_str(contents) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            errors.push(format!(
+                "package manifest `{manifest_path}` is not valid JSON: {error}"
+            ));
+            return;
+        }
+    };
+
+    validate_manifest_schema_version(errors, manifest_path, &manifest);
+    validate_manifest_required_strings(errors, manifest_path, &manifest);
+    validate_manifest_path(errors, manifest_path);
+    validate_manifest_required_artifacts(errors, manifest_path, &manifest);
+}
+
+fn validate_manifest_schema_version(
+    errors: &mut Vec<String>,
+    manifest_path: &Utf8PathBuf,
+    manifest: &Value,
+) {
+    if manifest.get("schema_version").and_then(Value::as_u64) == Some(2) {
+        return;
+    }
+
+    errors.push(format!(
+        "package manifest `{manifest_path}` schema_version must be 2"
+    ));
+}
+
+fn validate_manifest_required_strings(
+    errors: &mut Vec<String>,
+    manifest_path: &Utf8PathBuf,
+    manifest: &Value,
+) {
+    for (pointer, label) in [
+        ("/source_commit", "source_commit"),
+        ("/reference_commit", "reference_commit"),
+        ("/license_inventory", "license_inventory"),
+        ("/provenance_manifest", "provenance_manifest"),
+        ("/image_metadata/board", "image_metadata.board"),
+        (
+            "/image_metadata/device_model",
+            "image_metadata.device_model",
+        ),
+        ("/image_metadata/asic", "image_metadata.asic"),
+        ("/tool_versions/espflash", "tool_versions.espflash"),
+    ] {
+        let maybe_value = manifest.pointer(pointer).and_then(Value::as_str);
+        if maybe_value.is_some_and(|value| !value.trim().is_empty()) {
+            continue;
+        }
+
+        errors.push(format!(
+            "package manifest `{manifest_path}` field `{label}` must be non-empty"
+        ));
+    }
+}
+
+fn validate_manifest_path(errors: &mut Vec<String>, manifest_path: &Utf8PathBuf) {
+    if manifest_path.file_name() == Some("bitaxe-ultra205-package.json") {
+        return;
+    }
+
+    errors.push(format!(
+        "package manifest path `{manifest_path}` must include bitaxe-ultra205-package.json"
+    ));
+}
+
+fn validate_manifest_required_artifacts(
+    errors: &mut Vec<String>,
+    manifest_path: &Utf8PathBuf,
+    manifest: &Value,
+) {
+    let Some(artifacts) = manifest.get("artifacts").and_then(Value::as_array) else {
+        errors.push(format!(
+            "package manifest `{manifest_path}` field `artifacts` must be an array"
+        ));
+        return;
+    };
+
+    for required_path in [
+        "esp-miner.bin",
+        "www.bin",
+        "bitaxe-ultra205-factory.bin",
+        "otadata-initial.bin",
+    ] {
+        let maybe_artifact = artifacts.iter().find(|artifact| {
+            artifact
+                .get("path")
+                .and_then(Value::as_str)
+                .is_some_and(|path| path.contains(required_path))
+        });
+
+        let Some(artifact) = maybe_artifact else {
+            errors.push(format!(
+                "package manifest `{manifest_path}` missing artifact path containing `{required_path}`"
+            ));
+            continue;
+        };
+
+        validate_manifest_artifact_sha256(errors, manifest_path, artifact, required_path);
+    }
+}
+
+fn validate_manifest_artifact_sha256(
+    errors: &mut Vec<String>,
+    manifest_path: &Utf8PathBuf,
+    artifact: &Value,
+    required_path: &str,
+) {
+    let maybe_sha256 = artifact.get("sha256").and_then(Value::as_str);
+    if maybe_sha256.is_some_and(is_lowercase_sha256) {
+        return;
+    }
+
+    errors.push(format!(
+        "package manifest `{manifest_path}` artifact `{required_path}` sha256 must be a 64-character lowercase hex string"
+    ));
+}
+
+fn is_lowercase_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .chars()
+            .all(|character| character.is_ascii_digit() || matches!(character, 'a'..='f'))
+}
+
+fn validate_manifest_artifact_review_closure(
+    errors: &mut Vec<String>,
+    maybe_manifest_path: Option<&Utf8PathBuf>,
+    provenance_path: &Utf8PathBuf,
+    provenance_markdown: &str,
+) {
+    if maybe_manifest_path.is_none()
+        || !provenance_markdown.contains("Awaiting package output evidence")
+    {
+        return;
+    }
+
+    errors.push(format!(
+        "provenance manifest `{provenance_path}` still contains `Awaiting package output evidence` while a package manifest is supplied"
+    ));
 }
 
 fn parse_h2_sections(markdown: &str) -> Vec<MarkdownSection> {
@@ -529,6 +680,100 @@ mod tests {
         }));
     }
 
+    #[test]
+    fn release_gate_manifest_requires_schema_two() {
+        // Arrange
+        let mut manifest = valid_manifest_value();
+        manifest["schema_version"] = serde_json::json!(1);
+        let documents = documents_with_manifest(manifest);
+
+        // Act
+        let report = validate_release_gate(&documents);
+
+        // Assert
+        assert!(!report.passed());
+        assert!(report
+            .errors
+            .iter()
+            .any(|error| error.contains("schema_version") && error.contains('2')));
+    }
+
+    #[test]
+    fn release_gate_manifest_requires_named_ultra205_artifacts() {
+        // Arrange
+        let mut manifest = valid_manifest_value();
+        manifest["artifacts"] = serde_json::json!([
+            {
+                "kind": "firmware_elf",
+                "path": "bitaxe-ultra205.elf",
+                "offset": "Unavailable",
+                "sha256": "0".repeat(64)
+            }
+        ]);
+        let mut documents = documents_with_manifest(manifest);
+        documents.maybe_manifest_path = Some(Utf8PathBuf::from("bazel-bin/package.json"));
+
+        // Act
+        let report = validate_release_gate(&documents);
+
+        // Assert
+        assert!(!report.passed());
+        assert!(report
+            .errors
+            .iter()
+            .any(|error| error.contains("esp-miner.bin")));
+        assert!(report.errors.iter().any(|error| error.contains("www.bin")));
+        assert!(report
+            .errors
+            .iter()
+            .any(|error| error.contains("bitaxe-ultra205-factory.bin")));
+        assert!(report
+            .errors
+            .iter()
+            .any(|error| error.contains("otadata-initial.bin")));
+        assert!(report
+            .errors
+            .iter()
+            .any(|error| error.contains("bitaxe-ultra205-package.json")));
+    }
+
+    #[test]
+    fn release_gate_manifest_rejects_bad_sha256() {
+        // Arrange
+        let mut manifest = valid_manifest_value();
+        manifest["artifacts"][0]["sha256"] = serde_json::json!("A".repeat(64));
+        let documents = documents_with_manifest(manifest);
+
+        // Act
+        let report = validate_release_gate(&documents);
+
+        // Assert
+        assert!(!report.passed());
+        assert!(report.errors.iter().any(|error| {
+            error.contains("sha256") && error.contains("64-character lowercase hex")
+        }));
+    }
+
+    #[test]
+    fn release_gate_manifest_requires_artifact_review_closure() {
+        // Arrange
+        let mut documents = documents_with_manifest(valid_manifest_value());
+        documents.provenance_markdown = PROVENANCE_MANIFEST.replace(
+            "- Follow-up: review artifact checksums before release",
+            "- Current review status: Awaiting package output evidence.",
+        );
+
+        // Act
+        let report = validate_release_gate(&documents);
+
+        // Assert
+        assert!(!report.passed());
+        assert!(report.errors.iter().any(|error| {
+            error.contains("Awaiting package output evidence")
+                && error.contains("provenance manifest")
+        }));
+    }
+
     fn complete_documents() -> ReleaseGateDocuments {
         ReleaseGateDocuments {
             license_inventory_path: Utf8PathBuf::from(DEFAULT_LICENSE_INVENTORY_PATH),
@@ -540,5 +785,71 @@ mod tests {
             maybe_manifest_path: None,
             maybe_manifest_json: None,
         }
+    }
+
+    fn documents_with_manifest(manifest: serde_json::Value) -> ReleaseGateDocuments {
+        let mut documents = complete_documents();
+        documents.maybe_manifest_path = Some(Utf8PathBuf::from(
+            "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
+        ));
+        documents.maybe_manifest_json =
+            Some(serde_json::to_string(&manifest).expect("manifest json"));
+        documents
+    }
+
+    fn valid_manifest_value() -> serde_json::Value {
+        serde_json::json!({
+            "schema_version": 2,
+            "release_name": "bitaxe-ultra205-v1",
+            "source_commit": "abc123",
+            "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+            "default_flash_image": "bitaxe-ultra205.elf",
+            "image_metadata": {
+                "board": "205",
+                "device_model": "Ultra 205",
+                "asic": "BM1366",
+                "esp_idf_version": "v5.5.4",
+                "rust_target": "xtensa-esp32s3-espidf"
+            },
+            "tool_versions": {
+                "cargo": "cargo 1.88.0",
+                "rustc": "rustc 1.88.0",
+                "bazel": "bazel 9.1.1",
+                "espflash": "espflash 4.0.1"
+            },
+            "install_notes": {
+                "path": "docs/release/ultra-205.md",
+                "summary": "Ultra 205 release operator guide"
+            },
+            "license_inventory": "docs/release/license-inventory.md",
+            "provenance_manifest": "docs/release/provenance-manifest.md",
+            "otadata_source": "generated-erased-flash",
+            "artifacts": [
+                {
+                    "kind": "firmware_ota_image",
+                    "path": "esp-miner.bin",
+                    "offset": "0x10000",
+                    "sha256": "0".repeat(64)
+                },
+                {
+                    "kind": "www_spiffs_image",
+                    "path": "www.bin",
+                    "offset": "0x410000",
+                    "sha256": "1".repeat(64)
+                },
+                {
+                    "kind": "factory_merged_image",
+                    "path": "bitaxe-ultra205-factory.bin",
+                    "offset": "0x0",
+                    "sha256": "2".repeat(64)
+                },
+                {
+                    "kind": "otadata_initial",
+                    "path": "otadata-initial.bin",
+                    "offset": "0xf10000",
+                    "sha256": "3".repeat(64)
+                }
+            ]
+        })
     }
 }
