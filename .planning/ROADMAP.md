@@ -158,7 +158,7 @@ Plans:
 - [x] 06-07-PLAN.md - Replace zeroed API telemetry with explicit safety telemetry status.
 - [x] 06-08-PLAN.md - Add firmware observe-only safety adapters and runtime snapshot integration.
 - [x] 06-09-PLAN.md - Add firmware safety supervisor and display/input runtime gap status.
-- [ ] 06-10-PLAN.md - Enforce parity evidence gates and record Phase 6 checklist/evidence status.
+- [x] 06-10-PLAN.md - Enforce parity evidence gates and record Phase 6 checklist/evidence status.
 **Verification expectations**: Pure unit tests for safety decisions, hardware-smoke and hardware-regression evidence for voltage/fan/thermal/power paths, self-test smoke, watchdog/load responsiveness checks, and parity checklist enforcement that safety-critical rows cannot be `verified` without hardware evidence.
 **Research flags**: Needs deeper research and hardware planning for DS4432U, INA260, EMC2101, fan/PID behavior, fault paths, self-test sequencing, and soak protocol.
 
