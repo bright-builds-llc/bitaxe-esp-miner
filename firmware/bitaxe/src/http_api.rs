@@ -44,6 +44,7 @@ const ORIGIN_HEADER: &[u8] = b"Origin\0";
 const ORIGIN_HEADER_BUFFER_BYTES: usize = 128;
 const TEXT_PLAIN_CSTR: &[u8] = b"text/plain\0";
 const HTTPD_401: &[u8] = b"401 Unauthorized\0";
+const UPDATE_AP_MODE_REJECTION_BODY: &str = "Not allowed in AP mode";
 
 /// Starts the HTTP route shell and intentionally leaks the server so ESP-IDF's
 /// server task keeps running for the lifetime of the firmware process.
@@ -173,11 +174,7 @@ fn register_http_handlers(
         handle_block_found_dismiss,
     )?;
     server.fn_handler("/api/system/OTA", Method::Post, handle_firmware_ota_update)?;
-    server.fn_handler(
-        "/api/system/OTAWWW",
-        Method::Post,
-        handle_unsupported_update,
-    )?;
+    server.fn_handler("/api/system/OTAWWW", Method::Post, handle_otawww_update_gap)?;
     register_websocket_handlers(server)?;
     server.fn_handler("/api/*", Method::Get, handle_unknown_api_route)?;
     server.fn_handler("/api/*", Method::Post, handle_unknown_api_route)?;
@@ -377,14 +374,6 @@ fn handle_command<'request, 'connection>(
     })
 }
 
-fn handle_unsupported_update<'request, 'connection>(
-    request: ApiRequest<'request, 'connection>,
-) -> anyhow::Result<()> {
-    handle_with_access_gate(request, |request| {
-        send_public_response(request, unsupported_update_response())
-    })
-}
-
 fn handle_firmware_ota_update<'request, 'connection>(
     mut request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
@@ -430,6 +419,34 @@ fn handle_firmware_ota_update<'request, 'connection>(
         FirmwareOtaApplyResult::ValidationError { esp_err } => {
             log::warn!("firmware_ota_update=validation_error esp_err={esp_err}");
             send_public_response(request, plan.validation_error_response)
+        }
+    }
+}
+
+fn handle_otawww_update_gap<'request, 'connection>(
+    mut request: ApiRequest<'request, 'connection>,
+) -> anyhow::Result<()> {
+    match plan_update_request(UpdateRequestInput {
+        route: UpdateRouteKind::AxeOsStaticOtaWww,
+        access: access_input(&mut request),
+    }) {
+        UpdateRequestDecision::Reject(response) => {
+            if response.body == UPDATE_AP_MODE_REJECTION_BODY {
+                log::warn!("otawww_update=rejected reason=ap_mode");
+            }
+            send_public_response(request, response)
+        }
+        UpdateRequestDecision::OtaWwwGap(gap) => {
+            debug_assert_eq!(gap.public_response.body, "Wrong API input");
+            log::warn!(
+                "otawww_update=gap reason=interruption_evidence_missing owner={}",
+                gap.owner
+            );
+            send_public_response(request, gap.public_response)
+        }
+        UpdateRequestDecision::AcceptFirmwareOta(_) => {
+            log::warn!("otawww_update=gap reason=unexpected_firmware_ota_decision");
+            send_public_response(request, unsupported_update_response())
         }
     }
 }

@@ -33,11 +33,22 @@ evidence so release-readiness language does not outrun the available proof.
 
 ## OTAWWW REL-03 gap
 
-- Conclusion: OTAWWW remains an explicit REL-03 gap until whole-`www` partition
-  update behavior, recovery access, and interrupted-update evidence are present.
-- Current state: route behavior and release impact will be recorded by later
-  Phase 7 plans.
-- Evidence status: not run - hardware verification pending.
+- Conclusion: OTAWWW remains an explicit REL-03 V1 parity gap owned by
+  `phase-07-release`.
+- Current state: `/api/system/OTAWWW` preserves the update access gate and
+  AP/APSTA rejection path, then fail-closes with status 400 body `Wrong API
+  input`. Firmware logs `otawww_update=gap
+  reason=interruption_evidence_missing owner=phase-07-release` for accepted
+  private-network attempts.
+- Release impact: owners can package and flash `www.bin`, but in-firmware
+  whole-`www` static asset upload is not claimed for V1 release parity.
+- Follow-up path: implement whole-partition SPIFFS erase/write with size
+  checks, recovery access, successful update evidence, and interrupted-update
+  recovery evidence before moving REL-03 above explicit gap status.
+- D-15 status: not claimed in this plan because interruption/recovery hardware
+  evidence is not scheduled in this plan set.
+- Evidence status: explicit gap documented; hardware interruption/recovery
+  verification pending.
 
 ## rollback/recovery evidence
 
