@@ -22,6 +22,7 @@ rust_library(
     deps = [
         "//crates/bitaxe-asic:bitaxe_asic",
         "//crates/bitaxe-config:bitaxe_config",
+        "//crates/bitaxe-safety:bitaxe_safety",
         "@crates//:serde",
         "@crates//:serde_json",
         "@crates//:sha2",

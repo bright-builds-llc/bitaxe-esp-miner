@@ -11,6 +11,10 @@ use bitaxe_config::{
     ultra_205_catalog_entry, ultra_205_defaults, BoardCatalogEntry, Ultra205Defaults,
     VerificationScope,
 };
+use bitaxe_safety::{
+    evidence::SafetyCriticalEvidence, power::PowerEvidenceToken, status::SafetyStatus,
+    thermal::ThermalEvidenceToken,
+};
 
 use super::{
     command::{
@@ -139,7 +143,7 @@ pub enum Bm1366InitStage {
     InitializedNoMining,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Bm1366Preflight {
     maybe_board: Option<BoardPreflightEvidence>,
     maybe_config: Option<ConfigPreflightEvidence>,
@@ -223,7 +227,11 @@ impl Bm1366Preflight {
     }
 
     const fn has_safety_evidence(self) -> bool {
-        self.maybe_safety.is_some()
+        let Some(safety) = self.maybe_safety else {
+            return false;
+        };
+
+        safety.is_ready()
     }
 
     fn expected_chips(self) -> u8 {
@@ -300,33 +308,48 @@ impl ConfigPreflightEvidence {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PowerPreflightEvidence;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PowerPreflightEvidence {
+    token: PowerEvidenceToken,
+}
 
 impl PowerPreflightEvidence {
     #[must_use]
-    pub const fn present() -> Self {
-        Self
+    pub const fn from_power_token(token: PowerEvidenceToken) -> Self {
+        Self { token }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ThermalPreflightEvidence;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ThermalPreflightEvidence {
+    token: ThermalEvidenceToken,
+}
 
 impl ThermalPreflightEvidence {
     #[must_use]
-    pub const fn present() -> Self {
-        Self
+    pub const fn from_thermal_token(token: ThermalEvidenceToken) -> Self {
+        Self { token }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SafetyPreflightEvidence;
+pub struct SafetyPreflightEvidence {
+    evidence: SafetyCriticalEvidence,
+    status: SafetyStatus,
+}
 
 impl SafetyPreflightEvidence {
     #[must_use]
-    pub const fn present() -> Self {
-        Self
+    pub const fn from_safety_status(
+        evidence: SafetyCriticalEvidence,
+        status: SafetyStatus,
+    ) -> Self {
+        Self { evidence, status }
+    }
+
+    const fn is_ready(self) -> bool {
+        !matches!(self.evidence, SafetyCriticalEvidence::Missing)
+            && matches!(self.status, SafetyStatus::Normal)
     }
 }
 
@@ -395,6 +418,11 @@ impl Bm1366InitDecision {
 
 #[cfg(test)]
 mod tests {
+    use bitaxe_safety::{
+        evidence::SafetyCriticalEvidence, power::PowerEvidenceToken, status::SafetyStatus,
+        thermal::ThermalEvidenceToken,
+    };
+
     use crate::bm1366::{
         command::{Bm1366AdapterAction, Bm1366Command, DEFAULT_BAUD},
         observation::AsicInitStatus,
@@ -510,8 +538,8 @@ mod tests {
             BoardPreflightEvidence::active_ultra_205(),
             ConfigPreflightEvidence::ultra_205_defaults(),
         )
-        .with_power(PowerPreflightEvidence::present())
-        .with_thermal(ThermalPreflightEvidence::present());
+        .with_power(power_preflight())
+        .with_thermal(thermal_preflight());
 
         // Act
         let decision = Bm1366InitPlan::full_init(preflight);
@@ -526,6 +554,34 @@ mod tests {
         assert_eq!(
             decision.fail_closed_action(),
             Some(FailClosedAction::HoldResetLow)
+        );
+    }
+
+    #[test]
+    fn init_plan_faulted_safety_status_uses_distinct_fail_closed_reason() {
+        // Arrange
+        let preflight = Bm1366Preflight::chip_detect(
+            BoardPreflightEvidence::active_ultra_205(),
+            ConfigPreflightEvidence::ultra_205_defaults(),
+        )
+        .with_power(power_preflight())
+        .with_thermal(thermal_preflight())
+        .with_safety(SafetyPreflightEvidence::from_safety_status(
+            SafetyCriticalEvidence::implemented_not_verified("unit"),
+            SafetyStatus::PowerFault {
+                reason: "power_fault",
+            },
+        ));
+
+        // Act
+        let decision = Bm1366InitPlan::full_init(preflight);
+
+        // Assert
+        assert_eq!(
+            decision.status(),
+            AsicInitStatus::PreflightMissing {
+                reason: "safety_preflight_evidence_missing"
+            }
         );
     }
 
@@ -557,9 +613,9 @@ mod tests {
             BoardPreflightEvidence::active_ultra_205(),
             ConfigPreflightEvidence::ultra_205_defaults(),
         )
-        .with_power(PowerPreflightEvidence::present())
-        .with_thermal(ThermalPreflightEvidence::present())
-        .with_safety(SafetyPreflightEvidence::present());
+        .with_power(power_preflight())
+        .with_thermal(thermal_preflight())
+        .with_safety(safety_preflight());
 
         // Act
         let decision = Bm1366InitPlan::full_init(preflight);
@@ -569,5 +625,27 @@ mod tests {
         assert!(decision
             .stages()
             .contains(&Bm1366InitStage::InitializedNoMining));
+    }
+
+    fn power_preflight() -> PowerPreflightEvidence {
+        PowerPreflightEvidence::from_power_token(PowerEvidenceToken {
+            bus_voltage_volts: 5.0,
+            current_amps: 2.5,
+            power_watts: 12.5,
+        })
+    }
+
+    fn thermal_preflight() -> ThermalPreflightEvidence {
+        ThermalPreflightEvidence::from_thermal_token(ThermalEvidenceToken {
+            chip_temp_celsius: 55.0,
+            evidence: SafetyCriticalEvidence::implemented_not_verified("unit"),
+        })
+    }
+
+    fn safety_preflight() -> SafetyPreflightEvidence {
+        SafetyPreflightEvidence::from_safety_status(
+            SafetyCriticalEvidence::implemented_not_verified("unit"),
+            SafetyStatus::Normal,
+        )
     }
 }

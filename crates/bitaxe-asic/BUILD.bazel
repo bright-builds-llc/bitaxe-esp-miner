@@ -24,6 +24,7 @@ rust_library(
     crate_name = "bitaxe_asic",
     deps = [
         "//crates/bitaxe-config:bitaxe_config",
+        "//crates/bitaxe-safety:bitaxe_safety",
         "@crates//:thiserror",
     ],
     edition = "2021",

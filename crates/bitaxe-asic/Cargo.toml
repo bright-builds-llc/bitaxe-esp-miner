@@ -6,4 +6,5 @@ license.workspace = true
 
 [dependencies]
 bitaxe-config = { path = "../bitaxe-config" }
+bitaxe-safety = { path = "../bitaxe-safety" }
 thiserror.workspace = true

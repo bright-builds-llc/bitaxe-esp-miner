@@ -11,6 +11,10 @@ use bitaxe_asic::bm1366::{
     command::Bm1366Command, result::Bm1366NonceResult, work::Bm1366WorkFields,
 };
 use bitaxe_config::Ultra205Defaults;
+use bitaxe_safety::{
+    evidence::SafetyCriticalEvidence, power::PowerEvidenceToken, status::SafetyStatus,
+    thermal::ThermalEvidenceToken,
+};
 
 use crate::error::StratumV1Error;
 use crate::v1::mining::ShareSubmission;
@@ -22,17 +26,55 @@ use crate::v1::state::{
 pub const HARDWARE_EVIDENCE_ACK_MISSING: &str = "hardware_evidence_ack_missing";
 pub const ASIC_INITIALIZED_GATE_MISSING: &str = "asic_initialized_gate_missing";
 pub const SAFETY_PREFLIGHT_EVIDENCE_MISSING: &str = "safety_preflight_evidence_missing";
+pub const POWER_PREFLIGHT_EVIDENCE_MISSING: &str = "power_preflight_evidence_missing";
+pub const THERMAL_PREFLIGHT_EVIDENCE_MISSING: &str = "thermal_preflight_evidence_missing";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MiningLoopGate {
     pub asic_initialized: bool,
-    pub safety_evidence: bool,
+    pub maybe_power_evidence: Option<PowerEvidenceToken>,
+    pub maybe_thermal_evidence: Option<ThermalEvidenceToken>,
+    pub maybe_safety_evidence: Option<SafetyCriticalEvidence>,
+    pub safety_status: SafetyStatus,
     pub hardware_evidence_ack: bool,
+}
+
+impl Default for MiningLoopGate {
+    fn default() -> Self {
+        Self {
+            asic_initialized: false,
+            maybe_power_evidence: None,
+            maybe_thermal_evidence: None,
+            maybe_safety_evidence: None,
+            safety_status: SafetyStatus::SafeBlocked {
+                reason: SAFETY_PREFLIGHT_EVIDENCE_MISSING,
+            },
+            hardware_evidence_ack: false,
+        }
+    }
 }
 
 impl MiningLoopGate {
     #[must_use]
-    pub const fn decision(self) -> MiningLoopDecision {
+    pub fn decision(self) -> MiningLoopDecision {
+        if self.maybe_power_evidence.is_none() {
+            return MiningLoopDecision::Blocked {
+                reason: POWER_PREFLIGHT_EVIDENCE_MISSING,
+            };
+        }
+
+        if !self.thermal_evidence_ready() {
+            return MiningLoopDecision::Blocked {
+                reason: THERMAL_PREFLIGHT_EVIDENCE_MISSING,
+            };
+        }
+
+        if !self.safety_evidence_ready() {
+            return MiningLoopDecision::Blocked {
+                reason: SAFETY_PREFLIGHT_EVIDENCE_MISSING,
+            };
+        }
+
         if !self.hardware_evidence_ack {
             return MiningLoopDecision::Blocked {
                 reason: HARDWARE_EVIDENCE_ACK_MISSING,
@@ -45,13 +87,23 @@ impl MiningLoopGate {
             };
         }
 
-        if !self.safety_evidence {
-            return MiningLoopDecision::Blocked {
-                reason: SAFETY_PREFLIGHT_EVIDENCE_MISSING,
-            };
-        }
-
         MiningLoopDecision::Ready
+    }
+
+    fn thermal_evidence_ready(self) -> bool {
+        let Some(thermal) = self.maybe_thermal_evidence else {
+            return false;
+        };
+
+        thermal.evidence.is_hardware_verified()
+    }
+
+    fn safety_evidence_ready(self) -> bool {
+        let Some(evidence) = self.maybe_safety_evidence else {
+            return false;
+        };
+
+        evidence.is_hardware_verified() && matches!(self.safety_status, SafetyStatus::Normal)
     }
 
     pub fn apply_to_state(self, state: &mut MiningRuntimeState) {
@@ -169,6 +221,10 @@ mod mining_loop_tests {
         command::Bm1366Command, result::Bm1366NonceResult, work::Bm1366JobId,
     };
     use bitaxe_config::ultra_205_defaults;
+    use bitaxe_safety::{
+        evidence::SafetyCriticalEvidence, power::PowerEvidenceToken, status::SafetyStatus,
+        thermal::ThermalEvidenceToken,
+    };
 
     use super::*;
     use crate::v1::messages::{ExtranonceAssignment, MiningNotify, PoolDifficulty};
@@ -177,7 +233,7 @@ mod mining_loop_tests {
     use crate::v1::state::{MiningActivityStatus, MiningRuntimeState, WorkSubmissionGate};
 
     #[test]
-    fn mining_loop_gate_defaults_to_hardware_evidence_block() {
+    fn mining_loop_gate_missing_power_blocks_before_safety_evidence() {
         // Arrange
         let gate = MiningLoopGate::default();
 
@@ -188,7 +244,33 @@ mod mining_loop_tests {
         assert_eq!(
             decision,
             MiningLoopDecision::Blocked {
-                reason: HARDWARE_EVIDENCE_ACK_MISSING
+                reason: POWER_PREFLIGHT_EVIDENCE_MISSING
+            }
+        );
+    }
+
+    #[test]
+    fn mining_loop_gate_missing_thermal_blocks_before_safety_evidence() {
+        // Arrange
+        let gate = MiningLoopGate {
+            asic_initialized: true,
+            maybe_power_evidence: Some(power_evidence()),
+            maybe_thermal_evidence: None,
+            maybe_safety_evidence: Some(SafetyCriticalEvidence::hardware_smoke(
+                "phase-06-mining-safety-smoke",
+            )),
+            safety_status: SafetyStatus::Normal,
+            hardware_evidence_ack: true,
+        };
+
+        // Act
+        let decision = gate.decision();
+
+        // Assert
+        assert_eq!(
+            decision,
+            MiningLoopDecision::Blocked {
+                reason: THERMAL_PREFLIGHT_EVIDENCE_MISSING
             }
         );
     }
@@ -198,7 +280,10 @@ mod mining_loop_tests {
         // Arrange
         let gate = MiningLoopGate {
             asic_initialized: true,
-            safety_evidence: false,
+            maybe_power_evidence: Some(power_evidence()),
+            maybe_thermal_evidence: Some(thermal_evidence()),
+            maybe_safety_evidence: None,
+            safety_status: SafetyStatus::Normal,
             hardware_evidence_ack: true,
         };
 
@@ -215,13 +300,42 @@ mod mining_loop_tests {
     }
 
     #[test]
+    fn mining_loop_gate_blocks_faulted_safety_or_missing_hardware_ack() {
+        // Arrange
+        let faulted_safety = MiningLoopGate {
+            safety_status: SafetyStatus::PowerFault {
+                reason: "power_fault",
+            },
+            ..ready_gate()
+        };
+        let missing_ack = MiningLoopGate {
+            hardware_evidence_ack: false,
+            ..ready_gate()
+        };
+
+        // Act
+        let faulted_decision = faulted_safety.decision();
+        let missing_ack_decision = missing_ack.decision();
+
+        // Assert
+        assert_eq!(
+            faulted_decision,
+            MiningLoopDecision::Blocked {
+                reason: SAFETY_PREFLIGHT_EVIDENCE_MISSING
+            }
+        );
+        assert_eq!(
+            missing_ack_decision,
+            MiningLoopDecision::Blocked {
+                reason: HARDWARE_EVIDENCE_ACK_MISSING
+            }
+        );
+    }
+
+    #[test]
     fn mining_loop_gate_is_ready_when_all_evidence_is_present() {
         // Arrange
-        let gate = MiningLoopGate {
-            asic_initialized: true,
-            safety_evidence: true,
-            hardware_evidence_ack: true,
-        };
+        let gate = ready_gate();
 
         // Act
         let decision = gate.decision();
@@ -396,8 +510,28 @@ mod mining_loop_tests {
     fn ready_gate() -> MiningLoopGate {
         MiningLoopGate {
             asic_initialized: true,
-            safety_evidence: true,
+            maybe_power_evidence: Some(power_evidence()),
+            maybe_thermal_evidence: Some(thermal_evidence()),
+            maybe_safety_evidence: Some(SafetyCriticalEvidence::hardware_smoke(
+                "phase-06-mining-safety-smoke",
+            )),
+            safety_status: SafetyStatus::Normal,
             hardware_evidence_ack: true,
+        }
+    }
+
+    fn power_evidence() -> PowerEvidenceToken {
+        PowerEvidenceToken {
+            bus_voltage_volts: 5.0,
+            current_amps: 2.5,
+            power_watts: 12.5,
+        }
+    }
+
+    fn thermal_evidence() -> ThermalEvidenceToken {
+        ThermalEvidenceToken {
+            chip_temp_celsius: 55.0,
+            evidence: SafetyCriticalEvidence::hardware_smoke("phase-06-mining-thermal-smoke"),
         }
     }
 
