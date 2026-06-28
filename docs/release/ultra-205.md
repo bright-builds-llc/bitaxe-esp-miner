@@ -1,135 +1,185 @@
 # Ultra 205 Release Operator Guide
 
 This guide is the Phase 7 operator contract for Bitaxe Ultra 205 release
-artifacts. It records the command and evidence structure before later plans add
-live package, OTA, recovery, rollback, and hardware proof.
+candidates. It gives the commands, artifacts, evidence gates, and recovery
+paths a developer needs before using package, flash, OTA, recovery, rollback,
+or erase workflows on connected hardware.
 
-## Artifact List
+Do not treat package generation as live OTA, rollback, recovery, large erase,
+failed update, or interrupted update verification. Use
+`not run - hardware verification pending` until the matching Ultra 205 evidence
+record names the board, port, commits, artifacts, commands, observed behavior,
+and conclusion.
 
-Expected release artifacts:
+## Build And Package
 
-- `esp-miner.bin` - firmware OTA image for `/api/system/OTA`.
-- `www.bin` - AxeOS static image for `/api/system/OTAWWW` and `/recovery` once
-  the static-update evidence gate is closed.
-- Merged factory/recovery image - USB flash artifact containing bootloader,
-  partition table, app image, and filesystem image offsets.
-- Package manifest - release artifact metadata, paths, offsets, checksums,
-  source commit, reference commit, tool versions, and install notes.
-- `docs/release/cargo-about.html` - Cargo dependency license report.
-- `docs/release/license-inventory.md` - non-Cargo and release artifact license
-  inventory.
-- `docs/release/provenance-manifest.md` - source/reference/static/recovery
-  provenance manifest.
-
-## Local Build And Package
-
-Use the repo command surface:
+Run the canonical command surface from the repository root:
 
 ```bash
 just build
 just package
 ```
 
-`just package` must create the Ultra 205 package artifacts and manifest without
-requiring manual artifact discovery. Treat successful packaging as package
-evidence only; it does not prove live OTA, recovery, rollback, or interrupted
-static update behavior.
+`just package` writes the Ultra 205 package manifest at:
+
+```text
+bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+```
+
+The package manifest must name the release artifacts directly:
+
+- `bitaxe-ultra205.elf` - USB flashing default image for `tools/flash`.
+- `esp-miner.bin` - firmware OTA image for `/api/system/OTA`.
+- `www.bin` - static filesystem image built from the Rust-owned `www` tree.
+- `bitaxe-ultra205-factory.bin` - merged factory/recovery image.
+- `otadata-initial.bin` - OTA data initial image or erased-flash fallback.
+
+Record the package manifest path, source commit, reference commit, artifact
+SHA-256 values, ESP-IDF version, Rust target, and package command output before
+using the artifacts in release evidence.
 
 ## USB Flash
 
-Use the Ultra 205 board selector:
+Flash the Ultra 205 with an explicit serial port:
 
 ```bash
-just flash board=205
+just flash board=205 port=<port>
 ```
 
-Pass `port=...` only when automatic port discovery is missing or ambiguous.
-Factory image flashing is the recovery baseline when the web interface or
-filesystem state is unknown.
+Use the factory image path from
+`bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` when recovery requires
+a full USB flash baseline. Record the exact port, package manifest, source
+commit, reference commit, and observed flash result.
 
 ## Monitor
 
-Use:
+Monitor an already-flashed device with:
 
 ```bash
-just monitor
+just monitor port=<port>
 ```
 
-Monitor logs should record firmware identity, board/ASIC target, partition or
-image identity, filesystem status, update status, and recovery-relevant errors
-when those adapters exist.
+Logs should record firmware identity, board/ASIC target, reset reason, package
+or partition identity when available, SPIFFS status, OTA status, rollback boot
+validation status, and recovery-relevant errors.
 
-## Flash And Monitor
+## Flash And Monitor Evidence Capture
 
-Use:
+For a combined USB flash and boot-log capture, run:
 
 ```bash
-just flash-monitor board=205
+just flash-monitor board=205 port=<port> evidence-dir=docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke
 ```
 
-This is the preferred single command for evidence captures that need both a USB
-flash and boot log. Evidence should include the command, board, port, firmware
-commit, reference commit, package manifest path, and observed result.
+Use this command when preparing hardware evidence for package, static,
+recovery, boot-validation, or OTA smoke. The evidence file must include the
+command, board `Ultra 205`, port, firmware commit, reference commit, package
+manifest path, artifacts used, observed behavior, and conclusion.
 
 ## Firmware OTA
 
-The AxeOS firmware upload path targets:
+Firmware OTA uses the AxeOS firmware update route:
 
-- File name: `esp-miner.bin`
-- Route: `/api/system/OTA`
-- Visible surface: AxeOS `Update Firmware`
+- Upload target: `/api/system/OTA`
+- Expected upload file name: `esp-miner.bin`
+- Success response: `Firmware update complete, rebooting now!`
+- Visible AxeOS surface: `Update Firmware`
 
-Firmware OTA evidence must separately record accepted uploads, rejected uploads,
-AP/APSTA rejection, progress/status labels, validation or activation failures,
-reboot scheduling, boot validation, and rollback behavior before release parity
-is claimed.
+Before claiming firmware OTA verified, capture these facts on Ultra 205:
 
-## AxeOS OTAWWW Status
+1. Upload accepted for `esp-miner.bin`.
+2. Invalid image rejection or validation failure behavior.
+3. AP/APSTA rejection behavior.
+4. Progress/status labels and final public response.
+5. Selected next app partition.
+6. Reboot scheduling and post-reboot firmware identity.
+7. Rollback and boot-validation evidence.
+8. Recovery procedure if boot validation fails.
 
-The AxeOS static update path targets:
+The success response proves only that the upload path reached the reboot step.
+It does not prove rollback, boot validation, or return-to-operable-state parity
+without matching hardware logs.
 
-- File name: `www.bin`
-- Route: `/api/system/OTAWWW`
-- Visible surface: AxeOS `Update AxeOS`
+## AxeOS Static Update Gap
 
-OTAWWW static update is not available for verified parity until the D-16
-evidence gate is closed. Until then, `/api/system/OTAWWW` must stay fail-closed
-or below verified status, and release notes must describe REL-03 as an explicit
-gap with owner, evidence state, release impact, and follow-up path.
+The upstream AxeOS static update route is:
+
+- Upload target: `/api/system/OTAWWW`
+- Expected upload file name: `www.bin`
+- Visible AxeOS surface: `Update AxeOS`
+- Current public gap response: `Wrong API input`
+
+AxeOS update is not available in this release candidate. Use just package to create www.bin and flash the factory image, or use /recovery only after the documented evidence gate is complete.
+
+This is the D-16 OTAWWW gap. Do not claim static update parity from `www.bin`
+package generation alone. REL-03 remains an explicit release gap until a later
+evidence record proves whole-`www` partition write behavior, recovery access,
+and interrupted-update recovery on Ultra 205.
+
+## Static And Recovery Smoke
+
+Static filesystem smoke must cover:
+
+- `/` serving the packaged AxeOS-compatible static entry point.
+- Representative gzip smoke path `/assets/app.css.gz`.
+- Missing static asset redirect behavior.
+- API route coexistence for `/api/*`, `/api/ws`, `/api/ws/live`,
+  `/api/system/OTA`, and `/api/system/OTAWWW`.
+- `/recovery` availability when normal static assets are unavailable or
+  damaged.
+
+Static smoke is live firmware evidence only when the record names the connected
+Ultra 205 board, serial port, firmware commit, reference commit, package
+manifest path, and observed HTTP responses.
 
 ## Recovery Page
 
-The recovery route is:
+Use the recovery route when AxeOS static assets are missing, corrupt, not
+mounted, or intentionally being restored:
 
 - Route: `/recovery`
-- Recovery upload file: `www.bin`
+- Upload file: `www.bin`
 - Recovery surface: `AxeOS Recovery`
 
-Use `/recovery` when normal AxeOS static assets are unavailable, corrupt, or
-not mounted. The recovery workflow must preserve the `www.bin` file name, the
-60 second wait warning, the instruction not to restart before a response, and
-the explicit restart step after the upload response.
+Recovery evidence must capture the `/recovery` page load, upload attempt,
+public response, response body, restart step, post-restart static route state,
+and whether the device returned to an operable state. Do not mark recovery
+verified until the hardware-smoke record contains these observations.
 
 ## Large Erase
 
-Large erase procedures are destructive recovery actions. Use them only when the
-package/recovery evidence identifies the device as recoverable through USB
-factory flashing. Record the erase command, board, port, package manifest,
-source commit, reference commit, and post-erase flash/boot outcome.
+Large Erase is destructive. Use it only when the device can be recovered
+through USB factory flashing with the current package manifest.
+
+Safe procedure:
+
+1. Record the board, port, source commit, reference commit, and package
+   manifest path.
+2. Confirm `bitaxe-ultra205-factory.bin` is present in
+   `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`.
+3. Record the exact erase command and tool version before running it.
+4. Flash the factory image with `just flash board=205 port=<port>`.
+5. Monitor with `just monitor port=<port>`.
+6. Record post-erase boot, filesystem, recovery, and API reachability.
+
+Do not describe Large Erase as verified unless that full sequence is captured
+in hardware evidence.
 
 ## Failed Firmware Update
 
-For a failed firmware OTA, capture:
+For a failed firmware update, capture:
 
 - Request target `/api/system/OTA`.
 - File name and checksum for `esp-miner.bin`.
+- Whether the failure is invalid image rejection, upload interruption, write
+  error, validation failure, activation failure, or post-reboot validation.
 - Public response and internal update status.
-- Validation, activation, or write error logs.
 - Running partition after reboot or failed activation.
-- Recovery path used to return the Ultra 205 to an operable state.
+- Rollback logs when a pending image is marked valid or invalid.
+- Recovery procedure used to return the Ultra 205 to an operable state.
 
-Do not treat a failed upload rejection as rollback proof unless boot validation
-or rollback evidence is recorded.
+Do not treat a rejected upload as rollback proof. Rollback requires bootloader
+or boot-validation evidence from the actual post-update state.
 
 ## Interrupted Static Update
 
@@ -138,24 +188,27 @@ For interrupted static update evidence, capture:
 - Request target `/api/system/OTAWWW`.
 - File name and checksum for `www.bin`.
 - Point of interruption and observed device state.
-- Whether `/`, representative static assets, and `/recovery` are reachable.
-- The recovery procedure that restores AxeOS.
+- Whether `/`, `/assets/app.css.gz`, missing static redirect behavior, and
+  `/recovery` remain reachable.
+- Recovery procedure that restores AxeOS or the factory image.
+- Final conclusion.
 
-If this evidence is not present, OTAWWW remains an explicit REL-03 gap for
-release claims.
+Until this record exists, interrupted static update remains
+`not run - hardware verification pending` and OTAWWW remains the REL-03 gap.
 
 ## Rollback And Boot Validation
 
-Firmware OTA evidence must distinguish:
+Rollback evidence must distinguish:
 
 - Upload accepted.
 - Next app partition selected.
 - Device rebooted.
 - New app booted.
-- Boot validation completed.
-- Rollback path observed or ruled out with evidence.
+- Boot validation marked the pending app valid.
+- Boot validation marked a bad pending app invalid and rebooted.
+- Rollback path observed or ruled out by captured logs.
 
-Successful `/api/system/OTA` response text is not enough to claim rollback or
+Successful `/api/system/OTA` response text is not enough to claim Rollback or
 boot-validation parity.
 
 ## Evidence Required Before Verified Claims
@@ -163,20 +216,14 @@ boot-validation parity.
 Before claiming verified release or update parity, evidence must exist for:
 
 - Package artifact generation and manifest checksums.
-- Live firmware OTA success and rejection on Ultra 205.
-- Live recovery-page access on Ultra 205.
-- Rollback or boot-validation behavior.
+- Live firmware OTA success and invalid-image rejection on Ultra 205.
+- Live static filesystem and `/recovery` smoke on Ultra 205.
+- Rollback and boot-validation behavior.
 - Failed firmware update recovery.
-- Interrupted static update behavior, or an explicit REL-03 gap.
+- Interrupted static update behavior, or the explicit REL-03 gap.
 - License inventory and provenance review covering Cargo and non-Cargo inputs.
 
-Use status wording such as `not run - hardware verification pending` when live
-Ultra 205 evidence has not been recorded.
-
-## Release Caveats
-
-Phase 7 release candidates may carry explicit gaps, but they must not imply that
-package evidence proves live OTA, AxeOS OTAWWW, `/recovery`, rollback, large
-erase, failed update, or interrupted update behavior. Keep AxeOS names, route
-names, and artifact names stable: `AxeOS`, `esp-miner.bin`, `www.bin`,
-`/api/system/OTA`, `/api/system/OTAWWW`, and `/recovery`.
+Use `docs/parity/evidence/phase-07-ota-filesystem-release.md` for the Phase 7
+rollup and
+`docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke.md` for the manual
+Ultra 205 OTA/recovery smoke capture.
