@@ -1,0 +1,13 @@
+[package]
+name = "bitaxe-safety"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bitaxe-config = { path = "../bitaxe-config" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

@@ -1,0 +1,26 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "bitaxe_safety",
+    srcs = [
+        "src/effects.rs",
+        "src/evidence.rs",
+        "src/lib.rs",
+        "src/status.rs",
+    ],
+    compile_data = glob(["fixtures/**"], allow_empty = True),
+    crate_name = "bitaxe_safety",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-config:bitaxe_config",
+        "@crates//:serde",
+        "@crates//:thiserror",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "tests",
+    crate = ":bitaxe_safety",
+    compile_data = glob(["fixtures/**"], allow_empty = True),
+)
