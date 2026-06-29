@@ -392,17 +392,19 @@ This keeps illegal states easier to review because `status`, `trusted_output`, a
 
 The planner can eliminate A1 by making the timeout configurable, documenting the default, and requiring tests for both timeout-success and timeout-failure classifications. [VERIFIED: 09-CONTEXT.md]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the generated Markdown summary be added in Phase 9?**
    - What we know: The JSON record is required and is the source of truth. [VERIFIED: 09-CONTEXT.md]
    - What's unclear: A Markdown summary is optional and only useful if rendered from the same structured record. [VERIFIED: 09-CONTEXT.md]
    - Recommendation: Start with JSON plus a concise hand-maintained evidence doc that cites the JSON/log; add generated Markdown only if it is a small helper around the same struct. [VERIFIED: 09-CONTEXT.md]
+   - RESOLVED: Plan 09-02 uses a concise hand-maintained evidence document that cites wrapper-generated JSON/log artifacts; generated Markdown remains optional future work. [VERIFIED: 09-02-PLAN.md]
 
 2. **How strict should trusted marker classification be?**
    - What we know: Phase 8 serial logs include boot identity, safe state, boot validation, SPIFFS mount, route registration, firmware commit, and reference commit. [VERIFIED: docs/parity/evidence/phase-08-ultra-205-release-gate/flash-monitor-noninteractive.log]
    - What's unclear: Future firmware log wording may change before Phase 13. [ASSUMED]
    - Recommendation: Use a minimal serial-scope marker set and keep failures explicit so log wording drift is visible in tests/evidence. [VERIFIED: standards/core/testing.md]
+   - RESOLVED: Plan 09-01 requires the minimal seven serial-scope markers and explicit failure classification when trusted output is missing. [VERIFIED: 09-01-PLAN.md]
 
 ## Environment Availability
 

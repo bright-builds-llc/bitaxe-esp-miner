@@ -35,9 +35,8 @@ created: 2026-06-29
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 09-01-01 | 01 | 1 | FND-08 | T-09-01 | Evidence-mode monitor command uses `espflash monitor --chip esp32s3 --port <port> --non-interactive` without changing ordinary monitor behavior. | unit | `bazel test //tools/flash:tests` | Yes | pending |
 | 09-01-02 | 01 | 1 | EVD-05 | T-09-02 | Capture result records trusted status and fails closed on nonzero exit, timeout without trusted output, or log write failure. | unit | `bazel test //tools/flash:tests` | Yes | pending |
-| 09-02-01 | 02 | 1 | EVD-05 | T-09-03 | `flash-command-evidence.json` records board, port, commits, manifest, exact commands, log path, capture mode/status, and conclusion. | unit | `bazel test //tools/flash:tests` | Yes | pending |
-| 09-02-02 | 02 | 1 | REL-07 | T-09-04 | Failure guidance says evidence is not trusted and routes operators to `just detect-ultra205`, wrapper capture, and diagnostic `just monitor`. | unit/docs | `bazel test //tools/flash:tests` | Yes | pending |
-| 09-03-01 | 03 | 2 | FND-07/EVD-05 | T-09-05 | Fresh Ultra 205 wrapper evidence is captured only after detector success, and docs/checklist do not overclaim HTTP/OTA/recovery parity. | hardware/docs | `just detect-ultra205`; `just flash-monitor board=205 port=<port> evidence-dir=<path>`; `just parity` | Yes | pending |
+| 09-02-01 | 02 | 2 | FND-07/EVD-05 | T-09-05 | Fresh Ultra 205 wrapper evidence is captured only after detector success, and docs/checklist do not overclaim HTTP/OTA/recovery parity. | hardware/docs | `just detect-ultra205`; `just flash-monitor board=205 port=<port> evidence-dir=<path>`; `just parity` | Yes | pending |
+| 09-02-02 | 02 | 2 | REL-07 | T-09-04 | Release docs and checklist cite wrapper evidence, keep raw monitor fallback historical, and keep HTTP/OTA/recovery rows below verified. | docs/parity | `just parity` | Yes | pending |
 
 *Status: pending, green, red, flaky.*
 
