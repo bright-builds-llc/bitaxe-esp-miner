@@ -316,6 +316,8 @@ const REQUIRED_PHASE07_ROUTE_POLICY: &[Phase07RoutePolicy] = &[
 
 const WEAK_VERIFIED_EVIDENCE_LABELS: &[&str] =
     &["unit", "workflow", "package", "api-compare", "static-route"];
+const STRONG_VERIFIED_EVIDENCE_LABELS: &[&str] =
+    &["hardware-smoke", "hardware-regression", "release-gate"];
 
 fn validate_schema_evidence(
     openapi_yaml: &str,
@@ -586,19 +588,29 @@ fn validate_verified_claim_policy(
         return 1;
     }
 
-    if claim.evidence.iter().all(|evidence| {
-        WEAK_VERIFIED_EVIDENCE_LABELS
-            .iter()
-            .any(|weak_label| evidence == weak_label)
-    }) {
+    let has_unknown_evidence = claim
+        .evidence
+        .iter()
+        .any(|evidence| !is_known_verified_evidence_label(evidence.as_str()));
+    let has_strong_evidence = claim
+        .evidence
+        .iter()
+        .any(|evidence| STRONG_VERIFIED_EVIDENCE_LABELS.contains(&evidence.as_str()));
+
+    if has_unknown_evidence || !has_strong_evidence {
         validation_errors.push(format!(
-            "release-sensitive route {} has weak evidence verified overclaim: evidence={}",
+            "release-sensitive route {} has insufficient verified evidence: evidence={}",
             route_key(&call.method, &call.path),
             claim.evidence.join(", ")
         ));
     }
 
     1
+}
+
+fn is_known_verified_evidence_label(evidence: &str) -> bool {
+    WEAK_VERIFIED_EVIDENCE_LABELS.contains(&evidence)
+        || STRONG_VERIFIED_EVIDENCE_LABELS.contains(&evidence)
 }
 
 fn is_release_sensitive_route(method: &str, path: &str) -> bool {
@@ -1039,9 +1051,37 @@ paths:
             // Assert
             assert_validation_error_contains(
                 &report,
-                &[&route_key(method, path), "weak evidence verified overclaim"],
+                &[&route_key(method, path), "insufficient verified evidence"],
             );
         }
+    }
+
+    #[test]
+    fn api_compare_fails_when_release_sensitive_route_claims_verified_from_unknown_evidence() {
+        // Arrange
+        let loader = MemoryFixtureLoader;
+        let unknown_evidence = ["hardwar-smoke"];
+        let static_usage = static_usage_with_verified_claim(
+            "POST",
+            "/api/system/OTA",
+            "verified",
+            &unknown_evidence,
+        );
+        let request = default_request(&static_usage);
+
+        // Act
+        let report = run_api_compare_with_routes(&request, &loader, bitaxe_api::phase07_routes())
+            .expect("api compare should run");
+
+        // Assert
+        assert_validation_error_contains(
+            &report,
+            &[
+                "POST /api/system/OTA",
+                "insufficient verified evidence",
+                "hardwar-smoke",
+            ],
+        );
     }
 
     #[test]
