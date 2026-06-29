@@ -503,6 +503,9 @@ fn has_hardware_evidence(row: &ChecklistRow) -> bool {
 
 fn validate_release_ota_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
     match row.id.as_str() {
+        "FS-001" | "OTA-001" | "OTA-002" | "REL-003" if row_contains_live_evidence_blocker(row) => {
+            vec![live_evidence_blocker_error(row)]
+        }
         "FS-001" => validate_filesystem_verified_row(row),
         "OTA-001" => validate_firmware_ota_verified_row(row),
         "OTA-002" => validate_otawww_verified_row(row),
@@ -649,6 +652,27 @@ fn has_evidence_token(row: &ChecklistRow, expected: &str) -> bool {
         .split(',')
         .map(normalize)
         .any(|token| token == expected)
+}
+
+fn row_contains_live_evidence_blocker(row: &ChecklistRow) -> bool {
+    let haystack = format!("{} {}", row.evidence, row.notes).to_ascii_lowercase();
+
+    [
+        "not run",
+        "blocked",
+        "pending",
+        "no reachable device_url",
+        "unverified",
+    ]
+    .iter()
+    .any(|term| haystack.contains(term))
+}
+
+fn live_evidence_blocker_error(row: &ChecklistRow) -> ValidationError {
+    ValidationError {
+        id: row.id.clone(),
+        message: "verified live release/OTA/filesystem rows must not contain blocker terms such as not run, blocked, pending, no reachable DEVICE_URL, or unverified".to_owned(),
+    }
 }
 
 fn row_haystack(row: &ChecklistRow) -> String {
@@ -1091,6 +1115,54 @@ mod tests {
         assert_validation_error_contains(&errors, "FS-001", "/assets/app.css.gz");
         assert_validation_error_contains(&errors, "FS-001", "missing static redirect");
         assert_validation_error_contains(&errors, "FS-001", "/recovery");
+    }
+
+    #[test]
+    fn release_ota_verified_guard_rejects_blocker_language_that_contains_required_terms() {
+        // Arrange
+        let cases = [
+            (
+                "FS-001",
+                "SPIFFS/filesystem behavior",
+                "hardware-smoke",
+                "live static not run; /assets/app.css.gz blocked; missing static redirect pending; /recovery no reachable DEVICE_URL; unverified smoke.",
+            ),
+            (
+                "OTA-001",
+                "Firmware OTA route",
+                "hardware-smoke",
+                "valid OTA not run; invalid image rejection blocked; boot-validation pending.",
+            ),
+            (
+                "OTA-002",
+                "AxeOS OTAWWW route",
+                "hardware-regression",
+                "interrupted-update not run because no reachable DEVICE_URL.",
+            ),
+            (
+                "REL-003",
+                "Release image behavior",
+                "workflow",
+                "release-gate provenance package workflow recorded; rollback not run; recovery blocked; large erase pending; failed update unverified; interrupted-update no reachable DEVICE_URL.",
+            ),
+        ];
+
+        for (id, surface, evidence, notes) in cases {
+            let checklist = format!(
+                r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| {id} | {surface} | reference path | rust target | verified | {evidence} | {notes} |
+"#
+            );
+            let rows = parse_checklist(&checklist).expect("checklist should parse");
+
+            // Act
+            let errors = validate_rows(&rows);
+
+            // Assert
+            assert_validation_error_contains(&errors, id, "blocker terms");
+        }
     }
 
     #[test]
