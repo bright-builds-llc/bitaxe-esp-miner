@@ -8,7 +8,7 @@ use std::time::Duration;
 use bitaxe_api::{
     asic_settings_from_snapshot, block_found_dismiss_plan, empty_statistics_response,
     execute_settings_persistence_plan, identify_plan, log_download_headers,
-    origin_gate_from_header, pause_mining_plan, phase05_routes, plan_http_access,
+    origin_gate_from_header, pause_mining_plan, phase07_route_report, plan_http_access,
     plan_settings_patch_body, plan_settings_patch_body_size, plan_update_request,
     plan_websocket_upgrade, restart_plan, resume_mining_plan, scoreboard_response,
     system_info_from_snapshot, unknown_api_route_response, unsupported_update_response,
@@ -68,9 +68,14 @@ pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()>
 
     register_http_handlers(&mut server, filesystem_status)?;
     start_live_telemetry_cadence_task(server.handle())?;
+    let route_report = phase07_route_report();
     log::info!(
-        "axeos_api_route_shell=started registered_routes={}",
-        phase05_routes().len()
+        "axeos_api_route_shell=started manifest_routes={} firmware_update_routes={} otawww_gap_routes={} recovery_routes={} static_file_routes={}",
+        route_report.total_routes,
+        route_report.firmware_update_routes,
+        route_report.otawww_gap_routes,
+        route_report.recovery_routes,
+        route_report.static_file_routes
     );
 
     core::mem::forget(server);
