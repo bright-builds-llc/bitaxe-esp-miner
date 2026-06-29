@@ -378,12 +378,13 @@ The production route set should move from `phase05_routes()` to a Phase 7 route 
 
 All claims in this research were verified against repo files or local command output; no `[ASSUMED]` claims are used. [VERIFIED: this research session]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Phase 10 add a dedicated checklist row for manifest/tooling alignment?**  
    - What we know: D-19 permits a narrowly worded row only if queryability needs it. [VERIFIED: `.planning/phases/10-route-manifest-and-api-compare-unification/10-CONTEXT.md`]  
    - What's unclear: The planner may decide existing rows can express the evidence cleanly. [VERIFIED: `.planning/phases/10-route-manifest-and-api-compare-unification/10-CONTEXT.md`]  
    - Recommendation: Prefer updating existing `API-004`, `API-008`, `FS-001`, `OTA-001`, `OTA-002`, and release rows plus adding a Phase 10 evidence record; add a dedicated row only if the manifest/tooling claim would otherwise be hard to query. [VERIFIED: `.planning/phases/10-route-manifest-and-api-compare-unification/10-CONTEXT.md`; VERIFIED: `docs/parity/checklist.md`]
+   - RESOLVED: Plan 03 will update existing relevant checklist rows and add `docs/parity/evidence/phase-10-route-manifest-and-api-compare-unification.md` as the primary Phase 10 evidence ledger. A dedicated checklist row is not required by default and should be added only if execution finds the manifest/tooling claim cannot be expressed without ambiguity in existing rows. [VERIFIED: `.planning/phases/10-route-manifest-and-api-compare-unification/10-03-PLAN.md`; VERIFIED: `.planning/phases/10-route-manifest-and-api-compare-unification/10-CONTEXT.md`]
 
 ## Environment Availability
 
