@@ -13,6 +13,7 @@ failed-update recovery, and interrupted-update recovery remain outside the Phase
 | phase | Phase 10 - Route Manifest And API Compare Unification |
 | plan | 10-03 - checklist/evidence claim boundaries and final verification |
 | source commit at plan start | `bfdc9e7c4ab3c3c99918756fe872fd48ba17509b` |
+| source commit for final verification | `a65439415e3291700fbd86e86abb75a9d20a9c40` |
 | reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | dependency evidence | `.planning/phases/10-route-manifest-and-api-compare-unification/10-01-SUMMARY.md`, `.planning/phases/10-route-manifest-and-api-compare-unification/10-02-SUMMARY.md` |
 | evidence classes used | `unit`, `workflow`, `api-compare` |
@@ -53,15 +54,15 @@ failed-update recovery, and interrupted-update recovery remain outside the Phase
 
 | Command | Evidence class | Result | Notes |
 | --- | --- | --- | --- |
-| `bazel test //crates/bitaxe-api:tests //tools/parity:tests` | `unit` | pending final verification | Task 2 reruns and records the final result. |
-| `bazel run //tools/parity:report -- api-compare` | `api-compare` | pending final verification | Task 2 reruns and records the final result. |
-| `just parity` | `workflow` | Task 1 documentation gate passed with `validation_errors: none`; final rerun pending Task 2 | Ran after checklist edits to prove no unsupported verified claims were introduced. |
-| `just test` | `workflow` | pending final verification | Task 2 records the final result. |
-| `cargo fmt --all` | `workflow` | pending final verification | Required by repo Rust pre-commit policy. |
-| `cargo clippy --all-targets --all-features -- -D warnings` | `workflow` | pending final verification | Required by repo Rust pre-commit policy. |
-| `cargo build --all-targets --all-features` | `workflow` | pending final verification | Required by repo Rust pre-commit policy. |
-| `cargo test --all-features` | `workflow` | pending final verification | Required by repo Rust pre-commit policy. |
-| `git diff -- reference/esp-miner --exit-code` | `workflow` | pending final verification | Confirms the pinned upstream reference stayed read-only. |
+| `bazel test //crates/bitaxe-api:tests //tools/parity:tests` | `unit` | passed | `//crates/bitaxe-api:tests` and `//tools/parity:tests` passed. |
+| `bazel run //tools/parity:report -- api-compare` | `api-compare` | passed with `validation_errors: none` | Checked `schema=99`, `captured-response=47`, `static-route=36`, and left `firmware-smoke` as `not-run`. |
+| `just parity` | `workflow` | passed with `validation_errors: none` | Ran after checklist edits and again during final verification to prove no unsupported verified claims were introduced. |
+| `just test` | `workflow` | passed | `bazel test //...` passed all 13 test targets and rebuilt firmware/package targets at source commit `a65439415e32`. |
+| `cargo fmt --all` | `workflow` | passed | Required by repo Rust pre-commit policy. |
+| `cargo clippy --all-targets --all-features -- -D warnings` | `workflow` | passed | Required by repo Rust pre-commit policy. |
+| `cargo build --all-targets --all-features` | `workflow` | passed | Required by repo Rust pre-commit policy. |
+| `cargo test --all-features` | `workflow` | passed | 362 unit tests and doc tests passed across workspace crates. |
+| `git diff -- reference/esp-miner --exit-code` | `workflow` | passed | The pinned upstream reference stayed read-only. |
 
 ## Secret Redaction Review
 
