@@ -233,7 +233,11 @@ Plans:
 1. The wrapper prints clear recovery guidance for monitor startup failures and still fails visibly when evidence capture cannot be trusted.
 1. Fresh Ultra 205 wrapper evidence replaces the fallback-only evidence path without changing `reference/esp-miner`.
 
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+
+- [ ] 09-01-PLAN.md - Harden the flash wrapper with noninteractive evidence capture, bounded monitor timeout, trusted marker classification, enriched JSON, and recovery guidance.
+- [ ] 09-02-PLAN.md - Capture fresh Ultra 205 wrapper evidence and refresh workflow/release docs without promoting later release rows.
 **Verification expectations**: Unit tests for command construction and evidence path behavior, `just detect-ultra205` before hardware use, live wrapper-based `just flash-monitor board=205 port=... evidence-dir=...` evidence when exactly one Ultra 205 is detected, and parity evidence updates that remove the raw-monitor fallback as the only proof.
 **Research flags**: Standard host-tool and ESP serial workflow work. Do not introduce a custom flashing backend unless `espflash` cannot support the documented evidence path.
 
@@ -320,7 +324,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 6. Safety Controllers And Self-Test | 10/10 | Complete | 2026-06-28 |
 | 7. OTA, Filesystem, And Release Packaging | 9/9 | Complete | 2026-06-28 |
 | 8. Parity Evidence And Ultra 205 Release Gate | 4/4 | Complete | 2026-06-29 |
-| 9. Flash-Monitor Evidence Wrapper Hardening | 0/TBD | Not started | - |
+| 9. Flash-Monitor Evidence Wrapper Hardening | 0/2 | Not started | - |
 | 10. Route Manifest And API Compare Unification | 0/TBD | Not started | - |
 | 11. Safety Controller Hardware Regression Evidence | 0/TBD | Not started | - |
 | 12. ASIC And Mining Hardware Evidence | 0/TBD | Not started | - |
