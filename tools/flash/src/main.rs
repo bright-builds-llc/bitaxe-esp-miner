@@ -18,6 +18,7 @@ const PACKAGE_MANIFEST_RELATIVE_PATH: &str = "firmware/bitaxe/bitaxe-ultra205-pa
 const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
 const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
 const DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS: u64 = 25;
+const MIN_COMMIT_PREFIX_LEN: usize = 12;
 const UNAVAILABLE: &str = "Unavailable";
 
 #[derive(Debug, Parser)]
@@ -881,7 +882,17 @@ fn monitor_trust_failure(
 }
 
 fn commit_marker_matches_expected(observed: &str, expected: &str) -> bool {
-    observed != UNAVAILABLE && expected != UNAVAILABLE && expected.starts_with(observed)
+    observed != UNAVAILABLE
+        && expected != UNAVAILABLE
+        && observed.len() >= MIN_COMMIT_PREFIX_LEN
+        && observed.len() <= expected.len()
+        && observed
+            .chars()
+            .all(|character| character.is_ascii_hexdigit())
+        && expected
+            .chars()
+            .all(|character| character.is_ascii_hexdigit())
+        && expected.starts_with(observed)
 }
 
 fn dry_run_monitor_capture_outcome(capture_timeout_seconds: u64) -> MonitorCaptureOutcome {
@@ -1651,8 +1662,8 @@ mod tests {
         assert_eq!(json["capture_status"], "completed");
         assert_eq!(json["capture_timeout_seconds"], 25);
         assert_eq!(json["trusted_output"], true);
-        assert_eq!(json["observed_firmware_commit"], "firmware-commit");
-        assert_eq!(json["observed_reference_commit"], "reference-commit");
+        assert_eq!(json["observed_firmware_commit"], "0123456789ab");
+        assert_eq!(json["observed_reference_commit"], "abcdef012345");
     }
 
     #[test]
@@ -1702,8 +1713,8 @@ mod tests {
         let evidence_dir = dir_path(&dir).join("evidence");
         let command = flash_monitor_command(evidence_dir.clone());
         let stale_log = trusted_monitor_log().replace(
-            "firmware_commit=firmware-commit",
-            "firmware_commit=stale-commit",
+            "firmware_commit=0123456789ab",
+            "firmware_commit=fedcba987654",
         );
         let environment = FakeFlashEnvironment::default().with_log_contents(&stale_log);
 
@@ -1712,11 +1723,33 @@ mod tests {
 
         // Assert
         let error = format!("{result:#?}");
-        assert!(error.contains("observed firmware_commit=stale-commit"));
+        assert!(error.contains("observed firmware_commit=fedcba987654"));
         let evidence_path = evidence_dir.join("flash-command-evidence.json");
         let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
         assert!(evidence.contains(r#""trusted_output": false"#));
-        assert!(evidence.contains(r#""observed_firmware_commit": "stale-commit""#));
+        assert!(evidence.contains(r#""observed_firmware_commit": "fedcba987654""#));
+    }
+
+    #[test]
+    fn truncated_firmware_commit_capture_fails_after_writing_json() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_command(evidence_dir.clone());
+        let truncated_log =
+            trusted_monitor_log().replace("firmware_commit=0123456789ab", "firmware_commit=0");
+        let environment = FakeFlashEnvironment::default().with_log_contents(&truncated_log);
+
+        // Act
+        let result = run_flash_monitor(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("observed firmware_commit=0"));
+        let evidence_path = evidence_dir.join("flash-command-evidence.json");
+        let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
+        assert!(evidence.contains(r#""trusted_output": false"#));
+        assert!(evidence.contains(r#""observed_firmware_commit": "0""#));
     }
 
     #[test]
@@ -1786,8 +1819,8 @@ mod tests {
             "spiffs_mount=available partition=www total_bytes=2884241 used_bytes=4518",
             "axeos_api_route_shell=started registered_routes=15",
             "reset_reason=11",
-            "firmware_commit=firmware-commit",
-            "reference_commit=reference-commit",
+            "firmware_commit=0123456789ab",
+            "reference_commit=abcdef012345",
             "esp_idf_version=v5.5.4",
         ]
         .join("\n")
@@ -2004,11 +2037,11 @@ mod tests {
         }
 
         fn firmware_commit(&self) -> String {
-            "firmware-commit".to_owned()
+            "0123456789abcdef0123456789abcdef01234567".to_owned()
         }
 
         fn reference_commit(&self) -> String {
-            "reference-commit".to_owned()
+            "abcdef012345abcdef012345abcdef012345abcd".to_owned()
         }
 
         fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()> {
