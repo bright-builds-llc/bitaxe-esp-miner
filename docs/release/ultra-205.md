@@ -81,16 +81,47 @@ validation status, and recovery-relevant errors.
 
 ## Flash And Monitor Evidence Capture
 
-For a combined USB flash and boot-log capture, run:
+For the Phase 9 wrapper-owned USB flash and boot-log capture, run:
 
 ```bash
-just flash-monitor board=205 port=<port> evidence-dir=docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke
+just flash-monitor board=205 port=<port> evidence-dir=docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening
 ```
 
-Use this command when preparing hardware evidence for package, static,
-recovery, boot-validation, or OTA smoke. The evidence file must include the
-command, board `Ultra 205`, port, firmware commit, reference commit, package
-manifest path, artifacts used, observed behavior, and conclusion.
+The optional timeout override is:
+
+```bash
+just flash-monitor board=205 port=<port> evidence-dir=docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening capture-timeout-seconds=25
+```
+
+The JSON source of truth is
+`docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening/flash-command-evidence.json`.
+The wrapper-owned serial log is
+`docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening/flash-monitor.log`.
+
+Passing capture statuses are `completed` and
+`timed_out_after_trusted_output`. Any other status means evidence capture failed and is not trusted.
+The JSON record must name the board, port, source commit,
+reference commit, package manifest path, flash image path, exact flash command,
+exact monitor command, monitor log path, capture mode, capture status, timeout,
+trusted-output flag, and conclusion.
+
+This serial evidence proves only the wrapper-owned flash-monitor boot-log path.
+It does not verify live HTTP, static, recovery, firmware OTA, invalid image
+rejection, rollback, failed update recovery, large erase, interrupted update, or
+OTAWWW behavior.
+
+### Flash-Monitor Recovery
+
+If evidence capture fails, use repo-owned recovery and diagnostic steps:
+
+```bash
+just detect-ultra205
+just flash-monitor board=205 port=<port> evidence-dir=<path>
+just monitor port=<port>
+```
+
+Use `just monitor port=<port>` as a diagnostic-only follow-up after the wrapper
+failure has been recorded. raw `espflash monitor` output must not be used as the trusted Phase 9 proof.
 
 ## Firmware OTA
 
