@@ -26,8 +26,7 @@ genrule(
     name = "firmware_image",
     srcs = [
         "//firmware/bitaxe:firmware",
-        "//:.git/HEAD",
-        "//:.git/refs/heads/main",
+        "//scripts:source_commit_stamp",
     ],
     outs = [
         "bitaxe-ultra205.elf",
