@@ -227,6 +227,7 @@ fn validate_manifest_if_provided(
 
     validate_manifest_schema_version(errors, manifest_path, &manifest);
     validate_manifest_required_strings(errors, manifest_path, &manifest);
+    validate_manifest_exact_strings(errors, manifest_path, &manifest);
     validate_manifest_path(errors, manifest_path);
     validate_manifest_required_artifacts(errors, manifest_path, &manifest);
 }
@@ -253,14 +254,7 @@ fn validate_manifest_required_strings(
     for (pointer, label) in [
         ("/source_commit", "source_commit"),
         ("/reference_commit", "reference_commit"),
-        ("/license_inventory", "license_inventory"),
-        ("/provenance_manifest", "provenance_manifest"),
-        ("/image_metadata/board", "image_metadata.board"),
-        (
-            "/image_metadata/device_model",
-            "image_metadata.device_model",
-        ),
-        ("/image_metadata/asic", "image_metadata.asic"),
+        ("/otadata_source", "otadata_source"),
         ("/tool_versions/espflash", "tool_versions.espflash"),
     ] {
         let maybe_value = manifest.pointer(pointer).and_then(Value::as_str);
@@ -272,6 +266,77 @@ fn validate_manifest_required_strings(
             "package manifest `{manifest_path}` field `{label}` must be non-empty"
         ));
     }
+}
+
+fn validate_manifest_exact_strings(
+    errors: &mut Vec<String>,
+    manifest_path: &Utf8PathBuf,
+    manifest: &Value,
+) {
+    for (pointer, label, expected) in [
+        ("/release_name", "release_name", "bitaxe-ultra205"),
+        (
+            "/default_flash_image",
+            "default_flash_image",
+            "bitaxe-ultra205.elf",
+        ),
+        ("/image_metadata/board", "image_metadata.board", "205"),
+        (
+            "/image_metadata/device_model",
+            "image_metadata.device_model",
+            "Ultra 205",
+        ),
+        ("/image_metadata/asic", "image_metadata.asic", "BM1366"),
+        (
+            "/image_metadata/esp_idf_version",
+            "image_metadata.esp_idf_version",
+            "v5.5.4",
+        ),
+        (
+            "/image_metadata/rust_target",
+            "image_metadata.rust_target",
+            "xtensa-esp32s3-espidf",
+        ),
+        (
+            "/install_notes/path",
+            "install_notes.path",
+            "docs/release/ultra-205.md",
+        ),
+        (
+            "/install_notes/summary",
+            "install_notes.summary",
+            "Ultra 205 release operator guide",
+        ),
+        (
+            "/license_inventory",
+            "license_inventory",
+            DEFAULT_LICENSE_INVENTORY_PATH,
+        ),
+        (
+            "/provenance_manifest",
+            "provenance_manifest",
+            DEFAULT_PROVENANCE_PATH,
+        ),
+    ] {
+        validate_manifest_exact_string(errors, manifest_path, manifest, pointer, label, expected);
+    }
+}
+
+fn validate_manifest_exact_string(
+    errors: &mut Vec<String>,
+    manifest_path: &Utf8PathBuf,
+    manifest: &Value,
+    pointer: &str,
+    label: &str,
+    expected: &str,
+) {
+    if manifest.pointer(pointer).and_then(Value::as_str) == Some(expected) {
+        return;
+    }
+
+    errors.push(format!(
+        "package manifest `{manifest_path}` field `{label}` must be `{expected}`"
+    ));
 }
 
 fn validate_manifest_path(errors: &mut Vec<String>, manifest_path: &Utf8PathBuf) {
@@ -296,27 +361,66 @@ fn validate_manifest_required_artifacts(
         return;
     };
 
-    for required_path in [
-        "esp-miner.bin",
-        "www.bin",
-        "bitaxe-ultra205-factory.bin",
-        "otadata-initial.bin",
-    ] {
+    for required_artifact in RequiredArtifact::all() {
         let maybe_artifact = artifacts.iter().find(|artifact| {
-            artifact
-                .get("path")
-                .and_then(Value::as_str)
-                .is_some_and(|path| path.contains(required_path))
+            artifact.get("kind").and_then(Value::as_str) == Some(required_artifact.kind)
+                && artifact.get("path").and_then(Value::as_str) == Some(required_artifact.path)
+                && artifact.get("offset").and_then(Value::as_str) == Some(required_artifact.offset)
         });
 
         let Some(artifact) = maybe_artifact else {
             errors.push(format!(
-                "package manifest `{manifest_path}` missing artifact path containing `{required_path}`"
+                "package manifest `{manifest_path}` missing artifact `{}` at path `{}` offset `{}`",
+                required_artifact.kind, required_artifact.path, required_artifact.offset
             ));
             continue;
         };
 
-        validate_manifest_artifact_sha256(errors, manifest_path, artifact, required_path);
+        validate_manifest_artifact_sha256(errors, manifest_path, artifact, required_artifact.path);
+    }
+}
+
+#[derive(Clone, Copy)]
+struct RequiredArtifact {
+    kind: &'static str,
+    path: &'static str,
+    offset: &'static str,
+}
+
+impl RequiredArtifact {
+    const fn all() -> &'static [Self] {
+        &[
+            Self {
+                kind: "firmware_elf",
+                path: "bitaxe-ultra205.elf",
+                offset: "Unavailable",
+            },
+            Self {
+                kind: "firmware_ota_image",
+                path: "esp-miner.bin",
+                offset: "0x10000",
+            },
+            Self {
+                kind: "www_spiffs_image",
+                path: "www.bin",
+                offset: "0x410000",
+            },
+            Self {
+                kind: "factory_merged_image",
+                path: "bitaxe-ultra205-factory.bin",
+                offset: "0x0",
+            },
+            Self {
+                kind: "partition_table",
+                path: "firmware/bitaxe/partitions-ultra205.csv",
+                offset: "Unavailable",
+            },
+            Self {
+                kind: "otadata_initial",
+                path: "otadata-initial.bin",
+                offset: "0xf10000",
+            },
+        ]
     }
 }
 
@@ -699,6 +803,43 @@ mod tests {
     }
 
     #[test]
+    fn release_gate_manifest_rejects_wrong_board_metadata() {
+        // Arrange
+        let mut manifest = valid_manifest_value();
+        manifest["release_name"] = serde_json::json!("bitaxe-gamma601");
+        manifest["default_flash_image"] = serde_json::json!("bitaxe-gamma601.elf");
+        manifest["image_metadata"]["board"] = serde_json::json!("601");
+        manifest["image_metadata"]["device_model"] = serde_json::json!("Gamma 601");
+        manifest["image_metadata"]["asic"] = serde_json::json!("BM1370");
+        manifest["artifacts"][0]["path"] = serde_json::json!("bitaxe-gamma601.elf");
+        manifest["artifacts"][3]["path"] = serde_json::json!("bitaxe-gamma601-factory.bin");
+        let documents = documents_with_manifest(manifest);
+
+        // Act
+        let report = validate_release_gate(&documents);
+
+        // Assert
+        assert!(!report.passed());
+        assert!(report
+            .errors
+            .iter()
+            .any(|error| error.contains("image_metadata.board") && error.contains("205")));
+        assert!(report
+            .errors
+            .iter()
+            .any(|error| error.contains("image_metadata.device_model")
+                && error.contains("Ultra 205")));
+        assert!(report
+            .errors
+            .iter()
+            .any(|error| error.contains("image_metadata.asic") && error.contains("BM1366")));
+        assert!(report
+            .errors
+            .iter()
+            .any(|error| error.contains("bitaxe-ultra205-factory.bin")));
+    }
+
+    #[test]
     fn release_gate_manifest_requires_named_ultra205_artifacts() {
         // Arrange
         let mut manifest = valid_manifest_value();
@@ -800,7 +941,7 @@ mod tests {
     fn valid_manifest_value() -> serde_json::Value {
         serde_json::json!({
             "schema_version": 2,
-            "release_name": "bitaxe-ultra205-v1",
+            "release_name": "bitaxe-ultra205",
             "source_commit": "abc123",
             "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
             "default_flash_image": "bitaxe-ultra205.elf",
@@ -826,28 +967,40 @@ mod tests {
             "otadata_source": "generated-erased-flash",
             "artifacts": [
                 {
+                    "kind": "firmware_elf",
+                    "path": "bitaxe-ultra205.elf",
+                    "offset": "Unavailable",
+                    "sha256": "0".repeat(64)
+                },
+                {
                     "kind": "firmware_ota_image",
                     "path": "esp-miner.bin",
                     "offset": "0x10000",
-                    "sha256": "0".repeat(64)
+                    "sha256": "1".repeat(64)
                 },
                 {
                     "kind": "www_spiffs_image",
                     "path": "www.bin",
                     "offset": "0x410000",
-                    "sha256": "1".repeat(64)
+                    "sha256": "2".repeat(64)
                 },
                 {
                     "kind": "factory_merged_image",
                     "path": "bitaxe-ultra205-factory.bin",
                     "offset": "0x0",
-                    "sha256": "2".repeat(64)
+                    "sha256": "3".repeat(64)
+                },
+                {
+                    "kind": "partition_table",
+                    "path": "firmware/bitaxe/partitions-ultra205.csv",
+                    "offset": "Unavailable",
+                    "sha256": "4".repeat(64)
                 },
                 {
                     "kind": "otadata_initial",
                     "path": "otadata-initial.bin",
                     "offset": "0xf10000",
-                    "sha256": "3".repeat(64)
+                    "sha256": "5".repeat(64)
                 }
             ]
         })
