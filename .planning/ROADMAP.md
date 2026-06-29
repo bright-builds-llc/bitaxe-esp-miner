@@ -236,7 +236,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 
-- [ ] 09-01-PLAN.md - Harden the flash wrapper with noninteractive evidence capture, bounded monitor timeout, trusted marker classification, enriched JSON, and recovery guidance.
+- [x] 09-01-PLAN.md - Harden the flash wrapper with noninteractive evidence capture, bounded monitor timeout, trusted marker classification, enriched JSON, and recovery guidance.
 - [ ] 09-02-PLAN.md - Capture fresh Ultra 205 wrapper evidence and refresh workflow/release docs without promoting later release rows.
 **Verification expectations**: Unit tests for command construction and evidence path behavior, `just detect-ultra205` before hardware use, live wrapper-based `just flash-monitor board=205 port=... evidence-dir=...` evidence when exactly one Ultra 205 is detected, and parity evidence updates that remove the raw-monitor fallback as the only proof.
 **Research flags**: Standard host-tool and ESP serial workflow work. Do not introduce a custom flashing backend unless `espflash` cannot support the documented evidence path.

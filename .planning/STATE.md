@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 09 context gathered
-last_updated: "2026-06-29T13:22:25.714Z"
+status: executing
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-06-29T14:11:59.436Z"
 last_activity: 2026-06-29
 progress:
   total_phases: 13
   completed_phases: 8
-  total_plans: 52
-  completed_plans: 52
-  percent: 100
+  total_plans: 54
+  completed_plans: 53
+  percent: 98
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Phase 08 — parity-evidence-and-ultra-205-release-gate
+**Current focus:** Phase 09 — flash-monitor-evidence-wrapper-hardening
 
 ## Current Position
 
-Phase: 08
-Plan: Not started
-Status: Phase complete
+Phase: 09 (flash-monitor-evidence-wrapper-hardening) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-06-29
 
 Progress: [██████████] 100%
@@ -104,6 +104,7 @@ Progress: [██████████] 100%
 | Phase 07-ota-filesystem-and-release-packaging P08 | 6m28s | 3 tasks | 3 files |
 | Phase 07-ota-filesystem-and-release-packaging P09 | 12m 8s | 3 tasks | 3 files |
 | Phase 08-parity-evidence-and-ultra-205-release-gate P04 | 112min | 3 tasks | 7 files |
+| Phase 09-flash-monitor-evidence-wrapper-hardening P01 | 11 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -250,6 +251,10 @@ Recent decisions affecting current work:
 - [Phase 08-parity-evidence-and-ultra-205-release-gate]: No Phase 8 checklist row was promoted to verified without live evidence; FS-001, OTA-001, REL-001, REL-002, and REL-003 remain implemented.
 - [Phase 08-parity-evidence-and-ultra-205-release-gate]: OTA-002 remains deferred with public response Wrong API input because whole-www hardware-regression and interrupted-update evidence were not recorded.
 - [Phase 08-parity-evidence-and-ultra-205-release-gate]: Release artifacts are GPL-risk-reviewed release artifacts and publication waits for final release approval.
+- [Phase 09-flash-monitor-evidence-wrapper-hardening]: flash-monitor --evidence-dir now uses espflash monitor --chip esp32s3 --port <port> --non-interactive while ordinary monitor remains interactive.
+- [Phase 09-flash-monitor-evidence-wrapper-hardening]: Evidence is trusted only when all seven serial-scope Ultra 205 boot markers are present.
+- [Phase 09-flash-monitor-evidence-wrapper-hardening]: Monitor timeouts are accepted only after trusted output; untrusted timeout or failed monitor exits write JSON and fail visibly.
+- [Phase 09-flash-monitor-evidence-wrapper-hardening]: TDD RED failures were run but not committed because AGENTS.md requires passing Rust checks before every commit.
 
 ### Pending Todos
 
@@ -271,6 +276,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-29T13:22:25.709Z
-Stopped at: Phase 09 context gathered
-Resume file: .planning/phases/09-flash-monitor-evidence-wrapper-hardening/09-CONTEXT.md
+Last session: 2026-06-29T14:11:38.281Z
+Stopped at: Completed 09-01-PLAN.md
+Resume file: None
