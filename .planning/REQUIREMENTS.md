@@ -14,9 +14,9 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 - [x] **FND-03**: Bazel/Bzlmod is the canonical automation graph for build, test, package, flash-shaped, parity, and release-shaped workflows.
 - [x] **FND-04**: The Rust workspace pins the ESP-IDF Rust toolchain, ESP-IDF version, Rust target, firmware metadata, and dependency versions needed for Ultra 205 firmware builds.
 - [x] **FND-05**: The monorepo contains the planned pure Rust crates for core state, config, ASIC, Stratum, API, and test support.
-- [x] **FND-06**: The ESP-IDF Rust firmware app can boot on Ultra 205 and log firmware identity, platform status, reset reason, partition/image identity, and selected board/ASIC target while mining and hardware control remain disabled.
-- [x] **FND-07**: `just build`, `just test`, `just package`, `just flash`, `just monitor`, `just flash-monitor`, `just verify-reference`, and `just parity` are available and route through Bazel or repo-owned scripts represented in the automation graph.
-- [x] **FND-08**: USB flashing ergonomics support `board=205`, optional `port=...`, likely-port discovery, clear ambiguous-port errors, build-before-flash by default, and printing the underlying flashing command.
+- [ ] **FND-06**: The ESP-IDF Rust firmware app can boot on Ultra 205 and log firmware identity, platform status, reset reason, partition/image identity, and selected board/ASIC target while mining and hardware control remain disabled.
+- [ ] **FND-07**: `just build`, `just test`, `just package`, `just flash`, `just monitor`, `just flash-monitor`, `just verify-reference`, and `just parity` are available and route through Bazel or repo-owned scripts represented in the automation graph.
+- [ ] **FND-08**: USB flashing ergonomics support `board=205`, optional `port=...`, likely-port discovery, clear ambiguous-port errors, build-before-flash by default, and printing the underlying flashing command.
 - [x] **FND-09**: Firmware packaging records image paths, offsets when applicable, checksums, tool versions, firmware commit, and reference commit in a machine-readable manifest.
 - [x] **FND-10**: Provenance and license guardrails keep original project work MIT-first where possible while marking upstream-derived GPL-compatible expression explicitly.
 - [x] **FND-11**: Parity tooling reports checklist status, evidence gaps, implementation pointers, and reference breadcrumbs without treating implementation alone as verification.
@@ -38,7 +38,7 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 - [x] **ASIC-04**: The firmware contains a narrow UART adapter boundary that translates typed ASIC commands and observations between pure Rust logic and ESP-IDF serial I/O.
 - [x] **ASIC-05**: Ultra 205 BM1366 reset, preflight, and staged initialization fail closed unless required board, power, thermal, and config gates pass.
 - [x] **ASIC-06**: Frequency and voltage transition decisions are range-checked in pure Rust and require explicit hardware evidence before being marked verified.
-- [x] **ASIC-07**: BM1366 initialization, work-send, and result-receive behavior have hardware-smoke evidence before release parity is claimed.
+- [ ] **ASIC-07**: BM1366 initialization, work-send, and result-receive behavior have hardware-smoke evidence before release parity is claimed.
 - [x] **ASIC-08**: ASIC modules and tricky behavior boundaries include reference breadcrumbs pointing to the pinned upstream implementation and parity checklist rows.
 
 ### Stratum And Mining Loop
@@ -48,8 +48,8 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 - [x] **STR-03**: Mining job construction, coinbase decoding, extranonce handling, and work queue integration match reference-observable behavior.
 - [x] **STR-04**: Pool socket lifecycle, fallback pool behavior, reconnect behavior, and error logging match upstream user-visible behavior.
 - [x] **STR-05**: Accepted shares, rejected shares, share difficulty, hashrate inputs, and pool result counters update consistently across mining, API, and telemetry surfaces.
-- [x] **STR-06**: The first Ultra 205 mining loop connects config, Stratum v1, BM1366 work dispatch, result parsing, and global state without bypassing safety gates.
-- [x] **STR-07**: Mining parity has hardware-smoke and soak criteria that record command, board, port, firmware commit, reference commit, logs, observed result, and conclusion.
+- [ ] **STR-06**: The first Ultra 205 mining loop connects config, Stratum v1, BM1366 work dispatch, result parsing, and global state without bypassing safety gates.
+- [ ] **STR-07**: Mining parity has hardware-smoke and soak criteria that record command, board, port, firmware commit, reference commit, logs, observed result, and conclusion.
 
 ### AxeOS API, Logs, And Telemetry
 
@@ -61,39 +61,39 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 - [x] **API-06**: `/api/ws` streams log events in a client-compatible format.
 - [x] **API-07**: `/api/ws/live` streams live telemetry with upstream-compatible payload shape, cadence, and state transitions.
 - [x] **API-08**: Pause, resume, restart, identify, and related command routes preserve user-visible behavior and safe failure modes.
-- [x] **API-09**: Static AxeOS assets and recovery page behavior remain compatible enough for device administration without requiring an Angular rewrite in V1.
-- [x] **API-10**: API compare fixtures prove Rust responses match the upstream schema or captured upstream responses for representative success and error cases.
+- [ ] **API-09**: Static AxeOS assets and recovery page behavior remain compatible enough for device administration without requiring an Angular rewrite in V1.
+- [ ] **API-10**: API compare fixtures prove Rust responses match the upstream schema or captured upstream responses for representative success and error cases.
 
 ### Safety, Power, Thermal, Self-Test, And Peripherals
 
-- [x] **SAFE-01**: Ultra 205 voltage and power-control surfaces use bounded typed decisions and fail closed on invalid configuration, communication failure, or unsafe readings.
-- [x] **SAFE-02**: Thermal sensor and fan control surfaces expose upstream-compatible readings, fan duty behavior, RPM behavior, and failure reporting.
-- [x] **SAFE-03**: PID and thermal-control decisions are covered by pure unit tests before hardware effects are enabled.
-- [x] **SAFE-04**: Overheat, fan, power, thermal, and ASIC fault paths enter safe states and expose user-visible status compatible with upstream behavior.
-- [x] **SAFE-05**: Self-test lifecycle behavior covers factory flags, start, pass, fail, restart, cancel, and user-visible result reporting.
-- [x] **SAFE-06**: Display and input status surfaces needed for normal Ultra 205 administration are preserved or explicitly documented as deferred gaps.
-- [x] **SAFE-07**: Power, current, voltage, fan, and temperature telemetry are captured where Ultra 205 hardware exposes them.
-- [x] **SAFE-08**: Safety-critical surfaces cannot be marked `verified` without `hardware-smoke` or `hardware-regression` evidence.
-- [x] **SAFE-09**: Mining, control, API, and telemetry tasks avoid watchdog starvation and preserve observable responsiveness under load.
+- [ ] **SAFE-01**: Ultra 205 voltage and power-control surfaces use bounded typed decisions and fail closed on invalid configuration, communication failure, or unsafe readings.
+- [ ] **SAFE-02**: Thermal sensor and fan control surfaces expose upstream-compatible readings, fan duty behavior, RPM behavior, and failure reporting.
+- [ ] **SAFE-03**: PID and thermal-control decisions are covered by pure unit tests before hardware effects are enabled.
+- [ ] **SAFE-04**: Overheat, fan, power, thermal, and ASIC fault paths enter safe states and expose user-visible status compatible with upstream behavior.
+- [ ] **SAFE-05**: Self-test lifecycle behavior covers factory flags, start, pass, fail, restart, cancel, and user-visible result reporting.
+- [ ] **SAFE-06**: Display and input status surfaces needed for normal Ultra 205 administration are preserved or explicitly documented as deferred gaps.
+- [ ] **SAFE-07**: Power, current, voltage, fan, and temperature telemetry are captured where Ultra 205 hardware exposes them.
+- [ ] **SAFE-08**: Safety-critical surfaces cannot be marked `verified` without `hardware-smoke` or `hardware-regression` evidence.
+- [ ] **SAFE-09**: Mining, control, API, and telemetry tasks avoid watchdog starvation and preserve observable responsiveness under load.
 
 ### OTA, Filesystem, And Release Packaging
 
-- [x] **REL-01**: Partition layout, filesystem layout, SPIFFS/static assets, and recovery assets support the same user-facing flash and administration flows expected from upstream.
-- [x] **REL-02**: Firmware OTA route behavior accepts, rejects, applies, logs, and recovers from updates with upstream-compatible observable behavior.
-- [x] **REL-03**: OTAWWW or static-asset update behavior is implemented or explicitly reported as a V1 parity gap with evidence and owner.
-- [x] **REL-04**: Release packaging produces named artifacts with checksums, manifests, image metadata, installation notes, and source/reference commit identifiers.
+- [ ] **REL-01**: Partition layout, filesystem layout, SPIFFS/static assets, and recovery assets support the same user-facing flash and administration flows expected from upstream.
+- [ ] **REL-02**: Firmware OTA route behavior accepts, rejects, applies, logs, and recovers from updates with upstream-compatible observable behavior.
+- [ ] **REL-03**: OTAWWW or static-asset update behavior is implemented or explicitly reported as a V1 parity gap with evidence and owner.
+- [ ] **REL-04**: Release packaging produces named artifacts with checksums, manifests, image metadata, installation notes, and source/reference commit identifiers.
 - [x] **REL-05**: Release preparation includes dependency license inventory, reference provenance manifest, and explicit review of GPL-derived materials.
 - [x] **REL-06**: Flashable image production is reachable through `just package` and `just flash board=205` without requiring manual artifact discovery.
-- [x] **REL-07**: Build, flash, monitor, OTA, and recovery documentation is sufficient for a developer with a connected Ultra 205 to operate the firmware safely.
-- [x] **REL-08**: Rollback, recovery, large erase, failed update, and interrupted update cases have verification evidence before release parity is claimed. Deferred to Phase 8 so Phase 7 can close on implementation, packaging, factory-flash, and serial boot evidence without overclaiming release parity.
+- [ ] **REL-07**: Build, flash, monitor, OTA, and recovery documentation is sufficient for a developer with a connected Ultra 205 to operate the firmware safely.
+- [ ] **REL-08**: Rollback, recovery, large erase, failed update, and interrupted update cases have verification evidence before release parity is claimed. Deferred to Phase 8 so Phase 7 can close on implementation, packaging, factory-flash, and serial boot evidence without overclaiming release parity.
 
 ### Evidence And Governance
 
-- [x] **EVD-01**: Each V1 parity surface in `docs/parity/checklist.md` records observable behavior, reference breadcrumb, Rust implementation pointer when known, status, evidence, and notes.
+- [ ] **EVD-01**: Each V1 parity surface in `docs/parity/checklist.md` records observable behavior, reference breadcrumb, Rust implementation pointer when known, status, evidence, and notes.
 - [x] **EVD-02**: `verified` means evidence-backed parity, not only implemented code.
 - [x] **EVD-03**: Non-205 boards and ASICs stay unverified or deferred until each board or ASIC has its own evidence set.
 - [x] **EVD-04**: Rust modules that port reference behavior include module-level or behavior-level breadcrumbs without line-by-line translation comments.
-- [x] **EVD-05**: Verification layers include unit tests, golden fixtures, API comparison, hardware smoke tests, and hardware regression or soak evidence where appropriate.
+- [ ] **EVD-05**: Verification layers include unit tests, golden fixtures, API comparison, hardware smoke tests, and hardware regression or soak evidence where appropriate.
 
 ## v2 Requirements
 
@@ -143,9 +143,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-03 | Phase 1 | Complete |
 | FND-04 | Phase 1 | Complete |
 | FND-05 | Phase 1 | Complete |
-| FND-06 | Phase 1 | Complete |
-| FND-07 | Phase 1 | Complete |
-| FND-08 | Phase 1 | Complete |
+| FND-06 | Phase 1 + Phase 13 | Pending |
+| FND-07 | Phase 1 + Phase 9 | Pending |
+| FND-08 | Phase 1 + Phase 9 | Pending |
 | FND-09 | Phase 1 | Complete |
 | FND-10 | Phase 1 | Complete |
 | FND-11 | Phase 1 | Complete |
@@ -161,15 +161,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASIC-04 | Phase 3 | Complete |
 | ASIC-05 | Phase 3 | Complete |
 | ASIC-06 | Phase 3 | Complete |
-| ASIC-07 | Phase 3 | Complete |
+| ASIC-07 | Phase 3 + Phase 12 | Pending |
 | ASIC-08 | Phase 3 | Complete |
 | STR-01 | Phase 4 | Complete |
 | STR-02 | Phase 4 | Complete |
 | STR-03 | Phase 4 | Complete |
 | STR-04 | Phase 4 | Complete |
 | STR-05 | Phase 4 | Complete |
-| STR-06 | Phase 4 | Complete |
-| STR-07 | Phase 4 | Complete |
+| STR-06 | Phase 4 + Phase 12 | Pending |
+| STR-07 | Phase 4 + Phase 12 | Pending |
 | API-01 | Phase 5 | Complete |
 | API-02 | Phase 5 | Complete |
 | API-03 | Phase 5 | Complete |
@@ -178,38 +178,40 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-06 | Phase 5 | Complete |
 | API-07 | Phase 5 | Complete |
 | API-08 | Phase 5 | Complete |
-| API-09 | Phase 5 | Complete |
-| API-10 | Phase 5 | Complete |
-| SAFE-01 | Phase 6 | Complete |
-| SAFE-02 | Phase 6 | Complete |
-| SAFE-03 | Phase 6 | Complete |
-| SAFE-04 | Phase 6 | Complete |
-| SAFE-05 | Phase 6 | Complete |
-| SAFE-06 | Phase 6 | Complete |
-| SAFE-07 | Phase 6 | Complete |
-| SAFE-08 | Phase 6 | Complete |
-| SAFE-09 | Phase 6 | Complete |
-| REL-01 | Phase 7 | Complete |
-| REL-02 | Phase 7 | Complete |
-| REL-03 | Phase 7 | Complete |
-| REL-04 | Phase 7 | Complete |
+| API-09 | Phase 5 + Phase 10 + Phase 13 | Pending |
+| API-10 | Phase 5 + Phase 10 | Pending |
+| SAFE-01 | Phase 6 + Phase 11 | Pending |
+| SAFE-02 | Phase 6 + Phase 11 | Pending |
+| SAFE-03 | Phase 6 + Phase 11 | Pending |
+| SAFE-04 | Phase 6 + Phase 11 | Pending |
+| SAFE-05 | Phase 6 + Phase 11 | Pending |
+| SAFE-06 | Phase 6 + Phase 11 | Pending |
+| SAFE-07 | Phase 6 + Phase 11 | Pending |
+| SAFE-08 | Phase 6 + Phase 11 | Pending |
+| SAFE-09 | Phase 6 + Phase 11 | Pending |
+| REL-01 | Phase 7 + Phase 10 + Phase 13 | Pending |
+| REL-02 | Phase 7 + Phase 10 + Phase 13 | Pending |
+| REL-03 | Phase 7 + Phase 10 + Phase 13 | Pending |
+| REL-04 | Phase 7 + Phase 13 | Pending |
 | REL-05 | Phase 7 | Complete |
 | REL-06 | Phase 7 | Complete |
-| REL-07 | Phase 7 | Complete |
-| REL-08 | Phase 8 | Complete |
-| EVD-01 | Phase 8 | Complete |
+| REL-07 | Phase 7 + Phase 9 | Pending |
+| REL-08 | Phase 8 + Phase 13 | Pending |
+| EVD-01 | Phase 8 + Phase 10 | Pending |
 | EVD-02 | Phase 8 | Complete |
 | EVD-03 | Phase 8 | Complete |
 | EVD-04 | Phase 8 | Complete |
-| EVD-05 | Phase 8 | Complete |
+| EVD-05 | Phase 8 + Phase 9 + Phase 11 + Phase 12 + Phase 13 | Pending |
 
 **Coverage:**
 
 - v1 requirements: 64 total
 - Mapped to phases: 64
 - Unmapped: 0
+- Complete: 39
+- Pending gap closure: 25
 
 ______________________________________________________________________
 
 *Requirements defined: 2026-06-20*\
-*Last updated: 2026-06-20 after roadmap traceability mapping*
+*Last updated: 2026-06-29 after milestone gap closure planning*
