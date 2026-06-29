@@ -5,7 +5,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
@@ -150,6 +150,56 @@ struct FlashOutcome {
     command: CommandSpec,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct CaptureProcessResult {
+    status: CaptureProcessStatus,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum CaptureProcessStatus {
+    ExitedSuccess,
+    ExitedFailure(String),
+    TimedOut,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum CaptureStatus {
+    Completed,
+    TimedOutAfterTrustedOutput,
+    TimedOutWithoutTrustedOutput,
+    Failed,
+    DryRun,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+struct MonitorCaptureOutcome {
+    capture_mode: String,
+    capture_status: CaptureStatus,
+    capture_timeout_seconds: u64,
+    trusted_output: bool,
+    conclusion: String,
+}
+
+impl MonitorCaptureOutcome {
+    fn accepted(&self) -> bool {
+        self.trusted_output
+            && matches!(
+                self.capture_status,
+                CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
+            )
+    }
+}
+
+struct EvidenceRecordInput<'a> {
+    command_kind: &'a str,
+    command: &'a str,
+    flash_command: &'a str,
+    monitor_command: &'a str,
+    log_path: &'a Utf8Path,
+    capture_outcome: &'a MonitorCaptureOutcome,
+}
+
 #[derive(Debug, Deserialize)]
 struct PackageManifest {
     default_flash_image: String,
@@ -170,7 +220,12 @@ trait FlashEnvironment {
     fn path_exists(&self, path: &Utf8Path) -> bool;
     fn list_ports(&self) -> Result<String>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
-    fn execute_capturing(&self, command_spec: &CommandSpec, log_path: &Utf8Path) -> Result<()>;
+    fn execute_capturing(
+        &self,
+        command_spec: &CommandSpec,
+        log_path: &Utf8Path,
+        timeout_seconds: u64,
+    ) -> Result<CaptureProcessResult>;
     fn firmware_commit(&self) -> String;
     fn reference_commit(&self) -> String;
     fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()>;
@@ -204,7 +259,12 @@ impl FlashEnvironment for LocalFlashEnvironment {
         Ok(())
     }
 
-    fn execute_capturing(&self, command_spec: &CommandSpec, log_path: &Utf8Path) -> Result<()> {
+    fn execute_capturing(
+        &self,
+        command_spec: &CommandSpec,
+        log_path: &Utf8Path,
+        timeout_seconds: u64,
+    ) -> Result<CaptureProcessResult> {
         if command_spec.program != "espflash" {
             bail!("unsupported command program: {}", command_spec.program);
         }
@@ -225,16 +285,43 @@ impl FlashEnvironment for LocalFlashEnvironment {
             command.arg(arg);
         }
 
-        let status = command
+        let mut child = command
             .stdout(Stdio::from(log_file))
             .stderr(Stdio::from(stderr_log))
-            .status()
-            .with_context(|| format!("failed to run {}", command_spec.display()))?;
-        if !status.success() {
-            bail!("{} failed with {status}", command_spec.display());
-        }
+            .spawn()
+            .with_context(|| format!("failed to spawn {}", command_spec.display()))?;
 
-        Ok(())
+        let deadline = Duration::from_secs(timeout_seconds);
+        let started = Instant::now();
+        loop {
+            if let Some(status) = child
+                .try_wait()
+                .with_context(|| format!("failed to poll {}", command_spec.display()))?
+            {
+                let capture_status = if status.success() {
+                    CaptureProcessStatus::ExitedSuccess
+                } else {
+                    CaptureProcessStatus::ExitedFailure(status.to_string())
+                };
+                return Ok(CaptureProcessResult {
+                    status: capture_status,
+                });
+            }
+
+            if started.elapsed() >= deadline {
+                child
+                    .kill()
+                    .with_context(|| format!("failed to stop {}", command_spec.display()))?;
+                child
+                    .wait()
+                    .with_context(|| format!("failed to reap {}", command_spec.display()))?;
+                return Ok(CaptureProcessResult {
+                    status: CaptureProcessStatus::TimedOut,
+                });
+            }
+
+            std::thread::sleep(Duration::from_millis(200));
+        }
     }
 
     fn bazel_bin(&self) -> Result<Utf8PathBuf> {
@@ -422,28 +509,48 @@ fn run_flash_monitor(
     };
     let flash_outcome = run_flash(&flash_command, environment)?;
 
-    let monitor_command = prepare_monitor_command(&command.common, environment)?;
-    emit_command("monitor_command", &monitor_command)?;
-
     if let Some(evidence_dir) = &command.common.evidence_dir {
+        let monitor_command = prepare_evidence_monitor_command(&command.common, environment)?;
+        emit_command("monitor_command", &monitor_command)?;
         let log_path = evidence_dir.join("flash-monitor.log");
-        if command.common.dry_run {
+        let capture_outcome = if command.common.dry_run {
             environment.write_evidence(
                 &log_path,
                 "dry-run: espflash monitor was not executed; no hardware log captured\n",
             )?;
+            dry_run_monitor_capture_outcome(command.capture_timeout_seconds)
         } else {
-            environment.execute_capturing(&monitor_command, &log_path)?;
-        }
+            let capture_result = environment.execute_capturing(
+                &monitor_command,
+                &log_path,
+                command.capture_timeout_seconds,
+            )?;
+            let monitor_log = environment
+                .read_to_string(&log_path)
+                .with_context(|| format!("failed to read monitor log {log_path}"))?;
+            monitor_capture_outcome(
+                &capture_result.status,
+                &monitor_log,
+                command.capture_timeout_seconds,
+            )
+        };
         write_flash_monitor_evidence_if_requested(
             &command.common,
             &flash_outcome,
             &monitor_command,
             &log_path,
+            &capture_outcome,
             environment,
         )?;
+        if !command.common.dry_run && !capture_outcome.accepted() {
+            let port = command_port(&monitor_command).unwrap_or_else(|| UNAVAILABLE.to_owned());
+            bail!("{}", evidence_capture_failure_guidance(&port, evidence_dir));
+        }
         return Ok(());
     }
+
+    let monitor_command = prepare_monitor_command(&command.common, environment)?;
+    emit_command("monitor_command", &monitor_command)?;
 
     if !command.common.dry_run {
         environment.execute(&monitor_command)?;
@@ -626,7 +733,6 @@ fn prepare_monitor_command(
     ))
 }
 
-#[allow(dead_code)]
 fn prepare_evidence_monitor_command(
     common: &CommonArgs,
     environment: &impl FlashEnvironment,
@@ -646,7 +752,6 @@ fn prepare_evidence_monitor_command(
     ))
 }
 
-#[allow(dead_code)]
 fn monitor_log_has_trusted_boot_markers(log: &str) -> bool {
     [
         "bitaxe-rust boot: board=Ultra 205 asic=BM1366",
@@ -659,6 +764,73 @@ fn monitor_log_has_trusted_boot_markers(log: &str) -> bool {
     ]
     .iter()
     .all(|marker| log.contains(marker))
+}
+
+fn monitor_capture_outcome(
+    process_status: &CaptureProcessStatus,
+    monitor_log: &str,
+    capture_timeout_seconds: u64,
+) -> MonitorCaptureOutcome {
+    let trusted_output = monitor_log_has_trusted_boot_markers(monitor_log);
+    let capture_status = match process_status {
+        CaptureProcessStatus::ExitedSuccess if trusted_output => CaptureStatus::Completed,
+        CaptureProcessStatus::TimedOut if trusted_output => {
+            CaptureStatus::TimedOutAfterTrustedOutput
+        }
+        CaptureProcessStatus::TimedOut => CaptureStatus::TimedOutWithoutTrustedOutput,
+        CaptureProcessStatus::ExitedSuccess | CaptureProcessStatus::ExitedFailure(_) => {
+            CaptureStatus::Failed
+        }
+    };
+    let conclusion = if trusted_output
+        && matches!(
+            capture_status,
+            CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
+        ) {
+        "passed - wrapper-owned serial boot evidence captured; HTTP/static/recovery/OTA/rollback parity not claimed"
+    } else {
+        "failed - evidence capture is not trusted"
+    };
+
+    MonitorCaptureOutcome {
+        capture_mode: "noninteractive".to_owned(),
+        capture_status,
+        capture_timeout_seconds,
+        trusted_output,
+        conclusion: conclusion.to_owned(),
+    }
+}
+
+fn dry_run_monitor_capture_outcome(capture_timeout_seconds: u64) -> MonitorCaptureOutcome {
+    MonitorCaptureOutcome {
+        capture_mode: "dry_run".to_owned(),
+        capture_status: CaptureStatus::DryRun,
+        capture_timeout_seconds,
+        trusted_output: false,
+        conclusion: "not run - dry-run did not capture hardware evidence".to_owned(),
+    }
+}
+
+fn no_monitor_capture_outcome() -> MonitorCaptureOutcome {
+    MonitorCaptureOutcome {
+        capture_mode: "not_applicable".to_owned(),
+        capture_status: CaptureStatus::DryRun,
+        capture_timeout_seconds: 0,
+        trusted_output: false,
+        conclusion: "not run - no monitor capture requested".to_owned(),
+    }
+}
+
+fn evidence_capture_failure_guidance(port: &str, evidence_dir: &Utf8Path) -> String {
+    [
+        "evidence capture failed and is not trusted".to_owned(),
+        "rerun: just detect-ultra205".to_owned(),
+        format!("rerun: just flash-monitor board=205 port={port} evidence-dir={evidence_dir}"),
+        format!("diagnostic only: just monitor port={port}"),
+        "use the wrapper noninteractive evidence path before treating serial logs as proof"
+            .to_owned(),
+    ]
+    .join("\n")
 }
 
 fn likely_port_candidates(ports_output: &str) -> Vec<String> {
@@ -728,12 +900,18 @@ fn write_evidence_if_requested(
     };
 
     let log_path = evidence_dir.join("flash-monitor.log");
+    let capture_outcome = no_monitor_capture_outcome();
     write_evidence_record(
         common,
         outcome,
-        command_kind,
-        &outcome.command.display(),
-        &log_path,
+        EvidenceRecordInput {
+            command_kind,
+            command: &outcome.command.display(),
+            flash_command: &outcome.command.display(),
+            monitor_command: UNAVAILABLE,
+            log_path: &log_path,
+            capture_outcome: &capture_outcome,
+        },
         environment,
     )
 }
@@ -743,6 +921,7 @@ fn write_flash_monitor_evidence_if_requested(
     outcome: &FlashOutcome,
     monitor_command: &CommandSpec,
     log_path: &Utf8Path,
+    capture_outcome: &MonitorCaptureOutcome,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
     let Some(_evidence_dir) = &common.evidence_dir else {
@@ -757,9 +936,14 @@ fn write_flash_monitor_evidence_if_requested(
     write_evidence_record(
         common,
         outcome,
-        "flash-monitor",
-        &command,
-        log_path,
+        EvidenceRecordInput {
+            command_kind: "flash-monitor",
+            command: &command,
+            flash_command: &outcome.command.display(),
+            monitor_command: &monitor_command.display(),
+            log_path,
+            capture_outcome,
+        },
         environment,
     )
 }
@@ -767,9 +951,7 @@ fn write_flash_monitor_evidence_if_requested(
 fn write_evidence_record(
     common: &CommonArgs,
     outcome: &FlashOutcome,
-    command_kind: &str,
-    command: &str,
-    log_path: &Utf8Path,
+    input: EvidenceRecordInput<'_>,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
     let Some(evidence_dir) = &common.evidence_dir else {
@@ -777,8 +959,8 @@ fn write_evidence_record(
     };
 
     let record = EvidenceRecord {
-        command: command.to_owned(),
-        command_kind: command_kind.to_owned(),
+        command: input.command.to_owned(),
+        command_kind: input.command_kind.to_owned(),
         board: common.board.to_string(),
         port: command_port(&outcome.command).unwrap_or_else(|| UNAVAILABLE.to_owned()),
         firmware_commit: environment.firmware_commit(),
@@ -790,7 +972,15 @@ fn write_evidence_record(
             .unwrap_or_else(|| UNAVAILABLE.to_owned()),
         flash_image_path: outcome.flash_image.as_str().to_owned(),
         timestamp: unix_timestamp(),
-        log_path: log_path.as_str().to_owned(),
+        log_path: input.log_path.as_str().to_owned(),
+        flash_command: input.flash_command.to_owned(),
+        monitor_command: input.monitor_command.to_owned(),
+        monitor_log_path: input.log_path.as_str().to_owned(),
+        capture_mode: input.capture_outcome.capture_mode.clone(),
+        capture_status: input.capture_outcome.capture_status,
+        capture_timeout_seconds: input.capture_outcome.capture_timeout_seconds,
+        trusted_output: input.capture_outcome.trusted_output,
+        conclusion: input.capture_outcome.conclusion.clone(),
     };
     let json = serde_json::to_string_pretty(&record).context("failed to serialize evidence")?;
     environment.write_evidence(&evidence_dir.join("flash-command-evidence.json"), &json)
@@ -816,6 +1006,14 @@ struct EvidenceRecord {
     flash_image_path: String,
     timestamp: String,
     log_path: String,
+    flash_command: String,
+    monitor_command: String,
+    monitor_log_path: String,
+    capture_mode: String,
+    capture_status: CaptureStatus,
+    capture_timeout_seconds: u64,
+    trusted_output: bool,
+    conclusion: String,
 }
 
 fn unix_timestamp() -> String {
@@ -1238,6 +1436,132 @@ mod tests {
     }
 
     #[test]
+    fn flash_monitor_evidence_uses_noninteractive_capture_command() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_command(evidence_dir);
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        run_flash_monitor(&command, &environment).expect("flash-monitor");
+
+        // Assert
+        assert_eq!(
+            environment.captured_commands(),
+            vec![CommandSpec::new(
+                "espflash",
+                [
+                    "monitor",
+                    "--chip",
+                    "esp32s3",
+                    "--port",
+                    "/dev/cu.usbmodem101",
+                    "--non-interactive",
+                ],
+            )]
+        );
+    }
+
+    #[test]
+    fn flash_monitor_evidence_json_records_capture_contract() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_command(evidence_dir.clone());
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        run_flash_monitor(&command, &environment).expect("flash-monitor");
+
+        // Assert
+        let evidence_path = evidence_dir.join("flash-command-evidence.json");
+        let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
+        let json: serde_json::Value = serde_json::from_str(&evidence).expect("json");
+        for field in [
+            "flash_command",
+            "monitor_command",
+            "monitor_log_path",
+            "capture_mode",
+            "capture_status",
+            "capture_timeout_seconds",
+            "trusted_output",
+            "conclusion",
+        ] {
+            assert!(json.get(field).is_some(), "missing {field}");
+        }
+        assert_eq!(json["capture_mode"], "noninteractive");
+        assert_eq!(json["capture_status"], "completed");
+        assert_eq!(json["capture_timeout_seconds"], 25);
+        assert_eq!(json["trusted_output"], true);
+    }
+
+    #[test]
+    fn trusted_timeout_capture_is_accepted() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_command(evidence_dir.clone());
+        let environment =
+            FakeFlashEnvironment::default().with_capture_status(CaptureProcessStatus::TimedOut);
+
+        // Act
+        let result = run_flash_monitor(&command, &environment);
+
+        // Assert
+        assert!(result.is_ok());
+        let evidence_path = evidence_dir.join("flash-command-evidence.json");
+        let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
+        assert!(evidence.contains(r#""capture_status": "timed_out_after_trusted_output""#));
+    }
+
+    #[test]
+    fn untrusted_timeout_capture_fails_after_writing_json() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_command(evidence_dir.clone());
+        let environment = FakeFlashEnvironment::default()
+            .with_capture_status(CaptureProcessStatus::TimedOut)
+            .with_log_contents("untrusted monitor log\n");
+
+        // Act
+        let result = run_flash_monitor(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("evidence capture failed and is not trusted"));
+        let evidence_path = evidence_dir.join("flash-command-evidence.json");
+        let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
+        assert!(evidence.contains(r#""capture_status": "timed_out_without_trusted_output""#));
+    }
+
+    #[test]
+    fn monitor_failure_guidance_uses_repo_commands() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_command(evidence_dir.clone());
+        let environment = FakeFlashEnvironment::default().with_capture_status(
+            CaptureProcessStatus::ExitedFailure("exit status 1".to_owned()),
+        );
+
+        // Act
+        let result = run_flash_monitor(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("just detect-ultra205"));
+        assert!(error.contains(&format!(
+            "just flash-monitor board=205 port=/dev/cu.usbmodem101 evidence-dir={evidence_dir}"
+        )));
+        assert!(error.contains("just monitor port=/dev/cu.usbmodem101"));
+        assert!(error.contains("wrapper noninteractive evidence path"));
+        let raw_timeout_command = ["timeout", "25", "espflash"].join(" ");
+        assert!(!error.contains(&raw_timeout_command));
+    }
+
+    #[test]
     fn rejects_deferred_gamma_601_board() {
         // Arrange
         let input = "601";
@@ -1282,6 +1606,19 @@ mod tests {
             "reference_commit=reference-commit",
         ]
         .join("\n")
+    }
+
+    fn flash_monitor_command(evidence_dir: Utf8PathBuf) -> FlashMonitorCommand {
+        FlashMonitorCommand {
+            common: CommonArgs {
+                evidence_dir: Some(evidence_dir),
+                dry_run: false,
+                ..common_args()
+            },
+            image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
+            manifest: None,
+            capture_timeout_seconds: DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS,
+        }
     }
 
     fn dir_path(dir: &TempDir) -> Utf8PathBuf {
@@ -1377,6 +1714,8 @@ mod tests {
         ports: String,
         executed_commands: RefCell<Vec<CommandSpec>>,
         captured_commands: RefCell<Vec<CommandSpec>>,
+        capture_status: CaptureProcessStatus,
+        log_contents: String,
     }
 
     impl Default for FakeFlashEnvironment {
@@ -1391,11 +1730,27 @@ mod tests {
                 ports: ports.to_owned(),
                 executed_commands: RefCell::new(Vec::new()),
                 captured_commands: RefCell::new(Vec::new()),
+                capture_status: CaptureProcessStatus::ExitedSuccess,
+                log_contents: trusted_monitor_log(),
             }
         }
 
         fn executed_commands(&self) -> Vec<CommandSpec> {
             self.executed_commands.borrow().clone()
+        }
+
+        fn captured_commands(&self) -> Vec<CommandSpec> {
+            self.captured_commands.borrow().clone()
+        }
+
+        fn with_capture_status(mut self, capture_status: CaptureProcessStatus) -> Self {
+            self.capture_status = capture_status;
+            self
+        }
+
+        fn with_log_contents(mut self, log_contents: &str) -> Self {
+            self.log_contents = log_contents.to_owned();
+            self
         }
     }
 
@@ -1428,16 +1783,23 @@ mod tests {
             Ok(())
         }
 
-        fn execute_capturing(&self, command_spec: &CommandSpec, log_path: &Utf8Path) -> Result<()> {
+        fn execute_capturing(
+            &self,
+            command_spec: &CommandSpec,
+            log_path: &Utf8Path,
+            _timeout_seconds: u64,
+        ) -> Result<CaptureProcessResult> {
             self.captured_commands
                 .borrow_mut()
                 .push(command_spec.clone());
             if let Some(parent) = log_path.parent() {
                 std::fs::create_dir_all(parent.as_std_path()).expect("create fake log dir");
             }
-            std::fs::write(log_path.as_std_path(), b"captured monitor log\n")
+            std::fs::write(log_path.as_std_path(), &self.log_contents)
                 .expect("write fake monitor log");
-            Ok(())
+            Ok(CaptureProcessResult {
+                status: self.capture_status.clone(),
+            })
         }
 
         fn firmware_commit(&self) -> String {
