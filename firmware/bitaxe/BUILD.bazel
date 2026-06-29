@@ -5,6 +5,8 @@ genrule(
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by
     # //scripts:build_firmware.
     srcs = glob(["src/**/*.rs"]) + [
+        "//:.git/HEAD",
+        "//:.git/refs/heads/main",
         "Cargo.toml",
         "build.rs",
         "partitions-ultra205.csv",
