@@ -1,8 +1,10 @@
 package(default_visibility = ["//visibility:public"])
 
-# Package manifests record git HEAD, so package-producing actions need HEAD as
-# an explicit input instead of only reading it from git at execution time.
+# Package manifests and firmware boot logs record git HEAD, so package-producing
+# and firmware-producing actions need git state as explicit inputs instead of
+# only reading it from git at execution time.
 exports_files([
     ".git/HEAD",
+    ".git/logs/HEAD",
     ".git/refs/heads/main",
 ])

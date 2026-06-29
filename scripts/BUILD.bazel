@@ -33,6 +33,27 @@ sh_binary(
     srcs = ["package-firmware.sh"],
 )
 
+sh_binary(
+    name = "source_commit_stamp_tool",
+    srcs = ["source-commit-stamp.sh"],
+)
+
+genrule(
+    name = "source_commit_stamp",
+    srcs = [
+        "//:.git/HEAD",
+        "//:.git/logs/HEAD",
+    ],
+    outs = ["source-commit.stamp"],
+    cmd = "$(location :source_commit_stamp_tool) $@",
+    local = True,
+    tags = [
+        "local",
+        "no-sandbox",
+    ],
+    tools = [":source_commit_stamp_tool"],
+)
+
 sh_test(
     name = "detect_ultra205_test",
     srcs = ["detect-ultra205-test.sh"],

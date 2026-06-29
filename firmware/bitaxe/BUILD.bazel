@@ -5,15 +5,14 @@ genrule(
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by
     # //scripts:build_firmware.
     srcs = glob(["src/**/*.rs"]) + [
-        "//:.git/HEAD",
-        "//:.git/refs/heads/main",
+        "//scripts:source_commit_stamp",
         "Cargo.toml",
         "build.rs",
         "partitions-ultra205.csv",
         "sdkconfig.defaults",
     ] + glob(["static/**"]),
     outs = ["bitaxe-firmware.elf"],
-    cmd = "$(location //scripts:build_firmware) $(@D)",
+    cmd = "$(location //scripts:build_firmware) $(@D) $(location //scripts:source_commit_stamp)",
     local = True,
     tags = [
         "local",

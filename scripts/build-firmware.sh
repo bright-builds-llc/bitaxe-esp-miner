@@ -7,15 +7,16 @@ readonly ESP_IDF_VERSION_PIN="tag:v5.5.4"
 readonly PACKAGE_NAME="bitaxe-firmware"
 
 usage() {
-  printf 'usage: %s <bazel-output-dir>\n' "$0" >&2
+  printf 'usage: %s <bazel-output-dir> [source-commit-file]\n' "$0" >&2
 }
 
-if [[ "$#" -ne 1 ]]; then
+if [[ "$#" -lt 1 || "$#" -gt 2 ]]; then
   usage
   exit 2
 fi
 
 readonly OUTPUT_DIR="$1"
+readonly SOURCE_COMMIT_FILE="${2:-}"
 if [[ -z "${HOME:-}" ]]; then
   HOME="$(cd ~ && pwd)"
   export HOME
@@ -36,6 +37,21 @@ printf '[build-firmware] MCU=%s\n' "$MCU_NAME"
 printf '[build-firmware] target=%s\n' "$TARGET"
 printf '[build-firmware] esp_idf_version=%s\n' "$ESP_IDF_VERSION_PIN"
 printf '[build-firmware] output_dir=%s\n' "$OUTPUT_DIR"
+
+if [[ -n "$SOURCE_COMMIT_FILE" ]]; then
+  if [[ ! -f "$SOURCE_COMMIT_FILE" ]]; then
+    printf 'error: source commit file not found: %s\n' "$SOURCE_COMMIT_FILE" >&2
+    exit 1
+  fi
+
+  BITAXE_SOURCE_COMMIT="$(tr -d '[:space:]' <"$SOURCE_COMMIT_FILE")"
+  if [[ -z "$BITAXE_SOURCE_COMMIT" ]]; then
+    printf 'error: source commit file was empty: %s\n' "$SOURCE_COMMIT_FILE" >&2
+    exit 1
+  fi
+  export BITAXE_SOURCE_COMMIT
+  printf '[build-firmware] source_commit=%s\n' "$BITAXE_SOURCE_COMMIT"
+fi
 
 source "$ESP_EXPORT"
 

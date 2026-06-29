@@ -1,7 +1,9 @@
+use std::env;
 use std::process::Command;
 
 fn main() {
     embuild::espidf::sysenv::output();
+    println!("cargo:rerun-if-env-changed=BITAXE_SOURCE_COMMIT");
     emit_git_rerun_hints();
 
     let Some(commit) = maybe_git_commit() else {
@@ -27,7 +29,21 @@ fn emit_git_rerun_hints() {
 }
 
 fn maybe_git_commit() -> Option<String> {
+    if let Some(commit) = maybe_env_commit() {
+        return Some(commit);
+    }
+
     git_stdout(["rev-parse", "--short=12", "HEAD"])
+}
+
+fn maybe_env_commit() -> Option<String> {
+    let commit = env::var("BITAXE_SOURCE_COMMIT").ok()?;
+    let commit = commit.trim();
+    if commit.is_empty() {
+        return None;
+    }
+
+    Some(commit.to_owned())
 }
 
 fn git_path(path: &str) -> Option<String> {
