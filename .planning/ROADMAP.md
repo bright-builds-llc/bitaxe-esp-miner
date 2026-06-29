@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: OTA, Filesystem, And Release Packaging** - Deliver partition/filesystem behavior, OTA/recovery flows, static asset updates, release artifacts, license inventory, and safe operator docs. (completed 2026-06-28)
 - [x] **Phase 8: Parity Evidence And Ultra 205 Release Gate** - Close V1 evidence governance so Ultra 205 parity claims are supported and deferred scope remains unverified or out of scope. (completed 2026-06-29)
 - [ ] **Phase 9: Flash-Monitor Evidence Wrapper Hardening** - Close the audit gap where repository `flash-monitor` evidence capture fell back to raw `espflash monitor --non-interactive`.
-- [ ] **Phase 10: Route Manifest And API Compare Unification** - Close the audit gap where Phase 7 route manifests were not the source consumed by firmware route reporting and compare tooling.
+- [x] **Phase 10: Route Manifest And API Compare Unification** - Close the audit gap where Phase 7 route manifests were not the source consumed by firmware route reporting and compare tooling. (completed 2026-06-29)
 - [ ] **Phase 11: Safety Controller Hardware Regression Evidence** - Close the audit gap for Ultra 205 voltage, power, thermal, fan, self-test, display/input, watchdog, and safety-critical hardware evidence.
 - [ ] **Phase 12: ASIC And Mining Hardware Evidence** - Close the audit gap for BM1366 initialization, work/result handling, first mining loop, and controlled mining soak evidence.
 - [ ] **Phase 13: Final Ultra 205 Release Evidence** - Close the audit gap for final-commit package/flash/boot identity plus live HTTP, static, recovery, OTA, rollback, erase, and interrupted-update evidence.
@@ -259,7 +259,7 @@ Plans:
 
 - [x] 10-01-PLAN.md - Add Phase 7 route reporting helpers and switch firmware startup logging to manifest-derived counts.
 - [x] 10-02-PLAN.md - Refactor API compare route policy to use the Phase 7 typed manifest and add route-drift regressions.
-- [ ] 10-03-PLAN.md - Record checklist/evidence claim boundaries and run final Phase 10 verification.
+- [x] 10-03-PLAN.md - Record checklist/evidence claim boundaries and run final Phase 10 verification.
 **Verification expectations**: Cargo tests for route manifest consumers, API compare fixture regression tests, `just parity`, and a diff review confirming route reporting and compare tooling cannot drift independently.
 **Research flags**: Standard Rust domain and tooling work. Keep route classification in pure data and leave firmware handlers as thin adapters.
 
@@ -330,7 +330,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 7. OTA, Filesystem, And Release Packaging | 9/9 | Complete | 2026-06-28 |
 | 8. Parity Evidence And Ultra 205 Release Gate | 4/4 | Complete | 2026-06-29 |
 | 9. Flash-Monitor Evidence Wrapper Hardening | 0/2 | Not started | - |
-| 10. Route Manifest And API Compare Unification | 2/3 | In Progress | - |
+| 10. Route Manifest And API Compare Unification | 3/3 | Complete   | 2026-06-29 |
 | 11. Safety Controller Hardware Regression Evidence | 0/TBD | Not started | - |
 | 12. ASIC And Mining Hardware Evidence | 0/TBD | Not started | - |
 | 13. Final Ultra 205 Release Evidence | 0/TBD | Not started | - |
