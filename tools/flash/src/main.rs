@@ -17,6 +17,7 @@ const PACKAGE_BUILD_TARGET: &str = "//firmware/bitaxe:firmware_image";
 const PACKAGE_MANIFEST_RELATIVE_PATH: &str = "firmware/bitaxe/bitaxe-ultra205-package.json";
 const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
 const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
+const DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS: u64 = 25;
 const UNAVAILABLE: &str = "Unavailable";
 
 #[derive(Debug, Parser)]
@@ -78,6 +79,9 @@ struct FlashMonitorCommand {
 
     #[arg(long, value_parser = parse_utf8_path)]
     manifest: Option<Utf8PathBuf>,
+
+    #[arg(long = "capture-timeout-seconds", default_value_t = DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS)]
+    capture_timeout_seconds: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -358,6 +362,9 @@ where
             "evidence-dir" | "evidence_dir" => {
                 push_flag_value(&mut normalized, "--evidence-dir", value)
             }
+            "capture-timeout-seconds" | "capture_timeout_seconds" => {
+                push_flag_value(&mut normalized, "--capture-timeout-seconds", value)
+            }
             "dry-run" | "dry_run" => {
                 if parse_bool_alias(value) {
                     normalized.push("--dry-run".to_owned());
@@ -617,6 +624,41 @@ fn prepare_monitor_command(
         "espflash",
         ["monitor", "--port", port.as_str()],
     ))
+}
+
+#[allow(dead_code)]
+fn prepare_evidence_monitor_command(
+    common: &CommonArgs,
+    environment: &impl FlashEnvironment,
+) -> Result<CommandSpec> {
+    ensure_ultra_205(common.board)?;
+    let port = resolve_port(common.port.as_deref(), environment)?;
+    Ok(CommandSpec::new(
+        "espflash",
+        [
+            "monitor",
+            "--chip",
+            "esp32s3",
+            "--port",
+            port.as_str(),
+            "--non-interactive",
+        ],
+    ))
+}
+
+#[allow(dead_code)]
+fn monitor_log_has_trusted_boot_markers(log: &str) -> bool {
+    [
+        "bitaxe-rust boot: board=Ultra 205 asic=BM1366",
+        "safe_state:",
+        "ota_boot_validation=",
+        "spiffs_mount=available",
+        "axeos_api_route_shell=started",
+        "firmware_commit=",
+        "reference_commit=",
+    ]
+    .iter()
+    .all(|marker| log.contains(marker))
 }
 
 fn likely_port_candidates(ports_output: &str) -> Vec<String> {
@@ -884,6 +926,37 @@ mod tests {
     }
 
     #[test]
+    fn flash_monitor_parses_capture_timeout_alias() {
+        // Arrange
+        let hyphenated_args = [
+            "bitaxe-flash",
+            "flash-monitor",
+            "port=/dev/cu.usbmodem101",
+            "capture-timeout-seconds=30",
+        ];
+        let underscored_args = [
+            "bitaxe-flash",
+            "flash-monitor",
+            "port=/dev/cu.usbmodem101",
+            "capture_timeout_seconds=30",
+        ];
+
+        // Act
+        let hyphenated_cli = parse_cli(hyphenated_args).expect("hyphenated cli");
+        let underscored_cli = parse_cli(underscored_args).expect("underscored cli");
+
+        // Assert
+        let CliCommand::FlashMonitor(hyphenated_command) = hyphenated_cli.command else {
+            panic!("expected flash-monitor command");
+        };
+        let CliCommand::FlashMonitor(underscored_command) = underscored_cli.command else {
+            panic!("expected flash-monitor command");
+        };
+        assert_eq!(hyphenated_command.capture_timeout_seconds, 30);
+        assert_eq!(underscored_command.capture_timeout_seconds, 30);
+    }
+
+    #[test]
     fn dry_run_flash_with_explicit_image_renders_vector_command() {
         // Arrange
         let command = FlashCommand {
@@ -1079,6 +1152,62 @@ mod tests {
     }
 
     #[test]
+    fn evidence_monitor_command_uses_noninteractive_esp32s3_flags() {
+        // Arrange
+        let common = common_args();
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let command = prepare_evidence_monitor_command(&common, &environment).expect("command");
+
+        // Assert
+        assert_eq!(command.program, "espflash");
+        assert_eq!(
+            command.args,
+            vec![
+                "monitor",
+                "--chip",
+                "esp32s3",
+                "--port",
+                "/dev/cu.usbmodem101",
+                "--non-interactive",
+            ]
+        );
+    }
+
+    #[test]
+    fn interactive_monitor_command_remains_interactive() {
+        // Arrange
+        let common = common_args();
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let command = prepare_monitor_command(&common, &environment).expect("command");
+
+        // Assert
+        assert_eq!(
+            command.args,
+            vec!["monitor", "--port", "/dev/cu.usbmodem101"]
+        );
+        assert!(!command.args.iter().any(|arg| arg == "--non-interactive"));
+    }
+
+    #[test]
+    fn trusted_marker_classifier_requires_serial_scope_markers() {
+        // Arrange
+        let trusted_log = trusted_monitor_log();
+        let untrusted_log = trusted_log.replace("reference_commit=", "reference_sha=");
+
+        // Act
+        let trusted = monitor_log_has_trusted_boot_markers(&trusted_log);
+        let untrusted = monitor_log_has_trusted_boot_markers(&untrusted_log);
+
+        // Assert
+        assert!(trusted);
+        assert!(!untrusted);
+    }
+
+    #[test]
     fn flash_monitor_evidence_points_to_created_log() {
         // Arrange
         let dir = tempdir().expect("tempdir");
@@ -1091,6 +1220,7 @@ mod tests {
             },
             image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
             manifest: None,
+            capture_timeout_seconds: DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS,
         };
         let environment = FakeFlashEnvironment::default();
 
@@ -1139,6 +1269,19 @@ mod tests {
             dry_run: true,
             evidence_dir: None,
         }
+    }
+
+    fn trusted_monitor_log() -> String {
+        [
+            "bitaxe-rust boot: board=Ultra 205 asic=BM1366",
+            "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
+            "ota_boot_validation=not_pending state=factory",
+            "spiffs_mount=available partition=www total_bytes=2884241 used_bytes=4518",
+            "axeos_api_route_shell=started registered_routes=15",
+            "firmware_commit=firmware-commit",
+            "reference_commit=reference-commit",
+        ]
+        .join("\n")
     }
 
     fn dir_path(dir: &TempDir) -> Utf8PathBuf {
