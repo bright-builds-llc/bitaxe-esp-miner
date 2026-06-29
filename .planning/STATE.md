@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-06-29T16:46:23.483Z"
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-06-29T17:00:52.849Z"
 last_activity: 2026-06-29
 progress:
   total_phases: 13
   completed_phases: 9
   total_plans: 57
-  completed_plans: 55
-  percent: 96
+  completed_plans: 56
+  percent: 98
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 10 (route-manifest-and-api-compare-unification) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-06-29
 
-Progress: [██████████] 100%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -107,6 +107,7 @@ Progress: [██████████] 100%
 | Phase 08-parity-evidence-and-ultra-205-release-gate P04 | 112min | 3 tasks | 7 files |
 | Phase 09-flash-monitor-evidence-wrapper-hardening P01 | 11 min | 2 tasks | 1 files |
 | Phase 10-route-manifest-and-api-compare-unification P01 | 4m 30s | 2 tasks | 4 files |
+| Phase 10-route-manifest-and-api-compare-unification P02 | 7 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -259,6 +260,8 @@ Recent decisions affecting current work:
 - [Phase 09-flash-monitor-evidence-wrapper-hardening]: TDD RED failures were run but not committed because AGENTS.md requires passing Rust checks before every commit.
 - [Phase 10-route-manifest-and-api-compare-unification]: Derive Phase 7 ownership counts from phase07_routes() rather than duplicating route constants in firmware.
 - [Phase 10-route-manifest-and-api-compare-unification]: Keep ESP-IDF HTTP handler registration explicit and ordered while logging manifest-derived route metadata.
+- [Phase 10-route-manifest-and-api-compare-unification]: Use phase07_routes() for production API compare route presence and RouteKind policy while preserving Phase 5 schema and captured-response fixture checks.
+- [Phase 10-route-manifest-and-api-compare-unification]: Reject release-sensitive verified_claim entries for OTA, OTAWWW, recovery, and static wildcard routes when their evidence is only weak tooling/package labels.
 
 ### Pending Todos
 
@@ -280,6 +283,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-29T16:46:23.480Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-06-29T17:00:52.808Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None

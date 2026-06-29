@@ -258,7 +258,7 @@ Plans:
 Plans:
 
 - [x] 10-01-PLAN.md - Add Phase 7 route reporting helpers and switch firmware startup logging to manifest-derived counts.
-- [ ] 10-02-PLAN.md - Refactor API compare route policy to use the Phase 7 typed manifest and add route-drift regressions.
+- [x] 10-02-PLAN.md - Refactor API compare route policy to use the Phase 7 typed manifest and add route-drift regressions.
 - [ ] 10-03-PLAN.md - Record checklist/evidence claim boundaries and run final Phase 10 verification.
 **Verification expectations**: Cargo tests for route manifest consumers, API compare fixture regression tests, `just parity`, and a diff review confirming route reporting and compare tooling cannot drift independently.
 **Research flags**: Standard Rust domain and tooling work. Keep route classification in pure data and leave firmware handlers as thin adapters.
@@ -330,7 +330,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 7. OTA, Filesystem, And Release Packaging | 9/9 | Complete | 2026-06-28 |
 | 8. Parity Evidence And Ultra 205 Release Gate | 4/4 | Complete | 2026-06-29 |
 | 9. Flash-Monitor Evidence Wrapper Hardening | 0/2 | Not started | - |
-| 10. Route Manifest And API Compare Unification | 1/3 | In Progress | - |
+| 10. Route Manifest And API Compare Unification | 2/3 | In Progress | - |
 | 11. Safety Controller Hardware Regression Evidence | 0/TBD | Not started | - |
 | 12. ASIC And Mining Hardware Evidence | 0/TBD | Not started | - |
 | 13. Final Ultra 205 Release Evidence | 0/TBD | Not started | - |

@@ -62,7 +62,7 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 - [x] **API-07**: `/api/ws/live` streams live telemetry with upstream-compatible payload shape, cadence, and state transitions.
 - [x] **API-08**: Pause, resume, restart, identify, and related command routes preserve user-visible behavior and safe failure modes.
 - [x] **API-09**: Static AxeOS assets and recovery page behavior remain compatible enough for device administration without requiring an Angular rewrite in V1.
-- [ ] **API-10**: API compare fixtures prove Rust responses match the upstream schema or captured upstream responses for representative success and error cases.
+- [x] **API-10**: API compare fixtures prove Rust responses match the upstream schema or captured upstream responses for representative success and error cases.
 
 ### Safety, Power, Thermal, Self-Test, And Peripherals
 
@@ -179,7 +179,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-07 | Phase 5 | Complete |
 | API-08 | Phase 5 | Complete |
 | API-09 | Phase 5 + Phase 10 + Phase 13 | Complete |
-| API-10 | Phase 5 + Phase 10 | Pending |
+| API-10 | Phase 5 + Phase 10 | Complete |
 | SAFE-01 | Phase 6 + Phase 11 | Pending |
 | SAFE-02 | Phase 6 + Phase 11 | Pending |
 | SAFE-03 | Phase 6 + Phase 11 | Pending |
