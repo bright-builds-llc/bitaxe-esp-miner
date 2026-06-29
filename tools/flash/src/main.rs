@@ -782,16 +782,20 @@ fn monitor_log_has_trusted_boot_markers(log: &str) -> bool {
     [
         "bitaxe-rust boot: board=Ultra 205 asic=BM1366",
         "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
-        "ota_boot_validation=",
         "spiffs_mount=available",
         "axeos_api_route_shell=started",
-        "reset_reason=",
-        "firmware_commit=",
-        "reference_commit=",
-        "esp_idf_version=",
     ]
     .iter()
     .all(|marker| log.contains(marker))
+        && [
+            "ota_boot_validation=",
+            "reset_reason=",
+            "firmware_commit=",
+            "reference_commit=",
+            "esp_idf_version=",
+        ]
+        .iter()
+        .all(|marker| monitor_log_marker_value(log, marker) != UNAVAILABLE)
 }
 
 fn monitor_capture_outcome(
@@ -846,12 +850,10 @@ fn monitor_capture_outcome(
 
 fn monitor_log_marker_value(log: &str, marker: &str) -> String {
     log.lines()
-        .find_map(|line| {
-            line.split_once(marker)
-                .and_then(|(_, value)| value.split_whitespace().next())
-                .map(str::to_owned)
-        })
+        .flat_map(str::split_whitespace)
+        .find_map(|token| token.strip_prefix(marker))
         .filter(|value| !value.is_empty())
+        .map(str::to_owned)
         .unwrap_or_else(|| UNAVAILABLE.to_owned())
 }
 
@@ -1750,6 +1752,30 @@ mod tests {
         let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
         assert!(evidence.contains(r#""trusted_output": false"#));
         assert!(evidence.contains(r#""observed_firmware_commit": "0""#));
+    }
+
+    #[test]
+    fn prefixed_firmware_commit_marker_capture_fails_after_writing_json() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_command(evidence_dir.clone());
+        let prefixed_log = trusted_monitor_log().replace(
+            "firmware_commit=0123456789ab",
+            "not_firmware_commit=0123456789ab",
+        );
+        let environment = FakeFlashEnvironment::default().with_log_contents(&prefixed_log);
+
+        // Act
+        let result = run_flash_monitor(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("missing trusted Ultra 205 boot markers"));
+        let evidence_path = evidence_dir.join("flash-command-evidence.json");
+        let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
+        assert!(evidence.contains(r#""trusted_output": false"#));
+        assert!(evidence.contains(r#""observed_firmware_commit": "Unavailable""#));
     }
 
     #[test]
