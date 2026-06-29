@@ -229,6 +229,15 @@ struct StaticRouteUsage {
     phase_owner: String,
     phase05_behavior: String,
     counts_as_phase05_success: bool,
+    #[serde(default)]
+    verified_claim: Option<VerifiedClaim>,
+}
+
+#[derive(Debug, Deserialize)]
+struct VerifiedClaim {
+    status: String,
+    #[serde(default)]
+    evidence: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -304,6 +313,9 @@ const REQUIRED_PHASE07_ROUTE_POLICY: &[Phase07RoutePolicy] = &[
         kind: RouteKind::StaticFiles,
     },
 ];
+
+const WEAK_VERIFIED_EVIDENCE_LABELS: &[&str] =
+    &["unit", "workflow", "package", "api-compare", "static-route"];
 
 fn validate_schema_evidence(
     openapi_yaml: &str,
@@ -493,6 +505,8 @@ fn validate_static_route_evidence(
         if call.path == "/*" {
             validate_phase7_static_boundary(call, "static-fallback", validation_errors);
         }
+
+        checked += validate_verified_claim_policy(call, validation_errors);
     }
 
     checked += 1;
@@ -558,6 +572,39 @@ fn validate_phase7_static_boundary(
             call.surface, call.path
         ));
     }
+}
+
+fn validate_verified_claim_policy(
+    call: &StaticRouteUsage,
+    validation_errors: &mut Vec<String>,
+) -> usize {
+    let Some(claim) = &call.verified_claim else {
+        return 0;
+    };
+
+    if claim.status != "verified" || !is_release_sensitive_route(&call.method, &call.path) {
+        return 1;
+    }
+
+    if claim.evidence.iter().all(|evidence| {
+        WEAK_VERIFIED_EVIDENCE_LABELS
+            .iter()
+            .any(|weak_label| evidence == weak_label)
+    }) {
+        validation_errors.push(format!(
+            "release-sensitive route {} has weak evidence verified overclaim: evidence={}",
+            route_key(&call.method, &call.path),
+            claim.evidence.join(", ")
+        ));
+    }
+
+    1
+}
+
+fn is_release_sensitive_route(method: &str, path: &str) -> bool {
+    REQUIRED_PHASE07_ROUTE_POLICY
+        .iter()
+        .any(|policy| route_method_label(policy.method) == method && policy.path == path)
 }
 
 fn route_set(routes: &[RouteAssertion]) -> BTreeSet<String> {
@@ -863,6 +910,141 @@ paths:
     }
 
     #[test]
+    fn api_compare_fails_when_phase07_route_is_missing_from_rust_manifest() {
+        // Arrange
+        let loader = MemoryFixtureLoader;
+        let request = default_request(STATIC_USAGE);
+        let routes = bitaxe_api::phase07_routes()
+            .iter()
+            .copied()
+            .filter(|route| route.method != RouteMethod::Get || route.path != "/recovery")
+            .collect::<Vec<_>>();
+
+        // Act
+        let report = run_api_compare_with_routes(&request, &loader, &routes)
+            .expect("api compare should run");
+
+        // Assert
+        assert_validation_error_contains(&report, &["missing", "GET /recovery"]);
+    }
+
+    #[test]
+    fn api_compare_fails_when_firmware_ota_route_kind_is_downgraded() {
+        // Arrange
+        let loader = MemoryFixtureLoader;
+        let request = default_request(STATIC_USAGE);
+        let mut routes = bitaxe_api::phase07_routes().to_vec();
+        downgrade_route_kind(
+            &mut routes,
+            RouteMethod::Post,
+            "/api/system/OTA",
+            RouteKind::SafeUnsupportedUpdate,
+        );
+
+        // Act
+        let report = run_api_compare_with_routes(&request, &loader, &routes)
+            .expect("api compare should run");
+
+        // Assert
+        assert_validation_error_contains(
+            &report,
+            &["POST /api/system/OTA", "expected RouteKind::FirmwareUpdate"],
+        );
+    }
+
+    #[test]
+    fn api_compare_fails_when_otawww_route_kind_is_downgraded() {
+        // Arrange
+        let loader = MemoryFixtureLoader;
+        let request = default_request(STATIC_USAGE);
+        let mut routes = bitaxe_api::phase07_routes().to_vec();
+        downgrade_route_kind(
+            &mut routes,
+            RouteMethod::Post,
+            "/api/system/OTAWWW",
+            RouteKind::SafeUnsupportedUpdate,
+        );
+
+        // Act
+        let report = run_api_compare_with_routes(&request, &loader, &routes)
+            .expect("api compare should run");
+
+        // Assert
+        assert_validation_error_contains(
+            &report,
+            &[
+                "POST /api/system/OTAWWW",
+                "expected RouteKind::AxeOsStaticUpdateGap",
+            ],
+        );
+    }
+
+    #[test]
+    fn api_compare_fails_when_recovery_or_static_route_kind_is_downgraded() {
+        // Arrange
+        let loader = MemoryFixtureLoader;
+        let request = default_request(STATIC_USAGE);
+        let cases = [
+            (
+                RouteMethod::Get,
+                "/recovery",
+                RouteKind::Http,
+                "expected RouteKind::Recovery",
+            ),
+            (
+                RouteMethod::Get,
+                "/*",
+                RouteKind::Http,
+                "expected RouteKind::StaticFiles",
+            ),
+        ];
+
+        for (method, path, replacement_kind, expected_error) in cases {
+            let mut routes = bitaxe_api::phase07_routes().to_vec();
+            downgrade_route_kind(&mut routes, method, path, replacement_kind);
+
+            // Act
+            let report = run_api_compare_with_routes(&request, &loader, &routes)
+                .expect("api compare should run");
+
+            // Assert
+            assert_validation_error_contains(
+                &report,
+                &[&route_key(route_method_label(method), path), expected_error],
+            );
+        }
+    }
+
+    #[test]
+    fn api_compare_fails_when_release_sensitive_route_claims_verified_from_weak_evidence() {
+        // Arrange
+        let loader = MemoryFixtureLoader;
+        let weak_evidence = ["unit", "workflow", "package", "api-compare", "static-route"];
+
+        for (method, path) in [
+            ("POST", "/api/system/OTA"),
+            ("POST", "/api/system/OTAWWW"),
+            ("GET", "/recovery"),
+            ("GET", "/*"),
+        ] {
+            let static_usage =
+                static_usage_with_verified_claim(method, path, "verified", &weak_evidence);
+            let request = default_request(&static_usage);
+
+            // Act
+            let report =
+                run_api_compare_with_routes(&request, &loader, bitaxe_api::phase07_routes())
+                    .expect("api compare should run");
+
+            // Assert
+            assert_validation_error_contains(
+                &report,
+                &[&route_key(method, path), "weak evidence verified overclaim"],
+            );
+        }
+    }
+
+    #[test]
     fn api_compare_fails_when_required_route_is_removed_from_fixture() {
         // Arrange
         let loader = MemoryFixtureLoader;
@@ -956,6 +1138,65 @@ paths:
             .validation_errors
             .iter()
             .any(|error| error.contains("Phase 05 update success")));
+    }
+
+    fn default_request(static_usage_json: &str) -> ApiCompareRequest<'_> {
+        ApiCompareRequest {
+            openapi_yaml: OPENAPI,
+            route_manifest_json: ROUTE_MANIFEST,
+            static_usage_json,
+        }
+    }
+
+    fn downgrade_route_kind(
+        routes: &mut [AxeosRoute],
+        method: RouteMethod,
+        path: &str,
+        replacement_kind: RouteKind,
+    ) {
+        let route = routes
+            .iter_mut()
+            .find(|route| route.method == method && route.path == path)
+            .expect("test route should exist");
+        route.kind = replacement_kind;
+    }
+
+    fn static_usage_with_verified_claim(
+        method: &str,
+        path: &str,
+        status: &str,
+        evidence: &[&str],
+    ) -> String {
+        let mut fixture: Value =
+            serde_json::from_str(STATIC_USAGE).expect("static usage fixture should parse");
+        let calls = fixture
+            .get_mut("service_calls")
+            .and_then(Value::as_array_mut)
+            .expect("static usage fixture should have service calls");
+        let call = calls
+            .iter_mut()
+            .find(|call| call["method"] == method && call["path"] == path)
+            .expect("static usage route should exist");
+        let verified_claim = json!({
+            "status": status,
+            "evidence": evidence,
+        });
+        call.as_object_mut()
+            .expect("static usage call should be an object")
+            .insert("verified_claim".to_owned(), verified_claim);
+
+        serde_json::to_string(&fixture).expect("static usage fixture should serialize")
+    }
+
+    fn assert_validation_error_contains(report: &ApiCompareReport, parts: &[&str]) {
+        assert!(
+            report
+                .validation_errors
+                .iter()
+                .any(|error| parts.iter().all(|part| error.contains(part))),
+            "expected validation error containing {parts:?}, got {:#?}",
+            report.validation_errors
+        );
     }
 
     struct MemoryFixtureLoader;
