@@ -131,6 +131,21 @@ pub struct AxeosRoute {
     pub kind: RouteKind,
 }
 
+/// Manifest-derived Phase 7 route ownership counts for firmware startup logs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Phase07RouteReport {
+    /// Number of routes declared in the Phase 7 route manifest.
+    pub total_routes: usize,
+    /// Number of firmware OTA routes declared in the Phase 7 route manifest.
+    pub firmware_update_routes: usize,
+    /// Number of OTAWWW static update gap routes declared in the Phase 7 route manifest.
+    pub otawww_gap_routes: usize,
+    /// Number of recovery routes declared in the Phase 7 route manifest.
+    pub recovery_routes: usize,
+    /// Number of static file wildcard routes declared in the Phase 7 route manifest.
+    pub static_file_routes: usize,
+}
+
 /// Public HTTP response decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PublicHttpResponse {
@@ -208,6 +223,30 @@ pub const fn phase05_routes() -> &'static [AxeosRoute] {
 #[must_use]
 pub const fn phase07_routes() -> &'static [AxeosRoute] {
     PHASE07_ROUTES
+}
+
+/// Returns manifest-derived Phase 7 route ownership counts.
+#[must_use]
+pub fn phase07_route_report() -> Phase07RouteReport {
+    let mut report = Phase07RouteReport {
+        total_routes: phase07_routes().len(),
+        firmware_update_routes: 0,
+        otawww_gap_routes: 0,
+        recovery_routes: 0,
+        static_file_routes: 0,
+    };
+
+    for route in phase07_routes() {
+        match route.kind {
+            RouteKind::FirmwareUpdate => report.firmware_update_routes += 1,
+            RouteKind::AxeOsStaticUpdateGap => report.otawww_gap_routes += 1,
+            RouteKind::Recovery => report.recovery_routes += 1,
+            RouteKind::StaticFiles => report.static_file_routes += 1,
+            RouteKind::Http | RouteKind::SafeUnsupportedUpdate | RouteKind::WebSocket(_) => {}
+        }
+    }
+
+    report
 }
 
 /// Applies the private-network/AP-origin gate to an HTTP route.
@@ -332,8 +371,8 @@ mod tests {
     use std::net::Ipv4Addr;
 
     use super::{
-        maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, phase07_routes,
-        plan_http_access, plan_settings_patch_body_size, plan_websocket_upgrade,
+        maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, phase07_route_report,
+        phase07_routes, plan_http_access, plan_settings_patch_body_size, plan_websocket_upgrade,
         unknown_api_route_response, HttpAccessDecision, OriginGate, RouteAccessInput, RouteKind,
         RouteMethod, SettingsPatchBodyDecision, WebSocketRouteKind, WebSocketUpgradeDecision,
         MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
@@ -447,6 +486,22 @@ mod tests {
         assert_eq!(static_files.kind, RouteKind::StaticFiles);
         assert_ne!(firmware_ota.kind, RouteKind::SafeUnsupportedUpdate);
         assert_ne!(otawww.kind, RouteKind::SafeUnsupportedUpdate);
+    }
+
+    #[test]
+    fn phase07_route_report_counts_manifest_and_phase7_owned_routes() {
+        // Arrange
+        let routes = phase07_routes();
+
+        // Act
+        let report = phase07_route_report();
+
+        // Assert
+        assert_eq!(report.total_routes, routes.len());
+        assert_eq!(report.firmware_update_routes, 1);
+        assert_eq!(report.otawww_gap_routes, 1);
+        assert_eq!(report.recovery_routes, 1);
+        assert_eq!(report.static_file_routes, 1);
     }
 
     #[test]

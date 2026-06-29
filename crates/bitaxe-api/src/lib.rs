@@ -34,10 +34,10 @@ pub use logs::{
 };
 pub use mining::{mining_state_from_runtime, MiningStateWire, SharesRejectedReasonWire};
 pub use route_shell::{
-    maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, phase07_routes,
-    plan_http_access, plan_settings_patch_body_size, plan_websocket_upgrade,
+    maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, phase07_route_report,
+    phase07_routes, plan_http_access, plan_settings_patch_body_size, plan_websocket_upgrade,
     unknown_api_route_response, unsupported_update_response, AxeosRoute, HttpAccessDecision,
-    OriginGate, PublicHttpResponse, RouteAccessInput, RouteKind, RouteMethod,
+    OriginGate, Phase07RouteReport, PublicHttpResponse, RouteAccessInput, RouteKind, RouteMethod,
     SettingsPatchBodyDecision, WebSocketClientRegistrationPlan, WebSocketRouteKind,
     WebSocketUpgradeDecision, MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY,
     UNKNOWN_API_ROUTE_BODY,
