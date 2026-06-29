@@ -178,6 +178,8 @@ struct MonitorCaptureOutcome {
     capture_status: CaptureStatus,
     capture_timeout_seconds: u64,
     trusted_output: bool,
+    observed_firmware_commit: String,
+    observed_reference_commit: String,
     conclusion: String,
 }
 
@@ -543,6 +545,8 @@ fn run_flash_monitor(
                 &capture_result.status,
                 &monitor_log,
                 command.capture_timeout_seconds,
+                &environment.firmware_commit(),
+                &environment.reference_commit(),
             )
         };
         write_flash_monitor_evidence_if_requested(
@@ -562,7 +566,8 @@ fn run_flash_monitor(
                 .as_deref()
                 .unwrap_or(evidence_dir.as_path());
             bail!(
-                "{}",
+                "{}\n{}",
+                capture_outcome.conclusion,
                 evidence_capture_failure_guidance(&port, user_evidence_dir)
             );
         }
@@ -775,12 +780,14 @@ fn prepare_evidence_monitor_command(
 fn monitor_log_has_trusted_boot_markers(log: &str) -> bool {
     [
         "bitaxe-rust boot: board=Ultra 205 asic=BM1366",
-        "safe_state:",
+        "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
         "ota_boot_validation=",
         "spiffs_mount=available",
         "axeos_api_route_shell=started",
+        "reset_reason=",
         "firmware_commit=",
         "reference_commit=",
+        "esp_idf_version=",
     ]
     .iter()
     .all(|marker| log.contains(marker))
@@ -790,8 +797,19 @@ fn monitor_capture_outcome(
     process_status: &CaptureProcessStatus,
     monitor_log: &str,
     capture_timeout_seconds: u64,
+    expected_firmware_commit: &str,
+    expected_reference_commit: &str,
 ) -> MonitorCaptureOutcome {
-    let trusted_output = monitor_log_has_trusted_boot_markers(monitor_log);
+    let observed_firmware_commit = monitor_log_marker_value(monitor_log, "firmware_commit=");
+    let observed_reference_commit = monitor_log_marker_value(monitor_log, "reference_commit=");
+    let maybe_trust_failure = monitor_trust_failure(
+        monitor_log,
+        &observed_firmware_commit,
+        expected_firmware_commit,
+        &observed_reference_commit,
+        expected_reference_commit,
+    );
+    let trusted_output = maybe_trust_failure.is_none();
     let capture_status = match process_status {
         CaptureProcessStatus::ExitedSuccess if trusted_output => CaptureStatus::Completed,
         CaptureProcessStatus::TimedOut if trusted_output => {
@@ -807,9 +825,11 @@ fn monitor_capture_outcome(
             capture_status,
             CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
         ) {
-        "passed - wrapper-owned serial boot evidence captured; HTTP/static/recovery/OTA/rollback parity not claimed"
+        "passed - wrapper-owned serial boot evidence captured; HTTP/static/recovery/OTA/rollback parity not claimed".to_owned()
+    } else if let Some(trust_failure) = maybe_trust_failure {
+        format!("failed - evidence capture is not trusted: {trust_failure}")
     } else {
-        "failed - evidence capture is not trusted"
+        "failed - evidence capture is not trusted".to_owned()
     };
 
     MonitorCaptureOutcome {
@@ -817,8 +837,51 @@ fn monitor_capture_outcome(
         capture_status,
         capture_timeout_seconds,
         trusted_output,
-        conclusion: conclusion.to_owned(),
+        observed_firmware_commit,
+        observed_reference_commit,
+        conclusion,
     }
+}
+
+fn monitor_log_marker_value(log: &str, marker: &str) -> String {
+    log.lines()
+        .find_map(|line| {
+            line.split_once(marker)
+                .and_then(|(_, value)| value.split_whitespace().next())
+                .map(str::to_owned)
+        })
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| UNAVAILABLE.to_owned())
+}
+
+fn monitor_trust_failure(
+    monitor_log: &str,
+    observed_firmware_commit: &str,
+    expected_firmware_commit: &str,
+    observed_reference_commit: &str,
+    expected_reference_commit: &str,
+) -> Option<String> {
+    if !monitor_log_has_trusted_boot_markers(monitor_log) {
+        return Some("missing trusted Ultra 205 boot markers".to_owned());
+    }
+
+    if !commit_marker_matches_expected(observed_firmware_commit, expected_firmware_commit) {
+        return Some(format!(
+            "observed firmware_commit={observed_firmware_commit} did not match source commit={expected_firmware_commit}"
+        ));
+    }
+
+    if !commit_marker_matches_expected(observed_reference_commit, expected_reference_commit) {
+        return Some(format!(
+            "observed reference_commit={observed_reference_commit} did not match reference commit={expected_reference_commit}"
+        ));
+    }
+
+    None
+}
+
+fn commit_marker_matches_expected(observed: &str, expected: &str) -> bool {
+    observed != UNAVAILABLE && expected != UNAVAILABLE && expected.starts_with(observed)
 }
 
 fn dry_run_monitor_capture_outcome(capture_timeout_seconds: u64) -> MonitorCaptureOutcome {
@@ -827,6 +890,8 @@ fn dry_run_monitor_capture_outcome(capture_timeout_seconds: u64) -> MonitorCaptu
         capture_status: CaptureStatus::DryRun,
         capture_timeout_seconds,
         trusted_output: false,
+        observed_firmware_commit: UNAVAILABLE.to_owned(),
+        observed_reference_commit: UNAVAILABLE.to_owned(),
         conclusion: "not run - dry-run did not capture hardware evidence".to_owned(),
     }
 }
@@ -837,6 +902,8 @@ fn no_monitor_capture_outcome() -> MonitorCaptureOutcome {
         capture_status: CaptureStatus::DryRun,
         capture_timeout_seconds: 0,
         trusted_output: false,
+        observed_firmware_commit: UNAVAILABLE.to_owned(),
+        observed_reference_commit: UNAVAILABLE.to_owned(),
         conclusion: "not run - no monitor capture requested".to_owned(),
     }
 }
@@ -996,6 +1063,8 @@ fn write_evidence_record(
         capture_status: input.capture_outcome.capture_status,
         capture_timeout_seconds: input.capture_outcome.capture_timeout_seconds,
         trusted_output: input.capture_outcome.trusted_output,
+        observed_firmware_commit: input.capture_outcome.observed_firmware_commit.clone(),
+        observed_reference_commit: input.capture_outcome.observed_reference_commit.clone(),
         conclusion: input.capture_outcome.conclusion.clone(),
     };
     let json = serde_json::to_string_pretty(&record).context("failed to serialize evidence")?;
@@ -1039,6 +1108,8 @@ struct EvidenceRecord {
     capture_status: CaptureStatus,
     capture_timeout_seconds: u64,
     trusted_output: bool,
+    observed_firmware_commit: String,
+    observed_reference_commit: String,
     conclusion: String,
 }
 
@@ -1432,6 +1503,39 @@ mod tests {
     }
 
     #[test]
+    fn trusted_marker_classifier_requires_safe_noop_state() {
+        // Arrange
+        let trusted_log = trusted_monitor_log();
+        let unsafe_log = trusted_log.replace("mining=disabled", "mining=enabled");
+
+        // Act
+        let trusted = monitor_log_has_trusted_boot_markers(&trusted_log);
+        let unsafe_markers = monitor_log_has_trusted_boot_markers(&unsafe_log);
+
+        // Assert
+        assert!(trusted);
+        assert!(!unsafe_markers);
+    }
+
+    #[test]
+    fn trusted_marker_classifier_requires_reset_and_esp_idf_provenance() {
+        // Arrange
+        let trusted_log = trusted_monitor_log();
+        let without_reset_reason = trusted_log.replace("reset_reason=11\n", "");
+        let without_esp_idf = trusted_log.replace("esp_idf_version=v5.5.4", "");
+
+        // Act
+        let trusted = monitor_log_has_trusted_boot_markers(&trusted_log);
+        let missing_reset = monitor_log_has_trusted_boot_markers(&without_reset_reason);
+        let missing_esp_idf = monitor_log_has_trusted_boot_markers(&without_esp_idf);
+
+        // Assert
+        assert!(trusted);
+        assert!(!missing_reset);
+        assert!(!missing_esp_idf);
+    }
+
+    #[test]
     fn flash_monitor_evidence_points_to_created_log() {
         // Arrange
         let dir = tempdir().expect("tempdir");
@@ -1537,6 +1641,8 @@ mod tests {
             "capture_status",
             "capture_timeout_seconds",
             "trusted_output",
+            "observed_firmware_commit",
+            "observed_reference_commit",
             "conclusion",
         ] {
             assert!(json.get(field).is_some(), "missing {field}");
@@ -1545,6 +1651,8 @@ mod tests {
         assert_eq!(json["capture_status"], "completed");
         assert_eq!(json["capture_timeout_seconds"], 25);
         assert_eq!(json["trusted_output"], true);
+        assert_eq!(json["observed_firmware_commit"], "firmware-commit");
+        assert_eq!(json["observed_reference_commit"], "reference-commit");
     }
 
     #[test]
@@ -1585,6 +1693,30 @@ mod tests {
         let evidence_path = evidence_dir.join("flash-command-evidence.json");
         let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
         assert!(evidence.contains(r#""capture_status": "timed_out_without_trusted_output""#));
+    }
+
+    #[test]
+    fn stale_firmware_commit_capture_fails_after_writing_json() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_command(evidence_dir.clone());
+        let stale_log = trusted_monitor_log().replace(
+            "firmware_commit=firmware-commit",
+            "firmware_commit=stale-commit",
+        );
+        let environment = FakeFlashEnvironment::default().with_log_contents(&stale_log);
+
+        // Act
+        let result = run_flash_monitor(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("observed firmware_commit=stale-commit"));
+        let evidence_path = evidence_dir.join("flash-command-evidence.json");
+        let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
+        assert!(evidence.contains(r#""trusted_output": false"#));
+        assert!(evidence.contains(r#""observed_firmware_commit": "stale-commit""#));
     }
 
     #[test]
@@ -1653,8 +1785,10 @@ mod tests {
             "ota_boot_validation=not_pending state=factory",
             "spiffs_mount=available partition=www total_bytes=2884241 used_bytes=4518",
             "axeos_api_route_shell=started registered_routes=15",
+            "reset_reason=11",
             "firmware_commit=firmware-commit",
             "reference_commit=reference-commit",
+            "esp_idf_version=v5.5.4",
         ]
         .join("\n")
     }
