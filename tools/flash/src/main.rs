@@ -216,6 +216,9 @@ struct PackageArtifact {
 trait FlashEnvironment {
     fn build_package(&self) -> Result<()>;
     fn bazel_bin(&self) -> Result<Utf8PathBuf>;
+    fn workspace_path(&self, path: &Utf8Path) -> Utf8PathBuf {
+        path.to_owned()
+    }
     fn read_to_string(&self, path: &Utf8Path) -> Result<String>;
     fn path_exists(&self, path: &Utf8Path) -> bool;
     fn list_ports(&self) -> Result<String>;
@@ -332,6 +335,14 @@ impl FlashEnvironment for LocalFlashEnvironment {
             .output()
             .context("failed to run bazel info bazel-bin")?;
         command_output_to_string(output, "bazel info bazel-bin").map(Utf8PathBuf::from)
+    }
+
+    fn workspace_path(&self, path: &Utf8Path) -> Utf8PathBuf {
+        if path.is_absolute() {
+            return path.to_owned();
+        }
+
+        self.workspace_dir.join(path)
     }
 
     fn read_to_string(&self, path: &Utf8Path) -> Result<String> {
@@ -509,7 +520,7 @@ fn run_flash_monitor(
     };
     let flash_outcome = run_flash(&flash_command, environment)?;
 
-    if let Some(evidence_dir) = &command.common.evidence_dir {
+    if let Some(evidence_dir) = resolved_evidence_dir(&command.common, environment) {
         let monitor_command = prepare_evidence_monitor_command(&command.common, environment)?;
         emit_command("monitor_command", &monitor_command)?;
         let log_path = evidence_dir.join("flash-monitor.log");
@@ -538,13 +549,22 @@ fn run_flash_monitor(
             &command.common,
             &flash_outcome,
             &monitor_command,
+            &evidence_dir,
             &log_path,
             &capture_outcome,
             environment,
         )?;
         if !command.common.dry_run && !capture_outcome.accepted() {
             let port = command_port(&monitor_command).unwrap_or_else(|| UNAVAILABLE.to_owned());
-            bail!("{}", evidence_capture_failure_guidance(&port, evidence_dir));
+            let user_evidence_dir = command
+                .common
+                .evidence_dir
+                .as_deref()
+                .unwrap_or(evidence_dir.as_path());
+            bail!(
+                "{}",
+                evidence_capture_failure_guidance(&port, user_evidence_dir)
+            );
         }
         return Ok(());
     }
@@ -895,7 +915,7 @@ fn write_evidence_if_requested(
     command_kind: &str,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
-    let Some(evidence_dir) = &common.evidence_dir else {
+    let Some(evidence_dir) = resolved_evidence_dir(common, environment) else {
         return Ok(());
     };
 
@@ -904,6 +924,7 @@ fn write_evidence_if_requested(
     write_evidence_record(
         common,
         outcome,
+        &evidence_dir,
         EvidenceRecordInput {
             command_kind,
             command: &outcome.command.display(),
@@ -920,14 +941,11 @@ fn write_flash_monitor_evidence_if_requested(
     common: &CommonArgs,
     outcome: &FlashOutcome,
     monitor_command: &CommandSpec,
+    evidence_dir: &Utf8Path,
     log_path: &Utf8Path,
     capture_outcome: &MonitorCaptureOutcome,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
-    let Some(_evidence_dir) = &common.evidence_dir else {
-        return Ok(());
-    };
-
     let command = format!(
         "flash: {}\nmonitor: {}",
         outcome.command.display(),
@@ -936,6 +954,7 @@ fn write_flash_monitor_evidence_if_requested(
     write_evidence_record(
         common,
         outcome,
+        evidence_dir,
         EvidenceRecordInput {
             command_kind: "flash-monitor",
             command: &command,
@@ -951,13 +970,10 @@ fn write_flash_monitor_evidence_if_requested(
 fn write_evidence_record(
     common: &CommonArgs,
     outcome: &FlashOutcome,
+    evidence_dir: &Utf8Path,
     input: EvidenceRecordInput<'_>,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
-    let Some(evidence_dir) = &common.evidence_dir else {
-        return Ok(());
-    };
-
     let record = EvidenceRecord {
         command: input.command.to_owned(),
         command_kind: input.command_kind.to_owned(),
@@ -984,6 +1000,16 @@ fn write_evidence_record(
     };
     let json = serde_json::to_string_pretty(&record).context("failed to serialize evidence")?;
     environment.write_evidence(&evidence_dir.join("flash-command-evidence.json"), &json)
+}
+
+fn resolved_evidence_dir(
+    common: &CommonArgs,
+    environment: &impl FlashEnvironment,
+) -> Option<Utf8PathBuf> {
+    common
+        .evidence_dir
+        .as_deref()
+        .map(|path| environment.workspace_path(path))
 }
 
 fn command_port(command: &CommandSpec) -> Option<String> {
@@ -1436,6 +1462,31 @@ mod tests {
     }
 
     #[test]
+    fn relative_evidence_dir_writes_under_workspace_dir() {
+        // Arrange
+        let workspace = tempdir().expect("workspace");
+        let workspace_dir = dir_path(&workspace);
+        let evidence_dir = Utf8PathBuf::from("docs/parity/evidence/phase-09-test");
+        let command = flash_monitor_command(evidence_dir.clone());
+        let environment = FakeFlashEnvironment::default().with_workspace_dir(workspace_dir.clone());
+
+        // Act
+        run_flash_monitor(&command, &environment).expect("flash-monitor");
+
+        // Assert
+        let log_path = workspace_dir
+            .join(evidence_dir.as_str())
+            .join("flash-monitor.log");
+        let evidence_path = workspace_dir
+            .join(evidence_dir.as_str())
+            .join("flash-command-evidence.json");
+        assert!(log_path.is_file());
+        assert!(evidence_path.is_file());
+        let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
+        assert!(evidence.contains(log_path.as_str()));
+    }
+
+    #[test]
     fn flash_monitor_evidence_uses_noninteractive_capture_command() {
         // Arrange
         let dir = tempdir().expect("tempdir");
@@ -1712,6 +1763,7 @@ mod tests {
     #[derive(Debug)]
     struct FakeFlashEnvironment {
         ports: String,
+        workspace_dir: Utf8PathBuf,
         executed_commands: RefCell<Vec<CommandSpec>>,
         captured_commands: RefCell<Vec<CommandSpec>>,
         capture_status: CaptureProcessStatus,
@@ -1728,6 +1780,8 @@ mod tests {
         fn with_ports(ports: &str) -> Self {
             Self {
                 ports: ports.to_owned(),
+                workspace_dir: Utf8PathBuf::from_path_buf(env::current_dir().expect("current dir"))
+                    .expect("utf8 current dir"),
                 executed_commands: RefCell::new(Vec::new()),
                 captured_commands: RefCell::new(Vec::new()),
                 capture_status: CaptureProcessStatus::ExitedSuccess,
@@ -1752,6 +1806,11 @@ mod tests {
             self.log_contents = log_contents.to_owned();
             self
         }
+
+        fn with_workspace_dir(mut self, workspace_dir: Utf8PathBuf) -> Self {
+            self.workspace_dir = workspace_dir;
+            self
+        }
     }
 
     impl FlashEnvironment for FakeFlashEnvironment {
@@ -1761,6 +1820,14 @@ mod tests {
 
         fn bazel_bin(&self) -> Result<Utf8PathBuf> {
             Ok(Utf8PathBuf::from("/tmp/bazel-bin"))
+        }
+
+        fn workspace_path(&self, path: &Utf8Path) -> Utf8PathBuf {
+            if path.is_absolute() {
+                return path.to_owned();
+            }
+
+            self.workspace_dir.join(path)
         }
 
         fn read_to_string(&self, path: &Utf8Path) -> Result<String> {
