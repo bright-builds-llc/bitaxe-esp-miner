@@ -12,7 +12,7 @@ for the USB flash-monitor workflow only.
 | board | Ultra 205 / `board=205` |
 | selected port | `/dev/cu.usbmodem1101` |
 | wrapper evidence result | wrapper evidence result: passed - wrapper-owned noninteractive flash-monitor capture trusted |
-| source commit | `e527f378631d921580cbe1fc645bebbc89a8233c` |
+| source commit | `0a25ceeadc2788e8b93c4067603e71d7c067d372` |
 | reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | package manifest path | `/Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-package.json` |
 | flash image path | `/Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin` |
@@ -46,7 +46,7 @@ for the USB flash-monitor workflow only.
 | `command_kind` | `flash-monitor` |
 | `board` | `205` |
 | `port` | `/dev/cu.usbmodem1101` |
-| `firmware_commit` | `e527f378631d921580cbe1fc645bebbc89a8233c` |
+| `firmware_commit` | `0a25ceeadc2788e8b93c4067603e71d7c067d372` |
 | `reference_commit` | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | `manifest_path` | `/Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-package.json` |
 | `flash_image_path` | `/Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin` |
@@ -57,28 +57,32 @@ for the USB flash-monitor workflow only.
 | `capture_status` | `timed_out_after_trusted_output` |
 | `capture_timeout_seconds` | `25` |
 | `trusted_output` | `true` |
+| `observed_firmware_commit` | `0a25ceeadc27` |
+| `observed_reference_commit` | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | `conclusion` | `passed - wrapper-owned serial boot evidence captured; HTTP/static/recovery/OTA/rollback parity not claimed` |
 
 ## Monitor Log Markers
 
-The wrapper-owned serial log contains all seven trusted Phase 9 markers:
+The wrapper-owned serial log contains all trusted Phase 9 markers:
 
 | Marker | Observed |
 | --- | --- |
 | `bitaxe-rust boot: board=Ultra 205 asic=BM1366` | yes |
-| `safe_state:` | yes |
+| `safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled` | yes |
 | `ota_boot_validation=` | yes |
 | `spiffs_mount=available` | yes |
 | `axeos_api_route_shell=started` | yes |
+| `reset_reason=` | yes |
 | `firmware_commit=` | yes |
 | `reference_commit=` | yes |
+| `esp_idf_version=` | yes |
 
 ## Observed Behavior
 
 The captured boot log shows an ESP32-S3 Ultra 205 booting the factory image,
 publishing the Rust firmware identity, keeping mining and hardware control in
 safe state, mounting SPIFFS from the `www` partition, starting the HTTP route
-shell, reporting `firmware_commit=dc9266e34b97`, and reporting
+shell, reporting `firmware_commit=0a25ceeadc27`, and reporting
 `reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50`.
 
 The wrapper stopped the continuous monitor after trusted output was already

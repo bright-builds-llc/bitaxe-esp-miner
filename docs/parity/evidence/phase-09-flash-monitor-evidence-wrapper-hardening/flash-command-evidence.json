@@ -3,11 +3,11 @@
   "command_kind": "flash-monitor",
   "board": "205",
   "port": "/dev/cu.usbmodem1101",
-  "firmware_commit": "e527f378631d921580cbe1fc645bebbc89a8233c",
+  "firmware_commit": "0a25ceeadc2788e8b93c4067603e71d7c067d372",
   "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
   "manifest_path": "/Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-package.json",
   "flash_image_path": "/Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin",
-  "timestamp": "1782742785",
+  "timestamp": "1782746520",
   "log_path": "/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening/flash-monitor.log",
   "flash_command": "espflash write-bin --chip esp32s3 --port /dev/cu.usbmodem1101 0x0 /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin",
   "monitor_command": "espflash monitor --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
@@ -16,5 +16,7 @@
   "capture_status": "timed_out_after_trusted_output",
   "capture_timeout_seconds": 25,
   "trusted_output": true,
+  "observed_firmware_commit": "0a25ceeadc27",
+  "observed_reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
   "conclusion": "passed - wrapper-owned serial boot evidence captured; HTTP/static/recovery/OTA/rollback parity not claimed"
 }

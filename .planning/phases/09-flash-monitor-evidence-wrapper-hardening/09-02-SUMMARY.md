@@ -10,6 +10,7 @@ provides:
   - Fresh Ultra 205 wrapper-owned serial evidence captured through `just flash-monitor`.
   - Phase 9 machine-readable flash-monitor evidence JSON and serial log artifacts.
   - Fail-closed monitor trust gates for exact safe-state markers and observed boot commit identity.
+  - Firmware and package Bazel rebuild invalidation when the source commit changes.
   - WF-005 checklist citation to wrapper-produced evidence.
   - Ultra 205 release-guide recovery guidance for fail-closed monitor evidence capture.
 affects: [flash-monitor, evidence, release-gate, parity, ultra-205]
@@ -17,6 +18,7 @@ tech-stack:
   added: []
   patterns:
     - Workspace-anchored evidence paths for repo-owned commands launched through Bazel.
+    - Firmware build targets that embed source identity should consume a branch-agnostic source commit stamp.
     - Observed serial firmware/reference identity must match expected source/reference commit prefixes before output is trusted.
     - Serial-scope evidence ledgers that explicitly preserve unsupported HTTP, OTA, recovery, and rollback boundaries.
 key-files:
@@ -26,6 +28,12 @@ key-files:
     - docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening/flash-monitor.log
     - .planning/phases/09-flash-monitor-evidence-wrapper-hardening/09-02-SUMMARY.md
   modified:
+    - BUILD.bazel
+    - firmware/bitaxe/BUILD.bazel
+    - firmware/bitaxe/build.rs
+    - scripts/BUILD.bazel
+    - scripts/build-firmware.sh
+    - scripts/source-commit-stamp.sh
     - tools/flash/src/main.rs
     - docs/parity/checklist.md
     - docs/release/ultra-205.md
@@ -55,14 +63,15 @@ completed: 2026-06-29
 - **Started:** 2026-06-29T14:08:40Z
 - **Completed:** 2026-06-29T14:25:48Z
 - **Tasks:** 2
-- **Files modified:** 6
+- **Files modified:** 13
 
 ## Accomplishments
 
 - Ran the Ultra 205 detector gate and captured fresh flash-monitor evidence through `just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening`.
-- Committed wrapper-generated `flash-command-evidence.json` and `flash-monitor.log` with noninteractive capture status `timed_out_after_trusted_output` and all seven trusted serial boot markers.
+- Committed wrapper-generated `flash-command-evidence.json` and `flash-monitor.log` with noninteractive capture status `timed_out_after_trusted_output` and all trusted serial boot markers.
 - Added a human-readable Phase 9 evidence ledger with run identity, detector output, JSON fields, monitor markers, scope boundaries, secret review, and final conclusion.
 - Tightened the wrapper trust predicate after code review so future captures require the exact safe no-op state, reset/ESP-IDF provenance, and 12-character-or-longer observed commit prefixes matching the expected source/reference commits.
+- Fixed firmware and package Bazel invalidation so embedded firmware identity and package manifests follow the active source commit through a branch-agnostic source stamp, then recaptured hardware evidence at source commit `0a25ceeadc2788e8b93c4067603e71d7c067d372`.
 - Updated WF-005 to cite Phase 9 wrapper evidence while keeping HTTP, static, recovery, OTA, rollback, and release-sensitive rows below verified.
 - Updated the Ultra 205 release guide with the wrapper command, timeout override, trusted status values, fail-closed wording, and diagnostic-only recovery flow.
 
@@ -76,6 +85,9 @@ Each task was committed atomically:
 4. **Code review follow-up: Require stable commit marker prefixes** - `ef7c185` (fix)
 5. **Code review follow-up: Anchor monitor evidence markers** - `7b0d2cd` (fix)
 6. **Code review follow-up: Require exact trusted boot markers** - `424b8ec` (fix)
+7. **Evidence recapture follow-up: Rebuild firmware on source commit changes** - `5517931` (fix)
+8. **Evidence recapture follow-up: Stamp firmware source commit** - `70df6d3` (fix)
+9. **Evidence recapture follow-up: Stamp firmware package source commit** - `0a25cee` (fix)
 
 ## Files Created/Modified
 
@@ -83,6 +95,12 @@ Each task was committed atomically:
 - `docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening/flash-command-evidence.json` - Stores the wrapper-produced machine-readable evidence contract.
 - `docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening/flash-monitor.log` - Stores the wrapper-owned noninteractive serial capture.
 - `tools/flash/src/main.rs` - Anchors relative evidence paths under the workspace when launched through Bazel, verifies exact safe-state/provenance markers, rejects stale or truncated observed boot commits, and adds regression tests.
+- `BUILD.bazel` - Exports the minimal git state used by the source commit stamp.
+- `firmware/bitaxe/BUILD.bazel` - Wires the branch-agnostic source commit stamp into firmware and package build invalidation.
+- `firmware/bitaxe/build.rs` - Lets the Bazel wrapper inject the stamped source commit while preserving local Cargo git fallback behavior.
+- `scripts/BUILD.bazel` - Defines the source commit stamp target.
+- `scripts/build-firmware.sh` - Reads the optional source commit stamp and exports `BITAXE_SOURCE_COMMIT` for the firmware build.
+- `scripts/source-commit-stamp.sh` - Writes the active 12-character source commit marker used by Bazel-driven firmware builds.
 - `docs/parity/checklist.md` - Updates WF-005 with Phase 9 wrapper evidence citations.
 - `docs/release/ultra-205.md` - Documents trusted wrapper evidence capture, timeout, statuses, fail-closed guidance, and recovery commands.
 - `.planning/phases/09-flash-monitor-evidence-wrapper-hardening/09-02-SUMMARY.md` - Plan execution summary.
@@ -137,7 +155,23 @@ Each task was committed atomically:
 - **Verification:** `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo build --all-targets --all-features`, and `cargo test --all-features` passed.
 - **Committed in:** `424b8ec`
 
-**Total deviations:** 5 auto-fixed (5 blocking)
+**6. [Rule 3 - Blocking] Rebuilt firmware when source commit changes**
+- **Found during:** Fresh hardware evidence recapture after code-review hardening
+- **Issue:** The hardened wrapper rejected capture because the boot log still emitted a stale `firmware_commit=dc9266e34b97` while the wrapper expected the current source commit.
+- **Fix:** First added git ref inputs to the `//firmware/bitaxe:firmware` genrule, not just the packaging target, so the firmware ELF rebuilds when the source commit changes.
+- **Files modified:** `firmware/bitaxe/BUILD.bazel`
+- **Verification:** `bazel build //firmware/bitaxe:firmware`, `bazel test //tools/flash:tests`, `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo build --all-targets --all-features`, and `cargo test --all-features` passed. This was superseded by the branch-agnostic source stamp in deviation 7.
+- **Committed in:** `5517931`
+
+**7. [Rule 3 - Blocking] Replaced branch-specific git inputs with source commit stamp**
+- **Found during:** Final review of the firmware/package invalidation fix
+- **Issue:** The initial firmware fix and the package target still depended on a hardcoded `main` ref. That avoided the observed stale marker on `main` but did not describe the active branch generically, and the package manifest action also reads source identity through git.
+- **Fix:** Added a repo-owned source commit stamp target driven by `.git/HEAD` and `.git/logs/HEAD`, passed it to the firmware build through `BITAXE_SOURCE_COMMIT`, used it as the package invalidation input, and removed the hardcoded `main` ref.
+- **Files modified:** `BUILD.bazel`, `firmware/bitaxe/BUILD.bazel`, `firmware/bitaxe/build.rs`, `scripts/BUILD.bazel`, `scripts/build-firmware.sh`, `scripts/source-commit-stamp.sh`
+- **Verification:** `bazel build //scripts:source_commit_stamp //firmware/bitaxe:firmware_image`, `bazel test //tools/flash:tests`, `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo build --all-targets --all-features`, and `cargo test --all-features` passed. Fresh `just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening` then passed with observed `firmware_commit=0a25ceeadc27`.
+- **Committed in:** `70df6d3`, `0a25cee`
+
+**Total deviations:** 7 auto-fixed (7 blocking)
 **Impact on plan:** The adjustments were required for the planned evidence command to produce committed evidence in the requested repo path and to keep future trusted evidence fail-closed. No parity scope was expanded.
 
 ## Issues Encountered
@@ -151,7 +185,7 @@ None - no external service configuration required.
 ## Verification
 
 - `just detect-ultra205` passed with exactly one likely Ultra 205 serial port.
-- `just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening` produced `flash-command-evidence.json` and `flash-monitor.log`.
+- `just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening` produced trusted `flash-command-evidence.json` and `flash-monitor.log` for source commit `0a25ceeadc2788e8b93c4067603e71d7c067d372`.
 - The serial log contains the required Phase 9 markers: `bitaxe-rust boot: board=Ultra 205 asic=BM1366`, `safe_state:`, `ota_boot_validation=`, `spiffs_mount=available`, `axeos_api_route_shell=started`, `reset_reason=`, `firmware_commit=`, `reference_commit=`, and `esp_idf_version=`.
 - Code review follow-up verification passed: `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo build --all-targets --all-features`, and `cargo test --all-features`.
 - `just parity` passed during documentation refresh.
