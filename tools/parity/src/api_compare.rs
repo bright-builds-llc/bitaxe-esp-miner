@@ -10,7 +10,7 @@
 use std::collections::BTreeSet;
 
 use anyhow::{Context, Result};
-use bitaxe_api::{phase05_routes, RouteMethod};
+use bitaxe_api::{phase05_routes, phase07_routes, AxeosRoute, RouteKind, RouteMethod};
 use camino::Utf8PathBuf;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -91,6 +91,14 @@ pub fn run_api_compare(
     request: &ApiCompareRequest<'_>,
     loader: &impl JsonFixtureLoader,
 ) -> Result<ApiCompareReport> {
+    run_api_compare_with_routes(request, loader, phase07_routes())
+}
+
+fn run_api_compare_with_routes(
+    request: &ApiCompareRequest<'_>,
+    loader: &impl JsonFixtureLoader,
+    rust_routes: &[AxeosRoute],
+) -> Result<ApiCompareReport> {
     let route_manifest: RouteManifest = serde_json::from_str(request.route_manifest_json)
         .context("failed to parse Phase 05 route/property manifest")?;
     let static_usage: StaticRouteUsageFixture = serde_json::from_str(request.static_usage_json)
@@ -100,8 +108,9 @@ pub fn run_api_compare(
     let schema_checked = validate_schema_evidence(
         request.openapi_yaml,
         &route_manifest,
+        rust_routes,
         &mut validation_errors,
-    );
+    ) + validate_phase07_route_policy(rust_routes, &mut validation_errors);
     let captured_checked =
         validate_captured_response_evidence(&route_manifest, loader, &mut validation_errors)?;
     let static_checked = validate_static_route_evidence(&static_usage, &mut validation_errors);
@@ -228,6 +237,13 @@ struct StaticPackaging {
     phase07_owner: bool,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct Phase07RoutePolicy {
+    method: RouteMethod,
+    path: &'static str,
+    kind: RouteKind,
+}
+
 const REQUIRED_PHASE05_ROUTES: &[(&str, &str)] = &[
     ("GET", "/api/system/info"),
     ("PATCH", "/api/system"),
@@ -266,14 +282,38 @@ const REQUIRED_STATIC_USAGE_ROUTES: &[(&str, &str)] = &[
     ("GET", "/*"),
 ];
 
+const REQUIRED_PHASE07_ROUTE_POLICY: &[Phase07RoutePolicy] = &[
+    Phase07RoutePolicy {
+        method: RouteMethod::Post,
+        path: "/api/system/OTA",
+        kind: RouteKind::FirmwareUpdate,
+    },
+    Phase07RoutePolicy {
+        method: RouteMethod::Post,
+        path: "/api/system/OTAWWW",
+        kind: RouteKind::AxeOsStaticUpdateGap,
+    },
+    Phase07RoutePolicy {
+        method: RouteMethod::Get,
+        path: "/recovery",
+        kind: RouteKind::Recovery,
+    },
+    Phase07RoutePolicy {
+        method: RouteMethod::Get,
+        path: "/*",
+        kind: RouteKind::StaticFiles,
+    },
+];
+
 fn validate_schema_evidence(
     openapi_yaml: &str,
     route_manifest: &RouteManifest,
+    rust_routes: &[AxeosRoute],
     validation_errors: &mut Vec<String>,
 ) -> usize {
     let mut checked = 0;
     let manifest_routes = route_set(&route_manifest.rust_route_manifest_routes);
-    let rust_routes = rust_route_set();
+    let rust_route_keys = rust_route_set(rust_routes);
 
     for (method, path) in REQUIRED_PHASE05_ROUTES {
         checked += 1;
@@ -284,7 +324,7 @@ fn validate_schema_evidence(
 
     for route in &route_manifest.rust_route_manifest_routes {
         checked += 1;
-        if !rust_routes.contains(&route_key(&route.method, &route.path)) {
+        if !rust_route_keys.contains(&route_key(&route.method, &route.path)) {
             validation_errors.push(format!(
                 "Rust route shell missing {} {} from fixture",
                 route.method, route.path
@@ -327,6 +367,39 @@ fn validate_schema_evidence(
                     schema_route.schema, schema_route.method, schema_route.path
                 ));
             }
+        }
+    }
+
+    checked
+}
+
+fn validate_phase07_route_policy(
+    rust_routes: &[AxeosRoute],
+    validation_errors: &mut Vec<String>,
+) -> usize {
+    let mut checked = 0;
+
+    for policy in REQUIRED_PHASE07_ROUTE_POLICY {
+        checked += 1;
+        let method = route_method_label(policy.method);
+        let maybe_route = rust_routes
+            .iter()
+            .find(|route| route.method == policy.method && route.path == policy.path);
+        let Some(route) = maybe_route else {
+            validation_errors.push(format!(
+                "Phase 7 Rust route manifest missing {method} {}",
+                policy.path
+            ));
+            continue;
+        };
+
+        if route.kind != policy.kind {
+            validation_errors.push(format!(
+                "Phase 7 Rust route manifest {method} {} expected {}, got {}",
+                policy.path,
+                route_kind_label(policy.kind),
+                route_kind_label(route.kind)
+            ));
         }
     }
 
@@ -501,8 +574,8 @@ fn static_route_set(routes: &[StaticRouteUsage]) -> BTreeSet<String> {
         .collect()
 }
 
-fn rust_route_set() -> BTreeSet<String> {
-    phase05_routes()
+fn rust_route_set(routes: &[AxeosRoute]) -> BTreeSet<String> {
+    routes
         .iter()
         .map(|route| route_key(route_method_label(route.method), route.path))
         .collect()
@@ -517,6 +590,18 @@ fn route_method_label(method: RouteMethod) -> &'static str {
         RouteMethod::Get => "GET",
         RouteMethod::Patch => "PATCH",
         RouteMethod::Post => "POST",
+    }
+}
+
+fn route_kind_label(kind: RouteKind) -> &'static str {
+    match kind {
+        RouteKind::Http => "RouteKind::Http",
+        RouteKind::WebSocket(_) => "RouteKind::WebSocket",
+        RouteKind::SafeUnsupportedUpdate => "RouteKind::SafeUnsupportedUpdate",
+        RouteKind::FirmwareUpdate => "RouteKind::FirmwareUpdate",
+        RouteKind::AxeOsStaticUpdateGap => "RouteKind::AxeOsStaticUpdateGap",
+        RouteKind::Recovery => "RouteKind::Recovery",
+        RouteKind::StaticFiles => "RouteKind::StaticFiles",
     }
 }
 
@@ -753,6 +838,28 @@ paths:
         assert!(render_api_compare_report(&report).contains("captured-response"));
         assert!(render_api_compare_report(&report).contains("static-route"));
         assert!(render_api_compare_report(&report).contains("firmware-smoke"));
+    }
+
+    #[test]
+    fn api_compare_with_phase07_routes_preserves_schema_and_response_evidence() {
+        // Arrange
+        let loader = MemoryFixtureLoader;
+        let request = ApiCompareRequest {
+            openapi_yaml: OPENAPI,
+            route_manifest_json: ROUTE_MANIFEST,
+            static_usage_json: STATIC_USAGE,
+        };
+
+        // Act
+        let report = run_api_compare_with_routes(&request, &loader, bitaxe_api::phase07_routes())
+            .expect("api compare should run");
+        let rendered = render_api_compare_report(&report);
+
+        // Assert
+        assert!(report.validation_errors.is_empty(), "{report:#?}");
+        assert!(rendered.contains("- schema | status=passed"));
+        assert!(rendered.contains("- captured-response | status=passed"));
+        assert!(rendered.contains("- static-route | status=passed"));
     }
 
     #[test]
