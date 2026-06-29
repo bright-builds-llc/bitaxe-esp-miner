@@ -83,10 +83,10 @@ is required input, but it does not satisfy release compliance by itself.
 | License inventory | `docs/release/license-inventory.md` | This file | Required release-gate input. |
 | Provenance manifest | `docs/release/provenance-manifest.md` | Source/reference/static/recovery review records | Required release-gate input. |
 | Operator guide | `docs/release/ultra-205.md` | Phase 7 release documentation | Required operator documentation input. |
-| Firmware app image | `esp-miner.bin` from package workflow | Package manifest checksum and source commit | Publication waits for package output evidence. |
-| Static filesystem image | `www.bin` from `firmware/bitaxe/static/www` | Static asset rows above plus package manifest checksum | Publication waits for package output evidence. |
-| Factory/recovery image | `bitaxe-ultra205-factory.bin` from package workflow | Package manifest offsets and checksums | Publication waits for package output evidence. |
-| Package manifest | `bitaxe-ultra205-package.json` from package workflow | Package manifest v2 validation | Publication waits for package output evidence. |
+| Firmware app image | `esp-miner.bin` from package workflow | Package manifest checksum and source commit recorded in `docs/parity/evidence/phase-08-ultra-205-release-summary.md` | Publication waits for final release approval. |
+| Static filesystem image | `www.bin` from `firmware/bitaxe/static/www` | Static asset rows above plus package manifest checksum recorded in `docs/parity/evidence/phase-08-ultra-205-release-summary.md` | Publication waits for final release approval. |
+| Factory/recovery image | `bitaxe-ultra205-factory.bin` from package workflow | Package manifest offsets and checksums recorded in `docs/parity/evidence/phase-08-ultra-205-release-summary.md` | Publication waits for final release approval. |
+| Package manifest | `bitaxe-ultra205-package.json` from package workflow | Package manifest v2 validation recorded in `docs/parity/evidence/phase-08-ultra-205-release-summary.md` | Publication waits for final release approval. |
 
 - Owner: release gate.
 - Follow-up: final release approval requires artifact checksums, source commit,

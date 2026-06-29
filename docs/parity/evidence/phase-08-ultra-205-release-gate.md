@@ -192,4 +192,6 @@ language until each live surface has the required evidence class.
 ## Final Conclusion
 
 blocked - no reachable DEVICE_URL. Package, hardware detection, and serial boot
-capture were recorded; no checklist rows were promoted by this plan.
+capture were recorded; no checklist rows were promoted by this plan. Final
+release closure is summarized in
+`docs/parity/evidence/phase-08-ultra-205-release-summary.md`.

@@ -10,6 +10,23 @@ failed update, or interrupted update verification. Phase 8 owns that live
 network and recovery evidence gate; until it runs, use explicit Phase 8
 deferral language and keep affected parity rows below `verified`.
 
+## Phase 8 Evidence Status
+
+Phase 8 release evidence is recorded in
+`docs/parity/evidence/phase-08-ultra-205-release-gate.md` and summarized in
+`docs/parity/evidence/phase-08-ultra-205-release-summary.md`.
+
+Current conclusion: package, manifest, Ultra 205 detector, factory flash, and
+serial boot evidence are recorded, but live HTTP, static, recovery, firmware
+OTA, invalid image rejection, rollback, failed update recovery, large erase, and
+interrupted-update checks remain blocked by `DEVICE_URL status: blocked - no
+reachable DEVICE_URL`.
+
+Keep `FS-001`, `OTA-001`, `REL-001`, `REL-002`, and `REL-003` below
+`verified` until a later evidence record includes the required live observations.
+Keep the OTAWWW REL-03 gap and public response `Wrong API input` until
+whole-`www` hardware-regression and interrupted-update evidence exists.
+
 ## Build And Package
 
 Run the canonical command surface from the repository root:
