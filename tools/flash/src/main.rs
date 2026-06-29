@@ -779,14 +779,13 @@ fn prepare_evidence_monitor_command(
 }
 
 fn monitor_log_has_trusted_boot_markers(log: &str) -> bool {
-    [
-        "bitaxe-rust boot: board=Ultra 205 asic=BM1366",
-        "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
-        "spiffs_mount=available",
-        "axeos_api_route_shell=started",
-    ]
-    .iter()
-    .all(|marker| log.contains(marker))
+    monitor_log_has_message(log, "bitaxe-rust boot: board=Ultra 205 asic=BM1366")
+        && monitor_log_has_message(
+            log,
+            "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
+        )
+        && monitor_log_has_token(log, "spiffs_mount=available")
+        && monitor_log_has_token(log, "axeos_api_route_shell=started")
         && [
             "ota_boot_validation=",
             "reset_reason=",
@@ -796,6 +795,19 @@ fn monitor_log_has_trusted_boot_markers(log: &str) -> bool {
         ]
         .iter()
         .all(|marker| monitor_log_marker_value(log, marker) != UNAVAILABLE)
+}
+
+fn monitor_log_has_message(log: &str, marker: &str) -> bool {
+    let prefixed_marker = format!(": {marker}");
+    log.lines()
+        .map(str::trim)
+        .any(|line| line == marker || line.ends_with(&prefixed_marker))
+}
+
+fn monitor_log_has_token(log: &str, marker: &str) -> bool {
+    log.lines()
+        .flat_map(str::split_whitespace)
+        .any(|token| token == marker)
 }
 
 fn monitor_capture_outcome(
@@ -1520,14 +1532,17 @@ mod tests {
         // Arrange
         let trusted_log = trusted_monitor_log();
         let unsafe_log = trusted_log.replace("mining=disabled", "mining=enabled");
+        let prefixed_safe_log = trusted_log.replace("safe_state:", "unsafe_state:");
 
         // Act
         let trusted = monitor_log_has_trusted_boot_markers(&trusted_log);
         let unsafe_markers = monitor_log_has_trusted_boot_markers(&unsafe_log);
+        let prefixed_safe = monitor_log_has_trusted_boot_markers(&prefixed_safe_log);
 
         // Assert
         assert!(trusted);
         assert!(!unsafe_markers);
+        assert!(!prefixed_safe);
     }
 
     #[test]
@@ -1546,6 +1561,28 @@ mod tests {
         assert!(trusted);
         assert!(!missing_reset);
         assert!(!missing_esp_idf);
+    }
+
+    #[test]
+    fn trusted_marker_classifier_requires_exact_spiffs_and_route_tokens() {
+        // Arrange
+        let trusted_log = trusted_monitor_log();
+        let prefixed_spiffs =
+            trusted_log.replace("spiffs_mount=available", "not_spiffs_mount=available");
+        let prefixed_route = trusted_log.replace(
+            "axeos_api_route_shell=started",
+            "not_axeos_api_route_shell=started",
+        );
+
+        // Act
+        let trusted = monitor_log_has_trusted_boot_markers(&trusted_log);
+        let bad_spiffs = monitor_log_has_trusted_boot_markers(&prefixed_spiffs);
+        let bad_route = monitor_log_has_trusted_boot_markers(&prefixed_route);
+
+        // Assert
+        assert!(trusted);
+        assert!(!bad_spiffs);
+        assert!(!bad_route);
     }
 
     #[test]
