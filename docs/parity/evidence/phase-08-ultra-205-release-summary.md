@@ -11,8 +11,19 @@ evidence remains blocked by no reachable `DEVICE_URL`.
 | --- | --- | --- |
 | `just parity` | passed | Task 1 checklist validation passed with `validation_errors: none`. |
 | `just package` | passed | Ran before reading `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`; Bazel built `//firmware/bitaxe:firmware_image` and produced the Ultra 205 package artifacts. |
-| `just test` | required final gate | Final Task 3 gate command; result is appended after execution. |
-| `bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` | required final gate | Final Task 3 gate command; result is appended after execution. |
+| `cargo fmt --all` | passed | Final Rust pre-commit sequence completed before the Task 3 release summary update. |
+| `cargo clippy --all-targets --all-features -- -D warnings` | passed | Final Rust pre-commit sequence completed before the Task 3 release summary update. |
+| `cargo build --all-targets --all-features` | passed | Final Rust pre-commit sequence completed before the Task 3 release summary update. |
+| `cargo test --all-features` | passed | Final Rust pre-commit sequence completed before the Task 3 release summary update. |
+| `just test` | passed | Bazel test suite passed for all targets. |
+| `bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` | passed | Manifest-backed release gate returned `release_gate: passed`. |
+
+Result strings required by the final gate:
+
+- `just test: passed`
+- `just package: passed`
+- `just parity: passed`
+- `release-gate --manifest: passed`
 
 ## Package Manifest Used
 
@@ -22,7 +33,7 @@ Manifest path: `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
 | --- | --- |
 | schema_version | 2 |
 | release_name | `bitaxe-ultra205` |
-| source commit | `c33e4f7143482be6566dd2e8249265b68af71c30` |
+| source commit | `8d6121c3d85f61a1f243a1554fa7ab1b1d052a48` |
 | reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | default_flash_image | `bitaxe-ultra205.elf` |
 | board | `205` |
@@ -39,9 +50,11 @@ Manifest path: `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
 
 | Artifact | Kind | Offset | SHA-256 |
 | --- | --- | --- | --- |
+| `bitaxe-ultra205.elf` | `firmware_elf` | `Unavailable` | `39f35e5fbadb724b4b2194dfd700d91f2d7a7c2d4af383227f46475537b45cfb` |
 | `esp-miner.bin` | `firmware_ota_image` | `0x10000` | `28af3f014328748977d446cff86a70d9c8c2773eece14a32b058abe723b99197` |
 | `www.bin` | `www_spiffs_image` | `0x410000` | `0dbb0eba0cc4198186d0175557ec134d7829f3426faf35d8baf263ee0a7c65a0` |
 | `bitaxe-ultra205-factory.bin` | `factory_merged_image` | `0x0` | `9ba7f0171382b51733fe894705d31a25840b0cb3d5dfaf4ba392361733e3b169` |
+| `firmware/bitaxe/partitions-ultra205.csv` | `partition_table` | `Unavailable` | `19f4fe9b96e6807566dcde496697dde11a8c4258f8c74d3439aaee114a33bba5` |
 | `otadata-initial.bin` | `otadata_initial` | `0xf10000` | `7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f` |
 | `bitaxe-ultra205-package.json` | manifest output | `n/a` | manifest file validated by release gate; artifact checksums listed above. |
 
@@ -71,10 +84,15 @@ None. No Phase 8 row moved to `verified` because the live evidence file records
 
 ## Reference Breadcrumb Audit
 
-Task 3 performs the final audit over `crates`, `firmware`, and `tools` for
-`Reference breadcrumb`, `Reference breadcrumbs`, and `reference/esp-miner`.
-The final audit count and any source-module follow-up items are appended before
-the Phase 8 plan summary is written.
+Task 3 audited `crates`, `firmware`, and `tools` for `Reference breadcrumb`,
+`Reference breadcrumbs`, and `reference/esp-miner`.
+
+- Command: `rg -n "Reference breadcrumb|Reference breadcrumbs|reference/esp-miner" crates firmware tools`
+- Result: 253 matching breadcrumb or reference-provenance lines.
+- Source diff check: `git diff -- crates firmware tools reference/esp-miner --exit-code` passed.
+- Follow-up: no source changes were made for this plan; the audit found no
+  Phase 8 release-gate code bug requiring edits to `crates`, `firmware`,
+  `tools`, or `reference/esp-miner`.
 
 ## Deferred Scope Confirmation
 
