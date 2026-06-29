@@ -65,7 +65,7 @@ The accepted seed layout separates hardware-bound firmware from testable Rust lo
 
 ## Current State
 
-Phase 05 is complete: the repo now has AxeOS-compatible API route contracts, handwritten wire DTOs, settings PATCH planning and firmware persistence, retained log download/raw WebSocket behavior, live telemetry cadence planning, safe command routes, static AxeOS route usage evidence, and Phase 5 parity evidence. Live Ultra 205 HTTP/WebSocket smoke, SPIFFS/static packaging, recovery, OTA, and safety-controller hardware behavior remain later-phase work and are not claimed as verified.
+Phase 08 is complete: the repo now has the Ultra 205 V1 evidence and release gate closed conservatively. Parity/release-gate tooling rejects unsupported verified claims, blocker-language false positives, wrong-board package manifests, deferred-scope promotion, and package-only release parity claims. Phase 8 package, detector, factory-flash, serial boot, provenance, license, release-summary, and checklist evidence is recorded. Live HTTP/static/recovery/OTA/rollback/failed-update/large-erase/interrupted-update parity remains blocked by `DEVICE_URL status: blocked - no reachable DEVICE_URL` and is not claimed as verified.
 
 ## Constraints
 
@@ -118,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-06-27 after Phase 05 AxeOS API, logs, and telemetry verification*
+*Last updated: 2026-06-29 after Phase 08 parity evidence and Ultra 205 release gate verification*
