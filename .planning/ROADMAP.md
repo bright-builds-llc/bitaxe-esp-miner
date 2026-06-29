@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: AxeOS API, Logs, And Telemetry** - Deliver upstream-compatible API models, handlers, logs, WebSocket telemetry, commands, static asset compatibility, and API comparison evidence.
 - [ ] **Phase 6: Safety Controllers And Self-Test** - Deliver Ultra 205 power, voltage, thermal, fan, fault, display/input, watchdog, and self-test parity with hardware evidence gates.
 - [x] **Phase 7: OTA, Filesystem, And Release Packaging** - Deliver partition/filesystem behavior, OTA/recovery flows, static asset updates, release artifacts, license inventory, and safe operator docs. (completed 2026-06-28)
-- [ ] **Phase 8: Parity Evidence And Ultra 205 Release Gate** - Close V1 evidence governance so Ultra 205 parity claims are supported and deferred scope remains unverified or out of scope.
+- [x] **Phase 8: Parity Evidence And Ultra 205 Release Gate** - Close V1 evidence governance so Ultra 205 parity claims are supported and deferred scope remains unverified or out of scope. (completed 2026-06-29)
 
 ## Phase Details
 
@@ -205,7 +205,13 @@ Plans:
 1. Release readiness is derived from unit, golden, API-compare, hardware-smoke, and hardware-regression or soak evidence instead of implementation status alone.
 1. User can reach the flashed Ultra 205 over HTTP and capture live `/`, `/assets/app.css.gz`, missing static redirect, `/recovery`, valid firmware OTA, invalid OTA rejection, OTAWWW gap response, rollback/boot validation, large erase recovery, failed update recovery, and interrupted-update recovery evidence before release parity is claimed.
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+
+- [x] 08-01-PLAN.md - Record package, detector, factory flash, serial boot, and blocked live HTTP evidence.
+- [x] 08-02-PLAN.md - Record blocked live static, OTA, OTAWWW, and release-gate evidence.
+- [x] 08-03-PLAN.md - Record blocked rollback, recovery, failed-update, large erase, and destructive evidence.
+- [x] 08-04-PLAN.md - Close final checklist, release summary, provenance, license, breadcrumb audit, and release gates.
 **Verification expectations**: Full parity checklist audit, evidence type coverage review, non-205 deferred-scope review, reference breadcrumb audit, live Ultra 205 HTTP/OTA/recovery hardware evidence, release-readiness summary, and final confirmation that V2-only scope remains out of V1.
 **Research flags**: No V1 expansion research. Each future board, ASIC family, Stratum v2, BAP, or Angular UI replacement needs its own later research and roadmap entry before work starts.
 
@@ -223,4 +229,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 5. AxeOS API, Logs, And Telemetry | 0/TBD | Not started | - |
 | 6. Safety Controllers And Self-Test | 1/10 | In Progress | - |
 | 7. OTA, Filesystem, And Release Packaging | 9/9 | Complete | 2026-06-28 |
-| 8. Parity Evidence And Ultra 205 Release Gate | 0/TBD | Not started | - |
+| 8. Parity Evidence And Ultra 205 Release Gate | 4/4 | Complete | 2026-06-29 |

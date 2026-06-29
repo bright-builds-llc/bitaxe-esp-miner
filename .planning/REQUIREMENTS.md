@@ -85,15 +85,15 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 - [x] **REL-05**: Release preparation includes dependency license inventory, reference provenance manifest, and explicit review of GPL-derived materials.
 - [x] **REL-06**: Flashable image production is reachable through `just package` and `just flash board=205` without requiring manual artifact discovery.
 - [x] **REL-07**: Build, flash, monitor, OTA, and recovery documentation is sufficient for a developer with a connected Ultra 205 to operate the firmware safely.
-- [ ] **REL-08**: Rollback, recovery, large erase, failed update, and interrupted update cases have verification evidence before release parity is claimed. Deferred to Phase 8 so Phase 7 can close on implementation, packaging, factory-flash, and serial boot evidence without overclaiming release parity.
+- [x] **REL-08**: Rollback, recovery, large erase, failed update, and interrupted update cases have verification evidence before release parity is claimed. Deferred to Phase 8 so Phase 7 can close on implementation, packaging, factory-flash, and serial boot evidence without overclaiming release parity.
 
 ### Evidence And Governance
 
-- [ ] **EVD-01**: Each V1 parity surface in `docs/parity/checklist.md` records observable behavior, reference breadcrumb, Rust implementation pointer when known, status, evidence, and notes.
-- [ ] **EVD-02**: `verified` means evidence-backed parity, not only implemented code.
-- [ ] **EVD-03**: Non-205 boards and ASICs stay unverified or deferred until each board or ASIC has its own evidence set.
-- [ ] **EVD-04**: Rust modules that port reference behavior include module-level or behavior-level breadcrumbs without line-by-line translation comments.
-- [ ] **EVD-05**: Verification layers include unit tests, golden fixtures, API comparison, hardware smoke tests, and hardware regression or soak evidence where appropriate.
+- [x] **EVD-01**: Each V1 parity surface in `docs/parity/checklist.md` records observable behavior, reference breadcrumb, Rust implementation pointer when known, status, evidence, and notes.
+- [x] **EVD-02**: `verified` means evidence-backed parity, not only implemented code.
+- [x] **EVD-03**: Non-205 boards and ASICs stay unverified or deferred until each board or ASIC has its own evidence set.
+- [x] **EVD-04**: Rust modules that port reference behavior include module-level or behavior-level breadcrumbs without line-by-line translation comments.
+- [x] **EVD-05**: Verification layers include unit tests, golden fixtures, API comparison, hardware smoke tests, and hardware regression or soak evidence where appropriate.
 
 ## v2 Requirements
 
@@ -196,12 +196,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REL-05 | Phase 7 | Complete |
 | REL-06 | Phase 7 | Complete |
 | REL-07 | Phase 7 | Complete |
-| REL-08 | Phase 8 | Pending |
-| EVD-01 | Phase 8 | Pending |
-| EVD-02 | Phase 8 | Pending |
-| EVD-03 | Phase 8 | Pending |
-| EVD-04 | Phase 8 | Pending |
-| EVD-05 | Phase 8 | Pending |
+| REL-08 | Phase 8 | Complete |
+| EVD-01 | Phase 8 | Complete |
+| EVD-02 | Phase 8 | Complete |
+| EVD-03 | Phase 8 | Complete |
+| EVD-04 | Phase 8 | Complete |
+| EVD-05 | Phase 8 | Complete |
 
 **Coverage:**
 
