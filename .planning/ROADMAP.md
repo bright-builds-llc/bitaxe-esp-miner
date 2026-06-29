@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Parity Evidence And Ultra 205 Release Gate** - Close V1 evidence governance so Ultra 205 parity claims are supported and deferred scope remains unverified or out of scope. (completed 2026-06-29)
 - [ ] **Phase 9: Flash-Monitor Evidence Wrapper Hardening** - Close the audit gap where repository `flash-monitor` evidence capture fell back to raw `espflash monitor --non-interactive`.
 - [x] **Phase 10: Route Manifest And API Compare Unification** - Close the audit gap where Phase 7 route manifests were not the source consumed by firmware route reporting and compare tooling. (completed 2026-06-29)
-- [ ] **Phase 11: Safety Controller Hardware Regression Evidence** - Close the audit gap for Ultra 205 voltage, power, thermal, fan, self-test, display/input, watchdog, and safety-critical hardware evidence.
+- [x] **Phase 11: Safety Controller Hardware Regression Evidence** - Close the audit gap for Ultra 205 voltage, power, thermal, fan, self-test, display/input, watchdog, and safety-critical hardware evidence. (completed 2026-06-29)
 - [ ] **Phase 12: ASIC And Mining Hardware Evidence** - Close the audit gap for BM1366 initialization, work/result handling, first mining loop, and controlled mining soak evidence.
 - [ ] **Phase 13: Final Ultra 205 Release Evidence** - Close the audit gap for final-commit package/flash/boot identity plus live HTTP, static, recovery, OTA, rollback, erase, and interrupted-update evidence.
 
@@ -276,7 +276,12 @@ Plans:
 1. Self-test, display/input status, watchdog, and load responsiveness evidence is captured or explicitly remains below verified with owner and follow-up.
 1. Parity tooling continues to reject safety-critical `verified` rows without hardware-smoke or hardware-regression evidence.
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+
+- [x] 11-01-PLAN.md - Document the Phase 11 runbook, recovery protocol, evidence-pack contract, and redaction gate.
+- [x] 11-02-PLAN.md - Require hardware-regression evidence before active safety-control rows can be marked verified.
+- [x] 11-03-PLAN.md - Capture detector-gated Ultra 205 safe boot evidence and update checklist boundaries.
 **Verification expectations**: Existing pure safety tests stay green, `just detect-ultra205` gates live hardware work, hardware-regression evidence is recorded only for board `205`, destructive/fault-injection steps follow the documented recovery path, and `just parity` rejects any overclaim.
 **Research flags**: Requires hardware planning for DS4432U, INA260, EMC2101, fan/PID behavior, self-test, display/input, and failure-path recovery. Do not run ad hoc voltage, fan, mining stress, erase, or fault injection outside the phase plan.
 
@@ -331,6 +336,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 8. Parity Evidence And Ultra 205 Release Gate | 4/4 | Complete | 2026-06-29 |
 | 9. Flash-Monitor Evidence Wrapper Hardening | 0/2 | Not started | - |
 | 10. Route Manifest And API Compare Unification | 3/3 | Complete    | 2026-06-29 |
-| 11. Safety Controller Hardware Regression Evidence | 0/TBD | Not started | - |
+| 11. Safety Controller Hardware Regression Evidence | 3/3 | Complete | 2026-06-29 |
 | 12. ASIC And Mining Hardware Evidence | 0/TBD | Not started | - |
 | 13. Final Ultra 205 Release Evidence | 0/TBD | Not started | - |

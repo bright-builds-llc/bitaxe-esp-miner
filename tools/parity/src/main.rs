@@ -401,6 +401,14 @@ fn validate_rows(rows: &[ChecklistRow]) -> Vec<ValidationError> {
             });
         }
 
+        if is_active_safety_control(row) && !has_evidence_token(row, "hardware-regression") {
+            errors.push(ValidationError {
+                id: row.id.clone(),
+                message: "active safety-control verified row requires hardware-regression evidence"
+                    .to_owned(),
+            });
+        }
+
         errors.extend(validate_release_ota_verified_row(row));
         errors.extend(validate_deferred_scope_verified_row(row));
     }
@@ -499,6 +507,20 @@ fn is_safety_critical(row: &ChecklistRow) -> bool {
 
 fn has_hardware_evidence(row: &ChecklistRow) -> bool {
     has_evidence_token(row, "hardware-smoke") || has_evidence_token(row, "hardware-regression")
+}
+
+fn is_active_safety_control(row: &ChecklistRow) -> bool {
+    matches!(
+        row.id.as_str(),
+        "PWR-001"
+            | "PWR-002"
+            | "PWR-003"
+            | "PWR-005"
+            | "THR-001"
+            | "THR-002"
+            | "SELF-001"
+            | "UI-003"
+    )
 }
 
 fn validate_release_ota_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
@@ -867,9 +889,11 @@ mod tests {
         let errors = validate_rows(&rows);
 
         // Assert
-        assert_eq!(errors.len(), 1);
-        assert!(errors[0].message.contains("hardware-smoke"));
-        assert!(errors[0].message.contains("hardware-regression"));
+        assert_validation_error_contains(
+            &errors,
+            "PWR-003",
+            "hardware-smoke or hardware-regression",
+        );
     }
 
     #[test]
@@ -886,10 +910,11 @@ mod tests {
         let errors = validate_rows(&rows);
 
         // Assert
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].id, "PWR-001");
-        assert!(errors[0].message.contains("hardware-smoke"));
-        assert!(errors[0].message.contains("hardware-regression"));
+        assert_validation_error_contains(
+            &errors,
+            "PWR-001",
+            "hardware-smoke or hardware-regression",
+        );
     }
 
     #[test]
@@ -906,10 +931,11 @@ mod tests {
         let errors = validate_rows(&rows);
 
         // Assert
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].id, "SELF-001");
-        assert!(errors[0].message.contains("hardware-smoke"));
-        assert!(errors[0].message.contains("hardware-regression"));
+        assert_validation_error_contains(
+            &errors,
+            "SELF-001",
+            "hardware-smoke or hardware-regression",
+        );
     }
 
     #[test]
@@ -926,10 +952,11 @@ mod tests {
         let errors = validate_rows(&rows);
 
         // Assert
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].id, "UI-003");
-        assert!(errors[0].message.contains("hardware-smoke"));
-        assert!(errors[0].message.contains("hardware-regression"));
+        assert_validation_error_contains(
+            &errors,
+            "UI-003",
+            "hardware-smoke or hardware-regression",
+        );
     }
 
     #[test]
@@ -939,6 +966,69 @@ mod tests {
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | THR-003 | PID behavior | `reference/esp-miner/main/thermal/PID.c` | `crates/bitaxe-safety/src/thermal.rs` | implemented | unit | Pure PID behavior is covered by unit tests; hardware fan and thermal verification remains separate. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn active_safety_control_verified_rows_require_hardware_regression() {
+        // Arrange
+        let active_ids = [
+            "PWR-001", "PWR-002", "PWR-003", "PWR-005", "THR-001", "THR-002", "SELF-001", "UI-003",
+        ];
+
+        for active_id in active_ids {
+            let checklist = format!(
+                r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| {active_id} | Active safety-control row | `reference/esp-miner/main/safety.c` | `firmware/bitaxe` | verified | hardware-smoke | Active hardware-control behavior cannot be proven by broad smoke evidence. |
+"#
+            );
+            let rows = parse_checklist(&checklist).expect("checklist should parse");
+
+            // Act
+            let errors = validate_rows(&rows);
+
+            // Assert
+            assert_validation_error_contains(
+                &errors,
+                active_id,
+                "requires hardware-regression evidence",
+            );
+        }
+    }
+
+    #[test]
+    fn active_safety_control_allows_hardware_regression_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| PWR-003 | Core voltage control | `reference/esp-miner/main/power/vcore.c` | `firmware/bitaxe` | verified | hardware-regression | Active voltage regression passed. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn active_safety_control_allows_read_only_hardware_smoke_rows() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| PWR-006 | INA260 power telemetry freshness | `reference/esp-miner/main/power/INA260.c` | `firmware/bitaxe` | verified | hardware-smoke | Read-only INA260 current, bus voltage, and power telemetry freshness observed; no voltage writes claimed. |
 "#;
         let rows = parse_checklist(checklist).expect("checklist should parse");
 
