@@ -254,7 +254,12 @@ Plans:
 1. Unit and fixture tests prove route reporting, compare tooling, and parity evidence stay aligned when route ownership changes.
 1. `docs/parity/checklist.md` records the unified manifest evidence without claiming live HTTP or OTA behavior before Phase 13.
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+
+- [ ] 10-01-PLAN.md - Add Phase 7 route reporting helpers and switch firmware startup logging to manifest-derived counts.
+- [ ] 10-02-PLAN.md - Refactor API compare route policy to use the Phase 7 typed manifest and add route-drift regressions.
+- [ ] 10-03-PLAN.md - Record checklist/evidence claim boundaries and run final Phase 10 verification.
 **Verification expectations**: Cargo tests for route manifest consumers, API compare fixture regression tests, `just parity`, and a diff review confirming route reporting and compare tooling cannot drift independently.
 **Research flags**: Standard Rust domain and tooling work. Keep route classification in pure data and leave firmware handlers as thin adapters.
 
