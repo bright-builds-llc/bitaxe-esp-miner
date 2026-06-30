@@ -5,22 +5,32 @@ candidates. It gives the commands, artifacts, evidence gates, and recovery
 paths a developer needs before using package, flash, OTA, recovery, rollback,
 or erase workflows on connected hardware.
 
-Do not treat package generation as live OTA, rollback, recovery, large erase,
-failed update, or interrupted update verification. Phase 8 owns that live
-network and recovery evidence gate; until it runs, use explicit Phase 8
-deferral language and keep affected parity rows below `verified`.
+Do not treat package generation or serial route registration as live OTA,
+rollback, recovery, large erase, failed update, or interrupted update
+verification. Phase 13 records the current final release-evidence status in
+`docs/parity/evidence/phase-13-final-ultra-205-release-evidence.md`. Use that
+ledger's blocker and pending language and keep affected parity rows below
+`verified`.
 
-## Phase 8 Evidence Status
+## Phase 13 Evidence Status
 
-Phase 8 release evidence is recorded in
-`docs/parity/evidence/phase-08-ultra-205-release-gate.md` and summarized in
-`docs/parity/evidence/phase-08-ultra-205-release-summary.md`.
+Phase 13 release evidence is recorded in
+`docs/parity/evidence/phase-13-final-ultra-205-release-evidence.md`, with
+component evidence under
+`docs/parity/evidence/phase-13-final-ultra-205-release-evidence/`.
 
-Current conclusion: package, manifest, Ultra 205 detector, factory flash, and
-serial boot evidence are recorded, but live HTTP, static, recovery, firmware
-OTA, invalid image rejection, rollback, failed update recovery, large erase, and
-interrupted-update checks remain blocked by `DEVICE_URL status: blocked - no
-reachable DEVICE_URL`.
+Current conclusion: package, manifest-backed release gate, Ultra 205 detector,
+factory flash, and serial boot evidence passed for board `205`, port
+`/dev/cu.usbmodem1101`, source commit
+`190849539700b8f9a7909fd2b6ebd84142557968`, and reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`.
+
+The final live network gate remains:
+`DEVICE_URL status: blocked - missing DEVICE_URL`.
+
+Because no reachable just-flashed device URL was available, live HTTP, static,
+recovery, firmware OTA, invalid image rejection, rollback, failed update
+recovery, large erase, and interrupted-update checks remain blocked or pending.
 
 Keep `FS-001`, `OTA-001`, `REL-001`, `REL-002`, and `REL-003` below
 `verified` until a later evidence record includes the required live observations.
@@ -53,6 +63,13 @@ The package manifest must name the release artifacts directly:
 Record the package manifest path, source commit, reference commit, artifact
 SHA-256 values, ESP-IDF version, Rust target, and package command output before
 using the artifacts in release evidence.
+
+The Phase 13 package/release-gate command sequence was:
+
+```bash
+just package
+bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+```
 
 ## USB Flash
 
@@ -110,6 +127,17 @@ It does not verify live HTTP, static, recovery, firmware OTA, invalid image
 rejection, rollback, failed update recovery, large erase, interrupted update, or
 OTAWWW behavior.
 
+For the Phase 13 final release-evidence capture, the exact command was:
+
+```bash
+just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot capture-timeout-seconds=25
+```
+
+The Phase 13 JSON source of truth is
+`docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot/flash-command-evidence.json`.
+The wrapper-owned serial log is
+`docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot/flash-monitor.log`.
+
 ### Flash-Monitor Recovery
 
 If evidence capture fails, use repo-owned recovery and diagnostic steps:
@@ -135,17 +163,22 @@ Firmware OTA uses the AxeOS firmware update route:
 Before claiming firmware OTA verified, capture these facts on Ultra 205:
 
 1. Upload accepted for `esp-miner.bin`.
-2. Invalid image rejection or validation failure behavior.
-3. AP/APSTA rejection behavior.
-4. Progress/status labels and final public response.
-5. Selected next app partition.
-6. Reboot scheduling and post-reboot firmware identity.
-7. Rollback and boot-validation evidence.
-8. Recovery procedure if boot validation fails.
+1. Invalid image rejection or validation failure behavior.
+1. AP/APSTA rejection behavior.
+1. Progress/status labels and final public response.
+1. Selected next app partition.
+1. Reboot scheduling and post-reboot firmware identity.
+1. Rollback and boot-validation evidence.
+1. Recovery procedure if boot validation fails.
 
 The success response proves only that the upload path reached the reboot step.
 It does not prove rollback, boot validation, or return-to-operable-state parity
 without matching hardware logs.
+
+Phase 13 firmware OTA status is conservative:
+`firmware_ota_status: blocked - DEVICE_URL unavailable`. The helper did not
+upload `esp-miner.bin`, did not run invalid image rejection, did not observe
+post-reboot identity, and did not observe boot-validation or rollback state.
 
 ## AxeOS Static Update Gap
 
@@ -156,12 +189,14 @@ The upstream AxeOS static update route is:
 - Visible AxeOS surface: `Update AxeOS`
 - Current public gap response: `Wrong API input`
 
-AxeOS update is not available in this release candidate. Use just package to create www.bin and flash the factory image, or use /recovery only after the documented evidence gate is complete.
+AxeOS update is not available in this release candidate. Use `just package` to
+create `www.bin` and flash the factory image, or use `/recovery` only after the
+documented evidence gate is complete.
 
-This is the D-16 OTAWWW gap. Do not claim static update parity from `www.bin`
-package generation alone. REL-03 remains an explicit release gap until Phase 8
-evidence proves whole-`www` partition write behavior, recovery access, and
-interrupted-update recovery on Ultra 205.
+This is the OTAWWW REL-03 gap. Phase 13 did not observe the public `Wrong API input` response because `DEVICE_URL` was missing. Do not claim static update
+parity from `www.bin` package generation alone. REL-03 remains an explicit
+release gap until evidence proves whole-`www` partition write behavior, recovery
+access, and interrupted-update recovery on Ultra 205.
 
 ## Static And Recovery Smoke
 
@@ -178,6 +213,11 @@ Static filesystem smoke must cover:
 Static smoke is live firmware evidence only when the record names the connected
 Ultra 205 board, serial port, firmware commit, reference commit, package
 manifest path, and observed HTTP responses.
+
+Phase 13 static/recovery status is conservative:
+`http_static_status: blocked` and `DEVICE_URL status: blocked - missing DEVICE_URL`.
+No live `/`, `/assets/app.css.gz`, missing static redirect, `/recovery`, API
+coexistence, or WebSocket coexistence response was captured.
 
 ## Recovery Page
 
@@ -202,15 +242,19 @@ Safe procedure:
 
 1. Record the board, port, source commit, reference commit, and package
    manifest path.
-2. Confirm `bitaxe-ultra205-factory.bin` is present in
+1. Confirm `bitaxe-ultra205-factory.bin` is present in
    `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`.
-3. Record the exact erase command and tool version before running it.
-4. Flash the factory image with `just flash board=205 port=<port>`.
-5. Monitor with `just monitor port=<port>`.
-6. Record post-erase boot, filesystem, recovery, and API reachability.
+1. Record the exact erase command and tool version before running it.
+1. Flash the factory image with `just flash board=205 port=<port>`.
+1. Monitor with `just monitor port=<port>`.
+1. Record post-erase boot, filesystem, recovery, and API reachability.
 
 Do not describe Large Erase as verified unless that full sequence is captured
 in hardware evidence.
+
+Phase 13 large erase status is conservative:
+`large_erase_status: pending - allow flag not provided`. No erase, restore, or
+post-restore monitor command ran.
 
 ## Failed Firmware Update
 
@@ -228,6 +272,10 @@ For a failed firmware update, capture:
 Do not treat a rejected upload as rollback proof. Rollback requires bootloader
 or boot-validation evidence from the actual post-update state.
 
+Phase 13 failed-update status is conservative:
+`failed_update_status: pending - allow flag not provided`. No invalid firmware
+upload was attempted through live HTTP.
+
 ## Interrupted Static Update
 
 For interrupted static update evidence, capture:
@@ -243,6 +291,10 @@ For interrupted static update evidence, capture:
 Until the Phase 8 record exists, interrupted static update remains deferred and
 OTAWWW remains the REL-03 gap.
 
+Phase 13 interrupted-update status is conservative:
+`interrupted_update_status: pending - allow flag not provided`. No bounded
+upload interruption was attempted.
+
 ## Rollback And Boot Validation
 
 Rollback evidence must distinguish:
@@ -257,6 +309,10 @@ Rollback evidence must distinguish:
 
 Successful `/api/system/OTA` response text is not enough to claim Rollback or
 boot-validation parity.
+
+Phase 13 rollback and boot-validation status remains:
+`pending - Plan 04 OTA evidence not run yet`. Serial factory boot observed
+`ota_boot_validation=not_pending state=factory`, which is not rollback proof.
 
 ## Evidence Required Before Verified Claims
 
