@@ -29,6 +29,17 @@ assert_contains() {
 	fi
 }
 
+assert_not_contains() {
+	local path="$1"
+	local needle="$2"
+
+	if grep -Fq "$needle" "$path"; then
+		printf 'Expected %s not to contain: %s\n' "$path" "$needle" >&2
+		printf 'Actual content:\n%s\n' "$(cat "$path")" >&2
+		exit 1
+	fi
+}
+
 write_executable() {
 	local path="$1"
 	local body="$2"
@@ -80,8 +91,20 @@ if [[ -z "$body_file" || "$url" != "http://device.local/api/system/OTA" ]]; then
   printf "missing fake curl inputs\n" >&2
   exit 2
 fi
-printf "invalid firmware rejected\n" >"$body_file"
-printf "400"
+case "${PHASE13_FAKE_CURL_SCENARIO:-invalid-rejected}" in
+  invalid-rejected)
+    printf "invalid firmware rejected\n" >"$body_file"
+    printf "400"
+    ;;
+  invalid-accepted)
+    printf "Firmware update complete, rebooting now!\n" >"$body_file"
+    printf "200"
+    ;;
+  *)
+    printf "unknown fake curl scenario: %s\n" "$PHASE13_FAKE_CURL_SCENARIO" >&2
+    exit 2
+    ;;
+esac
 '
 }
 
@@ -204,6 +227,35 @@ test_failed_update_evidence_fields() {
 	assert_contains "$log_file" "failed update conclusion:"
 }
 
+test_failed_update_blocks_if_invalid_image_is_accepted() {
+	local out_dir="${tmp_root}/failed-update-accepted"
+	local curl_stub="${tmp_root}/fake-curl-accepted"
+	local http_stub="${tmp_root}/fake-http-smoke-accepted"
+
+	create_fake_curl "$curl_stub"
+	create_fake_http_smoke "$http_stub"
+
+	set +e
+	PHASE13_FAKE_CURL_SCENARIO=invalid-accepted CURL_BIN="$curl_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+		--device-url http://device.local \
+		--manifest "${tmp_root}/manifest.json" \
+		--factory-image "${tmp_root}/factory.bin" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--allow-failed-update
+	local command_status=$?
+	set -e
+
+	if [[ "$command_status" -eq 0 ]]; then
+		fail "failed update accepted invalid image without blocking"
+	fi
+	local log_file="${out_dir}/recovery-regression.log"
+	assert_contains "$log_file" "failed_update_status: blocked - invalid image was accepted"
+	assert_contains "$log_file" "failed update recovery steps: use recovery runbook and collect post-failure boot evidence"
+	assert_not_contains "$log_file" "failed_update_status: captured"
+}
+
 test_large_erase_command_rendering() {
 	local out_dir="${tmp_root}/large"
 	local bin_dir="${tmp_root}/bin"
@@ -239,6 +291,7 @@ fi
 create_inputs "$tmp_root"
 test_default_pending_behavior
 test_failed_update_evidence_fields
+test_failed_update_blocks_if_invalid_image_is_accepted
 test_large_erase_command_rendering
 
 printf 'phase13_recovery_regression_test passed\n'

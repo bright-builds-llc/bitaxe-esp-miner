@@ -152,6 +152,21 @@ body_snippet() {
 	LC_ALL=C tr -d '\000\r' <"$body_file" | head -c 240 | tr '\n\t' '  '
 }
 
+failed_update_status_is_rejection() {
+	local status="$1"
+
+	case "$status" in
+	400 | 409 | 413 | 415 | 422) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+failed_update_body_has_rejection_marker() {
+	local body_file="$1"
+
+	grep -Eiq 'invalid|reject|validation|activation|error|wrong api input|firmware' "$body_file"
+}
+
 sha256_file() {
 	local path="$1"
 
@@ -272,7 +287,6 @@ run_failed_update() {
 	local curl_status=$?
 	set -e
 
-	log_main "failed_update_status: captured"
 	log_main "failed update route: POST /api/system/OTA"
 	log_main "failed update artifact: ${invalid_image}"
 	log_main "failed update artifact checksum: ${checksum}"
@@ -283,6 +297,27 @@ run_failed_update() {
 	if [[ -s "$error" ]]; then
 		log_main "failed update curl error: $(body_snippet "$error")"
 	fi
+
+	if [[ "$curl_status" -ne 0 ]]; then
+		log_main "failed_update_status: blocked - invalid-image request failed"
+		log_main "failed update recovery steps: use recovery runbook and collect post-failure boot evidence"
+		return 1
+	fi
+	if [[ "$status" == "200" ]]; then
+		log_main "failed_update_status: blocked - invalid image was accepted"
+		log_main "failed update recovery steps: use recovery runbook and collect post-failure boot evidence"
+		return 1
+	fi
+	if ! failed_update_status_is_rejection "$status"; then
+		log_main "failed_update_status: blocked - invalid image rejection returned unexpected status"
+		return 1
+	fi
+	if ! failed_update_body_has_rejection_marker "$body"; then
+		log_main "failed_update_status: blocked - rejection body did not contain expected failure marker"
+		return 1
+	fi
+
+	log_main "failed_update_status: captured"
 	log_main "failed update post-failure partition/static/API state: HTTP/static smoke rerun when helper and DEVICE_URL are available"
 	run_http_static_smoke "failed_update_post_failure" "${out_dir}/failed-update-http-static"
 	log_main "failed update recovery steps: explicitly not needed when invalid image is rejected and device remains reachable; otherwise use recovery runbook factory restore"
