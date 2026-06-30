@@ -2,7 +2,7 @@
 
 ## Overview
 
-V1 delivers Ultra 205 BM1366 device-user parity in deliberate layers: first a reproducible Rust ESP-IDF foundation with safe boot/log only, then typed configuration, BM1366 hardware behavior, Stratum v1 mining, AxeOS-compatible administration surfaces, safety controllers, OTA/release flows, and an evidence-backed Ultra 205 release gate. This supersedes the earlier Gamma 601-first roadmap per ADR-0014. The original V1 requirements naturally formed eight delivery boundaries; the v1.0 milestone audit added five gap-closure phases to turn conservative completion into stronger live release-parity evidence without blurring safety-critical evidence and release readiness.
+V1 delivers Ultra 205 BM1366 device-user parity in deliberate layers: first a reproducible Rust ESP-IDF foundation with safe boot/log only, then typed configuration, BM1366 hardware behavior, Stratum v1 mining, AxeOS-compatible administration surfaces, safety controllers, OTA/release flows, and an evidence-backed Ultra 205 release gate. This supersedes the earlier Gamma 601-first roadmap per ADR-0014. The original V1 requirements naturally formed eight delivery boundaries; the first v1.0 milestone audit added five gap-closure phases to turn conservative completion into stronger live release-parity evidence, and the current audit adds three final evidence phases for active safety, trusted ASIC/mining, and current-commit release parity.
 
 ## Phases
 
@@ -21,11 +21,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Safety Controllers And Self-Test** - Deliver Ultra 205 power, voltage, thermal, fan, fault, display/input, watchdog, and self-test parity with hardware evidence gates. (completed 2026-06-28)
 - [x] **Phase 7: OTA, Filesystem, And Release Packaging** - Deliver partition/filesystem behavior, OTA/recovery flows, static asset updates, release artifacts, license inventory, and safe operator docs. (completed 2026-06-28)
 - [x] **Phase 8: Parity Evidence And Ultra 205 Release Gate** - Close V1 evidence governance so Ultra 205 parity claims are supported and deferred scope remains unverified or out of scope. (completed 2026-06-29)
-- [ ] **Phase 9: Flash-Monitor Evidence Wrapper Hardening** - Close the audit gap where repository `flash-monitor` evidence capture fell back to raw `espflash monitor --non-interactive`.
+- [x] **Phase 9: Flash-Monitor Evidence Wrapper Hardening** - Close the audit gap where repository `flash-monitor` evidence capture fell back to raw `espflash monitor --non-interactive`. (completed 2026-06-29)
 - [x] **Phase 10: Route Manifest And API Compare Unification** - Close the audit gap where Phase 7 route manifests were not the source consumed by firmware route reporting and compare tooling. (completed 2026-06-29)
 - [x] **Phase 11: Safety Controller Hardware Regression Evidence** - Close the audit gap for Ultra 205 voltage, power, thermal, fan, self-test, display/input, watchdog, and safety-critical hardware evidence. (completed 2026-06-29)
-- [ ] **Phase 12: ASIC And Mining Hardware Evidence** - Close the audit gap for BM1366 initialization, work/result handling, first mining loop, and controlled mining soak evidence.
+- [x] **Phase 12: ASIC And Mining Hardware Evidence** - Close the audit gap for BM1366 initialization, work/result handling, first mining loop, and controlled mining soak evidence. (completed 2026-06-30)
 - [x] **Phase 13: Final Ultra 205 Release Evidence** - Close the audit gap for final-commit package/flash/boot identity plus live HTTP, static, recovery, OTA, rollback, erase, and interrupted-update evidence. (completed 2026-06-30)
+- [ ] **Phase 14: Safety Hardware Evidence Completion** - Close the current audit gap for active Ultra 205 safety-control, runtime telemetry, self-test submode, watchdog/load, and display/input evidence.
+- [ ] **Phase 15: BM1366 Mining Evidence Completion** - Close the current audit gap for trusted BM1366 initialization, work/result handling, and controlled mining smoke/soak evidence.
+- [ ] **Phase 16: Current Commit Release Evidence Completion** - Close the current audit gap for same-commit package, flash, serial boot, live HTTP/static/recovery/OTA, rollback, erase, failed-update, and interrupted-update evidence.
 
 ## Phase Details
 
@@ -327,10 +330,62 @@ Plans:
 **Verification expectations**: `just package`, wrapper-based flash-monitor evidence from Phase 9, live HTTP/static/recovery/OTA checks through the unified route manifest from Phase 10, recovery procedures documented before destructive tests, release gate validation, `just parity`, and final audit rerun.
 **Research flags**: Requires a reachable device network setup and phase-gated recovery instructions. Stop and record evidence pending if `DEVICE_URL` is unavailable.
 
+### Phase 14: Safety Hardware Evidence Completion
+
+**Goal**: Ultra 205 active safety-control and runtime telemetry surfaces have hardware-regression evidence, or remain explicitly below verified with bounded recovery instructions and no overclaim.
+**Depends on**: Phase 13
+**Requirements**: SAFE-01, SAFE-02, SAFE-03, SAFE-04, SAFE-05, SAFE-06, SAFE-07, SAFE-08, SAFE-09, EVD-05
+**Gap Closure**: Closes the current v1.0 audit gap where safety controllers are wired and fail-closed, but active voltage, fan, thermal, self-test submode, runtime input/display, watchdog/load, and live telemetry evidence remains pending.
+**Success Criteria** (what must be TRUE):
+
+1. The phase plan documents recovery steps, explicit allow gates, stop conditions, redaction rules, and post-action safe-state checks before any active voltage, fan, thermal, self-test, or load/stress hardware verification runs.
+1. Ultra 205 safety evidence records board `205`, selected port, source commit, reference commit, package manifest, exact commands, board-info, captured logs, observed readings or failures, and conclusion.
+1. Active voltage/power, fan/thermal, self-test, watchdog/load, display/input, and live API/WebSocket telemetry claims either have hardware-regression evidence or remain below `verified` with an owner and blocker.
+1. `just parity` continues to reject safety-critical verified rows without valid hardware-smoke or hardware-regression evidence.
+
+**Plans**: TBD
+**Verification expectations**: `just detect-ultra205`, gated hardware-regression evidence for board `205`, pure safety tests, relevant firmware/package checks, checklist validation, redaction review, and final phase verification.
+**Research flags**: Requires careful hardware recovery planning. Do not run ad hoc voltage, fan, mining stress, erase, rollback, or fault-injection commands outside the approved phase plan.
+
+### Phase 15: BM1366 Mining Evidence Completion
+
+**Goal**: BM1366 initialization, work-send, result-receive, and controlled Ultra 205 mining smoke/soak have trusted safety-gated hardware evidence.
+**Depends on**: Phase 14
+**Requirements**: ASIC-07, STR-06, STR-07, SAFE-09, EVD-05
+**Gap Closure**: Closes the current v1.0 audit gap where Phase 12 restored trusted safe boot and fail-closed mining state, but chip-detect was wrapper-untrusted and work/result/mining smoke/soak evidence did not run.
+**Success Criteria** (what must be TRUE):
+
+1. BM1366 chip-detect and staged initialization evidence is captured through a trusted wrapper path after safety and board gates pass.
+1. Work-send and result-receive evidence records commands, board, port, source commit, reference commit, package manifest, logs, observed ASIC behavior, and conclusion without exposing secrets.
+1. Controlled mining smoke or bounded soak records pool lifecycle, accepted/rejected share or controlled no-share behavior, hashrate inputs, API/WebSocket telemetry, watchdog responsiveness, and redaction review.
+1. Checklist rows for ASIC, Stratum, statistics, and mining remain below `verified` unless their hardware-smoke or soak evidence meets the documented criteria.
+
+**Plans**: TBD
+**Verification expectations**: Pure BM1366 and Stratum tests stay green, `just detect-ultra205` gates live hardware, any pool credentials are redacted or avoided, `just parity` validates checklist semantics, and final evidence restores safe state.
+**Research flags**: Requires controlled pool and recovery planning. Do not bypass safety gates or store pool credentials, private endpoints, Wi-Fi credentials, or NVS secret values in evidence.
+
+### Phase 16: Current Commit Release Evidence Completion
+
+**Goal**: The current release-candidate source commit has same-commit package, flash, serial boot, live HTTP/static/recovery/OTA, rollback, erase, failed-update, and interrupted-update evidence for Ultra 205 release parity.
+**Depends on**: Phase 15
+**Requirements**: FND-06, API-09, REL-01, REL-02, REL-03, REL-04, REL-07, REL-08, EVD-05
+**Gap Closure**: Closes the current v1.0 audit gaps for stale package-to-hardware identity, missing explicit `DEVICE_URL`, blocked live HTTP/static/recovery/OTA evidence, and pending destructive/fault-injection evidence.
+**Success Criteria** (what must be TRUE):
+
+1. `just package` produces a manifest for the same source commit that is flashed and monitored on Ultra 205, with source commit, reference commit, image paths, checksums, and install notes recorded before flash.
+1. `just flash-monitor board=205 port=... evidence-dir=...` records serial boot evidence for the same source commit, including partition/image state, PSRAM/SPIFFS, route registration, reset reason, and safe startup.
+1. An explicit reachable `DEVICE_URL` for the just-flashed device captures live `/`, `/assets/app.css.gz`, missing static redirect, `/recovery`, valid firmware OTA, invalid OTA rejection, and OTAWWW gap behavior without network scanning.
+1. Rollback, boot validation, large erase recovery, failed update recovery, and interrupted-update evidence runs only behind documented recovery gates and explicit allow flags, then restores and records safe state.
+1. Release docs, parity checklist, requirements traceability, milestone audit, and redaction review are updated without promoting rows that still lack evidence.
+
+**Plans**: TBD
+**Verification expectations**: `just package`, release gate, wrapper-based flash-monitor evidence, live HTTP/static/recovery/OTA checks, destructive/recovery checks only behind documented gates, `just parity`, `just verify-reference`, and final milestone audit rerun.
+**Research flags**: Requires reachable device network setup and explicit recovery authorization. Stop and record evidence pending if `DEVICE_URL`, detector gate, board-info, or recovery prerequisites are unavailable.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16
 
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
@@ -342,8 +397,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 6. Safety Controllers And Self-Test | 10/10 | Complete | 2026-06-28 |
 | 7. OTA, Filesystem, And Release Packaging | 9/9 | Complete | 2026-06-28 |
 | 8. Parity Evidence And Ultra 205 Release Gate | 4/4 | Complete | 2026-06-29 |
-| 9. Flash-Monitor Evidence Wrapper Hardening | 0/2 | Not started | - |
+| 9. Flash-Monitor Evidence Wrapper Hardening | 2/2 | Complete | 2026-06-29 |
 | 10. Route Manifest And API Compare Unification | 3/3 | Complete    | 2026-06-29 |
 | 11. Safety Controller Hardware Regression Evidence | 3/3 | Complete | 2026-06-29 |
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
 | 13. Final Ultra 205 Release Evidence | 6/6 | Complete    | 2026-06-30 |
+| 14. Safety Hardware Evidence Completion | 0/TBD | Not started | - |
+| 15. BM1366 Mining Evidence Completion | 0/TBD | Not started | - |
+| 16. Current Commit Release Evidence Completion | 0/TBD | Not started | - |
