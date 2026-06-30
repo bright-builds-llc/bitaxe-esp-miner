@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 13-final-ultra-205-release-evidence-03-PLAN.md
-last_updated: "2026-06-30T16:52:23.114Z"
+stopped_at: Completed 13-final-ultra-205-release-evidence-05-PLAN.md
+last_updated: "2026-06-30T17:12:48.185Z"
 last_activity: 2026-06-30
 progress:
   total_phases: 13
   completed_phases: 12
   total_plans: 70
-  completed_plans: 67
-  percent: 96
+  completed_plans: 68
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 13 (final-ultra-205-release-evidence) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-06-30
 
@@ -117,6 +117,7 @@ Progress: [██████████] 100%
 | Phase 13-final-ultra-205-release-evidence P01 | 7 min | 2 tasks | 3 files |
 | Phase 13-final-ultra-205-release-evidence P02 | 11 min | 2 tasks | 7 files |
 | Phase 13-final-ultra-205-release-evidence P03 | 8 min | 2 tasks | 6 files |
+| Phase 13-final-ultra-205-release-evidence P05 | 12 min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -280,6 +281,9 @@ Recent decisions affecting current work:
 - [Phase 13-final-ultra-205-release-evidence]: Detector and serial logs may retain the USB port, MAC address, package paths, and commit markers as necessary bench evidence after redaction review.
 - [Phase 13-final-ultra-205-release-evidence]: Live HTTP/static/recovery evidence remains blocked when DEVICE_URL is absent; the helper does not scan or infer a target from serial logs.
 - [Phase 13-final-ultra-205-release-evidence]: OTAWWW remains the REL-03 gap; Wrong API input is the expected public response, but Plan 13-03 did not observe it without DEVICE_URL.
+- [Phase 13-final-ultra-205-release-evidence]: Recovery, failed-update, large-erase, interrupted-update, rollback, and boot-validation evidence remain pending when DEVICE_URL is missing and allow flags are absent.
+- [Phase 13-final-ultra-205-release-evidence]: Plan 13-05 helpers record exact command shapes but do not execute destructive or fault-injection actions without explicit allow flags.
+- [Phase 13-final-ultra-205-release-evidence]: OTAWWW remains the REL-03 gap with expected public response Wrong API input until whole-www interrupted-update hardware-regression evidence exists.
 
 ### Pending Todos
 
@@ -290,6 +294,7 @@ None yet.
 - Hardware evidence: Mining, ASIC init, voltage, fan, thermal, power, and safety-critical verification still need Ultra 205 hardware-smoke or regression evidence before `verified` parity claims.
 - Release scope: Non-205 boards and ASICs must remain unverified or deferred until each has its own evidence set.
 - Phase 13-03 live HTTP/static/recovery evidence blocked because DEVICE_URL is missing; checklist rows must remain below verified until a reachable just-flashed Ultra 205 URL is provided.
+- Phase 13-05 recovery regression remains pending because DEVICE_URL is missing; no unsafe allow flags were used.
 
 ### Quick Tasks Completed
 
@@ -302,6 +307,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-30T16:52:23.111Z
-Stopped at: Completed 13-final-ultra-205-release-evidence-03-PLAN.md
+Last session: 2026-06-30T17:12:48.182Z
+Stopped at: Completed 13-final-ultra-205-release-evidence-05-PLAN.md
 Resume file: None
