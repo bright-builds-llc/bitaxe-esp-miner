@@ -29,6 +29,17 @@ assert_contains() {
 	fi
 }
 
+assert_not_contains() {
+	local path="$1"
+	local needle="$2"
+
+	if grep -Fq "$needle" "$path"; then
+		printf 'Expected %s not to contain: %s\n' "$path" "$needle" >&2
+		printf 'Actual content:\n%s\n' "$(cat "$path")" >&2
+		exit 1
+	fi
+}
+
 write_executable() {
 	local path="$1"
 	local body="$2"
@@ -130,10 +141,10 @@ case "${method} ${path}" in
     headers="Content-Type: text/html"
     body="<h1>AxeOS Recovery</h1><span>Response:</span>"
     ;;
-  "GET /api/system/info")
-    headers="Content-Type: application/json"
-    body="{\"firmware_commit\":\"190849539700\"}"
-    ;;
+	  "GET /api/system/info")
+	    headers="Content-Type: application/json"
+	    body="{\"firmware_commit\":\"190849539700\",\"ssid\":\"HomeNetwork\",\"wifiPass\":\"secret\",\"stratumUser\":\"worker\",\"ip\":\"192.168.1.5\"}"
+	    ;;
   "GET /api/phase13-unknown")
     status=404
     headers="Content-Type: application/json"
@@ -208,9 +219,18 @@ test_fake_success_records_required_paths() {
 	assert_contains "$log_file" "route: GET /api/ws"
 	assert_contains "$log_file" "route: GET /api/ws/live"
 	assert_contains "$log_file" "route: POST /api/system/OTAWWW"
+	assert_contains "$log_file" "redacted_body_snippet:"
+	assert_contains "$log_file" "\"ssid\":\"[redacted]\""
+	assert_contains "$log_file" "\"wifiPass\":\"[redacted]\""
+	assert_contains "$log_file" "\"stratumUser\":\"[redacted]\""
 	assert_contains "$log_file" "Redirect to the captive portal"
 	assert_contains "$log_file" "{\"error\":\"unknown route\"}"
 	assert_contains "$log_file" "Wrong API input"
+	assert_not_contains "$log_file" "sanitized_body_snippet:"
+	assert_not_contains "$log_file" "HomeNetwork"
+	assert_not_contains "$log_file" "secret"
+	assert_not_contains "$log_file" "worker"
+	assert_not_contains "$log_file" "192.168.1.5"
 	assert_contains "$log_file" "http_static_status: passed"
 }
 

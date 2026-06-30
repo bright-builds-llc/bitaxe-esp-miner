@@ -113,10 +113,13 @@ selected_headers() {
 	done <"$header_file"
 }
 
-body_snippet() {
+redacted_body_snippet() {
 	local body_file="$1"
 
-	LC_ALL=C tr -d '\000\r' <"$body_file" | head -c 240 | tr '\n\t' '  '
+	LC_ALL=C tr -d '\000\r' <"$body_file" \
+		| head -c 240 \
+		| sed -E 's/"(ssid|wifiPass|wifiPassword|stratumUser|stratumPassword|stratumCert|poolUrl|fallbackPoolUrl|hostname|ip|ipAddress|gateway|netmask|dns)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1":"[redacted]"/g; s/"(stratumPort|fallbackStratumPort)"[[:space:]]*:[[:space:]]*[0-9]+/"\1":[redacted]/g; s/([0-9]{1,3}\.){3}[0-9]{1,3}/[redacted-ip]/g; s/([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}/[redacted-mac]/g' \
+		| tr '\n\t' '  '
 }
 
 body_contains_marker() {
@@ -213,10 +216,10 @@ probe_route() {
 		log "  none"
 	fi
 	local snippet
-	snippet="$(body_snippet "$body_file")"
-	log "sanitized_body_snippet: ${snippet}"
+	snippet="$(redacted_body_snippet "$body_file")"
+	log "redacted_body_snippet: ${snippet}"
 	if [[ -s "$error_file" ]]; then
-		log "curl_error: $(body_snippet "$error_file")"
+		log "curl_error: $(redacted_body_snippet "$error_file")"
 	fi
 	log "route_conclusion: ${route_conclusion}"
 	log ""
