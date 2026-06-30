@@ -1,6 +1,6 @@
 ---
 phase: 13-final-ultra-205-release-evidence
-reviewed: 2026-06-30T18:32:00Z
+reviewed: 2026-06-30T19:11:24Z
 depth: standard
 files_reviewed: 33
 files_reviewed_list:
@@ -39,73 +39,39 @@ files_reviewed_list:
   - scripts/phase13-recovery-regression.sh
 findings:
   critical: 0
-  warning: 2
+  warning: 0
   info: 0
-  total: 2
-status: issues_found
+  total: 0
+status: clean
 ---
 
 # Phase 13: Code Review Report
 
-**Reviewed:** 2026-06-30T18:32:00Z
+**Reviewed:** 2026-06-30T19:11:24Z
 **Depth:** standard
 **Files Reviewed:** 33
-**Status:** issues_found
+**Status:** clean
 
 ## Summary
 
-Reviewed the listed Phase 13 parity evidence, release docs, Bazel script targets, and shell helpers at standard depth after the code-review-fix commits. The current Markdown evidence remains conservative about missing `DEVICE_URL` and pending destructive/fault-injection evidence. The remaining issues are both warning-level helper bugs that can overstate future live-run evidence.
+Reviewed the existing 33-file Phase 13 scope at current `HEAD` commit `5509739`. Material guidance loaded: `AGENTS.md`, `AGENTS.bright-builds.md`, `standards-overrides.md`, `standards/index.md`, `standards/core/verification.md`, `standards/core/testing.md`, `standards/core/code-shape.md`, `standards/core/architecture.md`, `standards/core/operability.md`, and `standards/languages/rust.md`. No repo-local `.claude/skills/` or `.agents/skills/` project skills were present.
 
-Material guidance loaded: `AGENTS.md` repo-local Ultra 205 hardware rules, `AGENTS.bright-builds.md`, `standards-overrides.md`, `standards/core/code-shape.md`, `standards/core/verification.md`, `standards/core/testing.md`, and `standards/languages/rust.md`.
+All reviewed files meet quality standards. No actionable critical, warning, or info findings remain.
 
-## Warnings
+## Requested Re-Check
 
-### WR-01: Firmware OTA Smoke Accepts Any Non-200 As Invalid-Image Rejection
+- Response body and curl stderr snippets are redacted before truncation in `scripts/phase13-http-static-smoke.sh:119-122`, `scripts/phase13-firmware-ota-smoke.sh:201-204`, and `scripts/phase13-recovery-regression.sh:152-155`.
+- Long-secret regression coverage exists for HTTP/static, firmware OTA, failed-update, and interrupted-OTA paths in `scripts/phase13-http-static-smoke-test.sh:149` and `scripts/phase13-http-static-smoke-test.sh:234-238`, `scripts/phase13-firmware-ota-smoke-test.sh:146` and `scripts/phase13-firmware-ota-smoke-test.sh:261-265`, plus `scripts/phase13-recovery-regression-test.sh:99-111`, `scripts/phase13-recovery-regression-test.sh:259-261`, and `scripts/phase13-recovery-regression-test.sh:417-421`.
+- Curl stderr URL and hostname snippets are redacted in the shared snippet helpers before truncation, with regression fixtures and assertions in `scripts/phase13-http-static-smoke-test.sh:116-118` and `scripts/phase13-http-static-smoke-test.sh:262-281`, `scripts/phase13-firmware-ota-smoke-test.sh:137-139` and `scripts/phase13-firmware-ota-smoke-test.sh:239-264`, plus `scripts/phase13-recovery-regression-test.sh:94-96`, `scripts/phase13-recovery-regression-test.sh:305-325`, and `scripts/phase13-recovery-regression-test.sh:396-420`.
 
-**File:** `scripts/phase13-firmware-ota-smoke.sh:371`
+## Verification
 
-**Issue:** After uploading `invalid-firmware.bin`, the helper only blocks when the response is `200`. A `302` captive-portal redirect, `404` wrong route, proxy error, or unrelated server error is logged as `invalid image rejection conclusion: captured`, and the helper can later emit `firmware_ota_status: passed` without proving that the firmware OTA validator actually rejected the image. The current test only checks a 500 response with `Validation / Activation Error`; it does not guard the overclaim case.
+Review-only verification performed:
 
-**Fix:** Require an expected rejection status/body marker before logging captured invalid-image evidence, and add a regression test for an unrelated non-200 response.
+- `bash -n scripts/phase13-http-static-smoke.sh scripts/phase13-monitor-capture.sh scripts/phase13-firmware-ota-smoke.sh scripts/phase13-recovery-regression.sh scripts/phase13-http-static-smoke-test.sh scripts/phase13-monitor-capture-test.sh scripts/phase13-firmware-ota-smoke-test.sh scripts/phase13-recovery-regression-test.sh` passed.
+- `bazel test //scripts:phase13_http_static_smoke_test //scripts:phase13_monitor_capture_test //scripts:phase13_firmware_ota_smoke_test //scripts:phase13_recovery_regression_test` passed; 4 test targets passed from cache.
+- Targeted scan for `PHASE13_LONG`, `phase13-secret`, `HomeNetwork`, `private-bitaxe`, `http://device.local`, `http://private-bitaxe.local`, and the dummy private IP fixtures found hits only in regression test fixtures and their negative assertions, not in checked-in Phase 13 evidence artifacts.
 
-```bash
-invalid_image_body_has_rejection_marker() {
-	local body_file="$1"
-
-	grep -Eiq 'invalid|reject|validation|activation' "$body_file"
-}
-
-if [[ "$last_http_status" == "200" ]]; then
-	block_with_reason "invalid image was not rejected"
-	exit 1
-fi
-if ! invalid_image_body_has_rejection_marker "$body_file"; then
-	block_with_reason "invalid image rejection body did not contain an OTA validation marker"
-	exit 1
-fi
-```
-
-### WR-02: Failed-Update Recovery Is Marked Captured Before Post-Failure Smoke Passes
-
-**File:** `scripts/phase13-recovery-regression.sh:345`
-
-**Issue:** `run_failed_update` writes `failed_update_status: captured` before running the post-failure HTTP/static smoke helper, and it never checks `http_static_smoke_passed` afterward. If the invalid image is rejected but the device is no longer reachable, or if the smoke helper records `http_static_status: blocked`, the evidence still says the failed-update path was captured. That can turn an incomplete recovery check into trusted-looking release evidence.
-
-**Fix:** Run and require post-failure HTTP/static smoke before emitting captured status. Add a negative test with `PHASE13_FAKE_HTTP_SMOKE_STATUS=blocked`.
-
-```bash
-local http_static_out="${out_dir}/failed-update-http-static"
-run_http_static_smoke "failed_update_post_failure" "$http_static_out"
-if ! http_static_smoke_passed "$http_static_out"; then
-	log_main "failed_update_status: blocked - post-failure operability not proven"
-	log_main "failed update recovery steps: use recovery runbook and collect post-failure boot evidence"
-	return 1
-fi
-
-log_main "failed_update_status: captured"
-log_main "failed update conclusion: captured - invalid image rejection evidence is not rollback proof"
-```
-
-_Reviewed: 2026-06-30T18:32:00Z_
+_Reviewed: 2026-06-30T19:11:24Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_

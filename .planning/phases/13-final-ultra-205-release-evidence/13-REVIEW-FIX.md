@@ -1,23 +1,23 @@
 ---
 phase: 13
-fixed_at: 2026-06-30T18:24:19Z
+fixed_at: 2026-06-30T19:05:25Z
 review_path: .planning/phases/13-final-ultra-205-release-evidence/13-REVIEW.md
-iteration: 1
-findings_in_scope: 7
-fixed: 7
+iteration: 5
+findings_in_scope: 14
+fixed: 14
 skipped: 0
 status: all_fixed
 ---
 
 # Phase 13: Code Review Fix Report
 
-**Fixed at:** 2026-06-30T18:24:19Z
+**Fixed at:** 2026-06-30T19:05:25Z
 **Source review:** .planning/phases/13-final-ultra-205-release-evidence/13-REVIEW.md
-**Iteration:** 1
+**Iteration:** 5
 
 **Summary:**
-- Findings in scope: 7
-- Fixed: 7
+- Findings in scope: 14
+- Fixed: 14
 - Skipped: 0
 
 ## Fixed Issues
@@ -70,6 +70,50 @@ status: all_fixed
 **Commit:** ba3e42f
 **Applied fix:** Updated Phase 13 evidence, runbook, and release language to reflect the stricter helper classifications, destructive detector gate, post-restore marker requirements, redacted HTTP logging, and WebSocket status expectations. The documentation remains conservative and does not promote claims to verified while `DEVICE_URL` evidence is missing.
 
-_Fixed: 2026-06-30T18:24:19Z_
+## Follow-Up Review Fixes
+
+### FU-01: Firmware OTA Smoke Accepts Any Non-200 As Invalid-Image Rejection
+
+**Files modified:** `scripts/phase13-firmware-ota-smoke.sh`, `scripts/phase13-firmware-ota-smoke-test.sh`
+**Commit:** a160b1c
+**Applied fix:** Required the invalid-image OTA response body to contain an OTA validation marker before captured evidence is logged, and added a regression where an unrelated non-200 response blocks the evidence result.
+
+### FU-02: Failed-Update Recovery Is Marked Captured Before Post-Failure Smoke Passes
+
+**Files modified:** `scripts/phase13-recovery-regression.sh`, `scripts/phase13-recovery-regression-test.sh`
+**Commit:** a160b1c
+**Applied fix:** Required post-failure HTTP/static smoke to pass before failed-update evidence can be marked captured, and added a regression where blocked post-failure smoke keeps the evidence blocked.
+
+### FU-03: Wrong-Route Body Can Be Captured As Failed-Update Evidence
+
+**Files modified:** `scripts/phase13-recovery-regression.sh`, `scripts/phase13-recovery-regression-test.sh`
+**Commit:** 4102879
+**Applied fix:** Rejected `Wrong API input` as failed-update proof, removed the generic `firmware` match from failed-update body markers, and added a regression that a wrong-route body blocks evidence.
+
+### FU-04: Interrupted OTA Evidence Does Not Require A Real Interruption
+
+**Files modified:** `scripts/phase13-recovery-regression.sh`, `scripts/phase13-recovery-regression-test.sh`
+**Commit:** 4102879
+**Applied fix:** Required interrupted OTA evidence to come from curl timeout status `28`, so fast non-timeout responses block instead of being captured. Added a fast-400 regression that proves the blocked classification.
+
+### FU-05: OTA And Recovery Helpers Log Live Response Bodies Without Redaction
+
+**Files modified:** `scripts/phase13-firmware-ota-smoke.sh`, `scripts/phase13-firmware-ota-smoke-test.sh`, `scripts/phase13-recovery-regression.sh`, `scripts/phase13-recovery-regression-test.sh`
+**Commit:** 4102879
+**Applied fix:** Redacted sensitive JSON keys, IPv4 addresses, and MAC-like values from OTA and recovery body snippets, with fixture coverage proving representative sensitive values are not written to logs.
+
+### FU-06: Redaction Truncates Long Secret Values Before Matching Them
+
+**Files modified:** `scripts/phase13-http-static-smoke.sh`, `scripts/phase13-http-static-smoke-test.sh`, `scripts/phase13-firmware-ota-smoke.sh`, `scripts/phase13-firmware-ota-smoke-test.sh`, `scripts/phase13-recovery-regression.sh`, `scripts/phase13-recovery-regression-test.sh`
+**Commit:** e4017d2
+**Applied fix:** Moved redaction before snippet truncation for all Phase 13 live-response body snippets, and added long secret fixtures proving prefixes of long sensitive values are not persisted in HTTP/static, firmware OTA, failed-update, or interrupted-OTA logs.
+
+### FU-07: Curl Error Snippets Can Expose Hostname-Style Private Endpoints
+
+**Files modified:** `scripts/phase13-http-static-smoke.sh`, `scripts/phase13-http-static-smoke-test.sh`, `scripts/phase13-firmware-ota-smoke.sh`, `scripts/phase13-firmware-ota-smoke-test.sh`, `scripts/phase13-recovery-regression.sh`, `scripts/phase13-recovery-regression-test.sh`
+**Commit:** 5509739
+**Applied fix:** Extended the shared snippet redaction to cover URL-like strings plus common curl `Could not resolve host` and `Failed to connect to` hostname messages before truncation. Added stderr fixtures for HTTP/static, firmware OTA, failed-update, and interrupted-OTA helper paths.
+
+_Fixed: 2026-06-30T19:05:25Z_
 _Fixer: the agent (gsd-code-fixer)_
-_Iteration: 1_
+_Iteration: 5_
