@@ -34,6 +34,11 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase13_firmware_ota_smoke",
+    srcs = ["phase13-firmware-ota-smoke.sh"],
+)
+
+sh_binary(
     name = "phase13_http_static_smoke",
     srcs = ["phase13-http-static-smoke.sh"],
 )
@@ -82,6 +87,16 @@ sh_test(
     data = [
         "bootstrap-esp.sh",
         "esp-doctor.sh",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase13_firmware_ota_smoke_test",
+    srcs = ["phase13-firmware-ota-smoke-test.sh"],
+    data = [
+        "phase13-firmware-ota-smoke.sh",
+        "phase13-monitor-capture.sh",
     ],
     tags = ["local"],
 )
