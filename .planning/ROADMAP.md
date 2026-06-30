@@ -321,7 +321,7 @@ Plans:
 - [x] 13-01-PLAN.md - Establish release-candidate package identity, release gate, and evidence scaffold.
 - [x] 13-02-PLAN.md - Capture detector-gated Ultra 205 flash-monitor serial boot evidence.
 - [x] 13-03-PLAN.md - Add and run HTTP/static/recovery smoke evidence helper.
-- [ ] 13-04-PLAN.md - Add and run firmware OTA and boot-validation evidence helpers.
+- [x] 13-04-PLAN.md - Add and run firmware OTA and boot-validation evidence helpers.
 - [x] 13-05-PLAN.md - Document and run recovery/destructive evidence only behind exact recovery gates.
 - [ ] 13-06-PLAN.md - Close checklist, release docs, redaction review, and final verification.
 **Verification expectations**: `just package`, wrapper-based flash-monitor evidence from Phase 9, live HTTP/static/recovery/OTA checks through the unified route manifest from Phase 10, recovery procedures documented before destructive tests, release gate validation, `just parity`, and final audit rerun.
@@ -346,4 +346,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 10. Route Manifest And API Compare Unification | 3/3 | Complete    | 2026-06-29 |
 | 11. Safety Controller Hardware Regression Evidence | 3/3 | Complete | 2026-06-29 |
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
-| 13. Final Ultra 205 Release Evidence | 4/6 | In Progress|  |
+| 13. Final Ultra 205 Release Evidence | 5/6 | In Progress|  |

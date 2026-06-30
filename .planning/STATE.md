@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 13-final-ultra-205-release-evidence-05-PLAN.md
-last_updated: "2026-06-30T17:12:48.185Z"
+stopped_at: Completed 13-final-ultra-205-release-evidence-04-PLAN.md
+last_updated: "2026-06-30T17:31:41.447Z"
 last_activity: 2026-06-30
 progress:
   total_phases: 13
   completed_phases: 12
   total_plans: 70
-  completed_plans: 68
-  percent: 97
+  completed_plans: 69
+  percent: 99
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 13 (final-ultra-205-release-evidence) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-06-30
 
@@ -118,6 +118,7 @@ Progress: [██████████] 100%
 | Phase 13-final-ultra-205-release-evidence P02 | 11 min | 2 tasks | 7 files |
 | Phase 13-final-ultra-205-release-evidence P03 | 8 min | 2 tasks | 6 files |
 | Phase 13-final-ultra-205-release-evidence P05 | 12 min | 2 tasks | 12 files |
+| Phase 13-final-ultra-205-release-evidence P04 | 10 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -284,6 +285,9 @@ Recent decisions affecting current work:
 - [Phase 13-final-ultra-205-release-evidence]: Recovery, failed-update, large-erase, interrupted-update, rollback, and boot-validation evidence remain pending when DEVICE_URL is missing and allow flags are absent.
 - [Phase 13-final-ultra-205-release-evidence]: Plan 13-05 helpers record exact command shapes but do not execute destructive or fault-injection actions without explicit allow flags.
 - [Phase 13-final-ultra-205-release-evidence]: OTAWWW remains the REL-03 gap with expected public response Wrong API input until whole-www interrupted-update hardware-regression evidence exists.
+- [Phase 13-final-ultra-205-release-evidence]: Firmware OTA helpers require an explicit DEVICE_URL and never scan or infer a target.
+- [Phase 13-final-ultra-205-release-evidence]: Without DEVICE_URL, Plan 13-04 records blocked OTA evidence and does not upload esp-miner.bin.
+- [Phase 13-final-ultra-205-release-evidence]: Invalid image rejection is separate failed-update evidence and is not rollback proof.
 
 ### Pending Todos
 
@@ -295,6 +299,7 @@ None yet.
 - Release scope: Non-205 boards and ASICs must remain unverified or deferred until each has its own evidence set.
 - Phase 13-03 live HTTP/static/recovery evidence blocked because DEVICE_URL is missing; checklist rows must remain below verified until a reachable just-flashed Ultra 205 URL is provided.
 - Phase 13-05 recovery regression remains pending because DEVICE_URL is missing; no unsafe allow flags were used.
+- Phase 13-04 firmware OTA evidence blocked because DEVICE_URL is missing; valid OTA, invalid rejection, reboot identity, rollback, selected partition, and boot-validation remain below verified.
 
 ### Quick Tasks Completed
 
@@ -307,6 +312,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-30T17:12:48.182Z
-Stopped at: Completed 13-final-ultra-205-release-evidence-05-PLAN.md
+Last session: 2026-06-30T17:31:41.444Z
+Stopped at: Completed 13-final-ultra-205-release-evidence-04-PLAN.md
 Resume file: None
