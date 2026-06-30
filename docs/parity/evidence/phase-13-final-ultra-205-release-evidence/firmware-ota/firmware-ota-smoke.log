@@ -1,0 +1,11 @@
+phase13_firmware_ota_smoke
+manifest: bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+ota_image: bazel-bin/firmware/bitaxe/esp-miner.bin
+port: /dev/cu.usbmodem1101
+monitor_seconds: 45
+manifest_source_commit: 190849539700b8f9a7909fd2b6ebd84142557968
+manifest_reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
+DEVICE_URL status: blocked - DEVICE_URL unavailable
+firmware_ota_status: blocked - DEVICE_URL unavailable
+network_scan: disabled - DEVICE_URL must be explicit
+conclusion: blocked - firmware OTA evidence requires a reachable just-flashed Ultra 205 DEVICE_URL

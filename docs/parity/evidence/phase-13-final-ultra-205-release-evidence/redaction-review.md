@@ -4,7 +4,7 @@
 
 This review applies to Phase 13 evidence artifacts under `docs/parity/evidence/phase-13-final-ultra-205-release-evidence/`, including generated JSON, serial logs, HTTP probe output, OTA responses, recovery logs, copied terminal output, package manifest excerpts, and Markdown evidence.
 
-Current status: package release-gate evidence, detector output, wrapper JSON, serial boot log, Plan 13-03 HTTP/static/recovery blocker evidence, and Plan 13-05 recovery pending evidence reviewed. Later generated live OTA, rollback, erase, failed-update, interrupted-update, and checklist-promotion artifacts remain pending until their owning plans create them.
+Current status: package release-gate evidence, detector output, wrapper JSON, serial boot log, Plan 13-03 HTTP/static/recovery blocker evidence, Plan 13-05 recovery pending evidence, and Plan 13-04 firmware OTA blocker evidence reviewed. Later generated live OTA, rollback, erase, failed-update, interrupted-update, and checklist-promotion artifacts remain pending until their owning plans create them.
 
 ## Review Checklist
 
@@ -21,6 +21,7 @@ Current status: package release-gate evidence, detector output, wrapper JSON, se
 - [x] Retained source commit, reference commit, package manifest, artifact, command, observed behavior, selected USB port, and conclusion fields are necessary for Plan 13-02 hardware evidence.
 - [x] HTTP/static/recovery `DEVICE_URL` handling is redacted for Plan 13-03; no private URL, route headers, route body snippets, credentials, tokens, pool data, NVS secret values, or raw terminal secrets were generated because `DEVICE_URL` was missing.
 - [x] Recovery/destructive logs are reviewed for Plan 13-05; no private `DEVICE_URL`, route headers, route body snippets, credentials, tokens, pool data, NVS secret values, raw terminal secrets, erase output, flash output, or monitor output were generated because every live recovery/fault action remained pending.
+- [x] Firmware OTA blocker artifacts are reviewed for Plan 13-04; no private `DEVICE_URL`, OTA request headers, OTA response bodies, valid upload command output, invalid image bytes beyond the fixed test string, post-OTA monitor output, credentials, tokens, pool data, NVS secret values, or raw terminal secrets were generated because `DEVICE_URL` was unavailable.
 
 ## Generated Artifact Review
 
@@ -37,6 +38,9 @@ Current status: package release-gate evidence, detector output, wrapper JSON, se
 | `recovery-regression/large-erase-post-restore-monitor.log` | passed | Contains pending monitor status only; no serial boot output, credentials, private endpoints, tokens, NVS values, or pool data. |
 | `recovery-regression/interrupted-ota.log` | passed | Contains `interrupted_update_status: pending - allow flag not provided`; no upload response, route headers, credentials, private endpoints, tokens, NVS values, or pool data. |
 | `recovery-regression.md` | passed | Contains the recovery pending summary, exact planned route/command fields, redaction result, and conservative conclusion; no private `DEVICE_URL`, credentials, tokens, NVS values, or pool data. |
+| `firmware-ota/firmware-ota-smoke.log` | passed | Contains package paths, selected USB port, source/reference commits, missing `DEVICE_URL` blocker, and no curl headers or response bodies because OTA upload was not run. |
+| `firmware-ota/post-ota-monitor.log` | passed | Contains blocked monitor status only; no serial monitor output, credentials, private endpoints, tokens, NVS values, or pool data. |
+| `firmware-ota.md` | passed | Contains firmware OTA blocker status, manifest `esp-miner.bin` checksum, expected invalid rejection/valid OTA/boot-validation fields, and no private `DEVICE_URL`, credentials, tokens, NVS values, or pool data. |
 
 ## Review Notes
 
@@ -46,4 +50,4 @@ Current status: package release-gate evidence, detector output, wrapper JSON, se
 
 ## Conclusion
 
-Conclusion: passed for Plan 13-05 recovery pending evidence - `recovery-runbook.md`, `recovery-regression.md`, and the generated recovery logs were reviewed. No secret redaction was required because no private `DEVICE_URL`, route headers, route body snippets, erase output, flash output, live monitor output, credentials, tokens, NVS values, pool data, or raw terminal secrets were present. Later Phase 13 generated live OTA, rollback, erase, failed-update, interrupted-update, and checklist-promotion artifacts require their own review before commit.
+Conclusion: passed for Plan 13-04 firmware OTA blocker evidence and earlier Phase 13 reviewed artifacts - `firmware-ota.md`, `firmware-ota/firmware-ota-smoke.log`, and `firmware-ota/post-ota-monitor.log` were reviewed. No secret redaction was required because no private `DEVICE_URL`, OTA request headers, OTA response bodies, valid upload output, live monitor output, credentials, tokens, NVS values, pool data, or raw terminal secrets were present. Later Phase 13 generated live OTA, rollback, erase, failed-update, interrupted-update, and checklist-promotion artifacts require their own review before commit.

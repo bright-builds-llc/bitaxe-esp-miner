@@ -1,0 +1,5 @@
+phase13_post_ota_monitor
+post_ota_monitor_status: blocked - DEVICE_URL unavailable
+firmware_ota_status: blocked - DEVICE_URL unavailable
+capture_status=blocked
+reason: post-OTA monitor capture not run because valid OTA requires explicit DEVICE_URL
