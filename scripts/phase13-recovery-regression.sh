@@ -185,6 +185,50 @@ run_http_static_smoke() {
 	"$BASH" "$http_static_smoke_script" --device-url "$device_url" --manifest "$manifest" --out-dir "$out_path" >>"$main_log" 2>&1
 }
 
+require_ultra205_destructive_gate() {
+	local detector_log="${out_dir}/detect-ultra205-before-destructive.log"
+	local detected_port
+	local port_count
+
+	log_both "$large_log" "destructive_gate_status: running - rechecking Ultra 205 detector"
+	log_both "$large_log" "destructive_gate_detector_command: just detect-ultra205"
+	set +e
+	just detect-ultra205 >"$detector_log" 2>&1
+	local detector_status=$?
+	set -e
+	log_both "$large_log" "destructive_gate_detector_log: ${detector_log}"
+	log_both "$large_log" "destructive_gate_detector_status: ${detector_status}"
+	if [[ "$detector_status" -ne 0 ]]; then
+		log_both "$large_log" "large_erase_status: blocked - detector preflight failed"
+		return 1
+	fi
+
+	port_count="$(awk -F= '/^port=/{count += 1} END {print count + 0}' "$detector_log")"
+	detected_port="$(awk -F= '/^port=/{print $2; exit}' "$detector_log")"
+	if [[ "$port_count" -ne 1 ]]; then
+		log_both "$large_log" "large_erase_status: blocked - detector did not report exactly one port"
+		return 1
+	fi
+	if [[ "$detected_port" != "$port" ]]; then
+		log_both "$large_log" "large_erase_status: blocked - detector port mismatch"
+		log_both "$large_log" "destructive_gate_detected_port: ${detected_port}"
+		return 1
+	fi
+
+	log_both "$large_log" "destructive_gate_detected_port: ${detected_port}"
+	log_both "$large_log" "destructive_gate_board_info_command: espflash board-info --chip esp32s3 --port ${port} --non-interactive"
+	set +e
+	espflash board-info --chip esp32s3 --port "$port" --non-interactive >>"$large_log" 2>&1
+	local board_info_status=$?
+	set -e
+	log_both "$large_log" "destructive_gate_board_info_status: ${board_info_status}"
+	if [[ "$board_info_status" -ne 0 ]]; then
+		log_both "$large_log" "large_erase_status: blocked - board-info preflight failed"
+		return 1
+	fi
+	log_both "$large_log" "destructive_gate_status: passed"
+}
+
 write_common_header() {
 	log_main "phase13_recovery_regression"
 	log_main "manifest: ${manifest}"
@@ -269,6 +313,7 @@ run_large_erase() {
 	log_both "$large_log" "espflash_version_status: ${version_status}"
 	log_both "$large_log" "espflash_version: ${espflash_version}"
 
+	require_ultra205_destructive_gate
 	espflash erase-flash --chip esp32s3 --port "$port" --non-interactive >>"$large_log" 2>&1
 	log_both "$large_log" "large_erase_result: passed"
 

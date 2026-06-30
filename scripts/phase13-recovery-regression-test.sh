@@ -95,12 +95,20 @@ if [[ "${1:-}" == "--version" ]]; then
   printf "espflash 4.0.0\n"
   exit 0
 fi
+if [[ "$*" == "board-info --chip esp32s3 --port /dev/test --non-interactive" ]]; then
+  printf "Chip type: esp32s3\n"
+  exit 0
+fi
 if [[ "$*" != "erase-flash --chip esp32s3 --port /dev/test --non-interactive" ]]; then
   printf "unexpected espflash command: %s\n" "$*" >&2
   exit 2
 fi
 '
 	write_executable "${bin_dir}/just" 'printf "just %s\n" "$*" >>"${PHASE13_COMMAND_LOG:?}"
+if [[ "$*" == "detect-ultra205" ]]; then
+  printf "port=%s\n" "${PHASE13_DETECTOR_PORT:-/dev/test}"
+  exit 0
+fi
 expected="flash board=205 port=/dev/test image='"${tmp_root}"'/factory.bin manifest='"${tmp_root}"'/manifest.json evidence-dir='"${tmp_root}"'/large/large-erase-restore"
 if [[ "$*" != "$expected" ]]; then
   printf "unexpected just command: %s\nexpected: %s\n" "$*" "$expected" >&2
@@ -214,8 +222,12 @@ test_large_erase_command_rendering() {
 		--allow-large-erase
 
 	assert_contains "${out_dir}/large-erase.log" "large erase exact command: espflash erase-flash --chip esp32s3 --port /dev/test --non-interactive"
+	assert_contains "${out_dir}/large-erase.log" "destructive_gate_detector_command: just detect-ultra205"
+	assert_contains "${out_dir}/large-erase.log" "destructive_gate_board_info_command: espflash board-info --chip esp32s3 --port /dev/test --non-interactive"
 	assert_contains "${out_dir}/large-erase.log" "factory reflash command: just flash board=205 port=/dev/test image=${tmp_root}/factory.bin manifest=${tmp_root}/manifest.json evidence-dir=${tmp_root}/large/large-erase-restore"
 	assert_contains "${out_dir}/large-erase-post-restore-monitor.log" "capture_status=completed"
+	assert_contains "$command_log" "just detect-ultra205"
+	assert_contains "$command_log" "espflash board-info --chip esp32s3 --port /dev/test --non-interactive"
 	assert_contains "$command_log" "espflash erase-flash --chip esp32s3 --port /dev/test --non-interactive"
 	assert_contains "$command_log" "just flash board=205 port=/dev/test image=${tmp_root}/factory.bin manifest=${tmp_root}/manifest.json evidence-dir=${tmp_root}/large/large-erase-restore"
 }
