@@ -4,7 +4,7 @@
 
 This review applies to Phase 13 evidence artifacts under `docs/parity/evidence/phase-13-final-ultra-205-release-evidence/`, including generated JSON, serial logs, HTTP probe output, OTA responses, recovery logs, copied terminal output, package manifest excerpts, and Markdown evidence.
 
-Current status: package release-gate evidence, detector output, wrapper JSON, serial boot log, and Plan 13-03 HTTP/static/recovery blocker evidence reviewed. Later generated OTA, rollback, erase, failed-update, interrupted-update, and checklist artifacts remain pending until their owning plans create them.
+Current status: package release-gate evidence, detector output, wrapper JSON, serial boot log, Plan 13-03 HTTP/static/recovery blocker evidence, and Plan 13-05 recovery pending evidence reviewed. Later generated live OTA, rollback, erase, failed-update, interrupted-update, and checklist-promotion artifacts remain pending until their owning plans create them.
 
 ## Review Checklist
 
@@ -20,6 +20,7 @@ Current status: package release-gate evidence, detector output, wrapper JSON, se
 - [x] local private IP disclosure beyond necessary bench evidence is absent or redacted for package release-gate, detector, wrapper JSON, and serial boot evidence.
 - [x] Retained source commit, reference commit, package manifest, artifact, command, observed behavior, selected USB port, and conclusion fields are necessary for Plan 13-02 hardware evidence.
 - [x] HTTP/static/recovery `DEVICE_URL` handling is redacted for Plan 13-03; no private URL, route headers, route body snippets, credentials, tokens, pool data, NVS secret values, or raw terminal secrets were generated because `DEVICE_URL` was missing.
+- [x] Recovery/destructive logs are reviewed for Plan 13-05; no private `DEVICE_URL`, route headers, route body snippets, credentials, tokens, pool data, NVS secret values, raw terminal secrets, erase output, flash output, or monitor output were generated because every live recovery/fault action remained pending.
 
 ## Generated Artifact Review
 
@@ -30,6 +31,12 @@ Current status: package release-gate evidence, detector output, wrapper JSON, se
 | `serial-boot/flash-monitor.log` | passed | Contains ESP-IDF boot log, partition labels, route shell startup, commit markers, reset reason, SPIFFS status, and safe-state marker; no credential values, private endpoints, token values, NVS secret values, or pool data. |
 | `http-static-recovery/http-static-smoke.log` | passed | Contains package manifest path, source/reference commits, missing `DEVICE_URL` blocker, sanitized target handling, and no route headers or route body snippets because curl was not run. |
 | `http-static-recovery.md` | passed | Contains the explicit missing `DEVICE_URL` blocker, planned route list, expected public markers, and no private URL, credentials, tokens, NVS values, or pool data. |
+| `recovery-runbook.md` | passed | Contains current package paths, exact recovery commands, stop conditions, and artifact list; no credentials, private endpoints, tokens, NVS values, or pool data. |
+| `recovery-regression/recovery-regression.log` | passed | Contains package paths, selected USB port, missing `DEVICE_URL` status, allow-flag pending statuses, rollback/boot-validation pending state, and OTAWWW gap response; no live HTTP bodies, route headers, credentials, tokens, NVS values, or pool data. |
+| `recovery-regression/large-erase.log` | passed | Contains `large_erase_status: pending - allow flag not provided`; no erase output, flash output, credentials, private endpoints, tokens, NVS values, or pool data. |
+| `recovery-regression/large-erase-post-restore-monitor.log` | passed | Contains pending monitor status only; no serial boot output, credentials, private endpoints, tokens, NVS values, or pool data. |
+| `recovery-regression/interrupted-ota.log` | passed | Contains `interrupted_update_status: pending - allow flag not provided`; no upload response, route headers, credentials, private endpoints, tokens, NVS values, or pool data. |
+| `recovery-regression.md` | passed | Contains the recovery pending summary, exact planned route/command fields, redaction result, and conservative conclusion; no private `DEVICE_URL`, credentials, tokens, NVS values, or pool data. |
 
 ## Review Notes
 
@@ -39,4 +46,4 @@ Current status: package release-gate evidence, detector output, wrapper JSON, se
 
 ## Conclusion
 
-Conclusion: passed for Plan 13-03 HTTP/static/recovery blocker evidence - `http-static-recovery.md` and `http-static-recovery/http-static-smoke.log` were reviewed; no secret redaction was required because no private `DEVICE_URL`, route headers, route body snippets, credentials, tokens, NVS values, pool data, or raw terminal secrets were present. Later Phase 13 generated OTA, rollback, erase, failed-update, interrupted-update, and checklist artifacts require their own review before commit.
+Conclusion: passed for Plan 13-05 recovery pending evidence - `recovery-runbook.md`, `recovery-regression.md`, and the generated recovery logs were reviewed. No secret redaction was required because no private `DEVICE_URL`, route headers, route body snippets, erase output, flash output, live monitor output, credentials, tokens, NVS values, pool data, or raw terminal secrets were present. Later Phase 13 generated live OTA, rollback, erase, failed-update, interrupted-update, and checklist-promotion artifacts require their own review before commit.

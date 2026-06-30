@@ -161,6 +161,8 @@ test_default_pending_behavior() {
 
 	assert_contains "${out_dir}/recovery-regression.log" "failed_update_status: pending - allow flag not provided"
 	assert_contains "${out_dir}/large-erase.log" "large_erase_status: pending - allow flag not provided"
+	assert_contains "${out_dir}/large-erase-post-restore-monitor.log" "large_erase_post_restore_monitor_status: pending - allow flag not provided"
+	assert_contains "${out_dir}/large-erase-post-restore-monitor.log" "capture_status=pending"
 	assert_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: pending - allow flag not provided"
 	assert_contains "${out_dir}/recovery-regression.log" "recovery_regression_status: pending"
 }

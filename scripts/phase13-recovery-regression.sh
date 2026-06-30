@@ -248,6 +248,8 @@ run_failed_update() {
 run_large_erase() {
 	if [[ "$allow_large_erase" -eq 0 ]]; then
 		log_both "$large_log" "large_erase_status: pending - allow flag not provided"
+		log_file "$monitor_log" "large_erase_post_restore_monitor_status: pending - allow flag not provided"
+		log_file "$monitor_log" "capture_status=pending"
 		return
 	fi
 
