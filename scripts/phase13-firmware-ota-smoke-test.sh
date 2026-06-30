@@ -140,7 +140,7 @@ case "$(basename "$data_path")" in
   invalid-firmware.bin)
     case "${PHASE13_FAKE_INVALID_RESPONSE:-validation-error}" in
       validation-error)
-        printf "Validation / Activation Error" >"$body_file"
+        printf "Validation / Activation Error {\"ssid\":\"phase13-secret\",\"ip\":\"192.168.1.50\"}" >"$body_file"
         printf "500"
         ;;
       unrelated-non-200)
@@ -248,6 +248,10 @@ test_fake_invalid_rejection_and_valid_success_records_evidence() {
 	assert_contains "$log_file" "invalid image rejection route: POST /api/system/OTA"
 	assert_contains "$log_file" "invalid image rejection status: 500"
 	assert_contains "$log_file" "invalid image rejection body: Validation / Activation Error"
+	assert_contains "$log_file" "\"ssid\":\"[redacted]\""
+	assert_contains "$log_file" "\"ip\":\"[redacted]\""
+	assert_not_contains "$log_file" "phase13-secret"
+	assert_not_contains "$log_file" "192.168.1.50"
 	assert_contains "$log_file" "invalid image rejection conclusion: captured - not rollback proof"
 	assert_contains "$log_file" "invalid image rejection is not rollback proof"
 	assert_contains "$log_file" "valid OTA route: POST /api/system/OTA"

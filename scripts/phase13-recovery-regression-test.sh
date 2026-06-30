@@ -93,12 +93,20 @@ if [[ -z "$body_file" || "$url" != "http://device.local/api/system/OTA" ]]; then
 fi
 case "${PHASE13_FAKE_CURL_SCENARIO:-invalid-rejected}" in
   invalid-rejected)
-    printf "invalid firmware rejected\n" >"$body_file"
+    printf "invalid firmware rejected {\"ssid\":\"phase13-secret\",\"ip\":\"192.168.1.77\"}\n" >"$body_file"
     printf "400"
     ;;
   invalid-accepted)
     printf "Firmware update complete, rebooting now!\n" >"$body_file"
     printf "200"
+    ;;
+  wrong-api-input)
+    printf "Wrong API input\n" >"$body_file"
+    printf "400"
+    ;;
+  interrupted-fast-400)
+    printf "Validation / Activation Error {\"ssid\":\"phase13-secret\",\"ip\":\"192.168.1.88\"}\n" >"$body_file"
+    printf "400"
     ;;
   interrupted-timeout)
     printf "client timed out before upload completed\n" >"$body_file"
@@ -242,6 +250,10 @@ test_failed_update_evidence_fields() {
 	assert_contains "$log_file" "failed update failure point:"
 	assert_contains "$log_file" "failed update public status: 400"
 	assert_contains "$log_file" "failed update public body: invalid firmware rejected"
+	assert_contains "$log_file" "\"ssid\":\"[redacted]\""
+	assert_contains "$log_file" "\"ip\":\"[redacted]\""
+	assert_not_contains "$log_file" "phase13-secret"
+	assert_not_contains "$log_file" "192.168.1.77"
 	assert_contains "$log_file" "failed update post-failure partition/static/API state:"
 	assert_contains "$log_file" "failed update recovery steps:"
 	assert_contains "$log_file" "failed update conclusion:"
@@ -273,6 +285,35 @@ test_failed_update_blocks_if_invalid_image_is_accepted() {
 	local log_file="${out_dir}/recovery-regression.log"
 	assert_contains "$log_file" "failed_update_status: blocked - invalid image was accepted"
 	assert_contains "$log_file" "failed update recovery steps: use recovery runbook and collect post-failure boot evidence"
+	assert_not_contains "$log_file" "failed_update_status: captured"
+}
+
+test_failed_update_blocks_wrong_route_response() {
+	local out_dir="${tmp_root}/failed-update-wrong-route"
+	local curl_stub="${tmp_root}/fake-curl-wrong-route"
+	local http_stub="${tmp_root}/fake-http-smoke-wrong-route"
+
+	create_fake_curl "$curl_stub"
+	create_fake_http_smoke "$http_stub"
+
+	set +e
+	PHASE13_FAKE_CURL_SCENARIO=wrong-api-input CURL_BIN="$curl_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+		--device-url http://device.local \
+		--manifest "${tmp_root}/manifest.json" \
+		--factory-image "${tmp_root}/factory.bin" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--allow-failed-update
+	local command_status=$?
+	set -e
+
+	if [[ "$command_status" -eq 0 ]]; then
+		fail "failed update accepted wrong-route response as captured"
+	fi
+	local log_file="${out_dir}/recovery-regression.log"
+	assert_contains "$log_file" "failed update public body: Wrong API input"
+	assert_contains "$log_file" "failed_update_status: blocked - rejection body did not contain expected failure marker"
 	assert_not_contains "$log_file" "failed_update_status: captured"
 }
 
@@ -330,6 +371,38 @@ test_interrupted_ota_blocks_if_upload_completes() {
 		fail "interrupted OTA accepted a completed upload as captured"
 	fi
 	assert_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: blocked - upload completed instead of interrupting"
+	assert_not_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: captured"
+}
+
+test_interrupted_ota_blocks_without_timeout() {
+	local out_dir="${tmp_root}/interrupted-fast-400"
+	local curl_stub="${tmp_root}/fake-curl-interrupted-fast-400"
+	local http_stub="${tmp_root}/fake-http-smoke-interrupted-fast-400"
+
+	create_fake_curl "$curl_stub"
+	create_fake_http_smoke "$http_stub"
+
+	set +e
+	PHASE13_FAKE_CURL_SCENARIO=interrupted-fast-400 CURL_BIN="$curl_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+		--device-url http://device.local \
+		--manifest "${tmp_root}/manifest.json" \
+		--factory-image "${tmp_root}/factory.bin" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--allow-interrupted-ota
+	local command_status=$?
+	set -e
+
+	if [[ "$command_status" -eq 0 ]]; then
+		fail "interrupted OTA accepted fast non-timeout response as captured"
+	fi
+	assert_contains "${out_dir}/interrupted-ota.log" "interrupted-update public status: 400"
+	assert_contains "${out_dir}/interrupted-ota.log" "\"ssid\":\"[redacted]\""
+	assert_contains "${out_dir}/interrupted-ota.log" "\"ip\":\"[redacted]\""
+	assert_not_contains "${out_dir}/interrupted-ota.log" "phase13-secret"
+	assert_not_contains "${out_dir}/interrupted-ota.log" "192.168.1.88"
+	assert_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: blocked - upload did not time out before completion"
 	assert_not_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: captured"
 }
 
@@ -494,7 +567,9 @@ test_default_pending_behavior
 test_failed_update_evidence_fields
 test_failed_update_blocks_if_invalid_image_is_accepted
 test_failed_update_blocks_if_post_failure_smoke_fails
+test_failed_update_blocks_wrong_route_response
 test_interrupted_ota_blocks_if_upload_completes
+test_interrupted_ota_blocks_without_timeout
 test_interrupted_ota_blocks_if_post_smoke_fails
 test_large_erase_command_rendering
 test_large_erase_blocks_without_post_restore_markers

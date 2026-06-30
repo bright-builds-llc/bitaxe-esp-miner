@@ -149,7 +149,10 @@ body_snippet() {
 		return
 	fi
 
-	LC_ALL=C tr -d '\000\r' <"$body_file" | head -c 240 | tr '\n\t' '  '
+	LC_ALL=C tr -d '\000\r' <"$body_file" |
+		head -c 240 |
+		sed -E 's/"(ssid|wifiPass|wifiPassword|stratumUser|stratumPassword|stratumCert|poolUrl|fallbackPoolUrl|hostname|ip|ipAddress|gateway|netmask|dns)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1":"[redacted]"/g; s/"(stratumPort|fallbackStratumPort)"[[:space:]]*:[[:space:]]*[0-9]+/"\1":[redacted]/g; s/([0-9]{1,3}\.){3}[0-9]{1,3}/[redacted-ip]/g; s/([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}/[redacted-mac]/g' |
+		tr '\n\t' '  '
 }
 
 failed_update_status_is_rejection() {
@@ -164,7 +167,11 @@ failed_update_status_is_rejection() {
 failed_update_body_has_rejection_marker() {
 	local body_file="$1"
 
-	grep -Eiq 'invalid|reject|validation|activation|error|wrong api input|firmware' "$body_file"
+	if grep -Eiq 'wrong api input' "$body_file"; then
+		return 1
+	fi
+
+	grep -Eiq 'invalid|reject|validation|activation|error' "$body_file"
 }
 
 sha256_file() {
@@ -457,6 +464,10 @@ run_interrupted_ota() {
 
 	if [[ "$status" == "200" ]]; then
 		log_both "$interrupted_log" "interrupted_update_status: blocked - upload completed instead of interrupting"
+		return 1
+	fi
+	if [[ "$curl_status" -ne 28 ]]; then
+		log_both "$interrupted_log" "interrupted_update_status: blocked - upload did not time out before completion"
 		return 1
 	fi
 
