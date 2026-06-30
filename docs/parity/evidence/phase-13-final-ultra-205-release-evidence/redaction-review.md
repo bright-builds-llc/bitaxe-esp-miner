@@ -4,21 +4,21 @@
 
 This review applies to Phase 13 evidence artifacts under `docs/parity/evidence/phase-13-final-ultra-205-release-evidence/`, including generated JSON, serial logs, HTTP probe output, OTA responses, recovery logs, copied terminal output, package manifest excerpts, and Markdown evidence.
 
-Current status: pending until generated artifacts are reviewed before commit.
+Current status: package release-gate evidence reviewed for Task 2; later generated hardware, HTTP, OTA, recovery, rollback, erase, failed-update, interrupted-update, and checklist artifacts remain pending until their owning plans create them.
 
 ## Review Checklist
 
-- [ ] Wi-Fi credentials are absent or redacted.
-- [ ] Pool URLs are absent or redacted.
-- [ ] Pool usernames are absent or redacted.
-- [ ] Pool passwords are absent or redacted.
-- [ ] API tokens are absent or redacted.
-- [ ] Private endpoints are absent or redacted.
-- [ ] NVS secret values are absent or redacted.
-- [ ] private DEVICE_URL values are absent, redacted, or reduced to the minimum necessary bench evidence.
-- [ ] Raw terminal secrets are absent or redacted.
-- [ ] local private IP disclosure beyond necessary bench evidence is absent or redacted.
-- [ ] Retained source commit, reference commit, board, port, package manifest, artifact, command, log, observed behavior, and conclusion fields are necessary for evidence.
+- [x] Wi-Fi credentials are absent or redacted for Task 2 package release-gate evidence.
+- [x] Pool URLs are absent or redacted for Task 2 package release-gate evidence.
+- [x] Pool usernames are absent or redacted for Task 2 package release-gate evidence.
+- [x] Pool passwords are absent or redacted for Task 2 package release-gate evidence.
+- [x] API tokens are absent or redacted for Task 2 package release-gate evidence.
+- [x] Private endpoints are absent or redacted for Task 2 package release-gate evidence.
+- [x] NVS secret values are absent or redacted for Task 2 package release-gate evidence.
+- [x] private DEVICE_URL values are absent, redacted, or reduced to the minimum necessary bench evidence for Task 2 package release-gate evidence.
+- [x] Raw terminal secrets are absent or redacted for Task 2 package release-gate evidence.
+- [x] local private IP disclosure beyond necessary bench evidence is absent or redacted for Task 2 package release-gate evidence.
+- [x] Retained source commit, reference commit, package manifest, artifact, command, observed behavior, and conclusion fields are necessary for Task 2 package release-gate evidence.
 
 ## Review Notes
 
@@ -28,4 +28,4 @@ Current status: pending until generated artifacts are reviewed before commit.
 
 ## Conclusion
 
-Conclusion: pending - Phase 13 generated artifacts have not yet been reviewed.
+Conclusion: passed for Task 2 package release-gate evidence - `package-release-gate.md`, `just package` output, release-gate output, and the generated package manifest fields recorded in this directory were reviewed; no secret redaction was required. Later Phase 13 generated artifacts require their own review before commit.
