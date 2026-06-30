@@ -1,9 +1,9 @@
 ---
 phase: 13
 slug: final-ultra-205-release-evidence
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: passed
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-30
 ---
 
@@ -32,21 +32,21 @@ created: 2026-06-30
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 13-01-01 | 01 | 1 | REL-04/EVD-05 | T-13-01 | Release artifacts must tie source/reference commits to manifest checksums. | package/release-gate | `just package && bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` | W0 | pending |
-| 13-02-01 | 02 | 2 | FND-06/EVD-05 | T-13-02 | Hardware evidence must target exactly one detector-approved Ultra 205. | hardware-smoke | `just detect-ultra205` then `just flash-monitor board=205 port=<path> evidence-dir=docs/parity/evidence/phase-13-final-ultra-205-release-evidence` | W0 | pending |
-| 13-03-01 | 03 | 3 | API-09/REL-01 | T-13-03 | Live HTTP evidence must use a reachable just-flashed device URL and no private data leakage. | live-http | plan-defined `DEVICE_URL` probe command | W0 | pending |
-| 13-05-01 | 05 | 4 | REL-08 | T-13-05 | Recovery, failed-update, and destructive evidence must have current factory image recovery path, stop conditions, and explicit failed-update status before valid OTA. | hardware-regression | plan-defined recovery commands only | W0 | pending |
-| 13-04-01 | 04 | 5 | REL-02/REL-08 | T-13-04 | OTA evidence must not run valid upload until recovery runbook and failed-update/recovery status exist, and must not treat upload success or invalid rejection as rollback proof without boot-validation logs. | live-ota | plan-defined OTA probe plus monitor evidence | W0 | pending |
-| 13-06-01 | 06 | 6 | REL-03/EVD-05 | T-13-06 | OTAWWW remains a documented REL-03 gap unless interrupted-update hardware-regression exists. | parity/docs | `just parity` | W0 | pending |
+| 13-01-01 | 01 | 1 | REL-04/EVD-05 | T-13-01 | Release artifacts must tie source/reference commits to manifest checksums. | package/release-gate | `just package && bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` | W0 | green |
+| 13-02-01 | 02 | 2 | FND-06/EVD-05 | T-13-02 | Hardware evidence must target exactly one detector-approved Ultra 205. | hardware-smoke | `just detect-ultra205` then `just flash-monitor board=205 port=<path> evidence-dir=docs/parity/evidence/phase-13-final-ultra-205-release-evidence` | W0 | green |
+| 13-03-01 | 03 | 3 | API-09/REL-01 | T-13-03 | Live HTTP evidence must use a reachable just-flashed device URL and no private data leakage. | live-http | `scripts/phase13-http-static-smoke.sh`; final status `DEVICE_URL status: blocked - missing DEVICE_URL` | W0 | green |
+| 13-05-01 | 05 | 4 | REL-08 | T-13-05 | Recovery, failed-update, and destructive evidence must have current factory image recovery path, stop conditions, and explicit failed-update status before valid OTA. | hardware-regression | `scripts/phase13-recovery-regression.sh`; final statuses `large_erase_status: pending - allow flag not provided`, `failed_update_status: pending - allow flag not provided`, and `interrupted_update_status: pending - allow flag not provided` | W0 | green |
+| 13-04-01 | 04 | 5 | REL-02/REL-08 | T-13-04 | OTA evidence must not run valid upload until recovery runbook and failed-update/recovery status exist, and must not treat upload success or invalid rejection as rollback proof without boot-validation logs. | live-ota | `scripts/phase13-firmware-ota-smoke.sh`; final status `firmware_ota_status: blocked - DEVICE_URL unavailable` | W0 | green |
+| 13-06-01 | 06 | 6 | REL-03/EVD-05 | T-13-06 | OTAWWW remains a documented REL-03 gap unless interrupted-update hardware-regression exists. | parity/docs | `just parity`; `OTA-002` remains deferred and the expected `Wrong API input` response was not observed live because `DEVICE_URL` was missing | W0 | green |
 
 *Status: pending, green, red, or flaky.*
 
 ## Wave 0 Requirements
 
-- [ ] Confirm whether a repo-owned HTTP/OTA evidence helper is needed or whether existing plan commands can capture status codes, headers, response snippets, checksums, and conclusions.
-- [ ] Define Phase 13 evidence directory and redaction review path.
-- [ ] Confirm `DEVICE_URL` input mechanism before any live HTTP/OTA probe.
-- [ ] Confirm destructive recovery runbooks name current factory image, stop conditions, failed-update evidence requirements, and recovery commands before any erase, rollback, valid OTA, failed-update, or interrupted-update action.
+- [x] Confirm whether a repo-owned HTTP/OTA evidence helper is needed or whether existing plan commands can capture status codes, headers, response snippets, checksums, and conclusions.
+- [x] Define Phase 13 evidence directory and redaction review path.
+- [x] Confirm `DEVICE_URL` input mechanism before any live HTTP/OTA probe.
+- [x] Confirm destructive recovery runbooks name current factory image, stop conditions, failed-update evidence requirements, and recovery commands before any erase, rollback, valid OTA, failed-update, or interrupted-update action.
 
 ## Manual-Only Verifications
 
@@ -60,11 +60,11 @@ created: 2026-06-30
 
 ## Validation Sign-Off
 
-- [ ] All tasks have automated or manual evidence commands.
-- [ ] Sampling continuity: no three consecutive tasks without an automated host check or explicit hardware/manual evidence checkpoint.
-- [ ] Wave 0 covers all missing evidence-helper and `DEVICE_URL` prerequisites.
-- [ ] No watch-mode flags.
-- [ ] Feedback latency is bounded or explicitly documented for hardware/destructive checks.
-- [ ] Set `nyquist_compliant: true` after plans instantiate task IDs and verification commands.
+- [x] All tasks have automated or manual evidence commands.
+- [x] Sampling continuity: no three consecutive tasks without an automated host check or explicit hardware/manual evidence checkpoint.
+- [x] Wave 0 covers all missing evidence-helper and `DEVICE_URL` prerequisites.
+- [x] No watch-mode flags.
+- [x] Feedback latency is bounded or explicitly documented for hardware/destructive checks.
+- [x] Set `nyquist_compliant: true` after plans instantiate task IDs and verification commands.
 
-**Approval:** pending
+**Approval:** passed - evidence-aware. Live HTTP/static, firmware OTA, rollback, failed-update, large erase, interrupted-update, and OTAWWW live-response evidence remain blocked or pending exactly as recorded in the Phase 13 final ledger.

@@ -301,12 +301,45 @@ No row should contain blocker language while marked `verified`.
 
 ## Final Verification
 
-Status before Task 3: pending.
+Status after Task 3: passed with conservative live-only blockers preserved.
 
-The final verification section will be updated after the plan runs the required
-script syntax checks, Bazel script tests, Rust pre-commit sequence, package
-build, release gate, parity guard, full test command, reference guard, and
-reference-tree diff guard.
+Task 3 ran the final host verification set after the final checklist and
+release-document updates:
+
+| Command | Result |
+| --- | --- |
+| `bash -n scripts/phase13-http-static-smoke.sh` | passed |
+| `bash -n scripts/phase13-monitor-capture.sh` | passed |
+| `bash -n scripts/phase13-firmware-ota-smoke.sh` | passed |
+| `bash -n scripts/phase13-recovery-regression.sh` | passed |
+| `bazel test //scripts:phase13_http_static_smoke_test //scripts:phase13_monitor_capture_test //scripts:phase13_firmware_ota_smoke_test //scripts:phase13_recovery_regression_test` | passed; 4 tests passed |
+| `cargo fmt --all` | passed |
+| `cargo clippy --all-targets --all-features -- -D warnings` | passed |
+| `cargo build --all-targets --all-features` | passed |
+| `cargo test --all-features` | passed |
+| `just package` | passed |
+| `bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` | passed; `release_gate: passed` |
+| `just parity` | passed; `validation_errors: none` |
+| `just test` | passed; 17 Bazel tests passed |
+| `just verify-reference` | passed; `reference clean: c1915b0a63bfabebdb95a515cedfee05146c1d50` |
+| `git diff -- reference/esp-miner --exit-code` | passed |
+
+The Task 3 package build used source commit
+`3eb66e4c088f437f1b4bd255217bd888e6f1cc33` and reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`. That docs-current package passed
+the release gate, but it was not live-flashed. Hardware evidence in this ledger
+remains tied to the live-flashed package source commit
+`190849539700b8f9a7909fd2b6ebd84142557968`.
+
+Task 3 did not change the live evidence blockers:
+
+- `DEVICE_URL status: blocked - missing DEVICE_URL`
+- `firmware_ota_status: blocked - DEVICE_URL unavailable`
+- `large_erase_status: pending - allow flag not provided`
+- `failed_update_status: pending - allow flag not provided`
+- `interrupted_update_status: pending - allow flag not provided`
+- Rollback and boot-validation status:
+  `pending - Plan 04 OTA evidence not run yet`
 
 ## Redaction Review
 
