@@ -200,6 +200,13 @@ run_http_static_smoke() {
 	"$BASH" "$http_static_smoke_script" --device-url "$device_url" --manifest "$manifest" --out-dir "$out_path" >>"$main_log" 2>&1
 }
 
+http_static_smoke_passed() {
+	local out_path="$1"
+	local smoke_log="${out_path}/http-static-smoke.log"
+
+	[[ -f "$smoke_log" ]] && grep -Fq "http_static_status: passed" "$smoke_log"
+}
+
 require_ultra205_destructive_gate() {
 	local detector_log="${out_dir}/detect-ultra205-before-destructive.log"
 	local detected_port
@@ -407,7 +414,19 @@ run_interrupted_ota() {
 	if [[ -s "$error" ]]; then
 		log_both "$interrupted_log" "interrupted-update curl error: $(body_snippet "$error")"
 	fi
-	run_http_static_smoke "interrupted_update_post_failure" "${out_dir}/interrupted-ota-http-static"
+
+	if [[ "$status" == "200" ]]; then
+		log_both "$interrupted_log" "interrupted_update_status: blocked - upload completed instead of interrupting"
+		return 1
+	fi
+
+	local http_static_out="${out_dir}/interrupted-ota-http-static"
+	run_http_static_smoke "interrupted_update_post_failure" "$http_static_out"
+	if ! http_static_smoke_passed "$http_static_out"; then
+		log_both "$interrupted_log" "interrupted_update_status: blocked - post-interruption operability not proven"
+		return 1
+	fi
+
 	log_both "$interrupted_log" "interrupted_update_status: captured"
 	log_both "$interrupted_log" "interrupted_update_conclusion: captured - post-interruption operability requires cited HTTP/static and boot evidence"
 }

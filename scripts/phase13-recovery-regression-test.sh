@@ -100,6 +100,15 @@ case "${PHASE13_FAKE_CURL_SCENARIO:-invalid-rejected}" in
     printf "Firmware update complete, rebooting now!\n" >"$body_file"
     printf "200"
     ;;
+  interrupted-timeout)
+    printf "client timed out before upload completed\n" >"$body_file"
+    printf "000"
+    exit 28
+    ;;
+  ota-completed)
+    printf "Firmware update complete, rebooting now!\n" >"$body_file"
+    printf "200"
+    ;;
   *)
     printf "unknown fake curl scenario: %s\n" "$PHASE13_FAKE_CURL_SCENARIO" >&2
     exit 2
@@ -176,7 +185,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 mkdir -p "$out_dir"
-printf "http_static_status: passed\n" >"${out_dir}/http-static-smoke.log"
+printf "http_static_status: %s\n" "${PHASE13_FAKE_HTTP_SMOKE_STATUS:-passed}" >"${out_dir}/http-static-smoke.log"
 '
 }
 
@@ -256,6 +265,61 @@ test_failed_update_blocks_if_invalid_image_is_accepted() {
 	assert_not_contains "$log_file" "failed_update_status: captured"
 }
 
+test_interrupted_ota_blocks_if_upload_completes() {
+	local out_dir="${tmp_root}/interrupted-completed"
+	local curl_stub="${tmp_root}/fake-curl-interrupted-completed"
+	local http_stub="${tmp_root}/fake-http-smoke-interrupted-completed"
+
+	create_fake_curl "$curl_stub"
+	create_fake_http_smoke "$http_stub"
+
+	set +e
+	PHASE13_FAKE_CURL_SCENARIO=ota-completed CURL_BIN="$curl_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+		--device-url http://device.local \
+		--manifest "${tmp_root}/manifest.json" \
+		--factory-image "${tmp_root}/factory.bin" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--allow-interrupted-ota
+	local command_status=$?
+	set -e
+
+	if [[ "$command_status" -eq 0 ]]; then
+		fail "interrupted OTA accepted a completed upload as captured"
+	fi
+	assert_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: blocked - upload completed instead of interrupting"
+	assert_not_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: captured"
+}
+
+test_interrupted_ota_blocks_if_post_smoke_fails() {
+	local out_dir="${tmp_root}/interrupted-smoke-failed"
+	local curl_stub="${tmp_root}/fake-curl-interrupted-smoke-failed"
+	local http_stub="${tmp_root}/fake-http-smoke-interrupted-smoke-failed"
+
+	create_fake_curl "$curl_stub"
+	create_fake_http_smoke "$http_stub"
+
+	set +e
+	PHASE13_FAKE_CURL_SCENARIO=interrupted-timeout PHASE13_FAKE_HTTP_SMOKE_STATUS=blocked CURL_BIN="$curl_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+		--device-url http://device.local \
+		--manifest "${tmp_root}/manifest.json" \
+		--factory-image "${tmp_root}/factory.bin" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--allow-interrupted-ota
+	local command_status=$?
+	set -e
+
+	if [[ "$command_status" -eq 0 ]]; then
+		fail "interrupted OTA accepted failed post-interruption smoke"
+	fi
+	assert_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: blocked - post-interruption operability not proven"
+	assert_contains "${out_dir}/interrupted-ota-http-static/http-static-smoke.log" "http_static_status: blocked"
+	assert_not_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: captured"
+}
+
 test_large_erase_command_rendering() {
 	local out_dir="${tmp_root}/large"
 	local bin_dir="${tmp_root}/bin"
@@ -292,6 +356,8 @@ create_inputs "$tmp_root"
 test_default_pending_behavior
 test_failed_update_evidence_fields
 test_failed_update_blocks_if_invalid_image_is_accepted
+test_interrupted_ota_blocks_if_upload_completes
+test_interrupted_ota_blocks_if_post_smoke_fails
 test_large_erase_command_rendering
 
 printf 'phase13_recovery_regression_test passed\n'
