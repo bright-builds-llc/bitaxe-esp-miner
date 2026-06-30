@@ -143,7 +143,7 @@ case "${method} ${path}" in
     ;;
   "GET /api/system/info")
     headers="Content-Type: application/json"
-    body="{\"firmware_commit\":\"190849539700\",\"ssid\":\"HomeNetwork\",\"wifiPass\":\"secret\",\"stratumUser\":\"worker\",\"ip\":\"192.168.1.5\"}"
+    body="{\"firmware_commit\":\"190849539700\",\"ssid\":\"HomeNetwork\",\"wifiPass\":\"secret\",\"stratumUser\":\"worker\",\"stratumCert\":\"PHASE13_LONG_CERT_SECRET_PREFIX_$(printf "x%.0s" {1..260})\",\"ip\":\"192.168.1.5\"}"
     ;;
   "GET /api/phase13-unknown")
     status=404
@@ -223,6 +223,7 @@ test_fake_success_records_required_paths() {
 	assert_contains "$log_file" "\"ssid\":\"[redacted]\""
 	assert_contains "$log_file" "\"wifiPass\":\"[redacted]\""
 	assert_contains "$log_file" "\"stratumUser\":\"[redacted]\""
+	assert_contains "$log_file" "\"stratumCert\":\"[redacted]\""
 	assert_contains "$log_file" "Redirect to the captive portal"
 	assert_contains "$log_file" "{\"error\":\"unknown route\"}"
 	assert_contains "$log_file" "Wrong API input"
@@ -230,6 +231,7 @@ test_fake_success_records_required_paths() {
 	assert_not_contains "$log_file" "HomeNetwork"
 	assert_not_contains "$log_file" "secret"
 	assert_not_contains "$log_file" "worker"
+	assert_not_contains "$log_file" "PHASE13_LONG_CERT_SECRET_PREFIX"
 	assert_not_contains "$log_file" "192.168.1.5"
 	assert_contains "$log_file" "http_static_status: passed"
 }

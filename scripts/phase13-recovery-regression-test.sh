@@ -93,7 +93,7 @@ if [[ -z "$body_file" || "$url" != "http://device.local/api/system/OTA" ]]; then
 fi
 case "${PHASE13_FAKE_CURL_SCENARIO:-invalid-rejected}" in
   invalid-rejected)
-    printf "invalid firmware rejected {\"ssid\":\"phase13-secret\",\"ip\":\"192.168.1.77\"}\n" >"$body_file"
+    printf "invalid firmware rejected {\"ssid\":\"phase13-secret\",\"stratumCert\":\"PHASE13_LONG_FAILED_UPDATE_SECRET_PREFIX_%s\",\"ip\":\"192.168.1.77\"}\n" "$(printf "x%.0s" {1..260})" >"$body_file"
     printf "400"
     ;;
   invalid-accepted)
@@ -105,7 +105,7 @@ case "${PHASE13_FAKE_CURL_SCENARIO:-invalid-rejected}" in
     printf "400"
     ;;
   interrupted-fast-400)
-    printf "Validation / Activation Error {\"ssid\":\"phase13-secret\",\"ip\":\"192.168.1.88\"}\n" >"$body_file"
+    printf "Validation / Activation Error {\"ssid\":\"phase13-secret\",\"stratumCert\":\"PHASE13_LONG_INTERRUPTED_SECRET_PREFIX_%s\",\"ip\":\"192.168.1.88\"}\n" "$(printf "x%.0s" {1..260})" >"$body_file"
     printf "400"
     ;;
   interrupted-timeout)
@@ -251,8 +251,10 @@ test_failed_update_evidence_fields() {
 	assert_contains "$log_file" "failed update public status: 400"
 	assert_contains "$log_file" "failed update public body: invalid firmware rejected"
 	assert_contains "$log_file" "\"ssid\":\"[redacted]\""
+	assert_contains "$log_file" "\"stratumCert\":\"[redacted]\""
 	assert_contains "$log_file" "\"ip\":\"[redacted]\""
 	assert_not_contains "$log_file" "phase13-secret"
+	assert_not_contains "$log_file" "PHASE13_LONG_FAILED_UPDATE_SECRET_PREFIX"
 	assert_not_contains "$log_file" "192.168.1.77"
 	assert_contains "$log_file" "failed update post-failure partition/static/API state:"
 	assert_contains "$log_file" "failed update recovery steps:"
@@ -399,8 +401,10 @@ test_interrupted_ota_blocks_without_timeout() {
 	fi
 	assert_contains "${out_dir}/interrupted-ota.log" "interrupted-update public status: 400"
 	assert_contains "${out_dir}/interrupted-ota.log" "\"ssid\":\"[redacted]\""
+	assert_contains "${out_dir}/interrupted-ota.log" "\"stratumCert\":\"[redacted]\""
 	assert_contains "${out_dir}/interrupted-ota.log" "\"ip\":\"[redacted]\""
 	assert_not_contains "${out_dir}/interrupted-ota.log" "phase13-secret"
+	assert_not_contains "${out_dir}/interrupted-ota.log" "PHASE13_LONG_INTERRUPTED_SECRET_PREFIX"
 	assert_not_contains "${out_dir}/interrupted-ota.log" "192.168.1.88"
 	assert_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: blocked - upload did not time out before completion"
 	assert_not_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: captured"
