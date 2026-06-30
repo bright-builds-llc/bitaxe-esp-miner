@@ -133,8 +133,8 @@ conclusion: blocked - live HTTP/static/recovery evidence requires an explicit DE
 | `GET /recovery` | `200` recovery page with `AxeOS Recovery` markers | not run - blocked before curl |
 | `GET /api/system/info` | API route coexists with static wildcard | not run - blocked before curl |
 | `GET /api/phase13-unknown` | `404` JSON body `{"error":"unknown route"}` | not run - blocked before curl |
-| `GET /api/ws` | WebSocket route response, not static wildcard | not run - blocked before curl |
-| `GET /api/ws/live` | Live WebSocket route response, not static wildcard | not run - blocked before curl |
+| `GET /api/ws` | `400` or `426` WebSocket no-upgrade response, not static wildcard or server error | not run - blocked before curl |
+| `GET /api/ws/live` | `400` or `426` live WebSocket no-upgrade response, not static wildcard or server error | not run - blocked before curl |
 | `POST /api/system/OTAWWW` | `400` body `Wrong API input` | not run - blocked before curl |
 
 Checklist conclusion: API route, static, recovery, WebSocket coexistence, and
@@ -204,6 +204,11 @@ Approved erase command shape:
 Selected erase command that would be used only after gates clear:
 `espflash erase-flash --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive`
 
+Current helper gate before that command: rerun `just detect-ultra205`, require
+exactly one detector `port=`, require it to match the selected port, and run
+`espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive`
+immediately before erase.
+
 Result:
 
 ```text
@@ -216,6 +221,9 @@ Factory restore command recorded by the helper:
 `just flash board=205 port=/dev/cu.usbmodem1101 image=bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json evidence-dir=docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression/large-erase-restore`
 
 Checklist conclusion: large erase recovery remains pending and below verified.
+Future captured evidence also requires post-restore `firmware_commit=`,
+`reference_commit=`, `safe_state: mining=disabled`, `spiffs_mount=available`,
+and `http_static_status: passed`.
 
 ## Failed Update
 

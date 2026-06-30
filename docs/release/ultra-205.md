@@ -236,7 +236,8 @@ verified until the hardware-smoke record contains these observations.
 ## Large Erase
 
 Large Erase is destructive. Use it only when the device can be recovered
-through USB factory flashing with the current package manifest.
+through USB factory flashing with the current package manifest and a reachable
+`DEVICE_URL` for post-restore HTTP/static proof.
 
 Safe procedure:
 
@@ -244,10 +245,14 @@ Safe procedure:
    manifest path.
 1. Confirm `bitaxe-ultra205-factory.bin` is present in
    `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`.
+1. Rerun `just detect-ultra205`, require exactly one `port=`, require it to
+   match the selected port, and run immediate `espflash board-info`.
 1. Record the exact erase command and tool version before running it.
 1. Flash the factory image with `just flash board=205 port=<port>`.
 1. Monitor with `just monitor port=<port>`.
-1. Record post-erase boot, filesystem, recovery, and API reachability.
+1. Record post-erase boot identity, `safe_state: mining=disabled`,
+   `spiffs_mount=available`, filesystem, recovery, and API reachability.
+1. Require post-restore HTTP/static smoke to pass.
 
 Do not describe Large Erase as verified unless that full sequence is captured
 in hardware evidence.
@@ -271,6 +276,8 @@ For a failed firmware update, capture:
 
 Do not treat a rejected upload as rollback proof. Rollback requires bootloader
 or boot-validation evidence from the actual post-update state.
+A failed-update capture must prove invalid-image rejection; a `200` response,
+curl failure, wrong-route response, or server error is blocked evidence.
 
 Phase 13 failed-update status is conservative:
 `failed_update_status: pending - allow flag not provided`. No invalid firmware
@@ -290,6 +297,9 @@ For interrupted static update evidence, capture:
 
 Until the Phase 8 record exists, interrupted static update remains deferred and
 OTAWWW remains the REL-03 gap.
+For the Phase 13 interrupted firmware OTA helper, a completed `200` OTA response
+is blocked evidence and post-interruption HTTP/static smoke must pass before a
+captured conclusion is valid.
 
 Phase 13 interrupted-update status is conservative:
 `interrupted_update_status: pending - allow flag not provided`. No bounded

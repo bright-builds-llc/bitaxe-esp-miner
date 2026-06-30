@@ -37,8 +37,8 @@ Because no explicit target URL was available, every live route probe below is no
 | `GET /recovery` | `200` with `AxeOS Recovery` and `Response:` page markers | not run | not captured | blocked before curl | blocked - missing DEVICE_URL |
 | `GET /api/system/info` | known API route coexists with static wildcard | not run | not captured | blocked before curl | blocked - missing DEVICE_URL |
 | `GET /api/phase13-unknown` | `404` JSON body `{"error":"unknown route"}` | not run | not captured | blocked before curl | blocked - missing DEVICE_URL |
-| `GET /api/ws` | bounded WebSocket route response, not static wildcard | not run | not captured | blocked before curl | blocked - missing DEVICE_URL |
-| `GET /api/ws/live` | bounded live WebSocket route response, not static wildcard | not run | not captured | blocked before curl | blocked - missing DEVICE_URL |
+| `GET /api/ws` | `400` or `426` WebSocket no-upgrade response, not static wildcard or server error | not run | not captured | blocked before curl | blocked - missing DEVICE_URL |
+| `GET /api/ws/live` | `400` or `426` live WebSocket no-upgrade response, not static wildcard or server error | not run | not captured | blocked before curl | blocked - missing DEVICE_URL |
 | `POST /api/system/OTAWWW` | `400` body `Wrong API input` | not run | not captured | blocked before curl | blocked - missing DEVICE_URL; REL-03 gap remains open |
 
 ## Recovery Page Evidence
@@ -55,7 +55,7 @@ Follow-up path: implement whole-`www` partition update with interruption/recover
 
 ## Redaction
 
-redaction: passed for `http-static-smoke.log` and this Markdown summary. No route headers, route body snippets, private endpoints, credentials, tokens, NVS secret values, pool data, or raw terminal secrets were generated because the helper stopped before curl.
+redaction: passed for `http-static-smoke.log` and this Markdown summary. No route headers, route body snippets, private endpoints, credentials, tokens, NVS secret values, pool data, or raw terminal secrets were generated because the helper stopped before curl. Future live route bodies are logged only as `redacted_body_snippet`.
 
 ## Conclusion
 

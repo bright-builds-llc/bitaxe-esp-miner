@@ -54,8 +54,12 @@ fault-injection commands when any of these conditions apply:
 ## Large Erase Procedure
 
 Large erase is destructive and must run only through the Phase 13 recovery helper
-after the stop conditions are clear and `--allow-large-erase` is explicitly
-provided.
+after the stop conditions are clear, an explicit reachable `DEVICE_URL` is
+available, and `--allow-large-erase` is explicitly provided.
+
+Immediately before erase, the helper must rerun `just detect-ultra205`, require
+exactly one detector-reported `port=`, require that port to match `--port`, and
+run `espflash board-info --chip esp32s3 --port <path> --non-interactive`.
 
 The only approved erase command is:
 
@@ -64,10 +68,10 @@ espflash erase-flash --chip esp32s3 --port <path> --non-interactive
 ```
 
 After erase, restore with the factory command in the Recovery Procedure section,
-capture bounded monitor output, and rerun HTTP/static smoke when `DEVICE_URL` is
-available. Do not claim large erase recovery verified unless the erase result,
-factory reflash result, monitor markers, filesystem/static route state, recovery
-route state, and API reachability are all recorded.
+capture bounded monitor output, and rerun HTTP/static smoke. Do not claim large
+erase recovery verified unless the erase result, factory reflash result,
+`firmware_commit=`, `reference_commit=`, `safe_state: mining=disabled`,
+`spiffs_mount=available`, and `http_static_status: passed` are all recorded.
 
 ## Failed Update Procedure
 
@@ -80,7 +84,10 @@ POST /api/system/OTA
 The Phase 13 recovery helper creates a fixed invalid firmware image, records its
 SHA-256 checksum, uploads it with `curl`, records the public status/body, and
 then records post-failure partition/static/API state through the HTTP/static
-smoke helper when `DEVICE_URL` is available.
+smoke helper when `DEVICE_URL` is available. It may emit captured failed-update
+evidence only for an explicit invalid-image rejection status with a rejection
+body marker; a `200` response, curl failure, wrong-route response, or server
+error is blocked evidence.
 
 A rejected invalid image is failed-update evidence only. It is not rollback or
 boot-validation proof.
@@ -96,8 +103,10 @@ curl --max-time 1 --limit-rate 1024 --data-binary @bazel-bin/firmware/bitaxe/esp
 
 The Phase 13 recovery helper must record the OTA image checksum, interruption
 point, public status/body or curl timeout/error, post-interruption route state,
-recovery steps, and final conclusion. Without `DEVICE_URL`, keep interrupted
-update evidence pending.
+recovery steps, and final conclusion. A completed `200` OTA response is blocked
+evidence, and captured interrupted-update evidence requires post-interruption
+`http_static_status: passed`. Without `DEVICE_URL`, keep interrupted update
+evidence pending.
 
 ## OTAWWW Gap Procedure
 
@@ -121,7 +130,7 @@ Expected artifacts:
 - `large-erase-post-restore-monitor.log` - bounded monitor capture produced by `scripts/phase13-monitor-capture.sh`.
 - `interrupted-ota.log` - interrupted firmware upload command shape, checksum, failure point, status/body, and recovery checks.
 - `invalid-firmware.bin` - fixed invalid firmware artifact used only for rejected-update evidence.
-- `failed-update-http-static/` or `large-erase-http-static/` - optional HTTP/static smoke outputs when `DEVICE_URL` is available.
+- `failed-update-http-static/`, `large-erase-http-static/`, or `interrupted-ota-http-static/` - HTTP/static smoke outputs for recovery evidence when `DEVICE_URL` is available; large-erase and interrupted-update captured conclusions require passing smoke.
 
 All recovery/destructive logs must be included in
 `docs/parity/evidence/phase-13-final-ultra-205-release-evidence/redaction-review.md`
