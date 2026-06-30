@@ -141,11 +141,14 @@ if [[ "$*" == "detect-ultra205" ]]; then
   printf "port=%s\n" "${PHASE13_DETECTOR_PORT:-/dev/test}"
   exit 0
 fi
-expected="flash board=205 port=/dev/test image='"${tmp_root}"'/factory.bin manifest='"${tmp_root}"'/manifest.json evidence-dir='"${tmp_root}"'/large/large-erase-restore"
-if [[ "$*" != "$expected" ]]; then
-  printf "unexpected just command: %s\nexpected: %s\n" "$*" "$expected" >&2
-  exit 2
-fi
+expected_prefix="flash board=205 port=/dev/test image='"${tmp_root}"'/factory.bin manifest='"${tmp_root}"'/manifest.json evidence-dir="
+case "$*" in
+  "$expected_prefix"*) ;;
+  *)
+    printf "unexpected just command: %s\nexpected prefix: %s\n" "$*" "$expected_prefix" >&2
+    exit 2
+    ;;
+esac
 '
 	: >"$command_log"
 }
@@ -166,6 +169,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 printf "capture_status=completed\n" >"$out"
+if [[ "${PHASE13_FAKE_MONITOR_MARKERS:-present}" == "present" ]]; then
+  {
+    printf "firmware_commit=source\n"
+    printf "reference_commit=reference\n"
+    printf "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled\n"
+    printf "spiffs_mount=available\n"
+  } >>"$out"
+fi
 '
 }
 
@@ -325,11 +336,14 @@ test_large_erase_command_rendering() {
 	local bin_dir="${tmp_root}/bin"
 	local command_log="${tmp_root}/commands.log"
 	local monitor_stub="${tmp_root}/fake-monitor"
+	local http_stub="${tmp_root}/fake-http-smoke-large"
 
 	create_fake_command_bin "$bin_dir" "$command_log"
 	create_fake_monitor "$monitor_stub"
+	create_fake_http_smoke "$http_stub"
 
-	PATH="${bin_dir}:$PATH" PHASE13_COMMAND_LOG="$command_log" PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" "$BASH" "$recovery_script" \
+	PATH="${bin_dir}:$PATH" PHASE13_COMMAND_LOG="$command_log" PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+		--device-url http://device.local \
 		--manifest "${tmp_root}/manifest.json" \
 		--factory-image "${tmp_root}/factory.bin" \
 		--ota-image "${tmp_root}/esp-miner.bin" \
@@ -348,6 +362,67 @@ test_large_erase_command_rendering() {
 	assert_contains "$command_log" "just flash board=205 port=/dev/test image=${tmp_root}/factory.bin manifest=${tmp_root}/manifest.json evidence-dir=${tmp_root}/large/large-erase-restore"
 }
 
+test_large_erase_blocks_without_post_restore_markers() {
+	local out_dir="${tmp_root}/large-missing-markers"
+	local bin_dir="${tmp_root}/bin-missing-markers"
+	local command_log="${tmp_root}/commands-missing-markers.log"
+	local monitor_stub="${tmp_root}/fake-monitor-missing-markers"
+	local http_stub="${tmp_root}/fake-http-smoke-missing-markers"
+
+	create_fake_command_bin "$bin_dir" "$command_log"
+	create_fake_monitor "$monitor_stub"
+	create_fake_http_smoke "$http_stub"
+
+	set +e
+	PATH="${bin_dir}:$PATH" PHASE13_COMMAND_LOG="$command_log" PHASE13_FAKE_MONITOR_MARKERS=missing PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+		--device-url http://device.local \
+		--manifest "${tmp_root}/manifest.json" \
+		--factory-image "${tmp_root}/factory.bin" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--allow-large-erase
+	local command_status=$?
+	set -e
+
+	if [[ "$command_status" -eq 0 ]]; then
+		fail "large erase accepted missing post-restore markers"
+	fi
+	assert_contains "${out_dir}/large-erase.log" "large_erase_conclusion: blocked - missing post-restore marker firmware_commit="
+	assert_not_contains "${out_dir}/large-erase.log" "large_erase_conclusion: captured"
+}
+
+test_large_erase_blocks_if_post_restore_smoke_fails() {
+	local out_dir="${tmp_root}/large-smoke-failed"
+	local bin_dir="${tmp_root}/bin-smoke-failed"
+	local command_log="${tmp_root}/commands-smoke-failed.log"
+	local monitor_stub="${tmp_root}/fake-monitor-smoke-failed"
+	local http_stub="${tmp_root}/fake-http-smoke-large-failed"
+
+	create_fake_command_bin "$bin_dir" "$command_log"
+	create_fake_monitor "$monitor_stub"
+	create_fake_http_smoke "$http_stub"
+
+	set +e
+	PATH="${bin_dir}:$PATH" PHASE13_COMMAND_LOG="$command_log" PHASE13_FAKE_HTTP_SMOKE_STATUS=blocked PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+		--device-url http://device.local \
+		--manifest "${tmp_root}/manifest.json" \
+		--factory-image "${tmp_root}/factory.bin" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--allow-large-erase
+	local command_status=$?
+	set -e
+
+	if [[ "$command_status" -eq 0 ]]; then
+		fail "large erase accepted failed post-restore smoke"
+	fi
+	assert_contains "${out_dir}/large-erase.log" "large_erase_conclusion: blocked - post-restore HTTP/static smoke failed"
+	assert_contains "${out_dir}/large-erase-http-static/http-static-smoke.log" "http_static_status: blocked"
+	assert_not_contains "${out_dir}/large-erase.log" "large_erase_conclusion: captured"
+}
+
 if [[ ! -f "$recovery_script" ]]; then
 	fail "recovery script missing: ${recovery_script}"
 fi
@@ -359,5 +434,7 @@ test_failed_update_blocks_if_invalid_image_is_accepted
 test_interrupted_ota_blocks_if_upload_completes
 test_interrupted_ota_blocks_if_post_smoke_fails
 test_large_erase_command_rendering
+test_large_erase_blocks_without_post_restore_markers
+test_large_erase_blocks_if_post_restore_smoke_fails
 
 printf 'phase13_recovery_regression_test passed\n'

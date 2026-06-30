@@ -207,6 +207,24 @@ http_static_smoke_passed() {
 	[[ -f "$smoke_log" ]] && grep -Fq "http_static_status: passed" "$smoke_log"
 }
 
+post_restore_monitor_has_required_markers() {
+	local marker
+
+	for marker in \
+		"firmware_commit=" \
+		"reference_commit=" \
+		"safe_state: mining=disabled" \
+		"spiffs_mount=available"; do
+		if grep -Fq "$marker" "$monitor_log"; then
+			log_both "$large_log" "post_restore_marker: ${marker} present"
+			continue
+		fi
+
+		log_both "$large_log" "large_erase_conclusion: blocked - missing post-restore marker ${marker}"
+		return 1
+	done
+}
+
 require_ultra205_destructive_gate() {
 	local detector_log="${out_dir}/detect-ultra205-before-destructive.log"
 	local detected_port
@@ -343,6 +361,11 @@ run_large_erase() {
 		log_both "$large_log" "large_erase_status: blocked - missing factory image ${factory_image}"
 		return
 	fi
+	if [[ -z "$device_url" ]]; then
+		log_both "$large_log" "large_erase_status: blocked - missing DEVICE_URL"
+		log_both "$large_log" "large_erase_conclusion: blocked - post-restore HTTP/static smoke requires DEVICE_URL"
+		return 1
+	fi
 
 	log_both "$large_log" "large_erase_status: running"
 	log_both "$large_log" "large erase exact command: espflash erase-flash --chip esp32s3 --port ${port} --non-interactive"
@@ -368,7 +391,17 @@ run_large_erase() {
 	log_both "$large_log" "monitor command: scripts/phase13-monitor-capture.sh --port ${port} --out ${monitor_log} --seconds 35"
 	"$BASH" "$monitor_capture_script" --port "$port" --out "$monitor_log" --seconds 35 >>"$large_log" 2>&1
 	log_both "$large_log" "post-restore monitor result: captured"
-	run_http_static_smoke "large_erase_post_restore" "${out_dir}/large-erase-http-static"
+	if ! post_restore_monitor_has_required_markers; then
+		return 1
+	fi
+
+	local http_static_out="${out_dir}/large-erase-http-static"
+	run_http_static_smoke "large_erase_post_restore" "$http_static_out"
+	if ! http_static_smoke_passed "$http_static_out"; then
+		log_both "$large_log" "large_erase_conclusion: blocked - post-restore HTTP/static smoke failed"
+		return 1
+	fi
+
 	log_both "$large_log" "large_erase_conclusion: captured - factory image recovery path completed"
 }
 
