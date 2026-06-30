@@ -33,11 +33,11 @@ created: 2026-06-30
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 13-01-01 | 01 | 1 | REL-04/EVD-05 | T-13-01 | Release artifacts must tie source/reference commits to manifest checksums. | package/release-gate | `just package && bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` | W0 | pending |
-| 13-02-01 | 02 | 1 | FND-06/EVD-05 | T-13-02 | Hardware evidence must target exactly one detector-approved Ultra 205. | hardware-smoke | `just detect-ultra205` then `just flash-monitor board=205 port=<path> evidence-dir=docs/parity/evidence/phase-13-final-ultra-205-release-evidence` | W0 | pending |
-| 13-03-01 | 03 | 2 | API-09/REL-01 | T-13-03 | Live HTTP evidence must use a reachable just-flashed device URL and no private data leakage. | live-http | plan-defined `DEVICE_URL` probe command | W0 | pending |
-| 13-04-01 | 04 | 2 | REL-02/REL-08 | T-13-04 | OTA evidence must not treat upload success or invalid rejection as rollback proof without boot-validation logs. | live-ota | plan-defined OTA probe plus monitor evidence | W0 | pending |
-| 13-05-01 | 05 | 3 | REL-08 | T-13-05 | Destructive recovery evidence must have current factory image recovery path and stop conditions. | hardware-regression | plan-defined recovery commands only | W0 | pending |
-| 13-06-01 | 06 | 3 | REL-03/EVD-05 | T-13-06 | OTAWWW remains a documented REL-03 gap unless interrupted-update hardware-regression exists. | parity/docs | `just parity` | W0 | pending |
+| 13-02-01 | 02 | 2 | FND-06/EVD-05 | T-13-02 | Hardware evidence must target exactly one detector-approved Ultra 205. | hardware-smoke | `just detect-ultra205` then `just flash-monitor board=205 port=<path> evidence-dir=docs/parity/evidence/phase-13-final-ultra-205-release-evidence` | W0 | pending |
+| 13-03-01 | 03 | 3 | API-09/REL-01 | T-13-03 | Live HTTP evidence must use a reachable just-flashed device URL and no private data leakage. | live-http | plan-defined `DEVICE_URL` probe command | W0 | pending |
+| 13-05-01 | 05 | 4 | REL-08 | T-13-05 | Recovery, failed-update, and destructive evidence must have current factory image recovery path, stop conditions, and explicit failed-update status before valid OTA. | hardware-regression | plan-defined recovery commands only | W0 | pending |
+| 13-04-01 | 04 | 5 | REL-02/REL-08 | T-13-04 | OTA evidence must not run valid upload until recovery runbook and failed-update/recovery status exist, and must not treat upload success or invalid rejection as rollback proof without boot-validation logs. | live-ota | plan-defined OTA probe plus monitor evidence | W0 | pending |
+| 13-06-01 | 06 | 6 | REL-03/EVD-05 | T-13-06 | OTAWWW remains a documented REL-03 gap unless interrupted-update hardware-regression exists. | parity/docs | `just parity` | W0 | pending |
 
 *Status: pending, green, red, or flaky.*
 
@@ -46,7 +46,7 @@ created: 2026-06-30
 - [ ] Confirm whether a repo-owned HTTP/OTA evidence helper is needed or whether existing plan commands can capture status codes, headers, response snippets, checksums, and conclusions.
 - [ ] Define Phase 13 evidence directory and redaction review path.
 - [ ] Confirm `DEVICE_URL` input mechanism before any live HTTP/OTA probe.
-- [ ] Confirm destructive recovery runbooks name current factory image, stop conditions, and recovery commands before any erase, rollback, failed-update, or interrupted-update action.
+- [ ] Confirm destructive recovery runbooks name current factory image, stop conditions, failed-update evidence requirements, and recovery commands before any erase, rollback, valid OTA, failed-update, or interrupted-update action.
 
 ## Manual-Only Verifications
 
