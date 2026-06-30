@@ -1,58 +1,55 @@
-______________________________________________________________________
-
+---
 phase: 13-final-ultra-205-release-evidence
 plan: "05"
 subsystem: release-evidence
 tags: [ultra-205, recovery, rollback, large-erase, interrupted-update, evidence, redaction]
 requires:
-
-- phase: 13-final-ultra-205-release-evidence
-  provides: Plan 13-03 HTTP/static/recovery helper and missing DEVICE_URL blocker evidence
-  provides:
-- Phase 13 recovery runbook with exact stop conditions and restore commands
-- Repo-owned bounded monitor capture helper and recovery regression helper
-- Bazel shell tests for monitor safety, pending defaults, failed-update fields, and command rendering
-- Pending REL-08 recovery/destructive evidence with redaction review
-  affects: [phase-13, release-evidence, ota-recovery, parity-checklist, release-docs]
-  tech-stack:
+  - phase: 13-final-ultra-205-release-evidence
+    provides: Plan 13-03 HTTP/static/recovery helper and missing DEVICE_URL blocker evidence
+provides:
+  - Phase 13 recovery runbook with exact stop conditions and restore commands
+  - Repo-owned bounded monitor capture helper and recovery regression helper
+  - Bazel shell tests for monitor safety, pending defaults, failed-update fields, and command rendering
+  - Pending REL-08 recovery/destructive evidence with redaction review
+affects: [phase-13, release-evidence, ota-recovery, parity-checklist, release-docs]
+tech-stack:
   added: []
   patterns:
-  - Destructive recovery helpers default to pending unless explicit allow flags are provided
-  - Bounded monitor capture wraps espflash monitor without serial writes or raw flash writes
-  - Missing DEVICE_URL produces pending evidence instead of live HTTP or destructive shortcuts
-    key-files:
-    created:
-  - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-runbook.md
-  - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression.md
-  - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression/recovery-regression.log
-  - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression/large-erase.log
-  - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression/large-erase-post-restore-monitor.log
-  - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression/interrupted-ota.log
-  - scripts/phase13-monitor-capture.sh
-  - scripts/phase13-monitor-capture-test.sh
-  - scripts/phase13-recovery-regression.sh
-  - scripts/phase13-recovery-regression-test.sh
-    modified:
-  - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/redaction-review.md
-  - scripts/BUILD.bazel
-  - scripts/phase13-recovery-regression.sh
-  - scripts/phase13-recovery-regression-test.sh
-    key-decisions:
-- "Recovery, failed-update, large-erase, interrupted-update, rollback, and boot-validation evidence remain pending when DEVICE_URL is missing and allow flags are absent."
-- "Plan 13-05 helpers record exact command shapes but do not execute destructive or fault-injection actions without explicit allow flags."
-- "OTAWWW remains the REL-03 gap with expected public response Wrong API input until whole-www interrupted-update hardware-regression evidence exists."
-  patterns-established:
-- "Generated evidence artifacts must carry their own pending/blocking reason, even when a sibling summary log already records the gate."
-- "Recovery evidence summaries cite pending fields explicitly instead of omitting unrun observations."
-  requirements-completed: [REL-08, REL-02, REL-01, EVD-05]
-  generated_by: gsd-execute-plan
-  lifecycle_mode: yolo
-  phase_lifecycle_id: 13-2026-06-30T14-53-46
-  generated_at: 2026-06-30T17:09:16Z
-  duration: 12 min
-  completed: 2026-06-30
-
-______________________________________________________________________
+    - Destructive recovery helpers default to pending unless explicit allow flags are provided
+    - Bounded monitor capture wraps espflash monitor without serial writes or raw flash writes
+    - Missing DEVICE_URL produces pending evidence instead of live HTTP or destructive shortcuts
+key-files:
+  created:
+    - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-runbook.md
+    - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression.md
+    - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression/recovery-regression.log
+    - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression/large-erase.log
+    - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression/large-erase-post-restore-monitor.log
+    - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression/interrupted-ota.log
+    - scripts/phase13-monitor-capture.sh
+    - scripts/phase13-monitor-capture-test.sh
+    - scripts/phase13-recovery-regression.sh
+    - scripts/phase13-recovery-regression-test.sh
+  modified:
+    - docs/parity/evidence/phase-13-final-ultra-205-release-evidence/redaction-review.md
+    - scripts/BUILD.bazel
+    - scripts/phase13-recovery-regression.sh
+    - scripts/phase13-recovery-regression-test.sh
+key-decisions:
+  - "Recovery, failed-update, large-erase, interrupted-update, rollback, and boot-validation evidence remain pending when DEVICE_URL is missing and allow flags are absent."
+  - "Plan 13-05 helpers record exact command shapes but do not execute destructive or fault-injection actions without explicit allow flags."
+  - "OTAWWW remains the REL-03 gap with expected public response Wrong API input until whole-www interrupted-update hardware-regression evidence exists."
+patterns-established:
+  - "Generated evidence artifacts must carry their own pending/blocking reason, even when a sibling summary log already records the gate."
+  - "Recovery evidence summaries cite pending fields explicitly instead of omitting unrun observations."
+requirements-completed: [REL-08, REL-02, REL-01, EVD-05]
+generated_by: gsd-execute-plan
+lifecycle_mode: yolo
+phase_lifecycle_id: 13-2026-06-30T14-53-46
+generated_at: 2026-06-30T17:09:16Z
+duration: 12 min
+completed: 2026-06-30
+---
 
 # Phase 13 Plan 05: Recovery Runbook And Pending Regression Evidence Summary
 
