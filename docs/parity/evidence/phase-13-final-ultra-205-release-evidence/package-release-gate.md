@@ -11,7 +11,7 @@
 ## Manifest Fields
 
 - package manifest: `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
-- source_commit: `8a93fd0e45f34ea36fd3375dae92fbcf0ce738e8`
+- source_commit: `568df2aae640d5df3347e3e0b522f166ebf86444`
 - reference_commit: `c1915b0a63bfabebdb95a515cedfee05146c1d50`
 - image_metadata.esp_idf_version: `v5.5.4`
 - image_metadata.rust_target: `xtensa-esp32s3-espidf`
@@ -24,10 +24,10 @@
 
 | Artifact | Kind | Manifest status | Offset | SHA-256 |
 | --- | --- | --- | --- | --- |
-| `bitaxe-ultra205.elf` | firmware_elf | present | `Unavailable` | `85e39cd914e5e14137eb1d7d623e553821528722d9c9e1163c65080bf6e06315` |
-| `esp-miner.bin` | firmware_ota_image | present | `0x10000` | `69079d90ab3bdbd19ed84ccd73498083675f94954a4cf629aebaee085f7b436b` |
+| `bitaxe-ultra205.elf` | firmware_elf | present | `Unavailable` | `98596efcdf07c8ddc720ab0a52318b09bc123599f1820366cc751fa46fbf5e1f` |
+| `esp-miner.bin` | firmware_ota_image | present | `0x10000` | `e8dc5b3e421f47e576d052bbda8caa108db3017fa51f9bcb1a7ccb448ba82a4f` |
 | `www.bin` | www_spiffs_image | present | `0x410000` | `0dbb0eba0cc4198186d0175557ec134d7829f3426faf35d8baf263ee0a7c65a0` |
-| `bitaxe-ultra205-factory.bin` | factory_merged_image | present | `0x0` | `c6d1c4f9ac139cd8d242eb060cb7636eca04ba0e81c71e23ca6622d968f5bd39` |
+| `bitaxe-ultra205-factory.bin` | factory_merged_image | present | `0x0` | `4aeab06ff90ce4bb846044cd10fdda67d0ca8af1595809d8a9a1893ef340b67c` |
 | `otadata-initial.bin` | otadata_initial | present | `0xf10000` | `7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f` |
 | `docs/release/license-inventory.md` | license_inventory | present via manifest field `license_inventory` | `n/a` | `n/a` |
 | `docs/release/provenance-manifest.md` | provenance_manifest | present via manifest field `provenance_manifest` | `n/a` | `n/a` |
