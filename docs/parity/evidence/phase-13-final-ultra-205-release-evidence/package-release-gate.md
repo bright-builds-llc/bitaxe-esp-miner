@@ -7,11 +7,15 @@
   - Package manifest emitted at `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`.
 - `bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`: passed
   - Result: `release_gate: passed`
+- `just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot capture-timeout-seconds=25`: passed
+  - Result: Wrapper rebuilt and flashed the package manifest for source commit `190849539700b8f9a7909fd2b6ebd84142557968`.
+- `bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`: passed after serial flash
+  - Result: `release_gate: passed`
 
 ## Manifest Fields
 
 - package manifest: `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
-- source_commit: `568df2aae640d5df3347e3e0b522f166ebf86444`
+- source_commit: `190849539700b8f9a7909fd2b6ebd84142557968`
 - reference_commit: `c1915b0a63bfabebdb95a515cedfee05146c1d50`
 - image_metadata.esp_idf_version: `v5.5.4`
 - image_metadata.rust_target: `xtensa-esp32s3-espidf`
@@ -24,10 +28,10 @@
 
 | Artifact | Kind | Manifest status | Offset | SHA-256 |
 | --- | --- | --- | --- | --- |
-| `bitaxe-ultra205.elf` | firmware_elf | present | `Unavailable` | `98596efcdf07c8ddc720ab0a52318b09bc123599f1820366cc751fa46fbf5e1f` |
-| `esp-miner.bin` | firmware_ota_image | present | `0x10000` | `e8dc5b3e421f47e576d052bbda8caa108db3017fa51f9bcb1a7ccb448ba82a4f` |
+| `bitaxe-ultra205.elf` | firmware_elf | present | `Unavailable` | `dbe8c778ede1b721a06f44c4d5ab4a1a7558439dd2e6446d97e668e0b5fb9735` |
+| `esp-miner.bin` | firmware_ota_image | present | `0x10000` | `e55e22da45f510b124beba62f56425fd468a95b1efd17949cfc140e15f220c42` |
 | `www.bin` | www_spiffs_image | present | `0x410000` | `0dbb0eba0cc4198186d0175557ec134d7829f3426faf35d8baf263ee0a7c65a0` |
-| `bitaxe-ultra205-factory.bin` | factory_merged_image | present | `0x0` | `4aeab06ff90ce4bb846044cd10fdda67d0ca8af1595809d8a9a1893ef340b67c` |
+| `bitaxe-ultra205-factory.bin` | factory_merged_image | present | `0x0` | `b354279c76d6ab05741c4444eb525beeef9be27c7285da394f5ee5396256d37a` |
 | `otadata-initial.bin` | otadata_initial | present | `0xf10000` | `7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f` |
 | `docs/release/license-inventory.md` | license_inventory | present via manifest field `license_inventory` | `n/a` | `n/a` |
 | `docs/release/provenance-manifest.md` | provenance_manifest | present via manifest field `provenance_manifest` | `n/a` | `n/a` |
