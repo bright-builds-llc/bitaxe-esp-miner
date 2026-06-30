@@ -423,6 +423,38 @@ test_large_erase_blocks_if_post_restore_smoke_fails() {
 	assert_not_contains "${out_dir}/large-erase.log" "large_erase_conclusion: captured"
 }
 
+test_large_erase_requires_detector_port_match() {
+	local out_dir="${tmp_root}/large-detector-mismatch"
+	local bin_dir="${tmp_root}/bin-detector-mismatch"
+	local command_log="${tmp_root}/commands-detector-mismatch.log"
+	local monitor_stub="${tmp_root}/fake-monitor-detector-mismatch"
+	local http_stub="${tmp_root}/fake-http-smoke-detector-mismatch"
+
+	create_fake_command_bin "$bin_dir" "$command_log"
+	create_fake_monitor "$monitor_stub"
+	create_fake_http_smoke "$http_stub"
+
+	set +e
+	PATH="${bin_dir}:$PATH" PHASE13_COMMAND_LOG="$command_log" PHASE13_DETECTOR_PORT=/dev/other PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+		--device-url http://device.local \
+		--manifest "${tmp_root}/manifest.json" \
+		--factory-image "${tmp_root}/factory.bin" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--allow-large-erase
+	local command_status=$?
+	set -e
+
+	if [[ "$command_status" -eq 0 ]]; then
+		fail "large erase accepted detector port mismatch"
+	fi
+	assert_contains "${out_dir}/large-erase.log" "large_erase_status: blocked - detector port mismatch"
+	assert_contains "${out_dir}/large-erase.log" "destructive_gate_detected_port: /dev/other"
+	assert_not_contains "$command_log" "espflash erase-flash --chip esp32s3 --port /dev/test --non-interactive"
+	assert_not_contains "$command_log" "just flash board=205"
+}
+
 if [[ ! -f "$recovery_script" ]]; then
 	fail "recovery script missing: ${recovery_script}"
 fi
@@ -436,5 +468,6 @@ test_interrupted_ota_blocks_if_post_smoke_fails
 test_large_erase_command_rendering
 test_large_erase_blocks_without_post_restore_markers
 test_large_erase_blocks_if_post_restore_smoke_fails
+test_large_erase_requires_detector_port_match
 
 printf 'phase13_recovery_regression_test passed\n'
