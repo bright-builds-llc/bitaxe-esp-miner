@@ -125,11 +125,140 @@ The following are prohibited in Phase 12 unless a later task adds bounded recove
 
 ## Execution Log
 
-No Phase 12 live command has run yet.
-
 | Time | Command | Result | Evidence Pack | Conclusion |
 | --- | --- | --- | --- | --- |
-| 2026-06-30 | plan setup only | pending | all Phase 12 packs | hardware evidence pending |
+| 2026-06-30T01:16Z | `just detect-ultra205` | passed | `detect-ultra205.log` | detector gate passed for board `205`; selected port: /dev/cu.usbmodem1101 |
+| 2026-06-30T01:17Z | `just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot` | passed | `safe-boot/flash-command-evidence.json`, `safe-boot/flash-monitor.log` | passed for detector/package/safe boot |
+| 2026-06-30T01:20Z | `bazel build --action_env=BITAXE_ASIC_DIAGNOSTIC=chip-detect --action_env=BITAXE_HARDWARE_EVIDENCE_ACK=ultra205-chip-detect-safe-bench //firmware/bitaxe:firmware_image` | passed | `bazel-bin/firmware/bitaxe/bitaxe-ultra205.elf` | chip-detect diagnostic image built |
+| 2026-06-30T01:20Z | `bazel run //tools/flash:flash -- flash-monitor --board 205 --port /dev/cu.usbmodem1101 --image bazel-bin/firmware/bitaxe/bitaxe-ultra205.elf --evidence-dir docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/chip-detect --capture-timeout-seconds 25` | blocked before evidence | none | relative image path was unavailable from the Bazel run environment; no flash evidence was written |
+| 2026-06-30T01:20Z | `bazel run //tools/flash:flash -- flash-monitor --board 205 --port /dev/cu.usbmodem1101 --image /Users/peterryszkiewicz/Repos/bitaxe-esp-miner/bazel-bin/firmware/bitaxe/bitaxe-ultra205.elf --evidence-dir docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/chip-detect --capture-timeout-seconds 25` | captured but wrapper-untrusted | `chip-detect/flash-command-evidence.json`, `chip-detect/flash-monitor.log` | chip-detect/no-mining markers were observed, but wrapper trust failed because the ELF-only diagnostic flash had `spiffs_mount=unavailable`; hardware evidence pending for checklist promotion |
+| 2026-06-30T01:21Z | `./scripts/phase12-mining-smoke-preflight.sh --log docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot/flash-monitor.log --out docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/mining-smoke-preflight.log` | passed | `mining-smoke-preflight.log` | `phase12_mining_smoke_preflight=blocked`; controlled mining smoke and bounded mining soak were not run |
+| 2026-06-30T01:23Z | `just detect-ultra205` | passed | `restore-detect-ultra205.log` | restore detector gate passed for board `205`; selected port: /dev/cu.usbmodem1101 |
+| 2026-06-30T01:24Z | `just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot-restore` | passed | `safe-boot-restore/flash-command-evidence.json`, `safe-boot-restore/flash-monitor.log` | final board state restored to trusted packaged safe boot |
+
+## Detector Gate Result
+
+Detector command:
+
+```bash
+just detect-ultra205
+```
+
+Result: passed.
+
+Board: `205`
+
+selected port: /dev/cu.usbmodem1101
+
+Source commit: `42bb1f7d4584d05ab453995e04bcab506c8b3fe9`
+
+Reference commit: `c1915b0a63bfabebdb95a515cedfee05146c1d50`
+
+board-info command:
+
+```bash
+espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive
+```
+
+board-info output is recorded in `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/detect-ultra205.log`. Summary: ESP32-S3 revision `v0.2`, 40 MHz crystal, 16MB flash, WiFi/BLE/Embedded Flash features, secure boot disabled, flash encryption disabled.
+
+Detector conclusion: passed for detector/package/safe boot prerequisite.
+
+The detector gate did not fail, so `hardware evidence pending - detector gate did not pass` does not apply to this run.
+
+## Safe-Boot Capture Result
+
+Evidence:
+
+- `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot/flash-command-evidence.json`
+- `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot/flash-monitor.log`
+
+Wrapper status: `capture_status=timed_out_after_trusted_output`, `trusted_output=true`.
+
+Observed markers:
+
+- `bitaxe-rust boot: board=Ultra 205 asic=BM1366`
+- `safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled`
+- `asic_status=preflight_missing reason=hardware_evidence_ack_missing initialized=false mining=disabled work_submission=disabled`
+- `mining_loop_status=blocked reason=hardware_evidence_ack_missing work_submission=disabled`
+- `safety_supervisor_step=yield reason=yield_interval_reached`
+- `spiffs_mount=available`
+- `axeos_api_route_shell=started`
+- `reset_reason=11`
+- `firmware_commit=42bb1f7d4584`
+- `reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50`
+- `esp_idf_version=v5.5.4`
+
+Conclusion: passed for detector/package/safe boot. This supports safe-state package and boot evidence only. It does not verify BM1366 full initialization, diagnostic work send, result receive, live mining smoke, WebSocket telemetry, or statistics producer behavior.
+
+## Chip-Detect Capture Result
+
+Evidence:
+
+- `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/chip-detect/flash-command-evidence.json`
+- `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/chip-detect/flash-monitor.log`
+
+Wrapper status: `capture_status=timed_out_without_trusted_output`, `trusted_output=false`.
+
+Wrapper conclusion: `failed - evidence capture is not trusted: missing trusted Ultra 205 boot markers`.
+
+Reason: the chip-detect diagnostic used the plan-specified ELF-only image path. The firmware booted and emitted chip-detect markers, but the wrapper trust check also requires `spiffs_mount=available`; the ELF-only diagnostic flash produced `spiffs_mount=unavailable partition=www reason=partition_not_found`.
+
+Observed markers in the untrusted diagnostic capture:
+
+- `bitaxe-rust boot: board=Ultra 205 asic=BM1366`
+- `safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled`
+- `asic_status=chip_detect_only initialized=false mining=disabled work_submission=disabled`
+- `asic_status=fail_closed reason=chip_detect_adapter_error error=partial BM1366 UART read: expected 11 bytes, read 9`
+- `asic_status=hold_reset_low gpio=1`
+- `asic_status=fail_closed reason=chip_detect_adapter_error initialized=false mining=disabled work_submission=disabled`
+- `mining_loop_status=blocked reason=hardware_evidence_ack_missing work_submission=disabled`
+- `firmware_commit=42bb1f7d4584`
+- `reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50`
+- `esp_idf_version=v5.5.4`
+
+Conclusion: hardware evidence pending for BM1366 initialization, ASIC serial transport promotion, diagnostic work-send, diagnostic result-receive, and live mining. The capture records a conservative chip-detect/no-mining fail-closed attempt, but the wrapper-untrusted status prevents checklist promotion to `verified`.
+
+## Mining Smoke Preflight Result
+
+Evidence: `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/mining-smoke-preflight.log`
+
+Observed markers:
+
+- `phase12_mining_smoke_preflight=blocked`
+- `reason=firmware_fail_closed`
+- `controlled_mining_smoke=not_run`
+- `bounded_mining_soak=not_run`
+- `work_submission=disabled`
+
+Conclusion: controlled mining smoke and bounded mining soak were not run. `STR-006`, `STR-008`, `API-006`, and `STAT-002` live mining or telemetry claims remain hardware evidence pending.
+
+## Restore Safe-Boot Result
+
+Reason: the chip-detect diagnostic used an ELF-only flash that left the board without the packaged SPIFFS partition. The restore run used the repo-owned default package wrapper after rerunning `just detect-ultra205`.
+
+Evidence:
+
+- `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/restore-detect-ultra205.log`
+- `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot-restore/flash-command-evidence.json`
+- `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot-restore/flash-monitor.log`
+
+Wrapper status: `capture_status=timed_out_after_trusted_output`, `trusted_output=true`.
+
+Observed markers:
+
+- `bitaxe-rust boot: board=Ultra 205 asic=BM1366`
+- `safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled`
+- `asic_status=preflight_missing reason=hardware_evidence_ack_missing initialized=false mining=disabled work_submission=disabled`
+- `mining_loop_status=blocked reason=hardware_evidence_ack_missing work_submission=disabled`
+- `safety_supervisor_step=yield reason=yield_interval_reached`
+- `spiffs_mount=available`
+- `axeos_api_route_shell=started`
+- `firmware_commit=42bb1f7d4584`
+- `reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50`
+- `esp_idf_version=v5.5.4`
+
+Conclusion: final connected-board state restored to trusted packaged safe boot with mining and ASIC work submission disabled.
 
 ## Checklist Promotion Rules
 
@@ -142,9 +271,21 @@ No Phase 12 live command has run yet.
 
 ## Secret Redaction Review
 
-Initial status: pending - no Phase 12 live artifacts reviewed yet.
+Status: completed for generated Phase 12 artifacts.
 
-Before committing generated artifacts, inspect all logs and JSON for:
+Reviewed artifacts:
+
+- `detect-ultra205.log`
+- `restore-detect-ultra205.log`
+- `safe-boot/flash-command-evidence.json`
+- `safe-boot/flash-monitor.log`
+- `chip-detect/flash-command-evidence.json`
+- `chip-detect/flash-monitor.log`
+- `mining-smoke-preflight.log`
+- `safe-boot-restore/flash-command-evidence.json`
+- `safe-boot-restore/flash-monitor.log`
+
+The review checked all logs and JSON for:
 
 - Pool URLs, usernames, passwords, and worker names.
 - Wi-Fi SSIDs and passwords.
@@ -153,6 +294,10 @@ Before committing generated artifacts, inspect all logs and JSON for:
 - API tokens.
 - Local private IP disclosure beyond necessary bench evidence.
 - Pasted raw terminal secrets.
+
+Findings: no pool credentials, worker names, Wi-Fi SSIDs/passwords, private endpoints, NVS secret values, API tokens, local private IPs, or pasted terminal secrets were found. The logs contain expected ESP feature labels, NVS partition labels, an NVS not-found status, local filesystem paths, and the board-info MAC address from the connected hardware; these are retained as bench evidence and not treated as credentials.
+
+Conclusion: passed - generated Phase 12 artifacts reviewed for secrets before citation.
 
 ## Residual Risks
 
@@ -163,6 +308,6 @@ Before committing generated artifacts, inspect all logs and JSON for:
 
 ## Conclusion
 
-Current conclusion: hardware evidence pending.
+Current conclusion: passed for detector/package/safe boot; final connected-board state restored to trusted packaged safe boot; chip-detect and live mining remain hardware evidence pending for checklist promotion.
 
-Phase 12 will promote only rows whose exact claims are supported by detector-gated artifacts, redaction review, and passing parity checks.
+Phase 12 will promote only rows whose exact claims are supported by detector-gated artifacts, redaction review, and passing parity checks. The current artifacts support safe boot and fail-closed mining preflight evidence, but do not support verified BM1366 full initialization, work-send/result-receive, controlled mining smoke, or bounded soak claims.

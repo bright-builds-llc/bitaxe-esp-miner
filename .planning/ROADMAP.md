@@ -337,5 +337,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 9. Flash-Monitor Evidence Wrapper Hardening | 0/2 | Not started | - |
 | 10. Route Manifest And API Compare Unification | 3/3 | Complete    | 2026-06-29 |
 | 11. Safety Controller Hardware Regression Evidence | 3/3 | Complete | 2026-06-29 |
-| 12. ASIC And Mining Hardware Evidence | 2/4 | In Progress | - |
+| 12. ASIC And Mining Hardware Evidence | 3/4 | In Progress | - |
 | 13. Final Ultra 205 Release Evidence | 0/TBD | Not started | - |

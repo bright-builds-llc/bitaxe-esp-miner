@@ -1,0 +1,6 @@
+phase12_mining_smoke_preflight=blocked
+reason=firmware_fail_closed
+controlled_mining_smoke=not_run
+bounded_mining_soak=not_run
+work_submission=disabled
+source_log=docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot/flash-monitor.log
