@@ -138,8 +138,20 @@ fi
 printf "Content-Type: text/plain\n" >"$header_file"
 case "$(basename "$data_path")" in
   invalid-firmware.bin)
-    printf "Validation / Activation Error" >"$body_file"
-    printf "500"
+    case "${PHASE13_FAKE_INVALID_RESPONSE:-validation-error}" in
+      validation-error)
+        printf "Validation / Activation Error" >"$body_file"
+        printf "500"
+        ;;
+      unrelated-non-200)
+        printf "unrelated proxy response" >"$body_file"
+        printf "502"
+        ;;
+      *)
+        printf "unknown fake invalid response: %s\n" "$PHASE13_FAKE_INVALID_RESPONSE" >&2
+        exit 2
+        ;;
+    esac
     ;;
   esp-miner.bin)
     printf "Firmware update complete, rebooting now!" >"$body_file"
@@ -278,6 +290,37 @@ test_missing_post_ota_marker_blocks_passed_status() {
 	assert_not_contains "$log_file" "firmware_ota_status: passed"
 }
 
+test_invalid_rejection_blocks_without_validation_marker() {
+	local out_dir="${tmp_root}/invalid-no-marker"
+	local curl_stub="${tmp_root}/fake-curl-invalid-no-marker"
+	local monitor_stub="${tmp_root}/success-monitor-invalid-no-marker"
+
+	create_fake_curl "$curl_stub"
+	create_success_monitor "$monitor_stub"
+
+	set +e
+	PHASE13_FAKE_INVALID_RESPONSE=unrelated-non-200 CURL_BIN="$curl_stub" PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" "$BASH" "$smoke_script" \
+		--device-url "http://device.local" \
+		--manifest "${tmp_root}/manifest.json" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--monitor-seconds 1
+	local status=$?
+	set -e
+
+	if [[ "$status" -eq 0 ]]; then
+		fail "unrelated non-200 invalid image response should block evidence"
+	fi
+
+	local log_file="${out_dir}/firmware-ota-smoke.log"
+	assert_contains "$log_file" "invalid image rejection status: 502"
+	assert_contains "$log_file" "invalid image rejection body: unrelated proxy response"
+	assert_contains "$log_file" "firmware_ota_status: blocked - invalid image rejection body did not contain an OTA validation marker"
+	assert_not_contains "$log_file" "invalid image rejection conclusion: captured"
+	assert_not_contains "$log_file" "firmware_ota_status: passed"
+}
+
 if [[ ! -f "$smoke_script" ]]; then
 	fail "smoke script missing: ${smoke_script}"
 fi
@@ -286,5 +329,6 @@ create_inputs "$tmp_root"
 test_missing_url_writes_blocker_without_curl
 test_fake_invalid_rejection_and_valid_success_records_evidence
 test_missing_post_ota_marker_blocks_passed_status
+test_invalid_rejection_blocks_without_validation_marker
 
 printf 'phase13_firmware_ota_smoke_test passed\n'

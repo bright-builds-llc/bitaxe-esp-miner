@@ -276,6 +276,36 @@ test_failed_update_blocks_if_invalid_image_is_accepted() {
 	assert_not_contains "$log_file" "failed_update_status: captured"
 }
 
+test_failed_update_blocks_if_post_failure_smoke_fails() {
+	local out_dir="${tmp_root}/failed-update-smoke-failed"
+	local curl_stub="${tmp_root}/fake-curl-smoke-failed"
+	local http_stub="${tmp_root}/fake-http-smoke-failed-update"
+
+	create_fake_curl "$curl_stub"
+	create_fake_http_smoke "$http_stub"
+
+	set +e
+	PHASE13_FAKE_HTTP_SMOKE_STATUS=blocked CURL_BIN="$curl_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+		--device-url http://device.local \
+		--manifest "${tmp_root}/manifest.json" \
+		--factory-image "${tmp_root}/factory.bin" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--allow-failed-update
+	local command_status=$?
+	set -e
+
+	if [[ "$command_status" -eq 0 ]]; then
+		fail "failed update accepted failed post-failure smoke"
+	fi
+	local log_file="${out_dir}/recovery-regression.log"
+	assert_contains "$log_file" "failed_update_status: blocked - post-failure operability not proven"
+	assert_contains "$log_file" "failed update recovery steps: use recovery runbook and collect post-failure boot evidence"
+	assert_contains "${out_dir}/failed-update-http-static/http-static-smoke.log" "http_static_status: blocked"
+	assert_not_contains "$log_file" "failed_update_status: captured"
+}
+
 test_interrupted_ota_blocks_if_upload_completes() {
 	local out_dir="${tmp_root}/interrupted-completed"
 	local curl_stub="${tmp_root}/fake-curl-interrupted-completed"
@@ -463,6 +493,7 @@ create_inputs "$tmp_root"
 test_default_pending_behavior
 test_failed_update_evidence_fields
 test_failed_update_blocks_if_invalid_image_is_accepted
+test_failed_update_blocks_if_post_failure_smoke_fails
 test_interrupted_ota_blocks_if_upload_completes
 test_interrupted_ota_blocks_if_post_smoke_fails
 test_large_erase_command_rendering

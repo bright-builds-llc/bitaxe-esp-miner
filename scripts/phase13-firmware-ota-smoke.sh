@@ -201,6 +201,12 @@ body_snippet() {
 	LC_ALL=C tr -d '\000\r' <"$body_file" | head -c 240 | tr '\n\t' '  '
 }
 
+invalid_image_body_has_rejection_marker() {
+	local body_file="$1"
+
+	[[ -f "$body_file" ]] && grep -Eiq 'invalid|reject|validation|activation|error' "$body_file"
+}
+
 selected_headers() {
 	local header_file="$1"
 
@@ -363,6 +369,7 @@ invalid_sha256="$(sha256_file "$invalid_image")"
 log "invalid image artifact: ${invalid_image}"
 log "invalid image checksum: ${invalid_sha256}"
 post_image "invalid-firmware-ota" "$invalid_image" "invalid image rejection"
+invalid_body_file="${out_dir}/invalid-firmware-ota.body.txt"
 
 if [[ "$last_curl_status" -ne 0 ]]; then
 	block_with_reason "invalid image rejection request failed"
@@ -370,6 +377,10 @@ if [[ "$last_curl_status" -ne 0 ]]; then
 fi
 if [[ "$last_http_status" == "200" ]]; then
 	block_with_reason "invalid image was not rejected"
+	exit 1
+fi
+if ! invalid_image_body_has_rejection_marker "$invalid_body_file"; then
+	block_with_reason "invalid image rejection body did not contain an OTA validation marker"
 	exit 1
 fi
 

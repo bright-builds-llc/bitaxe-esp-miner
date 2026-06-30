@@ -342,9 +342,16 @@ run_failed_update() {
 		return 1
 	fi
 
+	local http_static_out="${out_dir}/failed-update-http-static"
+	run_http_static_smoke "failed_update_post_failure" "$http_static_out"
+	if ! http_static_smoke_passed "$http_static_out"; then
+		log_main "failed_update_status: blocked - post-failure operability not proven"
+		log_main "failed update recovery steps: use recovery runbook and collect post-failure boot evidence"
+		return 1
+	fi
+
 	log_main "failed_update_status: captured"
-	log_main "failed update post-failure partition/static/API state: HTTP/static smoke rerun when helper and DEVICE_URL are available"
-	run_http_static_smoke "failed_update_post_failure" "${out_dir}/failed-update-http-static"
+	log_main "failed update post-failure partition/static/API state: HTTP/static smoke passed"
 	log_main "failed update recovery steps: explicitly not needed when invalid image is rejected and device remains reachable; otherwise use recovery runbook factory restore"
 	log_main "failed update conclusion: captured - invalid image rejection evidence is not rollback proof"
 }
