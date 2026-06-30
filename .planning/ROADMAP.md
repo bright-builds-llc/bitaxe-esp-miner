@@ -25,7 +25,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10: Route Manifest And API Compare Unification** - Close the audit gap where Phase 7 route manifests were not the source consumed by firmware route reporting and compare tooling. (completed 2026-06-29)
 - [x] **Phase 11: Safety Controller Hardware Regression Evidence** - Close the audit gap for Ultra 205 voltage, power, thermal, fan, self-test, display/input, watchdog, and safety-critical hardware evidence. (completed 2026-06-29)
 - [ ] **Phase 12: ASIC And Mining Hardware Evidence** - Close the audit gap for BM1366 initialization, work/result handling, first mining loop, and controlled mining soak evidence.
-- [ ] **Phase 13: Final Ultra 205 Release Evidence** - Close the audit gap for final-commit package/flash/boot identity plus live HTTP, static, recovery, OTA, rollback, erase, and interrupted-update evidence.
+- [x] **Phase 13: Final Ultra 205 Release Evidence** - Close the audit gap for final-commit package/flash/boot identity plus live HTTP, static, recovery, OTA, rollback, erase, and interrupted-update evidence. (completed 2026-06-30)
 
 ## Phase Details
 
@@ -323,7 +323,7 @@ Plans:
 - [x] 13-03-PLAN.md - Add and run HTTP/static/recovery smoke evidence helper.
 - [x] 13-04-PLAN.md - Add and run firmware OTA and boot-validation evidence helpers.
 - [x] 13-05-PLAN.md - Document and run recovery/destructive evidence only behind exact recovery gates.
-- [ ] 13-06-PLAN.md - Close checklist, release docs, redaction review, and final verification.
+- [x] 13-06-PLAN.md - Close checklist, release docs, redaction review, and final verification.
 **Verification expectations**: `just package`, wrapper-based flash-monitor evidence from Phase 9, live HTTP/static/recovery/OTA checks through the unified route manifest from Phase 10, recovery procedures documented before destructive tests, release gate validation, `just parity`, and final audit rerun.
 **Research flags**: Requires a reachable device network setup and phase-gated recovery instructions. Stop and record evidence pending if `DEVICE_URL` is unavailable.
 
@@ -346,4 +346,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 10. Route Manifest And API Compare Unification | 3/3 | Complete    | 2026-06-29 |
 | 11. Safety Controller Hardware Regression Evidence | 3/3 | Complete | 2026-06-29 |
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
-| 13. Final Ultra 205 Release Evidence | 5/6 | In Progress|  |
+| 13. Final Ultra 205 Release Evidence | 6/6 | Complete   | 2026-06-30 |

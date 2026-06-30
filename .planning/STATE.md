@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 13-final-ultra-205-release-evidence-04-PLAN.md
-last_updated: "2026-06-30T17:31:41.447Z"
+status: verifying
+stopped_at: Completed 13-final-ultra-205-release-evidence-06-PLAN.md
+last_updated: "2026-06-30T17:54:28.043Z"
 last_activity: 2026-06-30
 progress:
   total_phases: 13
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 70
-  completed_plans: 69
-  percent: 99
+  completed_plans: 70
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 Phase: 13 (final-ultra-205-release-evidence) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-30
 
 Progress: [██████████] 100%
@@ -119,6 +119,7 @@ Progress: [██████████] 100%
 | Phase 13-final-ultra-205-release-evidence P03 | 8 min | 2 tasks | 6 files |
 | Phase 13-final-ultra-205-release-evidence P05 | 12 min | 2 tasks | 12 files |
 | Phase 13-final-ultra-205-release-evidence P04 | 10 min | 2 tasks | 7 files |
+| Phase 13-final-ultra-205-release-evidence P06 | 55min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -288,6 +289,9 @@ Recent decisions affecting current work:
 - [Phase 13-final-ultra-205-release-evidence]: Firmware OTA helpers require an explicit DEVICE_URL and never scan or infer a target.
 - [Phase 13-final-ultra-205-release-evidence]: Without DEVICE_URL, Plan 13-04 records blocked OTA evidence and does not upload esp-miner.bin.
 - [Phase 13-final-ultra-205-release-evidence]: Invalid image rejection is separate failed-update evidence and is not rollback proof.
+- [Phase 13-final-ultra-205-release-evidence]: Live HTTP/static, firmware OTA, rollback, failed-update, large erase, interrupted-update, and OTAWWW live-response claims remain below verified because DEVICE_URL is missing or required allow flags were absent.
+- [Phase 13-final-ultra-205-release-evidence]: Docs-current package verification at source commit 3eb66e4c088f437f1b4bd255217bd888e6f1cc33 is distinct from live-flashed hardware evidence at source commit 190849539700b8f9a7909fd2b6ebd84142557968.
+- [Phase 13-final-ultra-205-release-evidence]: Release artifacts remain GPL-risk-reviewed and unpublished; Phase 13 evidence cites package and serial proof without changing publication approval posture.
 
 ### Pending Todos
 
@@ -312,6 +316,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-30T17:31:41.444Z
-Stopped at: Completed 13-final-ultra-205-release-evidence-04-PLAN.md
+Last session: 2026-06-30T17:54:28.040Z
+Stopped at: Completed 13-final-ultra-205-release-evidence-06-PLAN.md
 Resume file: None
