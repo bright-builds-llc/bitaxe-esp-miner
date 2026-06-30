@@ -409,6 +409,7 @@ fn validate_rows(rows: &[ChecklistRow]) -> Vec<ValidationError> {
             });
         }
 
+        errors.extend(validate_live_asic_mining_verified_row(row));
         errors.extend(validate_release_ota_verified_row(row));
         errors.extend(validate_deferred_scope_verified_row(row));
     }
@@ -507,6 +508,65 @@ fn is_safety_critical(row: &ChecklistRow) -> bool {
 
 fn has_hardware_evidence(row: &ChecklistRow) -> bool {
     has_evidence_token(row, "hardware-smoke") || has_evidence_token(row, "hardware-regression")
+}
+
+fn validate_live_asic_mining_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    if !is_live_asic_or_mining_row(row) {
+        return Vec::new();
+    }
+
+    let mut errors = Vec::new();
+
+    if !has_live_asic_mining_evidence(row) {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: "live ASIC/mining verified row requires hardware-smoke or soak evidence"
+                .to_owned(),
+        });
+    }
+
+    if row.id == "STR-008" && !has_mining_smoke_or_soak_details(row) {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: "STR-008 verified row requires mining smoke or soak details".to_owned(),
+        });
+    }
+
+    errors
+}
+
+fn is_live_asic_or_mining_row(row: &ChecklistRow) -> bool {
+    matches!(
+        row.id.as_str(),
+        "ASIC-002" | "ASIC-003" | "ASIC-004" | "ASIC-005" | "STR-006" | "STR-008"
+    )
+}
+
+fn has_live_asic_mining_evidence(row: &ChecklistRow) -> bool {
+    has_hardware_evidence(row) || has_evidence_token(row, "soak")
+}
+
+fn has_mining_smoke_or_soak_details(row: &ChecklistRow) -> bool {
+    let haystack = row_haystack(row);
+    let has_share_outcome = [
+        "accepted share",
+        "rejected share",
+        "controlled no-share condition",
+    ]
+    .iter()
+    .any(|term| haystack.contains(term));
+    let has_required_metadata = [
+        "board",
+        "port",
+        "firmware commit",
+        "reference commit",
+        "redaction",
+        "conclusion",
+    ]
+    .iter()
+    .all(|term| haystack.contains(term));
+
+    has_share_outcome && has_required_metadata
 }
 
 fn is_active_safety_control(row: &ChecklistRow) -> bool {
@@ -1029,6 +1089,88 @@ mod tests {
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | PWR-006 | INA260 power telemetry freshness | `reference/esp-miner/main/power/INA260.c` | `firmware/bitaxe` | verified | hardware-smoke | Read-only INA260 current, bus voltage, and power telemetry freshness observed; no voltage writes claimed. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn asic_mining_verified_rows_require_hardware_or_soak_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| ASIC-002 | BM1366 initialization | `reference/esp-miner/components/asic/bm1366.c` | `crates/bitaxe-asic`, `firmware/bitaxe` | verified | unit,workflow | Pure init and workflow evidence only. |
+| ASIC-003 | BM1366 work send | `reference/esp-miner/components/asic/bm1366.c` | `crates/bitaxe-asic` | verified | unit,golden | Diagnostic work fixture evidence only. |
+| ASIC-004 | BM1366 result parsing | `reference/esp-miner/components/asic/bm1366.c` | `crates/bitaxe-asic` | verified | unit,golden | Result fixture evidence only. |
+| ASIC-005 | ASIC serial transport | `reference/esp-miner/components/asic/serial.c` | `firmware/bitaxe` | verified | workflow | Firmware compile evidence only. |
+| STR-006 | Protocol coordinator | `reference/esp-miner/main/tasks/protocol_coordinator.c` | `crates/bitaxe-stratum`, `firmware/bitaxe` | verified | unit,workflow | First live mining loop not observed. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        for row_id in ["ASIC-002", "ASIC-003", "ASIC-004", "ASIC-005", "STR-006"] {
+            assert_validation_error_contains(
+                &errors,
+                row_id,
+                "requires hardware-smoke or soak evidence",
+            );
+        }
+    }
+
+    #[test]
+    fn asic_mining_verified_str008_requires_mining_smoke_or_soak_details() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STR-008 | Live mining smoke and soak evidence | `reference/esp-miner/main/tasks/protocol_coordinator.c` | `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence.md` | verified | hardware-smoke | Board 205 port /dev/cu.usbmodem1101 firmware commit abc123 reference commit def456 redaction passed conclusion recorded, but no share or controlled no-share observation. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(
+            &errors,
+            "STR-008",
+            "requires mining smoke or soak details",
+        );
+    }
+
+    #[test]
+    fn asic_mining_verified_str008_accepts_controlled_no_share_metadata() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STR-008 | Live mining smoke and soak evidence | `reference/esp-miner/main/tasks/protocol_coordinator.c` | `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence.md` | verified | hardware-smoke | Board 205 port /dev/cu.usbmodem1101 firmware commit abc123 reference commit def456 controlled no-share condition redaction passed conclusion recorded. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn asic_mining_verified_str007_workflow_below_verified_remains_allowed() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STR-007 | Mining smoke and soak criteria | `reference/esp-miner/main/tasks/protocol_coordinator.c` | `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence.md` | implemented | workflow | Criteria documentation only; live smoke remains hardware evidence pending. |
 "#;
         let rows = parse_checklist(checklist).expect("checklist should parse");
 
