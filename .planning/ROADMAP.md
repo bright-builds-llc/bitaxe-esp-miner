@@ -315,7 +315,15 @@ Plans:
 1. A reachable `DEVICE_URL` provides live evidence for `/`, `/assets/app.css.gz`, missing static redirect, `/recovery`, valid firmware OTA, invalid OTA rejection, and OTAWWW gap behavior.
 1. Rollback, boot validation, large erase recovery, failed update recovery, and interrupted-update recovery evidence is captured under a documented recovery procedure before release parity is claimed.
 
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+
+- [ ] 13-01-PLAN.md - Establish release-candidate package identity, release gate, and evidence scaffold.
+- [ ] 13-02-PLAN.md - Capture detector-gated Ultra 205 flash-monitor serial boot evidence.
+- [ ] 13-03-PLAN.md - Add and run HTTP/static/recovery smoke evidence helper.
+- [ ] 13-04-PLAN.md - Add and run firmware OTA and boot-validation evidence helpers.
+- [ ] 13-05-PLAN.md - Document and run recovery/destructive evidence only behind exact recovery gates.
+- [ ] 13-06-PLAN.md - Close checklist, release docs, redaction review, and final verification.
 **Verification expectations**: `just package`, wrapper-based flash-monitor evidence from Phase 9, live HTTP/static/recovery/OTA checks through the unified route manifest from Phase 10, recovery procedures documented before destructive tests, release gate validation, `just parity`, and final audit rerun.
 **Research flags**: Requires a reachable device network setup and phase-gated recovery instructions. Stop and record evidence pending if `DEVICE_URL` is unavailable.
 
@@ -338,4 +346,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 10. Route Manifest And API Compare Unification | 3/3 | Complete    | 2026-06-29 |
 | 11. Safety Controller Hardware Regression Evidence | 3/3 | Complete | 2026-06-29 |
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
-| 13. Final Ultra 205 Release Evidence | 0/TBD | Not started | - |
+| 13. Final Ultra 205 Release Evidence | 0/6 | Not started | - |
