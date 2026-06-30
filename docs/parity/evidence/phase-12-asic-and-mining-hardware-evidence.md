@@ -299,6 +299,18 @@ Findings: no pool credentials, worker names, Wi-Fi SSIDs/passwords, private endp
 
 Conclusion: passed - generated Phase 12 artifacts reviewed for secrets before citation.
 
+## Final Verification
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `cargo fmt --all` | passed | Final pre-commit sequence after Phase 12 docs/checklist updates. |
+| `cargo clippy --all-targets --all-features -- -D warnings` | passed | Final pre-commit sequence after Phase 12 docs/checklist updates. |
+| `cargo build --all-targets --all-features` | passed | Final pre-commit sequence after Phase 12 docs/checklist updates. |
+| `cargo test --all-features` | passed | Final pre-commit sequence after Phase 12 docs/checklist updates. |
+| `just parity` | passed | `validation_errors: none` after Phase 12 checklist updates. |
+| `just test` | passed | Bazel `//...` passed, including firmware image build and 13 test targets. |
+| `git diff -- reference/esp-miner --exit-code` | passed | Reference tree clean. |
+
 ## Residual Risks
 
 - Phase 12 may end with useful pending evidence if detector, chip-detect, controlled pool, redaction, or recovery prerequisites are missing.
@@ -308,6 +320,6 @@ Conclusion: passed - generated Phase 12 artifacts reviewed for secrets before ci
 
 ## Conclusion
 
-Current conclusion: passed for detector/package/safe boot; final connected-board state restored to trusted packaged safe boot; chip-detect and live mining remain hardware evidence pending for checklist promotion.
+Current conclusion: passed for detector/package/safe boot and final verification; final connected-board state restored to trusted packaged safe boot; chip-detect and live mining remain hardware evidence pending for checklist promotion.
 
 Phase 12 will promote only rows whose exact claims are supported by detector-gated artifacts, redaction review, and passing parity checks. The current artifacts support safe boot and fail-closed mining preflight evidence, but do not support verified BM1366 full initialization, work-send/result-receive, controlled mining smoke, or bounded soak claims.
