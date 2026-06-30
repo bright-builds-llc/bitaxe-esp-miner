@@ -34,6 +34,11 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase13_http_static_smoke",
+    srcs = ["phase13-http-static-smoke.sh"],
+)
+
+sh_binary(
     name = "source_commit_stamp_tool",
     srcs = ["source-commit-stamp.sh"],
 )
@@ -68,6 +73,13 @@ sh_test(
         "bootstrap-esp.sh",
         "esp-doctor.sh",
     ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase13_http_static_smoke_test",
+    srcs = ["phase13-http-static-smoke-test.sh"],
+    data = ["phase13-http-static-smoke.sh"],
     tags = ["local"],
 )
 
