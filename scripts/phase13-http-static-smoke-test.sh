@@ -141,22 +141,22 @@ case "${method} ${path}" in
     headers="Content-Type: text/html"
     body="<h1>AxeOS Recovery</h1><span>Response:</span>"
     ;;
-	  "GET /api/system/info")
-	    headers="Content-Type: application/json"
-	    body="{\"firmware_commit\":\"190849539700\",\"ssid\":\"HomeNetwork\",\"wifiPass\":\"secret\",\"stratumUser\":\"worker\",\"ip\":\"192.168.1.5\"}"
-	    ;;
+  "GET /api/system/info")
+    headers="Content-Type: application/json"
+    body="{\"firmware_commit\":\"190849539700\",\"ssid\":\"HomeNetwork\",\"wifiPass\":\"secret\",\"stratumUser\":\"worker\",\"ip\":\"192.168.1.5\"}"
+    ;;
   "GET /api/phase13-unknown")
     status=404
     headers="Content-Type: application/json"
     body="{\"error\":\"unknown route\"}"
     ;;
   "GET /api/ws")
-    status=400
+    status="${PHASE13_FAKE_WS_STATUS:-400}"
     headers="Content-Type: text/plain"
     body="WebSocket upgrade required"
     ;;
   "GET /api/ws/live")
-    status=400
+    status="${PHASE13_FAKE_WS_STATUS:-400}"
     headers="Content-Type: text/plain"
     body="WebSocket upgrade required"
     ;;
@@ -234,11 +234,32 @@ test_fake_success_records_required_paths() {
 	assert_contains "$log_file" "http_static_status: passed"
 }
 
+test_websocket_server_error_blocks_static_smoke() {
+	local out_dir="${tmp_root}/websocket-500"
+	local manifest="${tmp_root}/manifest-ws-500.json"
+	local curl_stub="${tmp_root}/fake-curl-ws-500"
+
+	create_manifest "$manifest"
+	create_fake_curl "$curl_stub"
+
+	PHASE13_FAKE_WS_STATUS=500 CURL_BIN="$curl_stub" "$BASH" "$smoke_script" \
+		--device-url "http://device.local" \
+		--manifest "$manifest" \
+		--out-dir "$out_dir"
+
+	local log_file="${out_dir}/http-static-smoke.log"
+	assert_contains "$log_file" "route: GET /api/ws"
+	assert_contains "$log_file" "actual_status: 500"
+	assert_contains "$log_file" "route_conclusion: blocked"
+	assert_contains "$log_file" "http_static_status: blocked"
+}
+
 if [[ ! -f "$smoke_script" ]]; then
 	fail "smoke script missing: ${smoke_script}"
 fi
 
 test_missing_url_writes_blocker_without_curl
 test_fake_success_records_required_paths
+test_websocket_server_error_blocks_static_smoke
 
 printf 'phase13_http_static_smoke_test passed\n'

@@ -137,6 +137,10 @@ status_matches() {
 		[[ "$actual" != "000" && "$actual" != "302" && "$actual" != "404" ]]
 		return
 	fi
+	if [[ "$expected" == "websocket-no-upgrade" ]]; then
+		[[ "$actual" == "400" || "$actual" == "426" ]]
+		return
+	fi
 
 	[[ "$expected" == "$actual" ]]
 }
@@ -263,8 +267,8 @@ probe_route "missing-static" "GET" "/phase13-missing-static" "302" "Redirect to 
 probe_route "recovery" "GET" "/recovery" "200" "AxeOS Recovery|Response:" "200 with AxeOS Recovery and Response:"
 probe_route "system-info" "GET" "/api/system/info" "200" "" "known API route coexists with static wildcard"
 probe_route "unknown-api" "GET" "/api/phase13-unknown" "404" "{\"error\":\"unknown route\"}" "unknown API JSON 404 body"
-probe_route "api-ws" "GET" "/api/ws" "any-non-static" "" "bounded WebSocket route coexistence response, not static wildcard"
-probe_route "api-ws-live" "GET" "/api/ws/live" "any-non-static" "" "bounded live WebSocket route coexistence response, not static wildcard"
+probe_route "api-ws" "GET" "/api/ws" "websocket-no-upgrade" "" "bounded WebSocket route coexistence response, not static wildcard"
+probe_route "api-ws-live" "GET" "/api/ws/live" "websocket-no-upgrade" "" "bounded live WebSocket route coexistence response, not static wildcard"
 probe_route "otawww" "POST" "/api/system/OTAWWW" "400" "Wrong API input" "OTAWWW REL-03 gap response"
 
 if [[ "$any_blocked" -eq 0 ]]; then
