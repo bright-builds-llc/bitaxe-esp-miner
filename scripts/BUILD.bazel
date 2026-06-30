@@ -39,6 +39,16 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase13_monitor_capture",
+    srcs = ["phase13-monitor-capture.sh"],
+)
+
+sh_binary(
+    name = "phase13_recovery_regression",
+    srcs = ["phase13-recovery-regression.sh"],
+)
+
+sh_binary(
     name = "source_commit_stamp_tool",
     srcs = ["source-commit-stamp.sh"],
 )
@@ -80,6 +90,24 @@ sh_test(
     name = "phase13_http_static_smoke_test",
     srcs = ["phase13-http-static-smoke-test.sh"],
     data = ["phase13-http-static-smoke.sh"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase13_monitor_capture_test",
+    srcs = ["phase13-monitor-capture-test.sh"],
+    data = ["phase13-monitor-capture.sh"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase13_recovery_regression_test",
+    srcs = ["phase13-recovery-regression-test.sh"],
+    data = [
+        "phase13-http-static-smoke.sh",
+        "phase13-monitor-capture.sh",
+        "phase13-recovery-regression.sh",
+    ],
     tags = ["local"],
 )
 
