@@ -134,6 +134,9 @@ if [[ -z "$header_file" || -z "$body_file" || -z "$data_path" || "$url" != "http
   printf "missing fake curl inputs\n" >&2
   exit 2
 fi
+if [[ "${PHASE13_FAKE_CURL_STDERR_HOST:-0}" == "1" ]]; then
+  printf "curl: (6) Could not resolve host: private-bitaxe.local\ncurl: (7) Failed to connect to private-bitaxe.local port 80\ncurl: (22) URL rejected: http://private-bitaxe.local/api/system/OTA\n" >&2
+fi
 
 printf "Content-Type: text/plain\n" >"$header_file"
 case "$(basename "$data_path")" in
@@ -233,7 +236,7 @@ test_fake_invalid_rejection_and_valid_success_records_evidence() {
 	create_fake_curl "$curl_stub"
 	create_success_monitor "$monitor_stub"
 
-	CURL_BIN="$curl_stub" PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" "$BASH" "$smoke_script" \
+	PHASE13_FAKE_CURL_STDERR_HOST=1 CURL_BIN="$curl_stub" PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" "$BASH" "$smoke_script" \
 		--device-url "http://device.local" \
 		--manifest "${tmp_root}/manifest.json" \
 		--ota-image "${tmp_root}/esp-miner.bin" \
@@ -251,8 +254,14 @@ test_fake_invalid_rejection_and_valid_success_records_evidence() {
 	assert_contains "$log_file" "\"ssid\":\"[redacted]\""
 	assert_contains "$log_file" "\"stratumCert\":\"[redacted]\""
 	assert_contains "$log_file" "\"ip\":\"[redacted]\""
+	assert_contains "$log_file" "curl_error:"
+	assert_contains "$log_file" "Could not resolve host: [redacted-host]"
+	assert_contains "$log_file" "Failed to connect to [redacted-host]"
+	assert_contains "$log_file" "[redacted-url]"
 	assert_not_contains "$log_file" "phase13-secret"
 	assert_not_contains "$log_file" "PHASE13_LONG_OTA_SECRET_PREFIX"
+	assert_not_contains "$log_file" "private-bitaxe.local"
+	assert_not_contains "$log_file" "http://private-bitaxe.local"
 	assert_not_contains "$log_file" "192.168.1.50"
 	assert_contains "$log_file" "invalid image rejection conclusion: captured - not rollback proof"
 	assert_contains "$log_file" "invalid image rejection is not rollback proof"

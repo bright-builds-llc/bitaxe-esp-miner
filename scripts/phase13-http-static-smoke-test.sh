@@ -113,6 +113,9 @@ if [[ -z "$header_file" || -z "$body_file" || -z "$url" ]]; then
   printf "missing curl fixture inputs\n" >&2
   exit 2
 fi
+if [[ "${PHASE13_FAKE_CURL_STDERR_HOST:-0}" == "1" ]]; then
+  printf "curl: (6) Could not resolve host: private-bitaxe.local\ncurl: (7) Failed to connect to private-bitaxe.local port 80\ncurl: (22) URL rejected: http://private-bitaxe.local/api/system/info\n" >&2
+fi
 
 path="/${url#*://*/}"
 if [[ "$url" == "http://device.local/" ]]; then
@@ -256,6 +259,28 @@ test_websocket_server_error_blocks_static_smoke() {
 	assert_contains "$log_file" "http_static_status: blocked"
 }
 
+test_curl_error_redacts_private_host() {
+	local out_dir="${tmp_root}/curl-error-redaction"
+	local manifest="${tmp_root}/manifest-curl-error.json"
+	local curl_stub="${tmp_root}/fake-curl-error"
+
+	create_manifest "$manifest"
+	create_fake_curl "$curl_stub"
+
+	PHASE13_FAKE_CURL_STDERR_HOST=1 CURL_BIN="$curl_stub" "$BASH" "$smoke_script" \
+		--device-url "http://device.local" \
+		--manifest "$manifest" \
+		--out-dir "$out_dir"
+
+	local log_file="${out_dir}/http-static-smoke.log"
+	assert_contains "$log_file" "curl_error:"
+	assert_contains "$log_file" "Could not resolve host: [redacted-host]"
+	assert_contains "$log_file" "Failed to connect to [redacted-host]"
+	assert_contains "$log_file" "[redacted-url]"
+	assert_not_contains "$log_file" "private-bitaxe.local"
+	assert_not_contains "$log_file" "http://private-bitaxe.local"
+}
+
 if [[ ! -f "$smoke_script" ]]; then
 	fail "smoke script missing: ${smoke_script}"
 fi
@@ -263,5 +288,6 @@ fi
 test_missing_url_writes_blocker_without_curl
 test_fake_success_records_required_paths
 test_websocket_server_error_blocks_static_smoke
+test_curl_error_redacts_private_host
 
 printf 'phase13_http_static_smoke_test passed\n'

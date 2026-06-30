@@ -91,6 +91,9 @@ if [[ -z "$body_file" || "$url" != "http://device.local/api/system/OTA" ]]; then
   printf "missing fake curl inputs\n" >&2
   exit 2
 fi
+if [[ "${PHASE13_FAKE_CURL_STDERR_HOST:-0}" == "1" ]]; then
+  printf "curl: (6) Could not resolve host: private-bitaxe.local\ncurl: (7) Failed to connect to private-bitaxe.local port 80\ncurl: (22) URL rejected: http://private-bitaxe.local/api/system/OTA\n" >&2
+fi
 case "${PHASE13_FAKE_CURL_SCENARIO:-invalid-rejected}" in
   invalid-rejected)
     printf "invalid firmware rejected {\"ssid\":\"phase13-secret\",\"stratumCert\":\"PHASE13_LONG_FAILED_UPDATE_SECRET_PREFIX_%s\",\"ip\":\"192.168.1.77\"}\n" "$(printf "x%.0s" {1..260})" >"$body_file"
@@ -299,7 +302,7 @@ test_failed_update_blocks_wrong_route_response() {
 	create_fake_http_smoke "$http_stub"
 
 	set +e
-	PHASE13_FAKE_CURL_SCENARIO=wrong-api-input CURL_BIN="$curl_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+	PHASE13_FAKE_CURL_SCENARIO=wrong-api-input PHASE13_FAKE_CURL_STDERR_HOST=1 CURL_BIN="$curl_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
 		--device-url http://device.local \
 		--manifest "${tmp_root}/manifest.json" \
 		--factory-image "${tmp_root}/factory.bin" \
@@ -315,6 +318,11 @@ test_failed_update_blocks_wrong_route_response() {
 	fi
 	local log_file="${out_dir}/recovery-regression.log"
 	assert_contains "$log_file" "failed update public body: Wrong API input"
+	assert_contains "$log_file" "failed update curl error: curl: (6) Could not resolve host: [redacted-host]"
+	assert_contains "$log_file" "Failed to connect to [redacted-host]"
+	assert_contains "$log_file" "[redacted-url]"
+	assert_not_contains "$log_file" "private-bitaxe.local"
+	assert_not_contains "$log_file" "http://private-bitaxe.local"
 	assert_contains "$log_file" "failed_update_status: blocked - rejection body did not contain expected failure marker"
 	assert_not_contains "$log_file" "failed_update_status: captured"
 }
@@ -385,7 +393,7 @@ test_interrupted_ota_blocks_without_timeout() {
 	create_fake_http_smoke "$http_stub"
 
 	set +e
-	PHASE13_FAKE_CURL_SCENARIO=interrupted-fast-400 CURL_BIN="$curl_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
+	PHASE13_FAKE_CURL_SCENARIO=interrupted-fast-400 PHASE13_FAKE_CURL_STDERR_HOST=1 CURL_BIN="$curl_stub" PHASE13_HTTP_STATIC_SMOKE_SCRIPT="$http_stub" "$BASH" "$recovery_script" \
 		--device-url http://device.local \
 		--manifest "${tmp_root}/manifest.json" \
 		--factory-image "${tmp_root}/factory.bin" \
@@ -403,8 +411,13 @@ test_interrupted_ota_blocks_without_timeout() {
 	assert_contains "${out_dir}/interrupted-ota.log" "\"ssid\":\"[redacted]\""
 	assert_contains "${out_dir}/interrupted-ota.log" "\"stratumCert\":\"[redacted]\""
 	assert_contains "${out_dir}/interrupted-ota.log" "\"ip\":\"[redacted]\""
+	assert_contains "${out_dir}/interrupted-ota.log" "interrupted-update curl error: curl: (6) Could not resolve host: [redacted-host]"
+	assert_contains "${out_dir}/interrupted-ota.log" "Failed to connect to [redacted-host]"
+	assert_contains "${out_dir}/interrupted-ota.log" "[redacted-url]"
 	assert_not_contains "${out_dir}/interrupted-ota.log" "phase13-secret"
 	assert_not_contains "${out_dir}/interrupted-ota.log" "PHASE13_LONG_INTERRUPTED_SECRET_PREFIX"
+	assert_not_contains "${out_dir}/interrupted-ota.log" "private-bitaxe.local"
+	assert_not_contains "${out_dir}/interrupted-ota.log" "http://private-bitaxe.local"
 	assert_not_contains "${out_dir}/interrupted-ota.log" "192.168.1.88"
 	assert_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: blocked - upload did not time out before completion"
 	assert_not_contains "${out_dir}/interrupted-ota.log" "interrupted_update_status: captured"
