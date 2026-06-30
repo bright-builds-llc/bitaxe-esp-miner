@@ -318,7 +318,7 @@ Plans:
 **Plans**: 6 plans
 Plans:
 
-- [ ] 13-01-PLAN.md - Establish release-candidate package identity, release gate, and evidence scaffold.
+- [x] 13-01-PLAN.md - Establish release-candidate package identity, release gate, and evidence scaffold.
 - [ ] 13-02-PLAN.md - Capture detector-gated Ultra 205 flash-monitor serial boot evidence.
 - [ ] 13-03-PLAN.md - Add and run HTTP/static/recovery smoke evidence helper.
 - [ ] 13-04-PLAN.md - Add and run firmware OTA and boot-validation evidence helpers.
@@ -346,4 +346,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 10. Route Manifest And API Compare Unification | 3/3 | Complete    | 2026-06-29 |
 | 11. Safety Controller Hardware Regression Evidence | 3/3 | Complete | 2026-06-29 |
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
-| 13. Final Ultra 205 Release Evidence | 0/6 | Not started | - |
+| 13. Final Ultra 205 Release Evidence | 1/6 | In Progress|  |
