@@ -5,6 +5,10 @@ use std::process::Command as ProcessCommand;
 use anyhow::{bail, Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
+use release_evidence::{
+    parse_flash_evidence_json, parse_release_evidence_manifest_json,
+    render_release_evidence_report, validate_release_evidence, ReleaseEvidenceDocuments,
+};
 use release_gate::{
     render_release_gate_report, validate_release_gate, ReleaseGateDocuments,
     DEFAULT_CARGO_ABOUT_PATH, DEFAULT_LICENSE_INVENTORY_PATH, DEFAULT_PROVENANCE_PATH,
@@ -21,6 +25,7 @@ const DEFAULT_AXEOS_ROUTE_USAGE: &str = "tools/parity/fixtures/api/axeos-route-u
 
 mod api_compare;
 mod mining_allow;
+mod release_evidence;
 mod release_gate;
 mod safety_allow;
 
@@ -37,6 +42,7 @@ enum CliCommand {
     Report(ReportArgs),
     ApiCompare(ApiCompareArgs),
     ReleaseGate(ReleaseGateArgs),
+    ReleaseEvidence(ReleaseEvidenceArgs),
     SafetyAllow(SafetyAllowArgs),
     MiningAllow(MiningAllowArgs),
 }
@@ -78,6 +84,24 @@ struct ReleaseGateArgs {
 
     #[arg(long, value_name = "package-json", value_parser = parse_utf8_path)]
     manifest: Option<Utf8PathBuf>,
+}
+
+#[derive(Debug, Parser)]
+struct ReleaseEvidenceArgs {
+    #[arg(long, value_name = "package-json", value_parser = parse_utf8_path)]
+    manifest: Utf8PathBuf,
+
+    #[arg(long = "evidence-root", value_parser = parse_utf8_path)]
+    evidence_root: Utf8PathBuf,
+
+    #[arg(long = "flash-evidence-json", value_parser = parse_utf8_path)]
+    maybe_flash_evidence_json: Option<Utf8PathBuf>,
+
+    #[arg(long = "redaction-review", value_parser = parse_utf8_path)]
+    maybe_redaction_review: Option<Utf8PathBuf>,
+
+    #[arg(long = "require-redaction-passed")]
+    require_redaction_passed: bool,
 }
 
 #[derive(Debug, Parser)]
@@ -249,6 +273,35 @@ impl LocalEnvironment {
 
         self.workspace_dir.join(path)
     }
+
+    fn current_git_head(&self) -> Result<String> {
+        let output = ProcessCommand::new("git")
+            .args(["-C", self.workspace_dir.as_str(), "rev-parse", "HEAD"])
+            .output()
+            .with_context(|| {
+                format!(
+                    "failed to read current git HEAD from {}",
+                    self.workspace_dir
+                )
+            })?;
+
+        if !output.status.success() {
+            bail!(
+                "failed to read current git HEAD from {}: {}",
+                self.workspace_dir,
+                command_stderr_or_status(&output)
+            );
+        }
+
+        let commit = String::from_utf8(output.stdout)
+            .context("current git HEAD output was not valid UTF-8")?;
+        let trimmed = commit.trim();
+        if trimmed.is_empty() {
+            bail!("current git HEAD output was empty");
+        }
+
+        Ok(trimmed.to_owned())
+    }
 }
 
 fn main() -> Result<()> {
@@ -262,6 +315,7 @@ fn main() -> Result<()> {
         }
         CliCommand::ApiCompare(args) => run_api_compare_command(args, &environment)?,
         CliCommand::ReleaseGate(args) => run_release_gate_command(args, &environment)?,
+        CliCommand::ReleaseEvidence(args) => run_release_evidence_command(args, &environment)?,
         CliCommand::SafetyAllow(args) => run_safety_allow_command(args, &environment)?,
         CliCommand::MiningAllow(args) => run_mining_allow_command(args, &environment)?,
     };
@@ -270,6 +324,59 @@ fn main() -> Result<()> {
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_release_evidence_command(
+    args: ReleaseEvidenceArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    let manifest_path = environment.workspace_path(&args.manifest);
+    let manifest_json = std::fs::read_to_string(manifest_path.as_std_path())
+        .with_context(|| format!("failed to read package manifest {manifest_path}"))?;
+    let manifest = parse_release_evidence_manifest_json(&manifest_json, &args.manifest)?;
+    let current_git_head = environment.current_git_head()?;
+
+    let maybe_flash_evidence = if let Some(flash_evidence_path) = &args.maybe_flash_evidence_json {
+        let workspace_flash_evidence_path = environment.workspace_path(flash_evidence_path);
+        let flash_evidence_json =
+            std::fs::read_to_string(workspace_flash_evidence_path.as_std_path()).with_context(
+                || format!("failed to read flash evidence {workspace_flash_evidence_path}"),
+            )?;
+        Some(parse_flash_evidence_json(
+            &flash_evidence_json,
+            flash_evidence_path,
+        )?)
+    } else {
+        None
+    };
+
+    let maybe_redaction_review = if let Some(redaction_review_path) = &args.maybe_redaction_review {
+        let workspace_redaction_review_path = environment.workspace_path(redaction_review_path);
+        Some(
+            std::fs::read_to_string(workspace_redaction_review_path.as_std_path()).with_context(
+                || format!("failed to read redaction review {workspace_redaction_review_path}"),
+            )?,
+        )
+    } else {
+        None
+    };
+
+    let documents = ReleaseEvidenceDocuments {
+        manifest,
+        current_git_head,
+        evidence_root: args.evidence_root,
+        maybe_flash_evidence_json_path: args.maybe_flash_evidence_json,
+        maybe_flash_evidence,
+        maybe_redaction_review,
+    };
+    let report = validate_release_evidence(&documents, args.require_redaction_passed);
+    let output = render_release_evidence_report(&documents, &report);
+
+    if !report.passed() {
+        bail!("release evidence failed:\n{output}");
+    }
+
+    Ok(output)
 }
 
 fn run_mining_allow_command(

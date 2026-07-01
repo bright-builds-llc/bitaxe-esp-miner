@@ -6,6 +6,7 @@ rust_binary(
         "src/api_compare.rs",
         "src/main.rs",
         "src/mining_allow.rs",
+        "src/release_evidence.rs",
         "src/release_gate.rs",
         "src/safety_allow.rs",
     ],
