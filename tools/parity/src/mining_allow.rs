@@ -33,6 +33,18 @@ const ALLOWED_CLAIM_TIERS: &[&str] = &[
     "unsupported-pending",
     "parity-redaction",
 ];
+const PROHIBITED_COMMAND_TOKENS: &[&str] = &[
+    "erase-flash",
+    "erase_flash",
+    "write-flash",
+    "write_flash",
+    "--erase-all",
+    "erase_region",
+    "raw-bm1366",
+    "voltage-control",
+    "fan-control",
+    "stratum",
+];
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct MiningAllowManifest {
@@ -230,6 +242,14 @@ fn validate_surface_and_claim(errors: &mut Vec<String>, manifest: &MiningAllowMa
         return;
     }
 
+    let allowed_tiers = allowed_claim_tiers_for_surface(&manifest.surface);
+    if !allowed_tiers.is_empty() && !allowed_tiers.contains(&manifest.claim_tier.as_str()) {
+        errors.push(format!(
+            "surface `{}` does not allow claim_tier `{}`",
+            manifest.surface, manifest.claim_tier
+        ));
+    }
+
     let expected_evidence_class = expected_evidence_class(&manifest.claim_tier);
     if manifest.evidence_class != expected_evidence_class {
         errors.push(format!(
@@ -242,6 +262,8 @@ fn validate_surface_and_claim(errors: &mut Vec<String>, manifest: &MiningAllowMa
 fn validate_required_procedure_scope(errors: &mut Vec<String>, manifest: &MiningAllowManifest) {
     if manifest.allowed_command.trim().is_empty() {
         errors.push("allowed_command must not be empty".to_owned());
+    } else {
+        validate_allowed_command_scope(errors, manifest);
     }
 
     if manifest.allowed_inputs.is_null() {
@@ -335,6 +357,14 @@ fn validate_live_pool_smoke_scope(errors: &mut Vec<String>, manifest: &MiningAll
             "live-pool-smoke requires allowed_inputs.device_url to equal explicit".to_owned(),
         );
     }
+
+    if !manifest
+        .allowed_command
+        .split_whitespace()
+        .any(|token| token == "--device-url")
+    {
+        errors.push("live-pool-smoke requires allowed_command to include --device-url".to_owned());
+    }
 }
 
 fn validate_bounded_soak_scope(errors: &mut Vec<String>, manifest: &MiningAllowManifest) {
@@ -374,14 +404,96 @@ fn validate_filters(
         }
     }
 
-    if let Some(expected_allowed_command) = &filters.maybe_allowed_command {
-        if &manifest.allowed_command != expected_allowed_command {
+    let Some(expected_allowed_command) = &filters.maybe_allowed_command else {
+        errors.push("allowed command filter is required".to_owned());
+        return;
+    };
+
+    if &manifest.allowed_command != expected_allowed_command {
+        errors.push(format!(
+            "allowed command filter mismatch: manifest `{}` != `{expected_allowed_command}`",
+            manifest.allowed_command
+        ));
+    }
+}
+
+fn allowed_claim_tiers_for_surface(surface: &str) -> &'static [&'static str] {
+    match surface {
+        "bm1366-chip-detect" => &["diagnostic-chip-detect"],
+        "bm1366-work-result" => &["diagnostic-work-result"],
+        "mining-smoke" => &["controlled-no-share", "live-pool-smoke"],
+        "bounded-soak" => &["bounded-soak", "unsupported-pending"],
+        "parity-redaction" => &["parity-redaction"],
+        _ => &[],
+    }
+}
+
+fn validate_allowed_command_scope(errors: &mut Vec<String>, manifest: &MiningAllowManifest) {
+    let tokens: Vec<&str> = manifest.allowed_command.split_whitespace().collect();
+
+    for prohibited_token in PROHIBITED_COMMAND_TOKENS {
+        if tokens.iter().any(|token| token == prohibited_token) {
             errors.push(format!(
-                "allowed command filter mismatch: manifest `{}` != `{expected_allowed_command}`",
-                manifest.allowed_command
+                "allowed_command contains prohibited token `{prohibited_token}`"
             ));
         }
     }
+
+    if is_expected_phase15_command(manifest, &tokens) {
+        return;
+    }
+
+    errors.push(
+        "allowed_command must route through an approved Phase 15 wrapper for its surface"
+            .to_owned(),
+    );
+}
+
+fn is_expected_phase15_command(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
+    match manifest.surface.as_str() {
+        "bm1366-chip-detect" | "bm1366-work-result" => {
+            starts_with_tokens(
+                tokens,
+                &["bazel", "run", "//tools/flash:flash", "--", "flash-monitor"],
+            ) && option_equals(tokens, "--board", "205")
+                && option_equals(tokens, "--port", &manifest.port)
+                && has_option_with_value(tokens, "--manifest")
+                && has_option_with_value(tokens, "--evidence-dir")
+        }
+        "mining-smoke" | "bounded-soak" => {
+            starts_with_tokens(tokens, &["scripts/phase15-controlled-mining.sh"])
+                && option_equals(tokens, "--surface", &manifest.surface)
+                && has_option_with_value(tokens, "--manifest")
+                && has_option_with_value(tokens, "--out-dir")
+                && has_option_with_value(tokens, "--chip-detect-summary")
+                && has_option_with_value(tokens, "--work-result-summary")
+        }
+        "parity-redaction" => {
+            starts_with_tokens(tokens, &["rg", "-n", "-i"])
+                && tokens.iter().any(|token| {
+                    token.starts_with(
+                        "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion",
+                    )
+                })
+        }
+        _ => false,
+    }
+}
+
+fn starts_with_tokens(tokens: &[&str], expected_prefix: &[&str]) -> bool {
+    tokens.starts_with(expected_prefix)
+}
+
+fn option_equals(tokens: &[&str], option: &str, expected_value: &str) -> bool {
+    tokens
+        .windows(2)
+        .any(|window| window[0] == option && window[1] == expected_value)
+}
+
+fn has_option_with_value(tokens: &[&str], option: &str) -> bool {
+    tokens
+        .windows(2)
+        .any(|window| window[0] == option && !window[1].starts_with("--"))
 }
 
 fn expected_evidence_class(claim_tier: &str) -> &'static str {
@@ -488,17 +600,45 @@ mod tests {
     #[test]
     fn mining_allow_accepts_only_phase15_surfaces() {
         // Arrange
-        let allowed_surfaces = [
-            "bm1366-chip-detect",
-            "bm1366-work-result",
-            "mining-smoke",
-            "bounded-soak",
-            "parity-redaction",
+        let allowed_surface_claims = [
+            (
+                "bm1366-chip-detect",
+                "diagnostic-chip-detect",
+                "hardware-smoke",
+                "bazel run //tools/flash:flash -- flash-monitor --board 205 --port /dev/cu.usbmodem1101 --manifest package.json --evidence-dir evidence/chip-detect",
+            ),
+            (
+                "bm1366-work-result",
+                "diagnostic-work-result",
+                "hardware-smoke",
+                "bazel run //tools/flash:flash -- flash-monitor --board 205 --port /dev/cu.usbmodem1101 --manifest package.json --evidence-dir evidence/work-result",
+            ),
+            (
+                "mining-smoke",
+                "controlled-no-share",
+                "hardware-smoke",
+                "scripts/phase15-controlled-mining.sh --manifest allow.json --surface mining-smoke --out-dir evidence/mining-smoke --chip-detect-summary chip.md --work-result-summary work.md",
+            ),
+            (
+                "bounded-soak",
+                "unsupported-pending",
+                "workflow",
+                "scripts/phase15-controlled-mining.sh --manifest allow.json --surface bounded-soak --duration-seconds 120 --out-dir evidence/bounded-soak --chip-detect-summary chip.md --work-result-summary work.md",
+            ),
+            (
+                "parity-redaction",
+                "parity-redaction",
+                "workflow",
+                "rg -n -i secret docs/parity/evidence/phase-15-bm1366-mining-evidence-completion",
+            ),
         ];
 
-        for surface in allowed_surfaces {
+        for (surface, claim_tier, evidence_class, allowed_command) in allowed_surface_claims {
             let (manifest, package_manifest) = manifest_with_change(|json| {
                 json["surface"] = serde_json::json!(surface);
+                json["claim_tier"] = serde_json::json!(claim_tier);
+                json["evidence_class"] = serde_json::json!(evidence_class);
+                json["allowed_command"] = serde_json::json!(allowed_command);
             });
 
             // Act
@@ -520,6 +660,60 @@ mod tests {
     }
 
     #[test]
+    fn mining_allow_rejects_surface_claim_tier_mismatch() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("bm1366-chip-detect");
+            json["claim_tier"] = serde_json::json!("controlled-no-share");
+            json["allowed_command"] = serde_json::json!(
+                "bazel run //tools/flash:flash -- flash-monitor --board 205 --port /dev/cu.usbmodem1101 --manifest package.json --evidence-dir evidence/chip-detect"
+            );
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert_error_contains(&report, "does not allow claim_tier `controlled-no-share`");
+    }
+
+    #[test]
+    fn mining_allow_rejects_unapproved_or_unsafe_allowed_command() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["allowed_command"] =
+                serde_json::json!("espflash erase-flash --port /dev/cu.usbmodem1101");
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert_error_contains(&report, "prohibited token `erase-flash`");
+        assert_error_contains(&report, "approved Phase 15 wrapper");
+    }
+
+    #[test]
+    fn mining_allow_documents_require_allowed_command_filter() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|_json| {});
+        let documents = MiningAllowDocuments {
+            manifest,
+            package_manifest,
+        };
+        let filters = MiningAllowFilters {
+            maybe_surface: Some("mining-smoke".to_owned()),
+            maybe_allowed_command: None,
+        };
+
+        // Act
+        let report = validate_mining_allow_documents(&documents, &filters);
+
+        // Assert
+        assert_error_contains(&report, "allowed command filter is required");
+    }
+
+    #[test]
     fn mining_allow_live_pool_smoke_requires_disposable_inputs() {
         // Arrange
         let (manifest, package_manifest) = manifest_with_change(|json| {
@@ -534,6 +728,7 @@ mod tests {
         // Assert
         assert_error_contains(&report, "pool_config");
         assert_error_contains(&report, "device_url");
+        assert_error_contains(&report, "--device-url");
     }
 
     #[test]
@@ -609,7 +804,7 @@ mod tests {
             "surface": "mining-smoke",
             "claim_tier": "controlled-no-share",
             "evidence_class": "hardware-smoke",
-            "allowed_command": "scripts/phase15-mining-smoke.sh --manifest allow.json",
+            "allowed_command": "scripts/phase15-controlled-mining.sh --manifest allow.json --surface mining-smoke --out-dir evidence/mining-smoke --chip-detect-summary chip.md --work-result-summary work.md",
             "allowed_inputs": {
                 "pool_config": "disposable-or-non-secret",
                 "device_url": "explicit",
