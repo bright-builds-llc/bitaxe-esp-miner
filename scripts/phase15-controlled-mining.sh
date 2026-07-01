@@ -332,21 +332,33 @@ probe_api_status() {
 	local url="${device_url%/}/api/system/info"
 	local body_file="${out_dir}/api-system-info.redacted.json"
 	local error_file="${out_dir}/api-system-info.error.txt"
+	local body_tmp="${body_file}.tmp"
+	local error_tmp="${error_file}.tmp"
 
 	: >"$body_file"
 	: >"$error_file"
+	: >"$body_tmp"
+	: >"$error_tmp"
 
 	set +e
 	local status
-	status="$("$curl_bin" --silent --show-error --max-time 10 --output "$body_file.tmp" --write-out "%{http_code}" "$url" 2>"$error_file.tmp")"
+	status="$("$curl_bin" --silent --show-error --max-time 10 --output "$body_tmp" --write-out "%{http_code}" "$url" 2>"$error_tmp")"
 	local curl_status=$?
 	set -e
 
-	redact_text <"$body_file.tmp" >"$body_file"
-	redact_text <"$error_file.tmp" >"$error_file"
-	rm -f "$body_file.tmp" "$error_file.tmp"
+	redact_text <"$body_tmp" >"$body_file"
+	redact_text <"$error_tmp" >"$error_file"
+	rm -f "$body_tmp" "$error_tmp"
 
-	log "api_telemetry_status=http_status_${status}_curl_${curl_status}"
+	if [[ "$curl_status" -ne 0 ]]; then
+		log "api_telemetry_status=pending - curl failed"
+		log "api_telemetry_curl_status=${curl_status}"
+		if [[ -n "$status" ]]; then
+			log "api_telemetry_http_status=${status}"
+		fi
+	else
+		log "api_telemetry_status=http_status_${status}_curl_${curl_status}"
+	fi
 	if [[ -s "$error_file" ]]; then
 		log "api_telemetry_error=$(tr '\n\t' '  ' <"$error_file" | head -c 240)"
 	fi

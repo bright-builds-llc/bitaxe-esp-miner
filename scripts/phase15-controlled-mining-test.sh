@@ -134,6 +134,10 @@ if [[ "${PHASE15_CURL_MUST_NOT_RUN:-0}" == "1" ]]; then
 	exit 99
 fi
 
+if [[ "${PHASE15_CURL_FAIL_EARLY:-0}" == "1" ]]; then
+	exit 7
+fi
+
 printf '{}'
 SH
 	chmod +x "$path"
@@ -317,6 +321,42 @@ test_environment_device_url_does_not_authorize_live_attempt() {
 	assert_not_contains "${out_dir}/mining-smoke.log" "pool_category=live-pool-smoke"
 }
 
+test_api_probe_early_curl_failure_records_pending() {
+	local out_dir="${tmp_root}/curl-fail-early"
+	local manifest="${tmp_root}/manifest-curl-fail-early.json"
+	local chip_summary="${tmp_root}/chip-detect-curl-fail-early.md"
+	local work_summary="${tmp_root}/work-result-curl-fail-early.md"
+	local fake_allow="${tmp_root}/fake-allow-curl-fail-early"
+	local fake_curl="${tmp_root}/fake-curl-fail-early"
+	local fake_ws="${tmp_root}/fake-ws-curl-fail-early"
+
+	write_manifest "$manifest"
+	write_chip_detect_summary "$chip_summary"
+	write_work_result_summary "$work_summary"
+	write_fake_allow "$fake_allow"
+	write_fake_curl "$fake_curl"
+	write_fake_websocket_helper "$fake_ws"
+
+	BITAXE_POOL_URL="stratum+tcp://pool.example.test:3333" \
+		BITAXE_POOL_USER="worker" \
+		BITAXE_POOL_PASSWORD="secret" \
+		PHASE15_CURL_FAIL_EARLY=1 \
+		run_wrapper \
+		"$out_dir" \
+		"$manifest" \
+		"$chip_summary" \
+		"$work_summary" \
+		"$fake_allow" \
+		"$fake_curl" \
+		"$fake_ws" \
+		--device-url "https://10.0.0.2"
+
+	assert_contains "${out_dir}/mining-smoke.log" "controlled_mining_status: live-prerequisites-present"
+	assert_contains "${out_dir}/mining-smoke.log" "api_telemetry_status=pending - curl failed"
+	assert_contains "${out_dir}/mining-smoke.log" "api_telemetry_curl_status=7"
+	assert_contains "${out_dir}/mining-smoke.log" "conclusion: pending - live mining evidence requires reviewed share/no-share and safe-stop artifacts"
+}
+
 test_pending_prerequisite_does_not_run_live_helpers() {
 	local out_dir="${tmp_root}/pending-prereq"
 	local manifest="${tmp_root}/manifest-pending.json"
@@ -414,6 +454,7 @@ test_missing_manifest_records_pending
 test_failed_allow_records_pending
 test_missing_live_prerequisites_records_controlled_no_share
 test_environment_device_url_does_not_authorize_live_attempt
+test_api_probe_early_curl_failure_records_pending
 test_pending_prerequisite_does_not_run_live_helpers
 test_bounded_soak_records_duration_and_abort_contract
 test_websocket_helper_rejects_missing_and_redacts_url
