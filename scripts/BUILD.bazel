@@ -44,6 +44,11 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase16_http_static_smoke",
+    srcs = ["phase16-http-static-smoke.sh"],
+)
+
+sh_binary(
     name = "phase13_monitor_capture",
     srcs = ["phase13-monitor-capture.sh"],
 )
@@ -141,6 +146,13 @@ sh_test(
     name = "phase13_http_static_smoke_test",
     srcs = ["phase13-http-static-smoke-test.sh"],
     data = ["phase13-http-static-smoke.sh"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase16_http_static_smoke_test",
+    srcs = ["phase16-http-static-smoke-test.sh"],
+    data = ["phase16-http-static-smoke.sh"],
     tags = ["local"],
 )
 
