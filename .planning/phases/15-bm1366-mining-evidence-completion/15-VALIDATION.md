@@ -85,3 +85,14 @@ phase_lifecycle_id: 15-2026-07-01T02-07-59
 missing explicit `DEVICE_URL` and missing live pool prerequisites; unsupported
 ASIC, mining, API/WebSocket, statistics, frequency, voltage, fan, and release
 claims remain below verified.
+
+## Final Verification Closure
+
+| Property | Status |
+|----------|--------|
+| Verification report | `15-VERIFICATION.md` created with command summaries and hardware command inventory. |
+| Targeted checks | Passed: shell syntax, Phase 15 Bazel script tests, ASIC filters, Stratum filters, API mining filter, and parity mining-allow filter. |
+| Rust pre-commit gate | Passed: `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo build --all-targets --all-features`, and `cargo test --all-features`. |
+| Aggregate repo checks | Passed: `just test`, `just parity`, and `just verify-reference`. |
+| Reference cleanliness | Passed: `git diff -- reference/esp-miner --exit-code`. |
+| Lifecycle validation | Passed for lifecycle ID `15-2026-07-01T02-07-59` in `yolo` mode. |
