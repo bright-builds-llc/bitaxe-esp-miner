@@ -1,0 +1,20 @@
+phase16_recovery_regression
+manifest: docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json
+factory_image: bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin
+ota_image: bazel-bin/firmware/bitaxe/esp-miner.bin
+port: /dev/cu.usbmodem1101
+DEVICE_URL sanitized: not provided
+network_scan: disabled - using explicit DEVICE_URL only
+raw_write_commands: prohibited
+voltage_fan_mining_stress: prohibited
+unbounded_fault_injection: prohibited
+phase16_gate: required before failed-update, large-erase, and interrupted-update actions
+
+failed_update_status: pending - allow flag not provided
+large_erase_status: pending - allow flag not provided
+interrupted_update_status: pending - allow flag not provided
+rollback_status: pending - Plan 04 OTA evidence not run yet
+boot-validation_status: pending - Plan 04 OTA evidence not run yet
+OTAWWW gap response: Wrong API input
+recovery_regression_status: pending
+conclusion: pending - promote only redaction-cleared current-commit live evidence
