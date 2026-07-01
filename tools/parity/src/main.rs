@@ -21,6 +21,7 @@ const DEFAULT_AXEOS_ROUTE_USAGE: &str = "tools/parity/fixtures/api/axeos-route-u
 
 mod api_compare;
 mod release_gate;
+mod safety_allow;
 
 #[derive(Debug, Parser)]
 #[command(name = "bitaxe-parity")]
@@ -35,6 +36,7 @@ enum CliCommand {
     Report(ReportArgs),
     ApiCompare(ApiCompareArgs),
     ReleaseGate(ReleaseGateArgs),
+    SafetyAllow(SafetyAllowArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -74,6 +76,18 @@ struct ReleaseGateArgs {
 
     #[arg(long, value_name = "package-json", value_parser = parse_utf8_path)]
     manifest: Option<Utf8PathBuf>,
+}
+
+#[derive(Debug, Parser)]
+struct SafetyAllowArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    manifest: Utf8PathBuf,
+
+    #[arg(long = "surface")]
+    maybe_surface: Option<String>,
+
+    #[arg(long = "allowed-command")]
+    maybe_allowed_command: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -234,12 +248,34 @@ fn main() -> Result<()> {
         }
         CliCommand::ApiCompare(args) => run_api_compare_command(args, &environment)?,
         CliCommand::ReleaseGate(args) => run_release_gate_command(args, &environment)?,
+        CliCommand::SafetyAllow(args) => run_safety_allow_command(args, &environment)?,
     };
 
     let mut stdout = io::stdout().lock();
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_safety_allow_command(
+    args: SafetyAllowArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    let manifest_path = environment.workspace_path(&args.manifest);
+    let documents =
+        safety_allow::load_safety_allow_documents(&environment.workspace_dir, &manifest_path)?;
+    let filters = safety_allow::SafetyAllowFilters {
+        maybe_surface: args.maybe_surface,
+        maybe_allowed_command: args.maybe_allowed_command,
+    };
+    let report = safety_allow::validate_safety_allow_documents(&documents, &filters);
+    let output = safety_allow::render_safety_allow_report(&documents.manifest, &report);
+
+    if !report.passed() {
+        bail!("safety allow failed:\n{output}");
+    }
+
+    Ok(output)
 }
 
 fn run_release_gate_command(
