@@ -7,22 +7,22 @@ or erase workflows on connected hardware.
 
 Do not treat package generation or serial route registration as live OTA,
 rollback, recovery, large erase, failed update, or interrupted update
-verification. Phase 13 records the current final release-evidence status in
-`docs/parity/evidence/phase-13-final-ultra-205-release-evidence.md`. Use that
-ledger's blocker and pending language and keep affected parity rows below
+verification. Phase 16 records the current release-evidence status in
+`docs/parity/evidence/phase-16-current-commit-release-evidence-completion.md`.
+Use that ledger's blocker and pending language and keep affected parity rows below
 `verified`.
 
-## Phase 13 Evidence Status
+## Phase 16 Current-Commit Evidence Status
 
-Phase 13 release evidence is recorded in
-`docs/parity/evidence/phase-13-final-ultra-205-release-evidence.md`, with
+Phase 16 current-commit release evidence is recorded in
+`docs/parity/evidence/phase-16-current-commit-release-evidence-completion.md`, with
 component evidence under
-`docs/parity/evidence/phase-13-final-ultra-205-release-evidence/`.
+`docs/parity/evidence/phase-16-current-commit-release-evidence-completion/`.
 
 Current conclusion: package, manifest-backed release gate, Ultra 205 detector,
 factory flash, and serial boot evidence passed for board `205`, port
 `/dev/cu.usbmodem1101`, source commit
-`190849539700b8f9a7909fd2b6ebd84142557968`, and reference commit
+`b55d3e68b68060fc6cf271372a75fc86c0a934c6`, and reference commit
 `c1915b0a63bfabebdb95a515cedfee05146c1d50`.
 
 The final live network gate remains:
@@ -31,11 +31,38 @@ The final live network gate remains:
 Because no reachable just-flashed device URL was available, live HTTP, static,
 recovery, firmware OTA, invalid image rejection, rollback, failed update
 recovery, large erase, and interrupted-update checks remain blocked or pending.
+The Phase 16 firmware OTA helper also blocked before upload because the copied
+evidence manifest `source_commit` no longer equaled the then-current git HEAD.
+No network scan, upload, erase, rollback, or destructive recovery operation ran.
 
 Keep `FS-001`, `OTA-001`, `REL-001`, `REL-002`, and `REL-003` below
 `verified` until a later evidence record includes the required live observations.
 Keep the OTAWWW REL-03 gap and public response `Wrong API input` until
 whole-`www` hardware-regression and interrupted-update evidence exists.
+
+The Phase 16 package/release-gate command sequence was:
+
+```bash
+just package
+bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+```
+
+The Phase 16 serial evidence command was:
+
+```bash
+just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json evidence-dir=docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot capture-timeout-seconds=35
+```
+
+The Phase 16 JSON source of truth is
+`docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-command-evidence.json`.
+The wrapper-owned serial log is
+`docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-monitor.log`.
+
+## Historical Phase 13 Evidence Status
+
+Phase 13 release evidence is historical evidence for source commit
+`190849539700b8f9a7909fd2b6ebd84142557968`; see
+`docs/parity/evidence/phase-13-final-ultra-205-release-evidence.md`.
 
 ## Build And Package
 
@@ -64,7 +91,7 @@ Record the package manifest path, source commit, reference commit, artifact
 SHA-256 values, ESP-IDF version, Rust target, and package command output before
 using the artifacts in release evidence.
 
-The Phase 13 package/release-gate command sequence was:
+The historical Phase 13 package/release-gate command sequence was:
 
 ```bash
 just package
@@ -127,13 +154,13 @@ It does not verify live HTTP, static, recovery, firmware OTA, invalid image
 rejection, rollback, failed update recovery, large erase, interrupted update, or
 OTAWWW behavior.
 
-For the Phase 13 final release-evidence capture, the exact command was:
+For the historical Phase 13 release-evidence capture, the exact command was:
 
 ```bash
 just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot capture-timeout-seconds=25
 ```
 
-The Phase 13 JSON source of truth is
+The historical Phase 13 JSON source of truth is
 `docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot/flash-command-evidence.json`.
 The wrapper-owned serial log is
 `docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot/flash-monitor.log`.
@@ -175,10 +202,12 @@ The success response proves only that the upload path reached the reboot step.
 It does not prove rollback, boot validation, or return-to-operable-state parity
 without matching hardware logs.
 
-Phase 13 firmware OTA status is conservative:
-`firmware_ota_status: blocked - DEVICE_URL unavailable`. The helper did not
-upload `esp-miner.bin`, did not run invalid image rejection, did not observe
-post-reboot identity, and did not observe boot-validation or rollback state.
+Phase 16 firmware OTA status is conservative:
+`firmware_ota_status: blocked`. The helper did not upload `esp-miner.bin`,
+did not run invalid image rejection, did not observe post-reboot identity, and
+did not observe boot-validation or rollback state because the copied evidence
+manifest `source_commit` did not match the then-current git HEAD and
+`DEVICE_URL` was missing.
 
 ## AxeOS Static Update Gap
 
@@ -193,7 +222,7 @@ AxeOS update is not available in this release candidate. Use `just package` to
 create `www.bin` and flash the factory image, or use `/recovery` only after the
 documented evidence gate is complete.
 
-This is the OTAWWW REL-03 gap. Phase 13 did not observe the public `Wrong API input` response because `DEVICE_URL` was missing. Do not claim static update
+This is the OTAWWW REL-03 gap. Phase 16 did not observe the public `Wrong API input` response because `DEVICE_URL` was missing. Do not claim static update
 parity from `www.bin` package generation alone. REL-03 remains an explicit
 release gap until evidence proves whole-`www` partition write behavior, recovery
 access, and interrupted-update recovery on Ultra 205.
@@ -214,7 +243,7 @@ Static smoke is live firmware evidence only when the record names the connected
 Ultra 205 board, serial port, firmware commit, reference commit, package
 manifest path, and observed HTTP responses.
 
-Phase 13 static/recovery status is conservative:
+Phase 16 static/recovery status is conservative:
 `http_static_status: blocked` and `DEVICE_URL status: blocked - missing DEVICE_URL`.
 No live `/`, `/assets/app.css.gz`, missing static redirect, `/recovery`, API
 coexistence, or WebSocket coexistence response was captured.
@@ -257,7 +286,7 @@ Safe procedure:
 Do not describe Large Erase as verified unless that full sequence is captured
 in hardware evidence.
 
-Phase 13 large erase status is conservative:
+Phase 16 large erase status is conservative:
 `large_erase_status: pending - allow flag not provided`. No erase, restore, or
 post-restore monitor command ran.
 
@@ -279,7 +308,7 @@ or boot-validation evidence from the actual post-update state.
 A failed-update capture must prove invalid-image rejection; a `200` response,
 curl failure, wrong-route response, or server error is blocked evidence.
 
-Phase 13 failed-update status is conservative:
+Phase 16 failed-update status is conservative:
 `failed_update_status: pending - allow flag not provided`. No invalid firmware
 upload was attempted through live HTTP.
 
@@ -297,11 +326,11 @@ For interrupted static update evidence, capture:
 
 Until the Phase 8 record exists, interrupted static update remains deferred and
 OTAWWW remains the REL-03 gap.
-For the Phase 13 interrupted firmware OTA helper, a completed `200` OTA response
+For the historical Phase 13 interrupted firmware OTA helper, a completed `200` OTA response
 is blocked evidence and post-interruption HTTP/static smoke must pass before a
 captured conclusion is valid.
 
-Phase 13 interrupted-update status is conservative:
+Phase 16 interrupted-update status is conservative:
 `interrupted_update_status: pending - allow flag not provided`. No bounded
 upload interruption was attempted.
 
@@ -320,8 +349,8 @@ Rollback evidence must distinguish:
 Successful `/api/system/OTA` response text is not enough to claim Rollback or
 boot-validation parity.
 
-Phase 13 rollback and boot-validation status remains:
-`pending - Plan 04 OTA evidence not run yet`. Serial factory boot observed
+Phase 16 rollback and boot-validation status remains:
+`blocked - Plan 16-04 OTA did not run`. Serial factory boot observed
 `ota_boot_validation=not_pending state=factory`, which is not rollback proof.
 
 ## Evidence Required Before Verified Claims

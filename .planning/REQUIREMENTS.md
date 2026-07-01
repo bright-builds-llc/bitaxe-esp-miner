@@ -136,6 +136,16 @@ Explicitly excluded. Documented to prevent scope creep.
 
 Which phases cover which requirements. Updated during roadmap creation.
 
+**Phase 16 current evidence note (2026-07-01):** Phase 16 adds current-commit
+package/release-gate and serial boot evidence for `FND-06`, `REL-04`,
+`REL-07`, and `EVD-05`. `API-09`, `REL-01`, `REL-02`, `REL-03`, and `REL-08`
+remain complete only in the implementation/governance sense unless their
+checklist rows say `verified`; the Phase 16 ledger keeps live HTTP/static,
+valid OTA, invalid OTA rejection, rollback, erase, failed-update,
+interrupted-update, and OTAWWW evidence blocked, pending, or below verified.
+See
+`docs/parity/evidence/phase-16-current-commit-release-evidence-completion.md`.
+
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | FND-01 | Phase 1 | Complete |
@@ -208,10 +218,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v1 requirements: 64 total
 - Mapped to phases: 64
 - Unmapped: 0
-- Complete: 31
-- Pending gap closure: 33
+- Complete: 64
+- Pending gap closure: 0
+- Below verified release evidence remains tracked in `docs/parity/checklist.md`
+  and the Phase 16 evidence ledger.
 
 ______________________________________________________________________
 
 *Requirements defined: 2026-06-20*\
-*Last updated: 2026-06-30 after current release-parity gap closure planning*
+*Last updated: 2026-07-01 after Phase 16 current-commit evidence closure*
