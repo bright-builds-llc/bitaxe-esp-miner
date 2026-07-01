@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 
 function parseArgs(argv) {
   const args = {
-    maybeDeviceUrl: process.env.DEVICE_URL || "",
+    maybeDeviceUrl: "",
     out: "",
     durationMs: 5_000,
     maxFrames: 5,

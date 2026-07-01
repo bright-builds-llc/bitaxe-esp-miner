@@ -421,6 +421,7 @@ test_bounded_soak_records_duration_and_abort_contract() {
 
 test_websocket_helper_rejects_missing_and_redacts_url() {
 	local missing_out="${tmp_root}/ws-missing.log"
+	local env_only_out="${tmp_root}/ws-env-only.log"
 	local invalid_out="${tmp_root}/ws-invalid.log"
 	local redacted_out="${tmp_root}/ws-redacted.log"
 	local node_bin
@@ -429,12 +430,14 @@ test_websocket_helper_rejects_missing_and_redacts_url() {
 	set +e
 	"$node_bin" "$websocket_helper" --out "$missing_out" >/dev/null 2>&1
 	local missing_status=$?
+	DEVICE_URL="https://10.0.0.2/path?token=secret" "$node_bin" "$websocket_helper" --out "$env_only_out" >/dev/null 2>&1
+	local env_only_status=$?
 	"$node_bin" "$websocket_helper" --device-url "ftp://example.test" --out "$invalid_out" >/dev/null 2>&1
 	local invalid_status=$?
 	set -e
 
-	if [[ "$missing_status" -eq 0 || "$invalid_status" -eq 0 ]]; then
-		printf 'websocket helper should reject missing and non-http(s) DEVICE_URL\n' >&2
+	if [[ "$missing_status" -eq 0 || "$env_only_status" -eq 0 || "$invalid_status" -eq 0 ]]; then
+		printf 'websocket helper should reject missing, env-only, and non-http(s) DEVICE_URL\n' >&2
 		exit 1
 	fi
 
