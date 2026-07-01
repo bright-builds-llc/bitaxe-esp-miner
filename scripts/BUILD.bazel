@@ -59,8 +59,18 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase14_self_test_watchdog_load",
+    srcs = ["phase14-self-test-watchdog-load.sh"],
+)
+
+sh_binary(
     name = "phase14_thermal_fan",
     srcs = ["phase14-thermal-fan.sh"],
+)
+
+sh_binary(
+    name = "phase14_display_input",
+    srcs = ["phase14-display-input.sh"],
 )
 
 sh_binary(
@@ -144,9 +154,23 @@ sh_test(
 )
 
 sh_test(
+    name = "phase14_self_test_watchdog_load_test",
+    srcs = ["phase14-self-test-watchdog-load-test.sh"],
+    data = ["phase14-self-test-watchdog-load.sh"],
+    tags = ["local"],
+)
+
+sh_test(
     name = "phase14_thermal_fan_test",
     srcs = ["phase14-thermal-fan-test.sh"],
     data = ["phase14-thermal-fan.sh"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase14_display_input_test",
+    srcs = ["phase14-display-input-test.sh"],
+    data = ["phase14-display-input.sh"],
     tags = ["local"],
 )
 
