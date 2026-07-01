@@ -346,7 +346,7 @@ Plans:
 **Plans**: 6 plans
 Plans:
 
-- [ ] 14-01-PLAN.md - Add the machine-enforced Phase 14 safety allow-manifest gate.
+- [x] 14-01-PLAN.md - Add the machine-enforced Phase 14 safety allow-manifest gate.
 - [ ] 14-02-PLAN.md - Create the Phase 14 component evidence scaffold and redaction contract.
 - [ ] 14-03-PLAN.md - Add and run power, voltage, thermal, and fan evidence wrappers.
 - [ ] 14-04-PLAN.md - Add and run self-test, watchdog/load, display, and input evidence wrappers.
@@ -410,6 +410,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 11. Safety Controller Hardware Regression Evidence | 3/3 | Complete | 2026-06-29 |
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
 | 13. Final Ultra 205 Release Evidence | 6/6 | Complete    | 2026-06-30 |
-| 14. Safety Hardware Evidence Completion | 0/TBD | Not started | - |
+| 14. Safety Hardware Evidence Completion | 1/6 | In Progress|  |
 | 15. BM1366 Mining Evidence Completion | 0/TBD | Not started | - |
 | 16. Current Commit Release Evidence Completion | 0/TBD | Not started | - |

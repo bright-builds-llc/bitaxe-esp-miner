@@ -66,14 +66,14 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 
 ### Safety, Power, Thermal, Self-Test, And Peripherals
 
-- [ ] **SAFE-01**: Ultra 205 voltage and power-control surfaces use bounded typed decisions and fail closed on invalid configuration, communication failure, or unsafe readings.
+- [x] **SAFE-01**: Ultra 205 voltage and power-control surfaces use bounded typed decisions and fail closed on invalid configuration, communication failure, or unsafe readings.
 - [ ] **SAFE-02**: Thermal sensor and fan control surfaces expose upstream-compatible readings, fan duty behavior, RPM behavior, and failure reporting.
 - [ ] **SAFE-03**: PID and thermal-control decisions are covered by pure unit tests before hardware effects are enabled.
-- [ ] **SAFE-04**: Overheat, fan, power, thermal, and ASIC fault paths enter safe states and expose user-visible status compatible with upstream behavior.
+- [x] **SAFE-04**: Overheat, fan, power, thermal, and ASIC fault paths enter safe states and expose user-visible status compatible with upstream behavior.
 - [ ] **SAFE-05**: Self-test lifecycle behavior covers factory flags, start, pass, fail, restart, cancel, and user-visible result reporting.
 - [ ] **SAFE-06**: Display and input status surfaces needed for normal Ultra 205 administration are preserved or explicitly documented as deferred gaps.
 - [ ] **SAFE-07**: Power, current, voltage, fan, and temperature telemetry are captured where Ultra 205 hardware exposes them.
-- [ ] **SAFE-08**: Safety-critical surfaces cannot be marked `verified` without `hardware-smoke` or `hardware-regression` evidence.
+- [x] **SAFE-08**: Safety-critical surfaces cannot be marked `verified` without `hardware-smoke` or `hardware-regression` evidence.
 - [ ] **SAFE-09**: Mining, control, API, and telemetry tasks avoid watchdog starvation and preserve observable responsiveness under load.
 
 ### OTA, Filesystem, And Release Packaging
@@ -93,7 +93,7 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 - [x] **EVD-02**: `verified` means evidence-backed parity, not only implemented code.
 - [x] **EVD-03**: Non-205 boards and ASICs stay unverified or deferred until each board or ASIC has its own evidence set.
 - [x] **EVD-04**: Rust modules that port reference behavior include module-level or behavior-level breadcrumbs without line-by-line translation comments.
-- [ ] **EVD-05**: Verification layers include unit tests, golden fixtures, API comparison, hardware smoke tests, and hardware regression or soak evidence where appropriate.
+- [x] **EVD-05**: Verification layers include unit tests, golden fixtures, API comparison, hardware smoke tests, and hardware regression or soak evidence where appropriate.
 
 ## v2 Requirements
 
@@ -180,14 +180,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-08 | Phase 5 | Complete |
 | API-09 | Phase 5 + Phase 10 + Phase 13 + Phase 16 | Pending |
 | API-10 | Phase 5 + Phase 10 | Complete |
-| SAFE-01 | Phase 6 + Phase 11 + Phase 14 | Pending |
+| SAFE-01 | Phase 6 + Phase 11 + Phase 14 | Complete |
 | SAFE-02 | Phase 6 + Phase 11 + Phase 14 | Pending |
 | SAFE-03 | Phase 6 + Phase 11 + Phase 14 | Pending |
-| SAFE-04 | Phase 6 + Phase 11 + Phase 14 | Pending |
+| SAFE-04 | Phase 6 + Phase 11 + Phase 14 | Complete |
 | SAFE-05 | Phase 6 + Phase 11 + Phase 14 | Pending |
 | SAFE-06 | Phase 6 + Phase 11 + Phase 14 | Pending |
 | SAFE-07 | Phase 6 + Phase 11 + Phase 14 | Pending |
-| SAFE-08 | Phase 6 + Phase 11 + Phase 14 | Pending |
+| SAFE-08 | Phase 6 + Phase 11 + Phase 14 | Complete |
 | SAFE-09 | Phase 6 + Phase 11 + Phase 14 + Phase 15 | Pending |
 | REL-01 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Pending |
 | REL-02 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Pending |
@@ -201,7 +201,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVD-02 | Phase 8 | Complete |
 | EVD-03 | Phase 8 | Complete |
 | EVD-04 | Phase 8 | Complete |
-| EVD-05 | Phase 8 + Phase 9 + Phase 11 + Phase 12 + Phase 13 + Phase 14 + Phase 15 + Phase 16 | Pending |
+| EVD-05 | Phase 8 + Phase 9 + Phase 11 + Phase 12 + Phase 13 + Phase 14 + Phase 15 + Phase 16 | Complete |
 
 **Coverage:**
 
