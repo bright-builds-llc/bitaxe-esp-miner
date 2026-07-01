@@ -15,7 +15,8 @@ use bitaxe_asic::bm1366::{
     command::Bm1366AdapterAction,
     init_plan::{Bm1366InitPlan, Bm1366Preflight, BoardPreflightEvidence, ConfigPreflightEvidence},
     observation::AsicInitStatus,
-    BM1366_RESULT_FRAME_LEN,
+    result::{parse_bm1366_result_frame, Bm1366ValidJobIds, BM1366_RESULT_FRAME_LEN},
+    work::{diagnostic_job_frame, Bm1366JobId, Bm1366WorkFields},
 };
 use esp_idf_svc::hal::{
     gpio::{InputPin, OutputPin},
@@ -53,6 +54,7 @@ where
             Ok(())
         }
         AsicAdapterMode::ChipDetectOnly => run_chip_detect_only(peripherals),
+        AsicAdapterMode::WorkResultDiagnostic => run_work_result_diagnostic(peripherals),
     }
 }
 
@@ -66,6 +68,11 @@ pub fn run_boot_gate_without_peripherals(reason: &'static str) -> Result<()> {
             Ok(())
         }
         AsicAdapterMode::ChipDetectOnly => {
+            log::warn!("asic_status=fail_closed reason={reason}");
+            status::publish_status(AsicInitStatus::FailClosed { reason });
+            Ok(())
+        }
+        AsicAdapterMode::WorkResultDiagnostic => {
             log::warn!("asic_status=fail_closed reason={reason}");
             status::publish_status(AsicInitStatus::FailClosed { reason });
             Ok(())
@@ -122,6 +129,82 @@ where
     }
 
     Ok(())
+}
+
+fn run_work_result_diagnostic<UART, RESET, TX, RX>(
+    peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
+) -> Result<()>
+where
+    UART: Uart + 'static,
+    RESET: OutputPin + 'static,
+    TX: OutputPin + 'static,
+    RX: InputPin + 'static,
+{
+    let mut reset = match reset::AsicReset::new(peripherals.reset)
+        .context("initialize ASIC reset GPIO adapter")
+    {
+        Ok(reset) => reset,
+        Err(error) => {
+            fail_closed_work_result_setup_error(None, &error);
+            return Ok(());
+        }
+    };
+    let mut uart = match uart::AsicUart::new(peripherals.uart, peripherals.tx, peripherals.rx)
+        .context("initialize BM1366 UART1 adapter")
+    {
+        Ok(uart) => uart,
+        Err(error) => {
+            fail_closed_work_result_setup_error(Some(&mut reset), &error);
+            return Ok(());
+        }
+    };
+
+    status::publish_work_result_diagnostic_started_status();
+    let job_id = Bm1366JobId::new(0x28);
+    let work_frame = match diagnostic_job_frame(job_id, diagnostic_work_fields()) {
+        Ok(work_frame) => work_frame,
+        Err(error) => {
+            fail_closed_work_result_invalid(&mut reset, &error);
+            return Ok(());
+        }
+    };
+
+    if let Err(error) = uart.write_frame(work_frame.bytes()) {
+        fail_closed_work_result_invalid(&mut reset, &error);
+        return Ok(());
+    }
+    status::publish_work_result_dispatched_status(job_id.raw(), work_frame.bytes().len());
+
+    let valid_jobs = Bm1366ValidJobIds::single(job_id);
+    let frame = match uart.read_exact(BM1366_RESULT_FRAME_LEN, uart::RESULT_WORK_TIMEOUT_MS) {
+        Ok(frame) => frame,
+        Err(error) => {
+            fail_closed_work_result_read(&mut reset, &error);
+            return Ok(());
+        }
+    };
+
+    match parse_bm1366_result_frame(&frame, &valid_jobs, 16) {
+        Ok(_result) => {
+            status::publish_work_result_parsed_status(job_id.raw());
+        }
+        Err(error) => {
+            fail_closed_work_result_invalid(&mut reset, &error);
+        }
+    }
+
+    Ok(())
+}
+
+fn diagnostic_work_fields() -> Bm1366WorkFields {
+    Bm1366WorkFields {
+        starting_nonce: [1, 2, 3, 4],
+        nbits: [5, 6, 7, 8],
+        ntime: [9, 10, 11, 12],
+        merkle_root: [17; 32],
+        prev_block_hash: [34; 32],
+        version: [51, 52, 53, 54],
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -216,6 +299,51 @@ fn fail_closed_adapter_error(reset: &mut reset::AsicReset<'_>, error: &anyhow::E
             _ => {}
         }
     }
+}
+
+fn fail_closed_work_result_setup_error(
+    maybe_reset: Option<&mut reset::AsicReset<'_>>,
+    error: &anyhow::Error,
+) {
+    if let Some(reset) = maybe_reset {
+        best_effort_hold_reset_low(reset, "work_result_diagnostic_setup_error");
+    }
+    status::publish_work_result_invalid_status(format_args!("{error:#}"));
+    status::publish_status(AsicInitStatus::FailClosed {
+        reason: "work_result_diagnostic_setup_error",
+    });
+}
+
+fn fail_closed_work_result_read(reset: &mut reset::AsicReset<'_>, error: &anyhow::Error) {
+    best_effort_hold_reset_low(reset, "work_result_diagnostic_read_error");
+    if error_is_timeout(error) {
+        status::publish_work_result_timeout_status();
+        status::publish_status(AsicInitStatus::FailClosed {
+            reason: "work_result_diagnostic_timeout",
+        });
+        return;
+    }
+
+    status::publish_work_result_invalid_status(format_args!("{error:#}"));
+    status::publish_status(AsicInitStatus::FailClosed {
+        reason: "work_result_diagnostic_invalid",
+    });
+}
+
+fn fail_closed_work_result_invalid(
+    reset: &mut reset::AsicReset<'_>,
+    error: impl std::fmt::Display,
+) {
+    best_effort_hold_reset_low(reset, "work_result_diagnostic_invalid");
+    status::publish_work_result_invalid_status(error);
+    status::publish_status(AsicInitStatus::FailClosed {
+        reason: "work_result_diagnostic_invalid",
+    });
+}
+
+fn error_is_timeout(error: &anyhow::Error) -> bool {
+    let rendered = format!("{error:#}").to_ascii_lowercase();
+    rendered.contains("timeout") || rendered.contains("timed out")
 }
 
 fn fail_closed_setup_error(
