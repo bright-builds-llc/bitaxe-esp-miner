@@ -1,6 +1,6 @@
 # Phase 16 Redaction Review
 
-redaction_status: pending
+redaction_status: passed
 
 ## Review Scope
 
@@ -31,13 +31,13 @@ redaction_status: pending
 | Detector log | present | passed | `serial-boot/detect-ultra205.log`; USB port and MAC address retained for board-info identity. |
 | Flash evidence JSON | present | passed | `serial-boot/flash-command-evidence.json`; USB port, local paths, source/reference commits, and wrapper commands retained for evidence identity. |
 | Serial monitor log | present | passed | `serial-boot/flash-monitor.log`; boot identity, route registration, safe-state, reset, SPIFFS, and commit markers retained. |
-| HTTP/static/recovery log | not generated in Plan 16-02 | pending | Later Phase 16 plans own live `DEVICE_URL` artifacts. |
-| Firmware OTA log | not generated in Plan 16-02 | pending | Later Phase 16 plans own live OTA artifacts. |
-| WebSocket capture | not generated in Plan 16-02 | pending | Later Phase 16 plans own live WebSocket artifacts if any. |
-| Recovery regression log | not generated in Plan 16-02 | pending | Later Phase 16 plans own recovery regression artifacts. |
-| Failed-update log | not generated in Plan 16-02 | pending | Later Phase 16 plans own failed-update artifacts. |
-| Interrupted-update log | not generated in Plan 16-02 | pending | Later Phase 16 plans own interrupted-update artifacts. |
-| Large-erase log | not generated in Plan 16-02 | pending | Later Phase 16 plans own destructive erase artifacts. |
+| HTTP/static/recovery log | present | passed | `http-static-recovery/http-static-smoke.log`; blocked helper log only, no explicit target value. |
+| Firmware OTA log | present | passed | `firmware-ota/firmware-ota-smoke.log` and `firmware-ota/post-ota-detect-ultra205.log`; blocked preflight logs only. |
+| WebSocket capture | absent - not cited | absent - not cited | No live WebSocket request was sent because `DEVICE_URL` was missing. |
+| Recovery regression log | present | passed | `recovery-regression/recovery-regression.log`; pending helper log only, no destructive action. |
+| Failed-update log | present | passed | `recovery-regression/failed-update.log`; pending marker only, no invalid upload. |
+| Interrupted-update log | present | passed | `recovery-regression/interrupted-ota.log`; pending marker only, no interrupted upload. |
+| Large-erase log | present | passed | `recovery-regression/large-erase.log` and `large-erase-post-restore-monitor.log`; pending markers only, no erase or reflash. |
 | Terminal snippets | present | passed | `package-release-gate.md` and `serial-boot.md` include command/output snippets needed for evidence. |
 | absent artifacts | present | passed | Plan 16-02 cites no HTTP, OTA, recovery, failed-update, interrupted-update, or large-erase proof. |
 
@@ -62,9 +62,9 @@ redaction_status: pending
 | `http-static-recovery/*.curl-error.txt` | absent - not cited | absent - not cited | Helper blocked before live route probes. |
 
 Plan 16-03 redaction result: passed for generated HTTP/static/recovery artifacts.
-The phase-level `redaction_status` remains pending for later Phase 16 firmware
-OTA, recovery regression, failed-update, interrupted-update, and large-erase
-artifacts.
+Later Phase 16 firmware OTA, recovery regression, failed-update,
+interrupted-update, and large-erase artifacts were reviewed in the sections
+below before the phase-level result was set to passed.
 
 ## Search Pattern
 
@@ -82,7 +82,7 @@ Reviewer: Codex GSD executor
 
 Secret scan result: expected category-label hits plus ESP boot terminology (`WiFi`, `NVS`, `pool`) and board-info MAC evidence retained for hardware identity. No pool credentials, worker secrets, Wi-Fi credentials, API tokens, private `DEVICE_URL`, private endpoints, NVS secret values, or local terminal secrets were found in Plan 16-02 artifacts.
 
-Conclusion: Plan 16-02 package, detector, flash JSON, and serial artifacts passed redaction review. Phase-level `redaction_status` remains pending for later Phase 16 live HTTP, OTA, recovery, failed-update, interrupted-update, and large-erase artifacts.
+Conclusion: Plan 16-02 package, detector, flash JSON, and serial artifacts passed redaction review. Later Phase 16 live HTTP, OTA, recovery, failed-update, interrupted-update, and large-erase artifacts were reviewed in their plan sections below before the phase-level result was set to passed.
 
 Plan 16-03 conclusion: the HTTP/static/recovery helper generated a blocked
 smoke log only. No route body, header, curl error, private `DEVICE_URL`, API
@@ -112,8 +112,9 @@ response, WebSocket, or recovery response artifact was generated or cited.
 | `firmware-ota/post-ota-monitor.log` | absent - not cited | absent - not cited | No valid OTA occurred, so no post-OTA monitor capture ran. |
 
 Plan 16-04 redaction result: passed for generated firmware OTA blocked artifacts.
-The phase-level `redaction_status` remains pending for later Phase 16 recovery
-regression, failed-update, interrupted-update, and large-erase artifacts.
+Later Phase 16 recovery regression, failed-update, interrupted-update, and
+large-erase artifacts were reviewed in the sections below before the
+phase-level result was set to passed.
 
 ## Plan 16-05 Recovery Regression Review
 
@@ -157,3 +158,29 @@ artifacts. The only retained sensitive-adjacent value is the USB port needed for
 board identity. No pool credentials, worker secrets, Wi-Fi credentials, API
 tokens, private `DEVICE_URL`, private endpoints, NVS secret values, or local
 terminal secrets were found in Plan 16-05 artifacts.
+
+## Final Phase 16 Review
+
+- [x] Package manifest and release-gate logs reviewed.
+- [x] Detector log, flash evidence JSON, and serial monitor log reviewed.
+- [x] HTTP/static/recovery blocked log reviewed.
+- [x] Firmware OTA blocked logs reviewed.
+- [x] Recovery regression pending logs reviewed.
+- [x] Failed-update, interrupted-update, and large-erase pending markers reviewed.
+- [x] HTTP body/header/error artifacts absent - not cited.
+- [x] WebSocket response artifacts absent - not cited.
+- [x] OTA request/response body, header, curl error, invalid image, and post-OTA monitor artifacts absent - not cited.
+- [x] Recovery detector, board-info, erase, reflash, failed-update body/header/error, interrupted-upload body/error artifacts absent - not cited.
+- [x] Private `DEVICE_URL` values absent - not cited.
+- [x] Pool credentials, worker secrets, Wi-Fi credentials, API tokens, NVS secret values, and local terminal secrets absent.
+- [x] USB port and MAC address retained only for board identity evidence.
+
+Final secret scan result: expected category-label hits plus ESP boot terms
+(`WiFi`, `NVS`, `pool`), missing-`DEVICE_URL` labels, local package paths, USB
+port, and board-info MAC evidence retained for identity. No private endpoint
+value, pool credential, worker secret, Wi-Fi credential, API token, NVS secret
+value, or local terminal secret was found in any Phase 16 cited artifact.
+
+Final conclusion: redaction_status: passed. Artifacts that are absent are
+explicitly listed as `absent - not cited`, and blocked or pending artifacts are
+cited only for their blocker status, not as live behavior proof.
