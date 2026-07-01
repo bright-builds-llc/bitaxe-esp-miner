@@ -1,6 +1,6 @@
 ---
 recovery_regression_status: pending
-source_commit: b55d3e68b68060fc6cf271372a75fc86c0a934c6
+source_commit: 8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 package_manifest: docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json
 factory_image: bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin
@@ -36,13 +36,13 @@ blocked before detector rerun or upload.
 
 | Field | Value |
 | --- | --- |
-| source_commit | `b55d3e68b68060fc6cf271372a75fc86c0a934c6` |
+| source_commit | `8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca` |
 | reference_commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
-| current git HEAD before Task 1 commit | `e5b6303f3abbe7fa240d04e2e44e9e444545e6d1` |
+| current git HEAD before helper refresh | `3e1a64089fb63432c9995308ee46aec17899b21d` |
 | package_manifest | `docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json` |
 | factory_image | `bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin` |
 | ota_image | `bazel-bin/firmware/bitaxe/esp-miner.bin` |
-| selected Plan 16-02 port | `/dev/cu.usbmodem1101` |
+| selected Phase 16 port | `/dev/cu.usbmodem1101` |
 | DEVICE_URL status | not provided |
 | network_scan | disabled |
 | helper log | `docs/parity/evidence/phase-16-current-commit-release-evidence-completion/recovery-regression/recovery-regression.log` |

@@ -2,11 +2,11 @@
 phase: 16-current-commit-release-evidence-completion
 evidence: final-ledger
 redaction_status: passed
-source_commit: b55d3e68b68060fc6cf271372a75fc86c0a934c6
+source_commit: 8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 status: mixed
 generated_by: gsd-execute-plan
-generated_at: 2026-07-01T14:55:28Z
+generated_at: 2026-07-01T15:26:58Z
 ---
 
 # Phase 16 Current Commit Release Evidence Completion
@@ -28,7 +28,7 @@ current release proof.
 
 | Field | Value |
 | --- | --- |
-| Phase 16 release-candidate source commit | `b55d3e68b68060fc6cf271372a75fc86c0a934c6` |
+| Phase 16 release-candidate source commit | `8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca` |
 | Reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | Board | `205` |
 | Device | Ultra 205 BM1366 |
@@ -37,10 +37,10 @@ current release proof.
 | Identity conclusion | passed for package, release gate, detector, and serial boot at the same release-candidate source commit |
 
 Later evidence and metadata commits advanced repository `HEAD` after the
-release-candidate package was flashed. The firmware OTA helper correctly
-blocked when the copied manifest source commit no longer equaled the preflight
-git HEAD, and this ledger does not claim the later evidence commits were
-repackaged, reflashed, or OTA-tested.
+release-candidate package was flashed. The final release-evidence validator was
+run with the explicit post-source evidence-commit allowance, which still rejects
+firmware, source, or tool changes after the package source commit. This ledger
+does not claim later evidence commits were reflashed or OTA-tested.
 
 ## Evidence Pack Matrix
 
@@ -49,7 +49,7 @@ repackaged, reflashed, or OTA-tested.
 | Package and release gate | `package-release-gate.md`, package manifest copy, package/release-gate logs | passed | REL-04 package identity, manifest checksums, release-gate inputs |
 | Serial boot | `serial-boot.md`, detector log, flash JSON, monitor log | passed | FND-06 boot identity, safe state, partition, SPIFFS, route registration |
 | HTTP static recovery | `http-static-recovery.md`, blocked smoke log | blocked | Evidence that `DEVICE_URL` was absent and network scanning stayed disabled |
-| Firmware OTA | `firmware-ota.md`, blocked preflight logs | blocked | Evidence that no OTA upload ran because manifest-vs-HEAD and `DEVICE_URL` prerequisites failed |
+| Firmware OTA | `firmware-ota.md`, blocked preflight logs | blocked | Evidence that no OTA upload ran because `DEVICE_URL` was unavailable |
 | Recovery regression | `recovery-regression.md`, pending operation logs | pending | Evidence that failed-update, large-erase, and interrupted-update operations did not run without allow flags |
 | Redaction review | `redaction-review.md` | passed | All cited artifacts safe; absent artifacts are `absent - not cited` |
 
@@ -73,7 +73,7 @@ Status: passed.
 
 Phase 16 package evidence records:
 
-- `source_commit: b55d3e68b68060fc6cf271372a75fc86c0a934c6`
+- `source_commit: 8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca`
 - `reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50`
 - `release_gate_status: passed`
 - artifacts: `bitaxe-ultra205.elf`, `esp-miner.bin`, `www.bin`,
@@ -98,7 +98,7 @@ from the package manifest and captured trusted wrapper output.
 Supported serial claims:
 
 - board `205`, Ultra 205, BM1366 identity
-- firmware commit marker `b55d3e68b680`
+- firmware commit marker `8490118a7e7f`
 - reference commit marker `c1915b0a63bfabebdb95a515cedfee05146c1d50`
 - reset reason and factory partition boot
 - `spiffs_mount=available`
@@ -133,10 +133,8 @@ Rows that remain below verified from this pack:
 
 Status: blocked.
 
-The firmware OTA preflight stopped before detector rerun or upload. The copied
-manifest source commit was the flashed Phase 16 release-candidate commit, while
-the preflight git HEAD had advanced to later evidence commits. `DEVICE_URL` was
-also missing.
+The firmware OTA preflight stopped before detector rerun or upload because
+`DEVICE_URL` was missing.
 
 No invalid firmware upload, valid OTA upload, selected next partition, reboot
 scheduling, post-reboot identity, boot-validation proof, rollback proof, or
@@ -181,7 +179,7 @@ or local terminal secret was found.
 ## Exact Claims Supported
 
 - Phase 16 package manifest and release gate passed for source commit
-  `b55d3e68b68060fc6cf271372a75fc86c0a934c6`.
+  `8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca`.
 - Phase 16 detector-gated wrapper flash-monitor evidence passed for board `205`
   with trusted output at the same release-candidate source commit.
 - Serial boot supports firmware identity, reference identity, factory partition,

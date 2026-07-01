@@ -2,7 +2,7 @@
 http_static_status: blocked
 device_url_status: blocked - missing DEVICE_URL
 network_scan: disabled
-source_commit: b55d3e68b68060fc6cf271372a75fc86c0a934c6
+source_commit: 8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 package_manifest: docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json
 serial_boot_dependency: passed - same source commit as package manifest
@@ -35,7 +35,7 @@ target from serial logs, mDNS, ARP, router state, or any other network source.
 | --- | --- |
 | device_url_status | blocked - missing DEVICE_URL |
 | network_scan | disabled |
-| source_commit | `b55d3e68b68060fc6cf271372a75fc86c0a934c6` |
+| source_commit | `8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca` |
 | reference_commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | package_manifest | `docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json` |
 | serial_boot_dependency | passed - `serial_boot_status: passed` for the same package source commit |

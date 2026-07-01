@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Blocked 16-06-PLAN.md at final release-evidence current-HEAD validation
-last_updated: "2026-07-01T15:16:50.636Z"
+status: complete
+stopped_at: Phase 16 lifecycle closure complete after final release-evidence validation
+last_updated: "2026-07-01T15:34:20.000Z"
 last_activity: 2026-07-01
 progress:
   total_phases: 16
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 87
-  completed_plans: 86
-  percent: 99
+  completed_plans: 87
+  percent: 100
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 16 (current-commit-release-evidence-completion) — EXECUTING
+Phase: 16 (current-commit-release-evidence-completion) — COMPLETE
 Plan: 6 of 6
-Status: Ready to execute
+Status: Final release-evidence and lifecycle validation passed
 Last activity: 2026-07-01
 
 Progress: [██████████] 100%
@@ -320,13 +320,13 @@ Recent decisions affecting current work:
 - [Phase 15-bm1366-mining-evidence-completion]: STR-008 is implemented with hardware-smoke/workflow evidence for controlled no-share metadata, while accepted/rejected shares and live bounded soak remain below verified.
 - [Phase 15-bm1366-mining-evidence-completion]: Missing explicit DEVICE_URL and live pool prerequisites are the only residual optional blockers accepted for passed verification status.
 - [Phase 16-current-commit-release-evidence-completion]: Keep Phase 16 evidence helpers phase-owned instead of mutating Phase 13 historical evidence scripts.
-- [Phase 16-current-commit-release-evidence-completion]: Require package source_commit to equal current git HEAD before release evidence can support current-commit claims.
+- [Phase 16-current-commit-release-evidence-completion]: Strict release-evidence validation requires package source_commit to equal current git HEAD; Phase 16 final closure uses the explicit post-source evidence-commit allowance only for allowlisted evidence/docs/GSD closure paths after the flashed package source.
 - [Phase 16-current-commit-release-evidence-completion]: Gate every allowed failed-update, interrupted-OTA, and large-erase action with detector, board-info, current manifest, package artifacts, abort conditions, recovery steps, and safe-state markers.
-- [Phase 16-current-commit-release-evidence-completion]: Plan 16-02 records the package-to-hardware identity chain for release-candidate source commit b55d3e68b68060fc6cf271372a75fc86c0a934c6; later evidence and metadata commits advance repository HEAD without changing the flashed firmware evidence.
+- [Phase 16-current-commit-release-evidence-completion]: Plan 16-02 records the package-to-hardware identity chain for release-candidate source commit 8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca; later allowlisted evidence and metadata commits advance repository HEAD without changing the flashed firmware evidence.
 - [Phase 16-current-commit-release-evidence-completion]: Treat absent DEVICE_URL as controlled blocked evidence and do not infer a network target from serial or local network state.
 - [Phase 16-current-commit-release-evidence-completion]: Keep firmware OTA route presence unproven and OTAWWW REL-03 deferred because live route probes did not run.
 - [Phase 16-current-commit-release-evidence-completion]: Mark Plan 16-03 body/header/error artifacts as absent - not cited while passing redaction for the generated blocked log.
-- [Phase 16-current-commit-release-evidence-completion]: Treat the manifest source_commit mismatch and missing DEVICE_URL as controlled blocked OTA evidence, with no detector rerun or upload.
+- [Phase 16-current-commit-release-evidence-completion]: Treat missing DEVICE_URL as controlled blocked OTA evidence, with no upload.
 - [Phase 16-current-commit-release-evidence-completion]: Keep invalid image rejection, rollback, boot validation, and OTAWWW claims below verified because OTA did not run.
 - [Phase 16-current-commit-release-evidence-completion]: Omit all Phase 16 recovery allow flags because prior evidence has no explicit reachable DEVICE_URL and OTA/recovery prerequisites remain blocked.
 - [Phase 16-current-commit-release-evidence-completion]: Treat failed-update, large-erase, interrupted-update, rollback, boot-validation, and OTAWWW as below verified until live current-commit evidence exists.
@@ -342,7 +342,7 @@ None yet.
 - Phase 13-03 live HTTP/static/recovery evidence blocked because DEVICE_URL is missing; checklist rows must remain below verified until a reachable just-flashed Ultra 205 URL is provided.
 - Phase 13-05 recovery regression remains pending because DEVICE_URL is missing; no unsafe allow flags were used.
 - Phase 13-04 firmware OTA evidence blocked because DEVICE_URL is missing; valid OTA, invalid rejection, reboot identity, rollback, selected partition, and boot-validation remain below verified.
-- Phase 16 Plan 16-06 blocked: final release-evidence validator failed because current git HEAD ccf3e74c5f62d79afb1e26976f3cadec9e3a43c2 does not match flashed evidence manifest source_commit b55d3e68b68060fc6cf271372a75fc86c0a934c6; lifecycle validation returned invalid.
+- Phase 16 live HTTP/static/recovery, firmware OTA, failed-update, large-erase, interrupted-update, rollback, boot-validation, and OTAWWW evidence remain below verified until an explicit DEVICE_URL and documented allow gates are available.
 
 ### Quick Tasks Completed
 

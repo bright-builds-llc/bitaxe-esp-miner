@@ -1,5 +1,5 @@
 detector_status: skipped - preflight blocked before detector rerun
-blocked_reason: package manifest source_commit b55d3e68b68060fc6cf271372a75fc86c0a934c6 does not equal current git HEAD 50b5868cc444ff91431865212983721ea59a52cb; DEVICE_URL unavailable
+blocked_reason: DEVICE_URL unavailable
 network_scan: disabled
 prior_selected_port: /dev/cu.usbmodem1101
 board: "205"

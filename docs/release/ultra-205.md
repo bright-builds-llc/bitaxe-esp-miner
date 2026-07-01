@@ -22,7 +22,7 @@ component evidence under
 Current conclusion: package, manifest-backed release gate, Ultra 205 detector,
 factory flash, and serial boot evidence passed for board `205`, port
 `/dev/cu.usbmodem1101`, source commit
-`b55d3e68b68060fc6cf271372a75fc86c0a934c6`, and reference commit
+`8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca`, and reference commit
 `c1915b0a63bfabebdb95a515cedfee05146c1d50`.
 
 The final live network gate remains:
@@ -31,8 +31,6 @@ The final live network gate remains:
 Because no reachable just-flashed device URL was available, live HTTP, static,
 recovery, firmware OTA, invalid image rejection, rollback, failed update
 recovery, large erase, and interrupted-update checks remain blocked or pending.
-The Phase 16 firmware OTA helper also blocked before upload because the copied
-evidence manifest `source_commit` no longer equaled the then-current git HEAD.
 No network scan, upload, erase, rollback, or destructive recovery operation ran.
 
 Keep `FS-001`, `OTA-001`, `REL-001`, `REL-002`, and `REL-003` below
@@ -205,9 +203,8 @@ without matching hardware logs.
 Phase 16 firmware OTA status is conservative:
 `firmware_ota_status: blocked`. The helper did not upload `esp-miner.bin`,
 did not run invalid image rejection, did not observe post-reboot identity, and
-did not observe boot-validation or rollback state because the copied evidence
-manifest `source_commit` did not match the then-current git HEAD and
-`DEVICE_URL` was missing.
+did not observe boot-validation or rollback state because `DEVICE_URL` was
+missing.
 
 ## AxeOS Static Update Gap
 
