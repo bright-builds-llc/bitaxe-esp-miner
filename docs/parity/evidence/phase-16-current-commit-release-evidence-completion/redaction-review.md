@@ -114,3 +114,46 @@ response, WebSocket, or recovery response artifact was generated or cited.
 Plan 16-04 redaction result: passed for generated firmware OTA blocked artifacts.
 The phase-level `redaction_status` remains pending for later Phase 16 recovery
 regression, failed-update, interrupted-update, and large-erase artifacts.
+
+## Plan 16-05 Recovery Regression Review
+
+- [x] Recovery regression main log reviewed for Plan 16-05.
+- [x] Failed-update log reviewed for Plan 16-05.
+- [x] Large-erase log reviewed for Plan 16-05.
+- [x] Large-erase post-restore monitor pending marker reviewed for Plan 16-05.
+- [x] Interrupted-update log reviewed for Plan 16-05.
+- [x] Failed-update request and response body artifacts absent - not cited.
+- [x] Failed-update response header artifacts absent - not cited.
+- [x] Failed-update curl error artifacts absent - not cited.
+- [x] Invalid firmware artifact absent - not cited.
+- [x] Large-erase detector transcript absent - not cited.
+- [x] Large-erase board-info transcript absent - not cited.
+- [x] Large-erase erase and factory reflash transcripts absent - not cited.
+- [x] Interrupted-update request and response body artifacts absent - not cited.
+- [x] Interrupted-update curl error artifacts absent - not cited.
+- [x] Interrupted-update detector transcript absent - not cited.
+- [x] Private `DEVICE_URL` value absent - not cited.
+- [x] Network scan disabled before any target inference.
+- [x] Raw erase, raw write, voltage/fan/mining stress, and interrupted upload actions absent - not cited.
+
+| Plan 16-05 artifact | Present? | Reviewed? | Notes |
+| --- | --- | --- | --- |
+| `recovery-regression/recovery-regression.log` | present | passed | Pending helper log only; contains manifest path, source/reference commits, retained USB port, `DEVICE_URL sanitized: not provided`, prohibited-action markers, and no explicit target value. |
+| `recovery-regression/failed-update.log` | present | passed | Pending marker only; no invalid upload, public status, body, headers, or curl error. |
+| `recovery-regression/large-erase.log` | present | passed | Pending marker only; no erase command execution, factory reflash, or board-info transcript. |
+| `recovery-regression/large-erase-post-restore-monitor.log` | present | passed | Pending marker only; no monitor capture from a restore run. |
+| `recovery-regression/interrupted-ota.log` | present | passed | Pending marker only; no interrupted upload, public status, body, or curl error. |
+| `recovery-regression/failed-update.headers.txt` | absent - not cited | absent - not cited | No failed-update request was sent. |
+| `recovery-regression/failed-update.body.txt` | absent - not cited | absent - not cited | No failed-update request was sent. |
+| `recovery-regression/failed-update.curl-error.txt` | absent - not cited | absent - not cited | No failed-update request was sent. |
+| `recovery-regression/invalid-firmware.bin` | absent - not cited | absent - not cited | No invalid firmware artifact was generated because `--allow-failed-update` was omitted. |
+| `recovery-regression/*-detect-ultra205.log` | absent - not cited | absent - not cited | No operation gate ran because all unsafe allow flags were omitted. |
+| `recovery-regression/*-board-info.log` | absent - not cited | absent - not cited | No operation gate ran because all unsafe allow flags were omitted. |
+| `recovery-regression/interrupted-ota.body.txt` | absent - not cited | absent - not cited | No interrupted upload request was sent. |
+| `recovery-regression/interrupted-ota.curl-error.txt` | absent - not cited | absent - not cited | No interrupted upload request was sent. |
+
+Plan 16-05 redaction result: passed for generated recovery regression pending
+artifacts. The only retained sensitive-adjacent value is the USB port needed for
+board identity. No pool credentials, worker secrets, Wi-Fi credentials, API
+tokens, private `DEVICE_URL`, private endpoints, NVS secret values, or local
+terminal secrets were found in Plan 16-05 artifacts.
