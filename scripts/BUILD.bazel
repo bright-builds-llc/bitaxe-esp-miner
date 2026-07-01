@@ -59,6 +59,11 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase16_recovery_regression",
+    srcs = ["phase16-recovery-regression.sh"],
+)
+
+sh_binary(
     name = "phase14_power_voltage",
     srcs = ["phase14-power-voltage.sh"],
 )
@@ -170,6 +175,17 @@ sh_test(
         "phase13-http-static-smoke.sh",
         "phase13-monitor-capture.sh",
         "phase13-recovery-regression.sh",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase16_recovery_regression_test",
+    srcs = ["phase16-recovery-regression-test.sh"],
+    data = [
+        "phase13-monitor-capture.sh",
+        "phase16-http-static-smoke.sh",
+        "phase16-recovery-regression.sh",
     ],
     tags = ["local"],
 )
