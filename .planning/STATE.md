@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 16 context gathered
-last_updated: "2026-07-01T13:24:49.083Z"
-last_activity: 2026-07-01 -- Phase 16 planning complete
+last_updated: "2026-07-01T13:25:32.888Z"
+last_activity: 2026-07-01 -- Phase 16 execution started
 progress:
   total_phases: 16
   completed_phases: 15
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Phase 15 — bm1366-mining-evidence-completion
+**Current focus:** Phase 16 — current-commit-release-evidence-completion
 
 ## Current Position
 
-Phase: 16
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-01 -- Phase 16 planning complete
+Phase: 16 (current-commit-release-evidence-completion) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 16
+Last activity: 2026-07-01 -- Phase 16 execution started
 
 Progress: [██████████] 100%
 
