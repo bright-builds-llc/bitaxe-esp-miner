@@ -315,22 +315,19 @@ Use this pattern because Phase 13 helpers already record missing `DEVICE_URL` an
 
 All claims in this research were verified against local project files, local command output, pinned reference source, or official documentation. [VERIFIED: source list below]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Is a reachable `DEVICE_URL` available during execution?**
    - What we know: `DEVICE_URL` is unset in the research environment, and Phase 13 live HTTP/OTA evidence was blocked when it was missing. [VERIFIED: env audit; `docs/parity/evidence/phase-13-final-ultra-205-release-evidence.md`]
-   - What's unclear: whether the executor will have a target URL for the just-flashed board. [VERIFIED: env audit]
-   - Recommendation: plan live API/WebSocket packs to write blocked evidence when `DEVICE_URL` is absent. [VERIFIED: `14-CONTEXT.md`; `scripts/phase13-http-static-smoke.sh`]
+   - RESOLVED: Plans must not assume a reachable `DEVICE_URL`; Plan 14-05 writes `DEVICE_URL status: blocked - missing DEVICE_URL` and keeps live API/WebSocket safety telemetry below verified unless an explicit target is provided and probed. [VERIFIED: `14-05-PLAN.md`; `14-CONTEXT.md`; `scripts/phase13-http-static-smoke.sh`]
 
 2. **Will Phase 14 attempt active actuation or only document pending active claims?**
    - What we know: active DS4432U, fan duty, overheat/fault, self-test hardware, runtime input/display, and load/stress require bounded `hardware-regression`. [VERIFIED: `14-CONTEXT.md`; `tools/parity/src/main.rs`]
-   - What's unclear: whether safe firmware routes and recovery procedures exist for each active surface at execution time. [VERIFIED: `firmware/bitaxe/src/safety_adapter.rs`; `docs/parity/checklist.md`]
-   - Recommendation: create plan tasks that validate prerequisites first and only run active wrappers after manifest validation passes. [VERIFIED: `14-CONTEXT.md`]
+   - RESOLVED: Plans attempt active actuation only through a validated Phase 14 allow manifest and surface wrapper; where no production-safe bounded route exists, Plans 14-03 and 14-04 explicitly record pending evidence and non-claims. [VERIFIED: `14-03-PLAN.md`; `14-04-PLAN.md`; `14-CONTEXT.md`]
 
 3. **How will WebSocket frames be captured?**
    - What we know: `websocat` and Python WebSocket libraries are missing locally. [VERIFIED: env audit; Python module probe]
-   - What's unclear: whether the plan should install/use a maintained client or keep frame-level live telemetry pending. [VERIFIED: env audit]
-   - Recommendation: default to blocked/pending frame evidence unless the plan adds an explicit maintained-client dependency and redaction path. [VERIFIED: `14-CONTEXT.md`; `standards/core/verification.md`]
+   - RESOLVED: Plan 14-05 does not hand-roll WebSocket framing. It records `websocket_frame_status: pending - maintained WebSocket client unavailable` unless an explicit maintained client dependency and redaction path exist. [VERIFIED: `14-05-PLAN.md`; `14-CONTEXT.md`; `standards/core/verification.md`]
 
 ## Environment Availability
 
