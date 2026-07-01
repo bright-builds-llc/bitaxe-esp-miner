@@ -79,6 +79,11 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase15_bm1366_diagnostic_package",
+    srcs = ["phase15-bm1366-diagnostic-package.sh"],
+)
+
+sh_binary(
     name = "source_commit_stamp_tool",
     srcs = ["source-commit-stamp.sh"],
 )
@@ -183,6 +188,13 @@ sh_test(
     name = "phase14_live_telemetry_test",
     srcs = ["phase14-live-telemetry-test.sh"],
     data = ["phase14-live-telemetry.sh"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase15_bm1366_diagnostic_package_test",
+    srcs = ["phase15-bm1366-diagnostic-package-test.sh"],
+    data = ["phase15-bm1366-diagnostic-package.sh"],
     tags = ["local"],
 )
 
