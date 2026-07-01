@@ -280,6 +280,43 @@ test_missing_live_prerequisites_records_controlled_no_share() {
 	assert_contains "${out_dir}/mining-smoke.log" "websocket_frame_status=pending - missing DEVICE_URL or helper blocked"
 }
 
+test_environment_device_url_does_not_authorize_live_attempt() {
+	local out_dir="${tmp_root}/env-device-url"
+	local manifest="${tmp_root}/manifest-env-device-url.json"
+	local chip_summary="${tmp_root}/chip-detect-env-device-url.md"
+	local work_summary="${tmp_root}/work-result-env-device-url.md"
+	local fake_allow="${tmp_root}/fake-allow-env-device-url"
+	local fake_curl="${tmp_root}/fake-curl-env-device-url"
+	local fake_ws="${tmp_root}/fake-ws-env-device-url"
+
+	write_manifest "$manifest"
+	write_chip_detect_summary "$chip_summary"
+	write_work_result_summary "$work_summary"
+	write_fake_allow "$fake_allow"
+	write_fake_curl "$fake_curl"
+	write_fake_websocket_helper "$fake_ws"
+
+	DEVICE_URL="https://10.0.0.2" \
+		BITAXE_POOL_URL="stratum+tcp://pool.example.test:3333" \
+		BITAXE_POOL_USER="worker" \
+		BITAXE_POOL_PASSWORD="secret" \
+		PHASE15_CURL_MUST_NOT_RUN=1 \
+		PHASE15_WEBSOCKET_MUST_NOT_RUN=1 \
+		run_wrapper \
+		"$out_dir" \
+		"$manifest" \
+		"$chip_summary" \
+		"$work_summary" \
+		"$fake_allow" \
+		"$fake_curl" \
+		"$fake_ws"
+
+	assert_contains "${out_dir}/mining-smoke.log" "pool_category=controlled-no-share"
+	assert_contains "${out_dir}/mining-smoke.log" "api_telemetry_status=pending - missing DEVICE_URL"
+	assert_not_contains "${out_dir}/mining-smoke.log" "controlled_mining_status: live-prerequisites-present"
+	assert_not_contains "${out_dir}/mining-smoke.log" "pool_category=live-pool-smoke"
+}
+
 test_pending_prerequisite_does_not_run_live_helpers() {
 	local out_dir="${tmp_root}/pending-prereq"
 	local manifest="${tmp_root}/manifest-pending.json"
@@ -376,6 +413,7 @@ test_websocket_helper_rejects_missing_and_redacts_url() {
 test_missing_manifest_records_pending
 test_failed_allow_records_pending
 test_missing_live_prerequisites_records_controlled_no_share
+test_environment_device_url_does_not_authorize_live_attempt
 test_pending_prerequisite_does_not_run_live_helpers
 test_bounded_soak_records_duration_and_abort_contract
 test_websocket_helper_rejects_missing_and_redacts_url
