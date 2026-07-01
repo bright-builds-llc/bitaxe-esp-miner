@@ -16,4 +16,3 @@ Secure Boot: Disabled
 Flash Encryption: Disabled
 SPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): 0x0
 port=/dev/cu.usbmodem1101
-[detect-ultra205] exit_status=0

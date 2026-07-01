@@ -1,7 +1,7 @@
 ESP-ROM:esp32s3-20210327
 Build:Mar 27 2021
 rst:0x15 (USB_UART_CHIP_RESET),boot:0x28 (SPI_FAST_FLASH_BOOT)
-Saved PC:0x40378cab
+Saved PC:0x40378ca5
 SPIWP:0xee
 mode:DIO, clock div:1
 load:0x3fce2810,len:0x15a0
@@ -115,7 +115,7 @@ I (1428) bitaxe_firmware::http_api: axeos_api_route_shell=started manifest_route
 I (1438) bitaxe_firmware: reset_reason=11
 I (1448) bitaxe_firmware: partition=factory
 I (1448) bitaxe_firmware: psram_status=available
-I (1458) bitaxe_firmware: firmware_commit=b55d3e68b680
+I (1458) bitaxe_firmware: firmware_commit=8490118a7e7f
 I (1458) bitaxe_firmware: reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50
 I (1468) bitaxe_firmware: esp_idf_version=v5.5.4
 I (1468) bitaxe_firmware: rust_target=xtensa-esp32s3-espidf

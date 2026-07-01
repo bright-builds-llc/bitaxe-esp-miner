@@ -4,13 +4,13 @@ detector_status: passed
 release_evidence_status: passed
 board: "205"
 port: /dev/cu.usbmodem1101
-source_commit: b55d3e68b68060fc6cf271372a75fc86c0a934c6
+source_commit: 8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 manifest_path: docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json
 flash_evidence_json: docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-command-evidence.json
 serial_log: docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-monitor.log
 detector_log: docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/detect-ultra205.log
-recorded_at: 2026-07-01T14:08:24Z
+recorded_at: 2026-07-01T15:26:58Z
 ---
 
 # Phase 16 Serial Boot Evidence
@@ -48,11 +48,11 @@ The wrapper resolved the manifest to the factory image and used:
 | --- | --- |
 | command_kind | `flash-monitor` |
 | board | `205` |
-| firmware_commit | `b55d3e68b68060fc6cf271372a75fc86c0a934c6` |
+| firmware_commit | `8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca` |
 | reference_commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | trusted_output | `true` |
 | capture_status | `timed_out_after_trusted_output` |
-| observed_firmware_commit | `b55d3e68b680` |
+| observed_firmware_commit | `8490118a7e7f` |
 | observed_reference_commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | flash evidence JSON | `docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-command-evidence.json` |
 | serial monitor log | `docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-monitor.log` |
@@ -65,7 +65,7 @@ The serial log contains the required FND-06 and release identity markers:
 - `safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled`
 - `reset_reason=11`
 - `partition=factory`
-- `firmware_commit=b55d3e68b680`
+- `firmware_commit=8490118a7e7f`
 - `reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50`
 - `esp_idf_version=v5.5.4`
 - `rust_target=xtensa-esp32s3-espidf`
@@ -79,24 +79,24 @@ The serial log contains the required FND-06 and release identity markers:
 Command:
 
 ```bash
-bazel run //tools/parity:report -- release-evidence --manifest docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json --evidence-root docs/parity/evidence/phase-16-current-commit-release-evidence-completion --flash-evidence-json docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-command-evidence.json
+bazel run //tools/parity:report -- release-evidence --manifest docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json --evidence-root docs/parity/evidence/phase-16-current-commit-release-evidence-completion --flash-evidence-json docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-command-evidence.json --redaction-review docs/parity/evidence/phase-16-current-commit-release-evidence-completion/redaction-review.md --require-redaction-passed
 ```
 
 Output:
 
 ```text
 release_evidence_status: passed
-source_commit: b55d3e68b68060fc6cf271372a75fc86c0a934c6
+source_commit: 8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 evidence_root: /Users/peterryszkiewicz/Repos/bitaxe-esp-miner/docs/parity/evidence/phase-16-current-commit-release-evidence-completion
-redaction_status: not-required
+redaction_status: passed
 ```
 
 ## Redaction
 
-redaction_status: pending
+redaction_status: passed
 
-Detector and serial artifacts were reviewed in `docs/parity/evidence/phase-16-current-commit-release-evidence-completion/redaction-review.md`. The phase-level redaction status remains pending because later Phase 16 plans own HTTP, OTA, recovery, failed-update, interrupted-update, and large-erase artifacts.
+Detector and serial artifacts were reviewed in `docs/parity/evidence/phase-16-current-commit-release-evidence-completion/redaction-review.md`. The phase-level redaction review is passed for cited Phase 16 artifacts; absent live HTTP, OTA, recovery, failed-update, interrupted-update, and large-erase artifacts remain marked `absent - not cited`.
 
 ## Non-Claims
 
