@@ -87,3 +87,30 @@ Conclusion: Plan 16-02 package, detector, flash JSON, and serial artifacts passe
 Plan 16-03 conclusion: the HTTP/static/recovery helper generated a blocked
 smoke log only. No route body, header, curl error, private `DEVICE_URL`, API
 response, WebSocket, or recovery response artifact was generated or cited.
+
+## Plan 16-04 Firmware OTA Review
+
+- [x] Firmware OTA smoke log reviewed for Plan 16-04.
+- [x] Post-OTA detector rerun log reviewed for Plan 16-04.
+- [x] Invalid firmware artifact absent - not cited.
+- [x] Firmware OTA request/response body artifacts absent - not cited.
+- [x] Firmware OTA response header artifacts absent - not cited.
+- [x] Firmware OTA curl error artifacts absent - not cited.
+- [x] Post-OTA monitor log absent - not cited.
+- [x] Private `DEVICE_URL` value absent - not cited.
+- [x] Network scan disabled before any target inference.
+- [x] Invalid rejection, valid OTA, reboot identity, boot validation, and rollback proof absent - not cited.
+
+| Plan 16-04 artifact | Present? | Reviewed? | Notes |
+| --- | --- | --- | --- |
+| `firmware-ota/firmware-ota-smoke.log` | present | passed | Blocked preflight log only; contains manifest path, source/reference commits, retained USB port, missing `DEVICE_URL` status, `network_scan: disabled`, and no explicit target value. |
+| `firmware-ota/post-ota-detect-ultra205.log` | present | passed | Detector rerun was skipped because preflight blocked; contains retained prior port and no board-info output from a rerun. |
+| `firmware-ota/invalid-firmware.bin` | absent - not cited | absent - not cited | Helper was not invoked because preflight blocked before upload. |
+| `firmware-ota/*.headers.txt` | absent - not cited | absent - not cited | No live OTA request was sent. |
+| `firmware-ota/*.body.txt` | absent - not cited | absent - not cited | No live OTA request was sent. |
+| `firmware-ota/*.curl-error.txt` | absent - not cited | absent - not cited | No curl command ran for OTA. |
+| `firmware-ota/post-ota-monitor.log` | absent - not cited | absent - not cited | No valid OTA occurred, so no post-OTA monitor capture ran. |
+
+Plan 16-04 redaction result: passed for generated firmware OTA blocked artifacts.
+The phase-level `redaction_status` remains pending for later Phase 16 recovery
+regression, failed-update, interrupted-update, and large-erase artifacts.
