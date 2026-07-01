@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-07-01T03:50:06.855Z"
+stopped_at: Completed 15-03-PLAN.md
+last_updated: "2026-07-01T04:10:16.096Z"
 last_activity: 2026-07-01
 progress:
   total_phases: 16
   completed_phases: 14
   total_plans: 81
-  completed_plans: 78
-  percent: 96
+  completed_plans: 79
+  percent: 98
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 15 (bm1366-mining-evidence-completion) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-07-01
 
@@ -125,6 +125,7 @@ Progress: [██████████] 100%
 | Phase 14 P06 | 11 min | 3 tasks | 5 files |
 | Phase 15-bm1366-mining-evidence-completion P01 | 10 min | 2 tasks | 5 files |
 | Phase 15-bm1366-mining-evidence-completion P02 | 19 min | 2 tasks | 12 files |
+| Phase 15-bm1366-mining-evidence-completion P03 | 15 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -301,6 +302,8 @@ Recent decisions affecting current work:
 - [Phase 15-bm1366-mining-evidence-completion]: Kept the TDD RED failure uncommitted because repo Rust rules require passing checks before every commit.
 - [Phase 15-bm1366-mining-evidence-completion]: Plan 15-02 kept chip-detect evidence scoped to diagnostic chip-detect smoke and did not promote work/result, production mining, voltage, fan, or share claims.
 - [Phase 15-bm1366-mining-evidence-completion]: Plan 15-02 resolves explicit flash image and manifest arguments relative to the workspace so bazel-run evidence commands can use repo-relative package paths.
+- [Phase 15-bm1366-mining-evidence-completion]: Plan 15-03 treats typed work-result evidence as diagnostic work dispatch plus bounded fail-closed timeout, not production mining or share proof.
+- [Phase 15-bm1366-mining-evidence-completion]: Plan 15-03 keeps work-result ASIC effects inside typed firmware adapters and omits large generated package binaries from docs evidence commits.
 
 ### Pending Todos
 
@@ -325,6 +328,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T03:50:06.851Z
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-07-01T04:10:16.088Z
+Stopped at: Completed 15-03-PLAN.md
 Resume file: None
