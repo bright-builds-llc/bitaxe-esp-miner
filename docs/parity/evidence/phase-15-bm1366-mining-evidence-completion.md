@@ -24,13 +24,15 @@ Requirements covered by this ledger: `ASIC-07`, `STR-06`, `STR-07`,
 
 ## Hardware Gates
 
-Every live Phase 15 evidence pack used the required detector gate before any
-hardware interaction.
+The package-backed chip-detect and work/result packs record the required
+detector gate before hardware interaction. Mining-smoke and bounded-soak
+artifacts record only the selected port, so their board-info transcript remains
+pending and they are not cited for board-info promotion.
 
 | Gate | Evidence | Result |
 | --- | --- | --- |
-| Detector | `just detect-ultra205` | Passed for exactly one likely Ultra 205 port, `port=/dev/cu.usbmodem1101`. |
-| Board info | `espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive` | Passed for ESP32-S3 in the detector logs. |
+| Detector | `just detect-ultra205` | Full detector transcript passed for chip-detect and work/result; mining-smoke and bounded-soak record selected port only, `port=/dev/cu.usbmodem1101`. |
+| Board info | `espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive` | Passed for ESP32-S3 in chip-detect and work/result detector logs; pending for mining-smoke and bounded-soak because their checked-in detector logs omit the transcript. |
 | Board | Allow manifests and summaries | Board `205` only. |
 | Reference | Allow manifests and package manifests | Reference commit `c1915b0a63bfabebdb95a515cedfee05146c1d50`. |
 | Safe state | Chip-detect and work/result serial logs | `mining=disabled`, `hardware_control=disabled`, `work_submission=disabled`, and reset held low on diagnostic failure paths. |

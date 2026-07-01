@@ -56,10 +56,12 @@ Detector command:
 just detect-ultra205
 ```
 
-Result: passed. The detector output is recorded in
+Result: port selected. The detector output is recorded in
 `docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/bounded-soak/detect-ultra205.log`.
-It selected board `205` port `/dev/cu.usbmodem1101` and recorded successful
-board-info output for ESP32-S3.
+The checked-in artifact records `port=/dev/cu.usbmodem1101` only; it does not
+include the `espflash board-info` transcript. Board-info evidence for this
+unsupported-pending bounded-soak pack remains pending and is not cited for
+promotion.
 
 No live bounded mining soak, pool socket command, voltage command, fan command,
 direct BM1366 command, or unbounded stress command was run by this pack.
