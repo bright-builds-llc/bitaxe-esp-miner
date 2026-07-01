@@ -636,12 +636,12 @@ fn resolve_flash_image(
     environment: &impl FlashEnvironment,
 ) -> Result<(Option<Utf8PathBuf>, Utf8PathBuf)> {
     if let Some(image) = &command.image {
-        return Ok((None, image.clone()));
+        return Ok((None, environment.workspace_path(image)));
     }
 
     environment.build_package()?;
     let manifest = match &command.manifest {
-        Some(path) => path.clone(),
+        Some(path) => environment.workspace_path(path),
         None => environment
             .bazel_bin()?
             .join(PACKAGE_MANIFEST_RELATIVE_PATH),
@@ -1342,6 +1342,60 @@ mod tests {
     }
 
     #[test]
+    fn relative_image_argument_resolves_under_workspace_dir() {
+        // Arrange
+        let workspace = tempdir().expect("workspace");
+        let workspace_dir = dir_path(&workspace);
+        let command = FlashCommand {
+            common: common_args(),
+            image: Some(Utf8PathBuf::from("docs/evidence/bitaxe-ultra205.elf")),
+            manifest: None,
+        };
+        let environment = FakeFlashEnvironment::default().with_workspace_dir(workspace_dir.clone());
+
+        // Act
+        let outcome = run_flash(&command, &environment).expect("flash");
+
+        // Assert
+        assert_eq!(
+            outcome.flash_image,
+            workspace_dir.join("docs/evidence/bitaxe-ultra205.elf")
+        );
+    }
+
+    #[test]
+    fn relative_manifest_argument_resolves_under_workspace_dir() {
+        // Arrange
+        let workspace = tempdir().expect("workspace");
+        let workspace_dir = dir_path(&workspace);
+        let manifest = write_manifest_at(
+            &workspace_dir,
+            "docs/evidence/package/bitaxe-ultra205-package.json",
+            DEFAULT_ELF_NAME,
+        );
+        let command = FlashCommand {
+            common: common_args(),
+            image: None,
+            manifest: Some(Utf8PathBuf::from(
+                "docs/evidence/package/bitaxe-ultra205-package.json",
+            )),
+        };
+        let environment = FakeFlashEnvironment::default().with_workspace_dir(workspace_dir.clone());
+
+        // Act
+        let outcome = run_flash(&command, &environment).expect("flash");
+
+        // Assert
+        assert_eq!(outcome.manifest.as_ref(), Some(&manifest));
+        assert_eq!(
+            outcome.flash_image,
+            workspace_dir
+                .join("docs/evidence/package")
+                .join(DEFAULT_ELF_NAME)
+        );
+    }
+
+    #[test]
     fn rejects_manifest_default_factory_bin() {
         // Arrange
         let dir = tempdir().expect("tempdir");
@@ -1908,7 +1962,19 @@ mod tests {
 
     fn write_manifest(dir: &TempDir, default_flash_image: &str) -> Utf8PathBuf {
         let dir_path = dir_path(dir);
-        let manifest = dir_path.join(PACKAGE_MANIFEST_RELATIVE_PATH);
+        write_manifest_at(
+            &dir_path,
+            PACKAGE_MANIFEST_RELATIVE_PATH,
+            default_flash_image,
+        )
+    }
+
+    fn write_manifest_at(
+        workspace_dir: &Utf8Path,
+        manifest_relative_path: &str,
+        default_flash_image: &str,
+    ) -> Utf8PathBuf {
+        let manifest = workspace_dir.join(manifest_relative_path);
         let manifest_dir = manifest.parent().expect("parent");
         std::fs::create_dir_all(manifest_dir.as_std_path()).expect("create manifest dir");
         let default_image = manifest_dir.join(default_flash_image);

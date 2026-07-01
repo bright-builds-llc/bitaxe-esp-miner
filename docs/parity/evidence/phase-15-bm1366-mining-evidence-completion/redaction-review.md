@@ -8,8 +8,8 @@ serial logs, JSON artifacts, API responses, WebSocket captures, terminal output,
 pasted output, manual observations, mining allow manifests, package manifest
 excerpts, and final Markdown evidence.
 
-Current status: pending - generated Phase 15 artifacts must be reviewed before
-they are cited for checklist promotion.
+Current status: partial - `bm1366-chip-detect` passed redaction review;
+generated artifacts for later Phase 15 packs remain pending before citation.
 
 ## Review Checklist
 
@@ -47,7 +47,7 @@ they are cited for checklist promotion.
 
 | Artifact | Review status | Notes |
 | --- | --- | --- |
-| `bm1366-chip-detect` | pending | Review generated serial logs, JSON artifacts, command output, and Markdown summary before citation. |
+| `bm1366-chip-detect` | passed | Reviewed `detect-ultra205.log`, `allow-chip-detect.json`, `diagnostic-package-summary.json`, `package/bitaxe-ultra205-package.json`, `flash-command-evidence.json`, `flash-monitor.log`, `chip-detect.md`, and terminal output from diagnostic package, allow validation, and flash-monitor commands. Expected retained bench metadata: USB port, MAC address, WiFi feature label, NVS partition/status labels, PSRAM pool wording, source/reference commits, package paths, checksums, local absolute wrapper paths, and chip-detect serial markers. No pool credentials, worker secrets, Wi-Fi credentials, private endpoints, private `DEVICE_URL`, API tokens, NVS secret values, or local terminal secrets found. |
 | `bm1366-work-result` | pending | Review generated diagnostic work/result artifacts before citation. |
 | `mining-smoke` | pending | Review pool category, share/no-share observations, telemetry artifacts, API responses, WebSocket captures, and safe-stop evidence before citation. |
 | `bounded-soak` | pending | Review duration logs, thermal/power/watchdog observations, telemetry snapshots, reconnect/fallback notes, safe-stop evidence, and all generated artifacts before citation. |
@@ -79,9 +79,14 @@ claim requires them.
   clear serial logs, JSON artifacts, Markdown evidence, API responses,
   WebSocket captures, terminal output, pasted output, or manual observations
   from another pack.
+- 2026-07-01 chip-detect scan reviewed expected matches from:
+  `rg -n -i "ssid|wifi|password|pool|worker|token|device_url|nvs|stratum|https?://|([0-9]{1,3}\.){3}[0-9]{1,3}|([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}|secret|credential" docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect`.
+  All matches were expected non-secret category labels, bench identifiers, or
+  firmware/platform status strings retained for evidence.
 
 ## Conclusion
 
-Conclusion: pending. No Phase 15 generated evidence artifact is cleared for
-citation until the relevant checklist items above are completed and the pack
-review status is updated.
+Conclusion: partial passed. The `bm1366-chip-detect` pack is cleared for
+diagnostic chip-detect citation. `bm1366-work-result`, `mining-smoke`,
+`bounded-soak`, `parity-redaction`, and `final-ledger` remain pending until
+their generated artifacts are reviewed.
