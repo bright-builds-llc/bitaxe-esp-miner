@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-07-01T14:18:35.402Z"
+stopped_at: Completed 16-03-PLAN.md
+last_updated: "2026-07-01T14:29:57.274Z"
 last_activity: 2026-07-01
 progress:
   total_phases: 16
   completed_phases: 15
   total_plans: 87
-  completed_plans: 83
-  percent: 95
+  completed_plans: 84
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 16 (current-commit-release-evidence-completion) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-07-01
 
@@ -131,6 +131,7 @@ Progress: [██████████] 100%
 | Phase 15-bm1366-mining-evidence-completion P05 | 15m40s | 3 tasks | 6 files |
 | Phase 16-current-commit-release-evidence-completion P01 | 23min | 3 tasks | 10 files |
 | Phase 16-current-commit-release-evidence-completion P02 | 18min | 2 tasks | 10 files |
+| Phase 16-current-commit-release-evidence-completion P03 | 5 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -319,6 +320,9 @@ Recent decisions affecting current work:
 - [Phase 16-current-commit-release-evidence-completion]: Require package source_commit to equal current git HEAD before release evidence can support current-commit claims.
 - [Phase 16-current-commit-release-evidence-completion]: Gate every allowed failed-update, interrupted-OTA, and large-erase action with detector, board-info, current manifest, package artifacts, abort conditions, recovery steps, and safe-state markers.
 - [Phase 16-current-commit-release-evidence-completion]: Plan 16-02 records the package-to-hardware identity chain for release-candidate source commit b55d3e68b68060fc6cf271372a75fc86c0a934c6; later evidence and metadata commits advance repository HEAD without changing the flashed firmware evidence.
+- [Phase 16-current-commit-release-evidence-completion]: Treat absent DEVICE_URL as controlled blocked evidence and do not infer a network target from serial or local network state.
+- [Phase 16-current-commit-release-evidence-completion]: Keep firmware OTA route presence unproven and OTAWWW REL-03 deferred because live route probes did not run.
+- [Phase 16-current-commit-release-evidence-completion]: Mark Plan 16-03 body/header/error artifacts as absent - not cited while passing redaction for the generated blocked log.
 
 ### Pending Todos
 
@@ -343,6 +347,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T14:18:35.387Z
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-07-01T14:29:57.271Z
+Stopped at: Completed 16-03-PLAN.md
 Resume file: None

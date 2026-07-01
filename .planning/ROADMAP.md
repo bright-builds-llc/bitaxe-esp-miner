@@ -398,7 +398,7 @@ Plans:
 
 - [x] 16-01-PLAN.md - Add Wave 0 current-commit identity, HTTP route, recovery gate, and redaction prerequisites.
 - [x] 16-02-PLAN.md - Capture current package, release-gate, detector, and serial boot evidence.
-- [ ] 16-03-PLAN.md - Capture explicit-DEVICE_URL HTTP, static, recovery, API/WebSocket, OTA route, and OTAWWW gap evidence.
+- [x] 16-03-PLAN.md - Capture explicit-DEVICE_URL HTTP, static, recovery, API/WebSocket, OTA route, and OTAWWW gap evidence.
 - [ ] 16-04-PLAN.md - Capture firmware OTA valid-upload, invalid-rejection, reboot identity, and boot-validation evidence.
 - [ ] 16-05-PLAN.md - Capture gated failed-update, large-erase, interrupted-update, restore, and recovery evidence.
 - [ ] 16-06-PLAN.md - Close final redaction, checklist, release docs, requirements traceability, validation, and lifecycle verification.
@@ -427,4 +427,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 13. Final Ultra 205 Release Evidence | 6/6 | Complete    | 2026-06-30 |
 | 14. Safety Hardware Evidence Completion | 6/6 | Complete    | 2026-07-01 |
 | 15. BM1366 Mining Evidence Completion | 5/5 | Complete    | 2026-07-01 |
-| 16. Current Commit Release Evidence Completion | 2/6 | In Progress|  |
+| 16. Current Commit Release Evidence Completion | 3/6 | In Progress|  |
