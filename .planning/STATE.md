@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 15-03-PLAN.md
-last_updated: "2026-07-01T04:10:16.096Z"
+stopped_at: Completed 15-04-PLAN.md
+last_updated: "2026-07-01T04:33:18.627Z"
 last_activity: 2026-07-01
 progress:
   total_phases: 16
   completed_phases: 14
   total_plans: 81
-  completed_plans: 79
-  percent: 98
+  completed_plans: 80
+  percent: 99
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 15 (bm1366-mining-evidence-completion) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-01
 
@@ -126,6 +126,7 @@ Progress: [██████████] 100%
 | Phase 15-bm1366-mining-evidence-completion P01 | 10 min | 2 tasks | 5 files |
 | Phase 15-bm1366-mining-evidence-completion P02 | 19 min | 2 tasks | 12 files |
 | Phase 15-bm1366-mining-evidence-completion P03 | 15 min | 2 tasks | 11 files |
+| Phase 15-bm1366-mining-evidence-completion P04 | 17m21s | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -304,6 +305,9 @@ Recent decisions affecting current work:
 - [Phase 15-bm1366-mining-evidence-completion]: Plan 15-02 resolves explicit flash image and manifest arguments relative to the workspace so bazel-run evidence commands can use repo-relative package paths.
 - [Phase 15-bm1366-mining-evidence-completion]: Plan 15-03 treats typed work-result evidence as diagnostic work dispatch plus bounded fail-closed timeout, not production mining or share proof.
 - [Phase 15-bm1366-mining-evidence-completion]: Plan 15-03 keeps work-result ASIC effects inside typed firmware adapters and omits large generated package binaries from docs evidence commits.
+- [Phase 15-bm1366-mining-evidence-completion]: Missing DEVICE_URL or pool credentials were treated as controlled no-share evidence, not as an execution failure or auth gate.
+- [Phase 15-bm1366-mining-evidence-completion]: Detector output was copied into both smoke and soak evidence directories so each pack is self-contained.
+- [Phase 15-bm1366-mining-evidence-completion]: The wrapper records pending API/WebSocket/watchdog status when live prerequisites are absent and avoids scanning or inferring device URLs.
 
 ### Pending Todos
 
@@ -328,6 +332,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T04:10:16.088Z
-Stopped at: Completed 15-03-PLAN.md
+Last session: 2026-07-01T04:33:18.596Z
+Stopped at: Completed 15-04-PLAN.md
 Resume file: None

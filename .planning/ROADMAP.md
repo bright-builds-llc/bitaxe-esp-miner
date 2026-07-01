@@ -374,7 +374,7 @@ Plans:
 - [x] 15-01-PLAN.md - Add the mining allow-manifest gate and Phase 15 evidence/redaction scaffold.
 - [x] 15-02-PLAN.md - Build and run package-backed BM1366 chip-detect evidence without weakening wrapper trust.
 - [x] 15-03-PLAN.md - Add and run typed bounded BM1366 work-send/result-receive diagnostics.
-- [ ] 15-04-PLAN.md - Add and run controlled mining smoke and bounded soak evidence with no-share fallback.
+- [x] 15-04-PLAN.md - Add and run controlled mining smoke and bounded soak evidence with no-share fallback.
 - [ ] 15-05-PLAN.md - Close redaction, checklist, validation, and lifecycle verification.
 **Verification expectations**: Pure BM1366 and Stratum tests stay green, `just detect-ultra205` gates live hardware, any pool credentials are redacted or avoided, `just parity` validates checklist semantics, and final evidence restores safe state.
 **Research flags**: Requires controlled pool and recovery planning. Do not bypass safety gates or store pool credentials, private endpoints, Wi-Fi credentials, or NVS secret values in evidence.
@@ -418,5 +418,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
 | 13. Final Ultra 205 Release Evidence | 6/6 | Complete    | 2026-06-30 |
 | 14. Safety Hardware Evidence Completion | 6/6 | Complete    | 2026-07-01 |
-| 15. BM1366 Mining Evidence Completion | 3/5 | In Progress|  |
+| 15. BM1366 Mining Evidence Completion | 4/5 | In Progress|  |
 | 16. Current Commit Release Evidence Completion | 0/TBD | Not started | - |
