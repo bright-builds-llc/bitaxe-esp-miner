@@ -41,6 +41,31 @@ redaction_status: pending
 | Terminal snippets | present | passed | `package-release-gate.md` and `serial-boot.md` include command/output snippets needed for evidence. |
 | absent artifacts | present | passed | Plan 16-02 cites no HTTP, OTA, recovery, failed-update, interrupted-update, or large-erase proof. |
 
+## Plan 16-03 HTTP/Static/Recovery Review
+
+- [x] HTTP/static/recovery smoke log reviewed for Plan 16-03.
+- [x] HTTP `.body.txt` artifacts absent - not cited.
+- [x] HTTP `.headers.txt` artifacts absent - not cited.
+- [x] HTTP `.curl-error.txt` artifacts absent - not cited.
+- [x] Private `DEVICE_URL` value absent - not cited.
+- [x] API response bodies absent - not cited.
+- [x] WebSocket response artifacts absent - not cited.
+- [x] Recovery response body absent - not cited.
+- [x] Firmware OTA route body absent - not cited.
+- [x] OTAWWW `Wrong API input` live response absent - not cited.
+
+| Plan 16-03 artifact | Present? | Reviewed? | Notes |
+| --- | --- | --- | --- |
+| `http-static-recovery/http-static-smoke.log` | present | passed | Blocked helper log only; contains manifest path, source/reference commits, `DEVICE_URL status: blocked - missing DEVICE_URL`, `network_scan: disabled`, and no explicit target value. |
+| `http-static-recovery/*.body.txt` | absent - not cited | absent - not cited | Helper blocked before live route probes. |
+| `http-static-recovery/*.headers.txt` | absent - not cited | absent - not cited | Helper blocked before live route probes. |
+| `http-static-recovery/*.curl-error.txt` | absent - not cited | absent - not cited | Helper blocked before live route probes. |
+
+Plan 16-03 redaction result: passed for generated HTTP/static/recovery artifacts.
+The phase-level `redaction_status` remains pending for later Phase 16 firmware
+OTA, recovery regression, failed-update, interrupted-update, and large-erase
+artifacts.
+
 ## Search Pattern
 
 Use a case-insensitive secret scan before changing `redaction_status` to
@@ -58,3 +83,7 @@ Reviewer: Codex GSD executor
 Secret scan result: expected category-label hits plus ESP boot terminology (`WiFi`, `NVS`, `pool`) and board-info MAC evidence retained for hardware identity. No pool credentials, worker secrets, Wi-Fi credentials, API tokens, private `DEVICE_URL`, private endpoints, NVS secret values, or local terminal secrets were found in Plan 16-02 artifacts.
 
 Conclusion: Plan 16-02 package, detector, flash JSON, and serial artifacts passed redaction review. Phase-level `redaction_status` remains pending for later Phase 16 live HTTP, OTA, recovery, failed-update, interrupted-update, and large-erase artifacts.
+
+Plan 16-03 conclusion: the HTTP/static/recovery helper generated a blocked
+smoke log only. No route body, header, curl error, private `DEVICE_URL`, API
+response, WebSocket, or recovery response artifact was generated or cited.
