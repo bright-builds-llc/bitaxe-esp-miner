@@ -362,21 +362,24 @@ All claims in this research were verified from local files or local commands, ex
 | --- | --- | --- | --- |
 | None | No assumed factual claims recorded. | N/A | N/A |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Will an explicit reachable `DEVICE_URL` be available during execution?**
    - What we know: Phase 13 and Phase 15 both recorded missing `DEVICE_URL` blockers; Phase 16 requires explicit `DEVICE_URL`. [VERIFIED: local files docs/parity/evidence/phase-13-final-ultra-205-release-evidence.md, .planning/phases/15-bm1366-mining-evidence-completion/15-VERIFICATION.md, .planning/phases/16-current-commit-release-evidence-completion/16-CONTEXT.md]
    - What's unclear: This research did not curl or probe any device URL by user instruction. [VERIFIED: user prompt]
+   - **RESOLVED:** Treat `DEVICE_URL` availability as an execution-time prerequisite, not a planning uncertainty. Plans must require an explicit reachable `DEVICE_URL` before live HTTP/static/recovery/OTA probes and must write blocked evidence with `network_scan: disabled` when it is absent or unreachable.
    - Recommendation: Plan blocked/pending branches for all live HTTP/OTA evidence and require an explicit `DEVICE_URL` input before live probes. [VERIFIED: local file scripts/phase13-http-static-smoke.sh]
 
 2. **Will exactly one Ultra 205 serial port pass detector and board-info during execution?**
    - What we know: `just detect-ultra205` implements the required detector/board-info gate. [VERIFIED: local file scripts/detect-ultra205.sh]
    - What's unclear: This research did not run `just detect-ultra205` by user instruction. [VERIFIED: user prompt]
+   - **RESOLVED:** Treat detector success as an execution-time hardware gate. Plans must run `just detect-ultra205`, continue only when exactly one Ultra 205 port passes board-info, and otherwise record pending or blocked evidence without running flash, OTA, erase, rollback, failed-update, interrupted-update, or raw recovery commands.
    - Recommendation: Make detector output the first hardware artifact and stop/pending on zero, multiple, mismatched, or board-info-failed ports. [VERIFIED: local file AGENTS.md]
 
 3. **Will destructive/fault operations be authorized with adequate recovery gates?**
    - What we know: Phase 16 decisions require allow flags, current manifest/factory image, detector gate, recovery steps, abort conditions, and safe-state markers before erase/rollback/failed/interrupted operations. [VERIFIED: local file .planning/phases/16-current-commit-release-evidence-completion/16-CONTEXT.md]
    - What's unclear: No Phase 16 evidence or allow manifests exist yet. [VERIFIED: local commands `find docs/parity/evidence -maxdepth 2 -path '*phase-16*' -print`, `find .planning/phases/16-current-commit-release-evidence-completion -maxdepth 1 -type f -print`]
+   - **RESOLVED:** Destructive and fault-injection authorization is only granted when the Phase 16 plan-owned gates exist and pass during execution: current package manifest, current factory image, detector/board-info transcript, explicit allow flags, abort conditions, recovery steps, safe-state checks, and redaction review. If any gate is missing, plans must write pending evidence and must not run the operation.
    - Recommendation: Add a Wave 0 gate task for a Phase 16 allow/identity manifest or equivalent tested shell preflight before any destructive action. [VERIFIED: local files tools/parity/src/safety_allow.rs, tools/parity/src/mining_allow.rs]
 
 ## Environment Availability
