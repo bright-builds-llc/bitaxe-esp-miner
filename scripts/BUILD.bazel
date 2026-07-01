@@ -74,6 +74,11 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase14_live_telemetry",
+    srcs = ["phase14-live-telemetry.sh"],
+)
+
+sh_binary(
     name = "source_commit_stamp_tool",
     srcs = ["source-commit-stamp.sh"],
 )
@@ -171,6 +176,13 @@ sh_test(
     name = "phase14_display_input_test",
     srcs = ["phase14-display-input-test.sh"],
     data = ["phase14-display-input.sh"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase14_live_telemetry_test",
+    srcs = ["phase14-live-telemetry-test.sh"],
+    data = ["phase14-live-telemetry.sh"],
     tags = ["local"],
 )
 
