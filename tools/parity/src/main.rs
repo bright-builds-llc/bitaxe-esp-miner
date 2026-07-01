@@ -564,6 +564,8 @@ fn is_safety_critical(row: &ChecklistRow) -> bool {
         || row.id.starts_with("SELF-")
         || [
             "voltage",
+            "frequency",
+            "frequency transition",
             "fan",
             "thermal",
             "power",
@@ -601,6 +603,15 @@ fn validate_live_asic_mining_verified_row(row: &ChecklistRow) -> Vec<ValidationE
         errors.push(live_asic_mining_blocker_error(row));
     }
 
+    if row.id == "ASIC-007" && !has_bounded_frequency_transition_regression(row) {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message:
+                "ASIC-007 verified row requires hardware-regression evidence with a bounded frequency-transition hardware artifact"
+                    .to_owned(),
+        });
+    }
+
     if row.id == "STR-008" && !has_mining_smoke_or_soak_details(row) {
         errors.push(ValidationError {
             id: row.id.clone(),
@@ -614,12 +625,21 @@ fn validate_live_asic_mining_verified_row(row: &ChecklistRow) -> Vec<ValidationE
 fn is_live_asic_or_mining_row(row: &ChecklistRow) -> bool {
     matches!(
         row.id.as_str(),
-        "ASIC-002" | "ASIC-003" | "ASIC-004" | "ASIC-005" | "STR-006" | "STR-008"
+        "ASIC-002" | "ASIC-003" | "ASIC-004" | "ASIC-005" | "ASIC-007" | "STR-006" | "STR-008"
     )
 }
 
 fn has_live_asic_mining_evidence(row: &ChecklistRow) -> bool {
     has_hardware_evidence(row) || has_evidence_token(row, "soak")
+}
+
+fn has_bounded_frequency_transition_regression(row: &ChecklistRow) -> bool {
+    let haystack = row_haystack(row);
+
+    has_evidence_token(row, "hardware-regression")
+        && haystack.contains("bounded")
+        && (haystack.contains("frequency-transition") || haystack.contains("frequency transition"))
+        && haystack.contains("hardware")
 }
 
 fn has_mining_smoke_or_soak_details(row: &ChecklistRow) -> bool {
@@ -654,6 +674,7 @@ fn is_active_safety_control(row: &ChecklistRow) -> bool {
             | "PWR-002"
             | "PWR-003"
             | "PWR-005"
+            | "ASIC-007"
             | "THR-001"
             | "THR-002"
             | "SELF-001"
@@ -1129,7 +1150,8 @@ mod tests {
     fn active_safety_control_verified_rows_require_hardware_regression() {
         // Arrange
         let active_ids = [
-            "PWR-001", "PWR-002", "PWR-003", "PWR-005", "THR-001", "THR-002", "SELF-001", "UI-003",
+            "PWR-001", "PWR-002", "PWR-003", "PWR-005", "ASIC-007", "THR-001", "THR-002",
+            "SELF-001", "UI-003",
         ];
 
         for active_id in active_ids {
@@ -1189,6 +1211,41 @@ mod tests {
     }
 
     #[test]
+    fn asic007_verified_requires_bounded_frequency_transition_hardware_regression() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| ASIC-007 | Frequency transition behavior | `reference/esp-miner/components/asic/frequency_transition_bmXX.c` | `crates/bitaxe-asic`, `firmware/bitaxe` | verified | hardware-smoke | Frequency transition smoke observed without a bounded frequency-transition hardware-regression artifact. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "ASIC-007", "hardware-regression evidence");
+        assert_validation_error_contains(&errors, "ASIC-007", "bounded frequency-transition");
+    }
+
+    #[test]
+    fn asic007_verified_accepts_bounded_frequency_transition_hardware_regression() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| ASIC-007 | Frequency transition behavior | `reference/esp-miner/components/asic/frequency_transition_bmXX.c` | `crates/bitaxe-asic`, `firmware/bitaxe` | verified | hardware-regression | Bounded frequency-transition hardware artifact passed on Ultra 205. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert!(errors.is_empty());
+    }
+
+    #[test]
     fn asic_mining_verified_rows_require_hardware_or_soak_evidence() {
         // Arrange
         let checklist = r#"
@@ -1198,6 +1255,7 @@ mod tests {
 | ASIC-003 | BM1366 work send | `reference/esp-miner/components/asic/bm1366.c` | `crates/bitaxe-asic` | verified | unit,golden | Diagnostic work fixture evidence only. |
 | ASIC-004 | BM1366 result parsing | `reference/esp-miner/components/asic/bm1366.c` | `crates/bitaxe-asic` | verified | unit,golden | Result fixture evidence only. |
 | ASIC-005 | ASIC serial transport | `reference/esp-miner/components/asic/serial.c` | `firmware/bitaxe` | verified | workflow | Firmware compile evidence only. |
+| ASIC-007 | Frequency transition behavior | `reference/esp-miner/components/asic/frequency_transition_bmXX.c` | `crates/bitaxe-asic` | verified | unit | Frequency transition unit evidence only. |
 | STR-006 | Protocol coordinator | `reference/esp-miner/main/tasks/protocol_coordinator.c` | `crates/bitaxe-stratum`, `firmware/bitaxe` | verified | unit,workflow | First live mining loop not observed. |
 "#;
         let rows = parse_checklist(checklist).expect("checklist should parse");
@@ -1206,7 +1264,9 @@ mod tests {
         let errors = validate_rows(&rows);
 
         // Assert
-        for row_id in ["ASIC-002", "ASIC-003", "ASIC-004", "ASIC-005", "STR-006"] {
+        for row_id in [
+            "ASIC-002", "ASIC-003", "ASIC-004", "ASIC-005", "ASIC-007", "STR-006",
+        ] {
             assert_validation_error_contains(
                 &errors,
                 row_id,
