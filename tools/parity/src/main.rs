@@ -20,6 +20,7 @@ const DEFAULT_API_COMPARE_MANIFEST: &str = "tools/parity/fixtures/api/phase05-re
 const DEFAULT_AXEOS_ROUTE_USAGE: &str = "tools/parity/fixtures/api/axeos-route-usage.json";
 
 mod api_compare;
+mod mining_allow;
 mod release_gate;
 mod safety_allow;
 
@@ -37,6 +38,7 @@ enum CliCommand {
     ApiCompare(ApiCompareArgs),
     ReleaseGate(ReleaseGateArgs),
     SafetyAllow(SafetyAllowArgs),
+    MiningAllow(MiningAllowArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -80,6 +82,18 @@ struct ReleaseGateArgs {
 
 #[derive(Debug, Parser)]
 struct SafetyAllowArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    manifest: Utf8PathBuf,
+
+    #[arg(long = "surface")]
+    maybe_surface: Option<String>,
+
+    #[arg(long = "allowed-command")]
+    maybe_allowed_command: Option<String>,
+}
+
+#[derive(Debug, Parser)]
+struct MiningAllowArgs {
     #[arg(long, value_parser = parse_utf8_path)]
     manifest: Utf8PathBuf,
 
@@ -249,12 +263,34 @@ fn main() -> Result<()> {
         CliCommand::ApiCompare(args) => run_api_compare_command(args, &environment)?,
         CliCommand::ReleaseGate(args) => run_release_gate_command(args, &environment)?,
         CliCommand::SafetyAllow(args) => run_safety_allow_command(args, &environment)?,
+        CliCommand::MiningAllow(args) => run_mining_allow_command(args, &environment)?,
     };
 
     let mut stdout = io::stdout().lock();
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_mining_allow_command(
+    args: MiningAllowArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    let manifest_path = environment.workspace_path(&args.manifest);
+    let documents =
+        mining_allow::load_mining_allow_documents(&environment.workspace_dir, &manifest_path)?;
+    let filters = mining_allow::MiningAllowFilters {
+        maybe_surface: args.maybe_surface,
+        maybe_allowed_command: args.maybe_allowed_command,
+    };
+    let report = mining_allow::validate_mining_allow_documents(&documents, &filters);
+    let output = mining_allow::render_mining_allow_report(&documents.manifest, &report);
+
+    if !report.passed() {
+        bail!("mining allow failed:\n{output}");
+    }
+
+    Ok(output)
 }
 
 fn run_safety_allow_command(
