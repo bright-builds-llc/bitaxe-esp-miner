@@ -26,7 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 11: Safety Controller Hardware Regression Evidence** - Close the audit gap for Ultra 205 voltage, power, thermal, fan, self-test, display/input, watchdog, and safety-critical hardware evidence. (completed 2026-06-29)
 - [x] **Phase 12: ASIC And Mining Hardware Evidence** - Close the audit gap for BM1366 initialization, work/result handling, first mining loop, and controlled mining soak evidence. (completed 2026-06-30)
 - [x] **Phase 13: Final Ultra 205 Release Evidence** - Close the audit gap for final-commit package/flash/boot identity plus live HTTP, static, recovery, OTA, rollback, erase, and interrupted-update evidence. (completed 2026-06-30)
-- [ ] **Phase 14: Safety Hardware Evidence Completion** - Close the current audit gap for active Ultra 205 safety-control, runtime telemetry, self-test submode, watchdog/load, and display/input evidence.
+- [x] **Phase 14: Safety Hardware Evidence Completion** - Close the current audit gap for active Ultra 205 safety-control, runtime telemetry, self-test submode, watchdog/load, and display/input evidence. (completed 2026-07-01)
 - [ ] **Phase 15: BM1366 Mining Evidence Completion** - Close the current audit gap for trusted BM1366 initialization, work/result handling, and controlled mining smoke/soak evidence.
 - [ ] **Phase 16: Current Commit Release Evidence Completion** - Close the current audit gap for same-commit package, flash, serial boot, live HTTP/static/recovery/OTA, rollback, erase, failed-update, and interrupted-update evidence.
 
@@ -351,7 +351,7 @@ Plans:
 - [x] 14-03-PLAN.md - Add and run power, voltage, thermal, and fan evidence wrappers.
 - [x] 14-04-PLAN.md - Add and run self-test, watchdog/load, display, and input evidence wrappers.
 - [x] 14-05-PLAN.md - Add and run live API/WebSocket safety telemetry evidence wrapper.
-- [ ] 14-06-PLAN.md - Close final ledger, redaction, checklist, and validation status.
+- [x] 14-06-PLAN.md - Close final ledger, redaction, checklist, and validation status.
 **Verification expectations**: `just detect-ultra205`, gated hardware-regression evidence for board `205`, pure safety tests, relevant firmware/package checks, checklist validation, redaction review, and final phase verification.
 **Research flags**: Requires careful hardware recovery planning. Do not run ad hoc voltage, fan, mining stress, erase, rollback, or fault-injection commands outside the approved phase plan.
 
@@ -410,6 +410,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 11. Safety Controller Hardware Regression Evidence | 3/3 | Complete | 2026-06-29 |
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
 | 13. Final Ultra 205 Release Evidence | 6/6 | Complete    | 2026-06-30 |
-| 14. Safety Hardware Evidence Completion | 5/6 | In Progress|  |
+| 14. Safety Hardware Evidence Completion | 6/6 | Complete    | 2026-07-01 |
 | 15. BM1366 Mining Evidence Completion | 0/TBD | Not started | - |
 | 16. Current Commit Release Evidence Completion | 0/TBD | Not started | - |
