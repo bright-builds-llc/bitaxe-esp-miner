@@ -1,0 +1,34 @@
+phase14_self_test_watchdog_load
+surface: self-test-watchdog-load
+manifest: docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load/allow-self-test-watchdog-load.json
+out_dir: docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load
+serial_log: docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load/current-serial/flash-monitor.log
+safety_allow_command: bazel run //tools/parity:report -- safety-allow --manifest docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load/allow-self-test-watchdog-load.json --surface self-test-watchdog-load --allowed-command scripts/phase14-self-test-watchdog-load.sh --manifest docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load/allow-self-test-watchdog-load.json --out-dir docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load
+Computing main repo mapping: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //tools/parity:report (1 packages loaded, 0 targets configured)
+Analyzing: target //tools/parity:report (1 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //tools/parity:report (125 packages loaded, 4902 targets configured).
+INFO: Found 1 target...
+Target //tools/parity:report up-to-date:
+  bazel-bin/tools/parity/report
+INFO: Elapsed time: 0.344s, Critical Path: 0.01s
+INFO: 1 process: 450 action cache hit, 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/tools/parity/report <args omitted>
+safety_allow_status: passed
+surface: self-test-watchdog-load
+claim_tier: read-only-observation
+evidence_class: hardware-smoke
+checklist_rows: SELF-001,SAFE-09
+watchdog_supervisor_status: observed
+watchdog_supervisor_start_marker: observed - safety_supervisor=started thread=bitaxe-safety-supervisor cadence_ms=100
+watchdog_supervisor_yield_marker: observed - safety_supervisor_step=yield reason=yield_interval_reached
+load_stress_status: pending - bounded workload stimulus unavailable
+self_test_hardware_status: pending - no production-safe self-test hardware submode route exists
+SELF-001 conclusion: below verified until hardware-regression proves exact submode, pass/fail/cancel, recovery, and production-mining gate behavior
+watchdog_load_non_claims: self-test hardware submodes, reboot, mining, ASIC diagnostic work, voltage/fan/ASIC work, bounded load stress
+checklist_rows: SELF-001,SAFE-09
+phase14_self_test_watchdog_load_status: pending - self-test hardware and bounded load routes unavailable

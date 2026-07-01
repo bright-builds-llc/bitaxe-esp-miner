@@ -1,0 +1,33 @@
+{
+  "board": "205",
+  "port": "/dev/cu.usbmodem1101",
+  "detector_command": "just detect-ultra205",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
+  "package_manifest": "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
+  "source_commit": "8d39c6b3379070a0b549acf9c282b5696c5c3cef",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "surface": "display-input",
+  "claim_tier": "read-only-observation",
+  "evidence_class": "hardware-smoke",
+  "allowed_command": "scripts/phase14-display-input.sh --manifest docs/parity/evidence/phase-14-safety-hardware-evidence-completion/display-input/allow-display-input.json --out-dir docs/parity/evidence/phase-14-safety-hardware-evidence-completion/display-input",
+  "allowed_inputs": {
+    "serial_log": "docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load/current-serial/flash-monitor.log",
+    "startup_display_marker_only": true,
+    "runtime_display_route": false,
+    "physical_input_observation": false,
+    "api_or_websocket_runtime_observation": false
+  },
+  "abort_conditions": [],
+  "recovery_steps": [],
+  "post_action_safe_state_markers": [],
+  "evidence_dir": "docs/parity/evidence/phase-14-safety-hardware-evidence-completion/display-input",
+  "redaction_reviewer": "phase-14-plan-04-wrapper-preflight",
+  "checklist_rows": [
+    "IO-001",
+    "UI-001",
+    "UI-002",
+    "UI-003"
+  ]
+}

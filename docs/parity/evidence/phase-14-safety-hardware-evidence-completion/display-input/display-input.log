@@ -1,0 +1,34 @@
+phase14_display_input
+surface: display-input
+manifest: docs/parity/evidence/phase-14-safety-hardware-evidence-completion/display-input/allow-display-input.json
+out_dir: docs/parity/evidence/phase-14-safety-hardware-evidence-completion/display-input
+serial_log: docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load/current-serial/flash-monitor.log
+safety_allow_command: bazel run //tools/parity:report -- safety-allow --manifest docs/parity/evidence/phase-14-safety-hardware-evidence-completion/display-input/allow-display-input.json --surface display-input --allowed-command scripts/phase14-display-input.sh --manifest docs/parity/evidence/phase-14-safety-hardware-evidence-completion/display-input/allow-display-input.json --out-dir docs/parity/evidence/phase-14-safety-hardware-evidence-completion/display-input
+Computing main repo mapping: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //tools/parity:report (0 packages loaded, 0 targets configured)
+Analyzing: target //tools/parity:report (0 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //tools/parity:report (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+Target //tools/parity:report up-to-date:
+  bazel-bin/tools/parity/report
+INFO: Elapsed time: 0.124s, Critical Path: 0.00s
+INFO: 1 process: 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/tools/parity/report <args omitted>
+safety_allow_status: passed
+surface: display-input
+claim_tier: read-only-observation
+evidence_class: hardware-smoke
+checklist_rows: IO-001,UI-001,UI-002,UI-003
+display_status=startup_text_rendered model=SSD1306 size=128x32 address=0x3c
+startup_display_status: observed
+display_input_status=runtime_gap reason=hardware_evidence_pending startup_only=true
+runtime_gap_marker_status: observed
+runtime_display_input_status: pending - no runtime display/input route or physical input observation
+display_input_status=runtime_gap reason=hardware_evidence_pending startup_only=true
+display_input_non_claims: runtime display pages, screen flow, LVGL parity, input hardware behavior
+checklist_rows: IO-001,UI-001,UI-002,UI-003
+phase14_display_input_status: pending - runtime display/input route unavailable
