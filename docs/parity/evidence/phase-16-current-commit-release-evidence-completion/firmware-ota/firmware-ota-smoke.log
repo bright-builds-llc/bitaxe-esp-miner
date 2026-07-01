@@ -1,0 +1,25 @@
+phase13_firmware_ota_smoke
+helper_reuse: scripts/phase13-firmware-ota-smoke.sh not invoked because preflight blocked before detector rerun
+manifest: docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json
+ota_image: bazel-bin/firmware/bitaxe/esp-miner.bin
+port: /dev/cu.usbmodem1101
+monitor_seconds: 45
+manifest_source_commit: b55d3e68b68060fc6cf271372a75fc86c0a934c6
+manifest_reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
+current_git_head: 50b5868cc444ff91431865212983721ea59a52cb
+serial_boot_dependency: passed
+ota_image_exists: true
+selected_ultra205_port_available: true
+DEVICE_URL status: blocked - missing DEVICE_URL
+firmware_ota_status: blocked - package manifest source_commit b55d3e68b68060fc6cf271372a75fc86c0a934c6 does not equal current git HEAD 50b5868cc444ff91431865212983721ea59a52cb; DEVICE_URL unavailable
+network_scan: disabled
+upload_attempted: no upload
+invalid_image_upload_attempted: no upload
+valid_ota_upload_attempted: no upload
+invalid image rejection: not run - preflight blocked before upload
+invalid image rejection conclusion: blocked - not rollback proof
+valid OTA: not run - preflight blocked before upload
+selected_next_app_partition: unavailable - OTA did not run
+post_ota_monitor_command: not run - OTA did not run
+AP/APSTA rejection: not applicable - device was not contacted
+conclusion: blocked - package manifest must be refreshed to current HEAD and an explicit reachable DEVICE_URL must be provided before firmware OTA evidence can run
