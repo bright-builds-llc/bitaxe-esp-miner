@@ -418,5 +418,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
 | 13. Final Ultra 205 Release Evidence | 6/6 | Complete    | 2026-06-30 |
 | 14. Safety Hardware Evidence Completion | 6/6 | Complete    | 2026-07-01 |
-| 15. BM1366 Mining Evidence Completion | 5/5 | Complete   | 2026-07-01 |
+| 15. BM1366 Mining Evidence Completion | 5/5 | Complete    | 2026-07-01 |
 | 16. Current Commit Release Evidence Completion | 0/TBD | Not started | - |
