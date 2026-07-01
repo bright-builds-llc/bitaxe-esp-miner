@@ -1,9 +1,9 @@
 ---
 phase: 15
 slug: bm1366-mining-evidence-completion
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: passed-with-evidence-boundaries
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-01
 lifecycle_mode: yolo
 phase_lifecycle_id: 15-2026-07-01T02-07-59
@@ -34,22 +34,32 @@ phase_lifecycle_id: 15-2026-07-01T02-07-59
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 15-W0-01 | TBD | 0 | ASIC-07 | T-15-01 | Package-backed diagnostic preserves trusted wrapper markers and does not weaken trust classification. | unit/workflow/hardware-gated | `cargo test -p bitaxe-asic --all-features adapter_gate chip_detect init_plan && bazel test //tools/flash:tests && just detect-ultra205` | ❌ W0 | ⬜ pending |
-| 15-W0-02 | TBD | 0 | ASIC-07 | T-15-02 | Typed work/result diagnostic emits bounded result-or-timeout and fail-closed markers without raw serial writes. | unit/integration/hardware-gated | `cargo test -p bitaxe-asic --all-features work result transcript && cargo test -p bitaxe-stratum --all-features mining_loop` | ❌ W0 | ⬜ pending |
-| 15-W0-03 | TBD | 0 | STR-06 | T-15-03 | Mining loop remains safety-gated and reaches active or controlled no-share only under exact prerequisites. | unit/workflow/hardware-gated | `cargo test -p bitaxe-stratum --all-features mining_loop fake_pool queue && cargo test -p bitaxe-api --all-features mining` | ✅ | ⬜ pending |
-| 15-W0-04 | TBD | 0 | STR-07 | T-15-04 | Smoke/soak evidence records share or controlled no-share, duration, telemetry/watchdog, safe-stop, redaction, and conclusion. | workflow/hardware-gated | `bash -n scripts/phase15-*.sh && bazel test //scripts:phase15_*_test && just parity` after scripts exist | ❌ W0 | ⬜ pending |
-| 15-W0-05 | TBD | 0 | SAFE-09 | T-15-05 | Bounded runs preserve watchdog/API/WebSocket/serial responsiveness or record missing `DEVICE_URL` as a blocker. | workflow/hardware-gated | `curl "$DEVICE_URL/api/system/info"` plus maintained WebSocket helper when `DEVICE_URL` exists; otherwise record pending evidence | ❌ W0 | ⬜ pending |
-| 15-W0-06 | TBD | 0 | EVD-05 | T-15-06 | Checklist and parity guards reject overclaims and generated artifacts pass redaction review. | unit/workflow | `cargo test -p bitaxe-parity --all-features && just parity && rg -n "pool|password|token|DEVICE_URL|ssid|secret" docs/parity/evidence/phase-15-bm1366-mining-evidence-completion` | ❌ W0 | ⬜ pending |
+| 15-W0-01 | 15-02 | 0 | ASIC-07 | T-15-01 | Package-backed diagnostic preserves trusted wrapper markers and does not weaken trust classification. | unit/workflow/hardware-gated | `cargo test -p bitaxe-asic --all-features adapter_gate chip_detect init_plan`; `bazel test //tools/flash:tests`; `just detect-ultra205`; package-backed flash-monitor evidence | ✅ | ✅ passed with evidence boundary - chip-detect/no-mining fail-closed subclaim only; full initialization below verified |
+| 15-W0-02 | 15-03 | 0 | ASIC-07 | T-15-02 | Typed work/result diagnostic emits bounded result-or-timeout and fail-closed markers without raw serial writes. | unit/integration/hardware-gated | `cargo test -p bitaxe-asic --all-features work result transcript`; `cargo test -p bitaxe-stratum --all-features mining_loop`; package-backed work/result flash-monitor evidence | ✅ | ✅ passed with evidence boundary - diagnostic work dispatch plus bounded no-result/fail-closed only |
+| 15-W0-03 | 15-04 | 0 | STR-06 | T-15-03 | Mining loop remains safety-gated and reaches active or controlled no-share only under exact prerequisites. | unit/workflow/hardware-gated | `cargo test -p bitaxe-stratum --all-features mining_loop`; `cargo test -p bitaxe-stratum --all-features fake_pool`; `cargo test -p bitaxe-stratum --all-features queue`; `cargo test -p bitaxe-api --all-features mining`; controlled mining wrapper evidence | ✅ | ✅ passed with evidence boundary - fail-closed/controlled no-share only; live pool coordination below verified |
+| 15-W0-04 | 15-04 | 0 | STR-07 | T-15-04 | Smoke/soak evidence records share or controlled no-share, duration, telemetry/watchdog, safe-stop, redaction, and conclusion. | workflow/hardware-gated | `bash -n scripts/phase15-*.sh`; `bazel test //scripts:phase15_bm1366_diagnostic_package_test //scripts:phase15_controlled_mining_test`; `just parity`; mining-smoke and bounded-soak evidence | ✅ | ✅ passed with evidence boundary - controlled no-share and unsupported-pending bounded soak only |
+| 15-W0-05 | 15-04 | 0 | SAFE-09 | T-15-05 | Bounded runs preserve watchdog/API/WebSocket/serial responsiveness or record missing `DEVICE_URL` as a blocker. | workflow/hardware-gated | Controlled wrapper recorded `api_telemetry_status=pending - missing DEVICE_URL`, `websocket_frame_status=pending - missing DEVICE_URL or helper blocked`, `watchdog_status=pending - live prerequisites missing`, and `safe_stop_status=confirmed-or-pending` | ✅ | ⚠️ blocked by optional boundary - missing explicit `DEVICE_URL` and live pool prerequisites only |
+| 15-W0-06 | 15-05 | 0 | EVD-05 | T-15-06 | Checklist and parity guards reject overclaims and generated artifacts pass redaction review. | unit/workflow | `cargo test -p bitaxe-parity --all-features`; `just parity`; secret-pattern scan over `docs/parity/evidence/phase-15-bm1366-mining-evidence-completion`; final ledger and redaction review | ✅ | ✅ passed with evidence boundary - cited artifacts redaction-reviewed; absent API/WebSocket/live-pool artifacts uncited |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
 ## Wave 0 Requirements
 
-- [ ] Package-backed BM1366 chip-detect/staged-init diagnostic target or wrapper flow that preserves trusted package/SPIFFS markers.
-- [ ] Bounded firmware diagnostic mode for typed BM1366 work-send/result-receive.
-- [ ] Mining-specific allow manifest or parity allow extension for `bm1366-chip-detect`, `bm1366-work-result`, `mining-smoke`, `bounded-soak`, and `parity-redaction` surfaces.
-- [ ] Phase 15 evidence scaffold and artifact-specific redaction review.
-- [ ] Controlled mining smoke/soak wrapper with conditional `DEVICE_URL`, pool, WebSocket, watchdog, and safe-stop behavior.
+- [x] Package-backed BM1366 chip-detect/staged-init diagnostic target or wrapper flow that preserves trusted package/SPIFFS markers.
+- [x] Bounded firmware diagnostic mode for typed BM1366 work-send/result-receive.
+- [x] Mining-specific allow manifest or parity allow extension for `bm1366-chip-detect`, `bm1366-work-result`, `mining-smoke`, `bounded-soak`, and `parity-redaction` surfaces.
+- [x] Phase 15 evidence scaffold and artifact-specific redaction review.
+- [x] Controlled mining smoke/soak wrapper with conditional `DEVICE_URL`, pool, WebSocket, watchdog, and safe-stop behavior.
+
+## Command And Artifact Results
+
+| Surface | Result |
+|---------|--------|
+| Package-backed chip-detect | Passed for exact chip-detect/no-mining fail-closed subclaim. Evidence: `docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md`. |
+| Typed work/result diagnostic | Passed for diagnostic work dispatch plus bounded no-result/fail-closed subclaim. Evidence: `docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result.md`. |
+| Controlled mining smoke | Passed as controlled no-share condition because live prerequisites were missing. Evidence: `docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke.md`. |
+| Bounded soak | Blocked by optional live prerequisites and recorded as unsupported-pending workflow with `duration_seconds=120`. Evidence: `docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/bounded-soak.md`. |
+| Final ledger/redaction | Passed for cited artifacts; absent API/WebSocket/live-pool artifacts remain uncited. Evidence: `docs/parity/evidence/phase-15-bm1366-mining-evidence-completion.md` and `docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/redaction-review.md`. |
 
 ## Manual-Only Verifications
 
@@ -63,12 +73,15 @@ phase_lifecycle_id: 15-2026-07-01T02-07-59
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify commands or Wave 0 dependencies.
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify.
-- [ ] Wave 0 covers all missing diagnostic, evidence, and redaction surfaces.
-- [ ] No watch-mode flags.
-- [ ] Feedback latency < 300 seconds for non-hardware checks.
-- [ ] Hardware commands record detector/board-info gates and stop conditions.
-- [ ] `nyquist_compliant: true` set in frontmatter after plans map every requirement and manual-only verification.
+- [x] All tasks have `<automated>` verify commands or Wave 0 dependencies.
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify.
+- [x] Wave 0 covers all missing diagnostic, evidence, and redaction surfaces.
+- [x] No watch-mode flags.
+- [x] Feedback latency < 300 seconds for non-hardware checks.
+- [x] Hardware commands record detector/board-info gates and stop conditions.
+- [x] `nyquist_compliant: true` set in frontmatter after plans map every requirement and manual-only verification.
 
-**Approval:** pending
+**Approval:** passed with evidence boundaries. Optional blockers are limited to
+missing explicit `DEVICE_URL` and missing live pool prerequisites; unsupported
+ASIC, mining, API/WebSocket, statistics, frequency, voltage, fan, and release
+claims remain below verified.
