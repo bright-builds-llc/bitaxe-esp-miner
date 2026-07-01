@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 15-04-PLAN.md
-last_updated: "2026-07-01T04:33:18.627Z"
+status: verifying
+stopped_at: Completed 15-05-PLAN.md
+last_updated: "2026-07-01T04:55:14.925Z"
 last_activity: 2026-07-01
 progress:
   total_phases: 16
-  completed_phases: 14
+  completed_phases: 15
   total_plans: 81
-  completed_plans: 80
-  percent: 99
+  completed_plans: 81
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 Phase: 15 (bm1366-mining-evidence-completion) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-01
 
 Progress: [██████████] 100%
@@ -127,6 +127,7 @@ Progress: [██████████] 100%
 | Phase 15-bm1366-mining-evidence-completion P02 | 19 min | 2 tasks | 12 files |
 | Phase 15-bm1366-mining-evidence-completion P03 | 15 min | 2 tasks | 11 files |
 | Phase 15-bm1366-mining-evidence-completion P04 | 17m21s | 2 tasks | 13 files |
+| Phase 15-bm1366-mining-evidence-completion P05 | 15m40s | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -308,6 +309,9 @@ Recent decisions affecting current work:
 - [Phase 15-bm1366-mining-evidence-completion]: Missing DEVICE_URL or pool credentials were treated as controlled no-share evidence, not as an execution failure or auth gate.
 - [Phase 15-bm1366-mining-evidence-completion]: Detector output was copied into both smoke and soak evidence directories so each pack is self-contained.
 - [Phase 15-bm1366-mining-evidence-completion]: The wrapper records pending API/WebSocket/watchdog status when live prerequisites are absent and avoids scanning or inferring device URLs.
+- [Phase 15-bm1366-mining-evidence-completion]: Phase 15 supports exact BM1366 diagnostic and controlled no-share subclaims only; broad production mining, live pool, API/WebSocket, statistics, frequency, voltage, fan, and release claims remain below verified.
+- [Phase 15-bm1366-mining-evidence-completion]: STR-008 is implemented with hardware-smoke/workflow evidence for controlled no-share metadata, while accepted/rejected shares and live bounded soak remain below verified.
+- [Phase 15-bm1366-mining-evidence-completion]: Missing explicit DEVICE_URL and live pool prerequisites are the only residual optional blockers accepted for passed verification status.
 
 ### Pending Todos
 
@@ -332,6 +336,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T04:33:18.596Z
-Stopped at: Completed 15-04-PLAN.md
+Last session: 2026-07-01T04:55:14.917Z
+Stopped at: Completed 15-05-PLAN.md
 Resume file: None

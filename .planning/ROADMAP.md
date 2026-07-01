@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 12: ASIC And Mining Hardware Evidence** - Close the audit gap for BM1366 initialization, work/result handling, first mining loop, and controlled mining soak evidence. (completed 2026-06-30)
 - [x] **Phase 13: Final Ultra 205 Release Evidence** - Close the audit gap for final-commit package/flash/boot identity plus live HTTP, static, recovery, OTA, rollback, erase, and interrupted-update evidence. (completed 2026-06-30)
 - [x] **Phase 14: Safety Hardware Evidence Completion** - Close the current audit gap for active Ultra 205 safety-control, runtime telemetry, self-test submode, watchdog/load, and display/input evidence. (completed 2026-07-01)
-- [ ] **Phase 15: BM1366 Mining Evidence Completion** - Close the current audit gap for trusted BM1366 initialization, work/result handling, and controlled mining smoke/soak evidence.
+- [x] **Phase 15: BM1366 Mining Evidence Completion** - Close the current audit gap for trusted BM1366 initialization, work/result handling, and controlled mining smoke/soak evidence. (completed 2026-07-01)
 - [ ] **Phase 16: Current Commit Release Evidence Completion** - Close the current audit gap for same-commit package, flash, serial boot, live HTTP/static/recovery/OTA, rollback, erase, failed-update, and interrupted-update evidence.
 
 ## Phase Details
@@ -375,7 +375,7 @@ Plans:
 - [x] 15-02-PLAN.md - Build and run package-backed BM1366 chip-detect evidence without weakening wrapper trust.
 - [x] 15-03-PLAN.md - Add and run typed bounded BM1366 work-send/result-receive diagnostics.
 - [x] 15-04-PLAN.md - Add and run controlled mining smoke and bounded soak evidence with no-share fallback.
-- [ ] 15-05-PLAN.md - Close redaction, checklist, validation, and lifecycle verification.
+- [x] 15-05-PLAN.md - Close redaction, checklist, validation, and lifecycle verification.
 **Verification expectations**: Pure BM1366 and Stratum tests stay green, `just detect-ultra205` gates live hardware, any pool credentials are redacted or avoided, `just parity` validates checklist semantics, and final evidence restores safe state.
 **Research flags**: Requires controlled pool and recovery planning. Do not bypass safety gates or store pool credentials, private endpoints, Wi-Fi credentials, or NVS secret values in evidence.
 
@@ -418,5 +418,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
 | 13. Final Ultra 205 Release Evidence | 6/6 | Complete    | 2026-06-30 |
 | 14. Safety Hardware Evidence Completion | 6/6 | Complete    | 2026-07-01 |
-| 15. BM1366 Mining Evidence Completion | 4/5 | In Progress|  |
+| 15. BM1366 Mining Evidence Completion | 5/5 | Complete   | 2026-07-01 |
 | 16. Current Commit Release Evidence Completion | 0/TBD | Not started | - |
