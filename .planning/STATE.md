@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 15 context gathered
-last_updated: "2026-07-01T03:07:10.862Z"
-last_activity: 2026-07-01 -- Phase 15 planning complete
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-07-01T03:24:45.823Z"
+last_activity: 2026-07-01
 progress:
   total_phases: 16
   completed_phases: 14
   total_plans: 81
-  completed_plans: 76
-  percent: 94
+  completed_plans: 77
+  percent: 95
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
+Phase: 15 (bm1366-mining-evidence-completion) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-07-01 -- Phase 15 planning complete
+Last activity: 2026-07-01
 
 Progress: [██████████] 100%
 
@@ -123,6 +123,7 @@ Progress: [██████████] 100%
 | Phase 13-final-ultra-205-release-evidence P04 | 10 min | 2 tasks | 7 files |
 | Phase 13-final-ultra-205-release-evidence P06 | 55min | 3 tasks | 8 files |
 | Phase 14 P06 | 11 min | 3 tasks | 5 files |
+| Phase 15-bm1366-mining-evidence-completion P01 | 10 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -295,6 +296,8 @@ Recent decisions affecting current work:
 - [Phase 13-final-ultra-205-release-evidence]: Live HTTP/static, firmware OTA, rollback, failed-update, large erase, interrupted-update, and OTAWWW live-response claims remain below verified because DEVICE_URL is missing or required allow flags were absent.
 - [Phase 13-final-ultra-205-release-evidence]: Docs-current package verification at source commit 3eb66e4c088f437f1b4bd255217bd888e6f1cc33 is distinct from live-flashed hardware evidence at source commit 190849539700b8f9a7909fd2b6ebd84142557968.
 - [Phase 13-final-ultra-205-release-evidence]: Release artifacts remain GPL-risk-reviewed and unpublished; Phase 13 evidence cites package and serial proof without changing publication approval posture.
+- [Phase 15-bm1366-mining-evidence-completion]: Created a separate mining_allow module instead of extending safety_allow so Phase 15 mining evidence semantics stay distinct from Phase 14 safety-control semantics.
+- [Phase 15-bm1366-mining-evidence-completion]: Kept the TDD RED failure uncommitted because repo Rust rules require passing checks before every commit.
 
 ### Pending Todos
 
@@ -319,6 +322,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T02:16:45.324Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-bm1366-mining-evidence-completion/15-CONTEXT.md
+Last session: 2026-07-01T03:24:45.820Z
+Stopped at: Completed 15-01-PLAN.md
+Resume file: None
