@@ -1,0 +1,8 @@
+phase16_http_static_smoke
+manifest: docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json
+manifest_source_commit: b55d3e68b68060fc6cf271372a75fc86c0a934c6
+manifest_reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
+network_scan: disabled - using explicit DEVICE_URL only
+DEVICE_URL status: blocked - missing DEVICE_URL
+http_static_status: blocked
+conclusion: blocked - live HTTP/static/recovery evidence requires an explicit DEVICE_URL
