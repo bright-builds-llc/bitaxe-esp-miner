@@ -350,22 +350,25 @@ bazel run //tools/parity:report -- safety-allow \
 | --- | --- | --- | --- |
 | None | All planner-relevant claims in this research are sourced from local code/docs, current environment probes, or official docs. [VERIFIED: source audit] | All sections | No user confirmation is required for assumptions, but live pool credentials and `DEVICE_URL` availability remain open prerequisites. [VERIFIED: environment audit] |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Will Phase 15 receive an explicit reachable `DEVICE_URL`?** [VERIFIED: environment audit]
    - What we know: `DEVICE_URL` was unset during research, and Phase 14 live telemetry blocked for the same class of reason. [VERIFIED: environment audit; VERIFIED: docs/parity/evidence/phase-14-safety-hardware-evidence-completion.md]
    - What's unclear: Whether the execution environment will provide a reachable device URL after flashing. [VERIFIED: environment audit]
    - Recommendation: Plan API/WebSocket telemetry as conditional; record pending evidence if `DEVICE_URL` remains absent. [VERIFIED: 15-CONTEXT.md]
+   - RESOLVED: Use conditional `DEVICE_URL`; require an explicit reachable value before API/WebSocket telemetry capture, and record pending API/WebSocket evidence when it remains absent. [VERIFIED: 15-CONTEXT.md]
 
 2. **Will live pool micro-smoke use disposable/non-secret config?** [VERIFIED: environment audit]
    - What we know: `BITAXE_POOL_URL`, `BITAXE_POOL_USER`, and `BITAXE_POOL_PASSWORD` were unset during research. [VERIFIED: environment audit]
    - What's unclear: Whether a live pool target will be supplied during execution. [VERIFIED: environment audit]
    - Recommendation: Default to controlled no-share/local deterministic evidence and gate live smoke behind explicit non-secret or disposable pool prerequisites. [VERIFIED: 15-CONTEXT.md]
+   - RESOLVED: Use controlled no-share evidence or pending mining evidence when pool environment is unavailable; live pool micro-smoke may run only with disposable or non-secret pool configuration plus the other D-11 prerequisites. [VERIFIED: 15-CONTEXT.md]
 
 3. **Should mining allow validation be a new `tools/parity` module or an extension of `safety_allow`?** [VERIFIED: tools/parity/src/safety_allow.rs]
    - What we know: Existing `safety_allow` fields are a strong pattern, but allowed surfaces are safety-specific. [VERIFIED: tools/parity/src/safety_allow.rs]
    - What's unclear: Whether maintainers prefer a generic allow validator or a separate mining-specific one. [VERIFIED: codebase inspection]
    - Recommendation: Prefer a small `mining_allow` module or explicit mining surfaces to avoid confusing safety and mining evidence semantics. [VERIFIED: tools/parity/src/safety_allow.rs; VERIFIED: 15-CONTEXT.md]
+   - RESOLVED: Create a new `mining_allow` module rather than extending `safety_allow`, unless implementation finds a narrower reuse point that preserves separate mining evidence semantics. [VERIFIED: tools/parity/src/safety_allow.rs; VERIFIED: 15-CONTEXT.md]
 
 ## Environment Availability
 
