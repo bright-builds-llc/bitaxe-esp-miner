@@ -68,7 +68,7 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 
 - [x] **SAFE-01**: Ultra 205 voltage and power-control surfaces use bounded typed decisions and fail closed on invalid configuration, communication failure, or unsafe readings.
 - [x] **SAFE-02**: Thermal sensor and fan control surfaces expose upstream-compatible readings, fan duty behavior, RPM behavior, and failure reporting.
-- [ ] **SAFE-03**: PID and thermal-control decisions are covered by pure unit tests before hardware effects are enabled.
+- [x] **SAFE-03**: PID and thermal-control decisions are covered by pure unit tests before hardware effects are enabled.
 - [x] **SAFE-04**: Overheat, fan, power, thermal, and ASIC fault paths enter safe states and expose user-visible status compatible with upstream behavior.
 - [x] **SAFE-05**: Self-test lifecycle behavior covers factory flags, start, pass, fail, restart, cancel, and user-visible result reporting.
 - [x] **SAFE-06**: Display and input status surfaces needed for normal Ultra 205 administration are preserved or explicitly documented as deferred gaps.
@@ -182,7 +182,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-10 | Phase 5 + Phase 10 | Complete |
 | SAFE-01 | Phase 6 + Phase 11 + Phase 14 | Complete |
 | SAFE-02 | Phase 6 + Phase 11 + Phase 14 | Complete |
-| SAFE-03 | Phase 6 + Phase 11 + Phase 14 | Pending |
+| SAFE-03 | Phase 6 + Phase 11 + Phase 14 | Complete |
 | SAFE-04 | Phase 6 + Phase 11 + Phase 14 | Complete |
 | SAFE-05 | Phase 6 + Phase 11 + Phase 14 | Complete |
 | SAFE-06 | Phase 6 + Phase 11 + Phase 14 | Complete |
