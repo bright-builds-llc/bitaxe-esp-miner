@@ -17,35 +17,31 @@ promotion.
 
 ## Review Checklist
 
-- [ ] Pool credentials are absent or redacted.
-- [ ] Worker names/secrets are absent or redacted.
-- [ ] Wi-Fi credentials are absent or redacted.
-- [ ] Private endpoints are absent or redacted.
-- [ ] Private `DEVICE_URL` values are absent or redacted.
-- [ ] API tokens are absent or redacted.
-- [ ] NVS secret values are absent or redacted.
-- [ ] Local terminal secrets are absent or redacted.
-- [ ] Serial logs have been inspected for pool credentials, worker secrets,
+- [x] Pool credentials are absent or redacted.
+- [x] Worker names/secrets are absent or redacted.
+- [x] Wi-Fi credentials are absent or redacted.
+- [x] Private endpoints are absent or redacted.
+- [x] Private `DEVICE_URL` values are absent or redacted.
+- [x] API tokens are absent or redacted.
+- [x] NVS secret values are absent or redacted.
+- [x] Local terminal secrets are absent or redacted.
+- [x] Serial logs have been inspected for pool credentials, worker secrets,
   Wi-Fi credentials, private endpoints, private `DEVICE_URL`, API tokens, NVS
   secret values, and local terminal secrets.
-- [ ] JSON artifacts have been inspected for pool credentials, worker secrets,
+- [x] JSON artifacts have been inspected for pool credentials, worker secrets,
   Wi-Fi credentials, private endpoints, private `DEVICE_URL`, API tokens, NVS
   secret values, and local terminal secrets.
-- [ ] Markdown evidence has been inspected for pool credentials, worker
+- [x] Markdown evidence has been inspected for pool credentials, worker
   secrets, Wi-Fi credentials, private endpoints, private `DEVICE_URL`, API
   tokens, NVS secret values, and local terminal secrets.
-- [ ] API responses have been inspected for pool credentials, worker secrets,
-  Wi-Fi credentials, private endpoints, private `DEVICE_URL`, API tokens, NVS
-  secret values, and local terminal secrets.
-- [ ] WebSocket captures have been inspected for pool credentials, worker
-  secrets, Wi-Fi credentials, private endpoints, private `DEVICE_URL`, API
-  tokens, NVS secret values, and local terminal secrets.
-- [ ] Pasted output has been inspected for pool credentials, worker secrets,
-  Wi-Fi credentials, private endpoints, private `DEVICE_URL`, API tokens, NVS
-  secret values, and local terminal secrets.
-- [ ] Manual observations have been inspected for pool credentials, worker
-  secrets, Wi-Fi credentials, private endpoints, private `DEVICE_URL`, API
-  tokens, NVS secret values, and local terminal secrets.
+- [x] N/A - no API response artifacts were generated or cited for checklist
+  promotion.
+- [x] N/A - no WebSocket capture artifacts were generated or cited for
+  checklist promotion.
+- [x] N/A - no pasted raw output artifacts were generated or cited for
+  checklist promotion.
+- [x] N/A - no additional manual observation artifacts were generated or cited
+  for checklist promotion.
 
 ## Generated Artifact Review
 
@@ -111,7 +107,7 @@ claim requires them.
   evidence.
 - No API response bodies, WebSocket captures, live-pool artifacts, pasted raw
   secrets, or additional manual observation artifacts were generated in Phase
-  15. They remain uncited and below verified.
+  15\. They remain uncited and below verified.
 
 ## Conclusion
 
