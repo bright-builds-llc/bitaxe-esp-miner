@@ -350,7 +350,7 @@ Plans:
 - [x] 14-02-PLAN.md - Create the Phase 14 component evidence scaffold and redaction contract.
 - [x] 14-03-PLAN.md - Add and run power, voltage, thermal, and fan evidence wrappers.
 - [x] 14-04-PLAN.md - Add and run self-test, watchdog/load, display, and input evidence wrappers.
-- [ ] 14-05-PLAN.md - Add and run live API/WebSocket safety telemetry evidence wrapper.
+- [x] 14-05-PLAN.md - Add and run live API/WebSocket safety telemetry evidence wrapper.
 - [ ] 14-06-PLAN.md - Close final ledger, redaction, checklist, and validation status.
 **Verification expectations**: `just detect-ultra205`, gated hardware-regression evidence for board `205`, pure safety tests, relevant firmware/package checks, checklist validation, redaction review, and final phase verification.
 **Research flags**: Requires careful hardware recovery planning. Do not run ad hoc voltage, fan, mining stress, erase, rollback, or fault-injection commands outside the approved phase plan.
@@ -410,6 +410,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 11. Safety Controller Hardware Regression Evidence | 3/3 | Complete | 2026-06-29 |
 | 12. ASIC And Mining Hardware Evidence | 4/4 | Complete | 2026-06-30 |
 | 13. Final Ultra 205 Release Evidence | 6/6 | Complete    | 2026-06-30 |
-| 14. Safety Hardware Evidence Completion | 4/6 | In Progress|  |
+| 14. Safety Hardware Evidence Completion | 5/6 | In Progress|  |
 | 15. BM1366 Mining Evidence Completion | 0/TBD | Not started | - |
 | 16. Current Commit Release Evidence Completion | 0/TBD | Not started | - |
