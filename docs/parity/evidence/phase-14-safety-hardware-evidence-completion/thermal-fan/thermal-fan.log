@@ -1,0 +1,31 @@
+phase14_thermal_fan
+surface: thermal-fan
+manifest: docs/parity/evidence/phase-14-safety-hardware-evidence-completion/thermal-fan/allow-thermal-fan.json
+out_dir: docs/parity/evidence/phase-14-safety-hardware-evidence-completion/thermal-fan
+serial_log: unavailable
+safety_allow_command: bazel run //tools/parity:report -- safety-allow --manifest docs/parity/evidence/phase-14-safety-hardware-evidence-completion/thermal-fan/allow-thermal-fan.json --surface thermal-fan --allowed-command scripts/phase14-thermal-fan.sh --manifest docs/parity/evidence/phase-14-safety-hardware-evidence-completion/thermal-fan/allow-thermal-fan.json --surface thermal-fan --out-dir docs/parity/evidence/phase-14-safety-hardware-evidence-completion/thermal-fan
+Computing main repo mapping: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //tools/parity:report (0 packages loaded, 0 targets configured)
+Analyzing: target //tools/parity:report (0 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //tools/parity:report (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+Target //tools/parity:report up-to-date:
+  bazel-bin/tools/parity/report
+INFO: Elapsed time: 0.285s, Critical Path: 0.00s
+INFO: 1 process: 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/tools/parity/report <args omitted>
+safety_allow_status: passed
+surface: thermal-fan
+claim_tier: read-only-observation
+evidence_class: hardware-smoke
+checklist_rows: THR-001,THR-002,THR-003
+phase14_thermal_fan_status: pending - serial log unavailable
+thermal_fan_status: pending - serial log unavailable
+thermal_claim: read-only-observation
+fan_rpm_claim: read-only-observation
+fan_duty_status: pending - no production-safe bounded fan-duty route exists
+checklist_rows: THR-001,THR-002,THR-003

@@ -1,0 +1,30 @@
+{
+  "board": "205",
+  "port": "/dev/cu.usbmodem1101",
+  "detector_command": "just detect-ultra205",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
+  "package_manifest": "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
+  "source_commit": "ff9da3be6450127dd2cdd92c6d60452b8d475fb8",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "surface": "thermal-fan",
+  "claim_tier": "read-only-observation",
+  "evidence_class": "hardware-smoke",
+  "allowed_command": "scripts/phase14-thermal-fan.sh --manifest docs/parity/evidence/phase-14-safety-hardware-evidence-completion/thermal-fan/allow-thermal-fan.json --surface thermal-fan --out-dir docs/parity/evidence/phase-14-safety-hardware-evidence-completion/thermal-fan",
+  "allowed_inputs": {
+    "serial_log": "unavailable",
+    "bounded_actuation": false,
+    "raw_hardware_writes": false
+  },
+  "abort_conditions": [],
+  "recovery_steps": [],
+  "post_action_safe_state_markers": [],
+  "evidence_dir": "docs/parity/evidence/phase-14-safety-hardware-evidence-completion/thermal-fan",
+  "redaction_reviewer": "phase-14-plan-03-wrapper-preflight",
+  "checklist_rows": [
+    "THR-001",
+    "THR-002",
+    "THR-003"
+  ]
+}
