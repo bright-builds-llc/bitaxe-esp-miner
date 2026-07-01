@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 16-05-PLAN.md
-last_updated: "2026-07-01T14:51:46.150Z"
+stopped_at: Blocked 16-06-PLAN.md at final release-evidence current-HEAD validation
+last_updated: "2026-07-01T15:16:50.636Z"
 last_activity: 2026-07-01
 progress:
   total_phases: 16
@@ -134,6 +134,7 @@ Progress: [██████████] 100%
 | Phase 16-current-commit-release-evidence-completion P03 | 5 min | 2 tasks | 3 files |
 | Phase 16-current-commit-release-evidence-completion P04 | 4 min | 2 tasks | 4 files |
 | Phase 16-current-commit-release-evidence-completion P05 | 6 min | 2 tasks | 7 files |
+| Phase 16-current-commit-release-evidence-completion P06 | 19 min 31 sec | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -341,6 +342,7 @@ None yet.
 - Phase 13-03 live HTTP/static/recovery evidence blocked because DEVICE_URL is missing; checklist rows must remain below verified until a reachable just-flashed Ultra 205 URL is provided.
 - Phase 13-05 recovery regression remains pending because DEVICE_URL is missing; no unsafe allow flags were used.
 - Phase 13-04 firmware OTA evidence blocked because DEVICE_URL is missing; valid OTA, invalid rejection, reboot identity, rollback, selected partition, and boot-validation remain below verified.
+- Phase 16 Plan 16-06 blocked: final release-evidence validator failed because current git HEAD ccf3e74c5f62d79afb1e26976f3cadec9e3a43c2 does not match flashed evidence manifest source_commit b55d3e68b68060fc6cf271372a75fc86c0a934c6; lifecycle validation returned invalid.
 
 ### Quick Tasks Completed
 
@@ -353,6 +355,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T14:51:46.147Z
-Stopped at: Completed 16-05-PLAN.md
+Last session: 2026-07-01T15:16:25.672Z
+Stopped at: Blocked 16-06-PLAN.md at final release-evidence current-HEAD validation
 Resume file: None
