@@ -39,6 +39,9 @@ pub(crate) struct ReleaseEvidenceFlashEvidence {
 pub(crate) struct ReleaseEvidenceDocuments {
     pub(crate) manifest: ReleaseEvidenceManifest,
     pub(crate) current_git_head: String,
+    pub(crate) allow_post_source_evidence_commits: bool,
+    pub(crate) source_commit_is_ancestor_of_head: bool,
+    pub(crate) post_source_changed_paths: Vec<Utf8PathBuf>,
     pub(crate) evidence_root: Utf8PathBuf,
     pub(crate) maybe_flash_evidence_json_path: Option<Utf8PathBuf>,
     pub(crate) maybe_flash_evidence: Option<ReleaseEvidenceFlashEvidence>,
@@ -160,7 +163,66 @@ fn validate_current_commit(
         return;
     }
 
+    if documents.allow_post_source_evidence_commits {
+        validate_post_source_evidence_commits(validation_errors, documents);
+        return;
+    }
+
     validation_errors.push("current git HEAD does not match package source_commit".to_owned());
+}
+
+fn validate_post_source_evidence_commits(
+    validation_errors: &mut Vec<String>,
+    documents: &ReleaseEvidenceDocuments,
+) {
+    if !documents.source_commit_is_ancestor_of_head {
+        validation_errors
+            .push("package source_commit is not an ancestor of current git HEAD".to_owned());
+        return;
+    }
+
+    let disallowed_paths = documents
+        .post_source_changed_paths
+        .iter()
+        .filter(|path| !is_allowed_post_source_evidence_path(path))
+        .map(|path| path.as_str())
+        .collect::<Vec<_>>();
+
+    if disallowed_paths.is_empty() {
+        return;
+    }
+
+    validation_errors.push(format!(
+        "post-source commits include non-evidence path(s): {}",
+        disallowed_paths.join(", ")
+    ));
+}
+
+fn is_allowed_post_source_evidence_path(path: &Utf8Path) -> bool {
+    let Some(normalized_path) = normalize_path(path) else {
+        return false;
+    };
+
+    if normalized_path.starts_with('/') {
+        return false;
+    }
+
+    matches!(
+        normalized_path.as_str(),
+        ".planning/REQUIREMENTS.md"
+            | ".planning/ROADMAP.md"
+            | ".planning/STATE.md"
+            | "docs/parity/checklist.md"
+            | "docs/release/license-inventory.md"
+            | "docs/release/provenance-manifest.md"
+            | "docs/release/ultra-205.md"
+    ) || normalized_path
+        .starts_with(".planning/phases/16-current-commit-release-evidence-completion/")
+        || normalized_path
+            == "docs/parity/evidence/phase-16-current-commit-release-evidence-completion.md"
+        || normalized_path.starts_with(
+            "docs/parity/evidence/phase-16-current-commit-release-evidence-completion/",
+        )
 }
 
 fn validate_redaction_review(
@@ -346,6 +408,74 @@ mod tests {
     }
 
     #[test]
+    fn release_evidence_accepts_post_source_evidence_commits_when_explicitly_allowed() {
+        // Arrange
+        let mut documents = complete_documents();
+        documents.current_git_head = "fedcba9876543210fedcba9876543210fedcba98".to_owned();
+        documents.allow_post_source_evidence_commits = true;
+        documents.source_commit_is_ancestor_of_head = true;
+        documents.post_source_changed_paths = vec![
+            Utf8PathBuf::from(
+                "docs/parity/evidence/phase-16-current-commit-release-evidence-completion.md",
+            ),
+            Utf8PathBuf::from(
+                "docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot.md",
+            ),
+            Utf8PathBuf::from(
+                ".planning/phases/16-current-commit-release-evidence-completion/16-VERIFICATION.md",
+            ),
+            Utf8PathBuf::from("docs/release/ultra-205.md"),
+        ];
+
+        // Act
+        let report = validate_release_evidence(&documents, true);
+
+        // Assert
+        assert!(report.passed(), "{:?}", report.validation_errors);
+    }
+
+    #[test]
+    fn release_evidence_rejects_post_source_commits_when_source_is_not_ancestor() {
+        // Arrange
+        let mut documents = complete_documents();
+        documents.current_git_head = "fedcba9876543210fedcba9876543210fedcba98".to_owned();
+        documents.allow_post_source_evidence_commits = true;
+        documents.source_commit_is_ancestor_of_head = false;
+        documents.post_source_changed_paths = vec![Utf8PathBuf::from("docs/release/ultra-205.md")];
+
+        // Act
+        let report = validate_release_evidence(&documents, false);
+
+        // Assert
+        assert_error(
+            &report,
+            "package source_commit is not an ancestor of current git HEAD",
+        );
+    }
+
+    #[test]
+    fn release_evidence_rejects_non_evidence_paths_after_package_source_commit() {
+        // Arrange
+        let mut documents = complete_documents();
+        documents.current_git_head = "fedcba9876543210fedcba9876543210fedcba98".to_owned();
+        documents.allow_post_source_evidence_commits = true;
+        documents.source_commit_is_ancestor_of_head = true;
+        documents.post_source_changed_paths = vec![
+            Utf8PathBuf::from("docs/release/ultra-205.md"),
+            Utf8PathBuf::from("firmware/bitaxe/src/main.rs"),
+        ];
+
+        // Act
+        let report = validate_release_evidence(&documents, false);
+
+        // Assert
+        assert_error(
+            &report,
+            "post-source commits include non-evidence path(s): firmware/bitaxe/src/main.rs",
+        );
+    }
+
+    #[test]
     fn release_evidence_rejects_flash_evidence_firmware_commit_mismatch() {
         // Arrange
         let mut documents = complete_documents();
@@ -483,6 +613,9 @@ mod tests {
                 ],
             },
             current_git_head: SOURCE_COMMIT.to_owned(),
+            allow_post_source_evidence_commits: false,
+            source_commit_is_ancestor_of_head: false,
+            post_source_changed_paths: Vec::new(),
             evidence_root: Utf8PathBuf::from(PHASE16_ROOT),
             maybe_flash_evidence_json_path: Some(Utf8PathBuf::from(format!(
                 "{PHASE16_ROOT}/serial-boot/flash-command-evidence.json"

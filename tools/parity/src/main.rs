@@ -102,6 +102,9 @@ struct ReleaseEvidenceArgs {
 
     #[arg(long = "require-redaction-passed")]
     require_redaction_passed: bool,
+
+    #[arg(long = "allow-post-source-evidence-commits")]
+    allow_post_source_evidence_commits: bool,
 }
 
 #[derive(Debug, Parser)]
@@ -302,6 +305,69 @@ impl LocalEnvironment {
 
         Ok(trimmed.to_owned())
     }
+
+    fn source_commit_is_ancestor_of_head(&self, source_commit: &str) -> Result<bool> {
+        let output = ProcessCommand::new("git")
+            .args([
+                "-C",
+                self.workspace_dir.as_str(),
+                "merge-base",
+                "--is-ancestor",
+                source_commit,
+                "HEAD",
+            ])
+            .output()
+            .with_context(|| {
+                format!(
+                    "failed to compare package source commit {source_commit} with HEAD in {}",
+                    self.workspace_dir
+                )
+            })?;
+
+        if output.status.success() {
+            return Ok(true);
+        }
+
+        if output.status.code() == Some(1) {
+            return Ok(false);
+        }
+
+        bail!(
+            "failed to compare package source commit {source_commit} with HEAD in {}: {}",
+            self.workspace_dir,
+            command_stderr_or_status(&output)
+        );
+    }
+
+    fn changed_paths_since(&self, source_commit: &str) -> Result<Vec<Utf8PathBuf>> {
+        let output = ProcessCommand::new("git")
+            .args([
+                "-C",
+                self.workspace_dir.as_str(),
+                "diff",
+                "--name-only",
+                &format!("{source_commit}..HEAD"),
+            ])
+            .output()
+            .with_context(|| {
+                format!("failed to list paths changed since package source commit {source_commit}")
+            })?;
+
+        if !output.status.success() {
+            bail!(
+                "failed to list paths changed since package source commit {source_commit}: {}",
+                command_stderr_or_status(&output)
+            );
+        }
+
+        let stdout =
+            String::from_utf8(output.stdout).context("git diff output was not valid UTF-8")?;
+        Ok(stdout
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(Utf8PathBuf::from)
+            .collect())
+    }
 }
 
 fn main() -> Result<()> {
@@ -335,6 +401,15 @@ fn run_release_evidence_command(
         .with_context(|| format!("failed to read package manifest {manifest_path}"))?;
     let manifest = parse_release_evidence_manifest_json(&manifest_json, &args.manifest)?;
     let current_git_head = environment.current_git_head()?;
+    let source_commit_is_ancestor_of_head = args.allow_post_source_evidence_commits
+        && current_git_head != manifest.source_commit
+        && environment.source_commit_is_ancestor_of_head(&manifest.source_commit)?;
+    let post_source_changed_paths =
+        if args.allow_post_source_evidence_commits && current_git_head != manifest.source_commit {
+            environment.changed_paths_since(&manifest.source_commit)?
+        } else {
+            Vec::new()
+        };
 
     let maybe_flash_evidence = if let Some(flash_evidence_path) = &args.maybe_flash_evidence_json {
         let workspace_flash_evidence_path = environment.workspace_path(flash_evidence_path);
@@ -366,6 +441,9 @@ fn run_release_evidence_command(
     let documents = ReleaseEvidenceDocuments {
         manifest,
         current_git_head,
+        allow_post_source_evidence_commits: args.allow_post_source_evidence_commits,
+        source_commit_is_ancestor_of_head,
+        post_source_changed_paths,
         evidence_root,
         maybe_flash_evidence_json_path,
         maybe_flash_evidence,
@@ -1165,6 +1243,7 @@ mod tests {
             maybe_flash_evidence_json: Some(Utf8PathBuf::from("docs/evidence/flash.json")),
             maybe_redaction_review: None,
             require_redaction_passed: false,
+            allow_post_source_evidence_commits: false,
         };
 
         // Act
