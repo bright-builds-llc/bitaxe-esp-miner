@@ -9,7 +9,7 @@ INFO: Analyzed target //tools/parity:report (125 packages loaded, 4904 targets c
 INFO: Found 1 target...
 Target //tools/parity:report up-to-date:
   bazel-bin/tools/parity/report
-INFO: Elapsed time: 1.341s, Critical Path: 0.01s
+INFO: Elapsed time: 1.321s, Critical Path: 0.01s
 INFO: 1 process: 450 action cache hit, 1 internal.
 INFO: Build completed successfully, 1 total action
 INFO: Running command line: bazel-bin/tools/parity/report <args omitted>

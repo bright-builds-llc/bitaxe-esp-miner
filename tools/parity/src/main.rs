@@ -344,7 +344,7 @@ fn run_release_evidence_command(
             )?;
         Some(parse_flash_evidence_json(
             &flash_evidence_json,
-            flash_evidence_path,
+            &workspace_flash_evidence_path,
         )?)
     } else {
         None
@@ -360,12 +360,14 @@ fn run_release_evidence_command(
     } else {
         None
     };
+    let (evidence_root, maybe_flash_evidence_json_path) =
+        release_evidence_validation_paths(&args, environment);
 
     let documents = ReleaseEvidenceDocuments {
         manifest,
         current_git_head,
-        evidence_root: args.evidence_root,
-        maybe_flash_evidence_json_path: args.maybe_flash_evidence_json,
+        evidence_root,
+        maybe_flash_evidence_json_path,
         maybe_flash_evidence,
         maybe_redaction_review,
     };
@@ -377,6 +379,18 @@ fn run_release_evidence_command(
     }
 
     Ok(output)
+}
+
+fn release_evidence_validation_paths(
+    args: &ReleaseEvidenceArgs,
+    environment: &LocalEnvironment,
+) -> (Utf8PathBuf, Option<Utf8PathBuf>) {
+    (
+        environment.workspace_path(&args.evidence_root),
+        args.maybe_flash_evidence_json
+            .as_ref()
+            .map(|path| environment.workspace_path(path)),
+    )
 }
 
 fn run_mining_allow_command(
@@ -1136,6 +1150,38 @@ mod tests {
         // Assert
         assert_eq!(parsed["reference_commit"], "abc123");
         assert_eq!(parsed["rows"][0]["id"], "WF-001");
+    }
+
+    #[test]
+    fn release_evidence_validation_paths_resolve_relative_inputs_under_workspace() {
+        // Arrange
+        let environment = LocalEnvironment {
+            workspace_dir: Utf8PathBuf::from("/tmp/bitaxe-workspace"),
+            reference_guard_path: Utf8PathBuf::from("unused-reference-guard"),
+        };
+        let args = ReleaseEvidenceArgs {
+            manifest: Utf8PathBuf::from("docs/evidence/package.json"),
+            evidence_root: Utf8PathBuf::from("docs/evidence"),
+            maybe_flash_evidence_json: Some(Utf8PathBuf::from("docs/evidence/flash.json")),
+            maybe_redaction_review: None,
+            require_redaction_passed: false,
+        };
+
+        // Act
+        let (evidence_root, maybe_flash_evidence_json_path) =
+            release_evidence_validation_paths(&args, &environment);
+
+        // Assert
+        assert_eq!(
+            evidence_root,
+            Utf8PathBuf::from("/tmp/bitaxe-workspace/docs/evidence")
+        );
+        assert_eq!(
+            maybe_flash_evidence_json_path,
+            Some(Utf8PathBuf::from(
+                "/tmp/bitaxe-workspace/docs/evidence/flash.json"
+            ))
+        );
     }
 
     #[test]
