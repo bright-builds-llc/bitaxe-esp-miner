@@ -343,7 +343,15 @@ Plans:
 1. Active voltage/power, fan/thermal, self-test, watchdog/load, display/input, and live API/WebSocket telemetry claims either have hardware-regression evidence or remain below `verified` with an owner and blocker.
 1. `just parity` continues to reject safety-critical verified rows without valid hardware-smoke or hardware-regression evidence.
 
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+
+- [ ] 14-01-PLAN.md - Add the machine-enforced Phase 14 safety allow-manifest gate.
+- [ ] 14-02-PLAN.md - Create the Phase 14 component evidence scaffold and redaction contract.
+- [ ] 14-03-PLAN.md - Add and run power, voltage, thermal, and fan evidence wrappers.
+- [ ] 14-04-PLAN.md - Add and run self-test, watchdog/load, display, and input evidence wrappers.
+- [ ] 14-05-PLAN.md - Add and run live API/WebSocket safety telemetry evidence wrapper.
+- [ ] 14-06-PLAN.md - Close final ledger, redaction, checklist, and validation status.
 **Verification expectations**: `just detect-ultra205`, gated hardware-regression evidence for board `205`, pure safety tests, relevant firmware/package checks, checklist validation, redaction review, and final phase verification.
 **Research flags**: Requires careful hardware recovery planning. Do not run ad hoc voltage, fan, mining stress, erase, rollback, or fault-injection commands outside the approved phase plan.
 
