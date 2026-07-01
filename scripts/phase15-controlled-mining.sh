@@ -178,20 +178,20 @@ allowed_command_string() {
 }
 
 run_mining_allow() {
-	local allowed_command="$1"
+	local expected_allowed_command="$1"
 
 	if [[ -n "${PHASE15_MINING_ALLOW_BIN:-}" ]]; then
 		"$PHASE15_MINING_ALLOW_BIN" \
 			--manifest "$manifest" \
 			--surface "$surface" \
-			--allowed-command "$allowed_command"
+			--allowed-command "$expected_allowed_command"
 		return
 	fi
 
 	bazel run //tools/parity:report -- mining-allow \
 		--manifest "$manifest" \
 		--surface "$surface" \
-		--allowed-command "$allowed_command"
+		--allowed-command "$expected_allowed_command"
 }
 
 summary_contains_any_safe_marker() {

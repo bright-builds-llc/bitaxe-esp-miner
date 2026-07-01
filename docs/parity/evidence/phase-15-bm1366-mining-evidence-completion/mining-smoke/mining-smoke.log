@@ -1,0 +1,36 @@
+phase15_controlled_mining
+surface: mining-smoke
+manifest: docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke/allow-mining-smoke.json
+out_dir: docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke
+network_scan: disabled - DEVICE_URL must be explicit
+mining_allow_command: bazel run //tools/parity:report -- mining-allow --manifest docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke/allow-mining-smoke.json --surface mining-smoke --allowed-command scripts/phase15-controlled-mining.sh --manifest docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke/allow-mining-smoke.json --surface mining-smoke --out-dir docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke --chip-detect-summary docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md --work-result-summary docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result.md
+INFO: Checking for file changes...
+Computing main repo mapping: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //tools/parity:report (1 packages loaded, 0 targets configured)
+Analyzing: target //tools/parity:report (1 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //tools/parity:report (125 packages loaded, 4362 targets configured).
+INFO: Found 1 target...
+Target //tools/parity:report up-to-date:
+  bazel-bin/tools/parity/report
+INFO: Elapsed time: 1.290s, Critical Path: 0.01s
+INFO: 1 process: 450 action cache hit, 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/tools/parity/report <args omitted>
+mining_allow_status: passed
+surface: mining-smoke
+claim_tier: controlled-no-share
+evidence_class: hardware-smoke
+checklist_rows: STR-006,STR-007,STR-008,API-002,API-006,STAT-002,SAFE-09,EVD-05
+controlled_mining_status: controlled-no-share
+pool_category=controlled-no-share
+controlled_no_share_condition=missing_live_prerequisites
+share_outcome=controlled no-share condition
+hashrate_inputs_status=pending - no live pool work submitted
+api_telemetry_status=pending - missing DEVICE_URL
+websocket_frame_status=pending - missing DEVICE_URL or helper blocked
+watchdog_status=pending - live prerequisites missing
+safe_stop_status=confirmed-or-pending
+conclusion: controlled no-share condition - missing live prerequisites

@@ -1,0 +1,55 @@
+{
+  "board": "205",
+  "port": "/dev/cu.usbmodem1101",
+  "detector_command": "just detect-ultra205",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
+  "package_manifest": "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/package/bitaxe-ultra205-package.json",
+  "source_commit": "d7d965ffdab1e589f6ea7dea81eb8edacf7f4c86",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "surface": "mining-smoke",
+  "claim_tier": "controlled-no-share",
+  "evidence_class": "hardware-smoke",
+  "allowed_command": "scripts/phase15-controlled-mining.sh --manifest docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke/allow-mining-smoke.json --surface mining-smoke --out-dir docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke --chip-detect-summary docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md --work-result-summary docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result.md",
+  "allowed_inputs": {
+    "pool_config": "missing-live-prerequisites",
+    "device_url": "missing",
+    "wrapper_source_commit": "edd5f4f8ac254513d412fae16f6cc1af3f33e455"
+  },
+  "abort_conditions": [
+    "detector_mismatch",
+    "board_info_failure",
+    "missing_trusted_wrapper_markers",
+    "redaction_uncertainty",
+    "unsafe_temperature_or_power",
+    "watchdog_unresponsive",
+    "serial_silence",
+    "missing_safe_stop"
+  ],
+  "recovery_steps": [
+    "Confirm package-backed safe-state markers from chip-detect.md and work-result.md before any later live run.",
+    "Use the package-backed work-result evidence command recorded in work-result.md if a later live run needs restore proof."
+  ],
+  "post_action_safe_state_markers": [
+    "safe_state: mining=disabled",
+    "hardware_control=disabled",
+    "work_submission=disabled"
+  ],
+  "prerequisite_artifacts": [
+    "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md",
+    "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result.md"
+  ],
+  "evidence_dir": "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke",
+  "redaction_reviewer": "phase-15-task-04-redaction-review",
+  "checklist_rows": [
+    "STR-006",
+    "STR-007",
+    "STR-008",
+    "API-002",
+    "API-006",
+    "STAT-002",
+    "SAFE-09",
+    "EVD-05"
+  ]
+}
