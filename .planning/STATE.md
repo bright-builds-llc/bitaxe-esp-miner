@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 16 context gathered
-last_updated: "2026-07-01T13:25:32.888Z"
-last_activity: 2026-07-01 -- Phase 16 execution started
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-07-01T13:52:48.638Z"
+last_activity: 2026-07-01
 progress:
   total_phases: 16
   completed_phases: 15
   total_plans: 87
-  completed_plans: 81
-  percent: 93
+  completed_plans: 82
+  percent: 94
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 16 (current-commit-release-evidence-completion) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 16
-Last activity: 2026-07-01 -- Phase 16 execution started
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-07-01
 
 Progress: [██████████] 100%
 
@@ -129,6 +129,7 @@ Progress: [██████████] 100%
 | Phase 15-bm1366-mining-evidence-completion P03 | 15 min | 2 tasks | 11 files |
 | Phase 15-bm1366-mining-evidence-completion P04 | 17m21s | 2 tasks | 13 files |
 | Phase 15-bm1366-mining-evidence-completion P05 | 15m40s | 3 tasks | 6 files |
+| Phase 16-current-commit-release-evidence-completion P01 | 23min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -313,6 +314,9 @@ Recent decisions affecting current work:
 - [Phase 15-bm1366-mining-evidence-completion]: Phase 15 supports exact BM1366 diagnostic and controlled no-share subclaims only; broad production mining, live pool, API/WebSocket, statistics, frequency, voltage, fan, and release claims remain below verified.
 - [Phase 15-bm1366-mining-evidence-completion]: STR-008 is implemented with hardware-smoke/workflow evidence for controlled no-share metadata, while accepted/rejected shares and live bounded soak remain below verified.
 - [Phase 15-bm1366-mining-evidence-completion]: Missing explicit DEVICE_URL and live pool prerequisites are the only residual optional blockers accepted for passed verification status.
+- [Phase 16-current-commit-release-evidence-completion]: Keep Phase 16 evidence helpers phase-owned instead of mutating Phase 13 historical evidence scripts.
+- [Phase 16-current-commit-release-evidence-completion]: Require package source_commit to equal current git HEAD before release evidence can support current-commit claims.
+- [Phase 16-current-commit-release-evidence-completion]: Gate every allowed failed-update, interrupted-OTA, and large-erase action with detector, board-info, current manifest, package artifacts, abort conditions, recovery steps, and safe-state markers.
 
 ### Pending Todos
 
@@ -337,6 +341,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T12:39:14.253Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-current-commit-release-evidence-completion/16-CONTEXT.md
+Last session: 2026-07-01T13:52:48.634Z
+Stopped at: Completed 16-01-PLAN.md
+Resume file: None

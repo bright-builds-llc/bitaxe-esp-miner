@@ -61,7 +61,7 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 - [x] **API-06**: `/api/ws` streams log events in a client-compatible format.
 - [x] **API-07**: `/api/ws/live` streams live telemetry with upstream-compatible payload shape, cadence, and state transitions.
 - [x] **API-08**: Pause, resume, restart, identify, and related command routes preserve user-visible behavior and safe failure modes.
-- [ ] **API-09**: Static AxeOS assets and recovery page behavior remain compatible enough for device administration without requiring an Angular rewrite in V1.
+- [x] **API-09**: Static AxeOS assets and recovery page behavior remain compatible enough for device administration without requiring an Angular rewrite in V1.
 - [x] **API-10**: API compare fixtures prove Rust responses match the upstream schema or captured upstream responses for representative success and error cases.
 
 ### Safety, Power, Thermal, Self-Test, And Peripherals
@@ -78,14 +78,14 @@ V1 targets device-user parity for the Bitaxe Ultra 205 with BM1366 ASIC. Other u
 
 ### OTA, Filesystem, And Release Packaging
 
-- [ ] **REL-01**: Partition layout, filesystem layout, SPIFFS/static assets, and recovery assets support the same user-facing flash and administration flows expected from upstream.
-- [ ] **REL-02**: Firmware OTA route behavior accepts, rejects, applies, logs, and recovers from updates with upstream-compatible observable behavior.
-- [ ] **REL-03**: OTAWWW or static-asset update behavior is implemented or explicitly reported as a V1 parity gap with evidence and owner.
-- [ ] **REL-04**: Release packaging produces named artifacts with checksums, manifests, image metadata, installation notes, and source/reference commit identifiers.
+- [x] **REL-01**: Partition layout, filesystem layout, SPIFFS/static assets, and recovery assets support the same user-facing flash and administration flows expected from upstream.
+- [x] **REL-02**: Firmware OTA route behavior accepts, rejects, applies, logs, and recovers from updates with upstream-compatible observable behavior.
+- [x] **REL-03**: OTAWWW or static-asset update behavior is implemented or explicitly reported as a V1 parity gap with evidence and owner.
+- [x] **REL-04**: Release packaging produces named artifacts with checksums, manifests, image metadata, installation notes, and source/reference commit identifiers.
 - [x] **REL-05**: Release preparation includes dependency license inventory, reference provenance manifest, and explicit review of GPL-derived materials.
 - [x] **REL-06**: Flashable image production is reachable through `just package` and `just flash board=205` without requiring manual artifact discovery.
-- [ ] **REL-07**: Build, flash, monitor, OTA, and recovery documentation is sufficient for a developer with a connected Ultra 205 to operate the firmware safely.
-- [ ] **REL-08**: Rollback, recovery, large erase, failed update, and interrupted update cases have verification evidence before release parity is claimed. Deferred to Phase 8 so Phase 7 can close on implementation, packaging, factory-flash, and serial boot evidence without overclaiming release parity.
+- [x] **REL-07**: Build, flash, monitor, OTA, and recovery documentation is sufficient for a developer with a connected Ultra 205 to operate the firmware safely.
+- [x] **REL-08**: Rollback, recovery, large erase, failed update, and interrupted update cases have verification evidence before release parity is claimed. Deferred to Phase 8 so Phase 7 can close on implementation, packaging, factory-flash, and serial boot evidence without overclaiming release parity.
 
 ### Evidence And Governance
 
@@ -178,7 +178,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-06 | Phase 5 | Complete |
 | API-07 | Phase 5 | Complete |
 | API-08 | Phase 5 | Complete |
-| API-09 | Phase 5 + Phase 10 + Phase 13 + Phase 16 | Pending |
+| API-09 | Phase 5 + Phase 10 + Phase 13 + Phase 16 | Complete |
 | API-10 | Phase 5 + Phase 10 | Complete |
 | SAFE-01 | Phase 6 + Phase 11 + Phase 14 | Complete |
 | SAFE-02 | Phase 6 + Phase 11 + Phase 14 | Complete |
@@ -189,14 +189,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAFE-07 | Phase 6 + Phase 11 + Phase 14 | Complete |
 | SAFE-08 | Phase 6 + Phase 11 + Phase 14 | Complete |
 | SAFE-09 | Phase 6 + Phase 11 + Phase 14 + Phase 15 | Complete |
-| REL-01 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Pending |
-| REL-02 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Pending |
-| REL-03 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Pending |
-| REL-04 | Phase 7 + Phase 13 + Phase 16 | Pending |
+| REL-01 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Complete |
+| REL-02 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Complete |
+| REL-03 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Complete |
+| REL-04 | Phase 7 + Phase 13 + Phase 16 | Complete |
 | REL-05 | Phase 7 | Complete |
 | REL-06 | Phase 7 | Complete |
-| REL-07 | Phase 7 + Phase 9 + Phase 16 | Pending |
-| REL-08 | Phase 8 + Phase 13 + Phase 16 | Pending |
+| REL-07 | Phase 7 + Phase 9 + Phase 16 | Complete |
+| REL-08 | Phase 8 + Phase 13 + Phase 16 | Complete |
 | EVD-01 | Phase 8 + Phase 10 | Complete |
 | EVD-02 | Phase 8 | Complete |
 | EVD-03 | Phase 8 | Complete |
