@@ -54,6 +54,16 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase14_power_voltage",
+    srcs = ["phase14-power-voltage.sh"],
+)
+
+sh_binary(
+    name = "phase14_thermal_fan",
+    srcs = ["phase14-thermal-fan.sh"],
+)
+
+sh_binary(
     name = "source_commit_stamp_tool",
     srcs = ["source-commit-stamp.sh"],
 )
@@ -123,6 +133,20 @@ sh_test(
         "phase13-monitor-capture.sh",
         "phase13-recovery-regression.sh",
     ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase14_power_voltage_test",
+    srcs = ["phase14-power-voltage-test.sh"],
+    data = ["phase14-power-voltage.sh"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase14_thermal_fan_test",
+    srcs = ["phase14-thermal-fan-test.sh"],
+    data = ["phase14-thermal-fan.sh"],
     tags = ["local"],
 )
 
