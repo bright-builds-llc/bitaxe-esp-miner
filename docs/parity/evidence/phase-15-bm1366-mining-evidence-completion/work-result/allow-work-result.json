@@ -1,0 +1,54 @@
+{
+  "board": "205",
+  "port": "/dev/cu.usbmodem1101",
+  "detector_command": "just detect-ultra205",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
+  "package_manifest": "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/package/bitaxe-ultra205-package.json",
+  "source_commit": "d7d965ffdab1e589f6ea7dea81eb8edacf7f4c86",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "surface": "bm1366-work-result",
+  "claim_tier": "diagnostic-work-result",
+  "evidence_class": "hardware-smoke",
+  "allowed_command": "bazel run //tools/flash:flash -- flash-monitor --board 205 --port /dev/cu.usbmodem1101 --manifest docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/package/bitaxe-ultra205-package.json --evidence-dir docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result --capture-timeout-seconds 45",
+  "allowed_inputs": {
+    "diagnostic_mode": "work-result",
+    "pool_config": "none",
+    "device_url": "not_required",
+    "duration_seconds": 45
+  },
+  "abort_conditions": [
+    "detector_mismatch",
+    "board_info_failure",
+    "missing_trusted_wrapper_markers",
+    "redaction_uncertainty",
+    "unsafe_temperature_or_power",
+    "watchdog_unresponsive"
+  ],
+  "recovery_steps": [
+    "just detect-ultra205",
+    "just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/safe-boot-restore"
+  ],
+  "post_action_safe_state_markers": [
+    "safe_state: mining=disabled",
+    "hardware_control=disabled",
+    "work_submission=disabled",
+    "asic_work_submission=disabled"
+  ],
+  "prerequisite_artifacts": [
+    "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md",
+    "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/detect-ultra205.log",
+    "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/diagnostic-package-summary.json",
+    "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/package/bitaxe-ultra205-package.json"
+  ],
+  "evidence_dir": "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result",
+  "redaction_reviewer": "Codex gsd-executor",
+  "checklist_rows": [
+    "ASIC-003",
+    "ASIC-004",
+    "STR-006",
+    "SAFE-09",
+    "EVD-05"
+  ]
+}
