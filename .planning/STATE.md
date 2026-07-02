@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 17-live-http-api-and-static-evidence-01-PLAN.md
-last_updated: "2026-07-02T02:45:56.763Z"
+stopped_at: Completed 17-live-http-api-and-static-evidence-02-PLAN.md
+last_updated: "2026-07-02T03:01:56.482Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 21
   completed_phases: 16
   total_plans: 92
-  completed_plans: 88
-  percent: 96
+  completed_plans: 89
+  percent: 97
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 17 (live-http-api-and-static-evidence) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-02
 
-Progress: [█████████░] 95%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -136,6 +136,7 @@ Progress: [█████████░] 95%
 | Phase 16-current-commit-release-evidence-completion P05 | 6 min | 2 tasks | 7 files |
 | Phase 16-current-commit-release-evidence-completion P06 | 19 min 31 sec | 3 tasks | 9 files |
 | Phase 17-live-http-api-and-static-evidence P01 | 13 min | 3 tasks | 6 files |
+| Phase 17-live-http-api-and-static-evidence P02 | 10 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -334,6 +335,9 @@ Recent decisions affecting current work:
 - [Phase 17-live-http-api-and-static-evidence]: Keep raw curl output in temporary files and write only selected headers plus redacted body/error artifacts.
 - [Phase 17-live-http-api-and-static-evidence]: Use Node global WebSocket with fake modes for deterministic no-network tests instead of adding dependencies.
 - [Phase 17-live-http-api-and-static-evidence]: Start Phase 17 redaction review as pending with absent-artifact tracking before live evidence is cited.
+- [Phase 17-live-http-api-and-static-evidence]: Trust only wrapper-owned flash-monitor JSON and log artifacts for serial identity evidence. — Task 2 used the repo wrapper evidence JSON and serial log instead of raw espflash monitor fallback output.
+- [Phase 17-live-http-api-and-static-evidence]: Refresh package/release-gate evidence after the Task 1 commit so the copied manifest matches the flashed source commit. — The flash-monitor wrapper rebuilds the package at current HEAD; refreshing package evidence preserved the source/reference identity chain.
+- [Phase 17-live-http-api-and-static-evidence]: Keep live HTTP, static route, WebSocket frame, OTA, rollback, boot-validation, and OTAWWW update behavior as explicit non-claims. — Plan 17-02 is package and serial identity only; route and WebSocket evidence belongs to later Phase 17 plans.
 
 ### Pending Todos
 
@@ -359,6 +363,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T02:45:56.758Z
-Stopped at: Completed 17-live-http-api-and-static-evidence-01-PLAN.md
+Last session: 2026-07-02T03:01:56.478Z
+Stopped at: Completed 17-live-http-api-and-static-evidence-02-PLAN.md
 Resume file: None
