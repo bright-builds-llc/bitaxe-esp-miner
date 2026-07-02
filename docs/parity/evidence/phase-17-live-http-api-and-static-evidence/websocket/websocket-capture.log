@@ -1,0 +1,13 @@
+phase17_websocket_capture
+device_url_status: blocked - missing explicit origin-only DEVICE_URL
+target_lock_status: absent - not cited
+network_scan: disabled
+capture_decision: not-run - no explicit target source
+/api/ws/live command: node scripts/phase17-websocket-capture.mjs --device-url "$DEVICE_URL" --path /api/ws/live --out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws-live.txt --duration-ms 5000 --max-frames 3
+/api/ws command: node scripts/phase17-websocket-capture.mjs --device-url "$DEVICE_URL" --path /api/ws --out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws.txt --duration-ms 5000 --max-frames 3
+/api/ws/live artifact: absent - not cited
+/api/ws artifact: absent - not cited
+websocket_live_frame_status: blocked - missing explicit DEVICE_URL
+websocket_raw_log_frame_status: blocked - missing explicit DEVICE_URL
+websocket_promotion_status: blocked - no WebSocket frame artifacts generated
+conclusion: blocked - WebSocket capture requires explicit origin-only DEVICE_URL or explicit-input target lock; network_scan: disabled

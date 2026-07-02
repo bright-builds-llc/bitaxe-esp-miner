@@ -1,6 +1,6 @@
 # Phase 17 Redaction Review
 
-redaction_status: pending - Plan 17-03 HTTP blocked artifacts reviewed; later WebSocket and release-doc artifacts remain pending
+redaction_status: pending - Plan 17-03 HTTP and Plan 17-04 WebSocket blocked artifacts reviewed; later release-doc artifacts remain pending
 
 ## Review Scope
 
@@ -15,6 +15,8 @@ redaction_status: pending - Plan 17-03 HTTP blocked artifacts reviewed; later We
 - [x] NVS secret values redacted or absent for Plan 17-03 HTTP artifacts.
 - [x] local terminal secrets redacted or absent for Plan 17-03 HTTP artifacts.
 - [x] absent - not cited for missing Plan 17-03 HTTP target and route artifacts.
+- [x] absent - not cited for missing Plan 17-04 WebSocket frame artifacts.
+- [x] WebSocket capture log reviewed for raw target URLs, private endpoints, credentials, tokens, NVS values, and terminal secrets.
 
 ## Artifact Matrix
 
@@ -30,12 +32,13 @@ redaction_status: pending - Plan 17-03 HTTP blocked artifacts reviewed; later We
 | HTTP headers | absent - not cited | reviewed | No `http-static-api/*.headers.txt` files were generated because route probes did not run. |
 | HTTP bodies | absent - not cited | reviewed | No `http-static-api/*.body.txt` files were generated because route probes did not run. |
 | HTTP curl errors | absent - not cited | reviewed | No `http-static-api/*.curl-error.txt` files were generated because route probes did not run. |
-| WebSocket /api/ws/live output | pending | pending | `websocket/api-ws-live.txt`; redacted frame snippets only; required for live frame proof. |
-| WebSocket /api/ws output | pending | pending | `websocket/api-ws.txt`; redacted raw-log frame snippets or open-timeout pending status only. |
-| Summary ledger | present | reviewed for Plan 17-03 HTTP scope | `http-static-api.md` cites only the blocked helper transcript and marks all missing route artifacts `absent - not cited`. |
+| WebSocket /api/ws/live output | absent - not cited | reviewed | `websocket/api-ws-live.txt` was not generated because no explicit origin-only `DEVICE_URL` or explicit-input target lock was available. |
+| WebSocket /api/ws output | absent - not cited | reviewed | `websocket/api-ws.txt` was not generated because no explicit origin-only `DEVICE_URL` or explicit-input target lock was available. |
+| WebSocket capture log | present | reviewed | `websocket/websocket-capture.log` contains only blocked/no-target status, command shapes, `network_scan: disabled`, and absent-artifact markers. |
+| Summary ledger | present | reviewed for Plan 17-03 HTTP and Plan 17-04 WebSocket scope | `http-static-api.md` and `websocket.md` cite blocked helper/capture transcripts and mark all missing route/frame artifacts `absent - not cited`. |
 | Release docs snippets | pending | pending | Release docs must cite exact commands/artifacts without exposing targets or secrets. |
 | Terminal snippets | pending | pending | Terminal snippets must not include private endpoints, credentials, tokens, or local secret values. |
-| absent artifacts | present | reviewed for Plan 17-03 HTTP scope | Missing HTTP target lock, header, body, and curl-error artifacts are marked `absent - not cited`; WebSocket and release-doc artifacts remain pending for later plans. |
+| absent artifacts | present | reviewed for Plan 17-03 HTTP and Plan 17-04 WebSocket scope | Missing HTTP target lock, header, body, curl-error, and WebSocket frame artifacts are marked `absent - not cited`; release-doc artifacts remain pending for later plans. |
 
 ## Search Pattern
 
@@ -47,13 +50,15 @@ rg -n -i "ssid|wifi|password|pool|token|device_url|nvs|stratum|https?://|wss?://
 
 ## Decision
 
-Reviewer: automated Plan 17-03 executor review for HTTP blocked artifacts.
+Reviewer: automated Plan 17-03 executor review for HTTP blocked artifacts and automated Plan 17-04 executor review for WebSocket blocked artifacts.
 
 Secret scan result: Plan 17-03 HTTP-specific artifact scan passed for
-`http-static-api.md` and `http-static-api/http-static-api.log`. Broader Phase 17
-scan remains pending until WebSocket and release-doc artifacts are generated.
+`http-static-api.md` and `http-static-api/http-static-api.log`. Plan 17-04
+WebSocket-specific artifact scan passed for `websocket.md` and
+`websocket/websocket-capture.log`. Broader Phase 17 scan remains pending until
+release-doc artifacts are generated.
 
-Conclusion: Plan 17-03 HTTP artifacts are reviewed for the blocked no-target
-path. Do not promote Phase 17 checklist or release documentation claims until
-all generated artifacts are reviewed and absent artifacts are marked `absent -
-not cited`.
+Conclusion: Plan 17-03 HTTP artifacts and Plan 17-04 WebSocket artifacts are
+reviewed for the blocked no-target path. Do not promote Phase 17 checklist or
+release documentation claims until all generated artifacts are reviewed and
+absent artifacts are marked `absent - not cited`.
