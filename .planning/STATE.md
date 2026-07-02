@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 17-live-http-api-and-static-evidence-03-PLAN.md
-last_updated: "2026-07-02T03:11:36.947Z"
+stopped_at: Completed 17-live-http-api-and-static-evidence-04-PLAN.md
+last_updated: "2026-07-02T03:19:48.492Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 21
   completed_phases: 16
   total_plans: 92
-  completed_plans: 90
-  percent: 98
+  completed_plans: 91
+  percent: 99
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 17 (live-http-api-and-static-evidence) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-02
 
@@ -138,6 +138,7 @@ Progress: [██████████] 97%
 | Phase 17-live-http-api-and-static-evidence P01 | 13 min | 3 tasks | 6 files |
 | Phase 17-live-http-api-and-static-evidence P02 | 10 min | 2 tasks | 8 files |
 | Phase 17-live-http-api-and-static-evidence P03 | 4 min | 1 tasks | 3 files |
+| Phase 17-live-http-api-and-static-evidence P04 | 3 min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -342,6 +343,9 @@ Recent decisions affecting current work:
 - [Phase 17-live-http-api-and-static-evidence]: Keep target-lock.json absent when no explicit origin-only DEVICE_URL is available. — Phase 17 Plan 03 evidence preserved the explicit target/no-scan boundary and route-specific non-claim boundaries.
 - [Phase 17-live-http-api-and-static-evidence]: Record every D-08 HTTP/static/API route as blocked with absent - not cited artifacts rather than scanning or inferring a target. — Phase 17 Plan 03 evidence preserved the explicit target/no-scan boundary and route-specific non-claim boundaries.
 - [Phase 17-live-http-api-and-static-evidence]: Keep WebSocket frame, valid OTA, rollback, boot-validation, and OTAWWW update behavior as explicit non-claims. — Phase 17 Plan 03 evidence preserved the explicit target/no-scan boundary and route-specific non-claim boundaries.
+- [Phase 17-live-http-api-and-static-evidence]: Keep WebSocket capture blocked when no explicit origin-only DEVICE_URL or explicit-input target lock exists.
+- [Phase 17-live-http-api-and-static-evidence]: Do not create placeholder frame artifacts for /api/ws/live or /api/ws; mark both absent - not cited.
+- [Phase 17-live-http-api-and-static-evidence]: Keep /api/ws raw-log streaming below verified unless a future bounded capture records a redacted raw-log frame.
 
 ### Pending Todos
 
@@ -367,6 +371,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T03:11:26.273Z
-Stopped at: Completed 17-live-http-api-and-static-evidence-03-PLAN.md
+Last session: 2026-07-02T03:19:48.488Z
+Stopped at: Completed 17-live-http-api-and-static-evidence-04-PLAN.md
 Resume file: None
