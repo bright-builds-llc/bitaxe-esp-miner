@@ -347,10 +347,10 @@ test_fake_success_records_required_phase17_routes() {
 	assert_contains "$log_file" "otawww_rel03_status: deferred"
 	assert_contains "$log_file" "Wrong API input"
 	assert_contains "$log_file" "http_static_api_status: passed"
-	assert_contains "${out_dir}/target-lock.json" "\"target_status\":\"passed\""
-	assert_contains "${out_dir}/target-lock.json" "\"device_url_redacted\":\"http://[redacted]\""
-	assert_contains "${out_dir}/target-lock.json" "\"network_scan\":\"disabled\""
-	assert_contains "${out_dir}/target-lock.json" "\"created_from_explicit_input\":true"
+	assert_contains "${out_dir}/target-lock.json" "\"target_status\": \"passed\""
+	assert_contains "${out_dir}/target-lock.json" "\"device_url_redacted\": \"http://[redacted]\""
+	assert_contains "${out_dir}/target-lock.json" "\"network_scan\": \"disabled\""
+	assert_contains "${out_dir}/target-lock.json" "\"created_from_explicit_input\": true"
 	assert_not_contains "${out_dir}/target-lock.json" "device.local"
 }
 
