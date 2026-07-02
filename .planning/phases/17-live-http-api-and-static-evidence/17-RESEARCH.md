@@ -446,22 +446,22 @@ rg -n -i 'ssid|wifi|password|pool|token|device_url|nvs|stratum|https?://|wss?://
 | --- | --- | --- | --- |
 | A1 | The research remains useful for about 30 days for stable repo-local tooling. [ASSUMED] | Metadata | Planner may need to re-run tool/version probes sooner if the repo, Node, ESP-IDF tooling, or hardware setup changes. [VERIFIED: local command probes] |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **What explicit `DEVICE_URL` will the operator provide at execution time?** [VERIFIED: 17-CONTEXT.md]
+1. **RESOLVED - handled by Plans 17-03 and 17-04: What explicit `DEVICE_URL` will the operator provide at execution time?** [VERIFIED: 17-CONTEXT.md]
    - What we know: hardware detection succeeded locally for one ESP32-S3 USB candidate. [VERIFIED: `just detect-ultra205`]
    - What's unclear: no reachable network origin was provided during research, and scanning is forbidden. [VERIFIED: 17-CONTEXT.md]
-   - Recommendation: planner should include a blocked evidence path and require `--device-url` or explicit `DEVICE_URL` before live probes. [VERIFIED: 17-CONTEXT.md]
+   - Selected plan handling: Plan 17-03 writes blocked HTTP/static/API evidence when explicit origin-only `DEVICE_URL` is missing, invalid, unreachable, or wrong-device; Plan 17-04 writes blocked WebSocket evidence under the same no-scan rule. Both keep `network_scan: disabled` and do not infer targets from serial logs, mDNS, ARP, AP UI, router UI, or operator observations. [VERIFIED: 17-CONTEXT.md]
 
-2. **Can `/api/ws` produce a raw log frame within the Phase 17 bounded window?** [VERIFIED: 17-CONTEXT.md]
+2. **RESOLVED - handled by Plan 17-04: Can `/api/ws` produce a raw log frame within the Phase 17 bounded window?** [VERIFIED: 17-CONTEXT.md]
    - What we know: `/api/ws/live` sends a connect frame; `/api/ws` starts from current log-buffer end and may time out without new log lines. [VERIFIED: firmware/bitaxe/src/http_api.rs, crates/bitaxe-api/src/logs.rs]
    - What's unclear: whether the live route sequence naturally generates a raw retained-log frame after `/api/ws` connects. [VERIFIED: firmware/bitaxe/src/log_buffer.rs, crates/bitaxe-api/src/logs.rs]
-   - Recommendation: capture `/api/ws` separately; if it opens but produces no frame, record open/timeout and keep raw-log frame evidence pending. [VERIFIED: 17-CONTEXT.md]
+   - Selected plan handling: Plan 17-04 runs `scripts/phase17-websocket-capture.mjs` separately for `/api/ws/live` and `/api/ws`; `/api/ws/live` can pass only with a redacted connect or cadence frame, while `/api/ws` open-without-frame is recorded as `pending - open timeout without raw log frame` and is not promoted as raw-log frame proof. [VERIFIED: 17-CONTEXT.md]
 
-3. **Should Phase 17 extend `release-evidence` validation for post-source docs commits?** [VERIFIED: tools/parity/src/release_evidence.rs]
+3. **RESOLVED - handled by Plan 17-05: Should Phase 17 extend `release-evidence` validation for post-source docs commits?** [VERIFIED: tools/parity/src/release_evidence.rs]
    - What we know: current release-evidence post-source allowlist is Phase 16-specific. [VERIFIED: tools/parity/src/release_evidence.rs]
    - What's unclear: Phase 17 verification expectations do not require `release-evidence`, but exact package/flash identity still matters. [VERIFIED: .planning/ROADMAP.md, 17-CONTEXT.md]
-   - Recommendation: planner should either avoid using `release-evidence` for Phase 17 final validation or add a narrow Phase 17 allowlist/test if that validator becomes part of the phase gate. [VERIFIED: tools/parity/src/release_evidence.rs]
+   - Selected plan handling: Plan 17-05 explicitly does not add or rely on a Phase 17 `release-evidence` validator extension; final validation is `just parity` and `just verify-reference` after the Phase 17 summary, redaction review, release docs, checklist, and requirements updates. If a future plan chooses to use `release-evidence`, it must add a narrow Phase 17 validator extension and tests in that plan. [VERIFIED: tools/parity/src/release_evidence.rs]
 
 ## Environment Availability
 
