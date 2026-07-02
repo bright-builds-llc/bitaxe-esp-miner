@@ -5,12 +5,84 @@ candidates. It gives the commands, artifacts, evidence gates, and recovery
 paths a developer needs before using package, flash, OTA, recovery, rollback,
 or erase workflows on connected hardware.
 
-Do not treat package generation or serial route registration as live OTA,
-rollback, recovery, large erase, failed update, or interrupted update
-verification. Phase 16 records the current release-evidence status in
+Do not treat package generation or serial route registration as live HTTP,
+WebSocket, OTA, rollback, recovery, large erase, failed update, or interrupted
+update verification. Phase 16 records the prior release-evidence status in
 `docs/parity/evidence/phase-16-current-commit-release-evidence-completion.md`.
-Use that ledger's blocker and pending language and keep affected parity rows below
-`verified`.
+Phase 17 records the current live HTTP/API/static/WebSocket evidence status in
+`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/summary.md`.
+Use those ledgers' blocker and pending language and keep affected parity rows
+below `verified`.
+
+## Phase 17 Live HTTP API And Static Evidence Status
+
+Phase 17 evidence is recorded in
+`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/summary.md`,
+with package, serial, HTTP, WebSocket, and redaction artifacts under
+`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/`.
+
+Current conclusion: package, manifest-backed release gate, Ultra 205 detector,
+wrapper-owned factory flash-monitor evidence, and final redaction review passed
+for board `205`, port `/dev/cu.usbmodem1101`, source commit
+`d9e471c9699eb0140749127416640aa1bf077d26`, and reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`.
+
+The final live network gate remains:
+`DEVICE_URL status: blocked - missing DEVICE_URL`.
+
+Because no explicit origin-only `DEVICE_URL` or explicit-input
+`target-lock.json` was available, Phase 17 did not run live route probes, did
+not create HTTP header/body/curl-error artifacts, and did not create
+`websocket/api-ws-live.txt` or `websocket/api-ws.txt` frame artifacts. Network
+scanning remained disabled. The final redaction review records
+`redaction_status: passed` in
+`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/redaction-review.md`.
+
+Supported Phase 17 claims are limited to:
+
+- package and release-gate identity from
+  `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/package-release-gate.md`;
+- detector and wrapper-owned flash-monitor identity from
+  `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot.md`;
+- blocked no-target HTTP/static/API evidence from
+  `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/http-static-api.md`;
+- blocked no-target WebSocket evidence from
+  `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket.md`;
+- final redaction status from
+  `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/redaction-review.md`.
+
+Phase 17 does not claim valid OTA upload, invalid OTA rejection, reboot,
+rollback, selected partition, boot validation, whole-`www` OTAWWW update
+behavior, production mining, pool behavior, active safety telemetry, or long
+soak behavior. Keep `FS-001`, `API-004`, `API-005`, `API-006`, `API-007`,
+`API-008`, `OTA-001`, `OTA-002`, and `REL-003` below `verified` unless a later
+artifact records the specific live behavior required by the parity checklist.
+
+The Phase 17 package/release-gate command sequence was:
+
+```bash
+just package
+bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+```
+
+The Phase 17 serial evidence command was:
+
+```bash
+just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json evidence-dir=docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot capture-timeout-seconds=35
+```
+
+The Phase 17 HTTP helper command recorded a blocked no-target result:
+
+```bash
+scripts/phase17-live-http-api-smoke.sh --manifest docs/parity/evidence/phase-17-live-http-api-and-static-evidence/package-release-gate/bitaxe-ultra205-package.json --flash-evidence-json docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot/flash-command-evidence.json --out-dir docs/parity/evidence/phase-17-live-http-api-and-static-evidence/http-static-api --target-lock-out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/target-lock.json
+```
+
+The Phase 17 WebSocket capture commands remain documented but not run:
+
+```bash
+node scripts/phase17-websocket-capture.mjs --device-url "$DEVICE_URL" --path /api/ws/live --out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws-live.txt --duration-ms 5000 --max-frames 3
+node scripts/phase17-websocket-capture.mjs --device-url "$DEVICE_URL" --path /api/ws --out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws.txt --duration-ms 5000 --max-frames 3
+```
 
 ## Phase 16 Current-Commit Evidence Status
 

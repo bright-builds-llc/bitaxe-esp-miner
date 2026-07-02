@@ -153,6 +153,22 @@ missing live flow evidence. The requirement checkboxes remain checked because
 implementation and governance coverage is complete; release claims still depend
 on checklist row status and evidence ledgers.
 
+**Phase 17 final evidence note (2026-07-02):** Phase 17 adds a final live
+HTTP/API/static/WebSocket evidence ledger at
+`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/summary.md`
+and final redaction status at
+`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/redaction-review.md`
+with `redaction_status: passed`. `API-09`, `REL-01`, `REL-07`, and `EVD-05`
+remain complete in the implementation/governance sense because Phase 17 records
+the exact package, release-gate, detector, flash-monitor, blocked HTTP, blocked
+WebSocket, and redaction artifacts. Evidence-sensitive checklist rows remain
+below verified where the Phase 17 summary records `DEVICE_URL status: blocked -
+missing DEVICE_URL`, `target-lock.json` as `absent - not cited`, absent HTTP
+route artifacts, absent WebSocket frame artifacts, and explicit non-claims for
+valid OTA, invalid OTA rejection, reboot, rollback, selected partition, boot
+validation, whole-`www` OTAWWW update behavior, production mining, pool
+behavior, active safety telemetry, and long soak behavior.
+
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | FND-01 | Phase 1 | Complete |
@@ -234,4 +250,4 @@ on checklist row status and evidence ledgers.
 ______________________________________________________________________
 
 *Requirements defined: 2026-06-20*\
-*Last updated: 2026-07-01 after Phase 16 current-commit evidence closure*
+*Last updated: 2026-07-02 after Phase 17 live HTTP API and static evidence closure*
