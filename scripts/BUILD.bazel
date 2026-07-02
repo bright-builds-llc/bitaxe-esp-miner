@@ -169,7 +169,16 @@ sh_test(
 sh_test(
     name = "phase17_live_http_api_smoke_test",
     srcs = ["phase17-live-http-api-smoke-test.sh"],
-    data = ["phase17-live-http-api-smoke.sh"],
+    data = [
+        "phase17-live-http-api-smoke.sh",
+        "phase17-websocket-capture.mjs",
+    ],
+    env_inherit = [
+        "HOME",
+        "NODE_BIN",
+        "NVM_DIR",
+        "PATH",
+    ],
     tags = ["local"],
 )
 

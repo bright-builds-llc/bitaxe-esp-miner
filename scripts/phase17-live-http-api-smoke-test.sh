@@ -4,6 +4,8 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 readonly smoke_script="${PHASE17_LIVE_HTTP_API_SMOKE_SCRIPT:-${script_dir}/phase17-live-http-api-smoke.sh}"
+readonly websocket_script="${PHASE17_WEBSOCKET_CAPTURE_SCRIPT:-${script_dir}/phase17-websocket-capture.mjs}"
+readonly node_bin="${NODE_BIN:-node}"
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/phase17-live-http-api-smoke-test.XXXXXX")"
 readonly tmp_root
@@ -235,6 +237,13 @@ run_smoke() {
 		"$@"
 }
 
+run_websocket_capture() {
+	local out_file="$1"
+	shift
+
+	"$node_bin" "$websocket_script" --out "$out_file" "$@"
+}
+
 test_missing_target_blocks_without_curl() {
 	# Arrange
 	local out_dir="${tmp_root}/missing-url"
@@ -424,9 +433,119 @@ test_redacts_response_secrets() {
 	assert_not_contains "$log_file" "private-bitaxe.local"
 }
 
+test_websocket_missing_target_blocks_with_out() {
+	# Arrange
+	local out_file="${tmp_root}/websocket-missing-target.txt"
+
+	# Act
+	run_websocket_capture "$out_file" --path "/api/ws/live"
+
+	# Assert
+	assert_contains "$out_file" "phase17_websocket_capture"
+	assert_contains "$out_file" "websocket_target_status=blocked - missing DEVICE_URL"
+	assert_contains "$out_file" "network_scan=disabled - DEVICE_URL must be explicit"
+	assert_contains "$out_file" "websocket_open_status=blocked"
+	assert_contains "$out_file" "websocket_frame_status=not-run"
+}
+
+test_websocket_rejects_non_origin_target() {
+	# Arrange
+	local out_file="${tmp_root}/websocket-invalid-target.txt"
+
+	# Act
+	run_websocket_capture "$out_file" --device-url "http://user:pass@device.local" --path "/api/ws/live"
+
+	# Assert
+	assert_contains "$out_file" "phase17_websocket_capture"
+	assert_contains "$out_file" "websocket_target_status=blocked - invalid origin-only DEVICE_URL"
+	assert_contains "$out_file" "websocket_open_status=blocked"
+	assert_contains "$out_file" "websocket_frame_status=not-run"
+}
+
+test_websocket_rejects_unsupported_path() {
+	# Arrange
+	local out_file="${tmp_root}/websocket-unsupported-path.txt"
+
+	# Act
+	run_websocket_capture "$out_file" --device-url "http://device.local" --path "/api/other"
+
+	# Assert
+	assert_contains "$out_file" "phase17_websocket_capture"
+	assert_contains "$out_file" "path=/api/other"
+	assert_contains "$out_file" "websocket_target_status=blocked - unsupported WebSocket path"
+	assert_contains "$out_file" "websocket_open_status=blocked"
+	assert_contains "$out_file" "websocket_frame_status=not-run"
+}
+
+test_websocket_live_fake_frame_passes() {
+	# Arrange
+	local out_file="${tmp_root}/websocket-live-frame.txt"
+	local payload='{"event":"update","ssid":"HomeNetwork","wifiPass":"secret","stratumUser":"worker","stratumPassword":"pool-pass","poolUrl":"stratum+tcp://pool.example:3333","ip":"192.168.1.5","mac":"aa:bb:cc:dd:ee:ff","token":"abc123"}'
+
+	# Act
+	PHASE17_FAKE_WEBSOCKET_MODE=open-frame PHASE17_FAKE_WEBSOCKET_PAYLOAD="$payload" \
+		run_websocket_capture "$out_file" --device-url "http://device.local" --path "/api/ws/live"
+
+	# Assert
+	assert_contains "$out_file" "phase17_websocket_capture"
+	assert_contains "$out_file" "path=/api/ws/live"
+	assert_contains "$out_file" "websocket_capture_url=ws://[redacted]/api/ws/live"
+	assert_contains "$out_file" "websocket_open_status=opened"
+	assert_contains "$out_file" "websocket_frame_1="
+	assert_contains "$out_file" "\"ssid\":\"[redacted]\""
+	assert_contains "$out_file" "\"wifiPass\":\"[redacted]\""
+	assert_contains "$out_file" "\"stratumUser\":\"[redacted]\""
+	assert_contains "$out_file" "\"stratumPassword\":\"[redacted]\""
+	assert_contains "$out_file" "\"poolUrl\":\"[redacted]\""
+	assert_contains "$out_file" "\"ip\":\"[redacted]\""
+	assert_contains "$out_file" "[redacted-mac]"
+	assert_contains "$out_file" "\"token\":\"[redacted]\""
+	assert_contains "$out_file" "websocket_frame_status=passed frames=1"
+	assert_not_contains "$out_file" "HomeNetwork"
+	assert_not_contains "$out_file" "pool.example"
+	assert_not_contains "$out_file" "192.168.1.5"
+	assert_not_contains "$out_file" "aa:bb:cc:dd:ee:ff"
+	assert_not_contains "$out_file" "abc123"
+}
+
+test_websocket_raw_log_open_timeout_stays_pending() {
+	# Arrange
+	local out_file="${tmp_root}/websocket-raw-timeout.txt"
+
+	# Act
+	PHASE17_FAKE_WEBSOCKET_MODE=open-timeout \
+		run_websocket_capture "$out_file" --device-url "http://device.local" --path "/api/ws" --duration-ms 25
+
+	# Assert
+	assert_contains "$out_file" "phase17_websocket_capture"
+	assert_contains "$out_file" "path=/api/ws"
+	assert_contains "$out_file" "websocket_open_status=opened"
+	assert_contains "$out_file" "websocket_frame_status=pending - open timeout without raw log frame"
+}
+
+test_websocket_rejects_bounds_over_limits() {
+	# Arrange
+	local duration_out="${tmp_root}/websocket-duration-over-limit.txt"
+	local frames_out="${tmp_root}/websocket-frames-over-limit.txt"
+
+	# Act
+	run_websocket_capture "$duration_out" --device-url "http://device.local" --path "/api/ws/live" --duration-ms 30001
+	run_websocket_capture "$frames_out" --device-url "http://device.local" --path "/api/ws/live" --max-frames 11
+
+	# Assert
+	assert_contains "$duration_out" "websocket_target_status=blocked - duration-ms exceeds 30000"
+	assert_contains "$duration_out" "websocket_frame_status=not-run"
+	assert_contains "$frames_out" "websocket_target_status=blocked - max-frames exceeds 10"
+	assert_contains "$frames_out" "websocket_frame_status=not-run"
+}
+
 if [[ ! -f "$smoke_script" ]]; then
 	fail "smoke script missing: ${smoke_script}"
 fi
+if [[ ! -f "$websocket_script" ]]; then
+	fail "websocket script missing: ${websocket_script}"
+fi
+"$node_bin" --check "$websocket_script" >/dev/null
 
 test_missing_target_blocks_without_curl
 test_userinfo_path_query_fragment_rejected
@@ -434,5 +553,11 @@ test_stale_flash_identity_blocks_without_curl
 test_fake_success_records_required_phase17_routes
 test_no_upgrade_does_not_claim_frames
 test_redacts_response_secrets
+test_websocket_missing_target_blocks_with_out
+test_websocket_rejects_non_origin_target
+test_websocket_rejects_unsupported_path
+test_websocket_live_fake_frame_passes
+test_websocket_raw_log_open_timeout_stays_pending
+test_websocket_rejects_bounds_over_limits
 
 printf 'phase17_live_http_api_smoke_test passed\n'
