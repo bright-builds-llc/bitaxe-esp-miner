@@ -2,7 +2,7 @@
 
 ## Overview
 
-V1 delivers Ultra 205 BM1366 device-user parity in deliberate layers: first a reproducible Rust ESP-IDF foundation with safe boot/log only, then typed configuration, BM1366 hardware behavior, Stratum v1 mining, AxeOS-compatible administration surfaces, safety controllers, OTA/release flows, and an evidence-backed Ultra 205 release gate. This supersedes the earlier Gamma 601-first roadmap per ADR-0014. The original V1 requirements naturally formed eight delivery boundaries; the first v1.0 milestone audit added five gap-closure phases to turn conservative completion into stronger live release-parity evidence, and the current audit adds three final evidence phases for active safety, trusted ASIC/mining, and current-commit release parity.
+V1 delivers Ultra 205 BM1366 device-user parity in deliberate layers: first a reproducible Rust ESP-IDF foundation with safe boot/log only, then typed configuration, BM1366 hardware behavior, Stratum v1 mining, AxeOS-compatible administration surfaces, safety controllers, OTA/release flows, and an evidence-backed Ultra 205 release gate. This supersedes the earlier Gamma 601-first roadmap per ADR-0014. The original V1 requirements naturally formed eight delivery boundaries; the first v1.0 milestone audit added five gap-closure phases to turn conservative completion into stronger live release-parity evidence, the next audit added three evidence-completion phases for active safety, trusted ASIC/mining, and current-commit release parity, and the current audit adds five targeted evidence-flow phases for live HTTP/API/static, OTA/rollback, recovery/OTAWWW, active safety telemetry, and live mining/soak proof.
 
 ## Phases
 
@@ -29,6 +29,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 14: Safety Hardware Evidence Completion** - Close the current audit gap for active Ultra 205 safety-control, runtime telemetry, self-test submode, watchdog/load, and display/input evidence. (completed 2026-07-01)
 - [x] **Phase 15: BM1366 Mining Evidence Completion** - Close the current audit gap for trusted BM1366 initialization, work/result handling, and controlled mining smoke/soak evidence. (completed 2026-07-01)
 - [x] **Phase 16: Current Commit Release Evidence Completion** - Close the current audit gap for same-commit package, flash, serial boot, live HTTP/static/recovery/OTA, rollback, erase, failed-update, and interrupted-update evidence. (completed 2026-07-01)
+- [ ] **Phase 17: Live HTTP API And Static Evidence** - Close the current audit gap for explicit-`DEVICE_URL` live HTTP, static asset, recovery page, API route, and WebSocket evidence.
+- [ ] **Phase 18: Firmware OTA And Rollback Evidence** - Close the current audit gap for valid firmware OTA, invalid OTA rejection, reboot identity, rollback, and boot-validation evidence.
+- [ ] **Phase 19: Recovery Regression And OTAWWW Evidence** - Close the current audit gaps for recovery fault-injection regressions and OTAWWW/static update behavior.
+- [ ] **Phase 20: Active Safety Hardware Telemetry Evidence** - Close the current audit gap for active Ultra 205 safety hardware behavior and live telemetry evidence.
+- [ ] **Phase 21: Live Mining And Soak Evidence** - Close the current audit gap for live production mining, accepted/rejected share behavior, watchdog responsiveness, and bounded soak evidence.
 
 ## Phase Details
 
@@ -405,10 +410,100 @@ Plans:
 **Verification expectations**: `just package`, release gate, wrapper-based flash-monitor evidence, live HTTP/static/recovery/OTA checks, destructive/recovery checks only behind documented gates, `just parity`, `just verify-reference`, and final milestone audit rerun.
 **Research flags**: Requires reachable device network setup and explicit recovery authorization. Stop and record evidence pending if `DEVICE_URL`, detector gate, board-info, or recovery prerequisites are unavailable.
 
+### Phase 17: Live HTTP API And Static Evidence
+
+**Goal**: The just-flashed Ultra 205 exposes live administration surfaces at an explicit `DEVICE_URL` with static asset, recovery page, API route, and WebSocket evidence.
+**Depends on**: Phase 16
+**Requirements**: API-09, REL-01, REL-07, EVD-05
+**Gap Closure**: Closes the current v1.0 audit gap `live-http-static-recovery-api-websocket`, where implementation exists but the current evidence set lacks an explicit reachable `DEVICE_URL` and live HTTP/API/WebSocket captures.
+**Success Criteria** (what must be TRUE):
+
+1. Ultra 205 detector output, board `205`, selected port, source commit, reference commit, package manifest, and explicit reachable `DEVICE_URL` are recorded without network scanning or secrets.
+1. Live evidence captures `/`, `/assets/app.css.gz`, representative missing static behavior, `/recovery`, API route coexistence, `/api/ws`, and `/api/ws/live` from the just-flashed device.
+1. Evidence records exact commands, HTTP status and response summaries, relevant device logs, observed behavior, conclusion, and redaction review.
+1. Release docs, parity checklist, and requirements traceability are updated without marking rows `verified` unless their evidence criteria are met.
+
+**Plans**: 0 plans
+Plans: Pending.
+**Verification expectations**: `just detect-ultra205`, same-commit package/flash evidence, explicit `DEVICE_URL` smoke, HTTP/API/WebSocket capture, redaction review, `just parity`, and `just verify-reference`.
+**Research flags**: Requires reachable device network setup. Stop and record evidence pending if detector, board-info, port selection, or `DEVICE_URL` is unavailable.
+
+### Phase 18: Firmware OTA And Rollback Evidence
+
+**Goal**: Firmware OTA accepts valid images, rejects invalid images, preserves reboot identity, and records rollback or boot-validation behavior on Ultra 205.
+**Depends on**: Phase 17
+**Requirements**: REL-02, REL-08, REL-07, EVD-05
+**Gap Closure**: Closes the current v1.0 audit gap `firmware-ota-rollback-boot-validation`, where live valid OTA, invalid OTA rejection, rollback, and boot-validation evidence remains missing.
+**Success Criteria** (what must be TRUE):
+
+1. Same-commit package artifacts and OTA image identity are recorded before upload, including source commit, reference commit, image path, checksum, board, port, and `DEVICE_URL`.
+1. Valid firmware OTA evidence records upload behavior, HTTP response, reboot behavior, selected partition, flashed image identity, serial logs, and post-OTA safe state.
+1. Invalid OTA rejection and rollback or boot-validation evidence run only behind documented gates and record the before/after partition and safety state.
+1. Release docs, parity checklist, requirements traceability, and redaction review reflect the evidence without exposing secrets or overclaiming release parity.
+
+**Plans**: 0 plans
+Plans: Pending.
+**Verification expectations**: `just package`, `just detect-ultra205`, explicit `DEVICE_URL` OTA upload checks, serial reboot capture, rollback/boot-validation checks only behind documented gates, `just parity`, and `just verify-reference`.
+**Research flags**: Requires recovery instructions before rollback or boot-validation fault cases. Stop if OTA prerequisites, rollback gates, or restore instructions are missing.
+
+### Phase 19: Recovery Regression And OTAWWW Evidence
+
+**Goal**: Recovery regressions and OTAWWW/static update behavior have bounded evidence, or remain explicitly below verified with owner, blocker, and release documentation.
+**Depends on**: Phase 18
+**Requirements**: REL-03, REL-08, REL-07, API-09, EVD-05
+**Gap Closure**: Closes the current v1.0 audit gaps `recovery-regression-fault-injection` and `otawww-static-update`, where destructive recovery cases and OTAWWW behavior are still pending or deferred.
+**Success Criteria** (what must be TRUE):
+
+1. The phase plan documents explicit allow flags, recovery path, stop conditions, expected restore state, and redaction rules before failed-update, erase, or interrupted-update tests run.
+1. Failed-update, large-erase or factory restore, and interrupted-update evidence records exact commands, board, port, source commit, package identity, logs, observed behavior, restore action, and conclusion.
+1. OTAWWW/static asset update behavior is either implemented and verified with live evidence or documented as an explicit V1 parity gap with owner, blocker, and operator impact.
+1. Release docs, parity checklist, requirements traceability, and final evidence ledgers distinguish verified behavior from blocked, deferred, or below-verified behavior.
+
+**Plans**: 0 plans
+Plans: Pending.
+**Verification expectations**: `just detect-ultra205`, gated recovery/fault-injection evidence, OTAWWW/static update check, restore proof, redaction review, `just parity`, and `just verify-reference`.
+**Research flags**: Requires documented recovery procedures and explicit destructive-test authorization in the phase plan. Do not run ad hoc erase, rollback, or interrupted-update commands.
+
+### Phase 20: Active Safety Hardware Telemetry Evidence
+
+**Goal**: Active Ultra 205 safety-control behavior and live telemetry have hardware-regression evidence, or remain explicitly below verified with bounded recovery instructions and no overclaim.
+**Depends on**: Phase 17
+**Requirements**: SAFE-01, SAFE-02, SAFE-03, SAFE-04, SAFE-05, SAFE-06, SAFE-07, SAFE-08, SAFE-09, EVD-05
+**Gap Closure**: Closes the current v1.0 audit gap `active-safety-hardware-and-live-telemetry`, where active voltage, fan, thermal, self-test, watchdog/load, display/input, and live telemetry evidence remains below verified.
+**Success Criteria** (what must be TRUE):
+
+1. The phase plan documents recovery steps, explicit allow gates, stop conditions, redaction rules, and post-action safe-state checks before active safety hardware verification runs.
+1. Active voltage/power, fan/thermal, self-test, watchdog/load, display/input, and failure-path evidence records board `205`, selected port, source commit, reference commit, package manifest, exact commands, logs, observed readings, and conclusion.
+1. Live API and WebSocket telemetry evidence is correlated with hardware observations and shows safe state before and after active checks.
+1. `just parity` continues to reject safety-critical verified rows without valid hardware-smoke or hardware-regression evidence.
+
+**Plans**: 0 plans
+Plans: Pending.
+**Verification expectations**: `just detect-ultra205`, active safety allow manifest, hardware-regression evidence, live telemetry capture, pure safety tests, redaction review, `just parity`, and `just verify-reference`.
+**Research flags**: Requires careful hardware recovery planning. Do not run ad hoc voltage, fan, thermal, self-test, load, or stress commands outside the approved phase plan.
+
+### Phase 21: Live Mining And Soak Evidence
+
+**Goal**: Live Ultra 205 mining, share handling, watchdog responsiveness, and bounded soak behavior have trusted safety-gated evidence.
+**Depends on**: Phase 20
+**Requirements**: ASIC-07, STR-06, STR-07, SAFE-09, EVD-05
+**Gap Closure**: Closes the current v1.0 audit gap `live-production-mining-soak`, where evidence remains diagnostic or no-share and does not yet prove live production mining or bounded soak behavior.
+**Success Criteria** (what must be TRUE):
+
+1. The phase plan documents controlled pool setup, credential redaction, recovery steps, safety gates, stop conditions, and post-run safe-state checks before live mining or soak runs.
+1. BM1366 initialization, work-send, and result-receive evidence records exact commands, board, port, source commit, reference commit, package manifest, logs, observed ASIC behavior, and conclusion.
+1. Controlled mining smoke or bounded soak records pool lifecycle, accepted/rejected share behavior or explicitly bounded no-share behavior, hashrate inputs, API/WebSocket telemetry, watchdog responsiveness, and redaction review.
+1. Checklist rows for ASIC, Stratum, statistics, and mining remain below `verified` unless their hardware-smoke or soak evidence meets the documented criteria.
+
+**Plans**: 0 plans
+Plans: Pending.
+**Verification expectations**: Pure BM1366 and Stratum tests, `just detect-ultra205`, safety-gated live mining smoke, bounded soak, live telemetry, no stored secrets, redaction review, `just parity`, and `just verify-reference`.
+**Research flags**: Requires controlled pool and recovery planning. Do not store pool credentials, private endpoints, Wi-Fi credentials, or NVS secret values in evidence.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
@@ -428,3 +523,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 14. Safety Hardware Evidence Completion | 6/6 | Complete    | 2026-07-01 |
 | 15. BM1366 Mining Evidence Completion | 5/5 | Complete    | 2026-07-01 |
 | 16. Current Commit Release Evidence Completion | 6/6 | Complete | 2026-07-01 |
+| 17. Live HTTP API And Static Evidence | 0/0 | Pending | TBD |
+| 18. Firmware OTA And Rollback Evidence | 0/0 | Pending | TBD |
+| 19. Recovery Regression And OTAWWW Evidence | 0/0 | Pending | TBD |
+| 20. Active Safety Hardware Telemetry Evidence | 0/0 | Pending | TBD |
+| 21. Live Mining And Soak Evidence | 0/0 | Pending | TBD |

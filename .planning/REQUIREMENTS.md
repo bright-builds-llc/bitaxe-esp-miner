@@ -146,6 +146,13 @@ interrupted-update, and OTAWWW evidence blocked, pending, or below verified.
 See
 `docs/parity/evidence/phase-16-current-commit-release-evidence-completion.md`.
 
+**Phase 17-21 gap-closure note (2026-07-02):** The current milestone audit
+found no unsatisfied requirements and no integration wiring gaps, but it reset
+19 evidence-sensitive traceability rows to `Pending` while Phases 17-21 gather
+missing live flow evidence. The requirement checkboxes remain checked because
+implementation and governance coverage is complete; release claims still depend
+on checklist row status and evidence ledgers.
+
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | FND-01 | Phase 1 | Complete |
@@ -171,15 +178,15 @@ See
 | ASIC-04 | Phase 3 | Complete |
 | ASIC-05 | Phase 3 | Complete |
 | ASIC-06 | Phase 3 | Complete |
-| ASIC-07 | Phase 3 + Phase 12 + Phase 15 | Complete |
+| ASIC-07 | Phase 3 + Phase 12 + Phase 15 + Phase 21 | Pending |
 | ASIC-08 | Phase 3 | Complete |
 | STR-01 | Phase 4 | Complete |
 | STR-02 | Phase 4 | Complete |
 | STR-03 | Phase 4 | Complete |
 | STR-04 | Phase 4 | Complete |
 | STR-05 | Phase 4 | Complete |
-| STR-06 | Phase 4 + Phase 12 + Phase 15 | Complete |
-| STR-07 | Phase 4 + Phase 12 + Phase 15 | Complete |
+| STR-06 | Phase 4 + Phase 12 + Phase 15 + Phase 21 | Pending |
+| STR-07 | Phase 4 + Phase 12 + Phase 15 + Phase 21 | Pending |
 | API-01 | Phase 5 | Complete |
 | API-02 | Phase 5 | Complete |
 | API-03 | Phase 5 | Complete |
@@ -188,40 +195,41 @@ See
 | API-06 | Phase 5 | Complete |
 | API-07 | Phase 5 | Complete |
 | API-08 | Phase 5 | Complete |
-| API-09 | Phase 5 + Phase 10 + Phase 13 + Phase 16 | Complete |
+| API-09 | Phase 5 + Phase 10 + Phase 13 + Phase 16 + Phase 17 + Phase 19 | Pending |
 | API-10 | Phase 5 + Phase 10 | Complete |
-| SAFE-01 | Phase 6 + Phase 11 + Phase 14 | Complete |
-| SAFE-02 | Phase 6 + Phase 11 + Phase 14 | Complete |
-| SAFE-03 | Phase 6 + Phase 11 + Phase 14 | Complete |
-| SAFE-04 | Phase 6 + Phase 11 + Phase 14 | Complete |
-| SAFE-05 | Phase 6 + Phase 11 + Phase 14 | Complete |
-| SAFE-06 | Phase 6 + Phase 11 + Phase 14 | Complete |
-| SAFE-07 | Phase 6 + Phase 11 + Phase 14 | Complete |
-| SAFE-08 | Phase 6 + Phase 11 + Phase 14 | Complete |
-| SAFE-09 | Phase 6 + Phase 11 + Phase 14 + Phase 15 | Complete |
-| REL-01 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Complete |
-| REL-02 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Complete |
-| REL-03 | Phase 7 + Phase 10 + Phase 13 + Phase 16 | Complete |
+| SAFE-01 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
+| SAFE-02 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
+| SAFE-03 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
+| SAFE-04 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
+| SAFE-05 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
+| SAFE-06 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
+| SAFE-07 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
+| SAFE-08 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
+| SAFE-09 | Phase 6 + Phase 11 + Phase 14 + Phase 15 + Phase 20 + Phase 21 | Pending |
+| REL-01 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 17 | Pending |
+| REL-02 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 18 | Pending |
+| REL-03 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 19 | Pending |
 | REL-04 | Phase 7 + Phase 13 + Phase 16 | Complete |
 | REL-05 | Phase 7 | Complete |
 | REL-06 | Phase 7 | Complete |
-| REL-07 | Phase 7 + Phase 9 + Phase 16 | Complete |
-| REL-08 | Phase 8 + Phase 13 + Phase 16 | Complete |
+| REL-07 | Phase 7 + Phase 9 + Phase 16 + Phase 17 + Phase 18 + Phase 19 | Pending |
+| REL-08 | Phase 8 + Phase 13 + Phase 16 + Phase 18 + Phase 19 | Pending |
 | EVD-01 | Phase 8 + Phase 10 | Complete |
 | EVD-02 | Phase 8 | Complete |
 | EVD-03 | Phase 8 | Complete |
 | EVD-04 | Phase 8 | Complete |
-| EVD-05 | Phase 8 + Phase 9 + Phase 11 + Phase 12 + Phase 13 + Phase 14 + Phase 15 + Phase 16 | Complete |
+| EVD-05 | Phase 8 + Phase 9 + Phase 11 + Phase 12 + Phase 13 + Phase 14 + Phase 15 + Phase 16 + Phase 17 + Phase 18 + Phase 19 + Phase 20 + Phase 21 | Pending |
 
 **Coverage:**
 
 - v1 requirements: 64 total
 - Mapped to phases: 64
 - Unmapped: 0
-- Complete: 64
-- Pending gap closure: 0
-- Below verified release evidence remains tracked in `docs/parity/checklist.md`
-  and the Phase 16 evidence ledger.
+- Complete: 45
+- Pending gap closure: 19
+- Pending gap closure rows correspond to flow gaps in
+  `.planning/v1.0-MILESTONE-AUDIT.md`; below-verified release evidence remains
+  tracked in `docs/parity/checklist.md` and phase evidence ledgers.
 
 ______________________________________________________________________
 
