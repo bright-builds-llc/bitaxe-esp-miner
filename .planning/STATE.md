@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Final release-evidence and lifecycle validation passed
+status: executing
 stopped_at: Phase 17 context gathered
-last_updated: "2026-07-02T01:17:14.368Z"
-last_activity: 2026-07-01
+last_updated: "2026-07-02T02:06:16.337Z"
+last_activity: 2026-07-02 -- Phase 17 planning complete
 progress:
   total_phases: 21
   completed_phases: 16
-  total_plans: 87
+  total_plans: 92
   completed_plans: 87
-  percent: 100
+  percent: 95
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Phase 16 — current-commit-release-evidence-completion
+**Current focus:** Phase 17 — live-http-api-and-static-evidence
 
 ## Current Position
 
-Phase: 16 (current-commit-release-evidence-completion) — COMPLETE
-Plan: 6 of 6
-Status: Final release-evidence and lifecycle validation passed
-Last activity: 2026-07-01
+Phase: 17 (live-http-api-and-static-evidence) — READY TO EXECUTE
+Plan: 0 of 5
+Status: Ready to execute
+Last activity: 2026-07-02 -- Phase 17 planning complete
 
-Progress: [██████████] 100%
+Progress: [█████████░] 95%
 
 ## Performance Metrics
 
