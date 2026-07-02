@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 17-live-http-api-and-static-evidence-02-PLAN.md
-last_updated: "2026-07-02T03:01:56.482Z"
+stopped_at: Completed 17-live-http-api-and-static-evidence-03-PLAN.md
+last_updated: "2026-07-02T03:11:36.947Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 21
   completed_phases: 16
   total_plans: 92
-  completed_plans: 89
-  percent: 97
+  completed_plans: 90
+  percent: 98
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 17 (live-http-api-and-static-evidence) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-07-02
 
@@ -137,6 +137,7 @@ Progress: [██████████] 97%
 | Phase 16-current-commit-release-evidence-completion P06 | 19 min 31 sec | 3 tasks | 9 files |
 | Phase 17-live-http-api-and-static-evidence P01 | 13 min | 3 tasks | 6 files |
 | Phase 17-live-http-api-and-static-evidence P02 | 10 min | 2 tasks | 8 files |
+| Phase 17-live-http-api-and-static-evidence P03 | 4 min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -338,6 +339,9 @@ Recent decisions affecting current work:
 - [Phase 17-live-http-api-and-static-evidence]: Trust only wrapper-owned flash-monitor JSON and log artifacts for serial identity evidence. — Task 2 used the repo wrapper evidence JSON and serial log instead of raw espflash monitor fallback output.
 - [Phase 17-live-http-api-and-static-evidence]: Refresh package/release-gate evidence after the Task 1 commit so the copied manifest matches the flashed source commit. — The flash-monitor wrapper rebuilds the package at current HEAD; refreshing package evidence preserved the source/reference identity chain.
 - [Phase 17-live-http-api-and-static-evidence]: Keep live HTTP, static route, WebSocket frame, OTA, rollback, boot-validation, and OTAWWW update behavior as explicit non-claims. — Plan 17-02 is package and serial identity only; route and WebSocket evidence belongs to later Phase 17 plans.
+- [Phase 17-live-http-api-and-static-evidence]: Keep target-lock.json absent when no explicit origin-only DEVICE_URL is available. — Phase 17 Plan 03 evidence preserved the explicit target/no-scan boundary and route-specific non-claim boundaries.
+- [Phase 17-live-http-api-and-static-evidence]: Record every D-08 HTTP/static/API route as blocked with absent - not cited artifacts rather than scanning or inferring a target. — Phase 17 Plan 03 evidence preserved the explicit target/no-scan boundary and route-specific non-claim boundaries.
+- [Phase 17-live-http-api-and-static-evidence]: Keep WebSocket frame, valid OTA, rollback, boot-validation, and OTAWWW update behavior as explicit non-claims. — Phase 17 Plan 03 evidence preserved the explicit target/no-scan boundary and route-specific non-claim boundaries.
 
 ### Pending Todos
 
@@ -363,6 +367,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T03:01:56.478Z
-Stopped at: Completed 17-live-http-api-and-static-evidence-02-PLAN.md
+Last session: 2026-07-02T03:11:26.273Z
+Stopped at: Completed 17-live-http-api-and-static-evidence-03-PLAN.md
 Resume file: None

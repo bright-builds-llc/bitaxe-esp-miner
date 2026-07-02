@@ -428,7 +428,7 @@ Plans:
 
 - [x] 17-01-PLAN.md - Add Wave 0 helper tests, Bazel wiring, WebSocket capture helper, and evidence/redaction scaffold.
 - [x] 17-02-PLAN.md - Capture current package, release-gate, detector, and flash-monitor identity evidence.
-- [ ] 17-03-PLAN.md - Capture explicit-target HTTP/static/API route evidence or no-scan blocked evidence.
+- [x] 17-03-PLAN.md - Capture explicit-target HTTP/static/API route evidence or no-scan blocked evidence.
 - [ ] 17-04-PLAN.md - Capture bounded WebSocket frame evidence for `/api/ws/live` and `/api/ws` or pending/blocked evidence.
 - [ ] 17-05-PLAN.md - Close summary ledger, redaction sign-off, release docs, checklist, requirements traceability, and final verification.
 **Verification expectations**: `just detect-ultra205`, same-commit package/flash evidence, explicit `DEVICE_URL` smoke, HTTP/API/WebSocket capture, redaction review, `just parity`, and `just verify-reference`.
@@ -529,7 +529,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 14. Safety Hardware Evidence Completion | 6/6 | Complete    | 2026-07-01 |
 | 15. BM1366 Mining Evidence Completion | 5/5 | Complete    | 2026-07-01 |
 | 16. Current Commit Release Evidence Completion | 6/6 | Complete | 2026-07-01 |
-| 17. Live HTTP API And Static Evidence | 2/5 | In Progress|  |
+| 17. Live HTTP API And Static Evidence | 3/5 | In Progress|  |
 | 18. Firmware OTA And Rollback Evidence | 0/0 | Pending | TBD |
 | 19. Recovery Regression And OTAWWW Evidence | 0/0 | Pending | TBD |
 | 20. Active Safety Hardware Telemetry Evidence | 0/0 | Pending | TBD |
