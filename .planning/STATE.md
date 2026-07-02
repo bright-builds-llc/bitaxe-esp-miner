@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 17 context gathered
-last_updated: "2026-07-02T02:28:43.229Z"
-last_activity: 2026-07-02 -- Phase 17 execution started
+stopped_at: Completed 17-live-http-api-and-static-evidence-01-PLAN.md
+last_updated: "2026-07-02T02:45:56.763Z"
+last_activity: 2026-07-02
 progress:
   total_phases: 21
   completed_phases: 16
   total_plans: 92
-  completed_plans: 87
-  percent: 95
+  completed_plans: 88
+  percent: 96
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 17 (live-http-api-and-static-evidence) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 17
-Last activity: 2026-07-02 -- Phase 17 execution started
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-07-02
 
 Progress: [█████████░] 95%
 
@@ -135,6 +135,7 @@ Progress: [█████████░] 95%
 | Phase 16-current-commit-release-evidence-completion P04 | 4 min | 2 tasks | 4 files |
 | Phase 16-current-commit-release-evidence-completion P05 | 6 min | 2 tasks | 7 files |
 | Phase 16-current-commit-release-evidence-completion P06 | 19 min 31 sec | 3 tasks | 9 files |
+| Phase 17-live-http-api-and-static-evidence P01 | 13 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -330,6 +331,9 @@ Recent decisions affecting current work:
 - [Phase 16-current-commit-release-evidence-completion]: Keep invalid image rejection, rollback, boot validation, and OTAWWW claims below verified because OTA did not run.
 - [Phase 16-current-commit-release-evidence-completion]: Omit all Phase 16 recovery allow flags because prior evidence has no explicit reachable DEVICE_URL and OTA/recovery prerequisites remain blocked.
 - [Phase 16-current-commit-release-evidence-completion]: Treat failed-update, large-erase, interrupted-update, rollback, boot-validation, and OTAWWW as below verified until live current-commit evidence exists.
+- [Phase 17-live-http-api-and-static-evidence]: Keep raw curl output in temporary files and write only selected headers plus redacted body/error artifacts.
+- [Phase 17-live-http-api-and-static-evidence]: Use Node global WebSocket with fake modes for deterministic no-network tests instead of adding dependencies.
+- [Phase 17-live-http-api-and-static-evidence]: Start Phase 17 redaction review as pending with absent-artifact tracking before live evidence is cited.
 
 ### Pending Todos
 
@@ -355,6 +359,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T01:17:14.358Z
-Stopped at: Phase 17 context gathered
-Resume file: .planning/phases/17-live-http-api-and-static-evidence/17-CONTEXT.md
+Last session: 2026-07-02T02:45:56.758Z
+Stopped at: Completed 17-live-http-api-and-static-evidence-01-PLAN.md
+Resume file: None
