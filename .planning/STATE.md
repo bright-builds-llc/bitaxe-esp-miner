@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 17-live-http-api-and-static-evidence-04-PLAN.md
-last_updated: "2026-07-02T03:19:48.492Z"
+status: verifying
+stopped_at: Completed 17-live-http-api-and-static-evidence-05-PLAN.md
+last_updated: "2026-07-02T03:33:56.654Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 21
-  completed_phases: 16
+  completed_phases: 17
   total_plans: 92
-  completed_plans: 91
-  percent: 99
+  completed_plans: 92
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 Phase: 17 (live-http-api-and-static-evidence) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-02
 
 Progress: [██████████] 97%
@@ -139,6 +139,7 @@ Progress: [██████████] 97%
 | Phase 17-live-http-api-and-static-evidence P02 | 10 min | 2 tasks | 8 files |
 | Phase 17-live-http-api-and-static-evidence P03 | 4 min | 1 tasks | 3 files |
 | Phase 17-live-http-api-and-static-evidence P04 | 3 min | 1 tasks | 3 files |
+| Phase 17-live-http-api-and-static-evidence P05 | 622s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -346,6 +347,9 @@ Recent decisions affecting current work:
 - [Phase 17-live-http-api-and-static-evidence]: Keep WebSocket capture blocked when no explicit origin-only DEVICE_URL or explicit-input target lock exists.
 - [Phase 17-live-http-api-and-static-evidence]: Do not create placeholder frame artifacts for /api/ws/live or /api/ws; mark both absent - not cited.
 - [Phase 17-live-http-api-and-static-evidence]: Keep /api/ws raw-log streaming below verified unless a future bounded capture records a redacted raw-log frame.
+- [Phase 17-live-http-api-and-static-evidence]: Plan 17-05 uses the final Phase 17 evidence ledger as the release traceability source of truth and keeps live HTTP/WebSocket/OTA/OTAWWW/mining/safety claims below verified where artifacts are absent or blocked.
+- [Phase 17-live-http-api-and-static-evidence]: Plan 17-05 treats redaction_status: passed as valid only with exact Phase 17 artifact paths and explicit absent-not-cited entries.
+- [Phase 17-live-http-api-and-static-evidence]: Plan 17-05 preserves REL-03 OTAWWW and live-device evidence gaps instead of promoting blocked Phase 17 artifacts above verified.
 
 ### Pending Todos
 
@@ -371,6 +375,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T03:19:48.488Z
-Stopped at: Completed 17-live-http-api-and-static-evidence-04-PLAN.md
+Last session: 2026-07-02T03:33:56.650Z
+Stopped at: Completed 17-live-http-api-and-static-evidence-05-PLAN.md
 Resume file: None

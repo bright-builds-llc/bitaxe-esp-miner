@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 14: Safety Hardware Evidence Completion** - Close the current audit gap for active Ultra 205 safety-control, runtime telemetry, self-test submode, watchdog/load, and display/input evidence. (completed 2026-07-01)
 - [x] **Phase 15: BM1366 Mining Evidence Completion** - Close the current audit gap for trusted BM1366 initialization, work/result handling, and controlled mining smoke/soak evidence. (completed 2026-07-01)
 - [x] **Phase 16: Current Commit Release Evidence Completion** - Close the current audit gap for same-commit package, flash, serial boot, live HTTP/static/recovery/OTA, rollback, erase, failed-update, and interrupted-update evidence. (completed 2026-07-01)
-- [ ] **Phase 17: Live HTTP API And Static Evidence** - Close the current audit gap for explicit-`DEVICE_URL` live HTTP, static asset, recovery page, API route, and WebSocket evidence.
+- [x] **Phase 17: Live HTTP API And Static Evidence** - Close the current audit gap for explicit-`DEVICE_URL` live HTTP, static asset, recovery page, API route, and WebSocket evidence. (completed 2026-07-02)
 - [ ] **Phase 18: Firmware OTA And Rollback Evidence** - Close the current audit gap for valid firmware OTA, invalid OTA rejection, reboot identity, rollback, and boot-validation evidence.
 - [ ] **Phase 19: Recovery Regression And OTAWWW Evidence** - Close the current audit gaps for recovery fault-injection regressions and OTAWWW/static update behavior.
 - [ ] **Phase 20: Active Safety Hardware Telemetry Evidence** - Close the current audit gap for active Ultra 205 safety hardware behavior and live telemetry evidence.
@@ -430,7 +430,7 @@ Plans:
 - [x] 17-02-PLAN.md - Capture current package, release-gate, detector, and flash-monitor identity evidence.
 - [x] 17-03-PLAN.md - Capture explicit-target HTTP/static/API route evidence or no-scan blocked evidence.
 - [x] 17-04-PLAN.md - Capture bounded WebSocket frame evidence for `/api/ws/live` and `/api/ws` or pending/blocked evidence.
-- [ ] 17-05-PLAN.md - Close summary ledger, redaction sign-off, release docs, checklist, requirements traceability, and final verification.
+- [x] 17-05-PLAN.md - Close summary ledger, redaction sign-off, release docs, checklist, requirements traceability, and final verification.
 **Verification expectations**: `just detect-ultra205`, same-commit package/flash evidence, explicit `DEVICE_URL` smoke, HTTP/API/WebSocket capture, redaction review, `just parity`, and `just verify-reference`.
 **Research flags**: Requires reachable device network setup. Stop and record evidence pending if detector, board-info, port selection, or `DEVICE_URL` is unavailable.
 
@@ -529,7 +529,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 14. Safety Hardware Evidence Completion | 6/6 | Complete    | 2026-07-01 |
 | 15. BM1366 Mining Evidence Completion | 5/5 | Complete    | 2026-07-01 |
 | 16. Current Commit Release Evidence Completion | 6/6 | Complete | 2026-07-01 |
-| 17. Live HTTP API And Static Evidence | 4/5 | In Progress|  |
+| 17. Live HTTP API And Static Evidence | 5/5 | Complete   | 2026-07-02 |
 | 18. Firmware OTA And Rollback Evidence | 0/0 | Pending | TBD |
 | 19. Recovery Regression And OTAWWW Evidence | 0/0 | Pending | TBD |
 | 20. Active Safety Hardware Telemetry Evidence | 0/0 | Pending | TBD |
