@@ -1,0 +1,10 @@
+phase17_live_http_api_smoke
+manifest: docs/parity/evidence/phase-17-live-http-api-and-static-evidence/package-release-gate/bitaxe-ultra205-package.json
+manifest_source_commit: d9e471c9699eb0140749127416640aa1bf077d26
+manifest_reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
+flash_evidence_json: docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot/flash-command-evidence.json
+network_scan: disabled
+DEVICE_URL status: blocked - missing DEVICE_URL
+target_status: blocked
+http_static_api_status: blocked
+conclusion: blocked - live HTTP/static/API evidence requires an explicit origin-only DEVICE_URL

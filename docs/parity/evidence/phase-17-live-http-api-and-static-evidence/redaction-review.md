@@ -1,20 +1,20 @@
 # Phase 17 Redaction Review
 
-redaction_status: pending
+redaction_status: pending - Plan 17-03 HTTP blocked artifacts reviewed; later WebSocket and release-doc artifacts remain pending
 
 ## Review Scope
 
-- [ ] Private `DEVICE_URL` values redacted or absent.
-- [ ] private endpoints redacted or absent.
-- [ ] IP addresses redacted or retained only when explicitly needed for board identity.
-- [ ] MAC addresses redacted or retained only when explicitly needed for board identity.
-- [ ] Wi-Fi credentials redacted or absent.
-- [ ] pool credentials redacted or absent.
-- [ ] worker secrets redacted or absent.
-- [ ] API tokens redacted or absent.
-- [ ] NVS secret values redacted or absent.
-- [ ] local terminal secrets redacted or absent.
-- [ ] absent - not cited.
+- [x] Private `DEVICE_URL` values redacted or absent for Plan 17-03 HTTP artifacts.
+- [x] private endpoints redacted or absent for Plan 17-03 HTTP artifacts.
+- [x] IP addresses redacted or retained only when explicitly needed for board identity.
+- [x] MAC addresses redacted or retained only when explicitly needed for board identity.
+- [x] Wi-Fi credentials redacted or absent for Plan 17-03 HTTP artifacts.
+- [x] pool credentials redacted or absent for Plan 17-03 HTTP artifacts.
+- [x] worker secrets redacted or absent for Plan 17-03 HTTP artifacts.
+- [x] API tokens redacted or absent for Plan 17-03 HTTP artifacts.
+- [x] NVS secret values redacted or absent for Plan 17-03 HTTP artifacts.
+- [x] local terminal secrets redacted or absent for Plan 17-03 HTTP artifacts.
+- [x] absent - not cited for missing Plan 17-03 HTTP target and route artifacts.
 
 ## Artifact Matrix
 
@@ -25,17 +25,17 @@ redaction_status: pending
 | Detector log | pending | pending | `serial-boot/detect-ultra205.log`; retain USB port and board-info identity only when required. |
 | Flash evidence JSON | pending | pending | `serial-boot/flash-command-evidence.json`; retain board, selected port, source/reference commits, trusted-output fields, and command identity only. |
 | Serial monitor log | pending | pending | `serial-boot/flash-monitor.log`; inspect for Wi-Fi, pool, token, NVS, private endpoint, IP, and MAC leakage before citation. |
-| Target lock | pending | pending | `target-lock.json`; must contain sanitized origin only and no raw `DEVICE_URL`. |
-| HTTP route log | pending | pending | `http-static-api/http-static-api.log`; cite route statuses, selected headers, redacted snippets, and non-claims only. |
-| HTTP headers | pending | pending | `http-static-api/*.headers.txt`; selected headers only, with no cookies, private endpoints, or secrets. |
-| HTTP bodies | pending | pending | `http-static-api/*.body.txt`; redacted snippets or allowlisted public markers only. |
-| HTTP curl errors | pending | pending | `http-static-api/*.curl-error.txt`; redacted host, URL, IP, and token values only. |
+| Target lock | absent - not cited | reviewed | `target-lock.json` was not created because no explicit origin-only `DEVICE_URL` was available. |
+| HTTP route log | present | reviewed | `http-static-api/http-static-api.log` contains only helper identity, sanitized blocker status, `network_scan: disabled`, and no raw target value. |
+| HTTP headers | absent - not cited | reviewed | No `http-static-api/*.headers.txt` files were generated because route probes did not run. |
+| HTTP bodies | absent - not cited | reviewed | No `http-static-api/*.body.txt` files were generated because route probes did not run. |
+| HTTP curl errors | absent - not cited | reviewed | No `http-static-api/*.curl-error.txt` files were generated because route probes did not run. |
 | WebSocket /api/ws/live output | pending | pending | `websocket/api-ws-live.txt`; redacted frame snippets only; required for live frame proof. |
 | WebSocket /api/ws output | pending | pending | `websocket/api-ws.txt`; redacted raw-log frame snippets or open-timeout pending status only. |
-| Summary ledger | pending | pending | Phase 17 ledger must cite only reviewed artifacts and preserve explicit non-claims. |
+| Summary ledger | present | reviewed for Plan 17-03 HTTP scope | `http-static-api.md` cites only the blocked helper transcript and marks all missing route artifacts `absent - not cited`. |
 | Release docs snippets | pending | pending | Release docs must cite exact commands/artifacts without exposing targets or secrets. |
 | Terminal snippets | pending | pending | Terminal snippets must not include private endpoints, credentials, tokens, or local secret values. |
-| absent artifacts | pending | pending | Mark every missing body/header/frame/upload/recovery artifact as `absent - not cited`. |
+| absent artifacts | present | reviewed for Plan 17-03 HTTP scope | Missing HTTP target lock, header, body, and curl-error artifacts are marked `absent - not cited`; WebSocket and release-doc artifacts remain pending for later plans. |
 
 ## Search Pattern
 
@@ -47,10 +47,13 @@ rg -n -i "ssid|wifi|password|pool|token|device_url|nvs|stratum|https?://|wss?://
 
 ## Decision
 
-Reviewer: pending
+Reviewer: automated Plan 17-03 executor review for HTTP blocked artifacts.
 
-Secret scan result: pending.
+Secret scan result: Plan 17-03 HTTP-specific artifact scan passed for
+`http-static-api.md` and `http-static-api/http-static-api.log`. Broader Phase 17
+scan remains pending until WebSocket and release-doc artifacts are generated.
 
-Conclusion: pending. Do not promote Phase 17 checklist or release documentation
-claims until generated artifacts are reviewed and absent artifacts are marked
-`absent - not cited`.
+Conclusion: Plan 17-03 HTTP artifacts are reviewed for the blocked no-target
+path. Do not promote Phase 17 checklist or release documentation claims until
+all generated artifacts are reviewed and absent artifacts are marked `absent -
+not cited`.
