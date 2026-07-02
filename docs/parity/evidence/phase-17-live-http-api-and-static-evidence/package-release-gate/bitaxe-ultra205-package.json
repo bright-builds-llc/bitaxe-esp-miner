@@ -1,0 +1,65 @@
+{
+  "schema_version": 2,
+  "release_name": "bitaxe-ultra205",
+  "source_commit": "1a1648158c3b8c1a509c73a72f87e4005a1aeff9",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "default_flash_image": "bitaxe-ultra205.elf",
+  "image_metadata": {
+    "board": "205",
+    "device_model": "Ultra 205",
+    "asic": "BM1366",
+    "esp_idf_version": "v5.5.4",
+    "rust_target": "xtensa-esp32s3-espidf"
+  },
+  "tool_versions": {
+    "cargo": "cargo 1.88.0-nightly (873a06493 2025-05-10) (1.88.0.0)",
+    "rustc": "rustc 1.88.0-nightly (2ab28d2e7 2025-06-24) (1.88.0.0)",
+    "bazel": "Unavailable",
+    "espflash": "espflash 4.0.1"
+  },
+  "install_notes": {
+    "path": "docs/release/ultra-205.md",
+    "summary": "Ultra 205 release operator guide"
+  },
+  "license_inventory": "docs/release/license-inventory.md",
+  "provenance_manifest": "docs/release/provenance-manifest.md",
+  "otadata_source": "target/xtensa-esp32s3-espidf/release/build/esp-idf-sys-2a443813359d6cae/out/build/ota_data_initial.bin",
+  "artifacts": [
+    {
+      "kind": "firmware_elf",
+      "path": "bitaxe-ultra205.elf",
+      "offset": "Unavailable",
+      "sha256": "5fbc6c2368762dff0ef3b1fcf529540dddffb06e5e24207021d39be79c63148e"
+    },
+    {
+      "kind": "firmware_ota_image",
+      "path": "esp-miner.bin",
+      "offset": "0x10000",
+      "sha256": "84bc1ac3c3d96ea2963c5600364320c84720293002aa3004115f55b23d1decce"
+    },
+    {
+      "kind": "www_spiffs_image",
+      "path": "www.bin",
+      "offset": "0x410000",
+      "sha256": "0dbb0eba0cc4198186d0175557ec134d7829f3426faf35d8baf263ee0a7c65a0"
+    },
+    {
+      "kind": "factory_merged_image",
+      "path": "bitaxe-ultra205-factory.bin",
+      "offset": "0x0",
+      "sha256": "86dbc3f3e16cee0fc31bbf9b76329d5dbe6c4e166d50e14db38e4b7db677b6df"
+    },
+    {
+      "kind": "partition_table",
+      "path": "firmware/bitaxe/partitions-ultra205.csv",
+      "offset": "Unavailable",
+      "sha256": "19f4fe9b96e6807566dcde496697dde11a8c4258f8c74d3439aaee114a33bba5"
+    },
+    {
+      "kind": "otadata_initial",
+      "path": "otadata-initial.bin",
+      "offset": "0xf10000",
+      "sha256": "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f"
+    }
+  ]
+}
