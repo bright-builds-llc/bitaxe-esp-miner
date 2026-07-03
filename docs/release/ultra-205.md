@@ -13,8 +13,73 @@ Phase 17 records the current live HTTP/API/static/WebSocket evidence status in
 `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/summary.md`.
 Phase 18 records the current firmware OTA evidence status in
 `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/summary.md`.
+Phase 19 records the current recovery-regression and OTAWWW closure status in
+`docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/summary.md`.
 Use those ledgers' blocker and pending language and keep affected parity rows
 below `verified`.
+
+## Phase 19 Recovery Regression And OTAWWW Evidence Status
+
+Phase 19 evidence is recorded in
+`docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/summary.md`,
+with package, serial boot, target-lock, recovery-regression, OTAWWW gap, and
+redaction artifacts under
+`docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/`.
+
+Current conclusion: package generation, manifest-backed release gate, Ultra
+205 detector evidence, wrapper-owned factory flash-monitor evidence, and final
+redaction review passed for board `205`, port `/dev/cu.usbmodem1101`, source
+commit `6842d7a6d3d4fc64d93900a9847c8a0b97edc16d`, and reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`.
+
+The Phase 19 target lock remains blocked because no trusted raw origin-only
+target path was available. Network scanning stayed disabled, and no device URL
+was inferred from committed redacted serial evidence. Recovery-regression
+operations that require explicit destructive or fault-injection permission did
+not run.
+
+Supported Phase 19 claims are limited to:
+
+- package and release-gate identity from
+  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate.md`;
+- detector and wrapper-owned flash-monitor identity from
+  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot.md`;
+- blocked target provenance from
+  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/target-lock.json`;
+- recovery-regression pending status from
+  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/recovery-regression.md`;
+- explicit OTAWWW REL-03 gap documentation from
+  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/otawww.md`;
+- final redaction status from
+  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/redaction-review.md`.
+
+Phase 19 does not claim valid firmware OTA verification, post-OTA reboot
+identity, selected next partition, post-OTA boot-validation, rollback,
+destructive rollback, failed-update recovery beyond previously recorded invalid
+image rejection, large erase, interrupted update, whole-`www` OTAWWW update
+behavior, production mining, pool behavior, active safety telemetry, or long
+soak behavior. Keep `OTA-001`, `OTA-002`, `REL-001`, `REL-002`, and `REL-003`
+below `verified` unless a later artifact records the specific missing behavior
+required by the parity checklist.
+
+The Phase 19 package/release-gate command sequence was:
+
+```bash
+just package
+bazel run //tools/parity:report -- release-gate --manifest docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json
+```
+
+The Phase 19 serial evidence command was:
+
+```bash
+just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot capture-timeout-seconds=45 redact-evidence=true
+```
+
+The Phase 19 recovery/OTAWWW helper recorded pending and blocked evidence only:
+
+```bash
+scripts/phase19-recovery-otawww-evidence.sh --manifest docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json --out-dir docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence --target-lock-out docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/target-lock.json --port /dev/cu.usbmodem1101 --flash-evidence-json docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot/flash-command-evidence.json
+```
 
 ## Phase 18 Firmware OTA And Rollback Evidence Status
 
@@ -47,8 +112,7 @@ Supported Phase 18 claims are limited to:
   `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/target-lock.json`;
 - invalid image rejection for `POST /api/system/OTA` from
   `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota.md`;
-- valid upload response only: HTTP 200 with `Firmware update complete,
-  rebooting now!`;
+- valid upload response only: HTTP 200 with `Firmware update complete, rebooting now!`;
 - final redaction status from
   `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/redaction-review.md`.
 

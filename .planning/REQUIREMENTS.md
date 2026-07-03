@@ -187,6 +187,24 @@ erase, interrupted update, whole-`www` OTAWWW update behavior, production
 mining, pool behavior, active safety telemetry, and long soak behavior are
 blocked, below verified, or not claimed.
 
+**Phase 19 final evidence note (2026-07-03):** Phase 19 adds a final
+recovery-regression and OTAWWW evidence ledger at
+`docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/summary.md`
+and final redaction status at
+`docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/redaction-review.md`
+with `redaction_status: passed`. `API-09`, `REL-03`, `REL-07`, `REL-08`, and
+`EVD-05` remain complete in the implementation/governance sense because Phase
+19 records exact package, release-gate, detector, flash-monitor, blocked target
+lock, recovery-regression pending status, OTAWWW REL-03 gap, redaction, and
+verification artifacts. The target lock remains blocked because no trusted raw
+origin-only target path was available; network scanning stayed disabled; no
+device URL was inferred from redacted serial evidence. Failed-update, large
+erase, interrupted update, rollback, boot-validation, and whole-`www` OTAWWW
+update behavior remain pending or explicitly gapped. The OTAWWW ledger records
+`rel_03_status: gap documented`, owner, blocker, operator impact, and follow-up
+path, while preserving `www.bin`, route presence, static serving, and `Wrong
+API input` as insufficient proof of whole-`www` update parity.
+
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | FND-01 | Phase 1 | Complete |
