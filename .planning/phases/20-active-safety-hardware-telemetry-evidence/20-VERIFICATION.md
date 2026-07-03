@@ -3,11 +3,16 @@ phase: 20
 plan: "06"
 slug: active-safety-hardware-telemetry-evidence
 status: passed
-verified_at: 2026-07-03T23:28:46Z
+verified_at: 2026-07-03T23:33:15Z
 redaction_status: passed
 reference_clean: passed
 key_links: valid
 lifecycle_validation: valid
+generated_by: gsd-execute-plan
+lifecycle_mode: yolo
+phase_lifecycle_id: 20-2026-07-03T20-48-00
+generated_at: 2026-07-03T23:33:15Z
+lifecycle_validated: true
 hardware_commands_used: recorded
 network_commands_used: recorded
 ---
