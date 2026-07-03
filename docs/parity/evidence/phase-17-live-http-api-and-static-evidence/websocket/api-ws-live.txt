@@ -1,0 +1,14 @@
+phase17_websocket_capture
+path=/api/ws/live
+websocket_capture_url=ws://[redacted]/api/ws/live
+device_url_source=usb_flash_monitor_log
+network_scan=disabled - DEVICE_URL must be explicit
+websocket_route_claim=frame-capture-required
+duration_ms=5000
+max_frames=3
+websocket_target_status=passed
+websocket_frame_1={"data":{"ASICModel":"BM1366","actualFrequency":0.0,"apEnabled":0,"autofanspeed":1,"axeOSVersion":"safe-fixture","bestDiff":0.0,"bestSessionDiff":0.0,"blockFound":0,"boardVersion":"205","coreVoltage":1200,"coreVoltageActual":0.0,"current":0.0,"errorPercentage":0.0,"expectedHashrate":0.0,"fan2rpm":0,"fanrpm":0,"fanspeed":0,"freeHeap":7958796,"freeHeapInternal":210287,"freeHeapSpiram":7780540,"frequency":485.0,"hashRate":0.0,"hashRate_10m":0.0,"hashRate_1h":0.0,"hashRate_1m":0.0,"hostname":"[redacted]","idfVersion":"v5.5.4","ipv4":"[redacted-ip]","ipv6":"","isPSRAMAvailable":1,"isUsingFallbackStratum":0,"macAddr":"[redacted-mac]","maxAllocHeap":7733248,"maxPower":12,"minFreeHeap":7419444,"miningPaused":true,"nominalVoltage":0,"poolConnectionInfo":"disconnected","poolDifficulty":0.0,"power":0.0,"processTime":0.0,"resetReason":"11","responseShareBatch":0,"responseTime":0.0,"runningPartition":"factory","sharesAccepted":0,"sharesRejected":0,"sharesRejectedReasons":[],"showNewBlock":false,"smallCoreCount":894,"ssid":"[redacted]","temp":0.0,"temp2":0.0,"uptimeSeconds":137,"version":"9a2bf5850ea0","voltage":0.0,"vrTemp":0.0,"wifiRSSI":-46,"wifiStatus":"connected"},"event":"update"}
+websocket_frame_2={"data":{"freeHeap":7956044,"freeHeapInternal":206167,"freeHeapSpiram":7781908,"minFreeHeap":7415916},"event":"update"}
+websocket_frame_3={"data":{"freeHeap":7956088,"freeHeapInternal":206027,"freeHeapSpiram":7782092,"minFreeHeap":7415020,"uptimeSeconds":138},"event":"update"}
+websocket_open_status=opened
+websocket_frame_status=passed frames=3

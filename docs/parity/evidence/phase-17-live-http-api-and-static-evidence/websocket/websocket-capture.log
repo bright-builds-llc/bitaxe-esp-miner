@@ -1,13 +1,16 @@
-phase17_websocket_capture
-device_url_status: blocked - missing explicit origin-only DEVICE_URL
-target_lock_status: absent - not cited
-network_scan: disabled
-capture_decision: not-run - no explicit target source
-/api/ws/live command: node scripts/phase17-websocket-capture.mjs --device-url "$DEVICE_URL" --path /api/ws/live --out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws-live.txt --duration-ms 5000 --max-frames 3
-/api/ws command: node scripts/phase17-websocket-capture.mjs --device-url "$DEVICE_URL" --path /api/ws --out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws.txt --duration-ms 5000 --max-frames 3
-/api/ws/live artifact: absent - not cited
-/api/ws artifact: absent - not cited
-websocket_live_frame_status: blocked - missing explicit DEVICE_URL
-websocket_raw_log_frame_status: blocked - missing explicit DEVICE_URL
-websocket_promotion_status: blocked - no WebSocket frame artifacts generated
-conclusion: blocked - WebSocket capture requires explicit origin-only DEVICE_URL or explicit-input target lock; network_scan: disabled
+phase17_websocket_capture_log
+network_scan=disabled
+target_source=trusted local USB flash-monitor log
+target_committed_status=redacted
+package_manifest=docs/parity/evidence/phase-17-live-http-api-and-static-evidence/package-release-gate/bitaxe-ultra205-package.json
+target_lock=docs/parity/evidence/phase-17-live-http-api-and-static-evidence/target-lock.json
+live_command=node scripts/phase17-websocket-capture.mjs --device-url-from-flash-evidence target/phase17-gap-current-dev-raw/flash-command-evidence.json --path /api/ws/live --out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws-live.txt --duration-ms 5000 --max-frames 3
+raw_log_command=node scripts/phase17-websocket-capture.mjs --device-url-from-flash-evidence target/phase17-gap-current-dev-raw/flash-command-evidence.json --path /api/ws --out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws.txt --duration-ms 5000 --max-frames 3
+api_ws_live_artifact=docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws-live.txt
+api_ws_live_status=passed
+api_ws_live_frame_status=passed frames=3
+api_ws_artifact=docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws.txt
+api_ws_status=passed
+api_ws_frame_status=passed frames=1
+redaction_status=passed
+conclusion=passed - bounded WebSocket artifacts were captured and committed with redacted target/network identifiers.

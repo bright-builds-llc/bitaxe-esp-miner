@@ -1,0 +1,14 @@
+phase17_websocket_capture
+path=/api/ws
+websocket_capture_url=ws://[redacted]/api/ws
+device_url_source=usb_flash_monitor_log
+network_scan=disabled - DEVICE_URL must be explicit
+websocket_route_claim=frame-capture-required
+duration_ms=5000
+max_frames=3
+websocket_target_status=passed
+websocket_frame_1=axeos_websocket_logs=connected
+
+websocket_open_status=opened
+websocket_error=connection error
+websocket_frame_status=passed frames=1
