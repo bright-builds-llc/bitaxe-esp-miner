@@ -3,7 +3,7 @@
 package_identity_status: passed
 release_gate_status: passed
 board: 205
-source_commit: 16cf0787c15b2258ce470c8a7d27e45c15e1ca2b
+source_commit: c11fba2622a389af533774447956b95f254c0280
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 manifest_path: docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/package-release-gate/bitaxe-ultra205-package.json
 default_flash_image: bitaxe-ultra205.elf

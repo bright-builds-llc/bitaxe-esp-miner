@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "release_name": "bitaxe-ultra205",
-  "source_commit": "16cf0787c15b2258ce470c8a7d27e45c15e1ca2b",
+  "source_commit": "c11fba2622a389af533774447956b95f254c0280",
   "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
   "default_flash_image": "bitaxe-ultra205.elf",
   "image_metadata": {
@@ -29,13 +29,13 @@
       "kind": "firmware_elf",
       "path": "bitaxe-ultra205.elf",
       "offset": "Unavailable",
-      "sha256": "eaab0243bb348404bcfb9aa1e33f97f4e7fbe250b8cb17bf0aaf70d19ef17f2d"
+      "sha256": "f8c1a52b1b407c4ce56b6bd6ebfca1c6776ae6b298df01dd191862c41799f2aa"
     },
     {
       "kind": "firmware_ota_image",
       "path": "esp-miner.bin",
       "offset": "0x10000",
-      "sha256": "a3ed04a926e30c0a1680fb75a10325bf60ee502691095857f2f14ad913476633"
+      "sha256": "836b58ab7e467595e5edf8e96b09b260ded5359c136514ae2e4e2557881c113a"
     },
     {
       "kind": "www_spiffs_image",
@@ -47,7 +47,7 @@
       "kind": "factory_merged_image",
       "path": "bitaxe-ultra205-factory.bin",
       "offset": "0x0",
-      "sha256": "741ccd0e8a6ccd8426a8524bd261287c59f9ccfa82a4b93a38df9180cd4ba75e"
+      "sha256": "6d69e980fb67026f883c609fc414cff4612875e65bd5e7fbc3f0f4cc401bba49"
     },
     {
       "kind": "partition_table",

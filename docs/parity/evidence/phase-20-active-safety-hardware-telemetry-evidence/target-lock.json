@@ -1,0 +1,14 @@
+{
+  "phase": "20-active-safety-hardware-telemetry-evidence",
+  "board": "205",
+  "status": "blocked",
+  "network_scan": "disabled",
+  "source_commit": "c11fba2622a389af533774447956b95f254c0280",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "selected_port": "/dev/cu.usbmodem1101",
+  "trusted_flash_evidence": "docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/safe-baseline/flash-command-evidence.json",
+  "reason": "No trusted raw origin-only target artifact is available for Phase 20 Plan 02.",
+  "target_source": "none",
+  "redacted_log_policy": "Do not infer DEVICE_URL or device origin from committed redacted serial output.",
+  "follow_up": "A later live telemetry plan must provide an explicit origin-only target or a trusted raw origin-only artifact before HTTP or WebSocket evidence runs."
+}
