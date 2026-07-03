@@ -42,11 +42,11 @@ artifact is scanned and reviewed, and every absent artifact is marked
 | `serial-boot/flash-monitor.log` | absent - not cited | pending | Serial logs may include SSIDs, MACs, IPs, and device URLs. |
 | `target-lock.json` | absent - not cited | pending | Must contain redacted origin only and `network_scan: disabled`. |
 | `recovery-regression.md` | absent - not cited | pending | Created by a later recovery evidence plan. |
-| `recovery-regression/recovery-regression.log` | absent - not cited | pending | Helper transcript and claim ledger. |
-| `recovery-regression/failed-update.log` | absent - not cited | pending | May include redacted failed-update response snippets. |
-| `recovery-regression/large-erase.log` | absent - not cited | pending | May include destructive command transcript and restore evidence. |
-| `recovery-regression/large-erase-post-restore-monitor.log` | absent - not cited | pending | Serial safe-state markers only after review. |
-| `recovery-regression/interrupted-ota.log` | absent - not cited | pending | May include redacted interruption response snippets. |
+| `recovery-regression/recovery-regression.log` | present | pending | Safe no-allow helper transcript; no live failed-update, large-erase, interrupted upload, rollback, or boot-validation action ran. |
+| `recovery-regression/failed-update.log` | present | pending | Pending allow-flag status only; no failed-update request or response body was captured. |
+| `recovery-regression/large-erase.log` | present | pending | Pending allow-flag status only; no destructive erase or restore command was run. |
+| `recovery-regression/large-erase-post-restore-monitor.log` | present | pending | Pending allow-flag status only; no post-restore serial capture was run. |
+| `recovery-regression/interrupted-ota.log` | present | pending | Pending allow-flag status only; no interrupted upload request or response body was captured. |
 | `otawww.md` | absent - not cited | pending | Created by a later OTAWWW evidence plan. |
 | `otawww/otawww-gap.log` | absent - not cited | pending | Gap-only response evidence; never whole-www proof by itself. |
 | `summary.md` | absent - not cited | pending | Final Phase 19 evidence ledger after live artifacts and review. |
