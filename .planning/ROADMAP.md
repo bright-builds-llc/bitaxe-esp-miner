@@ -473,7 +473,13 @@ Plans:
 1. Release docs, parity checklist, requirements traceability, and final evidence ledgers distinguish verified behavior from blocked, deferred, or below-verified behavior.
 
 **Plans**: 0 plans
-Plans: Pending.
+Plans: 4 plans
+Plans:
+
+- [ ] 19-01-PLAN.md - Create Wave 0 helper tests, evidence contract, and redaction gate.
+- [ ] 19-02-PLAN.md - Capture current package, release-gate, detector, serial, and target-provenance evidence.
+- [ ] 19-03-PLAN.md - Run or safely block gated recovery regression evidence.
+- [ ] 19-04-PLAN.md - Record OTAWWW gap/update evidence and close final docs, checklist, redaction, and verification.
 **Verification expectations**: `just detect-ultra205`, gated recovery/fault-injection evidence, OTAWWW/static update check, restore proof, redaction review, `just parity`, and `just verify-reference`.
 **Research flags**: Requires documented recovery procedures and explicit destructive-test authorization in the phase plan. Do not run ad hoc erase, rollback, or interrupted-update commands.
 
