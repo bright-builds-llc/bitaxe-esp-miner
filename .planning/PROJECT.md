@@ -65,7 +65,9 @@ The accepted seed layout separates hardware-bound firmware from testable Rust lo
 
 ## Current State
 
-Phase 08 is complete: the repo now has the Ultra 205 V1 evidence and release gate closed conservatively. Parity/release-gate tooling rejects unsupported verified claims, blocker-language false positives, wrong-board package manifests, deferred-scope promotion, and package-only release parity claims. Phase 8 package, detector, factory-flash, serial boot, provenance, license, release-summary, and checklist evidence is recorded. Live HTTP/static/recovery/OTA/rollback/failed-update/large-erase/interrupted-update parity remains blocked by `DEVICE_URL status: blocked - no reachable DEVICE_URL` and is not claimed as verified.
+Phase 19 is complete: the repo now has conservative Ultra 205 recovery-regression and OTAWWW evidence closure. Phase 19 records package/release-gate identity, detector-gated serial evidence, blocked no-scan target provenance, pending recovery-regression ledgers for failed update, large erase, and interrupted update, an explicit OTAWWW REL-03 gap with owner/blocker/operator impact, final redaction review, clean code review, and valid lifecycle verification.
+
+The evidence remains intentionally below verified for whole-`www` OTAWWW updates, failed-update recovery, large erase/factory restore, interrupted update, rollback, boot-validation, production mining, active safety telemetry, and long soak behavior until later phase artifacts prove those surfaces.
 
 ## Constraints
 
@@ -118,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-06-29 after Phase 08 parity evidence and Ultra 205 release gate verification*
+*Last updated: 2026-07-03 after Phase 19 recovery regression and OTAWWW evidence verification*
