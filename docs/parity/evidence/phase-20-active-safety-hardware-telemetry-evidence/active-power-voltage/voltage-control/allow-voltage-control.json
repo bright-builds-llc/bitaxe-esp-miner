@@ -1,0 +1,28 @@
+{
+  "board": "205",
+  "port": "/dev/cu.usbmodem1101",
+  "detector_command": "just detect-ultra205",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
+  "package_manifest": "docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/package-release-gate/bitaxe-ultra205-package.json",
+  "source_commit": "c11fba2622a389af533774447956b95f254c0280",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "surface": "voltage-control",
+  "claim_tier": "unsupported-pending",
+  "evidence_class": "deferred",
+  "allowed_command": "scripts/phase14-power-voltage.sh --manifest docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage/voltage-control/allow-voltage-control.json --surface voltage-control --out-dir docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage/voltage-control",
+  "allowed_inputs": {
+    "active_write": "not-run",
+    "reason": "no production-safe bounded DS4432U route"
+  },
+  "abort_conditions": [],
+  "recovery_steps": [],
+  "post_action_safe_state_markers": [],
+  "evidence_dir": "docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage/voltage-control",
+  "redaction_reviewer": "phase-20-plan-02-redacted-safe-baseline",
+  "checklist_rows": [
+    "PWR-003",
+    "PWR-005"
+  ]
+}

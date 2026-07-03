@@ -1,0 +1,35 @@
+phase14_power_voltage
+surface: power-telemetry
+manifest: docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage/power-telemetry/allow-power-telemetry.json
+out_dir: docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage/power-telemetry
+serial_log: docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/safe-baseline/flash-monitor.log
+allowed_surfaces: power-telemetry,voltage-control
+safety_allow_command: bazel run //tools/parity:report -- safety-allow --manifest docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage/power-telemetry/allow-power-telemetry.json --surface power-telemetry --allowed-command scripts/phase14-power-voltage.sh --manifest docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage/power-telemetry/allow-power-telemetry.json --surface power-telemetry --out-dir docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage/power-telemetry
+Computing main repo mapping:
+Loading:
+Loading: 0 packages loaded
+Analyzing: target //tools/parity:report (0 packages loaded, 0 targets configured)
+Analyzing: target //tools/parity:report (0 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //tools/parity:report (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+Target //tools/parity:report up-to-date:
+  bazel-bin/tools/parity/report
+INFO: Elapsed time: 0.152s, Critical Path: 0.00s
+INFO: 1 process: 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/tools/parity/report <args omitted>
+safety_allow_status: passed
+surface: power-telemetry
+claim_tier: read-only-observation
+evidence_class: hardware-smoke
+checklist_rows: PWR-006
+power_telemetry_claim: read-only-observation
+power_telemetry_status: pending - hardware_evidence_pending
+phase14_power_telemetry_status: pending - hardware_evidence_pending
+PWR-006 conclusion: read-only observation remains pending without fresh INA260 artifact
+voltage_control_status: pending - no production-safe bounded voltage route exists
+PWR-003 conclusion: below verified until hardware-regression exists
+PWR-005 conclusion: below verified until hardware-regression exists
+phase14_power_voltage_status: pending - read-only route unavailable
+non_claims: active voltage control, ASIC power sequencing, stale cached values
