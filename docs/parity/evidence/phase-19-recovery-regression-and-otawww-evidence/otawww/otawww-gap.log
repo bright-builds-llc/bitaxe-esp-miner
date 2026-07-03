@@ -1,0 +1,15 @@
+phase19_recovery_otawww_evidence
+network_scan: disabled
+otawww_status: blocked - missing DEVICE_URL
+otawww_claim: REL-03 gap
+rel_03_status: gap documented
+owner: release parity follow-up
+blocker: no documented whole-www partition update procedure with size checks, chunked erase/write behavior, recovery access, and interrupted-update hardware-regression evidence
+operator_impact: static administration UI cannot be updated independently through OTAWWW in this release-candidate evidence set
+current_public_route_behavior: Wrong API input when observed; otherwise blocked target
+follow_up_path: implement or use whole-www partition updater, capture interrupted-update recovery, then rerun parity and redaction
+whole_www_update_proof: absent
+www_bin_proof: package artifact only
+route_presence_proof: insufficient
+wrong_api_input_proof: insufficient for whole-www update parity
+phase17_supporting_context: live static serving and fail-closed OTAWWW response are not whole-www update proof
