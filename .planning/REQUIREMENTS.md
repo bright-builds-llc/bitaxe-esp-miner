@@ -242,7 +242,7 @@ blocked, below verified, or not claimed.
 | SAFE-09 | Phase 6 + Phase 11 + Phase 14 + Phase 15 + Phase 20 + Phase 21 | Pending |
 | REL-01 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 17 | Complete |
 | REL-02 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 18 | Complete |
-| REL-03 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 19 | Pending |
+| REL-03 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 19 | Complete |
 | REL-04 | Phase 7 + Phase 13 + Phase 16 | Complete |
 | REL-05 | Phase 7 | Complete |
 | REL-06 | Phase 7 | Complete |
