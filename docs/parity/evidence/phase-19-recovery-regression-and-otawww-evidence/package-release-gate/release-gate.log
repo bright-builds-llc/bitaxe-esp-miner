@@ -1,0 +1,16 @@
+Computing main repo mapping: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //tools/parity:report (1 packages loaded, 0 targets configured)
+Analyzing: target //tools/parity:report (1 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //tools/parity:report (125 packages loaded, 4904 targets configured).
+INFO: Found 1 target...
+Target //tools/parity:report up-to-date:
+  bazel-bin/tools/parity/report
+INFO: Elapsed time: 0.305s, Critical Path: 0.02s
+INFO: 1 process: 450 action cache hit, 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/tools/parity/report <args omitted>
+release_gate: passed
+
