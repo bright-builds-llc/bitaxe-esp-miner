@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-	printf 'usage: %s --manifest PATH --out-dir PATH [--serial-log PATH] [--stimulus NAME]\n' "$(basename "$0")" >&2
+	printf 'usage: %s --manifest PATH --out-dir PATH [--serial-log PATH]\n' "$(basename "$0")" >&2
 }
 
 manifest=""
@@ -38,12 +38,9 @@ while [[ $# -gt 0 ]]; do
 		shift 2
 		;;
 	--stimulus)
-		if [[ $# -lt 2 ]]; then
-			usage
-			exit 2
-		fi
-		stimulus="$2"
-		shift 2
+		printf '%s\n' '--stimulus is not supported until a bounded Phase 20 fault-stimulus route is implemented' >&2
+		usage
+		exit 2
 		;;
 	-h | --help)
 		usage

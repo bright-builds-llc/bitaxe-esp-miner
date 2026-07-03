@@ -188,6 +188,39 @@ test_unsupported_pending_manifest_records_required_fields() {
 	assert_no_active_commands "$command_log"
 }
 
+test_stimulus_argument_is_rejected_without_active_commands() {
+	local out_dir="${tmp_root}/stimulus-rejected"
+	local bin_dir="${tmp_root}/bin-stimulus"
+	local command_log="${tmp_root}/commands-stimulus.log"
+	local output
+	local status
+
+	create_no_active_command_bin "$bin_dir" "$command_log"
+
+	set +e
+	output="$(PATH="${bin_dir}:$PATH" PHASE20_COMMAND_LOG="$command_log" "$BASH" "$wrapper" \
+		--manifest "${tmp_root}/missing.json" \
+		--out-dir "$out_dir" \
+		--stimulus fan-rpm-unavailable 2>&1)"
+	status=$?
+	set -e
+
+	if [[ "$status" -eq 0 ]]; then
+		printf 'Expected --stimulus to be rejected. Actual output:\n%s\n' "$output" >&2
+		exit 1
+	fi
+
+	if [[ "$output" != *"--stimulus is not supported"* ]]; then
+		printf 'Expected unsupported --stimulus message. Actual output:\n%s\n' "$output" >&2
+		exit 1
+	fi
+
+	assert_no_active_commands "$command_log"
+	if [[ -e "${out_dir}/failure-paths.log" ]]; then
+		fail "--stimulus rejection should not create evidence logs"
+	fi
+}
+
 if [[ ! -f "$wrapper" ]]; then
 	fail "wrapper script missing: ${wrapper}"
 fi
@@ -195,5 +228,6 @@ fi
 test_missing_manifest_blocks_without_active_commands
 test_failed_safety_allow_validation_blocks
 test_unsupported_pending_manifest_records_required_fields
+test_stimulus_argument_is_rejected_without_active_commands
 
 printf 'phase20_failure_paths_test passed\n'

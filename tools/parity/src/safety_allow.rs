@@ -132,6 +132,8 @@ pub(crate) fn validate_safety_allow_manifest(
     validate_package_identity(&mut validation_errors, manifest, package_manifest);
     validate_surface_and_claim(&mut validation_errors, manifest);
     validate_required_procedure_scope(&mut validation_errors, manifest);
+    validate_failure_paths_scope(&mut validation_errors, manifest);
+    validate_live_api_websocket_scope(&mut validation_errors, manifest);
     validate_active_claim_scope(&mut validation_errors, manifest);
 
     SafetyAllowReport { validation_errors }
@@ -227,6 +229,14 @@ fn validate_surface_and_claim(errors: &mut Vec<String>, manifest: &SafetyAllowMa
         return;
     }
 
+    let allowed_tiers = allowed_claim_tiers_for_surface(&manifest.surface);
+    if !allowed_tiers.is_empty() && !allowed_tiers.contains(&manifest.claim_tier.as_str()) {
+        errors.push(format!(
+            "surface `{}` does not allow claim_tier `{}`",
+            manifest.surface, manifest.claim_tier
+        ));
+    }
+
     let expected_evidence_class = expected_evidence_class(&manifest.claim_tier);
     if manifest.evidence_class != expected_evidence_class {
         errors.push(format!(
@@ -239,6 +249,8 @@ fn validate_surface_and_claim(errors: &mut Vec<String>, manifest: &SafetyAllowMa
 fn validate_required_procedure_scope(errors: &mut Vec<String>, manifest: &SafetyAllowManifest) {
     if manifest.allowed_command.trim().is_empty() {
         errors.push("allowed_command must not be empty".to_owned());
+    } else {
+        validate_allowed_command_scope(errors, manifest);
     }
 
     if manifest.allowed_inputs.is_null() {
@@ -258,6 +270,127 @@ fn validate_required_procedure_scope(errors: &mut Vec<String>, manifest: &Safety
 
     if manifest.checklist_rows.is_empty() {
         errors.push("checklist_rows must not be empty".to_owned());
+    }
+}
+
+fn validate_failure_paths_scope(errors: &mut Vec<String>, manifest: &SafetyAllowManifest) {
+    if manifest.surface != "failure-paths" || manifest.claim_tier != "fault-stimulus" {
+        return;
+    }
+
+    require_string(
+        errors,
+        &manifest.allowed_inputs,
+        "stimulus",
+        "fault-stimulus",
+    );
+    require_string(
+        errors,
+        &manifest.allowed_inputs,
+        "expected_fault",
+        "fault-stimulus",
+    );
+    require_string(
+        errors,
+        &manifest.allowed_inputs,
+        "abort_condition",
+        "fault-stimulus",
+    );
+    require_string(
+        errors,
+        &manifest.allowed_inputs,
+        "restore_path",
+        "fault-stimulus",
+    );
+    require_string(
+        errors,
+        &manifest.allowed_inputs,
+        "projection_status",
+        "fault-stimulus",
+    );
+    require_string(
+        errors,
+        &manifest.allowed_inputs,
+        "final_safe_state_marker",
+        "fault-stimulus",
+    );
+}
+
+fn validate_live_api_websocket_scope(errors: &mut Vec<String>, manifest: &SafetyAllowManifest) {
+    if manifest.surface != "live-api-websocket-telemetry" {
+        return;
+    }
+
+    require_string_value(
+        errors,
+        &manifest.allowed_inputs,
+        "network_scan",
+        "disabled",
+        "live-api-websocket-telemetry",
+    );
+
+    if manifest.claim_tier == "unsupported-pending" {
+        require_string(
+            errors,
+            &manifest.allowed_inputs,
+            "device_url_source",
+            "unsupported-pending live-api-websocket-telemetry",
+        );
+        require_string(
+            errors,
+            &manifest.allowed_inputs,
+            "reason",
+            "unsupported-pending live-api-websocket-telemetry",
+        );
+        return;
+    }
+
+    if manifest.claim_tier != "api-websocket-projection" {
+        return;
+    }
+
+    let maybe_device_url_source = manifest
+        .allowed_inputs
+        .get("device_url_source")
+        .and_then(Value::as_str)
+        .map(str::trim);
+    let has_explicit_target = matches!(
+        maybe_device_url_source,
+        Some("explicit DEVICE_URL" | "trusted raw origin-only target lock")
+    );
+    if !has_explicit_target {
+        errors.push(
+            "api-websocket-projection requires allowed_inputs.device_url_source to name explicit DEVICE_URL or trusted raw origin-only target lock"
+                .to_owned(),
+        );
+    }
+
+    require_string(
+        errors,
+        &manifest.allowed_inputs,
+        "route_path",
+        "api-websocket-projection",
+    );
+    require_positive_integer(
+        errors,
+        &manifest.allowed_inputs,
+        "duration_ms",
+        "api-websocket-projection",
+    );
+    require_positive_integer(
+        errors,
+        &manifest.allowed_inputs,
+        "max_frames",
+        "api-websocket-projection",
+    );
+
+    if maybe_device_url_source == Some("explicit DEVICE_URL")
+        && !has_option(&manifest.allowed_command, "--device-url")
+    {
+        errors.push(
+            "api-websocket-projection with explicit DEVICE_URL requires allowed_command to include --device-url"
+                .to_owned(),
+        );
     }
 }
 
@@ -328,6 +461,179 @@ fn validate_filters(
                 manifest.allowed_command
             ));
         }
+    }
+}
+
+fn allowed_claim_tiers_for_surface(surface: &str) -> &'static [&'static str] {
+    match surface {
+        "safe-baseline" => &[
+            "safe-baseline",
+            "read-only-observation",
+            "safe-unavailable",
+            "unsupported-pending",
+        ],
+        "power-telemetry" => &[
+            "read-only-observation",
+            "safe-unavailable",
+            "unsupported-pending",
+        ],
+        "voltage-control" => &[
+            "bounded-actuation",
+            "safe-unavailable",
+            "unsupported-pending",
+        ],
+        "thermal-fan" => &[
+            "read-only-observation",
+            "bounded-actuation",
+            "fault-stimulus",
+            "safe-unavailable",
+            "unsupported-pending",
+        ],
+        "self-test-watchdog-load" => &[
+            "read-only-observation",
+            "self-test-hardware",
+            "load-stress",
+            "safe-unavailable",
+            "unsupported-pending",
+        ],
+        "display-input" => &[
+            "read-only-observation",
+            "runtime-display-input",
+            "safe-unavailable",
+            "unsupported-pending",
+        ],
+        "failure-paths" => &["fault-stimulus", "safe-unavailable", "unsupported-pending"],
+        "live-api-websocket-telemetry" => &[
+            "api-websocket-projection",
+            "read-only-observation",
+            "safe-unavailable",
+            "unsupported-pending",
+        ],
+        "parity-redaction" => &["parity-redaction", "unsupported-pending"],
+        _ => &[],
+    }
+}
+
+fn validate_allowed_command_scope(errors: &mut Vec<String>, manifest: &SafetyAllowManifest) {
+    let tokens: Vec<&str> = manifest.allowed_command.split_whitespace().collect();
+
+    if is_expected_safety_command(manifest, &tokens) {
+        return;
+    }
+
+    errors.push(
+        "allowed_command must route through an approved safety evidence wrapper for its surface"
+            .to_owned(),
+    );
+}
+
+fn is_expected_safety_command(manifest: &SafetyAllowManifest, tokens: &[&str]) -> bool {
+    match manifest.surface.as_str() {
+        "safe-baseline" => {
+            starts_with_tokens(
+                tokens,
+                &["bazel", "run", "//tools/flash:flash", "--", "flash-monitor"],
+            ) && option_equals(tokens, "--board", "205")
+                && option_equals(tokens, "--port", &manifest.port)
+                && has_option_with_value(tokens, "--manifest")
+                && has_option_with_value(tokens, "--evidence-dir")
+        }
+        "power-telemetry" | "voltage-control" => {
+            starts_with_tokens(tokens, &["scripts/phase14-power-voltage.sh"])
+                && option_equals(tokens, "--surface", &manifest.surface)
+                && has_option_with_value(tokens, "--manifest")
+                && has_option_with_value(tokens, "--out-dir")
+        }
+        "thermal-fan" => {
+            starts_with_tokens(tokens, &["scripts/phase14-thermal-fan.sh"])
+                && option_equals(tokens, "--surface", "thermal-fan")
+                && has_option_with_value(tokens, "--manifest")
+                && has_option_with_value(tokens, "--out-dir")
+        }
+        "self-test-watchdog-load" => {
+            starts_with_tokens(tokens, &["scripts/phase14-self-test-watchdog-load.sh"])
+                && has_option_with_value(tokens, "--manifest")
+                && has_option_with_value(tokens, "--out-dir")
+        }
+        "display-input" => {
+            starts_with_tokens(tokens, &["scripts/phase14-display-input.sh"])
+                && has_option_with_value(tokens, "--manifest")
+                && has_option_with_value(tokens, "--out-dir")
+        }
+        "failure-paths" => {
+            starts_with_tokens(tokens, &["scripts/phase20-failure-paths.sh"])
+                && has_option_with_value(tokens, "--manifest")
+                && has_option_with_value(tokens, "--out-dir")
+                && !tokens.contains(&"--stimulus")
+        }
+        "live-api-websocket-telemetry" => {
+            starts_with_tokens(tokens, &["scripts/phase14-live-telemetry.sh"])
+                && has_option_with_value(tokens, "--manifest")
+                && has_option_with_value(tokens, "--out-dir")
+        }
+        "parity-redaction" => starts_with_tokens(tokens, &["rg"]),
+        _ => false,
+    }
+}
+
+fn starts_with_tokens(tokens: &[&str], expected_prefix: &[&str]) -> bool {
+    tokens.starts_with(expected_prefix)
+}
+
+fn option_equals(tokens: &[&str], option: &str, expected_value: &str) -> bool {
+    tokens
+        .windows(2)
+        .any(|window| window[0] == option && window[1] == expected_value)
+}
+
+fn has_option_with_value(tokens: &[&str], option: &str) -> bool {
+    tokens
+        .windows(2)
+        .any(|window| window[0] == option && !window[1].starts_with("--"))
+}
+
+fn has_option(command: &str, option: &str) -> bool {
+    command.split_whitespace().any(|token| token == option)
+}
+
+fn require_string(errors: &mut Vec<String>, inputs: &Value, field: &str, claim: &str) {
+    let maybe_value = inputs.get(field).and_then(Value::as_str).map(str::trim);
+    match maybe_value {
+        Some(value) if !value.is_empty() => {}
+        _ => errors.push(format!("{claim} requires allowed_inputs.{field}")),
+    }
+}
+
+fn require_string_value(
+    errors: &mut Vec<String>,
+    inputs: &Value,
+    field: &str,
+    expected_value: &str,
+    claim: &str,
+) {
+    let maybe_value = inputs.get(field).and_then(Value::as_str).map(str::trim);
+    if maybe_value == Some(expected_value) {
+        return;
+    }
+
+    errors.push(format!(
+        "{claim} requires allowed_inputs.{field} to equal {expected_value}"
+    ));
+}
+
+fn require_positive_integer(errors: &mut Vec<String>, inputs: &Value, field: &str, claim: &str) {
+    let maybe_value = inputs.get(field).and_then(Value::as_i64);
+    let Some(value) = maybe_value else {
+        errors.push(format!(
+            "{claim} requires allowed_inputs.{field} to be positive"
+        ));
+        return;
+    };
+
+    if value <= 0 {
+        errors.push(format!(
+            "{claim} requires allowed_inputs.{field} to be positive"
+        ));
     }
 }
 
@@ -462,11 +768,14 @@ mod tests {
             json["claim_tier"] = serde_json::json!(claim_tier);
             json["evidence_class"] = serde_json::json!(evidence_class);
             json["allowed_command"] =
-                serde_json::json!("scripts/phase20-failure-paths.sh --manifest allow.json");
+                serde_json::json!("scripts/phase20-failure-paths.sh --manifest allow.json --out-dir evidence/failure-paths");
             json["allowed_inputs"] = serde_json::json!({
                 "stimulus": "fan-rpm-unavailable",
                 "expected_fault": "fan_fault",
-                "restore_path": "just flash board=205 port=/dev/cu.usbmodem1101"
+                "abort_condition": "missing_safe_state_marker",
+                "restore_path": "just flash board=205 port=/dev/cu.usbmodem1101",
+                "projection_status": "api-and-websocket-observed",
+                "final_safe_state_marker": "safe_state: mining=disabled"
             });
             json["evidence_dir"] = serde_json::json!(
                 "docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths"
@@ -498,6 +807,54 @@ mod tests {
     }
 
     #[test]
+    fn safety_allow_rejects_failure_paths_unrelated_claim_tier() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("failure-paths");
+            json["claim_tier"] = serde_json::json!("read-only-observation");
+            json["evidence_class"] = serde_json::json!("hardware-smoke");
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase20-failure-paths.sh --manifest allow.json --out-dir evidence/failure-paths"
+            );
+            json["abort_conditions"] = serde_json::json!([]);
+            json["recovery_steps"] = serde_json::json!([]);
+            json["post_action_safe_state_markers"] = serde_json::json!([]);
+        });
+
+        // Act
+        let report = validate_safety_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert_error_contains(&report, "does not allow claim_tier `read-only-observation`");
+    }
+
+    #[test]
+    fn safety_allow_rejects_failure_paths_fault_stimulus_missing_required_inputs() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("failure-paths");
+            json["claim_tier"] = serde_json::json!("fault-stimulus");
+            json["evidence_class"] = serde_json::json!("hardware-regression");
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase20-failure-paths.sh --manifest allow.json --out-dir evidence/failure-paths"
+            );
+            json["allowed_inputs"] = serde_json::json!({
+                "restore_path": "just flash board=205 port=/dev/cu.usbmodem1101"
+            });
+        });
+
+        // Act
+        let report = validate_safety_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert_error_contains(&report, "allowed_inputs.stimulus");
+        assert_error_contains(&report, "allowed_inputs.expected_fault");
+        assert_error_contains(&report, "allowed_inputs.abort_condition");
+        assert_error_contains(&report, "allowed_inputs.projection_status");
+        assert_error_contains(&report, "allowed_inputs.final_safe_state_marker");
+    }
+
+    #[test]
     fn safety_allow_allows_failure_paths_unsupported_pending_deferred_without_recovery() {
         // Arrange
         let (manifest, package_manifest) = manifest_with_change(|json| {
@@ -505,7 +862,7 @@ mod tests {
             json["claim_tier"] = serde_json::json!("unsupported-pending");
             json["evidence_class"] = serde_json::json!("deferred");
             json["allowed_command"] =
-                serde_json::json!("scripts/phase20-failure-paths.sh --manifest allow.json");
+                serde_json::json!("scripts/phase20-failure-paths.sh --manifest allow.json --out-dir evidence/failure-paths");
             json["allowed_inputs"] = serde_json::json!({
                 "blocked_by": "no compile-gated fault stimulus route"
             });
@@ -523,6 +880,38 @@ mod tests {
 
         // Assert
         assert!(report.passed(), "{report:#?}");
+    }
+
+    #[test]
+    fn safety_allow_rejects_live_api_projection_without_explicit_target() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("live-api-websocket-telemetry");
+            json["claim_tier"] = serde_json::json!("api-websocket-projection");
+            json["evidence_class"] = serde_json::json!("hardware-smoke");
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase14-live-telemetry.sh --manifest allow.json --out-dir evidence/live-api"
+            );
+            json["allowed_inputs"] = serde_json::json!({
+                "device_url_source": "missing",
+                "network_scan": "disabled",
+                "route_path": "/api/system/info",
+                "duration_ms": 10000,
+                "max_frames": 5
+            });
+            json["abort_conditions"] = serde_json::json!([]);
+            json["recovery_steps"] = serde_json::json!([]);
+            json["post_action_safe_state_markers"] = serde_json::json!([]);
+        });
+
+        // Act
+        let report = validate_safety_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert_error_contains(
+            &report,
+            "explicit DEVICE_URL or trusted raw origin-only target lock",
+        );
     }
 
     #[test]
@@ -558,22 +947,66 @@ mod tests {
     }
 
     #[test]
-    fn safety_allow_allows_non_active_claim_tiers_with_matching_evidence_class() {
+    fn safety_allow_allows_surface_claim_tiers_with_matching_evidence_class() {
         // Arrange
         let cases = [
-            ("safe-baseline", "hardware-smoke"),
-            ("read-only-observation", "hardware-smoke"),
-            ("api-websocket-projection", "hardware-smoke"),
-            ("safe-unavailable", "hardware-smoke"),
-            ("unsupported-pending", "deferred"),
-            ("parity-redaction", "workflow"),
+            (
+                "safe-baseline",
+                "safe-baseline",
+                "hardware-smoke",
+                "bazel run //tools/flash:flash -- flash-monitor --board 205 --port /dev/cu.usbmodem1101 --manifest package.json --evidence-dir evidence/safe-baseline",
+                serde_json::json!({ "safe_state_marker": "safe_state: mining=disabled" }),
+            ),
+            (
+                "safe-baseline",
+                "read-only-observation",
+                "hardware-smoke",
+                "bazel run //tools/flash:flash -- flash-monitor --board 205 --port /dev/cu.usbmodem1101 --manifest package.json --evidence-dir evidence/safe-baseline",
+                serde_json::json!({ "safe_state_marker": "safe_state: mining=disabled" }),
+            ),
+            (
+                "live-api-websocket-telemetry",
+                "api-websocket-projection",
+                "hardware-smoke",
+                "scripts/phase14-live-telemetry.sh --manifest allow.json --out-dir evidence/live-api --device-url http://[redacted]",
+                serde_json::json!({
+                    "device_url_source": "explicit DEVICE_URL",
+                    "network_scan": "disabled",
+                    "route_path": "/api/system/info",
+                    "duration_ms": 10000,
+                    "max_frames": 5
+                }),
+            ),
+            (
+                "failure-paths",
+                "safe-unavailable",
+                "hardware-smoke",
+                "scripts/phase20-failure-paths.sh --manifest allow.json --out-dir evidence/failure-paths",
+                serde_json::json!({ "reason": "fault route unavailable" }),
+            ),
+            (
+                "failure-paths",
+                "unsupported-pending",
+                "deferred",
+                "scripts/phase20-failure-paths.sh --manifest allow.json --out-dir evidence/failure-paths",
+                serde_json::json!({ "reason": "no production-safe bounded fault-stimulus route" }),
+            ),
+            (
+                "parity-redaction",
+                "parity-redaction",
+                "workflow",
+                "rg -n -i secret docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence",
+                serde_json::json!({ "scan": "secret patterns" }),
+            ),
         ];
 
-        for (claim_tier, evidence_class) in cases {
+        for (surface, claim_tier, evidence_class, allowed_command, allowed_inputs) in cases {
             let (manifest, package_manifest) = manifest_with_change(|json| {
-                json["surface"] = serde_json::json!("safe-baseline");
+                json["surface"] = serde_json::json!(surface);
                 json["claim_tier"] = serde_json::json!(claim_tier);
                 json["evidence_class"] = serde_json::json!(evidence_class);
+                json["allowed_command"] = serde_json::json!(allowed_command);
+                json["allowed_inputs"] = allowed_inputs;
                 json["abort_conditions"] = serde_json::json!([]);
                 json["recovery_steps"] = serde_json::json!([]);
                 json["post_action_safe_state_markers"] = serde_json::json!([]);
@@ -583,7 +1016,10 @@ mod tests {
             let report = validate_safety_allow_manifest(&manifest, &package_manifest);
 
             // Assert
-            assert!(report.passed(), "{claim_tier} should pass: {report:#?}");
+            assert!(
+                report.passed(),
+                "{surface}/{claim_tier} should pass: {report:#?}"
+            );
         }
     }
 
@@ -692,7 +1128,7 @@ mod tests {
             "surface": "voltage-control",
             "claim_tier": "bounded-actuation",
             "evidence_class": "hardware-regression",
-            "allowed_command": "scripts/phase14-voltage-control.sh --manifest allow.json",
+            "allowed_command": "scripts/phase14-power-voltage.sh --manifest allow.json --surface voltage-control --out-dir evidence/voltage-control",
             "allowed_inputs": {
                 "setpoint_mv": [1200]
             },
