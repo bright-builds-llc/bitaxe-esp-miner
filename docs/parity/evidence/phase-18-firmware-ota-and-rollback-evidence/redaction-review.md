@@ -1,70 +1,97 @@
 # Phase 18 Redaction Review
 
-redaction_status: pending
+redaction_status: passed
 
 ## Review Scope
 
-This review starts pending because Plan 18-01 creates the contract before live
-firmware OTA artifacts exist. Do not promote Phase 18 valid OTA, invalid
-rejection, boot validation, rollback, or release-doc claims until this review
-is updated after artifact capture.
+This review covers every committed Phase 18 evidence artifact present after
+package, detector, flash-monitor, target-lock, invalid-firmware, valid-upload,
+and post-OTA monitor capture. It also covers the final Phase 18 summary ledger
+created by Plan 18-04. Release documentation, checklist, requirements, and
+verification artifacts are updated only after this gate passes and are scanned
+again before commit.
 
 ## Required Checklist
 
-- [ ] `DEVICE_URL` values are redacted or absent from committed artifacts.
-- [ ] Private endpoints are redacted or absent from committed artifacts.
-- [ ] IP addresses are redacted or absent from committed artifacts.
-- [ ] MAC addresses are redacted or absent from committed artifacts.
-- [ ] SSIDs are redacted or absent from committed artifacts.
-- [ ] Wi-Fi credentials are redacted or absent from committed artifacts.
-- [ ] Pool credentials are redacted or absent from committed artifacts.
-- [ ] Worker secrets are redacted or absent from committed artifacts.
-- [ ] API tokens are redacted or absent from committed artifacts.
-- [ ] NVS secret values are redacted or absent from committed artifacts.
-- [ ] Request and response bodies are redacted before citation.
-- [ ] Serial logs are redacted before citation.
-- [ ] Recovery logs are redacted before citation.
-- [ ] Local developer-raw evidence under `target/` is not committed.
+- [x] `DEVICE_URL` values are redacted or absent from committed artifacts.
+- [x] Private endpoints are redacted or absent from committed artifacts.
+- [x] IP addresses are redacted or absent from committed artifacts.
+- [x] MAC addresses are redacted or absent from committed artifacts.
+- [x] SSIDs are redacted or absent from committed artifacts.
+- [x] Wi-Fi credentials are redacted or absent from committed artifacts.
+- [x] Pool credentials are redacted or absent from committed artifacts.
+- [x] Worker credentials are redacted or absent from committed artifacts.
+- [x] API tokens are redacted or absent from committed artifacts.
+- [x] NVS secret values are redacted or absent from committed artifacts.
+- [x] Request and response bodies are redacted before citation.
+- [x] Serial logs are redacted before citation.
+- [x] Recovery logs are absent because no recovery command ran.
+- [x] Local developer-raw evidence under `target/` is not committed.
 
 ## Artifact Matrix
 
 | Artifact class | Present? | Reviewed? | Notes |
 | --- | --- | --- | --- |
-| `package-release-gate.md` | absent - not cited | pending | Future package and release-gate ledger. |
-| `package-release-gate/bitaxe-ultra205-package.json` | absent - not cited | pending | Future copied manifest for board `205`. |
-| `serial-boot.md` | absent - not cited | pending | Future detector and flash-monitor ledger. |
-| `serial-boot/detect-ultra205.log` | absent - not cited | pending | Future detector output. |
-| `serial-boot/flash-command-evidence.json` | absent - not cited | pending | Future commit-redacted flash evidence JSON. |
-| `serial-boot/flash-monitor.log` | absent - not cited | pending | Future redacted serial boot evidence. |
-| `target-lock.json` | absent - not cited | pending | Future sanitized target lock with `network_scan: disabled`. |
-| `firmware-ota.md` | absent - not cited | pending | Future firmware OTA ledger for valid OTA, invalid rejection, boot validation, rollback, and non-claim boundaries. |
-| `firmware-ota/firmware-ota-smoke.log` | absent - not cited | pending | Future Phase 18 wrapper and Phase 13 helper log. |
-| `firmware-ota/invalid-firmware.bin` | absent - not cited | pending | Future fixed invalid fixture. |
-| `firmware-ota/invalid-firmware-ota.headers.txt` | absent - not cited | pending | Future invalid OTA selected headers. |
-| `firmware-ota/invalid-firmware-ota.body.txt` | absent - not cited | pending | Future invalid OTA redacted response body. |
-| `firmware-ota/invalid-firmware-ota.curl-error.txt` | absent - not cited | pending | Future invalid OTA redacted curl error. |
-| `firmware-ota/valid-firmware-ota.headers.txt` | absent - not cited | pending | Future valid OTA selected headers. |
-| `firmware-ota/valid-firmware-ota.body.txt` | absent - not cited | pending | Future valid OTA redacted response body. |
-| `firmware-ota/valid-firmware-ota.curl-error.txt` | absent - not cited | pending | Future valid OTA redacted curl error. |
-| `firmware-ota/post-ota-monitor.log` | absent - not cited | pending | Future post-OTA serial log requiring identity and `ota_boot_validation=` markers. |
-| `summary.md` | absent - not cited | pending | Future final Phase 18 evidence summary. |
-| `redaction-review.md` | present | pending | This gate remains pending in Plan 18-01. |
+| `package-release-gate.md` | present | passed | Contains package/release-gate labels, checksums, source/reference commits, and command examples only. |
+| `package-release-gate/bitaxe-ultra205-package.json` | present | passed | Contains manifest metadata and artifact checksums. Version strings such as `1.88.0.0` are not IP addresses. |
+| `package-release-gate/package-command.log` | present | passed | Contains package command transcript without target, credential, or network values. |
+| `package-release-gate/release-gate.log` | present | passed | Contains release-gate transcript without target, credential, or network values. |
+| `serial-boot.md` | present | passed | Contains allowed USB port identity, command examples, redacted Wi-Fi status, and explicit non-claims. |
+| `serial-boot/detect-ultra205.log` | present | passed | Contains detector and board-info output; MAC is redacted. |
+| `serial-boot/flash-command-evidence.json` | present | passed | Contains allowed USB port identity, local artifact paths, commit-redacted mode, and NVS seed labels without NVS values. |
+| `serial-boot/flash-monitor.log` | present | passed | Contains ESP-IDF/Wi-Fi subsystem labels, redacted SSID, redacted MAC, redacted IP, and redacted device URL. |
+| `target-lock.json` | present | passed | Contains sanitized target provenance with `network_scan: disabled`, `device_url_redacted`, and no target host. |
+| `firmware-ota.md` | present | passed | Contains claim ledger, HTTP status fields, redacted target provenance, and explicit non-claims. |
+| `firmware-ota/firmware-ota-smoke.log` | present | passed | Contains helper transcript with `http://[redacted]`, route names, allowed USB port identity, and claim boundaries. |
+| `firmware-ota/invalid-firmware.bin` | present | passed | Fixed invalid binary fixture; no text secrets or network values. |
+| `firmware-ota/invalid-firmware-ota.headers.txt` | present | passed | Selected response headers only. |
+| `firmware-ota/invalid-firmware-ota.body.txt` | present | passed | Body contains `Write Error` only. |
+| `firmware-ota/invalid-firmware-ota.curl-error.txt` | present | passed | Empty curl-error artifact. |
+| `firmware-ota/valid-firmware-ota.headers.txt` | present | passed | Selected response headers only. |
+| `firmware-ota/valid-firmware-ota.body.txt` | present | passed | Body contains `Firmware update complete, rebooting now!` only. |
+| `firmware-ota/valid-firmware-ota.curl-error.txt` | present | passed | Empty curl-error artifact. |
+| `firmware-ota/post-ota-monitor.log` | present | passed | Contains bounded monitor command and timeout status; no captured target or credential values. |
+| `summary.md` | present | passed | Final Plan 18-04 ledger contains only artifact paths, redacted target provenance, command examples, statuses, and non-claims. |
+| `redaction-review.md` | present | passed | This review records the scan result and allowed match classes. |
 
 ## Search Command
 
-Run this scan before changing `redaction_status` to `passed`:
+The required scan was run before changing the status to `passed`:
 
 ```bash
-rg -n -i "ssid|wifi|password|pool|token|device_url|nvs|stratum|https?://|wss?://|([0-9]{1,3}\.){3}[0-9]{1,3}|([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}|secret" docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence
+phase18_redaction_pattern="ssid|wifi|password|pool|token|device_url|nvs|stratum|https?://|wss?://|([0-9]{1,3}\.){3}[0-9]{1,3}|([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}"
+rg -n -i "${phase18_redaction_pattern}|secret" docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence
 ```
+
+## Reviewed Match Classes
+
+Allowed matches found by the scan:
+
+- Policy labels and redaction checklist terms: `DEVICE_URL`, `Wi-Fi`, `Pool credentials`, `API tokens`, `NVS secret values`, and related review text.
+- Redacted placeholders: `http://[redacted]`, `[redacted-ip]`, `[redacted-url]`, `[redacted-ssid]`, and `[redacted-mac]`.
+- USB identity and command examples: `/dev/cu.usbmodem1101`, `espflash`, `just flash-monitor`, `just detect-ultra205`, and local build artifact paths.
+- ESP-IDF and Wi-Fi subsystem labels: `nvs`, `wifi`, `wifi_init`, `esp_idf_svc::nvs`, `config NVS flash`, and PSRAM heap text.
+- Route names and evidence labels: `/api/system/OTA`, invalid image rejection, valid OTA, rollback non-claims, and `network_scan: disabled`.
+- Tool version strings that resemble dotted numeric patterns, such as Rust/Cargo `1.88.0.0`.
+
+No committed Phase 18 evidence contains a target host, private endpoint, IP
+address, MAC address, SSID value, Wi-Fi credential value, pool credential, worker
+credential, API token value, NVS secret value, terminal secret, or raw local
+developer target artifact.
 
 ## Decision
 
-Reviewer: pending future Phase 18 evidence executor.
+Reviewer: GSD Phase 18 Plan 04 executor.
 
-Secret scan result: pending.
+Secret scan result: passed - all matches were inspected and are limited to
+allowed labels, placeholders, route names, USB port identity, ESP-IDF NVS labels,
+command examples without target values, version strings, and explicit non-claim
+text.
 
-Conclusion: Phase 18 redaction is not passed yet. Current Plan 18-01 artifacts
-may cite only the evidence contract and pending review. Live target, OTA,
-serial, recovery, release-doc, checklist, and requirements-promotion claims
-remain pending or absent - not cited.
+Conclusion: Phase 18 redaction passed for the committed evidence set. Phase 18
+may be cited only with the claim boundaries recorded in `summary.md` and
+`firmware-ota.md`: invalid firmware rejection passed, valid upload response was
+observed, and valid OTA, post-OTA boot validation, selected partition, rollback,
+destructive rollback, OTAWWW, large erase, interrupted update, mining, and active
+safety behavior remain below verified or non-claims unless future artifacts prove
+them.
