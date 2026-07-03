@@ -253,8 +253,8 @@ API input` as insufficient proof of whole-`www` update parity.
 | SAFE-02 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
 | SAFE-03 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
 | SAFE-04 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
-| SAFE-05 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
-| SAFE-06 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
+| SAFE-05 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
+| SAFE-06 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
 | SAFE-07 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
 | SAFE-08 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
 | SAFE-09 | Phase 6 + Phase 11 + Phase 14 + Phase 15 + Phase 20 + Phase 21 | Complete |

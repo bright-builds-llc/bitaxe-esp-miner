@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 20-03-PLAN.md
-last_updated: "2026-07-03T22:39:31.787Z"
+stopped_at: Completed 20-04-PLAN.md
+last_updated: "2026-07-03T23:00:42.152Z"
 last_activity: 2026-07-03
 progress:
   total_phases: 21
   completed_phases: 19
   total_plans: 108
-  completed_plans: 105
-  percent: 97
+  completed_plans: 106
+  percent: 98
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 20 (active-safety-hardware-telemetry-evidence) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-03
 
@@ -152,6 +152,7 @@ Progress: [██████████] 100%
 | Phase 20-active-safety-hardware-telemetry-evidence P01 | 6 min | 2 tasks | 5 files |
 | Phase 20-active-safety-hardware-telemetry-evidence P02 | 17 min | 2 tasks | 9 files |
 | Phase 20-active-safety-hardware-telemetry-evidence P03 | 8 min | 2 tasks | 10 files |
+| Phase 20-active-safety-hardware-telemetry-evidence P04 | 16 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -397,6 +398,9 @@ Recent decisions affecting current work:
 - [Phase 20-active-safety-hardware-telemetry-evidence]: Power/current/voltage telemetry and voltage-control evidence stay split between read-only hardware-smoke attempts and unsupported/deferred active voltage-control boundaries.
 - [Phase 20-active-safety-hardware-telemetry-evidence]: Thermal/fan evidence stays split between read-only thermal/RPM observations, unit-only PID coverage, and unsupported/deferred fan-duty/fault behavior.
 - [Phase 20-active-safety-hardware-telemetry-evidence]: Phase 20 Plan 03 reuses Phase 14 wrappers and Plan 20-02 redacted safe-baseline evidence without adding active voltage, fan duty, overheat, or fault-stimulus routes.
+- [Phase 20-active-safety-hardware-telemetry-evidence]: Plan 20-04 keeps self-test hardware submodes, bounded load, watchdog recovery, runtime display/input, and failure-path behavior independently below verified unless future bounded hardware-regression evidence promotes a row.
+- [Phase 20-active-safety-hardware-telemetry-evidence]: The Phase 20 failure-path wrapper is blocked-only and does not introduce live fault stimulus, raw hardware commands, flashing, stress, curl, or I2C paths.
+- [Phase 20-active-safety-hardware-telemetry-evidence]: Startup SSD1306 and watchdog supervisor markers are breadcrumbs only, not runtime display/input or load/watchdog recovery proof.
 
 ### Pending Todos
 
@@ -422,6 +426,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T22:39:31.784Z
-Stopped at: Completed 20-03-PLAN.md
+Last session: 2026-07-03T23:00:42.148Z
+Stopped at: Completed 20-04-PLAN.md
 Resume file: None
