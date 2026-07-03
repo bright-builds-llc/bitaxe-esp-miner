@@ -1,0 +1,10 @@
+phase13_monitor_capture
+port: /dev/cu.usbmodem1101
+seconds: 45
+monitor_command: espflash monitor --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive --no-reset
+serial_write: disabled
+raw_flash_write: disabled
+capture_output_start
+capture_output_end
+monitor_exit_status: 143
+capture_status=timed_out_after_capture

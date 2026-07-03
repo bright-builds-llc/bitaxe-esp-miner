@@ -1,0 +1,64 @@
+phase18_firmware_ota_evidence
+manifest: docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/package-release-gate/bitaxe-ultra205-package.json
+ota_image: bazel-bin/firmware/bitaxe/esp-miner.bin
+port: /dev/cu.usbmodem1101
+out_dir: docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence
+target_lock_out: docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/target-lock.json
+monitor_seconds: 45
+network_scan: disabled
+phase13_helper: /Users/peterryszkiewicz/Repos/bitaxe-esp-miner/scripts/phase13-firmware-ota-smoke.sh
+DEVICE_URL status: provided
+DEVICE_URL source: usb_flash_monitor_log
+DEVICE_URL sanitized: http://[redacted]
+target_status: passed
+
+phase13_firmware_ota_smoke
+manifest: docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/package-release-gate/bitaxe-ultra205-package.json
+ota_image: bazel-bin/firmware/bitaxe/esp-miner.bin
+port: /dev/cu.usbmodem1101
+monitor_seconds: 45
+manifest_source_commit: 22d02f8e97928f1ec29360552179380b92582e6a
+manifest_reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
+DEVICE_URL status: provided
+DEVICE_URL sanitized: http://[redacted]
+network_scan: disabled - using explicit DEVICE_URL only
+firmware_ota_manifest_artifact: esp-miner.bin
+firmware_ota_manifest_sha256: c7f4a62872d6662562f89ff8e93e881317d65b8f58003577acfd6a0a50eb6463
+firmware_ota_artifact_sha256: c7f4a62872d6662562f89ff8e93e881317d65b8f58003577acfd6a0a50eb6463
+invalid image artifact: docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota/invalid-firmware.bin
+invalid image checksum: f08b10f0b8314e397b07526f18a5f81d79da9c20518bf5fd1b720c256d1a9294
+invalid image rejection route: POST /api/system/OTA
+invalid image rejection artifact: docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota/invalid-firmware.bin
+invalid image rejection status: 500
+invalid image rejection curl_status: 0
+invalid image rejection selected_headers:
+  Content-Type: text/plain
+invalid image rejection body: Write Error
+invalid image rejection conclusion: captured - not rollback proof
+invalid image rejection is not rollback proof
+
+valid OTA route: POST /api/system/OTA
+valid OTA artifact: bazel-bin/firmware/bitaxe/esp-miner.bin
+valid OTA status: 200
+valid OTA curl_status: 0
+valid OTA selected_headers:
+  Content-Type: text/plain
+valid OTA body: Firmware update complete, rebooting now!
+valid OTA conclusion: accepted - reboot monitor required
+selected_next_app_partition: unavailable - public route does not expose partition; boot-validation marker required
+post_ota_monitor_command: scripts/phase13-monitor-capture.sh --port /dev/cu.usbmodem1101 --out docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota/post-ota-monitor.log --seconds 45 --no-reset
+/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/scripts/phase13-monitor-capture.sh: line 119: 26063 Terminated: 15          "${monitor_command[@]}" >> "$out" 2>&1
+post_ota_marker: firmware_commit= missing
+post_ota_marker: reference_commit= missing
+post_ota_marker: ota_boot_validation= missing
+firmware_ota_status: blocked - post-OTA monitor missing required identity or boot-validation markers
+conclusion: blocked - post-OTA monitor missing required identity or boot-validation markers
+
+invalid_rejection_status: captured - invalid image rejection is not rollback proof
+valid_ota_status: blocked - Phase 13 helper did not pass
+boot_validation_status: blocked - required firmware_commit=, reference_commit=, or ota_boot_validation= marker missing
+rollback_status: not claimed - invalid image rejection is not rollback proof
+non_claims: destructive rollback, forced rollback, interrupted update, large erase, and OTAWWW update behavior are not claimed
+phase18_firmware_ota_status: blocked
+conclusion: blocked - Phase 13 helper did not produce passed firmware OTA evidence
+phase13_helper_exit_status: 1
