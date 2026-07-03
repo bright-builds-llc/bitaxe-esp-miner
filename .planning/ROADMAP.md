@@ -496,8 +496,15 @@ Plans:
 1. Live API and WebSocket telemetry evidence is correlated with hardware observations and shows safe state before and after active checks.
 1. `just parity` continues to reject safety-critical verified rows without valid hardware-smoke or hardware-regression evidence.
 
-**Plans**: 0 plans
-Plans: Pending.
+**Plans**: 6 plans
+Plans:
+
+- [ ] 20-01-PLAN.md - Add Phase 20 safety-allow `failure-paths` coverage and evidence/redaction scaffold.
+- [ ] 20-02-PLAN.md - Capture current package identity and detector-gated safe-baseline evidence or blockers.
+- [ ] 20-03-PLAN.md - Record power/voltage and thermal/fan exact-claim evidence boundaries.
+- [ ] 20-04-PLAN.md - Record self-test/watchdog/load, runtime display/input, and failure-path evidence boundaries.
+- [ ] 20-05-PLAN.md - Capture or block explicit-target live API/WebSocket safety telemetry correlation.
+- [ ] 20-06-PLAN.md - Complete redaction, checklist traceability, validation, and final verification.
 **Verification expectations**: `just detect-ultra205`, active safety allow manifest, hardware-regression evidence, live telemetry capture, pure safety tests, redaction review, `just parity`, and `just verify-reference`.
 **Research flags**: Requires careful hardware recovery planning. Do not run ad hoc voltage, fan, thermal, self-test, load, or stress commands outside the approved phase plan.
 
