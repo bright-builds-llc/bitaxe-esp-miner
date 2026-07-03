@@ -1,0 +1,43 @@
+phase20_failure_paths
+surface: failure-paths
+manifest: docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths/allow-failure-paths.json
+out_dir: docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths
+serial_log: unavailable
+requested_stimulus: none
+safety_allow_command: bazel run //tools/parity:report -- safety-allow --manifest docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths/allow-failure-paths.json --surface failure-paths --allowed-command scripts/phase20-failure-paths.sh --manifest docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths/allow-failure-paths.json --out-dir docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths
+INFO: Checking for file changes...
+Computing main repo mapping:
+Loading:
+Loading: 0 packages loaded
+Analyzing: target //tools/parity:report (1 packages loaded, 0 targets configured)
+Analyzing: target //tools/parity:report (1 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //tools/parity:report (125 packages loaded, 4363 targets configured).
+INFO: Found 1 target...
+Target //tools/parity:report up-to-date:
+  bazel-bin/tools/parity/report
+INFO: Elapsed time: 1.273s, Critical Path: 0.01s
+INFO: 1 process: 450 action cache hit, 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/tools/parity/report <args omitted>
+safety_allow_status: passed
+surface: failure-paths
+claim_tier: unsupported-pending
+evidence_class: deferred
+checklist_rows: PWR-001,PWR-002,THR-001,THR-002,SELF-001,SAFE-04
+failure_paths_status: blocked - no production-safe fault stimulus route
+fault_stimulus_status: not_run
+expected_fault_status: not_observed
+api_projection_status: not_run
+websocket_projection_status: not_run
+final_safe_state_status: required-before-promotion
+required_stimulus: missing - future plan must name bounded stimulus
+required_expected_fault: missing - future plan must name expected fault
+required_abort_condition: missing - future plan must name abort condition
+required_recovery_path: missing - future plan must name restore path
+required_api_projection: not_run - future plan must capture user-visible API projection
+required_websocket_projection: not_run - future plan must capture user-visible WebSocket projection
+required_final_safe_state_marker: missing - future plan must observe final safe-state marker
+active_rows_status: below_verified
+checklist_rows: PWR-001,PWR-002,THR-001,THR-002,SELF-001,SAFE-04
+non_claims: overheat stimulus, fan fault stimulus, power fault stimulus, thermal fault stimulus, ASIC fault stimulus
