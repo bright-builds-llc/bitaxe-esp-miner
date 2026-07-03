@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: complete
 phase: 17-live-http-api-and-static-evidence
 source:
   - 17-01-SUMMARY.md
@@ -8,7 +8,7 @@ source:
   - 17-04-SUMMARY.md
   - 17-05-SUMMARY.md
 started: 2026-07-02T21:11:41Z
-updated: 2026-07-03T02:15:15Z
+updated: 2026-07-03T05:50:35Z
 ---
 
 ## Current Test
@@ -25,16 +25,12 @@ expected: `package-release-gate.md`, `serial-boot.md`, and `summary.md` show pac
 result: pass
 
 ### 3. Live HTTP Static API Evidence
-expected: `summary.md`, `http-static-api.md`, and the `http-static-api/` artifacts show an explicit reachable `DEVICE_URL`, a sanitized `target-lock.json`, and live HTTP status/response summaries for `/`, `/assets/app.css.gz`, representative missing static behavior, `/recovery`, `/api/system/info`, `/api/ws`, `/api/ws/live`, and OTA route coexistence from the just-flashed device.
-result: issue
-reported: "Agent-performed artifact check found no target-lock.json, no per-route HTTP header/body/curl-error artifacts, and ledgers explicitly recording http_static_api_status: blocked because DEVICE_URL was missing."
-severity: major
+expected: The final Phase 17 live run shows an explicit reachable target from trusted USB flash-monitor evidence, a sanitized `target-lock.json`, and live HTTP status/response summaries for `/`, `/assets/app.css.gz`, representative missing static behavior, `/recovery`, `/api/system/info`, `/api/ws`, `/api/ws/live`, and OTA route coexistence from the just-flashed device.
+result: pass
 
 ### 4. Live WebSocket Evidence
-expected: `summary.md`, `websocket.md`, and the `websocket/` artifacts show bounded `/api/ws/live` and `/api/ws` captures from the explicit target with redacted frame, open, or timeout evidence and no raw endpoint, credential, or secret leakage.
-result: issue
-reported: "Agent-performed artifact check found only websocket-capture.log, no websocket/api-ws-live.txt or websocket/api-ws.txt frame artifacts, and ledgers explicitly recording websocket_status: blocked because DEVICE_URL was missing."
-severity: major
+expected: The final Phase 17 live run shows bounded `/api/ws/live` and `/api/ws` captures from the explicit target with redacted frame evidence and no raw endpoint, credential, or secret leakage.
+result: pass
 
 ### 5. Redaction And Traceability
 expected: `redaction-review.md`, `docs/release/ultra-205.md`, `docs/parity/checklist.md`, and `.planning/REQUIREMENTS.md` cite exact Phase 17 artifacts, mark redaction passed only for reviewed or absent-not-cited artifacts, and keep live HTTP/WebSocket/OTA rows below verified when evidence is absent.
@@ -43,47 +39,19 @@ result: pass
 ## Summary
 
 total: 5
-passed: 3
-issues: 2
+passed: 5
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-- truth: "summary.md, http-static-api.md, and the http-static-api/ artifacts show an explicit reachable DEVICE_URL, a sanitized target-lock.json, and live HTTP status/response summaries for /, /assets/app.css.gz, representative missing static behavior, /recovery, /api/system/info, /api/ws, /api/ws/live, and OTA route coexistence from the just-flashed device."
-  status: failed
-  reason: "Agent-performed artifact check found no target-lock.json, no per-route HTTP header/body/curl-error artifacts, and ledgers explicitly recording http_static_api_status: blocked because DEVICE_URL was missing."
-  severity: major
-  test: 3
-  root_cause: "Phase 17 ran the intended no-scan blocked HTTP/static/API path because no explicit origin-only DEVICE_URL was provided. The helper exited before curl probes, target-lock.json creation, and per-route artifact writes; Plan 17-03 accepted blocked evidence, but UAT requires live artifacts from a reachable just-flashed device."
-  artifacts:
-    - path: "scripts/phase17-live-http-api-smoke.sh"
-      issue: "Correctly blocks before live probes when DEVICE_URL is missing."
-    - path: ".planning/phases/17-live-http-api-and-static-evidence/17-03-PLAN.md"
-      issue: "Completion gate accepted blocked evidence for a live-evidence objective."
-    - path: "docs/parity/evidence/phase-17-live-http-api-and-static-evidence/http-static-api.md"
-      issue: "Records blocked status instead of live route artifacts."
-  missing:
-    - "Provide an explicit reachable origin-only DEVICE_URL for the just-flashed Ultra 205."
-    - "Generate sanitized target-lock.json from explicit target input."
-    - "Capture per-route HTTP headers, bodies, curl errors, statuses, and response summaries for the required Phase 17 routes."
-  debug_session: ".planning/debug/phase17-live-http-static-api-evidence.md"
-- truth: "summary.md, websocket.md, and the websocket/ artifacts show bounded /api/ws/live and /api/ws captures from the explicit target with redacted frame, open, or timeout evidence and no raw endpoint, credential, or secret leakage."
-  status: failed
-  reason: "Agent-performed artifact check found only websocket-capture.log, no websocket/api-ws-live.txt or websocket/api-ws.txt frame artifacts, and ledgers explicitly recording websocket_status: blocked because DEVICE_URL was missing."
-  severity: major
-  test: 4
-  root_cause: "Phase 17 ran only the conservative no-target WebSocket path because no explicit origin-only DEVICE_URL or explicit-input target-lock.json was available. The WebSocket helper was never run against /api/ws/live or /api/ws, so blocked ledgers are correct but do not satisfy UAT's bounded live frame/open/timeout evidence requirement."
-  artifacts:
-    - path: "docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket.md"
-      issue: "Records blocked WebSocket evidence instead of live capture evidence."
-    - path: "docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/"
-      issue: "Missing api-ws-live.txt and api-ws.txt frame artifacts."
-    - path: "scripts/phase17-websocket-capture.mjs"
-      issue: "Correctly requires explicit origin-only --device-url before live capture can run."
-  missing:
-    - "Provide an explicit reachable origin-only DEVICE_URL or target-lock generated from explicit input."
-    - "Run bounded captures for /api/ws/live and /api/ws."
-    - "Update WebSocket ledger and redaction review from api-ws-live.txt and api-ws.txt artifacts."
-  debug_session: ".planning/debug/phase17-live-websocket-evidence.md"
+[none]
+
+## Resolution Evidence
+
+- Test 3 resolved by final live HTTP/static/API run: `target/phase17-dev-raw-usb-http-static-ws-final/http-static-api/http-static-api.log` records `identity_status: passed`, `target_status: passed`, `Content-Encoding: gzip` for `/assets/app.css.gz`, and `http_static_api_status: passed`.
+- Test 3 target lock: `target/phase17-dev-raw-usb-http-static-ws-final/target-lock.json` was created from the trusted USB flash-monitor device URL source and stores only sanitized target provenance.
+- Test 4 resolved by bounded WebSocket captures: `target/phase17-dev-raw-usb-http-static-ws-final/websocket-live.txt` records `/api/ws/live` frame evidence and `websocket_frame_status=passed`; `target/phase17-dev-raw-usb-http-static-ws-final/websocket-api-ws.txt` records `/api/ws` raw-log frame evidence and `websocket_frame_status=passed`.
+- Trusted boot source: `target/phase17-dev-raw-usb-http-static-ws-final/serial-boot/flash-command-evidence.json` records `command_kind=flash-monitor`, `board=205`, and `trusted_output=true`.
