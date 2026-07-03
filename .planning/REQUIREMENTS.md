@@ -170,6 +170,23 @@ reboot, rollback, selected partition, boot validation, whole-`www` OTAWWW
 update behavior, production mining, pool behavior, active safety telemetry, and
 long soak behavior.
 
+**Phase 18 final evidence note (2026-07-03):** Phase 18 adds a final firmware
+OTA evidence ledger at
+`docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/summary.md`
+and final redaction status at
+`docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/redaction-review.md`
+with `redaction_status: passed`. `REL-02`, `REL-07`, `REL-08`, and `EVD-05`
+remain complete in the implementation/governance sense because Phase 18 records
+exact package, release-gate, detector, flash-monitor, sanitized target lock,
+invalid image rejection, valid upload response, blocked post-OTA monitor,
+redaction, and verification artifacts. Evidence-sensitive checklist rows remain
+below verified where the Phase 18 summary records that valid OTA,
+post-reboot identity, selected partition, boot validation, rollback,
+destructive rollback, failed-update recovery beyond invalid rejection, large
+erase, interrupted update, whole-`www` OTAWWW update behavior, production
+mining, pool behavior, active safety telemetry, and long soak behavior are
+blocked, below verified, or not claimed.
+
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | FND-01 | Phase 1 | Complete |

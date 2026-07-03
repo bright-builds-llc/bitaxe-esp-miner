@@ -11,8 +11,74 @@ update verification. Phase 16 records the prior release-evidence status in
 `docs/parity/evidence/phase-16-current-commit-release-evidence-completion.md`.
 Phase 17 records the current live HTTP/API/static/WebSocket evidence status in
 `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/summary.md`.
+Phase 18 records the current firmware OTA evidence status in
+`docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/summary.md`.
 Use those ledgers' blocker and pending language and keep affected parity rows
 below `verified`.
+
+## Phase 18 Firmware OTA And Rollback Evidence Status
+
+Phase 18 evidence is recorded in
+`docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/summary.md`,
+with package, serial boot, target-lock, firmware OTA, and redaction artifacts
+under `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/`.
+
+Current conclusion: package, manifest-backed release gate, Ultra 205 detector,
+wrapper-owned factory flash-monitor evidence, sanitized target lock, invalid
+image rejection, final redaction review, and a valid upload HTTP response were
+captured for board `205`, port `/dev/cu.usbmodem1101`, source commit
+`22d02f8e97928f1ec29360552179380b92582e6a`, and reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`.
+
+The target was accepted from trusted local USB flash-monitor evidence and
+committed only as sanitized provenance in
+`docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/target-lock.json`.
+Network scanning remained disabled. The final redaction review records
+`redaction_status: passed` in
+`docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/redaction-review.md`.
+
+Supported Phase 18 claims are limited to:
+
+- package and release-gate identity from
+  `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/package-release-gate.md`;
+- detector and wrapper-owned flash-monitor identity from
+  `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/serial-boot.md`;
+- sanitized target provenance from
+  `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/target-lock.json`;
+- invalid image rejection for `POST /api/system/OTA` from
+  `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota.md`;
+- valid upload response only: HTTP 200 with `Firmware update complete,
+  rebooting now!`;
+- final redaction status from
+  `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/redaction-review.md`.
+
+Phase 18 does not claim valid OTA verification, post-OTA reboot identity,
+selected next partition, post-OTA boot-validation, rollback, destructive
+rollback, failed-update recovery beyond invalid image rejection, large erase,
+interrupted update, OTAWWW whole-`www` update behavior, production mining, pool
+behavior, active safety telemetry, or long soak behavior. Keep `OTA-001`,
+`REL-001`, `REL-002`, and `REL-003` below `verified` unless a later artifact
+records the specific missing behavior required by the parity checklist.
+
+The Phase 18 package/release-gate command sequence was:
+
+```bash
+just package
+bazel run //tools/parity:report -- release-gate --manifest docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/package-release-gate/bitaxe-ultra205-package.json
+```
+
+The Phase 18 serial evidence command was:
+
+```bash
+just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/serial-boot capture-timeout-seconds=45 redact-evidence=true
+```
+
+The Phase 18 firmware OTA helper recorded invalid rejection, valid upload
+response, and blocked post-OTA marker evidence:
+
+```bash
+scripts/phase18-firmware-ota-evidence.sh --manifest docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/package-release-gate/bitaxe-ultra205-package.json --ota-image bazel-bin/firmware/bitaxe/esp-miner.bin --port /dev/cu.usbmodem1101 --out-dir docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence --target-lock-out docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/target-lock.json --monitor-seconds 45 --use-flash-log-device-url target/phase18-firmware-ota-and-rollback-evidence-dev-raw/flash-command-evidence.json
+```
 
 ## Phase 17 Live HTTP API And Static Evidence Status
 
@@ -317,6 +383,14 @@ did not run invalid image rejection, did not observe post-reboot identity, and
 did not observe boot-validation or rollback state because `DEVICE_URL` was
 missing.
 
+Phase 18 firmware OTA status remains conservative. It captured invalid image
+rejection with HTTP 500 and `Write Error`, and it captured a valid upload HTTP
+200 response with `Firmware update complete, rebooting now!`. It did not
+capture post-OTA `firmware_commit=`, `reference_commit=`, or
+`ota_boot_validation=` markers, so valid OTA, selected next partition,
+post-reboot identity, boot-validation, rollback, and recovery remain below
+verified.
+
 ## AxeOS Static Update Gap
 
 The upstream AxeOS static update route is:
@@ -420,6 +494,11 @@ Phase 16 failed-update status is conservative:
 `failed_update_status: pending - allow flag not provided`. No invalid firmware
 upload was attempted through live HTTP.
 
+Phase 18 captured invalid image rejection through `/api/system/OTA`, but that
+record is failed-update rejection evidence only. It does not prove recovery,
+rollback, running partition after reboot, interrupted upload behavior, or
+return-to-operable-state parity.
+
 ## Interrupted Static Update
 
 For interrupted static update evidence, capture:
@@ -460,6 +539,11 @@ boot-validation parity.
 Phase 16 rollback and boot-validation status remains:
 `blocked - Plan 16-04 OTA did not run`. Serial factory boot observed
 `ota_boot_validation=not_pending state=factory`, which is not rollback proof.
+
+Phase 18 rollback and boot-validation status remains below verified. The
+pre-OTA factory boot log observed `ota_boot_validation=not_pending state=factory`,
+but the post-OTA monitor captured no `firmware_commit=`, `reference_commit=`,
+or `ota_boot_validation=` marker after the valid upload response.
 
 ## Evidence Required Before Verified Claims
 
