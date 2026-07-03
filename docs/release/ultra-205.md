@@ -176,6 +176,45 @@ Flash the Ultra 205 with an explicit serial port:
 just flash board=205 port=<port>
 ```
 
+Current Rust firmware does not start the upstream Bitaxe setup AP or captive
+portal. For Phase 17 live HTTP/WebSocket bring-up, seed router credentials at
+flash time by copying the checked-in example to a local, untracked JSON file:
+
+```bash
+cp wifi-credentials.json.example wifi-credentials.json
+```
+
+Edit `wifi-credentials.json` with your router credentials:
+
+```json
+{"ssid":"<router-ssid>","wifiPass":"<router-password>"}
+```
+
+Pass that file to `just flash` or `just flash-monitor`:
+
+```bash
+just flash-monitor board=205 port=<port> wifi-credentials=wifi-credentials.json evidence-dir=<path>
+```
+
+Developer USB evidence is raw by default: the persisted flash-monitor artifacts
+may keep SSID, IP address, MAC address, and `device_url` values so live
+HTTP/WebSocket UAT can use the just-flashed target. Hard secrets such as
+`wifiPass`, pool credentials, tokens, API keys, and NVS secret values remain
+redacted. For commit-ready or shareable artifacts, request full redaction:
+
+```bash
+just flash-monitor board=205 port=<port> wifi-credentials=wifi-credentials.json evidence-dir=<path> redact-evidence=true
+```
+
+The flash wrapper generates and writes a replacement NVS partition at `0x9000`
+using the upstream keys `wifissid` and `wifipass`. Missing non-Wi-Fi settings
+load firmware defaults. If credentials are absent or wrong, recover by USB
+reseeding with another `wifi-credentials=<local-wifi-json>` flash run. Do not
+commit the credential file, passwords, pool credentials, tokens, API keys,
+private endpoints, or NVS secret values. Raw developer artifacts containing
+local SSIDs, IP addresses, MAC addresses, or `device_url` values must be
+redacted before commit or release citation.
+
 Use the factory image path from
 `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` when recovery requires
 a full USB flash baseline. Record the exact port, package manifest, source

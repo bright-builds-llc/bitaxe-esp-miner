@@ -6,6 +6,7 @@ rust_binary(
     crate_name = "bitaxe_flash",
     edition = "2021",
     deps = [
+        "//crates/bitaxe-config:bitaxe_config",
         "@crates//:anyhow",
         "@crates//:camino",
         "@crates//:clap",

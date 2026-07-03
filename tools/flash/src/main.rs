@@ -8,6 +8,10 @@ use std::str::FromStr;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
+use bitaxe_config::{
+    apply_settings_patch, ConfigValidationError, NvsWrite, RawSettingValue, SettingsPatch,
+    SettingsUpdateDecision, NVS_NAMESPACE,
+};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
@@ -19,6 +23,10 @@ const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
 const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
 const DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS: u64 = 25;
 const MIN_COMMIT_PREFIX_LEN: usize = 12;
+const NVS_PARTITION_OFFSET: &str = "0x9000";
+const NVS_PARTITION_SIZE: &str = "0x6000";
+const NVS_GENERATOR_PYTHON_RELATIVE_PATH: &str =
+    ".embuild/espressif/python_env/idf5.5_py3.9_env/bin/python";
 const UNAVAILABLE: &str = "Unavailable";
 
 #[derive(Debug, Parser)]
@@ -48,6 +56,9 @@ struct CommonArgs {
     #[arg(long)]
     dry_run: bool,
 
+    #[arg(long = "redact-evidence")]
+    redact_evidence: bool,
+
     #[arg(long = "evidence-dir", value_parser = parse_utf8_path)]
     evidence_dir: Option<Utf8PathBuf>,
 }
@@ -62,6 +73,9 @@ struct FlashCommand {
 
     #[arg(long, value_parser = parse_utf8_path)]
     manifest: Option<Utf8PathBuf>,
+
+    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
+    wifi_credentials: Option<Utf8PathBuf>,
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -81,6 +95,9 @@ struct FlashMonitorCommand {
     #[arg(long, value_parser = parse_utf8_path)]
     manifest: Option<Utf8PathBuf>,
 
+    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
+    wifi_credentials: Option<Utf8PathBuf>,
+
     #[arg(long = "capture-timeout-seconds", default_value_t = DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS)]
     capture_timeout_seconds: u64,
 }
@@ -88,6 +105,33 @@ struct FlashMonitorCommand {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum BoardId {
     Ultra205,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum EvidenceRedactionMode {
+    DeveloperRaw,
+    CommitRedacted,
+}
+
+impl EvidenceRedactionMode {
+    fn from_common(common: &CommonArgs) -> Self {
+        if common.redact_evidence {
+            return Self::CommitRedacted;
+        }
+
+        Self::DeveloperRaw
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::DeveloperRaw => "developer-raw",
+            Self::CommitRedacted => "commit-redacted",
+        }
+    }
+
+    fn commit_ready(self) -> bool {
+        matches!(self, Self::CommitRedacted)
+    }
 }
 
 impl FromStr for BoardId {
@@ -149,6 +193,14 @@ struct FlashOutcome {
     manifest: Option<Utf8PathBuf>,
     flash_image: Utf8PathBuf,
     command: CommandSpec,
+    nvs_seed: Option<NvsSeedOutcome>,
+}
+
+#[derive(Debug)]
+struct NvsSeedOutcome {
+    image: Utf8PathBuf,
+    command: CommandSpec,
+    _temp_dir: tempfile::TempDir,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -225,6 +277,13 @@ trait FlashEnvironment {
     fn read_to_string(&self, path: &Utf8Path) -> Result<String>;
     fn path_exists(&self, path: &Utf8Path) -> bool;
     fn list_ports(&self) -> Result<String>;
+    fn write_file(&self, path: &Utf8Path, contents: &str) -> Result<()>;
+    fn generate_nvs_partition(
+        &self,
+        csv_path: &Utf8Path,
+        bin_path: &Utf8Path,
+        size: &str,
+    ) -> Result<()>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
     fn execute_capturing(
         &self,
@@ -364,6 +423,41 @@ impl FlashEnvironment for LocalFlashEnvironment {
         command_output_to_string(output, "espflash list-ports")
     }
 
+    fn write_file(&self, path: &Utf8Path, contents: &str) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent.as_std_path())
+                .with_context(|| format!("failed to create directory {parent}"))?;
+        }
+
+        fs::write(path.as_std_path(), contents).with_context(|| format!("failed to write {path}"))
+    }
+
+    fn generate_nvs_partition(
+        &self,
+        csv_path: &Utf8Path,
+        bin_path: &Utf8Path,
+        size: &str,
+    ) -> Result<()> {
+        let python = self.nvs_generator_python()?;
+        let output = Command::new(python.as_std_path())
+            .arg("-m")
+            .arg("esp_idf_nvs_partition_gen")
+            .arg("generate")
+            .arg(csv_path.as_str())
+            .arg(bin_path.as_str())
+            .arg(size)
+            .output()
+            .context("failed to run ESP-IDF NVS partition generator")?;
+        if !output.status.success() {
+            bail!(
+                "ESP-IDF NVS partition generator failed: {}",
+                command_stderr_or_status(&output)
+            );
+        }
+
+        Ok(())
+    }
+
     fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
         if command_spec.program != "espflash" {
             bail!("unsupported command program: {}", command_spec.program);
@@ -406,6 +500,25 @@ impl FlashEnvironment for LocalFlashEnvironment {
 
         fs::write(path.as_std_path(), contents)
             .with_context(|| format!("failed to write evidence {path}"))
+    }
+}
+
+impl LocalFlashEnvironment {
+    fn nvs_generator_python(&self) -> Result<Utf8PathBuf> {
+        if let Ok(path) = env::var("ESP_IDF_NVS_PYTHON") {
+            if !path.is_empty() {
+                return Ok(Utf8PathBuf::from(path));
+            }
+        }
+
+        let candidate = self.workspace_dir.join(NVS_GENERATOR_PYTHON_RELATIVE_PATH);
+        if !candidate.is_file() {
+            bail!(
+                "ESP-IDF NVS generator python not found at {candidate}; run just bootstrap-esp or build firmware once"
+            );
+        }
+
+        Ok(candidate)
     }
 }
 
@@ -460,11 +573,19 @@ where
             "port" => push_flag_value(&mut normalized, "--port", value),
             "image" => push_flag_value(&mut normalized, "--image", value),
             "manifest" => push_flag_value(&mut normalized, "--manifest", value),
+            "wifi-credentials" | "wifi_credentials" => {
+                push_flag_value(&mut normalized, "--wifi-credentials", value)
+            }
             "evidence-dir" | "evidence_dir" => {
                 push_flag_value(&mut normalized, "--evidence-dir", value)
             }
             "capture-timeout-seconds" | "capture_timeout_seconds" => {
                 push_flag_value(&mut normalized, "--capture-timeout-seconds", value)
+            }
+            "redact-evidence" | "redact_evidence" => {
+                if parse_bool_alias(value) {
+                    normalized.push("--redact-evidence".to_owned());
+                }
             }
             "dry-run" | "dry_run" => {
                 if parse_bool_alias(value) {
@@ -493,6 +614,9 @@ fn run_flash(command: &FlashCommand, environment: &impl FlashEnvironment) -> Res
 
     if !command.common.dry_run {
         environment.execute(&outcome.command)?;
+        if let Some(nvs_seed) = &outcome.nvs_seed {
+            environment.execute(&nvs_seed.command)?;
+        }
     }
 
     write_evidence_if_requested(&command.common, &outcome, "flash", environment)?;
@@ -520,6 +644,7 @@ fn run_flash_monitor(
         common: flash_common,
         image: command.image.clone(),
         manifest: command.manifest.clone(),
+        wifi_credentials: command.wifi_credentials.clone(),
     };
     let flash_outcome = run_flash(&flash_command, environment)?;
 
@@ -542,13 +667,21 @@ fn run_flash_monitor(
             let monitor_log = environment
                 .read_to_string(&log_path)
                 .with_context(|| format!("failed to read monitor log {log_path}"))?;
-            monitor_capture_outcome(
+            let capture_outcome = monitor_capture_outcome(
                 &capture_result.status,
                 &monitor_log,
                 command.capture_timeout_seconds,
                 &environment.firmware_commit(),
                 &environment.reference_commit(),
-            )
+            );
+            environment.write_evidence(
+                &log_path,
+                &sanitize_evidence_text(
+                    &monitor_log,
+                    EvidenceRedactionMode::from_common(&command.common),
+                ),
+            )?;
+            capture_outcome
         };
         write_flash_monitor_evidence_if_requested(
             &command.common,
@@ -592,12 +725,17 @@ fn prepare_flash(
     ensure_ultra_205(command.common.board)?;
     let port = resolve_port(command.common.port.as_deref(), environment)?;
     let (maybe_manifest, flash_image) = resolve_flash_image(command, environment)?;
-    let command = flash_command_for_image(&port, &flash_image)?;
+    let flash_command = flash_command_for_image(&port, &flash_image)?;
+    let nvs_seed = match &command.wifi_credentials {
+        Some(path) => Some(prepare_wifi_nvs_seed(&port, path, environment)?),
+        None => None,
+    };
 
     Ok(FlashOutcome {
         manifest: maybe_manifest,
         flash_image,
-        command,
+        command: flash_command,
+        nvs_seed,
     })
 }
 
@@ -629,6 +767,166 @@ fn flash_command_for_image(port: &str, flash_image: &Utf8Path) -> Result<Command
             flash_image.as_str(),
         ],
     ))
+}
+
+fn prepare_wifi_nvs_seed(
+    port: &str,
+    credentials_path: &Utf8Path,
+    environment: &impl FlashEnvironment,
+) -> Result<NvsSeedOutcome> {
+    let credentials_path = environment.workspace_path(credentials_path);
+    let credentials = read_wifi_credentials(&credentials_path, environment)?;
+    let temp_dir = tempfile::Builder::new()
+        .prefix("bitaxe-wifi-nvs-")
+        .tempdir()
+        .context("failed to create temporary Wi-Fi NVS directory")?;
+    let temp_dir_path =
+        Utf8PathBuf::from_path_buf(temp_dir.path().to_path_buf()).map_err(|path| {
+            anyhow::anyhow!("temporary Wi-Fi NVS directory is not valid UTF-8: {path:?}")
+        })?;
+    let csv_path = temp_dir_path.join("wifi-nvs.csv");
+    let image_path = temp_dir_path.join("wifi-nvs.bin");
+    environment.write_file(&csv_path, &wifi_nvs_csv(&credentials))?;
+    environment.generate_nvs_partition(&csv_path, &image_path, NVS_PARTITION_SIZE)?;
+
+    Ok(NvsSeedOutcome {
+        command: nvs_seed_command_for_image(port, &image_path),
+        image: image_path,
+        _temp_dir: temp_dir,
+    })
+}
+
+fn nvs_seed_command_for_image(port: &str, nvs_image: &Utf8Path) -> CommandSpec {
+    CommandSpec::new(
+        "espflash",
+        [
+            "write-bin",
+            "--chip",
+            "esp32s3",
+            "--port",
+            port,
+            "--non-interactive",
+            NVS_PARTITION_OFFSET,
+            nvs_image.as_str(),
+        ],
+    )
+}
+
+#[derive(Debug, Deserialize)]
+struct WifiCredentialsFile {
+    ssid: String,
+    #[serde(rename = "wifiPass")]
+    wifi_pass: String,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct WifiCredentials {
+    ssid: String,
+    wifi_pass: String,
+}
+
+fn read_wifi_credentials(
+    path: &Utf8Path,
+    environment: &impl FlashEnvironment,
+) -> Result<WifiCredentials> {
+    let contents = environment
+        .read_to_string(path)
+        .with_context(|| format!("failed to read Wi-Fi credential file {path}"))?;
+    let file: WifiCredentialsFile = serde_json::from_str(&contents)
+        .with_context(|| format!("failed to parse Wi-Fi credential file JSON {path}"))?;
+    validate_wifi_credentials(file)
+}
+
+fn validate_wifi_credentials(file: WifiCredentialsFile) -> Result<WifiCredentials> {
+    let patch = SettingsPatch::from_pairs([
+        ("ssid", RawSettingValue::String(file.ssid)),
+        ("wifiPass", RawSettingValue::String(file.wifi_pass)),
+    ]);
+
+    match apply_settings_patch(&patch) {
+        SettingsUpdateDecision::Accepted { writes } => Ok(WifiCredentials {
+            ssid: string_write_value(&writes, "wifissid")?,
+            wifi_pass: string_write_value(&writes, "wifipass")?,
+        }),
+        SettingsUpdateDecision::Rejected { errors } => {
+            bail!(
+                "invalid Wi-Fi credentials: {}",
+                validation_error_summaries(&errors)
+            );
+        }
+    }
+}
+
+fn string_write_value(writes: &[NvsWrite], key_name: &str) -> Result<String> {
+    writes
+        .iter()
+        .find_map(|write| match write {
+            NvsWrite::String { key, value } if key.as_str() == key_name => Some(value.clone()),
+            _ => None,
+        })
+        .with_context(|| format!("validated Wi-Fi patch did not produce {key_name} NVS write"))
+}
+
+fn validation_error_summaries(errors: &[ConfigValidationError]) -> String {
+    errors
+        .iter()
+        .map(validation_error_summary)
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn validation_error_summary(error: &ConfigValidationError) -> String {
+    match error {
+        ConfigValidationError::InvalidLength {
+            field,
+            min,
+            max,
+            actual,
+        } => format!("{field} length {actual} is outside {min}..={max}"),
+        ConfigValidationError::OutOfRange {
+            field,
+            min,
+            max,
+            actual,
+        } => format!("{field} value {actual} is outside {min}..={max}"),
+        ConfigValidationError::InvalidEnum { field, .. } => {
+            format!("{field} has an invalid value")
+        }
+        ConfigValidationError::InvalidBoardScope { .. } => {
+            "board version is not active hardware-verified scope".to_owned()
+        }
+        ConfigValidationError::InvalidNvsKeyName { max_bytes, .. } => {
+            format!("NVS key name is invalid; maximum length is {max_bytes} bytes")
+        }
+    }
+}
+
+fn wifi_nvs_csv(credentials: &WifiCredentials) -> String {
+    [
+        "key,type,encoding,value".to_owned(),
+        format!("{NVS_NAMESPACE},namespace,,"),
+        format!(
+            "wifissid,data,string,{}",
+            csv_cell(credentials.ssid.as_str())
+        ),
+        format!(
+            "wifipass,data,string,{}",
+            csv_cell(credentials.wifi_pass.as_str())
+        ),
+    ]
+    .join("\n")
+        + "\n"
+}
+
+fn csv_cell(value: &str) -> String {
+    if !value
+        .chars()
+        .any(|character| matches!(character, ',' | '"' | '\n' | '\r'))
+    {
+        return value.to_owned();
+    }
+
+    format!("\"{}\"", value.replace('"', "\"\""))
 }
 
 fn resolve_flash_image(
@@ -989,7 +1287,13 @@ fn emit_flash_outcome(outcome: &FlashOutcome) -> Result<()> {
         emit_line("manifest", manifest.as_str())?;
     }
     emit_line("flash_image", outcome.flash_image.as_str())?;
-    emit_command("flash_command", &outcome.command)
+    emit_command("flash_command", &outcome.command)?;
+    if let Some(nvs_seed) = &outcome.nvs_seed {
+        emit_line("nvs_seed_status", "provided")?;
+        emit_line("nvs_seed_image", nvs_seed.image.as_str())?;
+        emit_command("nvs_seed_command", &nvs_seed.command)?;
+    }
+    Ok(())
 }
 
 fn emit_command(label: &str, command: &CommandSpec) -> Result<()> {
@@ -1013,14 +1317,16 @@ fn write_evidence_if_requested(
 
     let log_path = evidence_dir.join("flash-monitor.log");
     let capture_outcome = no_monitor_capture_outcome();
+    let command_display = flash_workflow_command(outcome);
+    let flash_command_display = outcome.command.display();
     write_evidence_record(
         common,
         outcome,
         &evidence_dir,
         EvidenceRecordInput {
             command_kind,
-            command: &outcome.command.display(),
-            flash_command: &outcome.command.display(),
+            command: &command_display,
+            flash_command: &flash_command_display,
             monitor_command: UNAVAILABLE,
             log_path: &log_path,
             capture_outcome: &capture_outcome,
@@ -1038,11 +1344,10 @@ fn write_flash_monitor_evidence_if_requested(
     capture_outcome: &MonitorCaptureOutcome,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
-    let command = format!(
-        "flash: {}\nmonitor: {}",
-        outcome.command.display(),
-        monitor_command.display()
-    );
+    let flash_workflow_command = flash_workflow_command(outcome);
+    let monitor_command_display = monitor_command.display();
+    let command = format!("{flash_workflow_command}\nmonitor: {monitor_command_display}");
+    let flash_command_display = outcome.command.display();
     write_evidence_record(
         common,
         outcome,
@@ -1050,8 +1355,8 @@ fn write_flash_monitor_evidence_if_requested(
         EvidenceRecordInput {
             command_kind: "flash-monitor",
             command: &command,
-            flash_command: &outcome.command.display(),
-            monitor_command: &monitor_command.display(),
+            flash_command: &flash_command_display,
+            monitor_command: &monitor_command_display,
             log_path,
             capture_outcome,
         },
@@ -1066,6 +1371,7 @@ fn write_evidence_record(
     input: EvidenceRecordInput<'_>,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
+    let redaction_mode = EvidenceRedactionMode::from_common(common);
     let record = EvidenceRecord {
         command: input.command.to_owned(),
         command_kind: input.command_kind.to_owned(),
@@ -1083,6 +1389,33 @@ fn write_evidence_record(
         log_path: input.log_path.as_str().to_owned(),
         flash_command: input.flash_command.to_owned(),
         monitor_command: input.monitor_command.to_owned(),
+        nvs_seed_status: if outcome.nvs_seed.is_some() {
+            "provided".to_owned()
+        } else {
+            "not_provided".to_owned()
+        },
+        nvs_seed_command: outcome
+            .nvs_seed
+            .as_ref()
+            .map(|seed| seed.command.display())
+            .unwrap_or_else(|| UNAVAILABLE.to_owned()),
+        nvs_seed_partition_offset: if outcome.nvs_seed.is_some() {
+            NVS_PARTITION_OFFSET.to_owned()
+        } else {
+            UNAVAILABLE.to_owned()
+        },
+        nvs_seed_partition_size: if outcome.nvs_seed.is_some() {
+            NVS_PARTITION_SIZE.to_owned()
+        } else {
+            UNAVAILABLE.to_owned()
+        },
+        redaction_mode: redaction_mode.as_str().to_owned(),
+        commit_ready: redaction_mode.commit_ready(),
+        wifi_credentials_source: if outcome.nvs_seed.is_some() {
+            "provided-redacted".to_owned()
+        } else {
+            "not-provided".to_owned()
+        },
         monitor_log_path: input.log_path.as_str().to_owned(),
         capture_mode: input.capture_outcome.capture_mode.clone(),
         capture_status: input.capture_outcome.capture_status,
@@ -1093,7 +1426,327 @@ fn write_evidence_record(
         conclusion: input.capture_outcome.conclusion.clone(),
     };
     let json = serde_json::to_string_pretty(&record).context("failed to serialize evidence")?;
-    environment.write_evidence(&evidence_dir.join("flash-command-evidence.json"), &json)
+    environment.write_evidence(
+        &evidence_dir.join("flash-command-evidence.json"),
+        &sanitize_evidence_text(&json, redaction_mode),
+    )
+}
+
+fn flash_workflow_command(outcome: &FlashOutcome) -> String {
+    let flash = format!("flash: {}", outcome.command.display());
+    let Some(nvs_seed) = &outcome.nvs_seed else {
+        return flash;
+    };
+
+    format!("{flash}\nnvs_seed: {}", nvs_seed.command.display())
+}
+
+fn sanitize_evidence_text(text: &str, redaction_mode: EvidenceRedactionMode) -> String {
+    let without_secret_json_fields = redact_json_string_fields(
+        text,
+        &[
+            "wifiPass",
+            "wifipass",
+            "wifi_password",
+            "password",
+            "pass",
+            "token",
+            "apiKey",
+            "api_key",
+            "pool_password",
+            "poolPassword",
+            "stratumPassword",
+            "nvsSecret",
+            "secret",
+        ],
+    );
+    let without_secret_tokens = redact_key_value_tokens(
+        &without_secret_json_fields,
+        &[
+            "wifiPass",
+            "wifipass",
+            "wifi_password",
+            "password",
+            "pass",
+            "token",
+            "apiKey",
+            "api_key",
+            "pool_password",
+            "poolPassword",
+            "stratumPassword",
+            "nvsSecret",
+            "secret",
+        ],
+    );
+
+    if redaction_mode == EvidenceRedactionMode::DeveloperRaw {
+        return without_secret_tokens;
+    }
+
+    let without_network_json_fields = redact_json_string_fields(&without_secret_tokens, &["ssid"]);
+    let without_urls = redact_urls(&without_network_json_fields);
+    let without_macs = redact_mac_addresses(&without_urls);
+    let without_ips = redact_ipv4_addresses(&without_macs);
+    let without_wifi_driver_ssids = redact_wifi_driver_connected_ssids(&without_ips);
+    redact_key_value_tokens(&without_wifi_driver_ssids, &["ssid"])
+}
+
+fn redact_wifi_driver_connected_ssids(text: &str) -> String {
+    const MARKER: &str = "wifi:connected with ";
+    const AID_DELIMITER: &str = ", aid =";
+
+    let mut output = String::with_capacity(text.len());
+    let mut index = 0;
+
+    while index < text.len() {
+        let Some(relative_start) = text[index..].find(MARKER) else {
+            output.push_str(&text[index..]);
+            break;
+        };
+
+        let marker_start = index + relative_start;
+        let ssid_start = marker_start + MARKER.len();
+        output.push_str(&text[index..ssid_start]);
+        output.push_str("[redacted-ssid]");
+
+        let remaining = &text[ssid_start..];
+        let relative_end = remaining
+            .find(AID_DELIMITER)
+            .or_else(|| remaining.find('\n'))
+            .unwrap_or(remaining.len());
+        index = ssid_start + relative_end;
+    }
+
+    output
+}
+
+fn redact_json_string_fields(text: &str, fields: &[&str]) -> String {
+    fields.iter().fold(text.to_owned(), |sanitized, field| {
+        redact_json_string_field(&sanitized, field)
+    })
+}
+
+fn redact_json_string_field(text: &str, field: &str) -> String {
+    let pattern = format!("\"{field}\"");
+    let mut output = String::with_capacity(text.len());
+    let mut index = 0;
+
+    while index < text.len() {
+        let Some(relative_start) = text[index..].find(&pattern) else {
+            output.push_str(&text[index..]);
+            break;
+        };
+
+        let field_start = index + relative_start;
+        let field_end = field_start + pattern.len();
+        output.push_str(&text[index..field_start]);
+
+        let Some((value_open, value_close)) = json_string_value_bounds(text, field_end) else {
+            output.push_str(&text[field_start..field_end]);
+            index = field_end;
+            continue;
+        };
+
+        output.push_str(&text[field_start..=value_open]);
+        output.push_str("[redacted]");
+        output.push('"');
+        index = value_close + 1;
+    }
+
+    output
+}
+
+fn json_string_value_bounds(text: &str, after_field: usize) -> Option<(usize, usize)> {
+    let bytes = text.as_bytes();
+    let mut cursor = after_field;
+    while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+        cursor += 1;
+    }
+
+    if bytes.get(cursor) != Some(&b':') {
+        return None;
+    }
+    cursor += 1;
+
+    while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+        cursor += 1;
+    }
+
+    if bytes.get(cursor) != Some(&b'"') {
+        return None;
+    }
+    let value_open = cursor;
+    cursor += 1;
+
+    while cursor < bytes.len() {
+        match bytes[cursor] {
+            b'\\' => cursor += 2,
+            b'"' => return Some((value_open, cursor)),
+            _ => cursor += 1,
+        }
+    }
+
+    None
+}
+
+fn redact_urls(text: &str) -> String {
+    const URL_SCHEMES: [&str; 4] = ["http://", "https://", "ws://", "wss://"];
+
+    let mut output = String::with_capacity(text.len());
+    let mut index = 0;
+    while index < text.len() {
+        let rest = &text[index..];
+        if let Some(scheme) = URL_SCHEMES.iter().find(|scheme| rest.starts_with(**scheme)) {
+            output.push_str("[redacted-url]");
+            index += scheme.len();
+            while index < text.len() {
+                let character = text[index..].chars().next().expect("character");
+                if is_url_delimiter(character) {
+                    break;
+                }
+                index += character.len_utf8();
+            }
+            continue;
+        }
+
+        let character = rest.chars().next().expect("character");
+        output.push(character);
+        index += character.len_utf8();
+    }
+
+    output
+}
+
+fn is_url_delimiter(character: char) -> bool {
+    character.is_whitespace()
+        || matches!(
+            character,
+            '"' | '\'' | '<' | '>' | ')' | '(' | '[' | ']' | '{' | '}'
+        )
+}
+
+fn redact_ipv4_addresses(text: &str) -> String {
+    let mut output = String::with_capacity(text.len());
+    let bytes = text.as_bytes();
+    let mut index = 0;
+
+    while index < bytes.len() {
+        if bytes[index].is_ascii_digit() {
+            let start = index;
+            while index < bytes.len() && (bytes[index].is_ascii_digit() || bytes[index] == b'.') {
+                index += 1;
+            }
+            let token = &text[start..index];
+            if is_ipv4_address(token) {
+                output.push_str("[redacted-ip]");
+            } else {
+                output.push_str(token);
+            }
+            continue;
+        }
+
+        let character = text[index..].chars().next().expect("character");
+        output.push(character);
+        index += character.len_utf8();
+    }
+
+    output
+}
+
+fn is_ipv4_address(token: &str) -> bool {
+    let parts = token.split('.').collect::<Vec<_>>();
+    if parts.len() != 4 {
+        return false;
+    }
+
+    parts.iter().all(|part| {
+        !part.is_empty()
+            && part.len() <= 3
+            && part.chars().all(|character| character.is_ascii_digit())
+            && part.parse::<u8>().is_ok()
+    })
+}
+
+fn redact_mac_addresses(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut output = String::with_capacity(text.len());
+    let mut index = 0;
+
+    while index < bytes.len() {
+        if is_mac_address_at(bytes, index) {
+            output.push_str("[redacted-mac]");
+            index += 17;
+            continue;
+        }
+
+        let character = text[index..].chars().next().expect("character");
+        output.push(character);
+        index += character.len_utf8();
+    }
+
+    output
+}
+
+fn is_mac_address_at(bytes: &[u8], index: usize) -> bool {
+    if index + 17 > bytes.len() {
+        return false;
+    }
+
+    if index > 0 && bytes[index - 1].is_ascii_hexdigit() {
+        return false;
+    }
+
+    if index + 17 < bytes.len() && bytes[index + 17].is_ascii_hexdigit() {
+        return false;
+    }
+
+    for offset in 0..17 {
+        let byte = bytes[index + offset];
+        if matches!(offset, 2 | 5 | 8 | 11 | 14) {
+            if byte != b':' {
+                return false;
+            }
+        } else if !byte.is_ascii_hexdigit() {
+            return false;
+        }
+    }
+
+    true
+}
+
+fn redact_key_value_tokens(text: &str, keys: &[&str]) -> String {
+    keys.iter().fold(text.to_owned(), |sanitized, key| {
+        redact_key_value_token(&sanitized, key)
+    })
+}
+
+fn redact_key_value_token(text: &str, key: &str) -> String {
+    let pattern = format!("{key}=");
+    let mut output = String::with_capacity(text.len());
+    let mut index = 0;
+
+    while index < text.len() {
+        let rest = &text[index..];
+        if rest.starts_with(&pattern) {
+            output.push_str(&pattern);
+            output.push_str("[redacted]");
+            index += pattern.len();
+            while index < text.len() {
+                let character = text[index..].chars().next().expect("character");
+                if character.is_whitespace() {
+                    break;
+                }
+                index += character.len_utf8();
+            }
+            continue;
+        }
+
+        let character = rest.chars().next().expect("character");
+        output.push(character);
+        index += character.len_utf8();
+    }
+
+    output
 }
 
 fn resolved_evidence_dir(
@@ -1128,6 +1781,13 @@ struct EvidenceRecord {
     log_path: String,
     flash_command: String,
     monitor_command: String,
+    nvs_seed_status: String,
+    nvs_seed_command: String,
+    nvs_seed_partition_offset: String,
+    nvs_seed_partition_size: String,
+    redaction_mode: String,
+    commit_ready: bool,
+    wifi_credentials_source: String,
     monitor_log_path: String,
     capture_mode: String,
     capture_status: CaptureStatus,
@@ -1225,6 +1885,7 @@ mod tests {
             "flash",
             "board=205",
             "dry-run=true",
+            "redact-evidence=true",
             "port=/dev/cu.usbmodem101",
             "image=/tmp/bitaxe-ultra205.elf",
         ];
@@ -1239,6 +1900,7 @@ mod tests {
         assert_eq!(command.common.board, BoardId::Ultra205);
         assert_eq!(command.common.port.as_deref(), Some("/dev/cu.usbmodem101"));
         assert!(command.common.dry_run);
+        assert!(command.common.redact_evidence);
         assert_eq!(
             command.image.as_deref(),
             Some(Utf8Path::new("/tmp/bitaxe-ultra205.elf"))
@@ -1277,12 +1939,81 @@ mod tests {
     }
 
     #[test]
+    fn flash_monitor_parses_redact_evidence_aliases() {
+        // Arrange
+        let hyphenated_args = [
+            "bitaxe-flash",
+            "flash-monitor",
+            "port=/dev/cu.usbmodem101",
+            "redact-evidence=true",
+        ];
+        let underscored_args = [
+            "bitaxe-flash",
+            "flash-monitor",
+            "port=/dev/cu.usbmodem101",
+            "redact_evidence=true",
+        ];
+
+        // Act
+        let hyphenated_cli = parse_cli(hyphenated_args).expect("hyphenated cli");
+        let underscored_cli = parse_cli(underscored_args).expect("underscored cli");
+
+        // Assert
+        let CliCommand::FlashMonitor(hyphenated_command) = hyphenated_cli.command else {
+            panic!("expected flash-monitor command");
+        };
+        let CliCommand::FlashMonitor(underscored_command) = underscored_cli.command else {
+            panic!("expected flash-monitor command");
+        };
+        assert!(hyphenated_command.common.redact_evidence);
+        assert!(underscored_command.common.redact_evidence);
+    }
+
+    #[test]
+    fn parses_wifi_credentials_aliases_for_flash_and_flash_monitor() {
+        // Arrange
+        let flash_args = [
+            "bitaxe-flash",
+            "flash",
+            "port=/dev/cu.usbmodem101",
+            "wifi-credentials=/tmp/wifi.json",
+        ];
+        let flash_monitor_args = [
+            "bitaxe-flash",
+            "flash-monitor",
+            "port=/dev/cu.usbmodem101",
+            "wifi_credentials=/tmp/wifi.json",
+        ];
+
+        // Act
+        let flash_cli = parse_cli(flash_args).expect("flash cli");
+        let flash_monitor_cli = parse_cli(flash_monitor_args).expect("flash-monitor cli");
+
+        // Assert
+        let CliCommand::Flash(flash_command) = flash_cli.command else {
+            panic!("expected flash command");
+        };
+        let CliCommand::FlashMonitor(flash_monitor_command) = flash_monitor_cli.command else {
+            panic!("expected flash-monitor command");
+        };
+        assert_eq!(
+            flash_command.wifi_credentials.as_deref(),
+            Some(Utf8Path::new("/tmp/wifi.json"))
+        );
+        assert_eq!(
+            flash_monitor_command.wifi_credentials.as_deref(),
+            Some(Utf8Path::new("/tmp/wifi.json"))
+        );
+    }
+
+    #[test]
     fn dry_run_flash_with_explicit_image_renders_vector_command() {
         // Arrange
         let command = FlashCommand {
             common: common_args(),
             image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
             manifest: None,
+            wifi_credentials: None,
         };
         let environment = FakeFlashEnvironment::default();
 
@@ -1308,6 +2039,105 @@ mod tests {
     }
 
     #[test]
+    fn flash_with_wifi_credentials_generates_and_executes_nvs_seed_after_flash() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let credentials_path = write_wifi_credentials(&dir, "LabNet", "super-secret");
+        let command = FlashCommand {
+            common: CommonArgs {
+                dry_run: false,
+                ..common_args()
+            },
+            image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
+            manifest: None,
+            wifi_credentials: Some(credentials_path),
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let outcome = run_flash(&command, &environment).expect("flash");
+
+        // Assert
+        let nvs_seed = outcome.nvs_seed.as_ref().expect("nvs seed");
+        assert_eq!(
+            environment.generated_nvs_partitions(),
+            vec![(
+                nvs_seed
+                    .image
+                    .parent()
+                    .expect("nvs seed parent")
+                    .join("wifi-nvs.csv"),
+                nvs_seed.image.clone(),
+                NVS_PARTITION_SIZE.to_owned(),
+            )]
+        );
+        assert_eq!(
+            environment.executed_commands(),
+            vec![
+                CommandSpec::new(
+                    "espflash",
+                    [
+                        "flash",
+                        "--chip",
+                        "esp32s3",
+                        "--port",
+                        "/dev/cu.usbmodem101",
+                        "/tmp/bitaxe-ultra205.elf",
+                    ],
+                ),
+                CommandSpec::new(
+                    "espflash",
+                    [
+                        "write-bin",
+                        "--chip",
+                        "esp32s3",
+                        "--port",
+                        "/dev/cu.usbmodem101",
+                        "--non-interactive",
+                        NVS_PARTITION_OFFSET,
+                        nvs_seed.image.as_str(),
+                    ],
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn wifi_credentials_nvs_csv_uses_main_namespace_and_upstream_keys() {
+        // Arrange
+        let credentials = WifiCredentials {
+            ssid: "Lab,Net".to_owned(),
+            wifi_pass: "quoted\"secret".to_owned(),
+        };
+
+        // Act
+        let csv = wifi_nvs_csv(&credentials);
+
+        // Assert
+        assert!(csv.contains("main,namespace,,"));
+        assert!(csv.contains("wifissid,data,string,\"Lab,Net\""));
+        assert!(csv.contains("wifipass,data,string,\"quoted\"\"secret\""));
+    }
+
+    #[test]
+    fn wifi_credentials_reject_invalid_lengths_without_secret_value() {
+        // Arrange
+        let file = WifiCredentialsFile {
+            ssid: String::new(),
+            wifi_pass: "p".repeat(64),
+        };
+
+        // Act
+        let result = validate_wifi_credentials(file);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("ssid length 0 is outside 1..=32"));
+        assert!(error.contains("wifiPass length 64 is outside 0..=63"));
+        assert!(!error.contains(&"p".repeat(64)));
+    }
+
+    #[test]
     fn dry_run_flash_resolves_manifest_default_elf() {
         // Arrange
         let dir = tempdir().expect("tempdir");
@@ -1316,6 +2146,7 @@ mod tests {
             common: common_args(),
             image: None,
             manifest: Some(manifest.clone()),
+            wifi_credentials: None,
         };
         let environment = FakeFlashEnvironment::default();
 
@@ -1350,6 +2181,7 @@ mod tests {
             common: common_args(),
             image: Some(Utf8PathBuf::from("docs/evidence/bitaxe-ultra205.elf")),
             manifest: None,
+            wifi_credentials: None,
         };
         let environment = FakeFlashEnvironment::default().with_workspace_dir(workspace_dir.clone());
 
@@ -1379,6 +2211,7 @@ mod tests {
             manifest: Some(Utf8PathBuf::from(
                 "docs/evidence/package/bitaxe-ultra205-package.json",
             )),
+            wifi_credentials: None,
         };
         let environment = FakeFlashEnvironment::default().with_workspace_dir(workspace_dir.clone());
 
@@ -1404,6 +2237,7 @@ mod tests {
             common: common_args(),
             image: None,
             manifest: Some(manifest),
+            wifi_credentials: None,
         };
         let environment = FakeFlashEnvironment::default();
 
@@ -1423,6 +2257,7 @@ mod tests {
             common: common_args(),
             image: None,
             manifest: Some(manifest.clone()),
+            wifi_credentials: None,
         };
         let environment = FakeFlashEnvironment::default();
 
@@ -1458,6 +2293,7 @@ mod tests {
             common: common_args(),
             image: None,
             manifest: Some(manifest),
+            wifi_credentials: None,
         };
         let environment = FakeFlashEnvironment::default();
 
@@ -1652,6 +2488,7 @@ mod tests {
             },
             image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
             manifest: None,
+            wifi_credentials: None,
             capture_timeout_seconds: DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS,
         };
         let environment = FakeFlashEnvironment::default();
@@ -1757,6 +2594,144 @@ mod tests {
         assert_eq!(json["trusted_output"], true);
         assert_eq!(json["observed_firmware_commit"], "0123456789ab");
         assert_eq!(json["observed_reference_commit"], "abcdef012345");
+    }
+
+    #[test]
+    fn flash_evidence_records_nvs_seed_without_credential_path_or_values() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let credentials_path = write_wifi_credentials(&dir, "LabNet", "super-secret");
+        let command = FlashCommand {
+            common: CommonArgs {
+                evidence_dir: Some(evidence_dir.clone()),
+                dry_run: false,
+                ..common_args()
+            },
+            image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
+            manifest: None,
+            wifi_credentials: Some(credentials_path.clone()),
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        run_flash(&command, &environment).expect("flash");
+
+        // Assert
+        let evidence_path = evidence_dir.join("flash-command-evidence.json");
+        let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
+        let json: serde_json::Value = serde_json::from_str(&evidence).expect("json");
+        assert_eq!(json["nvs_seed_status"], "provided");
+        assert_eq!(json["nvs_seed_partition_offset"], NVS_PARTITION_OFFSET);
+        assert_eq!(json["nvs_seed_partition_size"], NVS_PARTITION_SIZE);
+        assert_eq!(json["redaction_mode"], "developer-raw");
+        assert_eq!(json["commit_ready"], false);
+        assert_eq!(json["wifi_credentials_source"], "provided-redacted");
+        assert!(!evidence.contains(credentials_path.as_str()));
+        assert!(!evidence.contains("LabNet"));
+        assert!(!evidence.contains("super-secret"));
+    }
+
+    #[test]
+    fn flash_monitor_developer_raw_preserves_network_identifiers_and_redacts_secrets() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_command(evidence_dir.clone());
+        let sensitive_log = format!(
+            "{}\nI (3863) wifi:connected with LabNet, aid = 1, channel 11, BW20, bssid = aa:bb:cc:dd:ee:ff\nwifi_status=connected ssid=lab-net password=super-secret token=api-secret ipv4=192.168.1.24 mac=aa:bb:cc:dd:ee:ff device_url=http://192.168.1.24\n",
+            trusted_monitor_log()
+        );
+        let environment = FakeFlashEnvironment::default().with_log_contents(&sensitive_log);
+
+        // Act
+        run_flash_monitor(&command, &environment).expect("flash-monitor");
+
+        // Assert
+        let log_path = evidence_dir.join("flash-monitor.log");
+        let log = std::fs::read_to_string(log_path.as_std_path()).expect("log");
+        assert!(log.contains("ssid=lab-net"));
+        assert!(log.contains("wifi:connected with LabNet, aid = 1"));
+        assert!(log.contains("password=[redacted]"));
+        assert!(log.contains("token=[redacted]"));
+        assert!(log.contains("ipv4=192.168.1.24"));
+        assert!(log.contains("mac=aa:bb:cc:dd:ee:ff"));
+        assert!(log.contains("device_url=http://192.168.1.24"));
+        assert!(!log.contains("super-secret"));
+        assert!(!log.contains("api-secret"));
+    }
+
+    #[test]
+    fn flash_monitor_commit_redacted_sanitizes_network_identifiers() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let mut command = flash_monitor_command(evidence_dir.clone());
+        command.common.redact_evidence = true;
+        let sensitive_log = format!(
+            "{}\nI (3863) wifi:connected with LabNet, aid = 1, channel 11, BW20, bssid = aa:bb:cc:dd:ee:ff\nwifi_status=connected ssid=lab-net password=super-secret ipv4=192.168.1.24 mac=aa:bb:cc:dd:ee:ff device_url=http://192.168.1.24\n",
+            trusted_monitor_log()
+        );
+        let environment = FakeFlashEnvironment::default().with_log_contents(&sensitive_log);
+
+        // Act
+        run_flash_monitor(&command, &environment).expect("flash-monitor");
+
+        // Assert
+        let log_path = evidence_dir.join("flash-monitor.log");
+        let log = std::fs::read_to_string(log_path.as_std_path()).expect("log");
+        assert!(log.contains("ssid=[redacted]"));
+        assert!(log.contains("wifi:connected with [redacted-ssid], aid = 1"));
+        assert!(log.contains("password=[redacted]"));
+        assert!(log.contains("ipv4=[redacted-ip]"));
+        assert!(log.contains("mac=[redacted-mac]"));
+        assert!(log.contains("device_url=[redacted-url]"));
+        assert!(!log.contains("LabNet"));
+        assert!(!log.contains("lab-net"));
+        assert!(!log.contains("super-secret"));
+        assert!(!log.contains("192.168.1.24"));
+        assert!(!log.contains("aa:bb:cc:dd:ee:ff"));
+        assert!(!log.contains("http://192.168.1.24"));
+    }
+
+    #[test]
+    fn evidence_sanitizer_developer_raw_preserves_network_fields_and_redacts_secrets() {
+        // Arrange
+        let text = r#"{"ssid":"lab-net","wifiPass":"super-secret","ipv4":"192.168.1.24","mac":"aa:bb:cc:dd:ee:ff","device_url":"http://192.168.1.24","token":"api-secret"}"#;
+
+        // Act
+        let sanitized = sanitize_evidence_text(text, EvidenceRedactionMode::DeveloperRaw);
+
+        // Assert
+        assert!(sanitized.contains(r#""ssid":"lab-net""#));
+        assert!(sanitized.contains(r#""wifiPass":"[redacted]""#));
+        assert!(sanitized.contains(r#""ipv4":"192.168.1.24""#));
+        assert!(sanitized.contains(r#""mac":"aa:bb:cc:dd:ee:ff""#));
+        assert!(sanitized.contains(r#""device_url":"http://192.168.1.24""#));
+        assert!(sanitized.contains(r#""token":"[redacted]""#));
+        assert!(!sanitized.contains("super-secret"));
+        assert!(!sanitized.contains("api-secret"));
+    }
+
+    #[test]
+    fn evidence_sanitizer_commit_redacted_redacts_json_wifi_fields_network_urls_ips_and_macs() {
+        // Arrange
+        let text = r#"{"ssid":"lab-net","wifiPass":"super-secret","ipv4":"192.168.1.24","mac":"aa:bb:cc:dd:ee:ff","device_url":"http://192.168.1.24"}"#;
+
+        // Act
+        let sanitized = sanitize_evidence_text(text, EvidenceRedactionMode::CommitRedacted);
+
+        // Assert
+        assert!(sanitized.contains(r#""ssid":"[redacted]""#));
+        assert!(sanitized.contains(r#""wifiPass":"[redacted]""#));
+        assert!(sanitized.contains(r#""ipv4":"[redacted-ip]""#));
+        assert!(sanitized.contains(r#""mac":"[redacted-mac]""#));
+        assert!(sanitized.contains(r#""device_url":"[redacted-url]""#));
+        assert!(!sanitized.contains("lab-net"));
+        assert!(!sanitized.contains("super-secret"));
+        assert!(!sanitized.contains("192.168.1.24"));
+        assert!(!sanitized.contains("aa:bb:cc:dd:ee:ff"));
+        assert!(!sanitized.contains("http://192.168.1.24"));
     }
 
     #[test]
@@ -1924,6 +2899,7 @@ mod tests {
             board: BoardId::Ultra205,
             port: Some("/dev/cu.usbmodem101".to_owned()),
             dry_run: true,
+            redact_evidence: false,
             evidence_dir: None,
         }
     }
@@ -1952,12 +2928,27 @@ mod tests {
             },
             image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
             manifest: None,
+            wifi_credentials: None,
             capture_timeout_seconds: DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS,
         }
     }
 
     fn dir_path(dir: &TempDir) -> Utf8PathBuf {
         Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).expect("utf8 path")
+    }
+
+    fn write_wifi_credentials(dir: &TempDir, ssid: &str, wifi_pass: &str) -> Utf8PathBuf {
+        let path = dir_path(dir).join("wifi.json");
+        std::fs::write(
+            path.as_std_path(),
+            serde_json::json!({
+                "ssid": ssid,
+                "wifiPass": wifi_pass,
+            })
+            .to_string(),
+        )
+        .expect("write wifi credentials");
+        path
     }
 
     fn write_manifest(dir: &TempDir, default_flash_image: &str) -> Utf8PathBuf {
@@ -2062,6 +3053,7 @@ mod tests {
         workspace_dir: Utf8PathBuf,
         executed_commands: RefCell<Vec<CommandSpec>>,
         captured_commands: RefCell<Vec<CommandSpec>>,
+        generated_nvs_partitions: RefCell<Vec<(Utf8PathBuf, Utf8PathBuf, String)>>,
         capture_status: CaptureProcessStatus,
         log_contents: String,
     }
@@ -2080,6 +3072,7 @@ mod tests {
                     .expect("utf8 current dir"),
                 executed_commands: RefCell::new(Vec::new()),
                 captured_commands: RefCell::new(Vec::new()),
+                generated_nvs_partitions: RefCell::new(Vec::new()),
                 capture_status: CaptureProcessStatus::ExitedSuccess,
                 log_contents: trusted_monitor_log(),
             }
@@ -2091,6 +3084,10 @@ mod tests {
 
         fn captured_commands(&self) -> Vec<CommandSpec> {
             self.captured_commands.borrow().clone()
+        }
+
+        fn generated_nvs_partitions(&self) -> Vec<(Utf8PathBuf, Utf8PathBuf, String)> {
+            self.generated_nvs_partitions.borrow().clone()
         }
 
         fn with_capture_status(mut self, capture_status: CaptureProcessStatus) -> Self {
@@ -2137,6 +3134,32 @@ mod tests {
 
         fn list_ports(&self) -> Result<String> {
             Ok(self.ports.clone())
+        }
+
+        fn write_file(&self, path: &Utf8Path, contents: &str) -> Result<()> {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent.as_std_path()).expect("create fake file dir");
+            }
+            std::fs::write(path.as_std_path(), contents).expect("write fake file");
+            Ok(())
+        }
+
+        fn generate_nvs_partition(
+            &self,
+            csv_path: &Utf8Path,
+            bin_path: &Utf8Path,
+            size: &str,
+        ) -> Result<()> {
+            self.generated_nvs_partitions.borrow_mut().push((
+                csv_path.to_owned(),
+                bin_path.to_owned(),
+                size.to_owned(),
+            ));
+            if let Some(parent) = bin_path.parent() {
+                std::fs::create_dir_all(parent.as_std_path()).expect("create fake nvs dir");
+            }
+            std::fs::write(bin_path.as_std_path(), b"nvs-image").expect("write fake nvs image");
+            Ok(())
         }
 
         fn execute(&self, command_spec: &CommandSpec) -> Result<()> {

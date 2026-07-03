@@ -195,6 +195,7 @@ name = "bitaxe-flash"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitaxe-config",
  "camino",
  "clap",
  "serde",

@@ -161,6 +161,7 @@ test_package_script_uses_esptool_merge_bin() {
 	output="$(cat "$output_file")"$'\n'"$(cat "$log_file")"
 	assert_contains "$output" "[package-firmware] factory_base_command="
 	assert_contains "$output" "[package-firmware] factory_merge_command="
+	assert_contains "$output" "--obj-name-len 64"
 	assert_contains "$output" "--skip-padding"
 	assert_contains "$output" "esptool.py --chip esp32s3 merge_bin"
 	assert_contains "$output" "0x0"

@@ -1,0 +1,6 @@
+# Private local credentials and environment files
+/wifi-credentials*.json
+*.credentials.json
+.env
+.env.*
+secrets/

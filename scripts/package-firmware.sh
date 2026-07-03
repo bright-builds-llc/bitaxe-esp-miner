@@ -13,6 +13,7 @@ readonly ULTRA205_PARTITION_TABLE="firmware/bitaxe/partitions-ultra205.csv"
 readonly WWW_SOURCE_DIR="firmware/bitaxe/static/www"
 readonly WWW_SMOKE_ASSET="firmware/bitaxe/static/www/assets/app.css.gz"
 readonly WWW_SPIFFS_SIZE="0x300000"
+readonly WWW_SPIFFS_OBJ_NAME_LEN="64"
 
 detect_workspace_dir() {
 	local maybe_git_dir
@@ -90,6 +91,25 @@ find_generated_otadata() {
 	done
 
 	return 1
+}
+
+absolute_existing_path() {
+	local path="$1"
+	absolute_path "$path"
+}
+
+absolute_path() {
+	local path="$1"
+	if [[ "$path" == /* ]]; then
+		printf '%s\n' "$path"
+		return 0
+	fi
+
+	local dir
+	dir="$(dirname "$path")"
+	local base
+	base="$(basename "$path")"
+	printf '%s/%s\n' "$(cd "$dir" && pwd)" "$base"
 }
 
 write_erased_otadata() {
@@ -184,10 +204,16 @@ if [[ ! -x "$reference_guard" && ! -f "$reference_guard" ]]; then
 	printf 'error: reference guard not found: %s\n' "$reference_guard" >&2
 	exit 1
 fi
+reference_guard="$(absolute_existing_path "$reference_guard")"
 
 if [[ -z "$manifest" ]]; then
 	manifest="${out_dir}/${MANIFEST_NAME}"
 fi
+
+firmware_elf="$(absolute_existing_path "$firmware_elf")"
+mkdir -p "$out_dir"
+out_dir="$(absolute_existing_path "$out_dir")"
+manifest="$(absolute_path "$manifest")"
 
 workspace_dir="$(detect_workspace_dir)"
 export BUILD_WORKSPACE_DIRECTORY="$workspace_dir"
@@ -236,6 +262,8 @@ spiffsgen="$(find_spiffsgen)"
 spiffs_cmd=(
 	python3
 	"$spiffsgen"
+	--obj-name-len
+	"$WWW_SPIFFS_OBJ_NAME_LEN"
 	"$WWW_SPIFFS_SIZE"
 	"$WWW_SOURCE_DIR"
 	"$www_image"
