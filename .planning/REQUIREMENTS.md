@@ -205,6 +205,26 @@ update behavior remain pending or explicitly gapped. The OTAWWW ledger records
 path, while preserving `www.bin`, route presence, static serving, and `Wrong
 API input` as insufficient proof of whole-`www` update parity.
 
+**Phase 20 final evidence note (2026-07-03):** Phase 20 adds a final active
+safety hardware telemetry evidence ledger at
+`docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md`
+and final redaction status at
+`docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/redaction-review.md`
+with `redaction_status: passed`. `SAFE-01`, `SAFE-02`, `SAFE-03`, `SAFE-04`,
+`SAFE-05`, `SAFE-06`, `SAFE-07`, `SAFE-08`, `SAFE-09`, and `EVD-05` remain
+complete in the implementation/governance sense because Phase 20 records exact
+package, release-gate, detector, board-info, flash-monitor, safe-baseline,
+active power/voltage, thermal/fan, self-test/watchdog/load, runtime
+display/input, failure-path, live API/WebSocket telemetry, redaction, parity,
+reference, and lifecycle artifacts. The final summary keeps active voltage
+control, fan duty effects, overheat/fault stimulus, self-test hardware
+submodes, bounded load, watchdog recovery, runtime display/input parity, fresh
+safety telemetry, and live API/WebSocket correlation below verified unless a
+future artifact supplies the required `hardware-regression` or exact
+`hardware-smoke` evidence class. The target lock remains blocked because no
+trusted raw origin-only target artifact exists, network scanning stayed
+disabled, and no device URL was inferred from redacted serial evidence.
+
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | FND-01 | Phase 1 | Complete |

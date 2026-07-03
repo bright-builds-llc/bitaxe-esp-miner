@@ -1,9 +1,9 @@
 ---
 phase: 20
 slug: active-safety-hardware-telemetry-evidence
-status: draft
+status: pass
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-07-03T21:06:06.180Z
 lifecycle_mode: yolo
 phase_lifecycle_id: 20-2026-07-03T20-48-00
@@ -34,20 +34,20 @@ phase_lifecycle_id: 20-2026-07-03T20-48-00
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 20-W0-01 | 20-01 | 0 | SAFE-08, EVD-05 | T-20-01-01 | Safety allow and parity guards reject unsupported active safety claims and include first-class `failure-paths` surface coverage. | unit/workflow | `cargo test -p bitaxe-parity --all-features safety_allow && bazel test //tools/parity:tests --test_filter=safety_allow` | yes | complete |
-| 20-W0-02 | TBD | 0 | SAFE-01, SAFE-02, SAFE-04 | T20-02 | Active hardware probes require board `205`, detector gate, bounded inputs, recovery steps, and final safe-state markers. | wrapper/parity | `bazel test //scripts:phase14_power_voltage_test //scripts:phase14_thermal_fan_test` plus any Phase 20 wrapper test targets | partial | pending |
-| 20-W0-03 | TBD | 0 | SAFE-05, SAFE-09 | T20-03 | Self-test and load evidence cannot run without documented stimulus, abort conditions, recovery, and safe-state checks. | unit/wrapper | `cargo test -p bitaxe-safety --all-features self_test && cargo test -p bitaxe-safety --all-features watchdog && bazel test //scripts:phase14_self_test_watchdog_load_test` | yes | pending |
-| 20-W0-04 | TBD | 0 | SAFE-06 | T20-04 | Runtime display/input claims stay below verified unless a real runtime route and observation exist. | wrapper/evidence | `bazel test //scripts:phase14_display_input_test` plus any Phase 20 display/input test targets | partial | pending |
-| 20-W0-05 | TBD | 0 | SAFE-07 | T20-05 | Live API/WebSocket telemetry uses explicit target input, redaction, bounded capture, and correlation with hardware observations. | wrapper/live evidence | `bazel test //scripts:phase14_live_telemetry_test` plus `node scripts/phase17-websocket-capture.mjs --help` or a Phase 20 capture test target | partial | pending |
-| 20-W0-06 | TBD | 0 | EVD-05 | T20-06 | Evidence committed to the repo has redaction review and cites only reviewed artifacts. | docs/check | redaction scan command defined by the plan, followed by `just parity` | no | pending |
+| 20-W0-01 | 20-01 | 0 | SAFE-08, EVD-05 | T-20-01-01 | Safety allow and parity guards reject unsupported active safety claims and include first-class `failure-paths` surface coverage. | unit/workflow | `cargo test -p bitaxe-parity --all-features safety_allow && bazel test //tools/parity:tests --test_filter=safety_allow`; evidence: `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/evidence-contract.md` | yes | pass |
+| 20-W0-02 | 20-03 | 0 | SAFE-01, SAFE-02, SAFE-04 | T20-02 | Active hardware probes require board `205`, detector gate, bounded inputs, recovery steps, and final safe-state markers; unavailable active controls are documented below verified. | wrapper/parity | `bazel test //scripts:phase14_power_voltage_test //scripts:phase14_thermal_fan_test`; evidence: `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage.md`, `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-thermal-fan.md`, `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths.md` | yes | pass |
+| 20-W0-03 | 20-04 | 0 | SAFE-05, SAFE-09 | T20-03 | Self-test and load evidence cannot run without documented stimulus, abort conditions, recovery, and safe-state checks; Phase 20 records watchdog breadcrumbs and blocked hardware subclaims. | unit/wrapper | `cargo test -p bitaxe-safety --all-features self_test`, `cargo test -p bitaxe-safety --all-features watchdog`, `bazel test //scripts:phase14_self_test_watchdog_load_test`; evidence: `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/self-test-watchdog-load.md` | yes | pass |
+| 20-W0-04 | 20-04 | 0 | SAFE-06 | T20-04 | Runtime display/input claims stay below verified unless a real runtime route and observation exist; Phase 20 records startup-only display breadcrumbs and the runtime gap. | wrapper/evidence | `bazel test //scripts:phase14_display_input_test`; evidence: `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/runtime-display-input.md` | yes | pass |
+| 20-W0-05 | 20-05 | 0 | SAFE-07 | T20-05 | Live API/WebSocket telemetry uses explicit target input, redaction, bounded capture, and correlation with hardware observations; target evidence is blocked with network scanning disabled. | wrapper/live evidence | `bazel test //scripts:phase14_live_telemetry_test`, `node scripts/phase17-websocket-capture.mjs --help`; evidence: `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/live-api-websocket-telemetry.md` | yes | pass |
+| 20-W0-06 | 20-06 | 0 | EVD-05 | T20-06 | Evidence committed to the repo has redaction review and cites only reviewed artifacts. | docs/check | Redaction scans from `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/redaction-review.md`, `just parity`, and key-link verification; evidence: `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md`, `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/redaction-review.md` | yes | pass |
 
 ## Wave 0 Requirements
 
 - [x] Create Phase 20 evidence directory and redaction review scaffold before any hardware or network probe is cited.
-- [ ] Reuse existing Phase 14 wrapper tests unless a Phase 20-specific helper changes behavior.
-- [ ] Add Phase 20 wrapper tests for every new helper script created by the planner.
+- [x] Reuse existing Phase 14 wrapper tests unless a Phase 20-specific helper changes behavior.
+- [x] Add Phase 20 wrapper tests for every new helper script created by the planner.
 - [x] Extend `tools/parity/src/safety_allow.rs` and its tests if the planner chooses a standalone `failure-paths` safety surface.
-- [ ] Record blocked evidence for missing detector, board-info, package identity, recovery path, explicit `DEVICE_URL`, WebSocket client, active route, or redaction prerequisite.
+- [x] Record blocked evidence for missing detector, board-info, package identity, recovery path, explicit `DEVICE_URL`, WebSocket client, active route, or redaction prerequisite.
 
 ## Manual-Only Verifications
 
@@ -66,4 +66,4 @@ phase_lifecycle_id: 20-2026-07-03T20-48-00
 - [x] Feedback latency target documented.
 - [x] `nyquist_compliant: true` set in frontmatter.
 
-**Approval:** draft pending plan checker
+**Approval:** pass - Phase 20 validation rows are closed by `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md`, `redaction-review.md`, checklist citations, requirements traceability, `just parity`, `just verify-reference`, and lifecycle validation.
