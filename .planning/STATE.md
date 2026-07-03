@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 18-03-PLAN.md
-last_updated: "2026-07-03T15:49:15.050Z"
+status: verifying
+stopped_at: Completed 18-04-PLAN.md
+last_updated: "2026-07-03T16:04:30.055Z"
 last_activity: 2026-07-03
 progress:
   total_phases: 21
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 98
-  completed_plans: 97
-  percent: 99
+  completed_plans: 98
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 18 (firmware-ota-and-rollback-evidence) — EXECUTING
+Phase: 18 (firmware-ota-and-rollback-evidence) — VERIFYING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-03
 
-Progress: [███░░░░░░░] 25%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -143,6 +143,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 18-firmware-ota-and-rollback-evidence P01 | 11m46s | 2 tasks | 6 files |
 | Phase 18-firmware-ota-and-rollback-evidence P02 | 20m10s | 2 tasks | 9 files |
 | Phase 18-firmware-ota-and-rollback-evidence P03 | 9m52s | 2 tasks | 11 files |
+| Phase 18-firmware-ota-and-rollback-evidence P04 | 11m07s | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -364,6 +365,9 @@ Recent decisions affecting current work:
 - [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-03 keeps valid firmware OTA below verified because HTTP 200 completion was not followed by captured firmware identity or ota_boot_validation markers.
 - [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-03 keeps destructive rollback, interrupted update, forced boot failure, erase, OTAWWW, active safety, mining, and soak behavior as non-claims.
 - [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-03 leaves redaction_status pending for Plan 18-04 despite targeted pre-commit redaction scan passing.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-04 passed redaction after inspecting required scan matches and allowed only labels, placeholders, route names, USB port identity, ESP-IDF/Wi-Fi/NVS labels, command examples, version strings, and non-claims.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-04 kept OTA-001 implemented rather than verified because post-OTA firmware_commit, reference_commit, and ota_boot_validation markers were missing.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-04 kept REL-001, REL-002, and REL-003 below verified for selected partition, boot-validation, rollback, recovery, large erase, interrupted update, and OTAWWW behavior.
 
 ### Pending Todos
 
@@ -389,6 +393,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T15:49:15.046Z
-Stopped at: Completed 18-03-PLAN.md
+Last session: 2026-07-03T16:04:30.051Z
+Stopped at: Completed 18-04-PLAN.md
 Resume file: None
