@@ -177,6 +177,44 @@ impl Hostname {
     }
 }
 
+/// Wi-Fi station SSID.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WifiSsid(String);
+
+impl WifiSsid {
+    /// Parses Wi-Fi SSIDs with upstream length bounds.
+    pub fn parse(value: impl Into<String>) -> Result<Self, ConfigValidationError> {
+        let value = value.into();
+        validate_length("ssid", &value, 1, 32)?;
+        Ok(Self(value))
+    }
+
+    /// Returns the SSID string.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Wi-Fi station password.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WifiPassword(String);
+
+impl WifiPassword {
+    /// Parses Wi-Fi passwords with upstream length bounds.
+    pub fn parse(value: impl Into<String>) -> Result<Self, ConfigValidationError> {
+        let value = value.into();
+        validate_length("wifiPass", &value, 0, 63)?;
+        Ok(Self(value))
+    }
+
+    /// Returns the Wi-Fi password string.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Network port number.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PortNumber(u16);
@@ -447,7 +485,7 @@ mod tests {
     use super::{
         validate_nvs_key_name, AsicFrequencyMhz, BoardVersion, BoolLike, CoreVoltageMv,
         FanDutyPercent, Hostname, MinFanDutyPercent, PortNumber, StratumProtocol, Sv2ChannelType,
-        TemperatureCelsius, TlsMode,
+        TemperatureCelsius, TlsMode, WifiPassword, WifiSsid,
     };
 
     #[test]
@@ -514,6 +552,51 @@ mod tests {
         assert!(tls_mode.is_err());
         assert!(stratum_protocol.is_err());
         assert!(sv2_channel_type.is_err());
+    }
+
+    #[test]
+    fn validation_accepts_wifi_station_credentials_at_bounds() {
+        // Arrange
+        let min_ssid = "a";
+        let max_ssid_input = "s".repeat(32);
+        let empty_password = "";
+        let max_password_input = "p".repeat(63);
+
+        // Act
+        let min_ssid = WifiSsid::parse(min_ssid);
+        let max_ssid = WifiSsid::parse(max_ssid_input.clone());
+        let empty_password = WifiPassword::parse(empty_password);
+        let max_password = WifiPassword::parse(max_password_input.clone());
+
+        // Assert
+        assert_eq!(min_ssid.expect("min ssid").as_str(), "a");
+        assert_eq!(
+            max_ssid.expect("max ssid").as_str(),
+            max_ssid_input.as_str()
+        );
+        assert_eq!(empty_password.expect("empty password").as_str(), "");
+        assert_eq!(
+            max_password.expect("max password").as_str(),
+            max_password_input.as_str()
+        );
+    }
+
+    #[test]
+    fn validation_rejects_wifi_station_credentials_outside_bounds() {
+        // Arrange
+        let empty_ssid = "";
+        let too_long_ssid = "s".repeat(33);
+        let too_long_password = "p".repeat(64);
+
+        // Act
+        let empty_ssid = WifiSsid::parse(empty_ssid);
+        let too_long_ssid = WifiSsid::parse(too_long_ssid);
+        let too_long_password = WifiPassword::parse(too_long_password);
+
+        // Assert
+        assert!(empty_ssid.is_err());
+        assert!(too_long_ssid.is_err());
+        assert!(too_long_password.is_err());
     }
 
     #[test]

@@ -9,12 +9,14 @@ mod display_adapter;
 mod filesystem;
 mod http_api;
 mod log_buffer;
+mod network_stack;
 mod ota_update;
 mod runtime_snapshot;
 mod safety_adapter;
 mod settings_adapter;
 mod static_files;
 mod websocket_api;
+mod wifi_adapter;
 
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
 const ESP_IDF_VERSION: &str = "v5.5.4";
@@ -43,14 +45,18 @@ fn main() -> anyhow::Result<()> {
 
     info_retained(&boot_log_line);
     info_retained(&safe_state_log_line);
+    if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
+        log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
+    }
     let startup_debug_text = StartupDebugText::new(
         BoardTarget::Ultra205,
         AsicTarget::Bm1366,
         safe_state,
         Some(firmware_commit()),
     );
-    let startup_diagnostics = match Peripherals::take() {
+    let (startup_diagnostics, maybe_modem) = match Peripherals::take() {
         Ok(peripherals) => {
+            let modem = peripherals.modem;
             let pins = peripherals.pins;
             if let Err(error) = display_adapter::render_startup_debug_text(
                 peripherals.i2c0,
@@ -63,17 +69,23 @@ fn main() -> anyhow::Result<()> {
                 );
             }
             display_adapter::publish_runtime_display_input_boundary();
-            asic_adapter::run_boot_gate_with_peripherals(asic_adapter::AsicBootPeripherals {
-                uart: peripherals.uart1,
-                reset: pins.gpio1,
-                tx: pins.gpio17,
-                rx: pins.gpio18,
-            })
+            (
+                asic_adapter::run_boot_gate_with_peripherals(asic_adapter::AsicBootPeripherals {
+                    uart: peripherals.uart1,
+                    reset: pins.gpio1,
+                    tx: pins.gpio17,
+                    rx: pins.gpio18,
+                }),
+                Some(modem),
+            )
         }
         Err(error) => {
             log::warn!("display_status=unavailable reason=peripherals_unavailable error={error}");
             display_adapter::publish_runtime_display_input_boundary();
-            asic_adapter::run_boot_gate_without_peripherals("peripherals_unavailable")
+            (
+                asic_adapter::run_boot_gate_without_peripherals("peripherals_unavailable"),
+                None,
+            )
         }
     };
     let startup_diagnostics_passed = startup_diagnostics.is_ok();
@@ -83,6 +95,13 @@ fn main() -> anyhow::Result<()> {
     startup_diagnostics?;
     asic_adapter::publish_mining_loop_blocked_status("hardware_evidence_ack_missing");
     safety_adapter::start_safety_supervisor();
+    if let Some(modem) = maybe_modem {
+        if let Err(error) = wifi_adapter::start_wifi_sta(modem) {
+            log::warn!("wifi_status=unavailable error={error:#}");
+        }
+    } else {
+        log::warn!("wifi_status=unavailable reason=peripherals_unavailable");
+    }
     let filesystem_status = filesystem::mount_www_spiffs();
     if let Err(error) = http_api::start_http_api(filesystem_status) {
         log::warn!("axeos_api_route_shell=unavailable error={error:#}");

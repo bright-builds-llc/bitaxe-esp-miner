@@ -44,6 +44,7 @@ pub fn collect_api_snapshot() -> ApiSnapshot {
     snapshot.platform = collect_platform_snapshot(snapshot.platform);
     snapshot.safe_telemetry =
         SafeTelemetrySnapshot::from_report(crate::safety_adapter::collect_safety_report());
+    apply_wifi_snapshot(&mut snapshot);
     apply_settings_snapshot(&mut snapshot);
     snapshot
 }
@@ -125,6 +126,18 @@ fn apply_settings_snapshot(snapshot: &mut ApiSnapshot) {
 
     if let Some(LoadedValue::U16(manual_fan_speed)) = loaded.loaded_value("manualfanspeed") {
         snapshot.config.manual_fan_speed = *manual_fan_speed;
+    }
+}
+
+fn apply_wifi_snapshot(snapshot: &mut ApiSnapshot) {
+    let wifi = crate::wifi_adapter::current_wifi_snapshot();
+    snapshot.platform.wifi_status = wifi.wifi_status;
+    snapshot.platform.ssid = wifi.ssid;
+    snapshot.platform.ipv4 = wifi.ipv4;
+    snapshot.platform.mac_addr = wifi.mac_addr;
+    snapshot.platform.ap_enabled = wifi.ap_enabled;
+    if let Some(rssi) = wifi.maybe_rssi_dbm {
+        snapshot.safe_telemetry.wifi_rssi_dbm = rssi;
     }
 }
 

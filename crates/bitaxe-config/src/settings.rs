@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use crate::{
     all_settings_schema, compatibility_writes_for_active, BoolLike, ConfigValidationError,
     FanDutyPercent, Hostname, MinFanDutyPercent, NvsWrite, PortNumber, SettingSchema, StoredType,
-    StratumProtocol, Sv2ChannelType, TemperatureCelsius, TlsMode,
+    StratumProtocol, Sv2ChannelType, TemperatureCelsius, TlsMode, WifiPassword, WifiSsid,
 };
 
 /// Raw setting value accepted at the pure update boundary.
@@ -146,6 +146,12 @@ fn validate_string_setting(
     validate_schema_length(schema, value)?;
 
     match schema.key.as_str() {
+        "wifissid" => {
+            WifiSsid::parse(value.clone())?;
+        }
+        "wifipass" => {
+            WifiPassword::parse(value.clone())?;
+        }
         "hostname" => {
             Hostname::parse(value.clone())?;
         }
@@ -360,6 +366,8 @@ fn invalid_type(schema: &SettingSchema, raw_value: &RawSettingValue) -> ConfigVa
 
 fn field_name(schema: &SettingSchema) -> &'static str {
     match schema.key.as_str() {
+        "wifissid" => "ssid",
+        "wifipass" => "wifiPass",
         "hostname" => "hostname",
         "stratumprot" => "stratumProtocol",
         "stratumport" => "stratumPort",
@@ -386,8 +394,8 @@ mod tests {
     use serde::Deserialize;
 
     use crate::{
-        apply_settings_patch, NvsKeyName, NvsWrite, RawSettingValue, SettingsPatch,
-        SettingsUpdateDecision,
+        apply_settings_patch, ConfigValidationError, NvsKeyName, NvsWrite, RawSettingValue,
+        SettingsPatch, SettingsUpdateDecision,
     };
 
     #[derive(Debug, Deserialize)]
@@ -584,5 +592,63 @@ mod tests {
                 writes: vec![NvsWrite::u16("autofanspeed", 1)],
             }
         );
+    }
+
+    #[test]
+    fn validation_wifi_credentials_write_upstream_nvs_keys() {
+        // Arrange
+        let patch = SettingsPatch::from_pairs([
+            ("ssid", RawSettingValue::String("lab-network".to_owned())),
+            (
+                "wifiPass",
+                RawSettingValue::String("lab-password".to_owned()),
+            ),
+        ]);
+
+        // Act
+        let decision = apply_settings_patch(&patch);
+
+        // Assert
+        assert_eq!(
+            decision,
+            SettingsUpdateDecision::Accepted {
+                writes: vec![
+                    NvsWrite::string("wifissid", "lab-network"),
+                    NvsWrite::string("wifipass", "lab-password"),
+                ],
+            }
+        );
+    }
+
+    #[test]
+    fn validation_wifi_credentials_report_public_field_names() {
+        // Arrange
+        let patch = SettingsPatch::from_pairs([
+            ("ssid", RawSettingValue::String(String::new())),
+            ("wifiPass", RawSettingValue::String("p".repeat(64))),
+        ]);
+
+        // Act
+        let decision = apply_settings_patch(&patch);
+
+        // Assert
+        let SettingsUpdateDecision::Rejected { errors } = decision else {
+            panic!("invalid Wi-Fi credentials should be rejected");
+        };
+        assert!(errors.iter().any(|error| {
+            matches!(
+                error,
+                ConfigValidationError::InvalidLength { field: "ssid", .. }
+            )
+        }));
+        assert!(errors.iter().any(|error| {
+            matches!(
+                error,
+                ConfigValidationError::InvalidLength {
+                    field: "wifiPass",
+                    ..
+                }
+            )
+        }));
     }
 }

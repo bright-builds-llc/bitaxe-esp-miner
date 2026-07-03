@@ -31,7 +31,7 @@ pub use settings::{
 pub use validation::{
     validate_nvs_key_name, AsicFrequencyMhz, BoardVersion, BoolLike, ConfigValidationError,
     CoreVoltageMv, FanDutyPercent, Hostname, MinFanDutyPercent, PortNumber, StratumProtocol,
-    Sv2ChannelType, TemperatureCelsius, TlsMode,
+    Sv2ChannelType, TemperatureCelsius, TlsMode, WifiPassword, WifiSsid,
 };
 
 /// Phase 1 board and ASIC identity selection.
