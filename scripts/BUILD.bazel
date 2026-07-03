@@ -59,6 +59,11 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase19_recovery_otawww_evidence",
+    srcs = ["phase19-recovery-otawww-evidence.sh"],
+)
+
+sh_binary(
     name = "phase13_monitor_capture",
     srcs = ["phase13-monitor-capture.sh"],
 )
@@ -194,6 +199,17 @@ sh_test(
         "phase18-firmware-ota-evidence.sh",
         "phase13-firmware-ota-smoke.sh",
         "phase13-monitor-capture.sh",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase19_recovery_otawww_evidence_test",
+    srcs = ["phase19-recovery-otawww-evidence-test.sh"],
+    data = [
+        "phase19-recovery-otawww-evidence.sh",
+        "phase16-recovery-regression.sh",
+        "phase16-http-static-smoke.sh",
     ],
     tags = ["local"],
 )
