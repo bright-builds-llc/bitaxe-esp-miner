@@ -25,6 +25,7 @@ const ALLOWED_SURFACES: &[&str] = &[
     "thermal-fan",
     "self-test-watchdog-load",
     "display-input",
+    "failure-paths",
     "live-api-websocket-telemetry",
     "parity-redaction",
 ];
@@ -450,6 +451,78 @@ mod tests {
             // Assert
             assert_error_contains(&report, "hardware-regression");
         }
+    }
+
+    #[test]
+    fn safety_allow_allows_failure_paths_fault_stimulus_with_hardware_regression() {
+        // Arrange
+        let (claim_tier, evidence_class) = ("fault-stimulus", "hardware-regression");
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("failure-paths");
+            json["claim_tier"] = serde_json::json!(claim_tier);
+            json["evidence_class"] = serde_json::json!(evidence_class);
+            json["allowed_command"] =
+                serde_json::json!("scripts/phase20-failure-paths.sh --manifest allow.json");
+            json["allowed_inputs"] = serde_json::json!({
+                "stimulus": "fan-rpm-unavailable",
+                "expected_fault": "fan_fault",
+                "restore_path": "just flash board=205 port=/dev/cu.usbmodem1101"
+            });
+            json["evidence_dir"] = serde_json::json!(
+                "docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths"
+            );
+            json["checklist_rows"] = serde_json::json!(["SAFE-04"]);
+        });
+
+        // Act
+        let report = validate_safety_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(report.passed(), "{report:#?}");
+    }
+
+    #[test]
+    fn safety_allow_rejects_failure_paths_fault_stimulus_without_hardware_regression() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("failure-paths");
+            json["claim_tier"] = serde_json::json!("fault-stimulus");
+            json["evidence_class"] = serde_json::json!("hardware-smoke");
+        });
+
+        // Act
+        let report = validate_safety_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert_error_contains(&report, "hardware-regression");
+    }
+
+    #[test]
+    fn safety_allow_allows_failure_paths_unsupported_pending_deferred_without_recovery() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("failure-paths");
+            json["claim_tier"] = serde_json::json!("unsupported-pending");
+            json["evidence_class"] = serde_json::json!("deferred");
+            json["allowed_command"] =
+                serde_json::json!("scripts/phase20-failure-paths.sh --manifest allow.json");
+            json["allowed_inputs"] = serde_json::json!({
+                "blocked_by": "no compile-gated fault stimulus route"
+            });
+            json["abort_conditions"] = serde_json::json!([]);
+            json["recovery_steps"] = serde_json::json!([]);
+            json["post_action_safe_state_markers"] = serde_json::json!([]);
+            json["evidence_dir"] = serde_json::json!(
+                "docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths"
+            );
+            json["checklist_rows"] = serde_json::json!(["SAFE-04"]);
+        });
+
+        // Act
+        let report = validate_safety_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(report.passed(), "{report:#?}");
     }
 
     #[test]
