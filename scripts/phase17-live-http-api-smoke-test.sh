@@ -101,12 +101,13 @@ create_flash_json_with_monitor_log() {
 	local board="${3:-205}"
 	local trusted_output="${4:-true}"
 	local command_kind="${5:-flash-monitor}"
+	local port_field="${6:-selected_port}"
 
 	cat >"$path" <<JSON
 {
   "command_kind": "${command_kind}",
   "board": "${board}",
-  "selected_port": "/dev/cu.usbmodem1101",
+  "${port_field}": "/dev/cu.usbmodem1101",
   "trusted_output": ${trusted_output},
   "firmware_commit": "26a1aebad7a11234567890123456789012345678",
   "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
@@ -395,7 +396,7 @@ test_flash_log_device_url_success_records_usb_source_without_raw_target_lock() {
 
 	create_manifest "$manifest"
 	printf '\377\376wifi_status=connected ipv4=192.168.1.24 device_url=http://device.local\n' >"$monitor_log"
-	create_flash_json_with_monitor_log "$flash_json" "$monitor_log"
+	create_flash_json_with_monitor_log "$flash_json" "$monitor_log" "205" "true" "flash-monitor" "port"
 	create_fake_curl "$curl_stub"
 
 	# Act
@@ -409,6 +410,7 @@ test_flash_log_device_url_success_records_usb_source_without_raw_target_lock() {
 	assert_contains "$log_file" "http_static_api_status: passed"
 	assert_contains "${out_dir}/target-lock.json" "\"device_url_source\": \"usb_flash_monitor_log\""
 	assert_contains "${out_dir}/target-lock.json" "\"device_url_redacted\": \"http://[redacted]\""
+	assert_contains "${out_dir}/target-lock.json" "\"selected_port\": \"/dev/cu.usbmodem1101\""
 	assert_not_contains "${out_dir}/target-lock.json" "device.local"
 }
 

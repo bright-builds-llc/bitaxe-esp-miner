@@ -663,9 +663,12 @@ if ! identity_preflight_passes; then
 	exit 0
 fi
 
-selected_port="$(json_field "$flash_evidence_json" selected_port)"
-readonly selected_port
-write_target_lock "passed" "$selected_port"
+maybe_selected_port="$(json_field "$flash_evidence_json" selected_port)"
+if [[ -z "$maybe_selected_port" ]]; then
+	maybe_selected_port="$(json_field "$flash_evidence_json" port)"
+fi
+readonly maybe_selected_port
+write_target_lock "passed" "$maybe_selected_port"
 
 any_blocked=0
 

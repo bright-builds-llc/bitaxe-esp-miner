@@ -1,10 +1,153 @@
 phase17_live_http_api_smoke
 manifest: docs/parity/evidence/phase-17-live-http-api-and-static-evidence/package-release-gate/bitaxe-ultra205-package.json
-manifest_source_commit: d9e471c9699eb0140749127416640aa1bf077d26
+manifest_source_commit: 9a2bf5850ea042731f6a7947cc7eb04dc4589e90
 manifest_reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
-flash_evidence_json: docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot/flash-command-evidence.json
+flash_evidence_json: target/phase17-gap-current-dev-raw/flash-command-evidence.json
 network_scan: disabled
-DEVICE_URL status: blocked - missing DEVICE_URL
-target_status: blocked
-http_static_api_status: blocked
-conclusion: blocked - live HTTP/static/API evidence requires an explicit origin-only DEVICE_URL
+DEVICE_URL status: provided
+DEVICE_URL source: usb_flash_monitor_log
+DEVICE_URL sanitized: http://[redacted]
+identity_status: passed
+target_status: passed
+
+route: GET /
+method: GET
+path: /
+sanitized_target: http://[redacted]/
+expected_result: 200 with AxeOS unavailable, Open recovery, and Release metadata
+actual_status: 200
+curl_status: 0
+selected_headers:
+  Content-Type: text/html
+redacted_body_snippet: <!doctype html> <html lang="en">   <head>     <meta charset="utf-8">     <meta name="viewport" content="width=device-width, initial-scale=1">     <title>AxeOS unavailable</title>     <link rel="stylesheet" href="/assets/app.css">   </head>   <body>     <!-- Rust-owned compatibility fallback, not copied from upstream ESP-Miner. -->     <main class="shell" aria-labelledby="page-title">       <section class="status">         <p class="eyebrow">Bitaxe Rust Firmware</p>         <h1 id="page-title">AxeOS unavailable</h1>         <p>Open /recovery and upload www.bin to restore the web interface.</p>         <div class="actions" aria-label="Recovery actions">           <a href="/recovery">Open recovery</a>           <a href="/assets/release.json">Release metadata</a>         </div>       </section>     </main>   </body> </html>
+actual_result: matched
+route_conclusion: passed
+
+route: GET /assets/app.css.gz
+method: GET
+path: /assets/app.css.gz
+sanitized_target: http://[redacted]/assets/app.css.gz
+expected_result: 200 with Content-Type, Content-Encoding gzip, and Cache-Control
+actual_status: 200
+curl_status: 0
+selected_headers:
+  Content-Type: text/css
+  Cache-Control: max-age=2592000
+  Content-Encoding: gzip
+redacted_body_snippet: ãuS—n€0|œW-lE‘⁄n⁄d ”l¿äˆäE€Be…ê‰&ﬁ∞%'M∫46`[gÍx<R7W∏Çßﬁf7%TBÎµ(ü¡áA£o√åP⁄N≈ˇŒ∂–w>8-|[=≤e–]Gö«FxÑ9(–eq -˙ƒ‡∞”¢DB’k_∂¯sø~ƒÕ7Ó,˝ô•“÷1_6ÿ")‹Ûí–®™v∂7í√e6œd>_ÓÉ ©äj^≠#RYX%Z•NK?¯Ä-Î’4-ôË:çlDGË´VÊ˘Aî´Ñ}'ÇøXamë$^åk/ågù™ñìøì…Uíª∂[Ê’oejNﬂN¢c•ÄµïCäiïa™∫ Ú,{i¢–V∏ZŸŸÚà‚öz@^E©<98p®ùíÀs¨…d¶®œ°§F†K∞ê2I,f›v«DË}¢ﬁ( ?—á)‹›g›ˆSñJ¢›º’J¬eÅ∑ÛŸÏì9!UOÈë˙øZÚ<ˇ\‹ûëÄÆù›åÌÌ†{G¥oÆX¨ÁÂÏµπ‰6FægiÚì˝˘˝Hp^,é†ÕŒµª,ôOÌ«Éì◊E¢Ìﬁ≤æõ˝dÎ›Xó(„¸˚∑m´4é ËÕ6Nt‚3Bu\ÏéY∞›ëS‚-ï2)ÔûÒxf;aB´⁄úŒ¡;Ì¨Ÿ¨»œ∑ÛÙàΩvÚ‡t¿m`KÎD,ù”ë78JÁï-{?•è∆æ†ÕÒàº¶JW‹˛è5È‚¢
+actual_result: matched
+route_conclusion: passed
+
+route: GET /phase17-missing-static
+method: GET
+path: /phase17-missing-static
+sanitized_target: http://[redacted]/phase17-missing-static
+expected_result: 302 Location / with captive portal body
+actual_status: 302
+curl_status: 0
+selected_headers:
+  Content-Type: text/plain
+  Location: /
+redacted_body_snippet: Redirect to the captive portal
+actual_result: matched
+route_conclusion: passed
+
+route: GET /recovery
+method: GET
+path: /recovery
+sanitized_target: http://[redacted]/recovery
+expected_result: 200 with AxeOS Recovery and Response:
+actual_status: 200
+curl_status: 0
+selected_headers:
+  Content-Type: text/html
+redacted_body_snippet: <!doctype html> <html lang="en">   <head>     <meta charset="utf-8">     <meta name="viewport" content="width=device-width, initial-scale=1">     <title>AxeOS Recovery</title>     <style>       :root {         color-scheme: dark;         background: #000000;         color: #00ff00;         font-family: "courier new", monospace;       }        body {         margin: 0;         padding: 24px;       }        main {         max-width: 720px;       }        h1 {         margin: 0 0 24px;         font-size: 28px;         font-weight: 500;         line-height: 1.2;       }        p,       label,       output {         font-size: 14px;         line-height: 1.5;       }        form {         display: grid;         gap: 16px;         margin-top: 24px;       }        input,       button {         min-height: 44px;         font: inherit;       }        button {         width: fit-content;         border: 1px solid #00ff00;         border-radius: 0;         background: #000000;         color: #00ff
+actual_result: matched
+route_conclusion: passed
+
+route: GET /api/system/info
+method: GET
+path: /api/system/info
+sanitized_target: http://[redacted]/api/system/info
+expected_result: 200 JSON-like current-device body containing 205 and BM1366 or Ultra
+actual_status: 200
+curl_status: 0
+selected_headers:
+  Content-Type: application/json
+redacted_body_snippet: {"ASICModel":"BM1366","boardVersion":"205","hashRate":0.0,"hashRate_1m":0.0,"hashRate_10m":0.0,"hashRate_1h":0.0,"fanspeed":0,"fanrpm":0,"fan2rpm":0,"miningPaused":true,"apEnabled":0,"autofanspeed":1,"showNewBlock":false,"blockFound":0,"frequency":485.0,"actualFrequency":0.0,"coreVoltage":1200,"coreVoltageActual":0.0,"power":0.0,"voltage":0.0,"current":0.0,"temp":0.0,"temp2":0.0,"vrTemp":0.0,"expectedHashrate":0.0,"sharesAccepted":0,"sharesRejected":0,"sharesRejectedReasons":[],"bestDiff":0.0,"bestSessionDiff":0.0,"poolDifficulty":0.0,"poolConnectionInfo":"disconnected","responseTime":0.0,"responseShareBatch":0,"processTime":0.0,"errorPercentage":0.0,"isUsingFallbackStratum":0,"maxPower":12,"nominalVoltage":0,"smallCoreCount":894,"isPSRAMAvailable":1,"wifiRSSI":-46,"wifiStatus":"connected","version":"9a2bf5850ea0","axeOSVersion":"safe-fixture","idfVersion":"v5.5.4","resetReason":"11","runningPartition":"factory","macAddr":"[redacted-mac]","hostname":"[redacted]","ssid":"[redacted]","ip
+actual_result: matched
+system_info_device_marker: passed
+route_conclusion: passed
+
+route: GET /api/phase17-unknown
+method: GET
+path: /api/phase17-unknown
+sanitized_target: http://[redacted]/api/phase17-unknown
+expected_result: unknown API JSON 404 body
+actual_status: 404
+curl_status: 0
+selected_headers:
+  Content-Type: application/json
+redacted_body_snippet: {"error":"unknown route"}
+actual_result: matched
+route_conclusion: passed
+
+route: GET /api/ws
+method: GET
+path: /api/ws
+sanitized_target: http://[redacted]/api/ws
+expected_result: 400 or 426 WebSocket no-upgrade route coexistence response
+actual_status: 400
+curl_status: 0
+selected_headers:
+  Content-Type: text/plain
+redacted_body_snippet: WebSocket upgrade required
+actual_result: matched
+websocket_no_upgrade_claim: route-coexistence-only
+route_conclusion: passed
+
+route: GET /api/ws/live
+method: GET
+path: /api/ws/live
+sanitized_target: http://[redacted]/api/ws/live
+expected_result: 400 or 426 live WebSocket no-upgrade route coexistence response
+actual_status: 400
+curl_status: 0
+selected_headers:
+  Content-Type: text/plain
+redacted_body_snippet: WebSocket upgrade required
+actual_result: matched
+websocket_no_upgrade_claim: route-coexistence-only
+route_conclusion: passed
+
+route: POST /api/system/OTA
+method: POST
+path: /api/system/OTA
+sanitized_target: http://[redacted]/api/system/OTA
+expected_result: firmware OTA route presence and validation-path reachability only
+actual_status: 500
+curl_status: 0
+selected_headers:
+  Content-Type: text/plain
+redacted_body_snippet: Validation / Activation Error
+actual_result: matched
+ota_route_presence_claim: route-presence-only
+ota_non_claims: valid OTA upload, invalid image rejection, reboot, rollback, selected partition, boot validation not claimed
+route_conclusion: passed
+
+route: POST /api/system/OTAWWW
+method: POST
+path: /api/system/OTAWWW
+sanitized_target: http://[redacted]/api/system/OTAWWW
+expected_result: OTAWWW Wrong API input fail-closed gap response
+actual_status: 400
+curl_status: 0
+selected_headers:
+  Content-Type: text/plain
+redacted_body_snippet: Wrong API input
+actual_result: matched
+otawww_rel03_status: deferred
+route_conclusion: passed
+
+http_static_api_status: passed
+conclusion: passed - all Phase 17 HTTP/static/API route probes matched expected live evidence markers

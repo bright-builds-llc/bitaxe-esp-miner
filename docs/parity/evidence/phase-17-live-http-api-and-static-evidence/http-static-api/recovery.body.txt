@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AxeOS Recovery</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        background: #000000;
+        color: #00ff00;
+        font-family: "courier new", monospace;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+
+      main {
+        max-width: 720px;
+      }
+
+      h1 {
+        margin: 0 0 24px;
+        font-size: 28px;
+        font-weight: 500;
+        line-height: 1.2;
+      }
+
+      p,
+      label,
+      output {
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      form {
+        display: grid;
+        gap: 16px;
+        margin-top: 24px;
+      }
+
+      input,
+      button {
+        min-height: 44px;
+        font: inherit;
+      }
+
+      button {
+        width: fit-content;
+        border: 1px solid #00ff00;
+        border-radius: 0;
+        background: #000000;
+        color: #00ff00;
+        padding: 0 16px;
+      }
+
+      button:focus,
+      button:hover {
+        background: #00ff00;
+        color: #000000;
+      }
+
+      .response {
+        display: grid;
+        gap: 8px;
+        margin-top: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Rust-owned recovery page, not copied from upstream ESP-Miner. -->
+    <main>
+      <h1>AxeOS Recovery</h1>
+      <p>Please upload www.bin to recover AxeOS</p>
+      <p>
+        After clicking upload, please wait 60 seconds<br>
+        DO NOT restart the device until response is received
+      </p>
+
+      <form id="upload-form">
+        <label for="wwwfile">www.bin</label>
+        <input id="wwwfile" name="wwwfile" type="file" required>
+        <button id="upload" type="submit">Upload</button>
+      </form>
+
+      <button id="restart" type="button">Restart</button>
+
+      <div class="response">
+        <output id="status" aria-live="polite"></output>
+        <span>Response:</span>
+        <output id="response" aria-live="polite"></output>
+      </div>
+    </main>
+
+    <script>
+      const uploadForm = document.getElementById("upload-form");
+      const fileInput = document.getElementById("wwwfile");
+      const restartButton = document.getElementById("restart");
+      const statusMsg = document.getElementById("status");
+      const responseMsg = document.getElementById("response");
+
+      uploadForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const file = fileInput.files[0];
+        if (!file) {
+          statusMsg.textContent = "Error uploading!";
+          responseMsg.textContent = "No www.bin selected";
+          return;
+        }
+
+        statusMsg.textContent = "uploading...";
+        const request = new XMLHttpRequest();
+        request.open("POST", "/api/system/OTAWWW", true);
+        request.setRequestHeader("Content-Type", "application/octet-stream");
+        request.onload = () => {
+          responseMsg.textContent = request.responseText;
+          statusMsg.textContent =
+            request.status === 200 ? "Upload successful!" : "Error uploading!";
+        };
+        request.onerror = () => {
+          statusMsg.textContent = "Error uploading!";
+          responseMsg.textContent = "Request failed";
+        };
+        request.send(file);
+      });
+
+      restartButton.addEventListener("click", () => {
+        const request = new XMLHttpRequest();
+        request.open("POST", "/api/system/restart", true);
+        request.onload = () => {
+          responseMsg.textContent = request.responseText;
+        };
+        request.onerror = () => {
+          responseMsg.textContent = "Request failed";
+        };
+        request.send(null);
+      });
+    </script>
+  </body>
+</html>

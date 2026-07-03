@@ -1,0 +1,3 @@
+Content-Type: text/css
+Cache-Control: max-age=2592000
+Content-Encoding: gzip

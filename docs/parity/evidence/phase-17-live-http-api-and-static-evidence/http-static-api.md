@@ -1,55 +1,47 @@
 # Phase 17 HTTP Static API Evidence
 
-http_static_api_status: blocked
-device_url_status: blocked - missing explicit origin-only DEVICE_URL
-target_lock_status: absent - not cited
-identity_status: available - package and flash identity captured by Plan 17-02, but live route probes were not run because DEVICE_URL was missing
+http_static_api_status: passed
+device_url_status: accepted - trusted USB flash-monitor source, committed target redacted
+target_lock_status: present
+identity_status: passed - package manifest and flash evidence match current source/reference commits
 network_scan: disabled
-redaction_status: passed - blocked HTTP artifacts reviewed; missing route artifacts are absent - not cited
+redaction_status: passed - target lock and route artifacts reviewed
 
 ## Identity Context
 
 | Field | Value |
 | --- | --- |
-| source_commit | `d9e471c9699eb0140749127416640aa1bf077d26` |
+| source_commit | `9a2bf5850ea042731f6a7947cc7eb04dc4589e90` |
 | reference_commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
 | board | `205` |
 | selected_port | `/dev/cu.usbmodem1101` |
 | package_manifest | `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/package-release-gate/bitaxe-ultra205-package.json` |
-| flash_evidence_json | `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot/flash-command-evidence.json` |
+| commit-ready flash evidence | `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot/flash-command-evidence.json` |
+| local live target source | `target/phase17-gap-current-dev-raw/flash-command-evidence.json` |
+| target_lock | `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/target-lock.json` |
 | helper_log | `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/http-static-api/http-static-api.log` |
 
-The package and flash evidence are present and still useful as identity context,
-but Plan 17-03 did not receive an explicit origin-only `DEVICE_URL`. The helper
-therefore stopped before live HTTP requests and did not infer a target from
-serial logs, AP UI, router UI, mDNS, ARP, local network state, or operator
-observations.
+The helper used `--use-flash-log-device-url` against the local developer-raw
+USB evidence under `target/phase17-gap-current-dev-raw/` to read the raw
+`device_url` in memory. The committed artifacts contain only
+`device_url_redacted: http://[redacted]`, `device_url_source:
+usb_flash_monitor_log`, `network_scan: disabled`, and the matching
+source/reference identity.
 
 ## Route Evidence
 
-| D-08 route | Status | Artifact status | Claim boundary |
+| D-08 route | Status | Artifacts | Claim boundary |
 | --- | --- | --- | --- |
-| GET / | blocked - missing DEVICE_URL | absent - not cited | Root static entry markers not claimed. |
-| GET /assets/app.css.gz | blocked - missing DEVICE_URL | absent - not cited | CSS/gzip/cache header evidence not claimed. |
-| GET /phase17-missing-static | blocked - missing DEVICE_URL | absent - not cited | Missing-static redirect evidence not claimed. |
-| GET /recovery | blocked - missing DEVICE_URL | absent - not cited | Recovery page evidence not claimed. |
-| GET /api/system/info | blocked - missing DEVICE_URL | absent - not cited | Live current-device API body not claimed. |
-| GET /api/phase17-unknown | blocked - missing DEVICE_URL | absent - not cited | Unknown API JSON 404 evidence not claimed. |
-| GET /api/ws | blocked - missing DEVICE_URL | absent - not cited | No-upgrade route-coexistence response not observed. |
-| GET /api/ws/live | blocked - missing DEVICE_URL | absent - not cited | No-upgrade route-coexistence response not observed. |
-| POST /api/system/OTA | blocked - missing DEVICE_URL | absent - not cited | Empty OTA POST route-presence evidence not claimed. |
-| POST /api/system/OTAWWW | blocked - missing DEVICE_URL | absent - not cited | OTAWWW fail-closed live response not claimed. |
-
-## Explicit Claims And Non-Claims
-
-websocket_no_upgrade_claim: route-coexistence-only - not observed in Plan 17-03 because DEVICE_URL was missing
-websocket_frame_claim: not claimed in Plan 17-03
-
-ota_route_presence_claim: route-presence-only - not observed in Plan 17-03 because DEVICE_URL was missing
-ota_non_claims: valid OTA upload, invalid image rejection, reboot, rollback, selected partition, boot validation not claimed
-
-otawww_rel03_status: blocked - live fail-closed response not observed without DEVICE_URL
-otawww_update_claim: not claimed
+| GET / | passed | `root.headers.txt`, `root.body.txt`, `root.curl-error.txt` | Root static entry markers observed. |
+| GET /assets/app.css.gz | passed | `app-css-gz.headers.txt`, `app-css-gz.body.txt`, `app-css-gz.curl-error.txt` | CSS gzip/cache headers observed. |
+| GET /phase17-missing-static | passed | `missing-static.headers.txt`, `missing-static.body.txt`, `missing-static.curl-error.txt` | Missing-static redirect to `/` observed. |
+| GET /recovery | passed | `recovery.headers.txt`, `recovery.body.txt`, `recovery.curl-error.txt` | Recovery page route loaded. |
+| GET /api/system/info | passed | `system-info.headers.txt`, `system-info.body.txt`, `system-info.curl-error.txt` | Redacted current-device API body contains Ultra 205/BM1366 identity. |
+| GET /api/phase17-unknown | passed | `unknown-api.headers.txt`, `unknown-api.body.txt`, `unknown-api.curl-error.txt` | Unknown API JSON 404 observed. |
+| GET /api/ws | passed | `api-ws.headers.txt`, `api-ws.body.txt`, `api-ws.curl-error.txt` | HTTP no-upgrade route-coexistence only; not frame proof. |
+| GET /api/ws/live | passed | `api-ws-live.headers.txt`, `api-ws-live.body.txt`, `api-ws-live.curl-error.txt` | HTTP no-upgrade route-coexistence only; not frame proof. |
+| POST /api/system/OTA | passed | `firmware-ota.headers.txt`, `firmware-ota.body.txt`, `firmware-ota.curl-error.txt` | Empty POST route-presence/validation-path only. |
+| POST /api/system/OTAWWW | passed | `otawww.headers.txt`, `otawww.body.txt`, `otawww.curl-error.txt` | Live fail-closed `Wrong API input` gap response observed; whole-`www` update still deferred. |
 
 ## Helper Evidence
 
@@ -57,17 +49,33 @@ The helper transcript records:
 
 - `phase17_live_http_api_smoke`
 - `network_scan: disabled`
-- `DEVICE_URL status: blocked - missing DEVICE_URL`
-- `target_status: blocked`
-- `http_static_api_status: blocked`
-- `conclusion: blocked - live HTTP/static/API evidence requires an explicit origin-only DEVICE_URL`
+- `DEVICE_URL status: provided`
+- `DEVICE_URL source: usb_flash_monitor_log`
+- `identity_status: passed`
+- `target_status: passed`
+- `http_static_api_status: passed`
+- `websocket_no_upgrade_claim: route-coexistence-only`
+- `ota_route_presence_claim: route-presence-only`
+- `otawww_rel03_status: deferred`
+- `conclusion: passed - all Phase 17 HTTP/static/API route probes matched expected live evidence markers`
 
-No `target-lock.json` exists because no explicit target was accepted. No
-per-route header, body, or curl-error artifacts were generated; each is
-therefore `absent - not cited`.
+## Explicit Claims And Non-Claims
+
+websocket_no_upgrade_claim: route-coexistence-only - HTTP no-upgrade responses
+were observed for `/api/ws` and `/api/ws/live`, but frame proof comes only from
+`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/`.
+
+ota_route_presence_claim: route-presence-only - `POST /api/system/OTA` accepted
+the empty validation-path probe. Phase 17 does not claim valid OTA upload,
+invalid OTA rejection, reboot, rollback, selected partition, or boot validation.
+
+otawww_rel03_status: deferred - `POST /api/system/OTAWWW` returned the expected
+fail-closed gap response. Phase 17 does not claim whole-`www` OTAWWW update
+behavior.
 
 ## Conclusion
 
-conclusion: blocked - Plan 17-03 preserved the explicit-target and no-scan
-boundary. No live HTTP/static/API, WebSocket frame, valid OTA, rollback,
-boot-validation, or OTAWWW update claim is promoted from these blocked artifacts.
+conclusion: passed - Phase 17 now has live HTTP/static/API route evidence from
+a just-flashed Ultra 205 with a sanitized target lock and no network scanning.
+Unsupported valid OTA, rollback, boot-validation, OTAWWW update, mining,
+safety telemetry, and soak claims remain outside this evidence set.

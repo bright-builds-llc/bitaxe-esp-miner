@@ -1,0 +1,13 @@
+{
+  "board": "205",
+  "created_from_explicit_input": true,
+  "device_url_redacted": "http://[redacted]",
+  "device_url_source": "usb_flash_monitor_log",
+  "flash_evidence_json": "target/phase17-gap-current-dev-raw/flash-command-evidence.json",
+  "manifest": "docs/parity/evidence/phase-17-live-http-api-and-static-evidence/package-release-gate/bitaxe-ultra205-package.json",
+  "network_scan": "disabled",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "selected_port": "/dev/cu.usbmodem1101",
+  "source_commit": "9a2bf5850ea042731f6a7947cc7eb04dc4589e90",
+  "target_status": "passed"
+}
