@@ -446,22 +446,19 @@ Source: ESP-IDF partition APIs operate inside partition boundaries and upstream 
 
 No `[ASSUMED]` claims are used; all research claims are sourced from repo files, local command output, pinned reference code, or official documentation. [VERIFIED: pre-submission review]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Will Phase 19 implement whole-`www` OTAWWW or document the REL-03 gap?**
    - What we know: Current Rust behavior is a typed OTAWWW gap with `Wrong API input`, while upstream supports `POST /api/system/OTAWWW` with `www.bin` and whole-partition erase/write. [VERIFIED: crates/bitaxe-api/src/update_plan.rs] [VERIFIED: firmware/bitaxe/src/http_api.rs] [VERIFIED: reference/esp-miner/main/http_server/http_server.c]
-   - What's unclear: The Phase 19 context permits either safe proof or gap documentation, but does not lock implementation. [VERIFIED: 19-CONTEXT.md]
-   - Recommendation: Default to gap documentation unless the plan can include implementation, tests, flash/restore, recovery page proof, and interrupted-update hardware-regression evidence in the same phase. [VERIFIED: 19-CONTEXT.md] [VERIFIED: tools/parity/src/main.rs]
+   - RESOLVED: The generated Phase 19 plans take the REL-03 gap path by default. Whole-`www` OTAWWW parity may be claimed only if execution adds documented whole-partition update proof plus interrupted-update hardware-regression evidence; otherwise Plan 19-04 records owner, blocker, operator impact, follow-up path, and current public route behavior. [VERIFIED: .planning/phases/19-recovery-regression-and-otawww-evidence/19-04-PLAN.md] [VERIFIED: 19-CONTEXT.md]
 
 2. **Is a reachable explicit `DEVICE_URL` available during execution?**
    - What we know: Phase 17/18 used trusted USB flash-monitor evidence to derive sanitized target provenance, and Phase 19 must not scan or infer network targets. [VERIFIED: docs/parity/evidence/phase-17-live-http-api-and-static-evidence/summary.md] [VERIFIED: scripts/phase18-firmware-ota-evidence.sh]
-   - What's unclear: This research did not run `just detect-ultra205` or target extraction because hardware evidence belongs to execution gates. [VERIFIED: local research action log]
-   - Recommendation: Plan a blocked/pending evidence path for missing target and a passed path only when trusted board `205` flash-monitor evidence yields one origin-only URL. [VERIFIED: scripts/phase17-live-http-api-smoke.sh]
+   - RESOLVED: Target availability is execution-gated. Plan 19-02 must record a sanitized target lock with `network_scan: disabled` when trusted board `205` flash-monitor evidence yields an origin-only URL, or explicit blocked/pending evidence when no target is available. [VERIFIED: .planning/phases/19-recovery-regression-and-otawww-evidence/19-02-PLAN.md] [VERIFIED: scripts/phase17-live-http-api-smoke.sh]
 
 3. **Which destructive allow flags will be permitted?**
    - What we know: Failed-update, large erase, and interrupted OTA require explicit phase-owned allow flags. [VERIFIED: 19-CONTEXT.md]
-   - What's unclear: The current context locks the gate shape but does not grant every destructive flag. [VERIFIED: 19-CONTEXT.md]
-   - Recommendation: Split plans so no-allow evidence can pass safely, then make each destructive action independently skippable, blocked, or captured. [VERIFIED: scripts/phase16-recovery-regression.sh]
+   - RESOLVED: Allow flags are independent and opt-in during execution. Plan 19-03 runs a safe no-allow path by default, and only adds `--allow-failed-update`, `--allow-large-erase`, or `--allow-interrupted-ota` when the matching `PHASE19_ALLOW_*` environment gate is explicitly set and prerequisites pass. [VERIFIED: .planning/phases/19-recovery-regression-and-otawww-evidence/19-03-PLAN.md] [VERIFIED: scripts/phase16-recovery-regression.sh]
 
 ## Environment Availability
 
