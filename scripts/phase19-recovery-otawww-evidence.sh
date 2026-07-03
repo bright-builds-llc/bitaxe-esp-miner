@@ -503,18 +503,38 @@ write_otawww_gap_without_target() {
 }
 
 run_otawww_gap_probe() {
-	local headers="${otawww_dir}/otawww.headers.txt"
-	local body="${otawww_dir}/otawww.body.txt"
-	local error="${otawww_dir}/otawww.curl-error.txt"
-	local empty_payload="${otawww_dir}/empty-otawww-upload.bin"
+	local raw_root="${PHASE19_RAW_DIR:-target/phase19-recovery-regression-and-otawww-evidence-dev-raw/otawww}"
+	local raw_dir
+	local headers
+	local body
+	local error
+	local empty_payload
+	local safe_headers="${otawww_dir}/otawww.headers.txt"
+	local safe_body="${otawww_dir}/otawww.body.txt"
+	local safe_error="${otawww_dir}/otawww.curl-error.txt"
 	local url="${device_url%/}/api/system/OTAWWW"
 	local status
 	local curl_status
+	local header_summary
+	local body_summary
+	local error_summary
+	local wrong_api_input_proof
+
+	ensure_allowed_write_path "OTAWWW raw out-dir" "$raw_root"
+	mkdir -p "$raw_root"
+	raw_dir="$(mktemp -d "${raw_root%/}/probe.XXXXXX")"
+	headers="${raw_dir}/otawww.headers.txt"
+	body="${raw_dir}/otawww.body.txt"
+	error="${raw_dir}/otawww.curl-error.txt"
+	empty_payload="${raw_dir}/empty-otawww-upload.bin"
 
 	: >"$headers"
 	: >"$body"
 	: >"$error"
 	: >"$empty_payload"
+	: >"$safe_headers"
+	: >"$safe_body"
+	: >"$safe_error"
 	: >"$otawww_gap_log"
 
 	set +e
@@ -522,15 +542,22 @@ run_otawww_gap_probe() {
 	curl_status=$?
 	set -e
 
+	header_summary="$(safe_header_summary "$headers")"
+	body_summary="$(safe_body_summary "$body")"
+	error_summary="$(safe_curl_error_summary "$error")"
+	printf '%s\n' "$header_summary" >"$safe_headers"
+	printf '%s\n' "$body_summary" >"$safe_body"
+	printf '%s\n' "$error_summary" >"$safe_error"
+
 	log_otawww "phase19_recovery_otawww_evidence"
 	log_otawww "network_scan: disabled"
 	log_otawww "otawww_route: POST /api/system/OTAWWW"
 	log_otawww "otawww_request: bounded empty POST"
 	log_otawww "otawww_curl_status: ${curl_status}"
 	log_otawww "otawww_public_status: ${status}"
-	log_otawww "otawww_selected_headers: $(safe_header_summary "$headers")"
-	log_otawww "otawww_public_body: $(safe_body_summary "$body")"
-	log_otawww "otawww_curl_error: $(safe_curl_error_summary "$error")"
+	log_otawww "otawww_selected_headers: ${header_summary}"
+	log_otawww "otawww_public_body: ${body_summary}"
+	log_otawww "otawww_curl_error: ${error_summary}"
 	if [[ "$curl_status" -ne 0 || ! "$status" =~ ^[0-9][0-9][0-9]$ ]]; then
 		log_otawww "otawww_status: blocked - curl failed"
 		log_otawww "otawww_claim: REL-03 gap"
@@ -540,19 +567,19 @@ run_otawww_gap_probe() {
 		log_otawww "wrong_api_input_proof: absent - HTTP response unavailable"
 		return 0
 	fi
+	wrong_api_input_proof="absent - response did not match expected public fail-closed shape"
 	if [[ "$status" == "400" ]] && grep -Fq 'Wrong API input' "$body"; then
 		log_otawww "current_public_route_behavior: Wrong API input"
-		log_otawww "wrong_api_input_proof: present - Wrong API input is not whole-www update proof"
+		wrong_api_input_proof="present - Wrong API input is not whole-www update proof"
 	else
 		log_otawww "current_public_route_behavior: unexpected response - Wrong API input not cited"
-		log_otawww "wrong_api_input_proof: absent - response did not match expected public fail-closed shape"
 	fi
+	log_otawww "wrong_api_input_proof: ${wrong_api_input_proof}"
 	log_otawww "otawww_status: captured - gap evidence only"
 	log_otawww "otawww_claim: REL-03 gap"
 	log_otawww "whole_www_update_proof: absent"
 	log_otawww "www_bin_proof: absent - www.bin is package evidence only"
 	log_otawww "route_presence_proof: absent - route presence is not update proof"
-	log_otawww "wrong_api_input_proof: absent - Wrong API input is not whole-www update proof"
 }
 
 log_allow_flag_status() {

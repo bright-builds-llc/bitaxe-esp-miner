@@ -78,7 +78,13 @@ just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmwa
 The Phase 19 recovery/OTAWWW helper recorded pending and blocked evidence only:
 
 ```bash
-scripts/phase19-recovery-otawww-evidence.sh --manifest docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json --out-dir docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence --target-lock-out docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/target-lock.json --port /dev/cu.usbmodem1101 --flash-evidence-json docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot/flash-command-evidence.json
+scripts/phase19-recovery-otawww-evidence.sh \
+  --manifest docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json \
+  --factory-image bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin \
+  --ota-image bazel-bin/firmware/bitaxe/esp-miner.bin \
+  --port /dev/cu.usbmodem1101 \
+  --out-dir docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence \
+  --target-lock-out docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/target-lock.json
 ```
 
 ## Phase 18 Firmware OTA And Rollback Evidence Status

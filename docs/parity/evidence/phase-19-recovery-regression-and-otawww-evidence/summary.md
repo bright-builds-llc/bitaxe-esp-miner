@@ -75,7 +75,13 @@ just package
 bazel run //tools/parity:report -- release-gate --manifest docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json
 just detect-ultra205
 just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot capture-timeout-seconds=45 redact-evidence=true
-scripts/phase19-recovery-otawww-evidence.sh --manifest docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json --out-dir docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence --target-lock-out docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/target-lock.json --port /dev/cu.usbmodem1101 --flash-evidence-json docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot/flash-command-evidence.json
+scripts/phase19-recovery-otawww-evidence.sh \
+  --manifest docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json \
+  --factory-image bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin \
+  --ota-image bazel-bin/firmware/bitaxe/esp-miner.bin \
+  --port /dev/cu.usbmodem1101 \
+  --out-dir docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence \
+  --target-lock-out docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/target-lock.json
 ```
 
 Final verification commands are recorded in

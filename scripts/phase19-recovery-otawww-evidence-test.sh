@@ -287,12 +287,23 @@ test_origin_url_validation() {
 	assert_contains "${valid_out}/otawww/otawww-gap.log" "otawww_public_body: contains Wrong API input"
 	assert_contains "${valid_out}/otawww/otawww-gap.log" "current_public_route_behavior: Wrong API input"
 	assert_contains "${valid_out}/otawww/otawww-gap.log" "wrong_api_input_proof: present - Wrong API input is not whole-www update proof"
+	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "wrong_api_input_proof: absent"
 	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "Set-Cookie"
 	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "Authorization"
 	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "SECRET"
 	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "PRIVATE"
 	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "home-network"
 	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "192.168.1"
+	assert_contains "${valid_out}/otawww/otawww.headers.txt" "content-type: text/plain"
+	assert_contains "${valid_out}/otawww/otawww.body.txt" "contains Wrong API input"
+	assert_contains "${valid_out}/otawww/otawww.curl-error.txt" "none"
+	assert_not_contains "${valid_out}/otawww/otawww.headers.txt" "Set-Cookie"
+	assert_not_contains "${valid_out}/otawww/otawww.headers.txt" "Authorization"
+	assert_not_contains "${valid_out}/otawww/otawww.body.txt" "SECRET"
+	assert_not_contains "${valid_out}/otawww/otawww.body.txt" "home-network"
+	if [[ -e "${valid_out}/otawww/empty-otawww-upload.bin" ]]; then
+		fail "raw OTAWWW request payload was written to commit-ready evidence"
+	fi
 }
 
 test_trusted_flash_evidence_target_lock() {
@@ -370,6 +381,14 @@ test_otawww_gap_curl_failure_blocks_evidence() {
 	assert_not_contains "${out_dir}/otawww/otawww-gap.log" "Authorization"
 	assert_not_contains "${out_dir}/otawww/otawww-gap.log" "PRIVATE"
 	assert_not_contains "${out_dir}/otawww/otawww-gap.log" "home-network"
+	assert_contains "${out_dir}/otawww/otawww.headers.txt" "headers redacted - no allowlisted headers"
+	assert_contains "${out_dir}/otawww/otawww.body.txt" "body redacted - unexpected shape"
+	assert_contains "${out_dir}/otawww/otawww.curl-error.txt" "curl error redacted"
+	assert_not_contains "${out_dir}/otawww/otawww.curl-error.txt" "private-device.local"
+	assert_not_contains "${out_dir}/otawww/otawww.curl-error.txt" "PRIVATE"
+	if [[ -e "${out_dir}/otawww/empty-otawww-upload.bin" ]]; then
+		fail "raw OTAWWW request payload was written to commit-ready evidence"
+	fi
 }
 
 test_otawww_gap_without_target() {
