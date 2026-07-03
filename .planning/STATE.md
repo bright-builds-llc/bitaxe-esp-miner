@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 19-04-PLAN.md
-last_updated: "2026-07-03T21:47:42.074Z"
-last_activity: 2026-07-03 -- Phase 20 execution started
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-07-03T21:59:34.212Z"
+last_activity: 2026-07-03
 progress:
   total_phases: 21
   completed_phases: 19
   total_plans: 108
-  completed_plans: 102
-  percent: 94
+  completed_plans: 103
+  percent: 95
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 20 (active-safety-hardware-telemetry-evidence) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 20
-Last activity: 2026-07-03 -- Phase 20 execution started
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-07-03
 
 Progress: [██████████] 100%
 
@@ -149,6 +149,7 @@ Progress: [██████████] 100%
 | Phase 19-recovery-regression-and-otawww-evidence P02 | 13 min | 2 tasks | 9 files |
 | Phase 19-recovery-regression-and-otawww-evidence P03 | 6 min | 2 tasks | 7 files |
 | Phase 19 P04 | 14 min | 2 tasks | 10 files |
+| Phase 20-active-safety-hardware-telemetry-evidence P01 | 6 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -385,6 +386,9 @@ Recent decisions affecting current work:
 - [Phase 19]: Plan 04 closed OTAWWW through an explicit REL-03 gap ledger because no whole-www implementation and interrupted-update hardware-regression evidence exists.
 - [Phase 19]: Phase 19 target-lock remains blocked with network_scan disabled; no DEVICE_URL was inferred from redacted serial evidence.
 - [Phase 19]: OTA-002 stayed deferred and REL-003 stayed below verified for OTAWWW, rollback, failed-update, large erase, interrupted-update, and boot-validation behavior.
+- [Phase 20]: Plan 20-01: failure-paths is a standalone safety allow surface while fault-stimulus remains hardware-regression gated.
+- [Phase 20]: Plan 20-01: Phase 20 evidence starts pending with no checklist updates until redaction and exact evidence are complete.
+- [Phase 20]: Plan 20-01: TDD RED failures are recorded but not committed when Rust pre-commit rules require passing checks.
 
 ### Pending Todos
 
@@ -410,6 +414,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T19:27:00.270Z
-Stopped at: Completed 19-04-PLAN.md
+Last session: 2026-07-03T21:59:34.208Z
+Stopped at: Completed 20-01-PLAN.md
 Resume file: None
