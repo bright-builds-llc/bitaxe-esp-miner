@@ -381,22 +381,19 @@ The planner should keep this exact class of guard because `tools/parity` also re
 
 All claims in this research were verified from local files, command output, cargo registry search, or cited official documentation; no `[ASSUMED]` claims are intentionally present. [VERIFIED: research source audit]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Is a live Ultra 205 currently connected and uniquely detectable?**
    - What we know: The repo requires `just detect-ultra205` and board-info before hardware work. [VERIFIED: AGENTS.md; 18-CONTEXT.md]
-   - What is unclear: This research did not run the detector because it is planning research, not evidence execution. [VERIFIED: command log for this research]
-   - Recommendation: First execution task should run `just detect-ultra205` and write blocked evidence on zero/multiple/wrong-board results. [VERIFIED: AGENTS.md; 18-CONTEXT.md]
+   - Resolution: This is an execution-time hardware gate owned by Plan 18-02. Run `just detect-ultra205`; continue only when exactly one board `205` port is detected and board-info succeeds. On zero, multiple, wrong-board, or board-info failures, Plan 18-02 writes blocked detector/serial evidence and no OTA upload or checklist promotion occurs. [VERIFIED: AGENTS.md; 18-CONTEXT.md; 18-02-PLAN.md]
 
 2. **Can Phase 18 obtain a raw origin-only `DEVICE_URL` without committing it?**
    - What we know: `DEVICE_URL` was unset in the research shell, `wifi-credentials.json` exists but was not read, and Phase 17 has a committed redacted target lock plus a local developer-raw flash evidence artifact. [VERIFIED: environment audit; docs/parity/evidence/phase-17-live-http-api-and-static-evidence/target-lock.json]
-   - What is unclear: Whether that raw target remains correct after a fresh Phase 18 flash/package run. [VERIFIED: 18-CONTEXT.md]
-   - Recommendation: Refresh target provenance during Phase 18 and never commit the raw target. [VERIFIED: 18-CONTEXT.md; docs/parity/evidence/phase-17-live-http-api-and-static-evidence/redaction-review.md]
+   - Resolution: This is an execution-time target-provenance gate owned by Plans 18-02 and 18-03. Use only a direct explicit origin-only target input or trusted local flash/target-lock provenance for the just-flashed board, commit only redacted provenance, and keep `network_scan: disabled`. If no valid target source exists, write blocked target evidence and skip OTA upload/checklist promotion. [VERIFIED: 18-CONTEXT.md; 18-02-PLAN.md; 18-03-PLAN.md; docs/parity/evidence/phase-17-live-http-api-and-static-evidence/redaction-review.md]
 
 3. **Will same-commit OTA be accepted and exercise the next app slot?**
    - What we know: D-08 allows same-image evidence only if checksum, public response, reboot identity, and boot-validation marker prove the path. [VERIFIED: 18-CONTEXT.md]
-   - What is unclear: The live firmware response for same-image upload was not executed during research. [VERIFIED: no live OTA command run in this research]
-   - Recommendation: Plan a blocked-acceptable branch that records exact public/internal status if same-image/self-image OTA is refused. [VERIFIED: 18-CONTEXT.md]
+   - Resolution: This is an execution-time OTA evidence gate owned by Plan 18-03. Run the valid OTA helper against the manifest-listed image after package, detector, flash, and target gates pass; if accepted, record response, reboot identity, and boot-validation markers. If refused or markers are absent, record the exact public/internal blocker and keep valid OTA, boot-validation, rollback, and destructive rollback below verified. [VERIFIED: 18-CONTEXT.md; 18-03-PLAN.md]
 
 ## Environment Availability
 
