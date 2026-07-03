@@ -2,8 +2,8 @@
 phase: 19
 slug: recovery-regression-and-otawww-evidence
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-03
 ---
 
@@ -44,9 +44,9 @@ created: 2026-07-03
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 19-W0-01 | TBD | 0 | EVD-05 | T-19-01 | Phase 19 helper tests prove default no-allow behavior produces pending evidence without running destructive commands. | shell unit | `bazel test //scripts:phase19_recovery_otawww_evidence_test` | no - Wave 0 creates | pending |
-| 19-W0-02 | TBD | 0 | REL-08, API-09 | T-19-02 | Helper tests prove allowed failed-update and interrupted-update flows rerun detector and board-info gates before live HTTP action. | shell unit | `bazel test //scripts:phase19_recovery_otawww_evidence_test //scripts:phase16_recovery_regression_test` | no - Wave 0 creates | pending |
-| 19-W0-03 | TBD | 0 | REL-03 | T-19-03 | OTAWWW gap evidence is explicit and cannot be promoted from `www.bin`, route presence, or static serving alone. | Rust/tooling | `bazel test //crates/bitaxe-api:tests //tools/parity:tests` | yes | pending |
+| 19-W0-01 | 19-01 | 0 | EVD-05 | T-19-01 | Phase 19 helper tests prove default no-allow behavior produces pending evidence without running destructive commands. | shell unit | `bazel test //scripts:phase19_recovery_otawww_evidence_test` | yes | green |
+| 19-W0-02 | 19-01 | 0 | REL-08, API-09 | T-19-02 | Helper tests prove allowed failed-update and interrupted-update flows preserve Phase 16 detector and board-info gate delegation before live HTTP action. | shell unit | `bazel test //scripts:phase19_recovery_otawww_evidence_test //scripts:phase16_recovery_regression_test` | yes | green |
+| 19-W0-03 | 19-01 | 0 | REL-03 | T-19-03 | OTAWWW gap evidence is explicit and cannot be promoted from `www.bin`, route presence, or static serving alone. | shell/Bazel | `bazel test //scripts:phase19_recovery_otawww_evidence_test` | yes | green |
 | 19-W1-01 | TBD | 1 | REL-07, EVD-05 | T-19-04 | Package and release-gate evidence cites the current manifest and reference commit before hardware evidence is trusted. | workflow | `just package && bazel run //tools/parity:report -- release-gate --manifest docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json` | no - evidence created during execution | pending |
 | 19-W2-01 | TBD | 2 | REL-08, API-09 | T-19-05 | Recovery evidence names board `205`, port, source commit, package manifest, exact commands, logs, restore action, and conclusion, or records the exact blocker. | hardware/workflow | `just detect-ultra205` plus the phase helper command documented in the active plan | no - evidence created during execution | pending |
 | 19-W3-01 | TBD | 3 | REL-03, REL-07, EVD-05 | T-19-06 | Release docs, checklist, requirements traceability, and summary ledger distinguish verified behavior from blocked, pending, below-verified, and non-claim behavior. | docs/tooling | `just parity && just verify-reference && rg -n "phase-19-recovery-regression-and-otawww-evidence|OTAWWW|failed-update|large erase|interrupted" docs/release/ultra-205.md docs/parity/checklist.md .planning/REQUIREMENTS.md` | yes | pending |
@@ -57,18 +57,18 @@ created: 2026-07-03
 
 ## Wave 0 Requirements
 
-- [ ] `scripts/phase19-recovery-otawww-evidence.sh` or an equivalent
+- [x] `scripts/phase19-recovery-otawww-evidence.sh` or an equivalent
   phase-specific wrapper exists if Phase 19 does more than documentation-only
   closure.
-- [ ] `scripts/phase19-recovery-otawww-evidence-test.sh` covers pending
+- [x] `scripts/phase19-recovery-otawww-evidence-test.sh` covers pending
   no-allow behavior, failed-update allow gate, interrupted-update allow gate,
   large-erase restore gate or explicit non-run status, target redaction, and
   OTAWWW gap output.
-- [ ] `scripts/BUILD.bazel` exposes `phase19_recovery_otawww_evidence` and
+- [x] `scripts/BUILD.bazel` exposes `phase19_recovery_otawww_evidence` and
   `phase19_recovery_otawww_evidence_test` if the scripts are added.
-- [ ] `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/evidence-contract.md`
+- [x] `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/evidence-contract.md`
   exists before live artifacts are cited.
-- [ ] Final redaction-review criteria list every expected response, body,
+- [x] Final redaction-review criteria list every expected response, body,
   header, detector, board-info, serial, recovery, and OTAWWW artifact as
   reviewed or `absent - not cited`.
 
@@ -88,11 +88,11 @@ created: 2026-07-03
 
 - [ ] All tasks have automated verify commands or documented manual-only gates.
 - [ ] Sampling continuity: no three consecutive tasks skip automated checks.
-- [ ] Wave 0 covers all missing helper, evidence-contract, and redaction-review
+- [x] Wave 0 covers all missing helper, evidence-contract, and redaction-review
   references.
 - [ ] No watch-mode flags are used in verification commands.
 - [ ] Feedback latency stays under 180 seconds for local checks.
-- [ ] `nyquist_compliant: true` is set in frontmatter after Wave 0
+- [x] `nyquist_compliant: true` is set in frontmatter after Wave 0
   infrastructure exists and the plan checker confirms coverage.
 
 **Approval:** pending
