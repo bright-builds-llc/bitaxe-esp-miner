@@ -503,7 +503,7 @@ Plans:
 - [x] 20-02-PLAN.md - Capture current package identity and detector-gated safe-baseline evidence or blockers.
 - [x] 20-03-PLAN.md - Record power/voltage and thermal/fan exact-claim evidence boundaries.
 - [x] 20-04-PLAN.md - Record self-test/watchdog/load, runtime display/input, and failure-path evidence boundaries.
-- [ ] 20-05-PLAN.md - Capture or block explicit-target live API/WebSocket safety telemetry correlation.
+- [x] 20-05-PLAN.md - Capture or block explicit-target live API/WebSocket safety telemetry correlation.
 - [ ] 20-06-PLAN.md - Complete redaction, checklist traceability, validation, and final verification.
 **Verification expectations**: `just detect-ultra205`, active safety allow manifest, hardware-regression evidence, live telemetry capture, pure safety tests, redaction review, `just parity`, and `just verify-reference`.
 **Research flags**: Requires careful hardware recovery planning. Do not run ad hoc voltage, fan, thermal, self-test, load, or stress commands outside the approved phase plan.
@@ -552,5 +552,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 17. Live HTTP API And Static Evidence | 7/7 | Complete   | 2026-07-03 |
 | 18. Firmware OTA And Rollback Evidence | 4/4 | Complete   | 2026-07-03 |
 | 19. Recovery Regression And OTAWWW Evidence | 4/4 | Complete    | 2026-07-03 |
-| 20. Active Safety Hardware Telemetry Evidence | 4/6 | In Progress|  |
+| 20. Active Safety Hardware Telemetry Evidence | 5/6 | In Progress|  |
 | 21. Live Mining And Soak Evidence | 0/0 | Pending | TBD |
