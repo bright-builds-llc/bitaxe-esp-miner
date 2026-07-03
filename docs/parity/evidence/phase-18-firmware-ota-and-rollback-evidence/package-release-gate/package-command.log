@@ -1,0 +1,58 @@
+bazel build //firmware/bitaxe:firmware_image
+Computing main repo mapping: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //firmware/bitaxe:firmware_image (0 packages loaded, 0 targets configured)
+Analyzing: target //firmware/bitaxe:firmware_image (0 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //firmware/bitaxe:firmware_image (0 packages loaded, 11 targets configured).
+[22 / 24] Executing genrule //firmware/bitaxe:firmware; 1s local
+INFO: From Executing genrule //firmware/bitaxe:firmware:
+   Compiling bitaxe-firmware v0.1.0 (/Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/firmware/bitaxe)
+    Finished `release` profile [optimized] target(s) in 4.49s
+[build-firmware] MCU=esp32s3
+[build-firmware] target=xtensa-esp32s3-espidf
+[build-firmware] esp_idf_version=tag:v5.5.4
+[build-firmware] output_dir=bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe
+[build-firmware] source_commit=22d02f8e9792
+[build-firmware] cargo_command=cargo build -p bitaxe-firmware --release --target xtensa-esp32s3-espidf 
+[build-firmware] copied_elf=bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-firmware.elf
+[23 / 24] [Prepa] Executing genrule //firmware/bitaxe:firmware_image
+[23 / 24] Executing genrule //firmware/bitaxe:firmware_image; 1s local
+INFO: From Executing genrule //firmware/bitaxe:firmware_image:
+[2026-07-03T15:14:43Z INFO ] 🚀 A new version of espflash is available: v4.4.0
+[2026-07-03T15:14:43Z INFO ] Image successfully saved!
+[2026-07-03T15:14:43Z INFO ] 🚀 A new version of espflash is available: v4.4.0
+[2026-07-03T15:14:43Z INFO ] Image successfully saved!
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running `target/debug/xtask package-firmware --board 205 --firmware-elf /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205.elf --firmware-ota-image /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/esp-miner.bin --www-bin /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/www.bin --partition-table firmware/bitaxe/partitions-ultra205.csv --otadata-initial /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/otadata-initial.bin --default-flash-image /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205.elf --out-dir /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe --manifest /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-package.json --factory-image /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin --release-name bitaxe-ultra205 --install-notes docs/release/ultra-205.md --license-inventory docs/release/license-inventory.md --provenance-manifest docs/release/provenance-manifest.md --otadata-source target/xtensa-esp32s3-espidf/release/build/esp-idf-sys-2a443813359d6cae/out/build/ota_data_initial.bin`
+reference clean: c1915b0a63bfabebdb95a515cedfee05146c1d50
+[package-firmware] spiffs_command=python3 /Users/peterryszkiewicz/Repos/bitaxe-esp-miner/.embuild/espressif/esp-idf/v5.5.4/components/spiffs/spiffsgen.py --obj-name-len 64 0x300000 firmware/bitaxe/static/www /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/www.bin 
+[package-firmware] otadata_source=target/xtensa-esp32s3-espidf/release/build/esp-idf-sys-2a443813359d6cae/out/build/ota_data_initial.bin
+[package-firmware] firmware_ota_command=espflash save-image --chip esp32s3 --flash-size 16mb --flash-mode dio --flash-freq 80mhz --partition-table firmware/bitaxe/partitions-ultra205.csv --target-app-partition ota_0 /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205.elf /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/esp-miner.bin 
+Chip type:         esp32s3
+Merge:             false
+Skip padding:      false
+App/part. size:    1,549,232/4,194,304 bytes, 36.94%
+[package-firmware] factory_base_command=espflash save-image --chip esp32s3 --flash-size 16mb --flash-mode dio --flash-freq 80mhz --partition-table firmware/bitaxe/partitions-ultra205.csv --skip-padding --merge /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205.elf /var/folders/b6/j7bsvp3j6jzbl8r28p9wqtnh0000gn/T//bitaxe-package.YsG1Iq/bitaxe-ultra205-factory-base.bin 
+Chip type:         esp32s3
+Merge:             true
+Skip padding:      true
+App/part. size:    1,549,232/4,194,304 bytes, 36.94%
+[package-firmware] factory_merge_command=/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/.embuild/espressif/python_env/idf5.5_py3.14_env/bin/esptool.py --chip esp32s3 merge_bin --flash_mode dio --flash_size 16MB --flash_freq 80m 0x0 /var/folders/b6/j7bsvp3j6jzbl8r28p9wqtnh0000gn/T//bitaxe-package.YsG1Iq/bitaxe-ultra205-factory-base.bin 0x410000 /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/www.bin 0xf10000 /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/otadata-initial.bin -o /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin 
+esptool.py v4.12.dev2
+SHA digest in image updated
+Wrote 0xf12000 bytes to file /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin, ready to flash to offset 0x0
+[package-firmware] cargo_command=cargo run -p xtask -- package-firmware --board 205 --firmware-elf /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205.elf --firmware-ota-image /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/esp-miner.bin --www-bin /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/www.bin --partition-table firmware/bitaxe/partitions-ultra205.csv --otadata-initial /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/otadata-initial.bin --default-flash-image /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205.elf --out-dir /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe --manifest /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-package.json --factory-image /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin --release-name bitaxe-ultra205 --install-notes docs/release/ultra-205.md --license-inventory docs/release/license-inventory.md --provenance-manifest docs/release/provenance-manifest.md --otadata-source target/xtensa-esp32s3-espidf/release/build/esp-idf-sys-2a443813359d6cae/out/build/ota_data_initial.bin 
+[package-firmware] manifest=/Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-package.json
+INFO: Found 1 target...
+Target //firmware/bitaxe:firmware_image up-to-date:
+  bazel-bin/firmware/bitaxe/bitaxe-ultra205.elf
+  bazel-bin/firmware/bitaxe/esp-miner.bin
+  bazel-bin/firmware/bitaxe/www.bin
+  bazel-bin/firmware/bitaxe/otadata-initial.bin
+  bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin
+  bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+INFO: Elapsed time: 6.568s, Critical Path: 6.42s
+INFO: 4 processes: 20 action cache hit, 1 internal, 3 local.
+INFO: Build completed successfully, 4 total actions
