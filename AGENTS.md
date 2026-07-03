@@ -279,6 +279,14 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 - Phase-gated destructive or fault-injection verification is allowed only when the active phase plan documents the recovery path and required evidence. Do not run ad hoc erase, rollback, interrupted-update, voltage/fan/mining stress, or raw write commands outside documented phase-gated procedures.
 - Every hardware run must record board `205`, selected port, source commit, reference commit, package manifest/artifacts when applicable, exact commands, `board-info` output, captured logs, observed behavior, and conclusion. Do not commit secrets, pool credentials, Wi-Fi credentials, private endpoints, or NVS secret values in evidence.
 
+### Agent-Performed Simple UAT
+
+- When starting or resuming `$gsd-verify-work`, agents may complete simple UAT checkpoints without waiting for the user only when the expected behavior is objectively verifiable from repo artifacts or non-destructive commands.
+- Treat simple objective UAT as static inspection, committed evidence review, redaction checks, lifecycle checks, parity/reference checks, Bazel/Cargo/Just checks, and other deterministic repo-local verification.
+- For auto-passed UAT checkpoints, record `result: pass`, `verified_by: agent`, and an `evidence:` line citing exact commands, artifact paths, or concise observations.
+- Stop at the first checkpoint that needs human judgment, subjective product review, secret access, external accounts, raw unredacted endpoint review, destructive or fault-injection flows, unsafe hardware action, missing prerequisites, ambiguous interpretation, or unstated target discovery. Leave that checkpoint pending or blocked and report what user input or prerequisite is needed.
+- This rule does not expand Autonomous Ultra 205 permissions. Hardware UAT still must follow the detector gate, evidence requirements, redaction rules, and phase-gated destructive/fault-injection limits above.
+
 ### Frontmatter-Parsed Markdown
 
 - In GSD artifacts and other Markdown files parsed with YAML frontmatter, use standalone `---` only for the opening and closing frontmatter delimiters at the top of the file.
