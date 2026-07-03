@@ -3,7 +3,7 @@
 package_status: passed
 release_gate_status: passed
 board: 205
-source_commit: badeea05b7014378cc5dee994bdce97a5b97ba7f
+source_commit: 6842d7a6d3d4fc64d93900a9847c8a0b97edc16d
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 manifest_path: docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json
 firmware_ota_image: bazel-bin/firmware/bitaxe/esp-miner.bin

@@ -1,0 +1,11 @@
+{
+  "device_url_redacted": "not provided",
+  "device_url_source": "none",
+  "flash_evidence_json": "docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot/flash-command-evidence.json",
+  "manifest": "docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json",
+  "network_scan": "disabled",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "selected_port": "/dev/cu.usbmodem1101",
+  "source_commit": "6842d7a6d3d4fc64d93900a9847c8a0b97edc16d",
+  "target_status": "blocked - no explicit origin-only target"
+}
