@@ -449,8 +449,13 @@ Plans:
 1. Invalid OTA rejection and rollback or boot-validation evidence run only behind documented gates and record the before/after partition and safety state.
 1. Release docs, parity checklist, requirements traceability, and redaction review reflect the evidence without exposing secrets or overclaiming release parity.
 
-**Plans**: 0 plans
-Plans: Pending.
+**Plans**: 4 plans
+Plans:
+
+- [ ] 18-01-PLAN.md - Add the Phase 18 OTA evidence wrapper, tests, artifact contract, and pending redaction gate.
+- [ ] 18-02-PLAN.md - Capture current package, release-gate, detector, flash-monitor, and sanitized target provenance.
+- [ ] 18-03-PLAN.md - Run or precisely block invalid rejection, valid OTA, post-reboot identity, and boot-validation evidence.
+- [ ] 18-04-PLAN.md - Close redaction, summary, release docs, checklist, requirements traceability, and final verification.
 **Verification expectations**: `just package`, `just detect-ultra205`, explicit `DEVICE_URL` OTA upload checks, serial reboot capture, rollback/boot-validation checks only behind documented gates, `just parity`, and `just verify-reference`.
 **Research flags**: Requires recovery instructions before rollback or boot-validation fault cases. Stop if OTA prerequisites, rollback gates, or restore instructions are missing.
 
