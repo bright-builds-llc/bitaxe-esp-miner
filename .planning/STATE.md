@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 18 context gathered
-last_updated: "2026-07-03T14:55:08.930Z"
-last_activity: 2026-07-03 -- Phase 18 planning complete
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-07-03T15:10:22.600Z"
+last_activity: 2026-07-03
 progress:
   total_phases: 21
   completed_phases: 17
   total_plans: 98
-  completed_plans: 94
-  percent: 96
+  completed_plans: 95
+  percent: 97
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Phase 17 — live-http-api-and-static-evidence
+**Current focus:** Phase 18 — firmware-ota-and-rollback-evidence
 
 ## Current Position
 
-Phase: 17 (live-http-api-and-static-evidence) — EXECUTING
-Plan: 7 of 7
+Phase: 18 (firmware-ota-and-rollback-evidence) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-03 -- Phase 18 planning complete
+Last activity: 2026-07-03 -- Completed 18-01-PLAN.md
 
-Progress: [██████████] 100%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
@@ -140,6 +140,7 @@ Progress: [██████████] 100%
 | Phase 17-live-http-api-and-static-evidence P03 | 4 min | 1 tasks | 3 files |
 | Phase 17-live-http-api-and-static-evidence P04 | 3 min | 1 tasks | 3 files |
 | Phase 17-live-http-api-and-static-evidence P05 | 622s | 2 tasks | 5 files |
+| Phase 18-firmware-ota-and-rollback-evidence P01 | 11m46s | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -350,6 +351,10 @@ Recent decisions affecting current work:
 - [Phase 17-live-http-api-and-static-evidence]: Plan 17-05 uses the final Phase 17 evidence ledger as the release traceability source of truth and keeps live HTTP/WebSocket/OTA/OTAWWW/mining/safety claims below verified where artifacts are absent or blocked.
 - [Phase 17-live-http-api-and-static-evidence]: Plan 17-05 treats redaction_status: passed as valid only with exact Phase 17 artifact paths and explicit absent-not-cited entries.
 - [Phase 17-live-http-api-and-static-evidence]: Plan 17-05 preserves REL-03 OTAWWW and live-device evidence gaps instead of promoting blocked Phase 17 artifacts above verified.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-01 delegates OTA upload and post-OTA marker enforcement to the existing Phase 13 helper instead of duplicating OTA behavior.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-01 accepts only an explicit origin-only DEVICE_URL or trusted board 205 flash-monitor evidence and records network_scan: disabled.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-01 keeps invalid image rejection, valid OTA, boot validation, rollback, and non-claims as distinct evidence classes.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-01 starts Phase 18 redaction as pending until live target, OTA, serial, and recovery artifacts exist.
 
 ### Pending Todos
 
@@ -375,6 +380,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T14:11:57.817Z
-Stopped at: Phase 18 context gathered
-Resume file: .planning/phases/18-firmware-ota-and-rollback-evidence/18-CONTEXT.md
+Last session: 2026-07-03T15:10:22.585Z
+Stopped at: Completed 18-01-PLAN.md
+Resume file: None

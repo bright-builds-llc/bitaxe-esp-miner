@@ -224,13 +224,13 @@ long soak behavior.
 | SAFE-08 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
 | SAFE-09 | Phase 6 + Phase 11 + Phase 14 + Phase 15 + Phase 20 + Phase 21 | Pending |
 | REL-01 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 17 | Complete |
-| REL-02 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 18 | Pending |
+| REL-02 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 18 | Complete |
 | REL-03 | Phase 7 + Phase 10 + Phase 13 + Phase 16 + Phase 19 | Pending |
 | REL-04 | Phase 7 + Phase 13 + Phase 16 | Complete |
 | REL-05 | Phase 7 | Complete |
 | REL-06 | Phase 7 | Complete |
 | REL-07 | Phase 7 + Phase 9 + Phase 16 + Phase 17 + Phase 18 + Phase 19 | Complete |
-| REL-08 | Phase 8 + Phase 13 + Phase 16 + Phase 18 + Phase 19 | Pending |
+| REL-08 | Phase 8 + Phase 13 + Phase 16 + Phase 18 + Phase 19 | Complete |
 | EVD-01 | Phase 8 + Phase 10 | Complete |
 | EVD-02 | Phase 8 | Complete |
 | EVD-03 | Phase 8 | Complete |
