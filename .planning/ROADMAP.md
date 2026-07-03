@@ -453,7 +453,7 @@ Plans:
 Plans:
 
 - [x] 18-01-PLAN.md - Add the Phase 18 OTA evidence wrapper, tests, artifact contract, and pending redaction gate.
-- [ ] 18-02-PLAN.md - Capture current package, release-gate, detector, flash-monitor, and sanitized target provenance.
+- [x] 18-02-PLAN.md - Capture current package, release-gate, detector, flash-monitor, and sanitized target provenance.
 - [ ] 18-03-PLAN.md - Run or precisely block invalid rejection, valid OTA, post-reboot identity, and boot-validation evidence.
 - [ ] 18-04-PLAN.md - Close redaction, summary, release docs, checklist, requirements traceability, and final verification.
 **Verification expectations**: `just package`, `just detect-ultra205`, explicit `DEVICE_URL` OTA upload checks, serial reboot capture, rollback/boot-validation checks only behind documented gates, `just parity`, and `just verify-reference`.
@@ -537,7 +537,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 15. BM1366 Mining Evidence Completion | 5/5 | Complete    | 2026-07-01 |
 | 16. Current Commit Release Evidence Completion | 6/6 | Complete | 2026-07-01 |
 | 17. Live HTTP API And Static Evidence | 7/7 | Complete   | 2026-07-03 |
-| 18. Firmware OTA And Rollback Evidence | 1/4 | In Progress|  |
+| 18. Firmware OTA And Rollback Evidence | 2/4 | In Progress|  |
 | 19. Recovery Regression And OTAWWW Evidence | 0/0 | Pending | TBD |
 | 20. Active Safety Hardware Telemetry Evidence | 0/0 | Pending | TBD |
 | 21. Live Mining And Soak Evidence | 0/0 | Pending | TBD |

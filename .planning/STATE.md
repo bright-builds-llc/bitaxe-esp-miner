@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 18-01-PLAN.md
-last_updated: "2026-07-03T15:10:22.600Z"
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-07-03T15:36:12.688Z"
 last_activity: 2026-07-03
 progress:
   total_phases: 21
   completed_phases: 17
   total_plans: 98
-  completed_plans: 95
-  percent: 97
+  completed_plans: 96
+  percent: 98
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 18 (firmware-ota-and-rollback-evidence) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
-Last activity: 2026-07-03 -- Completed 18-01-PLAN.md
+Last activity: 2026-07-03
 
 Progress: [███░░░░░░░] 25%
 
@@ -141,6 +141,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 17-live-http-api-and-static-evidence P04 | 3 min | 1 tasks | 3 files |
 | Phase 17-live-http-api-and-static-evidence P05 | 622s | 2 tasks | 5 files |
 | Phase 18-firmware-ota-and-rollback-evidence P01 | 11m46s | 2 tasks | 6 files |
+| Phase 18-firmware-ota-and-rollback-evidence P02 | 20m10s | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -355,6 +356,9 @@ Recent decisions affecting current work:
 - [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-01 accepts only an explicit origin-only DEVICE_URL or trusted board 205 flash-monitor evidence and records network_scan: disabled.
 - [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-01 keeps invalid image rejection, valid OTA, boot validation, rollback, and non-claims as distinct evidence classes.
 - [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-01 starts Phase 18 redaction as pending until live target, OTA, serial, and recovery artifacts exist.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Treat 22d02f8e97928f1ec29360552179380b92582e6a as the Phase 18 package identity because it was HEAD at Task 1 package time.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Run flash-monitor from a temporary package-source clone under target/ so wrapper-owned flash evidence stays aligned with the copied package manifest after task commits.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Keep raw target/device_url extraction evidence under target/phase18-firmware-ota-and-rollback-evidence-dev-raw/ and commit only redacted serial and target-lock artifacts.
 
 ### Pending Todos
 
@@ -380,6 +384,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T15:10:22.585Z
-Stopped at: Completed 18-01-PLAN.md
+Last session: 2026-07-03T15:36:12.683Z
+Stopped at: Completed 18-02-PLAN.md
 Resume file: None
