@@ -64,6 +64,11 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase20_failure_paths",
+    srcs = ["phase20-failure-paths.sh"],
+)
+
+sh_binary(
     name = "phase13_monitor_capture",
     srcs = ["phase13-monitor-capture.sh"],
 )
@@ -211,6 +216,13 @@ sh_test(
         "phase16-recovery-regression.sh",
         "phase16-http-static-smoke.sh",
     ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase20_failure_paths_test",
+    srcs = ["phase20-failure-paths-test.sh"],
+    data = ["phase20-failure-paths.sh"],
     tags = ["local"],
 )
 
