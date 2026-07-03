@@ -41,7 +41,7 @@ artifact is scanned and reviewed, and every absent artifact is marked
 | `serial-boot/flash-command-evidence.json` | absent - not cited | pending | Trusted flash-monitor command metadata only after redaction review. |
 | `serial-boot/flash-monitor.log` | absent - not cited | pending | Serial logs may include SSIDs, MACs, IPs, and device URLs. |
 | `target-lock.json` | absent - not cited | pending | Must contain redacted origin only and `network_scan: disabled`. |
-| `recovery-regression.md` | absent - not cited | pending | Created by a later recovery evidence plan. |
+| `recovery-regression.md` | present | pending | Plan 03 recovery ledger; cites only redacted paths, commit identifiers, selected USB port, and pending statuses. |
 | `recovery-regression/recovery-regression.log` | present | pending | Safe no-allow helper transcript; no live failed-update, large-erase, interrupted upload, rollback, or boot-validation action ran. |
 | `recovery-regression/failed-update.log` | present | pending | Pending allow-flag status only; no failed-update request or response body was captured. |
 | `recovery-regression/large-erase.log` | present | pending | Pending allow-flag status only; no destructive erase or restore command was run. |
