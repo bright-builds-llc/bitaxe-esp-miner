@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 16: Current Commit Release Evidence Completion** - Close the current audit gap for same-commit package, flash, serial boot, live HTTP/static/recovery/OTA, rollback, erase, failed-update, and interrupted-update evidence. (completed 2026-07-01)
 - [x] **Phase 17: Live HTTP API And Static Evidence** - Close the current audit gap for explicit-`DEVICE_URL` live HTTP, static asset, recovery page, API route, and WebSocket evidence. (completed 2026-07-02)
 - [x] **Phase 18: Firmware OTA And Rollback Evidence** - Close the current audit gap for valid firmware OTA, invalid OTA rejection, reboot identity, rollback, and boot-validation evidence. (completed 2026-07-03)
-- [ ] **Phase 19: Recovery Regression And OTAWWW Evidence** - Close the current audit gaps for recovery fault-injection regressions and OTAWWW/static update behavior.
+- [x] **Phase 19: Recovery Regression And OTAWWW Evidence** - Close the current audit gaps for recovery fault-injection regressions and OTAWWW/static update behavior. (completed 2026-07-03)
 - [ ] **Phase 20: Active Safety Hardware Telemetry Evidence** - Close the current audit gap for active Ultra 205 safety hardware behavior and live telemetry evidence.
 - [ ] **Phase 21: Live Mining And Soak Evidence** - Close the current audit gap for live production mining, accepted/rejected share behavior, watchdog responsiveness, and bounded soak evidence.
 
@@ -479,7 +479,7 @@ Plans:
 - [x] 19-01-PLAN.md - Create Wave 0 helper tests, evidence contract, and redaction gate.
 - [x] 19-02-PLAN.md - Capture current package, release-gate, detector, serial, and target-provenance evidence.
 - [x] 19-03-PLAN.md - Run or safely block gated recovery regression evidence.
-- [ ] 19-04-PLAN.md - Record OTAWWW gap/update evidence and close final docs, checklist, redaction, and verification.
+- [x] 19-04-PLAN.md - Record OTAWWW gap/update evidence and close final docs, checklist, redaction, and verification.
 **Verification expectations**: `just detect-ultra205`, gated recovery/fault-injection evidence, OTAWWW/static update check, restore proof, redaction review, `just parity`, and `just verify-reference`.
 **Research flags**: Requires documented recovery procedures and explicit destructive-test authorization in the phase plan. Do not run ad hoc erase, rollback, or interrupted-update commands.
 
@@ -544,6 +544,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 16. Current Commit Release Evidence Completion | 6/6 | Complete | 2026-07-01 |
 | 17. Live HTTP API And Static Evidence | 7/7 | Complete   | 2026-07-03 |
 | 18. Firmware OTA And Rollback Evidence | 4/4 | Complete   | 2026-07-03 |
-| 19. Recovery Regression And OTAWWW Evidence | 3/4 | In Progress|  |
+| 19. Recovery Regression And OTAWWW Evidence | 4/4 | Complete   | 2026-07-03 |
 | 20. Active Safety Hardware Telemetry Evidence | 0/0 | Pending | TBD |
 | 21. Live Mining And Soak Evidence | 0/0 | Pending | TBD |
