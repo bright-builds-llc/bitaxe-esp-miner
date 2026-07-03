@@ -251,7 +251,7 @@ API input` as insufficient proof of whole-`www` update parity.
 | API-10 | Phase 5 + Phase 10 | Complete |
 | SAFE-01 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
 | SAFE-02 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
-| SAFE-03 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
+| SAFE-03 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
 | SAFE-04 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Complete |
 | SAFE-05 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
 | SAFE-06 | Phase 6 + Phase 11 + Phase 14 + Phase 20 | Pending |
