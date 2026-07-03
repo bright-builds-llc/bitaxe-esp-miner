@@ -1,0 +1,33 @@
+{
+  "board": "205",
+  "port": "/dev/cu.usbmodem1101",
+  "detector_command": "just detect-ultra205",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
+  "package_manifest": "docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/package-release-gate/bitaxe-ultra205-package.json",
+  "source_commit": "c11fba2622a389af533774447956b95f254c0280",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "surface": "live-api-websocket-telemetry",
+  "claim_tier": "api-websocket-projection",
+  "evidence_class": "hardware-smoke",
+  "allowed_command": "scripts/phase14-live-telemetry.sh --manifest docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/live-api-websocket-telemetry/allow-live-telemetry.json --out-dir docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/live-api-websocket-telemetry",
+  "allowed_inputs": {
+    "device_url_source": "explicit DEVICE_URL or trusted origin-only target-lock",
+    "network_scan": "disabled"
+  },
+  "abort_conditions": [],
+  "recovery_steps": [],
+  "post_action_safe_state_markers": [],
+  "evidence_dir": "docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/live-api-websocket-telemetry",
+  "redaction_reviewer": "phase-20-plan-05-task-1-blocked-http-redaction",
+  "checklist_rows": [
+    "API-002",
+    "API-006",
+    "STAT-002",
+    "PWR-006",
+    "THR-001",
+    "THR-002",
+    "SAFE-07"
+  ]
+}
