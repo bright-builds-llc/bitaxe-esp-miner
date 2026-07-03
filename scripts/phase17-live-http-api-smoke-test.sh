@@ -95,6 +95,28 @@ create_stale_flash_json() {
 JSON
 }
 
+create_flash_json_with_monitor_log() {
+	local path="$1"
+	local monitor_log_path="$2"
+	local board="${3:-205}"
+	local trusted_output="${4:-true}"
+	local command_kind="${5:-flash-monitor}"
+
+	cat >"$path" <<JSON
+{
+  "command_kind": "${command_kind}",
+  "board": "${board}",
+  "selected_port": "/dev/cu.usbmodem1101",
+  "trusted_output": ${trusted_output},
+  "firmware_commit": "26a1aebad7a11234567890123456789012345678",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "observed_firmware_commit": "26a1aebad7a1",
+  "observed_reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "monitor_log_path": "${monitor_log_path}"
+}
+JSON
+}
+
 create_no_curl_stub() {
 	local path="$1"
 
@@ -363,6 +385,77 @@ test_fake_success_records_required_phase17_routes() {
 	assert_not_contains "${out_dir}/target-lock.json" "device.local"
 }
 
+test_flash_log_device_url_success_records_usb_source_without_raw_target_lock() {
+	# Arrange
+	local out_dir="${tmp_root}/flash-log-url-success"
+	local manifest="${tmp_root}/manifest-flash-log.json"
+	local flash_json="${tmp_root}/flash-log.json"
+	local monitor_log="${tmp_root}/flash-monitor.log"
+	local curl_stub="${tmp_root}/fake-curl-flash-log"
+
+	create_manifest "$manifest"
+	printf '\377\376wifi_status=connected ipv4=192.168.1.24 device_url=http://device.local\n' >"$monitor_log"
+	create_flash_json_with_monitor_log "$flash_json" "$monitor_log"
+	create_fake_curl "$curl_stub"
+
+	# Act
+	run_smoke "$out_dir" "$manifest" "$flash_json" "$curl_stub" --use-flash-log-device-url
+
+	# Assert
+	local log_file="${out_dir}/http-static-api.log"
+	assert_contains "$log_file" "DEVICE_URL status: provided"
+	assert_contains "$log_file" "DEVICE_URL source: usb_flash_monitor_log"
+	assert_contains "$log_file" "network_scan: disabled"
+	assert_contains "$log_file" "http_static_api_status: passed"
+	assert_contains "${out_dir}/target-lock.json" "\"device_url_source\": \"usb_flash_monitor_log\""
+	assert_contains "${out_dir}/target-lock.json" "\"device_url_redacted\": \"http://[redacted]\""
+	assert_not_contains "${out_dir}/target-lock.json" "device.local"
+}
+
+test_flash_log_device_url_blocks_untrusted_or_unusable_sources() {
+	# Arrange
+	local manifest="${tmp_root}/manifest-flash-log-blocks.json"
+	local curl_stub="${tmp_root}/no-curl-flash-log-blocks"
+
+	create_manifest "$manifest"
+	create_no_curl_stub "$curl_stub"
+
+	local scenarios=(
+		"wrong-board|601|true|flash-monitor|device_url=http://device.local|flash board is not 205"
+		"untrusted|205|false|flash-monitor|device_url=http://device.local|flash trusted_output is not true"
+		"wrong-kind|205|true|flash|device_url=http://device.local|flash command_kind is not flash-monitor"
+		"redacted-log|205|true|flash-monitor|device_url=[redacted-url]|monitor log must contain exactly one device_url"
+		"invalid-url|205|true|flash-monitor|device_url=http://device.local/path|monitor log device_url is not origin-only"
+		"multiple-urls|205|true|flash-monitor|device_url=http://device.local%0Adevice_url=http://other.local|monitor log must contain exactly one device_url"
+	)
+
+	# Act + Assert
+	local scenario
+	for scenario in "${scenarios[@]}"; do
+		IFS='|' read -r name board trusted kind log_payload expected_reason <<<"$scenario"
+		local out_dir="${tmp_root}/flash-log-${name}"
+		local flash_json="${tmp_root}/flash-log-${name}.json"
+		local monitor_log="${tmp_root}/flash-log-${name}.log"
+
+		printf '%b\n' "${log_payload//%0A/\\n}" >"$monitor_log"
+		create_flash_json_with_monitor_log "$flash_json" "$monitor_log" "$board" "$trusted" "$kind"
+
+		run_smoke "$out_dir" "$manifest" "$flash_json" "$curl_stub" --use-flash-log-device-url
+
+		local log_file="${out_dir}/http-static-api.log"
+		assert_contains "$log_file" "DEVICE_URL status: blocked - flash log device_url unavailable"
+		assert_contains "$log_file" "device_url_lookup_reason: ${expected_reason}"
+		assert_contains "$log_file" "network_scan: disabled"
+		assert_contains "$log_file" "http_static_api_status: blocked"
+	done
+
+	local missing_log_out="${tmp_root}/flash-log-missing-log"
+	local missing_flash_json="${tmp_root}/flash-log-missing-log.json"
+	create_flash_json_with_monitor_log "$missing_flash_json" "${tmp_root}/absent-flash-monitor.log"
+	run_smoke "$missing_log_out" "$manifest" "$missing_flash_json" "$curl_stub" --use-flash-log-device-url
+	assert_contains "${missing_log_out}/http-static-api.log" "device_url_lookup_reason: monitor log path is missing or unreadable"
+}
+
 test_no_upgrade_does_not_claim_frames() {
 	# Arrange
 	local out_dir="${tmp_root}/websocket-no-upgrade"
@@ -508,6 +601,73 @@ test_websocket_live_fake_frame_passes() {
 	assert_not_contains "$out_file" "abc123"
 }
 
+test_websocket_flash_evidence_device_url_fake_frame_passes() {
+	# Arrange
+	local out_file="${tmp_root}/websocket-flash-evidence-frame.txt"
+	local flash_json="${tmp_root}/websocket-flash-evidence.json"
+	local monitor_log="${tmp_root}/websocket-flash-monitor.log"
+
+	printf 'wifi_status=connected ipv4=192.168.1.24 device_url=http://device.local\n' >"$monitor_log"
+	create_flash_json_with_monitor_log "$flash_json" "$monitor_log"
+
+	# Act
+	PHASE17_FAKE_WEBSOCKET_MODE=open-frame \
+	PHASE17_FAKE_WEBSOCKET_PAYLOAD='{"ssid":"HomeNetwork","wifiPass":"super-secret","ip":"192.168.1.5","mac":"aa:bb:cc:dd:ee:ff","token":"abc123"}' \
+		run_websocket_capture "$out_file" --device-url-from-flash-evidence "$flash_json" --path "/api/ws/live"
+
+	# Assert
+	assert_contains "$out_file" "device_url_source=usb_flash_monitor_log"
+	assert_contains "$out_file" "websocket_capture_url=ws://[redacted]/api/ws/live"
+	assert_contains "$out_file" "websocket_target_status=passed"
+	assert_contains "$out_file" "websocket_frame_status=passed frames=1"
+	assert_not_contains "$out_file" "device.local"
+	assert_not_contains "$out_file" "HomeNetwork"
+	assert_not_contains "$out_file" "super-secret"
+	assert_not_contains "$out_file" "192.168.1.5"
+	assert_not_contains "$out_file" "aa:bb:cc:dd:ee:ff"
+	assert_not_contains "$out_file" "abc123"
+}
+
+test_websocket_frame_then_error_preserves_passed_frame_status() {
+	# Arrange
+	local out_file="${tmp_root}/websocket-frame-error.txt"
+
+	# Act
+	PHASE17_FAKE_WEBSOCKET_MODE=frame-error PHASE17_FAKE_WEBSOCKET_PAYLOAD='{"event":"update","ip":"192.168.1.5"}' \
+		run_websocket_capture "$out_file" --device-url "http://device.local" --path "/api/ws/live"
+
+	# Assert
+	assert_contains "$out_file" "websocket_open_status=opened"
+	assert_contains "$out_file" "websocket_frame_1="
+	assert_contains "$out_file" "\"ip\":\"[redacted]\""
+	assert_contains "$out_file" "websocket_error=connection error"
+	assert_contains "$out_file" "websocket_frame_status=passed frames=1"
+	assert_not_contains "$out_file" "192.168.1.5"
+}
+
+test_websocket_flash_evidence_device_url_blocks_unusable_sources() {
+	# Arrange
+	local redacted_out="${tmp_root}/websocket-flash-evidence-redacted.txt"
+	local redacted_json="${tmp_root}/websocket-flash-evidence-redacted.json"
+	local redacted_log="${tmp_root}/websocket-flash-evidence-redacted.log"
+	local wrong_board_out="${tmp_root}/websocket-flash-evidence-wrong-board.txt"
+	local wrong_board_json="${tmp_root}/websocket-flash-evidence-wrong-board.json"
+	local wrong_board_log="${tmp_root}/websocket-flash-evidence-wrong-board.log"
+
+	printf 'wifi_status=connected device_url=[redacted-url]\n' >"$redacted_log"
+	create_flash_json_with_monitor_log "$redacted_json" "$redacted_log"
+	printf 'wifi_status=connected device_url=http://device.local\n' >"$wrong_board_log"
+	create_flash_json_with_monitor_log "$wrong_board_json" "$wrong_board_log" "601"
+
+	# Act
+	run_websocket_capture "$redacted_out" --device-url-from-flash-evidence "$redacted_json" --path "/api/ws/live"
+	run_websocket_capture "$wrong_board_out" --device-url-from-flash-evidence "$wrong_board_json" --path "/api/ws/live"
+
+	# Assert
+	assert_contains "$redacted_out" "websocket_target_status=blocked - flash log device_url unavailable - monitor log must contain exactly one device_url"
+	assert_contains "$wrong_board_out" "websocket_target_status=blocked - flash log device_url unavailable - flash board is not 205"
+}
+
 test_websocket_raw_log_open_timeout_stays_pending() {
 	# Arrange
 	local out_file="${tmp_root}/websocket-raw-timeout.txt"
@@ -551,12 +711,17 @@ test_missing_target_blocks_without_curl
 test_userinfo_path_query_fragment_rejected
 test_stale_flash_identity_blocks_without_curl
 test_fake_success_records_required_phase17_routes
+test_flash_log_device_url_success_records_usb_source_without_raw_target_lock
+test_flash_log_device_url_blocks_untrusted_or_unusable_sources
 test_no_upgrade_does_not_claim_frames
 test_redacts_response_secrets
 test_websocket_missing_target_blocks_with_out
 test_websocket_rejects_non_origin_target
 test_websocket_rejects_unsupported_path
 test_websocket_live_fake_frame_passes
+test_websocket_flash_evidence_device_url_fake_frame_passes
+test_websocket_frame_then_error_preserves_passed_frame_status
+test_websocket_flash_evidence_device_url_blocks_unusable_sources
 test_websocket_raw_log_open_timeout_stays_pending
 test_websocket_rejects_bounds_over_limits
 

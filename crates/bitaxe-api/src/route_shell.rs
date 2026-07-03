@@ -162,7 +162,7 @@ pub struct PublicHttpResponse {
 pub struct RouteAccessInput {
     /// Upstream AP-mode bypass for captive/local setup.
     pub ap_mode_enabled: bool,
-    /// Client peer IPv4 address.
+    /// Client peer IPv4 address, or `0.0.0.0` when the firmware platform cannot expose it.
     pub request_ip: Ipv4Addr,
     /// Origin header state.
     pub origin: OriginGate,
@@ -341,11 +341,21 @@ fn is_access_allowed(input: RouteAccessInput) -> bool {
         return true;
     }
 
+    // ESP-IDF HTTPD can report 0.0.0.0 for the peer after accepting a STA socket.
+    // Keep upstream-like local curl behavior while still rejecting hostile origins.
+    if input.request_ip.is_unspecified() {
+        return is_origin_allowed(input.origin);
+    }
+
     if !is_private_ipv4(input.request_ip) {
         return false;
     }
 
-    match input.origin {
+    is_origin_allowed(input.origin)
+}
+
+fn is_origin_allowed(origin: OriginGate) -> bool {
+    match origin {
         OriginGate::Missing => true,
         OriginGate::Parsed(origin_ip) => is_private_ipv4(origin_ip),
         OriginGate::Invalid => false,
@@ -581,6 +591,66 @@ mod tests {
             WebSocketUpgradeDecision::Accept(super::WebSocketClientRegistrationPlan {
                 route: WebSocketRouteKind::LiveTelemetry
             })
+        ));
+    }
+
+    #[test]
+    fn unspecified_peer_ip_from_firmware_allows_missing_origin_for_http_and_websocket() {
+        // Arrange
+        let input = RouteAccessInput {
+            ap_mode_enabled: false,
+            request_ip: Ipv4Addr::UNSPECIFIED,
+            origin: OriginGate::Missing,
+        };
+
+        // Act
+        let http_decision = plan_http_access(input);
+        let ws_decision = plan_websocket_upgrade(input, WebSocketRouteKind::Logs);
+
+        // Assert
+        assert_eq!(http_decision, HttpAccessDecision::Allow);
+        assert_eq!(
+            ws_decision,
+            WebSocketUpgradeDecision::Accept(super::WebSocketClientRegistrationPlan {
+                route: WebSocketRouteKind::Logs,
+            })
+        );
+    }
+
+    #[test]
+    fn unspecified_peer_ip_from_firmware_still_applies_origin_gate() {
+        // Arrange
+        let private_origin_input = RouteAccessInput {
+            ap_mode_enabled: false,
+            request_ip: Ipv4Addr::UNSPECIFIED,
+            origin: OriginGate::Parsed(Ipv4Addr::new(192, 168, 86, 1)),
+        };
+        let public_origin_input = RouteAccessInput {
+            ap_mode_enabled: false,
+            request_ip: Ipv4Addr::UNSPECIFIED,
+            origin: OriginGate::Parsed(Ipv4Addr::new(203, 0, 113, 10)),
+        };
+        let invalid_origin_input = RouteAccessInput {
+            ap_mode_enabled: false,
+            request_ip: Ipv4Addr::UNSPECIFIED,
+            origin: OriginGate::Invalid,
+        };
+
+        // Act
+        let private_origin_decision = plan_http_access(private_origin_input);
+        let public_origin_decision = plan_http_access(public_origin_input);
+        let invalid_origin_decision =
+            plan_websocket_upgrade(invalid_origin_input, WebSocketRouteKind::LiveTelemetry);
+
+        // Assert
+        assert_eq!(private_origin_decision, HttpAccessDecision::Allow);
+        assert!(matches!(
+            public_origin_decision,
+            HttpAccessDecision::Deny(_)
+        ));
+        assert!(matches!(
+            invalid_origin_decision,
+            WebSocketUpgradeDecision::Reject(_)
         ));
     }
 

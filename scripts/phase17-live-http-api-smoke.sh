@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-	printf 'usage: %s [--device-url URL] [--manifest PATH] [--flash-evidence-json PATH] [--out-dir PATH] [--target-lock-out PATH] [--curl-bin PATH]\n' "$(basename "$0")" >&2
+	printf 'usage: %s [--device-url URL] [--use-flash-log-device-url] [--manifest PATH] [--flash-evidence-json PATH] [--out-dir PATH] [--target-lock-out PATH] [--curl-bin PATH]\n' "$(basename "$0")" >&2
 }
 
 device_url="${DEVICE_URL:-}"
@@ -10,6 +10,7 @@ device_url_source="environment"
 if [[ -z "$device_url" ]]; then
 	device_url_source="none"
 fi
+use_flash_log_device_url=0
 manifest="bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json"
 flash_evidence_json=""
 out_dir="docs/parity/evidence/phase-17-live-http-api-and-static-evidence/http-static-api"
@@ -26,6 +27,10 @@ while [[ $# -gt 0 ]]; do
 		device_url="$2"
 		device_url_source="argument"
 		shift 2
+		;;
+	--use-flash-log-device-url)
+		use_flash_log_device_url=1
+		shift
 		;;
 	--manifest)
 		if [[ $# -lt 2 ]]; then
@@ -126,6 +131,85 @@ elif value is not None:
 PY
 }
 
+device_urls_from_monitor_log() {
+	local path="$1"
+
+	python3 - "$path" <<'PY'
+import re
+import sys
+
+with open(sys.argv[1], "rb") as handle:
+    data = handle.read()
+
+urls = sorted(
+    {
+        match.decode("ascii", errors="ignore").split("=", 1)[1]
+        for match in re.findall(rb"device_url=https?://[^\s\"<>]+", data)
+    }
+)
+for url in urls:
+    print(url)
+PY
+}
+
+load_device_url_from_flash_evidence() {
+	device_url_lookup_reason=""
+
+	if [[ -z "$flash_evidence_json" || ! -f "$flash_evidence_json" ]]; then
+		device_url_lookup_reason="missing --flash-evidence-json"
+		return 1
+	fi
+
+	local command_kind
+	local board
+	local trusted_output
+	command_kind="$(json_field "$flash_evidence_json" command_kind)"
+	board="$(json_field "$flash_evidence_json" board)"
+	trusted_output="$(json_field "$flash_evidence_json" trusted_output)"
+
+	if [[ "$command_kind" != *"flash-monitor"* ]]; then
+		device_url_lookup_reason="flash command_kind is not flash-monitor"
+		return 1
+	fi
+	if [[ "$board" != "205" ]]; then
+		device_url_lookup_reason="flash board is not 205"
+		return 1
+	fi
+	if [[ "$trusted_output" != "true" ]]; then
+		device_url_lookup_reason="flash trusted_output is not true"
+		return 1
+	fi
+
+	local monitor_log
+	monitor_log="$(json_field "$flash_evidence_json" monitor_log_path)"
+	if [[ -z "$monitor_log" ]]; then
+		monitor_log="$(json_field "$flash_evidence_json" log_path)"
+	fi
+	if [[ -z "$monitor_log" || ! -f "$monitor_log" ]]; then
+		device_url_lookup_reason="monitor log path is missing or unreadable"
+		return 1
+	fi
+
+	local urls
+	urls="$(device_urls_from_monitor_log "$monitor_log" || true)"
+	local url_count
+	url_count="$(printf '%s\n' "$urls" | LC_ALL=C sed '/^$/d' | wc -l | tr -d ' ')"
+	if [[ "$url_count" != "1" ]]; then
+		device_url_lookup_reason="monitor log must contain exactly one device_url"
+		return 1
+	fi
+
+	device_url="$(printf '%s\n' "$urls" | LC_ALL=C sed -n '1p')"
+	if ! validate_origin_device_url "$device_url"; then
+		device_url=""
+		device_url_lookup_reason="monitor log device_url is not origin-only"
+		return 1
+	fi
+
+	device_url_source="usb_flash_monitor_log"
+	return 0
+}
+
 redacted_origin() {
 	local url="$1"
 
@@ -193,7 +277,7 @@ validate_origin_device_url() {
 
 redact_stream() {
 	LC_ALL=C tr -d '\000\r' |
-		sed -E 's/"(ssid|wifiPass|wifiPassword|stratumUser|stratumPassword|stratumCert|poolUrl|fallbackPoolUrl|hostname|ip|ipAddress|gateway|netmask|dns|token|apiKey|password|nvsSecret|secret)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1":"[redacted]"/g; s/"(stratumPort|fallbackStratumPort)"[[:space:]]*:[[:space:]]*[0-9]+/"\1":[redacted]/g; s#https?://[^[:space:]"<>]+#[redacted-url]#g; s#wss?://[^[:space:]"<>]+#[redacted-url]#g; s/(Could not resolve host: )[[:alnum:]_.-]+/\1[redacted-host]/g; s/(Failed to connect to )([0-9]{1,3}\.){3}[0-9]{1,3}/\1[redacted-ip]/g; s/(Failed to connect to )[[:alnum:]_.-]+/\1[redacted-host]/g; s/([0-9]{1,3}\.){3}[0-9]{1,3}/[redacted-ip]/g; s/([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}/[redacted-mac]/g'
+		LC_ALL=C sed -E 's/"(ssid|wifiPass|wifiPassword|stratumUser|stratumPassword|stratumCert|poolUrl|fallbackPoolUrl|hostname|ip|ipAddress|gateway|netmask|dns|token|apiKey|password|nvsSecret|secret)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1":"[redacted]"/g; s/"(stratumPort|fallbackStratumPort)"[[:space:]]*:[[:space:]]*[0-9]+/"\1":[redacted]/g; s#https?://[^[:space:]"<>]+#[redacted-url]#g; s#wss?://[^[:space:]"<>]+#[redacted-url]#g; s/(Could not resolve host: )[[:alnum:]_.-]+/\1[redacted-host]/g; s/(Failed to connect to )([0-9]{1,3}\.){3}[0-9]{1,3}/\1[redacted-ip]/g; s/(Failed to connect to )[[:alnum:]_.-]+/\1[redacted-host]/g; s/([0-9]{1,3}\.){3}[0-9]{1,3}/[redacted-ip]/g; s/([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}/[redacted-mac]/g'
 }
 
 write_redacted_artifact() {
@@ -208,7 +292,7 @@ redacted_snippet() {
 
 	redact_stream <"$source_file" |
 		head -c 1000 |
-		tr '\n\t' '  '
+		LC_ALL=C tr '\n\t' '  '
 }
 
 selected_headers() {
@@ -533,6 +617,17 @@ log "manifest_source_commit: ${manifest_source_commit:-unavailable}"
 log "manifest_reference_commit: ${manifest_reference_commit:-unavailable}"
 log "flash_evidence_json: ${flash_evidence_json:-missing}"
 log "network_scan: disabled"
+
+if [[ -z "$device_url" && "$use_flash_log_device_url" == "1" ]]; then
+	if ! load_device_url_from_flash_evidence; then
+		log "DEVICE_URL status: blocked - flash log device_url unavailable"
+		log "device_url_lookup_reason: ${device_url_lookup_reason}"
+		log "target_status: blocked"
+		log "http_static_api_status: blocked"
+		log "conclusion: blocked - trusted USB flash-monitor log must contain exactly one origin-only device_url"
+		exit 0
+	fi
+fi
 
 if [[ -z "$device_url" ]]; then
 	log "DEVICE_URL status: blocked - missing DEVICE_URL"

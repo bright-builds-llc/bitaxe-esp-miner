@@ -31,7 +31,7 @@ use crate::runtime_snapshot::{
     apply_block_found_dismiss_command, apply_identify_mode_command, apply_mining_activity_command,
     block_found_notification_state, collect_api_snapshot, identify_mode, mining_runtime_state,
 };
-use crate::{log_buffer, settings_adapter, static_files, websocket_api};
+use crate::{log_buffer, network_stack, settings_adapter, static_files, websocket_api};
 
 type ApiRequest<'request, 'connection> = Request<&'request mut EspHttpConnection<'connection>>;
 
@@ -39,18 +39,21 @@ const API_WS_ROUTE: &str = "/api/ws";
 const API_WS_LIVE_ROUTE: &str = "/api/ws/live";
 const API_WS_PATH: &[u8] = b"/api/ws\0";
 const API_WS_LIVE_PATH: &[u8] = b"/api/ws/live\0";
+const CONNECTION_HEADER: &[u8] = b"Connection\0";
 const APPLICATION_JSON_CSTR: &[u8] = b"application/json\0";
 const ORIGIN_HEADER: &[u8] = b"Origin\0";
 const ORIGIN_HEADER_BUFFER_BYTES: usize = 128;
 const TEXT_PLAIN_CSTR: &[u8] = b"text/plain\0";
 const HTTPD_401: &[u8] = b"401 Unauthorized\0";
+const UPGRADE_HEADER: &[u8] = b"Upgrade\0";
 const UPDATE_AP_MODE_REJECTION_BODY: &str = "Not allowed in AP mode";
+const WEBSOCKET_UPGRADE_REQUIRED_BODY: &str = "WebSocket upgrade required";
 const LIVE_TELEMETRY_THREAD_STACK_BYTES: usize = 16 * 1024;
 
 /// Starts the HTTP route shell and intentionally leaks the server so ESP-IDF's
 /// server task keeps running for the lifetime of the firmware process.
 pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()> {
-    initialize_network_stack()?;
+    network_stack::initialize()?;
 
     let config = Configuration {
         stack_size: 8192,
@@ -79,20 +82,6 @@ pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()>
     );
 
     core::mem::forget(server);
-    Ok(())
-}
-
-fn initialize_network_stack() -> anyhow::Result<()> {
-    let netif_result = unsafe { sys::esp_netif_init() };
-    if !matches!(netif_result, sys::ESP_OK | sys::ESP_ERR_INVALID_STATE) {
-        anyhow::bail!("esp_netif_init failed: esp_err={netif_result}");
-    }
-
-    let event_loop_result = unsafe { sys::esp_event_loop_create_default() };
-    if !matches!(event_loop_result, sys::ESP_OK | sys::ESP_ERR_INVALID_STATE) {
-        anyhow::bail!("esp_event_loop_create_default failed: esp_err={event_loop_result}");
-    }
-
     Ok(())
 }
 
@@ -486,9 +475,14 @@ fn handle_with_access_gate<'request, 'connection>(
     mut request: ApiRequest<'request, 'connection>,
     handler: impl FnOnce(ApiRequest<'request, 'connection>) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    match plan_http_access(access_input(&mut request)) {
+    let path = request_path_without_query(request.connection().uri()).to_owned();
+    let input = access_input(&mut request);
+    match plan_http_access(input) {
         HttpAccessDecision::Allow => handler(request),
-        HttpAccessDecision::Deny(response) => send_public_response(request, response),
+        HttpAccessDecision::Deny(response) => {
+            log_access_denied("http", &path, input);
+            send_public_response(request, response)
+        }
     }
 }
 
@@ -523,6 +517,7 @@ fn peer_ipv4(request: *mut sys::httpd_req_t) -> Option<Ipv4Addr> {
     unsafe {
         let sockfd = sys::httpd_req_to_sockfd(request);
         if sockfd == -1 {
+            log::warn!("axeos_access_gate_peer_ip=unavailable reason=no_socket");
             return None;
         }
 
@@ -539,11 +534,34 @@ fn peer_ipv4(request: *mut sys::httpd_req_t) -> Option<Ipv4Addr> {
             &mut addr_len,
         ) != sys::ESP_OK
         {
+            log::warn!("axeos_access_gate_peer_ip=unavailable reason=getpeername_failed");
             return None;
         }
 
-        Some(Ipv4Addr::from(u32::from_be(addr.sin_addr.s_addr)))
+        Some(peer_ipv4_from_s_addr(addr.sin_addr.s_addr))
     }
+}
+
+fn peer_ipv4_from_s_addr(raw_addr: u32) -> Ipv4Addr {
+    let network_order_ip = Ipv4Addr::from(u32::from_be(raw_addr));
+    if is_rfc1918_ipv4(network_order_ip) {
+        return network_order_ip;
+    }
+
+    let host_order_ip = Ipv4Addr::from(raw_addr);
+    if is_rfc1918_ipv4(host_order_ip) {
+        log::warn!(
+            "axeos_access_gate_peer_ip_byte_order=host_order raw=0x{raw_addr:08x} network_order_ip={network_order_ip} host_order_ip={host_order_ip}"
+        );
+        return host_order_ip;
+    }
+
+    network_order_ip
+}
+
+fn is_rfc1918_ipv4(ip: Ipv4Addr) -> bool {
+    let [first, second, _, _] = ip.octets();
+    first == 10 || (first == 172 && (16..=31).contains(&second)) || (first == 192 && second == 168)
 }
 
 unsafe extern "C" fn websocket_logs_handler(request: *mut sys::httpd_req_t) -> sys::esp_err_t {
@@ -562,7 +580,13 @@ fn handle_websocket_upgrade(
         return handle_websocket_frame(request);
     }
 
-    match plan_websocket_upgrade(access_input_from_raw(request), route) {
+    if !is_websocket_upgrade_request(request) {
+        log::warn!("axeos_websocket_upgrade=rejected route={route:?} reason=no_upgrade");
+        return send_raw_public_response(request, websocket_upgrade_required_response());
+    }
+
+    let input = access_input_from_raw(request);
+    match plan_websocket_upgrade(input, route) {
         WebSocketUpgradeDecision::Accept(plan) => {
             let session = unsafe { sys::httpd_req_to_sockfd(request) };
             if session < 0 {
@@ -603,10 +627,76 @@ fn handle_websocket_upgrade(
             }
         }
         WebSocketUpgradeDecision::Reject(response) => {
+            log_access_denied("websocket", websocket_route_path(route), input);
             log::warn!("axeos_websocket_upgrade=rejected route={route:?}");
             send_raw_public_response(request, response)
         }
     }
+}
+
+fn is_websocket_upgrade_request(request: *mut sys::httpd_req_t) -> bool {
+    raw_header_matches(request, UPGRADE_HEADER, |value| {
+        value.eq_ignore_ascii_case("websocket")
+    }) && raw_header_matches(request, CONNECTION_HEADER, |value| {
+        value
+            .split(',')
+            .any(|part| part.trim().eq_ignore_ascii_case("upgrade"))
+    })
+}
+
+fn raw_header_matches(
+    request: *mut sys::httpd_req_t,
+    name: &[u8],
+    predicate: impl FnOnce(&str) -> bool,
+) -> bool {
+    let mut buffer = [0; ORIGIN_HEADER_BUFFER_BYTES];
+    let result = unsafe {
+        sys::httpd_req_get_hdr_value_str(
+            request,
+            name.as_ptr().cast(),
+            buffer.as_mut_ptr(),
+            buffer.len(),
+        )
+    };
+    if result != sys::ESP_OK {
+        return false;
+    }
+
+    let Ok(value) = (unsafe { CStr::from_ptr(buffer.as_ptr()) }).to_str() else {
+        return false;
+    };
+
+    predicate(value)
+}
+
+const fn websocket_upgrade_required_response() -> PublicHttpResponse {
+    PublicHttpResponse {
+        status: 400,
+        body: WEBSOCKET_UPGRADE_REQUIRED_BODY,
+        content_type: Some("text/plain"),
+    }
+}
+
+fn request_path_without_query(uri: &str) -> &str {
+    uri.split_once('?')
+        .map(|(path, _query)| path)
+        .unwrap_or(uri)
+}
+
+fn websocket_route_path(route: WebSocketRouteKind) -> &'static str {
+    match route {
+        WebSocketRouteKind::Logs => "/api/ws",
+        WebSocketRouteKind::LiveTelemetry => "/api/ws/live",
+    }
+}
+
+fn log_access_denied(kind: &str, path: &str, input: RouteAccessInput) {
+    log::warn!(
+        "axeos_access_gate=denied kind={kind} path={path} ap_mode_enabled={} request_ip={} origin={:?}",
+        input.ap_mode_enabled,
+        input.request_ip,
+        input.origin
+    );
 }
 
 fn handle_websocket_frame(request: *mut sys::httpd_req_t) -> sys::esp_err_t {
@@ -643,6 +733,14 @@ fn send_websocket_connect_frames(
         WebSocketRouteKind::Logs => {
             let buffer = log_buffer::retained_log_buffer();
             websocket_api::log_client_connected(&buffer);
+            log_buffer::append_runtime_log_line("axeos_websocket_logs=connected");
+            let buffer = log_buffer::retained_log_buffer();
+            for chunk in websocket_api::raw_log_chunks(&buffer) {
+                let result = send_websocket_text_frame(request, &chunk);
+                if result != sys::ESP_OK {
+                    return result;
+                }
+            }
             sys::ESP_OK
         }
         WebSocketRouteKind::LiveTelemetry => {

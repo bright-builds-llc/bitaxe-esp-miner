@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const allowedWebSocketPaths = new Set(["/api/ws", "/api/ws/live"]);
 const maxDurationMs = 30_000;
@@ -8,6 +8,8 @@ const maxAllowedFrames = 10;
 function parseArgs(argv) {
   const args = {
     maybeDeviceUrl: "",
+    maybeFlashEvidencePath: "",
+    deviceUrlSource: "none",
     path: "/api/ws/live",
     out: "",
     durationMs: 5_000,
@@ -24,6 +26,14 @@ function parseArgs(argv) {
           throw new Error("--device-url requires a value");
         }
         args.maybeDeviceUrl = next;
+        args.deviceUrlSource = "argument";
+        index += 1;
+        break;
+      case "--device-url-from-flash-evidence":
+        if (!next) {
+          throw new Error("--device-url-from-flash-evidence requires a value");
+        }
+        args.maybeFlashEvidencePath = next;
         index += 1;
         break;
       case "--path":
@@ -57,7 +67,7 @@ function parseArgs(argv) {
       case "-h":
       case "--help":
         console.log(
-          "usage: phase17-websocket-capture.mjs --device-url URL --path /api/ws|/api/ws/live --out PATH [--duration-ms N] [--max-frames N]",
+          "usage: phase17-websocket-capture.mjs --device-url URL|--device-url-from-flash-evidence PATH --path /api/ws|/api/ws/live --out PATH [--duration-ms N] [--max-frames N]",
         );
         process.exit(0);
         break;
@@ -133,6 +143,7 @@ function baseLines(path, args) {
   return [
     "phase17_websocket_capture",
     `path=${path}`,
+    `device_url_source=${args.deviceUrlSource}`,
     "network_scan=disabled - DEVICE_URL must be explicit",
     "websocket_route_claim=frame-capture-required",
     `duration_ms=${args.durationMs}`,
@@ -159,6 +170,70 @@ function writeBlocked(args, reason, maybeCaptureUrl = "") {
   lines.push("websocket_open_status=blocked");
   lines.push("websocket_frame_status=not-run");
   writeOutput(args.out, lines);
+}
+
+function stringField(record, field) {
+  const value = record[field];
+  return typeof value === "string" ? value : "";
+}
+
+function boolField(record, field) {
+  return record[field] === true ? "true" : "false";
+}
+
+function maybeDeviceUrlFromFlashEvidence(path) {
+  if (!path || !existsSync(path)) {
+    return { ok: false, reason: "missing flash evidence JSON" };
+  }
+
+  let record;
+  try {
+    record = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return { ok: false, reason: "failed to parse flash evidence JSON" };
+  }
+
+  const commandKind = stringField(record, "command_kind");
+  if (!commandKind.includes("flash-monitor")) {
+    return { ok: false, reason: "flash command_kind is not flash-monitor" };
+  }
+  if (stringField(record, "board") !== "205") {
+    return { ok: false, reason: "flash board is not 205" };
+  }
+  if (boolField(record, "trusted_output") !== "true") {
+    return { ok: false, reason: "flash trusted_output is not true" };
+  }
+
+  const monitorLogPath =
+    stringField(record, "monitor_log_path") || stringField(record, "log_path");
+  if (!monitorLogPath || !existsSync(monitorLogPath)) {
+    return { ok: false, reason: "monitor log path is missing or unreadable" };
+  }
+
+  const logText = readFileSync(monitorLogPath, "utf8");
+  const urls = [
+    ...new Set(
+      [...logText.matchAll(/\bdevice_url=(https?:\/\/[^\s"<>]+)/g)].map(
+        (match) => match[1],
+      ),
+    ),
+  ];
+  if (urls.length !== 1) {
+    return {
+      ok: false,
+      reason: "monitor log must contain exactly one device_url",
+    };
+  }
+
+  const maybeParsed = maybeParseOriginDeviceUrl(urls[0]);
+  if (!maybeParsed.ok) {
+    return {
+      ok: false,
+      reason: "monitor log device_url is not origin-only",
+    };
+  }
+
+  return { ok: true, deviceUrl: urls[0] };
 }
 
 function validateArgs(args) {
@@ -193,6 +268,14 @@ function statusForTimeout(path, frames, opened) {
   return "websocket_frame_status=pending - no live frame before timeout";
 }
 
+function statusForConnectionError(frames) {
+  if (frames > 0) {
+    return `websocket_frame_status=passed frames=${frames}`;
+  }
+
+  return "websocket_frame_status=pending - connection error";
+}
+
 async function captureFake(args, wsUrl, mode) {
   const lines = baseLines(args.path, args);
   lines.splice(2, 0, `websocket_capture_url=${redactUrlForStatus(wsUrl)}`);
@@ -207,6 +290,16 @@ async function captureFake(args, wsUrl, mode) {
     return;
   }
 
+  if (mode === "frame-error") {
+    const payload = process.env.PHASE17_FAKE_WEBSOCKET_PAYLOAD || "{}";
+    lines.push("websocket_open_status=opened");
+    lines.push(`websocket_frame_1=${redactText(payload)}`);
+    lines.push("websocket_error=connection error");
+    lines.push(statusForConnectionError(1));
+    writeOutput(args.out, lines);
+    return;
+  }
+
   if (mode === "open-timeout") {
     lines.push("websocket_open_status=opened");
     lines.push(statusForTimeout(args.path, 0, true));
@@ -217,7 +310,7 @@ async function captureFake(args, wsUrl, mode) {
   if (mode === "error") {
     lines.push("websocket_open_status=not-run");
     lines.push("websocket_error=connection error");
-    lines.push("websocket_frame_status=pending - connection error");
+    lines.push(statusForConnectionError(0));
     writeOutput(args.out, lines);
     return;
   }
@@ -278,7 +371,7 @@ async function captureReal(args, wsUrl) {
       clearTimeout(timer);
       lines.push(opened ? "websocket_open_status=opened" : "websocket_open_status=not-run");
       lines.push(`websocket_error=${redactText(event.message || "connection error")}`);
-      lines.push("websocket_frame_status=pending - connection error");
+      lines.push(statusForConnectionError(frames));
       resolve();
     });
   });
@@ -292,6 +385,19 @@ async function main() {
   if (!argValidation.ok) {
     writeBlocked(args, argValidation.reason);
     return;
+  }
+
+  if (!args.maybeDeviceUrl && args.maybeFlashEvidencePath) {
+    const maybeDeviceUrl = maybeDeviceUrlFromFlashEvidence(args.maybeFlashEvidencePath);
+    if (!maybeDeviceUrl.ok) {
+      writeBlocked(
+        args,
+        `flash log device_url unavailable - ${maybeDeviceUrl.reason}`,
+      );
+      return;
+    }
+    args.maybeDeviceUrl = maybeDeviceUrl.deviceUrl;
+    args.deviceUrlSource = "usb_flash_monitor_log";
   }
 
   const maybeParsed = maybeParseOriginDeviceUrl(args.maybeDeviceUrl);

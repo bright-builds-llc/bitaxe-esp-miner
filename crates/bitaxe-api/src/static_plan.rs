@@ -158,10 +158,11 @@ pub fn resolve_static_request(
     }
 
     if catalog.contains(&static_path.path) {
+        let content_encoding = content_encoding_for(&static_path.path);
         return StaticRouteDecision::ServeStatic(ServeStatic {
             path: static_path.path,
             cache_control: cache_control_for(static_path.directory_request),
-            content_encoding: None,
+            content_encoding,
         });
     }
 
@@ -208,6 +209,14 @@ const fn cache_control_for(directory_request: bool) -> Option<&'static str> {
     }
 
     Some(STATIC_CACHE_CONTROL)
+}
+
+fn content_encoding_for(path: &str) -> Option<&'static str> {
+    if path.ends_with(".gz") {
+        return Some(GZIP_CONTENT_ENCODING);
+    }
+
+    None
 }
 
 const fn serve_recovery() -> ServeRecovery {
@@ -351,6 +360,25 @@ mod tests {
         };
         assert_eq!(file.path, "/assets/app.css");
         assert_eq!(file.cache_control, Some("max-age=2592000"));
+        assert_eq!(file.content_encoding, None);
+    }
+
+    #[test]
+    fn direct_gz_static_asset_marks_content_encoding() {
+        // Arrange
+        let request = available_request("/assets/app.css.gz");
+        let catalog = catalog(&["/assets/app.css.gz"]);
+
+        // Act
+        let decision = resolve_static_request(request, catalog);
+
+        // Assert
+        let StaticRouteDecision::ServeStatic(file) = decision else {
+            panic!("direct gzip asset should be served");
+        };
+        assert_eq!(file.path, "/assets/app.css.gz");
+        assert_eq!(file.cache_control, Some(STATIC_CACHE_CONTROL));
+        assert_eq!(file.content_encoding, Some(GZIP_CONTENT_ENCODING));
     }
 
     #[test]
