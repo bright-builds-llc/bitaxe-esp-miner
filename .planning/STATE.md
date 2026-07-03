@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-07-03T15:36:12.688Z"
+stopped_at: Completed 18-03-PLAN.md
+last_updated: "2026-07-03T15:49:15.050Z"
 last_activity: 2026-07-03
 progress:
   total_phases: 21
   completed_phases: 17
   total_plans: 98
-  completed_plans: 96
-  percent: 98
+  completed_plans: 97
+  percent: 99
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 18 (firmware-ota-and-rollback-evidence) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-03
 
@@ -142,6 +142,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 17-live-http-api-and-static-evidence P05 | 622s | 2 tasks | 5 files |
 | Phase 18-firmware-ota-and-rollback-evidence P01 | 11m46s | 2 tasks | 6 files |
 | Phase 18-firmware-ota-and-rollback-evidence P02 | 20m10s | 2 tasks | 9 files |
+| Phase 18-firmware-ota-and-rollback-evidence P03 | 9m52s | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -359,6 +360,10 @@ Recent decisions affecting current work:
 - [Phase 18-firmware-ota-and-rollback-evidence]: Treat 22d02f8e97928f1ec29360552179380b92582e6a as the Phase 18 package identity because it was HEAD at Task 1 package time.
 - [Phase 18-firmware-ota-and-rollback-evidence]: Run flash-monitor from a temporary package-source clone under target/ so wrapper-owned flash evidence stays aligned with the copied package manifest after task commits.
 - [Phase 18-firmware-ota-and-rollback-evidence]: Keep raw target/device_url extraction evidence under target/phase18-firmware-ota-and-rollback-evidence-dev-raw/ and commit only redacted serial and target-lock artifacts.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-03 records invalid firmware rejection as passed invalid-rejection evidence only; it is not rollback or boot-validation proof.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-03 keeps valid firmware OTA below verified because HTTP 200 completion was not followed by captured firmware identity or ota_boot_validation markers.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-03 keeps destructive rollback, interrupted update, forced boot failure, erase, OTAWWW, active safety, mining, and soak behavior as non-claims.
+- [Phase 18-firmware-ota-and-rollback-evidence]: Plan 18-03 leaves redaction_status pending for Plan 18-04 despite targeted pre-commit redaction scan passing.
 
 ### Pending Todos
 
@@ -384,6 +389,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T15:36:12.683Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-07-03T15:49:15.046Z
+Stopped at: Completed 18-03-PLAN.md
 Resume file: None
