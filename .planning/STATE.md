@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 19 context gathered
-last_updated: "2026-07-03T18:15:30.436Z"
-last_activity: 2026-07-03 -- Phase 19 planning complete
+last_updated: "2026-07-03T18:16:25.520Z"
+last_activity: 2026-07-03 -- Phase 19 execution started
 progress:
   total_phases: 21
   completed_phases: 18
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
-**Current focus:** Phase 18 — firmware-ota-and-rollback-evidence
+**Current focus:** Phase 19 — recovery-regression-and-otawww-evidence
 
 ## Current Position
 
-Phase: 18 (firmware-ota-and-rollback-evidence) — VERIFYING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-07-03 -- Phase 19 planning complete
+Phase: 19 (recovery-regression-and-otawww-evidence) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 19
+Last activity: 2026-07-03 -- Phase 19 execution started
 
 Progress: [██████████] 100%
 
