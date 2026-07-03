@@ -1,0 +1,30 @@
+{
+  "board": "205",
+  "port": "/dev/cu.usbmodem1101",
+  "detector_command": "just detect-ultra205",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
+  "package_manifest": "docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/package-release-gate/bitaxe-ultra205-package.json",
+  "source_commit": "c11fba2622a389af533774447956b95f254c0280",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "surface": "display-input",
+  "claim_tier": "read-only-observation",
+  "evidence_class": "hardware-smoke",
+  "allowed_command": "scripts/phase14-display-input.sh --manifest docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/runtime-display-input/allow-display-input.json --out-dir docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/runtime-display-input",
+  "allowed_inputs": {
+    "runtime_route": "not-run",
+    "startup_marker": "observed-or-pending"
+  },
+  "abort_conditions": [],
+  "recovery_steps": [],
+  "post_action_safe_state_markers": [],
+  "evidence_dir": "docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/runtime-display-input",
+  "redaction_reviewer": "phase-20-plan-02-redacted-safe-baseline",
+  "checklist_rows": [
+    "IO-001",
+    "UI-001",
+    "UI-002",
+    "UI-003"
+  ]
+}
