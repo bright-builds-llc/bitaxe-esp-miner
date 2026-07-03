@@ -54,6 +54,11 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase18_firmware_ota_evidence",
+    srcs = ["phase18-firmware-ota-evidence.sh"],
+)
+
+sh_binary(
     name = "phase13_monitor_capture",
     srcs = ["phase13-monitor-capture.sh"],
 )
@@ -178,6 +183,17 @@ sh_test(
         "NODE_BIN",
         "NVM_DIR",
         "PATH",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase18_firmware_ota_evidence_test",
+    srcs = ["phase18-firmware-ota-evidence-test.sh"],
+    data = [
+        "phase18-firmware-ota-evidence.sh",
+        "phase13-firmware-ota-smoke.sh",
+        "phase13-monitor-capture.sh",
     ],
     tags = ["local"],
 )
