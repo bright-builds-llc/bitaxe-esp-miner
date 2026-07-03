@@ -409,7 +409,30 @@ with open(path, "w", encoding="utf-8") as handle:
 PY
 }
 
-redacted_snippet() {
+safe_header_summary() {
+	local path="$1"
+	local content_type
+
+	if [[ ! -f "$path" ]]; then
+		printf 'not captured'
+		return
+	fi
+
+	content_type="$(
+		LC_ALL=C tr -d '\000\r' <"$path" |
+			grep -i -m 1 '^content-type:' |
+			sed -E 's/^[Cc][Oo][Nn][Tt][Ee][Nn][Tt]-[Tt][Yy][Pp][Ee]:[[:space:]]*//; s/[^[:alnum:]\/.+;= _-]/_/g' |
+			head -c 80 || true
+	)"
+	if [[ -z "$content_type" ]]; then
+		printf 'headers redacted - no allowlisted headers'
+		return
+	fi
+
+	printf 'content-type: %s' "$content_type"
+}
+
+safe_body_summary() {
 	local path="$1"
 
 	if [[ ! -f "$path" ]]; then
@@ -417,10 +440,23 @@ redacted_snippet() {
 		return
 	fi
 
-	LC_ALL=C tr -d '\000\r' <"$path" |
-		sed -E 's#https?://[^[:space:]"<>]+#[redacted-url]#g; s/"(ssid|wifiPass|wifiPassword|stratumUser|stratumPassword|stratumCert|poolUrl|fallbackPoolUrl|hostname|ip|ipAddress|gateway|netmask|dns|token)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1":"[redacted]"/g; s/"(stratumPort|fallbackStratumPort)"[[:space:]]*:[[:space:]]*[0-9]+/"\1":[redacted]/g; s/([0-9]{1,3}\.){3}[0-9]{1,3}/[redacted-ip]/g; s/([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}/[redacted-mac]/g' |
-		head -c 240 |
-		tr '\n\t' '  '
+	if grep -Fq 'Wrong API input' "$path"; then
+		printf 'contains Wrong API input'
+		return
+	fi
+
+	printf 'body redacted - unexpected shape'
+}
+
+safe_curl_error_summary() {
+	local path="$1"
+
+	if [[ ! -s "$path" ]]; then
+		printf 'none'
+		return
+	fi
+
+	printf 'curl error redacted'
 }
 
 run_phase16_recovery() {
@@ -492,10 +528,24 @@ run_otawww_gap_probe() {
 	log_otawww "otawww_request: bounded empty POST"
 	log_otawww "otawww_curl_status: ${curl_status}"
 	log_otawww "otawww_public_status: ${status}"
-	log_otawww "otawww_selected_headers: $(redacted_snippet "$headers")"
-	log_otawww "otawww_public_body: $(redacted_snippet "$body")"
-	if [[ -s "$error" ]]; then
-		log_otawww "otawww_curl_error: $(redacted_snippet "$error")"
+	log_otawww "otawww_selected_headers: $(safe_header_summary "$headers")"
+	log_otawww "otawww_public_body: $(safe_body_summary "$body")"
+	log_otawww "otawww_curl_error: $(safe_curl_error_summary "$error")"
+	if [[ "$curl_status" -ne 0 || ! "$status" =~ ^[0-9][0-9][0-9]$ ]]; then
+		log_otawww "otawww_status: blocked - curl failed"
+		log_otawww "otawww_claim: REL-03 gap"
+		log_otawww "whole_www_update_proof: absent"
+		log_otawww "www_bin_proof: absent - www.bin is package evidence only"
+		log_otawww "route_presence_proof: absent - route presence is not update proof"
+		log_otawww "wrong_api_input_proof: absent - HTTP response unavailable"
+		return 0
+	fi
+	if [[ "$status" == "400" ]] && grep -Fq 'Wrong API input' "$body"; then
+		log_otawww "current_public_route_behavior: Wrong API input"
+		log_otawww "wrong_api_input_proof: present - Wrong API input is not whole-www update proof"
+	else
+		log_otawww "current_public_route_behavior: unexpected response - Wrong API input not cited"
+		log_otawww "wrong_api_input_proof: absent - response did not match expected public fail-closed shape"
 	fi
 	log_otawww "otawww_status: captured - gap evidence only"
 	log_otawww "otawww_claim: REL-03 gap"

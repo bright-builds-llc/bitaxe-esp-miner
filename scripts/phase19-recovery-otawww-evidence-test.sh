@@ -125,13 +125,31 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-if [[ -z "$header_file" || -z "$body_file" || "$url" != "http://device.local/api/system/OTAWWW" ]]; then
+if [[ -z "$header_file" || -z "$body_file" ]] || { [[ "$url" != "http://device.local/api/system/OTAWWW" ]] && [[ "$url" != "https://device.local:443/api/system/OTAWWW" ]]; }; then
   printf "missing fake curl inputs\n" >&2
   exit 2
 fi
-printf "Content-Type: text/plain\nX-Phase19-Private: 192.168.1.42\n" >"$header_file"
-printf "Wrong API input {\"ssid\":\"secret\",\"token\":\"PRIVATE\",\"ip\":\"192.168.1.77\"}\n" >"$body_file"
-printf "400"
+	printf "Content-Type: text/plain\nSet-Cookie: session=SECRET\nAuthorization: Bearer PRIVATE\nX-Phase19-Private: 192.168.1.42\nSSID: home-network\n" >"$header_file"
+	printf "Wrong API input ssid: home-network password: SECRET token=PRIVATE ip=192.168.1.77\n" >"$body_file"
+	printf "400"
+	'
+	write_executable "${bin_dir}/espflash" 'printf "espflash %s\n" "$*" >>"${PHASE19_COMMAND_LOG:?}"
+exit 98
+'
+	write_executable "${bin_dir}/just" 'printf "just %s\n" "$*" >>"${PHASE19_COMMAND_LOG:?}"
+exit 99
+'
+	: >"$command_log"
+}
+
+create_failing_curl() {
+	local bin_dir="$1"
+	local command_log="$2"
+
+	mkdir -p "$bin_dir"
+	write_executable "${bin_dir}/curl" 'printf "curl %s\n" "$*" >>"${PHASE19_COMMAND_LOG:?}"
+printf "Could not resolve host: private-device.local Authorization: Bearer PRIVATE ssid: home-network\n" >&2
+exit 7
 '
 	write_executable "${bin_dir}/espflash" 'printf "espflash %s\n" "$*" >>"${PHASE19_COMMAND_LOG:?}"
 exit 98
@@ -264,6 +282,17 @@ test_origin_url_validation() {
 	create_fake_curl "$bin_dir" "$command_log"
 	PATH="${bin_dir}:$PATH" PHASE19_COMMAND_LOG="$command_log" PHASE19_PHASE16_ARGS_LOG="$phase16_args" PHASE16_RECOVERY_REGRESSION_SCRIPT="$fake_phase16" run_wrapper "$valid_out" --device-url "https://device.local:443" --otawww-gap-only
 	assert_contains "${valid_out}/target-lock.json" '"device_url_redacted": "https://[redacted]"'
+	assert_contains "${valid_out}/otawww/otawww-gap.log" "otawww_status: captured - gap evidence only"
+	assert_contains "${valid_out}/otawww/otawww-gap.log" "otawww_selected_headers: content-type: text/plain"
+	assert_contains "${valid_out}/otawww/otawww-gap.log" "otawww_public_body: contains Wrong API input"
+	assert_contains "${valid_out}/otawww/otawww-gap.log" "current_public_route_behavior: Wrong API input"
+	assert_contains "${valid_out}/otawww/otawww-gap.log" "wrong_api_input_proof: present - Wrong API input is not whole-www update proof"
+	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "Set-Cookie"
+	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "Authorization"
+	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "SECRET"
+	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "PRIVATE"
+	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "home-network"
+	assert_not_contains "${valid_out}/otawww/otawww-gap.log" "192.168.1"
 }
 
 test_trusted_flash_evidence_target_lock() {
@@ -319,6 +348,30 @@ test_allow_flags_delegate_to_phase16() {
 	assert_not_contains "$command_log" "just"
 }
 
+test_otawww_gap_curl_failure_blocks_evidence() {
+	local out_dir="${tmp_root}/otawww-curl-failure"
+	local bin_dir="${tmp_root}/bin-curl-failure"
+	local command_log="${tmp_root}/commands-curl-failure.log"
+	local fake_phase16="${tmp_root}/fake-phase16-curl-failure"
+	local phase16_args="${tmp_root}/phase16-curl-failure-args.log"
+
+	create_failing_curl "$bin_dir" "$command_log"
+	create_fake_phase16 "$fake_phase16" "$phase16_args"
+
+	PATH="${bin_dir}:$PATH" PHASE19_COMMAND_LOG="$command_log" PHASE19_PHASE16_ARGS_LOG="$phase16_args" PHASE16_RECOVERY_REGRESSION_SCRIPT="$fake_phase16" run_wrapper "$out_dir" --device-url http://device.local --otawww-gap-only
+
+	assert_contains "${out_dir}/target-lock.json" '"target_status": "passed"'
+	assert_contains "${out_dir}/otawww/otawww-gap.log" "otawww_curl_status: 7"
+	assert_contains "${out_dir}/otawww/otawww-gap.log" "otawww_status: blocked - curl failed"
+	assert_contains "${out_dir}/otawww/otawww-gap.log" "whole_www_update_proof: absent"
+	assert_contains "${out_dir}/otawww/otawww-gap.log" "wrong_api_input_proof: absent - HTTP response unavailable"
+	assert_not_contains "${out_dir}/otawww/otawww-gap.log" "otawww_status: captured"
+	assert_not_contains "${out_dir}/otawww/otawww-gap.log" "private-device.local"
+	assert_not_contains "${out_dir}/otawww/otawww-gap.log" "Authorization"
+	assert_not_contains "${out_dir}/otawww/otawww-gap.log" "PRIVATE"
+	assert_not_contains "${out_dir}/otawww/otawww-gap.log" "home-network"
+}
+
 test_otawww_gap_without_target() {
 	local out_dir="${tmp_root}/otawww-gap-no-target"
 	local bin_dir="${tmp_root}/bin-gap-no-target"
@@ -349,6 +402,7 @@ test_default_no_allow_pending
 test_origin_url_validation
 test_trusted_flash_evidence_target_lock
 test_allow_flags_delegate_to_phase16
+test_otawww_gap_curl_failure_blocks_evidence
 test_otawww_gap_without_target
 
 printf 'phase19_recovery_otawww_evidence_test passed\n'
