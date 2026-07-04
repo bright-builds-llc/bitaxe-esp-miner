@@ -34,7 +34,9 @@ This ladder defines the exact evidence claims an Ultra 205 operator may make whi
 
 ## Blocked Claims
 
-Phase 21 `approved_controlled_no_share_soak` supports controlled no-share closure only. It must not be cited as proof of accepted shares, rejected shares, unbounded production mining, full active safety closure, non-205 board support, Stratum v2, OTA/recovery trust, runtime display/input parity, or BAP behavior.
+Phase 21 `approved_controlled_no_share_soak` supports controlled no-share closure only.
+
+That closure must not be cited as proof of accepted shares, rejected shares, unbounded production mining, full active safety closure, non-205 board support, Stratum v2, OTA/recovery trust, runtime display/input parity, or BAP behavior.
 
 The following claims remain blocked unless a later phase creates detector-gated, redacted evidence for that exact surface:
 
@@ -59,7 +61,7 @@ The following claims remain blocked unless a later phase creates detector-gated,
 ## Promotion Rules
 
 1. A lower tier may support readiness for a later phase, but it must not be promoted as a higher-tier claim without new evidence for that tier.
-2. `approved_controlled_no_share_soak` may support `version_1_0_controlled_no_share` only. It cannot appear as proof of accepted share or rejected share behavior.
+2. `approved_controlled_no_share_soak` may support `version_1_0_controlled_no_share` only. Live share behavior requires its own future evidence.
 3. A claim may advance to `version_1_1_prerequisite_readiness` only when the evidence names fresh or explicitly bounded prerequisite observations and preserves blocker reasons for stale, unavailable, unsafe, ambiguous, or undocumented inputs.
 4. A claim may advance to `version_1_1_live_socket_runtime` only when a redacted live Stratum v1 socket/runtime procedure and artifacts exist.
 5. A claim may advance to `version_1_1_live_asic_share_outcome` only when live ASIC-derived work is correlated with a parsed pool response or a documented safe-prerequisite blocker.
