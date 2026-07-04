@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-stopped_at: Completed 22-02-PLAN.md
-last_updated: "2026-07-04T20:37:45.149Z"
+status: verifying
+stopped_at: Completed 22-03-PLAN.md
+last_updated: "2026-07-04T20:42:10.919Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 Phase: 22 (Claim Ladder And Safety Preconditions) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-04
 
 Progress: [███░░░░░░░] 33%
@@ -68,6 +68,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 22]: Modeled production mining prerequisites as typed Fresh, Bounded, or Blocked inputs instead of accepting shell-owned readiness strings.
 - [Phase 22]: Kept existing power, thermal, safety, hardware ack, and ASIC initialization checks after typed production precondition decisions as defense in depth.
 - [Phase 22]: Preserved controlled-runtime default blocker behavior by making controlled gate builders pass an explicit typed Ready decision.
+- [Phase 22]: Kept SAFE-10 and SAFE-11 at implemented with unit/workflow evidence because Phase 22 produced no detector-gated hardware proof for live prerequisite behavior.
+- [Phase 22]: Promoted EVD-06 to verified using workflow evidence from the claim ladder, parity guard, and Phase 22 closure summary.
+- [Phase 22]: Recorded only redaction-safe reason categories and explicit non-claims in committed evidence.
 
 ### Pending Todos
 
@@ -80,8 +83,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T20:37:45.147Z
-Stopped at: Completed 22-02-PLAN.md
+Last session: 2026-07-04T20:42:10.917Z
+Stopped at: Completed 22-03-PLAN.md
 Resume file: None
 
 ## Next Step

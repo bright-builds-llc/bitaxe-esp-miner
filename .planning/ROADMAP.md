@@ -15,7 +15,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - Integer phases (22-26): planned milestone work continuing from v1.0.
 - Decimal phases (22.1, 22.2): urgent insertions if needed between planned phases.
 
-- [ ] **Phase 22: Claim Ladder And Safety Preconditions** - Operators get exact v1.1 claim boundaries and prerequisite safety gates before production work can start.
+- [x] **Phase 22: Claim Ladder And Safety Preconditions** - Operators get exact v1.1 claim boundaries and prerequisite safety gates before production work can start. (completed 2026-07-04)
 - [ ] **Phase 23: Redacted Operator Evidence Workflow** - Operators can run the repo-owned mining evidence flow without committing secrets or unsupported claims.
 - [ ] **Phase 24: BM1366 Production Work Path** - The firmware separates diagnostic ASIC behavior from trusted pool-derived BM1366 work and result handling.
 - [ ] **Phase 25: Live Stratum Runtime And Safe Stop** - Ultra 205 can run a real watchdog-responsive Stratum v1 mining session and stop safely.
@@ -36,7 +36,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 Plans:
 - [x] 22-01-PLAN.md — Create the operator claim ladder and parity overclaim guard.
 - [x] 22-02-PLAN.md — Add typed production-mining preconditions and exact blocker propagation.
-- [ ] 22-03-PLAN.md — Close Phase 22 evidence, checklist, and validation artifacts.
+- [x] 22-03-PLAN.md — Close Phase 22 evidence, checklist, and validation artifacts.
 
 ### Phase 23: Redacted Operator Evidence Workflow
 **Goal**: Ultra 205 operators can use a repo-owned, detector-gated flow for bounded production mining evidence while local pool credentials and sensitive runtime values remain runtime-only inputs.
@@ -91,7 +91,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 22. Claim Ladder And Safety Preconditions | v1.1 | 2/3 | In Progress|  |
+| 22. Claim Ladder And Safety Preconditions | v1.1 | 3/3 | Complete   | 2026-07-04 |
 | 23. Redacted Operator Evidence Workflow | v1.1 | 0/TBD | Not started | - |
 | 24. BM1366 Production Work Path | v1.1 | 0/TBD | Not started | - |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 0/TBD | Not started | - |
