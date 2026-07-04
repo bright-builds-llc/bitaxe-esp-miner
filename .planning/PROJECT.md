@@ -18,6 +18,8 @@ The shipped v1.0 evidence set proves the Ultra 205 BM1366 path through exact-cla
 
 The active planning surface is now focused on v1.1. Historical v1.0 roadmap, requirements, and audit records live under `.planning/milestones/`.
 
+Phase 22 is complete for v1.1: claim-ladder governance, typed production-mining safety preconditions, exact blocker propagation, and redaction-safe evidence boundaries are validated before the live production work path.
+
 ## Current Milestone: v1.1 Ultra 205 Trusted Production Mining
 
 **Goal:** Turn the v1.0 controlled no-share mining foundation into a trusted, safety-gated Ultra 205 Stratum v1 production mining runtime that can observe at least one real accepted or rejected share and report the result through firmware telemetry and evidence.
@@ -46,6 +48,7 @@ After v1.1, likely candidates remain OTA/recovery completion, broader active saf
 - ESP-IDF firmware app plus pure Rust crates for core logic, ASIC behavior, Stratum behavior, config, API models, safety decisions, release tooling, and test support - v1.0.
 - Provenance and license guardrails for MIT-first original work and explicit GPL-3.0 upstream-derived materials - v1.0.
 - Ultra 205 release-parity evidence governance with conservative exact non-claims for surfaces that lack required hardware evidence - v1.0.
+- Claim-ladder governance and fail-closed production-mining safety prerequisite contracts for v1.1 - validated in Phase 22.
 
 ### Active
 
@@ -124,4 +127,4 @@ This document evolves at milestone boundaries. The next update should happen whe
 
 ______________________________________________________________________
 
-*Last updated: 2026-07-04 after starting v1.1 Ultra 205 Trusted Production Mining*
+*Last updated: 2026-07-04 after completing Phase 22 claim ladder and safety preconditions*
