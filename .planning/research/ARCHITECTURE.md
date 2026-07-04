@@ -1,256 +1,304 @@
 # Architecture Research
 
-**Domain:** Rust ESP-IDF firmware rewrite for Bitaxe ESP-Miner
-**Researched:** 2026-06-20
-**Overall confidence:** HIGH for project-local boundaries and phase ordering, MEDIUM for ESP-IDF Rust/Bazel integration details that still need implementation spikes.
+**Domain:** Ultra 205 trusted production mining integration for Rust ESP-IDF Bitaxe firmware
+**Researched:** 2026-07-04
+**Confidence:** HIGH for project-local component boundaries and safety/evidence constraints; MEDIUM for exact ESP-IDF socket/task implementation details until the live adapter is implemented and hardware-evidenced.
 
-## Summary
+## Standard Architecture
 
-Structure the project as a behavior-led Rust firmware, not a line-by-line C translation. The rewrite should preserve device-user parity by tracking observable surfaces from `reference/esp-miner`, while allowing Rust modules to use stronger domain types, smaller pure crates, and explicit state transitions. The upstream tree is evidence and provenance, not the architecture template.
+### System Overview
 
-Use a functional core with an imperative ESP-IDF shell. Pure crates own deterministic behavior: config defaults and validation, ASIC packet construction/parsing, Stratum messages and job construction, AxeOS API models, statistics, PID decisions, work queues, and state machines. `firmware/bitaxe` owns side effects: ESP-IDF services, FreeRTOS tasks, Wi-Fi, HTTP/WebSocket serving, NVS, SPIFFS, OTA, UART, GPIO, I2C, ADC, power rails, fan/display/input adapters, and task orchestration.
-
-Bazel should be the canonical automation graph, with `just` as the ergonomic command surface. Early targets may wrap Cargo, ESP-IDF Rust tooling, or repo-owned scripts, but those workflows should still appear as Bazel targets so local and CI behavior stays aligned. This matches the accepted project decision and the current `rules_rust` Crate Universe model for generating Bazel Rust targets from Cargo metadata.
-
-Reference breadcrumbs should sit at module and behavior boundaries, not on every translated line. Each parity surface should have a breadcrumb to the upstream file/function, a Rust-owned target, and evidence in `docs/parity/checklist.md`. Verified parity should mean the evidence proves the user-visible behavior, not that the Rust code resembles the C code.
-
-Source basis:
-
-- Project docs: `.planning/PROJECT.md`, `docs/project/seed-layout.md`, `docs/project/project-decisions.md`, `docs/parity/checklist.md`
-- Local standards: `standards/core/architecture.md`, `standards/languages/rust.md`
-- ESP-IDF Rust ecosystem: `https://docs.espressif.com/projects/rust/`, `https://github.com/esp-rs/esp-idf-svc`, `https://github.com/esp-rs/esp-idf-sys`
-- ESP-IDF architecture context: `https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/build-system.html`, `https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/freertos.html`
-- Bazel Rust dependency model: `https://bazelbuild.github.io/rules_rust/crate_universe_bzlmod.html`
-
-## Components
-
-Recommended component and evidence map:
+Trusted production mining should extend the v1.0 controlled no-share path into a real, safety-gated Stratum v1 and BM1366 runtime without moving business logic into firmware tasks. The existing split remains correct: pure crates decide protocol state, work dispatch, ASIC command intent, share submission, statistics, and safety gates; `firmware/bitaxe` performs ESP-IDF I/O, owns long-running tasks, and publishes redacted runtime/evidence snapshots.
 
 ```text
-reference/esp-miner
-  -> tools/parity
-  -> docs/parity/checklist.md
-
-crates/bitaxe-core
-crates/bitaxe-config
-crates/bitaxe-asic
-crates/bitaxe-stratum
-crates/bitaxe-api
-  -> consumed by firmware/bitaxe and tests
-
-crates/bitaxe-test-support
-  -> consumes pure crates and reference-derived fixtures
-
-firmware/bitaxe
-  -> depends on pure crates
-  -> ESP-IDF Rust crates
-  -> device hardware
-  -> hardware smoke/regression evidence
-
-MODULE.bazel / BUILD.bazel targets
-  -> just commands
-  -> CI and local workflows
+Operator settings / pool credentials in NVS
+        |
+        v
+firmware/bitaxe imperative shell
+  settings_adapter -> wifi_adapter -> stratum_socket_adapter -> asic_adapter
+        |                 |                 |                 |
+        v                 v                 v                 v
+pure crates
+  bitaxe-config     bitaxe-stratum     bitaxe-asic      bitaxe-safety
+        \                 |                 |                 /
+         \                v                 v                /
+          +-------- mining_runtime core decisions ----------+
+                              |
+                              v
+                  bitaxe-api snapshots and telemetry
+                              |
+                              v
+             HTTP, WebSocket, retained logs, evidence files
 ```
 
-| Component | Responsibility | Must Not Own | Primary Evidence |
-| --- | --- | --- | --- |
-| `reference/esp-miner` | Pinned read-only upstream reference and source breadcrumbs. | Local fixes, patch experiments, or Rust implementation work. | `scripts/verify-reference-clean.sh`, pinned commit, checklist breadcrumbs. |
-| `firmware/bitaxe` | ESP-IDF app, boot order, task orchestration, hardware adapters, HTTP/WebSocket server, storage, OTA, logging, and board bring-up. | Core business decisions that can be pure, protocol codecs, API schemas as ad hoc maps. | Boot logs, hardware smoke, API compare, hardware regression. |
-| `crates/bitaxe-core` | Shared domain state, work queues, statistics, scoreboard, thermal/PID decisions, event types, state machines. | ESP-IDF imports, sockets, NVS, UART, GPIO, wall-clock ownership. | Unit tests, golden state-transition tests. |
-| `crates/bitaxe-config` | Board/device models, Gamma 601 defaults, upstream CSV/default extraction, typed settings, NVS key schema, validation. | Direct NVS reads/writes or mutable global config. | Unit tests, golden defaults from `config-601.cvs`, NVS key fixture checks. |
-| `crates/bitaxe-asic` | ASIC model dispatch, packet layouts, CRC, register commands, work encoding, nonce/result parsing, BM1370-first behavior. | UART transport, GPIO reset, voltage rails, sleeps/timing side effects. | Unit/golden tests, BM1370 hardware evidence for init/work/result paths. |
-| `crates/bitaxe-stratum` | Stratum v1/v2 message parsing, serialization, job construction, coinbase decode, reconnect/fallback decision inputs. | TCP sockets, DNS, Wi-Fi lifecycle, task scheduling. | Unit/golden protocol fixtures, pool integration smoke later. |
-| `crates/bitaxe-api` | AxeOS OpenAPI-compatible request/response models, serializers, PATCH validation, telemetry/log payload shapes. | HTTP server lifecycle, WebSocket transport, flash upload side effects. | Schema/API compare fixtures and captured upstream responses. |
-| `crates/bitaxe-test-support` | Reference-derived fixtures, golden data loaders, fake adapters, hardware-test helpers. | Production firmware logic. | Test harness output and fixture provenance. |
-| `tools/parity` | Checklist reporting, missing-evidence detection, fixture generation from pinned reference sources. | Manual status truth that bypasses `docs/parity/checklist.md`. | `just parity`, Bazel parity report target. |
-| `tools/flash` | USB port discovery, flash/monitor ergonomics, board/image selection. | Firmware behavior or parity decisions. | `just flash board=601`, captured flash logs. |
-| `scripts/verify-reference-clean.sh` | Fail fast when `reference/esp-miner` is missing or locally modified; print pinned commit. | Generic build orchestration. | Workflow checks and CI output. |
+The key architectural change is replacing `controlled_mining_runtime`'s synthetic transcript publication with a production runtime shell that feeds live socket messages and live BM1366 results through the same pure decision shapes. The current controlled path should remain as an evidence harness or test fixture path, but it must not be the production runtime source of truth.
 
-## Boundaries
+### Component Responsibilities
 
-The hard rule is dependency direction: firmware shell depends on pure crates, pure crates never depend on ESP-IDF or firmware shell code.
+| Component | Responsibility | Typical Implementation |
+| --- | --- | --- |
+| `firmware/bitaxe/src/production_mining_runtime.rs` | Own production runtime task lifecycle, bounded loops, channels, watchdog yields, safe stop, and state publication. | New firmware module that orchestrates adapters and pure plans; no protocol parsing or safety policy inline. |
+| `firmware/bitaxe/src/stratum_socket_adapter.rs` | Resolve/connect/read/write Stratum v1 TCP lines, redact logs, classify socket failures, and expose typed events to the runtime. | New ESP-IDF/LwIP socket shell around `bitaxe_stratum::v1::messages`. |
+| `crates/bitaxe-stratum/src/v1/production_runtime.rs` | Pure Stratum v1 session state machine: subscribe, authorize, difficulty, extranonce, notify, submit response, reconnect/fallback decisions, and redacted event summaries. | New pure module built from existing `messages`, `mining`, `mining_loop`, `queue`, and `state` modules. |
+| `crates/bitaxe-stratum/src/v1/mining_loop.rs` | Convert gated queued work plus ASIC nonce results into BM1366 dispatch plans and share submissions. | Modify existing guarded plan to use production command names and preserve gate ordering. |
+| `crates/bitaxe-stratum/src/v1/state.rs` | Track lifecycle, work gate, accepted/rejected shares, best difficulty, hashrate inputs, and activity status. | Modify with production-safe share outcome and hashrate/statistics fields only as needed. |
+| `crates/bitaxe-asic/src/bm1366/init_plan.rs` | Decide when BM1366 full init is allowed and emit typed init actions. | Modify only if v1.1 needs a stronger production-ready status than `InitializedNoMining`. |
+| `crates/bitaxe-asic/src/bm1366/command.rs` | Emit typed BM1366 adapter actions for init, frequency, nonce, and work commands. | Modify `SendDiagnosticWork` naming/semantics into a production work command while keeping bytes typed and non-logged. |
+| `firmware/bitaxe/src/asic_adapter.rs` | Interpret typed ASIC adapter actions with UART/reset hardware and publish ASIC status. | Modify to support full init, production work dispatch, bounded result reads, and safe-stop reset handling. |
+| `crates/bitaxe-safety` | Produce power, thermal, fan, voltage, and safety evidence tokens and fail-closed effect plans. | Modify minimally: add production-mining preflight decision wrappers if existing tokens are too scattered. |
+| `firmware/bitaxe/src/safety_adapter.rs` | Collect live safety telemetry and interpret fail-closed effects against real peripherals or observe-only adapters. | Modify to expose a current `MiningSafetyGate` input and block work on stale/unavailable/faulted samples. |
+| `firmware/bitaxe/src/runtime_snapshot.rs` | Store API-visible mining state and platform/safety snapshots. | Modify replacement API into production runtime state updates instead of evidence-only replacement. |
+| `firmware/bitaxe/src/http_api.rs` and `websocket_api.rs` | Serve live production mining state, statistics, scoreboard, pause/resume, and retained logs. | Modify route handlers to consume production runtime snapshots and command channel effects. |
+| Evidence scripts and parity checklist | Capture redacted commands, logs, API/WebSocket samples, share outcome, safe-stop, and exact status promotions. | Modify `docs/parity/checklist.md` rows and add v1.1 evidence tooling around existing detector/flash-monitor flows. |
 
-Allowed dependency direction:
+## Recommended Project Structure
 
 ```text
-firmware/bitaxe -> bitaxe-api
-firmware/bitaxe -> bitaxe-config
-firmware/bitaxe -> bitaxe-core
-firmware/bitaxe -> bitaxe-asic
-firmware/bitaxe -> bitaxe-stratum
+crates/bitaxe-stratum/src/v1/
+|-- production_runtime.rs      # Pure live Stratum session and share outcome planning
+|-- mining_loop.rs             # Existing gate/work/result/share bridge, tightened for production
+|-- messages.rs                # Existing Stratum v1 parse/serialize contract
+|-- mining.rs                  # Existing notify -> BM1366 work and nonce -> submit bridge
+|-- queue.rs                   # Existing bounded work queue behavior
+`-- state.rs                   # Existing runtime counters, lifecycle, hashrate state
 
-bitaxe-api -> bitaxe-config and/or bitaxe-core only when models need shared domain types
-bitaxe-stratum -> bitaxe-core only for shared job/work domain types
-bitaxe-asic -> bitaxe-core only for shared job/result domain types
-bitaxe-config -> bitaxe-core only for shared board/device identifiers
-bitaxe-core -> no project crate unless a tiny shared type crate is introduced later
+firmware/bitaxe/src/
+|-- production_mining_runtime.rs # New task orchestrator and safe-stop owner
+|-- stratum_socket_adapter.rs    # New TCP/DNS/read/write adapter
+|-- asic_adapter.rs              # Modified full init/work/result interpreter
+|-- safety_adapter.rs            # Modified live gate and effect interpreter
+|-- runtime_snapshot.rs          # Modified production telemetry publisher
+|-- http_api.rs                  # Modified commands/statistics/scoreboard routes
+`-- websocket_api.rs             # Existing frame planner fed by updated snapshots
 ```
 
-Do not introduce cross-crate convenience dependencies until there is a real invariant or duplication problem. If dependency cycles appear, create a small shared domain module inside `bitaxe-core` first; split a separate `bitaxe-types` crate only if `bitaxe-core` becomes a dumping ground.
+### Structure Rationale
 
-Pure core boundary:
+- `bitaxe-stratum` should own the production mining state machine because it already owns Stratum messages, work construction, guarded mining loop planning, and share serialization.
+- `bitaxe-asic` should continue emitting semantic BM1366 actions, not performing UART or GPIO work. Rename or supplement `SendDiagnosticWork` so production code does not carry diagnostic semantics.
+- `firmware/bitaxe` should own task lifetimes, blocking I/O, timing, sleeps, watchdog yields, and safe-stop effects because those are ESP-IDF and hardware concerns.
+- `runtime_snapshot` should remain the API projection point, but v1.1 should replace the evidence-only setter with a production update path that can be fed repeatedly by runtime events.
 
-- Inputs are typed domain values, parsed once at boundaries.
-- Outputs are decisions, commands, packets, snapshots, errors, or events.
-- No direct hardware, ESP-IDF, FreeRTOS, clock, random, file system, socket, NVS, or logging calls.
-- Use newtypes and enums for board IDs, ASIC model IDs, frequencies, millivolts, temperatures, fan duty, job IDs, nonce values, pool messages, and API setting updates.
-- Make invalid states unrepresentable where practical, especially around mining lifecycle, configured/unconfigured device state, power state, and API PATCH results.
+## Architectural Patterns
 
-Imperative shell boundary:
+### Pattern 1: Pure Runtime Plan, Effectful Interpreter
 
-- Owns `esp_idf_svc`, `esp_idf_hal`, `esp_idf_sys`, FreeRTOS tasks, ESP event loop, HTTP/WebSocket server, NVS, OTA, SPIFFS, UART, GPIO, I2C, ADC, display, input, fan, and voltage adapters.
-- Converts raw observations into typed events before handing them to pure crates.
-- Applies pure-core commands to hardware only through named adapters with explicit error handling and logs.
-- Keeps task loops thin: receive event, call pure decision function, perform adapter effects, publish resulting event/snapshot.
+**What:** Represent each live runtime step as a pure decision from typed inputs to typed effects. The firmware task interprets those effects through sockets, UART, GPIO, NVS, logs, and snapshots.
 
-Reference breadcrumb boundary:
+**When to use:** Subscribe/authorize sequencing, notify ingestion, clean-jobs handling, queued work dispatch, nonce-result handling, share submission, pause/resume, reconnect, and safe stop.
 
-- Each crate/module that implements a parity surface starts with a short breadcrumb list: parity IDs, upstream files/functions, and evidence expectations.
-- Function-level breadcrumbs are reserved for non-obvious constants, packet layouts, register sequences, or compatibility quirks.
-- Breadcrumbs should say "this behavior is compared against X" rather than "this line came from X".
-- Any intentionally ported upstream expression needs provenance review before being treated as MIT-first original work.
+**Trade-offs:** More event and command types up front, but it keeps protocol correctness testable without a pool, ASIC, Wi-Fi, or ESP-IDF runtime.
 
-Hardware safety boundary:
+```rust
+pub enum ProductionMiningEffect {
+    SendStratum(StratumV1ClientMessage),
+    DispatchBm1366(Bm1366Command),
+    SubmitShare(ShareSubmission),
+    PublishState(MiningRuntimeState),
+    SafeStop { reason: &'static str },
+}
+```
 
-- Voltage, fan, thermal, power, and ASIC initialization code stays behind firmware adapters with safe staging.
-- Pure crates may calculate desired commands, but firmware decides whether the command is safe to issue in the current hardware state.
-- Safety-critical parity cannot move to `verified` without hardware evidence, even when unit tests pass.
+### Pattern 2: Gate Tokens Before Hardware Effects
+
+**What:** Production work dispatch should require an explicit gate assembled from current ASIC init state, fresh power token, fresh thermal token, normal safety status, and hardware evidence acknowledgement.
+
+**When to use:** Full BM1366 init, voltage/frequency transition, work dispatch, result handling loops, and restart after fault.
+
+**Trade-offs:** Conservative gates can block early bring-up until telemetry is wired. That is appropriate for v1.1: the milestone requires trusted mining, not bypassed mining.
+
+### Pattern 3: Redacted Evidence Events
+
+**What:** Runtime emits structured, secret-free events that evidence scripts and API/WebSocket projections can consume. Event fields should record categories and booleans, not raw pool URLs, users, passwords, workers, Wi-Fi values, IPs, tokens, raw BM1366 frames, or NVS secret values.
+
+**When to use:** Every production Stratum lifecycle marker, pool connection event, authorization attempt, share submission response, safe-stop marker, and evidence summary.
+
+**Trade-offs:** Operators lose some direct debugging detail in committed evidence. Local uncommitted diagnostics can remain richer only when explicitly kept out of logs/evidence promotion.
 
 ## Data Flow
 
-Boot/config flow:
+### Production Mining Flow
 
 ```text
-ESP-IDF app entry
-  -> firmware boot coordinator
-  -> NVS/board/default adapters
-  -> bitaxe-config typed DeviceConfig
-  -> bitaxe-core initial DeviceState
-  -> firmware starts services/tasks from typed state
-  -> boot log and parity evidence capture
+settings_adapter::current_settings_snapshot
+  -> parse pool settings into redacted ProductionPoolConfig
+  -> stratum_socket_adapter connects to configured pool
+  -> bitaxe-stratum plans subscribe/authorize messages
+  -> stratum_socket_adapter writes JSON lines
+  -> stratum_socket_adapter reads JSON lines
+  -> bitaxe-stratum parses response/difficulty/extranonce/notify
+  -> bitaxe-stratum builds MiningWork and updates MiningWorkQueue
+  -> safety_adapter + asic_adapter status build MiningLoopGate
+  -> bitaxe-stratum guarded plan emits typed BM1366 work command
+  -> asic_adapter writes typed frame without logging raw bytes
+  -> asic_adapter reads bounded BM1366 result frame
+  -> bitaxe-asic parses nonce result
+  -> bitaxe-stratum converts result to ShareSubmission
+  -> stratum_socket_adapter sends mining.submit
+  -> bitaxe-stratum records accepted/rejected/no-share outcome
+  -> runtime_snapshot publishes state for HTTP/WebSocket/statistics
+  -> evidence tooling records redacted lifecycle and safe-stop proof
 ```
 
-Mining flow:
+### Safety Gate Flow
 
 ```text
-Wi-Fi/socket adapter
-  -> bitaxe-stratum parses pool messages
-  -> bitaxe-stratum builds mining jobs
-  -> bitaxe-core schedules work and updates lifecycle state
-  -> bitaxe-asic encodes BM1370 work packets
-  -> firmware UART adapter sends packets to ASIC
-  -> firmware UART adapter receives nonce/result bytes
-  -> bitaxe-asic parses results
-  -> bitaxe-core updates stats/scoreboard/work status
-  -> bitaxe-stratum serializes share submissions
-  -> firmware socket adapter sends submissions
+Power sample from INA260 adapter
+  -> bitaxe-safety PowerObservation
+  -> optional PowerEvidenceToken only when fresh and safe
+
+Thermal sample from EMC2101/thermal adapter
+  -> bitaxe-safety ThermalObservation
+  -> optional ThermalEvidenceToken only when fresh and below threshold
+
+Safety status + evidence marker
+  -> MiningLoopGate
+  -> Ready only if power, thermal, safety evidence, ASIC initialized, and ack are present
+  -> Blocked otherwise with stable reason
 ```
 
-Config/API flow:
+Gate ordering should stay fail-closed and predictable: power evidence, thermal evidence, safety status/evidence, hardware evidence acknowledgement, ASIC initialized. This matches the existing `MiningLoopGate` shape and avoids running work dispatch when a more basic prerequisite is missing.
 
-```text
-HTTP handler in firmware
-  -> bitaxe-api request model and PATCH validation
-  -> bitaxe-config setting update command
-  -> firmware NVS adapter persists accepted settings
-  -> bitaxe-core applies runtime-visible state change
-  -> bitaxe-api response serializer
-  -> HTTP/WebSocket transport
-```
+### Task Boundaries
 
-Thermal/power/fan flow:
-
-```text
-ADC/I2C/GPIO adapters
-  -> typed sensor samples
-  -> bitaxe-core thermal/PID decision
-  -> typed actuator command
-  -> firmware safety gate
-  -> fan/voltage/power adapter
-  -> telemetry event
-  -> stats/API/log snapshots
-```
-
-Parity evidence flow:
-
-```text
-reference breadcrumb
-  -> checklist parity ID
-  -> Rust-owned implementation pointer
-  -> test or hardware evidence artifact
-  -> docs/parity/checklist.md status update
-  -> tools/parity report
-```
-
-Data should generally move through events and snapshots rather than shared mutable global state. Firmware can use FreeRTOS queues, channels, mutexes, or atomics where needed, but those primitives should be adapter details. The pure crates should see domain inputs and return domain outputs.
-
-## Build Order
-
-Recommended phase order:
-
-| Order | Phase Focus | Why First/Next | Parity Surfaces |
-| --- | --- | --- | --- |
-| 1 | Repository foundation | Establish the graph before behavior work so all later evidence has a home. | WF-001 through WF-003. |
-| 2 | Reference guard and parity tooling skeleton | Prevent accidental upstream edits and make missing evidence visible from day one. | WF-001, `tools/parity`, checklist reporting. |
-| 3 | Pure crate skeletons and shared domain types | Forces architecture boundaries before hardware pressure pushes logic into tasks. | SYS-003, CFG-003, early API/core types. |
-| 4 | Gamma 601 config model | Device bring-up needs typed board defaults and settings before meaningful boot tests. | CFG-001, CFG-003, CFG-004. |
-| 5 | Minimal ESP-IDF firmware boot/log path | Proves toolchain, Bazel/just surface, image packaging, flash, and monitor on real hardware. | SYS-001, SYS-002, WF-004, WF-005. |
-| 6 | AxeOS API model compatibility baseline | API snapshots define user-visible contracts before full mining behavior exists. | API-001 through API-003. |
-| 7 | BM1370 pure ASIC codecs | CRC, packet layout, work encoding, and result parsing are high-value pure tests before hardware initialization. | ASIC-002 through ASIC-006. |
-| 8 | Safe BM1370 hardware initialization | The first dangerous hardware surface should be narrow, logged, and evidence-heavy. | ASIC-002, ASIC-005, PWR-001 through PWR-004. |
-| 9 | Stratum v1 and first mining loop | Mining needs config, boot, ASIC basics, and socket behavior in place. | STR-001 through STR-004, STR-006. |
-| 10 | Stats, logs, and WebSocket telemetry | These prove the device-user parity of visible runtime state. | LOG-001, STAT-001 through STAT-004, API-005, API-006. |
-| 11 | Thermal, fan, and power controllers | Safety loops need stable telemetry and hardware evidence. | PWR/THR surfaces. |
-| 12 | OTA, filesystem, static assets, release images | Packaging and update behavior depend on stable partition/image/API choices. | FS-001, OTA-001, OTA-002, REL-001 through REL-003. |
-| 13 | Additional ASICs/boards and Stratum v2 | Do not dilute the Gamma 601 evidence path before the first full loop works. | ASIC-008 through ASIC-010, CFG-002, STR-005, non-601 boards. |
-
-Build graph implications:
-
-- `//crates/...:tests` should pass before firmware build targets rely on those crates.
-- `//scripts:verify_reference_clean` should run before parity fixture generation and before release packaging.
-- `//tools/parity:report` should run in CI once checklist structure exists.
-- `//firmware/bitaxe:firmware` should depend on the pure crate libraries but not on test support.
-- `//firmware/bitaxe:firmware_image` should be the source for flash and release workflows.
-- `just build`, `just test`, `just package`, `just flash`, `just monitor`, `just flash-monitor`, `just verify-reference`, and `just parity` should call Bazel targets or scripts also represented in Bazel.
-
-## Testing Strategy
-
-Use a test pyramid shaped around parity evidence:
-
-| Layer | What It Proves | Where It Lives | Evidence Type |
-| --- | --- | --- | --- |
-| Pure unit tests | Domain decisions are deterministic and typed invariants hold. | `crates/bitaxe-*` | `unit` |
-| Golden fixture tests | Rust packet/API/config output matches reference-derived fixtures. | Pure crates plus `bitaxe-test-support` | `golden` |
-| API compare tests | AxeOS schemas and captured responses stay client-compatible. | `crates/bitaxe-api`, firmware route smoke | `api-compare` |
-| Firmware smoke tests | Build, flash, boot, log, and basic service startup work on Gamma 601. | `firmware/bitaxe`, `tools/flash` | `hardware-smoke` |
-| Hardware regression tests | Safety-critical and mining loops remain repeatable. | `tools/parity`, `tools/flash`, hardware harness helpers | `hardware-regression` |
-| Reference guard checks | Upstream evidence was not silently edited. | `scripts/verify-reference-clean.sh` | workflow evidence |
-
-Pure tests should use Arrange, Act, Assert structure. Good first pure targets are ASIC CRC, BM1370 packet encoding, BM1370 result parsing, Gamma 601 defaults, NVS key/default mapping, OpenAPI response serialization, coinbase decoding, job construction, PID decisions, scoreboard behavior, and work queue semantics.
-
-Hardware tests should capture enough context to be useful as audit evidence: command, board, port, firmware image or commit, reference commit, serial log excerpt, observed result, and pass/fail conclusion. A hardware test can validate many implementation details, but the checklist should record the user-visible parity claim it proves.
-
-Status discipline:
-
-- `not-started`: no Rust-owned implementation.
-- `in-progress`: implementation exists but is incomplete.
-- `implemented`: code exists but evidence is not enough.
-- `verified`: evidence proves parity or accepted project behavior.
-- `deferred`: gap is explicit with owner and reason.
-
-Do not let "builds successfully" imply parity. Build success proves only workflow health unless paired with behavior evidence.
-
-## Risks
-
-| Risk | What Goes Wrong | Mitigation |
+| Task/Loop | Owns | Must Delegate |
 | --- | --- | --- |
-| Line-by-line C translation pressure | Rust modules mirror upstream C files, including globals and incidental control flow, making the rewrite harder to maintain than the original. | Organize by domain behavior and adapter boundaries. Use breadcrumbs for provenance, not as a module layout mandate. |
-| Hidden global state migration | Upstream global state becomes Rust global mutable state, preserving invalid states and race risks. | Model lifecycle state in `bitaxe-core` with enums/newtypes and pass snapshots/events through explicit queues. |
-| ESP-IDF Rust integration maturity | `esp-idf-svc` appears to cover the needed ESP-IDF service families, but the `esp-idf-*` docs flag community maintenance, possible lag behind ESP-IDF stable, missing HIL tests, and sparse docs. | Keep ESP-IDF usage in thin adapters, spike each service before depending on it broadly, and prioritize early Gamma 601 hardware smoke. |
-| Bazel/ESP-IDF impedance mismatch | Direct hermetic Bazel builds may be hard before ESP-IDF Rust/Cargo details are proven. | Represent workflows as Bazel targets from the start, even if early targets wrap Cargo/ESP-IDF scripts. Tighten hermeticity after boot/flash works. |
-| False parity confidence | Implemented code gets marked verified without proving behavior. | Require checklist evidence for every status promotion and run `tools/parity:report` in local/CI workflows. |
-| Hardware safety regression | Voltage, fan, thermal, power, or ASIC init changes damage hardware or create unsafe operating conditions. | Stage hardware enablement narrowly, require hardware evidence, add safety gates in firmware adapters, and keep pure command generation separate from effect execution. |
-| API compatibility drift | Rust API models become cleaner than upstream but break existing AxeOS clients. | Treat `openapi.yaml` and captured upstream responses as compatibility contracts; compare encoded responses, not just Rust type names. |
-| NVS/settings mismatch | Settings names, defaults, and runtime update behavior diverge from existing devices. | Parse upstream config/default files into typed fixtures and test NVS key/default behavior before runtime persistence work. |
-| Task behavior drift | Different FreeRTOS task decomposition changes observable timing, logs, reconnect behavior, or telemetry freshness. | Allow internal task layout to differ, but write parity tests around observable boot order, API state, reconnect behavior, logs, and telemetry cadence. |
-| Provenance/license leakage | Ported GPL-covered source expression is treated as MIT-first original work. | Use breadcrumbs and provenance review at behavior boundaries; flag intentional ports explicitly before release artifacts ship. |
+| Production mining coordinator | Runtime lifecycle, channel select/poll order, watchdog yields, safe stop, snapshot publication. | Stratum parsing/serialization, job construction, safety decisions, BM1366 command construction. |
+| Stratum socket loop | TCP connect/read/write, line framing, timeouts, reconnect sleep, local-only error classification. | Protocol state, share outcome classification, credential rendering. |
+| ASIC UART loop | UART baud/write/read, reset GPIO, bounded result wait, adapter setup errors. | Init/work command planning, result parsing, share submission planning. |
+| Safety supervisor | Sensor sampling cadence, effect interpretation, latest telemetry publication. | Fault classification, PID/fan/voltage decisions, mining gate policy. |
+| HTTP/WebSocket server | Request transport, access/origin gate, cadence frames, pause/resume command ingress. | Mining command effects, telemetry DTO mapping, statistics/scoreboard semantics. |
+
+### Evidence Flow
+
+```text
+repo command with board=205 and detector output
+  -> package manifest and source/reference commits
+  -> flash-monitor or monitor log capture
+  -> production runtime redacted markers
+  -> explicit API/WebSocket/statistics samples
+  -> accepted_or_rejected_share observed OR milestone blocker recorded
+  -> safe-stop marker after bounded run
+  -> redaction review
+  -> parity checklist exact status update
+```
+
+Evidence should promote only exact claims. A connected pool plus notify is not a share outcome. A typed work dispatch is not accepted/rejected production mining. An accepted or rejected share response should be recorded as the first v1.1 production-share claim; if no such outcome can be safely achieved, the milestone should preserve that as an explicit blocker rather than inflating no-share evidence.
+
+## New Components
+
+| Component | Why New | Inputs | Outputs |
+| --- | --- | --- | --- |
+| `crates/bitaxe-stratum/src/v1/production_runtime.rs` | Controlled runtime currently consumes synthetic transcripts; production needs a live session state machine. | Parsed server messages, current queue/state, gate decisions, nonce results, submit responses. | Client messages, queue updates, dispatch plans, share outcomes, redacted evidence events. |
+| `firmware/bitaxe/src/production_mining_runtime.rs` | Current `maybe_start_after_asic_gate` only publishes bounded evidence markers. Production needs a long-running task. | Settings snapshot, safety snapshots, ASIC status/results, socket events, command effects. | Runtime state updates, adapter calls, retained logs, watchdog markers, safe-stop. |
+| `firmware/bitaxe/src/stratum_socket_adapter.rs` | Real Stratum v1 socket I/O is absent; Wi-Fi only brings up network services. | Redacted pool config and planned client messages. | Parsed server messages, submit responses, socket status, reconnect events. |
+| `firmware/bitaxe/src/mining_runtime_channel.rs` or local channel types | Runtime, HTTP commands, safety supervisor, and ASIC/socket adapters need bounded communication without shared ad hoc globals. | Command and event enums. | Bounded queues or latest-state cells with stable drop/block policy. |
+| Evidence helper for v1.1 live mining | Existing evidence scripts prove controlled no-share; v1.1 needs share outcome and redaction gates. | Detector, flash-monitor logs, API/WebSocket probes, optional local pool credentials. | Redacted evidence summary, share outcome classification, checklist-ready claims. |
+
+## Modified Components
+
+| Component | Required Change | Risk Boundary |
+| --- | --- | --- |
+| `firmware/bitaxe/src/main.rs` | Start production runtime only after settings snapshot, ASIC boot gate, safety supervisor, Wi-Fi, and HTTP services are ordered deliberately. | Do not start production mining by default without explicit compile/runtime gate and safety prerequisites. |
+| `firmware/bitaxe/src/controlled_mining_runtime.rs` | Keep as controlled evidence harness or replace with production runtime behind a clearer mode enum. | Do not let synthetic transcripts feed production claims. |
+| `firmware/bitaxe/src/asic_adapter.rs` | Add full init interpretation, production work dispatch, result read loop, and safe-stop reset/effect handling. | Never log raw frames; fail closed on setup, write, read, parse, or timeout errors. |
+| `crates/bitaxe-asic/src/bm1366/command.rs` | Split `SendDiagnosticWork` from production `SendWork` or rename with migration tests. | Avoid production code implying diagnostic-only semantics; keep bytes opaque in logs. |
+| `crates/bitaxe-asic/src/bm1366/init_plan.rs` | Define a production-ready init status if `InitializedNoMining` is insufficient for work dispatch gates. | Full init still requires power, thermal, safety, and hardware evidence. |
+| `crates/bitaxe-stratum/src/v1/mining_loop.rs` | Reuse the existing gate but support live notify source, clean-jobs, repeated dispatch, and nonce-to-share cycles. | Do not bypass `MiningLoopGate` for faster share attempts. |
+| `crates/bitaxe-stratum/src/v1/state.rs` | Extend counters/hashrate only where API/statistics require it. | Keep secret-bearing pool identity out of state that can be serialized or logged. |
+| `firmware/bitaxe/src/runtime_snapshot.rs` | Convert evidence-only `replace_mining_runtime_state_for_evidence` into a production-safe update path. | Avoid holding locks across I/O or publishing partially-updated snapshots. |
+| `firmware/bitaxe/src/http_api.rs` | Wire pause/resume to runtime command channel; return production statistics and scoreboard. | Keep access gate behavior and avoid exposing pool credentials. |
+| `docs/parity/checklist.md` | Promote exact v1.1 rows only after evidence: live socket, BM1366 production dispatch/result, share outcome, safety gate, telemetry, safe stop. | Do not mark full active voltage/fan/thermal parity verified if only mining prerequisite safety is proven. |
+
+## Integration Points
+
+### External Services
+
+| Service | Integration Pattern | Notes |
+| --- | --- | --- |
+| Stratum v1 pool | Firmware socket adapter exchanges newline-delimited JSON planned/parsed by `bitaxe-stratum`. | Pool URL, port, username, password, worker, endpoints, and responses must be redacted in committed logs/evidence. |
+| ESP-IDF Wi-Fi/LwIP | Existing Wi-Fi adapter brings up STA; new Stratum adapter should depend on network-ready status. | Do not derive `DEVICE_URL` or pool target from scans or stale state; use settings and current session only. |
+| BM1366 ASIC over UART1 | Existing ASIC adapter interprets typed actions; production adds repeated work/result operations. | UART read timeouts and invalid frames must safe-stop or remain blocked, not spin indefinitely. |
+| INA260/thermal/fan/voltage peripherals | Safety adapter turns readings into evidence tokens and effect plans. | v1.1 needs mining prerequisite safety only; full active safety closure remains a non-claim unless separately evidenced. |
+
+### Internal Boundaries
+
+| Boundary | Communication | Notes |
+| --- | --- | --- |
+| `production_mining_runtime` to `bitaxe-stratum` | Pure function calls with typed events and state. | Runtime owns loop cadence; crate owns decisions. |
+| `production_mining_runtime` to `stratum_socket_adapter` | Planned messages out, parsed messages/status events in. | Adapter must not log credentials or raw authorize lines. |
+| `production_mining_runtime` to `asic_adapter` | Typed BM1366 adapter actions and parsed nonce results. | Adapter interprets hardware effects only after gate readiness. |
+| `safety_adapter` to runtime | Latest gate snapshot or event channel. | Stale/unavailable safety telemetry should block work submission. |
+| `http_api` to runtime | Command channel for pause/resume and snapshot reads for state. | API command response can be immediate; runtime effect is asynchronous but observable. |
+| `runtime_snapshot` to `bitaxe-api` | Snapshot DTO mapping. | Keep API compatibility while adding production mining counters. |
+
+## Scaling Considerations
+
+| Scale | Architecture Adjustments |
+| --- | --- |
+| Single Ultra 205 | One production runtime task, one Stratum socket, one ASIC UART loop, shared latest-state snapshots are enough. |
+| Longer soak on one device | Add bounded queue metrics, reconnect backoff state, watchdog checkpoints, and memory/heap telemetry in snapshots. |
+| Multiple boards/ASICs later | Generalize production runtime over board/ASIC capabilities only after Ultra 205 evidence is complete. Do not abstract v1.1 prematurely. |
+
+### Scaling Priorities
+
+1. **First bottleneck:** Blocking socket or UART operations can starve telemetry/watchdog. Use bounded timeouts and explicit yield checkpoints before optimizing throughput.
+2. **Second bottleneck:** Snapshot locking can contend with WebSocket cadence and runtime updates. Keep snapshots small, cloneable, and updated outside I/O-critical sections.
+3. **Third bottleneck:** Evidence logs can leak or grow too much during soak. Emit compact structured markers and let scripts summarize.
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Production Logic In Firmware Loops
+
+**What people do:** Parse pool messages, decide share outcomes, update counters, and build BM1366 frames directly inside `production_mining_runtime.rs`.
+**Why it's wrong:** It buries business logic in ESP-IDF I/O code and makes hardware-free tests weak.
+**Do this instead:** Keep runtime loops thin and move decisions into `bitaxe-stratum`, `bitaxe-asic`, `bitaxe-safety`, and API mappers.
+
+### Anti-Pattern 2: Reusing Synthetic Evidence As Production Truth
+
+**What people do:** Extend `controlled_mining_runtime` markers until they look like production mining.
+**Why it's wrong:** v1.0 controlled no-share evidence explicitly does not prove accepted/rejected production share behavior.
+**Do this instead:** Build a live Stratum socket adapter and record actual pool responses, or record a milestone blocker if a safe share outcome cannot be observed.
+
+### Anti-Pattern 3: Secret-Bearing Logs
+
+**What people do:** Log raw Stratum authorize lines, pool URLs, worker names, endpoint addresses, NVS keys/values, or raw request bodies for debugging.
+**Why it's wrong:** Evidence is intended for commit/review and must not expose credentials or private endpoints.
+**Do this instead:** Log redacted lifecycle markers such as `stratum_authorize_status=sent redacted=true` and keep local secret inputs outside committed artifacts.
+
+### Anti-Pattern 4: Safety Gate Bypass For Bring-Up
+
+**What people do:** Add a temporary "force mining" flag that skips power, thermal, ASIC init, or evidence acknowledgement gates.
+**Why it's wrong:** It creates the exact unsafe path v1.1 is supposed to avoid and can accidentally become release behavior.
+**Do this instead:** Add explicit, documented evidence modes that still publish blocked reasons and require detector-gated hardware procedures.
+
+## Suggested Build Order
+
+| Order | Build Item | Why This Order | Primary Evidence |
+| --- | --- | --- | --- |
+| 1 | Define pure production runtime contract in `bitaxe-stratum`. | Establish state/effect vocabulary before firmware tasks exist. | Unit tests for subscribe/authorize/notify/share accepted/rejected/no-share transitions. |
+| 2 | Split production BM1366 work command semantics from diagnostic work. | Prevent production runtime from depending on diagnostic-only naming and evidence. | Unit/golden command tests, no raw frame logs. |
+| 3 | Add mining prerequisite safety gate aggregator. | Work dispatch and full init need one stable gate input. | Unit tests for fresh/stale/missing/faulted power and thermal cases. |
+| 4 | Extend ASIC adapter for full init, work dispatch, result reads, and safe stop. | Production runtime needs a hardware interpreter before live pool work can be trusted. | Detector-gated hardware smoke for init blocked/ready paths and bounded result behavior. |
+| 5 | Add Stratum socket adapter with redaction tests. | Real pool I/O should be isolated before long-running mining orchestration. | Host tests for rendering/redaction; firmware smoke for connect failure without secrets. |
+| 6 | Add production mining runtime task behind explicit v1.1 gate. | Coordinator can now compose typed socket, ASIC, safety, and snapshot boundaries. | Controlled host tests plus hardware smoke showing blocked until gates ready. |
+| 7 | Wire runtime snapshots, statistics, scoreboard, API, and WebSocket. | User-visible telemetry should reflect runtime state before share evidence runs. | API/WebSocket samples correlated with runtime markers. |
+| 8 | Run bounded live mining evidence with local pool credentials. | Only after gates, redaction, snapshots, and safe-stop are in place. | Accepted/rejected share outcome or explicit safe blocker; safe-stop proof; redaction pass. |
+| 9 | Update parity checklist with exact claims. | Status changes should follow evidence, not implementation completion. | `just parity` and checklist diffs tied to evidence paths. |
+
+## Sources
+
+- `.planning/PROJECT.md` - v1.1 goal, active requirements, constraints, and out-of-scope boundaries. Confidence: HIGH.
+- `standards/core/architecture.md` - functional core / imperative shell and parse-at-boundaries rules. Confidence: HIGH.
+- `docs/parity/checklist.md` - current v1.0 evidence state and non-claims for production share outcomes, active safety, and BM1366 full production mining. Confidence: HIGH.
+- `firmware/bitaxe/src/main.rs` - current boot order and controlled runtime startup point. Confidence: HIGH.
+- `firmware/bitaxe/src/controlled_mining_runtime.rs` - current compile-gated synthetic/no-share runtime harness and redaction markers. Confidence: HIGH.
+- `firmware/bitaxe/src/asic_adapter.rs` - current BM1366 UART/reset interpreter and diagnostic work/result boundaries. Confidence: HIGH.
+- `firmware/bitaxe/src/runtime_snapshot.rs`, `http_api.rs`, and `websocket_api.rs` - current API/WebSocket snapshot projection and command surfaces. Confidence: HIGH.
+- `firmware/bitaxe/src/wifi_adapter.rs`, `network_stack.rs`, and `settings_adapter.rs` - current Wi-Fi, network initialization, and NVS snapshot boundaries. Confidence: HIGH.
+- `crates/bitaxe-stratum/src/v1/mining_loop.rs`, `controlled_runtime.rs`, `messages.rs`, `mining.rs`, and `state.rs` - current pure Stratum, work queue, share, and mining state contracts. Confidence: HIGH.
+- `crates/bitaxe-asic/src/bm1366/init_plan.rs` and `command.rs` - current pure BM1366 init and adapter action contracts. Confidence: HIGH.
+- `crates/bitaxe-safety/src/power.rs` and `thermal.rs` - current power/thermal evidence token and fail-closed decision contracts. Confidence: HIGH.
+
+*Architecture research for: Ultra 205 trusted production mining*
+*Researched: 2026-07-04*

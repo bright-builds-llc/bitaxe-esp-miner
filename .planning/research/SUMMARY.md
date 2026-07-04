@@ -1,260 +1,266 @@
 # Project Research Summary
 
 **Project:** Bitaxe Rust Firmware\
-**Domain:** Rust ESP-IDF firmware rewrite for Bitaxe ESP-Miner\
-**Researched:** 2026-06-20\
-**Confidence:** MEDIUM-HIGH
+**Domain:** Ultra 205 trusted Stratum v1 production mining on Rust ESP-IDF firmware\
+**Researched:** 2026-07-04\
+**Confidence:** HIGH for scope, stack continuity, architecture boundaries, evidence governance, safety/redaction constraints; MEDIUM for live pool and hardware outcomes until accepted/rejected-share evidence exists.
 
 ## Executive Summary
 
-This project is a hardware-bound firmware rewrite, not an application rewrite or a C-to-Rust transliteration. The correct success measure is device-user parity with upstream ESP-Miner: a Bitaxe owner, API client, mining pool, flashing tool, or admin UI should observe compatible behavior. Experts would build this by keeping the upstream implementation pinned and read-only, modelling behavior in typed Rust domains, and proving parity through unit, golden, API-compare, and hardware evidence.
+v1.1 is a hardware-bound production-mining milestone, not a broad firmware expansion. The product is Rust ESP-IDF firmware for Bitaxe Ultra 205 owners that must graduate from the v1.0 controlled no-share harness to a real, safety-gated Stratum v1 mining session on BM1366 hardware. Experts should build it as a typed functional core with a thin ESP-IDF imperative shell: pure crates own Stratum state, ASIC command intent, safety gates, runtime counters, and API projections; firmware adapters own Wi-Fi, TCP sockets, UART, I2C, watchdog-friendly tasks, retained logs, and redacted evidence capture.
 
-Use a Rust ESP-IDF `std` firmware stack for the first production path. Pin ESP-IDF to `v5.5.4`, use the ESP Rust toolchain for `xtensa-esp32s3-espidf`, keep Bazel as the canonical automation graph, and keep `just` as the human command surface. Structure the code as a functional core plus imperative ESP-IDF shell: pure crates own config, ASIC codecs, Stratum, API models, statistics, state machines, and test fixtures; `firmware/bitaxe` owns Wi-Fi, FreeRTOS tasks, NVS, HTTP/WebSocket serving, SPIFFS, OTA, UART, GPIO, I2C, ADC, fan, voltage, display, and orchestration.
+The recommended approach is conservative and exact-claim driven. Keep the current ESP-IDF `v5.5.4` Rust `std` stack, Bazel/`just` command surface, `espflash` hardware workflow, pinned ESP-Miner reference, and existing pure Rust cores. Add only the missing production pieces: a real Stratum v1 socket adapter, a production mining runtime task, BM1366 production init/work/result handling, fresh prerequisite safety observations, live telemetry/statistics/scoreboard updates, and v1.1-specific evidence/allow-list tooling.
 
-The first roadmap milestone must stay deliberately small: foundation plus safe Gamma 601 BM1370 boot/log, build/package/flash/monitor, reference guardrails, and parity evidence scaffolding. The main risks are false parity claims, unsafe hardware bring-up, GPL provenance leakage, and Bazel/Cargo/ESP-IDF workflow drift. Mitigate them with a read-only reference submodule, evidence-backed checklist status, staged hardware enablement, range-checked domain types, package manifests, SPDX/provenance review, and hardware evidence before safety-critical parity is marked verified.
+The key risk is not missing technology; it is accidentally claiming more than the evidence proves or enabling unsafe hardware paths to get a share faster. Mitigate this by enforcing a claim ladder, detector-gated Ultra 205 runs, fail-closed mining prerequisite safety, bounded watchdog-aware loops, committed evidence redaction, and explicit non-claims for active voltage/fan/fault closure, OTAWWW/recovery fault injection, runtime display/input/BAP, non-205 boards, and Stratum v2.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Use ESP-IDF Rust `std` rather than bare-metal Rust for the first firmware because upstream ESP-Miner depends on ESP-IDF services: Wi-Fi, FreeRTOS, HTTP/WebSocket, NVS, partitions, SPIFFS/static assets, OTA, logging, and ESP image conventions. Bazel should own repeatable automation, but the firmware target should initially wrap Cargo plus `esp-idf-sys` instead of attempting a custom Bazel-native ESP-IDF toolchain.
+The stack should remain stable for v1.1. ESP-IDF Rust `std`, ESP-IDF `v5.5.4`, `esp-idf-svc 0.52.1`, `esp-idf-sys 0.37.2`, Bazel `9.1.1`, `rules_rust 0.70.0`, `just`, `espflash`, and the current Cargo/Bazel split already fit the work. The milestone should extend current firmware adapters and host evidence tooling rather than introducing async runtimes, TLS, MQTT, a new network stack, or a parallel build system.
 
 **Core technologies:**
 
-- ESP-IDF `v5.5.4` - stable baseline supported by released `esp-idf-*` crates.
-- `esp-idf-svc 0.52.1` with `esp-idf-hal 0.46.2` and `esp-idf-sys 0.37.2` - Rust access to Wi-Fi, HTTP, WebSocket, NVS, OTA, logging, event loop, timers, and lower HAL/sys layers.
-- ESP Rust toolchain via `espup v0.17.1` - required for Xtensa ESP32-S3 firmware builds with `std`.
-- Target `xtensa-esp32s3-espidf`, `MCU=esp32s3` - expected Gamma 601 target, pending confirmation from initialized reference tree.
-- Bazelisk with Bazel `9.1.1` and Bzlmod - canonical automation and CI/local graph.
-- `rules_rust 0.70.0` with `crate_universe` - Bazel coverage for pure Rust crates, host tools, and tests using Cargo metadata.
-- `espflash` / `cargo-espflash` - USB flashing, monitoring, port listing, board info, and image save workflows.
-- `just` - ergonomic command surface only; recipes delegate to Bazel targets or repo-owned scripts represented in Bazel.
+- ESP-IDF `v5.5.4` - production firmware platform for Wi-Fi, lwIP sockets, HTTP/WebSocket, NVS, SPIFFS, OTA, FreeRTOS, logging, and ESP image conventions.
+- `esp-idf-svc 0.52.1` / `esp-idf-sys 0.37.2` - Rust ESP-IDF service wrappers, HAL/sys access, and pinned build integration.
+- Rust `std::net::TcpStream` over ESP-IDF/lwIP - smallest viable real Stratum v1 TCP adapter with bounded read/write timeouts.
+- Rust `std::thread` / FreeRTOS-backed tasks - simple blocking runtime model with explicit stack sizes, sleeps, yields, watchdog checkpoints, and safe stop.
+- `esp_idf_svc::hal` UART/GPIO/I2C adapters - effectful boundary for BM1366 UART/reset and INA260/EMC2101/DS4432U observations.
+- Bazel + Bzlmod + `rules_rust` - canonical graph for pure crates, host tools, tests, package wrappers, and evidence commands.
+- `just` - stable human command surface that delegates to repo-owned Bazel/scripts.
+- `espflash` - detector, board-info, flash, monitor, and image backend for Ultra 205 evidence runs.
 
-**Critical version requirements:**
+**Critical version and dependency requirements:**
 
-- Do not use ESP-IDF `v6.0.1` as the first baseline; released Rust ESP-IDF crates have safer compatibility with ESP-IDF `v5.5.x`.
-- Pin `esp_idf_version = "tag:v5.5.4"` explicitly in firmware metadata; do not rely on `esp-idf-sys` defaults.
-- Use Rust 2021 initially for firmware and shared crates; consider Rust 2024 only after build/flash is stable.
-- Add `espidf_time64` and `ldproxy` through the ESP-IDF Rust template-compatible configuration path.
+- Keep ESP-IDF `v5.5.4`; do not migrate to ESP-IDF `v6.x` during the hardware/evidence-sensitive v1.1 milestone.
+- Pin ESP-IDF through `esp-idf-sys` metadata; do not rely on crate defaults.
+- Do not add `tokio`, `async-std`, `smoltcp`, MQTT, TLS, Stratum v2, or a new mining daemon framework unless a phase-specific implementation proves the current blocking socket model cannot meet responsiveness requirements.
+- Reuse `crates/bitaxe-stratum`, `crates/bitaxe-asic`, `crates/bitaxe-safety`, `crates/bitaxe-api`, and `tools/parity`; add pure state-machine pieces only where production runtime decisions need deterministic tests.
 
 ### Expected Features
 
+v1.1 succeeds only if an Ultra 205 owner can configure local Wi-Fi and pool credentials, flash firmware, start a bounded safety-gated production mining run, observe real pool lifecycle and live telemetry, and capture either one real accepted/rejected share response from live ASIC-derived work or an explicit safe blocker. Controlled no-share evidence remains useful as regression/preflight evidence but cannot be promoted to production-share proof.
+
 **Must have (table stakes):**
 
-- Gamma 601 defaults - `devicemodel=gamma`, `boardversion=601`, `asicmodel=BM1370`, `asicfrequency=525`, `asicvoltage=1150`, pool defaults, fan defaults, and self-test defaults.
-- Build/package/flash/monitor workflow - `just build`, `test`, `package`, `flash`, `monitor`, `flash-monitor`, `verify-reference`, and `parity`.
-- Safe boot/log path - firmware identity, ESP-IDF/Rust versions, reset reason, partition/image identity, PSRAM/platform status, board/ASIC target, and safe no-op mining state.
-- Config and NVS compatibility - upstream key names, defaults, validation, persistence, reboot reload behavior, and migrations where needed.
-- BM1370 ASIC path - reset, safe staged init, packet layout, CRC, work encoding, result parsing, frequency/voltage transitions, and hardware evidence.
-- Stratum v1 mining - subscribe, authorize, notify, difficulty, submit, fallback pool, reconnect, accepted/rejected shares, and fake pool coverage.
-- AxeOS API compatibility - OpenAPI-compatible system, ASIC, statistics, scoreboard, settings, logs, pause/resume, restart, identify, OTA, and telemetry routes.
-- WebSocket logs and live telemetry - `/api/ws` and `/api/ws/live` behavior expected by clients.
-- Power, voltage, thermal, and fan safety - Gamma TPS546, EMC2101, fan RPM/control, PID behavior, overheat/fault handling, and fail-closed policy.
-- Self-test lifecycle - factory/self-test flags, fan/power/vcore/temp/hashrate/domain checks, pass/fail/restart/cancel behavior.
-- OTA/filesystem/release behavior - partition layout, SPIFFS/static assets, recovery, OTA firmware, OTAWWW, image naming, and release manifests.
+- Real Stratum v1 socket lifecycle - connect, subscribe, authorize, difficulty/extranonce, notify, submit response, reconnect/block, and safe stop with all pool values redacted.
+- Redacted pool credential handling - local owner-supplied `pool-credentials*.json` may be used as runtime input, but committed evidence may record only category labels such as `pool_config: local-owner-supplied`.
+- Trusted BM1366 initialization gate - full production work requires documented board `205`, source/reference commits, safety prerequisites, init markers, and final go/no-go state.
+- Pool-derived work dispatch - live `mining.notify` data must feed typed BM1366 work dispatch, not fixed diagnostic jobs.
+- Live ASIC result and nonce parsing - share submission claims require live BM1366 results tied to active pool jobs.
+- Share submission and accepted/rejected outcome - at least one real parsed pool response to a live ASIC-derived `mining.submit`, or the milestone records a blocker/pending outcome.
+- Mining prerequisite safety gate - fresh or explicitly bounded power/thermal/fan/safety evidence must allow work; missing, stale, unsafe, or unavailable prerequisites block work.
+- Live API/WebSocket/statistics telemetry - `/api/system/info`, `/api/system/statistics`, `/api/system/scoreboard`, `/api/ws`, and `/api/ws/live` samples correlate to the same mining session.
+- Watchdog and safe-stop behavior - bounded run stays responsive and exits with mining, hardware control, and work submission disabled.
+- Evidence-governed claim promotion - parity checklist rows advance only to the exact level proven by redacted v1.1 artifacts.
 
 **Should have (differentiators):**
 
-- Explicit parity evidence with breadcrumbs, statuses, command summaries, and artifact paths.
-- Pure Rust domain crates with strong newtypes/state machines for board IDs, ASIC models, frequencies, millivolts, temperatures, fan duty, jobs, nonces, and API updates.
-- Safer staged hardware-control adapters that calculate decisions in pure code but gate effects in firmware.
-- Deterministic fake pool, API compare, golden fixture, and hardware-smoke workflows.
-- Clear USB ergonomics with port discovery, actionable failure messages, and printed underlying `espflash` commands.
+- Exact-claim mining evidence ledger - one redacted v1.1 evidence root with package manifest, detector, board-info, commands, logs, API/WebSocket captures, share outcome, redaction review, safe-stop, and conclusion.
+- Safety-gated production enablement - production mining is opt-in, prerequisite-bound, and explains blocked reasons.
+- Redacted observability by default - logs and retained evidence use secret-free lifecycle markers and aggregate counters.
+- Pure core, thin hardware shell - Stratum, ASIC, safety, share outcome, hashrate, and API behavior remain testable without hardware.
+- Share outcome honesty - one real rejected share is a valid milestone proof if it came from live ASIC-derived work and a parsed pool response.
+- Owner-ready operator workflow - one documented repo command flow handles detect, flash, credential seeding, bounded mining, telemetry capture, safe stop, and redaction.
 
-**Defer (v2+ or post-Gamma V1):**
+**Defer (future milestones):**
 
-- Non-601 boards and additional ASIC families, including Bitaxe 205/BM1366, BM1397, BM1368, Gamma Duo/Turbo, Max, Ultra, Hex, and Supra.
-- Stratum v2 completeness unless an explicit Gamma 601 acceptance target requires it.
-- BAP accessory protocol completeness unless accessory parity becomes a named V1 goal.
-- All-board factory image release automation and verification matrix.
-- Custom board config flows and advanced tuning beyond upstream-compatible ranges.
-- Angular AxeOS rewrite; scope is API and static asset compatibility.
+- Full active voltage, fan, thermal fault-stimulus, recovery, and self-test hardware closure.
+- OTA/recovery destructive or fault-injection validation, rollback, interrupted update, large erase, and OTAWWW parity.
+- Runtime display/input parity and BAP accessory behavior.
+- Non-205 boards and non-BM1366 ASIC families.
+- Stratum v2.
+- Unbounded production soak, stress mining, TLS hardening, or all-board release matrices.
 
 ### Architecture Approach
 
-Use behavior-led modules rather than upstream C file boundaries. Pure crates should expose deterministic data-in/data-out APIs and remain free of ESP-IDF, FreeRTOS, sockets, NVS, UART, GPIO, file system, clocks, and logging. The firmware app should translate real-world observations into typed domain events, call pure decision logic, then apply resulting commands through explicit adapters with logging and error handling.
+The existing functional-core/imperative-shell architecture should be preserved. Production mining should replace `controlled_mining_runtime` synthetic transcript publication with a live runtime shell that feeds real socket messages, real BM1366 results, and fresh safety observations through pure state/effect types. Firmware tasks should orchestrate bounded I/O and publish redacted snapshots; protocol parsing, gate decisions, share classification, and API statistics semantics belong in pure crates.
 
 **Major components:**
 
-1. `reference/esp-miner` - pinned, read-only upstream behavior and provenance reference.
-1. `firmware/bitaxe` - ESP-IDF app, boot order, task orchestration, hardware adapters, HTTP/WebSocket server, storage, OTA, logging, and board bring-up.
-1. `crates/bitaxe-core` - shared device state, work queues, statistics, scoreboard, PID decisions, events, and state machines.
-1. `crates/bitaxe-config` - board/device models, Gamma 601 defaults, NVS key schema, typed settings, and validation.
-1. `crates/bitaxe-asic` - ASIC model dispatch, packet layouts, CRC, register commands, BM1370 work/result encoding.
-1. `crates/bitaxe-stratum` - Stratum message parsing/serialization, job construction, coinbase decode, reconnect/fallback decisions.
-1. `crates/bitaxe-api` - AxeOS OpenAPI-compatible request/response models, serializers, settings validation, telemetry/log payloads.
-1. `crates/bitaxe-test-support` - reference-derived fixtures, fake adapters, golden data, and hardware-test helpers.
-1. `tools/flash` and `tools/parity` - USB workflow support and evidence/checklist reporting.
+1. `crates/bitaxe-stratum/src/v1/production_runtime.rs` - pure Stratum v1 session state, lifecycle transitions, share outcome planning, reconnect/fallback decisions, and redacted event summaries.
+2. `firmware/bitaxe/src/production_mining_runtime.rs` - production task coordinator for socket, ASIC, safety, snapshots, watchdog checkpoints, channels, and safe stop.
+3. `firmware/bitaxe/src/stratum_socket_adapter.rs` - ESP-IDF/lwIP TCP line I/O, DNS/connect/read/write timeouts, typed message parsing, local error classification, and credential-safe logs.
+4. `firmware/bitaxe/src/asic_adapter.rs` plus `crates/bitaxe-asic` - full init interpretation, production work dispatch, bounded result reads, reset/fail-closed behavior, and typed BM1366 command/result contracts.
+5. `firmware/bitaxe/src/safety_adapter.rs` plus `crates/bitaxe-safety` - fresh power/thermal/fan observations, evidence tokens, normal safety status, stale/unavailable blockers, and fail-closed effects.
+6. `firmware/bitaxe/src/runtime_snapshot.rs`, `http_api.rs`, and `websocket_api.rs` plus `crates/bitaxe-api` - production-safe snapshot updates, live statistics, scoreboard, pause/resume command surface, and WebSocket frames.
+7. Evidence scripts, `tools/parity`, and `docs/parity/checklist.md` - allow-manifest validation, redacted evidence packs, claim tiers, exact status promotion, and non-claim preservation.
 
 **Key patterns to follow:**
 
-- Dependency direction flows from firmware to pure crates; pure crates do not depend on firmware or ESP-IDF.
-- Parse raw inputs at boundaries into domain types; do not pass raw strings or integers through hardware-control logic.
-- Make illegal states unrepresentable where practical, especially mining lifecycle, configured/unconfigured state, power state, and API PATCH results.
-- Put reference breadcrumbs at module and behavior boundaries, not line-by-line.
-- Treat checklist `verified` as an evidence state, not an implementation state.
+- Model runtime steps as pure decisions from typed inputs to typed effects; firmware interprets effects.
+- Require explicit gate tokens before hardware effects: detector, board-info, package/source/reference identity, fresh power/thermal/safety status, ASIC init, and hardware evidence acknowledgement.
+- Emit redacted structured events with categories and booleans, never raw pool URLs, ports, workers, owner addresses, passwords, tokens, device URLs, Wi-Fi data, IPs, MACs, NVS secrets, raw targets, or raw BM1366 frames.
+- Keep controlled no-share runtime as a regression harness, not the production source of truth.
 
 ### Critical Pitfalls
 
-1. **False parity confidence** - prevent by requiring evidence in `docs/parity/checklist.md`; safety-critical rows need `hardware-smoke` or `hardware-regression`, not only unit/golden tests.
-1. **Unsafe hardware bring-up** - prevent by booting/logging first, then staged power/thermal/fan/ASIC enablement with preflight gates, fail-closed behavior, and hardware logs.
-1. **Reference/provenance drift** - prevent by adding `reference/esp-miner` as a pinned read-only submodule, failing on dirty/missing reference state, and reviewing any GPL-derived expression or fixture.
-1. **Bazel/Cargo/ESP-IDF divergence** - prevent by making Bazel the visible graph, Cargo.lock authoritative for Rust dependencies, `just` a thin wrapper, and package artifacts declared with versions/manifests.
-1. **NVS/API/settings mismatch** - prevent by comparing upstream OpenAPI, captured responses, NVS keys, defaults, persistence, and PATCH semantics before broad handler implementation.
-1. **Mining happy-path bias** - prevent by adding deterministic Stratum fixtures and fake pool scenarios before relying on public-pool smoke tests.
-1. **Broad board claims too early** - prevent by keeping Gamma 601 as the only verified hardware path until each additional board has its own evidence set.
+1. **Treating controlled no-share evidence as production proof** - prevent with a claim ladder that separates controlled-no-share, live-pool-smoke, accepted/rejected-share, bounded soak, and parity promotion. Stop if no real pool response and live ASIC result artifact exist.
+2. **Reusing synthetic safety tokens to enable real hardware** - require fresh or explicitly bounded Ultra 205 power/thermal/fan/safety observations before full init or work dispatch. Stop on stale, unavailable, out-of-range, or undocumented active-control prerequisites.
+3. **Bypassing the mining allow manifest** - extend `tools/parity` and repo-owned wrappers before new hardware procedures. Stop on detector mismatch, board-info failure, unapproved command surfaces, missing abort conditions, or missing recovery steps.
+4. **Leaking pool credentials, owner identity, targets, or NVS secrets** - make redaction a deliverable before live pool use. Stop before commit/citation if any raw endpoint, port, user, worker, address, password, token, device URL, Wi-Fi value, IP, MAC, target, or NVS secret is present.
+5. **Conflating diagnostic BM1366 work with production work** - split diagnostic and pool-derived paths. Stop if production still uses diagnostic job IDs, only timeout/no-result evidence exists, or nonce results are not tied to current jobs.
+6. **Starving watchdogs, Wi-Fi, HTTP, or telemetry** - use bounded socket/UART waits, cooperative yields, watchdog checkpoints, and API/WebSocket responsiveness checks. Stop if TWDT/IWDT markers, stale telemetry, or delayed safe-stop appears.
+7. **Reporting misleading hashrate, counters, or scoreboard state** - derive statistics from runtime events and parsed share responses only. Stop if counters move without submit responses or nonzero hashrate appears without valid runtime inputs.
+8. **Expanding scope into deferred surfaces** - keep non-205, active controls, OTAWWW/recovery fault injection, display/input/BAP, and Stratum v2 below verified unless separate phases own evidence and recovery paths.
 
 ## Implications for Roadmap
 
 Based on research, suggested phase structure:
 
-### Phase 1: Foundation And Gamma 601 Boot/Log
+### Phase 1: Baseline Evidence Contract And Claim Ladder
 
-**Rationale:** This must come first because every later parity claim depends on a reproducible graph, reference guardrails, flash/monitor workflow, and safe hardware smoke loop. It should not attempt mining.\
-**Delivers:** Repo/workspace skeleton, `reference/esp-miner` guard, Bazel/Bzlmod/Cargo setup, pure crate stubs, `just` command surface, ESP-IDF Rust firmware skeleton, firmware package target, `tools/flash`, `tools/parity`, provenance policy, and minimal Gamma 601 boot/log firmware with ASIC work disabled.\
-**Addresses:** First milestone foundation, USB flash workflow, boot/platform status, parity checklist integration, provenance guardrails.\
-**Avoids:** P-01, P-02, P-07, P-08, P-11, P-13.\
-**Research flag:** Mostly standard patterns, but the Bazel wrapper around Cargo/ESP-IDF and flashable image manifest may need an implementation spike.
+**Rationale:** This must come first because the main v1.1 failure mode is overclaiming existing v1.0 controlled no-share evidence. The roadmap needs claim tiers before risky hardware work starts.\
+**Delivers:** v1.1 claim ladder, exact subclaims/non-claims, parity checklist target rows, evidence vocabulary, acceptance blockers, and baseline v1.0 controlled evidence freeze.\
+**Addresses:** Evidence-governed claim promotion, share outcome honesty, explicit deferrals.\
+**Avoids:** Controlled evidence overclaim, broad "production ready" language, deferred-scope leakage.\
+**Research flag:** Standard GSD/evidence pattern; no extra research unless checklist status semantics are unclear.
 
-### Phase 2: Gamma 601 Config And NVS Model
+### Phase 2: Mining Prerequisite Safety Gate
 
-**Rationale:** Full typed config should follow the safe boot/log path so hardware identity, defaults, API settings, and future ASIC work are not scattered as constants.\
-**Delivers:** `bitaxe-config`, Gamma 601 golden defaults, board/device identifiers, NVS key schema, validation ranges, settings update model, reboot reload tests, and explicit deferred/non-verified status for non-601 boards.\
-**Addresses:** Gamma 601 defaults, board and ASIC config model, NVS/settings behavior, early API setting names.\
-**Avoids:** P-02, P-04, P-09, P-12.\
-**Research flag:** Standard patterns; use the reference tree and golden fixtures rather than a separate research phase unless upstream config extraction is ambiguous.
+**Rationale:** Production work dispatch must not begin from fixture safety values. Safety prerequisites decide whether live ASIC work may be attempted at all.\
+**Delivers:** Fresh or explicitly bounded INA260/EMC2101/fan/safety observations, `MiningSafetyGate` inputs, stale/unavailable/faulted blockers, safe-stop preconditions, and active-control non-claims.\
+**Addresses:** Mining prerequisite safety gate, trusted BM1366 initialization gate, watchdog/safe-stop prerequisites.\
+**Avoids:** Synthetic safety token reuse, unsafe voltage/fan shortcuts, full active safety overclaim.\
+**Research flag:** Needs `/gsd-research-phase` for Ultra 205 sensor paths, safe bounds, hardware evidence protocol, and any required recovery procedure.
 
-### Phase 3: BM1370 ASIC Protocol And Safe Initialization
+### Phase 3: Production Mining Allowlist And Evidence Wrapper
 
-**Rationale:** ASIC packet formats and work/result parsing can be tested in pure Rust before live hardware control, while live init must be narrow and evidence-heavy.\
-**Delivers:** `bitaxe-asic` BM1370 codecs, CRC, register/work/result fixtures, UART adapter boundary, reset/preflight flow, staged hardware init logs, and no successful-mining claims yet.\
-**Addresses:** BM1370 ASIC behavior, ASIC reset/init, frequency transitions, work packet construction, nonce/result parsing.\
-**Avoids:** P-03, P-04, P-05, P-06, P-11.\
-**Research flag:** Needs phase research or spike for upstream BM1370 sequencing, timing, reset, voltage dependencies, and hardware evidence plan.
+**Rationale:** Every live hardware run must be repeatable, detector-gated, scoped, stoppable, and redaction-ready before real pool credentials are used.\
+**Delivers:** v1.1 mining allow-manifest schema, approved claim tiers, repo-owned evidence wrapper, detector/package/board-info/source/reference capture, abort conditions, recovery steps, target-lock rules, and redaction gates.\
+**Addresses:** Redacted credential handling, owner-ready operator workflow, exact-claim evidence ledger.\
+**Avoids:** Allow-manifest bypass, stale or ambiguous `DEVICE_URL`, unapproved commands, missing safe-state markers.\
+**Research flag:** Standard repo tooling pattern with targeted implementation research for allow-list schema and evidence artifact layout.
 
-### Phase 4: Stratum V1 And First Mining Loop
+### Phase 4: Redaction And Secret-Handling Hardening
 
-**Rationale:** Mining depends on boot, config, safe ASIC initialization, Wi-Fi/socket lifecycle, and tested protocol construction.\
-**Delivers:** `bitaxe-stratum`, deterministic protocol fixtures, fake pool harness, pool subscribe/authorize/notify/set_difficulty/submit, work queue integration, first accepted-share smoke, fallback/reconnect behavior, and mining task/watchdog plan.\
-**Addresses:** Stratum v1 mining, public/fallback pool behavior, job construction, share submission, accepted/rejected share reporting.\
-**Avoids:** P-03, P-06, P-10, P-13.\
-**Research flag:** Needs deeper research for Stratum edge cases, fake pool design, reconnect behavior, watchdog/yielding, and long-running soak criteria.
+**Rationale:** Live pool and device evidence cannot be committed or cited safely unless redaction exists before the first real run.\
+**Delivers:** Raw/committed artifact separation, deterministic redaction fixtures, final committed-artifact scan, retained-log/API/WebSocket redaction rules, NVS/settings consumption checks without printing values, and accepted category labels.\
+**Addresses:** Redacted pool credential handling, redacted observability, local runtime input policy.\
+**Avoids:** Pool credential leakage, owner identity leakage, target leakage, NVS secret leakage.\
+**Research flag:** Standard pattern; targeted research only if new Stratum fields or evidence formats introduce uncertain sensitive values.
 
-### Phase 5: AxeOS API, Logs, And Telemetry
+### Phase 5: Trusted BM1366 Init, Work, And Result Path
 
-**Rationale:** API and telemetry are user-visible parity surfaces that should be backed by real config, mining, ASIC, and system state rather than early stubs.\
-**Delivers:** `bitaxe-api`, OpenAPI models, captured response/API compare fixtures, HTTP handlers, settings PATCH, log buffer/download, `/api/ws`, `/api/ws/live`, statistics, scoreboard, pause/resume, restart, identify, and telemetry cadence checks.\
-**Addresses:** AxeOS HTTP API, WebSocket logs/live telemetry, logging/statistics/scoreboard, theme API if unchanged static assets require it.\
-**Avoids:** P-02, P-09, P-13.\
-**Research flag:** Standard HTTP/model patterns, but route-by-route compare fixtures and upstream response capture should be planned carefully.
+**Rationale:** A share claim is impossible until diagnostic ASIC behavior is separated from pool-derived production init/work/result behavior.\
+**Delivers:** Production BM1366 command semantics, full-init readiness status, pool-derived work dispatch, clean-jobs invalidation, valid job tracking, bounded result reads, nonce/result validation, timeout/fault fail-closed behavior, reset-low recovery markers, and hardware evidence.\
+**Addresses:** Trusted BM1366 initialization gate, pool-derived work dispatch, live ASIC result and nonce parsing.\
+**Avoids:** Diagnostic/production ASIC confusion, stale nonce mapping, raw frame leakage, unsafe init shortcuts.\
+**Research flag:** Needs `/gsd-research-phase` for BM1366 production sequencing, UART timing, job/result correlation, reset behavior, and hardware smoke design.
 
-### Phase 6: Safety Controllers And Self-Test
+### Phase 6: Watchdog And Runtime Responsiveness Soak
 
-**Rationale:** Power, voltage, thermal, fan, and self-test parity must be validated after the device can mine and report telemetry, because meaningful checks depend on real runtime behavior.\
-**Delivers:** TPS546/vcore control, EMC2101 thermal path, fan RPM/control, PID behavior, overheat/fault handling, fail-closed policy, display/input minimums, self-test lifecycle, hardware regression logs, and soak evidence.\
-**Addresses:** Power/voltage/thermal/fan safety, self-test lifecycle, display/input surfaces needed for status and factory flow.\
-**Avoids:** P-05, P-06, P-12.\
-**Research flag:** Needs deeper research and hardware planning; safety-critical surfaces cannot be verified without real Gamma 601 evidence.
+**Rationale:** The production runtime must stay responsive while socket and UART paths block, retry, or stall. This should be proven before relying on long live-pool sessions.\
+**Delivers:** Bounded task step budgets, socket/UART timeouts, watchdog checkpoints, API/WebSocket responsiveness checks, retained-log cadence, no unexpected reboot/panic/silence evidence, and safe-stop latency bound.\
+**Addresses:** Watchdog and safe-stop behavior, runtime telemetry responsiveness, operator trust.\
+**Avoids:** TWDT/IWDT failures, stale telemetry, delayed stop, Wi-Fi/HTTP starvation.\
+**Research flag:** Needs `/gsd-research-phase` or implementation spike for ESP-IDF FreeRTOS scheduling, watchdog feeding, stack sizes, and blocking I/O behavior under mining load.
 
-### Phase 7: OTA, Filesystem, Static Assets, And Release Packaging
+### Phase 7: Real Stratum Socket And Share Lifecycle
 
-**Rationale:** OTA and release behavior depends on stable partition/image layout, NVS/API choices, static assets, recovery behavior, and license provenance.\
-**Delivers:** Partition table/image manifest with offsets and SHA256s, SPIFFS/static AxeOS assets, recovery page behavior, firmware OTA, OTAWWW, image size checks, release naming, dependency license inventory, source/reference commit manifest, and installation/flashing instructions.\
-**Addresses:** Static assets/recovery, OTA firmware, OTAWWW, filesystem behavior, factory/update image packaging, release artifacts.\
-**Avoids:** P-08, P-09, P-11, P-14.\
-**Research flag:** Needs phase research for ESP-IDF OTA/partition details, rollback/recovery testing, large erase watchdog behavior, and release compliance.
+**Rationale:** Only after gates, redaction, ASIC production path, and responsiveness are in place should the firmware attempt real pool lifecycle and share submission evidence.\
+**Delivers:** `TcpStream` Stratum adapter, pure production Stratum state machine, subscribe/authorize/difficulty/extranonce/notify handling, clean-jobs behavior, submit/response classification, reconnect/backoff/fallback, fake-pool tests, and live-pool evidence for accepted, rejected, or safely pending share outcome.\
+**Addresses:** Real Stratum v1 socket lifecycle, share submission and accepted/rejected outcome, share outcome honesty.\
+**Avoids:** Happy-path-only Stratum, TCP-connect-as-success, synthetic submit responses, uncontrolled pool logging.\
+**Research flag:** Needs `/gsd-research-phase` for pool edge cases, fake-pool coverage, reconnect/fallback semantics, and share response evidence criteria.
 
-### Phase 8: Expansion Beyond Gamma 601
+### Phase 8: Mining Telemetry, Statistics, And API Projection
 
-**Rationale:** Additional boards, ASICs, Stratum v2, BAP, and all-board release automation should wait until the Gamma 601 path has stable evidence and release discipline.\
-**Delivers:** One-board/one-ASIC-at-a-time expansion, Bitaxe 205/BM1366 path, additional ASIC families, Stratum v2, BAP, all-board factory image matrix, and per-board evidence gates.\
-**Addresses:** Non-601 board parity, additional ASICs, Stratum v2, BAP accessory port, all-board release artifacts.\
-**Avoids:** P-04, P-05, P-10, P-11, P-12.\
-**Research flag:** Needs research per board/ASIC/protocol; do not inherit verification from Gamma 601.
+**Rationale:** User-visible API/WebSocket/statistics surfaces must reflect the same runtime events that produced socket, ASIC, and share evidence.\
+**Delivers:** Event-sourced share counters, rejected reason categories, observed hashrate inputs, best-difficulty/scoreboard semantics, `/api/system/info`, `/api/system/statistics`, `/api/system/scoreboard`, `/api/ws`, `/api/ws/live` captures, and post-stop stale-data checks.\
+**Addresses:** Live hashrate and share statistics, scoreboard population, API/WebSocket telemetry.\
+**Avoids:** Expected-hashrate masquerading as observed hashrate, counter/API mismatches, stale active-mining state after stop.\
+**Research flag:** Standard model/projection work; route-specific compare fixture planning may need targeted research.
+
+### Phase 9: Safe-Stop And Recovery Evidence
+
+**Rationale:** A production run is not trusted until normal and error stops prove the socket, queue, ASIC path, work submission, and API state all end bounded and observable.\
+**Delivers:** Safe-stop state transition, post-stop artifacts, socket inactive/closed marker, queue drained/invalidated marker, mining disabled, hardware control disabled, work submission disabled, API/WebSocket stopped projection, and recovery notes.\
+**Addresses:** Watchdog/safe-stop behavior, mining prerequisite safety, exact evidence closure.\
+**Avoids:** Safe-stop as log-only, queue/socket continuing after stop, API still advertising active mining.\
+**Research flag:** Needs focused planning for hardware-safe recovery steps; avoid destructive/fault-injection flows unless explicitly phase-gated.
+
+### Phase 10: Evidence Closure, Rollout Limits, And Parity Promotion
+
+**Rationale:** Checklist and release language should change only after artifacts prove each exact v1.1 subclaim and redaction passes.\
+**Delivers:** Final redacted evidence pack, `just parity` pass, checklist updates for STR/ASIC/STAT/API/SAFE rows, explicit non-claims, release/roadmap notes, and blocked/pending items for unobserved shares or deferred surfaces.\
+**Addresses:** Evidence-governed claim promotion, exact-claim mining ledger, explicit deferrals.\
+**Avoids:** Scope creep into non-205 boards, OTAWWW/recovery fault injection, runtime display/input/BAP, active safety closure, Stratum v2, and all-board language.\
+**Research flag:** Standard evidence closure; no extra research unless a claim depends on a still-ambiguous artifact.
 
 ### Phase Ordering Rationale
 
-- Foundation and safe boot/log come first because no later evidence is credible without a repeatable build/package/flash/monitor loop and a known reference baseline.
-- Config comes before ASIC and Stratum because board defaults, NVS names, ranges, and identity drive hardware control, API output, and mining behavior.
-- ASIC comes before Stratum because work packets, reset/init, and result parsing are prerequisites for meaningful mining.
-- Stratum comes before API/telemetry completion because API statistics and WebSocket live state should reflect real mining lifecycle and counters.
-- Safety/self-test follows initial mining but must gate release-worthy mining parity because voltage, fan, thermal, and fail-closed behavior are safety-critical.
-- OTA/release comes after stable runtime surfaces because update behavior and release compliance depend on partition, asset, source, and license decisions.
-- Expansion is last to avoid diluting Gamma 601 evidence and creating broad unverified board claims.
+- The claim ladder comes first because implementation without exact claim tiers invites v1.0 controlled evidence overpromotion.
+- Safety, allow-list, and redaction precede live pool work because the first real mining run touches hardware risk and owner secrets.
+- BM1366 production work precedes Stratum share evidence because a valid share must come from live ASIC-derived work, not a socket transcript.
+- Watchdog responsiveness precedes longer live-pool evidence because blocking socket/UART loops can otherwise invalidate telemetry, safe-stop, and service availability claims.
+- Stratum and share lifecycle precede statistics/API promotion because counters, hashrate, scoreboard, and WebSocket data must derive from real runtime events.
+- Safe-stop and evidence closure finish the milestone by proving postconditions, preserving exact non-claims, and preventing deferred scope from leaking into v1.1.
 
 ### Research Flags
 
 Phases likely needing `/gsd-research-phase` during planning:
 
-- **Phase 3:** BM1370 init sequence, timing, hardware safety gates, UART behavior, and power dependencies.
-- **Phase 4:** Stratum edge cases, fake pool harness, reconnect/fallback behavior, watchdog/yielding, and soak evidence.
-- **Phase 6:** TPS546, EMC2101, fan/PID behavior, self-test sequencing, and hardware regression protocol.
-- **Phase 7:** OTA partition layout, rollback/recovery behavior, static asset packaging, image manifests, and release license obligations.
-- **Phase 8:** Each new board, ASIC family, Stratum v2, and BAP path needs targeted research and evidence planning.
+- **Phase 2:** Ultra 205 power/thermal/fan sensor paths, safe bounds, hardware evidence protocol, and any recovery constraints.
+- **Phase 5:** BM1366 production init sequencing, UART timing, job/result correlation, reset/fail-closed behavior, and hardware smoke evidence.
+- **Phase 6:** ESP-IDF FreeRTOS scheduling, watchdog feeding, blocking socket/UART timeouts, task stack sizing, and responsiveness evidence.
+- **Phase 7:** Stratum v1 live-pool edge cases, fake-pool scenarios, reconnect/fallback semantics, and accepted/rejected-share evidence criteria.
+- **Phase 9:** Safe-stop hardware recovery proof if postcondition checks require hardware effects beyond passive observation.
 
 Phases with standard patterns that can usually skip a standalone research phase:
 
-- **Phase 1:** Repo skeleton, Bazel/Bzlmod setup, `just` wrappers, and pure crate scaffolding are documented patterns; only the ESP-IDF image wrapper may need a spike.
-- **Phase 2:** Typed config, NVS schema modelling, and golden defaults are standard Rust modelling work once the reference files are available.
-- **Phase 5:** HTTP model/serializer work is standard, but API compare fixture design should be explicit in the phase plan.
+- **Phase 1:** Evidence contract and claim ladder are governance work using existing parity conventions.
+- **Phase 3:** Allow-list and wrapper upgrade should extend existing `tools/parity` and evidence script patterns.
+- **Phase 4:** Redaction hardening follows existing local secret-handling policy and deterministic fixture patterns.
+- **Phase 8:** Runtime DTO/API/WebSocket projection is standard once event sources are defined.
+- **Phase 10:** Evidence closure and checklist promotion are established exact-claim workflows.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
-| --- | --- | --- |
-| Stack | MEDIUM-HIGH | Strong official source support for ESP-IDF Rust, Bazel 9, `rules_rust`, `espup`, and `espflash`; ESP-IDF/Cargo/Bazel wrapper details still need implementation proof. |
-| Features | HIGH | Observable parity surfaces are well established from project docs and upstream ESP-Miner contracts; exact V1/deferred sequencing is more judgment-based. |
-| Architecture | HIGH | Functional core plus imperative shell is directly aligned with local standards and project decisions; ESP-IDF service adapters need spikes as they are implemented. |
-| Pitfalls | MEDIUM-HIGH | Roadmap, parity, safety, and provenance risks are well supported; exact ASIC/power sequencing confidence is lower until the reference tree and hardware traces exist. |
+|------|------------|-------|
+| Stack | HIGH | Strong agreement across local repo state, official ESP-IDF/esp-rs docs, and prior v1.0 validation. No dependency expansion is needed for v1.1. |
+| Features | HIGH | Table stakes and deferrals are well grounded in v1.0 evidence boundaries, parity checklist state, user-visible mining expectations, and milestone scope. |
+| Architecture | HIGH | Functional core / imperative shell is already the repo standard and maps cleanly to existing Stratum, ASIC, safety, API, firmware adapter, and evidence boundaries. |
+| Pitfalls | HIGH | Evidence, safety, redaction, watchdog, and scope risks are strongly supported by repo rules, current implementation boundaries, and ESP-IDF docs. |
+| Live mining outcome | MEDIUM | Real accepted/rejected share behavior remains unproven until detector-gated hardware evidence observes a live ASIC-derived submit and parsed pool response. |
 
-**Overall confidence:** MEDIUM-HIGH
+**Overall confidence:** HIGH for roadmap structure and constraints; MEDIUM for final share-outcome feasibility until hardware evidence exists.
 
-## Gaps to Address
+### Gaps to Address
 
-- `reference/esp-miner` is currently absent in this checkout; Phase 1 must initialize and pin it before serious parity work.
-- Confirm Gamma 601 ESP32-S3 target details, board pins, power path, and BM1370 assumptions from the pinned reference tree.
-- Capture upstream API responses, config defaults, logs, and hardware behavior before claiming API or hardware parity.
-- Define the hardware evidence format early: command, board, port, firmware commit, reference commit, timestamp, log path, observed result, and conclusion.
-- Design the HIL/hardware-smoke strategy for voltage, fan, thermal, ASIC init, mining, and long-running soak before safety-critical phases.
-- Prove the Bazel wrapper around Cargo/ESP-IDF firmware builds can produce declared ELF/bin/image artifacts and package manifests.
-- Decide how reference-derived fixtures and any intentionally ported GPL-covered expression are labeled and isolated before release artifacts.
-- Reassess ESP-IDF 6 only after released `esp-idf-svc`/`esp-idf-hal`/`esp-idf-sys` versions support it fully and the Gamma 601 baseline is stable.
+- **Accepted/rejected share observation:** Planning must allow a real rejected share, accepted share, or explicit safe blocker; do not require "accepted only" or promote no-share evidence.
+- **Fresh safety observations:** Confirm which Ultra 205 power, thermal, fan, voltage, and ASIC init observations are required to enable bounded work without claiming full active safety closure.
+- **BM1366 production sequencing:** Separate diagnostic chip/work evidence from production pool-derived work and live result parsing.
+- **Watchdog/runtime behavior:** Validate task budgets, socket/UART timeouts, yield cadence, and API/WebSocket responsiveness under mining load.
+- **Redaction coverage:** Extend tests for pool URL, port, worker, BTC-address-like username, password, device URL, IP, MAC, NVS values, Stratum target/extranonce, share payloads, retained logs, WebSocket captures, and command summaries.
+- **Device target provenance:** Use only explicit same-session `DEVICE_URL` or detector-gated fresh monitor derivation; no scans, stale logs, mDNS, ARP, or router state.
+- **Deferred scope control:** Keep non-205 boards, OTAWWW/recovery fault injection, runtime display/input/BAP, Stratum v2, active voltage/fan/fault closure, and unbounded stress mining below verified unless later phases explicitly own them.
 
 ## Sources
 
 ### Primary (HIGH confidence)
 
-- `.planning/PROJECT.md` - project scope, requirements, decisions, constraints, and first milestone target.
-- `.planning/research/STACK.md` - recommended toolchain, versions, build strategy, flashing workflow, and risks.
-- `.planning/research/FEATURES.md` - parity features, first milestone, deferred features, anti-features, and dependency flow.
-- `.planning/research/ARCHITECTURE.md` - components, boundaries, data flow, build order, and testing strategy.
-- `.planning/research/PITFALLS.md` - critical pitfalls, warning signs, prevention strategies, phase mapping, and guardrails.
-- `docs/project/gsd-new-project-brief.md`, `docs/project/seed-layout.md`, `docs/project/project-decisions.md`, `docs/project/first-milestone.md` - accepted project decisions.
-- `docs/parity/checklist.md` and `PROVENANCE.md` - parity evidence and licensing guardrails.
-- Upstream ESP-Miner commit `c1915b0a63bfabebdb95a515cedfee05146c1d50` - accepted reference baseline for parity research.
+- `.planning/research/STACK.md` - stack continuity, version pins, adapter boundaries, evidence tooling recommendations, and dependency non-additions.
+- `.planning/research/FEATURES.md` - v1.1 table stakes, differentiators, anti-features, acceptance boundaries, dependency flow, and explicit deferrals.
+- `.planning/research/ARCHITECTURE.md` - production runtime architecture, component boundaries, data flow, pure/effectful patterns, and suggested build order.
+- `.planning/research/PITFALLS.md` - critical pitfalls, blockers, warning signs, phase mapping, technical debt patterns, and recovery strategies.
+- `.planning/PROJECT.md`, `.planning/MILESTONES.md`, `.planning/milestones/v1.0-MILESTONE-AUDIT.md`, `docs/parity/checklist.md` - active milestone scope, v1.0 shipped state, exact non-claims, and parity evidence state.
+- `AGENTS.md` and repo-local guidance - Ultra 205 detector gate, local credential policy, redaction rules, hardware evidence requirements, and destructive/fault-injection limits.
+- `AGENTS.bright-builds.md`, `standards/core/architecture.md`, `standards/core/verification.md` - functional-core/imperative-shell, exact verification expectations, and pre-commit verification guidance.
 
-### Official / Vendor (HIGH confidence)
+### Implementation Evidence (HIGH confidence)
 
-- ESP-IDF versions and releases - `https://docs.espressif.com/projects/esp-idf/en/stable/esp32/versions.html`, `https://github.com/espressif/esp-idf/releases`
-- ESP-IDF build, partition, OTA, NVS, FreeRTOS, watchdog, and power-management docs - used for platform and release risk assessment.
-- ESP Rust and crates - `https://docs.espressif.com/projects/rust/`, `https://github.com/esp-rs/esp-idf-svc`, `https://docs.rs/crate/esp-idf-sys/latest`
-- `espup` and `espflash` - `https://github.com/esp-rs/espup`, `https://github.com/esp-rs/espflash`
-- Bazel, Bazelisk, and `rules_rust` - `https://bazel.build/release`, `https://bazel.build/install/bazelisk`, `https://bazelbuild.github.io/rules_rust/`, `https://registry.bazel.build/modules/rules_rust`
-- SPDX and GPL-3.0 guidance - `https://spdx.org/licenses/GPL-3.0-only`, `https://spdx.dev/learn/handling-license-info/`
+- `firmware/bitaxe/src/main.rs`, `controlled_mining_runtime.rs`, `asic_adapter.rs`, `safety_adapter.rs`, `runtime_snapshot.rs`, `http_api.rs`, `websocket_api.rs`, `wifi_adapter.rs`, `network_stack.rs`, `settings_adapter.rs` - current firmware shell, controlled runtime, ASIC/safety adapters, API/WebSocket snapshots, Wi-Fi, network, and settings boundaries.
+- `crates/bitaxe-stratum/src/v1/*`, `crates/bitaxe-asic/src/bm1366/*`, `crates/bitaxe-safety/src/*`, `crates/bitaxe-api/src/*` - existing pure Stratum, BM1366, safety, API, statistics, and scoreboard contracts to preserve and extend.
+- `scripts/phase21-live-mining-evidence.sh`, `scripts/phase21-pool-input-bridge.sh`, `scripts/phase21-live-mining-package.sh`, `tools/parity/src/mining_allow.rs` - current evidence, pool input, package, redaction, and allow-list patterns.
 
-### Upstream ESP-Miner Surfaces (HIGH for observed contracts, MEDIUM until local reference is initialized)
+### Official / Vendor (HIGH to MEDIUM-HIGH confidence)
 
-- `config-601.cvs` - Gamma 601 defaults.
-- `main/device_config.h` - board and ASIC matrix.
-- `main/http_server/openapi.yaml` - AxeOS API contract.
-- `main/http_server/http_server.c`, `main/nvs_config.c`, `main/main.c`, `main/self_test/self_test.c`, `main/bap/bap_readme.md` - observable behavior and parity targets.
-- `readme.md` and `flashing.md` - user/admin and flashing workflow surfaces.
+- ESP-IDF v5.5.4 release and docs - `https://github.com/espressif/esp-idf/releases/tag/v5.5.4`, lwIP sockets, watchdogs, FreeRTOS SMP, power management, and NVS behavior.
+- esp-rs docs and crates - `esp-idf-svc`, `esp-idf-sys`, and `EspWifi` integration supporting Rust `std` TCP/UDP over ESP-IDF/lwIP.
+- `espflash` docs/crate - ESP32-S3 board-info, flash, monitor, list-ports, and save-image workflow support.
+- Bazel and `rules_rust` docs - Bazel 9/Bzlmod/rules_rust compatibility and current Cargo dependency mirroring pattern.
 
-### Local Observation (MEDIUM confidence)
-
-- Current checkout had no `reference/` directory and `git submodule status --recursive` returned no submodules during pitfalls research on 2026-06-20.
-
-______________________________________________________________________
-
-*Research completed: 2026-06-20*\
+*Research completed: 2026-07-04*\
 *Ready for roadmap: yes*

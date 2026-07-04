@@ -1,147 +1,185 @@
-# Feature Research: Bitaxe Rust ESP-IDF Firmware
+# Feature Research
 
-**Domain:** Bitaxe ESP-Miner Rust firmware rewrite\
-**Researched:** 2026-06-20\
-**Overall confidence:** HIGH for observable surfaces, MEDIUM for v1/deferred sequencing
+**Domain:** Ultra 205 trusted Stratum v1 production mining\
+**Researched:** 2026-07-04\
+**Confidence:** HIGH for v1.0 evidence boundaries and required user-visible surfaces; MEDIUM for production share acceptance details until v1.1 hardware evidence observes a real accepted or rejected share.
 
-## Summary
+## Feature Landscape
 
-Device-user parity is the right feature boundary: the Rust firmware should match the behavior a Bitaxe owner, administrator, mining pool, API client, accessory, or flashing tool can observe from upstream ESP-Miner. It should not mirror C file boundaries, FreeRTOS task layout, or line-level implementation details unless those internals leak into behavior.
+v1.0 shipped a safe, evidence-governed Ultra 205 firmware with build/package/flash/monitor, config/NVS, BM1366 diagnostics, Stratum v1 pure behavior, AxeOS API/static/WebSocket routes, safety decisions, OTA/recovery boundaries, and a controlled no-share mining/soak harness. v1.1 should not rebuild those foundations. It should replace the synthesized controlled transcript with a real Stratum v1 socket path, connect that path to BM1366 work/result/share flow, and prove one bounded production mining session through redacted evidence.
 
-The upstream baseline used by this research is the project-accepted ESP-Miner commit `c1915b0a63bfabebdb95a515cedfee05146c1d50`, which GitHub currently reports as `master`. Local `reference/esp-miner` is not present yet, so source verification used the accepted project docs plus upstream official GitHub files at that commit-equivalent branch. Key checked surfaces: `config-601.cvs`, `main/device_config.h`, `main/http_server/openapi.yaml`, `main/http_server/http_server.c`, `main/nvs_config.c`, `main/main.c`, `main/self_test/self_test.c`, `main/bap/bap_readme.md`, and the repository tree.
+The acceptance boundary is deliberately narrow: an Ultra 205 owner can configure local Wi-Fi and pool credentials, flash the firmware, start a safety-gated production mining run, observe real pool lifecycle and live mining telemetry, and see either at least one accepted or rejected share or an explicit milestone failure if safe prerequisites cannot produce that outcome. Controlled no-share behavior remains useful as regression evidence, but it is not share proof.
 
-Recommendation: split roadmap language into three scopes:
+### Table Stakes (Users Expect These)
 
-1. **First milestone:** project foundation plus Gamma 601 BM1370 boot/log/flash path. No mining parity.
-1. **V1 Gamma parity:** a usable Gamma 601 miner with upstream-compatible board defaults, BM1370 mining, Stratum v1, safety controls, AxeOS API/static assets, telemetry, self-test, and update/flash behavior.
-1. **Deferred full parity:** additional board families, additional ASIC models, Stratum v2 completeness, BAP completeness, release automation for all factory images, and advanced/nonessential UI-adjacent behavior.
+Features users assume exist. Missing these = trusted production mining is not credible.
 
-Differentiators for the Rust rewrite should be project features, not end-user behavioral divergence: explicit parity evidence, pure Rust domain crates, safer hardware-control state modeling, `just` flash/monitor ergonomics, and repeatable API/golden/hardware evidence.
+| Feature | Why Expected | Complexity | Dependencies On v1.0 | Evidence Needed |
+|---------|--------------|------------|----------------------|-----------------|
+| Real Stratum v1 socket lifecycle | Owners expect configured pool settings to drive actual TCP Stratum I/O, not a synthesized transcript. | HIGH | NVS pool settings, Wi-Fi flash seeding, Stratum v1 message types, controlled runtime state model, AxeOS settings route. | Detector-gated Ultra 205 evidence showing connect, subscribe, authorize, difficulty/extranonce, notify/job, reconnect or safe-stop markers from real socket I/O with all pool values redacted. |
+| Redacted pool credential handling | Pool URL, worker, BTC-address-derived usernames, passwords, endpoints, and tokens are sensitive local owner inputs. | MEDIUM | `wifi-credentials.json` and `pool-credentials*.json` local-input policy, redaction review scripts, retained-log discipline. | Redaction review proving no raw pool URL, port, user, worker, address, password, token, device URL, Wi-Fi secret, endpoint, or NVS secret appears in committed evidence. |
+| Trusted BM1366 initialization gate | Production mining requires the BM1366 to be initialized for real work, not only chip-detect or diagnostic timeout behavior. | HIGH | BM1366 pure init plan, UART adapter, reset adapter, diagnostic chip-detect/work-result evidence, safety gate tokens. | Hardware-regression or tightly bounded hardware-smoke evidence that names board `205`, source/reference commits, init stage markers, reset/power/frequency prerequisites used, and final go/no-go state. |
+| Pool-derived work dispatch | A production miner must transform live `mining.notify` data into BM1366 work instead of dispatching a fixed diagnostic job. | HIGH | Coinbase/merkle work builder, work queue, guarded dispatch planner, BM1366 work packet logic. | Evidence linking a redacted real notify/job lifecycle to typed BM1366 work dispatch markers without raw ASIC frames or raw pool job secrets in committed artifacts. |
+| Live ASIC result and nonce parsing | Share submission cannot be claimed until live BM1366 results are parsed from hardware under mining load. | HIGH | BM1366 result parser, UART transport, runtime state counters, guarded mining loop. | Hardware evidence showing at least one valid result/nonce parse or a clear failure state. If no valid result occurs, accepted/rejected share remains unclaimed. |
+| Share submission and accepted/rejected outcome | The milestone goal requires at least one real pool response to a submitted share, or an explicit failure if it cannot be achieved safely. | HIGH | Stratum submit message serializer, runtime share counters, API mining mapper. | Redacted evidence showing `mining.submit` was sent for a live ASIC-derived share and pool response was accepted or rejected. Do not overclaim accepted/rejected behavior from synthetic responses or no-share soak. |
+| Mining prerequisite safety gate | Owners need assurance that production mining only starts when minimum safe power, thermal, fan, voltage, and evidence prerequisites are satisfied. | HIGH | Pure safety controllers, safety telemetry DTOs, watchdog status, fail-closed mining gate, Phase 20/21 safety boundaries. | Evidence that the gate blocks when prerequisites are missing and allows only the documented bounded mining mode. Claims should stay limited to mining prerequisites, not full active safety closure. |
+| Live hashrate and share statistics | Owners expect API and AxeOS surfaces to show live hashrate, share counts, pool difficulty, lifecycle, work submission, and rejected reasons. | MEDIUM | `MiningRuntimeState`, `MiningStateWire`, statistics mapper, WebSocket live telemetry route. | `/api/system/info`, `/api/system/statistics`, and `/api/ws/live` captures correlated to the same mining session with redacted target data and non-zero values only when produced by the run. |
+| Scoreboard population | Accepted or high-difficulty shares should appear as scoreboard entries in the upstream-compatible shape. | MEDIUM | `ScoreboardEntry`, `scoreboard_response`, share difficulty tracking. | API evidence for `/api/system/scoreboard` showing entries only when live results justify them; empty scoreboard remains acceptable for rejected-share-only evidence if documented. |
+| Watchdog and safe-stop behavior | Production mining must not starve firmware services, panic, silently hang, or leave work submission enabled after stop/failure. | MEDIUM | Watchdog checkpoints, safe-stop markers, retained logs, bounded soak pattern. | Bounded session evidence with watchdog checkpoints, no unexpected reboot/panic/silence markers, and final `mining=disabled`, `hardware_control=disabled`, `work_submission=disabled` safe-stop state. |
+| Evidence-governed claim promotion | v1.1 must advance only exact claims proven by artifacts. | MEDIUM | Parity checklist, release guide evidence rules, redaction review, `just parity`. | Checklist updates for STR/ASIC/STAT/API/SAFE rows cite exact v1.1 artifacts and preserve non-claims for unobserved shares, active controls, OTA/recovery, display/input, and non-205 boards. |
 
-Source basis:
+### Differentiators (Competitive Advantage)
 
-- Local project definition: `.planning/PROJECT.md`, `docs/project/gsd-new-project-brief.md`, `docs/parity/checklist.md`, `docs/project/first-milestone.md`, `CONTEXT.md`
-- Upstream repo tree: `https://api.github.com/repos/bitaxeorg/ESP-Miner/git/trees/c1915b0a63bfabebdb95a515cedfee05146c1d50?recursive=1`
-- Gamma 601 defaults: `https://raw.githubusercontent.com/bitaxeorg/ESP-Miner/master/config-601.cvs`
-- Board/ASIC matrix: `https://raw.githubusercontent.com/bitaxeorg/ESP-Miner/master/main/device_config.h`
-- AxeOS API contract: `https://raw.githubusercontent.com/bitaxeorg/ESP-Miner/master/main/http_server/openapi.yaml`
-- User/admin surfaces: `https://raw.githubusercontent.com/bitaxeorg/ESP-Miner/master/readme.md`
-- Flashing workflow: `https://raw.githubusercontent.com/bitaxeorg/ESP-Miner/master/flashing.md`
+Features that set the project apart. Not required for a miner to run, but valuable because they make Rust firmware trustworthy.
 
-## Table Stakes
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Exact-claim mining evidence ledger | Owners and contributors can see exactly what was proven on real Ultra 205 hardware and what remains a non-claim. | MEDIUM | Keep one redacted v1.1 evidence root with package manifest, detector, board-info, commands, logs, API/WebSocket captures, share outcome, and conclusion. |
+| Safety-gated production enablement | Production mining becomes opt-in and prerequisite-bound instead of silently enabled by compile-time or settings accidents. | HIGH | Preserve fail-closed defaults; make the runtime explain why mining is blocked. |
+| Redacted observability by default | The firmware can be debugged and audited without leaking owner pool credentials or private network details into committed evidence. | MEDIUM | Retain labels and lifecycle markers, not secrets. Raw developer artifacts can exist locally but must not be promoted. |
+| Pure core, thin hardware shell | Stratum, work construction, result classification, counters, statistics, and safety decisions remain testable without hardware. | MEDIUM | Build new production logic as domain types first, then connect ESP-IDF sockets/UART in adapters. |
+| Share outcome honesty | A rejected share is a valid milestone outcome if the pool really rejected a live ASIC-derived submission. | LOW | Acceptance should require real pool response evidence, not "accepted-only" optimism. |
+| Owner-ready operator workflow | A single documented flow can detect, flash, seed Wi-Fi/pool settings, run bounded mining, capture telemetry, safe-stop, and redact evidence. | MEDIUM | Best implemented as repo-owned `just` or script surface that follows existing detector and credential rules. |
 
-Features in this section must be tracked for device-user parity. The **V1 recommendation** column distinguishes first Gamma release scope from later full-parity scope.
+### Anti-Features (Commonly Requested, Often Problematic)
 
-| Feature surface | Observable behavior to match | V1 recommendation | Complexity | Dependencies |
-| --- | --- | --- | --- | --- |
-| Board and ASIC config model | Board version, family, ASIC model, frequency/voltage options, core counts, power targets, temperature sensor and regulator capabilities appear correctly in logs/API/settings. | V1: Gamma 601 only; track all boards as deferred parity items. | Medium | Reference submodule, `bitaxe-config`, NVS model, board fixtures. |
-| Gamma 601 defaults | `devicemodel=gamma`, `boardversion=601`, `asicmodel=BM1370`, `asicfrequency=525`, `asicvoltage=1150`, public-pool defaults, fallback pool defaults, fan/self-test defaults. | First milestone seed; V1 verified. | Low | Config parser, NVS seed data, flash/package workflow. |
-| Boot and platform status | Firmware boots safely, logs identity/basic platform status, reports PSRAM, version, reset reason, partition, heap, CPU, MAC/IP, and degraded-mode failures. | First milestone boot/log subset; V1 full system info fields. | Medium | ESP-IDF app skeleton, logging, global system model, API model. |
-| USB build/package/flash/monitor workflow | Developer can build, package, flash, and monitor a connected Gamma 601 with clear serial-port behavior and actionable failures. | First milestone. | Medium | Bazel graph, `just`, image packaging, flash tool wrapper. |
-| Wi-Fi/AP/connectivity behavior | Wi-Fi config, AP/captive-portal behavior, DNS redirect, private-network API authorization, mDNS/admin access expectations. | V1, before AxeOS/API acceptance. | High | NVS, ESP-IDF Wi-Fi, HTTP server, DNS server, filesystem/recovery. |
-| NVS/settings behavior | Upstream key names, defaults, REST names, validation ranges, migrations, async save behavior, factory config behavior. | V1 for Gamma-visible keys; full key matrix tracked. | High | Config model, API PATCH, flash config image, migration fixtures. |
-| BM1370 ASIC behavior | ASIC reset, power-up, serial transport, CRC/packet layout, init sequence, frequency transition, work send, nonce/result parsing. | V1 for Gamma 601. | High | Board config, power rails, serial adapter, `bitaxe-asic`, hardware evidence. |
-| Mining loop and Stratum v1 | Connect to pool, subscribe/authorize, construct jobs, send ASIC work, submit shares, handle fallback pool, report accepted/rejected shares and rejection reasons. | V1. | High | Wi-Fi, config, BM1370 ASIC path, work queue, `bitaxe-stratum`, telemetry. |
-| Stratum v2 | SV2 protocol settings, authority pubkey/channel type, coordinator behavior, response batching, share indicators. | Deferred after V1 unless a Gamma 601 acceptance test explicitly requires SV2. | High | Stable SV1 loop, protocol coordinator, API settings, pool test fixtures. |
-| AxeOS HTTP API | OpenAPI-compatible routes: `/api/system/info`, `/api/system/asic`, `/api/system/statistics`, `/api/system/scoreboard`, `/api/system/wifi/scan`, `/api/system/logs`, `/api/system`, pause/resume/restart/identify/blockFound dismiss, OTA/OTAWWW. | V1 core routes: info, asic, settings, logs, pause/resume, restart, identify, statistics/scoreboard if mining exists; OTA can be late V1. | High | API models, NVS, system state, log buffer, statistics, OTA partitions. |
-| WebSocket logs and live telemetry | `/api/ws` streams logs and `/api/ws/live` streams partial system info updates expected by AxeOS/API clients. | V1. | Medium | HTTP server, log buffer, system info serializer, task scheduling. |
-| Static AxeOS assets and recovery page | Serve packaged AxeOS assets, gzip/content-type behavior, cache headers, `/recovery`, fallback to recovery when filesystem unavailable, redirect behavior. | V1 for asset compatibility; no Angular rewrite. | Medium | SPIFFS/filesystem, partition layout, asset packaging, HTTP server. |
-| Theme API | `/api/theme` GET/POST persists scheme/colors used by existing AxeOS assets. | V1 if existing AxeOS assets are shipped unchanged; otherwise explicitly defer with UI compatibility evidence. | Low | NVS theme keys, HTTP server. |
-| Power/voltage/thermal/fan safety | ASIC reset/init, TPS546 support for Gamma, vcore control, EMC2101 thermal, fan RPM/control, PID behavior, fault reporting, overheat behavior. | V1 safety gate for mining. | High | I2C/ADC, board config, power adapters, thermal model, hardware evidence. |
-| Self-test lifecycle | Factory/self-test flag behavior, display messages, fan/power/vcore/temp/hashrate/domain checks, PASS/FAIL/restart/cancel behavior. | V1 for Gamma 601 if factory-user parity is required; can follow first mining loop. | High | Display/input, power/thermal, BM1370, hashrate monitor, NVS. |
-| Display and input | Screen rendering, rotation/invert/timeout settings, identify behavior, self-test messages, input/BOOT/RESET interaction where observable. | V1 minimal status/self-test behavior; full rendering polish after mining/API. | Medium | NVS, display driver, input GPIO, system state. |
-| Logging/statistics/scoreboard | Log buffer/download, live logs, hashrate windows, error percentage, best/session difficulty, top shares, block found state, statistics labels/history. | V1 for fields visible in API/AxeOS after mining. | Medium | Mining loop, result parser, time source, NVS best diff/scoreboard persistence. |
-| OTA/filesystem/release artifacts | Firmware OTA, AxeOS OTAWWW, partition layout, SPIFFS behavior, factory/update image packaging, per-board image naming. | V1 for 601 update path if release-worthy; all-board release matrix deferred. | High | Partition CSV equivalent, package tool, HTTP upload, flash artifacts. |
-| BAP accessory port | UART protocol with checksum, request/response, subscriptions, settings, AP-mode limitations, errors, 115200 8N1 behavior. | Deferred after core Gamma parity unless accessory use is an explicit V1 acceptance requirement. | Medium | System info/settings model, UART, scheduler, API-equivalent serializers. |
-| Additional boards and ASICs | BM1397, BM1366, BM1368, BM1370XP/Gamma Duo/Turbo, Max/Ultra/Hex/Supra families, board-specific regulators/sensors. | Deferred after Gamma 601 V1; track from day one in checklist. | High | Board fixtures, ASIC variants, hardware access, per-board safety evidence. |
+Features that seem good but create problems.
 
-## First Milestone Features
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Claiming production mining from controlled no-share soak | v1.0 already has working controlled markers, so it is tempting to promote them. | Phase 21 explicitly did not observe accepted/rejected shares, live nonce parsing, or full production mining. | Treat controlled no-share as regression/preflight only; require real socket plus live ASIC-derived share evidence for v1.1 claims. |
+| Hardcoded transcript or fake pool fallback as acceptance evidence | Deterministic tests are easier than real pool variability. | It bypasses the owner-visible behavior this milestone is about. | Keep fake/controlled fixtures for unit tests and preflight, then run a real pool session for acceptance. |
+| Logging raw Stratum messages, pool endpoints, workers, or ASIC frames | Raw logs make debugging easier. | They can leak owner secrets, addresses, endpoints, or proprietary pool details and violate evidence policy. | Log redacted lifecycle/status markers and store raw artifacts only in ignored local paths when absolutely necessary. |
+| Starting mining when safety evidence is missing | It may produce a share faster. | Unsafe hardware-control surfaces can damage hardware and invalidate the milestone. | Fail closed with a user-visible blocked reason and record missing prerequisites. |
+| Full active safety closure inside v1.1 | Production mining naturally raises voltage/fan/thermal questions. | Full active control, fault stimulus, and recovery closure are broader than the milestone and require separate evidence. | Prove only the minimum mining prerequisite gate; leave full active safety parity as an exact non-claim. |
+| Unbounded soak or stress mining | Longer runs feel more convincing. | It expands risk before watchdog, safe-stop, and thermal/power prerequisites are fully proven. | Use bounded sessions with documented timeout, stop condition, watchdog checkpoints, and recovery path. |
+| Network scanning or stale target inference | It can find the device when logs are redacted. | Repo rules prohibit deriving `DEVICE_URL` from scans, stale logs, mDNS, ARP, router state, or unrelated evidence. | Use only fresh detector-gated flash/monitor output with exactly one origin-only target when needed, then redact before commit. |
+| Treating rejected-share-only as failure | Accepted shares feel more satisfying. | A real rejected share still proves socket, ASIC result, submit, response, counters, and telemetry flow. | Accept either one real accepted or rejected share; record reason if rejected. |
+| Enabling Stratum v2 or non-205 boards now | They are legitimate future parity surfaces. | They distract from the Ultra 205 BM1366 Stratum v1 production path and need separate evidence. | Keep v1.1 scoped to Ultra 205, BM1366, Stratum v1. |
 
-The first milestone is not a mining release. It should prove the repo, build, flash, and safest possible Gamma 601 boot path.
+## Acceptance Boundaries
 
-| Feature | Observable acceptance target | Complexity | Dependencies | Notes |
-| --- | --- | --- | --- | --- |
-| Bazel/Cargo/ESP-IDF Rust skeleton | `just build` builds firmware skeleton through Bazel. | Medium | Toolchain pinning, ESP-IDF Rust setup. | Foundation only; avoid premature mining abstractions. |
-| Read-only reference submodule guard | `just verify-reference` fails on modified upstream reference files. | Low | Submodule addition, guard script. | Required before using reference breadcrumbs seriously. |
-| Initial crate layout | Pure crates exist for core, ASIC, Stratum, config, API, test support. | Low | Workspace setup. | Empty or stubbed crates are acceptable if boundaries are clear. |
-| Human command surface | `just build`, `test`, `package`, `flash`, `monitor`, `flash-monitor`, `verify-reference`, `parity`. | Medium | Bazel targets, flash tool wrapper. | Commands should fail clearly before all internals exist. |
-| Firmware package artifact | `just package` creates a flashable Gamma 601 image artifact or a clearly named placeholder path if packaging is staged. | Medium | ESP-IDF build outputs, partition/image merge plan. | Do not claim release compatibility before proof. |
-| Gamma 601 USB flash workflow | `just flash board=601 port=<port>` flashes or fails with actionable serial/port guidance. | Medium | Flash wrapper, port handling, package artifact. | Print underlying command for debugging. |
-| Monitor and flash-monitor | Serial monitor shows Rust firmware boot logs; combined command flashes then monitors. | Low | Flash wrapper, serial monitor tool. | This is the first hardware smoke loop. |
-| Minimal boot/log firmware | Gamma 601 boots and logs Rust firmware identity plus basic platform status. | Medium | ESP-IDF app, logging, PSRAM/platform probes. | No BM1370 init beyond safe no-op/reset handling. |
-| Seed parity checklist integration | Checklist remains the audit source of truth with statuses and evidence placeholders. | Low | Existing `docs/parity/checklist.md`, parity helper tooling. | Keep implementation status separate from verification status. |
-| Provenance/licensing guardrails | GPL-derived behavior breadcrumbs and MIT-first original-code posture are documented. | Low | `PROVENANCE.md`, reference breadcrumbs. | Needed before porting ASIC/protocol logic. |
+| Boundary | Accepted For v1.1 | Not Accepted For v1.1 |
+|----------|-------------------|-----------------------|
+| Pool behavior | Real Stratum v1 socket I/O against local owner-supplied pool settings, with redacted lifecycle markers. | Controlled transcript, fake pool only, hardcoded notify only, or unverified socket connection. |
+| ASIC work/result flow | Live BM1366 init gate, pool-derived work dispatch, valid nonce/result parse when claiming share submit. | Diagnostic chip-detect/work-result timeout as production proof. |
+| Share outcome | At least one real accepted or rejected pool response to a live ASIC-derived submit. | Synthetic submit response, no-share soak, or API counter mutation without submit evidence. |
+| Safety | Minimum documented prerequisites sufficient to enable bounded mining, plus fail-closed missing-prerequisite behavior. | Full active voltage/fan/thermal/fault/self-test closure unless separately evidenced. |
+| Telemetry | Session-correlated logs, `/api/system/info`, statistics, scoreboard where applicable, and `/api/ws/live`. | Static fixtures, stale captures, or unrelated prior evidence. |
+| Evidence | Redacted committed evidence plus local raw artifacts excluded from commit. | Raw pool credentials, workers, endpoints, BTC addresses, passwords, tokens, device URLs, Wi-Fi secrets, or NVS secret values. |
 
-## Deferred Features
-
-Deferred does not mean optional. It means the feature should not block the first milestone or, where noted, should not block Gamma 601 V1.
-
-| Feature | Defer until | Why defer | Complexity | Dependencies |
-| --- | --- | --- | --- | --- |
-| BM1370 cold init/work/result parity | V1 Gamma parity, after boot/log foundation. | Hardware-control surface; unsafe to rush before config, power, and serial adapters are in place. | High | Gamma config, TPS546/vcore, ASIC serial, hardware smoke evidence. |
-| Stratum v1 mining loop | V1 Gamma parity. | Needs ASIC work path and stable network/config model. | High | Wi-Fi, NVS, BM1370, work queue, protocol fixtures. |
-| AxeOS API compatibility | V1 Gamma parity after system state model exists. | API fields depend on mining, power, telemetry, and NVS; early stubs risk false parity. | High | `bitaxe-api`, serializers, API compare fixtures. |
-| Power/thermal/fan closed-loop control | V1 Gamma parity before mining is considered usable. | Safety-critical; requires hardware evidence. | High | I2C/ADC, TPS546, EMC2101, fan driver, PID tests. |
-| Self-test lifecycle | Late V1 Gamma parity. | Meaningful self-test needs real ASIC/power/fan/hashrate behavior. | High | BM1370 mining, display/input, thermal, NVS. |
-| OTA firmware and OTAWWW | Late V1 or first post-V1 maintenance release. | Requires stable partition/package strategy and recovery testing. | High | Partition layout, HTTP upload, flash artifacts, recovery page. |
-| Full static AxeOS asset compatibility | V1 if API clients need existing UI; otherwise post-V1. | Asset packaging is valuable only after underlying API surfaces are credible. | Medium | SPIFFS, content-type/gzip behavior, API route coverage. |
-| Stratum v2 | Post-V1 unless required by an explicit pool/user acceptance target. | Separate protocol stack with more complex coordinator and security settings. | High | Stable SV1, SV2 fixtures, pool interoperability tests. |
-| BAP protocol completeness | Post-V1 unless accessory parity is a named release goal. | Important external surface, but not required for a first standalone Gamma miner. | Medium | UART, system model, settings model, subscription scheduler. |
-| Bitaxe 205 / BM1366 secondary path | Post-Gamma V1. | User has a 205, but project has explicitly prioritized 601 first. | High | BM1366 ASIC support, DS4432U/INA260 path, hardware evidence. |
-| All upstream board factory images | Post-Gamma V1. | Requires per-board configs, packaging, and hardware or explicit unverified status. | High | Config matrix, CI/release graph, per-board acceptance records. |
-| Custom board config flow | Post-Gamma V1. | Useful for power users, but dangerous before supported configs are strongly typed. | Medium | Board model parser, validation, provenance/evidence policy. |
-| Advanced AxeOS UI changes | Out of v1; likely never for firmware parity unless upstream asset compatibility demands it. | Project scope is API/static asset compatibility, not Angular product development. | Medium | Existing static assets only. |
-
-## Anti-Features
-
-| Anti-feature | Why avoid | What to do instead |
-| --- | --- | --- |
-| C source mirroring | Preserves incidental complexity and conflicts with device-user parity definition. | Recreate observable behavior with Rust-owned boundaries and breadcrumbs. |
-| Initial Angular AxeOS rewrite | Expands project scope away from firmware parity and duplicates upstream UI work. | Serve compatible static assets and match API contracts. |
-| Mining stubs that look successful | Misleads users and hides safety/API gaps. | Report unavailable/degraded states clearly until verified. |
-| Hardware-control code without hardware evidence | Voltage, thermal, fan, power, and ASIC init mistakes can damage devices. | Require hardware-smoke or hardware-regression evidence before `verified`. |
-| Non-601 verification claims | The project only has Gamma 601 prioritized for first evidence. | Track all boards, but mark non-601 surfaces deferred/unverified until tested. |
-| Byte-for-byte image parity as a release goal | Users need flash/update behavior, not identical binary layout. | Match partition/update/flashing behavior and document any harmless differences. |
-| Hidden patches in `reference/esp-miner` | Corrupts the comparison baseline. | Keep reference read-only and refresh by explicit pinned commit update. |
-| New cloud services or remote dependencies | Upstream device behavior is local firmware/admin/pool interaction. | Keep device operation local except configured mining pools/update workflows. |
-| Unbounded overclock/tuning features | Upstream already gates voltage/frequency controls; extra tuning raises safety risk. | Match upstream setting ranges and overclock visibility before considering extensions. |
-| Treating implementation as verification | A port can compile while still diverging from device behavior. | Require checklist evidence: unit, golden, API compare, hardware smoke/regression, or explicit deferred gap. |
-
-## Dependencies
-
-Recommended roadmap dependency flow:
+## Feature Dependencies
 
 ```text
-Reference guard + parity checklist
-  -> Bazel/Cargo/ESP-IDF skeleton
-  -> Gamma 601 config/NVS seed
-  -> USB package/flash/monitor
-  -> Minimal boot/log firmware
-  -> Board/system state model
-  -> Power/thermal/fan safe adapters
-  -> BM1370 serial/CRC/init/work/result
-  -> Stratum v1 + mining loop
-  -> Logs/statistics/scoreboard
-  -> AxeOS API + WebSocket telemetry
-  -> Static assets/recovery + OTA
-  -> Self-test completion evidence
-  -> Stratum v2, BAP, non-601 boards, all-board releases
+Owner local inputs
+    requires -> Wi-Fi credentials + pool credentials remain local and redacted
+
+Real Stratum v1 socket lifecycle
+    requires -> NVS/settings + Wi-Fi connectivity + socket adapter + Stratum v1 parser/serializer
+        feeds -> Pool-derived notify/work builder
+
+Trusted BM1366 production path
+    requires -> Mining prerequisite safety gate + reset/UART/init evidence
+        feeds -> Pool-derived work dispatch
+            feeds -> Live nonce/result parsing
+                feeds -> Share submit
+                    feeds -> Accepted/rejected share counters + scoreboard
+
+Runtime telemetry
+    requires -> MiningRuntimeState + statistics samples + API/WebSocket routes
+        evidences -> User-visible production mining outcome
+
+Watchdog and safe-stop
+    guards -> Socket loop + ASIC loop + telemetry capture + bounded soak
+
+Parity checklist promotion
+    requires -> Redacted evidence for each exact subclaim
 ```
 
-Important cross-feature dependencies:
+### Dependency Notes
 
-- API parity depends on state model, NVS, telemetry, logs, and mining counters; do not build API fields as isolated string maps.
-- Mining depends on Wi-Fi, Stratum, BM1370 ASIC path, power/thermal/fan safety, and work queue behavior.
-- Gamma 601 safety depends on TPS546, EMC2101, fan control, ADC/I2C, and hardware smoke evidence.
-- Self-test depends on display/input plus real fan, vcore, temperature, domain hashrate, and restart/cancel behavior.
-- OTA depends on partition layout, flash artifact layout, HTTP upload behavior, filesystem availability, and recovery.
-- Additional boards depend on the same feature stack plus board-specific regulator/sensor/ASIC hardware evidence.
+- **Real share outcome requires live ASIC result parsing:** a pool response only matters if the submitted share came from live BM1366 work/result flow.
+- **Production work dispatch requires safety prerequisites:** the existing fail-closed gate is a feature, not a blocker to bypass.
+- **Live stats require the same session as mining evidence:** API/WebSocket captures should be correlated to the run that produced socket, work, result, and share markers.
+- **Scoreboard depends on share/result semantics:** populate it only from live entries that match the upstream-compatible scoreboard shape.
+- **Evidence promotion depends on redaction:** a technically successful run is not commit-ready until the final redaction scan/review passes.
 
-## Complexity Notes
+## MVP Definition
 
-- **High complexity / high risk:** BM1370 initialization, ASIC work/result parsing, voltage/power/thermal/fan control, Stratum v2, OTA/partition behavior, and all-board release parity. These need phase-specific research and hardware evidence gates.
-- **Medium complexity:** AxeOS API serialization, WebSocket telemetry, NVS migration/default behavior, static asset serving, self-test orchestration, display/input parity, statistics/scoreboard persistence.
-- **Lower complexity:** Gamma 601 default extraction, workflow commands, reference cleanliness checks, source breadcrumbs, parity-report scaffolding, and pure model fixtures.
-- **Best early pure-test targets:** config parsing, NVS key/REST-name mapping, API schema models, ASIC CRC, PLL/frequency option logic, Stratum JSON fixtures, coinbase decoding, scoreboard ordering, PID math.
-- **Best early hardware-smoke targets:** boot log, PSRAM status, I2C init, reset pin held low, flash/monitor loop, safe TPS546/EMC2101 detection without enabling mining.
-- **Evidence standard:** Safety-critical and hardware-control surfaces should remain below `verified` until real Gamma 601 command/log evidence exists. API surfaces should use API comparison fixtures against captured upstream responses. Protocol/config logic should use unit and golden tests.
+### Launch With (v1.1)
+
+Minimum viable milestone: enough to decide whether the Rust firmware can be trusted to mine on one Ultra 205 under bounded conditions.
+
+- [ ] Real Stratum v1 socket adapter and lifecycle state for subscribe, authorize, difficulty, notify, submit response, reconnect/block, and safe-stop.
+- [ ] Ultra 205 BM1366 production init/work/result path gated by documented mining prerequisites.
+- [ ] One real accepted or rejected share outcome from live ASIC-derived work, or an explicit milestone failure if safe prerequisites cannot reach that outcome.
+- [ ] API/WebSocket/statistics/share-counter evidence from the same bounded session.
+- [ ] Watchdog checkpoints and final safe-stop evidence.
+- [ ] Redacted evidence pack and parity checklist updates that promote only exact proven claims.
+
+### Add After Validation (v1.1.x)
+
+Features to add once the first trusted production session is proven.
+
+- [ ] Longer bounded soaks with repeatable accepted/rejected share counts after one-share proof is stable.
+- [ ] Richer scoreboard history and best-difficulty persistence after live result/share semantics are proven.
+- [ ] Better operator UX around blocked mining prerequisites after the first exact gate is accepted.
+- [ ] More detailed pool reconnect/fallback policy after basic real socket mining works.
+
+### Future Consideration (v1.2+)
+
+Features to defer until this milestone has real share evidence.
+
+- [ ] Full active voltage, fan, thermal, fault-stimulus, and self-test hardware closure.
+- [ ] OTA/recovery completion, rollback, interrupted-update, large erase, and OTAWWW parity.
+- [ ] Stratum v2.
+- [ ] Runtime display/input parity and BAP accessory behavior.
+- [ ] Non-205 boards and non-BM1366 ASIC families.
+- [ ] Unbounded production soak or stress mining.
+
+## Feature Prioritization Matrix
+
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Real Stratum v1 socket lifecycle | HIGH | HIGH | P1 |
+| BM1366 production init/work/result path | HIGH | HIGH | P1 |
+| Real accepted/rejected share evidence | HIGH | HIGH | P1 |
+| Mining prerequisite safety gate | HIGH | HIGH | P1 |
+| Redacted pool/evidence handling | HIGH | MEDIUM | P1 |
+| Live mining API/WebSocket/statistics counters | HIGH | MEDIUM | P1 |
+| Watchdog checkpoints and safe-stop | HIGH | MEDIUM | P1 |
+| Scoreboard population | MEDIUM | MEDIUM | P2 |
+| Longer bounded soak | MEDIUM | MEDIUM | P2 |
+| Full active safety closure | HIGH | HIGH | P3 |
+| Stratum v2 | MEDIUM | HIGH | P3 |
+| Non-205 board mining evidence | MEDIUM | HIGH | P3 |
+
+**Priority key:**
+- P1: Must have for v1.1 trusted production mining
+- P2: Should have once first share proof is stable
+- P3: Future milestone scope
+
+## Evidence Plan By Feature
+
+| Feature | Testable User-Visible Outcome | Minimum Evidence |
+|---------|-------------------------------|------------------|
+| Real socket lifecycle | Owner pool settings lead to visible pool lifecycle and job receipt. | Redacted socket lifecycle log plus API/WebSocket lifecycle status from the same session. |
+| BM1366 production path | Firmware initializes BM1366 enough to dispatch pool-derived work safely. | Hardware evidence with init gate, typed dispatch marker, and no raw frame leakage. |
+| Result/share flow | Accepted or rejected share count changes after live ASIC-derived submit. | Redacted submit/response markers, runtime counters, rejected reason if applicable, and matching API capture. |
+| Hashrate/statistics | Live hashrate/statistics reflect real runtime inputs rather than fixed zeros unless no result occurred. | Statistics and `/api/system/info` snapshots with session timestamp/provenance. |
+| Watchdog/safe-stop | Mining session remains responsive and exits to disabled work submission. | Bounded run logs with watchdog checkpoints and final safe-stop marker. |
+| Redaction | Evidence is publishable without secrets. | Final redaction review artifact and no committed raw credential/endpoint/target values. |
+
+## Sources
+
+- `.planning/PROJECT.md` for v1.1 goal, active requirements, out-of-scope boundaries, and architecture constraints.
+- `.planning/MILESTONES.md` and `.planning/milestones/v1.0-MILESTONE-AUDIT.md` for shipped v1.0 capabilities and exact non-claims.
+- `docs/parity/checklist.md` for parity rows, evidence types, safety-critical promotion rules, and current STR/ASIC/API/STAT/SAFE status.
+- `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/summary.md` for controlled no-share evidence and explicit below-verified claims.
+- `docs/release/ultra-205.md` for operator credential, flash, evidence, and redaction rules.
+- `firmware/bitaxe/src/controlled_mining_runtime.rs` for current controlled runtime shell and retained redacted markers.
+- `crates/bitaxe-stratum/src/v1/controlled_runtime.rs` and `crates/bitaxe-stratum/src/v1/state.rs` for current runtime, counters, share outcome, and hashrate state contracts.
+- `crates/bitaxe-api/src/mining.rs`, `crates/bitaxe-api/src/statistics.rs`, and `crates/bitaxe-api/src/scoreboard.rs` for API-visible mining, statistics, and scoreboard models.
+
+*Feature research for: Ultra 205 trusted Stratum v1 production mining*
+*Researched: 2026-07-04*
