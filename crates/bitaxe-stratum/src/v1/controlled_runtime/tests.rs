@@ -248,6 +248,41 @@ fn controlled_runtime_nonce_result_maps_to_share_submit_and_pool_outcomes() {
 }
 
 #[test]
+fn controlled_runtime_ignores_submit_responses_with_wrong_or_missing_id() {
+    // Arrange
+    let cases = [
+        Some(ControlledMiningRuntimePlan::AUTHORIZE_REQUEST_ID),
+        None,
+    ];
+
+    // Act / Assert
+    for maybe_response_id in cases {
+        let input = ControlledMiningRuntimeInput {
+            pool: sample_pool_config(),
+            gate: ready_gate(),
+            transcript: sample_transcript(),
+            maybe_nonce_result: Some(sample_nonce_result()),
+            maybe_submit_response: Some(StratumResponse {
+                maybe_id: maybe_response_id,
+                success: true,
+                maybe_error: None,
+                maybe_extranonce: None,
+                maybe_version_mask: None,
+            }),
+        };
+        let plan = ControlledMiningRuntimePlan::build(input)
+            .expect("uncorrelated submit response should still produce a plan");
+
+        assert_eq!(
+            plan.share_outcome,
+            Some(ControlledShareOutcome::NoShareObserved)
+        );
+        assert_eq!(plan.runtime_state.counters.accepted, 0);
+        assert_eq!(plan.runtime_state.counters.rejected, 0);
+    }
+}
+
+#[test]
 fn controlled_runtime_requires_safe_stop_and_watchdog_yields() {
     // Arrange
     let input = ControlledMiningRuntimeInput {

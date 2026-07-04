@@ -408,7 +408,9 @@ fn apply_share_response(
         &pool.username,
     ));
 
-    let Some(response) = maybe_response else {
+    let Some(response) = maybe_response.filter(|response| {
+        response.maybe_id == Some(ControlledMiningRuntimePlan::SUBMIT_REQUEST_ID)
+    }) else {
         return Some(ControlledShareOutcome::NoShareObserved);
     };
 
