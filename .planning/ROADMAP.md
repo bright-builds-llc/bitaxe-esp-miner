@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 18: Firmware OTA And Rollback Evidence** - Close the current audit gap for valid firmware OTA, invalid OTA rejection, reboot identity, rollback, and boot-validation evidence. (completed 2026-07-03)
 - [x] **Phase 19: Recovery Regression And OTAWWW Evidence** - Close the current audit gaps for recovery fault-injection regressions and OTAWWW/static update behavior. (completed 2026-07-03)
 - [x] **Phase 20: Active Safety Hardware Telemetry Evidence** - Close the current audit gap for active Ultra 205 safety hardware behavior and live telemetry evidence. (completed 2026-07-03)
-- [ ] **Phase 21: Live Mining And Soak Evidence** - Close the current audit gap for live production mining, accepted/rejected share behavior, watchdog responsiveness, and bounded soak evidence.
+- [x] **Phase 21: Live Mining And Soak Evidence** - Close the current audit gap for live production mining, accepted/rejected share behavior, watchdog responsiveness, and bounded soak evidence. (completed 2026-07-04)
 
 ## Phase Details
 
@@ -531,7 +531,7 @@ Plans:
 - [x] 21-05-PLAN.md - Capture or precisely block package-backed BM1366 work-result diagnostic evidence.
 - [x] 21-06-PLAN.md - Capture or precisely block live-pool mining smoke and explicit-target API/WebSocket telemetry correlation.
 - [x] 21-07-PLAN.md - Capture or precisely block bounded soak, watchdog responsiveness, and soak telemetry observations.
-- [ ] 21-08-PLAN.md - Close final redaction, checklist, requirements traceability, validation, and lifecycle verification.
+- [x] 21-08-PLAN.md - Close final redaction, checklist, requirements traceability, validation, and lifecycle verification.
 **Verification expectations**: Pure BM1366 and Stratum tests, `just detect-ultra205`, safety-gated live mining smoke, bounded soak, live telemetry, no stored secrets, redaction review, `just parity`, and `just verify-reference`.
 **Research flags**: Requires controlled pool and recovery planning. Do not store pool credentials, private endpoints, Wi-Fi credentials, or NVS secret values in evidence.
 
@@ -562,4 +562,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 18. Firmware OTA And Rollback Evidence | 4/4 | Complete   | 2026-07-03 |
 | 19. Recovery Regression And OTAWWW Evidence | 4/4 | Complete    | 2026-07-03 |
 | 20. Active Safety Hardware Telemetry Evidence | 6/6 | Complete    | 2026-07-04 |
-| 21. Live Mining And Soak Evidence | 7/8 | In Progress|  |
+| 21. Live Mining And Soak Evidence | 8/8 | Complete   | 2026-07-04 |

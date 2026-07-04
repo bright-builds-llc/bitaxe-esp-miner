@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 21-07-PLAN.md
-last_updated: "2026-07-04T06:18:39.981Z"
+status: verifying
+stopped_at: Completed 21-08-PLAN.md
+last_updated: "2026-07-04T06:38:08.274Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 21
-  completed_phases: 20
+  completed_phases: 21
   total_plans: 116
-  completed_plans: 115
-  percent: 99
+  completed_plans: 116
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 21 (live-mining-and-soak-evidence) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-04
 
 Progress: [█████████░] 94%
@@ -163,6 +163,7 @@ Progress: [█████████░] 94%
 | Phase 21-live-mining-and-soak-evidence P05 | 10m07s | 1 tasks | 11 files |
 | Phase 21-live-mining-and-soak-evidence P06 | 13min | 3 tasks | 11 files |
 | Phase 21-live-mining-and-soak-evidence P07 | 735s | 3 tasks | 10 files |
+| Phase 21-live-mining-and-soak-evidence P08 | 766 | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -439,6 +440,8 @@ Recent decisions affecting current work:
 - [Phase 21-live-mining-and-soak-evidence]: Plan 21-07 blocks bounded soak when live smoke has missing_live_prerequisites, share_outcome not-run, and no controlled package boot or pool-input bridge proof.
 - [Phase 21-live-mining-and-soak-evidence]: SAFE-09 watchdog responsiveness remains unproven without bounded mining or soak observations; startup watchdog breadcrumbs are not bounded soak proof.
 - [Phase 21-live-mining-and-soak-evidence]: Blocked bounded-soak placeholders can be redaction-reviewed when they contain only status/category labels and no raw endpoint, credential, address, token, or secret values.
+- [Phase 21-live-mining-and-soak-evidence]: Phase 21 final closure stays blocked/below verified because live smoke and bounded soak have missing_live_prerequisites, share_outcome not-run, no controlled package boot, no pool-input bridge, and no bounded watchdog proof.
+- [Phase 21-live-mining-and-soak-evidence]: Phase 21 redaction passed only for committed diagnostic and blocked-boundary artifacts; redaction did not promote blocked evidence to verified parity.
 
 ### Pending Todos
 
@@ -454,6 +457,7 @@ None yet.
 - Phase 16 live HTTP/static/recovery, firmware OTA, failed-update, large-erase, interrupted-update, rollback, boot-validation, and OTAWWW evidence remain below verified until an explicit DEVICE_URL and documented allow gates are available.
 - Phase 21 Plan 21-06 live mining smoke and API/WebSocket telemetry correlation remain blocked by missing explicit DEVICE_URL and disposable/non-secret pool input categories.
 - Phase 21 Plan 21-07 bounded soak and SAFE-09 watchdog observation remain blocked by missing live prerequisites from 21-06.
+- Phase 21 live mining and soak parity remain below verified: missing live prerequisites, no live pool command, no controlled package boot, no pool-input bridge, share_outcome not-run, bounded soak not run, watchdog responsiveness blocked.
 
 ### Quick Tasks Completed
 
@@ -466,6 +470,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T06:18:39.969Z
-Stopped at: Completed 21-07-PLAN.md
+Last session: 2026-07-04T06:38:01.008Z
+Stopped at: Completed 21-08-PLAN.md
 Resume file: None

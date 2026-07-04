@@ -4,7 +4,7 @@ status: blocked
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 21-2026-07-04T01-35-47
-generated_at: 2026-07-04T06:32:07Z
+generated_at: 2026-07-04T06:37:28Z
 lifecycle_validated: true
 requirements:
   - ASIC-07
@@ -28,6 +28,7 @@ just_verify_reference: passed
 lifecycle_validation: passed
 source_commit_after_traceability: 9eb35b1
 reference_commit: c1915b0
+summary_artifact: .planning/phases/21-live-mining-and-soak-evidence/21-08-SUMMARY.md
 commit_push_gate: blocked until 21-VERIFICATION.md status passed and lifecycle validation succeeds
 
 Phase 21 software verification, parity checks, reference cleanliness, and
