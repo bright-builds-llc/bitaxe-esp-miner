@@ -133,6 +133,7 @@ pub(crate) fn validate_mining_allow_manifest(
 ) -> MiningAllowReport {
     let mut validation_errors = Vec::new();
 
+    validate_required_schema_fields(&mut validation_errors, manifest);
     validate_detector_gate(&mut validation_errors, manifest);
     validate_package_identity(&mut validation_errors, manifest, package_manifest);
     validate_surface_and_claim(&mut validation_errors, manifest);
@@ -173,6 +174,36 @@ fn resolve_workspace_path(workspace_dir: &Utf8Path, path: &Utf8Path) -> Utf8Path
     }
 
     workspace_dir.join(path)
+}
+
+fn validate_required_schema_fields(errors: &mut Vec<String>, manifest: &MiningAllowManifest) {
+    let required_fields = [
+        ("board", manifest.board.as_str()),
+        ("port", manifest.port.as_str()),
+        ("detector_command", manifest.detector_command.as_str()),
+        ("detector_port", manifest.detector_port.as_str()),
+        ("board_info_command", manifest.board_info_command.as_str()),
+        ("board_info_status", manifest.board_info_status.as_str()),
+        ("package_manifest", manifest.package_manifest.as_str()),
+        ("source_commit", manifest.source_commit.as_str()),
+        ("reference_commit", manifest.reference_commit.as_str()),
+        ("surface", manifest.surface.as_str()),
+        ("claim_tier", manifest.claim_tier.as_str()),
+        ("evidence_class", manifest.evidence_class.as_str()),
+        ("allowed_command", manifest.allowed_command.as_str()),
+        ("evidence_dir", manifest.evidence_dir.as_str()),
+        ("redaction_reviewer", manifest.redaction_reviewer.as_str()),
+    ];
+
+    for (field_name, field_value) in required_fields {
+        if field_value.trim().is_empty() {
+            errors.push(format!("{field_name} must not be empty"));
+        }
+    }
+
+    if !manifest.allowed_inputs.is_object() {
+        errors.push("allowed_inputs must be a JSON object".to_owned());
+    }
 }
 
 fn validate_detector_gate(errors: &mut Vec<String>, manifest: &MiningAllowManifest) {
@@ -388,6 +419,21 @@ fn validate_bounded_soak_scope(errors: &mut Vec<String>, manifest: &MiningAllowM
             "bounded-soak requires allowed_inputs.duration_seconds between 60 and 600".to_owned(),
         );
     }
+
+    let expected_duration = duration_seconds.to_string();
+    if !option_equals(
+        &manifest
+            .allowed_command
+            .split_whitespace()
+            .collect::<Vec<_>>(),
+        "--duration-seconds",
+        &expected_duration,
+    ) {
+        errors.push(
+            "bounded-soak requires allowed_command --duration-seconds to match allowed_inputs"
+                .to_owned(),
+        );
+    }
 }
 
 fn validate_filters(
@@ -443,8 +489,12 @@ fn validate_allowed_command_scope(errors: &mut Vec<String>, manifest: &MiningAll
         return;
     }
 
+    if is_expected_phase21_command(manifest, &tokens) {
+        return;
+    }
+
     errors.push(
-        "allowed_command must route through an approved Phase 15 wrapper for its surface"
+        "allowed_command must route through an approved Phase 15 wrapper or approved Phase 21 wrapper for its surface"
             .to_owned(),
     );
 }
@@ -478,6 +528,46 @@ fn is_expected_phase15_command(manifest: &MiningAllowManifest, tokens: &[&str]) 
         }
         _ => false,
     }
+}
+
+fn is_expected_phase21_command(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
+    match manifest.surface.as_str() {
+        "mining-smoke" | "bounded-soak" => {
+            starts_with_tokens(tokens, &["scripts/phase21-live-mining-evidence.sh"])
+                && option_equals(tokens, "--surface", &manifest.surface)
+                && has_option_with_value(tokens, "--manifest")
+                && has_option_with_value(tokens, "--out-dir")
+                && has_option_with_value(tokens, "--chip-detect-summary")
+                && has_option_with_value(tokens, "--work-result-summary")
+                && has_option_with_value(tokens, "--readiness-audit")
+                && has_option_with_value(tokens, "--enablement-summary")
+                && phase21_duration_matches_manifest(manifest, tokens)
+        }
+        "parity-redaction" => {
+            starts_with_tokens(tokens, &["rg", "-n", "-i"])
+                && tokens.iter().any(|token| {
+                    token.starts_with("docs/parity/evidence/phase-21-live-mining-and-soak-evidence")
+                })
+        }
+        _ => false,
+    }
+}
+
+fn phase21_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
+    if manifest.claim_tier != "bounded-soak" {
+        return true;
+    }
+
+    let Some(duration_seconds) = manifest
+        .allowed_inputs
+        .get("duration_seconds")
+        .and_then(Value::as_i64)
+    else {
+        return false;
+    };
+    let expected_duration = duration_seconds.to_string();
+
+    option_equals(tokens, "--duration-seconds", &expected_duration)
 }
 
 fn starts_with_tokens(tokens: &[&str], expected_prefix: &[&str]) -> bool {
@@ -691,6 +781,117 @@ mod tests {
         // Assert
         assert_error_contains(&report, "prohibited token `erase-flash`");
         assert_error_contains(&report, "approved Phase 15 wrapper");
+    }
+
+    #[test]
+    fn mining_allow_accepts_phase21_live_pool_smoke_command() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["claim_tier"] = serde_json::json!("live-pool-smoke");
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase21-live-mining-evidence.sh --manifest allow.json --surface mining-smoke --out-dir evidence/mining-smoke --chip-detect-summary chip.md --work-result-summary work.md --readiness-audit readiness.md --enablement-summary enablement.md --device-url https://redacted.local"
+            );
+            json["prerequisite_artifacts"] = serde_json::json!([
+                "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md",
+                "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/summary.md"
+            ]);
+            json["evidence_dir"] = serde_json::json!(
+                "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke"
+            );
+            json["redaction_reviewer"] = serde_json::json!("phase-21-reviewer");
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(
+            report.passed(),
+            "phase21 live smoke should pass: {report:#?}"
+        );
+    }
+
+    #[test]
+    fn mining_allow_accepts_phase21_bounded_soak_with_matching_duration() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("bounded-soak");
+            json["claim_tier"] = serde_json::json!("bounded-soak");
+            json["evidence_class"] = serde_json::json!("soak");
+            json["allowed_inputs"]["duration_seconds"] = serde_json::json!(300);
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase21-live-mining-evidence.sh --manifest allow.json --surface bounded-soak --out-dir evidence/bounded-soak --chip-detect-summary chip.md --work-result-summary work.md --readiness-audit readiness.md --enablement-summary enablement.md --duration-seconds 300"
+            );
+            json["prerequisite_artifacts"] = serde_json::json!([
+                "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md",
+                "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/summary.md"
+            ]);
+            json["evidence_dir"] = serde_json::json!(
+                "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak"
+            );
+            json["redaction_reviewer"] = serde_json::json!("phase-21-reviewer");
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(
+            report.passed(),
+            "phase21 bounded soak should pass: {report:#?}"
+        );
+    }
+
+    #[test]
+    fn mining_allow_accepts_phase21_redaction_scan_command() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("parity-redaction");
+            json["claim_tier"] = serde_json::json!("parity-redaction");
+            json["evidence_class"] = serde_json::json!("workflow");
+            json["allowed_command"] = serde_json::json!(
+                "rg -n -i secret docs/parity/evidence/phase-21-live-mining-and-soak-evidence"
+            );
+            json["prerequisite_artifacts"] = serde_json::json!([
+                "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/redaction-review.md"
+            ]);
+            json["evidence_dir"] =
+                serde_json::json!("docs/parity/evidence/phase-21-live-mining-and-soak-evidence");
+            json["redaction_reviewer"] = serde_json::json!("phase-21-reviewer");
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(
+            report.passed(),
+            "phase21 redaction scan should pass: {report:#?}"
+        );
+    }
+
+    #[test]
+    fn mining_allow_rejects_phase21_unsafe_command_tokens() {
+        for prohibited_token in [
+            "raw-bm1366",
+            "erase-flash",
+            "voltage-control",
+            "fan-control",
+            "stratum",
+        ] {
+            // Arrange
+            let (manifest, package_manifest) = manifest_with_change(|json| {
+                json["allowed_command"] = serde_json::json!(format!(
+                    "scripts/phase21-live-mining-evidence.sh --manifest allow.json --surface mining-smoke --out-dir evidence/mining-smoke --chip-detect-summary chip.md --work-result-summary work.md --readiness-audit readiness.md --enablement-summary enablement.md {prohibited_token}"
+                ));
+            });
+
+            // Act
+            let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+            // Assert
+            assert_error_contains(&report, &format!("prohibited token `{prohibited_token}`"));
+        }
     }
 
     #[test]
