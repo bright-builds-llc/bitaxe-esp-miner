@@ -521,8 +521,14 @@ Plans:
 1. Controlled mining smoke or bounded soak records pool lifecycle, accepted/rejected share behavior or explicitly bounded no-share behavior, hashrate inputs, API/WebSocket telemetry, watchdog responsiveness, and redaction review.
 1. Checklist rows for ASIC, Stratum, statistics, and mining remain below `verified` unless their hardware-smoke or soak evidence meets the documented criteria.
 
-**Plans**: 0 plans
-Plans: Pending.
+**Plans**: 5 plans
+Plans:
+
+- [ ] 21-01-PLAN.md - Establish Phase 21 mining allow gates, wrapper tests, evidence scaffold, redaction scaffold, and readiness audit.
+- [ ] 21-02-PLAN.md - Capture package, safe-baseline, BM1366 chip-detect, and work-result prerequisite evidence.
+- [ ] 21-03-PLAN.md - Capture or precisely block live-pool mining smoke and explicit-target API/WebSocket telemetry correlation.
+- [ ] 21-04-PLAN.md - Capture or precisely block bounded soak, watchdog responsiveness, and soak telemetry observations.
+- [ ] 21-05-PLAN.md - Close final redaction, checklist, requirements traceability, validation, and lifecycle verification.
 **Verification expectations**: Pure BM1366 and Stratum tests, `just detect-ultra205`, safety-gated live mining smoke, bounded soak, live telemetry, no stored secrets, redaction review, `just parity`, and `just verify-reference`.
 **Research flags**: Requires controlled pool and recovery planning. Do not store pool credentials, private endpoints, Wi-Fi credentials, or NVS secret values in evidence.
 
