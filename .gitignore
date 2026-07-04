@@ -2,3 +2,5 @@ bazel-*
 target/
 .embuild/
 /wifi-credentials*.json
+docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/*.bin
+docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/*.elf

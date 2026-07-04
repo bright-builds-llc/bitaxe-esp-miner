@@ -335,6 +335,23 @@ sh_test(
     tags = ["local"],
 )
 
+sh_binary(
+    name = "phase21_live_mining_package",
+    srcs = ["phase21-live-mining-package.sh"],
+    data = [
+        "package-firmware.sh",
+        "verify-reference-clean.sh",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase21_live_mining_package_test",
+    srcs = ["phase21-live-mining-package-test.sh"],
+    data = ["phase21-live-mining-package.sh"],
+    tags = ["local"],
+)
+
 sh_test(
     name = "verify_reference_clean_test",
     srcs = ["verify-reference-clean-test.sh"],
