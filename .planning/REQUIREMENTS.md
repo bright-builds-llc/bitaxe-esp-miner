@@ -233,16 +233,16 @@ and final redaction status at
 with `redaction_status: passed`. `ASIC-07`, `STR-06`, `STR-07`, `SAFE-09`,
 and `EVD-05` remain complete in the implementation/governance sense because
 Phase 21 records the exact preflight, controlled runtime enablement,
-BM1366 diagnostic chip-detect/work-result, live-smoke blocked boundary,
-live API/WebSocket blocked boundary, bounded-soak blocked boundary, watchdog
-blocked boundary, redaction, parity, reference, and lifecycle artifacts.
-Release claims remain conservative: successful BM1366 initialization,
-production work dispatch, accepted/rejected shares, live pool lifecycle,
-runtime statistics correlation, telemetry freshness, bounded soak stability,
-SAFE-09 watchdog responsiveness under mining or soak load, and ASIC frequency
-transition behavior are below verified because final closure is
-`phase21_status: blocked` and `phase21_evidence_closure:
-blocked_or_below_verified`.
+BM1366 diagnostic chip-detect/work-result, controlled no-share live smoke,
+redacted live API/WebSocket correlation, approved bounded controlled no-share
+soak, watchdog responsiveness, redaction, parity, reference, and lifecycle
+artifacts. Phase 21 closure is `phase21_status: passed` with
+`phase21_evidence_closure: approved_controlled_no_share_soak`. Release claims
+remain conservative: accepted/rejected shares, full production mining,
+successful live nonce/result parsing, ASIC frequency transition, active
+voltage/fan/fault controls, OTA/recovery behavior, destructive/fault-injection
+flows, unbounded stress, and non-205 board behavior remain below verified or
+outside the verified Phase 21 closure.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
@@ -316,13 +316,15 @@ blocked_or_below_verified`.
 - v1 requirements: 64 total
 - Mapped to phases: 64
 - Unmapped: 0
-- Complete: 45
-- Pending gap closure: 19
-- Pending gap closure rows correspond to flow gaps in
-  `.planning/v1.0-MILESTONE-AUDIT.md`; below-verified release evidence remains
-  tracked in `docs/parity/checklist.md` and phase evidence ledgers.
+- Complete: 64
+- Pending gap closure: 0
+- Requirements are complete in the implementation/governance traceability
+  sense. Remaining exact-claim evidence boundaries and non-verified parity
+  surfaces are tracked in `docs/parity/checklist.md`, phase evidence ledgers,
+  and `.planning/v1.0-MILESTONE-AUDIT.md` as tech debt or explicit non-claims
+  rather than unsatisfied requirements.
 
 ______________________________________________________________________
 
 *Requirements defined: 2026-06-20*\
-*Last updated: 2026-07-04 after Phase 21 live mining and soak blocked evidence closure*
+*Last updated: 2026-07-04 after Phase 21 approved controlled no-share soak evidence closure*
