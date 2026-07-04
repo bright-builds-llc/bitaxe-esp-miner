@@ -225,6 +225,25 @@ future artifact supplies the required `hardware-regression` or exact
 trusted raw origin-only target artifact exists, network scanning stayed
 disabled, and no device URL was inferred from redacted serial evidence.
 
+**Phase 21 final evidence note (2026-07-04):** Phase 21 adds a final live
+mining and soak evidence ledger at
+`docs/parity/evidence/phase-21-live-mining-and-soak-evidence/summary.md`
+and final redaction status at
+`docs/parity/evidence/phase-21-live-mining-and-soak-evidence/redaction-review.md`
+with `redaction_status: passed`. `ASIC-07`, `STR-06`, `STR-07`, `SAFE-09`,
+and `EVD-05` remain complete in the implementation/governance sense because
+Phase 21 records the exact preflight, controlled runtime enablement,
+BM1366 diagnostic chip-detect/work-result, live-smoke blocked boundary,
+live API/WebSocket blocked boundary, bounded-soak blocked boundary, watchdog
+blocked boundary, redaction, parity, reference, and lifecycle artifacts.
+Release claims remain conservative: successful BM1366 initialization,
+production work dispatch, accepted/rejected shares, live pool lifecycle,
+runtime statistics correlation, telemetry freshness, bounded soak stability,
+SAFE-09 watchdog responsiveness under mining or soak load, and ASIC frequency
+transition behavior are below verified because final closure is
+`phase21_status: blocked` and `phase21_evidence_closure:
+blocked_or_below_verified`.
+
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | FND-01 | Phase 1 | Complete |
@@ -306,4 +325,4 @@ disabled, and no device URL was inferred from redacted serial evidence.
 ______________________________________________________________________
 
 *Requirements defined: 2026-06-20*\
-*Last updated: 2026-07-03 after Phase 17 live HTTP API, static, and WebSocket gap closure*
+*Last updated: 2026-07-04 after Phase 21 live mining and soak blocked evidence closure*
