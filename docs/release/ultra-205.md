@@ -351,6 +351,38 @@ private endpoints, or NVS secret values. Raw developer artifacts containing
 local SSIDs, IP addresses, MAC addresses, or `device_url` values must be
 redacted before commit or release citation.
 
+For Phase 21 live mining verification, keep owner pool input in a local,
+untracked env file by copying the checked-in example:
+
+```bash
+cp pool-credentials.env.example pool-credentials.env
+```
+
+Edit `pool-credentials.env` so `BITAXE_POOL_USER` is your BTC-address-derived
+worker, such as `<owner-btc-address>.bitaxe`. The sample uses the upstream
+Ultra 205 default pool endpoint shape:
+
+```bash
+BITAXE_POOL_URL="public-pool.io"
+BITAXE_POOL_PORT="3333"
+BITAXE_POOL_USER="<owner-btc-address>.bitaxe"
+BITAXE_POOL_PASSWORD="x"
+```
+
+Source the file only for local live mining verification commands:
+
+```bash
+set -a
+. ./pool-credentials.env
+set +a
+```
+
+Do not commit `pool-credentials.env`, paste its contents into chat, or copy raw
+pool values into evidence. Commit-ready evidence should use category labels such
+as `pool_config: local-owner-supplied` and must redact or omit raw pool URLs,
+ports, users, workers, addresses, passwords, endpoints, tokens, and NVS secret
+values.
+
 Use the factory image path from
 `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` when recovery requires
 a full USB flash baseline. Record the exact port, package manifest, source
