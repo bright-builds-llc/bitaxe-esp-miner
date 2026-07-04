@@ -1,10 +1,21 @@
 # Phase 21 Redaction Review
 
 redaction_status: pending
+plan_21_06_redaction_status: passed_for_blocked_live_smoke_and_telemetry
 raw_artifacts_committed: no
 bm1366-init-work-result: passed
+live-mining-smoke: passed
+live-api-websocket-telemetry: passed
 
 This scaffold is intentionally pending until Phase 21 live or soak artifacts exist. It defines the deterministic scan and artifact inventory required before any committed or shared evidence can be cited.
+
+Plan 21-06 reviewed the blocked live-mining smoke and blocked explicit-target
+API/WebSocket telemetry artifacts. The deterministic scan matched only schema
+terms, environment variable category names, non-secret labels, the ESP
+board-info `WiFi` capability label, and blocked-target placeholders. No raw
+SSID, Wi-Fi value, pool credential, private worker value, private endpoint, raw
+target URL, API token, NVS secret, unredacted IP address, or unredacted MAC
+address was committed in those artifacts.
 
 ## Deterministic Scan
 
@@ -23,9 +34,9 @@ Expected result before final promotion: only schema terms, redacted labels, and 
 | `preflight` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight/` | passed | raw_artifacts_committed: no | Review completed for package, detector, board-info, and safe-baseline artifacts. Raw detector output stayed under ignored `target/`; committed hardware logs are redacted and contain only board `205`, port label, source commit, reference commit, commands, and conclusions. |
 | `live-mining-enablement` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/` | pending | raw_artifacts_committed: no | Must contain ready markers without secret-bearing configuration values. |
 | `bm1366-init-work-result` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/` | passed for chip-detect and work-result packs | raw_artifacts_committed: no | Plans 21-04 and 21-05 diagnostic artifacts use wrapper redaction, retain only manifest/log metadata, and cite trusted wrapper summaries plus safe-state markers. Generated package binaries remain ignored. |
-| `live-mining-smoke` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/` | pending | raw_artifacts_committed: no | Must redact pool, worker, target, address, and credential-bearing details. |
+| `live-mining-smoke` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/` | passed for blocked missing-prerequisite artifact | raw_artifacts_committed: no | Plan 21-06 blocked before live smoke because explicit target and pool input categories were absent. The committed detector log is redacted; pool, worker, target, address, credential, and secret values are absent. |
 | `bounded-soak` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/` | pending | raw_artifacts_committed: no | Must include duration, abort conditions, safe-stop, and conclusion after redaction. |
-| `live-api-websocket-telemetry` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry/` | pending | raw_artifacts_committed: no | Must cite explicit-target captures only after target values are redacted. |
+| `live-api-websocket-telemetry` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry/` | passed for blocked missing-target artifact | raw_artifacts_committed: no | Plan 21-06 did not probe `/api/system/info` or `/api/ws/live` because no explicit target existed. Placeholder artifacts contain only status labels and capture bounds. |
 | `redaction-review` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/redaction-review.md` | pending | raw_artifacts_committed: no | This file is the review scaffold and is safe to commit. |
 | `final-summary` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/summary.md` | pending | raw_artifacts_committed: no | Must cite only redaction-reviewed artifacts. |
 

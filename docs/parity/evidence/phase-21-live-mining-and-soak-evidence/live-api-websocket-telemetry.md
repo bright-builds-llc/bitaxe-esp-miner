@@ -10,7 +10,7 @@ share_counter_correlation: blocked - missing explicit DEVICE_URL
 hashrate_input_correlation: blocked - missing explicit DEVICE_URL
 watchdog_correlation: blocked - missing explicit DEVICE_URL
 same_run_source: live-mining-smoke
-redaction_status: pending-review
+redaction_status: passed
 
 ## Scope
 

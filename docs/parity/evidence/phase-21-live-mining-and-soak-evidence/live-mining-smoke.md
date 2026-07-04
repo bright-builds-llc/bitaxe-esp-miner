@@ -25,7 +25,7 @@ watchdog_status: not-run
 api_telemetry_status: not-run
 websocket_frame_status: not-run
 safe_stop_status: not-run
-redaction_status: pending-review
+redaction_status: passed
 network_scan: disabled
 hardware_command_status: not-run
 detector_status: passed

@@ -5,7 +5,7 @@ pool_settings_consumed_by_runtime: false
 network_scan: disabled
 hardware_command_status: not-run
 settings_patch_status: not-run
-redaction_status: pending-review
+redaction_status: passed
 reason: DEVICE_URL-or-pool-input-category missing
 
 ## Scope
