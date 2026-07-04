@@ -91,7 +91,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 22. Claim Ladder And Safety Preconditions | v1.1 | 3/3 | Complete   | 2026-07-04 |
+| 22. Claim Ladder And Safety Preconditions | v1.1 | 3/3 | Complete    | 2026-07-04 |
 | 23. Redacted Operator Evidence Workflow | v1.1 | 0/TBD | Not started | - |
 | 24. BM1366 Production Work Path | v1.1 | 0/TBD | Not started | - |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 0/TBD | Not started | - |
