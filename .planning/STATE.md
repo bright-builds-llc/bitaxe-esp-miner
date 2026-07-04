@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 21-03-PLAN.md
-last_updated: "2026-07-04T05:03:13.245Z"
+stopped_at: Completed 21-04-PLAN.md
+last_updated: "2026-07-04T05:25:02.317Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 21
   completed_phases: 20
   total_plans: 116
-  completed_plans: 111
-  percent: 96
+  completed_plans: 112
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 21 (live-mining-and-soak-evidence) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-07-04
 
@@ -159,6 +159,7 @@ Progress: [█████████░] 94%
 | Phase 21-live-mining-and-soak-evidence P01 | 1800 | 3 tasks | 9 files |
 | Phase 21-live-mining-and-soak-evidence P02 | 33min | 3 tasks | 17 files |
 | Phase 21-live-mining-and-soak-evidence P03 | 15min | 2 tasks | 10 files |
+| Phase 21-live-mining-and-soak-evidence P04 | 981 | 1 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -423,6 +424,9 @@ Recent decisions affecting current work:
 - [Phase 21-live-mining-and-soak-evidence]: Refresh package/release-gate evidence after the Task 1 evidence commit so flashed safe-baseline firmware and copied manifest share the same source commit.
 - [Phase 21-live-mining-and-soak-evidence]: Commit only redacted detector and flash-monitor evidence; raw detector output stayed under ignored target/ state.
 - [Phase 21-live-mining-and-soak-evidence]: Redact IP-shaped Rust tool-version suffixes in the copied evidence manifest and rerun the release gate against the committed copy.
+- [Phase 21-live-mining-and-soak-evidence]: Plan 21-04 captured trusted package-backed chip-detect diagnostic evidence while preserving the observed BM1366 partial UART read as a fail-closed result, not ASIC initialization or mining proof.
+- [Phase 21-live-mining-and-soak-evidence]: Plan 21-04 validated chip-detect hardware execution through mining-allow with a completed redaction reviewer marker before citing the hardware command.
+- [Phase 21-live-mining-and-soak-evidence]: Plan 21-04 commits only the chip-detect package manifest and redacted logs; generated package binaries remain ignored.
 
 ### Pending Todos
 
@@ -448,6 +452,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T05:03:13.242Z
-Stopped at: Completed 21-03-PLAN.md
+Last session: 2026-07-04T05:25:02.313Z
+Stopped at: Completed 21-04-PLAN.md
 Resume file: None
