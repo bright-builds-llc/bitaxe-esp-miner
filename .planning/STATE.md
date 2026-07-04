@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: Ultra 205 Trusted Production Mining
-status: roadmap_ready
-stopped_at: Ready to plan Phase 22
-last_updated: "2026-07-04T20:05:00Z"
-last_activity: 2026-07-04 - Created v1.1 roadmap with Phases 22-26
+milestone_name: milestone
+status: executing
+stopped_at: Completed 22-01-PLAN.md
+last_updated: "2026-07-04T20:30:45.002Z"
+last_activity: 2026-07-04
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 3
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -22,16 +22,16 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
 
-**Current focus:** v1.1 Ultra 205 Trusted Production Mining - Phase 22 ready to plan.
+**Current focus:** Phase 22 — Claim Ladder And Safety Preconditions
 
 ## Current Position
 
-Phase: 22 of 26 (Claim Ladder And Safety Preconditions)
-Plan: -
-Status: Ready to plan
-Last activity: 2026-07-04 - Roadmap created for Phases 22-26
+Phase: 22 (Claim Ladder And Safety Preconditions) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-07-04
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 33%
 
 ## Active Artifacts
 
@@ -62,6 +62,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - v1.1 is limited to Ultra 205 BM1366 Stratum v1 trusted production mining.
 - Full active voltage, fan, thermal, fault, recovery, self-test, non-205 boards, OTAWWW/recovery fault injection, runtime display/input/BAP, Stratum v2, and unbounded stress mining remain deferred.
 - Phase goals preserve the functional-core/imperative-shell split for BM1366 work, Stratum runtime, safety decisions, and API projections.
+- [Phase 22]: Kept claim ladder validation as a test-enforced parity helper without adding a CLI subcommand.
+- [Phase 22]: Declared the claim ladder Markdown as a Bazel compile-time fixture for include_str validation.
+- [Phase 22]: Separated controlled no-share evidence text from accepted/rejected share terms to avoid overclaim ambiguity.
 
 ### Pending Todos
 
@@ -74,10 +77,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04 20:05 UTC
-Stopped at: v1.1 roadmap created and ready for Phase 22 planning
+Last session: 2026-07-04T20:30:45.000Z
+Stopped at: Completed 22-01-PLAN.md
 Resume file: None
 
 ## Next Step
 
-Run `/gsd-plan-phase 22` to create executable plans for Claim Ladder And Safety Preconditions.
+Run `/gsd-execute-phase 22` to continue with `22-02-PLAN.md`.

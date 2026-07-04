@@ -32,7 +32,11 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
   2. Operator can see that production mining requires fresh or explicitly bounded power, thermal, fan, voltage, and safety observations before BM1366 work dispatch.
   3. Operator receives a specific blocker reason when safety prerequisites are stale, unavailable, unsafe, ambiguous, or undocumented.
   4. Parity materials preserve explicit non-claims for full active voltage, fan, thermal, self-test, and fault-stimulus closure.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [x] 22-01-PLAN.md — Create the operator claim ladder and parity overclaim guard.
+- [ ] 22-02-PLAN.md — Add typed production-mining preconditions and exact blocker propagation.
+- [ ] 22-03-PLAN.md — Close Phase 22 evidence, checklist, and validation artifacts.
 
 ### Phase 23: Redacted Operator Evidence Workflow
 **Goal**: Ultra 205 operators can use a repo-owned, detector-gated flow for bounded production mining evidence while local pool credentials and sensitive runtime values remain runtime-only inputs.
@@ -87,7 +91,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 22. Claim Ladder And Safety Preconditions | v1.1 | 0/TBD | Not started | - |
+| 22. Claim Ladder And Safety Preconditions | v1.1 | 1/3 | In Progress | - |
 | 23. Redacted Operator Evidence Workflow | v1.1 | 0/TBD | Not started | - |
 | 24. BM1366 Production Work Path | v1.1 | 0/TBD | Not started | - |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 0/TBD | Not started | - |
