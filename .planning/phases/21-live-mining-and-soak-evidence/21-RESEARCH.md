@@ -383,22 +383,22 @@ Source: `tools/parity/src/main.rs` tests for `STR-008`. [VERIFIED: source file]
 
 All claims in this research were verified against local project files, local command probes, or cited official docs. No assumed claims are intentionally present.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Will execution have an explicit origin-only `DEVICE_URL` and disposable/non-secret live pool configuration?**
-   - What we know: Context requires both for live HTTP/WebSocket and live-pool smoke. [VERIFIED: `21-CONTEXT.md`]
-   - What's unclear: The value cannot be inferred and should not be committed or summarized. [VERIFIED: `21-CONTEXT.md`; `AGENTS.md`]
-   - Recommendation: Plan a live path plus a blocked/approved bounded no-share fallback. [VERIFIED: `21-CONTEXT.md`]
+   - Disposition: Converted into plan tasks with both runnable and blocked-safe paths. Plan `21-06` generates `allow-live-mining-smoke.json` as `live-pool-smoke` only when explicit operator-provided `DEVICE_URL` and disposable/non-secret pool env categories are present; otherwise it writes machine-readable blocked or controlled no-share evidence without probing. Plan `21-07` runs bounded soak only from a passed live smoke or approved controlled no-share prerequisite. Plan `21-08` refuses `phase21_status: complete` and `21-VERIFICATION.md status: passed` unless the artifacts prove actual live-pool smoke or approved controlled no-share soak plus bounded watchdog evidence and passed redaction.
+   - Plan references: `21-06-PLAN.md` Task 1 and Task 2; `21-07-PLAN.md` Task 1 and Task 2; `21-08-PLAN.md` Task 1 and Task 3.
+   - Secret handling: `DEVICE_URL`, pool credentials, worker secrets, private endpoints, Wi-Fi credentials, API tokens, and NVS secret values remain explicit non-readable/non-committable inputs per D-03 and D-04.
 
 2. **Does the current firmware need a controlled live-mining enablement path before evidence can run?**
-   - What we know: Current firmware main logs safe-state mining disabled and publishes blocked mining-loop status; pure mining-loop and state models exist. [VERIFIED: `firmware/bitaxe/src/main.rs`; `crates/bitaxe-stratum/src/v1/mining_loop.rs`]
-   - What's unclear: Whether an uninspected later mechanism enables live mining outside the searched firmware paths. [VERIFIED: `rg` search across `firmware/bitaxe/src` and `crates/bitaxe-stratum/src`]
-   - Recommendation: Make Wave 0 audit live-mining firmware readiness and add a controlled package mode only if the audit confirms it is missing. [VERIFIED: `21-CONTEXT.md`; `tools/parity/src/mining_allow.rs`]
+   - Disposition: Converted into implementation plan `21-02`. Plan `21-01` records `firmware_live_mining_status: blocked_by_default` and `controlled_enablement_required: true`; Plan `21-02` adds a package-scoped controlled live-mining evidence mode and package helper gated by `BITAXE_MINING_EVIDENCE_MODE=live-mining-smoke` plus `BITAXE_HARDWARE_EVIDENCE_ACK=ultra205-live-mining-smoke-safe-bench`. Plans `21-06` and `21-07` require `--enablement-summary` and `controlled_live_mining_package_status: ready` before wrapper execution.
+   - Plan references: `21-01-PLAN.md` Task 1 through Task 3; `21-02-PLAN.md` Task 1 and Task 2; `21-06-PLAN.md` Task 1; `21-07-PLAN.md` Task 1.
+   - Block disposition: If enablement cannot be built or proven, later live smoke and soak write blocked ledgers and the final phase remains blocked/below verified.
 
 3. **Will accepted-share proof be required, or is approved bounded no-share soak sufficient for closure?**
-   - What we know: `STR-008` verified can accept live share metadata or approved bounded controlled no-share soak without blocker language. [VERIFIED: `tools/parity/src/main.rs`]
-   - What's unclear: Pool difficulty and smoke duration may not produce shares in the bounded window. [VERIFIED: `21-CONTEXT.md`]
-   - Recommendation: Plan exact outcomes: accepted/rejected if observed, otherwise bounded no-share only with explicit non-claim language. [VERIFIED: `21-CONTEXT.md`; `tools/parity/src/main.rs`]
+   - Disposition: Explicitly accepted as exact-claim evidence branching. Plan `21-06` records accepted or rejected shares only when observed in redaction-reviewed artifacts. Plan `21-07` may record `approved_controlled_no_share_soak` only when live smoke establishes bounded no-share plus safe-stop and the soak records duration, pool lifecycle/job/work/result fields, safe-stop, and bounded watchdog observations. Plan `21-08` gates completion on `phase21_evidence_closure: live_pool_smoke` or `phase21_evidence_closure: approved_controlled_no_share_soak`; blocked prerequisite ledgers are not sufficient for completion.
+   - Plan references: `21-06-PLAN.md` Task 1; `21-07-PLAN.md` Task 1 and Task 2; `21-08-PLAN.md` Task 1 through Task 3.
+   - Claim boundary: Accepted-share proof is not synthesized; bounded no-share is never presented as accepted-share proof.
 
 ## Environment Availability
 

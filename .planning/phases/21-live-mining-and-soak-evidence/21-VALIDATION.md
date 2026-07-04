@@ -19,7 +19,7 @@ created: 2026-07-04
 |----------|-------|
 | **Framework** | Bazel `9.1.1` wrapping Rust and shell tests; Cargo/Rust workspace tests |
 | **Config file** | `BUILD.bazel`, per-package `BUILD.bazel`, `Cargo.toml`, `MODULE.bazel` |
-| **Quick run command** | `bazel test //tools/parity:tests //scripts:phase15_controlled_mining_test //scripts:phase15_bm1366_diagnostic_package_test` |
+| **Quick run command** | `bazel test //tools/parity:tests //scripts:phase21_live_mining_package_test //scripts:phase21_live_mining_evidence_test //scripts:phase15_bm1366_diagnostic_package_test` |
 | **Full suite command** | `just test` plus Rust pre-commit checks before commits |
 | **Estimated runtime** | ~60 seconds for scoped existing tests; hardware and firmware package commands vary by plan |
 
@@ -38,10 +38,10 @@ created: 2026-07-04
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 21-W0-01 | TBD | 0 | ASIC-07, STR-06, STR-07 | T-21-W0 / credential disclosure, unsafe command shape | New or reused mining wrappers cannot run outside detector, package, allow-manifest, redaction, and safe-state gates | unit + script | `cargo test -p bitaxe-parity --all-features mining_allow`; `bazel test //tools/parity:tests` | ✅ existing parity tests; Phase 21 extensions TBD | ⬜ pending |
-| 21-W0-02 | TBD | 0 | ASIC-07, STR-06 | T-21-W0 / live mining enablement ambiguity | Firmware live-mining readiness is audited before any live smoke claim; missing enablement produces blocked evidence instead of a false run | static + script | `rg -n "mining_loop_status|work_submission|hardware_evidence_ack|BITAXE_ASIC_DIAGNOSTIC" firmware/bitaxe crates/bitaxe-stratum scripts tools` | ✅ existing code; audit artifact TBD | ⬜ pending |
-| 21-W0-03 | TBD | 0 | SAFE-09, EVD-05 | T-21-W0 / watchdog overclaim, evidence gap | Bounded mining/soak plans include duration, abort conditions, responsiveness observations, and final safe-state markers | script + review | `bazel test //scripts:phase14_self_test_watchdog_load_test //scripts:phase20_failure_paths_test` plus Phase 21 helper tests if added | ✅ existing tests; Phase 21 helper tests TBD | ⬜ pending |
-| 21-W0-04 | TBD | 0 | EVD-05 | T-21-W0 / secret leakage | Evidence tree has a redaction-review scaffold and scoped secret-pattern scan before citation | workflow | `rg -n -i "ssid|wifi|password|pool|worker|token|device_url|nvs|stratum|https?://|([0-9]{1,3}\\.){3}[0-9]{1,3}|([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}|secret|credential" docs/parity/evidence/phase-21-live-mining-and-soak-evidence` | ❌ W0 scaffold needed | ⬜ pending |
+| 21-W0-01 | 21-01 | 0 | ASIC-07, STR-06, STR-07 | T-21-01 / credential disclosure, unsafe command shape | New or reused mining wrappers cannot run outside detector, package, allow-manifest, redaction, enablement-summary, and safe-state gates | unit + script | `cargo test -p bitaxe-parity --all-features mining_allow`; `bazel test //tools/parity:tests`; `bazel test //scripts:phase21_live_mining_evidence_test` | ✅ existing parity tests; Phase 21 extensions planned | ⬜ pending |
+| 21-W0-02 | 21-01, 21-02 | 0-1 | ASIC-07, STR-06 | T-21-02 / live mining enablement ambiguity | Firmware live-mining readiness is audited and `blocked_by_default` is converted into a controlled package enablement path before any live smoke claim | static + script | `21-01 Task 3 readiness audit command`; `bazel test //scripts:phase21_live_mining_package_test` | ✅ existing code; enablement artifact planned | ⬜ pending |
+| 21-W0-03 | 21-07 | 6 | SAFE-09, EVD-05 | T-21-07 / watchdog overclaim, evidence gap | Bounded mining/soak plans include duration, abort conditions, responsiveness observations, and final safe-state markers | script + review | `bazel test //scripts:phase14_self_test_watchdog_load_test //scripts:phase20_failure_paths_test`; `bazel test //scripts:phase21_live_mining_evidence_test` | ✅ existing tests; Phase 21 helper tests planned | ⬜ pending |
+| 21-W0-04 | 21-01, 21-08 | 0, 7 | EVD-05 | T-21-08 / secret leakage | Evidence tree has a redaction-review scaffold and deterministic scoped secret-pattern scan before citation | workflow | `21-08 Task 1 deterministic redaction scan command` | ❌ W0 scaffold needed | ⬜ pending |
 | 21-PHASE | all | all | ASIC-07, STR-06, STR-07, SAFE-09, EVD-05 | T-21-final / parity overclaim | Checklist promotions are exact-claim only and `just parity` rejects blocker language or missing metadata | workflow | `just test`; `just parity`; `just verify-reference`; `git diff -- reference/esp-miner --exit-code`; lifecycle validation | ✅ existing commands | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -52,7 +52,7 @@ created: 2026-07-04
 
 - [ ] Add tests for any `tools/parity/src/mining_allow.rs` Phase 21 command-shape extension before new hardware wrapper use.
 - [ ] Add a Phase 21 wrapper test target under `scripts/BUILD.bazel` if a new `scripts/phase21-*.sh` wrapper is introduced.
-- [ ] Add or record a live-mining readiness audit artifact before planning live smoke, because current firmware startup remains fail-closed by default.
+- [ ] Add or record a live-mining readiness audit artifact and controlled live-mining package enablement artifact before planning live smoke, because current firmware startup remains fail-closed by default.
 - [ ] Add a redaction-review scaffold for Phase 21 before final checklist citations.
 
 ***
