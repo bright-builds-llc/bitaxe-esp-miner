@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 21-01-PLAN.md
-last_updated: "2026-07-04T04:03:33.330Z"
+stopped_at: Completed 21-02-PLAN.md
+last_updated: "2026-07-04T04:41:48.369Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 21
   completed_phases: 20
   total_plans: 116
-  completed_plans: 109
-  percent: 94
+  completed_plans: 110
+  percent: 95
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 21 (live-mining-and-soak-evidence) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-07-04
 
@@ -157,6 +157,7 @@ Progress: [█████████░] 94%
 | Phase 20-active-safety-hardware-telemetry-evidence P05 | 7m44s | 2 tasks | 4 files |
 | Phase 20-active-safety-hardware-telemetry-evidence P06 | 13min | 3 tasks | 7 files |
 | Phase 21-live-mining-and-soak-evidence P01 | 1800 | 3 tasks | 9 files |
+| Phase 21-live-mining-and-soak-evidence P02 | 33min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -415,6 +416,9 @@ Recent decisions affecting current work:
 - [Phase 21]: Missing live prerequisites produce blocked or pending evidence, not controlled-no-share claims.
 - [Phase 21]: Live mining smoke and bounded soak require both controlled package readiness and controlled runtime harness readiness.
 - [Phase 21]: Plan 21-01 records firmware live mining as blocked by default and leaves runtime enablement to later plans.
+- [Phase 21-live-mining-and-soak-evidence]: Default firmware remains fail-closed; controlled mining only activates with BITAXE_MINING_EVIDENCE_MODE=live-mining-runtime and BITAXE_HARDWARE_EVIDENCE_ACK=ultra205-live-mining-runtime-safe-bench.
+- [Phase 21-live-mining-and-soak-evidence]: Firmware parses explicit stored Stratum settings for controlled mode; schema defaults alone do not enable the harness.
+- [Phase 21-live-mining-and-soak-evidence]: Only the package manifest is tracked; generated Phase 21 package binaries are ignored and reproducible through the helper.
 
 ### Pending Todos
 
@@ -440,6 +444,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T04:03:33.322Z
-Stopped at: Completed 21-01-PLAN.md
+Last session: 2026-07-04T04:41:48.365Z
+Stopped at: Completed 21-02-PLAN.md
 Resume file: None
