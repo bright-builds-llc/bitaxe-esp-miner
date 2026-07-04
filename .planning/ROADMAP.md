@@ -525,7 +525,7 @@ Plans:
 Plans:
 
 - [ ] 21-01-PLAN.md - Establish Phase 21 mining allow gates, wrapper tests, evidence scaffold, redaction scaffold, and readiness audit.
-- [ ] 21-02-PLAN.md - Add controlled live-mining firmware/package enablement for the blocked-by-default readiness path.
+- [ ] 21-02-PLAN.md - Add the bounded controlled mining runtime/harness and package enablement for the blocked-by-default readiness path.
 - [ ] 21-03-PLAN.md - Capture package, release-gate, detector, and safe-baseline preflight evidence or blockers.
 - [ ] 21-04-PLAN.md - Capture or precisely block package-backed BM1366 chip-detect diagnostic evidence.
 - [ ] 21-05-PLAN.md - Capture or precisely block package-backed BM1366 work-result diagnostic evidence.
