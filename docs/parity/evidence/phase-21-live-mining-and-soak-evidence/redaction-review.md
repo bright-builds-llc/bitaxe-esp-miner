@@ -19,7 +19,7 @@ Expected result before final promotion: only schema terms, redacted labels, and 
 
 | Evidence pack | Artifact path | Redaction state | Commit/share state | Notes |
 |---------------|---------------|-----------------|--------------------|-------|
-| `preflight` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight/` | pending | raw_artifacts_committed: no | Must keep board `205`, port label, source commit, reference commit, commands, and conclusions only after redaction review. |
+| `preflight` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight/` | passed | raw_artifacts_committed: no | Review completed for package, detector, board-info, and safe-baseline artifacts. Raw detector output stayed under ignored `target/`; committed hardware logs are redacted and contain only board `205`, port label, source commit, reference commit, commands, and conclusions. |
 | `live-mining-enablement` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/` | pending | raw_artifacts_committed: no | Must contain ready markers without secret-bearing configuration values. |
 | `bm1366-init-work-result` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/` | pending | raw_artifacts_committed: no | Must cite trusted wrapper summaries and safe-state markers. |
 | `live-mining-smoke` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/` | pending | raw_artifacts_committed: no | Must redact pool, worker, target, address, and credential-bearing details. |

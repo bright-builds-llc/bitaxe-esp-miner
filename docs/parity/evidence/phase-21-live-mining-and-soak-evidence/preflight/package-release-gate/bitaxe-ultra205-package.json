@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "release_name": "bitaxe-ultra205",
-  "source_commit": "caf67601f1cc8087346cb3f7032bd750504e1401",
+  "source_commit": "a19b9e0660a315e8f0e1aa08d16e4822fd6937a6",
   "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
   "default_flash_image": "bitaxe-ultra205.elf",
   "image_metadata": {
@@ -12,8 +12,8 @@
     "rust_target": "xtensa-esp32s3-espidf"
   },
   "tool_versions": {
-    "cargo": "cargo 1.88.0-nightly (873a06493 2025-05-10) (1.88.0.0)",
-    "rustc": "rustc 1.88.0-nightly (2ab28d2e7 2025-06-24) (1.88.0.0)",
+    "cargo": "cargo 1.88.0-nightly (873a06493 2025-05-10) ([redacted-ip-shaped-tool-version])",
+    "rustc": "rustc 1.88.0-nightly (2ab28d2e7 2025-06-24) ([redacted-ip-shaped-tool-version])",
     "bazel": "Unavailable",
     "espflash": "espflash 4.0.1"
   },
@@ -29,13 +29,13 @@
       "kind": "firmware_elf",
       "path": "bitaxe-ultra205.elf",
       "offset": "Unavailable",
-      "sha256": "bf0dcedec973f6db1b25ede65fdd7feef77e7de1cf0a1f135762b7c8733eb738"
+      "sha256": "b75760fea1525ae4b673d5c4000e910226b4928cfe136688dda0210f4f5a88c8"
     },
     {
       "kind": "firmware_ota_image",
       "path": "esp-miner.bin",
       "offset": "0x10000",
-      "sha256": "8a59b3cca3b69baa72f3d44065769eba760e7a824909c7841c335f9a91846a26"
+      "sha256": "fa64fc97e6bc9dd7e42d2b667fe31bc158a34b14c41a53b7580d88c7a8c23648"
     },
     {
       "kind": "www_spiffs_image",
@@ -47,7 +47,7 @@
       "kind": "factory_merged_image",
       "path": "bitaxe-ultra205-factory.bin",
       "offset": "0x0",
-      "sha256": "a1400f6f2afb15e859a455850129db55d3fbb675cb1c44c165ae879efa2826a9"
+      "sha256": "359e8ccfc59ca673f3e6924c731b7f2890036c2cbbc8b000d09cc5d5d0039a83"
     },
     {
       "kind": "partition_table",
