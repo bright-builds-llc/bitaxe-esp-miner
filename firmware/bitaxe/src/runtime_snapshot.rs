@@ -69,6 +69,13 @@ pub fn apply_mining_activity_command(effect: MiningActivityEffect) {
     mutate_command_visible_state(|state| apply_mining_activity_effect(&mut state.mining, effect));
 }
 
+/// Replaces API-visible mining state after Phase 21 controlled evidence runs.
+pub fn replace_mining_runtime_state_for_evidence(mining: MiningRuntimeState) {
+    mutate_command_visible_state(|state| {
+        state.mining = mining;
+    });
+}
+
 /// Applies an API-visible identify command effect.
 pub fn apply_identify_mode_command(effect: IdentifyModeEffect) {
     let now_ms = uptime_millis();

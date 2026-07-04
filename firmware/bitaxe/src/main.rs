@@ -5,10 +5,12 @@ use esp_idf_svc::{hal::peripherals::Peripherals, sys};
 
 mod asic_adapter;
 mod boot_validation;
+mod controlled_mining_runtime;
 mod display_adapter;
 mod filesystem;
 mod http_api;
 mod log_buffer;
+mod mining_evidence_mode;
 mod network_stack;
 mod ota_update;
 mod runtime_snapshot;
@@ -93,7 +95,7 @@ fn main() -> anyhow::Result<()> {
         log::warn!("ota_boot_validation=error error={error:#}");
     }
     startup_diagnostics?;
-    asic_adapter::publish_mining_loop_blocked_status("hardware_evidence_ack_missing");
+    controlled_mining_runtime::maybe_start_after_asic_gate();
     safety_adapter::start_safety_supervisor();
     if let Some(modem) = maybe_modem {
         if let Err(error) = wifi_adapter::start_wifi_sta(modem) {

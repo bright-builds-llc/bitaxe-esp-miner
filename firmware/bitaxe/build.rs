@@ -4,6 +4,8 @@ use std::process::Command;
 fn main() {
     embuild::espidf::sysenv::output();
     println!("cargo:rerun-if-env-changed=BITAXE_SOURCE_COMMIT");
+    println!("cargo:rerun-if-env-changed=BITAXE_MINING_EVIDENCE_MODE");
+    println!("cargo:rerun-if-env-changed=BITAXE_HARDWARE_EVIDENCE_ACK");
     emit_git_rerun_hints();
 
     let Some(commit) = maybe_git_commit() else {

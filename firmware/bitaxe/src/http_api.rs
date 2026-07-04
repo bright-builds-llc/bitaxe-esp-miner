@@ -31,7 +31,10 @@ use crate::runtime_snapshot::{
     apply_block_found_dismiss_command, apply_identify_mode_command, apply_mining_activity_command,
     block_found_notification_state, collect_api_snapshot, identify_mode, mining_runtime_state,
 };
-use crate::{log_buffer, network_stack, settings_adapter, static_files, websocket_api};
+use crate::{
+    controlled_mining_runtime, log_buffer, network_stack, settings_adapter, static_files,
+    websocket_api,
+};
 
 type ApiRequest<'request, 'connection> = Request<&'request mut EspHttpConnection<'connection>>;
 
@@ -953,6 +956,7 @@ fn apply_settings_effects(effects: &[SettingsPersistenceEffect]) {
             }
         }
     }
+    controlled_mining_runtime::maybe_refresh_from_settings();
 }
 
 fn apply_hostname_effect(hostname: &str) {
