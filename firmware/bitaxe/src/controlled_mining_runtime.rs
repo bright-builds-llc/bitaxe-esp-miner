@@ -8,7 +8,11 @@ use bitaxe_asic::bm1366::command::Bm1366Command;
 use bitaxe_config::{nvs::StoredValueKind, NvsSnapshot};
 use bitaxe_safety::{
     evidence::SafetyCriticalEvidence,
-    mining_preconditions::ProductionMiningPreconditionDecision,
+    mining_preconditions::{
+        BoundedObservationEvidence, ProductionMiningPreconditions, ProductionMiningPrerequisite,
+        FAN_OBSERVATION_UNAVAILABLE, SAFETY_PREFLIGHT_EVIDENCE_MISSING,
+        VOLTAGE_OBSERVATION_UNAVAILABLE,
+    },
     power::PowerEvidenceToken,
     status::SafetyStatus,
     thermal::ThermalEvidenceToken,
@@ -35,6 +39,9 @@ const BOARD_205: &str = "205";
 const MISSING_POOL_SETTINGS: &str = "missing_pool_settings";
 const PLAN_BUILD_FAILED: &str = "plan_build_failed";
 const ADAPTER_ACTION_FAILED: &str = "adapter_action_failed";
+const CONTROLLED_RUNTIME_EVIDENCE_ID: &str =
+    "ultra205-live-mining-runtime-safe-bench-controlled-mode";
+const CONTROLLED_RUNTIME_OBSERVATION_WINDOW_MS: u32 = 60_000;
 
 pub fn maybe_start_after_asic_gate() {
     match MiningEvidenceMode::current() {
@@ -61,6 +68,9 @@ fn publish_for_settings_snapshot(source: &'static str) {
         ControlledRuntimePublication::MissingPoolSettings => {
             publish_blocked(MISSING_POOL_SETTINGS, source);
         }
+        ControlledRuntimePublication::Blocked { reason } => {
+            publish_blocked(reason, source);
+        }
         ControlledRuntimePublication::Ready(plan) => {
             publish_ready(plan, source);
         }
@@ -83,12 +93,18 @@ fn runtime_publication_from_snapshot(snapshot: &NvsSnapshot) -> ControlledRuntim
         Ok(plan) if plan.status == ControlledMiningRuntimeStatus::Ready => {
             ControlledRuntimePublication::Ready(plan)
         }
-        Ok(_) | Err(_) => ControlledRuntimePublication::MissingPoolSettings,
+        Ok(plan) => ControlledRuntimePublication::Blocked {
+            reason: plan.block_reason.unwrap_or(PLAN_BUILD_FAILED),
+        },
+        Err(_) => ControlledRuntimePublication::Blocked {
+            reason: PLAN_BUILD_FAILED,
+        },
     }
 }
 
 enum ControlledRuntimePublication {
     MissingPoolSettings,
+    Blocked { reason: &'static str },
     Ready(ControlledMiningRuntimePlan),
 }
 
@@ -205,11 +221,10 @@ fn stored_u16(snapshot: &NvsSnapshot, key: &str) -> Option<u16> {
 }
 
 fn controlled_runtime_gate() -> MiningLoopGate {
-    let evidence = SafetyCriticalEvidence::hardware_smoke(
-        "ultra205-live-mining-runtime-safe-bench-controlled-mode",
-    );
+    let evidence = SafetyCriticalEvidence::hardware_smoke(CONTROLLED_RUNTIME_EVIDENCE_ID);
+    let preconditions = controlled_production_preconditions();
     MiningLoopGate {
-        production_preconditions: ProductionMiningPreconditionDecision::Ready,
+        production_preconditions: preconditions.decision(),
         asic_initialized: true,
         maybe_power_evidence: Some(PowerEvidenceToken {
             bus_voltage_volts: 5.0,
@@ -224,6 +239,26 @@ fn controlled_runtime_gate() -> MiningLoopGate {
         safety_status: SafetyStatus::Normal,
         hardware_evidence_ack: true,
     }
+}
+
+fn controlled_production_preconditions() -> ProductionMiningPreconditions {
+    ProductionMiningPreconditions {
+        power: bounded_production_prerequisite("controlled_runtime_power"),
+        thermal: bounded_production_prerequisite("controlled_runtime_thermal"),
+        fan: ProductionMiningPrerequisite::blocked(FAN_OBSERVATION_UNAVAILABLE),
+        voltage: ProductionMiningPrerequisite::blocked(VOLTAGE_OBSERVATION_UNAVAILABLE),
+        safety: ProductionMiningPrerequisite::blocked(SAFETY_PREFLIGHT_EVIDENCE_MISSING),
+    }
+}
+
+fn bounded_production_prerequisite(source: &'static str) -> ProductionMiningPrerequisite {
+    ProductionMiningPrerequisite::Bounded(BoundedObservationEvidence {
+        source,
+        board: BOARD_205,
+        evidence_id: CONTROLLED_RUNTIME_EVIDENCE_ID,
+        validity_window_ms: CONTROLLED_RUNTIME_OBSERVATION_WINDOW_MS,
+        reason: "bounded_observation_accepted",
+    })
 }
 
 fn redacted_lifecycle_log_markers(plan: &ControlledMiningRuntimePlan) -> Vec<String> {
@@ -324,6 +359,7 @@ fn runtime_state_for_evidence(plan: &ControlledMiningRuntimePlan) -> MiningRunti
 #[cfg(test)]
 mod tests {
     use bitaxe_config::{NvsSnapshot, StoredValue};
+    use bitaxe_safety::mining_preconditions::ProductionMiningPreconditionDecision;
     use bitaxe_stratum::v1::state::{PoolLifecycleStatus, WorkSubmissionGate};
 
     use super::*;
@@ -344,7 +380,7 @@ mod tests {
     }
 
     #[test]
-    fn settings_snapshot_builds_bounded_controlled_runtime_plan() {
+    fn settings_snapshot_blocks_controlled_runtime_without_live_fan_voltage_inputs() {
         // Arrange
         let snapshot = sample_settings_snapshot();
 
@@ -352,9 +388,30 @@ mod tests {
         let publication = runtime_publication_from_snapshot(&snapshot);
 
         // Assert
-        let ControlledRuntimePublication::Ready(plan) = publication else {
-            panic!("stored Stratum settings should enable controlled runtime");
+        let ControlledRuntimePublication::Blocked { reason } = publication else {
+            panic!("missing fan observation should block controlled runtime");
         };
+        assert_eq!(reason, FAN_OBSERVATION_UNAVAILABLE);
+    }
+
+    #[test]
+    fn ready_test_gate_still_builds_bounded_controlled_runtime_plan() {
+        // Arrange
+        let snapshot = sample_settings_snapshot();
+        let input = ControlledMiningRuntimeInput {
+            pool: controlled_pool_config_from_snapshot(&snapshot)
+                .expect("sample pool config should parse"),
+            gate: ready_test_gate(),
+            transcript: controlled_transcript(&snapshot),
+            maybe_nonce_result: None,
+            maybe_submit_response: None,
+        };
+
+        // Act
+        let plan = ControlledMiningRuntimePlan::build(input)
+            .expect("ready test gate should build controlled runtime plan");
+
+        // Assert
         assert_eq!(plan.runtime_state.lifecycle, PoolLifecycleStatus::Active);
         assert_eq!(
             plan.runtime_state.work_submission,
@@ -367,11 +424,16 @@ mod tests {
     fn redacted_markers_do_not_expose_pool_identity_or_raw_frames() {
         // Arrange
         let snapshot = sample_settings_snapshot();
-        let ControlledRuntimePublication::Ready(plan) =
-            runtime_publication_from_snapshot(&snapshot)
-        else {
-            panic!("sample settings should enable controlled runtime");
+        let input = ControlledMiningRuntimeInput {
+            pool: controlled_pool_config_from_snapshot(&snapshot)
+                .expect("sample pool config should parse"),
+            gate: ready_test_gate(),
+            transcript: controlled_transcript(&snapshot),
+            maybe_nonce_result: None,
+            maybe_submit_response: None,
         };
+        let plan = ControlledMiningRuntimePlan::build(input)
+            .expect("ready test gate should build controlled runtime plan");
 
         // Act
         let markers = redacted_lifecycle_log_markers(&plan).join("\n");
@@ -439,5 +501,25 @@ mod tests {
             StoredValue::string("stratumpass", "redaction-sentinel-password"),
             StoredValue::u16("stratumdiff", 42),
         ])
+    }
+
+    fn ready_test_gate() -> MiningLoopGate {
+        let evidence = SafetyCriticalEvidence::hardware_smoke("phase-22-ready-test-gate");
+        MiningLoopGate {
+            production_preconditions: ProductionMiningPreconditionDecision::Ready,
+            asic_initialized: true,
+            maybe_power_evidence: Some(PowerEvidenceToken {
+                bus_voltage_volts: 5.0,
+                current_amps: 2.5,
+                power_watts: 12.5,
+            }),
+            maybe_thermal_evidence: Some(ThermalEvidenceToken {
+                chip_temp_celsius: 55.0,
+                evidence,
+            }),
+            maybe_safety_evidence: Some(evidence),
+            safety_status: SafetyStatus::Normal,
+            hardware_evidence_ack: true,
+        }
     }
 }
