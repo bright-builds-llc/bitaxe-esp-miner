@@ -125,10 +125,10 @@ fn publish_ready(plan: ControlledMiningRuntimePlan, source: &'static str) {
     let runtime_state = runtime_state_for_evidence(&plan);
     runtime_snapshot::replace_mining_runtime_state_for_evidence(runtime_state);
     log::info!(
-        "runtime_snapshot_status=updated collect_api_snapshot=ready api_ws_live_telemetry_update=ready"
+        "runtime_snapshot_status=updated collect_api_snapshot=ready api_websocket_telemetry_update_status=ready"
     );
     log::info!(
-        "phase21_controlled_runtime_safe_stop=complete mining=disabled hardware_control=disabled work_submission=disabled"
+        "safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled"
     );
 }
 
