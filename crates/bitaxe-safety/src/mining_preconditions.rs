@@ -5,6 +5,151 @@
 //! - D-06: accept only fresh observations or bounded Ultra 205 evidence.
 //! - D-07: parse shell/runtime observations into typed inputs before dispatch decisions.
 
+use serde::Serialize;
+
+use crate::effects::SafetyEffectPlan;
+use crate::power::PowerObservation;
+use crate::thermal::ThermalObservation;
+
+pub const MODULE_NAME: &str = "mining_preconditions";
+
+pub const FAN_OBSERVATION_UNAVAILABLE: &str = "fan_observation_unavailable";
+pub const FAN_OBSERVATION_STALE: &str = "fan_observation_stale";
+pub const VOLTAGE_OBSERVATION_UNAVAILABLE: &str = "voltage_observation_unavailable";
+pub const VOLTAGE_OBSERVATION_STALE: &str = "voltage_observation_stale";
+pub const BOUNDED_OBSERVATION_AMBIGUOUS: &str = "bounded_observation_ambiguous";
+pub const BOUNDED_OBSERVATION_UNDOCUMENTED: &str = "bounded_observation_undocumented";
+pub const BOUNDED_OBSERVATION_BOARD_MISMATCH: &str = "bounded_observation_board_mismatch";
+pub const SAFETY_PREFLIGHT_EVIDENCE_MISSING: &str = "safety_preflight_evidence_missing";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct BoundedObservationEvidence {
+    pub source: &'static str,
+    pub board: &'static str,
+    pub evidence_id: &'static str,
+    pub validity_window_ms: u32,
+    pub reason: &'static str,
+}
+
+impl BoundedObservationEvidence {
+    #[must_use]
+    pub const fn blocker_reason(self) -> Option<&'static str> {
+        if self.source.is_empty() || self.evidence_id.is_empty() || self.reason.is_empty() {
+            return Some(BOUNDED_OBSERVATION_UNDOCUMENTED);
+        }
+
+        if self.validity_window_ms == 0 {
+            return Some(BOUNDED_OBSERVATION_AMBIGUOUS);
+        }
+
+        if !matches_board_205(self.board) {
+            return Some(BOUNDED_OBSERVATION_BOARD_MISMATCH);
+        }
+
+        None
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum ProductionMiningPrerequisite {
+    Fresh,
+    Blocked { reason: &'static str },
+    Bounded(BoundedObservationEvidence),
+}
+
+impl ProductionMiningPrerequisite {
+    #[must_use]
+    pub const fn blocked(reason: &'static str) -> Self {
+        Self::Blocked { reason }
+    }
+
+    #[must_use]
+    pub fn from_power_observation(observation: PowerObservation) -> Self {
+        let Some(reason) = observation.reason() else {
+            return Self::Fresh;
+        };
+
+        Self::Blocked { reason }
+    }
+
+    #[must_use]
+    pub fn from_thermal_observation(observation: ThermalObservation) -> Self {
+        let Some(reason) = observation.reason() else {
+            if observation.is_fresh_safe() {
+                return Self::Fresh;
+            }
+
+            return Self::Blocked {
+                reason: "thermal_reading_invalid",
+            };
+        };
+
+        Self::Blocked { reason }
+    }
+
+    const fn blocker_reason(self) -> Option<&'static str> {
+        match self {
+            Self::Fresh => None,
+            Self::Blocked { reason } => Some(reason),
+            Self::Bounded(evidence) => evidence.blocker_reason(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct ProductionMiningPreconditions {
+    pub power: ProductionMiningPrerequisite,
+    pub thermal: ProductionMiningPrerequisite,
+    pub fan: ProductionMiningPrerequisite,
+    pub voltage: ProductionMiningPrerequisite,
+    pub safety: ProductionMiningPrerequisite,
+}
+
+impl ProductionMiningPreconditions {
+    #[must_use]
+    pub fn decision(self) -> ProductionMiningPreconditionDecision {
+        for prerequisite in [
+            self.power,
+            self.thermal,
+            self.fan,
+            self.voltage,
+            self.safety,
+        ] {
+            let Some(reason) = prerequisite.blocker_reason() else {
+                continue;
+            };
+
+            return ProductionMiningPreconditionDecision::blocked(reason);
+        }
+
+        ProductionMiningPreconditionDecision::Ready
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub enum ProductionMiningPreconditionDecision {
+    Ready,
+    Blocked {
+        reason: &'static str,
+        plan: SafetyEffectPlan,
+    },
+}
+
+impl ProductionMiningPreconditionDecision {
+    #[must_use]
+    pub fn blocked(reason: &'static str) -> Self {
+        Self::Blocked {
+            reason,
+            plan: SafetyEffectPlan::fail_closed(reason),
+        }
+    }
+}
+
+const fn matches_board_205(board: &str) -> bool {
+    let bytes = board.as_bytes();
+    bytes.len() == 3 && bytes[0] == b'2' && bytes[1] == b'0' && bytes[2] == b'5'
+}
+
 #[cfg(test)]
 mod tests {
     use crate::effects::{SafetyEffect, SafetyEffectPlan};
