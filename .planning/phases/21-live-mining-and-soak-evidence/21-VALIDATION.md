@@ -97,3 +97,33 @@ Nyquist phase closure is green because Phase 21 now records controlled no-share
 live smoke, approved bounded controlled no-share soak, redacted telemetry, and
 watchdog responsiveness evidence without promoting accepted/rejected share or
 active hardware-control non-claims.
+
+## Validation Audit 2026-07-04T19:41:36Z
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+| Generated test files | 0 |
+
+Result: State A audit of the existing validation file found no missing Nyquist
+coverage for Phase 21. The current final evidence ledgers support the existing
+`nyquist_compliant: true` and `wave_0_complete: true` frontmatter.
+
+Evidence checked:
+
+- `.planning/phases/21-live-mining-and-soak-evidence/21-01-PLAN.md` through `21-08-PLAN.md`
+- `.planning/phases/21-live-mining-and-soak-evidence/21-01-SUMMARY.md` through `21-08-SUMMARY.md`
+- `.planning/phases/21-live-mining-and-soak-evidence/21-VERIFICATION.md`
+- `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/summary.md`
+- `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke.md`
+- `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak.md`
+- `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/redaction-review.md`
+
+The historical `21-08-SUMMARY.md` body still records the earlier blocked
+execution branch from that plan's original closure. The current validation
+decision is based on the later Phase 21 final evidence ledger and verification
+report, which record the approved controlled no-share soak closure without
+promoting accepted-share, rejected-share, active-control, frequency-transition,
+OTA/recovery, or non-205 board claims.
