@@ -120,6 +120,12 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase21_live_mining_evidence",
+    srcs = ["phase21-live-mining-evidence.sh"],
+    data = ["phase17-websocket-capture.mjs"],
+)
+
+sh_binary(
     name = "source_commit_stamp_tool",
     srcs = ["source-commit-stamp.sh"],
 )
@@ -303,6 +309,22 @@ sh_test(
     data = [
         "phase15-controlled-mining.sh",
         "phase15-websocket-capture.mjs",
+    ],
+    env_inherit = [
+        "HOME",
+        "NODE_BIN",
+        "NVM_DIR",
+        "PATH",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase21_live_mining_evidence_test",
+    srcs = ["phase21-live-mining-evidence-test.sh"],
+    data = [
+        "phase17-websocket-capture.mjs",
+        "phase21-live-mining-evidence.sh",
     ],
     env_inherit = [
         "HOME",
