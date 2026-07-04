@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Ultra 205 Parity
-status: milestone_complete
-stopped_at: v1.0 milestone archived
-last_updated: "2026-07-04T19:46:49Z"
-last_activity: 2026-07-04 - Archived v1.0 Ultra 205 Parity milestone
+milestone: v1.1
+milestone_name: Ultra 205 Trusted Production Mining
+status: defining_requirements
+stopped_at: Defining v1.1 requirements
+last_updated: "2026-07-04T19:52:00Z"
+last_activity: 2026-07-04 - Started v1.1 Ultra 205 Trusted Production Mining milestone
 progress:
-  total_phases: 21
-  completed_phases: 21
-  total_plans: 116
-  completed_plans: 116
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -22,29 +22,32 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
 
-**Current focus:** v1.0 archived. Next milestone requirements are not yet defined.
+**Current focus:** v1.1 Ultra 205 Trusted Production Mining - defining requirements.
 
 ## Current Position
 
-Milestone v1.0 Ultra 205 Parity is complete and archived.
+Phase: Not started (defining requirements)
+Plan: -
+Status: Defining requirements
+Last activity: 2026-07-04 - Milestone v1.1 started
 
-- Phases complete: 21/21
-- Plans complete: 116/116
-- Tasks complete: 226
-- Requirements satisfied: 64/64
-- Audit decision: `tech_debt`
-- Requirement gaps: 0
-- Integration gaps: 0
-- Flow gaps: 0
+Progress: [░░░░░░░░░░] 0%
 
 ## Active Artifacts
 
 - Current project brief: `.planning/PROJECT.md`
 - Current roadmap shell: `.planning/ROADMAP.md`
 - Milestone summary: `.planning/MILESTONES.md`
+- Current requirements: pending `.planning/REQUIREMENTS.md` creation
 - Archived roadmap: `.planning/milestones/v1.0-ROADMAP.md`
 - Archived requirements: `.planning/milestones/v1.0-REQUIREMENTS.md`
 - Archived audit: `.planning/milestones/v1.0-MILESTONE-AUDIT.md`
+
+## Current Milestone Scope
+
+v1.1 targets trusted Ultra 205 Stratum v1 production mining. The milestone should move beyond controlled no-share evidence by proving real socket I/O, trusted BM1366 initialization/work/result behavior, at least one real accepted or rejected share outcome, live mining telemetry, watchdog responsiveness, and safe stop under prerequisite safety gates.
+
+Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW, rollback/recovery fault injection, runtime display/input, LVGL-like UI flow, and BAP.
 
 ## Accepted Tech Debt
 
@@ -53,4 +56,4 @@ Milestone v1.0 Ultra 205 Parity is complete and archived.
 
 ## Next Step
 
-Run `/gsd-new-milestone` to define the next milestone through fresh questioning, research, requirements, and roadmap planning.
+Continue `/gsd-new-milestone` by choosing research, defining `.planning/REQUIREMENTS.md`, and creating the v1.1 roadmap.

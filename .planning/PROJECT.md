@@ -16,17 +16,23 @@ v1.0 Ultra 205 Parity shipped on 2026-07-04. The milestone completed 21 phases, 
 
 The shipped v1.0 evidence set proves the Ultra 205 BM1366 path through exact-claim evidence governance: Rust ESP-IDF foundation, package/flash/monitor workflows, typed config/NVS behavior, BM1366 protocol and diagnostic hardware evidence, Stratum v1 mining runtime, AxeOS-compatible API/static/WebSocket surfaces, safety controllers, release artifacts, OTA/recovery boundaries, redaction review, and controlled no-share live mining/soak closure.
 
-The active planning surface is intentionally reset for the next milestone. Historical v1.0 roadmap, requirements, and audit records live under `.planning/milestones/`.
+The active planning surface is now focused on v1.1. Historical v1.0 roadmap, requirements, and audit records live under `.planning/milestones/`.
+
+## Current Milestone: v1.1 Ultra 205 Trusted Production Mining
+
+**Goal:** Turn the v1.0 controlled no-share mining foundation into a trusted, safety-gated Ultra 205 Stratum v1 production mining runtime that can observe at least one real accepted or rejected share and report the result through firmware telemetry and evidence.
+
+**Target features:**
+
+- Real Stratum v1 socket/runtime path instead of synthesized controlled transcripts.
+- Trusted BM1366 initialization, work dispatch, nonce/result parsing, and share submission under Ultra 205 gates.
+- Mining prerequisite safety only: enough power, thermal, fan, voltage, or bounded safety proof to safely enable trusted mining without attempting full active safety closure.
+- Live hashrate, statistics, scoreboard/share counters, API, WebSocket, watchdog, and safe-stop evidence for the mining session.
+- Redacted evidence and parity checklist updates that promote only exact proven claims.
 
 ## Next Milestone Goals
 
-Not yet defined. Start the next milestone with `/gsd-new-milestone` so the next requirement set is discovered from current project goals instead of inherited from v1.0.
-
-Likely candidate themes, if prioritized during the next milestone discussion:
-
-- Close selected exact-claim parity rows that remain below `verified`, such as accepted/rejected live share behavior, active voltage/fan/fault/self-test/load behavior, OTAWWW whole-`www` update behavior, rollback/boot-validation, destructive recovery cases, and broader production mining soak criteria.
-- Add dedicated hardware evidence paths for non-205 boards or ASICs instead of inheriting Ultra 205 evidence.
-- Reassess platform evolution such as ESP-IDF 6 or UI replacement only after the next milestone requirements justify it.
+After v1.1, likely candidates remain OTA/recovery completion, broader active safety hardware closure, non-205 board evidence, Stratum v2, BAP, or runtime display/input parity. These are intentionally deferred unless v1.1 discovery finds they block trusted Ultra 205 production mining.
 
 ## Requirements
 
@@ -43,7 +49,12 @@ Likely candidate themes, if prioritized during the next milestone discussion:
 
 ### Active
 
-No active requirements are defined for the next milestone yet.
+- [ ] Ultra 205 can perform trusted Stratum v1 production mining with real socket I/O and redacted pool credential handling.
+- [ ] Ultra 205 can initialize BM1366, dispatch pool-derived work, parse live ASIC results, and submit shares without bypassing safety gates.
+- [ ] Ultra 205 can record at least one accepted or rejected share outcome, or explicitly fail the milestone if that outcome cannot be achieved under safe prerequisites.
+- [ ] Mining prerequisite safety evidence is sufficient to enable trusted mining while preserving exact non-claims for full active voltage, fan, thermal, self-test, and fault-stimulus closure.
+- [ ] API, WebSocket, hashrate, statistics, scoreboard/share counters, watchdog, and safe-stop evidence reflect the trusted mining session.
+- [ ] Parity checklist and evidence ledgers promote only exact claims proven by v1.1 artifacts.
 
 ### Out of Scope
 
@@ -54,6 +65,10 @@ No active requirements are defined for the next milestone yet.
 - Marking parity items verified without exact evidence - release readiness is evidence-backed, not implementation-only.
 - Treating controlled no-share mining evidence as proof of accepted/rejected production share behavior.
 - Treating package/static asset presence as proof of whole-`www` OTAWWW update parity without update and recovery evidence.
+- Non-205 boards and other ASIC families in v1.1 - Ultra 205 BM1366 trusted mining is the milestone target.
+- OTAWWW, rollback, failed-update, large erase, and interrupted-update recovery in v1.1 - release/update trust remains a later milestone.
+- Runtime display/input, LVGL-like UI flow, and BAP accessory behavior in v1.1 - mining runtime correctness and evidence are higher priority.
+- Stratum v2 in v1.1 - trusted Stratum v1 production mining is the milestone path.
 
 ## Context
 
@@ -109,4 +124,4 @@ This document evolves at milestone boundaries. The next update should happen whe
 
 ______________________________________________________________________
 
-*Last updated: 2026-07-04 after v1.0 Ultra 205 Parity milestone completion*
+*Last updated: 2026-07-04 after starting v1.1 Ultra 205 Trusted Production Mining*
