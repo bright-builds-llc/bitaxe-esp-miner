@@ -227,7 +227,10 @@ mod mining_loop_tests {
     };
     use bitaxe_config::ultra_205_defaults;
     use bitaxe_safety::{
-        evidence::SafetyCriticalEvidence, power::PowerEvidenceToken, status::SafetyStatus,
+        evidence::SafetyCriticalEvidence,
+        mining_preconditions::ProductionMiningPreconditionDecision,
+        power::PowerEvidenceToken,
+        status::SafetyStatus,
         thermal::ThermalEvidenceToken,
     };
 
@@ -361,6 +364,46 @@ mod mining_loop_tests {
         // Assert
         assert_eq!(state.work_submission, WorkSubmissionGate::Blocked);
         assert_eq!(state.mining_activity, MiningActivityStatus::SafeBlocked);
+    }
+
+    #[test]
+    fn blocked_production_precondition_stores_exact_reason_before_dispatch() {
+        // Arrange
+        let mut queue = MiningWorkQueue::new();
+        queue
+            .enqueue_work(sample_work(Bm1366JobId::new(0x28)))
+            .expect("sample work should enqueue");
+        let gate = MiningLoopGate {
+            production_preconditions: ProductionMiningPreconditionDecision::blocked(
+                "voltage_observation_stale",
+            ),
+            ..ready_gate()
+        };
+        let inputs = GuardedMiningLoopInputs {
+            gate,
+            pool_defaults: ultra_205_defaults(),
+            source: GuardedMiningLoopSource::Notify,
+            work_queue: queue,
+            runtime_state: MiningRuntimeState::default(),
+            maybe_nonce_result: Some(sample_nonce_result(Bm1366JobId::new(0x28))),
+        };
+
+        // Act
+        let plan = inputs
+            .plan()
+            .expect("blocked precondition should still produce a safe plan");
+
+        // Assert
+        assert_eq!(
+            plan.runtime_state.maybe_blocked_reason,
+            Some("voltage_observation_stale")
+        );
+        assert_eq!(
+            plan.runtime_state.work_submission,
+            WorkSubmissionGate::Blocked
+        );
+        assert!(plan.maybe_dispatch.is_none());
+        assert!(plan.maybe_share_submission.is_none());
     }
 
     #[test]

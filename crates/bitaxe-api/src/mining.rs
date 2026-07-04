@@ -179,4 +179,20 @@ mod tests {
         assert_eq!(response.blocked_reason, HARDWARE_EVIDENCE_ACK_MISSING);
         assert!(response.mining_paused);
     }
+
+    #[test]
+    fn mining_state_projects_exact_runtime_blocked_reason() {
+        // Arrange
+        let mut state = MiningRuntimeState::default();
+        state.block_work_submission("voltage_observation_stale");
+
+        // Act
+        let response = mining_state_from_runtime(&state);
+
+        // Assert
+        assert_eq!(response.mining_activity, "safe_blocked");
+        assert_eq!(response.work_submission, "blocked");
+        assert_eq!(response.blocked_reason, "voltage_observation_stale");
+        assert!(response.mining_paused);
+    }
 }

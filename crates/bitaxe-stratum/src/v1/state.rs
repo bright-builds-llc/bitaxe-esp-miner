@@ -156,6 +156,34 @@ mod tests {
     }
 
     #[test]
+    fn runtime_state_blocks_work_submission_with_exact_reason() {
+        // Arrange
+        let mut state = MiningRuntimeState::default();
+
+        // Act
+        state.block_work_submission("voltage_observation_stale");
+
+        // Assert
+        assert_eq!(state.work_submission, WorkSubmissionGate::Blocked);
+        assert_eq!(state.mining_activity, MiningActivityStatus::SafeBlocked);
+        assert_eq!(state.maybe_blocked_reason, Some("voltage_observation_stale"));
+    }
+
+    #[test]
+    fn runtime_state_clears_blocked_reason_when_work_submission_is_allowed() {
+        // Arrange
+        let mut state = MiningRuntimeState::default();
+        state.block_work_submission("voltage_observation_stale");
+
+        // Act
+        state.allow_work_submission();
+
+        // Assert
+        assert_eq!(state.work_submission, WorkSubmissionGate::Ready);
+        assert_eq!(state.maybe_blocked_reason, None);
+    }
+
+    #[test]
     fn runtime_state_records_accepted_share_and_best_difficulty() {
         // Arrange
         let mut state = MiningRuntimeState::default();
