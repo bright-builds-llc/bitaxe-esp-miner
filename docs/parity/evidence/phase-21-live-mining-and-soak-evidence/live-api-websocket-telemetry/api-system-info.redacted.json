@@ -1,0 +1,5 @@
+{
+  "api_system_info_status": "not-run",
+  "reason": "missing explicit DEVICE_URL",
+  "network_scan": "disabled"
+}

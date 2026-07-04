@@ -1,0 +1,8 @@
+phase21_websocket_capture
+path=/api/ws/live
+device_url_source=none
+network_scan=disabled - DEVICE_URL must be explicit
+websocket_route_claim=frame-capture-required
+duration_ms=10000
+max_frames=5
+websocket_frame_status=blocked_missing_explicit_device_url
