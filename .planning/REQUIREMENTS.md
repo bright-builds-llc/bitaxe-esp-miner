@@ -250,15 +250,15 @@ disabled, and no device URL was inferred from redacted serial evidence.
 | ASIC-04 | Phase 3 | Complete |
 | ASIC-05 | Phase 3 | Complete |
 | ASIC-06 | Phase 3 | Complete |
-| ASIC-07 | Phase 3 + Phase 12 + Phase 15 + Phase 21 | Pending |
+| ASIC-07 | Phase 3 + Phase 12 + Phase 15 + Phase 21 | Complete |
 | ASIC-08 | Phase 3 | Complete |
 | STR-01 | Phase 4 | Complete |
 | STR-02 | Phase 4 | Complete |
 | STR-03 | Phase 4 | Complete |
 | STR-04 | Phase 4 | Complete |
 | STR-05 | Phase 4 | Complete |
-| STR-06 | Phase 4 + Phase 12 + Phase 15 + Phase 21 | Pending |
-| STR-07 | Phase 4 + Phase 12 + Phase 15 + Phase 21 | Pending |
+| STR-06 | Phase 4 + Phase 12 + Phase 15 + Phase 21 | Complete |
+| STR-07 | Phase 4 + Phase 12 + Phase 15 + Phase 21 | Complete |
 | API-01 | Phase 5 | Complete |
 | API-02 | Phase 5 | Complete |
 | API-03 | Phase 5 | Complete |

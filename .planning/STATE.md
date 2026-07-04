@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 21 context gathered
-last_updated: "2026-07-04T03:41:41.042Z"
-last_activity: 2026-07-04 -- Phase 21 execution started
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-07-04T04:03:33.330Z"
+last_activity: 2026-07-04
 progress:
   total_phases: 21
   completed_phases: 20
   total_plans: 116
-  completed_plans: 108
-  percent: 93
+  completed_plans: 109
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 21 (live-mining-and-soak-evidence) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 21
-Last activity: 2026-07-04 -- Phase 21 execution started
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-07-04
 
-Progress: [██████████] 100%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -156,6 +156,7 @@ Progress: [██████████] 100%
 | Phase 20-active-safety-hardware-telemetry-evidence P04 | 16 min | 3 tasks | 12 files |
 | Phase 20-active-safety-hardware-telemetry-evidence P05 | 7m44s | 2 tasks | 4 files |
 | Phase 20-active-safety-hardware-telemetry-evidence P06 | 13min | 3 tasks | 7 files |
+| Phase 21-live-mining-and-soak-evidence P01 | 1800 | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -410,6 +411,10 @@ Recent decisions affecting current work:
 - [Phase 20]: 20-06 closed Phase 20 as evidence-governance completion, not verified active control behavior.
 - [Phase 20]: 20-06 kept checklist statuses conservative and active voltage/fan/fault/self-test/live telemetry claims below verified without exact hardware-regression evidence.
 - [Phase 20]: 20-06 kept live API/WebSocket safety telemetry blocked without an explicit trusted target; network scanning remained disabled.
+- [Phase 21]: Phase 21 mining commands are accepted only when the allow manifest matches the phase-owned wrapper shape.
+- [Phase 21]: Missing live prerequisites produce blocked or pending evidence, not controlled-no-share claims.
+- [Phase 21]: Live mining smoke and bounded soak require both controlled package readiness and controlled runtime harness readiness.
+- [Phase 21]: Plan 21-01 records firmware live mining as blocked by default and leaves runtime enablement to later plans.
 
 ### Pending Todos
 
@@ -435,6 +440,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T01:40:34.458Z
-Stopped at: Phase 21 context gathered
-Resume file: .planning/phases/21-live-mining-and-soak-evidence/21-CONTEXT.md
+Last session: 2026-07-04T04:03:33.322Z
+Stopped at: Completed 21-01-PLAN.md
+Resume file: None
