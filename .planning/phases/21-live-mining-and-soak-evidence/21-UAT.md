@@ -11,7 +11,7 @@ source:
   - .planning/phases/21-live-mining-and-soak-evidence/21-07-SUMMARY.md
   - .planning/phases/21-live-mining-and-soak-evidence/21-08-SUMMARY.md
 started: 2026-07-04T16:00:47Z
-updated: 2026-07-04T16:22:01Z
+updated: 2026-07-04T16:59:02Z
 ---
 
 ## Current Test
@@ -73,7 +73,7 @@ notes: The JSON credential values were not read into this file, printed, summari
 expected: Before any autonomous hardware rerun, `just detect-ultra205` must pass freshly with exactly one Ultra 205 candidate and board-info success.
 result: pass
 verified_by: agent
-evidence: "A fresh temp-file capture of `just detect-ultra205` returned `detect_status=0`, `port_count=1`, and `board_info_marker_count=1`; the raw detector output was not printed and the temp file was deleted."
+evidence: "`just detect-ultra205` returned exit status 0 before hardware use in this UAT attempt. Ignored local artifacts under `target/phase21-uat-complete-20260704T165435Z` record `port_count=1` and a redacted board-info command for the single Ultra 205 candidate; raw detector output was not copied into committed evidence."
 notes: This permits using the detected port for repo-owned commands, but it does not supply a `DEVICE_URL`.
 
 ### 8. Fresh Same-Session DEVICE_URL And Live Rerun
@@ -81,8 +81,8 @@ notes: This permits using the detected port for repo-owned commands, but it does
 expected: A fresh repo-owned monitor or flash-monitor run from the same current session provides exactly one origin-only `http://...` or `https://...` `DEVICE_URL` candidate, after which the Phase 21 live mining wrapper is rerun with `--pool-credentials pool-credentials.json`. The rerun records only redacted categories such as local owner supplied pool config, never raw pool values, address, worker, endpoint, password, IPs, MACs, Wi-Fi values, or target URL.
 result: blocked
 blocked_by: physical-device
-reason: "Agent verified fresh detector status, current controlled live-mining package generation, trusted controlled boot, exactly one origin-only same-session DEVICE_URL candidate, and valid local JSON pool credentials. The live wrapper was not run because the required pool-input bridge was not proven: PATCH /api/system timed out with curl status 28 and HTTP status 000, redacted device logs lacked settings-patch and controlled-runtime lifecycle markers, and running the wrapper would bypass the Phase 21 gate."
-evidence: "target/phase21-uat-live contains ignored local runtime artifacts only: detect_status=0, port_count=1, current package manifest source matched HEAD, trusted_output=true, capture_status=timed_out_after_trusted_output, device_url_candidate_count=1, pool_credentials_valid=yes, api_reachability_status=reachable, pool_input_bridge_status=blocked, pool_patch_curl_status=28, pool_patch_http_status=000, and no redacted settings-patch/runtime markers in fetched device logs."
+reason: "The prior PATCH /api/system timeout blocker has been fixed, but this fresh UAT rerun is now blocked by the hardware serial/device gate. The agent verified an initial fresh detector pass with exactly one Ultra 205 candidate, generated a current controlled live-mining package, and invoked repo-owned flash-monitor with ignored local Wi-Fi credentials and the package manifest. The package and NVS writes completed, but monitor capture failed before trusted boot/API markers with a device connection error. A fresh detector rerun after flash then failed board-info with a device connection error. Per the repo hardware rules, board-info failure is a stop condition; no DEVICE_URL was derived, no pool-input bridge was run for this UAT attempt, and the Phase 21 live wrapper was not run."
+evidence: "target/phase21-uat-complete-20260704T165435Z contains ignored local runtime artifacts only: initial detect_status=0, port_count=1, package_ledger_exists=yes, controlled_live_mining_package_status=ready, controlled_runtime_harness_status=ready, controlled_runtime_contract_tests=passed, package_manifest_exists=yes, source_commit_present=yes, reference_commit_present=yes, flash_monitor_exit_status=1, trusted_or_api_marker_seen=false, wifi_connected_marker_seen=false, device_url_candidate_count=0, post-flash detector board-info failed, and no same-session DEVICE_URL was available for the wrapper."
 notes: Raw DEVICE_URL, pool values, worker/address, password, Wi-Fi values, IPs, MACs, and endpoint values were not copied into this tracked UAT file.
 
 ## Summary
@@ -101,4 +101,4 @@ blocked: 1
 ## Residual Risks
 
 - Existing committed Phase 21 evidence remains blocked until a fresh rerun produces redacted live mining and soak artifacts.
-- The current live UAT attempt stopped at the pool-input bridge gate; pool reachability, share observation, and watchdog behavior remain unverified.
+- The PATCH /api/system pool-input bridge blocker is fixed in code, but the current live UAT attempt stopped earlier at the post-flash serial/device gate; pool reachability, wrapper live probe, share observation, and watchdog behavior remain unverified.
