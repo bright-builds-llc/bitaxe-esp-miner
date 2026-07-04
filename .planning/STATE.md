@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 21-04-PLAN.md
-last_updated: "2026-07-04T05:25:02.317Z"
+stopped_at: Completed 21-05-PLAN.md
+last_updated: "2026-07-04T05:41:35.562Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 21
   completed_phases: 20
   total_plans: 116
-  completed_plans: 112
+  completed_plans: 113
   percent: 97
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 21 (live-mining-and-soak-evidence) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-07-04
 
@@ -160,6 +160,7 @@ Progress: [█████████░] 94%
 | Phase 21-live-mining-and-soak-evidence P02 | 33min | 3 tasks | 17 files |
 | Phase 21-live-mining-and-soak-evidence P03 | 15min | 2 tasks | 10 files |
 | Phase 21-live-mining-and-soak-evidence P04 | 981 | 1 tasks | 11 files |
+| Phase 21-live-mining-and-soak-evidence P05 | 10m07s | 1 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -427,6 +428,9 @@ Recent decisions affecting current work:
 - [Phase 21-live-mining-and-soak-evidence]: Plan 21-04 captured trusted package-backed chip-detect diagnostic evidence while preserving the observed BM1366 partial UART read as a fail-closed result, not ASIC initialization or mining proof.
 - [Phase 21-live-mining-and-soak-evidence]: Plan 21-04 validated chip-detect hardware execution through mining-allow with a completed redaction reviewer marker before citing the hardware command.
 - [Phase 21-live-mining-and-soak-evidence]: Plan 21-04 commits only the chip-detect package manifest and redacted logs; generated package binaries remain ignored.
+- [Phase 21-live-mining-and-soak-evidence]: Plan 21-05 records work-result as diagnostic prerequisite evidence only: diagnostic work dispatched, result handling timed out fail-closed, and production mining/share claims remain below verified.
+- [Phase 21-live-mining-and-soak-evidence]: Plan 21-05 uses a completed work-result redaction reviewer marker because mining-allow rejects pending reviewer values before cited hardware commands.
+- [Phase 21-live-mining-and-soak-evidence]: Plan 21-05 used a 35-second work-result capture timeout to satisfy the bounded diagnostic-capture threat mitigation.
 
 ### Pending Todos
 
@@ -452,6 +456,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T05:25:02.313Z
-Stopped at: Completed 21-04-PLAN.md
+Last session: 2026-07-04T05:41:35.554Z
+Stopped at: Completed 21-05-PLAN.md
 Resume file: None

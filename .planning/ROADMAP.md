@@ -528,7 +528,7 @@ Plans:
 - [x] 21-02-PLAN.md - Add the bounded controlled mining runtime/harness and package enablement for the blocked-by-default readiness path.
 - [x] 21-03-PLAN.md - Capture package, release-gate, detector, and safe-baseline preflight evidence or blockers.
 - [x] 21-04-PLAN.md - Capture or precisely block package-backed BM1366 chip-detect diagnostic evidence.
-- [ ] 21-05-PLAN.md - Capture or precisely block package-backed BM1366 work-result diagnostic evidence.
+- [x] 21-05-PLAN.md - Capture or precisely block package-backed BM1366 work-result diagnostic evidence.
 - [ ] 21-06-PLAN.md - Capture or precisely block live-pool mining smoke and explicit-target API/WebSocket telemetry correlation.
 - [ ] 21-07-PLAN.md - Capture or precisely block bounded soak, watchdog responsiveness, and soak telemetry observations.
 - [ ] 21-08-PLAN.md - Close final redaction, checklist, requirements traceability, validation, and lifecycle verification.
@@ -562,4 +562,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 18. Firmware OTA And Rollback Evidence | 4/4 | Complete   | 2026-07-03 |
 | 19. Recovery Regression And OTAWWW Evidence | 4/4 | Complete    | 2026-07-03 |
 | 20. Active Safety Hardware Telemetry Evidence | 6/6 | Complete    | 2026-07-04 |
-| 21. Live Mining And Soak Evidence | 4/8 | In Progress|  |
+| 21. Live Mining And Soak Evidence | 5/8 | In Progress|  |
