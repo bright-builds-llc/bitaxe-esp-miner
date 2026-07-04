@@ -1,6 +1,7 @@
 pub mod effects;
 pub mod evidence;
 pub mod fault;
+pub mod mining_preconditions;
 pub mod power;
 pub mod self_test;
 pub mod status;
