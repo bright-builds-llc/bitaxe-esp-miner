@@ -1,0 +1,7 @@
+{
+  "mode": "work-result",
+  "diagnostic_env": "BITAXE_ASIC_DIAGNOSTIC=work-result",
+  "hardware_evidence_ack": "BITAXE_HARDWARE_EVIDENCE_ACK=ultra205-work-result-safe-bench",
+  "package_manifest": "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205-package.json",
+  "flash_monitor_command_shape": "bazel run //tools/flash:flash -- flash-monitor --board 205 --port <port> --manifest <out-dir>/package/bitaxe-ultra205-package.json --evidence-dir <evidence-dir> --capture-timeout-seconds <seconds>"
+}

@@ -1,0 +1,7 @@
+[detect-ultra205] command=just detect-ultra205
+[detect-ultra205] status=passed
+[detect-ultra205] selected_port=/dev/cu.usbmodem1101
+[detect-ultra205] board_info_command=espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive
+[detect-ultra205] board_info_status=passed
+[detect-ultra205] candidate_count=1
+[detect-ultra205] redaction=raw board-info output retained under ignored target/ scratch only; committed log omits MAC, IP, URL, SSID, and credential-bearing fields

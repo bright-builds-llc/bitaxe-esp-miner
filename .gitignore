@@ -6,3 +6,5 @@ docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enableme
 docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/*.elf
 docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/*.bin
 docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/*.elf
+docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/*.bin
+docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/*.elf
