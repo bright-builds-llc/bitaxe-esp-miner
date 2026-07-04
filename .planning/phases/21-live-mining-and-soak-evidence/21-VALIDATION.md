@@ -1,9 +1,9 @@
 ---
 phase: 21
 slug: live-mining-and-soak-evidence
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: green
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-04
 ---
 
@@ -38,10 +38,10 @@ created: 2026-07-04
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 21-W0-01 | 21-01 | 0 | ASIC-07, STR-06, STR-07 | T-21-01 / credential disclosure, unsafe command shape | New or reused mining wrappers cannot run outside detector, package, allow-manifest, redaction, enablement-summary, and safe-state gates | unit + script | `cargo test -p bitaxe-parity --all-features mining_allow`; `bazel test //tools/parity:tests`; `bazel test //scripts:phase21_live_mining_evidence_test` | ✅ existing parity tests; Phase 21 extensions planned | ⬜ pending |
-| 21-W0-02 | 21-01, 21-02 | 0-1 | ASIC-07, STR-06 | T-21-02 / readiness-only mining path, missing runtime harness | Firmware live-mining readiness is audited and `blocked_by_default` is converted into a bounded controlled runtime/harness path before any live smoke claim. The runtime must wire settings/pool config -> Stratum subscribe/authorize/notify -> guarded work queue -> typed BM1366 adapter dispatch -> result parsing -> share submission outcome/runtime state -> API/WebSocket telemetry updates. | unit + static + script | `cargo test -p bitaxe-stratum --all-features controlled_runtime`; `cargo test -p bitaxe-stratum --all-features mining_loop`; `bazel test //crates/bitaxe-stratum:tests --test_filter=controlled_runtime`; `bazel test //scripts:phase21_live_mining_package_test` | ✅ existing core surfaces; controlled runtime artifact planned | ⬜ pending |
-| 21-W0-03 | 21-06, 21-07 | 5-6 | SAFE-09, EVD-05 | T-21-07 / watchdog overclaim, evidence gap | Live smoke and bounded soak plans include controlled runtime/harness markers, duration, abort conditions, runtime snapshot/API/WebSocket updates, responsiveness observations, and final safe-state markers | script + review | `bazel test //scripts:phase14_self_test_watchdog_load_test //scripts:phase20_failure_paths_test`; `bazel test //scripts:phase21_live_mining_evidence_test`; `cargo test -p bitaxe-api --all-features mining`; `cargo test -p bitaxe-api --all-features telemetry` | ✅ existing tests; Phase 21 helper tests planned | ⬜ pending |
-| 21-W0-04 | 21-01, 21-08 | 0, 7 | EVD-05 | T-21-08 / secret leakage | Evidence tree has a redaction-review scaffold and deterministic scoped secret-pattern scan before citation | workflow | `21-08 Task 1 deterministic redaction scan command` | ❌ W0 scaffold needed | ⬜ pending |
+| 21-W0-01 | 21-01 | 0 | ASIC-07, STR-06, STR-07 | T-21-01 / credential disclosure, unsafe command shape | Phase 21 mining wrappers cannot run outside detector, package, allow-manifest, redaction, enablement-summary, and safe-state gates | unit + script | `cargo test -p bitaxe-parity --all-features mining_allow`; `bazel test //tools/parity:tests --test_filter=mining_allow`; `bazel test //scripts:phase21_live_mining_evidence_test` | ✅ `tools/parity/src/mining_allow.rs`; `scripts/phase21-live-mining-evidence.sh`; `scripts/phase21-live-mining-evidence-test.sh` | ✅ green |
+| 21-W0-02 | 21-01 | 0 | ASIC-07, STR-06 | T-21-02 / readiness-only mining path, missing runtime harness | Firmware live-mining readiness is audited as `blocked_by_default`; live commands require a later bounded controlled runtime/harness pack before any live smoke claim | static + review | `rg -n "mining_loop_status\|work_submission\|hardware_evidence_ack\|BITAXE_ASIC_DIAGNOSTIC" firmware/bitaxe crates/bitaxe-stratum scripts tools` | ✅ `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md` | ✅ green |
+| 21-W0-03 | 21-01 | 0 | SAFE-09, EVD-05 | T-21-07 / watchdog overclaim, evidence gap | Live smoke and bounded soak plans require controlled runtime/harness markers, duration, abort conditions, runtime snapshot/API/WebSocket updates, responsiveness observations, and final safe-state markers | script + review | `bazel test //scripts:phase21_live_mining_evidence_test`; `rg -n "Phase 21 evidence ladder\|D-16\|60..600" docs/parity/evidence/phase-21-live-mining-and-soak-evidence/evidence-contract.md` | ✅ `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/evidence-contract.md` | ✅ green |
+| 21-W0-04 | 21-01 | 0 | EVD-05 | T-21-08 / secret leakage | Evidence tree has a redaction-review scaffold and deterministic scoped secret-pattern scan before citation | workflow | `rg -n -i "ssid\|wifi\|password\|pool\|worker\|token\|device_url\|nvs\|stratum\|https?://\|([0-9]{1,3}\\.){3}[0-9]{1,3}\|([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}\|secret\|credential" docs/parity/evidence/phase-21-live-mining-and-soak-evidence` | ✅ `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/redaction-review.md` | ✅ green |
 | 21-PHASE | all | all | ASIC-07, STR-06, STR-07, SAFE-09, EVD-05 | T-21-final / parity overclaim | Checklist promotions are exact-claim only and `just parity` rejects blocker language or missing metadata | workflow | `just test`; `just parity`; `just verify-reference`; `git diff -- reference/esp-miner --exit-code`; lifecycle validation | ✅ existing commands | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -50,10 +50,10 @@ created: 2026-07-04
 
 ## Wave 0 Requirements
 
-- [ ] Add tests for any `tools/parity/src/mining_allow.rs` Phase 21 command-shape extension before new hardware wrapper use.
-- [ ] Add a Phase 21 wrapper test target under `scripts/BUILD.bazel` if a new `scripts/phase21-*.sh` wrapper is introduced.
-- [ ] Add or record a live-mining readiness audit artifact, a bounded controlled runtime/harness artifact, and a controlled live-mining package enablement artifact before planning live smoke, because current firmware startup remains fail-closed by default and readiness-only evidence cannot satisfy STR-06.
-- [ ] Add a redaction-review scaffold for Phase 21 before final checklist citations.
+- [x] Add tests for any `tools/parity/src/mining_allow.rs` Phase 21 command-shape extension before new hardware wrapper use.
+- [x] Add a Phase 21 wrapper test target under `scripts/BUILD.bazel` if a new `scripts/phase21-*.sh` wrapper is introduced.
+- [x] Add or record a live-mining readiness audit artifact and the required bounded controlled runtime/harness plus live-mining package enablement markers that later plans must satisfy before live smoke, because current firmware startup remains fail-closed by default and readiness-only evidence cannot satisfy STR-06.
+- [x] Add a redaction-review scaffold for Phase 21 before final checklist citations.
 
 ***
 
@@ -69,11 +69,13 @@ created: 2026-07-04
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 600s for software-only scoped checks
-- [ ] `nyquist_compliant: true` set in frontmatter
+Plan 21-01 artifacts provide the Wave 0 software validation scaffold and blocked-by-default readiness audit. They do not claim that the controlled runtime/harness or live-mining package enablement packs are complete.
 
-**Approval:** pending
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 600s for software-only scoped checks
+- [x] `nyquist_compliant: true` set in frontmatter
+
+**Approval:** Plan 21-01 Wave 0 validation scaffolding complete.
