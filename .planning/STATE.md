@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 21-08-PLAN.md
-last_updated: "2026-07-04T15:01:44.145Z"
-last_activity: 2026-07-04 - Completed quick task 260704-dxg: Add fresh monitor log DEVICE_URL repo rule
+last_updated: "2026-07-04T15:13:29.824Z"
+last_activity: 2026-07-04 - Completed quick task 260704-e78: Add owner pool credentials convention for live mining tests
 progress:
   total_phases: 21
   completed_phases: 21
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 Phase: 21 (live-mining-and-soak-evidence) — EXECUTING
 Plan: 8 of 8
 Status: Phase complete — ready for verification
-Last activity: 2026-07-04 - Completed quick task 260704-dxg: Add fresh monitor log DEVICE_URL repo rule
+Last activity: 2026-07-04 - Completed quick task 260704-e78: Add owner pool credentials convention for live mining tests
 
 Progress: [█████████░] 94%
 
@@ -468,6 +468,7 @@ None yet.
 | 260628-l4b | 2026-06-28 | Refactor factory image merging to ESP tooling | implemented, package path uses managed `esptool.py merge_bin` and validation remains in xtask | `.planning/quick/260628-l4b-refactor-factory-image-merging-to-esp-to/260628-l4b-SUMMARY.md`, `scripts/package-firmware-test.sh` |
 | 260628-lgg | 2026-06-28 | Add autonomous Ultra 205 hardware verification rule | implemented, read-only detector found `port=/dev/cu.usbmodem1101` locally | `.planning/quick/260628-lgg-add-autonomous-ultra-205-hardware-verifi/260628-lgg-SUMMARY.md`, `scripts/detect-ultra205-test.sh` |
 | 260704-dxg | 2026-07-04 | Add fresh monitor log DEVICE_URL repo rule | implemented, fresh same-session monitor URL extraction allowed for local runtime input only | `.planning/quick/260704-dxg-add-fresh-monitor-log-device-url-repo-ru/260704-dxg-SUMMARY.md`, `AGENTS.md` |
+| 260704-e78 | 2026-07-04 | Add owner pool credentials convention for live mining tests | implemented, ignored owner pool env convention documented for local runtime input only | `.planning/quick/260704-e78-add-owner-pool-credentials-convention-fo/260704-e78-SUMMARY.md`, `AGENTS.md`, `.gitignore` |
 
 ## Session Continuity
 
