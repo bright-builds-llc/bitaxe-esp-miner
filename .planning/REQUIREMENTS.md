@@ -93,32 +93,39 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EVD-06 | TBD | Pending |
-| EVD-07 | TBD | Pending |
-| EVD-08 | TBD | Pending |
-| SAFE-10 | TBD | Pending |
-| SAFE-11 | TBD | Pending |
-| SAFE-12 | TBD | Pending |
-| SAFE-13 | TBD | Pending |
-| STR-08 | TBD | Pending |
-| STR-09 | TBD | Pending |
-| STR-10 | TBD | Pending |
-| STR-11 | TBD | Pending |
-| ASIC-09 | TBD | Pending |
-| ASIC-10 | TBD | Pending |
-| ASIC-11 | TBD | Pending |
-| ASIC-12 | TBD | Pending |
-| REL-09 | TBD | Pending |
-| CFG-07 | TBD | Pending |
-| EVD-09 | TBD | Pending |
-| API-11 | TBD | Pending |
-| API-12 | TBD | Pending |
-| API-13 | TBD | Pending |
+| EVD-06 | Phase 22 | Pending |
+| EVD-07 | Phase 23 | Pending |
+| EVD-08 | Phase 26 | Pending |
+| SAFE-10 | Phase 22 | Pending |
+| SAFE-11 | Phase 22 | Pending |
+| SAFE-12 | Phase 25 | Pending |
+| SAFE-13 | Phase 25 | Pending |
+| STR-08 | Phase 25 | Pending |
+| STR-09 | Phase 25 | Pending |
+| STR-10 | Phase 23 | Pending |
+| STR-11 | Phase 25 | Pending |
+| ASIC-09 | Phase 24 | Pending |
+| ASIC-10 | Phase 24 | Pending |
+| ASIC-11 | Phase 24 | Pending |
+| ASIC-12 | Phase 24 | Pending |
+| REL-09 | Phase 23 | Pending |
+| CFG-07 | Phase 23 | Pending |
+| EVD-09 | Phase 23 | Pending |
+| API-11 | Phase 26 | Pending |
+| API-12 | Phase 26 | Pending |
+| API-13 | Phase 26 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21
+- Mapped to phases: 21
+- Unmapped: 0
+
+**Phase distribution:**
+- Phase 22: EVD-06, SAFE-10, SAFE-11
+- Phase 23: EVD-07, STR-10, REL-09, CFG-07, EVD-09
+- Phase 24: ASIC-09, ASIC-10, ASIC-11, ASIC-12
+- Phase 25: STR-08, STR-09, STR-11, SAFE-12, SAFE-13
+- Phase 26: EVD-08, API-11, API-12, API-13
 
 *Requirements defined: 2026-07-04*
-*Last updated: 2026-07-04 after initial definition*
+*Last updated: 2026-07-04 after v1.1 roadmap creation*
