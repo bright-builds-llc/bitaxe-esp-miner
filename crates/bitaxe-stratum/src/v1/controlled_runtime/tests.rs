@@ -101,6 +101,58 @@ fn controlled_runtime_redacted_summary_excludes_sensitive_pool_identity() {
 }
 
 #[test]
+fn controlled_runtime_redacted_summary_labels_rejected_share_without_reason() {
+    // Arrange
+    let input = ControlledMiningRuntimeInput {
+        pool: ControlledPoolConfig::parse(
+            "stratum+tcp://redaction-sentinel.pool.invalid:3333",
+            "redaction-sentinel-worker",
+            "redaction-sentinel-password",
+            Some("redaction-sentinel-worker-name"),
+        )
+        .expect("sample pool config should parse"),
+        gate: ready_gate(),
+        transcript: sample_transcript(),
+        maybe_nonce_result: Some(sample_nonce_result()),
+        maybe_submit_response: Some(StratumResponse {
+            maybe_id: Some(ControlledMiningRuntimePlan::SUBMIT_REQUEST_ID),
+            success: false,
+            maybe_error: Some(StratumResponseError {
+                maybe_code: Some(21),
+                message: concat!(
+                    "rejected redaction-sentinel-worker ",
+                    "redaction-sentinel.pool.invalid token DEVICE_URL wifi nvs"
+                )
+                .to_owned(),
+            }),
+            maybe_extranonce: None,
+            maybe_version_mask: None,
+        }),
+    };
+
+    // Act
+    let plan =
+        ControlledMiningRuntimePlan::build(input).expect("rejected share should produce a plan");
+    let summary = plan.evidence.redacted_summary();
+
+    // Assert
+    assert!(summary.contains("share_outcome: rejected"));
+    for forbidden in [
+        "redaction-sentinel.pool.invalid",
+        "redaction-sentinel-worker",
+        concat!("DEVICE", "_URL"),
+        "token",
+        "wifi",
+        "nvs",
+    ] {
+        assert!(
+            !summary.contains(forbidden),
+            "redacted summary leaked {forbidden}: {summary}"
+        );
+    }
+}
+
+#[test]
 fn controlled_runtime_transcript_enqueues_work_and_emits_typed_bm1366_dispatch() {
     // Arrange
     let input = ControlledMiningRuntimeInput {

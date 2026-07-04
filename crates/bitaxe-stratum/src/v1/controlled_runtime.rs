@@ -169,7 +169,7 @@ impl ControlledMiningRuntimeEvidence {
                 "pool_password_configured: {password}\n",
                 "pool_worker_configured: {worker}\n",
                 "lifecycle_markers: {markers:?}\n",
-                "share_outcome: {share:?}\n",
+                "share_outcome: {share}\n",
                 "safe_stop_required: {safe_stop}\n",
                 "watchdog_yield_checkpoints: {watchdog:?}\n"
             ),
@@ -182,10 +182,19 @@ impl ControlledMiningRuntimeEvidence {
             password = self.pool_summary.password_configured,
             worker = self.pool_summary.worker_configured,
             markers = self.lifecycle_markers,
-            share = self.share_outcome,
+            share = redacted_share_outcome_label(&self.share_outcome),
             safe_stop = self.safe_stop_required,
             watchdog = self.watchdog_yield_checkpoints,
         )
+    }
+}
+
+fn redacted_share_outcome_label(outcome: &Option<ControlledShareOutcome>) -> &'static str {
+    match outcome {
+        Some(ControlledShareOutcome::Accepted) => "accepted",
+        Some(ControlledShareOutcome::Rejected { .. }) => "rejected",
+        Some(ControlledShareOutcome::NoShareObserved) => "no_share_observed",
+        None => "none",
     }
 }
 
