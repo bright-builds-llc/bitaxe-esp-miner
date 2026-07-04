@@ -48,7 +48,12 @@ Plans:
   3. Evidence records pool credential use only as category labels, never raw pool endpoints, ports, users, workers, owner addresses, passwords, or tokens.
   4. Redaction review covers retained logs, command summaries, API captures, WebSocket captures, NVS/settings values, Stratum fields, share payloads, device URLs, IP addresses, MAC addresses, Wi-Fi values, and pool secrets before commit.
   5. Operator-visible logs and evidence redact pool URLs, ports, workers, owner addresses, passwords, targets, extranonces, share payloads, and socket errors.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [x] 23-01-PLAN.md — Define the Phase 23 evidence-root contract and required slot artifacts.
+- [x] 23-02-PLAN.md — Add the operator evidence-root validator and deterministic redaction checks.
+- [x] 23-03-PLAN.md — Create the just-reachable detector-gated operator workflow and synthetic tests.
+- [x] 23-04-PLAN.md — Integrate final redaction review, release docs, checklist rows, and validation closure.
 
 ### Phase 24: BM1366 Production Work Path
 **Goal**: The functional core models trusted BM1366 production work decisions while the firmware shell initializes Ultra 205 BM1366 hardware, dispatches pool-derived work, parses live results, and fails closed on unsafe or uncorrelated ASIC behavior.
@@ -92,7 +97,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 22. Claim Ladder And Safety Preconditions | v1.1 | 3/3 | Complete    | 2026-07-04 |
-| 23. Redacted Operator Evidence Workflow | v1.1 | 0/TBD | Not started | - |
+| 23. Redacted Operator Evidence Workflow | v1.1 | 4/4 | Complete    | 2026-07-04 |
 | 24. BM1366 Production Work Path | v1.1 | 0/TBD | Not started | - |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 0/TBD | Not started | - |
 | 26. Telemetry And Parity Closure | v1.1 | 0/TBD | Not started | - |

@@ -5,6 +5,10 @@ use std::process::Command as ProcessCommand;
 use anyhow::{bail, Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
+use operator_evidence::{
+    load_operator_evidence_documents, render_operator_evidence_report,
+    validate_operator_evidence_documents, OperatorEvidenceFilters,
+};
 use release_evidence::{
     parse_flash_evidence_json, parse_release_evidence_manifest_json,
     render_release_evidence_report, validate_release_evidence, ReleaseEvidenceDocuments,
@@ -26,6 +30,7 @@ const DEFAULT_AXEOS_ROUTE_USAGE: &str = "tools/parity/fixtures/api/axeos-route-u
 mod api_compare;
 mod claim_ladder;
 mod mining_allow;
+mod operator_evidence;
 mod release_evidence;
 mod release_gate;
 mod safety_allow;
@@ -46,6 +51,7 @@ enum CliCommand {
     ReleaseEvidence(ReleaseEvidenceArgs),
     SafetyAllow(SafetyAllowArgs),
     MiningAllow(MiningAllowArgs),
+    OperatorEvidence(OperatorEvidenceArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -130,6 +136,15 @@ struct MiningAllowArgs {
 
     #[arg(long = "allowed-command")]
     maybe_allowed_command: Option<String>,
+}
+
+#[derive(Debug, Parser)]
+struct OperatorEvidenceArgs {
+    #[arg(long = "evidence-root", value_parser = parse_utf8_path)]
+    evidence_root: Utf8PathBuf,
+
+    #[arg(long = "require-redaction-passed")]
+    require_redaction_passed: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -385,6 +400,7 @@ fn main() -> Result<()> {
         CliCommand::ReleaseEvidence(args) => run_release_evidence_command(args, &environment)?,
         CliCommand::SafetyAllow(args) => run_safety_allow_command(args, &environment)?,
         CliCommand::MiningAllow(args) => run_mining_allow_command(args, &environment)?,
+        CliCommand::OperatorEvidence(args) => run_operator_evidence_command(args, &environment)?,
     };
 
     let mut stdout = io::stdout().lock();
@@ -488,6 +504,25 @@ fn run_mining_allow_command(
 
     if !report.passed() {
         bail!("mining allow failed:\n{output}");
+    }
+
+    Ok(output)
+}
+
+fn run_operator_evidence_command(
+    args: OperatorEvidenceArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    let evidence_root = environment.workspace_path(&args.evidence_root);
+    let documents = load_operator_evidence_documents(&evidence_root)?;
+    let filters = OperatorEvidenceFilters {
+        require_redaction_passed: args.require_redaction_passed,
+    };
+    let report = validate_operator_evidence_documents(&documents, &filters);
+    let output = render_operator_evidence_report(&documents, &report);
+
+    if !report.passed() {
+        bail!("operator evidence failed:\n{output}");
     }
 
     Ok(output)

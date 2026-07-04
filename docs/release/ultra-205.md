@@ -384,6 +384,44 @@ Commit-ready evidence should use category labels such as
 ports, users, workers, addresses, passwords, endpoints, tokens, and NVS secret
 values.
 
+## Phase 23 Redacted Operator Evidence Workflow
+
+Phase 23 provides a repo-owned redacted operator evidence workflow for Ultra
+205 only. Hardware-capable runs must begin with the detector gate:
+
+```bash
+just detect-ultra205
+```
+
+If the detector finds zero ports, multiple ports, a non-205 target, or failed
+board-info, stop and keep hardware slots blocked. Do not infer targets from
+stale `DEVICE_URL`, mDNS, ARP, router state, network scans, or unrelated
+evidence.
+
+Use the blocked mode as the non-secret workflow proof:
+
+```bash
+just phase23-evidence --evidence-root docs/parity/evidence/phase-23-redacted-operator-evidence-workflow --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --mode blocked
+```
+
+After `just detect-ultra205` passes exactly once for the current session,
+operators may run hardware mode with local runtime credential paths:
+
+```bash
+just phase23-evidence --evidence-root docs/parity/evidence/phase-23-redacted-operator-evidence-workflow --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --mode hardware --pool-credentials pool-credentials.json --wifi-credentials wifi-credentials.json
+```
+
+Real credential contents must not be read, printed, summarized, committed,
+copied into evidence, or exposed. Committed summaries use category labels only:
+`pool_config: local-owner-supplied`, `wifi_config: local-owner-supplied`,
+`raw_pool_values_committed: no`, and `raw_artifacts_committed: no`.
+
+Phase 23 proves the redacted evidence workflow, required evidence-root slots,
+runtime-only credential labels, target-source blockers, and the
+`operator-evidence` parity validator. It does not verify Phase 24 BM1366
+production work, Phase 25 live Stratum socket success, accepted/rejected
+shares, or Phase 26 telemetry closure.
+
 Use the factory image path from
 `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` when recovery requires
 a full USB flash baseline. Record the exact port, package manifest, source

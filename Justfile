@@ -30,3 +30,6 @@ verify-reference:
 
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
+
+phase23-evidence *args:
+    bazel run //scripts:phase23_redacted_operator_evidence -- {{ args }}

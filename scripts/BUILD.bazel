@@ -138,6 +138,19 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase23_redacted_operator_evidence",
+    srcs = ["phase23-redacted-operator-evidence.sh"],
+    data = [
+        "phase17-live-http-api-smoke.sh",
+        "phase17-websocket-capture.mjs",
+        "phase21-live-mining-evidence.sh",
+        "phase21-pool-credentials-json.mjs",
+        "phase21-pool-input-bridge.sh",
+        "//tools/parity:report",
+    ],
+)
+
+sh_binary(
     name = "source_commit_stamp_tool",
     srcs = ["source-commit-stamp.sh"],
 )
@@ -355,6 +368,26 @@ sh_test(
     data = [
         "phase21-pool-credentials-json.mjs",
         "phase21-pool-input-bridge.sh",
+    ],
+    env_inherit = [
+        "HOME",
+        "NODE_BIN",
+        "NVM_DIR",
+        "PATH",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase23_redacted_operator_evidence_test",
+    srcs = ["phase23-redacted-operator-evidence-test.sh"],
+    data = [
+        "phase17-live-http-api-smoke.sh",
+        "phase17-websocket-capture.mjs",
+        "phase21-live-mining-evidence.sh",
+        "phase21-pool-credentials-json.mjs",
+        "phase21-pool-input-bridge.sh",
+        "phase23-redacted-operator-evidence.sh",
     ],
     env_inherit = [
         "HOME",

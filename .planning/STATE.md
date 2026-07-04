@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 22-03-PLAN.md
-last_updated: "2026-07-04T20:52:31.898Z"
-last_activity: 2026-07-04
+stopped_at: Completed 23-04-PLAN.md
+last_updated: "2026-07-04T23:24:00.000Z"
+last_activity: 2026-07-04 -- Phase 23 verification complete
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 2
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
@@ -22,16 +22,16 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
 
-**Current focus:** Phase 22 — Claim Ladder And Safety Preconditions
+**Current focus:** Phase 24 — BM1366 Production Work Path
 
 ## Current Position
 
-Phase: 23
+Phase: 24
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-04
+Status: Ready to discuss
+Last activity: 2026-07-04 -- Phase 23 verification complete
 
-Progress: [███░░░░░░░] 33%
+Progress: [██████████] 100%
 
 ## Active Artifacts
 
@@ -71,6 +71,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 22]: Kept SAFE-10 and SAFE-11 at implemented with unit/workflow evidence because Phase 22 produced no detector-gated hardware proof for live prerequisite behavior.
 - [Phase 22]: Promoted EVD-06 to verified using workflow evidence from the claim ladder, parity guard, and Phase 22 closure summary.
 - [Phase 22]: Recorded only redaction-safe reason categories and explicit non-claims in committed evidence.
+- [Phase 23]: Added a repo-owned redacted operator evidence workflow with required slots, validator checks, `just phase23-evidence`, and deterministic redaction review.
+- [Phase 23]: Kept `CFG-07` below verified because the parity guard requires hardware evidence before promoting safety-critical runtime credential handling.
+- [Phase 23]: Preserved exact non-claims for Phase 24 BM1366 production work, Phase 25 live Stratum/share behavior, and Phase 26 telemetry closure.
 
 ### Pending Todos
 
@@ -83,10 +86,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T20:42:10.917Z
-Stopped at: Completed 22-03-PLAN.md
+Last session: 2026-07-04T23:24:00.000Z
+Stopped at: Completed 23-04-PLAN.md
 Resume file: None
 
 ## Next Step
 
-Run `/gsd-execute-phase 22` to continue with `22-02-PLAN.md`.
+Run `/gsd-yolo-discuss-plan-execute-commit-and-push 24` to start Phase 24.
