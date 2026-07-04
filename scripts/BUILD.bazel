@@ -124,6 +124,15 @@ sh_binary(
     srcs = ["phase21-live-mining-evidence.sh"],
     data = [
         "phase17-websocket-capture.mjs",
+        "phase21-pool-input-bridge.sh",
+        "phase21-pool-credentials-json.mjs",
+    ],
+)
+
+sh_binary(
+    name = "phase21_pool_input_bridge",
+    srcs = ["phase21-pool-input-bridge.sh"],
+    data = [
         "phase21-pool-credentials-json.mjs",
     ],
 )
@@ -328,7 +337,24 @@ sh_test(
     data = [
         "phase17-websocket-capture.mjs",
         "phase21-live-mining-evidence.sh",
+        "phase21-pool-input-bridge.sh",
         "phase21-pool-credentials-json.mjs",
+    ],
+    env_inherit = [
+        "HOME",
+        "NODE_BIN",
+        "NVM_DIR",
+        "PATH",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase21_pool_input_bridge_test",
+    srcs = ["phase21-pool-input-bridge-test.sh"],
+    data = [
+        "phase21-pool-credentials-json.mjs",
+        "phase21-pool-input-bridge.sh",
     ],
     env_inherit = [
         "HOME",

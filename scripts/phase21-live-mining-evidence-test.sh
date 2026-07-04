@@ -6,6 +6,7 @@ readonly script_dir
 readonly wrapper="${PHASE21_LIVE_MINING_EVIDENCE_SCRIPT:-${script_dir}/phase21-live-mining-evidence.sh}"
 readonly websocket_helper="${PHASE21_WEBSOCKET_HELPER:-${script_dir}/phase17-websocket-capture.mjs}"
 readonly pool_credentials_helper="${PHASE21_POOL_CREDENTIALS_HELPER:-${script_dir}/phase21-pool-credentials-json.mjs}"
+readonly pool_input_bridge_helper="${PHASE21_POOL_INPUT_BRIDGE_HELPER:-${script_dir}/phase21-pool-input-bridge.sh}"
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/phase21-live-mining-evidence-test.XXXXXX")"
 readonly tmp_root
@@ -124,27 +125,69 @@ if [[ "${PHASE21_CURL_MUST_NOT_RUN:-0}" == "1" ]]; then
 	exit 99
 fi
 
-if [[ -n "${PHASE21_FAKE_CURL_ARGS:-}" ]]; then
-	printf '%s\n' "$*" >"$PHASE21_FAKE_CURL_ARGS"
-fi
-
 out_file=""
+url=""
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--output)
 		out_file="$2"
 		shift 2
 		;;
+	--write-out)
+		shift 2
+		;;
+	--data-binary | --header | --request | --max-time)
+		shift 2
+		;;
+	--silent | --show-error)
+		shift
+		;;
 	*)
+		url="$1"
 		shift
 		;;
 	esac
 done
 
-if [[ -n "$out_file" ]]; then
-	printf '{"poolUrl":"stratum+tcp://private.example:3333","poolURL":"private.example","poolPort":3333,"poolUser":"private-worker","poolPassword":"private-password","ip":"10.0.0.2","worker":"private-worker"}\n' >"$out_file"
-fi
-printf '200'
+case "$url" in
+*/api/system)
+	if [[ -n "${PHASE21_FAKE_CURL_ARGS:-}" ]]; then
+		printf 'PATCH %s\n' "$url" >>"$PHASE21_FAKE_CURL_ARGS"
+	fi
+	if [[ -n "$out_file" ]]; then
+		printf '{"stratumURL":"stratum+tcp://private-json.example:3333","stratumUser":"bc1q-json-owner-address.bitaxe","stratumPassword":"json-secret-password","ip":"10.0.0.2"}\n' >"$out_file"
+	fi
+	printf '%s' "${PHASE21_FAKE_PATCH_HTTP_STATUS:-200}"
+	exit "${PHASE21_FAKE_PATCH_CURL_STATUS:-0}"
+	;;
+*/api/system/logs)
+	if [[ -n "${PHASE21_FAKE_CURL_ARGS:-}" ]]; then
+		printf 'GET %s\n' "$url" >>"$PHASE21_FAKE_CURL_ARGS"
+	fi
+	if [[ -n "$out_file" ]]; then
+		if [[ "${PHASE21_FAKE_LOGS_CONSUMED:-1}" == "1" ]]; then
+			printf 'phase21_pool_settings_consumed=true source=settings_patch redacted=true\n"stratumUser":"bc1q-json-owner-address.bitaxe"\nip=10.0.0.2\n' >"$out_file"
+		else
+			printf 'axeos_settings_patch=effects_applied\n"stratumUser":"bc1q-json-owner-address.bitaxe"\n' >"$out_file"
+		fi
+	fi
+	printf '%s' "${PHASE21_FAKE_LOGS_HTTP_STATUS:-200}"
+	exit "${PHASE21_FAKE_LOGS_CURL_STATUS:-0}"
+	;;
+*/api/system/info)
+	if [[ -n "${PHASE21_FAKE_CURL_ARGS:-}" ]]; then
+		printf 'GET %s\n' "$url" >>"$PHASE21_FAKE_CURL_ARGS"
+	fi
+	if [[ -n "$out_file" ]]; then
+		printf '{"poolUrl":"stratum+tcp://private.example:3333","poolURL":"private.example","poolPort":3333,"poolUser":"private-worker","poolPassword":"private-password","ip":"10.0.0.2","worker":"private-worker"}\n' >"$out_file"
+	fi
+	printf '200'
+	;;
+*)
+	printf 'unexpected URL: %s\n' "$url" >&2
+	exit 98
+	;;
+esac
 SH
 	chmod +x "$path"
 }
@@ -156,7 +199,7 @@ write_fake_node() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "${1:-}" == *"phase21-pool-credentials-json.mjs" ]]; then
+if [[ "${1:-}" == *"phase21-pool-credentials-json.mjs" || "${1:-}" == "-" ]]; then
 	exec "${PHASE21_REAL_NODE_BIN:-node}" "$@"
 fi
 
@@ -241,20 +284,21 @@ run_wrapper() {
 		fi
 
 		PHASE21_MINING_ALLOW_BIN="$fake_allow" \
-		PHASE21_POOL_CREDENTIALS_HELPER="$pool_credentials_helper" \
-		PHASE21_REAL_NODE_BIN="${PHASE21_REAL_NODE_BIN:-node}" \
-		NODE_BIN="$fake_node" \
-		"$BASH" "$wrapper" \
-		--manifest "$manifest" \
-		--surface "$surface" \
-		--out-dir "$out_dir" \
-		--chip-detect-summary "$chip_summary" \
-		--work-result-summary "$work_summary" \
-		--readiness-audit "$readiness_audit" \
-		--enablement-summary "$enablement_summary" \
-		--curl-bin "$fake_curl" \
-		--websocket-helper "$websocket_helper" \
-		"$@"
+			PHASE21_POOL_CREDENTIALS_HELPER="$pool_credentials_helper" \
+			PHASE21_REAL_NODE_BIN="${PHASE21_REAL_NODE_BIN:-node}" \
+			NODE_BIN="$fake_node" \
+			"$BASH" "$wrapper" \
+			--manifest "$manifest" \
+			--surface "$surface" \
+			--out-dir "$out_dir" \
+			--chip-detect-summary "$chip_summary" \
+			--work-result-summary "$work_summary" \
+			--readiness-audit "$readiness_audit" \
+			--enablement-summary "$enablement_summary" \
+			--curl-bin "$fake_curl" \
+			--websocket-helper "$websocket_helper" \
+			--pool-input-bridge-helper "$pool_input_bridge_helper" \
+			"$@"
 	)
 }
 
@@ -349,6 +393,10 @@ JSON
 
 	assert_contains "${out_dir}/mining-smoke.log" "pool_credentials_status=loaded-redacted source=json"
 	assert_contains "${out_dir}/mining-smoke.log" "controlled_mining_status: live-prerequisites-present"
+	assert_contains "${out_dir}/mining-smoke.log" "pool_input_bridge_status=applied"
+	assert_contains "${out_dir}/mining-smoke.log" "pool_settings_consumed_by_runtime=true"
+	assert_contains "$curl_args" "PATCH https://10.0.0.2/api/system"
+	assert_contains "$curl_args" "GET https://10.0.0.2/api/system/logs"
 	assert_contains "$curl_args" "https://10.0.0.2/api/system/info"
 	assert_contains "$node_args" "--path"
 	assert_contains "$node_args" "/api/ws/live"
@@ -364,6 +412,70 @@ JSON
 	assert_not_contains "${out_dir}/api-system-info.redacted.json" "10.0.0.2"
 	assert_not_contains "${out_dir}/api-system-info.redacted.json" "private-worker"
 	assert_not_contains "${out_dir}/api-system-info.redacted.json" "private-password"
+}
+
+test_pool_input_bridge_timeout_blocks_before_live_probe() {
+	base_fixture_paths "bridge-timeout"
+	local out_dir="${tmp_root}/bridge-timeout-out"
+	local credentials="${tmp_root}/bridge-timeout-pool-credentials.json"
+	local curl_args="${tmp_root}/bridge-timeout-curl-args.txt"
+
+	cat >"$credentials" <<'JSON'
+{
+  "poolURL": "private-json.example",
+  "poolPort": 3333,
+  "poolUser": "bc1q-json-owner-address.bitaxe",
+  "poolPassword": "json-secret-password"
+}
+JSON
+
+	PHASE21_FAKE_CURL_ARGS="$curl_args" \
+		PHASE21_FAKE_PATCH_HTTP_STATUS=000 \
+		PHASE21_FAKE_PATCH_CURL_STATUS=28 \
+		PHASE21_WEBSOCKET_MUST_NOT_RUN=1 \
+		run_wrapper "$out_dir" "mining-smoke" \
+		--device-url "https://10.0.0.2" \
+		--pool-credentials "$credentials"
+
+	assert_contains "${out_dir}/mining-smoke.log" "blocker: pool_input_bridge_failed"
+	assert_contains "${out_dir}/mining-smoke.log" "pool_patch_curl_status=28"
+	assert_contains "${out_dir}/mining-smoke.log" "pool_input_bridge_status=blocked"
+	assert_contains "$curl_args" "PATCH https://10.0.0.2/api/system"
+	assert_not_contains "$curl_args" "/api/system/info"
+	assert_not_contains "${out_dir}/mining-smoke.log" "10.0.0.2"
+	assert_not_contains "${out_dir}/mining-smoke.log" "private-json.example"
+	assert_not_contains "${out_dir}/mining-smoke.log" "json-secret-password"
+}
+
+test_pool_input_bridge_missing_consumed_marker_blocks_before_live_probe() {
+	base_fixture_paths "bridge-missing-marker"
+	local out_dir="${tmp_root}/bridge-missing-marker-out"
+	local credentials="${tmp_root}/bridge-missing-marker-pool-credentials.json"
+	local curl_args="${tmp_root}/bridge-missing-marker-curl-args.txt"
+
+	cat >"$credentials" <<'JSON'
+{
+  "poolURL": "private-json.example",
+  "poolPort": 3333,
+  "poolUser": "bc1q-json-owner-address.bitaxe",
+  "poolPassword": "json-secret-password"
+}
+JSON
+
+	PHASE21_FAKE_CURL_ARGS="$curl_args" \
+		PHASE21_FAKE_LOGS_CONSUMED=0 \
+		PHASE21_WEBSOCKET_MUST_NOT_RUN=1 \
+		run_wrapper "$out_dir" "mining-smoke" \
+		--device-url "https://10.0.0.2" \
+		--pool-credentials "$credentials"
+
+	assert_contains "${out_dir}/mining-smoke.log" "blocker: pool_input_bridge_failed"
+	assert_contains "${out_dir}/mining-smoke.log" "pool_input_bridge_blocker=pool_settings_consumed_marker_missing"
+	assert_contains "$curl_args" "PATCH https://10.0.0.2/api/system"
+	assert_contains "$curl_args" "GET https://10.0.0.2/api/system/logs"
+	assert_not_contains "$curl_args" "/api/system/info"
+	assert_not_contains "${out_dir}/pool-input-bridge/logs.redacted.txt" "bc1q-json-owner-address"
+	assert_not_contains "${out_dir}/pool-input-bridge/logs.redacted.txt" "private-json.example"
 }
 
 test_missing_json_credentials_fields_block_without_printing_raw_values() {
@@ -448,6 +560,8 @@ test_missing_manifest_records_pending
 test_missing_prerequisite_records_pending
 test_missing_live_prerequisites_records_blocked
 test_json_credentials_make_live_prerequisites_present_and_redact_values
+test_pool_input_bridge_timeout_blocks_before_live_probe
+test_pool_input_bridge_missing_consumed_marker_blocks_before_live_probe
 test_missing_json_credentials_fields_block_without_printing_raw_values
 test_unparseable_json_credentials_block_without_printing_raw_values
 test_bounded_soak_records_default_duration_and_watchdog_boundary

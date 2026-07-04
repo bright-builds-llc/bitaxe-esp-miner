@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-	printf 'usage: %s --manifest PATH --surface mining-smoke|bounded-soak --out-dir PATH --chip-detect-summary PATH --work-result-summary PATH --readiness-audit PATH --enablement-summary PATH [--device-url ORIGIN] [--pool-credentials PATH] [--duration-seconds N] [--curl-bin PATH] [--websocket-helper PATH]\n' "$(basename "$0")" >&2
+	printf 'usage: %s --manifest PATH --surface mining-smoke|bounded-soak --out-dir PATH --chip-detect-summary PATH --work-result-summary PATH --readiness-audit PATH --enablement-summary PATH [--device-url ORIGIN] [--pool-credentials PATH] [--duration-seconds N] [--curl-bin PATH] [--websocket-helper PATH] [--pool-input-bridge-helper PATH]\n' "$(basename "$0")" >&2
 }
 
 manifest=""
@@ -19,6 +19,7 @@ duration_seconds=""
 curl_bin="${CURL_BIN:-curl}"
 websocket_helper="${PHASE21_WEBSOCKET_HELPER:-scripts/phase17-websocket-capture.mjs}"
 pool_credentials_helper="${PHASE21_POOL_CREDENTIALS_HELPER:-scripts/phase21-pool-credentials-json.mjs}"
+pool_input_bridge_helper="${PHASE21_POOL_INPUT_BRIDGE_HELPER:-scripts/phase21-pool-input-bridge.sh}"
 node_bin="${NODE_BIN:-node}"
 
 while [[ $# -gt 0 ]]; do
@@ -120,6 +121,14 @@ while [[ $# -gt 0 ]]; do
 		websocket_helper="$2"
 		shift 2
 		;;
+	--pool-input-bridge-helper)
+		if [[ $# -lt 2 ]]; then
+			usage
+			exit 2
+		fi
+		pool_input_bridge_helper="$2"
+		shift 2
+		;;
 	-h | --help)
 		usage
 		exit 0
@@ -154,7 +163,7 @@ if [[ -n "$duration_seconds" && ! "$duration_seconds" =~ ^[0-9]+$ ]]; then
 	exit 2
 fi
 
-if [[ -n "$duration_seconds" && ( "$duration_seconds" -lt 60 || "$duration_seconds" -gt 600 ) ]]; then
+if [[ -n "$duration_seconds" && ("$duration_seconds" -lt 60 || "$duration_seconds" -gt 600) ]]; then
 	printf 'duration seconds must be between 60 and 600\n' >&2
 	exit 2
 fi
@@ -418,6 +427,7 @@ record_missing_live_prerequisites() {
 	log "controlled_no_share_condition=not-applicable"
 	log "hardware_command_status=not-run"
 	log "pool_lifecycle_status=blocked - missing live prerequisites"
+	log "pool_input_bridge_status=blocked - missing live prerequisites"
 	log "subscribe_status=blocked - missing live prerequisites"
 	log "authorize_status=blocked - missing live prerequisites"
 	log "notify_job_status=blocked - missing live prerequisites"
@@ -431,6 +441,71 @@ record_missing_live_prerequisites() {
 	log "safe_stop_status=confirmed-or-pending"
 	log_safe_state_markers
 	log "conclusion: blocked - missing_live_prerequisites"
+}
+
+record_pool_input_bridge_blocked() {
+	local reason="$1"
+
+	log "enablement_status=ready"
+	log "controlled_mining_status: blocked - pool input bridge failed"
+	log "live_mining_smoke_status: blocked"
+	log "blocker: pool_input_bridge_failed"
+	log "pool_input_bridge_status=blocked - ${reason}"
+	log "pool_lifecycle_status=blocked - pool input bridge failed"
+	log "subscribe_status=blocked - pool input bridge failed"
+	log "authorize_status=blocked - pool input bridge failed"
+	log "notify_job_status=blocked - pool input bridge failed"
+	log "bm1366_work_dispatch_status=blocked - pool input bridge failed"
+	log "result_receive_status=blocked - pool input bridge failed"
+	log "share_outcome=not-observed - pool input bridge failed"
+	log "hashrate_inputs_status=blocked - pool input bridge failed"
+	log "api_telemetry_status=blocked - pool input bridge failed"
+	log "websocket_frame_status=blocked - pool input bridge failed"
+	log "watchdog_status=observed-or-pending"
+	log "safe_stop_status=confirmed-or-pending"
+	log_safe_state_markers
+	log "conclusion: blocked - pool_input_bridge_failed"
+}
+
+run_pool_input_bridge() {
+	local bridge_out_dir="${out_dir}/pool-input-bridge"
+	local bridge_log="${bridge_out_dir}/pool-input-bridge.log"
+
+	if [[ ! -f "$pool_input_bridge_helper" ]]; then
+		log "pool_input_bridge_status=blocked - helper missing"
+		return 1
+	fi
+
+	set +e
+	"$BASH" "$pool_input_bridge_helper" \
+		--device-url "$device_url" \
+		--pool-credentials "$pool_credentials" \
+		--out-dir "$bridge_out_dir" \
+		--curl-bin "$curl_bin" \
+		--node-bin "$node_bin" \
+		--credentials-helper "$pool_credentials_helper" \
+		--max-attempts 5 \
+		--poll-interval-seconds 1 >/dev/null 2>&1
+	local bridge_status=$?
+	set -e
+
+	if [[ -f "$bridge_log" ]]; then
+		append_redacted <"$bridge_log"
+	fi
+
+	if [[ "$bridge_status" -ne 0 ]]; then
+		log "pool_input_bridge_status=blocked - helper failed"
+		return 1
+	fi
+
+	if [[ -f "$bridge_log" ]] && grep -Fq "pool_input_bridge_status=applied" "$bridge_log"; then
+		log "pool_input_bridge_status=applied"
+		log "pool_settings_consumed_by_runtime=true"
+		return 0
+	fi
+
+	log "pool_input_bridge_status=blocked - helper did not apply"
+	return 1
 }
 
 probe_api_status() {
@@ -515,6 +590,7 @@ record_live_probe_attempt() {
 	log "enablement_status=ready"
 	log "controlled_mining_status: live-prerequisites-present"
 	log "live_mining_smoke_status: pending - live probe only"
+	log "pool_input_bridge_status=applied"
 	log "pool_lifecycle_status=pending - downstream mining harness required"
 	log "subscribe_status=pending - downstream mining harness required"
 	log "authorize_status=pending - downstream mining harness required"
@@ -572,6 +648,11 @@ maybe_load_pool_credentials
 
 if live_prerequisites_missing; then
 	record_missing_live_prerequisites
+	exit 0
+fi
+
+if ! run_pool_input_bridge; then
+	record_pool_input_bridge_blocked "bridge_not_applied"
 	exit 0
 fi
 

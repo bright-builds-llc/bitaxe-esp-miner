@@ -13,10 +13,10 @@ use bitaxe_api::{
     plan_websocket_upgrade, restart_plan, resume_mining_plan, scoreboard_response,
     system_info_from_snapshot, unknown_api_route_response, unsupported_update_response,
     CommandEffect, CommandPlan, HttpAccessDecision, IdentifyModeEffect, OriginGate,
-    PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchPublicError,
-    SettingsPersistenceEffect, SettingsPersistencePlan, SettingsPublicResponse,
-    UpdateRequestDecision, UpdateRequestInput, UpdateRouteKind, WebSocketRouteKind,
-    WebSocketUpgradeDecision, LIVE_TELEMETRY_CADENCE_MS,
+    PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchFailureReason,
+    SettingsPatchPublicError, SettingsPersistenceEffect, SettingsPersistencePlan,
+    SettingsPublicResponse, UpdateRequestDecision, UpdateRequestInput, UpdateRouteKind,
+    WebSocketRouteKind, WebSocketUpgradeDecision, LIVE_TELEMETRY_CADENCE_MS,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
@@ -52,6 +52,8 @@ const UPGRADE_HEADER: &[u8] = b"Upgrade\0";
 const UPDATE_AP_MODE_REJECTION_BODY: &str = "Not allowed in AP mode";
 const WEBSOCKET_UPGRADE_REQUIRED_BODY: &str = "WebSocket upgrade required";
 const LIVE_TELEMETRY_THREAD_STACK_BYTES: usize = 16 * 1024;
+const SETTINGS_EFFECTS_THREAD_STACK_BYTES: usize = 8 * 1024;
+const SETTINGS_EFFECTS_POST_RESPONSE_DELAY_MS: u64 = 100;
 
 /// Starts the HTTP route shell and intentionally leaks the server so ESP-IDF's
 /// server task keeps running for the lifetime of the firmware process.
@@ -251,19 +253,24 @@ fn handle_settings_patch<'request, 'connection>(
         let body_len = request_body_len(&mut request);
         if let SettingsPatchBodyDecision::Reject(response) = plan_settings_patch_body_size(body_len)
         {
+            settings_patch_warn_retained("axeos_settings_patch=rejected reason=body_too_large");
             return send_public_response(request, response);
         }
 
         let body = match read_body_string(&mut request, body_len) {
             Ok(body) => body,
             Err(public_error) => {
+                settings_patch_warn_retained("axeos_settings_patch=rejected reason=body_read");
                 return send_text_error(request, 400, public_error.body());
             }
         };
         let accepted = match plan_settings_patch_body(&body) {
             Ok(accepted) => accepted,
             Err(error) => {
-                log::warn!("axeos_settings_patch=rejected reason={:?}", error.reason());
+                settings_patch_warn_retained(&format!(
+                    "axeos_settings_patch=rejected reason={}",
+                    settings_patch_failure_label(error.reason())
+                ));
                 return send_text_error(request, 400, error.public_error().body());
             }
         };
@@ -281,21 +288,32 @@ fn handle_settings_patch<'request, 'connection>(
         };
         let snapshot = settings_adapter::current_settings_snapshot();
         let plan = SettingsPersistencePlan::from_accepted_patch(&snapshot, accepted);
+        let write_count = plan.writes().len();
+        let effect_count = plan.effects().len();
+        settings_patch_retained(&format!(
+            "axeos_settings_patch=accepted writes={write_count} effects={effect_count}"
+        ));
         let success = match execute_settings_persistence_plan(&plan, &mut adapter) {
             Ok(success) => success,
             Err(error) => {
-                log::warn!(
+                settings_patch_warn_retained(&format!(
                     "axeos_settings_patch=persistence_failed reason={:?} steps={:?}",
                     error.reason(),
                     error.completed_steps()
-                );
+                ));
                 return send_text_error(request, 400, error.public_error().body());
             }
         };
         let effects = success.effects().to_vec();
         settings_adapter::apply_persisted_settings_writes(plan.writes());
+        settings_patch_retained(&format!(
+            "axeos_settings_patch=persistence_committed writes={write_count}"
+        ));
         send_settings_response(request, success.public_response())?;
-        apply_settings_effects(&effects);
+        settings_patch_retained(
+            "axeos_settings_patch=response_scheduled status=200 empty_body=true",
+        );
+        schedule_settings_effects(effects);
         Ok(())
     })
 }
@@ -946,6 +964,47 @@ fn read_body_string(
     }
 
     String::from_utf8(body).map_err(|_| SettingsPatchPublicError::InvalidJson)
+}
+
+fn settings_patch_failure_label(reason: &SettingsPatchFailureReason) -> &'static str {
+    match reason {
+        SettingsPatchFailureReason::MalformedJson { .. } => "malformed_json",
+        SettingsPatchFailureReason::NonObjectJson => "non_object_json",
+        SettingsPatchFailureReason::InvalidKnownFields(_) => "invalid_known_fields",
+    }
+}
+
+fn settings_patch_retained(line: &str) {
+    log::info!("{line}");
+    log_buffer::append_runtime_log_line(line);
+}
+
+fn settings_patch_warn_retained(line: &str) {
+    log::warn!("{line}");
+    log_buffer::append_runtime_log_line(line);
+}
+
+fn schedule_settings_effects(effects: Vec<SettingsPersistenceEffect>) {
+    settings_patch_retained("axeos_settings_patch=effects_scheduled");
+    let fallback_effects = effects.clone();
+    let result = std::thread::Builder::new()
+        .name("settings-effects".to_owned())
+        .stack_size(SETTINGS_EFFECTS_THREAD_STACK_BYTES)
+        .spawn(move || {
+            std::thread::sleep(Duration::from_millis(
+                SETTINGS_EFFECTS_POST_RESPONSE_DELAY_MS,
+            ));
+            apply_settings_effects(&effects);
+            settings_patch_retained("axeos_settings_patch=effects_applied");
+        });
+
+    if let Err(error) = result {
+        settings_patch_warn_retained(&format!(
+            "axeos_settings_patch=effects_thread_failed error={error}"
+        ));
+        apply_settings_effects(&fallback_effects);
+        settings_patch_retained("axeos_settings_patch=effects_applied fallback=inline");
+    }
 }
 
 fn apply_settings_effects(effects: &[SettingsPersistenceEffect]) {

@@ -24,7 +24,8 @@ use bitaxe_stratum::v1::{
 };
 
 use crate::{
-    asic_adapter, mining_evidence_mode::MiningEvidenceMode, runtime_snapshot, settings_adapter,
+    asic_adapter, log_buffer, mining_evidence_mode::MiningEvidenceMode, runtime_snapshot,
+    settings_adapter,
 };
 
 const BOARD_205: &str = "205";
@@ -89,29 +90,29 @@ enum ControlledRuntimePublication {
 }
 
 fn publish_blocked(reason: &'static str, source: &'static str) {
-    log::info!(
+    info_retained(&format!(
         "phase21_controlled_runtime_status=blocked board={BOARD_205} source={source} reason={reason} work_submission=disabled"
-    );
+    ));
 }
 
 fn publish_ready(plan: ControlledMiningRuntimePlan, source: &'static str) {
-    log::info!(
+    info_retained(&format!(
         "phase21_controlled_runtime_status=ready board={BOARD_205} source={source} mode=live-mining-runtime"
-    );
+    ));
 
     for marker in redacted_lifecycle_log_markers(&plan) {
-        log::info!("{marker}");
+        info_retained(&marker);
     }
 
     let adapter_action_count = adapter_action_count(&plan);
     match adapter_action_count {
-        Ok(count) => log::info!(
+        Ok(count) => info_retained(&format!(
             "bm1366_work_dispatch_status=typed_action_ready action_count={count} raw_frame_logged=false"
-        ),
+        )),
         Err(reason) => {
-            log::warn!(
+            warn_retained(&format!(
                 "bm1366_work_dispatch_status=blocked reason={reason} raw_frame_logged=false"
-            );
+            ));
             publish_blocked(reason, source);
             return;
         }
@@ -119,16 +120,19 @@ fn publish_ready(plan: ControlledMiningRuntimePlan, source: &'static str) {
 
     log_result_and_share_markers(&plan);
     for checkpoint in &plan.evidence.watchdog_yield_checkpoints {
-        log::info!("watchdog_yield_checkpoint={checkpoint}");
+        info_retained(&format!("watchdog_yield_checkpoint={checkpoint}"));
     }
 
     let runtime_state = runtime_state_for_evidence(&plan);
     runtime_snapshot::replace_mining_runtime_state_for_evidence(runtime_state);
-    log::info!(
-        "runtime_snapshot_status=updated collect_api_snapshot=ready api_websocket_telemetry_update_status=ready"
+    info_retained(
+        "runtime_snapshot_status=updated collect_api_snapshot=ready api_websocket_telemetry_update_status=ready",
     );
-    log::info!(
-        "safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled"
+    if let Some(marker) = maybe_pool_settings_consumed_marker(source) {
+        info_retained(marker);
+    }
+    info_retained(
+        "safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled",
     );
 }
 
@@ -264,25 +268,43 @@ fn adapter_action_count(plan: &ControlledMiningRuntimePlan) -> Result<usize, &'s
 
 fn log_result_and_share_markers(plan: &ControlledMiningRuntimePlan) {
     if plan.guarded_plan.maybe_share_submission.is_some() {
-        log::info!("result_receive_status=received");
+        info_retained("result_receive_status=received");
     } else {
-        log::info!("result_receive_status=bounded_no_result");
+        info_retained("result_receive_status=bounded_no_result");
     }
 
     match &plan.share_outcome {
         Some(ControlledShareOutcome::Accepted) => {
-            log::info!("share_submission_status=accepted redacted=true");
+            info_retained("share_submission_status=accepted redacted=true");
         }
         Some(ControlledShareOutcome::Rejected { .. }) => {
-            log::info!("share_submission_status=rejected redacted=true");
+            info_retained("share_submission_status=rejected redacted=true");
         }
         Some(ControlledShareOutcome::NoShareObserved) => {
-            log::info!("share_submission_status=bounded_no_response redacted=true");
+            info_retained("share_submission_status=bounded_no_response redacted=true");
         }
         None => {
-            log::info!("share_submission_status=bounded_no_share redacted=true");
+            info_retained("share_submission_status=bounded_no_share redacted=true");
         }
     }
+}
+
+fn maybe_pool_settings_consumed_marker(source: &str) -> Option<&'static str> {
+    if source == "settings_patch" {
+        return Some("phase21_pool_settings_consumed=true source=settings_patch redacted=true");
+    }
+
+    None
+}
+
+fn info_retained(line: &str) {
+    log::info!("{line}");
+    log_buffer::append_runtime_log_line(line);
+}
+
+fn warn_retained(line: &str) {
+    log::warn!("{line}");
+    log_buffer::append_runtime_log_line(line);
 }
 
 fn runtime_state_for_evidence(plan: &ControlledMiningRuntimePlan) -> MiningRuntimeState {
@@ -366,6 +388,39 @@ mod tests {
             assert!(
                 !markers.contains(forbidden),
                 "redacted controlled runtime marker leaked {forbidden}: {markers}"
+            );
+        }
+    }
+
+    #[test]
+    fn settings_patch_consumed_marker_is_redacted_and_source_scoped() {
+        // Arrange
+        let source = "settings_patch";
+
+        // Act
+        let marker = maybe_pool_settings_consumed_marker(source)
+            .expect("settings patch source should publish consumed marker");
+        let maybe_boot_marker = maybe_pool_settings_consumed_marker("boot");
+
+        // Assert
+        assert_eq!(
+            marker,
+            "phase21_pool_settings_consumed=true source=settings_patch redacted=true"
+        );
+        assert!(maybe_boot_marker.is_none());
+        for forbidden in [
+            "redaction-sentinel.pool.invalid",
+            "redaction-sentinel-worker",
+            "redaction-sentinel-password",
+            concat!("DEVICE", "_URL"),
+            "http://",
+            "https://",
+            "wifi",
+            "token",
+        ] {
+            assert!(
+                !marker.contains(forbidden),
+                "pool consumed marker leaked {forbidden}: {marker}"
             );
         }
     }
