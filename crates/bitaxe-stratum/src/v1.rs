@@ -6,6 +6,7 @@
 //! - Parity checklist row `STR-001`
 
 pub mod coinbase;
+pub mod controlled_runtime;
 pub mod fake_pool;
 pub mod messages;
 pub mod mining;

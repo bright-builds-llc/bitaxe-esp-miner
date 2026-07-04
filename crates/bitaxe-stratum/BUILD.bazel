@@ -8,6 +8,8 @@ rust_library(
         "src/lib.rs",
         "src/v1.rs",
         "src/v1/coinbase.rs",
+        "src/v1/controlled_runtime.rs",
+        "src/v1/controlled_runtime/tests.rs",
         "src/v1/fake_pool.rs",
         "src/v1/mining.rs",
         "src/v1/mining_loop.rs",

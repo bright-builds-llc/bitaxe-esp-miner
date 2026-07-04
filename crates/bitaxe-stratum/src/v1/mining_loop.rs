@@ -8,7 +8,9 @@
 //! - Parity checklist rows `STR-006`, `STR-007`, and `STAT-004`
 
 use bitaxe_asic::bm1366::{
-    command::Bm1366Command, result::Bm1366NonceResult, work::Bm1366WorkFields,
+    command::Bm1366Command,
+    result::Bm1366NonceResult,
+    work::{Bm1366WorkFields, Bm1366WorkPayload},
 };
 use bitaxe_config::Ultra205Defaults;
 use bitaxe_safety::{
@@ -208,7 +210,10 @@ impl GuardedMiningLoopInputs {
             work_queue: self.work_queue,
             maybe_dispatch: Some(GuardedBm1366DispatchPlan {
                 fields: work.fields,
-                maybe_command: None,
+                maybe_command: Some(Bm1366Command::SendDiagnosticWork(Bm1366WorkPayload::new(
+                    work.asic_job_id,
+                    work.fields,
+                ))),
             }),
             maybe_share_submission,
         })
@@ -383,7 +388,10 @@ mod mining_loop_tests {
             .expect("ready queue should emit typed BM1366 work");
         assert_eq!(dispatch.fields.nbits, 0x1705_ae3a_u32.to_le_bytes());
         let maybe_command: Option<Bm1366Command> = dispatch.maybe_command;
-        assert!(maybe_command.is_none());
+        assert!(matches!(
+            maybe_command,
+            Some(Bm1366Command::SendDiagnosticWork(_))
+        ));
         assert_eq!(
             plan.runtime_state.work_submission,
             WorkSubmissionGate::Ready
