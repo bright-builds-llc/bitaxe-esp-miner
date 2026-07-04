@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 21-05-PLAN.md
-last_updated: "2026-07-04T05:41:35.562Z"
+stopped_at: Completed 21-06-PLAN.md
+last_updated: "2026-07-04T06:01:06.445Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 21
   completed_phases: 20
   total_plans: 116
-  completed_plans: 113
-  percent: 97
+  completed_plans: 114
+  percent: 98
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 21 (live-mining-and-soak-evidence) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-07-04
 
@@ -161,6 +161,7 @@ Progress: [█████████░] 94%
 | Phase 21-live-mining-and-soak-evidence P03 | 15min | 2 tasks | 10 files |
 | Phase 21-live-mining-and-soak-evidence P04 | 981 | 1 tasks | 11 files |
 | Phase 21-live-mining-and-soak-evidence P05 | 10m07s | 1 tasks | 11 files |
+| Phase 21-live-mining-and-soak-evidence P06 | 13min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -431,6 +432,9 @@ Recent decisions affecting current work:
 - [Phase 21-live-mining-and-soak-evidence]: Plan 21-05 records work-result as diagnostic prerequisite evidence only: diagnostic work dispatched, result handling timed out fail-closed, and production mining/share claims remain below verified.
 - [Phase 21-live-mining-and-soak-evidence]: Plan 21-05 uses a completed work-result redaction reviewer marker because mining-allow rejects pending reviewer values before cited hardware commands.
 - [Phase 21-live-mining-and-soak-evidence]: Plan 21-05 used a 35-second work-result capture timeout to satisfy the bounded diagnostic-capture threat mitigation.
+- [Phase 21-live-mining-and-soak-evidence]: Plan 21-06 treats absent DEVICE_URL or pool input categories as missing_live_prerequisites, not controlled no-share evidence.
+- [Phase 21-live-mining-and-soak-evidence]: Plan 21-06 keeps live API/WebSocket telemetry blocked without an explicit DEVICE_URL; network scanning and target inference remain disabled.
+- [Phase 21-live-mining-and-soak-evidence]: Plan 21-06 does not claim successful ASIC initialization, production mining, shares, telemetry freshness, watchdog mining-load behavior, or soak evidence from prerequisite-only ledgers.
 
 ### Pending Todos
 
@@ -444,6 +448,7 @@ None yet.
 - Phase 13-05 recovery regression remains pending because DEVICE_URL is missing; no unsafe allow flags were used.
 - Phase 13-04 firmware OTA evidence blocked because DEVICE_URL is missing; valid OTA, invalid rejection, reboot identity, rollback, selected partition, and boot-validation remain below verified.
 - Phase 16 live HTTP/static/recovery, firmware OTA, failed-update, large-erase, interrupted-update, rollback, boot-validation, and OTAWWW evidence remain below verified until an explicit DEVICE_URL and documented allow gates are available.
+- Phase 21 Plan 21-06 live mining smoke and API/WebSocket telemetry correlation remain blocked by missing explicit DEVICE_URL and disposable/non-secret pool input categories.
 
 ### Quick Tasks Completed
 
@@ -456,6 +461,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T05:41:35.554Z
-Stopped at: Completed 21-05-PLAN.md
+Last session: 2026-07-04T06:01:06.441Z
+Stopped at: Completed 21-06-PLAN.md
 Resume file: None
