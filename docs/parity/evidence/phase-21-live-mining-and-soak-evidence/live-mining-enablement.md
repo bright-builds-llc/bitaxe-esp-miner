@@ -8,7 +8,7 @@ readiness_status: blocked_by_default
 enablement_mode: live-mining-runtime
 hardware_evidence_ack: ultra205-live-mining-runtime-safe-bench
 package_manifest: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/bitaxe-ultra205-package.json
-source_commit: f34b50dda839a1867a2a7ee2c271e1533ce286ef
+source_commit: b5502a6306377183134afa223256997bfab9f6ae
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 recovery_steps: stop wrapper, power-cycle board if serial stalls, reflash default safe package if live mode does not safe-stop
 prerequisite_artifacts: readiness-audit.md

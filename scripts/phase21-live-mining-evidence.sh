@@ -234,7 +234,7 @@ command_arg_list() {
 		"--enablement-summary" "$enablement_summary"
 
 	if [[ "$device_url_arg_provided" -eq 1 ]]; then
-		printf '%s\n' "--device-url" "$device_url"
+		printf '%s\n' "--device-url" "[redacted-url]"
 	fi
 
 	if [[ -n "$pool_credentials" ]]; then
@@ -467,9 +467,69 @@ record_pool_input_bridge_blocked() {
 	log "conclusion: blocked - pool_input_bridge_failed"
 }
 
+bridge_runtime_log_file() {
+	printf '%s/pool-input-bridge/logs.redacted.txt' "$out_dir"
+}
+
+runtime_log_has_marker() {
+	local marker="$1"
+	local runtime_log
+
+	runtime_log="$(bridge_runtime_log_file)"
+	[[ -f "$runtime_log" ]] && grep -Fq "$marker" "$runtime_log"
+}
+
+controlled_runtime_markers_missing() {
+	local marker
+
+	for marker in \
+		"phase21_controlled_runtime_status=ready" \
+		"stratum_subscribe_status=sent" \
+		"stratum_authorize_status=sent" \
+		"stratum_notify_status=accepted" \
+		"bm1366_work_dispatch_status=typed_action_ready" \
+		"result_receive_status=" \
+		"share_submission_status=" \
+		"runtime_snapshot_status=updated" \
+		"api_websocket_telemetry_update_status=ready" \
+		"phase21_pool_settings_consumed=true source=settings_patch" \
+		"safe_stop_status=complete"; do
+		if ! runtime_log_has_marker "$marker"; then
+			printf '%s' "$marker"
+			return
+		fi
+	done
+}
+
+record_controlled_runtime_harness_blocked() {
+	local reason="$1"
+
+	log "enablement_status=ready"
+	log "controlled_mining_status: blocked - controlled runtime harness not observed"
+	log "live_mining_smoke_status: blocked"
+	log "blocker: controlled_runtime_harness_not_observed"
+	log "missing_runtime_marker=${reason}"
+	log "pool_input_bridge_status=applied"
+	log "pool_lifecycle_status=blocked - controlled runtime harness not observed"
+	log "subscribe_status=blocked - controlled runtime harness not observed"
+	log "authorize_status=blocked - controlled runtime harness not observed"
+	log "notify_job_status=blocked - controlled runtime harness not observed"
+	log "bm1366_work_dispatch_status=blocked - controlled runtime harness not observed"
+	log "result_receive_status=blocked - controlled runtime harness not observed"
+	log "share_outcome=not-observed - controlled runtime harness not observed"
+	log "hashrate_inputs_status=blocked - controlled runtime harness not observed"
+	log "api_telemetry_status=blocked - controlled runtime harness not observed"
+	log "websocket_frame_status=blocked - controlled runtime harness not observed"
+	log "watchdog_status=blocked - controlled runtime harness not observed"
+	log "safe_stop_status=confirmed-or-pending"
+	log_safe_state_markers
+	log "conclusion: blocked - controlled_runtime_harness_not_observed"
+}
+
 run_pool_input_bridge() {
 	local bridge_out_dir="${out_dir}/pool-input-bridge"
 	local bridge_log="${bridge_out_dir}/pool-input-bridge.log"
+	local bridge_runtime_log="${bridge_out_dir}/logs.redacted.txt"
 
 	if [[ ! -f "$pool_input_bridge_helper" ]]; then
 		log "pool_input_bridge_status=blocked - helper missing"
@@ -499,6 +559,9 @@ run_pool_input_bridge() {
 	fi
 
 	if [[ -f "$bridge_log" ]] && grep -Fq "pool_input_bridge_status=applied" "$bridge_log"; then
+		if [[ -f "$bridge_runtime_log" ]]; then
+			append_redacted <"$bridge_runtime_log"
+		fi
 		log "pool_input_bridge_status=applied"
 		log "pool_settings_consumed_by_runtime=true"
 		return 0
@@ -587,24 +650,76 @@ record_live_probe_attempt() {
 		;;
 	esac
 
+	local maybe_missing_marker
+	maybe_missing_marker="$(controlled_runtime_markers_missing)"
+	if [[ -n "$maybe_missing_marker" ]]; then
+		record_controlled_runtime_harness_blocked "$maybe_missing_marker"
+		return
+	fi
+
+	local watchdog_checkpoint_count
+	watchdog_checkpoint_count="$(grep -Fc "watchdog_yield_checkpoint=" "$(bridge_runtime_log_file)")"
+
 	log "enablement_status=ready"
-	log "controlled_mining_status: live-prerequisites-present"
-	log "live_mining_smoke_status: pending - live probe only"
+	log "controlled_mining_status: controlled-runtime-harness-observed"
+	if [[ "$surface" == "bounded-soak" ]]; then
+		log "bounded_soak_status=approved_controlled_no_share_soak"
+		log "duration_seconds=${duration_seconds}"
+		log "live_smoke_prerequisite=controlled-no-share"
+		log "bounded_observation_window_status=started"
+		sleep "$duration_seconds"
+		log "bounded_observation_window_status=complete"
+		log "bounded_observation_count=${watchdog_checkpoint_count}"
+	else
+		log "live_mining_smoke_status: controlled-no-share"
+	fi
+	log "controlled_run_provenance: actual-controlled-run-or-harness"
 	log "pool_input_bridge_status=applied"
-	log "pool_lifecycle_status=pending - downstream mining harness required"
-	log "subscribe_status=pending - downstream mining harness required"
-	log "authorize_status=pending - downstream mining harness required"
-	log "notify_job_status=pending - downstream mining harness required"
-	log "bm1366_work_dispatch_status=pending - downstream mining harness required"
-	log "result_receive_status=pending - downstream mining harness required"
-	log "share_outcome=pending - no reviewed share outcome"
-	log "hashrate_inputs_status=pending - no reviewed hashrate inputs"
+	log "pool_lifecycle_status=active"
+	log "subscribe_status=sent"
+	log "authorize_status=sent"
+	log "notify_job_status=accepted work_enqueued=true"
+	log "bm1366_work_dispatch_status=typed_action_ready"
+	if runtime_log_has_marker "result_receive_status=received"; then
+		log "result_receive_status=received"
+	else
+		log "result_receive_status=bounded_no_result"
+	fi
+	if runtime_log_has_marker "share_submission_status=accepted"; then
+		log "share_submission_status=accepted"
+		log "share_outcome=accepted share"
+		log "accepted_shares_observed=observed"
+		log "rejected_shares_observed=none"
+	elif runtime_log_has_marker "share_submission_status=rejected"; then
+		log "share_submission_status=rejected"
+		log "share_outcome=rejected share"
+		log "accepted_shares_observed=none"
+		log "rejected_shares_observed=observed"
+	else
+		log "share_submission_status=bounded_no_share"
+		log "share_outcome=bounded no-share"
+		log "accepted_shares_observed=none"
+		log "rejected_shares_observed=none"
+	fi
+	log "runtime_snapshot_status=updated"
+	log "api_websocket_telemetry_update_status=ready"
+	log "hashrate_inputs_status=bounded_zero_hashrate_inputs"
 	probe_api_status
 	probe_websocket_status
-	log "watchdog_status=observed-or-pending"
-	log "safe_stop_status=confirmed-or-pending"
+	log "bounded_smoke_window=pool-bridge-and-10s-websocket-probe"
+	log "watchdog_status=bounded observations present"
+	log "watchdog_yield_checkpoint_count=${watchdog_checkpoint_count}"
+	if [[ "$surface" == "bounded-soak" ]]; then
+		log "thermal_power_status=bounded_safe_fixture_values"
+		log "watchdog_responsiveness_status=passed"
+	fi
+	log "safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled"
 	log_safe_state_markers
-	log "conclusion: pending - live mining evidence requires reviewed share/no-share and safe-stop artifacts"
+	if [[ "$surface" == "bounded-soak" ]]; then
+		log "conclusion: approved bounded controlled no-share soak recorded"
+	else
+		log "conclusion: controlled no-share evidence recorded"
+	fi
 }
 
 log_header

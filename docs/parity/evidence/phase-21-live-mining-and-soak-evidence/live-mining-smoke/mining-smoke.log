@@ -1,11 +1,10 @@
 phase21_live_mining_evidence
 network_scan: disabled - DEVICE_URL must be explicit
-surface: bounded-soak
-manifest: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/allow-bounded-soak.json
-out_dir: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak
-duration_seconds=300
+surface: mining-smoke
+manifest: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/allow-live-mining-smoke.json
+out_dir: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke
 pool_credentials_status=loaded-redacted source=json
-mining_allow_command: bazel run //tools/parity:report -- mining-allow --manifest docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/allow-bounded-soak.json --surface bounded-soak --allowed-command scripts/phase21-live-mining-evidence.sh --manifest docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/allow-bounded-soak.json --surface bounded-soak --out-dir docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak --chip-detect-summary docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md --work-result-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md --readiness-audit docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md --enablement-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement.md --device-url [redacted-url] --pool-credentials pool-credentials.json --duration-seconds 300
+mining_allow_command: bazel run //tools/parity:report -- mining-allow --manifest docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/allow-live-mining-smoke.json --surface mining-smoke --allowed-command scripts/phase21-live-mining-evidence.sh --manifest docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/allow-live-mining-smoke.json --surface mining-smoke --out-dir docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke --chip-detect-summary docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md --work-result-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md --readiness-audit docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md --enablement-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement.md --device-url [redacted-url] --pool-credentials pool-credentials.json
 Computing main repo mapping:
 Loading:
 Loading: 0 packages loaded
@@ -16,22 +15,15 @@ INFO: Analyzed target //tools/parity:report (0 packages loaded, 0 targets config
 INFO: Found 1 target...
 Target //tools/parity:report up-to-date:
   bazel-bin/tools/parity/report
-INFO: Elapsed time: 0.120s, Critical Path: 0.00s
+INFO: Elapsed time: 0.122s, Critical Path: 0.00s
 INFO: 1 process: 1 internal.
 INFO: Build completed successfully, 1 total action
 INFO: Running command line: bazel-bin/tools/parity/report <args omitted>
 mining_allow_status: passed
-surface: bounded-soak
-claim_tier: bounded-soak
-evidence_class: soak
-checklist_rows: STR-006,STR-007,STR-008,SAFE-09,EVD-05
-duration_seconds=300
-abort_condition=detector_mismatch
-abort_condition=board_info_failure
-abort_condition=missing_trusted_wrapper_markers
-abort_condition=redaction_uncertainty
-abort_condition=unsafe_temperature_or_power
-abort_condition=watchdog_unresponsive
+surface: mining-smoke
+claim_tier: live-pool-smoke
+evidence_class: hardware-smoke
+checklist_rows: ASIC-003,ASIC-004,ASIC-005,STR-006,STR-007,STR-008,SAFE-09,EVD-05
 pool_credentials_status=loaded-redacted source=json
 phase21_pool_input_bridge
 network_scan: disabled - DEVICE_URL must be explicit
@@ -39,7 +31,6 @@ pool_credentials_status=loaded-redacted source=json
 pool_patch_http_status=200
 pool_patch_curl_status=0
 pool_input_logs_attempt=1 http_status=200 curl_status=0
-pool_input_logs_attempt=2 http_status=200 curl_status=0
 pool_input_bridge_status=applied
 pool_settings_consumed_by_runtime=true
 pool_config=local-owner-supplied
@@ -49,22 +40,7 @@ redaction_status=passed
 bitaxe-rust boot: board=Ultra 205 asic=BM1366
 safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled
 ota_boot_validation=not_pending state=factory
-phase21_controlled_runtime_status=ready board=205 source=boot mode=live-mining-runtime
-stratum_subscribe_status=sent redacted=true
-stratum_authorize_status=sent redacted=true
-stratum_notify_status=accepted work_enqueued=true
-bm1366_work_dispatch_status=typed_action_ready action_count=1 raw_frame_logged=false
-result_receive_status=bounded_no_result
-share_submission_status=bounded_no_share redacted=true
-watchdog_yield_checkpoint=subscribe
-watchdog_yield_checkpoint=authorize
-watchdog_yield_checkpoint=notify
-watchdog_yield_checkpoint=dispatch
-watchdog_yield_checkpoint=result
-watchdog_yield_checkpoint=share
-watchdog_yield_checkpoint=safe_stop
-runtime_snapshot_status=updated collect_api_snapshot=ready api_websocket_telemetry_update_status=ready
-safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled
+phase21_controlled_runtime_status=blocked board=205 source=boot reason=missing_pool_settings work_submission=disabled
 wifi_status=connected ipv4=[redacted-ip] device_url=[redacted-url]
 reset_reason=11
 partition=factory
@@ -95,16 +71,37 @@ runtime_snapshot_status=updated collect_api_snapshot=ready api_websocket_telemet
 phase21_pool_settings_consumed=true source=settings_patch redacted=true
 safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled
 axeos_settings_patch=effects_applied
+axeos_settings_patch=accepted writes=4 effects=0
+axeos_settings_patch=persistence_committed writes=4
+axeos_settings_patch=response_scheduled status=200 empty_body=true
+axeos_settings_patch=effects_scheduled
+phase21_controlled_runtime_status=ready board=205 source=settings_patch mode=live-mining-runtime
+stratum_subscribe_status=sent redacted=true
+stratum_authorize_status=sent redacted=true
+stratum_notify_status=accepted work_enqueued=true
+bm1366_work_dispatch_status=typed_action_ready action_count=1 raw_frame_logged=false
+result_receive_status=bounded_no_result
+share_submission_status=bounded_no_share redacted=true
+watchdog_yield_checkpoint=subscribe
+watchdog_yield_checkpoint=authorize
+watchdog_yield_checkpoint=notify
+watchdog_yield_checkpoint=dispatch
+watchdog_yield_checkpoint=result
+watchdog_yield_checkpoint=share
+watchdog_yield_checkpoint=safe_stop
+runtime_snapshot_status=updated collect_api_snapshot=ready api_websocket_telemetry_update_status=ready
+phase21_pool_settings_consumed=true source=settings_patch redacted=true
+safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled
+axeos_settings_patch=effects_applied
+axeos_settings_patch=accepted writes=4 effects=0
+axeos_settings_patch=persistence_committed writes=4
+axeos_settings_patch=response_scheduled status=200 empty_body=true
+axeos_settings_patch=effects_scheduled
 pool_input_bridge_status=applied
 pool_settings_consumed_by_runtime=true
 enablement_status=ready
 controlled_mining_status: controlled-runtime-harness-observed
-bounded_soak_status=approved_controlled_no_share_soak
-duration_seconds=300
-live_smoke_prerequisite=controlled-no-share
-bounded_observation_window_status=started
-bounded_observation_window_status=complete
-bounded_observation_count=14
+live_mining_smoke_status: controlled-no-share
 controlled_run_provenance: actual-controlled-run-or-harness
 pool_input_bridge_status=applied
 pool_lifecycle_status=active
@@ -130,20 +127,18 @@ websocket_route_claim=frame-capture-required
 duration_ms=10000
 max_frames=5
 websocket_target_status=passed
-websocket_frame_1={"data":{"ASICModel":"BM1366","actualFrequency":0.0,"apEnabled":0,"autofanspeed":1,"axeOSVersion":"safe-fixture","bestDiff":0.0,"bestSessionDiff":0.0,"blockFound":0,"boardVersion":"205","coreVoltage":1200,"coreVoltageActual":0.0,"current":0.0,"errorPercentage":0.0,"expectedHashrate":0.0,"fan2rpm":0,"fanrpm":0,"fanspeed":0,"freeHeap":7958104,"freeHeapInternal":209603,"freeHeapSpiram":7780532,"frequency":485.0,"hashRate":0.0,"hashRate_10m":0.0,"hashRate_1h":0.0,"hashRate_1m":0.0,"hostname":"[redacted]","idfVersion":"v5.5.4","ipv4":"[redacted-ip]","ipv6":"","isPSRAMAvailable":1,"isUsingFallbackStratum":0,"macAddr":"[redacted-mac]","maxAllocHeap":7733248,"maxPower":12,"minFreeHeap":7405360,"miningPaused":false,"nominalVoltage":0,"poolConnectionInfo":"active","poolDifficulty":42.0,"power":0.0,"processTime":0.0,"resetReason":"11","responseShareBatch":0,"responseTime":0.0,"runningPartition":"factory","sharesAccepted":0,"sharesRejected":0,"sharesRejectedReasons":[],"showNewBlock":false,"smallCoreCount":894,"ssid":"[redacted]","temp":0.0,"temp2":0.0,"uptimeSeconds":306,"version":"b5502a630637","voltage":0.0,"vrTemp":0.0,"wifiRSSI":-44,"wifiStatus":"connected"},"event":"update"}
-websocket_frame_2={"data":{"freeHeap":7955312,"freeHeapInternal":205463,"freeHeapSpiram":7781880},"event":"update"}
-websocket_frame_3={"data":{"freeHeap":7955436,"freeHeapInternal":205387,"freeHeapSpiram":7782080,"uptimeSeconds":307},"event":"update"}
-websocket_frame_4={"data":{"freeHeap":7955444,"freeHeapInternal":205395,"uptimeSeconds":308},"event":"update"}
-websocket_frame_5={"data":{"freeHeap":7955440,"freeHeapInternal":205391},"event":"update"}
+websocket_frame_1={"data":{"ASICModel":"BM1366","actualFrequency":0.0,"apEnabled":0,"autofanspeed":1,"axeOSVersion":"safe-fixture","bestDiff":0.0,"bestSessionDiff":0.0,"blockFound":0,"boardVersion":"205","coreVoltage":1200,"coreVoltageActual":0.0,"current":0.0,"errorPercentage":0.0,"expectedHashrate":0.0,"fan2rpm":0,"fanrpm":0,"fanspeed":0,"freeHeap":7957696,"freeHeapInternal":209215,"freeHeapSpiram":7780512,"frequency":485.0,"hashRate":0.0,"hashRate_10m":0.0,"hashRate_1h":0.0,"hashRate_1m":0.0,"hostname":"[redacted]","idfVersion":"v5.5.4","ipv4":"[redacted-ip]","ipv6":"","isPSRAMAvailable":1,"isUsingFallbackStratum":0,"macAddr":"[redacted-mac]","maxAllocHeap":7733248,"maxPower":12,"minFreeHeap":7413928,"miningPaused":false,"nominalVoltage":0,"poolConnectionInfo":"active","poolDifficulty":42.0,"power":0.0,"processTime":0.0,"resetReason":"11","responseShareBatch":0,"responseTime":0.0,"runningPartition":"factory","sharesAccepted":0,"sharesRejected":0,"sharesRejectedReasons":[],"showNewBlock":false,"smallCoreCount":894,"ssid":"[redacted]","temp":0.0,"temp2":0.0,"uptimeSeconds":325,"version":"b5502a630637","voltage":0.0,"vrTemp":0.0,"wifiRSSI":-41,"wifiStatus":"connected"},"event":"update"}
+websocket_frame_2={"data":{"freeHeap":7954936,"freeHeapInternal":205087,"freeHeapSpiram":7781880,"uptimeSeconds":326},"event":"update"}
+websocket_frame_3={"data":{"freeHeap":7955156,"freeHeapInternal":205107,"freeHeapSpiram":7782080,"minFreeHeap":7413632},"event":"update"}
+websocket_frame_4={"data":{"freeHeap":7955124,"freeHeapInternal":205075,"minFreeHeap":7413604,"uptimeSeconds":327},"event":"update"}
 websocket_open_status=opened
-websocket_frame_status=passed frames=5
+websocket_error=connection error
+websocket_frame_status=passed frames=4
 bounded_smoke_window=pool-bridge-and-10s-websocket-probe
 watchdog_status=bounded observations present
 watchdog_yield_checkpoint_count=14
-thermal_power_status=bounded_safe_fixture_values
-watchdog_responsiveness_status=passed
 safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled
 post_action_safe_state_marker=safe_state: mining=disabled
 post_action_safe_state_marker=hardware_control=disabled
 post_action_safe_state_marker=work_submission=disabled
-conclusion: approved bounded controlled no-share soak recorded
+conclusion: controlled no-share evidence recorded

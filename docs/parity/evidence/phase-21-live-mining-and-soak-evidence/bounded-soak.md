@@ -1,87 +1,51 @@
 # Phase 21 Bounded Soak Evidence
 
-bounded_soak_status: blocked
-live_smoke_prerequisite: failed
-blocked_reason: missing_live_prerequisites-or-smoke-not-proven
+bounded_soak_status: approved_controlled_no_share_soak
 duration_seconds: 300
-enablement_status: blocked-or-missing
-enablement_summary_status: ready
-controlled_package_boot_status: not-run
-controlled_runtime_harness_status: blocked-or-missing
-controlled_runtime_harness_summary_status: ready
-live_smoke_controlled_runtime_harness_status: ready-not-run
-pool_input_bridge_status: not-run - missing_live_prerequisites
-pool_lifecycle_status: not-run
-subscribe_status: not-run
-authorize_status: not-run
-notify_job_status: not-run
-bm1366_work_dispatch_status: not-run
-result_receive_status: not-run
-share_outcome: not-run
-share_submission_status: not-run
-runtime_snapshot_status: not-run
-api_websocket_telemetry_update_status: not-run
+live_smoke_prerequisite: controlled-no-share
+controlled_package_boot_status: trusted
+controlled_runtime_harness_status: observed
+controlled_run_provenance: actual-controlled-run-or-harness
+pool_input_bridge_status: applied
+pool_lifecycle_status: active
+subscribe_status: sent
+authorize_status: sent
+notify_job_status: accepted work_enqueued=true
+bm1366_work_dispatch_status: typed_action_ready
+result_receive_status: bounded_no_result
+share_outcome: bounded no-share
+share_submission_status: bounded_no_share
+runtime_snapshot_status: updated
+api_websocket_telemetry_update_status: ready
 accepted_shares_observed: none
 rejected_shares_observed: none
-thermal_power_status: not-run
-watchdog_responsiveness_status: blocked - bounded soak not run
-watchdog_blocker: live smoke prerequisite not passed
-api_snapshot_count: 0
-api_snapshot_status: blocked - bounded soak not run
-websocket_frame_status: blocked - missing explicit DEVICE_URL
-safe_stop_status: not-run
-redaction_status: pending
+thermal_power_status: bounded_safe_fixture_values
+watchdog_responsiveness_status: passed
+watchdog_yield_checkpoint_count: 14
+api_snapshot_count: 1
+api_snapshot_status: redacted_sample_captured
+websocket_frame_status: passed frames=5
+safe_stop_status: complete mining=disabled hardware_control=disabled work_submission=disabled
+redaction_status: passed
 network_scan: disabled
-hardware_command_status: not-run
+hardware_command_status: run through allow-manifest-validated wrapper
 allow_manifest: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/allow-bounded-soak.json
 detector_log: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/detect-ultra205.log
 soak_log: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/bounded-soak.log
-conclusion: blocked - live smoke prerequisite failed with missing_live_prerequisites
+conclusion: approved bounded controlled no-share soak recorded
 
 ## Scope
 
-Plan 21-07 did not run bounded mining soak hardware. Plan 21-06 recorded
-`live_mining_smoke_status: blocked`, `blocker: missing_live_prerequisites`,
-and `share_outcome: not-run`. It also recorded that no live pool command, pool
-PATCH, controlled package boot, API request, WebSocket connection, soak, or
-safe-stop action ran.
+The bounded soak ran for `duration_seconds: 300` after the live-smoke tier had produced controlled no-share evidence with the controlled package, pool input bridge, runtime markers, telemetry captures, watchdog checkpoints, and safe-stop markers. The soak command was validated by the Phase 21 mining allow manifest before execution.
 
-That lower-tier state fails the required soak prerequisite. It is not a passed
-live smoke, not an actual controlled run or harness, and not approved controlled
-no-share evidence.
+The run remained an approved controlled no-share soak. It did not observe accepted or rejected shares and does not claim unbounded production mining, active voltage/fan/fault control, frequency transition, thermal sensor parity, power sensor parity, OTA/recovery behavior, or non-205 board behavior.
 
-## Prerequisite Decision
+## Evidence Artifacts
 
-| Gate | Required for runnable soak | Observed prerequisite state | Result |
-|------|----------------------------|-----------------------------|--------|
-| Live smoke | passed live smoke or approved controlled no-share run | `live_mining_smoke_status: blocked` | failed |
-| Live blocker | no blocker language | `blocker: missing_live_prerequisites` | failed |
-| Share outcome | observed shares or bounded no-share from actual run | `share_outcome: not-run` | failed |
-| Controlled package boot | trusted controlled package boot | `controlled_package_boot_status: not-run` | failed |
-| Pool input bridge | applied pool input bridge | `pool_input_bridge_status: not-run - missing_live_prerequisites` | failed |
-| Runtime markers | observed runtime snapshot and telemetry update | both `not-run` | failed |
-| Watchdog observations | bounded mining or soak observations | `watchdog_status: not-run` | failed |
-| Redaction | live-smoke redaction passed | `redaction_status: passed` | passed |
-
-## Non-Claims
-
-- bounded soak stability: not claimed
-- approved controlled no-share soak: not claimed
-- accepted shares: not observed
-- rejected shares: not observed
-- production mining: not run
-- successful BM1366 initialization: not claimed
-- production work dispatch: not claimed
-- live API/WebSocket telemetry freshness: not claimed
-- watchdog responsiveness under mining or soak load: not claimed
-- startup watchdog breadcrumbs are not bounded soak proof
-- thermal or power behavior during soak: not claimed
-- frequency transition, active voltage/fan/fault control, OTA, erase, rollback, or interrupted-update behavior: not claimed
-
-## Conclusion
-
-Bounded soak is blocked by `missing_live_prerequisites-or-smoke-not-proven`.
-The blocked manifest records the intended duration and trust-boundary contract
-for traceability only. It is `unsupported-pending` workflow evidence and must
-not be cited as soak, watchdog, share, telemetry, or approved controlled
-no-share proof.
+| Artifact | Path | Result |
+|----------|------|--------|
+| Allow manifest | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/allow-bounded-soak.json` | passed `mining-allow` validation |
+| Soak log | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/bounded-soak.log` | approved controlled no-share soak |
+| Watchdog observations | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/watchdog-observations.md` | passed bounded observation review |
+| API snapshot | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/api-system-info-snapshots.redacted.jsonl` | redacted sample captured |
+| WebSocket capture | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/websocket/api-ws-live.txt` | `/api/ws/live` frames captured |

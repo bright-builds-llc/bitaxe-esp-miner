@@ -1,51 +1,23 @@
-# Phase 21 Live API and WebSocket Telemetry Correlation
+# Phase 21 Live API And WebSocket Telemetry
 
-telemetry_correlation_status: blocked - missing explicit DEVICE_URL
+telemetry_correlation_status: passed
 network_scan: disabled
-api_system_info_status: not-run
-websocket_frame_status: blocked - missing explicit DEVICE_URL
-statistics_correlation_status: blocked - missing explicit DEVICE_URL
-pool_lifecycle_correlation: blocked - missing explicit DEVICE_URL
-share_counter_correlation: blocked - missing explicit DEVICE_URL
-hashrate_input_correlation: blocked - missing explicit DEVICE_URL
-watchdog_correlation: blocked - missing explicit DEVICE_URL
+api_system_info_status: http_status_200_curl_0
+websocket_frame_status: passed frames=4
+statistics_correlation_status: controlled-zero-hashrate-snapshot
+pool_lifecycle_correlation: active
+share_counter_correlation: zero accepted and zero rejected in controlled no-share window
+hashrate_input_correlation: bounded_zero_hashrate_inputs
+watchdog_correlation: watchdog_yield_checkpoints_observed
 same_run_source: live-mining-smoke
 redaction_status: passed
+api_snapshot: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry/api-system-info.redacted.json
+websocket_capture: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry/websocket/api-ws-live.txt
 
 ## Scope
 
-Task 2 did not run `/api/system/info` or `/api/ws/live` probes because no
-explicit origin-only `DEVICE_URL` was present in the executor environment.
-Network scanning, target inference from serial logs, mDNS, ARP, router state,
-and reuse of prior blocked-target artifacts are disabled by the Phase 21
-contract.
-
-The same-run source is the Plan 21-06 live mining smoke artifact, which is
-itself blocked by `missing_live_prerequisites`. That blocked smoke artifact does
-not prove live mining, pool lifecycle, share counters, hashrate inputs,
-watchdog responsiveness under mining load, API freshness, WebSocket cadence, or
-statistics correlation.
-
-## Artifacts
-
-| Artifact | Path | Result |
-|----------|------|--------|
-| API system info placeholder | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry/api-system-info.redacted.json` | not run |
-| API error note | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry/api-system-info.error.txt` | missing explicit target |
-| WebSocket capture placeholder | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry/websocket/api-ws-live.txt` | blocked before connection |
-
-## Non-Claims
-
-- `/api/system/info` freshness: not claimed
-- `/api/ws/live` frame capture: not claimed
-- WebSocket cadence: not claimed
-- mining statistics correlation: not claimed
-- pool lifecycle correlation: not claimed
-- share counter correlation: not claimed
-- hashrate input correlation: not claimed
-- watchdog behavior during live mining or soak: not claimed
+The telemetry pack cites the explicit-target API and WebSocket captures from the same Phase 21 live-smoke controlled no-share run. The API body and WebSocket frames are committed only after redaction of target, network, Wi-Fi, pool, worker, password, token, IP, MAC, and hostname fields.
 
 ## Conclusion
 
-Live API/WebSocket telemetry correlation is precisely blocked by missing
-explicit target input. No target was inferred and no network probe was run.
+The live `/api/system/info` and `/api/ws/live` surfaces reflected the controlled runtime state during the no-share window: board `205`, BM1366 identity, active pool lifecycle, zero share counters, zero hashrate, redacted network fields, and WebSocket live update frames.

@@ -1,8 +1,8 @@
 ---
 phase: 21
 slug: live-mining-and-soak-evidence
-status: blocked
-nyquist_compliant: false
+status: passed
+nyquist_compliant: true
 wave_0_complete: true
 created: 2026-07-04
 ---
@@ -40,9 +40,9 @@ created: 2026-07-04
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 21-W0-01 | 21-01 | 0 | ASIC-07, STR-06, STR-07 | T-21-01 / credential disclosure, unsafe command shape | Phase 21 mining wrappers cannot run outside detector, package, allow-manifest, redaction, enablement-summary, and safe-state gates | unit + script | `cargo test -p bitaxe-parity --all-features mining_allow`; `bazel test //tools/parity:tests --test_filter=mining_allow`; `bazel test //scripts:phase21_live_mining_evidence_test` | ✅ `tools/parity/src/mining_allow.rs`; `scripts/phase21-live-mining-evidence.sh`; `scripts/phase21-live-mining-evidence-test.sh` | ✅ green |
 | 21-W0-02 | 21-01 | 0 | ASIC-07, STR-06 | T-21-02 / readiness-only mining path, missing runtime harness | Firmware live-mining readiness is audited as `blocked_by_default`; live commands require a later bounded controlled runtime/harness pack before any live smoke claim | static + review | `rg -n "mining_loop_status\|work_submission\|hardware_evidence_ack\|BITAXE_ASIC_DIAGNOSTIC" firmware/bitaxe crates/bitaxe-stratum scripts tools` | ✅ `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md` | ✅ green |
-| 21-W0-03 | 21-01, 21-06, 21-07 | 0 | SAFE-09, EVD-05 | T-21-07 / watchdog overclaim, evidence gap | Live smoke and bounded soak plans require controlled runtime/harness markers, duration, abort conditions, runtime snapshot/API/WebSocket updates, responsiveness observations, and final safe-state markers. Plan 21-06 sampled the live-smoke/API-WebSocket boundary as blocked evidence only; missing live prerequisites did not become watchdog, telemetry, share, or soak proof. Plan 21-07 sampled the bounded-soak/watchdog boundary as blocked evidence with `duration_seconds: 300`; it records that startup watchdog breadcrumbs are not bounded soak proof and preserves sampling continuity without claiming SAFE-09 responsiveness. | script + review | `bazel test //scripts:phase21_live_mining_evidence_test`; `rg -n "Phase 21 evidence ladder\|D-16\|60..600" docs/parity/evidence/phase-21-live-mining-and-soak-evidence/evidence-contract.md`; `rg -n "live_mining_smoke_status: blocked\|telemetry_correlation_status: blocked\|network_scan: disabled\|websocket_frame_status: blocked" docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke.md docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry.md`; `rg -n "bounded_soak_status: blocked\|duration_seconds: 300\|watchdog_responsiveness_status: blocked\|startup watchdog breadcrumbs are not bounded soak proof" docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak.md docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/watchdog-observations.md` | ✅ `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/evidence-contract.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/watchdog-observations.md` | ✅ green - blocked boundary sampled |
+| 21-W0-03 | 21-01, 21-06, 21-07 | 0 | SAFE-09, EVD-05 | T-21-07 / watchdog overclaim, evidence gap | Live smoke and bounded soak plans require controlled runtime/harness markers, duration, abort conditions, runtime snapshot/API/WebSocket updates, responsiveness observations, and final safe-state markers. Plan 21-06 sampled the live-smoke/API-WebSocket boundary as controlled no-share evidence with redacted explicit-target telemetry. Plan 21-07 sampled the bounded-soak/watchdog boundary as approved controlled no-share soak evidence with `duration_seconds: 300`, watchdog responsiveness, and startup-only breadcrumb rejection. | script + review | `bazel test //scripts:phase21_live_mining_evidence_test`; `rg -n "Phase 21 evidence ladder\|D-16\|60..600" docs/parity/evidence/phase-21-live-mining-and-soak-evidence/evidence-contract.md`; `rg -n "live_mining_smoke_status: controlled-no-share\|telemetry_correlation_status: passed\|network_scan: disabled\|websocket_frame_status: passed" docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke.md docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry.md`; `rg -n "bounded_soak_status: approved_controlled_no_share_soak\|duration_seconds: 300\|watchdog_responsiveness_status: passed\|startup watchdog breadcrumbs are not bounded soak proof" docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak.md docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/watchdog-observations.md` | ✅ `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/evidence-contract.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak.md`; `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/watchdog-observations.md` | ✅ green - controlled no-share sampled |
 | 21-W0-04 | 21-01 | 0 | EVD-05 | T-21-08 / secret leakage | Evidence tree has a redaction-review scaffold and deterministic scoped secret-pattern scan before citation | workflow | `rg -n -i "ssid\|wifi\|password\|pool\|worker\|token\|device_url\|nvs\|stratum\|https?://\|([0-9]{1,3}\\.){3}[0-9]{1,3}\|([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}\|secret\|credential" docs/parity/evidence/phase-21-live-mining-and-soak-evidence` | ✅ `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/redaction-review.md` | ✅ green |
-| 21-PHASE | all | all | ASIC-07, STR-06, STR-07, SAFE-09, EVD-05 | T-21-final / parity overclaim | Checklist promotions are exact-claim only and `just parity` rejects blocker language or missing metadata. Final Phase 21 closure is blocked because `summary.md` records `phase21_status: blocked`, `phase21_evidence_closure: blocked_or_below_verified`, live smoke blocked by missing live prerequisites, bounded soak blocked, and watchdog responsiveness blocked. | workflow | `just test`; `just parity`; `just verify-reference`; `git diff -- reference/esp-miner --exit-code`; lifecycle validation | ✅ existing commands | ⚠️ blocked - final evidence closure below verified |
+| 21-PHASE | all | all | ASIC-07, STR-06, STR-07, SAFE-09, EVD-05 | T-21-final / parity overclaim | Checklist promotions are exact-claim only and `just parity` rejects blocker language or missing metadata. Final Phase 21 closure passed because `summary.md` records `phase21_status: passed`, `phase21_evidence_closure: approved_controlled_no_share_soak`, controlled no-share live smoke, approved bounded controlled no-share soak, and watchdog responsiveness passed. | workflow | `just test`; `just parity`; `just verify-reference`; `git diff -- reference/esp-miner --exit-code`; lifecycle validation | ✅ existing commands | ✅ green - final evidence closure passed |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -76,23 +76,24 @@ Plan 21-01 artifacts provide the Wave 0 software validation scaffold and blocked
 - [x] Wave 0 covers all MISSING references
 - [x] No watch-mode flags
 - [x] Feedback latency < 600s for software-only scoped checks
-- [x] Final closure gate records `nyquist_compliant: false` because the evidence boundary is blocked/below verified
+- [x] Final closure gate records `nyquist_compliant: true` because the approved controlled no-share soak evidence boundary passed
 
-**Approval:** Plan 21-01 Wave 0 validation scaffolding complete; final Phase 21 closure blocked by missing live prerequisites.
+**Approval:** Phase 21 validation complete; final closure passed with approved controlled no-share soak evidence.
 
 ## Final Closure Sampling
 
-result: blocked
+result: passed
 summary_artifact: `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/summary.md`
 redaction_review: `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/redaction-review.md`
-phase21_status: blocked
-phase21_evidence_closure: blocked_or_below_verified
+phase21_status: passed
+phase21_evidence_closure: approved_controlled_no_share_soak
 controlled_runtime_harness_status: ready
-controlled_runtime_harness_observation_status: not observed in live smoke or soak
+controlled_runtime_harness_observation_status: observed in live smoke and bounded soak
 redaction_status: passed
-nyquist_final_gate: blocked - evidence closure is below verified
+nyquist_final_gate: passed - approved controlled no-share soak evidence closure
 
-The Wave 0 sampling strategy and software feedback loops were valid, but final
-Nyquist phase closure cannot stay green because Plan 21-08 found only blocked
-or below-verified live smoke, telemetry, bounded soak, and watchdog evidence.
-No final checklist row was promoted from the blocked Phase 21 artifacts.
+The Wave 0 sampling strategy and software feedback loops remain valid. Final
+Nyquist phase closure is green because Phase 21 now records controlled no-share
+live smoke, approved bounded controlled no-share soak, redacted telemetry, and
+watchdog responsiveness evidence without promoting accepted/rejected share or
+active hardware-control non-claims.

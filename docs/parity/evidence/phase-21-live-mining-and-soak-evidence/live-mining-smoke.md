@@ -1,81 +1,58 @@
 # Phase 21 Live Mining Smoke Evidence
 
-live_mining_smoke_status: blocked
-blocker: missing_live_prerequisites
-missing_live_prerequisites: DEVICE_URL-or-pool-input-category
-missing_live_prerequisite_categories: DEVICE_URL,BITAXE_POOL_URL,BITAXE_POOL_USER,BITAXE_POOL_PASSWORD
-enablement_status: ready-not-run
-controlled_runtime_harness_status: ready-not-run
-controlled_package_boot_status: not-run
-pool_input_bridge_status: not-run - missing_live_prerequisites
-pool_lifecycle_status: not-run
-subscribe_status: not-run
-authorize_status: not-run
-notify_job_status: not-run
-bm1366_work_dispatch_status: not-run
-result_receive_status: not-run
-share_submission_status: not-run
-runtime_snapshot_status: not-run
-api_websocket_telemetry_update_status: not-run
-share_outcome: not-run
+live_mining_smoke_status: controlled-no-share
+controlled_package_boot_status: trusted
+controlled_runtime_harness_status: observed
+controlled_run_provenance: actual-controlled-run-or-harness
+pool_input_bridge_status: applied
+pool_settings_consumed_by_runtime: true
+pool_lifecycle_status: active
+subscribe_status: sent
+authorize_status: sent
+notify_job_status: accepted work_enqueued=true
+bm1366_work_dispatch_status: typed_action_ready
+result_receive_status: bounded_no_result
+share_submission_status: bounded_no_share
+runtime_snapshot_status: updated
+api_websocket_telemetry_update_status: ready
+share_outcome: bounded no-share
 accepted_shares_observed: none
 rejected_shares_observed: none
-hashrate_inputs_status: not-run
-watchdog_status: not-run
-api_telemetry_status: not-run
-websocket_frame_status: not-run
-safe_stop_status: not-run
+hashrate_inputs_status: bounded_zero_hashrate_inputs
+watchdog_status: bounded observations present
+watchdog_yield_checkpoint_count: 14
+api_telemetry_status: http_status_200_curl_0
+websocket_frame_status: passed frames=4
+safe_stop_status: complete mining=disabled hardware_control=disabled work_submission=disabled
 redaction_status: passed
 network_scan: disabled
-hardware_command_status: not-run
+hardware_command_status: run through allow-manifest-validated wrapper
 detector_status: passed
 board: 205
 port: /dev/cu.usbmodem1101
 board_info_status: passed
-chip_detect_summary: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md
-work_result_summary: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md
-conclusion: blocked - missing_live_prerequisites
+allow_manifest: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/allow-live-mining-smoke.json
+smoke_log: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/mining-smoke.log
+controlled_package_boot_log: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/controlled-package-boot/flash-monitor.log
+pool_input_bridge_log: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/pool-input-bridge/logs.redacted.txt
+conclusion: controlled no-share evidence recorded
 
 ## Scope
 
-Task 1 ran a fresh detector gate before evaluating live smoke prerequisites.
-The detector found the Ultra 205 on the selected USB serial port and board-info
-passed. The preflight, enablement, and diagnostic work-result prerequisite
-ledgers are present, but the live target and disposable pool input categories
-were not present in the executor environment.
+The live-smoke tier ran only after detector, package, readiness, chip-detect, work-result, explicit-target, pool-input, mining-allow, and redaction gates passed. The committed manifest records the command with `[redacted-url]`; the actual target stayed local runtime input derived from the same controlled-package boot session.
 
-Because `DEVICE_URL`, `BITAXE_POOL_URL`, `BITAXE_POOL_USER`, and
-`BITAXE_POOL_PASSWORD` were absent, this plan did not create a
-`live-pool-smoke` allow manifest, did not flash the controlled live-mining
-package, did not PATCH pool settings, did not run the mining wrapper, and did
-not infer a device target from serial logs or network state.
+The controlled runtime consumed pool settings through the firmware settings path, emitted Stratum subscribe, authorize, notify/job, typed BM1366 work dispatch, bounded result/no-share, runtime snapshot, API/WebSocket telemetry, watchdog-yield, and safe-stop markers. No accepted or rejected share was observed, so this artifact supports only a bounded controlled no-share conclusion.
 
 ## Evidence Artifacts
 
 | Artifact | Path | Result |
 |----------|------|--------|
-| Fresh detector log | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/detect-ultra205.log` | redacted detector pass |
-| Pool input bridge | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/pool-input-bridge.md` | blocked before pool patch |
-| Preflight ledger | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight.md` | passed |
-| Enablement ledger | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement.md` | ready |
-| BM1366 diagnostic prerequisite ledger | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md` | complete diagnostic prerequisite only |
+| Allow manifest | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/allow-live-mining-smoke.json` | passed `mining-allow` validation |
+| Wrapper log | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/mining-smoke.log` | controlled no-share conclusion |
+| Pool input bridge | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/pool-input-bridge.md` | applied and consumed by runtime |
+| API snapshot | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/api-system-info.redacted.json` | HTTP 200, redacted mining telemetry |
+| WebSocket capture | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/websocket-live.redacted.log` | `/api/ws/live` frames captured |
 
 ## Non-Claims
 
-- live pool connectivity: not run
-- production mining: not run
-- controlled no share: not claimed
-- accepted shares: not observed
-- rejected shares: not observed
-- successful BM1366 initialization: not claimed
-- production work dispatch: not claimed
-- live API/WebSocket telemetry freshness: not claimed
-- bounded soak stability: not claimed
-- watchdog responsiveness under mining load: not claimed
-- frequency transition, active control, OTA, erase, or release recovery behavior: not claimed
-
-## Conclusion
-
-The live mining smoke tier is precisely blocked by missing live prerequisites.
-This is not controlled no share evidence and must not be cited as live pool,
-share, telemetry freshness, watchdog, or soak proof.
+This is not accepted-share proof, rejected-share proof, active voltage/fan/fault-control proof, frequency-transition proof, non-205 board proof, OTA/recovery proof, or unbounded production-mining soak proof. Raw pool values, device URL, Wi-Fi values, private endpoints, worker strings, passwords, tokens, IP addresses, and MAC addresses are not committed.

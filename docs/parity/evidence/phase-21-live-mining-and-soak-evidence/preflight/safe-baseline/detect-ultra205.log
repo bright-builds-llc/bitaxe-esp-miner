@@ -1,6 +1,6 @@
 command: just detect-ultra205
 ./scripts/detect-ultra205.sh
-[detect-ultra205] board_info_command=espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive 
+[detect-ultra205] board_info_command=espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive
 Chip type:         esp32s3 (revision v0.2)
 Crystal frequency: 40 MHz
 Flash size:        16MB

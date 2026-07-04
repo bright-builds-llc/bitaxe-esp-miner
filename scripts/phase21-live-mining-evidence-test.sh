@@ -166,7 +166,27 @@ case "$url" in
 	fi
 	if [[ -n "$out_file" ]]; then
 		if [[ "${PHASE21_FAKE_LOGS_CONSUMED:-1}" == "1" ]]; then
-			printf 'phase21_pool_settings_consumed=true source=settings_patch redacted=true\n"stratumUser":"bc1q-json-owner-address.bitaxe"\nip=10.0.0.2\n' >"$out_file"
+			cat >"$out_file" <<'LOGS'
+phase21_controlled_runtime_status=ready board=205 source=settings_patch mode=live-mining-runtime
+stratum_subscribe_status=sent redacted=true
+stratum_authorize_status=sent redacted=true
+stratum_notify_status=accepted work_enqueued=true
+bm1366_work_dispatch_status=typed_action_ready action_count=1 raw_frame_logged=false
+result_receive_status=bounded_no_result
+share_submission_status=bounded_no_share redacted=true
+watchdog_yield_checkpoint=subscribe
+watchdog_yield_checkpoint=authorize
+watchdog_yield_checkpoint=notify
+watchdog_yield_checkpoint=dispatch
+watchdog_yield_checkpoint=result
+watchdog_yield_checkpoint=share
+watchdog_yield_checkpoint=safe_stop
+runtime_snapshot_status=updated collect_api_snapshot=ready api_websocket_telemetry_update_status=ready
+phase21_pool_settings_consumed=true source=settings_patch redacted=true
+safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled
+"stratumUser":"bc1q-json-owner-address.bitaxe"
+ip=10.0.0.2
+LOGS
 		else
 			printf 'axeos_settings_patch=effects_applied\n"stratumUser":"bc1q-json-owner-address.bitaxe"\n' >"$out_file"
 		fi
@@ -392,9 +412,24 @@ JSON
 		--pool-credentials "$credentials"
 
 	assert_contains "${out_dir}/mining-smoke.log" "pool_credentials_status=loaded-redacted source=json"
-	assert_contains "${out_dir}/mining-smoke.log" "controlled_mining_status: live-prerequisites-present"
+	assert_contains "${out_dir}/mining-smoke.log" "controlled_mining_status: controlled-runtime-harness-observed"
+	assert_contains "${out_dir}/mining-smoke.log" "live_mining_smoke_status: controlled-no-share"
+	assert_contains "${out_dir}/mining-smoke.log" "controlled_run_provenance: actual-controlled-run-or-harness"
 	assert_contains "${out_dir}/mining-smoke.log" "pool_input_bridge_status=applied"
 	assert_contains "${out_dir}/mining-smoke.log" "pool_settings_consumed_by_runtime=true"
+	assert_contains "${out_dir}/mining-smoke.log" "stratum_subscribe_status=sent"
+	assert_contains "${out_dir}/mining-smoke.log" "stratum_authorize_status=sent"
+	assert_contains "${out_dir}/mining-smoke.log" "notify_job_status=accepted work_enqueued=true"
+	assert_contains "${out_dir}/mining-smoke.log" "bm1366_work_dispatch_status=typed_action_ready"
+	assert_contains "${out_dir}/mining-smoke.log" "result_receive_status=bounded_no_result"
+	assert_contains "${out_dir}/mining-smoke.log" "share_submission_status=bounded_no_share"
+	assert_contains "${out_dir}/mining-smoke.log" "runtime_snapshot_status=updated"
+	assert_contains "${out_dir}/mining-smoke.log" "api_websocket_telemetry_update_status=ready"
+	assert_contains "${out_dir}/mining-smoke.log" "share_outcome=bounded no-share"
+	assert_contains "${out_dir}/mining-smoke.log" "watchdog_yield_checkpoint_count=7"
+	assert_contains "${out_dir}/mining-smoke.log" "safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled"
+	assert_contains "${out_dir}/mining-smoke.log" "conclusion: controlled no-share evidence recorded"
+	assert_contains "${out_dir}/mining-smoke.log" "--device-url [redacted-url]"
 	assert_contains "$curl_args" "PATCH https://10.0.0.2/api/system"
 	assert_contains "$curl_args" "GET https://10.0.0.2/api/system/logs"
 	assert_contains "$curl_args" "https://10.0.0.2/api/system/info"

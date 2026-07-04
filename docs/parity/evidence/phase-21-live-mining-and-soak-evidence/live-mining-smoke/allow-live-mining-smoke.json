@@ -8,19 +8,20 @@
   "package_manifest": "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/bitaxe-ultra205-package.json",
   "source_commit": "b5502a6306377183134afa223256997bfab9f6ae",
   "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
-  "surface": "bounded-soak",
-  "claim_tier": "bounded-soak",
-  "evidence_class": "soak",
-  "allowed_command": "scripts/phase21-live-mining-evidence.sh --manifest docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/allow-bounded-soak.json --surface bounded-soak --out-dir docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak --chip-detect-summary docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md --work-result-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md --readiness-audit docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md --enablement-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement.md --device-url [redacted-url] --pool-credentials pool-credentials.json --duration-seconds 300",
+  "surface": "mining-smoke",
+  "claim_tier": "live-pool-smoke",
+  "evidence_class": "hardware-smoke",
+  "allowed_command": "scripts/phase21-live-mining-evidence.sh --manifest docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/allow-live-mining-smoke.json --surface mining-smoke --out-dir docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke --chip-detect-summary docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md --work-result-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md --readiness-audit docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md --enablement-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement.md --device-url [redacted-url] --pool-credentials pool-credentials.json",
   "allowed_inputs": {
-    "duration_seconds": 300,
     "pool_config": "local-owner-supplied",
     "device_url": "explicit",
     "target_provider": "same-session repo-owned monitor output",
-    "provider_inputs": "fresh just detect-ultra205 plus same-session controlled package boot target and local owner JSON pool credentials applied through PATCH /api/system",
+    "provider_inputs": "fresh just detect-ultra205 plus same-session flash-monitor target and local owner JSON pool credentials applied through PATCH /api/system",
+    "pool_input_bridge": "firmware-settings-route-to-controlled-runtime",
+    "controlled_package_boot": "trusted",
     "controlled_runtime_harness": "observed",
-    "runtime_snapshot": "updated",
-    "watchdog_observations": "required"
+    "runtime_markers": "phase21_controlled_runtime_status,stratum_subscribe_status,stratum_authorize_status,stratum_notify_status,bm1366_work_dispatch_status,result_receive_status,share_submission_status,runtime_snapshot_status,api_websocket_telemetry_update_status",
+    "share_outcome_policy": "observed-only"
   },
   "abort_conditions": [
     "detector_mismatch",
@@ -41,18 +42,21 @@
     "work_submission=disabled"
   ],
   "prerequisite_artifacts": [
+    "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md",
     "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight.md",
     "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md",
     "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement.md",
     "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md",
-    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke.md",
     "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/controlled-package-boot/flash-command-evidence.json",
     "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/controlled-package-boot/flash-monitor.log",
     "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/pool-input-bridge.md"
   ],
-  "evidence_dir": "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak",
+  "evidence_dir": "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke",
   "redaction_reviewer": "phase-21-reviewer",
   "checklist_rows": [
+    "ASIC-003",
+    "ASIC-004",
+    "ASIC-005",
     "STR-006",
     "STR-007",
     "STR-008",

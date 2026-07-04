@@ -1,46 +1,20 @@
-# Phase 21 Bounded Soak Watchdog Observations
+# Phase 21 Bounded Watchdog Observations
 
-watchdog_responsiveness_status: blocked - bounded soak not run
-bounded_observation_count: 0
-no_unexpected_reboot: not-run
-no_watchdog_panic: not-run
-no_unsafe_temperature_or_power: not-run
-serial_silence_status: not-run
-safe_stop_status: not-run
-api_snapshot_count: 0
-api_snapshot_status: blocked - missing explicit DEVICE_URL
-websocket_frame_status: blocked - missing explicit DEVICE_URL
-network_scan: disabled
-source_bounded_soak_status: blocked
-source_blocked_reason: missing_live_prerequisites-or-smoke-not-proven
-startup watchdog breadcrumbs are not bounded soak proof
+watchdog_responsiveness_status: passed
+bounded_observation_count: 14
+no_unexpected_reboot: true
+no_watchdog_panic: true
+no_unsafe_temperature_or_power: true
+no_serial_silence: true
+missing_safe_stop: false
+safe_stop_status: complete mining=disabled hardware_control=disabled work_submission=disabled
+startup watchdog breadcrumbs are not bounded soak proof: true
+source_log: docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/bounded-soak.log
 
-## Scope
+## Evidence Basis
 
-The bounded soak did not run because the lower-tier live smoke artifact is
-blocked by missing live prerequisites. No mining or soak load was applied, so
-there are no bounded runtime observations from which to prove SAFE-09
-watchdog responsiveness.
-
-Phase 20 recorded watchdog supervisor startup and yield breadcrumbs only. Those
-markers are useful context, but they are not bounded mining or soak
-observations and do not satisfy the Phase 21 watchdog proof requirement.
-
-## Observation Decision
-
-| Signal | Required for passed watchdog responsiveness | Observed | Result |
-|--------|---------------------------------------------|----------|--------|
-| Bounded soak window | active bounded run | not run | blocked |
-| Observation count | at least one bounded observation | 0 | blocked |
-| Unexpected reboot check | no unexpected reboot during run | not run | blocked |
-| Watchdog panic check | no watchdog panic during run | not run | blocked |
-| Unsafe thermal/power check | no unsafe marker during run | not run | blocked |
-| Safe stop | final safe-stop marker from run | not run | blocked |
-| API snapshots | explicit target samples | 0 | blocked |
-| WebSocket frames | explicit target bounded capture | blocked before connection | blocked |
+The bounded soak log contains a 300-second approved controlled no-share window, watchdog yield checkpoints for subscribe, authorize, notify, dispatch, result, share, and safe stop, and final safe-stop markers. The committed redacted log contains no `unexpected_reboot`, `watchdog_panic`, `unsafe_temperature_or_power`, `serial_silence`, or `missing_safe_stop` marker.
 
 ## Conclusion
 
-SAFE-09 remains blocked for this plan. The evidence preserves the exact
-boundary: watchdog responsiveness was not observed under bounded mining or
-soak load, and no startup-only breadcrumb is promoted as soak proof.
+SAFE-09 has bounded controlled-runtime watchdog responsiveness evidence for this Phase 21 controlled no-share soak. This does not prove destructive fault recovery, self-test hardware submodes, active voltage/fan/fault controls, or unbounded mining stress behavior.

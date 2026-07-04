@@ -1,22 +1,23 @@
 # Phase 21 Pool Input Bridge
 
-pool_input_bridge_status: blocked - missing_live_prerequisites
-pool_settings_consumed_by_runtime: false
+pool_input_bridge_status: applied
+pool_settings_consumed_by_runtime: true
+pool_config: local-owner-supplied
 network_scan: disabled
-hardware_command_status: not-run
-settings_patch_status: not-run
+settings_patch_status: http_status_200_curl_0
+runtime_refresh_status: observed
+controlled_runtime_harness_status: observed
+raw_pool_values_committed: no
 redaction_status: passed
-reason: DEVICE_URL-or-pool-input-category missing
 
 ## Scope
 
-The pool input bridge did not run because the executor environment did not
-contain an explicit `DEVICE_URL` and disposable or non-secret pool input
-categories. No pool endpoint, worker, password, private device target, Wi-Fi
-credential, API token, or NVS secret value was read, printed, summarized, or
-committed.
+The bridge applied local owner-supplied pool settings through the firmware-owned `PATCH /api/system` settings route using an explicit same-session device target. The committed artifacts keep only redacted categories and status labels; no pool endpoint, worker, password, private target, Wi-Fi credential, API token, or NVS secret value is committed.
+
+## Runtime Markers
+
+The redacted `/api/system/logs` capture records `phase21_pool_settings_consumed=true source=settings_patch`, `phase21_controlled_runtime_status=ready`, Stratum subscribe/authorize/notify markers, typed BM1366 work dispatch, bounded no-result/no-share markers, runtime snapshot update, API/WebSocket telemetry readiness, watchdog yield checkpoints, and final safe-stop.
 
 ## Conclusion
 
-The firmware settings route was not contacted and no pool settings reached the
-controlled runtime in this plan.
+Pool settings reached the controlled runtime through the firmware settings path and the runtime consumed them without exposing raw pool values.

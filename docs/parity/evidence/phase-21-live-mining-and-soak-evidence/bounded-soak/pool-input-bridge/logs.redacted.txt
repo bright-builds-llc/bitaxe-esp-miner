@@ -1,0 +1,49 @@
+bitaxe-rust boot: board=Ultra 205 asic=BM1366
+safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled
+ota_boot_validation=not_pending state=factory
+phase21_controlled_runtime_status=ready board=205 source=boot mode=live-mining-runtime
+stratum_subscribe_status=sent redacted=true
+stratum_authorize_status=sent redacted=true
+stratum_notify_status=accepted work_enqueued=true
+bm1366_work_dispatch_status=typed_action_ready action_count=1 raw_frame_logged=false
+result_receive_status=bounded_no_result
+share_submission_status=bounded_no_share redacted=true
+watchdog_yield_checkpoint=subscribe
+watchdog_yield_checkpoint=authorize
+watchdog_yield_checkpoint=notify
+watchdog_yield_checkpoint=dispatch
+watchdog_yield_checkpoint=result
+watchdog_yield_checkpoint=share
+watchdog_yield_checkpoint=safe_stop
+runtime_snapshot_status=updated collect_api_snapshot=ready api_websocket_telemetry_update_status=ready
+safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled
+wifi_status=connected ipv4=[redacted-ip] device_url=[redacted-url]
+reset_reason=11
+partition=factory
+psram_status=available
+firmware_commit=b5502a630637
+reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50
+esp_idf_version=v5.5.4
+rust_target=xtensa-esp32s3-espidf
+axeos_settings_patch=accepted writes=4 effects=0
+axeos_settings_patch=persistence_committed writes=4
+axeos_settings_patch=response_scheduled status=200 empty_body=true
+axeos_settings_patch=effects_scheduled
+phase21_controlled_runtime_status=ready board=205 source=settings_patch mode=live-mining-runtime
+stratum_subscribe_status=sent redacted=true
+stratum_authorize_status=sent redacted=true
+stratum_notify_status=accepted work_enqueued=true
+bm1366_work_dispatch_status=typed_action_ready action_count=1 raw_frame_logged=false
+result_receive_status=bounded_no_result
+share_submission_status=bounded_no_share redacted=true
+watchdog_yield_checkpoint=subscribe
+watchdog_yield_checkpoint=authorize
+watchdog_yield_checkpoint=notify
+watchdog_yield_checkpoint=dispatch
+watchdog_yield_checkpoint=result
+watchdog_yield_checkpoint=share
+watchdog_yield_checkpoint=safe_stop
+runtime_snapshot_status=updated collect_api_snapshot=ready api_websocket_telemetry_update_status=ready
+phase21_pool_settings_consumed=true source=settings_patch redacted=true
+safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled
+axeos_settings_patch=effects_applied
