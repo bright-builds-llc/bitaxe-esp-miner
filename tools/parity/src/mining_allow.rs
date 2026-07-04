@@ -372,9 +372,12 @@ fn validate_live_pool_smoke_scope(errors: &mut Vec<String>, manifest: &MiningAll
         .allowed_inputs
         .get("pool_config")
         .and_then(Value::as_str);
-    if maybe_pool_config != Some("disposable-or-non-secret") {
+    if !matches!(
+        maybe_pool_config,
+        Some("disposable-or-non-secret" | "local-owner-supplied")
+    ) {
         errors.push(
-            "live-pool-smoke requires allowed_inputs.pool_config to equal disposable-or-non-secret"
+            "live-pool-smoke requires allowed_inputs.pool_config to equal disposable-or-non-secret or local-owner-supplied"
                 .to_owned(),
         );
     }
@@ -788,8 +791,9 @@ mod tests {
         // Arrange
         let (manifest, package_manifest) = manifest_with_change(|json| {
             json["claim_tier"] = serde_json::json!("live-pool-smoke");
+            json["allowed_inputs"]["pool_config"] = serde_json::json!("local-owner-supplied");
             json["allowed_command"] = serde_json::json!(
-                "scripts/phase21-live-mining-evidence.sh --manifest allow.json --surface mining-smoke --out-dir evidence/mining-smoke --chip-detect-summary chip.md --work-result-summary work.md --readiness-audit readiness.md --enablement-summary enablement.md --device-url https://redacted.local"
+                "scripts/phase21-live-mining-evidence.sh --manifest allow.json --surface mining-smoke --out-dir evidence/mining-smoke --chip-detect-summary chip.md --work-result-summary work.md --readiness-audit readiness.md --enablement-summary enablement.md --device-url https://redacted.local --pool-credentials pool-credentials.json"
             );
             json["prerequisite_artifacts"] = serde_json::json!([
                 "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md",
@@ -915,7 +919,7 @@ mod tests {
     }
 
     #[test]
-    fn mining_allow_live_pool_smoke_requires_disposable_inputs() {
+    fn mining_allow_live_pool_smoke_requires_approved_pool_input_category() {
         // Arrange
         let (manifest, package_manifest) = manifest_with_change(|json| {
             json["claim_tier"] = serde_json::json!("live-pool-smoke");

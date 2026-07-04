@@ -122,7 +122,10 @@ sh_binary(
 sh_binary(
     name = "phase21_live_mining_evidence",
     srcs = ["phase21-live-mining-evidence.sh"],
-    data = ["phase17-websocket-capture.mjs"],
+    data = [
+        "phase17-websocket-capture.mjs",
+        "phase21-pool-credentials-json.mjs",
+    ],
 )
 
 sh_binary(
@@ -325,6 +328,7 @@ sh_test(
     data = [
         "phase17-websocket-capture.mjs",
         "phase21-live-mining-evidence.sh",
+        "phase21-pool-credentials-json.mjs",
     ],
     env_inherit = [
         "HOME",

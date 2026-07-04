@@ -5,6 +5,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 readonly wrapper="${PHASE21_LIVE_MINING_EVIDENCE_SCRIPT:-${script_dir}/phase21-live-mining-evidence.sh}"
 readonly websocket_helper="${PHASE21_WEBSOCKET_HELPER:-${script_dir}/phase17-websocket-capture.mjs}"
+readonly pool_credentials_helper="${PHASE21_POOL_CREDENTIALS_HELPER:-${script_dir}/phase21-pool-credentials-json.mjs}"
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/phase21-live-mining-evidence-test.XXXXXX")"
 readonly tmp_root
@@ -141,7 +142,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -n "$out_file" ]]; then
-	printf '{"poolUrl":"stratum+tcp://private.example:3333","ip":"10.0.0.2","worker":"private-worker"}\n' >"$out_file"
+	printf '{"poolUrl":"stratum+tcp://private.example:3333","poolURL":"private.example","poolPort":3333,"poolUser":"private-worker","poolPassword":"private-password","ip":"10.0.0.2","worker":"private-worker"}\n' >"$out_file"
 fi
 printf '200'
 SH
@@ -154,6 +155,10 @@ write_fake_node() {
 	cat >"$path" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
+
+if [[ "${1:-}" == *"phase21-pool-credentials-json.mjs" ]]; then
+	exec "${PHASE21_REAL_NODE_BIN:-node}" "$@"
+fi
 
 if [[ "${PHASE21_WEBSOCKET_MUST_NOT_RUN:-0}" == "1" ]]; then
 	printf 'websocket helper should not have been called\n' >&2
@@ -209,9 +214,37 @@ base_fixture_paths() {
 run_wrapper() {
 	local out_dir="$1"
 	local surface="$2"
+	local pool_url_is_set="${BITAXE_POOL_URL+set}"
+	local pool_url_value="${BITAXE_POOL_URL-}"
+	local pool_port_is_set="${BITAXE_POOL_PORT+set}"
+	local pool_port_value="${BITAXE_POOL_PORT-}"
+	local pool_user_is_set="${BITAXE_POOL_USER+set}"
+	local pool_user_value="${BITAXE_POOL_USER-}"
+	local pool_password_is_set="${BITAXE_POOL_PASSWORD+set}"
+	local pool_password_value="${BITAXE_POOL_PASSWORD-}"
 	shift 2
 
-	PHASE21_MINING_ALLOW_BIN="$fake_allow" NODE_BIN="$fake_node" "$BASH" "$wrapper" \
+	(
+		unset BITAXE_POOL_URL BITAXE_POOL_PORT BITAXE_POOL_USER BITAXE_POOL_PASSWORD
+
+		if [[ "$pool_url_is_set" == "set" ]]; then
+			export BITAXE_POOL_URL="$pool_url_value"
+		fi
+		if [[ "$pool_port_is_set" == "set" ]]; then
+			export BITAXE_POOL_PORT="$pool_port_value"
+		fi
+		if [[ "$pool_user_is_set" == "set" ]]; then
+			export BITAXE_POOL_USER="$pool_user_value"
+		fi
+		if [[ "$pool_password_is_set" == "set" ]]; then
+			export BITAXE_POOL_PASSWORD="$pool_password_value"
+		fi
+
+		PHASE21_MINING_ALLOW_BIN="$fake_allow" \
+		PHASE21_POOL_CREDENTIALS_HELPER="$pool_credentials_helper" \
+		PHASE21_REAL_NODE_BIN="${PHASE21_REAL_NODE_BIN:-node}" \
+		NODE_BIN="$fake_node" \
+		"$BASH" "$wrapper" \
 		--manifest "$manifest" \
 		--surface "$surface" \
 		--out-dir "$out_dir" \
@@ -222,6 +255,7 @@ run_wrapper() {
 		--curl-bin "$fake_curl" \
 		--websocket-helper "$websocket_helper" \
 		"$@"
+	)
 }
 
 test_missing_manifest_records_pending() {
@@ -291,6 +325,83 @@ test_missing_live_prerequisites_records_blocked() {
 	assert_not_contains "${out_dir}/mining-smoke.log" "private-worker"
 }
 
+test_json_credentials_make_live_prerequisites_present_and_redact_values() {
+	base_fixture_paths "json-creds"
+	local out_dir="${tmp_root}/json-creds-out"
+	local credentials="${tmp_root}/pool-credentials.json"
+	local curl_args="${tmp_root}/json-curl-args.txt"
+
+	cat >"$credentials" <<'JSON'
+{
+  "poolURL": "private-json.example",
+  "poolPort": 3333,
+  "poolUser": "bc1q-json-owner-address.bitaxe",
+  "poolPassword": "json-secret-password"
+}
+JSON
+
+	PHASE21_FAKE_CURL_ARGS="$curl_args" run_wrapper "$out_dir" "mining-smoke" \
+		--device-url "https://10.0.0.2" \
+		--pool-credentials "$credentials"
+
+	assert_contains "${out_dir}/mining-smoke.log" "pool_credentials_status=loaded-redacted source=json"
+	assert_contains "${out_dir}/mining-smoke.log" "controlled_mining_status: live-prerequisites-present"
+	assert_contains "$curl_args" "https://10.0.0.2/api/system/info"
+	assert_not_contains "${out_dir}/mining-smoke.log" "10.0.0.2"
+	assert_not_contains "${out_dir}/mining-smoke.log" "private-json.example"
+	assert_not_contains "${out_dir}/mining-smoke.log" "bc1q-json-owner-address"
+	assert_not_contains "${out_dir}/mining-smoke.log" "json-secret-password"
+	assert_not_contains "${out_dir}/api-system-info.redacted.json" "private.example"
+	assert_not_contains "${out_dir}/api-system-info.redacted.json" "10.0.0.2"
+	assert_not_contains "${out_dir}/api-system-info.redacted.json" "private-worker"
+	assert_not_contains "${out_dir}/api-system-info.redacted.json" "private-password"
+}
+
+test_missing_json_credentials_fields_block_without_printing_raw_values() {
+	base_fixture_paths "missing-json-field-creds"
+	local out_dir="${tmp_root}/missing-json-field-creds-out"
+	local credentials="${tmp_root}/missing-json-field-pool-credentials.json"
+
+	cat >"$credentials" <<'JSON'
+{
+  "poolURL": "private-json.example",
+  "poolUser": "bc1q-json-owner-address.bitaxe",
+  "poolPassword": "json-secret-password"
+}
+JSON
+
+	PHASE21_CURL_MUST_NOT_RUN=1 PHASE21_WEBSOCKET_MUST_NOT_RUN=1 run_wrapper "$out_dir" "mining-smoke" \
+		--device-url "https://10.0.0.2" \
+		--pool-credentials "$credentials"
+
+	assert_contains "${out_dir}/mining-smoke.log" "pool_credentials_json_error: pool credentials JSON field poolPort must be an integer from 1 to 65535"
+	assert_contains "${out_dir}/mining-smoke.log" "pool_credentials_status=blocked - invalid json"
+	assert_contains "${out_dir}/mining-smoke.log" "blocker: missing_live_prerequisites"
+	assert_not_contains "${out_dir}/mining-smoke.log" "10.0.0.2"
+	assert_not_contains "${out_dir}/mining-smoke.log" "private-json.example"
+	assert_not_contains "${out_dir}/mining-smoke.log" "bc1q-json-owner-address"
+	assert_not_contains "${out_dir}/mining-smoke.log" "json-secret-password"
+}
+
+test_unparseable_json_credentials_block_without_printing_raw_values() {
+	base_fixture_paths "unparseable-json-creds"
+	local out_dir="${tmp_root}/unparseable-json-creds-out"
+	local credentials="${tmp_root}/unparseable-pool-credentials.json"
+
+	printf '{"poolURL":"private-json.example","poolUser":"bc1q-json-owner-address.bitaxe"\n' >"$credentials"
+
+	PHASE21_CURL_MUST_NOT_RUN=1 PHASE21_WEBSOCKET_MUST_NOT_RUN=1 run_wrapper "$out_dir" "mining-smoke" \
+		--device-url "https://10.0.0.2" \
+		--pool-credentials "$credentials"
+
+	assert_contains "${out_dir}/mining-smoke.log" "pool_credentials_json_error: pool credentials JSON could not be read or parsed"
+	assert_contains "${out_dir}/mining-smoke.log" "pool_credentials_status=blocked - invalid json"
+	assert_contains "${out_dir}/mining-smoke.log" "blocker: missing_live_prerequisites"
+	assert_not_contains "${out_dir}/mining-smoke.log" "10.0.0.2"
+	assert_not_contains "${out_dir}/mining-smoke.log" "private-json.example"
+	assert_not_contains "${out_dir}/mining-smoke.log" "bc1q-json-owner-address"
+}
+
 test_bounded_soak_records_default_duration_and_watchdog_boundary() {
 	base_fixture_paths "bounded"
 	local out_dir="${tmp_root}/bounded-out"
@@ -332,6 +443,9 @@ test_explicit_target_uses_bounded_http_and_websocket_paths() {
 test_missing_manifest_records_pending
 test_missing_prerequisite_records_pending
 test_missing_live_prerequisites_records_blocked
+test_json_credentials_make_live_prerequisites_present_and_redact_values
+test_missing_json_credentials_fields_block_without_printing_raw_values
+test_unparseable_json_credentials_block_without_printing_raw_values
 test_bounded_soak_records_default_duration_and_watchdog_boundary
 test_explicit_target_uses_bounded_http_and_websocket_paths
 

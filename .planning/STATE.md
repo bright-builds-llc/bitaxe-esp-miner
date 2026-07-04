@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 21-08-PLAN.md
-last_updated: "2026-07-04T15:28:17.233Z"
-last_activity: 2026-07-04 - Completed quick task 260704-ejk: Add pool credentials env sample and docs
+last_updated: "2026-07-04T15:45:25Z"
+last_activity: 2026-07-04 - Completed quick task 260704-eql: Add JSON pool credentials support
 progress:
   total_phases: 21
   completed_phases: 21
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 Phase: 21 (live-mining-and-soak-evidence) — EXECUTING
 Plan: 8 of 8
 Status: Phase complete — ready for verification
-Last activity: 2026-07-04 - Completed quick task 260704-ejk: Add pool credentials env sample and docs
+Last activity: 2026-07-04 - Completed quick task 260704-eql: Add JSON pool credentials support
 
 Progress: [█████████░] 94%
 
@@ -470,6 +470,7 @@ None yet.
 | 260704-dxg | 2026-07-04 | Add fresh monitor log DEVICE_URL repo rule | implemented, fresh same-session monitor URL extraction allowed for local runtime input only | `.planning/quick/260704-dxg-add-fresh-monitor-log-device-url-repo-ru/260704-dxg-SUMMARY.md`, `AGENTS.md` |
 | 260704-e78 | 2026-07-04 | Add owner pool credentials convention for live mining tests | implemented, ignored owner pool env convention documented for local runtime input only | `.planning/quick/260704-e78-add-owner-pool-credentials-convention-fo/260704-e78-SUMMARY.md`, `AGENTS.md`, `.gitignore` |
 | 260704-ejk | 2026-07-04 | Add pool credentials env sample and docs | implemented, committed sample env shape and release docs for local owner pool input | `.planning/quick/260704-ejk-add-pool-credentials-env-sample-and-docs/260704-ejk-SUMMARY.md`, `pool-credentials.env.example`, `docs/release/ultra-205.md` |
+| 260704-eql | 2026-07-04 | Add JSON pool credentials support | implemented, JSON sample/helper/wrapper support with env fallback and redaction tests | `.planning/quick/260704-eql-add-json-pool-credentials-support/260704-eql-SUMMARY.md`, `pool-credentials.json.example`, `scripts/phase21-live-mining-evidence.sh` |
 
 ## Session Continuity
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-	printf 'usage: %s --manifest PATH --surface mining-smoke|bounded-soak --out-dir PATH --chip-detect-summary PATH --work-result-summary PATH --readiness-audit PATH --enablement-summary PATH [--device-url ORIGIN] [--duration-seconds N] [--curl-bin PATH] [--websocket-helper PATH]\n' "$(basename "$0")" >&2
+	printf 'usage: %s --manifest PATH --surface mining-smoke|bounded-soak --out-dir PATH --chip-detect-summary PATH --work-result-summary PATH --readiness-audit PATH --enablement-summary PATH [--device-url ORIGIN] [--pool-credentials PATH] [--duration-seconds N] [--curl-bin PATH] [--websocket-helper PATH]\n' "$(basename "$0")" >&2
 }
 
 manifest=""
@@ -14,9 +14,11 @@ readiness_audit=""
 enablement_summary=""
 device_url=""
 device_url_arg_provided=0
+pool_credentials=""
 duration_seconds=""
 curl_bin="${CURL_BIN:-curl}"
 websocket_helper="${PHASE21_WEBSOCKET_HELPER:-scripts/phase17-websocket-capture.mjs}"
+pool_credentials_helper="${PHASE21_POOL_CREDENTIALS_HELPER:-scripts/phase21-pool-credentials-json.mjs}"
 node_bin="${NODE_BIN:-node}"
 
 while [[ $# -gt 0 ]]; do
@@ -84,6 +86,14 @@ while [[ $# -gt 0 ]]; do
 		fi
 		device_url="$2"
 		device_url_arg_provided=1
+		shift 2
+		;;
+	--pool-credentials)
+		if [[ $# -lt 2 ]]; then
+			usage
+			exit 2
+		fi
+		pool_credentials="$2"
 		shift 2
 		;;
 	--duration-seconds)
@@ -155,7 +165,7 @@ readonly log_file="${out_dir}/${surface}.log"
 
 redact_text() {
 	LC_ALL=C tr -d '\000\r' |
-		sed -E 's#https?://[^[:space:]"<>]+#[redacted-url]#g; s#wss?://[^[:space:]"<>]+#[redacted-url]#g; s/(Could not resolve host: )[[:alnum:]_.-]+/\1[redacted-host]/g; s/(Failed to connect to )[[:alnum:]_.-]+/\1[redacted-host]/g; s/"(ssid|wifiPass|wifiPassword|stratumUser|stratumPassword|stratumCert|poolUrl|fallbackPoolUrl|hostname|ip|ipAddress|gateway|netmask|dns|apiToken|apiKey|token|password|user|worker)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1":"[redacted]"/g; s/"(stratumPort|fallbackStratumPort)"[[:space:]]*:[[:space:]]*[0-9]+/"\1":[redacted]/g; s/([0-9]{1,3}\.){3}[0-9]{1,3}/[redacted-ip]/g; s/([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}/[redacted-mac]/g; s#(BITAXE_POOL_PASSWORD=)[^[:space:]]+#\1[redacted]#g; s#(BITAXE_POOL_USER=)[^[:space:]]+#\1[redacted]#g; s#(BITAXE_POOL_URL=)[^[:space:]]+#\1[redacted]#g; s#(DEVICE_URL=)[^[:space:]]+#\1[redacted]#g'
+		sed -E 's#https?://[^[:space:]"<>]+#[redacted-url]#g; s#wss?://[^[:space:]"<>]+#[redacted-url]#g; s/(Could not resolve host: )[[:alnum:]_.-]+/\1[redacted-host]/g; s/(Failed to connect to )[[:alnum:]_.-]+/\1[redacted-host]/g; s/"(ssid|wifiPass|wifiPassword|stratumUser|stratumPassword|stratumCert|poolUrl|poolURL|fallbackPoolUrl|hostname|ip|ipAddress|gateway|netmask|dns|apiToken|apiKey|token|password|user|worker|poolUser|poolPassword)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1":"[redacted]"/g; s/"(stratumPort|fallbackStratumPort|poolPort)"[[:space:]]*:[[:space:]]*[0-9]+/"\1":[redacted]/g; s/([0-9]{1,3}\.){3}[0-9]{1,3}/[redacted-ip]/g; s/([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}/[redacted-mac]/g; s#(BITAXE_POOL_PASSWORD=)[^[:space:]]+#\1[redacted]#g; s#(BITAXE_POOL_USER=)[^[:space:]]+#\1[redacted]#g; s#(BITAXE_POOL_URL=)[^[:space:]]+#\1[redacted]#g; s#(BITAXE_POOL_PORT=)[^[:space:]]+#\1[redacted]#g; s#(DEVICE_URL=)[^[:space:]]+#\1[redacted]#g'
 }
 
 log() {
@@ -164,6 +174,40 @@ log() {
 
 append_redacted() {
 	redact_text | tee -a "$log_file" >/dev/null
+}
+
+maybe_load_pool_credentials() {
+	if [[ -z "$pool_credentials" ]]; then
+		return
+	fi
+
+	unset BITAXE_POOL_URL BITAXE_POOL_PORT BITAXE_POOL_USER BITAXE_POOL_PASSWORD
+
+	if [[ ! -f "$pool_credentials" ]]; then
+		log "pool_credentials_status=blocked - missing json file"
+		return
+	fi
+
+	if [[ ! -f "$pool_credentials_helper" ]]; then
+		log "pool_credentials_status=blocked - json helper missing"
+		return
+	fi
+
+	local maybe_exports
+	set +e
+	maybe_exports="$("$node_bin" "$pool_credentials_helper" "$pool_credentials" 2>&1)"
+	local helper_status=$?
+	set -e
+
+	if [[ "$helper_status" -ne 0 ]]; then
+		printf '%s\n' "$maybe_exports" | append_redacted
+		log "pool_credentials_status=blocked - invalid json"
+		return
+	fi
+
+	eval "$maybe_exports"
+	export BITAXE_POOL_URL BITAXE_POOL_PORT BITAXE_POOL_USER BITAXE_POOL_PASSWORD
+	log "pool_credentials_status=loaded-redacted source=json"
 }
 
 command_arg_list() {
@@ -179,6 +223,10 @@ command_arg_list() {
 
 	if [[ "$device_url_arg_provided" -eq 1 ]]; then
 		printf '%s\n' "--device-url" "$device_url"
+	fi
+
+	if [[ -n "$pool_credentials" ]]; then
+		printf '%s\n' "--pool-credentials" "$pool_credentials"
 	fi
 
 	if [[ "$surface" == "bounded-soak" ]]; then
@@ -481,6 +529,7 @@ record_live_probe_attempt() {
 }
 
 log_header
+maybe_load_pool_credentials
 
 if [[ -z "$manifest" || ! -f "$manifest" ]]; then
 	log "mining_allow_status=not-run"
