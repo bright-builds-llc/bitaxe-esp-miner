@@ -6,6 +6,10 @@ status: complete
 created: 2026-07-04T06:16:06Z
 completed: 2026-07-04T06:18:39Z
 duration_seconds: 735
+generated_by: gsd-execute-plan
+lifecycle_mode: yolo
+phase_lifecycle_id: 21-2026-07-04T01-35-47
+generated_at: 2026-07-04T06:18:39Z
 subsystem: parity-evidence
 tags:
   - bounded-soak
