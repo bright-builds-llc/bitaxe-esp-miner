@@ -24,6 +24,7 @@ const DEFAULT_API_COMPARE_MANIFEST: &str = "tools/parity/fixtures/api/phase05-re
 const DEFAULT_AXEOS_ROUTE_USAGE: &str = "tools/parity/fixtures/api/axeos-route-usage.json";
 
 mod api_compare;
+mod claim_ladder;
 mod mining_allow;
 mod release_evidence;
 mod release_gate;

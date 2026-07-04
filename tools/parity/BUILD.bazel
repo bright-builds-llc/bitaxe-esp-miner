@@ -4,13 +4,16 @@ rust_binary(
     name = "report",
     srcs = [
         "src/api_compare.rs",
+        "src/claim_ladder.rs",
         "src/main.rs",
         "src/mining_allow.rs",
         "src/release_evidence.rs",
         "src/release_gate.rs",
         "src/safety_allow.rs",
     ],
-    compile_data = glob(["fixtures/**"]),
+    compile_data = glob(["fixtures/**"]) + [
+        "//:docs/parity/evidence/phase-22-claim-ladder-and-safety-preconditions/claim-ladder.md",
+    ],
     crate_name = "bitaxe_parity",
     data = ["//scripts:verify_reference_clean"],
     edition = "2021",
