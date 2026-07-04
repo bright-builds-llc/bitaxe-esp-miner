@@ -35,7 +35,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 **Plans**: 3 plans
 Plans:
 - [x] 22-01-PLAN.md — Create the operator claim ladder and parity overclaim guard.
-- [ ] 22-02-PLAN.md — Add typed production-mining preconditions and exact blocker propagation.
+- [x] 22-02-PLAN.md — Add typed production-mining preconditions and exact blocker propagation.
 - [ ] 22-03-PLAN.md — Close Phase 22 evidence, checklist, and validation artifacts.
 
 ### Phase 23: Redacted Operator Evidence Workflow
@@ -91,7 +91,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 22. Claim Ladder And Safety Preconditions | v1.1 | 1/3 | In Progress | - |
+| 22. Claim Ladder And Safety Preconditions | v1.1 | 2/3 | In Progress|  |
 | 23. Redacted Operator Evidence Workflow | v1.1 | 0/TBD | Not started | - |
 | 24. BM1366 Production Work Path | v1.1 | 0/TBD | Not started | - |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 0/TBD | Not started | - |

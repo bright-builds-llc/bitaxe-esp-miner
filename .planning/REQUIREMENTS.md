@@ -16,8 +16,8 @@ Requirements for the current milestone. Each maps to roadmap phases and must be 
 
 ### Mining Prerequisite Safety
 
-- [ ] **SAFE-10**: Ultra 205 production mining requires fresh or explicitly bounded power, thermal, fan, voltage, and safety observations before BM1366 work dispatch is enabled.
-- [ ] **SAFE-11**: Ultra 205 production mining fails closed with user-visible blocker reasons when safety prerequisites are stale, unavailable, unsafe, ambiguous, or undocumented.
+- [x] **SAFE-10**: Ultra 205 production mining requires fresh or explicitly bounded power, thermal, fan, voltage, and safety observations before BM1366 work dispatch is enabled.
+- [x] **SAFE-11**: Ultra 205 production mining fails closed with user-visible blocker reasons when safety prerequisites are stale, unavailable, unsafe, ambiguous, or undocumented.
 - [ ] **SAFE-12**: Ultra 205 production mining can stop in a bounded safe state with socket activity stopped, work queues drained or invalidated, mining disabled, hardware control disabled, and post-stop API/WebSocket state updated.
 - [ ] **SAFE-13**: Ultra 205 production mining preserves watchdog responsiveness under bounded socket, ASIC, API, WebSocket, and evidence-capture load.
 
@@ -96,8 +96,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVD-06 | Phase 22 | Complete |
 | EVD-07 | Phase 23 | Pending |
 | EVD-08 | Phase 26 | Pending |
-| SAFE-10 | Phase 22 | Pending |
-| SAFE-11 | Phase 22 | Pending |
+| SAFE-10 | Phase 22 | Complete |
+| SAFE-11 | Phase 22 | Complete |
 | SAFE-12 | Phase 25 | Pending |
 | SAFE-13 | Phase 25 | Pending |
 | STR-08 | Phase 25 | Pending |

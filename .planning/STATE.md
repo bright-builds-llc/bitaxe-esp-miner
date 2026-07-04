@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-07-04T20:30:45.002Z"
+stopped_at: Completed 22-02-PLAN.md
+last_updated: "2026-07-04T20:37:45.149Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 ## Current Position
 
 Phase: 22 (Claim Ladder And Safety Preconditions) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-04
 
@@ -65,6 +65,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 22]: Kept claim ladder validation as a test-enforced parity helper without adding a CLI subcommand.
 - [Phase 22]: Declared the claim ladder Markdown as a Bazel compile-time fixture for include_str validation.
 - [Phase 22]: Separated controlled no-share evidence text from accepted/rejected share terms to avoid overclaim ambiguity.
+- [Phase 22]: Modeled production mining prerequisites as typed Fresh, Bounded, or Blocked inputs instead of accepting shell-owned readiness strings.
+- [Phase 22]: Kept existing power, thermal, safety, hardware ack, and ASIC initialization checks after typed production precondition decisions as defense in depth.
+- [Phase 22]: Preserved controlled-runtime default blocker behavior by making controlled gate builders pass an explicit typed Ready decision.
 
 ### Pending Todos
 
@@ -77,8 +80,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T20:30:45.000Z
-Stopped at: Completed 22-01-PLAN.md
+Last session: 2026-07-04T20:37:45.147Z
+Stopped at: Completed 22-02-PLAN.md
 Resume file: None
 
 ## Next Step
