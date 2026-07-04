@@ -65,9 +65,9 @@ The accepted seed layout separates hardware-bound firmware from testable Rust lo
 
 ## Current State
 
-Phase 19 is complete: the repo now has conservative Ultra 205 recovery-regression and OTAWWW evidence closure. Phase 19 records package/release-gate identity, detector-gated serial evidence, blocked no-scan target provenance, pending recovery-regression ledgers for failed update, large erase, and interrupted update, an explicit OTAWWW REL-03 gap with owner/blocker/operator impact, final redaction review, clean code review, and valid lifecycle verification.
+Phase 20 is complete: the repo now has exact-claim Ultra 205 active safety hardware telemetry evidence closure. Phase 20 records detector-gated safe-baseline hardware smoke, redacted active power/voltage and thermal/fan boundaries, self-test/watchdog/load and runtime display/input boundaries, a first-class `failure-paths` allow surface, blocked no-scan live API/WebSocket telemetry evidence, final redaction review, clean code review, and valid lifecycle verification.
 
-The evidence remains intentionally below verified for whole-`www` OTAWWW updates, failed-update recovery, large erase/factory restore, interrupted update, rollback, boot-validation, production mining, active safety telemetry, and long soak behavior until later phase artifacts prove those surfaces.
+The evidence remains intentionally below verified for whole-`www` OTAWWW updates, failed-update recovery, large erase/factory restore, interrupted update, rollback, boot-validation, production mining, live telemetry freshness/cadence, active voltage/fan/fault/self-test/load behavior, runtime physical input/display behavior, and long soak behavior until later phase artifacts prove those surfaces.
 
 ## Constraints
 
@@ -120,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-07-03 after Phase 19 recovery regression and OTAWWW evidence verification*
+*Last updated: 2026-07-04 after Phase 20 active safety hardware telemetry evidence verification*

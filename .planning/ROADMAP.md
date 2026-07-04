@@ -552,5 +552,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 17. Live HTTP API And Static Evidence | 7/7 | Complete   | 2026-07-03 |
 | 18. Firmware OTA And Rollback Evidence | 4/4 | Complete   | 2026-07-03 |
 | 19. Recovery Regression And OTAWWW Evidence | 4/4 | Complete    | 2026-07-03 |
-| 20. Active Safety Hardware Telemetry Evidence | 6/6 | Complete   | 2026-07-03 |
+| 20. Active Safety Hardware Telemetry Evidence | 6/6 | Complete    | 2026-07-04 |
 | 21. Live Mining And Soak Evidence | 0/0 | Pending | TBD |
