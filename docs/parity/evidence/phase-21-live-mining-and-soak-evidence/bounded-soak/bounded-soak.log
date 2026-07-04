@@ -1,0 +1,13 @@
+phase21_bounded_soak
+bounded_soak_status: blocked
+live_smoke_prerequisite: failed
+blocked_reason: missing_live_prerequisites-or-smoke-not-proven
+duration_seconds: 300
+hardware_command_status: not-run
+network_scan: disabled
+pool_lifecycle_status: not-run
+share_outcome: not-run
+watchdog_status: blocked - bounded soak not run
+watchdog_blocker: live smoke prerequisite not passed
+safe_stop_status: not-run
+conclusion: blocked - lower-tier live smoke did not run

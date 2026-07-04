@@ -1,0 +1,62 @@
+{
+  "board": "205",
+  "port": "/dev/cu.usbmodem1101",
+  "detector_command": "just detect-ultra205",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
+  "package_manifest": "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/bitaxe-ultra205-package.json",
+  "source_commit": "f34b50dda839a1867a2a7ee2c271e1533ce286ef",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "surface": "bounded-soak",
+  "claim_tier": "unsupported-pending",
+  "evidence_class": "workflow",
+  "allowed_command": "scripts/phase21-live-mining-evidence.sh --manifest docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/allow-bounded-soak.json --surface bounded-soak --duration-seconds 300 --out-dir docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak --chip-detect-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md --work-result-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md --readiness-audit docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md --enablement-summary docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement.md --websocket-helper scripts/phase17-websocket-capture.mjs",
+  "allowed_inputs": {
+    "duration_seconds": 300,
+    "pool_config": "disposable-or-non-secret",
+    "device_url": "explicit",
+    "target_provider": "operator-supplied",
+    "provider_inputs": "DEVICE_URL plus disposable pool env categories already applied through the firmware pool-input bridge",
+    "controlled_runtime_harness": "observed",
+    "runtime_snapshot": "updated",
+    "watchdog_observations": "required"
+  },
+  "abort_conditions": [
+    "detector_mismatch",
+    "board_info_failure",
+    "missing_trusted_wrapper_markers",
+    "redaction_uncertainty",
+    "unsafe_temperature_or_power",
+    "watchdog_unresponsive"
+  ],
+  "recovery_steps": [
+    "stop wrapper",
+    "power-cycle board if serial stalls",
+    "reflash default safe package"
+  ],
+  "post_action_safe_state_markers": [
+    "safe_state: mining=disabled",
+    "hardware_control=disabled",
+    "work_submission=disabled"
+  ],
+  "prerequisite_artifacts": [
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight.md",
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md",
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement.md",
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md",
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke.md",
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/controlled-package-boot/flash-command-evidence.json",
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/controlled-package-boot/flash-monitor.log",
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/pool-input-bridge.md"
+  ],
+  "evidence_dir": "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak",
+  "redaction_reviewer": "required-before-citation",
+  "checklist_rows": [
+    "STR-006",
+    "STR-007",
+    "STR-008",
+    "SAFE-09",
+    "EVD-05"
+  ]
+}

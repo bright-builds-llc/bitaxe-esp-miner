@@ -1,0 +1,6 @@
+path=/api/ws/live
+duration_ms=10000
+max_frames=5
+websocket_frame_status=blocked_missing_explicit_device_url
+network_scan=disabled
+reason=bounded_soak_not_run_after_live_smoke_prerequisite_failed
