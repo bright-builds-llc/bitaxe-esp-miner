@@ -7,7 +7,10 @@
 use bitaxe_asic::bm1366::command::Bm1366Command;
 use bitaxe_config::{nvs::StoredValueKind, NvsSnapshot};
 use bitaxe_safety::{
-    evidence::SafetyCriticalEvidence, power::PowerEvidenceToken, status::SafetyStatus,
+    evidence::SafetyCriticalEvidence,
+    mining_preconditions::ProductionMiningPreconditionDecision,
+    power::PowerEvidenceToken,
+    status::SafetyStatus,
     thermal::ThermalEvidenceToken,
 };
 use bitaxe_stratum::v1::{
@@ -206,6 +209,7 @@ fn controlled_runtime_gate() -> MiningLoopGate {
         "ultra205-live-mining-runtime-safe-bench-controlled-mode",
     );
     MiningLoopGate {
+        production_preconditions: ProductionMiningPreconditionDecision::Ready,
         asic_initialized: true,
         maybe_power_evidence: Some(PowerEvidenceToken {
             bus_voltage_volts: 5.0,

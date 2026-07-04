@@ -4,7 +4,10 @@ use bitaxe_asic::bm1366::{
     work::{Bm1366JobId, Bm1366WorkPayload},
 };
 use bitaxe_safety::{
-    evidence::SafetyCriticalEvidence, power::PowerEvidenceToken, status::SafetyStatus,
+    evidence::SafetyCriticalEvidence,
+    mining_preconditions::ProductionMiningPreconditionDecision,
+    power::PowerEvidenceToken,
+    status::SafetyStatus,
     thermal::ThermalEvidenceToken,
 };
 
@@ -269,6 +272,7 @@ fn sample_transcript() -> ControlledStratumTranscript {
 
 fn ready_gate() -> MiningLoopGate {
     MiningLoopGate {
+        production_preconditions: ProductionMiningPreconditionDecision::Ready,
         asic_initialized: true,
         maybe_power_evidence: Some(PowerEvidenceToken {
             bus_voltage_volts: 5.0,

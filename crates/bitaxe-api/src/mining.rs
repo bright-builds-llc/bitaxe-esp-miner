@@ -5,7 +5,6 @@
 //! - `crates/bitaxe-stratum/src/v1/mining_loop.rs`
 //! - `reference/esp-miner/main/http_server/system_api_json.c`
 
-use bitaxe_stratum::v1::mining_loop::HARDWARE_EVIDENCE_ACK_MISSING;
 use bitaxe_stratum::v1::state::{
     MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus, WorkSubmissionGate,
 };
@@ -150,7 +149,7 @@ fn blocked_reason(state: &MiningRuntimeState) -> &'static str {
     if state.work_submission == WorkSubmissionGate::Blocked
         && state.mining_activity == MiningActivityStatus::SafeBlocked
     {
-        return HARDWARE_EVIDENCE_ACK_MISSING;
+        return state.maybe_blocked_reason.unwrap_or("");
     }
 
     ""
@@ -159,7 +158,7 @@ fn blocked_reason(state: &MiningRuntimeState) -> &'static str {
 #[cfg(test)]
 mod tests {
     use bitaxe_stratum::v1::mining_loop::HARDWARE_EVIDENCE_ACK_MISSING;
-    use bitaxe_stratum::v1::state::{MiningActivityStatus, MiningRuntimeState, WorkSubmissionGate};
+    use bitaxe_stratum::v1::state::MiningRuntimeState;
 
     use crate::mining::mining_state_from_runtime;
 
@@ -167,8 +166,7 @@ mod tests {
     fn mining_state_keeps_hardware_evidence_block_visible_and_not_active() {
         // Arrange
         let mut state = MiningRuntimeState::default();
-        state.set_mining_activity(MiningActivityStatus::SafeBlocked);
-        state.work_submission = WorkSubmissionGate::Blocked;
+        state.block_work_submission(HARDWARE_EVIDENCE_ACK_MISSING);
 
         // Act
         let response = mining_state_from_runtime(&state);

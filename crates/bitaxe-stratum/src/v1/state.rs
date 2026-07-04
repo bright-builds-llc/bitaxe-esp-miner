@@ -72,6 +72,7 @@ pub struct MiningRuntimeState {
     pub work_submission: WorkSubmissionGate,
     pub hashrate_inputs: HashrateInputs,
     pub mining_activity: MiningActivityStatus,
+    pub maybe_blocked_reason: Option<&'static str>,
 }
 
 impl Default for MiningRuntimeState {
@@ -84,6 +85,7 @@ impl Default for MiningRuntimeState {
             work_submission: WorkSubmissionGate::Blocked,
             hashrate_inputs: HashrateInputs::default(),
             mining_activity: MiningActivityStatus::Paused,
+            maybe_blocked_reason: None,
         }
     }
 }
@@ -129,8 +131,19 @@ impl MiningRuntimeState {
         self.mining_activity = activity;
     }
 
+    pub fn block_work_submission(&mut self, reason: &'static str) {
+        self.work_submission = WorkSubmissionGate::Blocked;
+        self.mining_activity = MiningActivityStatus::SafeBlocked;
+        self.maybe_blocked_reason = Some(reason);
+    }
+
+    pub fn clear_blocked_reason(&mut self) {
+        self.maybe_blocked_reason = None;
+    }
+
     pub fn allow_work_submission(&mut self) {
         self.work_submission = WorkSubmissionGate::Ready;
+        self.clear_blocked_reason();
     }
 }
 

@@ -283,7 +283,7 @@ impl ControlledMiningRuntimePlan {
         work_queue.enqueue_work(work)?;
 
         let dispatch_plan = GuardedMiningLoopInputs {
-            gate: input.gate,
+            gate: input.gate.clone(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
             work_queue,
