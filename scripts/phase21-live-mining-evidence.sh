@@ -176,12 +176,15 @@ append_redacted() {
 	redact_text | tee -a "$log_file" >/dev/null
 }
 
+clear_pool_credentials_env() {
+	unset BITAXE_POOL_URL BITAXE_POOL_PORT BITAXE_POOL_USER BITAXE_POOL_PASSWORD
+}
+
 maybe_load_pool_credentials() {
 	if [[ -z "$pool_credentials" ]]; then
+		log "pool_credentials_status=blocked - missing json credentials"
 		return
 	fi
-
-	unset BITAXE_POOL_URL BITAXE_POOL_PORT BITAXE_POOL_USER BITAXE_POOL_PASSWORD
 
 	if [[ ! -f "$pool_credentials" ]]; then
 		log "pool_credentials_status=blocked - missing json file"
@@ -563,6 +566,9 @@ if [[ "$surface" == "bounded-soak" ]]; then
 	log "duration_seconds=${duration_seconds}"
 	record_abort_contract
 fi
+
+clear_pool_credentials_env
+maybe_load_pool_credentials
 
 if live_prerequisites_missing; then
 	record_missing_live_prerequisites

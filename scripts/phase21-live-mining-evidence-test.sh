@@ -330,6 +330,7 @@ test_json_credentials_make_live_prerequisites_present_and_redact_values() {
 	local out_dir="${tmp_root}/json-creds-out"
 	local credentials="${tmp_root}/pool-credentials.json"
 	local curl_args="${tmp_root}/json-curl-args.txt"
+	local node_args="${tmp_root}/json-node-args.txt"
 
 	cat >"$credentials" <<'JSON'
 {
@@ -340,13 +341,21 @@ test_json_credentials_make_live_prerequisites_present_and_redact_values() {
 }
 JSON
 
-	PHASE21_FAKE_CURL_ARGS="$curl_args" run_wrapper "$out_dir" "mining-smoke" \
+	PHASE21_FAKE_CURL_ARGS="$curl_args" \
+		PHASE21_FAKE_NODE_ARGS="$node_args" \
+		run_wrapper "$out_dir" "mining-smoke" \
 		--device-url "https://10.0.0.2" \
 		--pool-credentials "$credentials"
 
 	assert_contains "${out_dir}/mining-smoke.log" "pool_credentials_status=loaded-redacted source=json"
 	assert_contains "${out_dir}/mining-smoke.log" "controlled_mining_status: live-prerequisites-present"
 	assert_contains "$curl_args" "https://10.0.0.2/api/system/info"
+	assert_contains "$node_args" "--path"
+	assert_contains "$node_args" "/api/ws/live"
+	assert_contains "$node_args" "--duration-ms"
+	assert_contains "$node_args" "10000"
+	assert_contains "$node_args" "--max-frames"
+	assert_contains "$node_args" "5"
 	assert_not_contains "${out_dir}/mining-smoke.log" "10.0.0.2"
 	assert_not_contains "${out_dir}/mining-smoke.log" "private-json.example"
 	assert_not_contains "${out_dir}/mining-smoke.log" "bc1q-json-owner-address"
@@ -414,30 +423,25 @@ test_bounded_soak_records_default_duration_and_watchdog_boundary() {
 	assert_contains "${out_dir}/bounded-soak.log" "safe_stop_status=confirmed-or-pending"
 }
 
-test_explicit_target_uses_bounded_http_and_websocket_paths() {
-	base_fixture_paths "explicit-target"
-	local out_dir="${tmp_root}/explicit-target-out"
-	local curl_args="${tmp_root}/curl-args.txt"
-	local node_args="${tmp_root}/node-args.txt"
+test_env_only_credentials_do_not_satisfy_live_prerequisites() {
+	base_fixture_paths "env-only"
+	local out_dir="${tmp_root}/env-only-out"
 
-	PHASE21_FAKE_CURL_ARGS="$curl_args" \
-		PHASE21_FAKE_NODE_ARGS="$node_args" \
+	PHASE21_CURL_MUST_NOT_RUN=1 \
+		PHASE21_WEBSOCKET_MUST_NOT_RUN=1 \
 		BITAXE_POOL_URL="stratum+tcp://private.example:3333" \
 		BITAXE_POOL_USER="private-worker" \
 		BITAXE_POOL_PASSWORD="private-password" \
 		run_wrapper "$out_dir" "mining-smoke" --device-url "https://10.0.0.2"
 
-	assert_contains "${out_dir}/mining-smoke.log" "controlled_mining_status: live-prerequisites-present"
-	assert_contains "$curl_args" "https://10.0.0.2/api/system/info"
-	assert_contains "$node_args" "--path"
-	assert_contains "$node_args" "/api/ws/live"
-	assert_contains "$node_args" "--duration-ms"
-	assert_contains "$node_args" "10000"
-	assert_contains "$node_args" "--max-frames"
-	assert_contains "$node_args" "5"
+	assert_contains "${out_dir}/mining-smoke.log" "pool_credentials_status=blocked - missing json credentials"
+	assert_contains "${out_dir}/mining-smoke.log" "blocker: missing_live_prerequisites"
+	assert_contains "${out_dir}/mining-smoke.log" "hardware_command_status=not-run"
+	assert_not_contains "${out_dir}/mining-smoke.log" "controlled_mining_status: live-prerequisites-present"
 	assert_not_contains "${out_dir}/mining-smoke.log" "10.0.0.2"
-	assert_not_contains "${out_dir}/api-system-info.redacted.json" "private.example"
-	assert_not_contains "${out_dir}/api-system-info.redacted.json" "private-worker"
+	assert_not_contains "${out_dir}/mining-smoke.log" "private.example"
+	assert_not_contains "${out_dir}/mining-smoke.log" "private-worker"
+	assert_not_contains "${out_dir}/mining-smoke.log" "private-password"
 }
 
 test_missing_manifest_records_pending
@@ -447,6 +451,6 @@ test_json_credentials_make_live_prerequisites_present_and_redact_values
 test_missing_json_credentials_fields_block_without_printing_raw_values
 test_unparseable_json_credentials_block_without_printing_raw_values
 test_bounded_soak_records_default_duration_and_watchdog_boundary
-test_explicit_target_uses_bounded_http_and_websocket_paths
+test_env_only_credentials_do_not_satisfy_live_prerequisites
 
 printf 'phase21 live mining evidence tests passed\n'

@@ -377,16 +377,6 @@ Pass the file only to repo-owned local live mining verification commands:
 scripts/phase21-live-mining-evidence.sh ... --pool-credentials pool-credentials.json
 ```
 
-The `.env` shape remains available as a fallback for commands that need direct
-`BITAXE_POOL_*` environment variables:
-
-```bash
-cp pool-credentials.env.example pool-credentials.env
-set -a
-. ./pool-credentials.env
-set +a
-```
-
 Do not commit real `pool-credentials*.json` or `pool-credentials*.env` files,
 paste their contents into chat, or copy raw pool values into evidence.
 Commit-ready evidence should use category labels such as
