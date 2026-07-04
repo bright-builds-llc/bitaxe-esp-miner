@@ -2,10 +2,13 @@
 
 redaction_status: pending
 plan_21_06_redaction_status: passed_for_blocked_live_smoke_and_telemetry
+plan_21_07_redaction_status: passed_for_blocked_bounded_soak_and_watchdog
 raw_artifacts_committed: no
 bm1366-init-work-result: passed
 live-mining-smoke: passed
 live-api-websocket-telemetry: passed
+bounded-soak: passed
+bounded-soak-citation_status: passed_for_blocked_artifacts
 
 This scaffold is intentionally pending until Phase 21 live or soak artifacts exist. It defines the deterministic scan and artifact inventory required before any committed or shared evidence can be cited.
 
@@ -16,6 +19,16 @@ board-info `WiFi` capability label, and blocked-target placeholders. No raw
 SSID, Wi-Fi value, pool credential, private worker value, private endpoint, raw
 target URL, API token, NVS secret, unredacted IP address, or unredacted MAC
 address was committed in those artifacts.
+
+Plan 21-07 reviewed the blocked bounded-soak, blocked watchdog, blocked API
+snapshot, blocked WebSocket, allow-manifest, copied detector, and redaction
+review artifacts. The deterministic scan matched only this review contract,
+schema/status labels, `DEVICE_URL` category labels, the ESP board-info `WiFi`
+capability label, pool/device field names in the blocked manifest, and
+blocked-target placeholders. No raw SSID, Wi-Fi value, pool credential, private
+worker value, private endpoint, raw target URL, API token, NVS secret,
+unredacted IP address, or unredacted MAC address was committed in the bounded
+soak pack.
 
 ## Deterministic Scan
 
@@ -35,7 +48,7 @@ Expected result before final promotion: only schema terms, redacted labels, and 
 | `live-mining-enablement` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/` | pending | raw_artifacts_committed: no | Must contain ready markers without secret-bearing configuration values. |
 | `bm1366-init-work-result` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/` | passed for chip-detect and work-result packs | raw_artifacts_committed: no | Plans 21-04 and 21-05 diagnostic artifacts use wrapper redaction, retain only manifest/log metadata, and cite trusted wrapper summaries plus safe-state markers. Generated package binaries remain ignored. |
 | `live-mining-smoke` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/` | passed for blocked missing-prerequisite artifact | raw_artifacts_committed: no | Plan 21-06 blocked before live smoke because explicit target and pool input categories were absent. The committed detector log is redacted; pool, worker, target, address, credential, and secret values are absent. |
-| `bounded-soak` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/` | pending | raw_artifacts_committed: no | Must include duration, abort conditions, safe-stop, and conclusion after redaction. |
+| `bounded-soak` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/` | passed for blocked missing-prerequisite artifact | raw_artifacts_committed: no | Plan 21-07 blocked before soak because Plan 21-06 live smoke had `blocker: missing_live_prerequisites`, `share_outcome: not-run`, and no controlled package boot or pool-input bridge evidence. The copied detector log is redacted; bounded soak, watchdog, API snapshot, and WebSocket artifacts are blocked placeholders with no raw targets or credentials. |
 | `live-api-websocket-telemetry` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-api-websocket-telemetry/` | passed for blocked missing-target artifact | raw_artifacts_committed: no | Plan 21-06 did not probe `/api/system/info` or `/api/ws/live` because no explicit target existed. Placeholder artifacts contain only status labels and capture bounds. |
 | `redaction-review` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/redaction-review.md` | pending | raw_artifacts_committed: no | This file is the review scaffold and is safe to commit. |
 | `final-summary` | `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/summary.md` | pending | raw_artifacts_committed: no | Must cite only redaction-reviewed artifacts. |
