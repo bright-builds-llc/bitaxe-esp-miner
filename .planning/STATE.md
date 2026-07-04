@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 21-06-PLAN.md
-last_updated: "2026-07-04T06:01:06.445Z"
+stopped_at: Completed 21-07-PLAN.md
+last_updated: "2026-07-04T06:18:39.981Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 21
   completed_phases: 20
   total_plans: 116
-  completed_plans: 114
-  percent: 98
+  completed_plans: 115
+  percent: 99
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 21 (live-mining-and-soak-evidence) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-07-04
 
@@ -162,6 +162,7 @@ Progress: [█████████░] 94%
 | Phase 21-live-mining-and-soak-evidence P04 | 981 | 1 tasks | 11 files |
 | Phase 21-live-mining-and-soak-evidence P05 | 10m07s | 1 tasks | 11 files |
 | Phase 21-live-mining-and-soak-evidence P06 | 13min | 3 tasks | 11 files |
+| Phase 21-live-mining-and-soak-evidence P07 | 735s | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -435,6 +436,9 @@ Recent decisions affecting current work:
 - [Phase 21-live-mining-and-soak-evidence]: Plan 21-06 treats absent DEVICE_URL or pool input categories as missing_live_prerequisites, not controlled no-share evidence.
 - [Phase 21-live-mining-and-soak-evidence]: Plan 21-06 keeps live API/WebSocket telemetry blocked without an explicit DEVICE_URL; network scanning and target inference remain disabled.
 - [Phase 21-live-mining-and-soak-evidence]: Plan 21-06 does not claim successful ASIC initialization, production mining, shares, telemetry freshness, watchdog mining-load behavior, or soak evidence from prerequisite-only ledgers.
+- [Phase 21-live-mining-and-soak-evidence]: Plan 21-07 blocks bounded soak when live smoke has missing_live_prerequisites, share_outcome not-run, and no controlled package boot or pool-input bridge proof.
+- [Phase 21-live-mining-and-soak-evidence]: SAFE-09 watchdog responsiveness remains unproven without bounded mining or soak observations; startup watchdog breadcrumbs are not bounded soak proof.
+- [Phase 21-live-mining-and-soak-evidence]: Blocked bounded-soak placeholders can be redaction-reviewed when they contain only status/category labels and no raw endpoint, credential, address, token, or secret values.
 
 ### Pending Todos
 
@@ -449,6 +453,7 @@ None yet.
 - Phase 13-04 firmware OTA evidence blocked because DEVICE_URL is missing; valid OTA, invalid rejection, reboot identity, rollback, selected partition, and boot-validation remain below verified.
 - Phase 16 live HTTP/static/recovery, firmware OTA, failed-update, large-erase, interrupted-update, rollback, boot-validation, and OTAWWW evidence remain below verified until an explicit DEVICE_URL and documented allow gates are available.
 - Phase 21 Plan 21-06 live mining smoke and API/WebSocket telemetry correlation remain blocked by missing explicit DEVICE_URL and disposable/non-secret pool input categories.
+- Phase 21 Plan 21-07 bounded soak and SAFE-09 watchdog observation remain blocked by missing live prerequisites from 21-06.
 
 ### Quick Tasks Completed
 
@@ -461,6 +466,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T06:01:06.441Z
-Stopped at: Completed 21-06-PLAN.md
+Last session: 2026-07-04T06:18:39.969Z
+Stopped at: Completed 21-07-PLAN.md
 Resume file: None
