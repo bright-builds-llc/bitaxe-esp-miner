@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 21-02-PLAN.md
-last_updated: "2026-07-04T04:41:48.369Z"
+stopped_at: Completed 21-03-PLAN.md
+last_updated: "2026-07-04T05:03:13.245Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 21
   completed_phases: 20
   total_plans: 116
-  completed_plans: 110
-  percent: 95
+  completed_plans: 111
+  percent: 96
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 21 (live-mining-and-soak-evidence) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-07-04
 
@@ -158,6 +158,7 @@ Progress: [█████████░] 94%
 | Phase 20-active-safety-hardware-telemetry-evidence P06 | 13min | 3 tasks | 7 files |
 | Phase 21-live-mining-and-soak-evidence P01 | 1800 | 3 tasks | 9 files |
 | Phase 21-live-mining-and-soak-evidence P02 | 33min | 3 tasks | 17 files |
+| Phase 21-live-mining-and-soak-evidence P03 | 15min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -419,6 +420,9 @@ Recent decisions affecting current work:
 - [Phase 21-live-mining-and-soak-evidence]: Default firmware remains fail-closed; controlled mining only activates with BITAXE_MINING_EVIDENCE_MODE=live-mining-runtime and BITAXE_HARDWARE_EVIDENCE_ACK=ultra205-live-mining-runtime-safe-bench.
 - [Phase 21-live-mining-and-soak-evidence]: Firmware parses explicit stored Stratum settings for controlled mode; schema defaults alone do not enable the harness.
 - [Phase 21-live-mining-and-soak-evidence]: Only the package manifest is tracked; generated Phase 21 package binaries are ignored and reproducible through the helper.
+- [Phase 21-live-mining-and-soak-evidence]: Refresh package/release-gate evidence after the Task 1 evidence commit so flashed safe-baseline firmware and copied manifest share the same source commit.
+- [Phase 21-live-mining-and-soak-evidence]: Commit only redacted detector and flash-monitor evidence; raw detector output stayed under ignored target/ state.
+- [Phase 21-live-mining-and-soak-evidence]: Redact IP-shaped Rust tool-version suffixes in the copied evidence manifest and rerun the release gate against the committed copy.
 
 ### Pending Todos
 
@@ -444,6 +448,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T04:41:48.365Z
-Stopped at: Completed 21-02-PLAN.md
+Last session: 2026-07-04T05:03:13.242Z
+Stopped at: Completed 21-03-PLAN.md
 Resume file: None
