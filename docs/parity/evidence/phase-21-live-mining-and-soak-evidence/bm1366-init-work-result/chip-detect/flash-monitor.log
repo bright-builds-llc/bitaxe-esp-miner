@@ -1,0 +1,130 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x28 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40378d0b
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2810,len:0x15a0
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xd24
+load:0x403cb700,len:0x2f04
+entry 0x403c8928
+I (26) boot: ESP-IDF v5.4.1-426-g3ad36321ea 2nd stage bootloader
+I (27) boot: compile time Apr 24 2025 15:55:11
+I (27) boot: Multicore bootloader
+I (28) boot: chip revision: v0.2
+I (31) boot: efuse block revision: v1.3
+I (35) boot.esp32s3: Boot SPI Speed : 80MHz
+I (39) boot.esp32s3: SPI Mode       : DIO
+I (42) boot.esp32s3: SPI Flash Size : 16MB
+I (46) boot: Enabling RNG early entropy source...
+I (51) boot: Partition Table:
+I (53) boot: ## Label            Usage          Type ST Offset   Length
+I (60) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (66) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (73) boot:  2 factory          factory app      00 00 00010000 00400000
+I (79) boot:  3 www              Unknown data     01 82 00410000 00300000
+I (86) boot:  4 ota_0            OTA app          00 10 00710000 00400000
+I (92) boot:  5 ota_1            OTA app          00 11 00b10000 00400000
+I (99) boot:  6 otadata          OTA data         01 00 00f10000 00002000
+I (105) boot:  7 coredump         Unknown data     01 03 00f12000 00010000
+I (112) boot: End of partition table
+I (115) boot: Defaulting to factory image
+I (119) esp_image: segment 0: paddr=00010020 vaddr=3c120020 size=3f904h (260356) map
+I (172) esp_image: segment 1: paddr=0004f92c vaddr=3fc9c300 size=006ech (  1772) load
+I (173) esp_image: segment 2: paddr=00050020 vaddr=42000020 size=11bc20h (1162272) map
+I (381) esp_image: segment 3: paddr=0016bc48 vaddr=3fc9c9ec size=05478h ( 21624) load
+I (386) esp_image: segment 4: paddr=001710c8 vaddr=40374000 size=18284h ( 98948) load
+I (408) esp_image: segment 5: paddr=00189354 vaddr=50000000 size=00020h (    32) load
+I (418) boot: Loaded app from partition at offset 0x10000
+I (418) boot: Disabling RNG early entropy source...
+I (428) octal_psram: vendor id    : 0x0d (AP)
+I (428) octal_psram: dev id       : 0x02 (generation 3)
+I (428) octal_psram: density      : 0x03 (64 Mbit)
+I (430) octal_psram: good-die     : 0x01 (Pass)
+I (434) octal_psram: Latency      : 0x01 (Fixed)
+I (439) octal_psram: VCC          : 0x01 (3V)
+I (443) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (448) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (453) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (457) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (462) octal_psram: DriveStrength: 0x00 (1/1)
+I (467) MSPI Timing: Enter psram timing tuning
+I (471) esp_psram: Found 8MB PSRAM device
+I (474) esp_psram: Speed: 80MHz
+I (477) cpu_start: Multicore app
+I (903) esp_psram: SPI SRAM memory test OK
+I (912) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (913) cpu_start: Pro cpu start user code
+I (913) cpu_start: cpu freq: 160000000 Hz
+I (914) app_init: Application information:
+I (918) app_init: Project name:     libespidf
+I (922) app_init: App version:      dc9266e-dirty
+I (926) app_init: Compile time:     Jun 28 2026 15:45:05
+I (931) app_init: ELF file SHA256:  000000000...
+I (936) app_init: ESP-IDF:          v5.5.4
+I (939) efuse_init: Min chip rev:     v0.0
+I (943) efuse_init: Max chip rev:     v0.99 
+I (947) efuse_init: Chip rev:         v0.2
+I (951) heap_init: Initializing. RAM available for dynamic allocation:
+I (957) heap_init: At 3FCA3170 len 000465A0 (281 KiB): RAM
+I (963) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (968) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (973) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (978) esp_psram: Adding pool of 8179K of PSRAM memory to heap allocator
+I (986) spi_flash: detected chip: gd
+I (988) spi_flash: flash io: dio
+W (991) i2c: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
+I (1001) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (1007) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (1014) main_task: Started on CPU0
+I (1024) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1024) main_task: Calling app_main()
+I (1024) bitaxe_firmware: bitaxe-rust boot: board=Ultra 205 asic=BM1366
+I (1054) bitaxe_firmware: safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled
+I (1054) esp_idf_svc::nvs: NvsDefault dropped
+W (1054) bitaxe_firmware: axeos_settings_snapshot=startup_refresh_failed error=ESP_ERR_NVS_NOT_FOUND
+I (1084) bitaxe_firmware::display_adapter: display_status=startup_text_rendered model=SSD1306 size=128x32 address=0x3c
+W (1084) bitaxe_firmware::display_adapter: display_input_status=runtime_gap reason=hardware_evidence_pending startup_only=true
+I (1094) uart: queue free spaces: 10
+I (1094) bitaxe_firmware::asic_adapter::status: asic_status=chip_detect_only initialized=false mining=disabled work_submission=disabled
+W (1334) bitaxe_firmware::asic_adapter: asic_status=fail_closed reason=chip_detect_adapter_error error=partial BM1366 UART read: expected 11 bytes, read 9
+I (1334) bitaxe_firmware::asic_adapter::reset: asic_status=hold_reset_low gpio=1
+I (1344) bitaxe_firmware::asic_adapter::status: asic_status=fail_closed reason=chip_detect_adapter_error initialized=false mining=disabled work_submission=disabled
+I (1354) bitaxe_firmware::boot_validation: ota_boot_validation=not_pending state=factory
+I (1364) bitaxe_firmware::asic_adapter::status: mining_loop_status=blocked reason=hardware_evidence_ack_missing work_submission=disabled
+I (1374) bitaxe_firmware::safety_adapter::watchdog: safety_supervisor=started thread=bitaxe-safety-supervisor cadence_ms=100
+I (1384) bitaxe_firmware::safety_adapter::watchdog: safety_supervisor_step=yield reason=yield_interval_reached
+I (1404) bitaxe_firmware::wifi_adapter: wifi_status=credentials_missing
+I (1574) bitaxe_firmware::filesystem: spiffs_mount=available partition=www total_bytes=2884241 used_bytes=4518
+E (1584) httpd: Failed to post esp_http_server event: ESP_ERR_INVALID_STATE
+I (1584) esp_idf_svc::http::server: Started Httpd server with config Configuration { http_port: 80, ctrl_port: 32768, https_port: 443, core: None, max_sessions: 16, session_timeout: 1200s, task_caps: 2052, stack_size: 8192, max_open_sockets: 7, max_uri_handlers: 32, max_resp_headers: 8, lru_purge_enable: true, uri_match_wildcard: true }
+I (1614) esp_idf_svc::nvs: NvsDefault dropped
+W (1614) bitaxe_firmware::http_api: axeos_settings_snapshot=startup_refresh_failed error=ESP_ERR_NVS_NOT_FOUND
+I (1624) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/recovery"
+I (1634) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/info"
+I (1644) esp_idf_svc::http::server: Registered Httpd server handler Patch for URI "/api/system"
+I (1654) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/logs"
+I (1664) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/asic"
+I (1674) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/statistics"
+I (1684) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/scoreboard"
+I (1684) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/pause"
+I (1694) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/resume"
+I (1704) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/restart"
+I (1714) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/identify"
+I (1724) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/blockFound/dismiss"
+I (1734) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/OTA"
+I (1744) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/OTAWWW"
+I (1754) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/*"
+I (1764) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/*"
+I (1764) esp_idf_svc::http::server: Registered Httpd server handler Patch for URI "/api/*"
+I (1774) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/*"
+I (1784) bitaxe_firmware::http_api: axeos_api_route_shell=started manifest_routes=17 firmware_update_routes=1 otawww_gap_routes=1 recovery_routes=1 static_file_routes=1
+I (1794) bitaxe_firmware: reset_reason=11
+I (1804) bitaxe_firmware: partition=factory
+I (1804) bitaxe_firmware: psram_status=available
+I (1814) bitaxe_firmware: firmware_commit=d8fa80597992
+I (1814) bitaxe_firmware: reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50
+I (1824) bitaxe_firmware: esp_idf_version=v5.5.4
+I (1824) bitaxe_firmware: rust_target=xtensa-esp32s3-espidf
+I (1834) main_task: Returned from app_main()

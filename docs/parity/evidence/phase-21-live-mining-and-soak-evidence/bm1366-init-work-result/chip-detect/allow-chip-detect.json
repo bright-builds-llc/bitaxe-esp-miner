@@ -1,0 +1,53 @@
+{
+  "board": "205",
+  "port": "/dev/cu.usbmodem1101",
+  "detector_command": "just detect-ultra205",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
+  "package_manifest": "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205-package.json",
+  "source_commit": "d8fa80597992065546e19dd3af1d833aa63d0688",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "surface": "bm1366-chip-detect",
+  "claim_tier": "diagnostic-chip-detect",
+  "evidence_class": "hardware-smoke",
+  "allowed_command": "bazel run //tools/flash:flash -- flash-monitor --board 205 --port /dev/cu.usbmodem1101 --manifest docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205-package.json --evidence-dir docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect --capture-timeout-seconds 45 --redact-evidence",
+  "allowed_inputs": {
+    "pool_config": "not-used",
+    "device_url": "not-used",
+    "target_provider": "just detect-ultra205",
+    "provider_inputs": "none"
+  },
+  "abort_conditions": [
+    "detector_mismatch",
+    "board_info_failure",
+    "missing_trusted_wrapper_markers",
+    "redaction_uncertainty",
+    "unsafe_temperature_or_power",
+    "watchdog_unresponsive"
+  ],
+  "recovery_steps": [
+    "stop monitor",
+    "power-cycle board if serial stalls",
+    "reflash default safe package"
+  ],
+  "post_action_safe_state_markers": [
+    "safe_state: mining=disabled",
+    "hardware_control=disabled",
+    "work_submission=disabled"
+  ],
+  "prerequisite_artifacts": [
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight.md",
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/readiness-audit.md",
+    "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement.md"
+  ],
+  "evidence_dir": "docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect",
+  "redaction_reviewer": "phase-21-chip-detect-redaction-reviewed",
+  "checklist_rows": [
+    "ASIC-002",
+    "ASIC-005",
+    "ASIC-007",
+    "STR-006",
+    "EVD-05"
+  ]
+}
