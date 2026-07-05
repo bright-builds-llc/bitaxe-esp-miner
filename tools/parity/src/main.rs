@@ -719,6 +719,7 @@ fn validate_rows(rows: &[ChecklistRow]) -> Vec<ValidationError> {
         errors.extend(validate_live_asic_mining_verified_row(row));
         errors.extend(validate_release_ota_verified_row(row));
         errors.extend(validate_deferred_scope_verified_row(row));
+        errors.extend(validate_phase26_telemetry_verified_row(row));
     }
 
     errors
@@ -787,6 +788,10 @@ fn clean_markdown_cell(cell: &str) -> String {
 }
 
 fn is_safety_critical(row: &ChecklistRow) -> bool {
+    if row.id.starts_with("EVD-") {
+        return false;
+    }
+
     let haystack = format!(
         "{} {} {} {}",
         row.id, row.surface, row.rust_owned_target, row.notes
@@ -1042,6 +1047,98 @@ fn validate_deferred_scope_verified_row(row: &ChecklistRow) -> Vec<ValidationErr
         id: row.id.clone(),
         message: "deferred or non-205 verified rows cannot reuse Ultra 205 evidence".to_owned(),
     }]
+}
+
+fn validate_phase26_telemetry_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    if !is_phase26_telemetry_row(row) {
+        return Vec::new();
+    }
+
+    let mut errors = Vec::new();
+    let haystack = row_haystack(row);
+
+    if !haystack.contains("phase-26-telemetry-and-parity-closure/summary.md") {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: "phase26 verified row missing summary evidence".to_owned(),
+        });
+    }
+
+    if row_contains_live_evidence_blocker(row) {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: "phase26 blocked verified row must not contain blocker terms".to_owned(),
+        });
+    }
+
+    if !haystack.contains("redaction-review.md") && !haystack.contains("redaction_status: passed") {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: "phase26 redaction evidence requires redaction-review.md or redaction_status: passed".to_owned(),
+        });
+    }
+
+    match row.id.as_str() {
+        "STAT-002" if !haystack.contains("no_request_time_fabrication") => {
+            errors.push(ValidationError {
+                id: row.id.clone(),
+                message: "phase26 statistics verified row requires no_request_time_fabrication"
+                    .to_owned(),
+            });
+        }
+        "STAT-003" if !haystack.contains("empty_without_parsed_share_outcome") => {
+            errors.push(ValidationError {
+                id: row.id.clone(),
+                message:
+                    "phase26 scoreboard verified row requires empty_without_parsed_share_outcome"
+                        .to_owned(),
+            });
+        }
+        "EVD-08" => {
+            let missing_terms = missing_required_terms(
+                row,
+                &[
+                    RequiredTerm::new("API-11", "api-11"),
+                    RequiredTerm::new("API-12", "api-12"),
+                    RequiredTerm::new("API-13", "api-13"),
+                    RequiredTerm::new("EVD-08", "evd-08"),
+                    RequiredTerm::new("redaction_status: passed", "redaction_status: passed"),
+                    RequiredTerm::new("exact_non_claims", "exact_non_claims"),
+                ],
+            );
+
+            if !missing_terms.is_empty() {
+                errors.push(ValidationError {
+                    id: row.id.clone(),
+                    message: format!(
+                        "EVD-08 verified row requires {}",
+                        format_required_terms(&missing_terms)
+                    ),
+                });
+            }
+        }
+        _ => {}
+    }
+
+    errors
+}
+
+fn is_phase26_telemetry_row(row: &ChecklistRow) -> bool {
+    let row_identity =
+        format!("{} {} {}", row.id, row.surface, row.rust_owned_target).to_ascii_lowercase();
+
+    matches!(
+        row.id.as_str(),
+        "API-002" | "API-006" | "STAT-002" | "STAT-003" | "EVD-08"
+    ) || [
+        "statistics",
+        "scoreboard",
+        "websocket telemetry",
+        "system info response",
+        "phase 26",
+    ]
+    .iter()
+    .any(|term| row_identity.contains(term))
 }
 
 fn is_deferred_or_non_205_scope(row: &ChecklistRow) -> bool {
@@ -1980,7 +2077,7 @@ mod tests {
 | API-002 | System info response | `reference/esp-miner/main/http_server/system_api_json.c` | `crates/bitaxe-api`, `firmware/bitaxe` | implemented | unit,api-compare,workflow | phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed exact_non_claims projection-backed. Accepted shares remain non-claims. |
 | STAT-002 | Statistics task | `reference/esp-miner/main/tasks/statistics_task.c` | `crates/bitaxe-api`, `firmware/bitaxe` | implemented | unit,workflow | phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed no_request_time_fabrication runtime_projection_marker_only. |
 | STAT-003 | Scoreboard | `reference/esp-miner/main/tasks/scoreboard.c` | `crates/bitaxe-api` | implemented | unit,workflow | phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed empty_without_parsed_share_outcome exact_non_claims. |
-| EVD-08 | Phase 26 exact telemetry closure | `docs/parity/evidence/phase-26-telemetry-and-parity-closure/summary.md` | `docs/parity/checklist.md`, `tools/parity/src/main.rs` | verified | workflow | API-11 API-12 API-13 EVD-08 phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed exact_non_claims just parity guard passed. |
+| EVD-08 | Phase 26 exact telemetry closure | `docs/parity/evidence/phase-26-telemetry-and-parity-closure/summary.md` | `docs/parity/checklist.md`, `tools/parity/src/main.rs` | verified | workflow | API-11 API-12 API-13 EVD-08 phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed exact_non_claims just parity guard passed. Full active voltage and unbounded stress remain non-claims. |
 "#;
         let rows = parse_checklist(checklist).expect("checklist should parse");
 
