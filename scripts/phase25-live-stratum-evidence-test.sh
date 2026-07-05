@@ -70,6 +70,58 @@ SH
 	printf '%s\n' "$exit_code" >"${path}.exit"
 }
 
+write_fake_detector_with_port() {
+	local path="$1"
+
+	cat >"$path" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'fake-detect-ultra205 invoked\n' >&2
+printf 'port=/dev/cu.usbmodemPHASE25\n'
+SH
+	chmod +x "$path"
+}
+
+write_fake_board_info() {
+	local path="$1"
+
+	cat >"$path" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'fake-board-info invoked: %s\n' "$*" >&2
+printf 'Chip type: ESP32-S3\n'
+SH
+	chmod +x "$path"
+}
+
+write_fake_live_capture() {
+	local path="$1"
+	local args_path="$2"
+	local status="$3"
+
+	cat >"$path" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' "$*" >"${PHASE25_FAKE_LIVE_CAPTURE_ARGS:?}"
+if [[ "${PHASE25_FAKE_LIVE_CAPTURE_STATUS:-observed}" == "observed" ]]; then
+	printf 'phase25_live_submit_response_status=observed redacted=true\n'
+	printf 'phase25_safe_stop_status=complete socket=stopped work_queue=invalidated active_work=invalidated mining=disabled hardware_control=disabled work_submission=disabled post_stop_snapshot=updated\n'
+	printf 'phase25_watchdog_checkpoint=socket decision=yield redacted=true\n'
+	exit 0
+fi
+
+printf 'phase25_safe_stop_status=complete socket=stopped mining=disabled hardware_control=disabled work_submission=disabled\n'
+printf 'phase25_watchdog_checkpoint=socket decision=yield redacted=true\n'
+exit 1
+SH
+	chmod +x "$path"
+	printf '%s\n' "$args_path" >"${path}.args-path"
+	printf '%s\n' "$status" >"${path}.status"
+}
+
 assert_full_evidence_slots_exist() {
 	local evidence_root="$1"
 	local slot
@@ -175,6 +227,75 @@ run_blocked_mode_test() {
 	assert_evidence_is_redacted "$evidence_root"
 }
 
+run_hardware_ready_invokes_live_capture_test() {
+	local fake_parity="${tmp_root}/fake-parity-live.sh"
+	local fake_detector="${tmp_root}/fake-detect-ultra205-live.sh"
+	local fake_board_info="${tmp_root}/fake-board-info.sh"
+	local fake_live_capture="${tmp_root}/fake-live-capture.sh"
+	local fake_live_capture_args="${tmp_root}/fake-live-capture.args"
+	local evidence_root="${tmp_root}/hardware-ready-root"
+	write_fake_parity "$fake_parity"
+	write_fake_detector_with_port "$fake_detector"
+	write_fake_board_info "$fake_board_info"
+	write_fake_live_capture "$fake_live_capture" "$fake_live_capture_args" "observed"
+
+	PHASE25_PARITY_COMMAND="$fake_parity" \
+	PHASE25_DETECT_COMMAND="$fake_detector" \
+	PHASE25_BOARD_INFO_COMMAND="$fake_board_info" \
+	PHASE25_LIVE_CAPTURE_COMMAND="$fake_live_capture" \
+	PHASE25_FAKE_LIVE_CAPTURE_ARGS="$fake_live_capture_args" \
+	PHASE25_FAKE_LIVE_CAPTURE_STATUS=observed \
+	"$wrapper" \
+		--evidence-root "$evidence_root" \
+		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+		--mode hardware \
+		--pool-credentials "${tmp_root}/sentinel-pool.invalid.json" \
+		--device-url "http://device.local" \
+		--duration-seconds 60 >"${tmp_root}/hardware-ready.stdout"
+
+	assert_full_evidence_slots_exist "$evidence_root"
+	assert_file_exists "$fake_live_capture_args"
+	assert_contains "$fake_live_capture_args" "board=205"
+	assert_contains "$fake_live_capture_args" "port=/dev/cu.usbmodemPHASE25"
+	assert_contains "$fake_live_capture_args" "redact-evidence=true"
+	assert_contains "${evidence_root}/share-outcome.md" "share_outcome: live_submit_response_observed"
+	assert_contains "${evidence_root}/safe-stop.md" "safe_stop_status: complete"
+	assert_contains "${evidence_root}/summary.md" "watchdog_responsiveness_status: passed"
+	assert_contains "${tmp_root}/hardware-ready.stdout" "phase25_evidence_status=live_submit_response_observed"
+	assert_not_contains "${evidence_root}/summary.md" "device.local"
+	assert_not_contains "${evidence_root}/summary.md" "sentinel-pool"
+}
+
+run_hardware_missing_prerequisites_skips_live_capture_test() {
+	local fake_parity="${tmp_root}/fake-parity-missing-prereqs.sh"
+	local fake_detector="${tmp_root}/fake-detect-ultra205-missing-prereqs.sh"
+	local fake_board_info="${tmp_root}/fake-board-info-missing-prereqs.sh"
+	local fake_live_capture="${tmp_root}/fake-live-capture-missing-prereqs.sh"
+	local fake_live_capture_args="${tmp_root}/fake-live-capture-missing-prereqs.args"
+	local evidence_root="${tmp_root}/hardware-missing-prereqs-root"
+	write_fake_parity "$fake_parity"
+	write_fake_detector_with_port "$fake_detector"
+	write_fake_board_info "$fake_board_info"
+	write_fake_live_capture "$fake_live_capture" "$fake_live_capture_args" "observed"
+
+	PHASE25_PARITY_COMMAND="$fake_parity" \
+	PHASE25_DETECT_COMMAND="$fake_detector" \
+	PHASE25_BOARD_INFO_COMMAND="$fake_board_info" \
+	PHASE25_LIVE_CAPTURE_COMMAND="$fake_live_capture" \
+	PHASE25_FAKE_LIVE_CAPTURE_ARGS="$fake_live_capture_args" \
+	"$wrapper" \
+		--evidence-root "$evidence_root" \
+		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+		--mode hardware >"${tmp_root}/hardware-missing-prereqs.stdout"
+
+	if [[ -e "$fake_live_capture_args" ]]; then
+		printf 'live capture helper must not run when prerequisites are missing\n' >&2
+		exit 1
+	fi
+	assert_contains "${evidence_root}/share-outcome.md" "share_outcome: blocked_safe_prerequisite"
+	assert_contains "${tmp_root}/hardware-missing-prereqs.stdout" "phase25_evidence_status=blocked_safe_prerequisite"
+}
+
 run_detector_failure_test() {
 	local fake_parity="${tmp_root}/fake-parity-detector.sh"
 	local fake_detector="${tmp_root}/fake-detect-ultra205.sh"
@@ -210,6 +331,8 @@ run_detector_failure_test() {
 
 run_device_url_validation_test
 run_blocked_mode_test
+run_hardware_ready_invokes_live_capture_test
+run_hardware_missing_prerequisites_skips_live_capture_test
 run_detector_failure_test
 
 printf 'phase25_live_stratum_evidence_test=passed\n'

@@ -136,6 +136,7 @@ readonly reference_commit="${PHASE25_REFERENCE_COMMIT:-$(git -C reference/esp-mi
 readonly detector_command="${PHASE25_DETECT_COMMAND:-just detect-ultra205}"
 readonly board_info_command="${PHASE25_BOARD_INFO_COMMAND:-espflash board-info --chip esp32s3 --non-interactive}"
 readonly parity_command="${PHASE25_PARITY_COMMAND:-bazel run //tools/parity:report --}"
+readonly live_capture_command="${PHASE25_LIVE_CAPTURE_COMMAND:-just flash-monitor}"
 
 mkdir -p "$evidence_root"
 
@@ -415,6 +416,48 @@ write_full_blocked_slots() {
 	write_allow_manifest "/dev/redacted-phase25" "$board_info_status" "safe-prerequisite-blocked" "workflow" "blocked_safe_prerequisite" "$safe_stop_status" "$watchdog_status"
 }
 
+write_live_capture_slots() {
+	local detected_port="$1"
+	local share_outcome="live_submit_response_observed"
+	local safe_stop_status="complete"
+	local watchdog_status="passed"
+	local conclusion="Phase 25 records detector-gated live submit-response evidence from the bounded live capture helper with redacted runtime-only inputs."
+
+	write_slot "package" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "Package identity was supplied to the bounded repo-owned live capture helper; no raw package bytes are committed." "$conclusion"
+	write_slot "detector" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "Detector passed for exactly one Ultra 205 session. The selected port is recorded only in mining-allow metadata." "$conclusion"
+	write_slot "board-info" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "Board-info passed for ESP32-S3 in the same detector-gated session." "$conclusion"
+	write_slot "command" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "Repo-owned bounded live capture helper was invoked with runtime-only local input paths and an explicit origin; raw values are not committed." "$conclusion"
+	write_slot "log" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "Live capture output was reduced to redacted status categories before evidence recording." "$conclusion"
+	write_slot "api" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "API target use was limited to the explicit origin supplied in the current detector-gated session." "$conclusion"
+	write_slot "websocket" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "WebSocket/live capture target use was limited to the explicit origin supplied in the current detector-gated session." "$conclusion"
+	write_slot "share-outcome" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "The bounded helper observed the Phase 25 live submit-response marker. Raw Stratum payloads, pool endpoints, workers, and share fields are not committed." "$conclusion"
+	write_slot "safe-stop" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "safe_stop_status: complete; socket=stopped; work_queue=invalidated; active_work=invalidated; mining=disabled; hardware_control=disabled; work_submission=disabled; post_stop_snapshot=updated." "$conclusion"
+	write_redaction_review
+	write_summary "passed" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "$conclusion"
+	write_allow_manifest "$detected_port" "passed" "live-submit-response" "hardware-smoke" "live-submit-response" "$safe_stop_status" "$watchdog_status"
+}
+
+write_live_capture_not_observed_slots() {
+	local detected_port="$1"
+	local share_outcome="blocked_safe_prerequisite"
+	local safe_stop_status="${live_capture_safe_stop_status:-blocked}"
+	local watchdog_status="${live_capture_watchdog_status:-blocked}"
+	local conclusion="Phase 25 attempted bounded detector-gated live capture, but no valid live submit-response marker was observed."
+
+	write_slot "package" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "Package identity was supplied to the bounded repo-owned live capture helper; no raw package bytes are committed." "$conclusion"
+	write_slot "detector" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "Detector passed for exactly one Ultra 205 session before the live capture attempt." "$conclusion"
+	write_slot "board-info" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "Board-info passed for ESP32-S3 before the live capture attempt." "$conclusion"
+	write_slot "command" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "Repo-owned bounded live capture helper was invoked with runtime-only local input paths and an explicit origin; raw values are not committed." "$conclusion"
+	write_slot "log" "blocked" "$share_outcome" "$safe_stop_status" "$watchdog_status" "Live capture output did not contain the required submit-response, safe-stop, and watchdog category markers." "$conclusion"
+	write_slot "api" "blocked" "$share_outcome" "$safe_stop_status" "$watchdog_status" "API/WebSocket promotion remains blocked because the live submit-response marker was not observed." "$conclusion"
+	write_slot "websocket" "blocked" "$share_outcome" "$safe_stop_status" "$watchdog_status" "WebSocket/live capture promotion remains blocked because the live submit-response marker was not observed." "$conclusion"
+	write_slot "share-outcome" "blocked" "$share_outcome" "$safe_stop_status" "$watchdog_status" "live_socket_response_not_observed after a bounded detector-gated live capture attempt. accepted/rejected shares remain non-claims." "$conclusion"
+	write_slot "safe-stop" "$safe_stop_status" "$share_outcome" "$safe_stop_status" "$watchdog_status" "safe_stop_status: ${safe_stop_status}; mining=disabled; hardware_control=disabled; work_submission=disabled." "$conclusion"
+	write_redaction_review
+	write_summary "passed" "passed" "$share_outcome" "$safe_stop_status" "$watchdog_status" "$conclusion"
+	write_allow_manifest "$detected_port" "passed" "safe-prerequisite-blocked" "workflow" "blocked_safe_prerequisite" "$safe_stop_status" "$watchdog_status"
+}
+
 write_detector_failure_slots() {
 	local blocker="$1"
 	local share_outcome="blocked_safe_prerequisite"
@@ -443,6 +486,68 @@ extract_detector_port() {
 	fi
 
 	printf '%s' "${detected_ports[0]}"
+}
+
+redacted_live_capture_output() {
+	local stdout_path="$1"
+	local stderr_path="$2"
+
+	LC_ALL=C tr -d '\000\r' <"$stdout_path"
+	printf '\n'
+	LC_ALL=C tr -d '\000\r' <"$stderr_path"
+}
+
+run_live_capture_attempt() {
+	local detected_port="$1"
+	local stdout_path
+	local stderr_path
+	local output
+	local status
+	local -a command_parts=()
+	local -a command_args=(
+		"board=205"
+		"port=${detected_port}"
+		"evidence-dir=${evidence_root}/live-capture-runtime"
+		"redact-evidence=true"
+		"duration-seconds=${duration_seconds:-60}"
+		"device-url=${device_url}"
+	)
+
+	if [[ -n "$pool_credentials" ]]; then
+		command_args+=("pool-credentials=${pool_credentials}")
+	fi
+	if [[ -n "$wifi_credentials" ]]; then
+		command_args+=("wifi-credentials=${wifi_credentials}")
+	fi
+
+	stdout_path="$(mktemp "${TMPDIR:-/tmp}/phase25-live-capture.stdout.XXXXXX")"
+	stderr_path="$(mktemp "${TMPDIR:-/tmp}/phase25-live-capture.stderr.XXXXXX")"
+	IFS=' ' read -r -a command_parts <<<"$live_capture_command"
+
+	set +e
+	"${command_parts[@]}" "${command_args[@]}" >"$stdout_path" 2>"$stderr_path"
+	status=$?
+	set -e
+
+	output="$(redacted_live_capture_output "$stdout_path" "$stderr_path")"
+	rm -f "$stdout_path" "$stderr_path"
+
+	live_capture_safe_stop_status="blocked"
+	if [[ "$output" == *"phase25_safe_stop_status=complete"* || "$output" == *"safe_stop_status: complete"* ]]; then
+		live_capture_safe_stop_status="complete"
+	fi
+
+	live_capture_watchdog_status="blocked"
+	if [[ "$output" == *"phase25_watchdog_checkpoint="* || "$output" == *"watchdog_responsiveness_status: passed"* || "$output" == *"watchdog_responsiveness_status=passed"* ]]; then
+		live_capture_watchdog_status="passed"
+	fi
+
+	if [[ "$status" -eq 0 && "$live_capture_safe_stop_status" == "complete" && "$live_capture_watchdog_status" == "passed" ]] &&
+		[[ "$output" == *"phase25_live_submit_response_status=observed"* || "$output" == *"phase25_live_socket_response=observed"* || "$output" == *"share_outcome: live_submit_response_observed"* ]]; then
+		return 0
+	fi
+
+	return 1
 }
 
 run_hardware_mode() {
@@ -482,7 +587,14 @@ run_hardware_mode() {
 		return 0
 	fi
 
-	write_full_blocked_slots "passed" "passed" "live_socket_response_not_observed"
+	if run_live_capture_attempt "$maybe_detected_port"; then
+		write_live_capture_slots "$maybe_detected_port"
+		${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-stratum-runtime --allowed-command "$(allowed_command_string)" >/dev/null
+		printf 'phase25_evidence_status=live_submit_response_observed redacted=true\n'
+		return 0
+	fi
+
+	write_live_capture_not_observed_slots "$maybe_detected_port"
 	${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-stratum-runtime --allowed-command "$(allowed_command_string)" >/dev/null
 	printf 'phase25_evidence_status=blocked_safe_prerequisite redacted=true\n'
 }
