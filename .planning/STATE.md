@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 25-01-PLAN.md
-last_updated: "2026-07-05T02:20:59.815Z"
+stopped_at: Completed 25-02-PLAN.md
+last_updated: "2026-07-05T02:27:59.532Z"
 last_activity: 2026-07-05
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 ## Current Position
 
 Phase: 25 (Live Stratum Runtime And Safe Stop) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-05
 
@@ -87,6 +87,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 24]: Phase 24 evidence preserves Phase 26 ownership of API, WebSocket, statistics, and scoreboard promotion.
 - [Phase 25]: Pure live Stratum lifecycle, submit response classification, and fake-pool behavior stay in crates/bitaxe-stratum without socket or credential-file ownership.
 - [Phase 25]: Accepted/rejected share classification requires SubmitIntent plus matching request id and typed StratumResponse; fake-pool outcomes remain deterministic STR-11 evidence only.
+- [Phase 25]: Kept Phase 25 live Stratum startup behind a distinct compile-time mode and acknowledgment pair so Phase 21 controlled evidence cannot start the socket path.
+- [Phase 25]: Evaluated typed Phase 22 production-mining preconditions before NVS pool settings access or TcpStream construction.
+- [Phase 25]: Used a named Phase 25 snapshot helper for safe-stop refresh without adding Phase 26 statistics or scoreboard semantics.
 
 ### Pending Todos
 
@@ -99,8 +102,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-05T02:20:59.813Z
-Stopped at: Completed 25-01-PLAN.md
+Last session: 2026-07-05T02:27:59.530Z
+Stopped at: Completed 25-02-PLAN.md
 Resume file: None
 
 ## Next Step

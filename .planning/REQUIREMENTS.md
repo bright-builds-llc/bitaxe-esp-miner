@@ -18,13 +18,13 @@ Requirements for the current milestone. Each maps to roadmap phases and must be 
 
 - [x] **SAFE-10**: Ultra 205 production mining requires fresh or explicitly bounded power, thermal, fan, voltage, and safety observations before BM1366 work dispatch is enabled.
 - [x] **SAFE-11**: Ultra 205 production mining fails closed with user-visible blocker reasons when safety prerequisites are stale, unavailable, unsafe, ambiguous, or undocumented.
-- [ ] **SAFE-12**: Ultra 205 production mining can stop in a bounded safe state with socket activity stopped, work queues drained or invalidated, mining disabled, hardware control disabled, and post-stop API/WebSocket state updated.
-- [ ] **SAFE-13**: Ultra 205 production mining preserves watchdog responsiveness under bounded socket, ASIC, API, WebSocket, and evidence-capture load.
+- [x] **SAFE-12**: Ultra 205 production mining can stop in a bounded safe state with socket activity stopped, work queues drained or invalidated, mining disabled, hardware control disabled, and post-stop API/WebSocket state updated.
+- [x] **SAFE-13**: Ultra 205 production mining preserves watchdog responsiveness under bounded socket, ASIC, API, WebSocket, and evidence-capture load.
 
 ### Stratum v1 Production Runtime
 
-- [ ] **STR-08**: Ultra 205 production mining uses a real Stratum v1 TCP socket lifecycle for connect, subscribe, authorize, difficulty/extranonce, notify, submit, response classification, reconnect, and safe stop.
-- [ ] **STR-09**: Ultra 205 production mining classifies at least one real pool response to a live ASIC-derived `mining.submit` as accepted, rejected, or explicitly blocked by a safe prerequisite.
+- [x] **STR-08**: Ultra 205 production mining uses a real Stratum v1 TCP socket lifecycle for connect, subscribe, authorize, difficulty/extranonce, notify, submit, response classification, reconnect, and safe stop.
+- [x] **STR-09**: Ultra 205 production mining classifies at least one real pool response to a live ASIC-derived `mining.submit` as accepted, rejected, or explicitly blocked by a safe prerequisite.
 - [ ] **STR-10**: Ultra 205 production mining redacts pool URLs, ports, workers, owner addresses, passwords, targets, extranonces, share payloads, and socket errors in committed logs and evidence.
 - [ ] **STR-11**: Ultra 205 production mining has deterministic fake-pool or fixture tests for subscribe, authorize, notify, clean-jobs, submit response, reconnect, fallback, and error classification behavior.
 
@@ -98,10 +98,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVD-08 | Phase 26 | Pending |
 | SAFE-10 | Phase 22 | Complete |
 | SAFE-11 | Phase 22 | Complete |
-| SAFE-12 | Phase 25 | Pending |
-| SAFE-13 | Phase 25 | Pending |
-| STR-08 | Phase 25 | Pending |
-| STR-09 | Phase 25 | Pending |
+| SAFE-12 | Phase 25 | Complete |
+| SAFE-13 | Phase 25 | Complete |
+| STR-08 | Phase 25 | Complete |
+| STR-09 | Phase 25 | Complete |
 | STR-10 | Phase 23 | Pending |
 | STR-11 | Phase 25 | Pending |
 | ASIC-09 | Phase 24 | Complete |
