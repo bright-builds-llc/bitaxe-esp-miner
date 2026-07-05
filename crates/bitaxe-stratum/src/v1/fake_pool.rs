@@ -1,19 +1,68 @@
+use std::fmt;
+
 use crate::error::StratumV1Error;
 use crate::jsonrpc::StratumRequestId;
+use crate::v1::live_runtime::LiveStratumRuntime;
 use crate::v1::messages::{StratumResponse, StratumV1ClientMessage, StratumV1ServerMessage};
 use crate::v1::state::{MiningRuntimeState, PoolLifecycleStatus, ShareDifficulty};
+use crate::v1::submit_response::SubmitClassification;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum FakePoolEvent {
     ExpectClient(StratumV1ClientMessage),
     SendServer(StratumV1ServerMessage),
     Disconnect,
     Timeout,
+    MalformedResponse,
+    BlockedPrerequisite { reason: &'static str },
+    FallbackActivation,
+    NoResponse,
+    ClassifySubmitResponse(StratumResponse),
+    ClassifyStaleSubmitResponse(StratumResponse),
+}
+
+impl fmt::Debug for FakePoolEvent {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ExpectClient(_) => formatter
+                .debug_struct("FakePoolEvent::ExpectClient")
+                .field("client_message", &"redacted")
+                .finish(),
+            Self::SendServer(_) => formatter
+                .debug_struct("FakePoolEvent::SendServer")
+                .field("server_message", &"redacted")
+                .finish(),
+            Self::Disconnect => formatter.write_str("FakePoolEvent::Disconnect"),
+            Self::Timeout => formatter.write_str("FakePoolEvent::Timeout"),
+            Self::MalformedResponse => formatter.write_str("FakePoolEvent::MalformedResponse"),
+            Self::BlockedPrerequisite { reason } => formatter
+                .debug_struct("FakePoolEvent::BlockedPrerequisite")
+                .field("reason", reason)
+                .finish(),
+            Self::FallbackActivation => formatter.write_str("FakePoolEvent::FallbackActivation"),
+            Self::NoResponse => formatter.write_str("FakePoolEvent::NoResponse"),
+            Self::ClassifySubmitResponse(_) => formatter
+                .debug_struct("FakePoolEvent::ClassifySubmitResponse")
+                .field("pool_response", &"redacted")
+                .finish(),
+            Self::ClassifyStaleSubmitResponse(_) => formatter
+                .debug_struct("FakePoolEvent::ClassifyStaleSubmitResponse")
+                .field("pool_response", &"redacted")
+                .finish(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FakePoolTranscript {
     pub events: Vec<FakePoolEvent>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FakePoolRuntimeReport {
+    pub state: MiningRuntimeState,
+    pub classifications: Vec<SubmitClassification>,
+    pub generation: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,6 +103,12 @@ impl FakePoolTranscript {
                 FakePoolEvent::Timeout => {
                     state.set_fallback_active(true);
                 }
+                FakePoolEvent::MalformedResponse
+                | FakePoolEvent::BlockedPrerequisite { .. }
+                | FakePoolEvent::FallbackActivation
+                | FakePoolEvent::NoResponse
+                | FakePoolEvent::ClassifySubmitResponse(_)
+                | FakePoolEvent::ClassifyStaleSubmitResponse(_) => {}
             }
         }
 
@@ -62,6 +117,17 @@ impl FakePoolTranscript {
         }
 
         Ok(state)
+    }
+
+    pub fn run_live_runtime(
+        &self,
+        _runtime: &mut LiveStratumRuntime,
+    ) -> Result<FakePoolRuntimeReport, StratumV1Error> {
+        Ok(FakePoolRuntimeReport {
+            state: MiningRuntimeState::default(),
+            classifications: Vec::new(),
+            generation: 0,
+        })
     }
 }
 
@@ -176,11 +242,13 @@ fn unexpected_client_message<T>() -> Result<T, StratumV1Error> {
 mod tests {
     use super::*;
     use crate::jsonrpc::StratumRequestId;
+    use crate::v1::live_runtime::{LivePoolCredentials, LiveRuntimeConfig};
     use crate::v1::messages::{
         ExtranonceAssignment, MiningNotify, PoolDifficulty, StratumResponse, StratumResponseError,
         StratumV1ClientMessage, StratumV1ServerMessage,
     };
-    use crate::v1::state::PoolLifecycleStatus;
+    use crate::v1::state::{PoolLifecycleStatus, WorkSubmissionGate};
+    use crate::v1::submit_response::{RedactedSubmitRejectReason, SubmitClassification};
 
     #[test]
     fn fake_pool_accepts_subscribe_authorize_notify_and_submit() {
@@ -275,6 +343,127 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[test]
+    fn fake_pool_phase25_live_runtime_sequences_subscribe_authorize_difficulty_and_notify() {
+        // Arrange
+        let transcript = FakePoolTranscript {
+            events: phase25_ready_events(false),
+        };
+        let mut runtime = live_runtime();
+
+        // Act
+        let report = transcript
+            .run_live_runtime(&mut runtime)
+            .expect("phase25 live runtime transcript should run");
+
+        // Assert
+        assert_eq!(report.state.lifecycle, PoolLifecycleStatus::Active);
+        assert_eq!(report.state.work_submission, WorkSubmissionGate::Ready);
+        assert_eq!(
+            report.state.maybe_pool_difficulty,
+            Some(PoolDifficulty { difficulty: 42.0 })
+        );
+        assert!(report.classifications.is_empty());
+    }
+
+    #[test]
+    fn fake_pool_phase25_classifies_accepted_and_rejected_only_in_deterministic_scope() {
+        // Arrange
+        let mut events = phase25_ready_events(false);
+        events.push(FakePoolEvent::ClassifySubmitResponse(success_response(7)));
+        events.push(FakePoolEvent::ClassifySubmitResponse(
+            rejected_submit_response(7, "low difficulty"),
+        ));
+        let transcript = FakePoolTranscript { events };
+        let mut runtime = live_runtime();
+
+        // Act
+        let report = transcript
+            .run_live_runtime(&mut runtime)
+            .expect("phase25 classification transcript should run");
+
+        // Assert
+        assert_eq!(
+            report.classifications,
+            vec![
+                SubmitClassification::Accepted,
+                SubmitClassification::Rejected {
+                    reason: RedactedSubmitRejectReason::PoolRejectedShare
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn fake_pool_phase25_clean_jobs_and_reconnect_block_stale_submit_classification() {
+        // Arrange
+        let mut events = phase25_ready_events(false);
+        events.push(FakePoolEvent::ClassifySubmitResponse(success_response(7)));
+        events.push(FakePoolEvent::SendServer(StratumV1ServerMessage::Notify(
+            notify_with_clean_jobs(true),
+        )));
+        events.push(FakePoolEvent::ClassifyStaleSubmitResponse(success_response(7)));
+        events.push(FakePoolEvent::SendServer(StratumV1ServerMessage::ClientReconnect));
+        let transcript = FakePoolTranscript { events };
+        let mut runtime = live_runtime();
+
+        // Act
+        let report = transcript
+            .run_live_runtime(&mut runtime)
+            .expect("phase25 clean-jobs transcript should run");
+
+        // Assert
+        assert_eq!(report.generation, 2);
+        assert!(report
+            .classifications
+            .contains(&SubmitClassification::Blocked {
+                reason: "stale_generation"
+            }));
+        assert!(report
+            .classifications
+            .contains(&SubmitClassification::Reconnect));
+    }
+
+    #[test]
+    fn fake_pool_phase25_fail_closed_paths_are_redaction_safe_non_accepted_outcomes() {
+        // Arrange
+        let transcript = FakePoolTranscript {
+            events: vec![
+                FakePoolEvent::BlockedPrerequisite {
+                    reason: "precondition_blocked",
+                },
+                FakePoolEvent::FallbackActivation,
+                FakePoolEvent::Timeout,
+                FakePoolEvent::MalformedResponse,
+                FakePoolEvent::Disconnect,
+                FakePoolEvent::NoResponse,
+            ],
+        };
+        let mut runtime = live_runtime();
+
+        // Act
+        let report = transcript
+            .run_live_runtime(&mut runtime)
+            .expect("phase25 fail-closed transcript should run");
+        let rendered = format!("{:?}", transcript.events);
+
+        // Assert
+        assert!(report.state.fallback_active);
+        assert!(report
+            .classifications
+            .contains(&SubmitClassification::Blocked {
+                reason: "precondition_blocked"
+            }));
+        assert!(report.classifications.contains(&SubmitClassification::Timeout));
+        assert!(report.classifications.contains(&SubmitClassification::Malformed));
+        assert!(report.classifications.contains(&SubmitClassification::Reconnect));
+        assert!(!report
+            .classifications
+            .contains(&SubmitClassification::Accepted));
+        assert!(!rendered.contains("low difficulty"));
+        assert!(!rendered.contains("00000000"));
+    }
+
     fn accepted_share_transcript() -> FakePoolTranscript {
         FakePoolTranscript {
             events: vec![
@@ -294,6 +483,32 @@ mod tests {
 
     fn accepted_share_clients() -> Vec<StratumV1ClientMessage> {
         vec![subscribe(), authorize(), submit_share(3)]
+    }
+
+    fn phase25_ready_events(clean_jobs: bool) -> Vec<FakePoolEvent> {
+        vec![
+            FakePoolEvent::ExpectClient(subscribe()),
+            FakePoolEvent::SendServer(StratumV1ServerMessage::Response(subscribe_response(1))),
+            FakePoolEvent::ExpectClient(authorize()),
+            FakePoolEvent::SendServer(StratumV1ServerMessage::Response(success_response(2))),
+            FakePoolEvent::SendServer(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
+                difficulty: 42.0,
+            })),
+            FakePoolEvent::SendServer(StratumV1ServerMessage::Notify(notify_with_clean_jobs(
+                clean_jobs,
+            ))),
+        ]
+    }
+
+    fn live_runtime() -> LiveStratumRuntime {
+        LiveStratumRuntime::new(LiveRuntimeConfig {
+            model: "ultra".to_owned(),
+            version: "205".to_owned(),
+            credentials: LivePoolCredentials {
+                username: "synthetic-user".to_owned(),
+                password: "x".to_owned(),
+            },
+        })
     }
 
     fn subscribe() -> StratumV1ClientMessage {
@@ -353,6 +568,10 @@ mod tests {
     }
 
     fn notify() -> MiningNotify {
+        notify_with_clean_jobs(true)
+    }
+
+    fn notify_with_clean_jobs(clean_jobs: bool) -> MiningNotify {
         MiningNotify {
             job_id: "job".to_owned(),
             prev_block_hash: "00".repeat(32),
@@ -362,7 +581,7 @@ mod tests {
             version: 0x2000_0004,
             nbits: 0x1705_ae3a,
             ntime: 0x6470_25b5,
-            clean_jobs: true,
+            clean_jobs,
         }
     }
 }
