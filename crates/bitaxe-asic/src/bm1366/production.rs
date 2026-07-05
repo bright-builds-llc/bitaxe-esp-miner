@@ -1,3 +1,143 @@
+//! BM1366 production-mode work and status primitives.
+//!
+//! Production types deliberately sit beside diagnostic BM1366 work so downstream
+//! firmware can interpret typed adapter actions without owning packet layout.
+
+use super::{
+    command::Bm1366AdapterAction,
+    packet::{FrameBytes, JobFrame, CMD_WRITE, GROUP_SINGLE, JOB_HEADER_TYPE},
+    work::{Bm1366JobId, Bm1366WorkFields, Bm1366WorkPayload},
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProductionWorkPayload {
+    job_id: Bm1366JobId,
+    payload: Bm1366WorkPayload,
+}
+
+impl ProductionWorkPayload {
+    #[must_use]
+    pub fn new(job_id: Bm1366JobId, fields: Bm1366WorkFields) -> Self {
+        Self {
+            job_id,
+            payload: Bm1366WorkPayload::new(job_id, fields),
+        }
+    }
+
+    #[must_use]
+    pub const fn job_id(&self) -> Bm1366JobId {
+        self.job_id
+    }
+
+    #[must_use]
+    pub const fn payload(&self) -> &Bm1366WorkPayload {
+        &self.payload
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Bm1366ProductionCommand {
+    SendProductionWork(ProductionWorkPayload),
+    ReadProductionResult,
+}
+
+impl Bm1366ProductionCommand {
+    #[must_use]
+    pub fn adapter_actions(self) -> Vec<Bm1366AdapterAction> {
+        match self {
+            Self::SendProductionWork(payload) => {
+                vec![Bm1366AdapterAction::WriteFrame(production_job_frame(&payload))]
+            }
+            Self::ReadProductionResult => vec![Bm1366AdapterAction::READ_RESULT_FRAME],
+        }
+    }
+}
+
+fn production_job_frame(payload: &ProductionWorkPayload) -> FrameBytes {
+    JobFrame::new(
+        JOB_HEADER_TYPE | GROUP_SINGLE | CMD_WRITE,
+        payload.payload().bytes(),
+    )
+    .expect("fixed production work payload length must fit BM1366 job frame")
+    .into_bytes()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProductionAsicBlocker {
+    PrerequisiteBlocked,
+    AsicInitFailed,
+    UartFailed,
+    ResetFailed,
+    ResultTimeout,
+    ResultMalformed,
+    WorkStale,
+    JobUncorrelated,
+    DuplicateResult,
+    WrongSession,
+    TargetMismatch,
+}
+
+impl ProductionAsicBlocker {
+    pub const ALL: [Self; 11] = [
+        Self::PrerequisiteBlocked,
+        Self::AsicInitFailed,
+        Self::UartFailed,
+        Self::ResetFailed,
+        Self::ResultTimeout,
+        Self::ResultMalformed,
+        Self::WorkStale,
+        Self::JobUncorrelated,
+        Self::DuplicateResult,
+        Self::WrongSession,
+        Self::TargetMismatch,
+    ];
+
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::PrerequisiteBlocked => "production_prerequisite_blocked",
+            Self::AsicInitFailed => "production_asic_init_failed",
+            Self::UartFailed => "production_uart_failed",
+            Self::ResetFailed => "production_reset_failed",
+            Self::ResultTimeout => "production_result_timeout",
+            Self::ResultMalformed => "production_result_malformed",
+            Self::WorkStale => "production_work_stale",
+            Self::JobUncorrelated => "production_job_uncorrelated",
+            Self::DuplicateResult => "production_duplicate_result",
+            Self::WrongSession => "production_wrong_session",
+            Self::TargetMismatch => "production_target_mismatch",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProductionAsicStatus {
+    InitializedForProduction,
+    WorkDispatched,
+    ResultCorrelated,
+    FailClosed { reason: ProductionAsicBlocker },
+}
+
+impl ProductionAsicStatus {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::InitializedForProduction => "production_initialized_for_production",
+            Self::WorkDispatched => "production_work_dispatched",
+            Self::ResultCorrelated => "production_result_correlated",
+            Self::FailClosed { .. } => "production_fail_closed",
+        }
+    }
+
+    #[must_use]
+    pub const fn reason(self) -> Option<ProductionAsicBlocker> {
+        match self {
+            Self::FailClosed { reason } => Some(reason),
+            Self::InitializedForProduction | Self::WorkDispatched | Self::ResultCorrelated => None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::bm1366::{
