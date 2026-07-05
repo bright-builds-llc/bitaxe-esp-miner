@@ -84,7 +84,7 @@ Plans:
   5. Operator can verify watchdog responsiveness under bounded socket, ASIC, API, WebSocket, and evidence-capture load.
 **Plans**: 3 plans
 Plans:
-- [ ] 25-01-PLAN.md — Create the pure live Stratum runtime, submit classifier, and deterministic fake-pool coverage.
+- [x] 25-01-PLAN.md — Create the pure live Stratum runtime, submit classifier, and deterministic fake-pool coverage.
 - [ ] 25-02-PLAN.md — Wire the firmware live socket adapter with safe-stop and watchdog postconditions.
 - [ ] 25-03-PLAN.md — Add detector-gated evidence tooling and exact parity closure.
 
@@ -108,7 +108,7 @@ Plans:
 | 22. Claim Ladder And Safety Preconditions | v1.1 | 3/3 | Complete    | 2026-07-04 |
 | 23. Redacted Operator Evidence Workflow | v1.1 | 4/4 | Complete    | 2026-07-04 |
 | 24. BM1366 Production Work Path | v1.1 | 4/4 | Complete    | 2026-07-05 |
-| 25. Live Stratum Runtime And Safe Stop | v1.1 | 0/3 | Not started | - |
+| 25. Live Stratum Runtime And Safe Stop | v1.1 | 1/3 | In Progress|  |
 | 26. Telemetry And Parity Closure | v1.1 | 0/TBD | Not started | - |
 
 ## Coverage

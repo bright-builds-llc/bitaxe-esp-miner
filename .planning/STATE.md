@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 24-04-PLAN.md
-last_updated: "2026-07-05T01:24:41.840Z"
+status: executing
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-07-05T02:20:59.815Z"
 last_activity: 2026-07-05
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  total_plans: 14
+  completed_plans: 12
+  percent: 86
 ---
 
 # Project State
@@ -22,13 +22,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
 
-**Current focus:** Phase 24 — bm1366-production-work-path
+**Current focus:** Phase 25 — Live Stratum Runtime And Safe Stop
 
 ## Current Position
 
-Phase: 25
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 25 (Live Stratum Runtime And Safe Stop) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-07-05
 
 Progress: [██████████] 100%
@@ -85,6 +85,8 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 24]: Phase 24 checklist rows stay implemented with unit,workflow evidence only; no hardware promotion branch was added.
 - [Phase 24]: Phase 24 evidence preserves Phase 25 ownership of live socket and share-response outcomes.
 - [Phase 24]: Phase 24 evidence preserves Phase 26 ownership of API, WebSocket, statistics, and scoreboard promotion.
+- [Phase 25]: Pure live Stratum lifecycle, submit response classification, and fake-pool behavior stay in crates/bitaxe-stratum without socket or credential-file ownership.
+- [Phase 25]: Accepted/rejected share classification requires SubmitIntent plus matching request id and typed StratumResponse; fake-pool outcomes remain deterministic STR-11 evidence only.
 
 ### Pending Todos
 
@@ -97,8 +99,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-05T01:12:08.985Z
-Stopped at: Completed 24-04-PLAN.md
+Last session: 2026-07-05T02:20:59.813Z
+Stopped at: Completed 25-01-PLAN.md
 Resume file: None
 
 ## Next Step
