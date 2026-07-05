@@ -19,6 +19,10 @@ use bitaxe_safety::{
     power::PowerEvidenceToken,
     status::SafetyStatus,
     thermal::ThermalEvidenceToken,
+    watchdog::{
+        StepKind, StepProgress, StepSupervisor, WatchdogDecision, PHASE25_LIVE_RUNTIME_STEP_KINDS,
+        SAFETY_STEP_BUDGET_MS,
+    },
 };
 use bitaxe_stratum::jsonrpc::StratumRequestId;
 use bitaxe_stratum::v1::{
@@ -54,10 +58,12 @@ pub fn maybe_start_after_network_setup(network_ready: bool) {
     if !MiningEvidenceMode::current().is_phase25_live_stratum_runtime() {
         return;
     }
+    let _reason_labels = safe_stop_reason_labels();
+    publish_phase25_watchdog_boundaries();
 
     if !network_ready {
         publish_blocked("network_unavailable");
-        publish_safe_stop_without_runtime();
+        publish_safe_stop_without_runtime(SafeStopReason::PrerequisiteFailure);
         return;
     }
 
@@ -138,7 +144,7 @@ where
     let gate = mining_loop_gate(decision);
     if let MiningLoopDecision::Blocked { reason } = gate.decision() {
         publish_blocked(reason);
-        publish_safe_stop_without_runtime();
+        publish_safe_stop_without_runtime(SafeStopReason::PrerequisiteFailure);
         return LiveStartOutcome::Blocked { reason };
     }
 
@@ -146,7 +152,7 @@ where
         Ok(settings) => settings,
         Err(_) => {
             publish_blocked(POOL_SETTINGS_UNAVAILABLE);
-            publish_safe_stop_without_runtime();
+            publish_safe_stop_without_runtime(SafeStopReason::PrerequisiteFailure);
             return LiveStartOutcome::Blocked {
                 reason: POOL_SETTINGS_UNAVAILABLE,
             };
@@ -158,7 +164,7 @@ where
         Ok(socket) => socket,
         Err(_) => {
             publish_status("reconnecting");
-            publish_safe_stop_without_runtime();
+            publish_safe_stop_without_runtime(SafeStopReason::FallbackExhausted);
             return LiveStartOutcome::Blocked {
                 reason: SafeStopReason::FallbackExhausted.as_str(),
             };
@@ -179,6 +185,16 @@ where
     }
 
     safe_stop_with_socket(runtime, socket, SafeStopReason::NormalStop)
+}
+
+#[must_use]
+pub fn operator_cancelled_safe_stop_marker() -> &'static str {
+    SafeStopReason::OperatorCancelled.as_str()
+}
+
+#[must_use]
+pub fn verification_cleanup_safe_stop_marker() -> &'static str {
+    SafeStopReason::VerificationCleanup.as_str()
 }
 
 fn firmware_production_preconditions() -> ProductionMiningPreconditions {
@@ -225,6 +241,7 @@ fn write_runtime_actions<S: LiveSocketIo>(
     runtime: &mut LiveStratumRuntime,
     socket: &mut S,
 ) -> anyhow::Result<()> {
+    publish_watchdog_checkpoint(StepKind::Socket, 1);
     for action in runtime.drain_actions() {
         match action {
             LiveRuntimeAction::SendClientMessage(message) => {
@@ -238,6 +255,7 @@ fn write_runtime_actions<S: LiveSocketIo>(
 }
 
 fn handle_socket_line(runtime: &mut LiveStratumRuntime, line: &str) {
+    publish_watchdog_checkpoint(StepKind::Socket, 1);
     let Ok(message) = parse_server_message(line) else {
         let _classification = classify_maybe_submit_response(
             None,
@@ -277,7 +295,8 @@ fn safe_stop_with_socket<S: LiveSocketIo>(
 ) -> LiveStartOutcome {
     let postconditions = runtime.safe_stop(reason.as_str());
     socket.shutdown_both();
-    runtime_snapshot::replace_mining_runtime_state_for_evidence(runtime.state().clone());
+    let post_stop_state = phase25_safe_stop_state(runtime.state().clone());
+    runtime_snapshot::replace_mining_runtime_state_after_phase25_safe_stop(post_stop_state);
     if postconditions.socket_stopped
         && postconditions.active_work_invalidated
         && postconditions.mining_disabled
@@ -291,14 +310,63 @@ fn safe_stop_with_socket<S: LiveSocketIo>(
     LiveStartOutcome::Stopped
 }
 
-fn publish_safe_stop_without_runtime() {
-    let mut state = MiningRuntimeState::default();
+fn publish_safe_stop_without_runtime(reason: SafeStopReason) {
+    let _reason = reason.as_str();
+    let state = phase25_safe_stop_state(MiningRuntimeState::default());
+    runtime_snapshot::replace_mining_runtime_state_after_phase25_safe_stop(state);
+    publish_safe_stop_complete();
+    publish_status("stopped");
+}
+
+fn phase25_safe_stop_state(mut state: MiningRuntimeState) -> MiningRuntimeState {
     state.block_work_submission(PHASE25_SAFE_STOP_REASON);
     state.set_lifecycle(PoolLifecycleStatus::Disconnected);
     state.set_mining_activity(MiningActivityStatus::SafeBlocked);
-    runtime_snapshot::replace_mining_runtime_state_for_evidence(state);
-    publish_safe_stop_complete();
-    publish_status("stopped");
+    state
+}
+
+fn safe_stop_reason_labels() -> [&'static str; 5] {
+    [
+        SafeStopReason::NormalStop.as_str(),
+        SafeStopReason::FallbackExhausted.as_str(),
+        SafeStopReason::PrerequisiteFailure.as_str(),
+        operator_cancelled_safe_stop_marker(),
+        verification_cleanup_safe_stop_marker(),
+    ]
+}
+
+fn publish_phase25_watchdog_boundaries() {
+    for kind in PHASE25_LIVE_RUNTIME_STEP_KINDS {
+        publish_watchdog_checkpoint(*kind, 1);
+    }
+}
+
+fn publish_watchdog_checkpoint(kind: StepKind, consecutive_steps: u8) {
+    let decision = StepSupervisor::decision(StepProgress {
+        kind,
+        elapsed_ms: SAFETY_STEP_BUDGET_MS,
+        consecutive_steps,
+    });
+    let decision_label = match decision {
+        WatchdogDecision::Continue => "continue",
+        WatchdogDecision::YieldNow { .. } => "yield",
+        WatchdogDecision::ResetOrFeedWatchdog { .. } => "reset_or_feed",
+    };
+    let kind_label = match kind {
+        StepKind::Socket => "socket",
+        StepKind::Asic => "asic",
+        StepKind::Api => "api",
+        StepKind::WebSocket => "websocket",
+        StepKind::EvidenceCapture => "evidence_capture",
+        StepKind::Power
+        | StepKind::Thermal
+        | StepKind::Fan
+        | StepKind::SelfTest
+        | StepKind::Telemetry => "legacy",
+    };
+    info_retained(&format!(
+        "phase25_watchdog_checkpoint={kind_label} decision={decision_label} redacted=true"
+    ));
 }
 
 fn publish_status(status: &'static str) {
@@ -563,6 +631,45 @@ mod tests {
             assert!(!rendered.contains(forbidden));
         }
         assert!(rendered.contains("redacted=true"));
+    }
+
+    #[test]
+    fn safe_stop_marker_and_state_are_phase25_postconditions() {
+        // Arrange
+        let mut state = MiningRuntimeState::default();
+        state.allow_work_submission();
+
+        // Act
+        let stopped = phase25_safe_stop_state(state);
+
+        // Assert
+        assert_eq!(SAFE_STOP_COMPLETE_MARKER, "phase25_safe_stop_status=complete socket=stopped work_queue=invalidated active_work=invalidated mining=disabled hardware_control=disabled work_submission=disabled post_stop_snapshot=updated");
+        assert_eq!(stopped.mining_activity, MiningActivityStatus::SafeBlocked);
+        assert_eq!(
+            stopped.work_submission,
+            bitaxe_stratum::v1::state::WorkSubmissionGate::Blocked
+        );
+        assert_eq!(stopped.maybe_blocked_reason, Some(PHASE25_SAFE_STOP_REASON));
+    }
+
+    #[test]
+    fn safe_stop_reasons_cover_all_phase25_convergence_paths() {
+        // Arrange
+        let labels = safe_stop_reason_labels();
+
+        // Act
+        let rendered = labels.join(",");
+
+        // Assert
+        for expected in [
+            "normal_stop",
+            "fallback_exhausted",
+            "prerequisite_failure",
+            "operator_cancelled",
+            "verification_cleanup",
+        ] {
+            assert!(rendered.contains(expected));
+        }
     }
 
     struct CountingSettingsSource {

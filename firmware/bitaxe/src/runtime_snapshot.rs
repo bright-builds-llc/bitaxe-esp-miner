@@ -76,6 +76,11 @@ pub fn replace_mining_runtime_state_for_evidence(mining: MiningRuntimeState) {
     });
 }
 
+/// Replaces API-visible mining state after Phase 25 safe stop completes.
+pub fn replace_mining_runtime_state_after_phase25_safe_stop(mining: MiningRuntimeState) {
+    replace_mining_runtime_state_for_evidence(mining);
+}
+
 /// Applies an API-visible identify command effect.
 pub fn apply_identify_mode_command(effect: IdentifyModeEffect) {
     let now_ms = uptime_millis();

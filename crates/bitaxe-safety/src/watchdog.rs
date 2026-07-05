@@ -28,7 +28,20 @@ pub enum StepKind {
     Fan,
     SelfTest,
     Telemetry,
+    Socket,
+    Asic,
+    Api,
+    WebSocket,
+    EvidenceCapture,
 }
+
+pub const PHASE25_LIVE_RUNTIME_STEP_KINDS: &[StepKind] = &[
+    StepKind::Socket,
+    StepKind::Asic,
+    StepKind::Api,
+    StepKind::WebSocket,
+    StepKind::EvidenceCapture,
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct StepProgress {
@@ -148,6 +161,44 @@ mod tests {
                 reason: "consecutive_step_limit_reached"
             }
         );
+    }
+
+    #[test]
+    fn phase25_live_runtime_step_kinds_use_existing_watchdog_thresholds() {
+        // Arrange
+        let kinds = PHASE25_LIVE_RUNTIME_STEP_KINDS;
+
+        // Act / Assert
+        for kind in kinds {
+            assert_eq!(
+                StepSupervisor::decision(StepProgress {
+                    kind: *kind,
+                    elapsed_ms: SAFETY_STEP_BUDGET_MS,
+                    consecutive_steps: 1,
+                }),
+                WatchdogDecision::Continue
+            );
+            assert_eq!(
+                StepSupervisor::decision(StepProgress {
+                    kind: *kind,
+                    elapsed_ms: 1,
+                    consecutive_steps: MAX_CONSECUTIVE_STEPS_BEFORE_YIELD,
+                }),
+                WatchdogDecision::YieldNow {
+                    reason: "consecutive_step_limit_reached"
+                }
+            );
+            assert_eq!(
+                StepSupervisor::decision(StepProgress {
+                    kind: *kind,
+                    elapsed_ms: SAFETY_STEP_BUDGET_MS + 1,
+                    consecutive_steps: 1,
+                }),
+                WatchdogDecision::ResetOrFeedWatchdog {
+                    reason: "step_budget_exceeded"
+                }
+            );
+        }
     }
 
     #[test]
