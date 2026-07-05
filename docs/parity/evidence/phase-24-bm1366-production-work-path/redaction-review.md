@@ -45,6 +45,7 @@ Committed Phase 24 evidence uses category labels and explicit non-claims. It doe
 ## exact_non_claims
 
 - nonzero version-mask and multi-midstate production support remain Phase 24 non-claims
+- nonce-vs-target proof and share-hash validation remain Phase 24 non-claims
 - accepted/rejected share outcomes remain Phase 25-owned non-claims
 - live Stratum socket success remains a Phase 25-owned non-claim
 - API/WebSocket/statistics/scoreboard promotion remains a Phase 26-owned non-claim

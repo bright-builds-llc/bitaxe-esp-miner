@@ -46,7 +46,9 @@ impl Bm1366ProductionCommand {
     pub fn adapter_actions(self) -> Vec<Bm1366AdapterAction> {
         match self {
             Self::SendProductionWork(payload) => {
-                vec![Bm1366AdapterAction::WriteFrame(production_job_frame(&payload))]
+                vec![Bm1366AdapterAction::WriteFrame(production_job_frame(
+                    &payload,
+                ))]
             }
             Self::ReadProductionResult => vec![Bm1366AdapterAction::READ_RESULT_FRAME],
         }
@@ -74,6 +76,10 @@ pub enum ProductionAsicBlocker {
     JobUncorrelated,
     DuplicateResult,
     WrongSession,
+    /// Stored work target context drifted before submit-intent preparation.
+    ///
+    /// This is a fail-closed context guard, not proof that a nonce satisfies a
+    /// pool target. Full nonce-vs-target validation remains outside Phase 24.
     TargetMismatch,
 }
 
@@ -146,8 +152,7 @@ mod tests {
     };
 
     use super::{
-        Bm1366ProductionCommand, ProductionAsicBlocker, ProductionAsicStatus,
-        ProductionWorkPayload,
+        Bm1366ProductionCommand, ProductionAsicBlocker, ProductionAsicStatus, ProductionWorkPayload,
     };
 
     fn sample_fields() -> Bm1366WorkFields {

@@ -14,7 +14,7 @@ Phase 24 proves that parsed BM1366 nonce/result observations must correlate to c
 
 ## Correlation Gate Evidence
 
-`crates/bitaxe-stratum/src/v1/production_work.rs` defines `SubmitIntent`, `CorrelationOutcome`, and correlation inputs that include `PoolSessionGeneration`. A BM1366 nonce/result observation is blocked when the active work is missing, stale, duplicated, associated with the wrong session generation, or incompatible with the production target context.
+`crates/bitaxe-stratum/src/v1/production_work.rs` defines `SubmitIntent`, `CorrelationOutcome`, and correlation inputs that include `PoolSessionGeneration`. A BM1366 nonce/result observation is blocked when the active work is missing, stale, duplicated, associated with the wrong session generation, or inconsistent with the stored work context. The stored target-context check is a fail-closed context-drift guard only; Phase 24 does not recompute a share/header hash and does not prove the nonce satisfies the pool target.
 
 The fail-closed blocker taxonomy is provided by `ProductionAsicBlocker` from `crates/bitaxe-asic/src/bm1366/production.rs`. These blockers render stable labels for evidence and firmware status without raw runtime values.
 
@@ -37,6 +37,7 @@ bazel build //firmware/bitaxe:firmware
 ## exact_non_claims
 
 - nonzero version-mask and multi-midstate production support remain Phase 24 non-claims
+- nonce-vs-target proof and share-hash validation remain Phase 24 non-claims
 - accepted/rejected share outcomes remain Phase 25-owned non-claims
 - live Stratum socket success remains a Phase 25-owned non-claim
 - API/WebSocket/statistics/scoreboard promotion remains a Phase 26-owned non-claim

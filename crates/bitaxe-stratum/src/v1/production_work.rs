@@ -281,7 +281,7 @@ impl ProductionWorkRegistry {
             };
         }
 
-        if !target_context_matches_nonce_result(record, observation.result) {
+        if !stored_work_context_matches_nonce_result(record, observation.result) {
             return CorrelationOutcome::Blocked {
                 reason: ProductionAsicBlocker::TargetMismatch,
             };
@@ -331,10 +331,12 @@ impl ProductionWorkRegistry {
     }
 }
 
-fn target_context_matches_nonce_result(
+fn stored_work_context_matches_nonce_result(
     record: &ProductionWorkRecord,
     result: Bm1366NonceResult,
 ) -> bool {
+    // This guards stored work-context drift before submit-intent creation. It is
+    // deliberately not a nonce-vs-target proof or share-hash validation.
     let work_compact_nbits = u32::from_le_bytes(record.work.fields.nbits);
     record.target_context.compact_nbits == work_compact_nbits
         && result.job_id.lookup_key() == record.asic_job_id.lookup_key()
@@ -707,7 +709,7 @@ mod tests {
     }
 
     #[test]
-    fn production_correlation_rejects_target_mismatch() {
+    fn production_correlation_rejects_stored_target_context_drift() {
         // Arrange
         let mut registry = registry_with_dispatched_work(Bm1366JobId::new(0xa0));
         registry.force_active_compact_nbits_for_test(Bm1366JobId::new(0xa0), 0x1d00_ffff);
