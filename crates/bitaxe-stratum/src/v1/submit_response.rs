@@ -98,11 +98,35 @@ impl SubmitClassification {
 
 #[must_use]
 pub fn classify_submit_response(
-    _intent: &SubmitIntent,
-    _request_id: StratumRequestId,
-    _observation: SubmitResponseObservation,
+    intent: &SubmitIntent,
+    request_id: StratumRequestId,
+    observation: SubmitResponseObservation,
 ) -> SubmitClassification {
-    SubmitClassification::NoObservedShare
+    match observation {
+        SubmitResponseObservation::Response(response) => {
+            classify_typed_response(request_id, response)
+        }
+        SubmitResponseObservation::FakePoolOnlyResponse(_) => {
+            SubmitClassification::NoObservedShare
+        }
+        SubmitResponseObservation::StaleGeneration {
+            observed_generation,
+            response,
+        } => {
+            if observed_generation != intent.generation {
+                return SubmitClassification::Blocked {
+                    reason: "stale_generation",
+                };
+            }
+
+            classify_typed_response(request_id, response)
+        }
+        SubmitResponseObservation::Timeout => SubmitClassification::Timeout,
+        SubmitResponseObservation::Reconnect => SubmitClassification::Reconnect,
+        SubmitResponseObservation::Malformed => SubmitClassification::Malformed,
+        SubmitResponseObservation::Blocked { reason } => SubmitClassification::Blocked { reason },
+        SubmitResponseObservation::SocketStopped => SubmitClassification::Stopped,
+    }
 }
 
 #[must_use]
@@ -120,15 +144,34 @@ pub fn classify_maybe_submit_response(
     classify_submit_response(intent, request_id, observation)
 }
 
+fn classify_typed_response(
+    request_id: StratumRequestId,
+    response: StratumResponse,
+) -> SubmitClassification {
+    if response.maybe_id != Some(request_id) {
+        return SubmitClassification::NoObservedShare;
+    }
+
+    if response.success {
+        return SubmitClassification::Accepted;
+    }
+
+    let reason = if response.maybe_error.is_some() {
+        RedactedSubmitRejectReason::PoolRejectedShare
+    } else {
+        RedactedSubmitRejectReason::Unknown
+    };
+    SubmitClassification::Rejected { reason }
+}
+
 #[cfg(test)]
 mod tests {
-    use bitaxe_asic::bm1366::{
-        result::Bm1366NonceResult,
-        work::Bm1366JobId,
-    };
+    use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
 
     use super::*;
-    use crate::v1::messages::{ExtranonceAssignment, MiningNotify, PoolDifficulty, StratumResponse, StratumResponseError};
+    use crate::v1::messages::{
+        ExtranonceAssignment, MiningNotify, PoolDifficulty, StratumResponse, StratumResponseError,
+    };
     use crate::v1::mining::MiningWorkBuilder;
     use crate::v1::production_work::{
         CorrelationOutcome, ProductionNonceObservation, ProductionWorkRegistry,
@@ -175,7 +218,10 @@ mod tests {
                 reason: RedactedSubmitRejectReason::PoolRejectedShare
             }
         );
-        assert_eq!(RedactedSubmitRejectReason::PoolRejectedShare.as_str(), "pool_rejected_share");
+        assert_eq!(
+            RedactedSubmitRejectReason::PoolRejectedShare.as_str(),
+            "pool_rejected_share"
+        );
         assert!(!rendered_observation.contains("raw pool reject text"));
     }
 
@@ -240,7 +286,8 @@ mod tests {
         let request_id = StratumRequestId::new(7);
 
         // Act
-        let timeout = classify_submit_response(&intent, request_id, SubmitResponseObservation::Timeout);
+        let timeout =
+            classify_submit_response(&intent, request_id, SubmitResponseObservation::Timeout);
         let reconnect =
             classify_submit_response(&intent, request_id, SubmitResponseObservation::Reconnect);
         let malformed =
