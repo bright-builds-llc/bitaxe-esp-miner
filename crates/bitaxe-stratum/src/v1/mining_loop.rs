@@ -233,7 +233,7 @@ impl GuardedMiningLoopInputs {
 #[cfg(test)]
 mod mining_loop_tests {
     use bitaxe_asic::bm1366::{
-        command::Bm1366Command, result::Bm1366NonceResult, work::Bm1366JobId,
+        production::Bm1366ProductionCommand, result::Bm1366NonceResult, work::Bm1366JobId,
     };
     use bitaxe_config::ultra_205_defaults;
     use bitaxe_safety::{
@@ -247,7 +247,7 @@ mod mining_loop_tests {
     use super::*;
     use crate::v1::messages::{ExtranonceAssignment, MiningNotify, PoolDifficulty};
     use crate::v1::mining::MiningWorkBuilder;
-    use crate::v1::queue::MiningWorkQueue;
+    use crate::v1::production_work::ProductionWorkRegistry;
     use crate::v1::state::{MiningActivityStatus, MiningRuntimeState, WorkSubmissionGate};
 
     #[test]
@@ -386,9 +386,9 @@ mod mining_loop_tests {
     #[test]
     fn blocked_production_precondition_stores_exact_reason_before_dispatch() {
         // Arrange
-        let mut queue = MiningWorkQueue::new();
-        queue
-            .enqueue_work(sample_work(Bm1366JobId::new(0x28)))
+        let mut registry = ProductionWorkRegistry::new();
+        registry
+            .enqueue_pool_work(sample_work(Bm1366JobId::new(0x28)))
             .expect("sample work should enqueue");
         let gate = MiningLoopGate {
             production_preconditions: ProductionMiningPreconditionDecision::blocked(
@@ -400,7 +400,7 @@ mod mining_loop_tests {
             gate,
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
-            work_queue: queue,
+            production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
             maybe_nonce_result: Some(sample_nonce_result(Bm1366JobId::new(0x28))),
         };
@@ -424,17 +424,17 @@ mod mining_loop_tests {
     }
 
     #[test]
-    fn ready_mining_loop_turns_queued_work_into_typed_bm1366_dispatch() {
+    fn ready_mining_loop_dispatches_production_work_command() {
         // Arrange
-        let mut queue = MiningWorkQueue::new();
-        queue
-            .enqueue_work(sample_work(Bm1366JobId::new(0x28)))
+        let mut registry = ProductionWorkRegistry::new();
+        registry
+            .enqueue_pool_work(sample_work(Bm1366JobId::new(0x28)))
             .expect("sample work should enqueue");
         let inputs = GuardedMiningLoopInputs {
             gate: ready_gate(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::FakePool,
-            work_queue: queue,
+            production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
             maybe_nonce_result: None,
         };
@@ -446,11 +446,11 @@ mod mining_loop_tests {
         let dispatch = plan
             .maybe_dispatch
             .expect("ready queue should emit typed BM1366 work");
-        assert_eq!(dispatch.fields.nbits, 0x1705_ae3a_u32.to_le_bytes());
-        let maybe_command: Option<Bm1366Command> = dispatch.maybe_command;
+        let maybe_command: Option<Bm1366ProductionCommand> = dispatch.maybe_production_command;
         assert!(matches!(
             maybe_command,
-            Some(Bm1366Command::SendDiagnosticWork(_))
+            Some(Bm1366ProductionCommand::SendProductionWork(payload))
+                if payload.job_id() == Bm1366JobId::new(0x28)
         ));
         assert_eq!(
             plan.runtime_state.work_submission,
@@ -463,18 +463,18 @@ mod mining_loop_tests {
     }
 
     #[test]
-    fn ready_mining_loop_converts_active_nonce_result_with_empty_pending_queue_into_share() {
+    fn ready_mining_loop_correlates_active_nonce_result_into_submit_intent() {
         // Arrange
-        let mut queue = MiningWorkQueue::new();
+        let mut registry = ProductionWorkRegistry::new();
         let job_id = Bm1366JobId::new(0x28);
-        queue
-            .enqueue_work(sample_work(job_id))
+        registry
+            .enqueue_pool_work(sample_work(job_id))
             .expect("sample work should enqueue");
         let dispatch_plan = GuardedMiningLoopInputs {
             gate: ready_gate(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
-            work_queue: queue,
+            production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
             maybe_nonce_result: None,
         }
@@ -484,7 +484,7 @@ mod mining_loop_tests {
             gate: ready_gate(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
-            work_queue: dispatch_plan.work_queue,
+            production_registry: dispatch_plan.production_registry,
             runtime_state: MiningRuntimeState::default(),
             maybe_nonce_result: Some(sample_nonce_result(job_id)),
         };
@@ -494,41 +494,41 @@ mod mining_loop_tests {
 
         // Assert
         assert!(plan.maybe_dispatch.is_none());
-        let share = plan
-            .maybe_share_submission
-            .expect("valid tracked job should produce a share submission");
-        assert_eq!(share.job_id, "job-40");
-        assert_eq!(share.nonce, 0x1234_5678);
+        let submit_intent = plan
+            .maybe_submit_intent
+            .expect("valid tracked job should produce a submit intent");
+        assert_eq!(submit_intent.submission().job_id, "job-40");
+        assert_eq!(submit_intent.submission().nonce, 0x1234_5678);
     }
 
     #[test]
-    fn ready_mining_loop_converts_active_nonce_result_when_pending_front_job_differs() {
+    fn ready_mining_loop_correlates_active_result_and_dispatches_pending_work() {
         // Arrange
         let active_job_id = Bm1366JobId::new(0x28);
         let pending_job_id = Bm1366JobId::new(0x30);
-        let mut queue = MiningWorkQueue::new();
-        queue
-            .enqueue_work(sample_work(active_job_id))
+        let mut registry = ProductionWorkRegistry::new();
+        registry
+            .enqueue_pool_work(sample_work(active_job_id))
             .expect("active sample work should enqueue");
-        let mut queue = GuardedMiningLoopInputs {
+        let mut registry = GuardedMiningLoopInputs {
             gate: ready_gate(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
-            work_queue: queue,
+            production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
             maybe_nonce_result: None,
         }
         .plan()
         .expect("active work should dispatch")
-        .work_queue;
-        queue
-            .enqueue_work(sample_work(pending_job_id))
+        .production_registry;
+        registry
+            .enqueue_pool_work(sample_work(pending_job_id))
             .expect("pending sample work should enqueue");
         let inputs = GuardedMiningLoopInputs {
             gate: ready_gate(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
-            work_queue: queue,
+            production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
             maybe_nonce_result: Some(sample_nonce_result(active_job_id)),
         };
@@ -537,30 +537,30 @@ mod mining_loop_tests {
         let plan = inputs.plan().expect("valid result should produce a plan");
 
         // Assert
-        let share = plan
-            .maybe_share_submission
-            .expect("active work should produce a share submission");
-        assert_eq!(share.job_id, "job-40");
+        let submit_intent = plan
+            .maybe_submit_intent
+            .expect("active work should produce a submit intent");
+        assert_eq!(submit_intent.submission().job_id, "job-40");
         let dispatch = plan
             .maybe_dispatch
             .expect("pending work should still dispatch");
-        assert_eq!(dispatch.fields.nbits, 0x1705_ae3a_u32.to_le_bytes());
+        assert!(matches!(
+            dispatch.maybe_production_command,
+            Some(Bm1366ProductionCommand::SendProductionWork(payload))
+                if payload.job_id() == pending_job_id
+        ));
     }
 
     #[test]
-    fn ready_mining_loop_rejects_nonce_result_for_invalidated_job() {
+    fn ready_mining_loop_blocks_uncorrelated_nonce_result_reason() {
         // Arrange
-        let mut queue = MiningWorkQueue::new();
+        let registry = ProductionWorkRegistry::new();
         let job_id = Bm1366JobId::new(0x28);
-        queue
-            .enqueue_work(sample_work(job_id))
-            .expect("sample work should enqueue");
-        queue.clear_jobs();
         let inputs = GuardedMiningLoopInputs {
             gate: ready_gate(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
-            work_queue: queue,
+            production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
             maybe_nonce_result: Some(sample_nonce_result(job_id)),
         };
@@ -572,7 +572,12 @@ mod mining_loop_tests {
 
         // Assert
         assert!(plan.maybe_dispatch.is_none());
-        assert!(plan.maybe_share_submission.is_none());
+        assert!(plan.maybe_submit_intent.is_none());
+        assert_eq!(
+            plan.runtime_state.maybe_blocked_reason,
+            Some("production_job_uncorrelated")
+        );
+        assert_eq!(plan.runtime_state.work_submission, WorkSubmissionGate::Blocked);
     }
 
     fn ready_gate() -> MiningLoopGate {
