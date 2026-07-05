@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 25-03-PLAN.md
-last_updated: "2026-07-05T02:49:51.003Z"
+status: executing
+stopped_at: Completed 26-01-PLAN.md
+last_updated: "2026-07-05T04:14:57.936Z"
 last_activity: 2026-07-05
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
-  percent: 100
+  total_plans: 18
+  completed_plans: 15
+  percent: 83
 ---
 
 # Project State
@@ -22,13 +22,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
 
-**Current focus:** Phase 25 — Live Stratum Runtime And Safe Stop
+**Current focus:** Phase 26 — Telemetry And Parity Closure
 
 ## Current Position
 
-Phase: 26
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 26 (Telemetry And Parity Closure) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-07-05
 
 Progress: [██████████] 100%
@@ -93,6 +93,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 25]: Recorded Phase 25 committed evidence as blocked-safe-prerequisite rather than accepted/rejected live share proof because no detector-gated live pool response artifact was produced.
 - [Phase 25]: Allowed Phase 25 mining-allow manifests only through the repo-owned wrapper command surface while preserving raw Stratum, unsafe hardware-control, erase, rollback, and stale-target rejection.
 - [Phase 25]: Promoted STR-11 to verified from deterministic unit coverage, while keeping STR-08, STR-09, SAFE-12, and SAFE-13 at implemented/workflow scope without hardware overclaiming.
+- [Phase 26]: Kept Phase 26 telemetry projection as a pure stratum v1 core module exported through Rust and Bazel.
+- [Phase 26]: Accepted and rejected projection counters advance only for current-generation SubmitClassification Accepted or Rejected events.
+- [Phase 26]: Projection sample markers drain at most once per runtime boundary to prevent request-time statistics fabrication.
 
 ### Pending Todos
 
@@ -108,11 +111,12 @@ None yet.
 | Phase | Plan | Duration | Tasks | Files | Recorded |
 | --- | --- | --- | --- | --- | --- |
 | 25 | 03 | 7min | 3 | 14 | 2026-07-05 |
+| Phase 26 P01 | 4min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-07-05T02:37:19.157Z
-Stopped at: Completed 25-03-PLAN.md
+Last session: 2026-07-05T04:14:57.934Z
+Stopped at: Completed 26-01-PLAN.md
 Resume file: None
 
 ## Next Step

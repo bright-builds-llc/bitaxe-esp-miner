@@ -97,7 +97,12 @@ Plans:
   2. Operator can observe `/api/ws` and `/api/ws/live` stream redacted, session-correlated mining telemetry without stale active-mining state after stop.
   3. Statistics, scoreboard, and share counters do not advance unless corresponding runtime events and parsed pool responses exist.
   4. Parity checklist updates promote only exact v1.1 claims proven by artifacts and preserve explicit non-claims for deferred surfaces.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [x] 26-01-PLAN.md — Create the shared runtime-event projection and sample-marker contract.
+- [ ] 26-02-PLAN.md — Add pure API/WebSocket projection view builders.
+- [ ] 26-03-PLAN.md — Wire Phase 25 runtime producers and firmware consumers into the projection.
+- [ ] 26-04-PLAN.md — Close Phase 26 evidence, checklist guardrails, and validation metadata.
 
 ## Progress
 
@@ -109,7 +114,7 @@ Plans:
 | 23. Redacted Operator Evidence Workflow | v1.1 | 4/4 | Complete    | 2026-07-04 |
 | 24. BM1366 Production Work Path | v1.1 | 4/4 | Complete    | 2026-07-05 |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 3/3 | Complete    | 2026-07-05 |
-| 26. Telemetry And Parity Closure | v1.1 | 0/TBD | Not started | - |
+| 26. Telemetry And Parity Closure | v1.1 | 1/4 | In Progress|  |
 
 ## Coverage
 
