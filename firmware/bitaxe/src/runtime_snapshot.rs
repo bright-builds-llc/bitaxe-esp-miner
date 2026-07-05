@@ -197,3 +197,107 @@ fn uptime_millis() -> u64 {
 
     (uptime_micros as u64) / 1_000
 }
+
+#[cfg(test)]
+mod tests {
+    use bitaxe_stratum::v1::{
+        messages::PoolDifficulty,
+        production_work::PoolSessionGeneration,
+        state::{HashrateInputs, MiningActivityStatus, PoolLifecycleStatus, WorkSubmissionGate},
+        submit_response::SubmitClassification,
+        telemetry_projection::RuntimeProjectionSampleSource,
+    };
+
+    use super::*;
+
+    #[test]
+    fn runtime_projection_lifecycle_and_hashrate_events_update_visible_state() {
+        // Arrange
+        reset_command_visible_state_for_test();
+        let inputs = HashrateInputs {
+            hashes_done: 8_192,
+            elapsed_ms: 2_048,
+            rolling_hashrate_hs: 4_096.0,
+        };
+
+        // Act
+        publish_runtime_lifecycle(PoolLifecycleStatus::Active);
+        publish_runtime_hashrate_inputs(inputs);
+        publish_runtime_pool_difficulty(PoolDifficulty { difficulty: 16.0 });
+
+        // Assert
+        let mining = mining_runtime_state();
+        assert_eq!(mining.lifecycle, PoolLifecycleStatus::Active);
+        assert_eq!(mining.hashrate_inputs, inputs);
+        assert_eq!(
+            mining.maybe_pool_difficulty,
+            Some(PoolDifficulty { difficulty: 16.0 })
+        );
+        assert_eq!(mining.counters.accepted, 0);
+        assert_eq!(mining.counters.rejected, 0);
+    }
+
+    #[test]
+    fn runtime_projection_sample_markers_drain_once_per_producer_boundary() {
+        // Arrange
+        reset_command_visible_state_for_test();
+
+        // Act
+        publish_runtime_bounded_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
+        let maybe_first_marker = drain_pending_runtime_sample_marker_for_test();
+        let maybe_second_marker = drain_pending_runtime_sample_marker_for_test();
+
+        // Assert
+        let first_marker = maybe_first_marker.expect("runtime boundary should emit sample marker");
+        assert_eq!(first_marker.source, RuntimeProjectionSampleSource::RuntimeEvent);
+        assert!(maybe_second_marker.is_none());
+    }
+
+    #[test]
+    fn runtime_projection_submit_classification_gates_counters_by_generation() {
+        // Arrange
+        reset_command_visible_state_for_test();
+        let current_generation = PoolSessionGeneration::initial();
+        let stale_generation = current_generation.next();
+
+        // Act
+        publish_runtime_submit_classification(
+            stale_generation,
+            SubmitClassification::Accepted,
+            None,
+        );
+        publish_runtime_submit_classification(
+            current_generation,
+            SubmitClassification::Blocked {
+                reason: "submit_intent_missing",
+            },
+            None,
+        );
+
+        // Assert
+        let mining = mining_runtime_state();
+        assert_eq!(mining.counters.accepted, 0);
+        assert_eq!(mining.counters.rejected, 0);
+    }
+
+    #[test]
+    fn runtime_projection_safe_stop_resets_active_mining_before_snapshot_collection() {
+        // Arrange
+        reset_command_visible_state_for_test();
+        publish_runtime_work_submission_ready();
+
+        // Act
+        publish_runtime_blocked("phase25_safe_stop");
+        publish_runtime_safe_stopped("phase25_safe_stop");
+        let snapshot = collect_api_snapshot();
+
+        // Assert
+        assert_eq!(snapshot.mining.lifecycle, PoolLifecycleStatus::Disconnected);
+        assert_eq!(snapshot.mining.mining_activity, MiningActivityStatus::SafeBlocked);
+        assert_eq!(snapshot.mining.work_submission, WorkSubmissionGate::Blocked);
+        assert_eq!(
+            snapshot.mining.maybe_blocked_reason,
+            Some("phase25_safe_stop")
+        );
+    }
+}
