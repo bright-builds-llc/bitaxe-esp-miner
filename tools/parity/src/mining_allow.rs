@@ -23,6 +23,7 @@ const ALLOWED_SURFACES: &[&str] = &[
     "mining-smoke",
     "bounded-soak",
     "parity-redaction",
+    "live-stratum-runtime",
 ];
 const ALLOWED_CLAIM_TIERS: &[&str] = &[
     "diagnostic-chip-detect",
@@ -32,6 +33,8 @@ const ALLOWED_CLAIM_TIERS: &[&str] = &[
     "bounded-soak",
     "unsupported-pending",
     "parity-redaction",
+    "live-submit-response",
+    "safe-prerequisite-blocked",
 ];
 const PROHIBITED_COMMAND_TOKENS: &[&str] = &[
     "erase-flash",
@@ -44,6 +47,9 @@ const PROHIBITED_COMMAND_TOKENS: &[&str] = &[
     "voltage-control",
     "fan-control",
     "stratum",
+    "rollback",
+    "network-scan",
+    "network_scan",
 ];
 
 #[derive(Debug, Deserialize)]
@@ -141,6 +147,7 @@ pub(crate) fn validate_mining_allow_manifest(
     validate_required_stop_contract(&mut validation_errors, manifest);
     validate_live_pool_smoke_scope(&mut validation_errors, manifest);
     validate_bounded_soak_scope(&mut validation_errors, manifest);
+    validate_phase25_live_stratum_scope(&mut validation_errors, manifest);
 
     MiningAllowReport { validation_errors }
 }
@@ -219,7 +226,7 @@ fn validate_detector_gate(errors: &mut Vec<String>, manifest: &MiningAllowManife
         errors.push("detector port mismatch".to_owned());
     }
 
-    if manifest.board_info_status != "passed" {
+    if manifest.board_info_status != "passed" && !is_phase25_safe_prerequisite_blocker(manifest) {
         errors.push("board-info must pass".to_owned());
     }
 
@@ -281,8 +288,17 @@ fn validate_surface_and_claim(errors: &mut Vec<String>, manifest: &MiningAllowMa
         ));
     }
 
+    if evidence_class_matches_claim(manifest) {
+        return;
+    }
+
     let expected_evidence_class = expected_evidence_class(&manifest.claim_tier);
-    if manifest.evidence_class != expected_evidence_class {
+    if manifest.claim_tier == "safe-prerequisite-blocked" {
+        errors.push(
+            "claim_tier `safe-prerequisite-blocked` requires evidence_class `workflow` or `hardware-smoke`"
+                .to_owned(),
+        );
+    } else {
         errors.push(format!(
             "claim_tier `{}` requires evidence_class `{expected_evidence_class}`",
             manifest.claim_tier
@@ -439,6 +455,115 @@ fn validate_bounded_soak_scope(errors: &mut Vec<String>, manifest: &MiningAllowM
     }
 }
 
+fn validate_phase25_live_stratum_scope(errors: &mut Vec<String>, manifest: &MiningAllowManifest) {
+    if manifest.surface != "live-stratum-runtime" {
+        return;
+    }
+
+    match manifest.claim_tier.as_str() {
+        "live-submit-response" => validate_phase25_live_submit_scope(errors, manifest),
+        "safe-prerequisite-blocked" => validate_phase25_safe_prerequisite_scope(errors, manifest),
+        _ => errors.push(format!(
+            "live-stratum-runtime does not allow claim_tier `{}`",
+            manifest.claim_tier
+        )),
+    }
+}
+
+fn validate_phase25_live_submit_scope(errors: &mut Vec<String>, manifest: &MiningAllowManifest) {
+    let maybe_pool_config = manifest
+        .allowed_inputs
+        .get("pool_config")
+        .and_then(Value::as_str);
+    if !matches!(
+        maybe_pool_config,
+        Some("disposable-or-non-secret" | "local-owner-supplied")
+    ) {
+        errors.push(
+            "live-submit-response requires allowed_inputs.pool_config to equal disposable-or-non-secret or local-owner-supplied"
+                .to_owned(),
+        );
+    }
+
+    let maybe_device_url = manifest
+        .allowed_inputs
+        .get("device_url")
+        .and_then(Value::as_str);
+    if maybe_device_url != Some("explicit") {
+        errors.push(
+            "live-submit-response requires allowed_inputs.device_url to equal explicit".to_owned(),
+        );
+    }
+
+    let maybe_target_source = manifest
+        .allowed_inputs
+        .get("target_source")
+        .and_then(Value::as_str);
+    if maybe_target_source != Some("explicit") {
+        errors.push(
+            "live-submit-response requires allowed_inputs.target_source to equal explicit"
+                .to_owned(),
+        );
+    }
+
+    require_allowed_input_value(
+        errors,
+        manifest,
+        "safe_stop_status",
+        "complete",
+        "live-submit-response",
+    );
+    require_allowed_input_value(
+        errors,
+        manifest,
+        "watchdog_responsiveness_status",
+        "passed",
+        "live-submit-response",
+    );
+
+    let tokens: Vec<&str> = manifest.allowed_command.split_whitespace().collect();
+    if !tokens.iter().any(|token| *token == "--device-url") {
+        errors.push(
+            "live-submit-response requires allowed_command to include --device-url".to_owned(),
+        );
+    }
+    if !option_equals(&tokens, "--mode", "hardware") {
+        errors.push("live-submit-response requires --mode hardware".to_owned());
+    }
+}
+
+fn validate_phase25_safe_prerequisite_scope(
+    errors: &mut Vec<String>,
+    manifest: &MiningAllowManifest,
+) {
+    let maybe_conclusion = manifest
+        .allowed_inputs
+        .get("conclusion")
+        .and_then(Value::as_str);
+    if maybe_conclusion != Some("blocked_safe_prerequisite") {
+        errors.push(
+            "safe-prerequisite-blocked requires allowed_inputs.conclusion to equal blocked_safe_prerequisite"
+                .to_owned(),
+        );
+    }
+
+    require_allowed_input_value(
+        errors,
+        manifest,
+        "safe_stop_status",
+        "complete",
+        "safe-prerequisite-blocked",
+    );
+
+    let tokens: Vec<&str> = manifest.allowed_command.split_whitespace().collect();
+    if !option_equals(&tokens, "--mode", "blocked") && !option_equals(&tokens, "--mode", "hardware")
+    {
+        errors.push(
+            "safe-prerequisite-blocked requires --mode blocked or --mode hardware".to_owned(),
+        );
+    }
+}
+
 fn validate_filters(
     errors: &mut Vec<String>,
     manifest: &MiningAllowManifest,
@@ -473,6 +598,7 @@ fn allowed_claim_tiers_for_surface(surface: &str) -> &'static [&'static str] {
         "mining-smoke" => &["controlled-no-share", "live-pool-smoke"],
         "bounded-soak" => &["bounded-soak", "unsupported-pending"],
         "parity-redaction" => &["parity-redaction"],
+        "live-stratum-runtime" => &["live-submit-response", "safe-prerequisite-blocked"],
         _ => &[],
     }
 }
@@ -496,8 +622,12 @@ fn validate_allowed_command_scope(errors: &mut Vec<String>, manifest: &MiningAll
         return;
     }
 
+    if is_expected_phase25_command(manifest, &tokens) {
+        return;
+    }
+
     errors.push(
-        "allowed_command must route through an approved Phase 15 wrapper or approved Phase 21 wrapper for its surface"
+        "allowed_command must route through an approved Phase 15 wrapper, approved Phase 21 wrapper, or approved Phase 25 wrapper for its surface"
             .to_owned(),
     );
 }
@@ -556,6 +686,43 @@ fn is_expected_phase21_command(manifest: &MiningAllowManifest, tokens: &[&str]) 
     }
 }
 
+fn is_expected_phase25_command(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
+    if manifest.surface != "live-stratum-runtime" {
+        return false;
+    }
+
+    if !starts_with_tokens(tokens, &["scripts/phase25-live-stratum-evidence.sh"]) {
+        return false;
+    }
+
+    if !has_option_with_value(tokens, "--evidence-root")
+        || !has_option_with_value(tokens, "--manifest")
+        || !has_option_with_value(tokens, "--mode")
+    {
+        return false;
+    }
+
+    if tokens.iter().any(|token| *token == "--target-source") {
+        return false;
+    }
+
+    if !phase25_duration_matches_manifest(manifest, tokens) {
+        return false;
+    }
+
+    match manifest.claim_tier.as_str() {
+        "live-submit-response" => {
+            option_equals(tokens, "--mode", "hardware")
+                && has_option_with_value(tokens, "--device-url")
+        }
+        "safe-prerequisite-blocked" => {
+            option_equals(tokens, "--mode", "blocked")
+                || option_equals(tokens, "--mode", "hardware")
+        }
+        _ => false,
+    }
+}
+
 fn phase21_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
     if manifest.claim_tier != "bounded-soak" {
         return true;
@@ -571,6 +738,27 @@ fn phase21_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&
     let expected_duration = duration_seconds.to_string();
 
     option_equals(tokens, "--duration-seconds", &expected_duration)
+}
+
+fn phase25_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
+    let Some(duration_seconds) = manifest
+        .allowed_inputs
+        .get("duration_seconds")
+        .and_then(Value::as_i64)
+    else {
+        return !tokens.iter().any(|token| *token == "--duration-seconds");
+    };
+
+    if !(60..=600).contains(&duration_seconds) {
+        return false;
+    }
+
+    let expected_duration = duration_seconds.to_string();
+    if tokens.iter().any(|token| *token == "--duration-seconds") {
+        return option_equals(tokens, "--duration-seconds", &expected_duration);
+    }
+
+    true
 }
 
 fn starts_with_tokens(tokens: &[&str], expected_prefix: &[&str]) -> bool {
@@ -596,9 +784,48 @@ fn expected_evidence_class(claim_tier: &str) -> &'static str {
         | "controlled-no-share"
         | "live-pool-smoke" => "hardware-smoke",
         "bounded-soak" => "soak",
+        "live-submit-response" => "hardware-smoke",
+        "safe-prerequisite-blocked" => "workflow",
         "unsupported-pending" | "parity-redaction" => "workflow",
         _ => "unsupported",
     }
+}
+
+fn evidence_class_matches_claim(manifest: &MiningAllowManifest) -> bool {
+    if manifest.claim_tier == "safe-prerequisite-blocked" {
+        return matches!(
+            manifest.evidence_class.as_str(),
+            "workflow" | "hardware-smoke"
+        );
+    }
+
+    manifest.evidence_class == expected_evidence_class(&manifest.claim_tier)
+}
+
+fn is_phase25_safe_prerequisite_blocker(manifest: &MiningAllowManifest) -> bool {
+    manifest.surface == "live-stratum-runtime"
+        && manifest.claim_tier == "safe-prerequisite-blocked"
+        && manifest.evidence_class == "workflow"
+}
+
+fn require_allowed_input_value(
+    errors: &mut Vec<String>,
+    manifest: &MiningAllowManifest,
+    field_name: &str,
+    expected_value: &str,
+    claim_tier: &str,
+) {
+    let maybe_value = manifest
+        .allowed_inputs
+        .get(field_name)
+        .and_then(Value::as_str);
+    if maybe_value == Some(expected_value) {
+        return;
+    }
+
+    errors.push(format!(
+        "{claim_tier} requires allowed_inputs.{field_name} to equal {expected_value}"
+    ));
 }
 
 fn deserialize_utf8_path_buf<'de, D>(deserializer: D) -> Result<Utf8PathBuf, D::Error>
