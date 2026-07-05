@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 24-01-PLAN.md
-last_updated: "2026-07-05T00:53:01.632Z"
+stopped_at: Completed 24-02-PLAN.md
+last_updated: "2026-07-05T00:58:57.180Z"
 last_activity: 2026-07-05
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 8
-  percent: 73
+  completed_plans: 9
+  percent: 82
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 ## Current Position
 
 Phase: 24 (bm1366-production-work-path) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-05
 
@@ -76,6 +76,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 23]: Preserved exact non-claims for Phase 24 BM1366 production work, Phase 25 live Stratum/share behavior, and Phase 26 telemetry closure.
 - [Phase 24]: Production BM1366 work uses distinct command and payload types instead of diagnostic work names.
 - [Phase 24]: Production ASIC failures render stable redaction-safe category labels only.
+- [Phase 24]: Production BM1366 work is bound to PoolSessionGeneration before dispatch.
+- [Phase 24]: Clean-jobs, reconnect, authorization reset, and session replacement clear queued, active, and valid-job state.
+- [Phase 24]: Raw-bearing production work registry surfaces render redacted category labels instead of raw job, extranonce, target, or payload details.
 
 ### Pending Todos
 
@@ -88,8 +91,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-05T00:53:01.630Z
-Stopped at: Completed 24-01-PLAN.md
+Last session: 2026-07-05T00:58:57.177Z
+Stopped at: Completed 24-02-PLAN.md
 Resume file: None
 
 ## Next Step
