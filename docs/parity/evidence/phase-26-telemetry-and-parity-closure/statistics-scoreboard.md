@@ -3,7 +3,7 @@
 slot: statistics-scoreboard
 slot_status: passed
 board: 205
-source_commit: fa79b06
+source_commit: eb2458582ed2c8cef529e91fbbf51b8a95883030
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 package_identity: projection-workflow
 detector_evidence: not-run-static-evidence-only
