@@ -24,6 +24,7 @@ const ALLOWED_SURFACES: &[&str] = &[
     "bounded-soak",
     "parity-redaction",
     "live-stratum-runtime",
+    "live-hardware-bridge",
 ];
 const ALLOWED_CLAIM_TIERS: &[&str] = &[
     "diagnostic-chip-detect",
@@ -34,8 +35,10 @@ const ALLOWED_CLAIM_TIERS: &[&str] = &[
     "unsupported-pending",
     "parity-redaction",
     "live-submit-response",
+    "live-hardware-share-outcome",
     "safe-prerequisite-blocked",
 ];
+const PHASE27_ABORT_CONDITION: &str = "asic_bridge_blocked";
 const PROHIBITED_COMMAND_TOKENS: &[&str] = &[
     "erase-flash",
     "erase_flash",
@@ -148,6 +151,7 @@ pub(crate) fn validate_mining_allow_manifest(
     validate_live_pool_smoke_scope(&mut validation_errors, manifest);
     validate_bounded_soak_scope(&mut validation_errors, manifest);
     validate_phase25_live_stratum_scope(&mut validation_errors, manifest);
+    validate_phase27_live_hardware_bridge_scope(&mut validation_errors, manifest);
 
     MiningAllowReport { validation_errors }
 }
@@ -226,7 +230,10 @@ fn validate_detector_gate(errors: &mut Vec<String>, manifest: &MiningAllowManife
         errors.push("detector port mismatch".to_owned());
     }
 
-    if manifest.board_info_status != "passed" && !is_phase25_safe_prerequisite_blocker(manifest) {
+    if manifest.board_info_status != "passed"
+        && !is_phase25_safe_prerequisite_blocker(manifest)
+        && !is_phase27_safe_prerequisite_blocker(manifest)
+    {
         errors.push("board-info must pass".to_owned());
     }
 
@@ -347,6 +354,16 @@ fn validate_required_stop_contract(errors: &mut Vec<String>, manifest: &MiningAl
     }
 
     for required_condition in REQUIRED_ABORT_CONDITIONS {
+        if *required_condition == "watchdog_unresponsive"
+            && manifest.surface == "live-hardware-bridge"
+            && manifest
+                .abort_conditions
+                .iter()
+                .any(|condition| condition == PHASE27_ABORT_CONDITION)
+        {
+            continue;
+        }
+
         if manifest
             .abort_conditions
             .iter()
@@ -357,6 +374,17 @@ fn validate_required_stop_contract(errors: &mut Vec<String>, manifest: &MiningAl
 
         errors.push(format!(
             "abort_conditions must contain `{required_condition}`"
+        ));
+    }
+
+    if manifest.surface == "live-hardware-bridge"
+        && !manifest
+            .abort_conditions
+            .iter()
+            .any(|condition| condition == PHASE27_ABORT_CONDITION)
+    {
+        errors.push(format!(
+            "abort_conditions must contain `{PHASE27_ABORT_CONDITION}`"
         ));
     }
 
@@ -564,6 +592,124 @@ fn validate_phase25_safe_prerequisite_scope(
     }
 }
 
+fn validate_phase27_live_hardware_bridge_scope(
+    errors: &mut Vec<String>,
+    manifest: &MiningAllowManifest,
+) {
+    if manifest.surface != "live-hardware-bridge" {
+        return;
+    }
+
+    match manifest.claim_tier.as_str() {
+        "live-hardware-share-outcome" => {
+            validate_phase27_live_share_outcome_scope(errors, manifest)
+        }
+        "safe-prerequisite-blocked" => {
+            validate_phase27_safe_prerequisite_scope(errors, manifest)
+        }
+        _ => errors.push(format!(
+            "live-hardware-bridge does not allow claim_tier `{}`",
+            manifest.claim_tier
+        )),
+    }
+}
+
+fn validate_phase27_live_share_outcome_scope(
+    errors: &mut Vec<String>,
+    manifest: &MiningAllowManifest,
+) {
+    let maybe_share_outcome = manifest
+        .allowed_inputs
+        .get("share_outcome")
+        .and_then(Value::as_str);
+    match maybe_share_outcome {
+        Some("accepted") | Some("rejected") => {}
+        Some(share_outcome) => errors.push(format!(
+            "live-hardware-share-outcome requires allowed_inputs.share_outcome to equal accepted or rejected, not `{share_outcome}`"
+        )),
+        None => errors.push(
+            "live-hardware-share-outcome requires allowed_inputs.share_outcome to equal accepted or rejected"
+                .to_owned(),
+        ),
+    }
+
+    let maybe_pool_config = manifest
+        .allowed_inputs
+        .get("pool_config")
+        .and_then(Value::as_str);
+    if !matches!(
+        maybe_pool_config,
+        Some("disposable-or-non-secret" | "local-owner-supplied")
+    ) {
+        errors.push(
+            "live-hardware-share-outcome requires allowed_inputs.pool_config to equal disposable-or-non-secret or local-owner-supplied"
+                .to_owned(),
+        );
+    }
+
+    let maybe_wifi_config = manifest
+        .allowed_inputs
+        .get("wifi_config")
+        .and_then(Value::as_str);
+    if !matches!(
+        maybe_wifi_config,
+        Some("disposable-or-non-secret" | "local-owner-supplied")
+    ) {
+        errors.push(
+            "live-hardware-share-outcome requires allowed_inputs.wifi_config to equal disposable-or-non-secret or local-owner-supplied"
+                .to_owned(),
+        );
+    }
+
+    require_allowed_input_value(
+        errors,
+        manifest,
+        "safe_stop_status",
+        "complete",
+        "live-hardware-share-outcome",
+    );
+
+    if manifest.board_info_status != "passed" {
+        errors.push(
+            "live-hardware-share-outcome requires board_info_status passed".to_owned(),
+        );
+    }
+
+    let tokens: Vec<&str> = manifest.allowed_command.split_whitespace().collect();
+    if !option_equals(&tokens, "--mode", "hardware") {
+        errors.push("live-hardware-share-outcome requires --mode hardware".to_owned());
+    }
+}
+
+fn validate_phase27_safe_prerequisite_scope(
+    errors: &mut Vec<String>,
+    manifest: &MiningAllowManifest,
+) {
+    require_allowed_input_value(
+        errors,
+        manifest,
+        "share_outcome",
+        "blocked_safe_prerequisite",
+        "safe-prerequisite-blocked",
+    );
+
+    require_allowed_input_value(
+        errors,
+        manifest,
+        "safe_stop_status",
+        "complete",
+        "safe-prerequisite-blocked",
+    );
+
+    let tokens: Vec<&str> = manifest.allowed_command.split_whitespace().collect();
+    if !option_equals(&tokens, "--mode", "blocked") && !option_equals(&tokens, "--mode", "hardware")
+    {
+        errors.push(
+            "safe-prerequisite-blocked requires --mode blocked or --mode hardware".to_owned(),
+        );
+    }
+}
+
 fn validate_filters(
     errors: &mut Vec<String>,
     manifest: &MiningAllowManifest,
@@ -599,6 +745,7 @@ fn allowed_claim_tiers_for_surface(surface: &str) -> &'static [&'static str] {
         "bounded-soak" => &["bounded-soak", "unsupported-pending"],
         "parity-redaction" => &["parity-redaction"],
         "live-stratum-runtime" => &["live-submit-response", "safe-prerequisite-blocked"],
+        "live-hardware-bridge" => &["live-hardware-share-outcome", "safe-prerequisite-blocked"],
         _ => &[],
     }
 }
@@ -626,8 +773,12 @@ fn validate_allowed_command_scope(errors: &mut Vec<String>, manifest: &MiningAll
         return;
     }
 
+    if is_expected_phase27_command(manifest, &tokens) {
+        return;
+    }
+
     errors.push(
-        "allowed_command must route through an approved Phase 15 wrapper, approved Phase 21 wrapper, or approved Phase 25 wrapper for its surface"
+        "allowed_command must route through an approved Phase 15 wrapper, approved Phase 21 wrapper, approved Phase 25 wrapper, or approved Phase 27 wrapper for its surface"
             .to_owned(),
     );
 }
@@ -723,6 +874,46 @@ fn is_expected_phase25_command(manifest: &MiningAllowManifest, tokens: &[&str]) 
     }
 }
 
+fn is_expected_phase27_command(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
+    if manifest.surface != "live-hardware-bridge" {
+        return false;
+    }
+
+    let script_command = starts_with_tokens(
+        tokens,
+        &["scripts/phase27-live-hardware-bridge-evidence.sh"],
+    );
+    let just_alias =
+        starts_with_tokens(tokens, &["just", "phase27-evidence"]);
+    if !script_command && !just_alias {
+        return false;
+    }
+
+    if !has_option_with_value(tokens, "--evidence-root")
+        || !has_option_with_value(tokens, "--manifest")
+        || !has_option_with_value(tokens, "--mode")
+    {
+        return false;
+    }
+
+    if !phase27_duration_matches_manifest(manifest, tokens) {
+        return false;
+    }
+
+    match manifest.claim_tier.as_str() {
+        "live-hardware-share-outcome" => {
+            option_equals(tokens, "--mode", "hardware")
+                && (has_option_with_value(tokens, "--pool-credentials")
+                    || has_option_with_value(tokens, "--wifi-credentials"))
+        }
+        "safe-prerequisite-blocked" => {
+            option_equals(tokens, "--mode", "blocked")
+                || option_equals(tokens, "--mode", "hardware")
+        }
+        _ => false,
+    }
+}
+
 fn phase21_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
     if manifest.claim_tier != "bounded-soak" {
         return true;
@@ -738,6 +929,27 @@ fn phase21_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&
     let expected_duration = duration_seconds.to_string();
 
     option_equals(tokens, "--duration-seconds", &expected_duration)
+}
+
+fn phase27_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
+    let Some(duration_seconds) = manifest
+        .allowed_inputs
+        .get("duration_seconds")
+        .and_then(Value::as_i64)
+    else {
+        return !tokens.iter().any(|token| *token == "--duration-seconds");
+    };
+
+    if !(60..=600).contains(&duration_seconds) {
+        return false;
+    }
+
+    let expected_duration = duration_seconds.to_string();
+    if tokens.iter().any(|token| *token == "--duration-seconds") {
+        return option_equals(tokens, "--duration-seconds", &expected_duration);
+    }
+
+    true
 }
 
 fn phase25_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
@@ -785,6 +997,7 @@ fn expected_evidence_class(claim_tier: &str) -> &'static str {
         | "live-pool-smoke" => "hardware-smoke",
         "bounded-soak" => "soak",
         "live-submit-response" => "hardware-smoke",
+        "live-hardware-share-outcome" => "hardware-smoke",
         "safe-prerequisite-blocked" => "workflow",
         "unsupported-pending" | "parity-redaction" => "workflow",
         _ => "unsupported",
@@ -804,6 +1017,12 @@ fn evidence_class_matches_claim(manifest: &MiningAllowManifest) -> bool {
 
 fn is_phase25_safe_prerequisite_blocker(manifest: &MiningAllowManifest) -> bool {
     manifest.surface == "live-stratum-runtime"
+        && manifest.claim_tier == "safe-prerequisite-blocked"
+        && manifest.evidence_class == "workflow"
+}
+
+fn is_phase27_safe_prerequisite_blocker(manifest: &MiningAllowManifest) -> bool {
+    manifest.surface == "live-hardware-bridge"
         && manifest.claim_tier == "safe-prerequisite-blocked"
         && manifest.evidence_class == "workflow"
 }
@@ -1312,6 +1531,250 @@ mod tests {
             assert!(
                 !report.passed(),
                 "unsafe phase25 command should fail: {unsafe_command}"
+            );
+        }
+    }
+
+    #[test]
+    fn mining_allow_accepts_phase27_live_hardware_share_outcome_command() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("live-hardware-bridge");
+            json["claim_tier"] = serde_json::json!("live-hardware-share-outcome");
+            json["evidence_class"] = serde_json::json!("hardware-smoke");
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode hardware --duration-seconds 120 --pool-credentials [redacted-local-path] --wifi-credentials [redacted-local-path] --redact-evidence=true"
+            );
+            json["allowed_inputs"] = serde_json::json!({
+                "pool_config": "local-owner-supplied",
+                "wifi_config": "local-owner-supplied",
+                "port_source": "explicit",
+                "duration_seconds": 120,
+                "redact_evidence": "true",
+                "target_source": "explicit-or-blocked",
+                "share_outcome": "accepted",
+                "asic_bridge_status": "passed",
+                "safe_stop_status": "complete"
+            });
+            json["abort_conditions"] = serde_json::json!([
+                "detector_mismatch",
+                "board_info_failure",
+                "missing_trusted_wrapper_markers",
+                "redaction_uncertainty",
+                "unsafe_temperature_or_power",
+                "asic_bridge_blocked"
+            ]);
+            json["prerequisite_artifacts"] = serde_json::json!([
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/detector.md",
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/board-info.md",
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/redaction-review.md"
+            ]);
+            json["evidence_dir"] = serde_json::json!(
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge"
+            );
+            json["redaction_reviewer"] = serde_json::json!("phase-27-wrapper");
+            json["checklist_rows"] =
+                serde_json::json!(["STR-08", "STR-09", "ASIC-10", "ASIC-11"]);
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(
+            report.passed(),
+            "phase27 live hardware share outcome should pass: {report:#?}"
+        );
+    }
+
+    #[test]
+    fn mining_allow_accepts_phase27_safe_prerequisite_blocker() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("live-hardware-bridge");
+            json["claim_tier"] = serde_json::json!("safe-prerequisite-blocked");
+            json["evidence_class"] = serde_json::json!("workflow");
+            json["board_info_status"] = serde_json::json!("blocked");
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode blocked"
+            );
+            json["allowed_inputs"] = serde_json::json!({
+                "pool_config": "not-supplied",
+                "wifi_config": "not-supplied",
+                "port_source": "not-supplied",
+                "duration_seconds": 60,
+                "redact_evidence": "not-requested",
+                "target_source": "explicit-or-blocked",
+                "share_outcome": "blocked_safe_prerequisite",
+                "asic_bridge_status": "blocked",
+                "safe_stop_status": "complete"
+            });
+            json["abort_conditions"] = serde_json::json!([
+                "detector_mismatch",
+                "board_info_failure",
+                "missing_trusted_wrapper_markers",
+                "redaction_uncertainty",
+                "unsafe_temperature_or_power",
+                "asic_bridge_blocked"
+            ]);
+            json["prerequisite_artifacts"] = serde_json::json!([
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/detector.md",
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/redaction-review.md"
+            ]);
+            json["evidence_dir"] = serde_json::json!(
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge"
+            );
+            json["redaction_reviewer"] = serde_json::json!("phase-27-wrapper");
+            json["checklist_rows"] =
+                serde_json::json!(["STR-08", "STR-09", "ASIC-10", "ASIC-11"]);
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(
+            report.passed(),
+            "phase27 safe prerequisite blocker should pass: {report:#?}"
+        );
+    }
+
+    #[test]
+    fn mining_allow_accepts_phase27_just_alias_command() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("live-hardware-bridge");
+            json["claim_tier"] = serde_json::json!("safe-prerequisite-blocked");
+            json["evidence_class"] = serde_json::json!("workflow");
+            json["board_info_status"] = serde_json::json!("blocked");
+            json["allowed_command"] = serde_json::json!(
+                "just phase27-evidence --evidence-root evidence/phase27 --manifest package.json --mode blocked"
+            );
+            json["allowed_inputs"] = serde_json::json!({
+                "pool_config": "not-supplied",
+                "wifi_config": "not-supplied",
+                "port_source": "not-supplied",
+                "duration_seconds": 60,
+                "redact_evidence": "not-requested",
+                "target_source": "explicit-or-blocked",
+                "share_outcome": "blocked_safe_prerequisite",
+                "asic_bridge_status": "blocked",
+                "safe_stop_status": "complete"
+            });
+            json["abort_conditions"] = serde_json::json!([
+                "detector_mismatch",
+                "board_info_failure",
+                "missing_trusted_wrapper_markers",
+                "redaction_uncertainty",
+                "unsafe_temperature_or_power",
+                "asic_bridge_blocked"
+            ]);
+            json["prerequisite_artifacts"] = serde_json::json!([
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/detector.md",
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/redaction-review.md"
+            ]);
+            json["evidence_dir"] = serde_json::json!(
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge"
+            );
+            json["redaction_reviewer"] = serde_json::json!("phase-27-wrapper");
+            json["checklist_rows"] =
+                serde_json::json!(["STR-08", "STR-09", "ASIC-10", "ASIC-11"]);
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(
+            report.passed(),
+            "phase27 just alias should pass: {report:#?}"
+        );
+    }
+
+    #[test]
+    fn mining_allow_rejects_phase27_accepted_share_without_hardware_tier() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("live-hardware-bridge");
+            json["claim_tier"] = serde_json::json!("safe-prerequisite-blocked");
+            json["evidence_class"] = serde_json::json!("workflow");
+            json["board_info_status"] = serde_json::json!("blocked");
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode blocked"
+            );
+            json["allowed_inputs"] = serde_json::json!({
+                "pool_config": "not-supplied",
+                "wifi_config": "not-supplied",
+                "port_source": "not-supplied",
+                "duration_seconds": 60,
+                "redact_evidence": "not-requested",
+                "target_source": "explicit-or-blocked",
+                "share_outcome": "accepted",
+                "asic_bridge_status": "blocked",
+                "safe_stop_status": "complete"
+            });
+            json["abort_conditions"] = serde_json::json!([
+                "detector_mismatch",
+                "board_info_failure",
+                "missing_trusted_wrapper_markers",
+                "redaction_uncertainty",
+                "unsafe_temperature_or_power",
+                "asic_bridge_blocked"
+            ]);
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert_error_contains(&report, "share_outcome");
+    }
+
+    #[test]
+    fn mining_allow_rejects_phase27_unsafe_or_stale_command() {
+        for unsafe_command in [
+            "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode hardware stratum",
+            "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode hardware --pool-credentials [redacted-local-path] erase-flash",
+            "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode hardware --pool-credentials [redacted-local-path] rollback",
+            "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode hardware --pool-credentials [redacted-local-path] voltage-control",
+            "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode hardware --pool-credentials [redacted-local-path] fan-control",
+            "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode hardware --duration-seconds 30 --pool-credentials [redacted-local-path] --wifi-credentials [redacted-local-path]",
+            "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode hardware",
+        ] {
+            // Arrange
+            let (manifest, package_manifest) = manifest_with_change(|json| {
+                json["surface"] = serde_json::json!("live-hardware-bridge");
+                json["claim_tier"] = serde_json::json!("live-hardware-share-outcome");
+                json["evidence_class"] = serde_json::json!("hardware-smoke");
+                json["allowed_command"] = serde_json::json!(unsafe_command);
+                json["allowed_inputs"] = serde_json::json!({
+                    "pool_config": "local-owner-supplied",
+                    "wifi_config": "local-owner-supplied",
+                    "port_source": "explicit",
+                    "duration_seconds": 120,
+                    "redact_evidence": "true",
+                    "target_source": "explicit-or-blocked",
+                    "share_outcome": "accepted",
+                    "asic_bridge_status": "passed",
+                    "safe_stop_status": "complete"
+                });
+                json["abort_conditions"] = serde_json::json!([
+                    "detector_mismatch",
+                    "board_info_failure",
+                    "missing_trusted_wrapper_markers",
+                    "redaction_uncertainty",
+                    "unsafe_temperature_or_power",
+                    "asic_bridge_blocked"
+                ]);
+            });
+
+            // Act
+            let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+            // Assert
+            assert!(
+                !report.passed(),
+                "unsafe phase27 command should fail: {unsafe_command}"
             );
         }
     }

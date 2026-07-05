@@ -18,13 +18,13 @@ network_scan: disabled
 
 ## Observed Behavior
 
-No accepted or rejected share is claimed by Phase 23. Phase 25 now owns the follow-up evidence root at `docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/`, where the current supported outcome is `share_outcome: blocked_safe_prerequisite`.
+No accepted or rejected share is claimed by Phase 23. Phase 25 defined the first live-or-blocked Stratum wrapper at `docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/`. Phase 27 now owns the live hardware bridge follow-up at `docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/`, where the current supported outcome is `share_outcome: blocked_safe_prerequisite`.
 
 accepted/rejected share outcomes remain non-claims
 
 ## Conclusion
 
-This slot is present so the Phase 23 evidence root is complete without implying share proof. Phase 25 adds the repo-owned live-or-blocked wrapper and records the current blocked safe-prerequisite status, but Phase 23 remains a workflow and redaction contract only.
+This slot is present so the Phase 23 evidence root is complete without implying share proof. Phase 23 remains a workflow and redaction contract only; live share-outcome proof is tracked in Phase 27 without rewriting Phase 23 into live-share evidence.
 
 ## exact_non_claims
 

@@ -27,17 +27,19 @@ network_scan: disabled
 
 ## Observed Behavior
 
-The repo-owned wrapper, wrapper tests, and mining-allow rules now define the Phase 25 live Stratum evidence path. No detector-gated hardware artifact in this committed evidence root proves a real pool response tied to a live ASIC-derived `mining.submit`.
+The repo-owned Phase 25 wrapper, wrapper tests, and mining-allow rules define the live Stratum socket evidence path. No detector-gated hardware artifact in this committed evidence root proves a real pool response tied to a live ASIC-derived `mining.submit`.
+
+Phase 27 now owns the follow-up live hardware bridge evidence root at `docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/`, where the current supported outcome is also `share_outcome: blocked_safe_prerequisite`.
 
 accepted/rejected shares remain non-claims
 
 ## Conclusion
 
-The supported Phase 25 share outcome is `share_outcome: blocked_safe_prerequisite`. Accepted or rejected share proof remains pending until a detector-gated hardware run records a real socket response tied to live ASIC-derived submit intent and passes redaction review.
+The supported Phase 25 share outcome is `share_outcome: blocked_safe_prerequisite`. Accepted or rejected share proof is tracked in the Phase 27 live hardware bridge evidence root and remains pending until a detector-gated hardware run records a real socket response tied to live ASIC-derived submit intent with ASIC bridge correlation and passes redaction review.
 
 ## exact_non_claims
 
 - Accepted shares remain non-claims.
 - Rejected shares remain non-claims.
-- Real socket response proof remains a non-claim.
+- Real socket response proof remains a non-claim in this Phase 25 root.
 - Phase 26 API, WebSocket, statistics, and scoreboard projection remains a non-claim.
