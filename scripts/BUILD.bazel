@@ -398,6 +398,19 @@ sh_test(
     tags = ["local"],
 )
 
+sh_test(
+    name = "phase25_live_stratum_evidence_test",
+    srcs = ["phase25-live-stratum-evidence-test.sh"],
+    data = ["phase25-live-stratum-evidence.sh"],
+    env_inherit = [
+        "HOME",
+        "NODE_BIN",
+        "NVM_DIR",
+        "PATH",
+    ],
+    tags = ["local"],
+)
+
 sh_binary(
     name = "phase21_live_mining_package",
     srcs = ["phase21-live-mining-package.sh"],
