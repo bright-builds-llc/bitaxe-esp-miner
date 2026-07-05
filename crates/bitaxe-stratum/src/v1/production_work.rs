@@ -118,12 +118,24 @@ impl fmt::Debug for ProductionDispatch {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct ProductionWorkRegistry {
     generation: PoolSessionGeneration,
     queue: BoundedWorkQueue<MiningWork, STRATUM_WORK_QUEUE_CAPACITY>,
     valid_jobs: Bm1366ValidJobIds,
     active_work: HashMap<Bm1366JobId, ProductionWorkRecord>,
+}
+
+impl fmt::Debug for ProductionWorkRegistry {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ProductionWorkRegistry")
+            .field("generation", &self.generation)
+            .field("queued_work", &"redacted")
+            .field("active_work", &"redacted")
+            .field("valid_jobs", &"redacted")
+            .finish()
+    }
 }
 
 impl ProductionWorkRegistry {
@@ -218,6 +230,7 @@ mod tests {
     use bitaxe_asic::bm1366::work::Bm1366JobId;
 
     use super::*;
+    use crate::error::StratumV1Error;
     use crate::v1::messages::{ExtranonceAssignment, MiningNotify, PoolDifficulty};
     use crate::v1::mining::{MiningWork, MiningWorkBuilder};
 
@@ -337,6 +350,123 @@ mod tests {
         assert!(!rendered.contains("1705ae3a"));
         assert!(!rendered.contains("647025b5"));
         assert!(!rendered.contains("0x40"));
+    }
+
+    #[test]
+    fn production_work_clean_jobs_invalidates_queued_active_and_valid_jobs() {
+        // Arrange
+        let mut registry = ProductionWorkRegistry::new();
+        let queued_stale_job_id = Bm1366JobId::new(0x48);
+        let active_stale_job_id = Bm1366JobId::new(0x50);
+        let current_job_id = Bm1366JobId::new(0x58);
+        registry
+            .enqueue_pool_work(sample_work(queued_stale_job_id, "queued-stale-job", false))
+            .expect("queued stale work should enqueue");
+        registry
+            .enqueue_pool_work(sample_work(active_stale_job_id, "active-stale-job", false))
+            .expect("active stale work should enqueue");
+        let stale_dispatch = registry.dispatch_next().expect("stale work should dispatch");
+        assert_eq!(stale_dispatch.work.asic_job_id, queued_stale_job_id);
+        assert!(registry.valid_jobs().contains(queued_stale_job_id));
+        assert!(registry.valid_jobs().contains(active_stale_job_id));
+
+        // Act
+        registry
+            .enqueue_pool_work(sample_work(current_job_id, "current-job", true))
+            .expect("clean-jobs work should enqueue");
+
+        // Assert
+        assert_eq!(registry.generation().raw(), 1);
+        assert!(!registry.valid_jobs().contains(queued_stale_job_id));
+        assert!(!registry.valid_jobs().contains(active_stale_job_id));
+        assert!(registry.valid_jobs().contains(current_job_id));
+        assert!(registry.maybe_active_work(queued_stale_job_id).is_none());
+        let current_dispatch = registry
+            .dispatch_next()
+            .expect("current work should be the only queued dispatch");
+        assert_eq!(current_dispatch.work.asic_job_id, current_job_id);
+    }
+
+    #[test]
+    fn production_work_reconnect_advances_generation_and_clears_work() {
+        // Arrange
+        let mut registry = ProductionWorkRegistry::new();
+        let clean_job_id = Bm1366JobId::new(0x60);
+        let active_job_id = Bm1366JobId::new(0x68);
+        registry
+            .enqueue_pool_work(sample_work(clean_job_id, "clean-job", true))
+            .expect("clean work should enqueue");
+        assert_eq!(registry.generation().raw(), 1);
+        registry
+            .enqueue_pool_work(sample_work(active_job_id, "active-job", false))
+            .expect("active work should enqueue");
+        let _active_dispatch = registry.dispatch_next().expect("work should dispatch");
+        assert!(registry.valid_jobs().contains(clean_job_id));
+        assert!(registry.valid_jobs().contains(active_job_id));
+        assert!(registry.maybe_active_work(clean_job_id).is_some());
+
+        // Act
+        registry.invalidate_for_reconnect();
+
+        // Assert
+        assert_eq!(registry.generation().raw(), 2);
+        assert!(!registry.valid_jobs().contains(clean_job_id));
+        assert!(!registry.valid_jobs().contains(active_job_id));
+        assert!(registry.maybe_active_work(clean_job_id).is_none());
+        assert!(matches!(
+            registry.dispatch_next(),
+            Err(StratumV1Error::QueueEmpty)
+        ));
+    }
+
+    #[test]
+    fn production_work_records_pool_context() {
+        // Arrange
+        let mut registry = ProductionWorkRegistry::new();
+        let job_id = Bm1366JobId::new(0x70);
+        registry
+            .enqueue_pool_work(sample_work(job_id, "context-job", false))
+            .expect("pool work should enqueue");
+
+        // Act
+        let dispatch = registry.dispatch_next().expect("work should dispatch");
+        let active = registry
+            .maybe_active_work(job_id)
+            .expect("dispatched work should be active");
+
+        // Assert
+        assert_eq!(dispatch.generation.raw(), 0);
+        assert_eq!(active.stratum_job_id, "context-job");
+        assert_eq!(active.extranonce2, "00000000");
+        assert_eq!(active.ntime, 0x6470_25b5);
+        assert_eq!(active.target_context.compact_nbits, 0x1705_ae3a);
+        assert_eq!(
+            active.target_context.maybe_pool_difficulty,
+            Some(PoolDifficulty { difficulty: 1.25 })
+        );
+    }
+
+    #[test]
+    fn production_work_registry_debug_redacts_queued_active_context() {
+        // Arrange
+        let mut registry = ProductionWorkRegistry::new();
+        let job_id = Bm1366JobId::new(0x78);
+        registry
+            .enqueue_pool_work(sample_work(job_id, "registry-hidden-job", false))
+            .expect("pool work should enqueue");
+        let _dispatch = registry.dispatch_next().expect("work should dispatch");
+
+        // Act
+        let rendered = format!("{registry:?}");
+
+        // Assert
+        assert!(rendered.contains("ProductionWorkRegistry"));
+        assert!(!rendered.contains("registry-hidden-job"));
+        assert!(!rendered.contains("4de05269"));
+        assert!(!rendered.contains("00000000"));
+        assert!(!rendered.contains("1705ae3a"));
+        assert!(!rendered.contains("647025b5"));
+        assert!(!rendered.contains("0x78"));
     }
 
     fn sample_work(job_id: Bm1366JobId, stratum_job_id: &str, clean_jobs: bool) -> MiningWork {
