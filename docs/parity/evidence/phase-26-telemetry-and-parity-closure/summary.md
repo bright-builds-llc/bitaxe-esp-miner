@@ -3,7 +3,7 @@
 slot: summary
 slot_status: passed
 board: 205
-source_commit: fa79b06
+source_commit: f3df744
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 package_identity: projection-workflow
 detector_evidence: not-run-static-evidence-only
@@ -67,7 +67,12 @@ node "$HOME/.cursor/get-shit-done/bin/gsd-tools.cjs" verify lifecycle 26 --expec
 
 ## Final Command Results
 
-pending until Task 26-04-03 runs the final gate.
+- `bazel test //crates/bitaxe-stratum:tests //crates/bitaxe-api:tests //tools/parity:tests` passed.
+- `bazel build //firmware/bitaxe:firmware` passed.
+- `just parity` passed.
+- `just verify-reference` passed.
+- `node "$HOME/.cursor/get-shit-done/bin/gsd-tools.cjs" verify lifecycle 26 --expect-id 26-2026-07-05T03-48-38 --expect-mode yolo --require-plans` passed.
+- `hardware_evidence_status: blocked_or_not_run` because no detector-gated live hardware run was attempted in this static closure.
 
 ## exact_non_claims
 
