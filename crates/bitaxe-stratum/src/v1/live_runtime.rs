@@ -10,6 +10,8 @@ use std::fmt;
 
 use bitaxe_asic::bm1366::work::Bm1366JobId;
 
+use bitaxe_asic::bm1366::production::ProductionAsicBlocker;
+
 use crate::error::StratumV1Error;
 use crate::jsonrpc::StratumRequestId;
 use crate::v1::messages::{
@@ -17,7 +19,9 @@ use crate::v1::messages::{
     VersionMask,
 };
 use crate::v1::mining::MiningWorkBuilder;
-use crate::v1::production_work::{ProductionWorkRegistry, SubmitIntent};
+use crate::v1::production_work::{
+    CorrelationOutcome, ProductionNonceObservation, ProductionWorkRegistry, SubmitIntent,
+};
 use crate::v1::state::{MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -90,6 +94,12 @@ pub enum LiveRuntimeEvent {
     WorkQueued,
     WorkInvalidated,
     SafeStopped,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BridgeObservationOutcome {
+    SubmitQueued,
+    Blocked { reason: ProductionAsicBlocker },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -289,6 +299,41 @@ impl LiveStratumRuntime {
     #[must_use]
     pub fn drain_actions(&mut self) -> Vec<LiveRuntimeAction> {
         std::mem::take(&mut self.outbound_actions)
+    }
+
+    /// Feed a firmware-stamped nonce observation through production correlation.
+    pub fn apply_bridge_observation(
+        &mut self,
+        observation: ProductionNonceObservation,
+    ) -> Result<BridgeObservationOutcome, StratumV1Error> {
+        match self.production_registry.correlate_nonce_result(observation) {
+            CorrelationOutcome::SubmitIntent(intent) => {
+                let request_id = self.next_request_id();
+                self.queue_submit_share(intent, request_id)?;
+                Ok(BridgeObservationOutcome::SubmitQueued)
+            }
+            CorrelationOutcome::Blocked { reason } => {
+                self.block_work_submission(reason.as_str());
+                Ok(BridgeObservationOutcome::Blocked { reason })
+            }
+        }
+    }
+
+    fn queue_submit_share(
+        &mut self,
+        intent: SubmitIntent,
+        request_id: StratumRequestId,
+    ) -> Result<(), StratumV1Error> {
+        let message = intent
+            .submission()
+            .to_client_message(request_id, &self.config.credentials.username);
+        self.outbound_actions
+            .push(LiveRuntimeAction::SendSubmitShare {
+                intent,
+                request_id,
+                message,
+            });
+        Ok(())
     }
 
     fn apply_response(
@@ -615,5 +660,83 @@ mod tests {
             ntime: 0x6470_25b5,
             clean_jobs,
         }
+    }
+
+    #[test]
+    fn apply_bridge_observation_queues_submit_share_for_correlated_nonce() {
+        // Arrange
+        use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
+        use crate::v1::mining::MiningWorkBuilder;
+        use crate::v1::production_work::{CorrelationOutcome, ProductionNonceObservation};
+
+        let mut runtime = authorized_runtime();
+        let notify = notify(false);
+        runtime
+            .apply_server_message(StratumV1ServerMessage::Notify(notify.clone()))
+            .expect("notify should enqueue work");
+        let dispatch = runtime
+            .production_registry_mut()
+            .dispatch_next()
+            .expect("dispatch should succeed");
+        let observation = ProductionNonceObservation {
+            observed_generation: dispatch.generation,
+            result: Bm1366NonceResult {
+                job_id: dispatch.work.asic_job_id,
+                nonce: 0x1234_5678,
+                asic_index: 0,
+                core_id: 0,
+                small_core_id: 0,
+                version_bits: 0,
+            },
+        };
+
+        // Act
+        let outcome = runtime
+            .apply_bridge_observation(observation)
+            .expect("observation should apply");
+        let actions = runtime.drain_actions();
+
+        // Assert
+        assert_eq!(outcome, BridgeObservationOutcome::SubmitQueued);
+        assert_eq!(actions.len(), 1);
+        assert!(matches!(
+            actions[0],
+            LiveRuntimeAction::SendSubmitShare { .. }
+        ));
+        let rendered = format!("{runtime:?}");
+        assert!(!rendered.contains("synthetic-secret"));
+    }
+
+    #[test]
+    fn apply_bridge_observation_blocked_does_not_queue_submit() {
+        // Arrange
+        use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
+        use crate::v1::production_work::ProductionNonceObservation;
+
+        let mut runtime = authorized_runtime();
+        let observation = ProductionNonceObservation {
+            observed_generation: runtime.production_registry().generation().next(),
+            result: Bm1366NonceResult {
+                job_id: Bm1366JobId::new(0x20),
+                nonce: 1,
+                asic_index: 0,
+                core_id: 0,
+                small_core_id: 0,
+                version_bits: 0,
+            },
+        };
+
+        // Act
+        let outcome = runtime
+            .apply_bridge_observation(observation)
+            .expect("blocked observation should return outcome");
+        let actions = runtime.drain_actions();
+
+        // Assert
+        assert!(matches!(
+            outcome,
+            BridgeObservationOutcome::Blocked { .. }
+        ));
+        assert!(actions.is_empty());
     }
 }
