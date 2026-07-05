@@ -20,6 +20,10 @@ The active planning surface is now focused on v1.1. Historical v1.0 roadmap, req
 
 Phase 22 is complete for v1.1: claim-ladder governance, typed production-mining safety preconditions, exact blocker propagation, and redaction-safe evidence boundaries are validated before the live production work path.
 
+Phase 23 is complete for v1.1: the redacted operator evidence workflow, runtime-only local credential handling, evidence-root slot contract, deterministic redaction checks, and exact non-claim handling are validated before live production mining evidence is promoted.
+
+Phase 24 is complete for v1.1: the functional core and firmware shell now separate BM1366 diagnostic behavior from trusted production work behavior, dispatch pool-derived BM1366 work through session-generation tracking, correlate generation-stamped nonce observations before submit intent, and fail closed with redaction-safe reasons. Phase 24 intentionally remains at implemented/unit,workflow scope for ASIC-09 through ASIC-12; live pool response proof and final telemetry promotion remain later-phase work.
+
 ## Current Milestone: v1.1 Ultra 205 Trusted Production Mining
 
 **Goal:** Turn the v1.0 controlled no-share mining foundation into a trusted, safety-gated Ultra 205 Stratum v1 production mining runtime that can observe at least one real accepted or rejected share and report the result through firmware telemetry and evidence.
@@ -49,6 +53,8 @@ After v1.1, likely candidates remain OTA/recovery completion, broader active saf
 - Provenance and license guardrails for MIT-first original work and explicit GPL-3.0 upstream-derived materials - v1.0.
 - Ultra 205 release-parity evidence governance with conservative exact non-claims for surfaces that lack required hardware evidence - v1.0.
 - Claim-ladder governance and fail-closed production-mining safety prerequisite contracts for v1.1 - validated in Phase 22.
+- Redacted operator evidence-root workflow and runtime-only local credential handling for v1.1 - validated in Phase 23.
+- BM1366 production work functional core, session-generation active-work tracking, result correlation, and redaction-safe fail-closed firmware status path for v1.1 - validated in Phase 24 at implemented/unit,workflow scope.
 
 ### Active
 
@@ -127,4 +133,4 @@ This document evolves at milestone boundaries. The next update should happen whe
 
 ______________________________________________________________________
 
-*Last updated: 2026-07-04 after completing Phase 22 claim ladder and safety preconditions*
+*Last updated: 2026-07-05 after completing Phase 24 BM1366 production work path*
