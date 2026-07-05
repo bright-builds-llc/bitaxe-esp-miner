@@ -24,6 +24,8 @@ Phase 23 is complete for v1.1: the redacted operator evidence workflow, runtime-
 
 Phase 24 is complete for v1.1: the functional core and firmware shell now separate BM1366 diagnostic behavior from trusted production work behavior, dispatch pool-derived BM1366 work through session-generation tracking, correlate generation-stamped nonce observations before submit intent, and fail closed with redaction-safe reasons. Phase 24 intentionally remains at implemented/unit,workflow scope for ASIC-09 through ASIC-12; live pool response proof and final telemetry promotion remain later-phase work.
 
+Phase 25 is complete for v1.1: the pure Stratum runtime, submit-response classifier, fake-pool coverage, firmware live-socket shell, bounded safe-stop path, watchdog checkpoints, evidence wrapper, and parity closure now exist with redaction-safe validation. Live accepted/rejected share proof and hardware watchdog proof remain explicit blocked/non-claims unless detector-gated Ultra 205 evidence later proves them.
+
 ## Current Milestone: v1.1 Ultra 205 Trusted Production Mining
 
 **Goal:** Turn the v1.0 controlled no-share mining foundation into a trusted, safety-gated Ultra 205 Stratum v1 production mining runtime that can observe at least one real accepted or rejected share and report the result through firmware telemetry and evidence.
@@ -55,6 +57,7 @@ After v1.1, likely candidates remain OTA/recovery completion, broader active saf
 - Claim-ladder governance and fail-closed production-mining safety prerequisite contracts for v1.1 - validated in Phase 22.
 - Redacted operator evidence-root workflow and runtime-only local credential handling for v1.1 - validated in Phase 23.
 - BM1366 production work functional core, session-generation active-work tracking, result correlation, and redaction-safe fail-closed firmware status path for v1.1 - validated in Phase 24 at implemented/unit,workflow scope.
+- Live Stratum runtime, deterministic fake-pool coverage, submit-response classification, bounded safe-stop, watchdog checkpoints, and Phase 25 evidence closure for v1.1 - validated in Phase 25 with live accepted/rejected share and hardware watchdog proof preserved as explicit blocked/non-claims pending detector-gated evidence.
 
 ### Active
 
@@ -133,4 +136,4 @@ This document evolves at milestone boundaries. The next update should happen whe
 
 ______________________________________________________________________
 
-*Last updated: 2026-07-05 after completing Phase 24 BM1366 production work path*
+*Last updated: 2026-07-05 after completing Phase 25 live Stratum runtime and safe stop*
