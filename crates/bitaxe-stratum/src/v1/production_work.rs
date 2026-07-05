@@ -1,5 +1,218 @@
 //! Production BM1366 work registry for pool-derived Stratum v1 work.
 
+use std::collections::HashMap;
+use std::fmt;
+
+use bitaxe_asic::bm1366::{
+    production::ProductionWorkPayload,
+    result::Bm1366ValidJobIds,
+    work::Bm1366JobId,
+};
+
+use crate::error::StratumV1Error;
+use crate::v1::messages::PoolDifficulty;
+use crate::v1::mining::MiningWork;
+use crate::v1::queue::{BoundedWorkQueue, STRATUM_WORK_QUEUE_CAPACITY};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PoolSessionGeneration(u64);
+
+impl PoolSessionGeneration {
+    #[must_use]
+    pub const fn initial() -> Self {
+        Self(0)
+    }
+
+    #[must_use]
+    pub const fn next(self) -> Self {
+        Self(self.0 + 1)
+    }
+
+    #[must_use]
+    pub const fn raw(self) -> u64 {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct ProductionTargetContext {
+    pub compact_nbits: u32,
+    pub maybe_pool_difficulty: Option<PoolDifficulty>,
+}
+
+impl fmt::Debug for ProductionTargetContext {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ProductionTargetContext")
+            .field("redaction", &"target_context_redacted")
+            .finish()
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct ProductionWorkRecord {
+    pub generation: PoolSessionGeneration,
+    pub stratum_job_id: String,
+    pub asic_job_id: Bm1366JobId,
+    pub extranonce2: String,
+    pub ntime: u32,
+    pub target_context: ProductionTargetContext,
+    pub work: MiningWork,
+    pub dispatched: bool,
+    pub result_seen: bool,
+}
+
+impl ProductionWorkRecord {
+    fn from_work(
+        generation: PoolSessionGeneration,
+        work: MiningWork,
+        dispatched: bool,
+    ) -> Self {
+        Self {
+            generation,
+            stratum_job_id: work.stratum_job_id.clone(),
+            asic_job_id: work.asic_job_id,
+            extranonce2: work.extranonce2.clone(),
+            ntime: work.ntime,
+            target_context: ProductionTargetContext {
+                compact_nbits: u32::from_le_bytes(work.fields.nbits),
+                maybe_pool_difficulty: work.maybe_pool_difficulty,
+            },
+            work,
+            dispatched,
+            result_seen: false,
+        }
+    }
+}
+
+impl fmt::Debug for ProductionWorkRecord {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ProductionWorkRecord")
+            .field("generation", &self.generation)
+            .field("job", &"redacted")
+            .field("target_context", &"redacted")
+            .field("work_payload", &"redacted")
+            .field("dispatched", &self.dispatched)
+            .field("result_seen", &self.result_seen)
+            .finish()
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct ProductionDispatch {
+    pub generation: PoolSessionGeneration,
+    pub work_payload: ProductionWorkPayload,
+    pub work: MiningWork,
+}
+
+impl fmt::Debug for ProductionDispatch {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ProductionDispatch")
+            .field("generation", &self.generation)
+            .field("job", &"redacted")
+            .field("target_context", &"redacted")
+            .field("work_payload", &"redacted")
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProductionWorkRegistry {
+    generation: PoolSessionGeneration,
+    queue: BoundedWorkQueue<MiningWork, STRATUM_WORK_QUEUE_CAPACITY>,
+    valid_jobs: Bm1366ValidJobIds,
+    active_work: HashMap<Bm1366JobId, ProductionWorkRecord>,
+}
+
+impl ProductionWorkRegistry {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            generation: PoolSessionGeneration::initial(),
+            queue: BoundedWorkQueue::new(),
+            valid_jobs: Bm1366ValidJobIds::empty(),
+            active_work: HashMap::new(),
+        }
+    }
+
+    #[must_use]
+    pub const fn generation(&self) -> PoolSessionGeneration {
+        self.generation
+    }
+
+    pub fn enqueue_pool_work(&mut self, work: MiningWork) -> Result<(), StratumV1Error> {
+        let asic_job_id = work.asic_job_id;
+        if work.clean_jobs {
+            self.invalidate_for_clean_jobs();
+        }
+
+        self.queue.enqueue(work)?;
+        self.valid_jobs.insert(asic_job_id);
+        Ok(())
+    }
+
+    pub fn dispatch_next(&mut self) -> Result<ProductionDispatch, StratumV1Error> {
+        let work = self.queue.dequeue()?;
+        let generation = self.generation;
+        let work_payload = ProductionWorkPayload::new(work.asic_job_id, work.fields);
+        let record = ProductionWorkRecord::from_work(generation, work.clone(), true);
+        self.active_work.insert(work.asic_job_id.lookup_key(), record);
+
+        Ok(ProductionDispatch {
+            generation,
+            work_payload,
+            work,
+        })
+    }
+
+    #[must_use]
+    pub fn maybe_active_work(&self, job_id: Bm1366JobId) -> Option<&ProductionWorkRecord> {
+        let maybe_record = self.active_work.get(&job_id.lookup_key());
+        let record = maybe_record?;
+        if record.generation != self.generation {
+            return None;
+        }
+
+        Some(record)
+    }
+
+    #[must_use]
+    pub const fn valid_jobs(&self) -> &Bm1366ValidJobIds {
+        &self.valid_jobs
+    }
+
+    pub fn invalidate_for_clean_jobs(&mut self) {
+        self.advance_generation_and_clear_work();
+    }
+
+    pub fn invalidate_for_reconnect(&mut self) {
+        self.advance_generation_and_clear_work();
+    }
+
+    pub fn invalidate_for_authorization_reset(&mut self) {
+        self.advance_generation_and_clear_work();
+    }
+
+    pub fn invalidate_for_session_replacement(&mut self) {
+        self.advance_generation_and_clear_work();
+    }
+
+    fn advance_generation_and_clear_work(&mut self) {
+        self.generation = self.generation.next();
+        self.queue.clear();
+        self.valid_jobs = Bm1366ValidJobIds::empty();
+        self.active_work.clear();
+    }
+}
+
+impl Default for ProductionWorkRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bitaxe_asic::bm1366::work::Bm1366JobId;
