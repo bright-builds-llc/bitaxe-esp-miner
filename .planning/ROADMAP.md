@@ -20,7 +20,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [x] **Phase 24: BM1366 Production Work Path** - The firmware separates diagnostic ASIC behavior from trusted pool-derived BM1366 work and result handling. (completed 2026-07-05)
 - [x] **Phase 25: Live Stratum Runtime And Safe Stop** - Ultra 205 can run a real watchdog-responsive Stratum v1 mining session and stop safely. (completed 2026-07-05)
 - [x] **Phase 26: Telemetry And Parity Closure** - Runtime API, WebSocket, counters, and parity checklist updates reflect only proven v1.1 mining events. (completed 2026-07-05)
-- [ ] **Phase 27: Live Hardware ASIC And Stratum Bridge** - Live firmware wires Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 socket loop and produces detector-gated share-outcome evidence.
+- [x] **Phase 27: Live Hardware ASIC And Stratum Bridge** - Live firmware wires Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 socket loop and produces detector-gated share-outcome evidence. (completed 2026-07-05)
 - [ ] **Phase 28: Hardware Evidence And Checklist Promotion** - Redacted hardware evidence promotes only exact verified checklist rows supported by Phase 27 artifacts.
 
 ## Phase Details
@@ -118,10 +118,10 @@ Plans:
   4. Committed evidence preserves exact non-claims when hardware prerequisites block live share proof.
 **Plans**: 4 plans
 Plans:
-- [ ] 27-01-PLAN.md — Wire live firmware production command dispatch into `live_stratum_runtime`.
-- [ ] 27-02-PLAN.md — Bridge ASIC nonce observations into production correlation and submit intent emission.
-- [ ] 27-03-PLAN.md — Add detector-gated hardware evidence wrapper and redacted share-outcome artifacts.
-- [ ] 27-04-PLAN.md — Close Phase 27 evidence, tests, and validation metadata.
+- [x] 27-01-PLAN.md — Wire live firmware production command dispatch into `live_stratum_runtime`.
+- [x] 27-02-PLAN.md — Bridge ASIC nonce observations into production correlation and submit intent emission.
+- [x] 27-03-PLAN.md — Add detector-gated hardware evidence wrapper and redacted share-outcome artifacts.
+- [x] 27-04-PLAN.md — Close Phase 27 evidence, tests, and validation metadata.
 
 ### Phase 28: Hardware Evidence And Checklist Promotion
 **Goal**: Parity checklist rows promote to `verified` only where Phase 27 redacted hardware evidence supports exact claims; all other surfaces remain conservative non-claims.
@@ -150,7 +150,7 @@ Plans:
 | 24. BM1366 Production Work Path | v1.1 | 4/4 | Complete    | 2026-07-05 |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 3/3 | Complete    | 2026-07-05 |
 | 26. Telemetry And Parity Closure | v1.1 | 4/4 | Complete    | 2026-07-05 |
-| 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 0/4 | Not started | — |
+| 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 28. Hardware Evidence And Checklist Promotion | v1.1 | 0/3 | Not started | — |
 
 ## Coverage

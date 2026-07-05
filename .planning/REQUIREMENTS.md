@@ -23,16 +23,16 @@ Requirements for the current milestone. Each maps to roadmap phases and must be 
 
 ### Stratum v1 Production Runtime
 
-- [ ] **STR-08**: Ultra 205 production mining uses a real Stratum v1 TCP socket lifecycle for connect, subscribe, authorize, difficulty/extranonce, notify, submit, response classification, reconnect, and safe stop.
-- [ ] **STR-09**: Ultra 205 production mining classifies at least one real pool response to a live ASIC-derived `mining.submit` as accepted, rejected, or explicitly blocked by a safe prerequisite.
+- [x] **STR-08**: Ultra 205 production mining uses a real Stratum v1 TCP socket lifecycle for connect, subscribe, authorize, difficulty/extranonce, notify, submit, response classification, reconnect, and safe stop.
+- [x] **STR-09**: Ultra 205 production mining classifies at least one real pool response to a live ASIC-derived `mining.submit` as accepted, rejected, or explicitly blocked by a safe prerequisite.
 - [x] **STR-10**: Ultra 205 production mining redacts pool URLs, ports, workers, owner addresses, passwords, targets, extranonces, share payloads, and socket errors in committed logs and evidence.
 - [x] **STR-11**: Ultra 205 production mining has deterministic fake-pool or fixture tests for subscribe, authorize, notify, clean-jobs, submit response, reconnect, fallback, and error classification behavior.
 
 ### BM1366 Production Work Path
 
 - [ ] **ASIC-09**: Ultra 205 production mining separates BM1366 diagnostic chip/work modes from trusted production initialization and work-result modes.
-- [ ] **ASIC-10**: Ultra 205 production mining dispatches BM1366 work derived from the active pool job, tracks job/extranonce/difficulty context, and invalidates stale work on clean-jobs or reconnect.
-- [ ] **ASIC-11**: Ultra 205 production mining maps live BM1366 nonce or result observations back to active pool work before any share submission claim is recorded.
+- [x] **ASIC-10**: Ultra 205 production mining dispatches BM1366 work derived from the active pool job, tracks job/extranonce/difficulty context, and invalidates stale work on clean-jobs or reconnect.
+- [x] **ASIC-11**: Ultra 205 production mining maps live BM1366 nonce or result observations back to active pool work before any share submission claim is recorded.
 - [ ] **ASIC-12**: Ultra 205 production mining fails closed on BM1366 initialization, UART, reset, timeout, malformed result, or job-correlation failures without leaking raw frames in committed evidence.
 
 ### Operator Workflow And Secret Handling
@@ -100,13 +100,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAFE-11 | Phase 28 | Pending |
 | SAFE-12 | Phase 28 | Pending |
 | SAFE-13 | Phase 28 | Pending |
-| STR-08 | Phase 27 | Pending |
-| STR-09 | Phase 27 | Pending |
+| STR-08 | Phase 27 | Complete |
+| STR-09 | Phase 27 | Complete |
 | STR-10 | Phase 23 | Complete |
 | STR-11 | Phase 25 | Complete |
 | ASIC-09 | Phase 28 | Pending |
-| ASIC-10 | Phase 27 | Pending |
-| ASIC-11 | Phase 27 | Pending |
+| ASIC-10 | Phase 27 | Complete |
+| ASIC-11 | Phase 27 | Complete |
 | ASIC-12 | Phase 28 | Pending |
 | REL-09 | Phase 23 | Complete |
 | CFG-07 | Phase 28 | Pending |
