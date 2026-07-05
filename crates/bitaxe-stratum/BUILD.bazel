@@ -14,6 +14,7 @@ rust_library(
         "src/v1/mining.rs",
         "src/v1/mining_loop.rs",
         "src/v1/messages.rs",
+        "src/v1/production_work.rs",
         "src/v1/queue.rs",
         "src/v1/state.rs",
     ],
