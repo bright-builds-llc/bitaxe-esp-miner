@@ -98,7 +98,7 @@ fn main() -> anyhow::Result<()> {
     startup_diagnostics?;
     controlled_mining_runtime::maybe_start_after_asic_gate();
     safety_adapter::start_safety_supervisor();
-    let phase25_network_ready = if let Some(modem) = maybe_modem {
+    let network_ready = if let Some(modem) = maybe_modem {
         match wifi_adapter::start_wifi_sta(modem) {
             Ok(()) => true,
             Err(error) => {
@@ -110,7 +110,11 @@ fn main() -> anyhow::Result<()> {
         log::warn!("wifi_status=unavailable reason=peripherals_unavailable");
         false
     };
-    live_stratum_runtime::maybe_start_after_network_setup(phase25_network_ready);
+    if mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
+        live_stratum_runtime::maybe_start_phase27_bridge_after_network_setup(network_ready);
+    } else {
+        live_stratum_runtime::maybe_start_after_network_setup(network_ready);
+    }
     let filesystem_status = filesystem::mount_www_spiffs();
     if let Err(error) = http_api::start_http_api(filesystem_status) {
         log::warn!("axeos_api_route_shell=unavailable error={error:#}");

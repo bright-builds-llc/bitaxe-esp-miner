@@ -53,6 +53,7 @@ pub fn maybe_start_after_asic_gate() {
             publish_for_settings_snapshot("boot");
         }
         MiningEvidenceMode::Phase25LiveStratumRuntime => {}
+        MiningEvidenceMode::Phase27LiveHardwareBridge => {}
     }
 }
 

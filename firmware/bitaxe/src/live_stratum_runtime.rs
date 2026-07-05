@@ -9,7 +9,8 @@ use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpStream};
 use std::time::Duration;
 
-use bitaxe_config::{nvs::StoredValueKind, NvsSnapshot};
+use bitaxe_asic::bm1366::production::ProductionAsicBlocker;
+use bitaxe_config::{nvs::StoredValueKind, ultra_205_defaults, NvsSnapshot};
 use bitaxe_safety::{
     evidence::SafetyCriticalEvidence,
     mining_preconditions::{
@@ -29,10 +30,15 @@ use bitaxe_stratum::jsonrpc::StratumRequestId;
 #[cfg(test)]
 use bitaxe_stratum::v1::state::{MiningActivityStatus, MiningRuntimeState};
 use bitaxe_stratum::v1::{
-    live_runtime::{LivePoolCredentials, LiveRuntimeAction, LiveRuntimeConfig, LiveStratumRuntime},
+    live_runtime::{
+        BridgeObservationOutcome, LivePoolCredentials, LiveRuntimeAction, LiveRuntimeConfig,
+        LiveRuntimeEvent, LiveStratumRuntime,
+    },
     messages::{parse_server_message, StratumResponse, StratumV1ServerMessage},
-    mining_loop::{MiningLoopDecision, MiningLoopGate},
-    production_work::SubmitIntent,
+    mining_loop::{
+        GuardedMiningLoopInputs, GuardedMiningLoopSource, MiningLoopDecision, MiningLoopGate,
+    },
+    production_work::{PoolSessionGeneration, ProductionNonceObservation, SubmitIntent},
     state::PoolLifecycleStatus,
     submit_response::{
         classify_maybe_submit_response, classify_submit_response, SubmitClassification,
@@ -42,17 +48,23 @@ use bitaxe_stratum::v1::{
 };
 
 use crate::{
-    log_buffer, mining_evidence_mode::MiningEvidenceMode, runtime_snapshot, settings_adapter,
+    asic_adapter::{self, ProductionAsicExecutor},
+    log_buffer,
+    mining_evidence_mode::MiningEvidenceMode,
+    runtime_snapshot,
+    settings_adapter,
 };
 
 const BOARD_205: &str = "205";
 const EVIDENCE_ID: &str = "phase25-live-stratum-runtime-safe-stop";
+const PHASE27_EVIDENCE_ID: &str = "phase27-live-hardware-bridge-safe-stop";
 const PHASE25_MODEL: &str = "ultra";
 const PHASE25_VERSION: &str = "205";
 const SOCKET_TIMEOUT_MS: u64 = 100;
 const READ_BUFFER_BYTES: usize = 512;
 const MAX_JSON_LINE_BYTES: usize = 16 * 1024;
 const LIVE_SOCKET_PUMP_ITERATIONS: usize = 16;
+const PHASE27_LIVE_BRIDGE_PUMP_ITERATIONS: usize = 32;
 const STRATUM_PLUS_TCP_PREFIX: &str = concat!("stratum", "+tcp://");
 const TCP_PREFIX: &str = "tcp://";
 const POOL_SETTINGS_UNAVAILABLE: &str = "pool_settings_unavailable";
@@ -61,6 +73,9 @@ const PHASE25_SAFE_STOP_REASON: &str = "phase25_safe_stop";
 const SAFE_STOP_COMPLETE_MARKER: &str = "phase25_safe_stop_status=complete socket=stopped work_queue=invalidated active_work=invalidated mining=disabled hardware_control=disabled work_submission=disabled post_stop_snapshot=updated";
 
 pub fn maybe_start_after_network_setup(network_ready: bool) {
+    if MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
+        return;
+    }
     if !MiningEvidenceMode::current().is_phase25_live_stratum_runtime() {
         return;
     }
@@ -77,6 +92,28 @@ pub fn maybe_start_after_network_setup(network_ready: bool) {
     let mut connector = FirmwareTcpConnector;
     let _outcome = start_live_stratum_runtime_with_dependencies(
         firmware_production_preconditions(),
+        &mut settings_source,
+        &mut connector,
+    );
+}
+
+pub fn maybe_start_phase27_bridge_after_network_setup(network_ready: bool) {
+    if !MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
+        return;
+    }
+    let _reason_labels = safe_stop_reason_labels();
+    publish_phase25_watchdog_boundaries();
+
+    if !network_ready {
+        publish_blocked("network_unavailable");
+        publish_safe_stop_without_runtime(SafeStopReason::PrerequisiteFailure);
+        return;
+    }
+
+    let mut settings_source = FirmwarePoolSettingsSource;
+    let mut connector = FirmwareTcpConnector;
+    let _outcome = start_live_stratum_runtime_with_dependencies(
+        firmware_phase27_production_preconditions(),
         &mut settings_source,
         &mut connector,
     );
@@ -228,6 +265,16 @@ fn firmware_production_preconditions() -> ProductionMiningPreconditions {
     }
 }
 
+fn firmware_phase27_production_preconditions() -> ProductionMiningPreconditions {
+    ProductionMiningPreconditions {
+        power: unavailable_prerequisite("phase27_power"),
+        thermal: unavailable_prerequisite("phase27_thermal"),
+        fan: unavailable_prerequisite("phase27_fan"),
+        voltage: unavailable_prerequisite("phase27_voltage"),
+        safety: ProductionMiningPrerequisite::blocked(SAFETY_PREFLIGHT_EVIDENCE_MISSING),
+    }
+}
+
 fn unavailable_prerequisite(source: &'static str) -> ProductionMiningPrerequisite {
     ProductionMiningPrerequisite::Bounded(BoundedObservationEvidence {
         source,
@@ -262,11 +309,36 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
     runtime: &mut LiveStratumRuntime,
     socket: &mut S,
 ) -> SafeStopReason {
+    let phase27_bridge = MiningEvidenceMode::current().is_phase27_live_hardware_bridge();
+    let max_iterations = if phase27_bridge {
+        PHASE27_LIVE_BRIDGE_PUMP_ITERATIONS
+    } else {
+        LIVE_SOCKET_PUMP_ITERATIONS
+    };
     let mut pending_actions: VecDeque<LiveRuntimeAction> = runtime.drain_actions().into();
     let mut maybe_pending_submit: Option<PendingSubmit> = None;
+    let mut asic_bridge = AsicBridgeState::default();
+    let mut maybe_submit_classified = false;
 
-    for _iteration in 0..LIVE_SOCKET_PUMP_ITERATIONS {
+    for _iteration in 0..max_iterations {
         publish_watchdog_checkpoint(StepKind::Socket, 1);
+
+        if phase27_bridge && asic_bridge.needs_step() {
+            publish_watchdog_checkpoint(StepKind::Asic, 1);
+            match run_asic_bridge_step(runtime, &mut asic_bridge) {
+                AsicBridgeStepOutcome::Actions(actions) => {
+                    pending_actions.extend(actions);
+                }
+                AsicBridgeStepOutcome::Blocked { reason } => {
+                    publish_asic_bridge_blocked(reason);
+                    return SafeStopReason::PrerequisiteFailure;
+                }
+                AsicBridgeStepOutcome::Correlated => {
+                    maybe_submit_classified = false;
+                }
+                AsicBridgeStepOutcome::NoOp => {}
+            }
+        }
 
         if let Some(action) = pending_actions.pop_front() {
             match write_runtime_action(action, socket) {
@@ -288,8 +360,15 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
 
         match socket.maybe_read_json_line() {
             Ok(Some(line)) => {
-                if handle_socket_line(runtime, &line, maybe_pending_submit.as_ref()) {
-                    maybe_pending_submit = None;
+                match handle_socket_line(runtime, &line, maybe_pending_submit.as_ref()) {
+                    SocketLineOutcome::SubmitClassified => {
+                        maybe_pending_submit = None;
+                        maybe_submit_classified = true;
+                    }
+                    SocketLineOutcome::WorkQueued => {
+                        asic_bridge.note_work_queued();
+                    }
+                    SocketLineOutcome::None => {}
                 }
                 pending_actions.extend(runtime.drain_actions());
             }
@@ -303,9 +382,166 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
                 return SafeStopReason::FallbackExhausted;
             }
         }
+
+        if phase27_bridge
+            && maybe_submit_classified
+            && maybe_pending_submit.is_none()
+            && !asic_bridge.needs_step()
+        {
+            return SafeStopReason::NormalStop;
+        }
     }
 
     SafeStopReason::VerificationCleanup
+}
+
+#[derive(Debug, Default)]
+struct AsicBridgeState {
+    maybe_pending_dispatch: bool,
+    awaiting_result_read: bool,
+    last_dispatch_generation: Option<PoolSessionGeneration>,
+}
+
+impl AsicBridgeState {
+    fn needs_step(&self) -> bool {
+        self.maybe_pending_dispatch || self.awaiting_result_read
+    }
+
+    fn note_work_queued(&mut self) {
+        self.maybe_pending_dispatch = true;
+    }
+}
+
+enum AsicBridgeStepOutcome {
+    NoOp,
+    Actions(Vec<LiveRuntimeAction>),
+    Correlated,
+    Blocked { reason: ProductionAsicBlocker },
+}
+
+fn run_asic_bridge_step(
+    runtime: &mut LiveStratumRuntime,
+    bridge: &mut AsicBridgeState,
+) -> AsicBridgeStepOutcome {
+    if bridge.awaiting_result_read {
+        return read_and_correlate_asic_result(runtime, bridge);
+    }
+    if !bridge.maybe_pending_dispatch {
+        return AsicBridgeStepOutcome::NoOp;
+    }
+
+    let gate = mining_loop_gate(firmware_phase27_production_preconditions().decision());
+    if gate.decision() != MiningLoopDecision::Ready {
+        let MiningLoopDecision::Blocked { reason } = gate.decision() else {
+            return AsicBridgeStepOutcome::NoOp;
+        };
+        if let Some(blocker) = production_asic_blocker_from_reason(reason) {
+            return AsicBridgeStepOutcome::Blocked { reason: blocker };
+        }
+        publish_asic_bridge_blocked(ProductionAsicBlocker::PrerequisiteBlocked);
+        return AsicBridgeStepOutcome::Blocked {
+            reason: ProductionAsicBlocker::PrerequisiteBlocked,
+        };
+    }
+
+    let inputs = GuardedMiningLoopInputs {
+        gate,
+        pool_defaults: ultra_205_defaults(),
+        source: GuardedMiningLoopSource::Notify,
+        production_registry: runtime.production_registry().clone(),
+        runtime_state: runtime.state().clone(),
+        maybe_nonce_observation: None,
+    };
+    let plan = match inputs.plan() {
+        Ok(plan) => plan,
+        Err(_) => {
+            publish_asic_bridge_blocked(ProductionAsicBlocker::WorkStale);
+            return AsicBridgeStepOutcome::Blocked {
+                reason: ProductionAsicBlocker::WorkStale,
+            };
+        }
+    };
+
+    *runtime.production_registry_mut() = plan.production_registry;
+    let Some(dispatch) = plan.maybe_dispatch else {
+        bridge.maybe_pending_dispatch = false;
+        return AsicBridgeStepOutcome::NoOp;
+    };
+    let Some(command) = dispatch.maybe_production_command else {
+        bridge.maybe_pending_dispatch = false;
+        return AsicBridgeStepOutcome::NoOp;
+    };
+
+    let generation = runtime.production_registry().generation();
+    bridge.last_dispatch_generation = Some(generation);
+    let valid_jobs = runtime.production_registry().valid_jobs();
+    let mut executor = ProductionAsicExecutor::new();
+    match executor.execute(command, valid_jobs) {
+        Ok(_) => {
+            bridge.maybe_pending_dispatch = false;
+            bridge.awaiting_result_read = true;
+            AsicBridgeStepOutcome::NoOp
+        }
+        Err(blocker) => AsicBridgeStepOutcome::Blocked { reason: blocker },
+    }
+}
+
+fn read_and_correlate_asic_result(
+    runtime: &mut LiveStratumRuntime,
+    bridge: &mut AsicBridgeState,
+) -> AsicBridgeStepOutcome {
+    let Some(generation) = bridge.last_dispatch_generation else {
+        bridge.awaiting_result_read = false;
+        return AsicBridgeStepOutcome::NoOp;
+    };
+    let valid_jobs = runtime.production_registry().valid_jobs();
+    let mut executor = ProductionAsicExecutor::new();
+    let result = match executor.execute(
+        bitaxe_asic::bm1366::production::Bm1366ProductionCommand::ReadProductionResult,
+        valid_jobs,
+    ) {
+        Ok(maybe_result) => maybe_result,
+        Err(blocker) => return AsicBridgeStepOutcome::Blocked { reason: blocker },
+    };
+    bridge.awaiting_result_read = false;
+
+    let Some(result) = result else {
+        return AsicBridgeStepOutcome::NoOp;
+    };
+
+    let observation = ProductionNonceObservation {
+        observed_generation: generation,
+        result,
+    };
+    match runtime.apply_bridge_observation(observation) {
+        Ok(BridgeObservationOutcome::SubmitQueued) => {
+            asic_adapter::publish_production_asic_status(
+                bitaxe_asic::bm1366::production::ProductionAsicStatus::ResultCorrelated,
+            );
+            let actions = runtime.drain_actions();
+            AsicBridgeStepOutcome::Actions(actions)
+        }
+        Ok(BridgeObservationOutcome::Blocked { reason }) => {
+            publish_asic_bridge_blocked(reason);
+            AsicBridgeStepOutcome::Blocked { reason }
+        }
+        Err(_) => {
+            publish_asic_bridge_blocked(ProductionAsicBlocker::JobUncorrelated);
+            AsicBridgeStepOutcome::Blocked {
+                reason: ProductionAsicBlocker::JobUncorrelated,
+            }
+        }
+    }
+}
+
+fn publish_asic_bridge_blocked(reason: ProductionAsicBlocker) {
+    asic_adapter::publish_production_asic_blocked_status(reason);
+}
+
+fn production_asic_blocker_from_reason(reason: &'static str) -> Option<ProductionAsicBlocker> {
+    ProductionAsicBlocker::ALL
+        .into_iter()
+        .find(|blocker| blocker.as_str() == reason)
 }
 
 fn write_runtime_action<S: LiveSocketIo>(
@@ -330,11 +566,18 @@ fn write_runtime_action<S: LiveSocketIo>(
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SocketLineOutcome {
+    None,
+    SubmitClassified,
+    WorkQueued,
+}
+
 fn handle_socket_line(
     runtime: &mut LiveStratumRuntime,
     line: &str,
     maybe_pending_submit: Option<&PendingSubmit>,
-) -> bool {
+) -> SocketLineOutcome {
     publish_watchdog_checkpoint(StepKind::Socket, 1);
     let Ok(message) = parse_server_message(line) else {
         publish_submit_classification(
@@ -342,7 +585,7 @@ fn handle_socket_line(
             SubmitClassification::Malformed,
         );
         publish_status("reconnecting");
-        return false;
+        return SocketLineOutcome::None;
     };
 
     publish_pool_difficulty_if_present(&message);
@@ -352,13 +595,17 @@ fn handle_socket_line(
         {
             let classification = pending_submit.classify_response(response.clone());
             publish_submit_classification(pending_submit.intent.generation, classification);
-            return true;
+            publish_share_submission_status(classification);
+            return SocketLineOutcome::SubmitClassified;
         }
     }
 
     let maybe_event = runtime.apply_server_message(message).ok().flatten();
     publish_event_status(runtime, maybe_event);
-    false
+    if maybe_event == Some(LiveRuntimeEvent::WorkQueued) {
+        return SocketLineOutcome::WorkQueued;
+    }
+    SocketLineOutcome::None
 }
 
 fn publish_pool_difficulty_if_present(message: &StratumV1ServerMessage) {
@@ -505,6 +752,20 @@ fn publish_submit_classification(
 ) {
     runtime_snapshot::publish_runtime_submit_classification(generation, classification, None);
     publish_runtime_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
+}
+
+fn publish_share_submission_status(classification: SubmitClassification) {
+    let label = match classification {
+        SubmitClassification::Accepted => "accepted",
+        SubmitClassification::Rejected { .. } => "rejected",
+        SubmitClassification::Blocked { .. }
+        | SubmitClassification::Malformed
+        | SubmitClassification::Reconnect
+        | SubmitClassification::Timeout
+        | SubmitClassification::NoObservedShare
+        | SubmitClassification::Stopped => "blocked_safe_prerequisite",
+    };
+    info_retained(&format!("share_submission_status={label} redacted=true"));
 }
 
 fn publish_phase25_safe_stop_projection() {

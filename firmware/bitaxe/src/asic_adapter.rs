@@ -23,9 +23,12 @@ use esp_idf_svc::hal::{
     uart::Uart,
 };
 
+mod production;
 mod reset;
 mod status;
 mod uart;
+
+pub use production::{store_production_peripherals, ProductionAsicExecutor, production_handle_available};
 
 pub use status::{
     publish_mining_loop_blocked_status, publish_production_asic_blocked_status,
@@ -190,6 +193,11 @@ where
     match parse_bm1366_result_frame(&frame, &valid_jobs, 16) {
         Ok(_result) => {
             status::publish_work_result_parsed_status(job_id.raw());
+            if crate::mining_evidence_mode::MiningEvidenceMode::current()
+                .is_phase27_live_hardware_bridge()
+            {
+                production::store_production_peripherals(uart, reset, true);
+            }
         }
         Err(error) => {
             fail_closed_work_result_invalid(&mut reset, &error);
