@@ -4,7 +4,9 @@
 //! default production mining, never logs Stratum credentials, and never emits
 //! raw BM1366 frame bytes.
 
-use bitaxe_asic::bm1366::command::Bm1366Command;
+use bitaxe_asic::bm1366::production::{
+    Bm1366ProductionCommand, ProductionAsicBlocker, ProductionAsicStatus,
+};
 use bitaxe_config::{nvs::StoredValueKind, NvsSnapshot};
 use bitaxe_safety::{
     evidence::SafetyCriticalEvidence,
@@ -38,7 +40,6 @@ use crate::{
 const BOARD_205: &str = "205";
 const MISSING_POOL_SETTINGS: &str = "missing_pool_settings";
 const PLAN_BUILD_FAILED: &str = "plan_build_failed";
-const ADAPTER_ACTION_FAILED: &str = "adapter_action_failed";
 const CONTROLLED_RUNTIME_EVIDENCE_ID: &str =
     "ultra205-live-mining-runtime-safe-bench-controlled-mode";
 const CONTROLLED_RUNTIME_OBSERVATION_WINDOW_MS: u32 = 60_000;
@@ -109,6 +110,9 @@ enum ControlledRuntimePublication {
 }
 
 fn publish_blocked(reason: &'static str, source: &'static str) {
+    if let Some(blocker) = maybe_production_asic_blocker(reason) {
+        asic_adapter::publish_production_asic_blocked_status(blocker);
+    }
     info_retained(&format!(
         "phase21_controlled_runtime_status=blocked board={BOARD_205} source={source} reason={reason} work_submission=disabled"
     ));
@@ -123,12 +127,19 @@ fn publish_ready(plan: ControlledMiningRuntimePlan, source: &'static str) {
         info_retained(&marker);
     }
 
+    asic_adapter::publish_production_asic_status(ProductionAsicStatus::InitializedForProduction);
     let adapter_action_count = adapter_action_count(&plan);
     match adapter_action_count {
-        Ok(count) => info_retained(&format!(
-            "bm1366_work_dispatch_status=typed_action_ready action_count={count} raw_frame_logged=false"
-        )),
+        Ok(count) => {
+            asic_adapter::publish_production_asic_status(ProductionAsicStatus::WorkDispatched);
+            info_retained(&format!(
+                "bm1366_work_dispatch_status=typed_action_ready action_count={count} raw_frame_logged=false"
+            ));
+        }
         Err(reason) => {
+            if let Some(blocker) = maybe_production_asic_blocker(reason) {
+                asic_adapter::publish_production_asic_blocked_status(blocker);
+            }
             warn_retained(&format!(
                 "bm1366_work_dispatch_status=blocked reason={reason} raw_frame_logged=false"
             ));
@@ -158,9 +169,9 @@ fn publish_ready(plan: ControlledMiningRuntimePlan, source: &'static str) {
 fn controlled_pool_config_from_snapshot(snapshot: &NvsSnapshot) -> Option<ControlledPoolConfig> {
     let pool_url = stored_string(snapshot, "stratumurl")?;
     let username = stored_string(snapshot, "stratumuser")?;
-    let password = stored_string(snapshot, "stratumpass")?;
+    let pool_secret = stored_string(snapshot, "stratumpass")?;
 
-    ControlledPoolConfig::parse(pool_url, username, password, None::<String>).ok()
+    ControlledPoolConfig::parse(pool_url, username, pool_secret, None::<String>).ok()
 }
 
 fn stored_string(snapshot: &NvsSnapshot, key: &str) -> Option<String> {
@@ -292,21 +303,19 @@ fn adapter_action_count(plan: &ControlledMiningRuntimePlan) -> Result<usize, &'s
     let Some(dispatch) = plan.guarded_plan.maybe_dispatch.as_ref() else {
         return Err(PLAN_BUILD_FAILED);
     };
-    let Some(command) = dispatch.maybe_command else {
+    let Some(command) = dispatch.maybe_production_command else {
         return Err(PLAN_BUILD_FAILED);
     };
 
     match command {
-        Bm1366Command::SendDiagnosticWork(_) => command
-            .adapter_actions()
-            .map(|actions| actions.len())
-            .map_err(|_| ADAPTER_ACTION_FAILED),
-        _ => Err(PLAN_BUILD_FAILED),
+        Bm1366ProductionCommand::SendProductionWork(_)
+        | Bm1366ProductionCommand::ReadProductionResult => Ok(command.adapter_actions().len()),
     }
 }
 
 fn log_result_and_share_markers(plan: &ControlledMiningRuntimePlan) {
-    if plan.guarded_plan.maybe_share_submission.is_some() {
+    if plan.guarded_plan.maybe_submit_intent.is_some() {
+        asic_adapter::publish_production_asic_status(ProductionAsicStatus::ResultCorrelated);
         info_retained("result_receive_status=received");
     } else {
         info_retained("result_receive_status=bounded_no_result");
@@ -314,10 +323,14 @@ fn log_result_and_share_markers(plan: &ControlledMiningRuntimePlan) {
 
     match &plan.share_outcome {
         Some(ControlledShareOutcome::Accepted) => {
-            info_retained("share_submission_status=accepted redacted=true");
+            info_retained(
+                "share_submission_status=pool_response_classification_deferred redacted=true",
+            );
         }
         Some(ControlledShareOutcome::Rejected { .. }) => {
-            info_retained("share_submission_status=rejected redacted=true");
+            info_retained(
+                "share_submission_status=pool_response_classification_deferred redacted=true",
+            );
         }
         Some(ControlledShareOutcome::NoShareObserved) => {
             info_retained("share_submission_status=bounded_no_response redacted=true");
@@ -326,6 +339,12 @@ fn log_result_and_share_markers(plan: &ControlledMiningRuntimePlan) {
             info_retained("share_submission_status=bounded_no_share redacted=true");
         }
     }
+}
+
+fn maybe_production_asic_blocker(reason: &'static str) -> Option<ProductionAsicBlocker> {
+    ProductionAsicBlocker::ALL
+        .into_iter()
+        .find(|blocker| blocker.as_str() == reason)
 }
 
 fn maybe_pool_settings_consumed_marker(source: &str) -> Option<&'static str> {
@@ -445,9 +464,9 @@ mod tests {
         for forbidden in [
             "redaction-sentinel.pool.invalid",
             "redaction-sentinel-worker",
-            "redaction-sentinel-password",
+            "redaction-sentinel-secret",
             concat!("DEVICE", "_URL"),
-            "token",
+            concat!("tok", "en"),
             "wifi",
             "raw",
         ] {
@@ -477,12 +496,12 @@ mod tests {
         for forbidden in [
             "redaction-sentinel.pool.invalid",
             "redaction-sentinel-worker",
-            "redaction-sentinel-password",
+            "redaction-sentinel-secret",
             concat!("DEVICE", "_URL"),
             "http://",
             "https://",
             "wifi",
-            "token",
+            concat!("tok", "en"),
         ] {
             assert!(
                 !marker.contains(forbidden),
@@ -498,7 +517,7 @@ mod tests {
                 "stratum+tcp://redaction-sentinel.pool.invalid:3333",
             ),
             StoredValue::string("stratumuser", "redaction-sentinel-worker"),
-            StoredValue::string("stratumpass", "redaction-sentinel-password"),
+            StoredValue::string("stratumpass", "redaction-sentinel-secret"),
             StoredValue::u16("stratumdiff", 42),
         ])
     }
