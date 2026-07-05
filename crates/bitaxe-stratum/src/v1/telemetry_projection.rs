@@ -1,7 +1,7 @@
 use crate::v1::messages::PoolDifficulty;
 use crate::v1::production_work::PoolSessionGeneration;
 use crate::v1::state::{
-    HashrateInputs, MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus,
+    HashrateInputs, MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus, ShareDifficulty,
 };
 use crate::v1::submit_response::SubmitClassification;
 
@@ -67,6 +67,7 @@ pub enum RuntimeTelemetryEvent {
         sequence: RuntimeTelemetrySequence,
         generation: PoolSessionGeneration,
         classification: SubmitClassification,
+        maybe_share_difficulty: Option<ShareDifficulty>,
     },
     SafeStopped {
         sequence: RuntimeTelemetrySequence,
@@ -174,11 +175,33 @@ impl RuntimeTelemetryProjection {
                 });
                 ProjectionShareOutcome::NoCounterChange
             }
-            RuntimeTelemetryEvent::SubmitClassified { generation, .. } => {
+            RuntimeTelemetryEvent::SubmitClassified {
+                generation,
+                classification,
+                maybe_share_difficulty,
+                ..
+            } => {
                 if generation != self.current_generation {
                     return ProjectionShareOutcome::IgnoredStaleGeneration;
                 }
-                ProjectionShareOutcome::NoCounterChange
+                match classification {
+                    SubmitClassification::Accepted => {
+                        let share_difficulty =
+                            maybe_share_difficulty.unwrap_or_else(|| ShareDifficulty::new(0.0));
+                        self.state.record_accepted_share(share_difficulty);
+                        ProjectionShareOutcome::Accepted
+                    }
+                    SubmitClassification::Rejected { reason } => {
+                        self.state.record_rejected_share(reason.as_str());
+                        ProjectionShareOutcome::Rejected
+                    }
+                    SubmitClassification::NoObservedShare
+                    | SubmitClassification::Timeout
+                    | SubmitClassification::Reconnect
+                    | SubmitClassification::Malformed
+                    | SubmitClassification::Blocked { .. }
+                    | SubmitClassification::Stopped => ProjectionShareOutcome::NoCounterChange,
+                }
             }
             RuntimeTelemetryEvent::SafeStopped { reason, .. } => {
                 self.current_generation = self.current_generation.next();
@@ -395,6 +418,10 @@ mod tests {
         assert_eq!(
             projection.state().counters.rejected_reasons,
             vec!["pool_rejected_share".to_owned()]
+        );
+        assert_eq!(
+            RedactedSubmitRejectReason::Unknown.as_str(),
+            "unknown_rejected_share"
         );
     }
 
