@@ -18,11 +18,11 @@ network_scan: disabled
 
 ## Observed Behavior
 
-Phase 23 requires a slot for safe-stop evidence, but runtime safe-stop behavior under live production mining belongs to Phase 25.
+Phase 23 requires a slot for safe-stop evidence, but runtime safe-stop behavior under live production mining belongs to Phase 25. Phase 25 now records its current safe-stop evidence at `docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/safe-stop.md` with `safe_stop_status: complete` at implemented/workflow scope and hardware-level live runtime stop still below verified.
 
 ## Conclusion
 
-The workflow can carry a safe-stop artifact or blocker without claiming live runtime stop behavior.
+The Phase 23 workflow can carry a safe-stop artifact or blocker without claiming live runtime stop behavior. Phase 25 owns the current status and the future detector-gated promotion path.
 
 ## exact_non_claims
 
