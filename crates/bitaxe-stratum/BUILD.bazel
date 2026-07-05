@@ -11,6 +11,7 @@ rust_library(
         "src/v1/controlled_runtime.rs",
         "src/v1/controlled_runtime/tests.rs",
         "src/v1/fake_pool.rs",
+        "src/v1/live_runtime.rs",
         "src/v1/mining.rs",
         "src/v1/mining_loop.rs",
         "src/v1/messages.rs",

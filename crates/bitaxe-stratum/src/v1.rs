@@ -8,6 +8,7 @@
 pub mod coinbase;
 pub mod controlled_runtime;
 pub mod fake_pool;
+pub mod live_runtime;
 pub mod messages;
 pub mod mining;
 pub mod mining_loop;
