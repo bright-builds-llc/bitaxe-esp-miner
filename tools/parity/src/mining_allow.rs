@@ -965,6 +965,130 @@ mod tests {
         );
     }
 
+    #[test]
+    fn mining_allow_accepts_phase25_live_submit_response_command() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("live-stratum-runtime");
+            json["claim_tier"] = serde_json::json!("live-submit-response");
+            json["evidence_class"] = serde_json::json!("hardware-smoke");
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase25-live-stratum-evidence.sh --evidence-root evidence/phase25 --manifest package.json --mode hardware --duration-seconds 120 --device-url [redacted-origin] --pool-credentials [redacted-local-path]"
+            );
+            json["allowed_inputs"] = serde_json::json!({
+                "pool_config": "local-owner-supplied",
+                "device_url": "explicit",
+                "duration_seconds": 120,
+                "target_source": "explicit",
+                "conclusion": "live-submit-response",
+                "safe_stop_status": "complete",
+                "watchdog_responsiveness_status": "passed"
+            });
+            json["prerequisite_artifacts"] = serde_json::json!([
+                "docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/detector.md",
+                "docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/board-info.md",
+                "docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/redaction-review.md"
+            ]);
+            json["evidence_dir"] = serde_json::json!(
+                "docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop"
+            );
+            json["redaction_reviewer"] = serde_json::json!("phase-25-wrapper");
+            json["checklist_rows"] =
+                serde_json::json!(["STR-08", "STR-09", "STR-11", "SAFE-12", "SAFE-13"]);
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(
+            report.passed(),
+            "phase25 live submit response should pass: {report:#?}"
+        );
+    }
+
+    #[test]
+    fn mining_allow_accepts_phase25_safe_prerequisite_blocker() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("live-stratum-runtime");
+            json["claim_tier"] = serde_json::json!("safe-prerequisite-blocked");
+            json["evidence_class"] = serde_json::json!("workflow");
+            json["board_info_status"] = serde_json::json!("blocked");
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase25-live-stratum-evidence.sh --evidence-root evidence/phase25 --manifest package.json --mode blocked"
+            );
+            json["allowed_inputs"] = serde_json::json!({
+                "pool_config": "not-supplied",
+                "device_url": "not-supplied",
+                "duration_seconds": 60,
+                "target_source": "blocked",
+                "conclusion": "blocked_safe_prerequisite",
+                "safe_stop_status": "complete",
+                "watchdog_responsiveness_status": "blocked"
+            });
+            json["prerequisite_artifacts"] = serde_json::json!([
+                "docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/detector.md",
+                "docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/redaction-review.md"
+            ]);
+            json["evidence_dir"] = serde_json::json!(
+                "docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop"
+            );
+            json["redaction_reviewer"] = serde_json::json!("phase-25-wrapper");
+            json["checklist_rows"] =
+                serde_json::json!(["STR-08", "STR-09", "STR-11", "SAFE-12", "SAFE-13"]);
+        });
+
+        // Act
+        let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(
+            report.passed(),
+            "phase25 safe prerequisite blocker should pass: {report:#?}"
+        );
+    }
+
+    #[test]
+    fn mining_allow_rejects_phase25_unsafe_or_stale_command() {
+        for unsafe_command in [
+            "scripts/phase25-live-stratum-evidence.sh --evidence-root evidence/phase25 --manifest package.json --mode hardware stratum",
+            "scripts/phase25-live-stratum-evidence.sh --evidence-root evidence/phase25 --manifest package.json --mode hardware --device-url [redacted-origin] erase-flash",
+            "scripts/phase25-live-stratum-evidence.sh --evidence-root evidence/phase25 --manifest package.json --mode hardware --device-url [redacted-origin] rollback",
+            "scripts/phase25-live-stratum-evidence.sh --evidence-root evidence/phase25 --manifest package.json --mode hardware --device-url [redacted-origin] voltage-control",
+            "scripts/phase25-live-stratum-evidence.sh --evidence-root evidence/phase25 --manifest package.json --mode hardware --device-url [redacted-origin] fan-control",
+            "scripts/phase25-live-stratum-evidence.sh --evidence-root evidence/phase25 --manifest package.json --mode hardware --target-source stale-log --device-url [redacted-origin]",
+            "scripts/phase25-live-stratum-evidence.sh --evidence-root evidence/phase25 --manifest package.json --mode hardware --duration-seconds 30 --device-url [redacted-origin]",
+            "scripts/phase25-live-stratum-evidence.sh --evidence-root evidence/phase25 --manifest package.json --mode hardware",
+        ] {
+            // Arrange
+            let (manifest, package_manifest) = manifest_with_change(|json| {
+                json["surface"] = serde_json::json!("live-stratum-runtime");
+                json["claim_tier"] = serde_json::json!("live-submit-response");
+                json["evidence_class"] = serde_json::json!("hardware-smoke");
+                json["allowed_command"] = serde_json::json!(unsafe_command);
+                json["allowed_inputs"] = serde_json::json!({
+                    "pool_config": "local-owner-supplied",
+                    "device_url": "explicit",
+                    "duration_seconds": 120,
+                    "target_source": "explicit",
+                    "conclusion": "live-submit-response",
+                    "safe_stop_status": "complete",
+                    "watchdog_responsiveness_status": "passed"
+                });
+            });
+
+            // Act
+            let report = validate_mining_allow_manifest(&manifest, &package_manifest);
+
+            // Assert
+            assert!(
+                !report.passed(),
+                "unsafe phase25 command should fail: {unsafe_command}"
+            );
+        }
+    }
+
     fn assert_error_contains(report: &MiningAllowReport, expected: &str) {
         assert!(
             report
