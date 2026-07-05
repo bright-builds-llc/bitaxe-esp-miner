@@ -1,9 +1,9 @@
 ---
 phase: 24
 slug: bm1366-production-work-path
-status: draft
+status: passed
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-07-05
 ---
 
@@ -32,21 +32,21 @@ created: 2026-07-05
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 24-01-01 | 01 | 1 | ASIC-09 | T-24-01 / T-24-04 | Diagnostic and production BM1366 modes are distinct and raw frames stay outside firmware | unit/static | `bazel test //crates/bitaxe-asic/... && ! rg -n "0x55|0xaa|crc5|crc16|raw frame" firmware/bitaxe/src` | W0 | pending |
-| 24-02-01 | 02 | 1 | ASIC-10 | T-24-02 / T-24-05 | Pool-derived work binds job, extranonce, difficulty/target, and session generation before dispatch | unit | `bazel test //crates/bitaxe-stratum/...` | W0 | pending |
-| 24-02-02 | 02 | 1 | ASIC-10 | T-24-02 | Clean-jobs and reconnect invalidate queued and active BM1366 production work | unit | `bazel test //crates/bitaxe-stratum/...` | W0 | pending |
-| 24-03-01 | 03 | 3 | ASIC-11 | T-24-09 / T-24-10 | Nonce/result observations produce submit intent only after generation-stamped active-work correlation and redacted submit formatting | unit/fixture/redaction | `bazel test //crates/bitaxe-asic/... //crates/bitaxe-stratum/...` | W0 | pending |
-| 24-03-02 | 03 | 3 | ASIC-11, ASIC-12 | T-24-09 / T-24-11 / T-24-13 | Malformed, stale, duplicate, wrong-session, or uncorrelated results fail closed with redaction-safe reasons | unit/redaction | `bazel test //crates/bitaxe-asic/... //crates/bitaxe-stratum/... //crates/bitaxe-safety:tests` | W0 | pending |
-| 24-03-03 | 03 | 3 | ASIC-09, ASIC-11, ASIC-12 | T-24-12 / T-24-19 | Controlled firmware runtime consumes production dispatch/result outputs and keeps diagnostic work out of the production route | build/static | `bazel build //firmware/bitaxe:firmware` | W0 | pending |
-| 24-04-01 | 04 | 4 | ASIC-09, ASIC-10, ASIC-11, ASIC-12 | T-24-14 / T-24-15 / T-24-17 | Checklist and evidence updates promote only exact implemented/evidenced claims and preserve Phase 25 non-claims | parity/docs | `just parity && just verify-reference` | W0 | pending |
-| 24-04-02 | 04 | 4 | ASIC-09, ASIC-10, ASIC-11, ASIC-12 | T-24-15 / T-24-16 / T-24-17 | Validation metadata and checklist rows remain implemented/unit,workflow with no Phase 24 hardware promotion | lifecycle/parity | `node "$HOME/.cursor/get-shit-done/bin/gsd-tools.cjs" verify lifecycle 24 --expect-id 24-2026-07-05T00-27-27 --expect-mode yolo --require-plans` | W0 | pending |
+| 24-01-01 | 01 | 1 | ASIC-09 | T-24-01 / T-24-04 | Diagnostic and production BM1366 modes are distinct and raw frames stay outside firmware | unit/static | `bazel test //crates/bitaxe-asic/... && ! rg -n "0x55|0xaa|crc5|crc16|raw frame" firmware/bitaxe/src` | W0 | passed - observed `bazel test //crates/bitaxe-asic:tests` in `24-01-SUMMARY.md` and full Phase 24 suite in Plan 04 |
+| 24-02-01 | 02 | 1 | ASIC-10 | T-24-02 / T-24-05 | Pool-derived work binds job, extranonce, difficulty/target, and session generation before dispatch | unit | `bazel test //crates/bitaxe-stratum/...` | W0 | passed - observed `bazel test //crates/bitaxe-stratum:tests` in `24-02-SUMMARY.md` and full Phase 24 suite in Plan 04 |
+| 24-02-02 | 02 | 1 | ASIC-10 | T-24-02 | Clean-jobs and reconnect invalidate queued and active BM1366 production work | unit | `bazel test //crates/bitaxe-stratum/...` | W0 | passed - observed `bazel test //crates/bitaxe-stratum:tests` in `24-02-SUMMARY.md` and full Phase 24 suite in Plan 04 |
+| 24-03-01 | 03 | 3 | ASIC-11 | T-24-09 / T-24-10 | Nonce/result observations produce submit intent only after generation-stamped active-work correlation and redacted submit formatting | unit/fixture/redaction | `bazel test //crates/bitaxe-asic/... //crates/bitaxe-stratum/...` | W0 | passed - observed `bazel test //crates/bitaxe-stratum:tests //crates/bitaxe-asic:tests` in `24-03-SUMMARY.md` and full Phase 24 suite in Plan 04 |
+| 24-03-02 | 03 | 3 | ASIC-11, ASIC-12 | T-24-09 / T-24-11 / T-24-13 | Malformed, stale, duplicate, wrong-session, or uncorrelated results fail closed with redaction-safe reasons | unit/redaction | `bazel test //crates/bitaxe-asic/... //crates/bitaxe-stratum/... //crates/bitaxe-safety:tests` | W0 | passed - observed `bazel test //crates/bitaxe-stratum:tests //crates/bitaxe-asic:tests //crates/bitaxe-safety:tests` in `24-03-SUMMARY.md` and full Phase 24 suite in Plan 04 |
+| 24-03-03 | 03 | 3 | ASIC-09, ASIC-11, ASIC-12 | T-24-12 / T-24-19 | Controlled firmware runtime consumes production dispatch/result outputs and keeps diagnostic work out of the production route | build/static | `bazel build //firmware/bitaxe:firmware` | W0 | passed - observed `bazel build //firmware/bitaxe:firmware` in `24-03-SUMMARY.md` |
+| 24-04-01 | 04 | 4 | ASIC-09, ASIC-10, ASIC-11, ASIC-12 | T-24-14 / T-24-15 / T-24-17 | Checklist and evidence updates promote only exact implemented/evidenced claims and preserve Phase 25 non-claims | parity/docs | `just parity && just verify-reference` | W0 | passed - observed evidence metadata scan, forbidden-value scan, `just parity`, and `just verify-reference` in Plan 04 |
+| 24-04-02 | 04 | 4 | ASIC-09, ASIC-10, ASIC-11, ASIC-12 | T-24-15 / T-24-16 / T-24-17 | Validation metadata and checklist rows remain implemented/unit,workflow with no Phase 24 hardware promotion | lifecycle/parity | `node "$HOME/.cursor/get-shit-done/bin/gsd-tools.cjs" verify lifecycle 24 --expect-id 24-2026-07-05T00-27-27 --expect-mode yolo --require-plans` | W0 | passed - observed lifecycle validation, `just parity`, and `just verify-reference` in Plan 04 |
 
 ## Wave 0 Requirements
 
-- [ ] Existing `bazel test` infrastructure remains usable for `crates/bitaxe-asic` and `crates/bitaxe-stratum`.
-- [ ] New or changed Rust core modules include focused unit tests with Arrange, Act, Assert structure.
-- [ ] If new shell or Node helpers are added, task plans include syntax/unit checks such as `bash -n` or the existing repo-owned script test pattern.
-- [ ] Hardware checklist promotion remains out of Phase 24; any later hardware-capable evidence plan must start with `just detect-ultra205` and record selected port, board-info, package identity, exact commands, evidence directory, redaction workflow, observed behavior, and conclusion.
+- [x] Existing `bazel test` infrastructure remains usable for `crates/bitaxe-asic` and `crates/bitaxe-stratum`.
+- [x] New or changed Rust core modules include focused unit tests with Arrange, Act, Assert structure.
+- [x] If new shell or Node helpers are added, task plans include syntax/unit checks such as `bash -n` or the existing repo-owned script test pattern.
+- [x] Hardware checklist promotion remains out of Phase 24; any later hardware-capable evidence plan must start with `just detect-ultra205` and record selected port, board-info, package identity, exact commands, evidence directory, redaction workflow, observed behavior, and conclusion.
 
 ## Manual-Only Verifications
 
