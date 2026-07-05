@@ -63,11 +63,7 @@ pub struct ProductionWorkRecord {
 }
 
 impl ProductionWorkRecord {
-    fn from_work(
-        generation: PoolSessionGeneration,
-        work: MiningWork,
-        dispatched: bool,
-    ) -> Self {
+    fn from_work(generation: PoolSessionGeneration, work: MiningWork, dispatched: bool) -> Self {
         Self {
             generation,
             stratum_job_id: work.stratum_job_id.clone(),
@@ -122,6 +118,16 @@ impl fmt::Debug for ProductionDispatch {
 pub struct ProductionNonceObservation {
     pub observed_generation: PoolSessionGeneration,
     pub result: Bm1366NonceResult,
+}
+
+impl fmt::Debug for ProductionNonceObservation {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ProductionNonceObservation")
+            .field("observed_generation", &self.observed_generation)
+            .field("nonce_result", &"redacted")
+            .finish()
+    }
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -222,7 +228,8 @@ impl ProductionWorkRegistry {
         let generation = self.generation;
         let work_payload = ProductionWorkPayload::new(work.asic_job_id, work.fields);
         let record = ProductionWorkRecord::from_work(generation, work.clone(), true);
-        self.active_work.insert(work.asic_job_id.lookup_key(), record);
+        self.active_work
+            .insert(work.asic_job_id.lookup_key(), record);
 
         Ok(ProductionDispatch {
             generation,
@@ -253,7 +260,9 @@ impl ProductionWorkRegistry {
             };
         }
 
-        let maybe_record = self.active_work.get_mut(&observation.result.job_id.lookup_key());
+        let maybe_record = self
+            .active_work
+            .get_mut(&observation.result.job_id.lookup_key());
         let Some(record) = maybe_record else {
             return CorrelationOutcome::Blocked {
                 reason: ProductionAsicBlocker::JobUncorrelated,
@@ -467,7 +476,11 @@ mod tests {
         // Arrange
         let mut registry = ProductionWorkRegistry::new();
         registry
-            .enqueue_pool_work(sample_work(Bm1366JobId::new(0x40), "pool-job-hidden", false))
+            .enqueue_pool_work(sample_work(
+                Bm1366JobId::new(0x40),
+                "pool-job-hidden",
+                false,
+            ))
             .expect("pool work should enqueue");
         let dispatch = registry.dispatch_next().expect("work should dispatch");
 
@@ -498,7 +511,9 @@ mod tests {
         registry
             .enqueue_pool_work(sample_work(active_stale_job_id, "active-stale-job", false))
             .expect("active stale work should enqueue");
-        let stale_dispatch = registry.dispatch_next().expect("stale work should dispatch");
+        let stale_dispatch = registry
+            .dispatch_next()
+            .expect("stale work should dispatch");
         assert_eq!(stale_dispatch.work.asic_job_id, queued_stale_job_id);
         assert!(registry.valid_jobs().contains(queued_stale_job_id));
         assert!(registry.valid_jobs().contains(active_stale_job_id));

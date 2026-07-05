@@ -22,7 +22,7 @@ use crate::v1::mining_loop::{
     GuardedMiningLoopInputs, GuardedMiningLoopPlan, GuardedMiningLoopSource, MiningLoopDecision,
     MiningLoopGate,
 };
-use crate::v1::production_work::ProductionWorkRegistry;
+use crate::v1::production_work::{ProductionNonceObservation, ProductionWorkRegistry};
 use crate::v1::state::{MiningRuntimeState, PoolLifecycleStatus, ShareDifficulty};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -237,7 +237,7 @@ impl ControlledMiningRuntimePlan {
             source: GuardedMiningLoopSource::FakePool,
             production_registry: ProductionWorkRegistry::new(),
             runtime_state: MiningRuntimeState::default(),
-            maybe_nonce_result: None,
+            maybe_nonce_observation: None,
         }
         .plan()?;
         let evidence = ControlledMiningRuntimeEvidence {
@@ -297,18 +297,22 @@ impl ControlledMiningRuntimePlan {
             source: GuardedMiningLoopSource::Notify,
             production_registry,
             runtime_state,
-            maybe_nonce_result: None,
+            maybe_nonce_observation: None,
         }
         .plan()?;
 
         let mut guarded_plan = if let Some(nonce_result) = input.maybe_nonce_result {
+            let observation = ProductionNonceObservation {
+                observed_generation: dispatch_plan.production_registry.generation(),
+                result: nonce_result,
+            };
             GuardedMiningLoopInputs {
                 gate: input.gate,
                 pool_defaults: ultra_205_defaults(),
                 source: GuardedMiningLoopSource::Notify,
                 production_registry: dispatch_plan.production_registry,
                 runtime_state: dispatch_plan.runtime_state,
-                maybe_nonce_result: Some(nonce_result),
+                maybe_nonce_observation: Some(observation),
             }
             .plan()?
         } else {

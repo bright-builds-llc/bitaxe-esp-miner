@@ -7,26 +7,18 @@
 //! - `crates/bitaxe-asic/src/bm1366/observation.rs`
 //! - Parity checklist rows `STR-006`, `STR-007`, and `STAT-004`
 
-use bitaxe_asic::bm1366::{
-    production::Bm1366ProductionCommand,
-    result::Bm1366NonceResult,
-};
+use bitaxe_asic::bm1366::production::Bm1366ProductionCommand;
 use bitaxe_config::Ultra205Defaults;
 use bitaxe_safety::{
-    evidence::SafetyCriticalEvidence,
-    mining_preconditions::ProductionMiningPreconditionDecision,
-    power::PowerEvidenceToken,
-    status::SafetyStatus,
-    thermal::ThermalEvidenceToken,
+    evidence::SafetyCriticalEvidence, mining_preconditions::ProductionMiningPreconditionDecision,
+    power::PowerEvidenceToken, status::SafetyStatus, thermal::ThermalEvidenceToken,
 };
 
 use crate::error::StratumV1Error;
 use crate::v1::production_work::{
     CorrelationOutcome, ProductionNonceObservation, ProductionWorkRegistry, SubmitIntent,
 };
-use crate::v1::state::{
-    MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus,
-};
+use crate::v1::state::{MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus};
 
 pub const HARDWARE_EVIDENCE_ACK_MISSING: &str = "hardware_evidence_ack_missing";
 pub const ASIC_INITIALIZED_GATE_MISSING: &str = "asic_initialized_gate_missing";
@@ -158,7 +150,7 @@ pub struct GuardedMiningLoopInputs {
     pub source: GuardedMiningLoopSource,
     pub production_registry: ProductionWorkRegistry,
     pub runtime_state: MiningRuntimeState,
-    pub maybe_nonce_result: Option<Bm1366NonceResult>,
+    pub maybe_nonce_observation: Option<ProductionNonceObservation>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -188,11 +180,7 @@ impl GuardedMiningLoopInputs {
                 difficulty: f64::from(self.pool_defaults.primary_pool().difficulty()),
             });
 
-        let maybe_submit_intent = if let Some(result) = self.maybe_nonce_result {
-            let observation = ProductionNonceObservation {
-                observed_generation: self.production_registry.generation(),
-                result,
-            };
+        let maybe_submit_intent = if let Some(observation) = self.maybe_nonce_observation {
             match self.production_registry.correlate_nonce_result(observation) {
                 CorrelationOutcome::SubmitIntent(intent) => Some(intent),
                 CorrelationOutcome::Blocked { reason } => {
@@ -249,16 +237,14 @@ mod mining_loop_tests {
     use bitaxe_config::ultra_205_defaults;
     use bitaxe_safety::{
         evidence::SafetyCriticalEvidence,
-        mining_preconditions::ProductionMiningPreconditionDecision,
-        power::PowerEvidenceToken,
-        status::SafetyStatus,
-        thermal::ThermalEvidenceToken,
+        mining_preconditions::ProductionMiningPreconditionDecision, power::PowerEvidenceToken,
+        status::SafetyStatus, thermal::ThermalEvidenceToken,
     };
 
     use super::*;
     use crate::v1::messages::{ExtranonceAssignment, MiningNotify, PoolDifficulty};
     use crate::v1::mining::MiningWorkBuilder;
-    use crate::v1::production_work::ProductionWorkRegistry;
+    use crate::v1::production_work::{PoolSessionGeneration, ProductionWorkRegistry};
     use crate::v1::state::{MiningActivityStatus, MiningRuntimeState, WorkSubmissionGate};
 
     #[test]
@@ -413,7 +399,10 @@ mod mining_loop_tests {
             source: GuardedMiningLoopSource::Notify,
             production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
-            maybe_nonce_result: Some(sample_nonce_result(Bm1366JobId::new(0x28))),
+            maybe_nonce_observation: Some(sample_nonce_observation(
+                ProductionWorkRegistry::new().generation(),
+                Bm1366JobId::new(0x28),
+            )),
         };
 
         // Act
@@ -447,7 +436,7 @@ mod mining_loop_tests {
             source: GuardedMiningLoopSource::FakePool,
             production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
-            maybe_nonce_result: None,
+            maybe_nonce_observation: None,
         };
 
         // Act
@@ -487,17 +476,18 @@ mod mining_loop_tests {
             source: GuardedMiningLoopSource::Notify,
             production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
-            maybe_nonce_result: None,
+            maybe_nonce_observation: None,
         }
         .plan()
         .expect("queued work should dispatch first");
+        let observed_generation = dispatch_plan.production_registry.generation();
         let inputs = GuardedMiningLoopInputs {
             gate: ready_gate(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
             production_registry: dispatch_plan.production_registry,
             runtime_state: MiningRuntimeState::default(),
-            maybe_nonce_result: Some(sample_nonce_result(job_id)),
+            maybe_nonce_observation: Some(sample_nonce_observation(observed_generation, job_id)),
         };
 
         // Act
@@ -527,7 +517,7 @@ mod mining_loop_tests {
             source: GuardedMiningLoopSource::Notify,
             production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
-            maybe_nonce_result: None,
+            maybe_nonce_observation: None,
         }
         .plan()
         .expect("active work should dispatch")
@@ -535,13 +525,17 @@ mod mining_loop_tests {
         registry
             .enqueue_pool_work(sample_work(pending_job_id))
             .expect("pending sample work should enqueue");
+        let observed_generation = registry.generation();
         let inputs = GuardedMiningLoopInputs {
             gate: ready_gate(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
             production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
-            maybe_nonce_result: Some(sample_nonce_result(active_job_id)),
+            maybe_nonce_observation: Some(sample_nonce_observation(
+                observed_generation,
+                active_job_id,
+            )),
         };
 
         // Act
@@ -573,7 +567,10 @@ mod mining_loop_tests {
             source: GuardedMiningLoopSource::Notify,
             production_registry: registry,
             runtime_state: MiningRuntimeState::default(),
-            maybe_nonce_result: Some(sample_nonce_result(job_id)),
+            maybe_nonce_observation: Some(sample_nonce_observation(
+                ProductionWorkRegistry::new().generation(),
+                job_id,
+            )),
         };
 
         // Act
@@ -588,7 +585,73 @@ mod mining_loop_tests {
             plan.runtime_state.maybe_blocked_reason,
             Some("production_job_uncorrelated")
         );
-        assert_eq!(plan.runtime_state.work_submission, WorkSubmissionGate::Blocked);
+        assert_eq!(
+            plan.runtime_state.work_submission,
+            WorkSubmissionGate::Blocked
+        );
+    }
+
+    #[test]
+    fn ready_mining_loop_rejects_stale_generation_after_clean_jobs_reuses_lookup() {
+        // Arrange
+        let job_id = Bm1366JobId::new(0x28);
+        let mut registry = ProductionWorkRegistry::new();
+        registry
+            .enqueue_pool_work(sample_work(job_id))
+            .expect("generation zero work should enqueue");
+        let generation_zero_plan = GuardedMiningLoopInputs {
+            gate: ready_gate(),
+            pool_defaults: ultra_205_defaults(),
+            source: GuardedMiningLoopSource::Notify,
+            production_registry: registry,
+            runtime_state: MiningRuntimeState::default(),
+            maybe_nonce_observation: None,
+        }
+        .plan()
+        .expect("generation zero work should dispatch");
+        let stale_observation = sample_nonce_observation(
+            generation_zero_plan.production_registry.generation(),
+            job_id,
+        );
+        let mut registry = generation_zero_plan.production_registry;
+        registry
+            .enqueue_pool_work(sample_clean_jobs_work(job_id))
+            .expect("clean-jobs work should replace active work");
+        let generation_one_plan = GuardedMiningLoopInputs {
+            gate: ready_gate(),
+            pool_defaults: ultra_205_defaults(),
+            source: GuardedMiningLoopSource::Notify,
+            production_registry: registry,
+            runtime_state: MiningRuntimeState::default(),
+            maybe_nonce_observation: None,
+        }
+        .plan()
+        .expect("generation one work should dispatch with reused lookup");
+        let inputs = GuardedMiningLoopInputs {
+            gate: ready_gate(),
+            pool_defaults: ultra_205_defaults(),
+            source: GuardedMiningLoopSource::Notify,
+            production_registry: generation_one_plan.production_registry,
+            runtime_state: MiningRuntimeState::default(),
+            maybe_nonce_observation: Some(stale_observation),
+        };
+
+        // Act
+        let plan = inputs
+            .plan()
+            .expect("stale generation should produce a fail-closed plan");
+
+        // Assert
+        assert!(plan.maybe_dispatch.is_none());
+        assert!(plan.maybe_submit_intent.is_none());
+        assert_eq!(
+            plan.runtime_state.maybe_blocked_reason,
+            Some("production_wrong_session")
+        );
+        assert_eq!(
+            plan.runtime_state.work_submission,
+            WorkSubmissionGate::Blocked
+        );
     }
 
     fn ready_gate() -> MiningLoopGate {
@@ -621,6 +684,17 @@ mod mining_loop_tests {
     }
 
     fn sample_work(job_id: Bm1366JobId) -> crate::v1::mining::MiningWork {
+        sample_work_with_clean_jobs(job_id, false)
+    }
+
+    fn sample_clean_jobs_work(job_id: Bm1366JobId) -> crate::v1::mining::MiningWork {
+        sample_work_with_clean_jobs(job_id, true)
+    }
+
+    fn sample_work_with_clean_jobs(
+        job_id: Bm1366JobId,
+        clean_jobs: bool,
+    ) -> crate::v1::mining::MiningWork {
         MiningWorkBuilder::new(
             MiningNotify {
                 job_id: format!("job-{}", job_id.raw()),
@@ -631,7 +705,7 @@ mod mining_loop_tests {
                 version: 0x2000_0004,
                 nbits: 0x1705_ae3a,
                 ntime: 0x6470_25b5,
-                clean_jobs: false,
+                clean_jobs,
             },
             ExtranonceAssignment {
                 extranonce1: "4de05269".to_owned(),
@@ -641,6 +715,16 @@ mod mining_loop_tests {
         .with_pool_difficulty(PoolDifficulty { difficulty: 1000.0 })
         .build(job_id)
         .expect("sample work should build")
+    }
+
+    fn sample_nonce_observation(
+        observed_generation: PoolSessionGeneration,
+        job_id: Bm1366JobId,
+    ) -> ProductionNonceObservation {
+        ProductionNonceObservation {
+            observed_generation,
+            result: sample_nonce_result(job_id),
+        }
     }
 
     fn sample_nonce_result(job_id: Bm1366JobId) -> Bm1366NonceResult {
