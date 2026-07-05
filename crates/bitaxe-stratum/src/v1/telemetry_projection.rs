@@ -1,3 +1,199 @@
+use crate::v1::messages::PoolDifficulty;
+use crate::v1::production_work::PoolSessionGeneration;
+use crate::v1::state::{
+    HashrateInputs, MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus,
+};
+use crate::v1::submit_response::SubmitClassification;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RuntimeTelemetrySequence(u64);
+
+impl RuntimeTelemetrySequence {
+    #[must_use]
+    pub const fn new(sequence: u64) -> Self {
+        Self(sequence)
+    }
+
+    #[must_use]
+    pub const fn raw(self) -> u64 {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeProjectionSampleSource {
+    RuntimeEvent,
+    SafeStop,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RuntimeProjectionSampleMarker {
+    pub sequence: RuntimeTelemetrySequence,
+    pub timestamp_ms: u64,
+    pub source: RuntimeProjectionSampleSource,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RuntimeTelemetryEvent {
+    LifecycleChanged {
+        sequence: RuntimeTelemetrySequence,
+        lifecycle: PoolLifecycleStatus,
+    },
+    PoolDifficultyObserved {
+        sequence: RuntimeTelemetrySequence,
+        difficulty: PoolDifficulty,
+    },
+    HashrateObserved {
+        sequence: RuntimeTelemetrySequence,
+        inputs: HashrateInputs,
+    },
+    FallbackChanged {
+        sequence: RuntimeTelemetrySequence,
+        active: bool,
+    },
+    WorkSubmissionReady {
+        sequence: RuntimeTelemetrySequence,
+    },
+    Blocked {
+        sequence: RuntimeTelemetrySequence,
+        reason: &'static str,
+    },
+    BoundedSampleReady {
+        sequence: RuntimeTelemetrySequence,
+        timestamp_ms: u64,
+        source: RuntimeProjectionSampleSource,
+    },
+    SubmitClassified {
+        sequence: RuntimeTelemetrySequence,
+        generation: PoolSessionGeneration,
+        classification: SubmitClassification,
+    },
+    SafeStopped {
+        sequence: RuntimeTelemetrySequence,
+        reason: &'static str,
+    },
+}
+
+impl RuntimeTelemetryEvent {
+    #[must_use]
+    pub const fn sequence(&self) -> RuntimeTelemetrySequence {
+        match self {
+            Self::LifecycleChanged { sequence, .. }
+            | Self::PoolDifficultyObserved { sequence, .. }
+            | Self::HashrateObserved { sequence, .. }
+            | Self::FallbackChanged { sequence, .. }
+            | Self::WorkSubmissionReady { sequence }
+            | Self::Blocked { sequence, .. }
+            | Self::BoundedSampleReady { sequence, .. }
+            | Self::SubmitClassified { sequence, .. }
+            | Self::SafeStopped { sequence, .. } => *sequence,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProjectionShareOutcome {
+    Accepted,
+    Rejected,
+    NoCounterChange,
+    IgnoredStaleSequence,
+    IgnoredStaleGeneration,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuntimeTelemetryProjection {
+    last_sequence: RuntimeTelemetrySequence,
+    current_generation: PoolSessionGeneration,
+    maybe_pending_sample_marker: Option<RuntimeProjectionSampleMarker>,
+    state: MiningRuntimeState,
+}
+
+impl RuntimeTelemetryProjection {
+    #[must_use]
+    pub fn new(generation: PoolSessionGeneration) -> Self {
+        Self {
+            last_sequence: RuntimeTelemetrySequence::new(0),
+            current_generation: generation,
+            maybe_pending_sample_marker: None,
+            state: MiningRuntimeState::default(),
+        }
+    }
+
+    #[must_use]
+    pub const fn state(&self) -> &MiningRuntimeState {
+        &self.state
+    }
+
+    #[must_use]
+    pub const fn current_generation(&self) -> PoolSessionGeneration {
+        self.current_generation
+    }
+
+    pub fn fold(&mut self, event: RuntimeTelemetryEvent) -> ProjectionShareOutcome {
+        let sequence = event.sequence();
+        if sequence <= self.last_sequence {
+            return ProjectionShareOutcome::IgnoredStaleSequence;
+        }
+        self.last_sequence = sequence;
+
+        match event {
+            RuntimeTelemetryEvent::LifecycleChanged { lifecycle, .. } => {
+                self.state.set_lifecycle(lifecycle);
+                ProjectionShareOutcome::NoCounterChange
+            }
+            RuntimeTelemetryEvent::PoolDifficultyObserved { difficulty, .. } => {
+                self.state.set_pool_difficulty(difficulty);
+                ProjectionShareOutcome::NoCounterChange
+            }
+            RuntimeTelemetryEvent::HashrateObserved { inputs, .. } => {
+                self.state.record_hashrate_inputs(inputs);
+                ProjectionShareOutcome::NoCounterChange
+            }
+            RuntimeTelemetryEvent::FallbackChanged { active, .. } => {
+                self.state.set_fallback_active(active);
+                ProjectionShareOutcome::NoCounterChange
+            }
+            RuntimeTelemetryEvent::WorkSubmissionReady { .. } => {
+                self.state.allow_work_submission();
+                self.state.set_mining_activity(MiningActivityStatus::Active);
+                ProjectionShareOutcome::NoCounterChange
+            }
+            RuntimeTelemetryEvent::Blocked { reason, .. } => {
+                self.state.block_work_submission(reason);
+                ProjectionShareOutcome::NoCounterChange
+            }
+            RuntimeTelemetryEvent::BoundedSampleReady {
+                sequence,
+                timestamp_ms,
+                source,
+            } => {
+                self.maybe_pending_sample_marker = Some(RuntimeProjectionSampleMarker {
+                    sequence,
+                    timestamp_ms,
+                    source,
+                });
+                ProjectionShareOutcome::NoCounterChange
+            }
+            RuntimeTelemetryEvent::SubmitClassified { generation, .. } => {
+                if generation != self.current_generation {
+                    return ProjectionShareOutcome::IgnoredStaleGeneration;
+                }
+                ProjectionShareOutcome::NoCounterChange
+            }
+            RuntimeTelemetryEvent::SafeStopped { reason, .. } => {
+                self.current_generation = self.current_generation.next();
+                self.state.set_lifecycle(PoolLifecycleStatus::Disconnected);
+                self.state.block_work_submission(reason);
+                ProjectionShareOutcome::NoCounterChange
+            }
+        }
+    }
+
+    pub fn drain_pending_sample_marker(&mut self) -> Option<RuntimeProjectionSampleMarker> {
+        self.maybe_pending_sample_marker.take()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
