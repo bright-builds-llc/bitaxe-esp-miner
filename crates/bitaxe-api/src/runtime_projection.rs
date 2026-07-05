@@ -61,7 +61,8 @@ mod tests {
 
     use super::{project_api_views, ProjectedApiViews};
     use crate::{
-        ApiSnapshot, SystemInfoWire, WebSocketRouteKind, WebSocketState,
+        scoreboard_response, statistics_response, ApiSnapshot, SystemInfoWire, WebSocketRouteKind,
+        WebSocketState,
     };
 
     #[test]
@@ -229,6 +230,60 @@ mod tests {
         for field in denied_fields {
             assert!(telemetry_payload.get(field).is_none());
         }
+    }
+
+    #[test]
+    fn projection_statistics_wire_keeps_sample_provenance_internal() {
+        // Arrange
+        let projection = active_projection_with_share_counters();
+        let marker = RuntimeProjectionSampleMarker {
+            sequence: RuntimeTelemetrySequence::new(91),
+            timestamp_ms: 40_000,
+            source: RuntimeProjectionSampleSource::SafeStop,
+        };
+
+        // Act
+        let views = project_api_views(
+            ApiSnapshot::safe_ultra_205(),
+            &projection,
+            Some(marker),
+            41_000,
+            9.5,
+        );
+        let response = statistics_response(
+            41_000,
+            Some("hashrate,responseTime"),
+            &views.statistics_samples,
+        );
+        let public_json = serde_json::to_value(response).expect("statistics should serialize");
+        let rendered = public_json.to_string();
+
+        // Assert
+        assert_eq!(
+            public_json["labels"],
+            serde_json::json!(["hashrate", "responseTime", "timestamp"])
+        );
+        assert_eq!(
+            public_json["statistics"],
+            serde_json::json!([[2_500.0, 9.5, 40_000]])
+        );
+        assert!(!rendered.contains("RuntimeEvent"));
+        assert!(!rendered.contains("SafeStop"));
+        assert!(public_json.get("source").is_none());
+    }
+
+    #[test]
+    fn projection_scoreboard_response_remains_upstream_empty_array() {
+        // Arrange
+        let projection = active_projection_with_share_counters();
+        let views = project_api_views(ApiSnapshot::safe_ultra_205(), &projection, None, 1, 0.0);
+
+        // Act
+        let response = scoreboard_response(&views.scoreboard_entries);
+        let public_json = serde_json::to_value(response).expect("scoreboard should serialize");
+
+        // Assert
+        assert_eq!(public_json, serde_json::json!([]));
     }
 
     fn active_projection_with_share_counters() -> RuntimeTelemetryProjection {
