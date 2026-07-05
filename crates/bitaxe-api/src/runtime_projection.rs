@@ -1,10 +1,55 @@
+//! Pure adapter from Phase 26 runtime telemetry projection into API views.
+
+use bitaxe_stratum::v1::telemetry_projection::{
+    RuntimeProjectionSampleMarker, RuntimeTelemetryProjection,
+};
+use serde_json::Value;
+
+use crate::{ApiSnapshot, ScoreboardEntry, StatisticsSample, SystemInfoWire};
+
+/// Projection-backed API view bundle for HTTP and WebSocket adapters.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProjectedApiViews {
+    pub snapshot: ApiSnapshot,
+    pub statistics_samples: Vec<StatisticsSample>,
+    pub scoreboard_entries: Vec<ScoreboardEntry>,
+    pub telemetry_payload: Value,
+}
+
+/// Builds upstream-compatible API views from the shared runtime projection.
+#[must_use]
+pub fn project_api_views(
+    mut base: ApiSnapshot,
+    projection: &RuntimeTelemetryProjection,
+    maybe_sample_marker: Option<RuntimeProjectionSampleMarker>,
+    _timestamp_ms: u64,
+    response_time_ms: f64,
+) -> ProjectedApiViews {
+    base.mining = projection.state().clone();
+
+    let statistics_samples = maybe_sample_marker
+        .map(|sample_marker| {
+            StatisticsSample::from_snapshot(&base, sample_marker.timestamp_ms, response_time_ms)
+        })
+        .into_iter()
+        .collect();
+    let scoreboard_entries = Vec::new();
+    let telemetry_payload = serde_json::to_value(SystemInfoWire::from_snapshot(&base))
+        .expect("system info DTO should serialize to JSON");
+
+    ProjectedApiViews {
+        snapshot: base,
+        statistics_samples,
+        scoreboard_entries,
+        telemetry_payload,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bitaxe_stratum::v1::messages::PoolDifficulty;
     use bitaxe_stratum::v1::production_work::PoolSessionGeneration;
-    use bitaxe_stratum::v1::state::{
-        HashrateInputs, MiningRuntimeState, PoolLifecycleStatus, ShareDifficulty,
-    };
+    use bitaxe_stratum::v1::state::{HashrateInputs, PoolLifecycleStatus, ShareDifficulty};
     use bitaxe_stratum::v1::submit_response::{
         RedactedSubmitRejectReason, SubmitClassification,
     };
@@ -16,7 +61,7 @@ mod tests {
 
     use super::{project_api_views, ProjectedApiViews};
     use crate::{
-        ApiSnapshot, LiveTelemetryPlanner, SystemInfoWire, WebSocketRouteKind, WebSocketState,
+        ApiSnapshot, SystemInfoWire, WebSocketRouteKind, WebSocketState,
     };
 
     #[test]
