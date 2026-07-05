@@ -199,8 +199,10 @@ mod tests {
     use super::*;
     use crate::v1::production_work::PoolSessionGeneration;
     use crate::v1::state::{
-        HashrateInputs, MiningActivityStatus, PoolLifecycleStatus, WorkSubmissionGate,
+        HashrateInputs, MiningActivityStatus, PoolLifecycleStatus, ShareDifficulty,
+        WorkSubmissionGate,
     };
+    use crate::v1::submit_response::{RedactedSubmitRejectReason, SubmitClassification};
 
     #[test]
     fn projection_lifecycle_event_sets_active_without_counter_changes() {
@@ -344,5 +346,187 @@ mod tests {
             assert!(!rendered_event.contains(denied));
             assert!(!rendered_projection.contains(denied));
         }
+    }
+
+    #[test]
+    fn projection_advances_accepted_counter_only_for_current_generation() {
+        // Arrange
+        let current_generation = PoolSessionGeneration::initial();
+        let mut projection = RuntimeTelemetryProjection::new(current_generation);
+
+        // Act
+        let outcome = projection.fold(RuntimeTelemetryEvent::SubmitClassified {
+            sequence: RuntimeTelemetrySequence::new(6),
+            generation: current_generation,
+            classification: SubmitClassification::Accepted,
+            maybe_share_difficulty: Some(ShareDifficulty::new(128.0)),
+        });
+
+        // Assert
+        assert_eq!(outcome, ProjectionShareOutcome::Accepted);
+        assert_eq!(projection.state().counters.accepted, 1);
+        assert_eq!(projection.state().counters.rejected, 0);
+        assert_eq!(
+            projection.state().counters.maybe_best_difficulty,
+            Some(ShareDifficulty::new(128.0))
+        );
+    }
+
+    #[test]
+    fn projection_advances_rejected_counter_with_redacted_reason() {
+        // Arrange
+        let current_generation = PoolSessionGeneration::initial();
+        let mut projection = RuntimeTelemetryProjection::new(current_generation);
+
+        // Act
+        let outcome = projection.fold(RuntimeTelemetryEvent::SubmitClassified {
+            sequence: RuntimeTelemetrySequence::new(7),
+            generation: current_generation,
+            classification: SubmitClassification::Rejected {
+                reason: RedactedSubmitRejectReason::PoolRejectedShare,
+            },
+            maybe_share_difficulty: None,
+        });
+
+        // Assert
+        assert_eq!(outcome, ProjectionShareOutcome::Rejected);
+        assert_eq!(projection.state().counters.accepted, 0);
+        assert_eq!(projection.state().counters.rejected, 1);
+        assert_eq!(
+            projection.state().counters.rejected_reasons,
+            vec!["pool_rejected_share".to_owned()]
+        );
+    }
+
+    #[test]
+    fn projection_does_not_advance_counters_for_stale_generation() {
+        // Arrange
+        let current_generation = PoolSessionGeneration::initial();
+        let stale_generation = current_generation.next();
+        let mut projection = RuntimeTelemetryProjection::new(current_generation);
+
+        // Act
+        let outcome = projection.fold(RuntimeTelemetryEvent::SubmitClassified {
+            sequence: RuntimeTelemetrySequence::new(8),
+            generation: stale_generation,
+            classification: SubmitClassification::Accepted,
+            maybe_share_difficulty: Some(ShareDifficulty::new(64.0)),
+        });
+
+        // Assert
+        assert_eq!(outcome, ProjectionShareOutcome::IgnoredStaleGeneration);
+        assert_eq!(projection.state().counters.accepted, 0);
+        assert_eq!(projection.state().counters.rejected, 0);
+    }
+
+    #[test]
+    fn projection_does_not_advance_counters_for_non_share_classifications() {
+        // Arrange
+        let current_generation = PoolSessionGeneration::initial();
+        let classifications = [
+            SubmitClassification::NoObservedShare,
+            SubmitClassification::Timeout,
+            SubmitClassification::Reconnect,
+            SubmitClassification::Malformed,
+            SubmitClassification::Blocked {
+                reason: "stale_generation",
+            },
+            SubmitClassification::Blocked {
+                reason: "submit_intent_missing",
+            },
+            SubmitClassification::Blocked {
+                reason: "blocked_safe_prerequisite",
+            },
+            SubmitClassification::Stopped,
+        ];
+        let mut projection = RuntimeTelemetryProjection::new(current_generation);
+
+        // Act
+        for (offset, classification) in classifications.into_iter().enumerate() {
+            let _outcome = projection.fold(RuntimeTelemetryEvent::SubmitClassified {
+                sequence: RuntimeTelemetrySequence::new(9 + offset as u64),
+                generation: current_generation,
+                classification,
+                maybe_share_difficulty: Some(ShareDifficulty::new(256.0)),
+            });
+        }
+
+        // Assert
+        assert_eq!(projection.state().counters.accepted, 0);
+        assert_eq!(projection.state().counters.rejected, 0);
+    }
+
+    #[test]
+    fn projection_safe_stop_prevents_stale_active_mining() {
+        // Arrange
+        let current_generation = PoolSessionGeneration::initial();
+        let mut projection = RuntimeTelemetryProjection::new(current_generation);
+        let _ready = projection.fold(RuntimeTelemetryEvent::WorkSubmissionReady {
+            sequence: RuntimeTelemetrySequence::new(17),
+        });
+
+        // Act
+        let safe_stop = projection.fold(RuntimeTelemetryEvent::SafeStopped {
+            sequence: RuntimeTelemetrySequence::new(18),
+            reason: "phase25_safe_stop",
+        });
+        let lower_sequence = projection.fold(RuntimeTelemetryEvent::SubmitClassified {
+            sequence: RuntimeTelemetrySequence::new(17),
+            generation: current_generation,
+            classification: SubmitClassification::Accepted,
+            maybe_share_difficulty: Some(ShareDifficulty::new(1.0)),
+        });
+        let stale_generation = projection.fold(RuntimeTelemetryEvent::SubmitClassified {
+            sequence: RuntimeTelemetrySequence::new(19),
+            generation: current_generation,
+            classification: SubmitClassification::Rejected {
+                reason: RedactedSubmitRejectReason::Unknown,
+            },
+            maybe_share_difficulty: None,
+        });
+
+        // Assert
+        assert_eq!(safe_stop, ProjectionShareOutcome::NoCounterChange);
+        assert_eq!(lower_sequence, ProjectionShareOutcome::IgnoredStaleSequence);
+        assert_eq!(
+            stale_generation,
+            ProjectionShareOutcome::IgnoredStaleGeneration
+        );
+        assert_eq!(projection.state().lifecycle, PoolLifecycleStatus::Disconnected);
+        assert_eq!(
+            projection.state().mining_activity,
+            MiningActivityStatus::SafeBlocked
+        );
+        assert_eq!(
+            projection.state().work_submission,
+            WorkSubmissionGate::Blocked
+        );
+        assert_eq!(projection.state().counters.accepted, 0);
+        assert_eq!(projection.state().counters.rejected, 0);
+    }
+
+    #[test]
+    fn projection_submit_classification_does_not_emit_request_time_sample_marker() {
+        // Arrange
+        let current_generation = PoolSessionGeneration::initial();
+        let mut projection = RuntimeTelemetryProjection::new(current_generation);
+
+        // Act
+        let outcome = projection.fold(RuntimeTelemetryEvent::SubmitClassified {
+            sequence: RuntimeTelemetrySequence::new(20),
+            generation: current_generation,
+            classification: SubmitClassification::Accepted,
+            maybe_share_difficulty: None,
+        });
+        let maybe_marker = projection.drain_pending_sample_marker();
+
+        // Assert
+        assert_eq!(outcome, ProjectionShareOutcome::Accepted);
+        assert_eq!(projection.state().counters.accepted, 1);
+        assert_eq!(
+            projection.state().counters.maybe_best_difficulty,
+            Some(ShareDifficulty::new(0.0))
+        );
+        assert_eq!(maybe_marker, None);
     }
 }
