@@ -4,14 +4,14 @@ use std::collections::HashMap;
 use std::fmt;
 
 use bitaxe_asic::bm1366::{
-    production::ProductionWorkPayload,
-    result::Bm1366ValidJobIds,
+    production::{ProductionAsicBlocker, ProductionWorkPayload},
+    result::{Bm1366NonceResult, Bm1366ValidJobIds},
     work::Bm1366JobId,
 };
 
 use crate::error::StratumV1Error;
 use crate::v1::messages::PoolDifficulty;
-use crate::v1::mining::MiningWork;
+use crate::v1::mining::{MiningWork, ShareSubmission};
 use crate::v1::queue::{BoundedWorkQueue, STRATUM_WORK_QUEUE_CAPACITY};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -118,6 +118,58 @@ impl fmt::Debug for ProductionDispatch {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct ProductionNonceObservation {
+    pub observed_generation: PoolSessionGeneration,
+    pub result: Bm1366NonceResult,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct SubmitIntent {
+    pub generation: PoolSessionGeneration,
+    pub asic_job_id: Bm1366JobId,
+    submission: ShareSubmission,
+}
+
+impl SubmitIntent {
+    #[must_use]
+    pub const fn submission(&self) -> &ShareSubmission {
+        &self.submission
+    }
+}
+
+impl fmt::Debug for SubmitIntent {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("SubmitIntent")
+            .field("generation", &self.generation)
+            .field("asic_job", &"redacted")
+            .field("submit_context", &"redacted")
+            .finish()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum CorrelationOutcome {
+    SubmitIntent(SubmitIntent),
+    Blocked { reason: ProductionAsicBlocker },
+}
+
+impl fmt::Debug for CorrelationOutcome {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SubmitIntent(intent) => formatter
+                .debug_tuple("CorrelationOutcome::SubmitIntent")
+                .field(intent)
+                .finish(),
+            Self::Blocked { reason } => formatter
+                .debug_struct("CorrelationOutcome::Blocked")
+                .field("reason", &reason.as_str())
+                .finish(),
+        }
+    }
+}
+
 #[derive(Clone, PartialEq)]
 pub struct ProductionWorkRegistry {
     generation: PoolSessionGeneration,
@@ -191,6 +243,57 @@ impl ProductionWorkRegistry {
     }
 
     #[must_use]
+    pub fn correlate_nonce_result(
+        &mut self,
+        observation: ProductionNonceObservation,
+    ) -> CorrelationOutcome {
+        if observation.observed_generation != self.generation {
+            return CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::WrongSession,
+            };
+        }
+
+        let maybe_record = self.active_work.get_mut(&observation.result.job_id.lookup_key());
+        let Some(record) = maybe_record else {
+            return CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::JobUncorrelated,
+            };
+        };
+
+        if record.generation != self.generation {
+            return CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::WorkStale,
+            };
+        }
+
+        if record.result_seen {
+            return CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::DuplicateResult,
+            };
+        }
+
+        if !target_context_matches_nonce_result(record, observation.result) {
+            return CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::TargetMismatch,
+            };
+        }
+
+        let Ok(submission) = ShareSubmission::from_nonce_result(&record.work, observation.result)
+        else {
+            return CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::TargetMismatch,
+            };
+        };
+
+        record.result_seen = true;
+        CorrelationOutcome::SubmitIntent(SubmitIntent {
+            generation: self.generation,
+            asic_job_id: record.asic_job_id,
+            submission,
+        })
+    }
+
+    #[must_use]
     pub const fn valid_jobs(&self) -> &Bm1366ValidJobIds {
         &self.valid_jobs
     }
@@ -216,6 +319,34 @@ impl ProductionWorkRegistry {
         self.queue.clear();
         self.valid_jobs = Bm1366ValidJobIds::empty();
         self.active_work.clear();
+    }
+}
+
+fn target_context_matches_nonce_result(
+    record: &ProductionWorkRecord,
+    result: Bm1366NonceResult,
+) -> bool {
+    let work_compact_nbits = u32::from_le_bytes(record.work.fields.nbits);
+    record.target_context.compact_nbits == work_compact_nbits
+        && result.job_id.lookup_key() == record.asic_job_id.lookup_key()
+}
+
+#[cfg(test)]
+impl ProductionWorkRegistry {
+    fn force_active_record_generation_for_test(
+        &mut self,
+        job_id: Bm1366JobId,
+        generation: PoolSessionGeneration,
+    ) {
+        if let Some(record) = self.active_work.get_mut(&job_id.lookup_key()) {
+            record.generation = generation;
+        }
+    }
+
+    fn force_active_compact_nbits_for_test(&mut self, job_id: Bm1366JobId, compact_nbits: u32) {
+        if let Some(record) = self.active_work.get_mut(&job_id.lookup_key()) {
+            record.target_context.compact_nbits = compact_nbits;
+        }
     }
 }
 

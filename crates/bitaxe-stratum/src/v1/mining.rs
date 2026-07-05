@@ -6,6 +6,8 @@
 //! - `crates/bitaxe-asic/src/bm1366/work.rs`
 //! - Parity checklist rows `STR-003` and `STR-006`
 
+use std::fmt;
+
 use bitaxe_asic::bm1366::{
     result::Bm1366NonceResult,
     work::{Bm1366JobId, Bm1366WorkFields},
@@ -106,13 +108,22 @@ pub fn build_work_fields(
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ShareSubmission {
     pub job_id: String,
     pub extranonce2: String,
     pub ntime: u32,
     pub nonce: u32,
     pub version_bits: u32,
+}
+
+impl fmt::Debug for ShareSubmission {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ShareSubmission")
+            .field("redaction", &"submit_context_redacted")
+            .finish()
+    }
 }
 
 impl ShareSubmission {
