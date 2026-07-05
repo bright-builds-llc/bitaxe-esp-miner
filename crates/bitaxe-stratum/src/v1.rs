@@ -15,3 +15,4 @@ pub mod mining_loop;
 pub mod production_work;
 pub mod queue;
 pub mod state;
+pub mod submit_response;
