@@ -51,6 +51,7 @@ const PHASE25_MODEL: &str = "ultra";
 const PHASE25_VERSION: &str = "205";
 const SOCKET_TIMEOUT_MS: u64 = 100;
 const READ_BUFFER_BYTES: usize = 512;
+const MAX_JSON_LINE_BYTES: usize = 16 * 1024;
 const LIVE_SOCKET_PUMP_ITERATIONS: usize = 16;
 const STRATUM_PLUS_TCP_PREFIX: &str = concat!("stratum", "+tcp://");
 const TCP_PREFIX: &str = "tcp://";
@@ -590,12 +591,16 @@ impl LiveSocketConnector for FirmwareTcpConnector {
         let stream = TcpStream::connect((endpoint.host.as_str(), endpoint.port))?;
         stream.set_read_timeout(Some(Duration::from_millis(SOCKET_TIMEOUT_MS)))?;
         stream.set_write_timeout(Some(Duration::from_millis(SOCKET_TIMEOUT_MS)))?;
-        Ok(FirmwareTcpSocket { stream })
+        Ok(FirmwareTcpSocket {
+            stream,
+            read_buffer: Vec::new(),
+        })
     }
 }
 
 struct FirmwareTcpSocket {
     stream: TcpStream,
+    read_buffer: Vec<u8>,
 }
 
 impl LiveSocketIo for FirmwareTcpSocket {
@@ -605,6 +610,10 @@ impl LiveSocketIo for FirmwareTcpSocket {
     }
 
     fn maybe_read_json_line(&mut self) -> anyhow::Result<Option<String>> {
+        if let Some(line) = maybe_pop_json_line(&mut self.read_buffer)? {
+            return Ok(Some(line));
+        }
+
         let mut buffer = [0_u8; READ_BUFFER_BYTES];
         let bytes_read = match self.stream.read(&mut buffer) {
             Ok(bytes_read) => bytes_read,
@@ -622,17 +631,37 @@ impl LiveSocketIo for FirmwareTcpSocket {
             return Ok(None);
         }
 
-        let line_end = buffer[..bytes_read]
-            .iter()
-            .position(|byte| *byte == b'\n')
-            .unwrap_or(bytes_read);
-        let line = String::from_utf8_lossy(&buffer[..line_end]).into_owned();
-        Ok(Some(line))
+        self.read_buffer.extend_from_slice(&buffer[..bytes_read]);
+        maybe_pop_json_line(&mut self.read_buffer)
     }
 
     fn shutdown_both(&mut self) {
         let _result = self.stream.shutdown(Shutdown::Both);
     }
+}
+
+fn maybe_pop_json_line(read_buffer: &mut Vec<u8>) -> anyhow::Result<Option<String>> {
+    let Some(line_end) = read_buffer.iter().position(|byte| *byte == b'\n') else {
+        if read_buffer.len() > MAX_JSON_LINE_BYTES {
+            anyhow::bail!("stratum JSON line exceeded maximum length");
+        }
+        return Ok(None);
+    };
+
+    if line_end > MAX_JSON_LINE_BYTES {
+        anyhow::bail!("stratum JSON line exceeded maximum length");
+    }
+
+    let remainder = read_buffer.split_off(line_end + 1);
+    let mut line_bytes = std::mem::replace(read_buffer, remainder);
+    line_bytes.truncate(line_end);
+    if line_bytes.ends_with(b"\r") {
+        let _removed = line_bytes.pop();
+    }
+
+    String::from_utf8(line_bytes)
+        .map(Some)
+        .map_err(|_| anyhow::anyhow!("stratum JSON line was not valid UTF-8"))
 }
 
 #[allow(dead_code)]
@@ -893,6 +922,103 @@ mod tests {
         assert!(consumed);
         assert_eq!(mining.counters.accepted, 1);
         assert_eq!(mining.counters.rejected, 0);
+    }
+
+    #[test]
+    fn fragmented_json_line_waits_for_newline_before_parsing() {
+        // Arrange
+        let mut read_buffer = br#"{"id":1"#.to_vec();
+
+        // Act
+        let maybe_first_read =
+            maybe_pop_json_line(&mut read_buffer).expect("partial line should not fail");
+        read_buffer.extend_from_slice(br#","result":true,"error":null}"#);
+        let maybe_second_read =
+            maybe_pop_json_line(&mut read_buffer).expect("unterminated line should not fail");
+        read_buffer.extend_from_slice(b"\n");
+        let maybe_complete_line =
+            maybe_pop_json_line(&mut read_buffer).expect("complete line should parse");
+
+        // Assert
+        assert_eq!(maybe_first_read, None);
+        assert_eq!(maybe_second_read, None);
+        assert_eq!(
+            maybe_complete_line,
+            Some(r#"{"id":1,"result":true,"error":null}"#.to_owned())
+        );
+        assert!(read_buffer.is_empty());
+    }
+
+    #[test]
+    fn coalesced_server_messages_preserve_remainder_for_next_read() {
+        // Arrange
+        let mut read_buffer = br#"{"id":1,"result":true,"error":null}
+{"id":2,"result":false,"error":null}
+"#
+        .to_vec();
+
+        // Act
+        let first_line = maybe_pop_json_line(&mut read_buffer)
+            .expect("first line should parse")
+            .expect("first line should be present");
+        let second_line = maybe_pop_json_line(&mut read_buffer)
+            .expect("second line should parse")
+            .expect("second line should be present");
+
+        // Assert
+        assert_eq!(first_line, r#"{"id":1,"result":true,"error":null}"#);
+        assert_eq!(second_line, r#"{"id":2,"result":false,"error":null}"#);
+        assert!(read_buffer.is_empty());
+    }
+
+    #[test]
+    fn coalesced_submit_response_updates_projection_and_preserves_next_message() {
+        // Arrange
+        runtime_snapshot::reset_command_visible_state_for_test();
+        let request_id = StratumRequestId::new(7);
+        let intent = sample_submit_intent();
+        let message = intent
+            .submission()
+            .to_client_message(request_id, "redacted-user");
+        let action = LiveRuntimeAction::SendSubmitShare {
+            intent,
+            request_id,
+            message,
+        };
+        let mut socket = CountingSocket::default();
+        let maybe_pending_submit =
+            write_runtime_action(action, &mut socket).expect("submit write should succeed");
+        let pending_submit =
+            maybe_pending_submit.expect("submit action should retain pending intent");
+        let mut runtime = LiveStratumRuntime::new(LiveRuntimeConfig {
+            model: PHASE25_MODEL.to_owned(),
+            version: PHASE25_VERSION.to_owned(),
+            credentials: LivePoolCredentials {
+                username: "redacted-user".to_owned(),
+                password: "redacted-secret".to_owned(),
+            },
+        });
+        let mut read_buffer = br#"{"id":7,"result":true,"error":null}
+{"id":null,"method":"mining.set_difficulty","params":[42]}
+"#
+        .to_vec();
+
+        // Act
+        let submit_response = maybe_pop_json_line(&mut read_buffer)
+            .expect("submit response should parse")
+            .expect("submit response should be present");
+        let consumed = handle_socket_line(&mut runtime, &submit_response, Some(&pending_submit));
+        let next_message = maybe_pop_json_line(&mut read_buffer)
+            .expect("next message should parse")
+            .expect("next message should be present");
+        let mining = runtime_snapshot::mining_runtime_state();
+
+        // Assert
+        assert!(consumed);
+        assert_eq!(mining.counters.accepted, 1);
+        assert_eq!(mining.counters.rejected, 0);
+        assert!(next_message.contains(r#""method":"mining.set_difficulty""#));
+        assert!(read_buffer.is_empty());
     }
 
     struct CountingSettingsSource {
