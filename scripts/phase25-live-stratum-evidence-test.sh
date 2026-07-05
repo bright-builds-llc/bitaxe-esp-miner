@@ -111,6 +111,39 @@ assert_evidence_is_redacted() {
 	done
 }
 
+run_device_url_validation_test() {
+	local fake_parity="${tmp_root}/fake-parity-device-url.sh"
+	local valid_url
+	local invalid_url
+	write_fake_parity "$fake_parity"
+
+	for valid_url in "http://host" "http://host:80" "https://device.local/" "https://device.local:443"; do
+		PHASE25_PARITY_COMMAND="$fake_parity" \
+		"$wrapper" \
+			--evidence-root "${tmp_root}/device-url-valid-${valid_url//[^A-Za-z0-9]/-}" \
+			--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+			--mode blocked \
+			--device-url "$valid_url" >"${tmp_root}/device-url-valid.stdout"
+	done
+
+	for invalid_url in "http://host/api/system/info" "http://user@host" "http://host?x=1" "http://host#frag" "http://host:bad" "http://"; do
+		set +e
+		"$wrapper" \
+			--evidence-root "${tmp_root}/device-url-invalid-${invalid_url//[^A-Za-z0-9]/-}" \
+			--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+			--mode blocked \
+			--device-url "$invalid_url" >"${tmp_root}/device-url-invalid.stdout" 2>"${tmp_root}/device-url-invalid.stderr"
+		local status=$?
+		set -e
+
+		if [[ "$status" -eq 0 ]]; then
+			printf 'invalid device URL should fail validation: %s\n' "$invalid_url" >&2
+			exit 1
+		fi
+		assert_contains "${tmp_root}/device-url-invalid.stderr" "invalid origin-only DEVICE_URL"
+	done
+}
+
 run_blocked_mode_test() {
 	local fake_parity="${tmp_root}/fake-parity.sh"
 	local evidence_root="${tmp_root}/blocked-root"
@@ -175,6 +208,7 @@ run_detector_failure_test() {
 	assert_evidence_is_redacted "$evidence_root"
 }
 
+run_device_url_validation_test
 run_blocked_mode_test
 run_detector_failure_test
 

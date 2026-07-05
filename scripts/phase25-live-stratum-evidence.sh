@@ -78,14 +78,57 @@ if [[ -n "$duration_seconds" && ("$duration_seconds" -lt 60 || "$duration_second
 	exit 2
 fi
 
-if [[ -n "$device_url" ]]; then
-	case "$device_url" in
-	http://* | https://*) ;;
+validate_origin_device_url() {
+	local value="$1"
+	local rest
+	local host
+	local port
+
+	case "$value" in
+	http://*)
+		rest="${value#http://}"
+		;;
+	https://*)
+		rest="${value#https://}"
+		;;
 	*)
-		printf 'invalid origin-only DEVICE_URL\n' >&2
-		exit 2
+		return 1
 		;;
 	esac
+
+	if [[ -z "$rest" || "$rest" == *"@"* || "$rest" == *"?"* || "$rest" == *"#"* ]]; then
+		return 1
+	fi
+	if [[ "$rest" == */* ]]; then
+		if [[ "$rest" != */ || "${rest%/}" == *"/"* ]]; then
+			return 1
+		fi
+		rest="${rest%/}"
+	fi
+	if [[ -z "$rest" || "$rest" == *"["* || "$rest" == *"]"* ]]; then
+		return 1
+	fi
+
+	host="$rest"
+	port=""
+	if [[ "$rest" == *:* ]]; then
+		host="${rest%:*}"
+		port="${rest##*:}"
+		if [[ -z "$host" || ! "$port" =~ ^[0-9]+$ || "$port" -lt 1 || "$port" -gt 65535 ]]; then
+			return 1
+		fi
+	fi
+
+	if [[ ! "$host" =~ ^[A-Za-z0-9.-]+$ || "$host" == .* || "$host" == *..* || "$host" == *. ]]; then
+		return 1
+	fi
+
+	return 0
+}
+
+if [[ -n "$device_url" ]] && ! validate_origin_device_url "$device_url"; then
+	printf 'invalid origin-only DEVICE_URL\n' >&2
+	exit 2
 fi
 
 readonly source_commit="${PHASE25_SOURCE_COMMIT:-$(git rev-parse HEAD 2>/dev/null || printf 'unknown-source')}"
