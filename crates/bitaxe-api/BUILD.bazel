@@ -9,6 +9,7 @@ rust_library(
         "src/logs.rs",
         "src/mining.rs",
         "src/route_shell.rs",
+        "src/runtime_projection.rs",
         "src/scoreboard.rs",
         "src/settings.rs",
         "src/snapshot.rs",
