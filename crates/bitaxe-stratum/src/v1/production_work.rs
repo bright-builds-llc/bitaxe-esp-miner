@@ -227,7 +227,9 @@ impl Default for ProductionWorkRegistry {
 
 #[cfg(test)]
 mod tests {
-    use bitaxe_asic::bm1366::work::Bm1366JobId;
+    use bitaxe_asic::bm1366::{
+        production::ProductionAsicBlocker, result::Bm1366NonceResult, work::Bm1366JobId,
+    };
 
     use super::*;
     use crate::error::StratumV1Error;
@@ -467,6 +469,204 @@ mod tests {
         assert!(!rendered.contains("1705ae3a"));
         assert!(!rendered.contains("647025b5"));
         assert!(!rendered.contains("0x78"));
+    }
+
+    #[test]
+    fn production_correlation_returns_submit_intent_for_active_generation() {
+        // Arrange
+        let mut registry = registry_with_dispatched_work(Bm1366JobId::new(0x80));
+        let observation = ProductionNonceObservation {
+            observed_generation: registry.generation(),
+            result: sample_nonce_result(Bm1366JobId::new(0x80)),
+        };
+
+        // Act
+        let outcome = registry.correlate_nonce_result(observation);
+
+        // Assert
+        let CorrelationOutcome::SubmitIntent(intent) = outcome else {
+            panic!("active current-generation result should produce submit intent");
+        };
+        assert_eq!(intent.generation, PoolSessionGeneration::initial());
+        assert_eq!(intent.asic_job_id, Bm1366JobId::new(0x80));
+        assert_eq!(intent.submission.job_id, "correlated-job");
+    }
+
+    #[test]
+    fn production_correlation_rejects_uncorrelated_result() {
+        // Arrange
+        let mut registry = ProductionWorkRegistry::new();
+        let observation = ProductionNonceObservation {
+            observed_generation: registry.generation(),
+            result: sample_nonce_result(Bm1366JobId::new(0x88)),
+        };
+
+        // Act
+        let outcome = registry.correlate_nonce_result(observation);
+
+        // Assert
+        assert_eq!(
+            outcome,
+            CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::JobUncorrelated
+            }
+        );
+    }
+
+    #[test]
+    fn production_correlation_rejects_stale_active_record() {
+        // Arrange
+        let mut registry = registry_with_dispatched_work(Bm1366JobId::new(0x90));
+        registry.force_active_record_generation_for_test(
+            Bm1366JobId::new(0x90),
+            PoolSessionGeneration::initial().next(),
+        );
+        let observation = ProductionNonceObservation {
+            observed_generation: registry.generation(),
+            result: sample_nonce_result(Bm1366JobId::new(0x90)),
+        };
+
+        // Act
+        let outcome = registry.correlate_nonce_result(observation);
+
+        // Assert
+        assert_eq!(
+            outcome,
+            CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::WorkStale
+            }
+        );
+    }
+
+    #[test]
+    fn production_correlation_rejects_duplicate_result() {
+        // Arrange
+        let mut registry = registry_with_dispatched_work(Bm1366JobId::new(0x98));
+        let observation = ProductionNonceObservation {
+            observed_generation: registry.generation(),
+            result: sample_nonce_result(Bm1366JobId::new(0x98)),
+        };
+        let _first = registry.correlate_nonce_result(observation);
+
+        // Act
+        let outcome = registry.correlate_nonce_result(observation);
+
+        // Assert
+        assert_eq!(
+            outcome,
+            CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::DuplicateResult
+            }
+        );
+    }
+
+    #[test]
+    fn production_correlation_rejects_target_mismatch() {
+        // Arrange
+        let mut registry = registry_with_dispatched_work(Bm1366JobId::new(0xa0));
+        registry.force_active_compact_nbits_for_test(Bm1366JobId::new(0xa0), 0x1d00_ffff);
+        let observation = ProductionNonceObservation {
+            observed_generation: registry.generation(),
+            result: sample_nonce_result(Bm1366JobId::new(0xa0)),
+        };
+
+        // Act
+        let outcome = registry.correlate_nonce_result(observation);
+
+        // Assert
+        assert_eq!(
+            outcome,
+            CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::TargetMismatch
+            }
+        );
+    }
+
+    #[test]
+    fn production_correlation_rejects_wrong_session_generation() {
+        // Arrange
+        let mut registry = registry_with_dispatched_work(Bm1366JobId::new(0xa8));
+        let observation = ProductionNonceObservation {
+            observed_generation: registry.generation().next(),
+            result: sample_nonce_result(Bm1366JobId::new(0xa8)),
+        };
+
+        // Act
+        let outcome = registry.correlate_nonce_result(observation);
+
+        // Assert
+        assert_eq!(
+            outcome,
+            CorrelationOutcome::Blocked {
+                reason: ProductionAsicBlocker::WrongSession
+            }
+        );
+    }
+
+    #[test]
+    fn submit_intent_debug_redacts_raw_context() {
+        // Arrange
+        let mut registry = registry_with_dispatched_work(Bm1366JobId::new(0xb0));
+        let outcome = registry.correlate_nonce_result(ProductionNonceObservation {
+            observed_generation: registry.generation(),
+            result: sample_nonce_result(Bm1366JobId::new(0xb0)),
+        });
+        let CorrelationOutcome::SubmitIntent(intent) = outcome else {
+            panic!("active work should produce submit intent");
+        };
+
+        // Act
+        let rendered = format!("{intent:?}");
+
+        // Assert
+        assert!(rendered.contains("SubmitIntent"));
+        assert!(rendered.contains("submit_context"));
+        assert!(!rendered.contains("correlated-job"));
+        assert!(!rendered.contains("00000000"));
+        assert!(!rendered.contains("12345678"));
+        assert!(!rendered.contains("00002000"));
+        assert!(!rendered.contains("1705ae3a"));
+    }
+
+    #[test]
+    fn no_debug_for_submit_context_leaks_raw_values() {
+        // Arrange
+        let mut registry = registry_with_dispatched_work(Bm1366JobId::new(0xb8));
+        let outcome = registry.correlate_nonce_result(ProductionNonceObservation {
+            observed_generation: registry.generation(),
+            result: sample_nonce_result(Bm1366JobId::new(0xb8)),
+        });
+
+        // Act
+        let rendered = format!("{outcome:?}");
+
+        // Assert
+        assert!(rendered.contains("CorrelationOutcome"));
+        assert!(!rendered.contains("correlated-job"));
+        assert!(!rendered.contains("00000000"));
+        assert!(!rendered.contains("12345678"));
+        assert!(!rendered.contains("00002000"));
+        assert!(!rendered.contains("1705ae3a"));
+    }
+
+    fn registry_with_dispatched_work(job_id: Bm1366JobId) -> ProductionWorkRegistry {
+        let mut registry = ProductionWorkRegistry::new();
+        registry
+            .enqueue_pool_work(sample_work(job_id, "correlated-job", false))
+            .expect("pool work should enqueue");
+        let _dispatch = registry.dispatch_next().expect("work should dispatch");
+        registry
+    }
+
+    fn sample_nonce_result(job_id: Bm1366JobId) -> Bm1366NonceResult {
+        Bm1366NonceResult {
+            job_id,
+            nonce: 0x1234_5678,
+            asic_index: 0,
+            core_id: 1,
+            small_core_id: 0,
+            version_bits: 0x0000_2000,
+        }
     }
 
     fn sample_work(job_id: Bm1366JobId, stratum_job_id: &str, clean_jobs: bool) -> MiningWork {

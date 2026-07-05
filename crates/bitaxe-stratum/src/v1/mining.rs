@@ -323,6 +323,43 @@ mod mining_job_tests {
         ));
     }
 
+    #[test]
+    fn share_submission_debug_redacts_raw_context() {
+        // Arrange
+        let work = MiningWorkBuilder::new(
+            sample_notify(),
+            ExtranonceAssignment {
+                extranonce1: "4de05269".to_owned(),
+                extranonce2_len: 4,
+            },
+        )
+        .build(Bm1366JobId::new(0x28))
+        .expect("mining work should build");
+        let submission = ShareSubmission::from_nonce_result(
+            &work,
+            Bm1366NonceResult {
+                job_id: Bm1366JobId::new(0x28),
+                nonce: 0x1234_5678,
+                asic_index: 0,
+                core_id: 1,
+                small_core_id: 0,
+                version_bits: 0x0000_2000,
+            },
+        )
+        .expect("nonce should match active work");
+
+        // Act
+        let rendered = format!("{submission:?}");
+
+        // Assert
+        assert!(rendered.contains("ShareSubmission"));
+        assert!(rendered.contains("submit_context"));
+        assert!(!rendered.contains("job"));
+        assert!(!rendered.contains("00000000"));
+        assert!(!rendered.contains("12345678"));
+        assert!(!rendered.contains("00002000"));
+    }
+
     fn sample_notify() -> MiningNotify {
         MiningNotify {
             job_id: "job".to_owned(),
