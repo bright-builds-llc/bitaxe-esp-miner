@@ -282,13 +282,12 @@ fn apply_response(
     response: &StratumResponse,
     observed_clients: &[(StratumRequestId, ExpectedClientKind)],
 ) {
+    let maybe_kind = response
+        .maybe_id
+        .and_then(|id| maybe_expected_client_kind(id, observed_clients));
+
     if !response.success {
-        let reason = response
-            .maybe_error
-            .as_ref()
-            .map(|error| error.message.as_str())
-            .unwrap_or("pool rejected share");
-        state.record_rejected_share(reason);
+        apply_failed_response(state, response, maybe_kind);
         return;
     }
 
@@ -297,9 +296,6 @@ fn apply_response(
         return;
     }
 
-    let maybe_kind = response
-        .maybe_id
-        .and_then(|id| maybe_expected_client_kind(id, observed_clients));
     match maybe_kind {
         Some(ExpectedClientKind::Authorize) => state.set_lifecycle(PoolLifecycleStatus::Authorized),
         Some(ExpectedClientKind::SubmitShare) => {
@@ -311,6 +307,34 @@ fn apply_response(
             state.set_lifecycle(PoolLifecycleStatus::Active);
         }
         Some(ExpectedClientKind::Subscribe | ExpectedClientKind::Other) | None => {}
+    }
+}
+
+fn apply_failed_response(
+    state: &mut MiningRuntimeState,
+    response: &StratumResponse,
+    maybe_kind: Option<ExpectedClientKind>,
+) {
+    match maybe_kind {
+        Some(ExpectedClientKind::SubmitShare) => {
+            let reason = response
+                .maybe_error
+                .as_ref()
+                .map(|error| error.message.as_str())
+                .unwrap_or("pool rejected share");
+            state.record_rejected_share(reason);
+        }
+        Some(ExpectedClientKind::Authorize) => {
+            state.set_lifecycle(PoolLifecycleStatus::Error);
+            state.block_work_submission("authorize_failed");
+        }
+        Some(ExpectedClientKind::Subscribe) => {
+            state.set_lifecycle(PoolLifecycleStatus::Error);
+            state.block_work_submission("subscribe_failed");
+        }
+        Some(ExpectedClientKind::Other) | None => {
+            state.block_work_submission("non_submit_response_failed");
+        }
     }
 }
 
@@ -411,6 +435,32 @@ mod tests {
             state.counters.rejected_reasons,
             vec!["low difficulty".to_owned()]
         );
+    }
+
+    #[test]
+    fn fake_pool_authorize_failure_does_not_record_rejected_share() {
+        // Arrange
+        let transcript = FakePoolTranscript {
+            events: vec![
+                FakePoolEvent::ExpectClient(authorize()),
+                FakePoolEvent::SendServer(StratumV1ServerMessage::Response(
+                    rejected_submit_response(2, "authorize denied"),
+                )),
+            ],
+        };
+
+        // Act
+        let state = match transcript.run(&[authorize()]) {
+            Ok(state) => state,
+            Err(error) => panic!("fake pool transcript failed: {error}"),
+        };
+
+        // Assert
+        assert_eq!(state.counters.rejected, 0);
+        assert!(state.counters.rejected_reasons.is_empty());
+        assert_eq!(state.lifecycle, PoolLifecycleStatus::Error);
+        assert_eq!(state.work_submission, WorkSubmissionGate::Blocked);
+        assert_eq!(state.maybe_blocked_reason, Some("authorize_failed"));
     }
 
     #[test]
