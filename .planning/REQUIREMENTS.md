@@ -43,9 +43,9 @@ Requirements for the current milestone. Each maps to roadmap phases and must be 
 
 ### Mining Telemetry And API Projection
 
-- [ ] **API-11**: `/api/system/info`, `/api/system/statistics`, and `/api/system/scoreboard` expose mining state, counters, hashrate inputs, share outcomes, and post-stop state derived from the same v1.1 runtime events.
-- [ ] **API-12**: `/api/ws` and `/api/ws/live` stream redacted, session-correlated mining telemetry during bounded production mining without stale active-mining state after stop.
-- [ ] **API-13**: Statistics, scoreboard, and share counters do not advance without corresponding runtime events and parsed pool responses.
+- [x] **API-11**: `/api/system/info`, `/api/system/statistics`, and `/api/system/scoreboard` expose mining state, counters, hashrate inputs, share outcomes, and post-stop state derived from the same v1.1 runtime events.
+- [x] **API-12**: `/api/ws` and `/api/ws/live` stream redacted, session-correlated mining telemetry during bounded production mining without stale active-mining state after stop.
+- [x] **API-13**: Statistics, scoreboard, and share counters do not advance without corresponding runtime events and parsed pool responses.
 
 ## Future Requirements
 
@@ -111,9 +111,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REL-09 | Phase 23 | Pending |
 | CFG-07 | Phase 23 | Pending |
 | EVD-09 | Phase 23 | Pending |
-| API-11 | Phase 26 | Pending |
-| API-12 | Phase 26 | Pending |
-| API-13 | Phase 26 | Pending |
+| API-11 | Phase 26 | Complete |
+| API-12 | Phase 26 | Complete |
+| API-13 | Phase 26 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 21 total
