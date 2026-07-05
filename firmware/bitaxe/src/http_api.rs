@@ -6,14 +6,13 @@ use std::ptr;
 use std::time::Duration;
 
 use bitaxe_api::{
-    asic_settings_from_snapshot, block_found_dismiss_plan, empty_statistics_response,
-    execute_settings_persistence_plan, identify_plan, log_download_headers,
-    origin_gate_from_header, pause_mining_plan, phase07_route_report, plan_http_access,
-    plan_settings_patch_body, plan_settings_patch_body_size, plan_update_request,
-    plan_websocket_upgrade, restart_plan, resume_mining_plan, scoreboard_response,
-    system_info_from_snapshot, unknown_api_route_response, unsupported_update_response,
-    CommandEffect, CommandPlan, HttpAccessDecision, IdentifyModeEffect, OriginGate,
-    PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchFailureReason,
+    asic_settings_from_snapshot, block_found_dismiss_plan, execute_settings_persistence_plan,
+    identify_plan, log_download_headers, origin_gate_from_header, pause_mining_plan,
+    phase07_route_report, plan_http_access, plan_settings_patch_body,
+    plan_settings_patch_body_size, plan_update_request, plan_websocket_upgrade, restart_plan,
+    resume_mining_plan, unknown_api_route_response, unsupported_update_response, CommandEffect,
+    CommandPlan, HttpAccessDecision, IdentifyModeEffect, OriginGate, PublicHttpResponse,
+    RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchFailureReason,
     SettingsPatchPublicError, SettingsPersistenceEffect, SettingsPersistencePlan,
     SettingsPublicResponse, UpdateRequestDecision, UpdateRequestInput, UpdateRouteKind,
     WebSocketRouteKind, WebSocketUpgradeDecision, LIVE_TELEMETRY_CADENCE_MS,
@@ -30,6 +29,8 @@ use crate::ota_update::{FirmwareOtaApplyResult, FirmwareOtaStatus};
 use crate::runtime_snapshot::{
     apply_block_found_dismiss_command, apply_identify_mode_command, apply_mining_activity_command,
     block_found_notification_state, collect_api_snapshot, identify_mode, mining_runtime_state,
+    projected_live_telemetry_payload, projected_scoreboard, projected_statistics,
+    projected_system_info,
 };
 use crate::{
     controlled_mining_runtime, log_buffer, network_stack, settings_adapter, static_files,
@@ -110,11 +111,7 @@ fn live_telemetry_cadence_loop(server_addr: usize) {
 }
 
 fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
-    let snapshot = collect_api_snapshot();
-    let Ok(current) = serde_json::to_value(system_info_from_snapshot(&snapshot)) else {
-        log::warn!("axeos_websocket_live_cadence=skipped reason=serialize_current");
-        return;
-    };
+    let current = projected_live_telemetry_payload(uptime_millis());
     let Some(frame) = websocket_api::live_cadence_frame(current) else {
         return;
     };
@@ -240,8 +237,7 @@ fn handle_system_info<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        let snapshot = collect_api_snapshot();
-        send_json(request, &system_info_from_snapshot(&snapshot))
+        send_json(request, &projected_system_info(uptime_millis()))
     })
 }
 
@@ -349,7 +345,7 @@ fn handle_statistics<'request, 'connection>(
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
         let timestamp_ms = uptime_millis();
-        send_json(request, &empty_statistics_response(timestamp_ms, None))
+        send_json(request, &projected_statistics(timestamp_ms))
     })
 }
 
@@ -357,7 +353,7 @@ fn handle_scoreboard<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        send_json(request, &scoreboard_response(&[]))
+        send_json(request, &projected_scoreboard(uptime_millis()))
     })
 }
 
@@ -765,10 +761,7 @@ fn send_websocket_connect_frames(
             sys::ESP_OK
         }
         WebSocketRouteKind::LiveTelemetry => {
-            let snapshot = collect_api_snapshot();
-            let Ok(current) = serde_json::to_value(system_info_from_snapshot(&snapshot)) else {
-                return sys::ESP_FAIL;
-            };
+            let current = projected_live_telemetry_payload(uptime_millis());
             let Some(frame) = websocket_api::live_connect_frame(current) else {
                 return sys::ESP_FAIL;
             };

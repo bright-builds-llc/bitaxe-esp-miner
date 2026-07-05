@@ -4,12 +4,12 @@ use std::sync::{Mutex, OnceLock};
 
 use bitaxe_api::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
-    ApiSnapshot, BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode,
-    IdentifyModeEffect, IdentifyModeState, MiningActivityEffect, PlatformSnapshot,
-    SafeTelemetrySnapshot,
+    project_api_views, scoreboard_response, statistics_response, ApiSnapshot,
+    BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect,
+    IdentifyModeState, MiningActivityEffect, PlatformSnapshot, ProjectedApiViews,
+    SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsWire, SystemInfoWire,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
-#[cfg(test)]
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
 use bitaxe_stratum::v1::{
     messages::PoolDifficulty,
@@ -67,6 +67,34 @@ pub fn collect_api_snapshot() -> ApiSnapshot {
 /// Returns the current command-visible mining state.
 pub fn mining_runtime_state() -> MiningRuntimeState {
     command_visible_state().mining
+}
+
+/// Collects projection-backed API views and drains at most one pending sample marker.
+pub fn collect_projected_api_views(timestamp_ms: u64, response_time_ms: f64) -> ProjectedApiViews {
+    collect_projected_api_views_with_sample_policy(timestamp_ms, response_time_ms, true)
+}
+
+/// Returns projection-backed `/api/system/info` data without consuming statistics markers.
+pub fn projected_system_info(timestamp_ms: u64) -> SystemInfoWire {
+    let views = collect_projected_api_views_with_sample_policy(timestamp_ms, 0.0, false);
+    SystemInfoWire::from_snapshot(&views.snapshot)
+}
+
+/// Returns projection-backed `/api/system/statistics` data.
+pub fn projected_statistics(timestamp_ms: u64) -> StatisticsWire {
+    let views = collect_projected_api_views(timestamp_ms, 0.0);
+    statistics_response(timestamp_ms, None, &views.statistics_samples)
+}
+
+/// Returns projection-backed `/api/system/scoreboard` data.
+pub fn projected_scoreboard(timestamp_ms: u64) -> Vec<ScoreboardEntryWire> {
+    let views = collect_projected_api_views_with_sample_policy(timestamp_ms, 0.0, false);
+    scoreboard_response(&views.scoreboard_entries)
+}
+
+/// Returns projection-backed `/api/ws/live` payload JSON.
+pub fn projected_live_telemetry_payload(timestamp_ms: u64) -> serde_json::Value {
+    collect_projected_api_views_with_sample_policy(timestamp_ms, 0.0, false).telemetry_payload
 }
 
 /// Folds a lifecycle event into the shared runtime telemetry projection.
@@ -220,6 +248,43 @@ fn publish_runtime_telemetry_event(
     })
 }
 
+fn collect_projected_api_views_with_sample_policy(
+    timestamp_ms: u64,
+    response_time_ms: f64,
+    drain_sample_marker: bool,
+) -> ProjectedApiViews {
+    let (projection, maybe_sample_marker) = runtime_projection_for_api_views(drain_sample_marker);
+    project_api_views(
+        collect_api_snapshot(),
+        &projection,
+        maybe_sample_marker,
+        timestamp_ms,
+        response_time_ms,
+    )
+}
+
+fn runtime_projection_for_api_views(
+    drain_sample_marker: bool,
+) -> (
+    RuntimeTelemetryProjection,
+    Option<RuntimeProjectionSampleMarker>,
+) {
+    mutate_command_visible_state_with_result(
+        (
+            RuntimeTelemetryProjection::new(PoolSessionGeneration::initial()),
+            None,
+        ),
+        |state| {
+            let maybe_sample_marker = if drain_sample_marker {
+                state.drain_pending_runtime_sample_marker()
+            } else {
+                None
+            };
+            (state.runtime_projection.clone(), maybe_sample_marker)
+        },
+    )
+}
+
 fn mutate_command_visible_state_with_result<T>(
     fallback: T,
     mutate: impl FnOnce(&mut CommandVisibleState) -> T,
@@ -240,7 +305,6 @@ impl CommandVisibleState {
         sequence
     }
 
-    #[cfg(test)]
     fn drain_pending_runtime_sample_marker(&mut self) -> Option<RuntimeProjectionSampleMarker> {
         self.runtime_projection.drain_pending_sample_marker()
     }
