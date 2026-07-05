@@ -450,4 +450,52 @@ mod tests {
             Some("phase25_safe_stop")
         );
     }
+
+    #[test]
+    fn projected_route_helpers_use_projection_state_and_drain_samples_once() {
+        // Arrange
+        reset_command_visible_state_for_test();
+        let inputs = HashrateInputs {
+            hashes_done: 4_000,
+            elapsed_ms: 2_000,
+            rolling_hashrate_hs: 2_000.0,
+        };
+        publish_runtime_hashrate_inputs(inputs);
+        publish_runtime_lifecycle(PoolLifecycleStatus::Active);
+        publish_runtime_bounded_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
+
+        // Act
+        let system_info = projected_system_info(50_000);
+        let first_statistics = projected_statistics(50_000);
+        let second_statistics = projected_statistics(50_500);
+        let scoreboard = projected_scoreboard(50_000);
+
+        // Assert
+        assert_eq!(system_info.hash_rate, 2.0);
+        assert_eq!(system_info.pool_connection_info, "active");
+        assert_eq!(first_statistics.statistics.len(), 1);
+        assert!(second_statistics.statistics.is_empty());
+        assert!(scoreboard.is_empty());
+    }
+
+    #[test]
+    fn projected_live_telemetry_payload_reflects_safe_stop_state() {
+        // Arrange
+        reset_command_visible_state_for_test();
+        publish_runtime_work_submission_ready();
+
+        // Act
+        publish_runtime_blocked("phase25_safe_stop");
+        publish_runtime_safe_stopped("phase25_safe_stop");
+        let payload = projected_live_telemetry_payload(60_000);
+        let rendered = payload.to_string();
+
+        // Assert
+        assert_eq!(payload["miningPaused"], serde_json::Value::Bool(true));
+        assert_eq!(
+            payload["poolConnectionInfo"],
+            serde_json::Value::String("disconnected".to_owned())
+        );
+        assert!(!rendered.contains(":\"active\""));
+    }
 }
