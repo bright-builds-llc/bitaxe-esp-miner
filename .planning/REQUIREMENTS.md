@@ -32,7 +32,7 @@ Requirements for the current milestone. Each maps to roadmap phases and must be 
 
 - [x] **ASIC-09**: Ultra 205 production mining separates BM1366 diagnostic chip/work modes from trusted production initialization and work-result modes.
 - [x] **ASIC-10**: Ultra 205 production mining dispatches BM1366 work derived from the active pool job, tracks job/extranonce/difficulty context, and invalidates stale work on clean-jobs or reconnect.
-- [ ] **ASIC-11**: Ultra 205 production mining maps live BM1366 nonce or result observations back to active pool work before any share submission claim is recorded.
+- [x] **ASIC-11**: Ultra 205 production mining maps live BM1366 nonce or result observations back to active pool work before any share submission claim is recorded.
 - [x] **ASIC-12**: Ultra 205 production mining fails closed on BM1366 initialization, UART, reset, timeout, malformed result, or job-correlation failures without leaking raw frames in committed evidence.
 
 ### Operator Workflow And Secret Handling
@@ -106,7 +106,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STR-11 | Phase 25 | Pending |
 | ASIC-09 | Phase 24 | Complete |
 | ASIC-10 | Phase 24 | Complete |
-| ASIC-11 | Phase 24 | Pending |
+| ASIC-11 | Phase 24 | Complete |
 | ASIC-12 | Phase 24 | Complete |
 | REL-09 | Phase 23 | Pending |
 | CFG-07 | Phase 23 | Pending |

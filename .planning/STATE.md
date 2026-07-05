@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 24-02-PLAN.md
-last_updated: "2026-07-05T00:58:57.180Z"
+stopped_at: Completed 24-03-PLAN.md
+last_updated: "2026-07-05T01:07:56.306Z"
 last_activity: 2026-07-05
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 9
-  percent: 82
+  completed_plans: 10
+  percent: 91
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 ## Current Position
 
 Phase: 24 (bm1366-production-work-path) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-05
 
@@ -79,6 +79,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 24]: Production BM1366 work is bound to PoolSessionGeneration before dispatch.
 - [Phase 24]: Clean-jobs, reconnect, authorization reset, and session replacement clear queued, active, and valid-job state.
 - [Phase 24]: Raw-bearing production work registry surfaces render redacted category labels instead of raw job, extranonce, target, or payload details.
+- [Phase 24]: BM1366 nonce observations must carry PoolSessionGeneration because parsed ASIC results have no pool-session identity.
+- [Phase 24]: The guarded mining loop emits production BM1366 commands and submit intents instead of diagnostic commands or direct share submissions.
+- [Phase 24]: Firmware production logs publish stable ASIC status labels and defer accepted/rejected pool-response classification to Phase 25.
 
 ### Pending Todos
 
@@ -91,8 +94,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-05T00:58:57.177Z
-Stopped at: Completed 24-02-PLAN.md
+Last session: 2026-07-05T01:07:56.303Z
+Stopped at: Completed 24-03-PLAN.md
 Resume file: None
 
 ## Next Step
