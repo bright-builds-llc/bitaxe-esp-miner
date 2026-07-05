@@ -36,3 +36,6 @@ phase23-evidence *args:
 
 phase25-evidence *args:
     bazel run //scripts:phase25_live_stratum_evidence -- {{ args }}
+
+phase27-evidence *args:
+    bazel run //scripts:phase27_live_hardware_bridge_evidence -- {{ args }}
