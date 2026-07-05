@@ -1917,6 +1917,81 @@ mod tests {
     }
 
     #[test]
+    fn phase26_verified_telemetry_row_rejects_missing_summary_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| API-002 | System info response | `reference/esp-miner/main/http_server/system_api_json.c` | `crates/bitaxe-api`, `firmware/bitaxe` | verified | workflow | Phase 26 redaction-review.md redaction_status: passed exact_non_claims no_request_time_fabrication empty_without_parsed_share_outcome. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(
+            &errors,
+            "API-002",
+            "phase26 verified row missing summary evidence",
+        );
+    }
+
+    #[test]
+    fn phase26_verified_row_rejects_blocked_or_pending_language() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| API-006 | WebSocket telemetry | `reference/esp-miner/main/http_server/websocket_api.c` | `crates/bitaxe-api`, `firmware/bitaxe` | verified | workflow | phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed but no reachable DEVICE_URL and blocked proof remain. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "API-006", "phase26 blocked verified row");
+    }
+
+    #[test]
+    fn phase26_verified_row_rejects_missing_redaction_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STAT-002 | Statistics task | `reference/esp-miner/main/tasks/statistics_task.c` | `crates/bitaxe-api`, `firmware/bitaxe` | verified | workflow | phase-26-telemetry-and-parity-closure/summary.md no_request_time_fabrication runtime_projection_marker_only. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "STAT-002", "phase26 redaction evidence");
+    }
+
+    #[test]
+    fn phase26_guard_accepts_conservative_rows_and_evd08_closure() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| API-002 | System info response | `reference/esp-miner/main/http_server/system_api_json.c` | `crates/bitaxe-api`, `firmware/bitaxe` | implemented | unit,api-compare,workflow | phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed exact_non_claims projection-backed. Accepted shares remain non-claims. |
+| STAT-002 | Statistics task | `reference/esp-miner/main/tasks/statistics_task.c` | `crates/bitaxe-api`, `firmware/bitaxe` | implemented | unit,workflow | phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed no_request_time_fabrication runtime_projection_marker_only. |
+| STAT-003 | Scoreboard | `reference/esp-miner/main/tasks/scoreboard.c` | `crates/bitaxe-api` | implemented | unit,workflow | phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed empty_without_parsed_share_outcome exact_non_claims. |
+| EVD-08 | Phase 26 exact telemetry closure | `docs/parity/evidence/phase-26-telemetry-and-parity-closure/summary.md` | `docs/parity/checklist.md`, `tools/parity/src/main.rs` | verified | workflow | API-11 API-12 API-13 EVD-08 phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed exact_non_claims just parity guard passed. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert!(errors.is_empty());
+    }
+
+    #[test]
     fn missing_reference_guard_failure_blocks_report_output() {
         // Arrange
         let env = FakeEnvironment::failing_guard("reference missing or not initialized");
