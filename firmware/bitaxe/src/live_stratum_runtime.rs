@@ -124,6 +124,26 @@ enum SafeStopReason {
     VerificationCleanup,
 }
 
+#[derive(Clone)]
+struct PendingSubmit {
+    intent: SubmitIntent,
+    request_id: StratumRequestId,
+}
+
+impl PendingSubmit {
+    fn matches_response(&self, response: &StratumResponse) -> bool {
+        response.maybe_id == Some(self.request_id)
+    }
+
+    fn classify_response(&self, response: StratumResponse) -> SubmitClassification {
+        classify_maybe_submit_response(
+            Some(&self.intent),
+            self.request_id,
+            SubmitResponseObservation::Response(response),
+        )
+    }
+}
+
 impl SafeStopReason {
     const fn as_str(self) -> &'static str {
         match self {
@@ -242,25 +262,34 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
     socket: &mut S,
 ) -> SafeStopReason {
     let mut pending_actions: VecDeque<LiveRuntimeAction> = runtime.drain_actions().into();
+    let mut maybe_pending_submit: Option<PendingSubmit> = None;
 
     for _iteration in 0..LIVE_SOCKET_PUMP_ITERATIONS {
         publish_watchdog_checkpoint(StepKind::Socket, 1);
 
         if let Some(action) = pending_actions.pop_front() {
-            if write_runtime_action(action, socket).is_err() {
-                publish_submit_classification(
-                    runtime.production_registry().generation(),
-                    SubmitClassification::Reconnect,
-                );
-                publish_status("reconnecting");
-                return SafeStopReason::FallbackExhausted;
+            match write_runtime_action(action, socket) {
+                Ok(Some(pending_submit)) => {
+                    maybe_pending_submit = Some(pending_submit);
+                }
+                Ok(None) => {}
+                Err(_) => {
+                    publish_submit_classification(
+                        runtime.production_registry().generation(),
+                        SubmitClassification::Reconnect,
+                    );
+                    publish_status("reconnecting");
+                    return SafeStopReason::FallbackExhausted;
+                }
             }
             continue;
         }
 
         match socket.maybe_read_json_line() {
             Ok(Some(line)) => {
-                handle_socket_line(runtime, &line);
+                if handle_socket_line(runtime, &line, maybe_pending_submit.as_ref()) {
+                    maybe_pending_submit = None;
+                }
                 pending_actions.extend(runtime.drain_actions());
             }
             Ok(None) => {}
@@ -281,18 +310,30 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
 fn write_runtime_action<S: LiveSocketIo>(
     action: LiveRuntimeAction,
     socket: &mut S,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<PendingSubmit>> {
     match action {
         LiveRuntimeAction::SendClientMessage(message) => {
             let line = message.to_json_line()?;
             socket.write_json_line(&line)?;
+            Ok(None)
+        }
+        LiveRuntimeAction::SendSubmitShare {
+            intent,
+            request_id,
+            message,
+        } => {
+            let line = message.to_json_line()?;
+            socket.write_json_line(&line)?;
+            Ok(Some(PendingSubmit { intent, request_id }))
         }
     }
-
-    Ok(())
 }
 
-fn handle_socket_line(runtime: &mut LiveStratumRuntime, line: &str) {
+fn handle_socket_line(
+    runtime: &mut LiveStratumRuntime,
+    line: &str,
+    maybe_pending_submit: Option<&PendingSubmit>,
+) -> bool {
     publish_watchdog_checkpoint(StepKind::Socket, 1);
     let Ok(message) = parse_server_message(line) else {
         publish_submit_classification(
@@ -300,20 +341,23 @@ fn handle_socket_line(runtime: &mut LiveStratumRuntime, line: &str) {
             SubmitClassification::Malformed,
         );
         publish_status("reconnecting");
-        return;
+        return false;
     };
 
     publish_pool_difficulty_if_present(&message);
-    let maybe_event = runtime.apply_server_message(message.clone()).ok().flatten();
-    publish_event_status(runtime, maybe_event);
-    if let StratumV1ServerMessage::Response(response) = message {
-        let classification = classify_maybe_submit_response(
-            None,
-            StratumRequestId::new(0),
-            SubmitResponseObservation::Response(response),
-        );
-        publish_submit_classification(runtime.production_registry().generation(), classification);
+    if let StratumV1ServerMessage::Response(response) = &message {
+        if let Some(pending_submit) =
+            maybe_pending_submit.filter(|pending_submit| pending_submit.matches_response(response))
+        {
+            let classification = pending_submit.classify_response(response.clone());
+            publish_submit_classification(pending_submit.intent.generation, classification);
+            return true;
+        }
     }
+
+    let maybe_event = runtime.apply_server_message(message).ok().flatten();
+    publish_event_status(runtime, maybe_event);
+    false
 }
 
 fn publish_pool_difficulty_if_present(message: &StratumV1ServerMessage) {
@@ -609,7 +653,13 @@ mod tests {
     use std::cell::{Cell, RefCell};
     use std::rc::Rc;
 
+    use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
     use bitaxe_config::{NvsSnapshot, StoredValue};
+    use bitaxe_stratum::v1::{
+        messages::{ExtranonceAssignment, MiningNotify, PoolDifficulty},
+        mining::MiningWorkBuilder,
+        production_work::{CorrelationOutcome, ProductionNonceObservation, ProductionWorkRegistry},
+    };
 
     use super::*;
 
@@ -803,6 +853,48 @@ mod tests {
         assert!(retained_logs.contains("phase25_live_stratum_status=active"));
     }
 
+    #[test]
+    fn matching_pending_submit_response_updates_projection_counters() {
+        // Arrange
+        runtime_snapshot::reset_command_visible_state_for_test();
+        let request_id = StratumRequestId::new(7);
+        let intent = sample_submit_intent();
+        let message = intent
+            .submission()
+            .to_client_message(request_id, "redacted-user");
+        let action = LiveRuntimeAction::SendSubmitShare {
+            intent,
+            request_id,
+            message,
+        };
+        let mut socket = CountingSocket::default();
+        let maybe_pending_submit =
+            write_runtime_action(action, &mut socket).expect("submit write should succeed");
+        let pending_submit =
+            maybe_pending_submit.expect("submit action should retain pending intent");
+        let mut runtime = LiveStratumRuntime::new(LiveRuntimeConfig {
+            model: PHASE25_MODEL.to_owned(),
+            version: PHASE25_VERSION.to_owned(),
+            credentials: LivePoolCredentials {
+                username: "redacted-user".to_owned(),
+                password: "redacted-secret".to_owned(),
+            },
+        });
+
+        // Act
+        let consumed = handle_socket_line(
+            &mut runtime,
+            r#"{"id":7,"result":true,"error":null}"#,
+            Some(&pending_submit),
+        );
+        let mining = runtime_snapshot::mining_runtime_state();
+
+        // Assert
+        assert!(consumed);
+        assert_eq!(mining.counters.accepted, 1);
+        assert_eq!(mining.counters.rejected, 0);
+    }
+
     struct CountingSettingsSource {
         pool_settings_access_counter: Rc<Cell<usize>>,
     }
@@ -947,5 +1039,52 @@ mod tests {
             power: ProductionMiningPrerequisite::blocked(reason),
             ..ready_preconditions()
         }
+    }
+
+    fn sample_submit_intent() -> SubmitIntent {
+        let mut registry = ProductionWorkRegistry::new();
+        let job_id = Bm1366JobId::new(0x28);
+        registry
+            .enqueue_pool_work(sample_work(job_id))
+            .expect("sample work should enqueue");
+        let _dispatch = registry.dispatch_next().expect("work should dispatch");
+        let outcome = registry.correlate_nonce_result(ProductionNonceObservation {
+            observed_generation: registry.generation(),
+            result: Bm1366NonceResult {
+                job_id,
+                nonce: 0x1234_5678,
+                asic_index: 0,
+                core_id: 1,
+                small_core_id: 0,
+                version_bits: 0x0000_2000,
+            },
+        });
+        let CorrelationOutcome::SubmitIntent(intent) = outcome else {
+            panic!("sample active work should produce submit intent");
+        };
+        intent
+    }
+
+    fn sample_work(job_id: Bm1366JobId) -> bitaxe_stratum::v1::mining::MiningWork {
+        MiningWorkBuilder::new(
+            MiningNotify {
+                job_id: "correlated-job".to_owned(),
+                prev_block_hash: "00".repeat(32),
+                coinbase_1: "0200000001".to_owned(),
+                coinbase_2: "ffffffff".to_owned(),
+                merkle_branches: Vec::new(),
+                version: 0x2000_0004,
+                nbits: 0x1705_ae3a,
+                ntime: 0x6470_25b5,
+                clean_jobs: false,
+            },
+            ExtranonceAssignment {
+                extranonce1: "4de05269".to_owned(),
+                extranonce2_len: 4,
+            },
+        )
+        .with_pool_difficulty(PoolDifficulty { difficulty: 1.25 })
+        .build(job_id)
+        .expect("sample work should build")
     }
 }

@@ -17,7 +17,7 @@ use crate::v1::messages::{
     VersionMask,
 };
 use crate::v1::mining::MiningWorkBuilder;
-use crate::v1::production_work::ProductionWorkRegistry;
+use crate::v1::production_work::{ProductionWorkRegistry, SubmitIntent};
 use crate::v1::state::{MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -56,6 +56,11 @@ impl fmt::Debug for LiveRuntimeConfig {
 #[derive(Clone, PartialEq, Eq)]
 pub enum LiveRuntimeAction {
     SendClientMessage(StratumV1ClientMessage),
+    SendSubmitShare {
+        intent: SubmitIntent,
+        request_id: StratumRequestId,
+        message: StratumV1ClientMessage,
+    },
 }
 
 impl fmt::Debug for LiveRuntimeAction {
@@ -63,6 +68,14 @@ impl fmt::Debug for LiveRuntimeAction {
         match self {
             Self::SendClientMessage(_) => formatter
                 .debug_struct("LiveRuntimeAction::SendClientMessage")
+                .field("client_message", &"redacted")
+                .finish(),
+            Self::SendSubmitShare {
+                request_id, intent, ..
+            } => formatter
+                .debug_struct("LiveRuntimeAction::SendSubmitShare")
+                .field("request_id", request_id)
+                .field("intent", intent)
                 .field("client_message", &"redacted")
                 .finish(),
         }
@@ -260,7 +273,8 @@ impl LiveStratumRuntime {
         self.outbound_actions.clear();
         self.invalidate_for_session_replacement();
         self.state.set_lifecycle(PoolLifecycleStatus::Disconnected);
-        self.state.set_mining_activity(MiningActivityStatus::SafeBlocked);
+        self.state
+            .set_mining_activity(MiningActivityStatus::SafeBlocked);
         SafeStopPostconditions {
             reason: SafeStopReason::new(reason),
             socket_stopped: true,
@@ -365,12 +379,10 @@ impl LiveStratumRuntime {
 mod tests {
     use super::*;
     use crate::v1::messages::{
-        ExtranonceAssignment, MiningNotify, PoolDifficulty, StratumResponse, StratumV1ClientMessage,
-        StratumV1ServerMessage,
+        ExtranonceAssignment, MiningNotify, PoolDifficulty, StratumResponse,
+        StratumV1ClientMessage, StratumV1ServerMessage,
     };
-    use crate::v1::state::{
-        MiningActivityStatus, PoolLifecycleStatus, WorkSubmissionGate,
-    };
+    use crate::v1::state::{MiningActivityStatus, PoolLifecycleStatus, WorkSubmissionGate};
 
     #[test]
     fn live_runtime_start_queues_subscribe_and_redacts_sensitive_debug() {
@@ -448,7 +460,10 @@ mod tests {
         assert_eq!(maybe_event, Some(LiveRuntimeEvent::WorkQueued));
         assert_eq!(runtime.state().lifecycle, PoolLifecycleStatus::Active);
         assert_eq!(runtime.state().work_submission, WorkSubmissionGate::Ready);
-        assert_eq!(runtime.state().mining_activity, MiningActivityStatus::Active);
+        assert_eq!(
+            runtime.state().mining_activity,
+            MiningActivityStatus::Active
+        );
         assert!(runtime
             .production_registry()
             .valid_jobs()

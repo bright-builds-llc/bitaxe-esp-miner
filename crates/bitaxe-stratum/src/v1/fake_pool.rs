@@ -6,9 +6,7 @@ use crate::error::StratumV1Error;
 use crate::jsonrpc::StratumRequestId;
 use crate::v1::live_runtime::{LiveRuntimeAction, LiveStratumRuntime};
 use crate::v1::messages::{StratumResponse, StratumV1ClientMessage, StratumV1ServerMessage};
-use crate::v1::production_work::{
-    CorrelationOutcome, ProductionNonceObservation, SubmitIntent,
-};
+use crate::v1::production_work::{CorrelationOutcome, ProductionNonceObservation, SubmitIntent};
 use crate::v1::state::{MiningRuntimeState, PoolLifecycleStatus, ShareDifficulty};
 use crate::v1::submit_response::{
     classify_submit_response, SubmitClassification, SubmitResponseObservation,
@@ -213,7 +211,9 @@ fn expect_live_client_message(
     let Some(action) = pending_actions.first() else {
         return unexpected_client_message();
     };
-    let LiveRuntimeAction::SendClientMessage(actual) = action;
+    let LiveRuntimeAction::SendClientMessage(actual) = action else {
+        return unexpected_client_message();
+    };
     if actual != expected {
         return unexpected_client_message();
     }
@@ -571,8 +571,12 @@ mod tests {
         events.push(FakePoolEvent::SendServer(StratumV1ServerMessage::Notify(
             notify_with_clean_jobs(true),
         )));
-        events.push(FakePoolEvent::ClassifyStaleSubmitResponse(success_response(7)));
-        events.push(FakePoolEvent::SendServer(StratumV1ServerMessage::ClientReconnect));
+        events.push(FakePoolEvent::ClassifyStaleSubmitResponse(
+            success_response(7),
+        ));
+        events.push(FakePoolEvent::SendServer(
+            StratumV1ServerMessage::ClientReconnect,
+        ));
         let transcript = FakePoolTranscript { events };
         let mut runtime = live_runtime();
 
@@ -623,9 +627,15 @@ mod tests {
             .contains(&SubmitClassification::Blocked {
                 reason: "precondition_blocked"
             }));
-        assert!(report.classifications.contains(&SubmitClassification::Timeout));
-        assert!(report.classifications.contains(&SubmitClassification::Malformed));
-        assert!(report.classifications.contains(&SubmitClassification::Reconnect));
+        assert!(report
+            .classifications
+            .contains(&SubmitClassification::Timeout));
+        assert!(report
+            .classifications
+            .contains(&SubmitClassification::Malformed));
+        assert!(report
+            .classifications
+            .contains(&SubmitClassification::Reconnect));
         assert!(!report
             .classifications
             .contains(&SubmitClassification::Accepted));

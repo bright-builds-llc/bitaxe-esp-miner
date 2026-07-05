@@ -393,7 +393,7 @@ fn uptime_millis() -> u64 {
 }
 
 #[cfg(test)]
-fn reset_command_visible_state_for_test() {
+pub(crate) fn reset_command_visible_state_for_test() {
     mutate_command_visible_state(|state| {
         *state = CommandVisibleState::default();
     });
