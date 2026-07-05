@@ -11,35 +11,35 @@ Requirements for the current milestone. Each maps to roadmap phases and must be 
 ### Evidence Governance
 
 - [x] **EVD-06**: An Ultra 205 operator can distinguish v1.0 controlled no-share evidence from v1.1 live production mining claims through a documented claim ladder.
-- [ ] **EVD-07**: Committed v1.1 evidence records a single redacted evidence root with package, detector, board-info, command, log, API, WebSocket, share-outcome, redaction-review, safe-stop, and conclusion artifacts.
+- [x] **EVD-07**: Committed v1.1 evidence records a single redacted evidence root with package, detector, board-info, command, log, API, WebSocket, share-outcome, redaction-review, safe-stop, and conclusion artifacts.
 - [x] **EVD-08**: Committed parity checklist updates promote only exact claims proven by v1.1 artifacts and preserve explicit non-claims for deferred surfaces.
 
 ### Mining Prerequisite Safety
 
-- [x] **SAFE-10**: Ultra 205 production mining requires fresh or explicitly bounded power, thermal, fan, voltage, and safety observations before BM1366 work dispatch is enabled.
-- [x] **SAFE-11**: Ultra 205 production mining fails closed with user-visible blocker reasons when safety prerequisites are stale, unavailable, unsafe, ambiguous, or undocumented.
-- [x] **SAFE-12**: Ultra 205 production mining can stop in a bounded safe state with socket activity stopped, work queues drained or invalidated, mining disabled, hardware control disabled, and post-stop API/WebSocket state updated.
-- [x] **SAFE-13**: Ultra 205 production mining preserves watchdog responsiveness under bounded socket, ASIC, API, WebSocket, and evidence-capture load.
+- [ ] **SAFE-10**: Ultra 205 production mining requires fresh or explicitly bounded power, thermal, fan, voltage, and safety observations before BM1366 work dispatch is enabled.
+- [ ] **SAFE-11**: Ultra 205 production mining fails closed with user-visible blocker reasons when safety prerequisites are stale, unavailable, unsafe, ambiguous, or undocumented.
+- [ ] **SAFE-12**: Ultra 205 production mining can stop in a bounded safe state with socket activity stopped, work queues drained or invalidated, mining disabled, hardware control disabled, and post-stop API/WebSocket state updated.
+- [ ] **SAFE-13**: Ultra 205 production mining preserves watchdog responsiveness under bounded socket, ASIC, API, WebSocket, and evidence-capture load.
 
 ### Stratum v1 Production Runtime
 
-- [x] **STR-08**: Ultra 205 production mining uses a real Stratum v1 TCP socket lifecycle for connect, subscribe, authorize, difficulty/extranonce, notify, submit, response classification, reconnect, and safe stop.
-- [x] **STR-09**: Ultra 205 production mining classifies at least one real pool response to a live ASIC-derived `mining.submit` as accepted, rejected, or explicitly blocked by a safe prerequisite.
-- [ ] **STR-10**: Ultra 205 production mining redacts pool URLs, ports, workers, owner addresses, passwords, targets, extranonces, share payloads, and socket errors in committed logs and evidence.
+- [ ] **STR-08**: Ultra 205 production mining uses a real Stratum v1 TCP socket lifecycle for connect, subscribe, authorize, difficulty/extranonce, notify, submit, response classification, reconnect, and safe stop.
+- [ ] **STR-09**: Ultra 205 production mining classifies at least one real pool response to a live ASIC-derived `mining.submit` as accepted, rejected, or explicitly blocked by a safe prerequisite.
+- [x] **STR-10**: Ultra 205 production mining redacts pool URLs, ports, workers, owner addresses, passwords, targets, extranonces, share payloads, and socket errors in committed logs and evidence.
 - [x] **STR-11**: Ultra 205 production mining has deterministic fake-pool or fixture tests for subscribe, authorize, notify, clean-jobs, submit response, reconnect, fallback, and error classification behavior.
 
 ### BM1366 Production Work Path
 
-- [x] **ASIC-09**: Ultra 205 production mining separates BM1366 diagnostic chip/work modes from trusted production initialization and work-result modes.
-- [x] **ASIC-10**: Ultra 205 production mining dispatches BM1366 work derived from the active pool job, tracks job/extranonce/difficulty context, and invalidates stale work on clean-jobs or reconnect.
-- [x] **ASIC-11**: Ultra 205 production mining maps live BM1366 nonce or result observations back to active pool work before any share submission claim is recorded.
-- [x] **ASIC-12**: Ultra 205 production mining fails closed on BM1366 initialization, UART, reset, timeout, malformed result, or job-correlation failures without leaking raw frames in committed evidence.
+- [ ] **ASIC-09**: Ultra 205 production mining separates BM1366 diagnostic chip/work modes from trusted production initialization and work-result modes.
+- [ ] **ASIC-10**: Ultra 205 production mining dispatches BM1366 work derived from the active pool job, tracks job/extranonce/difficulty context, and invalidates stale work on clean-jobs or reconnect.
+- [ ] **ASIC-11**: Ultra 205 production mining maps live BM1366 nonce or result observations back to active pool work before any share submission claim is recorded.
+- [ ] **ASIC-12**: Ultra 205 production mining fails closed on BM1366 initialization, UART, reset, timeout, malformed result, or job-correlation failures without leaking raw frames in committed evidence.
 
 ### Operator Workflow And Secret Handling
 
-- [ ] **REL-09**: An Ultra 205 operator can run a documented repo-owned flow for detect, package or flash, local credential input, bounded production mining, telemetry capture, safe stop, redaction, and evidence review.
+- [x] **REL-09**: An Ultra 205 operator can run a documented repo-owned flow for detect, package or flash, local credential input, bounded production mining, telemetry capture, safe stop, redaction, and evidence review.
 - [ ] **CFG-07**: Local pool credentials are accepted only as runtime inputs and committed evidence records category labels instead of raw pool endpoints, ports, users, workers, owner addresses, passwords, or tokens.
-- [ ] **EVD-09**: Redaction tests or review gates cover retained logs, command summaries, API captures, WebSocket captures, NVS/settings values, Stratum fields, share payloads, device URLs, IP addresses, MAC addresses, Wi-Fi values, and pool secrets before evidence is committed.
+- [x] **EVD-09**: Redaction tests or review gates cover retained logs, command summaries, API captures, WebSocket captures, NVS/settings values, Stratum fields, share payloads, device URLs, IP addresses, MAC addresses, Wi-Fi values, and pool secrets before evidence is committed.
 
 ### Mining Telemetry And API Projection
 
@@ -94,23 +94,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | EVD-06 | Phase 22 | Complete |
-| EVD-07 | Phase 23 | Pending |
+| EVD-07 | Phase 23 | Complete |
 | EVD-08 | Phase 26 | Complete |
-| SAFE-10 | Phase 22 | Complete |
-| SAFE-11 | Phase 22 | Complete |
-| SAFE-12 | Phase 25 | Complete |
-| SAFE-13 | Phase 25 | Complete |
-| STR-08 | Phase 25 | Complete |
-| STR-09 | Phase 25 | Complete |
-| STR-10 | Phase 23 | Pending |
+| SAFE-10 | Phase 28 | Pending |
+| SAFE-11 | Phase 28 | Pending |
+| SAFE-12 | Phase 28 | Pending |
+| SAFE-13 | Phase 28 | Pending |
+| STR-08 | Phase 27 | Pending |
+| STR-09 | Phase 27 | Pending |
+| STR-10 | Phase 23 | Complete |
 | STR-11 | Phase 25 | Complete |
-| ASIC-09 | Phase 24 | Complete |
-| ASIC-10 | Phase 24 | Complete |
-| ASIC-11 | Phase 24 | Complete |
-| ASIC-12 | Phase 24 | Complete |
-| REL-09 | Phase 23 | Pending |
-| CFG-07 | Phase 23 | Pending |
-| EVD-09 | Phase 23 | Pending |
+| ASIC-09 | Phase 28 | Pending |
+| ASIC-10 | Phase 27 | Pending |
+| ASIC-11 | Phase 27 | Pending |
+| ASIC-12 | Phase 28 | Pending |
+| REL-09 | Phase 23 | Complete |
+| CFG-07 | Phase 28 | Pending |
+| EVD-09 | Phase 23 | Complete |
 | API-11 | Phase 26 | Complete |
 | API-12 | Phase 26 | Complete |
 | API-13 | Phase 26 | Complete |
@@ -118,14 +118,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Coverage:**
 - v1.1 requirements: 21 total
 - Mapped to phases: 21
+- Complete: 10
+- Pending (gap closure): 11
 - Unmapped: 0
 
 **Phase distribution:**
-- Phase 22: EVD-06, SAFE-10, SAFE-11
-- Phase 23: EVD-07, STR-10, REL-09, CFG-07, EVD-09
-- Phase 24: ASIC-09, ASIC-10, ASIC-11, ASIC-12
-- Phase 25: STR-08, STR-09, STR-11, SAFE-12, SAFE-13
+- Phase 22: EVD-06
+- Phase 23: EVD-07, STR-10, REL-09, EVD-09
+- Phase 24: (baseline ASIC work — superseded for hardware promotion by Phases 27-28)
+- Phase 25: STR-11
 - Phase 26: EVD-08, API-11, API-12, API-13
+- Phase 27: STR-08, STR-09, ASIC-10, ASIC-11
+- Phase 28: SAFE-10, SAFE-11, SAFE-12, SAFE-13, CFG-07, ASIC-09, ASIC-12
 
 *Requirements defined: 2026-07-04*
-*Last updated: 2026-07-04 after v1.1 roadmap creation*
+*Last updated: 2026-07-05 after v1.1 gap closure phase planning*

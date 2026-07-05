@@ -7,19 +7,21 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 ## Milestones
 
 - [x] **v1.0 Ultra 205 Parity** - Phases 1-21 shipped 2026-07-04; full archive: `.planning/milestones/v1.0-ROADMAP.md`.
-- [ ] **v1.1 Ultra 205 Trusted Production Mining** - Phases 22-26 planned for bounded Ultra 205 BM1366 Stratum v1 production mining.
+- [ ] **v1.1 Ultra 205 Trusted Production Mining** - Phases 22-28 planned for bounded Ultra 205 BM1366 Stratum v1 production mining and hardware evidence promotion.
 
 ## Phases
 
 **Phase Numbering:**
-- Integer phases (22-26): planned milestone work continuing from v1.0.
+- Integer phases (22-28): planned milestone work continuing from v1.0.
 - Decimal phases (22.1, 22.2): urgent insertions if needed between planned phases.
 
 - [x] **Phase 22: Claim Ladder And Safety Preconditions** - Operators get exact v1.1 claim boundaries and prerequisite safety gates before production work can start. (completed 2026-07-04)
-- [ ] **Phase 23: Redacted Operator Evidence Workflow** - Operators can run the repo-owned mining evidence flow without committing secrets or unsupported claims.
+- [x] **Phase 23: Redacted Operator Evidence Workflow** - Operators can run the repo-owned mining evidence flow without committing secrets or unsupported claims. (completed 2026-07-04)
 - [x] **Phase 24: BM1366 Production Work Path** - The firmware separates diagnostic ASIC behavior from trusted pool-derived BM1366 work and result handling. (completed 2026-07-05)
 - [x] **Phase 25: Live Stratum Runtime And Safe Stop** - Ultra 205 can run a real watchdog-responsive Stratum v1 mining session and stop safely. (completed 2026-07-05)
 - [x] **Phase 26: Telemetry And Parity Closure** - Runtime API, WebSocket, counters, and parity checklist updates reflect only proven v1.1 mining events. (completed 2026-07-05)
+- [ ] **Phase 27: Live Hardware ASIC And Stratum Bridge** - Live firmware wires Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 socket loop and produces detector-gated share-outcome evidence.
+- [ ] **Phase 28: Hardware Evidence And Checklist Promotion** - Redacted hardware evidence promotes only exact verified checklist rows supported by Phase 27 artifacts.
 
 ## Phase Details
 
@@ -104,9 +106,42 @@ Plans:
 - [x] 26-03-PLAN.md — Wire Phase 25 runtime producers and firmware consumers into the projection.
 - [x] 26-04-PLAN.md — Close Phase 26 evidence, checklist guardrails, and validation metadata.
 
+### Phase 27: Live Hardware ASIC And Stratum Bridge
+**Goal**: Ultra 205 live production firmware bridges Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 Stratum socket loop and records detector-gated redacted share-outcome evidence.
+**Depends on**: Phase 26
+**Requirements**: STR-08, STR-09, ASIC-10, ASIC-11
+**Gap Closure**: Closes audit integration gap Phase 24 → Phase 25 and live-hardware ASIC/Stratum tech debt.
+**Success Criteria** (what must be TRUE):
+  1. Live firmware dispatches `Bm1366ProductionCommand` from pool-derived work inside the Phase 25 socket runtime path.
+  2. Live firmware feeds `ProductionNonceObservation` back into runtime correlation and submit classification.
+  3. Detector-gated hardware run records redacted share-outcome evidence as accepted, rejected, or an explicit safe-prerequisite blocker.
+  4. Committed evidence preserves exact non-claims when hardware prerequisites block live share proof.
+**Plans**: TBD
+Plans:
+- [ ] 27-01-PLAN.md — Wire live firmware production command dispatch into `live_stratum_runtime`.
+- [ ] 27-02-PLAN.md — Bridge ASIC nonce observations into production correlation and submit intent emission.
+- [ ] 27-03-PLAN.md — Add detector-gated hardware evidence wrapper and redacted share-outcome artifacts.
+- [ ] 27-04-PLAN.md — Close Phase 27 evidence, tests, and validation metadata.
+
+### Phase 28: Hardware Evidence And Checklist Promotion
+**Goal**: Parity checklist rows promote to `verified` only where Phase 27 redacted hardware evidence supports exact claims; all other surfaces remain conservative non-claims.
+**Depends on**: Phase 27
+**Requirements**: SAFE-10, SAFE-11, SAFE-12, SAFE-13, CFG-07, ASIC-09, ASIC-12
+**Gap Closure**: Closes audit tech debt for checklist rows below `verified` where hardware evidence is required.
+**Success Criteria** (what must be TRUE):
+  1. Operator evidence root consolidates Phase 27 hardware artifacts with required redaction review.
+  2. Checklist rows for SAFE-10, SAFE-11, STR-08, STR-09, SAFE-12, SAFE-13, CFG-07, and ASIC-09 through ASIC-12 promote only to statuses supported by committed evidence.
+  3. `just parity` rejects overbroad verified promotion without matching evidence artifacts.
+  4. Explicit non-claims remain for deferred active safety, OTAWWW/recovery, non-205 boards, Stratum v2, UI/BAP, and unbounded stress.
+**Plans**: TBD
+Plans:
+- [ ] 28-01-PLAN.md — Consolidate Phase 27 hardware evidence into the operator evidence root contract.
+- [ ] 28-02-PLAN.md — Promote conservative checklist rows from Phase 27 evidence only.
+- [ ] 28-03-PLAN.md — Close Phase 28 verification, parity guardrails, and validation metadata.
+
 ## Progress
 
-**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26
+**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -115,7 +150,9 @@ Plans:
 | 24. BM1366 Production Work Path | v1.1 | 4/4 | Complete    | 2026-07-05 |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 3/3 | Complete    | 2026-07-05 |
 | 26. Telemetry And Parity Closure | v1.1 | 4/4 | Complete    | 2026-07-05 |
+| 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 0/4 | Not started | — |
+| 28. Hardware Evidence And Checklist Promotion | v1.1 | 0/3 | Not started | — |
 
 ## Coverage
 
-All 21 v1.1 requirements are mapped exactly once across Phases 22-26. Non-205 boards, non-BM1366 ASIC families, full active voltage/fan/thermal/fault/self-test closure, OTAWWW/recovery destructive or fault-injection evidence, runtime display/input/BAP, Stratum v2, and unbounded stress mining remain deferred.
+All 21 v1.1 requirements are mapped across Phases 22-26 with gap-closure promotion work in Phases 27-28. Non-205 boards, non-BM1366 ASIC families, full active voltage/fan/thermal/fault/self-test closure, OTAWWW/recovery destructive or fault-injection evidence, runtime display/input/BAP, Stratum v2, and unbounded stress mining remain deferred.
