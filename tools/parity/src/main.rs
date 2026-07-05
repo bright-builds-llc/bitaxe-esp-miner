@@ -1078,6 +1078,13 @@ fn validate_phase26_telemetry_verified_row(row: &ChecklistRow) -> Vec<Validation
         });
     }
 
+    if !haystack.contains("exact_non_claims") {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: "phase26 verified row requires exact_non_claims".to_owned(),
+        });
+    }
+
     match row.id.as_str() {
         "STAT-002" if !haystack.contains("no_request_time_fabrication") => {
             errors.push(ValidationError {
@@ -1103,7 +1110,6 @@ fn validate_phase26_telemetry_verified_row(row: &ChecklistRow) -> Vec<Validation
                     RequiredTerm::new("API-13", "api-13"),
                     RequiredTerm::new("EVD-08", "evd-08"),
                     RequiredTerm::new("redaction_status: passed", "redaction_status: passed"),
-                    RequiredTerm::new("exact_non_claims", "exact_non_claims"),
                 ],
             );
 
@@ -2066,6 +2072,23 @@ mod tests {
 
         // Assert
         assert_validation_error_contains(&errors, "STAT-002", "phase26 redaction evidence");
+    }
+
+    #[test]
+    fn phase26_verified_row_rejects_missing_exact_non_claims() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| API-006 | WebSocket telemetry | `reference/esp-miner/main/http_server/websocket_api.c` | `crates/bitaxe-api`, `firmware/bitaxe` | verified | workflow | phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed projection-backed telemetry closure. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "API-006", "exact_non_claims");
     }
 
     #[test]
