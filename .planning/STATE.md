@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Phase 24 context gathered
-last_updated: "2026-07-05T00:48:02.353Z"
-last_activity: 2026-07-05 -- Phase 24 execution started
+stopped_at: Completed 24-01-PLAN.md
+last_updated: "2026-07-05T00:53:01.632Z"
+last_activity: 2026-07-05
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 7
-  percent: 64
+  completed_plans: 8
+  percent: 73
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 ## Current Position
 
 Phase: 24 (bm1366-production-work-path) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 24
-Last activity: 2026-07-05 -- Phase 24 execution started
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-07-05
 
 Progress: [██████████] 100%
 
@@ -74,6 +74,8 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 23]: Added a repo-owned redacted operator evidence workflow with required slots, validator checks, `just phase23-evidence`, and deterministic redaction review.
 - [Phase 23]: Kept `CFG-07` below verified because the parity guard requires hardware evidence before promoting safety-critical runtime credential handling.
 - [Phase 23]: Preserved exact non-claims for Phase 24 BM1366 production work, Phase 25 live Stratum/share behavior, and Phase 26 telemetry closure.
+- [Phase 24]: Production BM1366 work uses distinct command and payload types instead of diagnostic work names.
+- [Phase 24]: Production ASIC failures render stable redaction-safe category labels only.
 
 ### Pending Todos
 
@@ -86,9 +88,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-05T00:28:43.094Z
-Stopped at: Phase 24 context gathered
-Resume file: .planning/phases/24-bm1366-production-work-path/24-CONTEXT.md
+Last session: 2026-07-05T00:53:01.630Z
+Stopped at: Completed 24-01-PLAN.md
+Resume file: None
 
 ## Next Step
 
