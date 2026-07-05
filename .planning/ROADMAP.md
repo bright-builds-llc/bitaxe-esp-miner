@@ -19,7 +19,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [ ] **Phase 23: Redacted Operator Evidence Workflow** - Operators can run the repo-owned mining evidence flow without committing secrets or unsupported claims.
 - [x] **Phase 24: BM1366 Production Work Path** - The firmware separates diagnostic ASIC behavior from trusted pool-derived BM1366 work and result handling. (completed 2026-07-05)
 - [x] **Phase 25: Live Stratum Runtime And Safe Stop** - Ultra 205 can run a real watchdog-responsive Stratum v1 mining session and stop safely. (completed 2026-07-05)
-- [ ] **Phase 26: Telemetry And Parity Closure** - Runtime API, WebSocket, counters, and parity checklist updates reflect only proven v1.1 mining events.
+- [x] **Phase 26: Telemetry And Parity Closure** - Runtime API, WebSocket, counters, and parity checklist updates reflect only proven v1.1 mining events. (completed 2026-07-05)
 
 ## Phase Details
 
@@ -102,7 +102,7 @@ Plans:
 - [x] 26-01-PLAN.md — Create the shared runtime-event projection and sample-marker contract.
 - [x] 26-02-PLAN.md — Add pure API/WebSocket projection view builders.
 - [x] 26-03-PLAN.md — Wire Phase 25 runtime producers and firmware consumers into the projection.
-- [ ] 26-04-PLAN.md — Close Phase 26 evidence, checklist guardrails, and validation metadata.
+- [x] 26-04-PLAN.md — Close Phase 26 evidence, checklist guardrails, and validation metadata.
 
 ## Progress
 
@@ -114,7 +114,7 @@ Plans:
 | 23. Redacted Operator Evidence Workflow | v1.1 | 4/4 | Complete    | 2026-07-04 |
 | 24. BM1366 Production Work Path | v1.1 | 4/4 | Complete    | 2026-07-05 |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 3/3 | Complete    | 2026-07-05 |
-| 26. Telemetry And Parity Closure | v1.1 | 3/4 | In Progress|  |
+| 26. Telemetry And Parity Closure | v1.1 | 4/4 | Complete   | 2026-07-05 |
 
 ## Coverage
 

@@ -12,7 +12,7 @@ Requirements for the current milestone. Each maps to roadmap phases and must be 
 
 - [x] **EVD-06**: An Ultra 205 operator can distinguish v1.0 controlled no-share evidence from v1.1 live production mining claims through a documented claim ladder.
 - [ ] **EVD-07**: Committed v1.1 evidence records a single redacted evidence root with package, detector, board-info, command, log, API, WebSocket, share-outcome, redaction-review, safe-stop, and conclusion artifacts.
-- [ ] **EVD-08**: Committed parity checklist updates promote only exact claims proven by v1.1 artifacts and preserve explicit non-claims for deferred surfaces.
+- [x] **EVD-08**: Committed parity checklist updates promote only exact claims proven by v1.1 artifacts and preserve explicit non-claims for deferred surfaces.
 
 ### Mining Prerequisite Safety
 
@@ -95,7 +95,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | EVD-06 | Phase 22 | Complete |
 | EVD-07 | Phase 23 | Pending |
-| EVD-08 | Phase 26 | Pending |
+| EVD-08 | Phase 26 | Complete |
 | SAFE-10 | Phase 22 | Complete |
 | SAFE-11 | Phase 22 | Complete |
 | SAFE-12 | Phase 25 | Complete |
