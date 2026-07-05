@@ -348,20 +348,17 @@ The exact names may change, but the function should be pure, typed, unit-tested,
 
 ## Open Questions
 
-1. **Should Phase 24 implement nonzero version-mask / multi-midstate work generation?** [VERIFIED: crates/bitaxe-stratum/src/v1/mining.rs]
-   - What we know: Current Rust rejects nonzero version masks during work generation. [VERIFIED: crates/bitaxe-stratum/src/v1/mining.rs]
-   - What is unclear: The Phase 24 success criteria do not explicitly require nonzero version-mask production support. [VERIFIED: .planning/ROADMAP.md]
-   - Recommendation: Keep nonzero masks as a redaction-safe blocker or explicit non-claim unless planning determines pool compatibility requires implementation in Phase 24. [VERIFIED: .planning/phases/24-bm1366-production-work-path/24-CONTEXT.md]
+1. **RESOLVED: Phase 24 will not implement nonzero version-mask / multi-midstate work generation.** [VERIFIED: crates/bitaxe-stratum/src/v1/mining.rs]
+   - Decision: Preserve the current Rust behavior that rejects nonzero version masks during work generation, and record nonzero version-mask support as an exact Phase 24 non-claim rather than adding version-rolling scope. [VERIFIED: crates/bitaxe-stratum/src/v1/mining.rs] [VERIFIED: .planning/ROADMAP.md]
+   - Plan reflection: Plan 24-02 keeps production work derived from existing `MiningWork` only, so unsupported nonzero masks fail before registry dispatch; Plan 24-04 records the non-claim in Phase 24 evidence and checklist notes. [VERIFIED: .planning/phases/24-bm1366-production-work-path/24-02-PLAN.md] [VERIFIED: .planning/phases/24-bm1366-production-work-path/24-04-PLAN.md]
 
-2. **Should hardware evidence run during Phase 24 or stay optional?** [VERIFIED: AGENTS.md]
-   - What we know: Hardware-capable verification is allowed only after `just detect-ultra205` passes exactly one likely port and board-info succeeds. [VERIFIED: AGENTS.md]
-   - What is unclear: The phase can likely satisfy implemented-level proof with pure tests, while verified safety-critical promotion depends on actual detector-gated evidence. [VERIFIED: docs/parity/checklist.md]
-   - Recommendation: Plan pure tests as mandatory and detector-gated hardware evidence as an optional final gate that can promote only exact observed claims. [VERIFIED: .planning/phases/24-bm1366-production-work-path/24-CONTEXT.md]
+2. **RESOLVED: Phase 24 will keep mandatory proof at code/test/workflow level and will not include a conditional hardware promotion path.** [VERIFIED: AGENTS.md]
+   - Decision: Hardware-capable verification remains detector-gated by `just detect-ultra205`, but Phase 24 plans do not promote checklist rows beyond `implemented | unit,workflow`. Verified hardware promotion remains pending until a later detector-gated execution plan names the evidence directory, selected port, board-info capture, package identity, exact commands, redaction workflow, observed behavior, and conclusion. [VERIFIED: AGENTS.md] [VERIFIED: docs/parity/checklist.md]
+   - Plan reflection: Plan 24-04 writes exact non-claims and conservative checklist rows only; it does not contain an optional hardware promotion branch. [VERIFIED: .planning/phases/24-bm1366-production-work-path/24-04-PLAN.md]
 
-3. **Where should the production active-work registry live?** [VERIFIED: crates/bitaxe-asic/src/bm1366/result.rs] [VERIFIED: crates/bitaxe-stratum/src/v1/queue.rs]
-   - What we know: BM1366 job-id and valid-job primitives live in `bitaxe-asic`, while pool job/extranonce/difficulty context lives in `bitaxe-stratum`. [VERIFIED: crates/bitaxe-asic/src/bm1366/work.rs] [VERIFIED: crates/bitaxe-stratum/src/v1/mining.rs]
-   - What is unclear: The exact module split is discretionary. [VERIFIED: .planning/phases/24-bm1366-production-work-path/24-CONTEXT.md]
-   - Recommendation: Put BM1366 production command/result primitives in `bitaxe-asic` and the session-generation registry/correlation to Stratum submit intent in `bitaxe-stratum`. [VERIFIED: standards/core/architecture.md]
+3. **RESOLVED: Production registry ownership is split by domain boundary.** [VERIFIED: crates/bitaxe-asic/src/bm1366/result.rs] [VERIFIED: crates/bitaxe-stratum/src/v1/queue.rs]
+   - Decision: BM1366 production command, result, payload, status, and blocker primitives belong in `crates/bitaxe-asic`; pool-session generation, active-work registry, invalidation, result correlation, and submit-intent preparation belong in `crates/bitaxe-stratum`. [VERIFIED: crates/bitaxe-asic/src/bm1366/work.rs] [VERIFIED: crates/bitaxe-stratum/src/v1/mining.rs] [VERIFIED: standards/core/architecture.md]
+   - Plan reflection: Plan 24-01 creates ASIC primitives in `bitaxe-asic`; Plans 24-02 and 24-03 create and consume the production registry in `bitaxe-stratum`; firmware remains a thin interpreter/status publisher. [VERIFIED: .planning/phases/24-bm1366-production-work-path/24-01-PLAN.md] [VERIFIED: .planning/phases/24-bm1366-production-work-path/24-02-PLAN.md] [VERIFIED: .planning/phases/24-bm1366-production-work-path/24-03-PLAN.md]
 
 ## Environment Availability
 
@@ -376,7 +373,7 @@ The exact names may change, but the function should be pure, typed, unit-tested,
 
 **Missing dependencies with no fallback:** None found during the environment audit. [VERIFIED: environment probe]
 
-**Missing dependencies with fallback:** Hardware availability itself was not probed during research; Phase 24 plans should run `just detect-ultra205` only if they choose hardware evidence. [VERIFIED: AGENTS.md]
+**Missing dependencies with fallback:** Hardware availability itself was not probed during research. Phase 24 plans do not include hardware promotion; any later hardware evidence plan must run `just detect-ultra205` first and follow AGENTS.md evidence/redaction requirements. [VERIFIED: AGENTS.md]
 
 ## Validation Architecture
 

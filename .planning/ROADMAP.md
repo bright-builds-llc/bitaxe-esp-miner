@@ -65,7 +65,12 @@ Plans:
   3. Firmware invalidates stale BM1366 work on clean-jobs or reconnect before another share claim can be recorded.
   4. Firmware maps live BM1366 nonce or result observations back to active pool work before any share submission claim is recorded.
   5. Firmware fails closed on BM1366 initialization, UART, reset, timeout, malformed result, or job-correlation failures without leaking raw frames in committed evidence.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 24-01-PLAN.md — Create BM1366 production ASIC primitives and redaction-safe blocker taxonomy.
+- [ ] 24-02-PLAN.md — Add a session-generation production active-work registry.
+- [ ] 24-03-PLAN.md — Correlate BM1366 results and wire guarded production dispatch/status.
+- [ ] 24-04-PLAN.md — Close Phase 24 evidence, checklist rows, and validation metadata.
 
 ### Phase 25: Live Stratum Runtime And Safe Stop
 **Goal**: A watchdog-responsive firmware shell drives a pure Stratum v1 production runtime with real TCP socket I/O, live ASIC-derived submit behavior, deterministic fake-pool coverage, and bounded safe-stop postconditions.
@@ -98,7 +103,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 22. Claim Ladder And Safety Preconditions | v1.1 | 3/3 | Complete    | 2026-07-04 |
 | 23. Redacted Operator Evidence Workflow | v1.1 | 4/4 | Complete    | 2026-07-04 |
-| 24. BM1366 Production Work Path | v1.1 | 0/TBD | Not started | - |
+| 24. BM1366 Production Work Path | v1.1 | 0/4 | Not started | - |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 0/TBD | Not started | - |
 | 26. Telemetry And Parity Closure | v1.1 | 0/TBD | Not started | - |
 
