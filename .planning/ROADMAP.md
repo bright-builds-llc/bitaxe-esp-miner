@@ -82,7 +82,11 @@ Plans:
   3. Operator can observe at least one real pool response to a live ASIC-derived `mining.submit` classified as accepted or rejected, or an explicit safe-prerequisite blocker.
   4. Operator can stop production mining into a bounded safe state with socket activity stopped, work queues drained or invalidated, mining disabled, hardware control disabled, and post-stop API/WebSocket state updated.
   5. Operator can verify watchdog responsiveness under bounded socket, ASIC, API, WebSocket, and evidence-capture load.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 25-01-PLAN.md — Create the pure live Stratum runtime, submit classifier, and deterministic fake-pool coverage.
+- [ ] 25-02-PLAN.md — Wire the firmware live socket adapter with safe-stop and watchdog postconditions.
+- [ ] 25-03-PLAN.md — Add detector-gated evidence tooling and exact parity closure.
 
 ### Phase 26: Telemetry And Parity Closure
 **Goal**: API, WebSocket, statistics, scoreboard, and parity checklist projections are derived from the same v1.1 runtime events and promote only exact claims proven by redacted Ultra 205 artifacts.
@@ -104,7 +108,7 @@ Plans:
 | 22. Claim Ladder And Safety Preconditions | v1.1 | 3/3 | Complete    | 2026-07-04 |
 | 23. Redacted Operator Evidence Workflow | v1.1 | 4/4 | Complete    | 2026-07-04 |
 | 24. BM1366 Production Work Path | v1.1 | 4/4 | Complete    | 2026-07-05 |
-| 25. Live Stratum Runtime And Safe Stop | v1.1 | 0/TBD | Not started | - |
+| 25. Live Stratum Runtime And Safe Stop | v1.1 | 0/3 | Not started | - |
 | 26. Telemetry And Parity Closure | v1.1 | 0/TBD | Not started | - |
 
 ## Coverage
