@@ -17,7 +17,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 
 - [x] **Phase 22: Claim Ladder And Safety Preconditions** - Operators get exact v1.1 claim boundaries and prerequisite safety gates before production work can start. (completed 2026-07-04)
 - [ ] **Phase 23: Redacted Operator Evidence Workflow** - Operators can run the repo-owned mining evidence flow without committing secrets or unsupported claims.
-- [ ] **Phase 24: BM1366 Production Work Path** - The firmware separates diagnostic ASIC behavior from trusted pool-derived BM1366 work and result handling.
+- [x] **Phase 24: BM1366 Production Work Path** - The firmware separates diagnostic ASIC behavior from trusted pool-derived BM1366 work and result handling. (completed 2026-07-05)
 - [ ] **Phase 25: Live Stratum Runtime And Safe Stop** - Ultra 205 can run a real watchdog-responsive Stratum v1 mining session and stop safely.
 - [ ] **Phase 26: Telemetry And Parity Closure** - Runtime API, WebSocket, counters, and parity checklist updates reflect only proven v1.1 mining events.
 
@@ -70,7 +70,7 @@ Plans:
 - [x] 24-01-PLAN.md — Create BM1366 production ASIC primitives and redaction-safe blocker taxonomy.
 - [x] 24-02-PLAN.md — Add a session-generation production active-work registry.
 - [x] 24-03-PLAN.md — Correlate BM1366 results and wire guarded production dispatch/status.
-- [ ] 24-04-PLAN.md — Close Phase 24 evidence, checklist rows, and validation metadata.
+- [x] 24-04-PLAN.md — Close Phase 24 evidence, checklist rows, and validation metadata.
 
 ### Phase 25: Live Stratum Runtime And Safe Stop
 **Goal**: A watchdog-responsive firmware shell drives a pure Stratum v1 production runtime with real TCP socket I/O, live ASIC-derived submit behavior, deterministic fake-pool coverage, and bounded safe-stop postconditions.
@@ -103,7 +103,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 22. Claim Ladder And Safety Preconditions | v1.1 | 3/3 | Complete    | 2026-07-04 |
 | 23. Redacted Operator Evidence Workflow | v1.1 | 4/4 | Complete    | 2026-07-04 |
-| 24. BM1366 Production Work Path | v1.1 | 3/4 | In Progress|  |
+| 24. BM1366 Production Work Path | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 0/TBD | Not started | - |
 | 26. Telemetry And Parity Closure | v1.1 | 0/TBD | Not started | - |
 
