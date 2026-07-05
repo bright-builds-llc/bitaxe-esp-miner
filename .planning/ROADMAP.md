@@ -116,7 +116,7 @@ Plans:
   2. Live firmware feeds `ProductionNonceObservation` back into runtime correlation and submit classification.
   3. Detector-gated hardware run records redacted share-outcome evidence as accepted, rejected, or an explicit safe-prerequisite blocker.
   4. Committed evidence preserves exact non-claims when hardware prerequisites block live share proof.
-**Plans**: TBD
+**Plans**: 4 plans
 Plans:
 - [ ] 27-01-PLAN.md — Wire live firmware production command dispatch into `live_stratum_runtime`.
 - [ ] 27-02-PLAN.md — Bridge ASIC nonce observations into production correlation and submit intent emission.
