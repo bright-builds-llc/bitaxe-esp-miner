@@ -519,7 +519,10 @@ mod tests {
             stale_generation,
             ProjectionShareOutcome::IgnoredStaleGeneration
         );
-        assert_eq!(projection.state().lifecycle, PoolLifecycleStatus::Disconnected);
+        assert_eq!(
+            projection.state().lifecycle,
+            PoolLifecycleStatus::Disconnected
+        );
         assert_eq!(
             projection.state().mining_activity,
             MiningActivityStatus::SafeBlocked
