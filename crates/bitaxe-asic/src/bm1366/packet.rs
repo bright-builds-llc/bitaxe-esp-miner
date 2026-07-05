@@ -21,6 +21,10 @@ pub const CMD_INACTIVE: u8 = 0x03;
 pub struct FrameBytes(Vec<u8>);
 
 impl FrameBytes {
+    pub fn from_fixed(bytes: impl AsRef<[u8]>) -> Self {
+        Self(bytes.as_ref().to_vec())
+    }
+
     pub fn as_slice(&self) -> &[u8] {
         &self.0
     }

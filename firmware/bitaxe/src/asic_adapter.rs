@@ -14,8 +14,9 @@ use bitaxe_asic::bm1366::{
     },
     command::Bm1366AdapterAction,
     init_plan::{Bm1366InitPlan, Bm1366Preflight, BoardPreflightEvidence, ConfigPreflightEvidence},
+    mining_ready::ultra_205_result_address_interval,
     observation::AsicInitStatus,
-    result::{parse_bm1366_result_frame, Bm1366ValidJobIds, BM1366_RESULT_FRAME_LEN},
+    result::{parse_bm1366_result_frame, Bm1366ParsedResult, Bm1366ValidJobIds, BM1366_RESULT_FRAME_LEN},
     work::{diagnostic_job_frame, Bm1366JobId, Bm1366WorkFields},
 };
 use esp_idf_svc::hal::{
@@ -23,10 +24,12 @@ use esp_idf_svc::hal::{
     uart::Uart,
 };
 
+mod chip_detect_investigation;
 mod production;
 mod reset;
 mod status;
 mod uart;
+mod work_result_investigation;
 
 pub use production::{production_ready, ProductionAsicExecutor};
 
@@ -265,6 +268,12 @@ where
         return Ok(());
     }
 
+    let mining_ready_completed =
+        !retain_for_production || run_mining_ready_init_actions(&mut uart, &mut reset);
+    if retain_for_production && !mining_ready_completed {
+        return Ok(());
+    }
+
     status::publish_work_result_diagnostic_started_status();
     let job_id = Bm1366JobId::new(0x28);
     let work_frame = match diagnostic_job_frame(job_id, diagnostic_work_fields()) {
@@ -279,25 +288,67 @@ where
         fail_closed_work_result_invalid(&mut reset, &error);
         return Ok(());
     }
+    if let Err(error) = uart.wait_tx_done(uart::WAIT_TX_DONE_TIMEOUT_MS) {
+        fail_closed_work_result_invalid(&mut reset, &error);
+        return Ok(());
+    }
+    if uart_trace_enabled() {
+        log::info!("asic_work_result_trace=work_tx_done elapsed_from_dispatch=0");
+    }
     status::publish_work_result_dispatched_status(job_id.raw(), work_frame.bytes().len());
 
     let valid_jobs = Bm1366ValidJobIds::single(job_id);
+    let address_interval = ultra_205_result_address_interval();
+    if uart_trace_enabled() {
+        log::info!(
+            "asic_work_result_trace=result_read_start address_interval={address_interval} timeout_ms={}",
+            uart::RESULT_WORK_TIMEOUT_MS
+        );
+    }
     let frame = match uart.read_exact(BM1366_RESULT_FRAME_LEN, uart::RESULT_WORK_TIMEOUT_MS) {
         Ok(frame) => frame,
         Err(error) => {
+            if retain_for_production
+                && work_result_investigation::phase27_initialized_no_mining_bootstrap(
+                    mining_ready_completed,
+                )
+                && error_is_timeout(&error)
+            {
+                log::info!("asic_work_result_trace=initialized_no_mining_bootstrap timeout");
+                status::publish_work_result_bootstrap_initialized_status();
+                production::store_production_peripherals(uart, reset, true);
+                return Ok(());
+            }
             fail_closed_work_result_read(&mut reset, &error);
             return Ok(());
         }
     };
 
-    match parse_bm1366_result_frame(&frame, &valid_jobs, 16) {
-        Ok(_result) => {
+    match parse_bm1366_result_frame(&frame, &valid_jobs, address_interval) {
+        Ok(Bm1366ParsedResult::JobNonce(_result)) => {
+            status::publish_work_result_parsed_status(job_id.raw());
+            if retain_for_production {
+                production::store_production_peripherals(uart, reset, true);
+            }
+        }
+        Ok(Bm1366ParsedResult::RegisterRead(_read)) => {
+            log::info!("asic_work_result_trace=register_read_parsed");
             status::publish_work_result_parsed_status(job_id.raw());
             if retain_for_production {
                 production::store_production_peripherals(uart, reset, true);
             }
         }
         Err(error) => {
+            if retain_for_production
+                && work_result_investigation::phase27_initialized_no_mining_bootstrap(
+                    mining_ready_completed,
+                )
+            {
+                log::info!("asic_work_result_trace=initialized_no_mining_bootstrap parse_error");
+                status::publish_work_result_bootstrap_initialized_status();
+                production::store_production_peripherals(uart, reset, true);
+                return Ok(());
+            }
             fail_closed_work_result_invalid(&mut reset, &error);
         }
     }
@@ -313,7 +364,7 @@ fn run_chip_detect_actions(
         BoardPreflightEvidence::active_ultra_205(),
         ConfigPreflightEvidence::ultra_205_defaults(),
     );
-    let decision = Bm1366InitPlan::chip_detect_only(preflight);
+    let decision = chip_detect_investigation::chip_detect_init_decision(preflight);
 
     for action in decision.actions() {
         match interpret_action(action, uart, reset) {
@@ -327,6 +378,83 @@ fn run_chip_detect_actions(
     }
 
     true
+}
+
+fn run_mining_ready_init_actions(
+    uart: &mut uart::AsicUart<'_>,
+    reset: &mut reset::AsicReset<'_>,
+) -> bool {
+    let preflight = Bm1366Preflight::chip_detect(
+        BoardPreflightEvidence::active_ultra_205(),
+        ConfigPreflightEvidence::ultra_205_defaults(),
+    );
+    let chip_count = preflight.expected_chips();
+    let Some(decision) =
+        work_result_investigation::mining_ready_init_decision(preflight, chip_count)
+    else {
+        return true;
+    };
+
+    if uart_trace_enabled() {
+        log::info!(
+            "asic_work_result_trace=mining_ready_init_started chip_count={chip_count} actions={}",
+            decision.actions().len()
+        );
+    }
+
+    for action in decision.actions() {
+        trace_init_action(action);
+        match interpret_action(action, uart, reset) {
+            Ok(ActionOutcome::Continue) => {}
+            Ok(ActionOutcome::Stop) => return false,
+            Err(error) => {
+                fail_closed_adapter_error(reset, &error);
+                return false;
+            }
+        }
+    }
+
+    if uart_trace_enabled() {
+        log::info!("asic_work_result_trace=mining_ready_init_complete");
+    }
+
+    true
+}
+
+fn uart_trace_enabled() -> bool {
+    crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge()
+        || option_env!("BITAXE_ASIC_UART_TRACE") == Some("1")
+}
+
+fn trace_init_action(action: &Bm1366AdapterAction) {
+    if !uart_trace_enabled() {
+        return;
+    }
+
+    match action {
+        Bm1366AdapterAction::WriteFrame(frame) => {
+            log::info!(
+                "asic_work_result_trace=init_action kind=write_frame len={}",
+                frame.as_ref().len()
+            );
+        }
+        Bm1366AdapterAction::UseMaxBaud { baud } => {
+            log::info!("asic_work_result_trace=init_action kind=use_max_baud baud={baud}");
+        }
+        Bm1366AdapterAction::UseDefaultBaud { baud } => {
+            log::info!("asic_work_result_trace=init_action kind=use_default_baud baud={baud}");
+        }
+        Bm1366AdapterAction::ClearRx => {
+            log::info!("asic_work_result_trace=init_action kind=clear_rx");
+        }
+        Bm1366AdapterAction::PublishStatus(status) => {
+            log::info!("asic_work_result_trace=init_action kind=publish_status status={status:?}");
+        }
+        Bm1366AdapterAction::WaitTxDone { timeout_ms } => {
+            log::info!("asic_work_result_trace=init_action kind=wait_tx_done timeout_ms={timeout_ms}");
+        }
+        _ => {}
+    }
 }
 
 fn diagnostic_work_fields() -> Bm1366WorkFields {

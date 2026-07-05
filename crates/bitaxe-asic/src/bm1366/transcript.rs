@@ -23,7 +23,7 @@ pub struct FakeUartTranscript {
     events: Vec<FakeUartEvent>,
     expected_chips: u8,
     valid_jobs: Bm1366ValidJobIds,
-    address_interval: u8,
+    address_interval: u16,
 }
 
 impl FakeUartTranscript {
@@ -49,7 +49,7 @@ impl FakeUartTranscript {
     pub fn with_result_context(
         events: Vec<FakeUartEvent>,
         valid_jobs: Bm1366ValidJobIds,
-        address_interval: u8,
+        address_interval: u16,
     ) -> Self {
         Self {
             events,
@@ -118,6 +118,20 @@ impl FakeUartTranscript {
                         "chip_id_partial_read",
                     );
                     break;
+                }
+                FakeUartEvent::SplitRead { first, second } => {
+                    let mut combined = first;
+                    combined.extend(second);
+                    match parse_chip_id_response(&combined) {
+                        Ok(observation) => {
+                            detected_chips = detected_chips.saturating_add(1);
+                            outcome.observations.push(observation);
+                        }
+                        Err(fault) => {
+                            outcome.fail_closed(fault, "chip_id_split_read_fault");
+                            break;
+                        }
+                    }
                 }
                 FakeUartEvent::MalformedPreamble(bytes) | FakeUartEvent::BadCrc(bytes) => {
                     outcome.actions.push(Bm1366AdapterAction::ClearRx);
@@ -210,6 +224,18 @@ impl FakeUartTranscript {
                     );
                     break;
                 }
+                FakeUartEvent::SplitRead { first, second } => {
+                    let mut combined = first;
+                    combined.extend(second);
+                    if !parse_result_bytes(
+                        &mut outcome,
+                        &combined,
+                        &self.valid_jobs,
+                        self.address_interval,
+                    ) {
+                        break;
+                    }
+                }
                 FakeUartEvent::ExpectWrite(_) => {
                     outcome.fail_closed(
                         Bm1366ProtocolFault::TranscriptWriteMismatch,
@@ -228,7 +254,7 @@ fn parse_result_bytes(
     outcome: &mut TranscriptOutcome,
     bytes: &[u8],
     valid_jobs: &Bm1366ValidJobIds,
-    address_interval: u8,
+    address_interval: u16,
 ) -> bool {
     match parse_bm1366_result_frame(bytes, valid_jobs, address_interval) {
         Ok(parsed) => {
@@ -248,6 +274,7 @@ pub enum FakeUartEvent {
     ReadBytes(Vec<u8>),
     Timeout,
     PartialRead(Vec<u8>),
+    SplitRead { first: Vec<u8>, second: Vec<u8> },
     MalformedPreamble(Vec<u8>),
     BadCrc(Vec<u8>),
 }

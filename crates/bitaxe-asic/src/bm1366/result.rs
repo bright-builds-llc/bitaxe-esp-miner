@@ -103,7 +103,7 @@ pub struct Bm1366RegisterRead {
 pub fn parse_bm1366_result_frame(
     bytes: &[u8],
     valid_jobs: &Bm1366ValidJobIds,
-    address_interval: u8,
+    address_interval: u16,
 ) -> Result<Bm1366ParsedResult, Bm1366ProtocolFault> {
     let frame = ResultFrameBytes::try_from_slice(bytes)?;
     validate_result_frame(frame)?;
@@ -136,7 +136,7 @@ fn validate_result_frame(frame: ResultFrameBytes) -> Result<(), Bm1366ProtocolFa
 fn parse_job_result(
     frame: ResultFrameBytes,
     valid_jobs: &Bm1366ValidJobIds,
-    address_interval: u8,
+    address_interval: u16,
 ) -> Result<Bm1366ParsedResult, Bm1366ProtocolFault> {
     let bytes = frame.bytes();
     let nonce_be = u32::from_be_bytes([bytes[2], bytes[3], bytes[4], bytes[5]]);
@@ -162,7 +162,7 @@ fn parse_job_result(
     }
 
     let address_interval = valid_address_interval(address_interval)?;
-    let asic_index = (((nonce_be >> 17) & 0xff) as u8) / address_interval;
+    let asic_index = (u16::from(((nonce_be >> 17) & 0xff) as u8) / address_interval) as u8;
     let small_core_id = id & 0x07;
     let version_be = u16::from_be_bytes([bytes[8], bytes[9]]);
     let version_bits = (u32::from(version_be)) << 13;
@@ -179,14 +179,14 @@ fn parse_job_result(
 
 fn parse_register_read(
     frame: ResultFrameBytes,
-    address_interval: u8,
+    address_interval: u16,
 ) -> Result<Bm1366ParsedResult, Bm1366ProtocolFault> {
     let bytes = frame.bytes();
     let value = u32::from_be_bytes([bytes[2], bytes[3], bytes[4], bytes[5]]);
     let asic_address = bytes[6];
     let register = Bm1366Register::try_from(bytes[7])?;
     let address_interval = valid_address_interval(address_interval)?;
-    let asic_index = asic_address / address_interval;
+    let asic_index = (u16::from(asic_address) / address_interval) as u8;
 
     Ok(Bm1366ParsedResult::RegisterRead(Bm1366RegisterRead {
         register,
@@ -196,7 +196,7 @@ fn parse_register_read(
     }))
 }
 
-fn valid_address_interval(address_interval: u8) -> Result<u8, Bm1366ProtocolFault> {
+fn valid_address_interval(address_interval: u16) -> Result<u16, Bm1366ProtocolFault> {
     if address_interval == 0 {
         return Err(Bm1366ProtocolFault::ChipCountMismatch {
             expected: 1,

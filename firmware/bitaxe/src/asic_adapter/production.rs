@@ -12,6 +12,7 @@ use bitaxe_asic::bm1366::{
         parse_bm1366_result_frame, Bm1366NonceResult, Bm1366ParsedResult, Bm1366ValidJobIds,
         BM1366_RESULT_FRAME_LEN,
     },
+    mining_ready::ultra_205_result_address_interval,
 };
 
 use super::{reset, status, uart};
@@ -116,7 +117,11 @@ impl ProductionAsicExecutor {
                 let frame = uart
                     .read_exact(BM1366_RESULT_FRAME_LEN, uart::RESULT_WORK_TIMEOUT_MS)
                     .map_err(|_| ProductionAsicBlocker::ResultTimeout)?;
-                match parse_bm1366_result_frame(&frame, valid_jobs, 16) {
+                match parse_bm1366_result_frame(
+                    &frame,
+                    valid_jobs,
+                    ultra_205_result_address_interval(),
+                ) {
                     Ok(Bm1366ParsedResult::JobNonce(result)) => Ok(Some(result)),
                     Ok(Bm1366ParsedResult::RegisterRead(_)) => {
                         Err(ProductionAsicBlocker::ResultMalformed)

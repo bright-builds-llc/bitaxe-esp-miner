@@ -10,12 +10,12 @@ use crate::Bm1366ProtocolFault;
 use super::{
     observation::{AsicInitStatus, ChipAddress},
     packet::{
-        CommandFrame, FrameBytes, JobFrame, CMD_READ, CMD_SET_ADDRESS, CMD_WRITE,
+        CommandFrame, FrameBytes, JobFrame, CMD_INACTIVE, CMD_READ, CMD_SET_ADDRESS, CMD_WRITE,
         COMMAND_HEADER_TYPE, GROUP_ALL, GROUP_SINGLE, JOB_HEADER_TYPE,
     },
     registers::{
-        frequency_payload, hash_counting_payload, read_register_payload, set_address_payload,
-        version_mask_payload, write_register_payload,
+        difficulty_mask_payload, frequency_payload, hash_counting_payload, inactive_chain_payload,
+        read_register_payload, set_address_payload, version_mask_payload, write_register_payload,
     },
     result::BM1366_RESULT_FRAME_LEN,
     work::Bm1366WorkPayload,
@@ -34,12 +34,19 @@ pub enum Bm1366Command {
     WriteRegister(RegisterWrite),
     SetFrequency(FrequencyPlan),
     SetNonceSpace(NonceSpacePlan),
+    SetChainInactive,
+    SetDifficultyMask([u8; 4]),
+    SetAsicMaxBaud,
+    DelayMs(u32),
     SendDiagnosticWork(Bm1366WorkPayload),
 }
 
 impl Bm1366Command {
     pub fn adapter_actions(self) -> Result<Vec<Bm1366AdapterAction>, Bm1366ProtocolFault> {
-        Ok(vec![Bm1366AdapterAction::WriteFrame(self.frame_bytes()?)])
+        match self {
+            Self::DelayMs(delay_ms) => Ok(vec![Bm1366AdapterAction::DelayMs(delay_ms)]),
+            _ => Ok(vec![Bm1366AdapterAction::WriteFrame(self.frame_bytes()?)]),
+        }
     }
 
     pub fn frame_bytes(self) -> Result<FrameBytes, Bm1366ProtocolFault> {
@@ -70,6 +77,21 @@ impl Bm1366Command {
                 COMMAND_HEADER_TYPE | GROUP_ALL | CMD_WRITE,
                 hash_counting_payload(plan.hash_counting_number).as_bytes(),
             ),
+            Self::SetChainInactive => command_frame(
+                COMMAND_HEADER_TYPE | GROUP_ALL | CMD_INACTIVE,
+                inactive_chain_payload().as_bytes(),
+            ),
+            Self::SetDifficultyMask(mask) => command_frame(
+                COMMAND_HEADER_TYPE | GROUP_ALL | CMD_WRITE,
+                difficulty_mask_payload(mask).as_bytes(),
+            ),
+            Self::SetAsicMaxBaud => Ok(FrameBytes::from_fixed(
+                super::upstream_init_frames::REG28_MAX_BAUD_FRAME,
+            )),
+            Self::DelayMs(_) => Err(Bm1366ProtocolFault::InvalidLength {
+                expected: 0,
+                actual: 0,
+            }),
             Self::SendDiagnosticWork(payload) => {
                 JobFrame::new(JOB_HEADER_TYPE | GROUP_SINGLE | CMD_WRITE, payload.bytes())
                     .map(JobFrame::into_bytes)

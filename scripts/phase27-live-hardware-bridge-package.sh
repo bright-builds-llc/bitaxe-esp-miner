@@ -6,12 +6,14 @@ readonly ENABLEMENT_MODE="phase27-live-hardware-asic-stratum-bridge"
 readonly HARDWARE_EVIDENCE_ACK="ultra205-phase27-live-hardware-bridge-safe-stop"
 
 usage() {
-	printf 'usage: %s [--out-dir PATH]\n' "$(basename "$0")" >&2
+	printf 'usage: %s [--out-dir PATH] [--investigation MODE]\n' "$(basename "$0")" >&2
+	printf '  --investigation MODE  optional BITAXE_WORK_RESULT_INVESTIGATION value\n' >&2
 }
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 out_dir="${repo_root}/bazel-bin/firmware/bitaxe"
+investigation_mode=""
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
@@ -21,6 +23,14 @@ while [[ "$#" -gt 0 ]]; do
 			exit 2
 		fi
 		out_dir="${2%/}"
+		shift 2
+		;;
+	--investigation)
+		if [[ "$#" -lt 2 ]]; then
+			usage
+			exit 2
+		fi
+		investigation_mode="${2}"
 		shift 2
 		;;
 	-h | --help)
@@ -43,8 +53,13 @@ build_cmd=(
 	build
 	"--action_env=BITAXE_MINING_EVIDENCE_MODE=${ENABLEMENT_MODE}"
 	"--action_env=BITAXE_HARDWARE_EVIDENCE_ACK=${HARDWARE_EVIDENCE_ACK}"
-	"$FIRMWARE_TARGET"
 )
+
+if [[ -n "$investigation_mode" ]]; then
+	build_cmd+=("--action_env=BITAXE_WORK_RESULT_INVESTIGATION=${investigation_mode}")
+fi
+
+build_cmd+=("$FIRMWARE_TARGET")
 
 printf '[phase27-live-hardware-bridge-package] build_command='
 printf '%q ' "${build_cmd[@]}"

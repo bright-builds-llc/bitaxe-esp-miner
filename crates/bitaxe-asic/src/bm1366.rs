@@ -11,12 +11,15 @@ pub mod command;
 pub mod crc;
 pub mod frequency_voltage;
 pub mod init_plan;
+pub mod mining_ready;
 pub mod observation;
 pub mod packet;
 pub mod production;
 pub mod registers;
 pub mod result;
 pub mod transcript;
+pub mod uart_accumulate;
+pub mod upstream_init_frames;
 pub mod work;
 
 pub const BM1366_CHIP_ID: u16 = 0x1366;

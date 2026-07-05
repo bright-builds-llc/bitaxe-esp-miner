@@ -28,21 +28,70 @@ const CONFIG_PREFLIGHT_EVIDENCE_MISSING: &str = "config_preflight_evidence_missi
 const POWER_THERMAL_EVIDENCE_MISSING: &str = "power_thermal_evidence_missing";
 const SAFETY_PREFLIGHT_EVIDENCE_MISSING: &str = "safety_preflight_evidence_missing";
 const INIT_COMMAND_ENCODING_FAILED: &str = "init_command_encoding_failed";
+const UPSTREAM_VERSION_MASK: VersionMask = VersionMask::new(0x1fffe000);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChipDetectPlanOptions {
+    pub skip_reset_pulse: bool,
+    pub version_mask_prelude_count: u8,
+    pub wait_tx_done_after_chip_id_write: bool,
+}
+
+impl ChipDetectPlanOptions {
+    #[must_use]
+    pub const fn chip_detect_only_baseline() -> Self {
+        Self {
+            skip_reset_pulse: false,
+            version_mask_prelude_count: 0,
+            wait_tx_done_after_chip_id_write: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn upstream_aligned_after_safety_bring_up() -> Self {
+        Self {
+            skip_reset_pulse: true,
+            version_mask_prelude_count: 3,
+            wait_tx_done_after_chip_id_write: true,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Bm1366InitPlan;
 
 impl Bm1366InitPlan {
     pub fn chip_detect_only(preflight: Bm1366Preflight) -> Bm1366InitDecision {
+        Self::chip_detect_with_options(preflight, ChipDetectPlanOptions::chip_detect_only_baseline())
+    }
+
+    pub fn chip_detect_with_options(
+        preflight: Bm1366Preflight,
+        options: ChipDetectPlanOptions,
+    ) -> Bm1366InitDecision {
         if let Err(reason) = preflight.validate_board_and_config() {
             return Bm1366InitDecision::preflight_missing(reason, FailClosedAction::HoldResetLow);
         }
 
         let mut actions = vec![
             Bm1366AdapterAction::PublishStatus(AsicInitStatus::ChipDetectOnly),
-            Bm1366AdapterAction::reset_pulse(),
             Bm1366AdapterAction::UseDefaultBaud { baud: DEFAULT_BAUD },
         ];
+
+        if !options.skip_reset_pulse {
+            actions.insert(1, Bm1366AdapterAction::reset_pulse());
+        }
+
+        for _ in 0..options.version_mask_prelude_count {
+            let encoded = Bm1366Command::SetVersionMask(UPSTREAM_VERSION_MASK).adapter_actions();
+            let Ok(encoded) = encoded else {
+                return Bm1366InitDecision::fail_closed(
+                    INIT_COMMAND_ENCODING_FAILED,
+                    FailClosedAction::HoldResetLow,
+                );
+            };
+            actions.extend(encoded);
+        }
 
         let read_chip_id_actions = Bm1366Command::ReadChipId.adapter_actions();
         let Ok(read_chip_id_actions) = read_chip_id_actions else {
@@ -53,6 +102,9 @@ impl Bm1366InitPlan {
         };
 
         actions.extend(read_chip_id_actions);
+        if options.wait_tx_done_after_chip_id_write {
+            actions.push(Bm1366AdapterAction::WAIT_TX_DONE);
+        }
         actions.push(Bm1366AdapterAction::read_chip_id_response(
             preflight.expected_chips(),
         ));
@@ -202,7 +254,7 @@ impl Bm1366Preflight {
         self
     }
 
-    fn validate_board_and_config(self) -> Result<(), &'static str> {
+    pub(crate) fn validate_board_and_config(self) -> Result<(), &'static str> {
         let Some(board) = self.maybe_board else {
             return Err(BOARD_PREFLIGHT_EVIDENCE_MISSING);
         };
@@ -234,7 +286,7 @@ impl Bm1366Preflight {
         safety.is_ready()
     }
 
-    fn expected_chips(self) -> u8 {
+    pub fn expected_chips(self) -> u8 {
         self.maybe_board
             .map_or(ultra_205_catalog_entry().asic_count(), |board| {
                 board.entry.asic_count()
@@ -389,7 +441,21 @@ impl Bm1366InitDecision {
         self.maybe_fail_closed_action
     }
 
-    fn preflight_missing(reason: &'static str, action: FailClosedAction) -> Self {
+    pub(crate) fn mining_ready_success(actions: Vec<Bm1366AdapterAction>) -> Self {
+        Self {
+            stages: vec![
+                Bm1366InitStage::RegisterInit,
+                Bm1366InitStage::FrequencyNonceSetup,
+                Bm1366InitStage::MaxBaud,
+                Bm1366InitStage::InitializedNoMining,
+            ],
+            actions,
+            status: AsicInitStatus::InitializedNoMining,
+            maybe_fail_closed_action: None,
+        }
+    }
+
+    pub(crate) fn preflight_missing(reason: &'static str, action: FailClosedAction) -> Self {
         let status = AsicInitStatus::PreflightMissing { reason };
         Self {
             stages: vec![Bm1366InitStage::Preflight],
@@ -402,7 +468,7 @@ impl Bm1366InitDecision {
         }
     }
 
-    fn fail_closed(reason: &'static str, action: FailClosedAction) -> Self {
+    pub(crate) fn fail_closed(reason: &'static str, action: FailClosedAction) -> Self {
         let status = AsicInitStatus::FailClosed { reason };
         Self {
             stages: vec![Bm1366InitStage::Preflight],
@@ -430,9 +496,41 @@ mod tests {
 
     use super::{
         Bm1366InitPlan, Bm1366InitStage, Bm1366Preflight, BoardPreflightEvidence,
-        ConfigPreflightEvidence, FailClosedAction, PowerPreflightEvidence, SafetyPreflightEvidence,
-        ThermalPreflightEvidence,
+        ChipDetectPlanOptions, ConfigPreflightEvidence, FailClosedAction, PowerPreflightEvidence,
+        SafetyPreflightEvidence, ThermalPreflightEvidence,
     };
+
+    #[test]
+    fn init_plan_upstream_aligned_skips_reset_and_adds_version_mask_prelude() {
+        // Arrange
+        let preflight = Bm1366Preflight::chip_detect(
+            BoardPreflightEvidence::active_ultra_205(),
+            ConfigPreflightEvidence::ultra_205_defaults(),
+        );
+
+        // Act
+        let decision = Bm1366InitPlan::chip_detect_with_options(
+            preflight,
+            ChipDetectPlanOptions::upstream_aligned_after_safety_bring_up(),
+        );
+
+        // Assert
+        assert!(!decision
+            .actions()
+            .contains(&Bm1366AdapterAction::reset_pulse()));
+        assert!(decision
+            .actions()
+            .contains(&Bm1366AdapterAction::WAIT_TX_DONE));
+        assert_eq!(
+            decision
+                .actions()
+                .iter()
+                .filter(|action| matches!(action, Bm1366AdapterAction::WriteFrame(_)))
+                .count(),
+            4,
+            "expected 3 version-mask frames plus 1 read-chip-id frame"
+        );
+    }
 
     #[test]
     fn init_plan_chip_detect_only_emits_reset_default_baud_and_validating_chip_id_read_actions() {

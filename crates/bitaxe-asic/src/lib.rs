@@ -343,6 +343,37 @@ mod tests {
     }
 
     #[test]
+    fn transcript_split_nine_plus_two_read_parses_valid_chip_id_frame() {
+        // Arrange
+        let full_frame = chip_id_response_frame(BM1366_CHIP_ID, 0x70, 0x00);
+        let first = full_frame[..9].to_vec();
+        let second = full_frame[9..].to_vec();
+        let expected_frame = Bm1366Command::ReadChipId
+            .frame_bytes()
+            .expect("read chip-id frame should encode");
+        let transcript = bm1366::transcript::FakeUartTranscript::with_expected_chips(
+            vec![
+                bm1366::transcript::FakeUartEvent::ExpectWrite(expected_frame),
+                bm1366::transcript::FakeUartEvent::SplitRead { first, second },
+            ],
+            1,
+        );
+
+        // Act
+        let outcome = transcript.run_read_chip_id();
+
+        // Assert
+        assert_eq!(
+            outcome.status(),
+            bm1366::transcript::TranscriptStatus::Complete
+        );
+        assert!(outcome.observations().contains(&Bm1366Observation::ChipId {
+            chip_id: ChipId::new(BM1366_CHIP_ID),
+            asic_index: AsicIndex::new(0),
+        }));
+    }
+
+    #[test]
     fn transcript_partial_read_returns_invalid_length_and_clears_rx() {
         // Arrange
         let transcript = bm1366::transcript::FakeUartTranscript::new(vec![

@@ -1,0 +1,271 @@
+[2026-07-05T20:48:39Z INFO ] 🚀 A new version of espflash is available: v4.4.0
+[2026-07-05T20:48:39Z INFO ] Serial port: '/dev/cu.usbmodem1101'
+[2026-07-05T20:48:39Z INFO ] Connecting...
+[2026-07-05T20:48:39Z INFO ] Using flash stub
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x28 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40378d06
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2810,len:0x15a0
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xd24
+load:0x403cb700,len:0x2f04
+entry 0x403c8928
+I (26) boot: ESP-IDF v5.4.1-426-g3ad36321ea 2nd stage bootloader
+I (27) boot: compile time Apr 24 2025 15:55:11
+I (27) boot: Multicore bootloader
+I (28) boot: chip revision: v0.2
+I (31) boot: efuse block revision: v1.3
+I (35) boot.esp32s3: Boot SPI Speed : 80MHz
+I (39) boot.esp32s3: SPI Mode       : DIO
+I (42) boot.esp32s3: SPI Flash Size : 16MB
+I (46) boot: Enabling RNG early entropy source...
+I (51) boot: Partition Table:
+I (53) boot: ## Label            Usage          Type ST Offset   Length
+I (60) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (66) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (73) boot:  2 factory          factory app      00 00 00010000 00400000
+I (79) boot:  3 www              Unknown data     01 82 00410000 00300000
+I (86) boot:  4 ota_0            OTA app          00 10 00710000 00400000
+I (92) boot:  5 ota_1            OTA app          00 11 00b10000 00400000
+I (99) boot:  6 otadata          OTA data         01 00 00f10000 00002000
+I (105) boot:  7 coredump         Unknown data     01 03 00f12000 00010000
+I (112) boot: End of partition table
+I (115) boot: Defaulting to factory image
+I (119) esp_image: segment 0: paddr=00010020 vaddr=3c140020 size=44604h (280068) map
+I (176) esp_image: segment 1: paddr=0005462c vaddr=3fc9c300 size=05b64h ( 23396) load
+I (181) esp_image: segment 2: paddr=0005a198 vaddr=40374000 size=05e80h ( 24192) load
+I (187) esp_image: segment 3: paddr=00060020 vaddr=42000020 size=13bacch (1293004) map
+I (415) esp_image: segment 4: paddr=0019baf4 vaddr=40379e80 size=12404h ( 74756) load
+I (432) esp_image: segment 5: paddr=001adf00 vaddr=50000000 size=00020h (    32) load
+I (442) boot: Loaded app from partition at offset 0x10000
+I (442) boot: Disabling RNG early entropy source...
+I (452) octal_psram: vendor id    : 0x0d (AP)
+I (452) octal_psram: dev id       : 0x02 (generation 3)
+I (452) octal_psram: density      : 0x03 (64 Mbit)
+I (454) octal_psram: good-die     : 0x01 (Pass)
+I (458) octal_psram: Latency      : 0x01 (Fixed)
+I (463) octal_psram: VCC          : 0x01 (3V)
+I (467) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (472) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (477) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (481) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (486) octal_psram: DriveStrength: 0x00 (1/1)
+I (491) MSPI Timing: Enter psram timing tuning
+I (495) esp_psram: Found 8MB PSRAM device
+I (498) esp_psram: Speed: 80MHz
+I (501) cpu_start: Multicore app
+I (927) esp_psram: SPI SRAM memory test OK
+I (936) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (937) cpu_start: Pro cpu start user code
+I (937) cpu_start: cpu freq: 160000000 Hz
+I (938) app_init: Application information:
+I (942) app_init: Project name:     libespidf
+I (946) app_init: App version:      dc9266e-dirty
+I (950) app_init: Compile time:     Jun 28 2026 15:45:05
+I (955) app_init: ELF file SHA256:  000000000...
+I (960) app_init: ESP-IDF:          v5.5.4
+I (964) efuse_init: Min chip rev:     v0.0
+I (967) efuse_init: Max chip rev:     v0.99 
+I (971) efuse_init: Chip rev:         v0.2
+I (975) heap_init: Initializing. RAM available for dynamic allocation:
+I (982) heap_init: At 3FCA32A0 len 00046470 (281 KiB): RAM
+I (987) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (992) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (997) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (1002) esp_psram: Adding pool of 8178K of PSRAM memory to heap allocator
+I (1010) spi_flash: detected chip: gd
+I (1012) spi_flash: flash io: dio
+W (1016) i2c: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
+I (1025) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (1032) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (1039) main_task: Started on CPU0
+I (1049) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1049) main_task: Calling app_main()
+I (1049) bitaxe_firmware: bitaxe-rust boot: board=Ultra 205 asic=BM1366
+I (1079) bitaxe_firmware: safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled
+I (1079) esp_idf_svc::nvs: NvsDefault dropped
+W (1079) bitaxe_firmware: axeos_settings_snapshot=startup_refresh_failed error=ESP_ERR_NVS_NOT_FOUND
+W (1089) bitaxe_firmware::display_adapter: display_input_status=runtime_gap reason=hardware_evidence_pending startup_only=true
+W (1099) bitaxe_firmware: display_status=deferred reason=phase27_safety_i2c0_in_use
+I (1109) bitaxe_firmware::safety_adapter::phase27_bring_up: phase27_safety_bring_up=started
+I (1119) bitaxe_firmware::asic_adapter::reset: asic_status=hold_reset_low gpio=1
+I (1119) bitaxe_firmware::safety_adapter::asic_enable: asic_enable_status=active gpio=10
+I (1129) bitaxe_firmware::safety_adapter::ds4432u: safety_voltage_effect=write setpoint_v=1.200 register=0xc6
+I (1139) bitaxe_firmware::safety_adapter::emc2101: safety_fan_effect=write percent=70 register=0x2c
+I (1659) bitaxe_firmware::safety_adapter::phase27_bring_up: safety_power_status=observed
+I (1659) bitaxe_firmware::safety_adapter::phase27_bring_up: safety_thermal_status=observed
+I (1659) bitaxe_firmware::safety_adapter::phase27_bring_up: safety_fan_status=startup_duty percent=70 rpm=7346
+I (1889) bitaxe_firmware::safety_adapter::phase27_bring_up: asic_reset_status=post_bring_up_pulse
+I (1889) bitaxe_firmware::safety_adapter::phase27_bring_up: phase27_safety_bring_up=complete
+I (1889) uart: queue free spaces: 10
+I (1899) bitaxe_firmware::asic_adapter::status: asic_status=chip_detect_only initialized=false mining=disabled work_submission=disabled
+I (1909) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=wait_tx_done outcome=Ok(()) elapsed_ms=0
+I (1919) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 a4 90 00 ff ff 1c
+I (1929) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 a4 90 00 ff ff 1c
+I (1929) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 a4 90 00 ff ff 1c
+I (1939) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=7 hex=55 aa 52 05 00 00 0a
+I (1949) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=wait_tx_done outcome=Ok(()) elapsed_ms=0
+I (1959) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=rx read_index=1 chunk_bytes=11 total_bytes=11 remaining_ms=999
+I (1969) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=rx_chunk hex=aa 55 13 66 00 00 00 00 00 00 05
+I (1979) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=rx_complete read_count=1 hex=aa 55 13 66 00 00 00 00 00 00 05
+I (1989) bitaxe_firmware::asic_adapter::status: asic_status=chip_detected chips=1 initialized=false mining=disabled work_submission=disabled
+I (2009) bitaxe_firmware::asic_adapter: asic_work_result_trace=mining_ready_init_started chip_count=1 actions=21
+I (2009) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2019) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 a8 00 07 00 00 03
+I (2029) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2039) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 18 ff 0f c1 00 00
+I (2049) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=7
+I (2059) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=7 hex=55 aa 53 05 00 00 03
+I (2069) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=7
+I (2079) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=7 hex=55 aa 40 05 00 00 1c
+I (2089) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2089) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 3c 80 00 85 40 0c
+I (2099) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2109) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 3c 80 00 80 20 19
+I (2119) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2129) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 14 00 00 80 ff 04
+I (2139) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2149) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 54 00 00 00 03 1d
+I (2159) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2169) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 58 02 11 11 11 06
+I (2179) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2189) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 2c 00 7c 00 03 03
+I (2189) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2199) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 a8 00 07 01 f0 15
+I (2209) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2219) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 18 f0 00 c1 00 0c
+I (2229) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2239) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 3c 80 00 85 40 04
+I (2249) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2259) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 3c 80 00 80 20 11
+I (2269) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2279) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 3c 80 00 82 aa 05
+I (2289) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2289) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (2299) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2309) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 10 00 0d 32 24 10
+I (2319) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2329) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 a4 90 00 ff ff 1c
+I (2339) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=use_max_baud baud=1000000
+I (2349) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=wait_tx_done outcome=Ok(()) elapsed_ms=0
+I (2359) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=clear_rx
+I (2369) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=clear_rx
+I (2369) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=publish_status status=InitializedNoMining
+I (2379) bitaxe_firmware::asic_adapter::status: asic_status=initialized_no_mining initialized=true mining=disabled work_submission=disabled
+I (2399) bitaxe_firmware::asic_adapter: asic_work_result_trace=mining_ready_init_complete
+I (2399) bitaxe_firmware::asic_adapter::status: asic_work_result_diagnostic=started mining=disabled work_submission=disabled
+I (2419) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=88 hex=55 aa 21 56 28 01 01 02 03 04 05 06 07 08 09 0a 0b 0c 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 33 34 35 36 1c 1f
+I (2449) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=wait_tx_done outcome=Ok(()) elapsed_ms=0
+I (2449) bitaxe_firmware::asic_adapter: asic_work_result_trace=work_tx_done elapsed_from_dispatch=0
+I (2459) bitaxe_firmware::asic_adapter::status: bm1366_diagnostic_work=dispatched job_id=0x28 bytes=88 mining=disabled
+I (2469) bitaxe_firmware::asic_adapter: asic_work_result_trace=result_read_start address_interval=256 timeout_ms=10000
+I (12479) bitaxe_firmware::asic_adapter::reset: asic_status=hold_reset_low gpio=1
+W (12479) bitaxe_firmware::asic_adapter::status: bm1366_diagnostic_result=timeout fail_closed=true mining=disabled work_submission=disabled
+I (12479) bitaxe_firmware::asic_adapter::status: asic_status=fail_closed reason=work_result_diagnostic_timeout initialized=false mining=disabled work_submission=disabled
+I (12499) bitaxe_firmware::boot_validation: ota_boot_validation=not_pending state=factory
+I (12509) bitaxe_firmware::safety_adapter::watchdog: safety_supervisor=started thread=bitaxe-safety-supervisor cadence_ms=100
+I (12519) bitaxe_firmware::safety_adapter::watchdog: safety_supervisor_step=yield reason=yield_interval_reached
+I (12529) bitaxe_firmware::wifi_adapter: wifi_status=credentials_missing
+I (12709) bitaxe_firmware::filesystem: spiffs_mount=available partition=www total_bytes=2884241 used_bytes=4518
+E (12709) httpd: Failed to post esp_http_server event: ESP_ERR_INVALID_STATE
+I (12719) esp_idf_svc::http::server: Started Httpd server with config Configuration { http_port: 80, ctrl_port: 32768, https_port: 443, core: None, max_sessions: 16, session_timeout: 1200s, task_caps: 2052, stack_size: 8192, max_open_sockets: 7, max_uri_handlers: 32, max_resp_headers: 8, lru_purge_enable: true, uri_match_wildcard: true }
+I (12739) esp_idf_svc::nvs: NvsDefault dropped
+W (12749) bitaxe_firmware::http_api: axeos_settings_snapshot=startup_refresh_failed error=ESP_ERR_NVS_NOT_FOUND
+I (12759) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/recovery"
+I (12769) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/info"
+I (12779) esp_idf_svc::http::server: Registered Httpd server handler Patch for URI "/api/system"
+I (12779) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/logs"
+I (12789) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/asic"
+I (12799) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/statistics"
+I (12809) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/scoreboard"
+I (12819) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/pause"
+I (12829) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/resume"
+I (12839) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/restart"
+I (12849) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/identify"
+I (12859) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/blockFound/dismiss"
+I (12869) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/OTA"
+I (12879) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/OTAWWW"
+I (12879) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/*"
+I (12889) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/*"
+I (12899) esp_idf_svc::http::server: Registered Httpd server handler Patch for URI "/api/*"
+I (12909) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/*"
+I (12919) bitaxe_firmware::http_api: axeos_api_route_shell=started manifest_routes=17 firmware_update_routes=1 otawww_gap_routes=1 recovery_routes=1 static_file_routes=1
+I (12929) bitaxe_firmware::live_stratum_runtime: phase25_watchdog_checkpoint=socket decision=continue redacted=true
+I (12939) bitaxe_firmware::live_stratum_runtime: phase25_watchdog_checkpoint=asic decision=continue redacted=true
+I (12949) bitaxe_firmware::live_stratum_runtime: phase25_watchdog_checkpoint=api decision=continue redacted=true
+I (12959) bitaxe_firmware::live_stratum_runtime: phase25_watchdog_checkpoint=websocket decision=continue redacted=true
+I (12969) bitaxe_firmware::live_stratum_runtime: phase25_watchdog_checkpoint=evidence_capture decision=continue redacted=true
+I (12979) bitaxe_firmware: reset_reason=11
+I (12989) bitaxe_firmware: partition=factory
+I (12989) bitaxe_firmware: psram_status=available
+I (12989) bitaxe_firmware: firmware_commit=255d495d7ec3
+I (12999) bitaxe_firmware: reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50
+I (13009) bitaxe_firmware: esp_idf_version=v5.5.4
+I (13009) bitaxe_firmware: rust_target=xtensa-esp32s3-espidf
+I (13019) main_task: Returned from app_main()
+I (13489) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (15499) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (17509) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (19519) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (21529) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (23539) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (25549) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (27559) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (29569) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (31579) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (33589) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (35599) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (37609) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (39619) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (41629) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (43639) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (45649) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (47659) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (49669) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (51679) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (53689) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (55699) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (57709) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (59719) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (61729) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (63739) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (65749) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (67759) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (69769) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (71779) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (73789) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (75799) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (77809) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (79819) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (81829) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (83839) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (85849) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (87859) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (89869) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (91879) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (93889) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (95899) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (97909) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (99919) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (101929) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (103939) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (105949) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (107959) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (109969) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (111979) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (113989) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (115999) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (118009) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (120019) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (122029) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (124039) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (126049) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (128059) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (130069) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (132079) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (134089) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=blocked phase25_prerequisite_status=phase27_pool_wait_timeout redacted=true
+I (134089) bitaxe_firmware::live_stratum_runtime: phase25_safe_stop_status=complete socket=stopped work_queue=invalidated active_work=invalidated mining=disabled hardware_control=disabled work_submission=disabled post_stop_snapshot=updated
+I (134109) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=stopped redacted=true

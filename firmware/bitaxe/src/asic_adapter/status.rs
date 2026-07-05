@@ -82,6 +82,12 @@ pub fn publish_work_result_timeout_status() {
     );
 }
 
+pub fn publish_work_result_bootstrap_initialized_status() {
+    log::info!(
+        "bm1366_diagnostic_result=bounded_no_result bootstrap=initialized_no_mining mining=disabled work_submission=disabled"
+    );
+}
+
 pub fn publish_work_result_invalid_status(error: impl std::fmt::Display) {
     log::warn!(
         "{} mining=disabled work_submission=disabled error={error}",
