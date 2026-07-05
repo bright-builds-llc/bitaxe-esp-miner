@@ -1,5 +1,7 @@
 pub const LIVE_MINING_RUNTIME_MODE: &str = "live-mining-runtime";
 pub const LIVE_MINING_RUNTIME_ACK: &str = "ultra205-live-mining-runtime-safe-bench";
+pub const PHASE25_LIVE_STRATUM_MODE: &str = "phase25-live-stratum-runtime";
+pub const PHASE25_LIVE_STRATUM_ACK: &str = "ultra205-phase25-live-stratum-safe-stop";
 
 macro_rules! bitaxe_mining_evidence_mode_env {
     () => {
@@ -17,6 +19,7 @@ macro_rules! bitaxe_hardware_evidence_ack_env {
 pub enum MiningEvidenceMode {
     FailClosed,
     LiveMiningRuntime,
+    Phase25LiveStratumRuntime,
 }
 
 impl MiningEvidenceMode {
@@ -37,6 +40,9 @@ impl MiningEvidenceMode {
             (Some(LIVE_MINING_RUNTIME_MODE), Some(LIVE_MINING_RUNTIME_ACK)) => {
                 Self::LiveMiningRuntime
             }
+            (Some(PHASE25_LIVE_STRATUM_MODE), Some(PHASE25_LIVE_STRATUM_ACK)) => {
+                Self::Phase25LiveStratumRuntime
+            }
             _ => Self::FailClosed,
         }
     }
@@ -44,6 +50,11 @@ impl MiningEvidenceMode {
     #[must_use]
     pub fn is_live_mining_runtime(self) -> bool {
         matches!(self, Self::LiveMiningRuntime)
+    }
+
+    #[must_use]
+    pub fn is_phase25_live_stratum_runtime(self) -> bool {
+        matches!(self, Self::Phase25LiveStratumRuntime)
     }
 }
 
@@ -83,5 +94,29 @@ mod tests {
         // Assert
         assert_eq!(wrong_ack, MiningEvidenceMode::FailClosed);
         assert!(!live);
+    }
+
+    #[test]
+    fn phase25_live_stratum_runtime_requires_distinct_mode_and_ack_pair() {
+        // Arrange
+        let missing = MiningEvidenceMode::from_compile_env(None, None);
+        let mode_only = MiningEvidenceMode::from_compile_env(Some(PHASE25_LIVE_STRATUM_MODE), None);
+        let wrong_ack = MiningEvidenceMode::from_compile_env(
+            Some(PHASE25_LIVE_STRATUM_MODE),
+            Some(LIVE_MINING_RUNTIME_ACK),
+        );
+
+        // Act
+        let phase25 = MiningEvidenceMode::from_compile_env(
+            Some(PHASE25_LIVE_STRATUM_MODE),
+            Some(PHASE25_LIVE_STRATUM_ACK),
+        );
+
+        // Assert
+        assert_eq!(missing, MiningEvidenceMode::FailClosed);
+        assert_eq!(mode_only, MiningEvidenceMode::FailClosed);
+        assert_eq!(wrong_ack, MiningEvidenceMode::FailClosed);
+        assert!(phase25.is_phase25_live_stratum_runtime());
+        assert!(!phase25.is_live_mining_runtime());
     }
 }

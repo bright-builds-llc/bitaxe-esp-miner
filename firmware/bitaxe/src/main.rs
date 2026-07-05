@@ -9,6 +9,7 @@ mod controlled_mining_runtime;
 mod display_adapter;
 mod filesystem;
 mod http_api;
+mod live_stratum_runtime;
 mod log_buffer;
 mod mining_evidence_mode;
 mod network_stack;
@@ -97,13 +98,19 @@ fn main() -> anyhow::Result<()> {
     startup_diagnostics?;
     controlled_mining_runtime::maybe_start_after_asic_gate();
     safety_adapter::start_safety_supervisor();
-    if let Some(modem) = maybe_modem {
-        if let Err(error) = wifi_adapter::start_wifi_sta(modem) {
-            log::warn!("wifi_status=unavailable error={error:#}");
+    let phase25_network_ready = if let Some(modem) = maybe_modem {
+        match wifi_adapter::start_wifi_sta(modem) {
+            Ok(()) => true,
+            Err(error) => {
+                log::warn!("wifi_status=unavailable error={error:#}");
+                false
+            }
         }
     } else {
         log::warn!("wifi_status=unavailable reason=peripherals_unavailable");
-    }
+        false
+    };
+    live_stratum_runtime::maybe_start_after_network_setup(phase25_network_ready);
     let filesystem_status = filesystem::mount_www_spiffs();
     if let Err(error) = http_api::start_http_api(filesystem_status) {
         log::warn!("axeos_api_route_shell=unavailable error={error:#}");
