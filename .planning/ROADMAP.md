@@ -18,7 +18,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [x] **Phase 22: Claim Ladder And Safety Preconditions** - Operators get exact v1.1 claim boundaries and prerequisite safety gates before production work can start. (completed 2026-07-04)
 - [ ] **Phase 23: Redacted Operator Evidence Workflow** - Operators can run the repo-owned mining evidence flow without committing secrets or unsupported claims.
 - [x] **Phase 24: BM1366 Production Work Path** - The firmware separates diagnostic ASIC behavior from trusted pool-derived BM1366 work and result handling. (completed 2026-07-05)
-- [ ] **Phase 25: Live Stratum Runtime And Safe Stop** - Ultra 205 can run a real watchdog-responsive Stratum v1 mining session and stop safely.
+- [x] **Phase 25: Live Stratum Runtime And Safe Stop** - Ultra 205 can run a real watchdog-responsive Stratum v1 mining session and stop safely. (completed 2026-07-05)
 - [ ] **Phase 26: Telemetry And Parity Closure** - Runtime API, WebSocket, counters, and parity checklist updates reflect only proven v1.1 mining events.
 
 ## Phase Details
@@ -86,7 +86,7 @@ Plans:
 Plans:
 - [x] 25-01-PLAN.md — Create the pure live Stratum runtime, submit classifier, and deterministic fake-pool coverage.
 - [x] 25-02-PLAN.md — Wire the firmware live socket adapter with safe-stop and watchdog postconditions.
-- [ ] 25-03-PLAN.md — Add detector-gated evidence tooling and exact parity closure.
+- [x] 25-03-PLAN.md — Add detector-gated evidence tooling and exact parity closure.
 
 ### Phase 26: Telemetry And Parity Closure
 **Goal**: API, WebSocket, statistics, scoreboard, and parity checklist projections are derived from the same v1.1 runtime events and promote only exact claims proven by redacted Ultra 205 artifacts.
@@ -108,7 +108,7 @@ Plans:
 | 22. Claim Ladder And Safety Preconditions | v1.1 | 3/3 | Complete    | 2026-07-04 |
 | 23. Redacted Operator Evidence Workflow | v1.1 | 4/4 | Complete    | 2026-07-04 |
 | 24. BM1366 Production Work Path | v1.1 | 4/4 | Complete    | 2026-07-05 |
-| 25. Live Stratum Runtime And Safe Stop | v1.1 | 2/3 | In Progress|  |
+| 25. Live Stratum Runtime And Safe Stop | v1.1 | 3/3 | Complete   | 2026-07-05 |
 | 26. Telemetry And Parity Closure | v1.1 | 0/TBD | Not started | - |
 
 ## Coverage

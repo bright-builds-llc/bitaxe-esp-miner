@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-stopped_at: Completed 25-02-PLAN.md
-last_updated: "2026-07-05T02:27:59.532Z"
+status: verifying
+stopped_at: Completed 25-03-PLAN.md
+last_updated: "2026-07-05T02:37:19.160Z"
 last_activity: 2026-07-05
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 14
-  completed_plans: 13
-  percent: 93
+  completed_plans: 14
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 Phase: 25 (Live Stratum Runtime And Safe Stop) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-05
 
 Progress: [██████████] 100%
@@ -90,6 +90,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 25]: Kept Phase 25 live Stratum startup behind a distinct compile-time mode and acknowledgment pair so Phase 21 controlled evidence cannot start the socket path.
 - [Phase 25]: Evaluated typed Phase 22 production-mining preconditions before NVS pool settings access or TcpStream construction.
 - [Phase 25]: Used a named Phase 25 snapshot helper for safe-stop refresh without adding Phase 26 statistics or scoreboard semantics.
+- [Phase 25]: Recorded Phase 25 committed evidence as blocked-safe-prerequisite rather than accepted/rejected live share proof because no detector-gated live pool response artifact was produced.
+- [Phase 25]: Allowed Phase 25 mining-allow manifests only through the repo-owned wrapper command surface while preserving raw Stratum, unsafe hardware-control, erase, rollback, and stale-target rejection.
+- [Phase 25]: Promoted STR-11 to verified from deterministic unit coverage, while keeping STR-08, STR-09, SAFE-12, and SAFE-13 at implemented/workflow scope without hardware overclaiming.
 
 ### Pending Todos
 
@@ -100,12 +103,18 @@ None yet.
 - Live accepted/rejected share feasibility remains evidence-dependent until a detector-gated Ultra 205 run observes a parsed pool response to live ASIC-derived work.
 - Hardware phases must follow the Ultra 205 detector gate, redaction rules, safe-stop evidence requirements, and exact non-claim governance.
 
+## Performance Metrics
+
+| Phase | Plan | Duration | Tasks | Files | Recorded |
+| --- | --- | --- | --- | --- | --- |
+| 25 | 03 | 7min | 3 | 14 | 2026-07-05 |
+
 ## Session Continuity
 
-Last session: 2026-07-05T02:27:59.530Z
-Stopped at: Completed 25-02-PLAN.md
+Last session: 2026-07-05T02:37:19.157Z
+Stopped at: Completed 25-03-PLAN.md
 Resume file: None
 
 ## Next Step
 
-Run `/gsd-yolo-discuss-plan-execute-commit-and-push 24` to start Phase 24.
+Run `/gsd-verify-work 25` to verify Phase 25 closure before Phase 26 telemetry planning.
