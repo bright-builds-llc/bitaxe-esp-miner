@@ -561,6 +561,57 @@ resolve_manifest_path() {
 	printf '%s/%s' "$repo_root" "$manifest"
 }
 
+resolve_manifest_factory_image() {
+	local manifest_path
+	manifest_path="$(resolve_manifest_path)"
+
+	if [[ ! -f "$manifest_path" ]]; then
+		printf 'error: package manifest missing: %s\n' "$manifest_path" >&2
+		return 1
+	fi
+
+	python3 - "$manifest_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest = Path(sys.argv[1])
+data = json.loads(manifest.read_text(encoding="utf-8"))
+for artifact in data.get("artifacts", []):
+    if artifact.get("kind") == "factory_merged_image":
+        image = manifest.parent / artifact["path"]
+        print(image.resolve())
+        break
+else:
+    raise SystemExit("factory_merged_image artifact missing from manifest")
+PY
+}
+
+warn_if_manifest_source_commit_stale() {
+	local manifest_path
+	local manifest_commit
+	local head_commit
+
+	manifest_path="$(resolve_manifest_path)"
+	head_commit="$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || printf 'unknown-head')"
+	manifest_commit="$(python3 - "$manifest_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest = Path(sys.argv[1])
+data = json.loads(manifest.read_text(encoding="utf-8"))
+print(data.get("source_commit", "unknown-manifest"))
+PY
+)"
+
+	if [[ "$manifest_commit" != "$head_commit" && "$manifest_commit" != "unknown-manifest" && "$head_commit" != "unknown-head" ]]; then
+		printf 'phase27_manifest_warning=source_commit_mismatch manifest=%s head=%s\n' \
+			"$manifest_commit" "$head_commit" >&2
+		printf 'phase27_manifest_warning_action=rebuild with scripts/phase27-live-hardware-bridge-package.sh\n' >&2
+	fi
+}
+
 extract_device_url_from_log() {
 	local log_path="$1"
 	local -a urls=()
@@ -607,15 +658,19 @@ run_live_capture_attempt() {
 	local output
 	local status
 	local -a command_parts=()
-	local resolved_manifest
+	local factory_image
 	local capture_evidence_dir="${evidence_root}/live-capture-runtime"
 	local monitor_log="${capture_evidence_dir}/flash-monitor.log"
 	local capture_timeout="${duration_seconds:-360}"
 	local pool_bridge_applied=0
+
+	warn_if_manifest_source_commit_stale
+	factory_image="$(resolve_manifest_factory_image)" || return 1
+
 	local -a command_args=(
 		"board=205"
 		"port=${detected_port}"
-		"manifest=$(resolve_manifest_path)"
+		"image=${factory_image}"
 		"evidence-dir=${capture_evidence_dir}"
 		"capture-timeout-seconds=${capture_timeout}"
 	)

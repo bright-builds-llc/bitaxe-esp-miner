@@ -96,6 +96,27 @@ SH
 	chmod +x "$path"
 }
 
+write_fake_package_manifest() {
+	local manifest_path="$1"
+	local factory_image_path="$2"
+
+	mkdir -p "$(dirname "$factory_image_path")"
+	printf 'fake-factory-image\n' >"$factory_image_path"
+	cat >"$manifest_path" <<EOF
+{
+  "schema_version": 2,
+  "source_commit": "$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || printf 'unknown-source')",
+  "default_flash_image": "bitaxe-ultra205.elf",
+  "artifacts": [
+    {
+      "kind": "factory_merged_image",
+      "path": "$(basename "$factory_image_path")"
+    }
+  ]
+}
+EOF
+}
+
 write_fake_live_capture() {
 	local path="$1"
 	local args_path="$2"
@@ -241,10 +262,13 @@ run_hardware_ready_invokes_live_capture_test() {
 	local fake_board_info="${tmp_root}/fake-board-info.sh"
 	local fake_live_capture="${tmp_root}/fake-live-capture.sh"
 	local fake_live_capture_args="${tmp_root}/fake-live-capture.args"
+	local manifest_path="${tmp_root}/bitaxe-ultra205-package.json"
+	local factory_image="${tmp_root}/bitaxe-ultra205-factory.bin"
 	local evidence_root="${tmp_root}/hardware-ready-root"
 	write_fake_parity "$fake_parity"
 	write_fake_detector_with_port "$fake_detector"
 	write_fake_board_info "$fake_board_info"
+	write_fake_package_manifest "$manifest_path" "$factory_image"
 	write_fake_live_capture "$fake_live_capture" "$fake_live_capture_args" "accepted"
 
 	PHASE27_PARITY_COMMAND="$fake_parity" \
@@ -255,7 +279,7 @@ run_hardware_ready_invokes_live_capture_test() {
 	PHASE27_FAKE_SHARE_OUTCOME=accepted \
 	"$wrapper" \
 		--evidence-root "$evidence_root" \
-		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+		--manifest "$manifest_path" \
 		--mode hardware \
 		--pool-credentials "${tmp_root}/sentinel-pool.invalid.json" \
 		--duration-seconds 60 \
@@ -265,6 +289,8 @@ run_hardware_ready_invokes_live_capture_test() {
 	assert_file_exists "$fake_live_capture_args"
 	assert_contains "$fake_live_capture_args" "board=205"
 	assert_contains "$fake_live_capture_args" "port=/dev/cu.usbmodemPHASE27"
+	assert_contains "$fake_live_capture_args" "image="
+	assert_contains "$fake_live_capture_args" "bitaxe-ultra205-factory.bin"
 	assert_contains "$fake_live_capture_args" "redact-evidence=true"
 	assert_contains "${evidence_root}/share-outcome.md" "share_outcome: accepted"
 	assert_contains "${evidence_root}/summary.md" "asic_bridge_status: result_correlated"
@@ -278,10 +304,13 @@ run_hardware_missing_prerequisites_skips_live_capture_test() {
 	local fake_board_info="${tmp_root}/fake-board-info-missing-prereqs.sh"
 	local fake_live_capture="${tmp_root}/fake-live-capture-missing-prereqs.sh"
 	local fake_live_capture_args="${tmp_root}/fake-live-capture-missing-prereqs.args"
+	local manifest_path="${tmp_root}/bitaxe-ultra205-package.json"
+	local factory_image="${tmp_root}/bitaxe-ultra205-factory.bin"
 	local evidence_root="${tmp_root}/hardware-missing-prereqs-root"
 	write_fake_parity "$fake_parity"
 	write_fake_detector_with_port "$fake_detector"
 	write_fake_board_info "$fake_board_info"
+	write_fake_package_manifest "$manifest_path" "$factory_image"
 	write_fake_live_capture "$fake_live_capture" "$fake_live_capture_args" "accepted"
 
 	PHASE27_PARITY_COMMAND="$fake_parity" \
@@ -291,7 +320,7 @@ run_hardware_missing_prerequisites_skips_live_capture_test() {
 	PHASE27_FAKE_LIVE_CAPTURE_ARGS="$fake_live_capture_args" \
 	"$wrapper" \
 		--evidence-root "$evidence_root" \
-		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+		--manifest "$manifest_path" \
 		--mode hardware >"${tmp_root}/hardware-missing-prereqs.stdout"
 
 	if [[ -e "$fake_live_capture_args" ]]; then
