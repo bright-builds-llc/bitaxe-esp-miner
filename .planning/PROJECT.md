@@ -26,6 +26,8 @@ Phase 24 is complete for v1.1: the functional core and firmware shell now separa
 
 Phase 25 is complete for v1.1: the pure Stratum runtime, submit-response classifier, fake-pool coverage, firmware live-socket shell, bounded safe-stop path, watchdog checkpoints, evidence wrapper, and parity closure now exist with redaction-safe validation. Live accepted/rejected share proof and hardware watchdog proof remain explicit blocked/non-claims unless detector-gated Ultra 205 evidence later proves them.
 
+Phase 26 is complete for v1.1: API, WebSocket, statistics, scoreboard, runtime counters, and parity checklist updates now consume a shared runtime-event telemetry projection and promote only exact claims proven by redacted artifacts. Detector-gated live accepted/rejected share proof, hardware telemetry, full active safety closure, OTA/recovery, non-205 boards, other ASIC families, Stratum v2, display/input, BAP, and unbounded stress remain explicit non-claims.
+
 ## Current Milestone: v1.1 Ultra 205 Trusted Production Mining
 
 **Goal:** Turn the v1.0 controlled no-share mining foundation into a trusted, safety-gated Ultra 205 Stratum v1 production mining runtime that can observe at least one real accepted or rejected share and report the result through firmware telemetry and evidence.
@@ -58,6 +60,7 @@ After v1.1, likely candidates remain OTA/recovery completion, broader active saf
 - Redacted operator evidence-root workflow and runtime-only local credential handling for v1.1 - validated in Phase 23.
 - BM1366 production work functional core, session-generation active-work tracking, result correlation, and redaction-safe fail-closed firmware status path for v1.1 - validated in Phase 24 at implemented/unit,workflow scope.
 - Live Stratum runtime, deterministic fake-pool coverage, submit-response classification, bounded safe-stop, watchdog checkpoints, and Phase 25 evidence closure for v1.1 - validated in Phase 25 with live accepted/rejected share and hardware watchdog proof preserved as explicit blocked/non-claims pending detector-gated evidence.
+- Projection-backed API/WebSocket/statistics/scoreboard telemetry, share-counter guardrails, parity checklist evidence, and exact non-claim enforcement for v1.1 - validated in Phase 26 at projection/workflow evidence scope.
 
 ### Active
 
@@ -136,4 +139,4 @@ This document evolves at milestone boundaries. The next update should happen whe
 
 ______________________________________________________________________
 
-*Last updated: 2026-07-05 after completing Phase 25 live Stratum runtime and safe stop*
+*Last updated: 2026-07-05 after completing Phase 26 telemetry and parity closure*

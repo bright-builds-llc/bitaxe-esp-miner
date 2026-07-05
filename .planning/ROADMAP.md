@@ -114,7 +114,7 @@ Plans:
 | 23. Redacted Operator Evidence Workflow | v1.1 | 4/4 | Complete    | 2026-07-04 |
 | 24. BM1366 Production Work Path | v1.1 | 4/4 | Complete    | 2026-07-05 |
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 3/3 | Complete    | 2026-07-05 |
-| 26. Telemetry And Parity Closure | v1.1 | 4/4 | Complete   | 2026-07-05 |
+| 26. Telemetry And Parity Closure | v1.1 | 4/4 | Complete    | 2026-07-05 |
 
 ## Coverage
 

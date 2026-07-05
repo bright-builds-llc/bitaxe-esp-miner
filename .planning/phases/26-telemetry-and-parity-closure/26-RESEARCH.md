@@ -406,20 +406,25 @@ The planner already handles hibernation and diff suppression; Phase 26 should fo
 
 ## Open Questions
 
-1. **Should Phase 26 add a machine-readable promotion manifest?**
+**Status:** RESOLVED during planner revision. The chosen answers below are now reflected in Plans 26-01 through 26-04.
+
+1. **[RESOLVED] Should Phase 26 add a machine-readable promotion manifest?**
    - What we know: CONTEXT says checklist-first exact delta is enough unless reusable v1.1 closure validation is needed. [VERIFIED: `.planning/phases/26-telemetry-and-parity-closure/26-CONTEXT.md`]
    - What's unclear: Whether the planner wants reusable validation for future telemetry closure. [VERIFIED: `.planning/phases/26-telemetry-and-parity-closure/26-CONTEXT.md`]
    - Recommendation: Start with checklist/evidence artifacts and extend `tools/parity` only for overbroad telemetry/statistics/scoreboard claim rejection. [VERIFIED: `tools/parity/src/main.rs`, `.planning/phases/26-telemetry-and-parity-closure/26-CONTEXT.md`]
+   - Chosen answer: Do not add a machine-readable promotion manifest in Phase 26. Plan 26-04 uses checklist-first evidence artifacts plus narrow `tools/parity` guardrails for overbroad telemetry/statistics/scoreboard claims. [RESOLVED: `.planning/phases/26-telemetry-and-parity-closure/26-04-PLAN.md`]
 
-2. **Can any scoreboard entry be safely emitted without live accepted/rejected proof?**
+2. **[RESOLVED] Can any scoreboard entry be safely emitted without live accepted/rejected proof?**
    - What we know: Context says populate scoreboard only from runtime events tied to parsed pool responses or active share outcomes, and Phase 25 evidence keeps accepted/rejected proof blocked. [VERIFIED: `.planning/phases/26-telemetry-and-parity-closure/26-CONTEXT.md`, `docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/share-outcome.md`]
    - What's unclear: Whether a blocked-safe-prerequisite artifact can support any non-empty upstream-shaped scoreboard row. [VERIFIED: `docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/share-outcome.md`, `crates/bitaxe-api/src/scoreboard.rs`]
    - Recommendation: Plan for an empty scoreboard unless new detector-gated live share artifacts are available during execution. [VERIFIED: `.planning/phases/26-telemetry-and-parity-closure/26-CONTEXT.md`]
+   - Chosen answer: No. A blocked-safe-prerequisite artifact does not support non-empty scoreboard rows. Plans 26-02 through 26-04 keep scoreboard output empty unless parsed-response-backed and redaction-allowed share outcome material exists. [RESOLVED: `.planning/phases/26-telemetry-and-parity-closure/26-02-PLAN.md`, `.planning/phases/26-telemetry-and-parity-closure/26-04-PLAN.md`]
 
-3. **Should statistics samples include a source label publicly?**
+3. **[RESOLVED] Should statistics samples include a source label publicly?**
    - What we know: Context says any emitted sample must name or encode that it came from the runtime projection, but D-09 says richer semantics that do not fit upstream fields should stay internal or in evidence. [VERIFIED: `.planning/phases/26-telemetry-and-parity-closure/26-CONTEXT.md`]
    - What's unclear: Whether source labeling belongs in internal fixture/evidence metadata or public statistics response. [VERIFIED: `crates/bitaxe-api/src/statistics.rs`, `.planning/phases/26-telemetry-and-parity-closure/26-CONTEXT.md`]
    - Recommendation: Keep public response upstream-shaped and record source in projection tests/evidence artifacts unless the planner makes a deliberate compatibility decision. [VERIFIED: `.planning/phases/26-telemetry-and-parity-closure/26-CONTEXT.md`]
+   - Chosen answer: Keep source labeling internal. Plan 26-01 defines `RuntimeProjectionSampleMarker` and `RuntimeProjectionSampleSource`; Plan 26-02 consumes the marker without adding public JSON fields; Plan 26-04 records source semantics in evidence. [RESOLVED: `.planning/phases/26-telemetry-and-parity-closure/26-01-PLAN.md`, `.planning/phases/26-telemetry-and-parity-closure/26-02-PLAN.md`, `.planning/phases/26-telemetry-and-parity-closure/26-04-PLAN.md`]
 
 ## Environment Availability
 
