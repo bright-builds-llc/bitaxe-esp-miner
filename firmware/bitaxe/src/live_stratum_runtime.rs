@@ -628,7 +628,7 @@ impl LiveSocketIo for FirmwareTcpSocket {
             Err(error) => return Err(error.into()),
         };
         if bytes_read == 0 {
-            return Ok(None);
+            anyhow::bail!("stratum socket closed");
         }
 
         self.read_buffer.extend_from_slice(&buffer[..bytes_read]);
@@ -883,6 +883,40 @@ mod tests {
     }
 
     #[test]
+    fn socket_read_error_publishes_reconnect_before_fallback_stop() {
+        // Arrange
+        runtime_snapshot::reset_command_visible_state_for_test();
+        let mut runtime = LiveStratumRuntime::new(LiveRuntimeConfig {
+            model: PHASE25_MODEL.to_owned(),
+            version: PHASE25_VERSION.to_owned(),
+            credentials: LivePoolCredentials {
+                username: "redacted-user".to_owned(),
+                password: "redacted-secret".to_owned(),
+            },
+        });
+        let _event = runtime.start();
+        let socket_state = Rc::new(RefCell::new(ScriptedSocketState::new_with_reads([
+            ScriptedRead::Error("stratum socket closed"),
+        ])));
+        let mut socket = ScriptedSocket {
+            state: socket_state.clone(),
+        };
+
+        // Act
+        let stop_reason = pump_live_socket_until_cleanup(&mut runtime, &mut socket);
+        let mining = runtime_snapshot::mining_runtime_state();
+        let retained_logs = log_buffer::retained_log_buffer().download_chunks().join("");
+
+        // Assert
+        assert_eq!(stop_reason, SafeStopReason::FallbackExhausted);
+        assert_eq!(mining.lifecycle, PoolLifecycleStatus::Reconnecting);
+        assert_eq!(mining.counters.accepted, 0);
+        assert_eq!(mining.counters.rejected, 0);
+        assert!(socket_state.borrow().reads.is_empty());
+        assert!(retained_logs.contains("phase25_live_stratum_status=reconnecting"));
+    }
+
+    #[test]
     fn matching_pending_submit_response_updates_projection_counters() {
         // Arrange
         runtime_snapshot::reset_command_visible_state_for_test();
@@ -1116,19 +1150,28 @@ mod tests {
     }
 
     struct ScriptedSocketState {
-        reads: VecDeque<String>,
+        reads: VecDeque<ScriptedRead>,
         writes: Vec<String>,
         shutdown_called: bool,
     }
 
     impl ScriptedSocketState {
         fn new<const N: usize>(reads: [&'static str; N]) -> Self {
+            Self::new_with_reads(reads.map(ScriptedRead::Line))
+        }
+
+        fn new_with_reads<const N: usize>(reads: [ScriptedRead; N]) -> Self {
             Self {
-                reads: reads.into_iter().map(str::to_owned).collect(),
+                reads: reads.into_iter().collect(),
                 writes: Vec::new(),
                 shutdown_called: false,
             }
         }
+    }
+
+    enum ScriptedRead {
+        Line(&'static str),
+        Error(&'static str),
     }
 
     struct ScriptedSocket {
@@ -1142,7 +1185,14 @@ mod tests {
         }
 
         fn maybe_read_json_line(&mut self) -> anyhow::Result<Option<String>> {
-            Ok(self.state.borrow_mut().reads.pop_front())
+            let Some(read) = self.state.borrow_mut().reads.pop_front() else {
+                return Ok(None);
+            };
+
+            match read {
+                ScriptedRead::Line(line) => Ok(Some(line.to_owned())),
+                ScriptedRead::Error(message) => anyhow::bail!(message),
+            }
         }
 
         fn shutdown_both(&mut self) {
