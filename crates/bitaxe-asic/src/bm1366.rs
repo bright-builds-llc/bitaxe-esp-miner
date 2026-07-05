@@ -13,7 +13,6 @@ pub mod frequency_voltage;
 pub mod init_plan;
 pub mod observation;
 pub mod packet;
-#[cfg(test)]
 pub mod production;
 pub mod registers;
 pub mod result;
