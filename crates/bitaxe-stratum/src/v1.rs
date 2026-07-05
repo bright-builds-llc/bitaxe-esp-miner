@@ -11,7 +11,6 @@ pub mod fake_pool;
 pub mod messages;
 pub mod mining;
 pub mod mining_loop;
-#[cfg(test)]
 pub mod production_work;
 pub mod queue;
 pub mod state;
