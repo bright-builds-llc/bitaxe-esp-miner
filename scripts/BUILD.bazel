@@ -151,6 +151,12 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase25_live_stratum_evidence",
+    srcs = ["phase25-live-stratum-evidence.sh"],
+    data = ["//tools/parity:report"],
+)
+
+sh_binary(
     name = "source_commit_stamp_tool",
     srcs = ["source-commit-stamp.sh"],
 )

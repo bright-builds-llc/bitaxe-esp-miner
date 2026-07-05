@@ -33,3 +33,6 @@ parity:
 
 phase23-evidence *args:
     bazel run //scripts:phase23_redacted_operator_evidence -- {{ args }}
+
+phase25-evidence *args:
+    bazel run //scripts:phase25_live_stratum_evidence -- {{ args }}
