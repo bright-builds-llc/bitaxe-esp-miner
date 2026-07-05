@@ -4,6 +4,7 @@
 //! parsing, submit classification, and safe-stop postconditions stay in pure
 //! crates.
 
+use std::collections::VecDeque;
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpStream};
 use std::time::Duration;
@@ -47,6 +48,7 @@ const PHASE25_MODEL: &str = "ultra";
 const PHASE25_VERSION: &str = "205";
 const SOCKET_TIMEOUT_MS: u64 = 100;
 const READ_BUFFER_BYTES: usize = 512;
+const LIVE_SOCKET_PUMP_ITERATIONS: usize = 16;
 const STRATUM_PLUS_TCP_PREFIX: &str = concat!("stratum", "+tcp://");
 const TCP_PREFIX: &str = "tcp://";
 const POOL_SETTINGS_UNAVAILABLE: &str = "pool_settings_unavailable";
@@ -173,18 +175,9 @@ where
 
     let mut runtime = LiveStratumRuntime::new(settings.runtime_config);
     let _event = runtime.start();
-    if write_runtime_actions(&mut runtime, &mut socket).is_err() {
-        return safe_stop_with_socket(runtime, socket, SafeStopReason::FallbackExhausted);
-    }
+    let stop_reason = pump_live_socket_until_cleanup(&mut runtime, &mut socket);
 
-    if let Ok(Some(line)) = socket.maybe_read_json_line() {
-        handle_socket_line(&mut runtime, &line);
-        if write_runtime_actions(&mut runtime, &mut socket).is_err() {
-            return safe_stop_with_socket(runtime, socket, SafeStopReason::FallbackExhausted);
-        }
-    }
-
-    safe_stop_with_socket(runtime, socket, SafeStopReason::NormalStop)
+    safe_stop_with_socket(runtime, socket, stop_reason)
 }
 
 #[must_use]
@@ -237,17 +230,47 @@ fn mining_loop_gate(decision: ProductionMiningPreconditionDecision) -> MiningLoo
     }
 }
 
-fn write_runtime_actions<S: LiveSocketIo>(
+fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
     runtime: &mut LiveStratumRuntime,
     socket: &mut S,
-) -> anyhow::Result<()> {
-    publish_watchdog_checkpoint(StepKind::Socket, 1);
-    for action in runtime.drain_actions() {
-        match action {
-            LiveRuntimeAction::SendClientMessage(message) => {
-                let line = message.to_json_line()?;
-                socket.write_json_line(&line)?;
+) -> SafeStopReason {
+    let mut pending_actions: VecDeque<LiveRuntimeAction> = runtime.drain_actions().into();
+
+    for _iteration in 0..LIVE_SOCKET_PUMP_ITERATIONS {
+        publish_watchdog_checkpoint(StepKind::Socket, 1);
+
+        if let Some(action) = pending_actions.pop_front() {
+            if write_runtime_action(action, socket).is_err() {
+                publish_status("reconnecting");
+                return SafeStopReason::FallbackExhausted;
             }
+            continue;
+        }
+
+        match socket.maybe_read_json_line() {
+            Ok(Some(line)) => {
+                handle_socket_line(runtime, &line);
+                pending_actions.extend(runtime.drain_actions());
+            }
+            Ok(None) => {}
+            Err(_) => {
+                publish_status("reconnecting");
+                return SafeStopReason::FallbackExhausted;
+            }
+        }
+    }
+
+    SafeStopReason::VerificationCleanup
+}
+
+fn write_runtime_action<S: LiveSocketIo>(
+    action: LiveRuntimeAction,
+    socket: &mut S,
+) -> anyhow::Result<()> {
+    match action {
+        LiveRuntimeAction::SendClientMessage(message) => {
+            let line = message.to_json_line()?;
+            socket.write_json_line(&line)?;
         }
     }
 
@@ -515,7 +538,7 @@ fn classify_live_submit_response(
 
 #[cfg(test)]
 mod tests {
-    use std::cell::Cell;
+    use std::cell::{Cell, RefCell};
     use std::rc::Rc;
 
     use bitaxe_config::{NvsSnapshot, StoredValue};
@@ -672,6 +695,46 @@ mod tests {
         }
     }
 
+    #[test]
+    fn live_socket_loop_progresses_through_notify_before_cleanup_stop() {
+        // Arrange
+        let socket_state = Rc::new(RefCell::new(ScriptedSocketState::new([
+            r#"{"id":1,"result":[[["mining.set_difficulty","1"]],"4de05269",4],"error":null}"#,
+            r#"{"id":2,"result":true,"error":null}"#,
+            r#"{"id":null,"method":"mining.set_difficulty","params":[42]}"#,
+            r#"{"id":null,"method":"mining.notify","params":["job","0100000000000000000000000000000000000000000000000000000000000000","0200000001","ffffffff",[],"20000004","1705ae3a","647025b5",false]}"#,
+            r#"{"id":7,"result":true,"error":null}"#,
+        ])));
+        let mut connector = ScriptedConnector::new(socket_state.clone());
+        let pool_settings_access_counter = Rc::new(Cell::new(0));
+        let mut settings = CountingSettingsSource::new(pool_settings_access_counter.clone());
+
+        // Act
+        let outcome = start_live_stratum_runtime_with_dependencies(
+            ready_preconditions(),
+            &mut settings,
+            &mut connector,
+        );
+        let state = socket_state.borrow();
+        let retained_logs = log_buffer::retained_log_buffer().download_chunks().join("");
+
+        // Assert
+        assert_eq!(outcome, LiveStartOutcome::Stopped);
+        assert_eq!(pool_settings_access_counter.get(), 1);
+        assert!(state.shutdown_called);
+        assert!(state.reads.is_empty());
+        assert_eq!(state.writes.len(), 2);
+        assert!(state
+            .writes
+            .iter()
+            .any(|line| line.contains(r#""method":"mining.subscribe""#)));
+        assert!(state
+            .writes
+            .iter()
+            .any(|line| line.contains(r#""method":"mining.authorize""#)));
+        assert!(retained_logs.contains("phase25_live_stratum_status=active"));
+    }
+
     struct CountingSettingsSource {
         pool_settings_access_counter: Rc<Cell<usize>>,
     }
@@ -743,6 +806,61 @@ mod tests {
 
         fn shutdown_both(&mut self) {
             self.shutdown_called = true;
+        }
+    }
+
+    struct ScriptedConnector {
+        socket_state: Rc<RefCell<ScriptedSocketState>>,
+    }
+
+    impl ScriptedConnector {
+        fn new(socket_state: Rc<RefCell<ScriptedSocketState>>) -> Self {
+            Self { socket_state }
+        }
+    }
+
+    impl LiveSocketConnector for ScriptedConnector {
+        type Socket = ScriptedSocket;
+
+        fn connect(&mut self, _endpoint: &PoolEndpoint) -> anyhow::Result<Self::Socket> {
+            Ok(ScriptedSocket {
+                state: self.socket_state.clone(),
+            })
+        }
+    }
+
+    struct ScriptedSocketState {
+        reads: VecDeque<String>,
+        writes: Vec<String>,
+        shutdown_called: bool,
+    }
+
+    impl ScriptedSocketState {
+        fn new<const N: usize>(reads: [&'static str; N]) -> Self {
+            Self {
+                reads: reads.into_iter().map(str::to_owned).collect(),
+                writes: Vec::new(),
+                shutdown_called: false,
+            }
+        }
+    }
+
+    struct ScriptedSocket {
+        state: Rc<RefCell<ScriptedSocketState>>,
+    }
+
+    impl LiveSocketIo for ScriptedSocket {
+        fn write_json_line(&mut self, line: &str) -> anyhow::Result<()> {
+            self.state.borrow_mut().writes.push(line.to_owned());
+            Ok(())
+        }
+
+        fn maybe_read_json_line(&mut self) -> anyhow::Result<Option<String>> {
+            Ok(self.state.borrow_mut().reads.pop_front())
+        }
+
+        fn shutdown_both(&mut self) {
+            self.state.borrow_mut().shutdown_called = true;
         }
     }
 
