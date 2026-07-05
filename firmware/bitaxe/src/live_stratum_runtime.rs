@@ -26,16 +26,19 @@ use bitaxe_safety::{
     },
 };
 use bitaxe_stratum::jsonrpc::StratumRequestId;
+#[cfg(test)]
+use bitaxe_stratum::v1::state::{MiningActivityStatus, MiningRuntimeState};
 use bitaxe_stratum::v1::{
     live_runtime::{LivePoolCredentials, LiveRuntimeAction, LiveRuntimeConfig, LiveStratumRuntime},
     messages::{parse_server_message, StratumResponse, StratumV1ServerMessage},
     mining_loop::{MiningLoopDecision, MiningLoopGate},
     production_work::SubmitIntent,
-    state::{MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus},
+    state::PoolLifecycleStatus,
     submit_response::{
         classify_maybe_submit_response, classify_submit_response, SubmitClassification,
         SubmitResponseObservation,
     },
+    telemetry_projection::RuntimeProjectionSampleSource,
 };
 
 use crate::{
@@ -166,6 +169,10 @@ where
         Ok(socket) => socket,
         Err(_) => {
             publish_status("reconnecting");
+            publish_submit_classification(
+                bitaxe_stratum::v1::production_work::PoolSessionGeneration::initial(),
+                SubmitClassification::Reconnect,
+            );
             publish_safe_stop_without_runtime(SafeStopReason::FallbackExhausted);
             return LiveStartOutcome::Blocked {
                 reason: SafeStopReason::FallbackExhausted.as_str(),
@@ -241,6 +248,10 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
 
         if let Some(action) = pending_actions.pop_front() {
             if write_runtime_action(action, socket).is_err() {
+                publish_submit_classification(
+                    runtime.production_registry().generation(),
+                    SubmitClassification::Reconnect,
+                );
                 publish_status("reconnecting");
                 return SafeStopReason::FallbackExhausted;
             }
@@ -254,6 +265,10 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
             }
             Ok(None) => {}
             Err(_) => {
+                publish_submit_classification(
+                    runtime.production_registry().generation(),
+                    SubmitClassification::Reconnect,
+                );
                 publish_status("reconnecting");
                 return SafeStopReason::FallbackExhausted;
             }
@@ -280,32 +295,49 @@ fn write_runtime_action<S: LiveSocketIo>(
 fn handle_socket_line(runtime: &mut LiveStratumRuntime, line: &str) {
     publish_watchdog_checkpoint(StepKind::Socket, 1);
     let Ok(message) = parse_server_message(line) else {
-        let _classification = classify_maybe_submit_response(
-            None,
-            StratumRequestId::new(0),
-            SubmitResponseObservation::Malformed,
+        publish_submit_classification(
+            runtime.production_registry().generation(),
+            SubmitClassification::Malformed,
         );
         publish_status("reconnecting");
         return;
     };
 
-    publish_event_status(runtime.apply_server_message(message.clone()).ok().flatten());
+    publish_pool_difficulty_if_present(&message);
+    let maybe_event = runtime.apply_server_message(message.clone()).ok().flatten();
+    publish_event_status(runtime, maybe_event);
     if let StratumV1ServerMessage::Response(response) = message {
-        let _classification = classify_maybe_submit_response(
+        let classification = classify_maybe_submit_response(
             None,
             StratumRequestId::new(0),
             SubmitResponseObservation::Response(response),
         );
+        publish_submit_classification(runtime.production_registry().generation(), classification);
     }
 }
 
-fn publish_event_status(maybe_event: Option<bitaxe_stratum::v1::live_runtime::LiveRuntimeEvent>) {
+fn publish_pool_difficulty_if_present(message: &StratumV1ServerMessage) {
+    if let StratumV1ServerMessage::SetDifficulty(difficulty) = message {
+        runtime_snapshot::publish_runtime_pool_difficulty(*difficulty);
+        publish_runtime_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
+    }
+}
+
+fn publish_event_status(
+    runtime: &LiveStratumRuntime,
+    maybe_event: Option<bitaxe_stratum::v1::live_runtime::LiveRuntimeEvent>,
+) {
     use bitaxe_stratum::v1::live_runtime::LiveRuntimeEvent;
 
     match maybe_event {
         Some(LiveRuntimeEvent::Subscribed) => publish_status("subscribed"),
         Some(LiveRuntimeEvent::Authorized) => publish_status("authorized"),
-        Some(LiveRuntimeEvent::WorkQueued) => publish_status("active"),
+        Some(LiveRuntimeEvent::WorkQueued) => {
+            runtime_snapshot::publish_runtime_work_submission_ready();
+            runtime_snapshot::publish_runtime_hashrate_inputs(runtime.state().hashrate_inputs);
+            publish_runtime_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
+            publish_status("active");
+        }
         Some(LiveRuntimeEvent::WorkInvalidated) => publish_status("reconnecting"),
         Some(LiveRuntimeEvent::Started | LiveRuntimeEvent::SafeStopped) | None => {}
     }
@@ -318,8 +350,7 @@ fn safe_stop_with_socket<S: LiveSocketIo>(
 ) -> LiveStartOutcome {
     let postconditions = runtime.safe_stop(reason.as_str());
     socket.shutdown_both();
-    let post_stop_state = phase25_safe_stop_state(runtime.state().clone());
-    runtime_snapshot::replace_mining_runtime_state_after_phase25_safe_stop(post_stop_state);
+    publish_phase25_safe_stop_projection();
     if postconditions.socket_stopped
         && postconditions.active_work_invalidated
         && postconditions.mining_disabled
@@ -335,12 +366,12 @@ fn safe_stop_with_socket<S: LiveSocketIo>(
 
 fn publish_safe_stop_without_runtime(reason: SafeStopReason) {
     let _reason = reason.as_str();
-    let state = phase25_safe_stop_state(MiningRuntimeState::default());
-    runtime_snapshot::replace_mining_runtime_state_after_phase25_safe_stop(state);
+    publish_phase25_safe_stop_projection();
     publish_safe_stop_complete();
     publish_status("stopped");
 }
 
+#[cfg(test)]
 fn phase25_safe_stop_state(mut state: MiningRuntimeState) -> MiningRuntimeState {
     state.block_work_submission(PHASE25_SAFE_STOP_REASON);
     state.set_lifecycle(PoolLifecycleStatus::Disconnected);
@@ -393,15 +424,52 @@ fn publish_watchdog_checkpoint(kind: StepKind, consecutive_steps: u8) {
 }
 
 fn publish_status(status: &'static str) {
+    publish_lifecycle_status(status);
     info_retained(&format!(
         "phase25_live_stratum_status={status} redacted=true"
     ));
 }
 
 fn publish_blocked(reason: &'static str) {
+    runtime_snapshot::publish_runtime_blocked(reason);
+    publish_runtime_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
     info_retained(&format!(
         "phase25_live_stratum_status=blocked phase25_prerequisite_status={reason} redacted=true"
     ));
+}
+
+fn publish_lifecycle_status(status: &'static str) {
+    let maybe_lifecycle = match status {
+        "connecting" => Some(PoolLifecycleStatus::Connecting),
+        "subscribed" => Some(PoolLifecycleStatus::Subscribed),
+        "authorized" => Some(PoolLifecycleStatus::Authorized),
+        "active" => Some(PoolLifecycleStatus::Active),
+        "reconnecting" => Some(PoolLifecycleStatus::Reconnecting),
+        "stopped" => Some(PoolLifecycleStatus::Disconnected),
+        _ => None,
+    };
+    if let Some(lifecycle) = maybe_lifecycle {
+        runtime_snapshot::publish_runtime_lifecycle(lifecycle);
+        publish_runtime_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
+    }
+}
+
+fn publish_submit_classification(
+    generation: bitaxe_stratum::v1::production_work::PoolSessionGeneration,
+    classification: SubmitClassification,
+) {
+    runtime_snapshot::publish_runtime_submit_classification(generation, classification, None);
+    publish_runtime_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
+}
+
+fn publish_phase25_safe_stop_projection() {
+    runtime_snapshot::publish_runtime_blocked(PHASE25_SAFE_STOP_REASON);
+    runtime_snapshot::publish_runtime_safe_stopped(PHASE25_SAFE_STOP_REASON);
+    publish_runtime_sample_marker(RuntimeProjectionSampleSource::SafeStop);
+}
+
+fn publish_runtime_sample_marker(source: RuntimeProjectionSampleSource) {
+    runtime_snapshot::publish_runtime_bounded_sample_marker(source);
 }
 
 fn publish_safe_stop_complete() {
