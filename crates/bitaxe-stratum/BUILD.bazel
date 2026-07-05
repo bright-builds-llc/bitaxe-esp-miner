@@ -19,6 +19,7 @@ rust_library(
         "src/v1/queue.rs",
         "src/v1/state.rs",
         "src/v1/submit_response.rs",
+        "src/v1/telemetry_projection.rs",
     ],
     compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_stratum",
