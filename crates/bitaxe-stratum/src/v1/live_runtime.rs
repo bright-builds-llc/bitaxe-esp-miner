@@ -172,6 +172,19 @@ impl LiveStratumRuntime {
         &self.production_registry
     }
 
+    #[must_use]
+    pub fn production_registry_mut(&mut self) -> &mut ProductionWorkRegistry {
+        &mut self.production_registry
+    }
+
+    pub fn activate_fallback(&mut self) {
+        self.state.set_fallback_active(true);
+    }
+
+    pub fn block_work_submission(&mut self, reason: &'static str) {
+        self.state.block_work_submission(reason);
+    }
+
     pub fn start(&mut self) -> LiveRuntimeEvent {
         if self.stopped {
             return LiveRuntimeEvent::SafeStopped;

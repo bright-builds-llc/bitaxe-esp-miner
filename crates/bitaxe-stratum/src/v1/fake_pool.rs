@@ -1,11 +1,18 @@
 use std::fmt;
 
+use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
+
 use crate::error::StratumV1Error;
 use crate::jsonrpc::StratumRequestId;
-use crate::v1::live_runtime::LiveStratumRuntime;
+use crate::v1::live_runtime::{LiveRuntimeAction, LiveStratumRuntime};
 use crate::v1::messages::{StratumResponse, StratumV1ClientMessage, StratumV1ServerMessage};
+use crate::v1::production_work::{
+    CorrelationOutcome, ProductionNonceObservation, SubmitIntent,
+};
 use crate::v1::state::{MiningRuntimeState, PoolLifecycleStatus, ShareDifficulty};
-use crate::v1::submit_response::SubmitClassification;
+use crate::v1::submit_response::{
+    classify_submit_response, SubmitClassification, SubmitResponseObservation,
+};
 
 #[derive(Clone, PartialEq)]
 pub enum FakePoolEvent {
@@ -121,13 +128,125 @@ impl FakePoolTranscript {
 
     pub fn run_live_runtime(
         &self,
-        _runtime: &mut LiveStratumRuntime,
+        runtime: &mut LiveStratumRuntime,
     ) -> Result<FakePoolRuntimeReport, StratumV1Error> {
+        let _event = runtime.start();
+        let mut pending_actions = runtime.drain_actions();
+        let mut classifications = Vec::new();
+        let mut maybe_submit_intent: Option<SubmitIntent> = None;
+        let submit_request_id = StratumRequestId::new(7);
+
+        for event in &self.events {
+            match event {
+                FakePoolEvent::ExpectClient(expected) => {
+                    expect_live_client_message(expected, &mut pending_actions, runtime)?;
+                }
+                FakePoolEvent::SendServer(message) => {
+                    runtime.apply_server_message(message.clone())?;
+                    pending_actions.extend(runtime.drain_actions());
+                    if matches!(message, StratumV1ServerMessage::ClientReconnect) {
+                        classifications.push(SubmitClassification::Reconnect);
+                    }
+                }
+                FakePoolEvent::Disconnect => {
+                    runtime.apply_server_message(StratumV1ServerMessage::ClientReconnect)?;
+                    classifications.push(SubmitClassification::Reconnect);
+                }
+                FakePoolEvent::Timeout | FakePoolEvent::NoResponse => {
+                    classifications.push(SubmitClassification::Timeout);
+                }
+                FakePoolEvent::MalformedResponse => {
+                    classifications.push(SubmitClassification::Malformed);
+                }
+                FakePoolEvent::BlockedPrerequisite { reason } => {
+                    runtime.block_work_submission(reason);
+                    classifications.push(SubmitClassification::Blocked { reason });
+                }
+                FakePoolEvent::FallbackActivation => {
+                    runtime.activate_fallback();
+                }
+                FakePoolEvent::ClassifySubmitResponse(response) => {
+                    if maybe_submit_intent.is_none() {
+                        maybe_submit_intent = Some(correlate_runtime_submit_intent(runtime)?);
+                    }
+                    let Some(intent) = &maybe_submit_intent else {
+                        return unexpected_client_message();
+                    };
+                    classifications.push(classify_submit_response(
+                        intent,
+                        submit_request_id,
+                        SubmitResponseObservation::Response(response.clone()),
+                    ));
+                }
+                FakePoolEvent::ClassifyStaleSubmitResponse(response) => {
+                    let Some(intent) = &maybe_submit_intent else {
+                        return unexpected_client_message();
+                    };
+                    classifications.push(classify_submit_response(
+                        intent,
+                        submit_request_id,
+                        SubmitResponseObservation::StaleGeneration {
+                            observed_generation: runtime.production_registry().generation(),
+                            response: response.clone(),
+                        },
+                    ));
+                }
+            }
+        }
+
         Ok(FakePoolRuntimeReport {
-            state: MiningRuntimeState::default(),
-            classifications: Vec::new(),
-            generation: 0,
+            state: runtime.state().clone(),
+            classifications,
+            generation: runtime.production_registry().generation().raw(),
         })
+    }
+}
+
+fn expect_live_client_message(
+    expected: &StratumV1ClientMessage,
+    pending_actions: &mut Vec<LiveRuntimeAction>,
+    runtime: &mut LiveStratumRuntime,
+) -> Result<(), StratumV1Error> {
+    if pending_actions.is_empty() {
+        pending_actions.extend(runtime.drain_actions());
+    }
+    let Some(action) = pending_actions.first() else {
+        return unexpected_client_message();
+    };
+    let LiveRuntimeAction::SendClientMessage(actual) = action;
+    if actual != expected {
+        return unexpected_client_message();
+    }
+    pending_actions.remove(0);
+    Ok(())
+}
+
+fn correlate_runtime_submit_intent(
+    runtime: &mut LiveStratumRuntime,
+) -> Result<SubmitIntent, StratumV1Error> {
+    let dispatch = runtime.production_registry_mut().dispatch_next()?;
+    let outcome =
+        runtime
+            .production_registry_mut()
+            .correlate_nonce_result(ProductionNonceObservation {
+                observed_generation: dispatch.generation,
+                result: fake_nonce_result(dispatch.work.asic_job_id),
+            });
+    let CorrelationOutcome::SubmitIntent(intent) = outcome else {
+        return unexpected_client_message();
+    };
+
+    Ok(intent)
+}
+
+fn fake_nonce_result(job_id: Bm1366JobId) -> Bm1366NonceResult {
+    Bm1366NonceResult {
+        job_id,
+        nonce: 0x1234_5678,
+        asic_index: 0,
+        core_id: 1,
+        small_core_id: 0,
+        version_bits: 0x0000_2000,
     }
 }
 
