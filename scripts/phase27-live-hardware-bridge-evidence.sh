@@ -100,6 +100,10 @@ readonly detector_command="${PHASE27_DETECT_COMMAND:-just detect-ultra205}"
 readonly board_info_command="${PHASE27_BOARD_INFO_COMMAND:-espflash board-info --chip esp32s3 --non-interactive}"
 readonly parity_command="${PHASE27_PARITY_COMMAND:-bazel run //tools/parity:report --}"
 readonly live_capture_command="${PHASE27_LIVE_CAPTURE_COMMAND:-just flash-monitor}"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly script_dir
+readonly repo_root="$(cd "${script_dir}/.." && pwd)"
+readonly pool_input_bridge_helper="${PHASE27_POOL_INPUT_BRIDGE_HELPER:-${repo_root}/scripts/phase21-pool-input-bridge.sh}"
 
 mkdir -p "$evidence_root"
 
@@ -245,7 +249,7 @@ write_allow_manifest() {
     "pool_config": "${pool_config_label}",
     "wifi_config": "${wifi_config_label}",
     "port_source": "${port_label}",
-    "duration_seconds": ${duration_seconds:-60},
+    "duration_seconds": ${duration_seconds:-360},
     "redact_evidence": "${redaction_label}",
     "target_source": "explicit-or-blocked",
     "share_outcome": "${share_outcome}",
@@ -357,6 +361,7 @@ network_scan: disabled
 pool_config: ${pool_config_label}
 wifi_config: ${wifi_config_label}
 port_source: ${port_label}
+safety_bring_up_status: ${live_capture_safety_bring_up_status:-not-run}
 
 ## Supported Claim
 
@@ -507,6 +512,25 @@ derive_share_outcome_from_output() {
 	return 1
 }
 
+derive_safety_bring_up_status_from_output() {
+	local output="$1"
+
+	if [[ "$output" == *"phase27_safety_bring_up=complete"* &&
+		"$output" == *"asic_enable_status=active"* &&
+		"$output" == *"safety_fan_status=startup_duty"* ]]; then
+		printf 'complete'
+		return 0
+	fi
+
+	if [[ "$output" == *"phase27_safety_bring_up=started"* ||
+		"$output" == *"phase27_safety_bring_up=failed"* ]]; then
+		printf 'partial'
+		return 0
+	fi
+
+	printf 'missing'
+}
+
 derive_asic_bridge_status_from_output() {
 	local output="$1"
 
@@ -528,6 +552,54 @@ derive_asic_bridge_status_from_output() {
 	printf 'blocked'
 }
 
+resolve_manifest_path() {
+	if [[ "$manifest" == /* ]]; then
+		printf '%s' "$manifest"
+		return 0
+	fi
+
+	printf '%s/%s' "$repo_root" "$manifest"
+}
+
+extract_device_url_from_log() {
+	local log_path="$1"
+	local -a urls=()
+
+	while IFS= read -r line; do
+		case "$line" in
+		*device_url=http://* | *device_url=https://*)
+			local candidate="${line#*device_url=}"
+			candidate="${candidate%% *}"
+			candidate="${candidate%%$'\r'}"
+			if [[ "$candidate" == http://* || "$candidate" == https://* ]]; then
+				urls+=("$candidate")
+			fi
+			;;
+		esac
+	done <"$log_path"
+
+	if [[ "${#urls[@]}" -ne 1 ]]; then
+		return 1
+	fi
+
+	printf '%s' "${urls[0]}"
+}
+
+run_pool_input_bridge() {
+	local device_url="$1"
+	local bridge_out_dir="${evidence_root}/live-capture-runtime/pool-input-bridge"
+
+	if [[ ! -f "$pool_input_bridge_helper" ]]; then
+		return 1
+	fi
+
+	mkdir -p "$bridge_out_dir"
+	"$BASH" "$pool_input_bridge_helper" \
+		--device-url "$device_url" \
+		--pool-credentials "$pool_credentials" \
+		--out-dir "$bridge_out_dir"
+}
+
 run_live_capture_attempt() {
 	local detected_port="$1"
 	local stdout_path
@@ -535,31 +607,77 @@ run_live_capture_attempt() {
 	local output
 	local status
 	local -a command_parts=()
+	local resolved_manifest
+	local capture_evidence_dir="${evidence_root}/live-capture-runtime"
+	local monitor_log="${capture_evidence_dir}/flash-monitor.log"
+	local capture_timeout="${duration_seconds:-360}"
+	local pool_bridge_applied=0
 	local -a command_args=(
 		"board=205"
 		"port=${detected_port}"
-		"evidence-dir=${evidence_root}/live-capture-runtime"
-		"redact-evidence=true"
-		"duration-seconds=${duration_seconds:-60}"
+		"manifest=$(resolve_manifest_path)"
+		"evidence-dir=${capture_evidence_dir}"
+		"capture-timeout-seconds=${capture_timeout}"
 	)
 
-	if [[ -n "$pool_credentials" ]]; then
-		command_args+=("pool-credentials=${pool_credentials}")
-	fi
 	if [[ -n "$wifi_credentials" ]]; then
 		command_args+=("wifi-credentials=${wifi_credentials}")
 	fi
+	if [[ -n "$redact_evidence" ]]; then
+		command_args+=("redact-evidence=${redact_evidence}")
+	fi
 
+	mkdir -p "$capture_evidence_dir"
 	stdout_path="$(mktemp "${TMPDIR:-/tmp}/phase27-live-capture.stdout.XXXXXX")"
 	stderr_path="$(mktemp "${TMPDIR:-/tmp}/phase27-live-capture.stderr.XXXXXX")"
 	IFS=' ' read -r -a command_parts <<<"$live_capture_command"
 
 	set +e
-	"${command_parts[@]}" "${command_args[@]}" >"$stdout_path" 2>"$stderr_path"
+	(
+		cd "$repo_root"
+		"${command_parts[@]}" "${command_args[@]}"
+	) >"$stdout_path" 2>"$stderr_path" &
+	local capture_pid=$!
+
+	local deadline=$((SECONDS + capture_timeout + 30))
+	while ((SECONDS < deadline)); do
+		if [[ -f "$monitor_log" && -n "$pool_credentials" && "$pool_bridge_applied" -eq 0 ]]; then
+			local maybe_device_url=""
+			if maybe_device_url="$(extract_device_url_from_log "$monitor_log")"; then
+				if run_pool_input_bridge "$maybe_device_url"; then
+					pool_bridge_applied=1
+				fi
+			fi
+		fi
+
+		if ! kill -0 "$capture_pid" 2>/dev/null; then
+			break
+		fi
+
+		sleep 2
+	done
+
+	wait "$capture_pid"
 	status=$?
 	set -e
 
+	if [[ -f "$monitor_log" && "$redact_evidence" == "true" ]]; then
+		local redacted_monitor_log
+		redacted_monitor_log="$(mktemp "${TMPDIR:-/tmp}/phase27-live-capture.redacted.XXXXXX")"
+		LC_ALL=C sed \
+			-e 's/device_url=http[^[:space:]]*/device_url=[redacted-url]/g' \
+			-e 's/device_url=https[^[:space:]]*/device_url=[redacted-url]/g' \
+			-e 's/ipv4=[0-9.]*/ipv4=[redacted-ip]/g' \
+			-e 's/mac=[0-9a-f:]*\([[:space:]]\|$\)/mac=[redacted-mac]\1/g' \
+			"$monitor_log" >"$redacted_monitor_log"
+		mv "$redacted_monitor_log" "$monitor_log"
+	fi
+
 	output="$(redacted_live_capture_output "$stdout_path" "$stderr_path")"
+	if [[ -f "$monitor_log" ]]; then
+		output="${output}
+$(LC_ALL=C tr -d '\000\r' <"$monitor_log")"
+	fi
 	rm -f "$stdout_path" "$stderr_path"
 
 	live_capture_safe_stop_status="blocked"
@@ -568,6 +686,7 @@ run_live_capture_attempt() {
 	fi
 
 	live_capture_asic_bridge_status="$(derive_asic_bridge_status_from_output "$output")"
+	live_capture_safety_bring_up_status="$(derive_safety_bring_up_status_from_output "$output")"
 
 	if [[ "$status" -eq 0 && "$live_capture_safe_stop_status" == "complete" ]] &&
 		share_outcome="$(derive_share_outcome_from_output "$output")"; then
@@ -628,7 +747,9 @@ run_hardware_mode() {
 	fi
 
 	write_live_capture_not_observed_slots "$maybe_detected_port"
-	${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-hardware-bridge --allowed-command "$(allowed_command_string)" >/dev/null
+	if [[ "${live_capture_safe_stop_status:-blocked}" == "complete" ]]; then
+		${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-hardware-bridge --allowed-command "$(allowed_command_string)" >/dev/null
+	fi
 	printf 'phase27_evidence_status=blocked_safe_prerequisite redacted=true\n'
 }
 

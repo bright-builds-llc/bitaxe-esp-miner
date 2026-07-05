@@ -1,12 +1,22 @@
 //! Observe-only firmware safety adapter facade.
 //!
-//! This module bridges pure Phase 6 safety decisions into firmware
-//! observability without enabling voltage, fan, ASIC reset, or mining effects.
-#![allow(dead_code)]
+//! Phase 27 live bridge mode enables bounded power, thermal, and fan bring-up
+//! before BM1366 UART initialization.
 
+mod asic_enable;
+mod ds4432u;
+mod emc2101;
+mod i2c_bus;
+mod ina260;
+pub mod phase27_bring_up;
 mod power;
 mod thermal;
 mod watchdog;
+
+pub use phase27_bring_up::{
+    phase27_bring_up_complete, phase27_safety_snapshot, run_phase27_hardware_bring_up,
+    Phase27BringUpReset,
+};
 
 use bitaxe_api::{SafetyTelemetryReport, SafetyTelemetryStatus};
 use bitaxe_safety::{
@@ -20,6 +30,8 @@ pub fn collect_safety_report() -> SafetyTelemetryReport {
     report.chip_temp_celsius = thermal.chip_temp_celsius;
     report.chip_temp2_celsius = thermal.chip_temp2_celsius;
     report.vr_temp_celsius = thermal.vr_temp_celsius;
+    report.fan_speed_percent = thermal.fan_speed_percent;
+    report.fan_rpm = thermal.fan_rpm;
     report
 }
 
@@ -43,12 +55,20 @@ fn interpret_safety_effect(effect: &SafetyEffect) {
             );
         }
         SafetyEffect::DisableAsicEnable => {
+            if phase27_bring_up_complete() {
+                log::warn!("safety_effect=disable_asic_enable status=deferred");
+                return;
+            }
             log::warn!("safety_effect=disable_asic_enable status=suppressed");
         }
         SafetyEffect::SuppressVoltageWrite => {
             power::suppress_voltage_write("safety_effect");
         }
         SafetyEffect::SetFanDutyPercent { percent } => {
+            if phase27_bring_up_complete() {
+                log::info!("safety_fan_effect=armed percent={percent}");
+                return;
+            }
             thermal::suppress_fan_write(percent, "hardware_evidence_pending");
         }
         SafetyEffect::BlockWorkSubmission { reason } => {

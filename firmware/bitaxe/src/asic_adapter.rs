@@ -28,7 +28,7 @@ mod reset;
 mod status;
 mod uart;
 
-pub use production::{store_production_peripherals, ProductionAsicExecutor, production_handle_available};
+pub use production::{production_ready, ProductionAsicExecutor};
 
 pub use status::{
     publish_mining_loop_blocked_status, publish_production_asic_blocked_status,
@@ -42,6 +42,13 @@ pub struct AsicBootPeripherals<UART, RESET, TX, RX> {
     pub rx: RX,
 }
 
+pub struct Phase27SafetyPeripherals<I2C, SDA, SCL, ENABLE> {
+    pub i2c: I2C,
+    pub sda: SDA,
+    pub scl: SCL,
+    pub enable: ENABLE,
+}
+
 pub fn run_boot_gate_with_peripherals<UART, RESET, TX, RX>(
     peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
 ) -> Result<()>
@@ -51,24 +58,111 @@ where
     TX: OutputPin + 'static,
     RX: InputPin + 'static,
 {
-    match AsicAdapterMode::from_compile_env(
-        option_env!("BITAXE_ASIC_DIAGNOSTIC"),
-        option_env!("BITAXE_HARDWARE_EVIDENCE_ACK"),
-    ) {
+    match adapter_mode_from_firmware_compile_env() {
         AsicAdapterMode::FailClosed => {
             status::publish_default_fail_closed_status();
             Ok(())
         }
         AsicAdapterMode::ChipDetectOnly => run_chip_detect_only(peripherals),
-        AsicAdapterMode::WorkResultDiagnostic => run_work_result_diagnostic(peripherals),
+        AsicAdapterMode::WorkResultDiagnostic => {
+            run_work_result_uart_bootstrap(peripherals, false)
+        }
+        AsicAdapterMode::Phase27ProductionBridge => {
+            run_work_result_uart_bootstrap(peripherals, true)
+        }
     }
 }
 
-pub fn run_boot_gate_without_peripherals(reason: &'static str) -> Result<()> {
-    match AsicAdapterMode::from_compile_env(
-        option_env!("BITAXE_ASIC_DIAGNOSTIC"),
-        option_env!("BITAXE_HARDWARE_EVIDENCE_ACK"),
+pub fn run_phase27_boot_gate_with_safety<UART, RESET, TX, RX, I2C, SDA, SCL, ENABLE>(
+    peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
+    safety: Phase27SafetyPeripherals<I2C, SDA, SCL, ENABLE>,
+) -> Result<()>
+where
+    UART: Uart + 'static,
+    RESET: OutputPin + 'static,
+    TX: OutputPin + 'static,
+    RX: InputPin + 'static,
+    I2C: esp_idf_svc::hal::i2c::I2c + 'static,
+    SDA: InputPin + OutputPin + 'static,
+    SCL: InputPin + OutputPin + 'static,
+    ENABLE: OutputPin + 'static,
+{
+    match adapter_mode_from_firmware_compile_env() {
+        AsicAdapterMode::Phase27ProductionBridge => {
+            run_work_result_uart_bootstrap_with_phase27_safety(peripherals, safety)
+        }
+        _ => run_boot_gate_with_peripherals(peripherals),
+    }
+}
+
+fn run_work_result_uart_bootstrap_with_phase27_safety<UART, RESET, TX, RX, I2C, SDA, SCL, ENABLE>(
+    peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
+    safety: Phase27SafetyPeripherals<I2C, SDA, SCL, ENABLE>,
+) -> Result<()>
+where
+    UART: Uart + 'static,
+    RESET: OutputPin + 'static,
+    TX: OutputPin + 'static,
+    RX: InputPin + 'static,
+    I2C: esp_idf_svc::hal::i2c::I2c + 'static,
+    SDA: InputPin + OutputPin + 'static,
+    SCL: InputPin + OutputPin + 'static,
+    ENABLE: OutputPin + 'static,
+{
+    let mut reset = match reset::AsicReset::new(peripherals.reset)
+        .context("initialize ASIC reset GPIO adapter")
+    {
+        Ok(reset) => reset,
+        Err(error) => {
+            fail_closed_work_result_setup_error(None, &error);
+            return Ok(());
+        }
+    };
+
+    if let Err(error) = crate::safety_adapter::run_phase27_hardware_bring_up(
+        safety.i2c,
+        safety.sda,
+        safety.scl,
+        safety.enable,
+        &mut reset,
     ) {
+        log::warn!("phase27_safety_bring_up=failed error={error:#}");
+    }
+
+    run_work_result_uart_bootstrap_after_reset(peripherals.uart, peripherals.tx, peripherals.rx, reset, true)
+}
+
+fn run_work_result_uart_bootstrap<UART, RESET, TX, RX>(
+    peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
+    retain_for_production: bool,
+) -> Result<()>
+where
+    UART: Uart + 'static,
+    RESET: OutputPin + 'static,
+    TX: OutputPin + 'static,
+    RX: InputPin + 'static,
+{
+    let mut reset = match reset::AsicReset::new(peripherals.reset)
+        .context("initialize ASIC reset GPIO adapter")
+    {
+        Ok(reset) => reset,
+        Err(error) => {
+            fail_closed_work_result_setup_error(None, &error);
+            return Ok(());
+        }
+    };
+
+    run_work_result_uart_bootstrap_after_reset(
+        peripherals.uart,
+        peripherals.tx,
+        peripherals.rx,
+        reset,
+        retain_for_production,
+    )
+}
+
+pub fn run_boot_gate_without_peripherals(reason: &'static str) -> Result<()> {
+    match adapter_mode_from_firmware_compile_env() {
         AsicAdapterMode::FailClosed => {
             status::publish_default_fail_closed_status();
             Ok(())
@@ -78,12 +172,20 @@ pub fn run_boot_gate_without_peripherals(reason: &'static str) -> Result<()> {
             status::publish_status(AsicInitStatus::FailClosed { reason });
             Ok(())
         }
-        AsicAdapterMode::WorkResultDiagnostic => {
+        AsicAdapterMode::WorkResultDiagnostic | AsicAdapterMode::Phase27ProductionBridge => {
             log::warn!("asic_status=fail_closed reason={reason}");
             status::publish_status(AsicInitStatus::FailClosed { reason });
             Ok(())
         }
     }
+}
+
+fn adapter_mode_from_firmware_compile_env() -> AsicAdapterMode {
+    AsicAdapterMode::from_compile_env(
+        option_env!("BITAXE_ASIC_DIAGNOSTIC"),
+        option_env!("BITAXE_HARDWARE_EVIDENCE_ACK"),
+        option_env!("BITAXE_MINING_EVIDENCE_MODE"),
+    )
 }
 
 fn run_chip_detect_only<UART, RESET, TX, RX>(
@@ -137,25 +239,19 @@ where
     Ok(())
 }
 
-fn run_work_result_diagnostic<UART, RESET, TX, RX>(
-    peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
+fn run_work_result_uart_bootstrap_after_reset<UART, TX, RX>(
+    uart_peripheral: UART,
+    tx: TX,
+    rx: RX,
+    mut reset: reset::AsicReset<'_>,
+    retain_for_production: bool,
 ) -> Result<()>
 where
     UART: Uart + 'static,
-    RESET: OutputPin + 'static,
     TX: OutputPin + 'static,
     RX: InputPin + 'static,
 {
-    let mut reset = match reset::AsicReset::new(peripherals.reset)
-        .context("initialize ASIC reset GPIO adapter")
-    {
-        Ok(reset) => reset,
-        Err(error) => {
-            fail_closed_work_result_setup_error(None, &error);
-            return Ok(());
-        }
-    };
-    let mut uart = match uart::AsicUart::new(peripherals.uart, peripherals.tx, peripherals.rx)
+    let mut uart = match uart::AsicUart::new(uart_peripheral, tx, rx)
         .context("initialize BM1366 UART1 adapter")
     {
         Ok(uart) => uart,
@@ -164,6 +260,10 @@ where
             return Ok(());
         }
     };
+
+    if retain_for_production && !run_chip_detect_actions(&mut uart, &mut reset) {
+        return Ok(());
+    }
 
     status::publish_work_result_diagnostic_started_status();
     let job_id = Bm1366JobId::new(0x28);
@@ -193,9 +293,7 @@ where
     match parse_bm1366_result_frame(&frame, &valid_jobs, 16) {
         Ok(_result) => {
             status::publish_work_result_parsed_status(job_id.raw());
-            if crate::mining_evidence_mode::MiningEvidenceMode::current()
-                .is_phase27_live_hardware_bridge()
-            {
+            if retain_for_production {
                 production::store_production_peripherals(uart, reset, true);
             }
         }
@@ -205,6 +303,30 @@ where
     }
 
     Ok(())
+}
+
+fn run_chip_detect_actions(
+    uart: &mut uart::AsicUart<'_>,
+    reset: &mut reset::AsicReset<'_>,
+) -> bool {
+    let preflight = Bm1366Preflight::chip_detect(
+        BoardPreflightEvidence::active_ultra_205(),
+        ConfigPreflightEvidence::ultra_205_defaults(),
+    );
+    let decision = Bm1366InitPlan::chip_detect_only(preflight);
+
+    for action in decision.actions() {
+        match interpret_action(action, uart, reset) {
+            Ok(ActionOutcome::Continue) => {}
+            Ok(ActionOutcome::Stop) => return false,
+            Err(error) => {
+                fail_closed_adapter_error(reset, &error);
+                return false;
+            }
+        }
+    }
+
+    true
 }
 
 fn diagnostic_work_fields() -> Bm1366WorkFields {

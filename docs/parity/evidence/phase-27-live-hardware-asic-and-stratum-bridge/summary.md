@@ -1,28 +1,28 @@
 # Phase 27 Evidence Summary
 
 board: 205
-source_commit: 5e8461ccd64d2aab163c956d1b089511bda499c8
+source_commit: 92e838ac9ef1e6fb7c343883388e363ca05438f3
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
-package_identity: /tmp/phase27-manifest.json
+package_identity: bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
 evidence_mode: phase27-live-hardware-asic-stratum-bridge
 evidence_ack: ultra205-phase27-live-hardware-bridge-safe-stop
-package_artifact_status: blocked
-detector_status: blocked
-board_info_status: blocked
+package_artifact_status: passed
+detector_status: passed
+board_info_status: passed
 share_outcome: blocked_safe_prerequisite
 asic_bridge_status: blocked
-safe_stop_status: complete
+safe_stop_status: blocked
 redaction_status: passed
 raw_artifacts_committed: no
 raw_pool_values_committed: no
 network_scan: disabled
-pool_config: not-supplied
-wifi_config: not-supplied
-port_source: not-supplied
+pool_config: local-owner-supplied
+wifi_config: local-owner-supplied
+port_source: explicit
 
 ## Supported Claim
 
-Phase 27 records an exact blocked safe-prerequisite non-claim: blocked_mode_static_workflow.
+Phase 27 attempted bounded detector-gated live hardware bridge capture, but no valid accepted/rejected share outcome with ASIC bridge markers was observed.
 
 ## exact_non_claims
 

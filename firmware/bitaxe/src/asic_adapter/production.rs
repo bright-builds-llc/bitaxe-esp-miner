@@ -4,7 +4,7 @@
 
 use std::sync::{Mutex, OnceLock};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bitaxe_asic::bm1366::{
     command::Bm1366AdapterAction,
     production::{Bm1366ProductionCommand, ProductionAsicBlocker, ProductionAsicStatus},
@@ -66,6 +66,14 @@ pub fn production_handle_available() -> bool {
         .lock()
         .ok()
         .is_some_and(|state| state.maybe_uart.is_some())
+}
+
+#[must_use]
+pub fn production_ready() -> bool {
+    production_state()
+        .lock()
+        .ok()
+        .is_some_and(|state| state.production_ready && state.maybe_uart.is_some())
 }
 
 pub struct ProductionAsicExecutor;

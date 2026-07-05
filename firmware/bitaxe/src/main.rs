@@ -57,30 +57,44 @@ fn main() -> anyhow::Result<()> {
         safe_state,
         Some(firmware_commit()),
     );
+    let is_phase27_bridge =
+        mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge();
     let (startup_diagnostics, maybe_modem) = match Peripherals::take() {
         Ok(peripherals) => {
             let modem = peripherals.modem;
             let pins = peripherals.pins;
-            if let Err(error) = display_adapter::render_startup_debug_text(
-                peripherals.i2c0,
-                pins.gpio47,
-                pins.gpio48,
-                &startup_debug_text,
-            ) {
-                log::warn!(
-                    "display_status=unavailable reason=startup_text_render_failed error={error:#}"
-                );
-            }
             display_adapter::publish_runtime_display_input_boundary();
-            (
-                asic_adapter::run_boot_gate_with_peripherals(asic_adapter::AsicBootPeripherals {
-                    uart: peripherals.uart1,
-                    reset: pins.gpio1,
-                    tx: pins.gpio17,
-                    rx: pins.gpio18,
-                }),
-                Some(modem),
-            )
+            let boot_peripherals = asic_adapter::AsicBootPeripherals {
+                uart: peripherals.uart1,
+                reset: pins.gpio1,
+                tx: pins.gpio17,
+                rx: pins.gpio18,
+            };
+            let startup_diagnostics = if is_phase27_bridge {
+                log::warn!("display_status=deferred reason=phase27_safety_i2c0_in_use");
+                asic_adapter::run_phase27_boot_gate_with_safety(
+                    boot_peripherals,
+                    asic_adapter::Phase27SafetyPeripherals {
+                        i2c: peripherals.i2c0,
+                        sda: pins.gpio47,
+                        scl: pins.gpio48,
+                        enable: pins.gpio10,
+                    },
+                )
+            } else {
+                if let Err(error) = display_adapter::render_startup_debug_text(
+                    peripherals.i2c0,
+                    pins.gpio47,
+                    pins.gpio48,
+                    &startup_debug_text,
+                ) {
+                    log::warn!(
+                        "display_status=unavailable reason=startup_text_render_failed error={error:#}"
+                    );
+                }
+                asic_adapter::run_boot_gate_with_peripherals(boot_peripherals)
+            };
+            (startup_diagnostics, Some(modem))
         }
         Err(error) => {
             log::warn!("display_status=unavailable reason=peripherals_unavailable error={error}");
@@ -110,14 +124,15 @@ fn main() -> anyhow::Result<()> {
         log::warn!("wifi_status=unavailable reason=peripherals_unavailable");
         false
     };
-    if mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
-        live_stratum_runtime::maybe_start_phase27_bridge_after_network_setup(network_ready);
-    } else {
+    if !mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
         live_stratum_runtime::maybe_start_after_network_setup(network_ready);
     }
     let filesystem_status = filesystem::mount_www_spiffs();
     if let Err(error) = http_api::start_http_api(filesystem_status) {
         log::warn!("axeos_api_route_shell=unavailable error={error:#}");
+    }
+    if mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
+        live_stratum_runtime::schedule_phase27_bridge_after_http_ready(network_ready);
     }
     info_retained(&format!("reset_reason={}", reset_reason()));
     info_retained(&format!("partition={}", partition_label()));

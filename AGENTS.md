@@ -282,6 +282,32 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 - Phase-gated destructive or fault-injection verification is allowed only when the active phase plan documents the recovery path and required evidence. Do not run ad hoc erase, rollback, interrupted-update, voltage/fan/mining stress, or raw write commands outside documented phase-gated procedures.
 - Every hardware run must record board `205`, selected port, source commit, reference commit, package manifest/artifacts when applicable, exact commands, `board-info` output, captured logs, observed behavior, and conclusion. Do not commit secrets, pool credentials, Wi-Fi credentials, private endpoints, or NVS secret values in evidence.
 
+### Flash And Monitor Timeouts
+
+Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and post-flash runtime evidence routinely exceed short monitor defaults. Agents and repo-owned wrappers must budget accordingly:
+
+1. **Minimum capture timeout:** use at least **6 minutes (360 seconds)** for `just flash`, `just flash-monitor`, `just monitor`, and equivalent `bazel run //tools/flash` invocations when flashing or reflashing real hardware, unless a phase plan or deterministic test fixture documents a shorter bound explicitly.
+2. **Explicit override required:** `tools/flash` defaults to a 25-second monitor capture, which is insufficient for hardware evidence. Always pass `capture-timeout-seconds=360` (or higher) on `flash-monitor` / `monitor` commands for Ultra 205 bring-up and evidence capture.
+3. **Phase evidence wrappers:** when `--duration-seconds` governs post-flash monitor capture (`phase25-evidence`, `phase27-evidence`, and similar), use **≥ 360** for hardware mode unless the phase plan documents a shorter deterministic test bound.
+4. **Agent/shell wall clock:** command and tool timeouts must exceed the flash plus monitor budget; prefer **≥ 420 seconds** wall clock when using a 360-second capture timeout.
+5. **Do not treat early exit as failure** until the full timeout elapses unless the repo-owned flash tool reports a hard error (flash/write failure, missing trusted boot markers after complete capture, and similar).
+
+### Evidence Workflow: Hardware-First Default
+
+Agents executing phase evidence wrappers (`phase23-evidence`, `phase25-evidence`, `phase27-evidence`, and future `phase*-evidence` scripts with `blocked|hardware` modes) must:
+
+1. **Always attempt hardware path first** when the phase scope includes detector-gated Ultra 205 evidence:
+   - Run `just detect-ultra205` before any flash/monitor/evidence work.
+   - If detection passes **and** required local credential files exist, run `--mode hardware` (not `--mode blocked`).
+2. **Use blocked mode only as fallback** when:
+   - Detection fails (zero/ambiguous ports, board-info failure),
+   - Required credentials are absent,
+   - User explicitly requests CI-safe/static workflow proof, or
+   - Phase plan explicitly requires blocked mode for deterministic Bazel tests only.
+3. **Never skip detection** and jump to blocked mode when a board may be connected (standing permission in Autonomous Ultra 205 section applies).
+4. **Build phase-correct firmware** before flash when compile-time evidence mode gates exist (Phase 21/25/27 pattern); default `just build` is fail-closed. Use `scripts/phase27-live-hardware-bridge-package.sh` or equivalent `action_env` for Phase 27 enablement.
+5. **Promotion:** hardware artifacts intended for commit must pass redaction review (`redact-evidence=true` or equivalent) before updating `docs/parity/evidence/`.
+
 ### Agent-Performed Simple UAT
 
 - When starting or resuming `$gsd-verify-work`, agents may complete simple UAT checkpoints without waiting for the user only when the expected behavior is objectively verifiable from repo artifacts or non-destructive commands.

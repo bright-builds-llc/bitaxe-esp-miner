@@ -1,0 +1,53 @@
+{
+  "board": "205",
+  "port": "/dev/cu.usbmodem1101",
+  "detector_command": "just detect-ultra205",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
+  "package_manifest": "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
+  "source_commit": "92e838ac9ef1e6fb7c343883388e363ca05438f3",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "surface": "live-hardware-bridge",
+  "evidence_mode": "phase27-live-hardware-asic-stratum-bridge",
+  "evidence_ack": "ultra205-phase27-live-hardware-bridge-safe-stop",
+  "claim_tier": "safe-prerequisite-blocked",
+  "evidence_class": "workflow",
+  "allowed_command": "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root .planning/phases/27-live-hardware-asic-and-stratum-bridge/hardware-run-20260705-safety-bringup-retry2 --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --mode hardware --duration-seconds 360 --port [redacted-port] --pool-credentials [redacted-local-path] --wifi-credentials [redacted-local-path] --redact-evidence=true",
+  "allowed_inputs": {
+    "pool_config": "local-owner-supplied",
+    "wifi_config": "local-owner-supplied",
+    "port_source": "explicit",
+    "duration_seconds": 360,
+    "redact_evidence": "true",
+    "target_source": "explicit-or-blocked",
+    "share_outcome": "blocked_safe_prerequisite",
+    "asic_bridge_status": "blocked",
+    "safe_stop_status": "complete"
+  },
+  "abort_conditions": [
+    "detector_mismatch",
+    "board_info_failure",
+    "missing_trusted_wrapper_markers",
+    "redaction_uncertainty",
+    "unsafe_temperature_or_power",
+    "asic_bridge_blocked"
+  ],
+  "recovery_steps": [
+    "safe_stop",
+    "just flash board=205 port=/dev/cu.usbmodem1101"
+  ],
+  "post_action_safe_state_markers": [
+    "safe_state: mining=disabled",
+    "hardware_control=disabled",
+    "work_submission=disabled"
+  ],
+  "prerequisite_artifacts": [
+    ".planning/phases/27-live-hardware-asic-and-stratum-bridge/hardware-run-20260705-safety-bringup-retry2/detector.md",
+    ".planning/phases/27-live-hardware-asic-and-stratum-bridge/hardware-run-20260705-safety-bringup-retry2/board-info.md",
+    ".planning/phases/27-live-hardware-asic-and-stratum-bridge/hardware-run-20260705-safety-bringup-retry2/redaction-review.md"
+  ],
+  "evidence_dir": ".planning/phases/27-live-hardware-asic-and-stratum-bridge/hardware-run-20260705-safety-bringup-retry2",
+  "redaction_reviewer": "phase-27-wrapper",
+  "checklist_rows": ["STR-08", "STR-09", "ASIC-10", "ASIC-11"]
+}

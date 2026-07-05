@@ -28,6 +28,7 @@ const ALLOWED_SURFACES: &[&str] = &[
     "failure-paths",
     "live-api-websocket-telemetry",
     "parity-redaction",
+    "phase27-live-hardware-bridge",
 ];
 const ALLOWED_CLAIM_TIERS: &[&str] = &[
     "safe-baseline",
@@ -510,6 +511,12 @@ fn allowed_claim_tiers_for_surface(surface: &str) -> &'static [&'static str] {
             "unsupported-pending",
         ],
         "parity-redaction" => &["parity-redaction", "unsupported-pending"],
+        "phase27-live-hardware-bridge" => &[
+            "bounded-actuation",
+            "read-only-observation",
+            "safe-unavailable",
+            "unsupported-pending",
+        ],
         _ => &[],
     }
 }
@@ -572,6 +579,12 @@ fn is_expected_safety_command(manifest: &SafetyAllowManifest, tokens: &[&str]) -
                 && has_option_with_value(tokens, "--out-dir")
         }
         "parity-redaction" => starts_with_tokens(tokens, &["rg"]),
+        "phase27-live-hardware-bridge" => {
+            starts_with_tokens(tokens, &["scripts/phase27-live-hardware-bridge-evidence.sh"])
+                && has_option_with_value(tokens, "--evidence-root")
+                && has_option_with_value(tokens, "--manifest")
+                && option_equals(tokens, "--mode", "hardware")
+        }
         _ => false,
     }
 }
@@ -1021,6 +1034,39 @@ mod tests {
                 "{surface}/{claim_tier} should pass: {report:#?}"
             );
         }
+    }
+
+    #[test]
+    fn safety_allow_allows_phase27_live_hardware_bridge_bounded_actuation() {
+        // Arrange
+        let (manifest, package_manifest) = manifest_with_change(|json| {
+            json["surface"] = serde_json::json!("phase27-live-hardware-bridge");
+            json["claim_tier"] = serde_json::json!("bounded-actuation");
+            json["evidence_class"] = serde_json::json!("hardware-regression");
+            json["allowed_command"] = serde_json::json!(
+                "scripts/phase27-live-hardware-bridge-evidence.sh --evidence-root evidence/phase27 --manifest package.json --mode hardware --duration-seconds 360 --redact-evidence=true"
+            );
+            json["allowed_inputs"] = serde_json::json!({
+                "bounded_actuation": "startup_fan_and_default_voltage_only",
+                "boot_markers": [
+                    "phase27_safety_bring_up=complete",
+                    "safety_power_status=observed",
+                    "safety_thermal_status=observed",
+                    "safety_fan_status=startup_duty",
+                    "asic_enable_status=active"
+                ]
+            });
+            json["evidence_dir"] = serde_json::json!(
+                "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge"
+            );
+            json["checklist_rows"] = serde_json::json!(["STR-08", "STR-09", "ASIC-10", "ASIC-11"]);
+        });
+
+        // Act
+        let report = validate_safety_allow_manifest(&manifest, &package_manifest);
+
+        // Assert
+        assert!(report.passed(), "{report:#?}");
     }
 
     #[test]

@@ -269,7 +269,7 @@ write_allow_manifest() {
     "pool_config": "${pool_config_label}",
     "wifi_config": "${wifi_config_label}",
     "device_url": "${device_url_label}",
-    "duration_seconds": ${duration_seconds:-60},
+    "duration_seconds": ${duration_seconds:-360},
     "target_source": "explicit-or-blocked",
     "conclusion": "${conclusion}",
     "safe_stop_status": "${safe_stop_status}",
@@ -509,7 +509,7 @@ run_live_capture_attempt() {
 		"port=${detected_port}"
 		"evidence-dir=${evidence_root}/live-capture-runtime"
 		"redact-evidence=true"
-		"duration-seconds=${duration_seconds:-60}"
+		"duration-seconds=${duration_seconds:-360}"
 		"device-url=${device_url}"
 	)
 

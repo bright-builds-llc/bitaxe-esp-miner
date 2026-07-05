@@ -1,11 +1,11 @@
 # Phase 27 board-info Evidence
 
 slot: board-info
-slot_status: blocked
+slot_status: passed
 board: 205
-source_commit: 5e8461ccd64d2aab163c956d1b089511bda499c8
+source_commit: 92e838ac9ef1e6fb7c343883388e363ca05438f3
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
-package_identity: /tmp/phase27-manifest.json
+package_identity: bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
 evidence_mode: phase27-live-hardware-asic-stratum-bridge
 evidence_ack: ultra205-phase27-live-hardware-bridge-safe-stop
 detector_evidence: just detect-ultra205
@@ -14,23 +14,23 @@ command_category: repo-owned-phase27-live-hardware-bridge-evidence
 redaction_status: passed
 share_outcome: blocked_safe_prerequisite
 asic_bridge_status: blocked
-safe_stop_status: complete
+safe_stop_status: blocked
 raw_artifacts_committed: no
-pool_config: not-supplied
-wifi_config: not-supplied
-port_source: not-supplied
-duration_seconds: not-requested
-redact_evidence: not-requested
+pool_config: local-owner-supplied
+wifi_config: local-owner-supplied
+port_source: explicit
+duration_seconds: 120
+redact_evidence: true
 raw_pool_values_committed: no
 network_scan: disabled
 
 ## observed_behavior
 
-Board-info status is blocked; hardware promotion requires ESP32-S3 board-info in the same detector-gated session.
+Board-info passed for ESP32-S3 before the live capture attempt.
 
 ## conclusion
 
-Phase 27 records an exact blocked safe-prerequisite non-claim: blocked_mode_static_workflow.
+Phase 27 attempted bounded detector-gated live hardware bridge capture, but no valid accepted/rejected share outcome with ASIC bridge markers was observed.
 
 ## exact_non_claims
 

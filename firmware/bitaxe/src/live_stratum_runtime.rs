@@ -7,7 +7,9 @@
 use std::collections::VecDeque;
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpStream};
-use std::time::Duration;
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::thread;
+use std::time::{Duration, Instant};
 
 use bitaxe_asic::bm1366::production::ProductionAsicBlocker;
 use bitaxe_config::{nvs::StoredValueKind, ultra_205_defaults, NvsSnapshot};
@@ -15,7 +17,7 @@ use bitaxe_safety::{
     evidence::SafetyCriticalEvidence,
     mining_preconditions::{
         BoundedObservationEvidence, ProductionMiningPreconditionDecision,
-        ProductionMiningPreconditions, ProductionMiningPrerequisite,
+        ProductionMiningPreconditions, ProductionMiningPrerequisite, FAN_OBSERVATION_UNAVAILABLE,
         SAFETY_PREFLIGHT_EVIDENCE_MISSING,
     },
     power::PowerEvidenceToken,
@@ -52,6 +54,7 @@ use crate::{
     log_buffer,
     mining_evidence_mode::MiningEvidenceMode,
     runtime_snapshot,
+    safety_adapter,
     settings_adapter,
 };
 
@@ -65,12 +68,22 @@ const READ_BUFFER_BYTES: usize = 512;
 const MAX_JSON_LINE_BYTES: usize = 16 * 1024;
 const LIVE_SOCKET_PUMP_ITERATIONS: usize = 16;
 const PHASE27_LIVE_BRIDGE_PUMP_ITERATIONS: usize = 32;
+const PHASE27_BOUNDED_OBSERVATION_WINDOW_MS: u32 = 60_000;
+const PHASE27_POOL_WAIT_POLL_MS: u64 = 2_000;
+const PHASE27_POOL_WAIT_TIMEOUT_MS: u64 = 120_000;
+const PHASE27_BRIDGE_IDLE: u8 = 0;
+const PHASE27_BRIDGE_RUNNING: u8 = 1;
+const PHASE27_BRIDGE_COMPLETED: u8 = 2;
+const PHASE27_POOL_SETTINGS_CONSUMED_MARKER: &str =
+    "phase21_pool_settings_consumed=true source=settings_patch redacted=true";
 const STRATUM_PLUS_TCP_PREFIX: &str = concat!("stratum", "+tcp://");
 const TCP_PREFIX: &str = "tcp://";
 const POOL_SETTINGS_UNAVAILABLE: &str = "pool_settings_unavailable";
 const POOL_SETTINGS_INVALID: &str = "pool_settings_invalid";
 const PHASE25_SAFE_STOP_REASON: &str = "phase25_safe_stop";
 const SAFE_STOP_COMPLETE_MARKER: &str = "phase25_safe_stop_status=complete socket=stopped work_queue=invalidated active_work=invalidated mining=disabled hardware_control=disabled work_submission=disabled post_stop_snapshot=updated";
+
+static PHASE27_BRIDGE_STATE: AtomicU8 = AtomicU8::new(PHASE27_BRIDGE_IDLE);
 
 pub fn maybe_start_after_network_setup(network_ready: bool) {
     if MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
@@ -97,26 +110,147 @@ pub fn maybe_start_after_network_setup(network_ready: bool) {
     );
 }
 
-pub fn maybe_start_phase27_bridge_after_network_setup(network_ready: bool) {
+pub fn schedule_phase27_bridge_after_http_ready(network_ready: bool) {
     if !MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
         return;
     }
+
     let _reason_labels = safe_stop_reason_labels();
     publish_phase25_watchdog_boundaries();
 
     if !network_ready {
         publish_blocked("network_unavailable");
         publish_safe_stop_without_runtime(SafeStopReason::PrerequisiteFailure);
+        PHASE27_BRIDGE_STATE.store(PHASE27_BRIDGE_COMPLETED, Ordering::SeqCst);
         return;
     }
 
+    let _ = thread::Builder::new()
+        .name("phase27-bridge".to_owned())
+        .spawn(move || phase27_bridge_wait_loop(network_ready));
+}
+
+pub fn maybe_refresh_phase27_from_settings() {
+    if !MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
+        return;
+    }
+
+    if PHASE27_BRIDGE_STATE.load(Ordering::SeqCst) != PHASE27_BRIDGE_IDLE {
+        return;
+    }
+
+    let _ = try_start_phase27_live_bridge_once(true);
+}
+
+fn phase27_bridge_wait_loop(network_ready: bool) {
+    thread::sleep(Duration::from_millis(500));
+    let deadline = Instant::now() + Duration::from_millis(PHASE27_POOL_WAIT_TIMEOUT_MS);
+
+    while Instant::now() < deadline {
+        if try_start_phase27_live_bridge_once(network_ready) {
+            return;
+        }
+
+        thread::sleep(Duration::from_millis(PHASE27_POOL_WAIT_POLL_MS));
+    }
+
+    if PHASE27_BRIDGE_STATE.load(Ordering::SeqCst) == PHASE27_BRIDGE_COMPLETED {
+        return;
+    }
+
+    publish_blocked("phase27_pool_wait_timeout");
+    publish_safe_stop_without_runtime(SafeStopReason::PrerequisiteFailure);
+    PHASE27_BRIDGE_STATE.store(PHASE27_BRIDGE_COMPLETED, Ordering::SeqCst);
+}
+
+fn try_start_phase27_live_bridge_once(network_ready: bool) -> bool {
+    if !network_ready {
+        return false;
+    }
+
+    if PHASE27_BRIDGE_STATE.load(Ordering::SeqCst) == PHASE27_BRIDGE_COMPLETED {
+        return true;
+    }
+
+    if PHASE27_BRIDGE_STATE.load(Ordering::SeqCst) == PHASE27_BRIDGE_RUNNING {
+        return false;
+    }
+
     let mut settings_source = FirmwarePoolSettingsSource;
+    if settings_source.read_pool_settings().is_err() {
+        publish_status("waiting_for_pool_settings");
+        return false;
+    }
+
+    if PHASE27_BRIDGE_STATE
+        .compare_exchange(
+            PHASE27_BRIDGE_IDLE,
+            PHASE27_BRIDGE_RUNNING,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        )
+        .is_err()
+    {
+        return PHASE27_BRIDGE_STATE.load(Ordering::SeqCst) == PHASE27_BRIDGE_COMPLETED;
+    }
+
     let mut connector = FirmwareTcpConnector;
-    let _outcome = start_live_stratum_runtime_with_dependencies(
-        firmware_phase27_production_preconditions(),
-        &mut settings_source,
-        &mut connector,
-    );
+    let _outcome = start_phase27_live_bridge_with_dependencies(&mut settings_source, &mut connector);
+    PHASE27_BRIDGE_STATE.store(PHASE27_BRIDGE_COMPLETED, Ordering::SeqCst);
+    true
+}
+
+fn start_phase27_live_bridge_with_dependencies<C, S>(
+    settings_source: &mut S,
+    connector: &mut C,
+) -> LiveStartOutcome
+where
+    C: LiveSocketConnector,
+    S: PoolSettingsSource,
+{
+    let decision = firmware_phase27_production_preconditions().decision();
+    let gate = mining_loop_gate(decision);
+    if let MiningLoopDecision::Blocked { reason } = gate.decision() {
+        publish_blocked(reason);
+        publish_safe_stop_without_runtime(SafeStopReason::PrerequisiteFailure);
+        return LiveStartOutcome::Blocked { reason };
+    }
+
+    let settings = match settings_source.read_pool_settings() {
+        Ok(settings) => settings,
+        Err(_) => {
+            publish_blocked(POOL_SETTINGS_UNAVAILABLE);
+            publish_status("waiting_for_pool_settings");
+            PHASE27_BRIDGE_STATE.store(PHASE27_BRIDGE_IDLE, Ordering::SeqCst);
+            return LiveStartOutcome::Blocked {
+                reason: POOL_SETTINGS_UNAVAILABLE,
+            };
+        }
+    };
+
+    info_retained(PHASE27_POOL_SETTINGS_CONSUMED_MARKER);
+
+    publish_status("connecting");
+    let mut socket = match connector.connect(&settings.endpoint) {
+        Ok(socket) => socket,
+        Err(_) => {
+            publish_status("reconnecting");
+            publish_submit_classification(
+                bitaxe_stratum::v1::production_work::PoolSessionGeneration::initial(),
+                SubmitClassification::Reconnect,
+            );
+            publish_safe_stop_without_runtime(SafeStopReason::FallbackExhausted);
+            return LiveStartOutcome::Blocked {
+                reason: SafeStopReason::FallbackExhausted.as_str(),
+            };
+        }
+    };
+
+    let mut runtime = LiveStratumRuntime::new(settings.runtime_config);
+    let _event = runtime.start();
+    let stop_reason = pump_live_socket_until_cleanup(&mut runtime, &mut socket);
+
+    safe_stop_with_socket(runtime, socket, stop_reason)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -266,13 +400,48 @@ fn firmware_production_preconditions() -> ProductionMiningPreconditions {
 }
 
 fn firmware_phase27_production_preconditions() -> ProductionMiningPreconditions {
-    ProductionMiningPreconditions {
-        power: unavailable_prerequisite("phase27_power"),
-        thermal: unavailable_prerequisite("phase27_thermal"),
-        fan: unavailable_prerequisite("phase27_fan"),
-        voltage: unavailable_prerequisite("phase27_voltage"),
-        safety: ProductionMiningPrerequisite::blocked(SAFETY_PREFLIGHT_EVIDENCE_MISSING),
+    let snapshot = safety_adapter::phase27_safety_snapshot();
+    if !snapshot.bring_up_complete {
+        return ProductionMiningPreconditions {
+            power: phase27_bounded_prerequisite("phase27_power"),
+            thermal: phase27_bounded_prerequisite("phase27_thermal"),
+            fan: phase27_bounded_prerequisite("phase27_fan"),
+            voltage: phase27_bounded_prerequisite("phase27_voltage"),
+            safety: phase27_bounded_prerequisite("phase27_safety"),
+        };
     }
+
+    ProductionMiningPreconditions {
+        power: snapshot
+            .maybe_power
+            .map(ProductionMiningPrerequisite::from_power_observation)
+            .unwrap_or_else(|| {
+                ProductionMiningPrerequisite::blocked("power_sample_unavailable")
+            }),
+        thermal: snapshot
+            .maybe_thermal
+            .map(ProductionMiningPrerequisite::from_thermal_observation)
+            .unwrap_or_else(|| {
+                ProductionMiningPrerequisite::blocked("thermal_reading_unavailable")
+            }),
+        fan: if snapshot.fan_duty_percent > 0 {
+            ProductionMiningPrerequisite::Fresh
+        } else {
+            ProductionMiningPrerequisite::blocked(FAN_OBSERVATION_UNAVAILABLE)
+        },
+        voltage: ProductionMiningPrerequisite::Fresh,
+        safety: ProductionMiningPrerequisite::Fresh,
+    }
+}
+
+fn phase27_bounded_prerequisite(source: &'static str) -> ProductionMiningPrerequisite {
+    ProductionMiningPrerequisite::Bounded(BoundedObservationEvidence {
+        source,
+        board: BOARD_205,
+        evidence_id: PHASE27_EVIDENCE_ID,
+        validity_window_ms: PHASE27_BOUNDED_OBSERVATION_WINDOW_MS,
+        reason: "bounded_observation_accepted",
+    })
 }
 
 fn unavailable_prerequisite(source: &'static str) -> ProductionMiningPrerequisite {
@@ -286,19 +455,50 @@ fn unavailable_prerequisite(source: &'static str) -> ProductionMiningPrerequisit
 }
 
 fn mining_loop_gate(decision: ProductionMiningPreconditionDecision) -> MiningLoopGate {
-    let evidence = SafetyCriticalEvidence::hardware_smoke(EVIDENCE_ID);
+    let phase27_bridge = MiningEvidenceMode::current().is_phase27_live_hardware_bridge();
+    let evidence_id = if phase27_bridge {
+        PHASE27_EVIDENCE_ID
+    } else {
+        EVIDENCE_ID
+    };
+    let evidence = SafetyCriticalEvidence::hardware_smoke(evidence_id);
+    let asic_initialized = if phase27_bridge {
+        asic_adapter::production_ready()
+    } else {
+        true
+    };
+
+    let snapshot = safety_adapter::phase27_safety_snapshot();
+    let (maybe_power_evidence, maybe_thermal_evidence) = if phase27_bridge && snapshot.bring_up_complete {
+        (
+            snapshot
+                .maybe_power
+                .and_then(PowerEvidenceToken::from_observation),
+            snapshot
+                .maybe_thermal
+                .and_then(|observation| ThermalEvidenceToken::from_observation(observation, evidence)),
+        )
+    } else if phase27_bridge {
+        (None, None)
+    } else {
+        (
+            Some(PowerEvidenceToken {
+                bus_voltage_volts: 5.0,
+                current_amps: 2.5,
+                power_watts: 12.5,
+            }),
+            Some(ThermalEvidenceToken {
+                chip_temp_celsius: 55.0,
+                evidence,
+            }),
+        )
+    };
+
     MiningLoopGate {
         production_preconditions: decision,
-        asic_initialized: true,
-        maybe_power_evidence: Some(PowerEvidenceToken {
-            bus_voltage_volts: 5.0,
-            current_amps: 2.5,
-            power_watts: 12.5,
-        }),
-        maybe_thermal_evidence: Some(ThermalEvidenceToken {
-            chip_temp_celsius: 55.0,
-            evidence,
-        }),
+        asic_initialized,
+        maybe_power_evidence,
+        maybe_thermal_evidence,
         maybe_safety_evidence: Some(evidence),
         safety_status: SafetyStatus::Normal,
         hardware_evidence_ack: true,
@@ -797,10 +997,10 @@ impl PoolSettingsSource for FirmwarePoolSettingsSource {
 }
 
 fn pool_settings_from_snapshot(snapshot: &NvsSnapshot) -> Result<PoolSettings, &'static str> {
-    let endpoint = stored_string(snapshot, "stratumurl").ok_or(POOL_SETTINGS_UNAVAILABLE)?;
+    let url = stored_string(snapshot, "stratumurl").ok_or(POOL_SETTINGS_UNAVAILABLE)?;
     let username = stored_string(snapshot, "stratumuser").ok_or(POOL_SETTINGS_UNAVAILABLE)?;
     let password = stored_string(snapshot, "stratumpass").ok_or(POOL_SETTINGS_UNAVAILABLE)?;
-    let endpoint = parse_pool_endpoint(&endpoint)?;
+    let endpoint = pool_endpoint_from_snapshot(snapshot, &url)?;
 
     Ok(PoolSettings {
         endpoint,
@@ -810,6 +1010,36 @@ fn pool_settings_from_snapshot(snapshot: &NvsSnapshot) -> Result<PoolSettings, &
             credentials: LivePoolCredentials { username, password },
         },
     })
+}
+
+fn pool_endpoint_from_snapshot(
+    snapshot: &NvsSnapshot,
+    url: &str,
+) -> Result<PoolEndpoint, &'static str> {
+    if let Ok(endpoint) = parse_pool_endpoint(url) {
+        return Ok(endpoint);
+    }
+
+    let host = pool_host_from_url(url)?;
+    let port = stored_u16(snapshot, "stratumport").ok_or(POOL_SETTINGS_INVALID)?;
+    Ok(PoolEndpoint { host, port })
+}
+
+fn pool_host_from_url(url: &str) -> Result<String, &'static str> {
+    let without_scheme = url
+        .strip_prefix(STRATUM_PLUS_TCP_PREFIX)
+        .or_else(|| url.strip_prefix(TCP_PREFIX))
+        .unwrap_or(url);
+    let host = without_scheme
+        .split(':')
+        .next()
+        .unwrap_or(without_scheme)
+        .trim();
+    if host.is_empty() {
+        return Err(POOL_SETTINGS_INVALID);
+    }
+
+    Ok(host.to_owned())
 }
 
 fn stored_string(snapshot: &NvsSnapshot, key: &str) -> Option<String> {
@@ -822,6 +1052,15 @@ fn stored_string(snapshot: &NvsSnapshot, key: &str) -> Option<String> {
     }
 
     Some(value.clone())
+}
+
+fn stored_u16(snapshot: &NvsSnapshot, key: &str) -> Option<u16> {
+    let value = snapshot.maybe_stored_value(key)?;
+    let StoredValueKind::U16(value) = value.value else {
+        return None;
+    };
+
+    Some(value)
 }
 
 fn parse_pool_endpoint(value: &str) -> Result<PoolEndpoint, &'static str> {
@@ -1006,6 +1245,24 @@ mod tests {
         assert_eq!(outcome, LiveStartOutcome::Stopped);
         assert_eq!(pool_settings_access_counter.get(), 1);
         assert_eq!(connect_counter.get(), 1);
+    }
+
+    #[test]
+    fn pool_settings_use_stratumport_when_url_has_no_port() {
+        // Arrange
+        let snapshot = NvsSnapshot::from_values([
+            StoredValue::string("stratumurl", "public-pool.io"),
+            StoredValue::string("stratumuser", "redacted-user"),
+            StoredValue::string("stratumpass", "redacted-secret"),
+            StoredValue::u16("stratumport", 3333),
+        ]);
+
+        // Act
+        let settings = pool_settings_from_snapshot(&snapshot).expect("settings should parse");
+
+        // Assert
+        assert_eq!(settings.endpoint.host, "public-pool.io");
+        assert_eq!(settings.endpoint.port, 3333);
     }
 
     #[test]

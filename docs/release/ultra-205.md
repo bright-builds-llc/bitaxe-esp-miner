@@ -398,7 +398,9 @@ board-info, stop and keep hardware slots blocked. Do not infer targets from
 stale `DEVICE_URL`, mDNS, ARP, router state, network scans, or unrelated
 evidence.
 
-Use the blocked mode as the non-secret workflow proof:
+Agents must attempt hardware mode first when detection passes and local
+credential files exist. See `AGENTS.md` → Evidence Workflow: Hardware-First
+Default. Use blocked mode only as the CI/no-hardware fallback:
 
 ```bash
 just phase23-evidence --evidence-root docs/parity/evidence/phase-23-redacted-operator-evidence-workflow --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --mode blocked
@@ -426,6 +428,40 @@ Use the factory image path from
 `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` when recovery requires
 a full USB flash baseline. Record the exact port, package manifest, source
 commit, reference commit, and observed flash result.
+
+## Phase 27 Live Hardware ASIC And Stratum Bridge
+
+Phase 27 evidence requires Phase 27 enablement firmware before flash. Build and
+package with:
+
+```bash
+scripts/phase27-live-hardware-bridge-package.sh
+```
+
+Or equivalent Bazel `action_env` for
+`BITAXE_MINING_EVIDENCE_MODE=phase27-live-hardware-asic-stratum-bridge` and
+`BITAXE_HARDWARE_EVIDENCE_ACK=ultra205-phase27-live-hardware-bridge-safe-stop`.
+
+Agents must attempt hardware mode first when detection and credentials are
+available. See `AGENTS.md` → Evidence Workflow: Hardware-First Default. For
+flash and monitor capture, use at least `capture-timeout-seconds=360` or
+`--duration-seconds 360`; see `AGENTS.md` → Flash And Monitor Timeouts.
+
+```bash
+just detect-ultra205
+just phase27-evidence \
+  --evidence-root docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge \
+  --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json \
+  --mode hardware \
+  --port "<detected-port>" \
+  --pool-credentials pool-credentials.json \
+  --wifi-credentials wifi-credentials.json \
+  --duration-seconds 360 \
+  --redact-evidence=true
+```
+
+Use `--mode blocked` only as the CI/no-hardware fallback when detection fails or
+credentials are absent.
 
 ## Monitor
 

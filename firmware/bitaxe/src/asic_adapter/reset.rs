@@ -39,3 +39,13 @@ impl<'d> AsicReset<'d> {
         Ok(())
     }
 }
+
+impl crate::safety_adapter::Phase27BringUpReset for AsicReset<'_> {
+    fn hold_reset_low(&mut self) -> Result<()> {
+        AsicReset::hold_reset_low(self)
+    }
+
+    fn reset_pulse(&mut self, low_ms: u32, high_ms: u32) -> Result<()> {
+        AsicReset::reset_pulse(self, low_ms, high_ms)
+    }
+}

@@ -1,0 +1,181 @@
+[2026-07-05T18:18:43Z INFO ] 🚀 A new version of espflash is available: v4.4.0
+[2026-07-05T18:18:43Z INFO ] Serial port: '/dev/cu.usbmodem1101'
+[2026-07-05T18:18:43Z INFO ] Connecting...
+[2026-07-05T18:18:43Z INFO ] Using flash stub
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x28 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40378cab
+SPIWP:0xee
+mode:DIO, clock div:2
+load:0x3fce2810,len:0x15a0
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xd24
+load:0x403cb700,len:0x2f04
+entry 0x403c8928
+I (27) boot: ESP-IDF v5.4.1-426-g3ad36321ea 2nd stage bootloader
+I (27) boot: compile time Apr 24 2025 15:55:11
+I (28) boot: Multicore bootloader
+I (29) boot: chip revision: v0.2
+I (32) boot: efuse block revision: v1.3
+I (35) boot.esp32s3: Boot SPI Speed : 40MHz
+I (39) boot.esp32s3: SPI Mode       : DIO
+I (43) boot.esp32s3: SPI Flash Size : 16MB
+I (47) boot: Enabling RNG early entropy source...
+I (51) boot: Partition Table:
+I (54) boot: ## Label            Usage          Type ST Offset   Length
+I (60) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (67) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (73) boot:  2 factory          factory app      00 00 00010000 00fa0000
+I (80) boot: End of partition table
+I (83) esp_image: segment 0: paddr=00010020 vaddr=3c120020 size=3ffd4h (262100) map
+I (155) esp_image: segment 1: paddr=0004fffc vaddr=3fc9c300 size=0001ch (    28) load
+I (155) esp_image: segment 2: paddr=00050020 vaddr=42000020 size=11def4h (1171188) map
+I (446) esp_image: segment 3: paddr=0016df1c vaddr=3fc9c31c size=05b48h ( 23368) load
+I (453) esp_image: segment 4: paddr=00173a6c vaddr=40374000 size=18284h ( 98948) load
+I (481) esp_image: segment 5: paddr=0018bcf8 vaddr=50000000 size=00020h (    32) load
+I (491) boot: Loaded app from partition at offset 0x10000
+I (492) boot: Disabling RNG early entropy source...
+I (502) octal_psram: vendor id    : 0x0d (AP)
+I (502) octal_psram: dev id       : 0x02 (generation 3)
+I (502) octal_psram: density      : 0x03 (64 Mbit)
+I (504) octal_psram: good-die     : 0x01 (Pass)
+I (508) octal_psram: Latency      : 0x01 (Fixed)
+I (513) octal_psram: VCC          : 0x01 (3V)
+I (517) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (522) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (527) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (531) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (536) octal_psram: DriveStrength: 0x00 (1/1)
+I (541) MSPI Timing: Enter psram timing tuning
+I (545) esp_psram: Found 8MB PSRAM device
+I (548) esp_psram: Speed: 80MHz
+I (551) cpu_start: Multicore app
+I (977) esp_psram: SPI SRAM memory test OK
+I (986) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (986) cpu_start: Pro cpu start user code
+I (987) cpu_start: cpu freq: 160000000 Hz
+I (988) app_init: Application information:
+I (992) app_init: Project name:     libespidf
+I (996) app_init: App version:      dc9266e-dirty
+I (1000) app_init: Compile time:     Jun 28 2026 15:45:05
+I (1005) app_init: ELF file SHA256:  000000000...
+I (1010) app_init: ESP-IDF:          v5.5.4
+I (1014) efuse_init: Min chip rev:     v0.0
+I (1018) efuse_init: Max chip rev:     v0.99 
+I (1022) efuse_init: Chip rev:         v0.2
+I (1026) heap_init: Initializing. RAM available for dynamic allocation:
+I (1032) heap_init: At 3FCA32A0 len 00046470 (281 KiB): RAM
+I (1037) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (1042) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (1048) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (1053) esp_psram: Adding pool of 8179K of PSRAM memory to heap allocator
+I (1061) spi_flash: detected chip: gd
+I (1063) spi_flash: flash io: dio
+W (1067) i2c: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
+I (1076) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (1083) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (1090) main_task: Started on CPU0
+I (1100) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1100) main_task: Calling app_main()
+I (1100) bitaxe_firmware: bitaxe-rust boot: board=Ultra 205 asic=BM1366
+I (1130) bitaxe_firmware: safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled
+I (1140) esp_idf_svc::nvs: EspNvs dropped
+I (1140) esp_idf_svc::nvs: NvsDefault dropped
+W (1140) bitaxe_firmware::display_adapter: display_input_status=runtime_gap reason=hardware_evidence_pending startup_only=true
+I (1170) bitaxe_firmware::display_adapter: display_status=startup_text_rendered model=SSD1306 size=128x32 address=0x3c
+I (1170) bitaxe_firmware::asic_adapter::status: asic_status=preflight_missing reason=hardware_evidence_ack_missing initialized=false mining=disabled work_submission=disabled
+I (1190) bitaxe_firmware::boot_validation: ota_boot_validation=not_pending state=factory
+I (1190) bitaxe_firmware::asic_adapter::status: mining_loop_status=blocked reason=hardware_evidence_ack_missing work_submission=disabled
+I (1210) bitaxe_firmware::safety_adapter::watchdog: safety_supervisor=started thread=bitaxe-safety-supervisor cadence_ms=100
+I (1220) bitaxe_firmware::safety_adapter::watchdog: safety_supervisor_step=yield reason=yield_interval_reached
+I (1230) pp: pp rom version: e7ae62f
+I (1230) net80211: net80211 rom version: e7ae62f
+I (1240) wifi:wifi driver task: 3fced3e8, prio:23, stack:6656, core=0
+I (1240) wifi:wifi firmware version: 0947e8b
+I (1240) wifi:wifi certification version: v7.0
+I (1250) wifi:config NVS flash: disabled
+I (1250) wifi:config nano formatting: disabled
+I (1260) wifi:Init data frame dynamic rx buffer num: 32
+I (1260) wifi:Init static rx mgmt buffer num: 5
+I (1270) wifi:Init management short buffer num: 32
+I (1270) wifi:Init static tx buffer num: 16
+I (1270) wifi:Init tx cache buffer num: 32
+I (1280) wifi:Init static tx FG buffer num: 2
+I (1280) wifi:Init static rx buffer size: 1600
+I (1290) wifi:Init static rx buffer num: 16
+I (1290) wifi:Init dynamic rx buffer num: 32
+I (1290) wifi_init: rx ba win: 16
+I (1300) wifi_init: accept mbox: 6
+I (1300) wifi_init: tcpip mbox: 32
+I (1300) wifi_init: udp mbox: 6
+I (1310) wifi_init: tcp mbox: 6
+I (1310) wifi_init: tcp tx win: 5760
+I (1310) wifi_init: tcp rx win: 5760
+I (1320) wifi_init: tcp mss: 1440
+I (1320) wifi_init: WiFi/LWIP prefer SPIRAM
+I (1320) wifi_init: WiFi IRAM OP enabled
+I (1330) wifi_init: WiFi RX IRAM OP enabled
+I (1330) bitaxe_firmware::wifi_adapter: wifi_hostname_status=applied
+I (1340) phy_init: phy_version 711,97bcf0a2,Aug 25 2025,19:04:10
+W (1340) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1380) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1400) wifi:mode : sta ([redacted-mac])
+I (1400) wifi:enable tsf
+I (3880) wifi:new:<11,0>, old:<1,0>, ap:<255,255>, sta:<11,0>, prof:1, snd_ch_cfg:0x0
+I (3880) wifi:state: init -> auth (0xb0)
+I (4010) wifi:state: auth -> assoc (0x0)
+I (4030) wifi:state: assoc -> run (0x10)
+I (4070) wifi:connected with [redacted-ssid], aid = 1, channel 11, BW20, bssid = [redacted-mac]
+I (4070) wifi:security: WPA2-PSK, phy: bgn, rssi: -42, cipher(pairwise:0x3, group:0x3), pmf:0
+I (4080) wifi:pm start, type: 1
+
+I (4080) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (4090) wifi:set rx beacon pti, rx_bcn_pti: 0, bcn_timeout: 25000, mt_pti: 0, mt_time: 10000
+I (4150) wifi:dp: 2, bi: 102400, li: 4, scale listen interval from 307200 us to 409600 us
+I (4150) wifi:AP's beacon interval = 102400 us, DTIM period = 2
+I (4570) wifi:<ba-add>idx:0 (ifx:0, [redacted-mac]), tid:0, ssn:0, winSize:64
+I (4610) wifi:<ba-add>idx:1 (ifx:0, [redacted-mac]), tid:6, ssn:2, winSize:64
+I (5620) esp_netif_handlers: sta ip: [redacted-ip], mask: [redacted-ip], gw: [redacted-ip]
+I (5620) bitaxe_firmware::wifi_adapter: wifi_status=connected ipv4=[redacted-ip][redacted-ip] device_url=[redacted-url]
+E (5620) SPIFFS: spiffs partition could not be found
+W (5630) bitaxe_firmware::filesystem: spiffs_mount=unavailable partition=www reason=partition_not_found esp_err=261 esp_err_name=ESP_ERR_NOT_FOUND
+I (5640) esp_idf_svc::http::server: Started Httpd server with config Configuration { http_port: 80, ctrl_port: 32768, https_port: 443, core: None, max_sessions: 16, session_timeout: 1200s, task_caps: 2052, stack_size: 8192, max_open_sockets: 7, max_uri_handlers: 32, max_resp_headers: 8, lru_purge_enable: true, uri_match_wildcard: true }
+I (5680) esp_idf_svc::nvs: EspNvs dropped
+I (5680) esp_idf_svc::nvs: NvsDefault dropped
+I (5680) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/recovery"
+I (5690) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/info"
+I (5690) esp_idf_svc::http::server: Registered Httpd server handler Patch for URI "/api/system"
+I (5700) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/logs"
+I (5710) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/asic"
+I (5720) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/statistics"
+I (5730) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/scoreboard"
+I (5740) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/pause"
+I (5750) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/resume"
+I (5760) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/restart"
+I (5770) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/identify"
+I (5770) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/blockFound/dismiss"
+I (5780) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/OTA"
+I (5790) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/OTAWWW"
+I (5800) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/*"
+I (5810) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/*"
+I (5820) esp_idf_svc::http::server: Registered Httpd server handler Patch for URI "/api/*"
+W (5830) bitaxe_firmware::static_files: static_files=spiffs_unavailable recovery=available
+I (5830) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/*"
+I (5840) bitaxe_firmware::http_api: axeos_api_route_shell=started manifest_routes=17 firmware_update_routes=1 otawww_gap_routes=1 recovery_routes=1 static_file_routes=1
+I (5860) bitaxe_firmware: reset_reason=11
+I (5860) bitaxe_firmware: partition=factory
+I (5860) bitaxe_firmware: psram_status=available
+I (5870) bitaxe_firmware: firmware_commit=92e838ac9ef1
+I (5870) bitaxe_firmware: reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50
+I (5880) bitaxe_firmware: esp_idf_version=v5.5.4
+I (5880) bitaxe_firmware: rust_target=xtensa-esp32s3-espidf
+I (5890) main_task: Returned from app_main()
+I (7050) bitaxe_firmware::http_api: axeos_settings_patch=accepted writes=4 effects=0
+I (7070) esp_idf_svc::nvs: EspNvs dropped
+I (7070) bitaxe_firmware::http_api: axeos_settings_patch=persistence_committed writes=4
+I (7070) bitaxe_firmware::http_api: axeos_settings_patch=response_scheduled status=200 empty_body=true
+I (7080) bitaxe_firmware::http_api: axeos_settings_patch=effects_scheduled
+I (7090) esp_idf_svc::nvs: EspNvs dropped
+I (7090) esp_idf_svc::nvs: NvsDefault dropped
+I (7190) bitaxe_firmware::http_api: axeos_settings_patch=effects_applied

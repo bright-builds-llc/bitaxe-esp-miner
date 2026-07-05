@@ -39,3 +39,6 @@ phase25-evidence *args:
 
 phase27-evidence *args:
     bazel run //scripts:phase27_live_hardware_bridge_evidence -- {{ args }}
+
+phase27-package:
+    scripts/phase27-live-hardware-bridge-package.sh

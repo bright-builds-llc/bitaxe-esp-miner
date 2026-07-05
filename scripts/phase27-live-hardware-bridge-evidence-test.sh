@@ -108,11 +108,23 @@ set -euo pipefail
 printf '%s\n' "$*" >"${PHASE27_FAKE_LIVE_CAPTURE_ARGS:?}"
 case "${PHASE27_FAKE_SHARE_OUTCOME:-accepted}" in
 accepted)
+	printf 'phase27_safety_bring_up=complete\n'
+	printf 'asic_enable_status=active gpio=10\n'
+	printf 'safety_power_status=observed\n'
+	printf 'safety_thermal_status=observed\n'
+	printf 'safety_fan_status=startup_duty percent=70 rpm=2400\n'
+	printf 'asic_production_status=initialized\n'
 	printf 'share_submission_status=accepted redacted=true\n'
 	printf 'asic_production_status=work_dispatched\n'
 	printf 'asic_production_status=result_correlated\n'
 	;;
 rejected)
+	printf 'phase27_safety_bring_up=complete\n'
+	printf 'asic_enable_status=active gpio=10\n'
+	printf 'safety_power_status=observed\n'
+	printf 'safety_thermal_status=observed\n'
+	printf 'safety_fan_status=startup_duty percent=70 rpm=2400\n'
+	printf 'asic_production_status=initialized\n'
 	printf 'share_submission_status=rejected redacted=true\n'
 	printf 'asic_production_status=work_dispatched\n'
 	printf 'asic_production_status=result_correlated\n'

@@ -33,8 +33,8 @@ use crate::runtime_snapshot::{
     projected_system_info,
 };
 use crate::{
-    controlled_mining_runtime, log_buffer, network_stack, settings_adapter, static_files,
-    websocket_api,
+    controlled_mining_runtime, live_stratum_runtime, log_buffer, network_stack, settings_adapter,
+    static_files, websocket_api,
 };
 
 type ApiRequest<'request, 'connection> = Request<&'request mut EspHttpConnection<'connection>>;
@@ -1009,6 +1009,7 @@ fn apply_settings_effects(effects: &[SettingsPersistenceEffect]) {
         }
     }
     controlled_mining_runtime::maybe_refresh_from_settings();
+    live_stratum_runtime::maybe_refresh_phase27_from_settings();
 }
 
 fn apply_hostname_effect(hostname: &str) {

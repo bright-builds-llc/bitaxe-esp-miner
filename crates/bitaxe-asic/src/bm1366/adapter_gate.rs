@@ -9,6 +9,8 @@ pub const CHIP_DETECT_DIAGNOSTIC: &str = "chip-detect";
 pub const HARDWARE_EVIDENCE_ACK: &str = "ultra205-chip-detect-safe-bench";
 pub const WORK_RESULT_DIAGNOSTIC: &str = "work-result";
 pub const WORK_RESULT_HARDWARE_EVIDENCE_ACK: &str = "ultra205-work-result-safe-bench";
+pub const PHASE27_LIVE_HARDWARE_BRIDGE_MODE: &str = "phase27-live-hardware-asic-stratum-bridge";
+pub const PHASE27_LIVE_HARDWARE_BRIDGE_ACK: &str = "ultra205-phase27-live-hardware-bridge-safe-stop";
 pub const DEFAULT_FAIL_CLOSED_STATUS_LOG: &str = "asic_status=preflight_missing reason=hardware_evidence_ack_missing initialized=false mining=disabled work_submission=disabled";
 pub const WORK_RESULT_DIAGNOSTIC_STARTED_LOG: &str =
     "asic_work_result_diagnostic=started mining=disabled";
@@ -24,6 +26,7 @@ pub enum AsicAdapterMode {
     FailClosed,
     ChipDetectOnly,
     WorkResultDiagnostic,
+    Phase27ProductionBridge,
 }
 
 impl AsicAdapterMode {
@@ -31,7 +34,14 @@ impl AsicAdapterMode {
     pub fn from_compile_env(
         maybe_diagnostic: Option<&str>,
         maybe_hardware_evidence_ack: Option<&str>,
+        maybe_mining_evidence_mode: Option<&str>,
     ) -> Self {
+        if maybe_mining_evidence_mode == Some(PHASE27_LIVE_HARDWARE_BRIDGE_MODE)
+            && maybe_hardware_evidence_ack == Some(PHASE27_LIVE_HARDWARE_BRIDGE_ACK)
+        {
+            return Self::Phase27ProductionBridge;
+        }
+
         if maybe_diagnostic == Some(CHIP_DETECT_DIAGNOSTIC)
             && maybe_hardware_evidence_ack == Some(HARDWARE_EVIDENCE_ACK)
         {
@@ -84,6 +94,7 @@ mod tests {
         default_fail_closed_status_log, work_result_diagnostic_dispatched_log,
         work_result_diagnostic_invalid_log, work_result_diagnostic_parsed_log,
         work_result_diagnostic_started_log, work_result_diagnostic_timeout_log, AsicAdapterMode,
+        PHASE27_LIVE_HARDWARE_BRIDGE_ACK, PHASE27_LIVE_HARDWARE_BRIDGE_MODE,
     };
 
     #[test]
@@ -105,8 +116,11 @@ mod tests {
         let maybe_hardware_evidence_ack = None;
 
         // Act
-        let observed =
-            AsicAdapterMode::from_compile_env(maybe_diagnostic, maybe_hardware_evidence_ack);
+        let observed = AsicAdapterMode::from_compile_env(
+            maybe_diagnostic,
+            maybe_hardware_evidence_ack,
+            None,
+        );
 
         // Assert
         assert_eq!(observed, AsicAdapterMode::FailClosed);
@@ -119,8 +133,11 @@ mod tests {
         let maybe_hardware_evidence_ack = None;
 
         // Act
-        let observed =
-            AsicAdapterMode::from_compile_env(maybe_diagnostic, maybe_hardware_evidence_ack);
+        let observed = AsicAdapterMode::from_compile_env(
+            maybe_diagnostic,
+            maybe_hardware_evidence_ack,
+            None,
+        );
 
         // Assert
         assert_eq!(observed, AsicAdapterMode::FailClosed);
@@ -133,8 +150,11 @@ mod tests {
         let maybe_hardware_evidence_ack = Some("wrong-bench");
 
         // Act
-        let observed =
-            AsicAdapterMode::from_compile_env(maybe_diagnostic, maybe_hardware_evidence_ack);
+        let observed = AsicAdapterMode::from_compile_env(
+            maybe_diagnostic,
+            maybe_hardware_evidence_ack,
+            None,
+        );
 
         // Assert
         assert_eq!(observed, AsicAdapterMode::FailClosed);
@@ -147,8 +167,11 @@ mod tests {
         let maybe_hardware_evidence_ack = Some("ultra205-chip-detect-safe-bench");
 
         // Act
-        let observed =
-            AsicAdapterMode::from_compile_env(maybe_diagnostic, maybe_hardware_evidence_ack);
+        let observed = AsicAdapterMode::from_compile_env(
+            maybe_diagnostic,
+            maybe_hardware_evidence_ack,
+            None,
+        );
 
         // Assert
         assert_eq!(observed, AsicAdapterMode::ChipDetectOnly);
@@ -161,8 +184,11 @@ mod tests {
         let maybe_hardware_evidence_ack = Some("ultra205-work-result-safe-bench");
 
         // Act
-        let observed =
-            AsicAdapterMode::from_compile_env(maybe_diagnostic, maybe_hardware_evidence_ack);
+        let observed = AsicAdapterMode::from_compile_env(
+            maybe_diagnostic,
+            maybe_hardware_evidence_ack,
+            None,
+        );
 
         // Assert
         assert_eq!(observed, AsicAdapterMode::WorkResultDiagnostic);
@@ -175,12 +201,64 @@ mod tests {
         let wrong_ack = Some("ultra205-chip-detect-safe-bench");
 
         // Act
-        let missing_observed = AsicAdapterMode::from_compile_env(Some("work-result"), missing_ack);
-        let wrong_observed = AsicAdapterMode::from_compile_env(Some("work-result"), wrong_ack);
+        let missing_observed =
+            AsicAdapterMode::from_compile_env(Some("work-result"), missing_ack, None);
+        let wrong_observed =
+            AsicAdapterMode::from_compile_env(Some("work-result"), wrong_ack, None);
 
         // Assert
         assert_eq!(missing_observed, AsicAdapterMode::FailClosed);
         assert_eq!(wrong_observed, AsicAdapterMode::FailClosed);
+    }
+
+    #[test]
+    fn adapter_gate_phase27_mode_and_ack_is_production_bridge() {
+        // Arrange
+        let maybe_mining_evidence_mode = Some(PHASE27_LIVE_HARDWARE_BRIDGE_MODE);
+        let maybe_hardware_evidence_ack = Some(PHASE27_LIVE_HARDWARE_BRIDGE_ACK);
+
+        // Act
+        let observed = AsicAdapterMode::from_compile_env(
+            None,
+            maybe_hardware_evidence_ack,
+            maybe_mining_evidence_mode,
+        );
+
+        // Assert
+        assert_eq!(observed, AsicAdapterMode::Phase27ProductionBridge);
+    }
+
+    #[test]
+    fn adapter_gate_phase27_ack_without_mining_mode_fails_closed() {
+        // Arrange
+        let maybe_hardware_evidence_ack = Some(PHASE27_LIVE_HARDWARE_BRIDGE_ACK);
+
+        // Act
+        let observed = AsicAdapterMode::from_compile_env(
+            Some("work-result"),
+            maybe_hardware_evidence_ack,
+            None,
+        );
+
+        // Assert
+        assert_eq!(observed, AsicAdapterMode::FailClosed);
+    }
+
+    #[test]
+    fn adapter_gate_phase27_mode_with_wrong_ack_fails_closed() {
+        // Arrange
+        let maybe_mining_evidence_mode = Some(PHASE27_LIVE_HARDWARE_BRIDGE_MODE);
+        let maybe_hardware_evidence_ack = Some("ultra205-work-result-safe-bench");
+
+        // Act
+        let observed = AsicAdapterMode::from_compile_env(
+            None,
+            maybe_hardware_evidence_ack,
+            maybe_mining_evidence_mode,
+        );
+
+        // Assert
+        assert_eq!(observed, AsicAdapterMode::FailClosed);
     }
 
     #[test]
