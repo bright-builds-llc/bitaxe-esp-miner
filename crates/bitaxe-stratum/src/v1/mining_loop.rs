@@ -8,9 +8,8 @@
 //! - Parity checklist rows `STR-006`, `STR-007`, and `STAT-004`
 
 use bitaxe_asic::bm1366::{
-    command::Bm1366Command,
+    production::Bm1366ProductionCommand,
     result::Bm1366NonceResult,
-    work::{Bm1366WorkFields, Bm1366WorkPayload},
 };
 use bitaxe_config::Ultra205Defaults;
 use bitaxe_safety::{
@@ -22,8 +21,9 @@ use bitaxe_safety::{
 };
 
 use crate::error::StratumV1Error;
-use crate::v1::mining::ShareSubmission;
-use crate::v1::queue::MiningWorkQueue;
+use crate::v1::production_work::{
+    CorrelationOutcome, ProductionNonceObservation, ProductionWorkRegistry, SubmitIntent,
+};
 use crate::v1::state::{
     MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus,
 };
@@ -148,8 +148,7 @@ pub enum GuardedMiningLoopSource {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GuardedBm1366DispatchPlan {
-    pub fields: Bm1366WorkFields,
-    pub maybe_command: Option<Bm1366Command>,
+    pub maybe_production_command: Option<Bm1366ProductionCommand>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -157,7 +156,7 @@ pub struct GuardedMiningLoopInputs {
     pub gate: MiningLoopGate,
     pub pool_defaults: Ultra205Defaults,
     pub source: GuardedMiningLoopSource,
-    pub work_queue: MiningWorkQueue,
+    pub production_registry: ProductionWorkRegistry,
     pub runtime_state: MiningRuntimeState,
     pub maybe_nonce_result: Option<Bm1366NonceResult>,
 }
@@ -166,9 +165,9 @@ pub struct GuardedMiningLoopInputs {
 pub struct GuardedMiningLoopPlan {
     pub source: GuardedMiningLoopSource,
     pub runtime_state: MiningRuntimeState,
-    pub work_queue: MiningWorkQueue,
+    pub production_registry: ProductionWorkRegistry,
     pub maybe_dispatch: Option<GuardedBm1366DispatchPlan>,
-    pub maybe_share_submission: Option<ShareSubmission>,
+    pub maybe_submit_intent: Option<SubmitIntent>,
 }
 
 impl GuardedMiningLoopInputs {
@@ -178,9 +177,9 @@ impl GuardedMiningLoopInputs {
             return Ok(GuardedMiningLoopPlan {
                 source: self.source,
                 runtime_state: self.runtime_state,
-                work_queue: self.work_queue,
+                production_registry: self.production_registry,
                 maybe_dispatch: None,
-                maybe_share_submission: None,
+                maybe_submit_intent: None,
             });
         }
 
@@ -189,43 +188,55 @@ impl GuardedMiningLoopInputs {
                 difficulty: f64::from(self.pool_defaults.primary_pool().difficulty()),
             });
 
-        let maybe_share_submission = self
-            .maybe_nonce_result
-            .and_then(|result| {
-                self.work_queue
-                    .maybe_active_work(result.job_id)
-                    .map(|work| (work, result))
-            })
-            .map(|(work, result)| ShareSubmission::from_nonce_result(work, result))
-            .transpose()?;
+        let maybe_submit_intent = if let Some(result) = self.maybe_nonce_result {
+            let observation = ProductionNonceObservation {
+                observed_generation: self.production_registry.generation(),
+                result,
+            };
+            match self.production_registry.correlate_nonce_result(observation) {
+                CorrelationOutcome::SubmitIntent(intent) => Some(intent),
+                CorrelationOutcome::Blocked { reason } => {
+                    self.runtime_state.block_work_submission(reason.as_str());
+                    return Ok(GuardedMiningLoopPlan {
+                        source: self.source,
+                        runtime_state: self.runtime_state,
+                        production_registry: self.production_registry,
+                        maybe_dispatch: None,
+                        maybe_submit_intent: None,
+                    });
+                }
+            }
+        } else {
+            None
+        };
 
-        if self.work_queue.is_empty() {
-            return Ok(GuardedMiningLoopPlan {
-                source: self.source,
-                runtime_state: self.runtime_state,
-                work_queue: self.work_queue,
-                maybe_dispatch: None,
-                maybe_share_submission,
-            });
-        }
-
-        let work = self.work_queue.dequeue_work()?;
-        if let Some(pool_difficulty) = work.maybe_pool_difficulty {
+        let dispatch = match self.production_registry.dispatch_next() {
+            Ok(dispatch) => dispatch,
+            Err(StratumV1Error::QueueEmpty) => {
+                return Ok(GuardedMiningLoopPlan {
+                    source: self.source,
+                    runtime_state: self.runtime_state,
+                    production_registry: self.production_registry,
+                    maybe_dispatch: None,
+                    maybe_submit_intent,
+                });
+            }
+            Err(error) => return Err(error),
+        };
+        if let Some(pool_difficulty) = dispatch.work.maybe_pool_difficulty {
             self.runtime_state.set_pool_difficulty(pool_difficulty);
         }
 
         Ok(GuardedMiningLoopPlan {
             source: self.source,
             runtime_state: self.runtime_state,
-            work_queue: self.work_queue,
+            production_registry: self.production_registry,
             maybe_dispatch: Some(GuardedBm1366DispatchPlan {
-                fields: work.fields,
-                maybe_command: Some(Bm1366Command::SendDiagnosticWork(Bm1366WorkPayload::new(
-                    work.asic_job_id,
-                    work.fields,
-                ))),
+                maybe_production_command: Some(Bm1366ProductionCommand::SendProductionWork(
+                    dispatch.work_payload,
+                )),
             }),
-            maybe_share_submission,
+            maybe_submit_intent,
         })
     }
 }
@@ -420,7 +431,7 @@ mod mining_loop_tests {
             WorkSubmissionGate::Blocked
         );
         assert!(plan.maybe_dispatch.is_none());
-        assert!(plan.maybe_share_submission.is_none());
+        assert!(plan.maybe_submit_intent.is_none());
     }
 
     #[test]

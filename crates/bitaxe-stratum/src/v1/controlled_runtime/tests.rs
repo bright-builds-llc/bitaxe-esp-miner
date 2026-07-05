@@ -1,7 +1,7 @@
 use bitaxe_asic::bm1366::{
-    command::Bm1366Command,
+    production::Bm1366ProductionCommand,
     result::Bm1366NonceResult,
-    work::{Bm1366JobId, Bm1366WorkPayload},
+    work::Bm1366JobId,
 };
 use bitaxe_safety::{
     evidence::SafetyCriticalEvidence,
@@ -39,7 +39,7 @@ fn controlled_runtime_blocked_gate_has_no_side_effect_plan() {
     assert_eq!(plan.block_reason, Some(POWER_PREFLIGHT_EVIDENCE_MISSING));
     assert!(plan.client_messages.is_empty());
     assert!(plan.guarded_plan.maybe_dispatch.is_none());
-    assert!(plan.guarded_plan.maybe_share_submission.is_none());
+    assert!(plan.guarded_plan.maybe_submit_intent.is_none());
     assert_eq!(
         plan.guarded_plan.runtime_state.work_submission,
         WorkSubmissionGate::Blocked
@@ -182,9 +182,9 @@ fn controlled_runtime_transcript_enqueues_work_and_emits_typed_bm1366_dispatch()
         .maybe_dispatch
         .expect("active notify should dispatch BM1366 work");
     assert!(matches!(
-        dispatch.maybe_command,
-        Some(Bm1366Command::SendDiagnosticWork(payload))
-            if payload == Bm1366WorkPayload::new(Bm1366JobId::new(0x28), dispatch.fields)
+        dispatch.maybe_production_command,
+        Some(Bm1366ProductionCommand::SendProductionWork(payload))
+            if payload.job_id() == Bm1366JobId::new(0x28)
     ));
     assert_eq!(
         plan.guarded_plan.runtime_state.lifecycle,

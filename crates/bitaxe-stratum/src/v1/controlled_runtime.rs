@@ -22,7 +22,7 @@ use crate::v1::mining_loop::{
     GuardedMiningLoopInputs, GuardedMiningLoopPlan, GuardedMiningLoopSource, MiningLoopDecision,
     MiningLoopGate,
 };
-use crate::v1::queue::MiningWorkQueue;
+use crate::v1::production_work::ProductionWorkRegistry;
 use crate::v1::state::{MiningRuntimeState, PoolLifecycleStatus, ShareDifficulty};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -235,7 +235,7 @@ impl ControlledMiningRuntimePlan {
             gate: input.gate,
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::FakePool,
-            work_queue: MiningWorkQueue::new(),
+            production_registry: ProductionWorkRegistry::new(),
             runtime_state: MiningRuntimeState::default(),
             maybe_nonce_result: None,
         }
@@ -285,17 +285,17 @@ impl ControlledMiningRuntimePlan {
         runtime_state.set_lifecycle(PoolLifecycleStatus::Active);
         lifecycle_markers.push(ControlledRuntimeMarker::Active);
 
-        let mut work_queue = MiningWorkQueue::new();
+        let mut production_registry = ProductionWorkRegistry::new();
         let work = MiningWorkBuilder::new(input.transcript.notify, extranonce)
             .with_pool_difficulty(input.transcript.difficulty)
             .build(Bm1366JobId::new(0x28))?;
-        work_queue.enqueue_work(work)?;
+        production_registry.enqueue_pool_work(work)?;
 
         let dispatch_plan = GuardedMiningLoopInputs {
             gate: input.gate.clone(),
             pool_defaults: ultra_205_defaults(),
             source: GuardedMiningLoopSource::Notify,
-            work_queue,
+            production_registry,
             runtime_state,
             maybe_nonce_result: None,
         }
@@ -306,7 +306,7 @@ impl ControlledMiningRuntimePlan {
                 gate: input.gate,
                 pool_defaults: ultra_205_defaults(),
                 source: GuardedMiningLoopSource::Notify,
-                work_queue: dispatch_plan.work_queue,
+                production_registry: dispatch_plan.production_registry,
                 runtime_state: dispatch_plan.runtime_state,
                 maybe_nonce_result: Some(nonce_result),
             }
@@ -315,7 +315,10 @@ impl ControlledMiningRuntimePlan {
             dispatch_plan
         };
 
-        let maybe_share = guarded_plan.maybe_share_submission.clone();
+        let maybe_share = guarded_plan
+            .maybe_submit_intent
+            .as_ref()
+            .map(|intent| intent.submission().clone());
         let share_outcome = apply_share_response(
             maybe_share.as_ref(),
             input.maybe_submit_response.as_ref(),
