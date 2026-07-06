@@ -23,6 +23,13 @@ Phase [`27-04-PLAN.md`](27-04-PLAN.md) checklist promotion remains **blocked**.
 
 Canonical silent-UART evidence: [`b4-init-state-20260706-retry-H3b/`](b4-init-state-20260706-retry-H3b/) (best combo) and [`b4-init-state-20260706-retry-H1/`](b4-init-state-20260706-retry-H1/) (skip diagnostic only)
 
+## B5 H4 findings (2026-07-06)
+
+- **27-05 code**: `continuous_result_task` arms upstream-style listener; non-fatal `h4_continuous_result=timeout_continue`; optional `job_redispatch_pump` (2000ms re-dispatch)
+- **Upstream mapping**: [`work-result-upstream-diff-v6-h4.md`](work-result-upstream-diff-v6-h4.md)
+- **Hardware J2c** (foreground capture): [`b5-h4-orchestration-20260706-J2c/`](b5-h4-orchestration-20260706-J2c/) — `listener_armed` + `timeout_continue` confirmed; **no `work_dispatched`**; promotion still blocked
+- **Evidence wrapper note**: background `just flash-monitor` subprocess from `phase27-live-hardware-bridge-evidence.sh` exited immediately in J2/J2b runs (empty capture dir); use foreground capture + pool bridge watcher for H4 matrix
+
 ## Next phase (not 27-04 promotion)
 
 Upstream task orchestration gap (H4): continuous `ASIC_result_task` + `create_jobs_task` timing vs notify-driven bridge; optional upstream baseline capture (Wave 4). Do not promote checklist without share or post-dispatch UART proof.

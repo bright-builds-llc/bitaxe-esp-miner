@@ -81,6 +81,16 @@ Default Phase 27 behavior after deep dive:
 | H3 | ramp + skip diagnostic | **Silent @ 10s** (retry-H3b) | [`b4-init-state-20260706-retry-H3b/`](b4-init-state-20260706-retry-H3b/) — best combo still fails |
 | Wave 3 code | Bridge-default frequency ramp; comma-separated investigation modes | **APPLIED** | [`work_result_investigation.rs`](../../../firmware/bitaxe/src/asic_adapter/work_result_investigation.rs) |
 
+## B5 H4 orchestration wave (2026-07-06)
+
+| ID | Investigation modes | Result | Evidence |
+| --- | --- | --- | --- |
+| J2 | `continuous_result_task,job_redispatch_pump,initialized_no_mining_gate,frequency_ramp` | **Partial — listener OK, no dispatch** | [`b5-h4-orchestration-20260706-J2c/`](b5-h4-orchestration-20260706-J2c/) |
+| J2-retry | Same firmware; wifi-only flash-monitor 120s | **Bridge blocked** | No pool injection; boot-path `rx_chunk` only |
+| J2/J2b | Evidence wrapper `--mode hardware` | **Capture subprocess failed** | `safe_stop_status=blocked`; empty `live-capture-runtime/` |
+
+Code: `continuous_result_task` + `job_redispatch_pump` investigation flags; upstream diff [`work-result-upstream-diff-v6-h4.md`](work-result-upstream-diff-v6-h4.md).
+
 ## Hardware matrix evidence
 
 See `work-result-deep-dive-20260705-run-*.md`, `work-result-blocker-fix-20260706-run-*.md`, `b3-production-read-20260706-run-F*.md`, and `b4-init-state-20260706-run-*.md` under this phase directory.

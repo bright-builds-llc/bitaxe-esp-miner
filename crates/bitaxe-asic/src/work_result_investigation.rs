@@ -41,4 +41,13 @@ mod tests {
         assert!(investigation_modes_contain(raw, "require_uart_proof_for_production"));
         assert!(!investigation_modes_contain(raw, "require_diagnostic_nonce"));
     }
+
+    #[test]
+    fn h4_orchestration_modes_parse_in_comma_separated_combo() {
+        let raw = "continuous_result_task,job_redispatch_pump,frequency_ramp";
+        assert!(investigation_modes_contain(raw, "continuous_result_task"));
+        assert!(investigation_modes_contain(raw, "job_redispatch_pump"));
+        assert!(investigation_modes_contain(raw, "frequency_ramp"));
+        assert!(!investigation_modes_contain(raw, "skip_boot_diagnostic_work"));
+    }
 }

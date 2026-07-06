@@ -33,6 +33,9 @@ pub use uart::RESULT_WORK_TIMEOUT_MS;
 mod work_result_investigation;
 
 pub use production::{production_ready, ProductionAsicExecutor, ProductionReadOutcome};
+pub use work_result_investigation::{
+    continuous_result_task_enabled, job_redispatch_pump_enabled, JOB_REDISPATCH_INTERVAL_MS,
+};
 
 pub use status::{
     publish_mining_loop_blocked_status, publish_production_asic_blocked_status,

@@ -85,6 +85,19 @@ pub fn clear_rx_before_production_work() -> bool {
     has_investigation_mode("clear_rx_before_production_work")
 }
 
+/// H4: emulate upstream `ASIC_result_task` — continuous UART listen with non-fatal timeouts.
+pub fn continuous_result_task_enabled() -> bool {
+    has_investigation_mode("continuous_result_task")
+}
+
+/// H4: emulate upstream `create_jobs_task` re-feed — periodic re-dispatch while work active.
+pub fn job_redispatch_pump_enabled() -> bool {
+    has_investigation_mode("job_redispatch_pump")
+}
+
+/// Upstream create_jobs_task re-send interval when holding current work (ms).
+pub const JOB_REDISPATCH_INTERVAL_MS: u64 = 2000;
+
 fn phase27_bridge_active() -> bool {
     crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge()
 }

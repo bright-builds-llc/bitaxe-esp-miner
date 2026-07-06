@@ -1,0 +1,12 @@
+phase21_pool_input_bridge
+network_scan: disabled - DEVICE_URL must be explicit
+pool_credentials_status=loaded-redacted source=json
+pool_patch_http_status=200
+pool_patch_curl_status=0
+pool_input_logs_attempt=1 http_status=200 curl_status=0
+pool_input_bridge_status=applied
+pool_settings_consumed_by_runtime=true
+pool_config=local-owner-supplied
+raw_pool_values_committed=no
+network_scan=disabled
+redaction_status=passed
