@@ -1,7 +1,7 @@
 # Phase 27 Conclusion
 
 board: 205
-source_commit: 9136f85b8dc8b109a1e59253d872bae95d1a4d40
+source_commit: 6ddbe70fd9d5602a851fe940dfdf371ce48b1670
 reference_commit: c1915b0a63bfabebdb95a515cedfee05146c1d50
 package_identity: bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
 evidence_mode: phase27-live-hardware-asic-stratum-bridge
@@ -12,7 +12,7 @@ raw_artifacts_committed: no
 
 ## conclusion
 
-Phase 27 records an exact blocked safe-prerequisite non-claim: board_info_failure.
+Phase 27 attempted bounded detector-gated live hardware bridge capture, but no valid accepted/rejected share outcome with ASIC bridge markers was observed.
 
 ## exact_non_claims
 

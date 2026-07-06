@@ -78,7 +78,7 @@ Default Phase 27 behavior after deep dive:
 | G3 | ramp + W9 delay combo | **Silent @ 10s** (retry) | [`b4-init-state-20260706-retry-G3/`](b4-init-state-20260706-retry-G3/) |
 | H1 | `skip_boot_diagnostic_work` | **Silent @ 10s** (retry) | [`b4-init-state-20260706-retry-H1/`](b4-init-state-20260706-retry-H1/) — H3 boot-pollution **rejected** |
 | H2 | `require_uart_proof_for_production` | **PASS control** (retry) | Fail-closed like G2 |
-| H3 | ramp + skip diagnostic | **INCOMPLETE** | USB/truncated capture; H1+G1 cover combo |
+| H3 | ramp + skip diagnostic | **Silent @ 10s** (retry-H3b) | [`b4-init-state-20260706-retry-H3b/`](b4-init-state-20260706-retry-H3b/) — best combo still fails |
 | Wave 3 code | Bridge-default frequency ramp; comma-separated investigation modes | **APPLIED** | [`work_result_investigation.rs`](../../../firmware/bitaxe/src/asic_adapter/work_result_investigation.rs) |
 
 ## Hardware matrix evidence

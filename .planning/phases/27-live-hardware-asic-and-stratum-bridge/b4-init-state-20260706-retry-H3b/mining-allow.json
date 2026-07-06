@@ -1,12 +1,12 @@
 {
   "board": "205",
-  "port": "/dev/redacted-phase27",
+  "port": "/dev/cu.usbmodem1101",
   "detector_command": "just detect-ultra205",
-  "detector_port": "/dev/redacted-phase27",
-  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/redacted-phase27 --non-interactive",
-  "board_info_status": "blocked",
+  "detector_port": "/dev/cu.usbmodem1101",
+  "board_info_command": "espflash board-info --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive",
+  "board_info_status": "passed",
   "package_manifest": "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
-  "source_commit": "9136f85b8dc8b109a1e59253d872bae95d1a4d40",
+  "source_commit": "6ddbe70fd9d5602a851fe940dfdf371ce48b1670",
   "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
   "surface": "live-hardware-bridge",
   "evidence_mode": "phase27-live-hardware-asic-stratum-bridge",
@@ -22,7 +22,7 @@
     "redact_evidence": "true",
     "target_source": "explicit-or-blocked",
     "share_outcome": "blocked_safe_prerequisite",
-    "asic_bridge_status": "blocked",
+    "asic_bridge_status": "work_dispatched",
     "safe_stop_status": "complete"
   },
   "abort_conditions": [
@@ -35,7 +35,7 @@
   ],
   "recovery_steps": [
     "safe_stop",
-    "just flash board=205 port=/dev/redacted-phase27"
+    "just flash board=205 port=/dev/cu.usbmodem1101"
   ],
   "post_action_safe_state_markers": [
     "safe_state: mining=disabled",

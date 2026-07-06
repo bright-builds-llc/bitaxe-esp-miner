@@ -19,7 +19,9 @@ Phase [`27-04-PLAN.md`](27-04-PLAN.md) checklist promotion remains **blocked**.
 - **H2 require UART proof** (retry): fail-closed control confirmed (matches G2)
 - **Wave 3 structural**: bridge packages default stepped frequency ramp unless `skip_frequency_ramp`; comma-separated investigation modes supported
 
-Canonical silent-UART evidence: [`b4-init-state-20260706-retry-H1/`](b4-init-state-20260706-retry-H1/) (skip diagnostic) and [`b4-init-state-20260706-run-G1/`](b4-init-state-20260706-run-G1/) (ramp combo)
+- **H3 best combo** (retry-H3b: ramp + skip diagnostic): `production_result_timeout` after ~10s — init/timing path exhausted
+
+Canonical silent-UART evidence: [`b4-init-state-20260706-retry-H3b/`](b4-init-state-20260706-retry-H3b/) (best combo) and [`b4-init-state-20260706-retry-H1/`](b4-init-state-20260706-retry-H1/) (skip diagnostic only)
 
 ## Next phase (not 27-04 promotion)
 

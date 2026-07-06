@@ -1,0 +1,22 @@
+bitaxe-rust boot: board=Ultra 205 asic=BM1366
+safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled
+ota_boot_validation=not_pending state=factory
+wifi_status=connected ipv4=[redacted-ip] device_url=[redacted-url]
+phase25_watchdog_checkpoint=socket decision=continue redacted=true
+phase25_watchdog_checkpoint=asic decision=continue redacted=true
+phase25_watchdog_checkpoint=api decision=continue redacted=true
+phase25_watchdog_checkpoint=websocket decision=continue redacted=true
+phase25_watchdog_checkpoint=evidence_capture decision=continue redacted=true
+reset_reason=11
+partition=factory
+psram_status=available
+firmware_commit=6ddbe70fd9d5
+reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50
+esp_idf_version=v5.5.4
+rust_target=xtensa-esp32s3-espidf
+phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+axeos_settings_patch=accepted writes=4 effects=0
+axeos_settings_patch=persistence_committed writes=4
+phase21_pool_settings_consumed=true source=settings_patch redacted=true
+axeos_settings_patch=response_scheduled status=200 empty_body=true
+axeos_settings_patch=effects_scheduled
