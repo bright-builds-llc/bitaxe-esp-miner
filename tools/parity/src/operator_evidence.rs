@@ -102,12 +102,14 @@ pub(crate) fn validate_operator_evidence_documents(
 ) -> OperatorEvidenceReport {
     let mut validation_errors = Vec::new();
 
+    let is_phase28 = is_phase28_consolidation_root(documents);
+
     validate_required_slots(&mut validation_errors, documents);
-    validate_slot_metadata(&mut validation_errors, documents);
+    validate_slot_metadata(&mut validation_errors, documents, is_phase28);
     validate_redaction_review(&mut validation_errors, documents, filters);
     validate_blocked_target_slots(&mut validation_errors, documents);
-    validate_share_outcome_slot(&mut validation_errors, documents);
-    validate_conclusion(&mut validation_errors, documents);
+    validate_share_outcome_slot(&mut validation_errors, documents, is_phase28);
+    validate_conclusion(&mut validation_errors, documents, is_phase28);
     validate_forbidden_sentinels(&mut validation_errors, documents);
     validate_later_phase_overclaims(&mut validation_errors, documents);
 
@@ -146,9 +148,21 @@ fn validate_required_slots(
     }
 }
 
+fn is_phase28_consolidation_root(documents: &OperatorEvidenceDocuments) -> bool {
+    documents
+        .evidence_root
+        .as_str()
+        .contains("phase-28-hardware-evidence-and-checklist-promotion")
+        || documents
+            .slots
+            .get("conclusion.md")
+            .is_some_and(|contents| contents.contains("phase28_consolidation_claim:"))
+}
+
 fn validate_slot_metadata(
     validation_errors: &mut Vec<String>,
     documents: &OperatorEvidenceDocuments,
+    is_phase28: bool,
 ) {
     for slot_file in REQUIRED_SLOT_FILES {
         let Some(contents) = documents.slots.get(*slot_file) else {
@@ -170,6 +184,16 @@ fn validate_slot_metadata(
         ] {
             if !contents.contains(required) {
                 validation_errors.push(format!("{slot_file} must contain {required}"));
+            }
+        }
+
+        if is_phase28 {
+            for required in ["source_phase27_root:", "consolidation_status:"] {
+                if !contents.contains(required) {
+                    validation_errors.push(format!(
+                        "{slot_file} must contain Phase 28 consolidation field {required}"
+                    ));
+                }
             }
         }
     }
@@ -223,10 +247,29 @@ fn validate_blocked_target_slots(
 fn validate_share_outcome_slot(
     validation_errors: &mut Vec<String>,
     documents: &OperatorEvidenceDocuments,
+    is_phase28: bool,
 ) {
     let Some(contents) = documents.slots.get("share-outcome.md") else {
         return;
     };
+
+    if is_phase28 {
+        if !contents.contains("slot_status: blocked") {
+            validation_errors
+                .push("share-outcome.md must contain slot_status: blocked for Phase 28".to_owned());
+        }
+
+        for required in [
+            "share_outcome: blocked_safe_prerequisite",
+            "asic_bridge_status: blocked",
+            "safe_stop_status: blocked",
+        ] {
+            if !contents.contains(required) {
+                validation_errors.push(format!("share-outcome.md must contain {required}"));
+            }
+        }
+        return;
+    }
 
     let is_pending_or_deferred =
         contents.contains("slot_status: pending") || contents.contains("slot_status: deferred");
@@ -244,10 +287,24 @@ fn validate_share_outcome_slot(
     }
 }
 
-fn validate_conclusion(validation_errors: &mut Vec<String>, documents: &OperatorEvidenceDocuments) {
+fn validate_conclusion(
+    validation_errors: &mut Vec<String>,
+    documents: &OperatorEvidenceDocuments,
+    is_phase28: bool,
+) {
     let Some(contents) = documents.slots.get("conclusion.md") else {
         return;
     };
+
+    if is_phase28 {
+        if !contents.contains("phase28_consolidation_claim: hardware_evidence_consolidation") {
+            validation_errors.push(
+                "conclusion.md must contain phase28_consolidation_claim: hardware_evidence_consolidation"
+                    .to_owned(),
+            );
+        }
+        return;
+    }
 
     if !contents.contains("phase23_workflow_claim: redacted_operator_evidence_workflow") {
         validation_errors.push(
@@ -447,6 +504,23 @@ mod tests {
     }
 
     #[test]
+    fn accepts_phase28_consolidation_root_with_cross_linked_slots() {
+        // Arrange
+        let evidence_root = create_evidence_root("phase28-consolidation");
+        write_phase28_consolidation_slots(&evidence_root);
+        let documents = load_operator_evidence_documents(&evidence_root).expect("root should load");
+        let filters = OperatorEvidenceFilters {
+            require_redaction_passed: true,
+        };
+
+        // Act
+        let report = validate_operator_evidence_documents(&documents, &filters);
+
+        // Assert
+        assert!(report.validation_errors.is_empty(), "{report:#?}");
+    }
+
+    #[test]
     fn rejects_later_phase_overclaim_language() {
         // Arrange
         let evidence_root = create_evidence_root("overclaim");
@@ -554,5 +628,33 @@ mod tests {
                 .any(|error| error.contains(expected)),
             "expected validation error containing {expected:?}, got {report:#?}"
         );
+    }
+
+    fn write_phase28_consolidation_slots(evidence_root: &Utf8Path) {
+        for slot_file in REQUIRED_SLOT_FILES {
+            let slot_name = slot_file.trim_end_matches(".md");
+            let mut contents = format!(
+                "slot: {slot_name}\nslot_status: passed\nboard: 205\nsource_phase27_root: docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/\nconsolidation_status: cross_linked\nredaction_status: passed\nraw_artifacts_committed: no\npool_config: local-owner-supplied\nexact_non_claims:\n- accepted/rejected shares remain non-claims\n"
+            );
+            if *slot_file == "share-outcome.md" {
+                contents = contents.replace("slot_status: passed", "slot_status: blocked");
+                contents.push_str(
+                    "share_outcome: blocked_safe_prerequisite\nasic_bridge_status: blocked\nsafe_stop_status: blocked\n",
+                );
+            }
+            if *slot_file == "api.md" || *slot_file == "websocket.md" {
+                contents = contents.replace("slot_status: passed", "slot_status: blocked");
+                contents.push_str(
+                    "target_blocker: stale DEVICE_URL, mDNS, ARP, router state, network scan, and unrelated evidence are invalid.\n",
+                );
+            }
+            if *slot_file == "conclusion.md" {
+                contents.push_str(
+                    "phase28_consolidation_claim: hardware_evidence_consolidation\n",
+                );
+            }
+            std::fs::write(evidence_root.join(slot_file).as_std_path(), contents)
+                .expect("slot should be written");
+        }
     }
 }
