@@ -21,7 +21,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [x] **Phase 25: Live Stratum Runtime And Safe Stop** - Ultra 205 can run a real watchdog-responsive Stratum v1 mining session and stop safely. (completed 2026-07-05)
 - [x] **Phase 26: Telemetry And Parity Closure** - Runtime API, WebSocket, counters, and parity checklist updates reflect only proven v1.1 mining events. (completed 2026-07-05)
 - [x] **Phase 27: Live Hardware ASIC And Stratum Bridge** - Live firmware wires Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 socket loop and produces detector-gated share-outcome evidence. (completed 2026-07-05)
-- [ ] **Phase 28: Hardware Evidence And Checklist Promotion** - Redacted hardware evidence promotes only exact verified checklist rows supported by Phase 27 artifacts.
+- [x] **Phase 28: Hardware Evidence And Checklist Promotion** - Redacted hardware evidence promotes only exact verified checklist rows supported by Phase 27 artifacts. (completed 2026-07-06)
 
 ## Phase Details
 
@@ -135,9 +135,9 @@ Plans:
   4. Explicit non-claims remain for deferred active safety, OTAWWW/recovery, non-205 boards, Stratum v2, UI/BAP, and unbounded stress.
 **Plans**: 3 plans
 Plans:
-- [ ] 28-01-PLAN.md — Consolidate Phase 27 hardware evidence into the operator evidence root contract.
-- [ ] 28-02-PLAN.md — Promote conservative checklist rows from Phase 27 evidence only.
-- [ ] 28-03-PLAN.md — Close Phase 28 verification, parity guardrails, and validation metadata.
+- [x] 28-01-PLAN.md — Consolidate Phase 27 hardware evidence into the operator evidence root contract.
+- [x] 28-02-PLAN.md — Promote conservative checklist rows from Phase 27 evidence only.
+- [x] 28-03-PLAN.md — Close Phase 28 verification, parity guardrails, and validation metadata.
 
 ## Progress
 
@@ -151,7 +151,7 @@ Plans:
 | 25. Live Stratum Runtime And Safe Stop | v1.1 | 3/3 | Complete    | 2026-07-05 |
 | 26. Telemetry And Parity Closure | v1.1 | 4/4 | Complete    | 2026-07-05 |
 | 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
-| 28. Hardware Evidence And Checklist Promotion | v1.1 | 0/3 | Not started | — |
+| 28. Hardware Evidence And Checklist Promotion | v1.1 | 3/3 | Complete   | 2026-07-06 |
 
 ## Coverage
 
