@@ -720,6 +720,7 @@ fn validate_rows(rows: &[ChecklistRow]) -> Vec<ValidationError> {
         errors.extend(validate_release_ota_verified_row(row));
         errors.extend(validate_deferred_scope_verified_row(row));
         errors.extend(validate_phase26_telemetry_verified_row(row));
+        errors.extend(validate_phase28_hardware_promotion_row(row));
     }
 
     errors
@@ -1145,6 +1146,134 @@ fn is_phase26_telemetry_row(row: &ChecklistRow) -> bool {
     ]
     .iter()
     .any(|term| row_identity.contains(term))
+}
+
+fn validate_phase28_hardware_promotion_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    if !is_phase28_hardware_promotion_row(row) {
+        return Vec::new();
+    }
+
+    let mut errors = Vec::new();
+    let haystack = row_haystack(row);
+
+    if normalize(&row.status) != "verified" {
+        return errors;
+    }
+
+    if !haystack.contains("phase-28-hardware-evidence-and-checklist-promotion/summary.md") {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: "phase28 verified row missing summary evidence".to_owned(),
+        });
+    }
+
+    if row_contains_live_evidence_blocker(row) {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: "phase28 blocked verified row must not contain blocker terms".to_owned(),
+        });
+    }
+
+    if !haystack.contains("redaction-review.md") && !haystack.contains("redaction_status: passed") {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message:
+                "phase28 redaction evidence requires redaction-review.md or redaction_status: passed"
+                    .to_owned(),
+        });
+    }
+
+    if !haystack.contains("exact_non_claims") {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: "phase28 verified row requires exact_non_claims".to_owned(),
+        });
+    }
+
+    match row.id.as_str() {
+        "STR-09" => {
+            if haystack.contains("blocked_safe_prerequisite")
+                || !has_str09_accepted_rejected_hardware_share_proof(row)
+            {
+                errors.push(ValidationError {
+                    id: row.id.clone(),
+                    message: "STR-09 verified requires accepted or rejected hardware share proof without blocked_safe_prerequisite"
+                        .to_owned(),
+                });
+            }
+        }
+        "CFG-07" => {
+            errors.push(ValidationError {
+                id: row.id.clone(),
+                message: "CFG-07 must remain below verified; runtime credential handling lacks hardware proof"
+                    .to_owned(),
+            });
+        }
+        "SAFE-10" | "SAFE-11" | "SAFE-12" | "SAFE-13" if !has_phase28_live_safety_hardware_proof(row) => {
+            errors.push(ValidationError {
+                id: row.id.clone(),
+                message: "phase28 SAFE verified row requires detector-gated live safety hardware proof"
+                    .to_owned(),
+            });
+        }
+        "STR-08" | "ASIC-09" | "ASIC-10" | "ASIC-11" | "ASIC-12"
+            if !has_phase28_hardware_bridge_socket_proof(row) =>
+        {
+            errors.push(ValidationError {
+                id: row.id.clone(),
+                message: "phase28 ASIC/STR verified row requires matching hardware bridge or socket success proof"
+                    .to_owned(),
+            });
+        }
+        _ => {}
+    }
+
+    errors
+}
+
+fn is_phase28_hardware_promotion_row(row: &ChecklistRow) -> bool {
+    let row_identity =
+        format!("{} {} {}", row.id, row.surface, row.rust_owned_target).to_ascii_lowercase();
+
+    matches!(
+        row.id.as_str(),
+        "SAFE-10" | "SAFE-11" | "SAFE-12" | "SAFE-13" | "STR-08" | "STR-09" | "CFG-07"
+            | "ASIC-09" | "ASIC-10" | "ASIC-11" | "ASIC-12"
+    ) || [
+        "phase 28",
+        "phase-28-hardware-evidence-and-checklist-promotion",
+        "hardware promotion",
+        "checklist promotion",
+    ]
+    .iter()
+    .any(|term| row_identity.contains(term))
+}
+
+fn has_str09_accepted_rejected_hardware_share_proof(row: &ChecklistRow) -> bool {
+    let haystack = row_haystack(row);
+    has_hardware_evidence(row)
+        && (haystack.contains("accepted share hardware")
+            || haystack.contains("rejected share hardware")
+            || haystack.contains("accepted share proof")
+            || haystack.contains("rejected share proof"))
+}
+
+fn has_phase28_live_safety_hardware_proof(row: &ChecklistRow) -> bool {
+    let haystack = row_haystack(row);
+    has_hardware_evidence(row)
+        && (haystack.contains("detector-gated live safety")
+            || haystack.contains("live safety hardware proof")
+            || haystack.contains("active voltage regression")
+            || haystack.contains("thermal fault stimulus hardware"))
+}
+
+fn has_phase28_hardware_bridge_socket_proof(row: &ChecklistRow) -> bool {
+    let haystack = row_haystack(row);
+    has_hardware_evidence(row)
+        && (haystack.contains("live socket success")
+            || haystack.contains("asic bridge correlation")
+            || haystack.contains("accepted share hardware")
+            || haystack.contains("rejected share hardware"))
 }
 
 fn is_deferred_or_non_205_scope(row: &ChecklistRow) -> bool {
@@ -2101,6 +2230,143 @@ mod tests {
 | STAT-002 | Statistics task | `reference/esp-miner/main/tasks/statistics_task.c` | `crates/bitaxe-api`, `firmware/bitaxe` | implemented | unit,workflow | phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed no_request_time_fabrication runtime_projection_marker_only. |
 | STAT-003 | Scoreboard | `reference/esp-miner/main/tasks/scoreboard.c` | `crates/bitaxe-api` | implemented | unit,workflow | phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed empty_without_parsed_share_outcome exact_non_claims. |
 | EVD-08 | Phase 26 exact telemetry closure | `docs/parity/evidence/phase-26-telemetry-and-parity-closure/summary.md` | `docs/parity/checklist.md`, `tools/parity/src/main.rs` | verified | workflow | API-11 API-12 API-13 EVD-08 phase-26-telemetry-and-parity-closure/summary.md redaction-review.md redaction_status: passed exact_non_claims just parity guard passed. Full active voltage and unbounded stress remain non-claims. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn phase28_verified_str09_rejects_missing_summary_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STR-09 | Live submit response classification or blocker | `reference/esp-miner/main/system.c` | `crates/bitaxe-stratum` | verified | unit,workflow | redaction-review.md redaction_status: passed exact_non_claims accepted share hardware proof. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(
+            &errors,
+            "STR-09",
+            "phase28 verified row missing summary evidence",
+        );
+    }
+
+    #[test]
+    fn phase28_verified_str09_rejects_blocked_safe_prerequisite() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STR-09 | Live submit response classification or blocker | `reference/esp-miner/main/system.c` | `crates/bitaxe-stratum` | verified | unit,workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md redaction_status: passed exact_non_claims share_outcome: blocked_safe_prerequisite. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(
+            &errors,
+            "STR-09",
+            "blocked_safe_prerequisite",
+        );
+    }
+
+    #[test]
+    fn phase28_verified_cfg07_rejects_verified_status() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `scripts/phase23-redacted-operator-evidence.sh` | verified | workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md redaction_status: passed exact_non_claims pool_config: local-owner-supplied. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(
+            &errors,
+            "CFG-07",
+            "CFG-07 must remain below verified",
+        );
+    }
+
+    #[test]
+    fn phase28_verified_safe10_rejects_without_live_safety_hardware_proof() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| SAFE-10 | Production mining prerequisite readiness | `reference/esp-miner/main/tasks/protocol_coordinator.c` | `crates/bitaxe-safety` | verified | unit,workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md redaction_status: passed exact_non_claims consolidation only. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(
+            &errors,
+            "SAFE-10",
+            "detector-gated live safety hardware proof",
+        );
+    }
+
+    #[test]
+    fn phase28_verified_row_rejects_missing_redaction_evidence() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| ASIC-09 | BM1366 diagnostic and production mode separation | `reference/esp-miner/components/asic/bm1366.c` | `crates/bitaxe-asic` | verified | unit,workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md exact_non_claims live socket success hardware-regression asic bridge correlation. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "ASIC-09", "phase28 redaction evidence");
+    }
+
+    #[test]
+    fn phase28_verified_row_rejects_missing_exact_non_claims() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| ASIC-10 | Pool-derived BM1366 production work registry | `reference/esp-miner/components/stratum/mining.c` | `crates/bitaxe-stratum` | verified | unit,workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md redaction_status: passed live socket success hardware-regression asic bridge correlation. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "ASIC-10", "exact_non_claims");
+    }
+
+    #[test]
+    fn phase28_guard_accepts_conservative_rows() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STR-09 | Live submit response classification or blocker | `reference/esp-miner/main/system.c` | `crates/bitaxe-stratum` | implemented | unit,workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md phase-27-live-hardware-asic-and-stratum-bridge/share-outcome.md redaction-review.md redaction_status: passed exact_non_claims share_outcome: blocked_safe_prerequisite below verified. |
+| CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `scripts/phase23-redacted-operator-evidence.sh` | implemented | workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md redaction_status: passed exact_non_claims below verified category labels only. |
+| SAFE-10 | Production mining prerequisite readiness | `reference/esp-miner/main/tasks/protocol_coordinator.c` | `crates/bitaxe-safety` | implemented | unit,workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md phase-22-claim-ladder-and-safety-preconditions/safety-preconditions.md exact_non_claims below verified. |
 "#;
         let rows = parse_checklist(checklist).expect("checklist should parse");
 
