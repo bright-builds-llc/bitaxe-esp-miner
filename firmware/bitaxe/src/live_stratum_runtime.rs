@@ -7,7 +7,7 @@
 use std::collections::VecDeque;
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpStream};
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -84,6 +84,7 @@ const PHASE25_SAFE_STOP_REASON: &str = "phase25_safe_stop";
 const SAFE_STOP_COMPLETE_MARKER: &str = "phase25_safe_stop_status=complete socket=stopped work_queue=invalidated active_work=invalidated mining=disabled hardware_control=disabled work_submission=disabled post_stop_snapshot=updated";
 
 static PHASE27_BRIDGE_STATE: AtomicU8 = AtomicU8::new(PHASE27_BRIDGE_IDLE);
+static PHASE27_POOL_SETTINGS_CONSUMED_EMITTED: AtomicBool = AtomicBool::new(false);
 
 pub fn maybe_start_after_network_setup(network_ready: bool) {
     if MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
@@ -139,7 +140,31 @@ pub fn maybe_refresh_phase27_from_settings() {
         return;
     }
 
+    maybe_emit_phase27_pool_settings_consumed_marker();
     let _ = try_start_phase27_live_bridge_once(true);
+}
+
+pub fn maybe_emit_phase27_pool_settings_consumed_marker() {
+    if !MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
+        return;
+    }
+
+    if !pool_settings_present_in_snapshot(&settings_adapter::current_settings_snapshot()) {
+        return;
+    }
+
+    if PHASE27_POOL_SETTINGS_CONSUMED_EMITTED
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return;
+    }
+
+    info_retained(PHASE27_POOL_SETTINGS_CONSUMED_MARKER);
+}
+
+fn pool_settings_present_in_snapshot(snapshot: &NvsSnapshot) -> bool {
+    pool_settings_from_snapshot(snapshot).is_ok()
 }
 
 fn phase27_bridge_wait_loop(network_ready: bool) {
@@ -418,12 +443,7 @@ fn firmware_phase27_production_preconditions() -> ProductionMiningPreconditions 
             .unwrap_or_else(|| {
                 ProductionMiningPrerequisite::blocked("power_sample_unavailable")
             }),
-        thermal: snapshot
-            .maybe_thermal
-            .map(ProductionMiningPrerequisite::from_thermal_observation)
-            .unwrap_or_else(|| {
-                ProductionMiningPrerequisite::blocked("thermal_reading_unavailable")
-            }),
+        thermal: phase27_thermal_prerequisite(&snapshot),
         fan: if snapshot.fan_duty_percent > 0 {
             ProductionMiningPrerequisite::Fresh
         } else {
@@ -432,6 +452,20 @@ fn firmware_phase27_production_preconditions() -> ProductionMiningPreconditions 
         voltage: ProductionMiningPrerequisite::Fresh,
         safety: ProductionMiningPrerequisite::Fresh,
     }
+}
+
+fn phase27_thermal_prerequisite(
+    snapshot: &safety_adapter::phase27_bring_up::Phase27SafetySnapshot,
+) -> ProductionMiningPrerequisite {
+    let Some(observation) = snapshot.maybe_thermal else {
+        return ProductionMiningPrerequisite::blocked("thermal_reading_unavailable");
+    };
+
+    if observation.reason().is_none() {
+        return ProductionMiningPrerequisite::from_thermal_observation(observation);
+    }
+
+    phase27_bounded_prerequisite("phase27_thermal")
 }
 
 fn phase27_bounded_prerequisite(source: &'static str) -> ProductionMiningPrerequisite {
@@ -474,9 +508,7 @@ fn mining_loop_gate(decision: ProductionMiningPreconditionDecision) -> MiningLoo
             snapshot
                 .maybe_power
                 .and_then(PowerEvidenceToken::from_observation),
-            snapshot
-                .maybe_thermal
-                .and_then(|observation| ThermalEvidenceToken::from_observation(observation, evidence)),
+            phase27_thermal_evidence_token(&snapshot, evidence),
         )
     } else if phase27_bridge {
         (None, None)
@@ -503,6 +535,23 @@ fn mining_loop_gate(decision: ProductionMiningPreconditionDecision) -> MiningLoo
         safety_status: SafetyStatus::Normal,
         hardware_evidence_ack: true,
     }
+}
+
+fn phase27_thermal_evidence_token(
+    snapshot: &safety_adapter::phase27_bring_up::Phase27SafetySnapshot,
+    evidence: SafetyCriticalEvidence,
+) -> Option<ThermalEvidenceToken> {
+    let observation = snapshot.maybe_thermal?;
+
+    ThermalEvidenceToken::from_observation(observation, evidence)
+        .or_else(|| ThermalEvidenceToken::from_phase27_fresh_observation(observation, evidence))
+        .or_else(|| {
+            if observation.reason().is_some() {
+                ThermalEvidenceToken::from_phase27_bounded_evidence(evidence)
+            } else {
+                None
+            }
+        })
 }
 
 fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
@@ -1245,6 +1294,29 @@ mod tests {
         assert_eq!(outcome, LiveStartOutcome::Stopped);
         assert_eq!(pool_settings_access_counter.get(), 1);
         assert_eq!(connect_counter.get(), 1);
+    }
+
+    #[test]
+    fn pool_settings_snapshot_is_complete_when_required_keys_exist() {
+        // Arrange
+        let snapshot = NvsSnapshot::from_values([
+            StoredValue::string("stratumurl", "public-pool.io"),
+            StoredValue::string("stratumuser", "redacted-user"),
+            StoredValue::string("stratumpass", "redacted-secret"),
+            StoredValue::u16("stratumport", 3333),
+        ]);
+
+        // Act / Assert
+        assert!(pool_settings_from_snapshot(&snapshot).is_ok());
+    }
+
+    #[test]
+    fn phase27_pool_settings_consumed_marker_is_redacted() {
+        // Assert
+        assert_eq!(
+            PHASE27_POOL_SETTINGS_CONSUMED_MARKER,
+            "phase21_pool_settings_consumed=true source=settings_patch redacted=true"
+        );
     }
 
     #[test]

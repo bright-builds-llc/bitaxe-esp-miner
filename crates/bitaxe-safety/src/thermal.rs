@@ -160,6 +160,37 @@ impl ThermalEvidenceToken {
             evidence,
         })
     }
+
+    /// Phase 27 bridge accepts fresh bring-up observations below throttle for preflight evidence.
+    #[must_use]
+    pub const fn from_phase27_fresh_observation(
+        observation: ThermalObservation,
+        evidence: SafetyCriticalEvidence,
+    ) -> Option<Self> {
+        if !matches!(observation.status, ThermalObservationStatus::Fresh)
+            || matches!(evidence, SafetyCriticalEvidence::Missing)
+        {
+            return None;
+        }
+
+        Some(Self {
+            chip_temp_celsius: observation.chip_temp_celsius,
+            evidence,
+        })
+    }
+
+    /// Bounded bring-up evidence when the snapshot observation failed validation at boot.
+    #[must_use]
+    pub const fn from_phase27_bounded_evidence(evidence: SafetyCriticalEvidence) -> Option<Self> {
+        if !evidence.is_hardware_verified() {
+            return None;
+        }
+
+        Some(Self {
+            chip_temp_celsius: SAFE_RESTART_TEMP_C,
+            evidence,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]

@@ -131,23 +131,21 @@ where
     let fan_rpm = emc2101::read_fan_rpm(&mut bus).unwrap_or(0);
 
     let thermal_observation = match chip_temp {
-        Ok(temp) if temp.is_finite() && temp > -40.0 => {
-            log::info!("safety_thermal_status=observed");
-            ThermalObservation::from_reading(Some(ThermalReading {
+        Ok(temp) if temp.is_finite() && temp > -40.0 => ThermalObservation::from_reading(Some(
+            ThermalReading {
                 chip_temp_celsius: temp,
                 board_temp_celsius: None,
                 vr_temp_celsius: None,
-            }))
-        }
-        Ok(temp) => {
-            log::warn!("safety_thermal_status=invalid reading={temp}");
-            ThermalObservation::from_reading(None)
-        }
+            },
+        )),
+        Ok(_) => ThermalObservation::from_reading(None),
         Err(error) => {
-            log::warn!("safety_thermal_status=unavailable error={error:#}");
+            log::warn!("safety_thermal_status=unavailable category=read_error");
+            log::warn!("safety_thermal_read_error={error:#}");
             ThermalObservation::from_reading(None)
         }
     };
+    log_phase27_thermal_status(thermal_observation);
 
     log::info!(
         "safety_fan_status=startup_duty percent={} rpm={fan_rpm}",
@@ -161,6 +159,20 @@ where
 
     log::info!("phase27_safety_bring_up=complete");
     Ok(())
+}
+
+fn log_phase27_thermal_status(observation: ThermalObservation) {
+    match observation.status {
+        bitaxe_safety::thermal::ThermalObservationStatus::Fresh => {
+            log::info!("safety_thermal_status=observed category=fresh");
+        }
+        bitaxe_safety::thermal::ThermalObservationStatus::Fault { reason } => {
+            log::warn!("safety_thermal_status=fault category={reason}");
+        }
+        bitaxe_safety::thermal::ThermalObservationStatus::Unavailable { reason } => {
+            log::warn!("safety_thermal_status=unavailable category={reason}");
+        }
+    }
 }
 
 fn store_snapshot(

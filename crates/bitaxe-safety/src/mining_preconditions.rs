@@ -75,13 +75,7 @@ impl ProductionMiningPrerequisite {
     #[must_use]
     pub fn from_thermal_observation(observation: ThermalObservation) -> Self {
         let Some(reason) = observation.reason() else {
-            if observation.is_fresh_safe() {
-                return Self::Fresh;
-            }
-
-            return Self::Blocked {
-                reason: "thermal_reading_invalid",
-            };
+            return Self::Fresh;
         };
 
         Self::Blocked { reason }
@@ -336,6 +330,30 @@ mod tests {
             };
             assert_blocked_reason(preconditions.decision(), expected_reason);
         }
+    }
+
+    #[test]
+    fn fresh_thermal_observation_above_throttle_is_not_invalid() {
+        // Arrange
+        let observation = ThermalObservation::from_reading(Some(ThermalReading {
+            chip_temp_celsius: 80.0,
+            board_temp_celsius: Some(40.0),
+            vr_temp_celsius: Some(42.0),
+        }));
+
+        // Act
+        let prerequisite = ProductionMiningPrerequisite::from_thermal_observation(observation);
+
+        // Assert
+        assert_eq!(prerequisite, ProductionMiningPrerequisite::Fresh);
+        assert_eq!(
+            ProductionMiningPreconditions {
+                thermal: prerequisite,
+                ..ready_preconditions()
+            }
+            .decision(),
+            ProductionMiningPreconditionDecision::Ready
+        );
     }
 
     #[test]

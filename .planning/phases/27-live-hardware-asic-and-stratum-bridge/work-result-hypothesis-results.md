@@ -20,10 +20,10 @@ Board: Ultra 205 (`port=/dev/cu.usbmodem1101`)
 | --- | --- | --- | --- |
 | W7 | Missing ASIC-side reg 0x28 before host 1M | **FIX APPLIED — RX still silent** | REG28 TX confirmed; post-work diagnostic still times out at 1M and 115200 |
 | W8 | Single frequency step vs 50→485 MHz ramp | **FIX AVAILABLE** | `frequency_ramp` investigation flag; 6.25 MHz steps with 100 ms delay |
-| W9 | Voltage/UART flush ordering before init | **NOT CHANGED** | Phase 27 safety bring-up covers voltage; no divergence evidence on silence |
+| W9 | 2000ms post max-baud stabilization | **FIX AVAILABLE — no RX gain** | `post_max_baud_delay_2000`; E2 timing confirmed, diagnostic still silent |
 | W10 | Single boot read vs continuous result loop | **NOT CHANGED** | Bridge uses pump loop; boot diagnostic remains single 10s read |
 | W11 | Synthetic diagnostic job may not nonce | **DOCUMENTED** | Boot diagnostic uses fixed `job_id=0x28` and synthetic fields; register-read or production pool work required for nonce proof |
-| W12 | Bridge blocked on pool settings | **SEPARATE** | `phase27_pool_wait_timeout` without local pool creds |
+| W12 | Bridge blocked on pool settings | **FIXED (B2)** | Stratum `connecting`→`active`; consumed marker on patch |
 
 ## Bootstrap gate (Wave 4)
 
@@ -43,7 +43,16 @@ Default Phase 27 behavior after deep dive:
 | `frequency_ramp` | W8 ramp before nonce space |
 | `require_diagnostic_nonce` | No W5 bootstrap on timeout/parse miss |
 | `initialized_no_mining_gate` | Explicit W5 bootstrap on timeout |
+| `post_max_baud_delay_2000` | W9: 2000ms delay after host max baud + clear_rx |
+
+## Blocker fix outcomes (2026-07-06)
+
+| ID | Fix | Result | Evidence |
+| --- | --- | --- | --- |
+| B1 | Thermal prerequisite + bounded fallback + category bring-up logs | **PASS** | Bridge reaches `connecting`; no `thermal_reading_invalid` gate |
+| B2 | Pool consumed marker on settings patch before bridge gate | **PASS** | `pool_settings_consumed_by_runtime=true` |
+| B3 | Bridge production work after B1/B2 | **UART still silent** | `work_dispatched` then `production_result_timeout`; W9 delay (E2) no help |
 
 ## Hardware matrix evidence
 
-See `work-result-deep-dive-20260705-run-*.md` under this phase directory.
+See `work-result-deep-dive-20260705-run-*.md` and `work-result-blocker-fix-20260706-run-*.md` under this phase directory.

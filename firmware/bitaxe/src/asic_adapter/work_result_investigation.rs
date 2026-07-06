@@ -15,6 +15,7 @@ pub enum WorkResultInvestigationMode {
     FrequencyRamp,
     RequireDiagnosticNonce,
     InitializedNoMiningGate,
+    PostMaxBaudDelay2000,
 }
 
 pub fn mining_ready_init_decision(
@@ -43,6 +44,11 @@ pub fn mining_ready_init_options() -> MiningReadyInitOptions {
         skip_max_baud: mode == Some(WorkResultInvestigationMode::SkipMaxBaudBeforeWork),
         skip_asic_max_baud: mode == Some(WorkResultInvestigationMode::SkipAsicMaxBaud),
         use_frequency_ramp: mode == Some(WorkResultInvestigationMode::FrequencyRamp),
+        post_max_baud_delay_ms: if mode == Some(WorkResultInvestigationMode::PostMaxBaudDelay2000) {
+            2_000
+        } else {
+            0
+        },
     }
 }
 
@@ -56,7 +62,8 @@ pub fn phase27_initialized_no_mining_bootstrap(mining_ready_completed: bool) -> 
     match investigation_mode() {
         Some(WorkResultInvestigationMode::RequireDiagnosticNonce) => false,
         Some(WorkResultInvestigationMode::InitializedNoMiningGate) => true,
-        Some(WorkResultInvestigationMode::SkipMiningReadyInit)
+        Some(WorkResultInvestigationMode::PostMaxBaudDelay2000)
+        | Some(WorkResultInvestigationMode::SkipMiningReadyInit)
         | Some(WorkResultInvestigationMode::SkipMaxBaudBeforeWork)
         | Some(WorkResultInvestigationMode::SkipAsicMaxBaud)
         | Some(WorkResultInvestigationMode::FrequencyRamp)
@@ -82,6 +89,7 @@ fn investigation_mode() -> Option<WorkResultInvestigationMode> {
         Some("initialized_no_mining_gate") => {
             Some(WorkResultInvestigationMode::InitializedNoMiningGate)
         }
+        Some("post_max_baud_delay_2000") => Some(WorkResultInvestigationMode::PostMaxBaudDelay2000),
         _ => None,
     }
 }

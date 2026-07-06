@@ -244,6 +244,11 @@ pub fn max_baud_prelude_actions(
     }
     actions.push(Bm1366AdapterAction::UseMaxBaud { baud: MAX_BAUD });
     actions.push(Bm1366AdapterAction::ClearRx);
+    if options.post_max_baud_delay_ms > 0 {
+        actions.extend(encode_commands(&[Bm1366Command::DelayMs(
+            options.post_max_baud_delay_ms,
+        )])?);
+    }
     Ok(actions)
 }
 
@@ -274,6 +279,7 @@ pub struct MiningReadyInitOptions {
     pub skip_max_baud: bool,
     pub skip_asic_max_baud: bool,
     pub use_frequency_ramp: bool,
+    pub post_max_baud_delay_ms: u32,
 }
 
 impl MiningReadyInitOptions {
@@ -283,6 +289,7 @@ impl MiningReadyInitOptions {
             skip_max_baud: false,
             skip_asic_max_baud: false,
             use_frequency_ramp: false,
+            post_max_baud_delay_ms: 0,
         }
     }
 }
@@ -410,6 +417,21 @@ mod tests {
             Bm1366AdapterAction::UseMaxBaud { baud: 1_000_000 }
         )));
         assert!(actions.contains(&Bm1366AdapterAction::ClearRx));
+    }
+
+    #[test]
+    fn max_baud_prelude_can_insert_post_host_delay() {
+        let actions = max_baud_prelude_actions(MiningReadyInitOptions {
+            post_max_baud_delay_ms: 2_000,
+            ..MiningReadyInitOptions::phase27_default()
+        })
+        .expect("prelude should encode");
+
+        assert!(actions.contains(&Bm1366AdapterAction::ClearRx));
+        assert!(actions.iter().any(|command| matches!(
+            command,
+            Bm1366AdapterAction::DelayMs(2_000)
+        )));
     }
 
     #[test]

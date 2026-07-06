@@ -33,8 +33,8 @@ use crate::runtime_snapshot::{
     projected_system_info,
 };
 use crate::{
-    controlled_mining_runtime, live_stratum_runtime, log_buffer, network_stack, settings_adapter,
-    static_files, websocket_api,
+    controlled_mining_runtime, live_stratum_runtime, log_buffer, mining_evidence_mode::MiningEvidenceMode,
+    network_stack, settings_adapter, static_files, websocket_api,
 };
 
 type ApiRequest<'request, 'connection> = Request<&'request mut EspHttpConnection<'connection>>;
@@ -305,6 +305,9 @@ fn handle_settings_patch<'request, 'connection>(
         settings_patch_retained(&format!(
             "axeos_settings_patch=persistence_committed writes={write_count}"
         ));
+        if MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
+            live_stratum_runtime::maybe_emit_phase27_pool_settings_consumed_marker();
+        }
         send_settings_response(request, success.public_response())?;
         settings_patch_retained(
             "axeos_settings_patch=response_scheduled status=200 empty_body=true",
