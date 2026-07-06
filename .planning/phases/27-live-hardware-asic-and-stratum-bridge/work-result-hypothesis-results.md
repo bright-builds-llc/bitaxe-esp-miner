@@ -75,10 +75,10 @@ Default Phase 27 behavior after deep dive:
 | --- | --- | --- | --- |
 | G1 | `frequency_ramp,initialized_no_mining_gate` | **Silent @ 10s** | [`b4-init-state-20260706-run-G1/`](b4-init-state-20260706-run-G1/) |
 | G2 | `require_diagnostic_nonce,initialized_no_mining_gate` | **PASS control** | Fail-closed; no `work_dispatched` |
-| G3 | ramp + W9 delay combo | **BLOCKED** | USB connection failure post-G2 |
-| H1 | `skip_boot_diagnostic_work` | **BLOCKED** | USB connection failure |
-| H2 | `require_uart_proof_for_production` | **BLOCKED** (code PASS) | Bootstrap disabled like G2 |
-| H3 | ramp + skip diagnostic | **BLOCKED** | USB connection failure |
+| G3 | ramp + W9 delay combo | **Silent @ 10s** (retry) | [`b4-init-state-20260706-retry-G3/`](b4-init-state-20260706-retry-G3/) |
+| H1 | `skip_boot_diagnostic_work` | **Silent @ 10s** (retry) | [`b4-init-state-20260706-retry-H1/`](b4-init-state-20260706-retry-H1/) — H3 boot-pollution **rejected** |
+| H2 | `require_uart_proof_for_production` | **PASS control** (retry) | Fail-closed like G2 |
+| H3 | ramp + skip diagnostic | **INCOMPLETE** | USB/truncated capture; H1+G1 cover combo |
 | Wave 3 code | Bridge-default frequency ramp; comma-separated investigation modes | **APPLIED** | [`work_result_investigation.rs`](../../../firmware/bitaxe/src/asic_adapter/work_result_investigation.rs) |
 
 ## Hardware matrix evidence
