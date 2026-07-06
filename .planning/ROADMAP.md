@@ -133,7 +133,7 @@ Plans:
   2. Checklist rows for SAFE-10, SAFE-11, STR-08, STR-09, SAFE-12, SAFE-13, CFG-07, and ASIC-09 through ASIC-12 promote only to statuses supported by committed evidence.
   3. `just parity` rejects overbroad verified promotion without matching evidence artifacts.
   4. Explicit non-claims remain for deferred active safety, OTAWWW/recovery, non-205 boards, Stratum v2, UI/BAP, and unbounded stress.
-**Plans**: TBD
+**Plans**: 3 plans
 Plans:
 - [ ] 28-01-PLAN.md — Consolidate Phase 27 hardware evidence into the operator evidence root contract.
 - [ ] 28-02-PLAN.md — Promote conservative checklist rows from Phase 27 evidence only.
