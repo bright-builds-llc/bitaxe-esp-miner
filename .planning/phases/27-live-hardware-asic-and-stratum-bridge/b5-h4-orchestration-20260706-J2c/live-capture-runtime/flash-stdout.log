@@ -1,0 +1,16 @@
+flash_image: /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin
+flash_command: espflash write-bin --chip esp32s3 --port /dev/cu.usbmodem1101 0x0 /Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin
+nvs_seed_status: provided
+nvs_seed_image: /var/folders/b6/j7bsvp3j6jzbl8r28p9wqtnh0000gn/T/bitaxe-wifi-nvs-Pkg4XX/wifi-nvs.bin
+nvs_seed_command: espflash write-bin --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive 0x9000 /var/folders/b6/j7bsvp3j6jzbl8r28p9wqtnh0000gn/T/bitaxe-wifi-nvs-Pkg4XX/wifi-nvs.bin
+Chip type:         esp32s3 (revision v0.2)
+Crystal frequency: 40 MHz
+Flash size:        16MB
+Features:          WiFi, BLE, Embedded Flash
+MAC address:       f0:f5:bd:4a:ab:cc
+Chip type:         esp32s3 (revision v0.2)
+Crystal frequency: 40 MHz
+Flash size:        16MB
+Features:          WiFi, BLE, Embedded Flash
+MAC address:       f0:f5:bd:4a:ab:cc
+monitor_command: espflash monitor --chip esp32s3 --port /dev/cu.usbmodem1101 --non-interactive

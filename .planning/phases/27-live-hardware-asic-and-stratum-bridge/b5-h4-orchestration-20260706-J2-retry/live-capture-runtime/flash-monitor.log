@@ -1,0 +1,444 @@
+[2026-07-06T16:39:13Z INFO ] 🚀 A new version of espflash is available: v4.4.0
+[2026-07-06T16:39:13Z INFO ] Serial port: '/dev/cu.usbmodem1101'
+[2026-07-06T16:39:13Z INFO ] Connecting...
+[2026-07-06T16:39:13Z INFO ] Using flash stub
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x28 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40378d0b
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2810,len:0x15a0
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xd24
+load:0x403cb700,len:0x2f04
+entry 0x403c8928
+I (26) boot: ESP-IDF v5.4.1-426-g3ad36321ea 2nd stage bootloader
+I (27) boot: compile time Apr 24 2025 15:55:11
+I (27) boot: Multicore bootloader
+I (28) boot: chip revision: v0.2
+I (31) boot: efuse block revision: v1.3
+I (35) boot.esp32s3: Boot SPI Speed : 80MHz
+I (39) boot.esp32s3: SPI Mode       : DIO
+I (42) boot.esp32s3: SPI Flash Size : 16MB
+I (46) boot: Enabling RNG early entropy source...
+I (51) boot: Partition Table:
+I (53) boot: ## Label            Usage          Type ST Offset   Length
+I (60) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (66) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (73) boot:  2 factory          factory app      00 00 00010000 00400000
+I (79) boot:  3 www              Unknown data     01 82 00410000 00300000
+I (86) boot:  4 ota_0            OTA app          00 10 00710000 00400000
+I (92) boot:  5 ota_1            OTA app          00 11 00b10000 00400000
+I (99) boot:  6 otadata          OTA data         01 00 00f10000 00002000
+I (105) boot:  7 coredump         Unknown data     01 03 00f12000 00010000
+I (112) boot: End of partition table
+I (115) boot: Defaulting to factory image
+I (119) esp_image: segment 0: paddr=00010020 vaddr=3c140020 size=44e04h (282116) map
+I (176) esp_image: segment 1: paddr=00054e2c vaddr=3fc9c300 size=05b64h ( 23396) load
+I (181) esp_image: segment 2: paddr=0005a998 vaddr=40374000 size=05680h ( 22144) load
+I (187) esp_image: segment 3: paddr=00060020 vaddr=42000020 size=13da7ch (1301116) map
+I (417) esp_image: segment 4: paddr=0019daa4 vaddr=40379680 size=12c04h ( 76804) load
+I (434) esp_image: segment 5: paddr=001b06b0 vaddr=50000000 size=00020h (    32) load
+I (444) boot: Loaded app from partition at offset 0x10000
+I (444) boot: Disabling RNG early entropy source...
+I (454) octal_psram: vendor id    : 0x0d (AP)
+I (454) octal_psram: dev id       : 0x02 (generation 3)
+I (455) octal_psram: density      : 0x03 (64 Mbit)
+I (456) octal_psram: good-die     : 0x01 (Pass)
+I (461) octal_psram: Latency      : 0x01 (Fixed)
+I (465) octal_psram: VCC          : 0x01 (3V)
+I (469) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (474) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (479) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (483) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (489) octal_psram: DriveStrength: 0x00 (1/1)
+I (493) MSPI Timing: Enter psram timing tuning
+I (498) esp_psram: Found 8MB PSRAM device
+I (501) esp_psram: Speed: 80MHz
+I (504) cpu_start: Multicore app
+I (929) esp_psram: SPI SRAM memory test OK
+I (938) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (939) cpu_start: Pro cpu start user code
+I (939) cpu_start: cpu freq: 160000000 Hz
+I (940) app_init: Application information:
+I (944) app_init: Project name:     libespidf
+I (948) app_init: App version:      dc9266e-dirty
+I (953) app_init: Compile time:     Jun 28 2026 15:45:05
+I (958) app_init: ELF file SHA256:  000000000...
+I (962) app_init: ESP-IDF:          v5.5.4
+I (966) efuse_init: Min chip rev:     v0.0
+I (970) efuse_init: Max chip rev:     v0.99 
+I (974) efuse_init: Chip rev:         v0.2
+I (977) heap_init: Initializing. RAM available for dynamic allocation:
+I (984) heap_init: At 3FCA32A8 len 00046468 (281 KiB): RAM
+I (989) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (994) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (999) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (1005) esp_psram: Adding pool of 8178K of PSRAM memory to heap allocator
+I (1012) spi_flash: detected chip: gd
+I (1014) spi_flash: flash io: dio
+W (1018) i2c: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
+I (1028) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (1034) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (1041) main_task: Started on CPU0
+I (1051) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1051) main_task: Calling app_main()
+I (1051) bitaxe_firmware: bitaxe-rust boot: board=Ultra 205 asic=BM1366
+I (1081) bitaxe_firmware: safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled
+I (1091) esp_idf_svc::nvs: EspNvs dropped
+I (1091) esp_idf_svc::nvs: NvsDefault dropped
+W (1091) bitaxe_firmware::display_adapter: display_input_status=runtime_gap reason=hardware_evidence_pending startup_only=true
+W (1101) bitaxe_firmware: display_status=deferred reason=phase27_safety_i2c0_in_use
+I (1111) bitaxe_firmware::safety_adapter::phase27_bring_up: phase27_safety_bring_up=started
+I (1121) bitaxe_firmware::asic_adapter::reset: asic_status=hold_reset_low gpio=1
+I (1121) bitaxe_firmware::safety_adapter::asic_enable: asic_enable_status=active gpio=10
+I (1131) bitaxe_firmware::safety_adapter::ds4432u: safety_voltage_effect=write setpoint_v=1.200 register=0xc6
+I (1141) bitaxe_firmware::safety_adapter::emc2101: safety_fan_effect=write percent=70 register=0x2c
+I (1661) bitaxe_firmware::safety_adapter::phase27_bring_up: safety_power_status=observed
+W (1661) bitaxe_firmware::safety_adapter::phase27_bring_up: safety_thermal_status=fault category=thermal_reading_invalid
+I (1661) bitaxe_firmware::safety_adapter::phase27_bring_up: safety_fan_status=startup_duty percent=70 rpm=7346
+I (1891) bitaxe_firmware::safety_adapter::phase27_bring_up: asic_reset_status=post_bring_up_pulse
+I (1891) bitaxe_firmware::safety_adapter::phase27_bring_up: phase27_safety_bring_up=complete
+I (1891) uart: queue free spaces: 10
+I (1901) bitaxe_firmware::asic_adapter::status: asic_status=chip_detect_only initialized=false mining=disabled work_submission=disabled
+I (1911) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=wait_tx_done outcome=Ok(()) elapsed_ms=0
+I (1921) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 a4 90 00 ff ff 1c
+I (1931) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 a4 90 00 ff ff 1c
+I (1931) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 a4 90 00 ff ff 1c
+I (1941) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=7 hex=55 aa 52 05 00 00 0a
+I (1951) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=wait_tx_done outcome=Ok(()) elapsed_ms=0
+I (1961) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=rx read_index=1 chunk_bytes=11 total_bytes=11 remaining_ms=999
+I (1971) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=rx_chunk hex=aa 55 13 66 00 00 00 00 00 00 05
+I (1981) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=rx_complete read_count=1 hex=aa 55 13 66 00 00 00 00 00 00 05
+I (1991) bitaxe_firmware::asic_adapter::status: asic_status=chip_detected chips=1 initialized=false mining=disabled work_submission=disabled
+I (2011) bitaxe_firmware::asic_adapter: asic_work_result_trace=mining_ready_init_started chip_count=1 actions=161
+I (2011) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2021) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 a8 00 07 00 00 03
+I (2031) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2041) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 18 ff 0f c1 00 00
+I (2051) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=7
+I (2061) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=7 hex=55 aa 53 05 00 00 03
+I (2071) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=7
+I (2081) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=7 hex=55 aa 40 05 00 00 1c
+I (2091) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2091) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 3c 80 00 85 40 0c
+I (2101) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2111) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 3c 80 00 80 20 19
+I (2121) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2131) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 14 00 00 80 ff 04
+I (2141) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2151) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 54 00 00 00 03 1d
+I (2161) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2171) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 58 02 11 11 11 06
+I (2181) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2191) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 2c 00 7c 00 03 03
+I (2191) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2201) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 a8 00 07 01 f0 15
+I (2211) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2221) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 18 f0 00 c1 00 0c
+I (2231) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2241) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 3c 80 00 85 40 04
+I (2251) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2261) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 3c 80 00 80 20 11
+I (2271) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2281) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 41 09 00 3c 80 00 82 aa 05
+I (2291) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2291) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (2411) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2411) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (2521) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2521) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (2631) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2631) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (2741) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2741) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (2851) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2851) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (2961) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (2961) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (3071) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (3071) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (3181) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (3181) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (3291) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (3291) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (3401) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (3401) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (3511) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (3511) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (3621) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (3621) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (3731) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (3731) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (3841) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (3841) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (3951) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (3951) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (4061) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (4061) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (4171) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (4171) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (4281) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (4281) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (4391) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (4391) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (4501) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (4501) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (4611) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (4611) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (4721) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (4721) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (4831) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (4831) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (4941) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (4941) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (5051) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (5051) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (5161) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (5161) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (5271) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (5271) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (5381) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (5381) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (5491) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (5491) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (5601) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (5601) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (5711) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (5711) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (5821) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (5821) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (5931) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (5931) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (6041) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (6041) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (6151) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (6151) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (6261) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (6261) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (6371) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (6371) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (6481) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (6481) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (6591) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (6591) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (6701) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (6701) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (6811) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (6811) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (6921) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (6921) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (7031) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (7031) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (7141) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (7141) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (7251) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (7251) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (7361) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (7361) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (7471) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (7471) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (7581) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (7581) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (7691) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (7691) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (7801) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (7801) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (7911) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (7911) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (8021) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (8021) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (8131) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (8131) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (8241) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (8241) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (8351) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (8351) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 40 a0 02 40 11
+I (8461) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (8461) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (8571) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (8571) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (8681) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (8681) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (8791) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (8791) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 40 aa 02 40 1a
+I (8901) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (8901) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (9011) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9011) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (9121) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9121) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (9231) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9231) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 40 90 02 30 13
+I (9341) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9341) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (9451) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9451) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (9561) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9561) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (9671) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9671) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 40 98 02 30 0d
+I (9781) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9781) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (9891) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9891) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 08 50 c2 02 40 1c
+I (9891) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9901) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 10 00 0d 32 24 10
+I (9911) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9921) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 a4 90 00 ff ff 1c
+I (9931) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=write_frame len=11
+I (9941) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=11 hex=55 aa 51 09 00 28 11 30 02 00 03
+I (9951) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=wait_tx_done timeout_ms=1000
+I (9961) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=wait_tx_done outcome=Ok(()) elapsed_ms=0
+I (9971) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=use_max_baud baud=1000000
+I (9981) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=wait_tx_done outcome=Ok(()) elapsed_ms=0
+I (9981) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=clear_rx
+I (9991) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=clear_rx
+I (10001) bitaxe_firmware::asic_adapter: asic_work_result_trace=init_action kind=publish_status status=InitializedNoMining
+I (10011) bitaxe_firmware::asic_adapter::status: asic_status=initialized_no_mining initialized=true mining=disabled work_submission=disabled
+I (10021) bitaxe_firmware::asic_adapter: asic_work_result_trace=mining_ready_init_complete
+I (10031) bitaxe_firmware::asic_adapter::status: asic_work_result_diagnostic=started mining=disabled work_submission=disabled
+I (10041) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=tx len=88 hex=55 aa 21 56 28 01 01 02 03 04 05 06 07 08 09 0a 0b 0c 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 33 34 35 36 1c 1f
+I (10071) bitaxe_firmware::asic_adapter::uart: asic_uart_trace=wait_tx_done outcome=Ok(()) elapsed_ms=0
+I (10081) bitaxe_firmware::asic_adapter: asic_work_result_trace=work_tx_done elapsed_from_dispatch=0
+I (10091) bitaxe_firmware::asic_adapter::status: bm1366_diagnostic_work=dispatched job_id=0x28 bytes=88 mining=disabled
+I (10101) bitaxe_firmware::asic_adapter: asic_work_result_trace=result_read_start address_interval=256 timeout_ms=10000
+I (20111) bitaxe_firmware::asic_adapter: asic_work_result_trace=initialized_no_mining_bootstrap timeout
+I (20111) bitaxe_firmware::asic_adapter::status: bm1366_diagnostic_result=bounded_no_result bootstrap=initialized_no_mining mining=disabled work_submission=disabled
+I (20121) bitaxe_firmware::asic_adapter::status: asic_production_status=initialized
+I (20131) bitaxe_firmware::boot_validation: ota_boot_validation=not_pending state=factory
+I (20131) bitaxe_firmware::safety_adapter::watchdog: safety_supervisor=started thread=bitaxe-safety-supervisor cadence_ms=100
+I (20141) bitaxe_firmware::safety_adapter::watchdog: safety_supervisor_step=yield reason=yield_interval_reached
+I (20161) pp: pp rom version: e7ae62f
+I (20161) net80211: net80211 rom version: e7ae62f
+I (20171) wifi:wifi driver task: 3fcb2c48, prio:23, stack:6656, core=0
+I (20171) wifi:wifi firmware version: 0947e8b
+I (20171) wifi:wifi certification version: v7.0
+I (20181) wifi:config NVS flash: disabled
+I (20181) wifi:config nano formatting: disabled
+I (20181) wifi:Init data frame dynamic rx buffer num: 32
+I (20191) wifi:Init static rx mgmt buffer num: 5
+I (20191) wifi:Init management short buffer num: 32
+I (20201) wifi:Init static tx buffer num: 16
+I (20201) wifi:Init tx cache buffer num: 32
+I (20211) wifi:Init static tx FG buffer num: 2
+I (20211) wifi:Init static rx buffer size: 1600
+I (20221) wifi:Init static rx buffer num: 16
+I (20221) wifi:Init dynamic rx buffer num: 32
+I (20221) wifi_init: rx ba win: 16
+I (20231) wifi_init: accept mbox: 6
+I (20231) wifi_init: tcpip mbox: 32
+I (20231) wifi_init: udp mbox: 6
+I (20241) wifi_init: tcp mbox: 6
+I (20241) wifi_init: tcp tx win: 5760
+I (20241) wifi_init: tcp rx win: 5760
+I (20251) wifi_init: tcp mss: 1440
+I (20251) wifi_init: WiFi/LWIP prefer SPIRAM
+I (20251) wifi_init: WiFi IRAM OP enabled
+I (20261) wifi_init: WiFi RX IRAM OP enabled
+I (20261) bitaxe_firmware::wifi_adapter: wifi_hostname_status=applied
+I (20271) phy_init: phy_version 711,97bcf0a2,Aug 25 2025,19:04:10
+W (20271) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (20311) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (20331) wifi:mode : sta ([redacted-mac])
+I (20331) wifi:enable tsf
+I (22811) wifi:new:<11,0>, old:<1,0>, ap:<255,255>, sta:<11,0>, prof:1, snd_ch_cfg:0x0
+I (22811) wifi:state: init -> auth (0xb0)
+I (22961) wifi:state: auth -> assoc (0x0)
+I (22981) wifi:state: assoc -> run (0x10)
+I (23031) wifi:connected with [redacted-ssid], aid = 1, channel 11, BW20, bssid = [redacted-mac]
+I (23031) wifi:security: WPA2-PSK, phy: bgn, rssi: -45, cipher(pairwise:0x3, group:0x3), pmf:0
+I (23041) wifi:pm start, type: 1
+
+I (23041) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (23051) wifi:set rx beacon pti, rx_bcn_pti: 0, bcn_timeout: 25000, mt_pti: 0, mt_time: 10000
+I (23061) wifi:dp: 2, bi: 102400, li: 4, scale listen interval from 307200 us to 409600 us
+I (23061) wifi:AP's beacon interval = 102400 us, DTIM period = 2
+I (23361) wifi:<ba-add>idx:0 (ifx:0, [redacted-mac]), tid:0, ssn:0, winSize:64
+I (23571) wifi:<ba-add>idx:1 (ifx:0, [redacted-mac]), tid:6, ssn:2, winSize:64
+I (24581) esp_netif_handlers: sta ip: [redacted-ip], mask: [redacted-ip], gw: [redacted-ip]
+I (24581) bitaxe_firmware::wifi_adapter: wifi_status=connected ipv4=[redacted-ip] device_url=[redacted-url]
+I (24761) bitaxe_firmware::filesystem: spiffs_mount=available partition=www total_bytes=2884241 used_bytes=4518
+I (24761) esp_idf_svc::http::server: Started Httpd server with config Configuration { http_port: 80, ctrl_port: 32768, https_port: 443, core: None, max_sessions: 16, session_timeout: 1200s, task_caps: 2052, stack_size: 8192, max_open_sockets: 7, max_uri_handlers: 32, max_resp_headers: 8, lru_purge_enable: true, uri_match_wildcard: true }
+I (24801) esp_idf_svc::nvs: EspNvs dropped
+I (24801) esp_idf_svc::nvs: NvsDefault dropped
+I (24801) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/recovery"
+I (24811) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/info"
+I (24821) esp_idf_svc::http::server: Registered Httpd server handler Patch for URI "/api/system"
+I (24821) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/logs"
+I (24831) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/asic"
+I (24841) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/statistics"
+I (24851) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/system/scoreboard"
+I (24861) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/pause"
+I (24871) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/resume"
+I (24881) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/restart"
+I (24891) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/identify"
+I (24901) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/blockFound/dismiss"
+I (24911) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/OTA"
+I (24921) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/system/OTAWWW"
+I (24921) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/api/*"
+I (24931) esp_idf_svc::http::server: Registered Httpd server handler Post for URI "/api/*"
+I (24941) esp_idf_svc::http::server: Registered Httpd server handler Patch for URI "/api/*"
+I (24951) esp_idf_svc::http::server: Registered Httpd server handler Get for URI "/*"
+I (24961) bitaxe_firmware::http_api: axeos_api_route_shell=started manifest_routes=17 firmware_update_routes=1 otawww_gap_routes=1 recovery_routes=1 static_file_routes=1
+I (24971) bitaxe_firmware::live_stratum_runtime: phase25_watchdog_checkpoint=socket decision=continue redacted=true
+I (24981) bitaxe_firmware::live_stratum_runtime: phase25_watchdog_checkpoint=asic decision=continue redacted=true
+I (24991) bitaxe_firmware::live_stratum_runtime: phase25_watchdog_checkpoint=api decision=continue redacted=true
+I (25001) bitaxe_firmware::live_stratum_runtime: phase25_watchdog_checkpoint=websocket decision=continue redacted=true
+I (25011) bitaxe_firmware::live_stratum_runtime: phase25_watchdog_checkpoint=evidence_capture decision=continue redacted=true
+I (25021) bitaxe_firmware: reset_reason=11
+I (25031) bitaxe_firmware: partition=factory
+I (25031) bitaxe_firmware: psram_status=available
+I (25031) bitaxe_firmware: firmware_commit=b6f41401369c
+I (25041) bitaxe_firmware: reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50
+I (25051) bitaxe_firmware: esp_idf_version=v5.5.4
+I (25051) bitaxe_firmware: rust_target=xtensa-esp32s3-espidf
+I (25061) main_task: Returned from app_main()
+I (25531) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (27541) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (29551) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (31561) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (33571) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (35581) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (37591) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (39601) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (41611) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (43621) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (45631) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (47631) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (49651) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (51661) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (53671) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (55681) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (57691) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (59701) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (61711) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (63721) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (65731) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (67741) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (69751) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (71761) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (73771) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (75781) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (77791) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (79801) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (81811) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (83821) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (85831) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (87841) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (89851) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (91861) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (93871) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (95881) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (97891) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (99901) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (101911) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (103921) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (105931) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (107941) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (109951) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (111961) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (113971) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (115981) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true
+I (117991) bitaxe_firmware::live_stratum_runtime: phase25_live_stratum_status=waiting_for_pool_settings redacted=true

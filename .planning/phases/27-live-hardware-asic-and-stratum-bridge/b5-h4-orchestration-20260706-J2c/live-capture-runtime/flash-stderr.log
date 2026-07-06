@@ -1,0 +1,26 @@
+bazel run //tools/flash:flash -- flash-monitor board=205 port=/dev/cu.usbmodem1101 image=/Users/peterryszkiewicz/Library/Caches/bazel/_bazel_peterryszkiewicz/79ce772edfc7d2dc3dd5c6889d5a90c9/execroot/_main/bazel-out/darwin_arm64-fastbuild/bin/firmware/bitaxe/bitaxe-ultra205-factory.bin evidence-dir=/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/.planning/phases/27-live-hardware-asic-and-stratum-bridge/b5-h4-orchestration-20260706-J2c/live-capture-runtime capture-timeout-seconds=360 wifi-credentials=/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/wifi-credentials.json redact-evidence=true
+Computing main repo mapping: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //tools/flash:flash (0 packages loaded, 0 targets configured)
+Analyzing: target //tools/flash:flash (0 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //tools/flash:flash (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+Target //tools/flash:flash up-to-date:
+  bazel-bin/tools/flash/flash
+INFO: Elapsed time: 0.097s, Critical Path: 0.00s
+INFO: 1 process: 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/tools/flash/flash <args omitted>
+[2026-07-06T16:44:19Z INFO ] 🚀 A new version of espflash is available: v4.4.0
+[2026-07-06T16:44:19Z INFO ] Serial port: '/dev/cu.usbmodem1101'
+[2026-07-06T16:44:19Z INFO ] Connecting...
+[2026-07-06T16:44:19Z INFO ] Using flash stub
+[2026-07-06T16:44:45Z INFO ] Binary successfully written to flash!
+[2026-07-06T16:44:45Z INFO ] 🚀 A new version of espflash is available: v4.4.0
+[2026-07-06T16:44:45Z WARN ] Monitor options were provided, but `--monitor/-M` flag isn't set. These options will be ignored.
+[2026-07-06T16:44:45Z INFO ] Serial port: '/dev/cu.usbmodem1101'
+[2026-07-06T16:44:45Z INFO ] Connecting...
+[2026-07-06T16:44:46Z INFO ] Using flash stub
+[2026-07-06T16:44:46Z INFO ] Binary successfully written to flash!
