@@ -1,6 +1,7 @@
 pub mod bm1366;
 pub mod dispatch;
 pub mod error;
+pub mod work_result_investigation;
 
 pub use dispatch::{AsicDispatch, DeferredAsic, DeferredAsicModel, DeferredAsicReason};
 pub use error::Bm1366ProtocolFault;

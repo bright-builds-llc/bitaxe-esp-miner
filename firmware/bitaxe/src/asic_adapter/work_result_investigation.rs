@@ -1,23 +1,20 @@
 //! Phase 27 work-result investigation compile-time plan selection.
 //!
 //! Controlled by `BITAXE_WORK_RESULT_INVESTIGATION` action env at firmware build time.
+//! Supports comma-separated modes, e.g. `frequency_ramp,initialized_no_mining_gate`.
 
-use bitaxe_asic::bm1366::{
-    init_plan::{Bm1366InitDecision, Bm1366InitPlan, Bm1366Preflight},
-    mining_ready::MiningReadyInitOptions,
+use bitaxe_asic::{
+    bm1366::{
+        init_plan::{Bm1366InitDecision, Bm1366InitPlan, Bm1366Preflight},
+        mining_ready::MiningReadyInitOptions,
+    },
+    work_result_investigation::investigation_modes_contain,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum WorkResultInvestigationMode {
-    SkipMiningReadyInit,
-    SkipMaxBaudBeforeWork,
-    SkipAsicMaxBaud,
-    FrequencyRamp,
-    RequireDiagnosticNonce,
-    InitializedNoMiningGate,
-    PostMaxBaudDelay2000,
-    ClearRxBeforeProductionWork,
-}
+const INVESTIGATION_RAW: &str = match option_env!("BITAXE_WORK_RESULT_INVESTIGATION") {
+    Some(raw) => raw,
+    None => "",
+};
 
 pub fn mining_ready_init_decision(
     preflight: Bm1366Preflight,
@@ -27,7 +24,7 @@ pub fn mining_ready_init_decision(
         return None;
     }
 
-    if investigation_mode() == Some(WorkResultInvestigationMode::SkipMiningReadyInit) {
+    if has_investigation_mode("skip_mining_ready_init") {
         return None;
     }
 
@@ -40,17 +37,24 @@ pub fn mining_ready_init_decision(
 }
 
 pub fn mining_ready_init_options() -> MiningReadyInitOptions {
-    let mode = investigation_mode();
+    let bridge_active = phase27_bridge_active();
     MiningReadyInitOptions {
-        skip_max_baud: mode == Some(WorkResultInvestigationMode::SkipMaxBaudBeforeWork),
-        skip_asic_max_baud: mode == Some(WorkResultInvestigationMode::SkipAsicMaxBaud),
-        use_frequency_ramp: mode == Some(WorkResultInvestigationMode::FrequencyRamp),
-        post_max_baud_delay_ms: if mode == Some(WorkResultInvestigationMode::PostMaxBaudDelay2000) {
+        skip_max_baud: has_investigation_mode("skip_max_baud"),
+        skip_asic_max_baud: has_investigation_mode("skip_asic_max_baud"),
+        use_frequency_ramp: has_investigation_mode("frequency_ramp")
+            || (bridge_active && bridge_default_frequency_ramp_enabled()),
+        post_max_baud_delay_ms: if has_investigation_mode("post_max_baud_delay_2000") {
             2_000
         } else {
             0
         },
     }
+}
+
+/// Wave 3: upstream parity — stepped 50→485 MHz ramp is default on bridge packages unless
+/// explicitly disabled via `skip_frequency_ramp` investigation mode.
+fn bridge_default_frequency_ramp_enabled() -> bool {
+    !has_investigation_mode("skip_frequency_ramp")
 }
 
 /// Phase 27 bootstrap: retain production UART when mining-ready init completed but
@@ -60,45 +64,31 @@ pub fn phase27_initialized_no_mining_bootstrap(mining_ready_completed: bool) -> 
         return false;
     }
 
-    match investigation_mode() {
-        Some(WorkResultInvestigationMode::RequireDiagnosticNonce) => false,
-        Some(WorkResultInvestigationMode::InitializedNoMiningGate) => true,
-        Some(WorkResultInvestigationMode::PostMaxBaudDelay2000)
-        | Some(WorkResultInvestigationMode::ClearRxBeforeProductionWork)
-        | Some(WorkResultInvestigationMode::SkipMiningReadyInit)
-        | Some(WorkResultInvestigationMode::SkipMaxBaudBeforeWork)
-        | Some(WorkResultInvestigationMode::SkipAsicMaxBaud)
-        | Some(WorkResultInvestigationMode::FrequencyRamp)
-        | None => false,
+    if has_investigation_mode("require_diagnostic_nonce")
+        || has_investigation_mode("require_uart_proof_for_production")
+    {
+        return false;
     }
+
+    has_investigation_mode("initialized_no_mining_gate")
+}
+
+pub fn skip_boot_diagnostic_work() -> bool {
+    has_investigation_mode("skip_boot_diagnostic_work")
 }
 
 pub fn initialized_no_mining_bootstrap_gate() -> bool {
-    investigation_mode() == Some(WorkResultInvestigationMode::InitializedNoMiningGate)
+    has_investigation_mode("initialized_no_mining_gate")
 }
 
 pub fn clear_rx_before_production_work() -> bool {
-    investigation_mode() == Some(WorkResultInvestigationMode::ClearRxBeforeProductionWork)
+    has_investigation_mode("clear_rx_before_production_work")
 }
 
 fn phase27_bridge_active() -> bool {
     crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge()
 }
 
-fn investigation_mode() -> Option<WorkResultInvestigationMode> {
-    match option_env!("BITAXE_WORK_RESULT_INVESTIGATION") {
-        Some("skip_mining_ready_init") => Some(WorkResultInvestigationMode::SkipMiningReadyInit),
-        Some("skip_max_baud") => Some(WorkResultInvestigationMode::SkipMaxBaudBeforeWork),
-        Some("skip_asic_max_baud") => Some(WorkResultInvestigationMode::SkipAsicMaxBaud),
-        Some("frequency_ramp") => Some(WorkResultInvestigationMode::FrequencyRamp),
-        Some("require_diagnostic_nonce") => Some(WorkResultInvestigationMode::RequireDiagnosticNonce),
-        Some("initialized_no_mining_gate") => {
-            Some(WorkResultInvestigationMode::InitializedNoMiningGate)
-        }
-        Some("post_max_baud_delay_2000") => Some(WorkResultInvestigationMode::PostMaxBaudDelay2000),
-        Some("clear_rx_before_production_work") => {
-            Some(WorkResultInvestigationMode::ClearRxBeforeProductionWork)
-        }
-        _ => None,
-    }
+fn has_investigation_mode(mode: &str) -> bool {
+    investigation_modes_contain(INVESTIGATION_RAW, mode)
 }

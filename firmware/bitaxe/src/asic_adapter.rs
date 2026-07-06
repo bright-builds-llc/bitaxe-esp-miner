@@ -275,6 +275,16 @@ where
         return Ok(());
     }
 
+    if retain_for_production
+        && work_result_investigation::skip_boot_diagnostic_work()
+        && work_result_investigation::phase27_initialized_no_mining_bootstrap(mining_ready_completed)
+    {
+        log::info!("asic_work_result_trace=skip_boot_diagnostic_work bootstrap=initialized_no_mining");
+        status::publish_work_result_bootstrap_initialized_status();
+        production::store_production_peripherals(uart, reset, true);
+        return Ok(());
+    }
+
     status::publish_work_result_diagnostic_started_status();
     let job_id = Bm1366JobId::new(0x28);
     let work_frame = match diagnostic_job_frame(job_id, diagnostic_work_fields()) {

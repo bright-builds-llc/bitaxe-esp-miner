@@ -19,7 +19,7 @@ Board: Ultra 205 (`port=/dev/cu.usbmodem1101`)
 | ID | Hypothesis | Result | Evidence |
 | --- | --- | --- | --- |
 | W7 | Missing ASIC-side reg 0x28 before host 1M | **FIX APPLIED — RX still silent** | REG28 TX confirmed; post-work diagnostic still times out at 1M and 115200 |
-| W8 | Single frequency step vs 50→485 MHz ramp | **FIX AVAILABLE** | `frequency_ramp` investigation flag; 6.25 MHz steps with 100 ms delay |
+| W8 | Single frequency step vs 50→485 MHz ramp | **NO RX GAIN (G1)** | `frequency_ramp` + bootstrap; ~10s poll still silent |
 | W9 | 2000ms post max-baud stabilization | **FIX AVAILABLE — no RX gain** | `post_max_baud_delay_2000`; E2 timing confirmed, diagnostic still silent |
 | W10 | Single boot read vs continuous result loop | **FIX APPLIED — still silent** | Bridge polls ~10s (`result_read_attempt` ×47); boot diagnostic remains single 10s read |
 | W11 | Synthetic diagnostic job may not nonce | **DOCUMENTED** | Boot diagnostic uses fixed `job_id=0x28` and synthetic fields; register-read or production pool work required for nonce proof |
@@ -37,13 +37,18 @@ Default Phase 27 behavior after deep dive:
 
 | Env value | Effect |
 | --- | --- |
-| (default) | W7 reg28 prelude + host 1M |
+| (default) | W7 reg28 prelude + host 1M; bridge packages default W8 ramp unless `skip_frequency_ramp` |
+| Comma-separated | e.g. `frequency_ramp,initialized_no_mining_gate` |
 | `skip_asic_max_baud` | Skip reg28; host still switches to 1M |
 | `skip_max_baud` | Stay @ 115200 (run C control) |
 | `frequency_ramp` | W8 ramp before nonce space |
+| `skip_frequency_ramp` | Disable bridge-default frequency ramp |
 | `require_diagnostic_nonce` | No W5 bootstrap on timeout/parse miss |
+| `require_uart_proof_for_production` | Same bootstrap disable as `require_diagnostic_nonce` |
 | `initialized_no_mining_gate` | Explicit W5 bootstrap on timeout |
+| `skip_boot_diagnostic_work` | Skip synthetic boot job; pool-only path (H1/H3) |
 | `post_max_baud_delay_2000` | W9: 2000ms delay after host max baud + clear_rx |
+| `clear_rx_before_production_work` | Clear RX before pool work TX |
 
 ## Blocker fix outcomes (2026-07-06)
 
@@ -64,6 +69,18 @@ Default Phase 27 behavior after deep dive:
 | F2 | `clear_rx_before_production_work` | **NO BRIDGE SIGNAL** | Boot diagnostic only; fail-closed @ 10s |
 | F3 | Default fail-closed regression | **PASS** | `work_result_diagnostic_timeout`; no bridge |
 
+## B4 init-state wave (2026-07-06)
+
+| ID | Experiment | Result | Evidence |
+| --- | --- | --- | --- |
+| G1 | `frequency_ramp,initialized_no_mining_gate` | **Silent @ 10s** | [`b4-init-state-20260706-run-G1/`](b4-init-state-20260706-run-G1/) |
+| G2 | `require_diagnostic_nonce,initialized_no_mining_gate` | **PASS control** | Fail-closed; no `work_dispatched` |
+| G3 | ramp + W9 delay combo | **BLOCKED** | USB connection failure post-G2 |
+| H1 | `skip_boot_diagnostic_work` | **BLOCKED** | USB connection failure |
+| H2 | `require_uart_proof_for_production` | **BLOCKED** (code PASS) | Bootstrap disabled like G2 |
+| H3 | ramp + skip diagnostic | **BLOCKED** | USB connection failure |
+| Wave 3 code | Bridge-default frequency ramp; comma-separated investigation modes | **APPLIED** | [`work_result_investigation.rs`](../../../firmware/bitaxe/src/asic_adapter/work_result_investigation.rs) |
+
 ## Hardware matrix evidence
 
-See `work-result-deep-dive-20260705-run-*.md`, `work-result-blocker-fix-20260706-run-*.md`, and `b3-production-read-20260706-run-F*.md` under this phase directory.
+See `work-result-deep-dive-20260705-run-*.md`, `work-result-blocker-fix-20260706-run-*.md`, `b3-production-read-20260706-run-F*.md`, and `b4-init-state-20260706-run-*.md` under this phase directory.

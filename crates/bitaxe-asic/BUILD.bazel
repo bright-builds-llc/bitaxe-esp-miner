@@ -23,6 +23,7 @@ rust_library(
         "src/error.rs",
         "src/dispatch.rs",
         "src/lib.rs",
+        "src/work_result_investigation.rs",
     ],
     compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_asic",

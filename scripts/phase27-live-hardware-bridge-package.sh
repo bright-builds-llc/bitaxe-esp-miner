@@ -7,7 +7,7 @@ readonly HARDWARE_EVIDENCE_ACK="ultra205-phase27-live-hardware-bridge-safe-stop"
 
 usage() {
 	printf 'usage: %s [--out-dir PATH] [--investigation MODE]\n' "$(basename "$0")" >&2
-	printf '  --investigation MODE  optional BITAXE_WORK_RESULT_INVESTIGATION value\n' >&2
+	printf '  --investigation MODE  optional BITAXE_WORK_RESULT_INVESTIGATION value (comma-separated modes)\n' >&2
 }
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

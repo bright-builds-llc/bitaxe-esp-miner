@@ -43,3 +43,5 @@ Rust path after B3 wave: safety bring-up → chip detect → `mining_ready_init`
 ASIC still does not emit post-production-work results within 10s despite correct read timing and pool-framed TX. Next investigation should target upstream init/state gaps (W13 `GLOBAL_STATE->ASIC_initialized`, frequency/mining enable timing) rather than baud, delay, or read-timeout tuning.
 
 See [`b3-production-read-20260706-run-F1.md`](b3-production-read-20260706-run-F1.md), F2, F3 under this phase directory.
+
+**Superseded by:** [`work-result-upstream-diff-v5.md`](work-result-upstream-diff-v5.md) (B4 init-state hardware matrix).
