@@ -41,3 +41,5 @@ See `work-result-blocker-fix-20260706-run-{E2,E3}.md` and `bridge-blocker-fix-20
 ## Primary suspect (post W7/W9)
 
 Missing or mis-timed **continuous production result read** (W10) and/or pool-work field encoding vs upstream `BM1366_send_work` (W11). Baud and stabilization delays alone do not restore post-work RX.
+
+**Superseded by:** [`work-result-upstream-diff-v4.md`](work-result-upstream-diff-v4.md) (B3 production-read hardware matrix).

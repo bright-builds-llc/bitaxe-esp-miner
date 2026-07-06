@@ -16,6 +16,7 @@ pub enum WorkResultInvestigationMode {
     RequireDiagnosticNonce,
     InitializedNoMiningGate,
     PostMaxBaudDelay2000,
+    ClearRxBeforeProductionWork,
 }
 
 pub fn mining_ready_init_decision(
@@ -63,6 +64,7 @@ pub fn phase27_initialized_no_mining_bootstrap(mining_ready_completed: bool) -> 
         Some(WorkResultInvestigationMode::RequireDiagnosticNonce) => false,
         Some(WorkResultInvestigationMode::InitializedNoMiningGate) => true,
         Some(WorkResultInvestigationMode::PostMaxBaudDelay2000)
+        | Some(WorkResultInvestigationMode::ClearRxBeforeProductionWork)
         | Some(WorkResultInvestigationMode::SkipMiningReadyInit)
         | Some(WorkResultInvestigationMode::SkipMaxBaudBeforeWork)
         | Some(WorkResultInvestigationMode::SkipAsicMaxBaud)
@@ -73,6 +75,10 @@ pub fn phase27_initialized_no_mining_bootstrap(mining_ready_completed: bool) -> 
 
 pub fn initialized_no_mining_bootstrap_gate() -> bool {
     investigation_mode() == Some(WorkResultInvestigationMode::InitializedNoMiningGate)
+}
+
+pub fn clear_rx_before_production_work() -> bool {
+    investigation_mode() == Some(WorkResultInvestigationMode::ClearRxBeforeProductionWork)
 }
 
 fn phase27_bridge_active() -> bool {
@@ -90,6 +96,9 @@ fn investigation_mode() -> Option<WorkResultInvestigationMode> {
             Some(WorkResultInvestigationMode::InitializedNoMiningGate)
         }
         Some("post_max_baud_delay_2000") => Some(WorkResultInvestigationMode::PostMaxBaudDelay2000),
+        Some("clear_rx_before_production_work") => {
+            Some(WorkResultInvestigationMode::ClearRxBeforeProductionWork)
+        }
         _ => None,
     }
 }

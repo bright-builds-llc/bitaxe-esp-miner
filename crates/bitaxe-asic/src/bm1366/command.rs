@@ -196,10 +196,10 @@ impl Bm1366AdapterAction {
     pub const USE_DEFAULT_BAUD: Self = Self::UseDefaultBaud { baud: 115_200 };
     pub const USE_MAX_BAUD: Self = Self::UseMaxBaud { baud: 1_000_000 };
     pub const WAIT_TX_DONE: Self = Self::WaitTxDone { timeout_ms: 1_000 };
-    /// Adapter constant: ReadExact len 11 with timeout_ms 1_000 for result frames.
+    /// Adapter constant: bounded result read matching boot diagnostic timeout.
     pub const READ_RESULT_FRAME: Self = Self::ReadExact {
         len: BM1366_RESULT_FRAME_LEN,
-        timeout_ms: 1_000,
+        timeout_ms: super::result::RESULT_WORK_TIMEOUT_MS,
     };
     /// Adapter constant: ResetPulse low_ms 100 and high_ms 100.
     pub const RESET_PULSE: Self = Self::ResetPulse {
@@ -212,7 +212,7 @@ impl Bm1366AdapterAction {
     pub const fn read_result_frame() -> Self {
         Self::ReadExact {
             len: BM1366_RESULT_FRAME_LEN,
-            timeout_ms: 1_000,
+            timeout_ms: super::result::RESULT_WORK_TIMEOUT_MS,
         }
     }
 

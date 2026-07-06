@@ -1,0 +1,14 @@
+{
+  "id": "production-work-redacted",
+  "kind": "production_work_frame",
+  "checklist_ids": ["ASIC-003", "ASIC-010"],
+  "source_file": "reference/esp-miner/components/asic/bm1366.c",
+  "source_behavior": "BM1366_send_work job frame header and payload layout",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "license_posture": "reference-derived fixture data; not MIT source expression",
+  "derivation": "manual",
+  "job_frame_len": 88,
+  "job_id_hex": "28",
+  "num_midstates_hex": "01",
+  "header_prefix_hex": "55 aa 21 56"
+}

@@ -1,0 +1,17 @@
+phase27_detector_status=explicit_port redacted=true
+Computing main repo mapping: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //tools/parity:report (1 packages loaded, 0 targets configured)
+Analyzing: target //tools/parity:report (1 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //tools/parity:report (15 packages loaded, 320 targets configured).
+[449 / 451] [Prepa] Compiling Rust bin report (8 files)
+INFO: Found 1 target...
+Target //tools/parity:report up-to-date:
+  bazel-bin/tools/parity/report
+INFO: Elapsed time: 2.251s, Critical Path: 2.08s
+INFO: 6 processes: 21 action cache hit, 2 internal, 4 darwin-sandbox.
+INFO: Build completed successfully, 6 total actions
+INFO: Running command line: bazel-bin/tools/parity/report <args omitted>
+phase27_evidence_status=blocked_safe_prerequisite redacted=true

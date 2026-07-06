@@ -14,6 +14,7 @@ use super::{
 
 pub const BM1366_RECEIVE_PREAMBLE: u16 = 0xaa55;
 pub const BM1366_RESULT_FRAME_LEN: usize = 11;
+pub const RESULT_WORK_TIMEOUT_MS: u32 = 10_000;
 pub const BM1366_NORMAL_CORE_COUNT: u8 = 112;
 pub const BM1366_SMALL_CORE_IDS: u8 = 8;
 

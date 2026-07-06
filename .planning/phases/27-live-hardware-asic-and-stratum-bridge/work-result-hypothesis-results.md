@@ -21,7 +21,7 @@ Board: Ultra 205 (`port=/dev/cu.usbmodem1101`)
 | W7 | Missing ASIC-side reg 0x28 before host 1M | **FIX APPLIED — RX still silent** | REG28 TX confirmed; post-work diagnostic still times out at 1M and 115200 |
 | W8 | Single frequency step vs 50→485 MHz ramp | **FIX AVAILABLE** | `frequency_ramp` investigation flag; 6.25 MHz steps with 100 ms delay |
 | W9 | 2000ms post max-baud stabilization | **FIX AVAILABLE — no RX gain** | `post_max_baud_delay_2000`; E2 timing confirmed, diagnostic still silent |
-| W10 | Single boot read vs continuous result loop | **NOT CHANGED** | Bridge uses pump loop; boot diagnostic remains single 10s read |
+| W10 | Single boot read vs continuous result loop | **FIX APPLIED — still silent** | Bridge polls ~10s (`result_read_attempt` ×47); boot diagnostic remains single 10s read |
 | W11 | Synthetic diagnostic job may not nonce | **DOCUMENTED** | Boot diagnostic uses fixed `job_id=0x28` and synthetic fields; register-read or production pool work required for nonce proof |
 | W12 | Bridge blocked on pool settings | **FIXED (B2)** | Stratum `connecting`→`active`; consumed marker on patch |
 
@@ -53,6 +53,17 @@ Default Phase 27 behavior after deep dive:
 | B2 | Pool consumed marker on settings patch before bridge gate | **PASS** | `pool_settings_consumed_by_runtime=true` |
 | B3 | Bridge production work after B1/B2 | **UART still silent** | `work_dispatched` then `production_result_timeout`; W9 delay (E2) no help |
 
+## B3 production-read wave (2026-07-06)
+
+| ID | Fix / hypothesis | Result | Evidence |
+| --- | --- | --- | --- |
+| P0 | Production read 1s vs 10s double-read bug | **CONFIRMED + FIXED** | Blocker E1: ~1110ms timeout; F1 retry: ~9960ms poll window |
+| W10 | Bridge continuous result read loop | **FIX APPLIED — no RX gain** | 47× `result_read_attempt`; zero post-dispatch `rx_chunk` |
+| W10 | Production accepts `RegisterRead` proof | **NOT OBSERVED** | No `register_read_parsed` in F1 retry |
+| W11 | Pool work encoding vs upstream | **HOST PASS / HW silent** | Golden fixture + 88-byte TX; no nonce |
+| F2 | `clear_rx_before_production_work` | **NO BRIDGE SIGNAL** | Boot diagnostic only; fail-closed @ 10s |
+| F3 | Default fail-closed regression | **PASS** | `work_result_diagnostic_timeout`; no bridge |
+
 ## Hardware matrix evidence
 
-See `work-result-deep-dive-20260705-run-*.md` and `work-result-blocker-fix-20260706-run-*.md` under this phase directory.
+See `work-result-deep-dive-20260705-run-*.md`, `work-result-blocker-fix-20260706-run-*.md`, and `b3-production-read-20260706-run-F*.md` under this phase directory.

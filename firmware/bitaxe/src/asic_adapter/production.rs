@@ -17,6 +17,14 @@ use bitaxe_asic::bm1366::{
 
 use super::{reset, status, uart};
 
+/// Outcome of a bounded production UART read poll.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProductionReadOutcome {
+    Pending,
+    JobNonce(Bm1366NonceResult),
+    RegisterReadProof,
+}
+
 static PRODUCTION_HANDLE: OnceLock<Mutex<ProductionAsicState>> = OnceLock::new();
 
 struct ProductionAsicState {
@@ -100,6 +108,14 @@ impl ProductionAsicExecutor {
         let actions = command.adapter_actions();
         match command {
             Bm1366ProductionCommand::SendProductionWork(_) => {
+                if super::work_result_investigation::clear_rx_before_production_work() {
+                    let uart = state
+                        .maybe_uart
+                        .as_mut()
+                        .ok_or(ProductionAsicBlocker::UartFailed)?;
+                    uart.clear_rx().map_err(|_| ProductionAsicBlocker::UartFailed)?;
+                    log::info!("asic_production_trace=clear_rx_before_work");
+                }
                 for action in actions {
                     execute_adapter_action_on_state(action, &mut state)?;
                 }
@@ -107,29 +123,60 @@ impl ProductionAsicExecutor {
                 Ok(None)
             }
             Bm1366ProductionCommand::ReadProductionResult => {
-                for action in actions {
-                    execute_adapter_action_on_state(action, &mut state)?;
-                }
-                let uart = state
-                    .maybe_uart
-                    .as_mut()
-                    .expect("uart presence checked above");
-                let frame = uart
-                    .read_exact(BM1366_RESULT_FRAME_LEN, uart::RESULT_WORK_TIMEOUT_MS)
-                    .map_err(|_| ProductionAsicBlocker::ResultTimeout)?;
-                match parse_bm1366_result_frame(
-                    &frame,
-                    valid_jobs,
-                    ultra_205_result_address_interval(),
-                ) {
-                    Ok(Bm1366ParsedResult::JobNonce(result)) => Ok(Some(result)),
-                    Ok(Bm1366ParsedResult::RegisterRead(_)) => {
-                        Err(ProductionAsicBlocker::ResultMalformed)
-                    }
-                    Err(_) => Err(ProductionAsicBlocker::ResultMalformed),
+                match try_read_production_result_on_state(&mut state, valid_jobs, uart::RESULT_WORK_TIMEOUT_MS)? {
+                    ProductionReadOutcome::Pending => Ok(None),
+                    ProductionReadOutcome::JobNonce(result) => Ok(Some(result)),
+                    ProductionReadOutcome::RegisterReadProof => Ok(None),
                 }
             }
         }
+    }
+
+    pub fn try_read_production_result(
+        &mut self,
+        valid_jobs: &Bm1366ValidJobIds,
+        poll_timeout_ms: u32,
+    ) -> Result<ProductionReadOutcome, ProductionAsicBlocker> {
+        let Ok(mut state) = production_state().lock() else {
+            return Err(ProductionAsicBlocker::UartFailed);
+        };
+        if !state.production_ready || state.maybe_uart.is_none() {
+            return Err(ProductionAsicBlocker::AsicInitFailed);
+        }
+
+        try_read_production_result_on_state(&mut state, valid_jobs, poll_timeout_ms)
+    }
+}
+
+fn try_read_production_result_on_state(
+    state: &mut ProductionAsicState,
+    valid_jobs: &Bm1366ValidJobIds,
+    poll_timeout_ms: u32,
+) -> Result<ProductionReadOutcome, ProductionAsicBlocker> {
+    log::info!("asic_production_trace=result_read_attempt poll_timeout_ms={poll_timeout_ms}");
+    let uart = state
+        .maybe_uart
+        .as_mut()
+        .ok_or(ProductionAsicBlocker::UartFailed)?;
+    let maybe_frame = match uart.try_read_exact(BM1366_RESULT_FRAME_LEN, poll_timeout_ms) {
+        Ok(maybe_frame) => maybe_frame,
+        Err(_) => return Ok(ProductionReadOutcome::Pending),
+    };
+    let Some(frame) = maybe_frame else {
+        return Ok(ProductionReadOutcome::Pending);
+    };
+
+    match parse_bm1366_result_frame(
+        &frame,
+        valid_jobs,
+        ultra_205_result_address_interval(),
+    ) {
+        Ok(Bm1366ParsedResult::JobNonce(result)) => Ok(ProductionReadOutcome::JobNonce(result)),
+        Ok(Bm1366ParsedResult::RegisterRead(_)) => {
+            log::info!("asic_production_trace=register_read_parsed");
+            Ok(ProductionReadOutcome::RegisterReadProof)
+        }
+        Err(_) => Err(ProductionAsicBlocker::ResultMalformed),
     }
 }
 

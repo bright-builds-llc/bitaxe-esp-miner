@@ -50,7 +50,7 @@ impl Bm1366ProductionCommand {
                     &payload,
                 ))]
             }
-            Self::ReadProductionResult => vec![Bm1366AdapterAction::READ_RESULT_FRAME],
+            Self::ReadProductionResult => Vec::new(),
         }
     }
 }
@@ -203,7 +203,42 @@ mod tests {
     }
 
     #[test]
-    fn production_command_read_result_emits_result_frame_action() {
+    fn production_job_frame_matches_redacted_fixture_layout() {
+        // Arrange
+        let job_id = Bm1366JobId::new(0x28);
+        let payload = ProductionWorkPayload::new(job_id, sample_fields());
+        let command = Bm1366ProductionCommand::SendProductionWork(payload);
+
+        // Act
+        let actions = command.adapter_actions();
+
+        // Assert
+        let [Bm1366AdapterAction::WriteFrame(frame)] = actions.as_slice() else {
+            panic!("production work should emit one typed frame");
+        };
+        assert_eq!(frame.as_ref().len(), 88);
+        assert_eq!(frame.as_ref()[4], 0x28);
+    }
+
+    #[test]
+    fn read_result_frame_uses_bounded_work_timeout() {
+        use crate::bm1366::result::{BM1366_RESULT_FRAME_LEN, RESULT_WORK_TIMEOUT_MS};
+
+        // Act
+        let action = Bm1366AdapterAction::read_result_frame();
+
+        // Assert
+        assert_eq!(
+            action,
+            Bm1366AdapterAction::ReadExact {
+                len: BM1366_RESULT_FRAME_LEN,
+                timeout_ms: RESULT_WORK_TIMEOUT_MS,
+            }
+        );
+    }
+
+    #[test]
+    fn production_command_read_result_defers_to_executor_bounded_read() {
         // Arrange
         let command = Bm1366ProductionCommand::ReadProductionResult;
 
@@ -211,7 +246,7 @@ mod tests {
         let actions = command.adapter_actions();
 
         // Assert
-        assert_eq!(actions, vec![Bm1366AdapterAction::READ_RESULT_FRAME]);
+        assert!(actions.is_empty());
     }
 
     #[test]

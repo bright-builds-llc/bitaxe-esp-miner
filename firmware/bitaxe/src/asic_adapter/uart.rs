@@ -17,6 +17,11 @@ const UART_BUF_SIZE: usize = 1024;
 const UART_RX_BUFFER_BYTES: usize = UART_BUF_SIZE * 2;
 const READ_CHUNK_MAX: usize = 64;
 
+enum ReadAccumulateOutcome {
+    Complete(Vec<u8>),
+    Idle,
+}
+
 pub struct AsicUart<'d> {
     driver: UartDriver<'d>,
 }
@@ -83,10 +88,30 @@ impl<'d> AsicUart<'d> {
     }
 
     pub fn read_exact(&mut self, len: usize, timeout_ms: u32) -> Result<Vec<u8>> {
-        self.read_accumulate(len, timeout_ms)
+        match self.read_accumulate_inner(len, timeout_ms)? {
+            ReadAccumulateOutcome::Complete(frame) => Ok(frame),
+            ReadAccumulateOutcome::Idle => {
+                anyhow::bail!("partial BM1366 UART read: expected {len} bytes, read 0")
+            }
+        }
     }
 
     pub fn read_accumulate(&mut self, len: usize, timeout_ms: u32) -> Result<Vec<u8>> {
+        self.read_exact(len, timeout_ms)
+    }
+
+    pub fn try_read_exact(&mut self, len: usize, timeout_ms: u32) -> Result<Option<Vec<u8>>> {
+        match self.read_accumulate_inner(len, timeout_ms)? {
+            ReadAccumulateOutcome::Complete(frame) => Ok(Some(frame)),
+            ReadAccumulateOutcome::Idle => Ok(None),
+        }
+    }
+
+    fn read_accumulate_inner(
+        &mut self,
+        len: usize,
+        timeout_ms: u32,
+    ) -> Result<ReadAccumulateOutcome> {
         debug_assert_eq!(CHIP_DETECT_READ_LEN, 11);
         debug_assert_eq!(CHIP_DETECT_TIMEOUT_MS, 1_000);
         debug_assert_eq!(RESULT_WORK_TIMEOUT_MS, 10_000);
@@ -131,7 +156,13 @@ impl<'d> AsicUart<'d> {
         }
 
         if buf.len() != len {
-            if uart_trace_enabled() && !buf.is_empty() {
+            if buf.is_empty() {
+                if uart_trace_enabled() {
+                    log::info!("asic_uart_trace=rx_idle timeout_ms={timeout_ms}");
+                }
+                return Ok(ReadAccumulateOutcome::Idle);
+            }
+            if uart_trace_enabled() {
                 log::info!(
                     "asic_uart_trace=partial_frame hex={} expected_len={len} actual_len={}",
                     hex_bytes(&buf),
@@ -149,7 +180,7 @@ impl<'d> AsicUart<'d> {
             );
         }
 
-        Ok(buf)
+        Ok(ReadAccumulateOutcome::Complete(buf))
     }
 
     pub fn clear_rx(&mut self) -> Result<()> {

@@ -29,9 +29,10 @@ mod production;
 mod reset;
 mod status;
 mod uart;
+pub use uart::RESULT_WORK_TIMEOUT_MS;
 mod work_result_investigation;
 
-pub use production::{production_ready, ProductionAsicExecutor};
+pub use production::{production_ready, ProductionAsicExecutor, ProductionReadOutcome};
 
 pub use status::{
     publish_mining_loop_blocked_status, publish_production_asic_blocked_status,

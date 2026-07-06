@@ -50,7 +50,7 @@ use bitaxe_stratum::v1::{
 };
 
 use crate::{
-    asic_adapter::{self, ProductionAsicExecutor},
+    asic_adapter::{self, ProductionAsicExecutor, ProductionReadOutcome},
     log_buffer,
     mining_evidence_mode::MiningEvidenceMode,
     runtime_snapshot,
@@ -559,17 +559,21 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
     socket: &mut S,
 ) -> SafeStopReason {
     let phase27_bridge = MiningEvidenceMode::current().is_phase27_live_hardware_bridge();
-    let max_iterations = if phase27_bridge {
-        PHASE27_LIVE_BRIDGE_PUMP_ITERATIONS
-    } else {
-        LIVE_SOCKET_PUMP_ITERATIONS
-    };
     let mut pending_actions: VecDeque<LiveRuntimeAction> = runtime.drain_actions().into();
     let mut maybe_pending_submit: Option<PendingSubmit> = None;
     let mut asic_bridge = AsicBridgeState::default();
     let mut maybe_submit_classified = false;
 
-    for _iteration in 0..max_iterations {
+    let base_max_iterations = if phase27_bridge {
+        PHASE27_LIVE_BRIDGE_PUMP_ITERATIONS
+    } else {
+        LIVE_SOCKET_PUMP_ITERATIONS
+    };
+    let mut iteration = 0usize;
+
+    while iteration < base_max_iterations
+        || (phase27_bridge && asic_bridge.should_continue_result_read())
+    {
         publish_watchdog_checkpoint(StepKind::Socket, 1);
 
         if phase27_bridge && asic_bridge.needs_step() {
@@ -583,6 +587,9 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
                     return SafeStopReason::PrerequisiteFailure;
                 }
                 AsicBridgeStepOutcome::Correlated => {
+                    maybe_submit_classified = false;
+                }
+                AsicBridgeStepOutcome::UartProof => {
                     maybe_submit_classified = false;
                 }
                 AsicBridgeStepOutcome::NoOp => {}
@@ -639,6 +646,8 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
         {
             return SafeStopReason::NormalStop;
         }
+
+        iteration += 1;
     }
 
     SafeStopReason::VerificationCleanup
@@ -649,6 +658,7 @@ struct AsicBridgeState {
     maybe_pending_dispatch: bool,
     awaiting_result_read: bool,
     last_dispatch_generation: Option<PoolSessionGeneration>,
+    result_read_deadline: Option<Instant>,
 }
 
 impl AsicBridgeState {
@@ -659,12 +669,24 @@ impl AsicBridgeState {
     fn note_work_queued(&mut self) {
         self.maybe_pending_dispatch = true;
     }
+
+    fn should_continue_result_read(&self) -> bool {
+        if !self.awaiting_result_read {
+            return false;
+        }
+
+        self.result_read_deadline.is_some_and(|deadline| {
+            Instant::now()
+                < deadline + Duration::from_millis(u64::from(SOCKET_TIMEOUT_MS))
+        })
+    }
 }
 
 enum AsicBridgeStepOutcome {
     NoOp,
     Actions(Vec<LiveRuntimeAction>),
     Correlated,
+    UartProof,
     Blocked { reason: ProductionAsicBlocker },
 }
 
@@ -729,6 +751,9 @@ fn run_asic_bridge_step(
         Ok(_) => {
             bridge.maybe_pending_dispatch = false;
             bridge.awaiting_result_read = true;
+            bridge.result_read_deadline = Some(
+                Instant::now() + Duration::from_millis(u64::from(asic_adapter::RESULT_WORK_TIMEOUT_MS)),
+            );
             AsicBridgeStepOutcome::NoOp
         }
         Err(blocker) => AsicBridgeStepOutcome::Blocked { reason: blocker },
@@ -741,44 +766,69 @@ fn read_and_correlate_asic_result(
 ) -> AsicBridgeStepOutcome {
     let Some(generation) = bridge.last_dispatch_generation else {
         bridge.awaiting_result_read = false;
+        bridge.result_read_deadline = None;
         return AsicBridgeStepOutcome::NoOp;
     };
+
+    let deadline = bridge.result_read_deadline.unwrap_or_else(|| {
+        let deadline =
+            Instant::now() + Duration::from_millis(u64::from(asic_adapter::RESULT_WORK_TIMEOUT_MS));
+        bridge.result_read_deadline = Some(deadline);
+        deadline
+    });
+    if Instant::now() >= deadline {
+        bridge.awaiting_result_read = false;
+        bridge.result_read_deadline = None;
+        return AsicBridgeStepOutcome::Blocked {
+            reason: ProductionAsicBlocker::ResultTimeout,
+        };
+    }
+
+    let remaining_ms = deadline
+        .saturating_duration_since(Instant::now())
+        .as_millis()
+        .min(u128::from(SOCKET_TIMEOUT_MS)) as u32;
+    let poll_timeout_ms = remaining_ms.max(1);
     let valid_jobs = runtime.production_registry().valid_jobs();
     let mut executor = ProductionAsicExecutor::new();
-    let result = match executor.execute(
-        bitaxe_asic::bm1366::production::Bm1366ProductionCommand::ReadProductionResult,
-        valid_jobs,
-    ) {
-        Ok(maybe_result) => maybe_result,
-        Err(blocker) => return AsicBridgeStepOutcome::Blocked { reason: blocker },
-    };
-    bridge.awaiting_result_read = false;
-
-    let Some(result) = result else {
-        return AsicBridgeStepOutcome::NoOp;
-    };
-
-    let observation = ProductionNonceObservation {
-        observed_generation: generation,
-        result,
-    };
-    match runtime.apply_bridge_observation(observation) {
-        Ok(BridgeObservationOutcome::SubmitQueued) => {
-            asic_adapter::publish_production_asic_status(
-                bitaxe_asic::bm1366::production::ProductionAsicStatus::ResultCorrelated,
-            );
-            let actions = runtime.drain_actions();
-            AsicBridgeStepOutcome::Actions(actions)
+    match executor.try_read_production_result(valid_jobs, poll_timeout_ms) {
+        Ok(ProductionReadOutcome::Pending) => AsicBridgeStepOutcome::NoOp,
+        Ok(ProductionReadOutcome::RegisterReadProof) => {
+            bridge.awaiting_result_read = false;
+            bridge.result_read_deadline = None;
+            AsicBridgeStepOutcome::UartProof
         }
-        Ok(BridgeObservationOutcome::Blocked { reason }) => {
-            publish_asic_bridge_blocked(reason);
-            AsicBridgeStepOutcome::Blocked { reason }
-        }
-        Err(_) => {
-            publish_asic_bridge_blocked(ProductionAsicBlocker::JobUncorrelated);
-            AsicBridgeStepOutcome::Blocked {
-                reason: ProductionAsicBlocker::JobUncorrelated,
+        Ok(ProductionReadOutcome::JobNonce(result)) => {
+            bridge.awaiting_result_read = false;
+            bridge.result_read_deadline = None;
+            let observation = ProductionNonceObservation {
+                observed_generation: generation,
+                result,
+            };
+            match runtime.apply_bridge_observation(observation) {
+                Ok(BridgeObservationOutcome::SubmitQueued) => {
+                    asic_adapter::publish_production_asic_status(
+                        bitaxe_asic::bm1366::production::ProductionAsicStatus::ResultCorrelated,
+                    );
+                    let actions = runtime.drain_actions();
+                    AsicBridgeStepOutcome::Actions(actions)
+                }
+                Ok(BridgeObservationOutcome::Blocked { reason }) => {
+                    publish_asic_bridge_blocked(reason);
+                    AsicBridgeStepOutcome::Blocked { reason }
+                }
+                Err(_) => {
+                    publish_asic_bridge_blocked(ProductionAsicBlocker::JobUncorrelated);
+                    AsicBridgeStepOutcome::Blocked {
+                        reason: ProductionAsicBlocker::JobUncorrelated,
+                    }
+                }
             }
+        }
+        Err(blocker) => {
+            bridge.awaiting_result_read = false;
+            bridge.result_read_deadline = None;
+            AsicBridgeStepOutcome::Blocked { reason: blocker }
         }
     }
 }
