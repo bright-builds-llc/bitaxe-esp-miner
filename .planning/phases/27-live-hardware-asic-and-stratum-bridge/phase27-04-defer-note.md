@@ -14,12 +14,12 @@ Phase [`27-04-PLAN.md`](27-04-PLAN.md) checklist promotion remains **blocked**.
 
 ## B4 findings
 
-- **W8 frequency ramp** (G1): no post-dispatch UART improvement
-- **W13 bootstrap control** (G2): `require_diagnostic_nonce` correctly fail-closes before bridge
-- **H3 skip diagnostic**: code landed; hardware retry pending (USB blocked after G2)
-- **Wave 3 structural**: bridge packages now default stepped frequency ramp unless `skip_frequency_ramp`; comma-separated investigation modes supported
+- **W8 + W9 combo** (retry G3): still `production_result_timeout` after ~10s poll
+- **H1 skip boot diagnostic** (retry): marker confirmed; **still silent** — boot work pollution rejected as sole cause
+- **H2 require UART proof** (retry): fail-closed control confirmed (matches G2)
+- **Wave 3 structural**: bridge packages default stepped frequency ramp unless `skip_frequency_ramp`; comma-separated investigation modes supported
 
-Canonical silent-UART evidence: [`b4-init-state-20260706-run-G1/`](b4-init-state-20260706-run-G1/)
+Canonical silent-UART evidence: [`b4-init-state-20260706-retry-H1/`](b4-init-state-20260706-retry-H1/) (skip diagnostic) and [`b4-init-state-20260706-run-G1/`](b4-init-state-20260706-run-G1/) (ramp combo)
 
 ## Next phase (not 27-04 promotion)
 
