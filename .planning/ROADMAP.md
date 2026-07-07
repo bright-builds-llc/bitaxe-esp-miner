@@ -7,7 +7,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 ## Milestones
 
 - [x] **v1.0 Ultra 205 Parity** - Phases 1-21 shipped 2026-07-04; full archive: `.planning/milestones/v1.0-ROADMAP.md`.
-- [ ] **v1.1 Ultra 205 Trusted Production Mining** - Phases 22-28 planned for bounded Ultra 205 BM1366 Stratum v1 production mining and hardware evidence promotion.
+- [ ] **v1.1 Ultra 205 Trusted Production Mining** - Phases 22-30 for bounded Ultra 205 BM1366 Stratum v1 production mining, hardware evidence promotion, and audit gap closure.
 
 ## Phases
 
@@ -22,6 +22,8 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [x] **Phase 26: Telemetry And Parity Closure** - Runtime API, WebSocket, counters, and parity checklist updates reflect only proven v1.1 mining events. (completed 2026-07-05)
 - [x] **Phase 27: Live Hardware ASIC And Stratum Bridge** - Live firmware wires Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 socket loop and produces detector-gated share-outcome evidence. (completed 2026-07-05)
 - [x] **Phase 28: Hardware Evidence And Checklist Promotion** - Redacted hardware evidence promotes only exact verified checklist rows supported by Phase 27 artifacts. (completed 2026-07-06)
+- [ ] **Phase 29: Evidence Workflow Automation Closure** - Phase 25/27/28 evidence wrappers auto-validate operator evidence roots and close the redact-validate-promote flow without manual consolidation steps.
+- [ ] **Phase 30: Live Share Outcome And Verified Promotion** - Post-28.1 hardware evidence captures accepted/rejected share outcomes and promotes STR-09/CFG-07 only where redacted artifacts support verified claims.
 
 ## Phase Details
 
@@ -139,9 +141,34 @@ Plans:
 - [x] 28-02-PLAN.md — Promote conservative checklist rows from Phase 27 evidence only.
 - [x] 28-03-PLAN.md — Close Phase 28 verification, parity guardrails, and validation metadata.
 
+### Phase 29: Evidence Workflow Automation Closure
+**Goal**: Ultra 205 operators can run Phase 25, Phase 27, and Phase 28 evidence workflows end-to-end with automated `operator-evidence` validation and no manual consolidation gap between partial and full evidence roots.
+**Depends on**: Phase 28.1
+**Requirements**: EVD-07, EVD-08, EVD-09, REL-09
+**Gap Closure**: Closes audit integration gaps Phase 23 → Phase 25/27 and Phase 27 → Phase 28; closes partial Redact → validate → parity promote flow.
+**Success Criteria** (what must be TRUE):
+  1. Phase 25 and Phase 27 evidence wrappers invoke `parity operator-evidence --require-redaction-passed` at workflow end.
+  2. Operator can run `just phase28-evidence` to consolidate Phase 27 artifacts into a full Phase 23 slot inventory and pass operator-evidence validation.
+  3. REL-09 operator flow documentation and regression tests cover the automated validate step for Phase 25, Phase 27, and Phase 28 roots.
+  4. `just parity` and existing redaction guards continue to reject overbroad promotion without matching evidence artifacts.
+**Plans**: 0 plans
+
+### Phase 30: Live Share Outcome And Verified Promotion
+**Goal**: Ultra 205 post-28.1 hardware evidence records accepted or rejected live `mining.submit` pool responses where prerequisites allow, fixes register-read classification gaps, and promotes STR-09/CFG-07 checklist rows only to statuses supported by redacted committed artifacts.
+**Depends on**: Phase 29
+**Requirements**: STR-09, CFG-07, ASIC-11
+**Gap Closure**: Closes audit tech debt for blocker-level share outcomes, STR-09/CFG-07 below `verified`, and Phase 28.1 register-read parser follow-up.
+**Success Criteria** (what must be TRUE):
+  1. BM1366 register-read probe responses classify chip-identity frames without `register_read_unparsed` on hardware where frames are present.
+  2. Detector-gated hardware run records redacted share-outcome evidence as accepted, rejected, or an explicit safe-prerequisite blocker — not only `blocked_safe_prerequisite` when mining prerequisites are met.
+  3. STR-09 and CFG-07 checklist rows promote to `verified` only when committed Phase 30 evidence supports exact claims; parity validator rejects overbroad promotion.
+  4. Phase 28.1 Nyquist `wave_0_complete` metadata is closed after hardware re-run evidence is captured.
+  5. Explicit non-claims remain for full active safety, OTAWWW/recovery, non-205 boards, Stratum v2, UI/BAP, and unbounded stress.
+**Plans**: 0 plans
+
 ## Progress
 
-**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28 -> Phase 28.1
+**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28 -> Phase 28.1 -> Phase 29 -> Phase 30
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -153,10 +180,12 @@ Plans:
 | 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 28. Hardware Evidence And Checklist Promotion | v1.1 | 3/3 | Complete   | 2026-07-06 |
 | 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete    | 2026-07-07 |
+| 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
+| 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
 ## Coverage
 
-All 21 v1.1 requirements are mapped across Phases 22-26 with gap-closure promotion work in Phases 27-28. Non-205 boards, non-BM1366 ASIC families, full active voltage/fan/thermal/fault/self-test closure, OTAWWW/recovery destructive or fault-injection evidence, runtime display/input/BAP, Stratum v2, and unbounded stress mining remain deferred.
+All 21 v1.1 requirements are mapped across Phases 22-28 with gap-closure reinforcement in Phases 29-30. Non-205 boards, non-BM1366 ASIC families, full active voltage/fan/thermal/fault/self-test closure, OTAWWW/recovery destructive or fault-injection evidence, runtime display/input/BAP, Stratum v2, and unbounded stress mining remain deferred.
 
 ### Phase 28.1: live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes) (INSERTED)
 

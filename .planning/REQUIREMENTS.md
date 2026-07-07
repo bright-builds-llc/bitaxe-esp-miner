@@ -94,23 +94,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | EVD-06 | Phase 22 | Complete |
-| EVD-07 | Phase 23 | Complete |
-| EVD-08 | Phase 26 | Complete |
+| EVD-07 | Phase 23, 29 | Pending (gap closure) |
+| EVD-08 | Phase 26, 29 | Pending (gap closure) |
 | SAFE-10 | Phase 28 | Complete |
 | SAFE-11 | Phase 28 | Complete |
 | SAFE-12 | Phase 28 | Complete |
 | SAFE-13 | Phase 28 | Complete |
 | STR-08 | Phase 27 | Complete |
-| STR-09 | Phase 27 | Complete |
+| STR-09 | Phase 27, 30 | Pending (gap closure) |
 | STR-10 | Phase 23 | Complete |
 | STR-11 | Phase 25 | Complete |
 | ASIC-09 | Phase 28 | Complete |
 | ASIC-10 | Phase 27 | Complete |
-| ASIC-11 | Phase 27 | Complete |
+| ASIC-11 | Phase 27, 30 | Pending (gap closure) |
 | ASIC-12 | Phase 28 | Complete |
-| REL-09 | Phase 23 | Complete |
-| CFG-07 | Phase 28 | Complete |
-| EVD-09 | Phase 23 | Complete |
+| REL-09 | Phase 23, 29 | Pending (gap closure) |
+| CFG-07 | Phase 28, 30 | Pending (gap closure) |
+| EVD-09 | Phase 23, 29 | Pending (gap closure) |
 | API-11 | Phase 26 | Complete |
 | API-12 | Phase 26 | Complete |
 | API-13 | Phase 26 | Complete |
@@ -118,8 +118,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Coverage:**
 - v1.1 requirements: 21 total
 - Mapped to phases: 21
-- Complete: 21
-- Pending (gap closure): 0
+- Complete: 14
+- Pending (gap closure): 7
 - Unmapped: 0
 
 **Phase distribution:**
@@ -130,6 +130,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Phase 26: EVD-08, API-11, API-12, API-13
 - Phase 27: STR-08, STR-09, ASIC-10, ASIC-11
 - Phase 28: SAFE-10, SAFE-11, SAFE-12, SAFE-13, CFG-07, ASIC-09, ASIC-12
+- Phase 29: EVD-07, EVD-08, EVD-09, REL-09 (gap closure — workflow automation)
+- Phase 30: STR-09, CFG-07, ASIC-11 (gap closure — verified promotion)
 
 *Requirements defined: 2026-07-04*
-*Last updated: 2026-07-06 after v1.1 milestone audit (Phases 22–28 complete)*
+*Last updated: 2026-07-07 after v1.1 gap closure planning (Phases 29-30 added)*
