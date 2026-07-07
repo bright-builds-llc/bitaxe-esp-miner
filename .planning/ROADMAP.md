@@ -152,7 +152,7 @@ Plans:
 | 26. Telemetry And Parity Closure | v1.1 | 4/4 | Complete    | 2026-07-05 |
 | 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 28. Hardware Evidence And Checklist Promotion | v1.1 | 3/3 | Complete   | 2026-07-06 |
-| 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete   | 2026-07-07 |
+| 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete    | 2026-07-07 |
 
 ## Coverage
 

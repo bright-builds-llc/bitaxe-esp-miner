@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 28.1-05-PLAN.md
-last_updated: "2026-07-07T03:33:49.704Z"
+last_updated: "2026-07-07T03:54:29.036Z"
 last_activity: 2026-07-07
 progress:
   total_phases: 8
@@ -26,8 +26,8 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 ## Current Position
 
-Phase: 28.1 (live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes)) — EXECUTING
-Plan: 5 of 5
+Phase: 28.1
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-07-07
 
