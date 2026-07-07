@@ -226,6 +226,33 @@ mod tests {
     }
 
     #[test]
+    fn regeneration_unavailable_must_not_permanently_shadow_poll() {
+        // Arrange: cadence elapsed, but the runtime cannot regenerate work
+        // (lost regeneration context) — the shell invalidates the session.
+        let mut orchestrator = armed_orchestrator();
+        let t0 = Instant::now();
+        orchestrator.note_dispatched(t0);
+        assert_eq!(
+            orchestrator.next_step(t0 + Duration::from_millis(2000)),
+            BridgeStep::Regenerate
+        );
+
+        // Act: invalidate on regeneration failure, then fresh pool work arrives.
+        orchestrator.invalidate_session();
+        let step_while_starved = orchestrator.next_step(t0 + Duration::from_secs(60));
+        orchestrator.note_work_queued();
+        let step_on_fresh_work = orchestrator.next_step(t0 + Duration::from_secs(61));
+        orchestrator.note_dispatched(t0 + Duration::from_secs(61));
+        let step_after_redispatch =
+            orchestrator.next_step(t0 + Duration::from_secs(61) + Duration::from_millis(50));
+
+        // Assert: no Regenerate spin; the pump idles, dispatches, then polls again.
+        assert_eq!(step_while_starved, BridgeStep::Idle);
+        assert_eq!(step_on_fresh_work, BridgeStep::Dispatch);
+        assert!(matches!(step_after_redispatch, BridgeStep::Poll { .. }));
+    }
+
+    #[test]
     fn result_received_keeps_mining_with_no_terminal_state() {
         // Arrange
         let mut orchestrator = armed_orchestrator();

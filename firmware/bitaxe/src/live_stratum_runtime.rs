@@ -787,8 +787,13 @@ fn run_asic_bridge_step(
                 info_retained(&bridge_orchestration::job_redispatched_marker(counter));
                 dispatch_production_work(runtime, bridge)
             }
-            // No held notify: regeneration never fabricates work.
-            Err(_) => AsicBridgeStepOutcome::NoOp,
+            // No held notify: regeneration never fabricates work. Drop the
+            // cadence so Regenerate cannot permanently shadow Poll; the pump
+            // idles until fresh pool work re-arms dispatch.
+            Err(_) => {
+                bridge.orchestrator.invalidate_session();
+                AsicBridgeStepOutcome::NoOp
+            }
         },
         BridgeStep::Poll { slice_ms } => poll_continuous_asic_result(runtime, bridge, slice_ms),
         BridgeStep::Idle => AsicBridgeStepOutcome::NoOp,
