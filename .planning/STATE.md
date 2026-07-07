@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: partial
-stopped_at: Phase 28.1.1 verification — blocker persists; post-fix reflash pending
-last_updated: "2026-07-07T05:05:00.000Z"
+status: Wire fixes landed; `firmware-nonce-production` still open — rerun hardware after USB recovery
+stopped_at: Phase 28.1.1 context gathered
+last_updated: "2026-07-07T15:24:54.355Z"
 last_activity: 2026-07-07
 progress:
-  total_phases: 8
+  total_phases: 11
   completed_phases: 8
   total_plans: 31
-  completed_plans: 31
+  completed_plans: 32
   percent: 100
 ---
 
@@ -153,9 +153,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-07T03:33:49.702Z
-Stopped at: Completed 28.1-05-PLAN.md
-Resume file: None
+Last session: 2026-07-07T15:24:54.351Z
+Stopped at: Phase 28.1.1 context gathered
+Resume file: .planning/phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-CONTEXT.md
 
 ## Next Step
 
