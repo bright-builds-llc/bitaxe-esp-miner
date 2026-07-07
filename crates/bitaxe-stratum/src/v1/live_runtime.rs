@@ -15,8 +15,8 @@ use bitaxe_asic::bm1366::production::ProductionAsicBlocker;
 use crate::error::StratumV1Error;
 use crate::jsonrpc::StratumRequestId;
 use crate::v1::messages::{
-    ExtranonceAssignment, StratumResponse, StratumV1ClientMessage, StratumV1ServerMessage,
-    VersionMask,
+    ExtranonceAssignment, MiningNotify, StratumResponse, StratumV1ClientMessage,
+    StratumV1ServerMessage, VersionMask,
 };
 use crate::v1::mining::MiningWorkBuilder;
 use crate::v1::production_work::{
@@ -147,6 +147,8 @@ pub struct LiveStratumRuntime {
     outbound_actions: Vec<LiveRuntimeAction>,
     maybe_extranonce: Option<ExtranonceAssignment>,
     maybe_version_mask: Option<VersionMask>,
+    maybe_current_notify: Option<MiningNotify>,
+    extranonce2_counter: u64,
     next_request_id: u64,
     next_asic_job_id: u8,
     stopped: bool,
@@ -179,6 +181,8 @@ impl LiveStratumRuntime {
             outbound_actions: Vec::new(),
             maybe_extranonce: None,
             maybe_version_mask: None,
+            maybe_current_notify: None,
+            extranonce2_counter: 0,
             next_request_id: 1,
             next_asic_job_id: 0,
             stopped: false,
@@ -259,23 +263,68 @@ impl LiveStratumRuntime {
     pub fn invalidate_for_clean_jobs(&mut self) {
         self.production_registry.invalidate_for_clean_jobs();
         self.state.block_work_submission("clean_jobs");
+        self.reset_regeneration_context();
     }
 
     pub fn invalidate_for_reconnect(&mut self) {
         self.production_registry.invalidate_for_reconnect();
         self.state.block_work_submission("pool_reconnect");
+        self.reset_regeneration_context();
     }
 
     pub fn invalidate_for_authorization_reset(&mut self) {
         self.production_registry
             .invalidate_for_authorization_reset();
         self.state.block_work_submission("authorization_reset");
+        self.reset_regeneration_context();
     }
 
     pub fn invalidate_for_session_replacement(&mut self) {
         self.production_registry
             .invalidate_for_session_replacement();
         self.state.block_work_submission("session_replacement");
+        self.reset_regeneration_context();
+    }
+
+    /// Drop the held notify and restart the extranonce2 counter.
+    ///
+    /// Session invalidation must prevent stale-session work regeneration;
+    /// the counter restarts at zero for the next fresh notify.
+    fn reset_regeneration_context(&mut self) {
+        self.maybe_current_notify = None;
+        self.extranonce2_counter = 0;
+    }
+
+    /// Regenerate held pool work with a fresh extranonce2 and enqueue it.
+    ///
+    /// Returns the new counter value for redaction-safe telemetry markers.
+    /// Errors as a no-op when no notify is held — regeneration never
+    /// fabricates work.
+    ///
+    /// Reference: reference/esp-miner/main/tasks/create_jobs_task.c:183-186
+    /// (cadence timeout regenerates the held work with extranonce_2++).
+    pub fn regenerate_work(&mut self) -> Result<u64, StratumV1Error> {
+        let Some(notify) = self.maybe_current_notify.clone() else {
+            return Err(StratumV1Error::MissingField("current_notify"));
+        };
+        let Some(extranonce) = self.maybe_extranonce.clone() else {
+            return Err(StratumV1Error::MissingField("extranonce"));
+        };
+
+        self.extranonce2_counter += 1;
+        let mut builder = MiningWorkBuilder::new(notify, extranonce)
+            .with_extranonce2_value(self.extranonce2_counter);
+        if let Some(pool_difficulty) = self.state.maybe_pool_difficulty {
+            builder = builder.with_pool_difficulty(pool_difficulty);
+        }
+        if let Some(version_mask) = self.maybe_version_mask {
+            builder = builder.with_version_mask(version_mask);
+        }
+
+        let mut work = builder.build(self.next_asic_job_id())?;
+        work.clean_jobs = false;
+        self.production_registry.enqueue_pool_work(work)?;
+        Ok(self.extranonce2_counter)
     }
 
     pub fn safe_stop(&mut self, reason: &'static str) -> SafeStopPostconditions {
@@ -388,6 +437,7 @@ impl LiveStratumRuntime {
             return Ok(None);
         };
 
+        let stored_notify = notify.clone();
         let mut builder = MiningWorkBuilder::new(notify, extranonce);
         if let Some(pool_difficulty) = self.state.maybe_pool_difficulty {
             builder = builder.with_pool_difficulty(pool_difficulty);
@@ -401,6 +451,11 @@ impl LiveStratumRuntime {
             work.clean_jobs = false;
         }
         self.production_registry.enqueue_pool_work(work)?;
+        // Hold the notify for cadence regeneration; the counter restarts
+        // whenever fresh pool work arrives.
+        // Reference: reference/esp-miner/main/tasks/create_jobs_task.c:132
+        self.maybe_current_notify = Some(stored_notify);
+        self.extranonce2_counter = 0;
         self.state.allow_work_submission();
         self.state.set_lifecycle(PoolLifecycleStatus::Active);
         self.state.set_mining_activity(MiningActivityStatus::Active);
@@ -734,5 +789,113 @@ mod tests {
         // Assert
         assert!(matches!(outcome, BridgeObservationOutcome::Blocked { .. }));
         assert!(actions.is_empty());
+    }
+
+    #[test]
+    fn regenerate_work_uses_fresh_extranonce2_counter_sequence() {
+        // Arrange
+        let mut runtime = authorized_runtime();
+        runtime
+            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+            .expect("notify should enqueue work");
+        let first = runtime
+            .production_registry_mut()
+            .dispatch_next()
+            .expect("first dispatch should succeed");
+
+        // Act
+        let first_counter = runtime
+            .regenerate_work()
+            .expect("first regeneration should enqueue");
+        let second = runtime
+            .production_registry_mut()
+            .dispatch_next()
+            .expect("second dispatch should succeed");
+        let second_counter = runtime
+            .regenerate_work()
+            .expect("second regeneration should enqueue");
+        let third = runtime
+            .production_registry_mut()
+            .dispatch_next()
+            .expect("third dispatch should succeed");
+
+        // Assert: counter sequence 0,1,2 rendered with the fixture-tested
+        // little-endian extranonce2 encoding (upstream mining.c parity).
+        assert_eq!(first.work.extranonce2, "00000000");
+        assert_eq!(first_counter, 1);
+        assert_eq!(second.work.extranonce2, "01000000");
+        assert_eq!(second_counter, 2);
+        assert_eq!(third.work.extranonce2, "02000000");
+    }
+
+    #[test]
+    fn regenerate_work_without_held_notify_is_a_no_op() {
+        // Arrange
+        let mut runtime = authorized_runtime();
+
+        // Act
+        let result = runtime.regenerate_work();
+
+        // Assert: regeneration never fabricates work.
+        assert!(result.is_err());
+        assert!(matches!(
+            runtime.production_registry_mut().dispatch_next(),
+            Err(StratumV1Error::QueueEmpty)
+        ));
+    }
+
+    fn assert_invalidation_clears_regeneration_context(invalidate: fn(&mut LiveStratumRuntime)) {
+        // Arrange: held notify with an advanced extranonce2 counter.
+        let mut runtime = authorized_runtime();
+        runtime
+            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+            .expect("notify should enqueue work");
+        let advanced_counter = runtime
+            .regenerate_work()
+            .expect("regeneration should enqueue");
+        assert_eq!(advanced_counter, 1);
+
+        // Act
+        invalidate(&mut runtime);
+        let regenerate_after_invalidation = runtime.regenerate_work();
+        runtime
+            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+            .expect("fresh notify should enqueue work");
+        let fresh = runtime
+            .production_registry_mut()
+            .dispatch_next()
+            .expect("fresh dispatch should succeed");
+
+        // Assert: no-op until a fresh notify; fresh work restarts at extranonce2=0.
+        assert!(regenerate_after_invalidation.is_err());
+        assert_eq!(fresh.work.extranonce2, "00000000");
+    }
+
+    #[test]
+    fn clean_jobs_invalidation_clears_regeneration_context() {
+        assert_invalidation_clears_regeneration_context(
+            LiveStratumRuntime::invalidate_for_clean_jobs,
+        );
+    }
+
+    #[test]
+    fn reconnect_invalidation_clears_regeneration_context() {
+        assert_invalidation_clears_regeneration_context(
+            LiveStratumRuntime::invalidate_for_reconnect,
+        );
+    }
+
+    #[test]
+    fn authorization_reset_invalidation_clears_regeneration_context() {
+        assert_invalidation_clears_regeneration_context(
+            LiveStratumRuntime::invalidate_for_authorization_reset,
+        );
+    }
+
+    #[test]
+    fn session_replacement_invalidation_clears_regeneration_context() {
+        assert_invalidation_clears_regeneration_context(
+            LiveStratumRuntime::invalidate_for_session_replacement,
+        );
     }
 }
