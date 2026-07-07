@@ -18,6 +18,8 @@ The shipped v1.0 evidence set proves the Ultra 205 BM1366 path through exact-cla
 
 The active planning surface is now focused on v1.1. Historical v1.0 roadmap, requirements, and audit records live under `.planning/milestones/`.
 
+Phase 28.1 is complete (2026-07-07): the live mining blocker is now conclusively isolated. Upstream-parity orchestration (dispatch-before-poll, continuous result listener, ~2 s job regeneration with fresh extranonce2, unconditional post-init retention) is the phase27 bridge default; the J2c dispatch-starvation confound was falsified on hardware (22 dispatches at ~2 s cadence); register-read probes prove the BM1366 is alive with a working 1 MBaud RX path; the INA260 power delta (~flat) proves the cores are not hashing under Rust firmware; and the approved upstream A/B showed stock ESP-Miner v2.14.0 mining immediately on the same board (171 nonces, 11 accepted). Disposition: `firmware-nonce-production` — the remaining gap is in the Rust init/work content that leaves cores idle, with the upstream wire-byte diff (and its version-rolling negotiation observation) recorded as the priority follow-up. No checklist rows were promoted.
+
 Phase 22 is complete for v1.1: claim-ladder governance, typed production-mining safety preconditions, exact blocker propagation, and redaction-safe evidence boundaries are validated before the live production work path.
 
 Phase 23 is complete for v1.1: the redacted operator evidence workflow, runtime-only local credential handling, evidence-root slot contract, deterministic redaction checks, and exact non-claim handling are validated before live production mining evidence is promoted.
@@ -139,4 +141,4 @@ This document evolves at milestone boundaries. The next update should happen whe
 
 ______________________________________________________________________
 
-*Last updated: 2026-07-05 after completing Phase 26 telemetry and parity closure*
+*Last updated: 2026-07-07 after completing Phase 28.1 live mining blocker isolation*
