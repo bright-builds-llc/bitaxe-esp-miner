@@ -73,6 +73,9 @@ const PHASE27_LIVE_BRIDGE_PUMP_ITERATIONS: usize = 32;
 const PHASE27_BOUNDED_OBSERVATION_WINDOW_MS: u32 = 60_000;
 const PHASE27_POOL_WAIT_POLL_MS: u64 = 2_000;
 const PHASE27_POOL_WAIT_TIMEOUT_MS: u64 = 120_000;
+/// Power-delta probe sampling delay after first dispatch (7 s, inside the
+/// locked 5-10 s discrimination window).
+const POWER_DELTA_PROBE_DELAY_MS: u64 = 7_000;
 const PHASE27_BRIDGE_IDLE: u8 = 0;
 const PHASE27_BRIDGE_RUNNING: u8 = 1;
 const PHASE27_BRIDGE_COMPLETED: u8 = 2;
@@ -579,6 +582,7 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
 
         if phase27_bridge {
             asic_bridge.maybe_arm_continuous_listener();
+            maybe_log_power_delta(&mut asic_bridge);
         }
 
         if phase27_bridge && asic_bridge.needs_step() {
@@ -672,6 +676,12 @@ struct AsicBridgeState {
     maybe_bounded_read_deadline: Option<Instant>,
     /// Once-per-session guard for the post-dispatch register-read probe.
     post_dispatch_probe_sent: bool,
+    /// INA260 sample taken immediately before the first dispatch of a session.
+    maybe_power_baseline_mw: Option<u32>,
+    /// When the first successful production dispatch of a session happened.
+    maybe_first_dispatch_at: Option<Instant>,
+    /// Once-per-session guard for the power-delta marker.
+    power_delta_logged: bool,
 }
 
 impl Default for AsicBridgeState {
@@ -692,6 +702,9 @@ impl AsicBridgeState {
             awaiting_bounded_read: false,
             maybe_bounded_read_deadline: None,
             post_dispatch_probe_sent: false,
+            maybe_power_baseline_mw: None,
+            maybe_first_dispatch_at: None,
+            power_delta_logged: false,
         }
     }
 
@@ -712,6 +725,9 @@ impl AsicBridgeState {
         self.last_dispatch_generation = None;
         self.clear_bounded_read();
         self.post_dispatch_probe_sent = false;
+        self.maybe_power_baseline_mw = None;
+        self.maybe_first_dispatch_at = None;
+        self.power_delta_logged = false;
     }
 
     fn maybe_arm_continuous_listener(&mut self) {
@@ -827,10 +843,14 @@ fn dispatch_production_work(
     let generation = runtime.production_registry().generation();
     bridge.last_dispatch_generation = Some(generation);
     let valid_jobs = runtime.production_registry().valid_jobs();
+    sample_power_baseline_before_first_dispatch(bridge);
     let mut executor = ProductionAsicExecutor::new();
     match executor.execute(command, valid_jobs) {
         Ok(_) => {
             bridge.orchestrator.note_dispatched(Instant::now());
+            if bridge.maybe_first_dispatch_at.is_none() {
+                bridge.maybe_first_dispatch_at = Some(Instant::now());
+            }
             maybe_send_post_dispatch_register_probe(bridge);
             if !bridge.continuous {
                 bridge.awaiting_bounded_read = true;
@@ -860,6 +880,49 @@ fn maybe_send_post_dispatch_register_probe(bridge: &mut AsicBridgeState) {
         info_retained("asic_probe=register_read_tx stage=post_dispatch");
     } else {
         log::warn!("asic_probe=register_read_tx_error stage=post_dispatch");
+    }
+}
+
+/// INA260 baseline sample immediately before the FIRST production dispatch
+/// of a socket session. Numeric-only marker; sampling failure is silent and
+/// surfaces later as `asic_probe=power_delta unavailable=true`.
+fn sample_power_baseline_before_first_dispatch(bridge: &mut AsicBridgeState) {
+    if bridge.maybe_first_dispatch_at.is_some() {
+        return;
+    }
+    bridge.maybe_power_baseline_mw = safety_adapter::power_probe::sample_power_mw();
+    if let Some(baseline_mw) = bridge.maybe_power_baseline_mw {
+        info_retained(&format!("asic_probe=power_baseline mw={baseline_mw}"));
+    }
+}
+
+/// Power-delta discrimination marker: once per session, ~7 s after the first
+/// dispatch, sample INA260 again and log the numeric-only delta. Hashing at
+/// 485 MHz shows a ~10 W class jump; flat means cores are not hashing. The
+/// delta magnitude is diagnostic data, never a pass/fail gate.
+fn maybe_log_power_delta(bridge: &mut AsicBridgeState) {
+    if bridge.power_delta_logged {
+        return;
+    }
+    let Some(first_dispatch_at) = bridge.maybe_first_dispatch_at else {
+        return;
+    };
+    if Instant::now() < first_dispatch_at + Duration::from_millis(POWER_DELTA_PROBE_DELAY_MS) {
+        return;
+    }
+
+    bridge.power_delta_logged = true;
+    let maybe_after_mw = safety_adapter::power_probe::sample_power_mw();
+    match (bridge.maybe_power_baseline_mw, maybe_after_mw) {
+        (Some(baseline_mw), Some(after_mw)) => {
+            let delta_mw = i64::from(after_mw) - i64::from(baseline_mw);
+            info_retained(&format!(
+                "asic_probe=power_delta baseline_mw={baseline_mw} after_mw={after_mw} delta_mw={delta_mw}"
+            ));
+        }
+        _ => {
+            info_retained("asic_probe=power_delta unavailable=true");
+        }
     }
 }
 

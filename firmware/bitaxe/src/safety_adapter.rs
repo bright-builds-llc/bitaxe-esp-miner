@@ -10,6 +10,7 @@ mod i2c_bus;
 mod ina260;
 pub mod phase27_bring_up;
 mod power;
+pub mod power_probe;
 mod thermal;
 mod watchdog;
 

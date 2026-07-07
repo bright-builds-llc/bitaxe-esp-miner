@@ -19,6 +19,7 @@ use super::{
     ds4432u, emc2101,
     i2c_bus::BitaxeI2cBus,
     ina260::{self, Ina260Sample},
+    power_probe,
 };
 
 const BRING_UP_SETTLE_MS: u64 = 500;
@@ -165,7 +166,22 @@ where
     log::info!("asic_reset_status=post_bring_up_pulse");
 
     log::info!("phase27_safety_bring_up=complete");
+
+    // Phase 28.1 power-delta probe: retain the bus instead of dropping it so
+    // mid-bridge INA260 sampling stays possible. Diagnostic only — a failed
+    // store never affects bring-up outcome.
+    if power_probe::store_power_probe_bus(bus) {
+        info_retained("phase27_safety_bring_up=power_probe_bus_retained");
+    } else {
+        log::warn!("phase27_safety_bring_up=power_probe_bus_unavailable");
+    }
+
     Ok(())
+}
+
+fn info_retained(line: &str) {
+    log::info!("{line}");
+    crate::log_buffer::append_runtime_log_line(line);
 }
 
 fn log_phase27_thermal_status(observation: ThermalObservation) {
