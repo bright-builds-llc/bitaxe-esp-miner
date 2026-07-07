@@ -56,6 +56,10 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 28.1 inserted after Phase 28: live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes) (URGENT)
+
 ### Decisions
 
 - v1.1 phase numbering continues from v1.0, so planned work starts at Phase 22.

@@ -156,3 +156,13 @@ Plans:
 ## Coverage
 
 All 21 v1.1 requirements are mapped across Phases 22-26 with gap-closure promotion work in Phases 27-28. Non-205 boards, non-BM1366 ASIC families, full active voltage/fan/thermal/fault/self-test closure, OTAWWW/recovery destructive or fault-injection evidence, runtime display/input/BAP, Stratum v2, and unbounded stress mining remain deferred.
+
+### Phase 28.1: live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes) (INSERTED)
+
+**Goal:** The Ultra 205 produces post-dispatch BM1366 UART evidence (register-read proof and/or nonces) under upstream-parity default orchestration, or the blocker is conclusively isolated to hardware via discriminating probes and the approved upstream A/B fallback
+**Requirements**: TBD
+**Depends on:** Phase 28
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 28.1 to break down)
