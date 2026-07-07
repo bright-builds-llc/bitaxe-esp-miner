@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 28 context gathered
-last_updated: "2026-07-06T17:32:45.644Z"
-last_activity: 2026-07-06
+status: executing
+stopped_at: Completed 28.1-01-PLAN.md
+last_updated: "2026-07-07T01:34:37.796Z"
+last_activity: 2026-07-07
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 7
-  total_plans: 26
-  completed_plans: 26
-  percent: 100
+  total_plans: 31
+  completed_plans: 27
+  percent: 87
 ---
 
 # Project State
@@ -22,14 +22,14 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
 
-**Current focus:** v1.1 phase execution complete
+**Current focus:** Phase 28.1 — live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes)
 
 ## Current Position
 
-Phase: 26
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-07-06
+Phase: 28.1 (live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes)) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-07-07
 
 Progress: [██████████] 100%
 
@@ -111,6 +111,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 26]: Kept accepted/rejected live-share proof and detector-gated hardware telemetry as explicit non-claims.
 - [Phase 27]: Phase 27 uses distinct mode/ack and retains production UART for live socket ASIC bridge dispatch.
 - [Phase 27]: Committed Phase 27 share_outcome blocked_safe_prerequisite; accepted/rejected requires detector-gated hardware.
+- [Phase 28.1]: BridgeStep has no fatal variant so timeout cannot starve mining; dispatch-before-poll priority is the J2c fix encoded as a named regression test
+- [Phase 28.1]: extranonce2 regeneration keeps the fixture-tested little-endian hex encoding (01000000 for counter 1), matching upstream mining.c parity
+- [Phase 28.1]: Held notify and extranonce2 counter reset via one shared helper on all four session invalidation paths
 
 ### Pending Todos
 
@@ -131,12 +134,13 @@ None yet.
 | Phase 26 P03 | 7min | 2 tasks | 3 files |
 | Phase 26 P04 | 6min | 3 tasks | 9 files |
 | Phase 27-live-hardware-asic-and-stratum-bridge P01-04 | 62min | 8 tasks | 20 files |
+| Phase 28.1 P01 | 13min | 3 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-07-06T17:23:11.405Z
-Stopped at: Phase 28 context gathered
-Resume file: .planning/phases/28-hardware-evidence-and-checklist-promotion/28-CONTEXT.md
+Last session: 2026-07-07T01:34:31.957Z
+Stopped at: Completed 28.1-01-PLAN.md
+Resume file: None
 
 ## Next Step
 
