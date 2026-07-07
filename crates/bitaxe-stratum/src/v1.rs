@@ -5,6 +5,7 @@
 //! - `reference/esp-miner/components/stratum/include/stratum_api.h`
 //! - Parity checklist row `STR-001`
 
+pub mod bridge_orchestration;
 pub mod coinbase;
 pub mod controlled_runtime;
 pub mod fake_pool;
