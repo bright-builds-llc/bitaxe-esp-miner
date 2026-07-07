@@ -11,7 +11,10 @@ use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use bitaxe_asic::bm1366::production::ProductionAsicBlocker;
+use bitaxe_asic::bm1366::{
+    mining_ready::bm1366_job_interval_ms, production::ProductionAsicBlocker,
+    result::Bm1366NonceResult,
+};
 use bitaxe_config::{nvs::StoredValueKind, ultra_205_defaults, NvsSnapshot};
 use bitaxe_safety::{
     evidence::SafetyCriticalEvidence,
@@ -32,6 +35,7 @@ use bitaxe_stratum::jsonrpc::StratumRequestId;
 #[cfg(test)]
 use bitaxe_stratum::v1::state::{MiningActivityStatus, MiningRuntimeState};
 use bitaxe_stratum::v1::{
+    bridge_orchestration::{self, BridgeOrchestrator, BridgeStep},
     live_runtime::{
         BridgeObservationOutcome, LivePoolCredentials, LiveRuntimeAction, LiveRuntimeConfig,
         LiveRuntimeEvent, LiveStratumRuntime,
@@ -560,7 +564,6 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
     let mut pending_actions: VecDeque<LiveRuntimeAction> = runtime.drain_actions().into();
     let mut maybe_pending_submit: Option<PendingSubmit> = None;
     let mut asic_bridge = AsicBridgeState::new_for_phase27();
-    let mut maybe_submit_classified = false;
 
     let base_max_iterations = if phase27_bridge {
         PHASE27_LIVE_BRIDGE_PUMP_ITERATIONS
@@ -576,7 +579,6 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
 
         if phase27_bridge {
             asic_bridge.maybe_arm_continuous_listener();
-            asic_bridge.note_job_redispatch_if_due();
         }
 
         if phase27_bridge && asic_bridge.needs_step() {
@@ -589,13 +591,9 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
                     publish_asic_bridge_blocked(reason);
                     return SafeStopReason::PrerequisiteFailure;
                 }
-                AsicBridgeStepOutcome::Correlated => {
-                    maybe_submit_classified = false;
-                }
-                AsicBridgeStepOutcome::UartProof => {
-                    maybe_submit_classified = false;
-                }
-                AsicBridgeStepOutcome::NoOp => {}
+                AsicBridgeStepOutcome::Correlated
+                | AsicBridgeStepOutcome::UartProof
+                | AsicBridgeStepOutcome::NoOp => {}
             }
         }
 
@@ -622,10 +620,12 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
                 match handle_socket_line(runtime, &line, maybe_pending_submit.as_ref()) {
                     SocketLineOutcome::SubmitClassified => {
                         maybe_pending_submit = None;
-                        maybe_submit_classified = true;
                     }
                     SocketLineOutcome::WorkQueued => {
                         asic_bridge.note_work_queued();
+                    }
+                    SocketLineOutcome::SessionInvalidated => {
+                        asic_bridge.note_session_invalidated();
                     }
                     SocketLineOutcome::None => {}
                 }
@@ -642,30 +642,34 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
             }
         }
 
-        if phase27_bridge
-            && maybe_submit_classified
-            && maybe_pending_submit.is_none()
-            && !asic_bridge.needs_step()
-        {
-            return SafeStopReason::NormalStop;
-        }
-
+        // Upstream parity: mining continues after a classified share — no
+        // first-share exit (reference/esp-miner/main/tasks/asic_result_task.c
+        // never leaves its loop on success). Safe-stop, socket errors, and
+        // cleanup remain the only exits.
         iteration += 1;
     }
 
     SafeStopReason::VerificationCleanup
 }
 
+/// Thin firmware wrapper around the pure [`BridgeOrchestrator`].
+///
+/// All step priority and cadence decisions live in
+/// `bitaxe_stratum::v1::bridge_orchestration`; this wrapper keeps only the
+/// shell-facing state the orchestrator does not own.
 #[derive(Debug)]
 struct AsicBridgeState {
-    maybe_pending_dispatch: bool,
-    awaiting_result_read: bool,
+    orchestrator: BridgeOrchestrator,
+    /// Continuous listener + regeneration cadence are the phase27 bridge
+    /// defaults. The future `single_dispatch_bounded_read` control mode
+    /// (Plan 28.1-04) sets this false to keep the old bounded-read
+    /// fail-closed behavior reachable for A/B control runs.
+    continuous: bool,
+    listener_armed: bool,
     last_dispatch_generation: Option<PoolSessionGeneration>,
-    result_read_deadline: Option<Instant>,
-    continuous_listener: bool,
-    continuous_listener_armed: bool,
-    job_redispatch_pump: bool,
-    last_work_dispatched_at: Option<Instant>,
+    /// Bounded-read state; used only when `continuous == false`.
+    awaiting_bounded_read: bool,
+    maybe_bounded_read_deadline: Option<Instant>,
 }
 
 impl Default for AsicBridgeState {
@@ -677,45 +681,37 @@ impl Default for AsicBridgeState {
 impl AsicBridgeState {
     fn new_for_phase27() -> Self {
         Self {
-            maybe_pending_dispatch: false,
-            awaiting_result_read: false,
+            // Ultra 205 carries a single BM1366, so the regeneration cadence
+            // is bm1366_job_interval_ms(1) == 2000 ms (upstream parity).
+            orchestrator: BridgeOrchestrator::new(bm1366_job_interval_ms(1)),
+            continuous: true,
+            listener_armed: false,
             last_dispatch_generation: None,
-            result_read_deadline: None,
-            continuous_listener: asic_adapter::continuous_result_task_enabled(),
-            continuous_listener_armed: false,
-            job_redispatch_pump: asic_adapter::job_redispatch_pump_enabled(),
-            last_work_dispatched_at: None,
+            awaiting_bounded_read: false,
+            maybe_bounded_read_deadline: None,
         }
     }
 
     fn needs_step(&self) -> bool {
-        self.maybe_pending_dispatch || self.awaiting_result_read || self.job_redispatch_due()
+        if !self.continuous && self.awaiting_bounded_read {
+            return true;
+        }
+
+        self.orchestrator.next_step(Instant::now()) != BridgeStep::Idle
     }
 
     fn note_work_queued(&mut self) {
-        self.maybe_pending_dispatch = true;
+        self.orchestrator.note_work_queued();
     }
 
-    fn note_job_redispatch_if_due(&mut self) {
-        if self.job_redispatch_due() {
-            self.maybe_pending_dispatch = true;
-        }
-    }
-
-    fn job_redispatch_due(&self) -> bool {
-        if !self.job_redispatch_pump {
-            return false;
-        }
-
-        let Some(last) = self.last_work_dispatched_at else {
-            return false;
-        };
-
-        last.elapsed() >= Duration::from_millis(asic_adapter::JOB_REDISPATCH_INTERVAL_MS)
+    fn note_session_invalidated(&mut self) {
+        self.orchestrator.invalidate_session();
+        self.last_dispatch_generation = None;
+        self.clear_bounded_read();
     }
 
     fn maybe_arm_continuous_listener(&mut self) {
-        if !self.continuous_listener || self.continuous_listener_armed {
+        if !self.continuous || self.listener_armed {
             return;
         }
 
@@ -723,41 +719,25 @@ impl AsicBridgeState {
             return;
         }
 
-        self.continuous_listener_armed = true;
-        self.awaiting_result_read = true;
-        self.refresh_result_deadline();
+        self.listener_armed = true;
+        self.orchestrator.note_listener_armed();
         log::info!("h4_continuous_result=listener_armed");
     }
 
-    fn refresh_result_deadline(&mut self) {
-        self.result_read_deadline = Some(
-            Instant::now() + Duration::from_millis(u64::from(asic_adapter::RESULT_WORK_TIMEOUT_MS)),
-        );
-    }
-
     fn should_continue_result_read(&self) -> bool {
-        if self.continuous_listener && self.continuous_listener_armed {
-            return true;
+        if self.continuous {
+            return self.listener_armed;
         }
 
-        if !self.awaiting_result_read {
-            return false;
-        }
-
-        self.result_read_deadline.is_some_and(|deadline| {
-            Instant::now() < deadline + Duration::from_millis(u64::from(SOCKET_TIMEOUT_MS))
-        })
+        self.awaiting_bounded_read
+            && self.maybe_bounded_read_deadline.is_some_and(|deadline| {
+                Instant::now() < deadline + Duration::from_millis(SOCKET_TIMEOUT_MS)
+            })
     }
 
-    fn keep_result_listener_active(&mut self) {
-        if self.continuous_listener {
-            self.awaiting_result_read = true;
-            self.refresh_result_deadline();
-            return;
-        }
-
-        self.awaiting_result_read = false;
-        self.result_read_deadline = None;
+    fn clear_bounded_read(&mut self) {
+        self.awaiting_bounded_read = false;
+        self.maybe_bounded_read_deadline = None;
     }
 }
 
@@ -773,13 +753,29 @@ fn run_asic_bridge_step(
     runtime: &mut LiveStratumRuntime,
     bridge: &mut AsicBridgeState,
 ) -> AsicBridgeStepOutcome {
-    if bridge.awaiting_result_read {
-        return read_and_correlate_asic_result(runtime, bridge);
-    }
-    if !bridge.maybe_pending_dispatch {
-        return AsicBridgeStepOutcome::NoOp;
+    if !bridge.continuous && bridge.awaiting_bounded_read {
+        return read_bounded_asic_result(runtime, bridge);
     }
 
+    match bridge.orchestrator.next_step(Instant::now()) {
+        BridgeStep::Dispatch => dispatch_production_work(runtime, bridge),
+        BridgeStep::Regenerate => match runtime.regenerate_work() {
+            Ok(counter) => {
+                info_retained(&bridge_orchestration::job_redispatched_marker(counter));
+                dispatch_production_work(runtime, bridge)
+            }
+            // No held notify: regeneration never fabricates work.
+            Err(_) => AsicBridgeStepOutcome::NoOp,
+        },
+        BridgeStep::Poll { slice_ms } => poll_continuous_asic_result(runtime, bridge, slice_ms),
+        BridgeStep::Idle => AsicBridgeStepOutcome::NoOp,
+    }
+}
+
+fn dispatch_production_work(
+    runtime: &mut LiveStratumRuntime,
+    bridge: &mut AsicBridgeState,
+) -> AsicBridgeStepOutcome {
     let gate = mining_loop_gate(firmware_phase27_production_preconditions().decision());
     if gate.decision() != MiningLoopDecision::Ready {
         let MiningLoopDecision::Blocked { reason } = gate.decision() else {
@@ -814,11 +810,13 @@ fn run_asic_bridge_step(
 
     *runtime.production_registry_mut() = plan.production_registry;
     let Some(dispatch) = plan.maybe_dispatch else {
-        bridge.maybe_pending_dispatch = false;
+        // Nothing dispatchable: clear pending/cadence state so the pump
+        // idles until fresh pool work arrives.
+        bridge.orchestrator.invalidate_session();
         return AsicBridgeStepOutcome::NoOp;
     };
     let Some(command) = dispatch.maybe_production_command else {
-        bridge.maybe_pending_dispatch = false;
+        bridge.orchestrator.invalidate_session();
         return AsicBridgeStepOutcome::NoOp;
     };
 
@@ -828,20 +826,91 @@ fn run_asic_bridge_step(
     let mut executor = ProductionAsicExecutor::new();
     match executor.execute(command, valid_jobs) {
         Ok(_) => {
-            bridge.maybe_pending_dispatch = false;
-            bridge.awaiting_result_read = true;
-            bridge.result_read_deadline = Some(
-                Instant::now()
-                    + Duration::from_millis(u64::from(asic_adapter::RESULT_WORK_TIMEOUT_MS)),
-            );
-            bridge.last_work_dispatched_at = Some(Instant::now());
+            bridge.orchestrator.note_dispatched(Instant::now());
+            if !bridge.continuous {
+                bridge.awaiting_bounded_read = true;
+                bridge.maybe_bounded_read_deadline = Some(
+                    Instant::now()
+                        + Duration::from_millis(u64::from(asic_adapter::RESULT_WORK_TIMEOUT_MS)),
+                );
+            }
             AsicBridgeStepOutcome::NoOp
         }
         Err(blocker) => AsicBridgeStepOutcome::Blocked { reason: blocker },
     }
 }
 
-fn read_and_correlate_asic_result(
+fn poll_continuous_asic_result(
+    runtime: &mut LiveStratumRuntime,
+    bridge: &mut AsicBridgeState,
+    slice_ms: u32,
+) -> AsicBridgeStepOutcome {
+    let generation = bridge
+        .last_dispatch_generation
+        .unwrap_or_else(|| runtime.production_registry().generation());
+    let poll_timeout_ms = u64::from(slice_ms).min(SOCKET_TIMEOUT_MS).max(1) as u32;
+    let valid_jobs = runtime.production_registry().valid_jobs();
+    let mut executor = ProductionAsicExecutor::new();
+    match executor.try_read_production_result(valid_jobs, poll_timeout_ms) {
+        Ok(ProductionReadOutcome::Pending) => {
+            // Upstream parity: a result timeout is continue-with-telemetry,
+            // never fatal (reference/esp-miner/main/tasks/asic_result_task.c:24-36).
+            log::info!("h4_continuous_result=timeout_continue");
+            let streak = bridge.orchestrator.note_poll_timeout();
+            info_retained(&bridge_orchestration::timeout_streak_marker(streak));
+            AsicBridgeStepOutcome::NoOp
+        }
+        Ok(ProductionReadOutcome::RegisterReadProof) => {
+            bridge.orchestrator.note_result_received();
+            AsicBridgeStepOutcome::UartProof
+        }
+        Ok(ProductionReadOutcome::JobNonce(result)) => {
+            bridge.orchestrator.note_result_received();
+            correlate_job_nonce(runtime, generation, result)
+        }
+        Err(blocker) => {
+            log::info!(
+                "h4_continuous_result=read_error_continue reason={}",
+                blocker.as_str()
+            );
+            AsicBridgeStepOutcome::NoOp
+        }
+    }
+}
+
+fn correlate_job_nonce(
+    runtime: &mut LiveStratumRuntime,
+    generation: PoolSessionGeneration,
+    result: Bm1366NonceResult,
+) -> AsicBridgeStepOutcome {
+    let observation = ProductionNonceObservation {
+        observed_generation: generation,
+        result,
+    };
+    match runtime.apply_bridge_observation(observation) {
+        Ok(BridgeObservationOutcome::SubmitQueued) => {
+            asic_adapter::publish_production_asic_status(
+                bitaxe_asic::bm1366::production::ProductionAsicStatus::ResultCorrelated,
+            );
+            AsicBridgeStepOutcome::Actions(runtime.drain_actions())
+        }
+        Ok(BridgeObservationOutcome::Blocked { reason }) => {
+            publish_asic_bridge_blocked(reason);
+            AsicBridgeStepOutcome::Blocked { reason }
+        }
+        Err(_) => {
+            publish_asic_bridge_blocked(ProductionAsicBlocker::JobUncorrelated);
+            AsicBridgeStepOutcome::Blocked {
+                reason: ProductionAsicBlocker::JobUncorrelated,
+            }
+        }
+    }
+}
+
+/// Bounded single-read rollback path, reachable only when
+/// `continuous == false` (the Plan 28.1-04 `single_dispatch_bounded_read`
+/// control mode). The default continuous path never fail-closes on timeout.
+fn read_bounded_asic_result(
     runtime: &mut LiveStratumRuntime,
     bridge: &mut AsicBridgeState,
 ) -> AsicBridgeStepOutcome {
@@ -849,21 +918,14 @@ fn read_and_correlate_asic_result(
         .last_dispatch_generation
         .unwrap_or_else(|| runtime.production_registry().generation());
 
-    let deadline = bridge.result_read_deadline.unwrap_or_else(|| {
+    let deadline = bridge.maybe_bounded_read_deadline.unwrap_or_else(|| {
         let deadline =
             Instant::now() + Duration::from_millis(u64::from(asic_adapter::RESULT_WORK_TIMEOUT_MS));
-        bridge.result_read_deadline = Some(deadline);
+        bridge.maybe_bounded_read_deadline = Some(deadline);
         deadline
     });
     if Instant::now() >= deadline {
-        if bridge.continuous_listener {
-            log::info!("h4_continuous_result=timeout_continue");
-            bridge.refresh_result_deadline();
-            return AsicBridgeStepOutcome::NoOp;
-        }
-
-        bridge.awaiting_result_read = false;
-        bridge.result_read_deadline = None;
+        bridge.clear_bounded_read();
         return AsicBridgeStepOutcome::Blocked {
             reason: ProductionAsicBlocker::ResultTimeout,
         };
@@ -879,47 +941,15 @@ fn read_and_correlate_asic_result(
     match executor.try_read_production_result(valid_jobs, poll_timeout_ms) {
         Ok(ProductionReadOutcome::Pending) => AsicBridgeStepOutcome::NoOp,
         Ok(ProductionReadOutcome::RegisterReadProof) => {
-            bridge.keep_result_listener_active();
+            bridge.clear_bounded_read();
             AsicBridgeStepOutcome::UartProof
         }
         Ok(ProductionReadOutcome::JobNonce(result)) => {
-            let observation = ProductionNonceObservation {
-                observed_generation: generation,
-                result,
-            };
-            match runtime.apply_bridge_observation(observation) {
-                Ok(BridgeObservationOutcome::SubmitQueued) => {
-                    asic_adapter::publish_production_asic_status(
-                        bitaxe_asic::bm1366::production::ProductionAsicStatus::ResultCorrelated,
-                    );
-                    let actions = runtime.drain_actions();
-                    bridge.keep_result_listener_active();
-                    AsicBridgeStepOutcome::Actions(actions)
-                }
-                Ok(BridgeObservationOutcome::Blocked { reason }) => {
-                    publish_asic_bridge_blocked(reason);
-                    AsicBridgeStepOutcome::Blocked { reason }
-                }
-                Err(_) => {
-                    publish_asic_bridge_blocked(ProductionAsicBlocker::JobUncorrelated);
-                    AsicBridgeStepOutcome::Blocked {
-                        reason: ProductionAsicBlocker::JobUncorrelated,
-                    }
-                }
-            }
+            bridge.clear_bounded_read();
+            correlate_job_nonce(runtime, generation, result)
         }
         Err(blocker) => {
-            if bridge.continuous_listener {
-                log::info!(
-                    "h4_continuous_result=read_error_continue reason={}",
-                    blocker.as_str()
-                );
-                bridge.refresh_result_deadline();
-                return AsicBridgeStepOutcome::NoOp;
-            }
-
-            bridge.awaiting_result_read = false;
-            bridge.result_read_deadline = None;
+            bridge.clear_bounded_read();
             AsicBridgeStepOutcome::Blocked { reason: blocker }
         }
     }
@@ -962,6 +992,7 @@ enum SocketLineOutcome {
     None,
     SubmitClassified,
     WorkQueued,
+    SessionInvalidated,
 }
 
 fn handle_socket_line(
@@ -995,6 +1026,9 @@ fn handle_socket_line(
     publish_event_status(runtime, maybe_event);
     if maybe_event == Some(LiveRuntimeEvent::WorkQueued) {
         return SocketLineOutcome::WorkQueued;
+    }
+    if maybe_event == Some(LiveRuntimeEvent::WorkInvalidated) {
+        return SocketLineOutcome::SessionInvalidated;
     }
     SocketLineOutcome::None
 }
