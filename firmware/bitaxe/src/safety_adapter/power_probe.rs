@@ -20,19 +20,14 @@ fn probe_state() -> &'static Mutex<PowerProbeState> {
 /// Returns `false` (without panicking) when a bus is already stored or the
 /// probe state lock is unavailable.
 #[must_use]
-pub fn store_power_probe_bus(bus: BitaxeI2cBus<'_>) -> bool {
-    // SAFETY: The ESP-IDF I2C singleton peripheral lives for the firmware
-    // process lifetime; the bus is stored once at bring-up and never
-    // reconstructed, so extending its lifetime to 'static cannot dangle.
-    let bus_static: BitaxeI2cBus<'static> = unsafe { std::mem::transmute(bus) };
-
+pub fn store_power_probe_bus(bus: BitaxeI2cBus<'static>) -> bool {
     let Ok(mut state) = probe_state().lock() else {
         return false;
     };
     if state.maybe_bus.is_some() {
         return false;
     }
-    state.maybe_bus = Some(bus_static);
+    state.maybe_bus = Some(bus);
     true
 }
 
