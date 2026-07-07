@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 28.1-01-PLAN.md
-last_updated: "2026-07-07T01:34:37.796Z"
+stopped_at: Completed 28.1-02-PLAN.md
+last_updated: "2026-07-07T02:15:41.153Z"
 last_activity: 2026-07-07
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 31
-  completed_plans: 27
-  percent: 87
+  completed_plans: 28
+  percent: 90
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 ## Current Position
 
 Phase: 28.1 (live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes)) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-07
 
@@ -114,6 +114,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 28.1]: BridgeStep has no fatal variant so timeout cannot starve mining; dispatch-before-poll priority is the J2c fix encoded as a named regression test
 - [Phase 28.1]: extranonce2 regeneration keeps the fixture-tested little-endian hex encoding (01000000 for counter 1), matching upstream mining.c parity
 - [Phase 28.1]: Held notify and extranonce2 counter reset via one shared helper on all four session invalidation paths
+- [Phase 28.1]: AsicBridgeState kept as thin wrapper embedding BridgeOrchestrator; bridge pump interprets typed BridgeStep values only
+- [Phase 28.1]: Fail-closed ResultTimeout survives only in the non-continuous bounded-read rollback path for the single_dispatch_bounded_read control mode
+- [Phase 28.1]: W13 bridge-mode boot retains production peripherals unconditionally after init; require_diagnostic_nonce and require_uart_proof_for_production stay as opt-out rollback levers
 
 ### Pending Todos
 
@@ -135,11 +138,12 @@ None yet.
 | Phase 26 P04 | 6min | 3 tasks | 9 files |
 | Phase 27-live-hardware-asic-and-stratum-bridge P01-04 | 62min | 8 tasks | 20 files |
 | Phase 28.1 P01 | 13min | 3 tasks | 6 files |
+| Phase 28.1 P02 | 40min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-07-07T01:34:31.957Z
-Stopped at: Completed 28.1-01-PLAN.md
+Last session: 2026-07-07T02:15:41.151Z
+Stopped at: Completed 28.1-02-PLAN.md
 Resume file: None
 
 ## Next Step
