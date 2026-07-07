@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 28.1-03-PLAN.md
-last_updated: "2026-07-07T02:30:41.203Z"
+stopped_at: Completed 28.1-04-PLAN.md
+last_updated: "2026-07-07T02:39:56.639Z"
 last_activity: 2026-07-07
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 31
-  completed_plans: 29
-  percent: 94
+  completed_plans: 30
+  percent: 97
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 ## Current Position
 
 Phase: 28.1 (live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes)) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-07
 
@@ -119,6 +119,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 28.1]: W13 bridge-mode boot retains production peripherals unconditionally after init; require_diagnostic_nonce and require_uart_proof_for_production stay as opt-out rollback levers
 - [Phase 28.1]: Post-dispatch register-read probe TX helper lives in asic_adapter/production.rs because the retained UART is private to that module; probe is TX-only and rides the existing RegisterReadProof classification
 - [Phase 28.1]: Bring-up I2C bus retained via OnceLock power_probe module (store-once, read-only INA260 sampling); power-delta marker fires once per session 7 s after first dispatch and degrades to unavailable=true, never a gate
+- [Phase 28.1]: Four investigation modes (continuous_result_task, job_redispatch_pump, initialized_no_mining_gate, skip_boot_diagnostic_work) retired as defaults; single_dispatch_bounded_read added as the only opt-out reproducing the pre-28.1 fail-closed pump
+- [Phase 28.1]: W13 retention marker renamed to asic_work_result_trace=post_init_retention with bootstrap=initialized_no_mining preserved for run-doc comparability
+- [Phase 28.1]: Control mode suppresses BridgeStep::Regenerate at the pump interpreter so the A/B control run never regenerates work
 
 ### Pending Todos
 
@@ -142,11 +145,12 @@ None yet.
 | Phase 28.1 P01 | 13min | 3 tasks | 6 files |
 | Phase 28.1 P02 | 40min | 2 tasks | 3 files |
 | Phase 28.1 P03 | 12min | 2 tasks | 6 files |
+| Phase 28.1 P04 | 7min | 2 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-07-07T02:30:32.781Z
-Stopped at: Completed 28.1-03-PLAN.md
+Last session: 2026-07-07T02:39:56.636Z
+Stopped at: Completed 28.1-04-PLAN.md
 Resume file: None
 
 ## Next Step
