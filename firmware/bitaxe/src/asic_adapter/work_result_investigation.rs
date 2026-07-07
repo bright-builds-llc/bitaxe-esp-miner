@@ -1,7 +1,7 @@
 //! Phase 27 work-result investigation compile-time plan selection.
 //!
 //! Controlled by `BITAXE_WORK_RESULT_INVESTIGATION` action env at firmware build time.
-//! Supports comma-separated modes, e.g. `frequency_ramp,initialized_no_mining_gate`.
+//! Supports comma-separated modes, e.g. `frequency_ramp,single_dispatch_bounded_read`.
 
 use bitaxe_asic::{
     bm1366::{
@@ -55,20 +55,6 @@ fn bridge_default_frequency_ramp_enabled() -> bool {
     !has_investigation_mode("skip_frequency_ramp")
 }
 
-/// Phase 27 bootstrap: retain production UART when mining-ready init completed but
-/// the bounded diagnostic read does not return proof within 10s.
-pub fn phase27_initialized_no_mining_bootstrap(mining_ready_completed: bool) -> bool {
-    if !phase27_bridge_active() || !mining_ready_completed {
-        return false;
-    }
-
-    if require_diagnostic_nonce() || require_uart_proof_for_production() {
-        return false;
-    }
-
-    has_investigation_mode("initialized_no_mining_gate")
-}
-
 /// W13 rollback lever: compile-time opt-out that restores the old boot gate
 /// requiring a diagnostic nonce before production peripheral retention.
 pub fn require_diagnostic_nonce() -> bool {
@@ -81,30 +67,16 @@ pub fn require_uart_proof_for_production() -> bool {
     has_investigation_mode("require_uart_proof_for_production")
 }
 
-pub fn skip_boot_diagnostic_work() -> bool {
-    has_investigation_mode("skip_boot_diagnostic_work")
-}
-
-pub fn initialized_no_mining_bootstrap_gate() -> bool {
-    has_investigation_mode("initialized_no_mining_gate")
-}
-
 pub fn clear_rx_before_production_work() -> bool {
     has_investigation_mode("clear_rx_before_production_work")
 }
 
-/// H4: emulate upstream `ASIC_result_task` — continuous UART listen with non-fatal timeouts.
-pub fn continuous_result_task_enabled() -> bool {
-    has_investigation_mode("continuous_result_task")
+/// Phase 28.1 A/B control lever: compile-time opt-out that restores the
+/// pre-28.1 pump behavior — one dispatch per queued pool work, bounded
+/// result read, fail-closed `ResultTimeout` on chip silence.
+pub fn single_dispatch_bounded_read_enabled() -> bool {
+    has_investigation_mode("single_dispatch_bounded_read")
 }
-
-/// H4: emulate upstream `create_jobs_task` re-feed — periodic re-dispatch while work active.
-pub fn job_redispatch_pump_enabled() -> bool {
-    has_investigation_mode("job_redispatch_pump")
-}
-
-/// Upstream create_jobs_task re-send interval when holding current work (ms).
-pub const JOB_REDISPATCH_INTERVAL_MS: u64 = 2000;
 
 fn phase27_bridge_active() -> bool {
     crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge()

@@ -665,9 +665,9 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
 struct AsicBridgeState {
     orchestrator: BridgeOrchestrator,
     /// Continuous listener + regeneration cadence are the phase27 bridge
-    /// defaults. The future `single_dispatch_bounded_read` control mode
-    /// (Plan 28.1-04) sets this false to keep the old bounded-read
-    /// fail-closed behavior reachable for A/B control runs.
+    /// defaults. The `single_dispatch_bounded_read` control mode sets this
+    /// false to restore the pre-28.1 bounded-read fail-closed behavior for
+    /// A/B control runs.
     continuous: bool,
     listener_armed: bool,
     last_dispatch_generation: Option<PoolSessionGeneration>,
@@ -696,7 +696,7 @@ impl AsicBridgeState {
             // Ultra 205 carries a single BM1366, so the regeneration cadence
             // is bm1366_job_interval_ms(1) == 2000 ms (upstream parity).
             orchestrator: BridgeOrchestrator::new(bm1366_job_interval_ms(1)),
-            continuous: true,
+            continuous: !asic_adapter::single_dispatch_bounded_read_enabled(),
             listener_armed: false,
             last_dispatch_generation: None,
             awaiting_bounded_read: false,
@@ -779,6 +779,9 @@ fn run_asic_bridge_step(
 
     match bridge.orchestrator.next_step(Instant::now()) {
         BridgeStep::Dispatch => dispatch_production_work(runtime, bridge),
+        // Control mode (single_dispatch_bounded_read): the pre-28.1 pump
+        // never regenerated work — only fresh pool work triggers a dispatch.
+        BridgeStep::Regenerate if !bridge.continuous => AsicBridgeStepOutcome::NoOp,
         BridgeStep::Regenerate => match runtime.regenerate_work() {
             Ok(counter) => {
                 info_retained(&bridge_orchestration::job_redispatched_marker(counter));

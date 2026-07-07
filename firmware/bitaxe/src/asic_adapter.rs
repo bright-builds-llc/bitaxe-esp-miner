@@ -37,9 +37,7 @@ mod work_result_investigation;
 pub use production::{
     probe_register_read_tx, production_ready, ProductionAsicExecutor, ProductionReadOutcome,
 };
-pub use work_result_investigation::{
-    continuous_result_task_enabled, job_redispatch_pump_enabled, JOB_REDISPATCH_INTERVAL_MS,
-};
+pub use work_result_investigation::single_dispatch_bounded_read_enabled;
 
 pub use status::{
     publish_mining_loop_blocked_status, publish_production_asic_blocked_status,
@@ -294,9 +292,7 @@ where
         && !work_result_investigation::require_diagnostic_nonce()
         && !work_result_investigation::require_uart_proof_for_production()
     {
-        log::info!(
-            "asic_work_result_trace=skip_boot_diagnostic_work bootstrap=initialized_no_mining"
-        );
+        log::info!("asic_work_result_trace=post_init_retention bootstrap=initialized_no_mining");
         status::publish_work_result_bootstrap_initialized_status();
         // Post-init register-read probe runs on the still-local uart handle
         // BEFORE retention moves the peripherals into the production OnceLock.
@@ -341,17 +337,6 @@ where
     let frame = match uart.read_exact(BM1366_RESULT_FRAME_LEN, uart::RESULT_WORK_TIMEOUT_MS) {
         Ok(frame) => frame,
         Err(error) => {
-            if retain_for_production
-                && work_result_investigation::phase27_initialized_no_mining_bootstrap(
-                    mining_ready_completed,
-                )
-                && error_is_timeout(&error)
-            {
-                log::info!("asic_work_result_trace=initialized_no_mining_bootstrap timeout");
-                status::publish_work_result_bootstrap_initialized_status();
-                production::store_production_peripherals(uart, reset, true);
-                return Ok(());
-            }
             fail_closed_work_result_read(&mut reset, &error);
             return Ok(());
         }
@@ -372,16 +357,6 @@ where
             }
         }
         Err(error) => {
-            if retain_for_production
-                && work_result_investigation::phase27_initialized_no_mining_bootstrap(
-                    mining_ready_completed,
-                )
-            {
-                log::info!("asic_work_result_trace=initialized_no_mining_bootstrap parse_error");
-                status::publish_work_result_bootstrap_initialized_status();
-                production::store_production_peripherals(uart, reset, true);
-                return Ok(());
-            }
             fail_closed_work_result_invalid(&mut reset, &error);
         }
     }
