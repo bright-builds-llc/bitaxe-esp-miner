@@ -63,6 +63,20 @@ pub fn next_power_of_two(value: u32) -> u32 {
     power
 }
 
+/// BM1366 per-job dispatch interval in milliseconds for a given chain length.
+///
+/// Reference: reference/esp-miner/components/asic/asic.c:149-158
+/// (ASIC_get_asic_job_frequency_ms) and
+/// reference/esp-miner/main/device_config.h:93 (BM1366 default_asic_timeout = 2000).
+#[must_use]
+pub fn bm1366_job_interval_ms(asic_count: u32) -> u32 {
+    const BM1366_DEFAULT_ASIC_TIMEOUT_MS: u32 = 2000;
+    if asic_count == 0 {
+        return BM1366_DEFAULT_ASIC_TIMEOUT_MS;
+    }
+    BM1366_DEFAULT_ASIC_TIMEOUT_MS / next_power_of_two(asic_count)
+}
+
 #[must_use]
 pub fn hash_counting_number(
     nonce_percent: f64,
@@ -207,7 +221,9 @@ fn frequency_ramp_commands(target_mhz: f32) -> Result<Vec<Bm1366Command>, &'stat
     let mut current_mhz = FREQ_RAMP_START_MHZ;
 
     if (target_mhz - current_mhz).abs() < FREQ_RAMP_STEP_MHZ {
-        commands.push(Bm1366Command::SetFrequency(frequency_plan_for_mhz(target_mhz)));
+        commands.push(Bm1366Command::SetFrequency(frequency_plan_for_mhz(
+            target_mhz,
+        )));
         return Ok(commands);
     }
 
@@ -215,16 +231,19 @@ fn frequency_ramp_commands(target_mhz: f32) -> Result<Vec<Bm1366Command>, &'stat
     let mut current_step = (current_mhz / FREQ_RAMP_STEP_MHZ).floor() as i32;
     let target_step = (target_mhz / FREQ_RAMP_STEP_MHZ).floor() as i32;
 
-    while (sign > 0.0 && current_step < target_step) || (sign < 0.0 && current_step > target_step)
-    {
+    while (sign > 0.0 && current_step < target_step) || (sign < 0.0 && current_step > target_step) {
         current_step += sign as i32;
         current_mhz = current_step as f32 * FREQ_RAMP_STEP_MHZ;
-        commands.push(Bm1366Command::SetFrequency(frequency_plan_for_mhz(current_mhz)));
+        commands.push(Bm1366Command::SetFrequency(frequency_plan_for_mhz(
+            current_mhz,
+        )));
         commands.push(Bm1366Command::DelayMs(FREQ_RAMP_DELAY_MS));
     }
 
     if (current_mhz - target_mhz).abs() > f32::EPSILON {
-        commands.push(Bm1366Command::SetFrequency(frequency_plan_for_mhz(target_mhz)));
+        commands.push(Bm1366Command::SetFrequency(frequency_plan_for_mhz(
+            target_mhz,
+        )));
     }
 
     Ok(commands)
@@ -263,7 +282,9 @@ fn frequency_plan_for_mhz(frequency_mhz: f32) -> FrequencyPlan {
         })
 }
 
-pub fn encode_commands(commands: &[Bm1366Command]) -> Result<Vec<Bm1366AdapterAction>, &'static str> {
+pub fn encode_commands(
+    commands: &[Bm1366Command],
+) -> Result<Vec<Bm1366AdapterAction>, &'static str> {
     let mut actions = Vec::with_capacity(commands.len());
     for command in commands {
         let encoded = command
@@ -349,13 +370,13 @@ pub fn ultra_205_result_address_interval() -> u16 {
 
 #[cfg(test)]
 mod tests {
+    use super::super::command::Bm1366Command;
     use super::super::upstream_init_frames::{
         CHAIN_INACTIVE_FRAME, INIT135_FRAME, INIT136_FRAME, INIT138_FRAME, INIT139_FRAME,
         INIT171_FRAME, INIT4_FRAME, INIT5_FRAME, INIT795_FRAME, PER_CHIP_18_FRAME,
         PER_CHIP_3C_FIRST_FRAME, PER_CHIP_3C_SECOND_FRAME, PER_CHIP_3C_THIRD_FRAME,
         PER_CHIP_A8_FRAME, REG28_MAX_BAUD_FRAME,
     };
-    use super::super::command::Bm1366Command;
     use super::*;
 
     fn frame_bytes(command: Bm1366Command) -> Vec<u8> {
@@ -368,9 +389,8 @@ mod tests {
     #[test]
     fn mining_ready_init_frames_match_upstream_fixtures() {
         let config = MiningReadyConfig::ultra_205_single_chip(1);
-        let commands =
-            mining_ready_commands(config, MiningReadyInitOptions::phase27_default())
-                .expect("commands should build");
+        let commands = mining_ready_commands(config, MiningReadyInitOptions::phase27_default())
+            .expect("commands should build");
 
         let frames: Vec<Vec<u8>> = commands.iter().copied().map(frame_bytes).collect();
 
@@ -412,10 +432,9 @@ mod tests {
             Some(Bm1366AdapterAction::WriteFrame(_))
         ));
         assert!(actions.contains(&Bm1366AdapterAction::WAIT_TX_DONE));
-        assert!(actions.iter().any(|action| matches!(
-            action,
-            Bm1366AdapterAction::UseMaxBaud { baud: 1_000_000 }
-        )));
+        assert!(actions
+            .iter()
+            .any(|action| matches!(action, Bm1366AdapterAction::UseMaxBaud { baud: 1_000_000 })));
         assert!(actions.contains(&Bm1366AdapterAction::ClearRx));
     }
 
@@ -428,17 +447,18 @@ mod tests {
         .expect("prelude should encode");
 
         assert!(actions.contains(&Bm1366AdapterAction::ClearRx));
-        assert!(actions.iter().any(|command| matches!(
-            command,
-            Bm1366AdapterAction::DelayMs(2_000)
-        )));
+        assert!(actions
+            .iter()
+            .any(|command| matches!(command, Bm1366AdapterAction::DelayMs(2_000))));
     }
 
     #[test]
     fn frequency_ramp_emits_multiple_steps_with_delays() {
         let ramp = frequency_ramp_commands(485.0).expect("ramp should build");
         assert!(ramp.len() > 2);
-        assert!(ramp.iter().any(|command| matches!(command, Bm1366Command::DelayMs(100))));
+        assert!(ramp
+            .iter()
+            .any(|command| matches!(command, Bm1366Command::DelayMs(100))));
     }
 
     #[test]
@@ -465,5 +485,53 @@ mod tests {
         let hcn = hash_counting_number(1.0, 485.0, 1, 112);
         assert!(hcn > 0);
         assert!(hcn < u32::MAX);
+    }
+
+    #[test]
+    fn bm1366_job_interval_single_chip_is_2000_ms() {
+        // Arrange
+        let asic_count = 1_u32;
+
+        // Act
+        let interval_ms = bm1366_job_interval_ms(asic_count);
+
+        // Assert
+        assert_eq!(interval_ms, 2000);
+    }
+
+    #[test]
+    fn bm1366_job_interval_two_chips_is_1000_ms() {
+        // Arrange
+        let asic_count = 2_u32;
+
+        // Act
+        let interval_ms = bm1366_job_interval_ms(asic_count);
+
+        // Assert
+        assert_eq!(interval_ms, 1000);
+    }
+
+    #[test]
+    fn bm1366_job_interval_five_chips_rounds_up_to_eight_divisor() {
+        // Arrange
+        let asic_count = 5_u32;
+
+        // Act
+        let interval_ms = bm1366_job_interval_ms(asic_count);
+
+        // Assert
+        assert_eq!(interval_ms, 250);
+    }
+
+    #[test]
+    fn bm1366_job_interval_zero_chips_guards_as_single_chip() {
+        // Arrange
+        let asic_count = 0_u32;
+
+        // Act
+        let interval_ms = bm1366_job_interval_ms(asic_count);
+
+        // Assert
+        assert_eq!(interval_ms, 2000);
     }
 }
