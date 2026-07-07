@@ -118,8 +118,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Coverage:**
 - v1.1 requirements: 21 total
 - Mapped to phases: 21
-- Complete: 10
-- Pending (gap closure): 11
+- Complete: 21
+- Pending (gap closure): 0
 - Unmapped: 0
 
 **Phase distribution:**
@@ -132,4 +132,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Phase 28: SAFE-10, SAFE-11, SAFE-12, SAFE-13, CFG-07, ASIC-09, ASIC-12
 
 *Requirements defined: 2026-07-04*
-*Last updated: 2026-07-05 after v1.1 gap closure phase planning*
+*Last updated: 2026-07-06 after v1.1 milestone audit (Phases 22–28 complete)*
