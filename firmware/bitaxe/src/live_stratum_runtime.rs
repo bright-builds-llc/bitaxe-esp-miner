@@ -670,6 +670,8 @@ struct AsicBridgeState {
     /// Bounded-read state; used only when `continuous == false`.
     awaiting_bounded_read: bool,
     maybe_bounded_read_deadline: Option<Instant>,
+    /// Once-per-session guard for the post-dispatch register-read probe.
+    post_dispatch_probe_sent: bool,
 }
 
 impl Default for AsicBridgeState {
@@ -689,6 +691,7 @@ impl AsicBridgeState {
             last_dispatch_generation: None,
             awaiting_bounded_read: false,
             maybe_bounded_read_deadline: None,
+            post_dispatch_probe_sent: false,
         }
     }
 
@@ -708,6 +711,7 @@ impl AsicBridgeState {
         self.orchestrator.invalidate_session();
         self.last_dispatch_generation = None;
         self.clear_bounded_read();
+        self.post_dispatch_probe_sent = false;
     }
 
     fn maybe_arm_continuous_listener(&mut self) {
@@ -827,6 +831,7 @@ fn dispatch_production_work(
     match executor.execute(command, valid_jobs) {
         Ok(_) => {
             bridge.orchestrator.note_dispatched(Instant::now());
+            maybe_send_post_dispatch_register_probe(bridge);
             if !bridge.continuous {
                 bridge.awaiting_bounded_read = true;
                 bridge.maybe_bounded_read_deadline = Some(
@@ -837,6 +842,24 @@ fn dispatch_production_work(
             AsicBridgeStepOutcome::NoOp
         }
         Err(blocker) => AsicBridgeStepOutcome::Blocked { reason: blocker },
+    }
+}
+
+/// Post-dispatch register-read probe: one TX-only `ReadChipId` frame after
+/// the FIRST successful production dispatch of a socket session. Does not
+/// block for the response — the continuous poll path already classifies a
+/// register-read reply (`asic_production_trace=register_read_parsed`);
+/// absence of that marker in a capture IS the silent outcome. Diagnostic
+/// only; TX failure logs and continues, never blocking dispatch or mining.
+fn maybe_send_post_dispatch_register_probe(bridge: &mut AsicBridgeState) {
+    if bridge.post_dispatch_probe_sent {
+        return;
+    }
+    bridge.post_dispatch_probe_sent = true;
+    if asic_adapter::probe_register_read_tx() {
+        info_retained("asic_probe=register_read_tx stage=post_dispatch");
+    } else {
+        log::warn!("asic_probe=register_read_tx_error stage=post_dispatch");
     }
 }
 

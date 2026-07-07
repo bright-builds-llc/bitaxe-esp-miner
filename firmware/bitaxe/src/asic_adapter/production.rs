@@ -6,7 +6,7 @@ use std::sync::{Mutex, OnceLock};
 
 use anyhow::Result;
 use bitaxe_asic::bm1366::{
-    command::Bm1366AdapterAction,
+    command::{Bm1366AdapterAction, Bm1366Command},
     mining_ready::ultra_205_result_address_interval,
     production::{Bm1366ProductionCommand, ProductionAsicBlocker, ProductionAsicStatus},
     result::{
@@ -83,6 +83,32 @@ pub fn production_ready() -> bool {
         .lock()
         .ok()
         .is_some_and(|state| state.production_ready && state.maybe_uart.is_some())
+}
+
+/// TX-only `ReadChipId` register-read probe on the retained production UART.
+///
+/// Sends one reg-0x00 read frame and returns without blocking for the
+/// response: the continuous poll path already classifies a register-read
+/// reply through [`ProductionReadOutcome::RegisterReadProof`]. Diagnostic
+/// only — any failure returns `false` and never blocks dispatch or mining.
+///
+/// Reference: reference/esp-miner/components/asic/bm1366.c:389-399
+/// (`BM1366_read_registers`, reg 0x00 = chip id).
+#[must_use]
+pub fn probe_register_read_tx() -> bool {
+    let Ok(frame) = Bm1366Command::ReadChipId.frame_bytes() else {
+        return false;
+    };
+    let Ok(mut state) = production_state().lock() else {
+        return false;
+    };
+    let Some(uart) = state.maybe_uart.as_mut() else {
+        return false;
+    };
+    if uart.write_frame(frame.as_ref()).is_err() {
+        return false;
+    }
+    uart.wait_tx_done(uart::WAIT_TX_DONE_TIMEOUT_MS).is_ok()
 }
 
 pub struct ProductionAsicExecutor;

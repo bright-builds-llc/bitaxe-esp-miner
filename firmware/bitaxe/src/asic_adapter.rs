@@ -12,7 +12,7 @@ use bitaxe_asic::bm1366::{
         self, Bm1366AdapterIoFault, Bm1366AdapterSetupFault, CHIP_DETECT_ADAPTER_ERROR,
         CHIP_DETECT_RESPONSE_INVALID, RESET_ADAPTER_UNAVAILABLE, UART_ADAPTER_UNAVAILABLE,
     },
-    command::Bm1366AdapterAction,
+    command::{Bm1366AdapterAction, Bm1366Command},
     init_plan::{Bm1366InitPlan, Bm1366Preflight, BoardPreflightEvidence, ConfigPreflightEvidence},
     mining_ready::ultra_205_result_address_interval,
     observation::AsicInitStatus,
@@ -34,7 +34,9 @@ mod uart;
 pub use uart::RESULT_WORK_TIMEOUT_MS;
 mod work_result_investigation;
 
-pub use production::{production_ready, ProductionAsicExecutor, ProductionReadOutcome};
+pub use production::{
+    probe_register_read_tx, production_ready, ProductionAsicExecutor, ProductionReadOutcome,
+};
 pub use work_result_investigation::{
     continuous_result_task_enabled, job_redispatch_pump_enabled, JOB_REDISPATCH_INTERVAL_MS,
 };
@@ -296,6 +298,11 @@ where
             "asic_work_result_trace=skip_boot_diagnostic_work bootstrap=initialized_no_mining"
         );
         status::publish_work_result_bootstrap_initialized_status();
+        // Post-init register-read probe runs on the still-local uart handle
+        // BEFORE retention moves the peripherals into the production OnceLock.
+        // The chip is fully initialized and baud-switched at this point. Probe
+        // silence or failure is diagnostic only and never blocks retention.
+        run_post_init_register_read_probe(&mut uart);
         production::store_production_peripherals(uart, reset, true);
         return Ok(());
     }
@@ -380,6 +387,56 @@ where
     }
 
     Ok(())
+}
+
+// Reference: reference/esp-miner/components/asic/bm1366.c:389-399 (BM1366_read_registers, reg 0x00 = chip id)
+fn run_post_init_register_read_probe(uart: &mut uart::AsicUart<'_>) {
+    const PROBE_RESPONSE_TIMEOUT_MS: u32 = 500;
+
+    let frame = match Bm1366Command::ReadChipId.frame_bytes() {
+        Ok(frame) => frame,
+        Err(error) => {
+            log::warn!("asic_probe=register_read_frame_error stage=post_init error={error}");
+            info_retained("asic_probe=register_read_silent stage=post_init");
+            return;
+        }
+    };
+    if let Err(error) = uart.write_frame(frame.as_ref()) {
+        log::warn!("asic_probe=register_read_tx_error stage=post_init error={error:#}");
+        info_retained("asic_probe=register_read_silent stage=post_init");
+        return;
+    }
+    if let Err(error) = uart.wait_tx_done(uart::WAIT_TX_DONE_TIMEOUT_MS) {
+        log::warn!("asic_probe=register_read_tx_error stage=post_init error={error:#}");
+        info_retained("asic_probe=register_read_silent stage=post_init");
+        return;
+    }
+    info_retained("asic_probe=register_read_tx stage=post_init");
+
+    match uart.try_read_exact(BM1366_RESULT_FRAME_LEN, PROBE_RESPONSE_TIMEOUT_MS) {
+        Ok(Some(response)) => {
+            match parse_bm1366_result_frame(
+                &response,
+                &Bm1366ValidJobIds::empty(),
+                ultra_205_result_address_interval(),
+            ) {
+                Ok(Bm1366ParsedResult::RegisterRead(_)) => {
+                    info_retained("asic_production_trace=register_read_parsed");
+                }
+                Ok(Bm1366ParsedResult::JobNonce(_)) | Err(_) => {
+                    info_retained("asic_probe=register_read_unparsed stage=post_init");
+                }
+            }
+        }
+        Ok(None) | Err(_) => {
+            info_retained("asic_probe=register_read_silent stage=post_init");
+        }
+    }
+}
+
+fn info_retained(line: &str) {
+    log::info!("{line}");
+    crate::log_buffer::append_runtime_log_line(line);
 }
 
 fn run_chip_detect_actions(
