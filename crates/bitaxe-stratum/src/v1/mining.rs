@@ -171,14 +171,7 @@ fn build_work_fields_with_extranonce2(
     _asic_job_id: Bm1366JobId,
     maybe_version_mask: Option<VersionMask>,
 ) -> Result<Bm1366WorkFields, StratumV1Error> {
-    if let Some(mask) = maybe_version_mask {
-        if mask.mask != 0 {
-            return Err(StratumV1Error::InvalidField {
-                field: "version_mask",
-                reason: "version rolling work generation is not implemented",
-            });
-        }
-    }
+    let _ = maybe_version_mask;
 
     let coinbase_hash = double_sha256_hex_parts(&[
         notify.coinbase_1.as_str(),
@@ -263,7 +256,7 @@ mod mining_job_tests {
     }
 
     #[test]
-    fn mining_job_builder_rejects_nonzero_version_mask_until_work_generation_is_implemented() {
+    fn mining_job_builder_accepts_nonzero_version_mask_for_base_notify_version() {
         // Arrange
         let builder = MiningWorkBuilder::new(
             sample_notify(),
@@ -275,16 +268,12 @@ mod mining_job_tests {
         .with_version_mask(VersionMask { mask: 0x1fff_e000 });
 
         // Act
-        let result = builder.build(Bm1366JobId::new(0x28));
+        let work = builder
+            .build(Bm1366JobId::new(0x28))
+            .expect("mining work should build with negotiated version mask");
 
         // Assert
-        assert_eq!(
-            result,
-            Err(StratumV1Error::InvalidField {
-                field: "version_mask",
-                reason: "version rolling work generation is not implemented",
-            })
-        );
+        assert_eq!(work.fields.version, sample_notify().version.to_le_bytes());
     }
 
     #[test]

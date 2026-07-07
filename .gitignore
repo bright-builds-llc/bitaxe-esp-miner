@@ -1,4 +1,5 @@
 bazel-*
+/scratch/
 target/
 .embuild/
 /wifi-credentials*.json

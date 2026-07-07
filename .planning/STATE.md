@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 28.1-05-PLAN.md
-last_updated: "2026-07-07T03:54:29.036Z"
+status: partial
+stopped_at: Phase 28.1.1 verification — blocker persists; post-fix reflash pending
+last_updated: "2026-07-07T05:05:00.000Z"
 last_activity: 2026-07-07
 progress:
   total_phases: 8
@@ -22,16 +22,16 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
 
-**Current focus:** Phase 28.1 — live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes)
+**Current focus:** Phase 28.1.1 — BM1366 nonce production wire parity (`firmware-nonce-production`)
 
 ## Current Position
 
-Phase: 28.1
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 28.1.1
+Plan: 05 (verification partial)
+Status: Wire fixes landed; `firmware-nonce-production` still open — rerun hardware after USB recovery
 Last activity: 2026-07-07
 
-Progress: [██████████] 100%
+Progress: [█████████░] 90% (milestone v1.1; phase 28.1.1 partial)
 
 ## Active Artifacts
 
@@ -58,7 +58,7 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 
 ### Roadmap Evolution
 
-- Phase 28.1 inserted after Phase 28: live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes) (URGENT)
+- Phase 28.1.1 inserted after Phase 28.1: BM1366 nonce production wire parity (firmware-nonce-production fix)
 
 ### Decisions
 

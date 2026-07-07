@@ -388,7 +388,7 @@ mod tests {
     use crate::v1::live_runtime::{LivePoolCredentials, LiveRuntimeConfig};
     use crate::v1::messages::{
         ExtranonceAssignment, MiningNotify, PoolDifficulty, StratumResponse, StratumResponseError,
-        StratumV1ClientMessage, StratumV1ServerMessage,
+        StratumV1ClientMessage, StratumV1ServerMessage, VersionMask,
     };
     use crate::v1::state::{PoolLifecycleStatus, WorkSubmissionGate};
     use crate::v1::submit_response::{RedactedSubmitRejectReason, SubmitClassification};
@@ -444,7 +444,7 @@ mod tests {
             events: vec![
                 FakePoolEvent::ExpectClient(authorize()),
                 FakePoolEvent::SendServer(StratumV1ServerMessage::Response(
-                    rejected_submit_response(2, "authorize denied"),
+                    rejected_submit_response(3, "authorize denied"),
                 )),
             ],
         };
@@ -646,30 +646,34 @@ mod tests {
     fn accepted_share_transcript() -> FakePoolTranscript {
         FakePoolTranscript {
             events: vec![
+                FakePoolEvent::ExpectClient(configure()),
+                FakePoolEvent::SendServer(StratumV1ServerMessage::Response(configure_response(1))),
                 FakePoolEvent::ExpectClient(subscribe()),
-                FakePoolEvent::SendServer(StratumV1ServerMessage::Response(subscribe_response(1))),
+                FakePoolEvent::SendServer(StratumV1ServerMessage::Response(subscribe_response(2))),
                 FakePoolEvent::ExpectClient(authorize()),
-                FakePoolEvent::SendServer(StratumV1ServerMessage::Response(success_response(2))),
+                FakePoolEvent::SendServer(StratumV1ServerMessage::Response(success_response(3))),
                 FakePoolEvent::SendServer(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
                     difficulty: 42.0,
                 })),
                 FakePoolEvent::SendServer(StratumV1ServerMessage::Notify(notify())),
-                FakePoolEvent::ExpectClient(submit_share(3)),
-                FakePoolEvent::SendServer(StratumV1ServerMessage::Response(success_response(3))),
+                FakePoolEvent::ExpectClient(submit_share(4)),
+                FakePoolEvent::SendServer(StratumV1ServerMessage::Response(success_response(4))),
             ],
         }
     }
 
     fn accepted_share_clients() -> Vec<StratumV1ClientMessage> {
-        vec![subscribe(), authorize(), submit_share(3)]
+        vec![configure(), subscribe(), authorize(), submit_share(4)]
     }
 
     fn phase25_ready_events(clean_jobs: bool) -> Vec<FakePoolEvent> {
         vec![
+            FakePoolEvent::ExpectClient(configure()),
+            FakePoolEvent::SendServer(StratumV1ServerMessage::Response(configure_response(1))),
             FakePoolEvent::ExpectClient(subscribe()),
-            FakePoolEvent::SendServer(StratumV1ServerMessage::Response(subscribe_response(1))),
+            FakePoolEvent::SendServer(StratumV1ServerMessage::Response(subscribe_response(2))),
             FakePoolEvent::ExpectClient(authorize()),
-            FakePoolEvent::SendServer(StratumV1ServerMessage::Response(success_response(2))),
+            FakePoolEvent::SendServer(StratumV1ServerMessage::Response(success_response(3))),
             FakePoolEvent::SendServer(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
                 difficulty: 42.0,
             })),
@@ -690,12 +694,19 @@ mod tests {
         })
     }
 
+    fn configure() -> StratumV1ClientMessage {
+        StratumV1ClientMessage::ConfigureVersionRolling {
+            id: StratumRequestId::new(1),
+            mask: 0xffff_ffff,
+        }
+    }
+
     fn subscribe() -> StratumV1ClientMessage {
-        StratumV1ClientMessage::subscribe(StratumRequestId::new(1), "ultra", "205")
+        StratumV1ClientMessage::subscribe(StratumRequestId::new(2), "ultra", "205")
     }
 
     fn authorize() -> StratumV1ClientMessage {
-        StratumV1ClientMessage::authorize(StratumRequestId::new(2), "synthetic-user", "x")
+        StratumV1ClientMessage::authorize(StratumRequestId::new(3), "synthetic-user", "x")
     }
 
     fn submit_share(id: u64) -> StratumV1ClientMessage {
@@ -708,6 +719,16 @@ mod tests {
             0x1234_5678,
             0,
         )
+    }
+
+    fn configure_response(id: u64) -> StratumResponse {
+        StratumResponse {
+            maybe_id: Some(StratumRequestId::new(id)),
+            success: true,
+            maybe_error: None,
+            maybe_extranonce: None,
+            maybe_version_mask: Some(VersionMask { mask: 0x1fff_e000 }),
+        }
     }
 
     fn subscribe_response(id: u64) -> StratumResponse {

@@ -258,6 +258,11 @@ mod tests {
         [0x01, 0x02, 0x03, 0x04, 0x20, register, 0x00, 0x00]
     }
 
+    fn chip_identity_register_body() -> [u8; 8] {
+        // Hardware probe frame from Phase 28.1 J3: aa 55 13 66 00 00 00 00 00 00 05
+        [0x13, 0x66, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    }
+
     #[test]
     fn bm1366_result_valid_job_response_parses_nonce_observation() {
         // Arrange
@@ -307,6 +312,26 @@ mod tests {
             parsed,
             Err(Bm1366ProtocolFault::InvalidCoreId { core_id: 112 })
         );
+    }
+
+    #[test]
+    fn bm1366_result_chip_identity_register_read_parses() {
+        // Arrange
+        let frame = result_frame(chip_identity_register_body(), false);
+        let valid_jobs = Bm1366ValidJobIds::empty();
+
+        // Act
+        let parsed = parse_bm1366_result_frame(&frame, &valid_jobs, 256)
+            .expect("chip identity register frame should parse");
+
+        // Assert
+        let Bm1366ParsedResult::RegisterRead(read) = parsed else {
+            panic!("expected register read");
+        };
+        assert_eq!(read.register, Bm1366Register::ChipId);
+        assert_eq!(read.value, 0x1366_0000);
+        assert_eq!(read.asic_address, 0x00);
+        assert_eq!(read.asic_index, 0);
     }
 
     #[test]

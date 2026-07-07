@@ -13,6 +13,18 @@ use super::{
     registers::FREQUENCY_REGISTER,
 };
 
+/// Actual PLL output frequency in MHz for a BM1366 frequency command plan.
+///
+/// Reference: `reference/esp-miner/components/asic/pll.c:pll_get_parameters` and
+/// `bm1366.c:BM1366_set_nonce_space` (uses post-ramp `frequency_value`, not target).
+#[must_use]
+pub fn actual_frequency_mhz(plan: FrequencyPlan) -> f32 {
+    let postdiv1 = u32::from(((plan.postdiv >> 4) & 0x0f) + 1);
+    let postdiv2 = u32::from((plan.postdiv & 0x0f) + 1);
+    let divider = u32::from(plan.refdiv) * postdiv1 * postdiv2;
+    FREQ_MULT_MHZ as f32 * f32::from(plan.fb_divider) / divider as f32
+}
+
 const FREQ_MULT_MHZ: u16 = 25;
 const BM1366_FB_DIVIDER_MIN: u16 = 144;
 const BM1366_FB_DIVIDER_MAX: u16 = 235;

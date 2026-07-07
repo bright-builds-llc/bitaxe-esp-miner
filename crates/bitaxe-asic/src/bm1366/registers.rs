@@ -5,6 +5,7 @@
 
 use crate::Bm1366ProtocolFault;
 
+pub const CHIP_ID_REGISTER: u8 = 0x00;
 pub const ERROR_COUNT_REGISTER: u8 = 0x4c;
 pub const DOMAIN0_COUNT_REGISTER: u8 = 0x88;
 pub const DOMAIN1_COUNT_REGISTER: u8 = 0x89;
@@ -20,6 +21,7 @@ pub const DIFFICULTY_MASK_REGISTER: u8 = 0x14;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Bm1366Register {
+    ChipId = CHIP_ID_REGISTER,
     ErrorCount = ERROR_COUNT_REGISTER,
     Domain0Count = DOMAIN0_COUNT_REGISTER,
     Domain1Count = DOMAIN1_COUNT_REGISTER,
@@ -39,6 +41,7 @@ impl TryFrom<u8> for Bm1366Register {
 
     fn try_from(register: u8) -> Result<Self, Self::Error> {
         match register {
+            CHIP_ID_REGISTER => Ok(Self::ChipId),
             ERROR_COUNT_REGISTER => Ok(Self::ErrorCount),
             DOMAIN0_COUNT_REGISTER => Ok(Self::Domain0Count),
             DOMAIN1_COUNT_REGISTER => Ok(Self::Domain1Count),

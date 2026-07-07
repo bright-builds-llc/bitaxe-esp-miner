@@ -23,7 +23,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [x] **Phase 27: Live Hardware ASIC And Stratum Bridge** - Live firmware wires Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 socket loop and produces detector-gated share-outcome evidence. (completed 2026-07-05)
 - [x] **Phase 28: Hardware Evidence And Checklist Promotion** - Redacted hardware evidence promotes only exact verified checklist rows supported by Phase 27 artifacts. (completed 2026-07-06)
 - [ ] **Phase 29: Evidence Workflow Automation Closure** - Phase 25/27/28 evidence wrappers auto-validate operator evidence roots and close the redact-validate-promote flow without manual consolidation steps.
-- [ ] **Phase 30: Live Share Outcome And Verified Promotion** - Post-28.1 hardware evidence captures accepted/rejected share outcomes and promotes STR-09/CFG-07 only where redacted artifacts support verified claims.
+- [ ] **Phase 30: Live Share Outcome And Verified Promotion** - Promote STR-09/CFG-07 to `verified` using Phase 28.1.1 share-outcome evidence; close Nyquist metadata (no duplicate wire-diff work).
 
 ## Phase Details
 
@@ -154,21 +154,20 @@ Plans:
 **Plans**: 0 plans
 
 ### Phase 30: Live Share Outcome And Verified Promotion
-**Goal**: Ultra 205 post-28.1 hardware evidence records accepted or rejected live `mining.submit` pool responses where prerequisites allow, fixes register-read classification gaps, and promotes STR-09/CFG-07 checklist rows only to statuses supported by redacted committed artifacts.
-**Depends on**: Phase 29
+**Goal**: Promote STR-09/CFG-07 checklist rows to `verified` only where Phase 28.1.1 redacted hardware evidence supports accepted/rejected share outcomes; close Phase 28.1 Nyquist metadata. Does not re-do wire-byte diff work (owned by Phase 28.1.1).
+**Depends on**: Phase 28.1.1, Phase 29
 **Requirements**: STR-09, CFG-07, ASIC-11
-**Gap Closure**: Closes audit tech debt for blocker-level share outcomes, STR-09/CFG-07 below `verified`, and Phase 28.1 register-read parser follow-up.
+**Gap Closure**: Closes audit tech debt for STR-09/CFG-07 below `verified` after Phase 28.1.1 share-outcome evidence exists.
 **Success Criteria** (what must be TRUE):
-  1. BM1366 register-read probe responses classify chip-identity frames without `register_read_unparsed` on hardware where frames are present.
-  2. Detector-gated hardware run records redacted share-outcome evidence as accepted, rejected, or an explicit safe-prerequisite blocker — not only `blocked_safe_prerequisite` when mining prerequisites are met.
-  3. STR-09 and CFG-07 checklist rows promote to `verified` only when committed Phase 30 evidence supports exact claims; parity validator rejects overbroad promotion.
-  4. Phase 28.1 Nyquist `wave_0_complete` metadata is closed after hardware re-run evidence is captured.
-  5. Explicit non-claims remain for full active safety, OTAWWW/recovery, non-205 boards, Stratum v2, UI/BAP, and unbounded stress.
+  1. Committed Phase 30 evidence cites Phase 28.1.1 share-outcome artifacts (accepted/rejected) with redaction review complete.
+  2. STR-09 and CFG-07 checklist rows promote to `verified` only when committed evidence supports exact claims; parity validator rejects overbroad promotion.
+  3. Phase 28.1 Nyquist `wave_0_complete` metadata is closed after promotion evidence is captured.
+  4. Explicit non-claims remain for full active safety, OTAWWW/recovery, non-205 boards, Stratum v2, UI/BAP, and unbounded stress.
 **Plans**: 0 plans
 
 ## Progress
 
-**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28 -> Phase 28.1 -> Phase 29 -> Phase 30
+**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28 -> Phase 28.1 -> Phase 28.1.1 -> Phase 29 -> Phase 30
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -180,6 +179,7 @@ Plans:
 | 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 28. Hardware Evidence And Checklist Promotion | v1.1 | 3/3 | Complete   | 2026-07-06 |
 | 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete    | 2026-07-07 |
+| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 0/5 | In progress | — |
 | 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
@@ -200,3 +200,17 @@ Plans:
 - [x] 28.1-03-PLAN.md — Discriminating probes: post-init/post-dispatch register-read probe and INA260 power-delta marker with I2C bus retention
 - [x] 28.1-04-PLAN.md — Flag disposition: retire obsolete investigation modes, add single_dispatch_bounded_read control lever, fail-closed default proof
 - [x] 28.1-05-PLAN.md — Hardware evidence: parity-default success-ladder run, single-dispatch control run, conditional upstream A/B with documented recovery, blocker disposition
+
+### Phase 28.1.1: BM1366 nonce production wire parity (INSERTED)
+
+**Goal:** Fix `firmware-nonce-production` by diffing upstream golden UART bytes against Rust TX, correcting init/job wire divergences, and verifying `result_correlated` plus live accepted/rejected shares on Ultra 205.
+**Depends on:** Phase 28.1
+**Requirements:** STR-09, CFG-07 (blocker closure)
+**Plans:** 5 plans
+
+Plans:
+- [ ] 28.1.1-01-PLAN.md — Upstream SERIALTX_DEBUG golden wire capture + recovery
+- [ ] 28.1.1-02-PLAN.md — Rust TX trace + diff tooling + J3-equivalent capture
+- [ ] 28.1.1-03-PLAN.md — Dynamic init frame fixes + register-read parser + fixture tests
+- [ ] 28.1.1-04-PLAN.md — Job frame field parity fixes with per-hypothesis hardware runs
+- [ ] 28.1.1-05-PLAN.md — Version-rolling fallback + redacted evidence + verification

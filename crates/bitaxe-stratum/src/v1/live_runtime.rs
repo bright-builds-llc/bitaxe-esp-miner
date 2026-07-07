@@ -218,10 +218,22 @@ impl LiveStratumRuntime {
         }
 
         self.state.set_lifecycle(PoolLifecycleStatus::Connecting);
-        let id = self.next_request_id();
+        let configure_id = self.next_request_id();
         self.outbound_actions
             .push(LiveRuntimeAction::SendClientMessage(
-                StratumV1ClientMessage::subscribe(id, &self.config.model, &self.config.version),
+                StratumV1ClientMessage::ConfigureVersionRolling {
+                    id: configure_id,
+                    mask: 0xffff_ffff,
+                },
+            ));
+        let subscribe_id = self.next_request_id();
+        self.outbound_actions
+            .push(LiveRuntimeAction::SendClientMessage(
+                StratumV1ClientMessage::subscribe(
+                    subscribe_id,
+                    &self.config.model,
+                    &self.config.version,
+                ),
             ));
         LiveRuntimeEvent::Started
     }
@@ -409,7 +421,7 @@ impl LiveStratumRuntime {
             return Ok(None);
         }
 
-        if response.maybe_id == Some(StratumRequestId::new(2)) && response.success {
+        if response.maybe_id == Some(StratumRequestId::new(3)) && response.success {
             self.state.set_lifecycle(PoolLifecycleStatus::Authorized);
             return Ok(Some(LiveRuntimeEvent::Authorized));
         }
@@ -469,9 +481,9 @@ impl LiveStratumRuntime {
     }
 
     fn next_asic_job_id(&mut self) -> Bm1366JobId {
-        let job_id = Bm1366JobId::new(self.next_asic_job_id);
+        // Upstream `BM1366_send_work` pre-increments before assign (`bm1366.c:313-314`).
         self.next_asic_job_id = self.next_asic_job_id.wrapping_add(8) % 128;
-        job_id
+        Bm1366JobId::new(self.next_asic_job_id)
     }
 }
 
@@ -499,10 +511,19 @@ mod tests {
         assert_eq!(runtime.state().lifecycle, PoolLifecycleStatus::Connecting);
         assert!(matches!(
             actions.as_slice(),
-            [LiveRuntimeAction::SendClientMessage(StratumV1ClientMessage::Subscribe {
-                id,
-                user_agent,
-            })] if id.raw() == 1 && user_agent == "bitaxe/ultra/205"
+            [
+                LiveRuntimeAction::SendClientMessage(StratumV1ClientMessage::ConfigureVersionRolling {
+                    id: configure_id,
+                    mask,
+                }),
+                LiveRuntimeAction::SendClientMessage(StratumV1ClientMessage::Subscribe {
+                    id: subscribe_id,
+                    user_agent,
+                }),
+            ] if configure_id.raw() == 1
+                && *mask == 0xffff_ffff
+                && subscribe_id.raw() == 2
+                && user_agent == "bitaxe/ultra/205"
         ));
         assert!(!rendered.contains("synthetic-user"));
         assert!(!rendered.contains("synthetic-secret"));
@@ -518,11 +539,11 @@ mod tests {
 
         // Act
         runtime
-            .apply_server_message(StratumV1ServerMessage::Response(subscribe_response(1)))
+            .apply_server_message(StratumV1ServerMessage::Response(subscribe_response(2)))
             .expect("subscribe response should be accepted");
         let authorize_actions = runtime.drain_actions();
         runtime
-            .apply_server_message(StratumV1ServerMessage::Response(success_response(2)))
+            .apply_server_message(StratumV1ServerMessage::Response(success_response(3)))
             .expect("authorize response should be accepted");
         runtime
             .apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
@@ -537,13 +558,34 @@ mod tests {
                 id,
                 username,
                 password,
-            })] if id.raw() == 2 && username == "synthetic-user" && password == "synthetic-secret"
+            })] if id.raw() == 3 && username == "synthetic-user" && password == "synthetic-secret"
         ));
         assert_eq!(runtime.state().lifecycle, PoolLifecycleStatus::Authorized);
         assert_eq!(
             runtime.state().maybe_pool_difficulty,
             Some(PoolDifficulty { difficulty: 42.0 })
         );
+    }
+
+    #[test]
+    fn live_runtime_first_pool_job_id_matches_upstream_pre_increment_stride() {
+        // Arrange
+        let mut runtime = authorized_runtime();
+
+        // Act
+        runtime
+            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+            .expect("notify should build production work");
+
+        // Assert — upstream `BM1366_send_work` assigns id after `(id + 8) % 128` (`bm1366.c:313-314`).
+        assert!(runtime
+            .production_registry()
+            .valid_jobs()
+            .contains(Bm1366JobId::new(8)));
+        assert!(!runtime
+            .production_registry()
+            .valid_jobs()
+            .contains(Bm1366JobId::new(0)));
     }
 
     #[test]
@@ -567,7 +609,7 @@ mod tests {
         assert!(runtime
             .production_registry()
             .valid_jobs()
-            .contains(Bm1366JobId::new(0)));
+            .contains(Bm1366JobId::new(8)));
     }
 
     #[test]
@@ -586,11 +628,11 @@ mod tests {
         let clean_jobs_contains_current = runtime
             .production_registry()
             .valid_jobs()
-            .contains(Bm1366JobId::new(8));
+            .contains(Bm1366JobId::new(16));
         let clean_jobs_contains_stale = runtime
             .production_registry()
             .valid_jobs()
-            .contains(Bm1366JobId::new(0));
+            .contains(Bm1366JobId::new(8));
         runtime
             .apply_server_message(StratumV1ServerMessage::ClientReconnect)
             .expect("reconnect should invalidate production work");
@@ -642,7 +684,7 @@ mod tests {
         assert!(!runtime
             .production_registry()
             .valid_jobs()
-            .contains(Bm1366JobId::new(0)));
+            .contains(Bm1366JobId::new(8)));
     }
 
     fn started_runtime() -> LiveStratumRuntime {
@@ -655,11 +697,11 @@ mod tests {
     fn authorized_runtime() -> LiveStratumRuntime {
         let mut runtime = started_runtime();
         runtime
-            .apply_server_message(StratumV1ServerMessage::Response(subscribe_response(1)))
+            .apply_server_message(StratumV1ServerMessage::Response(subscribe_response(2)))
             .expect("subscribe response should be accepted");
         let _actions = runtime.drain_actions();
         runtime
-            .apply_server_message(StratumV1ServerMessage::Response(success_response(2)))
+            .apply_server_message(StratumV1ServerMessage::Response(success_response(3)))
             .expect("authorize response should be accepted");
         runtime
             .apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {

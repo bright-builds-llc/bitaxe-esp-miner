@@ -11,7 +11,7 @@ use super::{
     command::{
         Bm1366AdapterAction, Bm1366Command, FrequencyPlan, NonceSpacePlan, RegisterWrite, MAX_BAUD,
     },
-    frequency_voltage::Bm1366FrequencyPlan,
+    frequency_voltage::{actual_frequency_mhz, Bm1366FrequencyPlan},
     init_plan::{Bm1366InitDecision, Bm1366InitPlan, Bm1366Preflight, FailClosedAction},
     observation::{AsicInitStatus, ChipAddress},
 };
@@ -125,12 +125,7 @@ pub fn mining_ready_commands(
     config: MiningReadyConfig,
     options: MiningReadyInitOptions,
 ) -> Result<Vec<Bm1366Command>, &'static str> {
-    let hash_counting = hash_counting_number(
-        config.nonce_percent,
-        config.frequency_mhz,
-        config.asic_count,
-        config.core_count,
-    );
+    let final_frequency_plan = frequency_plan_for_mhz(config.frequency_mhz);
     let difficulty_mask = difficulty_mask_value(config.difficulty);
     let address_interval = config.address_interval();
 
@@ -196,11 +191,15 @@ pub fn mining_ready_commands(
     if options.use_frequency_ramp {
         commands.extend(frequency_ramp_commands(config.frequency_mhz)?);
     } else {
-        commands.push(Bm1366Command::SetFrequency(frequency_plan_for_mhz(
-            config.frequency_mhz,
-        )));
+        commands.push(Bm1366Command::SetFrequency(final_frequency_plan));
     }
 
+    let hash_counting = hash_counting_number(
+        config.nonce_percent,
+        actual_frequency_mhz(final_frequency_plan),
+        config.asic_count,
+        config.core_count,
+    );
     commands.push(Bm1366Command::SetNonceSpace(NonceSpacePlan {
         hash_counting_number: hash_counting,
     }));
@@ -372,10 +371,10 @@ pub fn ultra_205_result_address_interval() -> u16 {
 mod tests {
     use super::super::command::Bm1366Command;
     use super::super::upstream_init_frames::{
-        CHAIN_INACTIVE_FRAME, INIT135_FRAME, INIT136_FRAME, INIT138_FRAME, INIT139_FRAME,
-        INIT171_FRAME, INIT4_FRAME, INIT5_FRAME, INIT795_FRAME, PER_CHIP_18_FRAME,
-        PER_CHIP_3C_FIRST_FRAME, PER_CHIP_3C_SECOND_FRAME, PER_CHIP_3C_THIRD_FRAME,
-        PER_CHIP_A8_FRAME, REG28_MAX_BAUD_FRAME,
+        CHAIN_INACTIVE_FRAME, DIFFICULTY_1000_FRAME, FREQUENCY_485_FRAME, INIT135_FRAME,
+        INIT136_FRAME, INIT138_FRAME, INIT139_FRAME, INIT171_FRAME, INIT4_FRAME, INIT5_FRAME,
+        INIT795_FRAME, NONCE_SPACE_485_FRAME, PER_CHIP_18_FRAME, PER_CHIP_3C_FIRST_FRAME,
+        PER_CHIP_3C_SECOND_FRAME, PER_CHIP_3C_THIRD_FRAME, PER_CHIP_A8_FRAME, REG28_MAX_BAUD_FRAME,
     };
     use super::*;
 
@@ -384,6 +383,30 @@ mod tests {
             .frame_bytes()
             .expect("command should encode")
             .into_vec()
+    }
+
+    #[test]
+    #[ignore = "local fixture generation helper"]
+    fn dump_dynamic_init_frames_for_fixture_capture() {
+        let config = MiningReadyConfig::ultra_205_single_chip(1);
+        let commands = mining_ready_commands(config, MiningReadyInitOptions::phase27_default())
+            .expect("commands should build");
+        let frames: Vec<Vec<u8>> = commands.iter().copied().map(frame_bytes).collect();
+        for (index, frame) in frames.iter().enumerate() {
+            eprintln!("frames[{index}] = {frame:?}");
+        }
+    }
+
+    #[test]
+    fn mining_ready_dynamic_init_frames_match_upstream_computed_values() {
+        let config = MiningReadyConfig::ultra_205_single_chip(1);
+        let commands = mining_ready_commands(config, MiningReadyInitOptions::phase27_default())
+            .expect("commands should build");
+        let frames: Vec<Vec<u8>> = commands.iter().copied().map(frame_bytes).collect();
+
+        assert_eq!(frames[6], DIFFICULTY_1000_FRAME);
+        assert_eq!(frames[15], FREQUENCY_485_FRAME);
+        assert_eq!(frames[16], NONCE_SPACE_485_FRAME);
     }
 
     #[test]
@@ -400,7 +423,7 @@ mod tests {
         // frames[3] = set chip address 0
         assert_eq!(frames[4], INIT135_FRAME);
         assert_eq!(frames[5], INIT136_FRAME);
-        // frames[6] = difficulty mask (dynamic)
+        // frames[6] = difficulty mask (dynamic) — asserted in dynamic_init_frames test
         assert_eq!(frames[7], INIT138_FRAME);
         assert_eq!(frames[8], INIT139_FRAME);
         assert_eq!(frames[9], INIT171_FRAME);
@@ -409,8 +432,8 @@ mod tests {
         assert_eq!(frames[12], PER_CHIP_3C_FIRST_FRAME);
         assert_eq!(frames[13], PER_CHIP_3C_SECOND_FRAME);
         assert_eq!(frames[14], PER_CHIP_3C_THIRD_FRAME);
-        // frames[15] = frequency (PLL-derived)
-        // frames[16] = nonce space (computed)
+        // frames[15] = frequency (PLL-derived) — asserted in dynamic_init_frames test
+        // frames[16] = nonce space (computed) — asserted in dynamic_init_frames test
         assert_eq!(frames[17], INIT795_FRAME);
     }
 
@@ -478,6 +501,29 @@ mod tests {
         assert_eq!(mask[1], reverse_bits(0x00));
         assert_eq!(mask[2], reverse_bits(0x01));
         assert_eq!(mask[3], reverse_bits(0xFF));
+    }
+
+    #[test]
+    fn hash_counting_number_uses_actual_pll_frequency_for_nonce_space_frame() {
+        let config = MiningReadyConfig::ultra_205_single_chip(1);
+        let commands = mining_ready_commands(config, MiningReadyInitOptions::phase27_default())
+            .expect("commands should build");
+        let plan = frequency_plan_for_mhz(config.frequency_mhz);
+        let expected_hcn = hash_counting_number(
+            config.nonce_percent,
+            actual_frequency_mhz(plan),
+            config.asic_count,
+            config.core_count,
+        );
+        let nonce_space = commands
+            .iter()
+            .find_map(|command| match command {
+                Bm1366Command::SetNonceSpace(plan) => Some(plan.hash_counting_number),
+                _ => None,
+            })
+            .expect("nonce space command should exist");
+        assert_eq!(nonce_space, expected_hcn);
+        assert_eq!(expected_hcn, 0x000d_3224);
     }
 
     #[test]
