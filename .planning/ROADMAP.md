@@ -152,7 +152,7 @@ Plans:
 | 26. Telemetry And Parity Closure | v1.1 | 4/4 | Complete    | 2026-07-05 |
 | 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 28. Hardware Evidence And Checklist Promotion | v1.1 | 3/3 | Complete   | 2026-07-06 |
-| 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 4/5 | In Progress|  |
+| 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete   | 2026-07-07 |
 
 ## Coverage
 
@@ -163,11 +163,11 @@ All 21 v1.1 requirements are mapped across Phases 22-26 with gap-closure promoti
 **Goal:** The Ultra 205 produces post-dispatch BM1366 UART evidence (register-read proof and/or nonces) under upstream-parity default orchestration, or the blocker is conclusively isolated to hardware via discriminating probes and the approved upstream A/B fallback
 **Requirements**: None formally mapped (inserted urgent phase); STR-09 and CFG-07 promotion prerequisites are context only — no checklist promotion is claimed by this phase.
 **Depends on:** Phase 28
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 28.1-01-PLAN.md — Pure core: BridgeOrchestrator with J2c dispatch-priority regression tests, regenerate_work + extranonce2 counter, bm1366_job_interval_ms
 - [x] 28.1-02-PLAN.md — Firmware defaults: W13 unconditional post-init retention and bridge pump delegation to BridgeOrchestrator (timeout=continue, keep mining)
 - [x] 28.1-03-PLAN.md — Discriminating probes: post-init/post-dispatch register-read probe and INA260 power-delta marker with I2C bus retention
 - [x] 28.1-04-PLAN.md — Flag disposition: retire obsolete investigation modes, add single_dispatch_bounded_read control lever, fail-closed default proof
-- [ ] 28.1-05-PLAN.md — Hardware evidence: parity-default success-ladder run, single-dispatch control run, conditional upstream A/B with documented recovery, blocker disposition
+- [x] 28.1-05-PLAN.md — Hardware evidence: parity-default success-ladder run, single-dispatch control run, conditional upstream A/B with documented recovery, blocker disposition

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-stopped_at: Completed 28.1-04-PLAN.md
-last_updated: "2026-07-07T02:39:56.639Z"
+status: verifying
+stopped_at: Completed 28.1-05-PLAN.md
+last_updated: "2026-07-07T03:33:49.704Z"
 last_activity: 2026-07-07
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 31
-  completed_plans: 30
-  percent: 97
+  completed_plans: 31
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 Phase: 28.1 (live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes)) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-07
 
 Progress: [██████████] 100%
@@ -122,6 +122,9 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 28.1]: Four investigation modes (continuous_result_task, job_redispatch_pump, initialized_no_mining_gate, skip_boot_diagnostic_work) retired as defaults; single_dispatch_bounded_read added as the only opt-out reproducing the pre-28.1 fail-closed pump
 - [Phase 28.1]: W13 retention marker renamed to asic_work_result_trace=post_init_retention with bootstrap=initialized_no_mining preserved for run-doc comparability
 - [Phase 28.1]: Control mode suppresses BridgeStep::Regenerate at the pump interpreter so the A/B control run never regenerates work
+- [Phase 28.1]: Blocker dispositioned firmware-nonce-production: upstream v2.14.0 mines on the same Ultra 205 (nonces + accepted shares) while Rust firmware dispatches correctly to a chip that answers register reads but never hashes
+- [Phase 28.1]: J2c confound falsified on hardware: 22 work_dispatched at ~2 s cadence with fresh extranonce2 under parity-default orchestration
+- [Phase 28.1]: Upstream A/B used official release image (sha256-recorded) plus NVS from upstream config-205.cvs with local wifi only; recovery reflash verified and reference pin clean
 
 ### Pending Todos
 
@@ -146,11 +149,12 @@ None yet.
 | Phase 28.1 P02 | 40min | 2 tasks | 3 files |
 | Phase 28.1 P03 | 12min | 2 tasks | 6 files |
 | Phase 28.1 P04 | 7min | 2 tasks | 4 files |
+| Phase 28.1 P05 | 51min | 3 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-07-07T02:39:56.636Z
-Stopped at: Completed 28.1-04-PLAN.md
+Last session: 2026-07-07T03:33:49.702Z
+Stopped at: Completed 28.1-05-PLAN.md
 Resume file: None
 
 ## Next Step
