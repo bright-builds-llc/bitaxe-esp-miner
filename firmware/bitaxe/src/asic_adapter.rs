@@ -284,11 +284,13 @@ where
         return Ok(());
     }
 
+    // Reference: reference/esp-miner/main/power/asic_init.c:58-61 — upstream sets
+    // ASIC_initalized = true unconditionally after init; no boot diagnostic nonce
+    // gate exists upstream (W13). Retention after chip detect + mining-ready init
+    // is the bridge-mode default; the levers below restore the old boot gate.
     if retain_for_production
-        && work_result_investigation::skip_boot_diagnostic_work()
-        && work_result_investigation::phase27_initialized_no_mining_bootstrap(
-            mining_ready_completed,
-        )
+        && !work_result_investigation::require_diagnostic_nonce()
+        && !work_result_investigation::require_uart_proof_for_production()
     {
         log::info!(
             "asic_work_result_trace=skip_boot_diagnostic_work bootstrap=initialized_no_mining"

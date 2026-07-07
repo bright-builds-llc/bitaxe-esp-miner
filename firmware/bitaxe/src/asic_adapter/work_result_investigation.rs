@@ -62,13 +62,23 @@ pub fn phase27_initialized_no_mining_bootstrap(mining_ready_completed: bool) -> 
         return false;
     }
 
-    if has_investigation_mode("require_diagnostic_nonce")
-        || has_investigation_mode("require_uart_proof_for_production")
-    {
+    if require_diagnostic_nonce() || require_uart_proof_for_production() {
         return false;
     }
 
     has_investigation_mode("initialized_no_mining_gate")
+}
+
+/// W13 rollback lever: compile-time opt-out that restores the old boot gate
+/// requiring a diagnostic nonce before production peripheral retention.
+pub fn require_diagnostic_nonce() -> bool {
+    has_investigation_mode("require_diagnostic_nonce")
+}
+
+/// W13 rollback lever: compile-time opt-out that restores the old boot gate
+/// requiring UART proof before production peripheral retention.
+pub fn require_uart_proof_for_production() -> bool {
+    has_investigation_mode("require_uart_proof_for_production")
 }
 
 pub fn skip_boot_diagnostic_work() -> bool {
