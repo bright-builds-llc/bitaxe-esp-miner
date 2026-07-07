@@ -8,14 +8,15 @@ use anyhow::Result;
 use bitaxe_config::defaults::ultra_205_defaults;
 use bitaxe_safety::{
     power::PowerObservation,
-    thermal::{FanControlDecision, FanControlInputs, FanControlMode, ThermalObservation, ThermalReading},
+    thermal::{
+        FanControlDecision, FanControlInputs, FanControlMode, ThermalObservation, ThermalReading,
+    },
 };
 use esp_idf_svc::hal::gpio::{InputPin, OutputPin};
 
 use super::{
     asic_enable::AsicEnable,
-    ds4432u,
-    emc2101,
+    ds4432u, emc2101,
     i2c_bus::BitaxeI2cBus,
     ina260::{self, Ina260Sample},
 };
@@ -86,7 +87,8 @@ where
     ENABLE: OutputPin + 'static,
     RESET: Phase27BringUpReset,
 {
-    if !crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
+    if !crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge()
+    {
         return Ok(());
     }
 
@@ -131,13 +133,13 @@ where
     let fan_rpm = emc2101::read_fan_rpm(&mut bus).unwrap_or(0);
 
     let thermal_observation = match chip_temp {
-        Ok(temp) if temp.is_finite() && temp > -40.0 => ThermalObservation::from_reading(Some(
-            ThermalReading {
+        Ok(temp) if temp.is_finite() && temp > -40.0 => {
+            ThermalObservation::from_reading(Some(ThermalReading {
                 chip_temp_celsius: temp,
                 board_temp_celsius: None,
                 vr_temp_celsius: None,
-            },
-        )),
+            }))
+        }
         Ok(_) => ThermalObservation::from_reading(None),
         Err(error) => {
             log::warn!("safety_thermal_status=unavailable category=read_error");
@@ -152,7 +154,12 @@ where
         fan_decision.duty_percent
     );
 
-    store_snapshot(fan_decision.duty_percent, fan_rpm, power_sample, thermal_observation);
+    store_snapshot(
+        fan_decision.duty_percent,
+        fan_rpm,
+        power_sample,
+        thermal_observation,
+    );
 
     asic_reset.reset_pulse(RESET_PULSE_LOW_MS, RESET_PULSE_HIGH_MS)?;
     log::info!("asic_reset_status=post_bring_up_pulse");

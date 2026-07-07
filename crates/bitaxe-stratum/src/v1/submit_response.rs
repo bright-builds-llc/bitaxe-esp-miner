@@ -23,19 +23,21 @@ pub enum SubmitResponseObservation {
     Timeout,
     Reconnect,
     Malformed,
-    Blocked { reason: &'static str },
+    Blocked {
+        reason: &'static str,
+    },
     SocketStopped,
 }
 
 impl fmt::Debug for SubmitResponseObservation {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Response(_)
-            | Self::FakePoolOnlyResponse(_)
-            | Self::StaleGeneration { .. } => formatter
-                .debug_struct("SubmitResponseObservation")
-                .field("pool_response", &"redacted")
-                .finish(),
+            Self::Response(_) | Self::FakePoolOnlyResponse(_) | Self::StaleGeneration { .. } => {
+                formatter
+                    .debug_struct("SubmitResponseObservation")
+                    .field("pool_response", &"redacted")
+                    .finish()
+            }
             Self::Timeout => formatter.write_str("SubmitResponseObservation::Timeout"),
             Self::Reconnect => formatter.write_str("SubmitResponseObservation::Reconnect"),
             Self::Malformed => formatter.write_str("SubmitResponseObservation::Malformed"),
@@ -67,16 +69,12 @@ impl RedactedSubmitRejectReason {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubmitClassification {
     Accepted,
-    Rejected {
-        reason: RedactedSubmitRejectReason,
-    },
+    Rejected { reason: RedactedSubmitRejectReason },
     Timeout,
     Reconnect,
     Malformed,
     NoObservedShare,
-    Blocked {
-        reason: &'static str,
-    },
+    Blocked { reason: &'static str },
     Stopped,
 }
 
@@ -106,9 +104,7 @@ pub fn classify_submit_response(
         SubmitResponseObservation::Response(response) => {
             classify_typed_response(request_id, response)
         }
-        SubmitResponseObservation::FakePoolOnlyResponse(_) => {
-            SubmitClassification::NoObservedShare
-        }
+        SubmitResponseObservation::FakePoolOnlyResponse(_) => SubmitClassification::NoObservedShare,
         SubmitResponseObservation::StaleGeneration {
             observed_generation,
             response,
@@ -299,8 +295,11 @@ mod tests {
                 reason: "precondition_blocked",
             },
         );
-        let stopped =
-            classify_submit_response(&intent, request_id, SubmitResponseObservation::SocketStopped);
+        let stopped = classify_submit_response(
+            &intent,
+            request_id,
+            SubmitResponseObservation::SocketStopped,
+        );
 
         // Assert
         assert_eq!(timeout, SubmitClassification::Timeout);

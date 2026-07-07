@@ -170,7 +170,10 @@ impl<'d> AsicUart<'d> {
                 );
             }
             self.clear_rx()?;
-            anyhow::bail!("partial BM1366 UART read: expected {len} bytes, read {}", buf.len());
+            anyhow::bail!(
+                "partial BM1366 UART read: expected {len} bytes, read {}",
+                buf.len()
+            );
         }
 
         if uart_trace_enabled() {

@@ -3,7 +3,8 @@ pub const LIVE_MINING_RUNTIME_ACK: &str = "ultra205-live-mining-runtime-safe-ben
 pub const PHASE25_LIVE_STRATUM_MODE: &str = "phase25-live-stratum-runtime";
 pub const PHASE25_LIVE_STRATUM_ACK: &str = "ultra205-phase25-live-stratum-safe-stop";
 pub const PHASE27_LIVE_HARDWARE_BRIDGE_MODE: &str = "phase27-live-hardware-asic-stratum-bridge";
-pub const PHASE27_LIVE_HARDWARE_BRIDGE_ACK: &str = "ultra205-phase27-live-hardware-bridge-safe-stop";
+pub const PHASE27_LIVE_HARDWARE_BRIDGE_ACK: &str =
+    "ultra205-phase27-live-hardware-bridge-safe-stop";
 
 macro_rules! bitaxe_mining_evidence_mode_env {
     () => {

@@ -35,9 +35,7 @@ fn production_asic_status_log_line(status: ProductionAsicStatus) -> String {
         ProductionAsicStatus::InitializedForProduction => {
             "asic_production_status=initialized".to_owned()
         }
-        ProductionAsicStatus::WorkDispatched => {
-            "asic_production_status=work_dispatched".to_owned()
-        }
+        ProductionAsicStatus::WorkDispatched => "asic_production_status=work_dispatched".to_owned(),
         ProductionAsicStatus::ResultCorrelated => {
             "asic_production_status=result_correlated".to_owned()
         }

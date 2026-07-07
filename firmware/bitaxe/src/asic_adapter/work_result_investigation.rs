@@ -30,9 +30,7 @@ pub fn mining_ready_init_decision(
 
     let options = mining_ready_init_options();
     Some(Bm1366InitPlan::mining_ready_init(
-        preflight,
-        chip_count,
-        options,
+        preflight, chip_count, options,
     ))
 }
 

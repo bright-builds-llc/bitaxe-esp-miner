@@ -38,13 +38,17 @@ impl<'d> BitaxeI2cBus<'d> {
     pub fn write_register(&mut self, device_addr: u8, register: u8, value: u8) -> Result<()> {
         self.driver
             .write(device_addr, &[register, value], I2C_TIMEOUT_MS)
-            .with_context(|| format!("i2c write register 0x{register:02x} device 0x{device_addr:02x}"))
+            .with_context(|| {
+                format!("i2c write register 0x{register:02x} device 0x{device_addr:02x}")
+            })
     }
 
     pub fn read_register(&mut self, device_addr: u8, register: u8, buf: &mut [u8]) -> Result<()> {
         self.driver
             .write(device_addr, &[register], I2C_TIMEOUT_MS)
-            .with_context(|| format!("i2c write pointer 0x{register:02x} device 0x{device_addr:02x}"))?;
+            .with_context(|| {
+                format!("i2c write pointer 0x{register:02x} device 0x{device_addr:02x}")
+            })?;
         self.driver
             .read(device_addr, buf, I2C_TIMEOUT_MS)
             .with_context(|| format!("i2c read device 0x{device_addr:02x}"))

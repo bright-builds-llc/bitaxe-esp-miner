@@ -91,7 +91,9 @@ pub(crate) fn validate_claim_ladder_document(markdown: &str) -> Vec<String> {
 
     for tier_id in REQUIRED_TIER_IDS {
         if !markdown.contains(tier_id) {
-            errors.push(format!("claim ladder is missing required tier id {tier_id}"));
+            errors.push(format!(
+                "claim ladder is missing required tier id {tier_id}"
+            ));
         }
     }
 

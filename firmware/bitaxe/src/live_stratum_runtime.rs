@@ -53,9 +53,7 @@ use crate::{
     asic_adapter::{self, ProductionAsicExecutor, ProductionReadOutcome},
     log_buffer,
     mining_evidence_mode::MiningEvidenceMode,
-    runtime_snapshot,
-    safety_adapter,
-    settings_adapter,
+    runtime_snapshot, safety_adapter, settings_adapter,
 };
 
 const BOARD_205: &str = "205";
@@ -220,7 +218,8 @@ fn try_start_phase27_live_bridge_once(network_ready: bool) -> bool {
     }
 
     let mut connector = FirmwareTcpConnector;
-    let _outcome = start_phase27_live_bridge_with_dependencies(&mut settings_source, &mut connector);
+    let _outcome =
+        start_phase27_live_bridge_with_dependencies(&mut settings_source, &mut connector);
     PHASE27_BRIDGE_STATE.store(PHASE27_BRIDGE_COMPLETED, Ordering::SeqCst);
     true
 }
@@ -440,9 +439,7 @@ fn firmware_phase27_production_preconditions() -> ProductionMiningPreconditions 
         power: snapshot
             .maybe_power
             .map(ProductionMiningPrerequisite::from_power_observation)
-            .unwrap_or_else(|| {
-                ProductionMiningPrerequisite::blocked("power_sample_unavailable")
-            }),
+            .unwrap_or_else(|| ProductionMiningPrerequisite::blocked("power_sample_unavailable")),
         thermal: phase27_thermal_prerequisite(&snapshot),
         fan: if snapshot.fan_duty_percent > 0 {
             ProductionMiningPrerequisite::Fresh
@@ -503,28 +500,29 @@ fn mining_loop_gate(decision: ProductionMiningPreconditionDecision) -> MiningLoo
     };
 
     let snapshot = safety_adapter::phase27_safety_snapshot();
-    let (maybe_power_evidence, maybe_thermal_evidence) = if phase27_bridge && snapshot.bring_up_complete {
-        (
-            snapshot
-                .maybe_power
-                .and_then(PowerEvidenceToken::from_observation),
-            phase27_thermal_evidence_token(&snapshot, evidence),
-        )
-    } else if phase27_bridge {
-        (None, None)
-    } else {
-        (
-            Some(PowerEvidenceToken {
-                bus_voltage_volts: 5.0,
-                current_amps: 2.5,
-                power_watts: 12.5,
-            }),
-            Some(ThermalEvidenceToken {
-                chip_temp_celsius: 55.0,
-                evidence,
-            }),
-        )
-    };
+    let (maybe_power_evidence, maybe_thermal_evidence) =
+        if phase27_bridge && snapshot.bring_up_complete {
+            (
+                snapshot
+                    .maybe_power
+                    .and_then(PowerEvidenceToken::from_observation),
+                phase27_thermal_evidence_token(&snapshot, evidence),
+            )
+        } else if phase27_bridge {
+            (None, None)
+        } else {
+            (
+                Some(PowerEvidenceToken {
+                    bus_voltage_volts: 5.0,
+                    current_amps: 2.5,
+                    power_watts: 12.5,
+                }),
+                Some(ThermalEvidenceToken {
+                    chip_temp_celsius: 55.0,
+                    evidence,
+                }),
+            )
+        };
 
     MiningLoopGate {
         production_preconditions: decision,
@@ -691,9 +689,7 @@ impl AsicBridgeState {
     }
 
     fn needs_step(&self) -> bool {
-        self.maybe_pending_dispatch
-            || self.awaiting_result_read
-            || self.job_redispatch_due()
+        self.maybe_pending_dispatch || self.awaiting_result_read || self.job_redispatch_due()
     }
 
     fn note_work_queued(&mut self) {
@@ -715,8 +711,7 @@ impl AsicBridgeState {
             return false;
         };
 
-        last.elapsed()
-            >= Duration::from_millis(asic_adapter::JOB_REDISPATCH_INTERVAL_MS)
+        last.elapsed() >= Duration::from_millis(asic_adapter::JOB_REDISPATCH_INTERVAL_MS)
     }
 
     fn maybe_arm_continuous_listener(&mut self) {
@@ -736,8 +731,7 @@ impl AsicBridgeState {
 
     fn refresh_result_deadline(&mut self) {
         self.result_read_deadline = Some(
-            Instant::now()
-                + Duration::from_millis(u64::from(asic_adapter::RESULT_WORK_TIMEOUT_MS)),
+            Instant::now() + Duration::from_millis(u64::from(asic_adapter::RESULT_WORK_TIMEOUT_MS)),
         );
     }
 
@@ -751,8 +745,7 @@ impl AsicBridgeState {
         }
 
         self.result_read_deadline.is_some_and(|deadline| {
-            Instant::now()
-                < deadline + Duration::from_millis(u64::from(SOCKET_TIMEOUT_MS))
+            Instant::now() < deadline + Duration::from_millis(u64::from(SOCKET_TIMEOUT_MS))
         })
     }
 
@@ -917,7 +910,10 @@ fn read_and_correlate_asic_result(
         }
         Err(blocker) => {
             if bridge.continuous_listener {
-                log::info!("h4_continuous_result=read_error_continue reason={}", blocker.as_str());
+                log::info!(
+                    "h4_continuous_result=read_error_continue reason={}",
+                    blocker.as_str()
+                );
                 bridge.refresh_result_deadline();
                 return AsicBridgeStepOutcome::NoOp;
             }

@@ -665,9 +665,8 @@ mod tests {
     #[test]
     fn apply_bridge_observation_queues_submit_share_for_correlated_nonce() {
         // Arrange
-        use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
-        use crate::v1::mining::MiningWorkBuilder;
-        use crate::v1::production_work::{CorrelationOutcome, ProductionNonceObservation};
+        use crate::v1::production_work::ProductionNonceObservation;
+        use bitaxe_asic::bm1366::result::Bm1366NonceResult;
 
         let mut runtime = authorized_runtime();
         let notify = notify(false);
@@ -710,8 +709,8 @@ mod tests {
     #[test]
     fn apply_bridge_observation_blocked_does_not_queue_submit() {
         // Arrange
-        use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
         use crate::v1::production_work::ProductionNonceObservation;
+        use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
 
         let mut runtime = authorized_runtime();
         let observation = ProductionNonceObservation {
@@ -733,10 +732,7 @@ mod tests {
         let actions = runtime.drain_actions();
 
         // Assert
-        assert!(matches!(
-            outcome,
-            BridgeObservationOutcome::Blocked { .. }
-        ));
+        assert!(matches!(outcome, BridgeObservationOutcome::Blocked { .. }));
         assert!(actions.is_empty());
     }
 }

@@ -179,7 +179,10 @@ mod tests {
         // Assert
         assert_eq!(state.work_submission, WorkSubmissionGate::Blocked);
         assert_eq!(state.mining_activity, MiningActivityStatus::SafeBlocked);
-        assert_eq!(state.maybe_blocked_reason, Some("voltage_observation_stale"));
+        assert_eq!(
+            state.maybe_blocked_reason,
+            Some("voltage_observation_stale")
+        );
     }
 
     #[test]

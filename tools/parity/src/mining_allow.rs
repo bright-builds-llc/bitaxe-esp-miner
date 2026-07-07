@@ -550,7 +550,7 @@ fn validate_phase25_live_submit_scope(errors: &mut Vec<String>, manifest: &Minin
     );
 
     let tokens: Vec<&str> = manifest.allowed_command.split_whitespace().collect();
-    if !tokens.iter().any(|token| *token == "--device-url") {
+    if !tokens.contains(&"--device-url") {
         errors.push(
             "live-submit-response requires allowed_command to include --device-url".to_owned(),
         );
@@ -604,9 +604,7 @@ fn validate_phase27_live_hardware_bridge_scope(
         "live-hardware-share-outcome" => {
             validate_phase27_live_share_outcome_scope(errors, manifest)
         }
-        "safe-prerequisite-blocked" => {
-            validate_phase27_safe_prerequisite_scope(errors, manifest)
-        }
+        "safe-prerequisite-blocked" => validate_phase27_safe_prerequisite_scope(errors, manifest),
         _ => errors.push(format!(
             "live-hardware-bridge does not allow claim_tier `{}`",
             manifest.claim_tier
@@ -670,9 +668,7 @@ fn validate_phase27_live_share_outcome_scope(
     );
 
     if manifest.board_info_status != "passed" {
-        errors.push(
-            "live-hardware-share-outcome requires board_info_status passed".to_owned(),
-        );
+        errors.push("live-hardware-share-outcome requires board_info_status passed".to_owned());
     }
 
     let tokens: Vec<&str> = manifest.allowed_command.split_whitespace().collect();
@@ -853,7 +849,7 @@ fn is_expected_phase25_command(manifest: &MiningAllowManifest, tokens: &[&str]) 
         return false;
     }
 
-    if tokens.iter().any(|token| *token == "--target-source") {
+    if tokens.contains(&"--target-source") {
         return false;
     }
 
@@ -883,8 +879,7 @@ fn is_expected_phase27_command(manifest: &MiningAllowManifest, tokens: &[&str]) 
         tokens,
         &["scripts/phase27-live-hardware-bridge-evidence.sh"],
     );
-    let just_alias =
-        starts_with_tokens(tokens, &["just", "phase27-evidence"]);
+    let just_alias = starts_with_tokens(tokens, &["just", "phase27-evidence"]);
     if !script_command && !just_alias {
         return false;
     }
@@ -937,7 +932,7 @@ fn phase27_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&
         .get("duration_seconds")
         .and_then(Value::as_i64)
     else {
-        return !tokens.iter().any(|token| *token == "--duration-seconds");
+        return !tokens.contains(&"--duration-seconds");
     };
 
     if !(60..=600).contains(&duration_seconds) {
@@ -945,7 +940,7 @@ fn phase27_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&
     }
 
     let expected_duration = duration_seconds.to_string();
-    if tokens.iter().any(|token| *token == "--duration-seconds") {
+    if tokens.contains(&"--duration-seconds") {
         return option_equals(tokens, "--duration-seconds", &expected_duration);
     }
 
@@ -958,7 +953,7 @@ fn phase25_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&
         .get("duration_seconds")
         .and_then(Value::as_i64)
     else {
-        return !tokens.iter().any(|token| *token == "--duration-seconds");
+        return !tokens.contains(&"--duration-seconds");
     };
 
     if !(60..=600).contains(&duration_seconds) {
@@ -966,7 +961,7 @@ fn phase25_duration_matches_manifest(manifest: &MiningAllowManifest, tokens: &[&
     }
 
     let expected_duration = duration_seconds.to_string();
-    if tokens.iter().any(|token| *token == "--duration-seconds") {
+    if tokens.contains(&"--duration-seconds") {
         return option_equals(tokens, "--duration-seconds", &expected_duration);
     }
 
@@ -1573,8 +1568,7 @@ mod tests {
                 "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge"
             );
             json["redaction_reviewer"] = serde_json::json!("phase-27-wrapper");
-            json["checklist_rows"] =
-                serde_json::json!(["STR-08", "STR-09", "ASIC-10", "ASIC-11"]);
+            json["checklist_rows"] = serde_json::json!(["STR-08", "STR-09", "ASIC-10", "ASIC-11"]);
         });
 
         // Act
@@ -1625,8 +1619,7 @@ mod tests {
                 "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge"
             );
             json["redaction_reviewer"] = serde_json::json!("phase-27-wrapper");
-            json["checklist_rows"] =
-                serde_json::json!(["STR-08", "STR-09", "ASIC-10", "ASIC-11"]);
+            json["checklist_rows"] = serde_json::json!(["STR-08", "STR-09", "ASIC-10", "ASIC-11"]);
         });
 
         // Act
@@ -1677,8 +1670,7 @@ mod tests {
                 "docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge"
             );
             json["redaction_reviewer"] = serde_json::json!("phase-27-wrapper");
-            json["checklist_rows"] =
-                serde_json::json!(["STR-08", "STR-09", "ASIC-10", "ASIC-11"]);
+            json["checklist_rows"] = serde_json::json!(["STR-08", "STR-09", "ASIC-10", "ASIC-11"]);
         });
 
         // Act

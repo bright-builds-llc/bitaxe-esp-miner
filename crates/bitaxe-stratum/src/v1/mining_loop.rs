@@ -59,7 +59,7 @@ impl MiningLoopGate {
         if let ProductionMiningPreconditionDecision::Blocked { reason, .. } =
             &self.production_preconditions
         {
-            return MiningLoopDecision::Blocked { reason: *reason };
+            return MiningLoopDecision::Blocked { reason };
         }
 
         if self.maybe_power_evidence.is_none() {

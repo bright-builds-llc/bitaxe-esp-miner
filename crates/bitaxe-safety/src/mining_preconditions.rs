@@ -176,7 +176,10 @@ mod tests {
 
         // Assert
         assert_eq!(fresh_decision, ProductionMiningPreconditionDecision::Ready);
-        assert_eq!(bounded_decision, ProductionMiningPreconditionDecision::Ready);
+        assert_eq!(
+            bounded_decision,
+            ProductionMiningPreconditionDecision::Ready
+        );
     }
 
     #[test]
@@ -217,7 +220,9 @@ mod tests {
             ),
             (
                 ProductionMiningPreconditions {
-                    safety: ProductionMiningPrerequisite::blocked(SAFETY_PREFLIGHT_EVIDENCE_MISSING),
+                    safety: ProductionMiningPrerequisite::blocked(
+                        SAFETY_PREFLIGHT_EVIDENCE_MISSING,
+                    ),
                     ..ready_preconditions()
                 },
                 SAFETY_PREFLIGHT_EVIDENCE_MISSING,
@@ -235,22 +240,26 @@ mod tests {
         // Arrange
         let cases = [
             (
-                ProductionMiningPrerequisite::from_power_observation(PowerObservation::from_ina260_sample(
-                    Some(safe_power_sample()),
-                    PowerSampleAgeMs(1001),
-                    12.0,
-                )),
+                ProductionMiningPrerequisite::from_power_observation(
+                    PowerObservation::from_ina260_sample(
+                        Some(safe_power_sample()),
+                        PowerSampleAgeMs(1001),
+                        12.0,
+                    ),
+                ),
                 "power_sample_stale",
             ),
             (
-                ProductionMiningPrerequisite::from_power_observation(PowerObservation::from_ina260_sample(
-                    Some(Ina260RawSample {
-                        bus_voltage_volts: 5.6,
-                        ..safe_power_sample()
-                    }),
-                    PowerSampleAgeMs(100),
-                    12.0,
-                )),
+                ProductionMiningPrerequisite::from_power_observation(
+                    PowerObservation::from_ina260_sample(
+                        Some(Ina260RawSample {
+                            bus_voltage_volts: 5.6,
+                            ..safe_power_sample()
+                        }),
+                        PowerSampleAgeMs(100),
+                        12.0,
+                    ),
+                ),
                 "input_voltage_unsafe",
             ),
             (

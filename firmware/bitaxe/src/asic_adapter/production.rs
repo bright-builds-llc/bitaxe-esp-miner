@@ -7,12 +7,12 @@ use std::sync::{Mutex, OnceLock};
 use anyhow::Result;
 use bitaxe_asic::bm1366::{
     command::Bm1366AdapterAction,
+    mining_ready::ultra_205_result_address_interval,
     production::{Bm1366ProductionCommand, ProductionAsicBlocker, ProductionAsicStatus},
     result::{
         parse_bm1366_result_frame, Bm1366NonceResult, Bm1366ParsedResult, Bm1366ValidJobIds,
         BM1366_RESULT_FRAME_LEN,
     },
-    mining_ready::ultra_205_result_address_interval,
 };
 
 use super::{reset, status, uart};
@@ -88,7 +88,7 @@ pub fn production_ready() -> bool {
 pub struct ProductionAsicExecutor;
 
 impl ProductionAsicExecutor {
-  #[must_use]
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -113,7 +113,8 @@ impl ProductionAsicExecutor {
                         .maybe_uart
                         .as_mut()
                         .ok_or(ProductionAsicBlocker::UartFailed)?;
-                    uart.clear_rx().map_err(|_| ProductionAsicBlocker::UartFailed)?;
+                    uart.clear_rx()
+                        .map_err(|_| ProductionAsicBlocker::UartFailed)?;
                     log::info!("asic_production_trace=clear_rx_before_work");
                 }
                 for action in actions {
@@ -123,7 +124,11 @@ impl ProductionAsicExecutor {
                 Ok(None)
             }
             Bm1366ProductionCommand::ReadProductionResult => {
-                match try_read_production_result_on_state(&mut state, valid_jobs, uart::RESULT_WORK_TIMEOUT_MS)? {
+                match try_read_production_result_on_state(
+                    &mut state,
+                    valid_jobs,
+                    uart::RESULT_WORK_TIMEOUT_MS,
+                )? {
                     ProductionReadOutcome::Pending => Ok(None),
                     ProductionReadOutcome::JobNonce(result) => Ok(Some(result)),
                     ProductionReadOutcome::RegisterReadProof => Ok(None),
@@ -166,11 +171,7 @@ fn try_read_production_result_on_state(
         return Ok(ProductionReadOutcome::Pending);
     };
 
-    match parse_bm1366_result_frame(
-        &frame,
-        valid_jobs,
-        ultra_205_result_address_interval(),
-    ) {
+    match parse_bm1366_result_frame(&frame, valid_jobs, ultra_205_result_address_interval()) {
         Ok(Bm1366ParsedResult::JobNonce(result)) => Ok(ProductionReadOutcome::JobNonce(result)),
         Ok(Bm1366ParsedResult::RegisterRead(_)) => {
             log::info!("asic_production_trace=register_read_parsed");

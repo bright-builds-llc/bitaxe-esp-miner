@@ -7,9 +7,7 @@ use bitaxe_asic::bm1366::init_plan::{
     PowerPreflightEvidence, SafetyPreflightEvidence, ThermalPreflightEvidence,
 };
 use bitaxe_safety::{
-    evidence::SafetyCriticalEvidence,
-    power::PowerEvidenceToken,
-    status::SafetyStatus,
+    evidence::SafetyCriticalEvidence, power::PowerEvidenceToken, status::SafetyStatus,
     thermal::ThermalEvidenceToken,
 };
 
@@ -38,7 +36,9 @@ fn chip_detect_plan_options() -> ChipDetectPlanOptions {
             version_mask_prelude_count: 0,
             wait_tx_done_after_chip_id_write: false,
         },
-        Some(InvestigationMode::FullInitPrefix) => ChipDetectPlanOptions::chip_detect_only_baseline(),
+        Some(InvestigationMode::FullInitPrefix) => {
+            ChipDetectPlanOptions::chip_detect_only_baseline()
+        }
         None if phase27_bridge_active() => {
             ChipDetectPlanOptions::upstream_aligned_after_safety_bring_up()
         }

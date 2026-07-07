@@ -18,7 +18,11 @@ const EMC2101_TACH_INPUT_CONFIG: u8 = 0x04;
 const EMC2101_FAN_RPM_NUMERATOR: u32 = 5_400_000;
 
 pub fn init(bus: &mut BitaxeI2cBus<'_>) -> Result<()> {
-    bus.write_register(EMC2101_I2C_ADDRESS, EMC2101_REG_CONFIG, EMC2101_TACH_INPUT_CONFIG)?;
+    bus.write_register(
+        EMC2101_I2C_ADDRESS,
+        EMC2101_REG_CONFIG,
+        EMC2101_TACH_INPUT_CONFIG,
+    )?;
     bus.write_register(
         EMC2101_I2C_ADDRESS,
         EMC2101_FAN_CONFIG,
@@ -30,11 +34,7 @@ pub fn init(bus: &mut BitaxeI2cBus<'_>) -> Result<()> {
 pub fn set_fan_duty_percent(bus: &mut BitaxeI2cBus<'_>, percent: u8) -> Result<()> {
     let clamped = percent.min(100);
     let register_value = ((f64::from(clamped) / 100.0) * 63.0).round() as u8;
-    bus.write_register(
-        EMC2101_I2C_ADDRESS,
-        EMC2101_REG_FAN_SETTING,
-        register_value,
-    )?;
+    bus.write_register(EMC2101_I2C_ADDRESS, EMC2101_REG_FAN_SETTING, register_value)?;
     log::info!("safety_fan_effect=write percent={clamped} register=0x{register_value:02x}");
     Ok(())
 }

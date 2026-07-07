@@ -649,9 +649,7 @@ mod tests {
                 );
             }
             if *slot_file == "conclusion.md" {
-                contents.push_str(
-                    "phase28_consolidation_claim: hardware_evidence_consolidation\n",
-                );
+                contents.push_str("phase28_consolidation_claim: hardware_evidence_consolidation\n");
             }
             std::fs::write(evidence_root.join(slot_file).as_std_path(), contents)
                 .expect("slot should be written");

@@ -33,8 +33,9 @@ use crate::runtime_snapshot::{
     projected_system_info,
 };
 use crate::{
-    controlled_mining_runtime, live_stratum_runtime, log_buffer, mining_evidence_mode::MiningEvidenceMode,
-    network_stack, settings_adapter, static_files, websocket_api,
+    controlled_mining_runtime, live_stratum_runtime, log_buffer,
+    mining_evidence_mode::MiningEvidenceMode, network_stack, settings_adapter, static_files,
+    websocket_api,
 };
 
 type ApiRequest<'request, 'connection> = Request<&'request mut EspHttpConnection<'connection>>;

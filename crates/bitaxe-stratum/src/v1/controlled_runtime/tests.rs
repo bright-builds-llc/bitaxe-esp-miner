@@ -1,14 +1,9 @@
 use bitaxe_asic::bm1366::{
-    production::Bm1366ProductionCommand,
-    result::Bm1366NonceResult,
-    work::Bm1366JobId,
+    production::Bm1366ProductionCommand, result::Bm1366NonceResult, work::Bm1366JobId,
 };
 use bitaxe_safety::{
-    evidence::SafetyCriticalEvidence,
-    mining_preconditions::ProductionMiningPreconditionDecision,
-    power::PowerEvidenceToken,
-    status::SafetyStatus,
-    thermal::ThermalEvidenceToken,
+    evidence::SafetyCriticalEvidence, mining_preconditions::ProductionMiningPreconditionDecision,
+    power::PowerEvidenceToken, status::SafetyStatus, thermal::ThermalEvidenceToken,
 };
 
 use super::*;

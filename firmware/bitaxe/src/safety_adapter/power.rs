@@ -2,10 +2,7 @@
 #![allow(dead_code)]
 
 use bitaxe_api::{SafetyTelemetryReport, SafetyTelemetryStatus};
-use bitaxe_safety::{
-    evidence::SafetyCriticalEvidence,
-    power::VoltageEffectPlan,
-};
+use bitaxe_safety::{evidence::SafetyCriticalEvidence, power::VoltageEffectPlan};
 
 pub const DS4432U_I2C_ADDRESS: u8 = 0x48;
 pub const DS4432U_OUTPUT0_REGISTER: u8 = 0xF8;
@@ -29,7 +26,8 @@ pub fn collect_power_report() -> SafetyTelemetryReport {
 }
 
 pub fn interpret_voltage_effect(plan: VoltageEffectPlan) {
-    if crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
+    if crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge()
+    {
         if let VoltageEffectPlan::WriteDs4432u { setpoint_mv, .. } = plan {
             log::info!("safety_voltage_effect=armed setpoint_mv={setpoint_mv}");
             return;

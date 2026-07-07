@@ -16,7 +16,9 @@ use bitaxe_asic::bm1366::{
     init_plan::{Bm1366InitPlan, Bm1366Preflight, BoardPreflightEvidence, ConfigPreflightEvidence},
     mining_ready::ultra_205_result_address_interval,
     observation::AsicInitStatus,
-    result::{parse_bm1366_result_frame, Bm1366ParsedResult, Bm1366ValidJobIds, BM1366_RESULT_FRAME_LEN},
+    result::{
+        parse_bm1366_result_frame, Bm1366ParsedResult, Bm1366ValidJobIds, BM1366_RESULT_FRAME_LEN,
+    },
     work::{diagnostic_job_frame, Bm1366JobId, Bm1366WorkFields},
 };
 use esp_idf_svc::hal::{
@@ -71,9 +73,7 @@ where
             Ok(())
         }
         AsicAdapterMode::ChipDetectOnly => run_chip_detect_only(peripherals),
-        AsicAdapterMode::WorkResultDiagnostic => {
-            run_work_result_uart_bootstrap(peripherals, false)
-        }
+        AsicAdapterMode::WorkResultDiagnostic => run_work_result_uart_bootstrap(peripherals, false),
         AsicAdapterMode::Phase27ProductionBridge => {
             run_work_result_uart_bootstrap(peripherals, true)
         }
@@ -136,7 +136,13 @@ where
         log::warn!("phase27_safety_bring_up=failed error={error:#}");
     }
 
-    run_work_result_uart_bootstrap_after_reset(peripherals.uart, peripherals.tx, peripherals.rx, reset, true)
+    run_work_result_uart_bootstrap_after_reset(
+        peripherals.uart,
+        peripherals.tx,
+        peripherals.rx,
+        reset,
+        true,
+    )
 }
 
 fn run_work_result_uart_bootstrap<UART, RESET, TX, RX>(
@@ -280,9 +286,13 @@ where
 
     if retain_for_production
         && work_result_investigation::skip_boot_diagnostic_work()
-        && work_result_investigation::phase27_initialized_no_mining_bootstrap(mining_ready_completed)
+        && work_result_investigation::phase27_initialized_no_mining_bootstrap(
+            mining_ready_completed,
+        )
     {
-        log::info!("asic_work_result_trace=skip_boot_diagnostic_work bootstrap=initialized_no_mining");
+        log::info!(
+            "asic_work_result_trace=skip_boot_diagnostic_work bootstrap=initialized_no_mining"
+        );
         status::publish_work_result_bootstrap_initialized_status();
         production::store_production_peripherals(uart, reset, true);
         return Ok(());
@@ -465,7 +475,9 @@ fn trace_init_action(action: &Bm1366AdapterAction) {
             log::info!("asic_work_result_trace=init_action kind=publish_status status={status:?}");
         }
         Bm1366AdapterAction::WaitTxDone { timeout_ms } => {
-            log::info!("asic_work_result_trace=init_action kind=wait_tx_done timeout_ms={timeout_ms}");
+            log::info!(
+                "asic_work_result_trace=init_action kind=wait_tx_done timeout_ms={timeout_ms}"
+            );
         }
         _ => {}
     }

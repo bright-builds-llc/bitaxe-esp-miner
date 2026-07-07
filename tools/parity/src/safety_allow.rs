@@ -580,8 +580,10 @@ fn is_expected_safety_command(manifest: &SafetyAllowManifest, tokens: &[&str]) -
         }
         "parity-redaction" => starts_with_tokens(tokens, &["rg"]),
         "phase27-live-hardware-bridge" => {
-            starts_with_tokens(tokens, &["scripts/phase27-live-hardware-bridge-evidence.sh"])
-                && has_option_with_value(tokens, "--evidence-root")
+            starts_with_tokens(
+                tokens,
+                &["scripts/phase27-live-hardware-bridge-evidence.sh"],
+            ) && has_option_with_value(tokens, "--evidence-root")
                 && has_option_with_value(tokens, "--manifest")
                 && option_equals(tokens, "--mode", "hardware")
         }

@@ -50,9 +50,7 @@ mod tests {
     use bitaxe_stratum::v1::messages::PoolDifficulty;
     use bitaxe_stratum::v1::production_work::PoolSessionGeneration;
     use bitaxe_stratum::v1::state::{HashrateInputs, PoolLifecycleStatus, ShareDifficulty};
-    use bitaxe_stratum::v1::submit_response::{
-        RedactedSubmitRejectReason, SubmitClassification,
-    };
+    use bitaxe_stratum::v1::submit_response::{RedactedSubmitRejectReason, SubmitClassification};
     use bitaxe_stratum::v1::telemetry_projection::{
         RuntimeProjectionSampleMarker, RuntimeProjectionSampleSource, RuntimeTelemetryEvent,
         RuntimeTelemetryProjection, RuntimeTelemetrySequence,
@@ -163,14 +161,8 @@ mod tests {
         let projected_scoreboards = states
             .iter()
             .map(|projection| {
-                project_api_views(
-                    ApiSnapshot::safe_ultra_205(),
-                    projection,
-                    None,
-                    30_000,
-                    0.0,
-                )
-                .scoreboard_entries
+                project_api_views(ApiSnapshot::safe_ultra_205(), projection, None, 30_000, 0.0)
+                    .scoreboard_entries
             })
             .collect::<Vec<_>>();
 
@@ -185,10 +177,20 @@ mod tests {
         // Arrange
         let active_projection = active_projection_with_share_counters();
         let stopped_projection = stopped_projection();
-        let active_views =
-            project_api_views(ApiSnapshot::safe_ultra_205(), &active_projection, None, 1, 0.0);
-        let stopped_views =
-            project_api_views(ApiSnapshot::safe_ultra_205(), &stopped_projection, None, 2, 0.0);
+        let active_views = project_api_views(
+            ApiSnapshot::safe_ultra_205(),
+            &active_projection,
+            None,
+            1,
+            0.0,
+        );
+        let stopped_views = project_api_views(
+            ApiSnapshot::safe_ultra_205(),
+            &stopped_projection,
+            None,
+            2,
+            0.0,
+        );
         let mut websocket = WebSocketState::default();
         let _registered = websocket.register_client(1, WebSocketRouteKind::LiveTelemetry);
         let _connect = websocket.live_connect_frame(active_views.telemetry_payload);
@@ -202,7 +204,10 @@ mod tests {
         // Assert
         assert_eq!(cadence["event"], "update");
         assert_eq!(cadence["data"]["miningPaused"], Value::Bool(true));
-        assert_eq!(cadence["data"]["poolConnectionInfo"], Value::String("disconnected".into()));
+        assert_eq!(
+            cadence["data"]["poolConnectionInfo"],
+            Value::String("disconnected".into())
+        );
         assert!(!rendered.contains(":\"active\""));
     }
 

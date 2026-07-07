@@ -62,7 +62,10 @@ pub struct Bm1366InitPlan;
 
 impl Bm1366InitPlan {
     pub fn chip_detect_only(preflight: Bm1366Preflight) -> Bm1366InitDecision {
-        Self::chip_detect_with_options(preflight, ChipDetectPlanOptions::chip_detect_only_baseline())
+        Self::chip_detect_with_options(
+            preflight,
+            ChipDetectPlanOptions::chip_detect_only_baseline(),
+        )
     }
 
     pub fn chip_detect_with_options(

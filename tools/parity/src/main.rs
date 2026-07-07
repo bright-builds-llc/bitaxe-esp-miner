@@ -1209,11 +1209,14 @@ fn validate_phase28_hardware_promotion_row(row: &ChecklistRow) -> Vec<Validation
                     .to_owned(),
             });
         }
-        "SAFE-10" | "SAFE-11" | "SAFE-12" | "SAFE-13" if !has_phase28_live_safety_hardware_proof(row) => {
+        "SAFE-10" | "SAFE-11" | "SAFE-12" | "SAFE-13"
+            if !has_phase28_live_safety_hardware_proof(row) =>
+        {
             errors.push(ValidationError {
                 id: row.id.clone(),
-                message: "phase28 SAFE verified row requires detector-gated live safety hardware proof"
-                    .to_owned(),
+                message:
+                    "phase28 SAFE verified row requires detector-gated live safety hardware proof"
+                        .to_owned(),
             });
         }
         "STR-08" | "ASIC-09" | "ASIC-10" | "ASIC-11" | "ASIC-12"
@@ -1237,8 +1240,17 @@ fn is_phase28_hardware_promotion_row(row: &ChecklistRow) -> bool {
 
     matches!(
         row.id.as_str(),
-        "SAFE-10" | "SAFE-11" | "SAFE-12" | "SAFE-13" | "STR-08" | "STR-09" | "CFG-07"
-            | "ASIC-09" | "ASIC-10" | "ASIC-11" | "ASIC-12"
+        "SAFE-10"
+            | "SAFE-11"
+            | "SAFE-12"
+            | "SAFE-13"
+            | "STR-08"
+            | "STR-09"
+            | "CFG-07"
+            | "ASIC-09"
+            | "ASIC-10"
+            | "ASIC-11"
+            | "ASIC-12"
     ) || [
         "phase 28",
         "phase-28-hardware-evidence-and-checklist-promotion",
@@ -2275,11 +2287,7 @@ mod tests {
         let errors = validate_rows(&rows);
 
         // Assert
-        assert_validation_error_contains(
-            &errors,
-            "STR-09",
-            "blocked_safe_prerequisite",
-        );
+        assert_validation_error_contains(&errors, "STR-09", "blocked_safe_prerequisite");
     }
 
     #[test]
@@ -2296,11 +2304,7 @@ mod tests {
         let errors = validate_rows(&rows);
 
         // Assert
-        assert_validation_error_contains(
-            &errors,
-            "CFG-07",
-            "CFG-07 must remain below verified",
-        );
+        assert_validation_error_contains(&errors, "CFG-07", "CFG-07 must remain below verified");
     }
 
     #[test]
