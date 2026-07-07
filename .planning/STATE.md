@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 28.1-02-PLAN.md
-last_updated: "2026-07-07T02:15:41.153Z"
+stopped_at: Completed 28.1-03-PLAN.md
+last_updated: "2026-07-07T02:30:41.203Z"
 last_activity: 2026-07-07
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 31
-  completed_plans: 28
-  percent: 90
+  completed_plans: 29
+  percent: 94
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 ## Current Position
 
 Phase: 28.1 (live mining blocker fix (H4/W13 orchestration parity + discriminating hardware probes)) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-07-07
 
@@ -117,6 +117,8 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 28.1]: AsicBridgeState kept as thin wrapper embedding BridgeOrchestrator; bridge pump interprets typed BridgeStep values only
 - [Phase 28.1]: Fail-closed ResultTimeout survives only in the non-continuous bounded-read rollback path for the single_dispatch_bounded_read control mode
 - [Phase 28.1]: W13 bridge-mode boot retains production peripherals unconditionally after init; require_diagnostic_nonce and require_uart_proof_for_production stay as opt-out rollback levers
+- [Phase 28.1]: Post-dispatch register-read probe TX helper lives in asic_adapter/production.rs because the retained UART is private to that module; probe is TX-only and rides the existing RegisterReadProof classification
+- [Phase 28.1]: Bring-up I2C bus retained via OnceLock power_probe module (store-once, read-only INA260 sampling); power-delta marker fires once per session 7 s after first dispatch and degrades to unavailable=true, never a gate
 
 ### Pending Todos
 
@@ -139,11 +141,12 @@ None yet.
 | Phase 27-live-hardware-asic-and-stratum-bridge P01-04 | 62min | 8 tasks | 20 files |
 | Phase 28.1 P01 | 13min | 3 tasks | 6 files |
 | Phase 28.1 P02 | 40min | 2 tasks | 3 files |
+| Phase 28.1 P03 | 12min | 2 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-07-07T02:15:41.151Z
-Stopped at: Completed 28.1-02-PLAN.md
+Last session: 2026-07-07T02:30:32.781Z
+Stopped at: Completed 28.1-03-PLAN.md
 Resume file: None
 
 ## Next Step
