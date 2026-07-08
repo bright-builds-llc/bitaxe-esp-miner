@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Wire fixes landed; `firmware-nonce-production` still open — rerun hardware after USB recovery
-stopped_at: Phase 28.1.1 context gathered
-last_updated: "2026-07-07T15:24:54.355Z"
+status: Phase 28.1.1 gaps evidence recorded; Phase 28.1.1.1 inserted for nonce-production reconciliation
+stopped_at: Phase 28.1.1.1 ready for planning
+last_updated: "2026-07-08T01:25:07.000Z"
 last_activity: 2026-07-07
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 8
-  total_plans: 31
-  completed_plans: 32
+  total_plans: 36
+  completed_plans: 36
   percent: 100
 ---
 
@@ -22,16 +22,16 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
 
-**Current focus:** Phase 28.1.1 — BM1366 nonce production wire parity (`firmware-nonce-production`)
+**Current focus:** Phase 28.1.1.1 — BM1366 upstream golden comparator and nonce-production gap reconciliation
 
 ## Current Position
 
-Phase: 28.1.1
-Plan: 05 (verification partial)
-Status: Wire fixes landed; `firmware-nonce-production` still open — rerun hardware after USB recovery
+Phase: 28.1.1.1 (bm1366-upstream-golden-comparator-and-nonce-production-gap-r) — NOT PLANNED
+Plan: 0 of 0
+Status: Inserted to reconcile Phase 28.1.1 gaps by upstream golden UART capture, field comparator, confirmed divergence fix, and detector-gated rerun
 Last activity: 2026-07-07
 
-Progress: [█████████░] 90% (milestone v1.1; phase 28.1.1 partial)
+Progress: [█████████░] 90% (milestone v1.1; Phase 28.1.1 gaps recorded; Phase 28.1.1.1 planning next)
 
 ## Active Artifacts
 
@@ -59,6 +59,7 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 ### Roadmap Evolution
 
 - Phase 28.1.1 inserted after Phase 28.1: BM1366 nonce production wire parity (firmware-nonce-production fix)
+- Phase 28.1.1.1 inserted after Phase 28.1.1: BM1366 upstream golden comparator and nonce-production gap reconciliation (URGENT)
 
 ### Decisions
 
