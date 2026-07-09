@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-stopped_at: Completed 28.1.1.6-03-PLAN.md
-last_updated: "2026-07-09T14:04:10.274Z"
+status: ready
+stopped_at: Completed 28.1.1.6-04-PLAN.md
+last_updated: "2026-07-09T14:08:00Z"
 progress:
   total_phases: 17
-  completed_phases: 14
-  total_plans: 61
-  completed_plans: 61
+  completed_phases: 15
+  total_plans: 62
+  completed_plans: 62
   percent: 100
 ---
 
@@ -18,9 +18,9 @@ progress:
 ## Current Position
 
 - **Phase:** 28.1.1.6 — BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis
-- **Plan:** 3/4 — Patch disposition complete
-- **Status:** In Progress — `patch_disposition: falsified_negotiated_version_mask_work_field_parity_as_sole_blocker`; `wire_parity_mask_on_work_retained: true`; Phase 30 checklist verified rows untouched
-- **Next step:** Execute 28.1.1.6-04 (final evidence → `next_hypothesis: pool_negotiated_mask_asic_reload`)
+- **Plan:** 4/4 — Final evidence + VERIFICATION complete
+- **Status:** Gaps Found — `verification_result: gaps_found`; `patch_disposition: falsified_negotiated_version_mask_work_field_parity_as_sole_blocker`; `wire_parity_mask_on_work_retained: true`; Phase 30 checklist verified rows untouched
+- **Next step:** Discuss/plan insert for `pool_negotiated_mask_asic_reload` (or continue Phase 29 evidence-workflow automation); do not promote Phase 30 checklist verified rows
 
 ## Decisions (Phase 28.1.1.6)
 
@@ -34,6 +34,10 @@ progress:
 - `patch_disposition=falsified_negotiated_version_mask_work_field_parity_as_sole_blocker`; `wire_parity_mask_on_work_retained: true`
 - Plan 03 next_hypothesis: `pool_negotiated_mask_asic_reload` (not implemented; `asic_mask_reload_applied: false`; no second speculative patch)
 - `phase30_promotion_input: pending`; ASIC-256 ticket mask + RX-loop retained; checklist verified rows untouched
+- Plan 04 closed Wave 0 Nyquist (`wave_0_complete` / `nyquist_compliant`); ROADMAP 4/4 Gaps Found; handoff `pool_negotiated_mask_asic_reload`
+- `verification_result=gaps_found` (no correlate/submit after work-field A/B)
+- `next_hypothesis=pool_negotiated_mask_asic_reload`; mask-on-MiningWork + ASIC-256 + RX-loop retained
+- `phase30_promotion_input=pending`; checklist verified rows untouched
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -99,19 +103,10 @@ progress:
 - `next_hypothesis=version_rolling_negotiation`; `wire_parity_rx_loop_retained` + ASIC-256 retained
 - `phase30_promotion_input=pending`; checklist verified rows untouched
 
-## Decisions (Phase 28.1.1.6 — planned)
-
-- Wave 0: `forced_ab_label` defaults to `negotiated_version_mask_work_field_parity` when configure+mask_stored and mask not applied to work
-- `recommended_investigation` closed to `negotiated_version_mask_work_field_parity` | `pool_negotiated_mask_asic_reload` | `none`
-- HARD BAN: never emit `post_max_baud_delay_2000`, `match_upstream_register_read_poll`, `upstream_like_long_block_receive`, `ticket_mask_asic_difficulty`, `count_asic_chips_rx_loop_parity`
-- Plan 02: stop discard; attach mask to MiningWork; keep BM1366 UART version as base notify; no ASIC reload
-- Plan 03: promote default only if improved + correlate/submit; else falsify sole-blocker → `next_hypothesis: pool_negotiated_mask_asic_reload`
-- Prefer keeping wire-correct mask-on-MiningWork if A/B unchanged; no second speculative patch; no Phase 30 checklist verified edits
-
 ## Session
 
-- **Stopped at:** Completed 28.1.1.6-03-PLAN.md
-- **Resume:** `/gsd-execute-phase 28.1.1.6`
+- **Stopped at:** Completed 28.1.1.6-04-PLAN.md
+- **Resume:** Discuss/plan `pool_negotiated_mask_asic_reload` insert, or `/gsd-plan-phase 29`
 
 ## Accumulated Context
 
