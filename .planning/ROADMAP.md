@@ -179,8 +179,8 @@ Plans:
 | 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 28. Hardware Evidence And Checklist Promotion | v1.1 | 3/3 | Complete   | 2026-07-06 |
 | 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete    | 2026-07-07 |
-| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 5/5 | In Progress | — |
-| 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 0/0 | Not planned | — |
+| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
+| 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
 | 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
@@ -221,7 +221,13 @@ Plans:
 **Goal:** Reconcile the Phase 28.1.1 `gaps_found` result by capturing upstream `SERIALTX_DEBUG`/`SERIALRX_DEBUG` golden job bytes, comparing them field-by-field against Rust init/job frames, patching only confirmed divergences, and rerunning detector-gated Ultra 205 hardware evidence until either nonce/share evidence exists or the blocker is narrowed below job construction.
 **Requirements**: STR-09, CFG-07, ASIC-11 (blocker closure input only; Phase 30 owns checklist promotion)
 **Depends on:** Phase 28.1.1
-**Plans:** 0 plans
+**Plans:** 5/5 plans executed; verification `gaps_found`
 
 Plans:
-- [ ] TBD — Upstream golden UART capture, field comparator, one confirmed divergence fix or lower-layer blocker isolation, and 360-second detector-gated rerun (run /gsd-plan-phase 28.1.1.1 to break down)
+- [x] 28.1.1.1-01-PLAN.md — Redaction-safe BM1366 UART/job-frame field comparator + fixture tests
+- [x] 28.1.1.1-02-PLAN.md — Upstream golden capture helper + detector-gated Rust/upstream A/B
+- [x] 28.1.1.1-03-PLAN.md — Source-work alignment + divergence disposition (job fields match; no patch)
+- [x] 28.1.1.1-04-PLAN.md — Deterministic fake-pool source-work capture proving 11/11 job-field match
+- [x] 28.1.1.1-05-PLAN.md — Below-job-byte sequence comparator + post_max_baud_delay_2000 A/B (still no Rust submit)
+
+**Gaps found:** Job bytes match under aligned source work; below-job semantic events match 12/12; Rust still lacks `result_correlated` and share-submission evidence. Next diagnostic layer is result-path / ASIC side effects (not more job-byte patches).

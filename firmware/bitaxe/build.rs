@@ -6,6 +6,8 @@ fn main() {
     println!("cargo:rerun-if-env-changed=BITAXE_SOURCE_COMMIT");
     println!("cargo:rerun-if-env-changed=BITAXE_MINING_EVIDENCE_MODE");
     println!("cargo:rerun-if-env-changed=BITAXE_HARDWARE_EVIDENCE_ACK");
+    println!("cargo:rerun-if-env-changed=BITAXE_WORK_RESULT_INVESTIGATION");
+    println!("cargo:rerun-if-env-changed=BITAXE_CHIP_DETECT_INVESTIGATION");
     emit_git_rerun_hints();
 
     let Some(commit) = maybe_git_commit() else {

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1 gaps evidence recorded; Phase 28.1.1.1 inserted for nonce-production reconciliation
-stopped_at: Phase 28.1.1.1 ready for planning
-last_updated: "2026-07-08T01:25:07.000Z"
-last_activity: 2026-07-07
+status: Phase 28.1.1.1 gaps_found: below-job-byte A/B did not produce Rust submit evidence
+stopped_at: Phase 28.1.1.1 Plan 05 below-job-byte diagnostic recorded
+last_updated: "2026-07-08T19:48:38.000Z"
+last_activity: 2026-07-08 -- Phase 28.1.1.1 Plan 05 below-job-byte diagnostic captured; post_max_baud_delay_2000 did not resolve Rust submit gap
 progress:
   total_phases: 12
-  completed_phases: 8
-  total_plans: 36
-  completed_plans: 36
+  completed_phases: 10
+  total_plans: 41
+  completed_plans: 41
   percent: 100
 ---
 
@@ -22,16 +22,16 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
 
-**Current focus:** Phase 28.1.1.1 — BM1366 upstream golden comparator and nonce-production gap reconciliation
+**Current focus:** Phase 28.1.1.1 — bm1366-upstream-golden-comparator-and-nonce-production-gap-r
 
 ## Current Position
 
-Phase: 28.1.1.1 (bm1366-upstream-golden-comparator-and-nonce-production-gap-r) — NOT PLANNED
-Plan: 0 of 0
-Status: Inserted to reconcile Phase 28.1.1 gaps by upstream golden UART capture, field comparator, confirmed divergence fix, and detector-gated rerun
-Last activity: 2026-07-07
+Phase: 28.1.1.1 (bm1366-upstream-golden-comparator-and-nonce-production-gap-r) — GAPS FOUND
+Plan: 5 of 5
+Status: Below-job-byte semantic events matched, but Rust result/share evidence is still missing
+Last activity: 2026-07-08 -- Phase 28.1.1.1 Plan 05 below-job-byte diagnostic captured; post_max_baud_delay_2000 did not resolve Rust submit gap
 
-Progress: [█████████░] 90% (milestone v1.1; Phase 28.1.1 gaps recorded; Phase 28.1.1.1 planning next)
+Progress: [█████████░] 90% (milestone v1.1; Phase 28.1.1.1 Plan 05 gaps recorded; next diagnostic below result-read/ASIC side effects)
 
 ## Active Artifacts
 
@@ -160,4 +160,4 @@ Resume file: .planning/phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-
 
 ## Next Step
 
-Run milestone completion or audit workflow for v1.1 if release closure is desired.
+Insert Phase 28.1.1.2 for result-path / ASIC side-effect nonce-production diagnosis below job bytes, then discuss → plan → execute. Do not start Phase 29/30 until share-outcome evidence exists.
