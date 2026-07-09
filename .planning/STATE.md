@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.6 inserted — version-rolling diagnosis pending discuss/plan
-stopped_at: Inserted Phase 28.1.1.6 after 28.1.1.5
-last_updated: "2026-07-09T13:37:35.000Z"
+status: Phase 28.1.1.6 planned — ready to execute
+stopped_at: Planned Phase 28.1.1.6 (4 waves)
+last_updated: "2026-07-09T13:55:00.000Z"
 progress:
   total_phases: 16
   completed_phases: 14
-  total_plans: 58
+  total_plans: 62
   completed_plans: 58
-  percent: 100
+  percent: 94
 ---
 
 # Project State
 
 ## Current Position
 
-- **Phase:** 28.1.1.6 — BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis (inserted, not planned)
-- **Plan:** 0/4 — discuss/plan pending
-- **Status:** inserted after 28.1.1.5 — consume `next_hypothesis: version_rolling_negotiation`; Phase 30 checklist verified rows untouched
-- **Next step:** Yolo discuss → research → 4-wave plan → execute for version-rolling negotiation
+- **Phase:** 28.1.1.6 — BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis (planned)
+- **Plan:** 0/4 — plans ready; execute pending
+- **Status:** 4-wave plan locked — forced A/B `negotiated_version_mask_work_field_parity`; Phase 30 checklist verified rows untouched
+- **Next step:** `/gsd-execute-phase 28.1.1.6` (Wave 0 comparator → patch+A/B → disposition → final evidence)
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -83,10 +83,19 @@ progress:
 - `next_hypothesis=version_rolling_negotiation`; `wire_parity_rx_loop_retained` + ASIC-256 retained
 - `phase30_promotion_input=pending`; checklist verified rows untouched
 
+## Decisions (Phase 28.1.1.6 — planned)
+
+- Wave 0: `forced_ab_label` defaults to `negotiated_version_mask_work_field_parity` when configure+mask_stored and mask not applied to work
+- `recommended_investigation` closed to `negotiated_version_mask_work_field_parity` | `pool_negotiated_mask_asic_reload` | `none`
+- HARD BAN: never emit `post_max_baud_delay_2000`, `match_upstream_register_read_poll`, `upstream_like_long_block_receive`, `ticket_mask_asic_difficulty`, `count_asic_chips_rx_loop_parity`
+- Plan 02: stop discard; attach mask to MiningWork; keep BM1366 UART version as base notify; no ASIC reload
+- Plan 03: promote default only if improved + correlate/submit; else falsify sole-blocker → `next_hypothesis: pool_negotiated_mask_asic_reload`
+- Prefer keeping wire-correct mask-on-MiningWork if A/B unchanged; no second speculative patch; no Phase 30 checklist verified edits
+
 ## Session
 
-- **Stopped at:** Inserted Phase 28.1.1.6
-- **Resume:** Continue 28.1.1.6 discuss/plan/execute in-session
+- **Stopped at:** Planned Phase 28.1.1.6 (4 PLAN.md files)
+- **Resume:** `/gsd-execute-phase 28.1.1.6`
 
 ## Accumulated Context
 
