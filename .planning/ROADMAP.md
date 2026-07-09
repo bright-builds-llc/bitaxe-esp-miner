@@ -23,7 +23,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [x] **Phase 27: Live Hardware ASIC And Stratum Bridge** - Live firmware wires Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 socket loop and produces detector-gated share-outcome evidence. (completed 2026-07-05)
 - [x] **Phase 28: Hardware Evidence And Checklist Promotion** - Redacted hardware evidence promotes only exact verified checklist rows supported by Phase 27 artifacts. (completed 2026-07-06)
 - [ ] **Phase 29: Evidence Workflow Automation Closure** - Phase 25/27/28 evidence wrappers auto-validate operator evidence roots and close the redact-validate-promote flow without manual consolidation steps.
-- [x] **Phase 30: Live Share Outcome And Verified Promotion** - Promote STR-09/CFG-07 to `verified` using Phase 28.1.1.2 (or later) share-outcome evidence; close Nyquist metadata (no duplicate wire-diff work). (completed 2026-07-09)
+- [ ] **Phase 30: Live Share Outcome And Verified Promotion** - Promote STR-09/CFG-07 to `verified` using Phase 28.1.1.2 (or later) share-outcome evidence; close Nyquist metadata (no duplicate wire-diff work).
 
 ## Phase Details
 
