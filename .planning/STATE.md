@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.5 in progress — Plan 03 complete
-stopped_at: Completed 28.1.1.5-03-PLAN.md
-last_updated: "2026-07-09T12:31:07.238Z"
+status: Phase 28.1.1.5 complete — gaps_found; handoff version_rolling_negotiation
+stopped_at: Completed 28.1.1.5-04-PLAN.md
+last_updated: "2026-07-09T12:35:00Z"
 progress:
   total_phases: 16
-  completed_phases: 13
-  total_plans: 57
-  completed_plans: 57
+  completed_phases: 14
+  total_plans: 58
+  completed_plans: 58
   percent: 100
 ---
 
@@ -18,9 +18,9 @@ progress:
 ## Current Position
 
 - **Phase:** 28.1.1.5 — BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis
-- **Plan:** 3/4 — patch disposition complete; next final evidence
-- **Status:** in progress — `patch_disposition: falsified_count_asic_chips_rx_loop_parity_as_sole_blocker`; `wire_parity_rx_loop_retained: true`
-- **Next step:** Execute `28.1.1.5-04-PLAN.md` (final redacted evidence + VERIFICATION)
+- **Plan:** 4/4 — final evidence + VERIFICATION complete (`gaps_found`)
+- **Status:** complete — `verification_result: gaps_found`; `patch_disposition: falsified_count_asic_chips_rx_loop_parity_as_sole_blocker`; `wire_parity_rx_loop_retained: true`
+- **Next step:** Discuss/plan insert for `version_rolling_negotiation` (do not implement in 28.1.1.5); Phase 30 checklist verified promotion still deferred
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -76,12 +76,13 @@ progress:
 - A/B `ab_outcome: unchanged` — `counted_rx`/`drain_idle_like` matched but no correlate/submit; Plan 03 disposition; recommender hints `version_rolling_negotiation`
 - `patch_disposition=falsified_count_asic_chips_rx_loop_parity_as_sole_blocker`; `wire_parity_rx_loop_retained: true`
 - Plan 03 next_hypothesis: `version_rolling_negotiation` (not implemented; no second speculative patch)
-- `phase30_promotion_input: pending`; ASIC-256 ticket mask retained; checklist verified rows untouched
+- Final `verification_result: gaps_found`; `phase30_promotion_input: pending`; ASIC-256 ticket mask retained; checklist verified rows untouched
+- Plan 04 closed Wave 0 Nyquist (`wave_0_complete` / `nyquist_compliant`); ROADMAP 4/4 Gaps Found; handoff `version_rolling_negotiation`
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.5-03-PLAN.md
-- **Resume:** Execute `28.1.1.5-04-PLAN.md`
+- **Stopped at:** Completed 28.1.1.5-04-PLAN.md
+- **Resume:** Discuss/plan insert for `version_rolling_negotiation` (Phase 30 verified promotion still deferred)
 
 ## Accumulated Context
 
