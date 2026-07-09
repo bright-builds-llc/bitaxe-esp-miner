@@ -2,25 +2,32 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.6 planned — ready to execute
-stopped_at: Planned Phase 28.1.1.6 (4 waves)
-last_updated: "2026-07-09T13:55:00.000Z"
+status: verifying
+stopped_at: Completed 28.1.1.6-01-PLAN.md
+last_updated: "2026-07-09T13:49:41.618Z"
 progress:
-  total_phases: 16
+  total_phases: 17
   completed_phases: 14
-  total_plans: 62
-  completed_plans: 58
-  percent: 94
+  total_plans: 61
+  completed_plans: 59
+  percent: 97
 ---
 
 # Project State
 
 ## Current Position
 
-- **Phase:** 28.1.1.6 — BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis (planned)
-- **Plan:** 0/4 — plans ready; execute pending
-- **Status:** 4-wave plan locked — forced A/B `negotiated_version_mask_work_field_parity`; Phase 30 checklist verified rows untouched
-- **Next step:** `/gsd-execute-phase 28.1.1.6` (Wave 0 comparator → patch+A/B → disposition → final evidence)
+- **Phase:** 28.1.1.6 — BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis
+- **Plan:** 1/4 — Wave 0 comparator complete
+- **Status:** In Progress — forced A/B `negotiated_version_mask_work_field_parity`; Phase 30 checklist verified rows untouched
+- **Next step:** Execute 28.1.1.6-02 (mask-on-MiningWork patch + ≥360s fake-pool A/B)
+
+## Decisions (Phase 28.1.1.6)
+
+- `forced_ab_label` defaults to `negotiated_version_mask_work_field_parity` when configure+mask_stored and `mask_applied_to_work` false
+- `recommended_investigation` closed to `negotiated_version_mask_work_field_parity` | `pool_negotiated_mask_asic_reload` | `none`
+- HARD BAN includes `count_asic_chips_rx_loop_parity`; `asic_mask_reload_recommended` always false in Wave 0
+- Skipped optional firmware markers (D-10); category markers in logs suffice for Wave 0
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -62,6 +69,7 @@ progress:
 | 28.1.1.5 | 02 | 25 min | 2 | 7 |
 | 28.1.1.5 | 03 | 1 min | 2 | 1 |
 | 28.1.1.5 | 04 | 2 min | 2 | 5 |
+| Phase 28.1.1.6 P01 | 2 min | 2 tasks | 2 files |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -94,7 +102,7 @@ progress:
 
 ## Session
 
-- **Stopped at:** Planned Phase 28.1.1.6 (4 PLAN.md files)
+- **Stopped at:** Completed 28.1.1.6-01-PLAN.md
 - **Resume:** `/gsd-execute-phase 28.1.1.6`
 
 ## Accumulated Context
