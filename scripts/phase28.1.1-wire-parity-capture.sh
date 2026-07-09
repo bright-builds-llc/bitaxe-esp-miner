@@ -89,7 +89,12 @@ if [[ -n "$chip_detect_investigation_mode" ]]; then
 	package_args+=(--chip-detect-investigation "$chip_detect_investigation_mode")
 fi
 
-bash scripts/phase27-live-hardware-bridge-package.sh "${package_args[@]}" >/dev/null
+# Empty array under `set -u` is unbound on some bash versions; expand safely.
+if ((${#package_args[@]} > 0)); then
+	bash scripts/phase27-live-hardware-bridge-package.sh "${package_args[@]}" >/dev/null
+else
+	bash scripts/phase27-live-hardware-bridge-package.sh >/dev/null
+fi
 
 image_path="${repo_root}/bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin"
 mkdir -p "${evidence_dir}/pool-input-bridge"
