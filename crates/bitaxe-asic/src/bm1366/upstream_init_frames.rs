@@ -41,9 +41,17 @@ pub const INIT171_FRAME: [u8; 11] = [
     0x55, 0xAA, 0x41, 0x09, 0x00, 0x2C, 0x00, 0x7C, 0x00, 0x03, 0x03,
 ];
 
-/// Reference: `bm1366.c:237-238` difficulty mask for Ultra 205 default difficulty 1000.
+/// Reference: `get_difficulty_mask(1000)` / Rust `difficulty_mask_value(1000.0)`.
+/// Kept for pool-stratumdiff mask-math unit tests; not the Ultra 205 mining-ready default.
 pub const DIFFICULTY_1000_FRAME: [u8; 11] = [
     0x55, 0xAA, 0x51, 0x09, 0x00, 0x14, 0x00, 0x00, 0x80, 0xFF, 0x04,
+];
+
+/// Reference: `device_config.h` `ASIC_BM1366.difficulty = 256` and
+/// `bm1366.c:BM1366_init` ticket mask via `get_difficulty_mask(256)`.
+/// Wire payload from Rust `difficulty_mask_value(256.0)` + CRC5.
+pub const DIFFICULTY_256_FRAME: [u8; 11] = [
+    0x55, 0xAA, 0x51, 0x09, 0x00, 0x14, 0x00, 0x00, 0x00, 0xFF, 0x08,
 ];
 
 /// Reference: `bm1366.c:173-184` PLL frame for 485 MHz target (actual PLL output used for HCN).

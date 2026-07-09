@@ -40,7 +40,10 @@ impl MiningReadyConfig {
             asic_count: u16::from(catalog.asic_count()),
             core_count: catalog.asic().core_count(),
             frequency_mhz: defaults.asic_frequency_mhz() as f32,
-            difficulty: f64::from(defaults.primary_pool().difficulty()),
+            // Ticket mask follows ASIC family difficulty (upstream BM1366_init /
+            // device_config.h ASIC_BM1366.difficulty=256). Pool stratumdiff remains
+            // a Stratum/share concern and must not drive reg 0x14.
+            difficulty: f64::from(catalog.asic().difficulty()),
             nonce_percent: 1.0,
         }
     }
@@ -371,10 +374,11 @@ pub fn ultra_205_result_address_interval() -> u16 {
 mod tests {
     use super::super::command::Bm1366Command;
     use super::super::upstream_init_frames::{
-        CHAIN_INACTIVE_FRAME, DIFFICULTY_1000_FRAME, FREQUENCY_485_FRAME, INIT135_FRAME,
-        INIT136_FRAME, INIT138_FRAME, INIT139_FRAME, INIT171_FRAME, INIT4_FRAME, INIT5_FRAME,
-        INIT795_FRAME, NONCE_SPACE_485_FRAME, PER_CHIP_18_FRAME, PER_CHIP_3C_FIRST_FRAME,
-        PER_CHIP_3C_SECOND_FRAME, PER_CHIP_3C_THIRD_FRAME, PER_CHIP_A8_FRAME, REG28_MAX_BAUD_FRAME,
+        CHAIN_INACTIVE_FRAME, DIFFICULTY_1000_FRAME, DIFFICULTY_256_FRAME, FREQUENCY_485_FRAME,
+        INIT135_FRAME, INIT136_FRAME, INIT138_FRAME, INIT139_FRAME, INIT171_FRAME, INIT4_FRAME,
+        INIT5_FRAME, INIT795_FRAME, NONCE_SPACE_485_FRAME, PER_CHIP_18_FRAME,
+        PER_CHIP_3C_FIRST_FRAME, PER_CHIP_3C_SECOND_FRAME, PER_CHIP_3C_THIRD_FRAME,
+        PER_CHIP_A8_FRAME, REG28_MAX_BAUD_FRAME,
     };
     use super::*;
 
@@ -400,13 +404,37 @@ mod tests {
     #[test]
     fn mining_ready_dynamic_init_frames_match_upstream_computed_values() {
         let config = MiningReadyConfig::ultra_205_single_chip(1);
+        assert_eq!(config.difficulty, 256.0);
         let commands = mining_ready_commands(config, MiningReadyInitOptions::phase27_default())
             .expect("commands should build");
         let frames: Vec<Vec<u8>> = commands.iter().copied().map(frame_bytes).collect();
 
-        assert_eq!(frames[6], DIFFICULTY_1000_FRAME);
+        assert_eq!(frames[6], DIFFICULTY_256_FRAME);
         assert_eq!(frames[15], FREQUENCY_485_FRAME);
         assert_eq!(frames[16], NONCE_SPACE_485_FRAME);
+    }
+
+    #[test]
+    fn difficulty_mask_for_256_matches_upstream_asic_family_rule() {
+        let mask = difficulty_mask_value(256.0);
+        // mask = (1<<8)-1 = 255 = 0x000000FF, reversed per byte
+        assert_eq!(mask[0], reverse_bits(0x00));
+        assert_eq!(mask[1], reverse_bits(0x00));
+        assert_eq!(mask[2], reverse_bits(0x00));
+        assert_eq!(mask[3], reverse_bits(0xFF));
+        assert_eq!(
+            frame_bytes(Bm1366Command::SetDifficultyMask(mask)),
+            DIFFICULTY_256_FRAME
+        );
+    }
+
+    #[test]
+    fn difficulty_1000_frame_still_matches_pool_mask_math() {
+        let mask = difficulty_mask_value(1000.0);
+        assert_eq!(
+            frame_bytes(Bm1366Command::SetDifficultyMask(mask)),
+            DIFFICULTY_1000_FRAME
+        );
     }
 
     #[test]

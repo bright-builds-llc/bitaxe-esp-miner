@@ -19,6 +19,10 @@ pub struct AsicProfile {
     frequency_options: &'static [u16],
     default_voltage_mv: u16,
     voltage_options: &'static [u16],
+    /// ASIC family ticket-mask difficulty from upstream `AsicConfig.difficulty`.
+    /// Reference: `reference/esp-miner/main/device_config.h` (e.g. `ASIC_BM1366.difficulty = 256`).
+    /// Used by BM1366 mining-ready init for reg `0x14`; distinct from pool `stratumdiff`.
+    difficulty: u16,
     core_count: u16,
     small_core_count: u16,
     hash_domains: u8,
@@ -67,6 +71,15 @@ impl AsicProfile {
     #[must_use]
     pub const fn voltage_options(&self) -> &'static [u16] {
         self.voltage_options
+    }
+
+    /// Returns the ASIC family ticket-mask difficulty.
+    ///
+    /// Reference: `reference/esp-miner/main/device_config.h` `AsicConfig.difficulty`.
+    /// BM1366 Ultra 205 uses 256. This is not pool `stratumdiff`.
+    #[must_use]
+    pub const fn difficulty(&self) -> u16 {
+        self.difficulty
     }
 
     /// Returns the normal core count.
@@ -211,6 +224,8 @@ const ASIC_BM1397: AsicProfile = AsicProfile {
     frequency_options: BM1397_FREQUENCY_OPTIONS,
     default_voltage_mv: 1400,
     voltage_options: BM1397_VOLTAGE_OPTIONS,
+    // Reference: device_config.h ASIC_BM1397.difficulty (NotHardwareVerified).
+    difficulty: 256,
     core_count: 168,
     small_core_count: 672,
     hash_domains: 1,
@@ -225,6 +240,8 @@ const ASIC_BM1366: AsicProfile = AsicProfile {
     frequency_options: BM1366_FREQUENCY_OPTIONS,
     default_voltage_mv: 1200,
     voltage_options: BM1366_VOLTAGE_OPTIONS,
+    // Reference: device_config.h ASIC_BM1366.difficulty = 256 (Ultra 205 ActiveUltra205).
+    difficulty: 256,
     core_count: 112,
     small_core_count: 894,
     hash_domains: 4,
@@ -239,6 +256,8 @@ const ASIC_BM1368: AsicProfile = AsicProfile {
     frequency_options: BM1368_FREQUENCY_OPTIONS,
     default_voltage_mv: 1166,
     voltage_options: BM1368_VOLTAGE_OPTIONS,
+    // Reference: device_config.h ASIC_BM1368.difficulty (NotHardwareVerified).
+    difficulty: 256,
     core_count: 80,
     small_core_count: 1276,
     hash_domains: 4,
@@ -253,6 +272,8 @@ const ASIC_BM1370: AsicProfile = AsicProfile {
     frequency_options: BM1370_FREQUENCY_OPTIONS,
     default_voltage_mv: 1150,
     voltage_options: BM1370_VOLTAGE_OPTIONS,
+    // Reference: device_config.h ASIC_BM1370.difficulty (NotHardwareVerified).
+    difficulty: 256,
     core_count: 128,
     small_core_count: 2040,
     hash_domains: 4,
@@ -267,6 +288,8 @@ const ASIC_BM1370_XP: AsicProfile = AsicProfile {
     frequency_options: BM1370_XP_FREQUENCY_OPTIONS,
     default_voltage_mv: 1150,
     voltage_options: BM1370_VOLTAGE_OPTIONS,
+    // Reference: device_config.h ASIC_BM1370XP.difficulty (NotHardwareVerified).
+    difficulty: 256,
     core_count: 128,
     small_core_count: 2040,
     hash_domains: 4,

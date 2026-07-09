@@ -16,6 +16,7 @@
       "core_count": 168,
       "small_core_count": 672,
       "hash_domains": 1,
+      "difficulty": 256,
       "default_asic_timeout": 20
     },
     {
@@ -29,6 +30,7 @@
       "core_count": 112,
       "small_core_count": 894,
       "hash_domains": 4,
+      "difficulty": 256,
       "default_asic_timeout": 2000
     },
     {
@@ -42,6 +44,7 @@
       "core_count": 80,
       "small_core_count": 1276,
       "hash_domains": 4,
+      "difficulty": 256,
       "default_asic_timeout": 500
     },
     {
@@ -55,6 +58,7 @@
       "core_count": 128,
       "small_core_count": 2040,
       "hash_domains": 4,
+      "difficulty": 256,
       "default_asic_timeout": 500
     },
     {
@@ -68,6 +72,7 @@
       "core_count": 128,
       "small_core_count": 2040,
       "hash_domains": 4,
+      "difficulty": 256,
       "default_asic_timeout": 500
     }
   ],

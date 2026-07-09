@@ -37,6 +37,7 @@ struct CatalogAsicProfileFixture {
     core_count: u16,
     small_core_count: u16,
     hash_domains: u8,
+    difficulty: u16,
     default_asic_timeout: u16,
 }
 
@@ -377,6 +378,7 @@ fn assert_asic_profile_matches_fixture(asic: AsicProfile, fixture: &CatalogAsicP
     assert_eq!(asic.core_count(), fixture.core_count);
     assert_eq!(asic.small_core_count(), fixture.small_core_count);
     assert_eq!(asic.hash_domains(), fixture.hash_domains);
+    assert_eq!(asic.difficulty(), fixture.difficulty);
     assert_eq!(asic.default_asic_timeout(), fixture.default_asic_timeout);
 }
 
