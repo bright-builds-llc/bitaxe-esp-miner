@@ -2,26 +2,26 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.5 inserted — chip-enumerate diagnosis pending discuss/plan
-stopped_at: Inserted Phase 28.1.1.5 after 28.1.1.4
-last_updated: "2026-07-09T11:48:21.000Z"
-last_activity: 2026-07-09 -- Inserted 28.1.1.5 for match_upstream_chip_enumerate_before_init
+status: Phase 28.1.1.5 planned — 4 plans ready to execute
+stopped_at: Planned Phase 28.1.1.5 (waves 01–04)
+last_updated: "2026-07-09T12:05:00.000Z"
+last_activity: 2026-07-09 -- Created 28.1.1.5 plans; forced A/B `count_asic_chips_rx_loop_parity`
 progress:
   total_phases: 15
   completed_phases: 13
-  total_plans: 54
+  total_plans: 58
   completed_plans: 54
-  percent: 100
+  percent: 93
 ---
 
 # Project State
 
 ## Current Position
 
-- **Phase:** 28.1.1.5 — BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis (inserted, not planned)
-- **Plan:** 0/4 — discuss/plan pending
-- **Status:** inserted after 28.1.1.4 — consume `next_hypothesis: match_upstream_chip_enumerate_before_init`; Phase 30 checklist verified rows untouched
-- **Next step:** Yolo discuss → research → 4-wave plan → execute for chip-enumerate sequencing
+- **Phase:** 28.1.1.5 — BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis
+- **Plan:** 0/4 — plans ready (Wave 0 comparator → RX-loop A/B → disposition → final evidence)
+- **Status:** planned — forced A/B label `count_asic_chips_rx_loop_parity`; Phase 30 checklist verified rows untouched
+- **Next step:** `/gsd-execute-phase 28.1.1.5` (or yolo execute) starting at 28.1.1.5-01
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -60,10 +60,20 @@ progress:
 | 28.1.1.4 | 03 | 1 min | 2 | 1 |
 | 28.1.1.4 | 04 | 1 min | 2 | 5 |
 
+## Decisions (Phase 28.1.1.5 planning)
+
+- Forced A/B label: `count_asic_chips_rx_loop_parity` (RESEARCH Pattern 2 / D-05)
+- Wave 0 comparator may rename only from redacted evidence (`counted_chip_address_interval` or `enumerate_to_mining_ready_gap`)
+- `recommended_investigation` closed set: `match_upstream_chip_enumerate_before_init` | `version_rolling_negotiation` | `none`
+- HARD BAN: never emit `post_max_baud_delay_2000`, `match_upstream_register_read_poll`, `upstream_like_long_block_receive`, `ticket_mask_asic_difficulty`
+- Do not patch ReadChipId `0x0A` frame bytes (already matched)
+- Keep ASIC-256 ticket-mask wire parity; no Phase 30 checklist verified edits
+- If RX-loop A/B falsified with markers otherwise matching → `next_hypothesis: version_rolling_negotiation` (no second speculative patch)
+
 ## Session
 
-- **Stopped at:** Inserted Phase 28.1.1.5
-- **Resume:** `/gsd-yolo-discuss-plan-and-execute 28.1.1.5` (or continue in-session)
+- **Stopped at:** Planned Phase 28.1.1.5 (4 PLAN.md files)
+- **Resume:** `/gsd-execute-phase 28.1.1.5`
 
 ## Accumulated Context
 
