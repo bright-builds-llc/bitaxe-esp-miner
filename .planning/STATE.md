@@ -2,27 +2,27 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.7 planned — 4 plans ready to execute
-stopped_at: Planned Phase 28.1.1.7 (waves 01–04)
-last_updated: "2026-07-09T14:42:00.000Z"
+status: verifying
+stopped_at: Completed 28.1.1.7-01-PLAN.md
+last_updated: "2026-07-09T14:49:08.556Z"
 progress:
-  total_phases: 17
+  total_phases: 18
   completed_phases: 15
-  total_plans: 66
-  completed_plans: 62
-  percent: 94
+  total_plans: 65
+  completed_plans: 63
+  percent: 97
 ---
 
 # Project State
 
 ## Current Position
 
-- **Phase:** 28.1.1.7 — BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis (planned)
-- **Plan:** 0/4 — plans ready; execute pending
-- **Status:** 4-wave plan locked — forced A/B `pool_negotiated_mask_asic_reload`; Phase 30 checklist verified rows untouched
-- **Next step:** `/gsd-execute-phase 28.1.1.7` (Wave 0 comparator → patch+A/B → disposition → close)
+- **Phase:** 28.1.1.7 — BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis
+- **Plan:** 1/4 — Wave 0 comparator complete; Plan 02 next
+- **Status:** Wave 0 ASIC mask-reload comparator green; forced A/B `pool_negotiated_mask_asic_reload`; Phase 30 checklist verified rows untouched
+- **Next step:** Execute `28.1.1.7-02-PLAN.md` (runtime SetVersionMask patch + ≥360 s fake-pool A/B)
 
-## Decisions (Phase 28.1.1.7 — planned)
+## Decisions (Phase 28.1.1.7)
 
 - Forced A/B label: `pool_negotiated_mask_asic_reload` (D-04/D-12)
 - Gate lever on `mask_reload_tx_observed` / `post_configure_runtime` after configure — not mask-value delta (D-05)
@@ -31,6 +31,9 @@ progress:
 - Plan 02 hook: `apply_negotiated_version_mask` in production.rs; flush from live_stratum_runtime after configure + production_ready
 - Plan 03: promote only if improved+correlate/submit; else evidence-named next_hypothesis (default placeholder `remaining_nonce_production_blocker_narrowing` if silent); no second speculative patch
 - Plan 04: `passed` only with result_correlated + share submit; Phase 30 checklist verified rows untouched
+- `forced_ab_label` defaults to `pool_negotiated_mask_asic_reload` when configure+mask_stored+mask_applied and `mask_reload_tx_observed` false (Plan 01)
+- `mask_reload_tx_observed` true only for `post_configure_runtime` after configure — never prelude_3/init_register (Plan 01)
+- `recommended_investigation` closed to `pool_negotiated_mask_asic_reload` | `remaining_nonce_production_blocker_narrowing` | `none` (Plan 01)
 
 ## Decisions (Phase 28.1.1.6)
 
@@ -93,6 +96,7 @@ progress:
 | Phase 28.1.1.6 P02 | 11 min | 2 tasks | 7 files |
 | Phase 28.1.1.6 P03 | 1 min | 2 tasks | 1 files |
 | Phase 28.1.1.6 P04 | 5 min | 2 tasks | 5 files |
+| Phase 28.1.1.7 P01 | 2 min | 2 tasks | 2 files |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -116,7 +120,7 @@ progress:
 
 ## Session
 
-- **Stopped at:** Planned Phase 28.1.1.7 (4 PLAN.md files)
+- **Stopped at:** Completed 28.1.1.7-01-PLAN.md
 - **Resume:** `/gsd-execute-phase 28.1.1.7`
 
 ## Accumulated Context
