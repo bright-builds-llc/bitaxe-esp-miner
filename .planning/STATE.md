@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: verifying
+status: executing
 stopped_at: Phase 28.1.1 context gathered
-last_updated: "2026-07-09T19:29:38.691Z"
+last_updated: "2026-07-09T19:55:35.612Z"
 progress:
   total_phases: 18
-  completed_phases: 16
-  total_plans: 65
-  completed_plans: 66
-  percent: 100
+  completed_phases: 15
+  total_plans: 64
+  completed_plans: 61
+  percent: 95
 ---
 
 # Project State
@@ -19,7 +19,7 @@ progress:
 
 - **Phase:** 28.1.1.7 — BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis
 - **Plan:** 4/4 — Phase closed (`verification_result: gaps_found`)
-- **Status:** `verification_result: gaps_found`; `patch_disposition: falsified_pool_negotiated_mask_asic_reload_as_sole_blocker`; `wire_parity_mask_reload_retained: true` + mask-on-MiningWork + ASIC-256 + RX-loop retained; `next_hypothesis: remaining_nonce_production_blocker_narrowing`; `phase30_promotion_input: pending`; Phase 30 checklist verified rows untouched
+- **Status:** Ready to execute
 - **Next step:** Discuss/plan follow-on insert for `remaining_nonce_production_blocker_narrowing` (do not promote STR-09/CFG-07/ASIC-11 checklist verified rows)
 
 ## Decisions (Phase 28.1.1.7)
