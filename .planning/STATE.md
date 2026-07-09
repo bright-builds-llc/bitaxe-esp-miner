@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.5 in progress — Plan 02 complete
-stopped_at: Completed 28.1.1.5-02-PLAN.md
-last_updated: "2026-07-09T12:27:52.483Z"
+status: executing
+stopped_at: Completed 28.1.1.5-03-PLAN.md
+last_updated: "2026-07-09T12:31:07.238Z"
 progress:
   total_phases: 16
   completed_phases: 13
   total_plans: 57
-  completed_plans: 56
-  percent: 98
+  completed_plans: 57
+  percent: 100
 ---
 
 # Project State
@@ -18,9 +18,9 @@ progress:
 ## Current Position
 
 - **Phase:** 28.1.1.5 — BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis
-- **Plan:** 2/4 — RX-loop patch + A/B complete; next disposition
-- **Status:** in progress — `count_asic_chips_rx_loop_parity` A/B `ab_outcome: unchanged`
-- **Next step:** Execute `28.1.1.5-03-PLAN.md` (patch disposition; likely next_hypothesis version_rolling_negotiation)
+- **Plan:** 3/4 — patch disposition complete; next final evidence
+- **Status:** in progress — `patch_disposition: falsified_count_asic_chips_rx_loop_parity_as_sole_blocker`; `wire_parity_rx_loop_retained: true`
+- **Next step:** Execute `28.1.1.5-04-PLAN.md` (final redacted evidence + VERIFICATION)
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -60,6 +60,7 @@ progress:
 | 28.1.1.4 | 04 | 1 min | 2 | 5 |
 | 28.1.1.5 | 01 | 2 min | 2 | 2 |
 | 28.1.1.5 | 02 | 25 min | 2 | 7 |
+| 28.1.1.5 | 03 | 1 min | 2 | 1 |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -73,11 +74,14 @@ progress:
 - If RX-loop A/B falsified with markers otherwise matching → `next_hypothesis: version_rolling_negotiation` (no second speculative patch)
 - Default candidate `count_asic_chips_rx_loop_parity` with fixtures; empty-buffer ESP_ERR_TIMEOUT maps to idle exit
 - A/B `ab_outcome: unchanged` — `counted_rx`/`drain_idle_like` matched but no correlate/submit; Plan 03 disposition; recommender hints `version_rolling_negotiation`
+- `patch_disposition=falsified_count_asic_chips_rx_loop_parity_as_sole_blocker`; `wire_parity_rx_loop_retained: true`
+- Plan 03 next_hypothesis: `version_rolling_negotiation` (not implemented; no second speculative patch)
+- `phase30_promotion_input: pending`; ASIC-256 ticket mask retained; checklist verified rows untouched
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.5-02-PLAN.md
-- **Resume:** Execute `28.1.1.5-03-PLAN.md`
+- **Stopped at:** Completed 28.1.1.5-03-PLAN.md
+- **Resume:** Execute `28.1.1.5-04-PLAN.md`
 
 ## Accumulated Context
 
