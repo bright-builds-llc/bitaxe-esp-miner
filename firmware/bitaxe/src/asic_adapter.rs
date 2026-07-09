@@ -37,8 +37,8 @@ pub use uart::RESULT_WORK_TIMEOUT_MS;
 mod work_result_investigation;
 
 pub use production::{
-    probe_hashrate_monitor_register_reads_tx, probe_register_read_tx, production_ready,
-    ProductionAsicExecutor, ProductionReadOutcome,
+    apply_negotiated_version_mask, probe_hashrate_monitor_register_reads_tx,
+    probe_register_read_tx, production_ready, ProductionAsicExecutor, ProductionReadOutcome,
 };
 pub use work_result_investigation::{
     match_upstream_register_read_poll_enabled, single_dispatch_bounded_read_enabled,

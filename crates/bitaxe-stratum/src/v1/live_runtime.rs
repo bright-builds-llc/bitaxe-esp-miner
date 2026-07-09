@@ -147,6 +147,11 @@ pub struct LiveStratumRuntime {
     outbound_actions: Vec<LiveRuntimeAction>,
     maybe_extranonce: Option<ExtranonceAssignment>,
     maybe_version_mask: Option<VersionMask>,
+    /// Once-shot pending ASIC `SetVersionMask` reload after configure /
+    /// `mining.set_version_mask` (upstream `new_stratum_version_rolling_msg`).
+    /// Cleared by [`Self::take_pending_version_mask_reload`]. Not value-delta
+    /// gated — fake-pool mask may equal init default `0x1fffe000`.
+    pending_version_mask_reload: bool,
     maybe_current_notify: Option<MiningNotify>,
     extranonce2_counter: u64,
     next_request_id: u64,
@@ -181,6 +186,7 @@ impl LiveStratumRuntime {
             outbound_actions: Vec::new(),
             maybe_extranonce: None,
             maybe_version_mask: None,
+            pending_version_mask_reload: false,
             maybe_current_notify: None,
             extranonce2_counter: 0,
             next_request_id: 1,
@@ -199,6 +205,24 @@ impl LiveStratumRuntime {
     #[must_use]
     pub const fn maybe_version_mask(&self) -> Option<VersionMask> {
         self.maybe_version_mask
+    }
+
+    /// Take the once-shot pending ASIC version-mask reload, if any.
+    ///
+    /// Returns the stored mask when configure / `set_version_mask` raised the
+    /// pending bit. Clears the bit so firmware flushes at most once per store
+    /// (upstream `new_stratum_version_rolling_msg` clear after TX).
+    pub fn take_pending_version_mask_reload(&mut self) -> Option<VersionMask> {
+        if !self.pending_version_mask_reload {
+            return None;
+        }
+        self.pending_version_mask_reload = false;
+        self.maybe_version_mask
+    }
+
+    fn store_version_mask_and_raise_reload(&mut self, mask: VersionMask) {
+        self.maybe_version_mask = Some(mask);
+        self.pending_version_mask_reload = true;
     }
 
     #[must_use]
@@ -264,7 +288,7 @@ impl LiveStratumRuntime {
                 Ok(None)
             }
             StratumV1ServerMessage::SetVersionMask(mask) => {
-                self.maybe_version_mask = Some(mask);
+                self.store_version_mask_and_raise_reload(mask);
                 Ok(None)
             }
             StratumV1ServerMessage::Notify(notify) => self.apply_notify(notify),
@@ -424,7 +448,7 @@ impl LiveStratumRuntime {
         }
 
         if let Some(mask) = response.maybe_version_mask {
-            self.maybe_version_mask = Some(mask);
+            self.store_version_mask_and_raise_reload(mask);
             return Ok(None);
         }
 
@@ -593,6 +617,50 @@ mod tests {
             .production_registry()
             .valid_jobs()
             .contains(Bm1366JobId::new(0)));
+    }
+
+    #[test]
+    fn configure_mask_store_raises_pending_version_mask_reload_even_when_mask_equals_init_default() {
+        // Arrange — fake-pool / init default mask (D-05: no value-delta gate).
+        let mut runtime = started_runtime();
+        let init_default_mask = VersionMask { mask: 0x1fff_e000 };
+
+        // Act
+        runtime
+            .apply_server_message(StratumV1ServerMessage::Response(StratumResponse {
+                maybe_id: Some(StratumRequestId::new(1)),
+                success: true,
+                maybe_error: None,
+                maybe_extranonce: None,
+                maybe_version_mask: Some(init_default_mask),
+            }))
+            .expect("configure response should store mask");
+        let taken = runtime.take_pending_version_mask_reload();
+        let taken_again = runtime.take_pending_version_mask_reload();
+
+        // Assert
+        assert_eq!(runtime.maybe_version_mask(), Some(init_default_mask));
+        assert_eq!(taken, Some(init_default_mask));
+        assert_eq!(taken_again, None);
+    }
+
+    #[test]
+    fn set_version_mask_raises_pending_version_mask_reload() {
+        // Arrange
+        let mut runtime = authorized_runtime();
+        let mask = VersionMask { mask: 0x1fff_e000 };
+
+        // Act
+        runtime
+            .apply_server_message(StratumV1ServerMessage::SetVersionMask(mask))
+            .expect("set_version_mask should store mask");
+
+        // Assert
+        assert_eq!(
+            runtime.take_pending_version_mask_reload(),
+            Some(mask)
+        );
+        assert_eq!(runtime.take_pending_version_mask_reload(), None);
     }
 
     #[test]

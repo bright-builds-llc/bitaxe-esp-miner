@@ -581,6 +581,9 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
         publish_watchdog_checkpoint(StepKind::Socket, 1);
 
         if phase27_bridge {
+            // Upstream create_jobs: flag + ASIC_initalized → ASIC_set_version_mask
+            // before/at send_work. Flush pending reload once production_ready.
+            maybe_flush_pending_version_mask_reload(runtime);
             asic_bridge.maybe_arm_continuous_listener();
             maybe_log_power_delta(&mut asic_bridge);
             maybe_send_register_read_poll(&mut asic_bridge);
@@ -778,10 +781,36 @@ enum AsicBridgeStepOutcome {
     Blocked { reason: ProductionAsicBlocker },
 }
 
+/// Flush once-shot pending negotiated `SetVersionMask` onto the production UART.
+///
+/// Upstream: `new_stratum_version_rolling_msg && ASIC_initalized` →
+/// `ASIC_set_version_mask` (create_jobs_task.c:126-129). Not value-delta gated.
+fn maybe_flush_pending_version_mask_reload(runtime: &mut LiveStratumRuntime) {
+    if !asic_adapter::production_ready() {
+        return;
+    }
+    let Some(stratum_mask) = runtime.take_pending_version_mask_reload() else {
+        return;
+    };
+    let mask = bitaxe_asic::bm1366::command::VersionMask::new(stratum_mask.mask);
+    if asic_adapter::apply_negotiated_version_mask(mask) {
+        info_retained(
+            "mask_reload_tx_observed=true version_mask_tx_class=post_configure_runtime redacted=true",
+        );
+    } else {
+        log::warn!(
+            "mask_reload_tx_error version_mask_tx_class=post_configure_runtime redacted=true"
+        );
+    }
+}
+
 fn run_asic_bridge_step(
     runtime: &mut LiveStratumRuntime,
     bridge: &mut AsicBridgeState,
 ) -> AsicBridgeStepOutcome {
+    // Prefer flush before dispatch (create_jobs ordering).
+    maybe_flush_pending_version_mask_reload(runtime);
+
     if !bridge.continuous && bridge.awaiting_bounded_read {
         return read_bounded_asic_result(runtime, bridge);
     }

@@ -6,7 +6,7 @@ use std::sync::{Mutex, OnceLock};
 
 use anyhow::Result;
 use bitaxe_asic::bm1366::{
-    command::{Bm1366AdapterAction, Bm1366Command},
+    command::{Bm1366AdapterAction, Bm1366Command, VersionMask},
     mining_ready::ultra_205_result_address_interval,
     packet::{CommandFrame, CMD_READ, COMMAND_HEADER_TYPE, GROUP_ALL},
     production::{Bm1366ProductionCommand, ProductionAsicBlocker, ProductionAsicStatus},
@@ -110,6 +110,38 @@ pub fn probe_register_read_tx() -> bool {
     let Ok(mut state) = production_state().lock() else {
         return false;
     };
+    let Some(uart) = state.maybe_uart.as_mut() else {
+        return false;
+    };
+    if uart.write_frame(frame.as_ref()).is_err() {
+        return false;
+    }
+    uart.wait_tx_done(uart::WAIT_TX_DONE_TIMEOUT_MS).is_ok()
+}
+
+/// Post-configure runtime `SetVersionMask` on the retained production UART.
+///
+/// Mirrors upstream `ASIC_set_version_mask` / `BM1366_set_version_mask` after
+/// configure when ASIC is initialized. Not value-delta gated — callers may
+/// reload the init-default mask (`0x1fffe000`). Returns `false` when UART is
+/// not retained or not production-ready; never blocks mining beyond logging.
+///
+/// Reference: `reference/esp-miner/main/tasks/create_jobs_task.c:126-129`,
+/// `reference/esp-miner/components/asic/bm1366.c:141-147`.
+#[must_use]
+pub fn apply_negotiated_version_mask(mask: VersionMask) -> bool {
+    if !production_ready() {
+        return false;
+    }
+    let Ok(frame) = Bm1366Command::SetVersionMask(mask).frame_bytes() else {
+        return false;
+    };
+    let Ok(mut state) = production_state().lock() else {
+        return false;
+    };
+    if !state.production_ready {
+        return false;
+    }
     let Some(uart) = state.maybe_uart.as_mut() else {
         return false;
     };
@@ -392,6 +424,21 @@ mod tests {
 
         // Assert
         assert!(!source.contains("SendDiagnosticWork"));
+    }
+
+    #[test]
+    fn apply_negotiated_version_mask_encodes_set_version_mask_frame() {
+        // Arrange — encode path used by apply_negotiated_version_mask (no UART).
+        let mask = VersionMask::new(0x1fff_e000);
+
+        // Act
+        let frame = Bm1366Command::SetVersionMask(mask)
+            .frame_bytes()
+            .expect("SetVersionMask should encode");
+
+        // Assert — non-empty command frame; helper returns false without UART.
+        assert!(!frame.as_ref().is_empty());
+        assert!(!apply_negotiated_version_mask(mask));
     }
 
     fn sample_fields() -> Bm1366WorkFields {
