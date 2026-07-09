@@ -6,14 +6,21 @@ use std::sync::{Mutex, OnceLock};
 
 use anyhow::Result;
 use bitaxe_asic::bm1366::{
+    accepted_state::{
+        AcceptedStateSnapshot, AcceptedStateStage, AcceptedStateStatus, PowerDeltaClass,
+    },
     command::{Bm1366AdapterAction, Bm1366Command, VersionMask},
     mining_ready::ultra_205_result_address_interval,
     packet::{CommandFrame, CMD_READ, COMMAND_HEADER_TYPE, GROUP_ALL},
     production::{Bm1366ProductionCommand, ProductionAsicBlocker, ProductionAsicStatus},
-    registers::read_register_payload,
+    registers::{
+        read_register_payload, Bm1366Register, CHIP_ID_REGISTER, DOMAIN0_COUNT_REGISTER,
+        DOMAIN1_COUNT_REGISTER, DOMAIN2_COUNT_REGISTER, DOMAIN3_COUNT_REGISTER,
+        ERROR_COUNT_REGISTER, TOTAL_COUNT_REGISTER,
+    },
     result::{
-        parse_bm1366_result_frame, Bm1366NonceResult, Bm1366ParsedResult, Bm1366ValidJobIds,
-        BM1366_RESULT_FRAME_LEN,
+        parse_bm1366_result_frame, Bm1366NonceResult, Bm1366ParsedResult, Bm1366RegisterRead,
+        Bm1366ValidJobIds, BM1366_RESULT_FRAME_LEN,
     },
 };
 
@@ -24,7 +31,88 @@ use super::{reset, status, uart};
 pub enum ProductionReadOutcome {
     Pending,
     JobNonce(Bm1366NonceResult),
-    RegisterReadProof,
+    RegisterReadProof(Bm1366RegisterRead),
+}
+
+/// Exact safe-readable set for one-shot accepted-state diagnostics.
+pub const ACCEPTED_STATE_READ_REGISTERS: [u8; 7] = [
+    CHIP_ID_REGISTER,
+    ERROR_COUNT_REGISTER,
+    DOMAIN0_COUNT_REGISTER,
+    DOMAIN1_COUNT_REGISTER,
+    DOMAIN2_COUNT_REGISTER,
+    DOMAIN3_COUNT_REGISTER,
+    TOTAL_COUNT_REGISTER,
+];
+
+/// Redaction-safe accumulator for one bounded accepted-state read burst.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AcceptedStateSnapshotObservation {
+    stage: AcceptedStateStage,
+    readable_responses: u32,
+    chip_count_class: AcceptedStateStatus,
+    error_counter_active: bool,
+    domain_counter_active: bool,
+    total_counter_active: bool,
+}
+
+impl AcceptedStateSnapshotObservation {
+    #[must_use]
+    pub const fn new(stage: AcceptedStateStage) -> Self {
+        Self {
+            stage,
+            readable_responses: 0,
+            chip_count_class: AcceptedStateStatus::Unavailable,
+            error_counter_active: false,
+            domain_counter_active: false,
+            total_counter_active: false,
+        }
+    }
+
+    pub fn observe(&mut self, read: Bm1366RegisterRead) {
+        self.readable_responses = self.readable_responses.saturating_add(1);
+        match read.register {
+            Bm1366Register::ChipId => {
+                self.chip_count_class = if read.asic_index == 0 {
+                    AcceptedStateStatus::Match
+                } else {
+                    AcceptedStateStatus::Mismatch
+                };
+            }
+            Bm1366Register::ErrorCount => {
+                self.error_counter_active |= read.value > 0;
+            }
+            Bm1366Register::Domain0Count
+            | Bm1366Register::Domain1Count
+            | Bm1366Register::Domain2Count
+            | Bm1366Register::Domain3Count => {
+                self.domain_counter_active |= read.value > 0;
+            }
+            Bm1366Register::TotalCount => {
+                self.total_counter_active |= read.value > 0;
+            }
+        }
+    }
+
+    #[must_use]
+    pub const fn snapshot(
+        self,
+        power_delta_class: PowerDeltaClass,
+        result_correlated: bool,
+        submit_observed: bool,
+    ) -> AcceptedStateSnapshot {
+        AcceptedStateSnapshot {
+            stage: self.stage,
+            chip_count_class: self.chip_count_class,
+            readable_response_count: self.readable_responses,
+            error_counter_active: self.error_counter_active,
+            domain_counter_active: self.domain_counter_active,
+            total_counter_active: self.total_counter_active,
+            power_delta_class,
+            result_correlated,
+            submit_observed,
+        }
+    }
 }
 
 static PRODUCTION_HANDLE: OnceLock<Mutex<ProductionAsicState>> = OnceLock::new();
@@ -160,8 +248,62 @@ pub fn apply_negotiated_version_mask(mask: VersionMask) -> bool {
 /// register-read responses. Failures return `false` and never block mining.
 #[must_use]
 pub fn probe_hashrate_monitor_register_reads_tx() -> bool {
-    let mut frames = Vec::with_capacity(HASHRATE_MONITOR_REGISTERS.len());
-    for &register in HASHRATE_MONITOR_REGISTERS {
+    send_register_read_burst(HASHRATE_MONITOR_REGISTERS)
+}
+
+/// One-shot accepted-state read burst on the retained production UART.
+///
+/// Callers own the closed stage guard. This helper sends the exact safe read
+/// set once and never schedules retries or polling.
+#[must_use]
+pub fn probe_accepted_state_register_reads_tx() -> bool {
+    if !super::work_result_investigation::accepted_state_snapshot_enabled() {
+        return false;
+    }
+    send_register_read_burst(&ACCEPTED_STATE_READ_REGISTERS)
+}
+
+/// Collect one bounded accepted-state burst while boot still owns the UART.
+pub(super) fn collect_boot_accepted_state_snapshot(
+    uart: &mut uart::AsicUart<'_>,
+    stage: AcceptedStateStage,
+) -> AcceptedStateSnapshotObservation {
+    const RESPONSE_TIMEOUT_MS: u32 = 250;
+
+    let mut observation = AcceptedStateSnapshotObservation::new(stage);
+    for &register in &ACCEPTED_STATE_READ_REGISTERS {
+        let Ok(frame) = CommandFrame::new(
+            COMMAND_HEADER_TYPE | GROUP_ALL | CMD_READ,
+            read_register_payload(register).as_bytes(),
+        ) else {
+            return observation;
+        };
+        if uart.write_frame(frame.into_bytes().as_ref()).is_err()
+            || uart.wait_tx_done(uart::WAIT_TX_DONE_TIMEOUT_MS).is_err()
+        {
+            return observation;
+        }
+    }
+
+    for _ in ACCEPTED_STATE_READ_REGISTERS {
+        let Ok(Some(frame)) = uart.try_read_exact(BM1366_RESULT_FRAME_LEN, RESPONSE_TIMEOUT_MS)
+        else {
+            continue;
+        };
+        if let Ok(Bm1366ParsedResult::RegisterRead(read)) = parse_bm1366_result_frame(
+            &frame,
+            &Bm1366ValidJobIds::empty(),
+            ultra_205_result_address_interval(),
+        ) {
+            observation.observe(read);
+        }
+    }
+    observation
+}
+
+fn send_register_read_burst(registers: &[u8]) -> bool {
+    let mut frames = Vec::with_capacity(registers.len());
+    for &register in registers {
         let Ok(frame) = CommandFrame::new(
             COMMAND_HEADER_TYPE | GROUP_ALL | CMD_READ,
             read_register_payload(register).as_bytes(),
@@ -235,7 +377,7 @@ impl ProductionAsicExecutor {
                 )? {
                     ProductionReadOutcome::Pending => Ok(None),
                     ProductionReadOutcome::JobNonce(result) => Ok(Some(result)),
-                    ProductionReadOutcome::RegisterReadProof => Ok(None),
+                    ProductionReadOutcome::RegisterReadProof(_) => Ok(None),
                 }
             }
         }
@@ -279,9 +421,9 @@ fn try_read_production_result_on_state(
 
     match parse_bm1366_result_frame(&frame, valid_jobs, ultra_205_result_address_interval()) {
         Ok(Bm1366ParsedResult::JobNonce(result)) => Ok(ProductionReadOutcome::JobNonce(result)),
-        Ok(Bm1366ParsedResult::RegisterRead(_)) => {
+        Ok(Bm1366ParsedResult::RegisterRead(read)) => {
             log::info!("asic_production_trace=register_read_parsed");
-            Ok(ProductionReadOutcome::RegisterReadProof)
+            Ok(ProductionReadOutcome::RegisterReadProof(read))
         }
         Err(_) => Err(ProductionAsicBlocker::ResultMalformed),
     }
@@ -439,6 +581,41 @@ mod tests {
         // Assert — non-empty command frame; helper returns false without UART.
         assert!(!frame.as_ref().is_empty());
         assert!(!apply_negotiated_version_mask(mask));
+    }
+
+    #[test]
+    fn accepted_state_safe_read_set_is_exact() {
+        // Arrange / Act
+        let registers = ACCEPTED_STATE_READ_REGISTERS;
+
+        // Assert
+        assert_eq!(registers, [0x00, 0x4c, 0x88, 0x89, 0x8a, 0x8b, 0x8c]);
+    }
+
+    #[test]
+    fn accepted_state_marker_contains_categories_only() {
+        // Arrange
+        let mut observation =
+            AcceptedStateSnapshotObservation::new(AcceptedStateStage::PostFirstWork);
+        observation.observe(Bm1366RegisterRead {
+            register: Bm1366Register::TotalCount,
+            asic_index: 7,
+            asic_address: 8,
+            value: 9,
+        });
+
+        // Act
+        let marker = observation
+            .snapshot(PowerDeltaClass::RisingHashing, false, false)
+            .marker();
+
+        // Assert
+        assert_eq!(marker, "accepted_state_snapshot stage=post_first_work observation=unavailable chip_count_class=unavailable readable_responses=1 error_counter_active=false domain_counter_active=false total_counter_active=true power_delta_class=rising_hashing result_correlated=false submit_observed=false redacted=true");
+        assert!(!marker.contains("asic_address"));
+        assert!(!marker.contains("value"));
+        assert!(!marker.contains("=7"));
+        assert!(!marker.contains("=8"));
+        assert!(!marker.contains("=9"));
     }
 
     fn sample_fields() -> Bm1366WorkFields {

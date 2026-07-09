@@ -63,6 +63,18 @@ pub enum PowerDeltaClass {
     Unavailable,
 }
 
+impl PowerDeltaClass {
+    /// Returns the stable report vocabulary for this power category.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Falling => "falling",
+            Self::Flat => "flat",
+            Self::RisingHashing => "rising_hashing",
+            Self::Unavailable => "unavailable",
+        }
+    }
+}
+
 /// Closed next-investigation recommendation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AcceptedStateRecommendation {
@@ -108,6 +120,27 @@ impl AcceptedStateSnapshot {
 
     fn has_result_progress(self) -> bool {
         self.result_correlated || self.submit_observed
+    }
+
+    /// Renders the category-only firmware/comparator interchange marker.
+    pub fn marker(self) -> String {
+        let observation = if self.has_safe_readable_observation() {
+            "available"
+        } else {
+            "unavailable"
+        };
+        format!(
+            "accepted_state_snapshot stage={} observation={observation} chip_count_class={} readable_responses={} error_counter_active={} domain_counter_active={} total_counter_active={} power_delta_class={} result_correlated={} submit_observed={} redacted=true",
+            self.stage.as_str(),
+            self.chip_count_class.as_str(),
+            self.readable_response_count,
+            self.error_counter_active,
+            self.domain_counter_active,
+            self.total_counter_active,
+            self.power_delta_class.as_str(),
+            self.result_correlated,
+            self.submit_observed,
+        )
     }
 }
 
@@ -238,6 +271,20 @@ mod tests {
             result_correlated: false,
             submit_observed: false,
         }
+    }
+
+    #[test]
+    fn accepted_state_marker_is_category_only() {
+        // Arrange
+        let snapshot = snapshot(AcceptedStateStage::PostFirstWork);
+
+        // Act
+        let marker = snapshot.marker();
+
+        // Assert
+        assert_eq!(marker, "accepted_state_snapshot stage=post_first_work observation=available chip_count_class=match readable_responses=1 error_counter_active=false domain_counter_active=false total_counter_active=false power_delta_class=flat result_correlated=false submit_observed=false redacted=true");
+        assert!(!marker.contains("asic_address"));
+        assert!(!marker.contains("register_value"));
     }
 
     #[test]

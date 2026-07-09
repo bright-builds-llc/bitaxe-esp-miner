@@ -7,6 +7,7 @@
 
 use anyhow::{Context, Result};
 use bitaxe_asic::bm1366::{
+    accepted_state::{AcceptedStateStage, PowerDeltaClass},
     adapter_gate::AsicAdapterMode,
     chip_detect::{
         self, Bm1366AdapterIoFault, Bm1366AdapterSetupFault, ChipIdCountFrameDisposition,
@@ -37,12 +38,13 @@ pub use uart::RESULT_WORK_TIMEOUT_MS;
 mod work_result_investigation;
 
 pub use production::{
-    apply_negotiated_version_mask, probe_hashrate_monitor_register_reads_tx,
-    probe_register_read_tx, production_ready, ProductionAsicExecutor, ProductionReadOutcome,
+    apply_negotiated_version_mask, probe_accepted_state_register_reads_tx,
+    probe_hashrate_monitor_register_reads_tx, probe_register_read_tx, production_ready,
+    AcceptedStateSnapshotObservation, ProductionAsicExecutor, ProductionReadOutcome,
 };
 pub use work_result_investigation::{
-    match_upstream_register_read_poll_enabled, single_dispatch_bounded_read_enabled,
-    upstream_like_long_block_receive_enabled,
+    accepted_state_snapshot_enabled, match_upstream_register_read_poll_enabled,
+    single_dispatch_bounded_read_enabled, upstream_like_long_block_receive_enabled,
 };
 
 pub use status::{
@@ -284,14 +286,20 @@ where
         }
     };
 
-    if retain_for_production && !run_chip_detect_actions(&mut uart, &mut reset) {
-        return Ok(());
+    if retain_for_production {
+        if !run_chip_detect_actions(&mut uart, &mut reset) {
+            return Ok(());
+        }
+        record_boot_accepted_state_snapshot(&mut uart, AcceptedStateStage::PostEnumerate);
     }
 
     let mining_ready_completed =
         !retain_for_production || run_mining_ready_init_actions(&mut uart, &mut reset);
     if retain_for_production && !mining_ready_completed {
         return Ok(());
+    }
+    if retain_for_production {
+        record_boot_accepted_state_snapshot(&mut uart, AcceptedStateStage::PostMiningReady);
     }
 
     // Reference: reference/esp-miner/main/power/asic_init.c:58-61 — upstream sets
@@ -424,6 +432,18 @@ fn info_retained(line: &str) {
     crate::log_buffer::append_runtime_log_line(line);
 }
 
+fn record_boot_accepted_state_snapshot(uart: &mut uart::AsicUart<'_>, stage: AcceptedStateStage) {
+    if !work_result_investigation::accepted_state_snapshot_enabled() {
+        return;
+    }
+    let observation = production::collect_boot_accepted_state_snapshot(uart, stage);
+    info_retained(
+        &observation
+            .snapshot(PowerDeltaClass::Unavailable, false, false)
+            .marker(),
+    );
+}
+
 fn run_chip_detect_actions(
     uart: &mut uart::AsicUart<'_>,
     reset: &mut reset::AsicReset<'_>,
@@ -498,6 +518,9 @@ fn run_mining_ready_init_actions(
                 fail_closed_adapter_error(reset, &error);
                 return false;
             }
+        }
+        if matches!(action, Bm1366AdapterAction::UseMaxBaud { .. }) {
+            record_boot_accepted_state_snapshot(uart, AcceptedStateStage::PostMaxBaud);
         }
     }
 

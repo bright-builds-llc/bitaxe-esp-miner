@@ -84,6 +84,11 @@ pub fn match_upstream_register_read_poll_enabled() -> bool {
     has_investigation_mode("match_upstream_register_read_poll")
 }
 
+/// Phase 28.1.1 accepted-state diagnostic. Off by default and one-shot only.
+pub fn accepted_state_snapshot_enabled() -> bool {
+    has_investigation_mode("accepted_state_snapshot")
+}
+
 /// Phase 28.1.1.3 A/B: continuous result poll uses upstream-like long-block
 /// `RESULT_WORK_TIMEOUT_MS` (10000) instead of the 100 ms socket clamp.
 /// Off by default; investigation only.
@@ -97,4 +102,30 @@ fn phase27_bridge_active() -> bool {
 
 fn has_investigation_mode(mode: &str) -> bool {
     investigation_modes_contain(INVESTIGATION_RAW, mode)
+}
+
+#[cfg(test)]
+mod tests {
+    use bitaxe_asic::work_result_investigation::investigation_modes_contain;
+
+    use super::accepted_state_snapshot_enabled;
+
+    #[test]
+    fn accepted_state_snapshot_is_absent_from_default_build() {
+        // Arrange / Act / Assert
+        assert!(!accepted_state_snapshot_enabled());
+    }
+
+    #[test]
+    fn accepted_state_snapshot_token_is_exact() {
+        // Arrange
+        let modes = "frequency_ramp,accepted_state_snapshot";
+
+        // Act / Assert
+        assert!(investigation_modes_contain(
+            modes,
+            "accepted_state_snapshot"
+        ));
+        assert!(!investigation_modes_contain(modes, "accepted_state"));
+    }
 }

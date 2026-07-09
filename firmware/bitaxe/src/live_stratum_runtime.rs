@@ -12,8 +12,10 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use bitaxe_asic::bm1366::{
-    mining_ready::bm1366_job_interval_ms, production::ProductionAsicBlocker,
-    result::Bm1366NonceResult,
+    accepted_state::{AcceptedStateStage, PowerDeltaClass},
+    mining_ready::bm1366_job_interval_ms,
+    production::ProductionAsicBlocker,
+    result::{Bm1366NonceResult, Bm1366RegisterRead},
 };
 use bitaxe_config::{nvs::StoredValueKind, ultra_205_defaults, NvsSnapshot};
 use bitaxe_safety::{
@@ -76,6 +78,8 @@ const PHASE27_POOL_WAIT_TIMEOUT_MS: u64 = 120_000;
 /// Power-delta probe sampling delay after first dispatch (7 s, inside the
 /// locked 5-10 s discrimination window).
 const POWER_DELTA_PROBE_DELAY_MS: u64 = 7_000;
+const ACCEPTED_STATE_OBSERVATION_WINDOW_MS: u64 = 5_000;
+const RISING_HASHING_POWER_DELTA_MW: i64 = 5_000;
 const PHASE27_BRIDGE_IDLE: u8 = 0;
 const PHASE27_BRIDGE_RUNNING: u8 = 1;
 const PHASE27_BRIDGE_COMPLETED: u8 = 2;
@@ -583,9 +587,10 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
         if phase27_bridge {
             // Upstream create_jobs: flag + ASIC_initalized → ASIC_set_version_mask
             // before/at send_work. Flush pending reload once production_ready.
-            maybe_flush_pending_version_mask_reload(runtime);
+            maybe_flush_pending_version_mask_reload(runtime, &mut asic_bridge);
             asic_bridge.maybe_arm_continuous_listener();
             maybe_log_power_delta(&mut asic_bridge);
+            asic_bridge.maybe_finish_accepted_state_snapshot();
             maybe_send_register_read_poll(&mut asic_bridge);
         }
 
@@ -628,6 +633,7 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
                 match handle_socket_line(runtime, &line, maybe_pending_submit.as_ref()) {
                     SocketLineOutcome::SubmitClassified => {
                         maybe_pending_submit = None;
+                        asic_bridge.note_submit_observed();
                     }
                     SocketLineOutcome::WorkQueued => {
                         asic_bridge.note_work_queued();
@@ -690,6 +696,13 @@ struct AsicBridgeState {
     maybe_last_register_read_poll_at: Option<Instant>,
     /// Once-per-session marker that register-read poll mode is active.
     register_read_poll_mode_logged: bool,
+    /// One bounded accepted-state response window, diagnostic-only.
+    maybe_accepted_state_observation: Option<asic_adapter::AcceptedStateSnapshotObservation>,
+    maybe_accepted_state_deadline: Option<Instant>,
+    accepted_state_power_delta_class: PowerDeltaClass,
+    accepted_state_stage_mask: u8,
+    accepted_state_result_correlated: bool,
+    accepted_state_submit_observed: bool,
 }
 
 impl Default for AsicBridgeState {
@@ -715,6 +728,12 @@ impl AsicBridgeState {
             power_delta_logged: false,
             maybe_last_register_read_poll_at: None,
             register_read_poll_mode_logged: false,
+            maybe_accepted_state_observation: None,
+            maybe_accepted_state_deadline: None,
+            accepted_state_power_delta_class: PowerDeltaClass::Unavailable,
+            accepted_state_stage_mask: 0,
+            accepted_state_result_correlated: false,
+            accepted_state_submit_observed: false,
         }
     }
 
@@ -731,6 +750,7 @@ impl AsicBridgeState {
     }
 
     fn note_session_invalidated(&mut self) {
+        self.finish_accepted_state_snapshot();
         self.orchestrator.invalidate_session();
         self.last_dispatch_generation = None;
         self.clear_bounded_read();
@@ -740,6 +760,8 @@ impl AsicBridgeState {
         self.power_delta_logged = false;
         self.maybe_last_register_read_poll_at = None;
         self.register_read_poll_mode_logged = false;
+        self.accepted_state_result_correlated = false;
+        self.accepted_state_submit_observed = false;
     }
 
     fn maybe_arm_continuous_listener(&mut self) {
@@ -771,6 +793,80 @@ impl AsicBridgeState {
         self.awaiting_bounded_read = false;
         self.maybe_bounded_read_deadline = None;
     }
+
+    fn begin_accepted_state_snapshot(
+        &mut self,
+        stage: AcceptedStateStage,
+        power_delta_class: PowerDeltaClass,
+    ) {
+        if !asic_adapter::accepted_state_snapshot_enabled()
+            || self.maybe_accepted_state_observation.is_some()
+        {
+            return;
+        }
+        let stage_bit = accepted_state_stage_bit(stage);
+        if self.accepted_state_stage_mask & stage_bit != 0 {
+            return;
+        }
+        self.accepted_state_stage_mask |= stage_bit;
+        self.accepted_state_power_delta_class = power_delta_class;
+        self.maybe_accepted_state_observation =
+            Some(asic_adapter::AcceptedStateSnapshotObservation::new(stage));
+        self.maybe_accepted_state_deadline =
+            Some(Instant::now() + Duration::from_millis(ACCEPTED_STATE_OBSERVATION_WINDOW_MS));
+        if !asic_adapter::probe_accepted_state_register_reads_tx() {
+            self.finish_accepted_state_snapshot();
+        }
+    }
+
+    fn observe_accepted_state_read(&mut self, read: Bm1366RegisterRead) {
+        if let Some(observation) = self.maybe_accepted_state_observation.as_mut() {
+            observation.observe(read);
+        }
+    }
+
+    fn note_result_correlated(&mut self) {
+        self.accepted_state_result_correlated = true;
+    }
+
+    fn note_submit_observed(&mut self) {
+        self.accepted_state_submit_observed = true;
+    }
+
+    fn maybe_finish_accepted_state_snapshot(&mut self) {
+        if self
+            .maybe_accepted_state_deadline
+            .is_some_and(|deadline| Instant::now() >= deadline)
+        {
+            self.finish_accepted_state_snapshot();
+        }
+    }
+
+    fn finish_accepted_state_snapshot(&mut self) {
+        let Some(observation) = self.maybe_accepted_state_observation.take() else {
+            return;
+        };
+        self.maybe_accepted_state_deadline = None;
+        info_retained(
+            &observation
+                .snapshot(
+                    self.accepted_state_power_delta_class,
+                    self.accepted_state_result_correlated,
+                    self.accepted_state_submit_observed,
+                )
+                .marker(),
+        );
+    }
+}
+
+const fn accepted_state_stage_bit(stage: AcceptedStateStage) -> u8 {
+    match stage {
+        AcceptedStateStage::PostEnumerate => 1 << 0,
+        AcceptedStateStage::PostMiningReady => 1 << 1,
+        AcceptedStateStage::PostMaxBaud => 1 << 2,
+        AcceptedStateStage::PostMaskReload => 1 << 3,
+        AcceptedStateStage::PostFirstWork => 1 << 4,
+    }
 }
 
 enum AsicBridgeStepOutcome {
@@ -785,7 +881,10 @@ enum AsicBridgeStepOutcome {
 ///
 /// Upstream: `new_stratum_version_rolling_msg && ASIC_initalized` →
 /// `ASIC_set_version_mask` (create_jobs_task.c:126-129). Not value-delta gated.
-fn maybe_flush_pending_version_mask_reload(runtime: &mut LiveStratumRuntime) {
+fn maybe_flush_pending_version_mask_reload(
+    runtime: &mut LiveStratumRuntime,
+    bridge: &mut AsicBridgeState,
+) {
     if !asic_adapter::production_ready() {
         return;
     }
@@ -796,6 +895,10 @@ fn maybe_flush_pending_version_mask_reload(runtime: &mut LiveStratumRuntime) {
     if asic_adapter::apply_negotiated_version_mask(mask) {
         info_retained(
             "mask_reload_tx_observed=true version_mask_tx_class=post_configure_runtime redacted=true",
+        );
+        bridge.begin_accepted_state_snapshot(
+            AcceptedStateStage::PostMaskReload,
+            PowerDeltaClass::Unavailable,
         );
     } else {
         log::warn!(
@@ -809,7 +912,7 @@ fn run_asic_bridge_step(
     bridge: &mut AsicBridgeState,
 ) -> AsicBridgeStepOutcome {
     // Prefer flush before dispatch (create_jobs ordering).
-    maybe_flush_pending_version_mask_reload(runtime);
+    maybe_flush_pending_version_mask_reload(runtime, bridge);
 
     if !bridge.continuous && bridge.awaiting_bounded_read {
         return read_bounded_asic_result(runtime, bridge);
@@ -993,17 +1096,26 @@ fn maybe_log_power_delta(bridge: &mut AsicBridgeState) {
 
     bridge.power_delta_logged = true;
     let maybe_after_mw = safety_adapter::power_probe::sample_power_mw();
-    match (bridge.maybe_power_baseline_mw, maybe_after_mw) {
+    let power_delta_class = match (bridge.maybe_power_baseline_mw, maybe_after_mw) {
         (Some(baseline_mw), Some(after_mw)) => {
             let delta_mw = i64::from(after_mw) - i64::from(baseline_mw);
             info_retained(&format!(
                 "asic_probe=power_delta baseline_mw={baseline_mw} after_mw={after_mw} delta_mw={delta_mw}"
             ));
+            if delta_mw >= RISING_HASHING_POWER_DELTA_MW {
+                PowerDeltaClass::RisingHashing
+            } else if delta_mw < 0 {
+                PowerDeltaClass::Falling
+            } else {
+                PowerDeltaClass::Flat
+            }
         }
         _ => {
             info_retained("asic_probe=power_delta unavailable=true");
+            PowerDeltaClass::Unavailable
         }
-    }
+    };
+    bridge.begin_accepted_state_snapshot(AcceptedStateStage::PostFirstWork, power_delta_class);
 }
 
 fn poll_continuous_asic_result(
@@ -1032,13 +1144,14 @@ fn poll_continuous_asic_result(
             info_retained(&bridge_orchestration::timeout_streak_marker(streak));
             AsicBridgeStepOutcome::NoOp
         }
-        Ok(ProductionReadOutcome::RegisterReadProof) => {
+        Ok(ProductionReadOutcome::RegisterReadProof(read)) => {
+            bridge.observe_accepted_state_read(read);
             bridge.orchestrator.note_result_received();
             AsicBridgeStepOutcome::UartProof
         }
         Ok(ProductionReadOutcome::JobNonce(result)) => {
             bridge.orchestrator.note_result_received();
-            correlate_job_nonce(runtime, generation, result)
+            correlate_job_nonce(runtime, bridge, generation, result)
         }
         Err(blocker) => {
             log::info!(
@@ -1052,6 +1165,7 @@ fn poll_continuous_asic_result(
 
 fn correlate_job_nonce(
     runtime: &mut LiveStratumRuntime,
+    bridge: &mut AsicBridgeState,
     generation: PoolSessionGeneration,
     result: Bm1366NonceResult,
 ) -> AsicBridgeStepOutcome {
@@ -1061,6 +1175,7 @@ fn correlate_job_nonce(
     };
     match runtime.apply_bridge_observation(observation) {
         Ok(BridgeObservationOutcome::SubmitQueued) => {
+            bridge.note_result_correlated();
             asic_adapter::publish_production_asic_status(
                 bitaxe_asic::bm1366::production::ProductionAsicStatus::ResultCorrelated,
             );
@@ -1112,13 +1227,14 @@ fn read_bounded_asic_result(
     let mut executor = ProductionAsicExecutor::new();
     match executor.try_read_production_result(valid_jobs, poll_timeout_ms) {
         Ok(ProductionReadOutcome::Pending) => AsicBridgeStepOutcome::NoOp,
-        Ok(ProductionReadOutcome::RegisterReadProof) => {
+        Ok(ProductionReadOutcome::RegisterReadProof(read)) => {
+            bridge.observe_accepted_state_read(read);
             bridge.clear_bounded_read();
             AsicBridgeStepOutcome::UartProof
         }
         Ok(ProductionReadOutcome::JobNonce(result)) => {
             bridge.clear_bounded_read();
-            correlate_job_nonce(runtime, generation, result)
+            correlate_job_nonce(runtime, bridge, generation, result)
         }
         Err(blocker) => {
             bridge.clear_bounded_read();
