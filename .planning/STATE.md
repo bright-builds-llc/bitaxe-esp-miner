@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: milestone
 status: executing
 stopped_at: Completed 28.1.1.2-03-PLAN.md
-last_updated: "2026-07-09T02:53:36.398Z"
+last_updated: "2026-07-09T02:54:02.247Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 13
@@ -130,6 +130,8 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 28.1.1.2]: Result-path comparator composes 28.1.1.1 parsers; prefers match_upstream_register_read_poll; never post_max_baud_delay_2000
 - [Phase 28.1.1.2]: Forced A/B to match_upstream_register_read_poll; default bridge unchanged in Plan 02
 - [Phase 28.1.1.2]: Register-read-poll A/B regressed with LoadProhibited; no submit/correlate; post-fix re-run blocked until board-info recovers
+- [Phase 28.1.1.2]: patch_disposition=falsified_match_upstream_register_read_poll because ab_outcome=regressed — Plan 02 A/B regressed with panic; D-09 forbids default promotion without improved correlate/submit
+- [Phase 28.1.1.2]: Task 2 default promotion SKIPPED; next_hypothesis=result_rx_acquisition_model; phase30 pending — Falsified branch of Plan 03; investigation mode retained; no job-byte or post_max_baud changes
 
 ### Pending Todos
 
