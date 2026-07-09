@@ -2,25 +2,26 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.4 in progress — plan 03 complete
-stopped_at: Completed 28.1.1.4-03-PLAN.md
-last_updated: "2026-07-09T04:04:56.551Z"
-last_activity: 2026-07-09 -- Patch disposition falsified ticket-mask sole-blocker; ASIC-256 retained
+status: Phase 28.1.1.4 complete — gaps_found; hand off chip-enumerate
+stopped_at: Completed 28.1.1.4-04-PLAN.md
+last_updated: "2026-07-09T04:10:00.000Z"
+last_activity: 2026-07-09 -- Phase 28.1.1.4 closed gaps_found; next_hypothesis match_upstream_chip_enumerate_before_init
 progress:
   total_phases: 15
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 54
-  completed_plans: 53
-  percent: 98
+  completed_plans: 54
+  percent: 100
 ---
 
 # Project State
 
 ## Current Position
 
-- **Phase:** 28.1.1.4 — BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis
-- **Plan:** 03/04 complete (next: 04 final evidence)
-- **Status:** executing — `patch_disposition: falsified_ticket_mask_asic_difficulty_as_sole_blocker`; `wire_parity_retained: true`; `next_hypothesis: match_upstream_chip_enumerate_before_init`
+- **Phase:** 28.1.1.4 — BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis (complete, gaps_found)
+- **Plan:** 04/04 complete
+- **Status:** closed — `verification_result: gaps_found`; `next_hypothesis: match_upstream_chip_enumerate_before_init`; Phase 30 checklist verified rows untouched
+- **Next step:** Discuss/plan insert for `match_upstream_chip_enumerate_before_init` (do not claim STR-09/CFG-07/ASIC-11 verified)
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -34,6 +35,7 @@ progress:
 - Plan 03 next_hypothesis: `match_upstream_chip_enumerate_before_init` (D-05)
 - `patch_disposition=falsified_ticket_mask_asic_difficulty_as_sole_blocker`; `wire_parity_retained` ASIC-256
 - Chip-enumerate not implemented in Plan 03; deferred as next_hypothesis only
+- Final `verification_result: gaps_found`; `phase30_promotion_input: pending`; checklist verified rows untouched
 
 ## Decisions (Phase 28.1.1.3)
 
@@ -59,5 +61,5 @@ progress:
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.4-03-PLAN.md
-- **Resume:** Execute 28.1.1.4-04-PLAN.md (final evidence); do not claim STR-09/CFG-07/ASIC-11 verified
+- **Stopped at:** Completed 28.1.1.4-04-PLAN.md
+- **Resume:** Discuss/plan chip-enumerate insert (`match_upstream_chip_enumerate_before_init`); do not claim STR-09/CFG-07/ASIC-11 verified
