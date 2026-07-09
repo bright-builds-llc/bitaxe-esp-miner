@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.4 in progress — plan 01 complete
-stopped_at: Completed 28.1.1.4-01-PLAN.md
-last_updated: "2026-07-09T03:55:00.000Z"
-last_activity: 2026-07-09 -- Wave 0 init-sequencing comparator + fixtures shipped
+status: Phase 28.1.1.4 in progress — plan 02 complete
+stopped_at: Completed 28.1.1.4-02-PLAN.md
+last_updated: "2026-07-09T04:02:51.850Z"
+last_activity: 2026-07-09 -- Ticket-mask ASIC-256 patch + ≥360s A/B (unchanged)
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 54
-  completed_plans: 51
-  percent: 94
+  completed_plans: 52
+  percent: 98
 ---
 
 # Project State
@@ -19,8 +19,8 @@ progress:
 ## Current Position
 
 - **Phase:** 28.1.1.4 — BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis
-- **Plan:** 01/04 complete (next: 02 ticket-mask ASIC-256 patch)
-- **Status:** executing — Wave 0 comparator recommends `ticket_mask_asic_difficulty` for confirmed `diff_256` vs `diff_1000` mismatch
+- **Plan:** 02/04 complete (next: 03 patch disposition / chip-enumerate hypothesis)
+- **Status:** executing — ticket-mask ASIC-256 A/B `ab_outcome: unchanged`; next_hypothesis `match_upstream_chip_enumerate_before_init`
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -29,6 +29,9 @@ progress:
 - HARD BAN: never emit `post_max_baud_delay_2000`, `match_upstream_register_read_poll`, `upstream_like_long_block_receive`
 - Default Rust 512/1000 wire collision to `diff_1000` via pool_stratumdiff source preference
 - Compare last mining-ready window before first `job_tx` (ignore early upstream `diff_16`)
+- Ticket mask uses ASIC family difficulty 256; pool stratumdiff stays Stratum-only
+- A/B `ab_outcome: unchanged` for `ticket_mask_asic_difficulty` — no correlate/submit; do not sole-blocker promote (D-11)
+- Plan 03 next_hypothesis: `match_upstream_chip_enumerate_before_init` (D-05)
 
 ## Decisions (Phase 28.1.1.3)
 
@@ -49,8 +52,9 @@ progress:
 | 28.1.1.3 | 03 | 1 min | 2 | 1 |
 | 28.1.1.3 | 04 | 2 min | 2 | 5 |
 | 28.1.1.4 | 01 | 7 min | 2 | 2 |
+| 28.1.1.4 | 02 | 10 min | 2 | 10 |
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.4-01-PLAN.md
-- **Resume:** Execute 28.1.1.4-02-PLAN.md (ticket-mask ASIC-256 patch + A/B); do not claim STR-09/CFG-07/ASIC-11 verified
+- **Stopped at:** Completed 28.1.1.4-02-PLAN.md
+- **Resume:** Execute 28.1.1.4-03-PLAN.md (patch disposition); do not claim STR-09/CFG-07/ASIC-11 verified
