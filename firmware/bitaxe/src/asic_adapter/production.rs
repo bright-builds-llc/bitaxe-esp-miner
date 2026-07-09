@@ -122,18 +122,13 @@ pub fn probe_register_read_tx() -> bool {
 /// TX-only hashrate-monitor register-read burst (investigation A/B only).
 ///
 /// Mirrors upstream `BM1366_read_registers`: one CMD_READ (`0x52`) frame per
-/// REGISTER_MAP entry with a 1 ms gap. Does not wait for replies — continuous
-/// RX poll classifies register-read responses. Failures return `false` and
-/// never block mining.
+/// REGISTER_MAP entry. Frames are prebuilt, then sent back-to-back under the
+/// production UART lock (no sleep while holding the mutex — that panics on
+/// ESP-IDF). Does not wait for replies — continuous RX poll classifies
+/// register-read responses. Failures return `false` and never block mining.
 #[must_use]
 pub fn probe_hashrate_monitor_register_reads_tx() -> bool {
-    let Ok(mut state) = production_state().lock() else {
-        return false;
-    };
-    let Some(uart) = state.maybe_uart.as_mut() else {
-        return false;
-    };
-
+    let mut frames = Vec::with_capacity(HASHRATE_MONITOR_REGISTERS.len());
     for &register in HASHRATE_MONITOR_REGISTERS {
         let Ok(frame) = CommandFrame::new(
             COMMAND_HEADER_TYPE | GROUP_ALL | CMD_READ,
@@ -141,14 +136,23 @@ pub fn probe_hashrate_monitor_register_reads_tx() -> bool {
         ) else {
             return false;
         };
-        if uart.write_frame(frame.bytes()).is_err() {
+        frames.push(frame.into_bytes());
+    }
+
+    let Ok(mut state) = production_state().lock() else {
+        return false;
+    };
+    let Some(uart) = state.maybe_uart.as_mut() else {
+        return false;
+    };
+
+    for frame in &frames {
+        if uart.write_frame(frame.as_ref()).is_err() {
             return false;
         }
         if uart.wait_tx_done(uart::WAIT_TX_DONE_TIMEOUT_MS).is_err() {
             return false;
         }
-        // Upstream: vTaskDelay(1 / portTICK_PERIOD_MS) between register reads.
-        std::thread::sleep(std::time::Duration::from_millis(1));
     }
     true
 }
