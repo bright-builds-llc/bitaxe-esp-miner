@@ -231,6 +231,8 @@ fn try_read_production_result_on_state(
     poll_timeout_ms: u32,
 ) -> Result<ProductionReadOutcome, ProductionAsicBlocker> {
     log::info!("asic_production_trace=result_read_attempt poll_timeout_ms={poll_timeout_ms}");
+    // Flood-safe compact counters (no hex); emit every N polls for comparator D-06.
+    uart::note_result_poll_and_maybe_emit_summary();
     let uart = state
         .maybe_uart
         .as_mut()

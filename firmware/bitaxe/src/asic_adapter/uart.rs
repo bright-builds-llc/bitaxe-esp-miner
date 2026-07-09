@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicU32, Ordering};
+
 use anyhow::{ensure, Result};
 use esp_idf_svc::hal::{
     delay::TickType,
@@ -13,9 +15,75 @@ pub const CHIP_DETECT_READ_LEN: usize = 11;
 pub const CHIP_DETECT_TIMEOUT_MS: u32 = 1_000;
 pub const RESULT_WORK_TIMEOUT_MS: u32 = 10_000;
 pub const WAIT_TX_DONE_TIMEOUT_MS: u32 = 1_000;
+/// Emit compact flood-safe RX summary every N production result polls.
+pub const RX_ACQUISITION_SUMMARY_EVERY_N_POLLS: u32 = 50;
 const UART_BUF_SIZE: usize = 1024;
 const UART_RX_BUFFER_BYTES: usize = UART_BUF_SIZE * 2;
 const READ_CHUNK_MAX: usize = 64;
+
+static RX_ACQ_IDLE: AtomicU32 = AtomicU32::new(0);
+static RX_ACQ_PARTIAL: AtomicU32 = AtomicU32::new(0);
+static RX_ACQ_CLEAR: AtomicU32 = AtomicU32::new(0);
+static RX_ACQ_COMPLETE: AtomicU32 = AtomicU32::new(0);
+static RX_ACQ_POLL_TICKS: AtomicU32 = AtomicU32::new(0);
+
+/// Snapshot of flood-safe RX-acquisition counters (integers only; no hex).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RxAcquisitionCounts {
+    pub idle: u32,
+    pub partial: u32,
+    pub clear: u32,
+    pub complete: u32,
+}
+
+/// Read current RX-acquisition counters without resetting them.
+#[must_use]
+pub fn rx_acquisition_counts() -> RxAcquisitionCounts {
+    RxAcquisitionCounts {
+        idle: RX_ACQ_IDLE.load(Ordering::Relaxed),
+        partial: RX_ACQ_PARTIAL.load(Ordering::Relaxed),
+        clear: RX_ACQ_CLEAR.load(Ordering::Relaxed),
+        complete: RX_ACQ_COMPLETE.load(Ordering::Relaxed),
+    }
+}
+
+/// Record one production result-poll tick; emit compact summary every N polls.
+///
+/// Marker shape (no hex): `asic_rx_acquisition_summary idle=N partial=N clear=N complete=N`
+pub fn note_result_poll_and_maybe_emit_summary() {
+    let ticks = RX_ACQ_POLL_TICKS.fetch_add(1, Ordering::Relaxed).saturating_add(1);
+    if ticks % RX_ACQUISITION_SUMMARY_EVERY_N_POLLS != 0 {
+        return;
+    }
+    emit_rx_acquisition_summary();
+}
+
+fn emit_rx_acquisition_summary() {
+    let counts = rx_acquisition_counts();
+    log::info!(
+        "asic_rx_acquisition_summary idle={} partial={} clear={} complete={}",
+        counts.idle,
+        counts.partial,
+        counts.clear,
+        counts.complete
+    );
+}
+
+fn record_rx_idle() {
+    RX_ACQ_IDLE.fetch_add(1, Ordering::Relaxed);
+}
+
+fn record_rx_partial() {
+    RX_ACQ_PARTIAL.fetch_add(1, Ordering::Relaxed);
+}
+
+fn record_rx_clear() {
+    RX_ACQ_CLEAR.fetch_add(1, Ordering::Relaxed);
+}
+
+fn record_rx_complete() {
+    RX_ACQ_COMPLETE.fetch_add(1, Ordering::Relaxed);
+}
 
 enum ReadAccumulateOutcome {
     Complete(Vec<u8>),
@@ -157,11 +225,13 @@ impl<'d> AsicUart<'d> {
 
         if buf.len() != len {
             if buf.is_empty() {
+                record_rx_idle();
                 if uart_trace_enabled() {
                     log::info!("asic_uart_trace=rx_idle timeout_ms={timeout_ms}");
                 }
                 return Ok(ReadAccumulateOutcome::Idle);
             }
+            record_rx_partial();
             if uart_trace_enabled() {
                 log::info!(
                     "asic_uart_trace=partial_frame hex={} expected_len={len} actual_len={}",
@@ -176,6 +246,7 @@ impl<'d> AsicUart<'d> {
             );
         }
 
+        record_rx_complete();
         if uart_trace_enabled() {
             log::info!(
                 "asic_uart_trace=rx_complete read_count={read_index} hex={}",
@@ -187,6 +258,7 @@ impl<'d> AsicUart<'d> {
     }
 
     pub fn clear_rx(&mut self) -> Result<()> {
+        record_rx_clear();
         if uart_trace_enabled() {
             log::info!("asic_uart_trace=clear_rx");
         }
