@@ -155,7 +155,7 @@ Plans:
 
 ### Phase 30: Live Share Outcome And Verified Promotion
 **Goal**: Promote STR-09/CFG-07 checklist rows to `verified` only where Phase 28.1.1.1 redacted hardware evidence supports accepted/rejected share outcomes; close Phase 28.1 Nyquist metadata. Does not re-do wire-byte diff work (owned by Phase 28.1.1.1).
-**Depends on**: Phase 28.1.1.4 (or later phase with share-outcome evidence), Phase 29
+**Depends on**: Phase 28.1.1.5 (or later phase with share-outcome evidence), Phase 29
 **Requirements**: STR-09, CFG-07, ASIC-11
 **Gap Closure**: Closes audit tech debt for STR-09/CFG-07 below `verified` after Phase 28.1.1.1 share-outcome evidence exists.
 **Success Criteria** (what must be TRUE):
@@ -167,7 +167,7 @@ Plans:
 
 ## Progress
 
-**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28 -> Phase 28.1 -> Phase 28.1.1 -> Phase 28.1.1.1 -> Phase 28.1.1.2 -> Phase 28.1.1.3 -> Phase 28.1.1.4 -> Phase 29 -> Phase 30
+**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28 -> Phase 28.1 -> Phase 28.1.1 -> Phase 28.1.1.1 -> Phase 28.1.1.2 -> Phase 28.1.1.3 -> Phase 28.1.1.4 -> Phase 28.1.1.5 -> Phase 29 -> Phase 30
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -184,6 +184,7 @@ Plans:
 | 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.3. BM1366 Result RX Acquisition Model Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.4. BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
+| 28.1.1.5. BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis | v1.1 | 0/4 | Not started | — |
 | 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
@@ -281,3 +282,13 @@ Plans:
 - [x] 28.1.1.4-04-PLAN.md — Final evidence + VERIFICATION + VALIDATION/STATE/ROADMAP
 
 **Gaps found:** Ticket-mask A/B `ab_outcome: unchanged`; disposition `falsified_ticket_mask_asic_difficulty_as_sole_blocker`; ASIC-256 `wire_parity_retained: true`; no `result_correlated` / fake-pool submit; `next_hypothesis=match_upstream_chip_enumerate_before_init`. Phase 30 promotion pending.
+
+### Phase 28.1.1.5: BM1366 match upstream chip-enumerate before init nonce-production diagnosis (INSERTED)
+
+**Goal:** Isolate whether Rust chip-detect / address-split sequencing before BM1366 init diverges from upstream `55 AA 52 05 00 00 0A` enumerate + `count_asic_chips` + chip-address assignment in a way that leaves cores UART-alive but idle. Patch only a confirmed enumerate/sequencing divergence; run detector-gated Ultra 205 fake-pool evidence until `result_correlated` plus share submit appear, or narrow the blocker with redacted evidence.
+**Requirements**: STR-09, CFG-07, ASIC-11 (blocker closure input only; Phase 30 owns checklist promotion)
+**Depends on:** Phase 28.1.1.4
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 28.1.1.5 to break down)

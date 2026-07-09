@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.4 complete — gaps_found; hand off chip-enumerate
-stopped_at: Completed 28.1.1.4-04-PLAN.md
-last_updated: "2026-07-09T04:08:30.000Z"
-last_activity: 2026-07-09 -- Phase 28.1.1.4 closed gaps_found; next_hypothesis match_upstream_chip_enumerate_before_init
+status: Phase 28.1.1.5 inserted — chip-enumerate diagnosis pending discuss/plan
+stopped_at: Inserted Phase 28.1.1.5 after 28.1.1.4
+last_updated: "2026-07-09T11:48:21.000Z"
+last_activity: 2026-07-09 -- Inserted 28.1.1.5 for match_upstream_chip_enumerate_before_init
 progress:
   total_phases: 15
   completed_phases: 13
@@ -18,10 +18,10 @@ progress:
 
 ## Current Position
 
-- **Phase:** 28.1.1.4 — BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis (complete, gaps_found)
-- **Plan:** 04/04 complete
-- **Status:** closed — `verification_result: gaps_found`; `next_hypothesis: match_upstream_chip_enumerate_before_init`; Phase 30 checklist verified rows untouched
-- **Next step:** Discuss/plan insert for `match_upstream_chip_enumerate_before_init` (do not claim STR-09/CFG-07/ASIC-11 verified)
+- **Phase:** 28.1.1.5 — BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis (inserted, not planned)
+- **Plan:** 0/4 — discuss/plan pending
+- **Status:** inserted after 28.1.1.4 — consume `next_hypothesis: match_upstream_chip_enumerate_before_init`; Phase 30 checklist verified rows untouched
+- **Next step:** Yolo discuss → research → 4-wave plan → execute for chip-enumerate sequencing
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -62,5 +62,9 @@ progress:
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.4-04-PLAN.md
-- **Resume:** Discuss/plan chip-enumerate insert (`match_upstream_chip_enumerate_before_init`); do not claim STR-09/CFG-07/ASIC-11 verified
+- **Stopped at:** Inserted Phase 28.1.1.5
+- **Resume:** `/gsd-yolo-discuss-plan-and-execute 28.1.1.5` (or continue in-session)
+
+## Accumulated Context
+
+### Roadmap Evolution
