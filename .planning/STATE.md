@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.5 complete — gaps_found; handoff version_rolling_negotiation
-stopped_at: Completed 28.1.1.5-04-PLAN.md
-last_updated: "2026-07-09T12:34:00Z"
+status: Phase 28.1.1.6 inserted — version-rolling diagnosis pending discuss/plan
+stopped_at: Inserted Phase 28.1.1.6 after 28.1.1.5
+last_updated: "2026-07-09T13:37:35.000Z"
 progress:
   total_phases: 16
   completed_phases: 14
@@ -17,10 +17,10 @@ progress:
 
 ## Current Position
 
-- **Phase:** 28.1.1.5 — BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis
-- **Plan:** 4/4 — final evidence + VERIFICATION complete (`gaps_found`)
-- **Status:** complete — `verification_result: gaps_found`; `patch_disposition: falsified_count_asic_chips_rx_loop_parity_as_sole_blocker`; `wire_parity_rx_loop_retained: true`
-- **Next step:** Discuss/plan insert for `version_rolling_negotiation` (do not implement in 28.1.1.5); Phase 30 checklist verified promotion still deferred
+- **Phase:** 28.1.1.6 — BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis (inserted, not planned)
+- **Plan:** 0/4 — discuss/plan pending
+- **Status:** inserted after 28.1.1.5 — consume `next_hypothesis: version_rolling_negotiation`; Phase 30 checklist verified rows untouched
+- **Next step:** Yolo discuss → research → 4-wave plan → execute for version-rolling negotiation
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -85,8 +85,8 @@ progress:
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.5-04-PLAN.md
-- **Resume:** Discuss/plan insert for `version_rolling_negotiation` (Phase 30 verified promotion still deferred)
+- **Stopped at:** Inserted Phase 28.1.1.6
+- **Resume:** Continue 28.1.1.6 discuss/plan/execute in-session
 
 ## Accumulated Context
 
