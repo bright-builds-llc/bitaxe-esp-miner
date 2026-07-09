@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 28.1.1.6-02-PLAN.md
-last_updated: "2026-07-09T14:02:07.178Z"
+stopped_at: Completed 28.1.1.6-03-PLAN.md
+last_updated: "2026-07-09T14:04:10.274Z"
 progress:
   total_phases: 17
   completed_phases: 14
   total_plans: 61
-  completed_plans: 60
-  percent: 98
+  completed_plans: 61
+  percent: 100
 ---
 
 # Project State
@@ -18,9 +18,9 @@ progress:
 ## Current Position
 
 - **Phase:** 28.1.1.6 — BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis
-- **Plan:** 2/4 — Work-field mask A/B complete
-- **Status:** In Progress — `ab_outcome: unchanged` for `negotiated_version_mask_work_field_parity`; Phase 30 checklist verified rows untouched
-- **Next step:** Execute 28.1.1.6-03 (patch disposition → `next_hypothesis: pool_negotiated_mask_asic_reload`)
+- **Plan:** 3/4 — Patch disposition complete
+- **Status:** In Progress — `patch_disposition: falsified_negotiated_version_mask_work_field_parity_as_sole_blocker`; `wire_parity_mask_on_work_retained: true`; Phase 30 checklist verified rows untouched
+- **Next step:** Execute 28.1.1.6-04 (final evidence → `next_hypothesis: pool_negotiated_mask_asic_reload`)
 
 ## Decisions (Phase 28.1.1.6)
 
@@ -31,6 +31,9 @@ progress:
 - Stop discarding `maybe_version_mask`; store on `MiningWork`; UART version stays base notify
 - Compact `mask_applied_to_work=true` marker on WorkQueued when mask stored (D-10 Plan 02)
 - A/B `ab_outcome: unchanged` for `negotiated_version_mask_work_field_parity` — falsify work-field-only lever; Plan 03 `next_hypothesis: pool_negotiated_mask_asic_reload`
+- `patch_disposition=falsified_negotiated_version_mask_work_field_parity_as_sole_blocker`; `wire_parity_mask_on_work_retained: true`
+- Plan 03 next_hypothesis: `pool_negotiated_mask_asic_reload` (not implemented; `asic_mask_reload_applied: false`; no second speculative patch)
+- `phase30_promotion_input: pending`; ASIC-256 ticket mask + RX-loop retained; checklist verified rows untouched
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -74,6 +77,7 @@ progress:
 | 28.1.1.5 | 04 | 2 min | 2 | 5 |
 | Phase 28.1.1.6 P01 | 2 min | 2 tasks | 2 files |
 | Phase 28.1.1.6 P02 | 11 min | 2 tasks | 7 files |
+| Phase 28.1.1.6 P03 | 1 min | 2 tasks | 1 files |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -106,7 +110,7 @@ progress:
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.6-02-PLAN.md
+- **Stopped at:** Completed 28.1.1.6-03-PLAN.md
 - **Resume:** `/gsd-execute-phase 28.1.1.6`
 
 ## Accumulated Context
