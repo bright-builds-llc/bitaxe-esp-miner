@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 28.1.1.2-01-PLAN.md
-last_updated: "2026-07-09T02:33:20.969Z"
+stopped_at: Completed 28.1.1.2-02-PLAN.md
+last_updated: "2026-07-09T02:49:45.331Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 45
-  completed_plans: 43
-  percent: 96
+  completed_plans: 44
+  percent: 98
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 ## Current Position
 
 Phase: 28.1.1.2 (bm1366-result-path-and-asic-side-effect-nonce-production-dia) — PLANNED
-Plan: 1 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-09
 
@@ -128,6 +128,8 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 28.1]: J2c confound falsified on hardware: 22 work_dispatched at ~2 s cadence with fresh extranonce2 under parity-default orchestration
 - [Phase 28.1]: Upstream A/B used official release image (sha256-recorded) plus NVS from upstream config-205.cvs with local wifi only; recovery reflash verified and reference pin clean
 - [Phase 28.1.1.2]: Result-path comparator composes 28.1.1.1 parsers; prefers match_upstream_register_read_poll; never post_max_baud_delay_2000
+- [Phase 28.1.1.2]: Forced A/B to match_upstream_register_read_poll; default bridge unchanged in Plan 02
+- [Phase 28.1.1.2]: Register-read-poll A/B regressed with LoadProhibited; no submit/correlate; post-fix re-run blocked until board-info recovers
 
 ### Pending Todos
 
@@ -137,6 +139,7 @@ None yet.
 
 - Live accepted/rejected share feasibility remains evidence-dependent until a detector-gated Ultra 205 run observes a parsed pool response to live ASIC-derived work.
 - Hardware phases must follow the Ultra 205 detector gate, redaction rules, safe-stop evidence requirements, and exact non-claim governance.
+- Ultra 205 board-info failed after register-read-poll panic loop; physical USB power-cycle needed before clean A/B re-run
 
 ## Performance Metrics
 
@@ -154,11 +157,12 @@ None yet.
 | Phase 28.1 P04 | 7min | 2 tasks | 4 files |
 | Phase 28.1 P05 | 51min | 3 tasks | 4 files |
 | Phase 28.1.1.2 P01 | 2min | 2 tasks | 2 files |
+| Phase 28.1.1.2 P02 | 15min | 2 tasks | 8 files |
 
 ## Session Continuity
 
-Last session: 2026-07-09T02:33:20.967Z
-Stopped at: Completed 28.1.1.2-01-PLAN.md
+Last session: 2026-07-09T02:49:37.126Z
+Stopped at: Completed 28.1.1.2-02-PLAN.md
 Resume file: None
 
 ## Next Step
