@@ -186,7 +186,7 @@ Plans:
 | 28.1.1.4. BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.5. BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.6. BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
-| 28.1.1.7. BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis | v1.1 | 1/4 | In Progress|  |
+| 28.1.1.7. BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis | v1.1 | 2/4 | In Progress|  |
 | 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
@@ -320,10 +320,10 @@ Plans:
 **Goal:** Isolate whether missing post-configure ASIC `SetVersionMask` reload (init-only today) leaves BM1366 cores UART-alive but idle after mask-on-MiningWork. First lever: emit runtime `SetVersionMask` from the negotiated mask after configure + ASIC init (`pool_negotiated_mask_asic_reload`), gated on reload-timing markers rather than mask-value delta; patch only a confirmed divergence and rerun detector-gated Ultra 205 fake-pool evidence until `result_correlated` plus share submit appear, or narrow the blocker with redacted evidence.
 **Requirements**: STR-09, CFG-07, ASIC-11 (blocker closure input only; Phase 30 owns checklist promotion)
 **Depends on:** Phase 28.1.1.6
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [x] 28.1.1.7-01-PLAN.md — Wave 0 ASIC mask-reload comparator + recommender bans (`pool_negotiated_mask_asic_reload`)
-- [ ] 28.1.1.7-02-PLAN.md — Runtime SetVersionMask patch + ≥360s fake-pool A/B (`pool_negotiated_mask_asic_reload`)
+- [x] 28.1.1.7-02-PLAN.md — Runtime SetVersionMask patch + ≥360s fake-pool A/B (`pool_negotiated_mask_asic_reload`)
 - [ ] 28.1.1.7-03-PLAN.md — Patch disposition: promote only if improved; else evidence-named next_hypothesis
 - [ ] 28.1.1.7-04-PLAN.md — Final redacted evidence + VERIFICATION + VALIDATION/STATE/ROADMAP 4/4
