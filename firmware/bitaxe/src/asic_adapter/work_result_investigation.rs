@@ -78,6 +78,12 @@ pub fn single_dispatch_bounded_read_enabled() -> bool {
     has_investigation_mode("single_dispatch_bounded_read")
 }
 
+/// Phase 28.1.1.2 A/B: match upstream hashrate-monitor register-read poll
+/// cadence (~1 Hz × REGISTER_MAP entries). Off by default; investigation only.
+pub fn match_upstream_register_read_poll_enabled() -> bool {
+    has_investigation_mode("match_upstream_register_read_poll")
+}
+
 fn phase27_bridge_active() -> bool {
     crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge()
 }

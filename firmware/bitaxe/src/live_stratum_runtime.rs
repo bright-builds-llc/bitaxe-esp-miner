@@ -583,6 +583,7 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
         if phase27_bridge {
             asic_bridge.maybe_arm_continuous_listener();
             maybe_log_power_delta(&mut asic_bridge);
+            maybe_send_register_read_poll(&mut asic_bridge);
         }
 
         if phase27_bridge && asic_bridge.needs_step() {
@@ -682,6 +683,10 @@ struct AsicBridgeState {
     maybe_first_dispatch_at: Option<Instant>,
     /// Once-per-session guard for the power-delta marker.
     power_delta_logged: bool,
+    /// Last hashrate-monitor register-read poll (investigation A/B only).
+    maybe_last_register_read_poll_at: Option<Instant>,
+    /// Once-per-session marker that register-read poll mode is active.
+    register_read_poll_mode_logged: bool,
 }
 
 impl Default for AsicBridgeState {
@@ -705,6 +710,8 @@ impl AsicBridgeState {
             maybe_power_baseline_mw: None,
             maybe_first_dispatch_at: None,
             power_delta_logged: false,
+            maybe_last_register_read_poll_at: None,
+            register_read_poll_mode_logged: false,
         }
     }
 
@@ -728,6 +735,8 @@ impl AsicBridgeState {
         self.maybe_power_baseline_mw = None;
         self.maybe_first_dispatch_at = None;
         self.power_delta_logged = false;
+        self.maybe_last_register_read_poll_at = None;
+        self.register_read_poll_mode_logged = false;
     }
 
     fn maybe_arm_continuous_listener(&mut self) {
@@ -901,6 +910,40 @@ fn sample_power_baseline_before_first_dispatch(bridge: &mut AsicBridgeState) {
     bridge.maybe_power_baseline_mw = safety_adapter::power_probe::sample_power_mw();
     if let Some(baseline_mw) = bridge.maybe_power_baseline_mw {
         info_retained(&format!("asic_probe=power_baseline mw={baseline_mw}"));
+    }
+}
+
+/// Investigation-only: match upstream hashrate-monitor register-read cadence
+/// (~1 Hz × six REGISTER_MAP addresses). Off unless
+/// `BITAXE_WORK_RESULT_INVESTIGATION=match_upstream_register_read_poll`.
+/// Redaction-safe marker only — no hex dumps.
+fn maybe_send_register_read_poll(bridge: &mut AsicBridgeState) {
+    if !asic_adapter::match_upstream_register_read_poll_enabled() {
+        return;
+    }
+    if !asic_adapter::production_ready() {
+        return;
+    }
+
+    if !bridge.register_read_poll_mode_logged {
+        bridge.register_read_poll_mode_logged = true;
+        info_retained(
+            "asic_probe=register_read_poll mode=match_upstream_register_read_poll",
+        );
+    }
+
+    let now = Instant::now();
+    if let Some(last_at) = bridge.maybe_last_register_read_poll_at {
+        if now < last_at + Duration::from_millis(1_000) {
+            return;
+        }
+    }
+
+    bridge.maybe_last_register_read_poll_at = Some(now);
+    if asic_adapter::probe_hashrate_monitor_register_reads_tx() {
+        info_retained("asic_probe=register_read_poll_tx stage=hashrate_monitor");
+    } else {
+        log::warn!("asic_probe=register_read_poll_tx_error stage=hashrate_monitor");
     }
 }
 

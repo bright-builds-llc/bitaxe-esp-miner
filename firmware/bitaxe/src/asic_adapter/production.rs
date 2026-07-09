@@ -8,7 +8,9 @@ use anyhow::Result;
 use bitaxe_asic::bm1366::{
     command::{Bm1366AdapterAction, Bm1366Command},
     mining_ready::ultra_205_result_address_interval,
+    packet::{CommandFrame, CMD_READ, COMMAND_HEADER_TYPE, GROUP_ALL},
     production::{Bm1366ProductionCommand, ProductionAsicBlocker, ProductionAsicStatus},
+    registers::read_register_payload,
     result::{
         parse_bm1366_result_frame, Bm1366NonceResult, Bm1366ParsedResult, Bm1366ValidJobIds,
         BM1366_RESULT_FRAME_LEN,
@@ -85,6 +87,12 @@ pub fn production_ready() -> bool {
         .is_some_and(|state| state.production_ready && state.maybe_uart.is_some())
 }
 
+/// Upstream hashrate-monitor REGISTER_MAP addresses (valid entries only).
+///
+/// Reference: `reference/esp-miner/components/asic/bm1366.c` REGISTER_MAP /
+/// `BM1366_read_registers` — CMD_READ frames for 0x4C, 0x88–0x8C.
+const HASHRATE_MONITOR_REGISTERS: &[u8] = &[0x4C, 0x88, 0x89, 0x8A, 0x8B, 0x8C];
+
 /// TX-only `ReadChipId` register-read probe on the retained production UART.
 ///
 /// Sends one reg-0x00 read frame and returns without blocking for the
@@ -109,6 +117,40 @@ pub fn probe_register_read_tx() -> bool {
         return false;
     }
     uart.wait_tx_done(uart::WAIT_TX_DONE_TIMEOUT_MS).is_ok()
+}
+
+/// TX-only hashrate-monitor register-read burst (investigation A/B only).
+///
+/// Mirrors upstream `BM1366_read_registers`: one CMD_READ (`0x52`) frame per
+/// REGISTER_MAP entry with a 1 ms gap. Does not wait for replies — continuous
+/// RX poll classifies register-read responses. Failures return `false` and
+/// never block mining.
+#[must_use]
+pub fn probe_hashrate_monitor_register_reads_tx() -> bool {
+    let Ok(mut state) = production_state().lock() else {
+        return false;
+    };
+    let Some(uart) = state.maybe_uart.as_mut() else {
+        return false;
+    };
+
+    for &register in HASHRATE_MONITOR_REGISTERS {
+        let Ok(frame) = CommandFrame::new(
+            COMMAND_HEADER_TYPE | GROUP_ALL | CMD_READ,
+            read_register_payload(register).as_bytes(),
+        ) else {
+            return false;
+        };
+        if uart.write_frame(frame.bytes()).is_err() {
+            return false;
+        }
+        if uart.wait_tx_done(uart::WAIT_TX_DONE_TIMEOUT_MS).is_err() {
+            return false;
+        }
+        // Upstream: vTaskDelay(1 / portTICK_PERIOD_MS) between register reads.
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    true
 }
 
 pub struct ProductionAsicExecutor;
