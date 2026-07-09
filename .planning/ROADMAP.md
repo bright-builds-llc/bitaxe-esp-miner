@@ -304,7 +304,7 @@ Plans:
 **Goal:** Isolate whether incomplete Stratum version-rolling semantics—`mining.configure` response handling, negotiated mask application to work generation, and ASIC version-mask runtime alignment—leave BM1366 cores UART-alive but idle after enumerate wire parity. First lever: apply pool-negotiated version mask in work-field construction (`negotiated_version_mask_work_field_parity`); patch only a confirmed divergence and rerun detector-gated Ultra 205 fake-pool evidence until `result_correlated` plus share submit appear, or narrow the blocker with redacted evidence.
 **Requirements**: STR-09, CFG-07, ASIC-11 (blocker closure input only; Phase 30 owns checklist promotion)
 **Depends on:** Phase 28.1.1.5
-**Plans:** 4/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 28.1.1.6-01-PLAN.md — Wave 0 version-rolling comparator + recommender bans (`negotiated_version_mask_work_field_parity`)
