@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-stopped_at: Phase 28.1.1 Plan 08 complete
-last_updated: "2026-07-09T20:42:50.858Z"
+status: Phase closed with gaps_found
+stopped_at: Phase 28.1.1 verification gaps_found
+last_updated: "2026-07-09T20:51:25.310Z"
 progress:
   total_phases: 18
   completed_phases: 16
-  total_plans: 64
-  completed_plans: 64
+  total_plans: 65
+  completed_plans: 65
   percent: 100
 ---
 
@@ -17,13 +17,13 @@ progress:
 
 ## Current Position
 
-Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — EXECUTING
-Plan: 1 of 4
+Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — GAPS FOUND
+Plan: 4 of 4
 
-- **Phase:** 28.1.1.7 — BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis
-- **Plan:** 4/4 — Phase closed (`verification_result: gaps_found`)
-- **Status:** Executing Phase 28.1.1
-- **Next step:** Discuss/plan follow-on insert for `remaining_nonce_production_blocker_narrowing` (do not promote STR-09/CFG-07/ASIC-11 checklist verified rows)
+- **Phase:** 28.1.1 — Accepted-State Gap Closure
+- **Plan:** 4/4 — Complete (verification_result: gaps_found)
+- **Status:** Phase closed with gaps_found
+- **Next step:** Physical cold-start lifecycle evidence; Phase 30 remains pending
 
 ## Decisions (Phase 28.1.1.7)
 
@@ -138,8 +138,8 @@ Plan: 1 of 4
 
 ## Session
 
-- **Stopped at:** Phase 28.1.1 Plan 08 complete
-- **Resume:** Execute Plan 09 disposition and final verification
+- **Stopped at:** Phase 28.1.1 verification gaps_found
+- **Resume:** Obtain physical cold-start lifecycle evidence before any new gap plan
 
 ## Accumulated Context
 
