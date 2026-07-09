@@ -194,6 +194,13 @@ impl LiveStratumRuntime {
         &self.state
     }
 
+    /// Negotiated version-rolling mask stored from configure / set_version_mask.
+    /// Counts-only evidence: presence is enough for `mask_applied_to_work` markers.
+    #[must_use]
+    pub const fn maybe_version_mask(&self) -> Option<VersionMask> {
+        self.maybe_version_mask
+    }
+
     #[must_use]
     pub const fn production_registry(&self) -> &ProductionWorkRegistry {
         &self.production_registry

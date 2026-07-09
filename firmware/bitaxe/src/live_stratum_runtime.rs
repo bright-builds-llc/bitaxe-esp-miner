@@ -1196,6 +1196,13 @@ fn publish_event_status(
             runtime_snapshot::publish_runtime_work_submission_ready();
             runtime_snapshot::publish_runtime_hashrate_inputs(runtime.state().hashrate_inputs);
             publish_runtime_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
+            // Compact version-rolling marker (counts/booleans only; no hex).
+            // Plan 28.1.1.6-02: mask is attached to MiningWork when stored.
+            if runtime.maybe_version_mask().is_some() {
+                info_retained(
+                    "mask_applied_to_work=true job_version_field_class=base_notify redacted=true",
+                );
+            }
             publish_status("active");
         }
         Some(LiveRuntimeEvent::WorkInvalidated) => publish_status("reconnecting"),
