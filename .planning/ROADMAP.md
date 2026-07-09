@@ -23,7 +23,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [x] **Phase 27: Live Hardware ASIC And Stratum Bridge** - Live firmware wires Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 socket loop and produces detector-gated share-outcome evidence. (completed 2026-07-05)
 - [x] **Phase 28: Hardware Evidence And Checklist Promotion** - Redacted hardware evidence promotes only exact verified checklist rows supported by Phase 27 artifacts. (completed 2026-07-06)
 - [ ] **Phase 29: Evidence Workflow Automation Closure** - Phase 25/27/28 evidence wrappers auto-validate operator evidence roots and close the redact-validate-promote flow without manual consolidation steps.
-- [ ] **Phase 30: Live Share Outcome And Verified Promotion** - Promote STR-09/CFG-07 to `verified` using Phase 28.1.1.1 share-outcome evidence; close Nyquist metadata (no duplicate wire-diff work).
+- [ ] **Phase 30: Live Share Outcome And Verified Promotion** - Promote STR-09/CFG-07 to `verified` using Phase 28.1.1.2 (or later) share-outcome evidence; close Nyquist metadata (no duplicate wire-diff work).
 
 ## Phase Details
 
@@ -167,7 +167,7 @@ Plans:
 
 ## Progress
 
-**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28 -> Phase 28.1 -> Phase 28.1.1 -> Phase 28.1.1.1 -> Phase 29 -> Phase 30
+**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28 -> Phase 28.1 -> Phase 28.1.1 -> Phase 28.1.1.1 -> Phase 28.1.1.2 -> Phase 29 -> Phase 30
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -181,6 +181,7 @@ Plans:
 | 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete    | 2026-07-07 |
 | 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
 | 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
+| 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 0/4 | Planned | — |
 | 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
@@ -231,3 +232,16 @@ Plans:
 - [x] 28.1.1.1-05-PLAN.md — Below-job-byte sequence comparator + post_max_baud_delay_2000 A/B (still no Rust submit)
 
 **Gaps found:** Job bytes match under aligned source work; below-job semantic events match 12/12; Rust still lacks `result_correlated` and share-submission evidence. Next diagnostic layer is result-path / ASIC side effects (not more job-byte patches).
+
+### Phase 28.1.1.2: BM1366 result-path and ASIC side-effect nonce-production diagnosis (INSERTED)
+
+**Goal:** Isolate and close the remaining `firmware-nonce-production` gap below job bytes by comparing result-path / ASIC runtime side effects against upstream (continuous RX / chip-id polling vs Rust result-read polling, enable/power/reset sequencing, and missing upstream runtime side effects), then patch only a confirmed divergence and rerun detector-gated Ultra 205 evidence until `result_correlated` plus fake-pool/live share submit appear, or the blocker is narrowed further with redacted evidence.
+**Requirements**: STR-09, CFG-07, ASIC-11 (blocker closure input only; Phase 30 owns checklist promotion)
+**Depends on:** Phase 28.1.1.1
+**Plans:** 4 plans
+
+Plans:
+- [ ] 28.1.1.2-01-PLAN.md — Wave 0 result-path comparator + D-05 fixture tests
+- [ ] 28.1.1.2-02-PLAN.md — Diagnostic wrapper + baseline compare + hardware A/B `match_upstream_register_read_poll`
+- [ ] 28.1.1.2-03-PLAN.md — Optional firmware patch only if A/B confirms divergence; else disposition
+- [ ] 28.1.1.2-04-PLAN.md — Final redacted evidence + verification/validation closure

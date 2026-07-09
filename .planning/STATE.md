@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.1 gaps_found: below-job-byte A/B did not produce Rust submit evidence
-stopped_at: Phase 28.1.1.1 Plan 05 below-job-byte diagnostic recorded
-last_updated: "2026-07-08T19:48:38.000Z"
-last_activity: 2026-07-08 -- Phase 28.1.1.1 Plan 05 below-job-byte diagnostic captured; post_max_baud_delay_2000 did not resolve Rust submit gap
+status: Phase 28.1.1.2 planned — ready to execute
+stopped_at: Phase 28.1.1.2 plans created; ready for /gsd-execute-phase
+last_updated: "2026-07-09T02:27:00.000Z"
+last_activity: 2026-07-09 -- Phase 28.1.1.2 PLAN.md files created (4 plans)
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 10
-  total_plans: 41
+  total_plans: 45
   completed_plans: 41
-  percent: 100
+  percent: 77
 ---
 
 # Project State
@@ -22,16 +22,16 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 **Core value:** A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmware on real Bitaxe hardware with the same observable behavior they expect from upstream ESP-Miner.
 
-**Current focus:** Phase 28.1.1.1 — bm1366-upstream-golden-comparator-and-nonce-production-gap-r
+**Current focus:** Phase 28.1.1.2 — bm1366-result-path-and-asic-side-effect-nonce-production-dia
 
 ## Current Position
 
-Phase: 28.1.1.1 (bm1366-upstream-golden-comparator-and-nonce-production-gap-r) — GAPS FOUND
-Plan: 5 of 5
-Status: Below-job-byte semantic events matched, but Rust result/share evidence is still missing
-Last activity: 2026-07-08 -- Phase 28.1.1.1 Plan 05 below-job-byte diagnostic captured; post_max_baud_delay_2000 did not resolve Rust submit gap
+Phase: 28.1.1.2 (bm1366-result-path-and-asic-side-effect-nonce-production-dia) — PLANNED
+Plan: 0 of 4
+Status: Plans ready — comparator → register-read-poll A/B → optional patch → final evidence
+Last activity: 2026-07-09 -- Phase 28.1.1.2 PLAN.md files created
 
-Progress: [█████████░] 90% (milestone v1.1; Phase 28.1.1.1 Plan 05 gaps recorded; next diagnostic below result-read/ASIC side effects)
+Progress: [████████░░] 77% (milestone v1.1; Phase 28.1.1.2 execute next)
 
 ## Active Artifacts
 
@@ -60,6 +60,7 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 
 - Phase 28.1.1 inserted after Phase 28.1: BM1366 nonce production wire parity (firmware-nonce-production fix)
 - Phase 28.1.1.1 inserted after Phase 28.1.1: BM1366 upstream golden comparator and nonce-production gap reconciliation (URGENT)
+- Phase 28.1.1.2 inserted after Phase 28.1.1.1: BM1366 result-path and ASIC side-effect nonce-production diagnosis (URGENT)
 
 ### Decisions
 
@@ -160,4 +161,4 @@ Resume file: .planning/phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-
 
 ## Next Step
 
-Insert Phase 28.1.1.2 for result-path / ASIC side-effect nonce-production diagnosis below job bytes, then discuss → plan → execute. Do not start Phase 29/30 until share-outcome evidence exists.
+Run `/gsd-execute-phase 28.1.1.2` (result-path comparator → `match_upstream_register_read_poll` A/B → optional patch → final evidence). Do not start Phase 29/30 until share-outcome evidence exists.
