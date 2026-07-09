@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: milestone
 status: Phase 28.1.1.5 complete — gaps_found; handoff version_rolling_negotiation
 stopped_at: Completed 28.1.1.5-04-PLAN.md
-last_updated: "2026-07-09T12:35:00Z"
+last_updated: "2026-07-09T12:34:00Z"
 progress:
   total_phases: 16
   completed_phases: 14
@@ -61,6 +61,7 @@ progress:
 | 28.1.1.5 | 01 | 2 min | 2 | 2 |
 | 28.1.1.5 | 02 | 25 min | 2 | 7 |
 | 28.1.1.5 | 03 | 1 min | 2 | 1 |
+| 28.1.1.5 | 04 | 2 min | 2 | 5 |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -78,6 +79,9 @@ progress:
 - Plan 03 next_hypothesis: `version_rolling_negotiation` (not implemented; no second speculative patch)
 - Final `verification_result: gaps_found`; `phase30_promotion_input: pending`; ASIC-256 ticket mask retained; checklist verified rows untouched
 - Plan 04 closed Wave 0 Nyquist (`wave_0_complete` / `nyquist_compliant`); ROADMAP 4/4 Gaps Found; handoff `version_rolling_negotiation`
+- `verification_result=gaps_found` (no correlate/submit after RX-loop A/B)
+- `next_hypothesis=version_rolling_negotiation`; `wire_parity_rx_loop_retained` + ASIC-256 retained
+- `phase30_promotion_input=pending`; checklist verified rows untouched
 
 ## Session
 

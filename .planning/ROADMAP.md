@@ -288,7 +288,7 @@ Plans:
 **Goal:** Isolate whether Rust chip-detect / address-split sequencing before BM1366 init diverges from upstream `55 AA 52 05 00 00 0A` enumerate + `count_asic_chips` + chip-address assignment in a way that leaves cores UART-alive but idle. Patch only a confirmed enumerate/sequencing divergence; run detector-gated Ultra 205 fake-pool evidence until `result_correlated` plus share submit appear, or narrow the blocker with redacted evidence.
 **Requirements**: STR-09, CFG-07, ASIC-11 (blocker closure input only; Phase 30 owns checklist promotion)
 **Depends on:** Phase 28.1.1.4
-**Plans:** 4/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 28.1.1.5-01-PLAN.md — Wave 0 chip-enumerate comparator + fixture tests (`forced_ab_label: count_asic_chips_rx_loop_parity`)
