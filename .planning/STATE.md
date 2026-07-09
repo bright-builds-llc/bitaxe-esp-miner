@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 28.1.1.7-03-PLAN.md
-last_updated: "2026-07-09T15:05:35.313Z"
+status: gaps_found
+stopped_at: Completed 28.1.1.7-04-PLAN.md
+last_updated: "2026-07-09T15:12:00.000Z"
 progress:
   total_phases: 18
-  completed_phases: 15
-  total_plans: 65
-  completed_plans: 65
+  completed_phases: 16
+  total_plans: 66
+  completed_plans: 66
   percent: 100
 ---
 
@@ -18,9 +18,9 @@ progress:
 ## Current Position
 
 - **Phase:** 28.1.1.7 — BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis
-- **Plan:** 3/4 — Patch disposition complete; Plan 04 next
-- **Status:** `patch_disposition: falsified_pool_negotiated_mask_asic_reload_as_sole_blocker`; `wire_parity_mask_reload_retained: true`; `next_hypothesis: remaining_nonce_production_blocker_narrowing`; Phase 30 checklist verified rows untouched
-- **Next step:** Execute `28.1.1.7-04-PLAN.md` (final redacted evidence + VERIFICATION)
+- **Plan:** 4/4 — Phase closed (`verification_result: gaps_found`)
+- **Status:** `verification_result: gaps_found`; `patch_disposition: falsified_pool_negotiated_mask_asic_reload_as_sole_blocker`; `wire_parity_mask_reload_retained: true` + mask-on-MiningWork + ASIC-256 + RX-loop retained; `next_hypothesis: remaining_nonce_production_blocker_narrowing`; `phase30_promotion_input: pending`; Phase 30 checklist verified rows untouched
+- **Next step:** Discuss/plan follow-on insert for `remaining_nonce_production_blocker_narrowing` (do not promote STR-09/CFG-07/ASIC-11 checklist verified rows)
 
 ## Decisions (Phase 28.1.1.7)
 
@@ -40,6 +40,10 @@ progress:
 - `patch_disposition: falsified_pool_negotiated_mask_asic_reload_as_sole_blocker`; keep wire-correct post-configure SetVersionMask reload (Plan 03)
 - `next_hypothesis: remaining_nonce_production_blocker_narrowing` (A/B silent; no second speculative patch) (Plan 03)
 - `wire_parity_mask_reload_retained: true`; `phase30_promotion_input: pending` (Plan 03)
+- Plan 04 closed Wave 0 Nyquist (`wave_0_complete` / `nyquist_compliant`); ROADMAP 4/4 Gaps Found; handoff `remaining_nonce_production_blocker_narrowing`
+- `verification_result=gaps_found` (no correlate/submit after mask-reload A/B despite reload TX observed)
+- `next_hypothesis=remaining_nonce_production_blocker_narrowing`; mask-reload + mask-on-MiningWork + ASIC-256 + RX-loop wire retained
+- `phase30_promotion_input=pending`; checklist verified rows untouched
 
 ## Decisions (Phase 28.1.1.6)
 
@@ -105,6 +109,7 @@ progress:
 | Phase 28.1.1.7 P01 | 2 min | 2 tasks | 2 files |
 | Phase 28.1.1.7 P02 | 14min | 2 tasks | 10 files |
 | Phase 28.1.1.7 P03 | 1 min | 2 tasks | 1 files |
+| Phase 28.1.1.7 P04 | 6 min | 2 tasks | 5 files |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -128,8 +133,8 @@ progress:
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.7-03-PLAN.md
-- **Resume:** `/gsd-execute-phase 28.1.1.7`
+- **Stopped at:** Completed 28.1.1.7-04-PLAN.md
+- **Resume:** Discuss/plan follow-on for `remaining_nonce_production_blocker_narrowing` (Phase 28.1.1.7 closed gaps_found)
 
 ## Accumulated Context
 
