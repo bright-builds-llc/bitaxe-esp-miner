@@ -46,12 +46,12 @@ function runComparator({ upstream, rust }) {
 
 function gapShapeUpstreamLog() {
   // Many chip_id_read_tx (0x52) lines — upstream hashrate-monitor register poll shape.
+  // No submit marker: Test A asserts fake_pool_submit_observed: false for the gap shape.
   const chipReads = Array.from({ length: 40 }, () => `tx: [${chipIdReadFrame}]`).join("\n");
   return [
     "Starting ASIC initialization (cold boot mode)",
     chipReads,
     `tx: [${jobFrame}]`,
-    "mining.submit",
   ].join("\n");
 }
 
