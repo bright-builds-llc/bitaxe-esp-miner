@@ -4,22 +4,25 @@ milestone: v1.1
 milestone_name: milestone
 status: executing
 stopped_at: Phase 28.1.1 context gathered
-last_updated: "2026-07-09T19:55:35.612Z"
+last_updated: "2026-07-09T20:09:46.637Z"
 progress:
   total_phases: 18
   completed_phases: 15
   total_plans: 64
-  completed_plans: 61
-  percent: 95
+  completed_plans: 62
+  percent: 97
 ---
 
 # Project State
 
 ## Current Position
 
+Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — EXECUTING
+Plan: 1 of 4
+
 - **Phase:** 28.1.1.7 — BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis
 - **Plan:** 4/4 — Phase closed (`verification_result: gaps_found`)
-- **Status:** Ready to execute
+- **Status:** Executing Phase 28.1.1
 - **Next step:** Discuss/plan follow-on insert for `remaining_nonce_production_blocker_narrowing` (do not promote STR-09/CFG-07/ASIC-11 checklist verified rows)
 
 ## Decisions (Phase 28.1.1.7)

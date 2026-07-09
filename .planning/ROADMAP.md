@@ -179,7 +179,7 @@ Plans:
 | 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 28. Hardware Evidence And Checklist Promotion | v1.1 | 3/3 | Complete   | 2026-07-06 |
 | 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete    | 2026-07-07 |
-| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
+| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 1/4 | In Progress|  |
 | 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
 | 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.3. BM1366 Result RX Acquisition Model Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
@@ -213,7 +213,7 @@ Plans:
 **Goal:** Fix `firmware-nonce-production` by diffing upstream golden UART bytes against Rust TX, correcting init/job wire divergences, and verifying `result_correlated` plus live accepted/rejected shares on Ultra 205.
 **Depends on:** Phase 28.1
 **Requirements:** STR-09, CFG-07 (blocker closure)
-**Plans:** 5/5 plans executed; verification `gaps_found`
+**Plans:** 1/4 plans executed
 
 Plans:
 - [x] 28.1.1-01-PLAN.md — Upstream SERIALTX_DEBUG golden wire capture + recovery
