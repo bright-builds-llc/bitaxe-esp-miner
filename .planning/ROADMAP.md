@@ -182,7 +182,7 @@ Plans:
 | 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
 | 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
 | 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
-| 28.1.1.3. BM1366 Result RX Acquisition Model Nonce-Production Diagnosis | v1.1 | 3/4 | In Progress|  |
+| 28.1.1.3. BM1366 Result RX Acquisition Model Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
@@ -255,10 +255,12 @@ Plans:
 **Goal:** Isolate whether Rust short-poll `try_read_exact` + partial-frame `clear_rx` discards BM1366 nonce bytes versus upstream long-block `SERIAL_rx`/`receive_work`, then patch only a confirmed RX-acquisition divergence and rerun detector-gated Ultra 205 fake-pool evidence until `result_correlated` plus share submit appear, or narrow the blocker further with redacted evidence.
 **Requirements**: STR-09, CFG-07, ASIC-11 (blocker closure input only; Phase 30 owns checklist promotion)
 **Depends on:** Phase 28.1.1.2
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans executed
 
 Plans:
 - [x] 28.1.1.3-01-PLAN.md — Wave 0: RX acquisition comparator + tests (+ optional compact firmware counters)
 - [x] 28.1.1.3-02-PLAN.md — Diagnostic wrapper + baseline metrics + hardware A/B `upstream_like_long_block_receive`
 - [x] 28.1.1.3-03-PLAN.md — Optional default patch only if improved; else falsified disposition → next hypothesis asic_enable_power_sequencing
-- [ ] 28.1.1.3-04-PLAN.md — Final redacted evidence + VERIFICATION + VALIDATION/STATE/ROADMAP closure
+- [x] 28.1.1.3-04-PLAN.md — Final redacted evidence + VERIFICATION + VALIDATION/STATE/ROADMAP closure
+
+**Gaps found:** Long-block RX A/B `ab_outcome: unchanged`; disposition `falsified_upstream_like_long_block_receive`; no `result_correlated` / fake-pool submit; `next_hypothesis=asic_enable_power_sequencing`. Phase 30 promotion pending.
