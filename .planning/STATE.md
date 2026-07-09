@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: milestone
 status: Phase 28.1.1.4 complete — gaps_found; hand off chip-enumerate
 stopped_at: Completed 28.1.1.4-04-PLAN.md
-last_updated: "2026-07-09T04:10:00.000Z"
+last_updated: "2026-07-09T04:08:30.000Z"
 last_activity: 2026-07-09 -- Phase 28.1.1.4 closed gaps_found; next_hypothesis match_upstream_chip_enumerate_before_init
 progress:
   total_phases: 15
@@ -58,6 +58,7 @@ progress:
 | 28.1.1.4 | 01 | 7 min | 2 | 2 |
 | 28.1.1.4 | 02 | 10 min | 2 | 10 |
 | 28.1.1.4 | 03 | 1 min | 2 | 1 |
+| 28.1.1.4 | 04 | 1 min | 2 | 5 |
 
 ## Session
 
