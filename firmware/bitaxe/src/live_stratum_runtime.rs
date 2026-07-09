@@ -985,7 +985,13 @@ fn poll_continuous_asic_result(
     let generation = bridge
         .last_dispatch_generation
         .unwrap_or_else(|| runtime.production_registry().generation());
-    let poll_timeout_ms = u64::from(slice_ms).min(SOCKET_TIMEOUT_MS).max(1) as u32;
+    // Investigation-only: bypass SOCKET_TIMEOUT_MS clamp so continuous poll can
+    // match upstream SERIAL_rx(..., 10000). Default path keeps the 100 ms clamp.
+    let poll_timeout_ms = if asic_adapter::upstream_like_long_block_receive_enabled() {
+        asic_adapter::RESULT_WORK_TIMEOUT_MS
+    } else {
+        u64::from(slice_ms).min(SOCKET_TIMEOUT_MS).max(1) as u32
+    };
     let valid_jobs = runtime.production_registry().valid_jobs();
     let mut executor = ProductionAsicExecutor::new();
     match executor.try_read_production_result(valid_jobs, poll_timeout_ms) {

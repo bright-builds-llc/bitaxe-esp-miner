@@ -40,6 +40,7 @@ pub use production::{
 };
 pub use work_result_investigation::{
     match_upstream_register_read_poll_enabled, single_dispatch_bounded_read_enabled,
+    upstream_like_long_block_receive_enabled,
 };
 
 pub use status::{

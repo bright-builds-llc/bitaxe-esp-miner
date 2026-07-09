@@ -84,6 +84,13 @@ pub fn match_upstream_register_read_poll_enabled() -> bool {
     has_investigation_mode("match_upstream_register_read_poll")
 }
 
+/// Phase 28.1.1.3 A/B: continuous result poll uses upstream-like long-block
+/// `RESULT_WORK_TIMEOUT_MS` (10000) instead of the 100 ms socket clamp.
+/// Off by default; investigation only.
+pub fn upstream_like_long_block_receive_enabled() -> bool {
+    has_investigation_mode("upstream_like_long_block_receive")
+}
+
 fn phase27_bridge_active() -> bool {
     crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge()
 }
