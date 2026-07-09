@@ -18,9 +18,9 @@ progress:
 ## Current Position
 
 - **Phase:** 28.1.1.6 — BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis
-- **Plan:** 1/4 — Wave 0 comparator complete
-- **Status:** In Progress — forced A/B `negotiated_version_mask_work_field_parity`; Phase 30 checklist verified rows untouched
-- **Next step:** Execute 28.1.1.6-02 (mask-on-MiningWork patch + ≥360s fake-pool A/B)
+- **Plan:** 2/4 — Work-field mask A/B complete
+- **Status:** In Progress — `ab_outcome: unchanged` for `negotiated_version_mask_work_field_parity`; Phase 30 checklist verified rows untouched
+- **Next step:** Execute 28.1.1.6-03 (patch disposition → `next_hypothesis: pool_negotiated_mask_asic_reload`)
 
 ## Decisions (Phase 28.1.1.6)
 
@@ -28,6 +28,9 @@ progress:
 - `recommended_investigation` closed to `negotiated_version_mask_work_field_parity` | `pool_negotiated_mask_asic_reload` | `none`
 - HARD BAN includes `count_asic_chips_rx_loop_parity`; `asic_mask_reload_recommended` always false in Wave 0
 - Skipped optional firmware markers (D-10); category markers in logs suffice for Wave 0
+- Stop discarding `maybe_version_mask`; store on `MiningWork`; UART version stays base notify
+- Compact `mask_applied_to_work=true` marker on WorkQueued when mask stored (D-10 Plan 02)
+- A/B `ab_outcome: unchanged` for `negotiated_version_mask_work_field_parity` — falsify work-field-only lever; Plan 03 `next_hypothesis: pool_negotiated_mask_asic_reload`
 
 ## Decisions (Phase 28.1.1.4)
 
