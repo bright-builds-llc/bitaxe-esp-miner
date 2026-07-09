@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.2 planned — ready to execute
-stopped_at: Phase 28.1.1.2 plans created; ready for /gsd-execute-phase
-last_updated: "2026-07-09T02:27:00.000Z"
-last_activity: 2026-07-09 -- Phase 28.1.1.2 PLAN.md files created (4 plans)
+status: executing
+stopped_at: Completed 28.1.1.2-01-PLAN.md
+last_updated: "2026-07-09T02:33:20.969Z"
+last_activity: 2026-07-09
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 45
-  completed_plans: 41
-  percent: 77
+  completed_plans: 43
+  percent: 96
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 ## Current Position
 
 Phase: 28.1.1.2 (bm1366-result-path-and-asic-side-effect-nonce-production-dia) — PLANNED
-Plan: 0 of 4
-Status: Plans ready — comparator → register-read-poll A/B → optional patch → final evidence
-Last activity: 2026-07-09 -- Phase 28.1.1.2 PLAN.md files created
+Plan: 1 of 4
+Status: Ready to execute
+Last activity: 2026-07-09
 
 Progress: [████████░░] 77% (milestone v1.1; Phase 28.1.1.2 execute next)
 
@@ -127,6 +127,7 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 28.1]: Blocker dispositioned firmware-nonce-production: upstream v2.14.0 mines on the same Ultra 205 (nonces + accepted shares) while Rust firmware dispatches correctly to a chip that answers register reads but never hashes
 - [Phase 28.1]: J2c confound falsified on hardware: 22 work_dispatched at ~2 s cadence with fresh extranonce2 under parity-default orchestration
 - [Phase 28.1]: Upstream A/B used official release image (sha256-recorded) plus NVS from upstream config-205.cvs with local wifi only; recovery reflash verified and reference pin clean
+- [Phase 28.1.1.2]: Result-path comparator composes 28.1.1.1 parsers; prefers match_upstream_register_read_poll; never post_max_baud_delay_2000
 
 ### Pending Todos
 
@@ -152,12 +153,13 @@ None yet.
 | Phase 28.1 P03 | 12min | 2 tasks | 6 files |
 | Phase 28.1 P04 | 7min | 2 tasks | 4 files |
 | Phase 28.1 P05 | 51min | 3 tasks | 4 files |
+| Phase 28.1.1.2 P01 | 2min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-07-07T15:24:54.351Z
-Stopped at: Phase 28.1.1 context gathered
-Resume file: .planning/phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-CONTEXT.md
+Last session: 2026-07-09T02:33:20.967Z
+Stopped at: Completed 28.1.1.2-01-PLAN.md
+Resume file: None
 
 ## Next Step
 
