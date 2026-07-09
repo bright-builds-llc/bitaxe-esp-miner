@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-stopped_at: Completed 28.1.1.2-03-PLAN.md
-last_updated: "2026-07-09T02:54:02.247Z"
+status: verifying
+stopped_at: Completed 28.1.1.2-04-PLAN.md (gaps_found)
+last_updated: "2026-07-09T02:56:33.275Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 13
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 45
-  completed_plans: 45
+  completed_plans: 46
   percent: 100
 ---
 
@@ -26,12 +26,12 @@ See: `.planning/PROJECT.md` (updated 2026-07-04)
 
 ## Current Position
 
-Phase: 28.1.1.2 (bm1366-result-path-and-asic-side-effect-nonce-production-dia) — PLANNED
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 28.1.1.2 (bm1366-result-path-and-asic-side-effect-nonce-production-dia) — GAPS FOUND
+Plan: 4 of 4 (all plans executed)
+Status: Executed with gaps_found — no result_correlated / share submit; Phase 30 promotion pending
 Last activity: 2026-07-09
 
-Progress: [████████░░] 77% (milestone v1.1; Phase 28.1.1.2 execute next)
+Progress: [██████████] 100% plans for 28.1.1.2; milestone still blocked on share-outcome evidence
 
 ## Active Artifacts
 
@@ -132,6 +132,8 @@ Explicit v1.1 deferrals: non-205 boards, other ASIC families, Stratum v2, OTAWWW
 - [Phase 28.1.1.2]: Register-read-poll A/B regressed with LoadProhibited; no submit/correlate; post-fix re-run blocked until board-info recovers
 - [Phase 28.1.1.2]: patch_disposition=falsified_match_upstream_register_read_poll because ab_outcome=regressed — Plan 02 A/B regressed with panic; D-09 forbids default promotion without improved correlate/submit
 - [Phase 28.1.1.2]: Task 2 default promotion SKIPPED; next_hypothesis=result_rx_acquisition_model; phase30 pending — Falsified branch of Plan 03; investigation mode retained; no job-byte or post_max_baud changes
+- [Phase 28.1.1.2]: verification_verdict=gaps_found; phase30_promotion_input=pending — D-14 fail-closed: A/B completed with regression and no correlate/submit markers
+- [Phase 28.1.1.2]: next_hypothesis=result_rx_acquisition_model after falsified register-read poll — D-07 item 1; no second patch in this phase; board-info re-run still blocked
 
 ### Pending Todos
 
@@ -161,13 +163,14 @@ None yet.
 | Phase 28.1.1.2 P01 | 2min | 2 tasks | 2 files |
 | Phase 28.1.1.2 P02 | 15min | 2 tasks | 8 files |
 | Phase 28.1.1.2 P03 | 2min | 2 tasks | 1 files |
+| Phase 28.1.1.2 P04 | 3min | 2 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-07-09T02:53:36.395Z
-Stopped at: Completed 28.1.1.2-03-PLAN.md
+Last session: 2026-07-09T02:56:33.272Z
+Stopped at: Completed 28.1.1.2-04-PLAN.md (gaps_found)
 Resume file: None
 
 ## Next Step
 
-Run `/gsd-execute-phase 28.1.1.2` (result-path comparator → `match_upstream_register_read_poll` A/B → optional patch → final evidence). Do not start Phase 29/30 until share-outcome evidence exists.
+Phase 28.1.1.2 closed with `verification_verdict: gaps_found`. After Ultra 205 USB recovery (`just detect-ultra205`), pursue `next_hypothesis: result_rx_acquisition_model`. Do not start Phase 29/30 share-outcome promotion until `result_correlated` plus submit markers exist.
