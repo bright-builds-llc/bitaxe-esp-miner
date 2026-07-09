@@ -673,7 +673,17 @@ fn count_asic_chips_rx_loop(
                 }
             },
             Err(error) => {
-                // Wrong length / UART hard error — fail closed (upstream breaks).
+                // Empty-buffer UART timeout is idle (upstream SERIAL_rx==0). Partial
+                // frames / other UART errors remain fail-closed.
+                let message = format!("{error:#}");
+                if message.contains("ESP_ERR_TIMEOUT") || message.contains("timeout") {
+                    if uart_trace_enabled() {
+                        log::info!(
+                            "asic_uart_trace=count_asic_chips_rx_loop idle_via_timeout counted={counted_chips}"
+                        );
+                    }
+                    break;
+                }
                 log::warn!(
                     "asic_status=fail_closed reason={CHIP_DETECT_RESPONSE_INVALID} error={error:#}"
                 );

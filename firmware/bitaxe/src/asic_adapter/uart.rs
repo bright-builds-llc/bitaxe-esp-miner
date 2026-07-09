@@ -51,7 +51,9 @@ pub fn rx_acquisition_counts() -> RxAcquisitionCounts {
 ///
 /// Marker shape (no hex): `asic_rx_acquisition_summary idle=N partial=N clear=N complete=N`
 pub fn note_result_poll_and_maybe_emit_summary() {
-    let ticks = RX_ACQ_POLL_TICKS.fetch_add(1, Ordering::Relaxed).saturating_add(1);
+    let ticks = RX_ACQ_POLL_TICKS
+        .fetch_add(1, Ordering::Relaxed)
+        .saturating_add(1);
     if ticks % RX_ACQUISITION_SUMMARY_EVERY_N_POLLS != 0 {
         return;
     }
@@ -198,9 +200,17 @@ impl<'d> AsicUart<'d> {
 
             let remaining_ms = remaining.as_millis().min(u128::from(u32::MAX)) as u32;
             let chunk_cap = (len - buf.len()).min(scratch.len());
-            let read = self
+            // Upstream SERIAL_rx returns 0 on idle timeout. esp-idf UartDriver::read
+            // often surfaces ESP_ERR_TIMEOUT instead of Ok(0); treat empty-buffer
+            // timeout as zero bytes so drain-until-idle can exit cleanly.
+            let read = match self
                 .driver
-                .read(&mut scratch[..chunk_cap], ticks(remaining_ms))?;
+                .read(&mut scratch[..chunk_cap], ticks(remaining_ms))
+            {
+                Ok(n) => n,
+                Err(error) if is_uart_timeout_error(&error) && buf.is_empty() => 0,
+                Err(error) => return Err(error.into()),
+            };
             read_index = read_index.saturating_add(1);
 
             if uart_trace_enabled() {
@@ -278,6 +288,10 @@ fn hex_bytes(bytes: &[u8]) -> String {
         .map(|byte| format!("{byte:02x}"))
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn is_uart_timeout_error(error: &esp_idf_svc::sys::EspError) -> bool {
+    error.code() == esp_idf_svc::sys::ESP_ERR_TIMEOUT
 }
 
 fn ticks(timeout_ms: u32) -> esp_idf_svc::sys::TickType_t {
