@@ -29,6 +29,9 @@ pub struct MiningWork {
     pub ntime: u32,
     pub maybe_pool_difficulty: Option<PoolDifficulty>,
     pub clean_jobs: bool,
+    /// Negotiated Stratum version-rolling mask (upstream `bm_job.version_mask`).
+    /// Kept on the work object; BM1366 UART job `version` stays base notify bytes.
+    pub maybe_version_mask: Option<VersionMask>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -76,7 +79,6 @@ impl MiningWorkBuilder {
             &self.extranonce,
             &extranonce2,
             asic_job_id,
-            self.maybe_version_mask,
         )?;
 
         Ok(MiningWork {
@@ -87,6 +89,7 @@ impl MiningWorkBuilder {
             ntime: self.notify.ntime,
             maybe_pool_difficulty: self.maybe_pool_difficulty,
             clean_jobs: self.notify.clean_jobs,
+            maybe_version_mask: self.maybe_version_mask,
         })
     }
 }
@@ -95,17 +98,37 @@ pub fn build_work_fields(
     notify: &MiningNotify,
     extranonce: &ExtranonceAssignment,
     asic_job_id: Bm1366JobId,
-    maybe_version_mask: Option<VersionMask>,
+    _maybe_version_mask: Option<VersionMask>,
 ) -> Result<Bm1366WorkFields, StratumV1Error> {
     let extranonce2 = extranonce_2_generate(0, usize::from(extranonce.extranonce2_len))?;
 
-    build_work_fields_with_extranonce2(
-        notify,
-        extranonce,
-        &extranonce2,
-        asic_job_id,
-        maybe_version_mask,
-    )
+    // Mask belongs on `MiningWork` via `MiningWorkBuilder`; UART version stays base notify.
+    build_work_fields_with_extranonce2(notify, extranonce, &extranonce2, asic_job_id)
+}
+
+/// Host-side version-rolling bitmask increment (upstream `increment_bitmask`).
+///
+/// Used for pure-crate midstate fixtures only. BM1366 UART jobs keep
+/// `num_midstates = 0x01` and do not transmit rolled midstate arrays.
+///
+/// Breadcrumb: `reference/esp-miner/components/stratum/mining.c` (`increment_bitmask`).
+#[must_use]
+pub fn increment_bitmask(value: u32, mask: u32) -> u32 {
+    if mask == 0 {
+        return value;
+    }
+
+    let least_set = mask & mask.wrapping_neg();
+    let carry = (value & mask).wrapping_add(least_set);
+    let overflow = carry & !mask;
+    let mut new_value = (value & !mask) | (carry & mask);
+
+    if overflow > 0 {
+        let carry_mask = overflow << 1;
+        new_value = increment_bitmask(new_value, carry_mask);
+    }
+
+    new_value
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -169,10 +192,7 @@ fn build_work_fields_with_extranonce2(
     extranonce: &ExtranonceAssignment,
     extranonce2: &str,
     _asic_job_id: Bm1366JobId,
-    maybe_version_mask: Option<VersionMask>,
 ) -> Result<Bm1366WorkFields, StratumV1Error> {
-    let _ = maybe_version_mask;
-
     let coinbase_hash = double_sha256_hex_parts(&[
         notify.coinbase_1.as_str(),
         extranonce.extranonce1.as_str(),
@@ -189,6 +209,7 @@ fn build_work_fields_with_extranonce2(
         ntime: notify.ntime.to_le_bytes(),
         merkle_root: reverse_32bit_words(merkle_root),
         prev_block_hash: reverse_32bit_words(reverse_endianness_per_word(prev_block_hash)),
+        // Base notify version only — never OR/XOR negotiated mask into UART job bytes.
         version: notify.version.to_le_bytes(),
     })
 }
@@ -258,6 +279,7 @@ mod mining_job_tests {
     #[test]
     fn mining_job_builder_accepts_nonzero_version_mask_for_base_notify_version() {
         // Arrange
+        let negotiated = VersionMask { mask: 0x1fff_e000 };
         let builder = MiningWorkBuilder::new(
             sample_notify(),
             ExtranonceAssignment {
@@ -265,15 +287,62 @@ mod mining_job_tests {
                 extranonce2_len: 4,
             },
         )
-        .with_version_mask(VersionMask { mask: 0x1fff_e000 });
+        .with_version_mask(negotiated);
 
         // Act
         let work = builder
             .build(Bm1366JobId::new(0x28))
             .expect("mining work should build with negotiated version mask");
 
-        // Assert
+        // Assert — mask attached to work; UART version stays base notify LE bytes.
+        assert_eq!(work.maybe_version_mask, Some(negotiated));
         assert_eq!(work.fields.version, sample_notify().version.to_le_bytes());
+    }
+
+    #[test]
+    fn mining_job_builder_without_mask_leaves_maybe_version_mask_none() {
+        // Arrange
+        let builder = MiningWorkBuilder::new(
+            sample_notify(),
+            ExtranonceAssignment {
+                extranonce1: "4de05269".to_owned(),
+                extranonce2_len: 4,
+            },
+        );
+
+        // Act
+        let work = builder
+            .build(Bm1366JobId::new(0))
+            .expect("mining work should build without version mask");
+
+        // Assert
+        assert_eq!(work.maybe_version_mask, None);
+        assert_eq!(work.fields.version, sample_notify().version.to_le_bytes());
+    }
+
+    #[test]
+    fn increment_bitmask_matches_upstream_fixture_vectors() {
+        // Arrange — breadcrumb vectors from reference test_mining.c (independent Rust).
+        let version = 0x2000_0004_u32;
+        let mask = 0x00ff_ff00_u32;
+
+        // Act
+        let first = increment_bitmask(version, mask);
+        let second = increment_bitmask(first, mask);
+        let third = increment_bitmask(second, mask);
+        let fourth = increment_bitmask(third, mask);
+
+        // Assert
+        assert_eq!(first, 0x2000_0104);
+        assert_eq!(second, 0x2000_0204);
+        assert_eq!(third, 0x2000_0304);
+        assert_eq!(fourth, 0x2000_0404);
+    }
+
+    #[test]
+    fn increment_bitmask_zero_mask_returns_value_unchanged() {
+        // Arrange / Act / Assert
+        assert_eq!(increment_bitmask(0x2000_0004, 0), 0x2000_0004);
     }
 
     #[test]
