@@ -2,25 +2,35 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.7 inserted — ASIC mask-reload diagnosis pending discuss/plan
-stopped_at: Inserted Phase 28.1.1.7 after 28.1.1.6
-last_updated: "2026-07-09T14:38:38.000Z"
+status: Phase 28.1.1.7 planned — 4 plans ready to execute
+stopped_at: Planned Phase 28.1.1.7 (waves 01–04)
+last_updated: "2026-07-09T14:42:00.000Z"
 progress:
   total_phases: 17
   completed_phases: 15
-  total_plans: 62
+  total_plans: 66
   completed_plans: 62
-  percent: 100
+  percent: 94
 ---
 
 # Project State
 
 ## Current Position
 
-- **Phase:** 28.1.1.7 — BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis (inserted, not planned)
-- **Plan:** 0/4 — discuss/plan pending
-- **Status:** inserted after 28.1.1.6 — consume `next_hypothesis: pool_negotiated_mask_asic_reload`; Phase 30 checklist verified rows untouched
-- **Next step:** Yolo discuss → research → 4-wave plan → execute for ASIC mask reload
+- **Phase:** 28.1.1.7 — BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis (planned)
+- **Plan:** 0/4 — plans ready; execute pending
+- **Status:** 4-wave plan locked — forced A/B `pool_negotiated_mask_asic_reload`; Phase 30 checklist verified rows untouched
+- **Next step:** `/gsd-execute-phase 28.1.1.7` (Wave 0 comparator → patch+A/B → disposition → close)
+
+## Decisions (Phase 28.1.1.7 — planned)
+
+- Forced A/B label: `pool_negotiated_mask_asic_reload` (D-04/D-12)
+- Gate lever on `mask_reload_tx_observed` / `post_configure_runtime` after configure — not mask-value delta (D-05)
+- Wave 0 comparator: `scripts/phase28.1.1.7-asic-mask-reload-compare.mjs` extending 28.1.1.6 taxonomy
+- HARD BAN includes prior falsified knobs + `negotiated_version_mask_work_field_parity`
+- Plan 02 hook: `apply_negotiated_version_mask` in production.rs; flush from live_stratum_runtime after configure + production_ready
+- Plan 03: promote only if improved+correlate/submit; else evidence-named next_hypothesis (default placeholder `remaining_nonce_production_blocker_narrowing` if silent); no second speculative patch
+- Plan 04: `passed` only with result_correlated + share submit; Phase 30 checklist verified rows untouched
 
 ## Decisions (Phase 28.1.1.6)
 
@@ -106,8 +116,8 @@ progress:
 
 ## Session
 
-- **Stopped at:** Inserted Phase 28.1.1.7
-- **Resume:** Continue 28.1.1.7 discuss/plan/execute in-session
+- **Stopped at:** Planned Phase 28.1.1.7 (4 PLAN.md files)
+- **Resume:** `/gsd-execute-phase 28.1.1.7`
 
 ## Accumulated Context
 
