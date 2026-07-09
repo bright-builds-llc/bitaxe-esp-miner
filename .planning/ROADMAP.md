@@ -181,7 +181,7 @@ Plans:
 | 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete    | 2026-07-07 |
 | 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
 | 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
-| 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 2/4 | In Progress|  |
+| 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 3/4 | In Progress|  |
 | 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
@@ -238,10 +238,10 @@ Plans:
 **Goal:** Isolate and close the remaining `firmware-nonce-production` gap below job bytes by comparing result-path / ASIC runtime side effects against upstream (continuous RX / chip-id polling vs Rust result-read polling, enable/power/reset sequencing, and missing upstream runtime side effects), then patch only a confirmed divergence and rerun detector-gated Ultra 205 evidence until `result_correlated` plus fake-pool/live share submit appear, or the blocker is narrowed further with redacted evidence.
 **Requirements**: STR-09, CFG-07, ASIC-11 (blocker closure input only; Phase 30 owns checklist promotion)
 **Depends on:** Phase 28.1.1.1
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 28.1.1.2-01-PLAN.md — Wave 0 result-path comparator + D-05 fixture tests
 - [x] 28.1.1.2-02-PLAN.md — Diagnostic wrapper + baseline compare + hardware A/B `match_upstream_register_read_poll`
-- [ ] 28.1.1.2-03-PLAN.md — Optional firmware patch only if A/B confirms divergence; else disposition
+- [x] 28.1.1.2-03-PLAN.md — Optional firmware patch only if A/B confirms divergence; else disposition
 - [ ] 28.1.1.2-04-PLAN.md — Final redacted evidence + verification/validation closure
