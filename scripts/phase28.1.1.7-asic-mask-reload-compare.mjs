@@ -139,7 +139,12 @@ function configureObserved(text) {
   return (
     /mining\.configure|configure_observed=true|stratum_configure|version-rolling/i.test(
       text,
-    ) || /mining_configure|configure_sent|configure_result/i.test(text)
+    ) ||
+    /mining_configure|configure_sent|configure_result/i.test(text) ||
+    // Firmware may omit literal configure strings; these markers only appear
+    // after configure/mask store on the live Stratum path.
+    /mask_applied_to_work=true/i.test(text) ||
+    /mask_reload_tx_observed=true/i.test(text)
   );
 }
 
@@ -158,6 +163,13 @@ function maskStoredClass(text) {
     return "missing";
   }
   if (configureObserved(text) && /version-rolling\.mask|version_mask=/i.test(text)) {
+    return "stored";
+  }
+  // mask_applied_to_work / post_configure reload imply negotiated mask was stored.
+  if (
+    /mask_applied_to_work=true/i.test(text) ||
+    /mask_reload_tx_observed=true/i.test(text)
+  ) {
     return "stored";
   }
   if (configureObserved(text)) {
@@ -308,7 +320,7 @@ function configureEvidenceLineIndex(lines) {
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     if (
-      /mining\.configure|configure_observed=true|stratum_configure|configure_sent|configure_result|mask_stored_class=stored|version_mask_stored=true/i.test(
+      /mining\.configure|configure_observed=true|stratum_configure|configure_sent|configure_result|mask_stored_class=stored|version_mask_stored=true|mask_applied_to_work=true/i.test(
         line,
       )
     ) {
@@ -321,9 +333,13 @@ function configureEvidenceLineIndex(lines) {
 /**
  * Analyze version_mask TX class and mask_reload_tx_observed.
  *
- * mask_reload_tx_observed is true ONLY when an explicit post_configure_runtime
- * marker (or equivalent) appears AFTER configure/mask_stored evidence.
- * Prelude / init_register frames alone never count as reload (Pitfall 2).
+ * mask_reload_tx_observed is true ONLY for the explicit firmware
+ * `post_configure_runtime` / `mask_reload_tx_observed=true` marker (never from
+ * prelude_3 / init_register UART frames alone — Pitfall 2).
+ *
+ * Ordering note: firmware may flush reload before WorkQueued emits
+ * `mask_applied_to_work`; the explicit marker is path-unique to the
+ * post-configure flush and is sufficient without a prior configure log line.
  */
 function analyzeMaskReload(text) {
   if (!text) {
@@ -340,7 +356,7 @@ function analyzeMaskReload(text) {
   let totalVersionMask = 0;
   let sawChipId = false;
   let sawInitRegisterMarker = false;
-  let postConfigureRuntimeAfterConfigure = false;
+  let explicitPostConfigureRuntime = false;
   let anyPostConfigureMarker = false;
 
   for (let index = 0; index < lines.length; index += 1) {
@@ -352,9 +368,9 @@ function analyzeMaskReload(text) {
       )
     ) {
       anyPostConfigureMarker = true;
-      if (configureIndex >= 0 && index > configureIndex) {
-        postConfigureRuntimeAfterConfigure = true;
-      }
+      // Explicit firmware marker is only emitted from the post-configure flush
+      // path — trust it even when configure log lines are absent or later.
+      explicitPostConfigureRuntime = true;
     }
 
     if (
@@ -393,11 +409,11 @@ function analyzeMaskReload(text) {
     }
   }
 
-  const maskReloadTxObserved = postConfigureRuntimeAfterConfigure;
+  const maskReloadTxObserved = explicitPostConfigureRuntime;
 
   let versionMaskTxClass;
   if (maskReloadTxObserved || (anyPostConfigureMarker && configureIndex >= 0)) {
-    // Prefer post_configure_runtime only when after configure evidence.
+    // Prefer post_configure_runtime when the explicit firmware marker is present.
     versionMaskTxClass = maskReloadTxObserved
       ? "post_configure_runtime"
       : totalVersionMask === 0

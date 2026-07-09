@@ -212,6 +212,37 @@ function testC_postConfigureRuntimeObservesReload() {
   );
 }
 
+function testC2_explicitReloadMarkerWithoutConfigureLiteralStillCounts() {
+  // Arrange — firmware flush can log reload before mask_applied_to_work and
+  // without a literal mining.configure string in the monitor capture.
+  const upstream = baselineUpstreamLog();
+  const rust = [
+    "asic_reset_status=post_bring_up_pulse",
+    `asic_uart_trace=tx len=11 hex=${VERSION_MASK_FRAME}`,
+    `asic_uart_trace=tx len=11 hex=${VERSION_MASK_FRAME}`,
+    `asic_uart_trace=tx len=11 hex=${VERSION_MASK_FRAME}`,
+    `asic_uart_trace=tx len=7 hex=${READ_CHIP_ID_FRAME}`,
+    "mask_reload_tx_observed=true version_mask_tx_class=post_configure_runtime redacted=true",
+    "mask_applied_to_work=true job_version_field_class=base_notify redacted=true",
+    "wire_parity_ticket_mask_retained=true",
+    "wire_parity_rx_loop_retained=true",
+    "asic_probe=power_delta baseline_mw=770 after_mw=870 delta_mw=100",
+  ].join("\n");
+
+  // Act
+  const { report } = runComparator({ upstream, rust });
+  const analysis = analyzeMaskReload(rust);
+
+  // Assert
+  assert.equal(analysis.maskReloadTxObserved, true);
+  assert.equal(analysis.versionMaskTxClass, "post_configure_runtime");
+  assert.match(report, /configure_observed: true/);
+  assert.match(report, /mask_stored_class: stored/);
+  assert.match(report, /mask_reload_tx_observed: true/);
+  assert.match(report, /version_mask_tx_class: post_configure_runtime/);
+  assert.match(report, /power_delta_class: flat/);
+}
+
 function testD_missingLogBlocks() {
   // Arrange / Act
   const { report } = runComparator({ upstream: null, rust: divergeRustLog() });
@@ -390,6 +421,7 @@ function testG_reportDoesNotLeakHexOrCredentials() {
 testA_ultra205DivergeForcesAsicReload();
 testB_initOnlyDoesNotCountAsReload();
 testC_postConfigureRuntimeObservesReload();
+testC2_explicitReloadMarkerWithoutConfigureLiteralStillCounts();
 testD_missingLogBlocks();
 testE_powerDeltaClasses();
 testF_neverRecommendsFalsifiedKnobs();
