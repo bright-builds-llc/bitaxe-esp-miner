@@ -3,6 +3,9 @@
 //! Reference breadcrumbs:
 //! - `reference/esp-miner/components/asic/asic_common.c:count_asic_chips`
 //! - parity checklist rows `ASIC-005`, `ASIC-006`, and `ASIC-008`
+//!
+//! Phase 28.1.1.5 default candidate: `count_asic_chips_rx_loop_parity` —
+//! drain-until-idle + soft preamble/CRC retry (independent Rust design; no GPL copy).
 
 use crate::Bm1366ProtocolFault;
 
@@ -19,6 +22,9 @@ pub const CHIP_DETECT_ADAPTER_ERROR: &str = "chip_detect_adapter_error";
 pub const RESET_ADAPTER_UNAVAILABLE: &str = "reset_adapter_unavailable";
 pub const UART_ADAPTER_UNAVAILABLE: &str = "uart_adapter_unavailable";
 
+/// Idle-timeout used by upstream `count_asic_chips` / `SERIAL_rx` (ms).
+pub const COUNT_ASIC_CHIPS_IDLE_TIMEOUT_MS: u32 = 1_000;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bm1366AdapterIoFault {
     AdapterError,
@@ -30,6 +36,15 @@ pub enum Bm1366AdapterIoFault {
 pub enum Bm1366AdapterSetupFault {
     ResetUnavailable,
     UartUnavailable,
+}
+
+/// Disposition for one exact-length chip-ID frame inside the count loop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChipIdCountFrameDisposition {
+    /// Valid BM1366 chip-ID frame — accumulate one counted chip.
+    Accept,
+    /// Soft preamble/CRC/chip-id mismatch — continue drain without failing closed.
+    SoftRetry,
 }
 
 pub fn parse_chip_id_response(bytes: &[u8]) -> Result<Bm1366Observation, Bm1366ProtocolFault> {
@@ -65,6 +80,7 @@ pub fn parse_chip_id_response(bytes: &[u8]) -> Result<Bm1366Observation, Bm1366P
     })
 }
 
+/// Single-frame hard-fail validation (unit / legacy single-shot path).
 pub fn validate_single_chip_detect_response(
     bytes: &[u8],
     expected_chips: u8,
@@ -80,6 +96,66 @@ pub fn validate_single_chip_detect_response(
     }
 
     Ok(detected_chips)
+}
+
+/// Classify one exact-length chip-ID frame for the upstream-like count loop.
+///
+/// Wrong length is a hard fail (`InvalidLength`). Preamble/CRC/chip-id mismatch
+/// is a soft retry so the drain-until-idle loop can continue.
+pub fn classify_chip_id_count_frame(
+    bytes: &[u8],
+) -> Result<ChipIdCountFrameDisposition, Bm1366ProtocolFault> {
+    if bytes.len() != BM1366_RESULT_FRAME_LEN {
+        return Err(Bm1366ProtocolFault::InvalidLength {
+            expected: BM1366_RESULT_FRAME_LEN,
+            actual: bytes.len(),
+        });
+    }
+
+    match parse_chip_id_response(bytes) {
+        Ok(_) => Ok(ChipIdCountFrameDisposition::Accept),
+        Err(Bm1366ProtocolFault::BadPreamble { .. })
+        | Err(Bm1366ProtocolFault::BadCrc)
+        | Err(Bm1366ProtocolFault::PreflightMissing { .. }) => {
+            Ok(ChipIdCountFrameDisposition::SoftRetry)
+        }
+        Err(fault) => Err(fault),
+    }
+}
+
+/// After drain-until-idle, require counted chips to match expected.
+pub fn finalize_counted_chip_detect(
+    counted_chips: u8,
+    expected_chips: u8,
+) -> Result<u8, Bm1366ProtocolFault> {
+    if counted_chips != expected_chips {
+        return Err(Bm1366ProtocolFault::ChipCountMismatch {
+            expected: expected_chips,
+            actual: counted_chips,
+        });
+    }
+
+    Ok(counted_chips)
+}
+
+/// Pure multi-frame count: accumulate valid frames, soft-retry mismatches, exit on
+/// end-of-sequence (idle), hard-fail on wrong length, then compare vs expected.
+pub fn count_asic_chips_drain_until_idle(
+    frames: &[&[u8]],
+    expected_chips: u8,
+) -> Result<u8, Bm1366ProtocolFault> {
+    let mut counted_chips = 0_u8;
+
+    for frame in frames {
+        match classify_chip_id_count_frame(frame)? {
+            ChipIdCountFrameDisposition::Accept => {
+                counted_chips = counted_chips.saturating_add(1);
+            }
+            ChipIdCountFrameDisposition::SoftRetry => {}
+        }
+    }
+
+    finalize_counted_chip_detect(counted_chips, expected_chips)
 }
 
 #[must_use]
@@ -123,14 +199,16 @@ pub fn fail_closed_actions(reason: &'static str) -> Vec<Bm1366AdapterAction> {
 mod tests {
     use super::{
         adapter_io_failure_actions, adapter_setup_failure_actions, chip_detect_response_actions,
-        fail_closed_actions, Bm1366AdapterIoFault, Bm1366AdapterSetupFault,
-        CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID, RESET_ADAPTER_UNAVAILABLE,
-        UART_ADAPTER_UNAVAILABLE,
+        classify_chip_id_count_frame, count_asic_chips_drain_until_idle, fail_closed_actions,
+        finalize_counted_chip_detect, Bm1366AdapterIoFault, Bm1366AdapterSetupFault,
+        ChipIdCountFrameDisposition, CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID,
+        RESET_ADAPTER_UNAVAILABLE, UART_ADAPTER_UNAVAILABLE,
     };
     use crate::bm1366::{
         command::Bm1366AdapterAction, crc::crc5, observation::AsicInitStatus, BM1366_CHIP_ID,
         BM1366_RESULT_FRAME_LEN,
     };
+    use crate::Bm1366ProtocolFault;
 
     fn chip_id_response_frame(chip_id: u16) -> Vec<u8> {
         let mut frame = vec![
@@ -190,6 +268,95 @@ mod tests {
                 AsicInitStatus::ChipDetectedNoMining { chips: 1 }
             )]
         );
+    }
+
+    #[test]
+    fn soft_retry_on_bad_preamble_does_not_hard_fail_count_loop() {
+        // Arrange
+        let mut bad_preamble = chip_id_response_frame(BM1366_CHIP_ID);
+        bad_preamble[0] = 0x00;
+        let valid = chip_id_response_frame(BM1366_CHIP_ID);
+
+        // Act
+        let disposition = classify_chip_id_count_frame(&bad_preamble);
+        let counted = count_asic_chips_drain_until_idle(&[&bad_preamble, &valid], 1);
+
+        // Assert
+        assert_eq!(disposition, Ok(ChipIdCountFrameDisposition::SoftRetry));
+        assert_eq!(counted, Ok(1));
+    }
+
+    #[test]
+    fn soft_retry_on_bad_crc_continues_then_accepts_valid_frame() {
+        // Arrange
+        let mut bad_crc = chip_id_response_frame(BM1366_CHIP_ID);
+        bad_crc[10] ^= 0x01;
+        let valid = chip_id_response_frame(BM1366_CHIP_ID);
+
+        // Act
+        let disposition = classify_chip_id_count_frame(&bad_crc);
+        let counted = count_asic_chips_drain_until_idle(&[&bad_crc, &valid], 1);
+
+        // Assert
+        assert_eq!(disposition, Ok(ChipIdCountFrameDisposition::SoftRetry));
+        assert_eq!(counted, Ok(1));
+    }
+
+    #[test]
+    fn idle_with_no_frames_ends_loop_and_mismatches_expected() {
+        // Arrange / Act
+        let counted = count_asic_chips_drain_until_idle(&[], 1);
+
+        // Assert
+        assert_eq!(
+            counted,
+            Err(Bm1366ProtocolFault::ChipCountMismatch {
+                expected: 1,
+                actual: 0
+            })
+        );
+    }
+
+    #[test]
+    fn wrong_length_hard_fails_count_loop() {
+        // Arrange
+        let short = [0xaa_u8, 0x55, 0x13, 0x66];
+
+        // Act
+        let disposition = classify_chip_id_count_frame(&short);
+        let counted = count_asic_chips_drain_until_idle(&[&short], 1);
+
+        // Assert
+        assert_eq!(
+            disposition,
+            Err(Bm1366ProtocolFault::InvalidLength {
+                expected: BM1366_RESULT_FRAME_LEN,
+                actual: short.len()
+            })
+        );
+        assert_eq!(
+            counted,
+            Err(Bm1366ProtocolFault::InvalidLength {
+                expected: BM1366_RESULT_FRAME_LEN,
+                actual: short.len()
+            })
+        );
+    }
+
+    #[test]
+    fn valid_single_ultra205_frame_yields_counted_one() {
+        // Arrange
+        let valid = chip_id_response_frame(BM1366_CHIP_ID);
+
+        // Act
+        let disposition = classify_chip_id_count_frame(&valid);
+        let counted = count_asic_chips_drain_until_idle(&[&valid], 1);
+        let finalized = finalize_counted_chip_detect(1, 1);
+
+        // Assert
+        assert_eq!(disposition, Ok(ChipIdCountFrameDisposition::Accept));
+        assert_eq!(counted, Ok(1));
+        assert_eq!(finalized, Ok(1));
     }
 
     #[test]

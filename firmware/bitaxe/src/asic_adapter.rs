@@ -9,8 +9,9 @@ use anyhow::{Context, Result};
 use bitaxe_asic::bm1366::{
     adapter_gate::AsicAdapterMode,
     chip_detect::{
-        self, Bm1366AdapterIoFault, Bm1366AdapterSetupFault, CHIP_DETECT_ADAPTER_ERROR,
-        CHIP_DETECT_RESPONSE_INVALID, RESET_ADAPTER_UNAVAILABLE, UART_ADAPTER_UNAVAILABLE,
+        self, Bm1366AdapterIoFault, Bm1366AdapterSetupFault, ChipIdCountFrameDisposition,
+        CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID, COUNT_ASIC_CHIPS_IDLE_TIMEOUT_MS,
+        RESET_ADAPTER_UNAVAILABLE, UART_ADAPTER_UNAVAILABLE,
     },
     command::{Bm1366AdapterAction, Bm1366Command},
     init_plan::{Bm1366InitPlan, Bm1366Preflight, BoardPreflightEvidence, ConfigPreflightEvidence},
@@ -25,6 +26,7 @@ use esp_idf_svc::hal::{
     gpio::{InputPin, OutputPin},
     uart::Uart,
 };
+use std::sync::atomic::{AtomicU8, Ordering};
 
 mod chip_detect_investigation;
 mod production;
@@ -47,6 +49,10 @@ pub use status::{
     publish_mining_loop_blocked_status, publish_production_asic_blocked_status,
     publish_production_asic_status,
 };
+
+/// Counted chips from the last successful `count_asic_chips` RX loop (0 = none).
+/// Handed into mining-ready so `chip_count_source_class` becomes `counted_rx`.
+static LAST_COUNTED_CHIPS: AtomicU8 = AtomicU8::new(0);
 
 pub struct AsicBootPeripherals<UART, RESET, TX, RX> {
     pub uart: UART,
@@ -422,6 +428,7 @@ fn run_chip_detect_actions(
     uart: &mut uart::AsicUart<'_>,
     reset: &mut reset::AsicReset<'_>,
 ) -> bool {
+    LAST_COUNTED_CHIPS.store(0, Ordering::Relaxed);
     let preflight = Bm1366Preflight::chip_detect(
         BoardPreflightEvidence::active_ultra_205(),
         ConfigPreflightEvidence::ultra_205_defaults(),
@@ -450,16 +457,34 @@ fn run_mining_ready_init_actions(
         BoardPreflightEvidence::active_ultra_205(),
         ConfigPreflightEvidence::ultra_205_defaults(),
     );
-    let chip_count = preflight.expected_chips();
+    // Prefer counted RX from chip-detect drain loop; fall back to catalog expected.
+    let counted = LAST_COUNTED_CHIPS.load(Ordering::Relaxed);
+    let chip_count = if counted > 0 {
+        counted
+    } else {
+        preflight.expected_chips()
+    };
+    let chip_count_source = if counted > 0 {
+        "counted_rx"
+    } else {
+        "config_expected"
+    };
     let Some(decision) =
         work_result_investigation::mining_ready_init_decision(preflight, chip_count)
     else {
         return true;
     };
 
+    // Compact enumerate marker (counts/classes only — no hex) for Plan 01 comparator.
+    log::info!(
+        "asic_chip_enumerate_summary chip_count_source={chip_count_source} chip_count={chip_count} address_interval={} gap=drain_idle_like chip_detected={}",
+        256_u16 / u16::from(chip_count.max(1)),
+        counted > 0
+    );
+
     if uart_trace_enabled() {
         log::info!(
-            "asic_work_result_trace=mining_ready_init_started chip_count={chip_count} actions={}",
+            "asic_work_result_trace=mining_ready_init_started chip_count={chip_count} chip_count_source={chip_count_source} actions={}",
             decision.actions().len()
         );
     }
@@ -567,25 +592,7 @@ fn interpret_action(
         Bm1366AdapterAction::ReadChipId {
             expected_chips,
             timeout_ms,
-        } => {
-            let response = uart.read_exact(BM1366_RESULT_FRAME_LEN, *timeout_ms)?;
-            match chip_detect::validate_single_chip_detect_response(&response, *expected_chips) {
-                Ok(chips) => {
-                    status::publish_status(AsicInitStatus::ChipDetectedNoMining { chips });
-                    Ok(ActionOutcome::Continue)
-                }
-                Err(fault) => {
-                    log::warn!(
-                        "asic_status=fail_closed reason={CHIP_DETECT_RESPONSE_INVALID} error={fault}"
-                    );
-                    best_effort_hold_reset_low(reset, CHIP_DETECT_RESPONSE_INVALID);
-                    status::publish_status(AsicInitStatus::FailClosed {
-                        reason: CHIP_DETECT_RESPONSE_INVALID,
-                    });
-                    Ok(ActionOutcome::Stop)
-                }
-            }
-        }
+        } => count_asic_chips_rx_loop(uart, reset, *expected_chips, *timeout_ms),
         Bm1366AdapterAction::DelayMs(delay_ms) => {
             std::thread::sleep(std::time::Duration::from_millis(u64::from(*delay_ms)));
             Ok(ActionOutcome::Continue)
@@ -601,6 +608,104 @@ fn interpret_action(
         Bm1366AdapterAction::PublishStatus(init_status) => {
             status::publish_status(*init_status);
             Ok(ActionOutcome::Continue)
+        }
+    }
+}
+
+/// Upstream-like `count_asic_chips` RX loop: drain until idle timeout, soft-retry
+/// preamble/CRC/chip-id mismatch, hard-fail on wrong length / UART error, then
+/// require counted == expected. Stores counted chips for mining-ready handoff.
+fn count_asic_chips_rx_loop(
+    uart: &mut uart::AsicUart<'_>,
+    reset: &mut reset::AsicReset<'_>,
+    expected_chips: u8,
+    timeout_ms: u32,
+) -> Result<ActionOutcome> {
+    let idle_timeout_ms = if timeout_ms == 0 {
+        COUNT_ASIC_CHIPS_IDLE_TIMEOUT_MS
+    } else {
+        timeout_ms
+    };
+    let mut counted_chips = 0_u8;
+
+    if uart_trace_enabled() {
+        log::info!(
+            "asic_uart_trace=count_asic_chips_rx_loop start expected_chips={expected_chips} idle_timeout_ms={idle_timeout_ms}"
+        );
+    }
+
+    loop {
+        match uart.try_read_exact(BM1366_RESULT_FRAME_LEN, idle_timeout_ms) {
+            Ok(None) => {
+                // Idle / received==0 — exit drain loop.
+                if uart_trace_enabled() {
+                    log::info!(
+                        "asic_uart_trace=count_asic_chips_rx_loop idle counted={counted_chips}"
+                    );
+                }
+                break;
+            }
+            Ok(Some(response)) => match chip_detect::classify_chip_id_count_frame(&response) {
+                Ok(ChipIdCountFrameDisposition::Accept) => {
+                    counted_chips = counted_chips.saturating_add(1);
+                    if uart_trace_enabled() {
+                        log::info!(
+                                "asic_uart_trace=count_asic_chips_rx_loop accept counted={counted_chips}"
+                            );
+                    }
+                }
+                Ok(ChipIdCountFrameDisposition::SoftRetry) => {
+                    if uart_trace_enabled() {
+                        log::info!(
+                                "asic_uart_trace=count_asic_chips_rx_loop soft_retry counted={counted_chips}"
+                            );
+                    }
+                }
+                Err(fault) => {
+                    log::warn!(
+                            "asic_status=fail_closed reason={CHIP_DETECT_RESPONSE_INVALID} error={fault}"
+                        );
+                    best_effort_hold_reset_low(reset, CHIP_DETECT_RESPONSE_INVALID);
+                    status::publish_status(AsicInitStatus::FailClosed {
+                        reason: CHIP_DETECT_RESPONSE_INVALID,
+                    });
+                    return Ok(ActionOutcome::Stop);
+                }
+            },
+            Err(error) => {
+                // Wrong length / UART hard error — fail closed (upstream breaks).
+                log::warn!(
+                    "asic_status=fail_closed reason={CHIP_DETECT_RESPONSE_INVALID} error={error:#}"
+                );
+                best_effort_hold_reset_low(reset, CHIP_DETECT_RESPONSE_INVALID);
+                status::publish_status(AsicInitStatus::FailClosed {
+                    reason: CHIP_DETECT_RESPONSE_INVALID,
+                });
+                return Ok(ActionOutcome::Stop);
+            }
+        }
+    }
+
+    match chip_detect::finalize_counted_chip_detect(counted_chips, expected_chips) {
+        Ok(chips) => {
+            LAST_COUNTED_CHIPS.store(chips, Ordering::Relaxed);
+            status::publish_status(AsicInitStatus::ChipDetectedNoMining { chips });
+            if uart_trace_enabled() {
+                log::info!(
+                    "asic_uart_trace=count_asic_chips_rx_loop complete chip_count_source=counted_rx chips={chips}"
+                );
+            }
+            Ok(ActionOutcome::Continue)
+        }
+        Err(fault) => {
+            log::warn!(
+                "asic_status=fail_closed reason={CHIP_DETECT_RESPONSE_INVALID} error={fault}"
+            );
+            best_effort_hold_reset_low(reset, CHIP_DETECT_RESPONSE_INVALID);
+            status::publish_status(AsicInitStatus::FailClosed {
+                reason: CHIP_DETECT_RESPONSE_INVALID,
+            });
+            Ok(ActionOutcome::Stop)
         }
     }
 }
