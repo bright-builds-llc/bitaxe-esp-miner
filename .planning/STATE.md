@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: ready
-stopped_at: Completed 28.1.1.6-04-PLAN.md
-last_updated: "2026-07-09T14:10:00Z"
+status: Phase 28.1.1.7 inserted — ASIC mask-reload diagnosis pending discuss/plan
+stopped_at: Inserted Phase 28.1.1.7 after 28.1.1.6
+last_updated: "2026-07-09T14:38:38.000Z"
 progress:
   total_phases: 17
   completed_phases: 15
@@ -17,10 +17,10 @@ progress:
 
 ## Current Position
 
-- **Phase:** 28.1.1.6 — BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis
-- **Plan:** 4/4 — Final evidence + VERIFICATION complete
-- **Status:** Gaps Found — `verification_result: gaps_found`; `patch_disposition: falsified_negotiated_version_mask_work_field_parity_as_sole_blocker`; `wire_parity_mask_on_work_retained: true`; Phase 30 checklist verified rows untouched
-- **Next step:** Discuss/plan insert for `pool_negotiated_mask_asic_reload` (or continue Phase 29 evidence-workflow automation); do not promote Phase 30 checklist verified rows
+- **Phase:** 28.1.1.7 — BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis (inserted, not planned)
+- **Plan:** 0/4 — discuss/plan pending
+- **Status:** inserted after 28.1.1.6 — consume `next_hypothesis: pool_negotiated_mask_asic_reload`; Phase 30 checklist verified rows untouched
+- **Next step:** Yolo discuss → research → 4-wave plan → execute for ASIC mask reload
 
 ## Decisions (Phase 28.1.1.6)
 
@@ -106,8 +106,8 @@ progress:
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.6-04-PLAN.md
-- **Resume:** Discuss/plan `pool_negotiated_mask_asic_reload` insert, or `/gsd-plan-phase 29`
+- **Stopped at:** Inserted Phase 28.1.1.7
+- **Resume:** Continue 28.1.1.7 discuss/plan/execute in-session
 
 ## Accumulated Context
 

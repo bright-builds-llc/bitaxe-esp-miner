@@ -155,7 +155,7 @@ Plans:
 
 ### Phase 30: Live Share Outcome And Verified Promotion
 **Goal**: Promote STR-09/CFG-07 checklist rows to `verified` only where Phase 28.1.1.1 redacted hardware evidence supports accepted/rejected share outcomes; close Phase 28.1 Nyquist metadata. Does not re-do wire-byte diff work (owned by Phase 28.1.1.1).
-**Depends on**: Phase 28.1.1.6 (or later phase with share-outcome evidence), Phase 29
+**Depends on**: Phase 28.1.1.7 (or later phase with share-outcome evidence), Phase 29
 **Requirements**: STR-09, CFG-07, ASIC-11
 **Gap Closure**: Closes audit tech debt for STR-09/CFG-07 below `verified` after Phase 28.1.1.1 share-outcome evidence exists.
 **Success Criteria** (what must be TRUE):
@@ -167,7 +167,7 @@ Plans:
 
 ## Progress
 
-**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28 -> Phase 28.1 -> Phase 28.1.1 -> Phase 28.1.1.1 -> Phase 28.1.1.2 -> Phase 28.1.1.3 -> Phase 28.1.1.4 -> Phase 28.1.1.5 -> Phase 28.1.1.6 -> Phase 29 -> Phase 30
+**Execution Order:** Phase 22 -> Phase 23 -> Phase 24 -> Phase 25 -> Phase 26 -> Phase 27 -> Phase 28 -> Phase 28.1 -> Phase 28.1.1 -> Phase 28.1.1.1 -> Phase 28.1.1.2 -> Phase 28.1.1.3 -> Phase 28.1.1.4 -> Phase 28.1.1.5 -> Phase 28.1.1.6 -> Phase 28.1.1.7 -> Phase 29 -> Phase 30
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -186,6 +186,7 @@ Plans:
 | 28.1.1.4. BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.5. BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.6. BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
+| 28.1.1.7. BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis | v1.1 | 0/4 | Not started | — |
 | 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
@@ -313,3 +314,13 @@ Plans:
 - [x] 28.1.1.6-04-PLAN.md — Final redacted evidence + VERIFICATION + VALIDATION/STATE/ROADMAP 4/4
 
 **Gaps found:** Work-field A/B `ab_outcome: unchanged`; disposition `falsified_negotiated_version_mask_work_field_parity_as_sole_blocker`; `wire_parity_mask_on_work_retained: true` + ASIC-256 ticket mask + RX-loop retained; no `result_correlated` / fake-pool submit; `next_hypothesis=pool_negotiated_mask_asic_reload`. Phase 30 promotion pending.
+
+### Phase 28.1.1.7: BM1366 pool-negotiated ASIC mask reload nonce-production diagnosis (INSERTED)
+
+**Goal:** Isolate whether missing post-configure ASIC `SetVersionMask` reload (init-only today) leaves BM1366 cores UART-alive but idle after mask-on-MiningWork. First lever: emit runtime `SetVersionMask` from the negotiated mask after configure + ASIC init (`pool_negotiated_mask_asic_reload`), gated on reload-timing markers rather than mask-value delta; patch only a confirmed divergence and rerun detector-gated Ultra 205 fake-pool evidence until `result_correlated` plus share submit appear, or narrow the blocker with redacted evidence.
+**Requirements**: STR-09, CFG-07, ASIC-11 (blocker closure input only; Phase 30 owns checklist promotion)
+**Depends on:** Phase 28.1.1.6
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 28.1.1.7 to break down)
