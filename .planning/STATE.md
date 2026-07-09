@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 28.1.1.7-02-PLAN.md
-last_updated: "2026-07-09T15:03:40.609Z"
+stopped_at: Completed 28.1.1.7-03-PLAN.md
+last_updated: "2026-07-09T15:05:35.313Z"
 progress:
   total_phases: 18
   completed_phases: 15
   total_plans: 65
-  completed_plans: 64
-  percent: 98
+  completed_plans: 65
+  percent: 100
 ---
 
 # Project State
@@ -18,9 +18,9 @@ progress:
 ## Current Position
 
 - **Phase:** 28.1.1.7 — BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis
-- **Plan:** 2/4 — Runtime SetVersionMask reload + fake-pool A/B complete; Plan 03 next
-- **Status:** `mask_reload_tx_observed: true` / `post_configure_runtime`; `ab_outcome: unchanged` (no correlate/submit); Phase 30 checklist verified rows untouched
-- **Next step:** Execute `28.1.1.7-03-PLAN.md` (patch disposition + evidence-named next_hypothesis)
+- **Plan:** 3/4 — Patch disposition complete; Plan 04 next
+- **Status:** `patch_disposition: falsified_pool_negotiated_mask_asic_reload_as_sole_blocker`; `wire_parity_mask_reload_retained: true`; `next_hypothesis: remaining_nonce_production_blocker_narrowing`; Phase 30 checklist verified rows untouched
+- **Next step:** Execute `28.1.1.7-04-PLAN.md` (final redacted evidence + VERIFICATION)
 
 ## Decisions (Phase 28.1.1.7)
 
@@ -37,6 +37,9 @@ progress:
 - Pending bit in live_runtime; flush `apply_negotiated_version_mask` when production_ready with `post_configure_runtime` markers (Plan 02)
 - A/B `pool_negotiated_mask_asic_reload`: `mask_reload_tx_observed` true, `ab_outcome: unchanged` (no correlate/submit); Plan 03 disposition next (Plan 02)
 - Comparator trusts explicit `post_configure_runtime` marker without `mining.configure` literal in monitor log (Plan 02)
+- `patch_disposition: falsified_pool_negotiated_mask_asic_reload_as_sole_blocker`; keep wire-correct post-configure SetVersionMask reload (Plan 03)
+- `next_hypothesis: remaining_nonce_production_blocker_narrowing` (A/B silent; no second speculative patch) (Plan 03)
+- `wire_parity_mask_reload_retained: true`; `phase30_promotion_input: pending` (Plan 03)
 
 ## Decisions (Phase 28.1.1.6)
 
@@ -101,6 +104,7 @@ progress:
 | Phase 28.1.1.6 P04 | 5 min | 2 tasks | 5 files |
 | Phase 28.1.1.7 P01 | 2 min | 2 tasks | 2 files |
 | Phase 28.1.1.7 P02 | 14min | 2 tasks | 10 files |
+| Phase 28.1.1.7 P03 | 1 min | 2 tasks | 1 files |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -124,7 +128,7 @@ progress:
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.7-02-PLAN.md
+- **Stopped at:** Completed 28.1.1.7-03-PLAN.md
 - **Resume:** `/gsd-execute-phase 28.1.1.7`
 
 ## Accumulated Context
