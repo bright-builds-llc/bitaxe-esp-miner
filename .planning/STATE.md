@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.4 in progress — plan 02 complete
-stopped_at: Completed 28.1.1.4-02-PLAN.md
-last_updated: "2026-07-09T04:02:51.850Z"
-last_activity: 2026-07-09 -- Ticket-mask ASIC-256 patch + ≥360s A/B (unchanged)
+status: Phase 28.1.1.4 in progress — plan 03 complete
+stopped_at: Completed 28.1.1.4-03-PLAN.md
+last_updated: "2026-07-09T04:04:56.551Z"
+last_activity: 2026-07-09 -- Patch disposition falsified ticket-mask sole-blocker; ASIC-256 retained
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 54
-  completed_plans: 52
+  completed_plans: 53
   percent: 98
 ---
 
@@ -19,8 +19,8 @@ progress:
 ## Current Position
 
 - **Phase:** 28.1.1.4 — BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis
-- **Plan:** 02/04 complete (next: 03 patch disposition / chip-enumerate hypothesis)
-- **Status:** executing — ticket-mask ASIC-256 A/B `ab_outcome: unchanged`; next_hypothesis `match_upstream_chip_enumerate_before_init`
+- **Plan:** 03/04 complete (next: 04 final evidence)
+- **Status:** executing — `patch_disposition: falsified_ticket_mask_asic_difficulty_as_sole_blocker`; `wire_parity_retained: true`; `next_hypothesis: match_upstream_chip_enumerate_before_init`
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -32,6 +32,8 @@ progress:
 - Ticket mask uses ASIC family difficulty 256; pool stratumdiff stays Stratum-only
 - A/B `ab_outcome: unchanged` for `ticket_mask_asic_difficulty` — no correlate/submit; do not sole-blocker promote (D-11)
 - Plan 03 next_hypothesis: `match_upstream_chip_enumerate_before_init` (D-05)
+- `patch_disposition=falsified_ticket_mask_asic_difficulty_as_sole_blocker`; `wire_parity_retained` ASIC-256
+- Chip-enumerate not implemented in Plan 03; deferred as next_hypothesis only
 
 ## Decisions (Phase 28.1.1.3)
 
@@ -53,8 +55,9 @@ progress:
 | 28.1.1.3 | 04 | 2 min | 2 | 5 |
 | 28.1.1.4 | 01 | 7 min | 2 | 2 |
 | 28.1.1.4 | 02 | 10 min | 2 | 10 |
+| 28.1.1.4 | 03 | 1 min | 2 | 1 |
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.4-02-PLAN.md
-- **Resume:** Execute 28.1.1.4-03-PLAN.md (patch disposition); do not claim STR-09/CFG-07/ASIC-11 verified
+- **Stopped at:** Completed 28.1.1.4-03-PLAN.md
+- **Resume:** Execute 28.1.1.4-04-PLAN.md (final evidence); do not claim STR-09/CFG-07/ASIC-11 verified

@@ -183,7 +183,7 @@ Plans:
 | 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
 | 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.3. BM1366 Result RX Acquisition Model Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
-| 28.1.1.4. BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis | v1.1 | 2/4 | In Progress|  |
+| 28.1.1.4. BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis | v1.1 | 3/4 | In Progress|  |
 | 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
@@ -272,10 +272,10 @@ Plans:
 **Goal:** Isolate the deferred `asic_enable_power_sequencing` gap as init/content sequencing that leaves the BM1366 UART-alive but not hashing (enable/voltage/reset markers already present). First lever: golden byte diff of dynamic mining-ready frames regs `0x14` / `0x08` / `0x10` vs upstream SERIALTX, using `asic_probe=power_delta` as fast feedback; patch only a confirmed divergence and rerun detector-gated Ultra 205 fake-pool evidence until `result_correlated` plus share submit appear, or narrow the blocker (e.g. chip-enumerate) with redacted evidence.
 **Requirements**: STR-09, CFG-07, ASIC-11 (blocker closure input only; Phase 30 owns checklist promotion)
 **Depends on:** Phase 28.1.1.3
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 28.1.1.4-01-PLAN.md — Wave 0 init-sequencing comparator + tests (+ optional compact summary)
 - [x] 28.1.1.4-02-PLAN.md — Ticket-mask ASIC-256 pure-crate patch + fixture + diagnostic wrapper + ≥360s A/B
-- [ ] 28.1.1.4-03-PLAN.md — Promote default only if improved; else falsify → chip-enumerate next
+- [x] 28.1.1.4-03-PLAN.md — Promote default only if improved; else falsify → chip-enumerate next
 - [ ] 28.1.1.4-04-PLAN.md — Final evidence + VERIFICATION + VALIDATION/STATE/ROADMAP
