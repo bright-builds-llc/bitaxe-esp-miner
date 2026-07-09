@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1.5 in progress — Wave 0 comparator complete
-stopped_at: Completed 28.1.1.5-01-PLAN.md
-last_updated: "2026-07-09T12:01:05Z"
+status: Phase 28.1.1.5 in progress — Plan 02 complete
+stopped_at: Completed 28.1.1.5-02-PLAN.md
+last_updated: "2026-07-09T12:27:52.483Z"
 progress:
   total_phases: 16
   completed_phases: 13
   total_plans: 57
-  completed_plans: 55
-  percent: 96
+  completed_plans: 56
+  percent: 98
 ---
 
 # Project State
@@ -18,9 +18,9 @@ progress:
 ## Current Position
 
 - **Phase:** 28.1.1.5 — BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis
-- **Plan:** 1/4 — Wave 0 comparator done; next RX-loop patch + A/B
-- **Status:** in progress — `forced_ab_label: count_asic_chips_rx_loop_parity` locked by Wave 0 fixtures
-- **Next step:** Execute `28.1.1.5-02-PLAN.md` (count_asic_chips_rx_loop_parity patch + fake-pool A/B)
+- **Plan:** 2/4 — RX-loop patch + A/B complete; next disposition
+- **Status:** in progress — `count_asic_chips_rx_loop_parity` A/B `ab_outcome: unchanged`
+- **Next step:** Execute `28.1.1.5-03-PLAN.md` (patch disposition; likely next_hypothesis version_rolling_negotiation)
 
 ## Decisions (Phase 28.1.1.4)
 
@@ -59,6 +59,7 @@ progress:
 | 28.1.1.4 | 03 | 1 min | 2 | 1 |
 | 28.1.1.4 | 04 | 1 min | 2 | 5 |
 | 28.1.1.5 | 01 | 2 min | 2 | 2 |
+| 28.1.1.5 | 02 | 25 min | 2 | 7 |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -70,11 +71,13 @@ progress:
 - Wave 0 comparator may rename forced_ab only from redacted evidence (`counted_chip_address_interval` or `enumerate_to_mining_ready_gap`)
 - Keep ASIC-256 ticket-mask wire parity; no Phase 30 checklist verified edits
 - If RX-loop A/B falsified with markers otherwise matching → `next_hypothesis: version_rolling_negotiation` (no second speculative patch)
+- Default candidate `count_asic_chips_rx_loop_parity` with fixtures; empty-buffer ESP_ERR_TIMEOUT maps to idle exit
+- A/B `ab_outcome: unchanged` — `counted_rx`/`drain_idle_like` matched but no correlate/submit; Plan 03 disposition; recommender hints `version_rolling_negotiation`
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1.5-01-PLAN.md
-- **Resume:** Execute `28.1.1.5-02-PLAN.md`
+- **Stopped at:** Completed 28.1.1.5-02-PLAN.md
+- **Resume:** Execute `28.1.1.5-03-PLAN.md`
 
 ## Accumulated Context
 
