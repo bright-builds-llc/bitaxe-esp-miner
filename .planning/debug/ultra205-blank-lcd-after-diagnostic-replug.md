@@ -1,16 +1,16 @@
 ---
-status: verifying
+status: resolved
 trigger: "Ultra 205 fans spin but the LCD remains blank after a physical replug while the Phase 28.1.1 accepted-state diagnostic Rust package is retained."
 created: 2026-07-10T00:05:26Z
-updated: 2026-07-10T00:31:47Z
+updated: 2026-07-10T00:44:23Z
 ---
 
 ## Current Focus
 
-hypothesis: The confirmed boot loop is caused by the Phase 27 bridge worker inheriting the 3072-byte pthread default for its socket/JSON/Stratum/ASIC call chain.
-test: Build the corrected diagnostic package with a dedicated 16 KiB bridge-worker stack, then run a detector-gated long hardware capture and confirm the listener remains armed without a pthread overflow or reboot cycle.
-expecting: The corrected image boots once, reaches `h4_continuous_result=listener_armed`, and remains running throughout the bounded capture; no stack-overflow or fresh boot marker follows.
-next_action: Main agent runs full Rust/Bazel gates, asks the user to reconnect the device, flashes the corrected package through the repo-owned flow, and captures at least 360 seconds of hardware evidence. Do not erase NVS.
+hypothesis: Confirmed and resolved - the Phase 27 bridge worker overflowed ESP-IDF's inherited 3072-byte pthread stack; a dedicated 16 KiB worker stack removes the deterministic reboot loop.
+test: Detector-gated flash of the corrected accepted-state package followed by a redacted 360-second hardware capture and post-run board-info check.
+expecting: Satisfied - one boot, one `h4_continuous_result=listener_armed`, five accepted-state markers, and no stack overflow, panic, software reset, or repeated boot.
+next_action: Preserve the corrected package on the device, commit the hardware verification update, and push the verified fix. Do not erase NVS.
 
 ## Symptoms
 
@@ -109,14 +109,18 @@ started: Observed immediately after the physical replug requested for Phase 28.1
   checked: `cargo test -p bitaxe-firmware --all-features --target xtensa-esp32s3-espidf --no-run` and `cargo fmt --all -- --check`
   found: Firmware test compilation reaches two pre-existing `assert!(SocketLineOutcome)` errors at lines 2093 and 2188 plus an unrelated warning; format check reports pre-existing diffs in `crates/bitaxe-stratum/src/v1/live_runtime.rs` and an unchanged line in this firmware file. No source-text stack-size test was added because it would not verify runtime stack sufficiency.
   implication: The production fix is ready for the main agent's full gate/format pass, but only the detector-gated hardware capture can close this resource-budget regression.
+- timestamp: 2026-07-10T00:44:23Z
+  checked: mandatory Rust gates, exact Phase 27 accepted-state package build from commit `abf9db49949dd9e2f6ed6ad6666379cb816d2d30`, detector-gated flash, redacted 360-second capture, and post-run `just detect-ultra205`
+  found: Formatting, strict Clippy, all-target build, full tests, reference cleanliness, firmware packaging, pre/post ESP32-S3 board-info, and the hardware workflow all passed. The corrected capture contains one firmware boot, one listener-arm marker, five accepted-state markers, zero pthread stack overflows, zero `RTC_SW_CPU_RST` markers, and zero panic/backtrace markers.
+  implication: The former approximately 17-second deterministic reboot loop is resolved on the Ultra 205 without erasing NVS or changing the global pthread default.
 
 ## Resolution
 
-root_cause: Two independent behaviors are present. First, the retained Phase 28.1.1 accepted-state diagnostic intentionally leaves the LCD blank while Phase 27 safety bring-up starts the fan; this remains expected. Second, the installed image is in a confirmed approximately 17-second boot loop because a Rust/ESP-IDF pthread overflows and the panic policy reboots. The most likely overflowing pthread is the Phase 27 bridge worker: it is the worker that reaches `h4_continuous_result=listener_armed`, it executes the heavy socket/JSON/Stratum/ASIC path, it is spawned without `.stack_size(...)`, and the exact package configuration gives such pthreads only 3072 bytes. The corrupted backtrace prevents frame-level attribution, so the specific worker attribution is strong but not absolute.
-confidence: high for intentional LCD deferral; high for confirmed stack-overflow reboot loop; medium-high that the undersized `phase27-bridge` worker is the overflowing pthread.
-boot_loop_assessment: Confirmed. Four complete synchronized cycles show listener arming, pthread stack overflow, panic reboot, RTC software reset, and a fresh boot. A hard reset or power cycle cannot fix it because both merely restart the same image and reproduce the failure.
+root_cause: Two independent behaviors were present. First, the retained Phase 28.1.1 accepted-state diagnostic intentionally leaves the LCD blank while Phase 27 safety bring-up starts the fan; this remains expected. Second, the original installed image entered an approximately 17-second boot loop because a Rust/ESP-IDF pthread overflowed and the panic policy rebooted. The overflowing pthread was the Phase 27 bridge worker: it reached `h4_continuous_result=listener_armed`, executed the heavy socket/JSON/Stratum/ASIC path, and inherited the exact package configuration's 3072-byte pthread default because it lacked `.stack_size(...)`. The corrected hardware capture confirms that assigning this worker a dedicated 16 KiB stack removes the loop.
+confidence: high for intentional LCD deferral, the original stack-overflow reboot loop, attribution to the undersized `phase27-bridge` worker, and the hardware-verified correction.
+boot_loop_assessment: Resolved. The faulty image produced four complete approximately 17-second listener-arm/overflow/reboot cycles; the corrected image produced one boot and remained stable for the full 360-second capture with no overflow, panic, or software reset.
 fix: Applied the smallest targeted correction in `firmware/bitaxe/src/live_stratum_runtime.rs`: the `phase27-bridge` worker now requests 16 KiB, matching the comparable live-telemetry worker, without globally increasing pthread stacks. A spawn failure is visible and converges to blocked safe-stop state instead of being silently ignored. Do not erase NVS or factory-reset; normal repo-owned reflash of this corrected diagnostic image is the recovery path.
-verification: Focused ESP32-S3 `cargo check` and `cargo clippy` pass. Hardware resolution is not yet claimed: the corrected package still requires the full Rust/Bazel gates followed by detector-gated flash and at least 360 seconds of serial evidence showing listener arming without stack overflow or reboot.
+verification: Passed. Mandatory Rust gates, reference cleanliness, exact-commit ESP32-S3 packaging, detector-gated flash, a redacted 360-second capture, and post-run board-info all passed. Hardware markers show one boot, one listener arm, five accepted-state stages, and zero stack overflow, panic, or software-reset markers.
 files_changed:
   - `firmware/bitaxe/src/live_stratum_runtime.rs`
   - `.planning/debug/ultra205-blank-lcd-after-diagnostic-replug.md`
