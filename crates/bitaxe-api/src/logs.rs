@@ -15,6 +15,10 @@ pub const LOG_CHUNK_BYTES: usize = 4096;
 pub const DOWNLOAD_CONTENT_TYPE: &str = "text/plain";
 /// Log download file name header.
 pub const DOWNLOAD_CONTENT_DISPOSITION: &str = "attachment; filename=\"bitaxe-logs.txt\"";
+/// Diagnostic accepted-state replay window after listener readiness.
+pub const ACCEPTED_STATE_REPLAY_WINDOW_MS: u64 = 90_000;
+/// Fixed accepted-state replay interval inside the bounded window.
+pub const ACCEPTED_STATE_REPLAY_INTERVAL_MS: u64 = 2_000;
 
 /// Download response headers expected by existing AxeOS clients.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -138,6 +142,41 @@ impl RetainedLogBuffer {
         }
     }
 
+    /// Selects complete retained lines whose first whitespace-delimited token
+    /// exactly matches `token`.
+    ///
+    /// The returned lines omit only their line terminator so callers can pass
+    /// them directly to a logging facade. Partial trailing lines are ignored.
+    #[must_use]
+    pub fn complete_lines_with_first_token(&self, token: &str) -> Vec<String> {
+        let mut cursor = 0;
+        let mut lines = Vec::new();
+        let mut discarding_partial_line = false;
+
+        loop {
+            let chunk = self.read_absolute_chunk(&mut cursor, LOG_CHUNK_BYTES);
+            if chunk.is_empty() {
+                return lines;
+            }
+            if !chunk.ends_with('\n') {
+                discarding_partial_line = true;
+                continue;
+            }
+            if discarding_partial_line {
+                discarding_partial_line = false;
+                continue;
+            }
+
+            let line_without_newline = chunk.strip_suffix('\n').unwrap_or(&chunk);
+            let line = line_without_newline
+                .strip_suffix('\r')
+                .unwrap_or(line_without_newline);
+            if line.split_whitespace().next() == Some(token) {
+                lines.push(line.to_owned());
+            }
+        }
+    }
+
     fn read_absolute_bytes(&self, cursor: &mut u64, max_len: usize) -> Vec<u8> {
         if max_len == 0 {
             return Vec::new();
@@ -194,6 +233,35 @@ impl RetainedLogBuffer {
 
     fn byte_at(&self, abs_pos: u64) -> u8 {
         self.buffer[abs_pos as usize % self.buffer.len()]
+    }
+}
+
+/// Host-testable bounded cadence for replaying retained diagnostic markers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AcceptedStateReplayCadence {
+    next_due_ms: u64,
+    exhausted_at_ms: u64,
+}
+
+impl AcceptedStateReplayCadence {
+    /// Arms a replay cadence at listener readiness. The first replay is due
+    /// immediately, then repeats at the fixed interval for the bounded window.
+    #[must_use]
+    pub fn armed(armed_at_ms: u64) -> Self {
+        Self {
+            next_due_ms: armed_at_ms,
+            exhausted_at_ms: armed_at_ms.saturating_add(ACCEPTED_STATE_REPLAY_WINDOW_MS),
+        }
+    }
+
+    /// Consumes one due replay opportunity for the supplied monotonic time.
+    pub fn take_due(&mut self, now_ms: u64) -> bool {
+        if now_ms >= self.exhausted_at_ms || now_ms < self.next_due_ms {
+            return false;
+        }
+
+        self.next_due_ms = now_ms.saturating_add(ACCEPTED_STATE_REPLAY_INTERVAL_MS);
+        true
     }
 }
 
@@ -254,8 +322,9 @@ mod tests {
     use serde::Deserialize;
 
     use crate::logs::{
-        log_download_headers, RawLogStreamPlanner, RetainedLogBuffer, DOWNLOAD_CONTENT_DISPOSITION,
-        DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
+        log_download_headers, AcceptedStateReplayCadence, RawLogStreamPlanner, RetainedLogBuffer,
+        ACCEPTED_STATE_REPLAY_INTERVAL_MS, ACCEPTED_STATE_REPLAY_WINDOW_MS,
+        DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
     };
 
     #[derive(Debug, Deserialize)]
@@ -447,5 +516,115 @@ mod tests {
         assert_eq!(chunks, vec![fixture.raw_stream.payload]);
         assert!(!fixture.raw_stream.json_enveloped);
         assert!(!chunks[0].trim_start().starts_with('{'));
+    }
+
+    #[test]
+    fn accepted_state_replay_selects_only_exact_complete_first_token_lines() {
+        // Arrange
+        let mut buffer = RetainedLogBuffer::with_capacity(16_384);
+        buffer.append("noise accepted_state_snapshot stage=post_enumerate redacted=true\n");
+        buffer.append("accepted_state_snapshot_extra stage=post_enumerate redacted=true\n");
+        buffer.append("accepted_state_snapshot stage=post_enumerate redacted=true\n");
+        buffer.append("accepted_state_snapshot stage=post_mining_ready redacted=true");
+        buffer.append(&"x".repeat(LOG_CHUNK_BYTES));
+        buffer.append("accepted_state_snapshot stage=post_first_work redacted=true\n");
+
+        // Act
+        let lines = buffer.complete_lines_with_first_token("accepted_state_snapshot");
+
+        // Assert
+        assert_eq!(
+            lines,
+            ["accepted_state_snapshot stage=post_enumerate redacted=true"]
+        );
+    }
+
+    #[test]
+    fn accepted_state_replay_preserves_equivalent_duplicates_for_validation() {
+        // Arrange
+        let marker = "accepted_state_snapshot stage=post_max_baud redacted=true\n";
+        let mut buffer = RetainedLogBuffer::with_capacity(2_048);
+        buffer.append(marker);
+        buffer.append(marker);
+
+        // Act
+        let lines = buffer.complete_lines_with_first_token("accepted_state_snapshot");
+
+        // Assert
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0], lines[1]);
+    }
+
+    #[test]
+    fn accepted_state_replay_excludes_secret_bearing_noise() {
+        // Arrange
+        let mut buffer = RetainedLogBuffer::with_capacity(2_048);
+        buffer.append("poolPassword=do-not-replay\n");
+        buffer.append("wifi-credentials=do-not-replay\n");
+        buffer.append("accepted_state_snapshot stage=post_first_work redacted=true\n");
+
+        // Act
+        let lines = buffer.complete_lines_with_first_token("accepted_state_snapshot");
+
+        // Assert
+        assert_eq!(lines.len(), 1);
+        assert!(!lines.join("\n").contains("do-not-replay"));
+    }
+
+    #[test]
+    fn accepted_state_replay_cadence_is_not_due_before_arming_time() {
+        // Arrange
+        let mut cadence = AcceptedStateReplayCadence::armed(1_000);
+
+        // Act
+        let due = cadence.take_due(999);
+
+        // Assert
+        assert!(!due);
+    }
+
+    #[test]
+    fn accepted_state_replay_cadence_is_due_at_arming_time() {
+        // Arrange
+        let mut cadence = AcceptedStateReplayCadence::armed(1_000);
+
+        // Act
+        let due = cadence.take_due(1_000);
+
+        // Assert
+        assert!(due);
+    }
+
+    #[test]
+    fn accepted_state_replay_cadence_repeats_only_after_fixed_interval() {
+        // Arrange
+        let mut cadence = AcceptedStateReplayCadence::armed(1_000);
+        assert!(cadence.take_due(1_000));
+
+        // Act
+        let repeated_immediately = cadence.take_due(1_000);
+        let repeated_before_interval =
+            cadence.take_due(1_000 + ACCEPTED_STATE_REPLAY_INTERVAL_MS - 1);
+        let repeated_at_interval = cadence.take_due(1_000 + ACCEPTED_STATE_REPLAY_INTERVAL_MS);
+
+        // Assert
+        assert!(!repeated_immediately);
+        assert!(!repeated_before_interval);
+        assert!(repeated_at_interval);
+    }
+
+    #[test]
+    fn accepted_state_replay_cadence_exhausts_at_window_boundary() {
+        // Arrange
+        let mut cadence = AcceptedStateReplayCadence::armed(1_000);
+
+        // Act
+        let due_at_last_possible_millisecond =
+            cadence.take_due(1_000 + ACCEPTED_STATE_REPLAY_WINDOW_MS - 1);
+        let due_at_window_end = cadence.take_due(1_000 + ACCEPTED_STATE_REPLAY_WINDOW_MS);
+
+        // Assert
+        assert!(due_at_last_possible_millisecond);
+        assert!(!due_at_window_end);
     }
 }

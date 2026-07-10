@@ -39,6 +39,18 @@ pub fn retained_log_buffer() -> RetainedLogBuffer {
     buffer.clone()
 }
 
+/// Returns complete retained accepted-state category markers for diagnostic replay.
+#[must_use]
+pub fn accepted_state_replay_lines() -> Vec<String> {
+    let buffer = LOG_BUFFER.get_or_init(|| Mutex::new(firmware_log_buffer()));
+    let Ok(buffer) = buffer.lock() else {
+        log::warn!("retained_log_buffer=unavailable reason=mutex_poisoned");
+        return Vec::new();
+    };
+
+    buffer.complete_lines_with_first_token("accepted_state_snapshot")
+}
+
 fn firmware_log_buffer() -> RetainedLogBuffer {
     match RetainedLogBuffer::try_new() {
         Ok(buffer) => buffer,
