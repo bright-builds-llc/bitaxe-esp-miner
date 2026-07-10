@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: milestone
 status: executing
 stopped_at: Completed Phase 28.1.1 Plan 10 with `blocked_safe_prerequisite` physical lifecycle evidence
-last_updated: "2026-07-10T04:39:45.698Z"
+last_updated: "2026-07-10T04:44:52.995Z"
 progress:
   total_phases: 18
   completed_phases: 16
@@ -17,12 +17,12 @@ progress:
 
 ## Current Position
 
-Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — GAPS FOUND
-Plan: 5 of 5
+Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — EXECUTING
+Plan: 1 of 6
 
 - **Phase:** 28.1.1 — Accepted-State Gap Closure
 - **Plan:** 5/5 — Complete (verification_result: gaps_found)
-- **Status:** Ready to execute
+- **Status:** Executing Phase 28.1.1
 - **Next step:** Restore detector/board-info and exact five-stage reinit prerequisite; Phase 30 remains pending
 
 ## Decisions (Phase 28.1.1 Plan 10)
