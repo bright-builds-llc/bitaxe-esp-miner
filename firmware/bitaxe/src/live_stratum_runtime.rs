@@ -75,6 +75,13 @@ const PHASE27_LIVE_BRIDGE_PUMP_ITERATIONS: usize = 32;
 const PHASE27_BOUNDED_OBSERVATION_WINDOW_MS: u32 = 60_000;
 const PHASE27_POOL_WAIT_POLL_MS: u64 = 2_000;
 const PHASE27_POOL_WAIT_TIMEOUT_MS: u64 = 120_000;
+const PHASE27_BRIDGE_THREAD_NAME: &str = "phase27-bridge";
+/// The bridge owns socket, JSON, Stratum, and ASIC orchestration on one call
+/// chain, so the ESP-IDF 3 KiB pthread default is not a safe budget. Match the
+/// existing 16 KiB live-telemetry worker without raising every pthread default;
+/// this remains a bounded allocation that does not depend on PSRAM-backed task
+/// stacks on the ESP32-S3.
+const PHASE27_BRIDGE_THREAD_STACK_BYTES: usize = 16 * 1024;
 /// Power-delta probe sampling delay after first dispatch (7 s, inside the
 /// locked 5-10 s discrimination window).
 const POWER_DELTA_PROBE_DELAY_MS: u64 = 7_000;
@@ -135,9 +142,16 @@ pub fn schedule_phase27_bridge_after_http_ready(network_ready: bool) {
         return;
     }
 
-    let _ = thread::Builder::new()
-        .name("phase27-bridge".to_owned())
+    let result = thread::Builder::new()
+        .name(PHASE27_BRIDGE_THREAD_NAME.to_owned())
+        .stack_size(PHASE27_BRIDGE_THREAD_STACK_BYTES)
         .spawn(move || phase27_bridge_wait_loop(network_ready));
+    if let Err(error) = result {
+        log::warn!("phase27_bridge=unavailable reason=spawn_failed error={error}");
+        publish_blocked("phase27_bridge_thread_spawn_failed");
+        publish_safe_stop_without_runtime(SafeStopReason::PrerequisiteFailure);
+        PHASE27_BRIDGE_STATE.store(PHASE27_BRIDGE_COMPLETED, Ordering::SeqCst);
+    }
 }
 
 pub fn maybe_refresh_phase27_from_settings() {
@@ -1059,9 +1073,7 @@ fn maybe_send_register_read_poll(bridge: &mut AsicBridgeState) {
 
     if !bridge.register_read_poll_mode_logged {
         bridge.register_read_poll_mode_logged = true;
-        info_retained(
-            "asic_probe=register_read_poll mode=match_upstream_register_read_poll",
-        );
+        info_retained("asic_probe=register_read_poll mode=match_upstream_register_read_poll");
     }
 
     let now = Instant::now();
