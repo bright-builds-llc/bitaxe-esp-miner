@@ -157,6 +157,16 @@ pub fn classify_accepted_state(
     upstream: &[AcceptedStateSnapshot],
     rust: &[AcceptedStateSnapshot],
 ) -> AcceptedStateClassification {
+    if let Some(first_missing_stage) = AcceptedStateStage::ALL.into_iter().find(|stage| {
+        snapshot_for_stage(upstream, *stage).is_none() || snapshot_for_stage(rust, *stage).is_none()
+    }) {
+        return AcceptedStateClassification {
+            accepted_state_status: AcceptedStateStatus::Unavailable,
+            first_divergent_stage: Some(first_missing_stage),
+            recommended_investigation: AcceptedStateRecommendation::ColdBootRecoveryLifecycleParity,
+        };
+    }
+
     let result_progress = rust
         .iter()
         .copied()
@@ -169,10 +179,6 @@ pub fn classify_accepted_state(
     for stage in AcceptedStateStage::ALL {
         let maybe_upstream = snapshot_for_stage(upstream, stage);
         let maybe_rust = snapshot_for_stage(rust, stage);
-
-        if maybe_upstream.is_none() && maybe_rust.is_none() {
-            continue;
-        }
 
         let (Some(upstream_snapshot), Some(rust_snapshot)) = (maybe_upstream, maybe_rust) else {
             saw_missing_observation = true;
@@ -273,6 +279,10 @@ mod tests {
         }
     }
 
+    fn complete_snapshots() -> Vec<AcceptedStateSnapshot> {
+        AcceptedStateStage::ALL.into_iter().map(snapshot).collect()
+    }
+
     #[test]
     fn accepted_state_marker_is_category_only() {
         // Arrange
@@ -290,12 +300,16 @@ mod tests {
     #[test]
     fn accepted_state_routes_upstream_active_rust_inactive_counter() {
         // Arrange
-        let mut upstream = snapshot(AcceptedStateStage::PostFirstWork);
-        upstream.total_counter_active = true;
-        let rust = snapshot(AcceptedStateStage::PostFirstWork);
+        let mut upstream = complete_snapshots();
+        let upstream_first_work = upstream
+            .iter_mut()
+            .find(|snapshot| snapshot.stage == AcceptedStateStage::PostFirstWork)
+            .expect("complete fixture contains post-first-work stage");
+        upstream_first_work.total_counter_active = true;
+        let rust = complete_snapshots();
 
         // Act
-        let classification = classify_accepted_state(&[upstream], &[rust]);
+        let classification = classify_accepted_state(&upstream, &rust);
 
         // Assert
         assert_eq!(
@@ -315,13 +329,17 @@ mod tests {
     #[test]
     fn accepted_state_routes_missing_observation_to_lifecycle_parity() {
         // Arrange
-        let upstream = snapshot(AcceptedStateStage::PostEnumerate);
-        let mut rust = snapshot(AcceptedStateStage::PostEnumerate);
-        rust.readable_response_count = 0;
-        rust.chip_count_class = AcceptedStateStatus::Unavailable;
+        let upstream = complete_snapshots();
+        let mut rust = complete_snapshots();
+        let rust_enumerate = rust
+            .iter_mut()
+            .find(|snapshot| snapshot.stage == AcceptedStateStage::PostEnumerate)
+            .expect("complete fixture contains post-enumerate stage");
+        rust_enumerate.readable_response_count = 0;
+        rust_enumerate.chip_count_class = AcceptedStateStatus::Unavailable;
 
         // Act
-        let classification = classify_accepted_state(&[upstream], &[rust]);
+        let classification = classify_accepted_state(&upstream, &rust);
 
         // Assert
         assert_eq!(
@@ -337,11 +355,11 @@ mod tests {
     #[test]
     fn accepted_state_routes_matching_idle_state_to_lifecycle_parity() {
         // Arrange
-        let upstream = snapshot(AcceptedStateStage::PostMiningReady);
-        let rust = snapshot(AcceptedStateStage::PostMiningReady);
+        let upstream = complete_snapshots();
+        let rust = complete_snapshots();
 
         // Act
-        let classification = classify_accepted_state(&[upstream], &[rust]);
+        let classification = classify_accepted_state(&upstream, &rust);
 
         // Assert
         assert_eq!(
@@ -358,12 +376,16 @@ mod tests {
     #[test]
     fn accepted_state_routes_other_mismatch_to_transcript_bisection() {
         // Arrange
-        let upstream = snapshot(AcceptedStateStage::PostMaxBaud);
-        let mut rust = snapshot(AcceptedStateStage::PostMaxBaud);
-        rust.chip_count_class = AcceptedStateStatus::Mismatch;
+        let upstream = complete_snapshots();
+        let mut rust = complete_snapshots();
+        let rust_max_baud = rust
+            .iter_mut()
+            .find(|snapshot| snapshot.stage == AcceptedStateStage::PostMaxBaud)
+            .expect("complete fixture contains post-max-baud stage");
+        rust_max_baud.chip_count_class = AcceptedStateStatus::Mismatch;
 
         // Act
-        let classification = classify_accepted_state(&[upstream], &[rust]);
+        let classification = classify_accepted_state(&upstream, &rust);
 
         // Assert
         assert_eq!(
@@ -379,18 +401,86 @@ mod tests {
     #[test]
     fn accepted_state_routes_correlate_and_submit_to_none() {
         // Arrange
-        let upstream = snapshot(AcceptedStateStage::PostFirstWork);
-        let mut rust = snapshot(AcceptedStateStage::PostFirstWork);
-        rust.result_correlated = true;
-        rust.submit_observed = true;
+        let upstream = complete_snapshots();
+        let mut rust = complete_snapshots();
+        let rust_first_work = rust
+            .iter_mut()
+            .find(|snapshot| snapshot.stage == AcceptedStateStage::PostFirstWork)
+            .expect("complete fixture contains post-first-work stage");
+        rust_first_work.result_correlated = true;
+        rust_first_work.submit_observed = true;
 
         // Act
-        let classification = classify_accepted_state(&[upstream], &[rust]);
+        let classification = classify_accepted_state(&upstream, &rust);
 
         // Assert
         assert_eq!(
             classification.recommended_investigation,
             AcceptedStateRecommendation::None
+        );
+    }
+
+    #[test]
+    fn accepted_state_empty_inputs_are_unavailable() {
+        // Arrange
+        let upstream = Vec::new();
+        let rust = Vec::new();
+
+        // Act
+        let classification = classify_accepted_state(&upstream, &rust);
+
+        // Assert
+        assert_eq!(
+            classification.accepted_state_status,
+            AcceptedStateStatus::Unavailable
+        );
+        assert_eq!(
+            classification.first_divergent_stage,
+            Some(AcceptedStateStage::PostEnumerate)
+        );
+        assert_eq!(
+            classification.recommended_investigation,
+            AcceptedStateRecommendation::ColdBootRecoveryLifecycleParity
+        );
+    }
+
+    #[test]
+    fn accepted_state_matching_three_of_five_inputs_are_unavailable() {
+        // Arrange
+        let upstream = complete_snapshots().into_iter().take(3).collect::<Vec<_>>();
+        let rust = upstream.clone();
+
+        // Act
+        let classification = classify_accepted_state(&upstream, &rust);
+
+        // Assert
+        assert_eq!(
+            classification.accepted_state_status,
+            AcceptedStateStatus::Unavailable
+        );
+        assert_eq!(
+            classification.first_divergent_stage,
+            Some(AcceptedStateStage::PostMaskReload)
+        );
+    }
+
+    #[test]
+    fn accepted_state_one_sided_missing_input_is_unavailable() {
+        // Arrange
+        let upstream = complete_snapshots();
+        let rust = upstream.iter().copied().take(4).collect::<Vec<_>>();
+
+        // Act
+        let classification = classify_accepted_state(&upstream, &rust);
+
+        // Assert
+        assert_eq!(
+            classification.accepted_state_status,
+            AcceptedStateStatus::Unavailable
+        );
+        assert_eq!(
+            classification.first_divergent_stage,
+            Some(AcceptedStateStage::PostFirstWork)
         );
     }
 }

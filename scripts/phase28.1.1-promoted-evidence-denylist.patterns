@@ -1,0 +1,9 @@
+pool(URL|User|Password)[=:][[:space:]]*[^[:space:]]+
+(wifi-credentials|pool-credentials)[=:][[:space:]]*[^[:space:]]+
+device_url:[[:space:]]*(https?://|[0-9])
+https?://
+ssid:[[:space:]]*[^[:space:]]+
+mac address:[[:space:]]*[0-9a-f]{2}:
+password:[[:space:]]*[^[:space:]]+
+token:[[:space:]]*[^[:space:]]+
+(hex|raw_value|register_value|frame_value|frame_hex|uart_hex|nonce_hex|target_hex)[=:][[:space:]]*(0x)?[0-9a-f]{6,}

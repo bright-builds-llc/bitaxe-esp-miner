@@ -8,9 +8,17 @@ import {
   renderAcceptedStateReport,
 } from "./phase28.1.1-accepted-state-compare.mjs";
 
-function marker(overrides = {}) {
+const STAGES = [
+  "post_enumerate",
+  "post_mining_ready",
+  "post_max_baud",
+  "post_mask_reload",
+  "post_first_work",
+];
+
+function marker(stage, overrides = {}) {
   const values = {
-    stage: "post_first_work",
+    stage,
     observation: "available",
     chip_count_class: "match",
     readable_responses: "7",
@@ -27,9 +35,17 @@ function marker(overrides = {}) {
     .join(" ")} redacted=true`;
 }
 
+function completeLog(overridesByStage = {}) {
+  return STAGES.map((stage) => marker(stage, overridesByStage[stage])).join(
+    "\n",
+  );
+}
+
 // Arrange
-const upstreamActive = marker({ total_counter_active: "true" });
-const rustInactive = marker();
+const upstreamActive = completeLog({
+  post_first_work: { total_counter_active: "true" },
+});
+const rustInactive = completeLog();
 
 // Act
 const divergence = compareAcceptedState(upstreamActive, rustInactive);
@@ -42,15 +58,17 @@ assert.equal(
 );
 
 // Arrange
-const rustUnavailable = marker({
-  observation: "unavailable",
-  chip_count_class: "unavailable",
-  readable_responses: "0",
-  power_delta_class: "unavailable",
+const rustUnavailable = completeLog({
+  post_first_work: {
+    observation: "unavailable",
+    chip_count_class: "unavailable",
+    readable_responses: "0",
+    power_delta_class: "unavailable",
+  },
 });
 
 // Act
-const unavailable = compareAcceptedState(marker(), rustUnavailable);
+const unavailable = compareAcceptedState(completeLog(), rustUnavailable);
 
 // Assert
 assert.equal(unavailable.accepted_state_status, "unavailable");
@@ -60,7 +78,7 @@ assert.equal(
 );
 
 // Arrange
-const matchingIdle = marker();
+const matchingIdle = completeLog();
 
 // Act
 const matching = compareAcceptedState(matchingIdle, matchingIdle);
@@ -73,10 +91,12 @@ assert.equal(
 );
 
 // Arrange
-const otherMismatchRust = marker({ power_delta_class: "falling" });
+const otherMismatchRust = completeLog({
+  post_first_work: { power_delta_class: "falling" },
+});
 
 // Act
-const otherMismatch = compareAcceptedState(marker(), otherMismatchRust);
+const otherMismatch = compareAcceptedState(completeLog(), otherMismatchRust);
 
 // Assert
 assert.equal(
@@ -85,14 +105,16 @@ assert.equal(
 );
 
 // Arrange
-const progressed = marker({
-  result_correlated: "true",
-  submit_observed: "true",
-  power_delta_class: "rising_hashing",
+const progressed = completeLog({
+  post_first_work: {
+    result_correlated: "true",
+    submit_observed: "true",
+    power_delta_class: "rising_hashing",
+  },
 });
 
 // Act
-const progress = compareAcceptedState(marker(), progressed);
+const progress = compareAcceptedState(completeLog(), progressed);
 
 // Assert
 assert.equal(progress.recommended_investigation, "none");
@@ -103,18 +125,18 @@ assert.equal(progress.fake_pool_submit_observed, true);
 assert.throws(
   () =>
     parseAcceptedStateLog(
-      marker({ stage: "unknown_stage" }),
+      marker("unknown_stage"),
     ),
   /unknown stage/u,
 );
 
 // Arrange
 const sensitiveNoise =
-  "poolPassword=do-not-copy device_url=http://192.0.2.1 " + marker();
+  `poolPassword=do-not-copy device_url=http://192.0.2.1\n${completeLog()}`;
 
 // Act
 const rendered = renderAcceptedStateReport(
-  compareAcceptedState(marker(), sensitiveNoise),
+  compareAcceptedState(completeLog(), sensitiveNoise),
 );
 
 // Assert
@@ -132,6 +154,52 @@ for (const forbidden of [
   "pool_negotiated_mask_asic_reload",
 ]) {
   assert.equal(rendered.includes(forbidden), false);
+}
+
+{
+  // Arrange
+  const upstream = "";
+  const rust = "";
+
+  // Act
+  const report = compareAcceptedState(upstream, rust);
+
+  // Assert
+  assert.equal(report.accepted_state_status, "unavailable");
+  assert.equal(report.first_divergent_stage, "post_enumerate");
+  assert.equal(
+    report.recommended_investigation,
+    "cold_boot_recovery_lifecycle_parity",
+  );
+}
+
+{
+  // Arrange
+  const partial = STAGES.slice(0, 3)
+    .map((stage) => marker(stage))
+    .join("\n");
+
+  // Act
+  const report = compareAcceptedState(partial, partial);
+
+  // Assert
+  assert.equal(report.accepted_state_status, "unavailable");
+  assert.equal(report.first_divergent_stage, "post_mask_reload");
+}
+
+{
+  // Arrange
+  const upstream = completeLog();
+  const rust = STAGES.slice(0, 4)
+    .map((stage) => marker(stage))
+    .join("\n");
+
+  // Act
+  const report = compareAcceptedState(upstream, rust);
+
+  // Assert
+  assert.equal(report.accepted_state_status, "unavailable");
+  assert.equal(report.first_divergent_stage, "post_first_work");
 }
 
 process.stdout.write("accepted_state_compare_test: passed\n");

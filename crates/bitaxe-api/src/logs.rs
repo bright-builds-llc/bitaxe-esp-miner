@@ -16,9 +16,13 @@ pub const DOWNLOAD_CONTENT_TYPE: &str = "text/plain";
 /// Log download file name header.
 pub const DOWNLOAD_CONTENT_DISPOSITION: &str = "attachment; filename=\"bitaxe-logs.txt\"";
 /// Diagnostic accepted-state replay window after listener readiness.
-pub const ACCEPTED_STATE_REPLAY_WINDOW_MS: u64 = 90_000;
+pub const ACCEPTED_STATE_REPLAY_WINDOW_MS: u64 = 180_000;
 /// Fixed accepted-state replay interval inside the bounded window.
 pub const ACCEPTED_STATE_REPLAY_INTERVAL_MS: u64 = 2_000;
+/// Latest accepted USB reappearance after lifecycle attestation.
+pub const ACCEPTED_STATE_REATTACH_DEADLINE_MS: u64 = 60_000;
+/// Reserved time for starting the no-reset monitor after USB reappearance.
+pub const ACCEPTED_STATE_MONITOR_START_RESERVE_MS: u64 = 10_000;
 
 /// Download response headers expected by existing AxeOS clients.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -323,6 +327,7 @@ mod tests {
 
     use crate::logs::{
         log_download_headers, AcceptedStateReplayCadence, RawLogStreamPlanner, RetainedLogBuffer,
+        ACCEPTED_STATE_MONITOR_START_RESERVE_MS, ACCEPTED_STATE_REATTACH_DEADLINE_MS,
         ACCEPTED_STATE_REPLAY_INTERVAL_MS, ACCEPTED_STATE_REPLAY_WINDOW_MS,
         DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
     };
@@ -614,17 +619,34 @@ mod tests {
     }
 
     #[test]
-    fn accepted_state_replay_cadence_exhausts_at_window_boundary() {
+    fn accepted_state_replay_schedule_preserves_post_reattach_opportunity_before_expiry() {
         // Arrange
-        let mut cadence = AcceptedStateReplayCadence::armed(1_000);
+        let mut cadence = AcceptedStateReplayCadence::armed(0);
+        let monitor_ready_ms =
+            ACCEPTED_STATE_REATTACH_DEADLINE_MS + ACCEPTED_STATE_MONITOR_START_RESERVE_MS;
+        let next_replay_ms = monitor_ready_ms + ACCEPTED_STATE_REPLAY_INTERVAL_MS;
 
         // Act
-        let due_at_last_possible_millisecond =
-            cadence.take_due(1_000 + ACCEPTED_STATE_REPLAY_WINDOW_MS - 1);
-        let due_at_window_end = cadence.take_due(1_000 + ACCEPTED_STATE_REPLAY_WINDOW_MS);
+        for now_ms in (0..=monitor_ready_ms).step_by(ACCEPTED_STATE_REPLAY_INTERVAL_MS as usize) {
+            assert!(cadence.take_due(now_ms));
+        }
+        let due_after_monitor_reserve = cadence.take_due(next_replay_ms);
+        for now_ms in ((next_replay_ms + ACCEPTED_STATE_REPLAY_INTERVAL_MS)
+            ..ACCEPTED_STATE_REPLAY_WINDOW_MS)
+            .step_by(ACCEPTED_STATE_REPLAY_INTERVAL_MS as usize)
+        {
+            assert!(cadence.take_due(now_ms));
+        }
+        let due_at_window_end = cadence.take_due(ACCEPTED_STATE_REPLAY_WINDOW_MS);
 
         // Assert
-        assert!(due_at_last_possible_millisecond);
+        assert_eq!(ACCEPTED_STATE_REPLAY_WINDOW_MS, 180_000);
+        assert_eq!(ACCEPTED_STATE_REPLAY_INTERVAL_MS, 2_000);
+        assert_eq!(ACCEPTED_STATE_REATTACH_DEADLINE_MS, 60_000);
+        assert_eq!(ACCEPTED_STATE_MONITOR_START_RESERVE_MS, 10_000);
+        assert_eq!(next_replay_ms, 72_000);
+        assert!(next_replay_ms < ACCEPTED_STATE_REPLAY_WINDOW_MS);
+        assert!(due_after_monitor_reserve);
         assert!(!due_at_window_end);
     }
 }

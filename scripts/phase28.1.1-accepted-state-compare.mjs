@@ -158,7 +158,12 @@ export function compareAcceptedState(upstreamText, rustText) {
   for (const stage of STAGES) {
     const upstreamSnapshot = upstream.get(stage);
     const rustSnapshot = rust.get(stage);
-    if (upstreamSnapshot === undefined && rustSnapshot === undefined) continue;
+
+    if (upstreamSnapshot === undefined || rustSnapshot === undefined) {
+      missingObservation = true;
+      if (firstDivergentStage === "none") firstDivergentStage = stage;
+      continue;
+    }
 
     if (
       !observationAvailable(upstreamSnapshot) ||
@@ -179,17 +184,17 @@ export function compareAcceptedState(upstreamText, rustText) {
   }
 
   const acceptedStateStatus =
-    counterDivergence || otherMismatch
-      ? "mismatch"
-      : missingObservation
-        ? "unavailable"
+    missingObservation
+      ? "unavailable"
+      : counterDivergence || otherMismatch
+        ? "mismatch"
         : "match";
-  const recommendedInvestigation = resultProgress
-    ? "none"
-    : counterDivergence
-      ? "accepted_state_transition_divergence"
-      : missingObservation
-        ? "cold_boot_recovery_lifecycle_parity"
+  const recommendedInvestigation = missingObservation
+    ? "cold_boot_recovery_lifecycle_parity"
+    : resultProgress
+      ? "none"
+      : counterDivergence
+        ? "accepted_state_transition_divergence"
         : otherMismatch
           ? "upstream_init_transcript_prefix_bisection"
           : "cold_boot_recovery_lifecycle_parity";
