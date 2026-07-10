@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-stopped_at: Phase 28.1.1 verification gaps_found
-last_updated: "2026-07-10T02:37:10.902Z"
+status: gaps_found
+stopped_at: Completed Phase 28.1.1 Plan 10 with blocked physical lifecycle prerequisite
+last_updated: "2026-07-10T03:19:10Z"
 progress:
   total_phases: 18
   completed_phases: 16
@@ -18,12 +18,18 @@ progress:
 ## Current Position
 
 Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — GAPS FOUND
-Plan: 4 of 4
+Plan: 5 of 5
 
 - **Phase:** 28.1.1 — Accepted-State Gap Closure
-- **Plan:** 4/4 — Complete (verification_result: gaps_found)
-- **Status:** Ready to execute
-- **Next step:** Physical cold-start lifecycle evidence; Phase 30 remains pending
+- **Plan:** 5/5 — Complete (verification_result: gaps_found)
+- **Status:** Plan 10 implementation complete; hardware lifecycle blocked before arming
+- **Next step:** Restore detector/board-info and exact five-stage reinit prerequisite; Phase 30 remains pending
+
+## Decisions (Phase 28.1.1 Plan 10)
+
+- Diagnostic-only replay selects exact complete markers, arms at `listener_armed`, emits with `log::info!` only, and is bounded to 90 seconds at a fixed 2-second cadence
+- The retained-package lifecycle member prohibits package/flash/reset/detector/credential actions after arming and requires an exact five-stage reinit before requesting physical power action
+- Two reinit attempts missed that prerequisite and final board-info failed; the checkpoint remained unarmed and Phase 30 remains pending
 
 ## Decisions (Phase 28.1.1.7)
 
@@ -115,6 +121,7 @@ Plan: 4 of 4
 | Phase 28.1.1.7 P04 | 3 min | 2 tasks | 5 files |
 | Phase 28.1.1 P07 | 28min | 2 tasks | 8 files |
 | Phase 28.1.1 P08 | 15min | 3 tasks | 4 files |
+| Phase 28.1.1 P10 | 39 min | 3 tasks | 14 files |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -138,9 +145,5 @@ Plan: 4 of 4
 
 ## Session
 
-- **Stopped at:** Phase 28.1.1 verification gaps_found
-- **Resume:** Obtain physical cold-start lifecycle evidence before any new gap plan
-
-## Accumulated Context
-
-### Roadmap Evolution
+- **Stopped at:** Completed Phase 28.1.1 Plan 10 with `blocked_safe_prerequisite` physical lifecycle evidence
+- **Resume:** Restore one detector-valid board 205 and a complete exact-commit five-stage reinit member before arming the no-reset cold-start watcher

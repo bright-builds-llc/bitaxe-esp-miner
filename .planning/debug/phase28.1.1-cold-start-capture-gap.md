@@ -1,16 +1,16 @@
 ---
-status: root_cause_found
+status: blocked_safe_prerequisite
 trigger: "Phase 28.1.1 UAT Test 3 cannot reliably capture all five one-shot accepted-state markers across a true Ultra 205 cold start because removing both power paths also removes the native USB console."
 created: 2026-07-10T02:10:00Z
-updated: 2026-07-10T02:22:00Z
+updated: 2026-07-10T03:19:10Z
 ---
 
 ## Current Focus
 
-hypothesis: Confirmed. The failed truth is an evidence-transport race, compounded by a lifecycle wrapper that always packages/flashes and therefore cannot represent a retained-package cold start. The accepted-state observations themselves already reduce raw ASIC reads to closed category markers correctly.
-test: Trace marker production, retention, serial capture, lifecycle wrapper branching, and API log retrieval; compare those contracts with the safe scratch capture outcomes and exact-commit event timing.
-expecting: A correct gap plan will preserve the one-shot ASIC observation timing, retain only the five category markers, replay them after USB re-enumeration on the existing runtime path, and add an explicit no-flash cold-start capture mode that reattaches without reset.
-next_action: Plan the gap around category replay after initialization plus a retained-package, no-flash USB reattach capture. Do not change ASIC reads or initialization timing.
+hypothesis: Confirmed and implemented. The evidence-transport race is closed by bounded retained-category replay and a no-flash/no-reset reattach wrapper. Hardware closure remains blocked before arming because the exact-commit reinit member lacked the exact five-stage prerequisite and the final board-info gate failed.
+test: Two detector-gated exact-commit reinit captures plus strict lifecycle preflight and final board-info detection.
+expecting: The lifecycle watcher may arm only after a stable exact-commit reinit member contains all five closed stages with equivalent duplicates and the selected board remains detector-valid.
+next_action: Do not request physical power action. Restore a passing single-board detector/board-info gate, then retry the exact-commit reinit prerequisite before arming the existing lifecycle wrapper.
 
 ## Symptoms
 
@@ -111,3 +111,30 @@ missing:
   - five unique cold-start stage markers and category-only cold-vs-reinit comparison
 suggested_fix_direction: Use `gsd-plan-phase --gaps` to add one post-init category replay seam and one no-flash lifecycle capture seam. The replay must select only exact redacted accepted-state lines already retained in RAM, run once at listener readiness, and never repeat a register read. The wrapper must distinguish `reinit` from `cold-start`, prove the cold-start branch never calls package/flash/reset, reattach after USB re-enumeration with `--no-reset`, normalize stage duplicates, keep raw logs ignored, and promote only closed category/count fields.
 secondary_option_not_selected: A host-only reattach wrapper could derive one fresh origin-only `DEVICE_URL` from the same post-cold-start serial session and download `/api/system/logs`; this does not require stale discovery and is narrower in code volume. It is not the recommended seam because it makes serial evidence depend on Wi-Fi/API target acquisition and handling a broader raw retained-log response. Direct category-only replay is fail-closed, avoids target discovery entirely, and exposes only the already-approved evidence vocabulary.
+
+## Plan 10 Execution Update
+
+- timestamp: 2026-07-10T03:19:10Z
+  checked: `70f4631` and focused/full Rust verification
+  found: Exact complete-line selection and a 90-second/2-second bounded replay cadence pass host tests; firmware arms only at `listener_armed` under `accepted_state_snapshot` and emits with `log::info!` rather than `info_retained`.
+  implication: The firmware fix does not repeat ASIC reads, add tasks/sleeps, or change default firmware behavior.
+- timestamp: 2026-07-10T03:19:10Z
+  checked: `5b284d4`, Node lifecycle fixtures, shell routing fixtures, `shellcheck`, and `shfmt -d`
+  found: The lifecycle wrapper reuses the retained package, requires disappearance/reappearance inside one 89-second maximum budget, invokes `--no-reset` for at least 360 seconds, and excludes package/flash/reset/detector/credential actions between arming and capture completion.
+  implication: The original evidence-transport and wrapper-routing defects are regression guarded.
+- timestamp: 2026-07-10T03:19:10Z
+  checked: first exact-commit 360-second reinit attempt
+  found: One boot, one listener-ready marker, zero hazards, and three equivalent boot-owned stages. The pool session subscribed/authorized and then reconnected before work dispatch, leaving the exact five-stage prerequisite incomplete.
+  implication: The physical checkpoint must remain unarmed; replay cannot synthesize the two runtime-owned stages.
+- timestamp: 2026-07-10T03:19:10Z
+  checked: second exact-commit 360-second reinit attempt and final `just detect-ultra205`
+  found: The delegated capture closed `blocked_safe_prerequisite` with no firmware markers. The final detector found the USB candidate but `board-info` could not connect.
+  implication: Repo hardware guidance requires stopping without another flash, reset, scan, stale target, or physical power request.
+
+## Final Plan 10 Disposition
+
+implementation_status: complete
+hardware_lifecycle_status: blocked_safe_prerequisite
+lifecycle_checkpoint_armed: false
+physical_power_action_performed: false
+phase30_promotion_input: pending

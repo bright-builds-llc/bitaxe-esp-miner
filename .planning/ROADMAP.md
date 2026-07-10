@@ -179,7 +179,7 @@ Plans:
 | 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 28. Hardware Evidence And Checklist Promotion | v1.1 | 3/3 | Complete   | 2026-07-06 |
 | 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete    | 2026-07-07 |
-| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
+| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 5/5 | Gaps Found | 2026-07-10 |
 | 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
 | 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.3. BM1366 Result RX Acquisition Model Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
@@ -213,14 +213,14 @@ Plans:
 **Goal:** Fix `firmware-nonce-production` by diffing upstream golden UART bytes against Rust TX, correcting init/job wire divergences, and verifying `result_correlated` plus live accepted/rejected shares on Ultra 205.
 **Depends on:** Phase 28.1
 **Requirements:** STR-09, CFG-07 (blocker closure)
-**Plans:** 4/4 plans complete; verification `gaps_found`
+**Plans:** 5/5 current plans complete; verification `gaps_found`
 
 Plans:
-- [x] 28.1.1-01-PLAN.md — Upstream SERIALTX_DEBUG golden wire capture + recovery
-- [x] 28.1.1-02-PLAN.md — Rust TX trace + diff tooling + J3-equivalent capture
-- [x] 28.1.1-03-PLAN.md — Dynamic init frame fixes + register-read parser + fixture tests
-- [x] 28.1.1-04-PLAN.md — Job frame field parity fixes with per-hypothesis hardware runs
-- [x] 28.1.1-05-PLAN.md — Version-rolling fallback + redacted evidence + verification
+- [x] 28.1.1-06-PLAN.md — Typed accepted-state snapshots, classification, and closed redacted comparator
+- [x] 28.1.1-07-PLAN.md — Bounded one-shot accepted-state instrumentation and detector-gated wrapper
+- [x] 28.1.1-08-PLAN.md — Accepted-state baseline, conditional lifecycle fallback, and gated share capture
+- [x] 28.1.1-09-PLAN.md — Evidence-based disposition and lifecycle-valid verification
+- [x] 28.1.1-10-PLAN.md — Bounded accepted-state replay + retained-package lifecycle capture; physical pair blocked before arming
 
 ### Phase 28.1.1.1: BM1366 upstream golden comparator and nonce-production gap reconciliation (INSERTED)
 
