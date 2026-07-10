@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase closed with gaps_found
+status: executing
 stopped_at: Phase 28.1.1 verification gaps_found
-last_updated: "2026-07-09T20:51:25.310Z"
+last_updated: "2026-07-10T02:37:10.902Z"
 progress:
   total_phases: 18
   completed_phases: 16
@@ -22,7 +22,7 @@ Plan: 4 of 4
 
 - **Phase:** 28.1.1 — Accepted-State Gap Closure
 - **Plan:** 4/4 — Complete (verification_result: gaps_found)
-- **Status:** Phase closed with gaps_found
+- **Status:** Ready to execute
 - **Next step:** Physical cold-start lifecycle evidence; Phase 30 remains pending
 
 ## Decisions (Phase 28.1.1.7)
