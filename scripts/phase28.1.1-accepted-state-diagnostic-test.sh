@@ -19,6 +19,22 @@ emit_complete_accepted_state_log() {
 	done
 }
 
+next_sequence_value() {
+	local sequence_file="$1"
+	local cursor_file="$2"
+	local index=0
+	if [[ -f "$cursor_file" ]]; then
+		index="$(<"$cursor_file")"
+	fi
+	local value
+	value="$(sed -n "$((index + 1))p" "$sequence_file")"
+	if [[ -z "$value" ]]; then
+		value="$(tail -1 "$sequence_file")"
+	fi
+	printf '%s\n' "$((index + 1))" >"$cursor_file"
+	printf '%s\n' "$value"
+}
+
 fixture_name="$(basename "${BASH_SOURCE[0]}")"
 case "$fixture_name" in
 phase28-fake-verify)
@@ -48,6 +64,9 @@ phase28-fake-flash-capture)
 	[[ -n "$evidence_root" ]]
 	mkdir -p "$evidence_root/live-capture-runtime"
 	emit_complete_accepted_state_log >"$evidence_root/live-capture-runtime/flash-monitor.log"
+	if [[ "${PHASE28_FAKE_MONITOR_MODE:-complete}" == "hazard" ]]; then
+		printf 'Guru Meditation Error: stack overflow\n' >>"$evidence_root/live-capture-runtime/flash-monitor.log"
+	fi
 	exit 0
 	;;
 phase28-fake-monitor)
@@ -78,23 +97,26 @@ phase28-fake-monitor)
 	exit 0
 	;;
 phase28-fake-port-present)
-	cursor_file="${PHASE28_FAKE_PORT_CURSOR:?}"
-	sequence_file="${PHASE28_FAKE_PORT_SEQUENCE:?}"
-	index=0
-	if [[ -f "$cursor_file" ]]; then
-		index="$(<"$cursor_file")"
-	fi
-	state="$(sed -n "$((index + 1))p" "$sequence_file")"
-	if [[ -z "$state" ]]; then
-		state="$(tail -1 "$sequence_file")"
-	fi
-	printf '%s\n' "$((index + 1))" >"$cursor_file"
+	state="$(next_sequence_value "${PHASE28_FAKE_PORT_SEQUENCE:?}" "${PHASE28_FAKE_PORT_CURSOR:?}")"
 	if [[ "$state" == "present" ]]; then
 		exit 0
 	fi
 	exit 1
 	;;
 phase28-fake-sleep)
+	exit 0
+	;;
+phase28-fake-clock)
+	next_sequence_value "${PHASE28_FAKE_CLOCK_SEQUENCE:?}" "${PHASE28_FAKE_CLOCK_CURSOR:?}"
+	exit 0
+	;;
+phase28-fake-read)
+	read_value="$(next_sequence_value "${PHASE28_FAKE_READ_SEQUENCE:?}" "${PHASE28_FAKE_READ_CURSOR:?}")"
+	case "$read_value" in
+	timeout) exit 142 ;;
+	eof) exit 1 ;;
+	*) printf '%s\n' "$read_value" ;;
+	esac
 	exit 0
 	;;
 esac
@@ -125,6 +147,7 @@ expect_failure bash "$script" --mode invalid --attempt accepted-state --duration
 expect_failure bash "$script" --mode blocked --attempt invalid --duration-seconds 360 --evidence-out "$temp_root/invalid.md"
 expect_failure bash "$script" --mode blocked --attempt lifecycle --duration-seconds 359 --evidence-out "$temp_root/short.md"
 expect_failure bash "$script" --mode blocked --attempt lifecycle --duration-seconds 360 --reattach-timeout-seconds 90 --evidence-out "$temp_root/long-reattach.md"
+expect_failure bash "$script" --mode blocked --attempt lifecycle --duration-seconds 360 --attestation-timeout-seconds 299 --evidence-out "$temp_root/short-attestation.md"
 expect_failure bash "$script" --mode hardware --attempt accepted-state --duration-seconds 360 --port /dev/test --wifi-credentials "$temp_root/missing-wifi" --pool-credentials "$pool" --evidence-out "$temp_root/missing.md"
 
 bash "$script" --mode blocked --attempt lifecycle --duration-seconds 360 --evidence-out "$temp_root/blocked.md" >"$temp_root/blocked.stdout"
@@ -139,7 +162,9 @@ fake_flash_capture="$temp_root/phase28-fake-flash-capture"
 fake_monitor="$temp_root/phase28-fake-monitor"
 fake_port_present="$temp_root/phase28-fake-port-present"
 fake_sleep="$temp_root/phase28-fake-sleep"
-for fixture in "$fake_verify" "$fake_detect" "$fake_package" "$fake_flash_capture" "$fake_monitor" "$fake_port_present" "$fake_sleep"; do
+fake_clock="$temp_root/phase28-fake-clock"
+fake_read="$temp_root/phase28-fake-read"
+for fixture in "$fake_verify" "$fake_detect" "$fake_package" "$fake_flash_capture" "$fake_monitor" "$fake_port_present" "$fake_sleep" "$fake_clock" "$fake_read"; do
 	ln -s "$test_script" "$fixture"
 done
 
@@ -185,6 +210,22 @@ rg -q '^recommended_investigation: none$' "$temp_root/hardware.md"
 reinit_log="$(sed -n 's/^accepted_state_reinit_log=//p' "$temp_root/hardware.stdout")"
 [[ -n "$reinit_log" && -f "$reinit_log" ]] || fail "accepted-state run did not expose retained reinit log"
 
+missing_reinit_stdout="$temp_root/missing-reinit.stdout"
+expect_failure env \
+	"${common_env[@]}" \
+	PHASE28_ACCEPTED_STATE_PACKAGE_BIN="$fake_package" \
+	PHASE28_ACCEPTED_STATE_CAPTURE_BIN="$fake_flash_capture" \
+	PHASE28_ACCEPTED_STATE_UPSTREAM_LOG="$upstream_log" \
+	PHASE28_ACCEPTED_STATE_RUN_ROOT="$temp_root/runs-incomplete-accepted" \
+	PHASE28_FAKE_PACKAGE_ARGS="$temp_root/incomplete-package.args" \
+	PHASE28_FAKE_CAPTURE_ARGS="$temp_root/incomplete-capture.args" \
+	PHASE28_FAKE_MONITOR_MODE=missing \
+	bash "$script" --mode hardware --attempt accepted-state --duration-seconds 360 --port "$test_port" --wifi-credentials "$wifi" --pool-credentials "$pool" --evidence-out "$temp_root/incomplete-hardware.md"
+cp "$temp_root/expected-failure.stdout" "$missing_reinit_stdout"
+if rg -q '^accepted_state_manifest=' "$missing_reinit_stdout"; then
+	fail "incomplete accepted-state run exposed an armable manifest"
+fi
+
 if rg -q 'wifi-secret-sentinel|pool-secret-sentinel' "$temp_root/hardware.md" "$temp_root/hardware.stdout"; then
 	fail "credential contents escaped into accepted-state output"
 fi
@@ -192,13 +233,20 @@ fi
 run_lifecycle() {
 	local case_name="$1"
 	local monitor_mode="$2"
-	local sequence="$3"
-	local timeout="$4"
+	local port_sequence="$3"
+	local clock_sequence="$4"
+	local read_sequence="$5"
+	local selected_reinit_log="${6:-$reinit_log}"
 	local case_root="$temp_root/$case_name"
 	mkdir -p "$case_root"
-	tr ' ' '\n' <<<"$sequence" >"$case_root/port.sequence"
+	tr ' ' '\n' <<<"$port_sequence" >"$case_root/port.sequence"
+	tr ' ' '\n' <<<"$clock_sequence" >"$case_root/clock.sequence"
+	tr ' ' '\n' <<<"$read_sequence" >"$case_root/read.sequence"
 	local trace="$case_root/calls.trace"
 	local monitor_args="$case_root/monitor.args"
+	local child_pid_file="$case_root/child.pid"
+	local run_status
+	set +e
 	env \
 		"${common_env[@]}" \
 		PHASE28_ACCEPTED_STATE_PACKAGE_BIN="$fake_package" \
@@ -206,7 +254,10 @@ run_lifecycle() {
 		PHASE28_ACCEPTED_STATE_MONITOR_BIN="$fake_monitor" \
 		PHASE28_ACCEPTED_STATE_PORT_PRESENT_BIN="$fake_port_present" \
 		PHASE28_ACCEPTED_STATE_SLEEP_BIN="$fake_sleep" \
+		PHASE28_ACCEPTED_STATE_CLOCK_BIN="$fake_clock" \
+		PHASE28_ACCEPTED_STATE_READ_BIN="$fake_read" \
 		PHASE28_ACCEPTED_STATE_CALL_TRACE="$trace" \
+		PHASE28_ACCEPTED_STATE_CHILD_PID_FILE="$child_pid_file" \
 		PHASE28_ACCEPTED_STATE_RUN_ROOT="$case_root/runs" \
 		PHASE28_FAKE_FAIL_PACKAGE=1 \
 		PHASE28_FAKE_FAIL_FLASH_CAPTURE=1 \
@@ -214,12 +265,29 @@ run_lifecycle() {
 		PHASE28_FAKE_MONITOR_MODE="$monitor_mode" \
 		PHASE28_FAKE_PORT_SEQUENCE="$case_root/port.sequence" \
 		PHASE28_FAKE_PORT_CURSOR="$case_root/port.cursor" \
-		bash "$script" --mode hardware --attempt lifecycle --duration-seconds 360 --reattach-timeout-seconds "$timeout" --port "$test_port" --wifi-credentials "$wifi" --pool-credentials "$pool" --manifest "$manifest" --reinit-log "$reinit_log" --evidence-out "$case_root/evidence.md" >"$case_root/stdout"
+		PHASE28_FAKE_CLOCK_SEQUENCE="$case_root/clock.sequence" \
+		PHASE28_FAKE_CLOCK_CURSOR="$case_root/clock.cursor" \
+		PHASE28_FAKE_READ_SEQUENCE="$case_root/read.sequence" \
+		PHASE28_FAKE_READ_CURSOR="$case_root/read.cursor" \
+		bash "$script" --mode hardware --attempt lifecycle --duration-seconds 360 --reattach-timeout-seconds 60 --attestation-timeout-seconds 300 --port "$test_port" --wifi-credentials "$wifi" --pool-credentials "$pool" --manifest "$manifest" --reinit-log "$selected_reinit_log" --evidence-out "$case_root/evidence.md" >"$case_root/stdout" 2>"$case_root/stderr"
+	run_status=$?
+	set -e
+	[[ ! -s "$child_pid_file" ]] || fail "$case_name left a live monitor child recorded"
+	return "$run_status"
 }
 
-run_lifecycle lifecycle-success duplicate 'present absent present' 5
+success_port_sequence='present absent absent absent present'
+success_clock_sequence='0 0 0 4999 5000 5000 60000 60000'
+success_read_sequence='both-power-paths-removed barrel-then-usb-restored'
+run_lifecycle lifecycle-success duplicate "$success_port_sequence" "$success_clock_sequence" "$success_read_sequence"
 success_root="$temp_root/lifecycle-success"
 rg -q '^accepted_state_lifecycle_checkpoint=armed$' "$success_root/stdout"
+rg -q '^accepted_state_lifecycle_expected_token=both-power-paths-removed$' "$success_root/stdout"
+rg -q '^accepted_state_attestation_deadline_ms=300000$' "$success_root/stdout"
+rg -q '^operator_attested_both_power_paths_removed=true$' "$success_root/stdout"
+rg -q '^accepted_state_usb_absence_measured_ms=5000$' "$success_root/stdout"
+rg -q '^accepted_state_lifecycle_expected_token=barrel-then-usb-restored$' "$success_root/stdout"
+rg -q '^accepted_state_restore_deadline_ms=60000$' "$success_root/stdout"
 rg -q '^accepted_state_diagnostic_status=complete$' "$success_root/stdout"
 rg -q '^lifecycle_status: match$' "$success_root/evidence.md"
 rg -q '^reinit_stage_count: 5$' "$success_root/evidence.md"
@@ -227,6 +295,15 @@ rg -q '^cold_start_stage_count: 5$' "$success_root/evidence.md"
 rg -q '^cold_start_marker_count: 6$' "$success_root/evidence.md"
 rg -q '^cold_start_flash_performed: false$' "$success_root/evidence.md"
 rg -q '^cold_start_reset_performed: false$' "$success_root/evidence.md"
+rg -q '^operator_attested_both_power_paths_removed: true$' "$success_root/evidence.md"
+rg -q '^usb_absence_measured_ms: 5000$' "$success_root/evidence.md"
+rg -q '^barrel_removal_electronically_verified: false$' "$success_root/evidence.md"
+rg -q '^reattach_deadline_ms: 60000$' "$success_root/evidence.md"
+rg -q '^reappearance_elapsed_ms: 60000$' "$success_root/evidence.md"
+rg -q '^monitor_start_reserve_ms: 10000$' "$success_root/evidence.md"
+rg -q '^replay_interval_ms: 2000$' "$success_root/evidence.md"
+rg -q '^replay_window_ms: 180000$' "$success_root/evidence.md"
+rg -q '^latest_safe_replay_ms: 72000$' "$success_root/evidence.md"
 rg -q '^post_capture_detector_status: passed$' "$success_root/evidence.md"
 rg -q '^--no-reset$' "$success_root/monitor.args"
 rg -q '^--seconds$' "$success_root/monitor.args"
@@ -242,10 +319,36 @@ if rg -q 'wifi-secret-sentinel|pool-secret-sentinel' "$success_root/evidence.md"
 	fail "credential contents escaped into lifecycle output"
 fi
 
-expect_failure run_lifecycle lifecycle-no-disappear complete 'present present present' 2
-expect_failure run_lifecycle lifecycle-no-reappear complete 'present absent absent absent' 2
-expect_failure run_lifecycle lifecycle-missing missing 'present absent present' 5
-expect_failure run_lifecycle lifecycle-hazard hazard 'present absent present' 5
+expect_failure run_lifecycle lifecycle-wrong-attestation complete 'present' '0 0' 'wrong-token'
+expect_failure run_lifecycle lifecycle-absent-attestation complete 'present' '0 0' 'eof'
+expect_failure run_lifecycle lifecycle-abandoned-armed complete 'present' '0 0 300000' 'timeout'
+[[ ! -s "$temp_root/lifecycle-abandoned-armed/child.pid" ]] || fail "abandoned armed wait left a child"
+if rg -q '^monitor-no-reset$' "$temp_root/lifecycle-abandoned-armed/calls.trace"; then
+	fail "abandoned armed wait started a monitor child"
+fi
+
+expect_failure run_lifecycle lifecycle-present-at-attestation complete 'present present' '0 0 0' 'both-power-paths-removed'
+expect_failure run_lifecycle lifecycle-absence-4999 complete 'present absent absent present' '0 0 0 4999' 'both-power-paths-removed'
+expect_failure run_lifecycle lifecycle-wrong-restore complete 'present absent absent' '0 0 0 5000 5000' 'both-power-paths-removed wrong-token'
+expect_failure run_lifecycle lifecycle-absent-restore complete 'present absent absent' '0 0 0 5000 5000' 'both-power-paths-removed eof'
+expect_failure run_lifecycle lifecycle-abandoned-restore complete 'present absent absent' '0 0 0 5000 5000 60000' 'both-power-paths-removed timeout'
+[[ ! -s "$temp_root/lifecycle-abandoned-restore/child.pid" ]] || fail "abandoned restore wait left a child"
+if rg -q '^monitor-no-reset$' "$temp_root/lifecycle-abandoned-restore/calls.trace"; then
+	fail "abandoned restore wait started a monitor child"
+fi
+
+expect_failure run_lifecycle lifecycle-late-restore complete 'present absent absent' '0 0 0 5000 60000' 'both-power-paths-removed barrel-then-usb-restored'
+expect_failure run_lifecycle lifecycle-absent-at-60000 complete 'present absent absent absent' '0 0 0 5000 5000 60000' "$success_read_sequence"
+expect_failure run_lifecycle lifecycle-present-at-60001 complete 'present absent absent present' '0 0 0 5000 5000 60001' "$success_read_sequence"
+
+incomplete_reinit="$temp_root/incomplete-reinit.log"
+PHASE28_FAKE_MONITOR_MODE=missing emit_complete_accepted_state_log >"$incomplete_reinit"
+expect_failure run_lifecycle lifecycle-incomplete-reinit complete 'present' '0' 'both-power-paths-removed' "$incomplete_reinit"
+if rg -q '^armed$' "$temp_root/lifecycle-incomplete-reinit/calls.trace"; then
+	fail "incomplete reinit reached lifecycle arming"
+fi
+
+expect_failure run_lifecycle lifecycle-hazard hazard "$success_port_sequence" "$success_clock_sequence" "$success_read_sequence"
 
 if rg -q 'post_max_baud_delay_2000|match_upstream_register_read_poll|upstream_like_long_block_receive|ticket_mask_asic_difficulty' "$script"; then
 	fail "closed diagnostic wrapper contains a banned hypothesis"
