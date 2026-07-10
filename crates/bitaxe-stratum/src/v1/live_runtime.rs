@@ -620,7 +620,8 @@ mod tests {
     }
 
     #[test]
-    fn configure_mask_store_raises_pending_version_mask_reload_even_when_mask_equals_init_default() {
+    fn configure_mask_store_raises_pending_version_mask_reload_even_when_mask_equals_init_default()
+    {
         // Arrange — fake-pool / init default mask (D-05: no value-delta gate).
         let mut runtime = started_runtime();
         let init_default_mask = VersionMask { mask: 0x1fff_e000 };
@@ -656,10 +657,7 @@ mod tests {
             .expect("set_version_mask should store mask");
 
         // Assert
-        assert_eq!(
-            runtime.take_pending_version_mask_reload(),
-            Some(mask)
-        );
+        assert_eq!(runtime.take_pending_version_mask_reload(), Some(mask));
         assert_eq!(runtime.take_pending_version_mask_reload(), None);
     }
 
