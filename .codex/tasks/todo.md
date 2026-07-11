@@ -4,6 +4,6 @@
 - [x] Repair begin/resolve/deliver/effect dispatch and terminal cleanup without real hardware backends.
 - [x] Add exhaustive deterministic runner, lease/socket, secrecy, stale-handle, crash, and guard regressions.
 - [x] Run the mandatory Rust sequence before every commit, then focused Node/shell/Bazel/style/diff gates.
-- [ ] Update the Plan 12 summary truthfully and record residual risks.
+- [x] Update the Plan 12 summary truthfully and record residual risks.
 
-Completion review: pending.
+Completion review: The corrected Plan 12 software authority is committed at `287cf33bc3599d9f8afa8118037f4572cedf489f`; the exact Rust sequence and all focused runner, Bazel, Node, shell, style, reference, and diff gates pass. Residual risk is intentionally confined to Plan 13: the fixed production adapter and physical lifecycle still require detector-gated same-chain hardware evidence before any parity promotion.
