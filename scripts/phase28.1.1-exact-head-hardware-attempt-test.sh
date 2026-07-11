@@ -58,7 +58,12 @@ detector_board_info | credential_presence_bind | reference_guard | package | fla
 		reference_guard) outputs='{"reference_commit":"2222222222222222222222222222222222222222","reference_guard_output_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' ;;
 		package) outputs="{\"manifest_source_commit\":\"${PHASE28_TEST_HEAD:?}\",\"manifest_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"factory_image_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}" ;;
 		flash_reinit_runtime) outputs='{"runtime_credential_consumption":"pass","credential_capability_status":"destroyed","credential_capability_sha256":null,"reinit_capture_started_ms":10,"reinit_capture_ended_ms":360010,"reinit_capture_duration_ms":360000,"reinit_capture_category":"complete_360s","reinit_raw_log_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","reinit_classifier_input_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","reinit_five_stage_result":"pass"}' ;;
-		post_capture_detector_board_info) outputs='{"result_correlated":null,"power_delta_class":null,"share_submission_status":null,"lifecycle_status":"absent","classifier_input_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","classifier_output_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","classifier_version":"strict-production-v2"}' ;;
+		post_capture_detector_board_info)
+			outputs="${PHASE28_POST_CAPTURE_OUTPUTS:-}"
+			if [[ -z "$outputs" ]]; then
+				outputs='{"result_correlated":null,"power_delta_class":null,"share_submission_status":null,"lifecycle_status":"absent","classifier_input_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","classifier_output_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","classifier_version":"strict-production-v2"}'
+			fi
+			;;
 		esac
 		jq -cn --arg effect "$fixture_name" --argjson outputs "$outputs" '{schema_version:"exact-head-effect-result-v1",effect_id:$effect,status:"completed",blocker_reason:"none",outputs:$outputs}' >"${PHASE28_EFFECT_RESULT_FILE:?}"
 		chmod 600 "$PHASE28_EFFECT_RESULT_FILE"
@@ -214,6 +219,54 @@ prepare_lifecycle_state() {
 	chmod 600 "$state_path"
 }
 
+prepare_post_capture_state() {
+	local handle="$1"
+	prepare_lifecycle_state "$handle"
+	local slot
+	local state_path
+	slot="$control_root/resume-index/$(printf '%s' "$handle" | shasum -a 256 | awk '{print $1}').json"
+	state_path="$(jq -er '.attempt_dir' "$slot")/state.json"
+	jq '
+    .attempt_state="capture_complete" |
+    .lifecycle_substate="complete" |
+    .lifecycle_lease_id=("7"*32) |
+    .lifecycle_capability_sha256=("a"*64) |
+    .lifecycle_owner_pid=123 |
+    .lifecycle_owner_start_fingerprint_sha256=("a"*64) |
+    .lifecycle_deadline_ms=900000 |
+    .attestation_status="accepted" |
+    .attestation_accepted_ms=1000 |
+    .usb_absence_started_ms=1000 |
+    .usb_absence_ended_ms=6000 |
+    .usb_absence_ms=5000 |
+    .usb_absence_category="continuous_at_least_5000" |
+    .restore_token_status="accepted" |
+    .restore_accepted_ms=6001 |
+    .usb_reappearance_ms=7000 |
+    .reappearance_elapsed_ms=6000 |
+    .reappearance_category="within_60000" |
+    .capture_complete_permitted_lifecycle_counts |= with_entries(.value=1) |
+    .armed_prohibited_sentinel_sha256=("a"*64) |
+    .capture_complete_prohibited_sentinel_sha256=("a"*64) |
+    .armed_permitted_lifecycle_sha256=("b"*64) |
+    .capture_complete_permitted_lifecycle_sha256=("c"*64) |
+    .capture_started_ms=7000 |
+    .capture_ended_ms=367000 |
+    .capture_duration_ms=360000 |
+    .capture_category="complete_360s" |
+    .lifecycle_raw_log_sha256=("a"*64) |
+    .same_chain_raw_log_set_sha256=("a"*64) |
+    .classifier_input_sha256=("a"*64) |
+    .lifecycle_status="match" |
+    .process_running=false |
+    .result_correlated=false |
+    .power_delta_class="flat" |
+    .share_submission_status="not_observed"
+  ' "$state_path" >"$state_path.next"
+	mv "$state_path.next" "$state_path"
+	chmod 600 "$state_path"
+}
+
 wait_for_pattern() {
 	local pattern="$1"
 	local path="$2"
@@ -268,9 +321,21 @@ for effect in "${effects[@]}"; do
 	initial_state="$(initial_state_for_effect "$effect")"
 	handle="$(begin_attempt "$initial_state")"
 	handle="${handle#resume_handle=}"
+	effect_attempt_slot="$control_root/resume-index/$(printf '%s' "$handle" | shasum -a 256 | awk '{print $1}').json"
+	effect_attempt_dir="$(jq -er '.attempt_dir' "$effect_attempt_slot")"
 	output="$(run_effect "$handle" "$effect")"
 	rg -q "^effect_id=${effect}$" <<<"$output"
 	rg -q '^effect_status=completed$' <<<"$output"
+	if [[ "$effect" == "post_capture_detector_board_info" ]]; then
+		rg -q '^## TERMINAL CLOSED$' <<<"$output"
+		rg -q '^terminal_outcome=blocked_safe_evidence_invalid$' <<<"$output"
+		rg -q '^verification_result=gaps_found$' <<<"$output"
+		rg -q '^phase30_promotion_input=pending$' <<<"$output"
+		terminal_slot="$control_root/resume-index/$(printf '%s' "$handle" | shasum -a 256 | awk '{print $1}').json"
+		[[ "$(jq -er '.terminal_category' "$terminal_slot")" == "blocked_safe_evidence_invalid" ]] || fail "successful post-capture completion did not tombstone its terminal"
+		[[ ! -e "$effect_attempt_dir" ]] || fail "successful post-capture completion retained its live attempt"
+		expect_failure resume_handle_stale env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" bash "$runner" resolve-checkpoint --resume-handle "$handle"
+	fi
 done
 [[ "$(wc -l <"$temp_root/effects.trace" | tr -d ' ')" == "6" ]]
 
@@ -307,6 +372,36 @@ lifecycle_state="$(jq -er '.attempt_dir' "$lifecycle_slot")/state.json"
 [[ "$(jq -r '.attempt_state' "$lifecycle_state")" == "capture_complete" ]]
 [[ "$(jq -r '.process_running' "$lifecycle_state")" == "false" ]]
 [[ "$(wc -l <"$temp_root/effects.trace" | tr -d ' ')" == "7" ]]
+
+post_capture_outputs() {
+	local correlated="$1"
+	local power="$2"
+	local share="$3"
+	jq -cn \
+		--argjson correlated "$correlated" \
+		--arg power "$power" \
+		--arg share "$share" \
+		'{result_correlated:$correlated,power_delta_class:$power,share_submission_status:$share,lifecycle_status:"match",classifier_input_sha256:("d"*64),classifier_output_sha256:("e"*64),classifier_version:"strict-production-v2"}'
+}
+
+control_root="$temp_root/control-terminal-gaps"
+gaps_handle="$(begin_attempt capture_complete)"
+gaps_handle="${gaps_handle#resume_handle=}"
+prepare_post_capture_state "$gaps_handle"
+gaps_output="$(run_effect "$gaps_handle" post_capture_detector_board_info PHASE28_POST_CAPTURE_OUTPUTS="$(post_capture_outputs false flat not_observed)")"
+rg -q '^terminal_outcome=gaps_found_same_chain_production_markers_absent$' <<<"$gaps_output"
+rg -q '^verification_result=gaps_found$' <<<"$gaps_output"
+rg -q '^blocker_reason=production_markers_absent$' <<<"$gaps_output"
+
+control_root="$temp_root/control-terminal-passed"
+passed_handle="$(begin_attempt capture_complete)"
+passed_handle="${passed_handle#resume_handle=}"
+prepare_post_capture_state "$passed_handle"
+passed_output="$(run_effect "$passed_handle" post_capture_detector_board_info PHASE28_POST_CAPTURE_OUTPUTS="$(post_capture_outputs true rising_hashing accepted)")"
+rg -q '^terminal_outcome=passed_same_chain_hardware$' <<<"$passed_output"
+rg -q '^verification_result=passed$' <<<"$passed_output"
+rg -q '^phase30_promotion_input=eligible$' <<<"$passed_output"
+rg -q '^blocker_reason=none$' <<<"$passed_output"
 
 crash_boundaries=(
 	before_authorized_persistence
@@ -358,6 +453,42 @@ for effect in "${effects[@]}"; do
 		[[ "$(mode_of "$tombstone")" == "600" ]]
 		[[ "$(jq -r 'keys | sort | join(",")' "$tombstone")" == "attempt_generation,cleanup_time_category,resume_handle_sha256,schema_version,terminal_category,terminal_status" ]] || fail "$effect/$boundary tombstone retained live references"
 	done
+done
+
+classification_crash_boundaries=(
+	after_classifier_intent_persistence
+	after_classifier_invocation
+	after_classified_persistence
+	after_terminal_persistence
+	before_tombstone_persistence
+	after_tombstone_persistence
+	after_terminal_cleanup
+)
+for boundary in "${classification_crash_boundaries[@]}"; do
+	control_root="$temp_root/classification-crash-$boundary/control"
+	mkdir -p "$(dirname "$control_root")"
+	: >"$temp_root/effects.trace"
+	classifier_trace="$temp_root/classifier-$boundary.trace"
+	: >"$classifier_trace"
+	handle="$(begin_attempt capture_complete)"
+	handle="${handle#resume_handle=}"
+	prepare_post_capture_state "$handle"
+	expect_exit_failure run_effect "$handle" post_capture_detector_board_info \
+		PHASE28_POST_CAPTURE_OUTPUTS="$(post_capture_outputs false flat not_observed)" \
+		PHASE28_CLASSIFIER_TRACE="$classifier_trace" \
+		PHASE28_CRASH_AT="$boundary"
+	effect_count_before="$(wc -l <"$temp_root/effects.trace" | tr -d ' ')"
+	classifier_count_before="$(wc -l <"$classifier_trace" | tr -d ' ')"
+	set +e
+	run_effect "$handle" post_capture_detector_board_info \
+		PHASE28_POST_CAPTURE_OUTPUTS="$(post_capture_outputs true rising_hashing accepted)" \
+		PHASE28_CLASSIFIER_TRACE="$classifier_trace" >"$temp_root/classification-restart.stdout" 2>"$temp_root/classification-restart.stderr"
+	set -e
+	[[ "$(wc -l <"$temp_root/effects.trace" | tr -d ' ')" == "$effect_count_before" ]] || fail "$boundary redispatched the post-capture effect"
+	[[ "$(wc -l <"$classifier_trace" | tr -d ' ')" == "$classifier_count_before" ]] || fail "$boundary redispatched the strict classifier"
+	expect_failure resume_handle_stale env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" bash "$runner" resolve-checkpoint --resume-handle "$handle"
+	tombstone="$control_root/resume-index/$(printf '%s' "$handle" | shasum -a 256 | awk '{print $1}').json"
+	[[ "$(jq -r 'keys | sort | join(",")' "$tombstone")" == "attempt_generation,cleanup_time_category,resume_handle_sha256,schema_version,terminal_category,terminal_status" ]] || fail "$boundary terminal tombstone retained a live/private reference"
 done
 
 control_root="$temp_root/control-final"

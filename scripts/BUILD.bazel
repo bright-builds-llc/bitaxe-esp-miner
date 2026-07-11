@@ -472,6 +472,7 @@ sh_binary(
     data = [
         "phase28.1.1-accepted-state-diagnostic.sh",
         "phase28.1.1-hardware-attempt-state.mjs",
+        "phase28.1.1-strict-production-evidence.mjs",
         "process-group.sh",
     ],
 )
@@ -482,6 +483,7 @@ sh_test(
     data = [
         "phase28.1.1-exact-head-hardware-attempt.sh",
         "phase28.1.1-hardware-attempt-state.mjs",
+        "phase28.1.1-strict-production-evidence.mjs",
         "process-group.sh",
     ],
     env_inherit = [

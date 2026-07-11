@@ -22,17 +22,21 @@ import {
   consumeCheckpoint,
   createConnectedEntryState,
   createAttemptState,
+  finalizeClassifiedAttempt,
   deriveLinuxBootSessionDigest,
   deriveMacBootSessionDigest,
   finishEffect,
   markEffectInvoked,
+  markClassifierInvoked,
   normalizeFinishedEffect,
   observeBootSessionDigest,
   publicCheckpoint,
+  persistStrictClassification,
   routeBlocker,
   transitionAttemptState,
   validateAttemptState,
 } from "./phase28.1.1-hardware-attempt-state.mjs";
+import { classifyStrictPostCaptureState } from "./phase28.1.1-strict-production-evidence.mjs";
 
 const HEAD = "1".repeat(40);
 const RESUME_DIGEST = "2".repeat(64);
@@ -556,6 +560,50 @@ function testLifecycleLeaseAndSubordinateTransitions() {
   }
 }
 
+function testStrictClassificationPersistenceAndReplayGuards() {
+  // Arrange
+  const state = completeLifecycleState();
+  state.attempt_state = "post_capture_validated";
+  state.effect_sequence = 7;
+  state.classifier_input_sha256 = null;
+  const invoked = markClassifierInvoked(state);
+  const result = classifyStrictPostCaptureState(invoked);
+
+  // Act
+  const classified = persistStrictClassification(invoked, result);
+  const terminal = finalizeClassifiedAttempt(classified);
+
+  // Assert
+  assert.equal(classified.attempt_state, "classified");
+  assert.equal(
+    classified.terminal_outcome,
+    "gaps_found_same_chain_production_markers_absent",
+  );
+  assert.equal(classified.verification_result, "gaps_found");
+  assert.equal(classified.phase30_promotion_input, "pending");
+  assert.equal(terminal.attempt_state, "terminal");
+  const incomplete = { ...result };
+  delete incomplete.classifier_output_sha256;
+  expectStateError("state_malformed", () =>
+    persistStrictClassification(invoked, incomplete),
+  );
+  expectStateError("classifier_input_invalid", () =>
+    persistStrictClassification(invoked, {
+      ...result,
+      classifier_input_sha256: "f".repeat(64),
+    }),
+  );
+  expectStateError("classification_inconsistent", () =>
+    persistStrictClassification(invoked, {
+      ...result,
+      classifier_output_sha256: "f".repeat(64),
+    }),
+  );
+  expectStateError("classification_inconsistent", () =>
+    persistStrictClassification(classified, result),
+  );
+}
+
 testBootSessionFixtures();
 testClosedSchema();
 testBootSessionReobservation();
@@ -567,5 +615,6 @@ testSentinelInvariants();
 testConnectedCheckpointContract();
 testDetectorEffectTransitionsAndRecoveryOrder();
 testLifecycleLeaseAndSubordinateTransitions();
+testStrictClassificationPersistenceAndReplayGuards();
 
 console.log("phase28.1.1 hardware attempt state tests: passed");

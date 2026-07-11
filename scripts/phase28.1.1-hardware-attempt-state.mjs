@@ -26,6 +26,12 @@ export const EFFECT_PHASES = Object.freeze([
   "failed",
 ]);
 
+export const CLASSIFICATION_PHASES = Object.freeze([
+  "not_run",
+  "invoked",
+  "completed",
+]);
+
 export const EFFECT_AUTHORIZATION_STATES = Object.freeze({
   detector_board_info: Object.freeze([
     "connected_entry_waiting",
@@ -298,6 +304,36 @@ export const TERMINAL_IDS = Object.freeze([
   "passed_same_chain_hardware",
 ]);
 
+export const STRICT_CLASSIFICATION_RESULT_FIELDS = Object.freeze([
+  "classifier_version",
+  "classifier_input_sha256",
+  "classifier_output_sha256",
+  "terminal_outcome",
+  "verification_result",
+  "phase30_promotion_input",
+  "blocker_reason",
+]);
+
+export const CLASSIFIER_PROJECTION_FIELDS = Object.freeze([
+  "schema_version", "phase_lifecycle_id", "attempt_id", "exact_head",
+  "boot_session_sha256", "attempt_state", "classification_phase", "effect_id",
+  "effect_phase", "effect_sequence", "selected_port_fingerprint_sha256",
+  "reference_commit", "reference_guard_output_sha256", "manifest_source_commit",
+  "manifest_sha256", "factory_image_sha256", "reinit_capture_started_ms",
+  "reinit_capture_ended_ms", "reinit_capture_duration_ms", "reinit_raw_log_sha256",
+  "lifecycle_substate", "lifecycle_lease_id", "lifecycle_capability_sha256",
+  "lifecycle_owner_start_fingerprint_sha256", "lifecycle_deadline_ms",
+  "attestation_accepted_ms", "usb_absence_ms", "restore_accepted_ms",
+  "reappearance_elapsed_ms", "lifecycle_raw_log_sha256",
+  "same_chain_raw_log_set_sha256", "capture_started_ms", "capture_ended_ms",
+  "capture_duration_ms", "capture_category", "armed_prohibited_sentinel_sha256",
+  "capture_complete_prohibited_sentinel_sha256", "armed_permitted_lifecycle_sha256",
+  "capture_complete_permitted_lifecycle_sha256", "lifecycle_authorized",
+  "lifecycle_status", "process_running", "cleanup_state", "result_correlated",
+  "power_delta_class", "share_submission_status", "blocker_reason",
+  "classifier_version", "classifier_input_sha256",
+]);
+
 const CONTEXTUAL_BLOCKERS = Object.freeze([
   "resume_handle_missing",
   "resume_handle_malformed",
@@ -508,6 +544,7 @@ function stateDefaults() {
     classifier_input_sha256: null,
     classifier_output_sha256: null,
     classifier_version: "not_run",
+    classification_phase: "not_run",
     lifecycle_status: "absent",
     process_running: false,
     cleanup_state: "not_needed",
@@ -515,6 +552,8 @@ function stateDefaults() {
     power_delta_class: null,
     share_submission_status: null,
     terminal_outcome: null,
+    verification_result: null,
+    phase30_promotion_input: null,
     blocker_reason: "none",
   };
 }
@@ -700,6 +739,7 @@ export function validateAttemptState(state) {
   validateDuration(state, "capture_started_ms", "capture_ended_ms", "capture_duration_ms", "capture_category", "complete_360s", 360_000);
   for (const field of ["lifecycle_raw_log_sha256", "same_chain_raw_log_set_sha256", "classifier_input_sha256", "classifier_output_sha256"]) requirePattern(state[field], /^[0-9a-f]{64}$/, field, true);
   requireEnum(state.classifier_version, ["not_run", PHASE28_CLASSIFIER_VERSION], "classifier_version");
+  requireEnum(state.classification_phase, CLASSIFICATION_PHASES, "classification_phase");
   requireEnum(state.lifecycle_status, ["absent", "incomplete", "mismatch", "match"], "lifecycle_status");
   if (["capture_complete", "post_capture_validated", "classified", "terminal"].includes(state.attempt_state) && state.lifecycle_status !== "absent") {
     if (state.capture_category !== "complete_360s" || state.reinit_capture_category !== "complete_360s" || state.reinit_five_stage_result !== "pass") {
@@ -708,7 +748,13 @@ export function validateAttemptState(state) {
     if (state.reference_guard_state !== "pass" || state.manifest_state !== "pass" || state.selected_port_state !== "one_board205") {
       fail("state_malformed", "completed lifecycle lacks identity prerequisites");
     }
-    for (const field of ["lifecycle_raw_log_sha256", "same_chain_raw_log_set_sha256", "classifier_input_sha256"]) requirePattern(state[field], /^[0-9a-f]{64}$/, field);
+    for (const field of ["lifecycle_raw_log_sha256", "same_chain_raw_log_set_sha256"]) requirePattern(state[field], /^[0-9a-f]{64}$/, field);
+    if (state.attempt_state === "capture_complete") {
+      requirePattern(state.classifier_input_sha256, /^[0-9a-f]{64}$/, "classifier_input_sha256");
+    }
+    if (state.classification_phase === "completed" && state.classifier_input_sha256 !== null) {
+      requirePattern(state.classifier_output_sha256, /^[0-9a-f]{64}$/, "classifier_output_sha256");
+    }
   }
   if (typeof state.process_running !== "boolean") fail("state_malformed", "process_running is not boolean");
   requireEnum(state.cleanup_state, ["not_needed", "complete", "unresolved"], "cleanup_state");
@@ -716,13 +762,38 @@ export function validateAttemptState(state) {
   requireEnum(state.power_delta_class, ["rising_hashing", "flat", "falling", "unavailable"], "power_delta_class", true);
   requireEnum(state.share_submission_status, ["accepted", "rejected", "not_observed"], "share_submission_status", true);
   requireEnum(state.terminal_outcome, TERMINAL_IDS, "terminal_outcome", true);
+  requireEnum(state.verification_result, ["gaps_found", "passed"], "verification_result", true);
+  requireEnum(state.phase30_promotion_input, ["pending", "eligible"], "phase30_promotion_input", true);
   requireEnum(state.blocker_reason, BLOCKER_REASONS, "blocker_reason");
+  if (state.attempt_state === "classified") {
+    if (
+      state.classification_phase !== "completed" ||
+      state.terminal_outcome === null ||
+      state.verification_result === null ||
+      state.phase30_promotion_input === null
+    ) {
+      fail("classification_inconsistent", "classified state lacks a closed result");
+    }
+    validateTerminalResult(state);
+  } else if (
+    state.attempt_state !== "terminal" &&
+    [state.terminal_outcome, state.verification_result, state.phase30_promotion_input].some(
+      (value) => value !== null,
+    )
+  ) {
+    fail("state_malformed", "non-classified state retained a terminal result");
+  }
+  if (
+    state.classification_phase === "invoked" &&
+    state.attempt_state !== "post_capture_validated"
+  ) {
+    fail("classification_inconsistent", "classifier invocation is outside its persisted boundary");
+  }
   if (state.attempt_state === "terminal") {
     if (state.terminal_outcome === null) fail("state_malformed", "terminal state lacks terminal outcome");
     const expected = routeBlocker(state.blocker_reason, { lifecycleAuthorized: state.lifecycle_substate !== "not_started", cleanupUnresolved: state.cleanup_state === "unresolved" });
     if (state.blocker_reason !== "none" && state.terminal_outcome !== expected) fail("classification_inconsistent", "blocker does not route to terminal outcome");
-  } else if (state.terminal_outcome !== null) {
-    fail("state_malformed", "non-terminal state has terminal outcome");
+    validateTerminalResult(state);
   }
   return state;
 }
@@ -751,7 +822,12 @@ export function transitionAttemptState(state, nextState) {
 export function authorizeEffect(state, effectId, nonce = randomBytes(16).toString("hex")) {
   validateAttemptState(state);
   requireEnum(effectId, EFFECT_IDS, "effect_id");
-  if (state.effect_phase !== "none" || state.lifecycle_substate !== "not_started" && effectId !== "lifecycle_start") fail("effect_in_flight_ambiguous", "effect dispatch is not idle");
+  const lifecycleAllowsEffect =
+    state.lifecycle_substate === "not_started" ||
+    effectId === "lifecycle_start" ||
+    (effectId === "post_capture_detector_board_info" &&
+      state.lifecycle_substate === "complete");
+  if (state.effect_phase !== "none" || !lifecycleAllowsEffect) fail("effect_in_flight_ambiguous", "effect dispatch is not idle");
   if (!EFFECT_AUTHORIZATION_STATES[effectId].includes(state.attempt_state)) fail("checkpoint_state_mismatch", "effect is not authorized from the current attempt state");
   const next = structuredClone(state);
   next.effect_id = effectId;
@@ -970,6 +1046,151 @@ function returnEffectToIdle(state) {
   state.effect_authorization_nonce = null;
 }
 
+function expectedTerminalMetadata(terminalOutcome) {
+  const passed = terminalOutcome === "passed_same_chain_hardware";
+  return {
+    verification_result: passed ? "passed" : "gaps_found",
+    phase30_promotion_input: passed ? "eligible" : "pending",
+  };
+}
+
+function classificationOutputCommitment(result) {
+  return canonicalDigest({
+    terminal_outcome: result.terminal_outcome,
+    verification_result: result.verification_result,
+    phase30_promotion_input: result.phase30_promotion_input,
+    blocker_reason: result.blocker_reason,
+  });
+}
+
+function validateTerminalResult(state) {
+  const expected = expectedTerminalMetadata(state.terminal_outcome);
+  if (
+    state.verification_result !== expected.verification_result ||
+    state.phase30_promotion_input !== expected.phase30_promotion_input
+  ) {
+    fail("classification_inconsistent", "terminal verification metadata is inconsistent");
+  }
+  if (
+    state.terminal_outcome === "passed_same_chain_hardware" &&
+    state.blocker_reason !== "none"
+  ) {
+    fail("classification_inconsistent", "passing terminal retained a blocker");
+  }
+  if (
+    state.terminal_outcome ===
+      "gaps_found_same_chain_production_markers_absent" &&
+    state.blocker_reason !== "production_markers_absent"
+  ) {
+    fail("classification_inconsistent", "production-negative terminal lacks its blocker");
+  }
+}
+
+export function markClassifierInvoked(state) {
+  validateAttemptState(state);
+  if (
+    state.attempt_state !== "post_capture_validated" ||
+    state.effect_phase !== "none" ||
+    state.classification_phase !== "not_run"
+  ) {
+    fail("classification_inconsistent", "classifier invocation is not authorized");
+  }
+  const next = structuredClone(state);
+  next.classification_phase = "invoked";
+  next.classifier_version = PHASE28_CLASSIFIER_VERSION;
+  next.classifier_input_sha256 = null;
+  next.classifier_output_sha256 = null;
+  validateAttemptState(next);
+  return next;
+}
+
+export function persistStrictClassification(state, result) {
+  validateAttemptState(state);
+  if (
+    state.attempt_state !== "post_capture_validated" ||
+    state.classification_phase !== "invoked" ||
+    state.effect_phase !== "none"
+  ) {
+    fail("classification_inconsistent", "strict classifier result is stale or replayed");
+  }
+  requireExactKeys(
+    result,
+    STRICT_CLASSIFICATION_RESULT_FIELDS,
+    "strict classification result",
+  );
+  if (result.classifier_version !== PHASE28_CLASSIFIER_VERSION) {
+    fail("classifier_input_invalid", "classifier version is not fixed");
+  }
+  requirePattern(
+    result.classifier_input_sha256,
+    /^[0-9a-f]{64}$/,
+    "classifier_input_sha256",
+  );
+  requirePattern(
+    result.classifier_output_sha256,
+    /^[0-9a-f]{64}$/,
+    "classifier_output_sha256",
+  );
+  if (
+    result.classifier_input_sha256 !==
+    buildClassifierProjection(state).classifier_input_sha256
+  ) {
+    fail("classifier_input_invalid", "classifier input is forged, stale, or replayed");
+  }
+  requireEnum(result.terminal_outcome, TERMINAL_IDS, "terminal_outcome");
+  requireEnum(result.blocker_reason, BLOCKER_REASONS, "blocker_reason");
+  const expected = expectedTerminalMetadata(result.terminal_outcome);
+  if (
+    result.verification_result !== expected.verification_result ||
+    result.phase30_promotion_input !== expected.phase30_promotion_input ||
+    result.classifier_output_sha256 !== classificationOutputCommitment(result)
+  ) {
+    fail("classification_inconsistent", "strict classifier output is inconsistent");
+  }
+  const routed = routeBlocker(result.blocker_reason, {
+    lifecycleAuthorized: state.lifecycle_substate !== "not_started",
+    cleanupUnresolved: state.cleanup_state === "unresolved",
+  });
+  if (
+    result.blocker_reason === "none"
+      ? result.terminal_outcome !== "passed_same_chain_hardware"
+      : routed !== result.terminal_outcome
+  ) {
+    fail("classification_inconsistent", "strict classifier blocker route is inconsistent");
+  }
+
+  const next = structuredClone(state);
+  next.attempt_state = "classified";
+  next.classification_phase = "completed";
+  next.classifier_input_sha256 = result.classifier_input_sha256;
+  next.classifier_output_sha256 = result.classifier_output_sha256;
+  next.terminal_outcome = result.terminal_outcome;
+  next.verification_result = result.verification_result;
+  next.phase30_promotion_input = result.phase30_promotion_input;
+  next.blocker_reason = result.blocker_reason;
+  validateAttemptState(next);
+  return next;
+}
+
+export function finalizeClassifiedAttempt(state) {
+  validateAttemptState(state);
+  if (
+    state.attempt_state !== "classified" ||
+    state.classification_phase !== "completed"
+  ) {
+    fail("classification_inconsistent", "attempt lacks a persisted classification");
+  }
+  const next = structuredClone(state);
+  next.attempt_state = "terminal";
+  next.process_running = false;
+  next.cleanup_state =
+    next.terminal_outcome === "blocked_safe_unresolved_process"
+      ? "unresolved"
+      : "complete";
+  validateAttemptState(next);
+  return next;
+}
+
 export function terminalizeAttempt(
   state,
   blockerReason,
@@ -985,6 +1206,12 @@ export function terminalizeAttempt(
     lifecycleAuthorized: next.lifecycle_substate !== "not_started",
     cleanupUnresolved,
   });
+  const metadata = expectedTerminalMetadata(next.terminal_outcome);
+  next.verification_result = metadata.verification_result;
+  next.phase30_promotion_input = metadata.phase30_promotion_input;
+  if (next.classification_phase === "invoked") {
+    next.classification_phase = "completed";
+  }
   next.attempt_state = "terminal";
   next.checkpoint_id = null;
   next.checkpoint_token = null;
@@ -1037,7 +1264,14 @@ export function applyEffectCompletion(
   }
 
   const next = structuredClone(state);
-  Object.assign(next, result.outputs);
+  if (effectId === "post_capture_detector_board_info") {
+    Object.assign(next, result.outputs);
+    next.classifier_input_sha256 = null;
+    next.classifier_output_sha256 = null;
+    next.classifier_version = "not_run";
+  } else {
+    Object.assign(next, result.outputs);
+  }
   returnEffectToIdle(next);
   switch (effectId) {
     case "detector_board_info":
@@ -1209,6 +1443,71 @@ export function routeBlocker(reason, { lifecycleAuthorized = false, cleanupUnres
   if (reason === "production_markers_absent") return lifecycleAuthorized ? "gaps_found_same_chain_production_markers_absent" : "blocked_safe_evidence_invalid";
   if (reason === "none") return null;
   return lifecycleAuthorized ? "blocked_safe_evidence_invalid" : "blocked_safe_attempt_prerequisite";
+}
+
+export function buildClassifierProjection(state) {
+  const projection = {
+    schema_version: state.schema_version,
+    phase_lifecycle_id: state.phase_lifecycle_id,
+    attempt_id: state.attempt_id,
+    exact_head: state.exact_head,
+    boot_session_sha256: state.boot_session_sha256,
+    attempt_state: state.attempt_state,
+    classification_phase: state.classification_phase,
+    effect_id: state.effect_id,
+    effect_phase: state.effect_phase,
+    effect_sequence: state.effect_sequence,
+    selected_port_fingerprint_sha256: state.selected_port_fingerprint_sha256,
+    reference_commit: state.reference_commit,
+    reference_guard_output_sha256: state.reference_guard_output_sha256,
+    manifest_source_commit: state.manifest_source_commit,
+    manifest_sha256: state.manifest_sha256,
+    factory_image_sha256: state.factory_image_sha256,
+    reinit_capture_started_ms: state.reinit_capture_started_ms,
+    reinit_capture_ended_ms: state.reinit_capture_ended_ms,
+    reinit_capture_duration_ms: state.reinit_capture_duration_ms,
+    reinit_raw_log_sha256: state.reinit_raw_log_sha256,
+    lifecycle_substate: state.lifecycle_substate,
+    lifecycle_lease_id: state.lifecycle_lease_id,
+    lifecycle_capability_sha256: state.lifecycle_capability_sha256,
+    lifecycle_owner_start_fingerprint_sha256:
+      state.lifecycle_owner_start_fingerprint_sha256,
+    lifecycle_deadline_ms: state.lifecycle_deadline_ms,
+    attestation_accepted_ms: state.attestation_accepted_ms,
+    usb_absence_ms: state.usb_absence_ms,
+    restore_accepted_ms: state.restore_accepted_ms,
+    reappearance_elapsed_ms: state.reappearance_elapsed_ms,
+    lifecycle_raw_log_sha256: state.lifecycle_raw_log_sha256,
+    same_chain_raw_log_set_sha256: state.same_chain_raw_log_set_sha256,
+    capture_started_ms: state.capture_started_ms,
+    capture_ended_ms: state.capture_ended_ms,
+    capture_duration_ms: state.capture_duration_ms,
+    capture_category: state.capture_category,
+    armed_prohibited_sentinel_sha256:
+      state.armed_prohibited_sentinel_sha256,
+    capture_complete_prohibited_sentinel_sha256:
+      state.capture_complete_prohibited_sentinel_sha256,
+    armed_permitted_lifecycle_sha256:
+      state.armed_permitted_lifecycle_sha256,
+    capture_complete_permitted_lifecycle_sha256:
+      state.capture_complete_permitted_lifecycle_sha256,
+    lifecycle_authorized:
+      state.attempt_state !== "new" &&
+      state.lifecycle_substate !== "not_started",
+    lifecycle_status: state.lifecycle_status,
+    process_running: state.process_running,
+    cleanup_state: state.cleanup_state,
+    result_correlated: state.result_correlated,
+    power_delta_class: state.power_delta_class,
+    share_submission_status: state.share_submission_status,
+    blocker_reason: state.blocker_reason,
+    classifier_version: PHASE28_CLASSIFIER_VERSION,
+    classifier_input_sha256: null,
+  };
+  const committed = { ...projection };
+  delete committed.classifier_input_sha256;
+  projection.classifier_input_sha256 = canonicalDigest(committed);
+  return projection;
 }
 
 export function canonicalDigest(value) {

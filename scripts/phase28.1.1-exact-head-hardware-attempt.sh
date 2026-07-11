@@ -11,6 +11,7 @@ readonly resume_index="$private_root/resume-index"
 readonly attempts_root="$private_root/attempts"
 readonly lock_dir="$private_root/control.lock"
 readonly state_module="$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs"
+readonly classifier_module="$repo_root/scripts/phase28.1.1-strict-production-evidence.mjs"
 readonly production_adapter="$repo_root/scripts/phase28.1.1-accepted-state-diagnostic.sh"
 readonly max_handle_attempts=8
 lock_held=false
@@ -178,9 +179,16 @@ switch (operation) {
   case "attach-lifecycle": next = authority.attachLifecycleOwner(state, args); break;
   case "lifecycle-event": next = authority.applyLifecycleOwnerEvent(state, args.event, args.values); break;
   case "terminalize": next = authority.terminalizeAttempt(state, args.blockerReason, { cleanupUnresolved: args.cleanupUnresolved }); break;
+  case "mark-classifier-invoked": next = authority.markClassifierInvoked(state); break;
+  case "classify": {
+    const strict = await import(process.argv[5]);
+    next = authority.persistStrictClassification(state, strict.classifyStrictPostCaptureState(state));
+    break;
+  }
+  case "finalize-classified": next = authority.finalizeClassifiedAttempt(state); break;
   default: throw new Error("unknown state operation");
 }
-process.stdout.write(JSON.stringify(next));' "$state_module" "$operation" "$state_path" "$args_json"
+process.stdout.write(JSON.stringify(next));' "$state_module" "$operation" "$state_path" "$args_json" "$classifier_module"
 }
 
 public_checkpoint_output() {
@@ -194,6 +202,20 @@ const state = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const checkpoint = authority.publicCheckpoint(state, process.argv[3]);
 process.stdout.write("## CHECKPOINT REACHED\n");
 for (const field of authority.PUBLIC_CHECKPOINT_FIELDS) process.stdout.write(`${field}=${checkpoint[field]}\n`);' "$state_module" "$state_path" "$handle"
+}
+
+public_terminal_output() {
+	local state_path="$1"
+	jq -er '
+    select(.attempt_state == "terminal") |
+    "## TERMINAL CLOSED\n" +
+    "terminal_outcome=\(.terminal_outcome)\n" +
+    "verification_result=\(.verification_result)\n" +
+    "phase30_promotion_input=\(.phase30_promotion_input)\n" +
+    "blocker_reason=\(.blocker_reason)\n" +
+    "classifier_input_sha256=\(.classifier_input_sha256 // "not_run")\n" +
+    "classifier_output_sha256=\(.classifier_output_sha256 // "not_run")"
+  ' "$state_path"
 }
 
 transform_effect_state() {
@@ -441,6 +463,13 @@ resolve_checkpoint() {
 		release_lock
 		die "resume_handle_stale"
 	fi
+	case "$(jq -er '.attempt_state' "$state_path")" in
+	post_capture_validated | classified)
+		finalize_successful_classification "$slot" "$state_path"
+		release_lock
+		return
+		;;
+	esac
 	public_checkpoint_output "$state_path" "$handle"
 	release_lock
 }
@@ -554,8 +583,49 @@ terminal_cleanup() {
 		child_pid="$(sed -n '1p' "$attempt_dir/child.pid")"
 		terminate_effect_process "$child_pid" "phase28 attempt cleanup" || die "process_cleanup_unresolved"
 	fi
-	rm -rf "$attempt_dir"
+	rm -f "$attempt_dir/child.pid" "$attempt_dir/lifecycle.sock" "$attempt_dir/credential-capability.json" "$attempt_dir/effect.ack" "$attempt_dir/effect.gate" "$attempt_dir/effect-result.json"
+	[[ "${PHASE28_CRASH_AT:-}" != "before_tombstone_persistence" ]] || exit 97
 	atomic_write "$slot" "$(jq -cn --arg digest "$digest" --arg terminal "$terminal" --arg category "$category" --argjson generation "$generation" '{schema_version:"exact-head-resume-tombstone-v1",resume_handle_sha256:$digest,attempt_generation:$generation,terminal_status:"closed",terminal_category:$terminal,cleanup_time_category:$category}')"
+	[[ "${PHASE28_CRASH_AT:-}" != "after_tombstone_persistence" ]] || exit 97
+	rm -rf "$attempt_dir"
+	[[ "${PHASE28_CRASH_AT:-}" != "after_terminal_cleanup" ]] || exit 97
+}
+
+finalize_successful_classification() {
+	local slot="$1"
+	local state_path="$2"
+	local phase
+	phase="$(jq -er '.classification_phase' "$state_path")"
+	if [[ "$(jq -er '.attempt_state' "$state_path")" == "post_capture_validated" && "$phase" == "invoked" ]]; then
+		local interrupted_json
+		interrupted_json="$(state_operation terminalize "$state_path" '{"blockerReason":"classifier_input_invalid","cleanupUnresolved":false}')"
+		persist_state_and_slot "$state_path" "$slot" "$interrupted_json"
+	elif [[ "$(jq -er '.attempt_state' "$state_path")" == "post_capture_validated" ]]; then
+		[[ "$phase" == "not_run" ]] || die "classification_inconsistent"
+		persist_state_and_slot "$state_path" "$slot" "$(state_operation mark-classifier-invoked "$state_path")"
+		[[ "${PHASE28_CRASH_AT:-}" != "after_classifier_intent_persistence" ]] || exit 97
+		local classified_json
+		if [[ -n "${PHASE28_CLASSIFIER_TRACE:-}" ]]; then
+			[[ "${PHASE28_TEST_MODE:-0}" == "1" ]] || die "validator_error"
+			printf 'strict-production-v2\n' >>"$PHASE28_CLASSIFIER_TRACE"
+		fi
+		classified_json="$(state_operation classify "$state_path")"
+		[[ "${PHASE28_CRASH_AT:-}" != "after_classifier_invocation" ]] || exit 97
+		persist_state_and_slot "$state_path" "$slot" "$classified_json"
+		[[ "${PHASE28_CRASH_AT:-}" != "after_classified_persistence" ]] || exit 97
+	fi
+
+	if [[ "$(jq -er '.attempt_state' "$state_path")" == "classified" ]]; then
+		persist_state_and_slot "$state_path" "$slot" "$(state_operation finalize-classified "$state_path")"
+		[[ "${PHASE28_CRASH_AT:-}" != "after_terminal_persistence" ]] || exit 97
+	fi
+	[[ "$(jq -er '.attempt_state' "$state_path")" == "terminal" ]] || die "classification_inconsistent"
+	local terminal
+	local closed_output
+	terminal="$(jq -er '.terminal_outcome' "$state_path")"
+	closed_output="$(public_terminal_output "$state_path")"
+	terminal_cleanup "$slot" "$terminal" "$([[ "$terminal" == blocked_safe_* ]] && printf blocked || printf normal)"
+	printf '%s\n' "$closed_output"
 }
 
 lifecycle_owner_transition() {
@@ -634,6 +704,9 @@ run_validated_effect() {
 	detector_board_info | credential_presence_bind | reference_guard | package | flash_reinit_runtime | lifecycle_start | post_capture_detector_board_info) ;;
 	*) die "validator_error" ;;
 	esac
+	if [[ -n "${PHASE28_CLASSIFIER_TRACE:-}" && "${PHASE28_TEST_MODE:-0}" != "1" ]]; then
+		die "validator_error"
+	fi
 	ensure_private_root
 	acquire_lock
 	local slot
@@ -653,6 +726,13 @@ run_validated_effect() {
 		release_lock
 		die "resume_handle_stale"
 	fi
+	case "$(jq -er '.attempt_state' "$state_path")" in
+	post_capture_validated | classified)
+		finalize_successful_classification "$slot" "$state_path"
+		release_lock
+		return
+		;;
+	esac
 	if [[ -n "${PHASE28_INJECT_INVALID_CATEGORY:-}" ]]; then
 		case "$PHASE28_INJECT_INVALID_CATEGORY" in
 		expired | token_mismatch | exact_head_mismatch | manifest_mismatch | reference_mismatch | boot_session_mismatch | dirty_head | malformed_state | validator_error | lock_failure | persistence_failure | lease_conflict) die "$PHASE28_INJECT_INVALID_CATEGORY" ;;
@@ -693,6 +773,11 @@ run_validated_effect() {
 		fi
 		persist_state_and_slot "$state_path" "$slot" "$recovered_json"
 		rm -f "$retained_result"
+		if [[ "$(jq -r '.attempt_state' "$state_path")" == "post_capture_validated" ]]; then
+			finalize_successful_classification "$slot" "$state_path"
+			release_lock
+			return
+		fi
 		if [[ "$(jq -r '.attempt_state' "$state_path")" == "terminal" ]]; then
 			local terminal
 			terminal="$(jq -er '.terminal_outcome' "$state_path")"
@@ -821,6 +906,14 @@ run_validated_effect() {
 	[[ "${PHASE28_CRASH_AT:-}" != "after_effect_transition_persistence" ]] || exit 97
 	local final_state
 	final_state="$(jq -er '.attempt_state' "$state_path")"
+	if [[ "$final_state" == "post_capture_validated" ]]; then
+		printf 'effect_id=%s\n' "$effect"
+		printf 'effect_sequence=%s\n' "$sequence"
+		printf 'effect_status=%s\n' "$([[ "$succeeded" == true ]] && printf completed || printf failed)"
+		finalize_successful_classification "$slot" "$state_path"
+		release_lock
+		return
+	fi
 	if [[ "$final_state" == "terminal" ]]; then
 		local terminal
 		terminal="$(jq -er '.terminal_outcome' "$state_path")"
