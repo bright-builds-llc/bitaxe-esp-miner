@@ -135,6 +135,35 @@ function option(args, name) {
   return args[index + 1];
 }
 
+function maybeOption(args, name) {
+  const index = args.indexOf(name);
+  if (index < 0) return null;
+  if (index === args.length - 1) fail(`${name} is required`);
+  return args[index + 1];
+}
+
+function protectedOptions(args, action) {
+  const setId = maybeOption(args, "--set") ?? PROTECTED_SET_ID;
+  if (setId !== PROTECTED_SET_ID) fail("protected set ID changed");
+  const phaseDir =
+    maybeOption(args, "--phase-dir") ??
+    resolve(
+      ".planning/phases/28.1.1-bm1366-nonce-production-wire-parity",
+    );
+  const path =
+    action === "snapshot"
+      ? (maybeOption(args, "--output") ?? maybeOption(args, "--out"))
+      : (maybeOption(args, "--baseline") ?? maybeOption(args, "--manifest"));
+  if (!path) {
+    fail(
+      action === "snapshot"
+        ? "--output is required"
+        : "--baseline is required",
+    );
+  }
+  return { phaseDir, path };
+}
+
 function main(args) {
   const [command, ...rest] = args;
   switch (command) {
@@ -152,8 +181,16 @@ function main(args) {
     }
     case "check-frontmatter": checkFrontmatter(parseFiles(rest)); break;
     case "check-zero-frontmatter": checkZeroFrontmatter(parseFiles(rest)); break;
-    case "snapshot-protected": snapshotProtected(option(rest, "--phase-dir"), option(rest, "--out")); break;
-    case "compare-protected": compareProtected(option(rest, "--phase-dir"), option(rest, "--manifest")); break;
+    case "snapshot-protected": {
+      const { phaseDir, path } = protectedOptions(rest, "snapshot");
+      snapshotProtected(phaseDir, path);
+      break;
+    }
+    case "compare-protected": {
+      const { phaseDir, path } = protectedOptions(rest, "compare");
+      compareProtected(phaseDir, path);
+      break;
+    }
     default: fail("unknown command");
   }
 }

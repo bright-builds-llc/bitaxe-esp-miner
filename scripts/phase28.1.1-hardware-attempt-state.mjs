@@ -127,6 +127,133 @@ export const EXPECTED_USER_ACTIONS = Object.freeze([
   "restore-barrel-then-usb",
 ]);
 
+export const PUBLIC_CHECKPOINT_FIELDS = Object.freeze([
+  "resume_handle",
+  "checkpoint_id",
+  "checkpoint_token",
+  "checkpoint_generation",
+  "exact_head",
+  "attempt_state",
+  "lifecycle_substate",
+  "created_monotonic_ms",
+  "monotonic_deadline_ms",
+  "expected_response_token",
+  "expected_user_action",
+  "detector_attempt_count",
+  "usb_replug_count",
+  "both_power_count",
+  "reset_count",
+  "boot_reset_count",
+  "reinit_five_stage_result",
+  "capture_category",
+  "process_running",
+]);
+
+export const CHECKPOINT_DEFINITIONS = Object.freeze({
+  "plan13-connected-entry": Object.freeze({
+    checkpointToken: "plan13-connected-entry-v1",
+    expectedResponseToken: "ultra205-remains-connected",
+    expectedUserAction: "keep-connected",
+    timeoutMs: 600_000,
+    attemptState: "connected_entry_waiting",
+    lifecycleSubstate: "not_started",
+  }),
+  "plan13-recovery-usb-replug": Object.freeze({
+    checkpointToken: "plan13-usb-replug-recovery-v1",
+    expectedResponseToken: "plan13-usb-replugged-v1",
+    expectedUserAction: "replug-usb-with-barrel-retained",
+    timeoutMs: 300_000,
+    attemptState: "recovery_waiting",
+    lifecycleSubstate: "not_started",
+  }),
+  "plan13-recovery-both-power": Object.freeze({
+    checkpointToken: "plan13-both-power-recovery-v1",
+    expectedResponseToken: "plan13-both-power-restored-v1",
+    expectedUserAction:
+      "remove-both-wait-five-seconds-restore-barrel-then-usb",
+    timeoutMs: 300_000,
+    attemptState: "recovery_waiting",
+    lifecycleSubstate: "not_started",
+  }),
+  "plan13-recovery-reset": Object.freeze({
+    checkpointToken: "plan13-reset-recovery-v1",
+    expectedResponseToken: "plan13-reset-pressed-v1",
+    expectedUserAction: "press-reset-once",
+    timeoutMs: 300_000,
+    attemptState: "recovery_waiting",
+    lifecycleSubstate: "not_started",
+  }),
+  "plan13-recovery-boot-reset": Object.freeze({
+    checkpointToken: "plan13-boot-reset-recovery-v1",
+    expectedResponseToken: "plan13-boot-reset-assisted-v1",
+    expectedUserAction: "perform-boot-reset-board-info-assist-once",
+    timeoutMs: 300_000,
+    attemptState: "recovery_waiting",
+    lifecycleSubstate: "not_started",
+  }),
+  "plan13-lifecycle-removal": Object.freeze({
+    checkpointToken: "plan13-armed-removal-v1",
+    expectedResponseToken: "plan13-both-power-paths-removed",
+    expectedUserAction: "remove-both-power-paths-and-attest",
+    timeoutMs: 300_000,
+    attemptState: "armed",
+    lifecycleSubstate: "removal_waiting",
+  }),
+  "plan13-lifecycle-restore": Object.freeze({
+    checkpointToken: "plan13-barrel-usb-restore-v1",
+    expectedResponseToken: "plan13-barrel-then-usb-restored",
+    expectedUserAction: "restore-barrel-then-usb",
+    timeoutMs: 60_000,
+    attemptState: "restore_waiting",
+    lifecycleSubstate: "restore_waiting",
+  }),
+});
+
+export const EFFECT_RESULT_SCHEMA_VERSION = "exact-head-effect-result-v1";
+
+export const EFFECT_RESULT_FIELDS = Object.freeze({
+  detector_board_info: Object.freeze(["selected_port_fingerprint_sha256"]),
+  credential_presence_bind: Object.freeze([
+    "wifi_credential_state",
+    "pool_credential_state",
+    "wifi_credential_binding_id",
+    "pool_credential_binding_id",
+    "credential_capability_status",
+    "credential_capability_sha256",
+  ]),
+  reference_guard: Object.freeze([
+    "reference_commit",
+    "reference_guard_output_sha256",
+  ]),
+  package: Object.freeze([
+    "manifest_source_commit",
+    "manifest_sha256",
+    "factory_image_sha256",
+  ]),
+  flash_reinit_runtime: Object.freeze([
+    "runtime_credential_consumption",
+    "credential_capability_status",
+    "credential_capability_sha256",
+    "reinit_capture_started_ms",
+    "reinit_capture_ended_ms",
+    "reinit_capture_duration_ms",
+    "reinit_capture_category",
+    "reinit_raw_log_sha256",
+    "reinit_classifier_input_sha256",
+    "reinit_five_stage_result",
+  ]),
+  lifecycle_start: Object.freeze([]),
+  post_capture_detector_board_info: Object.freeze([
+    "result_correlated",
+    "power_delta_class",
+    "share_submission_status",
+    "lifecycle_status",
+    "classifier_input_sha256",
+    "classifier_output_sha256",
+    "classifier_version",
+  ]),
+});
+
 export const LIFECYCLE_SUBSTATES = Object.freeze([
   "not_started",
   "lease_issued",
@@ -453,7 +580,8 @@ function validateDuration(state, startField, endField, durationField, categoryFi
   }
   const values = [start, end, duration];
   const present = values.filter((value) => value !== null).length;
-  if (present !== 0 && present !== 3) fail("state_malformed", `${durationField} timing triple is incomplete`);
+  const startOnly = start !== null && end === null && duration === null;
+  if (present !== 0 && present !== 3 && !startOnly) fail("state_malformed", `${durationField} timing triple is incomplete`);
   if (present === 3 && (end < start || duration !== end - start)) fail("state_malformed", `${durationField} timing is inconsistent`);
   if (state[categoryField] === completeCategory && (duration === null || duration < minimumDuration)) {
     fail("state_malformed", `${categoryField} requires at least ${minimumDuration} ms`);
@@ -591,7 +719,7 @@ export function validateAttemptState(state) {
   requireEnum(state.blocker_reason, BLOCKER_REASONS, "blocker_reason");
   if (state.attempt_state === "terminal") {
     if (state.terminal_outcome === null) fail("state_malformed", "terminal state lacks terminal outcome");
-    const expected = routeBlocker(state.blocker_reason, { lifecycleAuthorized: state.lifecycle_status !== "absent", cleanupUnresolved: state.cleanup_state === "unresolved" });
+    const expected = routeBlocker(state.blocker_reason, { lifecycleAuthorized: state.lifecycle_substate !== "not_started", cleanupUnresolved: state.cleanup_state === "unresolved" });
     if (state.blocker_reason !== "none" && state.terminal_outcome !== expected) fail("classification_inconsistent", "blocker does not route to terminal outcome");
   } else if (state.terminal_outcome !== null) {
     fail("state_malformed", "non-terminal state has terminal outcome");
@@ -666,6 +794,412 @@ export function normalizeFinishedEffect(state) {
 export function ambiguousEffectOnRestart(state) {
   validateAttemptState(state);
   return ["authorized", "invoked"].includes(state.effect_phase);
+}
+
+export function installCheckpoint(state, checkpointId, createdMonotonicMs) {
+  validateAttemptState(state);
+  const definition = CHECKPOINT_DEFINITIONS[checkpointId];
+  if (!definition) fail("checkpoint_state_mismatch", "checkpoint ID is not closed");
+  if (state.checkpoint_id !== null) {
+    fail("checkpoint_state_mismatch", "another checkpoint is already active");
+  }
+  if (
+    state.attempt_state !== definition.attemptState ||
+    state.lifecycle_substate !== definition.lifecycleSubstate
+  ) {
+    fail("checkpoint_state_mismatch", "checkpoint does not match current state");
+  }
+  if (!isUnsigned(createdMonotonicMs)) {
+    fail("state_malformed", "checkpoint creation time is invalid");
+  }
+  const next = structuredClone(state);
+  next.checkpoint_id = checkpointId;
+  next.checkpoint_token = definition.checkpointToken;
+  next.expected_response_token = definition.expectedResponseToken;
+  next.expected_user_action = definition.expectedUserAction;
+  next.checkpoint_generation += 1;
+  next.created_monotonic_ms = createdMonotonicMs;
+  next.monotonic_deadline_ms =
+    checkpointId === "plan13-lifecycle-restore"
+      ? next.attestation_accepted_ms + definition.timeoutMs
+      : createdMonotonicMs + definition.timeoutMs;
+  validateAttemptState(next);
+  return next;
+}
+
+export function createConnectedEntryState(options) {
+  const state = createAttemptState(options);
+  state.attempt_state = "connected_entry_waiting";
+  return installCheckpoint(
+    state,
+    "plan13-connected-entry",
+    options.createdMonotonicMs,
+  );
+}
+
+export function publicCheckpoint(state, resumeHandle) {
+  validateAttemptState(state);
+  requirePattern(resumeHandle, /^[0-9a-f]{64}$/, "resume_handle");
+  if (sha256(resumeHandle) !== state.resume_handle_sha256) {
+    fail("resume_handle_wrong", "resume handle does not match state");
+  }
+  if (state.checkpoint_id === null) {
+    fail("checkpoint_state_mismatch", "attempt has no active checkpoint");
+  }
+  const projection = {
+    resume_handle: resumeHandle,
+    checkpoint_id: state.checkpoint_id,
+    checkpoint_token: state.checkpoint_token,
+    checkpoint_generation: state.checkpoint_generation,
+    exact_head: state.exact_head,
+    attempt_state: state.attempt_state,
+    lifecycle_substate: state.lifecycle_substate,
+    created_monotonic_ms: state.created_monotonic_ms,
+    monotonic_deadline_ms: state.monotonic_deadline_ms,
+    expected_response_token: state.expected_response_token,
+    expected_user_action: state.expected_user_action,
+    detector_attempt_count: state.detector_attempt_count,
+    usb_replug_count: state.usb_replug_count,
+    both_power_count: state.both_power_count,
+    reset_count: state.reset_count,
+    boot_reset_count: state.boot_reset_count,
+    reinit_five_stage_result: state.reinit_five_stage_result,
+    capture_category: state.capture_category,
+    process_running: state.process_running,
+  };
+  requireExactKeys(projection, PUBLIC_CHECKPOINT_FIELDS, "public checkpoint");
+  return projection;
+}
+
+export function consumeCheckpoint(
+  state,
+  { checkpointToken, responseToken, nowMonotonicMs },
+) {
+  validateAttemptState(state);
+  if (state.checkpoint_id === null) {
+    fail("checkpoint_state_mismatch", "checkpoint is already consumed");
+  }
+  const definition = CHECKPOINT_DEFINITIONS[state.checkpoint_id];
+  if (
+    state.attempt_state !== definition.attemptState ||
+    state.lifecycle_substate !== definition.lifecycleSubstate
+  ) {
+    fail("checkpoint_state_mismatch", "checkpoint state changed");
+  }
+  if (
+    checkpointToken !== state.checkpoint_token ||
+    responseToken !== state.expected_response_token
+  ) {
+    fail("checkpoint_token_mismatch", "checkpoint response does not match");
+  }
+  if (
+    !isUnsigned(nowMonotonicMs) ||
+    nowMonotonicMs >= state.monotonic_deadline_ms
+  ) {
+    fail("checkpoint_expired", "checkpoint deadline elapsed");
+  }
+
+  const next = structuredClone(state);
+  const consumedId = next.checkpoint_id;
+  next.checkpoint_id = null;
+  next.checkpoint_token = null;
+  next.expected_response_token = null;
+  next.expected_user_action = null;
+  next.monotonic_deadline_ms = null;
+
+  switch (consumedId) {
+    case "plan13-recovery-usb-replug":
+      next.usb_replug_count += 1;
+      break;
+    case "plan13-recovery-both-power":
+      next.both_power_count += 1;
+      break;
+    case "plan13-recovery-reset":
+      next.reset_count += 1;
+      break;
+    case "plan13-recovery-boot-reset":
+      next.boot_reset_count += 1;
+      break;
+    case "plan13-lifecycle-removal":
+      next.attempt_state = "removal_attested";
+      next.lifecycle_substate = "removal_attested";
+      next.attestation_status = "accepted";
+      next.attestation_accepted_ms = nowMonotonicMs;
+      break;
+    case "plan13-lifecycle-restore":
+      next.attempt_state = "restore_attested";
+      next.lifecycle_substate = "restore_attested";
+      next.restore_token_status = "accepted";
+      next.restore_accepted_ms = nowMonotonicMs;
+      break;
+  }
+  validateAttemptState(next);
+  return next;
+}
+
+function validateEffectResult(effectId, result, succeeded) {
+  requireExactKeys(
+    result,
+    ["schema_version", "effect_id", "status", "blocker_reason", "outputs"],
+    "effect result",
+  );
+  if (
+    result.schema_version !== EFFECT_RESULT_SCHEMA_VERSION ||
+    result.effect_id !== effectId ||
+    result.status !== (succeeded ? "completed" : "failed")
+  ) {
+    fail("effect_in_flight_ambiguous", "effect result identity is inconsistent");
+  }
+  requireEnum(result.blocker_reason, BLOCKER_REASONS, "blocker_reason");
+  requireExactKeys(
+    result.outputs,
+    succeeded ? EFFECT_RESULT_FIELDS[effectId] : [],
+    "effect outputs",
+  );
+  if (succeeded && result.blocker_reason !== "none") {
+    fail("effect_in_flight_ambiguous", "successful effect has a blocker");
+  }
+  if (!succeeded && result.blocker_reason === "none") {
+    fail("effect_in_flight_ambiguous", "failed effect lacks a blocker");
+  }
+}
+
+function returnEffectToIdle(state) {
+  state.effect_id = null;
+  state.effect_phase = "none";
+  state.effect_authorization_nonce = null;
+}
+
+export function terminalizeAttempt(
+  state,
+  blockerReason,
+  { cleanupUnresolved = false } = {},
+) {
+  const next = structuredClone(state);
+  next.blocker_reason = cleanupUnresolved
+    ? "process_cleanup_unresolved"
+    : blockerReason;
+  next.process_running = false;
+  next.cleanup_state = cleanupUnresolved ? "unresolved" : "complete";
+  next.terminal_outcome = routeBlocker(next.blocker_reason, {
+    lifecycleAuthorized: next.lifecycle_substate !== "not_started",
+    cleanupUnresolved,
+  });
+  next.attempt_state = "terminal";
+  next.checkpoint_id = null;
+  next.checkpoint_token = null;
+  next.expected_response_token = null;
+  next.expected_user_action = null;
+  next.monotonic_deadline_ms = null;
+  returnEffectToIdle(next);
+  validateAttemptState(next);
+  return next;
+}
+
+export function applyEffectCompletion(
+  state,
+  result,
+  { completedMonotonicMs },
+) {
+  validateAttemptState(state);
+  if (!isUnsigned(completedMonotonicMs)) {
+    fail("state_malformed", "effect completion time is invalid");
+  }
+  if (!state.effect_id || !["completed", "failed"].includes(state.effect_phase)) {
+    fail("effect_in_flight_ambiguous", "effect is not durably finished");
+  }
+  const effectId = state.effect_id;
+  const succeeded = state.effect_phase === "completed";
+  validateEffectResult(effectId, result, succeeded);
+
+  if (!succeeded) {
+    if (effectId !== "detector_board_info") {
+      return terminalizeAttempt(state, result.blocker_reason);
+    }
+    const next = structuredClone(state);
+    next.detector_attempt_count += 1;
+    returnEffectToIdle(next);
+    if (next.detector_attempt_count >= 5) {
+      return terminalizeAttempt(next, "detector_recovery_exhausted");
+    }
+    next.attempt_state = "recovery_waiting";
+    const recoveryIds = [
+      "plan13-recovery-usb-replug",
+      "plan13-recovery-both-power",
+      "plan13-recovery-reset",
+      "plan13-recovery-boot-reset",
+    ];
+    return installCheckpoint(
+      next,
+      recoveryIds[next.detector_attempt_count - 1],
+      completedMonotonicMs,
+    );
+  }
+
+  const next = structuredClone(state);
+  Object.assign(next, result.outputs);
+  returnEffectToIdle(next);
+  switch (effectId) {
+    case "detector_board_info":
+      next.detector_attempt_count += 1;
+      next.selected_port_state = "one_board205";
+      next.attempt_state = "detector_passed";
+      break;
+    case "credential_presence_bind":
+      next.attempt_state = "credentials_bound";
+      break;
+    case "reference_guard":
+      next.reference_guard_state = "pass";
+      next.attempt_state = "reference_checked";
+      break;
+    case "package":
+      next.manifest_state = "pass";
+      next.attempt_state = "packaged";
+      break;
+    case "flash_reinit_runtime":
+      next.attempt_state = "reinit_validated";
+      break;
+    case "lifecycle_start":
+      if (next.attempt_state !== "capture_complete") {
+        fail("effect_in_flight_ambiguous", "lifecycle ended before capture complete");
+      }
+      next.process_running = false;
+      break;
+    case "post_capture_detector_board_info":
+      next.attempt_state = "post_capture_validated";
+      break;
+  }
+  validateAttemptState(next);
+  return next;
+}
+
+export function attachLifecycleOwner(
+  state,
+  {
+    leaseId,
+    capabilitySha256,
+    ownerPid,
+    ownerStartFingerprintSha256,
+    lifecycleDeadlineMs,
+    checkpointCreatedMonotonicMs,
+  },
+) {
+  validateAttemptState(state);
+  if (
+    state.effect_id !== "lifecycle_start" ||
+    state.effect_phase !== "invoked" ||
+    state.attempt_state !== "reinit_validated"
+  ) {
+    fail("lease_conflict", "lifecycle owner attachment is not authorized");
+  }
+  const next = structuredClone(state);
+  next.attempt_state = "armed";
+  next.lifecycle_substate = "removal_waiting";
+  next.lifecycle_lease_id = leaseId;
+  next.lifecycle_capability_sha256 = capabilitySha256;
+  next.lifecycle_owner_pid = ownerPid;
+  next.lifecycle_owner_start_fingerprint_sha256 = ownerStartFingerprintSha256;
+  next.lifecycle_deadline_ms = lifecycleDeadlineMs;
+  next.process_running = true;
+  next.attestation_status = "waiting";
+  next.armed_prohibited_sentinel_sha256 = canonicalDigest(
+    next.armed_prohibited_sentinel_counts,
+  );
+  next.armed_permitted_lifecycle_sha256 = canonicalDigest(
+    next.armed_permitted_lifecycle_counts,
+  );
+  return installCheckpoint(
+    next,
+    "plan13-lifecycle-removal",
+    checkpointCreatedMonotonicMs,
+  );
+}
+
+export function applyLifecycleOwnerEvent(state, event, values = {}) {
+  validateAttemptState(state);
+  if (
+    state.effect_id !== "lifecycle_start" ||
+    state.effect_phase !== "invoked" ||
+    !state.process_running
+  ) {
+    fail("lease_owner_mismatch", "lifecycle owner is not active");
+  }
+  const next = structuredClone(state);
+  switch (event) {
+    case "absence-observing":
+      if (next.attempt_state !== "removal_attested") {
+        fail("checkpoint_state_mismatch", "removal was not attested");
+      }
+      next.attempt_state = "absence_observing";
+      next.lifecycle_substate = "absence_observing";
+      next.usb_absence_started_ms = values.usb_absence_started_ms;
+      break;
+    case "restore-waiting":
+      if (next.attempt_state !== "absence_observing") {
+        fail("checkpoint_state_mismatch", "absence observation is not active");
+      }
+      next.usb_absence_ended_ms = values.usb_absence_ended_ms;
+      next.usb_absence_ms = values.usb_absence_ms;
+      next.usb_absence_category = "continuous_at_least_5000";
+      next.attempt_state = "restore_waiting";
+      next.lifecycle_substate = "restore_waiting";
+      next.restore_token_status = "waiting";
+      next.capture_complete_permitted_lifecycle_counts.usb_absence_observation_session_count =
+        1;
+      return installCheckpoint(
+        next,
+        "plan13-lifecycle-restore",
+        values.usb_absence_ended_ms,
+      );
+    case "reappearance-observing":
+      if (next.attempt_state !== "restore_attested") {
+        fail("checkpoint_state_mismatch", "restore was not attested");
+      }
+      next.attempt_state = "reappearance_observing";
+      next.lifecycle_substate = "reappearance_observing";
+      break;
+    case "capture-running":
+      if (next.attempt_state !== "reappearance_observing") {
+        fail("checkpoint_state_mismatch", "reappearance observation is not active");
+      }
+      next.usb_reappearance_ms = values.usb_reappearance_ms;
+      next.reappearance_elapsed_ms = values.reappearance_elapsed_ms;
+      next.reappearance_category = "within_60000";
+      next.capture_started_ms = values.capture_started_ms;
+      next.capture_category = "running";
+      next.attempt_state = "capture_running";
+      next.lifecycle_substate = "monitoring";
+      next.capture_complete_permitted_lifecycle_counts.usb_reappearance_observation_session_count =
+        1;
+      next.capture_complete_permitted_lifecycle_counts.retained_monitor_start_count =
+        1;
+      break;
+    case "capture-complete":
+      if (next.attempt_state !== "capture_running") {
+        fail("checkpoint_state_mismatch", "capture is not running");
+      }
+      Object.assign(next, values);
+      next.capture_category = "complete_360s";
+      next.attempt_state = "capture_complete";
+      next.lifecycle_substate = "complete";
+      next.capture_complete_prohibited_sentinel_counts = structuredClone(
+        next.armed_prohibited_sentinel_counts,
+      );
+      next.capture_complete_prohibited_sentinel_sha256 =
+        next.armed_prohibited_sentinel_sha256;
+      next.capture_complete_permitted_lifecycle_counts.removal_pty_write_count =
+        1;
+      next.capture_complete_permitted_lifecycle_counts.restore_pty_write_count =
+        1;
+      next.capture_complete_permitted_lifecycle_sha256 = canonicalDigest(
+        next.capture_complete_permitted_lifecycle_counts,
+      );
+      break;
+    default:
+      fail("checkpoint_state_mismatch", "lifecycle event is not closed");
+  }
+  validateAttemptState(next);
+  return next;
 }
 
 export function routeBlocker(reason, { lifecycleAuthorized = false, cleanupUnresolved = false } = {}) {

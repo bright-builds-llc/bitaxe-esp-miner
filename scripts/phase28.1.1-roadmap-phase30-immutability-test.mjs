@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import "./phase28.1.1-hardware-attempt-state-test.mjs";
 import "./phase28.1.1-strict-production-evidence-test.mjs";
 import {
@@ -106,6 +108,40 @@ function testProtectedSet() {
   // Assert
   assert.equal(statSync(manifest).mode & 0o777, 0o600);
   compareProtected(phaseDir, manifest);
+  const cliManifest = join(privateRoot, "protected-cli.json");
+  const guardScript = fileURLToPath(
+    new URL("./phase28.1.1-roadmap-phase30-immutability.mjs", import.meta.url),
+  );
+  const snapshotCli = spawnSync(
+    process.execPath,
+    [
+      guardScript,
+      "snapshot-protected",
+      "--set",
+      "phase28.1.1-prior-evidence-v1",
+      "--phase-dir",
+      phaseDir,
+      "--output",
+      cliManifest,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(snapshotCli.status, 0, snapshotCli.stderr);
+  const compareCli = spawnSync(
+    process.execPath,
+    [
+      guardScript,
+      "compare-protected",
+      "--set",
+      "phase28.1.1-prior-evidence-v1",
+      "--phase-dir",
+      phaseDir,
+      "--baseline",
+      cliManifest,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(compareCli.status, 0, compareCli.stderr);
   const changed = PROTECTED_EVIDENCE_FILES[0];
   writeFileSync(join(phaseDir, changed), "changed\n");
   expectFailure(() => compareProtected(phaseDir, manifest), /changed/);

@@ -5,14 +5,22 @@ import {
   ATTEMPT_STATE_FIELDS,
   ATTEMPT_TRANSITIONS,
   BLOCKER_REASONS,
+  CHECKPOINT_DEFINITIONS,
   EFFECT_AUTHORIZATION_STATES,
   EFFECT_IDS,
+  EFFECT_RESULT_SCHEMA_VERSION,
   PERMITTED_LIFECYCLE_KEYS,
   PROHIBITED_SENTINEL_KEYS,
+  PUBLIC_CHECKPOINT_FIELDS,
   AttemptStateError,
+  applyEffectCompletion,
+  applyLifecycleOwnerEvent,
   ambiguousEffectOnRestart,
   assertFreshBootSession,
+  attachLifecycleOwner,
   authorizeEffect,
+  consumeCheckpoint,
+  createConnectedEntryState,
   createAttemptState,
   deriveLinuxBootSessionDigest,
   deriveMacBootSessionDigest,
@@ -20,6 +28,7 @@ import {
   markEffectInvoked,
   normalizeFinishedEffect,
   observeBootSessionDigest,
+  publicCheckpoint,
   routeBlocker,
   transitionAttemptState,
   validateAttemptState,
@@ -328,6 +337,225 @@ function testSentinelInvariants() {
   expectStateError("sentinel_mismatch", () => validateAttemptState(armed));
 }
 
+function completedEffect(state, effectId, result) {
+  const nonce = "a".repeat(32);
+  const authorized = authorizeEffect(state, effectId, nonce);
+  const invoked = markEffectInvoked(
+    authorized,
+    nonce,
+    authorized.effect_sequence,
+  );
+  const finished = finishEffect(
+    invoked,
+    nonce,
+    invoked.effect_sequence,
+    result.status === "completed",
+  );
+  return applyEffectCompletion(finished, result, {
+    completedMonotonicMs: 2_000,
+  });
+}
+
+function effectResult(effectId, outputs, status = "completed", blocker = "none") {
+  return {
+    schema_version: EFFECT_RESULT_SCHEMA_VERSION,
+    effect_id: effectId,
+    status,
+    blocker_reason: blocker,
+    outputs,
+  };
+}
+
+function testConnectedCheckpointContract() {
+  // Arrange
+  const handle = "6".repeat(64);
+  const state = createConnectedEntryState({
+    exactHead: HEAD,
+    resumeHandleSha256: sha256(handle),
+    createdMonotonicMs: 1_000,
+    observeBootSession: () => BOOT_DIGEST,
+    randomHex: () => "5".repeat(32),
+  });
+
+  // Act
+  const handoff = publicCheckpoint(state, handle);
+  const consumed = consumeCheckpoint(state, {
+    checkpointToken: "plan13-connected-entry-v1",
+    responseToken: "ultra205-remains-connected",
+    nowMonotonicMs: 1_001,
+  });
+
+  // Assert
+  assert.deepEqual(Object.keys(handoff), [...PUBLIC_CHECKPOINT_FIELDS]);
+  assert.equal(handoff.checkpoint_id, "plan13-connected-entry");
+  assert.equal(handoff.monotonic_deadline_ms, 601_000);
+  assert.equal(consumed.checkpoint_id, null);
+  assert.equal(consumed.attempt_state, "connected_entry_waiting");
+  expectStateError("checkpoint_state_mismatch", () =>
+    consumeCheckpoint(consumed, {
+      checkpointToken: "plan13-connected-entry-v1",
+      responseToken: "ultra205-remains-connected",
+      nowMonotonicMs: 1_002,
+    }),
+  );
+  expectStateError("checkpoint_expired", () =>
+    consumeCheckpoint(state, {
+      checkpointToken: "plan13-connected-entry-v1",
+      responseToken: "ultra205-remains-connected",
+      nowMonotonicMs: 601_000,
+    }),
+  );
+}
+
+function testDetectorEffectTransitionsAndRecoveryOrder() {
+  // Arrange
+  let state = baseState();
+  state.attempt_state = "connected_entry_waiting";
+
+  // Act
+  state = completedEffect(
+    state,
+    "detector_board_info",
+    effectResult(
+      "detector_board_info",
+      {},
+      "failed",
+      "detector_failed",
+    ),
+  );
+
+  // Assert
+  assert.equal(state.attempt_state, "recovery_waiting");
+  assert.equal(state.checkpoint_id, "plan13-recovery-usb-replug");
+  assert.equal(state.detector_attempt_count, 1);
+  assert.deepEqual(
+    Object.keys(CHECKPOINT_DEFINITIONS),
+    [
+      "plan13-connected-entry",
+      "plan13-recovery-usb-replug",
+      "plan13-recovery-both-power",
+      "plan13-recovery-reset",
+      "plan13-recovery-boot-reset",
+      "plan13-lifecycle-removal",
+      "plan13-lifecycle-restore",
+    ],
+  );
+  state = consumeCheckpoint(state, {
+    checkpointToken: "plan13-usb-replug-recovery-v1",
+    responseToken: "plan13-usb-replugged-v1",
+    nowMonotonicMs: 2_001,
+  });
+  assert.equal(state.usb_replug_count, 1);
+  const passed = completedEffect(
+    state,
+    "detector_board_info",
+    effectResult("detector_board_info", {
+      selected_port_fingerprint_sha256: DIGEST,
+    }),
+  );
+  assert.equal(passed.attempt_state, "detector_passed");
+  assert.equal(passed.detector_attempt_count, 2);
+  assert.equal(passed.selected_port_state, "one_board205");
+}
+
+function lifecycleReadyState() {
+  const state = baseState();
+  state.attempt_state = "reinit_validated";
+  state.reference_guard_state = "pass";
+  state.reference_commit = "6".repeat(40);
+  state.reference_guard_output_sha256 = DIGEST;
+  state.selected_port_state = "one_board205";
+  state.selected_port_fingerprint_sha256 = DIGEST;
+  state.manifest_state = "pass";
+  state.manifest_source_commit = HEAD;
+  state.manifest_sha256 = DIGEST;
+  state.factory_image_sha256 = DIGEST;
+  state.reinit_capture_started_ms = 10;
+  state.reinit_capture_ended_ms = 360_010;
+  state.reinit_capture_duration_ms = 360_000;
+  state.reinit_capture_category = "complete_360s";
+  state.reinit_raw_log_sha256 = DIGEST;
+  state.reinit_classifier_input_sha256 = DIGEST;
+  state.reinit_five_stage_result = "pass";
+  return state;
+}
+
+function testLifecycleLeaseAndSubordinateTransitions() {
+  // Arrange
+  const state = lifecycleReadyState();
+  const nonce = "a".repeat(32);
+  const authorized = authorizeEffect(state, "lifecycle_start", nonce);
+  const invoked = markEffectInvoked(
+    authorized,
+    nonce,
+    authorized.effect_sequence,
+  );
+
+  // Act
+  let next = attachLifecycleOwner(invoked, {
+    leaseId: "7".repeat(32),
+    capabilitySha256: DIGEST,
+    ownerPid: 123,
+    ownerStartFingerprintSha256: DIGEST,
+    lifecycleDeadlineMs: 900_000,
+    checkpointCreatedMonotonicMs: 1_000,
+  });
+  next = consumeCheckpoint(next, {
+    checkpointToken: "plan13-armed-removal-v1",
+    responseToken: "plan13-both-power-paths-removed",
+    nowMonotonicMs: 1_001,
+  });
+  next = applyLifecycleOwnerEvent(next, "absence-observing", {
+    usb_absence_started_ms: 1_001,
+  });
+  next = applyLifecycleOwnerEvent(next, "restore-waiting", {
+    usb_absence_ended_ms: 6_001,
+    usb_absence_ms: 5_000,
+  });
+  next = consumeCheckpoint(next, {
+    checkpointToken: "plan13-barrel-usb-restore-v1",
+    responseToken: "plan13-barrel-then-usb-restored",
+    nowMonotonicMs: 6_002,
+  });
+  next = applyLifecycleOwnerEvent(next, "reappearance-observing");
+  next = applyLifecycleOwnerEvent(next, "capture-running", {
+    usb_reappearance_ms: 7_000,
+    reappearance_elapsed_ms: 5_999,
+    capture_started_ms: 7_001,
+  });
+  next = applyLifecycleOwnerEvent(next, "capture-complete", {
+    capture_ended_ms: 367_001,
+    capture_duration_ms: 360_000,
+    lifecycle_raw_log_sha256: DIGEST,
+    same_chain_raw_log_set_sha256: DIGEST,
+    classifier_input_sha256: DIGEST,
+    lifecycle_status: "match",
+    result_correlated: false,
+    power_delta_class: "flat",
+    share_submission_status: "not_observed",
+  });
+  const finished = finishEffect(
+    next,
+    nonce,
+    next.effect_sequence,
+    true,
+  );
+  const completed = applyEffectCompletion(
+    finished,
+    effectResult("lifecycle_start", {}),
+    { completedMonotonicMs: 367_002 },
+  );
+
+  // Assert
+  assert.equal(completed.attempt_state, "capture_complete");
+  assert.equal(completed.lifecycle_substate, "complete");
+  assert.equal(completed.process_running, false);
+  assert.equal(completed.capture_category, "complete_360s");
+  for (const key of PERMITTED_LIFECYCLE_KEYS) {
+    assert.equal(completed.capture_complete_permitted_lifecycle_counts[key], 1);
+  }
+}
+
 testBootSessionFixtures();
 testClosedSchema();
 testBootSessionReobservation();
@@ -336,5 +564,8 @@ testEffectLifecycleForEveryEffect();
 testBlockerRoutesAreExhaustive();
 testTimingAndIdentityInvariants();
 testSentinelInvariants();
+testConnectedCheckpointContract();
+testDetectorEffectTransitionsAndRecoveryOrder();
+testLifecycleLeaseAndSubordinateTransitions();
 
 console.log("phase28.1.1 hardware attempt state tests: passed");

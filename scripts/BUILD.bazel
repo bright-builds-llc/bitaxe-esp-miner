@@ -470,6 +470,7 @@ sh_binary(
     name = "phase28_1_1_exact_head_hardware_attempt",
     srcs = ["phase28.1.1-exact-head-hardware-attempt.sh"],
     data = [
+        "phase28.1.1-accepted-state-diagnostic.sh",
         "phase28.1.1-hardware-attempt-state.mjs",
         "process-group.sh",
     ],
