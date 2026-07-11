@@ -2,13 +2,13 @@
 status: blocked_safe_prerequisite
 trigger: "Phase 28.1.1 UAT Test 3 cannot reliably capture all five one-shot accepted-state markers across a true Ultra 205 cold start because removing both power paths also removes the native USB console."
 created: 2026-07-10T02:10:00Z
-updated: 2026-07-11T01:57:59Z
+updated: 2026-07-11T02:27:38Z
 ---
 
 ## Current Focus
 
-hypothesis: Confirmed and implemented. The evidence-transport and evidence-correctness defects are closed. Hardware closure remains blocked because the strict five-stage candidate belongs to superseded head 4e2d165, while current head d275a0e reached an expired finite-recovery checkpoint before any eligible package, reinit, or lifecycle arm.
-test: Strict five-stage exact-identity audit, current-head bounded detector recovery, persisted monotonic checkpoint validation, and mandatory cleanup.
+hypothesis: Confirmed and implemented. The evidence-transport and evidence-correctness defects are closed, including independent-review fixes for process-tree cleanup, deadline-crossing tokens, and unavailable precedence. Hardware closure remains blocked because the strict five-stage candidate belongs to superseded head 4e2d165, hardware-attempt head d275a0e reached an expired finite-recovery checkpoint, and review-fix head ab7f5b9 has no eligible package, reinit, or lifecycle arm.
+test: Strict five-stage exact-identity audit, hardware-attempt bounded detector recovery, persisted monotonic checkpoint validation, and mandatory process-tree cleanup.
 expecting: A lifecycle watcher may arm only when the current exact head has a timely validated detector gate and a strict five-stage reinit member. Stale package identity and expired checkpoint state must stop without repair.
 next_action: Do not resume or refresh Plan 11. Its finite recovery contract is exhausted. Any further hardware attempt requires a new formally planned recovery contract.
 
@@ -148,9 +148,9 @@ phase30_promotion_input: pending
 - timestamp: 2026-07-11T01:57:59Z
   checked: exact-identity category summary for the 360-second reinit candidate
   found: Source commit `4e2d16524d57037e0814b191fed1b87fca4d0623` produced one stable boot, one listener-ready marker, zero hazards, all five closed stages, and a passing strict self-comparison.
-  implication: The candidate was complete for that source identity, but commit `d275a0e7af6a1534df5fca07820066791ae4af19` changed the lifecycle script and made the prior package stale. It cannot arm the current-head run.
+  implication: The candidate was complete for that source identity, but commit `d275a0e7af6a1534df5fca07820066791ae4af19` changed the lifecycle script and made the prior package stale. It could not arm the hardware-attempt run and cannot be imported into `ab7f5b9` or a later documentation-only closure head.
 - timestamp: 2026-07-11T01:57:59Z
-  checked: current-head finite recovery checkpoint state
+  checked: `d275a0e` hardware-attempt finite recovery checkpoint state
   found: The initial detector failed `board-info`; USB replug was consumed; the operator reported the both-power recovery, but the persisted deadline of `23949477` monotonic milliseconds had expired when continuation observed `44667284` milliseconds.
   implication: Plan 11 lines 183-185 require a conservative stop without inference, repair, refresh, or another recovery attempt.
 - timestamp: 2026-07-11T01:57:59Z
@@ -169,3 +169,14 @@ lifecycle_power_action_accepted: false
 cleanup_verified: true
 live_child_process: false
 phase30_promotion_input: pending
+
+## Independent Review Closure
+
+- timestamp: 2026-07-11T02:27:38Z
+  checked: independent review findings and commit `ab7f5b932a9c86045eb5dba66c1ec3ca3c3fe477`
+  found: Direct-child cleanup could leave an orphan descendant watcher; a token could complete at or after its deadline; and Rust missing observations could be masked by mismatch or result progress.
+  implication: The lifecycle contract was not fully fail closed until process-group termination, post-read deadline validation, and unavailable-first classification precedence were added.
+- timestamp: 2026-07-11T02:27:38Z
+  checked: Phase 13 process-tree suite, Phase 28 lifecycle suite, and focused accepted-state Rust tests
+  found: Timeout, TERM, normal-exit, detached-descendant cancellation, token-at-deadline rejection, unavailable-plus-mismatch, and unavailable-plus-result-progress regressions pass.
+  implication: The three independent findings are resolved in host software. Because `ab7f5b9` changed exact head without hardware access, it supplies no reusable detector/package/reinit/lifecycle evidence and preserves `blocked_safe_prerequisite`.

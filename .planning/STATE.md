@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: milestone
 status: executing
 stopped_at: Completed Phase 28.1.1 Plan 11 with `blocked_safe_prerequisite` after the finite recovery checkpoint expired
-last_updated: "2026-07-11T01:57:59Z"
+last_updated: "2026-07-11T02:27:38Z"
 progress:
   total_phases: 18
   completed_phases: 16
@@ -28,10 +28,11 @@ Plan: 6 of 6
 ## Decisions (Phase 28.1.1 Plan 11)
 
 - The evidence-correctness gaps are closed: exact five-stage completeness, 180-second/2-second replay timing, measured 5000 ms USB absence, exact checkpoint deadlines, cleanup, and tri-state denylist behavior are regression guarded
-- The strict five-stage 360-second reinit candidate belongs to `4e2d165`; `d275a0e` changed exact head, so that package identity is stale and not promotable
-- On current head, initial `board-info` failed, USB replug was consumed, and the both-power checkpoint response reached continuation after its persisted monotonic deadline
+- The strict five-stage 360-second reinit candidate belongs to `4e2d165`; `d275a0e` changed the hardware-attempt head, and independent review fix `ab7f5b9` changed classifier/process-cleanup code again, so both older package/checkpoint identities are stale and not promotable
+- On hardware-attempt head `d275a0e`, initial `board-info` failed, USB replug was consumed, and the both-power checkpoint response reached continuation after its persisted monotonic deadline
 - One post-expiry detector invocation succeeded but is invalid because continuation had not asserted expiry first; it is disclosed, unpromoted, and contributes no prerequisite claim
-- No current-head credential access, package, flash, reset, or monitor capture followed; cleanup verified no child remained
+- Independent review found and `ab7f5b9` fixed three host-only gaps: orphan descendant watcher cleanup, token crossing its deadline during read, and Rust unavailable-observation precedence; focused process-tree/lifecycle/classifier regressions pass
+- No `ab7f5b9` hardware access, credential access, package, flash, reset, or monitor capture occurred; cleanup verified no child remained
 - The finite Plan 11 recovery contract is exhausted and cannot be refreshed or retried
 - `verification_result=gaps_found`; `phase30_promotion_input=pending`; checklist verified rows untouched
 

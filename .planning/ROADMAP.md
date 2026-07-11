@@ -221,9 +221,9 @@ Plans:
 - [x] 28.1.1-08-PLAN.md — Accepted-state baseline, conditional lifecycle fallback, and gated share capture
 - [x] 28.1.1-09-PLAN.md — Evidence-based disposition and lifecycle-valid verification
 - [x] 28.1.1-10-PLAN.md — Bounded accepted-state replay + retained-package lifecycle capture; physical pair blocked before arming
-- [x] 28.1.1-11-PLAN.md — Fail-closed evidence correctness and finite physical recovery; current-head lifecycle blocked after checkpoint expiry
+- [x] 28.1.1-11-PLAN.md — Fail-closed evidence correctness and finite physical recovery; hardware lifecycle blocked after checkpoint expiry and independent review fixes
 
-**Gaps found:** Plan 11 closes the accepted-state completeness, replay timing, measured USB-absence, checkpoint-cleanup, and promoted-evidence denylist defects. Its strict five-stage candidate became stale after the polling compatibility fix; the current-head finite recovery checkpoint expired, and a mistakenly invoked post-expiry detector result is invalid and unpromoted. No eligible physical lifecycle pair, correlated result, hashing-class rise, or accepted/rejected share exists. Phase 30 promotion remains pending.
+**Gaps found:** Plan 11 closes accepted-state completeness, replay timing, measured USB absence, deadline validation, process-tree cleanup, unavailable precedence, and promoted-evidence denylist defects. Its strict five-stage candidate became stale after the polling compatibility fix; the `d275a0e` hardware-attempt checkpoint expired, and a mistakenly invoked post-expiry detector result is invalid and unpromoted. Independent review fix `ab7f5b9` is host-only and further prevents reuse of older package/checkpoint identities. No eligible physical lifecycle pair, correlated result, hashing-class rise, or accepted/rejected share exists. Phase 30 promotion remains pending.
 
 ### Phase 28.1.1.1: BM1366 upstream golden comparator and nonce-production gap reconciliation (INSERTED)
 
