@@ -74,6 +74,15 @@ phase28-fake-socket-send)
 	printf '%s\n' "$*" >>"${PHASE28_SOCKET_TRACE:?}"
 	exit 0
 	;;
+phase28-monotonic-sequence)
+	sequence_file="${PHASE28_MONOTONIC_SEQUENCE_FILE:?}"
+	value="$(sed -n '1p' "$sequence_file")"
+	[[ "$value" =~ ^[0-9]+$ ]]
+	sed '1d' "$sequence_file" >"$sequence_file.next"
+	mv "$sequence_file.next" "$sequence_file"
+	printf '%s\n' "$value"
+	exit 0
+	;;
 esac
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -116,6 +125,8 @@ for effect in "${effects[@]}"; do
 done
 socket_sender="$temp_root/phase28-fake-socket-send"
 ln -s "$repo_root/scripts/phase28.1.1-exact-head-hardware-attempt-test.sh" "$socket_sender"
+monotonic_sequence="$temp_root/phase28-monotonic-sequence"
+ln -s "$repo_root/scripts/phase28.1.1-exact-head-hardware-attempt-test.sh" "$monotonic_sequence"
 
 fail() {
 	printf 'phase28_exact_head_attempt_test_error: %s\n' "$1" >&2
@@ -174,6 +185,41 @@ begin_attempt() {
 		PHASE28_ALLOW_DIRTY_TEST=1 \
 		PHASE28_TEST_HEAD="$test_head" \
 		bash "$runner" begin-attempt --hardware-exact-head "$test_head"
+}
+
+slot_for_handle() {
+	local handle="$1"
+	printf '%s/resume-index/%s.json\n' "$control_root" "$(printf '%s' "$handle" | shasum -a 256 | awk '{print $1}')"
+}
+
+state_for_handle() {
+	local slot
+	slot="$(slot_for_handle "$1")"
+	printf '%s/state.json\n' "$(jq -er '.attempt_dir' "$slot")"
+}
+
+cleanup_attempt() {
+	local handle="$1"
+	shift
+	env \
+		PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+		PHASE28_TEST_MODE=1 \
+		PHASE28_ALLOW_DIRTY_TEST=1 \
+		PHASE28_TEST_HEAD="$test_head" \
+		"$@" \
+		bash "$runner" cleanup-active-attempt --resume-handle "$handle"
+}
+
+assert_tombstoned_and_stale() {
+	local handle="$1"
+	local expected_terminal="$2"
+	local attempt_dir="$3"
+	local slot
+	slot="$(slot_for_handle "$handle")"
+	[[ "$(jq -er '.terminal_category' "$slot")" == "$expected_terminal" ]] || fail "cleanup terminal category mismatch"
+	[[ "$(jq -r 'keys | sort | join(",")' "$slot")" == "attempt_generation,cleanup_time_category,resume_handle_sha256,schema_version,terminal_category,terminal_status" ]] || fail "cleanup tombstone retained live references"
+	[[ ! -e "$attempt_dir" ]] || fail "cleanup retained private attempt references"
+	expect_failure resume_handle_stale env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" bash "$runner" resolve-checkpoint --resume-handle "$handle"
 }
 
 run_effect() {
@@ -313,6 +359,9 @@ for effect in "${effects[@]}"; do
 		expect_failure "$invalid" run_effect "$handle" "$effect" PHASE28_INJECT_INVALID_CATEGORY="$invalid"
 		after_count="$(wc -l <"$temp_root/effects.trace" | tr -d ' ')"
 		[[ "$before_count" == "$after_count" ]] || fail "$effect/$invalid touched an adapter sentinel"
+		if [[ "$invalid" == "expired" ]]; then
+			expect_failure resume_handle_stale env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" bash "$runner" resolve-checkpoint --resume-handle "$handle"
+		fi
 	done
 done
 
@@ -490,6 +539,157 @@ for boundary in "${classification_crash_boundaries[@]}"; do
 	tombstone="$control_root/resume-index/$(printf '%s' "$handle" | shasum -a 256 | awk '{print $1}').json"
 	[[ "$(jq -r 'keys | sort | join(",")' "$tombstone")" == "attempt_generation,cleanup_time_category,resume_handle_sha256,schema_version,terminal_category,terminal_status" ]] || fail "$boundary terminal tombstone retained a live/private reference"
 done
+
+control_root="$temp_root/control-expired-resolve"
+: >"$temp_root/effects.trace"
+expired_resolve_handle="$(begin_attempt)"
+expired_resolve_handle="$(sed -n 's/^resume_handle=//p' <<<"$expired_resolve_handle")"
+expired_resolve_slot="$(slot_for_handle "$expired_resolve_handle")"
+expired_resolve_dir="$(jq -er '.attempt_dir' "$expired_resolve_slot")"
+expired_resolve_state="$expired_resolve_dir/state.json"
+jq '.monotonic_deadline_ms=0' "$expired_resolve_state" >"$expired_resolve_state.next"
+mv "$expired_resolve_state.next" "$expired_resolve_state"
+chmod 600 "$expired_resolve_state"
+expect_failure checkpoint_expired env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" bash "$runner" resolve-checkpoint --resume-handle "$expired_resolve_handle"
+assert_tombstoned_and_stale "$expired_resolve_handle" blocked_safe_attempt_prerequisite "$expired_resolve_dir"
+[[ ! -s "$temp_root/effects.trace" ]] || fail "expired resolve invoked an effect sentinel"
+
+control_root="$temp_root/control-expired-deliver"
+expired_deliver_handle="$(begin_attempt)"
+expired_deliver_handle="$(sed -n 's/^resume_handle=//p' <<<"$expired_deliver_handle")"
+expired_deliver_slot="$(slot_for_handle "$expired_deliver_handle")"
+expired_deliver_dir="$(jq -er '.attempt_dir' "$expired_deliver_slot")"
+expired_deliver_state="$expired_deliver_dir/state.json"
+jq '.monotonic_deadline_ms=0' "$expired_deliver_state" >"$expired_deliver_state.next"
+mv "$expired_deliver_state.next" "$expired_deliver_state"
+chmod 600 "$expired_deliver_state"
+expect_failure checkpoint_expired env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" bash "$runner" deliver-token --resume-handle "$expired_deliver_handle" --checkpoint-token malformed-before-parse --response-token malformed-before-parse
+assert_tombstoned_and_stale "$expired_deliver_handle" blocked_safe_attempt_prerequisite "$expired_deliver_dir"
+
+control_root="$temp_root/control-expired-effect"
+expired_effect_handle="$(begin_attempt)"
+expired_effect_handle="$(sed -n 's/^resume_handle=//p' <<<"$expired_effect_handle")"
+expired_effect_slot="$(slot_for_handle "$expired_effect_handle")"
+expired_effect_dir="$(jq -er '.attempt_dir' "$expired_effect_slot")"
+expired_effect_state="$expired_effect_dir/state.json"
+jq '.monotonic_deadline_ms=0' "$expired_effect_state" >"$expired_effect_state.next"
+mv "$expired_effect_state.next" "$expired_effect_state"
+chmod 600 "$expired_effect_state"
+before_expired_effect_count="$(wc -l <"$temp_root/effects.trace" | tr -d ' ')"
+expect_failure checkpoint_expired run_effect "$expired_effect_handle" detector_board_info
+after_expired_effect_count="$(wc -l <"$temp_root/effects.trace" | tr -d ' ')"
+[[ "$before_expired_effect_count" == "$after_expired_effect_count" ]] || fail "expired effect reached its adapter"
+assert_tombstoned_and_stale "$expired_effect_handle" blocked_safe_attempt_prerequisite "$expired_effect_dir"
+
+control_root="$temp_root/control-cleanup-head-mismatch"
+cleanup_head_handle="$(begin_attempt connected_entry_waiting)"
+cleanup_head_handle="${cleanup_head_handle#resume_handle=}"
+cleanup_head_slot="$(slot_for_handle "$cleanup_head_handle")"
+cleanup_head_dir="$(jq -er '.attempt_dir' "$cleanup_head_slot")"
+cleanup_output="$(cleanup_attempt "$cleanup_head_handle" PHASE28_TEST_HEAD="2222222222222222222222222222222222222222")"
+rg -q '^cleanup_result=closed$' <<<"$cleanup_output"
+rg -q '^terminal_outcome=blocked_safe_attempt_prerequisite$' <<<"$cleanup_output"
+rg -q '^effect_sentinels_invoked=0$' <<<"$cleanup_output"
+rg -q '^positive_evidence_promoted=false$' <<<"$cleanup_output"
+assert_tombstoned_and_stale "$cleanup_head_handle" blocked_safe_attempt_prerequisite "$cleanup_head_dir"
+expect_failure resume_handle_stale cleanup_attempt "$cleanup_head_handle"
+
+control_root="$temp_root/control-cleanup-boot-mismatch"
+cleanup_boot_handle="$(begin_attempt connected_entry_waiting)"
+cleanup_boot_handle="${cleanup_boot_handle#resume_handle=}"
+cleanup_boot_slot="$(slot_for_handle "$cleanup_boot_handle")"
+cleanup_boot_dir="$(jq -er '.attempt_dir' "$cleanup_boot_slot")"
+cleanup_boot_state="$cleanup_boot_dir/state.json"
+jq '.boot_session_sha256=("f"*64)' "$cleanup_boot_state" >"$cleanup_boot_state.next"
+mv "$cleanup_boot_state.next" "$cleanup_boot_state"
+chmod 600 "$cleanup_boot_state"
+jq '.boot_session_sha256=("f"*64)' "$cleanup_boot_slot" >"$cleanup_boot_slot.next"
+mv "$cleanup_boot_slot.next" "$cleanup_boot_slot"
+chmod 600 "$cleanup_boot_slot"
+cleanup_attempt "$cleanup_boot_handle" >/dev/null
+assert_tombstoned_and_stale "$cleanup_boot_handle" blocked_safe_attempt_prerequisite "$cleanup_boot_dir"
+
+control_root="$temp_root/control-cleanup-unresolved"
+cleanup_unresolved_handle="$(begin_attempt connected_entry_waiting)"
+cleanup_unresolved_handle="${cleanup_unresolved_handle#resume_handle=}"
+cleanup_unresolved_slot="$(slot_for_handle "$cleanup_unresolved_handle")"
+cleanup_unresolved_dir="$(jq -er '.attempt_dir' "$cleanup_unresolved_slot")"
+sleep 30 &
+unowned_child_pid=$!
+printf '%s\n' "$unowned_child_pid" >"$cleanup_unresolved_dir/child.pid"
+chmod 600 "$cleanup_unresolved_dir/child.pid"
+cleanup_unresolved_output="$(cleanup_attempt "$cleanup_unresolved_handle")"
+rg -q '^terminal_outcome=blocked_safe_unresolved_process$' <<<"$cleanup_unresolved_output"
+assert_tombstoned_and_stale "$cleanup_unresolved_handle" blocked_safe_unresolved_process "$cleanup_unresolved_dir"
+kill "$unowned_child_pid" 2>/dev/null || true
+wait "$unowned_child_pid" 2>/dev/null || true
+
+control_root="$temp_root/control-cleanup-crash"
+cleanup_crash_handle="$(begin_attempt connected_entry_waiting)"
+cleanup_crash_handle="${cleanup_crash_handle#resume_handle=}"
+cleanup_crash_slot="$(slot_for_handle "$cleanup_crash_handle")"
+cleanup_crash_dir="$(jq -er '.attempt_dir' "$cleanup_crash_slot")"
+expect_exit_failure cleanup_attempt "$cleanup_crash_handle" PHASE28_CRASH_AT=before_tombstone_persistence
+[[ "$(jq -er '.status' "$cleanup_crash_slot")" == "active" ]] || fail "cleanup crash lost its recoverable active mapping"
+cleanup_attempt "$cleanup_crash_handle" >/dev/null
+assert_tombstoned_and_stale "$cleanup_crash_handle" blocked_safe_attempt_prerequisite "$cleanup_crash_dir"
+
+control_root="$temp_root/control-cleanup-after-tombstone-crash"
+cleanup_after_tombstone_handle="$(begin_attempt connected_entry_waiting)"
+cleanup_after_tombstone_handle="${cleanup_after_tombstone_handle#resume_handle=}"
+cleanup_after_tombstone_slot="$(slot_for_handle "$cleanup_after_tombstone_handle")"
+cleanup_after_tombstone_dir="$(jq -er '.attempt_dir' "$cleanup_after_tombstone_slot")"
+expect_exit_failure cleanup_attempt "$cleanup_after_tombstone_handle" PHASE28_CRASH_AT=after_tombstone_persistence
+assert_tombstoned_and_stale "$cleanup_after_tombstone_handle" blocked_safe_attempt_prerequisite "$cleanup_after_tombstone_dir"
+
+control_root="$temp_root/control-lifecycle-expiry"
+socket_trace="$temp_root/lifecycle-expiry-socket.trace"
+: >"$socket_trace"
+lifecycle_expiry_handle="$(begin_attempt reinit_validated)"
+lifecycle_expiry_handle="${lifecycle_expiry_handle#resume_handle=}"
+prepare_lifecycle_state "$lifecycle_expiry_handle"
+env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+	PHASE28_TEST_MODE=1 \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$test_head" \
+	PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" \
+	PHASE28_TEST_EFFECT_ADAPTER_DIR="$adapter_dir" \
+	PHASE28_EFFECT_TRACE="$temp_root/effects.trace" \
+	PHASE28_TEST_SOCKET_SEND_BIN="$socket_sender" \
+	PHASE28_SOCKET_TRACE="$socket_trace" \
+	bash "$runner" run-validated-effect --resume-handle "$lifecycle_expiry_handle" --effect-id lifecycle_start >"$temp_root/lifecycle-expiry.stdout" 2>"$temp_root/lifecycle-expiry.stderr" &
+lifecycle_expiry_runner_pid=$!
+wait_for_pattern '^checkpoint_id=plan13-lifecycle-removal$' "$temp_root/lifecycle-expiry.stdout"
+lifecycle_expiry_slot="$(slot_for_handle "$lifecycle_expiry_handle")"
+lifecycle_expiry_dir="$(jq -er '.attempt_dir' "$lifecycle_expiry_slot")"
+lifecycle_expiry_state="$lifecycle_expiry_dir/state.json"
+jq '.lifecycle_deadline_ms=500 | .monotonic_deadline_ms=1000000' "$lifecycle_expiry_state" >"$lifecycle_expiry_state.next"
+mv "$lifecycle_expiry_state.next" "$lifecycle_expiry_state"
+chmod 600 "$lifecycle_expiry_state"
+printf '499\n499\n500\n' >"$temp_root/monotonic-sequence.txt"
+before_lifecycle_expiry_effects="$(wc -l <"$temp_root/effects.trace" | tr -d ' ')"
+expect_failure checkpoint_expired env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+	PHASE28_TEST_MODE=1 \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$test_head" \
+	PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" \
+	PHASE28_TEST_SOCKET_SEND_BIN="$socket_sender" \
+	PHASE28_SOCKET_TRACE="$socket_trace" \
+	PHASE28_MONOTONIC_MS_BIN="$monotonic_sequence" \
+	PHASE28_MONOTONIC_SEQUENCE_FILE="$temp_root/monotonic-sequence.txt" \
+	bash "$runner" deliver-token --resume-handle "$lifecycle_expiry_handle" --checkpoint-token plan13-armed-removal-v1 --response-token plan13-both-power-paths-removed
+set +e
+wait "$lifecycle_expiry_runner_pid"
+set -e
+after_lifecycle_expiry_effects="$(wc -l <"$temp_root/effects.trace" | tr -d ' ')"
+[[ "$before_lifecycle_expiry_effects" == "$after_lifecycle_expiry_effects" ]] || fail "lease expiry dispatched another effect"
+[[ ! -s "$socket_trace" ]] || fail "deadline crossed after parse but still reached the lifecycle socket"
+assert_tombstoned_and_stale "$lifecycle_expiry_handle" blocked_safe_evidence_invalid "$lifecycle_expiry_dir"
+
+expect_failure resume_handle_malformed cleanup_attempt malformed
+expect_failure resume_handle_wrong cleanup_attempt "f$(printf '0%.0s' {1..63})"
 
 control_root="$temp_root/control-final"
 handle="$(begin_attempt connected_entry_waiting)"

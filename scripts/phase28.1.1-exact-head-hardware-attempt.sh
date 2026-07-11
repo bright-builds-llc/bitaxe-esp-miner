@@ -48,7 +48,7 @@ die() {
 }
 
 usage() {
-	printf 'usage: %s begin-attempt|resolve-checkpoint|deliver-token|run-validated-effect [options]\n' "$(basename "$0")"
+	printf 'usage: %s begin-attempt|resolve-checkpoint|deliver-token|run-validated-effect|cleanup-active-attempt [options]\n' "$(basename "$0")"
 }
 
 ensure_private_root() {
@@ -189,6 +189,17 @@ switch (operation) {
   default: throw new Error("unknown state operation");
 }
 process.stdout.write(JSON.stringify(next));' "$state_module" "$operation" "$state_path" "$args_json" "$classifier_module"
+}
+
+active_expiry_blocker() {
+	local state_path="$1"
+	local now="$2"
+	node --input-type=module -e '
+import fs from "node:fs";
+const authority = await import(process.argv[1]);
+const state = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const maybeBlocker = authority.activeAttemptExpiryBlocker(state, Number(process.argv[3]));
+if (maybeBlocker !== null) process.stdout.write(maybeBlocker);' "$state_module" "$state_path" "$now"
 }
 
 public_checkpoint_output() {
@@ -455,11 +466,12 @@ resolve_checkpoint() {
 	state_path="$(jq -er '.attempt_dir' "$slot")/state.json"
 	validate_state "$state_path" || die "state_malformed"
 	validate_slot_state "$slot" "$state_path"
+	local now
+	now="$(monotonic_ms)"
+	fail_closed_if_expired "$slot" "$state_path" "$now"
 	assert_fresh_identity "$state_path"
 	if [[ "$(jq -r '.attempt_state' "$state_path")" == "terminal" ]]; then
-		local retained_terminal
-		retained_terminal="$(jq -er '.terminal_outcome' "$state_path")"
-		terminal_cleanup "$slot" "$retained_terminal" crash
+		cleanup_persisted_terminal_active "$slot" "$state_path" crash >/dev/null
 		release_lock
 		die "resume_handle_stale"
 	fi
@@ -507,13 +519,15 @@ deliver_token() {
 	state_path="$attempt_dir/state.json"
 	validate_state "$state_path" || die "state_malformed"
 	validate_slot_state "$slot" "$state_path"
+	now="$(monotonic_ms)"
+	fail_closed_if_expired "$slot" "$state_path" "$now"
 	assert_fresh_identity "$state_path"
 	[[ "$(jq -r '.checkpoint_id // empty' "$state_path")" != "" ]] || die "checkpoint_state_mismatch"
 	[[ "$(jq -r '.checkpoint_token // empty' "$state_path")" == "$checkpoint_token" ]] || die "checkpoint_token_mismatch"
 	[[ "$(jq -r '.expected_response_token // empty' "$state_path")" == "$response_token" ]] || die "checkpoint_token_mismatch"
 	deadline="$(jq -er '.monotonic_deadline_ms' "$state_path")"
 	now="$(monotonic_ms)"
-	((now < deadline)) || die "checkpoint_expired"
+	fail_closed_if_expired "$slot" "$state_path" "$now"
 	assert_fresh_identity "$state_path"
 	local checkpoint_generation
 	local lease
@@ -537,10 +551,14 @@ deliver_token() {
 		[[ "$(mode_of_path "$attempt_dir/lifecycle.sock")" == "600" ]] || die "private_capability_invalid"
 	fi
 	now="$(monotonic_ms)"
-	((now < deadline)) || die "checkpoint_expired"
+	fail_closed_if_expired "$slot" "$state_path" "$now"
 	local consumed_json
 	consumed_json="$(state_operation consume-checkpoint "$state_path" "$(jq -cn --arg token "$checkpoint_token" --arg response "$response_token" --argjson now "$now" '{checkpointToken:$token,responseToken:$response,nowMonotonicMs:$now}')")" || die "checkpoint_state_mismatch"
 	persist_state_and_slot "$state_path" "$slot" "$consumed_json"
+	now="$(monotonic_ms)"
+	if ((now >= deadline)); then
+		fail_closed_active "$slot" "$state_path" checkpoint_expired checkpoint_expired
+	fi
 	if [[ "$lifecycle_delivery" == "true" ]]; then
 		local frame
 		frame="$(jq -cn --arg digest "$(sha256_text "$handle")" --argjson generation "$checkpoint_generation" --arg token "$checkpoint_token" --arg response "$response_token" --arg nonce "$nonce" --arg lease "$lease" '{resume_handle_sha256:$digest,checkpoint_generation:$generation,checkpoint_token:$token,response_token:$response,effect_authorization_nonce:$nonce,lifecycle_lease_id:$lease}')"
@@ -558,7 +576,7 @@ deliver_token() {
 			local terminal_json
 			terminal_json="$(state_operation terminalize "$state_path" '{"blockerReason":"private_capability_invalid","cleanupUnresolved":false}')"
 			persist_state_and_slot "$state_path" "$slot" "$terminal_json"
-			terminal_cleanup "$slot" "$(jq -er '.terminal_outcome' "$state_path")" blocked
+			cleanup_persisted_terminal_active "$slot" "$state_path" blocked >/dev/null
 			release_lock
 			die "private_capability_invalid"
 		fi
@@ -568,7 +586,37 @@ deliver_token() {
 	printf 'checkpoint_generation=%s\n' "$checkpoint_generation"
 }
 
-terminal_cleanup() {
+cleanup_attempt_process() {
+	local slot="$1"
+	local state_path="$2"
+	local attempt_dir
+	attempt_dir="$(jq -er '.attempt_dir' "$slot")"
+	local child_pid=""
+	if [[ -e "$attempt_dir/child.pid" ]]; then
+		[[ -f "$attempt_dir/child.pid" && "$(mode_of_path "$attempt_dir/child.pid")" == "600" ]] || return 1
+		child_pid="$(sed -n '1p' "$attempt_dir/child.pid")"
+		[[ "$child_pid" =~ ^[1-9][0-9]*$ ]] || return 1
+	fi
+	if [[ -z "$child_pid" ]]; then
+		[[ "$(jq -er '.process_running' "$state_path")" == "false" ]] || return 1
+		return 0
+	fi
+	if ! kill -0 "$child_pid" 2>/dev/null; then
+		return 0
+	fi
+	local pgid
+	pgid="$(ps -o pgid= -p "$child_pid" 2>/dev/null | tr -d ' ')"
+	[[ "$pgid" == "$child_pid" ]] || return 1
+	if [[ "$(jq -er '.process_running' "$state_path")" == "true" ]]; then
+		[[ "$(jq -er '.lifecycle_owner_pid' "$state_path")" == "$child_pid" ]] || return 1
+		local observed_fingerprint
+		observed_fingerprint="$(process_start_fingerprint "$child_pid" 2>/dev/null)" || return 1
+		[[ "$observed_fingerprint" == "$(jq -er '.lifecycle_owner_start_fingerprint_sha256' "$state_path")" ]] || return 1
+	fi
+	terminate_effect_process "$child_pid" "phase28 attempt cleanup"
+}
+
+replace_active_with_tombstone() {
 	local slot="$1"
 	local terminal="$2"
 	local category="$3"
@@ -578,22 +626,76 @@ terminal_cleanup() {
 	attempt_dir="$(jq -er '.attempt_dir' "$slot")"
 	generation="$(jq -er '.attempt_generation' "$slot")"
 	digest="$(jq -er '.resume_handle_sha256' "$slot")"
-	if [[ -f "$attempt_dir/child.pid" ]]; then
-		local child_pid
-		child_pid="$(sed -n '1p' "$attempt_dir/child.pid")"
-		terminate_effect_process "$child_pid" "phase28 attempt cleanup" || die "process_cleanup_unresolved"
-	fi
 	rm -f "$attempt_dir/child.pid" "$attempt_dir/lifecycle.sock" "$attempt_dir/credential-capability.json" "$attempt_dir/effect.ack" "$attempt_dir/effect.gate" "$attempt_dir/effect-result.json"
 	[[ "${PHASE28_CRASH_AT:-}" != "before_tombstone_persistence" ]] || exit 97
 	atomic_write "$slot" "$(jq -cn --arg digest "$digest" --arg terminal "$terminal" --arg category "$category" --argjson generation "$generation" '{schema_version:"exact-head-resume-tombstone-v1",resume_handle_sha256:$digest,attempt_generation:$generation,terminal_status:"closed",terminal_category:$terminal,cleanup_time_category:$category}')"
-	[[ "${PHASE28_CRASH_AT:-}" != "after_tombstone_persistence" ]] || exit 97
 	rm -rf "$attempt_dir"
+	[[ "${PHASE28_CRASH_AT:-}" != "after_tombstone_persistence" ]] || exit 97
 	[[ "${PHASE28_CRASH_AT:-}" != "after_terminal_cleanup" ]] || exit 97
+}
+
+terminalize_and_cleanup_active() {
+	local slot="$1"
+	local state_path="$2"
+	local blocker="$3"
+	local category="$4"
+	local cleanup_unresolved=false
+	if ! cleanup_attempt_process "$slot" "$state_path"; then
+		cleanup_unresolved=true
+	fi
+	local terminal_json
+	terminal_json="$(state_operation terminalize "$state_path" "$(jq -cn --arg blockerReason "$blocker" --argjson cleanupUnresolved "$cleanup_unresolved" '{blockerReason:$blockerReason,cleanupUnresolved:$cleanupUnresolved}')")"
+	persist_state_and_slot "$state_path" "$slot" "$terminal_json"
+	local terminal
+	terminal="$(jq -er '.terminal_outcome' "$state_path")"
+	replace_active_with_tombstone "$slot" "$terminal" "$category"
+	printf '%s\n' "$terminal"
+}
+
+cleanup_persisted_terminal_active() {
+	local slot="$1"
+	local state_path="$2"
+	local category="$3"
+	[[ "$(jq -er '.attempt_state' "$state_path")" == "terminal" ]] || die "state_malformed"
+	if ! cleanup_attempt_process "$slot" "$state_path"; then
+		local unresolved_json
+		unresolved_json="$(state_operation terminalize "$state_path" '{"blockerReason":"process_cleanup_unresolved","cleanupUnresolved":true}')"
+		persist_state_and_slot "$state_path" "$slot" "$unresolved_json"
+	fi
+	local terminal
+	terminal="$(jq -er '.terminal_outcome' "$state_path")"
+	replace_active_with_tombstone "$slot" "$terminal" "$category"
+	printf '%s\n' "$terminal"
+}
+
+fail_closed_active() {
+	local slot="$1"
+	local state_path="$2"
+	local blocker="$3"
+	local error="$4"
+	local category="${5:-blocked}"
+	terminalize_and_cleanup_active "$slot" "$state_path" "$blocker" "$category" >/dev/null
+	release_lock
+	die "$error"
+}
+
+fail_closed_if_expired() {
+	local slot="$1"
+	local state_path="$2"
+	local now="$3"
+	local maybe_blocker
+	maybe_blocker="$(active_expiry_blocker "$state_path" "$now")"
+	if [[ -n "$maybe_blocker" ]]; then
+		fail_closed_active "$slot" "$state_path" "$maybe_blocker" "$maybe_blocker"
+	fi
 }
 
 finalize_successful_classification() {
 	local slot="$1"
 	local state_path="$2"
+	local now
+	now="$(monotonic_ms)"
+	fail_closed_if_expired "$slot" "$state_path" "$now"
 	local phase
 	phase="$(jq -er '.classification_phase' "$state_path")"
 	if [[ "$(jq -er '.attempt_state' "$state_path")" == "post_capture_validated" && "$phase" == "invoked" ]]; then
@@ -624,7 +726,7 @@ finalize_successful_classification() {
 	local closed_output
 	terminal="$(jq -er '.terminal_outcome' "$state_path")"
 	closed_output="$(public_terminal_output "$state_path")"
-	terminal_cleanup "$slot" "$terminal" "$([[ "$terminal" == blocked_safe_* ]] && printf blocked || printf normal)"
+	cleanup_persisted_terminal_active "$slot" "$state_path" "$([[ "$terminal" == blocked_safe_* ]] && printf blocked || printf normal)" >/dev/null
 	printf '%s\n' "$closed_output"
 }
 
@@ -668,13 +770,15 @@ lifecycle_owner_transition() {
 	validate_active_slot "$slot" "$digest" || die "resume_handle_ambiguous"
 	validate_state "$state_path" || die "state_malformed"
 	validate_slot_state "$slot" "$state_path"
+	local now
+	now="$(monotonic_ms)"
+	fail_closed_if_expired "$slot" "$state_path" "$now"
 	assert_fresh_identity "$state_path"
 	[[ "$(sha256_text "$capability")" == "$(jq -er '.lifecycle_capability_sha256' "$state_path")" ]] || die "lease_owner_mismatch"
 	[[ "$PPID" == "$(jq -er '.lifecycle_owner_pid' "$state_path")" ]] || die "lease_owner_mismatch"
 	[[ "$(process_start_fingerprint "$PPID")" == "$(jq -er '.lifecycle_owner_start_fingerprint_sha256' "$state_path")" ]] || die "lease_dead_or_reused_process"
-	local now
 	now="$(monotonic_ms)"
-	((now < $(jq -er '.lifecycle_deadline_ms' "$state_path"))) || die "checkpoint_expired"
+	fail_closed_if_expired "$slot" "$state_path" "$now"
 	local args
 	args="$(jq -cn --arg event "$event" --slurpfile values "$values_file" '{event:$event,values:$values[0]}')"
 	local next_json
@@ -718,11 +822,12 @@ run_validated_effect() {
 	state_path="$attempt_dir/state.json"
 	validate_state "$state_path" || die "state_malformed"
 	validate_slot_state "$slot" "$state_path"
+	local now
+	now="$(monotonic_ms)"
+	fail_closed_if_expired "$slot" "$state_path" "$now"
 	assert_fresh_identity "$state_path"
 	if [[ "$(jq -r '.attempt_state' "$state_path")" == "terminal" ]]; then
-		local retained_terminal
-		retained_terminal="$(jq -er '.terminal_outcome' "$state_path")"
-		terminal_cleanup "$slot" "$retained_terminal" crash
+		cleanup_persisted_terminal_active "$slot" "$state_path" crash >/dev/null
 		release_lock
 		die "resume_handle_stale"
 	fi
@@ -735,7 +840,8 @@ run_validated_effect() {
 	esac
 	if [[ -n "${PHASE28_INJECT_INVALID_CATEGORY:-}" ]]; then
 		case "$PHASE28_INJECT_INVALID_CATEGORY" in
-		expired | token_mismatch | exact_head_mismatch | manifest_mismatch | reference_mismatch | boot_session_mismatch | dirty_head | malformed_state | validator_error | lock_failure | persistence_failure | lease_conflict) die "$PHASE28_INJECT_INVALID_CATEGORY" ;;
+		expired) fail_closed_active "$slot" "$state_path" checkpoint_expired expired ;;
+		token_mismatch | exact_head_mismatch | manifest_mismatch | reference_mismatch | boot_session_mismatch | dirty_head | malformed_state | validator_error | lock_failure | persistence_failure | lease_conflict) die "$PHASE28_INJECT_INVALID_CATEGORY" ;;
 		*) die "validator_error" ;;
 		esac
 	fi
@@ -744,7 +850,7 @@ run_validated_effect() {
 		local ambiguous_json
 		ambiguous_json="$(state_operation terminalize "$state_path" '{"blockerReason":"effect_in_flight_ambiguous","cleanupUnresolved":false}')"
 		persist_state_and_slot "$state_path" "$slot" "$ambiguous_json"
-		terminal_cleanup "$slot" "$(jq -er '.terminal_outcome' "$state_path")" "crash"
+		cleanup_persisted_terminal_active "$slot" "$state_path" crash >/dev/null
 		release_lock
 		die "effect_in_flight_ambiguous"
 	fi
@@ -754,7 +860,7 @@ run_validated_effect() {
 			local inconsistent_json
 			inconsistent_json="$(state_operation terminalize "$state_path" '{"blockerReason":"effect_in_flight_ambiguous","cleanupUnresolved":false}')"
 			persist_state_and_slot "$state_path" "$slot" "$inconsistent_json"
-			terminal_cleanup "$slot" "$(jq -er '.terminal_outcome' "$state_path")" crash
+			cleanup_persisted_terminal_active "$slot" "$state_path" crash >/dev/null
 			release_lock
 			die "effect_in_flight_ambiguous"
 		}
@@ -767,7 +873,7 @@ run_validated_effect() {
 			local inconsistent_json
 			inconsistent_json="$(state_operation terminalize "$state_path" '{"blockerReason":"effect_in_flight_ambiguous","cleanupUnresolved":false}')"
 			persist_state_and_slot "$state_path" "$slot" "$inconsistent_json"
-			terminal_cleanup "$slot" "$(jq -er '.terminal_outcome' "$state_path")" crash
+			cleanup_persisted_terminal_active "$slot" "$state_path" crash >/dev/null
 			release_lock
 			die "effect_in_flight_ambiguous"
 		fi
@@ -781,7 +887,7 @@ run_validated_effect() {
 		if [[ "$(jq -r '.attempt_state' "$state_path")" == "terminal" ]]; then
 			local terminal
 			terminal="$(jq -er '.terminal_outcome' "$state_path")"
-			terminal_cleanup "$slot" "$terminal" crash
+			cleanup_persisted_terminal_active "$slot" "$state_path" crash >/dev/null
 			release_lock
 			printf 'terminal_outcome=%s\n' "$terminal"
 			return
@@ -897,7 +1003,7 @@ run_validated_effect() {
 		local inconsistent_json
 		inconsistent_json="$(state_operation terminalize "$state_path" '{"blockerReason":"effect_in_flight_ambiguous","cleanupUnresolved":false}')"
 		persist_state_and_slot "$state_path" "$slot" "$inconsistent_json"
-		terminal_cleanup "$slot" "$(jq -er '.terminal_outcome' "$state_path")" crash
+		cleanup_persisted_terminal_active "$slot" "$state_path" crash >/dev/null
 		release_lock
 		die "effect_in_flight_ambiguous"
 	fi
@@ -917,7 +1023,7 @@ run_validated_effect() {
 	if [[ "$final_state" == "terminal" ]]; then
 		local terminal
 		terminal="$(jq -er '.terminal_outcome' "$state_path")"
-		terminal_cleanup "$slot" "$terminal" "$([[ "$terminal" == blocked_safe_* ]] && printf blocked || printf normal)"
+		cleanup_persisted_terminal_active "$slot" "$state_path" "$([[ "$terminal" == blocked_safe_* ]] && printf blocked || printf normal)" >/dev/null
 		release_lock
 		printf 'effect_id=%s\n' "$effect"
 		printf 'effect_sequence=%s\n' "$sequence"
@@ -934,6 +1040,69 @@ run_validated_effect() {
 	fi
 }
 
+cleanup_active_attempt() {
+	local handle=""
+	while (($#)); do
+		case "$1" in
+		--resume-handle)
+			handle="${2:-}"
+			shift 2
+			;;
+		*) die "unknown_argument" ;;
+		esac
+	done
+	ensure_private_root
+	acquire_lock
+	local slot
+	local attempt_dir
+	local state_path
+	slot="$(resolve_handle "$handle")"
+	attempt_dir="$(jq -er '.attempt_dir' "$slot")"
+	state_path="$attempt_dir/state.json"
+	validate_state "$state_path" || die "state_malformed"
+	validate_slot_state "$slot" "$state_path"
+	if [[ "$(jq -er '.attempt_state' "$state_path")" == "terminal" ]]; then
+		local retained_terminal
+		retained_terminal="$(cleanup_persisted_terminal_active "$slot" "$state_path" blocked)"
+		release_lock
+		printf 'cleanup_result=closed\n'
+		printf 'terminal_outcome=%s\n' "$retained_terminal"
+		printf 'process_running=false\n'
+		printf 'effect_sentinels_invoked=0\n'
+		printf 'positive_evidence_promoted=false\n'
+		return
+	fi
+	local blocker=""
+	local now
+	now="$(monotonic_ms)"
+	blocker="$(active_expiry_blocker "$state_path" "$now")"
+	if [[ -z "$blocker" && "${PHASE28_ALLOW_DIRTY_TEST:-0}" != "1" && -n "$(git -C "$repo_root" status --porcelain=v1)" ]]; then
+		blocker="dirty_head"
+	fi
+	if [[ -z "$blocker" && "$(current_head)" != "$(jq -er '.exact_head' "$state_path")" ]]; then
+		blocker="exact_head_mismatch"
+	fi
+	if [[ -z "$blocker" ]]; then
+		local observed_boot=""
+		if ! observed_boot="$(observe_boot_digest 2>/dev/null)"; then
+			blocker="boot_session_observation_unavailable"
+		elif [[ "$observed_boot" != "$(jq -er '.boot_session_sha256' "$state_path")" ]]; then
+			blocker="boot_session_mismatch"
+		fi
+	fi
+	if [[ -z "$blocker" ]]; then
+		blocker="cancelled_or_abandoned"
+	fi
+	local terminal
+	terminal="$(terminalize_and_cleanup_active "$slot" "$state_path" "$blocker" blocked)"
+	release_lock
+	printf 'cleanup_result=closed\n'
+	printf 'terminal_outcome=%s\n' "$terminal"
+	printf 'process_running=false\n'
+	printf 'effect_sentinels_invoked=0\n'
+	printf 'positive_evidence_promoted=false\n'
+}
+
 command="${1:-}"
 [[ -n "$command" ]] || {
 	usage
@@ -947,5 +1116,6 @@ resolve-checkpoint) resolve_checkpoint "$@" ;;
 deliver-token) deliver_token "$@" ;;
 run-validated-effect) run_validated_effect "$@" ;;
 lifecycle-owner-transition) lifecycle_owner_transition "$@" ;;
+cleanup-active-attempt) cleanup_active_attempt "$@" ;;
 *) die "unknown_command" ;;
 esac

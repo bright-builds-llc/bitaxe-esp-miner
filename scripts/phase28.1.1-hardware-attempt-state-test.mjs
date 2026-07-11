@@ -13,6 +13,7 @@ import {
   PROHIBITED_SENTINEL_KEYS,
   PUBLIC_CHECKPOINT_FIELDS,
   AttemptStateError,
+  activeAttemptExpiryBlocker,
   applyEffectCompletion,
   applyLifecycleOwnerEvent,
   ambiguousEffectOnRestart,
@@ -411,6 +412,50 @@ function testConnectedCheckpointContract() {
   );
 }
 
+function testActiveAttemptExpiryClassification() {
+  // Arrange
+  const checkpointState = createConnectedEntryState({
+    exactHead: HEAD,
+    resumeHandleSha256: RESUME_DIGEST,
+    createdMonotonicMs: 1_000,
+    observeBootSession: () => BOOT_DIGEST,
+    randomHex: () => "5".repeat(32),
+  });
+  const lifecycleState = completeLifecycleState();
+  lifecycleState.attempt_state = "restore_waiting";
+  lifecycleState.lifecycle_substate = "restore_waiting";
+  lifecycleState.checkpoint_id = "plan13-lifecycle-restore";
+  lifecycleState.checkpoint_token = "plan13-barrel-usb-restore-v1";
+  lifecycleState.expected_response_token =
+    "plan13-barrel-then-usb-restored";
+  lifecycleState.expected_user_action = "restore-barrel-then-usb";
+  lifecycleState.monotonic_deadline_ms = 61_000;
+  lifecycleState.lifecycle_deadline_ms = 60_000;
+  lifecycleState.process_running = true;
+  lifecycleState.effect_id = "lifecycle_start";
+  lifecycleState.effect_phase = "invoked";
+  lifecycleState.effect_authorization_nonce = "8".repeat(32);
+
+  // Act
+  const beforeCheckpointDeadline = activeAttemptExpiryBlocker(
+    checkpointState,
+    600_999,
+  );
+  const atCheckpointDeadline = activeAttemptExpiryBlocker(
+    checkpointState,
+    601_000,
+  );
+  const atLeaseDeadline = activeAttemptExpiryBlocker(
+    lifecycleState,
+    60_000,
+  );
+
+  // Assert
+  assert.equal(beforeCheckpointDeadline, null);
+  assert.equal(atCheckpointDeadline, "checkpoint_expired");
+  assert.equal(atLeaseDeadline, "checkpoint_expired");
+}
+
 function testDetectorEffectTransitionsAndRecoveryOrder() {
   // Arrange
   let state = baseState();
@@ -613,6 +658,7 @@ testBlockerRoutesAreExhaustive();
 testTimingAndIdentityInvariants();
 testSentinelInvariants();
 testConnectedCheckpointContract();
+testActiveAttemptExpiryClassification();
 testDetectorEffectTransitionsAndRecoveryOrder();
 testLifecycleLeaseAndSubordinateTransitions();
 testStrictClassificationPersistenceAndReplayGuards();

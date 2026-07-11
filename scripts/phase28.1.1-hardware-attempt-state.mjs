@@ -947,6 +947,32 @@ export function publicCheckpoint(state, resumeHandle) {
   return projection;
 }
 
+export function activeAttemptExpiryBlocker(state, nowMonotonicMs) {
+  validateAttemptState(state);
+  if (!isUnsigned(nowMonotonicMs)) {
+    fail("state_malformed", "deadline observation is invalid");
+  }
+  if (
+    state.monotonic_deadline_ms !== null &&
+    nowMonotonicMs >= state.monotonic_deadline_ms
+  ) {
+    return "checkpoint_expired";
+  }
+  const lifecycleDeadlineIsActive = ![
+    "not_started",
+    "complete",
+    "failed",
+  ].includes(state.lifecycle_substate);
+  if (
+    lifecycleDeadlineIsActive &&
+    state.lifecycle_deadline_ms !== null &&
+    nowMonotonicMs >= state.lifecycle_deadline_ms
+  ) {
+    return "checkpoint_expired";
+  }
+  return null;
+}
+
 export function consumeCheckpoint(
   state,
   { checkpointToken, responseToken, nowMonotonicMs },
