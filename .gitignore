@@ -3,6 +3,7 @@ bazel-*
 target/
 .embuild/
 /.planning/phases/**/hardware-runs/
+/hardware-runs/
 /wifi-credentials*.json
 /pool-credentials*.env
 /pool-credentials*.json
