@@ -71,6 +71,7 @@ sh_binary(
 sh_binary(
     name = "phase13_monitor_capture",
     srcs = ["phase13-monitor-capture.sh"],
+    data = ["process-group.sh"],
 )
 
 sh_binary(
@@ -272,7 +273,10 @@ sh_test(
 sh_test(
     name = "phase13_monitor_capture_test",
     srcs = ["phase13-monitor-capture-test.sh"],
-    data = ["phase13-monitor-capture.sh"],
+    data = [
+        "phase13-monitor-capture.sh",
+        "process-group.sh",
+    ],
     tags = ["local"],
 )
 
@@ -283,6 +287,7 @@ sh_test(
         "phase13-http-static-smoke.sh",
         "phase13-monitor-capture.sh",
         "phase13-recovery-regression.sh",
+        "process-group.sh",
     ],
     tags = ["local"],
 )
@@ -294,6 +299,7 @@ sh_test(
         "phase13-monitor-capture.sh",
         "phase16-http-static-smoke.sh",
         "phase16-recovery-regression.sh",
+        "process-group.sh",
     ],
     tags = ["local"],
 )

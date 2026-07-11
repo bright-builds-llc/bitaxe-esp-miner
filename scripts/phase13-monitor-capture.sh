@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/process-group.sh
+source "${script_dir}/process-group.sh"
+
 usage() {
 	printf 'usage: %s --port PATH --out LOG [--seconds N] [--no-reset]\n' "$(basename "$0")" >&2
 }
@@ -9,6 +13,47 @@ port=""
 out=""
 seconds="35"
 no_reset=0
+monitor_pid=""
+monitor_group_ready_file=""
+monitor_group_state_file="${PHASE13_MONITOR_GROUP_STATE_FILE:-}"
+
+cleanup_monitor_group() {
+	local pid="${monitor_pid:-$PHASE_PROCESS_GROUP_PID}"
+	[[ -n "$pid" ]] || return 0
+
+	if ! phase_process_group_terminate "$pid" "phase13 monitor cleanup"; then
+		return 1
+	fi
+	monitor_pid=""
+	PHASE_PROCESS_GROUP_PID=""
+	if [[ -n "$monitor_group_state_file" ]]; then
+		: >"$monitor_group_state_file"
+	fi
+	if [[ -n "$monitor_group_ready_file" ]]; then
+		rm -f "$monitor_group_ready_file"
+	fi
+	return 0
+}
+
+handle_exit() {
+	local status=$?
+	trap - EXIT INT TERM
+	if ! cleanup_monitor_group; then
+		status=1
+	fi
+	exit "$status"
+}
+
+handle_signal() {
+	trap - EXIT INT TERM
+	if ! cleanup_monitor_group; then
+		exit 1
+	fi
+	exit 130
+}
+
+trap handle_exit EXIT
+trap handle_signal INT TERM
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -91,9 +136,16 @@ log "raw_flash_write: disabled"
 log "capture_output_start"
 
 set +e
-"${monitor_command[@]}" >>"$out" 2>&1 &
-monitor_pid=$!
+monitor_group_ready_file="${TMPDIR:-/tmp}/phase13-monitor-group.$$.ready"
+PHASE_PROCESS_GROUP_STATE_FILE="$monitor_group_state_file"
+phase_process_group_start "$monitor_group_ready_file" "${monitor_command[@]}" >>"$out" 2>&1
+group_start_status=$?
 set -e
+((group_start_status == 0)) || {
+	printf 'failed to start isolated monitor process group\n' >&2
+	exit 1
+}
+monitor_pid="$PHASE_PROCESS_GROUP_PID"
 
 start_epoch="$(date +%s)"
 capture_status="failed"
@@ -103,15 +155,8 @@ while kill -0 "$monitor_pid" >/dev/null 2>&1; do
 	now_epoch="$(date +%s)"
 	elapsed=$((now_epoch - start_epoch))
 	if [[ "$elapsed" -ge "$seconds" ]]; then
-		kill "$monitor_pid" >/dev/null 2>&1 || true
-		sleep 1
-		if kill -0 "$monitor_pid" >/dev/null 2>&1; then
-			kill -9 "$monitor_pid" >/dev/null 2>&1 || true
-		fi
-		set +e
-		wait "$monitor_pid" 2>/dev/null
-		monitor_status=$?
-		set -e
+		cleanup_monitor_group || exit 1
+		monitor_status=143
 		capture_status="timed_out_after_capture"
 		break
 	fi
@@ -123,6 +168,15 @@ if [[ "$capture_status" != "timed_out_after_capture" ]]; then
 	wait "$monitor_pid"
 	monitor_status=$?
 	set -e
+	if phase_process_group_is_alive "$monitor_pid"; then
+		cleanup_monitor_group || exit 1
+	else
+		monitor_pid=""
+		PHASE_PROCESS_GROUP_PID=""
+		if [[ -n "$monitor_group_state_file" ]]; then
+			: >"$monitor_group_state_file"
+		fi
+	fi
 	if [[ "$monitor_status" -eq 0 ]]; then
 		capture_status="completed"
 	else

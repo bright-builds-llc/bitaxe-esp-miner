@@ -203,20 +203,20 @@ pub fn classify_accepted_state(
         }
     }
 
-    let accepted_state_status = if saw_counter_divergence || saw_other_mismatch {
-        AcceptedStateStatus::Mismatch
-    } else if saw_missing_observation {
+    let accepted_state_status = if saw_missing_observation {
         AcceptedStateStatus::Unavailable
+    } else if saw_counter_divergence || saw_other_mismatch {
+        AcceptedStateStatus::Mismatch
     } else {
         AcceptedStateStatus::Match
     };
 
-    let recommended_investigation = if result_progress {
+    let recommended_investigation = if saw_missing_observation {
+        AcceptedStateRecommendation::ColdBootRecoveryLifecycleParity
+    } else if result_progress {
         AcceptedStateRecommendation::None
     } else if saw_counter_divergence {
         AcceptedStateRecommendation::AcceptedStateTransitionDivergence
-    } else if saw_missing_observation {
-        AcceptedStateRecommendation::ColdBootRecoveryLifecycleParity
     } else if saw_other_mismatch {
         AcceptedStateRecommendation::UpstreamInitTranscriptPrefixBisection
     } else {
@@ -417,6 +417,53 @@ mod tests {
         assert_eq!(
             classification.recommended_investigation,
             AcceptedStateRecommendation::None
+        );
+    }
+
+    #[test]
+    fn accepted_state_unavailable_observation_precedes_mismatch() {
+        // Arrange
+        let upstream = complete_snapshots();
+        let mut rust = complete_snapshots();
+        rust[2].chip_count_class = AcceptedStateStatus::Mismatch;
+        rust[3].readable_response_count = 0;
+        rust[3].chip_count_class = AcceptedStateStatus::Unavailable;
+
+        // Act
+        let classification = classify_accepted_state(&upstream, &rust);
+
+        // Assert
+        assert_eq!(
+            classification.accepted_state_status,
+            AcceptedStateStatus::Unavailable
+        );
+        assert_eq!(
+            classification.recommended_investigation,
+            AcceptedStateRecommendation::ColdBootRecoveryLifecycleParity
+        );
+    }
+
+    #[test]
+    fn accepted_state_unavailable_observation_precedes_result_progress() {
+        // Arrange
+        let upstream = complete_snapshots();
+        let mut rust = complete_snapshots();
+        rust[3].readable_response_count = 0;
+        rust[3].chip_count_class = AcceptedStateStatus::Unavailable;
+        rust[4].result_correlated = true;
+        rust[4].submit_observed = true;
+
+        // Act
+        let classification = classify_accepted_state(&upstream, &rust);
+
+        // Assert
+        assert_eq!(
+            classification.accepted_state_status,
+            AcceptedStateStatus::Unavailable
+        );
+        assert_eq!(
+            classification.recommended_investigation,
+            AcceptedStateRecommendation::ColdBootRecoveryLifecycleParity
         );
     }
 

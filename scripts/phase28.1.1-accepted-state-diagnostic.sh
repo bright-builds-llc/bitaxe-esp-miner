@@ -3,6 +3,8 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/process-group.sh
+source "$repo_root/scripts/process-group.sh"
 mode=""
 attempt=""
 duration_seconds="360"
@@ -22,6 +24,7 @@ readonly replay_interval_ms=2000
 readonly replay_window_ms=180000
 readonly latest_safe_replay_ms=72000
 active_child_pid=""
+active_descendant_group_file=""
 
 die() {
 	printf 'accepted_state_diagnostic_error: %s\n' "$1" >&2
@@ -81,32 +84,33 @@ run_dir="$run_root/$(date -u +%Y%m%dT%H%M%SZ)-${attempt}"
 mkdir -p "$run_dir" "$(dirname "$evidence_out")"
 
 cleanup_active_child() {
-	local pid="$active_child_pid"
-	[[ -n "$pid" ]] || return 0
-
-	set +e
-	kill "$pid" >/dev/null 2>&1
-	local terminate_status=$?
-	set -e
-	if ((terminate_status != 0)) && kill -0 "$pid" >/dev/null 2>&1; then
-		printf 'accepted_state_diagnostic_error: failed to terminate monitor child\n' >&2
+	local pid="${active_child_pid:-$PHASE_PROCESS_GROUP_PID}"
+	if [[ -z "$pid" && (-z "$active_descendant_group_file" || ! -s "$active_descendant_group_file") ]]; then
+		return 0
 	fi
+	local cleanup_failed=0
 
-	for _ in 1 2 3 4 5; do
-		if ! kill -0 "$pid" >/dev/null 2>&1; then
-			break
+	if [[ -n "$pid" ]] && ! phase_process_group_terminate "$pid" "accepted-state monitor cleanup"; then
+		printf 'accepted_state_diagnostic_error: monitor process group remains live\n' >&2
+		cleanup_failed=1
+	fi
+	if [[ -n "$active_descendant_group_file" && -s "$active_descendant_group_file" ]]; then
+		local descendant_pid
+		descendant_pid="$(sed -n '1p' "$active_descendant_group_file")"
+		if [[ ! "$descendant_pid" =~ ^[0-9]+$ ]]; then
+			printf 'accepted_state_diagnostic_error: invalid descendant process-group state\n' >&2
+			cleanup_failed=1
+		elif ! phase_process_group_terminate "$descendant_pid" "accepted-state descendant monitor cleanup"; then
+			printf 'accepted_state_diagnostic_error: descendant monitor process group remains live\n' >&2
+			cleanup_failed=1
+		else
+			: >"$active_descendant_group_file"
 		fi
-		sleep 0.1
-	done
-	if kill -0 "$pid" >/dev/null 2>&1; then
-		set +e
-		kill -9 "$pid" >/dev/null 2>&1
-		set -e
 	fi
-	set +e
-	wait "$pid" >/dev/null 2>&1
-	set -e
+	((cleanup_failed == 0)) || return 1
 	active_child_pid=""
+	PHASE_PROCESS_GROUP_PID=""
+	active_descendant_group_file=""
 	if [[ -n "${PHASE28_ACCEPTED_STATE_CHILD_PID_FILE:-}" ]]; then
 		: >"$PHASE28_ACCEPTED_STATE_CHILD_PID_FILE"
 	fi
@@ -116,13 +120,17 @@ cleanup_active_child() {
 handle_exit() {
 	local status=$?
 	trap - EXIT INT TERM
-	cleanup_active_child
+	if ! cleanup_active_child; then
+		status=1
+	fi
 	exit "$status"
 }
 
 handle_signal() {
 	trap - EXIT INT TERM
-	cleanup_active_child
+	if ! cleanup_active_child; then
+		exit 1
+	fi
 	exit 130
 }
 
@@ -189,22 +197,6 @@ run_flash_capture() {
 		"$PHASE28_ACCEPTED_STATE_CAPTURE_BIN" "${args[@]}"
 	else
 		bash scripts/phase27-live-hardware-bridge-evidence.sh "${args[@]}"
-	fi
-}
-
-run_no_reset_monitor() {
-	local output_log="$1"
-	local -a args=(
-		--port "$port"
-		--out "$output_log"
-		--seconds "$duration_seconds"
-		--no-reset
-	)
-	trace_event "monitor-no-reset"
-	if [[ -n "${PHASE28_ACCEPTED_STATE_MONITOR_BIN:-}" ]]; then
-		"$PHASE28_ACCEPTED_STATE_MONITOR_BIN" "${args[@]}"
-	else
-		bash scripts/phase13-monitor-capture.sh "${args[@]}"
 	fi
 }
 
@@ -277,6 +269,8 @@ read_closed_token_until() {
 		read_token_once
 		case "$token_read_status" in
 		0)
+			now_ms="$(monotonic_ms)"
+			((now_ms < deadline_ms)) || die "timed out waiting for $label token"
 			[[ "$received_token" == "$expected_token" ]] || die "invalid $label token"
 			return
 			;;
@@ -331,11 +325,29 @@ run_monitored_capture() {
 	local output_log="$1"
 	local wrapper_log="$2"
 	local child_status
+	local group_start_status
+	local -a args=(
+		--port "$port"
+		--out "$output_log"
+		--seconds "$duration_seconds"
+		--no-reset
+	)
+	local -a monitor_command
+	active_descendant_group_file="$run_dir/descendant-monitor-process-group.state"
+	: >"$active_descendant_group_file"
+	if [[ -n "${PHASE28_ACCEPTED_STATE_MONITOR_BIN:-}" ]]; then
+		monitor_command=(env PHASE13_MONITOR_GROUP_STATE_FILE="$active_descendant_group_file" "$PHASE28_ACCEPTED_STATE_MONITOR_BIN" "${args[@]}")
+	else
+		monitor_command=(env PHASE13_MONITOR_GROUP_STATE_FILE="$active_descendant_group_file" bash scripts/phase13-monitor-capture.sh "${args[@]}")
+	fi
 
+	trace_event "monitor-no-reset"
 	set +e
-	run_no_reset_monitor "$output_log" >"$wrapper_log" 2>&1 &
-	active_child_pid=$!
+	phase_process_group_start "$run_dir/monitor-process-group.ready" "${monitor_command[@]}" >"$wrapper_log" 2>&1
+	group_start_status=$?
 	set -e
+	((group_start_status == 0)) || die "failed to start isolated monitor process group"
+	active_child_pid="$PHASE_PROCESS_GROUP_PID"
 	if [[ -n "${PHASE28_ACCEPTED_STATE_CHILD_PID_FILE:-}" ]]; then
 		printf '%s\n' "$active_child_pid" >"$PHASE28_ACCEPTED_STATE_CHILD_PID_FILE"
 	fi
@@ -343,10 +355,7 @@ run_monitored_capture() {
 	wait "$active_child_pid"
 	child_status=$?
 	set -e
-	active_child_pid=""
-	if [[ -n "${PHASE28_ACCEPTED_STATE_CHILD_PID_FILE:-}" ]]; then
-		: >"$PHASE28_ACCEPTED_STATE_CHILD_PID_FILE"
-	fi
+	cleanup_active_child || die "failed to clean monitor process group"
 	((child_status == 0)) || die "no-reset monitor capture failed"
 }
 

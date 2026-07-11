@@ -94,6 +94,19 @@ phase28-fake-monitor)
 	if [[ "${PHASE28_FAKE_MONITOR_MODE:-complete}" == "hazard" ]]; then
 		printf 'Guru Meditation Error: stack overflow\n' >>"$output_log"
 	fi
+	if [[ "${PHASE28_FAKE_MONITOR_MODE:-complete}" == "detached-descendant" ]]; then
+		perl -MPOSIX=setsid -e '
+			defined(setsid()) or die "setsid failed: $!\n";
+			for my $path ($ENV{PHASE28_FAKE_WATCHER_PID_FILE}, $ENV{PHASE13_MONITOR_GROUP_STATE_FILE}) {
+				open my $file, ">", $path or die "open state file failed: $!\n";
+				print {$file} "$$\n" or die "write state file failed: $!\n";
+				close $file or die "close state file failed: $!\n";
+			}
+			exec {"/bin/bash"} "/bin/bash", "-c", q{trap "" INT TERM; while true; do sleep 1; done};
+			die "exec failed: $!\n";
+		' &
+		wait "$!"
+	fi
 	exit 0
 	;;
 phase28-fake-port-present)
@@ -136,6 +149,26 @@ expect_failure() {
 	if "$@" >"$temp_root/expected-failure.stdout" 2>"$temp_root/expected-failure.stderr"; then
 		fail "command unexpectedly succeeded"
 	fi
+}
+
+wait_for_file() {
+	local path="$1"
+	for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+		[[ -s "$path" ]] && return 0
+		sleep 0.05
+	done
+	fail "timed out waiting for $path"
+}
+
+assert_pid_stopped() {
+	local pid="$1"
+	for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+		if ! kill -0 "$pid" 2>/dev/null; then
+			return 0
+		fi
+		sleep 0.05
+	done
+	fail "descendant watcher $pid survived cleanup"
 }
 
 wifi="$temp_root/wifi.json"
@@ -230,6 +263,8 @@ if rg -q 'wifi-secret-sentinel|pool-secret-sentinel' "$temp_root/hardware.md" "$
 	fail "credential contents escaped into accepted-state output"
 fi
 
+lifecycle_wrapper_pid=""
+
 run_lifecycle() {
 	local case_name="$1"
 	local monitor_mode="$2"
@@ -238,6 +273,7 @@ run_lifecycle() {
 	local read_sequence="$5"
 	local selected_reinit_log="${6:-$reinit_log}"
 	local read_mode="${7:-fixture}"
+	local launch_mode="${8:-foreground}"
 	local case_root="$temp_root/$case_name"
 	mkdir -p "$case_root"
 	tr ' ' '\n' <<<"$port_sequence" >"$case_root/port.sequence"
@@ -251,30 +287,38 @@ run_lifecycle() {
 	if [[ "$read_mode" == "native" ]]; then
 		read_env=(PHASE28_ACCEPTED_STATE_READ_BIN=)
 	fi
+	local -a lifecycle_command=(env
+		"${common_env[@]}"
+		PHASE28_ACCEPTED_STATE_PACKAGE_BIN="$fake_package"
+		PHASE28_ACCEPTED_STATE_CAPTURE_BIN="$fake_flash_capture"
+		PHASE28_ACCEPTED_STATE_MONITOR_BIN="$fake_monitor"
+		PHASE28_ACCEPTED_STATE_PORT_PRESENT_BIN="$fake_port_present"
+		PHASE28_ACCEPTED_STATE_SLEEP_BIN="$fake_sleep"
+		PHASE28_ACCEPTED_STATE_CLOCK_BIN="$fake_clock"
+		"${read_env[@]}"
+		PHASE28_ACCEPTED_STATE_CALL_TRACE="$trace"
+		PHASE28_ACCEPTED_STATE_CHILD_PID_FILE="$child_pid_file"
+		PHASE28_ACCEPTED_STATE_RUN_ROOT="$case_root/runs"
+		PHASE28_FAKE_FAIL_PACKAGE=1
+		PHASE28_FAKE_FAIL_FLASH_CAPTURE=1
+		PHASE28_FAKE_MONITOR_ARGS="$monitor_args"
+		PHASE28_FAKE_MONITOR_MODE="$monitor_mode"
+		PHASE28_FAKE_WATCHER_PID_FILE="$case_root/watcher.pid"
+		PHASE28_FAKE_PORT_SEQUENCE="$case_root/port.sequence"
+		PHASE28_FAKE_PORT_CURSOR="$case_root/port.cursor"
+		PHASE28_FAKE_CLOCK_SEQUENCE="$case_root/clock.sequence"
+		PHASE28_FAKE_CLOCK_CURSOR="$case_root/clock.cursor"
+		PHASE28_FAKE_READ_SEQUENCE="$case_root/read.sequence"
+		PHASE28_FAKE_READ_CURSOR="$case_root/read.cursor"
+		bash "$script" --mode hardware --attempt lifecycle --duration-seconds 360 --reattach-timeout-seconds 60 --attestation-timeout-seconds 300 --port "$test_port" --wifi-credentials "$wifi" --pool-credentials "$pool" --manifest "$manifest" --reinit-log "$selected_reinit_log" --evidence-out "$case_root/evidence.md")
+	if [[ "$launch_mode" == "background" ]]; then
+		"${lifecycle_command[@]}" >"$case_root/stdout" 2>"$case_root/stderr" &
+		lifecycle_wrapper_pid=$!
+		return 0
+	fi
+
 	set +e
-	env \
-		"${common_env[@]}" \
-		PHASE28_ACCEPTED_STATE_PACKAGE_BIN="$fake_package" \
-		PHASE28_ACCEPTED_STATE_CAPTURE_BIN="$fake_flash_capture" \
-		PHASE28_ACCEPTED_STATE_MONITOR_BIN="$fake_monitor" \
-		PHASE28_ACCEPTED_STATE_PORT_PRESENT_BIN="$fake_port_present" \
-		PHASE28_ACCEPTED_STATE_SLEEP_BIN="$fake_sleep" \
-		PHASE28_ACCEPTED_STATE_CLOCK_BIN="$fake_clock" \
-		"${read_env[@]}" \
-		PHASE28_ACCEPTED_STATE_CALL_TRACE="$trace" \
-		PHASE28_ACCEPTED_STATE_CHILD_PID_FILE="$child_pid_file" \
-		PHASE28_ACCEPTED_STATE_RUN_ROOT="$case_root/runs" \
-		PHASE28_FAKE_FAIL_PACKAGE=1 \
-		PHASE28_FAKE_FAIL_FLASH_CAPTURE=1 \
-		PHASE28_FAKE_MONITOR_ARGS="$monitor_args" \
-		PHASE28_FAKE_MONITOR_MODE="$monitor_mode" \
-		PHASE28_FAKE_PORT_SEQUENCE="$case_root/port.sequence" \
-		PHASE28_FAKE_PORT_CURSOR="$case_root/port.cursor" \
-		PHASE28_FAKE_CLOCK_SEQUENCE="$case_root/clock.sequence" \
-		PHASE28_FAKE_CLOCK_CURSOR="$case_root/clock.cursor" \
-		PHASE28_FAKE_READ_SEQUENCE="$case_root/read.sequence" \
-		PHASE28_FAKE_READ_CURSOR="$case_root/read.cursor" \
-		bash "$script" --mode hardware --attempt lifecycle --duration-seconds 360 --reattach-timeout-seconds 60 --attestation-timeout-seconds 300 --port "$test_port" --wifi-credentials "$wifi" --pool-credentials "$pool" --manifest "$manifest" --reinit-log "$selected_reinit_log" --evidence-out "$case_root/evidence.md" >"$case_root/stdout" 2>"$case_root/stderr"
+	"${lifecycle_command[@]}" >"$case_root/stdout" 2>"$case_root/stderr"
 	run_status=$?
 	set -e
 	[[ ! -s "$child_pid_file" ]] || fail "$case_name left a live monitor child recorded"
@@ -282,7 +326,7 @@ run_lifecycle() {
 }
 
 success_port_sequence='present absent absent absent present'
-success_clock_sequence='0 0 0 4999 5000 5000 60000 60000'
+success_clock_sequence='0 0 0 0 4999 5000 5000 5000 60000 60000'
 success_read_sequence='both-power-paths-removed barrel-then-usb-restored'
 run_lifecycle lifecycle-success duplicate "$success_port_sequence" "$success_clock_sequence" "$success_read_sequence"
 success_root="$temp_root/lifecycle-success"
@@ -346,19 +390,36 @@ if rg -q '^monitor-no-reset$' "$temp_root/lifecycle-abandoned-armed/calls.trace"
 	fail "abandoned armed wait started a monitor child"
 fi
 
-expect_failure run_lifecycle lifecycle-present-at-attestation complete 'present present' '0 0 0' 'both-power-paths-removed'
-expect_failure run_lifecycle lifecycle-absence-4999 complete 'present absent absent present' '0 0 0 4999' 'both-power-paths-removed'
-expect_failure run_lifecycle lifecycle-wrong-restore complete 'present absent absent' '0 0 0 5000 5000' 'both-power-paths-removed wrong-token'
-expect_failure run_lifecycle lifecycle-absent-restore complete 'present absent absent' '0 0 0 5000 5000' 'both-power-paths-removed eof'
-expect_failure run_lifecycle lifecycle-abandoned-restore complete 'present absent absent' '0 0 0 5000 5000 60000' 'both-power-paths-removed timeout'
+expect_failure run_lifecycle lifecycle-token-crossed-deadline complete 'present' '0 299999 300000' 'both-power-paths-removed'
+rg -q 'timed out waiting for both-power attestation token' "$temp_root/lifecycle-token-crossed-deadline/stderr"
+if rg -q '^operator_attested_both_power_paths_removed=true$' "$temp_root/lifecycle-token-crossed-deadline/stdout"; then
+	fail "token crossing the deadline was accepted"
+fi
+
+expect_failure run_lifecycle lifecycle-present-at-attestation complete 'present present' '0 0 0 0' 'both-power-paths-removed'
+expect_failure run_lifecycle lifecycle-absence-4999 complete 'present absent absent present' '0 0 0 0 4999' 'both-power-paths-removed'
+expect_failure run_lifecycle lifecycle-wrong-restore complete 'present absent absent' '0 0 0 0 5000 5000 5000' 'both-power-paths-removed wrong-token'
+expect_failure run_lifecycle lifecycle-absent-restore complete 'present absent absent' '0 0 0 0 5000 5000' 'both-power-paths-removed eof'
+expect_failure run_lifecycle lifecycle-abandoned-restore complete 'present absent absent' '0 0 0 0 5000 5000 60000' 'both-power-paths-removed timeout'
 [[ ! -s "$temp_root/lifecycle-abandoned-restore/child.pid" ]] || fail "abandoned restore wait left a child"
 if rg -q '^monitor-no-reset$' "$temp_root/lifecycle-abandoned-restore/calls.trace"; then
 	fail "abandoned restore wait started a monitor child"
 fi
 
-expect_failure run_lifecycle lifecycle-late-restore complete 'present absent absent' '0 0 0 5000 60000' 'both-power-paths-removed barrel-then-usb-restored'
-expect_failure run_lifecycle lifecycle-absent-at-60000 complete 'present absent absent absent' '0 0 0 5000 5000 60000' "$success_read_sequence"
-expect_failure run_lifecycle lifecycle-present-at-60001 complete 'present absent absent present' '0 0 0 5000 5000 60001' "$success_read_sequence"
+expect_failure run_lifecycle lifecycle-late-restore complete 'present absent absent' '0 0 0 0 5000 60000' 'both-power-paths-removed barrel-then-usb-restored'
+expect_failure run_lifecycle lifecycle-absent-at-60000 complete 'present absent absent absent' '0 0 0 0 5000 5000 5000 60000' "$success_read_sequence"
+expect_failure run_lifecycle lifecycle-present-at-60001 complete 'present absent absent present' '0 0 0 0 5000 5000 5000 60001' "$success_read_sequence"
+
+run_lifecycle lifecycle-cancel-descendant detached-descendant "$success_port_sequence" "$success_clock_sequence" "$success_read_sequence" "$reinit_log" fixture background
+wait_for_file "$temp_root/lifecycle-cancel-descendant/watcher.pid"
+kill -TERM "$lifecycle_wrapper_pid"
+set +e
+wait "$lifecycle_wrapper_pid"
+lifecycle_cancel_status=$?
+set -e
+[[ "$lifecycle_cancel_status" -ne 0 ]] || fail "cancelled lifecycle unexpectedly succeeded"
+assert_pid_stopped "$(<"$temp_root/lifecycle-cancel-descendant/watcher.pid")"
+[[ ! -s "$temp_root/lifecycle-cancel-descendant/child.pid" ]] || fail "cancelled lifecycle falsely retained active child state"
 
 incomplete_reinit="$temp_root/incomplete-reinit.log"
 PHASE28_FAKE_MONITOR_MODE=missing emit_complete_accepted_state_log >"$incomplete_reinit"

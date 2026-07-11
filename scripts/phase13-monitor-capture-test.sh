@@ -75,6 +75,47 @@ sleep 10
 '
 }
 
+create_descendant_espflash() {
+	local bin_dir="$1"
+	mkdir -p "$bin_dir"
+
+	# shellcheck disable=SC2016 # The generated fixture expands these values at runtime.
+	write_executable "${bin_dir}/phase13-test-watcher" 'trap "" INT TERM
+printf "%s\n" "$$" >"${PHASE13_TEST_WATCHER_PID_FILE:?}"
+while true; do
+  sleep 1
+done
+'
+	# shellcheck disable=SC2016 # The generated fixture expands these values at runtime.
+	write_executable "${bin_dir}/espflash" '"$(dirname "$0")/phase13-test-watcher" &
+watcher_pid=$!
+if [[ "${PHASE13_TEST_TREE_MODE:-wait}" == "orphan" ]]; then
+  exit 0
+fi
+wait "$watcher_pid"
+'
+}
+
+wait_for_file() {
+	local path="$1"
+	for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+		[[ -s "$path" ]] && return 0
+		sleep 0.05
+	done
+	fail "timed out waiting for $path"
+}
+
+assert_pid_stopped() {
+	local pid="$1"
+	for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+		if ! kill -0 "$pid" 2>/dev/null; then
+			return 0
+		fi
+		sleep 0.05
+	done
+	fail "descendant watcher $pid survived cleanup"
+}
+
 test_monitor_command_is_bounded_and_safe() {
 	local bin_dir="${tmp_root}/fast-bin"
 	local out_file="${tmp_root}/monitor.log"
@@ -103,11 +144,71 @@ test_monitor_timeout_status_is_recorded() {
 	assert_contains "$out_file" "capture_status=timed_out_after_capture"
 }
 
+test_timeout_stops_descendant_watcher() {
+	local bin_dir="${tmp_root}/timeout-tree-bin"
+	local out_file="${tmp_root}/timeout-tree.log"
+	local watcher_pid_file="${tmp_root}/timeout-tree.pid"
+	local group_state_file="${tmp_root}/timeout-tree.group"
+
+	create_descendant_espflash "$bin_dir"
+
+	PHASE13_MONITOR_GROUP_STATE_FILE="$group_state_file" \
+		PHASE13_TEST_WATCHER_PID_FILE="$watcher_pid_file" PATH="${bin_dir}:$PATH" \
+		"$BASH" "$monitor_script" --port /dev/test --out "$out_file" --seconds 1
+
+	wait_for_file "$watcher_pid_file"
+	assert_pid_stopped "$(<"$watcher_pid_file")"
+	[[ ! -s "$group_state_file" ]] || fail "timeout cleanup falsely retained live group state"
+	assert_contains "$out_file" "capture_status=timed_out_after_capture"
+}
+
+test_term_stops_descendant_watcher() {
+	local bin_dir="${tmp_root}/term-tree-bin"
+	local out_file="${tmp_root}/term-tree.log"
+	local watcher_pid_file="${tmp_root}/term-tree.pid"
+	local wrapper_pid
+	local wrapper_status
+
+	create_descendant_espflash "$bin_dir"
+
+	PHASE13_TEST_WATCHER_PID_FILE="$watcher_pid_file" PATH="${bin_dir}:$PATH" \
+		"$BASH" "$monitor_script" --port /dev/test --out "$out_file" --seconds 30 \
+		>"${tmp_root}/term-wrapper.stdout" 2>"${tmp_root}/term-wrapper.stderr" &
+	wrapper_pid=$!
+	wait_for_file "$watcher_pid_file"
+	kill -TERM "$wrapper_pid"
+	set +e
+	wait "$wrapper_pid"
+	wrapper_status=$?
+	set -e
+
+	[[ "$wrapper_status" -ne 0 ]] || fail "TERM cancellation unexpectedly succeeded"
+	assert_pid_stopped "$(<"$watcher_pid_file")"
+}
+
+test_exit_stops_orphaned_descendant_watcher() {
+	local bin_dir="${tmp_root}/exit-tree-bin"
+	local out_file="${tmp_root}/exit-tree.log"
+	local watcher_pid_file="${tmp_root}/exit-tree.pid"
+
+	create_descendant_espflash "$bin_dir"
+
+	PHASE13_TEST_TREE_MODE=orphan PHASE13_TEST_WATCHER_PID_FILE="$watcher_pid_file" \
+		PATH="${bin_dir}:$PATH" "$BASH" "$monitor_script" --port /dev/test --out "$out_file" --seconds 30
+
+	wait_for_file "$watcher_pid_file"
+	assert_pid_stopped "$(<"$watcher_pid_file")"
+	assert_contains "$out_file" "capture_status=completed"
+}
+
 if [[ ! -f "$monitor_script" ]]; then
 	fail "monitor script missing: ${monitor_script}"
 fi
 
 test_monitor_command_is_bounded_and_safe
 test_monitor_timeout_status_is_recorded
+test_timeout_stops_descendant_watcher
+test_term_stops_descendant_watcher
+test_exit_stops_orphaned_descendant_watcher
 
 printf 'phase13_monitor_capture_test passed\n'
