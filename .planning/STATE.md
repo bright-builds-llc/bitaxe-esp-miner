@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed Phase 28.1.1 Plan 11 with `blocked_safe_prerequisite` after the both-power recovery checkpoint expired
-last_updated: "2026-07-11T04:59:55.625Z"
+stopped_at: Completed 28.1.1-12-PLAN.md
+last_updated: "2026-07-11T05:37:16.458Z"
 progress:
   total_phases: 18
   completed_phases: 15
-  total_plans: 68
-  completed_plans: 67
+  total_plans: 69
+  completed_plans: 68
   percent: 99
 ---
 
@@ -18,12 +18,12 @@ progress:
 ## Current Position
 
 Phase: 28.1.1 (BM1366 nonce production wire parity (INSERTED)) — EXECUTING
-Plan: 1 of 8
+Plan: 7 of 8
 
 - **Phase:** 28.1.1 — Accepted-State Gap Closure
-- **Plan:** 6/8 — Plans 12-13 ready to execute (verification_result: gaps_found)
+- **Plan:** 7/8 — Plan 12 complete; Plan 13 ready to execute
 - **Status:** Executing Phase 28.1.1
-- **Next step:** Execute Plans 12-13 with `/gsd-execute-phase 28.1.1 --gaps-only`; Phase 30 remains pending
+- **Next step:** Execute Plan 13 with `/gsd-execute-phase 28.1.1 --gaps-only`; Phase 30 remains pending
 
 ## Decisions (Phase 28.1.1 Plan 11)
 
@@ -134,6 +134,7 @@ Plan: 1 of 8
 | Phase 28.1.1 P08 | 15min | 3 tasks | 4 files |
 | Phase 28.1.1 P10 | 39 min | 3 tasks | 14 files |
 | Phase 28.1.1 P11 | bounded continuation | 4 tasks | 19 files |
+| Phase 28.1.1 P12 | 33 min | 3 tasks | 10 files |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -157,5 +158,5 @@ Plan: 1 of 8
 
 ## Session
 
-- **Stopped at:** Completed Phase 28.1.1 Plan 11 with `blocked_safe_prerequisite` after the both-power recovery checkpoint expired
-- **Resume:** Do not resume Plan 11. Start a new formally planned finite recovery contract for any later physical lifecycle attempt; Phase 30 remains pending until independent same-chain proof exists
+- **Stopped at:** Completed 28.1.1-12-PLAN.md
+- **Resume:** Execute Plan 13 from the clean Plan 12 completion HEAD; Phase 30 remains pending until independent same-chain proof exists
