@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed Phase 28.1.1 Plan 11 with `blocked_safe_prerequisite` after the finite recovery checkpoint expired
-last_updated: "2026-07-11T02:27:38Z"
+stopped_at: Completed Phase 28.1.1 Plan 11 with `blocked_safe_prerequisite` after the both-power recovery checkpoint expired
+last_updated: "2026-07-11T04:39:49.338Z"
 progress:
   total_phases: 18
-  completed_phases: 16
-  total_plans: 67
+  completed_phases: 15
+  total_plans: 69
   completed_plans: 67
-  percent: 100
+  percent: 97
 ---
 
 # Project State
@@ -18,12 +18,12 @@ progress:
 ## Current Position
 
 Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — GAPS FOUND
-Plan: 6 of 6
+Plan: 6 of 8
 
 - **Phase:** 28.1.1 — Accepted-State Gap Closure
-- **Plan:** 6/6 — Complete (verification_result: gaps_found)
-- **Status:** Plan 11 closed `blocked_safe_prerequisite`; physical lifecycle and production-share goals remain open
-- **Next step:** Do not resume or refresh Plan 11; any further lifecycle attempt requires a new formally planned recovery contract. Phase 30 remains pending
+- **Plan:** 6/8 — Plans 12-13 ready to execute (verification_result: gaps_found)
+- **Status:** Ready to execute
+- **Next step:** Execute Plans 12-13 with `/gsd-execute-phase 28.1.1 --gaps-only`; Phase 30 remains pending
 
 ## Decisions (Phase 28.1.1 Plan 11)
 
