@@ -327,9 +327,192 @@ if rg -q 'capability_file|wifi_credentials|pool_credentials|run_flash_capture|ru
 fi
 rg -q 'capability="\$\(validate_credential_capability "\$capability_path"\)"' "$script" || fail "flash reinit does not validate the private credential capability"
 credential_validator_source="$(sed -n '/^validate_credential_capability()/,/^}/p' "$script")"
-for required_check in 'mode_of_path' 'owner_of_path' 'credential_capability_status' 'credential_capability_sha256' 'wifi_credential_binding_id' 'pool_credential_binding_id'; do
+for required_check in 'is_private_owned_file' 'exact-head-attempt-v2' 'execution_plan' 'credential_capability_status' 'credential_capability_sha256' 'wifi_credential_state' 'pool_credential_state' 'wifi_credential_binding_id' 'pool_credential_binding_id'; do
 	rg -q "$required_check" <<<"$credential_validator_source" || fail "credential capability validation omits $required_check"
 done
+
+run_flash_capability_fixture() {
+	local case_name="$1"
+	local capability_kind="$2"
+	local expected_status="$3"
+	local state_status="${4:-sealed}"
+	local wifi_state="${5:-present}"
+	local state_digest_mode="${6:-matching}"
+	local capability_mode="${7:-600}"
+	local wifi_mode="${8:-600}"
+	local fixture_root="$temp_root/capability-$case_name"
+	local state_path="$fixture_root/state.json"
+	local capability_path="$fixture_root/credential-capability.json"
+	local fixture_wifi="$fixture_root/wifi.fixture.json"
+	local fixture_pool="$fixture_root/pool.fixture.json"
+	local ack="$fixture_root/effect.ack"
+	local gate="$fixture_root/effect.gate"
+	local result="$fixture_root/effect-result.json"
+	local trace="$fixture_root/trace"
+	local capture_args="$fixture_root/capture.args"
+	local clock_sequence="$fixture_root/clock.sequence"
+	local clock_cursor="$fixture_root/clock.cursor"
+	local wifi_binding="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	local pool_binding="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	local valid_capability
+	local capability
+	local capability_digest
+	local adapter_status
+
+	mkdir -m 700 "$fixture_root"
+	printf '%s\n' 'synthetic-wifi-not-read' >"$fixture_wifi"
+	printf '%s\n' 'synthetic-pool-not-read' >"$fixture_pool"
+	chmod "$wifi_mode" "$fixture_wifi"
+	chmod 600 "$fixture_pool"
+	valid_capability="$(jq -cn \
+		--arg wifi "$fixture_wifi" \
+		--arg pool "$fixture_pool" \
+		--arg wifi_binding "$wifi_binding" \
+		--arg pool_binding "$pool_binding" \
+		'{schema_version:"plan13-credential-capability-v1",wifi_path:$wifi,pool_path:$pool,wifi_binding_id:$wifi_binding,pool_binding_id:$pool_binding}')"
+	case "$capability_kind" in
+	valid) capability="$valid_capability" ;;
+	boolean) capability='true' ;;
+	null) capability='null' ;;
+	array) capability='[]' ;;
+	string) capability='"scalar"' ;;
+	number) capability='7' ;;
+	malformed-json) capability='{' ;;
+	missing) capability="$(jq -c 'del(.pool_path)' <<<"$valid_capability")" ;;
+	wrong-schema) capability="$(jq -c '.schema_version="plan13-credential-capability-v0"' <<<"$valid_capability")" ;;
+	wrong-binding) capability="$(jq -c '.wifi_binding_id=("c"*32)' <<<"$valid_capability")" ;;
+	boolean-path) capability="$(jq -c '.wifi_path=true' <<<"$valid_capability")" ;;
+	relative-path) capability="$(jq -c '.wifi_path="relative.json"' <<<"$valid_capability")" ;;
+	*) fail "unknown capability fixture kind: $capability_kind" ;;
+	esac
+	printf '%s\n' "$capability" >"$capability_path"
+	chmod "$capability_mode" "$capability_path"
+	capability_digest="$(shasum -a 256 "$capability_path" | awk '{print $1}')"
+	if [[ "$state_digest_mode" == "mismatch" ]]; then
+		capability_digest="$(printf 'f%.0s' {1..64})"
+	fi
+	printf '%s\n' "$test_port" >"$fixture_root/selected-port.value"
+	printf '%s\n' "$manifest" >"$fixture_root/package-manifest.path"
+	chmod 600 "$fixture_root/selected-port.value" "$fixture_root/package-manifest.path"
+	printf '10\n360010\n' >"$clock_sequence"
+	: >"$trace"
+
+	# shellcheck disable=SC2016
+	node --input-type=module -e '
+import fs from "node:fs";
+const authority = await import(process.argv[1]);
+let state = authority.createAttemptState({
+  exactHead: process.argv[3],
+  resumeHandleSha256: "d".repeat(64),
+  createdMonotonicMs: 1,
+  observeBootSession: () => authority.deriveLinuxBootSessionDigest("11111111-1111-1111-1111-111111111111"),
+  randomHex: () => "e".repeat(32),
+});
+state.attempt_state = "packaged";
+state.detector_attempt_count = 1;
+state.selected_port_state = "one_board205";
+state.selected_port_fingerprint_sha256 = "1".repeat(64);
+state.wifi_credential_state = process.argv[7];
+state.pool_credential_state = "present";
+state.wifi_credential_binding_id = process.argv[4];
+state.pool_credential_binding_id = process.argv[5];
+state.credential_capability_status = process.argv[8];
+state.credential_capability_sha256 = process.argv[6];
+state.reference_guard_state = "pass";
+state.reference_commit = "2".repeat(40);
+state.reference_guard_output_sha256 = "3".repeat(64);
+state.manifest_state = "pass";
+state.manifest_source_commit = process.argv[3];
+state.manifest_sha256 = "4".repeat(64);
+state.factory_image_sha256 = "5".repeat(64);
+state = authority.authorizeEffect(state, "flash_reinit_runtime", "6".repeat(32));
+fs.writeFileSync(process.argv[2], `${JSON.stringify(state)}\n`, {mode:0o600});' \
+		"$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs" \
+		"$state_path" \
+		"$source_commit" \
+		"$wifi_binding" \
+		"$pool_binding" \
+		"$capability_digest" \
+		"$wifi_state" \
+		"$state_status"
+
+	env \
+		PHASE28_ADAPTER_TEST_MODE=1 \
+		PHASE28_ADAPTER_UNIT_FIXTURE=1 \
+		PHASE28_ADAPTER_TEST_BOOT_PLATFORM=linux \
+		PHASE28_ADAPTER_TEST_BOOT_RAW=11111111-1111-1111-1111-111111111111 \
+		PHASE28_LIFECYCLE_ATTEMPT_DIR="$fixture_root" \
+		PHASE28_EFFECT_ID=flash_reinit_runtime \
+		PHASE28_EFFECT_ACK_FILE="$ack" \
+		PHASE28_EFFECT_GATE_FILE="$gate" \
+		PHASE28_EFFECT_RESULT_FILE="$result" \
+		PHASE28_ACCEPTED_STATE_CAPTURE_BIN="$fake_flash_capture" \
+		PHASE28_ACCEPTED_STATE_CLOCK_BIN="$fake_clock" \
+		PHASE28_FAKE_CAPTURE_ARGS="$capture_args" \
+		PHASE28_FAKE_CLOCK_SEQUENCE="$clock_sequence" \
+		PHASE28_FAKE_CLOCK_CURSOR="$clock_cursor" \
+		PHASE28_ACCEPTED_STATE_CALL_TRACE="$trace" \
+		bash "$script" --mode plan13-prevalidated --effect-id flash_reinit_runtime >"$fixture_root/stdout" 2>"$fixture_root/stderr" &
+	local adapter_pid=$!
+	for _ in $(seq 1 100); do
+		[[ -f "$ack" ]] && break
+		kill -0 "$adapter_pid" 2>/dev/null || break
+		sleep 0.01
+	done
+	[[ -f "$ack" ]] || fail "$case_name did not acknowledge the adapter boundary"
+	jq '.effect_phase="invoked"' "$state_path" >"$state_path.next"
+	mv "$state_path.next" "$state_path"
+	chmod 600 "$state_path"
+	: >"$gate"
+	set +e
+	wait "$adapter_pid"
+	adapter_status=$?
+	set -e
+
+	if rg -q 'Cannot index (boolean|null|array|string|number)|jq: error' "$fixture_root/stdout" "$fixture_root/stderr"; then
+		fail "$case_name leaked a jq runtime exception"
+	fi
+	if rg -q 'synthetic-wifi-not-read|synthetic-pool-not-read' "$fixture_root/stdout" "$fixture_root/stderr" "$trace"; then
+		fail "$case_name opened or exposed synthetic credential contents"
+	fi
+	if [[ "$expected_status" == "completed" ]]; then
+		[[ "$adapter_status" == "0" ]] || fail "$case_name did not complete"
+		[[ "$(jq -r '.status' "$result")" == "completed" ]] || fail "$case_name did not emit a completed result"
+		[[ ! -e "$capability_path" ]] || fail "$case_name did not destroy the consumed capability"
+		rg -q '^flash-capture$' "$trace"
+		[[ "$(awk '/^--wifi-credentials$/{getline; print; exit}' "$capture_args")" == "$fixture_wifi" ]] || fail "$case_name projected the wrong Wi-Fi path"
+		[[ "$(awk '/^--pool-credentials$/{getline; print; exit}' "$capture_args")" == "$fixture_pool" ]] || fail "$case_name projected the wrong pool path"
+		if rg -q "$fixture_wifi|$fixture_pool|$wifi_binding|$pool_binding|$capability_digest" "$fixture_root/stdout" "$fixture_root/stderr" "$trace"; then
+			fail "$case_name exposed private capability data outside the injected consumer"
+		fi
+		return
+	fi
+	[[ "$adapter_status" != "0" ]] || fail "$case_name unexpectedly completed"
+	[[ "$(jq -r '.status' "$result")" == "failed" ]] || fail "$case_name did not emit a failed result"
+	[[ "$(jq -r '.blocker_reason' "$result")" == "private_capability_invalid" ]] || fail "$case_name used the wrong blocker"
+	[[ ! -e "$capture_args" ]] || fail "$case_name called the injected flash consumer"
+	if rg -q '^flash-capture$' "$trace"; then
+		fail "$case_name crossed the flash sentinel"
+	fi
+}
+
+run_flash_capability_fixture boolean-projection-regression boolean failed
+run_flash_capability_fixture null-capability null failed
+run_flash_capability_fixture array-capability array failed
+run_flash_capability_fixture string-capability string failed
+run_flash_capability_fixture number-capability number failed
+run_flash_capability_fixture malformed-json malformed-json failed
+run_flash_capability_fixture missing-field missing failed
+run_flash_capability_fixture wrong-schema wrong-schema failed
+run_flash_capability_fixture wrong-binding wrong-binding failed
+run_flash_capability_fixture boolean-path boolean-path failed
+run_flash_capability_fixture relative-path relative-path failed
+run_flash_capability_fixture wrong-state-category valid failed sealed absent
+run_flash_capability_fixture wrong-sealed-state valid failed consumed present
+run_flash_capability_fixture wrong-digest valid failed sealed present mismatch
+run_flash_capability_fixture wrong-capability-mode valid failed sealed present matching 644
+run_flash_capability_fixture wrong-credential-mode valid failed sealed present matching 600 644
+run_flash_capability_fixture valid-object valid completed
 
 expect_failure env "${common_env[@]}" PHASE28_ACCEPTED_STATE_RUN_ROOT="$temp_root/runs-mismatch" bash "$script" --mode hardware --attempt accepted-state --duration-seconds 360 --port /dev/wrong --wifi-credentials "$wifi" --pool-credentials "$pool" --evidence-out "$temp_root/mismatch.md"
 

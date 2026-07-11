@@ -649,6 +649,13 @@ read_private_line() {
 	sed -n '1p' "$path"
 }
 
+is_private_owned_file() {
+	local path="$1"
+	[[ -f "$path" ]] || return 1
+	[[ "$(mode_of_path "$path")" == "600" ]] || return 1
+	[[ "$(owner_of_path "$path")" == "$(id -u)" ]]
+}
+
 parse_one_detector_port() {
 	local detector_log="$1"
 	local -a detected_ports=()
@@ -676,14 +683,16 @@ run_prevalidated_detector() {
 
 run_prevalidated_credential_bind() {
 	local wifi_path="$repo_root/wifi-credentials.json"
-	[[ -f "$wifi_path" ]] || {
+	if ! is_private_owned_file "$wifi_path"; then
 		write_effect_result failed credential_binding_failed '{}'
 		return 1
-	}
+	fi
 	local -a pool_paths=()
 	local candidate
 	for candidate in "$repo_root"/pool-credentials*.json; do
-		[[ -f "$candidate" && "$candidate" != *.example ]] && pool_paths+=("$candidate")
+		if [[ "$candidate" != *.example ]] && is_private_owned_file "$candidate"; then
+			pool_paths+=("$candidate")
+		fi
 	done
 	[[ "${#pool_paths[@]}" == "1" ]] || {
 		write_effect_result failed credential_binding_failed '{}'
@@ -742,22 +751,42 @@ run_prevalidated_package() {
 validate_credential_capability() {
 	local capability_path="$1"
 	local state_path
+	local capability
+	local wifi_path
+	local pool_path
 	state_path="$(adapter_state_path)"
-	[[ -f "$capability_path" && "$(mode_of_path "$capability_path")" == "600" ]] || return 1
-	[[ "$(owner_of_path "$capability_path")" == "$(id -u)" ]] || return 1
-	[[ "$(jq -er '.credential_capability_status' "$state_path")" == "sealed" ]] || return 1
+	is_private_owned_file "$capability_path" || return 1
+	jq -e '
+	  if type != "object" then false
+	  elif .schema_version != "exact-head-attempt-v2" then false
+	  elif .execution_plan != 13 then false
+	  elif .credential_capability_status != "sealed" then false
+	  elif .wifi_credential_state != "present" then false
+	  elif .pool_credential_state != "present" then false
+	  else true
+	  end
+	' "$state_path" >/dev/null || return 1
 	[[ "$(sha256_file "$capability_path")" == "$(jq -er '.credential_capability_sha256' "$state_path")" ]] || return 1
-	jq -ce \
+	capability="$(jq -ce \
 		--arg wifi_binding "$(jq -er '.wifi_credential_binding_id' "$state_path")" \
 		--arg pool_binding "$(jq -er '.pool_credential_binding_id' "$state_path")" '
-		  type == "object" and
-		  (keys | sort) == (["pool_binding_id","pool_path","schema_version","wifi_binding_id","wifi_path"] | sort) and
-		  .schema_version == "plan13-credential-capability-v1" and
-		  .wifi_binding_id == $wifi_binding and
-		  .pool_binding_id == $pool_binding and
-		  (.wifi_path | type == "string" and startswith("/")) and
-		  (.pool_path | type == "string" and startswith("/"))
-		' "$capability_path"
+		  if type != "object" then empty
+		  elif (keys | sort) != (["pool_binding_id","pool_path","schema_version","wifi_binding_id","wifi_path"] | sort) then empty
+		  elif .schema_version != "plan13-credential-capability-v1" then empty
+		  elif .wifi_binding_id != $wifi_binding then empty
+		  elif .pool_binding_id != $pool_binding then empty
+		  elif (.wifi_path | type) != "string" then empty
+		  elif (.pool_path | type) != "string" then empty
+		  elif (.wifi_path | startswith("/")) != true then empty
+		  elif (.pool_path | startswith("/")) != true then empty
+		  else .
+		  end
+		' "$capability_path" 2>/dev/null)" || return 1
+	wifi_path="$(jq -er '.wifi_path' <<<"$capability")" || return 1
+	pool_path="$(jq -er '.pool_path' <<<"$capability")" || return 1
+	is_private_owned_file "$wifi_path" || return 1
+	is_private_owned_file "$pool_path" || return 1
+	printf '%s\n' "$capability"
 }
 
 run_prevalidated_flash_reinit() {
