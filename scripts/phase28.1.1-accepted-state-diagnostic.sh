@@ -242,7 +242,24 @@ read_token_once() {
 		received_token="$("$PHASE28_ACCEPTED_STATE_READ_BIN")"
 		token_read_status=$?
 	else
-		IFS= read -r -t 0.25 received_token
+		# macOS Bash 3.2 rejects fractional read timeouts and conflates integer timeouts with EOF.
+		received_token="$(perl -MIO::Select -MTime::HiRes=time -e '
+			my $selector = IO::Select->new(\*STDIN);
+			my $deadline = time() + 0.25;
+			my $line = q{};
+			while (1) {
+				my $remaining = $deadline - time();
+				exit 142 if $remaining <= 0;
+				my @ready = $selector->can_read($remaining);
+				exit 142 unless @ready;
+				my $bytes_read = sysread(STDIN, my $character, 1);
+				exit 1 if !defined($bytes_read) || $bytes_read == 0;
+				last if $character eq "\n";
+				$line .= $character unless $character eq "\r";
+				exit 2 if length($line) > 64;
+			}
+			print $line;
+		')"
 		token_read_status=$?
 	fi
 	set -e

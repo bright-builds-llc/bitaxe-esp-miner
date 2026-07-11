@@ -237,6 +237,7 @@ run_lifecycle() {
 	local clock_sequence="$4"
 	local read_sequence="$5"
 	local selected_reinit_log="${6:-$reinit_log}"
+	local read_mode="${7:-fixture}"
 	local case_root="$temp_root/$case_name"
 	mkdir -p "$case_root"
 	tr ' ' '\n' <<<"$port_sequence" >"$case_root/port.sequence"
@@ -246,6 +247,10 @@ run_lifecycle() {
 	local monitor_args="$case_root/monitor.args"
 	local child_pid_file="$case_root/child.pid"
 	local run_status
+	local -a read_env=(PHASE28_ACCEPTED_STATE_READ_BIN="$fake_read")
+	if [[ "$read_mode" == "native" ]]; then
+		read_env=(PHASE28_ACCEPTED_STATE_READ_BIN=)
+	fi
 	set +e
 	env \
 		"${common_env[@]}" \
@@ -255,7 +260,7 @@ run_lifecycle() {
 		PHASE28_ACCEPTED_STATE_PORT_PRESENT_BIN="$fake_port_present" \
 		PHASE28_ACCEPTED_STATE_SLEEP_BIN="$fake_sleep" \
 		PHASE28_ACCEPTED_STATE_CLOCK_BIN="$fake_clock" \
-		PHASE28_ACCEPTED_STATE_READ_BIN="$fake_read" \
+		"${read_env[@]}" \
 		PHASE28_ACCEPTED_STATE_CALL_TRACE="$trace" \
 		PHASE28_ACCEPTED_STATE_CHILD_PID_FILE="$child_pid_file" \
 		PHASE28_ACCEPTED_STATE_RUN_ROOT="$case_root/runs" \
@@ -308,6 +313,20 @@ rg -q '^post_capture_detector_status: passed$' "$success_root/evidence.md"
 rg -q '^--no-reset$' "$success_root/monitor.args"
 rg -q '^--seconds$' "$success_root/monitor.args"
 rg -q '^360$' "$success_root/monitor.args"
+
+run_lifecycle lifecycle-native-read complete "$success_port_sequence" "$success_clock_sequence" "$success_read_sequence" "$reinit_log" native <<'EOF'
+both-power-paths-removed
+barrel-then-usb-restored
+EOF
+rg -q '^accepted_state_diagnostic_status=complete$' "$temp_root/lifecycle-native-read/stdout"
+if rg -n 'read[^[:cntrl:]]*-t[[:space:]]+[0-9]*\.[0-9]+' "$script"; then
+	fail "diagnostic wrapper uses a fractional Bash read timeout"
+fi
+expect_failure run_lifecycle lifecycle-native-read-timeout complete 'present' '0 0 300000' 'unused' "$reinit_log" native < <(sleep 1)
+rg -q 'timed out waiting for both-power attestation token' "$temp_root/lifecycle-native-read-timeout/stderr"
+if rg -q 'invalid timeout specification' "$temp_root/lifecycle-native-read-timeout/stderr"; then
+	fail "native token polling used an unsupported Bash timeout"
+fi
 
 armed_segment="$(sed -n '/^armed$/,/^capture-complete$/p' "$success_root/calls.trace")"
 if printf '%s\n' "$armed_segment" | rg -q 'package|flash-capture|preflight-detector|credential-paths-checked|reference-verified'; then
