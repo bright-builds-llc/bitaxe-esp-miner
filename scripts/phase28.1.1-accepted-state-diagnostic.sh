@@ -5,6 +5,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=/dev/null
 source "$repo_root/scripts/process-group.sh"
+readonly lifecycle_frame_helper="${PHASE28_LIFECYCLE_FRAME_HELPER:-$repo_root/scripts/phase28.1.1-lifecycle-frame.pl}"
 mode=""
 effect_id=""
 attempt=""
@@ -835,26 +836,9 @@ start_lifecycle_socket_receiver() {
 	rm -f "$socket_path" "$frame_path"
 	(
 		cd "$PHASE28_LIFECYCLE_ATTEMPT_DIR"
-		perl -MIO::Socket::UNIX -MSocket -e '
-my ($frame_path) = @ARGV;
-my $server = IO::Socket::UNIX->new(Type => SOCK_STREAM, Local => "lifecycle.sock", Listen => 1) or die $!;
-chmod 0600, "lifecycle.sock" or die $!;
-my $client = $server->accept or die $!;
-my $length_line = <$client>;
-defined $length_line && $length_line =~ /^([0-9]+)\n$/ && $1 <= 4096 or die "invalid frame length";
-my $remaining = 0 + $1;
-my $frame = q{};
-while ($remaining > 0) {
-  my $read = sysread($client, my $chunk, $remaining);
-  defined $read && $read > 0 or die "short frame";
-  $frame .= $chunk;
-  $remaining -= $read;
-}
-open my $out, ">", $frame_path or die $!;
-chmod 0600, $frame_path or die $!;
-print {$out} $frame or die $!;
-close $out or die $!;
-' "$frame_path"
+		perl "$lifecycle_frame_helper" receive \
+			--socket lifecycle.sock \
+			--output lifecycle-frame.json
 	) &
 	lifecycle_socket_pid=$!
 	for _ in $(seq 1 100); do

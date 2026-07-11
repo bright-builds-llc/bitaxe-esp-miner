@@ -472,6 +472,7 @@ sh_binary(
     data = [
         "phase28.1.1-accepted-state-diagnostic.sh",
         "phase28.1.1-hardware-attempt-state.mjs",
+        "phase28.1.1-lifecycle-frame.pl",
         "phase28.1.1-strict-production-evidence.mjs",
         "process-group.sh",
     ],
@@ -483,6 +484,7 @@ sh_test(
     data = [
         "phase28.1.1-exact-head-hardware-attempt.sh",
         "phase28.1.1-hardware-attempt-state.mjs",
+        "phase28.1.1-lifecycle-frame.pl",
         "phase28.1.1-strict-production-evidence.mjs",
         "process-group.sh",
     ],
@@ -490,6 +492,14 @@ sh_test(
         "HOME",
         "PATH",
     ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase28_1_1_lifecycle_frame_test",
+    srcs = ["phase28.1.1-lifecycle-frame-test.mjs"],
+    data = ["phase28.1.1-lifecycle-frame.pl"],
+    env_inherit = ["PATH"],
     tags = ["local"],
 )
 

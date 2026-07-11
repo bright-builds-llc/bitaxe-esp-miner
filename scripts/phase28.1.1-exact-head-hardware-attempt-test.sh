@@ -15,30 +15,73 @@ detector_board_info | credential_presence_bind | reference_guard | package | fla
 	if [[ "$fixture_name" == "lifecycle_start" && "${PHASE28_EFFECT_STATUS:-0}" == "0" ]]; then
 		state_path="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/state.json"
 		socket_path="$PHASE28_LIFECYCLE_ATTEMPT_DIR/lifecycle.sock"
-		(cd "$PHASE28_LIFECYCLE_ATTEMPT_DIR" && node -e 'const fs=require("node:fs"),net=require("node:net"); const path="lifecycle.sock"; const server=net.createServer(()=>{}); server.listen(path,()=>fs.chmodSync(path,0o600));') &
-		socket_pid=$!
-		trap 'kill "$socket_pid" 2>/dev/null || true; wait "$socket_pid" 2>/dev/null || true' EXIT
-		for _ in $(seq 1 100); do
-			[[ -S "$socket_path" ]] && break
-			sleep 0.01
-		done
-		[[ -S "$socket_path" ]]
-		for _ in $(seq 1 500); do
-			[[ -f "${PHASE28_SOCKET_TRACE:?}" && "$(wc -l <"$PHASE28_SOCKET_TRACE" | tr -d ' ')" -ge 1 ]] && break
-			sleep 0.01
-		done
+		socket_pid=""
+		frame_path="$PHASE28_LIFECYCLE_ATTEMPT_DIR/fixture-frame.json"
+		wait_for_fixture_socket() {
+			for _ in $(seq 1 100); do
+				[[ -S "$socket_path" ]] && return
+				kill -0 "$socket_pid" 2>/dev/null || break
+				sleep 0.01
+			done
+			return 1
+		}
+		start_fixture_receiver() {
+			rm -f "$socket_path" "$frame_path"
+			(
+				cd "$PHASE28_LIFECYCLE_ATTEMPT_DIR"
+				perl "${PHASE28_LIFECYCLE_FRAME_HELPER:?}" receive --socket lifecycle.sock --output fixture-frame.json
+			) &
+			socket_pid=$!
+			wait_for_fixture_socket
+		}
+		receive_fixture_frame() {
+			local expected_token="$1"
+			for _ in $(seq 1 500); do
+				[[ -f "$frame_path" ]] && break
+				kill -0 "$socket_pid" 2>/dev/null || break
+				sleep 0.01
+			done
+			wait "$socket_pid"
+			socket_pid=""
+			[[ -f "$frame_path" ]]
+			[[ "$(jq -er '.response_token' "$frame_path")" == "$expected_token" ]]
+			printf '%s\n' "$expected_token" >>"${PHASE28_SOCKET_TRACE:?}"
+		}
+		trap 'if [[ -n "$socket_pid" ]]; then kill "$socket_pid" 2>/dev/null || true; wait "$socket_pid" 2>/dev/null || true; fi' EXIT
+		if [[ "${PHASE28_REAL_SOCKET_FIXTURE:-0}" == "1" ]]; then
+			start_fixture_receiver
+		else
+			(cd "$PHASE28_LIFECYCLE_ATTEMPT_DIR" && node -e 'const fs=require("node:fs"),net=require("node:net"); const path="lifecycle.sock"; const server=net.createServer(()=>{}); server.listen(path,()=>fs.chmodSync(path,0o600));') &
+			socket_pid=$!
+			wait_for_fixture_socket
+		fi
+		if [[ "${PHASE28_REAL_SOCKET_FIXTURE:-0}" == "1" ]]; then
+			receive_fixture_frame plan13-both-power-paths-removed
+		else
+			for _ in $(seq 1 500); do
+				[[ -f "${PHASE28_SOCKET_TRACE:?}" && "$(wc -l <"$PHASE28_SOCKET_TRACE" | tr -d ' ')" -ge 1 ]] && break
+				sleep 0.01
+			done
+		fi
 		attestation_ms="$(jq -er '.attestation_accepted_ms' "$state_path")"
 		values="$PHASE28_LIFECYCLE_ATTEMPT_DIR/lifecycle-values.json"
 		jq -cn --argjson start "$attestation_ms" '{usb_absence_started_ms:$start}' >"$values"
 		chmod 600 "$values"
 		bash "${PHASE28_LIFECYCLE_RUNNER:?}" lifecycle-owner-transition --capability "${PHASE28_LIFECYCLE_CAPABILITY:?}" --event absence-observing --values-file "$values" >/dev/null
+		if [[ "${PHASE28_REAL_SOCKET_FIXTURE:-0}" == "1" ]]; then
+			start_fixture_receiver
+		fi
 		jq -cn --argjson end "$((attestation_ms + 5000))" '{usb_absence_ended_ms:$end,usb_absence_ms:5000}' >"$values"
 		chmod 600 "$values"
 		bash "$PHASE28_LIFECYCLE_RUNNER" lifecycle-owner-transition --capability "$PHASE28_LIFECYCLE_CAPABILITY" --event restore-waiting --values-file "$values" >/dev/null
-		for _ in $(seq 1 500); do
-			[[ "$(wc -l <"$PHASE28_SOCKET_TRACE" | tr -d ' ')" -ge 2 ]] && break
-			sleep 0.01
-		done
+		if [[ "${PHASE28_REAL_SOCKET_FIXTURE:-0}" == "1" ]]; then
+			receive_fixture_frame plan13-barrel-then-usb-restored
+		else
+			for _ in $(seq 1 500); do
+				[[ "$(wc -l <"$PHASE28_SOCKET_TRACE" | tr -d ' ')" -ge 2 ]] && break
+				sleep 0.01
+			done
+		fi
 		printf '{}\n' >"$values"
 		chmod 600 "$values"
 		bash "$PHASE28_LIFECYCLE_RUNNER" lifecycle-owner-transition --capability "$PHASE28_LIFECYCLE_CAPABILITY" --event reappearance-observing --values-file "$values" >/dev/null
@@ -72,7 +115,14 @@ detector_board_info | credential_presence_bind | reference_guard | package | fla
 	;;
 phase28-fake-socket-send)
 	printf '%s\n' "$*" >>"${PHASE28_SOCKET_TRACE:?}"
-	exit 0
+	socket_path="${1:?}"
+	frame="${2:?}"
+	helper="${PHASE28_LIFECYCLE_FRAME_HELPER:-$(dirname "$(readlink "$0")")/phase28.1.1-lifecycle-frame.pl}"
+	printf '%s' "$frame" | (
+		cd "$(dirname "$socket_path")"
+		perl "$helper" send --socket "$(basename "$socket_path")"
+	)
+	exit $?
 	;;
 phase28-monotonic-sequence)
 	sequence_file="${PHASE28_MONOTONIC_SEQUENCE_FILE:?}"
@@ -445,6 +495,7 @@ env \
 	PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" \
 	PHASE28_TEST_EFFECT_ADAPTER_DIR="$adapter_dir" \
 	PHASE28_EFFECT_TRACE="$temp_root/effects.trace" \
+	PHASE28_REAL_SOCKET_FIXTURE=1 \
 	PHASE28_TEST_SOCKET_SEND_BIN="$socket_sender" \
 	PHASE28_SOCKET_TRACE="$socket_trace" \
 	bash "$runner" run-validated-effect --resume-handle "$lifecycle_handle" --effect-id lifecycle_start >"$temp_root/lifecycle.stdout" 2>"$temp_root/lifecycle.stderr" &
@@ -454,11 +505,13 @@ expect_failure lease_dead_or_reused_process env PHASE28_ATTEMPT_CONTROL_ROOT="$c
 [[ ! -s "$socket_trace" ]] || fail "wrong lifecycle owner reached socket dispatch"
 expect_failure checkpoint_token_mismatch env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" PHASE28_TEST_SOCKET_SEND_BIN="$socket_sender" PHASE28_SOCKET_TRACE="$socket_trace" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token wrong --response-token plan13-both-power-paths-removed
 [[ ! -s "$socket_trace" ]] || fail "wrong lifecycle token reached socket dispatch"
-env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" PHASE28_TEST_SOCKET_SEND_BIN="$socket_sender" PHASE28_SOCKET_TRACE="$socket_trace" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token plan13-armed-removal-v1 --response-token plan13-both-power-paths-removed >/dev/null
+env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token plan13-armed-removal-v1 --response-token plan13-both-power-paths-removed >/dev/null
 wait_for_pattern '^checkpoint_id=plan13-lifecycle-restore$' "$temp_root/lifecycle.stdout"
-env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" PHASE28_TEST_SOCKET_SEND_BIN="$socket_sender" PHASE28_SOCKET_TRACE="$socket_trace" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token plan13-barrel-usb-restore-v1 --response-token plan13-barrel-then-usb-restored >/dev/null
+env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token plan13-barrel-usb-restore-v1 --response-token plan13-barrel-then-usb-restored >/dev/null
 wait "$lifecycle_runner_pid"
 rg -q '^effect_status=completed$' "$temp_root/lifecycle.stdout"
+[[ "$(rg -c '^plan13-both-power-paths-removed$' "$socket_trace")" == "1" ]] || fail "removal frame was not accepted exactly once"
+[[ "$(rg -c '^plan13-barrel-then-usb-restored$' "$socket_trace")" == "1" ]] || fail "restore frame was not accepted exactly once"
 lifecycle_slot="$control_root/resume-index/$(printf '%s' "$lifecycle_handle" | shasum -a 256 | awk '{print $1}').json"
 lifecycle_state="$(jq -er '.attempt_dir' "$lifecycle_slot")/state.json"
 [[ "$(jq -r '.attempt_state' "$lifecycle_state")" == "capture_complete" ]]
@@ -895,6 +948,7 @@ assert_tombstoned_and_stale "$lifecycle_expiry_handle" blocked_safe_evidence_inv
 
 expect_failure resume_handle_malformed cleanup_attempt malformed
 expect_failure resume_handle_wrong cleanup_attempt "f$(printf '0%.0s' {1..63})"
+[[ ! -e "$control_root/control.lock" ]] || fail "failed continuation retained the private control lock"
 
 control_root="$temp_root/control-final"
 handle="$(begin_attempt connected_entry_waiting)"
@@ -910,6 +964,10 @@ rg -q '^checkpoint_delivery=accepted$' <<<"$delivery"
 expect_failure checkpoint_state_mismatch env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" bash "$runner" deliver-token --resume-handle "$handle" --checkpoint-token wrong --response-token ultra205-remains-connected
 
 rg -q 'production_adapter=.*phase28.1.1-accepted-state-diagnostic.sh' "$runner" || fail "runner lacks the fixed repo-owned production adapter"
+rg -q 'lifecycle_frame_helper=.*phase28.1.1-lifecycle-frame.pl' "$runner" || fail "runner lacks the shared lifecycle framing helper"
+if rg -q 'IO::Socket::UNIX|length\(\$frame\).*\\n' "$runner" "$repo_root/scripts/phase28.1.1-accepted-state-diagnostic.sh"; then
+	fail "runtime scripts retain inline lifecycle framing logic"
+fi
 if rg -q 'just detect-ultra205|espflash|flash-monitor|wifi-credentials.json|pool-credentials' "$runner"; then
 	fail "runner contains a direct hardware or credential-content command"
 fi

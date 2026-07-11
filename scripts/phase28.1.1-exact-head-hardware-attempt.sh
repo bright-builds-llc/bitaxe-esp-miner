@@ -13,6 +13,7 @@ readonly lock_dir="$private_root/control.lock"
 readonly state_module="$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs"
 readonly classifier_module="$repo_root/scripts/phase28.1.1-strict-production-evidence.mjs"
 readonly production_adapter="$repo_root/scripts/phase28.1.1-accepted-state-diagnostic.sh"
+readonly lifecycle_frame_helper="$repo_root/scripts/phase28.1.1-lifecycle-frame.pl"
 readonly max_handle_attempts=8
 lock_held=false
 active_effect_pid=""
@@ -35,6 +36,7 @@ cleanup_on_exit() {
 		terminate_effect_process "$active_effect_pid" "phase28 effect cleanup" >/dev/null 2>&1 || true
 	fi
 	if [[ "$lock_held" == "true" ]]; then
+		rm -f "$lock_dir/owner.pid"
 		rmdir "$lock_dir" 2>/dev/null || true
 	fi
 }
@@ -615,12 +617,12 @@ deliver_token() {
 		local frame
 		frame="$(jq -cn --arg digest "$(sha256_text "$handle")" --argjson generation "$checkpoint_generation" --arg token "$checkpoint_token" --arg response "$response_token" --arg nonce "$nonce" --arg lease "$lease" '{resume_handle_sha256:$digest,checkpoint_generation:$generation,checkpoint_token:$token,response_token:$response,effect_authorization_nonce:$nonce,lifecycle_lease_id:$lease}')"
 		set +e
-		if [[ "${PHASE28_TEST_MODE:-0}" == "1" ]]; then
-			local sender="${PHASE28_TEST_SOCKET_SEND_BIN:-}"
-			[[ -n "$sender" && -x "$sender" ]] || die "private_capability_invalid"
+		local sender="${PHASE28_TEST_SOCKET_SEND_BIN:-}"
+		if [[ -n "$sender" ]]; then
+			[[ "${PHASE28_TEST_MODE:-0}" == "1" && -x "$sender" ]] || die "private_capability_invalid"
 			"$sender" "$attempt_dir/lifecycle.sock" "$frame"
 		else
-			(cd "$attempt_dir" && perl -MIO::Socket::UNIX -MSocket -e 'my ($frame)=@ARGV; my $socket=IO::Socket::UNIX->new(Type=>SOCK_STREAM,Peer=>"lifecycle.sock") or exit 1; print {$socket} length($frame)."\n".$frame or exit 1; close $socket or exit 1;' "$frame")
+			printf '%s' "$frame" | (cd "$attempt_dir" && perl "$lifecycle_frame_helper" send --socket lifecycle.sock)
 		fi
 		local sender_status=$?
 		set -e
@@ -979,6 +981,7 @@ run_validated_effect() {
 		PHASE28_LIFECYCLE_LEASE_ID="$lifecycle_lease"
 		PHASE28_LIFECYCLE_CAPABILITY="$lifecycle_capability"
 		PHASE28_LIFECYCLE_ATTEMPT_DIR="$attempt_dir"
+		PHASE28_LIFECYCLE_FRAME_HELPER="$lifecycle_frame_helper"
 		PHASE28_LIFECYCLE_RUNNER="$repo_root/scripts/phase28.1.1-exact-head-hardware-attempt.sh"
 		"${effect_adapter_command[@]}")
 	phase_process_group_start "$ready" "${adapter_env[@]}" || die "validator_error"
