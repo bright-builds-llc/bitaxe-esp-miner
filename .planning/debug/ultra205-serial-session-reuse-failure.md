@@ -1,16 +1,16 @@
 ---
-status: fix_implemented_hardware_pending
+status: resolved
 trigger: "A freshly replugged Ultra 205 is often reachable, but later detector or monitor interactions can fail while barrel and USB power remain connected."
 created: 2026-07-11T19:55:00Z
-updated: 2026-07-11T20:24:12Z
+updated: 2026-07-11T20:28:33Z
 ---
 
 ## Current Focus
 
-hypothesis: Confirmed in software. The retained-runtime wrapper mislabeled bare `espflash monitor --no-reset` as passive and did not prove stable USB identity, expected active ownership, or zero post-cleanup holders.
-test: Direct and Bazel runs of the serial trace, monitor capture, detector, and five-cycle diagnostic test targets.
-expecting: Satisfied in deterministic fixtures. Hardware must still prove five no-unplug cycles and a successful final detector on the connected Ultra 205.
-next_action: Run `just diagnose-ultra205-session cycles=5 capture-seconds=30` under the parent phase workflow; do not infer physical resolution from software fixtures alone.
+hypothesis: Confirmed and hardware-verified. The retained-runtime wrapper mislabeled bare `espflash monitor --no-reset` as passive and did not prove stable USB identity, expected active ownership, or zero post-cleanup holders.
+test: Five 30-second passive monitor sessions between successful baseline/final detector gates with barrel and USB retained and no requested physical intervention.
+expecting: Satisfied. All five sessions proved stable pre-attach identity, an active holder in the monitor process group, stable zero-holder cleanup, and a successful final detector.
+next_action: Start a new exact-head Plan 13 attempt; never reuse the tombstoned pre-fix attempt or its evidence.
 
 ## Symptoms
 
@@ -85,10 +85,14 @@ smallest_correct_seam: Keep the caller flag, render the full passive `espflash` 
   checked: main-agent simplification/review pass, complete Plan 13 safety matrix, reference guard, and both mandatory pre-commit Rust sequences
   found: Unavailable Darwin/Linux USB identity now returns a failure instead of hashing empty or placeholder input; the summary records that physical intervention was not requested rather than claiming it was electronically observed; five monitor digests roll into one category-safe trace-set digest. All 84 invalid exact-head cases, adapter/state/classifier/Phase-30 tests, `cargo fmt`, strict Clippy, all-target build, and all-feature tests pass.
   implication: The implementation is fail-closed, evidence-honest, and ready for a committed exact HEAD before real hardware confirmation.
+- timestamp: 2026-07-11T20:28:33Z
+  checked: `just diagnose-ultra205-session cycles=5 capture-seconds=30` on source commit `b48337fd77f589b0e4180306a5d902dcdfeea112`, followed by a category-only trace integrity and leak audit
+  found: Baseline and final detectors passed; all five passive captures completed; each trace is private mode 0600 and contains three zero-holder pre-attach snapshots, at least one expected active-owner proof, and three zero-holder post-cleanup snapshots. The aggregate trace-set digest is `09f60db37024409e085345934c4c72d594a2bf5878a462c582928f91f25cfbc8`; final matching-process and serial-holder counts are zero. The command invoked no flash, erase, factory reset, credential read, network discovery, or raw write and requested no physical intervention.
+  implication: The software defect no longer reproduces across the selected five-cycle connected-device regression, and the host serial resource is proven reusable without a replug or manual reset.
 
 ## Resolution
 
 root_cause: The Phase 13 wrapper treated bare `espflash monitor --no-reset` as passive even though it left espflash's pre-connect reset/synchronization policy at its default. It also equated process cleanup with serial-resource cleanup and recorded no stable USB-session identity or expected active-holder proof. This combination could perturb retained runtime state and made later connection failures impossible to classify precisely.
-confidence: high for the software defect and repair; pending for how much of the recurring hardware symptom it explains.
+confidence: high for the software defect, repair, and its contribution to the recurring connected-device failure.
 fix: Preserve the caller flag but translate it to the complete passive espflash policy. Add fail-closed pre/active/post ownership and identity gates, private detailed traces, explicit detector reset/failure semantics, and a bounded five-cycle no-unplug diagnostic command.
-hardware_status: pending; no device command was run in this debug implementation turn.
+hardware_status: passed; five passive reuse cycles and the final detector succeeded without requested physical recovery, and post-run process/holder counts are zero.

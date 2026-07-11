@@ -11,10 +11,10 @@ Completion review: The corrected Plan 12 software authority is committed at `287
 ## task-ultra205-serial-session-reuse | 2026-07-11 14:55 | Diagnose and repair connected-device session reuse
 
 - [x] Tombstone the expired Plan 13 attempt before any new device command and prove zero live process or serial holder.
-- [ ] Add a red-capable regression for the reset-capable bare `espflash monitor --no-reset` command.
-- [ ] Implement the fully passive monitor contract, private structured session traces, readiness and cleanup checks, and a bounded five-cycle diagnostic command.
-- [ ] Run focused shell/Bazel checks and the mandatory Rust verification sequence before commits.
-- [ ] Pass five passive monitor reuse cycles with barrel and USB retained, followed by a successful detector check without manual recovery.
+- [x] Add a red-capable regression for the reset-capable bare `espflash monitor --no-reset` command.
+- [x] Implement the fully passive monitor contract, private structured session traces, readiness and cleanup checks, and a bounded five-cycle diagnostic command.
+- [x] Run focused shell/Bazel checks and the mandatory Rust verification sequence before commits.
+- [x] Pass five passive monitor reuse cycles with barrel and USB retained, followed by a successful detector check without manual recovery.
 - [ ] Start a fresh exact-head Plan 13 chain and record the final completion review or residual blocker.
 
-Completion review: Pending implementation, hardware regression, and fresh Plan 13 closure. The superseded connected-entry handle was safely closed as `blocked_safe_attempt_prerequisite` with zero effects and is now stale.
+Completion review: Durable guidance is committed at `6f0629c`; the passive session repair is committed at `b48337f`. Direct/Bazel/Plan-13/shell/reference/Rust gates pass, and the five-cycle connected-device regression plus final detector passed with zero leaked processes or holders. The superseded handle is a stale zero-effect tombstone. Residual work is the fresh exact-head Plan 13 chain and Phase 28.1.1 closure.
