@@ -148,7 +148,7 @@ phase30_promotion_input: pending
 - timestamp: 2026-07-11T01:57:59Z
   checked: exact-identity category summary for the 360-second reinit candidate
   found: Source commit `4e2d16524d57037e0814b191fed1b87fca4d0623` produced one stable boot, one listener-ready marker, zero hazards, all five closed stages, and a passing strict self-comparison.
-  implication: The candidate was complete for that source identity, but commit `d275a0e7af6a1534df5fca07820066791ae4af19` changed the lifecycle script and made the prior package stale. It could not arm the hardware-attempt run and cannot be imported into `ab7f5b9` or a later documentation-only closure head.
+  implication: The candidate was complete for that source identity, but commit `d275a0e7af6a1534df5fca07820066791ae4af19` changed the lifecycle script and made the prior package stale. It could not arm the hardware-attempt run and cannot be imported into review-fix head `ab7f5b9` or documentation-closure head `bf6897b`.
 - timestamp: 2026-07-11T01:57:59Z
   checked: `d275a0e` hardware-attempt finite recovery checkpoint state
   found: The initial detector failed `board-info`; USB replug was consumed; the operator reported the both-power recovery, but the persisted deadline of `23949477` monotonic milliseconds had expired when continuation observed `44667284` milliseconds.
@@ -162,8 +162,8 @@ phase30_promotion_input: pending
 
 implementation_status: complete_review_warnings_resolved
 hardware_lifecycle_status: blocked_safe_prerequisite
-valid_current_head_detector_status: unavailable
-valid_current_head_reinit_status: unavailable
+hardware_attempt_valid_detector_status: unavailable
+hardware_attempt_valid_reinit_status: unavailable
 lifecycle_checkpoint_armed: false
 lifecycle_power_action_accepted: false
 cleanup_verified: true
