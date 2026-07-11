@@ -216,6 +216,121 @@ common_env=(
 	PHASE28_FAKE_PORT="$test_port"
 )
 
+runner="$repo_root/scripts/phase28.1.1-exact-head-hardware-attempt.sh"
+prevalidated_root="$temp_root/plan13-control"
+prevalidated_trace="$temp_root/plan13-prevalidated.trace"
+: >"$prevalidated_trace"
+
+expect_failure env PHASE28_ACCEPTED_STATE_CALL_TRACE="$prevalidated_trace" bash "$script" --mode plan13-prevalidated --effect-id detector_board_info
+[[ ! -s "$prevalidated_trace" ]] || fail "direct plan13-prevalidated entry reached an effect sentinel"
+expect_failure bash "$script" --mode plan13-prevalidated --effect-id detector_board_info --port "$test_port"
+
+prevalidated_begin="$(env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$prevalidated_root" \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$source_commit" \
+	bash "$runner" begin-attempt --hardware-exact-head "$source_commit")"
+prevalidated_handle="$(sed -n 's/^resume_handle=//p' <<<"$prevalidated_begin")"
+[[ "$prevalidated_handle" =~ ^[0-9a-f]{64}$ ]] || fail "prevalidated runner did not return an opaque handle"
+env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$prevalidated_root" \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$source_commit" \
+	bash "$runner" deliver-token \
+	--resume-handle "$prevalidated_handle" \
+	--checkpoint-token plan13-connected-entry-v1 \
+	--response-token ultra205-remains-connected >/dev/null
+prevalidated_stdout="$temp_root/plan13-prevalidated.stdout"
+prevalidated_stderr="$temp_root/plan13-prevalidated.stderr"
+env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$prevalidated_root" \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$source_commit" \
+	PHASE28_ADAPTER_TEST_MODE=1 \
+	PHASE28_ACCEPTED_STATE_DETECT_BIN="$fake_detect" \
+	PHASE28_FAKE_PORT="$test_port" \
+	PHASE28_ACCEPTED_STATE_CALL_TRACE="$prevalidated_trace" \
+	bash "$runner" run-validated-effect --resume-handle "$prevalidated_handle" --effect-id detector_board_info >"$prevalidated_stdout" 2>"$prevalidated_stderr"
+rg -q '^effect_id=detector_board_info$' "$prevalidated_stdout"
+rg -q '^effect_status=completed$' "$prevalidated_stdout"
+rg -q '^plan13-prevalidated:detector_board_info$' "$prevalidated_trace"
+if rg -q "$prevalidated_root|$test_port|credential|capability|resume_handle_sha256|boot_session|raw.log" "$prevalidated_stdout" "$prevalidated_stderr" "$prevalidated_trace"; then
+	fail "prevalidated adapter exposed private runner state"
+fi
+
+run_adapter_boot_fixture() {
+	local fixture_name="$1"
+	local boot_platform="$2"
+	local state_boot_raw="$3"
+	local observed_boot_raw="$4"
+	local fixture_root="$temp_root/adapter-boot-$fixture_name"
+	local state_path="$fixture_root/state.json"
+	local ack="$fixture_root/effect.ack"
+	local gate="$fixture_root/effect.gate"
+	local result="$fixture_root/effect-result.json"
+	local trace="$fixture_root/trace"
+	mkdir -m 700 "$fixture_root"
+	: >"$trace"
+	# shellcheck disable=SC2016
+	node --input-type=module -e '
+import fs from "node:fs";
+const authority = await import(process.argv[1]);
+const platform = process.argv[3];
+const raw = process.argv[4];
+const digest = platform === "darwin" ? authority.deriveMacBootSessionDigest(raw) : authority.deriveLinuxBootSessionDigest(raw);
+let state = authority.createAttemptState({exactHead:process.argv[5],resumeHandleSha256:"a".repeat(64),createdMonotonicMs:1,observeBootSession:()=>digest,randomHex:()=>"b".repeat(32)});
+state.attempt_state = "connected_entry_waiting";
+state = authority.authorizeEffect(state, "detector_board_info", "c".repeat(32));
+fs.writeFileSync(process.argv[2], `${JSON.stringify(state)}\n`, {mode:0o600});' \
+		"$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs" "$state_path" "$boot_platform" "$state_boot_raw" "$source_commit"
+	env \
+		PHASE28_ADAPTER_TEST_MODE=1 \
+		PHASE28_ADAPTER_UNIT_FIXTURE=1 \
+		PHASE28_ADAPTER_TEST_BOOT_PLATFORM="$boot_platform" \
+		PHASE28_ADAPTER_TEST_BOOT_RAW="$observed_boot_raw" \
+		PHASE28_LIFECYCLE_ATTEMPT_DIR="$fixture_root" \
+		PHASE28_EFFECT_ID=detector_board_info \
+		PHASE28_EFFECT_ACK_FILE="$ack" \
+		PHASE28_EFFECT_GATE_FILE="$gate" \
+		PHASE28_EFFECT_RESULT_FILE="$result" \
+		PHASE28_ACCEPTED_STATE_DETECT_BIN="$fake_detect" \
+		PHASE28_FAKE_PORT="$test_port" \
+		PHASE28_ACCEPTED_STATE_CALL_TRACE="$trace" \
+		bash "$script" --mode plan13-prevalidated --effect-id detector_board_info >"$fixture_root/stdout" 2>"$fixture_root/stderr" &
+	local adapter_pid=$!
+	for _ in $(seq 1 100); do
+		[[ -f "$ack" ]] && break
+		kill -0 "$adapter_pid" 2>/dev/null || break
+		sleep 0.01
+	done
+	if [[ "$state_boot_raw" != "$observed_boot_raw" ]]; then
+		wait "$adapter_pid" 2>/dev/null && fail "mismatched boot fixture unexpectedly succeeded"
+		[[ ! -f "$ack" && ! -s "$trace" ]] || fail "mismatched boot fixture crossed the adapter boundary"
+		return
+	fi
+	[[ -f "$ack" ]] || fail "$fixture_name did not acknowledge the adapter boundary"
+	jq '.effect_phase="invoked"' "$state_path" >"$state_path.next"
+	mv "$state_path.next" "$state_path"
+	chmod 600 "$state_path"
+	: >"$gate"
+	wait "$adapter_pid"
+	[[ "$(jq -r '.status' "$result")" == "completed" ]] || fail "$fixture_name did not complete"
+}
+
+run_adapter_boot_fixture linux linux '11111111-1111-1111-1111-111111111111' '11111111-1111-1111-1111-111111111111'
+run_adapter_boot_fixture macos darwin '{ sec = 123, usec = 456 }' '{ sec = 123, usec = 456 }'
+run_adapter_boot_fixture mismatch linux '11111111-1111-1111-1111-111111111111' '22222222-2222-2222-2222-222222222222'
+
+prevalidated_lifecycle_source="$(sed -n '/^run_prevalidated_lifecycle()/,/^}/p' "$script")"
+if rg -q 'capability_file|wifi_credentials|pool_credentials|run_flash_capture|run_package|run_verify_reference' <<<"$prevalidated_lifecycle_source"; then
+	fail "prevalidated lifecycle exposes credentials or duplicate preflight"
+fi
+rg -q 'capability="\$\(validate_credential_capability "\$capability_path"\)"' "$script" || fail "flash reinit does not validate the private credential capability"
+credential_validator_source="$(sed -n '/^validate_credential_capability()/,/^}/p' "$script")"
+for required_check in 'mode_of_path' 'owner_of_path' 'credential_capability_status' 'credential_capability_sha256' 'wifi_credential_binding_id' 'pool_credential_binding_id'; do
+	rg -q "$required_check" <<<"$credential_validator_source" || fail "credential capability validation omits $required_check"
+done
+
 expect_failure env "${common_env[@]}" PHASE28_ACCEPTED_STATE_RUN_ROOT="$temp_root/runs-mismatch" bash "$script" --mode hardware --attempt accepted-state --duration-seconds 360 --port /dev/wrong --wifi-credentials "$wifi" --pool-credentials "$pool" --evidence-out "$temp_root/mismatch.md"
 
 package_args="$temp_root/package.args"

@@ -3,9 +3,10 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=scripts/process-group.sh
+# shellcheck source=/dev/null
 source "$repo_root/scripts/process-group.sh"
 mode=""
+effect_id=""
 attempt=""
 duration_seconds="360"
 reattach_timeout_seconds="60"
@@ -38,16 +39,17 @@ trace_event() {
 }
 
 usage() {
-	printf 'usage: %s --mode blocked|hardware --attempt accepted-state|lifecycle --duration-seconds N --port PATH --wifi-credentials PATH --pool-credentials PATH --evidence-out PATH [--manifest PATH] [--reinit-log PATH] [--reattach-timeout-seconds 60] [--attestation-timeout-seconds 300]\n' "$(basename "$0")"
+	printf 'usage: %s --mode blocked|hardware|plan13-prevalidated [--effect-id EFFECT] --attempt accepted-state|lifecycle --duration-seconds N --port PATH --wifi-credentials PATH --pool-credentials PATH --evidence-out PATH [--manifest PATH] [--reinit-log PATH] [--reattach-timeout-seconds 60] [--attestation-timeout-seconds 300]\n' "$(basename "$0")"
 }
 
 while (($#)); do
 	case "$1" in
-	--mode | --attempt | --duration-seconds | --reattach-timeout-seconds | --attestation-timeout-seconds | --port | --wifi-credentials | --pool-credentials | --evidence-out | --manifest | --reinit-log)
+	--mode | --effect-id | --attempt | --duration-seconds | --reattach-timeout-seconds | --attestation-timeout-seconds | --port | --wifi-credentials | --pool-credentials | --evidence-out | --manifest | --reinit-log)
 		[[ $# -ge 2 ]] || die "missing option value"
 		name="${1#--}"
 		case "$name" in
 		mode) mode="$2" ;;
+		effect-id) effect_id="$2" ;;
 		attempt) attempt="$2" ;;
 		duration-seconds) duration_seconds="$2" ;;
 		reattach-timeout-seconds) reattach_timeout_seconds="$2" ;;
@@ -69,19 +71,34 @@ while (($#)); do
 	esac
 done
 
-[[ "$mode" == "blocked" || "$mode" == "hardware" ]] || die "invalid --mode"
-[[ "$attempt" == "accepted-state" || "$attempt" == "lifecycle" ]] || die "invalid --attempt"
-[[ "$duration_seconds" =~ ^[0-9]+$ ]] || die "--duration-seconds must be an integer"
-((duration_seconds >= 360)) || die "--duration-seconds must be at least 360"
-[[ "$reattach_timeout_seconds" =~ ^[0-9]+$ ]] || die "--reattach-timeout-seconds must be an integer"
-((reattach_timeout_seconds == 60)) || die "--reattach-timeout-seconds must be exactly 60"
-[[ "$attestation_timeout_seconds" =~ ^[0-9]+$ ]] || die "--attestation-timeout-seconds must be an integer"
-((attestation_timeout_seconds == 300)) || die "--attestation-timeout-seconds must be exactly 300"
-[[ -n "$evidence_out" ]] || die "--evidence-out is required"
+if [[ "$mode" == "plan13-prevalidated" ]]; then
+	case "$effect_id" in
+	detector_board_info | credential_presence_bind | reference_guard | package | flash_reinit_runtime | lifecycle_start | post_capture_detector_board_info) ;;
+	*) die "invalid --effect-id" ;;
+	esac
+	[[ -z "$attempt$port$wifi_credentials$pool_credentials$evidence_out$manifest$reinit_log" ]] || die "plan13-prevalidated rejects caller-owned inputs"
+else
+	[[ "$mode" == "blocked" || "$mode" == "hardware" ]] || die "invalid --mode"
+	[[ -z "$effect_id" ]] || die "--effect-id is reserved for plan13-prevalidated"
+	[[ "$attempt" == "accepted-state" || "$attempt" == "lifecycle" ]] || die "invalid --attempt"
+	[[ "$duration_seconds" =~ ^[0-9]+$ ]] || die "--duration-seconds must be an integer"
+	((duration_seconds >= 360)) || die "--duration-seconds must be at least 360"
+	[[ "$reattach_timeout_seconds" =~ ^[0-9]+$ ]] || die "--reattach-timeout-seconds must be an integer"
+	((reattach_timeout_seconds == 60)) || die "--reattach-timeout-seconds must be exactly 60"
+	[[ "$attestation_timeout_seconds" =~ ^[0-9]+$ ]] || die "--attestation-timeout-seconds must be an integer"
+	((attestation_timeout_seconds == 300)) || die "--attestation-timeout-seconds must be exactly 300"
+	[[ -n "$evidence_out" ]] || die "--evidence-out is required"
+fi
 
-run_root="${PHASE28_ACCEPTED_STATE_RUN_ROOT:-$repo_root/scratch/phase28.1.1-accepted-state}"
-run_dir="$run_root/$(date -u +%Y%m%dT%H%M%SZ)-${attempt}"
-mkdir -p "$run_dir" "$(dirname "$evidence_out")"
+if [[ "$mode" == "plan13-prevalidated" ]]; then
+	run_root=""
+	run_dir=""
+else
+	run_root="${PHASE28_ACCEPTED_STATE_RUN_ROOT:-$repo_root/scratch/phase28.1.1-accepted-state}"
+	run_dir="$run_root/$(date -u +%Y%m%dT%H%M%SZ)-${attempt}"
+	mkdir -p "$run_dir"
+	mkdir -p "$(dirname "$evidence_out")"
+fi
 
 cleanup_active_child() {
 	local pid="${active_child_pid:-$PHASE_PROCESS_GROUP_PID}"
@@ -458,7 +475,555 @@ write_common_evidence_header() {
 	printf 'redacted: true\n'
 }
 
+mode_of_path() {
+	if stat -f '%Lp' "$1" >/dev/null 2>&1; then
+		stat -f '%Lp' "$1"
+		return
+	fi
+	stat -c '%a' "$1"
+}
+
+owner_of_path() {
+	if stat -f '%u' "$1" >/dev/null 2>&1; then
+		stat -f '%u' "$1"
+		return
+	fi
+	stat -c '%u' "$1"
+}
+
+sha256_file() {
+	shasum -a 256 "$1" | awk '{print $1}'
+}
+
+sha256_text() {
+	printf '%s' "$1" | shasum -a 256 | awk '{print $1}'
+}
+
+private_write() {
+	local destination="$1"
+	local contents="$2"
+	local temporary
+	temporary="$(mktemp "$(dirname "$destination")/.plan13-adapter.XXXXXX")"
+	printf '%s\n' "$contents" >"$temporary"
+	chmod 600 "$temporary"
+	mv -f "$temporary" "$destination"
+}
+
+adapter_state_path() {
+	printf '%s/state.json\n' "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
+}
+
+assert_adapter_boot_and_head() {
+	local state_path
+	state_path="$(adapter_state_path)"
+	if [[ "${PHASE28_ADAPTER_TEST_MODE:-0}" == "1" && -n "${PHASE28_ADAPTER_TEST_BOOT_RAW:-}" ]]; then
+		local platform="${PHASE28_ADAPTER_TEST_BOOT_PLATFORM:-linux}"
+		local raw="${PHASE28_ADAPTER_TEST_BOOT_RAW:-11111111-1111-1111-1111-111111111111}"
+		node --input-type=module -e '
+import fs from "node:fs";
+const authority = await import(process.argv[1]);
+const state = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const platform = process.argv[3];
+const raw = process.argv[4];
+const observed = platform === "darwin" ? authority.deriveMacBootSessionDigest(raw) : authority.deriveLinuxBootSessionDigest(raw);
+authority.validateAttemptState(state);
+authority.assertFreshBootSession(state, () => observed);' \
+			"$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs" "$state_path" "$platform" "$raw"
+		return
+	fi
+	if [[ "${PHASE28_ADAPTER_TEST_MODE:-0}" == "1" ]]; then
+		node --input-type=module -e '
+import fs from "node:fs";
+const authority = await import(process.argv[1]);
+const state = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+authority.validateAttemptState(state);
+authority.assertFreshBootSession(state);' \
+			"$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs" "$state_path"
+		return
+	fi
+	[[ -z "$(git -C "$repo_root" status --porcelain=v1)" ]] || die "plan13 adapter requires a clean exact HEAD"
+	[[ "$(git -C "$repo_root" rev-parse HEAD)" == "$(jq -er '.exact_head' "$state_path")" ]] || die "plan13 adapter exact HEAD mismatch"
+	node --input-type=module -e '
+import fs from "node:fs";
+const authority = await import(process.argv[1]);
+const state = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+authority.validateAttemptState(state);
+authority.assertFreshBootSession(state);' \
+		"$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs" "$state_path"
+}
+
+validate_adapter_path() {
+	local path="$1"
+	local attempt_dir="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
+	[[ "$path" == "$attempt_dir/"* && "$(dirname "$path")" == "$attempt_dir" ]] || die "plan13 adapter private path mismatch"
+}
+
+validate_runner_adapter_context() {
+	local attempt_dir="${PHASE28_LIFECYCLE_ATTEMPT_DIR:-}"
+	local state_path
+	[[ -n "$attempt_dir" && -d "$attempt_dir" ]] || die "plan13-prevalidated requires runner-owned attempt state"
+	[[ "$(mode_of_path "$attempt_dir")" == "700" ]] || die "plan13 attempt directory is not private"
+	state_path="$attempt_dir/state.json"
+	[[ -f "$state_path" && "$(mode_of_path "$state_path")" == "600" ]] || die "plan13 state is not private"
+	[[ "$(owner_of_path "$attempt_dir")" == "$(id -u)" && "$(owner_of_path "$state_path")" == "$(id -u)" ]] || die "plan13 state owner mismatch"
+	if [[ "${PHASE28_ADAPTER_UNIT_FIXTURE:-0}" != "1" ]]; then
+		local control_root="${PHASE28_ATTEMPT_CONTROL_ROOT:-$repo_root/hardware-runs/phase28.1.1/attempt-control}"
+		local resume_digest
+		local active_slot
+		resume_digest="$(jq -er '.resume_handle_sha256' "$state_path")"
+		active_slot="$control_root/resume-index/$resume_digest.json"
+		[[ -f "$active_slot" && "$(mode_of_path "$active_slot")" == "600" && "$(owner_of_path "$active_slot")" == "$(id -u)" ]] || die "plan13 active mapping is unavailable"
+		jq -e \
+			--arg attempt_dir "$attempt_dir" \
+			--arg digest "$resume_digest" \
+			--arg attempt_id "$(jq -er '.attempt_id' "$state_path")" \
+			--arg boot "$(jq -er '.boot_session_sha256' "$state_path")" \
+			--argjson checkpoint_generation "$(jq -er '.checkpoint_generation' "$state_path")" '
+			  type == "object" and
+			  (keys | sort) == (["attempt_dir","attempt_generation","attempt_id","boot_session_sha256","checkpoint_generation","resume_handle_sha256","schema_version","status"] | sort) and
+			  .schema_version == "exact-head-resume-active-v1" and
+			  .status == "active" and
+			  .attempt_dir == $attempt_dir and
+			  .resume_handle_sha256 == $digest and
+			  .attempt_id == $attempt_id and
+			  .boot_session_sha256 == $boot and
+			  .checkpoint_generation == $checkpoint_generation
+			' "$active_slot" >/dev/null || die "plan13 active mapping mismatch"
+	else
+		[[ "${PHASE28_ADAPTER_TEST_MODE:-0}" == "1" ]] || die "adapter unit fixture requires test mode"
+	fi
+	[[ "${PHASE28_EFFECT_ID:-}" == "$effect_id" ]] || die "plan13 effect identity mismatch"
+	validate_adapter_path "${PHASE28_EFFECT_ACK_FILE:-}"
+	validate_adapter_path "${PHASE28_EFFECT_GATE_FILE:-}"
+	validate_adapter_path "${PHASE28_EFFECT_RESULT_FILE:-}"
+	[[ "$(jq -er '.effect_id' "$state_path")" == "$effect_id" ]] || die "plan13 effect is not authorized"
+	[[ "$(jq -er '.effect_phase' "$state_path")" == "authorized" ]] || die "plan13 effect is not at the authorization boundary"
+	assert_adapter_boot_and_head
+	: >"$PHASE28_EFFECT_ACK_FILE"
+	chmod 600 "$PHASE28_EFFECT_ACK_FILE"
+	for _ in $(seq 1 500); do
+		[[ -f "$PHASE28_EFFECT_GATE_FILE" ]] && break
+		sleep 0.01
+	done
+	[[ -f "$PHASE28_EFFECT_GATE_FILE" ]] || die "plan13 effect start gate was not released"
+	[[ "$(jq -er '.effect_id' "$state_path")" == "$effect_id" && "$(jq -er '.effect_phase' "$state_path")" == "invoked" ]] || die "plan13 effect invocation was not persisted"
+	assert_adapter_boot_and_head
+	trace_event "plan13-prevalidated:${effect_id}"
+}
+
+write_effect_result() {
+	local status="$1"
+	local blocker="$2"
+	local outputs="$3"
+	private_write "$PHASE28_EFFECT_RESULT_FILE" "$(jq -cn --arg effect "$effect_id" --arg status "$status" --arg blocker "$blocker" --argjson outputs "$outputs" '{schema_version:"exact-head-effect-result-v1",effect_id:$effect,status:$status,blocker_reason:$blocker,outputs:$outputs}')"
+}
+
+require_test_override_mode() {
+	local name
+	for name in PHASE28_ACCEPTED_STATE_DETECT_BIN PHASE28_ACCEPTED_STATE_VERIFY_BIN PHASE28_ACCEPTED_STATE_PACKAGE_BIN PHASE28_ACCEPTED_STATE_CAPTURE_BIN PHASE28_ACCEPTED_STATE_MONITOR_BIN PHASE28_ACCEPTED_STATE_PORT_PRESENT_BIN PHASE28_ACCEPTED_STATE_SLEEP_BIN PHASE28_ACCEPTED_STATE_CLOCK_BIN; do
+		if [[ -n "${!name:-}" && "${PHASE28_ADAPTER_TEST_MODE:-0}" != "1" ]]; then
+			die "plan13 adapter test override rejected"
+		fi
+	done
+}
+
+selected_port_file() {
+	printf '%s/selected-port.value\n' "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
+}
+
+capability_file() {
+	printf '%s/credential-capability.json\n' "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
+}
+
+manifest_path_file() {
+	printf '%s/package-manifest.path\n' "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
+}
+
+reinit_log_path_file() {
+	printf '%s/reinit-log.path\n' "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
+}
+
+read_private_line() {
+	local path="$1"
+	[[ -f "$path" && "$(mode_of_path "$path")" == "600" ]] || die "plan13 private capability is unavailable"
+	sed -n '1p' "$path"
+}
+
+parse_one_detector_port() {
+	local detector_log="$1"
+	local -a detected_ports=()
+	while IFS= read -r candidate; do
+		[[ -n "$candidate" ]] && detected_ports+=("$candidate")
+	done < <(sed -n 's/^port=//p' "$detector_log")
+	[[ "${#detected_ports[@]}" == "1" ]] || return 1
+	printf '%s\n' "${detected_ports[0]}"
+}
+
+run_prevalidated_detector() {
+	local detector_log="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/detector.raw.log"
+	if ! run_detector >"$detector_log" 2>&1; then
+		write_effect_result failed detector_failed '{}'
+		return 1
+	fi
+	local detected_port
+	detected_port="$(parse_one_detector_port "$detector_log")" || {
+		write_effect_result failed detector_failed '{}'
+		return 1
+	}
+	private_write "$(selected_port_file)" "$detected_port"
+	write_effect_result completed none "$(jq -cn --arg digest "$(sha256_text "plan13-port-v1\0${detected_port}")" '{selected_port_fingerprint_sha256:$digest}')"
+}
+
+run_prevalidated_credential_bind() {
+	local wifi_path="$repo_root/wifi-credentials.json"
+	[[ -f "$wifi_path" ]] || {
+		write_effect_result failed credential_binding_failed '{}'
+		return 1
+	}
+	local -a pool_paths=()
+	local candidate
+	for candidate in "$repo_root"/pool-credentials*.json; do
+		[[ -f "$candidate" && "$candidate" != *.example ]] && pool_paths+=("$candidate")
+	done
+	[[ "${#pool_paths[@]}" == "1" ]] || {
+		write_effect_result failed credential_binding_failed '{}'
+		return 1
+	}
+	local wifi_binding
+	local pool_binding
+	wifi_binding="$(openssl rand -hex 16)"
+	pool_binding="$(openssl rand -hex 16)"
+	local capability
+	capability="$(jq -cn --arg wifi "$wifi_path" --arg pool "${pool_paths[0]}" --arg wifi_binding "$wifi_binding" --arg pool_binding "$pool_binding" '{schema_version:"plan13-credential-capability-v1",wifi_path:$wifi,pool_path:$pool,wifi_binding_id:$wifi_binding,pool_binding_id:$pool_binding}')"
+	private_write "$(capability_file)" "$capability"
+	write_effect_result completed none "$(jq -cn --arg wifi_binding "$wifi_binding" --arg pool_binding "$pool_binding" --arg digest "$(sha256_file "$(capability_file)")" '{wifi_credential_state:"present",pool_credential_state:"present",wifi_credential_binding_id:$wifi_binding,pool_credential_binding_id:$pool_binding,credential_capability_status:"sealed",credential_capability_sha256:$digest}')"
+}
+
+run_prevalidated_reference_guard() {
+	local reference_log="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/reference-guard.raw.log"
+	if ! run_verify_reference >"$reference_log" 2>&1; then
+		write_effect_result failed reference_guard_failed '{}'
+		return 1
+	fi
+	local reference_commit
+	reference_commit="$(git -C "$repo_root/reference/esp-miner" rev-parse HEAD)"
+	write_effect_result completed none "$(jq -cn --arg commit "$reference_commit" --arg digest "$(sha256_file "$reference_log")" '{reference_commit:$commit,reference_guard_output_sha256:$digest}')"
+}
+
+factory_image_path() {
+	local package_manifest="$1"
+	local relative
+	relative="$(jq -er '.artifacts[] | select(.kind == "factory_merged_image") | .path' "$package_manifest")"
+	if [[ "$relative" == /* ]]; then
+		printf '%s\n' "$relative"
+	else
+		printf '%s/%s\n' "$(dirname "$package_manifest")" "$relative"
+	fi
+}
+
+run_prevalidated_package() {
+	local package_log="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/package.raw.log"
+	if ! run_package >"$package_log" 2>&1; then
+		write_effect_result failed package_failed '{}'
+		return 1
+	fi
+	local package_manifest="${PHASE28_ACCEPTED_STATE_MANIFEST:-$repo_root/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json}"
+	verify_manifest_identity "$package_manifest"
+	local factory_image
+	factory_image="$(factory_image_path "$package_manifest")"
+	[[ -f "$factory_image" ]] || {
+		write_effect_result failed package_failed '{}'
+		return 1
+	}
+	private_write "$(manifest_path_file)" "$package_manifest"
+	write_effect_result completed none "$(jq -cn --arg head "$(current_source_commit)" --arg manifest "$(sha256_file "$package_manifest")" --arg image "$(sha256_file "$factory_image")" '{manifest_source_commit:$head,manifest_sha256:$manifest,factory_image_sha256:$image}')"
+}
+
+validate_credential_capability() {
+	local capability_path="$1"
+	local state_path
+	state_path="$(adapter_state_path)"
+	[[ -f "$capability_path" && "$(mode_of_path "$capability_path")" == "600" ]] || return 1
+	[[ "$(owner_of_path "$capability_path")" == "$(id -u)" ]] || return 1
+	[[ "$(jq -er '.credential_capability_status' "$state_path")" == "sealed" ]] || return 1
+	[[ "$(sha256_file "$capability_path")" == "$(jq -er '.credential_capability_sha256' "$state_path")" ]] || return 1
+	jq -ce \
+		--arg wifi_binding "$(jq -er '.wifi_credential_binding_id' "$state_path")" \
+		--arg pool_binding "$(jq -er '.pool_credential_binding_id' "$state_path")" '
+		  type == "object" and
+		  (keys | sort) == (["pool_binding_id","pool_path","schema_version","wifi_binding_id","wifi_path"] | sort) and
+		  .schema_version == "plan13-credential-capability-v1" and
+		  .wifi_binding_id == $wifi_binding and
+		  .pool_binding_id == $pool_binding and
+		  (.wifi_path | type == "string" and startswith("/")) and
+		  (.pool_path | type == "string" and startswith("/"))
+		' "$capability_path"
+}
+
+run_prevalidated_flash_reinit() {
+	local capability
+	local capability_path
+	capability_path="$(capability_file)"
+	if ! capability="$(validate_credential_capability "$capability_path")"; then
+		write_effect_result failed private_capability_invalid '{}'
+		return 1
+	fi
+	port="$(read_private_line "$(selected_port_file)")"
+	manifest="$(read_private_line "$(manifest_path_file)")"
+	wifi_credentials="$(jq -er '.wifi_path' <<<"$capability")"
+	pool_credentials="$(jq -er '.pool_path' <<<"$capability")"
+	duration_seconds=360
+	local started_ms
+	local ended_ms
+	started_ms="$(monotonic_ms)"
+	if ! run_flash_capture "$manifest" >"${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/flash-reinit.raw.log" 2>&1; then
+		rm -f "$capability_path"
+		write_effect_result failed reinit_capture_failed '{}'
+		return 1
+	fi
+	ended_ms="$(monotonic_ms)"
+	local raw_reinit_log="$run_dir/hardware/live-capture-runtime/flash-monitor.log"
+	[[ -f "$raw_reinit_log" ]] || {
+		rm -f "$capability_path"
+		write_effect_result failed reinit_capture_failed '{}'
+		return 1
+	}
+	local comparison="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/reinit-self-compare.redacted.txt"
+	verify_complete_reinit_member "$raw_reinit_log" "$comparison"
+	private_write "$(reinit_log_path_file)" "$raw_reinit_log"
+	rm -f "$capability_path"
+	local duration_ms=$((ended_ms - started_ms))
+	((duration_ms >= 360000)) || {
+		write_effect_result failed reinit_capture_short '{}'
+		return 1
+	}
+	write_effect_result completed none "$(jq -cn --argjson start "$started_ms" --argjson end "$ended_ms" --argjson duration "$duration_ms" --arg raw "$(sha256_file "$raw_reinit_log")" --arg classifier "$(sha256_file "$comparison")" '{runtime_credential_consumption:"pass",credential_capability_status:"destroyed",credential_capability_sha256:null,reinit_capture_started_ms:$start,reinit_capture_ended_ms:$end,reinit_capture_duration_ms:$duration,reinit_capture_category:"complete_360s",reinit_raw_log_sha256:$raw,reinit_classifier_input_sha256:$classifier,reinit_five_stage_result:"pass"}')"
+}
+
+start_lifecycle_socket_receiver() {
+	local frame_path="$1"
+	local socket_path="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/lifecycle.sock"
+	rm -f "$socket_path" "$frame_path"
+	(
+		cd "$PHASE28_LIFECYCLE_ATTEMPT_DIR"
+		perl -MIO::Socket::UNIX -MSocket -e '
+my ($frame_path) = @ARGV;
+my $server = IO::Socket::UNIX->new(Type => SOCK_STREAM, Local => "lifecycle.sock", Listen => 1) or die $!;
+chmod 0600, "lifecycle.sock" or die $!;
+my $client = $server->accept or die $!;
+my $length_line = <$client>;
+defined $length_line && $length_line =~ /^([0-9]+)\n$/ && $1 <= 4096 or die "invalid frame length";
+my $remaining = 0 + $1;
+my $frame = q{};
+while ($remaining > 0) {
+  my $read = sysread($client, my $chunk, $remaining);
+  defined $read && $read > 0 or die "short frame";
+  $frame .= $chunk;
+  $remaining -= $read;
+}
+open my $out, ">", $frame_path or die $!;
+chmod 0600, $frame_path or die $!;
+print {$out} $frame or die $!;
+close $out or die $!;
+' "$frame_path"
+	) &
+	lifecycle_socket_pid=$!
+	for _ in $(seq 1 100); do
+		[[ -S "$socket_path" ]] && return
+		kill -0 "$lifecycle_socket_pid" 2>/dev/null || break
+		sleep 0.01
+	done
+	die "lifecycle private socket failed to start"
+}
+
+validate_lifecycle_frame() {
+	local frame_path="$1"
+	local expected_generation="$2"
+	local expected_token="$3"
+	local expected_response="$4"
+	local deadline_ms="$5"
+	local expected_attempt_state="$6"
+	local expected_lifecycle_substate="$7"
+	local state_path
+	state_path="$(adapter_state_path)"
+	assert_adapter_boot_and_head
+	(($(monotonic_ms) < deadline_ms)) || die "lifecycle checkpoint expired"
+	[[ "$(jq -er '.attempt_state' "$state_path")" == "$expected_attempt_state" ]] || die "lifecycle attempt state mismatch"
+	[[ "$(jq -er '.lifecycle_substate' "$state_path")" == "$expected_lifecycle_substate" ]] || die "lifecycle substate mismatch"
+	[[ "$(jq -er '.process_running' "$state_path")" == "true" ]] || die "lifecycle owner is not running"
+	[[ "$(jq -er '.lifecycle_lease_id' "$state_path")" == "${PHASE28_LIFECYCLE_LEASE_ID:?}" ]] || die "lifecycle lease mismatch"
+	[[ "$(jq -er '.lifecycle_capability_sha256' "$state_path")" == "$(sha256_text "${PHASE28_LIFECYCLE_CAPABILITY:?}")" ]] || die "lifecycle capability mismatch"
+	[[ "$(jq -er '.lifecycle_owner_pid' "$state_path")" == "$$" ]] || die "lifecycle owner PID mismatch"
+	jq -e \
+		--arg digest "$(jq -er '.resume_handle_sha256' "$state_path")" \
+		--argjson generation "$expected_generation" \
+		--arg token "$expected_token" \
+		--arg response "$expected_response" \
+		--arg nonce "$(jq -er '.effect_authorization_nonce' "$state_path")" \
+		--arg lease "$PHASE28_LIFECYCLE_LEASE_ID" '
+      (keys | sort) == (["checkpoint_generation","checkpoint_token","effect_authorization_nonce","lifecycle_lease_id","response_token","resume_handle_sha256"] | sort) and
+      .resume_handle_sha256 == $digest and
+      .checkpoint_generation == $generation and
+      .checkpoint_token == $token and
+      .response_token == $response and
+      .effect_authorization_nonce == $nonce and
+      .lifecycle_lease_id == $lease
+    ' "$frame_path" >/dev/null || die "lifecycle frame validation failed"
+}
+
+receive_lifecycle_token() {
+	local expected_token="$1"
+	local expected_response="$2"
+	local expected_attempt_state="$3"
+	local expected_lifecycle_substate="$4"
+	local state_path
+	local generation
+	local deadline
+	local frame_path="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/lifecycle-frame.json"
+	state_path="$(adapter_state_path)"
+	generation="$(jq -er '.checkpoint_generation' "$state_path")"
+	deadline="$(jq -er '.monotonic_deadline_ms' "$state_path")"
+	start_lifecycle_socket_receiver "$frame_path"
+	while kill -0 "$lifecycle_socket_pid" 2>/dev/null; do
+		if (($(monotonic_ms) >= deadline)); then
+			kill -TERM "$lifecycle_socket_pid" 2>/dev/null || true
+			wait "$lifecycle_socket_pid" 2>/dev/null || true
+			die "lifecycle checkpoint expired"
+		fi
+		sleep 0.05
+	done
+	wait "$lifecycle_socket_pid" || die "lifecycle private socket failed"
+	validate_lifecycle_frame "$frame_path" "$generation" "$expected_token" "$expected_response" "$deadline" "$expected_attempt_state" "$expected_lifecycle_substate"
+	rm -f "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/lifecycle.sock" "$frame_path"
+}
+
+lifecycle_transition() {
+	local event="$1"
+	local values="$2"
+	local values_path="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/lifecycle-values.json"
+	private_write "$values_path" "$values"
+	bash "${PHASE28_LIFECYCLE_RUNNER:?}" lifecycle-owner-transition \
+		--capability "${PHASE28_LIFECYCLE_CAPABILITY:?}" \
+		--event "$event" \
+		--values-file "$values_path" >/dev/null
+	rm -f "$values_path"
+}
+
+run_prevalidated_lifecycle() {
+	port="$(read_private_line "$(selected_port_file)")"
+	manifest="$(read_private_line "$(manifest_path_file)")"
+	reinit_log="$(read_private_line "$(reinit_log_path_file)")"
+	duration_seconds=360
+	verify_manifest_identity "$manifest"
+	verify_complete_reinit_member "$reinit_log" "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/reinit-preflight.redacted.txt"
+	port_is_present || {
+		write_effect_result failed lifecycle_capture_failed '{}'
+		return 1
+	}
+
+	receive_lifecycle_token plan13-armed-removal-v1 plan13-both-power-paths-removed removal_attested removal_attested
+	local attestation_ms
+	attestation_ms="$(jq -er '.attestation_accepted_ms' "$(adapter_state_path)")"
+	lifecycle_transition absence-observing "$(jq -cn --argjson start "$attestation_ms" '{usb_absence_started_ms:$start}')"
+	local usb_absence_measured_ms
+	usb_absence_measured_ms="$(measure_continuous_usb_absence "$attestation_ms")"
+	local absence_end=$((attestation_ms + usb_absence_measured_ms))
+	lifecycle_transition restore-waiting "$(jq -cn --argjson end "$absence_end" --argjson duration "$usb_absence_measured_ms" '{usb_absence_ended_ms:$end,usb_absence_ms:$duration}')"
+	receive_lifecycle_token plan13-barrel-usb-restore-v1 plan13-barrel-then-usb-restored restore_attested restore_attested
+	lifecycle_transition reappearance-observing '{}'
+	local reappearance_elapsed_ms
+	reappearance_elapsed_ms="$(wait_for_reappearance "$attestation_ms")"
+	local capture_started_ms
+	capture_started_ms="$(monotonic_ms)"
+	lifecycle_transition capture-running "$(jq -cn --argjson reappearance "$((attestation_ms + reappearance_elapsed_ms))" --argjson elapsed "$reappearance_elapsed_ms" --argjson start "$capture_started_ms" '{usb_reappearance_ms:$reappearance,reappearance_elapsed_ms:$elapsed,capture_started_ms:$start}')"
+
+	local cold_start_raw_log="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/cold-start-monitor.raw.log"
+	run_monitored_capture "$cold_start_raw_log" "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/monitor-wrapper.raw.log"
+	local capture_ended_ms
+	capture_ended_ms="$(monotonic_ms)"
+	local capture_duration_ms=$((capture_ended_ms - capture_started_ms))
+	((capture_duration_ms >= 360000)) || {
+		write_effect_result failed lifecycle_capture_short '{}'
+		return 1
+	}
+	verify_stable_runtime "$cold_start_raw_log" cold-start
+	local comparison="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/lifecycle.redacted.txt"
+	node scripts/phase28.1.1-accepted-state-lifecycle-compare.mjs --reinit-log "$reinit_log" --cold-start-log "$cold_start_raw_log" --out "$comparison"
+	local lifecycle_status
+	lifecycle_status="$(sed -n 's/^lifecycle_status: //p' "$comparison")"
+	case "$lifecycle_status" in match | mismatch | incomplete) ;; *) lifecycle_status=incomplete ;; esac
+	local result_correlated=false
+	local power_delta_class=unavailable
+	local share_submission_status=not_observed
+	rg -q 'result_correlated=true' "$cold_start_raw_log" && result_correlated=true
+	if rg -q 'power_delta_class=rising_hashing' "$cold_start_raw_log"; then
+		power_delta_class=rising_hashing
+	elif rg -q 'power_delta_class=flat' "$cold_start_raw_log"; then
+		power_delta_class=flat
+	fi
+	if rg -q 'share_submission_status=accepted|share_outcome: accepted' "$cold_start_raw_log"; then
+		share_submission_status=accepted
+	elif rg -q 'share_submission_status=rejected|share_outcome: rejected' "$cold_start_raw_log"; then
+		share_submission_status=rejected
+	fi
+	local raw_digest
+	local same_chain_digest
+	raw_digest="$(sha256_file "$cold_start_raw_log")"
+	same_chain_digest="$(sha256_text "$(sha256_file "$reinit_log")\0${raw_digest}")"
+	lifecycle_transition capture-complete "$(jq -cn --argjson end "$capture_ended_ms" --argjson duration "$capture_duration_ms" --arg raw "$raw_digest" --arg chain "$same_chain_digest" --arg classifier "$(sha256_file "$comparison")" --arg lifecycle "$lifecycle_status" --argjson correlated "$result_correlated" --arg power "$power_delta_class" --arg share "$share_submission_status" '{capture_ended_ms:$end,capture_duration_ms:$duration,lifecycle_raw_log_sha256:$raw,same_chain_raw_log_set_sha256:$chain,classifier_input_sha256:$classifier,lifecycle_status:$lifecycle,result_correlated:$correlated,power_delta_class:$power,share_submission_status:$share}')"
+	write_effect_result completed none '{}'
+}
+
+run_prevalidated_post_capture() {
+	local detector_log="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/post-capture-detector.raw.log"
+	if ! run_detector >"$detector_log" 2>&1; then
+		write_effect_result failed post_capture_detector_failed '{}'
+		return 1
+	fi
+	local detected_port
+	detected_port="$(parse_one_detector_port "$detector_log")" || {
+		write_effect_result failed post_capture_detector_failed '{}'
+		return 1
+	}
+	[[ "$(sha256_text "plan13-port-v1\0${detected_port}")" == "$(jq -er '.selected_port_fingerprint_sha256' "$(adapter_state_path)")" ]] || {
+		write_effect_result failed post_capture_detector_failed '{}'
+		return 1
+	}
+	local classifier_output
+	classifier_output="$(node --input-type=module -e '
+import fs from "node:fs";
+const strict = await import(process.argv[1]);
+const state = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const projection = strict.buildClassifierProjection(state);
+const result = strict.classifyStrictProductionEvidence(projection);
+process.stdout.write(JSON.stringify({projection,result}));' "$repo_root/scripts/phase28.1.1-strict-production-evidence.mjs" "$(adapter_state_path)")"
+	write_effect_result completed none "$(jq -cn --argjson classified "$classifier_output" '{result_correlated:$classified.projection.result_correlated,power_delta_class:$classified.projection.power_delta_class,share_submission_status:$classified.projection.share_submission_status,lifecycle_status:$classified.projection.lifecycle_status,classifier_input_sha256:$classified.projection.classifier_input_sha256,classifier_output_sha256:$classified.result.classifier_output_sha256,classifier_version:$classified.projection.classifier_version}')"
+}
+
+run_plan13_prevalidated() {
+	require_test_override_mode
+	validate_runner_adapter_context
+	run_root="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/effects"
+	run_dir="$run_root/$effect_id"
+	mkdir -p "$run_root" "$run_dir"
+	chmod 700 "$run_root" "$run_dir"
+	case "$effect_id" in
+	detector_board_info) run_prevalidated_detector ;;
+	credential_presence_bind) run_prevalidated_credential_bind ;;
+	reference_guard) run_prevalidated_reference_guard ;;
+	package) run_prevalidated_package ;;
+	flash_reinit_runtime) run_prevalidated_flash_reinit ;;
+	lifecycle_start) run_prevalidated_lifecycle ;;
+	post_capture_detector_board_info) run_prevalidated_post_capture ;;
+	esac
+}
+
 cd "$repo_root"
+
+if [[ "$mode" == "plan13-prevalidated" ]]; then
+	run_plan13_prevalidated
+	exit $?
+fi
 
 if [[ "$mode" == "blocked" ]]; then
 	if [[ "$attempt" == "lifecycle" ]]; then
