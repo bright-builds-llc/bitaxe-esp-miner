@@ -22,11 +22,14 @@ esac
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 runner="$repo_root/scripts/phase28.1.1-exact-head-hardware-attempt.sh"
-temp_root="$(mktemp -d "$repo_root/scratch/phase28-attempt-test.XXXXXX")"
+temp_base="${TEST_TMPDIR:-$repo_root/scratch}"
+mkdir -p "$temp_base"
+temp_root="$(mktemp -d "$temp_base/phase28-attempt-test.XXXXXX")"
 trap 'rm -rf "$temp_root"' EXIT
 control_root="$temp_root/control"
 adapter_dir="$temp_root/adapters"
 mkdir -p "$adapter_dir"
+test_head="1111111111111111111111111111111111111111"
 
 effects=(
 	detector_board_info
@@ -102,7 +105,7 @@ begin_attempt() {
 	env \
 		PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
 		PHASE28_ALLOW_DIRTY_TEST=1 \
-		PHASE28_TEST_HEAD="$(git -C "$repo_root" rev-parse HEAD)" \
+		PHASE28_TEST_HEAD="$test_head" \
 		PHASE28_TEST_INITIAL_ATTEMPT_STATE="$initial_state" \
 		bash "$runner" begin-attempt
 }
@@ -114,7 +117,7 @@ run_effect() {
 	env \
 		PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
 		PHASE28_ALLOW_DIRTY_TEST=1 \
-		PHASE28_TEST_HEAD="$(git -C "$repo_root" rev-parse HEAD)" \
+		PHASE28_TEST_HEAD="$test_head" \
 		PHASE28_EFFECT_ADAPTER_DIR="$adapter_dir" \
 		PHASE28_EFFECT_TRACE="$temp_root/effects.trace" \
 		"$@" \
@@ -133,7 +136,7 @@ attempt_dir="$(jq -er '.attempt_dir' "$first_slot")"
 [[ "$(mode_of "$attempt_dir")" == "700" ]]
 [[ "$(mode_of "$attempt_dir/state.json")" == "600" ]]
 
-resolve_output="$(env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$(git -C "$repo_root" rev-parse HEAD)" bash "$runner" resolve-checkpoint --resume-handle "$first_handle")"
+resolve_output="$(env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" bash "$runner" resolve-checkpoint --resume-handle "$first_handle")"
 rg -q '^checkpoint_id=none$' <<<"$resolve_output"
 rg -q '^checkpoint_generation=0$' <<<"$resolve_output"
 expect_failure resume_handle_missing env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" bash "$runner" resolve-checkpoint --resume-handle ""
@@ -200,9 +203,9 @@ deadline=$(($(perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC -e 'printf "%.0f"
 jq --argjson deadline "$deadline" '.checkpoint_id="plan13-connected-entry" | .checkpoint_token="plan13-connected-entry-v1" | .expected_response_token="ultra205-remains-connected" | .expected_user_action="keep-connected" | .monotonic_deadline_ms=$deadline' "$state" >"$state.next"
 mv "$state.next" "$state"
 chmod 600 "$state"
-delivery="$(env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$(git -C "$repo_root" rev-parse HEAD)" bash "$runner" deliver-token --resume-handle "$handle" --checkpoint-token plan13-connected-entry-v1 --response-token ultra205-remains-connected)"
+delivery="$(env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" bash "$runner" deliver-token --resume-handle "$handle" --checkpoint-token plan13-connected-entry-v1 --response-token ultra205-remains-connected)"
 rg -q '^checkpoint_delivery=accepted$' <<<"$delivery"
-expect_failure checkpoint_token_mismatch env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$(git -C "$repo_root" rev-parse HEAD)" bash "$runner" deliver-token --resume-handle "$handle" --checkpoint-token wrong --response-token ultra205-remains-connected
+expect_failure checkpoint_token_mismatch env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" bash "$runner" deliver-token --resume-handle "$handle" --checkpoint-token wrong --response-token ultra205-remains-connected
 
 if rg -q 'phase28.1.1-accepted-state-diagnostic.sh|just detect-ultra205|espflash|flash-monitor|wifi-credentials.json|pool-credentials' "$runner"; then
 	fail "runner contains a direct hardware or credential-content command"

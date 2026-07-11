@@ -465,3 +465,49 @@ sh_test(
     data = ["verify-reference-clean.sh"],
     tags = ["local"],
 )
+
+sh_binary(
+    name = "phase28_1_1_exact_head_hardware_attempt",
+    srcs = ["phase28.1.1-exact-head-hardware-attempt.sh"],
+    data = [
+        "phase28.1.1-hardware-attempt-state.mjs",
+        "process-group.sh",
+    ],
+)
+
+sh_test(
+    name = "phase28_1_1_exact_head_hardware_attempt_test",
+    srcs = ["phase28.1.1-exact-head-hardware-attempt-test.sh"],
+    data = [
+        "phase28.1.1-exact-head-hardware-attempt.sh",
+        "phase28.1.1-hardware-attempt-state.mjs",
+        "process-group.sh",
+    ],
+    env_inherit = [
+        "HOME",
+        "PATH",
+    ],
+    tags = ["local"],
+)
+
+sh_binary(
+    name = "phase28_1_1_roadmap_phase30_immutability",
+    srcs = ["phase28.1.1-roadmap-phase30-immutability.mjs"],
+)
+
+sh_test(
+    name = "phase28_1_1_software_authority_test",
+    srcs = ["phase28.1.1-roadmap-phase30-immutability-test.mjs"],
+    data = [
+        "phase28.1.1-hardware-attempt-state-test.mjs",
+        "phase28.1.1-hardware-attempt-state.mjs",
+        "phase28.1.1-roadmap-phase30-immutability.mjs",
+        "phase28.1.1-strict-production-evidence-test.mjs",
+        "phase28.1.1-strict-production-evidence.mjs",
+    ],
+    env_inherit = [
+        "HOME",
+        "PATH",
+    ],
+    tags = ["local"],
+)
