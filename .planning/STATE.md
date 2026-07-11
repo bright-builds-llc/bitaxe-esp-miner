@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed Phase 28.1.1 Plan 10 with `blocked_safe_prerequisite` physical lifecycle evidence
-last_updated: "2026-07-10T04:44:52.995Z"
+stopped_at: Completed Phase 28.1.1 Plan 11 with `blocked_safe_prerequisite` after the finite recovery checkpoint expired
+last_updated: "2026-07-11T01:57:59Z"
 progress:
   total_phases: 18
   completed_phases: 16
-  total_plans: 66
-  completed_plans: 66
+  total_plans: 67
+  completed_plans: 67
   percent: 100
 ---
 
@@ -17,13 +17,23 @@ progress:
 
 ## Current Position
 
-Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — EXECUTING
-Plan: 1 of 6
+Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — GAPS FOUND
+Plan: 6 of 6
 
 - **Phase:** 28.1.1 — Accepted-State Gap Closure
-- **Plan:** 5/5 — Complete (verification_result: gaps_found)
-- **Status:** Executing Phase 28.1.1
-- **Next step:** Restore detector/board-info and exact five-stage reinit prerequisite; Phase 30 remains pending
+- **Plan:** 6/6 — Complete (verification_result: gaps_found)
+- **Status:** Plan 11 closed `blocked_safe_prerequisite`; physical lifecycle and production-share goals remain open
+- **Next step:** Do not resume or refresh Plan 11; any further lifecycle attempt requires a new formally planned recovery contract. Phase 30 remains pending
+
+## Decisions (Phase 28.1.1 Plan 11)
+
+- The evidence-correctness gaps are closed: exact five-stage completeness, 180-second/2-second replay timing, measured 5000 ms USB absence, exact checkpoint deadlines, cleanup, and tri-state denylist behavior are regression guarded
+- The strict five-stage 360-second reinit candidate belongs to `4e2d165`; `d275a0e` changed exact head, so that package identity is stale and not promotable
+- On current head, initial `board-info` failed, USB replug was consumed, and the both-power checkpoint response reached continuation after its persisted monotonic deadline
+- One post-expiry detector invocation succeeded but is invalid because continuation had not asserted expiry first; it is disclosed, unpromoted, and contributes no prerequisite claim
+- No current-head credential access, package, flash, reset, or monitor capture followed; cleanup verified no child remained
+- The finite Plan 11 recovery contract is exhausted and cannot be refreshed or retried
+- `verification_result=gaps_found`; `phase30_promotion_input=pending`; checklist verified rows untouched
 
 ## Decisions (Phase 28.1.1 Plan 10)
 
@@ -122,6 +132,7 @@ Plan: 1 of 6
 | Phase 28.1.1 P07 | 28min | 2 tasks | 8 files |
 | Phase 28.1.1 P08 | 15min | 3 tasks | 4 files |
 | Phase 28.1.1 P10 | 39 min | 3 tasks | 14 files |
+| Phase 28.1.1 P11 | bounded continuation | 4 tasks | 19 files |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -145,5 +156,5 @@ Plan: 1 of 6
 
 ## Session
 
-- **Stopped at:** Completed Phase 28.1.1 Plan 10 with `blocked_safe_prerequisite` physical lifecycle evidence
-- **Resume:** Restore one detector-valid board 205 and a complete exact-commit five-stage reinit member before arming the no-reset cold-start watcher
+- **Stopped at:** Completed Phase 28.1.1 Plan 11 with `blocked_safe_prerequisite` after the both-power recovery checkpoint expired
+- **Resume:** Do not resume Plan 11. Start a new formally planned finite recovery contract for any later physical lifecycle attempt; Phase 30 remains pending until independent same-chain proof exists

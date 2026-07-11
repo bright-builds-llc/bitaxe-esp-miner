@@ -2,15 +2,15 @@
 status: blocked_safe_prerequisite
 trigger: "Phase 28.1.1 UAT Test 3 cannot reliably capture all five one-shot accepted-state markers across a true Ultra 205 cold start because removing both power paths also removes the native USB console."
 created: 2026-07-10T02:10:00Z
-updated: 2026-07-10T03:19:10Z
+updated: 2026-07-11T01:57:59Z
 ---
 
 ## Current Focus
 
-hypothesis: Confirmed and implemented. The evidence-transport race is closed by bounded retained-category replay and a no-flash/no-reset reattach wrapper. Hardware closure remains blocked before arming because the exact-commit reinit member lacked the exact five-stage prerequisite and the final board-info gate failed.
-test: Two detector-gated exact-commit reinit captures plus strict lifecycle preflight and final board-info detection.
-expecting: The lifecycle watcher may arm only after a stable exact-commit reinit member contains all five closed stages with equivalent duplicates and the selected board remains detector-valid.
-next_action: Do not request physical power action. Restore a passing single-board detector/board-info gate, then retry the exact-commit reinit prerequisite before arming the existing lifecycle wrapper.
+hypothesis: Confirmed and implemented. The evidence-transport and evidence-correctness defects are closed. Hardware closure remains blocked because the strict five-stage candidate belongs to superseded head 4e2d165, while current head d275a0e reached an expired finite-recovery checkpoint before any eligible package, reinit, or lifecycle arm.
+test: Strict five-stage exact-identity audit, current-head bounded detector recovery, persisted monotonic checkpoint validation, and mandatory cleanup.
+expecting: A lifecycle watcher may arm only when the current exact head has a timely validated detector gate and a strict five-stage reinit member. Stale package identity and expired checkpoint state must stop without repair.
+next_action: Do not resume or refresh Plan 11. Its finite recovery contract is exhausted. Any further hardware attempt requires a new formally planned recovery contract.
 
 ## Symptoms
 
@@ -137,4 +137,35 @@ implementation_status: complete
 hardware_lifecycle_status: blocked_safe_prerequisite
 lifecycle_checkpoint_armed: false
 physical_power_action_performed: false
+phase30_promotion_input: pending
+
+## Plan 11 Execution Update
+
+- timestamp: 2026-07-11T01:57:59Z
+  checked: Plan 11 software commits `1fe4918`, `c210f11`, `a6b634e`, focused review commit `4e2d165`, and polling compatibility commit `d275a0e`
+  found: Rust formatting is clean; accepted-state completeness, replay timing, measured USB absence, checkpoint deadlines, cleanup, and tri-state evidence denial have deterministic regression coverage. The focused review has no remaining warning.
+  implication: The earlier evidence-correctness defects are closed without changing ASIC initialization or the Phase 30 promotion gate.
+- timestamp: 2026-07-11T01:57:59Z
+  checked: exact-identity category summary for the 360-second reinit candidate
+  found: Source commit `4e2d16524d57037e0814b191fed1b87fca4d0623` produced one stable boot, one listener-ready marker, zero hazards, all five closed stages, and a passing strict self-comparison.
+  implication: The candidate was complete for that source identity, but commit `d275a0e7af6a1534df5fca07820066791ae4af19` changed the lifecycle script and made the prior package stale. It cannot arm the current-head run.
+- timestamp: 2026-07-11T01:57:59Z
+  checked: current-head finite recovery checkpoint state
+  found: The initial detector failed `board-info`; USB replug was consumed; the operator reported the both-power recovery, but the persisted deadline of `23949477` monotonic milliseconds had expired when continuation observed `44667284` milliseconds.
+  implication: Plan 11 lines 183-185 require a conservative stop without inference, repair, refresh, or another recovery attempt.
+- timestamp: 2026-07-11T01:57:59Z
+  checked: post-expiry continuation audit
+  found: A continuation mistakenly invoked one bounded repo-owned detector before asserting expiry. It reported exactly one ESP32-S3 and successful `board-info`, but the observation is invalid and unpromoted. No credential access, package, flash, reset, monitor, or later hardware command ran; cleanup proved no child remained.
+  implication: The invalid observation cannot satisfy detection, package, reinit, lifecycle, or promotion prerequisites. The finite recovery contract remains exhausted.
+
+## Final Plan 11 Disposition
+
+implementation_status: complete_review_warnings_resolved
+hardware_lifecycle_status: blocked_safe_prerequisite
+valid_current_head_detector_status: unavailable
+valid_current_head_reinit_status: unavailable
+lifecycle_checkpoint_armed: false
+lifecycle_power_action_accepted: false
+cleanup_verified: true
+live_child_process: false
 phase30_promotion_input: pending
