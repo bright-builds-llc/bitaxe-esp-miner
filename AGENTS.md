@@ -292,6 +292,14 @@ Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and po
 4. **Agent/shell wall clock:** command and tool timeouts must exceed the flash plus monitor budget; prefer **≥ 420 seconds** wall clock when using a 360-second capture timeout.
 5. **Do not treat early exit as failure** until the full timeout elapses unless the repo-owned flash tool reports a hard error (flash/write failure, missing trusted boot markers after complete capture, and similar).
 
+### Ultra 205 Serial Session Reuse
+
+- Treat bare `espflash monitor --no-reset` as reset-capable, not passive. For retained-runtime ESP32-S3 capture, require the complete command contract `--chip esp32s3 --before no-reset-no-sync --after no-reset --no-reset --non-interactive`.
+- Before and after a bounded monitor session, record the selected device node, USB enumeration/session identity when available, process PID/PGID and descendants, and serial file-descriptor holders. Process death alone is not cleanup proof: require the process tree reaped and no unexpected holder on the selected serial node before reuse.
+- Keep detailed session traces only in mode-0600 files under mode-0700 gitignored roots. Committed or shared evidence may contain only redacted categories, counts, durations, booleans, and trace digests; never promote device paths, USB serial identities, PIDs, commands containing secrets, or raw local identifiers.
+- Record barrel/DC power and USB power independently. Distinguish USB re-enumeration, warm reset, and true both-power cold start in every checkpoint and trace; USB removal while barrel power remains is not a cold start.
+- A port node appearing is not sufficient readiness after re-enumeration. Require the repo-owned bounded stability/ownership gate before opening the passive monitor, and fail closed on identity change, unexpected ownership, or unproved cleanup.
+
 ### Evidence Workflow: Hardware-First Default
 
 Agents executing phase evidence wrappers (`phase23-evidence`, `phase25-evidence`, `phase27-evidence`, and future `phase*-evidence` scripts with `blocked|hardware` modes) must:
