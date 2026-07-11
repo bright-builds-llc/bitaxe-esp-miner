@@ -48,7 +48,7 @@ die() {
 }
 
 usage() {
-	printf 'usage: %s begin-attempt|resolve-checkpoint|deliver-token|run-validated-effect|cleanup-active-attempt [options]\n' "$(basename "$0")"
+	printf 'usage: %s begin-attempt|resolve-checkpoint|deliver-token|run-validated-effect|cleanup-active-attempt|cleanup-unique-orphan-attempt [options]\n' "$(basename "$0")"
 }
 
 ensure_private_root() {
@@ -91,6 +91,14 @@ mode_of_path() {
 		return
 	fi
 	stat -c '%a' "$1"
+}
+
+owner_of_path() {
+	if stat -f '%u' "$1" >/dev/null 2>&1; then
+		stat -f '%u' "$1"
+		return
+	fi
+	stat -c '%u' "$1"
 }
 
 atomic_write() {
@@ -295,6 +303,50 @@ validate_tombstone() {
     (.terminal_category | IN("blocked_safe_attempt_prerequisite","blocked_safe_unresolved_process","blocked_safe_evidence_invalid","gaps_found_same_chain_production_markers_absent","passed_same_chain_hardware")) and
     (.cleanup_time_category | IN("normal","blocked","crash","abandoned"))
   ' "$slot" >/dev/null
+}
+
+count_category() {
+	case "$1" in
+	0) printf 'zero\n' ;;
+	1) printf 'one\n' ;;
+	*) printf 'multiple\n' ;;
+	esac
+}
+
+public_orphan_cleanup_failure() {
+	local category="$1"
+	local active_count_category="$2"
+	local tombstone_count_category="$3"
+	if [[ "$lock_held" == "true" ]]; then
+		release_lock
+	fi
+	printf 'cleanup_result=not_closed\n'
+	printf 'cleanup_category=%s\n' "$category"
+	printf 'active_orphan_count_category=%s\n' "$active_count_category"
+	printf 'tombstone_count_category=%s\n' "$tombstone_count_category"
+	printf 'state_mutated=false\n'
+	printf 'effect_sentinels_invoked=0\n'
+	printf 'positive_evidence_promoted=false\n'
+	die "$category"
+}
+
+classify_orphan_state() {
+	local state_path="$1"
+	local expected_head="$2"
+	local expected_state="$3"
+	local reason="$4"
+	local observed_boot="$5"
+	node --input-type=module -e '
+import fs from "node:fs";
+const authority = await import(process.argv[1]);
+const state = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const category = authority.classifyLostResumeHandleOrphanState(state, {
+  expectedHead: process.argv[3],
+  expectedState: process.argv[4],
+  reason: process.argv[5],
+  observedBootSessionSha256: process.argv[6],
+});
+process.stdout.write(category);' "$state_module" "$state_path" "$expected_head" "$expected_state" "$reason" "$observed_boot"
 }
 
 validate_slot_state() {
@@ -1040,6 +1092,147 @@ run_validated_effect() {
 	fi
 }
 
+cleanup_unique_orphan_attempt() {
+	local expected_head=""
+	local expected_state=""
+	local reason=""
+	while (($#)); do
+		case "$1" in
+		--expected-head)
+			expected_head="${2:-}"
+			shift 2
+			;;
+		--expected-state)
+			expected_state="${2:-}"
+			shift 2
+			;;
+		--reason)
+			reason="${2:-}"
+			shift 2
+			;;
+		*) die "unknown_argument" ;;
+		esac
+	done
+	[[ "$expected_head" =~ ^[0-9a-f]{40}$ ]] || die "orphan_cleanup_request_invalid"
+	[[ "$expected_state" == "connected_entry_waiting" ]] || die "orphan_cleanup_request_invalid"
+	[[ "$reason" == "lost_resume_handle" ]] || die "orphan_cleanup_request_invalid"
+
+	if [[ ! -e "$private_root" ]]; then
+		public_orphan_cleanup_failure "no_active_orphan" "zero" "zero"
+	fi
+	for private_directory in "$private_root" "$resume_index" "$attempts_root"; do
+		if [[ ! -d "$private_directory" || -L "$private_directory" || "$(mode_of_path "$private_directory")" != "700" || "$(owner_of_path "$private_directory")" != "$(id -u)" ]]; then
+			public_orphan_cleanup_failure "orphan_index_ambiguous" "unknown" "unknown"
+		fi
+	done
+	require_clean_head
+	acquire_lock
+
+	local active_count=0
+	local active_slot=""
+	local tombstone_count=0
+	local entry
+	while IFS= read -r -d '' entry; do
+		local entry_name
+		local entry_digest
+		entry_name="$(basename "$entry")"
+		if [[ ! -f "$entry" || -L "$entry" || "$entry_name" != *.json || "$(mode_of_path "$entry")" != "600" || "$(owner_of_path "$entry")" != "$(id -u)" ]]; then
+			public_orphan_cleanup_failure "orphan_index_ambiguous" "unknown" "unknown"
+		fi
+		entry_digest="${entry_name%.json}"
+		if [[ ! "$entry_digest" =~ ^[0-9a-f]{64}$ ]]; then
+			public_orphan_cleanup_failure "orphan_index_ambiguous" "unknown" "unknown"
+		fi
+		if validate_active_slot "$entry" "$entry_digest"; then
+			active_count=$((active_count + 1))
+			if ((active_count == 1)); then
+				active_slot="$entry"
+			fi
+		elif validate_tombstone "$entry" "$entry_digest"; then
+			tombstone_count=$((tombstone_count + 1))
+		else
+			public_orphan_cleanup_failure "orphan_index_ambiguous" "unknown" "unknown"
+		fi
+	done < <(find "$resume_index" -mindepth 1 -maxdepth 1 -print0)
+
+	local active_count_category
+	local tombstone_count_category
+	active_count_category="$(count_category "$active_count")"
+	tombstone_count_category="$(count_category "$tombstone_count")"
+	if ((active_count == 0)); then
+		public_orphan_cleanup_failure "no_active_orphan" "$active_count_category" "$tombstone_count_category"
+	fi
+	if ((active_count != 1)); then
+		public_orphan_cleanup_failure "orphan_index_ambiguous" "$active_count_category" "$tombstone_count_category"
+	fi
+
+	local slot="$active_slot"
+	local attempt_dir
+	local state_path
+	attempt_dir="$(jq -er '.attempt_dir' "$slot" 2>/dev/null)" || public_orphan_cleanup_failure "orphan_index_ambiguous" "one" "$tombstone_count_category"
+	state_path="$attempt_dir/state.json"
+	if ! validate_slot_state "$slot" "$state_path" 2>/dev/null || ! validate_state "$state_path" 2>/dev/null; then
+		public_orphan_cleanup_failure "orphan_state_ineligible" "one" "$tombstone_count_category"
+	fi
+
+	local attempt_entry_count=0
+	local observed_attempt_entry=""
+	while IFS= read -r -d '' entry; do
+		attempt_entry_count=$((attempt_entry_count + 1))
+		observed_attempt_entry="$entry"
+	done < <(find "$attempts_root" -mindepth 1 -maxdepth 1 -print0)
+	if ((attempt_entry_count != 1)) || [[ "$observed_attempt_entry" != "$attempt_dir" || ! -d "$attempt_dir" || -L "$attempt_dir" || "$(mode_of_path "$attempt_dir")" != "700" || "$(owner_of_path "$attempt_dir")" != "$(id -u)" ]]; then
+		public_orphan_cleanup_failure "orphan_index_ambiguous" "one" "$tombstone_count_category"
+	fi
+	local live_entry_count=0
+	local observed_live_entry=""
+	while IFS= read -r -d '' entry; do
+		live_entry_count=$((live_entry_count + 1))
+		observed_live_entry="$entry"
+	done < <(find "$attempt_dir" -mindepth 1 -maxdepth 1 -print0)
+	if ((live_entry_count != 1)) || [[ "$observed_live_entry" != "$state_path" || ! -f "$state_path" || -L "$state_path" ]]; then
+		public_orphan_cleanup_failure "orphan_live_reference_present" "one" "$tombstone_count_category"
+	fi
+
+	local observed_boot
+	if ! observed_boot="$(observe_boot_digest 2>/dev/null)"; then
+		public_orphan_cleanup_failure "orphan_state_ineligible" "one" "$tombstone_count_category"
+	fi
+	local orphan_state_category
+	if ! orphan_state_category="$(classify_orphan_state "$state_path" "$expected_head" "$expected_state" "$reason" "$observed_boot" 2>/dev/null)"; then
+		public_orphan_cleanup_failure "orphan_state_ineligible" "one" "$tombstone_count_category"
+	fi
+
+	local terminal
+	if [[ "$orphan_state_category" == "connected_entry_waiting" ]]; then
+		terminal="$(terminalize_and_cleanup_active "$slot" "$state_path" "cancelled_or_abandoned" abandoned)"
+	elif [[ "$orphan_state_category" == "terminal_recovery" ]]; then
+		terminal="$(cleanup_persisted_terminal_active "$slot" "$state_path" abandoned)"
+	else
+		public_orphan_cleanup_failure "orphan_state_ineligible" "one" "$tombstone_count_category"
+	fi
+	if [[ "$terminal" != "blocked_safe_attempt_prerequisite" ]]; then
+		release_lock
+		die "orphan_cleanup_terminal_inconsistent"
+	fi
+	local slot_digest
+	slot_digest="$(basename "$slot" .json)"
+	if ! validate_tombstone "$slot" "$slot_digest" || [[ -e "$attempt_dir" ]]; then
+		release_lock
+		die "orphan_cleanup_terminal_inconsistent"
+	fi
+	release_lock
+	printf 'cleanup_result=closed\n'
+	printf 'terminal_category=blocked_safe_attempt_prerequisite\n'
+	printf 'active_orphan_count_category=zero\n'
+	printf 'tombstone_count_increased=true\n'
+	printf 'live_reference_count_category=zero\n'
+	printf 'process_running=false\n'
+	printf 'effect_sentinels_invoked=0\n'
+	printf 'positive_evidence_promoted=false\n'
+	printf 'resume_handle_reconstructed=false\n'
+}
+
 cleanup_active_attempt() {
 	local handle=""
 	while (($#)); do
@@ -1117,5 +1310,6 @@ deliver-token) deliver_token "$@" ;;
 run-validated-effect) run_validated_effect "$@" ;;
 lifecycle-owner-transition) lifecycle_owner_transition "$@" ;;
 cleanup-active-attempt) cleanup_active_attempt "$@" ;;
+cleanup-unique-orphan-attempt) cleanup_unique_orphan_attempt "$@" ;;
 *) die "unknown_command" ;;
 esac

@@ -20,6 +20,7 @@ import {
   assertFreshBootSession,
   attachLifecycleOwner,
   authorizeEffect,
+  classifyLostResumeHandleOrphanState,
   consumeCheckpoint,
   createConnectedEntryState,
   createAttemptState,
@@ -34,6 +35,7 @@ import {
   publicCheckpoint,
   persistStrictClassification,
   routeBlocker,
+  terminalizeAttempt,
   transitionAttemptState,
   validateAttemptState,
 } from "./phase28.1.1-hardware-attempt-state.mjs";
@@ -393,6 +395,7 @@ function testConnectedCheckpointContract() {
   // Assert
   assert.deepEqual(Object.keys(handoff), [...PUBLIC_CHECKPOINT_FIELDS]);
   assert.equal(handoff.checkpoint_id, "plan13-connected-entry");
+  assert.equal(handoff.capture_category, "not_started");
   assert.equal(handoff.monotonic_deadline_ms, 601_000);
   assert.equal(consumed.checkpoint_id, null);
   assert.equal(consumed.attempt_state, "connected_entry_waiting");
@@ -408,6 +411,50 @@ function testConnectedCheckpointContract() {
       checkpointToken: "plan13-connected-entry-v1",
       responseToken: "ultra205-remains-connected",
       nowMonotonicMs: 601_000,
+    }),
+  );
+}
+
+function testLostResumeHandleOrphanStateContract() {
+  // Arrange
+  const state = createConnectedEntryState({
+    exactHead: HEAD,
+    resumeHandleSha256: RESUME_DIGEST,
+    createdMonotonicMs: 1_000,
+    observeBootSession: () => BOOT_DIGEST,
+    randomHex: () => "5".repeat(32),
+  });
+  const request = {
+    expectedHead: HEAD,
+    expectedState: "connected_entry_waiting",
+    reason: "lost_resume_handle",
+    observedBootSessionSha256: BOOT_DIGEST,
+  };
+
+  // Act
+  const initialCategory = classifyLostResumeHandleOrphanState(state, request);
+  const terminalCategory = classifyLostResumeHandleOrphanState(
+    terminalizeAttempt(state, "cancelled_or_abandoned"),
+    request,
+  );
+
+  // Assert
+  assert.equal(initialCategory, "connected_entry_waiting");
+  assert.equal(terminalCategory, "terminal_recovery");
+  assert.equal(state.capture_category, "not_started");
+  for (const changedState of [
+    { ...state, exact_head: "f".repeat(40) },
+    { ...state, effect_sequence: 1 },
+    { ...state, capture_category: "running", capture_started_ms: 1_001 },
+  ]) {
+    expectStateError("orphan_cleanup_ineligible", () =>
+      classifyLostResumeHandleOrphanState(changedState, request),
+    );
+  }
+  expectStateError("orphan_cleanup_ineligible", () =>
+    classifyLostResumeHandleOrphanState(state, {
+      ...request,
+      observedBootSessionSha256: "f".repeat(64),
     }),
   );
 }
@@ -658,6 +705,7 @@ testBlockerRoutesAreExhaustive();
 testTimingAndIdentityInvariants();
 testSentinelInvariants();
 testConnectedCheckpointContract();
+testLostResumeHandleOrphanStateContract();
 testActiveAttemptExpiryClassification();
 testDetectorEffectTransitionsAndRecoveryOrder();
 testLifecycleLeaseAndSubordinateTransitions();

@@ -210,6 +210,48 @@ cleanup_attempt() {
 		bash "$runner" cleanup-active-attempt --resume-handle "$handle"
 }
 
+cleanup_unique_orphan() {
+	env \
+		PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+		PHASE28_ALLOW_DIRTY_TEST=1 \
+		"$@" \
+		bash "$runner" cleanup-unique-orphan-attempt \
+		--expected-head "$test_head" \
+		--expected-state connected_entry_waiting \
+		--reason lost_resume_handle
+}
+
+expect_orphan_failure() {
+	local expected="$1"
+	shift
+	if "$@" >"$temp_root/orphan-failure.stdout" 2>"$temp_root/orphan-failure.stderr"; then
+		fail "orphan cleanup unexpectedly succeeded for $expected"
+	fi
+	rg -q "^cleanup_category=${expected}$" "$temp_root/orphan-failure.stdout" || fail "missing orphan cleanup category $expected"
+	rg -q "^phase28_attempt_error=${expected}$" "$temp_root/orphan-failure.stderr" || fail "missing orphan cleanup error $expected"
+	if rg -q "$control_root|resume_handle_sha256|attempt_dir|[0-9a-f]{64}\.json" "$temp_root/orphan-failure.stdout" "$temp_root/orphan-failure.stderr"; then
+		fail "orphan cleanup failure exposed a private identity"
+	fi
+}
+
+setup_unique_orphan() {
+	local label="$1"
+	control_root="$temp_root/control-orphan-$label"
+	local begin_output
+	begin_output="$(begin_attempt)"
+	orphan_handle="$(sed -n 's/^resume_handle=//p' <<<"$begin_output")"
+	orphan_slot="$(slot_for_handle "$orphan_handle")"
+	orphan_dir="$(jq -er '.attempt_dir' "$orphan_slot")"
+	orphan_state="$orphan_dir/state.json"
+}
+
+mutate_orphan_state() {
+	local filter="$1"
+	jq --arg head "$test_head" "$filter" "$orphan_state" >"$orphan_state.next"
+	mv "$orphan_state.next" "$orphan_state"
+	chmod 600 "$orphan_state"
+}
+
 assert_tombstoned_and_stale() {
 	local handle="$1"
 	local expected_terminal="$2"
@@ -331,6 +373,7 @@ first_handle="$(sed -n 's/^resume_handle=//p' <<<"$first_output")"
 rg -q '^## CHECKPOINT REACHED$' <<<"$first_output"
 rg -q '^checkpoint_id=plan13-connected-entry$' <<<"$first_output"
 rg -q '^attempt_state=connected_entry_waiting$' <<<"$first_output"
+rg -q '^capture_category=not_started$' <<<"$first_output"
 if rg -q 'attempt_dir|selected_port|credential|capability|lease_id|owner_pid|boot_session|effect_authorization|raw_log|device_url|endpoint|password' <<<"$first_output"; then
 	fail "public checkpoint exposed a private field"
 fi
@@ -641,6 +684,168 @@ cleanup_after_tombstone_slot="$(slot_for_handle "$cleanup_after_tombstone_handle
 cleanup_after_tombstone_dir="$(jq -er '.attempt_dir' "$cleanup_after_tombstone_slot")"
 expect_exit_failure cleanup_attempt "$cleanup_after_tombstone_handle" PHASE28_CRASH_AT=after_tombstone_persistence
 assert_tombstoned_and_stale "$cleanup_after_tombstone_handle" blocked_safe_attempt_prerequisite "$cleanup_after_tombstone_dir"
+
+control_root="$temp_root/control-orphan-zero"
+mkdir -p "$control_root/resume-index" "$control_root/attempts"
+chmod 700 "$control_root" "$control_root/resume-index" "$control_root/attempts"
+expect_orphan_failure no_active_orphan cleanup_unique_orphan
+rg -q '^active_orphan_count_category=zero$' "$temp_root/orphan-failure.stdout"
+rg -q '^state_mutated=false$' "$temp_root/orphan-failure.stdout"
+
+setup_unique_orphan multiple
+first_orphan_state="$orphan_state"
+first_orphan_slot="$orphan_slot"
+begin_attempt >"$temp_root/second-orphan-private.out"
+first_state_before="$(shasum -a 256 "$first_orphan_state" | awk '{print $1}')"
+first_slot_before="$(shasum -a 256 "$first_orphan_slot" | awk '{print $1}')"
+expect_orphan_failure orphan_index_ambiguous cleanup_unique_orphan
+[[ "$first_state_before" == "$(shasum -a 256 "$first_orphan_state" | awk '{print $1}')" ]] || fail "multiple-orphan rejection mutated state"
+[[ "$first_slot_before" == "$(shasum -a 256 "$first_orphan_slot" | awk '{print $1}')" ]] || fail "multiple-orphan rejection mutated its mapping"
+
+setup_unique_orphan collision
+collision_digest="$(jq -er '.resume_handle_sha256' "$orphan_slot")"
+collision_slot="$control_root/resume-index/$(printf 'f%.0s' {1..64}).json"
+jq -cn --arg digest "$collision_digest" '{schema_version:"exact-head-resume-tombstone-v1",resume_handle_sha256:$digest,attempt_generation:1,terminal_status:"closed",terminal_category:"blocked_safe_attempt_prerequisite",cleanup_time_category:"abandoned"}' >"$collision_slot"
+chmod 600 "$collision_slot"
+expect_orphan_failure orphan_index_ambiguous cleanup_unique_orphan
+[[ -f "$orphan_state" ]] || fail "active/tombstone collision rejection mutated state"
+
+setup_unique_orphan wrong-head
+expect_orphan_failure orphan_state_ineligible env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	bash "$runner" cleanup-unique-orphan-attempt \
+	--expected-head "2222222222222222222222222222222222222222" \
+	--expected-state connected_entry_waiting \
+	--reason lost_resume_handle
+[[ -f "$orphan_state" ]] || fail "wrong-head rejection mutated state"
+
+setup_unique_orphan wrong-boot
+mutate_orphan_state '.boot_session_sha256=("f"*64)'
+jq '.boot_session_sha256=("f"*64)' "$orphan_slot" >"$orphan_slot.next"
+mv "$orphan_slot.next" "$orphan_slot"
+chmod 600 "$orphan_slot"
+expect_orphan_failure orphan_state_ineligible cleanup_unique_orphan
+[[ -f "$orphan_state" ]] || fail "wrong-boot rejection mutated state"
+
+setup_unique_orphan wrong-state
+mutate_orphan_state '.attempt_state="recovery_waiting"'
+expect_orphan_failure orphan_state_ineligible cleanup_unique_orphan
+
+orphan_state_mutations=(
+	'.detector_attempt_count=1'
+	'.usb_replug_count=1'
+	'.both_power_count=1'
+	'.reset_count=1'
+	'.boot_reset_count=1'
+	'.effect_sequence=1'
+	'.effect_id="detector_board_info" | .effect_phase="authorized" | .effect_authorization_nonce=("a"*32) | .effect_sequence=1'
+	'.armed_prohibited_sentinel_counts.detector_board_info_effect_count=1'
+	'.capture_complete_prohibited_sentinel_counts.detector_board_info_effect_count=1'
+	'.armed_permitted_lifecycle_counts.removal_pty_write_count=1'
+	'.capture_complete_permitted_lifecycle_counts.removal_pty_write_count=1'
+	'.wifi_credential_state="present"'
+	'.wifi_credential_binding_id=("a"*32)'
+	'.reference_guard_state="pass" | .reference_commit=("b"*40) | .reference_guard_output_sha256=("c"*64)'
+	'.selected_port_state="one_board205" | .selected_port_fingerprint_sha256=("c"*64)'
+	'.manifest_state="pass" | .manifest_source_commit=("1"*40) | .manifest_sha256=("c"*64) | .factory_image_sha256=("d"*64)'
+	'.reinit_capture_started_ms=1'
+	'.capture_category="running" | .capture_started_ms=1'
+	'.classifier_version="strict-production-v2"'
+	'.classification_phase="completed"'
+	'.result_correlated=false'
+	'.process_running=true'
+	'.lifecycle_lease_id=("a"*32)'
+)
+orphan_mutation_index=0
+for orphan_mutation in "${orphan_state_mutations[@]}"; do
+	setup_unique_orphan "ineligible-$orphan_mutation_index"
+	mutate_orphan_state "$orphan_mutation"
+	state_before="$(shasum -a 256 "$orphan_state" | awk '{print $1}')"
+	expect_orphan_failure orphan_state_ineligible cleanup_unique_orphan
+	[[ "$state_before" == "$(shasum -a 256 "$orphan_state" | awk '{print $1}')" ]] || fail "ineligible orphan mutation changed state"
+	orphan_mutation_index=$((orphan_mutation_index + 1))
+done
+
+setup_unique_orphan capability-present
+printf '{}\n' >"$orphan_dir/credential-capability.json"
+chmod 600 "$orphan_dir/credential-capability.json"
+expect_orphan_failure orphan_live_reference_present cleanup_unique_orphan
+
+setup_unique_orphan pid-present
+printf '%s\n' "$$" >"$orphan_dir/child.pid"
+chmod 600 "$orphan_dir/child.pid"
+expect_orphan_failure orphan_live_reference_present cleanup_unique_orphan
+
+setup_unique_orphan socket-present
+(cd "$orphan_dir" && node -e 'const fs=require("node:fs"),net=require("node:net"); const server=net.createServer(()=>{}); server.listen("lifecycle.sock",()=>fs.chmodSync("lifecycle.sock",0o600)); setInterval(()=>{},1000);') &
+orphan_socket_pid=$!
+for _ in $(seq 1 100); do
+	[[ -S "$orphan_dir/lifecycle.sock" ]] && break
+	sleep 0.01
+done
+[[ -S "$orphan_dir/lifecycle.sock" ]] || fail "orphan socket fixture did not start"
+expect_orphan_failure orphan_live_reference_present cleanup_unique_orphan
+kill "$orphan_socket_pid" 2>/dev/null || true
+wait "$orphan_socket_pid" 2>/dev/null || true
+
+setup_unique_orphan malformed-schema
+mutate_orphan_state '.schema_version="wrong"'
+expect_orphan_failure orphan_state_ineligible cleanup_unique_orphan
+
+setup_unique_orphan malformed-mode
+chmod 644 "$orphan_slot"
+expect_orphan_failure orphan_index_ambiguous cleanup_unique_orphan
+
+setup_unique_orphan crash-before-tombstone
+expect_exit_failure cleanup_unique_orphan PHASE28_CRASH_AT=before_tombstone_persistence
+[[ "$(jq -er '.attempt_state' "$orphan_state")" == "terminal" ]] || fail "orphan cleanup crash did not preserve terminal recovery state"
+crash_recovery_output="$(cleanup_unique_orphan)"
+rg -q '^cleanup_result=closed$' <<<"$crash_recovery_output"
+rg -q '^terminal_category=blocked_safe_attempt_prerequisite$' <<<"$crash_recovery_output"
+[[ ! -e "$orphan_dir" ]] || fail "orphan cleanup crash recovery retained live references"
+
+setup_unique_orphan crash-after-tombstone
+expect_exit_failure cleanup_unique_orphan PHASE28_CRASH_AT=after_tombstone_persistence
+[[ ! -e "$orphan_dir" ]] || fail "post-tombstone crash retained live references"
+expect_orphan_failure no_active_orphan cleanup_unique_orphan
+
+setup_unique_orphan crash-after-cleanup
+expect_exit_failure cleanup_unique_orphan PHASE28_CRASH_AT=after_terminal_cleanup
+[[ ! -e "$orphan_dir" ]] || fail "post-cleanup crash retained live references"
+expect_orphan_failure no_active_orphan cleanup_unique_orphan
+
+setup_unique_orphan exact-success
+: >"$temp_root/orphan-adapter.trace"
+historical_digest="$(printf 'e%.0s' {1..64})"
+historical_slot="$control_root/resume-index/$historical_digest.json"
+jq -cn --arg digest "$historical_digest" '{schema_version:"exact-head-resume-tombstone-v1",resume_handle_sha256:$digest,attempt_generation:1,terminal_status:"closed",terminal_category:"blocked_safe_attempt_prerequisite",cleanup_time_category:"abandoned"}' >"$historical_slot"
+chmod 600 "$historical_slot"
+orphan_tombstone_count_before="$(find "$control_root/resume-index" -type f -name '*.json' | wc -l | tr -d ' ')"
+valid_tombstone_count_before="$(jq -s '[.[] | select(.schema_version == "exact-head-resume-tombstone-v1")] | length' "$control_root"/resume-index/*.json)"
+orphan_success_output="$(cleanup_unique_orphan PHASE28_EFFECT_TRACE="$temp_root/orphan-adapter.trace")"
+rg -q '^cleanup_result=closed$' <<<"$orphan_success_output"
+rg -q '^terminal_category=blocked_safe_attempt_prerequisite$' <<<"$orphan_success_output"
+rg -q '^active_orphan_count_category=zero$' <<<"$orphan_success_output"
+rg -q '^tombstone_count_increased=true$' <<<"$orphan_success_output"
+rg -q '^live_reference_count_category=zero$' <<<"$orphan_success_output"
+rg -q '^process_running=false$' <<<"$orphan_success_output"
+rg -q '^effect_sentinels_invoked=0$' <<<"$orphan_success_output"
+rg -q '^positive_evidence_promoted=false$' <<<"$orphan_success_output"
+rg -q '^resume_handle_reconstructed=false$' <<<"$orphan_success_output"
+if rg -q "$control_root|resume_handle_sha256|attempt_dir|[0-9a-f]{64}\.json" <<<"$orphan_success_output"; then
+	fail "successful orphan cleanup exposed a private identity"
+fi
+[[ ! -s "$temp_root/orphan-adapter.trace" ]] || fail "orphan cleanup touched an adapter sentinel"
+[[ ! -e "$orphan_dir" ]] || fail "successful orphan cleanup retained its attempt directory"
+[[ "$(jq -r 'keys | sort | join(",")' "$orphan_slot")" == "attempt_generation,cleanup_time_category,resume_handle_sha256,schema_version,terminal_category,terminal_status" ]] || fail "orphan cleanup tombstone retained live references"
+[[ "$(jq -er '.terminal_category' "$orphan_slot")" == "blocked_safe_attempt_prerequisite" ]] || fail "orphan cleanup tombstone category mismatch"
+orphan_tombstone_count_after="$(find "$control_root/resume-index" -type f -name '*.json' | wc -l | tr -d ' ')"
+valid_tombstone_count_after="$(jq -s '[.[] | select(.schema_version == "exact-head-resume-tombstone-v1")] | length' "$control_root"/resume-index/*.json)"
+[[ "$orphan_tombstone_count_after" == "$((orphan_tombstone_count_before + 0))" ]] || fail "orphan cleanup did not replace its active mapping in place"
+[[ "$valid_tombstone_count_after" == "$((valid_tombstone_count_before + 1))" ]] || fail "orphan cleanup did not increase the minimal tombstone count"
+expect_orphan_failure no_active_orphan cleanup_unique_orphan
+rg -q '^state_mutated=false$' "$temp_root/orphan-failure.stdout"
 
 control_root="$temp_root/control-lifecycle-expiry"
 socket_trace="$temp_root/lifecycle-expiry-socket.trace"

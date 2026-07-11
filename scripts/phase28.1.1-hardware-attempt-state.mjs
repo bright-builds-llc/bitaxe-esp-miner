@@ -913,6 +913,53 @@ export function createConnectedEntryState(options) {
   );
 }
 
+export function classifyLostResumeHandleOrphanState(
+  state,
+  {
+    expectedHead,
+    expectedState,
+    reason,
+    observedBootSessionSha256,
+  },
+) {
+  validateAttemptState(state);
+  requirePattern(expectedHead, /^[0-9a-f]{40}$/, "expected orphan HEAD");
+  requirePattern(
+    observedBootSessionSha256,
+    /^[0-9a-f]{64}$/,
+    "observed boot session",
+  );
+  if (
+    expectedState !== "connected_entry_waiting" ||
+    reason !== "lost_resume_handle" ||
+    state.exact_head !== expectedHead ||
+    state.boot_session_sha256 !== observedBootSessionSha256
+  ) {
+    fail("orphan_cleanup_ineligible", "orphan cleanup request does not match");
+  }
+
+  const connectedEntry = createConnectedEntryState({
+    exactHead: state.exact_head,
+    resumeHandleSha256: state.resume_handle_sha256,
+    createdMonotonicMs: state.created_monotonic_ms,
+    observeBootSession: () => state.boot_session_sha256,
+    randomHex: () => state.attempt_id,
+  });
+  if (JSON.stringify(state) === JSON.stringify(connectedEntry)) {
+    return "connected_entry_waiting";
+  }
+
+  const terminalRecovery = terminalizeAttempt(
+    connectedEntry,
+    "cancelled_or_abandoned",
+  );
+  if (JSON.stringify(state) === JSON.stringify(terminalRecovery)) {
+    return "terminal_recovery";
+  }
+
+  fail("orphan_cleanup_ineligible", "attempt is not an effect-free orphan");
+}
+
 export function publicCheckpoint(state, resumeHandle) {
   validateAttemptState(state);
   requirePattern(resumeHandle, /^[0-9a-f]{64}$/, "resume_handle");
