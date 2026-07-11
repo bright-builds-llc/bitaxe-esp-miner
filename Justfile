@@ -7,6 +7,9 @@ bootstrap-esp *args:
 detect-ultra205:
     ./scripts/detect-ultra205.sh
 
+diagnose-ultra205-session *args:
+    ./scripts/diagnose-ultra205-session.sh {{ args }}
+
 build:
     bazel build //firmware/bitaxe:firmware
 

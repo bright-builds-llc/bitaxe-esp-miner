@@ -58,6 +58,10 @@ create_espflash_stub() {
 	write_executable "$path" 'scenario="${DETECT_ULTRA205_TEST_SCENARIO:?}"
 if [[ "${1:-}" == "list-ports" && "${2:-}" == "--name-only" ]]; then
   case "$scenario" in
+    list_failure)
+      printf "list ports failed\n" >&2
+      exit 1
+      ;;
     zero)
       exit 0
       ;;
@@ -65,7 +69,7 @@ if [[ "${1:-}" == "list-ports" && "${2:-}" == "--name-only" ]]; then
       printf "/dev/cu.usbmodem101\n/dev/cu.usbmodem202\n"
       exit 0
       ;;
-    success | board_info_failure)
+    success | board_info_failure | open_failure)
       printf "/dev/cu.usbmodem101\n"
       exit 0
       ;;
@@ -84,6 +88,10 @@ if [[ "${1:-}" == "board-info" ]]; then
       ;;
     board_info_failure)
       printf "serial sync failed\n" >&2
+      exit 1
+      ;;
+    open_failure)
+      printf "failed to open serial port: permission denied\n" >&2
       exit 1
       ;;
     *)
@@ -107,7 +115,19 @@ run_detector() {
 	capture_command "$output_file" env \
 		DETECT_ULTRA205_TEST_SCENARIO="$scenario" \
 		ESPFLASH_BIN="$espflash_stub" \
+		SERIAL_SESSION_TOOL_VERSION=test \
+		SERIAL_SESSION_TRACE_ROOT="${tmp_root}/traces-${scenario}" \
 		"$BASH" "$detector_script"
+}
+
+test_list_ports_failure_is_classified() {
+	local output_file="${tmp_root}/list-failure.out"
+
+	if run_detector list_failure "$output_file"; then
+		fail "detector unexpectedly passed when list-ports failed"
+	fi
+
+	assert_contains "$(cat "$output_file")" "failure_category=list_ports_failed"
 }
 
 test_zero_ports_fails() {
@@ -148,6 +168,7 @@ test_single_port_success_prints_port() {
 	local output
 	output="$(cat "$output_file")"
 	assert_contains "$output" "board-info"
+	assert_contains "$output" "--before usb-reset --after hard-reset"
 	assert_contains "$output" "Chip type: esp32s3"
 	assert_contains "$output" "port=/dev/cu.usbmodem101"
 }
@@ -163,15 +184,28 @@ test_board_info_failure_blocks_detection() {
 	output="$(cat "$output_file")"
 	assert_contains "$output" "board-info failed"
 	assert_contains "$output" "serial sync failed"
+	assert_contains "$output" "failure_category=connection_failure"
+}
+
+test_open_failure_is_classified() {
+	local output_file="${tmp_root}/open-failure.out"
+
+	if run_detector open_failure "$output_file"; then
+		fail "detector unexpectedly passed when the serial port could not open"
+	fi
+
+	assert_contains "$(cat "$output_file")" "failure_category=open_failure"
 }
 
 if [[ ! -f "$detector_script" ]]; then
 	fail "detector script missing: ${detector_script}"
 fi
 
+test_list_ports_failure_is_classified
 test_zero_ports_fails
 test_multiple_ports_fail_with_candidates
 test_single_port_success_prints_port
 test_board_info_failure_blocks_detection
+test_open_failure_is_classified
 
 printf 'detect ultra205 tests passed\n'
