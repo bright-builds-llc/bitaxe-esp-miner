@@ -26,9 +26,15 @@ rg -q 'log::info!\("\{marker\}"\)' "$boot_evidence"
 rg -q 'initialize_observer\(\);' "$main"
 [[ "$(rg -c '\.spawn\(' "$boot_evidence")" == "1" ]]
 rg -q 'esp_timer_get_time' "$runtime_uptime"
-! rg -q 'esp_timer_get_time' "$repo_root/firmware/bitaxe/src/runtime_snapshot.rs" "$repo_root/firmware/bitaxe/src/http_api.rs"
+if rg -q 'esp_timer_get_time' "$repo_root/firmware/bitaxe/src/runtime_snapshot.rs" "$repo_root/firmware/bitaxe/src/http_api.rs"; then
+	printf 'phase28_boot_replay_test_error=duplicate_uptime_authority\n' >&2
+	exit 1
+fi
 rg -q 'record_listener_armed\(\);' "$live_runtime"
-! rg -q 'runtime_heartbeat' "$log_buffer"
+if rg -q 'runtime_heartbeat' "$log_buffer"; then
+	printf 'phase28_boot_replay_test_error=heartbeat_retained\n' >&2
+	exit 1
+fi
 
 # Assert: boot-lifetime evidence owns replay; Stratum progress cannot gate it.
 if rg -q 'maybe_replay_accepted_state_snapshot|AcceptedStateReplayCadence' "$live_runtime"; then

@@ -19,6 +19,8 @@ evidence_out=""
 manifest=""
 reinit_log=""
 board="205"
+# JavaScript owns the template-literal expansion.
+# shellcheck disable=SC2016
 IFS=' ' read -r minimum_usb_absence_ms restore_watch_timeout_ms monitor_attachment_timeout_ms minimum_capture_duration_ms <<<"$(node --input-type=module -e 'const { PLAN13_USB_ABSENCE_MINIMUM_MS, PLAN13_RESTORE_WATCH_TIMEOUT_MS, PLAN13_MONITOR_ATTACHMENT_TIMEOUT_MS, PLAN13_CAPTURE_MINIMUM_MS } = await import(process.argv[1]); process.stdout.write(`${PLAN13_USB_ABSENCE_MINIMUM_MS} ${PLAN13_RESTORE_WATCH_TIMEOUT_MS} ${PLAN13_MONITOR_ATTACHMENT_TIMEOUT_MS} ${PLAN13_CAPTURE_MINIMUM_MS}\n`)' "$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs")"
 readonly minimum_usb_absence_ms restore_watch_timeout_ms monitor_attachment_timeout_ms minimum_capture_duration_ms
 readonly replay_interval_ms=10000
