@@ -9,7 +9,7 @@ const DIGEST = "a".repeat(64);
 
 function classifierState() {
   return {
-    schema_version: "exact-head-attempt-v2",
+    schema_version: "exact-head-attempt-v3",
     phase_lifecycle_id: "28.1.1-2026-07-09T19-24-27",
     attempt_id: "0".repeat(32),
     exact_head: "1".repeat(40),
@@ -36,8 +36,11 @@ function classifierState() {
     lifecycle_deadline_ms: 900_000,
     attestation_accepted_ms: 2,
     usb_absence_ms: 5_000,
-    restore_accepted_ms: 5_003,
+    restore_watcher_armed_ms: 5_003,
+    restore_watcher_deadline_ms: 1_805_003,
     reappearance_elapsed_ms: 5_000,
+    monitor_attachment_ms: 10_103,
+    monitor_attachment_elapsed_ms: 100,
     lifecycle_raw_log_sha256: DIGEST,
     same_chain_raw_log_set_sha256: DIGEST,
     capture_started_ms: 1_000,

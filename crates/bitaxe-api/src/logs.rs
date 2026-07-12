@@ -16,13 +16,16 @@ pub const DOWNLOAD_CONTENT_TYPE: &str = "text/plain";
 /// Log download file name header.
 pub const DOWNLOAD_CONTENT_DISPOSITION: &str = "attachment; filename=\"bitaxe-logs.txt\"";
 /// Diagnostic accepted-state replay window after listener readiness.
-pub const ACCEPTED_STATE_REPLAY_WINDOW_MS: u64 = 180_000;
+///
+/// This covers the 30-minute native-USB appearance window, the 60-second
+/// attachment bound, and two replay intervals of alignment headroom.
+pub const ACCEPTED_STATE_REPLAY_WINDOW_MS: u64 = 1_880_000;
 /// Fixed accepted-state replay interval inside the bounded window.
-pub const ACCEPTED_STATE_REPLAY_INTERVAL_MS: u64 = 2_000;
-/// Latest accepted USB reappearance after lifecycle attestation.
-pub const ACCEPTED_STATE_REATTACH_DEADLINE_MS: u64 = 60_000;
-/// Reserved time for starting the no-reset monitor after USB reappearance.
-pub const ACCEPTED_STATE_MONITOR_START_RESERVE_MS: u64 = 10_000;
+pub const ACCEPTED_STATE_REPLAY_INTERVAL_MS: u64 = 10_000;
+/// Bounded wait for the selected native-USB node to appear after arming.
+pub const ACCEPTED_STATE_RESTORE_WATCH_MS: u64 = 1_800_000;
+/// Bounded readiness and passive-monitor ownership acquisition after appearance.
+pub const ACCEPTED_STATE_MONITOR_ATTACHMENT_MS: u64 = 60_000;
 
 /// Download response headers expected by existing AxeOS clients.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -327,8 +330,8 @@ mod tests {
 
     use crate::logs::{
         log_download_headers, AcceptedStateReplayCadence, RawLogStreamPlanner, RetainedLogBuffer,
-        ACCEPTED_STATE_MONITOR_START_RESERVE_MS, ACCEPTED_STATE_REATTACH_DEADLINE_MS,
-        ACCEPTED_STATE_REPLAY_INTERVAL_MS, ACCEPTED_STATE_REPLAY_WINDOW_MS,
+        ACCEPTED_STATE_MONITOR_ATTACHMENT_MS, ACCEPTED_STATE_REPLAY_INTERVAL_MS,
+        ACCEPTED_STATE_REPLAY_WINDOW_MS, ACCEPTED_STATE_RESTORE_WATCH_MS,
         DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
     };
 
@@ -623,7 +626,7 @@ mod tests {
         // Arrange
         let mut cadence = AcceptedStateReplayCadence::armed(0);
         let monitor_ready_ms =
-            ACCEPTED_STATE_REATTACH_DEADLINE_MS + ACCEPTED_STATE_MONITOR_START_RESERVE_MS;
+            ACCEPTED_STATE_RESTORE_WATCH_MS + ACCEPTED_STATE_MONITOR_ATTACHMENT_MS;
         let next_replay_ms = monitor_ready_ms + ACCEPTED_STATE_REPLAY_INTERVAL_MS;
 
         // Act
@@ -640,11 +643,11 @@ mod tests {
         let due_at_window_end = cadence.take_due(ACCEPTED_STATE_REPLAY_WINDOW_MS);
 
         // Assert
-        assert_eq!(ACCEPTED_STATE_REPLAY_WINDOW_MS, 180_000);
-        assert_eq!(ACCEPTED_STATE_REPLAY_INTERVAL_MS, 2_000);
-        assert_eq!(ACCEPTED_STATE_REATTACH_DEADLINE_MS, 60_000);
-        assert_eq!(ACCEPTED_STATE_MONITOR_START_RESERVE_MS, 10_000);
-        assert_eq!(next_replay_ms, 72_000);
+        assert_eq!(ACCEPTED_STATE_REPLAY_WINDOW_MS, 1_880_000);
+        assert_eq!(ACCEPTED_STATE_REPLAY_INTERVAL_MS, 10_000);
+        assert_eq!(ACCEPTED_STATE_RESTORE_WATCH_MS, 1_800_000);
+        assert_eq!(ACCEPTED_STATE_MONITOR_ATTACHMENT_MS, 60_000);
+        assert_eq!(next_replay_ms, 1_870_000);
         assert!(next_replay_ms < ACCEPTED_STATE_REPLAY_WINDOW_MS);
         assert!(due_after_monitor_reserve);
         assert!(!due_at_window_end);

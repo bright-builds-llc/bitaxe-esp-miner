@@ -83,27 +83,23 @@ detector_board_info | credential_presence_bind | reference_guard | package | fla
 		jq -cn --argjson start "$attestation_ms" '{usb_absence_started_ms:$start}' >"$values"
 		chmod 600 "$values"
 		bash "${PHASE28_LIFECYCLE_RUNNER:?}" lifecycle-owner-transition --capability "${PHASE28_LIFECYCLE_CAPABILITY:?}" --event absence-observing --values-file "$values" >/dev/null
-		if [[ "${PHASE28_REAL_SOCKET_FIXTURE:-0}" == "1" ]]; then
-			start_fixture_receiver
-		fi
-		jq -cn --argjson end "$((attestation_ms + 5000))" '{usb_absence_ended_ms:$end,usb_absence_ms:5000}' >"$values"
+		jq -cn --argjson end "$((attestation_ms + 5000))" --argjson deadline "$((attestation_ms + 1805000))" '{usb_absence_ended_ms:$end,usb_absence_ms:5000,restore_watcher_armed_ms:$end,restore_watcher_deadline_ms:$deadline}' >"$values"
 		chmod 600 "$values"
-		bash "$PHASE28_LIFECYCLE_RUNNER" lifecycle-owner-transition --capability "$PHASE28_LIFECYCLE_CAPABILITY" --event restore-waiting --values-file "$values" >/dev/null
-		if [[ "${PHASE28_REAL_SOCKET_FIXTURE:-0}" == "1" ]]; then
-			receive_fixture_frame plan13-barrel-then-usb-restored
-		else
+		bash "$PHASE28_LIFECYCLE_RUNNER" lifecycle-owner-transition --capability "$PHASE28_LIFECYCLE_CAPABILITY" --event restore-watcher-armed --values-file "$values" >/dev/null
+		if [[ -n "${PHASE28_FIXTURE_RESTORE_CONTINUE_FILE:-}" ]]; then
 			for _ in $(seq 1 500); do
-				[[ "$(wc -l <"$PHASE28_SOCKET_TRACE" | tr -d ' ')" -ge 2 ]] && break
+				[[ -f "$PHASE28_FIXTURE_RESTORE_CONTINUE_FILE" ]] && break
 				sleep 0.01
 			done
+			[[ -f "$PHASE28_FIXTURE_RESTORE_CONTINUE_FILE" ]]
 		fi
-		printf '{}\n' >"$values"
+		jq -cn --argjson reappearance "$((attestation_ms + 6000))" '{usb_reappearance_ms:$reappearance,reappearance_elapsed_ms:1000}' >"$values"
 		chmod 600 "$values"
-		bash "$PHASE28_LIFECYCLE_RUNNER" lifecycle-owner-transition --capability "$PHASE28_LIFECYCLE_CAPABILITY" --event reappearance-observing --values-file "$values" >/dev/null
-		jq -cn --argjson reappearance "$((attestation_ms + 6000))" '{usb_reappearance_ms:$reappearance,reappearance_elapsed_ms:6000,capture_started_ms:$reappearance}' >"$values"
+		bash "$PHASE28_LIFECYCLE_RUNNER" lifecycle-owner-transition --capability "$PHASE28_LIFECYCLE_CAPABILITY" --event usb-reappearance-observed --values-file "$values" >/dev/null
+		jq -cn --argjson attached "$((attestation_ms + 6001))" '{monitor_attachment_ms:$attached,monitor_attachment_elapsed_ms:1,capture_started_ms:$attached}' >"$values"
 		chmod 600 "$values"
 		bash "$PHASE28_LIFECYCLE_RUNNER" lifecycle-owner-transition --capability "$PHASE28_LIFECYCLE_CAPABILITY" --event capture-running --values-file "$values" >/dev/null
-		jq -cn --argjson ended "$((attestation_ms + 366000))" '{capture_ended_ms:$ended,capture_duration_ms:360000,lifecycle_raw_log_sha256:("a"*64),same_chain_raw_log_set_sha256:("a"*64),classifier_input_sha256:("a"*64),lifecycle_status:"match",result_correlated:false,power_delta_class:"flat",share_submission_status:"not_observed"}' >"$values"
+		jq -cn --argjson ended "$((attestation_ms + 366001))" '{capture_ended_ms:$ended,capture_duration_ms:360000,lifecycle_raw_log_sha256:("a"*64),same_chain_raw_log_set_sha256:("a"*64),classifier_input_sha256:("a"*64),lifecycle_status:"match",result_correlated:false,power_delta_class:"flat",share_submission_status:"not_observed"}' >"$values"
 		chmod 600 "$values"
 		bash "$PHASE28_LIFECYCLE_RUNNER" lifecycle-owner-transition --capability "$PHASE28_LIFECYCLE_CAPABILITY" --event capture-complete --values-file "$values" >/dev/null
 		jq -cn --arg effect "$fixture_name" '{schema_version:"exact-head-effect-result-v1",effect_id:$effect,status:"completed",blocker_reason:"none",outputs:{}}' >"${PHASE28_EFFECT_RESULT_FILE:?}"
@@ -387,18 +383,22 @@ prepare_post_capture_state() {
     .lifecycle_capability_sha256=("a"*64) |
     .lifecycle_owner_pid=123 |
     .lifecycle_owner_start_fingerprint_sha256=("a"*64) |
-    .lifecycle_deadline_ms=900000 |
+    .lifecycle_deadline_ms=4146000 |
     .attestation_status="accepted" |
     .attestation_accepted_ms=1000 |
     .usb_absence_started_ms=1000 |
     .usb_absence_ended_ms=6000 |
     .usb_absence_ms=5000 |
     .usb_absence_category="continuous_at_least_5000" |
-    .restore_token_status="accepted" |
-    .restore_accepted_ms=6001 |
+    .restore_watcher_status="attached" |
+    .restore_watcher_armed_ms=6001 |
+    .restore_watcher_deadline_ms=1806001 |
     .usb_reappearance_ms=7000 |
-    .reappearance_elapsed_ms=6000 |
-    .reappearance_category="within_60000" |
+    .reappearance_elapsed_ms=999 |
+    .reappearance_category="within_1800000" |
+    .monitor_attachment_ms=7000 |
+    .monitor_attachment_elapsed_ms=0 |
+    .monitor_attachment_category="within_60000" |
     .capture_complete_permitted_lifecycle_counts |= with_entries(.value=1) |
     .armed_prohibited_sentinel_sha256=("a"*64) |
     .capture_complete_prohibited_sentinel_sha256=("a"*64) |
@@ -514,6 +514,7 @@ env \
 	PHASE28_REAL_SOCKET_FIXTURE=1 \
 	PHASE28_TEST_SOCKET_SEND_BIN="$socket_sender" \
 	PHASE28_SOCKET_TRACE="$socket_trace" \
+	PHASE28_FIXTURE_RESTORE_CONTINUE_FILE="$temp_root/restore.continue" \
 	bash "$runner" run-validated-effect --resume-handle "$lifecycle_handle" --effect-id lifecycle_start >"$temp_root/lifecycle.stdout" 2>"$temp_root/lifecycle.stderr" &
 lifecycle_runner_pid=$!
 wait_for_pattern '^checkpoint_id=plan13-lifecycle-removal$' "$temp_root/lifecycle.stdout"
@@ -529,16 +530,23 @@ expect_failure lease_dead_or_reused_process env PHASE28_ATTEMPT_CONTROL_ROOT="$c
 expect_failure checkpoint_token_mismatch env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" PHASE28_TEST_SOCKET_SEND_BIN="$socket_sender" PHASE28_SOCKET_TRACE="$socket_trace" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token wrong --response-token plan13-both-power-paths-removed
 [[ ! -s "$socket_trace" ]] || fail "wrong lifecycle token reached socket dispatch"
 env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token plan13-armed-removal-v1 --response-token plan13-both-power-paths-removed >/dev/null
-wait_for_pattern '^checkpoint_id=plan13-lifecycle-restore$' "$temp_root/lifecycle.stdout"
-restore_created_ms="$(jq -er '.created_monotonic_ms' "$lifecycle_state")"
-restore_deadline_ms="$(jq -er '.monotonic_deadline_ms' "$lifecycle_state")"
-[[ "$((restore_deadline_ms - restore_created_ms))" == "1800000" ]] || fail "broker restore checkpoint is not bounded to 30 minutes"
-[[ "$restore_deadline_ms" -lt "$lifecycle_deadline_ms" ]] || fail "broker restore checkpoint exceeds its lifecycle lease"
-env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token plan13-barrel-usb-restore-v1 --response-token plan13-barrel-then-usb-restored >/dev/null
+wait_for_pattern '^## ACTION READY$' "$temp_root/lifecycle.stdout"
+rg -q '^action_token=plan13-restore-watcher-armed-v1$' "$temp_root/lifecycle.stdout"
+rg -q '^response_required=false$' "$temp_root/lifecycle.stdout"
+restore_armed_ms="$(jq -er '.restore_watcher_armed_ms' "$lifecycle_state")"
+restore_deadline_ms="$(jq -er '.restore_watcher_deadline_ms' "$lifecycle_state")"
+[[ "$((restore_deadline_ms - restore_armed_ms))" == "1800000" ]] || fail "broker restore watcher is not bounded to 30 minutes"
+[[ "$restore_deadline_ms" -lt "$lifecycle_deadline_ms" ]] || fail "broker restore watcher exceeds its lifecycle lease"
+action_resume="$(env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" bash "$runner" resolve-checkpoint --resume-handle "$lifecycle_handle")"
+rg -q '^## ACTION READY$' <<<"$action_resume"
+expect_failure checkpoint_state_mismatch env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token plan13-barrel-usb-restore-v1 --response-token plan13-barrel-then-usb-restored
+: >"$temp_root/restore.continue"
 wait "$lifecycle_runner_pid"
 rg -q '^effect_status=completed$' "$temp_root/lifecycle.stdout"
 [[ "$(rg -c '^plan13-both-power-paths-removed$' "$socket_trace")" == "1" ]] || fail "removal frame was not accepted exactly once"
-[[ "$(rg -c '^plan13-barrel-then-usb-restored$' "$socket_trace")" == "1" ]] || fail "restore frame was not accepted exactly once"
+if rg -q '^plan13-barrel-then-usb-restored$' "$socket_trace"; then
+	fail "manual restore token reached lifecycle socket"
+fi
 [[ "$(jq -r '.attempt_state' "$lifecycle_state")" == "capture_complete" ]]
 [[ "$(jq -r '.process_running' "$lifecycle_state")" == "false" ]]
 [[ "$(wc -l <"$temp_root/effects.trace" | tr -d ' ')" == "7" ]]
@@ -707,12 +715,25 @@ cleanup_head_handle="$(begin_attempt connected_entry_waiting)"
 cleanup_head_handle="${cleanup_head_handle#resume_handle=}"
 cleanup_head_slot="$(slot_for_handle "$cleanup_head_handle")"
 cleanup_head_dir="$(jq -er '.attempt_dir' "$cleanup_head_slot")"
-cleanup_output="$(cleanup_attempt "$cleanup_head_handle" PHASE28_TEST_HEAD="2222222222222222222222222222222222222222")"
+trace_escrow_root="$temp_root/private-trace-escrow"
+printf 'cold-start-raw\n' >"$cleanup_head_dir/cold-start-monitor.raw.log"
+printf 'wrapper-raw\n' >"$cleanup_head_dir/monitor-wrapper.raw.log"
+mkdir -m 700 "$cleanup_head_dir/private-session-traces"
+printf 'session-raw\n' >"$cleanup_head_dir/private-session-traces/session.jsonl"
+chmod 600 "$cleanup_head_dir/cold-start-monitor.raw.log" "$cleanup_head_dir/monitor-wrapper.raw.log" "$cleanup_head_dir/private-session-traces/session.jsonl"
+cleanup_output="$(cleanup_attempt "$cleanup_head_handle" PHASE28_TEST_HEAD="2222222222222222222222222222222222222222" PHASE28_TRACE_ESCROW_ROOT="$trace_escrow_root")"
 rg -q '^cleanup_result=closed$' <<<"$cleanup_output"
 rg -q '^terminal_outcome=blocked_safe_attempt_prerequisite$' <<<"$cleanup_output"
 rg -q '^effect_sentinels_invoked=0$' <<<"$cleanup_output"
 rg -q '^positive_evidence_promoted=false$' <<<"$cleanup_output"
 assert_tombstoned_and_stale "$cleanup_head_handle" blocked_safe_attempt_prerequisite "$cleanup_head_dir"
+trace_escrow_dir="$trace_escrow_root/$(basename "$cleanup_head_dir")"
+[[ "$(mode_of "$trace_escrow_root")" == "700" ]]
+[[ "$(mode_of "$trace_escrow_dir")" == "700" ]]
+[[ "$(find "$trace_escrow_dir" -name 'trace-*.raw' -type f | wc -l | tr -d ' ')" == "3" ]]
+while IFS= read -r escrow_file; do
+	[[ "$(mode_of "$escrow_file")" == "600" ]] || fail "escrowed trace is not mode 600"
+done < <(find "$trace_escrow_dir" -type f)
 expect_failure resume_handle_stale cleanup_attempt "$cleanup_head_handle"
 
 control_root="$temp_root/control-cleanup-boot-mismatch"

@@ -6,6 +6,7 @@ import {
   ACCEPTED_STATE_LIFECYCLE_STAGES,
   compareAcceptedStateLifecycle,
   parseAcceptedStateLifecycleMember,
+  parsePlan13BootEvidenceMember,
   renderAcceptedStateLifecycle,
   unavailableAcceptedStateLifecycle,
 } from "./phase28.1.1-accepted-state-lifecycle-compare.mjs";
@@ -30,13 +31,80 @@ function marker(stage, overrides = {}) {
 }
 
 function completeLog(overridesByStage = {}) {
-  return ACCEPTED_STATE_LIFECYCLE_STAGES.map((stage) =>
-    marker(stage, overridesByStage[stage]),
-  ).join("\n");
+  const session = "c".repeat(32);
+  return [
+    "bitaxe-rust boot: board=Ultra 205 asic=BM1366",
+    "h4_continuous_result=listener_armed",
+    bootEvidence(session, "booted"),
+    bootEvidence(session, "listener_armed"),
+    ...ACCEPTED_STATE_LIFECYCLE_STAGES.map((stage) =>
+      marker(stage, overridesByStage[stage]),
+    ),
+  ].join("\n");
+}
+
+function bootEvidence(session, state) {
+  return `plan13_boot_evidence session=${session} state=${state} redacted=true`;
 }
 
 function expectFailure(callback, pattern) {
   assert.throws(callback, pattern);
+}
+
+{
+  // Arrange
+  const session = "a".repeat(32);
+  const replayOnly = [
+    bootEvidence(session, "booted"),
+    bootEvidence(session, "listener_armed"),
+    bootEvidence(session, "booted"),
+    bootEvidence(session, "listener_armed"),
+  ].join("\n");
+
+  // Act
+  const report = parsePlan13BootEvidenceMember(replayOnly, "cold-start", {
+    requireOriginalMarkers: false,
+  });
+
+  // Assert
+  assert.equal(report.bootSessionCount, 1);
+  assert.equal(report.bootEvidenceStateCount, 2);
+  assert.equal(report.equivalentDuplicates, true);
+}
+
+{
+  // Arrange
+  const first = "a".repeat(32);
+  const second = "b".repeat(32);
+  const multipleSessions = [
+    bootEvidence(first, "booted"),
+    bootEvidence(first, "listener_armed"),
+    bootEvidence(second, "booted"),
+  ].join("\n");
+
+  // Act / Assert
+  expectFailure(
+    () =>
+      parsePlan13BootEvidenceMember(multipleSessions, "cold-start", {
+        requireOriginalMarkers: false,
+      }),
+    /multiple boot sessions/u,
+  );
+}
+
+{
+  // Arrange
+  const session = "a".repeat(32);
+  const missingListener = bootEvidence(session, "booted");
+
+  // Act / Assert
+  expectFailure(
+    () =>
+      parsePlan13BootEvidenceMember(missingListener, "cold-start", {
+        requireOriginalMarkers: false,
+      }),
+    /listener proof is absent/u,
+  );
 }
 
 {
@@ -53,6 +121,27 @@ function expectFailure(callback, pattern) {
   assert.equal(report.cold_start_stage_count, 5);
   assert.equal(report.cold_start_marker_count, 6);
   assert.equal(report.cold_start_equivalent_duplicates, true);
+}
+
+{
+  // Arrange
+  const reinit = completeLog();
+  const coldStartReplayOnly = completeLog()
+    .split("\n")
+    .filter(
+      (line) =>
+        !line.includes("bitaxe-rust boot") &&
+        !line.includes("h4_continuous_result=listener_armed"),
+    )
+    .join("\n");
+
+  // Act
+  const report = compareAcceptedStateLifecycle(reinit, coldStartReplayOnly);
+
+  // Assert
+  assert.equal(report.lifecycle_status, "match");
+  assert.equal(report.cold_start_boot_session_count, 1);
+  assert.equal(report.cold_start_boot_evidence_state_count, 2);
 }
 
 {

@@ -2,20 +2,22 @@ import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 
-export const PHASE28_ATTEMPT_SCHEMA_VERSION = "exact-head-attempt-v2";
+export const PHASE28_ATTEMPT_SCHEMA_VERSION = "exact-head-attempt-v3";
 export const PHASE28_RESUME_TOMBSTONE_SCHEMA_VERSION =
   "exact-head-resume-tombstone-v1";
 export const PHASE28_CLASSIFIER_VERSION = "strict-production-v2";
 export const PHASE28_LIFECYCLE_ID = "28.1.1-2026-07-09T19-24-27";
 export const PLAN13_PHYSICAL_ACTION_TIMEOUT_MS = 30 * 60 * 1_000;
 export const PLAN13_USB_ABSENCE_MINIMUM_MS = 5_000;
-export const PLAN13_USB_REAPPEARANCE_TIMEOUT_MS = 60_000;
+export const PLAN13_RESTORE_WATCH_TIMEOUT_MS = 30 * 60 * 1_000;
+export const PLAN13_MONITOR_ATTACHMENT_TIMEOUT_MS = 60_000;
 export const PLAN13_CAPTURE_MINIMUM_MS = 360_000;
 export const PLAN13_LIFECYCLE_LEASE_HEADROOM_MS = 120_000;
 export const PLAN13_LIFECYCLE_LEASE_DURATION_MS =
-  2 * PLAN13_PHYSICAL_ACTION_TIMEOUT_MS +
+  PLAN13_PHYSICAL_ACTION_TIMEOUT_MS +
   PLAN13_USB_ABSENCE_MINIMUM_MS +
-  PLAN13_USB_REAPPEARANCE_TIMEOUT_MS +
+  PLAN13_RESTORE_WATCH_TIMEOUT_MS +
+  PLAN13_MONITOR_ATTACHMENT_TIMEOUT_MS +
   PLAN13_CAPTURE_MINIMUM_MS +
   PLAN13_LIFECYCLE_LEASE_HEADROOM_MS;
 
@@ -70,8 +72,7 @@ export const ATTEMPT_STATES = Object.freeze([
   "armed",
   "removal_attested",
   "absence_observing",
-  "restore_waiting",
-  "restore_attested",
+  "restore_watcher_armed",
   "reappearance_observing",
   "capture_running",
   "capture_complete",
@@ -93,9 +94,8 @@ export const ATTEMPT_TRANSITIONS = Object.freeze({
   lifecycle_authorized: ["armed", "terminal"],
   armed: ["removal_attested", "terminal"],
   removal_attested: ["absence_observing", "terminal"],
-  absence_observing: ["restore_waiting", "terminal"],
-  restore_waiting: ["restore_attested", "terminal"],
-  restore_attested: ["reappearance_observing", "terminal"],
+  absence_observing: ["restore_watcher_armed", "terminal"],
+  restore_watcher_armed: ["reappearance_observing", "terminal"],
   reappearance_observing: ["capture_running", "terminal"],
   capture_running: ["capture_complete", "terminal"],
   capture_complete: ["post_capture_validated", "terminal"],
@@ -111,7 +111,6 @@ export const CHECKPOINT_IDS = Object.freeze([
   "plan13-recovery-reset",
   "plan13-recovery-boot-reset",
   "plan13-lifecycle-removal",
-  "plan13-lifecycle-restore",
 ]);
 
 export const CHECKPOINT_TOKENS = Object.freeze([
@@ -121,7 +120,6 @@ export const CHECKPOINT_TOKENS = Object.freeze([
   "plan13-reset-recovery-v1",
   "plan13-boot-reset-recovery-v1",
   "plan13-armed-removal-v1",
-  "plan13-barrel-usb-restore-v1",
 ]);
 
 export const EXPECTED_RESPONSE_TOKENS = Object.freeze([
@@ -131,7 +129,6 @@ export const EXPECTED_RESPONSE_TOKENS = Object.freeze([
   "plan13-reset-pressed-v1",
   "plan13-boot-reset-assisted-v1",
   "plan13-both-power-paths-removed",
-  "plan13-barrel-then-usb-restored",
 ]);
 
 export const EXPECTED_USER_ACTIONS = Object.freeze([
@@ -216,15 +213,15 @@ export const CHECKPOINT_DEFINITIONS = Object.freeze({
     attemptState: "armed",
     lifecycleSubstate: "removal_waiting",
   }),
-  "plan13-lifecycle-restore": Object.freeze({
-    checkpointToken: "plan13-barrel-usb-restore-v1",
-    expectedResponseToken: "plan13-barrel-then-usb-restored",
-    expectedUserAction: "restore-barrel-then-usb",
-    timeoutMs: PLAN13_PHYSICAL_ACTION_TIMEOUT_MS,
-    attemptState: "restore_waiting",
-    lifecycleSubstate: "restore_waiting",
-  }),
 });
+
+export const PUBLIC_ACTION_FIELDS = Object.freeze([
+  "action_id",
+  "action_token",
+  "attempt_state",
+  "expected_user_action",
+  "response_required",
+]);
 
 export const EFFECT_RESULT_SCHEMA_VERSION = "exact-head-effect-result-v1";
 
@@ -278,8 +275,7 @@ export const LIFECYCLE_SUBSTATES = Object.freeze([
   "removal_waiting",
   "removal_attested",
   "absence_observing",
-  "restore_waiting",
-  "restore_attested",
+  "restore_watcher_armed",
   "reappearance_observing",
   "monitoring",
   "complete",
@@ -301,7 +297,7 @@ export const PROHIBITED_SENTINEL_KEYS = Object.freeze([
 
 export const PERMITTED_LIFECYCLE_KEYS = Object.freeze([
   "removal_pty_write_count",
-  "restore_pty_write_count",
+  "restore_watcher_session_count",
   "usb_absence_observation_session_count",
   "usb_reappearance_observation_session_count",
   "retained_monitor_start_count",
@@ -334,8 +330,9 @@ export const CLASSIFIER_PROJECTION_FIELDS = Object.freeze([
   "reinit_capture_ended_ms", "reinit_capture_duration_ms", "reinit_raw_log_sha256",
   "lifecycle_substate", "lifecycle_lease_id", "lifecycle_capability_sha256",
   "lifecycle_owner_start_fingerprint_sha256", "lifecycle_deadline_ms",
-  "attestation_accepted_ms", "usb_absence_ms", "restore_accepted_ms",
-  "reappearance_elapsed_ms", "lifecycle_raw_log_sha256",
+  "attestation_accepted_ms", "usb_absence_ms", "restore_watcher_armed_ms",
+  "restore_watcher_deadline_ms", "reappearance_elapsed_ms",
+  "monitor_attachment_ms", "monitor_attachment_elapsed_ms", "lifecycle_raw_log_sha256",
   "same_chain_raw_log_set_sha256", "capture_started_ms", "capture_ended_ms",
   "capture_duration_ms", "capture_category", "armed_prohibited_sentinel_sha256",
   "capture_complete_prohibited_sentinel_sha256", "armed_permitted_lifecycle_sha256",
@@ -383,6 +380,14 @@ const CONTEXTUAL_BLOCKERS = Object.freeze([
   "reinit_stage_mismatch",
   "lifecycle_attestation_rejected",
   "usb_absence_too_short_or_interrupted",
+  "restore_watcher_arming_failed",
+  "usb_appearance_timeout",
+  "usb_identity_instability",
+  "monitor_attachment_failed",
+  "boot_proof_absent",
+  "multiple_boot_sessions",
+  "listener_proof_absent",
+  "lifecycle_cleanup_failed",
   "usb_reappearance_late",
   "monitor_failed",
   "lifecycle_capture_failed",
@@ -533,11 +538,15 @@ function stateDefaults() {
     usb_absence_ended_ms: null,
     usb_absence_ms: null,
     usb_absence_category: "not_observed",
-    restore_token_status: "not_requested",
-    restore_accepted_ms: null,
+    restore_watcher_status: "not_armed",
+    restore_watcher_armed_ms: null,
+    restore_watcher_deadline_ms: null,
     usb_reappearance_ms: null,
     reappearance_elapsed_ms: null,
     reappearance_category: "not_observed",
+    monitor_attachment_ms: null,
+    monitor_attachment_elapsed_ms: null,
+    monitor_attachment_category: "not_observed",
     armed_prohibited_sentinel_counts: zeroCounts(PROHIBITED_SENTINEL_KEYS),
     capture_complete_prohibited_sentinel_counts: zeroCounts(PROHIBITED_SENTINEL_KEYS),
     armed_permitted_lifecycle_counts: zeroCounts(PERMITTED_LIFECYCLE_KEYS),
@@ -723,21 +732,30 @@ export function validateAttemptState(state) {
   requireEnum(state.attestation_status, ["not_requested", "waiting", "accepted", "rejected", "expired"], "attestation_status");
   requireNullableUnsigned(state.attestation_accepted_ms, "attestation_accepted_ms");
   requireEnum(state.usb_absence_category, ["not_observed", "continuous_at_least_5000", "too_short", "interrupted"], "usb_absence_category");
-  requireEnum(state.restore_token_status, ["not_requested", "waiting", "accepted", "rejected", "expired"], "restore_token_status");
-  requireNullableUnsigned(state.restore_accepted_ms, "restore_accepted_ms");
+  requireEnum(state.restore_watcher_status, ["not_armed", "armed", "appearance_observed", "attached", "failed"], "restore_watcher_status");
+  requireNullableUnsigned(state.restore_watcher_armed_ms, "restore_watcher_armed_ms");
+  requireNullableUnsigned(state.restore_watcher_deadline_ms, "restore_watcher_deadline_ms");
   requireNullableUnsigned(state.usb_reappearance_ms, "usb_reappearance_ms");
   requireNullableUnsigned(state.reappearance_elapsed_ms, "reappearance_elapsed_ms");
-  requireEnum(state.reappearance_category, ["not_observed", "within_60000", "late"], "reappearance_category");
+  requireEnum(state.reappearance_category, ["not_observed", "within_1800000", "late"], "reappearance_category");
+  requireNullableUnsigned(state.monitor_attachment_ms, "monitor_attachment_ms");
+  requireNullableUnsigned(state.monitor_attachment_elapsed_ms, "monitor_attachment_elapsed_ms");
+  requireEnum(state.monitor_attachment_category, ["not_observed", "within_60000", "late"], "monitor_attachment_category");
   validateDuration(state, "usb_absence_started_ms", "usb_absence_ended_ms", "usb_absence_ms", "usb_absence_category", "continuous_at_least_5000", 5_000);
   if (state.usb_absence_category === "continuous_at_least_5000" && state.usb_absence_ms < 5_000) fail("state_malformed", "continuous USB absence is shorter than 5000 ms");
-  if (state.reappearance_category === "within_60000" && (state.reappearance_elapsed_ms === null || state.reappearance_elapsed_ms > PLAN13_USB_REAPPEARANCE_TIMEOUT_MS)) fail("state_malformed", "USB reappearance exceeded 60000 ms");
+  if (state.restore_watcher_status !== "not_armed" && (state.restore_watcher_armed_ms === null || state.restore_watcher_deadline_ms !== state.restore_watcher_armed_ms + PLAN13_RESTORE_WATCH_TIMEOUT_MS)) fail("state_malformed", "restore watcher deadline is inconsistent");
+  if (state.restore_watcher_deadline_ms !== null && state.lifecycle_deadline_ms !== null && state.restore_watcher_deadline_ms >= state.lifecycle_deadline_ms) fail("state_malformed", "restore watcher exceeds lifecycle lease");
+  if (state.reappearance_category === "within_1800000" && (state.reappearance_elapsed_ms === null || state.reappearance_elapsed_ms > PLAN13_RESTORE_WATCH_TIMEOUT_MS)) fail("state_malformed", "USB appearance exceeded 1800000 ms");
+  if (state.reappearance_category === "within_1800000" && state.usb_reappearance_ms - state.restore_watcher_armed_ms !== state.reappearance_elapsed_ms) fail("state_malformed", "USB appearance measurement is inconsistent");
+  if (state.monitor_attachment_category === "within_60000" && (state.monitor_attachment_elapsed_ms === null || state.monitor_attachment_elapsed_ms > PLAN13_MONITOR_ATTACHMENT_TIMEOUT_MS)) fail("state_malformed", "monitor attachment exceeded 60000 ms");
+  if (state.monitor_attachment_category === "within_60000" && (state.monitor_attachment_ms - state.usb_reappearance_ms !== state.monitor_attachment_elapsed_ms || state.capture_started_ms !== state.monitor_attachment_ms)) fail("state_malformed", "monitor attachment measurement is inconsistent");
 
   requireCountObject(state.armed_prohibited_sentinel_counts, PROHIBITED_SENTINEL_KEYS, "armed_prohibited_sentinel_counts");
   requireCountObject(state.capture_complete_prohibited_sentinel_counts, PROHIBITED_SENTINEL_KEYS, "capture_complete_prohibited_sentinel_counts");
   requireCountObject(state.armed_permitted_lifecycle_counts, PERMITTED_LIFECYCLE_KEYS, "armed_permitted_lifecycle_counts");
   requireCountObject(state.capture_complete_permitted_lifecycle_counts, PERMITTED_LIFECYCLE_KEYS, "capture_complete_permitted_lifecycle_counts");
   for (const field of ["armed_prohibited_sentinel_sha256", "capture_complete_prohibited_sentinel_sha256", "armed_permitted_lifecycle_sha256", "capture_complete_permitted_lifecycle_sha256"]) requirePattern(state[field], /^[0-9a-f]{64}$/, field, true);
-  if (["armed", "removal_attested", "absence_observing", "restore_waiting", "restore_attested", "reappearance_observing", "capture_running"].includes(state.attempt_state)) {
+  if (["armed", "removal_attested", "absence_observing", "restore_watcher_armed", "reappearance_observing", "capture_running"].includes(state.attempt_state)) {
     if (PERMITTED_LIFECYCLE_KEYS.some((key) => state.armed_permitted_lifecycle_counts[key] !== 0)) fail("sentinel_mismatch", "permitted lifecycle count was nonzero at arm");
   }
   if (["capture_complete", "post_capture_validated", "classified", "terminal"].includes(state.attempt_state) && state.lifecycle_status !== "absent") {
@@ -1002,6 +1020,26 @@ export function publicCheckpoint(state, resumeHandle) {
   return projection;
 }
 
+export function publicAction(state) {
+  validateAttemptState(state);
+  if (
+    state.attempt_state !== "restore_watcher_armed" ||
+    state.lifecycle_substate !== "restore_watcher_armed" ||
+    state.restore_watcher_status !== "armed"
+  ) {
+    fail("checkpoint_state_mismatch", "attempt has no ready public action");
+  }
+  const projection = {
+    action_id: "plan13-lifecycle-restore",
+    action_token: "plan13-restore-watcher-armed-v1",
+    attempt_state: state.attempt_state,
+    expected_user_action: "restore-barrel-then-usb",
+    response_required: false,
+  };
+  requireExactKeys(projection, PUBLIC_ACTION_FIELDS, "public action");
+  return projection;
+}
+
 export function activeAttemptExpiryBlocker(state, nowMonotonicMs) {
   validateAttemptState(state);
   if (!isUnsigned(nowMonotonicMs)) {
@@ -1012,6 +1050,13 @@ export function activeAttemptExpiryBlocker(state, nowMonotonicMs) {
     nowMonotonicMs >= state.monotonic_deadline_ms
   ) {
     return "checkpoint_expired";
+  }
+  if (
+    state.restore_watcher_status === "armed" &&
+    state.restore_watcher_deadline_ms !== null &&
+    nowMonotonicMs >= state.restore_watcher_deadline_ms
+  ) {
+    return "usb_appearance_timeout";
   }
   const lifecycleDeadlineIsActive = ![
     "not_started",
@@ -1082,12 +1127,6 @@ export function consumeCheckpoint(
       next.lifecycle_substate = "removal_attested";
       next.attestation_status = "accepted";
       next.attestation_accepted_ms = nowMonotonicMs;
-      break;
-    case "plan13-lifecycle-restore":
-      next.attempt_state = "restore_attested";
-      next.lifecycle_substate = "restore_attested";
-      next.restore_token_status = "accepted";
-      next.restore_accepted_ms = nowMonotonicMs;
       break;
   }
   validateAttemptState(next);
@@ -1458,43 +1497,48 @@ export function applyLifecycleOwnerEvent(state, event, values = {}) {
       next.lifecycle_substate = "absence_observing";
       next.usb_absence_started_ms = values.usb_absence_started_ms;
       break;
-    case "restore-waiting":
+    case "restore-watcher-armed":
       if (next.attempt_state !== "absence_observing") {
         fail("checkpoint_state_mismatch", "absence observation is not active");
       }
       next.usb_absence_ended_ms = values.usb_absence_ended_ms;
       next.usb_absence_ms = values.usb_absence_ms;
       next.usb_absence_category = "continuous_at_least_5000";
-      next.attempt_state = "restore_waiting";
-      next.lifecycle_substate = "restore_waiting";
-      next.restore_token_status = "waiting";
+      next.restore_watcher_status = "armed";
+      next.restore_watcher_armed_ms = values.restore_watcher_armed_ms;
+      next.restore_watcher_deadline_ms = values.restore_watcher_deadline_ms;
+      next.attempt_state = "restore_watcher_armed";
+      next.lifecycle_substate = "restore_watcher_armed";
       next.capture_complete_permitted_lifecycle_counts.usb_absence_observation_session_count =
         1;
-      return installCheckpoint(
-        next,
-        "plan13-lifecycle-restore",
-        values.usb_absence_ended_ms,
-      );
-    case "reappearance-observing":
-      if (next.attempt_state !== "restore_attested") {
-        fail("checkpoint_state_mismatch", "restore was not attested");
+      next.capture_complete_permitted_lifecycle_counts.restore_watcher_session_count =
+        1;
+      break;
+    case "usb-reappearance-observed":
+      if (next.attempt_state !== "restore_watcher_armed") {
+        fail("checkpoint_state_mismatch", "restore watcher is not armed");
       }
+      next.restore_watcher_status = "appearance_observed";
       next.attempt_state = "reappearance_observing";
       next.lifecycle_substate = "reappearance_observing";
+      next.usb_reappearance_ms = values.usb_reappearance_ms;
+      next.reappearance_elapsed_ms = values.reappearance_elapsed_ms;
+      next.reappearance_category = "within_1800000";
+      next.capture_complete_permitted_lifecycle_counts.usb_reappearance_observation_session_count =
+        1;
       break;
     case "capture-running":
       if (next.attempt_state !== "reappearance_observing") {
         fail("checkpoint_state_mismatch", "reappearance observation is not active");
       }
-      next.usb_reappearance_ms = values.usb_reappearance_ms;
-      next.reappearance_elapsed_ms = values.reappearance_elapsed_ms;
-      next.reappearance_category = "within_60000";
+      next.restore_watcher_status = "attached";
+      next.monitor_attachment_ms = values.monitor_attachment_ms;
+      next.monitor_attachment_elapsed_ms = values.monitor_attachment_elapsed_ms;
+      next.monitor_attachment_category = "within_60000";
       next.capture_started_ms = values.capture_started_ms;
       next.capture_category = "running";
       next.attempt_state = "capture_running";
       next.lifecycle_substate = "monitoring";
-      next.capture_complete_permitted_lifecycle_counts.usb_reappearance_observation_session_count =
-        1;
       next.capture_complete_permitted_lifecycle_counts.retained_monitor_start_count =
         1;
       break;
@@ -1512,8 +1556,6 @@ export function applyLifecycleOwnerEvent(state, event, values = {}) {
       next.capture_complete_prohibited_sentinel_sha256 =
         next.armed_prohibited_sentinel_sha256;
       next.capture_complete_permitted_lifecycle_counts.removal_pty_write_count =
-        1;
-      next.capture_complete_permitted_lifecycle_counts.restore_pty_write_count =
         1;
       next.capture_complete_permitted_lifecycle_sha256 = canonicalDigest(
         next.capture_complete_permitted_lifecycle_counts,
@@ -1565,8 +1607,11 @@ export function buildClassifierProjection(state) {
     lifecycle_deadline_ms: state.lifecycle_deadline_ms,
     attestation_accepted_ms: state.attestation_accepted_ms,
     usb_absence_ms: state.usb_absence_ms,
-    restore_accepted_ms: state.restore_accepted_ms,
+    restore_watcher_armed_ms: state.restore_watcher_armed_ms,
+    restore_watcher_deadline_ms: state.restore_watcher_deadline_ms,
     reappearance_elapsed_ms: state.reappearance_elapsed_ms,
+    monitor_attachment_ms: state.monitor_attachment_ms,
+    monitor_attachment_elapsed_ms: state.monitor_attachment_elapsed_ms,
     lifecycle_raw_log_sha256: state.lifecycle_raw_log_sha256,
     same_chain_raw_log_set_sha256: state.same_chain_raw_log_set_sha256,
     capture_started_ms: state.capture_started_ms,

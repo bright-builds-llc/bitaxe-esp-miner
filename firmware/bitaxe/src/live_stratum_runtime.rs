@@ -58,7 +58,7 @@ use bitaxe_stratum::v1::{
 
 use crate::{
     asic_adapter::{self, ProductionAsicExecutor, ProductionReadOutcome},
-    log_buffer,
+    boot_evidence, log_buffer,
     mining_evidence_mode::MiningEvidenceMode,
     runtime_snapshot, safety_adapter, settings_adapter,
 };
@@ -800,6 +800,7 @@ impl AsicBridgeState {
         self.orchestrator.note_listener_armed();
         log::info!("h4_continuous_result=listener_armed");
         if asic_adapter::accepted_state_snapshot_enabled() {
+            boot_evidence::record_listener_armed();
             self.maybe_accepted_state_replay_started_at = Some(Instant::now());
             self.maybe_accepted_state_replay_cadence = Some(AcceptedStateReplayCadence::armed(0));
         }

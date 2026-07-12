@@ -4,6 +4,7 @@ use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState, StartupDebugText};
 use esp_idf_svc::{hal::peripherals::Peripherals, sys};
 
 mod asic_adapter;
+mod boot_evidence;
 mod boot_validation;
 mod controlled_mining_runtime;
 mod display_adapter;
@@ -47,6 +48,7 @@ fn main() -> anyhow::Result<()> {
     debug_assert_eq!(safe_state_log_line, SAFE_STATE_LOG_LINE);
 
     info_retained(&boot_log_line);
+    boot_evidence::initialize_and_record_booted();
     info_retained(&safe_state_log_line);
     if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");

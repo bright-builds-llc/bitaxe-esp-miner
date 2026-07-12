@@ -25,6 +25,107 @@ function snapshotsEqual(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+export function parsePlan13BootEvidenceMember(
+  text,
+  memberName,
+  { requireOriginalMarkers },
+) {
+  const sessions = new Map();
+  let markerCount = 0;
+  let originalBootCount = 0;
+  let originalListenerCount = 0;
+
+  for (const line of text.split(/\r?\n/u)) {
+    if (line.includes("bitaxe-rust boot")) originalBootCount += 1;
+    if (line.includes("h4_continuous_result=listener_armed")) {
+      originalListenerCount += 1;
+    }
+    if (!line.includes("plan13_boot_evidence")) continue;
+
+    const maybeMarker = line.match(
+      /(?:^|\s)(plan13_boot_evidence(?:\s|$).*)$/u,
+    )?.[1];
+    if (maybeMarker === undefined) {
+      throw new Error(
+        `accepted_state_lifecycle_error: ${memberName} boot evidence is malformed`,
+      );
+    }
+    const tokens = maybeMarker.split(/\s+/u);
+    if (tokens.length !== 4) {
+      throw new Error(
+        `accepted_state_lifecycle_error: ${memberName} boot evidence is malformed`,
+      );
+    }
+    const values = Object.fromEntries(
+      tokens.slice(1).map((token) => {
+        const separator = token.indexOf("=");
+        return [token.slice(0, separator), token.slice(separator + 1)];
+      }),
+    );
+    if (
+      Object.keys(values).sort().join(",") !== "redacted,session,state" ||
+      !/^[0-9a-f]{32}$/u.test(values.session ?? "") ||
+      !["booted", "listener_armed"].includes(values.state) ||
+      values.redacted !== "true"
+    ) {
+      throw new Error(
+        `accepted_state_lifecycle_error: ${memberName} boot evidence is malformed`,
+      );
+    }
+    markerCount += 1;
+    const states = sessions.get(values.session) ?? new Set();
+    states.add(values.state);
+    sessions.set(values.session, states);
+  }
+
+  if (requireOriginalMarkers) {
+    if (originalBootCount !== 1) {
+      throw new Error(
+        `accepted_state_lifecycle_error: ${memberName} original boot proof is absent or repeated`,
+      );
+    }
+    if (originalListenerCount !== 1) {
+      throw new Error(
+        `accepted_state_lifecycle_error: ${memberName} original listener proof is absent or repeated`,
+      );
+    }
+  } else if (originalBootCount > 1 || originalListenerCount > 1) {
+    throw new Error(
+      `accepted_state_lifecycle_error: ${memberName} original runtime markers indicate multiple boots`,
+    );
+  }
+  if (sessions.size === 0) {
+    throw new Error(
+      `accepted_state_lifecycle_error: ${memberName} boot proof is absent`,
+    );
+  }
+  if (sessions.size !== 1) {
+    throw new Error(
+      `accepted_state_lifecycle_error: ${memberName} has multiple boot sessions`,
+    );
+  }
+  const states = sessions.values().next().value;
+  if (!states.has("booted")) {
+    throw new Error(
+      `accepted_state_lifecycle_error: ${memberName} boot proof is absent`,
+    );
+  }
+  if (!states.has("listener_armed")) {
+    throw new Error(
+      `accepted_state_lifecycle_error: ${memberName} listener proof is absent`,
+    );
+  }
+
+  return {
+    bootSessionCount: sessions.size,
+    bootEvidenceStateCount: states.size,
+    bootEvidenceMarkerCount: markerCount,
+    equivalentDuplicates: markerCount > states.size,
+    originalBootCount,
+    originalListenerCount,
+  };
+}
+
 export function parseAcceptedStateLifecycleMember(text, memberName) {
   const snapshots = new Map();
   let markerCount = 0;
@@ -77,6 +178,14 @@ export function parseAcceptedStateLifecycleMember(text, memberName) {
 }
 
 export function compareAcceptedStateLifecycle(reinitText, coldStartText) {
+  const reinitBoot = parsePlan13BootEvidenceMember(reinitText, "reinit", {
+    requireOriginalMarkers: true,
+  });
+  const coldStartBoot = parsePlan13BootEvidenceMember(
+    coldStartText,
+    "cold-start",
+    { requireOriginalMarkers: false },
+  );
   const reinit = parseAcceptedStateLifecycleMember(reinitText, "reinit");
   const coldStart = parseAcceptedStateLifecycleMember(
     coldStartText,
@@ -104,6 +213,18 @@ export function compareAcceptedStateLifecycle(reinitText, coldStartText) {
     cold_start_marker_count: coldStart.markerCount,
     reinit_equivalent_duplicates: reinit.equivalentDuplicates,
     cold_start_equivalent_duplicates: coldStart.equivalentDuplicates,
+    reinit_boot_session_count: reinitBoot.bootSessionCount,
+    cold_start_boot_session_count: coldStartBoot.bootSessionCount,
+    reinit_boot_evidence_state_count: reinitBoot.bootEvidenceStateCount,
+    cold_start_boot_evidence_state_count:
+      coldStartBoot.bootEvidenceStateCount,
+    reinit_boot_evidence_marker_count: reinitBoot.bootEvidenceMarkerCount,
+    cold_start_boot_evidence_marker_count:
+      coldStartBoot.bootEvidenceMarkerCount,
+    reinit_boot_evidence_equivalent_duplicates:
+      reinitBoot.equivalentDuplicates,
+    cold_start_boot_evidence_equivalent_duplicates:
+      coldStartBoot.equivalentDuplicates,
     ...stageStatus,
     redacted: true,
   };
@@ -118,6 +239,14 @@ export function unavailableAcceptedStateLifecycle() {
     cold_start_marker_count: 0,
     reinit_equivalent_duplicates: false,
     cold_start_equivalent_duplicates: false,
+    reinit_boot_session_count: 0,
+    cold_start_boot_session_count: 0,
+    reinit_boot_evidence_state_count: 0,
+    cold_start_boot_evidence_state_count: 0,
+    reinit_boot_evidence_marker_count: 0,
+    cold_start_boot_evidence_marker_count: 0,
+    reinit_boot_evidence_equivalent_duplicates: false,
+    cold_start_boot_evidence_equivalent_duplicates: false,
     ...Object.fromEntries(
       ACCEPTED_STATE_LIFECYCLE_STAGES.map((stage) => [
         `stage_${stage}`,

@@ -5,6 +5,8 @@ emit_complete_accepted_state_log() {
 	local stage
 	printf 'bitaxe-rust boot commit=test\n'
 	printf 'h4_continuous_result=listener_armed\n'
+	printf 'plan13_boot_evidence session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa state=booted redacted=true\n'
+	printf 'plan13_boot_evidence session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa state=listener_armed redacted=true\n'
 	for stage in post_enumerate post_mining_ready post_max_baud post_mask_reload post_first_work; do
 		local result_correlated="false"
 		local submit_observed="false"
@@ -88,6 +90,10 @@ phase28-fake-monitor)
 	done
 	[[ "$saw_no_reset" == "true" && -n "$output_log" ]]
 	emit_complete_accepted_state_log >"$output_log"
+	if [[ -n "${PHASE13_MONITOR_ACTIVE_READY_FILE:-}" ]]; then
+		printf '1\n' >"$PHASE13_MONITOR_ACTIVE_READY_FILE"
+		chmod 600 "$PHASE13_MONITOR_ACTIVE_READY_FILE"
+	fi
 	if [[ "${PHASE28_FAKE_MONITOR_MODE:-complete}" == "duplicate" ]]; then
 		printf 'accepted_state_snapshot stage=post_enumerate observation=available chip_count_class=match readable_responses=1 error_counter_active=false domain_counter_active=false total_counter_active=true power_delta_class=flat result_correlated=false submit_observed=false redacted=true\n' >>"$output_log"
 	fi
@@ -327,7 +333,7 @@ if rg -q 'capability_file|wifi_credentials|pool_credentials|run_flash_capture|ru
 fi
 rg -q 'capability="\$\(validate_credential_capability "\$capability_path"\)"' "$script" || fail "flash reinit does not validate the private credential capability"
 credential_validator_source="$(sed -n '/^validate_credential_capability()/,/^}/p' "$script")"
-for required_check in 'is_private_owned_file' 'exact-head-attempt-v2' 'execution_plan' 'credential_capability_status' 'credential_capability_sha256' 'wifi_credential_state' 'pool_credential_state' 'wifi_credential_binding_id' 'pool_credential_binding_id'; do
+for required_check in 'is_private_owned_file' 'exact-head-attempt-v3' 'execution_plan' 'credential_capability_status' 'credential_capability_sha256' 'wifi_credential_state' 'pool_credential_state' 'wifi_credential_binding_id' 'pool_credential_binding_id'; do
 	rg -q "$required_check" <<<"$credential_validator_source" || fail "credential capability validation omits $required_check"
 done
 
@@ -625,7 +631,7 @@ run_lifecycle() {
 
 success_port_sequence='present absent absent absent present'
 success_clock_sequence='0 0 0 0 4999 5000 5000 5000 60000 60000'
-success_read_sequence='both-power-paths-removed barrel-then-usb-restored'
+success_read_sequence='both-power-paths-removed'
 run_lifecycle lifecycle-success duplicate "$success_port_sequence" "$success_clock_sequence" "$success_read_sequence"
 success_root="$temp_root/lifecycle-success"
 rg -q '^accepted_state_lifecycle_checkpoint=armed$' "$success_root/stdout"
@@ -633,8 +639,11 @@ rg -q '^accepted_state_lifecycle_expected_token=both-power-paths-removed$' "$suc
 rg -q '^accepted_state_attestation_deadline_ms=300000$' "$success_root/stdout"
 rg -q '^operator_attested_both_power_paths_removed=true$' "$success_root/stdout"
 rg -q '^accepted_state_usb_absence_measured_ms=5000$' "$success_root/stdout"
-rg -q '^accepted_state_lifecycle_expected_token=barrel-then-usb-restored$' "$success_root/stdout"
-rg -q '^accepted_state_restore_deadline_ms=60000$' "$success_root/stdout"
+rg -q '^## ACTION READY$' "$success_root/stdout"
+rg -q '^action_token=plan13-restore-watcher-armed-v1$' "$success_root/stdout"
+rg -q '^attempt_state=restore_watcher_armed$' "$success_root/stdout"
+rg -q '^response_required=false$' "$success_root/stdout"
+rg -q '^accepted_state_restore_deadline_ms=[0-9]+$' "$success_root/stdout"
 rg -q '^accepted_state_diagnostic_status=complete$' "$success_root/stdout"
 rg -q '^lifecycle_status: match$' "$success_root/evidence.md"
 rg -q '^reinit_stage_count: 5$' "$success_root/evidence.md"
@@ -645,12 +654,12 @@ rg -q '^cold_start_reset_performed: false$' "$success_root/evidence.md"
 rg -q '^operator_attested_both_power_paths_removed: true$' "$success_root/evidence.md"
 rg -q '^usb_absence_measured_ms: 5000$' "$success_root/evidence.md"
 rg -q '^barrel_removal_electronically_verified: false$' "$success_root/evidence.md"
-rg -q '^reattach_deadline_ms: 60000$' "$success_root/evidence.md"
-rg -q '^reappearance_elapsed_ms: 60000$' "$success_root/evidence.md"
-rg -q '^monitor_start_reserve_ms: 10000$' "$success_root/evidence.md"
-rg -q '^replay_interval_ms: 2000$' "$success_root/evidence.md"
-rg -q '^replay_window_ms: 180000$' "$success_root/evidence.md"
-rg -q '^latest_safe_replay_ms: 72000$' "$success_root/evidence.md"
+rg -q '^restore_watch_timeout_ms: 1800000$' "$success_root/evidence.md"
+rg -q '^reappearance_elapsed_ms: [0-9]+$' "$success_root/evidence.md"
+rg -q '^monitor_attachment_timeout_ms: 60000$' "$success_root/evidence.md"
+rg -q '^replay_interval_ms: 10000$' "$success_root/evidence.md"
+rg -q '^replay_window_ms: 1880000$' "$success_root/evidence.md"
+rg -q '^latest_safe_replay_ms: 1870000$' "$success_root/evidence.md"
 rg -q '^post_capture_detector_status: passed$' "$success_root/evidence.md"
 rg -q '^--no-reset$' "$success_root/monitor.args"
 rg -q '^--seconds$' "$success_root/monitor.args"
@@ -658,7 +667,6 @@ rg -q '^360$' "$success_root/monitor.args"
 
 run_lifecycle lifecycle-native-read complete "$success_port_sequence" "$success_clock_sequence" "$success_read_sequence" "$reinit_log" native <<'EOF'
 both-power-paths-removed
-barrel-then-usb-restored
 EOF
 rg -q '^accepted_state_diagnostic_status=complete$' "$temp_root/lifecycle-native-read/stdout"
 if rg -n 'read[^[:cntrl:]]*-t[[:space:]]+[0-9]*\.[0-9]+' "$script"; then
@@ -696,17 +704,16 @@ fi
 
 expect_failure run_lifecycle lifecycle-present-at-attestation complete 'present present' '0 0 0 0' 'both-power-paths-removed'
 expect_failure run_lifecycle lifecycle-absence-4999 complete 'present absent absent present' '0 0 0 0 4999' 'both-power-paths-removed'
-expect_failure run_lifecycle lifecycle-wrong-restore complete 'present absent absent' '0 0 0 0 5000 5000 5000' 'both-power-paths-removed wrong-token'
-expect_failure run_lifecycle lifecycle-absent-restore complete 'present absent absent' '0 0 0 0 5000 5000' 'both-power-paths-removed eof'
-expect_failure run_lifecycle lifecycle-abandoned-restore complete 'present absent absent' '0 0 0 0 5000 5000 60000' 'both-power-paths-removed timeout'
+run_lifecycle lifecycle-restore-token-ignored complete "$success_port_sequence" "$success_clock_sequence" 'both-power-paths-removed wrong-token'
+rg -q '^accepted_state_diagnostic_status=complete$' "$temp_root/lifecycle-restore-token-ignored/stdout"
+expect_failure run_lifecycle lifecycle-abandoned-restore complete 'present absent absent' '0 0 0 0 5000 5000 1805000' 'both-power-paths-removed'
 [[ ! -s "$temp_root/lifecycle-abandoned-restore/child.pid" ]] || fail "abandoned restore wait left a child"
 if rg -q '^monitor-no-reset$' "$temp_root/lifecycle-abandoned-restore/calls.trace"; then
 	fail "abandoned restore wait started a monitor child"
 fi
 
-expect_failure run_lifecycle lifecycle-late-restore complete 'present absent absent' '0 0 0 0 5000 60000' 'both-power-paths-removed barrel-then-usb-restored'
-expect_failure run_lifecycle lifecycle-absent-at-60000 complete 'present absent absent absent' '0 0 0 0 5000 5000 5000 60000' "$success_read_sequence"
-expect_failure run_lifecycle lifecycle-present-at-60001 complete 'present absent absent present' '0 0 0 0 5000 5000 5000 60001' "$success_read_sequence"
+expect_failure run_lifecycle lifecycle-absent-at-deadline complete 'present absent absent absent' '0 0 0 0 5000 5000 5000 1805000' "$success_read_sequence"
+expect_failure run_lifecycle lifecycle-present-after-deadline complete 'present absent absent present' '0 0 0 0 5000 5000 5000 1805001' "$success_read_sequence"
 
 run_lifecycle lifecycle-cancel-descendant detached-descendant "$success_port_sequence" "$success_clock_sequence" "$success_read_sequence" "$reinit_log" fixture background
 wait_for_file "$temp_root/lifecycle-cancel-descendant/watcher.pid"

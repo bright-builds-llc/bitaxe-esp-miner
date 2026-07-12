@@ -33,6 +33,7 @@ import {
   normalizeFinishedEffect,
   observeBootSessionDigest,
   publicCheckpoint,
+  publicAction,
   persistStrictClassification,
   routeBlocker,
   terminalizeAttempt,
@@ -92,18 +93,22 @@ function completeLifecycleState() {
   state.lifecycle_capability_sha256 = DIGEST;
   state.lifecycle_owner_pid = 123;
   state.lifecycle_owner_start_fingerprint_sha256 = DIGEST;
-  state.lifecycle_deadline_ms = 900_000;
+  state.lifecycle_deadline_ms = 4_145_600;
   state.attestation_status = "accepted";
   state.attestation_accepted_ms = 500;
   state.usb_absence_started_ms = 500;
   state.usb_absence_ended_ms = 5_500;
   state.usb_absence_ms = 5_000;
   state.usb_absence_category = "continuous_at_least_5000";
-  state.restore_token_status = "accepted";
-  state.restore_accepted_ms = 5_600;
+  state.restore_watcher_status = "attached";
+  state.restore_watcher_armed_ms = 5_600;
+  state.restore_watcher_deadline_ms = 1_805_600;
   state.usb_reappearance_ms = 6_000;
-  state.reappearance_elapsed_ms = 5_500;
-  state.reappearance_category = "within_60000";
+  state.reappearance_elapsed_ms = 400;
+  state.reappearance_category = "within_1800000";
+  state.monitor_attachment_ms = 6_100;
+  state.monitor_attachment_elapsed_ms = 100;
+  state.monitor_attachment_category = "within_60000";
   for (const key of PERMITTED_LIFECYCLE_KEYS) {
     state.capture_complete_permitted_lifecycle_counts[key] = 1;
   }
@@ -111,8 +116,8 @@ function completeLifecycleState() {
   state.capture_complete_prohibited_sentinel_sha256 = DIGEST;
   state.armed_permitted_lifecycle_sha256 = DIGEST;
   state.capture_complete_permitted_lifecycle_sha256 = DIGEST;
-  state.capture_started_ms = 10_000;
-  state.capture_ended_ms = 370_000;
+  state.capture_started_ms = 6_100;
+  state.capture_ended_ms = 366_100;
   state.capture_duration_ms = 360_000;
   state.capture_category = "complete_360s";
   state.lifecycle_raw_log_sha256 = DIGEST;
@@ -317,9 +322,14 @@ function testTimingAndIdentityInvariants() {
   shortAbsence.usb_absence_ms = 4_999;
   expectStateError("state_malformed", () => validateAttemptState(shortAbsence));
   const lateReappearance = structuredClone(valid);
-  lateReappearance.reappearance_elapsed_ms = 60_001;
+  lateReappearance.reappearance_elapsed_ms = 1_800_001;
   expectStateError("state_malformed", () =>
     validateAttemptState(lateReappearance),
+  );
+  const lateAttachment = structuredClone(valid);
+  lateAttachment.monitor_attachment_elapsed_ms = 60_001;
+  expectStateError("state_malformed", () =>
+    validateAttemptState(lateAttachment),
   );
 }
 
@@ -485,19 +495,32 @@ function testActiveAttemptExpiryClassification() {
     randomHex: () => "5".repeat(32),
   });
   const lifecycleState = completeLifecycleState();
-  lifecycleState.attempt_state = "restore_waiting";
-  lifecycleState.lifecycle_substate = "restore_waiting";
-  lifecycleState.checkpoint_id = "plan13-lifecycle-restore";
-  lifecycleState.checkpoint_token = "plan13-barrel-usb-restore-v1";
-  lifecycleState.expected_response_token =
-    "plan13-barrel-then-usb-restored";
-  lifecycleState.expected_user_action = "restore-barrel-then-usb";
-  lifecycleState.monotonic_deadline_ms = 61_000;
-  lifecycleState.lifecycle_deadline_ms = 60_000;
+  lifecycleState.attempt_state = "restore_watcher_armed";
+  lifecycleState.lifecycle_substate = "restore_watcher_armed";
+  lifecycleState.checkpoint_id = null;
+  lifecycleState.checkpoint_token = null;
+  lifecycleState.expected_response_token = null;
+  lifecycleState.expected_user_action = null;
+  lifecycleState.monotonic_deadline_ms = null;
+  lifecycleState.restore_watcher_status = "armed";
+  lifecycleState.restore_watcher_armed_ms = 1_000;
+  lifecycleState.restore_watcher_deadline_ms = 1_801_000;
+  lifecycleState.usb_reappearance_ms = 1_400;
+  lifecycleState.reappearance_elapsed_ms = 400;
+  lifecycleState.monitor_attachment_ms = 1_500;
+  lifecycleState.monitor_attachment_elapsed_ms = 100;
+  lifecycleState.capture_started_ms = 1_500;
+  lifecycleState.capture_ended_ms = 361_500;
+  lifecycleState.lifecycle_deadline_ms = 4_145_000;
   lifecycleState.process_running = true;
   lifecycleState.effect_id = "lifecycle_start";
   lifecycleState.effect_phase = "invoked";
   lifecycleState.effect_authorization_nonce = "8".repeat(32);
+  const leaseState = structuredClone(lifecycleState);
+  leaseState.attempt_state = "reappearance_observing";
+  leaseState.lifecycle_substate = "reappearance_observing";
+  leaseState.restore_watcher_status = "appearance_observed";
+  leaseState.reappearance_category = "within_1800000";
 
   // Act
   const beforeCheckpointDeadline = activeAttemptExpiryBlocker(
@@ -509,14 +532,18 @@ function testActiveAttemptExpiryClassification() {
     601_000,
   );
   const atLeaseDeadline = activeAttemptExpiryBlocker(
-    lifecycleState,
-    60_000,
+    leaseState,
+    4_145_000,
   );
 
   // Assert
   assert.equal(beforeCheckpointDeadline, null);
   assert.equal(atCheckpointDeadline, "checkpoint_expired");
   assert.equal(atLeaseDeadline, "checkpoint_expired");
+  assert.equal(
+    activeAttemptExpiryBlocker(lifecycleState, 1_801_000),
+    "usb_appearance_timeout",
+  );
 }
 
 function testDetectorEffectTransitionsAndRecoveryOrder() {
@@ -549,7 +576,6 @@ function testDetectorEffectTransitionsAndRecoveryOrder() {
       "plan13-recovery-reset",
       "plan13-recovery-boot-reset",
       "plan13-lifecycle-removal",
-      "plan13-lifecycle-restore",
     ],
   );
   state = consumeCheckpoint(state, {
@@ -621,20 +647,20 @@ function testLifecycleLeaseAndSubordinateTransitions() {
   next = applyLifecycleOwnerEvent(next, "absence-observing", {
     usb_absence_started_ms: 1_001,
   });
-  next = applyLifecycleOwnerEvent(next, "restore-waiting", {
+  next = applyLifecycleOwnerEvent(next, "restore-watcher-armed", {
     usb_absence_ended_ms: 6_001,
     usb_absence_ms: 5_000,
+    restore_watcher_armed_ms: 6_001,
+    restore_watcher_deadline_ms: 1_806_001,
   });
-  const restoreCheckpoint = structuredClone(next);
-  next = consumeCheckpoint(next, {
-    checkpointToken: "plan13-barrel-usb-restore-v1",
-    responseToken: "plan13-barrel-then-usb-restored",
-    nowMonotonicMs: 6_002,
-  });
-  next = applyLifecycleOwnerEvent(next, "reappearance-observing");
-  next = applyLifecycleOwnerEvent(next, "capture-running", {
+  const restoreWatcher = structuredClone(next);
+  next = applyLifecycleOwnerEvent(next, "usb-reappearance-observed", {
     usb_reappearance_ms: 7_000,
-    reappearance_elapsed_ms: 998,
+    reappearance_elapsed_ms: 999,
+  });
+  next = applyLifecycleOwnerEvent(next, "capture-running", {
+    monitor_attachment_ms: 7_001,
+    monitor_attachment_elapsed_ms: 1,
     capture_started_ms: 7_001,
   });
   next = applyLifecycleOwnerEvent(next, "capture-complete", {
@@ -686,25 +712,11 @@ function testLifecycleLeaseAndSubordinateTransitions() {
       nowMonotonicMs: 1_801_000,
     }),
   );
-  assert.equal(restoreCheckpoint.created_monotonic_ms, 6_001);
-  assert.equal(restoreCheckpoint.monotonic_deadline_ms, 1_806_001);
-  assert.ok(
-    restoreCheckpoint.monotonic_deadline_ms <
-      restoreCheckpoint.lifecycle_deadline_ms,
-  );
-  assert.doesNotThrow(() =>
-    consumeCheckpoint(restoreCheckpoint, {
-      checkpointToken: "plan13-barrel-usb-restore-v1",
-      responseToken: "plan13-barrel-then-usb-restored",
-      nowMonotonicMs: 1_806_000,
-    }),
-  );
-  expectStateError("checkpoint_expired", () =>
-    consumeCheckpoint(restoreCheckpoint, {
-      checkpointToken: "plan13-barrel-usb-restore-v1",
-      responseToken: "plan13-barrel-then-usb-restored",
-      nowMonotonicMs: 1_806_001,
-    }),
+  assert.equal(restoreWatcher.checkpoint_id, null);
+  assert.equal(restoreWatcher.restore_watcher_deadline_ms, 1_806_001);
+  assert.equal(
+    activeAttemptExpiryBlocker(restoreWatcher, 1_806_001),
+    "usb_appearance_timeout",
   );
   expectStateError("lease_conflict", () =>
     attachLifecycleOwner(invoked, {
@@ -719,6 +731,60 @@ function testLifecycleLeaseAndSubordinateTransitions() {
   for (const key of PERMITTED_LIFECYCLE_KEYS) {
     assert.equal(completed.capture_complete_permitted_lifecycle_counts[key], 1);
   }
+}
+
+function testRestoreWatcherActionHasNoResponseSurface() {
+  // Arrange
+  const state = lifecycleReadyState();
+  const nonce = "a".repeat(32);
+  const authorized = authorizeEffect(state, "lifecycle_start", nonce);
+  const invoked = markEffectInvoked(
+    authorized,
+    nonce,
+    authorized.effect_sequence,
+  );
+  let next = attachLifecycleOwner(invoked, {
+    leaseId: "7".repeat(32),
+    capabilitySha256: DIGEST,
+    ownerPid: 123,
+    ownerStartFingerprintSha256: DIGEST,
+    lifecycleDeadlineMs: 4_146_000,
+    checkpointCreatedMonotonicMs: 1_000,
+  });
+  next = consumeCheckpoint(next, {
+    checkpointToken: "plan13-armed-removal-v1",
+    responseToken: "plan13-both-power-paths-removed",
+    nowMonotonicMs: 1_001,
+  });
+  next = applyLifecycleOwnerEvent(next, "absence-observing", {
+    usb_absence_started_ms: 1_001,
+  });
+  next = applyLifecycleOwnerEvent(next, "restore-watcher-armed", {
+    usb_absence_ended_ms: 6_001,
+    usb_absence_ms: 5_000,
+    restore_watcher_armed_ms: 6_001,
+    restore_watcher_deadline_ms: 1_806_001,
+  });
+
+  // Act
+  const action = publicAction(next);
+
+  // Assert
+  assert.deepEqual(action, {
+    action_id: "plan13-lifecycle-restore",
+    action_token: "plan13-restore-watcher-armed-v1",
+    attempt_state: "restore_watcher_armed",
+    expected_user_action: "restore-barrel-then-usb",
+    response_required: false,
+  });
+  assert.equal(next.checkpoint_id, null);
+  expectStateError("checkpoint_state_mismatch", () =>
+    consumeCheckpoint(next, {
+      checkpointToken: "plan13-barrel-usb-restore-v1",
+      responseToken: "plan13-barrel-then-usb-restored",
+      nowMonotonicMs: 6_002,
+    }),
+  );
 }
 
 function testStrictClassificationPersistenceAndReplayGuards() {
@@ -779,6 +845,7 @@ testLostResumeHandleOrphanStateContract();
 testActiveAttemptExpiryClassification();
 testDetectorEffectTransitionsAndRecoveryOrder();
 testLifecycleLeaseAndSubordinateTransitions();
+testRestoreWatcherActionHasNoResponseSurface();
 testStrictClassificationPersistenceAndReplayGuards();
 
 console.log("phase28.1.1 hardware attempt state tests: passed");

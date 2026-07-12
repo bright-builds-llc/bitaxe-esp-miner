@@ -104,8 +104,11 @@ export function validateClassifierProjection(projection) {
     "lifecycle_deadline_ms",
     "attestation_accepted_ms",
     "usb_absence_ms",
-    "restore_accepted_ms",
+    "restore_watcher_armed_ms",
+    "restore_watcher_deadline_ms",
     "reappearance_elapsed_ms",
+    "monitor_attachment_ms",
+    "monitor_attachment_elapsed_ms",
   ]) {
     if (!Number.isSafeInteger(projection[field]) || projection[field] < 0) {
       throw new Error(`classifier_input_invalid: ${field} is malformed`);
@@ -117,7 +120,11 @@ export function validateClassifierProjection(projection) {
       projection.reinit_capture_ended_ms - projection.reinit_capture_started_ms ||
     projection.reinit_capture_duration_ms < 360_000 ||
     projection.usb_absence_ms < 5_000 ||
-    projection.reappearance_elapsed_ms > 60_000
+    projection.restore_watcher_deadline_ms !==
+      projection.restore_watcher_armed_ms + 1_800_000 ||
+    projection.reappearance_elapsed_ms > 1_800_000 ||
+    projection.monitor_attachment_elapsed_ms > 60_000 ||
+    projection.monitor_attachment_ms < projection.restore_watcher_armed_ms
   ) {
     throw new Error("classifier_input_invalid: lifecycle measurements are inconsistent");
   }

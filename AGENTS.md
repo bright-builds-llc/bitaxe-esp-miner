@@ -299,6 +299,8 @@ Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and po
 - Keep detailed session traces only in mode-0600 files under mode-0700 gitignored roots. Committed or shared evidence may contain only redacted categories, counts, durations, booleans, and trace digests; never promote device paths, USB serial identities, PIDs, commands containing secrets, or raw local identifiers.
 - Record barrel/DC power and USB power independently. Distinguish USB re-enumeration, warm reset, and true both-power cold start in every checkpoint and trace; USB removal while barrel power remains is not a cold start.
 - A port node appearing is not sufficient readiness after re-enumeration. Require the repo-owned bounded stability/ownership gate before opening the passive monitor, and fail closed on identity change, unexpected ownership, or unproved cleanup.
+- For a Plan 13 both-power cold start, never tell the user to restore power until the lifecycle emits `action_token=plan13-restore-watcher-armed-v1` with `response_required=false`. Then instruct barrel power followed by USB; USB appearance is observed automatically and no post-plug response token is expected.
+- Native USB cannot preserve application bytes emitted before enumeration. Cold-start validation therefore uses the repo-owned redacted, session-tagged boot/listener replay proof; raw first-byte qualification requires a separate always-connected UART or data-only capture path.
 
 ### Evidence Workflow: Hardware-First Default
 

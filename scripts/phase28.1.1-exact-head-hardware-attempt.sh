@@ -235,6 +235,18 @@ process.stdout.write("## CHECKPOINT REACHED\n");
 for (const field of authority.PUBLIC_CHECKPOINT_FIELDS) process.stdout.write(`${field}=${checkpoint[field]}\n`);' "$state_module" "$state_path" "$handle"
 }
 
+public_action_output() {
+	local state_path="$1"
+	# shellcheck disable=SC2016
+	node --input-type=module -e '
+import fs from "node:fs";
+const authority = await import(process.argv[1]);
+const state = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const action = authority.publicAction(state);
+process.stdout.write("## ACTION READY\n");
+for (const field of authority.PUBLIC_ACTION_FIELDS) process.stdout.write(`${field}=${action[field]}\n`);' "$state_module" "$state_path"
+}
+
 public_terminal_output() {
 	local state_path="$1"
 	jq -er '
@@ -546,7 +558,11 @@ resolve_checkpoint() {
 		return
 		;;
 	esac
-	public_checkpoint_output "$state_path" "$handle"
+	if [[ "$(jq -er '.attempt_state' "$state_path")" == "restore_watcher_armed" ]]; then
+		public_action_output "$state_path"
+	else
+		public_checkpoint_output "$state_path" "$handle"
+	fi
 	release_lock
 }
 
@@ -604,7 +620,7 @@ deliver_token() {
 	owner_pid="$(jq -r '.lifecycle_owner_pid // empty' "$state_path")"
 	owner_fingerprint="$(jq -r '.lifecycle_owner_start_fingerprint_sha256 // empty' "$state_path")"
 	local lifecycle_delivery=false
-	if [[ "$checkpoint_token" == "plan13-armed-removal-v1" || "$checkpoint_token" == "plan13-barrel-usb-restore-v1" ]]; then
+	if [[ "$checkpoint_token" == "plan13-armed-removal-v1" ]]; then
 		lifecycle_delivery=true
 		[[ "$(jq -r '.process_running' "$state_path")" == "true" ]] || die "lease_dead_or_reused_process"
 		if [[ ! "$owner_pid" =~ ^[1-9][0-9]*$ ]] || ! kill -0 "$owner_pid" 2>/dev/null; then
@@ -688,6 +704,48 @@ cleanup_attempt_process() {
 	terminate_effect_process "$child_pid" "phase28 attempt cleanup"
 }
 
+escrow_attempt_traces() {
+	local attempt_dir="$1"
+	local attempt_id
+	attempt_id="$(basename "$attempt_dir")"
+	local escrow_root="${PHASE28_TRACE_ESCROW_ROOT:-$repo_root/scratch/phase28.1.1-plan13-private-traces}"
+	local escrow_dir="$escrow_root/$attempt_id"
+	local -a trace_files=()
+	local candidate
+	for candidate in \
+		"$attempt_dir/cold-start-monitor.raw.log" \
+		"$attempt_dir/monitor-wrapper.raw.log"; do
+		[[ ! -f "$candidate" ]] || trace_files+=("$candidate")
+	done
+	if [[ -d "$attempt_dir/private-session-traces" ]]; then
+		while IFS= read -r -d '' candidate; do
+			trace_files+=("$candidate")
+		done < <(find "$attempt_dir/private-session-traces" -type f -print0)
+	fi
+	((${#trace_files[@]} > 0)) || return 0
+	umask 077
+	mkdir -p "$escrow_root"
+	chmod 700 "$escrow_root"
+	if [[ ! -d "$escrow_dir" ]]; then
+		mkdir "$escrow_dir"
+	fi
+	chmod 700 "$escrow_dir"
+	local index=0
+	for candidate in "${trace_files[@]}"; do
+		index=$((index + 1))
+		local destination
+		destination="$escrow_dir/trace-$(printf '%03d' "$index").raw"
+		cp "$candidate" "$destination" || return 1
+		chmod 600 "$destination" || return 1
+	done
+	local digest_manifest="$escrow_dir/trace-digests.sha256"
+	: >"$digest_manifest"
+	chmod 600 "$digest_manifest"
+	for candidate in "$escrow_dir"/trace-*.raw; do
+		shasum -a 256 "$candidate" >>"$digest_manifest" || return 1
+	done
+}
+
 replace_active_with_tombstone() {
 	local slot="$1"
 	local terminal="$2"
@@ -698,6 +756,9 @@ replace_active_with_tombstone() {
 	attempt_dir="$(jq -er '.attempt_dir' "$slot")"
 	generation="$(jq -er '.attempt_generation' "$slot")"
 	digest="$(jq -er '.resume_handle_sha256' "$slot")"
+	if ! escrow_attempt_traces "$attempt_dir"; then
+		printf 'phase28_attempt_warning=trace_escrow_incomplete\n' >&2
+	fi
 	rm -f "$attempt_dir/child.pid" "$attempt_dir/lifecycle.sock" "$attempt_dir/credential-capability.json" "$attempt_dir/effect.ack" "$attempt_dir/effect.gate" "$attempt_dir/effect-result.json"
 	[[ "${PHASE28_CRASH_AT:-}" != "before_tombstone_persistence" ]] || exit 97
 	atomic_write "$slot" "$(jq -cn --arg digest "$digest" --arg terminal "$terminal" --arg category "$category" --argjson generation "$generation" '{schema_version:"exact-head-resume-tombstone-v1",resume_handle_sha256:$digest,attempt_generation:$generation,terminal_status:"closed",terminal_category:$terminal,cleanup_time_category:$category}')"
@@ -825,7 +886,7 @@ lifecycle_owner_transition() {
 	done
 	[[ "$capability" =~ ^[0-9a-f]{64}$ ]] || die "private_capability_invalid"
 	case "$event" in
-	absence-observing | restore-waiting | reappearance-observing | capture-running | capture-complete) ;;
+	absence-observing | restore-watcher-armed | usb-reappearance-observed | capture-running | capture-complete) ;;
 	*) die "checkpoint_state_mismatch" ;;
 	esac
 	local attempt_dir="${PHASE28_LIFECYCLE_ATTEMPT_DIR:-}"
@@ -1035,17 +1096,14 @@ run_validated_effect() {
 	set +e
 	if [[ "$effect" == "lifecycle_start" ]]; then
 		public_checkpoint_output "$state_path" "$handle"
-		local emitted_generation
-		emitted_generation="$(jq -er '.checkpoint_generation' "$state_path")"
+		local emitted_restore_action=false
 		while kill -0 "$child_pid" 2>/dev/null; do
 			if [[ -f "$state_path" ]]; then
-				local maybe_generation
-				local maybe_checkpoint
-				maybe_generation="$(jq -r '.checkpoint_generation' "$state_path" 2>/dev/null)"
-				maybe_checkpoint="$(jq -r '.checkpoint_id // empty' "$state_path" 2>/dev/null)"
-				if [[ "$maybe_checkpoint" == "plan13-lifecycle-restore" && "$maybe_generation" != "$emitted_generation" ]]; then
-					public_checkpoint_output "$state_path" "$handle"
-					emitted_generation="$maybe_generation"
+				local maybe_attempt_state
+				maybe_attempt_state="$(jq -r '.attempt_state // empty' "$state_path" 2>/dev/null)"
+				if [[ "$maybe_attempt_state" == "restore_watcher_armed" && "$emitted_restore_action" == "false" ]]; then
+					public_action_output "$state_path"
+					emitted_restore_action=true
 				fi
 			fi
 			sleep 0.05

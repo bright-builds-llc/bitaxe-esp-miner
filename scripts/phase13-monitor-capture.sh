@@ -18,6 +18,7 @@ no_reset=0
 monitor_pid=""
 monitor_group_ready_file=""
 monitor_group_state_file="${PHASE13_MONITOR_GROUP_STATE_FILE:-}"
+monitor_active_ready_file="${PHASE13_MONITOR_ACTIVE_READY_FILE:-}"
 passive_pre_ready=0
 passive_post_ready=0
 passive_identity=""
@@ -41,6 +42,22 @@ record_trace_summary() {
 	log "serial_trace_post_readiness=${post_readiness}"
 	log "serial_trace_active_owner_verified=${active_owner_verified}"
 	log "serial_trace_digest=${digest}"
+}
+
+signal_active_owner_ready() {
+	[[ -n "$monitor_active_ready_file" ]] || return 0
+	local temporary
+	temporary="$(mktemp "$(dirname "$monitor_active_ready_file")/.phase13-active.XXXXXX")"
+	serial_session_monotonic_ms >"$temporary"
+	chmod 600 "$temporary"
+	mv -f "$temporary" "$monitor_active_ready_file"
+}
+
+monitor_process_running() {
+	local pid="$1"
+	local state
+	state="$(ps -o stat= -p "$pid" 2>/dev/null | tr -d ' ')"
+	[[ -n "$state" && "$state" != Z* ]]
 }
 
 verify_post_readiness() {
@@ -229,13 +246,14 @@ if [[ "$no_reset" -eq 1 ]]; then
 		exit 1
 	fi
 	passive_active_owner_verified=1
+	signal_active_owner_ready
 fi
 
 start_epoch="$(date +%s)"
 capture_status="failed"
 monitor_status=0
 
-while kill -0 "$monitor_pid" >/dev/null 2>&1; do
+while monitor_process_running "$monitor_pid"; do
 	now_epoch="$(date +%s)"
 	elapsed=$((now_epoch - start_epoch))
 	if [[ "$elapsed" -ge "$seconds" ]]; then

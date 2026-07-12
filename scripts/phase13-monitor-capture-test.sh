@@ -136,6 +136,7 @@ test_monitor_timeout_status_is_recorded() {
 	local bin_dir="${tmp_root}/slow-bin"
 	local out_file="${tmp_root}/timeout.log"
 	local serial_port="${tmp_root}/serial-device"
+	local active_ready_file="${tmp_root}/monitor-active.ready"
 
 	create_slow_espflash "$bin_dir"
 	write_executable "${bin_dir}/node-identity" 'printf "node-stable\n"'
@@ -152,12 +153,21 @@ printf "%s\n" "$pid"'
 		SERIAL_SESSION_USB_IDENTITY_BIN="${bin_dir}/usb-identity" \
 		SERIAL_SESSION_LSOF_BIN="${bin_dir}/lsof-owner" \
 		SERIAL_TEST_MONITOR_PATTERN="${bin_dir}/espflash" \
+		PHASE13_MONITOR_ACTIVE_READY_FILE="$active_ready_file" \
 		PATH="${bin_dir}:$PATH" "$BASH" "$monitor_script" --port "$serial_port" --out "$out_file" --seconds 1 --no-reset
 
 	assert_contains "$out_file" "monitor_command: espflash monitor --chip esp32s3 --port ${serial_port} --non-interactive --before no-reset-no-sync --after no-reset --no-reset"
 	assert_not_contains "$out_file" "monitor_command: espflash monitor --chip esp32s3 --port ${serial_port} --non-interactive --no-reset"
 	assert_contains "$out_file" "capture_status=timed_out_after_capture"
 	assert_contains "$out_file" "serial_trace_pre_readiness=ready"
+	[[ -s "$active_ready_file" ]] || fail "passive monitor did not publish active-owner readiness"
+	local active_ready_mode
+	if active_ready_mode="$(stat -f '%Lp' "$active_ready_file" 2>/dev/null)"; then
+		:
+	else
+		active_ready_mode="$(stat -c '%a' "$active_ready_file")"
+	fi
+	[[ "$active_ready_mode" == "600" ]] || fail "active-owner readiness is not mode 600"
 	assert_contains "$out_file" "serial_trace_post_readiness=ready"
 	assert_contains "$out_file" "serial_trace_active_owner_verified=true"
 }

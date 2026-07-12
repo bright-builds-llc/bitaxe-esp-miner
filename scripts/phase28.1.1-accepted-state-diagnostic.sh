@@ -19,14 +19,16 @@ evidence_out=""
 manifest=""
 reinit_log=""
 board="205"
-IFS=' ' read -r minimum_usb_absence_ms reattach_deadline_ms minimum_capture_duration_ms <<<"$(node --input-type=module -e 'const { PLAN13_USB_ABSENCE_MINIMUM_MS, PLAN13_USB_REAPPEARANCE_TIMEOUT_MS, PLAN13_CAPTURE_MINIMUM_MS } = await import(process.argv[1]); process.stdout.write(`${PLAN13_USB_ABSENCE_MINIMUM_MS} ${PLAN13_USB_REAPPEARANCE_TIMEOUT_MS} ${PLAN13_CAPTURE_MINIMUM_MS}\n`)' "$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs")"
-readonly minimum_usb_absence_ms reattach_deadline_ms minimum_capture_duration_ms
-readonly monitor_start_reserve_ms=10000
-readonly replay_interval_ms=2000
-readonly replay_window_ms=180000
-readonly latest_safe_replay_ms=72000
+IFS=' ' read -r minimum_usb_absence_ms restore_watch_timeout_ms monitor_attachment_timeout_ms minimum_capture_duration_ms <<<"$(node --input-type=module -e 'const { PLAN13_USB_ABSENCE_MINIMUM_MS, PLAN13_RESTORE_WATCH_TIMEOUT_MS, PLAN13_MONITOR_ATTACHMENT_TIMEOUT_MS, PLAN13_CAPTURE_MINIMUM_MS } = await import(process.argv[1]); process.stdout.write(`${PLAN13_USB_ABSENCE_MINIMUM_MS} ${PLAN13_RESTORE_WATCH_TIMEOUT_MS} ${PLAN13_MONITOR_ATTACHMENT_TIMEOUT_MS} ${PLAN13_CAPTURE_MINIMUM_MS}\n`)' "$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs")"
+readonly minimum_usb_absence_ms restore_watch_timeout_ms monitor_attachment_timeout_ms minimum_capture_duration_ms
+readonly replay_interval_ms=10000
+readonly replay_window_ms=1880000
+readonly latest_safe_replay_ms=1870000
 active_child_pid=""
 active_descendant_group_file=""
+monitor_attachment_ms=""
+monitor_attachment_elapsed_ms=""
+monitor_failure_category=""
 
 die() {
 	printf 'accepted_state_diagnostic_error: %s\n' "$1" >&2
@@ -321,29 +323,52 @@ measure_continuous_usb_absence() {
 }
 
 wait_for_reappearance() {
-	local attestation_ms="$1"
+	local watcher_armed_ms="$1"
 	local now_ms
 	local elapsed_ms
 
 	while true; do
 		now_ms="$(monotonic_ms)"
-		elapsed_ms=$((now_ms - attestation_ms))
+		elapsed_ms=$((now_ms - watcher_armed_ms))
 		((elapsed_ms >= 0)) || die "monotonic clock moved backwards"
 		if port_is_present; then
-			((elapsed_ms <= reattach_deadline_ms)) || die "selected port reappeared after 60000 ms deadline"
+			((elapsed_ms <= restore_watch_timeout_ms)) || die "selected port appeared after 1800000 ms deadline"
 			printf '%s\n' "$elapsed_ms"
 			return
 		fi
-		((elapsed_ms < reattach_deadline_ms)) || die "selected port remained absent at 60000 ms deadline"
+		((elapsed_ms < restore_watch_timeout_ms)) || die "selected port remained absent at 1800000 ms deadline"
 		wait_one_second
 	done
+}
+
+process_is_running_non_zombie() {
+	local pid="$1"
+	local state
+	state="$(ps -o stat= -p "$pid" 2>/dev/null | tr -d ' ')"
+	[[ -n "$state" && "$state" != Z* ]]
+}
+
+classify_monitor_failure() {
+	local output_log="$1"
+	local wrapper_log="$2"
+	if rg -q 'serial_session_failure_category=(identity_changed|identity_unavailable|port_identity_changed)' "$output_log" "$wrapper_log" 2>/dev/null; then
+		printf 'usb_identity_instability\n'
+		return
+	fi
+	if rg -q 'cleanup.*failed|process group.*still alive|post_cleanup' "$output_log" "$wrapper_log" 2>/dev/null; then
+		printf 'lifecycle_cleanup_failed\n'
+		return
+	fi
+	printf 'monitor_attachment_failed\n'
 }
 
 run_monitored_capture() {
 	local output_log="$1"
 	local wrapper_log="$2"
+	local appearance_ms="${3:-}"
 	local child_status
 	local group_start_status
+	local active_ready_file="$run_dir/monitor-active.ready"
 	local -a args=(
 		--port "$port"
 		--out "$output_log"
@@ -353,10 +378,12 @@ run_monitored_capture() {
 	local -a monitor_command
 	active_descendant_group_file="$run_dir/descendant-monitor-process-group.state"
 	: >"$active_descendant_group_file"
+	rm -f "$active_ready_file"
+	local trace_root="${PHASE28_LIFECYCLE_ATTEMPT_DIR:-$run_dir}/private-session-traces"
 	if [[ -n "${PHASE28_ACCEPTED_STATE_MONITOR_BIN:-}" ]]; then
-		monitor_command=(env PHASE13_MONITOR_GROUP_STATE_FILE="$active_descendant_group_file" "$PHASE28_ACCEPTED_STATE_MONITOR_BIN" "${args[@]}")
+		monitor_command=(env PHASE13_MONITOR_GROUP_STATE_FILE="$active_descendant_group_file" PHASE13_MONITOR_ACTIVE_READY_FILE="$active_ready_file" SERIAL_SESSION_TRACE_ROOT="$trace_root" "$PHASE28_ACCEPTED_STATE_MONITOR_BIN" "${args[@]}")
 	else
-		monitor_command=(env PHASE13_MONITOR_GROUP_STATE_FILE="$active_descendant_group_file" bash scripts/phase13-monitor-capture.sh "${args[@]}")
+		monitor_command=(env PHASE13_MONITOR_GROUP_STATE_FILE="$active_descendant_group_file" PHASE13_MONITOR_ACTIVE_READY_FILE="$active_ready_file" SERIAL_SESSION_TRACE_ROOT="$trace_root" bash scripts/phase13-monitor-capture.sh "${args[@]}")
 	fi
 
 	trace_event "monitor-no-reset"
@@ -364,17 +391,55 @@ run_monitored_capture() {
 	phase_process_group_start "$run_dir/monitor-process-group.ready" "${monitor_command[@]}" >"$wrapper_log" 2>&1
 	group_start_status=$?
 	set -e
-	((group_start_status == 0)) || die "failed to start isolated monitor process group"
+	if ((group_start_status != 0)); then
+		monitor_failure_category="monitor_attachment_failed"
+		return 1
+	fi
 	active_child_pid="$PHASE_PROCESS_GROUP_PID"
 	if [[ -n "${PHASE28_ACCEPTED_STATE_CHILD_PID_FILE:-}" ]]; then
 		printf '%s\n' "$active_child_pid" >"$PHASE28_ACCEPTED_STATE_CHILD_PID_FILE"
+	fi
+	if [[ -n "$appearance_ms" ]]; then
+		local attachment_deadline_ms=$((appearance_ms + monitor_attachment_timeout_ms))
+		while [[ ! -f "$active_ready_file" ]]; do
+			if ! process_is_running_non_zombie "$active_child_pid"; then
+				monitor_failure_category="$(classify_monitor_failure "$output_log" "$wrapper_log")"
+				cleanup_active_child || monitor_failure_category="lifecycle_cleanup_failed"
+				return 1
+			fi
+			if (("$(monotonic_ms)" >= attachment_deadline_ms)); then
+				monitor_failure_category="monitor_attachment_failed"
+				cleanup_active_child || monitor_failure_category="lifecycle_cleanup_failed"
+				return 1
+			fi
+			sleep 0.05
+		done
+		if [[ "$(mode_of_path "$active_ready_file")" != "600" ]]; then
+			monitor_failure_category="monitor_attachment_failed"
+			cleanup_active_child || monitor_failure_category="lifecycle_cleanup_failed"
+			return 1
+		fi
+		monitor_attachment_ms="$(monotonic_ms)"
+		monitor_attachment_elapsed_ms=$((monitor_attachment_ms - appearance_ms))
+		if ((monitor_attachment_elapsed_ms < 0 || monitor_attachment_elapsed_ms > monitor_attachment_timeout_ms)); then
+			monitor_failure_category="monitor_attachment_failed"
+			cleanup_active_child || monitor_failure_category="lifecycle_cleanup_failed"
+			return 1
+		fi
+		lifecycle_transition capture-running "$(jq -cn --argjson attached "$monitor_attachment_ms" --argjson elapsed "$monitor_attachment_elapsed_ms" --argjson start "$monitor_attachment_ms" '{monitor_attachment_ms:$attached,monitor_attachment_elapsed_ms:$elapsed,capture_started_ms:$start}')"
 	fi
 	set +e
 	wait "$active_child_pid"
 	child_status=$?
 	set -e
-	cleanup_active_child || die "failed to clean monitor process group"
-	((child_status == 0)) || die "no-reset monitor capture failed"
+	if ! cleanup_active_child; then
+		monitor_failure_category="lifecycle_cleanup_failed"
+		return 1
+	fi
+	if ((child_status != 0)); then
+		monitor_failure_category="$(classify_monitor_failure "$output_log" "$wrapper_log")"
+		return 1
+	fi
 }
 
 verify_source_tree_clean() {
@@ -446,8 +511,13 @@ verify_stable_runtime() {
 	esac
 	boot_count="$(count_matches 'bitaxe-rust boot' "$raw_log")"
 	listener_count="$(count_matches 'h4_continuous_result=listener_armed' "$raw_log")"
-	[[ "$boot_count" == "1" ]] || die "$member_label capture does not contain exactly one stable boot"
-	[[ "$listener_count" == "1" ]] || die "$member_label capture does not contain exactly one listener-ready marker"
+	if [[ "$member_label" == "reinit" ]]; then
+		[[ "$boot_count" == "1" ]] || die "reinit capture does not contain exactly one original stable boot"
+		[[ "$listener_count" == "1" ]] || die "reinit capture does not contain exactly one original listener-ready marker"
+	else
+		((boot_count <= 1)) || die "cold-start capture contains multiple original stable boots"
+		((listener_count <= 1)) || die "cold-start capture contains multiple original listener-ready markers"
+	fi
 }
 
 verify_complete_reinit_member() {
@@ -508,6 +578,37 @@ private_write() {
 	printf '%s\n' "$contents" >"$temporary"
 	chmod 600 "$temporary"
 	mv -f "$temporary" "$destination"
+}
+
+escrow_lifecycle_traces_before_validation() {
+	local attempt_dir="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
+	local escrow_root="${PHASE28_TRACE_ESCROW_ROOT:-$repo_root/scratch/phase28.1.1-plan13-private-traces}"
+	local escrow_dir
+	escrow_dir="$escrow_root/$(basename "$attempt_dir")/pre-validation"
+	umask 077
+	mkdir -p "$escrow_root" "$(dirname "$escrow_dir")" "$escrow_dir"
+	chmod 700 "$escrow_root" "$(dirname "$escrow_dir")" "$escrow_dir"
+	local source
+	local index=0
+	for source in "$attempt_dir/cold-start-monitor.raw.log" "$attempt_dir/monitor-wrapper.raw.log"; do
+		[[ -f "$source" ]] || die "required lifecycle trace is missing before validation"
+		index=$((index + 1))
+		cp "$source" "$escrow_dir/trace-$(printf '%03d' "$index").raw" || return 1
+		chmod 600 "$escrow_dir/trace-$(printf '%03d' "$index").raw" || return 1
+	done
+	if [[ -d "$attempt_dir/private-session-traces" ]]; then
+		while IFS= read -r -d '' source; do
+			index=$((index + 1))
+			cp "$source" "$escrow_dir/trace-$(printf '%03d' "$index").raw" || return 1
+			chmod 600 "$escrow_dir/trace-$(printf '%03d' "$index").raw" || return 1
+		done < <(find "$attempt_dir/private-session-traces" -type f -print0)
+	fi
+	local digest_manifest="$escrow_dir/trace-digests.sha256"
+	: >"$digest_manifest"
+	chmod 600 "$digest_manifest"
+	for source in "$escrow_dir"/trace-*.raw; do
+		shasum -a 256 "$source" >>"$digest_manifest" || return 1
+	done
 }
 
 adapter_state_path() {
@@ -759,7 +860,7 @@ validate_credential_capability() {
 	is_private_owned_file "$capability_path" || return 1
 	jq -e '
 	  if type != "object" then false
-	  elif .schema_version != "exact-head-attempt-v2" then false
+	  elif .schema_version != "exact-head-attempt-v3" then false
 	  elif .execution_plan != 13 then false
 	  elif .credential_capability_status != "sealed" then false
 	  elif .wifi_credential_state != "present" then false
@@ -941,29 +1042,70 @@ run_prevalidated_lifecycle() {
 	local usb_absence_measured_ms
 	usb_absence_measured_ms="$(measure_continuous_usb_absence "$attestation_ms")"
 	local absence_end=$((attestation_ms + usb_absence_measured_ms))
-	lifecycle_transition restore-waiting "$(jq -cn --argjson end "$absence_end" --argjson duration "$usb_absence_measured_ms" '{usb_absence_ended_ms:$end,usb_absence_ms:$duration}')"
-	receive_lifecycle_token plan13-barrel-usb-restore-v1 plan13-barrel-then-usb-restored restore_attested restore_attested
-	lifecycle_transition reappearance-observing '{}'
-	local restore_accepted_ms
-	restore_accepted_ms="$(jq -er '.restore_accepted_ms' "$(adapter_state_path)")"
+	local watcher_ready_file="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/restore-watcher.ready"
+	if port_is_present; then
+		write_effect_result failed restore_watcher_arming_failed '{}'
+		return 1
+	fi
+	private_write "$watcher_ready_file" "exact-node-watcher-active"
+	local watcher_armed_ms
+	watcher_armed_ms="$(monotonic_ms)"
+	local watcher_deadline_ms=$((watcher_armed_ms + restore_watch_timeout_ms))
+	lifecycle_transition restore-watcher-armed "$(jq -cn --argjson end "$absence_end" --argjson duration "$usb_absence_measured_ms" --argjson armed "$watcher_armed_ms" --argjson deadline "$watcher_deadline_ms" '{usb_absence_ended_ms:$end,usb_absence_ms:$duration,restore_watcher_armed_ms:$armed,restore_watcher_deadline_ms:$deadline}')"
 	local reappearance_elapsed_ms
-	reappearance_elapsed_ms="$(wait_for_reappearance "$restore_accepted_ms")"
-	local capture_started_ms
-	capture_started_ms="$(monotonic_ms)"
-	lifecycle_transition capture-running "$(jq -cn --argjson reappearance "$((restore_accepted_ms + reappearance_elapsed_ms))" --argjson elapsed "$reappearance_elapsed_ms" --argjson start "$capture_started_ms" '{usb_reappearance_ms:$reappearance,reappearance_elapsed_ms:$elapsed,capture_started_ms:$start}')"
+	local appearance_error="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/usb-appearance.error"
+	set +e
+	reappearance_elapsed_ms="$(wait_for_reappearance "$watcher_armed_ms" 2>"$appearance_error")"
+	local appearance_status=$?
+	set -e
+	if ((appearance_status != 0)); then
+		write_effect_result failed usb_appearance_timeout '{}'
+		return 1
+	fi
+	rm -f "$appearance_error"
+	local appearance_ms=$((watcher_armed_ms + reappearance_elapsed_ms))
+	lifecycle_transition usb-reappearance-observed "$(jq -cn --argjson reappearance "$appearance_ms" --argjson elapsed "$reappearance_elapsed_ms" '{usb_reappearance_ms:$reappearance,reappearance_elapsed_ms:$elapsed}')"
+	rm -f "$watcher_ready_file"
 
 	local cold_start_raw_log="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/cold-start-monitor.raw.log"
-	run_monitored_capture "$cold_start_raw_log" "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/monitor-wrapper.raw.log"
+	monitor_failure_category=""
+	if ! run_monitored_capture "$cold_start_raw_log" "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/monitor-wrapper.raw.log" "$appearance_ms"; then
+		write_effect_result failed "${monitor_failure_category:-monitor_attachment_failed}" '{}'
+		return 1
+	fi
 	local capture_ended_ms
 	capture_ended_ms="$(monotonic_ms)"
-	local capture_duration_ms=$((capture_ended_ms - capture_started_ms))
+	local capture_duration_ms=$((capture_ended_ms - monitor_attachment_ms))
 	((capture_duration_ms >= minimum_capture_duration_ms)) || {
 		write_effect_result failed lifecycle_capture_short '{}'
 		return 1
 	}
-	verify_stable_runtime "$cold_start_raw_log" cold-start
 	local comparison="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/lifecycle.redacted.txt"
-	node scripts/phase28.1.1-accepted-state-lifecycle-compare.mjs --reinit-log "$reinit_log" --cold-start-log "$cold_start_raw_log" --out "$comparison"
+	if ! escrow_lifecycle_traces_before_validation; then
+		write_effect_result failed lifecycle_cleanup_failed '{}'
+		return 1
+	fi
+	local validation_error="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/lifecycle-validation.error"
+	set +e
+	(
+		verify_stable_runtime "$cold_start_raw_log" cold-start
+		node scripts/phase28.1.1-accepted-state-lifecycle-compare.mjs --reinit-log "$reinit_log" --cold-start-log "$cold_start_raw_log" --out "$comparison"
+	) 2>"$validation_error"
+	local validation_status=$?
+	set -e
+	if ((validation_status != 0)); then
+		local validation_blocker="lifecycle_capture_failed"
+		if rg -q 'multiple boot sessions|multiple original stable boots' "$validation_error"; then
+			validation_blocker="multiple_boot_sessions"
+		elif rg -q 'listener proof is absent|original listener proof is absent|listener-ready marker' "$validation_error"; then
+			validation_blocker="listener_proof_absent"
+		elif rg -q 'boot proof is absent|boot evidence is malformed|original boot proof is absent|stable boot' "$validation_error"; then
+			validation_blocker="boot_proof_absent"
+		fi
+		write_effect_result failed "$validation_blocker" '{}'
+		return 1
+	fi
+	rm -f "$validation_error"
 	local lifecycle_status
 	lifecycle_status="$(sed -n 's/^lifecycle_status: //p' "$comparison")"
 	case "$lifecycle_status" in match | mismatch | incomplete) ;; *) lifecycle_status=incomplete ;; esac
@@ -1134,23 +1276,23 @@ usb_absence_measured_ms="$(measure_continuous_usb_absence "$attestation_ms")"
 trace_event "usb-absence-confirmed"
 printf 'accepted_state_usb_absence_confirmed=true\n'
 printf 'accepted_state_usb_absence_measured_ms=%s\n' "$usb_absence_measured_ms"
-printf 'accepted_state_lifecycle_checkpoint=restore\n'
-printf 'accepted_state_lifecycle_arming_state=absence_confirmed_waiting_for_restore\n'
-printf 'accepted_state_lifecycle_action=restore-barrel-then-usb\n'
-printf 'accepted_state_lifecycle_expected_token=barrel-then-usb-restored\n'
-
-restore_deadline_ms=$((attestation_ms + reattach_timeout_seconds * 1000))
+watcher_armed_ms="$(monotonic_ms)"
+restore_deadline_ms=$((watcher_armed_ms + restore_watch_timeout_ms))
+printf '## ACTION READY\n'
+printf 'action_id=plan13-lifecycle-restore\n'
+printf 'action_token=plan13-restore-watcher-armed-v1\n'
+printf 'attempt_state=restore_watcher_armed\n'
+printf 'expected_user_action=restore-barrel-then-usb\n'
+printf 'response_required=false\n'
 printf 'accepted_state_restore_deadline_ms=%s\n' "$restore_deadline_ms"
-read_closed_token_until "barrel-then-usb-restored" "$restore_deadline_ms" "barrel-then-usb restore"
-trace_event "restore-token-accepted"
-reappearance_elapsed_ms="$(wait_for_reappearance "$attestation_ms")"
+reappearance_elapsed_ms="$(wait_for_reappearance "$watcher_armed_ms")"
 monitor_start_ms="$(monotonic_ms)"
-monitor_start_elapsed_ms=$((monitor_start_ms - attestation_ms))
-((monitor_start_elapsed_ms <= reappearance_elapsed_ms + monitor_start_reserve_ms)) || die "monitor startup exceeded 10000 ms reserve"
+monitor_start_elapsed_ms=$((monitor_start_ms - watcher_armed_ms))
+((monitor_start_elapsed_ms <= reappearance_elapsed_ms + monitor_attachment_timeout_ms)) || die "monitor startup exceeded 60000 ms attachment bound"
 next_replay_after_monitor_ms=$((monitor_start_elapsed_ms + replay_interval_ms))
-((reattach_deadline_ms + monitor_start_reserve_ms + replay_interval_ms == latest_safe_replay_ms)) || die "lifecycle timing contract drifted from 72000 ms"
-((latest_safe_replay_ms < replay_window_ms)) || die "latest safe replay does not precede 180000 ms expiry"
-((next_replay_after_monitor_ms < replay_window_ms)) || die "monitor startup left no replay before 180000 ms expiry"
+((restore_watch_timeout_ms + monitor_attachment_timeout_ms + replay_interval_ms == latest_safe_replay_ms)) || die "lifecycle timing contract drifted from 1870000 ms"
+((latest_safe_replay_ms < replay_window_ms)) || die "latest safe replay does not precede 1880000 ms expiry"
+((next_replay_after_monitor_ms < replay_window_ms)) || die "monitor startup left no replay before 1880000 ms expiry"
 
 run_monitored_capture "$cold_start_raw_log" "$run_dir/monitor-wrapper.raw.log"
 trace_event "capture-complete"
@@ -1175,9 +1317,9 @@ trace_event "post-capture-detector"
 	printf 'usb_absence_measured_ms: %s\n' "$usb_absence_measured_ms"
 	printf 'usb_absence_category: at_least_5000_ms\n'
 	printf 'barrel_removal_electronically_verified: false\n'
-	printf 'reattach_deadline_ms: %s\n' "$reattach_deadline_ms"
+	printf 'restore_watch_timeout_ms: %s\n' "$restore_watch_timeout_ms"
 	printf 'reappearance_elapsed_ms: %s\n' "$reappearance_elapsed_ms"
-	printf 'monitor_start_reserve_ms: %s\n' "$monitor_start_reserve_ms"
+	printf 'monitor_attachment_timeout_ms: %s\n' "$monitor_attachment_timeout_ms"
 	printf 'replay_interval_ms: %s\n' "$replay_interval_ms"
 	printf 'replay_window_ms: %s\n' "$replay_window_ms"
 	printf 'latest_safe_replay_ms: %s\n' "$latest_safe_replay_ms"
