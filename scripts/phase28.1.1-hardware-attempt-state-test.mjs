@@ -608,6 +608,7 @@ function testLifecycleLeaseAndSubordinateTransitions() {
     usb_absence_ended_ms: 6_001,
     usb_absence_ms: 5_000,
   });
+  const restoreCheckpoint = structuredClone(next);
   next = consumeCheckpoint(next, {
     checkpointToken: "plan13-barrel-usb-restore-v1",
     responseToken: "plan13-barrel-then-usb-restored",
@@ -616,7 +617,7 @@ function testLifecycleLeaseAndSubordinateTransitions() {
   next = applyLifecycleOwnerEvent(next, "reappearance-observing");
   next = applyLifecycleOwnerEvent(next, "capture-running", {
     usb_reappearance_ms: 7_000,
-    reappearance_elapsed_ms: 5_999,
+    reappearance_elapsed_ms: 998,
     capture_started_ms: 7_001,
   });
   next = applyLifecycleOwnerEvent(next, "capture-complete", {
@@ -647,6 +648,22 @@ function testLifecycleLeaseAndSubordinateTransitions() {
   assert.equal(completed.lifecycle_substate, "complete");
   assert.equal(completed.process_running, false);
   assert.equal(completed.capture_category, "complete_360s");
+  assert.equal(restoreCheckpoint.created_monotonic_ms, 6_001);
+  assert.equal(restoreCheckpoint.monotonic_deadline_ms, 306_001);
+  assert.doesNotThrow(() =>
+    consumeCheckpoint(restoreCheckpoint, {
+      checkpointToken: "plan13-barrel-usb-restore-v1",
+      responseToken: "plan13-barrel-then-usb-restored",
+      nowMonotonicMs: 306_000,
+    }),
+  );
+  expectStateError("checkpoint_expired", () =>
+    consumeCheckpoint(restoreCheckpoint, {
+      checkpointToken: "plan13-barrel-usb-restore-v1",
+      responseToken: "plan13-barrel-then-usb-restored",
+      nowMonotonicMs: 306_001,
+    }),
+  );
   for (const key of PERMITTED_LIFECYCLE_KEYS) {
     assert.equal(completed.capture_complete_permitted_lifecycle_counts[key], 1);
   }

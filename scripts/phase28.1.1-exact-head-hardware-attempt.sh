@@ -22,17 +22,23 @@ effect_adapter_command=()
 terminate_effect_process() {
 	local pid="$1"
 	local label="$2"
-	if ! kill -0 "$pid" 2>/dev/null; then
+	local leader_alive=false
+	local group_alive=false
+	phase_process_is_alive "$pid" && leader_alive=true
+	phase_process_group_is_alive "$pid" && group_alive=true
+	if [[ "$leader_alive" == "false" && "$group_alive" == "false" ]]; then
 		return 0
 	fi
-	local pgid
-	pgid="$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')"
-	[[ "$pgid" == "$pid" ]] || return 1
+	if [[ "$leader_alive" == "true" ]]; then
+		local pgid
+		pgid="$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')"
+		[[ "$pgid" == "$pid" ]] || return 1
+	fi
 	phase_process_group_terminate "$pid" "$label"
 }
 
 cleanup_on_exit() {
-	if [[ -n "$active_effect_pid" ]] && kill -0 "$active_effect_pid" 2>/dev/null; then
+	if [[ -n "$active_effect_pid" ]]; then
 		terminate_effect_process "$active_effect_pid" "phase28 effect cleanup" >/dev/null 2>&1 || true
 	fi
 	if [[ "$lock_held" == "true" ]]; then
@@ -655,17 +661,25 @@ cleanup_attempt_process() {
 		[[ "$(jq -er '.process_running' "$state_path")" == "false" ]] || return 1
 		return 0
 	fi
-	if ! kill -0 "$child_pid" 2>/dev/null; then
+	local leader_alive=false
+	local group_alive=false
+	phase_process_is_alive "$child_pid" && leader_alive=true
+	phase_process_group_is_alive "$child_pid" && group_alive=true
+	if [[ "$leader_alive" == "false" && "$group_alive" == "false" ]]; then
 		return 0
 	fi
-	local pgid
-	pgid="$(ps -o pgid= -p "$child_pid" 2>/dev/null | tr -d ' ')"
-	[[ "$pgid" == "$child_pid" ]] || return 1
+	if [[ "$leader_alive" == "true" ]]; then
+		local pgid
+		pgid="$(ps -o pgid= -p "$child_pid" 2>/dev/null | tr -d ' ')"
+		[[ "$pgid" == "$child_pid" ]] || return 1
+	fi
 	if [[ "$(jq -er '.process_running' "$state_path")" == "true" ]]; then
 		[[ "$(jq -er '.lifecycle_owner_pid' "$state_path")" == "$child_pid" ]] || return 1
-		local observed_fingerprint
-		observed_fingerprint="$(process_start_fingerprint "$child_pid" 2>/dev/null)" || return 1
-		[[ "$observed_fingerprint" == "$(jq -er '.lifecycle_owner_start_fingerprint_sha256' "$state_path")" ]] || return 1
+		if [[ "$leader_alive" == "true" ]]; then
+			local observed_fingerprint
+			observed_fingerprint="$(process_start_fingerprint "$child_pid" 2>/dev/null)" || return 1
+			[[ "$observed_fingerprint" == "$(jq -er '.lifecycle_owner_start_fingerprint_sha256' "$state_path")" ]] || return 1
+		fi
 	fi
 	terminate_effect_process "$child_pid" "phase28 attempt cleanup"
 }
@@ -946,6 +960,7 @@ run_validated_effect() {
 			printf 'terminal_outcome=%s\n' "$terminal"
 			return
 		fi
+		rm -f "$attempt_dir/child.pid"
 		release_lock
 		printf 'effect_recovery=completed_without_redispatch\n'
 		if [[ "$(jq -r '.checkpoint_id // empty' "$state_path")" != "" ]]; then
@@ -1047,7 +1062,7 @@ run_validated_effect() {
 	local succeeded=false
 	((adapter_status == 0)) && succeeded=true
 	persist_state_and_slot "$state_path" "$slot" "$(transform_effect_state finish "$state_path" "$effect" "$nonce" "$sequence" "$succeeded")"
-	rm -f "$attempt_dir/child.pid" "$ack" "$gate"
+	rm -f "$ack" "$gate"
 	[[ "${PHASE28_CRASH_AT:-}" != "after_completed_persistence" ]] || exit 97
 	local completed_json
 	set +e
@@ -1086,6 +1101,7 @@ run_validated_effect() {
 		printf 'terminal_outcome=%s\n' "$terminal"
 		return
 	fi
+	rm -f "$attempt_dir/child.pid"
 	release_lock
 	printf 'effect_id=%s\n' "$effect"
 	printf 'effect_sequence=%s\n' "$sequence"

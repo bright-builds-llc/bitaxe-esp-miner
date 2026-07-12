@@ -836,7 +836,7 @@ start_lifecycle_socket_receiver() {
 	rm -f "$socket_path" "$frame_path"
 	(
 		cd "$PHASE28_LIFECYCLE_ATTEMPT_DIR"
-		perl "$lifecycle_frame_helper" receive \
+		exec perl "$lifecycle_frame_helper" receive \
 			--socket lifecycle.sock \
 			--output lifecycle-frame.json
 	) &
@@ -944,11 +944,13 @@ run_prevalidated_lifecycle() {
 	lifecycle_transition restore-waiting "$(jq -cn --argjson end "$absence_end" --argjson duration "$usb_absence_measured_ms" '{usb_absence_ended_ms:$end,usb_absence_ms:$duration}')"
 	receive_lifecycle_token plan13-barrel-usb-restore-v1 plan13-barrel-then-usb-restored restore_attested restore_attested
 	lifecycle_transition reappearance-observing '{}'
+	local restore_accepted_ms
+	restore_accepted_ms="$(jq -er '.restore_accepted_ms' "$(adapter_state_path)")"
 	local reappearance_elapsed_ms
-	reappearance_elapsed_ms="$(wait_for_reappearance "$attestation_ms")"
+	reappearance_elapsed_ms="$(wait_for_reappearance "$restore_accepted_ms")"
 	local capture_started_ms
 	capture_started_ms="$(monotonic_ms)"
-	lifecycle_transition capture-running "$(jq -cn --argjson reappearance "$((attestation_ms + reappearance_elapsed_ms))" --argjson elapsed "$reappearance_elapsed_ms" --argjson start "$capture_started_ms" '{usb_reappearance_ms:$reappearance,reappearance_elapsed_ms:$elapsed,capture_started_ms:$start}')"
+	lifecycle_transition capture-running "$(jq -cn --argjson reappearance "$((restore_accepted_ms + reappearance_elapsed_ms))" --argjson elapsed "$reappearance_elapsed_ms" --argjson start "$capture_started_ms" '{usb_reappearance_ms:$reappearance,reappearance_elapsed_ms:$elapsed,capture_started_ms:$start}')"
 
 	local cold_start_raw_log="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/cold-start-monitor.raw.log"
 	run_monitored_capture "$cold_start_raw_log" "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/monitor-wrapper.raw.log"

@@ -209,7 +209,7 @@ export const CHECKPOINT_DEFINITIONS = Object.freeze({
     checkpointToken: "plan13-barrel-usb-restore-v1",
     expectedResponseToken: "plan13-barrel-then-usb-restored",
     expectedUserAction: "restore-barrel-then-usb",
-    timeoutMs: 60_000,
+    timeoutMs: 300_000,
     attemptState: "restore_waiting",
     lifecycleSubstate: "restore_waiting",
   }),
@@ -895,10 +895,7 @@ export function installCheckpoint(state, checkpointId, createdMonotonicMs) {
   next.expected_user_action = definition.expectedUserAction;
   next.checkpoint_generation += 1;
   next.created_monotonic_ms = createdMonotonicMs;
-  next.monotonic_deadline_ms =
-    checkpointId === "plan13-lifecycle-restore"
-      ? next.attestation_accepted_ms + definition.timeoutMs
-      : createdMonotonicMs + definition.timeoutMs;
+  next.monotonic_deadline_ms = createdMonotonicMs + definition.timeoutMs;
   validateAttemptState(next);
   return next;
 }

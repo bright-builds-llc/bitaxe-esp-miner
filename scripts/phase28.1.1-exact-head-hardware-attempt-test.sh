@@ -17,6 +17,21 @@ detector_board_info | credential_presence_bind | reference_guard | package | fla
 		socket_path="$PHASE28_LIFECYCLE_ATTEMPT_DIR/lifecycle.sock"
 		socket_pid=""
 		frame_path="$PHASE28_LIFECYCLE_ATTEMPT_DIR/fixture-frame.json"
+		if [[ "${PHASE28_ORPHAN_RECEIVER_FIXTURE:-0}" == "1" ]]; then
+			(
+				cd "$PHASE28_LIFECYCLE_ATTEMPT_DIR"
+				exec perl "${PHASE28_LIFECYCLE_FRAME_HELPER:?}" receive --socket lifecycle.sock --output fixture-frame.json
+			) >/dev/null 2>&1 &
+			socket_pid=$!
+			printf '%s\n' "$socket_pid" >"${PHASE28_ORPHAN_RECEIVER_PID_FILE:?}"
+			for _ in $(seq 1 100); do
+				[[ -S "$socket_path" ]] && break
+				kill -0 "$socket_pid" 2>/dev/null || exit 1
+				sleep 0.01
+			done
+			[[ -S "$socket_path" ]] || exit 1
+			exit 1
+		fi
 		wait_for_fixture_socket() {
 			for _ in $(seq 1 100); do
 				[[ -S "$socket_path" ]] && return
@@ -140,7 +155,8 @@ runner="$repo_root/scripts/phase28.1.1-exact-head-hardware-attempt.sh"
 temp_base="${TEST_TMPDIR:-$repo_root/scratch}"
 mkdir -p "$temp_base"
 temp_root="$(mktemp -d "$temp_base/phase28-attempt-test.XXXXXX")"
-trap 'rm -rf "$temp_root"' EXIT
+orphan_receiver_pid=""
+trap 'if [[ -n "$orphan_receiver_pid" ]]; then kill "$orphan_receiver_pid" 2>/dev/null || true; wait "$orphan_receiver_pid" 2>/dev/null || true; fi; rm -rf "$temp_root"' EXIT
 control_root="$temp_root/control"
 adapter_dir="$temp_root/adapters"
 mkdir -p "$adapter_dir"
@@ -945,6 +961,24 @@ after_lifecycle_expiry_effects="$(wc -l <"$temp_root/effects.trace" | tr -d ' ')
 [[ "$before_lifecycle_expiry_effects" == "$after_lifecycle_expiry_effects" ]] || fail "lease expiry dispatched another effect"
 [[ ! -s "$socket_trace" ]] || fail "deadline crossed after parse but still reached the lifecycle socket"
 assert_tombstoned_and_stale "$lifecycle_expiry_handle" blocked_safe_evidence_invalid "$lifecycle_expiry_dir"
+
+control_root="$temp_root/control-orphan-receiver"
+orphan_receiver_handle="$(begin_attempt reinit_validated)"
+orphan_receiver_handle="${orphan_receiver_handle#resume_handle=}"
+prepare_lifecycle_state "$orphan_receiver_handle"
+orphan_receiver_pid_file="$temp_root/orphan-receiver.pid"
+orphan_receiver_output="$(run_effect "$orphan_receiver_handle" lifecycle_start \
+	PHASE28_ORPHAN_RECEIVER_FIXTURE=1 \
+	PHASE28_ORPHAN_RECEIVER_PID_FILE="$orphan_receiver_pid_file")"
+orphan_receiver_pid="$(sed -n '1p' "$orphan_receiver_pid_file")"
+[[ "$orphan_receiver_pid" =~ ^[1-9][0-9]*$ ]] || fail "orphan receiver fixture did not report a PID"
+if kill -0 "$orphan_receiver_pid" 2>/dev/null; then
+	fail "lifecycle receiver survived terminal process-group cleanup"
+fi
+orphan_receiver_pid=""
+rg -q '^terminal_outcome=blocked_safe_evidence_invalid$' <<<"$orphan_receiver_output"
+orphan_receiver_slot="$(slot_for_handle "$orphan_receiver_handle")"
+[[ "$(jq -er '.terminal_category' "$orphan_receiver_slot")" == "blocked_safe_evidence_invalid" ]] || fail "orphan receiver cleanup terminal category mismatch"
 
 expect_failure resume_handle_malformed cleanup_attempt malformed
 expect_failure resume_handle_wrong cleanup_attempt "f$(printf '0%.0s' {1..63})"
