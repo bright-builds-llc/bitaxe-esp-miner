@@ -1,4 +1,7 @@
-exports_files(["partitions-ultra205.csv"])
+exports_files([
+    "partitions-ultra205.csv",
+    "sdkconfig.defaults",
+])
 
 filegroup(
     name = "phase28_boot_replay_sources",

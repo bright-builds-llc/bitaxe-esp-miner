@@ -1185,7 +1185,7 @@ run_prevalidated_lifecycle() {
 	local continuous_uart_wrapper="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/monitor-wrapper.raw.log"
 	monitor_failure_category=""
 	if ! run_monitored_capture "$continuous_uart_raw" "$continuous_uart_wrapper" "" uart-native "$external_uart_port" true 4200; then
-		write_effect_result failed monitor_attachment_failed '{}'
+		write_effect_result failed "${monitor_failure_category:-monitor_attachment_failed}" '{}'
 		return 1
 	fi
 	serial_session_active_owner_gate "$external_uart_port" "$(external_uart_owner_pgid)" || {

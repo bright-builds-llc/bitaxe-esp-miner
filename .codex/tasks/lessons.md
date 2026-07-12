@@ -74,3 +74,10 @@
 2. What went wrong: A cold-restore gate required both a new enumeration epoch and equality of a supposed physical-USB identity digest. On macOS that digest included `IOCalloutDevice`, `IODialinDevice`, `IOTTYDevice`, `IOTTYBaseName`, and the IORegistry entry ID, so the required re-enumeration could change the value and trigger `appearance_identity_changed` before capture.
 3. Preventive rule: Model stable physical identity and enumeration identity separately. A physical-identity digest may use stable hardware attributes such as USB serial number, vendor/product IDs, and stable port location, but must exclude tty paths/names, device-node metadata, and IORegistry entry IDs that are expected to change across enumeration.
 4. Trigger signal to catch it earlier: A lifecycle simultaneously requires `new_enumeration_epoch=true` and equality of a digest that contains callout/dial-in device names, tty base names, device-node inode data, or a registry-entry identifier.
+
+## lesson-cold-boot-proof-needs-an-independent-observer | 2026-07-12 16:17
+
+1. Date: 2026-07-12
+2. What went wrong: Native USB was used as the authoritative cold-start evidence channel even though the same board power transition removes that transport and recreates it only after early application output may already have occurred. Watcher timing, passive ownership, replay, and heartbeat repairs could prove their own boundaries but could not make the late-enumerated channel preserve original bytes.
+3. Preventive rule: When evidence must span destruction and recreation of a device-owned transport, use an independently powered receive-only observer that remains enumerated and open across the transition. Establish a quiet byte boundary while the target is unpowered, validate only post-boundary bytes, and keep target identity separate from observer identity and ownership.
+4. Trigger signal to catch it earlier: A test requires original boot bytes while its authoritative reader node disappears with target power or cannot be opened until after the target has begun booting.

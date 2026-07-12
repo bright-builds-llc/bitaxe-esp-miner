@@ -295,6 +295,7 @@ sh_test(
         "ultra205-late-attach-classifier.mjs",
         "ultra205-transport-qualification.sh",
         "ultra205-uart-capture-broker.sh",
+        "ultra205-uart-capture-classifier-test.mjs",
         "ultra205-uart-capture-classifier.mjs",
         "ultra205-uart-capture-worker.sh",
     ],
@@ -418,6 +419,7 @@ sh_test(
     name = "phase13_monitor_capture_test",
     srcs = ["phase13-monitor-capture-test.sh"],
     data = [
+        "//firmware/bitaxe:sdkconfig.defaults",
         "phase13-monitor-capture.sh",
         "phase13-os-native-reader.pl",
         "phase13-uart-native-reader.py",

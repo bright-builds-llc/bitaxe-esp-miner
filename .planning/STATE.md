@@ -3,24 +3,25 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Imported 28.1.1-14-PLAN.md
-last_updated: "2026-07-12T18:30:00.000Z"
+stopped_at: Completed 28.1.1-12-PLAN.md
+last_updated: "2026-07-12T20:25:19.202Z"
+last_activity: 2026-07-12
 progress:
   total_phases: 18
-  completed_phases: 15
-  total_plans: 70
+  completed_phases: 16
+  total_plans: 69
   completed_plans: 69
-  percent: 99
+  percent: 100
 ---
 
 # Project State
 
-Last activity: 2026-07-12 - Heartbeat-enabled Plan 13 passed reinit/ownership but failed closed on a zero-byte late-attach cold stream
+Last activity: 2026-07-12
 
 ## Current Position
 
-Phase: 28.1.1 (BM1366 nonce production wire parity (INSERTED)) — EXECUTING
-Plan: 8 of 9
+Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — EXECUTING
+Plan: 1 of 9
 
 - **Phase:** 28.1.1 — Accepted-State Gap Closure
 - **Plan:** 8/9 — Native-USB Plan 13 superseded; Plan 14 owns the single replacement chain

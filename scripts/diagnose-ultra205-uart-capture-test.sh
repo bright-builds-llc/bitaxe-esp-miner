@@ -20,7 +20,8 @@ write_executable() {
 }
 
 create_fixtures() {
-	local root="$1" bin="$root/bin"
+	local root="$1"
+	local bin="$root/bin"
 	mkdir -p "$bin"
 	: >"$root/native-port"
 	: >"$root/uart-port"
