@@ -213,7 +213,7 @@ Plans:
 **Goal:** Fix `firmware-nonce-production` by diffing upstream golden UART bytes against Rust TX, correcting init/job wire divergences, and verifying `result_correlated` plus live accepted/rejected shares on Ultra 205.
 **Depends on:** Phase 28.1
 **Requirements:** STR-09, CFG-07 (blocker closure)
-**Plans:** 7/8 plans executed
+**Plans:** 8/9 plans executed
 
 Plans:
 - [x] 28.1.1-06-PLAN.md — Typed accepted-state snapshots, classification, and closed redacted comparator
@@ -223,7 +223,8 @@ Plans:
 - [x] 28.1.1-10-PLAN.md — Bounded accepted-state replay + retained-package lifecycle capture; physical pair blocked before arming
 - [x] 28.1.1-11-PLAN.md — Fail-closed evidence correctness and finite physical recovery; hardware lifecycle blocked after checkpoint expiry and independent review fixes
 - [x] 28.1.1-12-PLAN.md — Closed exact-head attempt authority, crash-closed private resume lifecycle, and Phase 30/protected-evidence guards
-- [ ] 28.1.1-13-PLAN.md — One finite exact-head Ultra 205 attempt and conservative same-chain terminal closure
+- [x] 28.1.1-13-PLAN.md — Superseded without execution after native-USB transport/identity assumptions were invalidated; Plan 14 owns the single replacement chain
+- [ ] 28.1.1-14-PLAN.md — Receive-only external-UART qualification prerequisite and qualified Plan 13 cold-capture closure
 
 **Gaps found:** Plan 11 closes accepted-state completeness, replay timing, measured USB absence, deadline validation, process-tree cleanup, unavailable precedence, and promoted-evidence denylist defects. Its strict five-stage candidate became stale after the polling compatibility fix; the `d275a0e` hardware-attempt checkpoint expired, and a mistakenly invoked post-expiry detector result is invalid and unpromoted. Independent review fix `ab7f5b9` is host-only and further prevents reuse of older package/checkpoint identities. No eligible physical lifecycle pair, correlated result, hashing-class rise, or accepted/rejected share exists. Phase 30 promotion remains pending.
 
