@@ -29,3 +29,15 @@ Completion review: Durable guidance is committed at `6f0629c`; the passive sessi
 - [ ] Confirm the correction with a new detector-gated Plan 13 hardware chain before closing Phase 28.1.1.
 
 Completion review: In progress. The first watcher-based hardware run isolated the remaining failure to absent replay bytes after successful USB appearance, monitor ownership, capture duration, and cleanup. The boot-lifetime ownership regression, focused lifecycle/state/classifier/monitor suites, affected Bazel targets, canonical ESP firmware build, reference guard, and mandatory Rust sequence pass. The durable finding commit `2b504d5` and firmware repair commit `447f735c4df4363d84ea7b1354e32d57e28a68a5` are pushed on `main`. Hardware confirmation must use a later clean committed HEAD; the failed attempt will not be resumed or retried.
+
+Hardware update: Exact HEAD `e622253d2fc4aea4589e0dcf5524081b6b054aaf` passed detector, credential binding, reference, package, strict reflash/reinit heartbeat validation, response-free watcher arming, USB appearance, passive attachment, capture duration, and cleanup. The retained cold-start payload was still zero bytes, so heartbeat, boot evidence, listener evidence, and snapshots were all absent and the attempt correctly ended `blocked_safe_evidence_invalid`. The checkbox remains open; no hardware retry is authorized from this result.
+
+## task-native-usb-late-attach-byte-delivery | 2026-07-12 14:03 | Prove application bytes after late native-USB attachment
+
+- [x] Preserve the exact-head failed trace with mode-0700/0600 permissions and prove zero remaining processes and holders.
+- [x] Separate successful firmware heartbeat production during reinit from zero-byte delivery during retained cold start.
+- [ ] Design a transport-level diagnostic that distinguishes ESP32-S3 USB Serial/JTAG late-attach behavior from `espflash` passive-reader behavior without reset, flash, or hidden recovery.
+- [ ] Decide whether formal cold-start evidence needs an always-connected external UART/data-only arrangement or another machine-observable channel.
+- [ ] Run new hardware only after that diagnostic is planned, software-verified, committed, and pushed at a fresh exact HEAD.
+
+Completion review: Pending. The heartbeat feature is software-verified and hardware-observed during reinit, but it cannot close Plan 13 while the late-attached native-USB session delivers zero application bytes.

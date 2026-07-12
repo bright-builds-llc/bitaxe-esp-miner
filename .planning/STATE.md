@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: milestone
 status: executing
 stopped_at: Completed 28.1.1-12-PLAN.md
-last_updated: "2026-07-12T06:12:00.000Z"
+last_updated: "2026-07-12T14:03:00.000Z"
 progress:
   total_phases: 18
   completed_phases: 15
@@ -15,7 +15,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-12 - Completed quick task 260712-0a9: always-on serial runtime heartbeat and Plan 13 fallback validation
+Last activity: 2026-07-12 - Heartbeat-enabled Plan 13 passed reinit/ownership but failed closed on a zero-byte late-attach cold stream
 
 ## Current Position
 
@@ -25,7 +25,7 @@ Plan: 7 of 8
 - **Phase:** 28.1.1 — Accepted-State Gap Closure
 - **Plan:** 7/8 — Plan 12 complete; Plan 13 ready to execute
 - **Status:** Executing Phase 28.1.1
-- **Next step:** Execute Plan 13 with `/gsd-execute-phase 28.1.1 --gaps-only`; Phase 30 remains pending
+- **Next step:** Plan the native-USB late-attach byte-delivery diagnostic; do not retry Plan 13 until that diagnostic is committed on a fresh exact HEAD
 
 ## Decisions (Phase 28.1.1 Plan 11)
 
@@ -142,7 +142,7 @@ Plan: 7 of 8
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
-| 260712-0a9 | Always-on serial runtime heartbeat and Plan 13 fallback validation | 2026-07-12 | a38bb0f | Verified | [260712-0a9-implement-the-always-on-serial-only-runt](./quick/260712-0a9-implement-the-always-on-serial-only-runt/) |
+| 260712-0a9 | Always-on serial runtime heartbeat and Plan 13 fallback validation | 2026-07-12 | a38bb0f | Software verified; hardware transport blocked | [260712-0a9-implement-the-always-on-serial-only-runt](./quick/260712-0a9-implement-the-always-on-serial-only-runt/) |
 
 ## Decisions (Phase 28.1.1.5)
 

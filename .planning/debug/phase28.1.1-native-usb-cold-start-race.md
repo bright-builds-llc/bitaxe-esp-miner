@@ -1,23 +1,23 @@
 ---
-status: awaiting_hardware
+status: investigating
 trigger: "Plan 13 passed physical lifecycle, USB ownership, passive capture, and cleanup, but the retained cold-start log contained no boot or listener markers."
 created: 2026-07-12T04:00:00Z
-updated: 2026-07-12T05:00:00Z
+updated: 2026-07-12T14:03:00Z
 ---
 
 ## Current Focus
 
-hypothesis: The prearmed watcher repair is hardware-confirmed, but replay ownership is still too narrow. Replay runs only from the live Stratum socket pump, so optional Wi-Fi/pool-session progress can suppress boot evidence even after native USB is attached correctly.
-test: Move the allowlisted 10-second replay cadence to a boot-lifetime task with the same 1,880,000 ms window, remove Stratum-owned replay, and verify the ownership seam statically plus the timing schedule in Rust.
-expecting: Software checks prove that booted evidence replays independently of network progress and listener evidence joins the same session if and when listener readiness occurs. A later fresh exact-head hardware run remains required to prove native-USB delivery.
-next_action: Start only a new detector-gated Plan 13 hardware chain from the later clean exact HEAD; never resume the failed attempt at `4891ce06bb51f872fd41c0baa2412cd660c877eb`.
+hypothesis: Firmware evidence production is no longer the missing boundary. The reinit capture proves the boot-lifetime heartbeat and replay task run, while a late-attached native-USB session still delivers zero application bytes. The remaining fault is between ESP32-S3 USB Serial/JTAG late attachment and the passive `espflash` reader.
+test: Preserve the failed trace and plan a transport-level A/B that can distinguish device-side late-attach byte delivery from reader-side behavior without reset, flash, hidden recovery, or an ad hoc hardware retry.
+expecting: A future diagnostic identifies whether application bytes reach an OS-level passive reader after late attachment; if not, formal first-boot evidence requires an always-connected external UART/data-only path or another independent channel.
+next_action: Do not retry Plan 13. Create a new transport-level diagnostic plan from the preserved zero-byte trace, commit and push its software authority, then request at most one separately gated hardware run.
 
 ## Symptoms
 
 expected: Once both power paths are removed, the lifecycle is already observing the selected node before the user restores barrel power and USB; capture proves that one boot reached listener readiness even when native USB missed original bytes.
-actual: The repaired lifecycle armed the exact-node watcher before restoration, observed USB automatically, acquired passive ownership within the attachment bound, captured for 360 seconds, and cleaned up with zero holders. The raw serial stream was still empty because firmware replay was conditional on entering and remaining in the Stratum socket pump.
-errors: Cold monitor bytes `0`; boot-evidence markers `0`; accepted-state snapshots `0`; terminal `blocked_safe_evidence_invalid`. The session trace reports pre/post readiness, expected active ownership, stable identity, timeout-after-capture, and complete cleanup.
-reproduction: On exact HEAD `4891ce06bb51f872fd41c0baa2412cd660c877eb`, complete reflash/reinit, remove both power paths, wait for `plan13-restore-watcher-armed-v1`, then restore barrel and USB without a response. Attachment succeeds but no replay bytes arrive during the bounded capture.
+actual: Exact HEAD `e622253d2fc4aea4589e0dcf5524081b6b054aaf` passed strict reflash/reinit heartbeat validation, proving the always-on observer and both cadence phases. The retained lifecycle then armed before restoration, observed USB automatically, acquired passive ownership, completed its bounded capture, and cleaned up with zero holders, yet the raw application payload was exactly empty.
+errors: Cold monitor bytes `0`; heartbeat markers `0`; boot-evidence markers `0`; accepted-state snapshots `0`; terminal `blocked_safe_evidence_invalid`. The session trace reports pre/post readiness, expected active ownership, stable identity, timeout-after-capture, and complete cleanup.
+reproduction: On exact HEAD `e622253d2fc4aea4589e0dcf5524081b6b054aaf`, complete strict reflash/reinit, remove both power paths, wait for `plan13-restore-watcher-armed-v1`, then restore barrel and USB without a response. Attachment succeeds but no application byte arrives despite the boot-lifetime heartbeat.
 
 ## Feedback Loop
 
@@ -27,9 +27,9 @@ properties: Deterministic, hardware-free, and located at the state/evidence cont
 
 ## Working Diagnosis
 
-root_cause: Native USB required the prearmed watcher, and boot proof additionally requires a lifecycle independent of optional services. The first repair stored replay state correctly but invoked its cadence only from `pump_live_socket_until_cleanup`, making proof contingent on Wi-Fi and Stratum progress.
-confidence: high; the hardware trace proves transport appearance/ownership/cleanup while capturing zero bytes, and source inspection shows there is no other replay owner.
-smallest_correct_seam: Keep the watcher and validators unchanged, but move the existing allowlisted replay cadence to a boot-lifetime diagnostic task started with boot evidence.
+root_cause: Confirmed up to the transport boundary. The old human acknowledgment race and Stratum-coupled replay were real defects and are repaired, but neither explains the current empty stream. A passive native-USB session can have a present stable node and correct owner while carrying no application bytes after barrel-first boot and later USB attachment.
+confidence: high that firmware heartbeat scheduling is not the blocker because reinit validates it; medium on whether the remaining boundary is ESP32-S3 USB Serial/JTAG late-attach behavior or `espflash` passive-reader behavior.
+smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery observation below the Plan 13 evidence parser. Do not change evidence semantics or add another firmware replay mechanism until that boundary is classified.
 
 ## Fix in Progress
 
@@ -40,8 +40,9 @@ smallest_correct_seam: Keep the watcher and validators unchanged, but move the e
 
 ## Remaining Verification
 
-- Complete the boot-lifetime ownership regression, shell formatting/lint, affected Bazel targets, reference guard, and canonical Rust checks.
-- Commit and push a clean exact HEAD, but do not run another hardware chain in the failed attempt or mark this session resolved without later retained cold-start proof.
+- Design a transport-level A/B that compares the existing passive `espflash` reader with a bounded OS-level serial reader while preserving exact-node identity, no writes, no reset, and fail-closed cleanup.
+- Decide whether native USB can satisfy formal cold-start evidence at all; otherwise define the external UART or alternate-channel boundary explicitly.
+- Do not run another hardware chain until the new diagnostic is planned, verified, committed, and pushed at a fresh exact HEAD.
 
 ## Software Verification
 
@@ -72,9 +73,13 @@ smallest_correct_seam: Keep the watcher and validators unchanged, but move the e
   checked: private trace retention and secrecy
   found: The mode-0700 escrow contains only mode-0600 files, including duplicated pre-validation and tombstone copies with digests. No active attempt directory, lifecycle process, espflash monitor process, or serial holder remains.
   implication: The failed run is diagnosable without resuming or repeating it, and raw local identities remain outside committed evidence.
+- timestamp: 2026-07-12T14:03:00Z
+  checked: heartbeat-enabled exact-head Plan 13 chain at `e622253d2fc4aea4589e0dcf5524081b6b054aaf`
+  found: Strict reflash/reinit passed heartbeat, original-marker, and dedicated-evidence validation. The retained cold-start member passed watcher arming, automatic USB appearance, stable passive ownership, bounded capture, and cleanup, but its application payload remained exactly zero bytes with no heartbeat or evidence marker.
+  implication: The boot-lifetime heartbeat is implemented and works when monitoring spans boot, but it cannot close a silent late-attached native-USB transport. No retry is permitted from this result.
 
 ## Resolution State
 
-root_cause: The old post-plug checkpoint raced native USB, and the first replay repair remained conditional on Stratum-session execution. Transport ownership alone could not recover early bytes or guarantee later replay.
-fix: Keep the response-free exact-node watcher and private trace/validation contract; move allowlisted replay into a bounded boot-lifetime task so external-service progress cannot gate proof.
-hardware_status: watcher, passive attachment, 360-second capture, and cleanup passed on `4891ce06bb51f872fd41c0baa2412cd660c877eb`; replay delivery failed with an empty cold stream. A later clean committed HEAD requires fresh hardware confirmation.
+root_cause: The response race and service-coupled replay were repaired, but native-USB late attachment still yields a present owned node with zero application bytes. The unresolved boundary is device-side USB Serial/JTAG late-attach delivery versus passive-reader behavior.
+fix: Keep the watcher, heartbeat, replay, strict validator, private trace, and cleanup repairs. Do not add another evidence producer; classify byte delivery below the evidence parser first.
+hardware_status: exact HEAD `e622253d2fc4aea4589e0dcf5524081b6b054aaf` passed strict heartbeat-enabled reinit and all lifecycle ownership/cleanup gates, then failed closed on an empty retained cold-start stream. Hardware closure remains blocked pending a new transport-level diagnostic.
