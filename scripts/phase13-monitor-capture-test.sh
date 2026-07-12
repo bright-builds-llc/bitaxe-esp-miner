@@ -4,6 +4,8 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 readonly monitor_script="${PHASE13_MONITOR_CAPTURE_SCRIPT:-${script_dir}/phase13-monitor-capture.sh}"
+readonly uart_reader_test="${script_dir}/phase13-uart-native-reader-test.py"
+readonly sdkconfig_defaults="${script_dir}/../firmware/bitaxe/sdkconfig.defaults"
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/phase13-monitor-capture-test.XXXXXX")"
 readonly tmp_root
@@ -190,6 +192,46 @@ printf "%s\n" "$pid"'
 	fi
 }
 
+test_uart_native_reader_is_dispatched_receive_only() {
+	local bin_dir="${tmp_root}/uart-native-bin"
+	local out_file="${tmp_root}/uart-native.log"
+	local raw_file="${tmp_root}/uart-native.payload"
+	local serial_port="${tmp_root}/uart-native-device"
+	local reader_fixture="${tmp_root}/uart-native-fixture.py"
+
+	mkdir -p "$bin_dir"
+	: >"$serial_port"
+	chmod 600 "$serial_port"
+	write_executable "${bin_dir}/node-identity" 'printf "node-stable\n"'
+	write_executable "${bin_dir}/usb-identity" 'printf "usb-stable\n"'
+	# shellcheck disable=SC2016 # The generated fixture observes the isolated reader process.
+	write_executable "${bin_dir}/lsof-owner" 'pid="$(pgrep -f "uart-native-fixture.py ${SERIAL_TEST_PORT:?}" | head -1)"
+[[ -n "$pid" ]] || exit 1
+printf "%s\n" "$pid"'
+	printf '%s\n' 'import sys, time' 'print("uart-native-bytes", flush=True)' 'time.sleep(10)' >"$reader_fixture"
+	chmod 600 "$reader_fixture"
+
+	SERIAL_SESSION_READINESS_INTERVAL_SECONDS=0 SERIAL_SESSION_TOOL_VERSION=test \
+		SERIAL_SESSION_ACTIVE_OWNER_INTERVAL_SECONDS=0 \
+		SERIAL_SESSION_NODE_IDENTITY_BIN="${bin_dir}/node-identity" \
+		SERIAL_SESSION_USB_IDENTITY_BIN="${bin_dir}/usb-identity" \
+		SERIAL_SESSION_LSOF_BIN="${bin_dir}/lsof-owner" \
+		SERIAL_TEST_PORT="$serial_port" \
+		PHASE13_UART_NATIVE_READER_SCRIPT="$reader_fixture" \
+		"$BASH" "$monitor_script" --port "$serial_port" --out "$out_file" --raw-out "$raw_file" --reader uart-native --seconds 1 --no-reset
+
+	assert_contains "$raw_file" "uart-native-bytes"
+	assert_contains "$out_file" "reader: uart-native"
+	assert_contains "$out_file" "monitor_command: phase13-uart-native-reader.py ${serial_port}"
+	assert_contains "$out_file" "capture_status=timed_out_after_capture"
+}
+
+test_console_defaults_are_explicit() {
+	assert_contains "$sdkconfig_defaults" "CONFIG_ESP_CONSOLE_UART_DEFAULT=y"
+	assert_contains "$sdkconfig_defaults" "CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200"
+	assert_contains "$sdkconfig_defaults" "CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=y"
+}
+
 mode_of() {
 	local path="$1"
 	if stat -f '%Lp' "$path" >/dev/null 2>&1; then
@@ -319,6 +361,9 @@ fi
 test_monitor_command_is_bounded_and_safe
 test_raw_out_separates_reader_stdout_from_wrapper_log
 test_os_native_reader_captures_fifo_without_control_operations
+python3 "$uart_reader_test"
+test_uart_native_reader_is_dispatched_receive_only
+test_console_defaults_are_explicit
 test_repeated_fast_monitor_completion_never_becomes_timeout
 test_monitor_timeout_status_is_recorded
 test_timeout_stops_descendant_watcher

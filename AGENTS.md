@@ -305,6 +305,9 @@ Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and po
 - Model stable physical USB identity separately from enumeration identity. On macOS, never include `IOCalloutDevice`, `IODialinDevice`, `IOTTYDevice`, `IOTTYBaseName`, or the IORegistry entry ID in a physical-identity digest; those fields belong to the enumeration epoch and may change after the required cold restore.
 - For a Plan 13 both-power cold start, never tell the user to restore power until the lifecycle emits `action_token=plan13-restore-watcher-armed-v1` with `response_required=false`. Then instruct barrel power followed by USB; USB appearance is observed automatically and no post-plug response token is expected.
 - Native USB cannot preserve application bytes emitted before enumeration. Cold-start validation therefore uses the repo-owned redacted, session-tagged boot/listener replay proof; raw first-byte qualification requires a separate always-connected UART or data-only capture path.
+- External-UART cold capture is receive-only: with both board power paths absent, connect a 3.3 V adapter RX to Ultra 205 `TP18/P_TX` and GND to `TP12/GND` (or Tag-Connect `J5` pins 3/4). Leave adapter TX, VCC, RTS, DTR, and every other signal disconnected; stop on a board-layout mismatch or insecure probe fixture.
+- Keep the external adapter USB and probes connected across board power removal. Its physical and enumeration identities must both remain unchanged. For native USB restoration, require the same stable physical identity and a different enumeration identity; tty paths, inodes, dynamic device instances, and registry-entry IDs are never physical identity.
+- Treat the external UART as evidence-only. It may not power, reset, flash, transmit to, scan for, or otherwise control the board, and its raw bytes and local identities remain private under the serial-session trace rules.
 
 ### Evidence Workflow: Hardware-First Default
 

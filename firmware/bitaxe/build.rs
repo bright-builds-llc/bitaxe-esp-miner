@@ -1,8 +1,10 @@
 use std::env;
+use std::fs;
 use std::process::Command;
 
 fn main() {
     embuild::espidf::sysenv::output();
+    assert_console_contract();
     println!("cargo:rerun-if-env-changed=BITAXE_SOURCE_COMMIT");
     println!("cargo:rerun-if-env-changed=BITAXE_MINING_EVIDENCE_MODE");
     println!("cargo:rerun-if-env-changed=BITAXE_HARDWARE_EVIDENCE_ACK");
@@ -15,6 +17,24 @@ fn main() {
     };
 
     println!("cargo:rustc-env=BITAXE_FIRMWARE_COMMIT={commit}");
+}
+
+fn assert_console_contract() {
+    const REQUIRED_DEFAULTS: [&str; 3] = [
+        "CONFIG_ESP_CONSOLE_UART_DEFAULT=y",
+        "CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200",
+        "CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=y",
+    ];
+
+    println!("cargo:rerun-if-changed=sdkconfig.defaults");
+    let Ok(defaults) = fs::read_to_string("sdkconfig.defaults") else {
+        panic!("firmware build requires readable sdkconfig.defaults");
+    };
+    for required in REQUIRED_DEFAULTS {
+        if !defaults.lines().any(|line| line == required) {
+            panic!("firmware console contract missing {required}");
+        }
+    }
 }
 
 fn emit_git_rerun_hints() {

@@ -7,6 +7,8 @@ SERIAL_SESSION_TRACE_DIR=""
 SERIAL_SESSION_TRACE_STATUS="uninitialized"
 SERIAL_SESSION_READINESS_CATEGORY="unavailable"
 SERIAL_SESSION_READY_IDENTITY=""
+SERIAL_SESSION_READY_PHYSICAL_IDENTITY=""
+SERIAL_SESSION_READY_ENUMERATION_IDENTITY=""
 
 serial_session_monotonic_ms() {
 	if [[ -n "${SERIAL_SESSION_MONOTONIC_MS_BIN:-}" ]]; then
@@ -94,10 +96,15 @@ serial_session_node_identity() {
 	fi
 }
 
-serial_session_usb_identity() {
+serial_session_usb_physical_identity() {
 	local port="$1"
 	local tty_name="${port##*/}"
+	local sysfs_root="${SERIAL_SESSION_SYSFS_ROOT:-/sys}"
 
+	if [[ -n "${SERIAL_SESSION_USB_PHYSICAL_IDENTITY_BIN:-}" ]]; then
+		"$SERIAL_SESSION_USB_PHYSICAL_IDENTITY_BIN" "$port"
+		return
+	fi
 	if [[ -n "${SERIAL_SESSION_USB_IDENTITY_BIN:-}" ]]; then
 		"$SERIAL_SESSION_USB_IDENTITY_BIN" "$port"
 		return
@@ -109,21 +116,79 @@ serial_session_usb_identity() {
 			awk -v port="$port" 'BEGIN { RS="\\n[+]?-o " } index($0, port) { print }')"
 		[[ -n "$identity_block" ]] || return 1
 		stable_identity_fields="$(printf '%s\n' "$identity_block" | awk '
-			match($0, /id 0x[0-9a-fA-F]+/) { print substr($0, RSTART, RLENGTH) }
-			/"(IOCalloutDevice|IODialinDevice|IOTTYDevice|IOTTYBaseName|USB Serial Number|idVendor|idProduct|locationID)" =/ { print }
+			/"(USB Serial Number|idVendor|idProduct|locationID)" =/ { print }
 		')"
-		[[ -n "$stable_identity_fields" ]] || return 1
+		printf '%s\n' "$stable_identity_fields" | grep -q '"idVendor" =' || return 1
+		printf '%s\n' "$stable_identity_fields" | grep -q '"idProduct" =' || return 1
+		printf '%s\n' "$stable_identity_fields" | grep -Eq '"(USB Serial Number|locationID)" =' || return 1
 		printf '%s\n' "$stable_identity_fields" | serial_session_hash_text
 		return
 	fi
-	if [[ -e "/sys/class/tty/${tty_name}/device" ]]; then
+	if [[ -e "${sysfs_root}/class/tty/${tty_name}/device" ]]; then
+		local device_path
+		device_path="$(readlink -f "${sysfs_root}/class/tty/${tty_name}/device")" || return 1
+		while [[ "$device_path" != "/" ]]; do
+			if [[ -f "${device_path}/idVendor" && -f "${device_path}/idProduct" ]]; then
+				{
+					printf 'topology=%s\n' "${device_path##*/}"
+					printf 'vendor=' && sed -n '1p' "${device_path}/idVendor"
+					printf 'product=' && sed -n '1p' "${device_path}/idProduct"
+					if [[ -f "${device_path}/serial" ]]; then
+						printf 'serial=' && sed -n '1p' "${device_path}/serial"
+					fi
+				} | serial_session_hash_text
+				return
+			fi
+			device_path="${device_path%/*}"
+		done
+	fi
+	return 1
+}
+
+serial_session_usb_enumeration_identity() {
+	local port="$1"
+	local tty_name="${port##*/}"
+	local sysfs_root="${SERIAL_SESSION_SYSFS_ROOT:-/sys}"
+
+	if [[ -n "${SERIAL_SESSION_USB_ENUMERATION_IDENTITY_BIN:-}" ]]; then
+		"$SERIAL_SESSION_USB_ENUMERATION_IDENTITY_BIN" "$port"
+		return
+	fi
+	if [[ -n "${SERIAL_SESSION_USB_IDENTITY_BIN:-}" ]]; then
+		serial_session_node_identity "$port"
+		return
+	fi
+	if [[ "$(uname -s)" == "Darwin" ]] && command -v ioreg >/dev/null 2>&1; then
+		local identity_block
+		local enumeration_fields
+		identity_block="$(ioreg -r -c IOSerialBSDClient -l -w 0 |
+			awk -v port="$port" 'BEGIN { RS="\\n[+]?-o " } index($0, port) { print }')"
+		[[ -n "$identity_block" ]] || return 1
+		enumeration_fields="$(printf '%s\n' "$identity_block" | awk '
+			match($0, /id 0x[0-9a-fA-F]+/) { print substr($0, RSTART, RLENGTH) }
+			/"(IOCalloutDevice|IODialinDevice|IOTTYDevice|IOTTYBaseName)" =/ { print }
+		')"
+		[[ -n "$enumeration_fields" ]] || return 1
 		{
-			readlink -f "/sys/class/tty/${tty_name}/device"
-			find "/sys/class/tty/${tty_name}/device" -maxdepth 2 -name uevent -type f -exec sed -n '1,80p' {} \;
+			serial_session_node_identity "$port"
+			printf '%s\n' "$enumeration_fields"
 		} | serial_session_hash_text
 		return
 	fi
-	return 1
+	if [[ -e "${sysfs_root}/class/tty/${tty_name}/device" ]]; then
+		{
+			serial_session_node_identity "$port"
+			readlink -f "${sysfs_root}/class/tty/${tty_name}/device"
+			find "${sysfs_root}/class/tty/${tty_name}/device" -maxdepth 1 -name uevent -type f -exec sed -n '1,80p' {} \;
+		} | serial_session_hash_text
+		return
+	fi
+	serial_session_node_identity "$port"
+}
+
+# Compatibility name: USB identity now represents only the stable device.
+serial_session_usb_identity() {
+	serial_session_usb_physical_identity "$1"
 }
 
 serial_session_holder_pids() {
@@ -274,21 +339,27 @@ serial_session_readiness_gate() {
 	local maybe_expected_identity="${3:-}"
 	local interval="${SERIAL_SESSION_READINESS_INTERVAL_SECONDS:-0.25}"
 	local maybe_first_identity=""
+	local maybe_first_physical_identity=""
+	local maybe_first_enumeration_identity=""
 	local sample
 
 	SERIAL_SESSION_READINESS_CATEGORY="ready"
 	SERIAL_SESSION_READY_IDENTITY=""
+	SERIAL_SESSION_READY_PHYSICAL_IDENTITY=""
+	SERIAL_SESSION_READY_ENUMERATION_IDENTITY=""
 	for sample in 1 2 3; do
 		local present=false
 		local accessible=false
 		local maybe_node_identity=""
-		local maybe_usb_identity=""
+		local maybe_physical_identity=""
+		local maybe_enumeration_identity=""
 		local maybe_combined_identity=""
 		local maybe_holder_pids=""
 		local holder_count=0
 		local holder_probe_status=0
 		local node_identity_status=0
-		local usb_identity_status=0
+		local physical_identity_status=0
+		local enumeration_identity_status=0
 		local holder_probe_available=false
 
 		if [[ -e "$port" ]]; then
@@ -301,11 +372,13 @@ serial_session_readiness_gate() {
 			set +e
 			maybe_node_identity="$(serial_session_node_identity "$port" 2>/dev/null)"
 			node_identity_status=$?
-			maybe_usb_identity="$(serial_session_usb_identity "$port" 2>/dev/null)"
-			usb_identity_status=$?
+			maybe_physical_identity="$(serial_session_usb_physical_identity "$port" 2>/dev/null)"
+			physical_identity_status=$?
+			maybe_enumeration_identity="$(serial_session_usb_enumeration_identity "$port" 2>/dev/null)"
+			enumeration_identity_status=$?
 			set -e
-			if [[ -n "$maybe_node_identity" && -n "$maybe_usb_identity" ]]; then
-				maybe_combined_identity="$(printf '%s\n%s\n' "$maybe_node_identity" "$maybe_usb_identity" | serial_session_hash_text)"
+			if [[ -n "$maybe_physical_identity" && -n "$maybe_enumeration_identity" ]]; then
+				maybe_combined_identity="$(printf '%s\n%s\n' "$maybe_physical_identity" "$maybe_enumeration_identity" | serial_session_hash_text)"
 			fi
 		fi
 
@@ -324,7 +397,8 @@ serial_session_readiness_gate() {
 			--arg phase "$phase" \
 			--arg port "$port" \
 			--arg node_identity "$maybe_node_identity" \
-			--arg usb_identity "$maybe_usb_identity" \
+			--arg physical_identity "$maybe_physical_identity" \
+			--arg enumeration_identity "$maybe_enumeration_identity" \
 			--arg combined_identity "$maybe_combined_identity" \
 			--arg holder_pids "$maybe_holder_pids" \
 			--argjson sample "$sample" \
@@ -332,7 +406,7 @@ serial_session_readiness_gate() {
 			--argjson accessible "$accessible" \
 			--argjson holder_count "$holder_count" \
 			--argjson holder_probe_available "$holder_probe_available" \
-			'{phase:$phase,sample:$sample,port:$port,present:$present,accessible:$accessible,node_identity:$node_identity,usb_identity:$usb_identity,combined_identity:$combined_identity,holder_count:$holder_count,holder_pids:$holder_pids,holder_probe_available:$holder_probe_available}')" || return 1
+			'{phase:$phase,sample:$sample,port:$port,present:$present,accessible:$accessible,node_identity:$node_identity,physical_identity:$physical_identity,enumeration_identity:$enumeration_identity,combined_identity:$combined_identity,holder_count:$holder_count,holder_pids:$holder_pids,holder_probe_available:$holder_probe_available}')" || return 1
 
 		if [[ "$present" != true ]]; then
 			SERIAL_SESSION_READINESS_CATEGORY="missing_node"
@@ -342,10 +416,12 @@ serial_session_readiness_gate() {
 			SERIAL_SESSION_READINESS_CATEGORY="ownership_probe_unavailable"
 		elif ((holder_count > 0)); then
 			SERIAL_SESSION_READINESS_CATEGORY="holders_present"
-		elif ((node_identity_status != 0 || usb_identity_status != 0)) || [[ -z "$maybe_combined_identity" ]]; then
+		elif ((node_identity_status != 0 || physical_identity_status != 0 || enumeration_identity_status != 0)) || [[ -z "$maybe_combined_identity" ]]; then
 			SERIAL_SESSION_READINESS_CATEGORY="identity_unavailable"
-		elif [[ -n "$maybe_first_identity" && "$maybe_combined_identity" != "$maybe_first_identity" ]]; then
-			SERIAL_SESSION_READINESS_CATEGORY="identity_changed"
+		elif [[ -n "$maybe_first_physical_identity" && "$maybe_physical_identity" != "$maybe_first_physical_identity" ]]; then
+			SERIAL_SESSION_READINESS_CATEGORY="physical_identity_changed"
+		elif [[ -n "$maybe_first_enumeration_identity" && "$maybe_enumeration_identity" != "$maybe_first_enumeration_identity" ]]; then
+			SERIAL_SESSION_READINESS_CATEGORY="enumeration_identity_changed"
 		elif [[ -n "$maybe_expected_identity" && "$maybe_combined_identity" != "$maybe_expected_identity" ]]; then
 			SERIAL_SESSION_READINESS_CATEGORY="identity_changed"
 		fi
@@ -355,13 +431,17 @@ serial_session_readiness_gate() {
 			return 1
 		fi
 		[[ -n "$maybe_first_identity" ]] || maybe_first_identity="$maybe_combined_identity"
+		[[ -n "$maybe_first_physical_identity" ]] || maybe_first_physical_identity="$maybe_physical_identity"
+		[[ -n "$maybe_first_enumeration_identity" ]] || maybe_first_enumeration_identity="$maybe_enumeration_identity"
 		if ((sample < 3)); then
 			sleep "$interval"
 		fi
 	done
 
 	SERIAL_SESSION_READY_IDENTITY="$maybe_first_identity"
-	serial_session_trace_event "readiness_result" "$(jq -cn --arg phase "$phase" --arg category ready --arg identity "$SERIAL_SESSION_READY_IDENTITY" '{phase:$phase,category:$category,identity:$identity,ready:true}')"
+	SERIAL_SESSION_READY_PHYSICAL_IDENTITY="$maybe_first_physical_identity"
+	SERIAL_SESSION_READY_ENUMERATION_IDENTITY="$maybe_first_enumeration_identity"
+	serial_session_trace_event "readiness_result" "$(jq -cn --arg phase "$phase" --arg category ready --arg identity "$SERIAL_SESSION_READY_IDENTITY" --arg physical_identity "$SERIAL_SESSION_READY_PHYSICAL_IDENTITY" --arg enumeration_identity "$SERIAL_SESSION_READY_ENUMERATION_IDENTITY" '{phase:$phase,category:$category,identity:$identity,physical_identity:$physical_identity,enumeration_identity:$enumeration_identity,ready:true}')"
 }
 
 serial_session_trace_digest() {

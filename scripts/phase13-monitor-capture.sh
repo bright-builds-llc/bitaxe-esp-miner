@@ -8,7 +8,7 @@ source "${script_dir}/process-group.sh"
 source "${script_dir}/serial-session-trace.sh"
 
 usage() {
-	printf 'usage: %s --port PATH --out LOG [--seconds N] [--no-reset] [--reader espflash|os-native] [--raw-out PATH]\n' "$(basename "$0")" >&2
+	printf 'usage: %s --port PATH --out LOG [--seconds N] [--no-reset] [--reader espflash|os-native|uart-native] [--raw-out PATH]\n' "$(basename "$0")" >&2
 }
 
 port=""
@@ -194,14 +194,14 @@ if [[ ! "$seconds" =~ ^[0-9]+$ || "$seconds" -lt 1 ]]; then
 	exit 2
 fi
 case "$reader" in
-espflash | os-native) ;;
+espflash | os-native | uart-native) ;;
 *)
-	printf 'reader must be espflash or os-native\n' >&2
+	printf 'reader must be espflash, os-native, or uart-native\n' >&2
 	exit 2
 	;;
 esac
-if [[ "$reader" == "os-native" && "$no_reset" -ne 1 ]]; then
-	printf 'os-native reader requires --no-reset\n' >&2
+if [[ "$reader" != "espflash" && "$no_reset" -ne 1 ]]; then
+	printf '%s reader requires --no-reset\n' "$reader" >&2
 	exit 2
 fi
 
@@ -222,6 +222,10 @@ render_command() {
 		printf 'phase13-os-native-reader.pl %s\n' "$port"
 		return
 	fi
+	if [[ "$reader" == "uart-native" ]]; then
+		printf 'phase13-uart-native-reader.py %s\n' "$port"
+		return
+	fi
 	printf 'espflash monitor --chip esp32s3 --port %s --non-interactive' "$port"
 	if [[ "$no_reset" -eq 1 ]]; then
 		printf ' --before no-reset-no-sync --after no-reset --no-reset'
@@ -231,6 +235,8 @@ render_command() {
 
 if [[ "$reader" == "os-native" ]]; then
 	monitor_command=(perl "${script_dir}/phase13-os-native-reader.pl" "$port")
+elif [[ "$reader" == "uart-native" ]]; then
+	monitor_command=(python3 "${PHASE13_UART_NATIVE_READER_SCRIPT:-${script_dir}/phase13-uart-native-reader.py}" "$port")
 else
 	monitor_command=(espflash monitor --chip esp32s3 --port "$port" --non-interactive)
 	if [[ "$no_reset" -eq 1 ]]; then
@@ -252,6 +258,9 @@ if [[ "$no_reset" -eq 1 ]]; then
 	tool_version="${SERIAL_SESSION_TOOL_VERSION:-}"
 	if [[ -z "$tool_version" && "$reader" == "os-native" ]]; then
 		tool_version="$(perl --version 2>&1 | sed -n '2p')"
+	fi
+	if [[ -z "$tool_version" && "$reader" == "uart-native" ]]; then
+		tool_version="$(python3 --version 2>&1 | head -1)"
 	fi
 	if [[ -z "$tool_version" ]]; then
 		set +e
