@@ -18,6 +18,7 @@ no_reset=0
 monitor_pid=""
 monitor_group_ready_file=""
 monitor_group_state_file="${PHASE13_MONITOR_GROUP_STATE_FILE:-}"
+monitor_completion_file=""
 monitor_active_ready_file="${PHASE13_MONITOR_ACTIVE_READY_FILE:-}"
 passive_pre_ready=0
 passive_post_ready=0
@@ -96,6 +97,9 @@ cleanup_monitor_group() {
 	fi
 	if [[ -n "$monitor_group_ready_file" ]]; then
 		rm -f "$monitor_group_ready_file"
+	fi
+	if [[ -n "$monitor_completion_file" ]]; then
+		rm -f "$monitor_completion_file"
 	fi
 	verify_post_readiness
 }
@@ -227,9 +231,24 @@ fi
 
 set +e
 monitor_group_ready_file="${TMPDIR:-/tmp}/phase13-monitor-group.$$.ready"
+monitor_completion_file="$(mktemp "${TMPDIR:-/tmp}/phase13-monitor-completion.$$.XXXXXX")"
+rm -f "$monitor_completion_file"
 # shellcheck disable=SC2034 # Read by the sourced process-group helper.
 PHASE_PROCESS_GROUP_STATE_FILE="$monitor_group_state_file"
-phase_process_group_start "$monitor_group_ready_file" "${monitor_command[@]}" >>"$out" 2>&1
+# The generated Bash wrapper expands its own arguments and completion path.
+# shellcheck disable=SC2016
+phase_process_group_start "$monitor_group_ready_file" "$BASH" -c '
+completion_file="$1"
+shift
+set +e
+"$@"
+status=$?
+set -e
+temporary="${completion_file}.tmp.$$"
+(umask 077 && printf "%s\n" "$status" >"$temporary")
+mv -f "$temporary" "$completion_file"
+exit "$status"
+' _ "$monitor_completion_file" "${monitor_command[@]}" >>"$out" 2>&1
 group_start_status=$?
 set -e
 ((group_start_status == 0)) || {
@@ -253,10 +272,11 @@ start_epoch="$(date +%s)"
 capture_status="failed"
 monitor_status=0
 
-while monitor_process_running "$monitor_pid"; do
+while [[ ! -s "$monitor_completion_file" ]] && monitor_process_running "$monitor_pid"; do
 	now_epoch="$(date +%s)"
 	elapsed=$((now_epoch - start_epoch))
 	if [[ "$elapsed" -ge "$seconds" ]]; then
+		[[ ! -s "$monitor_completion_file" ]] || break
 		cleanup_monitor_group || exit 1
 		monitor_status=143
 		capture_status="timed_out_after_capture"
@@ -270,11 +290,18 @@ if [[ "$capture_status" != "timed_out_after_capture" ]]; then
 	wait "$monitor_pid"
 	monitor_status=$?
 	set -e
+	if [[ -s "$monitor_completion_file" ]]; then
+		completion_status="$(sed -n '1p' "$monitor_completion_file")"
+		if [[ ! "$completion_status" =~ ^[0-9]+$ || "$completion_status" -ne "$monitor_status" ]]; then
+			monitor_status=1
+		fi
+	fi
 	if phase_process_group_is_alive "$monitor_pid"; then
 		cleanup_monitor_group || exit 1
 	else
 		monitor_pid=""
 		PHASE_PROCESS_GROUP_PID=""
+		rm -f "$monitor_completion_file"
 		if [[ -n "$monitor_group_state_file" ]]; then
 			: >"$monitor_group_state_file"
 		fi

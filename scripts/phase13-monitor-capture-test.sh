@@ -128,8 +128,24 @@ test_monitor_command_is_bounded_and_safe() {
 	assert_contains "$out_file" "serial_write: disabled"
 	assert_contains "$out_file" "raw_flash_write: disabled"
 	assert_contains "$out_file" "capture_status=completed"
+	assert_contains "$out_file" "monitor_exit_status: 0"
 	assert_not_contains "$out_file" "erase-flash"
 	assert_not_contains "$out_file" "write-flash"
+}
+
+test_repeated_fast_monitor_completion_never_becomes_timeout() {
+	local bin_dir="${tmp_root}/repeated-fast-bin"
+	local iteration
+
+	create_fast_espflash "$bin_dir"
+	for iteration in 1 2 3 4 5 6 7 8 9 10; do
+		local out_file="${tmp_root}/repeated-fast-${iteration}.log"
+
+		PATH="${bin_dir}:$PATH" "$BASH" "$monitor_script" --port /dev/test --out "$out_file" --seconds 1
+
+		assert_contains "$out_file" "capture_status=completed"
+		assert_contains "$out_file" "monitor_exit_status: 0"
+	done
 }
 
 test_monitor_timeout_status_is_recorded() {
@@ -141,6 +157,7 @@ test_monitor_timeout_status_is_recorded() {
 	create_slow_espflash "$bin_dir"
 	write_executable "${bin_dir}/node-identity" 'printf "node-stable\n"'
 	write_executable "${bin_dir}/usb-identity" 'printf "usb-stable\n"'
+	# shellcheck disable=SC2016 # The generated fixture expands these values at runtime.
 	write_executable "${bin_dir}/lsof-owner" 'pid="$(pgrep -f "${SERIAL_TEST_MONITOR_PATTERN:?}" | head -1)"
 [[ -n "$pid" ]] || exit 1
 printf "%s\n" "$pid"'
@@ -234,6 +251,7 @@ if [[ ! -f "$monitor_script" ]]; then
 fi
 
 test_monitor_command_is_bounded_and_safe
+test_repeated_fast_monitor_completion_never_becomes_timeout
 test_monitor_timeout_status_is_recorded
 test_timeout_stops_descendant_watcher
 test_term_stops_descendant_watcher
