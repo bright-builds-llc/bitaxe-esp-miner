@@ -272,7 +272,7 @@ transport_contract_digest="$(bash "$repo_root/scripts/ultra205-transport-qualifi
 jq -cn \
 	--arg head "$source_commit" \
 	--arg contract "$transport_contract_digest" \
-	'{schema_version:"ultra205-transport-qualification-v2",tool_head:$head,expected_firmware_head:"e622253d2fc4aea4589e0dcf5524081b6b054aaf",classification_category:"os_native_cold_delivers",preflight_espflash_heartbeat_count:0,preflight_os_native_heartbeat_count:3,cold_os_native_heartbeat_count:3,identity_stable:true,new_enumeration_epoch:true,soak_complete:true,cleanup_complete:true,diagnostic_contract_digest_sha256:$contract,trace_digest_sha256:("f"*64)}' >"$transport_qualification"
+	'{schema_version:"ultra205-transport-qualification-v3",tool_head:$head,expected_firmware_head:"e622253d2fc4aea4589e0dcf5524081b6b054aaf",classification_category:"uart_cold_delivers",native_preflight_heartbeat_count:3,uart_preflight_heartbeat_count:3,cold_uart_heartbeat_count:3,native_physical_identity_stable:true,native_new_enumeration_epoch:true,uart_physical_identity_stable:true,uart_enumeration_identity_stable:true,quiet_boundary_complete:true,original_boot_present:true,original_listener_present:true,boot_evidence_complete:true,accepted_state_stages_complete:true,heartbeat_monotonic:true,listener_ready:true,soak_complete:true,cleanup_complete:true,adapter_binding_sha256:("a"*64),diagnostic_contract_digest_sha256:$contract,trace_digest_sha256:("f"*64)}' >"$transport_qualification"
 chmod 600 "$transport_qualification"
 
 expect_failure env PHASE28_ACCEPTED_STATE_CALL_TRACE="$prevalidated_trace" bash "$script" --mode plan13-prevalidated --effect-id detector_board_info
@@ -282,6 +282,7 @@ expect_failure bash "$script" --mode plan13-prevalidated --effect-id detector_bo
 prevalidated_begin="$(env \
 	PHASE28_ATTEMPT_CONTROL_ROOT="$prevalidated_root" \
 	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_MODE=1 \
 	PHASE28_TEST_HEAD="$source_commit" \
 	bash "$runner" begin-attempt --hardware-exact-head "$source_commit" --transport-qualification "$transport_qualification")"
 prevalidated_handle="$(sed -n 's/^resume_handle=//p' <<<"$prevalidated_begin")"
@@ -427,7 +428,10 @@ rg -q 'validate_transport_qualification' <<<"$prevalidated_lifecycle_source" || 
 qualification_line="$(rg -n 'validate_transport_qualification' <<<"$prevalidated_lifecycle_source" | head -1 | cut -d: -f1)"
 port_line="$(rg -n 'port=.*selected_port_file' <<<"$prevalidated_lifecycle_source" | head -1 | cut -d: -f1)"
 [[ -n "$qualification_line" && -n "$port_line" && "$qualification_line" -lt "$port_line" ]] || fail "prevalidated lifecycle crosses the serial boundary before qualification"
-rg -q 'run_monitored_capture .* os-native' <<<"$prevalidated_lifecycle_source" || fail "prevalidated lifecycle does not explicitly select OS-native capture"
+rg -q 'run_monitored_capture .* uart-native .*external_uart_port.* true' <<<"$prevalidated_lifecycle_source" || fail "prevalidated lifecycle does not start continuous external UART capture"
+reader_line="$(rg -n 'run_monitored_capture .* uart-native' <<<"$prevalidated_lifecycle_source" | head -1 | cut -d: -f1)"
+removal_line="$(rg -n 'receive_lifecycle_token plan13-armed-removal-v1' <<<"$prevalidated_lifecycle_source" | head -1 | cut -d: -f1)"
+[[ -n "$reader_line" && -n "$removal_line" && "$reader_line" -lt "$removal_line" ]] || fail "external UART reader does not own the port before removal publication"
 rg -q 'capability="\$\(validate_credential_capability "\$capability_path"\)"' "$script" || fail "flash reinit does not validate the private credential capability"
 credential_validator_source="$(sed -n '/^validate_credential_capability()/,/^}/p' "$script")"
 for required_check in 'is_private_owned_file' 'exact-head-attempt-v3' 'execution_plan' 'credential_capability_status' 'credential_capability_sha256' 'wifi_credential_state' 'pool_credential_state' 'wifi_credential_binding_id' 'pool_credential_binding_id'; do

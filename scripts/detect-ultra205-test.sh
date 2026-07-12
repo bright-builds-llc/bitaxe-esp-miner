@@ -56,6 +56,7 @@ create_espflash_stub() {
 	local path="$1"
 
 	write_executable "$path" 'scenario="${DETECT_ULTRA205_TEST_SCENARIO:?}"
+printf "%s\n" "$*" >>"${DETECT_ULTRA205_COMMAND_LOG:?}"
 if [[ "${1:-}" == "list-ports" && "${2:-}" == "--name-only" ]]; then
   case "$scenario" in
     list_failure)
@@ -114,10 +115,33 @@ run_detector() {
 	create_espflash_stub "$espflash_stub"
 	capture_command "$output_file" env \
 		DETECT_ULTRA205_TEST_SCENARIO="$scenario" \
+		DETECT_ULTRA205_COMMAND_LOG="${tmp_root}/commands-${scenario}.log" \
 		ESPFLASH_BIN="$espflash_stub" \
 		SERIAL_SESSION_TOOL_VERSION=test \
 		SERIAL_SESSION_TRACE_ROOT="${tmp_root}/traces-${scenario}" \
 		"$BASH" "$detector_script"
+}
+
+test_explicit_port_skips_listing_and_keeps_reset_contract() {
+	local output_file="${tmp_root}/explicit.out"
+	local espflash_stub="${tmp_root}/espflash-explicit"
+	local command_log="${tmp_root}/explicit.commands"
+	create_espflash_stub "$espflash_stub"
+
+	if ! capture_command "$output_file" env \
+		DETECT_ULTRA205_TEST_SCENARIO=success \
+		DETECT_ULTRA205_COMMAND_LOG="$command_log" \
+		ESPFLASH_BIN="$espflash_stub" \
+		SERIAL_SESSION_TOOL_VERSION=test \
+		SERIAL_SESSION_TRACE_ROOT="${tmp_root}/traces-explicit" \
+		"$BASH" "$detector_script" --port /dev/cu.explicit205; then
+		fail "explicit detector mode failed"
+	fi
+
+	[[ "$(wc -l <"$command_log" | tr -d ' ')" == 1 ]] || fail "explicit mode invoked more than board-info"
+	! grep -Fq 'list-ports' "$command_log" || fail "explicit mode listed ports"
+	assert_contains "$(cat "$command_log")" "board-info --chip esp32s3 --port /dev/cu.explicit205 --non-interactive --before usb-reset --after hard-reset"
+	assert_contains "$(cat "$output_file")" "port=/dev/cu.explicit205"
 }
 
 test_list_ports_failure_is_classified() {
@@ -207,5 +231,6 @@ test_multiple_ports_fail_with_candidates
 test_single_port_success_prints_port
 test_board_info_failure_blocks_detection
 test_open_failure_is_classified
+test_explicit_port_skips_listing_and_keeps_reset_contract
 
 printf 'detect ultra205 tests passed\n'

@@ -13,6 +13,9 @@ diagnose-ultra205-session *args:
 diagnose-ultra205-late-attach *args:
     ./scripts/diagnose-ultra205-late-attach.sh {{ args }}
 
+diagnose-ultra205-uart-capture *args:
+    ./scripts/diagnose-ultra205-uart-capture.sh {{ args }}
+
 build:
     bazel build //firmware/bitaxe:firmware
 

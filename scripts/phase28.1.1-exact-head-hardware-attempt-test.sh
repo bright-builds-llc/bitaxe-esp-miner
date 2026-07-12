@@ -162,7 +162,7 @@ transport_contract_digest="$(bash "$repo_root/scripts/ultra205-transport-qualifi
 jq -cn \
 	--arg head "$test_head" \
 	--arg contract "$transport_contract_digest" \
-	'{schema_version:"ultra205-transport-qualification-v2",tool_head:$head,expected_firmware_head:"e622253d2fc4aea4589e0dcf5524081b6b054aaf",classification_category:"os_native_cold_delivers",preflight_espflash_heartbeat_count:0,preflight_os_native_heartbeat_count:3,cold_os_native_heartbeat_count:3,identity_stable:true,new_enumeration_epoch:true,soak_complete:true,cleanup_complete:true,diagnostic_contract_digest_sha256:$contract,trace_digest_sha256:("f"*64)}' >"$transport_qualification"
+	'{schema_version:"ultra205-transport-qualification-v3",tool_head:$head,expected_firmware_head:"e622253d2fc4aea4589e0dcf5524081b6b054aaf",classification_category:"uart_cold_delivers",native_preflight_heartbeat_count:3,uart_preflight_heartbeat_count:3,cold_uart_heartbeat_count:3,native_physical_identity_stable:true,native_new_enumeration_epoch:true,uart_physical_identity_stable:true,uart_enumeration_identity_stable:true,quiet_boundary_complete:true,original_boot_present:true,original_listener_present:true,boot_evidence_complete:true,accepted_state_stages_complete:true,heartbeat_monotonic:true,listener_ready:true,soak_complete:true,cleanup_complete:true,adapter_binding_sha256:("a"*64),diagnostic_contract_digest_sha256:$contract,trace_digest_sha256:("f"*64)}' >"$transport_qualification"
 chmod 600 "$transport_qualification"
 
 effects=(
@@ -508,7 +508,7 @@ attempt_dir="$(jq -er '.attempt_dir' "$first_slot")"
 [[ "$(mode_of "$attempt_dir")" == "700" ]]
 [[ "$(mode_of "$attempt_dir/state.json")" == "600" ]]
 [[ "$(mode_of "$attempt_dir/transport-qualification.json")" == "600" ]]
-jq -e '.classification_category == "os_native_cold_delivers" and .cleanup_complete == true' "$attempt_dir/transport-qualification.json" >/dev/null
+jq -e '.classification_category == "uart_cold_delivers" and .cleanup_complete == true' "$attempt_dir/transport-qualification.json" >/dev/null
 
 resolve_output="$(env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" bash "$runner" resolve-checkpoint --resume-handle "$first_handle")"
 rg -q '^checkpoint_id=plan13-connected-entry$' <<<"$resolve_output"

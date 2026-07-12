@@ -5,6 +5,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=/dev/null
 source "$repo_root/scripts/process-group.sh"
+# shellcheck source=/dev/null
+source "$repo_root/scripts/serial-session-trace.sh"
 readonly lifecycle_frame_helper="${PHASE28_LIFECYCLE_FRAME_HELPER:-$repo_root/scripts/phase28.1.1-lifecycle-frame.pl}"
 readonly transport_qualification_helper="$repo_root/scripts/ultra205-transport-qualification.sh"
 mode=""
@@ -370,15 +372,18 @@ run_monitored_capture() {
 	local wrapper_log="$2"
 	local appearance_ms="${3:-}"
 	local reader="${4:-espflash}"
+	local capture_port="${5:-$port}"
+	local detach_after_ready="${6:-false}"
+	local capture_seconds="${7:-$duration_seconds}"
 	local child_status
 	local group_start_status
 	local active_ready_file="$run_dir/monitor-active.ready"
 	local -a args=(
-		--port "$port"
+		--port "$capture_port"
 		--out "$wrapper_log"
 		--raw-out "$application_log"
 		--reader "$reader"
-		--seconds "$duration_seconds"
+		--seconds "$capture_seconds"
 		--no-reset
 	)
 	local -a monitor_command
@@ -433,6 +438,23 @@ run_monitored_capture() {
 			return 1
 		fi
 		lifecycle_transition capture-running "$(jq -cn --argjson attached "$monitor_attachment_ms" --argjson elapsed "$monitor_attachment_elapsed_ms" --argjson start "$monitor_attachment_ms" '{monitor_attachment_ms:$attached,monitor_attachment_elapsed_ms:$elapsed,capture_started_ms:$start}')"
+	fi
+	if [[ "$detach_after_ready" == true ]]; then
+		local attachment_deadline_ms=$(($(monotonic_ms) + monitor_attachment_timeout_ms))
+		while [[ ! -f "$active_ready_file" ]]; do
+			if ! process_is_running_non_zombie "$active_child_pid" || (($(monotonic_ms) >= attachment_deadline_ms)); then
+				monitor_failure_category="monitor_attachment_failed"
+				cleanup_active_child || monitor_failure_category="lifecycle_cleanup_failed"
+				return 1
+			fi
+			sleep 0.05
+		done
+		if [[ "$(mode_of_path "$active_ready_file")" != 600 ]]; then
+			monitor_failure_category="monitor_attachment_failed"
+			cleanup_active_child || monitor_failure_category="lifecycle_cleanup_failed"
+			return 1
+		fi
+		return 0
 	fi
 	set +e
 	wait "$active_child_pid"
@@ -623,7 +645,7 @@ escrow_lifecycle_traces_before_validation() {
 	chmod 700 "$escrow_root" "$(dirname "$escrow_dir")" "$escrow_dir"
 	local source
 	local index=0
-	for source in "$attempt_dir/cold-start-monitor.raw.log" "$attempt_dir/monitor-wrapper.raw.log"; do
+	for source in "$attempt_dir/cold-start-monitor.raw.log" "$attempt_dir/continuous-uart.raw.log" "$attempt_dir/monitor-wrapper.raw.log"; do
 		[[ -f "$source" ]] || die "required lifecycle trace is missing before validation"
 		index=$((index + 1))
 		cp "$source" "$escrow_dir/trace-$(printf '%03d' "$index").raw" || return 1
@@ -780,6 +802,39 @@ reinit_log_path_file() {
 
 transport_qualification_file() {
 	printf '%s/transport-qualification.json\n' "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
+}
+
+external_uart_port_file() {
+	printf '%s/external-uart-port.value\n' "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
+}
+
+record_external_uart_boundary() {
+	local raw_log="$1"
+	local first_size second_size last_byte
+	first_size="$(wc -c <"$raw_log" | tr -d ' ')"
+	wait_one_second
+	second_size="$(wc -c <"$raw_log" | tr -d ' ')"
+	[[ "$first_size" == "$second_size" && "$second_size" -gt 0 ]] || return 1
+	last_byte="$(tail -c 1 "$raw_log" | od -An -tu1 | tr -d ' ')"
+	[[ "$last_byte" == 10 ]] || return 1
+	printf '%s\n' "$second_size"
+}
+
+slice_external_uart_capture() {
+	local source="$1" boundary="$2" destination="$3"
+	[[ "$boundary" =~ ^[0-9]+$ ]] || return 1
+	dd if="$source" of="$destination" bs=1 skip="$boundary" 2>/dev/null
+	chmod 600 "$destination"
+}
+
+external_uart_owner_pgid() {
+	local maybe_descendant
+	maybe_descendant="$(sed -n '1p' "$active_descendant_group_file" 2>/dev/null)"
+	if [[ "$maybe_descendant" =~ ^[1-9][0-9]*$ ]]; then
+		printf '%s\n' "$maybe_descendant"
+		return
+	fi
+	printf '%s\n' "$active_child_pid"
 }
 
 validate_transport_qualification() {
@@ -1093,6 +1148,8 @@ run_prevalidated_lifecycle() {
 		return 1
 	fi
 	port="$(read_private_line "$(selected_port_file)")"
+	local external_uart_port
+	external_uart_port="$(read_private_line "$(external_uart_port_file)")"
 	manifest="$(read_private_line "$(manifest_path_file)")"
 	reinit_log="$(read_private_line "$(reinit_log_path_file)")"
 	duration_seconds=360
@@ -1100,6 +1157,39 @@ run_prevalidated_lifecycle() {
 	verify_complete_reinit_member "$reinit_log" "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/reinit-preflight.redacted.txt"
 	port_is_present || {
 		write_effect_result failed lifecycle_capture_failed '{}'
+		return 1
+	}
+	serial_session_readiness_gate formal_uart_pre_removal "$external_uart_port" || {
+		write_effect_result failed private_capability_invalid '{}'
+		return 1
+	}
+	local uart_physical_identity="$SERIAL_SESSION_READY_PHYSICAL_IDENTITY"
+	local uart_enumeration_identity="$SERIAL_SESSION_READY_ENUMERATION_IDENTITY"
+	local qualification_adapter_binding
+	qualification_adapter_binding="$(jq -er '.adapter_binding_sha256' "$(transport_qualification_file)")"
+	[[ "$(sha256_text "$uart_physical_identity:$uart_enumeration_identity")" == "$qualification_adapter_binding" ]] || {
+		write_effect_result failed private_capability_invalid '{}'
+		return 1
+	}
+	local native_physical_identity
+	local native_enumeration_identity
+	native_physical_identity="$(serial_session_usb_physical_identity "$port")" || {
+		write_effect_result failed lifecycle_capture_failed '{}'
+		return 1
+	}
+	native_enumeration_identity="$(serial_session_usb_enumeration_identity "$port")" || {
+		write_effect_result failed lifecycle_capture_failed '{}'
+		return 1
+	}
+	local continuous_uart_raw="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/continuous-uart.raw.log"
+	local continuous_uart_wrapper="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/monitor-wrapper.raw.log"
+	monitor_failure_category=""
+	if ! run_monitored_capture "$continuous_uart_raw" "$continuous_uart_wrapper" "" uart-native "$external_uart_port" true 4200; then
+		write_effect_result failed monitor_attachment_failed '{}'
+		return 1
+	fi
+	serial_session_active_owner_gate "$external_uart_port" "$(external_uart_owner_pgid)" || {
+		write_effect_result failed monitor_attachment_failed '{}'
 		return 1
 	}
 
@@ -1110,6 +1200,20 @@ run_prevalidated_lifecycle() {
 	local usb_absence_measured_ms
 	usb_absence_measured_ms="$(measure_continuous_usb_absence "$attestation_ms")"
 	local absence_end=$((attestation_ms + usb_absence_measured_ms))
+	[[ "$(serial_session_usb_physical_identity "$external_uart_port" 2>/dev/null)" == "$uart_physical_identity" && "$(serial_session_usb_enumeration_identity "$external_uart_port" 2>/dev/null)" == "$uart_enumeration_identity" ]] || {
+		write_effect_result failed usb_identity_instability '{}'
+		return 1
+	}
+	serial_session_active_owner_gate "$external_uart_port" "$(external_uart_owner_pgid)" || {
+		write_effect_result failed monitor_attachment_failed '{}'
+		return 1
+	}
+	local cold_byte_boundary
+	cold_byte_boundary="$(record_external_uart_boundary "$continuous_uart_raw")" || {
+		write_effect_result failed lifecycle_capture_failed '{}'
+		return 1
+	}
+	private_write "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/cold-byte-boundary" "$cold_byte_boundary"
 	local watcher_ready_file="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/restore-watcher.ready"
 	if port_is_present; then
 		write_effect_result failed restore_watcher_arming_failed '{}'
@@ -1132,28 +1236,49 @@ run_prevalidated_lifecycle() {
 	fi
 	rm -f "$appearance_error"
 	local appearance_ms=$((watcher_armed_ms + reappearance_elapsed_ms))
+	serial_session_readiness_gate formal_native_restore "$port" || {
+		write_effect_result failed usb_identity_instability '{}'
+		return 1
+	}
+	[[ "$SERIAL_SESSION_READY_PHYSICAL_IDENTITY" == "$native_physical_identity" && "$SERIAL_SESSION_READY_ENUMERATION_IDENTITY" != "$native_enumeration_identity" ]] || {
+		write_effect_result failed usb_identity_instability '{}'
+		return 1
+	}
 	lifecycle_transition usb-reappearance-observed "$(jq -cn --argjson reappearance "$appearance_ms" --argjson elapsed "$reappearance_elapsed_ms" '{usb_reappearance_ms:$reappearance,reappearance_elapsed_ms:$elapsed}')"
 	rm -f "$watcher_ready_file"
 
 	local cold_start_raw_log="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/cold-start-monitor.raw.log"
-	monitor_failure_category=""
-	if ! run_monitored_capture "$cold_start_raw_log" "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/monitor-wrapper.raw.log" "$appearance_ms" os-native; then
-		write_effect_result failed "${monitor_failure_category:-monitor_attachment_failed}" '{}'
-		return 1
-	fi
+	monitor_attachment_ms="$appearance_ms"
+	monitor_attachment_elapsed_ms=0
+	lifecycle_transition capture-running "$(jq -cn --argjson attached "$monitor_attachment_ms" --argjson start "$appearance_ms" '{monitor_attachment_ms:$attached,monitor_attachment_elapsed_ms:0,capture_started_ms:$start}')"
+	for _ in $(seq 1 "$duration_seconds"); do
+		wait_one_second
+	done
 	local capture_ended_ms
 	capture_ended_ms="$(monotonic_ms)"
-	local capture_duration_ms=$((capture_ended_ms - monitor_attachment_ms))
+	local capture_duration_ms=$((capture_ended_ms - appearance_ms))
 	((capture_duration_ms >= minimum_capture_duration_ms)) || {
 		write_effect_result failed lifecycle_capture_short '{}'
 		return 1
 	}
+	if ! slice_external_uart_capture "$continuous_uart_raw" "$cold_byte_boundary" "$cold_start_raw_log"; then
+		write_effect_result failed lifecycle_capture_failed '{}'
+		return 1
+	fi
+	if ! cleanup_active_child; then
+		write_effect_result failed lifecycle_cleanup_failed '{}'
+		return 1
+	fi
 	local comparison="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/lifecycle.redacted.txt"
 	if ! escrow_lifecycle_traces_before_validation; then
 		write_effect_result failed lifecycle_cleanup_failed '{}'
 		return 1
 	fi
 	local validation_error="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/lifecycle-validation.error"
+	if [[ "$(count_matches 'bitaxe-rust boot' "$cold_start_raw_log")" != 1 || "$(count_matches 'h4_continuous_result=listener_armed' "$cold_start_raw_log")" != 1 ]]; then
+		write_effect_result failed lifecycle_capture_failed '{}'
+		return 1
+	fi
 	if ! (verify_stable_runtime "$cold_start_raw_log" cold-start) 2>"$validation_error"; then
 		write_effect_result failed lifecycle_capture_failed '{}'
 		return 1

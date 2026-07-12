@@ -6,6 +6,8 @@ umask 077
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=/dev/null
 source "$repo_root/scripts/process-group.sh"
+# shellcheck source=/dev/null
+source "$repo_root/scripts/serial-session-trace.sh"
 readonly private_root="${PHASE28_ATTEMPT_CONTROL_ROOT:-$repo_root/hardware-runs/phase28.1.1/attempt-control}"
 readonly resume_index="$private_root/resume-index"
 readonly attempts_root="$private_root/attempts"
@@ -57,7 +59,7 @@ die() {
 }
 
 usage() {
-	printf 'usage: %s begin-attempt --hardware-exact-head HEAD --transport-qualification PATH | resolve-checkpoint|deliver-token|run-validated-effect|cleanup-active-attempt|cleanup-unique-orphan-attempt [options]\n' "$(basename "$0")"
+	printf 'usage: %s begin-attempt --hardware-exact-head HEAD --transport-qualification PATH --external-uart-port PATH | resolve-checkpoint|deliver-token|run-validated-effect|cleanup-active-attempt|cleanup-unique-orphan-attempt [options]\n' "$(basename "$0")"
 }
 
 ensure_private_root() {
@@ -466,6 +468,7 @@ begin_attempt() {
 	local generation=1
 	local hardware_exact_head=""
 	local transport_qualification=""
+	local external_uart_port=""
 	while (($#)); do
 		case "$1" in
 		--hardware-exact-head)
@@ -480,12 +483,20 @@ begin_attempt() {
 			transport_qualification="${2:-}"
 			shift 2
 			;;
+		--external-uart-port)
+			external_uart_port="${2:-}"
+			shift 2
+			;;
 		*) die "unknown_argument" ;;
 		esac
 	done
 	[[ "$generation" =~ ^[0-9]+$ ]] || die "state_malformed"
 	[[ "$hardware_exact_head" =~ ^[0-9a-f]{40}$ ]] || die "exact_head_mismatch"
 	[[ -n "$transport_qualification" ]] || die "transport_qualification_missing"
+	if [[ "${PHASE28_TEST_MODE:-0}" == 1 && -z "$external_uart_port" ]]; then
+		external_uart_port="${PHASE28_TEST_EXTERNAL_UART_PORT:-/tmp/phase28-test-uart}"
+	fi
+	[[ -n "$external_uart_port" && ("$external_uart_port" == /* || "$external_uart_port" =~ ^COM[0-9]+$) ]] || die "external_uart_port_invalid"
 	ensure_private_root
 	require_clean_head
 	[[ "$(current_head)" == "$hardware_exact_head" ]] || die "exact_head_mismatch"
@@ -496,6 +507,14 @@ begin_attempt() {
 	"$transport_qualification_helper" validate "$transport_qualification" "$hardware_exact_head" >/dev/null 2>&1 || die "transport_qualification_invalid"
 	qualification_json="$(jq -ce . "$transport_qualification" 2>/dev/null)" || die "transport_qualification_invalid"
 	[[ "$(shasum -a 256 "$transport_qualification" 2>/dev/null | awk '{print $1}')" == "$qualification_source_digest" ]] || die "transport_qualification_invalid"
+	local adapter_binding_sha256
+	if [[ "${PHASE28_TEST_MODE:-0}" == 1 ]]; then
+		adapter_binding_sha256="${PHASE28_TEST_UART_BINDING_SHA256:-$(jq -er '.adapter_binding_sha256' <<<"$qualification_json")}"
+	else
+		serial_session_readiness_gate formal_uart_binding "$external_uart_port" || die "external_uart_port_invalid"
+		adapter_binding_sha256="$(sha256_text "$SERIAL_SESSION_READY_PHYSICAL_IDENTITY:$SERIAL_SESSION_READY_ENUMERATION_IDENTITY")"
+	fi
+	[[ "$adapter_binding_sha256" == "$(jq -er '.adapter_binding_sha256' <<<"$qualification_json")" ]] || die "transport_qualification_adapter_mismatch"
 	acquire_lock
 	trap release_lock RETURN
 	local exact_head
@@ -529,6 +548,7 @@ begin_attempt() {
 	mkdir -m 700 "$attempt_dir"
 	atomic_write "$attempt_dir/state.json" "$state_json"
 	atomic_write "$attempt_dir/transport-qualification.json" "$qualification_json"
+	atomic_write "$attempt_dir/external-uart-port.value" "$external_uart_port"
 	"$transport_qualification_helper" validate "$attempt_dir/transport-qualification.json" "$hardware_exact_head" >/dev/null 2>&1 || die "transport_qualification_invalid"
 	atomic_write "$slot" "$(jq -cn --arg digest "$digest" --arg dir "$attempt_dir" --arg attempt "$attempt_id" --arg boot "$boot_digest" --argjson generation "$generation" --argjson checkpoint_generation "$(jq -er '.checkpoint_generation' <<<"$state_json")" '{schema_version:"exact-head-resume-active-v1",status:"active",resume_handle_sha256:$digest,attempt_dir:$dir,attempt_id:$attempt,attempt_generation:$generation,checkpoint_generation:$checkpoint_generation,boot_session_sha256:$boot}')"
 	release_lock
@@ -1292,12 +1312,14 @@ cleanup_unique_orphan_attempt() {
 	local live_entry_count=0
 	local observed_state=false
 	local observed_qualification=false
+	local observed_external_uart=false
 	while IFS= read -r -d '' entry; do
 		live_entry_count=$((live_entry_count + 1))
 		[[ "$entry" == "$state_path" ]] && observed_state=true
 		[[ "$entry" == "$qualification_path" ]] && observed_qualification=true
+		[[ "$entry" == "$attempt_dir/external-uart-port.value" ]] && observed_external_uart=true
 	done < <(find "$attempt_dir" -mindepth 1 -maxdepth 1 -print0)
-	if ((live_entry_count != 2)) || [[ "$observed_state" != "true" || "$observed_qualification" != "true" || ! -f "$state_path" || -L "$state_path" || ! -f "$qualification_path" || -L "$qualification_path" ]]; then
+	if ((live_entry_count != 3)) || [[ "$observed_state" != "true" || "$observed_qualification" != "true" || "$observed_external_uart" != "true" || ! -f "$state_path" || -L "$state_path" || ! -f "$qualification_path" || -L "$qualification_path" || ! -f "$attempt_dir/external-uart-port.value" || -L "$attempt_dir/external-uart-port.value" || "$(mode_of_path "$attempt_dir/external-uart-port.value")" != 600 || "$(owner_of_path "$attempt_dir/external-uart-port.value")" != "$(id -u)" ]]; then
 		public_orphan_cleanup_failure "orphan_live_reference_present" "one" "$tombstone_count_category"
 	fi
 

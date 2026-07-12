@@ -12,7 +12,7 @@ readonly late_attach_expected_installed_head="e622253d2fc4aea4589e0dcf5524081b6b
 readonly late_attach_detector_bin="${LATE_ATTACH_DETECTOR_BIN:-$late_attach_script_dir/detect-ultra205.sh}"
 readonly late_attach_monitor_bin="${LATE_ATTACH_MONITOR_BIN:-$late_attach_script_dir/phase13-monitor-capture.sh}"
 readonly late_attach_classifier_bin="$late_attach_script_dir/ultra205-late-attach-classifier.mjs"
-readonly late_attach_worker_bin="$late_attach_script_dir/ultra205-late-attach-worker.sh"
+readonly late_attach_worker_bin="${LATE_ATTACH_WORKER_BIN:-$late_attach_script_dir/ultra205-late-attach-worker.sh}"
 readonly late_attach_qualification_bin="${LATE_ATTACH_QUALIFICATION_BIN:-$late_attach_script_dir/ultra205-transport-qualification.sh}"
 readonly late_attach_frame_helper="$late_attach_script_dir/phase28.1.1-lifecycle-frame.pl"
 readonly late_attach_private_root="${LATE_ATTACH_CONTROL_ROOT:-$late_attach_repo_root/hardware-runs/phase28.1.1/late-attach-control}"
@@ -262,7 +262,13 @@ late_attach_begin() {
 		late_attach_release_lock
 		late_attach_die active_attempt_exists
 	fi
-	local handle attempt_id digest attempt_dir state_path slot now detector_log detector_status port node_identity usb_identity preflight_seconds preflight_path worker_pid fingerprint socket_path capability ready_file action_path
+	local handle attempt_id digest attempt_dir state_path slot now detector_log detector_status port node_identity usb_identity enumeration_identity uart_port="" uart_physical_identity="" uart_enumeration_identity="" preflight_seconds preflight_path worker_pid fingerprint socket_path capability ready_file action_path
+	if [[ "${LATE_ATTACH_UART_MODE:-0}" == 1 ]]; then
+		uart_port="${LATE_ATTACH_UART_PORT:-}"
+		[[ -n "$requested_port" ]] || late_attach_die port_required
+		[[ -n "$uart_port" && "$uart_port" != "$requested_port" ]] || late_attach_die uart_port_invalid
+		[[ "$uart_port" == /* || "$uart_port" =~ ^COM[0-9]+$ ]] || late_attach_die uart_port_invalid
+	fi
 	handle="$(late_attach_random_hex 32)"
 	attempt_id="$(late_attach_random_hex 16)"
 	[[ "$handle" =~ ^[0-9a-f]{64}$ && "$attempt_id" =~ ^[0-9a-f]{32}$ ]] || late_attach_die randomness_unavailable
@@ -278,7 +284,11 @@ late_attach_begin() {
 	printf 'resume_handle=%s\n' "$handle"
 	detector_log="$attempt_dir/detector.log"
 	set +e
-	SERIAL_SESSION_TRACE_ROOT="$attempt_dir/detector-traces" "$late_attach_detector_bin" >"$detector_log" 2>&1
+	if [[ -n "$requested_port" ]]; then
+		SERIAL_SESSION_TRACE_ROOT="$attempt_dir/detector-traces" "$late_attach_detector_bin" --port "$requested_port" >"$detector_log" 2>&1
+	else
+		SERIAL_SESSION_TRACE_ROOT="$attempt_dir/detector-traces" "$late_attach_detector_bin" >"$detector_log" 2>&1
+	fi
 	detector_status=$?
 	set -e
 	chmod 600 "$detector_log"
@@ -316,13 +326,33 @@ late_attach_begin() {
 		late_attach_close_failure "$slot" preflight_identity_unavailable
 		return
 	}
+	enumeration_identity="$(serial_session_usb_enumeration_identity "$port")" || {
+		late_attach_acquire_lock
+		late_attach_close_failure "$slot" preflight_identity_unavailable
+		return
+	}
+	if [[ "${LATE_ATTACH_UART_MODE:-0}" == 1 ]]; then
+		serial_session_readiness_gate uart_connected_preflight "$uart_port" || {
+			late_attach_acquire_lock
+			late_attach_close_failure "$slot" "preflight_uart_${SERIAL_SESSION_READINESS_CATEGORY}"
+			return
+		}
+		uart_physical_identity="$SERIAL_SESSION_READY_PHYSICAL_IDENTITY"
+		uart_enumeration_identity="$SERIAL_SESSION_READY_ENUMERATION_IDENTITY"
+	fi
 	preflight_seconds="${LATE_ATTACH_PREFLIGHT_SECONDS:-15}"
-	late_attach_run_capture "$attempt_dir" "$port" espflash "$preflight_seconds" preflight-espflash || {
+	local first_reader=espflash first_port="$port" second_reader=os-native second_port="$port"
+	if [[ "${LATE_ATTACH_UART_MODE:-0}" == 1 ]]; then
+		first_reader=os-native
+		second_reader=uart-native
+		second_port="$uart_port"
+	fi
+	late_attach_run_capture "$attempt_dir" "$first_port" "$first_reader" "$preflight_seconds" preflight-espflash || {
 		late_attach_acquire_lock
 		late_attach_close_failure "$slot" preflight_espflash_capture_failed
 		return
 	}
-	late_attach_run_capture "$attempt_dir" "$port" os-native "$preflight_seconds" preflight-os-native || {
+	late_attach_run_capture "$attempt_dir" "$second_port" "$second_reader" "$preflight_seconds" preflight-os-native || {
 		late_attach_acquire_lock
 		late_attach_close_failure "$slot" preflight_os_native_capture_failed
 		return
@@ -348,12 +378,29 @@ late_attach_begin() {
 		late_attach_close_failure "$slot" pre_removal_identity_changed
 		return
 	}
+	[[ "$(serial_session_usb_enumeration_identity "$port")" == "$enumeration_identity" ]] || {
+		late_attach_acquire_lock
+		late_attach_close_failure "$slot" pre_removal_enumeration_changed
+		return
+	}
+	if [[ "${LATE_ATTACH_UART_MODE:-0}" == 1 ]]; then
+		serial_session_readiness_gate uart_pre_removal "$uart_port" || {
+			late_attach_acquire_lock
+			late_attach_close_failure "$slot" "pre_removal_uart_${SERIAL_SESSION_READINESS_CATEGORY}"
+			return
+		}
+		[[ "$SERIAL_SESSION_READY_PHYSICAL_IDENTITY" == "$uart_physical_identity" && "$SERIAL_SESSION_READY_ENUMERATION_IDENTITY" == "$uart_enumeration_identity" ]] || {
+			late_attach_acquire_lock
+			late_attach_close_failure "$slot" pre_removal_uart_identity_changed
+			return
+		}
+	fi
 	now="$(late_attach_monotonic_ms)"
 	capability="$(late_attach_random_hex 32)"
 	socket_path="${LATE_ATTACH_SOCKET_ROOT:-/tmp}/ultra205-la-${attempt_id}.sock"
 	ready_file="$attempt_dir/worker.ready"
 	action_path="$attempt_dir/action.json"
-	late_attach_atomic_write "$state_path" "$(jq -c --arg port "$port" --arg node "$node_identity" --arg usb "$usb_identity" --arg capability "$(late_attach_sha256_text "$capability")" --arg socket "$socket_path" --argjson deadline "$((now + late_attach_removal_timeout_ms))" --slurpfile preflight "$preflight_path" '.state="waiting_removal" | .selected_port=$port | .selected_node_identity=$node | .selected_usb_identity=$usb | .checkpoint_deadline_ms=$deadline | .socket_path=$socket | .lifecycle_capability_sha256=$capability | .preflight_espflash_heartbeat_count=$preflight[0].espflashHeartbeatCount | .preflight_os_native_heartbeat_count=$preflight[0].osNativeHeartbeatCount | .preflight_same_session=$preflight[0].sameSession' "$state_path")"
+	late_attach_atomic_write "$state_path" "$(jq -c --arg port "$port" --arg node "$node_identity" --arg usb "$usb_identity" --arg enumeration "$enumeration_identity" --arg uartPort "$uart_port" --arg uartPhysical "$uart_physical_identity" --arg uartEnumeration "$uart_enumeration_identity" --arg capability "$(late_attach_sha256_text "$capability")" --arg socket "$socket_path" --argjson deadline "$((now + late_attach_removal_timeout_ms))" --slurpfile preflight "$preflight_path" '.state="waiting_removal" | .selected_port=$port | .selected_node_identity=$node | .selected_usb_identity=$usb | .selected_enumeration_identity=$enumeration | .selected_uart_port=$uartPort | .selected_uart_physical_identity=$uartPhysical | .selected_uart_enumeration_identity=$uartEnumeration | .checkpoint_deadline_ms=$deadline | .socket_path=$socket | .lifecycle_capability_sha256=$capability | .preflight_espflash_heartbeat_count=$preflight[0].espflashHeartbeatCount | .preflight_os_native_heartbeat_count=$preflight[0].osNativeHeartbeatCount | .preflight_same_session=$preflight[0].sameSession' "$state_path")"
 	LATE_ATTACH_LIFECYCLE_CAPABILITY="$capability" phase_process_group_start "$ready_file" "$late_attach_worker_bin" "$attempt_dir" "$socket_path" >"$attempt_dir/worker.stdout" 2>"$attempt_dir/worker.stderr" || {
 		late_attach_acquire_lock
 		late_attach_close_failure "$slot" worker_start_failed
@@ -486,7 +533,9 @@ late_attach_deliver() {
 		return
 	}
 	attempt_id="$(jq -er '.attempt_id' "$state_path")"
-	late_attach_escrow_tombstone "$slot" diagnostic_complete os_native_cold_delivers true
+	local classification_category
+	classification_category="$(jq -er '.classification_category' "$qualification_path")"
+	late_attach_escrow_tombstone "$slot" diagnostic_complete "$classification_category" true
 	late_attach_release_lock
 	jq -r 'to_entries[] | "\(.key)=\(.value)"' "$late_attach_trace_root/$attempt_id/qualification.json"
 }
@@ -505,7 +554,7 @@ late_attach_install_traps() { trap late_attach_cleanup_exit EXIT INT TERM; }
 late_attach_validate_test_overrides() {
 	[[ "${LATE_ATTACH_TEST_MODE:-0}" == 1 ]] && return
 	local variable
-	for variable in LATE_ATTACH_ABSENCE_INTERVAL_SECONDS LATE_ATTACH_ABSENCE_SAMPLES LATE_ATTACH_PREFLIGHT_SECONDS LATE_ATTACH_RESTORE_TIMEOUT_MS LATE_ATTACH_SOAK_INTERVAL_SECONDS LATE_ATTACH_SOAK_SAMPLES LATE_ATTACH_RESULT_WAIT_SAMPLES LATE_ATTACH_WORKER_EXIT_DELAY_SECONDS; do
+	for variable in LATE_ATTACH_ABSENCE_INTERVAL_SECONDS LATE_ATTACH_ABSENCE_SAMPLES LATE_ATTACH_PREFLIGHT_SECONDS LATE_ATTACH_RESTORE_TIMEOUT_MS LATE_ATTACH_SOAK_INTERVAL_SECONDS LATE_ATTACH_SOAK_SAMPLES LATE_ATTACH_RESULT_WAIT_SAMPLES LATE_ATTACH_WORKER_EXIT_DELAY_SECONDS UART_CAPTURE_CONTINUOUS_SECONDS UART_CAPTURE_MONITOR_BIN UART_CAPTURE_QUIET_SECONDS; do
 		[[ -z "${!variable:-}" ]] || late_attach_die test_configuration_invalid
 	done
 }

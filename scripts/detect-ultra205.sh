@@ -7,21 +7,41 @@ source "${script_dir}/serial-session-trace.sh"
 
 readonly espflash_bin="${ESPFLASH_BIN:-espflash}"
 candidates=()
+explicit_port=""
 
 usage() {
-	printf 'usage: %s\n' "$0" >&2
+	printf 'usage: %s [--port PATH | port=PATH]\n' "$0" >&2
 	printf 'Detects one Ultra 205 using no-flash, non-destructive ESP USB checks with explicit reset policy.\n' >&2
 }
 
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-	usage
-	exit 0
-fi
-
-if [[ "$#" -ne 0 ]]; then
-	usage
+while (($#)); do
+	case "$1" in
+	-h | --help)
+		usage
+		exit 0
+		;;
+	--port)
+		[[ $# -ge 2 ]] || {
+			usage
+			exit 2
+		}
+		explicit_port="$2"
+		shift 2
+		;;
+	port=*)
+		explicit_port="${1#*=}"
+		shift
+		;;
+	*)
+		usage
+		exit 2
+		;;
+	esac
+done
+[[ -z "$explicit_port" || "$explicit_port" == /* || "$explicit_port" =~ ^COM[0-9]+$ ]] || {
+	printf 'failure_category=explicit_port_invalid\n' >&2
 	exit 2
-fi
+}
 
 serial_session_trace_init detect-ultra205
 tool_version="${SERIAL_SESSION_TOOL_VERSION:-}"
@@ -37,7 +57,8 @@ fi
 serial_session_trace_event "detector_start" "$(jq -cn \
 	--arg tool "$espflash_bin" \
 	--arg tool_version "$tool_version" \
-	'{tool:$tool,tool_version:$tool_version,list_ports_reset_policy:"none",board_info_reset_policy:{before:"usb-reset",after:"hard-reset"}}')"
+	--argjson exact_port_mode "$([[ -n "$explicit_port" ]] && printf true || printf false)" \
+	'{tool:$tool,tool_version:$tool_version,exact_port_mode:$exact_port_mode,list_ports_reset_policy:"none",board_info_reset_policy:{before:"usb-reset",after:"hard-reset"}}')"
 
 is_likely_esp_port() {
 	local port="$1"
@@ -86,46 +107,50 @@ clean_token() {
 	printf '%s\n' "$token"
 }
 
-ports_output="$("$espflash_bin" list-ports --name-only 2>&1)" || {
-	status=$?
-	serial_session_trace_event "detector_result" "$(jq -cn --arg category list_ports_failed --argjson exit_status "$status" '{status:"failed",category:$category,exit_status:$exit_status}')"
-	printf 'error: failed to list ESP serial ports with `%s list-ports --name-only`\n' "$espflash_bin" >&2
-	printf 'failure_category=list_ports_failed\n' >&2
-	printf '%s\n' "$ports_output" >&2
-	exit "$status"
-}
+if [[ -n "$explicit_port" ]]; then
+	port="$explicit_port"
+else
+	ports_output="$("$espflash_bin" list-ports --name-only 2>&1)" || {
+		status=$?
+		serial_session_trace_event "detector_result" "$(jq -cn --arg category list_ports_failed --argjson exit_status "$status" '{status:"failed",category:$category,exit_status:$exit_status}')"
+		printf 'error: failed to list ESP serial ports with `%s list-ports --name-only`\n' "$espflash_bin" >&2
+		printf 'failure_category=list_ports_failed\n' >&2
+		printf '%s\n' "$ports_output" >&2
+		exit "$status"
+	}
 
-while IFS= read -r line; do
-	for raw_token in $line; do
-		token="$(clean_token "$raw_token")"
-		if is_likely_esp_port "$token"; then
-			add_candidate "$token"
-		fi
-	done
-done <<<"$ports_output"
+	while IFS= read -r line; do
+		for raw_token in $line; do
+			token="$(clean_token "$raw_token")"
+			if is_likely_esp_port "$token"; then
+				add_candidate "$token"
+			fi
+		done
+	done <<<"$ports_output"
 
-case "${#candidates[@]}" in
-0)
-	serial_session_trace_event "detector_result" '{"status":"failed","category":"missing_node"}'
-	printf 'error: no likely Ultra 205 ESP USB serial port detected\n' >&2
-	printf 'failure_category=missing_node\n' >&2
-	printf 'connect exactly one Ultra 205 over USB, then rerun `just detect-ultra205`\n' >&2
-	exit 1
-	;;
-1)
-	port="${candidates[0]}"
-	;;
-*)
-	serial_session_trace_event "detector_result" "$(jq -cn --argjson candidate_count "${#candidates[@]}" '{status:"failed",category:"ambiguous_ports",candidate_count:$candidate_count}')"
-	printf 'error: multiple likely ESP USB serial ports detected; refusing autonomous hardware use\n' >&2
-	printf 'failure_category=ambiguous_ports\n' >&2
-	for port in "${candidates[@]}"; do
-		printf -- '- %s\n' "$port" >&2
-	done
-	printf 'disconnect extra devices or pass an explicit `port=<path>` to the hardware command\n' >&2
-	exit 1
-	;;
-esac
+	case "${#candidates[@]}" in
+	0)
+		serial_session_trace_event "detector_result" '{"status":"failed","category":"missing_node"}'
+		printf 'error: no likely Ultra 205 ESP USB serial port detected\n' >&2
+		printf 'failure_category=missing_node\n' >&2
+		printf 'connect exactly one Ultra 205 over USB, then rerun `just detect-ultra205`\n' >&2
+		exit 1
+		;;
+	1)
+		port="${candidates[0]}"
+		;;
+	*)
+		serial_session_trace_event "detector_result" "$(jq -cn --argjson candidate_count "${#candidates[@]}" '{status:"failed",category:"ambiguous_ports",candidate_count:$candidate_count}')"
+		printf 'error: multiple likely ESP USB serial ports detected; refusing autonomous hardware use\n' >&2
+		printf 'failure_category=ambiguous_ports\n' >&2
+		for port in "${candidates[@]}"; do
+			printf -- '- %s\n' "$port" >&2
+		done
+		printf 'disconnect extra devices or pass an explicit `port=<path>` to the hardware command\n' >&2
+		exit 1
+		;;
+	esac
+fi
 
 board_info_command=(
 	"$espflash_bin"

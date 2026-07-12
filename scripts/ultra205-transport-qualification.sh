@@ -6,12 +6,16 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly repo_root
 readonly expected_firmware_head="e622253d2fc4aea4589e0dcf5524081b6b054aaf"
 readonly -a contract_paths=(
-	"scripts/diagnose-ultra205-late-attach.sh"
-	"scripts/ultra205-late-attach-broker.sh"
-	"scripts/ultra205-late-attach-worker.sh"
-	"scripts/ultra205-late-attach-classifier.mjs"
+	"scripts/diagnose-ultra205-uart-capture.sh"
+	"scripts/ultra205-uart-capture-broker.sh"
+	"scripts/ultra205-uart-capture-worker.sh"
+	"scripts/ultra205-uart-capture-classifier.mjs"
 	"scripts/phase13-monitor-capture.sh"
-	"scripts/phase13-os-native-reader.pl"
+	"scripts/phase13-uart-native-reader.py"
+	"scripts/serial-session-trace.sh"
+	"scripts/detect-ultra205.sh"
+	"scripts/phase28.1.1-accepted-state-diagnostic.sh"
+	"scripts/phase28.1.1-exact-head-hardware-attempt.sh"
 )
 
 die() {
@@ -75,27 +79,47 @@ validate_summary() {
 		    "tool_head",
 		    "expected_firmware_head",
 		    "classification_category",
-		    "preflight_espflash_heartbeat_count",
-		    "preflight_os_native_heartbeat_count",
-		    "cold_os_native_heartbeat_count",
-		    "identity_stable",
-		    "new_enumeration_epoch",
+		    "native_preflight_heartbeat_count",
+		    "uart_preflight_heartbeat_count",
+		    "cold_uart_heartbeat_count",
+		    "native_physical_identity_stable",
+		    "native_new_enumeration_epoch",
+		    "uart_physical_identity_stable",
+		    "uart_enumeration_identity_stable",
+		    "quiet_boundary_complete",
+		    "original_boot_present",
+		    "original_listener_present",
+		    "boot_evidence_complete",
+		    "accepted_state_stages_complete",
+		    "heartbeat_monotonic",
+		    "listener_ready",
 		    "soak_complete",
 		    "cleanup_complete",
+		    "adapter_binding_sha256",
 		    "diagnostic_contract_digest_sha256",
 		    "trace_digest_sha256"
 		  ] | sort) and
-		  .schema_version == "ultra205-transport-qualification-v2" and
+		  .schema_version == "ultra205-transport-qualification-v3" and
 		  .tool_head == $expected_tool_head and
 		  .expected_firmware_head == $expected_firmware_head and
-		  .classification_category == "os_native_cold_delivers" and
-		  (.preflight_espflash_heartbeat_count | type == "number" and floor == . and . >= 0) and
-		  (.preflight_os_native_heartbeat_count | type == "number" and floor == . and . >= 1) and
-		  (.cold_os_native_heartbeat_count | type == "number" and floor == . and . >= 3) and
-		  .identity_stable == true and
-		  .new_enumeration_epoch == true and
+		  .classification_category == "uart_cold_delivers" and
+		  (.native_preflight_heartbeat_count | type == "number" and floor == . and . >= 1) and
+		  (.uart_preflight_heartbeat_count | type == "number" and floor == . and . >= 1) and
+		  (.cold_uart_heartbeat_count | type == "number" and floor == . and . >= 3) and
+		  .native_physical_identity_stable == true and
+		  .native_new_enumeration_epoch == true and
+		  .uart_physical_identity_stable == true and
+		  .uart_enumeration_identity_stable == true and
+		  .quiet_boundary_complete == true and
+		  .original_boot_present == true and
+		  .original_listener_present == true and
+		  .boot_evidence_complete == true and
+		  .accepted_state_stages_complete == true and
+		  .heartbeat_monotonic == true and
+		  .listener_ready == true and
 		  .soak_complete == true and
 		  .cleanup_complete == true and
+		  (.adapter_binding_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
 		  .diagnostic_contract_digest_sha256 == $expected_contract_digest and
 		  (.trace_digest_sha256 | type == "string" and test("^[0-9a-f]{64}$"))
 		' "$summary_path" >/dev/null || die "qualification_invalid"

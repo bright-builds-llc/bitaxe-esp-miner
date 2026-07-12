@@ -77,7 +77,7 @@ export function parseHeartbeatStream(text) {
   return { heartbeats, malformed, unexpectedLineCount };
 }
 
-function validateOrderedHeartbeats(streams) {
+export function validateOrderedHeartbeats(streams) {
   const heartbeats = streams.flatMap((stream) => stream.heartbeats);
   const sessions = new Set(heartbeats.map(({ session }) => session));
   let monotonic = true;
@@ -101,6 +101,7 @@ function validateOrderedHeartbeats(streams) {
     monotonic,
     cadenceValid: heartbeats.every(({ cadenceValid }) => cadenceValid),
     listenerArmed: heartbeats.some(({ listenerArmed }) => listenerArmed),
+    session: sessions.size === 1 ? heartbeats[0]?.session : undefined,
   };
 }
 
@@ -127,6 +128,7 @@ export function validateConnectedPreflight(espflashText, osNativeText) {
     osNativeMonotonic: osOrdered.monotonic,
     osNativeCadenceValid: osOrdered.cadenceValid,
     osNativeListenerArmed: osOrdered.listenerArmed,
+    session: observed.session,
   };
 }
 

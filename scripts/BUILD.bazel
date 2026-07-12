@@ -48,6 +48,28 @@ sh_binary(
 )
 
 sh_binary(
+    name = "diagnose_ultra205_uart_capture",
+    srcs = ["diagnose-ultra205-uart-capture.sh"],
+    data = [
+        "detect-ultra205.sh",
+        "phase13-monitor-capture.sh",
+        "phase13-os-native-reader.pl",
+        "phase13-uart-native-reader.py",
+        "phase28.1.1-accepted-state-diagnostic.sh",
+        "phase28.1.1-exact-head-hardware-attempt.sh",
+        "phase28.1.1-lifecycle-frame.pl",
+        "process-group.sh",
+        "serial-session-trace.sh",
+        "ultra205-late-attach-broker.sh",
+        "ultra205-late-attach-classifier.mjs",
+        "ultra205-transport-qualification.sh",
+        "ultra205-uart-capture-broker.sh",
+        "ultra205-uart-capture-classifier.mjs",
+        "ultra205-uart-capture-worker.sh",
+    ],
+)
+
+sh_binary(
     name = "esp_doctor",
     srcs = ["esp-doctor.sh"],
 )
@@ -102,6 +124,7 @@ sh_binary(
     srcs = ["phase13-monitor-capture.sh"],
     data = [
         "phase13-os-native-reader.pl",
+        "phase13-uart-native-reader.py",
         "process-group.sh",
         "serial-session-trace.sh",
     ],
@@ -256,9 +279,47 @@ sh_test(
 )
 
 sh_test(
+    name = "diagnose_ultra205_uart_capture_test",
+    srcs = ["diagnose-ultra205-uart-capture-test.sh"],
+    data = [
+        "detect-ultra205.sh",
+        "diagnose-ultra205-uart-capture.sh",
+        "phase13-monitor-capture.sh",
+        "phase13-uart-native-reader.py",
+        "phase28.1.1-accepted-state-diagnostic.sh",
+        "phase28.1.1-exact-head-hardware-attempt.sh",
+        "phase28.1.1-lifecycle-frame.pl",
+        "process-group.sh",
+        "serial-session-trace.sh",
+        "ultra205-late-attach-broker.sh",
+        "ultra205-late-attach-classifier.mjs",
+        "ultra205-transport-qualification.sh",
+        "ultra205-uart-capture-broker.sh",
+        "ultra205-uart-capture-classifier.mjs",
+        "ultra205-uart-capture-worker.sh",
+    ],
+    env_inherit = [
+        "HOME",
+        "PATH",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
     name = "ultra205_late_attach_classifier_test",
     srcs = ["ultra205-late-attach-classifier-test.mjs"],
     data = ["ultra205-late-attach-classifier.mjs"],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "ultra205_uart_capture_classifier_test",
+    srcs = ["ultra205-uart-capture-classifier-test.mjs"],
+    data = [
+        "ultra205-late-attach-classifier.mjs",
+        "ultra205-uart-capture-classifier.mjs",
+    ],
     env_inherit = ["PATH"],
     tags = ["local"],
 )
@@ -359,6 +420,8 @@ sh_test(
     data = [
         "phase13-monitor-capture.sh",
         "phase13-os-native-reader.pl",
+        "phase13-uart-native-reader.py",
+        "phase13-uart-native-reader-test.py",
         "process-group.sh",
         "serial-session-trace.sh",
     ],
@@ -557,18 +620,25 @@ sh_binary(
     name = "phase28_1_1_exact_head_hardware_attempt",
     srcs = ["phase28.1.1-exact-head-hardware-attempt.sh"],
     data = [
+        "detect-ultra205.sh",
+        "diagnose-ultra205-uart-capture.sh",
         "diagnose-ultra205-late-attach.sh",
         "phase13-monitor-capture.sh",
         "phase13-os-native-reader.pl",
+        "phase13-uart-native-reader.py",
         "phase28.1.1-accepted-state-diagnostic.sh",
         "phase28.1.1-hardware-attempt-state.mjs",
         "phase28.1.1-lifecycle-frame.pl",
         "phase28.1.1-strict-production-evidence.mjs",
         "process-group.sh",
+        "serial-session-trace.sh",
         "ultra205-late-attach-broker.sh",
         "ultra205-late-attach-classifier.mjs",
         "ultra205-late-attach-worker.sh",
         "ultra205-transport-qualification.sh",
+        "ultra205-uart-capture-broker.sh",
+        "ultra205-uart-capture-classifier.mjs",
+        "ultra205-uart-capture-worker.sh",
     ],
 )
 
@@ -576,19 +646,26 @@ sh_test(
     name = "phase28_1_1_exact_head_hardware_attempt_test",
     srcs = ["phase28.1.1-exact-head-hardware-attempt-test.sh"],
     data = [
+        "detect-ultra205.sh",
+        "diagnose-ultra205-uart-capture.sh",
         "phase28.1.1-accepted-state-diagnostic.sh",
         "phase28.1.1-exact-head-hardware-attempt.sh",
         "phase28.1.1-hardware-attempt-state.mjs",
         "phase28.1.1-lifecycle-frame.pl",
         "phase28.1.1-strict-production-evidence.mjs",
         "process-group.sh",
+        "serial-session-trace.sh",
         "diagnose-ultra205-late-attach.sh",
         "phase13-monitor-capture.sh",
         "phase13-os-native-reader.pl",
+        "phase13-uart-native-reader.py",
         "ultra205-late-attach-broker.sh",
         "ultra205-late-attach-classifier.mjs",
         "ultra205-late-attach-worker.sh",
         "ultra205-transport-qualification.sh",
+        "ultra205-uart-capture-broker.sh",
+        "ultra205-uart-capture-classifier.mjs",
+        "ultra205-uart-capture-worker.sh",
     ],
     env_inherit = [
         "HOME",
@@ -665,9 +742,12 @@ sh_test(
     data = [
         "//:.git/HEAD",
         "//:.git/logs/HEAD",
+        "detect-ultra205.sh",
+        "diagnose-ultra205-uart-capture.sh",
         "diagnose-ultra205-late-attach.sh",
         "phase13-monitor-capture.sh",
         "phase13-os-native-reader.pl",
+        "phase13-uart-native-reader.py",
         "phase28.1.1-accepted-state-compare.mjs",
         "phase28.1.1-accepted-state-diagnostic.sh",
         "phase28.1.1-accepted-state-lifecycle-compare.mjs",
@@ -682,6 +762,9 @@ sh_test(
         "ultra205-late-attach-classifier.mjs",
         "ultra205-late-attach-worker.sh",
         "ultra205-transport-qualification.sh",
+        "ultra205-uart-capture-broker.sh",
+        "ultra205-uart-capture-classifier.mjs",
+        "ultra205-uart-capture-worker.sh",
     ],
     env_inherit = [
         "HOME",
