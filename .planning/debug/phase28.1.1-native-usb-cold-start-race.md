@@ -2,15 +2,15 @@
 status: investigating
 trigger: "Plan 13 passed physical lifecycle, USB ownership, passive capture, and cleanup, but the retained cold-start log contained no boot or listener markers."
 created: 2026-07-12T04:00:00Z
-updated: 2026-07-12T15:00:00Z
+updated: 2026-07-12T15:01:04Z
 ---
 
 ## Current Focus
 
-hypothesis: Firmware evidence production is no longer the missing boundary. The reinit capture proves the boot-lifetime heartbeat and replay task run, while a late-attached native-USB session still delivers zero application bytes. The remaining fault is between ESP32-S3 USB Serial/JTAG late attachment and the passive `espflash` reader.
-test: Use the software-verified, detector-once A-B-A diagnostic to compare passive `espflash`, a read-only OS-native serial reader, and passive `espflash` again on one response-free watcher-armed cold boot.
-expecting: The one-shot classification identifies `espflash` reader silence, OS-open transport activation, device-side late-attach silence, or intermittent/mixed delivery without changing firmware or adding a reset after removal.
-next_action: Complete root-owned exact-head commit and push gates, then run at most one separately gated `just diagnose-ultra205-late-attach` hardware attempt. Do not retry Plan 13 first.
+hypothesis: The passive `espflash` reader is now implicated below the cold-start evidence parser: it delivered zero bytes during the connected preflight while the immediately following read-only OS-native reader delivered valid heartbeats from the installed boot session. Native-USB late attachment remains unclassified because the required two-reader preflight stopped before power removal.
+test: Preserve the one-shot preflight result and cleanup state without retrying. Use a new software plan to decide whether formal cold capture should replace `espflash` with the OS-native reader or whether an independent transport is still required.
+expecting: A follow-up design treats OS-native byte delivery as positive transport evidence but does not overclaim the unexecuted cold A-B-A classification or the unavailable terminal USB identity.
+next_action: Do not rerun hardware or Plan 13. Plan the smallest evidence-seam change from the connected preflight asymmetry and the terminal node disappearance, then commit and push new authority before any separately approved hardware use.
 
 ## Symptoms
 
@@ -43,8 +43,8 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
 
 ## Remaining Verification
 
-- Commit and push the verified A-B-A software authority at a fresh exact tool HEAD before touching hardware.
-- Run exactly one detector-gated diagnostic attempt and preserve its category-only result plus cleanup proof; do not run a post-diagnostic detector.
+- Treat the pushed A-B-A software authority and its one-shot failed preflight as closed inputs; do not reuse the stale handle or retry the attempt.
+- Plan whether OS-native should become the formal passive cold reader, with a gate that does not require a reader already proven silent, while retaining exact-node ownership and no-write guarantees.
 - Decide whether native USB can satisfy formal cold-start evidence at all; otherwise define the external UART or alternate-channel boundary explicitly.
 - Do not run another Plan 13 hardware chain until the transport classification selects the correct reader or proves an alternate evidence channel is required.
 
@@ -85,9 +85,13 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
   checked: heartbeat-enabled exact-head Plan 13 chain at `e622253d2fc4aea4589e0dcf5524081b6b054aaf`
   found: Strict reflash/reinit passed heartbeat, original-marker, and dedicated-evidence validation. The retained cold-start member passed watcher arming, automatic USB appearance, stable passive ownership, bounded capture, and cleanup, but its application payload remained exactly zero bytes with no heartbeat or evidence marker.
   implication: The boot-lifetime heartbeat is implemented and works when monitoring spans boot, but it cannot close a silent late-attached native-USB transport. No retry is permitted from this result.
+- timestamp: 2026-07-12T15:01:04Z
+  checked: one-shot late-attach diagnostic at pushed tool HEAD `a6623c8cebe54b85e4cb9e14bdcd83cd1d31b141`
+  found: The mandatory baseline detector completed. The connected passive `espflash` preflight then produced zero application bytes and zero heartbeats, while the following read-only OS-native preflight produced 16 well-formed heartbeats from one session. The two-reader gate failed before the removal checkpoint, so no cold A-B-A category exists. The tombstone and private trace were preserved. Terminal cleanup found zero diagnostic processes, lifecycle sockets, and serial holders, but the exact node was absent, leaving accessibility and USB identity unavailable without a prohibited reset or recovery action.
+  implication: `espflash` reader silence is reproduced even before late attachment, whereas the OS-native reader proves the firmware and USB transport can deliver bytes in that connected state. This narrows the next seam toward replacing or repairing the passive reader, but the cold behavior and node disappearance require a new plan rather than an ad hoc retry.
 
 ## Resolution State
 
-root_cause: The response race and service-coupled replay were repaired, but native-USB late attachment still yields a present owned node with zero application bytes. The unresolved boundary is device-side USB Serial/JTAG late-attach delivery versus passive-reader behavior.
-fix: Keep the watcher, heartbeat, replay, strict validator, private trace, and cleanup repairs. Do not add another evidence producer; classify byte delivery below the evidence parser first.
-hardware_status: exact HEAD `e622253d2fc4aea4589e0dcf5524081b6b054aaf` passed strict heartbeat-enabled reinit and all lifecycle ownership/cleanup gates, then failed closed on an empty retained cold-start stream. Hardware closure remains blocked pending a new transport-level diagnostic.
+root_cause: The response race and service-coupled replay were repaired. The new one-shot preflight proves passive `espflash` can be silent while a read-only OS-native reader receives the same running firmware's heartbeats, moving the leading defect to the reader path. Cold late-attach delivery remains unclassified because the strict preflight stopped before removal.
+fix: Keep the watcher, heartbeat, replay, strict validator, private trace, and cleanup repairs. Plan an OS-native formal capture seam or a narrower reader repair; do not add another evidence producer or repeat hardware without new committed authority.
+hardware_status: The one authorized diagnostic failed closed before removal with `espflash=0` and OS-native heartbeat count `16`. No cold category was produced. Process/socket/holder cleanup is zero, but the exact node is absent and identity cannot be re-proven without recovery. Phase 28.1.1 remains blocked.
