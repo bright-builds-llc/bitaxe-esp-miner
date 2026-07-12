@@ -282,6 +282,13 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 - Phase-gated destructive or fault-injection verification is allowed only when the active phase plan documents the recovery path and required evidence. Do not run ad hoc erase, rollback, interrupted-update, voltage/fan/mining stress, or raw write commands outside documented phase-gated procedures.
 - Every hardware run must record board `205`, selected port, source commit, reference commit, package manifest/artifacts when applicable, exact commands, `board-info` output, captured logs, observed behavior, and conclusion. Do not commit secrets, pool credentials, Wi-Fi credentials, private endpoints, or NVS secret values in evidence.
 
+### Direct UART And Pin-Manipulation Authorization
+
+- Default all hardware work to the device's provided barrel-power and USB connectors under the existing detector, phase, safety, and evidence gates. Standing USB permission does not authorize any other electrical interface.
+- Do not assume, recommend, request, instruct, or perform direct external UART attachment or physical electrical manipulation of pins, pads, headers, GPIO, test points, solder joints, probes, jumpers, or injected signals.
+- A direct UART or pin-manipulation path may be considered only when the user explicitly requests that specific path, or when a permanent blocker has been documented after non-invasive USB, firmware, host-tool, and software-observability paths are exhausted. Either case still requires fresh explicit user authorization before giving physical connection instructions or touching hardware.
+- The existing external-UART reader, commands, lifecycle, tests, and documentation are dormant software. Preserve them for history and possible future authorization, but do not invoke, surface, resume, or treat them as the next GSD action without satisfying the authorization rule above.
+
 ### Flash And Monitor Timeouts
 
 Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and post-flash runtime evidence routinely exceed short monitor defaults. Agents and repo-owned wrappers must budget accordingly:
@@ -304,10 +311,9 @@ Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and po
 - A manual power-removal response is never proof that USB disappeared. Start the exact-node lifecycle owner and removal watcher before publishing the physical instruction, accept the response token only after that owner observes disappearance, and then require the full bounded absence interval before arming restoration.
 - Model stable physical USB identity separately from enumeration identity. On macOS, never include `IOCalloutDevice`, `IODialinDevice`, `IOTTYDevice`, `IOTTYBaseName`, or the IORegistry entry ID in a physical-identity digest; those fields belong to the enumeration epoch and may change after the required cold restore.
 - For a Plan 13 both-power cold start, never tell the user to restore power until the lifecycle emits `action_token=plan13-restore-watcher-armed-v1` with `response_required=false`. Then instruct barrel power followed by USB; USB appearance is observed automatically and no post-plug response token is expected.
-- Native USB cannot preserve application bytes emitted before enumeration. Cold-start validation therefore uses the repo-owned redacted, session-tagged boot/listener replay proof; raw first-byte qualification requires a separate always-connected UART or data-only capture path.
-- External-UART cold capture is receive-only: with both board power paths absent, connect a 3.3 V adapter RX to Ultra 205 `TP18/P_TX` and GND to `TP12/GND` (or Tag-Connect `J5` pins 3/4). Leave adapter TX, VCC, RTS, DTR, and every other signal disconnected; stop on a board-layout mismatch or insecure probe fixture.
-- Keep the external adapter USB and probes connected across board power removal. Its physical and enumeration identities must both remain unchanged. For native USB restoration, require the same stable physical identity and a different enumeration identity; tty paths, inodes, dynamic device instances, and registry-entry IDs are never physical identity.
-- Treat the external UART as evidence-only. It may not power, reset, flash, transmit to, scan for, or otherwise control the board, and its raw bytes and local identities remain private under the serial-session trace rules.
+- Native USB cannot preserve application bytes emitted before enumeration. Cold-start validation therefore uses the repo-owned redacted, session-tagged boot/listener replay proof; any raw first-byte alternate-channel proposal remains subject to the direct-UART and pin-manipulation authorization rule above.
+- The dormant external-UART implementation remains receive-only and evidence-only by design. Its prior TP18/TP12/J5 fixture instructions are historical, not an active operational procedure, and must not be surfaced or executed without fresh explicit user authorization.
+- If an external observer is explicitly authorized in the future, its physical and enumeration identities must both remain unchanged across board power removal. For native USB restoration, require the same stable physical identity and a different enumeration identity; tty paths, inodes, dynamic device instances, and registry-entry IDs are never physical identity.
 
 ### Evidence Workflow: Hardware-First Default
 

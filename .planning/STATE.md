@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 28.1.1-12-PLAN.md
-last_updated: "2026-07-12T20:25:19.202Z"
+stopped_at: Plan 14 software-only terminal; hardware Tasks 4-5 cancelled
+last_updated: "2026-07-12T23:42:00.000Z"
 last_activity: 2026-07-12
 progress:
   total_phases: 18
@@ -20,13 +20,13 @@ Last activity: 2026-07-12
 
 ## Current Position
 
-Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — EXECUTING
-Plan: 1 of 9
+Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — GAPS FOUND
+Plan: 9 of 9 resolved
 
 - **Phase:** 28.1.1 — Accepted-State Gap Closure
-- **Plan:** 8/9 — Native-USB Plan 13 superseded; Plan 14 owns the single replacement chain
-- **Status:** Executing Phase 28.1.1
-- **Next step:** Execute Plan 14 software authority; do not touch hardware until its clean exact HEAD is committed and pushed
+- **Plan:** 9/9 — Plan 14 software verified; direct-UART hardware tasks cancelled
+- **Status:** Gaps found; STR-09, ASIC-11, CFG-07, and Phase 30 promotion remain pending
+- **Next step:** Create a new non-invasive USB, firmware, host-tool, or software-observability gap plan; do not resume Plan 14 or surface direct UART/pin work without fresh explicit user authorization
 
 ## Decisions (Phase 28.1.1 Plan 11)
 
@@ -144,6 +144,7 @@ Plan: 1 of 9
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
 | 260712-0a9 | Always-on serial runtime heartbeat and Plan 13 fallback validation | 2026-07-12 | a38bb0f | Software verified; hardware transport blocked | [260712-0a9-implement-the-always-on-serial-only-runt](./quick/260712-0a9-implement-the-always-on-serial-only-runt/) |
+| 260712-pw5 | Persist direct-UART and pin-manipulation authorization rule | 2026-07-12 | this commit | Plan 14 hardware cancelled; non-invasive replanning required | [260712-pw5-persist-repo-rule-prohibiting-assumed-di](./quick/260712-pw5-persist-repo-rule-prohibiting-assumed-di/) |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -167,5 +168,5 @@ Plan: 1 of 9
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1-12-PLAN.md
-- **Resume:** Execute Plan 13 from the clean Plan 12 completion HEAD; Phase 30 remains pending until independent same-chain proof exists
+- **Stopped at:** Plan 14 software-only terminal; physical fixture and qualification tasks cancelled before hardware
+- **Resume:** Plan a new non-invasive Phase 28.1.1 gap path. Do not resume Plan 14, install a fixture, or invoke dormant UART tooling without fresh explicit user authorization; Phase 30 remains pending until independent same-chain proof exists

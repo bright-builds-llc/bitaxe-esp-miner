@@ -2,15 +2,15 @@
 status: investigating
 trigger: "Plan 13 passed physical lifecycle, USB ownership, passive capture, and cleanup, but the retained cold-start log contained no boot or listener markers."
 created: 2026-07-12T04:00:00Z
-updated: 2026-07-12T21:17:00Z
+updated: 2026-07-12T23:42:00Z
 ---
 
 ## Current Focus
 
-hypothesis: An independently powered receive-only UART observer can preserve original UART0 boot bytes across a true both-power board cold start because its adapter node and reader remain present while barrel power and native USB are removed.
-test: Verify and push the schema-v3 software authority without hardware, then pause for an RX-to-TP18 and GND-to-TP12 fixture installed only while both board power paths remain removed.
-expecting: The continuous UART reader records a quiet pre-boot boundary and one distinct post-boundary boot session with original boot/listener markers, both evidence states, monotonic heartbeats, and all five accepted-state stages.
-next_action: Commit and push the verified schema-v3 software authority, prove clean 0/0 upstream sync, then request only `uart-receive-only-fixture-installed` before any adapter-node observation.
+hypothesis: The remaining cold-start evidence gap may be solvable through a non-invasive USB, firmware, host-tool, or software-observability seam without direct UART attachment or physical pin manipulation.
+test: No hardware test is active. Plan a new non-invasive diagnostic from the closed native-USB results while preserving Plan 14's verified external-UART software as dormant historical work.
+expecting: The next plan either establishes a non-invasive machine-observable cold-start proof or documents a permanent blocker without surfacing direct UART or pin-manipulation instructions.
+next_action: Create a new non-invasive gap plan; do not resume Plan 14, request a fixture token, observe an adapter node, or invoke dormant UART tooling without fresh explicit user authorization.
 
 ## Symptoms
 
@@ -29,9 +29,9 @@ properties: Deterministic, hardware-free, and located at the state/evidence cont
 
 root_cause: Confirmed up to the transport boundary. The old human acknowledgment race and Stratum-coupled replay were real defects and are repaired, but neither explains the current empty stream. A passive native-USB session can have a present stable node and correct owner while carrying no application bytes after barrel-first boot and later USB attachment.
 confidence: high that firmware heartbeat scheduling is not the blocker because reinit validates it; medium on whether the remaining boundary is ESP32-S3 USB Serial/JTAG late-attach behavior or `espflash` passive-reader behavior.
-smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery observation below the Plan 13 evidence parser. Do not change evidence semantics or add another firmware replay mechanism until that boundary is classified.
+smallest_correct_seam: Reassess non-invasive USB, firmware, host-tool, and software-observability boundaries below the Plan 13 evidence parser. Direct UART or pin manipulation is not an active seam and requires the repo's exceptional explicit-authorization gate.
 
-## Fix in Progress
+## Dormant Plan 14 Implementation
 
 - The private attempt state uses a response-free `restore_watcher_armed` action, a 30-minute exact-node appearance window, and a 60-second passive ownership-attachment bound while retaining the 4,145,000 ms lease.
 - Firmware generates one 128-bit hardware-RNG boot nonce and retains redacted `booted` and `listener_armed` proof in Plan 13 evidence mode. The follow-up correction moves the allowlisted replay task out of the Stratum adapter and schedules it from boot for 10-second ticks strictly before 1,880,000 ms.
@@ -40,21 +40,21 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
 - The new late-attach diagnostic returns an opaque handle before fallible preflight, runs the mandatory detector exactly once, proves both connected readers observe one heartbeat session, and then uses a real mode-0600 Unix-socket capability plus owner PID fingerprint to bind the removal token to one isolated lifecycle process.
 - After five seconds of exact-node absence it emits a response-free restore action, requires the same physical USB identity and a new enumeration epoch, and captures `espflash` / OS-native / `espflash` without flash, reset, serial writes, scans, credentials, network discovery, or a post-run detector.
 - The OS-native reader is a standalone Perl process restricted to read-only, no-controlling-terminal, nonblocking open plus `select` and `sysread`. Raw reader stdout is separated from wrapper/tool stderr, while the default `espflash` monitor interface remains compatible.
-- Plan 14 adds a standard-library `uart-native` reader that opens the independently powered adapter read-only, configures only 115200 8N1/local/no-flow-control, and never writes or manipulates modem/reset lines.
+- Plan 14 added a standard-library `uart-native` reader that opens an independently powered adapter read-only, configures only 115200 8N1/local/no-flow-control, and never writes or manipulates modem/reset lines. This implementation is dormant and is not an authorized hardware path.
 - Stable physical USB identity now excludes tty paths, inode data, registry entry IDs, and dynamic instances; native restoration requires the same physical identity with a new enumeration identity, while the continuously connected adapter requires both identities unchanged.
-- Schema v3 starts one continuous UART owner before publishing removal, records a newline-aligned quiet byte boundary after verified board-power absence, and accepts only one distinct post-boundary cold session with original and replay evidence plus all five accepted-state stages.
+- Schema v3 can start one continuous UART owner before publishing removal, record a newline-aligned quiet byte boundary after verified board-power absence, and accept only one distinct post-boundary cold session with original and replay evidence plus all five accepted-state stages. No qualification ran, and this dormant path must not be invoked without fresh explicit authorization.
 
 ## Remaining Verification
 
 - Treat the pushed A-B-A software authority and its one-shot failed preflight as closed inputs; do not reuse the stale handle or retry the attempt.
 - Plan whether OS-native should become the formal passive cold reader, with a gate that does not require a reader already proven silent, while retaining exact-node ownership and no-write guarantees.
-- Decide whether native USB can satisfy formal cold-start evidence at all; otherwise define the external UART or alternate-channel boundary explicitly.
+- Decide whether native USB, firmware replay, host tooling, or another non-invasive software-observability seam can satisfy formal cold-start evidence.
 - Do not run another Plan 13 hardware chain until the transport classification selects the correct reader or proves an alternate evidence channel is required.
 - Treat schema-v2 tool HEAD `7cab0c63b9887e3670b9db20e0eaec50dc4fbf0f` and its failed qualification as closed inputs; do not reuse or retry the handle.
-- Plan an external UART or independent data-only capture path that remains connected across both-power cold start.
+- Do not plan or surface direct UART, probe, pin, pad, header, GPIO, jumper, solder, or injected-signal work unless the repo's permanent-blocker and fresh explicit-authorization gate is satisfied.
 - If native USB remains a secondary signal, split stable physical identity from enumeration identity before any further hardware authority.
-- Finish and push the complete Plan 14 software authority before requesting fixture installation; no detector, serial open, reset, flash, credential, network, or board command is permitted before that checkpoint.
-- After the fixture checkpoint, perform at most one schema-v3 qualification and only conditionally one fresh formal Plan 13 chain; retain and stop on any failed qualification.
+- Treat the pushed Plan 14 software authority as closed, dormant historical work. Its fixture checkpoint and schema-v3/formal-closure hardware tasks are cancelled; no Plan 14 hardware action occurred.
+- Create a separate non-invasive gap plan before any further hardware attempt. Do not fabricate a passing qualification, requirement completion, or Phase 28.1.1 closure.
 
 ## Software Verification
 
@@ -93,7 +93,11 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
 - timestamp: 2026-07-12T21:17:00Z
   checked: Plan 14 receive-only UART foundation, schema-v3 authority, and formal integration through Task 2
   found: Direct UART PTY, monitor compatibility, Darwin/Linux identity, detector exact-node, pure classifier, real-process qualification, accepted-state, and exhaustive 84-case exact-head tests pass. All eight forced-uncached affected Bazel targets pass after declaring their complete runfiles, as do the canonical ESP32-S3 build, reference and protected-artifact checks, shell/Perl/Python/Node hygiene, and the mandatory Rust format, Clippy, all-target build, and all-feature test sequence. The lifecycle owns UART before removal action publication, rejects early tokens, preserves the adapter identity and owner across native-node absence, validates only post-boundary bytes, binds formal use to the exact adapter and contract digest, and cleans process groups and holders. No hardware command ran.
-  implication: The implementation is software-complete but not yet hardware-authorized. Commit, push, and clean 0/0 sync must still pass before the fixture action is requested.
+  implication: The implementation is software-complete and was subsequently committed and pushed through `ff127df7121f1251d5cf7359c1488128e6a62d17`, but it is dormant and authorizes no fixture action or hardware use.
+- timestamp: 2026-07-12T23:42:00Z
+  checked: corrected repository hardware policy and Plan 14 checkpoint disposition
+  found: The user explicitly rejected direct UART use as the repository default. No fixture was installed, no adapter node was observed, no schema-v3 qualification ran, no formal Plan 13 chain started, and no hardware evidence or requirement completion exists from Plan 14.
+  implication: Plan 14's software Tasks 1-3 remain verified historical work, while physical Tasks 4-5 are cancelled. Future work must be separately planned through non-invasive paths unless fresh explicit authorization satisfies the repo-local exception.
 
 ## Hardware Verification
 
@@ -121,5 +125,5 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
 ## Resolution State
 
 root_cause: The authoritative native-USB reader disappears with board power and re-enumerates only after boot has begun, so it cannot reliably preserve original cold-start bytes. The earlier response race, service-coupled replay, silent `espflash` reader, absence-only removal proof, and physical/enumeration identity conflation were additional independent defects.
-fix: Use an independently powered receive-only external UART observer that remains enumerated and continuously owned across board power removal. Preserve native USB only for explicit detection, flashing, and secondary identity evidence. Bind formal cold capture to one private passing schema-v3 qualification and validate only the new post-boundary boot session.
-hardware_status: No Plan 14 hardware action has occurred. The last hardware result remains the closed schema-v2 failure at tool HEAD `7cab0c63b9887e3670b9db20e0eaec50dc4fbf0f`; cleanup was complete and no retry occurred. Fixture installation and one-shot schema-v3 qualification remain gated on a newly verified, pushed, clean 0/0 tool HEAD.
+fix: No authorized closure fix is selected. Preserve native USB for explicit detection, flashing, and secondary identity evidence; plan a non-invasive USB, firmware, host-tool, or software-observability seam. The verified external-UART implementation remains dormant unless a permanent blocker and fresh explicit user authorization permit reconsideration.
+hardware_status: No Plan 14 hardware action occurred. The last hardware result remains the closed schema-v2 failure at tool HEAD `7cab0c63b9887e3670b9db20e0eaec50dc4fbf0f`; cleanup was complete and no retry occurred. Fixture installation, schema-v3 qualification, and the conditional Plan 13 chain are cancelled, and Phase 30 promotion remains pending.
