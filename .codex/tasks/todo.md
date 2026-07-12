@@ -25,7 +25,7 @@ Completion review: Durable guidance is committed at `6f0629c`; the passive sessi
 - [x] Move allowlisted Plan 13 replay from the Stratum socket pump to a bounded boot-lifetime firmware task.
 - [x] Add regression coverage for replay ownership and the 10-second/1,880-second schedule.
 - [x] Run focused shell/Bazel/reference checks and the mandatory Rust verification sequence.
-- [ ] Commit and push a clean exact HEAD.
+- [x] Commit and push the verified firmware repair at `447f735c4df4363d84ea7b1354e32d57e28a68a5`.
 - [ ] Confirm the correction with a new detector-gated Plan 13 hardware chain before closing Phase 28.1.1.
 
-Completion review: In progress. The first watcher-based hardware run isolated the remaining failure to absent replay bytes after successful USB appearance, monitor ownership, capture duration, and cleanup. The boot-lifetime ownership regression, focused lifecycle/state/classifier/monitor suites, affected Bazel targets, canonical ESP firmware build, reference guard, and mandatory Rust sequence pass. Hardware confirmation must use a later clean committed HEAD; the failed attempt will not be resumed or retried.
+Completion review: In progress. The first watcher-based hardware run isolated the remaining failure to absent replay bytes after successful USB appearance, monitor ownership, capture duration, and cleanup. The boot-lifetime ownership regression, focused lifecycle/state/classifier/monitor suites, affected Bazel targets, canonical ESP firmware build, reference guard, and mandatory Rust sequence pass. The durable finding commit `2b504d5` and firmware repair commit `447f735c4df4363d84ea7b1354e32d57e28a68a5` are pushed on `main`. Hardware confirmation must use a later clean committed HEAD; the failed attempt will not be resumed or retried.

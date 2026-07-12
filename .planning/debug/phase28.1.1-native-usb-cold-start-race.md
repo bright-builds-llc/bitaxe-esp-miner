@@ -10,7 +10,7 @@ updated: 2026-07-12T05:00:00Z
 hypothesis: The prearmed watcher repair is hardware-confirmed, but replay ownership is still too narrow. Replay runs only from the live Stratum socket pump, so optional Wi-Fi/pool-session progress can suppress boot evidence even after native USB is attached correctly.
 test: Move the allowlisted 10-second replay cadence to a boot-lifetime task with the same 1,880,000 ms window, remove Stratum-owned replay, and verify the ownership seam statically plus the timing schedule in Rust.
 expecting: Software checks prove that booted evidence replays independently of network progress and listener evidence joins the same session if and when listener readiness occurs. A later fresh exact-head hardware run remains required to prove native-USB delivery.
-next_action: Complete focused and canonical verification, commit and push the boot-lifetime replay correction, and stop before another hardware run.
+next_action: Start only a new detector-gated Plan 13 hardware chain from the later clean exact HEAD; never resume the failed attempt at `4891ce06bb51f872fd41c0baa2412cd660c877eb`.
 
 ## Symptoms
 
@@ -57,6 +57,10 @@ smallest_correct_seam: Keep the watcher and validators unchanged, but move the e
   checked: boot-lifetime replay correction
   found: The ownership shell regression, lifecycle/state/classifier/exact-head/monitor suites, seven host cadence/allowlist tests, four affected Bazel targets, canonical `//firmware/bitaxe:firmware` ESP32-S3 build, reference guard, and mandatory Rust format/Clippy/build/test sequence all pass. The exhaustive broker suite retains all 84 invalid cases.
   implication: The follow-up software seam is clean and may be committed as a fresh exact HEAD. Hardware delivery remains deliberately unclaimed.
+- timestamp: 2026-07-12T05:03:00Z
+  checked: git finalization
+  found: Durable findings are committed at `2b504d5`; the verified boot-lifetime replay repair is committed and pushed at `447f735c4df4363d84ea7b1354e32d57e28a68a5`.
+  implication: Any subsequent hardware confirmation must begin a new exact-head attempt and build a new package; the failed package and resume handle remain unusable.
 
 ## Hardware Verification
 
