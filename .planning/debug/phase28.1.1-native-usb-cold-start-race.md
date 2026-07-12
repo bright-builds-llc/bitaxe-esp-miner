@@ -2,15 +2,15 @@
 status: investigating
 trigger: "Plan 13 passed physical lifecycle, USB ownership, passive capture, and cleanup, but the retained cold-start log contained no boot or listener markers."
 created: 2026-07-12T04:00:00Z
-updated: 2026-07-12T16:56:36Z
+updated: 2026-07-12T17:27:24Z
 ---
 
 ## Current Focus
 
-hypothesis: The formal passive reader is the leading defect because `espflash` delivered no connected-preflight bytes while the immediately following read-only OS-native reader delivered valid heartbeats. OS-native cold delivery still requires one true both-power qualification before it may become formal Plan 13 evidence authority.
-test: Software-verify schema-v2 qualification: observational `espflash`, mandatory OS-native preflight, owner-observed post-action removal, response-free restore watcher, OS-native as the first and only cold reader, 30-second cleanup soak, and an exact-head private qualification consumed by a fresh Plan 13 attempt.
-expecting: Software tests prove the authority fails closed on unobserved removal, stale or mismatched qualification, reader/session/cadence faults, identity instability, holders, and cleanup. Hardware remains unclaimed until the new clean pushed tool HEAD runs exactly once.
-next_action: Complete focused and canonical software verification, review the exact-head authority and simplification diff, then let the coordinating agent commit and push before the one planned recovery and qualification.
+hypothesis: OS-native cold delivery remains unclassified because the one authorized qualification stopped at restoration identity validation. The current macOS USB digest conflates physical identity with enumeration-variant tty and IORegistry entry fields, making equality incompatible with the required new enumeration.
+test: Preserve the failed exact-head trace and terminal cleanup without retrying. Treat `appearance_identity_changed` as an invalid identity-contract boundary, not evidence that a different physical device was connected.
+expecting: A follow-up external-UART/data-only plan provides an independent always-connected evidence channel; any future native-USB design first separates stable physical identity from enumeration epoch in pure tested logic.
+next_action: Do not retry qualification or start Plan 13. Plan the approved external UART or independent data channel, including stable physical-identity modeling if native USB remains a secondary observation.
 
 ## Symptoms
 
@@ -47,8 +47,9 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
 - Plan whether OS-native should become the formal passive cold reader, with a gate that does not require a reader already proven silent, while retaining exact-node ownership and no-write guarantees.
 - Decide whether native USB can satisfy formal cold-start evidence at all; otherwise define the external UART or alternate-channel boundary explicitly.
 - Do not run another Plan 13 hardware chain until the transport classification selects the correct reader or proves an alternate evidence channel is required.
-- Commit and push the schema-v2 OS-native qualification and qualified Plan 13 reader authority on one clean exact HEAD.
-- Run exactly one owner-observed both-power cold qualification; continue to one fresh Plan 13 chain only if its private mode-0600 exact-head qualification passes.
+- Treat schema-v2 tool HEAD `7cab0c63b9887e3670b9db20e0eaec50dc4fbf0f` and its failed qualification as closed inputs; do not reuse or retry the handle.
+- Plan an external UART or independent data-only capture path that remains connected across both-power cold start.
+- If native USB remains a secondary signal, split stable physical identity from enumeration identity before any further hardware authority.
 
 ## Software Verification
 
@@ -80,6 +81,10 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
   checked: complete OS-native qualification and formal Plan 13 software authority
   found: Ten consecutive real-process qualification runs pass after closing receiver-publication and sourced-scope cleanup races. Direct monitor, trace, classifier, accepted-state, and exhaustive 84-case exact-head suites pass. Forced-uncached affected Bazel targets, shell/Perl/Node syntax, `shfmt`, warning-level `shellcheck`, reference/protected-artifact gates, and the mandatory Rust format/Clippy/build/test sequence pass. The private qualification is symlink-rejecting, owner/mode controlled, exact firmware/tool-head bound, contract-digested, and revalidated before formal cold serial capture.
   implication: Software implementation is complete and ready for root-owned review, commit, and push. Hardware qualification, Plan 13 closure, and any parity promotion remain deliberately unclaimed.
+- timestamp: 2026-07-12T17:10:00Z
+  checked: root review, software finalization, and git authority
+  found: Independent review corrected mixed-log heartbeat qualification, explicit Bash capture-status propagation, and cleanup finalization so a qualification remains `cleanup_complete=false` until the broker proves owner/process-group exit. Repeated direct tests, all five forced-uncached affected Bazel targets, adjacent protected/reference checks, full changed-path shell checks, and the mandatory Rust sequence pass. The complete authority is committed and pushed at `7cab0c63b9887e3670b9db20e0eaec50dc4fbf0f`.
+  implication: Exactly one hardware qualification was authorized on that clean HEAD; formal Plan 13 remained conditional on its passing private qualification.
 
 ## Hardware Verification
 
@@ -99,9 +104,13 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
   checked: one-shot late-attach diagnostic at pushed tool HEAD `a6623c8cebe54b85e4cb9e14bdcd83cd1d31b141`
   found: The mandatory baseline detector completed. The connected passive `espflash` preflight then produced zero application bytes and zero heartbeats, while the following read-only OS-native preflight produced 16 well-formed heartbeats from one session. The two-reader gate failed before the removal checkpoint, so no cold A-B-A category exists. The tombstone and private trace were preserved. Terminal cleanup found zero diagnostic processes, lifecycle sockets, and serial holders, but the exact node was absent, leaving accessibility and USB identity unavailable without a prohibited reset or recovery action.
   implication: `espflash` reader silence is reproduced even before late attachment, whereas the OS-native reader proves the firmware and USB transport can deliver bytes in that connected state. This narrows the next seam toward replacing or repairing the passive reader, but the cold behavior and node disappearance require a new plan rather than an ad hoc retry.
+- timestamp: 2026-07-12T17:27:24Z
+  checked: one authorized schema-v2 qualification at tool HEAD `7cab0c63b9887e3670b9db20e0eaec50dc4fbf0f`
+  found: The planned full-power recovery, baseline detector, connected controls, owner-before-action removal observation, token delivery, and five-second absence completed. On response-free restoration, the exact node appeared but the USB identity digest differed, producing `appearance_identity_changed` before OS-native cold capture. Source inspection shows the digest includes enumeration-variant macOS tty and IORegistry entry fields. No qualification file or cold-reader log was created. Terminal cleanup found the exact node present and accessible with zero holders, diagnostic processes, and sockets; no post-run detector ran.
+  implication: The gate correctly stopped, but the category cannot distinguish physical-device replacement from an expected enumeration-field change. The no-retry branch is active: do not start Plan 13; plan external UART/data-only evidence next.
 
 ## Resolution State
 
-root_cause: The response race and service-coupled replay were repaired. The new one-shot preflight proves passive `espflash` can be silent while a read-only OS-native reader receives the same running firmware's heartbeats, moving the leading defect to the reader path. Cold late-attach delivery remains unclassified because the strict preflight stopped before removal.
-fix: Keep the watcher, heartbeat, replay, strict validator, private trace, and cleanup repairs. Plan an OS-native formal capture seam or a narrower reader repair; do not add another evidence producer or repeat hardware without new committed authority.
-hardware_status: The one authorized diagnostic failed closed before removal with `espflash=0` and OS-native heartbeat count `16`. No cold category was produced. Process/socket/holder cleanup is zero, but the exact node is absent and identity cannot be re-proven without recovery. Phase 28.1.1 remains blocked.
+root_cause: The response race, service-coupled replay, silent `espflash` reader, and absence-only removal proof are repaired or isolated. The remaining qualification stopped because the macOS USB digest mixes stable hardware attributes with enumeration-variant tty and IORegistry entry fields, so it cannot prove same physical device plus new enumeration simultaneously. OS-native cold delivery remains unobserved.
+fix: Retain the watcher, heartbeat, OS-native reader, strict validator, private trace, and cleanup repairs. Do not retry native-USB hardware. Plan an always-connected external UART or independent data channel; model physical USB identity separately before any secondary native-USB use.
+hardware_status: Tool HEAD `7cab0c63b9887e3670b9db20e0eaec50dc4fbf0f` passed recovery, detector, connected controls, owner-observed removal, and bounded absence, then failed closed at `appearance_identity_changed` before cold capture. No qualification or Plan 13 attempt exists. Cleanup is complete and Phase 28.1.1 remains blocked.

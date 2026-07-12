@@ -67,3 +67,10 @@
 2. What went wrong: A lifecycle accepted the operator's power-removal token before a persistent exact-node owner was watching for disappearance, so the token could attest intent while the transport transition itself remained unobserved.
 3. Preventive rule: Start the lifecycle owner and exact-node removal watcher before publishing the removal action. Accept a manual response only after that owner records node disappearance after action publication, then require the complete bounded absence interval.
 4. Trigger signal to catch it earlier: A hardware continuation starts its watcher inside `deliver`, or a token can advance state while the selected node is still present or has no owner-recorded disappearance timestamp.
+
+## lesson-physical-usb-identity-excludes-enumeration-fields | 2026-07-12 17:27
+
+1. Date: 2026-07-12
+2. What went wrong: A cold-restore gate required both a new enumeration epoch and equality of a supposed physical-USB identity digest. On macOS that digest included `IOCalloutDevice`, `IODialinDevice`, `IOTTYDevice`, `IOTTYBaseName`, and the IORegistry entry ID, so the required re-enumeration could change the value and trigger `appearance_identity_changed` before capture.
+3. Preventive rule: Model stable physical identity and enumeration identity separately. A physical-identity digest may use stable hardware attributes such as USB serial number, vendor/product IDs, and stable port location, but must exclude tty paths/names, device-node metadata, and IORegistry entry IDs that are expected to change across enumeration.
+4. Trigger signal to catch it earlier: A lifecycle simultaneously requires `new_enumeration_epoch=true` and equality of a digest that contains callout/dial-in device names, tty base names, device-node inode data, or a registry-entry identifier.
