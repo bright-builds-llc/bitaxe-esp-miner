@@ -133,6 +133,72 @@ test_monitor_command_is_bounded_and_safe() {
 	assert_not_contains "$out_file" "write-flash"
 }
 
+test_raw_out_separates_reader_stdout_from_wrapper_log() {
+	local bin_dir="${tmp_root}/raw-out-bin"
+	local out_file="${tmp_root}/raw-out.log"
+	local raw_file="${tmp_root}/raw-out.payload"
+
+	create_fast_espflash "$bin_dir"
+	PATH="${bin_dir}:$PATH" "$BASH" "$monitor_script" --port /dev/test --out "$out_file" --raw-out "$raw_file" --seconds 3
+
+	assert_contains "$raw_file" "espflash-args: monitor --chip esp32s3 --port /dev/test --non-interactive"
+	assert_not_contains "$out_file" "espflash-args:"
+	assert_contains "$out_file" "capture_status=completed"
+	[[ "$(mode_of "$raw_file")" == "600" ]] || fail "raw output is not mode 600"
+}
+
+test_os_native_reader_captures_fifo_without_control_operations() {
+	local bin_dir="${tmp_root}/os-native-bin"
+	local out_file="${tmp_root}/os-native.log"
+	local raw_file="${tmp_root}/os-native.payload"
+	local serial_port="${tmp_root}/os-native.fifo"
+	local writer_pid
+
+	mkdir -p "$bin_dir"
+	mkfifo "$serial_port"
+	chmod 600 "$serial_port"
+	write_executable "${bin_dir}/node-identity" 'printf "node-stable\n"'
+	write_executable "${bin_dir}/usb-identity" 'printf "usb-stable\n"'
+	# shellcheck disable=SC2016 # The generated fixture observes the real fresh-process reader.
+	write_executable "${bin_dir}/lsof-owner" 'pid="$(pgrep -f "phase13-os-native-reader.pl ${SERIAL_TEST_PORT:?}" | head -1)"
+if [[ -z "$pid" ]]; then
+  exit 1
+fi
+printf "%s\n" "$pid"'
+
+	(
+		sleep 0.2
+		printf 'runtime_heartbeat session=0123456789abcdef0123456789abcdef sequence=1 uptime_ms=1000 cadence_ms=1000 listener_armed=false redacted=true\n' >"$serial_port"
+	) &
+	writer_pid=$!
+
+	SERIAL_SESSION_READINESS_INTERVAL_SECONDS=0 SERIAL_SESSION_TOOL_VERSION=test \
+		SERIAL_SESSION_ACTIVE_OWNER_INTERVAL_SECONDS=0 \
+		SERIAL_SESSION_NODE_IDENTITY_BIN="${bin_dir}/node-identity" \
+		SERIAL_SESSION_USB_IDENTITY_BIN="${bin_dir}/usb-identity" \
+		SERIAL_SESSION_LSOF_BIN="${bin_dir}/lsof-owner" \
+		SERIAL_TEST_PORT="$serial_port" \
+		"$BASH" "$monitor_script" --port "$serial_port" --out "$out_file" --raw-out "$raw_file" --reader os-native --seconds 1 --no-reset
+	wait "$writer_pid"
+
+	assert_contains "$raw_file" "runtime_heartbeat session=0123456789abcdef0123456789abcdef"
+	assert_contains "$out_file" "reader: os-native"
+	assert_contains "$out_file" "monitor_command: phase13-os-native-reader.pl ${serial_port}"
+	assert_not_contains "$out_file" "runtime_heartbeat"
+	if grep -Eiq 'syswrite|ioctl|termios|stty' "${script_dir}/phase13-os-native-reader.pl"; then
+		fail "OS-native reader contains a prohibited serial control or write API"
+	fi
+}
+
+mode_of() {
+	local path="$1"
+	if stat -f '%Lp' "$path" >/dev/null 2>&1; then
+		stat -f '%Lp' "$path"
+		return
+	fi
+	stat -c '%a' "$path"
+}
+
 test_repeated_fast_monitor_completion_never_becomes_timeout() {
 	local bin_dir="${tmp_root}/repeated-fast-bin"
 	local iteration
@@ -251,6 +317,8 @@ if [[ ! -f "$monitor_script" ]]; then
 fi
 
 test_monitor_command_is_bounded_and_safe
+test_raw_out_separates_reader_stdout_from_wrapper_log
+test_os_native_reader_captures_fifo_without_control_operations
 test_repeated_fast_monitor_completion_never_becomes_timeout
 test_monitor_timeout_status_is_recorded
 test_timeout_stops_descendant_watcher

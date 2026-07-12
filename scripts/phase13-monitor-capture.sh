@@ -8,13 +8,15 @@ source "${script_dir}/process-group.sh"
 source "${script_dir}/serial-session-trace.sh"
 
 usage() {
-	printf 'usage: %s --port PATH --out LOG [--seconds N] [--no-reset]\n' "$(basename "$0")" >&2
+	printf 'usage: %s --port PATH --out LOG [--seconds N] [--no-reset] [--reader espflash|os-native] [--raw-out PATH]\n' "$(basename "$0")" >&2
 }
 
 port=""
 out=""
 seconds="35"
 no_reset=0
+reader="espflash"
+raw_out=""
 monitor_pid=""
 monitor_group_ready_file=""
 monitor_group_state_file="${PHASE13_MONITOR_GROUP_STATE_FILE:-}"
@@ -154,6 +156,22 @@ while [[ $# -gt 0 ]]; do
 		no_reset=1
 		shift
 		;;
+	--reader)
+		if [[ $# -lt 2 ]]; then
+			usage
+			exit 2
+		fi
+		reader="$2"
+		shift 2
+		;;
+	--raw-out)
+		if [[ $# -lt 2 ]]; then
+			usage
+			exit 2
+		fi
+		raw_out="$2"
+		shift 2
+		;;
 	-h | --help)
 		usage
 		exit 0
@@ -175,15 +193,35 @@ if [[ ! "$seconds" =~ ^[0-9]+$ || "$seconds" -lt 1 ]]; then
 	printf 'seconds must be a positive integer\n' >&2
 	exit 2
 fi
+case "$reader" in
+espflash | os-native) ;;
+*)
+	printf 'reader must be espflash or os-native\n' >&2
+	exit 2
+	;;
+esac
+if [[ "$reader" == "os-native" && "$no_reset" -ne 1 ]]; then
+	printf 'os-native reader requires --no-reset\n' >&2
+	exit 2
+fi
 
 mkdir -p "$(dirname "$out")"
 : >"$out"
+if [[ -n "$raw_out" ]]; then
+	mkdir -p "$(dirname "$raw_out")"
+	: >"$raw_out"
+	chmod 600 "$raw_out"
+fi
 
 log() {
 	printf '%s\n' "$*" >>"$out"
 }
 
 render_command() {
+	if [[ "$reader" == "os-native" ]]; then
+		printf 'phase13-os-native-reader.pl %s\n' "$port"
+		return
+	fi
 	printf 'espflash monitor --chip esp32s3 --port %s --non-interactive' "$port"
 	if [[ "$no_reset" -eq 1 ]]; then
 		printf ' --before no-reset-no-sync --after no-reset --no-reset'
@@ -191,14 +229,19 @@ render_command() {
 	printf '\n'
 }
 
-monitor_command=(espflash monitor --chip esp32s3 --port "$port" --non-interactive)
-if [[ "$no_reset" -eq 1 ]]; then
-	monitor_command+=(--before no-reset-no-sync --after no-reset --no-reset)
+if [[ "$reader" == "os-native" ]]; then
+	monitor_command=(perl "${script_dir}/phase13-os-native-reader.pl" "$port")
+else
+	monitor_command=(espflash monitor --chip esp32s3 --port "$port" --non-interactive)
+	if [[ "$no_reset" -eq 1 ]]; then
+		monitor_command+=(--before no-reset-no-sync --after no-reset --no-reset)
+	fi
 fi
 
 log "phase13_monitor_capture"
 log "port: ${port}"
 log "seconds: ${seconds}"
+log "reader: ${reader}"
 log "monitor_command: $(render_command)"
 log "serial_write: disabled"
 log "raw_flash_write: disabled"
@@ -207,6 +250,9 @@ log "capture_output_start"
 if [[ "$no_reset" -eq 1 ]]; then
 	serial_session_trace_init phase13-passive-monitor
 	tool_version="${SERIAL_SESSION_TOOL_VERSION:-}"
+	if [[ -z "$tool_version" && "$reader" == "os-native" ]]; then
+		tool_version="$(perl --version 2>&1 | sed -n '2p')"
+	fi
 	if [[ -z "$tool_version" ]]; then
 		set +e
 		tool_version="$(espflash --version 2>&1 | head -1)"
@@ -218,8 +264,9 @@ if [[ "$no_reset" -eq 1 ]]; then
 	fi
 	serial_session_trace_event "session_start" "$(jq -cn \
 		--arg tool_version "$tool_version" \
+		--arg tool "$reader" \
 		--arg command "$(render_command)" \
-		'{tool:"espflash",tool_version:$tool_version,command:$command,reset_policy:{before:"no-reset-no-sync",after:"no-reset",monitor_reset:false}}')"
+		'{tool:$tool,tool_version:$tool_version,command:$command,reset_policy:{before:"no-reset-no-sync",after:"no-reset",monitor_reset:false}}')"
 	if ! serial_session_readiness_gate pre_attach "$port"; then
 		log "serial_session_failure_category=${SERIAL_SESSION_READINESS_CATEGORY}"
 		record_trace_summary
@@ -237,7 +284,7 @@ rm -f "$monitor_completion_file"
 PHASE_PROCESS_GROUP_STATE_FILE="$monitor_group_state_file"
 # The generated Bash wrapper expands its own arguments and completion path.
 # shellcheck disable=SC2016
-phase_process_group_start "$monitor_group_ready_file" "$BASH" -c '
+monitor_wrapper='
 completion_file="$1"
 shift
 set +e
@@ -248,7 +295,12 @@ temporary="${completion_file}.tmp.$$"
 (umask 077 && printf "%s\n" "$status" >"$temporary")
 mv -f "$temporary" "$completion_file"
 exit "$status"
-' _ "$monitor_completion_file" "${monitor_command[@]}" >>"$out" 2>&1
+'
+if [[ -n "$raw_out" ]]; then
+	phase_process_group_start "$monitor_group_ready_file" "$BASH" -c "$monitor_wrapper" _ "$monitor_completion_file" "${monitor_command[@]}" >>"$raw_out" 2>>"$out"
+else
+	phase_process_group_start "$monitor_group_ready_file" "$BASH" -c "$monitor_wrapper" _ "$monitor_completion_file" "${monitor_command[@]}" >>"$out" 2>&1
+fi
 group_start_status=$?
 set -e
 ((group_start_status == 0)) || {

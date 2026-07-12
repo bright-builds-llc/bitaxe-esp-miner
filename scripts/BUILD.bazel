@@ -31,6 +31,20 @@ sh_binary(
 )
 
 sh_binary(
+    name = "diagnose_ultra205_late_attach",
+    srcs = ["diagnose-ultra205-late-attach.sh"],
+    data = [
+        "detect-ultra205.sh",
+        "phase13-monitor-capture.sh",
+        "phase13-os-native-reader.pl",
+        "phase28.1.1-lifecycle-frame.pl",
+        "process-group.sh",
+        "serial-session-trace.sh",
+        "ultra205-late-attach-classifier.mjs",
+    ],
+)
+
+sh_binary(
     name = "esp_doctor",
     srcs = ["esp-doctor.sh"],
 )
@@ -84,6 +98,7 @@ sh_binary(
     name = "phase13_monitor_capture",
     srcs = ["phase13-monitor-capture.sh"],
     data = [
+        "phase13-os-native-reader.pl",
         "process-group.sh",
         "serial-session-trace.sh",
     ],
@@ -217,6 +232,32 @@ sh_test(
 )
 
 sh_test(
+    name = "diagnose_ultra205_late_attach_test",
+    srcs = ["diagnose-ultra205-late-attach-test.sh"],
+    data = [
+        "diagnose-ultra205-late-attach.sh",
+        "phase13-os-native-reader.pl",
+        "phase28.1.1-lifecycle-frame.pl",
+        "process-group.sh",
+        "serial-session-trace.sh",
+        "ultra205-late-attach-classifier.mjs",
+    ],
+    env_inherit = [
+        "HOME",
+        "PATH",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "ultra205_late_attach_classifier_test",
+    srcs = ["ultra205-late-attach-classifier-test.mjs"],
+    data = ["ultra205-late-attach-classifier.mjs"],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
+sh_test(
     name = "serial_session_trace_test",
     srcs = ["serial-session-trace-test.sh"],
     data = ["serial-session-trace.sh"],
@@ -311,6 +352,7 @@ sh_test(
     srcs = ["phase13-monitor-capture-test.sh"],
     data = [
         "phase13-monitor-capture.sh",
+        "phase13-os-native-reader.pl",
         "process-group.sh",
         "serial-session-trace.sh",
     ],

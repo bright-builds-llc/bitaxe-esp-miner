@@ -10,6 +10,9 @@ detect-ultra205:
 diagnose-ultra205-session *args:
     ./scripts/diagnose-ultra205-session.sh {{ args }}
 
+diagnose-ultra205-late-attach *args:
+    ./scripts/diagnose-ultra205-late-attach.sh {{ args }}
+
 build:
     bazel build //firmware/bitaxe:firmware
 

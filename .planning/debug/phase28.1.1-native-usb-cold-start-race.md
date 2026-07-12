@@ -2,15 +2,15 @@
 status: investigating
 trigger: "Plan 13 passed physical lifecycle, USB ownership, passive capture, and cleanup, but the retained cold-start log contained no boot or listener markers."
 created: 2026-07-12T04:00:00Z
-updated: 2026-07-12T14:03:00Z
+updated: 2026-07-12T15:00:00Z
 ---
 
 ## Current Focus
 
 hypothesis: Firmware evidence production is no longer the missing boundary. The reinit capture proves the boot-lifetime heartbeat and replay task run, while a late-attached native-USB session still delivers zero application bytes. The remaining fault is between ESP32-S3 USB Serial/JTAG late attachment and the passive `espflash` reader.
-test: Preserve the failed trace and plan a transport-level A/B that can distinguish device-side late-attach byte delivery from reader-side behavior without reset, flash, hidden recovery, or an ad hoc hardware retry.
-expecting: A future diagnostic identifies whether application bytes reach an OS-level passive reader after late attachment; if not, formal first-boot evidence requires an always-connected external UART/data-only path or another independent channel.
-next_action: Do not retry Plan 13. Create a new transport-level diagnostic plan from the preserved zero-byte trace, commit and push its software authority, then request at most one separately gated hardware run.
+test: Use the software-verified, detector-once A-B-A diagnostic to compare passive `espflash`, a read-only OS-native serial reader, and passive `espflash` again on one response-free watcher-armed cold boot.
+expecting: The one-shot classification identifies `espflash` reader silence, OS-open transport activation, device-side late-attach silence, or intermittent/mixed delivery without changing firmware or adding a reset after removal.
+next_action: Complete root-owned exact-head commit and push gates, then run at most one separately gated `just diagnose-ultra205-late-attach` hardware attempt. Do not retry Plan 13 first.
 
 ## Symptoms
 
@@ -37,12 +37,16 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
 - Firmware generates one 128-bit hardware-RNG boot nonce and retains redacted `booted` and `listener_armed` proof in Plan 13 evidence mode. The follow-up correction moves the allowlisted replay task out of the Stratum adapter and schedules it from boot for 10-second ticks strictly before 1,880,000 ms.
 - Validation requires original boot/listener lines for reinit, but permits replay-only cold-start proof; equivalent duplicates pass while malformed, missing, conflicting, or multiple-session proof fails.
 - Raw monitor, wrapper, and session traces are escrowed under a mode-0700 ignored root as mode-0600 files before validation and again before tombstoning.
+- The new late-attach diagnostic returns an opaque handle before fallible preflight, runs the mandatory detector exactly once, proves both connected readers observe one heartbeat session, and then uses a real mode-0600 Unix-socket capability plus owner PID fingerprint to bind the removal token to one isolated lifecycle process.
+- After five seconds of exact-node absence it emits a response-free restore action, requires the same physical USB identity and a new enumeration epoch, and captures `espflash` / OS-native / `espflash` without flash, reset, serial writes, scans, credentials, network discovery, or a post-run detector.
+- The OS-native reader is a standalone Perl process restricted to read-only, no-controlling-terminal, nonblocking open plus `select` and `sysread`. Raw reader stdout is separated from wrapper/tool stderr, while the default `espflash` monitor interface remains compatible.
 
 ## Remaining Verification
 
-- Design a transport-level A/B that compares the existing passive `espflash` reader with a bounded OS-level serial reader while preserving exact-node identity, no writes, no reset, and fail-closed cleanup.
+- Commit and push the verified A-B-A software authority at a fresh exact tool HEAD before touching hardware.
+- Run exactly one detector-gated diagnostic attempt and preserve its category-only result plus cleanup proof; do not run a post-diagnostic detector.
 - Decide whether native USB can satisfy formal cold-start evidence at all; otherwise define the external UART or alternate-channel boundary explicitly.
-- Do not run another hardware chain until the new diagnostic is planned, verified, committed, and pushed at a fresh exact HEAD.
+- Do not run another Plan 13 hardware chain until the transport classification selects the correct reader or proves an alternate evidence channel is required.
 
 ## Software Verification
 
@@ -62,6 +66,10 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
   checked: git finalization
   found: Durable findings are committed at `2b504d5`; the verified boot-lifetime replay repair is committed and pushed at `447f735c4df4363d84ea7b1354e32d57e28a68a5`.
   implication: Any subsequent hardware confirmation must begin a new exact-head attempt and build a new package; the failed package and resume handle remain unusable.
+- timestamp: 2026-07-12T15:00:00Z
+  checked: native-USB late-attach A-B-A software authority
+  found: The backward-compatible monitor wrapper, standalone OS-native reader, pure seven-category classifier, and resumable begin/deliver broker pass direct tests and forced-uncached Bazel coverage for stream separation, real Unix-socket framing, owner fingerprints, permissions, token/lease/stale handling, response-free watcher arming, all classification patterns, identity/epoch/holder/probe/node failures, worker cleanup, and forbidden-operation guards. Adjacent serial-session and accepted-state suites also pass. No detector, board-info, monitor, credential, network, flash, reset, or hardware command was used during software verification.
+  implication: The diagnostic is ready for root-owned final verification, commit, and push. No hardware classification is claimed yet.
 
 ## Hardware Verification
 

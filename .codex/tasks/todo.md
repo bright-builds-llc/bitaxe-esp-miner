@@ -36,8 +36,10 @@ Hardware update: Exact HEAD `e622253d2fc4aea4589e0dcf5524081b6b054aaf` passed de
 
 - [x] Preserve the exact-head failed trace with mode-0700/0600 permissions and prove zero remaining processes and holders.
 - [x] Separate successful firmware heartbeat production during reinit from zero-byte delivery during retained cold start.
-- [ ] Design a transport-level diagnostic that distinguishes ESP32-S3 USB Serial/JTAG late-attach behavior from `espflash` passive-reader behavior without reset, flash, or hidden recovery.
+- [x] Design and software-verify a transport-level A-B-A diagnostic that distinguishes ESP32-S3 USB Serial/JTAG late-attach behavior from `espflash` passive-reader behavior without reset, flash, or hidden recovery.
 - [ ] Decide whether formal cold-start evidence needs an always-connected external UART/data-only arrangement or another machine-observable channel.
 - [ ] Run new hardware only after that diagnostic is planned, software-verified, committed, and pushed at a fresh exact HEAD.
 
 Completion review: Pending. The heartbeat feature is software-verified and hardware-observed during reinit, but it cannot close Plan 13 while the late-attached native-USB session delivers zero application bytes.
+
+Software update: The new resumable diagnostic performs one baseline detector, same-session connected `espflash` and OS-native preflights, response-free exact-node watcher arming, and a cold `espflash` / OS-native / `espflash` sequence. Direct and forced-uncached Bazel tests cover the complete classifier matrix, real Unix-socket owner binding, private permissions, identity/epoch/ownership failures, leases, stale handles, crashes, cleanup, stream separation, and forbidden operations. Root-owned commit/push and one hardware classification remain pending; no hardware result is claimed.
