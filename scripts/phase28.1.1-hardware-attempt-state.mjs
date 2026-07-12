@@ -7,6 +7,17 @@ export const PHASE28_RESUME_TOMBSTONE_SCHEMA_VERSION =
   "exact-head-resume-tombstone-v1";
 export const PHASE28_CLASSIFIER_VERSION = "strict-production-v2";
 export const PHASE28_LIFECYCLE_ID = "28.1.1-2026-07-09T19-24-27";
+export const PLAN13_PHYSICAL_ACTION_TIMEOUT_MS = 30 * 60 * 1_000;
+export const PLAN13_USB_ABSENCE_MINIMUM_MS = 5_000;
+export const PLAN13_USB_REAPPEARANCE_TIMEOUT_MS = 60_000;
+export const PLAN13_CAPTURE_MINIMUM_MS = 360_000;
+export const PLAN13_LIFECYCLE_LEASE_HEADROOM_MS = 120_000;
+export const PLAN13_LIFECYCLE_LEASE_DURATION_MS =
+  2 * PLAN13_PHYSICAL_ACTION_TIMEOUT_MS +
+  PLAN13_USB_ABSENCE_MINIMUM_MS +
+  PLAN13_USB_REAPPEARANCE_TIMEOUT_MS +
+  PLAN13_CAPTURE_MINIMUM_MS +
+  PLAN13_LIFECYCLE_LEASE_HEADROOM_MS;
 
 export const EFFECT_IDS = Object.freeze([
   "detector_board_info",
@@ -168,7 +179,7 @@ export const CHECKPOINT_DEFINITIONS = Object.freeze({
     checkpointToken: "plan13-usb-replug-recovery-v1",
     expectedResponseToken: "plan13-usb-replugged-v1",
     expectedUserAction: "replug-usb-with-barrel-retained",
-    timeoutMs: 300_000,
+    timeoutMs: PLAN13_PHYSICAL_ACTION_TIMEOUT_MS,
     attemptState: "recovery_waiting",
     lifecycleSubstate: "not_started",
   }),
@@ -177,7 +188,7 @@ export const CHECKPOINT_DEFINITIONS = Object.freeze({
     expectedResponseToken: "plan13-both-power-restored-v1",
     expectedUserAction:
       "remove-both-wait-five-seconds-restore-barrel-then-usb",
-    timeoutMs: 300_000,
+    timeoutMs: PLAN13_PHYSICAL_ACTION_TIMEOUT_MS,
     attemptState: "recovery_waiting",
     lifecycleSubstate: "not_started",
   }),
@@ -185,7 +196,7 @@ export const CHECKPOINT_DEFINITIONS = Object.freeze({
     checkpointToken: "plan13-reset-recovery-v1",
     expectedResponseToken: "plan13-reset-pressed-v1",
     expectedUserAction: "press-reset-once",
-    timeoutMs: 300_000,
+    timeoutMs: PLAN13_PHYSICAL_ACTION_TIMEOUT_MS,
     attemptState: "recovery_waiting",
     lifecycleSubstate: "not_started",
   }),
@@ -193,7 +204,7 @@ export const CHECKPOINT_DEFINITIONS = Object.freeze({
     checkpointToken: "plan13-boot-reset-recovery-v1",
     expectedResponseToken: "plan13-boot-reset-assisted-v1",
     expectedUserAction: "perform-boot-reset-board-info-assist-once",
-    timeoutMs: 300_000,
+    timeoutMs: PLAN13_PHYSICAL_ACTION_TIMEOUT_MS,
     attemptState: "recovery_waiting",
     lifecycleSubstate: "not_started",
   }),
@@ -201,7 +212,7 @@ export const CHECKPOINT_DEFINITIONS = Object.freeze({
     checkpointToken: "plan13-armed-removal-v1",
     expectedResponseToken: "plan13-both-power-paths-removed",
     expectedUserAction: "remove-both-power-paths-and-attest",
-    timeoutMs: 300_000,
+    timeoutMs: PLAN13_PHYSICAL_ACTION_TIMEOUT_MS,
     attemptState: "armed",
     lifecycleSubstate: "removal_waiting",
   }),
@@ -209,7 +220,7 @@ export const CHECKPOINT_DEFINITIONS = Object.freeze({
     checkpointToken: "plan13-barrel-usb-restore-v1",
     expectedResponseToken: "plan13-barrel-then-usb-restored",
     expectedUserAction: "restore-barrel-then-usb",
-    timeoutMs: 300_000,
+    timeoutMs: PLAN13_PHYSICAL_ACTION_TIMEOUT_MS,
     attemptState: "restore_waiting",
     lifecycleSubstate: "restore_waiting",
   }),
@@ -694,7 +705,7 @@ export function validateAttemptState(state) {
   assertDigestForPass(state, "manifest_state", "pass", ["manifest_sha256", "factory_image_sha256"]);
 
   requireEnum(state.reinit_capture_category, ["not_run", "complete_360s", "short", "failed"], "reinit_capture_category");
-  validateDuration(state, "reinit_capture_started_ms", "reinit_capture_ended_ms", "reinit_capture_duration_ms", "reinit_capture_category", "complete_360s", 360_000);
+  validateDuration(state, "reinit_capture_started_ms", "reinit_capture_ended_ms", "reinit_capture_duration_ms", "reinit_capture_category", "complete_360s", PLAN13_CAPTURE_MINIMUM_MS);
   for (const field of ["reinit_raw_log_sha256", "reinit_classifier_input_sha256"]) requirePattern(state[field], /^[0-9a-f]{64}$/, field, true);
   requireEnum(state.reinit_five_stage_result, ["not_run", "pass", "fail"], "reinit_five_stage_result");
   if (state.reinit_five_stage_result === "pass") assertDigestForPass(state, "reinit_five_stage_result", "pass", ["reinit_raw_log_sha256", "reinit_classifier_input_sha256"]);
@@ -719,7 +730,7 @@ export function validateAttemptState(state) {
   requireEnum(state.reappearance_category, ["not_observed", "within_60000", "late"], "reappearance_category");
   validateDuration(state, "usb_absence_started_ms", "usb_absence_ended_ms", "usb_absence_ms", "usb_absence_category", "continuous_at_least_5000", 5_000);
   if (state.usb_absence_category === "continuous_at_least_5000" && state.usb_absence_ms < 5_000) fail("state_malformed", "continuous USB absence is shorter than 5000 ms");
-  if (state.reappearance_category === "within_60000" && (state.reappearance_elapsed_ms === null || state.reappearance_elapsed_ms > 60_000)) fail("state_malformed", "USB reappearance exceeded 60000 ms");
+  if (state.reappearance_category === "within_60000" && (state.reappearance_elapsed_ms === null || state.reappearance_elapsed_ms > PLAN13_USB_REAPPEARANCE_TIMEOUT_MS)) fail("state_malformed", "USB reappearance exceeded 60000 ms");
 
   requireCountObject(state.armed_prohibited_sentinel_counts, PROHIBITED_SENTINEL_KEYS, "armed_prohibited_sentinel_counts");
   requireCountObject(state.capture_complete_prohibited_sentinel_counts, PROHIBITED_SENTINEL_KEYS, "capture_complete_prohibited_sentinel_counts");
@@ -736,7 +747,7 @@ export function validateAttemptState(state) {
   }
 
   requireEnum(state.capture_category, ["not_started", "running", "complete_360s", "short", "failed"], "capture_category");
-  validateDuration(state, "capture_started_ms", "capture_ended_ms", "capture_duration_ms", "capture_category", "complete_360s", 360_000);
+  validateDuration(state, "capture_started_ms", "capture_ended_ms", "capture_duration_ms", "capture_category", "complete_360s", PLAN13_CAPTURE_MINIMUM_MS);
   for (const field of ["lifecycle_raw_log_sha256", "same_chain_raw_log_set_sha256", "classifier_input_sha256", "classifier_output_sha256"]) requirePattern(state[field], /^[0-9a-f]{64}$/, field, true);
   requireEnum(state.classifier_version, ["not_run", PHASE28_CLASSIFIER_VERSION], "classifier_version");
   requireEnum(state.classification_phase, CLASSIFICATION_PHASES, "classification_phase");
@@ -1395,6 +1406,15 @@ export function attachLifecycleOwner(
     state.attempt_state !== "reinit_validated"
   ) {
     fail("lease_conflict", "lifecycle owner attachment is not authorized");
+  }
+  const expectedLifecycleDeadlineMs =
+    checkpointCreatedMonotonicMs + PLAN13_LIFECYCLE_LEASE_DURATION_MS;
+  if (
+    !isUnsigned(checkpointCreatedMonotonicMs) ||
+    !isUnsigned(expectedLifecycleDeadlineMs) ||
+    lifecycleDeadlineMs !== expectedLifecycleDeadlineMs
+  ) {
+    fail("lease_conflict", "lifecycle lease does not match the bounded policy");
   }
   const next = structuredClone(state);
   next.attempt_state = "armed";

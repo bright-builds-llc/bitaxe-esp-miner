@@ -19,8 +19,8 @@ evidence_out=""
 manifest=""
 reinit_log=""
 board="205"
-readonly minimum_usb_absence_ms=5000
-readonly reattach_deadline_ms=60000
+IFS=' ' read -r minimum_usb_absence_ms reattach_deadline_ms minimum_capture_duration_ms <<<"$(node --input-type=module -e 'const { PLAN13_USB_ABSENCE_MINIMUM_MS, PLAN13_USB_REAPPEARANCE_TIMEOUT_MS, PLAN13_CAPTURE_MINIMUM_MS } = await import(process.argv[1]); process.stdout.write(`${PLAN13_USB_ABSENCE_MINIMUM_MS} ${PLAN13_USB_REAPPEARANCE_TIMEOUT_MS} ${PLAN13_CAPTURE_MINIMUM_MS}\n`)' "$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs")"
+readonly minimum_usb_absence_ms reattach_deadline_ms minimum_capture_duration_ms
 readonly monitor_start_reserve_ms=10000
 readonly replay_interval_ms=2000
 readonly replay_window_ms=180000
@@ -823,7 +823,7 @@ run_prevalidated_flash_reinit() {
 	private_write "$(reinit_log_path_file)" "$raw_reinit_log"
 	rm -f "$capability_path"
 	local duration_ms=$((ended_ms - started_ms))
-	((duration_ms >= 360000)) || {
+	((duration_ms >= minimum_capture_duration_ms)) || {
 		write_effect_result failed reinit_capture_short '{}'
 		return 1
 	}
@@ -957,7 +957,7 @@ run_prevalidated_lifecycle() {
 	local capture_ended_ms
 	capture_ended_ms="$(monotonic_ms)"
 	local capture_duration_ms=$((capture_ended_ms - capture_started_ms))
-	((capture_duration_ms >= 360000)) || {
+	((capture_duration_ms >= minimum_capture_duration_ms)) || {
 		write_effect_result failed lifecycle_capture_short '{}'
 		return 1
 	}

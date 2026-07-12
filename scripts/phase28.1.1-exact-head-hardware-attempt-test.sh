@@ -517,19 +517,28 @@ env \
 	bash "$runner" run-validated-effect --resume-handle "$lifecycle_handle" --effect-id lifecycle_start >"$temp_root/lifecycle.stdout" 2>"$temp_root/lifecycle.stderr" &
 lifecycle_runner_pid=$!
 wait_for_pattern '^checkpoint_id=plan13-lifecycle-removal$' "$temp_root/lifecycle.stdout"
+lifecycle_slot="$(slot_for_handle "$lifecycle_handle")"
+lifecycle_state="$(jq -er '.attempt_dir' "$lifecycle_slot")/state.json"
+removal_created_ms="$(jq -er '.created_monotonic_ms' "$lifecycle_state")"
+removal_deadline_ms="$(jq -er '.monotonic_deadline_ms' "$lifecycle_state")"
+lifecycle_deadline_ms="$(jq -er '.lifecycle_deadline_ms' "$lifecycle_state")"
+[[ "$((removal_deadline_ms - removal_created_ms))" == "1800000" ]] || fail "broker removal checkpoint is not bounded to 30 minutes"
+[[ "$((lifecycle_deadline_ms - removal_created_ms))" == "4145000" ]] || fail "broker lifecycle lease does not match the derived budget"
 expect_failure lease_dead_or_reused_process env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="b$(printf 'b%.0s' {1..63})" PHASE28_TEST_SOCKET_SEND_BIN="$socket_sender" PHASE28_SOCKET_TRACE="$socket_trace" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token plan13-armed-removal-v1 --response-token plan13-both-power-paths-removed
 [[ ! -s "$socket_trace" ]] || fail "wrong lifecycle owner reached socket dispatch"
 expect_failure checkpoint_token_mismatch env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" PHASE28_TEST_SOCKET_SEND_BIN="$socket_sender" PHASE28_SOCKET_TRACE="$socket_trace" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token wrong --response-token plan13-both-power-paths-removed
 [[ ! -s "$socket_trace" ]] || fail "wrong lifecycle token reached socket dispatch"
 env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token plan13-armed-removal-v1 --response-token plan13-both-power-paths-removed >/dev/null
 wait_for_pattern '^checkpoint_id=plan13-lifecycle-restore$' "$temp_root/lifecycle.stdout"
+restore_created_ms="$(jq -er '.created_monotonic_ms' "$lifecycle_state")"
+restore_deadline_ms="$(jq -er '.monotonic_deadline_ms' "$lifecycle_state")"
+[[ "$((restore_deadline_ms - restore_created_ms))" == "1800000" ]] || fail "broker restore checkpoint is not bounded to 30 minutes"
+[[ "$restore_deadline_ms" -lt "$lifecycle_deadline_ms" ]] || fail "broker restore checkpoint exceeds its lifecycle lease"
 env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_TEST_MODE=1 PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" PHASE28_TEST_OWNER_FINGERPRINT="a$(printf 'a%.0s' {1..63})" bash "$runner" deliver-token --resume-handle "$lifecycle_handle" --checkpoint-token plan13-barrel-usb-restore-v1 --response-token plan13-barrel-then-usb-restored >/dev/null
 wait "$lifecycle_runner_pid"
 rg -q '^effect_status=completed$' "$temp_root/lifecycle.stdout"
 [[ "$(rg -c '^plan13-both-power-paths-removed$' "$socket_trace")" == "1" ]] || fail "removal frame was not accepted exactly once"
 [[ "$(rg -c '^plan13-barrel-then-usb-restored$' "$socket_trace")" == "1" ]] || fail "restore frame was not accepted exactly once"
-lifecycle_slot="$control_root/resume-index/$(printf '%s' "$lifecycle_handle" | shasum -a 256 | awk '{print $1}').json"
-lifecycle_state="$(jq -er '.attempt_dir' "$lifecycle_slot")/state.json"
 [[ "$(jq -r '.attempt_state' "$lifecycle_state")" == "capture_complete" ]]
 [[ "$(jq -r '.process_running' "$lifecycle_state")" == "false" ]]
 [[ "$(wc -l <"$temp_root/effects.trace" | tr -d ' ')" == "7" ]]

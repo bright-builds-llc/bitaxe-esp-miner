@@ -459,6 +459,22 @@ function testLostResumeHandleOrphanStateContract() {
   );
 }
 
+function testPhysicalActionCheckpointTimeoutPolicy() {
+  // Arrange
+  const physicalCheckpointIds = Object.keys(CHECKPOINT_DEFINITIONS).filter(
+    (checkpointId) => checkpointId !== "plan13-connected-entry",
+  );
+
+  // Act / Assert
+  for (const checkpointId of physicalCheckpointIds) {
+    assert.equal(
+      CHECKPOINT_DEFINITIONS[checkpointId].timeoutMs,
+      1_800_000,
+      checkpointId,
+    );
+  }
+}
+
 function testActiveAttemptExpiryClassification() {
   // Arrange
   const checkpointState = createConnectedEntryState({
@@ -593,9 +609,10 @@ function testLifecycleLeaseAndSubordinateTransitions() {
     capabilitySha256: DIGEST,
     ownerPid: 123,
     ownerStartFingerprintSha256: DIGEST,
-    lifecycleDeadlineMs: 900_000,
+    lifecycleDeadlineMs: 4_146_000,
     checkpointCreatedMonotonicMs: 1_000,
   });
+  const removalCheckpoint = structuredClone(next);
   next = consumeCheckpoint(next, {
     checkpointToken: "plan13-armed-removal-v1",
     responseToken: "plan13-both-power-paths-removed",
@@ -648,20 +665,55 @@ function testLifecycleLeaseAndSubordinateTransitions() {
   assert.equal(completed.lifecycle_substate, "complete");
   assert.equal(completed.process_running, false);
   assert.equal(completed.capture_category, "complete_360s");
+  assert.equal(removalCheckpoint.created_monotonic_ms, 1_000);
+  assert.equal(removalCheckpoint.monotonic_deadline_ms, 1_801_000);
+  assert.equal(
+    removalCheckpoint.lifecycle_deadline_ms -
+      removalCheckpoint.created_monotonic_ms,
+    4_145_000,
+  );
+  assert.doesNotThrow(() =>
+    consumeCheckpoint(removalCheckpoint, {
+      checkpointToken: "plan13-armed-removal-v1",
+      responseToken: "plan13-both-power-paths-removed",
+      nowMonotonicMs: 1_800_999,
+    }),
+  );
+  expectStateError("checkpoint_expired", () =>
+    consumeCheckpoint(removalCheckpoint, {
+      checkpointToken: "plan13-armed-removal-v1",
+      responseToken: "plan13-both-power-paths-removed",
+      nowMonotonicMs: 1_801_000,
+    }),
+  );
   assert.equal(restoreCheckpoint.created_monotonic_ms, 6_001);
-  assert.equal(restoreCheckpoint.monotonic_deadline_ms, 306_001);
+  assert.equal(restoreCheckpoint.monotonic_deadline_ms, 1_806_001);
+  assert.ok(
+    restoreCheckpoint.monotonic_deadline_ms <
+      restoreCheckpoint.lifecycle_deadline_ms,
+  );
   assert.doesNotThrow(() =>
     consumeCheckpoint(restoreCheckpoint, {
       checkpointToken: "plan13-barrel-usb-restore-v1",
       responseToken: "plan13-barrel-then-usb-restored",
-      nowMonotonicMs: 306_000,
+      nowMonotonicMs: 1_806_000,
     }),
   );
   expectStateError("checkpoint_expired", () =>
     consumeCheckpoint(restoreCheckpoint, {
       checkpointToken: "plan13-barrel-usb-restore-v1",
       responseToken: "plan13-barrel-then-usb-restored",
-      nowMonotonicMs: 306_001,
+      nowMonotonicMs: 1_806_001,
+    }),
+  );
+  expectStateError("lease_conflict", () =>
+    attachLifecycleOwner(invoked, {
+      leaseId: "7".repeat(32),
+      capabilitySha256: DIGEST,
+      ownerPid: 123,
+      ownerStartFingerprintSha256: DIGEST,
+      lifecycleDeadlineMs: 4_145_999,
+      checkpointCreatedMonotonicMs: 1_000,
     }),
   );
   for (const key of PERMITTED_LIFECYCLE_KEYS) {
@@ -722,6 +774,7 @@ testBlockerRoutesAreExhaustive();
 testTimingAndIdentityInvariants();
 testSentinelInvariants();
 testConnectedCheckpointContract();
+testPhysicalActionCheckpointTimeoutPolicy();
 testLostResumeHandleOrphanStateContract();
 testActiveAttemptExpiryClassification();
 testDetectorEffectTransitionsAndRecoveryOrder();

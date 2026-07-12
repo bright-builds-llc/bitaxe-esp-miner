@@ -144,6 +144,10 @@ monotonic_ms() {
 	perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC -e 'printf "%.0f\n", clock_gettime(CLOCK_MONOTONIC) * 1000'
 }
 
+lifecycle_lease_duration_ms() {
+	node --input-type=module -e 'const { PLAN13_LIFECYCLE_LEASE_DURATION_MS } = await import(process.argv[1]); process.stdout.write(`${PLAN13_LIFECYCLE_LEASE_DURATION_MS}\n`)' "$state_module"
+}
+
 current_head() {
 	if [[ -n "${PHASE28_TEST_HEAD:-}" ]]; then
 		printf '%s\n' "$PHASE28_TEST_HEAD"
@@ -1018,8 +1022,10 @@ run_validated_effect() {
 		owner_fingerprint="$(process_start_fingerprint "$child_pid")"
 		local attach_now
 		attach_now="$(monotonic_ms)"
+		local lease_duration_ms
+		lease_duration_ms="$(lifecycle_lease_duration_ms)"
 		local attach_args
-		attach_args="$(jq -cn --arg leaseId "$lifecycle_lease" --arg capabilitySha256 "$(sha256_text "$lifecycle_capability")" --argjson ownerPid "$child_pid" --arg ownerStartFingerprintSha256 "$owner_fingerprint" --argjson lifecycleDeadlineMs "$((attach_now + 1200000))" --argjson checkpointCreatedMonotonicMs "$attach_now" '{leaseId:$leaseId,capabilitySha256:$capabilitySha256,ownerPid:$ownerPid,ownerStartFingerprintSha256:$ownerStartFingerprintSha256,lifecycleDeadlineMs:$lifecycleDeadlineMs,checkpointCreatedMonotonicMs:$checkpointCreatedMonotonicMs}')"
+		attach_args="$(jq -cn --arg leaseId "$lifecycle_lease" --arg capabilitySha256 "$(sha256_text "$lifecycle_capability")" --argjson ownerPid "$child_pid" --arg ownerStartFingerprintSha256 "$owner_fingerprint" --argjson lifecycleDeadlineMs "$((attach_now + lease_duration_ms))" --argjson checkpointCreatedMonotonicMs "$attach_now" '{leaseId:$leaseId,capabilitySha256:$capabilitySha256,ownerPid:$ownerPid,ownerStartFingerprintSha256:$ownerStartFingerprintSha256,lifecycleDeadlineMs:$lifecycleDeadlineMs,checkpointCreatedMonotonicMs:$checkpointCreatedMonotonicMs}')"
 		persist_state_and_slot "$state_path" "$slot" "$(state_operation attach-lifecycle "$state_path" "$attach_args")"
 	fi
 	[[ "${PHASE28_CRASH_AT:-}" != "after_invoked_persistence" ]] || exit 97
