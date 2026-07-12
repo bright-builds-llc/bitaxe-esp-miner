@@ -14,6 +14,7 @@ readonly state_module="$repo_root/scripts/phase28.1.1-hardware-attempt-state.mjs
 readonly classifier_module="$repo_root/scripts/phase28.1.1-strict-production-evidence.mjs"
 readonly production_adapter="$repo_root/scripts/phase28.1.1-accepted-state-diagnostic.sh"
 readonly lifecycle_frame_helper="$repo_root/scripts/phase28.1.1-lifecycle-frame.pl"
+readonly transport_qualification_helper="$repo_root/scripts/ultra205-transport-qualification.sh"
 readonly max_handle_attempts=8
 lock_held=false
 active_effect_pid=""
@@ -56,7 +57,7 @@ die() {
 }
 
 usage() {
-	printf 'usage: %s begin-attempt|resolve-checkpoint|deliver-token|run-validated-effect|cleanup-active-attempt|cleanup-unique-orphan-attempt [options]\n' "$(basename "$0")"
+	printf 'usage: %s begin-attempt --hardware-exact-head HEAD --transport-qualification PATH | resolve-checkpoint|deliver-token|run-validated-effect|cleanup-active-attempt|cleanup-unique-orphan-attempt [options]\n' "$(basename "$0")"
 }
 
 ensure_private_root() {
@@ -145,6 +146,7 @@ monotonic_ms() {
 }
 
 lifecycle_lease_duration_ms() {
+	# shellcheck disable=SC2016 # The template literal is evaluated by Node, not Bash.
 	node --input-type=module -e 'const { PLAN13_LIFECYCLE_LEASE_DURATION_MS } = await import(process.argv[1]); process.stdout.write(`${PLAN13_LIFECYCLE_LEASE_DURATION_MS}\n`)' "$state_module"
 }
 
@@ -463,6 +465,7 @@ resolve_handle() {
 begin_attempt() {
 	local generation=1
 	local hardware_exact_head=""
+	local transport_qualification=""
 	while (($#)); do
 		case "$1" in
 		--hardware-exact-head)
@@ -473,14 +476,26 @@ begin_attempt() {
 			generation="${2:-}"
 			shift 2
 			;;
+		--transport-qualification)
+			transport_qualification="${2:-}"
+			shift 2
+			;;
 		*) die "unknown_argument" ;;
 		esac
 	done
 	[[ "$generation" =~ ^[0-9]+$ ]] || die "state_malformed"
 	[[ "$hardware_exact_head" =~ ^[0-9a-f]{40}$ ]] || die "exact_head_mismatch"
+	[[ -n "$transport_qualification" ]] || die "transport_qualification_missing"
 	ensure_private_root
 	require_clean_head
 	[[ "$(current_head)" == "$hardware_exact_head" ]] || die "exact_head_mismatch"
+	[[ -x "$transport_qualification_helper" ]] || die "transport_qualification_invalid"
+	local qualification_source_digest
+	local qualification_json
+	qualification_source_digest="$(shasum -a 256 "$transport_qualification" 2>/dev/null | awk '{print $1}')" || die "transport_qualification_invalid"
+	"$transport_qualification_helper" validate "$transport_qualification" "$hardware_exact_head" >/dev/null 2>&1 || die "transport_qualification_invalid"
+	qualification_json="$(jq -ce . "$transport_qualification" 2>/dev/null)" || die "transport_qualification_invalid"
+	[[ "$(shasum -a 256 "$transport_qualification" 2>/dev/null | awk '{print $1}')" == "$qualification_source_digest" ]] || die "transport_qualification_invalid"
 	acquire_lock
 	trap release_lock RETURN
 	local exact_head
@@ -513,6 +528,8 @@ begin_attempt() {
 	attempt_dir="$attempts_root/$attempt_id"
 	mkdir -m 700 "$attempt_dir"
 	atomic_write "$attempt_dir/state.json" "$state_json"
+	atomic_write "$attempt_dir/transport-qualification.json" "$qualification_json"
+	"$transport_qualification_helper" validate "$attempt_dir/transport-qualification.json" "$hardware_exact_head" >/dev/null 2>&1 || die "transport_qualification_invalid"
 	atomic_write "$slot" "$(jq -cn --arg digest "$digest" --arg dir "$attempt_dir" --arg attempt "$attempt_id" --arg boot "$boot_digest" --argjson generation "$generation" --argjson checkpoint_generation "$(jq -er '.checkpoint_generation' <<<"$state_json")" '{schema_version:"exact-head-resume-active-v1",status:"active",resume_handle_sha256:$digest,attempt_dir:$dir,attempt_id:$attempt,attempt_generation:$generation,checkpoint_generation:$checkpoint_generation,boot_session_sha256:$boot}')"
 	release_lock
 	trap - RETURN
@@ -1252,9 +1269,14 @@ cleanup_unique_orphan_attempt() {
 	local slot="$active_slot"
 	local attempt_dir
 	local state_path
+	local qualification_path
 	attempt_dir="$(jq -er '.attempt_dir' "$slot" 2>/dev/null)" || public_orphan_cleanup_failure "orphan_index_ambiguous" "one" "$tombstone_count_category"
 	state_path="$attempt_dir/state.json"
+	qualification_path="$attempt_dir/transport-qualification.json"
 	if ! validate_slot_state "$slot" "$state_path" 2>/dev/null || ! validate_state "$state_path" 2>/dev/null; then
+		public_orphan_cleanup_failure "orphan_state_ineligible" "one" "$tombstone_count_category"
+	fi
+	if ! "$transport_qualification_helper" validate "$qualification_path" "$expected_head" >/dev/null 2>&1; then
 		public_orphan_cleanup_failure "orphan_state_ineligible" "one" "$tombstone_count_category"
 	fi
 
@@ -1268,12 +1290,14 @@ cleanup_unique_orphan_attempt() {
 		public_orphan_cleanup_failure "orphan_index_ambiguous" "one" "$tombstone_count_category"
 	fi
 	local live_entry_count=0
-	local observed_live_entry=""
+	local observed_state=false
+	local observed_qualification=false
 	while IFS= read -r -d '' entry; do
 		live_entry_count=$((live_entry_count + 1))
-		observed_live_entry="$entry"
+		[[ "$entry" == "$state_path" ]] && observed_state=true
+		[[ "$entry" == "$qualification_path" ]] && observed_qualification=true
 	done < <(find "$attempt_dir" -mindepth 1 -maxdepth 1 -print0)
-	if ((live_entry_count != 1)) || [[ "$observed_live_entry" != "$state_path" || ! -f "$state_path" || -L "$state_path" ]]; then
+	if ((live_entry_count != 2)) || [[ "$observed_state" != "true" || "$observed_qualification" != "true" || ! -f "$state_path" || -L "$state_path" || ! -f "$qualification_path" || -L "$qualification_path" ]]; then
 		public_orphan_cleanup_failure "orphan_live_reference_present" "one" "$tombstone_count_category"
 	fi
 

@@ -77,11 +77,21 @@ phase28-fake-flash-capture)
 phase28-fake-monitor)
 	printf '%s\n' "$@" >"${PHASE28_FAKE_MONITOR_ARGS:?}"
 	output_log=""
+	raw_log=""
+	reader=""
 	saw_no_reset="false"
 	while (($#)); do
 		case "$1" in
 		--out)
 			output_log="$2"
+			shift 2
+			;;
+		--raw-out)
+			raw_log="$2"
+			shift 2
+			;;
+		--reader)
+			reader="$2"
 			shift 2
 			;;
 		--no-reset)
@@ -91,17 +101,18 @@ phase28-fake-monitor)
 		*) shift ;;
 		esac
 	done
-	[[ "$saw_no_reset" == "true" && -n "$output_log" ]]
-	emit_complete_accepted_state_log >"$output_log"
+	[[ "$saw_no_reset" == "true" && -n "$output_log" && -n "$raw_log" && -n "$reader" ]]
+	printf 'fixture_wrapper_reader=%s\n' "$reader" >"$output_log"
+	emit_complete_accepted_state_log >"$raw_log"
 	if [[ -n "${PHASE13_MONITOR_ACTIVE_READY_FILE:-}" ]]; then
 		printf '1\n' >"$PHASE13_MONITOR_ACTIVE_READY_FILE"
 		chmod 600 "$PHASE13_MONITOR_ACTIVE_READY_FILE"
 	fi
 	if [[ "${PHASE28_FAKE_MONITOR_MODE:-complete}" == "duplicate" ]]; then
-		printf 'accepted_state_snapshot stage=post_enumerate observation=available chip_count_class=match readable_responses=1 error_counter_active=false domain_counter_active=false total_counter_active=true power_delta_class=flat result_correlated=false submit_observed=false redacted=true\n' >>"$output_log"
+		printf 'accepted_state_snapshot stage=post_enumerate observation=available chip_count_class=match readable_responses=1 error_counter_active=false domain_counter_active=false total_counter_active=true power_delta_class=flat result_correlated=false submit_observed=false redacted=true\n' >>"$raw_log"
 	fi
 	if [[ "${PHASE28_FAKE_MONITOR_MODE:-complete}" == "hazard" ]]; then
-		printf 'Guru Meditation Error: stack overflow\n' >>"$output_log"
+		printf 'Guru Meditation Error: stack overflow\n' >>"$raw_log"
 	fi
 	if [[ "${PHASE28_FAKE_MONITOR_MODE:-complete}" == "detached-descendant" ]]; then
 		perl -MPOSIX=setsid -e '
@@ -256,6 +267,13 @@ runner="$repo_root/scripts/phase28.1.1-exact-head-hardware-attempt.sh"
 prevalidated_root="$temp_root/plan13-control"
 prevalidated_trace="$temp_root/plan13-prevalidated.trace"
 : >"$prevalidated_trace"
+transport_qualification="$temp_root/transport-qualification.json"
+transport_contract_digest="$(bash "$repo_root/scripts/ultra205-transport-qualification.sh" contract-digest)"
+jq -cn \
+	--arg head "$source_commit" \
+	--arg contract "$transport_contract_digest" \
+	'{schema_version:"ultra205-transport-qualification-v2",tool_head:$head,expected_firmware_head:"e622253d2fc4aea4589e0dcf5524081b6b054aaf",classification_category:"os_native_cold_delivers",preflight_espflash_heartbeat_count:0,preflight_os_native_heartbeat_count:3,cold_os_native_heartbeat_count:3,identity_stable:true,new_enumeration_epoch:true,soak_complete:true,cleanup_complete:true,diagnostic_contract_digest_sha256:$contract,trace_digest_sha256:("f"*64)}' >"$transport_qualification"
+chmod 600 "$transport_qualification"
 
 expect_failure env PHASE28_ACCEPTED_STATE_CALL_TRACE="$prevalidated_trace" bash "$script" --mode plan13-prevalidated --effect-id detector_board_info
 [[ ! -s "$prevalidated_trace" ]] || fail "direct plan13-prevalidated entry reached an effect sentinel"
@@ -265,7 +283,7 @@ prevalidated_begin="$(env \
 	PHASE28_ATTEMPT_CONTROL_ROOT="$prevalidated_root" \
 	PHASE28_ALLOW_DIRTY_TEST=1 \
 	PHASE28_TEST_HEAD="$source_commit" \
-	bash "$runner" begin-attempt --hardware-exact-head "$source_commit")"
+	bash "$runner" begin-attempt --hardware-exact-head "$source_commit" --transport-qualification "$transport_qualification")"
 prevalidated_handle="$(sed -n 's/^resume_handle=//p' <<<"$prevalidated_begin")"
 [[ "$prevalidated_handle" =~ ^[0-9a-f]{64}$ ]] || fail "prevalidated runner did not return an opaque handle"
 env \
@@ -293,6 +311,50 @@ rg -q '^plan13-prevalidated:detector_board_info$' "$prevalidated_trace"
 if rg -q "$prevalidated_root|$test_port|credential|capability|resume_handle_sha256|boot_session|raw.log" "$prevalidated_stdout" "$prevalidated_stderr" "$prevalidated_trace"; then
 	fail "prevalidated adapter exposed private runner state"
 fi
+
+prevalidated_slot="$prevalidated_root/resume-index/$(printf '%s' "$prevalidated_handle" | shasum -a 256 | awk '{print $1}').json"
+prevalidated_attempt_dir="$(jq -er '.attempt_dir' "$prevalidated_slot")"
+prevalidated_state="$prevalidated_attempt_dir/state.json"
+jq --arg head "$source_commit" '
+  .attempt_state="reinit_validated" |
+  .checkpoint_id=null |
+  .checkpoint_token=null |
+  .expected_response_token=null |
+  .expected_user_action=null |
+  .monotonic_deadline_ms=null |
+  .reference_guard_state="pass" |
+  .reference_commit=("2"*40) |
+  .reference_guard_output_sha256=("a"*64) |
+  .selected_port_state="one_board205" |
+  .selected_port_fingerprint_sha256=("a"*64) |
+  .manifest_state="pass" |
+  .manifest_source_commit=$head |
+  .manifest_sha256=("a"*64) |
+  .factory_image_sha256=("a"*64) |
+  .reinit_capture_started_ms=10 |
+  .reinit_capture_ended_ms=360010 |
+  .reinit_capture_duration_ms=360000 |
+  .reinit_capture_category="complete_360s" |
+  .reinit_raw_log_sha256=("a"*64) |
+  .reinit_classifier_input_sha256=("a"*64) |
+  .reinit_five_stage_result="pass"
+' "$prevalidated_state" >"$prevalidated_state.next"
+mv "$prevalidated_state.next" "$prevalidated_state"
+chmod 600 "$prevalidated_state"
+jq '.cleanup_complete=false' "$prevalidated_attempt_dir/transport-qualification.json" >"$prevalidated_attempt_dir/transport-qualification.next"
+mv "$prevalidated_attempt_dir/transport-qualification.next" "$prevalidated_attempt_dir/transport-qualification.json"
+chmod 600 "$prevalidated_attempt_dir/transport-qualification.json"
+before_qualification_failure_trace_count="$(wc -l <"$prevalidated_trace" | tr -d ' ')"
+qualification_failure_output="$(env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$prevalidated_root" \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$source_commit" \
+	PHASE28_ADAPTER_TEST_MODE=1 \
+	PHASE28_ACCEPTED_STATE_CALL_TRACE="$prevalidated_trace" \
+	bash "$runner" run-validated-effect --resume-handle "$prevalidated_handle" --effect-id lifecycle_start)"
+rg -q '^terminal_outcome=blocked_safe_evidence_invalid$' <<<"$qualification_failure_output" || fail "invalid transport qualification did not fail the Plan 13 lifecycle closed"
+[[ "$(wc -l <"$prevalidated_trace" | tr -d ' ')" == "$((before_qualification_failure_trace_count + 1))" ]] || fail "qualification failure crossed another effect sentinel"
+rg -q '^plan13-prevalidated:lifecycle_start$' "$prevalidated_trace" || fail "qualification failure did not reach the authorized lifecycle adapter"
 
 run_adapter_boot_fixture() {
 	local fixture_name="$1"
@@ -361,6 +423,11 @@ prevalidated_lifecycle_source="$(sed -n '/^run_prevalidated_lifecycle()/,/^}/p' 
 if rg -q 'capability_file|wifi_credentials|pool_credentials|run_flash_capture|run_package|run_verify_reference' <<<"$prevalidated_lifecycle_source"; then
 	fail "prevalidated lifecycle exposes credentials or duplicate preflight"
 fi
+rg -q 'validate_transport_qualification' <<<"$prevalidated_lifecycle_source" || fail "prevalidated lifecycle omits transport qualification"
+qualification_line="$(rg -n 'validate_transport_qualification' <<<"$prevalidated_lifecycle_source" | head -1 | cut -d: -f1)"
+port_line="$(rg -n 'port=.*selected_port_file' <<<"$prevalidated_lifecycle_source" | head -1 | cut -d: -f1)"
+[[ -n "$qualification_line" && -n "$port_line" && "$qualification_line" -lt "$port_line" ]] || fail "prevalidated lifecycle crosses the serial boundary before qualification"
+rg -q 'run_monitored_capture .* os-native' <<<"$prevalidated_lifecycle_source" || fail "prevalidated lifecycle does not explicitly select OS-native capture"
 rg -q 'capability="\$\(validate_credential_capability "\$capability_path"\)"' "$script" || fail "flash reinit does not validate the private credential capability"
 credential_validator_source="$(sed -n '/^validate_credential_capability()/,/^}/p' "$script")"
 for required_check in 'is_private_owned_file' 'exact-head-attempt-v3' 'execution_plan' 'credential_capability_status' 'credential_capability_sha256' 'wifi_credential_state' 'pool_credential_state' 'wifi_credential_binding_id' 'pool_credential_binding_id'; do
@@ -571,6 +638,9 @@ rg -q '^hardware$' "$capture_args"
 rg -q '^--duration-seconds$' "$capture_args"
 rg -q '^360$' "$capture_args"
 rg -q '^--redact-evidence=true$' "$capture_args"
+if rg -q '^--reader$|^--raw-out$' "$capture_args"; then
+	fail "reinit flash capture unexpectedly adopted the retained cold-start reader contract"
+fi
 rg -q '^board: 205$' "$temp_root/hardware.md"
 rg -q '^manifest_source_commit_match: true$' "$temp_root/hardware.md"
 rg -q '^recommended_investigation: none$' "$temp_root/hardware.md"
@@ -678,6 +748,15 @@ rg -q '^accepted_state_diagnostic_status=complete$' "$success_root/stdout"
 rg -q '^lifecycle_status: match$' "$success_root/evidence.md"
 rg -q '^reinit_stage_count: 5$' "$success_root/evidence.md"
 rg -q '^cold_start_stage_count: 5$' "$success_root/evidence.md"
+[[ "$(awk '/^--reader$/{getline; print; exit}' "$success_root/monitor.args")" == "os-native" ]] || fail "retained cold capture did not select the OS-native reader"
+cold_raw_path="$(awk '/^--raw-out$/{getline; print; exit}' "$success_root/monitor.args")"
+wrapper_path="$(awk '/^--out$/{getline; print; exit}' "$success_root/monitor.args")"
+[[ -n "$cold_raw_path" && -n "$wrapper_path" && "$cold_raw_path" != "$wrapper_path" ]] || fail "retained cold capture did not separate application and wrapper streams"
+rg -q '^runtime_heartbeat ' "$cold_raw_path" || fail "application stream omitted firmware heartbeats"
+rg -q '^fixture_wrapper_reader=os-native$' "$wrapper_path" || fail "wrapper stream omitted reader diagnostics"
+if rg -q '^runtime_heartbeat ' "$wrapper_path"; then
+	fail "wrapper stream contains application heartbeats"
+fi
 rg -q '^cold_start_marker_count: 6$' "$success_root/evidence.md"
 rg -q '^cold_start_flash_performed: false$' "$success_root/evidence.md"
 rg -q '^cold_start_reset_performed: false$' "$success_root/evidence.md"

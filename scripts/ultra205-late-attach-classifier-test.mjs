@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 import {
   classifyLateAttachStreams,
+  qualifyOsNativeColdStream,
   validateConnectedPreflight,
 } from "./ultra205-late-attach-classifier.mjs";
 
@@ -34,6 +35,25 @@ function classify(pattern) {
   // Assert
   assert.equal(result.passed, true);
   assert.equal(result.sameSession, true);
+}
+
+{
+  // Arrange
+  const osNative = [
+    "bitaxe-rust boot",
+    heartbeat(1, 130_000),
+    "ordinary firmware diagnostic",
+    heartbeat(2, 140_000),
+    heartbeat(3, 150_000),
+  ].join("\n");
+
+  // Act
+  const result = validateConnectedPreflight("", osNative);
+
+  // Assert
+  assert.equal(result.passed, true);
+  assert.equal(result.espflashHeartbeatCount, 0);
+  assert.equal(result.osNativeListenerArmed, true);
 }
 
 for (const [pattern, expected] of [
@@ -98,6 +118,43 @@ for (const [pattern, expected] of [
 
   // Assert
   assert.equal(result.passed, false);
+}
+
+{
+  // Arrange
+  const cold = [
+    "I (130000) bitaxe: ordinary application log",
+    heartbeat(10, 130_000),
+    "accepted_state_snapshot stage=listener_armed redacted=true",
+    heartbeat(11, 140_000),
+    heartbeat(12, 150_000),
+  ].join("\n");
+
+  // Act
+  const result = qualifyOsNativeColdStream(cold);
+
+  // Assert
+  assert.equal(result.category, "os_native_cold_delivers");
+  assert.equal(result.heartbeat_count, 3);
+  assert.equal(result.listener_armed, true);
+}
+
+for (const [name, cold] of [
+  ["too-few", `${heartbeat(10, 130_000)}\n${heartbeat(11, 140_000)}`],
+  [
+    "regression",
+    `${heartbeat(11, 140_000)}\n${heartbeat(10, 130_000)}\n${heartbeat(12, 150_000)}`,
+  ],
+  [
+    "malformed-heartbeat",
+    `${heartbeat(10, 130_000)}\nruntime_heartbeat malformed\n${heartbeat(11, 140_000)}\n${heartbeat(12, 150_000)}`,
+  ],
+]) {
+  // Arrange / Act
+  const result = qualifyOsNativeColdStream(cold);
+
+  // Assert
+  assert.equal(result.category, "cold_heartbeat_invalid", name);
 }
 
 console.log("ultra205_late_attach_classifier_test passed");

@@ -2,15 +2,15 @@
 status: investigating
 trigger: "Plan 13 passed physical lifecycle, USB ownership, passive capture, and cleanup, but the retained cold-start log contained no boot or listener markers."
 created: 2026-07-12T04:00:00Z
-updated: 2026-07-12T15:01:04Z
+updated: 2026-07-12T16:56:36Z
 ---
 
 ## Current Focus
 
-hypothesis: The passive `espflash` reader is now implicated below the cold-start evidence parser: it delivered zero bytes during the connected preflight while the immediately following read-only OS-native reader delivered valid heartbeats from the installed boot session. Native-USB late attachment remains unclassified because the required two-reader preflight stopped before power removal.
-test: Preserve the one-shot preflight result and cleanup state without retrying. Use a new software plan to decide whether formal cold capture should replace `espflash` with the OS-native reader or whether an independent transport is still required.
-expecting: A follow-up design treats OS-native byte delivery as positive transport evidence but does not overclaim the unexecuted cold A-B-A classification or the unavailable terminal USB identity.
-next_action: Do not rerun hardware or Plan 13. Plan the smallest evidence-seam change from the connected preflight asymmetry and the terminal node disappearance, then commit and push new authority before any separately approved hardware use.
+hypothesis: The formal passive reader is the leading defect because `espflash` delivered no connected-preflight bytes while the immediately following read-only OS-native reader delivered valid heartbeats. OS-native cold delivery still requires one true both-power qualification before it may become formal Plan 13 evidence authority.
+test: Software-verify schema-v2 qualification: observational `espflash`, mandatory OS-native preflight, owner-observed post-action removal, response-free restore watcher, OS-native as the first and only cold reader, 30-second cleanup soak, and an exact-head private qualification consumed by a fresh Plan 13 attempt.
+expecting: Software tests prove the authority fails closed on unobserved removal, stale or mismatched qualification, reader/session/cadence faults, identity instability, holders, and cleanup. Hardware remains unclaimed until the new clean pushed tool HEAD runs exactly once.
+next_action: Complete focused and canonical software verification, review the exact-head authority and simplification diff, then let the coordinating agent commit and push before the one planned recovery and qualification.
 
 ## Symptoms
 
@@ -47,6 +47,8 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
 - Plan whether OS-native should become the formal passive cold reader, with a gate that does not require a reader already proven silent, while retaining exact-node ownership and no-write guarantees.
 - Decide whether native USB can satisfy formal cold-start evidence at all; otherwise define the external UART or alternate-channel boundary explicitly.
 - Do not run another Plan 13 hardware chain until the transport classification selects the correct reader or proves an alternate evidence channel is required.
+- Commit and push the schema-v2 OS-native qualification and qualified Plan 13 reader authority on one clean exact HEAD.
+- Run exactly one owner-observed both-power cold qualification; continue to one fresh Plan 13 chain only if its private mode-0600 exact-head qualification passes.
 
 ## Software Verification
 
@@ -70,6 +72,14 @@ smallest_correct_seam: Add a no-reset transport A/B with positive byte-delivery 
   checked: native-USB late-attach A-B-A software authority
   found: The backward-compatible monitor wrapper, standalone OS-native reader, pure seven-category classifier, and resumable begin/deliver broker pass direct tests and forced-uncached Bazel coverage for stream separation, real Unix-socket framing, owner fingerprints, permissions, token/lease/stale handling, response-free watcher arming, all classification patterns, identity/epoch/holder/probe/node failures, worker cleanup, and forbidden-operation guards. Adjacent serial-session and accepted-state suites also pass. No detector, board-info, monitor, credential, network, flash, reset, or hardware command was used during software verification.
   implication: The diagnostic is ready for root-owned final verification, commit, and push. No hardware classification is claimed yet.
+- timestamp: 2026-07-12T16:16:25Z
+  checked: schema-v2 OS-native diagnostic implementation and first focused tests
+  found: The public adapter is thin; broker/state and lifecycle ownership are split. Pure classifier tests and the real-process diagnostic regression pass for an empty observational `espflash` control, mandatory OS-native preflight, action-before-removal ordering, early-token rejection, non-advancing status, response-free restoration, OS-native-only cold qualification, private permissions, v1 tombstone compatibility, and terminal cleanup.
+  implication: The repaired transport authority is software-only and still needs the adjacent formal Plan 13 integration tests, forced-uncached Bazel gates, canonical verification, clean commit, and push before hardware use.
+- timestamp: 2026-07-12T16:56:36Z
+  checked: complete OS-native qualification and formal Plan 13 software authority
+  found: Ten consecutive real-process qualification runs pass after closing receiver-publication and sourced-scope cleanup races. Direct monitor, trace, classifier, accepted-state, and exhaustive 84-case exact-head suites pass. Forced-uncached affected Bazel targets, shell/Perl/Node syntax, `shfmt`, warning-level `shellcheck`, reference/protected-artifact gates, and the mandatory Rust format/Clippy/build/test sequence pass. The private qualification is symlink-rejecting, owner/mode controlled, exact firmware/tool-head bound, contract-digested, and revalidated before formal cold serial capture.
+  implication: Software implementation is complete and ready for root-owned review, commit, and push. Hardware qualification, Plan 13 closure, and any parity promotion remain deliberately unclaimed.
 
 ## Hardware Verification
 

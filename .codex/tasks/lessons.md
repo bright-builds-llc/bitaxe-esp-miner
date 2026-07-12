@@ -60,3 +60,10 @@
 2. What went wrong: An always-on boot-lifetime heartbeat passed strict reflash/reinit capture, but the retained both-power cold-start capture was still exactly empty after successful native-USB appearance, stable passive ownership, and a full bounded session. Moving evidence production earlier and making it service-independent did not restore byte delivery through a late-attached USB Serial/JTAG transport.
 3. Preventive rule: Treat node appearance, serial ownership, firmware evidence production, and observed byte delivery as four separate boundaries. A heartbeat can measure boot age only after the transport proves it carries application bytes; it cannot substitute for that transport proof.
 4. Trigger signal to catch it earlier: Reflash capture contains periodic application heartbeats, but an exact-node late-attach capture has zero bytes despite stable identity, expected ownership, and complete cleanup.
+
+## lesson-manual-removal-needs-owner-observation | 2026-07-12 11:16
+
+1. Date: 2026-07-12
+2. What went wrong: A lifecycle accepted the operator's power-removal token before a persistent exact-node owner was watching for disappearance, so the token could attest intent while the transport transition itself remained unobserved.
+3. Preventive rule: Start the lifecycle owner and exact-node removal watcher before publishing the removal action. Accept a manual response only after that owner records node disappearance after action publication, then require the complete bounded absence interval.
+4. Trigger signal to catch it earlier: A hardware continuation starts its watcher inside `deliver`, or a token can advance state while the selected node is still present or has no owner-recorded disappearance timestamp.

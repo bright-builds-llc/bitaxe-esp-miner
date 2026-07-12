@@ -6,6 +6,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=/dev/null
 source "$repo_root/scripts/process-group.sh"
 readonly lifecycle_frame_helper="${PHASE28_LIFECYCLE_FRAME_HELPER:-$repo_root/scripts/phase28.1.1-lifecycle-frame.pl}"
+readonly transport_qualification_helper="$repo_root/scripts/ultra205-transport-qualification.sh"
 mode=""
 effect_id=""
 attempt=""
@@ -365,15 +366,18 @@ classify_monitor_failure() {
 }
 
 run_monitored_capture() {
-	local output_log="$1"
+	local application_log="$1"
 	local wrapper_log="$2"
 	local appearance_ms="${3:-}"
+	local reader="${4:-espflash}"
 	local child_status
 	local group_start_status
 	local active_ready_file="$run_dir/monitor-active.ready"
 	local -a args=(
 		--port "$port"
-		--out "$output_log"
+		--out "$wrapper_log"
+		--raw-out "$application_log"
+		--reader "$reader"
 		--seconds "$duration_seconds"
 		--no-reset
 	)
@@ -388,9 +392,9 @@ run_monitored_capture() {
 		monitor_command=(env PHASE13_MONITOR_GROUP_STATE_FILE="$active_descendant_group_file" PHASE13_MONITOR_ACTIVE_READY_FILE="$active_ready_file" SERIAL_SESSION_TRACE_ROOT="$trace_root" bash scripts/phase13-monitor-capture.sh "${args[@]}")
 	fi
 
-	trace_event "monitor-no-reset"
+	trace_event "monitor-no-reset:${reader}"
 	set +e
-	phase_process_group_start "$run_dir/monitor-process-group.ready" "${monitor_command[@]}" >"$wrapper_log" 2>&1
+	phase_process_group_start "$run_dir/monitor-process-group.ready" "${monitor_command[@]}" >/dev/null 2>>"$wrapper_log"
 	group_start_status=$?
 	set -e
 	if ((group_start_status != 0)); then
@@ -405,7 +409,7 @@ run_monitored_capture() {
 		local attachment_deadline_ms=$((appearance_ms + monitor_attachment_timeout_ms))
 		while [[ ! -f "$active_ready_file" ]]; do
 			if ! process_is_running_non_zombie "$active_child_pid"; then
-				monitor_failure_category="$(classify_monitor_failure "$output_log" "$wrapper_log")"
+				monitor_failure_category="$(classify_monitor_failure "$application_log" "$wrapper_log")"
 				cleanup_active_child || monitor_failure_category="lifecycle_cleanup_failed"
 				return 1
 			fi
@@ -439,7 +443,7 @@ run_monitored_capture() {
 		return 1
 	fi
 	if ((child_status != 0)); then
-		monitor_failure_category="$(classify_monitor_failure "$output_log" "$wrapper_log")"
+		monitor_failure_category="$(classify_monitor_failure "$application_log" "$wrapper_log")"
 		return 1
 	fi
 }
@@ -774,6 +778,17 @@ reinit_log_path_file() {
 	printf '%s/reinit-log.path\n' "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
 }
 
+transport_qualification_file() {
+	printf '%s/transport-qualification.json\n' "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}"
+}
+
+validate_transport_qualification() {
+	local qualification_path
+	qualification_path="$(transport_qualification_file)"
+	[[ -x "$transport_qualification_helper" ]] || return 1
+	"$transport_qualification_helper" validate "$qualification_path" "$(current_source_commit)" >/dev/null 2>&1
+}
+
 read_private_line() {
 	local path="$1"
 	[[ -f "$path" && "$(mode_of_path "$path")" == "600" ]] || die "plan13 private capability is unavailable"
@@ -1073,6 +1088,10 @@ lifecycle_transition() {
 }
 
 run_prevalidated_lifecycle() {
+	if ! validate_transport_qualification; then
+		write_effect_result failed private_capability_invalid '{}'
+		return 1
+	fi
 	port="$(read_private_line "$(selected_port_file)")"
 	manifest="$(read_private_line "$(manifest_path_file)")"
 	reinit_log="$(read_private_line "$(reinit_log_path_file)")"
@@ -1118,7 +1137,7 @@ run_prevalidated_lifecycle() {
 
 	local cold_start_raw_log="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/cold-start-monitor.raw.log"
 	monitor_failure_category=""
-	if ! run_monitored_capture "$cold_start_raw_log" "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/monitor-wrapper.raw.log" "$appearance_ms"; then
+	if ! run_monitored_capture "$cold_start_raw_log" "${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/monitor-wrapper.raw.log" "$appearance_ms" os-native; then
 		write_effect_result failed "${monitor_failure_category:-monitor_attachment_failed}" '{}'
 		return 1
 	fi
@@ -1338,7 +1357,7 @@ next_replay_after_monitor_ms=$((monitor_start_elapsed_ms + replay_interval_ms))
 ((latest_safe_replay_ms < replay_window_ms)) || die "latest safe replay does not precede 1880000 ms expiry"
 ((next_replay_after_monitor_ms < replay_window_ms)) || die "monitor startup left no replay before 1880000 ms expiry"
 
-run_monitored_capture "$cold_start_raw_log" "$run_dir/monitor-wrapper.raw.log"
+run_monitored_capture "$cold_start_raw_log" "$run_dir/monitor-wrapper.raw.log" "" os-native
 trace_event "capture-complete"
 
 verify_stable_runtime "$cold_start_raw_log" "cold-start"

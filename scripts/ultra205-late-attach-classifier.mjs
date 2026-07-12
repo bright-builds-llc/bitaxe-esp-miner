@@ -100,25 +100,57 @@ function validateOrderedHeartbeats(streams) {
     sameSession: sessions.size <= 1,
     monotonic,
     cadenceValid: heartbeats.every(({ cadenceValid }) => cadenceValid),
+    listenerArmed: heartbeats.some(({ listenerArmed }) => listenerArmed),
   };
 }
 
 export function validateConnectedPreflight(espflashText, osNativeText) {
   const espflash = parseHeartbeatStream(espflashText);
   const osNative = parseHeartbeatStream(osNativeText);
-  const ordered = validateOrderedHeartbeats([espflash, osNative]);
+  const osOrdered = validateOrderedHeartbeats([osNative]);
+  const observed = validateOrderedHeartbeats([espflash, osNative]);
+  const espflashValidWhenPresent =
+    espflash.heartbeats.length === 0 ||
+    (!espflash.malformed && observed.sameSession);
   return {
     passed:
-      espflash.heartbeats.length > 0 &&
       osNative.heartbeats.length > 0 &&
-      !espflash.malformed &&
       !osNative.malformed &&
-      ordered.sameSession &&
-      ordered.monotonic &&
-      ordered.cadenceValid,
+      osOrdered.sameSession &&
+      osOrdered.monotonic &&
+      osOrdered.cadenceValid &&
+      osOrdered.listenerArmed &&
+      espflashValidWhenPresent,
     espflashHeartbeatCount: espflash.heartbeats.length,
     osNativeHeartbeatCount: osNative.heartbeats.length,
-    sameSession: ordered.sameSession,
+    sameSession: observed.sameSession,
+    osNativeMonotonic: osOrdered.monotonic,
+    osNativeCadenceValid: osOrdered.cadenceValid,
+    osNativeListenerArmed: osOrdered.listenerArmed,
+  };
+}
+
+export function qualifyOsNativeColdStream(osNativeText) {
+  const stream = parseHeartbeatStream(osNativeText);
+  const ordered = validateOrderedHeartbeats([stream]);
+  return {
+    schema_version: "ultra205-os-native-cold-qualification-v2",
+    category:
+      stream.heartbeats.length >= 3 &&
+      !stream.malformed &&
+      ordered.sameSession &&
+      ordered.monotonic &&
+      ordered.cadenceValid &&
+      ordered.listenerArmed
+        ? "os_native_cold_delivers"
+        : "cold_heartbeat_invalid",
+    heartbeat_count: stream.heartbeats.length,
+    same_session: ordered.sameSession,
+    monotonic: ordered.monotonic,
+    cadence_valid: ordered.cadenceValid,
+    listener_armed: ordered.listenerArmed,
+    malformed: stream.malformed,
+    unexpected_non_heartbeat_line_count: stream.unexpectedLineCount,
   };
 }
 
@@ -188,8 +220,15 @@ function main() {
     process.stdout.write(`${JSON.stringify(result)}\n`);
     return;
   }
+  if (command === "qualify-os-native" && process.argv.length === 4) {
+    const result = qualifyOsNativeColdStream(
+      fs.readFileSync(process.argv[3], "utf8"),
+    );
+    process.stdout.write(`${JSON.stringify(result)}\n`);
+    process.exit(result.category === "os_native_cold_delivers" ? 0 : 1);
+  }
   throw new Error(
-    "usage: ultra205-late-attach-classifier.mjs preflight ESP OS | classify ESP1 OS ESP2",
+    "usage: ultra205-late-attach-classifier.mjs preflight ESP OS | classify ESP1 OS ESP2 | qualify-os-native OS",
   );
 }
 

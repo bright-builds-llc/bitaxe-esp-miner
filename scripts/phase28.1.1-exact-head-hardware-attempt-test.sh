@@ -157,6 +157,13 @@ control_root="$temp_root/control"
 adapter_dir="$temp_root/adapters"
 mkdir -p "$adapter_dir"
 test_head="1111111111111111111111111111111111111111"
+transport_qualification="$temp_root/transport-qualification.json"
+transport_contract_digest="$(bash "$repo_root/scripts/ultra205-transport-qualification.sh" contract-digest)"
+jq -cn \
+	--arg head "$test_head" \
+	--arg contract "$transport_contract_digest" \
+	'{schema_version:"ultra205-transport-qualification-v2",tool_head:$head,expected_firmware_head:"e622253d2fc4aea4589e0dcf5524081b6b054aaf",classification_category:"os_native_cold_delivers",preflight_espflash_heartbeat_count:0,preflight_os_native_heartbeat_count:3,cold_os_native_heartbeat_count:3,identity_stable:true,new_enumeration_epoch:true,soak_complete:true,cleanup_complete:true,diagnostic_contract_digest_sha256:$contract,trace_digest_sha256:("f"*64)}' >"$transport_qualification"
+chmod 600 "$transport_qualification"
 
 effects=(
 	detector_board_info
@@ -238,7 +245,7 @@ begin_attempt() {
 			PHASE28_ALLOW_DIRTY_TEST=1 \
 			PHASE28_TEST_HEAD="$test_head" \
 			PHASE28_TEST_INITIAL_ATTEMPT_STATE="$initial_state" \
-			bash "$runner" begin-attempt --hardware-exact-head "$test_head"
+			bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$transport_qualification"
 		return
 	fi
 	env \
@@ -246,7 +253,7 @@ begin_attempt() {
 		PHASE28_TEST_MODE=1 \
 		PHASE28_ALLOW_DIRTY_TEST=1 \
 		PHASE28_TEST_HEAD="$test_head" \
-		bash "$runner" begin-attempt --hardware-exact-head "$test_head"
+		bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$transport_qualification"
 }
 
 slot_for_handle() {
@@ -431,6 +438,56 @@ wait_for_pattern() {
 	fail "timed out waiting for $pattern"
 }
 
+expect_failure transport_qualification_missing env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+	PHASE28_TEST_MODE=1 \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$test_head" \
+	bash "$runner" begin-attempt --hardware-exact-head "$test_head"
+
+invalid_qualification="$temp_root/transport-qualification-invalid.json"
+cp "$transport_qualification" "$invalid_qualification"
+chmod 644 "$invalid_qualification"
+expect_failure transport_qualification_invalid env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+	PHASE28_TEST_MODE=1 \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$test_head" \
+	bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$invalid_qualification"
+chmod 600 "$invalid_qualification"
+symlink_qualification="$temp_root/transport-qualification-symlink.json"
+ln -s "$transport_qualification" "$symlink_qualification"
+expect_failure transport_qualification_invalid env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+	PHASE28_TEST_MODE=1 \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$test_head" \
+	bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$symlink_qualification"
+jq '.tool_head=("2"*40)' "$transport_qualification" >"$invalid_qualification"
+chmod 600 "$invalid_qualification"
+expect_failure transport_qualification_invalid env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+	PHASE28_TEST_MODE=1 \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$test_head" \
+	bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$invalid_qualification"
+jq '.cleanup_complete=false' "$transport_qualification" >"$invalid_qualification"
+chmod 600 "$invalid_qualification"
+expect_failure transport_qualification_invalid env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+	PHASE28_TEST_MODE=1 \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$test_head" \
+	bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$invalid_qualification"
+jq '.diagnostic_contract_digest_sha256=("0"*64)' "$transport_qualification" >"$invalid_qualification"
+chmod 600 "$invalid_qualification"
+expect_failure transport_qualification_invalid env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+	PHASE28_TEST_MODE=1 \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$test_head" \
+	bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$invalid_qualification"
+
 first_output="$(begin_attempt)"
 first_handle="$(sed -n 's/^resume_handle=//p' <<<"$first_output")"
 [[ "$first_handle" =~ ^[0-9a-f]{64}$ ]] || fail "begin-attempt did not return one opaque handle"
@@ -450,6 +507,8 @@ first_slot="$control_root/resume-index/$(printf '%s' "$first_handle" | shasum -a
 attempt_dir="$(jq -er '.attempt_dir' "$first_slot")"
 [[ "$(mode_of "$attempt_dir")" == "700" ]]
 [[ "$(mode_of "$attempt_dir/state.json")" == "600" ]]
+[[ "$(mode_of "$attempt_dir/transport-qualification.json")" == "600" ]]
+jq -e '.classification_category == "os_native_cold_delivers" and .cleanup_complete == true' "$attempt_dir/transport-qualification.json" >/dev/null
 
 resolve_output="$(env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" bash "$runner" resolve-checkpoint --resume-handle "$first_handle")"
 rg -q '^checkpoint_id=plan13-connected-entry$' <<<"$resolve_output"

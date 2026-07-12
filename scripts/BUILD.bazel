@@ -40,7 +40,10 @@ sh_binary(
         "phase28.1.1-lifecycle-frame.pl",
         "process-group.sh",
         "serial-session-trace.sh",
+        "ultra205-late-attach-broker.sh",
         "ultra205-late-attach-classifier.mjs",
+        "ultra205-late-attach-worker.sh",
+        "ultra205-transport-qualification.sh",
     ],
 )
 
@@ -240,7 +243,10 @@ sh_test(
         "phase28.1.1-lifecycle-frame.pl",
         "process-group.sh",
         "serial-session-trace.sh",
+        "ultra205-late-attach-broker.sh",
         "ultra205-late-attach-classifier.mjs",
+        "ultra205-late-attach-worker.sh",
+        "ultra205-transport-qualification.sh",
     ],
     env_inherit = [
         "HOME",
@@ -551,11 +557,18 @@ sh_binary(
     name = "phase28_1_1_exact_head_hardware_attempt",
     srcs = ["phase28.1.1-exact-head-hardware-attempt.sh"],
     data = [
+        "diagnose-ultra205-late-attach.sh",
+        "phase13-monitor-capture.sh",
+        "phase13-os-native-reader.pl",
         "phase28.1.1-accepted-state-diagnostic.sh",
         "phase28.1.1-hardware-attempt-state.mjs",
         "phase28.1.1-lifecycle-frame.pl",
         "phase28.1.1-strict-production-evidence.mjs",
         "process-group.sh",
+        "ultra205-late-attach-broker.sh",
+        "ultra205-late-attach-classifier.mjs",
+        "ultra205-late-attach-worker.sh",
+        "ultra205-transport-qualification.sh",
     ],
 )
 
@@ -563,11 +576,19 @@ sh_test(
     name = "phase28_1_1_exact_head_hardware_attempt_test",
     srcs = ["phase28.1.1-exact-head-hardware-attempt-test.sh"],
     data = [
+        "phase28.1.1-accepted-state-diagnostic.sh",
         "phase28.1.1-exact-head-hardware-attempt.sh",
         "phase28.1.1-hardware-attempt-state.mjs",
         "phase28.1.1-lifecycle-frame.pl",
         "phase28.1.1-strict-production-evidence.mjs",
         "process-group.sh",
+        "diagnose-ultra205-late-attach.sh",
+        "phase13-monitor-capture.sh",
+        "phase13-os-native-reader.pl",
+        "ultra205-late-attach-broker.sh",
+        "ultra205-late-attach-classifier.mjs",
+        "ultra205-late-attach-worker.sh",
+        "ultra205-transport-qualification.sh",
     ],
     env_inherit = [
         "HOME",
@@ -644,7 +665,9 @@ sh_test(
     data = [
         "//:.git/HEAD",
         "//:.git/logs/HEAD",
+        "diagnose-ultra205-late-attach.sh",
         "phase13-monitor-capture.sh",
+        "phase13-os-native-reader.pl",
         "phase28.1.1-accepted-state-compare.mjs",
         "phase28.1.1-accepted-state-diagnostic.sh",
         "phase28.1.1-accepted-state-lifecycle-compare.mjs",
@@ -655,6 +678,10 @@ sh_test(
         "phase28.1.1-upstream-wire-capture.sh",
         "process-group.sh",
         "serial-session-trace.sh",
+        "ultra205-late-attach-broker.sh",
+        "ultra205-late-attach-classifier.mjs",
+        "ultra205-late-attach-worker.sh",
+        "ultra205-transport-qualification.sh",
     ],
     env_inherit = [
         "HOME",
