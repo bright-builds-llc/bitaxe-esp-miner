@@ -7,6 +7,9 @@ emit_complete_accepted_state_log() {
 	printf 'h4_continuous_result=listener_armed\n'
 	printf 'plan13_boot_evidence session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa state=booted redacted=true\n'
 	printf 'plan13_boot_evidence session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa state=listener_armed redacted=true\n'
+	printf 'runtime_heartbeat session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa sequence=0 uptime_ms=1000 cadence_ms=1000 listener_armed=false redacted=true\n'
+	printf 'runtime_heartbeat session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa sequence=1 uptime_ms=120000 cadence_ms=1000 listener_armed=true redacted=true\n'
+	printf 'runtime_heartbeat session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa sequence=2 uptime_ms=130000 cadence_ms=10000 listener_armed=true redacted=true\n'
 	for stage in post_enumerate post_mining_ready post_max_baud post_mask_reload post_first_work; do
 		local result_correlated="false"
 		local submit_observed="false"
@@ -143,13 +146,35 @@ esac
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 script="$repo_root/scripts/phase28.1.1-accepted-state-diagnostic.sh"
 test_script="$repo_root/scripts/phase28.1.1-accepted-state-diagnostic-test.sh"
-temp_root="$(mktemp -d "$repo_root/scratch/accepted-state-diagnostic-test.XXXXXX")"
+temp_base="${TEST_TMPDIR:-$repo_root/scratch}"
+mkdir -p "$temp_base"
+temp_root="$(mktemp -d "$temp_base/accepted-state-diagnostic-test.XXXXXX")"
 trap 'rm -rf "$temp_root"' EXIT
+export PHASE28_ACCEPTED_STATE_RUN_ROOT="$temp_root/default-runs"
 
 fail() {
 	printf 'accepted_state_diagnostic_test_error: %s\n' "$1" >&2
 	exit 1
 }
+
+map_lifecycle_code_for_test() {
+	local code="$1"
+	local error_file="$temp_root/lifecycle-code.error"
+	printf 'accepted_state_lifecycle_failure_code=%s\n' "$code" >"$error_file"
+	bash -c "$(sed -n '/^lifecycle_failure_blocker()/,/^}/p' "$script"); lifecycle_failure_blocker \"\$1\"" _ "$error_file"
+}
+
+for mapping in \
+	'reinit_heartbeat_absent heartbeat_absent' \
+	'cold_start_heartbeat_malformed heartbeat_malformed' \
+	'reinit_heartbeat_session_conflict heartbeat_session_conflict' \
+	'cold_start_heartbeat_monotonicity_failed heartbeat_monotonicity_failed' \
+	'reinit_heartbeat_cadence_invalid heartbeat_cadence_invalid' \
+	'cold_start_listener_proof_absent listener_proof_absent' \
+	'unknown_code validator_error'; do
+	read -r code expected <<<"$mapping"
+	[[ "$(map_lifecycle_code_for_test "$code")" == "$expected" ]] || fail "$code mapped outside the closed blocker vocabulary"
+done
 
 expect_failure() {
 	if "$@" >"$temp_root/expected-failure.stdout" 2>"$temp_root/expected-failure.stderr"; then
@@ -209,7 +234,12 @@ done
 
 test_port="/dev/ultra205-test"
 manifest="$temp_root/package.json"
-source_commit="$(git -C "$repo_root" rev-parse HEAD)"
+if [[ -n "${TEST_TMPDIR:-}" ]]; then
+	source_commit="${PHASE28_TEST_HEAD:-$(awk 'END { print $2 }' "$repo_root/.git/logs/HEAD")}"
+	export PHASE28_TEST_HEAD="$source_commit"
+else
+	source_commit="${PHASE28_TEST_HEAD:-$(git -C "$repo_root" rev-parse HEAD)}"
+fi
 printf '{"source_commit":"%s"}\n' "$source_commit" >"$manifest"
 upstream_log="$temp_root/upstream.log"
 emit_complete_accepted_state_log >"$upstream_log"

@@ -573,3 +573,53 @@ sh_test(
     env_inherit = ["PATH"],
     tags = ["local"],
 )
+
+sh_test(
+    name = "phase28_1_1_accepted_state_lifecycle_compare_test",
+    srcs = ["phase28.1.1-accepted-state-lifecycle-compare-test.mjs"],
+    data = [
+        "phase28.1.1-accepted-state-compare.mjs",
+        "phase28.1.1-accepted-state-lifecycle-compare.mjs",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase28_1_1_hardware_attempt_state_test",
+    srcs = ["phase28.1.1-hardware-attempt-state-test.mjs"],
+    data = [
+        "phase28.1.1-hardware-attempt-state.mjs",
+        "phase28.1.1-strict-production-evidence.mjs",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase28_1_1_accepted_state_diagnostic_test",
+    srcs = ["phase28.1.1-accepted-state-diagnostic-test.sh"],
+    data = [
+        "//:.git/HEAD",
+        "//:.git/logs/HEAD",
+        "phase13-monitor-capture.sh",
+        "phase28.1.1-accepted-state-compare.mjs",
+        "phase28.1.1-accepted-state-diagnostic.sh",
+        "phase28.1.1-accepted-state-lifecycle-compare.mjs",
+        "phase28.1.1-exact-head-hardware-attempt.sh",
+        "phase28.1.1-hardware-attempt-state.mjs",
+        "phase28.1.1-lifecycle-frame.pl",
+        "phase28.1.1-strict-production-evidence.mjs",
+        "phase28.1.1-upstream-wire-capture.sh",
+        "process-group.sh",
+        "serial-session-trace.sh",
+    ],
+    env_inherit = [
+        "HOME",
+        "PATH",
+    ],
+    tags = [
+        "local",
+        "no-sandbox",
+    ],
+)

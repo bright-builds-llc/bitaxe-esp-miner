@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const STAGES = [
   "post_enumerate",
@@ -260,7 +261,19 @@ function parseArgs(argv) {
   return args;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+function isMainModule() {
+  if (process.argv[1] === undefined) return false;
+  try {
+    return (
+      fs.realpathSync(fileURLToPath(import.meta.url)) ===
+      fs.realpathSync(process.argv[1])
+    );
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
   try {
     const args = parseArgs(process.argv.slice(2));
     const report = compareAcceptedState(

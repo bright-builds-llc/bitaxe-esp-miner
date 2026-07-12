@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {
   ACCEPTED_STATE_LIFECYCLE_STAGES,
   compareAcceptedStateLifecycle,
+  AcceptedStateLifecycleError,
   parseAcceptedStateLifecycleMember,
   parsePlan13BootEvidenceMember,
   renderAcceptedStateLifecycle,
@@ -37,10 +38,38 @@ function completeLog(overridesByStage = {}) {
     "h4_continuous_result=listener_armed",
     bootEvidence(session, "booted"),
     bootEvidence(session, "listener_armed"),
+    heartbeat(session, 0, 1_000, 1_000, false),
+    heartbeat(session, 1, 120_000, 1_000, true),
+    heartbeat(session, 2, 130_000, 10_000, true),
     ...ACCEPTED_STATE_LIFECYCLE_STAGES.map((stage) =>
       marker(stage, overridesByStage[stage]),
     ),
   ].join("\n");
+}
+
+function heartbeat(
+  session,
+  sequence,
+  uptimeMs,
+  cadenceMs,
+  listenerArmed,
+) {
+  return `runtime_heartbeat session=${session} sequence=${sequence} uptime_ms=${uptimeMs} cadence_ms=${cadenceMs} listener_armed=${listenerArmed} redacted=true`;
+}
+
+function replaceHeartbeats(log, replacements) {
+  return [
+    ...log.split("\n").filter((line) => !line.includes("runtime_heartbeat")),
+    ...replacements,
+  ].join("\n");
+}
+
+function expectCode(callback, code) {
+  assert.throws(callback, (error) => {
+    assert.ok(error instanceof AcceptedStateLifecycleError);
+    assert.equal(error.code, code);
+    return true;
+  });
 }
 
 function bootEvidence(session, state) {
@@ -70,6 +99,159 @@ function expectFailure(callback, pattern) {
   assert.equal(report.bootSessionCount, 1);
   assert.equal(report.bootEvidenceStateCount, 2);
   assert.equal(report.equivalentDuplicates, true);
+}
+
+{
+  // Arrange
+  const session = "c".repeat(32);
+  const coldHeartbeatOnly = [
+    heartbeat(session, 0, 1_000, 1_000, false),
+    heartbeat(session, 1, 130_000, 10_000, true),
+    ...ACCEPTED_STATE_LIFECYCLE_STAGES.map((stage) => marker(stage)),
+  ].join("\n");
+
+  // Act
+  const report = compareAcceptedStateLifecycle(completeLog(), coldHeartbeatOnly);
+
+  // Assert
+  assert.equal(report.cold_start_listener_fallback_used, true);
+  assert.equal(report.cold_start_boot_evidence_marker_count, 0);
+  assert.equal(report.cold_start_heartbeat_uptime_category, "early_and_steady");
+}
+
+{
+  // Arrange
+  const session = "c".repeat(32);
+  const mixedCold = [
+    bootEvidence(session, "booted"),
+    heartbeat(session, 0, 130_000, 10_000, true),
+    ...ACCEPTED_STATE_LIFECYCLE_STAGES.map((stage) => marker(stage)),
+  ].join("\n");
+
+  // Act
+  const report = compareAcceptedStateLifecycle(completeLog(), mixedCold);
+
+  // Assert
+  assert.equal(report.cold_start_listener_fallback_used, true);
+  assert.equal(report.cold_start_boot_evidence_state_count, 1);
+}
+
+{
+  // Arrange
+  const withoutDedicated = completeLog()
+    .split("\n")
+    .filter((line) => !line.includes("plan13_boot_evidence"))
+    .join("\n");
+
+  // Act / Assert
+  expectCode(
+    () => compareAcceptedStateLifecycle(withoutDedicated, completeLog()),
+    "reinit_listener_proof_absent",
+  );
+}
+
+{
+  // Arrange
+  const session = "c".repeat(32);
+  const coldFalseListener = replaceHeartbeats(completeLog(), [
+    heartbeat(session, 0, 130_000, 10_000, false),
+  ])
+    .split("\n")
+    .filter((line) => !line.includes("state=listener_armed"))
+    .join("\n");
+
+  // Act / Assert
+  expectCode(
+    () => compareAcceptedStateLifecycle(completeLog(), coldFalseListener),
+    "cold_start_listener_proof_absent",
+  );
+}
+
+for (const [name, reinitLog, coldLog, code] of [
+  [
+    "reinit malformed",
+    `${completeLog()}\nruntime_heartbeat broken=true`,
+    completeLog(),
+    "reinit_heartbeat_malformed",
+  ],
+  [
+    "cold malformed",
+    completeLog(),
+    `${completeLog()}\nruntime_heartbeat broken=true`,
+    "cold_start_heartbeat_malformed",
+  ],
+  [
+    "reinit session conflict",
+    `${completeLog()}\n${heartbeat("d".repeat(32), 3, 140_000, 10_000, true)}`,
+    completeLog(),
+    "reinit_heartbeat_session_conflict",
+  ],
+  [
+    "cold session conflict",
+    completeLog(),
+    `${completeLog()}\n${heartbeat("d".repeat(32), 3, 140_000, 10_000, true)}`,
+    "cold_start_heartbeat_session_conflict",
+  ],
+  [
+    "reinit monotonicity",
+    `${completeLog()}\n${heartbeat("c".repeat(32), 2, 140_000, 10_000, true)}`,
+    completeLog(),
+    "reinit_heartbeat_monotonicity_failed",
+  ],
+  [
+    "cold listener regression",
+    completeLog(),
+    `${completeLog()}\n${heartbeat("c".repeat(32), 3, 140_000, 10_000, false)}`,
+    "cold_start_heartbeat_monotonicity_failed",
+  ],
+  [
+    "reinit cadence",
+    replaceHeartbeats(completeLog(), [
+      heartbeat("c".repeat(32), 0, 130_000, 1_000, true),
+    ]),
+    completeLog(),
+    "reinit_heartbeat_cadence_invalid",
+  ],
+  [
+    "cold cadence",
+    completeLog(),
+    replaceHeartbeats(completeLog(), [
+      heartbeat("c".repeat(32), 0, 120_000, 10_000, true),
+    ]),
+    "cold_start_heartbeat_cadence_invalid",
+  ],
+  [
+    "reinit absent",
+    replaceHeartbeats(completeLog(), []),
+    completeLog(),
+    "reinit_heartbeat_absent",
+  ],
+  [
+    "cold absent",
+    completeLog(),
+    replaceHeartbeats(completeLog(), []),
+    "cold_start_heartbeat_absent",
+  ],
+]) {
+  // Arrange / Act / Assert
+  assert.ok(name.length > 0);
+  expectCode(() => compareAcceptedStateLifecycle(reinitLog, coldLog), code);
+}
+
+{
+  // Arrange
+  const malformedCold = `${replaceHeartbeats(completeLog(), [])}\nruntime_heartbeat broken=true`;
+  const absentReinit = replaceHeartbeats(completeLog(), []);
+
+  // Act / Assert
+  expectCode(
+    () => compareAcceptedStateLifecycle(absentReinit, malformedCold),
+    "cold_start_heartbeat_malformed",
+  );
+  expectCode(
+    () => compareAcceptedStateLifecycle(malformedCold, malformedCold),
+    "reinit_heartbeat_malformed",
+  );
 }
 
 {

@@ -452,6 +452,10 @@ verify_source_tree_clean() {
 }
 
 current_source_commit() {
+	if [[ -n "${PHASE28_TEST_HEAD:-}" ]]; then
+		printf '%s\n' "$PHASE28_TEST_HEAD"
+		return
+	fi
 	git rev-parse HEAD
 }
 
@@ -531,6 +535,29 @@ verify_complete_reinit_member() {
 	if ! rg -q '^lifecycle_status: match$' "$comparison_out"; then
 		die "reinit self-comparison did not match"
 	fi
+}
+
+lifecycle_failure_blocker() {
+	local error_file="$1"
+	local code
+	if [[ "$(wc -l <"$error_file" | tr -d ' ')" != "1" ]]; then
+		printf 'validator_error\n'
+		return
+	fi
+	code="$(sed -n 's/^accepted_state_lifecycle_failure_code=//p' "$error_file")"
+	case "$code" in
+	reinit_heartbeat_absent | cold_start_heartbeat_absent) printf 'heartbeat_absent\n' ;;
+	reinit_heartbeat_malformed | cold_start_heartbeat_malformed) printf 'heartbeat_malformed\n' ;;
+	reinit_heartbeat_session_conflict | cold_start_heartbeat_session_conflict) printf 'heartbeat_session_conflict\n' ;;
+	reinit_heartbeat_monotonicity_failed | cold_start_heartbeat_monotonicity_failed) printf 'heartbeat_monotonicity_failed\n' ;;
+	reinit_heartbeat_cadence_invalid | cold_start_heartbeat_cadence_invalid) printf 'heartbeat_cadence_invalid\n' ;;
+	reinit_listener_proof_absent | cold_start_listener_proof_absent) printf 'listener_proof_absent\n' ;;
+	reinit_boot_proof_absent | cold_start_boot_proof_absent | reinit_boot_evidence_malformed | cold_start_boot_evidence_malformed) printf 'boot_proof_absent\n' ;;
+	reinit_multiple_boot_sessions | cold_start_multiple_boot_sessions) printf 'multiple_boot_sessions\n' ;;
+	reinit_lifecycle_invalid | cold_start_lifecycle_invalid) printf 'lifecycle_capture_failed\n' ;;
+	validator_error) printf 'validator_error\n' ;;
+	*) printf 'validator_error\n' ;;
+	esac
 }
 
 write_common_evidence_header() {
@@ -920,7 +947,27 @@ run_prevalidated_flash_reinit() {
 		return 1
 	}
 	local comparison="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/reinit-self-compare.redacted.txt"
-	verify_complete_reinit_member "$raw_reinit_log" "$comparison"
+	local validation_error="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/reinit-validation.error"
+	if ! (verify_stable_runtime "$raw_reinit_log" reinit) 2>"$validation_error"; then
+		rm -f "$capability_path"
+		write_effect_result failed reinit_capture_failed '{}'
+		return 1
+	fi
+	set +e
+	node scripts/phase28.1.1-accepted-state-lifecycle-compare.mjs \
+		--reinit-log "$raw_reinit_log" \
+		--cold-start-log "$raw_reinit_log" \
+		--out "$comparison" 2>"$validation_error"
+	local validation_status=$?
+	set -e
+	if ((validation_status != 0)); then
+		local validation_blocker
+		validation_blocker="$(lifecycle_failure_blocker "$validation_error")"
+		rm -f "$capability_path"
+		write_effect_result failed "$validation_blocker" '{}'
+		return 1
+	fi
+	rm -f "$validation_error"
 	private_write "$(reinit_log_path_file)" "$raw_reinit_log"
 	rm -f "$capability_path"
 	local duration_ms=$((ended_ms - started_ms))
@@ -1086,22 +1133,17 @@ run_prevalidated_lifecycle() {
 		return 1
 	fi
 	local validation_error="${PHASE28_LIFECYCLE_ATTEMPT_DIR:?}/lifecycle-validation.error"
+	if ! (verify_stable_runtime "$cold_start_raw_log" cold-start) 2>"$validation_error"; then
+		write_effect_result failed lifecycle_capture_failed '{}'
+		return 1
+	fi
 	set +e
-	(
-		verify_stable_runtime "$cold_start_raw_log" cold-start
-		node scripts/phase28.1.1-accepted-state-lifecycle-compare.mjs --reinit-log "$reinit_log" --cold-start-log "$cold_start_raw_log" --out "$comparison"
-	) 2>"$validation_error"
+	node scripts/phase28.1.1-accepted-state-lifecycle-compare.mjs --reinit-log "$reinit_log" --cold-start-log "$cold_start_raw_log" --out "$comparison" 2>"$validation_error"
 	local validation_status=$?
 	set -e
 	if ((validation_status != 0)); then
-		local validation_blocker="lifecycle_capture_failed"
-		if rg -q 'multiple boot sessions|multiple original stable boots' "$validation_error"; then
-			validation_blocker="multiple_boot_sessions"
-		elif rg -q 'listener proof is absent|original listener proof is absent|listener-ready marker' "$validation_error"; then
-			validation_blocker="listener_proof_absent"
-		elif rg -q 'boot proof is absent|boot evidence is malformed|original boot proof is absent|stable boot' "$validation_error"; then
-			validation_blocker="boot_proof_absent"
-		fi
+		local validation_blocker
+		validation_blocker="$(lifecycle_failure_blocker "$validation_error")"
 		write_effect_result failed "$validation_blocker" '{}'
 		return 1
 	fi
