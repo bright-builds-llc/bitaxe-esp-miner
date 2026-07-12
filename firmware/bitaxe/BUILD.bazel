@@ -1,5 +1,14 @@
 exports_files(["partitions-ultra205.csv"])
 
+filegroup(
+    name = "phase28_boot_replay_sources",
+    srcs = [
+        "src/boot_evidence.rs",
+        "src/live_stratum_runtime.rs",
+    ],
+    visibility = ["//scripts:__pkg__"],
+)
+
 genrule(
     name = "firmware",
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by

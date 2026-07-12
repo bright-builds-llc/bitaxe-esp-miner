@@ -563,3 +563,13 @@ sh_test(
     ],
     tags = ["local"],
 )
+
+sh_test(
+    name = "phase28_1_1_boot_evidence_replay_ownership_test",
+    srcs = ["phase28.1.1-boot-evidence-replay-ownership-test.sh"],
+    data = [
+        "//firmware/bitaxe:phase28_boot_replay_sources",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)

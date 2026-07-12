@@ -11,7 +11,6 @@ use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use bitaxe_api::logs::AcceptedStateReplayCadence;
 use bitaxe_asic::bm1366::{
     accepted_state::{AcceptedStateStage, PowerDeltaClass},
     mining_ready::bm1366_job_interval_ms,
@@ -604,7 +603,6 @@ fn pump_live_socket_until_cleanup<S: LiveSocketIo>(
             // before/at send_work. Flush pending reload once production_ready.
             maybe_flush_pending_version_mask_reload(runtime, &mut asic_bridge);
             asic_bridge.maybe_arm_continuous_listener();
-            asic_bridge.maybe_replay_accepted_state_snapshot();
             maybe_log_power_delta(&mut asic_bridge);
             asic_bridge.maybe_finish_accepted_state_snapshot();
             maybe_send_register_read_poll(&mut asic_bridge);
@@ -719,9 +717,6 @@ struct AsicBridgeState {
     accepted_state_stage_mask: u8,
     accepted_state_result_correlated: bool,
     accepted_state_submit_observed: bool,
-    /// Diagnostic-only transport replay, armed at listener readiness.
-    maybe_accepted_state_replay_started_at: Option<Instant>,
-    maybe_accepted_state_replay_cadence: Option<AcceptedStateReplayCadence>,
 }
 
 impl Default for AsicBridgeState {
@@ -753,8 +748,6 @@ impl AsicBridgeState {
             accepted_state_stage_mask: 0,
             accepted_state_result_correlated: false,
             accepted_state_submit_observed: false,
-            maybe_accepted_state_replay_started_at: None,
-            maybe_accepted_state_replay_cadence: None,
         }
     }
 
@@ -783,8 +776,6 @@ impl AsicBridgeState {
         self.register_read_poll_mode_logged = false;
         self.accepted_state_result_correlated = false;
         self.accepted_state_submit_observed = false;
-        self.maybe_accepted_state_replay_started_at = None;
-        self.maybe_accepted_state_replay_cadence = None;
     }
 
     fn maybe_arm_continuous_listener(&mut self) {
@@ -801,28 +792,6 @@ impl AsicBridgeState {
         log::info!("h4_continuous_result=listener_armed");
         if asic_adapter::accepted_state_snapshot_enabled() {
             boot_evidence::record_listener_armed();
-            self.maybe_accepted_state_replay_started_at = Some(Instant::now());
-            self.maybe_accepted_state_replay_cadence = Some(AcceptedStateReplayCadence::armed(0));
-        }
-    }
-
-    fn maybe_replay_accepted_state_snapshot(&mut self) {
-        let (Some(started_at), Some(cadence)) = (
-            self.maybe_accepted_state_replay_started_at,
-            self.maybe_accepted_state_replay_cadence.as_mut(),
-        ) else {
-            return;
-        };
-        let elapsed_ms = Instant::now()
-            .saturating_duration_since(started_at)
-            .as_millis()
-            .min(u128::from(u64::MAX)) as u64;
-        if !cadence.take_due(elapsed_ms) {
-            return;
-        }
-
-        for line in log_buffer::accepted_state_replay_lines() {
-            log::info!("{line}");
         }
     }
 
