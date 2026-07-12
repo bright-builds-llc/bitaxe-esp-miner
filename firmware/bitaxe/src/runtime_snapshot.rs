@@ -143,7 +143,7 @@ pub fn publish_runtime_blocked(reason: &'static str) -> ProjectionShareOutcome {
 pub fn publish_runtime_bounded_sample_marker(
     source: RuntimeProjectionSampleSource,
 ) -> ProjectionShareOutcome {
-    let timestamp_ms = uptime_millis();
+    let timestamp_ms = crate::runtime_uptime::millis();
     publish_runtime_telemetry_event(|sequence, _generation| {
         RuntimeTelemetryEvent::BoundedSampleReady {
             sequence,
@@ -179,7 +179,9 @@ pub fn publish_runtime_safe_stopped(reason: &'static str) -> ProjectionShareOutc
 
 /// Returns the current identify mode used to plan the next identify command.
 pub fn identify_mode() -> IdentifyMode {
-    command_visible_state().identify.mode_at(uptime_millis())
+    command_visible_state()
+        .identify
+        .mode_at(crate::runtime_uptime::millis())
 }
 
 /// Returns the current block-found notification state.
@@ -201,7 +203,7 @@ pub fn replace_mining_runtime_state_for_evidence(mining: MiningRuntimeState) {
 
 /// Applies an API-visible identify command effect.
 pub fn apply_identify_mode_command(effect: IdentifyModeEffect) {
-    let now_ms = uptime_millis();
+    let now_ms = crate::runtime_uptime::millis();
     mutate_command_visible_state(|state| {
         apply_identify_mode_effect(&mut state.identify, effect, now_ms);
     });
@@ -358,7 +360,7 @@ fn collect_platform_snapshot(mut platform: PlatformSnapshot) -> PlatformSnapshot
     platform.free_heap_spiram = heap_free(sys::MALLOC_CAP_SPIRAM);
     platform.min_free_heap = heap_min_free(sys::MALLOC_CAP_DEFAULT);
     platform.max_alloc_heap = heap_largest_free_block(sys::MALLOC_CAP_DEFAULT);
-    platform.uptime_seconds = uptime_seconds();
+    platform.uptime_seconds = crate::runtime_uptime::seconds();
     platform
 }
 
@@ -372,24 +374,6 @@ fn heap_min_free(caps: u32) -> u64 {
 
 fn heap_largest_free_block(caps: u32) -> u64 {
     unsafe { sys::heap_caps_get_largest_free_block(caps) as u64 }
-}
-
-fn uptime_seconds() -> u64 {
-    let uptime_micros = unsafe { sys::esp_timer_get_time() };
-    if uptime_micros <= 0 {
-        return 0;
-    }
-
-    (uptime_micros as u64) / 1_000_000
-}
-
-fn uptime_millis() -> u64 {
-    let uptime_micros = unsafe { sys::esp_timer_get_time() };
-    if uptime_micros <= 0 {
-        return 0;
-    }
-
-    (uptime_micros as u64) / 1_000
 }
 
 #[cfg(test)]

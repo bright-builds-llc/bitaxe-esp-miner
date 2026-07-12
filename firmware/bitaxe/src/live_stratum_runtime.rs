@@ -789,10 +789,8 @@ impl AsicBridgeState {
 
         self.listener_armed = true;
         self.orchestrator.note_listener_armed();
+        boot_evidence::record_listener_armed();
         log::info!("h4_continuous_result=listener_armed");
-        if asic_adapter::accepted_state_snapshot_enabled() {
-            boot_evidence::record_listener_armed();
-        }
     }
 
     fn should_continue_result_read(&self) -> bool {

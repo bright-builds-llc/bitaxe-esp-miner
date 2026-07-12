@@ -5,6 +5,9 @@ filegroup(
     srcs = [
         "src/boot_evidence.rs",
         "src/live_stratum_runtime.rs",
+        "src/log_buffer.rs",
+        "src/main.rs",
+        "src/runtime_uptime.rs",
     ],
     visibility = ["//scripts:__pkg__"],
 )

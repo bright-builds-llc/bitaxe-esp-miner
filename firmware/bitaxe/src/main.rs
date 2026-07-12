@@ -16,6 +16,7 @@ mod mining_evidence_mode;
 mod network_stack;
 mod ota_update;
 mod runtime_snapshot;
+mod runtime_uptime;
 mod safety_adapter;
 mod settings_adapter;
 mod static_files;
@@ -34,6 +35,7 @@ const UNAVAILABLE: &str = "Unavailable";
 fn main() -> anyhow::Result<()> {
     sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
+    boot_evidence::initialize_observer();
 
     let safe_state = Phase1SafeState::default();
 
@@ -48,7 +50,7 @@ fn main() -> anyhow::Result<()> {
     debug_assert_eq!(safe_state_log_line, SAFE_STATE_LOG_LINE);
 
     info_retained(&boot_log_line);
-    boot_evidence::initialize_and_record_booted();
+    boot_evidence::record_booted();
     info_retained(&safe_state_log_line);
     if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");

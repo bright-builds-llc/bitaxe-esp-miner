@@ -112,7 +112,7 @@ fn live_telemetry_cadence_loop(server_addr: usize) {
 }
 
 fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
-    let current = projected_live_telemetry_payload(uptime_millis());
+    let current = projected_live_telemetry_payload(crate::runtime_uptime::millis());
     let Some(frame) = websocket_api::live_cadence_frame(current) else {
         return;
     };
@@ -238,7 +238,10 @@ fn handle_system_info<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        send_json(request, &projected_system_info(uptime_millis()))
+        send_json(
+            request,
+            &projected_system_info(crate::runtime_uptime::millis()),
+        )
     })
 }
 
@@ -348,7 +351,7 @@ fn handle_statistics<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        let timestamp_ms = uptime_millis();
+        let timestamp_ms = crate::runtime_uptime::millis();
         send_json(request, &projected_statistics(timestamp_ms))
     })
 }
@@ -357,7 +360,10 @@ fn handle_scoreboard<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        send_json(request, &projected_scoreboard(uptime_millis()))
+        send_json(
+            request,
+            &projected_scoreboard(crate::runtime_uptime::millis()),
+        )
     })
 }
 
@@ -765,7 +771,7 @@ fn send_websocket_connect_frames(
             sys::ESP_OK
         }
         WebSocketRouteKind::LiveTelemetry => {
-            let current = projected_live_telemetry_payload(uptime_millis());
+            let current = projected_live_telemetry_payload(crate::runtime_uptime::millis());
             let Some(frame) = websocket_api::live_connect_frame(current) else {
                 return sys::ESP_FAIL;
             };
@@ -1101,13 +1107,4 @@ fn schedule_firmware_ota_restart() {
         log::warn!("firmware_ota_update=restart_thread_failed error={error}");
         unsafe { sys::esp_restart() };
     }
-}
-
-fn uptime_millis() -> u64 {
-    let uptime_micros = unsafe { sys::esp_timer_get_time() };
-    if uptime_micros <= 0 {
-        return 0;
-    }
-
-    (uptime_micros as u64) / 1_000
 }

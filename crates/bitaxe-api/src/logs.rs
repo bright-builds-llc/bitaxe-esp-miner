@@ -26,6 +26,99 @@ pub const ACCEPTED_STATE_REPLAY_INTERVAL_MS: u64 = 10_000;
 pub const ACCEPTED_STATE_RESTORE_WATCH_MS: u64 = 1_800_000;
 /// Bounded readiness and passive-monitor ownership acquisition after appearance.
 pub const ACCEPTED_STATE_MONITOR_ATTACHMENT_MS: u64 = 60_000;
+/// Initial runtime-heartbeat cadence through the first two minutes.
+pub const RUNTIME_HEARTBEAT_EARLY_CADENCE_MS: u64 = 1_000;
+/// Runtime-heartbeat cadence after the first two minutes.
+pub const RUNTIME_HEARTBEAT_STEADY_CADENCE_MS: u64 = 10_000;
+/// Inclusive upper bound for the early runtime-heartbeat cadence.
+pub const RUNTIME_HEARTBEAT_EARLY_WINDOW_MS: u64 = 120_000;
+
+/// One immutable, redaction-safe runtime-heartbeat observation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RuntimeHeartbeatSample {
+    session_words: [u32; 4],
+    sequence: u64,
+    uptime_ms: u64,
+    cadence_ms: u64,
+    listener_armed: bool,
+}
+
+impl RuntimeHeartbeatSample {
+    /// Renders the exact serial-only runtime-heartbeat marker.
+    #[must_use]
+    pub fn marker(self) -> String {
+        let [first, second, third, fourth] = self.session_words;
+        format!(
+            "runtime_heartbeat session={first:08x}{second:08x}{third:08x}{fourth:08x} sequence={} uptime_ms={} cadence_ms={} listener_armed={} redacted=true",
+            self.sequence, self.uptime_ms, self.cadence_ms, self.listener_armed
+        )
+    }
+}
+
+/// Pure boot-lifetime runtime-heartbeat state machine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RuntimeHeartbeatModel {
+    session_words: [u32; 4],
+    next_sequence: u64,
+    next_deadline_ms: u64,
+    listener_armed: bool,
+}
+
+impl RuntimeHeartbeatModel {
+    /// Creates a heartbeat schedule for one opaque boot session.
+    #[must_use]
+    pub const fn new(session_words: [u32; 4]) -> Self {
+        Self {
+            session_words,
+            next_sequence: 0,
+            next_deadline_ms: RUNTIME_HEARTBEAT_EARLY_CADENCE_MS,
+            listener_armed: false,
+        }
+    }
+
+    /// Latches listener readiness for the rest of this boot.
+    pub fn arm_listener(&mut self) {
+        self.listener_armed = true;
+    }
+
+    /// Returns the next monotonic deadline at which the observer should wake.
+    #[must_use]
+    pub const fn next_deadline_ms(self) -> u64 {
+        self.next_deadline_ms
+    }
+
+    /// Emits at most one due sample and schedules from the observed time.
+    pub fn take_due(&mut self, observed_uptime_ms: u64) -> Option<RuntimeHeartbeatSample> {
+        if observed_uptime_ms < self.next_deadline_ms {
+            return None;
+        }
+
+        let cadence_ms = heartbeat_cadence_ms(observed_uptime_ms);
+        let sample = RuntimeHeartbeatSample {
+            session_words: self.session_words,
+            sequence: self.next_sequence,
+            uptime_ms: observed_uptime_ms,
+            cadence_ms,
+            listener_armed: self.listener_armed,
+        };
+        self.next_sequence = self.next_sequence.saturating_add(1);
+        let next_cadence_ms = if observed_uptime_ms < RUNTIME_HEARTBEAT_EARLY_WINDOW_MS {
+            RUNTIME_HEARTBEAT_EARLY_CADENCE_MS
+        } else {
+            RUNTIME_HEARTBEAT_STEADY_CADENCE_MS
+        };
+        self.next_deadline_ms = observed_uptime_ms.saturating_add(next_cadence_ms);
+        Some(sample)
+    }
+}
+
+const fn heartbeat_cadence_ms(uptime_ms: u64) -> u64 {
+    if uptime_ms <= RUNTIME_HEARTBEAT_EARLY_WINDOW_MS {
+        RUNTIME_HEARTBEAT_EARLY_CADENCE_MS
+    } else {
+        RUNTIME_HEARTBEAT_STEADY_CADENCE_MS
+    }
+}
 
 /// Download response headers expected by existing AxeOS clients.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -330,10 +423,131 @@ mod tests {
 
     use crate::logs::{
         log_download_headers, AcceptedStateReplayCadence, RawLogStreamPlanner, RetainedLogBuffer,
-        ACCEPTED_STATE_MONITOR_ATTACHMENT_MS, ACCEPTED_STATE_REPLAY_INTERVAL_MS,
-        ACCEPTED_STATE_REPLAY_WINDOW_MS, ACCEPTED_STATE_RESTORE_WATCH_MS,
-        DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
+        RuntimeHeartbeatModel, ACCEPTED_STATE_MONITOR_ATTACHMENT_MS,
+        ACCEPTED_STATE_REPLAY_INTERVAL_MS, ACCEPTED_STATE_REPLAY_WINDOW_MS,
+        ACCEPTED_STATE_RESTORE_WATCH_MS, DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE,
+        LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
     };
+
+    const HEARTBEAT_SESSION: [u32; 4] = [0, 1, u32::MAX, 0x1234_abcd];
+
+    #[test]
+    fn runtime_heartbeat_renders_exact_redacted_marker() {
+        // Arrange
+        let mut model = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
+
+        // Act
+        let sample = model
+            .take_due(1_000)
+            .expect("first heartbeat should be due");
+
+        // Assert
+        assert_eq!(
+            sample.marker(),
+            "runtime_heartbeat session=0000000000000001ffffffff1234abcd sequence=0 uptime_ms=1000 cadence_ms=1000 listener_armed=false redacted=true"
+        );
+    }
+
+    #[test]
+    fn runtime_heartbeat_is_first_due_at_one_second() {
+        // Arrange
+        let mut model = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
+
+        // Act
+        let before = model.take_due(999);
+        let due = model.take_due(1_000);
+
+        // Assert
+        assert!(before.is_none());
+        assert!(due.is_some());
+    }
+
+    #[test]
+    fn runtime_heartbeat_labels_cadence_at_two_minute_boundary() {
+        // Arrange
+        let mut before = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
+        let mut boundary = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
+        let mut after = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
+
+        // Act
+        let before_marker = before
+            .take_due(119_999)
+            .expect("sample should be due")
+            .marker();
+        let boundary_marker = boundary
+            .take_due(120_000)
+            .expect("sample should be due")
+            .marker();
+        let after_marker = after
+            .take_due(120_001)
+            .expect("sample should be due")
+            .marker();
+
+        // Assert
+        assert!(before_marker.contains("cadence_ms=1000"));
+        assert!(boundary_marker.contains("cadence_ms=1000"));
+        assert!(after_marker.contains("cadence_ms=10000"));
+    }
+
+    #[test]
+    fn runtime_heartbeat_boundary_schedules_steady_deadline() {
+        // Arrange
+        let mut model = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
+
+        // Act
+        let sample = model.take_due(120_000);
+
+        // Assert
+        assert!(sample.is_some());
+        assert_eq!(model.next_deadline_ms(), 130_000);
+    }
+
+    #[test]
+    fn runtime_heartbeat_delayed_wakeup_coalesces_missed_ticks() {
+        // Arrange
+        let mut model = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
+
+        // Act
+        let delayed = model
+            .take_due(75_432)
+            .expect("delayed sample should be due");
+        let duplicate = model.take_due(75_432);
+
+        // Assert
+        assert!(delayed.marker().contains("sequence=0 uptime_ms=75432"));
+        assert!(duplicate.is_none());
+        assert_eq!(model.next_deadline_ms(), 76_432);
+    }
+
+    #[test]
+    fn runtime_heartbeat_sequence_increments_once_per_due_sample() {
+        // Arrange
+        let mut model = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
+
+        // Act
+        let first = model.take_due(1_000).expect("first sample should be due");
+        let second = model.take_due(2_000).expect("second sample should be due");
+
+        // Assert
+        assert!(first.marker().contains("sequence=0"));
+        assert!(second.marker().contains("sequence=1"));
+    }
+
+    #[test]
+    fn runtime_heartbeat_listener_state_only_latches_true() {
+        // Arrange
+        let mut model = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
+        let before = model.take_due(1_000).expect("first sample should be due");
+
+        // Act
+        model.arm_listener();
+        model.arm_listener();
+        let after = model.take_due(2_000).expect("second sample should be due");
+
+        // Assert
+        assert!(before.marker().contains("listener_armed=false"));
+        assert!(after.marker().contains("listener_armed=true"));
+    }
 
     #[derive(Debug, Deserialize)]
     struct LogFixtureCases {
