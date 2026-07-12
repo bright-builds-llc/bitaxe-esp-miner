@@ -15,6 +15,17 @@ Completion review: The corrected Plan 12 software authority is committed at `287
 - [x] Implement the fully passive monitor contract, private structured session traces, readiness and cleanup checks, and a bounded five-cycle diagnostic command.
 - [x] Run focused shell/Bazel checks and the mandatory Rust verification sequence before commits.
 - [x] Pass five passive monitor reuse cycles with barrel and USB retained, followed by a successful detector check without manual recovery.
-- [ ] Start a fresh exact-head Plan 13 chain and record the final completion review or residual blocker.
+- [x] Start a fresh exact-head Plan 13 chain and record the final completion review or residual blocker.
 
-Completion review: Durable guidance is committed at `6f0629c`; the passive session repair is committed at `b48337f`. Direct/Bazel/Plan-13/shell/reference/Rust gates pass, and the five-cycle connected-device regression plus final detector passed with zero leaked processes or holders. The superseded handle is a stale zero-effect tombstone. Residual work is the fresh exact-head Plan 13 chain and Phase 28.1.1 closure.
+Completion review: Durable guidance is committed at `6f0629c`; the passive session repair is committed at `b48337f`. Direct/Bazel/Plan-13/shell/reference/Rust gates pass, and the five-cycle connected-device regression plus final detector passed with zero leaked processes or holders. The fresh exact-head Plan 13 run at `4891ce06bb51f872fd41c0baa2412cd660c877eb` also proved response-free USB appearance, stable passive ownership, a full 360-second capture, and zero leaked processes or holders. It failed closed at boot evidence because replay was still coupled to Stratum-session progress; that separate firmware-lifetime defect is tracked below.
+
+## task-plan13-boot-lifetime-replay | 2026-07-12 04:55 | Decouple cold-start proof from external services
+
+- [x] Retain and classify the failed exact-head hardware trace without an ad hoc retry.
+- [x] Move allowlisted Plan 13 replay from the Stratum socket pump to a bounded boot-lifetime firmware task.
+- [x] Add regression coverage for replay ownership and the 10-second/1,880-second schedule.
+- [x] Run focused shell/Bazel/reference checks and the mandatory Rust verification sequence.
+- [ ] Commit and push a clean exact HEAD.
+- [ ] Confirm the correction with a new detector-gated Plan 13 hardware chain before closing Phase 28.1.1.
+
+Completion review: In progress. The first watcher-based hardware run isolated the remaining failure to absent replay bytes after successful USB appearance, monitor ownership, capture duration, and cleanup. The boot-lifetime ownership regression, focused lifecycle/state/classifier/monitor suites, affected Bazel targets, canonical ESP firmware build, reference guard, and mandatory Rust sequence pass. Hardware confirmation must use a later clean committed HEAD; the failed attempt will not be resumed or retried.

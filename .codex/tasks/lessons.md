@@ -46,3 +46,10 @@
 2. What went wrong: A lifecycle waited for the operator to report barrel-then-USB restoration before opening the native USB monitor. The ESP32-S3 booted from barrel power before the serial node existed, so correct later ownership still captured zero early boot/listener markers.
 3. Preventive rule: For native-USB cold-start evidence, arm the exact-node watcher before instructing physical restoration and start passive ownership automatically on node appearance. When the transport cannot preserve pre-enumeration bytes, validate replayable, session-tagged application proof instead of relying on an arbitrary countdown or post-plug acknowledgment.
 4. Trigger signal to catch it earlier: A test requires early boot bytes from a serial device whose node is created only after power-up, or asks the operator to confirm plugging before the monitor process begins waiting.
+
+## lesson-boot-proof-replay-must-outlive-service-sessions | 2026-07-12 04:55
+
+1. Date: 2026-07-12
+2. What went wrong: The prearmed native-USB watcher acquired the correct node, held passive monitor ownership for the full capture, and cleaned up completely, but firmware emitted no replay markers. Source inspection showed replay was driven only from the live Stratum socket pump, so Wi-Fi or pool-session progress could prevent transport evidence from ever being replayed.
+3. Preventive rule: Evidence needed to prove boot independently of external services must be scheduled by a boot-lifetime owner. Keep transport proof, boot proof, listener proof, and network/session proof as separate boundaries with separate failure categories.
+4. Trigger signal to catch it earlier: A boot-evidence replay method is called only from a network, socket, pool, HTTP, ASIC-session, or other optional service loop, or a clean serial attachment captures zero bytes without an ownership failure.
