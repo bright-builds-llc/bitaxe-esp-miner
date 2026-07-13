@@ -798,6 +798,7 @@ fn validate_rows(rows: &[ChecklistRow]) -> Vec<ValidationError> {
         errors.extend(validate_deferred_scope_verified_row(row));
         errors.extend(validate_phase26_telemetry_verified_row(row));
         errors.extend(validate_phase28_hardware_promotion_row(row));
+        errors.extend(validate_phase30_promotion_row(row));
     }
 
     errors
@@ -1225,6 +1226,158 @@ fn is_phase26_telemetry_row(row: &ChecklistRow) -> bool {
     .any(|term| row_identity.contains(term))
 }
 
+fn validate_phase30_promotion_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    if !is_phase30_promotion_row(row) || normalize(&row.status) != "verified" {
+        return Vec::new();
+    }
+
+    let mut errors = Vec::new();
+
+    if let Some(forbidden_category) = phase30_forbidden_category(row) {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: format!("Phase 30 admission forbids no-proof category {forbidden_category}"),
+        });
+    }
+
+    let missing_shared_terms = phase30_missing_shared_terms(row);
+    if !missing_shared_terms.is_empty() {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: format!(
+                "Phase 30 admission requires {}",
+                format_required_terms(&missing_shared_terms)
+            ),
+        });
+    }
+
+    let missing_row_terms = phase30_missing_row_terms(row);
+    if !missing_row_terms.is_empty() {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: format!(
+                "Phase 30 {} proof requires {}",
+                row.id,
+                format_required_terms(&missing_row_terms)
+            ),
+        });
+    }
+
+    errors
+}
+
+fn is_phase30_promotion_row(row: &ChecklistRow) -> bool {
+    matches!(row.id.as_str(), "STR-09" | "CFG-07" | "ASIC-11")
+}
+
+fn phase30_forbidden_category(row: &ChecklistRow) -> Option<&'static str> {
+    let haystack = row_haystack(row);
+
+    [
+        "no_promotion_no_eligible_evidence",
+        "gaps_found",
+        "eligible_share_outcome: none",
+        "blocked_safe_prerequisite",
+        "workflow-only",
+        "fake-pool",
+        "deterministic-only",
+    ]
+    .into_iter()
+    .find(|category| haystack.contains(category))
+}
+
+fn phase30_missing_shared_terms(row: &ChecklistRow) -> Vec<&'static str> {
+    missing_required_terms(
+        row,
+        &[
+            RequiredTerm::new(
+                "phase-30-live-share-outcome-and-verified-promotion/",
+                "phase-30-live-share-outcome-and-verified-promotion/",
+            ),
+            RequiredTerm::new(
+                "phase30_promotion_disposition: promoted",
+                "phase30_promotion_disposition: promoted",
+            ),
+            RequiredTerm::new(
+                "new_evidence_input: explicit",
+                "new_evidence_input: explicit",
+            ),
+            RequiredTerm::new("detector_gate: passed", "detector_gate: passed"),
+            RequiredTerm::new("same_chain_gate: passed", "same_chain_gate: passed"),
+            RequiredTerm::new("redaction_status: passed", "redaction_status: passed"),
+            RequiredTerm::new("raw_artifacts_committed: no", "raw_artifacts_committed: no"),
+        ],
+    )
+}
+
+fn phase30_missing_row_terms(row: &ChecklistRow) -> Vec<&'static str> {
+    let mut missing_terms = match row.id.as_str() {
+        "STR-09" => missing_required_terms(
+            row,
+            &[
+                RequiredTerm::new(
+                    "live_submit_response_classified: true",
+                    "live_submit_response_classified: true",
+                ),
+                RequiredTerm::new("asic_correlation: passed", "asic_correlation: passed"),
+                RequiredTerm::new("safe_stop_status: complete", "safe_stop_status: complete"),
+            ],
+        ),
+        "ASIC-11" => missing_required_terms(
+            row,
+            &[
+                RequiredTerm::new(
+                    "asic_result_to_active_work: correlated",
+                    "asic_result_to_active_work: correlated",
+                ),
+                RequiredTerm::new(
+                    "submit_intent_from_correlated_result: true",
+                    "submit_intent_from_correlated_result: true",
+                ),
+                RequiredTerm::new("safe_stop_status: complete", "safe_stop_status: complete"),
+            ],
+        ),
+        "CFG-07" => missing_required_terms(
+            row,
+            &[
+                RequiredTerm::new(
+                    "runtime_credentials_input: local-owner-supplied",
+                    "runtime_credentials_input: local-owner-supplied",
+                ),
+                RequiredTerm::new(
+                    "live_mining_credentials_consumed: true",
+                    "live_mining_credentials_consumed: true",
+                ),
+                RequiredTerm::new(
+                    "committed_credential_values: none",
+                    "committed_credential_values: none",
+                ),
+                RequiredTerm::new("safe_stop_status: complete", "safe_stop_status: complete"),
+            ],
+        ),
+        _ => Vec::new(),
+    };
+
+    if !phase30_has_eligible_share_outcome(row) {
+        missing_terms.push("eligible_share_outcome: accepted or rejected");
+    }
+
+    missing_terms
+}
+
+fn phase30_has_eligible_share_outcome(row: &ChecklistRow) -> bool {
+    let haystack = row_haystack(row);
+    haystack.contains("eligible_share_outcome: accepted")
+        || haystack.contains("eligible_share_outcome: rejected")
+}
+
+fn has_phase30_exact_promotion_proof(row: &ChecklistRow) -> bool {
+    is_phase30_promotion_row(row)
+        && phase30_forbidden_category(row).is_none()
+        && phase30_missing_shared_terms(row).is_empty()
+        && phase30_missing_row_terms(row).is_empty()
+}
+
 fn validate_phase28_hardware_promotion_row(row: &ChecklistRow) -> Vec<ValidationError> {
     if !is_phase28_hardware_promotion_row(row) {
         return Vec::new();
@@ -1279,7 +1432,7 @@ fn validate_phase28_hardware_promotion_row(row: &ChecklistRow) -> Vec<Validation
                 });
             }
         }
-        "CFG-07" => {
+        "CFG-07" if !has_phase30_exact_promotion_proof(row) => {
             errors.push(ValidationError {
                 id: row.id.clone(),
                 message: "CFG-07 must remain below verified; runtime credential handling lacks hardware proof"
@@ -2327,6 +2480,300 @@ mod tests {
 
         // Assert
         assert!(errors.is_empty());
+    }
+
+    fn phase30_verified_row(requirement_id: &str, promotion_terms: &str) -> ChecklistRow {
+        ChecklistRow {
+            id: requirement_id.to_owned(),
+            surface: "Phase 30 exact promotion claim".to_owned(),
+            reference_breadcrumb: "reference/esp-miner/main/system.c".to_owned(),
+            rust_owned_target: "tools/parity/src/main.rs".to_owned(),
+            status: "verified".to_owned(),
+            evidence: "workflow,hardware-smoke,hardware-regression".to_owned(),
+            notes: format!(
+                "phase-28-hardware-evidence-and-checklist-promotion/summary.md \
+                 redaction-review.md exact_non_claims \
+                 accepted share hardware proof asic bridge correlation {promotion_terms}"
+            ),
+        }
+    }
+
+    fn phase30_shared_promotion_terms() -> &'static str {
+        "phase-30-live-share-outcome-and-verified-promotion/conclusion.md \
+         phase30_promotion_disposition: promoted new_evidence_input: explicit \
+         detector_gate: passed same_chain_gate: passed redaction_status: passed \
+         raw_artifacts_committed: no"
+    }
+
+    fn phase30_str09_terms() -> &'static str {
+        "eligible_share_outcome: accepted live_submit_response_classified: true \
+         asic_correlation: passed safe_stop_status: complete"
+    }
+
+    fn phase30_asic11_terms() -> &'static str {
+        "asic_result_to_active_work: correlated \
+         submit_intent_from_correlated_result: true eligible_share_outcome: rejected \
+         safe_stop_status: complete"
+    }
+
+    fn phase30_cfg07_terms() -> &'static str {
+        "runtime_credentials_input: local-owner-supplied \
+         live_mining_credentials_consumed: true committed_credential_values: none \
+         eligible_share_outcome: accepted safe_stop_status: complete"
+    }
+
+    #[test]
+    fn phase30_committed_conservative_rows_remain_valid() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STR-09 | Live submit response classification or blocker | `reference/esp-miner/main/system.c` | `crates/bitaxe-stratum` | implemented | unit,workflow | phase-30-live-share-outcome-and-verified-promotion/disposition.md phase30_disposition: no_promotion_no_eligible_evidence below verified. |
+| CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `scripts/phase23-redacted-operator-evidence.sh` | implemented | workflow | phase-30-live-share-outcome-and-verified-promotion/disposition.md phase30_disposition: no_promotion_no_eligible_evidence below verified. |
+| ASIC-11 | BM1366 result correlation before submit intent | `reference/esp-miner/components/asic/bm1366.c` | `crates/bitaxe-stratum` | implemented | unit,workflow | phase-30-live-share-outcome-and-verified-promotion/disposition.md phase30_disposition: no_promotion_no_eligible_evidence below verified. |
+"#;
+        let rows = parse_checklist(checklist).expect("checklist should parse");
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn phase30_verified_rows_reject_missing_admission() {
+        // Arrange
+        let rows = [
+            phase30_verified_row("STR-09", ""),
+            phase30_verified_row("CFG-07", ""),
+            phase30_verified_row("ASIC-11", ""),
+        ];
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        for requirement_id in ["STR-09", "CFG-07", "ASIC-11"] {
+            assert_validation_error_contains(&errors, requirement_id, "Phase 30 admission");
+        }
+    }
+
+    #[test]
+    fn phase30_verified_rows_reject_no_proof_categories() {
+        // Arrange
+        let forbidden_categories = [
+            "no_promotion_no_eligible_evidence",
+            "gaps_found",
+            "eligible_share_outcome: none",
+            "blocked_safe_prerequisite",
+            "workflow-only",
+            "fake-pool",
+            "deterministic-only",
+        ];
+
+        // Act
+        let results = forbidden_categories.map(|category| {
+            let terms = format!(
+                "{} {} {} {category}",
+                phase30_shared_promotion_terms(),
+                phase30_str09_terms(),
+                phase30_asic11_terms()
+            );
+            (
+                category,
+                validate_rows(&[phase30_verified_row("STR-09", &terms)]),
+            )
+        });
+
+        // Assert
+        for (category, errors) in results {
+            assert_validation_error_contains(&errors, "STR-09", category);
+        }
+    }
+
+    #[test]
+    fn phase30_verified_rows_reject_partial_row_specific_proof() {
+        // Arrange
+        let rows = [
+            phase30_verified_row("STR-09", phase30_shared_promotion_terms()),
+            phase30_verified_row("CFG-07", phase30_shared_promotion_terms()),
+            phase30_verified_row("ASIC-11", phase30_shared_promotion_terms()),
+        ];
+
+        // Act
+        let errors = validate_rows(&rows);
+
+        // Assert
+        assert_validation_error_contains(&errors, "STR-09", "live_submit_response_classified");
+        assert_validation_error_contains(&errors, "CFG-07", "runtime_credentials_input");
+        assert_validation_error_contains(&errors, "ASIC-11", "asic_result_to_active_work");
+    }
+
+    #[test]
+    fn phase30_each_shared_admission_token_is_required() {
+        // Arrange
+        let shared_terms = [
+            "phase-30-live-share-outcome-and-verified-promotion/conclusion.md",
+            "phase30_promotion_disposition: promoted",
+            "new_evidence_input: explicit",
+            "detector_gate: passed",
+            "same_chain_gate: passed",
+            "redaction_status: passed",
+            "raw_artifacts_committed: no",
+        ];
+
+        // Act
+        let results = shared_terms.map(|omitted_term| {
+            let partial_shared = shared_terms
+                .iter()
+                .filter(|term| **term != omitted_term)
+                .copied()
+                .collect::<Vec<_>>()
+                .join(" ");
+            let terms = format!("{partial_shared} {}", phase30_str09_terms());
+            (
+                omitted_term,
+                validate_rows(&[phase30_verified_row("STR-09", &terms)]),
+            )
+        });
+
+        // Assert
+        for (omitted_term, errors) in results {
+            let expected_category = if omitted_term.starts_with("phase-30-") {
+                "phase-30-live-share-outcome-and-verified-promotion/"
+            } else {
+                omitted_term
+            };
+            assert_validation_error_contains(&errors, "STR-09", expected_category);
+        }
+    }
+
+    #[test]
+    fn phase30_each_row_specific_token_is_required() {
+        // Arrange
+        let cases: [(&str, &[&str]); 3] = [
+            (
+                "STR-09",
+                &[
+                    "eligible_share_outcome: accepted",
+                    "live_submit_response_classified: true",
+                    "asic_correlation: passed",
+                    "safe_stop_status: complete",
+                ],
+            ),
+            (
+                "CFG-07",
+                &[
+                    "runtime_credentials_input: local-owner-supplied",
+                    "live_mining_credentials_consumed: true",
+                    "committed_credential_values: none",
+                    "eligible_share_outcome: accepted",
+                    "safe_stop_status: complete",
+                ],
+            ),
+            (
+                "ASIC-11",
+                &[
+                    "asic_result_to_active_work: correlated",
+                    "submit_intent_from_correlated_result: true",
+                    "eligible_share_outcome: rejected",
+                    "safe_stop_status: complete",
+                ],
+            ),
+        ];
+
+        // Act
+        let results = cases.into_iter().flat_map(|(requirement_id, row_terms)| {
+            row_terms.iter().map(move |omitted_term| {
+                let partial_row = row_terms
+                    .iter()
+                    .filter(|term| *term != omitted_term)
+                    .copied()
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                let terms = format!("{} {partial_row}", phase30_shared_promotion_terms());
+                (
+                    requirement_id,
+                    *omitted_term,
+                    validate_rows(&[phase30_verified_row(requirement_id, &terms)]),
+                )
+            })
+        });
+
+        // Assert
+        for (requirement_id, omitted_term, errors) in results {
+            let expected_category = if omitted_term.starts_with("eligible_share_outcome") {
+                "eligible_share_outcome: accepted or rejected"
+            } else {
+                omitted_term
+            };
+            assert_validation_error_contains(&errors, requirement_id, expected_category);
+        }
+    }
+
+    #[test]
+    fn phase30_future_positive_bundles_pass_their_exact_rows() {
+        // Arrange
+        let cases = [
+            ("STR-09", phase30_str09_terms()),
+            ("CFG-07", phase30_cfg07_terms()),
+            ("ASIC-11", phase30_asic11_terms()),
+        ];
+
+        // Act
+        let results = cases.map(|(requirement_id, row_terms)| {
+            let terms = format!("{} {row_terms}", phase30_shared_promotion_terms());
+            (
+                requirement_id,
+                validate_rows(&[phase30_verified_row(requirement_id, &terms)]),
+            )
+        });
+
+        // Assert
+        for (requirement_id, errors) in results {
+            assert!(
+                errors.is_empty(),
+                "expected exact Phase 30 bundle for {requirement_id} to pass, got {errors:#?}"
+            );
+        }
+    }
+
+    #[test]
+    fn phase30_row_specific_proof_is_not_interchangeable() {
+        // Arrange
+        let cases = [
+            (
+                "STR-09",
+                phase30_cfg07_terms(),
+                "live_submit_response_classified",
+            ),
+            (
+                "CFG-07",
+                phase30_asic11_terms(),
+                "runtime_credentials_input",
+            ),
+            (
+                "ASIC-11",
+                phase30_str09_terms(),
+                "asic_result_to_active_work",
+            ),
+        ];
+
+        // Act
+        let results = cases.map(|(requirement_id, wrong_terms, missing_category)| {
+            let terms = format!("{} {wrong_terms}", phase30_shared_promotion_terms());
+            (
+                requirement_id,
+                missing_category,
+                validate_rows(&[phase30_verified_row(requirement_id, &terms)]),
+            )
+        });
+
+        // Assert
+        for (requirement_id, missing_category, errors) in results {
+            assert_validation_error_contains(&errors, requirement_id, missing_category);
+        }
     }
 
     #[test]
