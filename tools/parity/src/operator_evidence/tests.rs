@@ -116,6 +116,116 @@ fn rejects_missing_share_outcome_slot() {
 }
 
 #[test]
+fn rejects_duplicate_slot_status_values() {
+    // Arrange
+    let evidence_root = create_evidence_root("duplicate-slot-status");
+    write_complete_slots(&evidence_root, SlotOverrides::default());
+    rewrite_slot(&evidence_root, OperatorEvidenceSlot::Package, |contents| {
+        format!("{contents}slot_status: blocked\n")
+    });
+    let documents = load_operator_evidence_documents(&evidence_root).expect("root should load");
+    let filters = OperatorEvidenceFilters {
+        require_redaction_passed: true,
+    };
+
+    // Act
+    let report = validate_operator_evidence_documents(
+        OperatorEvidenceProfile::Phase23,
+        &documents,
+        &filters,
+    );
+
+    // Assert
+    assert_error_contains(
+        &report,
+        "package.md must contain exactly one slot_status: value",
+    );
+}
+
+#[test]
+fn rejects_duplicate_redaction_status_values() {
+    // Arrange
+    let evidence_root = create_evidence_root("duplicate-redaction-status");
+    write_complete_slots(&evidence_root, SlotOverrides::default());
+    rewrite_slot(
+        &evidence_root,
+        OperatorEvidenceSlot::RedactionReview,
+        |contents| format!("{contents}redaction_status: blocked\n"),
+    );
+    let documents = load_operator_evidence_documents(&evidence_root).expect("root should load");
+    let filters = OperatorEvidenceFilters {
+        require_redaction_passed: true,
+    };
+
+    // Act
+    let report = validate_operator_evidence_documents(
+        OperatorEvidenceProfile::Phase23,
+        &documents,
+        &filters,
+    );
+
+    // Assert
+    assert_error_contains(
+        &report,
+        "redaction-review.md must contain exactly one redaction_status: value",
+    );
+}
+
+#[test]
+fn phase27_requires_exactly_one_share_outcome_value() {
+    // Arrange
+    let evidence_root = create_evidence_root("phase27-missing-share-outcome");
+    write_complete_slots(&evidence_root, SlotOverrides::default());
+    rewrite_profile(&evidence_root, OperatorEvidenceProfile::Phase27);
+    let documents = load_operator_evidence_documents(&evidence_root).expect("root should load");
+    let filters = OperatorEvidenceFilters {
+        require_redaction_passed: true,
+    };
+
+    // Act
+    let report = validate_operator_evidence_documents(
+        OperatorEvidenceProfile::Phase27,
+        &documents,
+        &filters,
+    );
+
+    // Assert
+    assert_error_contains(
+        &report,
+        "share-outcome.md must contain exactly one share_outcome: value",
+    );
+}
+
+#[test]
+fn phase28_rejects_duplicate_share_outcome_values() {
+    // Arrange
+    let evidence_root = create_evidence_root("phase28-duplicate-share-outcome");
+    write_phase28_consolidation_slots(&evidence_root);
+    rewrite_slot(
+        &evidence_root,
+        OperatorEvidenceSlot::ShareOutcome,
+        |contents| format!("{contents}share_outcome: accepted\n"),
+    );
+    let documents = load_operator_evidence_documents(&evidence_root).expect("root should load");
+    let filters = OperatorEvidenceFilters {
+        require_redaction_passed: true,
+    };
+
+    // Act
+    let report = validate_operator_evidence_documents(
+        OperatorEvidenceProfile::Phase28,
+        &documents,
+        &filters,
+    );
+
+    // Assert
+    assert_error_contains(
+        &report,
+        "share-outcome.md must contain exactly one share_outcome: value",
+    );
+}
+
+#[test]
 fn rejects_redaction_review_without_passed_status_when_required() {
     // Arrange
     let evidence_root = create_evidence_root("redaction-blocked");

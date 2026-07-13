@@ -1,6 +1,7 @@
 use anyhow::{bail, Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use std::collections::BTreeMap;
+use std::str::FromStr;
 
 mod generation;
 mod inventory;
@@ -34,13 +35,6 @@ pub(crate) const REQUIRED_SLOT_FILES: &[&str] = &[
     "conclusion.md",
 ];
 
-const ALLOWED_SLOT_STATUSES: &[&str] = &[
-    "slot_status: passed",
-    "slot_status: blocked",
-    "slot_status: pending",
-    "slot_status: deferred",
-];
-
 const OVERCLAIM_PHRASES: &[&str] = &[
     "phase 23 verifies trusted bm1366 production work",
     "phase 23 verifies live stratum socket success",
@@ -48,6 +42,108 @@ const OVERCLAIM_PHRASES: &[&str] = &[
     "phase 23 verifies rejected shares",
     "phase 23 verifies phase 26 telemetry promotion",
 ];
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SlotStatus {
+    Passed,
+    Blocked,
+    Pending,
+    Deferred,
+}
+
+impl FromStr for SlotStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "passed" => Ok(Self::Passed),
+            "blocked" => Ok(Self::Blocked),
+            "pending" => Ok(Self::Pending),
+            "deferred" => Ok(Self::Deferred),
+            _ => Err(format!("unknown slot status {value:?}")),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RedactionStatus {
+    Passed,
+    Pending,
+    Blocked,
+}
+
+impl FromStr for RedactionStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "passed" => Ok(Self::Passed),
+            "pending" => Ok(Self::Pending),
+            "blocked" => Ok(Self::Blocked),
+            _ => Err(format!("unknown redaction status {value:?}")),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SafeStopStatus {
+    Passed,
+    Complete,
+    Blocked,
+}
+
+impl FromStr for SafeStopStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "passed" => Ok(Self::Passed),
+            "complete" => Ok(Self::Complete),
+            "blocked" => Ok(Self::Blocked),
+            _ => Err(format!("unknown safe-stop status {value:?}")),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AsicBridgeStatus {
+    Blocked,
+    Initialized,
+    WorkDispatched,
+    ResultCorrelated,
+}
+
+impl FromStr for AsicBridgeStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "blocked" => Ok(Self::Blocked),
+            "initialized" => Ok(Self::Initialized),
+            "work_dispatched" => Ok(Self::WorkDispatched),
+            "result_correlated" => Ok(Self::ResultCorrelated),
+            _ => Err(format!("unknown ASIC bridge status {value:?}")),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AsicCorrelationStatus {
+    Passed,
+    Blocked,
+}
+
+impl FromStr for AsicCorrelationStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "passed" => Ok(Self::Passed),
+            "blocked" => Ok(Self::Blocked),
+            _ => Err(format!("unknown ASIC correlation status {value:?}")),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct OperatorEvidenceDocuments {
@@ -175,38 +271,43 @@ fn validate_slot_metadata(
             continue;
         };
 
-        if !ALLOWED_SLOT_STATUSES
-            .iter()
-            .any(|status| contents.contains(status))
-        {
-            validation_errors.push(format!("{slot_file} must contain a valid slot_status"));
-        }
-
-        let expected_slot = format!("slot: {}", slot.slot_name());
-        if !contents.lines().any(|line| line.trim() == expected_slot) {
-            validation_errors.push(format!("{slot_file} must contain {expected_slot}"));
-        }
-
-        for required in [
-            "raw_artifacts_committed: no",
-            "board: 205",
-            "redaction_status:",
-            "exact_non_claims",
-        ] {
-            if !contents.contains(required) {
-                validation_errors.push(format!("{slot_file} must contain {required}"));
-            }
+        let maybe_slot_status =
+            parse_typed_slot_field(validation_errors, slot_file, contents, "slot_status");
+        validate_literal_slot_field(
+            validation_errors,
+            slot_file,
+            contents,
+            "slot",
+            slot.slot_name(),
+        );
+        validate_literal_slot_field(
+            validation_errors,
+            slot_file,
+            contents,
+            "raw_artifacts_committed",
+            "no",
+        );
+        validate_literal_slot_field(validation_errors, slot_file, contents, "board", "205");
+        let _: Option<RedactionStatus> =
+            parse_typed_slot_field(validation_errors, slot_file, contents, "redaction_status");
+        if !contents.contains("exact_non_claims") {
+            validation_errors.push(format!("{slot_file} must contain exact_non_claims"));
         }
 
         validate_profile_field(validation_errors, profile, slot_file, contents);
-        validate_disposition(validation_errors, descriptor, slot, contents);
+        validate_disposition(
+            validation_errors,
+            descriptor,
+            slot,
+            contents,
+            maybe_slot_status,
+        );
 
         if profile == OperatorEvidenceProfile::Phase28 {
-            for required in ["source_phase27_root:", "consolidation_status:"] {
-                if !contents.contains(required) {
-                    validation_errors.push(format!(
-                        "{slot_file} must contain Phase 28 consolidation field {required}"
-                    ));
+            for field in ["source_phase27_root", "consolidation_status"] {
+                if let Err(error) = parse_single_field(contents, field) {
+                    validation_errors
+                        .push(format!("{slot_file} Phase 28 consolidation field {error}"));
                 }
             }
         }
@@ -219,8 +320,10 @@ fn validate_profile_field(
     slot_file: &str,
     contents: &str,
 ) {
-    match parse_single_field(contents, "evidence_profile") {
-        Ok(value) if value == profile.as_str() => {}
+    match parse_single_field(contents, "evidence_profile")
+        .and_then(|value| value.parse::<OperatorEvidenceProfile>())
+    {
+        Ok(value) if value == profile => {}
         Ok(value) => validation_errors.push(format!(
             "{slot_file} evidence_profile {value:?} contradicts selected profile {profile}"
         )),
@@ -233,6 +336,7 @@ fn validate_disposition(
     descriptor: profile::OperatorEvidenceProfileDescriptor,
     slot: OperatorEvidenceSlot,
     contents: &str,
+    maybe_slot_status: Option<SlotStatus>,
 ) {
     let slot_file = slot.file_name();
     let disposition = match parse_single_field(contents, "evidence_disposition")
@@ -258,29 +362,65 @@ fn validate_disposition(
         ));
     }
 
-    if descriptor.generated_provenance_required(disposition)
-        && !contents.contains("generated_provenance:")
-    {
-        validation_errors.push(format!(
-            "{slot_file} must contain generated_provenance for disposition {}",
-            disposition.as_str()
-        ));
+    if descriptor.generated_provenance_required(disposition) {
+        if let Err(error) = parse_single_field(contents, "generated_provenance") {
+            validation_errors.push(format!(
+                "{slot_file} {error} for disposition {}",
+                disposition.as_str()
+            ));
+        }
     }
 
-    let status_is_consistent = match disposition {
-        EvidenceDisposition::Observed | EvidenceDisposition::CrossLinked => {
-            contents.contains("slot_status: passed")
-        }
-        EvidenceDisposition::Blocked => contents.contains("slot_status: blocked"),
-        EvidenceDisposition::Deferred => {
-            contents.contains("slot_status: pending") || contents.contains("slot_status: deferred")
-        }
-    };
+    let status_is_consistent = matches!(
+        (disposition, maybe_slot_status),
+        (
+            EvidenceDisposition::Observed | EvidenceDisposition::CrossLinked,
+            Some(SlotStatus::Passed),
+        ) | (EvidenceDisposition::Blocked, Some(SlotStatus::Blocked))
+            | (
+                EvidenceDisposition::Deferred,
+                Some(SlotStatus::Pending | SlotStatus::Deferred)
+            )
+    );
     if !status_is_consistent {
         validation_errors.push(format!(
             "{slot_file} slot_status contradicts evidence_disposition {}",
             disposition.as_str()
         ));
+    }
+}
+
+fn parse_typed_slot_field<T>(
+    validation_errors: &mut Vec<String>,
+    slot_file: &str,
+    contents: &str,
+    field: &str,
+) -> Option<T>
+where
+    T: FromStr<Err = String>,
+{
+    match parse_single_field(contents, field).and_then(T::from_str) {
+        Ok(value) => Some(value),
+        Err(error) => {
+            validation_errors.push(format!("{slot_file} {error}"));
+            None
+        }
+    }
+}
+
+fn validate_literal_slot_field(
+    validation_errors: &mut Vec<String>,
+    slot_file: &str,
+    contents: &str,
+    field: &str,
+    expected: &str,
+) {
+    match parse_single_field(contents, field) {
+        Ok(value) if value == expected => {}
+        Ok(value) => validation_errors.push(format!(
+            "{slot_file} {field} {value:?} contradicts required value {expected:?}"
+        )),
+        Err(error) => validation_errors.push(format!("{slot_file} {error}")),
     }
 }
 
@@ -308,7 +448,9 @@ fn validate_redaction_review(
         return;
     };
 
-    if filters.require_redaction_passed && !redaction_review.contains("redaction_status: passed") {
+    let redaction_status = parse_single_field(redaction_review, "redaction_status")
+        .and_then(RedactionStatus::from_str);
+    if filters.require_redaction_passed && redaction_status != Ok(RedactionStatus::Passed) {
         validation_errors
             .push("redaction-review.md must contain redaction_status: passed".to_owned());
     }
@@ -323,7 +465,9 @@ fn validate_blocked_target_slots(
             continue;
         };
 
-        if !contents.contains("slot_status: blocked") {
+        if parse_single_field(contents, "slot_status").and_then(SlotStatus::from_str)
+            != Ok(SlotStatus::Blocked)
+        {
             continue;
         }
 
@@ -353,11 +497,13 @@ fn validate_share_outcome_slot(
         return;
     };
 
-    let maybe_outcome = contents
-        .lines()
-        .find_map(|line| line.trim().strip_prefix("share_outcome:").map(str::trim));
-    if let Some(outcome) = maybe_outcome {
-        match outcome.parse::<ShareOutcome>() {
+    let outcome_required = matches!(
+        profile,
+        OperatorEvidenceProfile::Phase27 | OperatorEvidenceProfile::Phase28
+    );
+    let outcome_present = field_occurrence_count(contents, "share_outcome") > 0;
+    if outcome_required || outcome_present {
+        match parse_single_field(contents, "share_outcome").and_then(ShareOutcome::from_str) {
             Ok(outcome) => {
                 validate_share_outcome_support(validation_errors, profile, outcome, contents)
             }
@@ -365,8 +511,10 @@ fn validate_share_outcome_slot(
         }
     }
 
-    let is_pending_or_deferred =
-        contents.contains("slot_status: pending") || contents.contains("slot_status: deferred");
+    let is_pending_or_deferred = matches!(
+        parse_single_field(contents, "slot_status").and_then(SlotStatus::from_str),
+        Ok(SlotStatus::Pending | SlotStatus::Deferred)
+    );
     if !is_pending_or_deferred {
         return;
     }
@@ -379,6 +527,14 @@ fn validate_share_outcome_slot(
             validation_errors.push(format!("share-outcome.md must contain {required}"));
         }
     }
+}
+
+fn field_occurrence_count(contents: &str, field: &str) -> usize {
+    let prefix = format!("{field}:");
+    contents
+        .lines()
+        .filter(|line| line.trim().starts_with(&prefix))
+        .count()
 }
 
 fn validate_share_outcome_support(
@@ -397,28 +553,57 @@ fn validate_share_outcome_support(
 
     match outcome {
         ShareOutcome::Accepted | ShareOutcome::Rejected => {
-            let required_fields = if profile == OperatorEvidenceProfile::Phase28 {
-                [
-                    "asic_correlation_status: passed",
-                    "safe_stop_status: passed",
-                ]
+            let support_is_valid = if profile == OperatorEvidenceProfile::Phase28 {
+                let correlation: Option<AsicCorrelationStatus> = parse_typed_slot_field(
+                    validation_errors,
+                    "share-outcome.md",
+                    contents,
+                    "asic_correlation_status",
+                );
+                let safe_stop: Option<SafeStopStatus> = parse_typed_slot_field(
+                    validation_errors,
+                    "share-outcome.md",
+                    contents,
+                    "safe_stop_status",
+                );
+                correlation == Some(AsicCorrelationStatus::Passed)
+                    && safe_stop == Some(SafeStopStatus::Passed)
             } else {
-                [
-                    "asic_bridge_status: result_correlated",
-                    "safe_stop_status: complete",
-                ]
+                let asic_bridge: Option<AsicBridgeStatus> = parse_typed_slot_field(
+                    validation_errors,
+                    "share-outcome.md",
+                    contents,
+                    "asic_bridge_status",
+                );
+                let safe_stop: Option<SafeStopStatus> = parse_typed_slot_field(
+                    validation_errors,
+                    "share-outcome.md",
+                    contents,
+                    "safe_stop_status",
+                );
+                asic_bridge == Some(AsicBridgeStatus::ResultCorrelated)
+                    && safe_stop == Some(SafeStopStatus::Complete)
             };
-            for required in required_fields {
-                if !contents.contains(required) {
-                    validation_errors.push(format!(
-                        "share-outcome.md {} requires {required}",
-                        outcome.as_str()
-                    ));
-                }
+            if !support_is_valid {
+                let required = if profile == OperatorEvidenceProfile::Phase28 {
+                    "asic_correlation_status: passed and safe_stop_status: passed"
+                } else {
+                    "asic_bridge_status: result_correlated and safe_stop_status: complete"
+                };
+                validation_errors.push(format!(
+                    "share-outcome.md {} requires {required}",
+                    outcome.as_str()
+                ));
             }
         }
         ShareOutcome::LiveSubmitResponseObserved => {
-            if !contents.contains("safe_stop_status: complete") {
+            let safe_stop: Option<SafeStopStatus> = parse_typed_slot_field(
+                validation_errors,
+                "share-outcome.md",
+                contents,
+                "safe_stop_status",
+            );
+            if safe_stop != Some(SafeStopStatus::Complete) {
                 validation_errors.push(
                     "share-outcome.md live_submit_response_observed requires safe_stop_status: complete"
                         .to_owned(),
@@ -426,20 +611,42 @@ fn validate_share_outcome_support(
             }
         }
         ShareOutcome::BlockedSafePrerequisite => {
+            let safe_stop: Option<SafeStopStatus> = parse_typed_slot_field(
+                validation_errors,
+                "share-outcome.md",
+                contents,
+                "safe_stop_status",
+            );
             let supported = match profile {
-                OperatorEvidenceProfile::Phase25 => {
-                    contents.contains("safe_stop_status: complete")
-                        || contents.contains("safe_stop_status: blocked")
-                }
+                OperatorEvidenceProfile::Phase25 => matches!(
+                    safe_stop,
+                    Some(SafeStopStatus::Complete | SafeStopStatus::Blocked)
+                ),
                 OperatorEvidenceProfile::Phase27 => {
-                    contents.contains("asic_bridge_status:")
-                        && (contents.contains("safe_stop_status: complete")
-                            || contents.contains("safe_stop_status: blocked"))
+                    let asic_bridge: Option<AsicBridgeStatus> = parse_typed_slot_field(
+                        validation_errors,
+                        "share-outcome.md",
+                        contents,
+                        "asic_bridge_status",
+                    );
+                    asic_bridge.is_some()
+                        && matches!(
+                            safe_stop,
+                            Some(SafeStopStatus::Complete | SafeStopStatus::Blocked)
+                        )
                 }
                 OperatorEvidenceProfile::Phase28 => {
-                    contents.contains("asic_bridge_status: blocked")
-                        && (contents.contains("safe_stop_status: passed")
-                            || contents.contains("safe_stop_status: blocked"))
+                    let asic_bridge: Option<AsicBridgeStatus> = parse_typed_slot_field(
+                        validation_errors,
+                        "share-outcome.md",
+                        contents,
+                        "asic_bridge_status",
+                    );
+                    asic_bridge == Some(AsicBridgeStatus::Blocked)
+                        && matches!(
+                            safe_stop,
+                            Some(SafeStopStatus::Passed | SafeStopStatus::Blocked)
+                        )
                 }
                 OperatorEvidenceProfile::Phase23 => false,
             };
