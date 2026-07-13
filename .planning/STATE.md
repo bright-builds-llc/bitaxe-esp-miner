@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 30 ready to discuss
-stopped_at: Phase 30 ready to discuss
-last_updated: "2026-07-13T16:14:02Z"
-last_activity: 2026-07-13
+status: Phase 30 ready to discuss; the Phase 28.1.1 lineage is terminal archived unresolved history.
+stopped_at: Phase 30 context gathered
+last_updated: "2026-07-13T16:28:35.673Z"
+last_activity: "2026-07-13 - Completed quick task 260713-egi: Close Phase 28.1.1 and descendants as archived Won't Do terminal unresolved work; guard historical diagnostics and route GSD exclusively to Phase 30"
 progress:
   total_phases: 18
   completed_phases: 17
@@ -187,5 +187,5 @@ Plan: 0 planned
 
 ## Session
 
-- **Stopped at:** Phase 30 ready to discuss
+- **Stopped at:** Phase 30 context gathered
 - **Resume:** Discuss Phase 30's conservative disposition; preserve the evidence gate and pending STR-09, ASIC-11, and CFG-07 requirements.
