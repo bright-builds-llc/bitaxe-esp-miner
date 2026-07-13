@@ -655,6 +655,23 @@ sh_test(
     tags = ["local"],
 )
 
+sh_test(
+    name = "phase30_no_promotion_contract_test",
+    srcs = ["phase30-no-promotion-contract-test.sh"],
+    data = [
+        "phase28.1.1-promoted-evidence-denylist.patterns",
+        "phase28.1.1-promoted-evidence-denylist.sh",
+        "//:.planning/REQUIREMENTS.md",
+        "//:.planning/milestones/v1.1-phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-VERIFICATION.md",
+        "//:.planning/phases/28.1-live-mining-blocker-fix-h4-w13-orchestration-parity-discrimi/28.1-VALIDATION.md",
+        "//:docs/parity/checklist.md",
+        "//:docs/parity/evidence/phase-29-evidence-workflow-automation-closure/summary.md",
+        "//:docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
 sh_binary(
     name = "phase21_live_mining_package",
     srcs = ["phase21-live-mining-package.sh"],
