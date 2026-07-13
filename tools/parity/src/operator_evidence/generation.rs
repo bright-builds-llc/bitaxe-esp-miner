@@ -58,6 +58,10 @@ pub(crate) enum GenerationError {
         retained_old_generation: Utf8PathBuf,
         detail: String,
     },
+    DurabilityUncertain {
+        destination: Utf8PathBuf,
+        detail: String,
+    },
 }
 
 impl fmt::Display for GenerationError {
@@ -76,6 +80,13 @@ impl fmt::Display for GenerationError {
             } => write!(
                 formatter,
                 "phase28 promotion needs recovery; destination={destination}; retained_old_generation={retained_old_generation}; {detail}"
+            ),
+            Self::DurabilityUncertain {
+                destination,
+                detail,
+            } => write!(
+                formatter,
+                "phase28 promotion durability is uncertain; destination={destination}; no retained recovery generation; {detail}"
             ),
         }
     }

@@ -103,6 +103,72 @@ fn post_rollback_sync_failure_reports_recovery_with_both_generations() {
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
+fn post_promotion_cleanup_sync_failure_does_not_claim_removed_generation() {
+    // Arrange
+    let workspace = create_workspace("promotion-cleanup-sync-uncertain");
+    let (destination, staging) = write_promotion_roots(&workspace);
+    let context = PromotionContext::acquire_for_test(&destination)
+        .expect("promotion lock should be acquired");
+    let mut filesystem = InjectedPromotionFilesystem::failing_sync_calls([2]);
+
+    // Act
+    let error = promote_staging_with_filesystem(
+        &destination,
+        &staging,
+        ConsolidationOptions::default(),
+        &mut filesystem,
+        &context,
+    )
+    .expect_err("post-cleanup sync failure should report uncertain durability");
+
+    // Assert
+    assert!(matches!(
+        &error,
+        GenerationError::DurabilityUncertain { .. }
+    ));
+    assert!(!staging.exists());
+    assert!(!error.to_string().contains("retained_old_generation"));
+    assert_eq!(
+        fs::read_to_string(destination.join("marker").as_std_path()).expect("marker should read"),
+        "replacement-generation"
+    );
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn post_rollback_cleanup_sync_failure_does_not_claim_removed_generation() {
+    // Arrange
+    let workspace = create_workspace("rollback-cleanup-sync-uncertain");
+    let (destination, staging) = write_promotion_roots(&workspace);
+    let context = PromotionContext::acquire_for_test(&destination)
+        .expect("promotion lock should be acquired");
+    let mut filesystem = InjectedPromotionFilesystem::failing_sync_calls([1, 3]);
+
+    // Act
+    let error = promote_staging_with_filesystem(
+        &destination,
+        &staging,
+        ConsolidationOptions::default(),
+        &mut filesystem,
+        &context,
+    )
+    .expect_err("post-rollback cleanup sync failure should report uncertain durability");
+
+    // Assert
+    assert!(matches!(
+        &error,
+        GenerationError::DurabilityUncertain { .. }
+    ));
+    assert!(!staging.exists());
+    assert!(!error.to_string().contains("retained_old_generation"));
+    assert_eq!(
+        fs::read_to_string(destination.join("marker").as_std_path()).expect("marker should read"),
+        "previous-generation"
+    );
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
 fn old_generation_cleanup_failure_retains_both_roots() {
     // Arrange
     let workspace = create_workspace("old-generation-cleanup");

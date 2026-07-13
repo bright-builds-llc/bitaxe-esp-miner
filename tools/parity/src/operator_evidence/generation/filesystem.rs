@@ -121,11 +121,10 @@ pub(super) fn promote_staging_with_filesystem(
         })?;
     filesystem
         .sync_directory(parent)
-        .map_err(|error| GenerationError::RecoveryRequired {
+        .map_err(|error| GenerationError::DurabilityUncertain {
             destination: destination.to_owned(),
-            retained_old_generation: staging.to_owned(),
             detail: format!(
-                "promotion completed but old-generation cleanup durability is uncertain: {error}"
+                "promotion completed and the old generation is absent from the namespace, but cleanup durability is uncertain: {error}"
             ),
         })
 }
@@ -170,11 +169,10 @@ pub(super) fn rollback_exchange(
         }
     })?;
     filesystem.sync_directory(parent).map_err(|error| {
-        GenerationError::RecoveryRequired {
+        GenerationError::DurabilityUncertain {
             destination: destination.to_owned(),
-            retained_old_generation: staging.to_owned(),
             detail: format!(
-                "promotion failed ({promotion_failure}); previous generation is restored but replacement cleanup durability is uncertain: {error}"
+                "promotion failed ({promotion_failure}); previous generation is restored and the replacement is absent from the namespace, but cleanup durability is uncertain: {error}"
             ),
         }
     })?;
