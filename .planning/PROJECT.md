@@ -16,6 +16,8 @@ v1.0 Ultra 205 Parity shipped on 2026-07-04 with 64/64 requirements satisfied ac
 
 v1.1 Ultra 205 Trusted Production Mining shipped administratively on 2026-07-13 with accepted gaps across 18 phases, 76 plans, and 170 tasks. The milestone delivered the safety-gated BM1366/Stratum software path, telemetry and evidence automation, and hardware-backed blocker isolation. It did not prove live Rust nonce correlation or a live share outcome: 18/21 requirements are satisfied, while STR-09, ASIC-11, and CFG-07 remain unresolved. Phase 30 closed with a conservative no-promotion disposition.
 
+v1.2 is in progress. Phase 31 is complete with 2/27 milestone requirements satisfied: operator observations now use explicit per-fact truth and producer-owned stamps, hostname is the complete effect-free v1.2 settings capability, and Phase 31 claim admission is closed to its two exact claims. A real read-only telemetry producer remains Phase 32 work, and settings persistence remains Phase 33 work.
+
 Historical milestone roadmaps, requirements, audits, and phase artifacts live under `.planning/milestones/`.
 
 ## Current Milestone: v1.2 Ultra 205 Operator-Ready Runtime
@@ -42,6 +44,7 @@ Roadmap phase numbering continues after Phase 30. The archived Phase 28.1.1 line
 - BM1366 production-work modeling, generation tracking, stale-work invalidation, and fail-closed runtime status — v1.1 at implemented and workflow-evidence scope.
 - Real Stratum v1 socket lifecycle, fake-pool coverage, bounded safe stop, watchdog checkpoints, and telemetry projection into API/WebSocket/statistics/scoreboard views — v1.1 within the exact evidence boundaries recorded by the archive.
 - Hardware-backed isolation of the remaining Rust firmware nonce-production blocker and preservation of evidence-supported wire-parity corrections — v1.1 without live-result promotion.
+- Per-fact observation truth, producer-owned stamp semantics, hostname-only v1.2 capability classification, and exact Phase 31 claim admission — Phase 31.
 
 ### Accepted Unresolved Debt
 
@@ -105,6 +108,7 @@ The monorepo separates hardware-bound firmware under `firmware/bitaxe` from test
 | Phase 28.1.1 closed as Won't Do (unresolved). | Repeated diagnostics narrowed but did not close the nonce-production gap. | All lineage verification remains `gaps_found` and is terminally archived. |
 | Archived diagnostic work cannot be reopened by autonomous routing. | Historical artifacts must not become executable work or synthetic proof. | Phase 30 is complete; future work requires a new milestone and new evidence. |
 | v1.2 establishes operator-ready observation before active hardware control. | Fresh telemetry, configuration persistence, provenance, and health visibility reduce uncertainty and create the recovery foundation needed for later actuation. | Active fan, voltage, reset, power sequencing, fault injection, and renewed mining diagnostics are excluded from v1.2. |
+| Unstamped compatibility telemetry cannot authenticate freshness. | Legacy aggregate status and numeric fallbacks can otherwise contradict per-fact truth. | Phase 31 projects unstamped legacy data as unavailable/zero; Phase 32 owns the first real stamped producer. |
 
 ## Evolution
 
@@ -123,4 +127,4 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
-*Last updated: 2026-07-13 after starting milestone v1.2 Ultra 205 Operator-Ready Runtime*
+*Last updated: 2026-07-13 after completing Phase 31 Operator Claim and Telemetry Contract*
