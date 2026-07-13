@@ -7,7 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
 use operator_evidence::{
     load_operator_evidence_documents, render_operator_evidence_report,
-    validate_operator_evidence_documents, OperatorEvidenceFilters,
+    validate_operator_evidence_documents, OperatorEvidenceFilters, OperatorEvidenceProfile,
 };
 use release_evidence::{
     parse_flash_evidence_json, parse_release_evidence_manifest_json,
@@ -140,6 +140,9 @@ struct MiningAllowArgs {
 
 #[derive(Debug, Parser)]
 struct OperatorEvidenceArgs {
+    #[arg(long, value_enum)]
+    profile: OperatorEvidenceProfile,
+
     #[arg(long = "evidence-root", value_parser = parse_utf8_path)]
     evidence_root: Utf8PathBuf,
 
@@ -518,7 +521,7 @@ fn run_operator_evidence_command(
     let filters = OperatorEvidenceFilters {
         require_redaction_passed: args.require_redaction_passed,
     };
-    let report = validate_operator_evidence_documents(&documents, &filters);
+    let report = validate_operator_evidence_documents(args.profile, &documents, &filters);
     let output = render_operator_evidence_report(&documents, &report);
 
     if !report.passed() {

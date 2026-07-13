@@ -3,6 +3,12 @@ use std::collections::BTreeMap;
 use anyhow::{bail, Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 
+mod profile;
+
+pub(crate) use profile::{
+    EvidenceDisposition, OperatorEvidenceProfile, OperatorEvidenceSlot, ShareOutcome,
+};
+
 pub(crate) const REQUIRED_SLOT_FILES: &[&str] = &[
     "package.md",
     "detector.md",
@@ -97,19 +103,18 @@ pub(crate) fn load_operator_evidence_documents(
 }
 
 pub(crate) fn validate_operator_evidence_documents(
+    profile: OperatorEvidenceProfile,
     documents: &OperatorEvidenceDocuments,
     filters: &OperatorEvidenceFilters,
 ) -> OperatorEvidenceReport {
     let mut validation_errors = Vec::new();
 
-    let is_phase28 = is_phase28_consolidation_root(documents);
-
     validate_required_slots(&mut validation_errors, documents);
-    validate_slot_metadata(&mut validation_errors, documents, is_phase28);
+    validate_slot_metadata(&mut validation_errors, profile, documents);
     validate_redaction_review(&mut validation_errors, documents, filters);
     validate_blocked_target_slots(&mut validation_errors, documents);
-    validate_share_outcome_slot(&mut validation_errors, documents, is_phase28);
-    validate_conclusion(&mut validation_errors, documents, is_phase28);
+    validate_share_outcome_slot(&mut validation_errors, profile, documents);
+    validate_conclusion(&mut validation_errors, profile, documents);
     validate_forbidden_sentinels(&mut validation_errors, documents);
     validate_later_phase_overclaims(&mut validation_errors, documents);
 
@@ -141,31 +146,22 @@ fn validate_required_slots(
     validation_errors: &mut Vec<String>,
     documents: &OperatorEvidenceDocuments,
 ) {
-    for slot_file in REQUIRED_SLOT_FILES {
-        if !documents.slots.contains_key(*slot_file) {
-            validation_errors.push(format!("missing required slot file {slot_file}"));
+    for slot in OperatorEvidenceSlot::ALL {
+        if !documents.slots.contains_key(slot.file_name()) {
+            validation_errors.push(format!("missing required slot file {}", slot.file_name()));
         }
     }
 }
 
-fn is_phase28_consolidation_root(documents: &OperatorEvidenceDocuments) -> bool {
-    documents
-        .evidence_root
-        .as_str()
-        .contains("phase-28-hardware-evidence-and-checklist-promotion")
-        || documents
-            .slots
-            .get("conclusion.md")
-            .is_some_and(|contents| contents.contains("phase28_consolidation_claim:"))
-}
-
 fn validate_slot_metadata(
     validation_errors: &mut Vec<String>,
+    profile: OperatorEvidenceProfile,
     documents: &OperatorEvidenceDocuments,
-    is_phase28: bool,
 ) {
-    for slot_file in REQUIRED_SLOT_FILES {
-        let Some(contents) = documents.slots.get(*slot_file) else {
+    let descriptor = profile.descriptor();
+    for slot in descriptor.slots() {
+        let slot_file = slot.file_name();
+        let Some(contents) = documents.slots.get(slot_file) else {
             continue;
         };
 
@@ -174,6 +170,11 @@ fn validate_slot_metadata(
             .any(|status| contents.contains(status))
         {
             validation_errors.push(format!("{slot_file} must contain a valid slot_status"));
+        }
+
+        let expected_slot = format!("slot: {}", slot.slot_name());
+        if !contents.lines().any(|line| line.trim() == expected_slot) {
+            validation_errors.push(format!("{slot_file} must contain {expected_slot}"));
         }
 
         for required in [
@@ -187,7 +188,10 @@ fn validate_slot_metadata(
             }
         }
 
-        if is_phase28 {
+        validate_profile_field(validation_errors, profile, slot_file, contents);
+        validate_disposition(validation_errors, descriptor, slot, contents);
+
+        if profile == OperatorEvidenceProfile::Phase28 {
             for required in ["source_phase27_root:", "consolidation_status:"] {
                 if !contents.contains(required) {
                     validation_errors.push(format!(
@@ -196,6 +200,92 @@ fn validate_slot_metadata(
                 }
             }
         }
+    }
+}
+
+fn validate_profile_field(
+    validation_errors: &mut Vec<String>,
+    profile: OperatorEvidenceProfile,
+    slot_file: &str,
+    contents: &str,
+) {
+    match parse_single_field(contents, "evidence_profile") {
+        Ok(value) if value == profile.as_str() => {}
+        Ok(value) => validation_errors.push(format!(
+            "{slot_file} evidence_profile {value:?} contradicts selected profile {profile}"
+        )),
+        Err(error) => validation_errors.push(format!("{slot_file} {error}")),
+    }
+}
+
+fn validate_disposition(
+    validation_errors: &mut Vec<String>,
+    descriptor: profile::OperatorEvidenceProfileDescriptor,
+    slot: OperatorEvidenceSlot,
+    contents: &str,
+) {
+    let slot_file = slot.file_name();
+    let disposition = match parse_single_field(contents, "evidence_disposition")
+        .and_then(|value| value.parse::<EvidenceDisposition>())
+    {
+        Ok(disposition) => disposition,
+        Err(error) => {
+            validation_errors.push(format!("{slot_file} {error}"));
+            return;
+        }
+    };
+
+    if !descriptor.allows_disposition(slot, disposition) {
+        validation_errors.push(format!(
+            "{slot_file} disposition {} is not legal for the selected profile",
+            disposition.as_str()
+        ));
+    }
+
+    if descriptor.requires_observation(slot) && disposition != EvidenceDisposition::Observed {
+        validation_errors.push(format!(
+            "{slot_file} requires observed evidence; generated or cross-linked provenance cannot satisfy it"
+        ));
+    }
+
+    if descriptor.generated_provenance_required(disposition)
+        && !contents.contains("generated_provenance:")
+    {
+        validation_errors.push(format!(
+            "{slot_file} must contain generated_provenance for disposition {}",
+            disposition.as_str()
+        ));
+    }
+
+    let status_is_consistent = match disposition {
+        EvidenceDisposition::Observed | EvidenceDisposition::CrossLinked => {
+            contents.contains("slot_status: passed")
+        }
+        EvidenceDisposition::Blocked => contents.contains("slot_status: blocked"),
+        EvidenceDisposition::Deferred => {
+            contents.contains("slot_status: pending") || contents.contains("slot_status: deferred")
+        }
+    };
+    if !status_is_consistent {
+        validation_errors.push(format!(
+            "{slot_file} slot_status contradicts evidence_disposition {}",
+            disposition.as_str()
+        ));
+    }
+}
+
+fn parse_single_field<'a>(contents: &'a str, field: &str) -> Result<&'a str, String> {
+    let prefix = format!("{field}:");
+    let values = contents
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix(&prefix))
+        .map(str::trim)
+        .collect::<Vec<_>>();
+
+    match values.as_slice() {
+        [value] if !value.is_empty() => Ok(value),
+        [] => Err(format!("must contain exactly one {field}: value")),
+        _ => Err(format!("must contain exactly one {field}: value")),
     }
 }
 
@@ -246,29 +336,23 @@ fn validate_blocked_target_slots(
 
 fn validate_share_outcome_slot(
     validation_errors: &mut Vec<String>,
+    profile: OperatorEvidenceProfile,
     documents: &OperatorEvidenceDocuments,
-    is_phase28: bool,
 ) {
     let Some(contents) = documents.slots.get("share-outcome.md") else {
         return;
     };
 
-    if is_phase28 {
-        if !contents.contains("slot_status: blocked") {
-            validation_errors
-                .push("share-outcome.md must contain slot_status: blocked for Phase 28".to_owned());
-        }
-
-        for required in [
-            "share_outcome: blocked_safe_prerequisite",
-            "asic_bridge_status: blocked",
-            "safe_stop_status: blocked",
-        ] {
-            if !contents.contains(required) {
-                validation_errors.push(format!("share-outcome.md must contain {required}"));
+    let maybe_outcome = contents
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("share_outcome:").map(str::trim));
+    if let Some(outcome) = maybe_outcome {
+        match outcome.parse::<ShareOutcome>() {
+            Ok(outcome) => {
+                validate_share_outcome_support(validation_errors, profile, outcome, contents)
             }
+            Err(error) => validation_errors.push(format!("share-outcome.md {error}")),
         }
-        return;
     }
 
     let is_pending_or_deferred =
@@ -287,16 +371,54 @@ fn validate_share_outcome_slot(
     }
 }
 
+fn validate_share_outcome_support(
+    validation_errors: &mut Vec<String>,
+    profile: OperatorEvidenceProfile,
+    outcome: ShareOutcome,
+    contents: &str,
+) {
+    if !profile.descriptor().supports_share_outcome(outcome) {
+        validation_errors.push(format!(
+            "share-outcome.md outcome {} is not supported by {profile}",
+            outcome.as_str()
+        ));
+        return;
+    }
+
+    match outcome {
+        ShareOutcome::Accepted | ShareOutcome::Rejected => {
+            for required in [
+                "asic_correlation_status: passed",
+                "safe_stop_status: passed",
+            ] {
+                if !contents.contains(required) {
+                    validation_errors.push(format!(
+                        "share-outcome.md {} requires {required}",
+                        outcome.as_str()
+                    ));
+                }
+            }
+        }
+        ShareOutcome::BlockedSafePrerequisite => {
+            for required in ["asic_bridge_status: blocked", "safe_stop_status: blocked"] {
+                if !contents.contains(required) {
+                    validation_errors.push(format!("share-outcome.md must contain {required}"));
+                }
+            }
+        }
+    }
+}
+
 fn validate_conclusion(
     validation_errors: &mut Vec<String>,
+    profile: OperatorEvidenceProfile,
     documents: &OperatorEvidenceDocuments,
-    is_phase28: bool,
 ) {
     let Some(contents) = documents.slots.get("conclusion.md") else {
         return;
     };
 
-    if is_phase28 {
+    if profile == OperatorEvidenceProfile::Phase28 {
         if !contents.contains("phase28_consolidation_claim: hardware_evidence_consolidation") {
             validation_errors.push(
                 "conclusion.md must contain phase28_consolidation_claim: hardware_evidence_consolidation"
@@ -306,7 +428,9 @@ fn validate_conclusion(
         return;
     }
 
-    if !contents.contains("phase23_workflow_claim: redacted_operator_evidence_workflow") {
+    if profile == OperatorEvidenceProfile::Phase23
+        && !contents.contains("phase23_workflow_claim: redacted_operator_evidence_workflow")
+    {
         validation_errors.push(
             "conclusion.md must contain phase23_workflow_claim: redacted_operator_evidence_workflow"
                 .to_owned(),
@@ -350,6 +474,80 @@ mod tests {
     use super::*;
 
     #[test]
+    fn every_profile_describes_exactly_the_canonical_eleven_slots() {
+        // Arrange
+        let profiles = OperatorEvidenceProfile::ALL;
+
+        // Act
+        let described_slots = profiles.map(|profile| profile.descriptor().slots());
+
+        // Assert
+        for slots in described_slots {
+            assert_eq!(slots, OperatorEvidenceSlot::ALL);
+        }
+    }
+
+    #[test]
+    fn explicit_phase23_profile_ignores_misleading_phase28_directory_name() {
+        // Arrange
+        let evidence_root =
+            create_evidence_root("phase-28-hardware-evidence-and-checklist-promotion");
+        write_complete_slots(&evidence_root, SlotOverrides::default());
+        let documents = load_operator_evidence_documents(&evidence_root).expect("root should load");
+        let filters = OperatorEvidenceFilters {
+            require_redaction_passed: true,
+        };
+
+        // Act
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase23,
+            &documents,
+            &filters,
+        );
+
+        // Assert
+        assert!(report.validation_errors.is_empty(), "{report:#?}");
+    }
+
+    #[test]
+    fn rejects_cross_linked_detector_when_phase27_requires_observation() {
+        // Arrange
+        let evidence_root = create_evidence_root("phase27-cross-linked-detector");
+        write_complete_slots(&evidence_root, SlotOverrides::default());
+        rewrite_profile(&evidence_root, OperatorEvidenceProfile::Phase27);
+        rewrite_slot(&evidence_root, OperatorEvidenceSlot::Detector, |contents| {
+            contents.replace(
+                "evidence_disposition: observed",
+                "evidence_disposition: cross_linked\ngenerated_provenance: source-link",
+            )
+        });
+        let documents = load_operator_evidence_documents(&evidence_root).expect("root should load");
+        let filters = OperatorEvidenceFilters {
+            require_redaction_passed: true,
+        };
+
+        // Act
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase27,
+            &documents,
+            &filters,
+        );
+
+        // Assert
+        assert_error_contains(&report, "requires observed evidence");
+    }
+
+    #[test]
+    fn rejects_accepted_outcome_without_asic_correlation_and_safe_stop_support() {
+        assert_unsupported_share_outcome(ShareOutcome::Accepted);
+    }
+
+    #[test]
+    fn rejects_rejected_outcome_without_asic_correlation_and_safe_stop_support() {
+        assert_unsupported_share_outcome(ShareOutcome::Rejected);
+    }
+
+    #[test]
     fn accepts_complete_redacted_operator_evidence_root() {
         // Arrange
         let evidence_root = create_evidence_root("complete");
@@ -360,7 +558,11 @@ mod tests {
         };
 
         // Act
-        let report = validate_operator_evidence_documents(&documents, &filters);
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase23,
+            &documents,
+            &filters,
+        );
 
         // Assert
         assert!(report.validation_errors.is_empty(), "{report:#?}");
@@ -402,7 +604,11 @@ mod tests {
         };
 
         // Act
-        let report = validate_operator_evidence_documents(&documents, &filters);
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase23,
+            &documents,
+            &filters,
+        );
 
         // Assert
         assert_error_contains(&report, "redaction_status: passed");
@@ -425,7 +631,11 @@ mod tests {
         };
 
         // Act
-        let report = validate_operator_evidence_documents(&documents, &filters);
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase23,
+            &documents,
+            &filters,
+        );
 
         // Assert
         assert_error_contains(&report, "sentinel-pool.invalid");
@@ -446,7 +656,11 @@ mod tests {
         };
 
         // Act
-        let report = validate_operator_evidence_documents(&documents, &filters);
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase23,
+            &documents,
+            &filters,
+        );
 
         // Assert
         assert!(report.validation_errors.is_empty(), "{report:#?}");
@@ -470,7 +684,11 @@ mod tests {
         };
 
         // Act
-        let report = validate_operator_evidence_documents(&documents, &filters);
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase23,
+            &documents,
+            &filters,
+        );
 
         // Assert
         assert_error_contains(&report, "Phase 25");
@@ -497,7 +715,11 @@ mod tests {
         };
 
         // Act
-        let report = validate_operator_evidence_documents(&documents, &filters);
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase23,
+            &documents,
+            &filters,
+        );
 
         // Assert
         assert_error_contains(&report, "phase23_workflow_claim");
@@ -514,7 +736,11 @@ mod tests {
         };
 
         // Act
-        let report = validate_operator_evidence_documents(&documents, &filters);
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase28,
+            &documents,
+            &filters,
+        );
 
         // Assert
         assert!(report.validation_errors.is_empty(), "{report:#?}");
@@ -537,7 +763,11 @@ mod tests {
         };
 
         // Act
-        let report = validate_operator_evidence_documents(&documents, &filters);
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase23,
+            &documents,
+            &filters,
+        );
 
         // Assert
         assert_error_contains(&report, "trusted bm1366 production work");
@@ -589,6 +819,10 @@ mod tests {
             }
             if *slot_file == "share-outcome.md" {
                 contents = contents.replace("slot_status: passed", "slot_status: pending");
+                contents = contents.replace(
+                    "evidence_disposition: observed",
+                    "evidence_disposition: deferred\ngenerated_provenance: phase23-non-claim",
+                );
                 if !overrides.omit_share_nonclaim {
                     contents.push_str(
                         "owner: Phase 25\naccepted/rejected share outcomes remain non-claims\n",
@@ -616,7 +850,7 @@ mod tests {
 
     fn base_slot(slot_name: &str) -> String {
         format!(
-            "slot: {slot_name}\nslot_status: passed\nboard: 205\nredaction_status: passed\nraw_artifacts_committed: no\npool_config: local-owner-supplied\nexact_non_claims:\n- trusted BM1366 production work remains a non-claim\n"
+            "slot: {slot_name}\nslot_status: passed\nevidence_profile: phase23\nevidence_disposition: observed\nboard: 205\nredaction_status: passed\nraw_artifacts_committed: no\npool_config: local-owner-supplied\nexact_non_claims:\n- trusted BM1366 production work remains a non-claim\n"
         )
     }
 
@@ -630,20 +864,85 @@ mod tests {
         );
     }
 
+    fn assert_unsupported_share_outcome(outcome: ShareOutcome) {
+        // Arrange
+        let evidence_root = create_evidence_root(outcome.as_str());
+        write_complete_slots(&evidence_root, SlotOverrides::default());
+        rewrite_profile(&evidence_root, OperatorEvidenceProfile::Phase27);
+        rewrite_slot(
+            &evidence_root,
+            OperatorEvidenceSlot::ShareOutcome,
+            |contents| {
+                contents
+                    .replace("slot_status: pending", "slot_status: passed")
+                    .replace(
+                        "evidence_disposition: deferred",
+                        "evidence_disposition: observed",
+                    )
+                    .replace("generated_provenance: phase23-non-claim\n", "")
+                    + &format!("share_outcome: {}\n", outcome.as_str())
+            },
+        );
+        let documents = load_operator_evidence_documents(&evidence_root).expect("root should load");
+        let filters = OperatorEvidenceFilters {
+            require_redaction_passed: true,
+        };
+
+        // Act
+        let report = validate_operator_evidence_documents(
+            OperatorEvidenceProfile::Phase27,
+            &documents,
+            &filters,
+        );
+
+        // Assert
+        assert_error_contains(&report, "asic_correlation_status: passed");
+        assert_error_contains(&report, "safe_stop_status: passed");
+    }
+
+    fn rewrite_profile(evidence_root: &Utf8Path, profile: OperatorEvidenceProfile) {
+        for slot in OperatorEvidenceSlot::ALL {
+            rewrite_slot(evidence_root, slot, |contents| {
+                contents.replace(
+                    "evidence_profile: phase23",
+                    &format!("evidence_profile: {profile}"),
+                )
+            });
+        }
+    }
+
+    fn rewrite_slot(
+        evidence_root: &Utf8Path,
+        slot: OperatorEvidenceSlot,
+        transform: impl FnOnce(String) -> String,
+    ) {
+        let path = evidence_root.join(slot.file_name());
+        let contents = std::fs::read_to_string(path.as_std_path()).expect("slot should read");
+        std::fs::write(path.as_std_path(), transform(contents)).expect("slot should rewrite");
+    }
+
     fn write_phase28_consolidation_slots(evidence_root: &Utf8Path) {
         for slot_file in REQUIRED_SLOT_FILES {
             let slot_name = slot_file.trim_end_matches(".md");
             let mut contents = format!(
-                "slot: {slot_name}\nslot_status: passed\nboard: 205\nsource_phase27_root: docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/\nconsolidation_status: cross_linked\nredaction_status: passed\nraw_artifacts_committed: no\npool_config: local-owner-supplied\nexact_non_claims:\n- accepted/rejected shares remain non-claims\n"
+                "slot: {slot_name}\nslot_status: passed\nevidence_profile: phase28\nevidence_disposition: cross_linked\ngenerated_provenance: phase27-category-cross-link\nboard: 205\nsource_phase27_root: docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/\nconsolidation_status: cross_linked\nredaction_status: passed\nraw_artifacts_committed: no\npool_config: local-owner-supplied\nexact_non_claims:\n- accepted/rejected shares remain non-claims\n"
             );
             if *slot_file == "share-outcome.md" {
                 contents = contents.replace("slot_status: passed", "slot_status: blocked");
+                contents = contents.replace(
+                    "evidence_disposition: cross_linked",
+                    "evidence_disposition: blocked",
+                );
                 contents.push_str(
                     "share_outcome: blocked_safe_prerequisite\nasic_bridge_status: blocked\nsafe_stop_status: blocked\n",
                 );
             }
             if *slot_file == "api.md" || *slot_file == "websocket.md" {
                 contents = contents.replace("slot_status: passed", "slot_status: blocked");
+                contents = contents.replace(
+                    "evidence_disposition: cross_linked",
+                    "evidence_disposition: blocked",
+                );
                 contents.push_str(
                     "target_blocker: stale DEVICE_URL, mDNS, ARP, router state, network scan, and unrelated evidence are invalid.\n",
                 );
