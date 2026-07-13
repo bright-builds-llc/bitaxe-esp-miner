@@ -211,6 +211,7 @@ dependencies = [
  "bitaxe-api",
  "camino",
  "clap",
+ "libc",
  "serde",
  "serde_json",
 ]

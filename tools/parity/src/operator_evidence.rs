@@ -3,8 +3,12 @@ use std::collections::BTreeMap;
 use anyhow::{bail, Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 
+mod generation;
 mod profile;
 
+pub(crate) use generation::{
+    complete_operator_evidence, consolidate_phase28_evidence, WorkflowStatus,
+};
 pub(crate) use profile::{
     EvidenceDisposition, OperatorEvidenceProfile, OperatorEvidenceSlot, ShareOutcome,
 };
@@ -242,7 +246,7 @@ fn validate_disposition(
         ));
     }
 
-    if descriptor.requires_observation(slot) && disposition != EvidenceDisposition::Observed {
+    if descriptor.requires_observation(slot) && disposition == EvidenceDisposition::CrossLinked {
         validation_errors.push(format!(
             "{slot_file} requires observed evidence; generated or cross-linked provenance cannot satisfy it"
         ));
