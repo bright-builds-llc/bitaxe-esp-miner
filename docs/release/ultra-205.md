@@ -429,6 +429,25 @@ Use the factory image path from
 a full USB flash baseline. Record the exact port, package manifest, source
 commit, reference commit, and observed flash result.
 
+## Phase 25 Live Stratum Evidence
+
+Phase 25 uses the hardware-first detector gate, runtime-only local credential
+paths, commit-ready redaction, and a hardware capture duration of at least 360
+seconds. After `just detect-ultra205` passes for exactly one Ultra 205, the
+operator command shape is:
+
+```bash
+just phase25-evidence --evidence-root <phase25-root> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --mode hardware --pool-credentials pool-credentials.json --wifi-credentials wifi-credentials.json --duration-seconds 360 --device-url <current-session-origin>
+```
+
+The wrapper completes the canonical eleven-slot evidence root, applies the
+applicable mining policy check, and finishes with strict
+`operator-evidence --profile phase25 --evidence-root <phase25-root> --require-redaction-passed`
+validation exactly once. A post-setup blocked result or detector failure still
+writes and validates a complete blocked root, preserves the exact non-claim,
+and returns nonzero. Use blocked mode only for the documented static fallback;
+it is not a successful hardware result.
+
 ## Phase 27 Live Hardware ASIC And Stratum Bridge
 
 Phase 27 evidence requires Phase 27 enablement firmware before flash. Build and
@@ -462,6 +481,30 @@ just phase27-evidence \
 
 Use `--mode blocked` only as the CI/no-hardware fallback when detection fails or
 credentials are absent.
+
+The Phase 27 wrapper completes the canonical eleven-slot evidence root, runs
+the applicable mining policy check, and finishes with strict
+`operator-evidence --profile phase27 --evidence-root <phase27-root> --require-redaction-passed`
+validation exactly once. A post-setup blocked result or detector failure still
+writes and validates a complete blocked root, preserves the exact non-claim,
+and returns nonzero.
+
+## Phase 28 Evidence Consolidation
+
+Consolidate a committed Phase 27 root into a dedicated Phase 28 destination
+with this exact repo-owned command shape:
+
+```bash
+just phase28-evidence --phase27-root <committed-phase27-root> --evidence-root <dedicated-phase28-root>
+```
+
+The two roots must be distinct and non-nested. The command reads only committed
+allowlisted category fields, renders relative cross-links, and preserves the
+exact `accepted`, `rejected`, or `blocked_safe_prerequisite` outcome and its
+supporting proof or non-claims. Identical reruns are deterministic. Generation
+and strict Phase 28 operator validation occur in staging; if either fails, the
+prior destination remains unchanged. Equal, nested, contradictory, incomplete,
+or operator-owned destinations fail closed.
 
 ## Monitor
 

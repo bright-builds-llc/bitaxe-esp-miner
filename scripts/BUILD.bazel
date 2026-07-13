@@ -226,6 +226,15 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase29_doc_redaction_check",
+    srcs = ["phase29-doc-redaction-check.sh"],
+    data = [
+        "phase28.1.1-promoted-evidence-denylist.patterns",
+        "phase28.1.1-promoted-evidence-denylist.sh",
+    ],
+)
+
+sh_binary(
     name = "source_commit_stamp_tool",
     srcs = ["source-commit-stamp.sh"],
 )
@@ -608,6 +617,18 @@ sh_test(
         "HOME",
         "PATH",
     ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase29_doc_redaction_check_test",
+    srcs = ["phase29-doc-redaction-check-test.sh"],
+    data = [
+        "phase28.1.1-promoted-evidence-denylist.patterns",
+        "phase28.1.1-promoted-evidence-denylist.sh",
+        "phase29-doc-redaction-check.sh",
+    ],
+    env_inherit = ["PATH"],
     tags = ["local"],
 )
 
