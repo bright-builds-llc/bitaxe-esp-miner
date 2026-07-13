@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: Phase 28.1.1 closed — Won't Do (unresolved); Phase 30 is next
-stopped_at: Phase 28.1.1 context gathered
-last_updated: "2026-07-13T14:54:51.253Z"
+status: Phase 30 ready to discuss
+stopped_at: Phase 30 ready to discuss
+last_updated: "2026-07-13T16:14:02Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 18
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-13
+Last activity: 2026-07-13 - Completed quick task 260713-egi: Close Phase 28.1.1 and descendants as archived Won't Do terminal unresolved work; guard historical diagnostics and route GSD exclusively to Phase 30
 
 ## Current Position
 
@@ -25,7 +25,7 @@ Plan: 0 planned
 
 - **Phase:** 30 — Live Share Outcome And Verified Promotion
 - **Plan:** 0 planned
-- **Status:** Phase 28.1.1 closed — Won't Do (unresolved); Phase 30 is next
+- **Status:** Phase 30 ready to discuss; the Phase 28.1.1 lineage is terminal archived unresolved history.
 - **Next step:** Discuss Phase 30's conservative disposition. Do not promote STR-09, ASIC-11, or CFG-07 unless new eligible share-outcome evidence is introduced.
 
 ## Decisions (Phase 28.1.1 Closure)
@@ -35,6 +35,8 @@ Plan: 0 planned
 - Phase 28.1.1 remains `gaps_found` at 6/12. Firmware nonce production, hashing-capable state, correlated BM1366 result, and accepted/rejected live share remain unverified.
 - STR-09, ASIC-11, and CFG-07 remain pending. Phase 30 is the next roadmap phase, but verified promotion remains evidence-gated.
 - Do not resume Plan 16 or treat this closure as parity evidence.
+- GSD variants that do not resolve active-milestone archives may produce eight W006 warnings for this lineage. The installed GSD currently introduces none; in either case, do not recreate active directories or promote verification to silence diagnostics.
+- Installed atomic `find-phase` does not resolve milestone archives, and `init phase-op` returns the roadmap phase with a null directory; use lifecycle validation for allowed archive resolution, never recreate active stubs, and do not run explicit lineage operations.
 
 ## Decisions (Phase 28.1.1 Plan 15)
 
@@ -161,6 +163,7 @@ Plan: 0 planned
 | 260712-0a9 | Always-on serial runtime heartbeat and Plan 13 fallback validation | 2026-07-12 | a38bb0f | Software verified; hardware transport blocked | [260712-0a9-implement-the-always-on-serial-only-runt](./quick/260712-0a9-implement-the-always-on-serial-only-runt/) |
 | 260712-pw5 | Persist direct-UART and pin-manipulation authorization rule | 2026-07-12 | this commit | Plan 14 hardware cancelled; non-invasive replanning required | [260712-pw5-persist-repo-rule-prohibiting-assumed-di](./quick/260712-pw5-persist-repo-rule-prohibiting-assumed-di/) |
 | 260713-p28 | Close Phase 28.1.1 without claiming unresolved parity | 2026-07-13 | this commit | Closed — Won't Do (unresolved); Phase 30 next | — |
+| 260713-egi | Close Phase 28.1.1 lineage as terminal archived unresolved work and guard all reopening paths | 2026-07-13 | 2285ebe | Verified | [260713-egi-close-phase-28-1-1-and-descendants-as-ar](./quick/260713-egi-close-phase-28-1-1-and-descendants-as-ar/) |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -184,5 +187,5 @@ Plan: 0 planned
 
 ## Session
 
-- **Stopped at:** Phase 28.1.1 context gathered
+- **Stopped at:** Phase 30 ready to discuss
 - **Resume:** Discuss Phase 30's conservative disposition; preserve the evidence gate and pending STR-09, ASIC-11, and CFG-07 requirements.
