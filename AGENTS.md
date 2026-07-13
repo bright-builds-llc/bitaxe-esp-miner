@@ -295,7 +295,8 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 - Do not discuss, plan, execute, verify, resume, diagnose, or run hardware/capture work for that lineage. This prohibition includes direct UART and any pin, pad, header, GPIO, test-point, probe, jumper, solder, or injected-signal path.
 - Phase 30 is the only allowed continuation. It must use a conservative no-promotion disposition unless explicitly supplied new eligible evidence independently satisfies the existing evidence gates.
 - The lineage's `gaps_found` verifications, pending STR-09/CFG-07/ASIC-11 requirements, and exact non-claims are authoritative. Administrative closure is not verification.
-- GSD versions/configurations that do not resolve active-milestone archives may report W006 for these eight phases. Treat such warnings as an expected archive exception; do not silence them by recreating active directories or marking verification passed. The currently installed GSD resolves this archive and introduces no W006.
+- GSD versions/configurations that do not resolve active-milestone archives may report W006 for these eight phases. Treat such warnings as an expected archive exception; do not silence them by recreating active directories or marking verification passed.
+- The currently installed GSD has a split archive lookup contract: canonical `find-phase 28.1.1*` returns `found: false`, and `init phase-op 28.1.1*` reports `phase_found: true` with `phase_dir: null`, because those command paths ignore milestone archives. `verify lifecycle` does resolve `.planning/milestones/v1.1-phases/` and must pass for all eight archived lifecycle IDs. This is an expected installed-GSD exception, not permission to patch global GSD core, recreate active directories, promote verification, or run explicit lineage operations; Phase 30 remains the sole continuation.
 
 ### Flash And Monitor Timeouts
 

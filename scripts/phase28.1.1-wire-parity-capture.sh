@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck source=scripts/phase28.1.1-terminal-closure-guard.sh
 source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # J3-equivalent capture: phase27 image + pool-input-bridge watcher (Plan 28.1.1-02).
 set -euo pipefail
@@ -97,6 +98,8 @@ else
 	bash scripts/phase27-live-hardware-bridge-package.sh >/dev/null
 fi
 
+# Historical dead body retained for audit; the terminal guard exits first.
+# shellcheck disable=SC2034
 image_path="${repo_root}/bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin"
 mkdir -p "${evidence_dir}/pool-input-bridge"
 monitor_log="${evidence_dir}/flash-monitor.log"

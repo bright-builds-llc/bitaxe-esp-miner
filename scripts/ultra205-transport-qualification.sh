@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck source=scripts/phase28.1.1-terminal-closure-guard.sh
 source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Shared authority for the private Ultra 205 transport qualification contract.
 set -euo pipefail

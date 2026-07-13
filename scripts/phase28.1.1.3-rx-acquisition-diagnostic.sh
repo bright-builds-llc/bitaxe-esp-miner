@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck source=scripts/phase28.1.1-terminal-closure-guard.sh
 source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Phase 28.1.1.3 RX-acquisition diagnostic: baseline compare + forced long-block A/B.
 set -euo pipefail

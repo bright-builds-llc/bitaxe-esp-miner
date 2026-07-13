@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck source=scripts/phase28.1.1-terminal-closure-guard.sh
 source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Capture upstream and Rust BM1366 job frames against the same synthetic Stratum work.
 set -euo pipefail

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck source=scripts/phase28.1.1-terminal-closure-guard.sh
 source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Out-of-tree upstream BM1366 SERIALTX_DEBUG capture helper (Plan 28.1.1-01).
 # Never modifies reference/esp-miner. Capture artifacts stay under scratch/ (gitignored).
