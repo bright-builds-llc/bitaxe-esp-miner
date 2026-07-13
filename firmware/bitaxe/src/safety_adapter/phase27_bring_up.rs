@@ -5,10 +5,10 @@
 use std::sync::{Mutex, OnceLock};
 
 use anyhow::Result;
-use bitaxe_api::{project_observation, TelemetryObservations};
+use bitaxe_api::TelemetryObservations;
 use bitaxe_config::defaults::ultra_205_defaults;
 use bitaxe_safety::{
-    observation::{Observation, UnavailableReason},
+    observation::Observation,
     power::PowerObservation,
     thermal::{
         FanControlDecision, FanControlInputs, FanControlMode, ThermalObservation, ThermalReading,
@@ -213,8 +213,6 @@ fn store_snapshot(
     thermal_observation: ThermalObservation,
 ) {
     let maybe_power = maybe_power_sample.map(ina260::power_observation_from_sample);
-    let observations = phase31_observations(maybe_power.as_ref(), &thermal_observation);
-
     if let Ok(mut state) = snapshot_state().lock() {
         state.bring_up_complete = true;
         state.fan_duty_percent = fan_duty_percent;
@@ -225,45 +223,10 @@ fn store_snapshot(
         log::warn!("phase27_safety_snapshot=unavailable category=mutex_poisoned");
     }
 
-    super::replace_observations_from_producer(observations);
-}
-
-fn phase31_observations(
-    maybe_power: Option<&PowerObservation>,
-    thermal: &ThermalObservation,
-) -> TelemetryObservations {
-    let power_truth = maybe_power.map_or_else(
-        || Observation::unavailable(UnavailableReason::PowerSampleUnavailable),
-        |power| *power.truth(),
+    // Phase 27's retained compatibility observations have fixed placeholder
+    // stamps. Keep them unavailable to operator consumers until Phase 32 owns
+    // real boot-session, sequence, and acquisition-time provenance.
+    super::replace_observations_from_producer(
+        TelemetryObservations::unavailable_from_unstamped_legacy_source(),
     );
-    let temperature_truth = thermal.temperature_truth();
-
-    TelemetryObservations {
-        power_watts: project_observation(
-            &power_truth,
-            |reading| Some(reading.power_watts()),
-            UnavailableReason::PowerSampleUnavailable,
-        ),
-        bus_voltage_volts: project_observation(
-            &power_truth,
-            |reading| Some(reading.bus_voltage_volts()),
-            UnavailableReason::PowerSampleUnavailable,
-        ),
-        current_amps: project_observation(
-            &power_truth,
-            |reading| Some(reading.current_amps()),
-            UnavailableReason::PowerSampleUnavailable,
-        ),
-        chip_temp_celsius: project_observation(
-            temperature_truth,
-            |reading| Some(reading.chip_temp_celsius),
-            UnavailableReason::ThermalReadingUnavailable,
-        ),
-        vr_temp_celsius: project_observation(
-            temperature_truth,
-            |reading| reading.maybe_vr_temp_celsius,
-            UnavailableReason::ThermalReadingUnavailable,
-        ),
-        fan_rpm: Observation::unavailable(UnavailableReason::TachometerUnavailable),
-    }
 }

@@ -107,6 +107,13 @@ impl TelemetryObservations {
             fan_rpm: Observation::unavailable(reason),
         }
     }
+
+    /// Returns unavailable truth for a retained source that has no valid
+    /// producer-owned session, sequence, or acquisition time.
+    #[must_use]
+    pub const fn unavailable_from_unstamped_legacy_source() -> Self {
+        Self::unavailable(UnavailableReason::ProducerUnavailable)
+    }
 }
 
 impl Default for TelemetryObservations {
@@ -336,6 +343,34 @@ mod tests {
 
         // Assert
         assert_eq!(store.read(), replacement);
+    }
+
+    #[test]
+    fn unstamped_legacy_source_cannot_publish_fresh_operator_truth() {
+        // Arrange
+        let observations = TelemetryObservations::unavailable_from_unstamped_legacy_source();
+
+        // Act
+        let truths = [
+            observations.power_watts.state_label(),
+            observations.bus_voltage_volts.state_label(),
+            observations.current_amps.state_label(),
+            observations.chip_temp_celsius.state_label(),
+            observations.vr_temp_celsius.state_label(),
+            observations.fan_rpm.state_label(),
+        ];
+        let stamps = [
+            observations.power_watts.maybe_last_good(),
+            observations.bus_voltage_volts.maybe_last_good(),
+            observations.current_amps.maybe_last_good(),
+            observations.chip_temp_celsius.maybe_last_good(),
+            observations.vr_temp_celsius.maybe_last_good(),
+        ];
+
+        // Assert
+        assert_eq!(truths, ["unavailable"; 6]);
+        assert!(stamps.into_iter().all(|maybe_stamp| maybe_stamp.is_none()));
+        assert!(observations.fan_rpm.maybe_last_good().is_none());
     }
 
     #[test]
