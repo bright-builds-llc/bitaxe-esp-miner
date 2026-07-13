@@ -75,7 +75,7 @@ pub struct SequenceOverflow;
 pub struct MissingLastGood;
 
 /// A validated successful value and its producer-owned provenance.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StampedSample<T> {
     value: T,
     boot_session: BootSessionId,
@@ -148,6 +148,22 @@ pub enum SampleOrder {
 pub enum StaleReason {
     ProducerCadenceExpired,
     ProducerTimeout,
+    PowerSampleStale,
+    ThermalSampleStale,
+    TachometerStale,
+}
+
+impl StaleReason {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ProducerCadenceExpired => "producer_cadence_expired",
+            Self::ProducerTimeout => "producer_timeout",
+            Self::PowerSampleStale => "power_sample_stale",
+            Self::ThermalSampleStale => "thermal_sample_stale",
+            Self::TachometerStale => "tachometer_stale",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -155,6 +171,22 @@ pub enum StaleReason {
 pub enum UnavailableReason {
     NotYetObserved,
     ProducerUnavailable,
+    PowerSampleUnavailable,
+    ThermalReadingUnavailable,
+    TachometerUnavailable,
+}
+
+impl UnavailableReason {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::NotYetObserved => "not_yet_observed",
+            Self::ProducerUnavailable => "producer_unavailable",
+            Self::PowerSampleUnavailable => "power_sample_unavailable",
+            Self::ThermalReadingUnavailable => "thermal_reading_unavailable",
+            Self::TachometerUnavailable => "tachometer_unavailable",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -163,10 +195,31 @@ pub enum FaultReason {
     ReadFailed,
     InvalidSample,
     UnsafeReading,
+    Ina260ReadFailed,
+    InputVoltageUnsafe,
+    PowerLimitExceeded,
+    PowerReadingInvalid,
+    ThermalReadingInvalid,
+}
+
+impl FaultReason {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ReadFailed => "read_failed",
+            Self::InvalidSample => "invalid_sample",
+            Self::UnsafeReading => "unsafe_reading",
+            Self::Ina260ReadFailed => "ina260_read_failed",
+            Self::InputVoltageUnsafe => "input_voltage_unsafe",
+            Self::PowerLimitExceeded => "power_limit_exceeded",
+            Self::PowerReadingInvalid => "power_reading_invalid",
+            Self::ThermalReadingInvalid => "thermal_reading_invalid",
+        }
+    }
 }
 
 /// Mutually exclusive observation truth with variant-owned data.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Observation<T> {
     Fresh {
@@ -229,6 +282,16 @@ impl<T> Observation<T> {
     #[must_use]
     pub const fn is_fresh(&self) -> bool {
         matches!(self, Self::Fresh { .. })
+    }
+
+    #[must_use]
+    pub const fn maybe_reason(&self) -> Option<&'static str> {
+        match self {
+            Self::Fresh { .. } => None,
+            Self::Stale { reason, .. } => Some(reason.as_str()),
+            Self::Unavailable { reason } => Some(reason.as_str()),
+            Self::Fault { reason, .. } => Some(reason.as_str()),
+        }
     }
 }
 
@@ -325,10 +388,9 @@ mod tests {
     fn stale_transition_preserves_the_exact_last_good_sample() {
         // Arrange
         let fresh = fresh(42, 7, 9);
-        let expected = fresh
+        let expected = *fresh
             .maybe_last_good()
-            .expect("fresh observation has a sample")
-            .clone();
+            .expect("fresh observation has a sample");
 
         // Act
         let stale = fresh
@@ -344,10 +406,9 @@ mod tests {
     fn fault_retains_last_good_without_storing_failed_attempt() {
         // Arrange
         let fresh = fresh(42, 7, 9);
-        let expected = fresh
+        let expected = *fresh
             .maybe_last_good()
-            .expect("fresh observation has a sample")
-            .clone();
+            .expect("fresh observation has a sample");
 
         // Act
         let fault = fresh.record_fault(FaultReason::InvalidSample);
@@ -376,18 +437,15 @@ mod tests {
     #[test]
     fn sample_order_is_scoped_to_one_boot_session() {
         // Arrange
-        let earlier = fresh(10, 7, 0)
+        let earlier = *fresh(10, 7, 0)
             .maybe_last_good()
-            .expect("fresh observation has a sample")
-            .clone();
-        let later = fresh(11, 7, 1)
+            .expect("fresh observation has a sample");
+        let later = *fresh(11, 7, 1)
             .maybe_last_good()
-            .expect("fresh observation has a sample")
-            .clone();
-        let other_session = fresh(12, 8, 99)
+            .expect("fresh observation has a sample");
+        let other_session = *fresh(12, 8, 99)
             .maybe_last_good()
-            .expect("fresh observation has a sample")
-            .clone();
+            .expect("fresh observation has a sample");
 
         // Act / Assert
         assert_eq!(earlier.source_order(&later), SampleOrder::Earlier);

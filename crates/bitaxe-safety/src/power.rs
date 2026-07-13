@@ -14,6 +14,10 @@ use bitaxe_config::validation::CoreVoltageMv;
 
 use crate::effects::{SafetyEffect, SafetyEffectPlan};
 use crate::evidence::SafetyCriticalEvidence;
+use crate::observation::{
+    BootSessionId, FaultReason, MonotonicMillis, Observation, ObservationSequence,
+    SequenceOverflow, StaleReason, UnavailableReason,
+};
 use crate::status::SafetyStatus;
 
 pub const MODULE_NAME: &str = "power";
@@ -47,20 +51,33 @@ pub struct Ina260RawSample {
     pub read_failed: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-pub enum PowerObservationStatus {
-    Fresh,
-    Stale { reason: &'static str },
-    Fault { reason: &'static str },
-    Unavailable { reason: &'static str },
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+pub struct PowerReading {
+    bus_voltage_volts: f64,
+    current_amps: f64,
+    power_watts: f64,
+}
+
+impl PowerReading {
+    #[must_use]
+    pub const fn bus_voltage_volts(self) -> f64 {
+        self.bus_voltage_volts
+    }
+
+    #[must_use]
+    pub const fn current_amps(self) -> f64 {
+        self.current_amps
+    }
+
+    #[must_use]
+    pub const fn power_watts(self) -> f64 {
+        self.power_watts
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct PowerObservation {
-    pub status: PowerObservationStatus,
-    pub bus_voltage_volts: f64,
-    pub current_amps: f64,
-    pub power_watts: f64,
+    truth: Observation<PowerReading>,
 }
 
 impl PowerObservation {
@@ -70,81 +87,170 @@ impl PowerObservation {
         age: PowerSampleAgeMs,
         board_power_target_watts: f64,
     ) -> Self {
+        Self::from_stamped_ina260_sample(
+            maybe_sample,
+            age,
+            board_power_target_watts,
+            BootSessionId::new(0),
+            ObservationSequence::ZERO,
+            MonotonicMillis::new(0),
+        )
+        .expect("the zero compatibility sequence must advance")
+        .0
+    }
+
+    pub fn from_stamped_ina260_sample(
+        maybe_sample: Option<Ina260RawSample>,
+        age: PowerSampleAgeMs,
+        board_power_target_watts: f64,
+        boot_session: BootSessionId,
+        prior_sequence: ObservationSequence,
+        acquired_at: MonotonicMillis,
+    ) -> Result<(Self, ObservationSequence), SequenceOverflow> {
         let Some(sample) = maybe_sample else {
-            return Self::unavailable("power_sample_unavailable");
+            return Ok((
+                Self {
+                    truth: Observation::unavailable(UnavailableReason::PowerSampleUnavailable),
+                },
+                prior_sequence,
+            ));
         };
 
         if sample.read_failed {
-            return Self::fault(sample, "ina260_read_failed");
+            return Ok((
+                Self::fault_without_last_good(FaultReason::Ina260ReadFailed),
+                prior_sequence,
+            ));
         }
 
-        if age.0 > POWER_SAMPLE_STALE_AFTER_MS {
-            return Self::with_status(
-                sample,
-                PowerObservationStatus::Stale {
-                    reason: "power_sample_stale",
-                },
-            );
-        }
+        let reading = match validated_power_reading(sample, board_power_target_watts) {
+            Ok(reading) => reading,
+            Err(reason) => {
+                return Ok((Self::fault_without_last_good(reason), prior_sequence));
+            }
+        };
+        let (fresh, sequence) =
+            Observation::record_success(reading, boot_session, prior_sequence, acquired_at)?;
+        let truth = if age.0 > POWER_SAMPLE_STALE_AFTER_MS {
+            let Some(last_good) = fresh.maybe_last_good().copied() else {
+                unreachable!("a fresh observation always owns a last-good sample");
+            };
+            Observation::Stale {
+                last_good,
+                reason: StaleReason::PowerSampleStale,
+            }
+        } else {
+            fresh
+        };
 
-        if !sample.bus_voltage_volts.is_finite()
-            || !sample.current_amps.is_finite()
-            || !sample.power_watts.is_finite()
-            || sample.current_amps < 0.0
-            || sample.power_watts < 0.0
-        {
-            return Self::fault(sample, "power_reading_invalid");
-        }
+        Ok((Self { truth }, sequence))
+    }
 
-        let min_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 - INPUT_VOLTAGE_MARGIN_RATIO);
-        let max_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 + INPUT_VOLTAGE_MARGIN_RATIO);
-        if sample.bus_voltage_volts < min_voltage || sample.bus_voltage_volts > max_voltage {
-            return Self::fault(sample, "input_voltage_unsafe");
-        }
-
-        if sample.power_watts > board_power_target_watts + POWER_MARGIN_WATTS {
-            return Self::fault(sample, "power_limit_exceeded");
-        }
-
-        Self::with_status(sample, PowerObservationStatus::Fresh)
+    #[must_use]
+    pub const fn truth(&self) -> &Observation<PowerReading> {
+        &self.truth
     }
 
     #[must_use]
     pub const fn is_fresh_safe(self) -> bool {
-        matches!(self.status, PowerObservationStatus::Fresh)
+        self.truth.is_fresh()
     }
 
     #[must_use]
     pub const fn reason(self) -> Option<&'static str> {
-        match self.status {
-            PowerObservationStatus::Fresh => None,
-            PowerObservationStatus::Stale { reason }
-            | PowerObservationStatus::Fault { reason }
-            | PowerObservationStatus::Unavailable { reason } => Some(reason),
-        }
+        self.truth.maybe_reason()
     }
 
-    const fn unavailable(reason: &'static str) -> Self {
+    pub fn mark_stale(
+        self,
+        reason: StaleReason,
+    ) -> Result<Self, crate::observation::MissingLastGood> {
+        Ok(Self {
+            truth: self.truth.mark_stale(reason)?,
+        })
+    }
+
+    #[must_use]
+    pub fn record_fault(self, reason: FaultReason) -> Self {
         Self {
-            status: PowerObservationStatus::Unavailable { reason },
-            bus_voltage_volts: 0.0,
-            current_amps: 0.0,
-            power_watts: 0.0,
+            truth: self.truth.record_fault(reason),
         }
     }
 
-    fn fault(sample: Ina260RawSample, reason: &'static str) -> Self {
-        Self::with_status(sample, PowerObservationStatus::Fault { reason })
+    #[must_use]
+    pub const fn maybe_reading(self) -> Option<PowerReading> {
+        let Some(sample) = self.truth.maybe_last_good() else {
+            return None;
+        };
+
+        Some(*sample.value())
     }
 
-    fn with_status(sample: Ina260RawSample, status: PowerObservationStatus) -> Self {
+    #[must_use]
+    pub const fn bus_voltage_volts(self) -> f64 {
+        let Some(reading) = self.maybe_reading() else {
+            return 0.0;
+        };
+
+        reading.bus_voltage_volts()
+    }
+
+    #[must_use]
+    pub const fn current_amps(self) -> f64 {
+        let Some(reading) = self.maybe_reading() else {
+            return 0.0;
+        };
+
+        reading.current_amps()
+    }
+
+    #[must_use]
+    pub const fn power_watts(self) -> f64 {
+        let Some(reading) = self.maybe_reading() else {
+            return 0.0;
+        };
+
+        reading.power_watts()
+    }
+
+    const fn fault_without_last_good(reason: FaultReason) -> Self {
         Self {
-            status,
-            bus_voltage_volts: sample.bus_voltage_volts,
-            current_amps: sample.current_amps,
-            power_watts: sample.power_watts,
+            truth: Observation::Fault {
+                reason,
+                maybe_last_good: None,
+            },
         }
     }
+}
+
+fn validated_power_reading(
+    sample: Ina260RawSample,
+    board_power_target_watts: f64,
+) -> Result<PowerReading, FaultReason> {
+    if !sample.bus_voltage_volts.is_finite()
+        || !sample.current_amps.is_finite()
+        || !sample.power_watts.is_finite()
+        || sample.current_amps < 0.0
+        || sample.power_watts < 0.0
+    {
+        return Err(FaultReason::PowerReadingInvalid);
+    }
+
+    let min_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 - INPUT_VOLTAGE_MARGIN_RATIO);
+    let max_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 + INPUT_VOLTAGE_MARGIN_RATIO);
+    if sample.bus_voltage_volts < min_voltage || sample.bus_voltage_volts > max_voltage {
+        return Err(FaultReason::InputVoltageUnsafe);
+    }
+
+    if sample.power_watts > board_power_target_watts + POWER_MARGIN_WATTS {
+        return Err(FaultReason::PowerLimitExceeded);
+    }
+
+    Ok(PowerReading {
+        bus_voltage_volts: sample.bus_voltage_volts,
+        current_amps: sample.current_amps,
+        power_watts: sample.power_watts,
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -186,9 +292,9 @@ impl PowerEvidenceToken {
         }
 
         Some(Self {
-            bus_voltage_volts: observation.bus_voltage_volts,
-            current_amps: observation.current_amps,
-            power_watts: observation.power_watts,
+            bus_voltage_volts: observation.bus_voltage_volts(),
+            current_amps: observation.current_amps(),
+            power_watts: observation.power_watts(),
         })
     }
 }
@@ -348,7 +454,7 @@ mod tests {
         let decision = PowerSafetyDecision::from_observation(observation);
 
         // Assert
-        assert_eq!(observation.status, PowerObservationStatus::Fresh);
+        assert_eq!(observation.truth().state_label(), "fresh");
         assert!(decision.maybe_evidence.is_some());
         assert_eq!(decision.plan.status, SafetyStatus::Normal);
     }
@@ -432,6 +538,69 @@ mod tests {
                     reason: expected_reason
                 }));
         }
+    }
+
+    #[test]
+    fn safety_power_truth_preserves_last_good_across_stale_and_fault_states() {
+        // Arrange
+        let (fresh, sequence) = PowerObservation::from_stamped_ina260_sample(
+            Some(safe_sample()),
+            PowerSampleAgeMs(100),
+            12.0,
+            BootSessionId::new(7),
+            ObservationSequence::new(9),
+            MonotonicMillis::new(250),
+        )
+        .expect("fixture sequence should advance");
+        let expected = fresh
+            .truth()
+            .maybe_last_good()
+            .expect("fresh power should own a sample")
+            .to_owned();
+
+        // Act
+        let stale = fresh
+            .mark_stale(StaleReason::PowerSampleStale)
+            .expect("fresh power can become stale");
+        let fault = stale.record_fault(FaultReason::ReadFailed);
+
+        // Assert
+        assert_eq!(sequence, ObservationSequence::new(10));
+        assert_eq!(stale.truth().maybe_last_good(), Some(&expected));
+        assert_eq!(fault.truth().maybe_last_good(), Some(&expected));
+        assert_eq!(stale.truth().state_label(), "stale");
+        assert_eq!(fault.truth().state_label(), "fault");
+    }
+
+    #[test]
+    fn safety_power_unavailable_and_invalid_attempts_publish_no_numeric_truth() {
+        // Arrange
+        let unavailable = PowerObservation::from_ina260_sample(None, PowerSampleAgeMs(0), 12.0);
+        let invalid = PowerObservation::from_ina260_sample(
+            Some(Ina260RawSample {
+                current_amps: f64::NAN,
+                ..safe_sample()
+            }),
+            PowerSampleAgeMs(100),
+            12.0,
+        );
+
+        // Act
+        let compatibility_values = [
+            unavailable.bus_voltage_volts(),
+            unavailable.current_amps(),
+            unavailable.power_watts(),
+            invalid.bus_voltage_volts(),
+            invalid.current_amps(),
+            invalid.power_watts(),
+        ];
+
+        // Assert
+        assert_eq!(unavailable.truth().state_label(), "unavailable");
+        assert_eq!(invalid.truth().state_label(), "fault");
+        assert!(unavailable.truth().maybe_last_good().is_none());
+        assert!(invalid.truth().maybe_last_good().is_none());
+        assert_eq!(compatibility_values, [0.0; 6]);
     }
 
     #[test]

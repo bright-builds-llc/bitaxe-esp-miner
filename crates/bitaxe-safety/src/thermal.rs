@@ -14,6 +14,10 @@ use bitaxe_config::validation::{ConfigValidationError, FanDutyPercent, MinFanDut
 
 use crate::effects::{SafetyEffect, SafetyEffectPlan};
 use crate::evidence::SafetyCriticalEvidence;
+use crate::observation::{
+    BootSessionId, FaultReason, MonotonicMillis, Observation, ObservationSequence,
+    SequenceOverflow, UnavailableReason,
+};
 use crate::status::SafetyStatus;
 
 pub const MODULE_NAME: &str = "thermal";
@@ -43,69 +47,165 @@ pub const SAFE_RESTART_TEMP_C: f64 = 45.0;
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct ThermalReading {
     pub chip_temp_celsius: f64,
-    pub board_temp_celsius: Option<f64>,
-    pub vr_temp_celsius: Option<f64>,
+    pub maybe_board_temp_celsius: Option<f64>,
+    pub maybe_vr_temp_celsius: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-pub enum ThermalObservationStatus {
-    Fresh,
-    Fault { reason: &'static str },
-    Unavailable { reason: &'static str },
+pub struct TachometerReading {
+    rpm: u16,
+}
+
+impl TachometerReading {
+    #[must_use]
+    pub const fn new(rpm: u16) -> Self {
+        Self { rpm }
+    }
+
+    #[must_use]
+    pub const fn rpm(self) -> u16 {
+        self.rpm
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct ThermalObservation {
-    pub status: ThermalObservationStatus,
-    pub chip_temp_celsius: f64,
-    pub board_temp_celsius: Option<f64>,
-    pub vr_temp_celsius: Option<f64>,
+    temperature: Observation<ThermalReading>,
+    tachometer: Observation<TachometerReading>,
 }
 
 impl ThermalObservation {
     #[must_use]
     pub fn from_reading(maybe_reading: Option<ThermalReading>) -> Self {
+        Self::from_stamped_reading(
+            maybe_reading,
+            BootSessionId::new(0),
+            ObservationSequence::ZERO,
+            MonotonicMillis::new(0),
+        )
+        .expect("the zero compatibility sequence must advance or remain unchanged")
+        .0
+    }
+
+    pub fn from_stamped_reading(
+        maybe_reading: Option<ThermalReading>,
+        boot_session: BootSessionId,
+        prior_sequence: ObservationSequence,
+        acquired_at: MonotonicMillis,
+    ) -> Result<(Self, ObservationSequence), SequenceOverflow> {
+        let tachometer = Observation::unavailable(UnavailableReason::TachometerUnavailable);
         let Some(reading) = maybe_reading else {
-            return Self::unavailable("thermal_reading_unavailable");
+            return Ok((
+                Self {
+                    temperature: Observation::unavailable(
+                        UnavailableReason::ThermalReadingUnavailable,
+                    ),
+                    tachometer,
+                },
+                prior_sequence,
+            ));
         };
 
         if reading.chip_temp_celsius == THERMAL_UNAVAILABLE_SENTINEL {
-            return Self::unavailable("thermal_reading_unavailable");
+            return Ok((
+                Self {
+                    temperature: Observation::unavailable(
+                        UnavailableReason::ThermalReadingUnavailable,
+                    ),
+                    tachometer,
+                },
+                prior_sequence,
+            ));
         }
 
-        if reading.chip_temp_celsius == THERMAL_DIODE_FAULT_SENTINEL
-            || !plausible_temperature(reading.chip_temp_celsius)
-            || reading
-                .board_temp_celsius
-                .is_some_and(|value| !plausible_temperature(value))
-            || reading
-                .vr_temp_celsius
-                .is_some_and(|value| !plausible_temperature(value))
-        {
-            return Self::fault(reading, "thermal_reading_invalid");
+        if !valid_thermal_reading(reading) {
+            return Ok((
+                Self {
+                    temperature: Observation::Fault {
+                        reason: FaultReason::ThermalReadingInvalid,
+                        maybe_last_good: None,
+                    },
+                    tachometer,
+                },
+                prior_sequence,
+            ));
         }
 
+        let (temperature, sequence) =
+            Observation::record_success(reading, boot_session, prior_sequence, acquired_at)?;
+        Ok((
+            Self {
+                temperature,
+                tachometer,
+            },
+            sequence,
+        ))
+    }
+
+    #[must_use]
+    pub const fn from_facts(
+        temperature: Observation<ThermalReading>,
+        tachometer: Observation<TachometerReading>,
+    ) -> Self {
         Self {
-            status: ThermalObservationStatus::Fresh,
-            chip_temp_celsius: reading.chip_temp_celsius,
-            board_temp_celsius: reading.board_temp_celsius,
-            vr_temp_celsius: reading.vr_temp_celsius,
+            temperature,
+            tachometer,
+        }
+    }
+
+    #[must_use]
+    pub const fn temperature_truth(&self) -> &Observation<ThermalReading> {
+        &self.temperature
+    }
+
+    #[must_use]
+    pub const fn tachometer_truth(&self) -> &Observation<TachometerReading> {
+        &self.tachometer
+    }
+
+    #[must_use]
+    pub const fn with_tachometer(self, tachometer: Observation<TachometerReading>) -> Self {
+        Self {
+            temperature: self.temperature,
+            tachometer,
         }
     }
 
     #[must_use]
     pub const fn is_fresh_safe(self) -> bool {
-        matches!(self.status, ThermalObservationStatus::Fresh)
-            && self.chip_temp_celsius < ASIC_THROTTLE_TEMP_C
+        self.temperature.is_fresh() && self.chip_temp_celsius() < ASIC_THROTTLE_TEMP_C
     }
 
     #[must_use]
     pub const fn reason(self) -> Option<&'static str> {
-        match self.status {
-            ThermalObservationStatus::Fresh => None,
-            ThermalObservationStatus::Fault { reason }
-            | ThermalObservationStatus::Unavailable { reason } => Some(reason),
-        }
+        self.temperature.maybe_reason()
+    }
+
+    #[must_use]
+    pub const fn chip_temp_celsius(self) -> f64 {
+        let Some(sample) = self.temperature.maybe_last_good() else {
+            return THERMAL_UNAVAILABLE_SENTINEL;
+        };
+
+        sample.value().chip_temp_celsius
+    }
+
+    #[must_use]
+    pub const fn maybe_board_temp_celsius(self) -> Option<f64> {
+        let Some(sample) = self.temperature.maybe_last_good() else {
+            return None;
+        };
+
+        sample.value().maybe_board_temp_celsius
+    }
+
+    #[must_use]
+    pub const fn maybe_vr_temp_celsius(self) -> Option<f64> {
+        let Some(sample) = self.temperature.maybe_last_good() else {
+            return None;
+        };
+
+        sample.value().maybe_vr_temp_celsius
     }
 
     #[must_use]
@@ -119,24 +219,17 @@ impl ThermalObservation {
 
         SafetyEffectPlan::fail_closed(reason)
     }
+}
 
-    const fn unavailable(reason: &'static str) -> Self {
-        Self {
-            status: ThermalObservationStatus::Unavailable { reason },
-            chip_temp_celsius: THERMAL_UNAVAILABLE_SENTINEL,
-            board_temp_celsius: None,
-            vr_temp_celsius: None,
-        }
-    }
-
-    const fn fault(reading: ThermalReading, reason: &'static str) -> Self {
-        Self {
-            status: ThermalObservationStatus::Fault { reason },
-            chip_temp_celsius: reading.chip_temp_celsius,
-            board_temp_celsius: reading.board_temp_celsius,
-            vr_temp_celsius: reading.vr_temp_celsius,
-        }
-    }
+fn valid_thermal_reading(reading: ThermalReading) -> bool {
+    reading.chip_temp_celsius != THERMAL_DIODE_FAULT_SENTINEL
+        && plausible_temperature(reading.chip_temp_celsius)
+        && reading
+            .maybe_board_temp_celsius
+            .is_none_or(plausible_temperature)
+        && reading
+            .maybe_vr_temp_celsius
+            .is_none_or(plausible_temperature)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
@@ -156,7 +249,7 @@ impl ThermalEvidenceToken {
         }
 
         Some(Self {
-            chip_temp_celsius: observation.chip_temp_celsius,
+            chip_temp_celsius: observation.chip_temp_celsius(),
             evidence,
         })
     }
@@ -167,14 +260,14 @@ impl ThermalEvidenceToken {
         observation: ThermalObservation,
         evidence: SafetyCriticalEvidence,
     ) -> Option<Self> {
-        if !matches!(observation.status, ThermalObservationStatus::Fresh)
+        if !observation.temperature_truth().is_fresh()
             || matches!(evidence, SafetyCriticalEvidence::Missing)
         {
             return None;
         }
 
         Some(Self {
-            chip_temp_celsius: observation.chip_temp_celsius,
+            chip_temp_celsius: observation.chip_temp_celsius(),
             evidence,
         })
     }
@@ -312,7 +405,7 @@ impl FanControlDecision {
                 let min_fan = MinFanDutyPercent::parse(min_percent)?.percent();
                 return Ok(PidController::new(pid_state).duty_percent(
                     target_temp_celsius,
-                    inputs.observation.chip_temp_celsius,
+                    inputs.observation.chip_temp_celsius(),
                     min_fan,
                 ));
             }
@@ -364,7 +457,7 @@ impl OverheatDecision {
             };
         }
 
-        if inputs.observation.chip_temp_celsius >= ASIC_THROTTLE_TEMP_C {
+        if inputs.observation.chip_temp_celsius() >= ASIC_THROTTLE_TEMP_C {
             let reason = "overheat_safe_stop";
             return Self {
                 state: OverheatState::SafeStopped,
@@ -388,7 +481,7 @@ impl OverheatDecision {
             inputs.prior_state,
             OverheatState::SafeStopped | OverheatState::Cooling
         ) {
-            if inputs.observation.chip_temp_celsius <= SAFE_RESTART_TEMP_C {
+            if inputs.observation.chip_temp_celsius() <= SAFE_RESTART_TEMP_C {
                 let reason = "restart_requires_hardware_gates";
                 return Self {
                     state: OverheatState::RestartCandidate,
@@ -534,6 +627,83 @@ mod tests {
     }
 
     #[test]
+    fn safety_thermal_temperature_and_tachometer_truth_are_independent() {
+        // Arrange
+        let fresh_temperature = fresh_observation(60.0);
+        let invalid_temperature = ThermalObservation::from_reading(Some(reading(f64::NAN)));
+        let (fresh_tachometer, _) = Observation::record_success(
+            TachometerReading::new(3_000),
+            BootSessionId::new(7),
+            ObservationSequence::ZERO,
+            MonotonicMillis::new(250),
+        )
+        .expect("fixture sequence should advance");
+
+        // Act
+        let temperature_without_tachometer = fresh_temperature;
+        let tachometer_without_temperature = invalid_temperature.with_tachometer(fresh_tachometer);
+
+        // Assert
+        assert!(temperature_without_tachometer
+            .temperature_truth()
+            .is_fresh());
+        assert_eq!(
+            temperature_without_tachometer
+                .tachometer_truth()
+                .state_label(),
+            "unavailable"
+        );
+        assert_eq!(
+            tachometer_without_temperature
+                .temperature_truth()
+                .state_label(),
+            "fault"
+        );
+        assert_eq!(
+            tachometer_without_temperature
+                .tachometer_truth()
+                .maybe_last_good()
+                .map(|sample| sample.value().rpm()),
+            Some(3_000)
+        );
+    }
+
+    #[test]
+    fn safety_thermal_stale_and_fault_states_retain_the_exact_temperature_stamp() {
+        // Arrange
+        let fresh = fresh_observation(60.0);
+        let expected = fresh
+            .temperature_truth()
+            .maybe_last_good()
+            .expect("fresh temperature should own a sample")
+            .to_owned();
+        let stale_temperature = fresh
+            .temperature_truth()
+            .mark_stale(crate::observation::StaleReason::ThermalSampleStale)
+            .expect("fresh temperature can become stale");
+        let stale = ThermalObservation::from_facts(stale_temperature, *fresh.tachometer_truth());
+
+        // Act
+        let fault_temperature = stale
+            .temperature_truth()
+            .record_fault(FaultReason::ReadFailed);
+        let fault = ThermalObservation::from_facts(fault_temperature, *stale.tachometer_truth());
+
+        // Assert
+        assert_eq!(stale.temperature_truth().maybe_last_good(), Some(&expected));
+        assert_eq!(fault.temperature_truth().maybe_last_good(), Some(&expected));
+        assert!(matches!(
+            FanControlDecision::from_inputs(FanControlInputs {
+                mode: FanControlMode::Startup,
+                observation: stale,
+            })
+            .expect("stale temperature should produce a safe fan decision")
+            .status,
+            SafetyStatus::SafeBlocked { .. }
+        ));
+    }
+
+    #[test]
     fn safety_fault_overheat_stop_and_restart_candidate_are_fail_closed() {
         // Arrange
         let hot = fresh_observation(75.0);
@@ -616,8 +786,8 @@ mod tests {
     fn reading(chip_temp_celsius: f64) -> ThermalReading {
         ThermalReading {
             chip_temp_celsius,
-            board_temp_celsius: Some(40.0),
-            vr_temp_celsius: Some(42.0),
+            maybe_board_temp_celsius: Some(40.0),
+            maybe_vr_temp_celsius: Some(42.0),
         }
     }
 }

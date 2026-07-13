@@ -272,8 +272,8 @@ mod tests {
                 ProductionMiningPrerequisite::from_thermal_observation(
                     ThermalObservation::from_reading(Some(ThermalReading {
                         chip_temp_celsius: f64::NAN,
-                        board_temp_celsius: Some(40.0),
-                        vr_temp_celsius: Some(42.0),
+                        maybe_board_temp_celsius: Some(40.0),
+                        maybe_vr_temp_celsius: Some(42.0),
                     })),
                 ),
                 "thermal_reading_invalid",
@@ -346,8 +346,8 @@ mod tests {
         // Arrange
         let observation = ThermalObservation::from_reading(Some(ThermalReading {
             chip_temp_celsius: 80.0,
-            board_temp_celsius: Some(40.0),
-            vr_temp_celsius: Some(42.0),
+            maybe_board_temp_celsius: Some(40.0),
+            maybe_vr_temp_celsius: Some(42.0),
         }));
 
         // Act
@@ -412,8 +412,8 @@ mod tests {
         ProductionMiningPrerequisite::from_thermal_observation(ThermalObservation::from_reading(
             Some(ThermalReading {
                 chip_temp_celsius: 55.0,
-                board_temp_celsius: Some(40.0),
-                vr_temp_celsius: Some(42.0),
+                maybe_board_temp_celsius: Some(40.0),
+                maybe_vr_temp_celsius: Some(42.0),
             }),
         ))
     }
