@@ -19,6 +19,7 @@ rust_library(
         "src/system.rs",
         "src/telemetry.rs",
         "src/update_plan.rs",
+        "src/v12_settings.rs",
         "src/websocket_state.rs",
         "src/wire.rs",
     ],

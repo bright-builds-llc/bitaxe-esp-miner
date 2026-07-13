@@ -20,6 +20,7 @@ pub mod statistics;
 pub mod system;
 pub mod telemetry;
 pub mod update_plan;
+pub mod v12_settings;
 pub mod websocket_state;
 pub mod wire;
 
@@ -79,6 +80,10 @@ pub use telemetry::{
 pub use update_plan::{
     plan_update_request, FirmwareOtaDecision, OtaWwwGapDecision, UpdateRequestDecision,
     UpdateRequestInput, UpdateRouteKind, UpdateStatusLabel,
+};
+pub use v12_settings::{
+    decide_v12_settings_body, decide_v12_settings_value, Hostname, V12SettingsChange,
+    V12SettingsDecision, V12SettingsExclusionReason,
 };
 pub use websocket_state::{WebSocketRegisterOutcome, WebSocketState, MAX_WEBSOCKET_CLIENTS};
 pub use wire::{SystemAsicWire, SystemInfoWire};

@@ -345,14 +345,18 @@ pub fn execute_settings_persistence_plan(
 
 /// Parses a raw PATCH body string and plans accepted writes without side effects.
 pub fn plan_settings_patch_body(body: &str) -> Result<AcceptedSettingsPatch, SettingsPatchFailure> {
-    let value = serde_json::from_str::<Value>(body).map_err(|error| SettingsPatchFailure {
+    let value = parse_settings_patch_body(body)?;
+
+    plan_settings_patch_value(&value)
+}
+
+pub(crate) fn parse_settings_patch_body(body: &str) -> Result<Value, SettingsPatchFailure> {
+    serde_json::from_str::<Value>(body).map_err(|error| SettingsPatchFailure {
         public_error: SettingsPatchPublicError::InvalidJson,
         reason: SettingsPatchFailureReason::MalformedJson {
             message: error.to_string(),
         },
-    })?;
-
-    plan_settings_patch_value(&value)
+    })
 }
 
 /// Plans accepted settings writes from a parsed JSON value without side effects.
@@ -475,7 +479,7 @@ fn unsupported_json_type(field: &str, kind: &'static str) -> SettingsPatchFieldE
     }
 }
 
-fn wrong_input(errors: Vec<SettingsPatchFieldError>) -> SettingsPatchFailure {
+pub(crate) fn wrong_input(errors: Vec<SettingsPatchFieldError>) -> SettingsPatchFailure {
     SettingsPatchFailure {
         public_error: SettingsPatchPublicError::WrongApiInput,
         reason: SettingsPatchFailureReason::InvalidKnownFields(errors),
