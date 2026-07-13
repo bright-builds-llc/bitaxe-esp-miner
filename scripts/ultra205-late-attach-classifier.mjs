@@ -12,6 +12,13 @@ const HEARTBEAT_KEYS = [
   "session",
   "uptime_ms",
 ];
+const ACCEPTED_STAGES = [
+  "post_enumerate",
+  "post_mining_ready",
+  "post_max_baud",
+  "post_mask_reload",
+  "post_first_work",
+];
 
 function parseUnsignedU64(value) {
   if (!/^(?:0|[1-9][0-9]*)$/u.test(value ?? "")) return undefined;
@@ -132,26 +139,114 @@ export function validateConnectedPreflight(espflashText, osNativeText) {
   };
 }
 
-export function qualifyOsNativeColdStream(osNativeText) {
+function markerPayload(line, marker) {
+  return line.match(new RegExp(`(?:^|\\s)(${marker}(?:\\s|$).*)$`, "u"))?.[1];
+}
+
+function parseBootEvidence(text) {
+  const sessions = new Set();
+  const states = new Set();
+  let malformed = false;
+  for (const line of text.split(/\r?\n/u)) {
+    if (!line.includes("plan13_boot_evidence")) continue;
+    const marker = markerPayload(line, "plan13_boot_evidence");
+    const match = marker?.match(
+      /^plan13_boot_evidence session=([0-9a-f]{32}) state=(booted|listener_armed) redacted=true$/u,
+    );
+    if (match === undefined || match === null) {
+      malformed = true;
+      continue;
+    }
+    sessions.add(match[1]);
+    states.add(match[2]);
+  }
+  return { sessions, states, malformed };
+}
+
+function parseAcceptedStages(text) {
+  const observed = new Set();
+  let malformed = false;
+  for (const line of text.split(/\r?\n/u)) {
+    if (!line.includes("accepted_state_snapshot")) continue;
+    const marker = markerPayload(line, "accepted_state_snapshot");
+    const match = marker?.match(/^accepted_state_snapshot stage=([^\s]+)\s/u);
+    if (match === undefined || match === null || !marker?.endsWith(" redacted=true")) {
+      malformed = true;
+      continue;
+    }
+    if (!ACCEPTED_STAGES.includes(match[1])) {
+      malformed = true;
+      continue;
+    }
+    observed.add(match[1]);
+  }
+  return { observed, malformed };
+}
+
+function hasRuntimeHazard(text) {
+  return /stack overflow|stack canary|guru meditation|panic(?:ed)?|abort\(\)|SW_CPU_RESET|RTC_SW_(?:SYS|CPU)_RST|software reset/iu.test(
+    text,
+  );
+}
+
+export function qualifyOsNativeColdStream(osNativeText, preflightSession) {
   const stream = parseHeartbeatStream(osNativeText);
   const ordered = validateOrderedHeartbeats([stream]);
+  const bootEvidence = parseBootEvidence(osNativeText);
+  const acceptedStages = parseAcceptedStages(osNativeText);
+  const heartbeatSession = ordered.session;
+  const evidenceSession =
+    bootEvidence.sessions.size === 1 ? [...bootEvidence.sessions][0] : undefined;
+  const sessionConsistent =
+    heartbeatSession !== undefined &&
+    evidenceSession !== undefined &&
+    heartbeatSession === evidenceSession;
+  const newSession =
+    /^[0-9a-f]{32}$/u.test(preflightSession ?? "") &&
+    sessionConsistent &&
+    heartbeatSession !== preflightSession;
+  const bootEvidenceComplete =
+    bootEvidence.states.has("booted") &&
+    bootEvidence.states.has("listener_armed");
+  const acceptedStateReplayComplete = ACCEPTED_STAGES.every((stage) =>
+    acceptedStages.observed.has(stage),
+  );
+  const applicationByteCount = Buffer.byteLength(osNativeText);
+  const runtimeHazard = hasRuntimeHazard(osNativeText);
+  const passed =
+    applicationByteCount > 0 &&
+    stream.heartbeats.length >= 3 &&
+    !stream.malformed &&
+    ordered.sameSession &&
+    ordered.monotonic &&
+    ordered.cadenceValid &&
+    ordered.listenerArmed &&
+    !bootEvidence.malformed &&
+    bootEvidence.sessions.size === 1 &&
+    bootEvidenceComplete &&
+    !acceptedStages.malformed &&
+    acceptedStateReplayComplete &&
+    !runtimeHazard &&
+    sessionConsistent &&
+    newSession;
   return {
     schema_version: "ultra205-os-native-cold-qualification-v2",
-    category:
-      stream.heartbeats.length >= 3 &&
-      !stream.malformed &&
-      ordered.sameSession &&
-      ordered.monotonic &&
-      ordered.cadenceValid &&
-      ordered.listenerArmed
-        ? "os_native_cold_delivers"
-        : "cold_heartbeat_invalid",
+    category: passed ? "native_cold_delivers" : "cold_native_evidence_invalid",
+    application_byte_count: applicationByteCount,
     heartbeat_count: stream.heartbeats.length,
     same_session: ordered.sameSession,
     monotonic: ordered.monotonic,
     cadence_valid: ordered.cadenceValid,
     listener_armed: ordered.listenerArmed,
-    malformed: stream.malformed,
+    boot_evidence_replay_complete: bootEvidenceComplete,
+    accepted_state_stage_count: acceptedStages.observed.size,
+    accepted_state_replay_complete: acceptedStateReplayComplete,
+    one_cold_session: sessionConsistent,
+    new_cold_session: newSession,
+    malformed:
+      stream.malformed || bootEvidence.malformed || acceptedStages.malformed,
+    runtime_hazard: runtimeHazard,
+    session: heartbeatSession ?? null,
     unexpected_non_heartbeat_line_count: stream.unexpectedLineCount,
   };
 }
@@ -222,15 +317,16 @@ function main() {
     process.stdout.write(`${JSON.stringify(result)}\n`);
     return;
   }
-  if (command === "qualify-os-native" && process.argv.length === 4) {
+  if (command === "qualify-os-native" && process.argv.length === 5) {
     const result = qualifyOsNativeColdStream(
       fs.readFileSync(process.argv[3], "utf8"),
+      process.argv[4],
     );
     process.stdout.write(`${JSON.stringify(result)}\n`);
-    process.exit(result.category === "os_native_cold_delivers" ? 0 : 1);
+    process.exit(result.category === "native_cold_delivers" ? 0 : 1);
   }
   throw new Error(
-    "usage: ultra205-late-attach-classifier.mjs preflight ESP OS | classify ESP1 OS ESP2 | qualify-os-native OS",
+    "usage: ultra205-late-attach-classifier.mjs preflight ESP OS | classify ESP1 OS ESP2 | qualify-os-native OS PREFLIGHT_SESSION",
   );
 }
 

@@ -112,7 +112,7 @@ main() {
 	[[ -d "$attempt_dir" && "$(late_attach_mode_of "$attempt_dir")" == 700 ]] || worker_fail private_capability_invalid
 	late_attach_validate_state "$state_path" || worker_fail state_malformed
 	[[ "$(late_attach_sha256_text "$capability")" == "$(jq -er '.lifecycle_capability_sha256' "$state_path")" ]] || worker_fail private_capability_invalid
-	local port frame_path action_ms removal_ms deadline restore_timeout_ms armed_ms observed_node observed_usb old_node old_usb appeared_ms capture_seconds qualification_path contract_digest trace_digest
+	local port frame_path action_ms removal_ms deadline restore_timeout_ms armed_ms observed_physical observed_enumeration old_physical old_enumeration appeared_ms capture_seconds qualification_path contract_digest trace_digest preflight_session cold_session
 	port="$(jq -er '.selected_port' "$state_path")"
 	frame_path="$attempt_dir/lifecycle-frame.json"
 	rm -f "$socket_path" "$frame_path"
@@ -160,12 +160,12 @@ main() {
 		'response_required=false'
 	wait_for_restore "$port" "$((armed_ms + restore_timeout_ms))"
 	appeared_ms="$(late_attach_monotonic_ms)"
-	old_node="$(jq -er '.selected_node_identity' "$state_path")"
-	old_usb="$(jq -er '.selected_usb_identity' "$state_path")"
-	observed_node="$(serial_session_node_identity "$port" 2>/dev/null)" || worker_fail appearance_identity_unavailable
-	observed_usb="$(serial_session_usb_identity "$port" 2>/dev/null)" || worker_fail appearance_identity_unavailable
-	[[ "$observed_usb" == "$old_usb" ]] || worker_fail appearance_identity_changed
-	[[ "$observed_node" != "$old_node" ]] || worker_fail enumeration_epoch_unchanged
+	old_physical="$(jq -er '.selected_usb_identity' "$state_path")"
+	old_enumeration="$(jq -er '.selected_enumeration_identity' "$state_path")"
+	observed_physical="$(serial_session_usb_physical_identity "$port" 2>/dev/null)" || worker_fail appearance_identity_unavailable
+	observed_enumeration="$(serial_session_usb_enumeration_identity "$port" 2>/dev/null)" || worker_fail appearance_identity_unavailable
+	[[ "$observed_physical" == "$old_physical" ]] || worker_fail appearance_identity_changed
+	[[ "$observed_enumeration" != "$old_enumeration" ]] || worker_fail enumeration_epoch_unchanged
 	# shellcheck disable=SC2034 # Read by sourced serial-session helpers.
 	SERIAL_SESSION_TRACE_ROOT="$attempt_dir/session-traces"
 	serial_session_trace_init late-attach-os-native-appearance
@@ -174,20 +174,32 @@ main() {
 	capture_seconds="$(jq -er '.capture_seconds' "$state_path")"
 	late_attach_run_capture "$attempt_dir" "$port" os-native "$capture_seconds" cold-os-native || worker_fail cold_os_native_capture_failed
 	qualification_path="$attempt_dir/cold-qualification.json"
+	preflight_session="$(jq -er '.preflight_session' "$state_path")"
 	set +e
-	node "$late_attach_classifier_bin" qualify-os-native "$attempt_dir/cold-os-native.raw.log" >"$qualification_path"
+	node "$late_attach_classifier_bin" qualify-os-native "$attempt_dir/cold-os-native.raw.log" "$preflight_session" >"$qualification_path"
 	local classifier_status=$?
 	set -e
 	chmod 600 "$qualification_path"
-	((classifier_status == 0)) || worker_fail cold_heartbeat_invalid
-	run_soak "$port" "$old_usb"
+	((classifier_status == 0)) || worker_fail cold_native_evidence_invalid
+	cold_session="$(jq -er '.session' "$qualification_path")"
+	run_soak "$port" "$old_physical"
 	serial_session_readiness_gate terminal_cleanup "$port" || worker_fail "cleanup_${SERIAL_SESSION_READINESS_CATEGORY}"
-	contract_digest="$($qualification_bin contract-digest)" || worker_fail contract_digest_unavailable
+	contract_digest="$($qualification_bin native-contract-digest)" || worker_fail contract_digest_unavailable
 	trace_digest="$(late_attach_trace_digest "$attempt_dir")"
-	jq -n --slurpfile state "$state_path" --slurpfile cold "$qualification_path" --arg contract "$contract_digest" --arg trace "$trace_digest" '{schema_version:"ultra205-transport-qualification-v2",tool_head:$state[0].tool_head,expected_firmware_head:$state[0].expected_firmware_head,classification_category:"os_native_cold_delivers",preflight_espflash_heartbeat_count:$state[0].preflight_espflash_heartbeat_count,preflight_os_native_heartbeat_count:$state[0].preflight_os_native_heartbeat_count,cold_os_native_heartbeat_count:$cold[0].heartbeat_count,identity_stable:true,new_enumeration_epoch:true,soak_complete:true,cleanup_complete:false,diagnostic_contract_digest_sha256:$contract,trace_digest_sha256:$trace}' >"$attempt_dir/qualification.json"
+	jq -n \
+		--slurpfile state "$state_path" \
+		--slurpfile cold "$qualification_path" \
+		--arg contract "$contract_digest" \
+		--arg trace "$trace_digest" \
+		--arg physical "$old_physical" \
+		--arg preflightEnumeration "$old_enumeration" \
+		--arg coldEnumeration "$observed_enumeration" \
+		--arg preflightSession "$(late_attach_sha256_text "$preflight_session")" \
+		--arg coldSession "$(late_attach_sha256_text "$cold_session")" \
+		'{schema_version:"ultra205-transport-qualification-v2",tool_head:$state[0].tool_head,expected_firmware_head:$state[0].expected_firmware_head,attempt_id:$state[0].attempt_id,owner_fingerprint_sha256:$state[0].owner_fingerprint_sha256,owner_process_count:1,classification_category:"native_cold_delivers",capture_seconds:$state[0].capture_seconds,preflight_native_heartbeat_count:$state[0].preflight_os_native_heartbeat_count,cold_native_heartbeat_count:$cold[0].heartbeat_count,application_byte_count:$cold[0].application_byte_count,physical_identity_sha256:$physical,preflight_enumeration_identity_sha256:$preflightEnumeration,cold_enumeration_identity_sha256:$coldEnumeration,preflight_session_sha256:$preflightSession,cold_session_sha256:$coldSession,physical_identity_stable:true,new_enumeration_epoch:true,distinct_cold_session:true,heartbeat_monotonic:$cold[0].monotonic,listener_ready:$cold[0].listener_armed,boot_evidence_replay_complete:$cold[0].boot_evidence_replay_complete,accepted_state_replay_complete:$cold[0].accepted_state_replay_complete,soak_complete:true,cleanup_complete:false,owner_cleanup_complete:false,holder_cleanup_complete:false,socket_cleanup_complete:false,live_process_count:1,serial_holder_count:0,live_socket_count:1,diagnostic_contract_digest_sha256:$contract,trace_digest_sha256:$trace}' >"$attempt_dir/qualification.json"
 	chmod 600 "$attempt_dir/qualification.json"
 	late_attach_atomic_write "$state_path" "$(jq -c '.state="complete"' "$state_path")"
-	late_attach_atomic_write "$attempt_dir/result.json" "$(jq -cn '{status:"complete",classification_category:"os_native_cold_delivers"}')"
+	late_attach_atomic_write "$attempt_dir/result.json" "$(jq -cn '{status:"complete",classification_category:"native_cold_delivers"}')"
 	if [[ -n "${LATE_ATTACH_WORKER_EXIT_DELAY_SECONDS:-}" ]]; then
 		sleep "$LATE_ATTACH_WORKER_EXIT_DELAY_SECONDS"
 	fi

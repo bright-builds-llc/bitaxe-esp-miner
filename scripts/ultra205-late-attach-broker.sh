@@ -110,7 +110,10 @@ late_attach_validate_state() {
       (.resume_handle_sha256 | test("^[0-9a-f]{64}$")) and
       (.expected_firmware_head | test("^[0-9a-f]{40}$")) and
       (.tool_head | test("^[0-9a-f]{40}$")) and
-      (.selected_port | type == "string") and (.capture_seconds | type == "number") and
+      (.selected_port | type == "string") and
+      (.selected_enumeration_identity | type == "string") and
+      (.preflight_session | type == "string") and
+      (.capture_seconds | type == "number" and floor == . and . >= 3) and
       (.state | IN("preflight","waiting_removal","removal_observed","waiting_restore","capturing","complete","failed"))
     ' "$1" >/dev/null
 }
@@ -233,6 +236,21 @@ late_attach_wait_for_owner_cleanup() {
 	return 1
 }
 
+late_attach_verify_terminal_cleanup() {
+	local state_path="$1" owner="$2" socket_path port maybe_holders holder_status
+	! kill -0 "$owner" 2>/dev/null || return 1
+	! phase_process_group_is_alive "$owner" || return 1
+	socket_path="$(jq -er '.socket_path' "$state_path")" || return 1
+	[[ ! -e "$socket_path" && ! -S "$socket_path" ]] || return 1
+	port="$(jq -er '.selected_port' "$state_path")" || return 1
+	set +e
+	maybe_holders="$(serial_session_holder_pids "$port")"
+	holder_status=$?
+	set -e
+	((holder_status == 0)) || return 1
+	[[ -z "$maybe_holders" ]]
+}
+
 late_attach_emit_public_state() {
 	local state_path="$1" action_path result_path
 	action_path="$(dirname "$state_path")/action.json"
@@ -246,12 +264,12 @@ late_attach_emit_public_state() {
 }
 
 late_attach_begin() {
-	local expected_head="" requested_port="" capture_seconds=60 arg
+	local expected_head="" requested_port="" capture_seconds=360 arg
 	for arg in "$@"; do
 		case "$arg" in expected-firmware-head=*) expected_head="${arg#*=}" ;; port=*) requested_port="${arg#*=}" ;; capture-seconds=*) capture_seconds="${arg#*=}" ;; *) late_attach_die unknown_argument ;; esac
 	done
 	[[ "$expected_head" == "$late_attach_expected_installed_head" ]] || late_attach_die expected_firmware_head_mismatch
-	if [[ ! "$capture_seconds" =~ ^[0-9]+$ ]] || ((capture_seconds < 3 || capture_seconds > 300)); then
+	if ! late_attach_capture_seconds_valid "$capture_seconds"; then
 		late_attach_die capture_seconds_invalid
 	fi
 	[[ -z "$requested_port" || "$requested_port" == /* || "$requested_port" =~ ^COM[0-9]+$ ]] || late_attach_die port_invalid
@@ -277,7 +295,7 @@ late_attach_begin() {
 	mkdir -m 700 "$attempt_dir"
 	state_path="$attempt_dir/state.json"
 	now="$(late_attach_monotonic_ms)"
-	late_attach_atomic_write "$state_path" "$(jq -cn --arg attempt "$attempt_id" --arg digest "$digest" --arg expected "$expected_head" --arg toolHead "$(git -C "$late_attach_repo_root" rev-parse HEAD)" --argjson created "$now" --argjson capture "$capture_seconds" '{schema_version:"ultra205-late-attach-attempt-v2",attempt_id:$attempt,resume_handle_sha256:$digest,expected_firmware_head:$expected,tool_head:$toolHead,created_ms:$created,capture_seconds:$capture,state:"preflight",selected_port:"",selected_node_identity:"",selected_usb_identity:"",preflight_espflash_heartbeat_count:0,preflight_os_native_heartbeat_count:0,preflight_same_session:false,checkpoint_deadline_ms:0,owner_pid:null,owner_fingerprint_sha256:null,socket_path:null,lifecycle_capability_sha256:null,action_published_ms:null,removal_observed_ms:null,watcher_armed_ms:null,watcher_deadline_ms:null,usb_appeared_ms:null,monitor_attached_ms:null}')"
+	late_attach_atomic_write "$state_path" "$(jq -cn --arg attempt "$attempt_id" --arg digest "$digest" --arg expected "$expected_head" --arg toolHead "$(git -C "$late_attach_repo_root" rev-parse HEAD)" --argjson created "$now" --argjson capture "$capture_seconds" '{schema_version:"ultra205-late-attach-attempt-v2",attempt_id:$attempt,resume_handle_sha256:$digest,expected_firmware_head:$expected,tool_head:$toolHead,created_ms:$created,capture_seconds:$capture,state:"preflight",selected_port:"",selected_node_identity:"",selected_usb_identity:"",selected_enumeration_identity:"",preflight_session:"",preflight_espflash_heartbeat_count:0,preflight_os_native_heartbeat_count:0,preflight_same_session:false,checkpoint_deadline_ms:0,owner_pid:null,owner_fingerprint_sha256:null,socket_path:null,lifecycle_capability_sha256:null,action_published_ms:null,removal_observed_ms:null,watcher_armed_ms:null,watcher_deadline_ms:null,usb_appeared_ms:null,monitor_attached_ms:null}')"
 	slot="$late_attach_resume_root/$digest.json"
 	late_attach_atomic_write "$slot" "$(jq -cn --arg digest "$digest" --arg attempt "$attempt_id" --arg dir "$attempt_dir" '{schema_version:"ultra205-late-attach-resume-v2",status:"active",resume_handle_sha256:$digest,attempt_id:$attempt,attempt_dir:$dir}')"
 	late_attach_release_lock
@@ -400,7 +418,7 @@ late_attach_begin() {
 	socket_path="${LATE_ATTACH_SOCKET_ROOT:-/tmp}/ultra205-la-${attempt_id}.sock"
 	ready_file="$attempt_dir/worker.ready"
 	action_path="$attempt_dir/action.json"
-	late_attach_atomic_write "$state_path" "$(jq -c --arg port "$port" --arg node "$node_identity" --arg usb "$usb_identity" --arg enumeration "$enumeration_identity" --arg uartPort "$uart_port" --arg uartPhysical "$uart_physical_identity" --arg uartEnumeration "$uart_enumeration_identity" --arg capability "$(late_attach_sha256_text "$capability")" --arg socket "$socket_path" --argjson deadline "$((now + late_attach_removal_timeout_ms))" --slurpfile preflight "$preflight_path" '.state="waiting_removal" | .selected_port=$port | .selected_node_identity=$node | .selected_usb_identity=$usb | .selected_enumeration_identity=$enumeration | .selected_uart_port=$uartPort | .selected_uart_physical_identity=$uartPhysical | .selected_uart_enumeration_identity=$uartEnumeration | .checkpoint_deadline_ms=$deadline | .socket_path=$socket | .lifecycle_capability_sha256=$capability | .preflight_espflash_heartbeat_count=$preflight[0].espflashHeartbeatCount | .preflight_os_native_heartbeat_count=$preflight[0].osNativeHeartbeatCount | .preflight_same_session=$preflight[0].sameSession' "$state_path")"
+	late_attach_atomic_write "$state_path" "$(jq -c --arg port "$port" --arg node "$node_identity" --arg usb "$usb_identity" --arg enumeration "$enumeration_identity" --arg uartPort "$uart_port" --arg uartPhysical "$uart_physical_identity" --arg uartEnumeration "$uart_enumeration_identity" --arg capability "$(late_attach_sha256_text "$capability")" --arg socket "$socket_path" --argjson deadline "$((now + late_attach_removal_timeout_ms))" --slurpfile preflight "$preflight_path" '.state="waiting_removal" | .selected_port=$port | .selected_node_identity=$node | .selected_usb_identity=$usb | .selected_enumeration_identity=$enumeration | .selected_uart_port=$uartPort | .selected_uart_physical_identity=$uartPhysical | .selected_uart_enumeration_identity=$uartEnumeration | .checkpoint_deadline_ms=$deadline | .socket_path=$socket | .lifecycle_capability_sha256=$capability | .preflight_session=$preflight[0].session | .preflight_espflash_heartbeat_count=$preflight[0].espflashHeartbeatCount | .preflight_os_native_heartbeat_count=$preflight[0].osNativeHeartbeatCount | .preflight_same_session=$preflight[0].sameSession' "$state_path")"
 	LATE_ATTACH_LIFECYCLE_CAPABILITY="$capability" phase_process_group_start "$ready_file" "$late_attach_worker_bin" "$attempt_dir" "$socket_path" >"$attempt_dir/worker.stdout" 2>"$attempt_dir/worker.stderr" || {
 		late_attach_acquire_lock
 		late_attach_close_failure "$slot" worker_start_failed
@@ -514,6 +532,12 @@ late_attach_deliver() {
 		late_attach_close_failure "$slot" cleanup_process_survived false
 		return
 	}
+	late_attach_verify_terminal_cleanup "$state_path" "$owner" || {
+		late_attach_acquire_lock
+		slot="$(late_attach_resolve_handle "$handle")"
+		late_attach_close_failure "$slot" cleanup_resources_survived false
+		return
+	}
 	late_attach_acquire_lock
 	slot="$(late_attach_resolve_handle "$handle")"
 	if [[ "$(jq -r '.status' "$result_path")" != complete ]]; then
@@ -527,8 +551,8 @@ late_attach_deliver() {
 		late_attach_close_failure "$slot" qualification_invalid
 		return
 	}
-	late_attach_atomic_write "$qualification_path" "$(jq -c '.cleanup_complete=true' "$qualification_path")"
-	"$late_attach_qualification_bin" validate "$qualification_path" "$(git -C "$late_attach_repo_root" rev-parse HEAD)" >/dev/null 2>&1 || {
+	late_attach_atomic_write "$qualification_path" "$(jq -c '.cleanup_complete=true | .owner_cleanup_complete=true | .holder_cleanup_complete=true | .socket_cleanup_complete=true | .live_process_count=0 | .live_socket_count=0' "$qualification_path")"
+	"$late_attach_qualification_bin" validate-native "$qualification_path" "$(git -C "$late_attach_repo_root" rev-parse HEAD)" >/dev/null 2>&1 || {
 		late_attach_close_failure "$slot" qualification_invalid
 		return
 	}
@@ -537,7 +561,7 @@ late_attach_deliver() {
 	classification_category="$(jq -er '.classification_category' "$qualification_path")"
 	late_attach_escrow_tombstone "$slot" diagnostic_complete "$classification_category" true
 	late_attach_release_lock
-	jq -r 'to_entries[] | "\(.key)=\(.value)"' "$late_attach_trace_root/$attempt_id/qualification.json"
+	printf 'diagnostic_status=complete\nclassification_category=%s\ncleanup_complete=true\n' "$classification_category"
 }
 
 late_attach_cleanup_exit() {
@@ -550,6 +574,15 @@ late_attach_cleanup_exit() {
 }
 
 late_attach_install_traps() { trap late_attach_cleanup_exit EXIT INT TERM; }
+
+late_attach_capture_seconds_valid() {
+	local capture_seconds="$1" minimum=360
+	[[ "$capture_seconds" =~ ^[0-9]+$ ]] || return 1
+	if [[ "${LATE_ATTACH_TEST_MODE:-0}" == 1 ]]; then
+		minimum=3
+	fi
+	((capture_seconds >= minimum))
+}
 
 late_attach_validate_test_overrides() {
 	[[ "${LATE_ATTACH_TEST_MODE:-0}" == 1 ]] && return
