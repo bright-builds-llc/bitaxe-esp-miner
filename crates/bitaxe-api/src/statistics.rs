@@ -97,7 +97,7 @@ impl StatisticsSample {
     #[must_use]
     pub fn from_snapshot(snapshot: &ApiSnapshot, timestamp: u64, response_time: f64) -> Self {
         let mining = mining_state_from_runtime(&snapshot.mining);
-        let safe_telemetry = snapshot.safe_telemetry;
+        let safe_telemetry = snapshot.safe_telemetry.operator_projection();
 
         Self {
             timestamp,
@@ -269,11 +269,13 @@ fn clamp_wifi_rssi(value: i16) -> i8 {
 
 #[cfg(test)]
 mod tests {
-    use bitaxe_safety::evidence::SafetyCriticalEvidence;
+    use bitaxe_safety::observation::{
+        BootSessionId, MonotonicMillis, Observation, ObservationSequence,
+    };
     use serde_json::{json, Value};
 
     use crate::statistics::{empty_statistics_response, statistics_response, StatisticsSample};
-    use crate::{ApiSnapshot, SafeTelemetrySnapshot, SafetyTelemetryReport, SafetyTelemetryStatus};
+    use crate::{ApiSnapshot, SafeTelemetrySnapshot, TelemetryObservations};
 
     #[test]
     fn statistics_response_applies_optional_columns_and_keeps_timestamp_last() {
@@ -322,7 +324,8 @@ mod tests {
         // Arrange
         let mut snapshot = ApiSnapshot::safe_ultra_205();
         snapshot.platform.free_heap = 4_096;
-        snapshot.safe_telemetry = SafeTelemetrySnapshot::from_report(fresh_report());
+        snapshot.safe_telemetry =
+            SafeTelemetrySnapshot::from_observations(&fresh_telemetry_observations());
 
         // Act
         let sample = StatisticsSample::from_snapshot(&snapshot, 123, 7.5);
@@ -331,13 +334,13 @@ mod tests {
         assert_eq!(sample.timestamp, 123);
         assert_eq!(sample.asic_temp, 56.0);
         assert_eq!(sample.vr_temp, 45.0);
-        assert_eq!(sample.asic_voltage, 1_198);
+        assert_eq!(sample.asic_voltage, 0);
         assert_eq!(sample.voltage, 5.1);
         assert_eq!(sample.power, 11.5);
         assert_eq!(sample.current, 2.25);
-        assert_eq!(sample.fan_speed, 70.0);
+        assert_eq!(sample.fan_speed, 0.0);
         assert_eq!(sample.fan_rpm, 3_200);
-        assert_eq!(sample.wifi_rssi, -50);
+        assert_eq!(sample.wifi_rssi, -90);
         assert_eq!(sample.free_heap, 4_096);
         assert_eq!(sample.response_time, 7.5);
     }
@@ -359,23 +362,36 @@ mod tests {
         assert_eq!(sample.fan_rpm, 0);
     }
 
-    fn fresh_report() -> SafetyTelemetryReport {
-        SafetyTelemetryReport {
-            status: SafetyTelemetryStatus::Fresh,
-            evidence: SafetyCriticalEvidence::hardware_smoke("phase-06-statistics-telemetry-smoke"),
-            power_watts: 11.5,
-            voltage_volts: 5.1,
-            current_amps: 2.25,
-            chip_temp_celsius: 56.0,
-            chip_temp2_celsius: 57.0,
-            vr_temp_celsius: 45.0,
-            core_voltage_actual_mv: 1_198.0,
-            actual_frequency_mhz: 485.0,
-            expected_hashrate_ghs: 525.0,
-            fan_speed_percent: 70,
-            fan_rpm: 3_200,
-            fan2_rpm: 0,
-            wifi_rssi_dbm: -50,
+    fn fresh_telemetry_observations() -> TelemetryObservations {
+        TelemetryObservations {
+            power_watts: fresh_f64(11.5, 1),
+            bus_voltage_volts: fresh_f64(5.1, 2),
+            current_amps: fresh_f64(2.25, 3),
+            chip_temp_celsius: fresh_f64(56.0, 4),
+            vr_temp_celsius: fresh_f64(45.0, 5),
+            fan_rpm: fresh_u16(3_200, 6),
         }
+    }
+
+    fn fresh_f64(value: f64, prior_sequence: u64) -> Observation<f64> {
+        Observation::record_success(
+            value,
+            BootSessionId::new(7),
+            ObservationSequence::new(prior_sequence),
+            MonotonicMillis::new(250),
+        )
+        .expect("fixture sequence should advance")
+        .0
+    }
+
+    fn fresh_u16(value: u16, prior_sequence: u64) -> Observation<u16> {
+        Observation::record_success(
+            value,
+            BootSessionId::new(7),
+            ObservationSequence::new(prior_sequence),
+            MonotonicMillis::new(250),
+        )
+        .expect("fixture sequence should advance")
+        .0
     }
 }

@@ -214,47 +214,46 @@ impl SafeTelemetrySnapshot {
         }
     }
 
-    /// Projects a report into upstream-compatible numeric fields.
+    /// Preserves legacy report status without treating unstamped values as
+    /// operator observation truth.
     #[must_use]
     pub const fn from_report(report: SafetyTelemetryReport) -> Self {
-        if matches!(report.status, SafetyTelemetryStatus::Fresh)
-            && report.evidence.is_hardware_verified()
-        {
-            return Self {
-                status: SafetyTelemetryStatus::Fresh,
-                evidence: report.evidence,
-                power_watts: report.power_watts,
-                voltage_volts: report.voltage_volts,
-                current_amps: report.current_amps,
-                chip_temp_celsius: report.chip_temp_celsius,
-                chip_temp2_celsius: report.chip_temp2_celsius,
-                vr_temp_celsius: report.vr_temp_celsius,
-                core_voltage_actual_mv: report.core_voltage_actual_mv,
-                actual_frequency_mhz: report.actual_frequency_mhz,
-                expected_hashrate_ghs: report.expected_hashrate_ghs,
-                fan_speed_percent: report.fan_speed_percent,
-                fan_rpm: report.fan_rpm,
-                fan2_rpm: report.fan2_rpm,
-                wifi_rssi_dbm: report.wifi_rssi_dbm,
-                power_status: legacy_unavailable_truth(),
-                voltage_status: legacy_unavailable_truth(),
-                current_status: legacy_unavailable_truth(),
-                chip_temp_status: legacy_unavailable_truth(),
-                vr_temp_status: legacy_unavailable_truth(),
-                fan_rpm_status: legacy_unavailable_truth(),
-            };
-        }
-
         let mut snapshot = Self::zero_compatible();
         snapshot.status = if matches!(report.status, SafetyTelemetryStatus::Fresh) {
             SafetyTelemetryStatus::Unavailable {
-                reason: "safety_telemetry_unverified",
+                reason: "legacy_telemetry_unstamped",
             }
         } else {
             report.status
         };
         snapshot.evidence = report.evidence;
         snapshot
+    }
+
+    /// Returns the operator projection with compatibility numerics suppressed
+    /// whenever their corresponding fact lacks fresh stamped truth.
+    #[must_use]
+    pub(crate) fn operator_projection(mut self) -> Self {
+        if !is_fresh_stamped(self.power_status) {
+            self.power_watts = 0.0;
+        }
+        if !is_fresh_stamped(self.voltage_status) {
+            self.voltage_volts = 0.0;
+        }
+        if !is_fresh_stamped(self.current_status) {
+            self.current_amps = 0.0;
+        }
+        if !is_fresh_stamped(self.chip_temp_status) {
+            self.chip_temp_celsius = 0.0;
+        }
+        if !is_fresh_stamped(self.vr_temp_status) {
+            self.vr_temp_celsius = 0.0;
+        }
+        if !is_fresh_stamped(self.fan_rpm_status) {
+            self.fan_rpm = 0;
+        }
+
+        self
     }
 
     /// Projects stored observation truth separately from numeric compatibility values.
@@ -319,6 +318,10 @@ impl SafeTelemetrySnapshot {
             fan_rpm_status: legacy_unavailable_truth(),
         }
     }
+}
+
+fn is_fresh_stamped(truth: ObservationTruthWire) -> bool {
+    matches!(truth.state, ObservationStateWire::Fresh) && truth.stamp.is_some()
 }
 
 const fn legacy_unavailable_truth() -> ObservationTruthWire {
@@ -422,7 +425,7 @@ mod tests {
     }
 
     #[test]
-    fn safety_telemetry_model_fresh_hardware_report_preserves_values_and_evidence() {
+    fn safety_telemetry_model_fresh_legacy_report_cannot_publish_unstamped_values() {
         // Arrange
         let report = fresh_report(SafetyCriticalEvidence::hardware_smoke(
             "phase-06-api-telemetry-smoke",
@@ -432,13 +435,22 @@ mod tests {
         let snapshot = SafeTelemetrySnapshot::from_report(report);
 
         // Assert
-        assert_eq!(snapshot.status, SafetyTelemetryStatus::Fresh);
+        assert_eq!(
+            snapshot.status,
+            SafetyTelemetryStatus::Unavailable {
+                reason: "legacy_telemetry_unstamped"
+            }
+        );
         assert_eq!(snapshot.evidence, report.evidence);
-        assert_eq!(snapshot.power_watts, 11.5);
-        assert_eq!(snapshot.voltage_volts, 5.1);
-        assert_eq!(snapshot.current_amps, 2.25);
-        assert_eq!(snapshot.chip_temp_celsius, 56.0);
-        assert_eq!(snapshot.fan_rpm, 3_200);
+        assert_eq!(snapshot.power_watts, 0.0);
+        assert_eq!(snapshot.voltage_volts, 0.0);
+        assert_eq!(snapshot.current_amps, 0.0);
+        assert_eq!(snapshot.chip_temp_celsius, 0.0);
+        assert_eq!(snapshot.fan_rpm, 0);
+        assert_eq!(
+            snapshot.power_status.state,
+            ObservationStateWire::Unavailable
+        );
     }
 
     #[test]
@@ -567,7 +579,7 @@ mod tests {
         assert_eq!(
             snapshot.status,
             SafetyTelemetryStatus::Unavailable {
-                reason: "safety_telemetry_unverified"
+                reason: "legacy_telemetry_unstamped"
             }
         );
         assert_eq!(snapshot.evidence, report.evidence);

@@ -173,7 +173,7 @@ impl SystemInfoWire {
     #[must_use]
     pub fn from_snapshot(snapshot: &ApiSnapshot) -> Self {
         let config = snapshot.config;
-        let safe_telemetry = snapshot.safe_telemetry;
+        let safe_telemetry = snapshot.safe_telemetry.operator_projection();
         let mining_state = mining_state_from_runtime(&snapshot.mining);
         let platform = &snapshot.platform;
 
@@ -309,13 +309,15 @@ fn swarm_color_for_family(family: &str) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use bitaxe_safety::evidence::SafetyCriticalEvidence;
+    use bitaxe_safety::observation::{
+        BootSessionId, FaultReason, MonotonicMillis, Observation, ObservationSequence, StaleReason,
+        UnavailableReason,
+    };
     use serde_json::{json, Value};
 
     use super::require_wire_keys;
     use crate::{
-        ApiSnapshot, SafeTelemetrySnapshot, SafetyTelemetryReport, SafetyTelemetryStatus,
-        SystemAsicWire, SystemInfoWire,
+        ApiSnapshot, SafeTelemetrySnapshot, SystemAsicWire, SystemInfoWire, TelemetryObservations,
     };
 
     #[test]
@@ -417,25 +419,8 @@ mod tests {
     fn safety_telemetry_projection_system_info_reads_safe_telemetry_values() {
         // Arrange
         let mut snapshot = ApiSnapshot::safe_ultra_205();
-        snapshot.safe_telemetry = SafeTelemetrySnapshot::from_report(SafetyTelemetryReport {
-            status: SafetyTelemetryStatus::Fresh,
-            evidence: SafetyCriticalEvidence::hardware_smoke(
-                "phase-06-system-info-telemetry-smoke",
-            ),
-            power_watts: 11.5,
-            voltage_volts: 5.1,
-            current_amps: 2.25,
-            chip_temp_celsius: 56.0,
-            chip_temp2_celsius: 57.0,
-            vr_temp_celsius: 45.0,
-            core_voltage_actual_mv: 1_198.0,
-            actual_frequency_mhz: 485.0,
-            expected_hashrate_ghs: 525.0,
-            fan_speed_percent: 70,
-            fan_rpm: 3_200,
-            fan2_rpm: 0,
-            wifi_rssi_dbm: -50,
-        });
+        snapshot.safe_telemetry =
+            SafeTelemetrySnapshot::from_observations(&fresh_telemetry_observations());
 
         // Act
         let wire = SystemInfoWire::from_snapshot(&snapshot);
@@ -444,13 +429,46 @@ mod tests {
         assert_eq!(wire.power, 11.5);
         assert_eq!(wire.voltage, 5.1);
         assert_eq!(wire.current, 2.25);
-        assert_eq!(wire.fan_speed, 70);
         assert_eq!(wire.fan_rpm, 3_200);
         assert_eq!(wire.temp, 56.0);
         assert_eq!(wire.vr_temp, 45.0);
-        assert_eq!(wire.core_voltage_actual, 1_198.0);
-        assert_eq!(wire.expected_hashrate, 525.0);
-        assert_eq!(wire.wifi_rssi, -50);
+        assert_eq!(wire.power_status.state, crate::ObservationStateWire::Fresh);
+        assert!(wire.power_status.stamp.is_some());
+    }
+
+    #[test]
+    fn system_info_wire_rejects_nonfresh_truth_numeric_claims_even_with_fresh_aggregate() {
+        // Arrange
+        let mut snapshot = ApiSnapshot::safe_ultra_205();
+        snapshot.safe_telemetry =
+            SafeTelemetrySnapshot::from_observations(&fresh_telemetry_observations());
+        let stale_voltage = fresh_f64(5.1, 2)
+            .mark_stale(StaleReason::PowerSampleStale)
+            .expect("fresh voltage can become stale");
+        let unavailable_power =
+            Observation::<f64>::unavailable(UnavailableReason::PowerSampleUnavailable);
+        let fault_current = fresh_f64(2.25, 3).record_fault(FaultReason::ReadFailed);
+        snapshot.safe_telemetry.power_status = (&unavailable_power).into();
+        snapshot.safe_telemetry.voltage_status = (&stale_voltage).into();
+        snapshot.safe_telemetry.current_status = (&fault_current).into();
+        assert_eq!(
+            snapshot.safe_telemetry.status,
+            crate::SafetyTelemetryStatus::Fresh
+        );
+
+        // Act
+        let value = serde_json::to_value(SystemInfoWire::from_snapshot(&snapshot))
+            .expect("system info should serialize");
+
+        // Assert
+        assert_eq!(value["power"], 0.0);
+        assert_eq!(value["voltage"], 0.0);
+        assert_eq!(value["current"], 0.0);
+        assert_eq!(value["powerStatus"]["state"], "unavailable");
+        assert_eq!(value["voltageStatus"]["state"], "stale");
+        assert_eq!(value["currentStatus"]["state"], "fault");
+        assert_eq!(value["temp"], 56.0);
+        assert_eq!(value["chipTempStatus"]["state"], "fresh");
     }
 
     #[test]
@@ -467,6 +485,39 @@ mod tests {
         assert_eq!(value.get("deviceModel"), Some(&json!("Ultra")));
         assert_eq!(value.get("swarmColor"), Some(&json!("purple")));
         assert_eq!(value.get("asicCount"), Some(&json!(1)));
+    }
+
+    fn fresh_telemetry_observations() -> TelemetryObservations {
+        TelemetryObservations {
+            power_watts: fresh_f64(11.5, 1),
+            bus_voltage_volts: fresh_f64(5.1, 2),
+            current_amps: fresh_f64(2.25, 3),
+            chip_temp_celsius: fresh_f64(56.0, 4),
+            vr_temp_celsius: fresh_f64(45.0, 5),
+            fan_rpm: fresh_u16(3_200, 6),
+        }
+    }
+
+    fn fresh_f64(value: f64, prior_sequence: u64) -> Observation<f64> {
+        Observation::record_success(
+            value,
+            BootSessionId::new(7),
+            ObservationSequence::new(prior_sequence),
+            MonotonicMillis::new(250),
+        )
+        .expect("fixture sequence should advance")
+        .0
+    }
+
+    fn fresh_u16(value: u16, prior_sequence: u64) -> Observation<u16> {
+        Observation::record_success(
+            value,
+            BootSessionId::new(7),
+            ObservationSequence::new(prior_sequence),
+            MonotonicMillis::new(250),
+        )
+        .expect("fixture sequence should advance")
+        .0
     }
 
     #[test]
