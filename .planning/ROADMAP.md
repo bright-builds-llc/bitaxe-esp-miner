@@ -176,7 +176,7 @@ Plans:
   2. STR-09, CFG-07, and ASIC-11 remain pending unless explicitly supplied new evidence supports each exact claim; parity validation rejects overbroad promotion.
   3. Phase 28.1 Nyquist metadata is closed conservatively without treating the Won't Do decision as verification.
   4. Explicit non-claims remain for full active safety, OTAWWW/recovery, non-205 boards, Stratum v2, UI/BAP, and unbounded stress.
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 - [x] 30-01-PLAN.md — Record the conservative no-promotion disposition, unresolved validation closure, and Bazel contract regression.
 - [x] 30-02-PLAN.md — Enforce row-specific parity admission and publish the final no-promotion conclusion.

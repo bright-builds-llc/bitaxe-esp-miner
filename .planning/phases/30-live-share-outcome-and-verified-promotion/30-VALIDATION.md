@@ -74,7 +74,7 @@ All Phase 30 behavior is deterministic and repository-local. Hardware, USB, flas
 
 ## Final Gate Results
 
-- `cargo test -p bitaxe-parity --all-features phase30_` passed eight focused admission tests.
+- `cargo test -p bitaxe-parity --all-features phase30_` passed seven focused admission tests, including a parameterized positive case for all three row bundles.
 - `bazel test //scripts:phase30_no_promotion_contract_test //tools/parity:tests` passed both repository contracts.
 - `just parity` passed with `validation_errors: none`.
 - `just verify-reference` passed for the pinned clean reference.

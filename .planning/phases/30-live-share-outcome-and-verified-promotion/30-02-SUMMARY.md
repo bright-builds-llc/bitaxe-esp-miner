@@ -76,7 +76,7 @@ Primary artifacts: `tools/parity/src/main.rs` and `docs/parity/evidence/phase-30
 ## Tests and Verification
 
 - RED: the initial focused run had one conservative test pass and five new admission tests fail before the guard existed.
-- GREEN: `cargo test -p bitaxe-parity --all-features phase30_` passed eight focused tests, including complete token-omission matrices.
+- GREEN: `cargo test -p bitaxe-parity --all-features phase30_` passed seven focused tests, including complete token-omission matrices and a parameterized positive case for all three row bundles.
 - `bazel test //scripts:phase30_no_promotion_contract_test //tools/parity:tests` passed both repository contracts.
 - `just parity` passed with `validation_errors: none`.
 - `just verify-reference` passed for the pinned clean reference.
