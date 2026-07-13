@@ -19,8 +19,8 @@ created: 2026-07-12
 | --- | --- |
 | **Framework** | Rust built-in tests plus repo-owned Bash regression harnesses under Bazel |
 | **Config file** | `Cargo.toml`, `tools/parity/BUILD.bazel`, `scripts/BUILD.bazel` |
-| **Quick run command** | `cargo test -p bitaxe-parity --all-features` if that package name is confirmed; otherwise the targeted parity package command from `tools/parity/Cargo.toml` |
-| **Full suite command** | `cargo test --all-features` plus affected `bazel test` targets in `//tools/parity` and `//scripts` |
+| **Quick run command** | `cargo test -p bitaxe-parity --all-features operator_evidence` |
+| **Full suite command** | `bazel test //tools/parity:tests //scripts:phase23_redacted_operator_evidence_test //scripts:phase25_live_stratum_evidence_test //scripts:phase27_live_hardware_bridge_evidence_test //scripts:phase28_evidence_test` |
 | **Estimated runtime** | Quick checks under 30 seconds; full relevant local suite under 10 minutes |
 
 ***
@@ -38,12 +38,12 @@ created: 2026-07-12
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 29-01-01 | 01 | 1 | EVD-07, EVD-09 | T-29-01 | Phase identity and slot dispositions fail closed | unit | Targeted `tools/parity` Rust tests | ✅ | ⬜ pending |
-| 29-01-02 | 01 | 1 | EVD-08, EVD-09 | T-29-02 | Cross-link generation cannot infer success or copy secrets | unit/CLI | Targeted operator-evidence CLI tests | ✅ | ⬜ pending |
-| 29-02-01 | 02 | 2 | EVD-07, REL-09 | T-29-03 | Phase 25/27 validate exactly once and preserve failures | integration | Phase 25 and Phase 27 script regression targets | ✅ | ⬜ pending |
-| 29-02-02 | 02 | 2 | EVD-07, EVD-09, REL-09 | T-29-04 | Invalid consolidation never replaces a valid destination | integration | New Phase 28 script regression target | ❌ W0 | ⬜ pending |
-| 29-03-01 | 03 | 3 | REL-09 | — | Operator docs expose only repo-owned redaction-safe commands | static | Targeted docs/command checks and `git diff --check` | ✅ | ⬜ pending |
-| 29-03-02 | 03 | 3 | EVD-08, EVD-09 | T-29-05 | Overclaim and prohibited-token guards remain fail closed | regression | `just parity` and affected negative fixtures | ✅ | ⬜ pending |
+| 29-01-01 | 01 | 1 | EVD-07, EVD-09 | T-29-01 | Phase identity and slot dispositions fail closed | unit | `cargo test -p bitaxe-parity --all-features operator_evidence` | ✅ | ⬜ pending |
+| 29-01-02 | 01 | 1 | EVD-08, EVD-09 | T-29-02 | Cross-link generation cannot infer success or copy secrets | unit/CLI | `cargo test -p bitaxe-parity --all-features` | ✅ | ⬜ pending |
+| 29-02-01 | 02 | 2 | EVD-07, REL-09 | T-29-03 | Phase 25/27 validate exactly once and preserve failures | integration | `bazel test //scripts:phase23_redacted_operator_evidence_test //scripts:phase25_live_stratum_evidence_test //scripts:phase27_live_hardware_bridge_evidence_test` | ✅ | ⬜ pending |
+| 29-02-02 | 02 | 2 | EVD-07, EVD-08, EVD-09, REL-09 | T-29-04 | Invalid consolidation never replaces a valid destination | integration | `bazel test //scripts:phase28_evidence_test //tools/parity:tests` | ❌ W0 | ⬜ pending |
+| 29-03-01 | 03 | 3 | EVD-07, EVD-09, REL-09 | T-29-05 | New guide lines and Phase 29 evidence reject secret/local/network identifiers | regression/static | `bazel test //scripts:phase29_doc_redaction_check_test` then `bazel run //scripts:phase29_doc_redaction_check -- --baseline-ref "$(git log -1 --format=%H -- .planning/phases/29-evidence-workflow-automation-closure/29-02-SUMMARY.md)" --evidence-root docs/parity/evidence/phase-29-evidence-workflow-automation-closure` | ❌ W0 | ⬜ pending |
+| 29-03-02 | 03 | 3 | EVD-08, EVD-09 | T-29-06 | Overclaim and prohibited-token guards remain fail closed | regression | `just parity` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -51,9 +51,10 @@ created: 2026-07-12
 
 ## Wave 0 Requirements
 
-- [ ] Add the Phase 28 wrapper regression script and Bazel test target before implementing consolidation behavior.
-- [ ] Add targeted Rust fixtures for explicit Phase 25, Phase 27, and Phase 28 profiles before changing validator policy.
-- [ ] Confirm the exact Cargo package and Bazel target names used by the quick commands; plans must replace provisional names with repo-valid commands.
+- [ ] Plan 29-01 Tasks 1 and 2 write profile/generation tests first, run and record the expected red result locally, then implement to green without committing the red state.
+- [ ] Plan 29-02 Task 1 extends existing wrapper tests before wrapper production edits; Task 2 creates the Phase 28 test and Bazel target before the wrapper implementation.
+- [ ] Plan 29-03 Task 1 creates the diff-aware documentation redaction test before the scanner and documentation edits.
+- [x] Exact Cargo package (`bitaxe-parity`) and existing/new Bazel target names are recorded in the verification map.
 
 ***
 
@@ -65,11 +66,11 @@ All Phase 29 workflow-automation behavior has automated verification. Real hardw
 
 ## Validation Sign-Off
 
-- [ ] All tasks have an automated verify command or a Wave 0 dependency.
-- [ ] Sampling continuity: no three consecutive tasks without automated verification.
-- [ ] Wave 0 covers every missing test target or fixture.
-- [ ] No watch-mode flags.
-- [ ] Feedback latency remains below 10 minutes.
-- [ ] `nyquist_compliant: true` and `wave_0_complete: true` are set after plan verification confirms exact commands and test coverage.
+- [x] All tasks have an automated verify command or a Wave 0 dependency.
+- [x] Sampling continuity: no three consecutive tasks without automated verification.
+- [ ] Wave 0 test-first steps have been executed and every expected red test was driven to green.
+- [x] No watch-mode flags.
+- [x] Feedback latency remains below 10 minutes.
+- [ ] Set `nyquist_compliant: true` and `wave_0_complete: true` only during Plan 03 after test-first steps and every mapped command pass.
 
 **Approval:** pending
