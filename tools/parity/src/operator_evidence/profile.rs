@@ -12,6 +12,33 @@ pub(crate) enum OperatorEvidenceProfile {
     Phase28,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum OperatorEvidenceRootEntry {
+    Slot(OperatorEvidenceSlot),
+    Summary,
+    EvidenceContract,
+    MiningAllow,
+    LiveCaptureRuntime,
+    Phase28Manifest,
+}
+
+impl OperatorEvidenceRootEntry {
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::Slot(slot) => slot.file_name(),
+            Self::Summary => "summary.md",
+            Self::EvidenceContract => "evidence-contract.md",
+            Self::MiningAllow => "mining-allow.json",
+            Self::LiveCaptureRuntime => "live-capture-runtime",
+            Self::Phase28Manifest => ".phase28-evidence-manifest",
+        }
+    }
+
+    pub(crate) const fn is_directory(self) -> bool {
+        matches!(self, Self::LiveCaptureRuntime)
+    }
+}
+
 impl OperatorEvidenceProfile {
     #[cfg(test)]
     pub(crate) const ALL: [Self; 4] = [Self::Phase23, Self::Phase25, Self::Phase27, Self::Phase28];
@@ -184,6 +211,34 @@ pub(crate) struct OperatorEvidenceProfileDescriptor {
 impl OperatorEvidenceProfileDescriptor {
     pub(crate) const fn slots(self) -> [OperatorEvidenceSlot; 11] {
         OperatorEvidenceSlot::ALL
+    }
+
+    pub(crate) fn root_entries(self) -> Vec<OperatorEvidenceRootEntry> {
+        let mut entries = self
+            .slots()
+            .into_iter()
+            .map(OperatorEvidenceRootEntry::Slot)
+            .collect::<Vec<_>>();
+        match self.profile {
+            OperatorEvidenceProfile::Phase23 => {
+                entries.push(OperatorEvidenceRootEntry::EvidenceContract);
+            }
+            OperatorEvidenceProfile::Phase25 | OperatorEvidenceProfile::Phase27 => {
+                entries.extend([
+                    OperatorEvidenceRootEntry::Summary,
+                    OperatorEvidenceRootEntry::MiningAllow,
+                    OperatorEvidenceRootEntry::LiveCaptureRuntime,
+                ]);
+            }
+            OperatorEvidenceProfile::Phase28 => {
+                entries.extend([
+                    OperatorEvidenceRootEntry::Summary,
+                    OperatorEvidenceRootEntry::EvidenceContract,
+                    OperatorEvidenceRootEntry::Phase28Manifest,
+                ]);
+            }
+        }
+        entries
     }
 
     pub(crate) const fn allows_disposition(

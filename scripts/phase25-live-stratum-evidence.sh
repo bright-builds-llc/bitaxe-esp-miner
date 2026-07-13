@@ -139,6 +139,7 @@ readonly parity_command="${PHASE25_PARITY_COMMAND:-bazel run //tools/parity:repo
 readonly live_capture_command="${PHASE25_LIVE_CAPTURE_COMMAND:-just flash-monitor}"
 
 mkdir -p "$evidence_root"
+rm -f "${evidence_root}/mining-allow.json"
 
 pool_config_label="not-supplied"
 if [[ -n "$pool_credentials" ]]; then
@@ -256,7 +257,7 @@ finalize_evidence() {
 }
 write_allow_manifest() {
 	local path="${evidence_root}/mining-allow.json"
-	local detected_port="$1"
+	local detected_port="[redacted-port]"
 	local board_info_status="$2"
 	local claim_tier="$3"
 	local evidence_class="$4"

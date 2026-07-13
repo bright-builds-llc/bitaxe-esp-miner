@@ -92,6 +92,11 @@ if [[ -n "$redact_evidence" && "$redact_evidence" != "true" ]]; then
 	exit 2
 fi
 
+if [[ "$mode" == "hardware" && "$redact_evidence" != "true" ]]; then
+	printf 'hardware evidence requires --redact-evidence=true before capture\n' >&2
+	exit 2
+fi
+
 readonly source_commit="${PHASE27_SOURCE_COMMIT:-$(git rev-parse HEAD 2>/dev/null || printf 'unknown-source')}"
 readonly reference_commit="${PHASE27_REFERENCE_COMMIT:-$(git -C reference/esp-miner rev-parse HEAD 2>/dev/null || printf 'unknown-reference')}"
 readonly evidence_mode="${PHASE27_EVIDENCE_MODE:-phase27-live-hardware-asic-stratum-bridge}"
@@ -106,6 +111,7 @@ readonly repo_root="$(cd "${script_dir}/.." && pwd)"
 readonly pool_input_bridge_helper="${PHASE27_POOL_INPUT_BRIDGE_HELPER:-${repo_root}/scripts/phase21-pool-input-bridge.sh}"
 
 mkdir -p "$evidence_root"
+rm -f "${evidence_root}/mining-allow.json"
 
 pool_config_label="not-supplied"
 if [[ -n "$pool_credentials" ]]; then
@@ -244,7 +250,7 @@ finalize_evidence() {
 
 write_allow_manifest() {
 	local path="${evidence_root}/mining-allow.json"
-	local detected_port="$1"
+	local detected_port="[redacted-port]"
 	local board_info_status="$2"
 	local claim_tier="$3"
 	local evidence_class="$4"

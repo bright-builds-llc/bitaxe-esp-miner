@@ -283,6 +283,36 @@ run_required_args_test() {
 	fi
 }
 
+run_hardware_requires_redaction_test() {
+	local evidence_root="${tmp_root}/hardware-without-redaction"
+	local detector_trace="${tmp_root}/hardware-without-redaction.detector"
+	local fake_detector="${tmp_root}/hardware-without-redaction-detector.sh"
+
+	cat >"$fake_detector" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'detector invoked\n' >"${PHASE27_REDACTION_DETECTOR_TRACE:?}"
+SH
+	chmod +x "$fake_detector"
+
+	set +e
+	PHASE27_DETECT_COMMAND="$fake_detector" \
+	PHASE27_REDACTION_DETECTOR_TRACE="$detector_trace" \
+	"$wrapper" \
+		--evidence-root "$evidence_root" \
+		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+		--mode hardware >"${tmp_root}/hardware-without-redaction.stdout" 2>"${tmp_root}/hardware-without-redaction.stderr"
+	local status=$?
+	set -e
+
+	assert_nonzero_status "$status" "hardware mode without redaction"
+	assert_contains "${tmp_root}/hardware-without-redaction.stderr" "requires --redact-evidence=true"
+	if [[ -e "$detector_trace" || -e "$evidence_root" ]]; then
+		printf 'redaction argument validation must precede detector and evidence writes\n' >&2
+		exit 1
+	fi
+}
+
 run_blocked_mode_test() {
 	local fake_parity="${tmp_root}/fake-parity.sh"
 	local evidence_root="${tmp_root}/blocked-root"
@@ -399,7 +429,8 @@ run_hardware_missing_prerequisites_skips_live_capture_test() {
 	"$wrapper" \
 		--evidence-root "$evidence_root" \
 		--manifest "$manifest_path" \
-		--mode hardware >"${tmp_root}/hardware-missing-prereqs.stdout" 2>"${tmp_root}/hardware-missing-prereqs.stderr"
+		--mode hardware \
+		--redact-evidence=true >"${tmp_root}/hardware-missing-prereqs.stdout" 2>"${tmp_root}/hardware-missing-prereqs.stderr"
 	local status=$?
 	set -e
 
@@ -429,7 +460,8 @@ run_detector_failure_test() {
 	"$wrapper" \
 		--evidence-root "$evidence_root" \
 		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
-		--mode hardware >"${tmp_root}/detector.stdout" 2>"${tmp_root}/detector.stderr"
+		--mode hardware \
+		--redact-evidence=true >"${tmp_root}/detector.stdout" 2>"${tmp_root}/detector.stderr"
 	local status=$?
 	set -e
 
@@ -526,6 +558,7 @@ scan_committed_artifacts_if_present() {
 }
 
 run_required_args_test
+run_hardware_requires_redaction_test
 run_blocked_mode_test
 run_hardware_ready_invokes_live_capture_test
 run_hardware_missing_prerequisites_skips_live_capture_test
