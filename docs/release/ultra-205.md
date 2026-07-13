@@ -501,9 +501,11 @@ just phase28-evidence --phase27-root <committed-phase27-root> --evidence-root <d
 The two roots must be distinct and non-nested. The command reads only committed
 allowlisted category fields, renders relative cross-links, and preserves the
 exact `accepted`, `rejected`, or `blocked_safe_prerequisite` outcome and its
-supporting proof or non-claims. Identical reruns are deterministic. Generation
-and strict Phase 28 operator validation occur in staging; if either fails, the
-prior destination remains unchanged. Equal, nested, contradictory, incomplete,
+supporting proof or non-claims. Identical reruns are deterministic. The
+consolidation command runs the same strict Phase 28 operator validation with
+required redaction inside staging before atomic promotion; no second
+post-promotion validator is needed. If generation or validation fails, the prior
+destination remains byte-identical. Equal, nested, contradictory, incomplete,
 or operator-owned destinations fail closed.
 
 ## Monitor

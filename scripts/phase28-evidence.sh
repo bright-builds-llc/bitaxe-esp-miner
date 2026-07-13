@@ -52,8 +52,6 @@ fi
 
 readonly parity_command="${PARITY_COMMAND:-bazel run //tools/parity:report --}"
 
-printf 'phase28_evidence_step=consolidate\n'
+printf 'phase28_evidence_step=consolidate-and-strict-validate\n'
 ${parity_command} consolidate-phase28-evidence --phase27-root "$phase27_root" --evidence-root "$evidence_root" >/dev/null
-printf 'phase28_evidence_step=strict-operator-validation\n'
-${parity_command} operator-evidence --profile phase28 --evidence-root "$evidence_root" --require-redaction-passed >/dev/null
 printf 'phase28_evidence_status=passed redacted=true\n'

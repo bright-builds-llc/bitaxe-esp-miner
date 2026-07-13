@@ -313,12 +313,6 @@ EOF
 	exit 0
 fi
 
-if [[ "$command_name" == "operator-evidence" ]]; then
-	printf 'command=operator-evidence profile=%s\n' "$profile" >>"${PHASE28_FAKE_PARITY_TRACE:?}"
-	[[ "$profile" == "phase28" && -d "$evidence_root" ]] || exit 41
-	exit "${PHASE28_FAKE_OPERATOR_EXIT:-0}"
-fi
-
 exit 98
 SH
 	chmod +x "$path"
@@ -344,7 +338,7 @@ run_wrapper() {
 
 assert_success_trace() {
 	local trace_path="$1"
-	local expected=$'command=consolidate-phase28-evidence profile=none\ncommand=operator-evidence profile=phase28'
+	local expected='command=consolidate-phase28-evidence profile=none'
 	local actual
 	actual="$(<"$trace_path")"
 
@@ -400,7 +394,7 @@ run_outcome_and_determinism_tests() {
 
 run_rejection_and_preservation_tests() {
 	local scenario
-	for scenario in missing contradictory equal nested unknown-destination consolidate-failure validation-failure operator-failure; do
+	for scenario in missing contradictory equal nested unknown-destination consolidate-failure validation-failure; do
 		local case_root="${tmp_root}/failure-${scenario}"
 		local source_root="${case_root}/source"
 		local destination_root="${case_root}/destination"
@@ -425,14 +419,13 @@ run_rejection_and_preservation_tests() {
 			nested) run_wrapper "fake-parity.sh" "trace" "source" "source/nested" ;;
 			consolidate-failure) PHASE28_FAKE_CONSOLIDATE_EXIT=51 run_wrapper "fake-parity.sh" "trace" "source" "destination" ;;
 			validation-failure) PHASE28_FAKE_INTERNAL_VALIDATION_EXIT=52 run_wrapper "fake-parity.sh" "trace" "source" "destination" ;;
-			operator-failure) PHASE28_FAKE_OPERATOR_EXIT=53 run_wrapper "fake-parity.sh" "trace" "source" "destination" ;;
 			*) run_wrapper "fake-parity.sh" "trace" "source" "destination" ;;
 			esac
 		) >"${case_root}/stdout" 2>"${case_root}/stderr"
 		local status=$?
 		set -e
 		assert_nonzero_status "$status" "$scenario"
-		if [[ "$scenario" != "operator-failure" && "$before_digest" != "$(tree_digest "$destination_root")" ]]; then
+		if [[ "$before_digest" != "$(tree_digest "$destination_root")" ]]; then
 			printf '%s changed the previous destination\n' "$scenario" >&2
 			exit 1
 		fi
