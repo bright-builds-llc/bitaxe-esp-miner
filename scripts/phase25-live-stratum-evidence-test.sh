@@ -4,6 +4,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 readonly wrapper="${PHASE25_EVIDENCE_SCRIPT:-${script_dir}/phase25-live-stratum-evidence.sh}"
+readonly repo_root="$(cd "${script_dir}/.." && pwd)"
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/phase25-live-stratum-evidence-test.XXXXXX")"
 readonly tmp_root
@@ -118,6 +119,21 @@ assert_nonzero_status() {
 		printf '%s should exit non-zero\n' "$scenario" >&2
 		exit 1
 	fi
+}
+
+find_real_parity() {
+	local candidate
+	for candidate in \
+		"${script_dir}/../tools/parity/report" \
+		"${repo_root}/target/debug/bitaxe-parity" \
+		"${repo_root}/bazel-bin/tools/parity/report"; do
+		if [[ -x "$candidate" ]]; then
+			printf '%s' "$candidate"
+			return 0
+		fi
+	done
+	printf 'production parity binary was not found\n' >&2
+	return 1
 }
 
 write_fake_detector() {
@@ -471,11 +487,49 @@ run_failure_precedence_tests() {
 	done
 }
 
+run_real_parity_integration_test() {
+	local real_parity
+	real_parity="$(find_real_parity)"
+	local fake_detector="${tmp_root}/real-parity-detector.sh"
+	local relative_evidence_root="scratch/phase25-real-parity-$$"
+	local evidence_root="${repo_root}/${relative_evidence_root}"
+	write_fake_detector "$fake_detector" 42
+	rm -rf "$evidence_root"
+
+	set +e
+	(
+		cd "$repo_root"
+		export BUILD_WORKSPACE_DIRECTORY="$repo_root"
+		PHASE25_PARITY_COMMAND="$real_parity" \
+		PHASE25_DETECT_COMMAND="$fake_detector" \
+		PHASE25_FAKE_DETECT_EXIT=42 \
+			"$wrapper" \
+			--evidence-root "$relative_evidence_root" \
+			--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+			--mode hardware
+	) >"${tmp_root}/real-parity.stdout" 2>"${tmp_root}/real-parity.stderr"
+	local status=$?
+	set -e
+
+	assert_nonzero_status "$status" "real parity detector failure"
+	(
+		cd "$repo_root"
+		export BUILD_WORKSPACE_DIRECTORY="$repo_root"
+		"$real_parity" operator-evidence \
+			--profile phase25 \
+			--evidence-root "$relative_evidence_root" \
+			--require-redaction-passed
+	) >"${tmp_root}/real-parity-validation.stdout"
+	assert_contains "${tmp_root}/real-parity-validation.stdout" "operator_evidence_status: passed"
+	rm -rf "$evidence_root"
+}
+
 run_device_url_validation_test
 run_blocked_mode_test
 run_hardware_ready_invokes_live_capture_test
 run_hardware_missing_prerequisites_skips_live_capture_test
 run_detector_failure_test
 run_failure_precedence_tests
+run_real_parity_integration_test
 
 printf 'phase25_live_stratum_evidence_test=passed\n'

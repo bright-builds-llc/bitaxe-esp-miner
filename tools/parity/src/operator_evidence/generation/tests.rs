@@ -421,6 +421,9 @@ fn write_phase27_source(root: &Utf8Path, outcome: ShareOutcome) {
             "passed",
             "asic_correlation_status: passed\nsafe_stop_status: passed\n",
         ),
+        ShareOutcome::LiveSubmitResponseObserved => {
+            unreachable!("Phase 28 source fixtures do not use Phase 25 outcomes")
+        }
         ShareOutcome::BlockedSafePrerequisite => (
             "blocked",
             "asic_bridge_status: blocked\nsafe_stop_status: blocked\n",

@@ -127,6 +127,12 @@ pub(super) fn validate_source_categories(
                 }
             }
         }
+        ShareOutcome::LiveSubmitResponseObserved => {
+            return Err(GenerationError::InvalidInput(
+                "Phase 25 live-submit outcome cannot be consolidated as Phase 28 evidence"
+                    .to_owned(),
+            ));
+        }
         ShareOutcome::BlockedSafePrerequisite => {
             for key in ["asic_bridge_status", "safe_stop_status"] {
                 if categories.get(key).map(String::as_str) != Some("blocked") {
@@ -169,6 +175,9 @@ pub(super) fn generate_phase28_staging(
                 match outcome {
                     ShareOutcome::Accepted | ShareOutcome::Rejected => {
                         ("passed", EvidenceDisposition::CrossLinked, "cross_linked")
+                    }
+                    ShareOutcome::LiveSubmitResponseObserved => {
+                        unreachable!("Phase 25 outcome was rejected during source validation")
                     }
                     ShareOutcome::BlockedSafePrerequisite => {
                         ("blocked", EvidenceDisposition::Blocked, "blocked")
@@ -233,6 +242,9 @@ fn render_phase28_slot(
         match outcome {
             ShareOutcome::Accepted | ShareOutcome::Rejected => {
                 output.push_str("asic_correlation_status: passed\nsafe_stop_status: passed\n");
+            }
+            ShareOutcome::LiveSubmitResponseObserved => {
+                unreachable!("Phase 28 does not support Phase 25 outcomes")
             }
             ShareOutcome::BlockedSafePrerequisite => {
                 output.push_str("asic_bridge_status: blocked\nsafe_stop_status: blocked\n");

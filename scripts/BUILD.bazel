@@ -573,6 +573,7 @@ sh_test(
         "phase21-pool-credentials-json.mjs",
         "phase21-pool-input-bridge.sh",
         "phase23-redacted-operator-evidence.sh",
+        "//tools/parity:report",
     ],
     env_inherit = [
         "HOME",
@@ -586,7 +587,10 @@ sh_test(
 sh_test(
     name = "phase25_live_stratum_evidence_test",
     srcs = ["phase25-live-stratum-evidence-test.sh"],
-    data = ["phase25-live-stratum-evidence.sh"],
+    data = [
+        "phase25-live-stratum-evidence.sh",
+        "//tools/parity:report",
+    ],
     env_inherit = [
         "HOME",
         "NODE_BIN",
@@ -599,7 +603,10 @@ sh_test(
 sh_test(
     name = "phase27_live_hardware_bridge_evidence_test",
     srcs = ["phase27-live-hardware-bridge-evidence-test.sh"],
-    data = ["phase27-live-hardware-bridge-evidence.sh"],
+    data = [
+        "phase27-live-hardware-bridge-evidence.sh",
+        "//tools/parity:report",
+    ],
     env_inherit = [
         "HOME",
         "NODE_BIN",

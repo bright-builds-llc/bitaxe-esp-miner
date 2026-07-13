@@ -122,6 +122,21 @@ assert_nonzero_status() {
 	fi
 }
 
+find_real_parity() {
+	local candidate
+	for candidate in \
+		"${script_dir}/../tools/parity/report" \
+		"${repo_root}/target/debug/bitaxe-parity" \
+		"${repo_root}/bazel-bin/tools/parity/report"; do
+		if [[ -x "$candidate" ]]; then
+			printf '%s' "$candidate"
+			return 0
+		fi
+	done
+	printf 'production parity binary was not found\n' >&2
+	return 1
+}
+
 write_fake_detector() {
 	local path="$1"
 
@@ -535,6 +550,44 @@ run_failure_precedence_tests() {
 	done
 }
 
+run_real_parity_integration_test() {
+	local real_parity
+	real_parity="$(find_real_parity)"
+	local fake_detector="${tmp_root}/real-parity-detector.sh"
+	local relative_evidence_root="scratch/phase27-real-parity-$$"
+	local evidence_root="${repo_root}/${relative_evidence_root}"
+	write_fake_detector "$fake_detector"
+	rm -rf "$evidence_root"
+
+	set +e
+	(
+		cd "$repo_root"
+		export BUILD_WORKSPACE_DIRECTORY="$repo_root"
+		PHASE27_PARITY_COMMAND="$real_parity" \
+		PHASE27_DETECT_COMMAND="$fake_detector" \
+		PHASE27_FAKE_DETECT_EXIT=42 \
+			"$wrapper" \
+			--evidence-root "$relative_evidence_root" \
+			--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+			--mode hardware \
+			--redact-evidence=true
+	) >"${tmp_root}/real-parity.stdout" 2>"${tmp_root}/real-parity.stderr"
+	local status=$?
+	set -e
+
+	assert_nonzero_status "$status" "real parity detector failure"
+	(
+		cd "$repo_root"
+		export BUILD_WORKSPACE_DIRECTORY="$repo_root"
+		"$real_parity" operator-evidence \
+			--profile phase27 \
+			--evidence-root "$relative_evidence_root" \
+			--require-redaction-passed
+	) >"${tmp_root}/real-parity-validation.stdout"
+	assert_contains "${tmp_root}/real-parity-validation.stdout" "operator_evidence_status: passed"
+	rm -rf "$evidence_root"
+}
+
 scan_committed_artifacts_if_present() {
 	if [[ ! -d "$committed_evidence_root" ]]; then
 		return 0
@@ -564,6 +617,7 @@ run_hardware_ready_invokes_live_capture_test
 run_hardware_missing_prerequisites_skips_live_capture_test
 run_detector_failure_test
 run_failure_precedence_tests
+run_real_parity_integration_test
 scan_committed_artifacts_if_present
 
 printf 'phase27_live_hardware_bridge_evidence_test=passed\n'

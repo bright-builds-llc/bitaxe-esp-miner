@@ -177,6 +177,7 @@ impl FromStr for EvidenceDisposition {
 pub(crate) enum ShareOutcome {
     Accepted,
     Rejected,
+    LiveSubmitResponseObserved,
     BlockedSafePrerequisite,
 }
 
@@ -185,6 +186,7 @@ impl ShareOutcome {
         match self {
             Self::Accepted => "accepted",
             Self::Rejected => "rejected",
+            Self::LiveSubmitResponseObserved => "live_submit_response_observed",
             Self::BlockedSafePrerequisite => "blocked_safe_prerequisite",
         }
     }
@@ -197,6 +199,7 @@ impl FromStr for ShareOutcome {
         match value {
             "accepted" => Ok(Self::Accepted),
             "rejected" => Ok(Self::Rejected),
+            "live_submit_response_observed" => Ok(Self::LiveSubmitResponseObserved),
             "blocked_safe_prerequisite" => Ok(Self::BlockedSafePrerequisite),
             _ => Err(format!("unknown share outcome {value:?}")),
         }
@@ -299,10 +302,14 @@ impl OperatorEvidenceProfileDescriptor {
 
     pub(crate) const fn supports_share_outcome(self, outcome: ShareOutcome) -> bool {
         match self.profile {
-            OperatorEvidenceProfile::Phase23 | OperatorEvidenceProfile::Phase25 => {
-                matches!(outcome, ShareOutcome::BlockedSafePrerequisite)
+            OperatorEvidenceProfile::Phase23 => false,
+            OperatorEvidenceProfile::Phase25 => matches!(
+                outcome,
+                ShareOutcome::LiveSubmitResponseObserved | ShareOutcome::BlockedSafePrerequisite
+            ),
+            OperatorEvidenceProfile::Phase27 | OperatorEvidenceProfile::Phase28 => {
+                !matches!(outcome, ShareOutcome::LiveSubmitResponseObserved)
             }
-            OperatorEvidenceProfile::Phase27 | OperatorEvidenceProfile::Phase28 => true,
         }
     }
 }

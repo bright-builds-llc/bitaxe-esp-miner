@@ -150,12 +150,24 @@ write_slot() {
 	local observed="$6"
 	local conclusion="$7"
 	local file="${evidence_root}/${slot}.md"
+	local disposition="observed"
+	local generated_provenance=""
+	if [[ "$status" == "blocked" ]]; then
+		disposition="blocked"
+		generated_provenance="generated_provenance: phase27-wrapper-classification"
+	elif [[ "$status" == "pending" || "$status" == "deferred" ]]; then
+		disposition="deferred"
+		generated_provenance="generated_provenance: phase27-wrapper-classification"
+	fi
 
 	cat >"$file" <<EOF
 # Phase 27 ${slot} Evidence
 
 slot: ${slot}
 slot_status: ${status}
+evidence_profile: phase27
+evidence_disposition: ${disposition}
+${generated_provenance}
 board: 205
 source_commit: ${source_commit}
 reference_commit: ${reference_commit}
@@ -326,6 +338,8 @@ write_redaction_review() {
 
 slot: redaction-review
 slot_status: passed
+evidence_profile: phase27
+evidence_disposition: observed
 board: 205
 source_commit: ${source_commit}
 reference_commit: ${reference_commit}
@@ -414,6 +428,10 @@ write_conclusion() {
 	cat >"${evidence_root}/conclusion.md" <<EOF
 # Phase 27 Conclusion
 
+slot: conclusion
+slot_status: passed
+evidence_profile: phase27
+evidence_disposition: observed
 board: 205
 source_commit: ${source_commit}
 reference_commit: ${reference_commit}

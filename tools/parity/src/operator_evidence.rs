@@ -397,10 +397,18 @@ fn validate_share_outcome_support(
 
     match outcome {
         ShareOutcome::Accepted | ShareOutcome::Rejected => {
-            for required in [
-                "asic_correlation_status: passed",
-                "safe_stop_status: passed",
-            ] {
+            let required_fields = if profile == OperatorEvidenceProfile::Phase28 {
+                [
+                    "asic_correlation_status: passed",
+                    "safe_stop_status: passed",
+                ]
+            } else {
+                [
+                    "asic_bridge_status: result_correlated",
+                    "safe_stop_status: complete",
+                ]
+            };
+            for required in required_fields {
                 if !contents.contains(required) {
                     validation_errors.push(format!(
                         "share-outcome.md {} requires {required}",
@@ -409,11 +417,35 @@ fn validate_share_outcome_support(
                 }
             }
         }
+        ShareOutcome::LiveSubmitResponseObserved => {
+            if !contents.contains("safe_stop_status: complete") {
+                validation_errors.push(
+                    "share-outcome.md live_submit_response_observed requires safe_stop_status: complete"
+                        .to_owned(),
+                );
+            }
+        }
         ShareOutcome::BlockedSafePrerequisite => {
-            for required in ["asic_bridge_status: blocked", "safe_stop_status: blocked"] {
-                if !contents.contains(required) {
-                    validation_errors.push(format!("share-outcome.md must contain {required}"));
+            let supported = match profile {
+                OperatorEvidenceProfile::Phase25 => {
+                    contents.contains("safe_stop_status: complete")
+                        || contents.contains("safe_stop_status: blocked")
                 }
+                OperatorEvidenceProfile::Phase27 => {
+                    contents.contains("asic_bridge_status:")
+                        && (contents.contains("safe_stop_status: complete")
+                            || contents.contains("safe_stop_status: blocked"))
+                }
+                OperatorEvidenceProfile::Phase28 => {
+                    contents.contains("asic_bridge_status: blocked")
+                        && contents.contains("safe_stop_status: blocked")
+                }
+                OperatorEvidenceProfile::Phase23 => false,
+            };
+            if !supported {
+                validation_errors.push(format!(
+                    "share-outcome.md blocked_safe_prerequisite lacks {profile} support categories"
+                ));
             }
         }
     }

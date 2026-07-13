@@ -524,8 +524,8 @@ fn assert_unsupported_share_outcome(outcome: ShareOutcome) {
     );
 
     // Assert
-    assert_error_contains(&report, "asic_correlation_status: passed");
-    assert_error_contains(&report, "safe_stop_status: passed");
+    assert_error_contains(&report, "asic_bridge_status: result_correlated");
+    assert_error_contains(&report, "safe_stop_status: complete");
 }
 
 fn rewrite_profile(evidence_root: &Utf8Path, profile: OperatorEvidenceProfile) {

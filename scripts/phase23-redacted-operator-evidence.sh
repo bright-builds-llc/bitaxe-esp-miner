@@ -112,12 +112,24 @@ write_slot() {
 	local conclusion="$4"
 	local safe_stop_status="${5:-not-run-static-workflow-slot}"
 	local file="${evidence_root}/${slot}.md"
+	local disposition="observed"
+	local generated_provenance=""
+	if [[ "$status" == "blocked" ]]; then
+		disposition="blocked"
+		generated_provenance="generated_provenance: phase23-wrapper-classification"
+	elif [[ "$status" == "pending" || "$status" == "deferred" ]]; then
+		disposition="deferred"
+		generated_provenance="generated_provenance: phase23-wrapper-classification"
+	fi
 
 	cat >"$file" <<EOF
 # Phase 23 ${slot} Slot
 
 slot: ${slot}
 slot_status: ${status}
+evidence_profile: phase23
+evidence_disposition: ${disposition}
+${generated_provenance}
 board: 205
 source_commit: ${source_commit}
 reference_commit: ${reference_commit}
@@ -174,6 +186,8 @@ write_redaction_review() {
 
 slot: redaction-review
 slot_status: passed
+evidence_profile: phase23
+evidence_disposition: observed
 board: 205
 source_commit: ${source_commit}
 reference_commit: ${reference_commit}
@@ -226,6 +240,8 @@ write_conclusion() {
 
 slot: conclusion
 slot_status: passed
+evidence_profile: phase23
+evidence_disposition: observed
 board: 205
 source_commit: ${source_commit}
 reference_commit: ${reference_commit}

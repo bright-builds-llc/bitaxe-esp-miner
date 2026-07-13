@@ -4,6 +4,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 readonly wrapper="${PHASE23_EVIDENCE_SCRIPT:-${script_dir}/phase23-redacted-operator-evidence.sh}"
+readonly repo_root="$(cd "${script_dir}/.." && pwd)"
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/phase23-redacted-operator-evidence-test.XXXXXX")"
 readonly tmp_root
@@ -93,6 +94,21 @@ assert_all_slots_exist() {
 	done
 }
 
+find_real_parity() {
+	local candidate
+	for candidate in \
+		"${script_dir}/../tools/parity/report" \
+		"${repo_root}/target/debug/bitaxe-parity" \
+		"${repo_root}/bazel-bin/tools/parity/report"; do
+		if [[ -x "$candidate" ]]; then
+			printf '%s' "$candidate"
+			return 0
+		fi
+	done
+	printf 'production parity binary was not found\n' >&2
+	return 1
+}
+
 run_blocked_mode_test() {
 	local fake_parity="${tmp_root}/fake-parity.sh"
 	local evidence_root="${tmp_root}/blocked-root"
@@ -162,7 +178,23 @@ run_detector_failure_test() {
 	assert_operator_trace "$trace_path"
 }
 
+run_real_parity_integration_test() {
+	local real_parity
+	real_parity="$(find_real_parity)"
+	local evidence_root="${tmp_root}/real-parity-root"
+
+	PHASE23_PARITY_COMMAND="$real_parity" \
+		"$wrapper" \
+		--evidence-root "$evidence_root" \
+		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+		--mode blocked >"${tmp_root}/real-parity.stdout"
+
+	assert_contains "${tmp_root}/real-parity.stdout" "operator_evidence_status: passed"
+	assert_all_slots_exist "$evidence_root"
+}
+
 run_blocked_mode_test
 run_detector_failure_test
+run_real_parity_integration_test
 
 printf 'phase23_redacted_operator_evidence_test=passed\n'
