@@ -38,6 +38,7 @@ mod operator_evidence;
 mod release_evidence;
 mod release_gate;
 mod safety_allow;
+mod v12_admission;
 
 #[derive(Debug, Parser)]
 #[command(name = "bitaxe-parity")]
@@ -951,6 +952,13 @@ fn validate_rows_with_phase30_artifact(
     phase30_artifact: &Phase30PromotionArtifactState,
 ) -> Vec<ValidationError> {
     let mut errors = Vec::new();
+
+    if let Err(message) = v12_admission::validate_closed_phase31_contract() {
+        errors.push(ValidationError {
+            id: "PHASE-31".to_owned(),
+            message,
+        });
+    }
 
     for row in rows {
         if normalize(&row.status) != "verified" {
