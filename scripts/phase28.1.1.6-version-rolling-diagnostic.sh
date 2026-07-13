@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Phase 28.1.1.6 version-rolling diagnostic: baseline compare + forced work-field A/B.
 # Forced A/B label: negotiated_version_mask_work_field_parity (Wave 0 / D-04 locked).
 # Does not recommend or enable falsified levers (job-byte / poll / long-block /

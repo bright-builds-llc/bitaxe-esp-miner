@@ -11,10 +11,10 @@ diagnose-ultra205-session *args:
     ./scripts/diagnose-ultra205-session.sh {{ args }}
 
 diagnose-ultra205-late-attach *args:
-    ./scripts/diagnose-ultra205-late-attach.sh {{ args }}
+    bash scripts/phase28.1.1-terminal-closure-guard.sh
 
 diagnose-ultra205-uart-capture *args:
-    ./scripts/diagnose-ultra205-uart-capture.sh {{ args }}
+    bash scripts/phase28.1.1-terminal-closure-guard.sh
 
 build:
     bazel build //firmware/bitaxe:firmware

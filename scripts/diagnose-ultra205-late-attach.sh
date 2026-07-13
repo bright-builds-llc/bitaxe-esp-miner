@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Resumable OS-native qualification of ESP32-S3 native-USB cold attachment.
 set -euo pipefail
 umask 077

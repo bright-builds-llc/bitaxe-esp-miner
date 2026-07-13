@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Phase 28.1.1.4 init-sequencing diagnostic: baseline compare + forced ticket-mask A/B.
 # Forced A/B label: ticket_mask_asic_difficulty (ASIC family difficulty 256).
 # Does not recommend or enable falsified levers (job-byte / poll / long-block / post_max_baud).

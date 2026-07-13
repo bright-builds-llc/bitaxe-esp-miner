@@ -6,5 +6,6 @@ package(default_visibility = ["//visibility:public"])
 exports_files([
     ".git/HEAD",
     ".git/logs/HEAD",
+    "Justfile",
     "docs/parity/evidence/phase-22-claim-ladder-and-safety-preconditions/claim-ladder.md",
 ])

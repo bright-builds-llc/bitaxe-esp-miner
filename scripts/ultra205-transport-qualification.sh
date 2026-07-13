@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Shared authority for the private Ultra 205 transport qualification contract.
 set -euo pipefail
 
@@ -236,27 +237,27 @@ validate_native_summary() {
 
 command="${1:-}"
 case "$command" in
-	contract-digest)
-		[[ $# -eq 1 ]] || die "unknown_argument"
-		contract_digest
-		;;
-	native-contract-digest)
-		[[ $# -eq 1 ]] || die "unknown_argument"
-		native_contract_digest
-		;;
-	validate)
-		[[ $# -ge 2 && $# -le 3 ]] || die "unknown_argument"
-		validate_uart_summary "$2" "${3:-}"
-		;;
-	validate-native)
-		[[ $# -ge 2 && $# -le 3 ]] || die "unknown_argument"
-		validate_native_summary "$2" "${3:-}"
-		;;
-	-h | --help)
-		usage
-		;;
-	*)
-		usage
-		die "unknown_command"
-		;;
+contract-digest)
+	[[ $# -eq 1 ]] || die "unknown_argument"
+	contract_digest
+	;;
+native-contract-digest)
+	[[ $# -eq 1 ]] || die "unknown_argument"
+	native_contract_digest
+	;;
+validate)
+	[[ $# -ge 2 && $# -le 3 ]] || die "unknown_argument"
+	validate_uart_summary "$2" "${3:-}"
+	;;
+validate-native)
+	[[ $# -ge 2 && $# -le 3 ]] || die "unknown_argument"
+	validate_native_summary "$2" "${3:-}"
+	;;
+-h | --help)
+	usage
+	;;
+*)
+	usage
+	die "unknown_command"
+	;;
 esac

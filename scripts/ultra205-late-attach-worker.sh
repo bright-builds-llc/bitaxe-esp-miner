@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Lifecycle owner for the Ultra 205 OS-native cold-attach qualification.
 # shellcheck disable=SC2154 # Constants are defined by the sourced broker.
 set -euo pipefail

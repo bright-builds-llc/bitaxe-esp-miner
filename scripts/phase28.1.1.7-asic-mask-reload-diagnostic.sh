@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Phase 28.1.1.7 ASIC mask-reload diagnostic: baseline compare + forced reload A/B.
 # Forced A/B label: pool_negotiated_mask_asic_reload (D-04/D-12 locked).
 # Does not recommend or enable falsified levers (job-byte / poll / long-block /

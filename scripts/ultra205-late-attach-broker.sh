@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Private state broker for the Ultra 205 late-attach qualification.
 
 late_attach_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

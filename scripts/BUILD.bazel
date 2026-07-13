@@ -3,6 +3,14 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "phase28_1_1_terminal_closure_support",
+    srcs = [
+        "phase28.1.1-terminal-closure-entrypoint-test.sh",
+        "phase28.1.1-terminal-closure-guard.sh",
+    ],
+)
+
 sh_binary(
     name = "bootstrap_esp",
     srcs = ["bootstrap-esp.sh"],
@@ -34,6 +42,7 @@ sh_binary(
     name = "diagnose_ultra205_late_attach",
     srcs = ["diagnose-ultra205-late-attach.sh"],
     data = [
+        ":phase28_1_1_terminal_closure_support",
         "detect-ultra205.sh",
         "phase13-monitor-capture.sh",
         "phase13-os-native-reader.pl",
@@ -51,6 +60,7 @@ sh_binary(
     name = "diagnose_ultra205_uart_capture",
     srcs = ["diagnose-ultra205-uart-capture.sh"],
     data = [
+        ":phase28_1_1_terminal_closure_support",
         "detect-ultra205.sh",
         "phase13-monitor-capture.sh",
         "phase13-os-native-reader.pl",
@@ -273,26 +283,42 @@ sh_test(
 )
 
 sh_test(
+    name = "phase28_1_1_terminal_closure_guard_test",
+    srcs = ["phase28.1.1-terminal-closure-guard-test.sh"],
+    data = [
+        "//:Justfile",
+        ":phase28_1_1_terminal_closure_support",
+        "diagnose-ultra205-late-attach.sh",
+        "diagnose-ultra205-uart-capture.sh",
+        "phase28.1.1-accepted-state-diagnostic.sh",
+        "phase28.1.1-exact-head-hardware-attempt.sh",
+        "phase28.1.1-upstream-wire-capture.sh",
+        "phase28.1.1-wire-parity-capture.sh",
+        "phase28.1.1.1-below-job-byte-diagnostic.sh",
+        "phase28.1.1.1-source-work-aligned-capture.sh",
+        "phase28.1.1.1-upstream-golden-capture.sh",
+        "phase28.1.1.2-result-path-diagnostic.sh",
+        "phase28.1.1.3-rx-acquisition-diagnostic.sh",
+        "phase28.1.1.4-init-sequencing-diagnostic.sh",
+        "phase28.1.1.5-chip-enumerate-diagnostic.sh",
+        "phase28.1.1.6-version-rolling-diagnostic.sh",
+        "phase28.1.1.7-asic-mask-reload-diagnostic.sh",
+        "ultra205-late-attach-broker.sh",
+        "ultra205-late-attach-worker.sh",
+        "ultra205-transport-qualification.sh",
+        "ultra205-uart-capture-broker.sh",
+        "ultra205-uart-capture-worker.sh",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
+sh_test(
     name = "diagnose_ultra205_late_attach_test",
     srcs = ["diagnose-ultra205-late-attach-test.sh"],
     data = [
-        "detect-ultra205.sh",
+        ":phase28_1_1_terminal_closure_support",
         "diagnose-ultra205-late-attach.sh",
-        "phase13-monitor-capture.sh",
-        "phase13-os-native-reader.pl",
-        "phase28.1.1-accepted-state-diagnostic.sh",
-        "phase28.1.1-exact-head-hardware-attempt.sh",
-        "phase28.1.1-lifecycle-frame.pl",
-        "process-group.sh",
-        "serial-session-trace.sh",
-        "ultra205-late-attach-broker.sh",
-        "ultra205-late-attach-classifier.mjs",
-        "ultra205-late-attach-worker.sh",
-        "ultra205-transport-qualification.sh",
-    ],
-    env_inherit = [
-        "HOME",
-        "PATH",
     ],
     tags = ["local"],
 )
@@ -301,26 +327,8 @@ sh_test(
     name = "diagnose_ultra205_uart_capture_test",
     srcs = ["diagnose-ultra205-uart-capture-test.sh"],
     data = [
-        "detect-ultra205.sh",
+        ":phase28_1_1_terminal_closure_support",
         "diagnose-ultra205-uart-capture.sh",
-        "phase13-monitor-capture.sh",
-        "phase13-uart-native-reader.py",
-        "phase28.1.1-accepted-state-diagnostic.sh",
-        "phase28.1.1-exact-head-hardware-attempt.sh",
-        "phase28.1.1-lifecycle-frame.pl",
-        "process-group.sh",
-        "serial-session-trace.sh",
-        "ultra205-late-attach-broker.sh",
-        "ultra205-late-attach-classifier.mjs",
-        "ultra205-transport-qualification.sh",
-        "ultra205-uart-capture-broker.sh",
-        "ultra205-uart-capture-classifier-test.mjs",
-        "ultra205-uart-capture-classifier.mjs",
-        "ultra205-uart-capture-worker.sh",
-    ],
-    env_inherit = [
-        "HOME",
-        "PATH",
     ],
     tags = ["local"],
 )
@@ -675,6 +683,7 @@ sh_binary(
     name = "phase28_1_1_exact_head_hardware_attempt",
     srcs = ["phase28.1.1-exact-head-hardware-attempt.sh"],
     data = [
+        ":phase28_1_1_terminal_closure_support",
         "detect-ultra205.sh",
         "diagnose-ultra205-late-attach.sh",
         "phase13-monitor-capture.sh",
@@ -696,25 +705,8 @@ sh_test(
     name = "phase28_1_1_exact_head_hardware_attempt_test",
     srcs = ["phase28.1.1-exact-head-hardware-attempt-test.sh"],
     data = [
-        "detect-ultra205.sh",
-        "phase28.1.1-accepted-state-diagnostic.sh",
+        ":phase28_1_1_terminal_closure_support",
         "phase28.1.1-exact-head-hardware-attempt.sh",
-        "phase28.1.1-hardware-attempt-state.mjs",
-        "phase28.1.1-lifecycle-frame.pl",
-        "phase28.1.1-strict-production-evidence.mjs",
-        "process-group.sh",
-        "serial-session-trace.sh",
-        "diagnose-ultra205-late-attach.sh",
-        "phase13-monitor-capture.sh",
-        "phase13-os-native-reader.pl",
-        "ultra205-late-attach-broker.sh",
-        "ultra205-late-attach-classifier.mjs",
-        "ultra205-late-attach-worker.sh",
-        "ultra205-transport-qualification.sh",
-    ],
-    env_inherit = [
-        "HOME",
-        "PATH",
     ],
     tags = ["local"],
 )
@@ -785,33 +777,8 @@ sh_test(
     name = "phase28_1_1_accepted_state_diagnostic_test",
     srcs = ["phase28.1.1-accepted-state-diagnostic-test.sh"],
     data = [
-        "//:.git/HEAD",
-        "//:.git/logs/HEAD",
-        "detect-ultra205.sh",
-        "diagnose-ultra205-late-attach.sh",
-        "phase13-monitor-capture.sh",
-        "phase13-os-native-reader.pl",
-        "phase28.1.1-accepted-state-compare.mjs",
+        ":phase28_1_1_terminal_closure_support",
         "phase28.1.1-accepted-state-diagnostic.sh",
-        "phase28.1.1-accepted-state-lifecycle-compare.mjs",
-        "phase28.1.1-exact-head-hardware-attempt.sh",
-        "phase28.1.1-hardware-attempt-state.mjs",
-        "phase28.1.1-lifecycle-frame.pl",
-        "phase28.1.1-strict-production-evidence.mjs",
-        "phase28.1.1-upstream-wire-capture.sh",
-        "process-group.sh",
-        "serial-session-trace.sh",
-        "ultra205-late-attach-broker.sh",
-        "ultra205-late-attach-classifier.mjs",
-        "ultra205-late-attach-worker.sh",
-        "ultra205-transport-qualification.sh",
     ],
-    env_inherit = [
-        "HOME",
-        "PATH",
-    ],
-    tags = [
-        "local",
-        "no-sandbox",
-    ],
+    tags = ["local"],
 )

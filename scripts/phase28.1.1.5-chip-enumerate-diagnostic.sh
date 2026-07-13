@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Phase 28.1.1.5 chip-enumerate diagnostic: baseline compare + forced RX-loop A/B.
 # Forced A/B label: count_asic_chips_rx_loop_parity (Wave 0 locked).
 # Does not recommend or enable falsified levers (job-byte / poll / long-block /

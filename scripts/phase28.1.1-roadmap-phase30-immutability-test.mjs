@@ -28,8 +28,8 @@ function roadmapFixture(sectionSuffix = "") {
 **Plans**: 3 plans
 
 ### Phase 30: Live Share Outcome And Verified Promotion
-**Goal**: exact goal${sectionSuffix}
-**Depends on**: Phase 29
+**Goal**: conservative no-promotion disposition unless explicitly supplied new evidence passes the existing gate${sectionSuffix}
+**Depends on**: Terminal archived Phase 28.1.1 lineage, Phase 29
 **Requirements**: STR-09, CFG-07, ASIC-11
 **Plans**: 0 plans
 

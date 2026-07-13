@@ -289,6 +289,14 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 - A direct UART or pin-manipulation path may be considered only when the user explicitly requests that specific path, or when a permanent blocker has been documented after non-invasive USB, firmware, host-tool, and software-observability paths are exhausted. Either case still requires fresh explicit user authorization before giving physical connection instructions or touching hardware.
 - The existing external-UART reader, commands, lifecycle, tests, and documentation are dormant software. Preserve them for history and possible future authorization, but do not invoke, surface, resume, or treat them as the next GSD action without satisfying the authorization rule above.
 
+### Archived Phase 28.1.1 Terminal Closure
+
+- Phase 28.1.1 and descendants 28.1.1.1 through 28.1.1.7 are terminal archived unresolved history under `.planning/milestones/v1.1-phases/`.
+- Do not discuss, plan, execute, verify, resume, diagnose, or run hardware/capture work for that lineage. This prohibition includes direct UART and any pin, pad, header, GPIO, test-point, probe, jumper, solder, or injected-signal path.
+- Phase 30 is the only allowed continuation. It must use a conservative no-promotion disposition unless explicitly supplied new eligible evidence independently satisfies the existing evidence gates.
+- The lineage's `gaps_found` verifications, pending STR-09/CFG-07/ASIC-11 requirements, and exact non-claims are authoritative. Administrative closure is not verification.
+- GSD versions/configurations that do not resolve active-milestone archives may report W006 for these eight phases. Treat such warnings as an expected archive exception; do not silence them by recreating active directories or marking verification passed. The currently installed GSD resolves this archive and introduces no W006.
+
 ### Flash And Monitor Timeouts
 
 Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and post-flash runtime evidence routinely exceed short monitor defaults. Agents and repo-owned wrappers must budget accordingly:

@@ -1,11 +1,13 @@
 ---
-status: blocked_safe_prerequisite
+status: closed_wont_do_unresolved
 trigger: "Phase 28.1.1 UAT Test 3 cannot reliably capture all five one-shot accepted-state markers across a true Ultra 205 cold start because removing both power paths also removes the native USB console."
 created: 2026-07-10T02:10:00Z
-updated: 2026-07-11T02:27:38Z
+updated: 2026-07-13T16:30:00Z
 ---
 
 ## Current Focus
+
+closure: Closed without resolution by the Phase 28.1.1 Won't Do decision. Preserve this record as historical diagnostic evidence; do not resume it or infer verification.
 
 hypothesis: Confirmed and implemented. The evidence-transport and evidence-correctness defects are closed, including independent-review fixes for process-tree cleanup, deadline-crossing tokens, and unavailable precedence. Hardware closure remains blocked because the strict five-stage candidate belongs to superseded head 4e2d165, hardware-attempt head d275a0e reached an expired finite-recovery checkpoint, and review-fix head ab7f5b9 has no eligible package, reinit, or lifecycle arm.
 test: Strict five-stage exact-identity audit, hardware-attempt bounded detector recovery, persisted monotonic checkpoint validation, and mandatory process-tree cleanup.

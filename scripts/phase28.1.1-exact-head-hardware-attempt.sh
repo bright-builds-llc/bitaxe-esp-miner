@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Crash-closed private control plane for one exact-HEAD Phase 28.1.1 attempt.
 set -euo pipefail
 umask 077

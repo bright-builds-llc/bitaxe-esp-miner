@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # J3-equivalent capture: phase27 image + pool-input-bridge watcher (Plan 28.1.1-02).
 set -euo pipefail
 

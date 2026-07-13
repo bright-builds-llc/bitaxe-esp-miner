@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Resumable receive-only external-UART cold-start qualification.
 set -euo pipefail
 umask 077

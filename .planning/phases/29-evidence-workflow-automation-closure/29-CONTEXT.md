@@ -85,7 +85,7 @@ This phase closes EVD-07, EVD-08, EVD-09, and REL-09 workflow gaps. It does not 
 - `.planning/phases/26-telemetry-and-parity-closure/26-CONTEXT.md` — evidence-class and blocker-as-proof rejection rules.
 - `.planning/phases/27-live-hardware-asic-and-stratum-bridge/27-CONTEXT.md` — detector-gated wrapper and closed share-outcome categories.
 - `.planning/phases/28-hardware-evidence-and-checklist-promotion/28-CONTEXT.md` — cross-link-only consolidation and conservative promotion rules.
-- `.planning/phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-CONTEXT.md` — Phase 29 automation versus Phase 30 promotion boundary.
+- `.planning/milestones/v1.1-phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-CONTEXT.md` — canonical archived Phase 29 automation versus Phase 30 promotion boundary.
 - `docs/parity/evidence/phase-23-redacted-operator-evidence-workflow/evidence-contract.md` — authoritative eleven-slot evidence-root contract.
 - `docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/evidence-contract.md` — Phase 28 source cross-links and consolidation metadata.
 

@@ -26,9 +26,9 @@ Completion review: Durable guidance is committed at `6f0629c`; the passive sessi
 - [x] Add regression coverage for replay ownership and the 10-second/1,880-second schedule.
 - [x] Run focused shell/Bazel/reference checks and the mandatory Rust verification sequence.
 - [x] Commit and push the verified firmware repair at `447f735c4df4363d84ea7b1354e32d57e28a68a5`.
-- [ ] Confirm the correction with a new detector-gated Plan 13 hardware chain before closing Phase 28.1.1.
+- [x] Skip the new detector-gated Plan 13 hardware chain under the Phase 28.1.1 Won't Do decision; no closure evidence was produced.
 
-Completion review: In progress. The first watcher-based hardware run isolated the remaining failure to absent replay bytes after successful USB appearance, monitor ownership, capture duration, and cleanup. The boot-lifetime ownership regression, focused lifecycle/state/classifier/monitor suites, affected Bazel targets, canonical ESP firmware build, reference guard, and mandatory Rust sequence pass. The durable finding commit `2b504d5` and firmware repair commit `447f735c4df4363d84ea7b1354e32d57e28a68a5` are pushed on `main`. Hardware confirmation must use a later clean committed HEAD; the failed attempt will not be resumed or retried.
+Completion review: Closed as skipped by the 2026-07-13 Phase 28.1.1 Won't Do decision. The first watcher-based hardware run isolated the remaining failure to absent replay bytes after successful USB appearance, monitor ownership, capture duration, and cleanup. The boot-lifetime ownership regression, focused lifecycle/state/classifier/monitor suites, affected Bazel targets, canonical ESP firmware build, reference guard, and mandatory Rust sequence passed, but no later hardware confirmation occurred and no verification claim is made.
 
 Hardware update: Exact HEAD `e622253d2fc4aea4589e0dcf5524081b6b054aaf` passed detector, credential binding, reference, package, strict reflash/reinit heartbeat validation, response-free watcher arming, USB appearance, passive attachment, capture duration, and cleanup. The retained cold-start payload was still zero bytes, so heartbeat, boot evidence, listener evidence, and snapshots were all absent and the attempt correctly ended `blocked_safe_evidence_invalid`. The checkbox remains open; no hardware retry is authorized from this result.
 
@@ -47,7 +47,7 @@ Hardware update: Exact HEAD `e622253d2fc4aea4589e0dcf5524081b6b054aaf` passed de
 - [x] Cancel the RX/GND fixture checkpoint; no direct UART, probe, pin, pad, or solder work is authorized and no fixture was installed.
 - [x] Cancel the schema-v3 hardware qualification and conditional formal Plan 13 chain; Plan 14's verified software remains dormant and produced no hardware evidence.
 
-Completion review: Pending. The heartbeat feature is software-verified and hardware-observed during reinit, but it cannot close Plan 13 while the late-attached native-USB session delivers zero application bytes.
+Completion review: Closed as skipped by the 2026-07-13 Phase 28.1.1 Won't Do decision. The heartbeat feature remains software-verified and hardware-observed during reinit, but it did not close Plan 13 because the late-attached native-USB session delivered zero application bytes.
 
 Software update: The new resumable diagnostic performs one baseline detector, same-session connected `espflash` and OS-native preflights, response-free exact-node watcher arming, and a cold `espflash` / OS-native / `espflash` sequence. Direct and forced-uncached Bazel tests cover the complete classifier matrix, real Unix-socket owner binding, private permissions, identity/epoch/ownership failures, leases, stale handles, crashes, cleanup, stream separation, and forbidden operations. The software authority is committed and pushed at `a6623c8cebe54b85e4cb9e14bdcd83cd1d31b141`.
 

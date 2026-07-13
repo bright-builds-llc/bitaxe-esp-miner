@@ -22,8 +22,17 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [x] **Phase 26: Telemetry And Parity Closure** - Runtime API, WebSocket, counters, and parity checklist updates reflect only proven v1.1 mining events. (completed 2026-07-05)
 - [x] **Phase 27: Live Hardware ASIC And Stratum Bridge** - Live firmware wires Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 socket loop and produces detector-gated share-outcome evidence. (completed 2026-07-05)
 - [x] **Phase 28: Hardware Evidence And Checklist Promotion** - Redacted hardware evidence promotes only exact verified checklist rows supported by Phase 27 artifacts. (completed 2026-07-06)
+- [x] **Phase 28.1: Live Mining Blocker Fix** - Completed its five planned diagnostic steps without promoting STR-09, CFG-07, or ASIC-11. (completed 2026-07-07)
+- [x] **Phase 28.1.1: BM1366 Nonce Production Wire Parity** - Closed — Won't Do (Unresolved); all 11 historical plans remain archived with `gaps_found`. (closed 2026-07-13)
+- [x] **Phase 28.1.1.1: Upstream Golden Comparator** - Closed — Diagnostic Gaps Deferred. (closed 2026-07-13)
+- [x] **Phase 28.1.1.2: Result-Path Diagnosis** - Closed — Diagnostic Gaps Deferred. (closed 2026-07-13)
+- [x] **Phase 28.1.1.3: Result RX Acquisition Diagnosis** - Closed — Diagnostic Gaps Deferred. (closed 2026-07-13)
+- [x] **Phase 28.1.1.4: ASIC Init-Content Sequencing Diagnosis** - Closed — Diagnostic Gaps Deferred. (closed 2026-07-13)
+- [x] **Phase 28.1.1.5: Chip-Enumerate Diagnosis** - Closed — Diagnostic Gaps Deferred. (closed 2026-07-13)
+- [x] **Phase 28.1.1.6: Version-Rolling Negotiation Diagnosis** - Closed — Diagnostic Gaps Deferred. (closed 2026-07-13)
+- [x] **Phase 28.1.1.7: ASIC Mask Reload Diagnosis** - Closed — Diagnostic Gaps Deferred. (closed 2026-07-13)
 - [x] **Phase 29: Evidence Workflow Automation Closure** - Phase 25/27/28 evidence wrappers auto-validate operator evidence roots and close the redact-validate-promote flow without manual consolidation steps. (completed 2026-07-13)
-- [ ] **Phase 30: Live Share Outcome And Verified Promotion** - Promote STR-09/CFG-07 to `verified` using Phase 28.1.1.2 (or later) share-outcome evidence; close Nyquist metadata (no duplicate wire-diff work).
+- [ ] **Phase 30: Live Share Outcome And Verified Promotion** - Apply the conservative no-promotion disposition because the terminal lineage contains no eligible share evidence; promote only if explicitly supplied new evidence passes the existing gate.
 
 ## Phase Details
 
@@ -158,14 +167,14 @@ Plans:
 - [x] 29-03-PLAN.md — Publish the operator flow, redaction scanner, closure evidence, and validation sign-off.
 
 ### Phase 30: Live Share Outcome And Verified Promotion
-**Goal**: Promote STR-09/CFG-07 checklist rows to `verified` only where Phase 28.1.1.1 redacted hardware evidence supports accepted/rejected share outcomes; close Phase 28.1 Nyquist metadata. Does not re-do wire-byte diff work (owned by Phase 28.1.1.1).
-**Depends on**: Phase 28.1.1.7 (or later phase with share-outcome evidence), Phase 29
+**Goal**: Record a conservative no-promotion disposition for STR-09, CFG-07, and ASIC-11 because the terminal archived Phase 28.1.1 lineage contains no eligible accepted/rejected share evidence. Promotion is allowed only if explicitly supplied new evidence independently satisfies the existing same-chain and redaction gates; do not reopen or re-run the archived diagnostics.
+**Depends on**: Terminal archived Phase 28.1.1 lineage, Phase 29
 **Requirements**: STR-09, CFG-07, ASIC-11
-**Gap Closure**: Closes audit tech debt for STR-09/CFG-07 below `verified` after Phase 28.1.1.1 share-outcome evidence exists.
+**Gap Closure**: Disposes the remaining audit gap truthfully without promotion; new evidence may change the disposition only through an explicit Phase 30 input.
 **Success Criteria** (what must be TRUE):
-  1. Committed Phase 30 evidence cites Phase 28.1.1.1 share-outcome artifacts (accepted/rejected) with redaction review complete.
-  2. STR-09 and CFG-07 checklist rows promote to `verified` only when committed evidence supports exact claims; parity validator rejects overbroad promotion.
-  3. Phase 28.1 Nyquist `wave_0_complete` metadata is closed after promotion evidence is captured.
+  1. Committed Phase 30 disposition records that the archived lineage produced no eligible accepted/rejected share evidence.
+  2. STR-09, CFG-07, and ASIC-11 remain pending unless explicitly supplied new evidence supports each exact claim; parity validation rejects overbroad promotion.
+  3. Phase 28.1 Nyquist metadata is closed conservatively without treating the Won't Do decision as verification.
   4. Explicit non-claims remain for full active safety, OTAWWW/recovery, non-205 boards, Stratum v2, UI/BAP, and unbounded stress.
 **Plans**: 0 plans
 
@@ -183,14 +192,14 @@ Plans:
 | 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 28. Hardware Evidence And Checklist Promotion | v1.1 | 3/3 | Complete   | 2026-07-06 |
 | 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete    | 2026-07-07 |
-| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 10/11 | Closed — Won't Do (Unresolved) | 2026-07-13 |
-| 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
-| 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
-| 28.1.1.3. BM1366 Result RX Acquisition Model Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
-| 28.1.1.4. BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
-| 28.1.1.5. BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
-| 28.1.1.6. BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
-| 28.1.1.7. BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
+| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 11/11 | Closed — Won't Do (Unresolved) | 2026-07-13 |
+| 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 5/5 | Closed — Diagnostic Gaps Deferred | 2026-07-13 |
+| 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 4/4 | Closed — Diagnostic Gaps Deferred | 2026-07-13 |
+| 28.1.1.3. BM1366 Result RX Acquisition Model Nonce-Production Diagnosis | v1.1 | 4/4 | Closed — Diagnostic Gaps Deferred | 2026-07-13 |
+| 28.1.1.4. BM1366 ASIC Init-Content Sequencing Nonce-Production Diagnosis | v1.1 | 4/4 | Closed — Diagnostic Gaps Deferred | 2026-07-13 |
+| 28.1.1.5. BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis | v1.1 | 4/4 | Closed — Diagnostic Gaps Deferred | 2026-07-13 |
+| 28.1.1.6. BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis | v1.1 | 4/4 | Closed — Diagnostic Gaps Deferred | 2026-07-13 |
+| 28.1.1.7. BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis | v1.1 | 4/4 | Closed — Diagnostic Gaps Deferred | 2026-07-13 |
 | 29. Evidence Workflow Automation Closure | v1.1 | 3/3 | Complete    | 2026-07-13 |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
@@ -233,6 +242,8 @@ Plans:
 - [x] 28.1.1-16-PLAN.md — Closed without execution after the one-shot preflight ended `preflight_identity_unavailable`; no retry or physical action occurred
 
 **Closure:** Closed — Won't Do (unresolved) by user decision on 2026-07-13. This is an administrative terminal, not a successful verification or requirements promotion. Plan 16's one-shot preflight ended `preflight_identity_unavailable` before any physical action, cleanup completed, and the no-retry contract was preserved. No eligible physical lifecycle pair, correlated result, hashing-class rise, or accepted/rejected share exists. The existing `gaps_found` verification and exact non-claims remain authoritative; STR-09, ASIC-11, and CFG-07 stay pending, and Phase 30 promotion remains evidence-gated.
+
+**GSD health exception:** GSD versions/configurations that do not count active-milestone archive lookup may report W006 for these eight intentionally archived phases. Treat those warnings as expected and do not repair them by recreating active phase directories or changing any `gaps_found` verification to `passed`. The installed GSD currently resolves the archive and introduces no W006; its pre-existing Phase 01-21 W007 warnings are unrelated.
 
 ### Phase 28.1.1.1: BM1366 upstream golden comparator and nonce-production gap reconciliation (INSERTED)
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Phase 28.1.1.2 result-path diagnostic: baseline compare + forced register-read-poll A/B.
 set -euo pipefail
 

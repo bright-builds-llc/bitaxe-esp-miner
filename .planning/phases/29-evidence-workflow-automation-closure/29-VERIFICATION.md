@@ -1,24 +1,25 @@
 ---
 phase: 29-evidence-workflow-automation-closure
-verified: 2026-07-13T03:43:08Z
+verified: 2026-07-13T16:30:00Z
 status: passed
 score: 12/12 must-haves verified
 generated_by: gsd-verifier
 lifecycle_mode: yolo
 phase_lifecycle_id: 29-2026-07-13T00-19-45
-generated_at: 2026-07-13T03:43:08Z
+generated_at: 2026-07-13T16:30:00Z
 lifecycle_validated: true
 overrides_applied: 0
 head_commit: ab87fa59b541b6f58349205fca77cb6180e4c8dc
+reverified_for_archived_context: true
 ---
 
 # Phase 29: Evidence Workflow Automation Closure Verification Report
 
 **Phase Goal:** Ultra 205 operators can run Phase 25, Phase 27, and Phase 28 evidence workflows end-to-end with automated `operator-evidence` validation and no manual consolidation gap between partial and full evidence roots.
 
-**Verified:** 2026-07-13T03:43:08Z  
+**Verified:** 2026-07-13T16:30:00Z
 **Status:** passed  
-**Re-verification:** No — initial goal-backward verification after the capped iteration-3 review fix.
+**Re-verification:** Yes — the sole context-path change resolves to the canonical archived Phase 28.1.1 history; the Phase 29 implementation, outcome, and claims are unchanged.
 
 ## Goal Achievement
 

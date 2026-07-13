@@ -148,7 +148,7 @@ function protectedOptions(args, action) {
   const phaseDir =
     maybeOption(args, "--phase-dir") ??
     resolve(
-      ".planning/phases/28.1.1-bm1366-nonce-production-wire-parity",
+      ".planning/milestones/v1.1-phases/28.1.1-bm1366-nonce-production-wire-parity",
     );
   const path =
     action === "snapshot"

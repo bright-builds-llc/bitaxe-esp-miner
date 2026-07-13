@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # External-UART specialization of the private late-attach attempt broker.
 
 uart_capture_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

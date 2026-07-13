@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 # Diagnose Phase 28.1.1.1 below-job-byte BM1366 sequencing without committing raw logs.
 set -euo pipefail
 
@@ -310,8 +311,7 @@ blocked_safe_prerequisite)
 	write_evidence "blocked_safe_prerequisite" "below_job_byte_sequence_incomplete" "$phase_sequence_report" "$recommendation" "$ab_status" "$ab_submit"
 	die "below-job-byte sequence comparator blocked"
 	;;
-match | match_with_downstream_gap | mismatch)
-	;;
+match | match_with_downstream_gap | mismatch) ;;
 *)
 	write_evidence "blocked_safe_prerequisite" "below_job_byte_sequence_unknown_status" "$phase_sequence_report" "$recommendation" "$ab_status" "$ab_submit"
 	die "unknown sequence comparison status: $comparison_status"

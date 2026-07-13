@@ -1,11 +1,13 @@
 ---
-status: investigating
+status: closed_wont_do_unresolved
 trigger: "Plan 13 passed physical lifecycle, USB ownership, passive capture, and cleanup, but the retained cold-start log contained no boot or listener markers."
 created: 2026-07-12T04:00:00Z
-updated: 2026-07-12T23:42:00Z
+updated: 2026-07-13T16:30:00Z
 ---
 
 ## Current Focus
+
+closure: Closed without resolution by the Phase 28.1.1 Won't Do decision. Preserve this record as historical diagnostic evidence; do not resume it or infer verification.
 
 hypothesis: The remaining cold-start evidence gap may be solvable through a non-invasive USB, firmware, host-tool, or software-observability seam without direct UART attachment or physical pin manipulation.
 test: No hardware test is active. Plan a new non-invasive diagnostic from the closed native-USB results while preserving Plan 14's verified external-UART software as dormant historical work.
