@@ -380,6 +380,77 @@ fn rejects_nested_stratum_pool_uri() {
     assert!(!format!("{report:#?}").contains("pool.runtime.example"));
 }
 
+#[test]
+fn rejects_redacted_ssid_token_with_appended_value() {
+    // Arrange
+    let evidence_root = create_phase27_runtime_root("phase27-ssid-token-suffix");
+    std::fs::write(
+        evidence_root
+            .join("live-capture-runtime/flash-monitor.log")
+            .as_std_path(),
+        "I (2048) wifi:connected with [redacted-ssid]WorkshopNetwork, aid = 1\n",
+    )
+    .expect("runtime log should write");
+
+    // Act
+    let report = validate_phase27_runtime_root(&evidence_root);
+
+    // Assert
+    assert_error_contains(
+        &report,
+        "live-capture-runtime/flash-monitor.log contains a forbidden redaction sentinel or private runtime value",
+    );
+    assert!(!format!("{report:#?}").contains("WorkshopNetwork"));
+}
+
+#[test]
+fn rejects_redacted_uri_token_with_appended_authority() {
+    // Arrange
+    let evidence_root = create_phase27_runtime_root("phase27-uri-token-authority");
+    std::fs::write(
+        evidence_root
+            .join("live-capture-runtime/pool-input-bridge/runtime.log")
+            .as_std_path(),
+        "Connecting to: stratum+tcp://[redacted]@pool.runtime.example:3333\n",
+    )
+    .expect("runtime log should write");
+
+    // Act
+    let report = validate_phase27_runtime_root(&evidence_root);
+
+    // Assert
+    assert_error_contains(
+        &report,
+        "live-capture-runtime/pool-input-bridge/runtime.log contains a forbidden redaction sentinel or private runtime value",
+    );
+    assert!(!format!("{report:#?}").contains("pool.runtime.example"));
+}
+
+#[test]
+fn accepts_exact_runtime_redaction_tokens_at_field_boundaries() {
+    // Arrange
+    let evidence_root = create_phase27_runtime_root("phase27-closed-redaction-tokens");
+    std::fs::write(
+        evidence_root
+            .join("live-capture-runtime/flash-monitor.log")
+            .as_std_path(),
+        "I (2048) wifi:connected with [redacted-ssid], aid = 1\nConnecting to: stratum+tcp://[redacted-host]\n",
+    )
+    .expect("runtime log should write");
+
+    // Act
+    let report = validate_phase27_runtime_root(&evidence_root);
+
+    // Assert
+    assert!(
+        !report
+            .validation_errors
+            .iter()
+            .any(|error| error.contains("forbidden redaction sentinel or private runtime value")),
+        "{report:#?}"
+    );
+}
+
 fn create_phase27_runtime_root(name: &str) -> Utf8PathBuf {
     let evidence_root = create_evidence_root(name);
     write_complete_slots(&evidence_root, SlotOverrides::default());

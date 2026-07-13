@@ -158,13 +158,20 @@ fn contains_private_runtime_value(contents: &str) -> bool {
 }
 
 fn contains_unredacted_wifi_ssid(normalized: &str) -> bool {
-    ["wifi:connected with ", "connected to ssid:"]
-        .iter()
-        .filter_map(|marker| normalized.find(marker).map(|index| (marker, index)))
-        .any(|(marker, index)| {
-            let value = normalized[index + marker.len()..].trim_start();
-            !value.starts_with("[redacted-ssid]")
+    [
+        ("wifi:connected with ", Some(", aid =")),
+        ("connected to ssid:", None),
+    ]
+    .iter()
+    .any(|(marker, maybe_delimiter)| {
+        normalized.match_indices(marker).any(|(index, _)| {
+            let remainder = normalized[index + marker.len()..].trim_start();
+            let value = maybe_delimiter
+                .and_then(|delimiter| remainder.find(delimiter))
+                .map_or(remainder, |delimiter_index| &remainder[..delimiter_index]);
+            value.trim() != "[redacted-ssid]"
         })
+    })
 }
 
 fn contains_unredacted_url(normalized: &str) -> bool {
@@ -182,9 +189,24 @@ fn contains_unredacted_url(normalized: &str) -> bool {
     .any(|scheme| {
         normalized.match_indices(scheme).any(|(index, _)| {
             let value = &normalized[index + scheme.len()..];
-            !value.starts_with("[redacted")
+            let authority_end = value
+                .find(is_uri_authority_delimiter)
+                .unwrap_or(value.len());
+            let authority = &value[..authority_end];
+            !matches!(
+                authority,
+                "[redacted]" | "[redacted-url]" | "[redacted-host]" | "[redacted-ip]"
+            )
         })
     })
+}
+
+fn is_uri_authority_delimiter(character: char) -> bool {
+    character.is_ascii_whitespace()
+        || matches!(
+            character,
+            '/' | '?' | '#' | '"' | '\'' | ',' | ';' | ')' | '}' | '>' | '`'
+        )
 }
 
 fn looks_like_private_network_token(token: &str) -> bool {
