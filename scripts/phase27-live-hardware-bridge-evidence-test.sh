@@ -207,6 +207,19 @@ write_fake_live_capture() {
 set -euo pipefail
 
 printf '%s\n' "$*" >"${PHASE27_FAKE_LIVE_CAPTURE_ARGS:?}"
+capture_evidence_dir=""
+for argument in "$@"; do
+	case "$argument" in
+	evidence-dir=*) capture_evidence_dir="${argument#*=}" ;;
+	esac
+done
+if [[ "${PHASE27_FAKE_RUNTIME_LOG_MODE:-none}" == "unredacted" ]]; then
+	mkdir -p "${capture_evidence_dir:?}/pool-input-bridge"
+	printf '%s\n' \
+		'I (2048) wifi:connected with WorkshopNetwork, aid = 1, channel 6' \
+		'Connecting to: stratum+tcp://pool.runtime.example:3333' \
+		>"${capture_evidence_dir}/pool-input-bridge/runtime.log"
+fi
 case "${PHASE27_FAKE_SHARE_OUTCOME:-accepted}" in
 accepted)
 	printf 'phase27_safety_bring_up=complete\n'
@@ -588,6 +601,51 @@ run_real_parity_integration_test() {
 	rm -rf "$evidence_root"
 }
 
+run_real_parity_rejects_nested_runtime_values_test() {
+	local real_parity
+	real_parity="$(find_real_parity)"
+	local fake_detector="${tmp_root}/real-parity-runtime-detector.sh"
+	local fake_board_info="${tmp_root}/real-parity-runtime-board-info.sh"
+	local fake_live_capture="${tmp_root}/real-parity-runtime-capture.sh"
+	local fake_live_capture_args="${tmp_root}/real-parity-runtime-capture.args"
+	local manifest_path="${tmp_root}/real-parity-runtime/bitaxe-ultra205-package.json"
+	local factory_image="${tmp_root}/real-parity-runtime/bitaxe-ultra205-factory.bin"
+	local relative_evidence_root="scratch/phase27-real-parity-runtime-$$"
+	local evidence_root="${repo_root}/${relative_evidence_root}"
+	write_fake_detector_with_port "$fake_detector"
+	write_fake_board_info "$fake_board_info"
+	write_fake_package_manifest "$manifest_path" "$factory_image"
+	write_fake_live_capture "$fake_live_capture" "$fake_live_capture_args" "accepted"
+	rm -rf "$evidence_root"
+
+	set +e
+	(
+		cd "$repo_root"
+		export BUILD_WORKSPACE_DIRECTORY="$repo_root"
+		PHASE27_PARITY_COMMAND="$real_parity" \
+		PHASE27_DETECT_COMMAND="$fake_detector" \
+		PHASE27_BOARD_INFO_COMMAND="$fake_board_info" \
+		PHASE27_LIVE_CAPTURE_COMMAND="$fake_live_capture" \
+		PHASE27_FAKE_LIVE_CAPTURE_ARGS="$fake_live_capture_args" \
+		PHASE27_FAKE_RUNTIME_LOG_MODE=unredacted \
+			"$wrapper" \
+			--evidence-root "$relative_evidence_root" \
+			--manifest "$manifest_path" \
+			--mode hardware \
+			--pool-credentials "${tmp_root}/local-pool-input.json" \
+			--duration-seconds 60 \
+			--redact-evidence=true
+	) >"${tmp_root}/real-parity-runtime.stdout" 2>"${tmp_root}/real-parity-runtime.stderr"
+	local status=$?
+	set -e
+
+	assert_nonzero_status "$status" "nested runtime redaction validation"
+	assert_contains "${tmp_root}/real-parity-runtime.stderr" "live-capture-runtime/pool-input-bridge/runtime.log contains a forbidden redaction sentinel or private runtime value"
+	assert_not_contains "${tmp_root}/real-parity-runtime.stderr" "WorkshopNetwork"
+	assert_not_contains "${tmp_root}/real-parity-runtime.stderr" "pool.runtime.example"
+	rm -rf "$evidence_root"
+}
+
 scan_committed_artifacts_if_present() {
 	if [[ ! -d "$committed_evidence_root" ]]; then
 		return 0
@@ -618,6 +676,7 @@ run_hardware_missing_prerequisites_skips_live_capture_test
 run_detector_failure_test
 run_failure_precedence_tests
 run_real_parity_integration_test
+run_real_parity_rejects_nested_runtime_values_test
 scan_committed_artifacts_if_present
 
 printf 'phase27_live_hardware_bridge_evidence_test=passed\n'

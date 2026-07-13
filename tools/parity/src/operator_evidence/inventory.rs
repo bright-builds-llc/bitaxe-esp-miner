@@ -147,11 +147,43 @@ fn contains_private_runtime_value(contents: &str) -> bool {
         .iter()
         .any(|prefix| normalized.contains(prefix));
         forbidden_assignment
+            || contains_unredacted_wifi_ssid(&normalized)
+            || contains_unredacted_url(&normalized)
             || normalized.contains("/dev/cu.")
             || normalized.contains("/dev/tty")
             || line
                 .split_ascii_whitespace()
                 .any(looks_like_private_network_token)
+    })
+}
+
+fn contains_unredacted_wifi_ssid(normalized: &str) -> bool {
+    ["wifi:connected with ", "connected to ssid:"]
+        .iter()
+        .filter_map(|marker| normalized.find(marker).map(|index| (marker, index)))
+        .any(|(marker, index)| {
+            let value = normalized[index + marker.len()..].trim_start();
+            !value.starts_with("[redacted-ssid]")
+        })
+}
+
+fn contains_unredacted_url(normalized: &str) -> bool {
+    [
+        "stratum+tcp://",
+        "stratum+ssl://",
+        "https://",
+        "http://",
+        "wss://",
+        "ws://",
+        "tls://",
+        "tcp://",
+    ]
+    .iter()
+    .any(|scheme| {
+        normalized.match_indices(scheme).any(|(index, _)| {
+            let value = &normalized[index + scheme.len()..];
+            !value.starts_with("[redacted")
+        })
     })
 }
 

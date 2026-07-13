@@ -335,6 +335,86 @@ fn scans_phase27_manifest_and_nested_runtime_artifacts() {
 }
 
 #[test]
+fn rejects_nested_vendor_connected_ssid_line() {
+    // Arrange
+    let evidence_root = create_phase27_runtime_root("phase27-vendor-ssid");
+    std::fs::write(
+        evidence_root
+            .join("live-capture-runtime/flash-monitor.log")
+            .as_std_path(),
+        "I (2048) wifi:connected with WorkshopNetwork, aid = 1, channel 6\n",
+    )
+    .expect("runtime log should write");
+
+    // Act
+    let report = validate_phase27_runtime_root(&evidence_root);
+
+    // Assert
+    assert_error_contains(
+        &report,
+        "live-capture-runtime/flash-monitor.log contains a forbidden redaction sentinel or private runtime value",
+    );
+    assert!(!format!("{report:#?}").contains("WorkshopNetwork"));
+}
+
+#[test]
+fn rejects_nested_stratum_pool_uri() {
+    // Arrange
+    let evidence_root = create_phase27_runtime_root("phase27-pool-uri");
+    std::fs::write(
+        evidence_root
+            .join("live-capture-runtime/pool-input-bridge/runtime.log")
+            .as_std_path(),
+        "Connecting to: stratum+tcp://pool.runtime.example:3333\n",
+    )
+    .expect("runtime log should write");
+
+    // Act
+    let report = validate_phase27_runtime_root(&evidence_root);
+
+    // Assert
+    assert_error_contains(
+        &report,
+        "live-capture-runtime/pool-input-bridge/runtime.log contains a forbidden redaction sentinel or private runtime value",
+    );
+    assert!(!format!("{report:#?}").contains("pool.runtime.example"));
+}
+
+fn create_phase27_runtime_root(name: &str) -> Utf8PathBuf {
+    let evidence_root = create_evidence_root(name);
+    write_complete_slots(&evidence_root, SlotOverrides::default());
+    rewrite_profile(&evidence_root, OperatorEvidenceProfile::Phase27);
+    std::fs::write(
+        evidence_root.join("summary.md").as_std_path(),
+        "summary_status: blocked\n",
+    )
+    .expect("summary should write");
+    std::fs::write(
+        evidence_root.join("mining-allow.json").as_std_path(),
+        r#"{"status":"blocked"}"#,
+    )
+    .expect("manifest should write");
+    std::fs::create_dir_all(
+        evidence_root
+            .join("live-capture-runtime/pool-input-bridge")
+            .as_std_path(),
+    )
+    .expect("nested runtime directory should write");
+    evidence_root
+}
+
+fn validate_phase27_runtime_root(evidence_root: &Utf8Path) -> OperatorEvidenceReport {
+    let documents = load_operator_evidence_documents(evidence_root).expect("root should load");
+    validate_operator_evidence_documents(
+        OperatorEvidenceProfile::Phase27,
+        &documents,
+        &OperatorEvidenceFilters {
+            require_redaction_passed: true,
+        },
+    )
+}
+
+#[test]
 fn rejects_unknown_root_artifact() {
     // Arrange
     let evidence_root = create_evidence_root("unknown-root-artifact");
