@@ -9,7 +9,7 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 
 ### Read-Only Observation
 
-- [ ] **OBS-01**: An Ultra 205 operator can distinguish every power and thermal observation as `fresh`, `stale`, `unavailable`, or `fault`; compatibility numeric zero values never imply freshness.
+- [x] **OBS-01**: An Ultra 205 operator can distinguish every power and thermal observation as `fresh`, `stale`, `unavailable`, or `fault`; compatibility numeric zero values never imply freshness.
 - [ ] **OBS-02**: An Ultra 205 operator retains the existing startup-display behavior while display, INA260, and EMC2101 access use one bounded, serialized, firmware-owned I2C0 lifecycle with no v1.2 actuator or control-register writes.
 - [ ] **OBS-03**: An Ultra 205 operator can observe INA260 current, bus voltage, and power values only when a producer-owned sequence and monotonic acquisition time prove a fresh read.
 - [ ] **OBS-04**: An Ultra 205 operator can observe EMC2101 temperature and independently available tachometer data through read-only transactions, with missing or invalid data represented explicitly.
@@ -98,7 +98,7 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| OBS-01 | Phase 31 | Pending |
+| OBS-01 | Phase 31 | Complete |
 | OBS-02 | Phase 32 | Pending |
 | OBS-03 | Phase 32 | Pending |
 | OBS-04 | Phase 32 | Pending |

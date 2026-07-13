@@ -39,7 +39,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 1. The v1.2 settings contract names `hostname` as the complete PATCH allowlist and rejects every broader field from v1.2 promotion.
 1. Typed capability and admission boundaries cannot represent active control, self-test effects, mining or Phase 28.1.1 work, credentials, direct-UART/pin work, OTA, other-board, or broad-promotion claims as eligible v1.2 outcomes.
 
-**Plans:** TBD
+**Plans:** 1/3 plans executed
 
 ### Phase 32: Shared I2C and Read-Only Sensor Acquisition
 
@@ -129,13 +129,13 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 
 | Phase | Name | Requirements | Status |
 | --- | --- | ---: | --- |
-| 31 | Operator Claim and Telemetry Contract | 2 | Not started |
+| 31 | Operator Claim and Telemetry Contract | 2 | In Progress (1/3 plans) |
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Not started |
 | 33 | Confirmed Settings Durability | 5 | Not started |
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Not started |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 6 | Not started |
 
-**Overall:** 0/5 phases complete; 0/27 requirements complete.
+**Overall:** 0/5 phases complete; 1/27 requirements complete.
 
 ## Coverage
 

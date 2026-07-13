@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 31 context gathered
-last_updated: "2026-07-13T20:30:30.549Z"
+stopped_at: Completed 31-01-PLAN.md
+last_updated: "2026-07-13T20:47:30.579Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -20,13 +20,13 @@ Last activity: 2026-07-13
 
 ## Current Position
 
-Phase: 31 of 35 (Operator Claim and Telemetry Contract)
-Plan: —
+Phase: 31 (Operator Claim and Telemetry Contract) — EXECUTING
+Plan: 2 of 3
 
 - **Phase:** 31 of 35 (Operator Claim and Telemetry Contract)
-- **Plan:** —
-- **Status:** Ready to execute
-- **Next step:** Discuss Phase 31, then create its implementation plan.
+- **Plan:** 2 of 3
+- **Status:** Executing Phase 31
+- **Next step:** Execute `31-02-PLAN.md` to project stored observation truth through API and firmware consumer boundaries.
 
 ## Project Reference
 
@@ -39,6 +39,12 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 - The complete v1.2 PATCH allowlist is `hostname`; additional settings remain future work.
 - Active fan, voltage, reset, power, fault, ASIC, and self-test effects are prohibited. Mining and Phase 28.1.1 lineage work, credentials, direct UART/pins, OTA, other boards, and broad parity promotion are also prohibited.
 - Only Phase 35 may admit final v1.2 parity evidence, and only for explicitly allowlisted operator-runtime rows supported by an eligible same-chain evidence root.
+
+## Decisions (Phase 31 Plan 01)
+
+- Power current, bus voltage, and wattage share one stamped acquisition because INA260 supplies them atomically.
+- Temperature and tachometer use independent observations so one producer failure cannot erase the other fact.
+- Compatibility numeric fallbacks remain projections outside observation truth and cannot authenticate freshness.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -178,6 +184,7 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 | Phase 28.1.1 P15 | 1h 12m | 3 tasks | 12 files |
 | Phase 30 P01 | 13 min | 1 tasks | 6 files |
 | Phase 30 P02 | 8 min | 2 tasks | 3 files |
+| Phase 31 P01 | 12 min | 2 tasks | 6 files |
 
 ### Quick Tasks Completed
 
@@ -210,5 +217,5 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Phase 31 context gathered
+- **Stopped at:** Completed 31-01-PLAN.md
 - **Resume:** Run `/gsd-discuss-phase 31` or `/gsd-plan-phase 31`; preserve all v1.2 read-only and terminal-archive prohibitions.
