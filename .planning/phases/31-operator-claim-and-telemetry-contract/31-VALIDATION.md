@@ -40,8 +40,8 @@ generated_at: 2026-07-13T20:06:00.000Z
 | 31-01-02 | 01 | 1 | OBS-01 | T-31-02 | Failed/stale transitions cannot mint new sample metadata | unit | `cargo test -p bitaxe-safety --all-features observation` | ✅ | ✅ green |
 | 31-02-01 | 02 | 2 | OBS-01 | T-31-03 | Compatibility zero never authenticates freshness | unit/golden | `cargo test -p bitaxe-api --all-features safety_telemetry` | ✅ | ✅ green |
 | 31-02-02 | 02 | 2 | OBS-01 | T-31-08 | Consumer reads cannot advance producer-owned stamps and firmware still builds | regression/build | `cargo test -p bitaxe-api --all-features projection && just build` | ✅ | ✅ green |
-| 31-03-01 | 03 | 3 | CFG-08 | T-31-04 | Only validated hostname can construct an effect-free v1.2 capability; Phase 33 owns persistence integration | unit | `cargo test -p bitaxe-api --all-features settings` | ✅ | ⬜ pending |
-| 31-03-02 | 03 | 3 | CFG-08 | T-31-05 | Excluded settings and claims remain ineligible and effect-free | unit/workflow | `cargo test -p bitaxe-parity --all-features phase31_` | ❌ W0 | ⬜ pending |
+| 31-03-01 | 03 | 3 | CFG-08 | T-31-04 | Only validated hostname can construct an effect-free v1.2 capability; Phase 33 owns persistence integration | unit | `cargo test -p bitaxe-api --all-features settings` | ✅ | ✅ green |
+| 31-03-02 | 03 | 3 | CFG-08 | T-31-05 | Excluded settings and claims remain ineligible and effect-free | unit/workflow | `cargo test -p bitaxe-parity --all-features phase31_` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

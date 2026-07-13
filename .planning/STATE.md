@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: executing
-stopped_at: Completed 31-02-PLAN.md
-last_updated: "2026-07-13T21:09:10.382Z"
+status: verifying
+stopped_at: Completed 31-03-PLAN.md
+last_updated: "2026-07-13T21:27:32.270Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -20,13 +20,13 @@ Last activity: 2026-07-13
 
 ## Current Position
 
-Phase: 31 (Operator Claim and Telemetry Contract) — EXECUTING
+Phase: 31 (Operator Claim and Telemetry Contract) — READY FOR VERIFICATION
 Plan: 3 of 3
 
 - **Phase:** 31 of 35 (Operator Claim and Telemetry Contract)
 - **Plan:** 3 of 3
-- **Status:** Ready to execute
-- **Next step:** Execute `31-03-PLAN.md` to add hostname-only authority and exact claim admission.
+- **Status:** Phase complete — ready for verification
+- **Next step:** Verify Phase 31 before advancing to Phase 32.
 
 ## Project Reference
 
@@ -51,6 +51,11 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 - Observation truth serializes independently from AxeOS numeric compatibility values; a compatibility zero cannot authenticate freshness, availability, or health.
 - Firmware consumers clone one complete stored snapshot, and only producer completion may replace it, so request traffic cannot acquire sensors or advance metadata.
 - The retained Phase 27 path leaves fan RPM unavailable until a producer owns an independent stamp; reusing another fact's stamp would manufacture provenance.
+
+## Decisions (Phase 31 Plan 03)
+
+- Only exact validated hostname input constructs v1.2 settings authority; compatibility parsing remains broad for stable responses while persistence integration stays Phase 33-owned.
+- Phase 31 claim admission is closed, typed, and requirement-scoped: OBS-01 and CFG-08 evidence authenticate only their exact claims, while excluded categories, strings, and schema growth fail closed.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -192,6 +197,7 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 | Phase 30 P02 | 8 min | 2 tasks | 3 files |
 | Phase 31 P01 | 12 min | 2 tasks | 6 files |
 | Phase 31 P02 | 15 min | 2 tasks | 15 files |
+| Phase 31 P03 | 14 min | 2 tasks | 7 files |
 
 ### Quick Tasks Completed
 
@@ -224,5 +230,5 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 31-02-PLAN.md
-- **Resume:** Execute `31-03-PLAN.md`; preserve all v1.2 read-only and terminal-archive prohibitions.
+- **Stopped at:** Completed 31-03-PLAN.md
+- **Resume:** Verify Phase 31; preserve all v1.2 read-only and terminal-archive prohibitions.

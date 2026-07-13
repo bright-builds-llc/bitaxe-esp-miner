@@ -16,7 +16,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 
 **Phase numbering:** Integer phases continue after completed Phase 30. Decimal phases are reserved for urgent insertions and are not part of the initial v1.2 roadmap.
 
-- [ ] **Phase 31: Operator Claim and Telemetry Contract** — Define truthful observation, settings, health, and promotion states before effectful integration.
+- [x] **Phase 31: Operator Claim and Telemetry Contract** — Define truthful observation, settings, health, and promotion states before effectful integration. (completed 2026-07-13)
 - [ ] **Phase 32: Shared I2C and Read-Only Sensor Acquisition** — Establish one bounded I2C0 owner for startup display handoff and read-only INA260/EMC2101 observations.
 - [ ] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, immediately visible, and reboot-durable storage truth.
 - [ ] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot.
@@ -39,7 +39,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 1. The v1.2 settings contract names `hostname` as the complete PATCH allowlist and rejects every broader field from v1.2 promotion.
 1. Typed capability and admission boundaries cannot represent active control, self-test effects, mining or Phase 28.1.1 work, credentials, direct-UART/pin work, OTA, other-board, or broad-promotion claims as eligible v1.2 outcomes.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 ### Phase 32: Shared I2C and Read-Only Sensor Acquisition
 
@@ -129,7 +129,7 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 
 | Phase | Name | Requirements | Status |
 | --- | --- | ---: | --- |
-| 31 | Operator Claim and Telemetry Contract | 2 | In Progress (2/3 plans) |
+| 31 | Operator Claim and Telemetry Contract | 2 | Complete |
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Not started |
 | 33 | Confirmed Settings Durability | 5 | Not started |
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Not started |
