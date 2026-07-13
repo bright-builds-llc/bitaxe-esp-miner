@@ -9,7 +9,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 
 use super::{
     ConsolidationOptions, GenerationError, GenerationResult, PromotionFailurePoint, MANIFEST_FILE,
-    STAGING_SEQUENCE,
+    STAGING_SEQUENCE, SUMMARY_FILE,
 };
 use crate::operator_evidence::OperatorEvidenceSlot;
 
@@ -22,7 +22,7 @@ pub(super) fn validate_managed_destination(destination: &Utf8Path) -> Generation
     let allowed = OperatorEvidenceSlot::ALL
         .into_iter()
         .map(|slot| slot.file_name())
-        .chain(std::iter::once(MANIFEST_FILE))
+        .chain([SUMMARY_FILE, MANIFEST_FILE])
         .collect::<BTreeSet<_>>();
     for entry in fs::read_dir(destination.as_std_path()).map_err(|source| {
         io_error(

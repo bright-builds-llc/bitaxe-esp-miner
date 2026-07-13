@@ -261,9 +261,19 @@ fn outcome_matrix_requires_support_and_renders_all_closed_outcomes() {
         let share =
             fs::read_to_string(workspace.join("destination/share-outcome.md").as_std_path())
                 .expect("share outcome should read");
+        let summary = fs::read_to_string(workspace.join("destination/summary.md").as_std_path())
+            .expect("summary should read");
+        let manifest = fs::read_to_string(
+            workspace
+                .join("destination/.phase28-evidence-manifest")
+                .as_std_path(),
+        )
+        .expect("manifest should read");
 
         // Assert
         assert!(share.contains(&format!("share_outcome: {}", outcome.as_str())));
+        assert!(summary.contains(&format!("share_outcome: {}", outcome.as_str())));
+        assert!(manifest.lines().any(|line| line == "- summary.md"));
         assert!(share.contains("safe_stop_status: passed"));
         if matches!(outcome, ShareOutcome::Accepted | ShareOutcome::Rejected) {
             assert!(share.contains("asic_correlation_status: passed"));

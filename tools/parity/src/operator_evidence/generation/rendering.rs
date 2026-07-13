@@ -7,7 +7,7 @@ use camino::Utf8Path;
 use super::filesystem::{io_error, sync_directory, write_synced};
 use super::{
     ConsolidationOptions, GenerationError, GenerationResult, PromotionFailurePoint, WorkflowStatus,
-    MANIFEST_FILE,
+    MANIFEST_FILE, SUMMARY_FILE,
 };
 use crate::operator_evidence::{
     load_operator_evidence_documents, validate_operator_evidence_documents, EvidenceDisposition,
@@ -297,6 +297,10 @@ pub(super) fn generate_phase28_staging(
         );
         write_synced(&staging.join(slot.file_name()), &contents)?;
     }
+    write_synced(
+        &staging.join(SUMMARY_FILE),
+        &render_phase28_summary(relative_source, source_record),
+    )?;
     write_synced(&staging.join(MANIFEST_FILE), &render_manifest())?;
     if options.maybe_failure == Some(PromotionFailurePoint::BeforeStagingSync) {
         return Err(GenerationError::Injected(
@@ -304,6 +308,32 @@ pub(super) fn generate_phase28_staging(
         ));
     }
     sync_directory(staging)
+}
+
+fn render_phase28_summary(
+    relative_source: &Utf8Path,
+    source_record: Phase27SourceRecord,
+) -> String {
+    let mut output = format!(
+        "# Phase 28 Evidence Summary\n\nevidence_profile: phase28\ngenerated_provenance: phase29-phase28-consolidation\nboard: 205\nsource_phase27_root: {relative_source}\nshare_outcome: {}\nsafe_stop_status: {}\nredaction_status: passed\nraw_artifacts_committed: no\nraw_pool_values_committed: no\nconsolidation_status: passed\nconclusion: deterministic Phase 28 category-only consolidation\n",
+        source_record.outcome.as_str(),
+        source_record.safe_stop_status.normalized_str(),
+    );
+    match source_record.outcome {
+        ShareOutcome::Accepted | ShareOutcome::Rejected => {
+            output.push_str("asic_correlation_status: passed\n");
+        }
+        ShareOutcome::BlockedSafePrerequisite => {
+            output.push_str("asic_bridge_status: blocked\n");
+        }
+        ShareOutcome::LiveSubmitResponseObserved => {
+            unreachable!("Phase 28 does not support Phase 25 outcomes")
+        }
+    }
+    output.push_str(
+        "\n## exact_non_claims\n\n- Raw Phase 27 artifacts and private runtime values are not copied.\n- Phase 30 checklist promotion remains a separate decision.\n",
+    );
+    output
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -365,10 +395,33 @@ fn render_manifest() -> String {
         output.push_str(slot.file_name());
         output.push('\n');
     }
+    output.push_str("- ");
+    output.push_str(SUMMARY_FILE);
+    output.push('\n');
     output
 }
 
-pub(super) fn validate_staging(staging: &Utf8Path) -> GenerationResult<()> {
+pub(super) fn validate_staging(
+    staging: &Utf8Path,
+    relative_source: &Utf8Path,
+    source_categories: &BTreeMap<String, String>,
+) -> GenerationResult<()> {
+    let expected_summary = render_phase28_summary(
+        relative_source,
+        Phase27SourceRecord::parse(source_categories)?,
+    );
+    let summary_path = staging.join(SUMMARY_FILE);
+    let summary = fs::read_to_string(summary_path.as_std_path()).map_err(|source| {
+        io_error(
+            format!("failed to read generated Phase 28 summary {summary_path}"),
+            source,
+        )
+    })?;
+    if summary != expected_summary {
+        return Err(GenerationError::Validation(vec![
+            "generated Phase 28 summary does not match its typed source categories".to_owned(),
+        ]));
+    }
     let documents = load_operator_evidence_documents(staging)
         .map_err(|error| GenerationError::InvalidInput(error.to_string()))?;
     let report = validate_operator_evidence_documents(

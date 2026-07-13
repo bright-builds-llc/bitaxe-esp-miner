@@ -17,6 +17,7 @@ use rendering::*;
 use super::{EvidenceDisposition, OperatorEvidenceProfile, OperatorEvidenceSlot};
 
 const MANIFEST_FILE: &str = ".phase28-evidence-manifest";
+const SUMMARY_FILE: &str = "summary.md";
 static STAGING_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 const COMPLETION_PROVENANCE: &str = "generated_provenance: phase29-completion";
 
@@ -234,7 +235,7 @@ pub(crate) fn consolidate_phase28_evidence_with_options(
         return Err(error);
     }
 
-    validate_staging(&staging)?;
+    validate_staging(&staging, &relative_source, &source_categories)?;
     if options.maybe_failure == Some(PromotionFailurePoint::BeforeExchange) {
         let _ = fs::remove_dir_all(staging.as_std_path());
         return Err(GenerationError::Injected(

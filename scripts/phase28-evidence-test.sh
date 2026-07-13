@@ -484,6 +484,7 @@ run_real_phase27_to_phase28_outcome_tests() {
 				--phase27-root "$relative_source" \
 				--evidence-root "$relative_destination"
 		) >"${fixture_root}/phase28-${outcome}.stdout" 2>"${fixture_root}/phase28-${outcome}.stderr"
+		assert_phase28_inventory "${repo_root}/${relative_destination}"
 		assert_contains "${repo_root}/${relative_destination}/share-outcome.md" "share_outcome: ${outcome}"
 		rm -rf "${repo_root}/${relative_source}" "${repo_root}/${relative_destination}"
 	done
