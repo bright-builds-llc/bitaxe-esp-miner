@@ -8,6 +8,7 @@ rust_library(
         "src/fault.rs",
         "src/lib.rs",
         "src/mining_preconditions.rs",
+        "src/observation.rs",
         "src/power.rs",
         "src/self_test.rs",
         "src/status.rs",
