@@ -1,6 +1,6 @@
 ---
 phase: 31-operator-claim-and-telemetry-contract
-reviewed: 2026-07-13T21:33:59Z
+reviewed: 2026-07-13T21:45:22Z
 depth: standard
 files_reviewed: 20
 files_reviewed_list:
@@ -26,58 +26,53 @@ files_reviewed_list:
   - tools/parity/BUILD.bazel
 findings:
   critical: 0
-  warning: 2
+  warning: 0
   info: 0
-  total: 2
-status: issues_found
+  total: 0
+status: clean
 generated_by: gsd-code-reviewer
 lifecycle_mode: yolo
 phase_lifecycle_id: 31-2026-07-13T19-47-51
-generated_at: 2026-07-13T21:33:59Z
+generated_at: 2026-07-13T21:45:22Z
 ---
 
 # Phase 31: Code Review Report
 
-**Reviewed:** 2026-07-13T21:33:59Z
+**Reviewed:** 2026-07-13T21:45:22Z
 **Depth:** standard
 **Files Reviewed:** 20
-**Status:** issues_found
+**Status:** clean
 
 ## Summary
 
-Reviewed the Phase 31 observation truth core, safety migrations, API and firmware consumer boundary, hostname-only settings capability, and typed parity admission contract. The state-carrying observation enum, read-only request path, hostname classifier, and excluded-claim vocabulary are generally conservative, and the focused test suites pass. Two actionable gaps remain: the retained Phase 27 publication path emits fixed compatibility stamps as if they were producer provenance, and the public legacy report mapper can still construct a contradictory telemetry snapshot whose aggregate state is fresh while every new fact-level truth field is unavailable.
+Re-reviewed the Phase 31 observation truth core, safety migrations, API and firmware consumer boundary, hostname-only settings capability, and typed parity admission contract after fix commits `2463764` and `9f66dd9`. Both prior warnings are resolved. The retained Phase 27 compatibility path now publishes explicit unavailable truth instead of fixed placeholder stamps, and legacy reports can no longer expose unstamped live numerics or aggregate freshness through operator projections. No correctness, hidden freshness mutation, compatibility, fail-open, authority-widening, secret-leakage, claim-admission, security, or code-quality issue remains in the reviewed scope.
 
 This review was materially informed by repo-local hardware and phase-boundary guidance in `AGENTS.md`, the Bright Builds workflow in `AGENTS.bright-builds.md`, `standards-overrides.md`, and the architecture, code-shape, verification, testing, and Rust standards under `standards/`.
 
-## Warnings
+## Resolved Findings
 
-### WR-01: Retained Phase 27 samples are published with fixed compatibility stamps
+### WR-01: Retained Phase 27 samples were published with fixed compatibility stamps
 
-**Files:** `firmware/bitaxe/src/safety_adapter/phase27_bring_up.rs:138-165`, `firmware/bitaxe/src/safety_adapter/phase27_bring_up.rs:209-228`, `crates/bitaxe-safety/src/power.rs:85-99`, `crates/bitaxe-safety/src/thermal.rs:79-87`
+**Resolution:** Fixed in `2463764`. `store_snapshot()` no longer projects the retained Phase 27 power and thermal compatibility objects into operator truth. It replaces the operator store with `TelemetryObservations::unavailable_from_unstamped_legacy_source()`, whose six facts are unavailable and carry no stamp. The new `unstamped_legacy_source_cannot_publish_fresh_operator_truth` regression proves that no fixed boot/session, sequence, or acquisition metadata escapes this path. Phase 32 remains the owner of real stamped acquisition.
 
-**Issue:** `store_snapshot()` publishes Phase 27 power and temperature observations into the new operator store. Those observations are created through `PowerObservation::from_ina260_sample()` and `ThermalObservation::from_reading()`, whose compatibility constructors hard-code boot session `0`, prior sequence `0`, and acquisition time `0`. Every successful live sample therefore appears as `fresh` with the same public stamp `{ bootSession: 0, sequence: 1, acquiredAtMs: 0 }`, regardless of the actual boot, acquisition time, or prior producer success. Repeated consumer reads do preserve that stamp, but the stamp itself is not producer provenance and cannot support the Phase 31 claim that successful samples are bound to a boot/session identity and monotonic acquisition metadata.
+### WR-02: Legacy report mapping created contradictory fresh and unavailable truth
 
-**Fix:** Do not publish these compatibility-constructed observations as fresh operator truth. Either keep the retained Phase 27 facts unavailable until Phase 32 installs the sole stamped producer, or pass a real boot-session identity, source-owned sequence, and acquisition-time value through `from_stamped_ina260_sample()` and `from_stamped_reading()` at the acquisition boundary. Add a firmware-hostable regression proving that successive producer successes advance the source sequence, carry their actual monotonic acquisition times, and do not reuse the fixed compatibility stamp.
-
-### WR-02: Legacy report mapping creates contradictory fresh and unavailable truth
-
-**Files:** `crates/bitaxe-api/src/snapshot.rs:217-245`, `crates/bitaxe-api/src/wire.rs:417-453`
-
-**Issue:** `SafeTelemetrySnapshot::from_report()` accepts a hardware-verified `SafetyTelemetryReport` with `SafetyTelemetryStatus::Fresh`, preserves all nonzero numeric values, and sets the aggregate snapshot status to `Fresh`, but fills each of the six Phase 31 fact-level truth fields with `legacy_unavailable_truth()`. The existing wire regression exercises this exact path and asserts the numeric values without checking the truth fields. The public API can therefore serialize power, voltage, current, temperature, VR temperature, and fan RPM as live values while simultaneously labeling each fact unavailable, leaving two incompatible truth authorities in one response. This violates the Phase 31 requirement that observation truth be independent from compatibility numerics and that legacy DTOs not remain an alternate source of truth.
-
-**Fix:** Make operator-facing telemetry snapshots constructible only from `TelemetryObservations`, or change the legacy mapper so it cannot advertise aggregate freshness or live numeric facts without matching stamped per-fact observations. Add a regression over the serialized `SystemInfoWire` that rejects any snapshot with aggregate `Fresh` and unavailable/fault/stale fact truth, and ensure every nonzero live numeric emitted by this path has a matching fresh stamped fact.
+**Resolution:** Fixed in `9f66dd9`. `SafeTelemetrySnapshot::from_report()` now maps a legacy fresh report to `Unavailable { reason: "legacy_telemetry_unstamped" }` and zero-compatible numeric values. Both system-info and statistics apply `operator_projection()`, which suppresses each Phase 31 compatibility numeric unless its matching fact is fresh and stamped. New regressions cover legacy report suppression, valid stamped values, and mixed unavailable/stale/fault truth even when the mutable aggregate field says `Fresh`.
 
 ## Verification
 
 - `cargo test -p bitaxe-safety --all-features observation` passed: 12 tests.
 - `cargo test -p bitaxe-api --all-features safety_telemetry` passed: 14 tests.
+- `cargo test -p bitaxe-api --all-features unstamped` passed: 2 tests.
+- `cargo test -p bitaxe-api --all-features system_info_wire_rejects_nonfresh` passed: 1 test.
+- `cargo test -p bitaxe-api --all-features projection` passed: 19 tests.
 - `cargo test -p bitaxe-api --all-features settings_v12` passed: 8 tests.
 - `cargo test -p bitaxe-parity --all-features phase31` passed: 7 tests.
-- Call-chain inspection confirmed request-side `collect_api_snapshot()` reads the stored observation snapshot and does not invoke sensor acquisition.
+- Call-chain inspection confirmed request-side `collect_api_snapshot()` reads the stored observation snapshot, retained Phase 27 compatibility data stays unavailable to operator consumers, and operator system-info/statistics projections suppress nonfresh or unstamped numerics.
 - Settings and admission inspection found no broadened persistence authority, eligible excluded-claim variant, or raw secret value in the reviewed Phase 31 surfaces.
 
 ***
 
-_Reviewed: 2026-07-13T21:33:59Z_
+_Reviewed: 2026-07-13T21:45:22Z_
 _Reviewer: gsd-code-reviewer_
 _Depth: standard_
