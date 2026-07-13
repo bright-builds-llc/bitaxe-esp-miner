@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Closed Phase 28.1.1 — Won't Do (unresolved)
-last_updated: "2026-07-13T14:06:46Z"
+status: Phase 28.1.1 closed — Won't Do (unresolved); Phase 30 is next
+stopped_at: Phase 28.1.1 context gathered
+last_updated: "2026-07-13T14:54:51.253Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 18
   completed_phases: 17
   total_plans: 74
-  completed_plans: 74
+  completed_plans: 75
   percent: 100
 ---
 
@@ -184,5 +184,5 @@ Plan: 0 planned
 
 ## Session
 
-- **Stopped at:** Closed Phase 28.1.1 — Won't Do (unresolved)
+- **Stopped at:** Phase 28.1.1 context gathered
 - **Resume:** Discuss Phase 30's conservative disposition; preserve the evidence gate and pending STR-09, ASIC-11, and CFG-07 requirements.
