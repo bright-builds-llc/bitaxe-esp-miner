@@ -158,12 +158,34 @@ adapter_dir="$temp_root/adapters"
 mkdir -p "$adapter_dir"
 test_head="1111111111111111111111111111111111111111"
 transport_qualification="$temp_root/transport-qualification.json"
-transport_contract_digest="$(bash "$repo_root/scripts/ultra205-transport-qualification.sh" contract-digest)"
-jq -cn \
-	--arg head "$test_head" \
-	--arg contract "$transport_contract_digest" \
-	'{schema_version:"ultra205-transport-qualification-v3",tool_head:$head,expected_firmware_head:"e622253d2fc4aea4589e0dcf5524081b6b054aaf",classification_category:"uart_cold_delivers",native_preflight_heartbeat_count:3,uart_preflight_heartbeat_count:3,cold_uart_heartbeat_count:3,native_physical_identity_stable:true,native_new_enumeration_epoch:true,uart_physical_identity_stable:true,uart_enumeration_identity_stable:true,quiet_boundary_complete:true,original_boot_present:true,original_listener_present:true,boot_evidence_complete:true,accepted_state_stages_complete:true,heartbeat_monotonic:true,listener_ready:true,soak_complete:true,cleanup_complete:true,adapter_binding_sha256:("a"*64),diagnostic_contract_digest_sha256:$contract,trace_digest_sha256:("f"*64)}' >"$transport_qualification"
-chmod 600 "$transport_qualification"
+transport_contract_digest="$(bash "$repo_root/scripts/ultra205-transport-qualification.sh" native-contract-digest)"
+test_wifi="$temp_root/formal-wifi.json"
+test_pool="$temp_root/formal-pool.json"
+qualification_paths_trace="$temp_root/qualification-paths.trace"
+: >"$qualification_paths_trace"
+printf 'fixture-not-read\n' >"$test_wifi"
+printf 'fixture-not-read\n' >"$test_pool"
+chmod 600 "$test_wifi" "$test_pool"
+
+write_transport_qualification() {
+	local destination="$1"
+	local filter="${2:-.}"
+	jq -cn \
+		--arg head "$test_head" \
+		--arg contract "$transport_contract_digest" \
+		'{schema_version:"ultra205-transport-qualification-v2",tool_head:$head,expected_firmware_head:"e622253d2fc4aea4589e0dcf5524081b6b054aaf",attempt_id:"0123456789abcdef0123456789abcdef",owner_fingerprint_sha256:("a"*64),owner_process_count:1,classification_category:"native_cold_delivers",capture_seconds:360,preflight_native_heartbeat_count:3,cold_native_heartbeat_count:3,application_byte_count:1024,physical_identity_sha256:("b"*64),preflight_enumeration_identity_sha256:("c"*64),cold_enumeration_identity_sha256:("d"*64),preflight_session_sha256:("c"*64),cold_session_sha256:("d"*64),physical_identity_stable:true,new_enumeration_epoch:true,distinct_cold_session:true,heartbeat_monotonic:true,listener_ready:true,boot_evidence_replay_complete:true,accepted_state_replay_complete:true,soak_complete:true,cleanup_complete:true,owner_cleanup_complete:true,holder_cleanup_complete:true,socket_cleanup_complete:true,live_process_count:0,serial_holder_count:0,live_socket_count:0,diagnostic_contract_digest_sha256:$contract,trace_digest_sha256:("f"*64)}' | jq "$filter" >"$destination"
+	chmod 600 "$destination"
+}
+
+fresh_transport_qualification() {
+	local qualification_root
+	qualification_root="$(mktemp -d "$temp_root/qualification.XXXXXX")"
+	write_transport_qualification "$qualification_root/qualification.json"
+	printf '%s\n' "$qualification_root/qualification.json" >>"$qualification_paths_trace"
+	printf '%s\n' "$qualification_root/qualification.json"
+}
+
+write_transport_qualification "$transport_qualification"
 
 effects=(
 	detector_board_info
@@ -220,6 +242,8 @@ expect_exit_failure() {
 	fi
 }
 
+: >"$temp_root/effects.trace"
+
 mode_of() {
 	stat -f '%Lp' "$1"
 }
@@ -238,14 +262,18 @@ initial_state_for_effect() {
 
 begin_attempt() {
 	local initial_state="${1:-}"
+	local qualification_path
+	qualification_path="$(fresh_transport_qualification)"
 	if [[ -n "$initial_state" ]]; then
 		env \
 			PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
 			PHASE28_TEST_MODE=1 \
 			PHASE28_ALLOW_DIRTY_TEST=1 \
 			PHASE28_TEST_HEAD="$test_head" \
+			PHASE28_TEST_WIFI_CREDENTIAL_PATH="$test_wifi" \
+			PHASE28_TEST_POOL_CREDENTIAL_PATH="$test_pool" \
 			PHASE28_TEST_INITIAL_ATTEMPT_STATE="$initial_state" \
-			bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$transport_qualification"
+			bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$qualification_path"
 		return
 	fi
 	env \
@@ -253,7 +281,9 @@ begin_attempt() {
 		PHASE28_TEST_MODE=1 \
 		PHASE28_ALLOW_DIRTY_TEST=1 \
 		PHASE28_TEST_HEAD="$test_head" \
-		bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$transport_qualification"
+		PHASE28_TEST_WIFI_CREDENTIAL_PATH="$test_wifi" \
+		PHASE28_TEST_POOL_CREDENTIAL_PATH="$test_pool" \
+		bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$qualification_path"
 }
 
 slot_for_handle() {
@@ -328,7 +358,8 @@ assert_tombstoned_and_stale() {
 	local slot
 	slot="$(slot_for_handle "$handle")"
 	[[ "$(jq -er '.terminal_category' "$slot")" == "$expected_terminal" ]] || fail "cleanup terminal category mismatch"
-	[[ "$(jq -r 'keys | sort | join(",")' "$slot")" == "attempt_generation,cleanup_time_category,resume_handle_sha256,schema_version,terminal_category,terminal_status" ]] || fail "cleanup tombstone retained live references"
+	[[ "$(jq -er '.schema_version' "$slot")" == "exact-head-resume-tombstone-v2" ]] || fail "cleanup tombstone schema mismatch"
+	jq -e '.cleanup_complete == true or .terminal_category == "blocked_safe_unresolved_process"' "$slot" >/dev/null || fail "cleanup tombstone retained unresolved resources outside its conservative terminal"
 	[[ ! -e "$attempt_dir" ]] || fail "cleanup retained private attempt references"
 	expect_failure resume_handle_stale env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" bash "$runner" resolve-checkpoint --resume-handle "$handle"
 }
@@ -488,8 +519,43 @@ expect_failure transport_qualification_invalid env \
 	PHASE28_TEST_HEAD="$test_head" \
 	bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$invalid_qualification"
 
+for invalid_entry in \
+	'.application_byte_count=0' \
+	'.live_process_count=1 | .owner_cleanup_complete=false' \
+	'.result_correlated=true' \
+	'.tool_head=("2"*40)' \
+	'.cold_session_sha256=.preflight_session_sha256'; do
+	write_transport_qualification "$invalid_qualification" "$invalid_entry"
+	invalid_control="$temp_root/invalid-entry-$(printf '%s' "$invalid_entry" | shasum -a 256 | awk '{print $1}')"
+	mkdir -m 700 "$invalid_control"
+	before_effects="$(wc -l <"$temp_root/effects.trace" | tr -d ' ')"
+	expect_failure transport_qualification_invalid env \
+		PHASE28_ATTEMPT_CONTROL_ROOT="$invalid_control" \
+		PHASE28_TEST_MODE=1 \
+		PHASE28_ALLOW_DIRTY_TEST=1 \
+		PHASE28_TEST_HEAD="$test_head" \
+		PHASE28_TEST_WIFI_CREDENTIAL_PATH="$test_wifi" \
+		PHASE28_TEST_POOL_CREDENTIAL_PATH="$test_pool" \
+		bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$invalid_qualification"
+	[[ -z "$(find "$invalid_control" -path '*/attempts/*' -mindepth 1 -print -quit)" ]] || fail "invalid qualification created formal authority"
+	after_effects="$(wc -l <"$temp_root/effects.trace" | tr -d ' ')"
+	[[ "$before_effects" == "$after_effects" ]] || fail "invalid qualification dispatched an effect"
+done
+
+missing_credential_qualification="$(fresh_transport_qualification)"
+expect_failure credential_binding_failed env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$temp_root/missing-credential-control" \
+	PHASE28_TEST_MODE=1 \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$test_head" \
+	PHASE28_TEST_WIFI_CREDENTIAL_PATH="$temp_root/missing-wifi" \
+	PHASE28_TEST_POOL_CREDENTIAL_PATH="$test_pool" \
+	bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$missing_credential_qualification"
+[[ -z "$(find "$temp_root/missing-credential-control" -path '*/attempts/*' -mindepth 1 -print -quit 2>/dev/null)" ]] || fail "missing credentials created formal authority"
+
 first_output="$(begin_attempt)"
 first_handle="$(sed -n 's/^resume_handle=//p' <<<"$first_output")"
+first_qualification_source="$(tail -1 "$qualification_paths_trace")"
 [[ "$first_handle" =~ ^[0-9a-f]{64}$ ]] || fail "begin-attempt did not return one opaque handle"
 [[ "$first_output" != *"$control_root"* ]] || fail "public handle output exposed a path"
 [[ "$(rg -c '^[a-z_]+=' <<<"$first_output")" == "19" ]] || fail "begin-attempt did not return the exact 19 public fields"
@@ -507,8 +573,28 @@ first_slot="$control_root/resume-index/$(printf '%s' "$first_handle" | shasum -a
 attempt_dir="$(jq -er '.attempt_dir' "$first_slot")"
 [[ "$(mode_of "$attempt_dir")" == "700" ]]
 [[ "$(mode_of "$attempt_dir/state.json")" == "600" ]]
-[[ "$(mode_of "$attempt_dir/transport-qualification.json")" == "600" ]]
-jq -e '.classification_category == "uart_cold_delivers" and .cleanup_complete == true' "$attempt_dir/transport-qualification.json" >/dev/null
+[[ "$(mode_of "$attempt_dir/qualification-handoff.json")" == "600" ]]
+jq -e --arg head "$test_head" '
+  .schema_version == "phase28.1.1-native-qualification-handoff-v1" and
+  .qualification_status == "consumed" and
+  .exact_head == $head and
+  .product_projection_empty == true and
+  .cleanup_complete == true and
+  .live_process_count == 0 and
+  .serial_holder_count == 0 and
+  .live_socket_count == 0 and
+  .qualification_attempt_id_sha256 != .formal_attempt_id_sha256 and
+  ([.result_correlated,.power_delta_class,.share_submission_status,.verification_result,.phase30_promotion_input] | all(. == null))
+' "$attempt_dir/qualification-handoff.json" >/dev/null
+jq -e '.schema_version == "ultra205-transport-qualification-consumed-v1" and .status == "consumed" and .cleanup_complete == true and .product_projection_imported == false' "$first_qualification_source" >/dev/null || fail "qualification authority was not destroyed"
+expect_failure transport_qualification_invalid env \
+	PHASE28_ATTEMPT_CONTROL_ROOT="$temp_root/reuse-control" \
+	PHASE28_TEST_MODE=1 \
+	PHASE28_ALLOW_DIRTY_TEST=1 \
+	PHASE28_TEST_HEAD="$test_head" \
+	PHASE28_TEST_WIFI_CREDENTIAL_PATH="$test_wifi" \
+	PHASE28_TEST_POOL_CREDENTIAL_PATH="$test_pool" \
+	bash "$runner" begin-attempt --hardware-exact-head "$test_head" --transport-qualification "$first_qualification_source"
 
 resolve_output="$(env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" PHASE28_ALLOW_DIRTY_TEST=1 PHASE28_TEST_HEAD="$test_head" bash "$runner" resolve-checkpoint --resume-handle "$first_handle")"
 rg -q '^checkpoint_id=plan13-connected-entry$' <<<"$resolve_output"
@@ -621,6 +707,39 @@ post_capture_outputs() {
 		'{result_correlated:$correlated,power_delta_class:$power,share_submission_status:$share,lifecycle_status:"match",classifier_input_sha256:("d"*64),classifier_output_sha256:("e"*64),classifier_version:"strict-production-v2"}'
 }
 
+write_terminal_artifact() {
+	local tombstone="$1"
+	local artifact="$2"
+	cat >"$artifact" <<EOF
+---
+phase: 28.1.1
+phase_lifecycle_id: $(jq -er '.phase_lifecycle_id' "$tombstone")
+exact_head: $(jq -er '.exact_head' "$tombstone")
+formal_attempt_id_sha256: $(jq -er '.formal_attempt_id_sha256' "$tombstone")
+formal_status: closed
+terminal_outcome: $(jq -er '.terminal_category' "$tombstone")
+verification_result: $(jq -er '.verification_result' "$tombstone")
+phase30_promotion_input: $(jq -er '.phase30_promotion_input' "$tombstone")
+blocker_reason: $(jq -er '.blocker_reason' "$tombstone")
+cleanup_complete: $(jq -er '.cleanup_complete' "$tombstone")
+live_process_count: $(jq -er '.live_process_count' "$tombstone")
+serial_holder_count: $(jq -er '.serial_holder_count' "$tombstone")
+live_socket_count: $(jq -er '.live_socket_count' "$tombstone")
+qualification_contract_digest_sha256: $(jq -er '.qualification_contract_digest_sha256' "$tombstone")
+redacted: true
+---
+EOF
+}
+
+verify_terminal_artifact() {
+	local handle="$1"
+	local artifact="$2"
+	env \
+		PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" \
+		PHASE28_TEST_HEAD="$test_head" \
+		bash "$runner" verify-terminal --resume-handle "$handle" --redacted-artifact "$artifact"
+}
+
 control_root="$temp_root/control-terminal-gaps"
 gaps_handle="$(begin_attempt capture_complete)"
 gaps_handle="${gaps_handle#resume_handle=}"
@@ -629,6 +748,45 @@ gaps_output="$(run_effect "$gaps_handle" post_capture_detector_board_info PHASE2
 rg -q '^terminal_outcome=gaps_found_same_chain_production_markers_absent$' <<<"$gaps_output"
 rg -q '^verification_result=gaps_found$' <<<"$gaps_output"
 rg -q '^blocker_reason=production_markers_absent$' <<<"$gaps_output"
+gaps_tombstone="$(slot_for_handle "$gaps_handle")"
+gaps_artifact="$temp_root/gaps-terminal.md"
+write_terminal_artifact "$gaps_tombstone" "$gaps_artifact"
+verification_effect_count="$(wc -l <"$temp_root/effects.trace" | tr -d ' ')"
+if ! verify_terminal_artifact "$gaps_handle" "$gaps_artifact" >"$temp_root/verify-terminal.stdout" 2>"$temp_root/verify-terminal.stderr"; then
+	jq . "$gaps_tombstone" >&2
+	sed -n '1,30p' "$gaps_artifact" >&2
+	cat "$temp_root/verify-terminal.stderr" >&2
+	fail "valid terminal artifact was rejected"
+fi
+rg -q '^terminal_verification=passed$' "$temp_root/verify-terminal.stdout"
+rg -q '^hardware_effects_invoked=0$' "$temp_root/verify-terminal.stdout"
+[[ "$(wc -l <"$temp_root/effects.trace" | tr -d ' ')" == "$verification_effect_count" ]] || fail "terminal verifier dispatched an effect"
+
+for terminal_tamper in \
+	's/exact_head: /exact_head: f/' \
+	's/phase_lifecycle_id: /phase_lifecycle_id: wrong-/' \
+	's/terminal_outcome: gaps_found_same_chain_production_markers_absent/terminal_outcome: passed_same_chain_hardware/' \
+	's/cleanup_complete: true/cleanup_complete: false/' \
+	's/verification_result: gaps_found/verification_result: passed/'; do
+	tampered_artifact="$temp_root/tampered-$(printf '%s' "$terminal_tamper" | shasum -a 256 | awk '{print $1}').md"
+	sed "$terminal_tamper" "$gaps_artifact" >"$tampered_artifact"
+	expect_failure terminal_artifact_invalid verify_terminal_artifact "$gaps_handle" "$tampered_artifact"
+done
+
+sed '/^redacted: true$/i\
+unexpected_field: true
+' "$gaps_artifact" >"$temp_root/unknown-terminal-field.md"
+expect_failure terminal_artifact_invalid verify_terminal_artifact "$gaps_handle" "$temp_root/unknown-terminal-field.md"
+
+cp "$gaps_tombstone" "$gaps_tombstone.original"
+jq '.live_process_count=1' "$gaps_tombstone.original" >"$gaps_tombstone"
+chmod 600 "$gaps_tombstone"
+expect_failure terminal_artifact_invalid verify_terminal_artifact "$gaps_handle" "$gaps_artifact"
+mv "$gaps_tombstone.original" "$gaps_tombstone"
+chmod 600 "$gaps_tombstone"
+mkdir -m 700 "$control_root/attempts/leaked-resource"
+expect_failure terminal_resources_live verify_terminal_artifact "$gaps_handle" "$gaps_artifact"
+rmdir "$control_root/attempts/leaked-resource"
 
 control_root="$temp_root/control-terminal-passed"
 passed_handle="$(begin_attempt capture_complete)"
@@ -639,6 +797,10 @@ rg -q '^terminal_outcome=passed_same_chain_hardware$' <<<"$passed_output"
 rg -q '^verification_result=passed$' <<<"$passed_output"
 rg -q '^phase30_promotion_input=eligible$' <<<"$passed_output"
 rg -q '^blocker_reason=none$' <<<"$passed_output"
+passed_tombstone="$(slot_for_handle "$passed_handle")"
+passed_artifact="$temp_root/passed-terminal.md"
+write_terminal_artifact "$passed_tombstone" "$passed_artifact"
+verify_terminal_artifact "$passed_handle" "$passed_artifact" >/dev/null
 
 crash_boundaries=(
 	before_authorized_persistence
@@ -688,7 +850,7 @@ for effect in "${effects[@]}"; do
 		expect_failure resume_handle_stale env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" bash "$runner" resolve-checkpoint --resume-handle "$handle"
 		tombstone="$control_root/resume-index/$(printf '%s' "$handle" | shasum -a 256 | awk '{print $1}').json"
 		[[ "$(mode_of "$tombstone")" == "600" ]]
-		[[ "$(jq -r 'keys | sort | join(",")' "$tombstone")" == "attempt_generation,cleanup_time_category,resume_handle_sha256,schema_version,terminal_category,terminal_status" ]] || fail "$effect/$boundary tombstone retained live references"
+		[[ "$(jq -er '.schema_version' "$tombstone")" == "exact-head-resume-tombstone-v2" ]] || fail "$effect/$boundary tombstone schema mismatch"
 	done
 done
 
@@ -725,7 +887,7 @@ for boundary in "${classification_crash_boundaries[@]}"; do
 	[[ "$(wc -l <"$classifier_trace" | tr -d ' ')" == "$classifier_count_before" ]] || fail "$boundary redispatched the strict classifier"
 	expect_failure resume_handle_stale env PHASE28_ATTEMPT_CONTROL_ROOT="$control_root" bash "$runner" resolve-checkpoint --resume-handle "$handle"
 	tombstone="$control_root/resume-index/$(printf '%s' "$handle" | shasum -a 256 | awk '{print $1}').json"
-	[[ "$(jq -r 'keys | sort | join(",")' "$tombstone")" == "attempt_generation,cleanup_time_category,resume_handle_sha256,schema_version,terminal_category,terminal_status" ]] || fail "$boundary terminal tombstone retained a live/private reference"
+	[[ "$(jq -er '.schema_version' "$tombstone")" == "exact-head-resume-tombstone-v2" ]] || fail "$boundary terminal tombstone schema mismatch"
 done
 
 control_root="$temp_root/control-expired-resolve"
@@ -980,7 +1142,7 @@ historical_slot="$control_root/resume-index/$historical_digest.json"
 jq -cn --arg digest "$historical_digest" '{schema_version:"exact-head-resume-tombstone-v1",resume_handle_sha256:$digest,attempt_generation:1,terminal_status:"closed",terminal_category:"blocked_safe_attempt_prerequisite",cleanup_time_category:"abandoned"}' >"$historical_slot"
 chmod 600 "$historical_slot"
 orphan_tombstone_count_before="$(find "$control_root/resume-index" -type f -name '*.json' | wc -l | tr -d ' ')"
-valid_tombstone_count_before="$(jq -s '[.[] | select(.schema_version == "exact-head-resume-tombstone-v1")] | length' "$control_root"/resume-index/*.json)"
+valid_tombstone_count_before="$(jq -s '[.[] | select(.schema_version == "exact-head-resume-tombstone-v1" or .schema_version == "exact-head-resume-tombstone-v2")] | length' "$control_root"/resume-index/*.json)"
 orphan_success_output="$(cleanup_unique_orphan PHASE28_EFFECT_TRACE="$temp_root/orphan-adapter.trace")"
 rg -q '^cleanup_result=closed$' <<<"$orphan_success_output"
 rg -q '^terminal_category=blocked_safe_attempt_prerequisite$' <<<"$orphan_success_output"
@@ -996,10 +1158,10 @@ if rg -q "$control_root|resume_handle_sha256|attempt_dir|[0-9a-f]{64}\.json" <<<
 fi
 [[ ! -s "$temp_root/orphan-adapter.trace" ]] || fail "orphan cleanup touched an adapter sentinel"
 [[ ! -e "$orphan_dir" ]] || fail "successful orphan cleanup retained its attempt directory"
-[[ "$(jq -r 'keys | sort | join(",")' "$orphan_slot")" == "attempt_generation,cleanup_time_category,resume_handle_sha256,schema_version,terminal_category,terminal_status" ]] || fail "orphan cleanup tombstone retained live references"
+[[ "$(jq -er '.schema_version' "$orphan_slot")" == "exact-head-resume-tombstone-v2" ]] || fail "orphan cleanup tombstone schema mismatch"
 [[ "$(jq -er '.terminal_category' "$orphan_slot")" == "blocked_safe_attempt_prerequisite" ]] || fail "orphan cleanup tombstone category mismatch"
 orphan_tombstone_count_after="$(find "$control_root/resume-index" -type f -name '*.json' | wc -l | tr -d ' ')"
-valid_tombstone_count_after="$(jq -s '[.[] | select(.schema_version == "exact-head-resume-tombstone-v1")] | length' "$control_root"/resume-index/*.json)"
+valid_tombstone_count_after="$(jq -s '[.[] | select(.schema_version == "exact-head-resume-tombstone-v1" or .schema_version == "exact-head-resume-tombstone-v2")] | length' "$control_root"/resume-index/*.json)"
 [[ "$orphan_tombstone_count_after" == "$((orphan_tombstone_count_before + 0))" ]] || fail "orphan cleanup did not replace its active mapping in place"
 [[ "$valid_tombstone_count_after" == "$((valid_tombstone_count_before + 1))" ]] || fail "orphan cleanup did not increase the minimal tombstone count"
 expect_orphan_failure no_active_orphan cleanup_unique_orphan
@@ -1091,8 +1253,11 @@ rg -q 'lifecycle_frame_helper=.*phase28.1.1-lifecycle-frame.pl' "$runner" || fai
 if rg -q 'IO::Socket::UNIX|length\(\$frame\).*\\n' "$runner" "$repo_root/scripts/phase28.1.1-accepted-state-diagnostic.sh"; then
 	fail "runtime scripts retain inline lifecycle framing logic"
 fi
-if rg -q 'just detect-ultra205|espflash|flash-monitor|wifi-credentials.json|pool-credentials' "$runner"; then
-	fail "runner contains a direct hardware or credential-content command"
+if rg -q 'just detect-ultra205|espflash|flash-monitor' "$runner"; then
+	fail "runner contains a direct hardware command"
+fi
+if rg -q '(cat|jq|sed|awk|head|tail)[^\n]*(wifi-credentials|pool-credentials)|<[^\n]*(wifi-credentials|pool-credentials)' "$runner"; then
+	fail "runner contains a credential-content read"
 fi
 arbitrary_handle="$(begin_attempt connected_entry_waiting)"
 arbitrary_handle="${arbitrary_handle#resume_handle=}"

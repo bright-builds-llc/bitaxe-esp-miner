@@ -17,6 +17,7 @@ readonly classifier_module="$repo_root/scripts/phase28.1.1-strict-production-evi
 readonly production_adapter="$repo_root/scripts/phase28.1.1-accepted-state-diagnostic.sh"
 readonly lifecycle_frame_helper="$repo_root/scripts/phase28.1.1-lifecycle-frame.pl"
 readonly transport_qualification_helper="$repo_root/scripts/ultra205-transport-qualification.sh"
+readonly phase_lifecycle_id="28.1.1-2026-07-09T19-24-27"
 readonly max_handle_attempts=8
 lock_held=false
 active_effect_pid=""
@@ -59,7 +60,7 @@ die() {
 }
 
 usage() {
-	printf 'usage: %s begin-attempt --hardware-exact-head HEAD --transport-qualification PATH --external-uart-port PATH | resolve-checkpoint|deliver-token|run-validated-effect|cleanup-active-attempt|cleanup-unique-orphan-attempt [options]\n' "$(basename "$0")"
+	printf 'usage: %s begin-attempt --hardware-exact-head HEAD --transport-qualification PATH | resolve-checkpoint|deliver-token|run-validated-effect|verify-terminal|cleanup-active-attempt|cleanup-unique-orphan-attempt [options]\n' "$(basename "$0")"
 }
 
 ensure_private_root() {
@@ -322,7 +323,7 @@ validate_active_slot() {
 validate_tombstone() {
 	local slot="$1"
 	local digest="$2"
-	jq -e --arg digest "$digest" '
+	if jq -e --arg digest "$digest" '
     type == "object" and
     (keys | sort) == (["attempt_generation","cleanup_time_category","resume_handle_sha256","schema_version","terminal_category","terminal_status"] | sort) and
     .schema_version == "exact-head-resume-tombstone-v1" and
@@ -330,7 +331,36 @@ validate_tombstone() {
     .terminal_status == "closed" and
     (.terminal_category | IN("blocked_safe_attempt_prerequisite","blocked_safe_unresolved_process","blocked_safe_evidence_invalid","gaps_found_same_chain_production_markers_absent","passed_same_chain_hardware")) and
     (.cleanup_time_category | IN("normal","blocked","crash","abandoned"))
+  ' "$slot" >/dev/null; then
+		return 0
+	fi
+	jq -e --arg digest "$digest" '
+    type == "object" and
+    (keys | sort) == (["attempt_generation","blocker_reason","cleanup_complete","cleanup_time_category","exact_head","formal_attempt_id_sha256","live_process_count","live_socket_count","phase30_promotion_input","phase_lifecycle_id","qualification_contract_digest_sha256","resume_handle_sha256","schema_version","serial_holder_count","terminal_category","terminal_status","verification_result"] | sort) and
+    .schema_version == "exact-head-resume-tombstone-v2" and
+    .resume_handle_sha256 == $digest and
+    .terminal_status == "closed" and
+    (.exact_head | test("^[0-9a-f]{40}$")) and
+    (.formal_attempt_id_sha256 | test("^[0-9a-f]{64}$")) and
+    .phase_lifecycle_id == "28.1.1-2026-07-09T19-24-27" and
+    (.qualification_contract_digest_sha256 | test("^[0-9a-f]{64}$")) and
+    (.terminal_category | IN("blocked_safe_attempt_prerequisite","blocked_safe_unresolved_process","blocked_safe_evidence_invalid","gaps_found_same_chain_production_markers_absent","passed_same_chain_hardware")) and
+    (.verification_result | IN("gaps_found","passed")) and
+    (.phase30_promotion_input | IN("pending","eligible")) and
+    (.blocker_reason | type == "string") and
+    (.cleanup_complete | type == "boolean") and
+    (.live_process_count | type == "number" and floor == . and . >= 0) and
+    (.serial_holder_count | type == "number" and floor == . and . >= 0) and
+    (.live_socket_count | type == "number" and floor == . and . >= 0) and
+    (.cleanup_time_category | IN("normal","blocked","crash","abandoned"))
   ' "$slot" >/dev/null
+}
+
+validate_formal_tombstone() {
+	local slot="$1"
+	local digest="$2"
+	validate_tombstone "$slot" "$digest" || return 1
+	[[ "$(jq -er '.schema_version' "$slot")" == "exact-head-resume-tombstone-v2" ]]
 }
 
 count_category() {
@@ -464,11 +494,106 @@ resolve_handle() {
 	die "resume_handle_ambiguous"
 }
 
+qualification_parent_is_private() {
+	local qualification_path="$1"
+	local parent
+	parent="$(dirname "$qualification_path")"
+	[[ "$qualification_path" == /* && -d "$parent" && ! -L "$parent" ]] || return 1
+	[[ "$(mode_of_path "$parent")" == "700" && "$(owner_of_path "$parent")" == "$(id -u)" ]]
+}
+
+formal_credential_paths_ready() {
+	local wifi_path="$repo_root/wifi-credentials.json"
+	local pool_path=""
+	if [[ "${PHASE28_TEST_MODE:-0}" == "1" ]]; then
+		wifi_path="${PHASE28_TEST_WIFI_CREDENTIAL_PATH:-$wifi_path}"
+		pool_path="${PHASE28_TEST_POOL_CREDENTIAL_PATH:-}"
+	elif [[ -n "${PHASE28_TEST_WIFI_CREDENTIAL_PATH:-}${PHASE28_TEST_POOL_CREDENTIAL_PATH:-}" ]]; then
+		return 1
+	fi
+	[[ -f "$wifi_path" && ! -L "$wifi_path" ]] || return 1
+	[[ "$(mode_of_path "$wifi_path")" == "600" && "$(owner_of_path "$wifi_path")" == "$(id -u)" ]] || return 1
+	if [[ -z "$pool_path" ]]; then
+		local -a pool_paths=()
+		local candidate
+		for candidate in "$repo_root"/pool-credentials*.json; do
+			if [[ "$candidate" != *.example && -f "$candidate" && ! -L "$candidate" && "$(mode_of_path "$candidate")" == "600" && "$(owner_of_path "$candidate")" == "$(id -u)" ]]; then
+				pool_paths+=("$candidate")
+			fi
+		done
+		((${#pool_paths[@]} == 1)) || return 1
+		pool_path="${pool_paths[0]}"
+	fi
+	[[ -f "$pool_path" && ! -L "$pool_path" ]] || return 1
+	[[ "$(mode_of_path "$pool_path")" == "600" && "$(owner_of_path "$pool_path")" == "$(id -u)" ]]
+}
+
+write_consumed_qualification_tombstone() {
+	local qualification_path="$1"
+	local qualification_json="$2"
+	local qualification_source_digest="$3"
+	local formal_attempt_id="$4"
+	local exact_head="$5"
+	local qualification_attempt formal_attempt
+	qualification_attempt="$(jq -er '.attempt_id' <<<"$qualification_json")"
+	formal_attempt="$formal_attempt_id"
+	atomic_write "$qualification_path" "$(jq -cn \
+		--arg exact_head "$exact_head" \
+		--arg qualification_attempt_sha256 "$(sha256_text "$qualification_attempt")" \
+		--arg formal_attempt_sha256 "$(sha256_text "$formal_attempt")" \
+		--arg source_digest "$qualification_source_digest" \
+		--arg contract "$(jq -er '.diagnostic_contract_digest_sha256' <<<"$qualification_json")" \
+		'{schema_version:"ultra205-transport-qualification-consumed-v1",status:"consumed",exact_head:$exact_head,qualification_attempt_id_sha256:$qualification_attempt_sha256,formal_attempt_id_sha256:$formal_attempt_sha256,qualification_source_digest_sha256:$source_digest,qualification_contract_digest_sha256:$contract,cleanup_complete:true,product_projection_imported:false}')"
+}
+
+build_qualification_handoff() {
+	local qualification_json="$1"
+	local qualification_source_digest="$2"
+	local formal_attempt_id="$3"
+	local exact_head="$4"
+	local qualification_attempt
+	qualification_attempt="$(jq -er '.attempt_id' <<<"$qualification_json")"
+	jq -cn \
+		--arg exact_head "$exact_head" \
+		--arg qualification_attempt_sha256 "$(sha256_text "$qualification_attempt")" \
+		--arg formal_attempt_sha256 "$(sha256_text "$formal_attempt_id")" \
+		--arg source_digest "$qualification_source_digest" \
+		--arg contract "$(jq -er '.diagnostic_contract_digest_sha256' <<<"$qualification_json")" \
+		'{schema_version:"phase28.1.1-native-qualification-handoff-v1",qualification_status:"consumed",exact_head:$exact_head,qualification_attempt_id_sha256:$qualification_attempt_sha256,formal_attempt_id_sha256:$formal_attempt_sha256,qualification_source_digest_sha256:$source_digest,qualification_contract_digest_sha256:$contract,source_root_distinct:true,product_projection_empty:true,cleanup_complete:true,live_process_count:0,serial_holder_count:0,live_socket_count:0}'
+}
+
+validate_qualification_handoff() {
+	local handoff_path="$1"
+	local expected_head="$2"
+	local expected_formal_attempt_id="$3"
+	[[ -f "$handoff_path" && ! -L "$handoff_path" ]] || return 1
+	[[ "$(mode_of_path "$handoff_path")" == "600" && "$(owner_of_path "$handoff_path")" == "$(id -u)" ]] || return 1
+	jq -e \
+		--arg expected_head "$expected_head" \
+		--arg expected_formal_attempt_sha256 "$(sha256_text "$expected_formal_attempt_id")" '
+		  type == "object" and
+		  (keys | sort) == (["cleanup_complete","exact_head","formal_attempt_id_sha256","live_process_count","live_socket_count","product_projection_empty","qualification_attempt_id_sha256","qualification_contract_digest_sha256","qualification_source_digest_sha256","qualification_status","schema_version","serial_holder_count","source_root_distinct"] | sort) and
+		  .schema_version == "phase28.1.1-native-qualification-handoff-v1" and
+		  .qualification_status == "consumed" and
+		  .exact_head == $expected_head and
+		  .formal_attempt_id_sha256 == $expected_formal_attempt_sha256 and
+		  (.qualification_attempt_id_sha256 | test("^[0-9a-f]{64}$")) and
+		  .qualification_attempt_id_sha256 != .formal_attempt_id_sha256 and
+		  (.qualification_source_digest_sha256 | test("^[0-9a-f]{64}$")) and
+		  (.qualification_contract_digest_sha256 | test("^[0-9a-f]{64}$")) and
+		  .source_root_distinct == true and
+		  .product_projection_empty == true and
+		  .cleanup_complete == true and
+		  .live_process_count == 0 and
+		  .serial_holder_count == 0 and
+		  .live_socket_count == 0
+		' "$handoff_path" >/dev/null
+}
+
 begin_attempt() {
 	local generation=1
 	local hardware_exact_head=""
 	local transport_qualification=""
-	local external_uart_port=""
 	while (($#)); do
 		case "$1" in
 		--hardware-exact-head)
@@ -483,38 +608,24 @@ begin_attempt() {
 			transport_qualification="${2:-}"
 			shift 2
 			;;
-		--external-uart-port)
-			external_uart_port="${2:-}"
-			shift 2
-			;;
 		*) die "unknown_argument" ;;
 		esac
 	done
 	[[ "$generation" =~ ^[0-9]+$ ]] || die "state_malformed"
 	[[ "$hardware_exact_head" =~ ^[0-9a-f]{40}$ ]] || die "exact_head_mismatch"
 	[[ -n "$transport_qualification" ]] || die "transport_qualification_missing"
-	if [[ "${PHASE28_TEST_MODE:-0}" == 1 && -z "$external_uart_port" ]]; then
-		external_uart_port="${PHASE28_TEST_EXTERNAL_UART_PORT:-/tmp/phase28-test-uart}"
-	fi
-	[[ -n "$external_uart_port" && ("$external_uart_port" == /* || "$external_uart_port" =~ ^COM[0-9]+$) ]] || die "external_uart_port_invalid"
 	ensure_private_root
 	require_clean_head
 	[[ "$(current_head)" == "$hardware_exact_head" ]] || die "exact_head_mismatch"
 	[[ -x "$transport_qualification_helper" ]] || die "transport_qualification_invalid"
+	qualification_parent_is_private "$transport_qualification" || die "transport_qualification_invalid"
 	local qualification_source_digest
 	local qualification_json
 	qualification_source_digest="$(shasum -a 256 "$transport_qualification" 2>/dev/null | awk '{print $1}')" || die "transport_qualification_invalid"
-	"$transport_qualification_helper" validate "$transport_qualification" "$hardware_exact_head" >/dev/null 2>&1 || die "transport_qualification_invalid"
+	"$transport_qualification_helper" validate-native "$transport_qualification" "$hardware_exact_head" >/dev/null 2>&1 || die "transport_qualification_invalid"
 	qualification_json="$(jq -ce . "$transport_qualification" 2>/dev/null)" || die "transport_qualification_invalid"
 	[[ "$(shasum -a 256 "$transport_qualification" 2>/dev/null | awk '{print $1}')" == "$qualification_source_digest" ]] || die "transport_qualification_invalid"
-	local adapter_binding_sha256
-	if [[ "${PHASE28_TEST_MODE:-0}" == 1 ]]; then
-		adapter_binding_sha256="${PHASE28_TEST_UART_BINDING_SHA256:-$(jq -er '.adapter_binding_sha256' <<<"$qualification_json")}"
-	else
-		serial_session_readiness_gate formal_uart_binding "$external_uart_port" || die "external_uart_port_invalid"
-		adapter_binding_sha256="$(sha256_text "$SERIAL_SESSION_READY_PHYSICAL_IDENTITY:$SERIAL_SESSION_READY_ENUMERATION_IDENTITY")"
-	fi
-	[[ "$adapter_binding_sha256" == "$(jq -er '.adapter_binding_sha256' <<<"$qualification_json")" ]] || die "transport_qualification_adapter_mismatch"
+	formal_credential_paths_ready || die "credential_binding_failed"
 	acquire_lock
 	trap release_lock RETURN
 	local exact_head
@@ -526,6 +637,7 @@ begin_attempt() {
 	local attempt_dir
 	local state_json
 	local boot_digest
+	local handoff_json
 	exact_head="$hardware_exact_head"
 	created_ms="$(monotonic_ms)"
 	for _ in $(seq 1 "$max_handle_attempts"); do
@@ -543,13 +655,17 @@ begin_attempt() {
 		state_json="$(jq -c --arg state "$PHASE28_TEST_INITIAL_ATTEMPT_STATE" '.attempt_state = $state | .checkpoint_id=null | .checkpoint_token=null | .expected_response_token=null | .expected_user_action=null | .monotonic_deadline_ms=null' <<<"$state_json")"
 	fi
 	attempt_id="$(jq -er '.attempt_id' <<<"$state_json")"
+	[[ "$attempt_id" != "$(jq -er '.attempt_id' <<<"$qualification_json")" ]] || die "resume_handle_ambiguous"
 	boot_digest="$(jq -er '.boot_session_sha256' <<<"$state_json")"
 	attempt_dir="$attempts_root/$attempt_id"
+	[[ "$(dirname "$transport_qualification")" != "$attempt_dir" ]] || die "transport_qualification_invalid"
+	[[ "$(shasum -a 256 "$transport_qualification" 2>/dev/null | awk '{print $1}')" == "$qualification_source_digest" ]] || die "transport_qualification_invalid"
+	handoff_json="$(build_qualification_handoff "$qualification_json" "$qualification_source_digest" "$attempt_id" "$exact_head")"
+	write_consumed_qualification_tombstone "$transport_qualification" "$qualification_json" "$qualification_source_digest" "$attempt_id" "$exact_head"
 	mkdir -m 700 "$attempt_dir"
 	atomic_write "$attempt_dir/state.json" "$state_json"
-	atomic_write "$attempt_dir/transport-qualification.json" "$qualification_json"
-	atomic_write "$attempt_dir/external-uart-port.value" "$external_uart_port"
-	"$transport_qualification_helper" validate "$attempt_dir/transport-qualification.json" "$hardware_exact_head" >/dev/null 2>&1 || die "transport_qualification_invalid"
+	atomic_write "$attempt_dir/qualification-handoff.json" "$handoff_json"
+	validate_qualification_handoff "$attempt_dir/qualification-handoff.json" "$exact_head" "$attempt_id" || die "transport_qualification_invalid"
 	atomic_write "$slot" "$(jq -cn --arg digest "$digest" --arg dir "$attempt_dir" --arg attempt "$attempt_id" --arg boot "$boot_digest" --argjson generation "$generation" --argjson checkpoint_generation "$(jq -er '.checkpoint_generation' <<<"$state_json")" '{schema_version:"exact-head-resume-active-v1",status:"active",resume_handle_sha256:$digest,attempt_dir:$dir,attempt_id:$attempt,attempt_generation:$generation,checkpoint_generation:$checkpoint_generation,boot_session_sha256:$boot}')"
 	release_lock
 	trap - RETURN
@@ -790,15 +906,57 @@ replace_active_with_tombstone() {
 	local attempt_dir
 	local generation
 	local digest
+	local state_path
+	local handoff_path
+	local exact_head
+	local attempt_id
+	local lifecycle_id
+	local verification_result
+	local phase30_promotion_input
+	local blocker_reason
+	local contract_digest
+	local cleanup_complete=false
+	local live_resource_count=1
 	attempt_dir="$(jq -er '.attempt_dir' "$slot")"
 	generation="$(jq -er '.attempt_generation' "$slot")"
 	digest="$(jq -er '.resume_handle_sha256' "$slot")"
+	state_path="$attempt_dir/state.json"
+	handoff_path="$attempt_dir/qualification-handoff.json"
+	validate_state "$state_path" || die "state_malformed"
+	exact_head="$(jq -er '.exact_head' "$state_path")"
+	attempt_id="$(jq -er '.attempt_id' "$state_path")"
+	lifecycle_id="$(jq -er '.phase_lifecycle_id' "$state_path")"
+	verification_result="$(jq -er '.verification_result' "$state_path")"
+	phase30_promotion_input="$(jq -er '.phase30_promotion_input' "$state_path")"
+	blocker_reason="$(jq -er '.blocker_reason' "$state_path")"
+	contract_digest="$(jq -er '.qualification_contract_digest_sha256 | select(type == "string" and test("^[0-9a-f]{64}$"))' "$handoff_path" 2>/dev/null || true)"
+	if [[ -z "$contract_digest" ]]; then
+		contract_digest="$(sha256_text "invalid-qualification-handoff-v1")"
+	fi
+	if [[ "$(jq -er '.cleanup_state' "$state_path")" == "complete" ]]; then
+		cleanup_complete=true
+		live_resource_count=0
+	fi
 	if ! escrow_attempt_traces "$attempt_dir"; then
 		printf 'phase28_attempt_warning=trace_escrow_incomplete\n' >&2
 	fi
 	rm -f "$attempt_dir/child.pid" "$attempt_dir/lifecycle.sock" "$attempt_dir/credential-capability.json" "$attempt_dir/effect.ack" "$attempt_dir/effect.gate" "$attempt_dir/effect-result.json"
 	[[ "${PHASE28_CRASH_AT:-}" != "before_tombstone_persistence" ]] || exit 97
-	atomic_write "$slot" "$(jq -cn --arg digest "$digest" --arg terminal "$terminal" --arg category "$category" --argjson generation "$generation" '{schema_version:"exact-head-resume-tombstone-v1",resume_handle_sha256:$digest,attempt_generation:$generation,terminal_status:"closed",terminal_category:$terminal,cleanup_time_category:$category}')"
+	atomic_write "$slot" "$(jq -cn \
+		--arg digest "$digest" \
+		--arg terminal "$terminal" \
+		--arg category "$category" \
+		--arg exact_head "$exact_head" \
+		--arg formal_attempt_id_sha256 "$(sha256_text "$attempt_id")" \
+		--arg lifecycle_id "$lifecycle_id" \
+		--arg verification_result "$verification_result" \
+		--arg phase30 "$phase30_promotion_input" \
+		--arg blocker "$blocker_reason" \
+		--arg contract "$contract_digest" \
+		--argjson generation "$generation" \
+		--argjson cleanup_complete "$cleanup_complete" \
+		--argjson live_resource_count "$live_resource_count" \
+		'{schema_version:"exact-head-resume-tombstone-v2",resume_handle_sha256:$digest,attempt_generation:$generation,terminal_status:"closed",terminal_category:$terminal,cleanup_time_category:$category,exact_head:$exact_head,formal_attempt_id_sha256:$formal_attempt_id_sha256,phase_lifecycle_id:$lifecycle_id,verification_result:$verification_result,phase30_promotion_input:$phase30,blocker_reason:$blocker,qualification_contract_digest_sha256:$contract,cleanup_complete:$cleanup_complete,live_process_count:$live_resource_count,serial_holder_count:$live_resource_count,live_socket_count:$live_resource_count}')"
 	rm -rf "$attempt_dir"
 	[[ "${PHASE28_CRASH_AT:-}" != "after_tombstone_persistence" ]] || exit 97
 	[[ "${PHASE28_CRASH_AT:-}" != "after_terminal_cleanup" ]] || exit 97
@@ -1292,11 +1450,11 @@ cleanup_unique_orphan_attempt() {
 	local qualification_path
 	attempt_dir="$(jq -er '.attempt_dir' "$slot" 2>/dev/null)" || public_orphan_cleanup_failure "orphan_index_ambiguous" "one" "$tombstone_count_category"
 	state_path="$attempt_dir/state.json"
-	qualification_path="$attempt_dir/transport-qualification.json"
+	qualification_path="$attempt_dir/qualification-handoff.json"
 	if ! validate_slot_state "$slot" "$state_path" 2>/dev/null || ! validate_state "$state_path" 2>/dev/null; then
 		public_orphan_cleanup_failure "orphan_state_ineligible" "one" "$tombstone_count_category"
 	fi
-	if ! "$transport_qualification_helper" validate "$qualification_path" "$expected_head" >/dev/null 2>&1; then
+	if ! validate_qualification_handoff "$qualification_path" "$expected_head" "$(jq -er '.attempt_id' "$state_path")"; then
 		public_orphan_cleanup_failure "orphan_state_ineligible" "one" "$tombstone_count_category"
 	fi
 
@@ -1312,14 +1470,12 @@ cleanup_unique_orphan_attempt() {
 	local live_entry_count=0
 	local observed_state=false
 	local observed_qualification=false
-	local observed_external_uart=false
 	while IFS= read -r -d '' entry; do
 		live_entry_count=$((live_entry_count + 1))
 		[[ "$entry" == "$state_path" ]] && observed_state=true
 		[[ "$entry" == "$qualification_path" ]] && observed_qualification=true
-		[[ "$entry" == "$attempt_dir/external-uart-port.value" ]] && observed_external_uart=true
 	done < <(find "$attempt_dir" -mindepth 1 -maxdepth 1 -print0)
-	if ((live_entry_count != 3)) || [[ "$observed_state" != "true" || "$observed_qualification" != "true" || "$observed_external_uart" != "true" || ! -f "$state_path" || -L "$state_path" || ! -f "$qualification_path" || -L "$qualification_path" || ! -f "$attempt_dir/external-uart-port.value" || -L "$attempt_dir/external-uart-port.value" || "$(mode_of_path "$attempt_dir/external-uart-port.value")" != 600 || "$(owner_of_path "$attempt_dir/external-uart-port.value")" != "$(id -u)" ]]; then
+	if ((live_entry_count != 2)) || [[ "$observed_state" != "true" || "$observed_qualification" != "true" || ! -f "$state_path" || -L "$state_path" || ! -f "$qualification_path" || -L "$qualification_path" ]]; then
 		public_orphan_cleanup_failure "orphan_live_reference_present" "one" "$tombstone_count_category"
 	fi
 
@@ -1425,6 +1581,98 @@ cleanup_active_attempt() {
 	printf 'positive_evidence_promoted=false\n'
 }
 
+parse_terminal_artifact() {
+	local artifact_path="$1"
+	node --input-type=module -e '
+import fs from "node:fs";
+const text = fs.readFileSync(process.argv[1], "utf8");
+const lines = text.split(/\r?\n/u);
+const delimiters = lines.flatMap((line, index) => line === "---" ? [index] : []);
+if (delimiters.length !== 2 || delimiters[0] !== 0) throw new Error("frontmatter delimiters are not closed");
+if (lines.slice(delimiters[1] + 1).some((line) => line.trim() !== "")) throw new Error("artifact body is not closed");
+const value = {};
+const numericFields = new Set(["live_process_count", "serial_holder_count", "live_socket_count"]);
+for (const line of lines.slice(1, delimiters[1])) {
+  const match = /^([a-z0-9_]+): (.+)$/u.exec(line);
+  if (!match || Object.hasOwn(value, match[1])) throw new Error("frontmatter field is malformed");
+  const raw = match[2];
+  value[match[1]] = raw === "true" ? true : raw === "false" ? false : numericFields.has(match[1]) && /^[0-9]+$/u.test(raw) ? Number(raw) : raw;
+}
+const expected = ["blocker_reason","cleanup_complete","exact_head","formal_attempt_id_sha256","formal_status","live_process_count","live_socket_count","phase","phase30_promotion_input","phase_lifecycle_id","qualification_contract_digest_sha256","redacted","serial_holder_count","terminal_outcome","verification_result"].sort();
+const actual = Object.keys(value).sort();
+if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) throw new Error("frontmatter key set is not closed");
+process.stdout.write(JSON.stringify(value));' "$artifact_path"
+}
+
+verify_terminal() {
+	local handle=""
+	local artifact_path=""
+	while (($#)); do
+		case "$1" in
+		--resume-handle)
+			handle="${2:-}"
+			shift 2
+			;;
+		--redacted-artifact)
+			artifact_path="${2:-}"
+			shift 2
+			;;
+		*) die "unknown_argument" ;;
+		esac
+	done
+	[[ "$handle" =~ ^[0-9a-f]{64}$ ]] || die "resume_handle_malformed"
+	[[ -f "$artifact_path" && ! -L "$artifact_path" ]] || die "terminal_artifact_invalid"
+	[[ -d "$private_root" && -d "$resume_index" && -d "$attempts_root" ]] || die "terminal_artifact_invalid"
+	local digest
+	local slot
+	digest="$(sha256_text "$handle")"
+	slot="$resume_index/$digest.json"
+	[[ -f "$slot" && ! -L "$slot" && "$(mode_of_path "$slot")" == "600" && "$(owner_of_path "$slot")" == "$(id -u)" ]] || die "resume_handle_wrong"
+	validate_formal_tombstone "$slot" "$digest" || die "terminal_artifact_invalid"
+	[[ "$(jq -er '.exact_head' "$slot")" == "$(current_head)" ]] || die "exact_head_mismatch"
+	[[ "$(jq -er '.phase_lifecycle_id' "$slot")" == "$phase_lifecycle_id" ]] || die "terminal_artifact_invalid"
+	[[ "$(jq -er '.cleanup_complete' "$slot")" == "true" ]] || die "terminal_artifact_invalid"
+	[[ "$(jq -er '.live_process_count' "$slot")" == "0" && "$(jq -er '.serial_holder_count' "$slot")" == "0" && "$(jq -er '.live_socket_count' "$slot")" == "0" ]] || die "terminal_artifact_invalid"
+	[[ -z "$(find "$attempts_root" -mindepth 1 -maxdepth 1 -print -quit)" ]] || die "terminal_resources_live"
+	[[ -z "$(find "$private_root" \( -type s -o -name child.pid \) -print -quit)" ]] || die "terminal_resources_live"
+	local artifact_json
+	artifact_json="$(parse_terminal_artifact "$artifact_path" 2>/dev/null)" || die "terminal_artifact_invalid"
+	jq -e \
+		--arg phase_lifecycle_id "$phase_lifecycle_id" \
+		--arg exact_head "$(jq -er '.exact_head' "$slot")" \
+		--arg formal_attempt_id_sha256 "$(jq -er '.formal_attempt_id_sha256' "$slot")" \
+		--arg terminal "$(jq -er '.terminal_category' "$slot")" \
+		--arg verification "$(jq -er '.verification_result' "$slot")" \
+		--arg phase30 "$(jq -er '.phase30_promotion_input' "$slot")" \
+		--arg blocker "$(jq -er '.blocker_reason' "$slot")" \
+		--arg contract "$(jq -er '.qualification_contract_digest_sha256' "$slot")" '
+		  .phase == "28.1.1" and
+		  .phase_lifecycle_id == $phase_lifecycle_id and
+		  .exact_head == $exact_head and
+		  .formal_attempt_id_sha256 == $formal_attempt_id_sha256 and
+		  .formal_status == "closed" and
+		  .terminal_outcome == $terminal and
+		  .verification_result == $verification and
+		  .phase30_promotion_input == $phase30 and
+		  .blocker_reason == $blocker and
+		  .qualification_contract_digest_sha256 == $contract and
+		  .cleanup_complete == true and
+		  .live_process_count == 0 and
+		  .serial_holder_count == 0 and
+		  .live_socket_count == 0 and
+		  .redacted == true and
+		  (if .terminal_outcome == "passed_same_chain_hardware" then
+		     .verification_result == "passed" and .phase30_promotion_input == "eligible" and .blocker_reason == "none"
+		   else
+		     .verification_result == "gaps_found" and .phase30_promotion_input == "pending"
+		   end)
+		' <<<"$artifact_json" >/dev/null || die "terminal_artifact_invalid"
+	printf 'terminal_verification=passed\n'
+	printf 'terminal_outcome=%s\n' "$(jq -er '.terminal_category' "$slot")"
+	printf 'cleanup_complete=true\n'
+	printf 'hardware_effects_invoked=0\n'
+}
+
 command="${1:-}"
 [[ -n "$command" ]] || {
 	usage
@@ -1438,6 +1686,7 @@ resolve-checkpoint) resolve_checkpoint "$@" ;;
 deliver-token) deliver_token "$@" ;;
 run-validated-effect) run_validated_effect "$@" ;;
 lifecycle-owner-transition) lifecycle_owner_transition "$@" ;;
+verify-terminal) verify_terminal "$@" ;;
 cleanup-active-attempt) cleanup_active_attempt "$@" ;;
 cleanup-unique-orphan-attempt) cleanup_unique_orphan_attempt "$@" ;;
 *) die "unknown_command" ;;
