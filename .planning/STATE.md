@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Ultra 205 Trusted Production Mining
-status: milestone_archived
-stopped_at: v1.1 archived with accepted gaps — start a new milestone
+milestone: v1.2
+milestone_name: Ultra 205 Operator-Ready Runtime
+status: defining_requirements
+stopped_at: Milestone v1.2 started — defining requirements
 last_updated: "2026-07-13T18:07:13.001Z"
 last_activity: 2026-07-13
 progress:
-  total_phases: 18
-  completed_phases: 18
-  total_plans: 76
-  completed_plans: 76
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -20,17 +20,17 @@ Last activity: 2026-07-13
 
 ## Current Position
 
-Phase: Milestone archive
-Plan: None
+Phase: Not started (defining requirements)
+Plan: —
 
-- **Phase:** v1.1 archive complete
-- **Plan:** None
-- **Status:** Shipped with accepted unresolved gaps; 18/21 requirements satisfied
-- **Next step:** Run `/gsd-new-milestone` to create fresh requirements and continue after Phase 30.
+- **Phase:** Not started (defining requirements)
+- **Plan:** —
+- **Status:** Defining requirements
+- **Next step:** Define v1.2 requirements and create a roadmap continuing after Phase 30.
 
 ## Project Reference
 
-See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable device-user parity on real Bitaxe hardware. Current focus is planning the next milestone without reopening archived diagnostic work.
+See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable device-user parity on real Bitaxe hardware. Current focus is v1.2 operator-ready read-only telemetry, persistent settings, truthful provenance, and bounded runtime-health evidence without active hardware actuation or renewed mining diagnostics.
 
 ## Decisions (v1.1 Milestone Archive)
 

@@ -70,5 +70,6 @@
 - [Roadmap](./milestones/v1.0-ROADMAP.md)
 - [Requirements](./milestones/v1.0-REQUIREMENTS.md)
 - [Milestone audit](./milestones/v1.0-MILESTONE-AUDIT.md)
+- [Phase archive](./milestones/v1.0-phases/)
 
 **Next:** Start the next milestone with fresh requirements via `/gsd-new-milestone`.

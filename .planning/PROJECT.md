@@ -16,15 +16,20 @@ v1.0 Ultra 205 Parity shipped on 2026-07-04 with 64/64 requirements satisfied ac
 
 v1.1 Ultra 205 Trusted Production Mining shipped administratively on 2026-07-13 with accepted gaps across 18 phases, 76 plans, and 170 tasks. The milestone delivered the safety-gated BM1366/Stratum software path, telemetry and evidence automation, and hardware-backed blocker isolation. It did not prove live Rust nonce correlation or a live share outcome: 18/21 requirements are satisfied, while STR-09, ASIC-11, and CFG-07 remain unresolved. Phase 30 closed with a conservative no-promotion disposition.
 
-Historical milestone roadmaps, requirements, audits, and v1.1 phase artifacts live under `.planning/milestones/`.
+Historical milestone roadmaps, requirements, audits, and phase artifacts live under `.planning/milestones/`.
 
-## Current Planning State
+## Current Milestone: v1.2 Ultra 205 Operator-Ready Runtime
 
-No milestone is active. `/gsd-new-milestone` must create fresh requirements and continue roadmap phase numbering after Phase 30. The archived Phase 28.1.1 lineage is terminal and must not be resumed, recreated under `.planning/phases/`, or treated as passed verification.
+**Goal:** Make an Ultra 205 observably configurable and trustworthy in normal operator use through fresh read-only telemetry, persistent settings, truthful provenance, and bounded runtime-health evidence.
 
-## Next Milestone Goals
+**Target features:**
 
-Potential future work includes a newly scoped nonce-production investigation backed by genuinely new evidence, OTA/recovery completion, broader active-safety hardware closure, non-205 board evidence, Stratum v2, BAP, and runtime display/input parity. None is selected until the next milestone is discussed.
+- Shared, safe read-only power and thermal telemetry with explicit freshness and failure state.
+- Operator configuration persistence and truthful system and build provenance through existing AxeOS-compatible surfaces.
+- Self-test, watchdog, and runtime-health visibility correlated across firmware, API, and evidence.
+- Detector-gated Ultra 205 verification without active hardware actuation or renewed mining diagnostics.
+
+Roadmap phase numbering continues after Phase 30. The archived Phase 28.1.1 lineage remains terminal and must not be resumed, recreated under `.planning/phases/`, or treated as passed verification.
 
 ## Requirements
 
@@ -46,7 +51,10 @@ Potential future work includes a newly scoped nonce-production investigation bac
 
 ### Active
 
-None. The next milestone must define a new requirements file.
+- [ ] An Ultra 205 operator can observe fresh read-only power and thermal telemetry with explicit unavailable, stale, and failed states.
+- [ ] An Ultra 205 operator can inspect truthful firmware identity, build provenance, and runtime-health state through existing AxeOS-compatible surfaces.
+- [ ] An Ultra 205 operator can update supported settings, persist them in NVS, and observe the same values after reload and reboot.
+- [ ] Operator-readiness claims are backed by bounded detector-gated hardware evidence that correlates device, API, persistence, and health observations.
 
 ### Out of Scope Until Replanned
 
@@ -55,6 +63,8 @@ None. The next milestone must define a new requirements file.
 - Modifying files inside `reference/esp-miner`.
 - Claiming non-205 boards, other ASIC families, active hardware safety, recovery/rollback, OTAWWW, display/input, BAP, Stratum v2, or unbounded mining without their own evidence.
 - Treating controlled no-share, synthetic, package-only, or archived diagnostic evidence as proof of accepted/rejected production share behavior.
+- Active fan, voltage, reset, power-sequencing, and fault-injection control during v1.2; this milestone establishes observation and recovery evidence before actuation.
+- Reopening BM1366 nonce-production or live-share diagnostics without a separately approved milestone, genuinely new evidence, a discriminating hypothesis, and a hard stopping rule.
 
 <details>
 <summary>v1.1 pre-closure planning snapshot</summary>
@@ -94,9 +104,23 @@ The monorepo separates hardware-bound firmware under `firmware/bitaxe` from test
 | Phase 29 evidence profiles and Phase 30 admission are typed and atomic. | Partial or mixed evidence roots must not advance parity. | Delivered; Phase 30 chose no promotion. |
 | Phase 28.1.1 closed as Won't Do (unresolved). | Repeated diagnostics narrowed but did not close the nonce-production gap. | All lineage verification remains `gaps_found` and is terminally archived. |
 | Archived diagnostic work cannot be reopened by autonomous routing. | Historical artifacts must not become executable work or synthetic proof. | Phase 30 is complete; future work requires a new milestone and new evidence. |
+| v1.2 establishes operator-ready observation before active hardware control. | Fresh telemetry, configuration persistence, provenance, and health visibility reduce uncertainty and create the recovery foundation needed for later actuation. | Active fan, voltage, reset, power sequencing, fault injection, and renewed mining diagnostics are excluded from v1.2. |
 
 ## Evolution
 
-This document evolves at milestone boundaries. The next update occurs when `/gsd-new-milestone` defines the next active requirements and roadmap.
+This document evolves at phase transitions and milestone boundaries.
 
-*Last updated: 2026-07-13 after archiving v1.1 with accepted unresolved gaps*
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
+*Last updated: 2026-07-13 after starting milestone v1.2 Ultra 205 Operator-Ready Runtime*
