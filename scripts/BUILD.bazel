@@ -667,6 +667,7 @@ sh_test(
         "//:docs/parity/checklist.md",
         "//:docs/parity/evidence/phase-29-evidence-workflow-automation-closure/summary.md",
         "//:docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md",
+        "//:docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md",
     ],
     env_inherit = ["PATH"],
     tags = ["local"],

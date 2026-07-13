@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::env;
 use std::io::{self, Write};
 use std::process::Command as ProcessCommand;
@@ -27,6 +28,8 @@ const DEFAULT_REFERENCE_DIR: &str = "reference/esp-miner";
 const DEFAULT_OPENAPI_PATH: &str = "reference/esp-miner/main/http_server/openapi.yaml";
 const DEFAULT_API_COMPARE_MANIFEST: &str = "tools/parity/fixtures/api/phase05-required-routes.json";
 const DEFAULT_AXEOS_ROUTE_USAGE: &str = "tools/parity/fixtures/api/axeos-route-usage.json";
+const DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH: &str =
+    "docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md";
 
 mod api_compare;
 mod claim_ladder;
@@ -221,8 +224,23 @@ struct ParityReport {
 }
 
 impl ParityReport {
+    #[cfg(test)]
     fn new(reference_commit: String, rows: Vec<ChecklistRow>) -> Self {
-        let validation_errors = validate_rows(&rows);
+        Self::new_with_phase30_artifact(
+            reference_commit,
+            rows,
+            &Phase30PromotionArtifactState::Unavailable(
+                "structured Phase 30 evidence artifact was not loaded".to_owned(),
+            ),
+        )
+    }
+
+    fn new_with_phase30_artifact(
+        reference_commit: String,
+        rows: Vec<ChecklistRow>,
+        phase30_artifact: &Phase30PromotionArtifactState,
+    ) -> Self {
+        let validation_errors = validate_rows_with_phase30_artifact(&rows, phase30_artifact);
 
         Self {
             reference_commit,
@@ -249,9 +267,127 @@ struct ValidationError {
     message: String,
 }
 
+#[derive(Debug)]
+struct Phase30PromotionArtifact {
+    fields: BTreeMap<String, String>,
+}
+
+impl Phase30PromotionArtifact {
+    fn field(&self, key: &str) -> Option<&str> {
+        self.fields.get(key).map(String::as_str)
+    }
+
+    fn has_exact_field(&self, key: &str, value: &str) -> bool {
+        self.field(key) == Some(value)
+    }
+}
+
+#[derive(Debug)]
+enum Phase30PromotionArtifactState {
+    Available(Phase30PromotionArtifact),
+    Unavailable(String),
+    Malformed(String),
+}
+
+fn parse_phase30_promotion_artifact(
+    document: &str,
+) -> std::result::Result<Phase30PromotionArtifact, String> {
+    let mut fields = BTreeMap::new();
+
+    for line in document.lines() {
+        let trimmed = line.trim();
+        let Some((key, value)) = trimmed.split_once(": ") else {
+            continue;
+        };
+        if key.is_empty()
+            || !key
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric() || "._-".contains(character))
+        {
+            continue;
+        }
+        if fields.insert(key.to_owned(), value.to_owned()).is_some() {
+            return Err(format!("duplicate structured Phase 30 field {key}"));
+        }
+    }
+
+    let artifact = Phase30PromotionArtifact { fields };
+    validate_phase30_artifact_closed_fields(&artifact)?;
+    Ok(artifact)
+}
+
+fn validate_phase30_artifact_closed_fields(
+    artifact: &Phase30PromotionArtifact,
+) -> std::result::Result<(), String> {
+    require_phase30_field_value(
+        artifact,
+        "phase30_disposition",
+        &["no_promotion_no_eligible_evidence", "promoted"],
+    )?;
+    require_phase30_field_value(artifact, "new_evidence_input", &["none", "explicit"])?;
+    require_phase30_field_value(artifact, "archived_lineage_verification", &["gaps_found"])?;
+    require_phase30_field_value(
+        artifact,
+        "eligible_share_outcome",
+        &["none", "accepted", "rejected"],
+    )?;
+    require_phase30_field_value(artifact, "hardware_accessed", &["false", "true"])?;
+    require_phase30_field_value(artifact, "credentials_accessed", &["false", "true"])?;
+    require_phase30_field_value(artifact, "raw_artifacts_committed", &["no"])?;
+
+    match artifact.field("phase30_disposition") {
+        Some("no_promotion_no_eligible_evidence") => {
+            require_phase30_field_value(artifact, "new_evidence_input", &["none"])?;
+            require_phase30_field_value(artifact, "eligible_share_outcome", &["none"])?;
+            require_phase30_field_value(artifact, "hardware_accessed", &["false"])?;
+            require_phase30_field_value(artifact, "credentials_accessed", &["false"])?;
+        }
+        Some("promoted") => {
+            require_phase30_field_value(artifact, "new_evidence_input", &["explicit"])?;
+            require_phase30_field_value(
+                artifact,
+                "eligible_share_outcome",
+                &["accepted", "rejected"],
+            )?;
+            require_phase30_field_value(artifact, "hardware_accessed", &["true"])?;
+            for (key, value) in [
+                ("current_source_gate", "passed"),
+                ("detector_gate", "passed"),
+                ("same_chain_gate", "passed"),
+                ("provenance_gate", "passed"),
+                ("redaction_status", "passed"),
+            ] {
+                require_phase30_field_value(artifact, key, &[value])?;
+            }
+        }
+        _ => return Err("invalid phase30_disposition".to_owned()),
+    }
+
+    Ok(())
+}
+
+fn require_phase30_field_value(
+    artifact: &Phase30PromotionArtifact,
+    key: &str,
+    allowed_values: &[&str],
+) -> std::result::Result<(), String> {
+    let Some(value) = artifact.field(key) else {
+        return Err(format!("missing structured Phase 30 field {key}"));
+    };
+    if allowed_values.contains(&value) {
+        return Ok(());
+    }
+
+    Err(format!(
+        "invalid structured Phase 30 value for {key}: expected {}",
+        allowed_values.join(" or ")
+    ))
+}
+
 trait ReportEnvironment {
     fn run_reference_guard(&self) -> Result<()>;
     fn read_checklist(&self, path: &Utf8Path) -> Result<String>;
+    fn read_phase30_promotion_artifact(&self, path: &Utf8Path) -> Result<String>;
     fn reference_commit(&self) -> Result<String>;
 }
 
@@ -300,6 +436,12 @@ impl ReportEnvironment for LocalEnvironment {
         let checklist_path = self.workspace_path(path);
         std::fs::read_to_string(checklist_path.as_std_path())
             .with_context(|| format!("failed to read checklist {checklist_path}"))
+    }
+
+    fn read_phase30_promotion_artifact(&self, path: &Utf8Path) -> Result<String> {
+        let artifact_path = self.workspace_path(path);
+        std::fs::read_to_string(artifact_path.as_std_path())
+            .with_context(|| format!("failed to read Phase 30 promotion artifact {artifact_path}"))
     }
 
     fn reference_commit(&self) -> Result<String> {
@@ -709,8 +851,9 @@ fn run_report(
         .read_checklist(&environment_request.checklist)
         .with_context(|| format!("failed to load {}", environment_request.checklist))?;
     let rows = parse_checklist(&checklist)?;
+    let phase30_artifact = load_phase30_promotion_artifact(&rows, environment);
     let reference_commit = environment.reference_commit()?;
-    let report = ParityReport::new(reference_commit, rows);
+    let report = ParityReport::new_with_phase30_artifact(reference_commit, rows, &phase30_artifact);
 
     if environment_request.fail_on_invalid_verified && !report.validation_errors.is_empty() {
         bail!(
@@ -720,6 +863,36 @@ fn run_report(
     }
 
     render_report(&report, environment_request.format)
+}
+
+fn load_phase30_promotion_artifact(
+    rows: &[ChecklistRow],
+    environment: &impl ReportEnvironment,
+) -> Phase30PromotionArtifactState {
+    let has_verified_phase30_row = rows
+        .iter()
+        .any(|row| is_phase30_promotion_row(row) && normalize(&row.status) == "verified");
+    if !has_verified_phase30_row {
+        return Phase30PromotionArtifactState::Unavailable(
+            "no verified Phase 30 row requested promotion admission".to_owned(),
+        );
+    }
+
+    let document = match environment
+        .read_phase30_promotion_artifact(Utf8Path::new(DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH))
+    {
+        Ok(document) => document,
+        Err(error) => {
+            return Phase30PromotionArtifactState::Unavailable(format!(
+                "structured Phase 30 evidence artifact is missing or unreadable: {error:#}"
+            ));
+        }
+    };
+
+    match parse_phase30_promotion_artifact(&document) {
+        Ok(artifact) => Phase30PromotionArtifactState::Available(artifact),
+        Err(error) => Phase30PromotionArtifactState::Malformed(error),
+    }
 }
 
 fn parse_checklist(checklist: &str) -> Result<Vec<ChecklistRow>> {
@@ -763,7 +936,20 @@ fn parse_checklist(checklist: &str) -> Result<Vec<ChecklistRow>> {
     Ok(rows)
 }
 
+#[cfg(test)]
 fn validate_rows(rows: &[ChecklistRow]) -> Vec<ValidationError> {
+    validate_rows_with_phase30_artifact(
+        rows,
+        &Phase30PromotionArtifactState::Unavailable(
+            "structured Phase 30 evidence artifact was not loaded".to_owned(),
+        ),
+    )
+}
+
+fn validate_rows_with_phase30_artifact(
+    rows: &[ChecklistRow],
+    phase30_artifact: &Phase30PromotionArtifactState,
+) -> Vec<ValidationError> {
     let mut errors = Vec::new();
 
     for row in rows {
@@ -797,8 +983,11 @@ fn validate_rows(rows: &[ChecklistRow]) -> Vec<ValidationError> {
         errors.extend(validate_release_ota_verified_row(row));
         errors.extend(validate_deferred_scope_verified_row(row));
         errors.extend(validate_phase26_telemetry_verified_row(row));
-        errors.extend(validate_phase28_hardware_promotion_row(row));
-        errors.extend(validate_phase30_promotion_row(row));
+        errors.extend(validate_phase28_hardware_promotion_row(
+            row,
+            phase30_artifact,
+        ));
+        errors.extend(validate_phase30_promotion_row(row, phase30_artifact));
     }
 
     errors
@@ -1226,12 +1415,23 @@ fn is_phase26_telemetry_row(row: &ChecklistRow) -> bool {
     .any(|term| row_identity.contains(term))
 }
 
-fn validate_phase30_promotion_row(row: &ChecklistRow) -> Vec<ValidationError> {
+fn validate_phase30_promotion_row(
+    row: &ChecklistRow,
+    artifact_state: &Phase30PromotionArtifactState,
+) -> Vec<ValidationError> {
     if !is_phase30_promotion_row(row) || normalize(&row.status) != "verified" {
         return Vec::new();
     }
 
     let mut errors = Vec::new();
+    if !row_haystack(row).contains(DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH) {
+        errors.push(ValidationError {
+            id: row.id.clone(),
+            message: format!(
+                "Phase 30 admission requires exact artifact breadcrumb {DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH}"
+            ),
+        });
+    }
 
     if let Some(forbidden_category) = phase30_forbidden_category(row) {
         errors.push(ValidationError {
@@ -1240,25 +1440,35 @@ fn validate_phase30_promotion_row(row: &ChecklistRow) -> Vec<ValidationError> {
         });
     }
 
-    let missing_shared_terms = phase30_missing_shared_terms(row);
-    if !missing_shared_terms.is_empty() {
+    let artifact = match artifact_state {
+        Phase30PromotionArtifactState::Available(artifact) => artifact,
+        Phase30PromotionArtifactState::Unavailable(message)
+        | Phase30PromotionArtifactState::Malformed(message) => {
+            errors.push(ValidationError {
+                id: row.id.clone(),
+                message: format!("Phase 30 admission rejected artifact: {message}"),
+            });
+            return errors;
+        }
+    };
+
+    if artifact.has_exact_field("phase30_disposition", "no_promotion_no_eligible_evidence") {
         errors.push(ValidationError {
             id: row.id.clone(),
-            message: format!(
-                "Phase 30 admission requires {}",
-                format_required_terms(&missing_shared_terms)
-            ),
+            message: "Phase 30 evidence artifact records no_promotion_no_eligible_evidence"
+                .to_owned(),
         });
+        return errors;
     }
 
-    let missing_row_terms = phase30_missing_row_terms(row);
-    if !missing_row_terms.is_empty() {
+    let missing_row_fields = phase30_missing_artifact_row_fields(row, artifact);
+    if !missing_row_fields.is_empty() {
         errors.push(ValidationError {
             id: row.id.clone(),
             message: format!(
-                "Phase 30 {} proof requires {}",
+                "Phase 30 {} structured proof requires {}",
                 row.id,
-                format_required_terms(&missing_row_terms)
+                format_required_terms(&missing_row_fields)
             ),
         });
     }
@@ -1286,99 +1496,55 @@ fn phase30_forbidden_category(row: &ChecklistRow) -> Option<&'static str> {
     .find(|category| haystack.contains(category))
 }
 
-fn phase30_missing_shared_terms(row: &ChecklistRow) -> Vec<&'static str> {
-    missing_required_terms(
-        row,
-        &[
-            RequiredTerm::new(
-                "phase-30-live-share-outcome-and-verified-promotion/",
-                "phase-30-live-share-outcome-and-verified-promotion/",
-            ),
-            RequiredTerm::new(
-                "phase30_promotion_disposition: promoted",
-                "phase30_promotion_disposition: promoted",
-            ),
-            RequiredTerm::new(
-                "new_evidence_input: explicit",
-                "new_evidence_input: explicit",
-            ),
-            RequiredTerm::new("detector_gate: passed", "detector_gate: passed"),
-            RequiredTerm::new("same_chain_gate: passed", "same_chain_gate: passed"),
-            RequiredTerm::new("redaction_status: passed", "redaction_status: passed"),
-            RequiredTerm::new("raw_artifacts_committed: no", "raw_artifacts_committed: no"),
+fn phase30_missing_artifact_row_fields(
+    row: &ChecklistRow,
+    artifact: &Phase30PromotionArtifact,
+) -> Vec<&'static str> {
+    let required_fields: &[(&'static str, &'static str)] = match row.id.as_str() {
+        "STR-09" => &[
+            ("STR-09.live_submit_response_classified", "true"),
+            ("STR-09.asic_correlation", "passed"),
+            ("STR-09.safe_stop_status", "complete"),
         ],
-    )
-}
-
-fn phase30_missing_row_terms(row: &ChecklistRow) -> Vec<&'static str> {
-    let mut missing_terms = match row.id.as_str() {
-        "STR-09" => missing_required_terms(
-            row,
-            &[
-                RequiredTerm::new(
-                    "live_submit_response_classified: true",
-                    "live_submit_response_classified: true",
-                ),
-                RequiredTerm::new("asic_correlation: passed", "asic_correlation: passed"),
-                RequiredTerm::new("safe_stop_status: complete", "safe_stop_status: complete"),
-            ],
-        ),
-        "ASIC-11" => missing_required_terms(
-            row,
-            &[
-                RequiredTerm::new(
-                    "asic_result_to_active_work: correlated",
-                    "asic_result_to_active_work: correlated",
-                ),
-                RequiredTerm::new(
-                    "submit_intent_from_correlated_result: true",
-                    "submit_intent_from_correlated_result: true",
-                ),
-                RequiredTerm::new("safe_stop_status: complete", "safe_stop_status: complete"),
-            ],
-        ),
-        "CFG-07" => missing_required_terms(
-            row,
-            &[
-                RequiredTerm::new(
-                    "runtime_credentials_input: local-owner-supplied",
-                    "runtime_credentials_input: local-owner-supplied",
-                ),
-                RequiredTerm::new(
-                    "live_mining_credentials_consumed: true",
-                    "live_mining_credentials_consumed: true",
-                ),
-                RequiredTerm::new(
-                    "committed_credential_values: none",
-                    "committed_credential_values: none",
-                ),
-                RequiredTerm::new("safe_stop_status: complete", "safe_stop_status: complete"),
-            ],
-        ),
-        _ => Vec::new(),
+        "CFG-07" => &[
+            ("CFG-07.runtime_credentials_input", "local-owner-supplied"),
+            ("CFG-07.live_mining_credentials_consumed", "true"),
+            ("CFG-07.committed_credential_values", "none"),
+            ("CFG-07.safe_stop_status", "complete"),
+        ],
+        "ASIC-11" => &[
+            ("ASIC-11.asic_result_to_active_work", "correlated"),
+            ("ASIC-11.submit_intent_from_correlated_result", "true"),
+            ("ASIC-11.safe_stop_status", "complete"),
+        ],
+        _ => &[],
     };
 
-    if !phase30_has_eligible_share_outcome(row) {
-        missing_terms.push("eligible_share_outcome: accepted or rejected");
-    }
-
-    missing_terms
+    required_fields
+        .iter()
+        .filter_map(|(key, value)| (!artifact.has_exact_field(key, value)).then_some(*key))
+        .collect()
 }
 
-fn phase30_has_eligible_share_outcome(row: &ChecklistRow) -> bool {
-    let haystack = row_haystack(row);
-    haystack.contains("eligible_share_outcome: accepted")
-        || haystack.contains("eligible_share_outcome: rejected")
-}
+fn has_phase30_exact_promotion_proof(
+    row: &ChecklistRow,
+    artifact_state: &Phase30PromotionArtifactState,
+) -> bool {
+    let Phase30PromotionArtifactState::Available(artifact) = artifact_state else {
+        return false;
+    };
 
-fn has_phase30_exact_promotion_proof(row: &ChecklistRow) -> bool {
     is_phase30_promotion_row(row)
+        && row_haystack(row).contains(DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH)
         && phase30_forbidden_category(row).is_none()
-        && phase30_missing_shared_terms(row).is_empty()
-        && phase30_missing_row_terms(row).is_empty()
+        && artifact.has_exact_field("phase30_disposition", "promoted")
+        && phase30_missing_artifact_row_fields(row, artifact).is_empty()
 }
 
-fn validate_phase28_hardware_promotion_row(row: &ChecklistRow) -> Vec<ValidationError> {
+fn validate_phase28_hardware_promotion_row(
+    row: &ChecklistRow,
+    phase30_artifact: &Phase30PromotionArtifactState,
+) -> Vec<ValidationError> {
     if !is_phase28_hardware_promotion_row(row) {
         return Vec::new();
     }
@@ -1432,7 +1598,7 @@ fn validate_phase28_hardware_promotion_row(row: &ChecklistRow) -> Vec<Validation
                 });
             }
         }
-        "CFG-07" if !has_phase30_exact_promotion_proof(row) => {
+        "CFG-07" if !has_phase30_exact_promotion_proof(row, phase30_artifact) => {
             errors.push(ValidationError {
                 id: row.id.clone(),
                 message: "CFG-07 must remain below verified; runtime credential handling lacks hardware proof"
@@ -2498,28 +2664,178 @@ mod tests {
         }
     }
 
-    fn phase30_shared_promotion_terms() -> &'static str {
-        "phase-30-live-share-outcome-and-verified-promotion/conclusion.md \
-         phase30_promotion_disposition: promoted new_evidence_input: explicit \
-         detector_gate: passed same_chain_gate: passed redaction_status: passed \
-         raw_artifacts_committed: no"
+    fn phase30_complete_promotion_artifact(requirement_id: &str) -> String {
+        let row_proof = match requirement_id {
+            "STR-09" => {
+                "STR-09.live_submit_response_classified: true\n\
+                 STR-09.asic_correlation: passed\n\
+                 STR-09.safe_stop_status: complete"
+            }
+            "CFG-07" => {
+                "CFG-07.runtime_credentials_input: local-owner-supplied\n\
+                 CFG-07.live_mining_credentials_consumed: true\n\
+                 CFG-07.committed_credential_values: none\n\
+                 CFG-07.safe_stop_status: complete"
+            }
+            "ASIC-11" => {
+                "ASIC-11.asic_result_to_active_work: correlated\n\
+                 ASIC-11.submit_intent_from_correlated_result: true\n\
+                 ASIC-11.safe_stop_status: complete"
+            }
+            _ => panic!("unsupported Phase 30 requirement fixture: {requirement_id}"),
+        };
+
+        format!(
+            "phase30_disposition: promoted\n\
+             new_evidence_input: explicit\n\
+             archived_lineage_verification: gaps_found\n\
+             eligible_share_outcome: accepted\n\
+             hardware_accessed: true\n\
+             credentials_accessed: false\n\
+             raw_artifacts_committed: no\n\
+             current_source_gate: passed\n\
+             detector_gate: passed\n\
+             same_chain_gate: passed\n\
+             provenance_gate: passed\n\
+             redaction_status: passed\n\
+             {row_proof}\n"
+        )
     }
 
-    fn phase30_str09_terms() -> &'static str {
-        "eligible_share_outcome: accepted live_submit_response_classified: true \
-         asic_correlation: passed safe_stop_status: complete"
+    #[test]
+    fn phase30_verified_row_rejects_current_no_promotion_artifact() {
+        // Arrange
+        let row = phase30_verified_row("STR-09", DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH);
+        let artifact = parse_phase30_promotion_artifact(include_str!(
+            "../../../docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md"
+        ))
+        .expect("committed Phase 30 conclusion should parse");
+
+        // Act
+        let errors = validate_rows_with_phase30_artifact(
+            &[row],
+            &Phase30PromotionArtifactState::Available(artifact),
+        );
+
+        // Assert
+        assert_validation_error_contains(&errors, "STR-09", "no_promotion_no_eligible_evidence");
     }
 
-    fn phase30_asic11_terms() -> &'static str {
-        "asic_result_to_active_work: correlated \
-         submit_intent_from_correlated_result: true eligible_share_outcome: rejected \
-         safe_stop_status: complete"
+    #[test]
+    fn phase30_report_rejects_verified_row_against_committed_no_promotion_artifact() {
+        // Arrange
+        let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STR-09 | Phase 30 exact promotion claim | `reference/esp-miner/main/system.c` | `tools/parity/src/main.rs` | verified | workflow,hardware-smoke,hardware-regression | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md exact_non_claims accepted share hardware proof asic bridge correlation docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md |
+"#;
+        let environment = FakeEnvironment::with_documents(
+            checklist,
+            include_str!(
+                "../../../docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md"
+            ),
+        );
+        let request = ReportRequest {
+            checklist: Utf8PathBuf::from("docs/parity/checklist.md"),
+            format: ReportFormat::Text,
+            fail_on_invalid_verified: true,
+        };
+
+        // Act
+        let result = run_report(&request, &environment);
+
+        // Assert
+        assert!(result.is_err());
+        assert!(result
+            .expect_err("current no-promotion artifact must reject verified row")
+            .to_string()
+            .contains("no_promotion_no_eligible_evidence"));
     }
 
-    fn phase30_cfg07_terms() -> &'static str {
-        "runtime_credentials_input: local-owner-supplied \
-         live_mining_credentials_consumed: true committed_credential_values: none \
-         eligible_share_outcome: accepted safe_stop_status: complete"
+    #[test]
+    fn phase30_verified_rows_accept_matching_structured_artifacts() {
+        // Arrange
+        let cases = ["STR-09", "CFG-07", "ASIC-11"];
+
+        // Act
+        let results = cases.map(|requirement_id| {
+            let artifact = parse_phase30_promotion_artifact(&phase30_complete_promotion_artifact(
+                requirement_id,
+            ))
+            .expect("complete Phase 30 promotion artifact should parse");
+            let errors = validate_rows_with_phase30_artifact(
+                &[phase30_verified_row(
+                    requirement_id,
+                    DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH,
+                )],
+                &Phase30PromotionArtifactState::Available(artifact),
+            );
+            (requirement_id, errors)
+        });
+
+        // Assert
+        for (requirement_id, errors) in results {
+            assert!(
+                errors.is_empty(),
+                "expected structured artifact for {requirement_id} to pass, got {errors:#?}"
+            );
+        }
+    }
+
+    #[test]
+    fn phase30_verified_row_rejects_missing_artifact() {
+        // Arrange
+        let row = phase30_verified_row("STR-09", DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH);
+        let artifact = Phase30PromotionArtifactState::Unavailable(
+            "structured Phase 30 evidence artifact is missing".to_owned(),
+        );
+
+        // Act
+        let errors = validate_rows_with_phase30_artifact(&[row], &artifact);
+
+        // Assert
+        assert_validation_error_contains(&errors, "STR-09", "artifact is missing");
+    }
+
+    #[test]
+    fn phase30_verified_row_rejects_malformed_artifact_value() {
+        // Arrange
+        let row = phase30_verified_row("STR-09", DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH);
+        let malformed = phase30_complete_promotion_artifact("STR-09")
+            .replace("detector_gate: passed", "detector_gate: maybe");
+        let artifact = parse_phase30_promotion_artifact(&malformed)
+            .expect_err("invalid closed value must fail parsing");
+
+        // Act
+        let errors = validate_rows_with_phase30_artifact(
+            &[row],
+            &Phase30PromotionArtifactState::Malformed(artifact),
+        );
+
+        // Assert
+        assert_validation_error_contains(&errors, "STR-09", "detector_gate");
+    }
+
+    #[test]
+    fn phase30_verified_row_rejects_mismatched_artifact_bundle() {
+        // Arrange
+        let row = phase30_verified_row("STR-09", DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH);
+        let artifact =
+            parse_phase30_promotion_artifact(&phase30_complete_promotion_artifact("CFG-07"))
+                .expect("complete CFG-07 fixture should parse");
+
+        // Act
+        let errors = validate_rows_with_phase30_artifact(
+            &[row],
+            &Phase30PromotionArtifactState::Available(artifact),
+        );
+
+        // Assert
+        assert_validation_error_contains(
+            &errors,
+            "STR-09",
+            "STR-09.live_submit_response_classified",
+        );
     }
 
     #[test]
@@ -2539,241 +2855,6 @@ mod tests {
 
         // Assert
         assert!(errors.is_empty());
-    }
-
-    #[test]
-    fn phase30_verified_rows_reject_missing_admission() {
-        // Arrange
-        let rows = [
-            phase30_verified_row("STR-09", ""),
-            phase30_verified_row("CFG-07", ""),
-            phase30_verified_row("ASIC-11", ""),
-        ];
-
-        // Act
-        let errors = validate_rows(&rows);
-
-        // Assert
-        for requirement_id in ["STR-09", "CFG-07", "ASIC-11"] {
-            assert_validation_error_contains(&errors, requirement_id, "Phase 30 admission");
-        }
-    }
-
-    #[test]
-    fn phase30_verified_rows_reject_no_proof_categories() {
-        // Arrange
-        let forbidden_categories = [
-            "no_promotion_no_eligible_evidence",
-            "gaps_found",
-            "eligible_share_outcome: none",
-            "blocked_safe_prerequisite",
-            "workflow-only",
-            "fake-pool",
-            "deterministic-only",
-        ];
-
-        // Act
-        let results = forbidden_categories.map(|category| {
-            let terms = format!(
-                "{} {} {} {category}",
-                phase30_shared_promotion_terms(),
-                phase30_str09_terms(),
-                phase30_asic11_terms()
-            );
-            (
-                category,
-                validate_rows(&[phase30_verified_row("STR-09", &terms)]),
-            )
-        });
-
-        // Assert
-        for (category, errors) in results {
-            assert_validation_error_contains(&errors, "STR-09", category);
-        }
-    }
-
-    #[test]
-    fn phase30_verified_rows_reject_partial_row_specific_proof() {
-        // Arrange
-        let rows = [
-            phase30_verified_row("STR-09", phase30_shared_promotion_terms()),
-            phase30_verified_row("CFG-07", phase30_shared_promotion_terms()),
-            phase30_verified_row("ASIC-11", phase30_shared_promotion_terms()),
-        ];
-
-        // Act
-        let errors = validate_rows(&rows);
-
-        // Assert
-        assert_validation_error_contains(&errors, "STR-09", "live_submit_response_classified");
-        assert_validation_error_contains(&errors, "CFG-07", "runtime_credentials_input");
-        assert_validation_error_contains(&errors, "ASIC-11", "asic_result_to_active_work");
-    }
-
-    #[test]
-    fn phase30_each_shared_admission_token_is_required() {
-        // Arrange
-        let shared_terms = [
-            "phase-30-live-share-outcome-and-verified-promotion/conclusion.md",
-            "phase30_promotion_disposition: promoted",
-            "new_evidence_input: explicit",
-            "detector_gate: passed",
-            "same_chain_gate: passed",
-            "redaction_status: passed",
-            "raw_artifacts_committed: no",
-        ];
-
-        // Act
-        let results = shared_terms.map(|omitted_term| {
-            let partial_shared = shared_terms
-                .iter()
-                .filter(|term| **term != omitted_term)
-                .copied()
-                .collect::<Vec<_>>()
-                .join(" ");
-            let terms = format!("{partial_shared} {}", phase30_str09_terms());
-            (
-                omitted_term,
-                validate_rows(&[phase30_verified_row("STR-09", &terms)]),
-            )
-        });
-
-        // Assert
-        for (omitted_term, errors) in results {
-            let expected_category = if omitted_term.starts_with("phase-30-") {
-                "phase-30-live-share-outcome-and-verified-promotion/"
-            } else {
-                omitted_term
-            };
-            assert_validation_error_contains(&errors, "STR-09", expected_category);
-        }
-    }
-
-    #[test]
-    fn phase30_each_row_specific_token_is_required() {
-        // Arrange
-        let cases: [(&str, &[&str]); 3] = [
-            (
-                "STR-09",
-                &[
-                    "eligible_share_outcome: accepted",
-                    "live_submit_response_classified: true",
-                    "asic_correlation: passed",
-                    "safe_stop_status: complete",
-                ],
-            ),
-            (
-                "CFG-07",
-                &[
-                    "runtime_credentials_input: local-owner-supplied",
-                    "live_mining_credentials_consumed: true",
-                    "committed_credential_values: none",
-                    "eligible_share_outcome: accepted",
-                    "safe_stop_status: complete",
-                ],
-            ),
-            (
-                "ASIC-11",
-                &[
-                    "asic_result_to_active_work: correlated",
-                    "submit_intent_from_correlated_result: true",
-                    "eligible_share_outcome: rejected",
-                    "safe_stop_status: complete",
-                ],
-            ),
-        ];
-
-        // Act
-        let results = cases.into_iter().flat_map(|(requirement_id, row_terms)| {
-            row_terms.iter().map(move |omitted_term| {
-                let partial_row = row_terms
-                    .iter()
-                    .filter(|term| *term != omitted_term)
-                    .copied()
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                let terms = format!("{} {partial_row}", phase30_shared_promotion_terms());
-                (
-                    requirement_id,
-                    *omitted_term,
-                    validate_rows(&[phase30_verified_row(requirement_id, &terms)]),
-                )
-            })
-        });
-
-        // Assert
-        for (requirement_id, omitted_term, errors) in results {
-            let expected_category = if omitted_term.starts_with("eligible_share_outcome") {
-                "eligible_share_outcome: accepted or rejected"
-            } else {
-                omitted_term
-            };
-            assert_validation_error_contains(&errors, requirement_id, expected_category);
-        }
-    }
-
-    #[test]
-    fn phase30_future_positive_bundles_pass_their_exact_rows() {
-        // Arrange
-        let cases = [
-            ("STR-09", phase30_str09_terms()),
-            ("CFG-07", phase30_cfg07_terms()),
-            ("ASIC-11", phase30_asic11_terms()),
-        ];
-
-        // Act
-        let results = cases.map(|(requirement_id, row_terms)| {
-            let terms = format!("{} {row_terms}", phase30_shared_promotion_terms());
-            (
-                requirement_id,
-                validate_rows(&[phase30_verified_row(requirement_id, &terms)]),
-            )
-        });
-
-        // Assert
-        for (requirement_id, errors) in results {
-            assert!(
-                errors.is_empty(),
-                "expected exact Phase 30 bundle for {requirement_id} to pass, got {errors:#?}"
-            );
-        }
-    }
-
-    #[test]
-    fn phase30_row_specific_proof_is_not_interchangeable() {
-        // Arrange
-        let cases = [
-            (
-                "STR-09",
-                phase30_cfg07_terms(),
-                "live_submit_response_classified",
-            ),
-            (
-                "CFG-07",
-                phase30_asic11_terms(),
-                "runtime_credentials_input",
-            ),
-            (
-                "ASIC-11",
-                phase30_str09_terms(),
-                "asic_result_to_active_work",
-            ),
-        ];
-
-        // Act
-        let results = cases.map(|(requirement_id, wrong_terms, missing_category)| {
-            let terms = format!("{} {wrong_terms}", phase30_shared_promotion_terms());
-            (
-                requirement_id,
-                missing_category,
-                validate_rows(&[phase30_verified_row(requirement_id, &terms)]),
-            )
-        });
-
-        // Assert
-        for (requirement_id, missing_category, errors) in results {
-            assert_validation_error_contains(&errors, requirement_id, missing_category);
-        }
     }
 
     #[test]
@@ -2964,6 +3045,8 @@ mod tests {
 
     struct FakeEnvironment {
         maybe_guard_error: Option<&'static str>,
+        maybe_checklist: Option<&'static str>,
+        maybe_phase30_artifact: Option<&'static str>,
         read_called: Cell<bool>,
     }
 
@@ -2971,6 +3054,17 @@ mod tests {
         fn failing_guard(message: &'static str) -> Self {
             Self {
                 maybe_guard_error: Some(message),
+                maybe_checklist: None,
+                maybe_phase30_artifact: None,
+                read_called: Cell::new(false),
+            }
+        }
+
+        fn with_documents(checklist: &'static str, phase30_artifact: &'static str) -> Self {
+            Self {
+                maybe_guard_error: None,
+                maybe_checklist: Some(checklist),
+                maybe_phase30_artifact: Some(phase30_artifact),
                 read_called: Cell::new(false),
             }
         }
@@ -2987,7 +3081,14 @@ mod tests {
 
         fn read_checklist(&self, _path: &Utf8Path) -> Result<String> {
             self.read_called.set(true);
-            Ok(CHECKLIST.to_owned())
+            Ok(self.maybe_checklist.unwrap_or(CHECKLIST).to_owned())
+        }
+
+        fn read_phase30_promotion_artifact(&self, _path: &Utf8Path) -> Result<String> {
+            let Some(document) = self.maybe_phase30_artifact else {
+                bail!("structured Phase 30 evidence artifact is missing");
+            };
+            Ok(document.to_owned())
         }
 
         fn reference_commit(&self) -> Result<String> {

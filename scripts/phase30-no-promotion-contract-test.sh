@@ -5,6 +5,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 readonly workspace_root="${PHASE30_WORKSPACE_ROOT:-$(cd "${script_dir}/.." && pwd)}"
 readonly disposition_path="${workspace_root}/docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md"
+readonly conclusion_path="${workspace_root}/docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md"
 readonly checklist_path="${workspace_root}/docs/parity/checklist.md"
 readonly requirements_path="${workspace_root}/.planning/REQUIREMENTS.md"
 readonly archived_verification_path="${workspace_root}/.planning/milestones/v1.1-phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-VERIFICATION.md"
@@ -48,6 +49,7 @@ require_pending_traceability() {
 
 for required_path in \
 	"$disposition_path" \
+	"$conclusion_path" \
 	"$checklist_path" \
 	"$requirements_path" \
 	"$archived_verification_path" \
@@ -69,6 +71,22 @@ credentials_accessed: false
 raw_artifacts_committed: no
 FIELDS
 
+while IFS= read -r required_field; do
+	require_literal "$conclusion_path" "$required_field" conclusion-field
+done <<'FIELDS'
+phase30_disposition: no_promotion_no_eligible_evidence
+new_evidence_input: none
+archived_lineage_verification: gaps_found
+eligible_share_outcome: none
+hardware_accessed: false
+credentials_accessed: false
+raw_artifacts_committed: no
+FIELDS
+
+require_literal "$conclusion_path" \
+	'Phase completion is not requirement verification and does not satisfy STR-09, CFG-07, or ASIC-11.' \
+	conclusion-non-verification
+
 while IFS= read -r required_non_claim; do
 	require_literal "$disposition_path" "$required_non_claim" exact-non-claim
 done <<'NON_CLAIMS'
@@ -83,9 +101,22 @@ NON_CLAIMS
 
 for requirement_id in STR-09 CFG-07 ASIC-11; do
 	require_literal "$disposition_path" "| ${requirement_id} | pending |" disposition-matrix
+	require_literal "$conclusion_path" "| ${requirement_id} | not_promoted_pending |" conclusion-matrix
 	require_row_status "$requirement_id"
 	require_pending_traceability "$requirement_id"
 done
+
+while IFS= read -r required_non_claim; do
+	require_literal "$conclusion_path" "$required_non_claim" conclusion-non-claim
+done <<'NON_CLAIMS'
+full active voltage/fan/thermal/fault/self-test safety
+OTAWWW/recovery destructive or fault-injection behavior
+non-205 boards
+other ASIC families
+Stratum v2
+runtime UI/display/input/BAP
+unbounded stress mining
+NON_CLAIMS
 
 require_literal "$archived_verification_path" 'status: gaps_found' archived-verification
 require_literal "$archived_verification_path" 'verification_result: gaps_found' archived-verification
@@ -105,7 +136,7 @@ cleanup() {
 trap cleanup EXIT
 
 readonly aggregate_path="${tmp_root}/aggregate.txt"
-cat "$disposition_path" "$validation_path" >"$aggregate_path"
+cat "$disposition_path" "$conclusion_path" "$validation_path" >"$aggregate_path"
 for requirement_id in STR-09 CFG-07 ASIC-11; do
 	rg -m 1 -F "| ${requirement_id} |" "$checklist_path" >>"$aggregate_path"
 done
