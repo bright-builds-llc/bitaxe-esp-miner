@@ -276,8 +276,12 @@ sh_test(
     name = "diagnose_ultra205_late_attach_test",
     srcs = ["diagnose-ultra205-late-attach-test.sh"],
     data = [
+        "detect-ultra205.sh",
         "diagnose-ultra205-late-attach.sh",
+        "phase13-monitor-capture.sh",
         "phase13-os-native-reader.pl",
+        "phase28.1.1-accepted-state-diagnostic.sh",
+        "phase28.1.1-exact-head-hardware-attempt.sh",
         "phase28.1.1-lifecycle-frame.pl",
         "process-group.sh",
         "serial-session-trace.sh",
