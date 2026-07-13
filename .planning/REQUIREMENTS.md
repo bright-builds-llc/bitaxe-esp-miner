@@ -94,8 +94,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | EVD-06 | Phase 22 | Complete |
-| EVD-07 | Phase 23, 29 | Pending (gap closure) |
-| EVD-08 | Phase 26, 29 | Pending (gap closure) |
+| EVD-07 | Phase 23, 29 | Complete |
+| EVD-08 | Phase 26, 29 | Complete |
 | SAFE-10 | Phase 28 | Complete |
 | SAFE-11 | Phase 28 | Complete |
 | SAFE-12 | Phase 28 | Complete |
@@ -108,9 +108,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASIC-10 | Phase 27 | Complete |
 | ASIC-11 | Phase 27, 30 | Pending (gap closure) |
 | ASIC-12 | Phase 28 | Complete |
-| REL-09 | Phase 23, 29 | Pending (gap closure) |
+| REL-09 | Phase 23, 29 | Complete |
 | CFG-07 | Phase 28, 30 | Pending (gap closure) |
-| EVD-09 | Phase 23, 29 | Pending (gap closure) |
+| EVD-09 | Phase 23, 29 | Complete |
 | API-11 | Phase 26 | Complete |
 | API-12 | Phase 26 | Complete |
 | API-13 | Phase 26 | Complete |
@@ -118,8 +118,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Coverage:**
 - v1.1 requirements: 21 total
 - Mapped to phases: 21
-- Complete: 14
-- Pending (gap closure): 7
+- Complete: 18
+- Pending (gap closure): 3
 - Unmapped: 0
 
 **Phase distribution:**
@@ -134,4 +134,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Phase 30: STR-09, CFG-07, ASIC-11 (gap closure — verified promotion)
 
 *Requirements defined: 2026-07-04*
-*Last updated: 2026-07-07 after v1.1 gap closure planning (Phases 29-30 added)*
+*Last updated: 2026-07-13 after Phase 29 evidence workflow automation closure*

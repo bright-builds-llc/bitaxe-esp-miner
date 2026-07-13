@@ -22,7 +22,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [x] **Phase 26: Telemetry And Parity Closure** - Runtime API, WebSocket, counters, and parity checklist updates reflect only proven v1.1 mining events. (completed 2026-07-05)
 - [x] **Phase 27: Live Hardware ASIC And Stratum Bridge** - Live firmware wires Phase 24 BM1366 production dispatch and nonce correlation into the Phase 25 socket loop and produces detector-gated share-outcome evidence. (completed 2026-07-05)
 - [x] **Phase 28: Hardware Evidence And Checklist Promotion** - Redacted hardware evidence promotes only exact verified checklist rows supported by Phase 27 artifacts. (completed 2026-07-06)
-- [ ] **Phase 29: Evidence Workflow Automation Closure** - Phase 25/27/28 evidence wrappers auto-validate operator evidence roots and close the redact-validate-promote flow without manual consolidation steps.
+- [x] **Phase 29: Evidence Workflow Automation Closure** - Phase 25/27/28 evidence wrappers auto-validate operator evidence roots and close the redact-validate-promote flow without manual consolidation steps. (completed 2026-07-13)
 - [ ] **Phase 30: Live Share Outcome And Verified Promotion** - Promote STR-09/CFG-07 to `verified` using Phase 28.1.1.2 (or later) share-outcome evidence; close Nyquist metadata (no duplicate wire-diff work).
 
 ## Phase Details
@@ -151,7 +151,11 @@ Plans:
   2. Operator can run `just phase28-evidence` to consolidate Phase 27 artifacts into a full Phase 23 slot inventory and pass operator-evidence validation.
   3. REL-09 operator flow documentation and regression tests cover the automated validate step for Phase 25, Phase 27, and Phase 28 roots.
   4. `just parity` and existing redaction guards continue to reject overbroad promotion without matching evidence artifacts.
-**Plans**: 0 plans
+**Plans**: 3 plans
+Plans:
+- [x] 29-01-PLAN.md — Define typed evidence profiles, the shared eleven-slot contract, and deterministic completion/consolidation.
+- [x] 29-02-PLAN.md — Finalize Phase 25/27 roots and add the atomic Bazel-owned Phase 28 evidence command.
+- [x] 29-03-PLAN.md — Publish the operator flow, redaction scanner, closure evidence, and validation sign-off.
 
 ### Phase 30: Live Share Outcome And Verified Promotion
 **Goal**: Promote STR-09/CFG-07 checklist rows to `verified` only where Phase 28.1.1.1 redacted hardware evidence supports accepted/rejected share outcomes; close Phase 28.1 Nyquist metadata. Does not re-do wire-byte diff work (owned by Phase 28.1.1.1).
@@ -187,7 +191,7 @@ Plans:
 | 28.1.1.5. BM1366 Match Upstream Chip-Enumerate Before Init Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.6. BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.7. BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
-| 29. Evidence Workflow Automation Closure | v1.1 | 0/3 | Not started | — |
+| 29. Evidence Workflow Automation Closure | v1.1 | 3/3 | Complete    | 2026-07-13 |
 | 30. Live Share Outcome And Verified Promotion | v1.1 | 0/4 | Not started | — |
 
 ## Coverage
