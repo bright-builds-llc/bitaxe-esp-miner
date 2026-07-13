@@ -10,7 +10,7 @@ use serde_json::Value;
 use thiserror::Error;
 
 use crate::mining::{mining_state_from_runtime, SharesRejectedReasonWire};
-use crate::ApiSnapshot;
+use crate::{ApiSnapshot, ObservationTruthWire};
 
 /// Error type for host-side fixture compatibility helpers.
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -54,6 +54,8 @@ pub struct SystemInfoWire {
     pub fan_rpm: u16,
     #[serde(rename = "fan2rpm")]
     pub fan2_rpm: u16,
+    #[serde(rename = "fanRpmStatus")]
+    pub fan_rpm_status: ObservationTruthWire,
     #[serde(rename = "miningPaused")]
     pub mining_paused: bool,
     #[serde(rename = "apEnabled")]
@@ -74,16 +76,26 @@ pub struct SystemInfoWire {
     pub core_voltage_actual: f64,
     #[serde(rename = "power")]
     pub power: f64,
+    #[serde(rename = "powerStatus")]
+    pub power_status: ObservationTruthWire,
     #[serde(rename = "voltage")]
     pub voltage: f64,
+    #[serde(rename = "voltageStatus")]
+    pub voltage_status: ObservationTruthWire,
     #[serde(rename = "current")]
     pub current: f64,
+    #[serde(rename = "currentStatus")]
+    pub current_status: ObservationTruthWire,
     #[serde(rename = "temp")]
     pub temp: f64,
+    #[serde(rename = "chipTempStatus")]
+    pub chip_temp_status: ObservationTruthWire,
     #[serde(rename = "temp2")]
     pub temp2: f64,
     #[serde(rename = "vrTemp")]
     pub vr_temp: f64,
+    #[serde(rename = "vrTempStatus")]
+    pub vr_temp_status: ObservationTruthWire,
     #[serde(rename = "expectedHashrate")]
     pub expected_hashrate: f64,
     #[serde(rename = "sharesAccepted")]
@@ -175,6 +187,7 @@ impl SystemInfoWire {
             fan_speed: safe_telemetry.fan_speed_percent,
             fan_rpm: safe_telemetry.fan_rpm,
             fan2_rpm: safe_telemetry.fan2_rpm,
+            fan_rpm_status: safe_telemetry.fan_rpm_status,
             mining_paused: mining_state.mining_paused,
             ap_enabled: numeric_bool(platform.ap_enabled),
             auto_fan_speed: numeric_bool(config.auto_fan_speed),
@@ -185,11 +198,16 @@ impl SystemInfoWire {
             core_voltage: config.asic_voltage_mv,
             core_voltage_actual: safe_telemetry.core_voltage_actual_mv,
             power: safe_telemetry.power_watts,
+            power_status: safe_telemetry.power_status,
             voltage: safe_telemetry.voltage_volts,
+            voltage_status: safe_telemetry.voltage_status,
             current: safe_telemetry.current_amps,
+            current_status: safe_telemetry.current_status,
             temp: safe_telemetry.chip_temp_celsius,
+            chip_temp_status: safe_telemetry.chip_temp_status,
             temp2: safe_telemetry.chip_temp2_celsius,
             vr_temp: safe_telemetry.vr_temp_celsius,
+            vr_temp_status: safe_telemetry.vr_temp_status,
             expected_hashrate: safe_telemetry.expected_hashrate_ghs,
             shares_accepted: mining_state.shares_accepted,
             shares_rejected: mining_state.shares_rejected,
@@ -330,6 +348,37 @@ mod tests {
             ],
         )
         .is_ok());
+    }
+
+    #[test]
+    fn safety_telemetry_system_info_exposes_exact_six_truth_fields() {
+        // Arrange
+        let snapshot = ApiSnapshot::safe_ultra_205();
+
+        // Act
+        let value = serde_json::to_value(SystemInfoWire::from_snapshot(&snapshot))
+            .expect("system info should serialize");
+        let status_fields = [
+            "chipTempStatus",
+            "currentStatus",
+            "fanRpmStatus",
+            "powerStatus",
+            "voltageStatus",
+            "vrTempStatus",
+        ];
+
+        // Assert
+        for field in status_fields {
+            assert_eq!(value[field]["state"], "unavailable");
+        }
+        for unsupported_field in [
+            "fanSpeedStatus",
+            "fan2RpmStatus",
+            "chipTemp2Status",
+            "coreVoltageStatus",
+        ] {
+            assert!(value.get(unsupported_field).is_none());
+        }
     }
 
     #[test]

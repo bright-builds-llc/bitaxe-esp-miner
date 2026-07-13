@@ -272,4 +272,37 @@ mod tests {
         // Assert
         assert_eq!(diff, Some(fixture.expected_nested_diff));
     }
+
+    #[test]
+    fn telemetry_truth_change_emits_nested_diff_without_compatibility_numeric_change() {
+        // Arrange
+        let old = json!({
+            "power": 0.0,
+            "powerStatus": {
+                "state": "unavailable",
+                "reason": { "kind": "unavailable", "code": "not_yet_observed" }
+            }
+        });
+        let new = json!({
+            "power": 0.0,
+            "powerStatus": {
+                "state": "fresh",
+                "stamp": { "bootSession": 7, "sequence": 1, "acquiredAtMs": 250 }
+            }
+        });
+
+        // Act
+        let diff = live_telemetry_diff(Some(&old), &new);
+
+        // Assert
+        assert_eq!(
+            diff,
+            Some(json!({
+                "powerStatus": {
+                    "state": "fresh",
+                    "stamp": { "bootSession": 7, "sequence": 1, "acquiredAtMs": 250 }
+                }
+            }))
+        );
+    }
 }

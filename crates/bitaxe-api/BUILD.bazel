@@ -8,6 +8,7 @@ rust_library(
         "src/lib.rs",
         "src/logs.rs",
         "src/mining.rs",
+        "src/observation.rs",
         "src/route_shell.rs",
         "src/runtime_projection.rs",
         "src/scoreboard.rs",

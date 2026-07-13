@@ -9,6 +9,7 @@ pub mod asic;
 pub mod commands;
 pub mod logs;
 pub mod mining;
+pub mod observation;
 pub mod route_shell;
 pub mod runtime_projection;
 pub mod scoreboard;
@@ -34,6 +35,10 @@ pub use logs::{
     DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
 };
 pub use mining::{mining_state_from_runtime, MiningStateWire, SharesRejectedReasonWire};
+pub use observation::{
+    ObservationReasonWire, ObservationStampWire, ObservationStateWire, ObservationStore,
+    ObservationTruthWire, TelemetryObservations,
+};
 pub use route_shell::{
     maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, phase07_route_report,
     phase07_routes, plan_http_access, plan_settings_patch_body_size, plan_websocket_upgrade,

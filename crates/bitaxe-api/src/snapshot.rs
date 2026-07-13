@@ -9,9 +9,13 @@ use bitaxe_config::{
     ultra_205_catalog_entry, ultra_205_defaults, BoardCatalogEntry, Ultra205Defaults,
 };
 use bitaxe_safety::evidence::SafetyCriticalEvidence;
+use bitaxe_safety::observation::{Observation, UnavailableReason};
 use bitaxe_stratum::v1::state::MiningRuntimeState;
 
-use crate::BlockFoundNotificationState;
+use crate::{
+    BlockFoundNotificationState, ObservationReasonWire, ObservationStateWire, ObservationTruthWire,
+    TelemetryObservations,
+};
 
 /// Complete pure input snapshot for the initial AxeOS API contract slice.
 #[derive(Debug, Clone, PartialEq)]
@@ -191,6 +195,12 @@ pub struct SafeTelemetrySnapshot {
     pub fan_rpm: u16,
     pub fan2_rpm: u16,
     pub wifi_rssi_dbm: i16,
+    pub power_status: ObservationTruthWire,
+    pub voltage_status: ObservationTruthWire,
+    pub current_status: ObservationTruthWire,
+    pub chip_temp_status: ObservationTruthWire,
+    pub vr_temp_status: ObservationTruthWire,
+    pub fan_rpm_status: ObservationTruthWire,
 }
 
 impl SafeTelemetrySnapshot {
@@ -226,6 +236,12 @@ impl SafeTelemetrySnapshot {
                 fan_rpm: report.fan_rpm,
                 fan2_rpm: report.fan2_rpm,
                 wifi_rssi_dbm: report.wifi_rssi_dbm,
+                power_status: legacy_unavailable_truth(),
+                voltage_status: legacy_unavailable_truth(),
+                current_status: legacy_unavailable_truth(),
+                chip_temp_status: legacy_unavailable_truth(),
+                vr_temp_status: legacy_unavailable_truth(),
+                fan_rpm_status: legacy_unavailable_truth(),
             };
         }
 
@@ -239,6 +255,41 @@ impl SafeTelemetrySnapshot {
         };
         snapshot.evidence = report.evidence;
         snapshot
+    }
+
+    /// Projects stored observation truth separately from numeric compatibility values.
+    #[must_use]
+    pub fn from_observations(observations: &TelemetryObservations) -> Self {
+        let all_fresh = observations.power_watts.is_fresh()
+            && observations.bus_voltage_volts.is_fresh()
+            && observations.current_amps.is_fresh()
+            && observations.chip_temp_celsius.is_fresh()
+            && observations.vr_temp_celsius.is_fresh()
+            && observations.fan_rpm.is_fresh();
+
+        Self {
+            status: if all_fresh {
+                SafetyTelemetryStatus::Fresh
+            } else {
+                SafetyTelemetryStatus::Unavailable {
+                    reason: "observation_truth_not_all_fresh",
+                }
+            },
+            evidence: SafetyCriticalEvidence::Missing,
+            power_watts: fresh_f64(&observations.power_watts),
+            voltage_volts: fresh_f64(&observations.bus_voltage_volts),
+            current_amps: fresh_f64(&observations.current_amps),
+            chip_temp_celsius: fresh_f64(&observations.chip_temp_celsius),
+            vr_temp_celsius: fresh_f64(&observations.vr_temp_celsius),
+            fan_rpm: fresh_u16(&observations.fan_rpm),
+            power_status: (&observations.power_watts).into(),
+            voltage_status: (&observations.bus_voltage_volts).into(),
+            current_status: (&observations.current_amps).into(),
+            chip_temp_status: (&observations.chip_temp_celsius).into(),
+            vr_temp_status: (&observations.vr_temp_celsius).into(),
+            fan_rpm_status: (&observations.fan_rpm).into(),
+            ..Self::zero_compatible()
+        }
     }
 
     const fn zero_compatible() -> Self {
@@ -260,17 +311,57 @@ impl SafeTelemetrySnapshot {
             fan_rpm: 0,
             fan2_rpm: 0,
             wifi_rssi_dbm: -90,
+            power_status: legacy_unavailable_truth(),
+            voltage_status: legacy_unavailable_truth(),
+            current_status: legacy_unavailable_truth(),
+            chip_temp_status: legacy_unavailable_truth(),
+            vr_temp_status: legacy_unavailable_truth(),
+            fan_rpm_status: legacy_unavailable_truth(),
         }
     }
+}
+
+const fn legacy_unavailable_truth() -> ObservationTruthWire {
+    ObservationTruthWire {
+        state: ObservationStateWire::Unavailable,
+        stamp: None,
+        reason: Some(ObservationReasonWire::Unavailable(
+            UnavailableReason::ProducerUnavailable,
+        )),
+    }
+}
+
+fn fresh_f64(observation: &Observation<f64>) -> f64 {
+    if !observation.is_fresh() {
+        return 0.0;
+    }
+
+    observation
+        .maybe_last_good()
+        .map_or(0.0, |sample| *sample.value())
+}
+
+fn fresh_u16(observation: &Observation<u16>) -> u16 {
+    if !observation.is_fresh() {
+        return 0;
+    }
+
+    observation
+        .maybe_last_good()
+        .map_or(0, |sample| *sample.value())
 }
 
 #[cfg(test)]
 mod tests {
     use bitaxe_safety::evidence::SafetyCriticalEvidence;
+    use bitaxe_safety::observation::{
+        BootSessionId, FaultReason, MonotonicMillis, Observation, ObservationSequence, StaleReason,
+        UnavailableReason,
+    };
 
     use crate::{
-        ApiSnapshot, ConfigSnapshot, SafeTelemetrySnapshot, SafetyTelemetryReport,
-        SafetyTelemetryStatus,
+        ApiSnapshot, ConfigSnapshot, ObservationStateWire, SafeTelemetrySnapshot,
+        SafetyTelemetryReport, SafetyTelemetryStatus, TelemetryObservations,
     };
 
     #[test]
@@ -348,6 +439,77 @@ mod tests {
         assert_eq!(snapshot.current_amps, 2.25);
         assert_eq!(snapshot.chip_temp_celsius, 56.0);
         assert_eq!(snapshot.fan_rpm, 3_200);
+    }
+
+    #[test]
+    fn safety_telemetry_projection_compatibility_zero_does_not_authenticate_truth() {
+        // Arrange
+        let unavailable = TelemetryObservations::default();
+        let fresh_zero = TelemetryObservations {
+            power_watts: fresh_f64_observation(0.0, 1),
+            ..TelemetryObservations::default()
+        };
+
+        // Act
+        let unavailable_projection = SafeTelemetrySnapshot::from_observations(&unavailable);
+        let fresh_projection = SafeTelemetrySnapshot::from_observations(&fresh_zero);
+
+        // Assert
+        assert_eq!(unavailable_projection.power_watts, 0.0);
+        assert_eq!(fresh_projection.power_watts, 0.0);
+        assert_eq!(
+            unavailable_projection.power_status.state,
+            ObservationStateWire::Unavailable
+        );
+        assert_eq!(
+            fresh_projection.power_status.state,
+            ObservationStateWire::Fresh
+        );
+    }
+
+    #[test]
+    fn safety_telemetry_projection_preserves_mixed_independent_states() {
+        // Arrange
+        let fresh_power = fresh_f64_observation(10.0, 1);
+        let stale_voltage = fresh_f64_observation(5.0, 2)
+            .mark_stale(StaleReason::PowerSampleStale)
+            .expect("fresh voltage can become stale");
+        let unavailable_current =
+            Observation::unavailable(UnavailableReason::PowerSampleUnavailable);
+        let fault_temperature =
+            Observation::<f64>::unavailable(UnavailableReason::ThermalReadingUnavailable)
+                .record_fault(FaultReason::ThermalReadingInvalid);
+        let fresh_vr = fresh_f64_observation(42.0, 3);
+        let fresh_fan = fresh_u16_observation(3_200, 4);
+        let observations = TelemetryObservations {
+            power_watts: fresh_power,
+            bus_voltage_volts: stale_voltage,
+            current_amps: unavailable_current,
+            chip_temp_celsius: fault_temperature,
+            vr_temp_celsius: fresh_vr,
+            fan_rpm: fresh_fan,
+        };
+
+        // Act
+        let projection = SafeTelemetrySnapshot::from_observations(&observations);
+
+        // Assert
+        assert_eq!(projection.power_status.state, ObservationStateWire::Fresh);
+        assert_eq!(projection.voltage_status.state, ObservationStateWire::Stale);
+        assert_eq!(
+            projection.current_status.state,
+            ObservationStateWire::Unavailable
+        );
+        assert_eq!(
+            projection.chip_temp_status.state,
+            ObservationStateWire::Fault
+        );
+        assert_eq!(projection.vr_temp_status.state, ObservationStateWire::Fresh);
+        assert_eq!(projection.fan_rpm_status.state, ObservationStateWire::Fresh);
+        assert_eq!(projection.power_watts, 10.0);
+        assert_eq!(projection.voltage_volts, 0.0);
+        assert_eq!(projection.vr_temp_celsius, 42.0);
+        assert_eq!(projection.fan_rpm, 3_200);
     }
 
     #[test]
@@ -431,5 +593,27 @@ mod tests {
             fan2_rpm: 0,
             wifi_rssi_dbm: -50,
         }
+    }
+
+    fn fresh_f64_observation(value: f64, prior_sequence: u64) -> Observation<f64> {
+        Observation::record_success(
+            value,
+            BootSessionId::new(7),
+            ObservationSequence::new(prior_sequence),
+            MonotonicMillis::new(250),
+        )
+        .expect("fixture sequence should advance")
+        .0
+    }
+
+    fn fresh_u16_observation(value: u16, prior_sequence: u64) -> Observation<u16> {
+        Observation::record_success(
+            value,
+            BootSessionId::new(7),
+            ObservationSequence::new(prior_sequence),
+            MonotonicMillis::new(250),
+        )
+        .expect("fixture sequence should advance")
+        .0
     }
 }
