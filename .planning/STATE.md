@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-stopped_at: Completed 28.1.1-15-PLAN.md
-last_updated: "2026-07-13T06:29:24.068Z"
+status: ready_to_plan
+stopped_at: Closed Phase 28.1.1 — Won't Do (unresolved)
+last_updated: "2026-07-13T14:06:46Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 18
-  completed_phases: 16
+  completed_phases: 17
   total_plans: 74
-  completed_plans: 73
-  percent: 99
+  completed_plans: 74
+  percent: 100
 ---
 
 # Project State
@@ -20,13 +20,21 @@ Last activity: 2026-07-13
 
 ## Current Position
 
-Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — EXECUTING
-Plan: 10 of 11
+Phase: 30 (live-share-outcome-and-verified-promotion) — READY TO DISCUSS
+Plan: 0 planned
 
 - **Phase:** 30 — Live Share Outcome And Verified Promotion
-- **Plan:** 0/4 — Not planned
-- **Status:** Executing Phase 28.1.1
-- **Next step:** Execute Plan 16's one-shot non-invasive native-USB qualification and conditional fresh formal chain from the clean Plan 15 HEAD
+- **Plan:** 0 planned
+- **Status:** Phase 28.1.1 closed — Won't Do (unresolved); Phase 30 is next
+- **Next step:** Discuss Phase 30's conservative disposition. Do not promote STR-09, ASIC-11, or CFG-07 unless new eligible share-outcome evidence is introduced.
+
+## Decisions (Phase 28.1.1 Closure)
+
+- User directed deliberate closure as `Closed — Won't Do (unresolved)` so later phases can proceed.
+- Plan 16 is administratively accounted for without execution after its one-shot preflight ended `preflight_identity_unavailable`; no retry or physical action occurred, and cleanup completed.
+- Phase 28.1.1 remains `gaps_found` at 6/12. Firmware nonce production, hashing-capable state, correlated BM1366 result, and accepted/rejected live share remain unverified.
+- STR-09, ASIC-11, and CFG-07 remain pending. Phase 30 is the next roadmap phase, but verified promotion remains evidence-gated.
+- Do not resume Plan 16 or treat this closure as parity evidence.
 
 ## Decisions (Phase 28.1.1 Plan 15)
 
@@ -152,6 +160,7 @@ Plan: 10 of 11
 |---|-------------|------|--------|--------|-----------|
 | 260712-0a9 | Always-on serial runtime heartbeat and Plan 13 fallback validation | 2026-07-12 | a38bb0f | Software verified; hardware transport blocked | [260712-0a9-implement-the-always-on-serial-only-runt](./quick/260712-0a9-implement-the-always-on-serial-only-runt/) |
 | 260712-pw5 | Persist direct-UART and pin-manipulation authorization rule | 2026-07-12 | this commit | Plan 14 hardware cancelled; non-invasive replanning required | [260712-pw5-persist-repo-rule-prohibiting-assumed-di](./quick/260712-pw5-persist-repo-rule-prohibiting-assumed-di/) |
+| 260713-p28 | Close Phase 28.1.1 without claiming unresolved parity | 2026-07-13 | this commit | Closed — Won't Do (unresolved); Phase 30 next | — |
 
 ## Decisions (Phase 28.1.1.5)
 
@@ -175,5 +184,5 @@ Plan: 10 of 11
 
 ## Session
 
-- **Stopped at:** Completed 28.1.1-15-PLAN.md
-- **Resume:** Execute `28.1.1-16-PLAN.md` from the clean exact Plan 15 HEAD. Use only barrel power and native USB; dormant UART tooling remains unauthorized.
+- **Stopped at:** Closed Phase 28.1.1 — Won't Do (unresolved)
+- **Resume:** Discuss Phase 30's conservative disposition; preserve the evidence gate and pending STR-09, ASIC-11, and CFG-07 requirements.

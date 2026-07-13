@@ -183,7 +183,7 @@ Plans:
 | 27. Live Hardware ASIC And Stratum Bridge | v1.1 | 4/4 | Complete   | 2026-07-05 |
 | 28. Hardware Evidence And Checklist Promotion | v1.1 | 3/3 | Complete   | 2026-07-06 |
 | 28.1. Live Mining Blocker Fix (H4/W13 + Probes) | v1.1 | 5/5 | Complete    | 2026-07-07 |
-| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 10/11 | In Progress|  |
+| 28.1.1. BM1366 Nonce Production Wire Parity | v1.1 | 10/11 | Closed — Won't Do (Unresolved) | 2026-07-13 |
 | 28.1.1.1. BM1366 Upstream Golden Comparator And Nonce-Production Gap Reconciliation | v1.1 | 5/5 | Gaps Found | 2026-07-08 |
 | 28.1.1.2. BM1366 Result-Path And ASIC Side-Effect Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
 | 28.1.1.3. BM1366 Result RX Acquisition Model Nonce-Production Diagnosis | v1.1 | 4/4 | Gaps Found | 2026-07-09 |
@@ -217,7 +217,7 @@ Plans:
 **Goal:** Fix `firmware-nonce-production` by diffing upstream golden UART bytes against Rust TX, correcting init/job wire divergences, and verifying `result_correlated` plus live accepted/rejected shares on Ultra 205.
 **Depends on:** Phase 28.1
 **Requirements:** STR-09, CFG-07 (blocker closure)
-**Plans:** 10/11 plans executed
+**Plans:** 11/11 accounted for (10 executed; Plan 16 closed without execution)
 
 Plans:
 - [x] 28.1.1-06-PLAN.md — Typed accepted-state snapshots, classification, and closed redacted comparator
@@ -230,9 +230,9 @@ Plans:
 - [x] 28.1.1-13-PLAN.md — Superseded without execution after native-USB transport/identity assumptions were invalidated; Plan 14 owns the single replacement chain
 - [x] 28.1.1-14-PLAN.md — Software-only terminal: receive-only tooling verified and preserved dormant; direct-UART fixture, qualification, and formal hardware closure cancelled before hardware
 - [x] 28.1.1-15-PLAN.md — Closed native-USB schema-v2 qualification, one-shot product-empty formal handoff, and read-only terminal verification
-- [ ] 28.1.1-16-PLAN.md — One bounded native-USB qualification and conditional fresh same-chain formal hardware closure
+- [x] 28.1.1-16-PLAN.md — Closed without execution after the one-shot preflight ended `preflight_identity_unavailable`; no retry or physical action occurred
 
-**Gaps found:** Plan 11 closes accepted-state completeness, replay timing, measured USB absence, deadline validation, process-tree cleanup, unavailable precedence, and promoted-evidence denylist defects. Its strict five-stage candidate became stale after the polling compatibility fix; the `d275a0e` hardware-attempt checkpoint expired, and a mistakenly invoked post-expiry detector result is invalid and unpromoted. Independent review fix `ab7f5b9` is host-only and further prevents reuse of older package/checkpoint identities. Plan 14 verified software through `ff127df7121f1251d5cf7359c1488128e6a62d17`, but the user rejected assumed direct UART/pin manipulation; no fixture, schema-v3 qualification, or formal Plan 13 hardware chain ran, and that tooling is dormant. Plan 15 closes the non-invasive native-USB transport qualification and one-shot formal-entry software authority without hardware use. Plan 16 still must produce one real qualification and, only if it passes, one fresh same-chain formal result. No eligible physical lifecycle pair, correlated result, hashing-class rise, or accepted/rejected share exists yet, and Phase 30 promotion remains pending.
+**Closure:** Closed — Won't Do (unresolved) by user decision on 2026-07-13. This is an administrative terminal, not a successful verification or requirements promotion. Plan 16's one-shot preflight ended `preflight_identity_unavailable` before any physical action, cleanup completed, and the no-retry contract was preserved. No eligible physical lifecycle pair, correlated result, hashing-class rise, or accepted/rejected share exists. The existing `gaps_found` verification and exact non-claims remain authoritative; STR-09, ASIC-11, and CFG-07 stay pending, and Phase 30 promotion remains evidence-gated.
 
 ### Phase 28.1.1.1: BM1366 upstream golden comparator and nonce-production gap reconciliation (INSERTED)
 
