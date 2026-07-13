@@ -40,10 +40,28 @@ write_fake_parity() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-printf 'fake_operator_evidence_args: %s\n' "$*"
+profile="none"
+while [[ $# -gt 0 ]]; do
+	if [[ "$1" == "--profile" ]]; then
+		profile="${2:-missing}"
+		break
+	fi
+	shift
+done
+printf 'command=operator-evidence profile=%s\n' "$profile" >>"${PHASE23_FAKE_PARITY_TRACE:?}"
 printf 'operator_evidence_status: passed\n'
 SH
 	chmod +x "$path"
+}
+
+assert_operator_trace() {
+	local trace_path="$1"
+
+	assert_contains "$trace_path" "command=operator-evidence profile=phase23"
+	if [[ "$(wc -l <"$trace_path" | tr -d ' ')" -ne 1 ]]; then
+		printf 'Phase 23 operator validation must run exactly once\n' >&2
+		exit 1
+	fi
 }
 
 write_failing_detector() {
@@ -78,9 +96,12 @@ assert_all_slots_exist() {
 run_blocked_mode_test() {
 	local fake_parity="${tmp_root}/fake-parity.sh"
 	local evidence_root="${tmp_root}/blocked-root"
+	local trace_path="${tmp_root}/blocked.trace"
 	write_fake_parity "$fake_parity"
 
-	PHASE23_PARITY_COMMAND="$fake_parity" "$wrapper" \
+	PHASE23_PARITY_COMMAND="$fake_parity" \
+	PHASE23_FAKE_PARITY_TRACE="$trace_path" \
+		"$wrapper" \
 		--evidence-root "$evidence_root" \
 		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
 		--mode blocked \
@@ -105,17 +126,20 @@ run_blocked_mode_test() {
 		assert_not_contains "$slot" "raw_bm1366_frame"
 		assert_not_contains "$slot" "192.0.2.55"
 	done
+	assert_operator_trace "$trace_path"
 }
 
 run_detector_failure_test() {
 	local fake_parity="${tmp_root}/fake-parity-detector.sh"
 	local fake_detector="${tmp_root}/fake-detect-ultra205.sh"
 	local evidence_root="${tmp_root}/detector-root"
+	local trace_path="${tmp_root}/detector.trace"
 	write_fake_parity "$fake_parity"
 	write_failing_detector "$fake_detector"
 
 	set +e
 	PHASE23_PARITY_COMMAND="$fake_parity" \
+	PHASE23_FAKE_PARITY_TRACE="$trace_path" \
 	PHASE23_DETECT_COMMAND="$fake_detector" \
 	PHASE23_DETECT_MUST_FAIL=1 \
 		"$wrapper" \
@@ -135,6 +159,7 @@ run_detector_failure_test() {
 	assert_contains "${evidence_root}/board-info.md" "slot_status: blocked"
 	assert_contains "${evidence_root}/detector.md" "just detect-ultra205"
 	assert_contains "${evidence_root}/board-info.md" "Board-info blocked"
+	assert_operator_trace "$trace_path"
 }
 
 run_blocked_mode_test

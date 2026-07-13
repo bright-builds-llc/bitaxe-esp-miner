@@ -51,10 +51,75 @@ write_fake_parity() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-printf 'fake_phase27_parity_args: %s\n' "$*"
-printf 'mining_allow_status: passed\n'
+command_name="${1:-missing}"
+profile="none"
+evidence_root=""
+arguments=("$@")
+for ((index = 0; index < ${#arguments[@]}; index += 1)); do
+	case "${arguments[$index]}" in
+	--profile)
+		profile="${arguments[$((index + 1))]:-missing}"
+		;;
+	--evidence-root)
+		evidence_root="${arguments[$((index + 1))]:-}"
+		;;
+	--manifest)
+		if [[ -z "$evidence_root" ]]; then
+			evidence_root="$(dirname "${arguments[$((index + 1))]:-}")"
+		fi
+		;;
+	esac
+done
+
+if [[ "$command_name" == "complete-operator-evidence" && -n "$evidence_root" ]]; then
+	mkdir -p "$evidence_root"
+	for slot in package detector board-info command log api websocket share-outcome safe-stop redaction-review conclusion; do
+		[[ -f "${evidence_root}/${slot}.md" ]] || : >"${evidence_root}/${slot}.md"
+	done
+fi
+
+slots_status="incomplete"
+if [[ -n "$evidence_root" ]]; then
+	slots_status="complete"
+	for slot in package detector board-info command log api websocket share-outcome safe-stop redaction-review conclusion; do
+		if [[ ! -f "${evidence_root}/${slot}.md" ]]; then
+			slots_status="incomplete"
+			break
+		fi
+	done
+fi
+
+printf 'command=%s profile=%s slots=%s\n' "$command_name" "$profile" "$slots_status" >>"${PHASE27_FAKE_PARITY_TRACE:?}"
+case "$command_name" in
+complete-operator-evidence) exit "${PHASE27_FAKE_COMPLETE_EXIT:-0}" ;;
+mining-allow) exit "${PHASE27_FAKE_MINING_EXIT:-0}" ;;
+operator-evidence) exit "${PHASE27_FAKE_OPERATOR_EXIT:-0}" ;;
+*) exit 99 ;;
+esac
 SH
 	chmod +x "$path"
+}
+
+assert_trace_sequence() {
+	local trace_path="$1"
+	local expected="$2"
+	local actual
+	actual="$(<"$trace_path")"
+
+	if [[ "$actual" != "$expected" ]]; then
+		printf 'unexpected Phase 27 parity trace\nexpected:\n%s\nactual:\n%s\n' "$expected" "$actual" >&2
+		exit 1
+	fi
+}
+
+assert_nonzero_status() {
+	local status="$1"
+	local scenario="$2"
+
+	if [[ "$status" -eq 0 ]]; then
+		printf '%s should exit non-zero\n' "$scenario" >&2
+		exit 1
+	fi
 }
 
 write_fake_detector() {
@@ -166,7 +231,7 @@ assert_required_evidence_slots_exist() {
 	local evidence_root="$1"
 	local slot
 
-	for slot in share-outcome summary detector board-info command redaction-review conclusion; do
+	for slot in package detector board-info command log api websocket share-outcome safe-stop redaction-review conclusion; do
 		assert_file_exists "${evidence_root}/${slot}.md"
 	done
 }
@@ -221,9 +286,12 @@ run_required_args_test() {
 run_blocked_mode_test() {
 	local fake_parity="${tmp_root}/fake-parity.sh"
 	local evidence_root="${tmp_root}/blocked-root"
+	local trace_path="${tmp_root}/blocked.trace"
 	write_fake_parity "$fake_parity"
 
+	set +e
 	PHASE27_PARITY_COMMAND="$fake_parity" \
+	PHASE27_FAKE_PARITY_TRACE="$trace_path" \
 	PHASE27_RAW_DIAGNOSTIC_SAMPLE="sentinel-pool sentinel-password sentinel-share sentinel-extra sentinel-token raw_bm1366_frame 192.0.2.55 bc1qsentinelowneraddress" \
 	"$wrapper" \
 		--evidence-root "$evidence_root" \
@@ -232,8 +300,11 @@ run_blocked_mode_test() {
 		--pool-credentials "${tmp_root}/sentinel-pool.invalid.json" \
 		--wifi-credentials "${tmp_root}/SentinelWifi.json" \
 		--redact-evidence=true \
-		--duration-seconds 60 >"${tmp_root}/blocked.stdout"
+		--duration-seconds 60 >"${tmp_root}/blocked.stdout" 2>"${tmp_root}/blocked.stderr"
+	local status=$?
+	set -e
 
+	assert_nonzero_status "$status" "blocked mode"
 	assert_required_evidence_slots_exist "$evidence_root"
 	assert_contains "${evidence_root}/command.md" "pool_config: local-owner-supplied"
 	assert_contains "${evidence_root}/command.md" "wifi_config: local-owner-supplied"
@@ -254,6 +325,7 @@ run_blocked_mode_test() {
 	assert_manifest_shape "${evidence_root}/mining-allow.json"
 	assert_evidence_is_redacted "$evidence_root"
 	assert_contains "${tmp_root}/blocked.stdout" "phase27_evidence_status=blocked_safe_prerequisite"
+	assert_trace_sequence "$trace_path" $'command=complete-operator-evidence profile=phase27 slots=complete\ncommand=mining-allow profile=none slots=complete\ncommand=operator-evidence profile=phase27 slots=complete'
 }
 
 run_hardware_ready_invokes_live_capture_test() {
@@ -265,6 +337,7 @@ run_hardware_ready_invokes_live_capture_test() {
 	local manifest_path="${tmp_root}/bitaxe-ultra205-package.json"
 	local factory_image="${tmp_root}/bitaxe-ultra205-factory.bin"
 	local evidence_root="${tmp_root}/hardware-ready-root"
+	local trace_path="${tmp_root}/hardware-ready.trace"
 	write_fake_parity "$fake_parity"
 	write_fake_detector_with_port "$fake_detector"
 	write_fake_board_info "$fake_board_info"
@@ -272,6 +345,7 @@ run_hardware_ready_invokes_live_capture_test() {
 	write_fake_live_capture "$fake_live_capture" "$fake_live_capture_args" "accepted"
 
 	PHASE27_PARITY_COMMAND="$fake_parity" \
+	PHASE27_FAKE_PARITY_TRACE="$trace_path" \
 	PHASE27_DETECT_COMMAND="$fake_detector" \
 	PHASE27_BOARD_INFO_COMMAND="$fake_board_info" \
 	PHASE27_LIVE_CAPTURE_COMMAND="$fake_live_capture" \
@@ -296,6 +370,7 @@ run_hardware_ready_invokes_live_capture_test() {
 	assert_contains "${evidence_root}/summary.md" "asic_bridge_status: result_correlated"
 	assert_contains "${tmp_root}/hardware-ready.stdout" "phase27_evidence_status=accepted"
 	assert_not_contains "${evidence_root}/summary.md" "sentinel-pool"
+	assert_trace_sequence "$trace_path" $'command=complete-operator-evidence profile=phase27 slots=complete\ncommand=mining-allow profile=none slots=complete\ncommand=operator-evidence profile=phase27 slots=complete'
 }
 
 run_hardware_missing_prerequisites_skips_live_capture_test() {
@@ -307,13 +382,16 @@ run_hardware_missing_prerequisites_skips_live_capture_test() {
 	local manifest_path="${tmp_root}/bitaxe-ultra205-package.json"
 	local factory_image="${tmp_root}/bitaxe-ultra205-factory.bin"
 	local evidence_root="${tmp_root}/hardware-missing-prereqs-root"
+	local trace_path="${tmp_root}/hardware-missing-prereqs.trace"
 	write_fake_parity "$fake_parity"
 	write_fake_detector_with_port "$fake_detector"
 	write_fake_board_info "$fake_board_info"
 	write_fake_package_manifest "$manifest_path" "$factory_image"
 	write_fake_live_capture "$fake_live_capture" "$fake_live_capture_args" "accepted"
 
+	set +e
 	PHASE27_PARITY_COMMAND="$fake_parity" \
+	PHASE27_FAKE_PARITY_TRACE="$trace_path" \
 	PHASE27_DETECT_COMMAND="$fake_detector" \
 	PHASE27_BOARD_INFO_COMMAND="$fake_board_info" \
 	PHASE27_LIVE_CAPTURE_COMMAND="$fake_live_capture" \
@@ -321,25 +399,31 @@ run_hardware_missing_prerequisites_skips_live_capture_test() {
 	"$wrapper" \
 		--evidence-root "$evidence_root" \
 		--manifest "$manifest_path" \
-		--mode hardware >"${tmp_root}/hardware-missing-prereqs.stdout"
+		--mode hardware >"${tmp_root}/hardware-missing-prereqs.stdout" 2>"${tmp_root}/hardware-missing-prereqs.stderr"
+	local status=$?
+	set -e
 
+	assert_nonzero_status "$status" "missing prerequisites"
 	if [[ -e "$fake_live_capture_args" ]]; then
 		printf 'live capture helper must not run when prerequisites are missing\n' >&2
 		exit 1
 	fi
 	assert_contains "${evidence_root}/share-outcome.md" "share_outcome: blocked_safe_prerequisite"
 	assert_contains "${tmp_root}/hardware-missing-prereqs.stdout" "phase27_evidence_status=blocked_safe_prerequisite"
+	assert_trace_sequence "$trace_path" $'command=complete-operator-evidence profile=phase27 slots=complete\ncommand=mining-allow profile=none slots=complete\ncommand=operator-evidence profile=phase27 slots=complete'
 }
 
 run_detector_failure_test() {
 	local fake_parity="${tmp_root}/fake-parity-detector.sh"
 	local fake_detector="${tmp_root}/fake-detect-ultra205.sh"
 	local evidence_root="${tmp_root}/detector-root"
+	local trace_path="${tmp_root}/detector.trace"
 	write_fake_parity "$fake_parity"
 	write_fake_detector "$fake_detector"
 
 	set +e
 	PHASE27_PARITY_COMMAND="$fake_parity" \
+	PHASE27_FAKE_PARITY_TRACE="$trace_path" \
 	PHASE27_DETECT_COMMAND="$fake_detector" \
 	PHASE27_FAKE_DETECT_EXIT=42 \
 	"$wrapper" \
@@ -349,10 +433,7 @@ run_detector_failure_test() {
 	local status=$?
 	set -e
 
-	if [[ "$status" -eq 0 ]]; then
-		printf 'hardware mode detector failure should exit non-zero\n' >&2
-		exit 1
-	fi
+	assert_nonzero_status "$status" "hardware mode detector failure"
 
 	assert_required_evidence_slots_exist "$evidence_root"
 	assert_contains "${tmp_root}/detector.stderr" "phase27_detector_status=blocked"
@@ -361,6 +442,65 @@ run_detector_failure_test() {
 	assert_contains "${evidence_root}/share-outcome.md" "share_outcome: blocked_safe_prerequisite"
 	assert_contains "${evidence_root}/summary.md" "package_artifact_status: not-run"
 	assert_evidence_is_redacted "$evidence_root"
+	assert_trace_sequence "$trace_path" $'command=complete-operator-evidence profile=phase27 slots=complete\ncommand=operator-evidence profile=phase27 slots=complete'
+}
+
+run_failure_precedence_tests() {
+	local scenario
+	for scenario in completion mining operator prior-workflow; do
+		local fake_parity="${tmp_root}/fake-parity-${scenario}.sh"
+		local fake_detector="${tmp_root}/fake-detector-${scenario}.sh"
+		local fake_board_info="${tmp_root}/fake-board-info-${scenario}.sh"
+		local fake_live_capture="${tmp_root}/fake-live-capture-${scenario}.sh"
+		local fake_live_capture_args="${tmp_root}/fake-live-capture-${scenario}.args"
+		local manifest_path="${tmp_root}/manifest-${scenario}/bitaxe-ultra205-package.json"
+		local factory_image="${tmp_root}/manifest-${scenario}/bitaxe-ultra205-factory.bin"
+		local evidence_root="${tmp_root}/failure-${scenario}-root"
+		local trace_path="${tmp_root}/failure-${scenario}.trace"
+		local complete_exit=0
+		local mining_exit=0
+		local operator_exit=0
+		local live_exit=0
+
+		case "$scenario" in
+		completion) complete_exit=41 ;;
+		mining) mining_exit=42 ;;
+		operator) operator_exit=43 ;;
+		prior-workflow) live_exit=44 ;;
+		esac
+
+		write_fake_parity "$fake_parity"
+		write_fake_detector_with_port "$fake_detector"
+		write_fake_board_info "$fake_board_info"
+		write_fake_package_manifest "$manifest_path" "$factory_image"
+		write_fake_live_capture "$fake_live_capture" "$fake_live_capture_args" "accepted"
+
+		set +e
+		PHASE27_PARITY_COMMAND="$fake_parity" \
+		PHASE27_FAKE_PARITY_TRACE="$trace_path" \
+		PHASE27_FAKE_COMPLETE_EXIT="$complete_exit" \
+		PHASE27_FAKE_MINING_EXIT="$mining_exit" \
+		PHASE27_FAKE_OPERATOR_EXIT="$operator_exit" \
+		PHASE27_DETECT_COMMAND="$fake_detector" \
+		PHASE27_BOARD_INFO_COMMAND="$fake_board_info" \
+		PHASE27_LIVE_CAPTURE_COMMAND="$fake_live_capture" \
+		PHASE27_FAKE_LIVE_CAPTURE_ARGS="$fake_live_capture_args" \
+		PHASE27_FAKE_SHARE_OUTCOME=accepted \
+		PHASE27_FAKE_LIVE_CAPTURE_EXIT="$live_exit" \
+		"$wrapper" \
+			--evidence-root "$evidence_root" \
+			--manifest "$manifest_path" \
+			--mode hardware \
+			--pool-credentials "${tmp_root}/sentinel-pool.invalid.json" \
+			--duration-seconds 60 \
+			--redact-evidence=true >"${tmp_root}/failure-${scenario}.stdout" 2>"${tmp_root}/failure-${scenario}.stderr"
+		local status=$?
+		set -e
+
+		assert_nonzero_status "$status" "$scenario failure"
+		assert_required_evidence_slots_exist "$evidence_root"
+		assert_trace_sequence "$trace_path" $'command=complete-operator-evidence profile=phase27 slots=complete\ncommand=mining-allow profile=none slots=complete\ncommand=operator-evidence profile=phase27 slots=complete'
+	done
 }
 
 scan_committed_artifacts_if_present() {
@@ -390,6 +530,7 @@ run_blocked_mode_test
 run_hardware_ready_invokes_live_capture_test
 run_hardware_missing_prerequisites_skips_live_capture_test
 run_detector_failure_test
+run_failure_precedence_tests
 scan_committed_artifacts_if_present
 
 printf 'phase27_live_hardware_bridge_evidence_test=passed\n'

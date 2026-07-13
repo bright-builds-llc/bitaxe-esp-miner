@@ -160,6 +160,8 @@ if [[ -n "$duration_seconds" ]]; then
 	duration_label="$duration_seconds"
 fi
 
+workflow_status="passed"
+mining_allow_applicable=0
 write_slot() {
 	local slot="$1"
 	local status="$2"
@@ -218,7 +220,6 @@ redaction_diagnostic_status() {
 
 	printf 'no_raw_diagnostic_input'
 }
-
 allowed_command_string() {
 	local command="scripts/phase25-live-stratum-evidence.sh --evidence-root ${evidence_root} --manifest ${manifest} --mode ${mode}"
 
@@ -237,7 +238,22 @@ allowed_command_string() {
 
 	printf '%s' "$command"
 }
-
+finalize_evidence() {
+	local completion_status=0
+	local mining_allow_status=0
+	local operator_status=0
+	set +e
+	${parity_command} complete-operator-evidence --profile phase25 --evidence-root "$evidence_root" --workflow-status "$workflow_status" >/dev/null
+	completion_status=$?
+	if [[ "$mining_allow_applicable" -eq 1 ]]; then
+		${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-stratum-runtime --allowed-command "$(allowed_command_string)" >/dev/null
+		mining_allow_status=$?
+	fi
+	${parity_command} operator-evidence --profile phase25 --evidence-root "$evidence_root" --require-redaction-passed >/dev/null
+	operator_status=$?
+	set -e
+	[[ "$workflow_status" == "passed" && "$completion_status" -eq 0 && "$mining_allow_status" -eq 0 && "$operator_status" -eq 0 ]]
+}
 write_allow_manifest() {
 	local path="${evidence_root}/mining-allow.json"
 	local detected_port="$1"
@@ -303,7 +319,6 @@ write_allow_manifest() {
 }
 EOF
 }
-
 write_redaction_review() {
 	local status
 	status="$(redaction_diagnostic_status)"
@@ -565,9 +580,9 @@ run_hardware_mode() {
 	if [[ "$detector_status" -ne 0 || -z "$maybe_detected_port" ]]; then
 		write_detector_failure_slots "detector_failed_or_ambiguous"
 		printf 'phase25_detector_status=blocked redacted=true\n' >&2
-		return 1
+		workflow_status="failed"
+		return 0
 	fi
-
 	set +e
 	local board_info_output
 	board_info_output="$($board_info_command --port "$maybe_detected_port" 2>&1)"
@@ -577,33 +592,37 @@ run_hardware_mode() {
 	if [[ "$board_info_status" -ne 0 ]]; then
 		write_full_blocked_slots "passed" "blocked" "board_info_failure"
 		printf 'phase25_board_info_status=blocked redacted=true\n' >&2
-		return 1
+		workflow_status="failed"
+		return 0
 	fi
-
 	if [[ -z "$pool_credentials" || -z "$device_url" ]]; then
 		write_full_blocked_slots "passed" "passed" "missing_live_prerequisites"
-		${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-stratum-runtime --allowed-command "$(allowed_command_string)" >/dev/null
+		workflow_status="blocked"
+		mining_allow_applicable=1
 		printf 'phase25_evidence_status=blocked_safe_prerequisite redacted=true\n'
 		return 0
 	fi
-
 	if run_live_capture_attempt "$maybe_detected_port"; then
 		write_live_capture_slots "$maybe_detected_port"
-		${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-stratum-runtime --allowed-command "$(allowed_command_string)" >/dev/null
+		workflow_status="passed"
+		mining_allow_applicable=1
 		printf 'phase25_evidence_status=live_submit_response_observed redacted=true\n'
 		return 0
 	fi
-
 	write_live_capture_not_observed_slots "$maybe_detected_port"
-	${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-stratum-runtime --allowed-command "$(allowed_command_string)" >/dev/null
+	workflow_status="failed"
+	mining_allow_applicable=1
 	printf 'phase25_evidence_status=blocked_safe_prerequisite redacted=true\n'
+	return 0
 }
-
 if [[ "$mode" == "hardware" ]]; then
 	run_hardware_mode
-	exit $?
+else
+	write_full_blocked_slots "blocked" "blocked" "blocked_mode_static_workflow"
+	workflow_status="blocked"
+	mining_allow_applicable=1
+	printf 'phase25_evidence_status=blocked_safe_prerequisite redacted=true\n'
 fi
-
-write_full_blocked_slots "blocked" "blocked" "blocked_mode_static_workflow"
-${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-stratum-runtime --allowed-command "$(allowed_command_string)" >/dev/null
-printf 'phase25_evidence_status=blocked_safe_prerequisite redacted=true\n'
+if ! finalize_evidence; then
+	exit 1
+fi

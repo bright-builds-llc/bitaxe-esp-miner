@@ -259,6 +259,7 @@ Phase 23 supports the redacted operator evidence workflow, required evidence-roo
 EOF
 }
 
+workflow_status=0
 if [[ "$mode" == "hardware" ]]; then
 	set +e
 	detector_output="$($detector_command 2>&1)"
@@ -267,9 +268,10 @@ if [[ "$mode" == "hardware" ]]; then
 	if [[ "$detector_status" -ne 0 || "$detector_output" != *"port="* ]]; then
 		write_common_slots "blocked" "blocked" "Detector failed or did not produce exactly one redaction-safe port category." "Board-info blocked because detector did not pass."
 		printf 'phase23_detector_status=blocked redacted=true\n' >&2
-		exit 1
+		workflow_status=1
+	else
+		write_common_slots "passed" "passed" "Detector passed for board 205; raw port details stay local to the run." "Board-info passed in the detector-gated session."
 	fi
-	write_common_slots "passed" "passed" "Detector passed for board 205; raw port details stay local to the run." "Board-info passed in the detector-gated session."
 else
 	write_common_slots "blocked" "blocked" "Blocked mode did not run hardware detection. Hardware runs must start with just detect-ultra205." "Board-info blocked because blocked mode is static workflow proof."
 fi
@@ -284,6 +286,13 @@ fi
 
 # Validator command is configurable so tests can avoid nested Bazel while the
 # operator workflow still routes through the repo-owned parity command by default.
-${parity_command} operator-evidence --evidence-root "$evidence_root" --require-redaction-passed
+set +e
+${parity_command} operator-evidence --profile phase23 --evidence-root "$evidence_root" --require-redaction-passed
+operator_status=$?
+set -e
+
+if [[ "$workflow_status" -ne 0 || "$operator_status" -ne 0 ]]; then
+	exit 1
+fi
 
 printf 'phase23_evidence_status=passed evidence_root=%s redacted=true\n' "$evidence_root"

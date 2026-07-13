@@ -132,6 +132,9 @@ if [[ -n "$redact_evidence" ]]; then
 	redaction_label="true"
 fi
 
+workflow_status="passed"
+mining_allow_applicable=0
+
 write_slot() {
 	local slot="$1"
 	local status="$2"
@@ -214,6 +217,29 @@ allowed_command_string() {
 	fi
 
 	printf '%s' "$command"
+}
+
+finalize_evidence() {
+	local completion_status
+	local mining_allow_status=0
+	local operator_status
+
+	set +e
+	${parity_command} complete-operator-evidence --profile phase27 --evidence-root "$evidence_root" --workflow-status "$workflow_status" >/dev/null
+	completion_status=$?
+	if [[ "$mining_allow_applicable" -eq 1 ]]; then
+		${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-hardware-bridge --allowed-command "$(allowed_command_string)" >/dev/null
+		mining_allow_status=$?
+	fi
+	${parity_command} operator-evidence --profile phase27 --evidence-root "$evidence_root" --require-redaction-passed >/dev/null
+	operator_status=$?
+	set -e
+
+	if [[ "$workflow_status" != "passed" || "$completion_status" -ne 0 || "$mining_allow_status" -ne 0 || "$operator_status" -ne 0 ]]; then
+		return 1
+	fi
+
+	return 0
 }
 
 write_allow_manifest() {
@@ -769,7 +795,8 @@ run_hardware_mode() {
 		if [[ "$detector_status" -ne 0 || -z "$maybe_detected_port" ]]; then
 			write_detector_failure_slots "detector_failed_or_ambiguous"
 			printf 'phase27_detector_status=blocked redacted=true\n' >&2
-			return 1
+			workflow_status="failed"
+			return 0
 		fi
 	else
 		printf 'phase27_detector_status=explicit_port redacted=true\n' >&2
@@ -784,35 +811,44 @@ run_hardware_mode() {
 	if [[ "$board_info_status" -ne 0 ]]; then
 		write_blocked_evidence "passed" "blocked" "board_info_failure"
 		printf 'phase27_board_info_status=blocked redacted=true\n' >&2
-		return 1
+		workflow_status="failed"
+		return 0
 	fi
 
 	if [[ -z "$pool_credentials" ]]; then
 		write_blocked_evidence "passed" "passed" "missing_live_prerequisites"
-		${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-hardware-bridge --allowed-command "$(allowed_command_string)" >/dev/null
+		workflow_status="blocked"
+		mining_allow_applicable=1
 		printf 'phase27_evidence_status=blocked_safe_prerequisite redacted=true\n'
 		return 0
 	fi
 
 	if run_live_capture_attempt "$maybe_detected_port"; then
 		write_live_capture_slots "$maybe_detected_port" "$live_capture_share_outcome" "$live_capture_asic_bridge_status"
-		${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-hardware-bridge --allowed-command "$(allowed_command_string)" >/dev/null
+		workflow_status="passed"
+		mining_allow_applicable=1
 		printf 'phase27_evidence_status=%s redacted=true\n' "$live_capture_share_outcome"
 		return 0
 	fi
 
 	write_live_capture_not_observed_slots "$maybe_detected_port"
+	workflow_status="failed"
 	if [[ "${live_capture_safe_stop_status:-blocked}" == "complete" ]]; then
-		${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-hardware-bridge --allowed-command "$(allowed_command_string)" >/dev/null
+		mining_allow_applicable=1
 	fi
 	printf 'phase27_evidence_status=blocked_safe_prerequisite redacted=true\n'
+	return 0
 }
 
 if [[ "$mode" == "hardware" ]]; then
 	run_hardware_mode
-	exit $?
+else
+	write_blocked_evidence "blocked" "blocked" "blocked_mode_static_workflow"
+	workflow_status="blocked"
+	mining_allow_applicable=1
+	printf 'phase27_evidence_status=blocked_safe_prerequisite redacted=true\n'
 fi
 
-write_blocked_evidence "blocked" "blocked" "blocked_mode_static_workflow"
-${parity_command} mining-allow --manifest "${evidence_root}/mining-allow.json" --surface live-hardware-bridge --allowed-command "$(allowed_command_string)" >/dev/null
-printf 'phase27_evidence_status=blocked_safe_prerequisite redacted=true\n'
+if ! finalize_evidence; then
+	exit 1
+fi
