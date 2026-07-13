@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: executing
-stopped_at: Phase 28.1.1 context gathered
-last_updated: "2026-07-13T05:15:16.034Z"
+stopped_at: Completed 28.1.1-15-PLAN.md
+last_updated: "2026-07-13T06:29:24.068Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 18
@@ -21,12 +21,18 @@ Last activity: 2026-07-13
 ## Current Position
 
 Phase: 28.1.1 (bm1366-nonce-production-wire-parity) — EXECUTING
-Plan: 1 of 11
+Plan: 10 of 11
 
 - **Phase:** 30 — Live Share Outcome And Verified Promotion
 - **Plan:** 0/4 — Not planned
 - **Status:** Executing Phase 28.1.1
-- **Next step:** Discuss and plan Phase 30 only when accepted/rejected share-outcome evidence exists; otherwise continue a separately planned non-invasive blocker-closure path
+- **Next step:** Execute Plan 16's one-shot non-invasive native-USB qualification and conditional fresh formal chain from the clean Plan 15 HEAD
+
+## Decisions (Phase 28.1.1 Plan 15)
+
+- Only OS-native no-reset capture can produce a native qualification; zero-byte, mixed-identity, incomplete-replay, cleanup-leaking, unknown-field, and UART inputs fail closed.
+- Consume one qualification before creating a distinct formal authority on the same clean exact HEAD, carrying only contract and zero-resource handoff facts; qualification facts never populate product evidence.
+- Terminal verification is read-only and only `passed_same_chain_hardware` may carry a positive verification projection; requirements traceability and Phase 30 remain pending.
 
 ## Decisions (Phase 28.1.1 Plan 11)
 
@@ -138,6 +144,7 @@ Plan: 1 of 11
 | Phase 28.1.1 P10 | 39 min | 3 tasks | 14 files |
 | Phase 28.1.1 P11 | bounded continuation | 4 tasks | 19 files |
 | Phase 28.1.1 P12 | 33 min | 3 tasks | 10 files |
+| Phase 28.1.1 P15 | 1h 12m | 3 tasks | 12 files |
 
 ### Quick Tasks Completed
 
@@ -168,5 +175,5 @@ Plan: 1 of 11
 
 ## Session
 
-- **Stopped at:** Phase 28.1.1 context gathered
-- **Resume:** Discuss and plan Phase 30 only when accepted/rejected share-outcome evidence exists. Otherwise plan a new non-invasive Phase 28.1.1 gap path; do not resume Plan 14, install a fixture, or invoke dormant UART tooling without fresh explicit user authorization.
+- **Stopped at:** Completed 28.1.1-15-PLAN.md
+- **Resume:** Execute `28.1.1-16-PLAN.md` from the clean exact Plan 15 HEAD. Use only barrel power and native USB; dormant UART tooling remains unauthorized.
