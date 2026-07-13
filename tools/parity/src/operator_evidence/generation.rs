@@ -34,8 +34,6 @@ pub(crate) enum PromotionFailurePoint {
     BeforeStagingSync,
     BeforeExchange,
     AfterExchange,
-    DuringParentSync,
-    DuringRollback,
     DuringOldGenerationCleanup,
 }
 

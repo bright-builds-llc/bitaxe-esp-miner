@@ -13,6 +13,40 @@ use super::{
 };
 use crate::operator_evidence::OperatorEvidenceSlot;
 
+pub(super) trait PromotionFilesystem {
+    fn rename(&mut self, source: &Utf8Path, destination: &Utf8Path) -> GenerationResult<()>;
+    fn exchange(&mut self, left: &Utf8Path, right: &Utf8Path) -> GenerationResult<()>;
+    fn sync_directory(&mut self, path: &Utf8Path) -> GenerationResult<()>;
+    fn remove_directory(&mut self, path: &Utf8Path) -> GenerationResult<()>;
+}
+
+struct SystemPromotionFilesystem;
+
+impl PromotionFilesystem for SystemPromotionFilesystem {
+    fn rename(&mut self, source: &Utf8Path, destination: &Utf8Path) -> GenerationResult<()> {
+        fs::rename(source.as_std_path(), destination.as_std_path())
+            .map_err(|error| io_error(format!("failed to promote staging root {source}"), error))
+    }
+
+    fn exchange(&mut self, left: &Utf8Path, right: &Utf8Path) -> GenerationResult<()> {
+        atomic_exchange(left, right)
+    }
+
+    fn sync_directory(&mut self, path: &Utf8Path) -> GenerationResult<()> {
+        sync_directory(path)
+    }
+
+    fn remove_directory(&mut self, path: &Utf8Path) -> GenerationResult<()> {
+        fs::remove_dir_all(path.as_std_path())
+            .map_err(|error| io_error(format!("failed to remove generation {path}"), error))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum RollbackState {
+    PreviousGenerationRestored,
+}
+
 pub(super) fn validate_managed_destination(destination: &Utf8Path) -> GenerationResult<()> {
     if !destination.join(MANIFEST_FILE).is_file() {
         return Err(GenerationError::InvalidInput(format!(
@@ -50,26 +84,42 @@ pub(super) fn promote_staging(
     staging: &Utf8Path,
     options: ConsolidationOptions,
 ) -> GenerationResult<()> {
+    promote_staging_with_filesystem(
+        destination,
+        staging,
+        options,
+        &mut SystemPromotionFilesystem,
+    )
+}
+
+pub(super) fn promote_staging_with_filesystem(
+    destination: &Utf8Path,
+    staging: &Utf8Path,
+    options: ConsolidationOptions,
+    filesystem: &mut impl PromotionFilesystem,
+) -> GenerationResult<()> {
     let parent = destination.parent().ok_or_else(|| {
         GenerationError::InvalidInput("evidence destination has no parent".to_owned())
     })?;
     if !destination.exists() {
-        fs::rename(staging.as_std_path(), destination.as_std_path()).map_err(|source| {
-            io_error(format!("failed to promote staging root {staging}"), source)
-        })?;
-        return sync_directory(parent);
+        filesystem.rename(staging, destination)?;
+        return filesystem.sync_directory(parent);
     }
 
-    atomic_exchange(staging, destination)?;
-    if options.maybe_failure == Some(PromotionFailurePoint::AfterExchange)
-        || options.maybe_failure == Some(PromotionFailurePoint::DuringParentSync)
-        || options.maybe_failure == Some(PromotionFailurePoint::DuringRollback)
-    {
-        return rollback_exchange(destination, staging, parent, options);
+    filesystem.exchange(staging, destination)?;
+    let maybe_promotion_error =
+        if options.maybe_failure == Some(PromotionFailurePoint::AfterExchange) {
+            Some(GenerationError::Injected(
+                PromotionFailurePoint::AfterExchange,
+            ))
+        } else {
+            filesystem.sync_directory(parent).err()
+        };
+    if let Some(promotion_error) = maybe_promotion_error {
+        let promotion_detail = promotion_error.to_string();
+        rollback_exchange(destination, staging, parent, filesystem, &promotion_detail)?;
+        return Err(promotion_error);
     }
-    sync_directory(parent).or_else(|error| {
-        rollback_exchange(destination, staging, parent, options).and(Err(error))
-    })?;
 
     if options.maybe_failure == Some(PromotionFailurePoint::DuringOldGenerationCleanup) {
         return Err(GenerationError::RecoveryRequired {
@@ -78,43 +128,70 @@ pub(super) fn promote_staging(
             detail: "old-generation cleanup was not attempted after injected failure".to_owned(),
         });
     }
-    fs::remove_dir_all(staging.as_std_path())
-        .map_err(|source| io_error(format!("failed to remove old generation {staging}"), source))?;
-    sync_directory(parent)
+    filesystem
+        .remove_directory(staging)
+        .map_err(|error| GenerationError::RecoveryRequired {
+            destination: destination.to_owned(),
+            retained_old_generation: staging.to_owned(),
+            detail: format!(
+                "promotion is durable but old-generation cleanup failed; retained path is explicit: {error}"
+            ),
+        })?;
+    filesystem
+        .sync_directory(parent)
+        .map_err(|error| GenerationError::RecoveryRequired {
+            destination: destination.to_owned(),
+            retained_old_generation: staging.to_owned(),
+            detail: format!(
+                "promotion completed but old-generation cleanup durability is uncertain: {error}"
+            ),
+        })
 }
 
 pub(super) fn rollback_exchange(
     destination: &Utf8Path,
     staging: &Utf8Path,
     parent: &Utf8Path,
-    options: ConsolidationOptions,
-) -> GenerationResult<()> {
-    if options.maybe_failure == Some(PromotionFailurePoint::DuringRollback) {
-        return Err(GenerationError::RecoveryRequired {
-            destination: destination.to_owned(),
-            retained_old_generation: staging.to_owned(),
-            detail: "rollback failed; both complete generations retained".to_owned(),
-        });
-    }
-    atomic_exchange(destination, staging).map_err(|error| GenerationError::RecoveryRequired {
-        destination: destination.to_owned(),
-        retained_old_generation: staging.to_owned(),
-        detail: format!("rollback exchange failed: {error}"),
-    })?;
-    sync_directory(parent)?;
-    fs::remove_dir_all(staging.as_std_path()).map_err(|source| {
+    filesystem: &mut impl PromotionFilesystem,
+    promotion_failure: &str,
+) -> GenerationResult<RollbackState> {
+    filesystem.exchange(destination, staging).map_err(|error| {
         GenerationError::RecoveryRequired {
             destination: destination.to_owned(),
             retained_old_generation: staging.to_owned(),
-            detail: format!("rollback succeeded but staged replacement cleanup failed: {source}"),
+            detail: format!(
+                "promotion failed ({promotion_failure}); rollback exchange failed; both complete generations retained: {error}"
+            ),
         }
     })?;
-    sync_directory(parent)?;
-    Err(GenerationError::Injected(
-        options
-            .maybe_failure
-            .unwrap_or(PromotionFailurePoint::DuringParentSync),
-    ))
+    filesystem.sync_directory(parent).map_err(|error| {
+        GenerationError::RecoveryRequired {
+            destination: destination.to_owned(),
+            retained_old_generation: staging.to_owned(),
+            detail: format!(
+                "promotion failed ({promotion_failure}); previous generation is restored in the namespace but rollback durability is uncertain; both complete generations retained: {error}"
+            ),
+        }
+    })?;
+    filesystem.remove_directory(staging).map_err(|error| {
+        GenerationError::RecoveryRequired {
+            destination: destination.to_owned(),
+            retained_old_generation: staging.to_owned(),
+            detail: format!(
+                "promotion failed ({promotion_failure}); rollback is durable but replacement cleanup failed: {error}"
+            ),
+        }
+    })?;
+    filesystem.sync_directory(parent).map_err(|error| {
+        GenerationError::RecoveryRequired {
+            destination: destination.to_owned(),
+            retained_old_generation: staging.to_owned(),
+            detail: format!(
+                "promotion failed ({promotion_failure}); previous generation is restored but replacement cleanup durability is uncertain: {error}"
+            ),
+        }
+    })?;
+    Ok(RollbackState::PreviousGenerationRestored)
 }
 
 pub(super) fn atomic_exchange(left: &Utf8Path, right: &Utf8Path) -> GenerationResult<()> {
