@@ -6,9 +6,9 @@ package(default_visibility = ["//visibility:public"])
 exports_files([
     ".git/HEAD",
     ".git/logs/HEAD",
-    ".planning/REQUIREMENTS.md",
+    ".planning/milestones/v1.1-REQUIREMENTS.md",
     ".planning/milestones/v1.1-phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-VERIFICATION.md",
-    ".planning/phases/28.1-live-mining-blocker-fix-h4-w13-orchestration-parity-discrimi/28.1-VALIDATION.md",
+    ".planning/milestones/v1.1-phases/28.1-live-mining-blocker-fix-h4-w13-orchestration-parity-discrimi/28.1-VALIDATION.md",
     "Justfile",
     "docs/parity/evidence/phase-22-claim-ladder-and-safety-preconditions/claim-ladder.md",
     "docs/parity/checklist.md",

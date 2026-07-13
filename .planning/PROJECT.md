@@ -12,133 +12,91 @@ A Bitaxe owner can build, flash, run, configure, monitor, and update Rust firmwa
 
 ## Current State
 
-v1.0 Ultra 205 Parity shipped on 2026-07-04. The milestone completed 21 phases, 116 plans, 226 tasks, 64/64 v1 requirements, and a final milestone audit with no requirement, integration, or flow gaps.
+v1.0 Ultra 205 Parity shipped on 2026-07-04 with 64/64 requirements satisfied across 21 phases, 116 plans, and 226 tasks.
 
-The shipped v1.0 evidence set proves the Ultra 205 BM1366 path through exact-claim evidence governance: Rust ESP-IDF foundation, package/flash/monitor workflows, typed config/NVS behavior, BM1366 protocol and diagnostic hardware evidence, Stratum v1 mining runtime, AxeOS-compatible API/static/WebSocket surfaces, safety controllers, release artifacts, OTA/recovery boundaries, redaction review, and controlled no-share live mining/soak closure.
+v1.1 Ultra 205 Trusted Production Mining shipped administratively on 2026-07-13 with accepted gaps across 18 phases, 76 plans, and 170 tasks. The milestone delivered the safety-gated BM1366/Stratum software path, telemetry and evidence automation, and hardware-backed blocker isolation. It did not prove live Rust nonce correlation or a live share outcome: 18/21 requirements are satisfied, while STR-09, ASIC-11, and CFG-07 remain unresolved. Phase 30 closed with a conservative no-promotion disposition.
 
-The active planning surface is now focused on v1.1. Historical v1.0 roadmap, requirements, and audit records live under `.planning/milestones/`.
+Historical milestone roadmaps, requirements, audits, and v1.1 phase artifacts live under `.planning/milestones/`.
 
-Phase 28.1 is complete (2026-07-07): the live mining blocker is now conclusively isolated. Upstream-parity orchestration (dispatch-before-poll, continuous result listener, ~2 s job regeneration with fresh extranonce2, unconditional post-init retention) is the phase27 bridge default; the J2c dispatch-starvation confound was falsified on hardware (22 dispatches at ~2 s cadence); register-read probes prove the BM1366 is alive with a working 1 MBaud RX path; the INA260 power delta (~flat) proves the cores are not hashing under Rust firmware; and the approved upstream A/B showed stock ESP-Miner v2.14.0 mining immediately on the same board (171 nonces, 11 accepted). Disposition: `firmware-nonce-production` — the remaining gap is in the Rust init/work content that leaves cores idle, with the upstream wire-byte diff (and its version-rolling negotiation observation) recorded as the priority follow-up. No checklist rows were promoted.
+## Current Planning State
 
-Phase 22 is complete for v1.1: claim-ladder governance, typed production-mining safety preconditions, exact blocker propagation, and redaction-safe evidence boundaries are validated before the live production work path.
-
-Phase 23 is complete for v1.1: the redacted operator evidence workflow, runtime-only local credential handling, evidence-root slot contract, deterministic redaction checks, and exact non-claim handling are validated before live production mining evidence is promoted.
-
-Phase 24 is complete for v1.1: the functional core and firmware shell now separate BM1366 diagnostic behavior from trusted production work behavior, dispatch pool-derived BM1366 work through session-generation tracking, correlate generation-stamped nonce observations before submit intent, and fail closed with redaction-safe reasons. Phase 24 intentionally remains at implemented/unit,workflow scope for ASIC-09 through ASIC-12; live pool response proof and final telemetry promotion remain later-phase work.
-
-Phase 25 is complete for v1.1: the pure Stratum runtime, submit-response classifier, fake-pool coverage, firmware live-socket shell, bounded safe-stop path, watchdog checkpoints, evidence wrapper, and parity closure now exist with redaction-safe validation. Live accepted/rejected share proof and hardware watchdog proof remain explicit blocked/non-claims unless detector-gated Ultra 205 evidence later proves them.
-
-Phase 26 is complete for v1.1: API, WebSocket, statistics, scoreboard, runtime counters, and parity checklist updates now consume a shared runtime-event telemetry projection and promote only exact claims proven by redacted artifacts. Detector-gated live accepted/rejected share proof, hardware telemetry, full active safety closure, OTA/recovery, non-205 boards, other ASIC families, Stratum v2, display/input, BAP, and unbounded stress remain explicit non-claims.
-
-## Current Milestone: v1.1 Ultra 205 Trusted Production Mining
-
-**Goal:** Turn the v1.0 controlled no-share mining foundation into a trusted, safety-gated Ultra 205 Stratum v1 production mining runtime that can observe at least one real accepted or rejected share and report the result through firmware telemetry and evidence.
-
-**Target features:**
-
-- Real Stratum v1 socket/runtime path instead of synthesized controlled transcripts.
-- Trusted BM1366 initialization, work dispatch, nonce/result parsing, and share submission under Ultra 205 gates.
-- Mining prerequisite safety only: enough power, thermal, fan, voltage, or bounded safety proof to safely enable trusted mining without attempting full active safety closure.
-- Live hashrate, statistics, scoreboard/share counters, API, WebSocket, watchdog, and safe-stop evidence for the mining session.
-- Redacted evidence and parity checklist updates that promote only exact proven claims.
+No milestone is active. `/gsd-new-milestone` must create fresh requirements and continue roadmap phase numbering after Phase 30. The archived Phase 28.1.1 lineage is terminal and must not be resumed, recreated under `.planning/phases/`, or treated as passed verification.
 
 ## Next Milestone Goals
 
-After v1.1, likely candidates remain OTA/recovery completion, broader active safety hardware closure, non-205 board evidence, Stratum v2, BAP, or runtime display/input parity. These are intentionally deferred unless v1.1 discovery finds they block trusted Ultra 205 production mining.
+Potential future work includes a newly scoped nonce-production investigation backed by genuinely new evidence, OTA/recovery completion, broader active-safety hardware closure, non-205 board evidence, Stratum v2, BAP, and runtime display/input parity. None is selected until the next milestone is discussed.
 
 ## Requirements
 
 ### Validated
 
-- Rust firmware monorepo with Bazel as canonical automation graph and `just` as the ergonomic command surface - v1.0.
-- Pinned read-only upstream ESP-Miner reference implementation at `reference/esp-miner` - v1.0.
-- Device-user parity as the canonical rewrite scope with parity evidence in `docs/parity/checklist.md` - v1.0.
-- ESP-IDF Rust bindings as the first production firmware stack - v1.0.
-- Bitaxe Ultra 205 BM1366 as the first hardware bring-up, USB flashing, smoke, and acceptance target - v1.0.
-- ESP-IDF firmware app plus pure Rust crates for core logic, ASIC behavior, Stratum behavior, config, API models, safety decisions, release tooling, and test support - v1.0.
-- Provenance and license guardrails for MIT-first original work and explicit GPL-3.0 upstream-derived materials - v1.0.
-- Ultra 205 release-parity evidence governance with conservative exact non-claims for surfaces that lack required hardware evidence - v1.0.
-- Claim-ladder governance and fail-closed production-mining safety prerequisite contracts for v1.1 - validated in Phase 22.
-- Redacted operator evidence-root workflow and runtime-only local credential handling for v1.1 - validated in Phase 23.
-- BM1366 production work functional core, session-generation active-work tracking, result correlation, and redaction-safe fail-closed firmware status path for v1.1 - validated in Phase 24 at implemented/unit,workflow scope.
-- Live Stratum runtime, deterministic fake-pool coverage, submit-response classification, bounded safe-stop, watchdog checkpoints, and Phase 25 evidence closure for v1.1 - validated in Phase 25 with live accepted/rejected share and hardware watchdog proof preserved as explicit blocked/non-claims pending detector-gated evidence.
-- Projection-backed API/WebSocket/statistics/scoreboard telemetry, share-counter guardrails, parity checklist evidence, and exact non-claim enforcement for v1.1 - validated in Phase 26 at projection/workflow evidence scope.
+- Rust ESP-IDF firmware monorepo with Bazel as canonical automation and `just` as the human command surface — v1.0.
+- Pinned read-only ESP-Miner reference, device-user parity scope, provenance controls, release workflows, Ultra 205 hardware foundation, and exact-claim evidence governance — v1.0.
+- Claim-ladder governance and fail-closed production-mining prerequisite contracts — v1.1.
+- Redacted operator evidence profiles, runtime-only secret inputs, deterministic validators, and atomic evidence consolidation — v1.1.
+- BM1366 production-work modeling, generation tracking, stale-work invalidation, and fail-closed runtime status — v1.1 at implemented and workflow-evidence scope.
+- Real Stratum v1 socket lifecycle, fake-pool coverage, bounded safe stop, watchdog checkpoints, and telemetry projection into API/WebSocket/statistics/scoreboard views — v1.1 within the exact evidence boundaries recorded by the archive.
+- Hardware-backed isolation of the remaining Rust firmware nonce-production blocker and preservation of evidence-supported wire-parity corrections — v1.1 without live-result promotion.
+
+### Accepted Unresolved Debt
+
+- **STR-09:** No eligible live ASIC-derived `mining.submit` response was classified as accepted, rejected, or safely blocked under the final evidence contract.
+- **ASIC-11:** No live BM1366 nonce/result was correlated back to active pool work.
+- **CFG-07:** Runtime-only credential handling exists, but no eligible live evidence root proved it end to end.
 
 ### Active
 
-- [ ] Ultra 205 can perform trusted Stratum v1 production mining with real socket I/O and redacted pool credential handling.
-- [ ] Ultra 205 can initialize BM1366, dispatch pool-derived work, parse live ASIC results, and submit shares without bypassing safety gates.
-- [ ] Ultra 205 can record at least one accepted or rejected share outcome, or explicitly fail the milestone if that outcome cannot be achieved under safe prerequisites.
-- [ ] Mining prerequisite safety evidence is sufficient to enable trusted mining while preserving exact non-claims for full active voltage, fan, thermal, self-test, and fault-stimulus closure.
-- [ ] API, WebSocket, hashrate, statistics, scoreboard/share counters, watchdog, and safe-stop evidence reflect the trusted mining session.
-- [ ] Parity checklist and evidence ledgers promote only exact claims proven by v1.1 artifacts.
+None. The next milestone must define a new requirements file.
 
-### Out of Scope
+### Out of Scope Until Replanned
 
-- Rewriting the Angular AxeOS UI in v1.0 - v1.0 targets API and static asset compatibility, not a new frontend.
-- Bare-metal `no_std` firmware as the first production stack - ESP-IDF Rust is the practical stack for matching upstream device-user behavior.
-- Modifying upstream ESP-Miner files inside `reference/esp-miner` - that tree remains read-only reference evidence.
-- Claiming boards other than Ultra 205 are hardware-verified before each board has its own evidence set.
-- Marking parity items verified without exact evidence - release readiness is evidence-backed, not implementation-only.
-- Treating controlled no-share mining evidence as proof of accepted/rejected production share behavior.
-- Treating package/static asset presence as proof of whole-`www` OTAWWW update parity without update and recovery evidence.
-- Non-205 boards and other ASIC families in v1.1 - Ultra 205 BM1366 trusted mining is the milestone target.
-- OTAWWW, rollback, failed-update, large erase, and interrupted-update recovery in v1.1 - release/update trust remains a later milestone.
-- Runtime display/input, LVGL-like UI flow, and BAP accessory behavior in v1.1 - mining runtime correctness and evidence are higher priority.
-- Stratum v2 in v1.1 - trusted Stratum v1 production mining is the milestone path.
+- Rewriting the Angular AxeOS UI; API and static-asset compatibility remain the project boundary.
+- Bare-metal `no_std` as the first production stack.
+- Modifying files inside `reference/esp-miner`.
+- Claiming non-205 boards, other ASIC families, active hardware safety, recovery/rollback, OTAWWW, display/input, BAP, Stratum v2, or unbounded mining without their own evidence.
+- Treating controlled no-share, synthetic, package-only, or archived diagnostic evidence as proof of accepted/rejected production share behavior.
+
+<details>
+<summary>v1.1 pre-closure planning snapshot</summary>
+
+The v1.1 goal was to turn the v1.0 controlled no-share foundation into a trusted, safety-gated Ultra 205 Stratum v1 runtime that observed at least one real accepted or rejected share and reported it through firmware telemetry and redacted evidence. Target features included real socket I/O, trusted BM1366 initialization/work/result handling, mining-prerequisite safety, bounded safe stop, live telemetry, and exact parity promotion. The software and governance surfaces were delivered; the live nonce/result/share target remained unresolved and was not promoted.
+
+</details>
 
 ## Context
 
-The accepted brief lives at `docs/project/gsd-new-project-brief.md`, with supporting decision docs under `docs/project/`, ADRs under `docs/adr/`, parity checklist under `docs/parity/checklist.md`, release docs under `docs/release/`, and provenance policy in `PROVENANCE.md`.
+The accepted brief lives at `docs/project/gsd-new-project-brief.md`, decision records under `docs/project/` and `docs/adr/`, the exact-claim checklist at `docs/parity/checklist.md`, release documentation under `docs/release/`, and provenance policy in `PROVENANCE.md`.
 
-The first verified hardware target is Bitaxe Ultra 205 with BM1366 ASIC. This superseded the earlier Gamma 601-first direction through ADR-0014. Gamma 601 with BM1370 and other upstream boards remain in parity scope but require separate evidence before any verified hardware claim.
+The first verified hardware target is Bitaxe Ultra 205 with BM1366. Gamma 601 with BM1370 and other upstream boards remain in scope but require separate evidence before any verified hardware claim.
 
-The seed layout separates hardware-bound firmware from testable Rust logic:
-
-- `reference/esp-miner` for the read-only upstream submodule.
-- `firmware/bitaxe` for the ESP-IDF Rust firmware app.
-- `crates/bitaxe-core` for pure shared firmware/domain logic.
-- `crates/bitaxe-asic` for ASIC protocol and model support.
-- `crates/bitaxe-stratum` for Stratum v1/v2 protocol logic.
-- `crates/bitaxe-config` for board, device, and NVS config models.
-- `crates/bitaxe-api` for AxeOS API models and OpenAPI compatibility.
-- `crates/bitaxe-safety` for power, thermal, fan, fault, self-test, and watchdog decisions.
-- `crates/bitaxe-test-support` for fixtures, golden data, and hardware test helpers.
-- `tools/flash` and `tools/parity` for workflow support.
-- `scripts/` for reference, packaging, release, hardware-evidence, and redaction helpers.
+The monorepo separates hardware-bound firmware under `firmware/bitaxe` from testable Rust logic under `crates/`, host tools under `tools/`, repository automation under `scripts/`, and the protected upstream reference under `reference/esp-miner`. At v1.1 closure, the Rust source tree contains 56,967 lines.
 
 ## Constraints
 
-- **Tech stack**: Use ESP-IDF Rust bindings for the production firmware stack because upstream ESP-Miner depends on ESP-IDF services such as Wi-Fi, HTTP serving, NVS, SPIFFS, OTA, FreeRTOS tasks, PSRAM-aware allocation, logging, partition images, and ESP flashing conventions.
-- **Build orchestration**: Use Bazel as the canonical automation graph and `just` as the human command surface.
-- **Reference implementation**: Keep upstream ESP-Miner pinned and read-only at `reference/esp-miner`.
-- **Parity evidence**: Maintain a parity checklist with breadcrumbs, implementation pointers, statuses, and verification evidence. Implemented code alone is not a parity claim.
-- **Hardware priority**: Ultra 205 BM1366 is the verified v1.0 target. Other boards remain in scope but need separate evidence.
-- **Architecture**: Prefer functional core and imperative shell. Pure logic belongs in testable crates; ESP-IDF, FreeRTOS, Wi-Fi, NVS, SPIFFS, OTA, serial, GPIO, I2C, ADC, power, display, and task orchestration stay in firmware adapters.
-- **Licensing**: Keep original work MIT-first where legally possible, mark intentionally ported GPL-covered source expression as GPL-3.0-compatible, and review distributed firmware artifacts before release.
-- **Safety**: Hardware-control surfaces such as voltage, fan, thermal, power, and ASIC initialization require exact hardware evidence before verified parity claims.
+- **Tech stack:** Use ESP-IDF Rust bindings for production firmware services.
+- **Build orchestration:** Use Bazel as the canonical automation graph and `just` as the human command surface.
+- **Reference implementation:** Keep `reference/esp-miner` pinned and read-only.
+- **Parity evidence:** Implemented code is never sufficient by itself for a parity claim.
+- **Hardware priority:** Ultra 205 BM1366 is the first verified target; every other board requires separate evidence.
+- **Architecture:** Prefer a functional core and imperative shell.
+- **Licensing:** Keep original work MIT-first, isolate intentional GPL-covered expression, and review distributed artifacts.
+- **Safety:** Hardware-control and mining claims require exact hardware evidence and fail-closed behavior.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 | --- | --- | --- |
 | Device-user parity defines rewrite scope. | Observable behavior matters more than preserving C internals. | Accepted in v1.0. |
-| This repo is the Rust firmware monorepo. | The Rust implementation needs independent architecture while upstream remains reference evidence. | Accepted in v1.0. |
-| ESP-IDF Rust is the production stack. | It preserves access to the platform services upstream already relies on. | Accepted in v1.0. |
-| Bazel owns automation and `just` owns ergonomics. | Build, test, package, flash, and release workflows need a shared graph with convenient commands. | Accepted in v1.0. |
-| Upstream ESP-Miner is read-only at `reference/esp-miner`. | Normal project work must not hide local patches inside the reference implementation. | Enforced by reference guardrails. |
-| The parity checklist is audit evidence. | Release readiness should be proved by evidence, not task completion claims. | Enforced through `just parity` and milestone audit. |
-| Ultra 205 BM1366 is first hardware target. | The available connected hardware is an Ultra 205, and evidence confirms safe flash/boot workflows on that board. | Accepted in ADR-0014 and validated through v1.0 evidence. |
-| Gamma 601 BM1370 is deferred. | Gamma 601 remains in scope but should not block or inherit the first evidence-backed v1.0 path. | Accepted in ADR-0014; remains future scope. |
-| Reference breadcrumbs appear at module and behavior boundaries. | Breadcrumbs preserve provenance without forcing line-by-line translation comments. | Adopted in v1.0. |
-| AxeOS scope is API and asset compatibility first. | Rewriting Angular would expand the firmware parity milestone beyond its goal. | Preserved through v1.0. |
-| USB flashing is a first-class `just` workflow. | A connected Bitaxe should be easy to build, flash, and monitor over USB. | Implemented and evidence-backed for Ultra 205. |
-| MIT-first original code with GPL guardrails. | The repo is MIT-licensed, but upstream ESP-Miner is GPL-3.0 and provenance must be explicit. | Implemented through provenance and release gates. |
+| ESP-IDF Rust is the production stack; Bazel owns automation and `just` owns ergonomics. | The project needs ESP-IDF services and a reproducible shared graph. | Accepted in v1.0. |
+| Upstream ESP-Miner stays read-only and parity claims follow exact evidence. | Reference changes and task-completion claims could hide unsupported parity. | Enforced throughout v1.0 and v1.1. |
+| Ultra 205 BM1366 is the first hardware target. | Available hardware supports board-specific evidence without extrapolating to other devices. | Validated; other boards remain future scope. |
+| Production-mining promotion is fail closed. | Safety, credentials, live results, and pool outcomes must remain independently evidenced. | Prevented STR-09, ASIC-11, and CFG-07 overclaiming. |
+| Phase 29 evidence profiles and Phase 30 admission are typed and atomic. | Partial or mixed evidence roots must not advance parity. | Delivered; Phase 30 chose no promotion. |
+| Phase 28.1.1 closed as Won't Do (unresolved). | Repeated diagnostics narrowed but did not close the nonce-production gap. | All lineage verification remains `gaps_found` and is terminally archived. |
+| Archived diagnostic work cannot be reopened by autonomous routing. | Historical artifacts must not become executable work or synthetic proof. | Phase 30 is complete; future work requires a new milestone and new evidence. |
 
 ## Evolution
 
-This document evolves at milestone boundaries. The next update should happen when `/gsd-new-milestone` defines the next active requirements and roadmap.
+This document evolves at milestone boundaries. The next update occurs when `/gsd-new-milestone` defines the next active requirements and roadmap.
 
-______________________________________________________________________
-
-*Last updated: 2026-07-07 after completing Phase 28.1 live mining blocker isolation*
+*Last updated: 2026-07-13 after archiving v1.1 with accepted unresolved gaps*

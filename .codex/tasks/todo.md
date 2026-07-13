@@ -60,3 +60,25 @@ Hardware update: Clean pushed tool HEAD `7cab0c63b9887e3670b9db20e0eaec50dc4fbf0
 Software update: Plan 14 provides a standard-library receive-only UART reader, explicit UART0/USB console build contract, stable physical versus enumeration identity, a continuous external-UART lifecycle owner, strict post-boundary cold-session validation, and an exact-head/mode/owner/adapter/contract-bound schema-v3 qualification. Direct focused suites, all eight forced-uncached affected Bazel targets, the canonical ESP32-S3 build, reference/protected checks, shell/Perl/Python/Node hygiene, and the mandatory Rust sequence passed; the verified software was committed and pushed through `ff127df7121f1251d5cf7359c1488128e6a62d17`.
 
 Correction update: The user clarified that this repository will not use direct UART or manipulate board pins/connections by default. No Plan 14 hardware action occurred. Its physical Tasks 4-5 are cancelled and its tooling is dormant. All prior retry guidance is superseded by the terminal archived-lineage prohibition in `AGENTS.md`; Phase 30 is the only allowed continuation.
+
+## task-v1-1-milestone-audit | 2026-07-13 12:57 | Audit milestone v1.1 after terminal closure
+
+- [x] Confirm the authoritative 18-phase roadmap scope and 76-plan historical count.
+- [x] Reconcile requirements across definitions, traceability, phase verifications, and summary metadata.
+- [x] Run an independent cross-phase integration and end-to-end flow check.
+- [x] Audit Nyquist and lifecycle provenance without reopening the archived lineage.
+- [x] Run fresh routing, UAT, parity, reference, and diff checks.
+- [x] Replace the stale milestone audit with a truthful `gaps_found` report.
+
+Completion review: Milestone v1.1 is administratively complete but audits as `gaps_found`: 18/21 requirements are satisfied, while STR-09, ASIC-11, and CFG-07 remain deliberately unpromoted. Cross-phase integration scores 12/13 and 2/3 flows; live BM1366 result/share evidence is the critical terminal gap. The archive lifecycle is valid, yolo routing reports no work, and the installed GSD `init progress` archive lookup remains a documented tooling exception. No hardware, credentials, archived diagnostic execution, commit, or push was used.
+
+## task-complete-v1-1-milestone | 2026-07-13 13:18 | Archive milestone v1.1 with accepted gaps
+
+- [x] Archive all 18 v1.1 phase directories and preserve their complete histories.
+- [x] Correct generated milestone totals to 18 phases, 76 plans, and 170 tasks.
+- [x] Collapse active planning state and preserve STR-09, ASIC-11, and CFG-07 as accepted unresolved requirements.
+- [x] Add the v1.1 retrospective and terminal archive guidance.
+- [x] Validate archive integrity, roadmap state, requirement non-promotion, and repository references.
+- [ ] Run mandatory Rust pre-commit gates, commit the archive safely, remove active requirements, and tag v1.1.
+
+Completion review: Pending final validation and git finalization. No hardware or credentials are authorized or required for milestone archival.

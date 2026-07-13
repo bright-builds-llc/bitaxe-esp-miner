@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: milestone
-status: milestone_complete
-stopped_at: Phase 30 verified complete — no promotion; requirements pending
-last_updated: "2026-07-13T17:44:56Z"
+milestone_name: Ultra 205 Trusted Production Mining
+status: milestone_archived
+stopped_at: v1.1 archived with accepted gaps — start a new milestone
+last_updated: "2026-07-13T18:07:13.001Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 18
@@ -20,20 +20,33 @@ Last activity: 2026-07-13
 
 ## Current Position
 
-Phase: 30 (live-share-outcome-and-verified-promotion) — COMPLETE
-Plan: 2 of 2 complete
+Phase: Milestone archive
+Plan: None
 
-- **Phase:** 30 (live-share-outcome-and-verified-promotion) — COMPLETE
-- **Plan:** 2 of 2 complete
-- **Status:** Milestone complete — Phase 30 passed as a conservative no-promotion disposition
-- **Next step:** Audit the v1.1 milestone before archival; preserve STR-09, CFG-07, and ASIC-11 as pending.
+- **Phase:** v1.1 archive complete
+- **Plan:** None
+- **Status:** Shipped with accepted unresolved gaps; 18/21 requirements satisfied
+- **Next step:** Run `/gsd-new-milestone` to create fresh requirements and continue after Phase 30.
+
+## Project Reference
+
+See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable device-user parity on real Bitaxe hardware. Current focus is planning the next milestone without reopening archived diagnostic work.
+
+## Decisions (v1.1 Milestone Archive)
+
+- v1.1 is administratively shipped with accepted gaps, not verified as full trusted production mining.
+- STR-09, ASIC-11, and CFG-07 remain unresolved; Phase 30 selected the conservative no-promotion outcome.
+- All 18 v1.1 phase directories and their evidence histories are archived under `.planning/milestones/v1.1-phases/`.
+- Phase 28.1.1 and descendants remain terminal `gaps_found` work. They must not be recreated under `.planning/phases/` or resumed through explicit or autonomous GSD commands.
+- Any future nonce-production or live-share work requires a new milestone, fresh requirements, and explicitly new evidence.
+- GSD archive/progress lookup limitations are a tooling exception only; never silence them by changing verification truth or recreating active directories.
 
 ## Decisions (Phase 28.1.1 Closure)
 
 - User directed deliberate closure as `Closed — Won't Do (unresolved)` so later phases can proceed.
 - Plan 16 is administratively accounted for without execution after its one-shot preflight ended `preflight_identity_unavailable`; no retry or physical action occurred, and cleanup completed.
 - Phase 28.1.1 remains `gaps_found` at 6/12. Firmware nonce production, hashing-capable state, correlated BM1366 result, and accepted/rejected live share remain unverified.
-- STR-09, ASIC-11, and CFG-07 remain pending. Phase 30 is the next roadmap phase, but verified promotion remains evidence-gated.
+- STR-09, ASIC-11, and CFG-07 remain pending. Phase 30 was the only permitted continuation and later completed with no promotion.
 - Do not resume Plan 16 or treat this closure as parity evidence.
 - GSD variants that do not resolve active-milestone archives may produce eight W006 warnings for this lineage. The installed GSD currently introduces none; in either case, do not recreate active directories or promote verification to silence diagnostics.
 - Installed atomic `find-phase` does not resolve milestone archives, and `init phase-op` returns the roadmap phase with a null directory; use lifecycle validation for allowed archive resolution, never recreate active stubs, and do not run explicit lineage operations.
@@ -189,5 +202,5 @@ Plan: 2 of 2 complete
 
 ## Session
 
-- **Stopped at:** Phase 30 verified complete — no promotion; requirements pending
-- **Resume:** Audit the v1.1 milestone before archival; preserve the evidence gate and pending STR-09, ASIC-11, and CFG-07 requirements.
+- **Stopped at:** v1.1 archived with accepted unresolved gaps
+- **Resume:** Start `/gsd-new-milestone`; preserve the terminal archive and unresolved STR-09, ASIC-11, and CFG-07 requirements as historical debt.

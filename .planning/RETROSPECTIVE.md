@@ -46,6 +46,54 @@
 - Sessions: multiple long-running GSD execution and audit sessions.
 - Notable: phase-gated hardware evidence was slower than pure implementation, but it prevented unsafe or unsupported parity claims.
 
+## Milestone: v1.1 - Ultra 205 Trusted Production Mining
+
+**Shipped:** 2026-07-13
+**Phases:** 18 | **Plans:** 76 | **Tasks:** 170
+**Outcome:** 18/21 requirements satisfied; shipped with accepted unresolved gaps
+
+### What Was Built
+
+- An exact claim ladder and fail-closed safety prerequisite model with blocker propagation into runtime and API output.
+- BM1366 production-work and real Stratum v1 runtime paths with bounded safe stop, watchdog checkpoints, generation-aware correlation, and telemetry projection.
+- Redacted evidence profiles, deterministic completion/validation, single-finalizer workflows, atomic evidence consolidation, and Phase 30 admission rules.
+- Hardware-backed diagnostic evidence showing the Rust firmware remained unable to produce correlatable nonces while upstream firmware mined on the same Ultra 205.
+- Terminal archive and execution guards for the unresolved Phase 28.1.1 diagnostic lineage.
+
+### What Worked
+
+- Exact non-claims prevented software completion, synthetic tests, and upstream success from being mistaken for Rust live-share parity.
+- Comparing Rust and upstream firmware on the same board sharply isolated the blocker to the Rust firmware path.
+- Typed evidence contracts and atomic finalization made partial, stale, mixed, or sensitive artifacts fail closed.
+- Retaining only evidence-supported wire corrections preserved useful progress without claiming that any one diagnostic lever solved nonce production.
+
+### What Was Inefficient
+
+- The Phase 28.1.1 lineage expanded through seven inserted descendants and several recovery plans without a decisive live-result signal.
+- Hardware transport and lifecycle uncertainty consumed substantial effort after the main firmware blocker had already been isolated.
+- Lifecycle metadata and Nyquist validation were not consistently completed when phases closed, increasing audit work.
+- The milestone archive tool counted only then-active directories and required manual correction for phases archived early.
+
+### Patterns Established
+
+- Terminal unresolved work is a valid milestone outcome when verification remains truthful and future routing is explicit.
+- Archive lookup failures are tooling defects, not permission to recreate active phase stubs or promote verification.
+- A new hardware diagnostic must define a bounded evidence-producing lever and stopping rule before execution.
+- Requirement definition checkboxes and verified traceability are separate concepts; the outcome ledger is authoritative.
+
+### Key Lessons
+
+1. Stop a diagnostic lineage once repeated A/B levers fail to produce a new discriminating signal.
+2. Treat no-promotion as a first-class, testable terminal decision rather than a temporary workflow state.
+3. Make archive-aware routing part of GSD health checks before using early phase archival inside an active milestone.
+4. Complete validation and lifecycle metadata in the same phase-closing commit whenever possible.
+
+### Cost Observations
+
+- Duration: 9 days and 432 commits from milestone start through Phase 30 completion.
+- Scale: 975 files changed, 122,740 insertions, 1,454 deletions, and 56,967 Rust source lines at closure.
+- The hardware effort produced a strong blocker isolation result, but repeated nonce-production diagnostics had diminishing returns and justified the Won't Do closure.
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -53,14 +101,18 @@
 | Milestone | Phases | Key Change |
 | --- | ---: | --- |
 | v1.0 | 21 | Established evidence-backed GSD delivery for Rust ESP-IDF firmware and Ultra 205 hardware parity. |
+| v1.1 | 18 | Added fail-closed production-mining evidence governance and a truthful terminal-unresolved archive path. |
 
 ### Cumulative Quality
 
 | Milestone | Requirement Coverage | Phase Verification | Audit Result |
 | --- | ---: | ---: | --- |
 | v1.0 | 64/64 | 21/21 passed | No gaps; accepted tech debt. |
+| v1.1 | 18/21 | 10 passed; 8 terminal `gaps_found` | `gaps_found`; three accepted unresolved requirements. |
 
 ### Top Lessons
 
 1. Verification evidence must name what it proves and what it does not prove.
 2. Hardware safety gates and redaction gates are planning requirements, not after-the-fact cleanup.
+3. Terminal unresolved closure is healthier than autonomous diagnostic churn when evidence no longer discriminates between hypotheses.
+4. Archive truth must take precedence over tool-health heuristics that expect every milestone phase to remain active until completion.

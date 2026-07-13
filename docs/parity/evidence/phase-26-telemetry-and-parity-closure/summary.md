@@ -46,9 +46,9 @@ Phase 26 closes projection mechanics and parity governance for API-11, API-12, A
 
 ## Source Artifacts
 
-- `.planning/phases/26-telemetry-and-parity-closure/26-01-SUMMARY.md`
-- `.planning/phases/26-telemetry-and-parity-closure/26-02-SUMMARY.md`
-- `.planning/phases/26-telemetry-and-parity-closure/26-03-SUMMARY.md`
+- `.planning/milestones/v1.1-phases/26-telemetry-and-parity-closure/26-01-SUMMARY.md`
+- `.planning/milestones/v1.1-phases/26-telemetry-and-parity-closure/26-02-SUMMARY.md`
+- `.planning/milestones/v1.1-phases/26-telemetry-and-parity-closure/26-03-SUMMARY.md`
 - `crates/bitaxe-stratum/src/v1/telemetry_projection.rs`
 - `crates/bitaxe-api/src/runtime_projection.rs`
 - `firmware/bitaxe/src/live_stratum_runtime.rs`

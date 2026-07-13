@@ -7,9 +7,9 @@ readonly workspace_root="${PHASE30_WORKSPACE_ROOT:-$(cd "${script_dir}/.." && pw
 readonly disposition_path="${workspace_root}/docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md"
 readonly conclusion_path="${workspace_root}/docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md"
 readonly checklist_path="${workspace_root}/docs/parity/checklist.md"
-readonly requirements_path="${workspace_root}/.planning/REQUIREMENTS.md"
+readonly requirements_path="${workspace_root}/.planning/milestones/v1.1-REQUIREMENTS.md"
 readonly archived_verification_path="${workspace_root}/.planning/milestones/v1.1-phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-VERIFICATION.md"
-readonly validation_path="${workspace_root}/.planning/phases/28.1-live-mining-blocker-fix-h4-w13-orchestration-parity-discrimi/28.1-VALIDATION.md"
+readonly validation_path="${workspace_root}/.planning/milestones/v1.1-phases/28.1-live-mining-blocker-fix-h4-w13-orchestration-parity-discrimi/28.1-VALIDATION.md"
 readonly phase29_summary_path="${workspace_root}/docs/parity/evidence/phase-29-evidence-workflow-automation-closure/summary.md"
 readonly denylist="${script_dir}/phase28.1.1-promoted-evidence-denylist.sh"
 

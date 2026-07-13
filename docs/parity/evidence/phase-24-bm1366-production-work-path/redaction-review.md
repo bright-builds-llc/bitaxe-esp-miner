@@ -18,7 +18,7 @@ This review covers the generated Phase 24 evidence claim files:
 
 This file is an allowlisted schema and command declaration file. It names forbidden categories and command patterns so reviewers can reproduce the scan, but it is intentionally excluded from the forbidden-value scan target list.
 
-The scan does not target `.planning/phases/24-bm1366-production-work-path`, because the plans and validation artifact necessarily document category names, evidence rules, and command patterns.
+The scan does not target `.planning/milestones/v1.1-phases/24-bm1366-production-work-path`, because the archived plans and validation artifact necessarily document category names, evidence rules, and command patterns.
 
 ## Deterministic Scan
 

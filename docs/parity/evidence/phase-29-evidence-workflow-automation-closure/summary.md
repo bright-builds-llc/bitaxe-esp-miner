@@ -20,7 +20,7 @@ content_presence_check_passed: true
 | --- | --- | --- |
 | EVD-07 | `bazel test //scripts:phase25_live_stratum_evidence_test //scripts:phase27_live_hardware_bridge_evidence_test` | Phase 25 and Phase 27 wrappers complete the eleven-slot root and invoke strict profile validation exactly once and last; tests passed. |
 | EVD-08 | `bazel test //scripts:phase28_evidence_test //tools/parity:tests` | Phase 28 consolidation preserves closed outcomes, deterministic reruns, and the prior destination on failure; tests passed. |
-| EVD-09 | `bazel test //scripts:phase29_doc_redaction_check_test` and `bazel run //scripts:phase29_doc_redaction_check -- --baseline-ref "$(git log -1 --format=%H -- .planning/phases/29-evidence-workflow-automation-closure/29-02-SUMMARY.md)" --evidence-root docs/parity/evidence/phase-29-evidence-workflow-automation-closure` | Diff-aware guide and full Phase 29 evidence scans reject secret, raw, local, and network identifier categories; test result passed. |
+| EVD-09 | `bazel test //scripts:phase29_doc_redaction_check_test` and `bazel run //scripts:phase29_doc_redaction_check -- --baseline-ref 195878c0975654d9aa2ba9b59a5b3cf1900101fb --evidence-root docs/parity/evidence/phase-29-evidence-workflow-automation-closure` | Diff-aware guide and full Phase 29 evidence scans reject secret, raw, local, and network identifier categories; test result passed. |
 | REL-09 | `rg -n "phase28-evidence\|operator-evidence\|require-redaction-passed\|distinct\|non-nested\|raw_artifacts_committed: no" docs/release/ultra-205.md docs/parity/evidence/phase-29-evidence-workflow-automation-closure` | The operator guide records exact Phase 25, Phase 27, and Phase 28 command and failure semantics; content check passed. |
 
 ## Workflow Claims
