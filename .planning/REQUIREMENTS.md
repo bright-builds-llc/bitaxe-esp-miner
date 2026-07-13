@@ -98,12 +98,40 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
+| OBS-01 | Phase 31 | Pending |
+| OBS-02 | Phase 32 | Pending |
+| OBS-03 | Phase 32 | Pending |
+| OBS-04 | Phase 32 | Pending |
+| OBS-05 | Phase 32 | Pending |
+| OBS-06 | Phase 34 | Pending |
+| CFG-08 | Phase 31 | Pending |
+| CFG-09 | Phase 33 | Pending |
+| CFG-10 | Phase 33 | Pending |
+| CFG-11 | Phase 33 | Pending |
+| CFG-12 | Phase 33 | Pending |
+| CFG-13 | Phase 33 | Pending |
+| SYS-01 | Phase 34 | Pending |
+| SYS-02 | Phase 34 | Pending |
+| SYS-03 | Phase 34 | Pending |
+| SYS-04 | Phase 34 | Pending |
+| SYS-05 | Phase 34 | Pending |
+| HLT-01 | Phase 34 | Pending |
+| HLT-02 | Phase 34 | Pending |
+| HLT-03 | Phase 34 | Pending |
+| HLT-04 | Phase 34 | Pending |
+| EVD-10 | Phase 35 | Pending |
+| EVD-11 | Phase 35 | Pending |
+| EVD-12 | Phase 35 | Pending |
+| EVD-13 | Phase 35 | Pending |
+| EVD-14 | Phase 35 | Pending |
+| EVD-15 | Phase 35 | Pending |
 
 **Coverage:**
 
 - v1.2 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 ⚠️
+- Mapped to phases: 27
+- Unmapped: 0
+- Duplicate mappings: 0
 
 *Requirements defined: 2026-07-13*
-*Last updated: 2026-07-13 after initial v1.2 definition*
+*Last updated: 2026-07-13 after v1.2 roadmap creation*

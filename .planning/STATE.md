@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: defining_requirements
-stopped_at: Milestone v1.2 started — defining requirements
-last_updated: "2026-07-13T18:07:13.001Z"
+status: ready_to_plan
+stopped_at: v1.2 roadmap created — Phase 31 ready to discuss or plan
+last_updated: "2026-07-13T18:55:54.000Z"
 last_activity: 2026-07-13
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,17 +20,25 @@ Last activity: 2026-07-13
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 31 of 35 (Operator Claim and Telemetry Contract)
 Plan: —
 
-- **Phase:** Not started (defining requirements)
+- **Phase:** 31 of 35 (Operator Claim and Telemetry Contract)
 - **Plan:** —
-- **Status:** Defining requirements
-- **Next step:** Define v1.2 requirements and create a roadmap continuing after Phase 30.
+- **Status:** Ready to discuss or plan
+- **Next step:** Discuss Phase 31, then create its implementation plan.
 
 ## Project Reference
 
 See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable device-user parity on real Bitaxe hardware. Current focus is v1.2 operator-ready read-only telemetry, persistent settings, truthful provenance, and bounded runtime-health evidence without active hardware actuation or renewed mining diagnostics.
+
+## Decisions (v1.2 Roadmap)
+
+- v1.2 contains five ordered phases, 31 through 35, with all 27 actionable requirements mapped exactly once.
+- Phase 31 defines claim and telemetry semantics before effectful integration; Phase 32 establishes one read-only I2C0 producer; Phase 33 confirms hostname storage truth; Phase 34 composes one coherent operator snapshot; Phase 35 owns final detector-gated evidence admission.
+- The complete v1.2 PATCH allowlist is `hostname`; additional settings remain future work.
+- Active fan, voltage, reset, power, fault, ASIC, and self-test effects are prohibited. Mining and Phase 28.1.1 lineage work, credentials, direct UART/pins, OTA, other boards, and broad parity promotion are also prohibited.
+- Only Phase 35 may admit final v1.2 parity evidence, and only for explicitly allowlisted operator-runtime rows supported by an eligible same-chain evidence root.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -202,5 +210,5 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** v1.1 archived with accepted unresolved gaps
-- **Resume:** Start `/gsd-new-milestone`; preserve the terminal archive and unresolved STR-09, ASIC-11, and CFG-07 requirements as historical debt.
+- **Stopped at:** v1.2 roadmap created with Phase 31 ready to discuss or plan.
+- **Resume:** Run `/gsd-discuss-phase 31` or `/gsd-plan-phase 31`; preserve all v1.2 read-only and terminal-archive prohibitions.
