@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
-status: executing
-stopped_at: Plan 14 software-only terminal; hardware Tasks 4-5 cancelled
-last_updated: "2026-07-12T23:42:00.000Z"
+status: Gaps found; STR-09, ASIC-11, CFG-07, and Phase 30 promotion remain pending
+stopped_at: Phase 29 context gathered
+last_updated: "2026-07-13T00:22:49.322Z"
 last_activity: 2026-07-12
 progress:
   total_phases: 18
   completed_phases: 16
   total_plans: 69
-  completed_plans: 69
+  completed_plans: 70
   percent: 100
 ---
 
@@ -168,5 +168,5 @@ Plan: 9 of 9 resolved
 
 ## Session
 
-- **Stopped at:** Plan 14 software-only terminal; physical fixture and qualification tasks cancelled before hardware
+- **Stopped at:** Phase 29 context gathered
 - **Resume:** Plan a new non-invasive Phase 28.1.1 gap path. Do not resume Plan 14, install a fixture, or invoke dormant UART tooling without fresh explicit user authorization; Phase 30 remains pending until independent same-chain proof exists
