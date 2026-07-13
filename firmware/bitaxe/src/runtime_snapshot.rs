@@ -57,8 +57,8 @@ pub fn collect_api_snapshot() -> ApiSnapshot {
     snapshot.mining = command_state.mining;
     snapshot.block_found = command_state.block_found;
     snapshot.platform = collect_platform_snapshot(snapshot.platform);
-    snapshot.safe_telemetry =
-        SafeTelemetrySnapshot::from_report(crate::safety_adapter::collect_safety_report());
+    let observations = crate::safety_adapter::observation_snapshot();
+    snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
     apply_wifi_snapshot(&mut snapshot);
     apply_settings_snapshot(&mut snapshot);
     snapshot

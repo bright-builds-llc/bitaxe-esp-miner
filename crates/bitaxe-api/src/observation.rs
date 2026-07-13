@@ -137,14 +137,75 @@ impl ObservationStore {
     }
 }
 
+/// Projects one fact out of an observation without changing producer metadata.
+#[must_use]
+pub fn project_observation<T, U: Copy>(
+    observation: &Observation<T>,
+    project: impl Fn(&T) -> Option<U> + Copy,
+    missing_reason: UnavailableReason,
+) -> Observation<U> {
+    match observation {
+        Observation::Fresh { sample } => project_sample(sample, project).map_or_else(
+            || Observation::unavailable(missing_reason),
+            |sample| Observation::Fresh { sample },
+        ),
+        Observation::Stale { last_good, reason } => project_sample(last_good, project).map_or_else(
+            || Observation::unavailable(missing_reason),
+            |last_good| Observation::Stale {
+                last_good,
+                reason: *reason,
+            },
+        ),
+        Observation::Unavailable { reason } => Observation::unavailable(*reason),
+        Observation::Fault {
+            reason,
+            maybe_last_good,
+        } => Observation::Fault {
+            reason: *reason,
+            maybe_last_good: maybe_last_good
+                .as_ref()
+                .and_then(|sample| project_sample(sample, project)),
+        },
+    }
+}
+
+fn project_sample<T, U>(
+    sample: &StampedSample<T>,
+    project: impl Fn(&T) -> Option<U>,
+) -> Option<StampedSample<U>> {
+    let maybe_value = project(sample.value());
+    maybe_value.map(|value| {
+        StampedSample::new(
+            value,
+            sample.boot_session(),
+            sample.sequence(),
+            sample.acquired_at(),
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use bitaxe_safety::observation::{BootSessionId, MonotonicMillis, ObservationSequence};
     use serde_json::json;
 
     use super::*;
+    use crate::{
+        ApiSnapshot, LiveTelemetryPlanner, SafeTelemetrySnapshot, StatisticsSample, SystemInfoWire,
+    };
 
     fn fresh(value: f64) -> Observation<f64> {
+        Observation::record_success(
+            value,
+            BootSessionId::new(7),
+            ObservationSequence::new(9),
+            MonotonicMillis::new(250),
+        )
+        .expect("fixture sequence should advance")
+        .0
+    }
+
+    fn fresh_u16(value: u16) -> Observation<u16> {
         Observation::record_success(
             value,
             BootSessionId::new(7),
@@ -275,5 +336,126 @@ mod tests {
 
         // Assert
         assert_eq!(store.read(), replacement);
+    }
+
+    #[test]
+    fn projection_repeated_consumer_reads_leave_store_and_stamps_unchanged() {
+        // Arrange
+        let observations = TelemetryObservations {
+            power_watts: fresh(10.0),
+            bus_voltage_volts: fresh(5.0),
+            current_amps: fresh(2.0),
+            chip_temp_celsius: fresh(55.0),
+            vr_temp_celsius: fresh(42.0),
+            fan_rpm: fresh_u16(3_200),
+        };
+        let store = ObservationStore::new(observations);
+        let before = store.read();
+
+        // Act
+        let mut first_snapshot = ApiSnapshot::safe_ultra_205();
+        first_snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&store.read());
+        let first_system = SystemInfoWire::from_snapshot(&first_snapshot);
+        let first_payload = serde_json::to_value(&first_system).expect("wire should serialize");
+        let first_statistics = StatisticsSample::from_snapshot(&first_snapshot, 1, 0.0);
+        let first_projection_bytes = serde_json::to_vec(&[
+            first_system.power_status,
+            first_system.voltage_status,
+            first_system.current_status,
+            first_system.chip_temp_status,
+            first_system.vr_temp_status,
+            first_system.fan_rpm_status,
+        ])
+        .expect("truth projection should serialize");
+        let mut websocket = LiveTelemetryPlanner::default();
+        websocket.set_active_client_count(1);
+        websocket.seed_cadence_baseline(first_payload.clone());
+        let websocket_read = websocket.cadence_frame(first_payload);
+
+        let mut second_snapshot = ApiSnapshot::safe_ultra_205();
+        second_snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&store.read());
+        let second_system = SystemInfoWire::from_snapshot(&second_snapshot);
+        let second_statistics = StatisticsSample::from_snapshot(&second_snapshot, 1, 0.0);
+        let second_projection_bytes = serde_json::to_vec(&[
+            second_system.power_status,
+            second_system.voltage_status,
+            second_system.current_status,
+            second_system.chip_temp_status,
+            second_system.vr_temp_status,
+            second_system.fan_rpm_status,
+        ])
+        .expect("truth projection should serialize");
+        let after = store.read();
+
+        // Assert
+        assert_eq!(before, observations);
+        assert_eq!(after, observations);
+        assert_eq!(before, after);
+        assert_eq!(first_system, second_system);
+        assert_eq!(first_statistics, second_statistics);
+        assert_eq!(first_projection_bytes, second_projection_bytes);
+        assert!(websocket_read.is_none());
+    }
+
+    #[test]
+    fn projection_store_advances_only_metadata_supplied_by_producer() {
+        // Arrange
+        let initial = TelemetryObservations {
+            power_watts: fresh(10.0),
+            ..TelemetryObservations::default()
+        };
+        let mut store = ObservationStore::new(initial);
+        let (next_power, _) = Observation::record_success(
+            11.0,
+            BootSessionId::new(7),
+            ObservationSequence::new(10),
+            MonotonicMillis::new(500),
+        )
+        .expect("fixture sequence should advance");
+        let replacement = TelemetryObservations {
+            power_watts: next_power,
+            ..initial
+        };
+
+        // Act
+        store.replace(replacement);
+        let stored = store.read();
+
+        // Assert
+        assert_eq!(
+            stored
+                .power_watts
+                .maybe_last_good()
+                .expect("power should be fresh")
+                .sequence()
+                .get(),
+            11
+        );
+        assert_eq!(stored.current_amps, initial.current_amps);
+        assert_eq!(stored.chip_temp_celsius, initial.chip_temp_celsius);
+    }
+
+    #[test]
+    fn projection_mapping_copies_state_and_stamp_without_advancing_metadata() {
+        // Arrange
+        let source = fresh(5.0)
+            .mark_stale(StaleReason::ProducerTimeout)
+            .expect("fresh fixture can become stale");
+        let expected_stamp = ObservationTruthWire::from(&source).stamp;
+
+        // Act
+        let projected = project_observation(
+            &source,
+            |value| Some(*value * 2.0),
+            UnavailableReason::ProducerUnavailable,
+        );
+
+        // Assert
+        assert_eq!(projected.state_label(), "stale");
+        assert_eq!(
+            projected.maybe_last_good().map(StampedSample::value),
+            Some(&10.0)
+        );
+        assert_eq!(ObservationTruthWire::from(&projected).stamp, expected_stamp);
     }
 }

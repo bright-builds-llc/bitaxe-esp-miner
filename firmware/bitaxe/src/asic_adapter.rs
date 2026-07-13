@@ -167,7 +167,7 @@ where
     TX: OutputPin + 'static,
     RX: InputPin + 'static,
 {
-    let mut reset = match reset::AsicReset::new(peripherals.reset)
+    let reset = match reset::AsicReset::new(peripherals.reset)
         .context("initialize ASIC reset GPIO adapter")
     {
         Ok(reset) => reset,

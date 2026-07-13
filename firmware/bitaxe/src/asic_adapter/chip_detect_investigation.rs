@@ -52,16 +52,16 @@ fn phase27_full_init_preflight(base: Bm1366Preflight) -> Bm1366Preflight {
     if let Some(power) = snapshot.maybe_power {
         preflight = preflight.with_power(PowerPreflightEvidence::from_power_token(
             PowerEvidenceToken {
-                bus_voltage_volts: power.bus_voltage_volts,
-                current_amps: power.current_amps,
-                power_watts: power.power_watts,
+                bus_voltage_volts: power.bus_voltage_volts(),
+                current_amps: power.current_amps(),
+                power_watts: power.power_watts(),
             },
         ));
     }
     if let Some(thermal) = snapshot.maybe_thermal {
         preflight = preflight.with_thermal(ThermalPreflightEvidence::from_thermal_token(
             ThermalEvidenceToken {
-                chip_temp_celsius: thermal.chip_temp_celsius,
+                chip_temp_celsius: thermal.chip_temp_celsius(),
                 evidence: SafetyCriticalEvidence::hardware_smoke(
                     "phase27-live-hardware-bridge-safe-stop",
                 ),

@@ -5,8 +5,10 @@
 use std::sync::{Mutex, OnceLock};
 
 use anyhow::Result;
+use bitaxe_api::{project_observation, TelemetryObservations};
 use bitaxe_config::defaults::ultra_205_defaults;
 use bitaxe_safety::{
+    observation::{Observation, UnavailableReason},
     power::PowerObservation,
     thermal::{
         FanControlDecision, FanControlInputs, FanControlMode, ThermalObservation, ThermalReading,
@@ -110,8 +112,8 @@ where
         mode: FanControlMode::Startup,
         observation: ThermalObservation::from_reading(Some(ThermalReading {
             chip_temp_celsius: 25.0,
-            board_temp_celsius: None,
-            vr_temp_celsius: None,
+            maybe_board_temp_celsius: None,
+            maybe_vr_temp_celsius: None,
         })),
     };
     let fan_decision = FanControlDecision::from_inputs(fan_inputs)?;
@@ -137,8 +139,8 @@ where
         Ok(temp) if temp.is_finite() && temp > -40.0 => {
             ThermalObservation::from_reading(Some(ThermalReading {
                 chip_temp_celsius: temp,
-                board_temp_celsius: None,
-                vr_temp_celsius: None,
+                maybe_board_temp_celsius: None,
+                maybe_vr_temp_celsius: None,
             }))
         }
         Ok(_) => ThermalObservation::from_reading(None),
@@ -185,15 +187,21 @@ fn info_retained(line: &str) {
 }
 
 fn log_phase27_thermal_status(observation: ThermalObservation) {
-    match observation.status {
-        bitaxe_safety::thermal::ThermalObservationStatus::Fresh => {
+    match observation.temperature_truth() {
+        Observation::Fresh { .. } => {
             log::info!("safety_thermal_status=observed category=fresh");
         }
-        bitaxe_safety::thermal::ThermalObservationStatus::Fault { reason } => {
-            log::warn!("safety_thermal_status=fault category={reason}");
+        Observation::Stale { reason, .. } => {
+            log::warn!("safety_thermal_status=stale category={}", reason.as_str());
         }
-        bitaxe_safety::thermal::ThermalObservationStatus::Unavailable { reason } => {
-            log::warn!("safety_thermal_status=unavailable category={reason}");
+        Observation::Unavailable { reason } => {
+            log::warn!(
+                "safety_thermal_status=unavailable category={}",
+                reason.as_str()
+            );
+        }
+        Observation::Fault { reason, .. } => {
+            log::warn!("safety_thermal_status=fault category={}", reason.as_str());
         }
     }
 }
@@ -204,12 +212,58 @@ fn store_snapshot(
     maybe_power_sample: Option<Ina260Sample>,
     thermal_observation: ThermalObservation,
 ) {
-    let Ok(mut state) = snapshot_state().lock() else {
-        return;
-    };
-    state.bring_up_complete = true;
-    state.fan_duty_percent = fan_duty_percent;
-    state.fan_rpm = fan_rpm;
-    state.maybe_power = maybe_power_sample.map(ina260::power_observation_from_sample);
-    state.maybe_thermal = Some(thermal_observation);
+    let maybe_power = maybe_power_sample.map(ina260::power_observation_from_sample);
+    let observations = phase31_observations(maybe_power.as_ref(), &thermal_observation);
+
+    if let Ok(mut state) = snapshot_state().lock() {
+        state.bring_up_complete = true;
+        state.fan_duty_percent = fan_duty_percent;
+        state.fan_rpm = fan_rpm;
+        state.maybe_power = maybe_power;
+        state.maybe_thermal = Some(thermal_observation);
+    } else {
+        log::warn!("phase27_safety_snapshot=unavailable category=mutex_poisoned");
+    }
+
+    super::replace_observations_from_producer(observations);
+}
+
+fn phase31_observations(
+    maybe_power: Option<&PowerObservation>,
+    thermal: &ThermalObservation,
+) -> TelemetryObservations {
+    let power_truth = maybe_power.map_or_else(
+        || Observation::unavailable(UnavailableReason::PowerSampleUnavailable),
+        |power| *power.truth(),
+    );
+    let temperature_truth = thermal.temperature_truth();
+
+    TelemetryObservations {
+        power_watts: project_observation(
+            &power_truth,
+            |reading| Some(reading.power_watts()),
+            UnavailableReason::PowerSampleUnavailable,
+        ),
+        bus_voltage_volts: project_observation(
+            &power_truth,
+            |reading| Some(reading.bus_voltage_volts()),
+            UnavailableReason::PowerSampleUnavailable,
+        ),
+        current_amps: project_observation(
+            &power_truth,
+            |reading| Some(reading.current_amps()),
+            UnavailableReason::PowerSampleUnavailable,
+        ),
+        chip_temp_celsius: project_observation(
+            temperature_truth,
+            |reading| Some(reading.chip_temp_celsius),
+            UnavailableReason::ThermalReadingUnavailable,
+        ),
+        vr_temp_celsius: project_observation(
+            temperature_truth,
+            |reading| reading.maybe_vr_temp_celsius,
+            UnavailableReason::ThermalReadingUnavailable,
+        ),
+        fan_rpm: Observation::unavailable(UnavailableReason::TachometerUnavailable),
+    }
 }

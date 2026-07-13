@@ -8,33 +8,20 @@ mod ds4432u;
 mod emc2101;
 mod i2c_bus;
 mod ina260;
+mod observation_store;
 pub mod phase27_bring_up;
 mod power;
 pub mod power_probe;
 mod thermal;
 mod watchdog;
 
+pub(crate) use observation_store::{observation_snapshot, replace_observations_from_producer};
 pub use phase27_bring_up::{
     phase27_bring_up_complete, phase27_safety_snapshot, run_phase27_hardware_bring_up,
     Phase27BringUpReset,
 };
 
-use bitaxe_api::{SafetyTelemetryReport, SafetyTelemetryStatus};
-use bitaxe_safety::{
-    effects::SafetyEffect, evidence::SafetyCriticalEvidence, status::SafetyStatus,
-};
-
-pub fn collect_safety_report() -> SafetyTelemetryReport {
-    let mut report = power::collect_power_report();
-    let thermal = thermal::collect_thermal_report();
-
-    report.chip_temp_celsius = thermal.chip_temp_celsius;
-    report.chip_temp2_celsius = thermal.chip_temp2_celsius;
-    report.vr_temp_celsius = thermal.vr_temp_celsius;
-    report.fan_speed_percent = thermal.fan_speed_percent;
-    report.fan_rpm = thermal.fan_rpm;
-    report
-}
+use bitaxe_safety::{effects::SafetyEffect, status::SafetyStatus};
 
 pub fn interpret_safety_effects(effects: &[SafetyEffect]) {
     for effect in effects {
@@ -103,25 +90,5 @@ fn status_label(status: SafetyStatus) -> &'static str {
         SafetyStatus::SelfTestRunning => "self_test_running",
         SafetyStatus::SelfTestPassed => "self_test_passed",
         SafetyStatus::SelfTestFailed { .. } => "self_test_failed",
-    }
-}
-
-pub(crate) fn unavailable_report(reason: &'static str) -> SafetyTelemetryReport {
-    SafetyTelemetryReport {
-        status: SafetyTelemetryStatus::Unavailable { reason },
-        evidence: SafetyCriticalEvidence::Missing,
-        power_watts: 0.0,
-        voltage_volts: 0.0,
-        current_amps: 0.0,
-        chip_temp_celsius: 0.0,
-        chip_temp2_celsius: 0.0,
-        vr_temp_celsius: 0.0,
-        core_voltage_actual_mv: 0.0,
-        actual_frequency_mhz: 0.0,
-        expected_hashrate_ghs: 0.0,
-        fan_speed_percent: 0,
-        fan_rpm: 0,
-        fan2_rpm: 0,
-        wifi_rssi_dbm: -90,
     }
 }

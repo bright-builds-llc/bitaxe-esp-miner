@@ -36,8 +36,8 @@ pub use logs::{
 };
 pub use mining::{mining_state_from_runtime, MiningStateWire, SharesRejectedReasonWire};
 pub use observation::{
-    ObservationReasonWire, ObservationStampWire, ObservationStateWire, ObservationStore,
-    ObservationTruthWire, TelemetryObservations,
+    project_observation, ObservationReasonWire, ObservationStampWire, ObservationStateWire,
+    ObservationStore, ObservationTruthWire, TelemetryObservations,
 };
 pub use route_shell::{
     maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, phase07_route_report,
