@@ -18,6 +18,7 @@ use super::{EvidenceDisposition, OperatorEvidenceProfile, OperatorEvidenceSlot};
 
 const MANIFEST_FILE: &str = ".phase28-evidence-manifest";
 static STAGING_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+const COMPLETION_PROVENANCE: &str = "generated_provenance: phase29-completion";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 #[value(rename_all = "lower")]
@@ -119,21 +120,66 @@ pub(crate) fn complete_operator_evidence(
         WorkflowStatus::Passed => EvidenceDisposition::Deferred,
         WorkflowStatus::Blocked | WorkflowStatus::Failed => EvidenceDisposition::Blocked,
     };
-    let mut created = Vec::new();
+    let mut changed = Vec::new();
     for slot in OperatorEvidenceSlot::ALL {
         let path = absolute_root.join(slot.file_name());
-        if path.exists() {
+        let desired = render_completion_slot(profile, slot, disposition, workflow_status);
+        if !path.exists() {
+            write_synced(&path, &desired)?;
+            changed.push(path);
             continue;
         }
 
-        write_synced(
-            &path,
-            &render_completion_slot(profile, slot, disposition, workflow_status),
-        )?;
-        created.push(path);
+        let existing = fs::read_to_string(path.as_std_path()).map_err(|source| {
+            io_error(
+                format!("failed to read existing evidence slot {path}"),
+                source,
+            )
+        })?;
+        if !is_completion_owned(&existing) || existing == desired {
+            continue;
+        }
+
+        replace_synced(&path, &desired)?;
+        changed.push(path);
     }
+    validate_completion_workflow_state(&absolute_root, workflow_status)?;
     sync_directory(&absolute_root)?;
-    Ok(created)
+    Ok(changed)
+}
+
+fn is_completion_owned(contents: &str) -> bool {
+    contents.lines().any(|line| line == COMPLETION_PROVENANCE)
+}
+
+fn validate_completion_workflow_state(
+    root: &Utf8Path,
+    workflow_status: WorkflowStatus,
+) -> GenerationResult<()> {
+    if workflow_status != WorkflowStatus::Passed {
+        return Ok(());
+    }
+
+    for slot in OperatorEvidenceSlot::ALL {
+        let path = root.join(slot.file_name());
+        let contents = fs::read_to_string(path.as_std_path()).map_err(|source| {
+            io_error(
+                format!("failed to verify completed evidence slot {path}"),
+                source,
+            )
+        })?;
+        if is_completion_owned(&contents)
+            && contents
+                .lines()
+                .any(|line| line == "workflow_status: failed")
+        {
+            return Err(GenerationError::Validation(vec![format!(
+                "passed workflow retains failed generator-owned slot {}",
+                slot.file_name()
+            )]));
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn consolidate_phase28_evidence(

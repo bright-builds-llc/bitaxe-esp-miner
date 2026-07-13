@@ -311,6 +311,53 @@ pub(super) fn write_synced(path: &Utf8Path, contents: &str) -> GenerationResult<
         .map_err(|source| io_error(format!("failed to sync generated file {path}"), source))
 }
 
+pub(super) fn replace_synced(path: &Utf8Path, contents: &str) -> GenerationResult<()> {
+    let parent = path.parent().ok_or_else(|| {
+        GenerationError::InvalidInput("generated file has no parent directory".to_owned())
+    })?;
+    let name = path.file_name().ok_or_else(|| {
+        GenerationError::InvalidInput("generated file has no file name".to_owned())
+    })?;
+
+    for _ in 0..32 {
+        let sequence = STAGING_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let temporary = parent.join(format!(
+            ".{name}.replacement-{}-{sequence}",
+            std::process::id()
+        ));
+        let mut file = match OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(temporary.as_std_path())
+        {
+            Ok(file) => file,
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+            Err(source) => {
+                return Err(io_error(
+                    format!("failed to create replacement file {temporary}"),
+                    source,
+                ));
+            }
+        };
+        let replacement_result = file
+            .write_all(contents.as_bytes())
+            .and_then(|()| file.sync_all())
+            .and_then(|()| fs::rename(temporary.as_std_path(), path.as_std_path()));
+        if let Err(source) = replacement_result {
+            let _ = fs::remove_file(temporary.as_std_path());
+            return Err(io_error(
+                format!("failed to replace generated file {path}"),
+                source,
+            ));
+        }
+        return Ok(());
+    }
+
+    Err(GenerationError::InvalidInput(
+        "could not allocate a unique replacement file".to_owned(),
+    ))
+}
+
 pub(super) fn sync_directory(path: &Utf8Path) -> GenerationResult<()> {
     File::open(path.as_std_path())
         .and_then(|directory| directory.sync_all())
