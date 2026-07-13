@@ -32,7 +32,7 @@ v1.1 turns the shipped Ultra 205 v1.0 controlled no-share mining foundation into
 - [x] **Phase 28.1.1.6: Version-Rolling Negotiation Diagnosis** - Closed — Diagnostic Gaps Deferred. (closed 2026-07-13)
 - [x] **Phase 28.1.1.7: ASIC Mask Reload Diagnosis** - Closed — Diagnostic Gaps Deferred. (closed 2026-07-13)
 - [x] **Phase 29: Evidence Workflow Automation Closure** - Phase 25/27/28 evidence wrappers auto-validate operator evidence roots and close the redact-validate-promote flow without manual consolidation steps. (completed 2026-07-13)
-- [ ] **Phase 30: Live Share Outcome And Verified Promotion** - Apply the conservative no-promotion disposition because the terminal lineage contains no eligible share evidence; promote only if explicitly supplied new evidence passes the existing gate.
+- [x] **Phase 30: Live Share Outcome And Verified Promotion** - Apply the conservative no-promotion disposition because the terminal lineage contains no eligible share evidence; promote only if explicitly supplied new evidence passes the existing gate. (completed 2026-07-13)
 
 ## Phase Details
 
@@ -179,7 +179,7 @@ Plans:
 **Plans**: 2 plans
 
 - [x] 30-01-PLAN.md — Record the conservative no-promotion disposition, unresolved validation closure, and Bazel contract regression.
-- [ ] 30-02-PLAN.md — Enforce row-specific parity admission and publish the final no-promotion conclusion.
+- [x] 30-02-PLAN.md — Enforce row-specific parity admission and publish the final no-promotion conclusion.
 
 ## Progress
 
@@ -204,7 +204,7 @@ Plans:
 | 28.1.1.6. BM1366 Version-Rolling Negotiation Nonce-Production Diagnosis | v1.1 | 4/4 | Closed — Diagnostic Gaps Deferred | 2026-07-13 |
 | 28.1.1.7. BM1366 Pool-Negotiated ASIC Mask Reload Nonce-Production Diagnosis | v1.1 | 4/4 | Closed — Diagnostic Gaps Deferred | 2026-07-13 |
 | 29. Evidence Workflow Automation Closure | v1.1 | 3/3 | Complete    | 2026-07-13 |
-| 30. Live Share Outcome And Verified Promotion | v1.1 | 1/2 | In Progress|  |
+| 30. Live Share Outcome And Verified Promotion | v1.1 | 2/2 | Complete   | 2026-07-13 |
 
 ## Coverage
 
@@ -215,7 +215,7 @@ All 21 v1.1 requirements are mapped across Phases 22-28 with gap-closure reinfor
 **Goal:** The Ultra 205 produces post-dispatch BM1366 UART evidence (register-read proof and/or nonces) under upstream-parity default orchestration, or the blocker is conclusively isolated to hardware via discriminating probes and the approved upstream A/B fallback
 **Requirements**: None formally mapped (inserted urgent phase); STR-09 and CFG-07 promotion prerequisites are context only — no checklist promotion is claimed by this phase.
 **Depends on:** Phase 28
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 28.1-01-PLAN.md — Pure core: BridgeOrchestrator with J2c dispatch-priority regression tests, regenerate_work + extranonce2 counter, bm1366_job_interval_ms
