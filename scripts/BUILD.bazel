@@ -220,6 +220,12 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase28_evidence",
+    srcs = ["phase28-evidence.sh"],
+    data = ["//tools/parity:report"],
+)
+
+sh_binary(
     name = "source_commit_stamp_tool",
     srcs = ["source-commit-stamp.sh"],
 )
@@ -589,6 +595,17 @@ sh_test(
         "HOME",
         "NODE_BIN",
         "NVM_DIR",
+        "PATH",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase28_evidence_test",
+    srcs = ["phase28-evidence-test.sh"],
+    data = ["phase28-evidence.sh"],
+    env_inherit = [
+        "HOME",
         "PATH",
     ],
     tags = ["local"],
