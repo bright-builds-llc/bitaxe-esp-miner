@@ -39,11 +39,12 @@
 - [Roadmap](./milestones/v1.1-ROADMAP.md)
 - [Requirements](./milestones/v1.1-REQUIREMENTS.md)
 - [Milestone audit](./milestones/v1.1-MILESTONE-AUDIT.md)
+- [Research archive](./milestones/v1.1-research/)
 - [Phase archive](./milestones/v1.1-phases/)
 
 **Next:** Start a new milestone with fresh requirements via `/gsd-new-milestone`.
 
-***
+______________________________________________________________________
 
 ## v1.0 Ultra 205 Parity (Shipped: 2026-07-04)
 

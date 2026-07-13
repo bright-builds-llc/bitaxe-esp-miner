@@ -1,185 +1,189 @@
 # Feature Research
 
-**Domain:** Ultra 205 trusted Stratum v1 production mining\
-**Researched:** 2026-07-04\
-**Confidence:** HIGH for v1.0 evidence boundaries and required user-visible surfaces; MEDIUM for production share acceptance details until v1.1 hardware evidence observes a real accepted or rejected share.
+**Domain:** Ultra 205 operator-ready runtime observation, configuration, provenance, and health visibility
+**Researched:** 2026-07-13
+**Confidence:** HIGH for project scope, existing Rust contracts, upstream AxeOS surfaces, and evidence rules; MEDIUM for the final safe settings allowlist until requirements pin the exact keys and reboot semantics.
 
 ## Feature Landscape
 
-v1.0 shipped a safe, evidence-governed Ultra 205 firmware with build/package/flash/monitor, config/NVS, BM1366 diagnostics, Stratum v1 pure behavior, AxeOS API/static/WebSocket routes, safety decisions, OTA/recovery boundaries, and a controlled no-share mining/soak harness. v1.1 should not rebuild those foundations. It should replace the synthesized controlled transcript with a real Stratum v1 socket path, connect that path to BM1366 work/result/share flow, and prove one bounded production mining session through redacted evidence.
+v1.2 should make the already-flashable Ultra 205 understandable and predictably configurable during normal operator use. It is not a mining retry or an active hardware-control milestone. The acceptance boundary is a detector-gated, bounded session in which one physical board reports fresh read-only power and thermal observations, persists a deliberately safe subset of settings, exposes truthful firmware/build/runtime identity, and shows passive self-test and watchdog health through correlated firmware and AxeOS-compatible API evidence.
 
-The acceptance boundary is deliberately narrow: an Ultra 205 owner can configure local Wi-Fi and pool credentials, flash the firmware, start a safety-gated production mining run, observe real pool lifecycle and live mining telemetry, and see either at least one accepted or rejected share or an explicit milestone failure if safe prerequisites cannot produce that outcome. Controlled no-share behavior remains useful as regression evidence, but it is not share proof.
+The central operator rule is that a numeric zero is not a status. Power and thermal values are usable only when accompanied by a fresh observation state. Missing sensors, failed reads, implausible values, and old samples must remain distinguishable as `unavailable`, `fault`, and `stale` rather than being flattened into plausible-looking zero values.
+
+### Expected Operator Behavior
+
+| Area | Expected behavior | Failure behavior |
+| --- | --- | --- |
+| Power telemetry | Current, input voltage, and power come from fresh read-only INA260 samples and are visible through the shared runtime/API projection. | Missing device or no sample is `unavailable`; expired data is `stale`; transport or invalid/unsafe reading is `fault`. A failure must not be presented as fresh zero telemetry. |
+| Thermal telemetry | Chip temperature and available secondary/VR temperature facts come from fresh read-only thermal observations and share the same lifecycle as power telemetry. | Missing sensor is `unavailable`; invalid or failed reading is `fault`; an old retained value is explicitly `stale` if retained at all. No fan duty, reset, voltage, or power effect is emitted. |
+| Settings | A published safe allowlist is validated as one request, written to NVS, committed, reloaded, and only then acknowledged. The operator sees the reloaded value immediately and again after a bounded reboot. | Malformed/invalid input performs no partial write. Write, commit, or reload failure does not return success. Public errors stay AxeOS-compatible while retained logs use redaction-safe reason categories. |
+| Provenance | Firmware version, source identity, reference identity, ESP-IDF version, board/ASIC identity, running partition, and build/package identity are truthful and correlated. | Missing facts say `Unavailable` or an equivalent explicit state; synthetic values such as `safe-fixture` are never presented as device provenance. |
+| Runtime health | Uptime, decoded reset reason, heap facts, passive self-test state, watchdog supervisor state/checkpoint recency, and safe runtime mode are inspectable without starting a hardware self-test. | Health collection failures remain visible and fail closed. Watchdog startup breadcrumbs alone are not reported as load or intervention proof. |
+| Evidence | Detector, board-info, package/flash identity, device logs, API/WebSocket observations, persistence readback, reboot readback, and conclusion belong to one bounded session and are redacted before promotion. | Detection, target provenance, identity, capture, correlation, or redaction failure yields blocked evidence rather than a partial operator-readiness claim. |
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist. Missing these = trusted production mining is not credible.
+Features users assume exist. Missing these means the runtime is not trustworthy for normal operator use.
 
-| Feature | Why Expected | Complexity | Dependencies On v1.0 | Evidence Needed |
-|---------|--------------|------------|----------------------|-----------------|
-| Real Stratum v1 socket lifecycle | Owners expect configured pool settings to drive actual TCP Stratum I/O, not a synthesized transcript. | HIGH | NVS pool settings, Wi-Fi flash seeding, Stratum v1 message types, controlled runtime state model, AxeOS settings route. | Detector-gated Ultra 205 evidence showing connect, subscribe, authorize, difficulty/extranonce, notify/job, reconnect or safe-stop markers from real socket I/O with all pool values redacted. |
-| Redacted pool credential handling | Pool URL, worker, BTC-address-derived usernames, passwords, endpoints, and tokens are sensitive local owner inputs. | MEDIUM | `wifi-credentials.json` and `pool-credentials*.json` local-input policy, redaction review scripts, retained-log discipline. | Redaction review proving no raw pool URL, port, user, worker, address, password, token, device URL, Wi-Fi secret, endpoint, or NVS secret appears in committed evidence. |
-| Trusted BM1366 initialization gate | Production mining requires the BM1366 to be initialized for real work, not only chip-detect or diagnostic timeout behavior. | HIGH | BM1366 pure init plan, UART adapter, reset adapter, diagnostic chip-detect/work-result evidence, safety gate tokens. | Hardware-regression or tightly bounded hardware-smoke evidence that names board `205`, source/reference commits, init stage markers, reset/power/frequency prerequisites used, and final go/no-go state. |
-| Pool-derived work dispatch | A production miner must transform live `mining.notify` data into BM1366 work instead of dispatching a fixed diagnostic job. | HIGH | Coinbase/merkle work builder, work queue, guarded dispatch planner, BM1366 work packet logic. | Evidence linking a redacted real notify/job lifecycle to typed BM1366 work dispatch markers without raw ASIC frames or raw pool job secrets in committed artifacts. |
-| Live ASIC result and nonce parsing | Share submission cannot be claimed until live BM1366 results are parsed from hardware under mining load. | HIGH | BM1366 result parser, UART transport, runtime state counters, guarded mining loop. | Hardware evidence showing at least one valid result/nonce parse or a clear failure state. If no valid result occurs, accepted/rejected share remains unclaimed. |
-| Share submission and accepted/rejected outcome | The milestone goal requires at least one real pool response to a submitted share, or an explicit failure if it cannot be achieved safely. | HIGH | Stratum submit message serializer, runtime share counters, API mining mapper. | Redacted evidence showing `mining.submit` was sent for a live ASIC-derived share and pool response was accepted or rejected. Do not overclaim accepted/rejected behavior from synthetic responses or no-share soak. |
-| Mining prerequisite safety gate | Owners need assurance that production mining only starts when minimum safe power, thermal, fan, voltage, and evidence prerequisites are satisfied. | HIGH | Pure safety controllers, safety telemetry DTOs, watchdog status, fail-closed mining gate, Phase 20/21 safety boundaries. | Evidence that the gate blocks when prerequisites are missing and allows only the documented bounded mining mode. Claims should stay limited to mining prerequisites, not full active safety closure. |
-| Live hashrate and share statistics | Owners expect API and AxeOS surfaces to show live hashrate, share counts, pool difficulty, lifecycle, work submission, and rejected reasons. | MEDIUM | `MiningRuntimeState`, `MiningStateWire`, statistics mapper, WebSocket live telemetry route. | `/api/system/info`, `/api/system/statistics`, and `/api/ws/live` captures correlated to the same mining session with redacted target data and non-zero values only when produced by the run. |
-| Scoreboard population | Accepted or high-difficulty shares should appear as scoreboard entries in the upstream-compatible shape. | MEDIUM | `ScoreboardEntry`, `scoreboard_response`, share difficulty tracking. | API evidence for `/api/system/scoreboard` showing entries only when live results justify them; empty scoreboard remains acceptable for rejected-share-only evidence if documented. |
-| Watchdog and safe-stop behavior | Production mining must not starve firmware services, panic, silently hang, or leave work submission enabled after stop/failure. | MEDIUM | Watchdog checkpoints, safe-stop markers, retained logs, bounded soak pattern. | Bounded session evidence with watchdog checkpoints, no unexpected reboot/panic/silence markers, and final `mining=disabled`, `hardware_control=disabled`, `work_submission=disabled` safe-stop state. |
-| Evidence-governed claim promotion | v1.1 must advance only exact claims proven by artifacts. | MEDIUM | Parity checklist, release guide evidence rules, redaction review, `just parity`. | Checklist updates for STR/ASIC/STAT/API/SAFE rows cite exact v1.1 artifacts and preserve non-claims for unobserved shares, active controls, OTA/recovery, display/input, and non-205 boards. |
+| Feature | Why Expected | Complexity | Notes |
+| --- | --- | --- | --- |
+| Shared read-only I2C ownership | The Ultra 205 display, INA260, EMC2101-class thermal path, and future safety peripherals share one bus; operators should not see sporadic telemetry caused by competing bus initialization. | HIGH | One firmware-owned bus lifecycle should serialize reads and report initialization/read failure. v1.2 must not write DS4432U voltage registers or fan-control registers. |
+| Fresh INA260 observation | An operator expects power, current, and input voltage to describe the device now, not a fixture or cached placeholder. | HIGH | Use the existing typed power model and its bounded freshness threshold. Preserve units and upstream-compatible numeric fields while exposing a companion observation state/reason. |
+| Fresh thermal observation | Temperature is a basic device-health fact and is required before later safe actuation work. | HIGH | Read only. Distinguish missing, invalid/faulted, stale, and fresh data. Fan RPM may be reported only if it is independently observed; fan actuation is excluded. |
+| Explicit telemetry states | Operators must be able to distinguish a healthy zero-like reading from missing, stale, or failed telemetry. | MEDIUM | Use typed states (`fresh`, `stale`, `unavailable`, `fault`) and stable redaction-safe reason labels. Do not let AxeOS-compatible zero defaults imply freshness. |
+| Coherent API and WebSocket projection | The same device observation should not disagree across `/api/system/info`, `/api/ws/live`, retained logs, and evidence. | MEDIUM | Project from one shared snapshot/sample identity or equivalent bounded correlation marker; do not independently poll and silently combine unrelated samples. |
+| Published safe settings allowlist | Operators need to know which PATCH fields v1.2 truly supports. | MEDIUM | At minimum, support `hostname`; add another field only if persistence cannot actuate hardware, alter mining, exercise display/input, trigger OTA, expose credentials, or invalidate the current evidence session. Do not imply that every field in the upstream schema is v1.2-supported. |
+| Atomic PATCH validation and persistence | A successful settings response must mean every accepted write was committed and reloaded. | MEDIUM | Preserve the existing validation → write(s) → commit → reload → public-success ordering. Invalid known fields reject the request without partial writes; unknown-field behavior must be pinned to the existing compatibility contract. |
+| Reload and reboot durability | Persisted configuration is meaningful only if the same value is observed after route reload and a real bounded reboot. | HIGH | Correlate pre-PATCH, post-reload, and post-reboot observations on the same detector-gated board. Do not test Wi-Fi-changing settings that would destroy the evidence target lock. |
+| Truthful system and build provenance | Owners and maintainers need to identify exactly what firmware and package are running before trusting evidence or reporting a bug. | MEDIUM | Report firmware version/short source commit, reference commit or package provenance, ESP-IDF version, AxeOS/static asset version, board `205`, BM1366, running partition, and reset reason. Missing values are explicit, never synthetic. |
+| Passive self-test state visibility | Operators need to know whether self-test is idle, blocked, running, passed, failed, canceled, or unavailable. | MEDIUM | v1.2 exposes state only. It does not start factory/manual self-test or execute diagnostic work, fan, power, voltage, reset, or ASIC effects. |
+| Watchdog and runtime-health visibility | A responsive API is not enough to prove the runtime loops remain supervised. | MEDIUM | Expose supervisor started/available state, latest bounded checkpoint category/age, uptime, reset reason, and heap health without claiming watchdog intervention or load testing that did not occur. |
+| Detector-gated correlated evidence | Hardware-sensitive parity requires a board-named, same-session proof chain. | HIGH | Begin with `just detect-ultra205`; require exactly one board `205`, board-info success, source/reference/package identity, trusted target derivation, bounded captures, redaction, and exact claim/non-claim conclusion. |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set the project apart. Not required for a miner to run, but valuable because they make Rust firmware trustworthy.
+These capabilities make the Rust firmware easier to trust and diagnose even when its observable API remains compatible with upstream AxeOS.
 
 | Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Exact-claim mining evidence ledger | Owners and contributors can see exactly what was proven on real Ultra 205 hardware and what remains a non-claim. | MEDIUM | Keep one redacted v1.1 evidence root with package manifest, detector, board-info, commands, logs, API/WebSocket captures, share outcome, and conclusion. |
-| Safety-gated production enablement | Production mining becomes opt-in and prerequisite-bound instead of silently enabled by compile-time or settings accidents. | HIGH | Preserve fail-closed defaults; make the runtime explain why mining is blocked. |
-| Redacted observability by default | The firmware can be debugged and audited without leaking owner pool credentials or private network details into committed evidence. | MEDIUM | Retain labels and lifecycle markers, not secrets. Raw developer artifacts can exist locally but must not be promoted. |
-| Pure core, thin hardware shell | Stratum, work construction, result classification, counters, statistics, and safety decisions remain testable without hardware. | MEDIUM | Build new production logic as domain types first, then connect ESP-IDF sockets/UART in adapters. |
-| Share outcome honesty | A rejected share is a valid milestone outcome if the pool really rejected a live ASIC-derived submission. | LOW | Acceptance should require real pool response evidence, not "accepted-only" optimism. |
-| Owner-ready operator workflow | A single documented flow can detect, flash, seed Wi-Fi/pool settings, run bounded mining, capture telemetry, safe-stop, and redact evidence. | MEDIUM | Best implemented as repo-owned `just` or script surface that follows existing detector and credential rules. |
+| --- | --- | --- | --- |
+| Telemetry truth as a domain type | Operators and tests can tell fresh data from absence or failure without interpreting magic numbers. | MEDIUM | Make illegal combinations unrepresentable: a `fresh` observation carries usable values, while non-fresh states carry a reason and cannot silently promote numeric claims. |
+| Observation-before-actuation architecture | v1.2 establishes real sensor and recovery visibility without risking voltage, fan, reset, or power effects. | MEDIUM | This provides a safer foundation for the later active-control milestone and follows the functional-core/imperative-shell project decision. |
+| Transactional persistence evidence | A PATCH is proven through NVS commit, reload, API readback, and reboot continuity rather than inferred from an HTTP 200. | HIGH | The same session records the ordered boundary without committing setting values that are sensitive. |
+| First-class build provenance | A support report can correlate the running firmware, package manifest, upstream reference, ESP-IDF, board, and evidence session. | MEDIUM | Present ordinary operator identity through existing compatible surfaces; keep local device/network identifiers redacted in shareable artifacts. |
+| Honest passive health model | Self-test and watchdog state remain useful even when active tests are prohibited or evidence is absent. | MEDIUM | `blocked` or `unavailable` is a valid result and must not be transformed into passed health. |
+| Exact-claim evidence pack | Contributors can reproduce what was observed and understand every excluded claim. | MEDIUM | Reuse the detector, target-lock, redaction, and atomic validation patterns established in v1.0/v1.1, but define a v1.2-specific operator-runtime profile rather than reusing mining evidence slots. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem good but create problems.
-
 | Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Claiming production mining from controlled no-share soak | v1.0 already has working controlled markers, so it is tempting to promote them. | Phase 21 explicitly did not observe accepted/rejected shares, live nonce parsing, or full production mining. | Treat controlled no-share as regression/preflight only; require real socket plus live ASIC-derived share evidence for v1.1 claims. |
-| Hardcoded transcript or fake pool fallback as acceptance evidence | Deterministic tests are easier than real pool variability. | It bypasses the owner-visible behavior this milestone is about. | Keep fake/controlled fixtures for unit tests and preflight, then run a real pool session for acceptance. |
-| Logging raw Stratum messages, pool endpoints, workers, or ASIC frames | Raw logs make debugging easier. | They can leak owner secrets, addresses, endpoints, or proprietary pool details and violate evidence policy. | Log redacted lifecycle/status markers and store raw artifacts only in ignored local paths when absolutely necessary. |
-| Starting mining when safety evidence is missing | It may produce a share faster. | Unsafe hardware-control surfaces can damage hardware and invalidate the milestone. | Fail closed with a user-visible blocked reason and record missing prerequisites. |
-| Full active safety closure inside v1.1 | Production mining naturally raises voltage/fan/thermal questions. | Full active control, fault stimulus, and recovery closure are broader than the milestone and require separate evidence. | Prove only the minimum mining prerequisite gate; leave full active safety parity as an exact non-claim. |
-| Unbounded soak or stress mining | Longer runs feel more convincing. | It expands risk before watchdog, safe-stop, and thermal/power prerequisites are fully proven. | Use bounded sessions with documented timeout, stop condition, watchdog checkpoints, and recovery path. |
-| Network scanning or stale target inference | It can find the device when logs are redacted. | Repo rules prohibit deriving `DEVICE_URL` from scans, stale logs, mDNS, ARP, router state, or unrelated evidence. | Use only fresh detector-gated flash/monitor output with exactly one origin-only target when needed, then redact before commit. |
-| Treating rejected-share-only as failure | Accepted shares feel more satisfying. | A real rejected share still proves socket, ASIC result, submit, response, counters, and telemetry flow. | Accept either one real accepted or rejected share; record reason if rejected. |
-| Enabling Stratum v2 or non-205 boards now | They are legitimate future parity surfaces. | They distract from the Ultra 205 BM1366 Stratum v1 production path and need separate evidence. | Keep v1.1 scoped to Ultra 205, BM1366, Stratum v1. |
-
-## Acceptance Boundaries
-
-| Boundary | Accepted For v1.1 | Not Accepted For v1.1 |
-|----------|-------------------|-----------------------|
-| Pool behavior | Real Stratum v1 socket I/O against local owner-supplied pool settings, with redacted lifecycle markers. | Controlled transcript, fake pool only, hardcoded notify only, or unverified socket connection. |
-| ASIC work/result flow | Live BM1366 init gate, pool-derived work dispatch, valid nonce/result parse when claiming share submit. | Diagnostic chip-detect/work-result timeout as production proof. |
-| Share outcome | At least one real accepted or rejected pool response to a live ASIC-derived submit. | Synthetic submit response, no-share soak, or API counter mutation without submit evidence. |
-| Safety | Minimum documented prerequisites sufficient to enable bounded mining, plus fail-closed missing-prerequisite behavior. | Full active voltage/fan/thermal/fault/self-test closure unless separately evidenced. |
-| Telemetry | Session-correlated logs, `/api/system/info`, statistics, scoreboard where applicable, and `/api/ws/live`. | Static fixtures, stale captures, or unrelated prior evidence. |
-| Evidence | Redacted committed evidence plus local raw artifacts excluded from commit. | Raw pool credentials, workers, endpoints, BTC addresses, passwords, tokens, device URLs, Wi-Fi secrets, or NVS secret values. |
+| --- | --- | --- | --- |
+| Active fan, voltage, reset, power sequencing, or fault injection | Live telemetry naturally invites control and failure testing. | These are safety-critical hardware effects with separate recovery and hardware-regression requirements; combining them with observation makes failures harder to isolate. | Keep v1.2 read-only. Plan active control only after observation and update/recovery foundations are independently proven. |
+| Treating zero values as successful telemetry | It preserves the current upstream-compatible numeric shape with little work. | Current safe snapshots use zero-compatible placeholders; presenting them as sensor values would be a false hardware claim. | Add explicit status/freshness/reason projection and promote numeric values only from fresh samples. |
+| Keeping the last value without a stale label | A stable dashboard looks better during transient read failures. | It hides sensor failure and can mislead later safety decisions. | Retain a last value only with explicit age and `stale`; otherwise expose `unavailable` or `fault`. |
+| Supporting every upstream PATCH field | The schema and pure validation already contain many fields. | Wi-Fi, pool, frequency, voltage, fan, display, Stratum v2, and other fields cross v1.2 exclusions or can break target continuity and create implied behavior. | Publish a narrow safe allowlist and expand it in later evidence-backed milestones. |
+| Returning PATCH success before commit/reload | It reduces route latency and mirrors optimistic UI behavior. | The operator cannot distinguish durable configuration from a failed write or reload. | Return success only after validation, every write, commit, and reload complete. Apply optional live effects only afterward. |
+| Using a synthetic provenance placeholder | It keeps every API field populated. | Values such as `safe-fixture` are useful in tests but dishonest on a live device. | Use actual package/runtime facts or `Unavailable`. Test fixtures remain test-only. |
+| Running self-test to prove self-test visibility | A real pass/fail result seems stronger than passive state. | Existing self-test can involve fan, power, voltage, ASIC work, and restart effects outside v1.2. | Expose idle/blocked/unavailable lifecycle and defer active self-test hardware closure. |
+| Calling watchdog startup proof of resilience | Startup/yield markers already exist. | They do not prove intervention, recovery, bounded load behavior, or long-term responsiveness. | Report exactly observed supervisor/checkpoint state; retain intervention/load as explicit non-claims. |
+| Network scanning or stale target reuse | It is convenient when the device URL is missing. | It violates the same-session target-source contract and can correlate evidence from the wrong device or boot. | Derive exactly one origin from the current detector-gated repo-owned monitor session or record the API portion blocked. |
+| Reopening BM1366 mining diagnostics | Better telemetry might appear adjacent to the unresolved nonce blocker. | The Phase 28.1.1 lineage is terminal and repeated diagnostics had diminishing returns. | Keep v1.2 independent. A future mining milestone requires genuinely new evidence, a discriminating hypothesis, and a hard stopping rule. |
+| AxeOS UI rewrite | New status presentation may tempt a frontend redesign. | The accepted compatibility boundary is API/static assets first; a UI rewrite would multiply scope without improving firmware evidence. | Preserve current AxeOS compatibility and expose additive, documented operator status through existing surfaces. |
 
 ## Feature Dependencies
 
 ```text
-Owner local inputs
-    requires -> Wi-Fi credentials + pool credentials remain local and redacted
+One firmware-owned read-only I2C lifecycle
+    feeds -> INA260 + thermal sensor samples
+        feeds -> Typed observation classification and freshness
+            feeds -> Shared runtime snapshot
+                feeds -> /api/system/info + /api/ws/live + retained logs
+                    feeds -> Same-session telemetry evidence
 
-Real Stratum v1 socket lifecycle
-    requires -> NVS/settings + Wi-Fi connectivity + socket adapter + Stratum v1 parser/serializer
-        feeds -> Pool-derived notify/work builder
+Published safe settings allowlist
+    feeds -> Pure PATCH validation
+        feeds -> NVS writes -> commit -> reload -> immediate readback
+            feeds -> Bounded reboot -> post-reboot readback
+                feeds -> Persistence evidence
 
-Trusted BM1366 production path
-    requires -> Mining prerequisite safety gate + reset/UART/init evidence
-        feeds -> Pool-derived work dispatch
-            feeds -> Live nonce/result parsing
-                feeds -> Share submit
-                    feeds -> Accepted/rejected share counters + scoreboard
+Package manifest + runtime collectors
+    feeds -> Truthful provenance and runtime-health snapshot
+        feeds -> API/log identity
+            feeds -> Evidence identity correlation
 
-Runtime telemetry
-    requires -> MiningRuntimeState + statistics samples + API/WebSocket routes
-        evidences -> User-visible production mining outcome
+Detector + board-info + trusted current-session target
+    guards -> Flash/monitor + API/WebSocket + PATCH/reboot capture
+        guards -> Redaction + exact parity promotion
 
-Watchdog and safe-stop
-    guards -> Socket loop + ASIC loop + telemetry capture + bounded soak
-
-Parity checklist promotion
-    requires -> Redacted evidence for each exact subclaim
+Active hardware effects
+    conflict with -> v1.2 read-only observation boundary
 ```
 
 ### Dependency Notes
 
-- **Real share outcome requires live ASIC result parsing:** a pool response only matters if the submitted share came from live BM1366 work/result flow.
-- **Production work dispatch requires safety prerequisites:** the existing fail-closed gate is a feature, not a blocker to bypass.
-- **Live stats require the same session as mining evidence:** API/WebSocket captures should be correlated to the run that produced socket, work, result, and share markers.
-- **Scoreboard depends on share/result semantics:** populate it only from live entries that match the upstream-compatible scoreboard shape.
-- **Evidence promotion depends on redaction:** a technically successful run is not commit-ready until the final redaction scan/review passes.
+- **Fresh telemetry requires shared I2C ownership:** initialization and access must be coordinated before any sample can be considered attributable and fresh.
+- **API values require typed observation states:** compatibility DTOs should consume one classified runtime snapshot, not raw register values or zero-filled placeholders.
+- **Telemetry evidence requires same-sample correlation:** device logs, API, and WebSocket need a bounded sample/session marker or equivalent chronology before they can support a parity claim.
+- **PATCH durability requires ordered persistence:** success depends on validation, all writes, commit, reload, immediate readback, and post-reboot readback in that order.
+- **Reboot evidence requires safe settings:** a Wi-Fi, credential, mining, display, or active-control change can invalidate target continuity or cross milestone boundaries, so it is excluded from the initial allowlist.
+- **Provenance evidence requires package/runtime agreement:** the package manifest, flashed source/reference identity, runtime firmware fields, board identity, and evidence conclusion must describe the same build.
+- **Runtime-health evidence requires passive collection:** self-test state and watchdog checkpoints may be observed, but v1.2 cannot manufacture stronger proof by running excluded hardware or fault paths.
+- **Every live claim requires the detector gate:** a failed or ambiguous detector stops hardware/API work before credential access, filesystem promotion, or target inference.
 
-## MVP Definition
+## v1.2 Definition
 
-### Launch With (v1.1)
+### Launch With (v1.2)
 
-Minimum viable milestone: enough to decide whether the Rust firmware can be trusted to mine on one Ultra 205 under bounded conditions.
+- [ ] One shared read-only Ultra 205 I2C lifecycle for power and thermal observations, with no control-register writes.
+- [ ] Fresh INA260 current/voltage/power and thermal observations with explicit `fresh`, `stale`, `unavailable`, and `fault` behavior as applicable.
+- [ ] One coherent runtime projection across system info, live WebSocket telemetry, retained status logs, and evidence.
+- [ ] A published safe settings PATCH allowlist, atomic validation/persistence, immediate reload readback, and bounded reboot durability proof.
+- [ ] Truthful firmware, source/reference, ESP-IDF, AxeOS/static, board/ASIC, partition, reset, uptime, and heap provenance or explicit `Unavailable` states.
+- [ ] Passive self-test lifecycle and watchdog/runtime-health visibility without starting active self-test or fault/load behavior.
+- [ ] A detector-gated, redacted, same-session evidence pack that promotes only exact operator-runtime claims.
 
-- [ ] Real Stratum v1 socket adapter and lifecycle state for subscribe, authorize, difficulty, notify, submit response, reconnect/block, and safe-stop.
-- [ ] Ultra 205 BM1366 production init/work/result path gated by documented mining prerequisites.
-- [ ] One real accepted or rejected share outcome from live ASIC-derived work, or an explicit milestone failure if safe prerequisites cannot reach that outcome.
-- [ ] API/WebSocket/statistics/share-counter evidence from the same bounded session.
-- [ ] Watchdog checkpoints and final safe-stop evidence.
-- [ ] Redacted evidence pack and parity checklist updates that promote only exact proven claims.
+### Add After Validation (v1.2.x)
 
-### Add After Validation (v1.1.x)
+- [ ] Additional non-secret, non-actuating settings after each key has an explicit reload/reboot contract and cannot disrupt target continuity.
+- [ ] Longer read-only telemetry continuity runs after single-session freshness, cadence, and stale/fault transitions are deterministic.
+- [ ] Richer historical telemetry/statistics only after the shared snapshot producer proves bounded memory and sample ownership.
+- [ ] Operator-facing support summaries derived from the same provenance and health model, without introducing a new UI framework.
 
-Features to add once the first trusted production session is proven.
+### Explicit Deferrals (Later Milestones)
 
-- [ ] Longer bounded soaks with repeatable accepted/rejected share counts after one-share proof is stable.
-- [ ] Richer scoreboard history and best-difficulty persistence after live result/share semantics are proven.
-- [ ] Better operator UX around blocked mining prerequisites after the first exact gate is accepted.
-- [ ] More detailed pool reconnect/fallback policy after basic real socket mining works.
-
-### Future Consideration (v1.2+)
-
-Features to defer until this milestone has real share evidence.
-
-- [ ] Full active voltage, fan, thermal, fault-stimulus, and self-test hardware closure.
-- [ ] OTA/recovery completion, rollback, interrupted-update, large erase, and OTAWWW parity.
-- [ ] Stratum v2.
-- [ ] Runtime display/input parity and BAP accessory behavior.
-- [ ] Non-205 boards and non-BM1366 ASIC families.
-- [ ] Unbounded production soak or stress mining.
+- [ ] OTA, rollback, interrupted update, recovery, and OTAWWW — planned for the update/recovery milestone.
+- [ ] Active voltage, fan, reset, ASIC power sequencing, thermal/fan/power fault stimulus, and active self-test — planned only after observation and recovery foundations exist.
+- [ ] BM1366 nonce/result/share diagnostics — terminal v1.1 lineage remains closed; reconsider only with genuinely new evidence and a bounded hypothesis.
+- [ ] Gamma 601/BM1370 and every other board/ASIC family — require board-specific evidence after the Ultra 205 journey is credible.
+- [ ] Runtime display/input, BAP, Stratum v2, and an Angular AxeOS rewrite — not needed to establish v1.2 operator-ready runtime behavior.
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Real Stratum v1 socket lifecycle | HIGH | HIGH | P1 |
-| BM1366 production init/work/result path | HIGH | HIGH | P1 |
-| Real accepted/rejected share evidence | HIGH | HIGH | P1 |
-| Mining prerequisite safety gate | HIGH | HIGH | P1 |
-| Redacted pool/evidence handling | HIGH | MEDIUM | P1 |
-| Live mining API/WebSocket/statistics counters | HIGH | MEDIUM | P1 |
-| Watchdog checkpoints and safe-stop | HIGH | MEDIUM | P1 |
-| Scoreboard population | MEDIUM | MEDIUM | P2 |
-| Longer bounded soak | MEDIUM | MEDIUM | P2 |
-| Full active safety closure | HIGH | HIGH | P3 |
-| Stratum v2 | MEDIUM | HIGH | P3 |
-| Non-205 board mining evidence | MEDIUM | HIGH | P3 |
+| --- | --- | --- | --- |
+| Shared read-only I2C lifecycle | HIGH | HIGH | P1 |
+| Typed fresh/stale/unavailable/fault telemetry | HIGH | MEDIUM | P1 |
+| Live INA260 and thermal observations | HIGH | HIGH | P1 |
+| Coherent API/WebSocket/log projection | HIGH | MEDIUM | P1 |
+| Safe settings allowlist and atomic persistence | HIGH | MEDIUM | P1 |
+| Reload and reboot durability proof | HIGH | HIGH | P1 |
+| Truthful build/system provenance | HIGH | MEDIUM | P1 |
+| Passive self-test/watchdog/runtime health | HIGH | MEDIUM | P1 |
+| Detector-gated correlated evidence pack | HIGH | HIGH | P1 |
+| Additional non-actuating settings | MEDIUM | MEDIUM | P2 |
+| Longer telemetry continuity and history | MEDIUM | MEDIUM | P2 |
+| Active hardware-control behavior | HIGH | HIGH | P3 |
+| Mining re-entry | HIGH | HIGH | P3, trigger-gated |
+| Other boards, display/BAP, Stratum v2, UI rewrite | MEDIUM | HIGH | P3 |
 
 **Priority key:**
-- P1: Must have for v1.1 trusted production mining
-- P2: Should have once first share proof is stable
-- P3: Future milestone scope
 
-## Evidence Plan By Feature
+- P1: Must have for v1.2 operator-ready runtime.
+- P2: Add only after the P1 evidence chain is stable.
+- P3: Deferred to a separately scoped milestone and evidence contract.
 
-| Feature | Testable User-Visible Outcome | Minimum Evidence |
-|---------|-------------------------------|------------------|
-| Real socket lifecycle | Owner pool settings lead to visible pool lifecycle and job receipt. | Redacted socket lifecycle log plus API/WebSocket lifecycle status from the same session. |
-| BM1366 production path | Firmware initializes BM1366 enough to dispatch pool-derived work safely. | Hardware evidence with init gate, typed dispatch marker, and no raw frame leakage. |
-| Result/share flow | Accepted or rejected share count changes after live ASIC-derived submit. | Redacted submit/response markers, runtime counters, rejected reason if applicable, and matching API capture. |
-| Hashrate/statistics | Live hashrate/statistics reflect real runtime inputs rather than fixed zeros unless no result occurred. | Statistics and `/api/system/info` snapshots with session timestamp/provenance. |
-| Watchdog/safe-stop | Mining session remains responsive and exits to disabled work submission. | Bounded run logs with watchdog checkpoints and final safe-stop marker. |
-| Redaction | Evidence is publishable without secrets. | Final redaction review artifact and no committed raw credential/endpoint/target values. |
+## Reference Behavior Analysis
+
+| Feature | Upstream ESP-Miner behavior | Rust v1.1 state | v1.2 approach |
+| --- | --- | --- | --- |
+| Power/thermal values | `/api/system/info` exposes power, voltage, current, temperatures, fan, and related numeric fields from global runtime state. | Typed pure power/thermal classifications exist, but live firmware projection remains zero-compatible/unavailable and lacks fresh sensor correlation. | Keep the compatible numeric surface while adding explicit observation status, freshness, and stable reason semantics backed by real read-only samples. |
+| Settings PATCH | Upstream maps REST fields to NVS settings with type/range metadata. | Pure schema validation and firmware validation → write → commit → reload ordering exist; live PATCH/reboot evidence is missing. | Publish a safe v1.2 subset and prove rejection atomicity, reload readback, and reboot durability on board `205`. |
+| Version/system info | Upstream reports firmware/AxeOS/ESP-IDF versions, board/ASIC, reset reason, partition, uptime, heap, and network facts. | Many fields are present, but live evidence includes a source short commit as `version`, `safe-fixture` AxeOS version, and a numeric reset reason string. | Report actual build/runtime facts with human-meaningful reset reason and explicit unavailable states; correlate them to package and reference identity. |
+| Self-test/watchdog | Upstream self-test can exercise hardware and runtime tasks are monitored. | Pure self-test/watchdog models and startup/yield breadcrumbs exist; active hardware submodes and load/intervention proof remain below verified. | Expose passive lifecycle, supervisor availability, and checkpoint recency only; preserve active test/load/intervention as non-claims. |
+| Evidence | Upstream is behavioral reference, not an evidence framework. | v1.0/v1.1 established detector, target-lock, redaction, typed validation, and exact-claim practices. | Reuse those practices in a dedicated operator-runtime evidence profile that correlates telemetry, configuration, provenance, and health without mining slots. |
 
 ## Sources
 
-- `.planning/PROJECT.md` for v1.1 goal, active requirements, out-of-scope boundaries, and architecture constraints.
-- `.planning/MILESTONES.md` and `.planning/milestones/v1.0-MILESTONE-AUDIT.md` for shipped v1.0 capabilities and exact non-claims.
-- `docs/parity/checklist.md` for parity rows, evidence types, safety-critical promotion rules, and current STR/ASIC/API/STAT/SAFE status.
-- `docs/parity/evidence/phase-21-live-mining-and-soak-evidence/summary.md` for controlled no-share evidence and explicit below-verified claims.
-- `docs/release/ultra-205.md` for operator credential, flash, evidence, and redaction rules.
-- `firmware/bitaxe/src/controlled_mining_runtime.rs` for current controlled runtime shell and retained redacted markers.
-- `crates/bitaxe-stratum/src/v1/controlled_runtime.rs` and `crates/bitaxe-stratum/src/v1/state.rs` for current runtime, counters, share outcome, and hashrate state contracts.
-- `crates/bitaxe-api/src/mining.rs`, `crates/bitaxe-api/src/statistics.rs`, and `crates/bitaxe-api/src/scoreboard.rs` for API-visible mining, statistics, and scoreboard models.
+- `.planning/PROJECT.md` for the v1.2 goal, active requirements, terminal mining boundary, and project constraints.
+- `.planning/milestones/v1.1-MILESTONE-AUDIT.md` for accepted unresolved mining debt, exact non-claims, and evidence limitations carried into v1.2.
+- `.planning/RETROSPECTIVE.md` for the evidence-first, fail-closed, bounded-diagnostic, and terminal-unresolved lessons.
+- `.planning/milestones/v1.1-research/FEATURES.md` for the prior feature boundary and the v1.1 capabilities that v1.2 must not reclassify as verified.
+- `docs/project/gsd-new-project-brief.md` and ADRs 0001, 0010, 0012, and 0014 for device-user parity, AxeOS compatibility, evidence, and Ultra 205 priority.
+- `docs/parity/checklist.md` for current `SYS-004`, `CFG-005`, `API-002`, `API-003`, `PWR-006`, `THR-001`, `IO-001`, `SELF-001`, `SAFE-12`, and `SAFE-13` evidence boundaries.
+- `docs/parity/evidence/phase-14-safety-hardware-evidence-completion.md` and `docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md` for the missing fresh sensor, API correlation, self-test, and watchdog evidence.
+- `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/` for the current live system-info/WebSocket route evidence and zero-compatible/synthetic field gaps.
+- `reference/esp-miner/main/http_server/system_api_json.c`, `reference/esp-miner/main/http_server/openapi.yaml`, `reference/esp-miner/main/nvs_config.c`, `reference/esp-miner/main/system.c`, `reference/esp-miner/main/task_monitor.c`, and `reference/esp-miner/main/self_test/self_test.c` for upstream operator-visible behavior.
+- `crates/bitaxe-safety/src/power.rs`, `thermal.rs`, `watchdog.rs`, and `self_test.rs`; `crates/bitaxe-api/src/snapshot.rs`, `wire.rs`, and `settings.rs`; `crates/bitaxe-config/src/nvs.rs`; and `firmware/bitaxe/src/runtime_snapshot.rs`, `http_api.rs`, and `settings_adapter.rs` for the current Rust-owned feature contracts.
+- `AGENTS.md`, `AGENTS.bright-builds.md`, `standards/core/architecture.md`, and `standards/core/verification.md` for the local read-only hardware gates, functional-core/imperative-shell design, explicit evidence, and verification boundaries that materially shape this research.
 
-*Feature research for: Ultra 205 trusted Stratum v1 production mining*
-*Researched: 2026-07-04*
+*Feature research for: v1.2 Ultra 205 Operator-Ready Runtime*
+*Researched: 2026-07-13*
