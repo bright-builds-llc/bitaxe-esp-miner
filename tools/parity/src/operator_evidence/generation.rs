@@ -7,11 +7,13 @@ use camino::{Utf8Path, Utf8PathBuf};
 use clap::ValueEnum;
 
 mod filesystem;
+mod ownership;
 mod rendering;
 #[cfg(test)]
 mod tests;
 
 use filesystem::*;
+use ownership::*;
 use rendering::*;
 
 use super::{EvidenceDisposition, OperatorEvidenceProfile, OperatorEvidenceSlot};
@@ -214,12 +216,10 @@ pub(crate) fn consolidate_phase28_evidence_with_options(
         )));
     }
 
-    if destination.exists() {
-        validate_managed_destination(&destination)?;
-    }
-
     let source_categories = read_source_categories(&source)?;
     validate_source_categories(&source_categories)?;
+    let promotion_context = PromotionContext::acquire(&destination)?;
+    reject_symlink_managed_path(workspace_root, &destination)?;
     let staging = create_staging_directory(&destination)?;
     let generation_result = generate_phase28_staging(
         &staging,
@@ -241,5 +241,5 @@ pub(crate) fn consolidate_phase28_evidence_with_options(
         ));
     }
 
-    promote_staging(&destination, &staging, options)
+    promote_staging(&destination, &staging, options, &promotion_context)
 }

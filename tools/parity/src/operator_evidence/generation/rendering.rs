@@ -388,7 +388,7 @@ fn render_phase28_slot(
     output
 }
 
-fn render_manifest() -> String {
+pub(super) fn render_manifest() -> String {
     let mut output = String::from("generator: bitaxe-parity-phase28-v1\nfiles:\n");
     for slot in OperatorEvidenceSlot::ALL {
         output.push_str("- ");

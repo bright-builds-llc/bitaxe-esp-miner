@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::ffi::CString;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
@@ -7,11 +6,11 @@ use std::sync::atomic::Ordering;
 
 use camino::{Utf8Path, Utf8PathBuf};
 
+use super::ownership::{PathIdentity, PromotionContext};
 use super::{
-    ConsolidationOptions, GenerationError, GenerationResult, PromotionFailurePoint, MANIFEST_FILE,
-    STAGING_SEQUENCE, SUMMARY_FILE,
+    ConsolidationOptions, GenerationError, GenerationResult, PromotionFailurePoint,
+    STAGING_SEQUENCE,
 };
-use crate::operator_evidence::OperatorEvidenceSlot;
 
 pub(super) trait PromotionFilesystem {
     fn rename(&mut self, source: &Utf8Path, destination: &Utf8Path) -> GenerationResult<()>;
@@ -47,48 +46,18 @@ pub(super) enum RollbackState {
     PreviousGenerationRestored,
 }
 
-pub(super) fn validate_managed_destination(destination: &Utf8Path) -> GenerationResult<()> {
-    if !destination.join(MANIFEST_FILE).is_file() {
-        return Err(GenerationError::InvalidInput(format!(
-            "existing destination lacks generator-owned manifest: {destination}"
-        )));
-    }
-    let allowed = OperatorEvidenceSlot::ALL
-        .into_iter()
-        .map(|slot| slot.file_name())
-        .chain([SUMMARY_FILE, MANIFEST_FILE])
-        .collect::<BTreeSet<_>>();
-    for entry in fs::read_dir(destination.as_std_path()).map_err(|source| {
-        io_error(
-            format!("failed to inspect destination {destination}"),
-            source,
-        )
-    })? {
-        let entry =
-            entry.map_err(|source| io_error("failed to inspect destination entry", source))?;
-        let name = entry.file_name();
-        let name = name.to_str().ok_or_else(|| {
-            GenerationError::InvalidInput("destination contains a non-UTF-8 file name".to_owned())
-        })?;
-        if !allowed.contains(name) {
-            return Err(GenerationError::InvalidInput(format!(
-                "existing destination contains unknown file {name:?}"
-            )));
-        }
-    }
-    Ok(())
-}
-
 pub(super) fn promote_staging(
     destination: &Utf8Path,
     staging: &Utf8Path,
     options: ConsolidationOptions,
+    context: &PromotionContext,
 ) -> GenerationResult<()> {
     promote_staging_with_filesystem(
         destination,
         staging,
         options,
         &mut SystemPromotionFilesystem,
+        context,
     )
 }
 
@@ -97,16 +66,20 @@ pub(super) fn promote_staging_with_filesystem(
     staging: &Utf8Path,
     options: ConsolidationOptions,
     filesystem: &mut impl PromotionFilesystem,
+    context: &PromotionContext,
 ) -> GenerationResult<()> {
     let parent = destination.parent().ok_or_else(|| {
         GenerationError::InvalidInput("evidence destination has no parent".to_owned())
     })?;
-    if !destination.exists() {
+    let staging_identity = context.validate_before_exchange(destination, staging)?;
+    if context.destination_identity().is_none() {
         filesystem.rename(staging, destination)?;
+        context.validate_initial_promotion(destination, staging, staging_identity)?;
         return filesystem.sync_directory(parent);
     }
 
     filesystem.exchange(staging, destination)?;
+    context.validate_swapped(destination, staging, staging_identity)?;
     let maybe_promotion_error =
         if options.maybe_failure == Some(PromotionFailurePoint::AfterExchange) {
             Some(GenerationError::Injected(
@@ -117,7 +90,15 @@ pub(super) fn promote_staging_with_filesystem(
         };
     if let Some(promotion_error) = maybe_promotion_error {
         let promotion_detail = promotion_error.to_string();
-        rollback_exchange(destination, staging, parent, filesystem, &promotion_detail)?;
+        rollback_exchange(
+            destination,
+            staging,
+            parent,
+            filesystem,
+            context,
+            staging_identity,
+            &promotion_detail,
+        )?;
         return Err(promotion_error);
     }
 
@@ -128,6 +109,7 @@ pub(super) fn promote_staging_with_filesystem(
             detail: "old-generation cleanup was not attempted after injected failure".to_owned(),
         });
     }
+    context.validate_swapped(destination, staging, staging_identity)?;
     filesystem
         .remove_directory(staging)
         .map_err(|error| GenerationError::RecoveryRequired {
@@ -153,8 +135,11 @@ pub(super) fn rollback_exchange(
     staging: &Utf8Path,
     parent: &Utf8Path,
     filesystem: &mut impl PromotionFilesystem,
+    context: &PromotionContext,
+    staging_identity: PathIdentity,
     promotion_failure: &str,
 ) -> GenerationResult<RollbackState> {
+    context.validate_swapped(destination, staging, staging_identity)?;
     filesystem.exchange(destination, staging).map_err(|error| {
         GenerationError::RecoveryRequired {
             destination: destination.to_owned(),
@@ -164,6 +149,7 @@ pub(super) fn rollback_exchange(
             ),
         }
     })?;
+    context.validate_restored(destination, staging, staging_identity)?;
     filesystem.sync_directory(parent).map_err(|error| {
         GenerationError::RecoveryRequired {
             destination: destination.to_owned(),
@@ -173,6 +159,7 @@ pub(super) fn rollback_exchange(
             ),
         }
     })?;
+    context.validate_restored(destination, staging, staging_identity)?;
     filesystem.remove_directory(staging).map_err(|error| {
         GenerationError::RecoveryRequired {
             destination: destination.to_owned(),
