@@ -486,7 +486,7 @@ write_live_capture_slots() {
 	write_redaction_review
 	write_summary "passed" "passed" "$share_outcome" "$asic_bridge_status" "$safe_stop_status" "$conclusion"
 	write_conclusion "$share_outcome" "$conclusion"
-	write_allow_manifest "$detected_port" "passed" "live-hardware-bridge" "hardware-smoke" "$share_outcome" "$safe_stop_status" "$asic_bridge_status"
+	write_allow_manifest "$detected_port" "passed" "live-hardware-share-outcome" "hardware-smoke" "$share_outcome" "$safe_stop_status" "$asic_bridge_status"
 }
 
 write_live_capture_not_observed_slots() {

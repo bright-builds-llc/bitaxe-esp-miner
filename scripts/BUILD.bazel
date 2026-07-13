@@ -619,7 +619,11 @@ sh_test(
 sh_test(
     name = "phase28_evidence_test",
     srcs = ["phase28-evidence-test.sh"],
-    data = ["phase28-evidence.sh"],
+    data = [
+        "phase27-live-hardware-bridge-evidence.sh",
+        "phase28-evidence.sh",
+        "//tools/parity:report",
+    ],
     env_inherit = [
         "HOME",
         "PATH",

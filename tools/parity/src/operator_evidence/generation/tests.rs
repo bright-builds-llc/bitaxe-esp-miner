@@ -193,6 +193,13 @@ fn outcome_matrix_requires_support_and_renders_all_closed_outcomes() {
 
         // Assert
         assert!(share.contains(&format!("share_outcome: {}", outcome.as_str())));
+        assert!(share.contains("safe_stop_status: passed"));
+        if matches!(outcome, ShareOutcome::Accepted | ShareOutcome::Rejected) {
+            assert!(share.contains("asic_correlation_status: passed"));
+        } else {
+            assert!(share.contains("asic_bridge_status: blocked"));
+            assert!(share.contains("source_safe_stop_status: complete"));
+        }
     }
 }
 
@@ -419,14 +426,14 @@ fn write_phase27_source(root: &Utf8Path, outcome: ShareOutcome) {
     let (slot_status, maybe_support) = match outcome {
         ShareOutcome::Accepted | ShareOutcome::Rejected => (
             "passed",
-            "asic_correlation_status: passed\nsafe_stop_status: passed\n",
+            "asic_bridge_status: result_correlated\nsafe_stop_status: complete\n",
         ),
         ShareOutcome::LiveSubmitResponseObserved => {
             unreachable!("Phase 28 source fixtures do not use Phase 25 outcomes")
         }
         ShareOutcome::BlockedSafePrerequisite => (
             "blocked",
-            "asic_bridge_status: blocked\nsafe_stop_status: blocked\n",
+            "asic_bridge_status: blocked\nsafe_stop_status: complete\n",
         ),
     };
     let common = format!(

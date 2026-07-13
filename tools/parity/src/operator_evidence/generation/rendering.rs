@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
+use std::str::FromStr;
 
 use camino::Utf8Path;
 
@@ -12,6 +13,130 @@ use crate::operator_evidence::{
     load_operator_evidence_documents, validate_operator_evidence_documents, EvidenceDisposition,
     OperatorEvidenceFilters, OperatorEvidenceProfile, OperatorEvidenceSlot, ShareOutcome,
 };
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Phase27AsicBridgeStatus {
+    Blocked,
+    Initialized,
+    WorkDispatched,
+    ResultCorrelated,
+}
+
+impl FromStr for Phase27AsicBridgeStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "blocked" => Ok(Self::Blocked),
+            "initialized" => Ok(Self::Initialized),
+            "work_dispatched" => Ok(Self::WorkDispatched),
+            "result_correlated" => Ok(Self::ResultCorrelated),
+            _ => Err(format!("unknown Phase 27 ASIC bridge status {value:?}")),
+        }
+    }
+}
+
+impl Phase27AsicBridgeStatus {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Blocked => "blocked",
+            Self::Initialized => "initialized",
+            Self::WorkDispatched => "work_dispatched",
+            Self::ResultCorrelated => "result_correlated",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Phase27SafeStopStatus {
+    Blocked,
+    Complete,
+}
+
+impl FromStr for Phase27SafeStopStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "blocked" => Ok(Self::Blocked),
+            "complete" => Ok(Self::Complete),
+            _ => Err(format!("unknown Phase 27 safe-stop status {value:?}")),
+        }
+    }
+}
+
+impl Phase27SafeStopStatus {
+    const fn source_str(self) -> &'static str {
+        match self {
+            Self::Blocked => "blocked",
+            Self::Complete => "complete",
+        }
+    }
+
+    const fn normalized_str(self) -> &'static str {
+        match self {
+            Self::Blocked => "blocked",
+            Self::Complete => "passed",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct Phase27SourceRecord {
+    outcome: ShareOutcome,
+    asic_bridge_status: Phase27AsicBridgeStatus,
+    safe_stop_status: Phase27SafeStopStatus,
+}
+
+impl Phase27SourceRecord {
+    fn parse(categories: &BTreeMap<String, String>) -> GenerationResult<Self> {
+        let outcome = source_outcome(categories)?;
+        let asic_bridge_status = parse_source_category(categories, "asic_bridge_status")?;
+        let safe_stop_status = parse_source_category(categories, "safe_stop_status")?;
+        Ok(Self {
+            outcome,
+            asic_bridge_status,
+            safe_stop_status,
+        })
+    }
+
+    fn validate(self) -> GenerationResult<()> {
+        match self.outcome {
+            ShareOutcome::Accepted | ShareOutcome::Rejected => {
+                if self.asic_bridge_status != Phase27AsicBridgeStatus::ResultCorrelated {
+                    return Err(GenerationError::InvalidInput(format!(
+                        "{} source outcome requires asic_bridge_status: result_correlated",
+                        self.outcome.as_str()
+                    )));
+                }
+                if self.safe_stop_status != Phase27SafeStopStatus::Complete {
+                    return Err(GenerationError::InvalidInput(format!(
+                        "{} source outcome requires safe_stop_status: complete",
+                        self.outcome.as_str()
+                    )));
+                }
+            }
+            ShareOutcome::BlockedSafePrerequisite => {}
+            ShareOutcome::LiveSubmitResponseObserved => {
+                return Err(GenerationError::InvalidInput(
+                    "Phase 25 live-submit outcome cannot be consolidated as Phase 28 evidence"
+                        .to_owned(),
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+fn parse_source_category<T>(categories: &BTreeMap<String, String>, key: &str) -> GenerationResult<T>
+where
+    T: FromStr<Err = String>,
+{
+    let value = categories.get(key).ok_or_else(|| {
+        GenerationError::InvalidInput(format!("mandatory source category {key} is missing"))
+    })?;
+    value.parse().map_err(GenerationError::InvalidInput)
+}
 
 pub(super) fn render_completion_slot(
     profile: OperatorEvidenceProfile,
@@ -115,35 +240,7 @@ pub(super) fn validate_source_categories(
         }
     }
 
-    let outcome = source_outcome(categories)?;
-    match outcome {
-        ShareOutcome::Accepted | ShareOutcome::Rejected => {
-            for key in ["asic_correlation_status", "safe_stop_status"] {
-                if categories.get(key).map(String::as_str) != Some("passed") {
-                    return Err(GenerationError::InvalidInput(format!(
-                        "{} source outcome requires {key}: passed",
-                        outcome.as_str()
-                    )));
-                }
-            }
-        }
-        ShareOutcome::LiveSubmitResponseObserved => {
-            return Err(GenerationError::InvalidInput(
-                "Phase 25 live-submit outcome cannot be consolidated as Phase 28 evidence"
-                    .to_owned(),
-            ));
-        }
-        ShareOutcome::BlockedSafePrerequisite => {
-            for key in ["asic_bridge_status", "safe_stop_status"] {
-                if categories.get(key).map(String::as_str) != Some("blocked") {
-                    return Err(GenerationError::InvalidInput(format!(
-                        "blocked_safe_prerequisite source requires {key}: blocked"
-                    )));
-                }
-            }
-        }
-    }
-    Ok(())
+    Phase27SourceRecord::parse(categories)?.validate()
 }
 
 pub(super) fn source_outcome(
@@ -166,7 +263,8 @@ pub(super) fn generate_phase28_staging(
     categories: &BTreeMap<String, String>,
     options: ConsolidationOptions,
 ) -> GenerationResult<()> {
-    let outcome = source_outcome(categories)?;
+    let source_record = Phase27SourceRecord::parse(categories)?;
+    let outcome = source_record.outcome;
     for slot in OperatorEvidenceSlot::ALL {
         let source_slot = source.join(slot.file_name());
         let source_exists = source_slot.is_file();
@@ -195,8 +293,7 @@ pub(super) fn generate_phase28_staging(
             consolidation_status,
             relative_source,
             source_exists,
-            categories,
-            outcome,
+            source_record,
         );
         write_synced(&staging.join(slot.file_name()), &contents)?;
     }
@@ -217,9 +314,9 @@ fn render_phase28_slot(
     consolidation_status: &str,
     relative_source: &Utf8Path,
     source_exists: bool,
-    categories: &BTreeMap<String, String>,
-    outcome: ShareOutcome,
+    source_record: Phase27SourceRecord,
 ) -> String {
+    let outcome = source_record.outcome;
     let source_link = if source_exists {
         format!("{relative_source}/{}", slot.file_name())
     } else {
@@ -229,7 +326,7 @@ fn render_phase28_slot(
         "slot: {}\nslot_status: {status}\nevidence_profile: phase28\nevidence_disposition: {}\ngenerated_provenance: phase29-phase28-consolidation\nboard: 205\nsource_phase27_root: {relative_source}\nsource_link: {source_link}\nconsolidation_status: {consolidation_status}\nredaction_status: passed\nraw_artifacts_committed: no\nraw_pool_values_committed: no\npool_config: not-read\nobserved_behavior: source categories are represented by cross-links only\nsafe_stop_status: {}\nconclusion: deterministic Phase 28 consolidation\nexact_non_claims:\n- accepted or rejected shares require exact ASIC correlation and safe-stop support\n- raw Phase 27 artifacts and private runtime values are not copied\n- Phase 30 checklist promotion remains a separate decision\n",
         slot.slot_name(),
         disposition.as_str(),
-        categories.get("safe_stop_status").map_or("blocked", String::as_str),
+        source_record.safe_stop_status.normalized_str(),
     );
     if matches!(
         slot,
@@ -241,13 +338,17 @@ fn render_phase28_slot(
         output.push_str(&format!("share_outcome: {}\n", outcome.as_str()));
         match outcome {
             ShareOutcome::Accepted | ShareOutcome::Rejected => {
-                output.push_str("asic_correlation_status: passed\nsafe_stop_status: passed\n");
+                output.push_str("asic_correlation_status: passed\n");
             }
             ShareOutcome::LiveSubmitResponseObserved => {
                 unreachable!("Phase 28 does not support Phase 25 outcomes")
             }
             ShareOutcome::BlockedSafePrerequisite => {
-                output.push_str("asic_bridge_status: blocked\nsafe_stop_status: blocked\n");
+                output.push_str(&format!(
+                    "asic_bridge_status: blocked\nsource_asic_bridge_status: {}\nsource_safe_stop_status: {}\n",
+                    source_record.asic_bridge_status.as_str(),
+                    source_record.safe_stop_status.source_str(),
+                ));
             }
         }
     }

@@ -4,12 +4,18 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 readonly wrapper="${PHASE28_EVIDENCE_SCRIPT:-${script_dir}/phase28-evidence.sh}"
+readonly phase27_wrapper="${PHASE27_EVIDENCE_SCRIPT:-${script_dir}/phase27-live-hardware-bridge-evidence.sh}"
+readonly repo_root="$(cd "${script_dir}/.." && pwd)"
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/phase28-evidence-test.XXXXXX")"
 readonly tmp_root
+runtime_roots=()
 
 cleanup() {
 	rm -rf "$tmp_root"
+	if [[ "${#runtime_roots[@]}" -gt 0 ]]; then
+		rm -rf "${runtime_roots[@]}"
+	fi
 }
 trap cleanup EXIT
 
@@ -39,6 +45,111 @@ assert_nonzero_status() {
 
 	if [[ "$status" -eq 0 ]]; then
 		printf '%s should exit non-zero\n' "$scenario" >&2
+		exit 1
+	fi
+}
+
+find_real_parity() {
+	local candidate
+	for candidate in \
+		"${script_dir}/../tools/parity/report" \
+		"${repo_root}/target/debug/bitaxe-parity" \
+		"${repo_root}/bazel-bin/tools/parity/report"; do
+		if [[ -x "$candidate" ]]; then
+			printf '%s' "$candidate"
+			return 0
+		fi
+	done
+	printf 'production parity binary was not found\n' >&2
+	return 1
+}
+
+write_real_phase27_tools() {
+	local root="$1"
+
+	cat >"${root}/detector.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'port=/dev/cu.phase29-fixture\n'
+SH
+	cat >"${root}/board-info.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'Chip type: ESP32-S3\n'
+SH
+	cat >"${root}/live-capture.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'phase27_safety_bring_up=complete\n'
+printf 'asic_enable_status=active\n'
+printf 'safety_fan_status=startup_duty\n'
+printf 'asic_production_status=result_correlated\n'
+printf 'share_submission_status=%s redacted=true\n' "${PHASE28_REAL_OUTCOME:?}"
+printf 'phase25_safe_stop_status=complete mining=disabled hardware_control=disabled work_submission=disabled\n'
+SH
+	chmod +x "${root}/detector.sh" "${root}/board-info.sh" "${root}/live-capture.sh"
+}
+
+write_real_package_manifest() {
+	local root="$1"
+	printf 'fixture-image\n' >"${root}/factory.bin"
+	cat >"${root}/package.json" <<'EOF'
+{
+  "schema_version": 2,
+  "source_commit": "phase29-source-fixture",
+  "reference_commit": "phase29-reference-fixture",
+  "artifacts": [
+    {
+      "kind": "factory_merged_image",
+      "path": "factory.bin"
+    }
+  ]
+}
+EOF
+}
+
+run_real_phase27_source() {
+	local real_parity="$1"
+	local outcome="$2"
+	local relative_source="$3"
+	local fixture_root="$4"
+	local mode="hardware"
+	local -a extra_args=(
+		--pool-credentials "${fixture_root}/local-pool-input.json"
+		--wifi-credentials "${fixture_root}/local-wifi-input.json"
+		--duration-seconds 60
+		--redact-evidence=true
+	)
+	if [[ "$outcome" == "blocked_safe_prerequisite" ]]; then
+		mode="blocked"
+		extra_args=(--duration-seconds 60 --redact-evidence=true)
+	fi
+
+	set +e
+	(
+		cd "$repo_root"
+		export BUILD_WORKSPACE_DIRECTORY="$repo_root"
+		PHASE27_PARITY_COMMAND="$real_parity" \
+		PHASE27_SOURCE_COMMIT="phase29-source-fixture" \
+		PHASE27_REFERENCE_COMMIT="phase29-reference-fixture" \
+		PHASE27_DETECT_COMMAND="bash ${fixture_root}/detector.sh" \
+		PHASE27_BOARD_INFO_COMMAND="bash ${fixture_root}/board-info.sh" \
+		PHASE27_LIVE_CAPTURE_COMMAND="bash ${fixture_root}/live-capture.sh" \
+		PHASE28_REAL_OUTCOME="$outcome" \
+			"$phase27_wrapper" \
+			--evidence-root "$relative_source" \
+			--manifest "${fixture_root}/package.json" \
+			--mode "$mode" \
+			"${extra_args[@]}"
+	) >"${fixture_root}/phase27-${outcome}.stdout" 2>"${fixture_root}/phase27-${outcome}.stderr"
+	local status=$?
+	set -e
+
+	if [[ "$outcome" == "blocked_safe_prerequisite" ]]; then
+		assert_nonzero_status "$status" "production Phase 27 blocked source"
+	elif [[ "$status" -ne 0 ]]; then
+		printf 'production Phase 27 %s source failed\n' "$outcome" >&2
+		cat "${fixture_root}/phase27-${outcome}.stderr" >&2
 		exit 1
 	fi
 }
@@ -221,7 +332,9 @@ run_wrapper() {
 	shift 4
 	local parity_command="$fake_parity"
 	if [[ "$parity_command" != */* ]]; then
-		parity_command="./${parity_command}"
+		parity_command="bash ./${parity_command}"
+	else
+		parity_command="bash ${parity_command}"
 	fi
 
 	PARITY_COMMAND="$parity_command" \
@@ -346,8 +459,39 @@ run_argument_surface_test() {
 	done
 }
 
+run_real_phase27_to_phase28_outcome_tests() {
+	local real_parity
+	real_parity="$(find_real_parity)"
+	local fixture_root="${tmp_root}/real-integration"
+	mkdir -p "$fixture_root"
+	write_real_phase27_tools "$fixture_root"
+	write_real_package_manifest "$fixture_root"
+	printf '{}\n' >"${fixture_root}/local-pool-input.json"
+	printf '{}\n' >"${fixture_root}/local-wifi-input.json"
+
+	local outcome
+	for outcome in accepted rejected blocked_safe_prerequisite; do
+		local relative_source="scratch/phase27-production-${outcome}-$$"
+		local relative_destination="scratch/phase28-production-${outcome}-$$"
+		runtime_roots+=("${repo_root}/${relative_source}" "${repo_root}/${relative_destination}")
+		rm -rf "${repo_root}/${relative_source}" "${repo_root}/${relative_destination}"
+		run_real_phase27_source "$real_parity" "$outcome" "$relative_source" "$fixture_root"
+		(
+			cd "$repo_root"
+			export BUILD_WORKSPACE_DIRECTORY="$repo_root"
+			PARITY_COMMAND="$real_parity" \
+				"$wrapper" \
+				--phase27-root "$relative_source" \
+				--evidence-root "$relative_destination"
+		) >"${fixture_root}/phase28-${outcome}.stdout" 2>"${fixture_root}/phase28-${outcome}.stderr"
+		assert_contains "${repo_root}/${relative_destination}/share-outcome.md" "share_outcome: ${outcome}"
+		rm -rf "${repo_root}/${relative_source}" "${repo_root}/${relative_destination}"
+	done
+}
+
 run_outcome_and_determinism_tests
 run_rejection_and_preservation_tests
 run_argument_surface_test
+run_real_phase27_to_phase28_outcome_tests
 
 printf 'phase28_evidence_test=passed\n'

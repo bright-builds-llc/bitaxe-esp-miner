@@ -438,7 +438,8 @@ fn validate_share_outcome_support(
                 }
                 OperatorEvidenceProfile::Phase28 => {
                     contents.contains("asic_bridge_status: blocked")
-                        && contents.contains("safe_stop_status: blocked")
+                        && (contents.contains("safe_stop_status: passed")
+                            || contents.contains("safe_stop_status: blocked"))
                 }
                 OperatorEvidenceProfile::Phase23 => false,
             };
