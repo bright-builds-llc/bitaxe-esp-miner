@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 33-01-PLAN.md
-last_updated: "2026-07-14T02:38:38.458Z"
+stopped_at: Completed 33-02-PLAN.md
+last_updated: "2026-07-14T02:49:30.854Z"
 last_activity: 2026-07-14
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -21,12 +21,12 @@ Last activity: 2026-07-14
 ## Current Position
 
 Phase: 33 (confirmed-settings-durability) — EXECUTING
-Plan: 2 of 3
+Plan: 2 of 3 complete
 
 - **Phase:** 33 of 35 (confirmed settings durability)
-- **Plan:** 1 of 3 complete
-- **Status:** Executing Phase 33
-- **Next step:** Execute 33-02 firmware confirmation integration.
+- **Plan:** 2 of 3 complete
+- **Status:** Ready to execute
+- **Next step:** Execute 33-03 detector-gated durability evidence.
 
 ## Project Reference
 
@@ -80,6 +80,12 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Known-field compatibility validation always precedes exact hostname-only authority; valid mixed or excluded requests remain inert.
 - A lifetime-bound transaction owns serialization from the first hostname mutation through strict reload, typed reconciliation, and confirmed publication.
 - Post-commit reload, mismatch, or publication failures retain explicit uncertainty and never claim or attempt rollback.
+
+## Decisions (Phase 33 Plan 02)
+
+- Writable NVS opens only after exact hostname authority and under one transaction lock held through confirmed publication.
+- Strict independent reload remains non-publishing until typed exact reconciliation succeeds; requested values never overlay public truth.
+- Compatibility-only and invalid requests never construct the adapter, and hostname application is the sole post-response live effect.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -226,6 +232,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 32 P02 | 21 min | 2 tasks | 17 files |
 | Phase 32 P03 | 15 min | 3 tasks | 7 files |
 | Phase 33 P01 | 12 min | 2 tasks | 5 files |
+| Phase 33 P02 | 9min | 2 tasks | 7 files |
 
 ### Quick Tasks Completed
 
@@ -258,5 +265,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 33-01-PLAN.md
-- **Resume:** Execute 33-02 firmware confirmation integration; preserve all v1.2 exclusions and terminal-archive prohibitions.
+- **Stopped at:** Completed 33-02-PLAN.md
+- **Resume:** Execute 33-03 detector-gated durability evidence; preserve all v1.2 exclusions and terminal-archive prohibitions.

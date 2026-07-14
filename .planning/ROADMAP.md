@@ -75,7 +75,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 1. The same storage-confirmed hostname is observed after one phase-approved normal reboot and detector-gated reacquisition of the same board.
 1. Unknown and unsupported fields preserve existing compatibility behavior without writes, secrets, credentials, target changes, actuation, raw reset/power operations, mining, direct-UART/pin work, or broader settings promotion.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 ### Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot
 
@@ -131,7 +131,7 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | --- | --- | ---: | --- |
 | 31 | Operator Claim and Telemetry Contract | 2 | Complete |
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
-| 33 | Confirmed Settings Durability | 5 | In Progress (1/3) |
+| 33 | Confirmed Settings Durability | 5 | In Progress (2/3) |
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Not started |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 6 | Not started |
 
