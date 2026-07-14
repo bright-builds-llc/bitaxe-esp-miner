@@ -1,35 +1,44 @@
-//! ESP-IDF NVS adapter for accepted AxeOS settings PATCH plans.
+//! ESP-IDF NVS adapter for storage-confirmed AxeOS hostname settings.
 
 use std::ffi::CString;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use bitaxe_api::{SettingsAdapterFailure, SettingsPersistenceAdapter};
+use bitaxe_api::{
+    Hostname, SettingsAdapterFailure, SettingsPersistenceAdapter, SettingsPersistenceTransaction,
+};
 use bitaxe_config::nvs::StoredValueKind;
 use bitaxe_config::{
-    all_settings_schema, NvsSnapshot, NvsWrite, StoredType, StoredValue, NVS_NAMESPACE,
+    all_settings_schema, confirm_hostname_snapshot, ConfirmedHostnameSnapshot, NvsSnapshot,
+    StoredValue, NVS_NAMESPACE,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDataType, NvsDefault};
 use esp_idf_svc::sys;
 
 static CURRENT_SETTINGS_SNAPSHOT: OnceLock<Mutex<NvsSnapshot>> = OnceLock::new();
+static SETTINGS_TRANSACTION_LOCK: Mutex<()> = Mutex::new(());
 
-/// Firmware adapter that applies pure settings write plans to ESP-IDF NVS.
+/// Firmware coordinator that opens writable NVS only after exact authority.
 pub struct FirmwareSettingsAdapter {
+    partition: EspDefaultNvsPartition,
+}
+
+impl FirmwareSettingsAdapter {
+    /// Takes the default NVS partition without opening the settings namespace for writes.
+    pub fn open() -> Result<Self, SettingsAdapterFailure> {
+        let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+        Ok(Self { partition })
+    }
+}
+
+/// Exclusive hostname transaction held from writable open through publication.
+pub struct FirmwareSettingsTransaction {
+    _transaction_guard: MutexGuard<'static, ()>,
     partition: EspDefaultNvsPartition,
     nvs: EspNvs<NvsDefault>,
 }
 
-impl FirmwareSettingsAdapter {
-    /// Opens the upstream ESP-Miner NVS namespace for read/write settings persistence.
-    pub fn open() -> Result<Self, SettingsAdapterFailure> {
-        let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
-        let nvs = EspNvs::new(partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
-        refresh_current_settings_snapshot(&nvs);
-
-        Ok(Self { partition, nvs })
-    }
-
+impl FirmwareSettingsTransaction {
     fn set_string(&mut self, key: &str, value: &str) -> Result<(), SettingsAdapterFailure> {
         let c_key = c_string(key)?;
         let c_value = c_string(value)?;
@@ -42,38 +51,11 @@ impl FirmwareSettingsAdapter {
             unsafe { sys::nvs_set_str(self.nvs.handle(), c_key.as_ptr(), c_value.as_ptr()) };
         esp_result("nvs_set_str", result)
     }
-
-    fn set_u16(&mut self, key: &str, value: u16) -> Result<(), SettingsAdapterFailure> {
-        let c_key = c_string(key)?;
-        let result = unsafe { sys::nvs_set_u16(self.nvs.handle(), c_key.as_ptr(), value) };
-        esp_result("nvs_set_u16", result)
-    }
-
-    fn set_i32(&mut self, key: &str, value: i32) -> Result<(), SettingsAdapterFailure> {
-        let c_key = c_string(key)?;
-        let result = unsafe { sys::nvs_set_i32(self.nvs.handle(), c_key.as_ptr(), value) };
-        esp_result("nvs_set_i32", result)
-    }
-
-    fn set_u64(&mut self, key: &str, value: u64) -> Result<(), SettingsAdapterFailure> {
-        let c_key = c_string(key)?;
-        let result = unsafe { sys::nvs_set_u64(self.nvs.handle(), c_key.as_ptr(), value) };
-        esp_result("nvs_set_u64", result)
-    }
 }
 
-impl SettingsPersistenceAdapter for FirmwareSettingsAdapter {
-    fn validate_accepted(&mut self) -> Result<(), SettingsAdapterFailure> {
-        Ok(())
-    }
-
-    fn write(&mut self, write: &NvsWrite) -> Result<(), SettingsAdapterFailure> {
-        match write {
-            NvsWrite::String { key, value } => self.set_string(key.as_str(), value),
-            NvsWrite::U16 { key, value } => self.set_u16(key.as_str(), *value),
-            NvsWrite::I32 { key, value } => self.set_i32(key.as_str(), *value),
-            NvsWrite::U64 { key, value } => self.set_u64(key.as_str(), *value),
-        }
+impl SettingsPersistenceTransaction for FirmwareSettingsTransaction {
+    fn write_hostname(&mut self, hostname: &Hostname) -> Result<(), SettingsAdapterFailure> {
+        self.set_string("hostname", hostname.as_str())
     }
 
     fn commit(&mut self) -> Result<(), SettingsAdapterFailure> {
@@ -81,11 +63,47 @@ impl SettingsPersistenceAdapter for FirmwareSettingsAdapter {
         esp_result("nvs_commit", result)
     }
 
-    fn reload(&mut self) -> Result<(), SettingsAdapterFailure> {
+    fn reload(&mut self) -> Result<ConfirmedHostnameSnapshot, SettingsAdapterFailure> {
         let reloaded =
             EspNvs::new(self.partition.clone(), NVS_NAMESPACE, false).map_err(settings_failure)?;
-        refresh_current_settings_snapshot(&reloaded);
+        let candidate = read_current_settings_snapshot_strict(&reloaded)?;
+        confirm_hostname_snapshot(candidate).map_err(settings_failure)
+    }
+
+    fn publish(
+        &mut self,
+        candidate: ConfirmedHostnameSnapshot,
+    ) -> Result<(), SettingsAdapterFailure> {
+        let mut current = current_snapshot_cell()
+            .lock()
+            .map_err(|_| SettingsAdapterFailure::failed("settings snapshot lock poisoned"))?;
+        *current = candidate.into_snapshot();
         Ok(())
+    }
+}
+
+impl SettingsPersistenceAdapter for FirmwareSettingsAdapter {
+    type Transaction<'adapter>
+        = FirmwareSettingsTransaction
+    where
+        Self: 'adapter;
+
+    fn validate_accepted(&mut self, _hostname: &Hostname) -> Result<(), SettingsAdapterFailure> {
+        Ok(())
+    }
+
+    fn begin_transaction(&mut self) -> Result<Self::Transaction<'_>, SettingsAdapterFailure> {
+        let transaction_guard = SETTINGS_TRANSACTION_LOCK
+            .lock()
+            .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
+        let nvs =
+            EspNvs::new(self.partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
+
+        Ok(FirmwareSettingsTransaction {
+            _transaction_guard: transaction_guard,
+            partition: self.partition.clone(),
+            nvs,
+        })
     }
 }
 
@@ -93,11 +111,11 @@ impl SettingsPersistenceAdapter for FirmwareSettingsAdapter {
 pub fn initialize_current_settings_snapshot() -> Result<(), SettingsAdapterFailure> {
     let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
     let nvs = EspNvs::new(partition, NVS_NAMESPACE, false).map_err(settings_failure)?;
-    refresh_current_settings_snapshot(&nvs);
+    refresh_current_settings_snapshot_best_effort(&nvs);
     Ok(())
 }
 
-/// Returns the current settings snapshot boundary used for pure effect planning.
+/// Returns the last atomically published settings snapshot.
 #[must_use]
 pub fn current_settings_snapshot() -> NvsSnapshot {
     let snapshot = current_snapshot_cell();
@@ -109,27 +127,12 @@ pub fn current_settings_snapshot() -> NvsSnapshot {
     snapshot.clone()
 }
 
-/// Records successfully persisted writes in the runtime settings snapshot.
-pub fn apply_persisted_settings_writes(writes: &[NvsWrite]) {
-    if writes.is_empty() {
-        return;
-    }
-
-    let snapshot = current_snapshot_cell();
-    let Ok(mut snapshot) = snapshot.lock() else {
-        log::warn!("axeos_settings_snapshot=update_failed reason=mutex_poisoned");
-        return;
-    };
-
-    snapshot.apply_writes(writes);
-}
-
 fn current_snapshot_cell() -> &'static Mutex<NvsSnapshot> {
     CURRENT_SETTINGS_SNAPSHOT.get_or_init(|| Mutex::new(NvsSnapshot::new()))
 }
 
-fn refresh_current_settings_snapshot(nvs: &EspNvs<NvsDefault>) {
-    let snapshot = read_current_settings_snapshot(nvs);
+fn refresh_current_settings_snapshot_best_effort(nvs: &EspNvs<NvsDefault>) {
+    let snapshot = read_current_settings_snapshot_best_effort(nvs);
     let cell = current_snapshot_cell();
     let Ok(mut current) = cell.lock() else {
         log::warn!("axeos_settings_snapshot=refresh_failed reason=mutex_poisoned");
@@ -139,21 +142,23 @@ fn refresh_current_settings_snapshot(nvs: &EspNvs<NvsDefault>) {
     *current = snapshot;
 }
 
-fn read_current_settings_snapshot(nvs: &EspNvs<NvsDefault>) -> NvsSnapshot {
+fn read_current_settings_snapshot_best_effort(nvs: &EspNvs<NvsDefault>) -> NvsSnapshot {
     let mut values = Vec::new();
     for schema in all_settings_schema() {
         let key = schema.key.as_str();
         let maybe_stored_type = match nvs.find_key(key) {
             Ok(maybe_stored_type) => maybe_stored_type,
             Err(error) => {
-                log::warn!("axeos_settings_snapshot=skip_key key={key} reason=find_key_failed error={error}");
+                log::warn!(
+                    "axeos_settings_snapshot=skip_key key={key} reason=find_key_failed error={error}"
+                );
                 continue;
             }
         };
         let Some(stored_type) = maybe_stored_type else {
             continue;
         };
-        let Some(value) = read_stored_value(nvs, key, schema.stored_type, stored_type) else {
+        let Some(value) = read_stored_value_best_effort(nvs, key, stored_type) else {
             continue;
         };
 
@@ -166,87 +171,99 @@ fn read_current_settings_snapshot(nvs: &EspNvs<NvsDefault>) -> NvsSnapshot {
     NvsSnapshot::from_values(values)
 }
 
-fn read_stored_value(
+fn read_current_settings_snapshot_strict(
+    nvs: &EspNvs<NvsDefault>,
+) -> Result<NvsSnapshot, SettingsAdapterFailure> {
+    let mut values = Vec::new();
+    for schema in all_settings_schema() {
+        let key = schema.key.as_str();
+        let maybe_stored_type = nvs.find_key(key).map_err(settings_failure)?;
+        let Some(stored_type) = maybe_stored_type else {
+            continue;
+        };
+        let value = read_stored_value_strict(nvs, key, stored_type)?;
+
+        values.push(StoredValue {
+            key: schema.key,
+            value,
+        });
+    }
+
+    Ok(NvsSnapshot::from_values(values))
+}
+
+fn read_stored_value_best_effort(
     nvs: &EspNvs<NvsDefault>,
     key: &str,
-    expected_type: StoredType,
     stored_type: NvsDataType,
 ) -> Option<StoredValueKind> {
+    match read_stored_value_strict(nvs, key, stored_type) {
+        Ok(value) => Some(value),
+        Err(error) => {
+            log::warn!(
+                "axeos_settings_snapshot=skip_key key={key} reason=read_failed error={error}"
+            );
+            None
+        }
+    }
+}
+
+fn read_stored_value_strict(
+    nvs: &EspNvs<NvsDefault>,
+    key: &str,
+    stored_type: NvsDataType,
+) -> Result<StoredValueKind, SettingsAdapterFailure> {
     match stored_type {
-        NvsDataType::Str => read_string_value(nvs, key).map(StoredValueKind::String),
-        NvsDataType::U16 => read_u16_value(nvs, key).map(StoredValueKind::U16),
-        NvsDataType::I32 => read_i32_value(nvs, key).map(StoredValueKind::I32),
-        NvsDataType::U64 => read_u64_value(nvs, key).map(StoredValueKind::U64),
-        unsupported => {
-            log::warn!(
-                "axeos_settings_snapshot=skip_key key={key} expected_type={expected_type:?} stored_type={unsupported:?}"
-            );
-            None
-        }
+        NvsDataType::Str => read_string_value_strict(nvs, key).map(StoredValueKind::String),
+        NvsDataType::U16 => read_u16_value_strict(nvs, key).map(StoredValueKind::U16),
+        NvsDataType::I32 => read_i32_value_strict(nvs, key).map(StoredValueKind::I32),
+        NvsDataType::U64 => read_u64_value_strict(nvs, key).map(StoredValueKind::U64),
+        _ => Err(SettingsAdapterFailure::failed(
+            "settings key has unsupported storage type",
+        )),
     }
 }
 
-fn read_string_value(nvs: &EspNvs<NvsDefault>, key: &str) -> Option<String> {
-    let maybe_len = match nvs.str_len(key) {
-        Ok(maybe_len) => maybe_len,
-        Err(error) => {
-            log::warn!(
-                "axeos_settings_snapshot=skip_key key={key} reason=str_len_failed error={error}"
-            );
-            return None;
-        }
-    };
-    let Some(len) = maybe_len else {
-        return None;
-    };
-
+fn read_string_value_strict(
+    nvs: &EspNvs<NvsDefault>,
+    key: &str,
+) -> Result<String, SettingsAdapterFailure> {
+    let len = nvs
+        .str_len(key)
+        .map_err(settings_failure)?
+        .ok_or_else(|| SettingsAdapterFailure::failed("settings string length missing"))?;
     let mut buffer = vec![0; len];
-    match nvs.get_str(key, &mut buffer) {
-        Ok(Some(value)) => Some(value.to_owned()),
-        Ok(None) => None,
-        Err(error) => {
-            log::warn!(
-                "axeos_settings_snapshot=skip_key key={key} reason=get_str_failed error={error}"
-            );
-            None
-        }
-    }
+    nvs.get_str(key, &mut buffer)
+        .map_err(settings_failure)?
+        .map(str::to_owned)
+        .ok_or_else(|| SettingsAdapterFailure::failed("settings string value missing"))
 }
 
-fn read_u16_value(nvs: &EspNvs<NvsDefault>, key: &str) -> Option<u16> {
-    match nvs.get_u16(key) {
-        Ok(value) => value,
-        Err(error) => {
-            log::warn!(
-                "axeos_settings_snapshot=skip_key key={key} reason=get_u16_failed error={error}"
-            );
-            None
-        }
-    }
+fn read_u16_value_strict(
+    nvs: &EspNvs<NvsDefault>,
+    key: &str,
+) -> Result<u16, SettingsAdapterFailure> {
+    nvs.get_u16(key)
+        .map_err(settings_failure)?
+        .ok_or_else(|| SettingsAdapterFailure::failed("settings u16 value missing"))
 }
 
-fn read_i32_value(nvs: &EspNvs<NvsDefault>, key: &str) -> Option<i32> {
-    match nvs.get_i32(key) {
-        Ok(value) => value,
-        Err(error) => {
-            log::warn!(
-                "axeos_settings_snapshot=skip_key key={key} reason=get_i32_failed error={error}"
-            );
-            None
-        }
-    }
+fn read_i32_value_strict(
+    nvs: &EspNvs<NvsDefault>,
+    key: &str,
+) -> Result<i32, SettingsAdapterFailure> {
+    nvs.get_i32(key)
+        .map_err(settings_failure)?
+        .ok_or_else(|| SettingsAdapterFailure::failed("settings i32 value missing"))
 }
 
-fn read_u64_value(nvs: &EspNvs<NvsDefault>, key: &str) -> Option<u64> {
-    match nvs.get_u64(key) {
-        Ok(value) => value,
-        Err(error) => {
-            log::warn!(
-                "axeos_settings_snapshot=skip_key key={key} reason=get_u64_failed error={error}"
-            );
-            None
-        }
-    }
+fn read_u64_value_strict(
+    nvs: &EspNvs<NvsDefault>,
+    key: &str,
+) -> Result<u64, SettingsAdapterFailure> {
+    nvs.get_u64(key)
+        .map_err(settings_failure)?
+        .ok_or_else(|| SettingsAdapterFailure::failed("settings u64 value missing"))
 }
 
 fn c_string(value: &str) -> Result<CString, SettingsAdapterFailure> {

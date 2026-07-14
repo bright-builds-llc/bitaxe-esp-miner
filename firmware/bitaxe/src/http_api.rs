@@ -6,15 +6,16 @@ use std::ptr;
 use std::time::Duration;
 
 use bitaxe_api::{
-    asic_settings_from_snapshot, block_found_dismiss_plan, execute_settings_persistence_plan,
-    identify_plan, log_download_headers, origin_gate_from_header, pause_mining_plan,
-    phase07_route_report, plan_http_access, plan_settings_patch_body,
+    asic_settings_from_snapshot, block_found_dismiss_plan, decide_v12_settings_body,
+    execute_settings_persistence_plan, identify_plan, log_download_headers,
+    origin_gate_from_header, pause_mining_plan, phase07_route_report, plan_http_access,
     plan_settings_patch_body_size, plan_update_request, plan_websocket_upgrade, restart_plan,
     resume_mining_plan, unknown_api_route_response, unsupported_update_response, CommandEffect,
     CommandPlan, HttpAccessDecision, IdentifyModeEffect, OriginGate, PublicHttpResponse,
     RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchFailureReason,
-    SettingsPatchPublicError, SettingsPersistenceEffect, SettingsPersistencePlan,
-    SettingsPublicResponse, UpdateRequestDecision, UpdateRequestInput, UpdateRouteKind,
+    SettingsPatchPublicError, SettingsPersistenceEffect, SettingsPersistenceFailure,
+    SettingsPersistencePlan, SettingsPublicResponse, UpdateRequestDecision, UpdateRequestInput,
+    UpdateRouteKind, V12SettingsChange, V12SettingsDecision, V12SettingsExclusionReason,
     WebSocketRouteKind, WebSocketUpgradeDecision, LIVE_TELEMETRY_CADENCE_MS,
 };
 use esp_idf_svc::handle::RawHandle;
@@ -32,11 +33,7 @@ use crate::runtime_snapshot::{
     projected_live_telemetry_payload, projected_scoreboard, projected_statistics,
     projected_system_info,
 };
-use crate::{
-    controlled_mining_runtime, live_stratum_runtime, log_buffer,
-    mining_evidence_mode::MiningEvidenceMode, network_stack, settings_adapter, static_files,
-    websocket_api,
-};
+use crate::{log_buffer, network_stack, settings_adapter, static_files, websocket_api};
 
 type ApiRequest<'request, 'connection> = Request<&'request mut EspHttpConnection<'connection>>;
 
@@ -264,8 +261,8 @@ fn handle_settings_patch<'request, 'connection>(
                 return send_text_error(request, 400, public_error.body());
             }
         };
-        let accepted = match plan_settings_patch_body(&body) {
-            Ok(accepted) => accepted,
+        let decision = match decide_v12_settings_body(&body) {
+            Ok(decision) => decision,
             Err(error) => {
                 settings_patch_warn_retained(&format!(
                     "axeos_settings_patch=rejected reason={}",
@@ -274,11 +271,30 @@ fn handle_settings_patch<'request, 'connection>(
                 return send_text_error(request, 400, error.public_error().body());
             }
         };
+        let hostname = match decision {
+            V12SettingsDecision::Authorized(V12SettingsChange::Hostname(hostname)) => hostname,
+            V12SettingsDecision::CompatibilityOnly {
+                reason,
+                field_count,
+            } => {
+                settings_patch_retained(&format!(
+                    "axeos_settings_patch=compatibility_only reason={} fields={field_count}",
+                    settings_exclusion_label(reason)
+                ));
+                send_settings_response(request, SettingsPublicResponse::EmptySuccess)?;
+                settings_patch_retained(
+                    "axeos_settings_patch=response_scheduled status=200 empty_body=true",
+                );
+                return Ok(());
+            }
+        };
 
         let mut adapter = match settings_adapter::FirmwareSettingsAdapter::open() {
             Ok(adapter) => adapter,
-            Err(error) => {
-                log::warn!("axeos_settings_patch=adapter_open_failed error={error}");
+            Err(_) => {
+                settings_patch_warn_retained(
+                    "axeos_settings_patch=persistence_failed reason=adapter_open",
+                );
                 return send_text_error(
                     request,
                     400,
@@ -286,32 +302,21 @@ fn handle_settings_patch<'request, 'connection>(
                 );
             }
         };
-        let snapshot = settings_adapter::current_settings_snapshot();
-        let plan = SettingsPersistencePlan::from_accepted_patch(&snapshot, accepted);
-        let write_count = plan.writes().len();
-        let effect_count = plan.effects().len();
-        settings_patch_retained(&format!(
-            "axeos_settings_patch=accepted writes={write_count} effects={effect_count}"
-        ));
+        let plan = SettingsPersistencePlan::for_hostname(hostname);
+        settings_patch_retained("axeos_settings_patch=authorized category=hostname");
         let success = match execute_settings_persistence_plan(&plan, &mut adapter) {
             Ok(success) => success,
             Err(error) => {
                 settings_patch_warn_retained(&format!(
-                    "axeos_settings_patch=persistence_failed reason={:?} steps={:?}",
-                    error.reason(),
-                    error.completed_steps()
+                    "axeos_settings_patch=persistence_failed reason={} disposition={:?}",
+                    settings_persistence_failure_label(error.reason()),
+                    error.disposition()
                 ));
                 return send_text_error(request, 400, error.public_error().body());
             }
         };
         let effects = success.effects().to_vec();
-        settings_adapter::apply_persisted_settings_writes(plan.writes());
-        settings_patch_retained(&format!(
-            "axeos_settings_patch=persistence_committed writes={write_count}"
-        ));
-        if MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
-            live_stratum_runtime::maybe_emit_phase27_pool_settings_consumed_marker();
-        }
+        settings_patch_retained("axeos_settings_patch=persistence_confirmed category=hostname");
         send_settings_response(request, success.public_response())?;
         settings_patch_retained(
             "axeos_settings_patch=response_scheduled status=200 empty_body=true",
@@ -977,6 +982,30 @@ fn settings_patch_failure_label(reason: &SettingsPatchFailureReason) -> &'static
     }
 }
 
+fn settings_exclusion_label(reason: V12SettingsExclusionReason) -> &'static str {
+    match reason {
+        V12SettingsExclusionReason::EmptyPatch => "empty_patch",
+        V12SettingsExclusionReason::UnknownField => "unknown_field",
+        V12SettingsExclusionReason::BroaderKnownField => "broader_known_field",
+        V12SettingsExclusionReason::CredentialField => "credential_field",
+        V12SettingsExclusionReason::HardwareControlField => "hardware_control_field",
+        V12SettingsExclusionReason::MiningOrSelfTestField => "mining_or_self_test_field",
+        V12SettingsExclusionReason::MixedFieldSet => "mixed_field_set",
+    }
+}
+
+fn settings_persistence_failure_label(reason: &SettingsPersistenceFailure) -> &'static str {
+    match reason {
+        SettingsPersistenceFailure::Validation => "validation",
+        SettingsPersistenceFailure::Transaction => "transaction",
+        SettingsPersistenceFailure::Write { .. } => "write",
+        SettingsPersistenceFailure::Commit => "commit",
+        SettingsPersistenceFailure::Reload => "reload",
+        SettingsPersistenceFailure::Reconcile => "reconcile",
+        SettingsPersistenceFailure::Publication => "publication",
+    }
+}
+
 fn settings_patch_retained(line: &str) {
     log::info!("{line}");
     log_buffer::append_runtime_log_line(line);
@@ -1018,8 +1047,6 @@ fn apply_settings_effects(effects: &[SettingsPersistenceEffect]) {
             }
         }
     }
-    controlled_mining_runtime::maybe_refresh_from_settings();
-    live_stratum_runtime::maybe_refresh_phase27_from_settings();
 }
 
 fn apply_hostname_effect(hostname: &str) {

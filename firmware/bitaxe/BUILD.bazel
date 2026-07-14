@@ -30,6 +30,16 @@ filegroup(
     visibility = ["//tools/parity:__pkg__"],
 )
 
+filegroup(
+    name = "phase33_settings_sources",
+    srcs = [
+        "src/http_api.rs",
+        "src/runtime_snapshot.rs",
+        "src/settings_adapter.rs",
+    ],
+    visibility = ["//tools/parity:__pkg__"],
+)
+
 genrule(
     name = "firmware",
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by
