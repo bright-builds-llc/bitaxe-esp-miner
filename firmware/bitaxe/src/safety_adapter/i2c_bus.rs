@@ -44,8 +44,10 @@ impl<'d> BitaxeI2cBus<'d> {
         StartupDisplayBus { bus: self }
     }
 
-    pub(crate) fn read_only_sensors(&mut self) -> ReadOnlySensorBus<'_, 'd> {
-        ReadOnlySensorBus { bus: self }
+    pub(crate) fn into_read_only(self) -> ReadOnlySensorOwner<'d> {
+        ReadOnlySensorOwner {
+            driver: self.driver,
+        }
     }
 
     pub(super) fn active_for_phase27(
@@ -101,6 +103,19 @@ fn transaction_timeout_ticks() -> esp_idf_sys::TickType_t {
 
 pub(crate) struct StartupDisplayBus<'bus, 'd> {
     bus: &'bus mut BitaxeI2cBus<'d>,
+}
+
+/// Post-display owner whose type exposes only closed sensor-read capabilities.
+pub(crate) struct ReadOnlySensorOwner<'d> {
+    driver: I2cDriver<'d>,
+}
+
+impl<'d> ReadOnlySensorOwner<'d> {
+    pub(crate) fn sensors(&mut self) -> ReadOnlySensorBus<'_, 'd> {
+        ReadOnlySensorBus {
+            driver: &mut self.driver,
+        }
+    }
 }
 
 impl ErrorType for StartupDisplayBus<'_, '_> {
@@ -183,7 +198,7 @@ impl Emc2101ReadRegister {
 }
 
 pub(crate) struct ReadOnlySensorBus<'bus, 'd> {
-    bus: &'bus mut BitaxeI2cBus<'d>,
+    driver: &'bus mut I2cDriver<'d>,
 }
 
 impl ReadOnlySensorBus<'_, '_> {
@@ -204,8 +219,7 @@ impl ReadOnlySensorBus<'_, '_> {
     }
 
     fn read_register(&mut self, device_addr: u8, register: u8, output: &mut [u8]) -> Result<()> {
-        self.bus
-            .driver
+        self.driver
             .write_read(
                 device_addr,
                 &[register],

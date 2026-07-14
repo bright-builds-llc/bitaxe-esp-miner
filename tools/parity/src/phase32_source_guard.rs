@@ -110,13 +110,17 @@ fn phase32_runtime_source_guard_moves_one_post_display_owner_into_one_producer()
         .find("render_startup_debug_text")
         .expect("normal startup display call");
     let producer = MAIN_SOURCE
-        .find("operator_sensor_runtime::start(bus)")
+        .find("operator_sensor_runtime::start(bus.into_read_only())")
         .expect("normal sensor producer handoff");
 
     // Act / Assert
     assert_eq!(MAIN_SOURCE.matches("BitaxeI2cBus::new").count(), 1);
     assert!(display < producer);
     assert!(MAIN_SOURCE.contains("match display_adapter::render_startup_debug_text"));
+    assert!(I2C_BUS_SOURCE.contains("struct ReadOnlySensorOwner"));
+    assert!(OPERATOR_RUNTIME_SOURCE.contains("ReadOnlySensorOwner<'static>"));
+    assert!(!OPERATOR_RUNTIME_SOURCE.contains("BitaxeI2cBus"));
+    assert!(!OPERATOR_RUNTIME_SOURCE.contains("startup_display"));
     assert!(OPERATOR_RUNTIME_SOURCE.contains("SENSOR_SWEEP_CADENCE_MS: u64 = 500"));
     assert!(OPERATOR_RUNTIME_SOURCE.contains("thread::Builder::new()"));
 }

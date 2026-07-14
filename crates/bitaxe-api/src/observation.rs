@@ -529,6 +529,90 @@ mod tests {
     }
 
     #[test]
+    fn phase32_consumer_failure_isolation_covers_each_sensor_source() {
+        // Arrange
+        #[derive(Clone, Copy)]
+        enum FailedSource {
+            Power,
+            Temperature,
+            Tachometer,
+        }
+
+        for failed_source in [
+            FailedSource::Power,
+            FailedSource::Temperature,
+            FailedSource::Tachometer,
+        ] {
+            let power_watts = if matches!(failed_source, FailedSource::Power) {
+                fresh(10.0).record_fault(FaultReason::ReadFailed)
+            } else {
+                fresh(10.0)
+            };
+            let bus_voltage_volts = if matches!(failed_source, FailedSource::Power) {
+                fresh(5.0).record_fault(FaultReason::ReadFailed)
+            } else {
+                fresh(5.0)
+            };
+            let current_amps = if matches!(failed_source, FailedSource::Power) {
+                fresh(2.0).record_fault(FaultReason::ReadFailed)
+            } else {
+                fresh(2.0)
+            };
+            let chip_temp_celsius = if matches!(failed_source, FailedSource::Temperature) {
+                fresh(55.0).record_fault(FaultReason::ReadFailed)
+            } else {
+                fresh(55.0)
+            };
+            let fan_rpm = if matches!(failed_source, FailedSource::Tachometer) {
+                fresh_u16(3_200).record_fault(FaultReason::ReadFailed)
+            } else {
+                fresh_u16(3_200)
+            };
+            let observations = TelemetryObservations {
+                power_watts,
+                bus_voltage_volts,
+                current_amps,
+                chip_temp_celsius,
+                vr_temp_celsius: Observation::unavailable(
+                    UnavailableReason::ThermalReadingUnavailable,
+                ),
+                fan_rpm,
+            };
+            let store = ObservationStore::new(observations);
+
+            // Act
+            let first = store.read();
+            let second = store.read();
+            let mut snapshot = ApiSnapshot::safe_ultra_205();
+            snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&first);
+            let wire = SystemInfoWire::from_snapshot(&snapshot);
+
+            // Assert
+            assert_eq!(first, observations);
+            assert_eq!(second, observations);
+            match failed_source {
+                FailedSource::Power => {
+                    assert_eq!(wire.power_status.state, ObservationStateWire::Fault);
+                    assert_eq!(wire.voltage_status.state, ObservationStateWire::Fault);
+                    assert_eq!(wire.current_status.state, ObservationStateWire::Fault);
+                    assert_eq!(wire.chip_temp_status.state, ObservationStateWire::Fresh);
+                    assert_eq!(wire.fan_rpm_status.state, ObservationStateWire::Fresh);
+                }
+                FailedSource::Temperature => {
+                    assert_eq!(wire.chip_temp_status.state, ObservationStateWire::Fault);
+                    assert_eq!(wire.power_status.state, ObservationStateWire::Fresh);
+                    assert_eq!(wire.fan_rpm_status.state, ObservationStateWire::Fresh);
+                }
+                FailedSource::Tachometer => {
+                    assert_eq!(wire.fan_rpm_status.state, ObservationStateWire::Fault);
+                    assert_eq!(wire.power_status.state, ObservationStateWire::Fresh);
+                    assert_eq!(wire.chip_temp_status.state, ObservationStateWire::Fresh);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn projection_mapping_copies_state_and_stamp_without_advancing_metadata() {
         // Arrange
         let source = fresh(5.0)

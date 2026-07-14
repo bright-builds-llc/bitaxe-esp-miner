@@ -15,7 +15,7 @@ pub mod power_probe;
 mod thermal;
 mod watchdog;
 
-pub(crate) use i2c_bus::BitaxeI2cBus;
+pub(crate) use i2c_bus::{BitaxeI2cBus, ReadOnlySensorOwner};
 pub(crate) use observation_store::{observation_snapshot, replace_observations_from_producer};
 pub use phase27_bring_up::{
     phase27_bring_up_complete, phase27_safety_snapshot, run_phase27_hardware_bring_up,
@@ -26,17 +26,21 @@ use bitaxe_safety::{effects::SafetyEffect, status::SafetyStatus};
 use bitaxe_safety::{power::Ina260RawSample, sensor_acquisition::AcquisitionOutcome};
 
 pub(crate) fn read_power_acquisition(
-    bus: &mut BitaxeI2cBus<'_>,
+    owner: &mut ReadOnlySensorOwner<'_>,
 ) -> AcquisitionOutcome<Ina260RawSample> {
-    ina260::read_acquisition(&mut bus.read_only_sensors())
+    ina260::read_acquisition(&mut owner.sensors())
 }
 
-pub(crate) fn read_temperature_acquisition(bus: &mut BitaxeI2cBus<'_>) -> AcquisitionOutcome<f64> {
-    emc2101::read_external_temperature_acquisition(&mut bus.read_only_sensors())
+pub(crate) fn read_temperature_acquisition(
+    owner: &mut ReadOnlySensorOwner<'_>,
+) -> AcquisitionOutcome<f64> {
+    emc2101::read_external_temperature_acquisition(&mut owner.sensors())
 }
 
-pub(crate) fn read_tachometer_acquisition(bus: &mut BitaxeI2cBus<'_>) -> AcquisitionOutcome<u16> {
-    emc2101::read_tachometer_acquisition(&mut bus.read_only_sensors())
+pub(crate) fn read_tachometer_acquisition(
+    owner: &mut ReadOnlySensorOwner<'_>,
+) -> AcquisitionOutcome<u16> {
+    emc2101::read_tachometer_acquisition(&mut owner.sensors())
 }
 
 pub fn interpret_safety_effects(effects: &[SafetyEffect]) {

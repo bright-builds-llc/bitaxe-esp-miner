@@ -103,7 +103,7 @@ fn main() -> anyhow::Result<()> {
                                 );
                             }
                         }
-                        if let Err(error) = operator_sensor_runtime::start(bus) {
+                        if let Err(error) = operator_sensor_runtime::start(bus.into_read_only()) {
                             log::warn!(
                                 "operator_sensor_runtime=unavailable reason=thread_spawn_failed error={error:#}"
                             );

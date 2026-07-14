@@ -303,10 +303,9 @@ fn is_fresh_and_expired<T>(
     now: MonotonicMillis,
     stale_after_ms: u64,
 ) -> bool {
-    observation.is_fresh()
-        && observation.maybe_last_good().is_some_and(|sample| {
-            now.get().saturating_sub(sample.acquired_at().get()) > stale_after_ms
-        })
+    observation
+        .maybe_last_good()
+        .is_some_and(|sample| now.get().saturating_sub(sample.acquired_at().get()) > stale_after_ms)
 }
 
 fn mark_observation_stale_if_expired<T: Clone>(
@@ -553,5 +552,72 @@ mod tests {
         assert_eq!(stale.power().truth().state_label(), "stale");
         assert_eq!(stale.thermal().temperature_truth().state_label(), "stale");
         assert_eq!(stale.thermal().tachometer_truth().state_label(), "stale");
+    }
+
+    #[test]
+    fn sensor_acquisition_sustained_failures_age_all_retained_facts_to_stale() {
+        // Arrange
+        let (fresh, sequences) = reduce_sensor_sweep(
+            ProducerSensorState::default(),
+            ProducerSequences::default(),
+            successful_outcomes(),
+            SESSION,
+            ACQUIRED_AT,
+            12.0,
+        )
+        .expect("fixture sequences should advance");
+        let expected_power = fresh.power().truth().maybe_last_good().cloned();
+        let expected_temperature = fresh
+            .thermal()
+            .temperature_truth()
+            .maybe_last_good()
+            .cloned();
+        let expected_tachometer = fresh
+            .thermal()
+            .tachometer_truth()
+            .maybe_last_good()
+            .cloned();
+        let failed_outcomes = SensorSweepOutcomes {
+            power: AcquisitionOutcome::ReadFailed,
+            temperature_celsius: AcquisitionOutcome::ReadFailed,
+            tachometer_rpm: AcquisitionOutcome::ReadFailed,
+        };
+
+        // Act
+        let (faulted, next_sequences) = reduce_sensor_sweep(
+            fresh,
+            sequences,
+            failed_outcomes,
+            SESSION,
+            MonotonicMillis::new(750),
+            12.0,
+        )
+        .expect("failed attempts preserve sequences");
+        let retained = faulted.mark_stale_at(MonotonicMillis::new(1_250), 1_000);
+        let stale = faulted.mark_stale_at(MonotonicMillis::new(1_251), 1_000);
+
+        // Assert
+        assert_eq!(next_sequences, sequences);
+        assert_eq!(retained.power().truth().state_label(), "fault");
+        assert_eq!(
+            retained.thermal().temperature_truth().state_label(),
+            "fault"
+        );
+        assert_eq!(retained.thermal().tachometer_truth().state_label(), "fault");
+        assert_eq!(stale.power().truth().state_label(), "stale");
+        assert_eq!(
+            stale.power().truth().maybe_last_good(),
+            expected_power.as_ref()
+        );
+        assert_eq!(stale.thermal().temperature_truth().state_label(), "stale");
+        assert_eq!(
+            stale.thermal().temperature_truth().maybe_last_good(),
+            expected_temperature.as_ref()
+        );
+        assert_eq!(stale.thermal().tachometer_truth().state_label(), "stale");
+        assert_eq!(
+            stale.thermal().tachometer_truth().maybe_last_good(),
+            expected_tachometer.as_ref()
+        );
     }
 }

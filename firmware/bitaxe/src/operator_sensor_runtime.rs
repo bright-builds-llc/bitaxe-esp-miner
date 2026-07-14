@@ -12,7 +12,7 @@ use bitaxe_safety::{
 };
 use esp_idf_svc::sys;
 
-use crate::safety_adapter::{self, BitaxeI2cBus};
+use crate::safety_adapter::{self, ReadOnlySensorOwner};
 
 pub const SENSOR_SWEEP_CADENCE_MS: u64 = 500;
 const SENSOR_STALE_AFTER_MS: u64 = 1_000;
@@ -20,17 +20,17 @@ const BOARD_POWER_TARGET_WATTS: f64 = 12.0;
 const PRODUCER_THREAD_NAME: &str = "operator-sensors";
 const PRODUCER_THREAD_STACK_BYTES: usize = 8 * 1024;
 
-pub fn start(bus: BitaxeI2cBus<'static>) -> Result<()> {
+pub fn start(owner: ReadOnlySensorOwner<'static>) -> Result<()> {
     thread::Builder::new()
         .name(PRODUCER_THREAD_NAME.to_owned())
         .stack_size(PRODUCER_THREAD_STACK_BYTES)
-        .spawn(move || run(bus))
+        .spawn(move || run(owner))
         .context("spawn operator sensor producer")?;
     log::info!("operator_sensor_runtime=started cadence_ms={SENSOR_SWEEP_CADENCE_MS}");
     Ok(())
 }
 
-fn run(mut bus: BitaxeI2cBus<'static>) -> ! {
+fn run(mut owner: ReadOnlySensorOwner<'static>) -> ! {
     let boot_session = new_boot_session_id();
     let mut state = ProducerSensorState::default();
     let mut sequences = ProducerSequences::default();
@@ -39,9 +39,9 @@ fn run(mut bus: BitaxeI2cBus<'static>) -> ! {
     loop {
         sleep_until(next_deadline_ms);
 
-        let power = safety_adapter::read_power_acquisition(&mut bus);
-        let temperature_celsius = safety_adapter::read_temperature_acquisition(&mut bus);
-        let tachometer_rpm = safety_adapter::read_tachometer_acquisition(&mut bus);
+        let power = safety_adapter::read_power_acquisition(&mut owner);
+        let temperature_celsius = safety_adapter::read_temperature_acquisition(&mut owner);
+        let tachometer_rpm = safety_adapter::read_tachometer_acquisition(&mut owner);
         let acquired_at = MonotonicMillis::new(crate::runtime_uptime::millis());
         let outcomes = SensorSweepOutcomes {
             power,
