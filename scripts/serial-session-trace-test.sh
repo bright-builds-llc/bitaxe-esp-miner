@@ -105,12 +105,15 @@ test_darwin_physical_identity_excludes_enumeration_fields() {
 	local bin_dir="${tmp_root}/darwin-split-bin"
 	local physical_a
 	local physical_b
+	local physical_a_status
+	local physical_b_status
 	local enumeration_a
 	local enumeration_b
 	mkdir -p "$bin_dir"
 	write_executable "${bin_dir}/uname" 'printf "Darwin\n"'
 	write_executable "${bin_dir}/node-identity" 'printf "%s\n" "node-${SERIAL_TEST_IOREG_EPOCH:?}"'
-	write_executable "${bin_dir}/ioreg" 'epoch="${SERIAL_TEST_IOREG_EPOCH:?}"
+	write_executable "${bin_dir}/ioreg" 'trap "exit 141" PIPE
+epoch="${SERIAL_TEST_IOREG_EPOCH:?}"
 if [[ " $* " != *" -p IOService "* || " $* " != *" -t "* ]]; then
 	printf "+-o serial%s <class IOSerialBSDClient, id 0x%s>\n" "$epoch" "$epoch"
 	printf "  \"IOCalloutDevice\" = \"%s\"\n" "${SERIAL_TEST_PORT:?}"
@@ -138,13 +141,21 @@ printf "      +-o serial%s <class IOSerialBSDClient, id 0x%s>\n" "$epoch" "$epoc
 printf "        \"IOCalloutDevice\" = \"%s\"\n" "${SERIAL_TEST_PORT:?}"
 printf "        \"IODialinDevice\" = \"/dev/tty.epoch%s\"\n" "$epoch"
 printf "        \"IOTTYDevice\" = \"cu.epoch%s\"\n" "$epoch"
-printf "        \"IOTTYBaseName\" = \"epoch%s\"\n" "$epoch"'
+printf "        \"IOTTYBaseName\" = \"epoch%s\"\n" "$epoch"
+for ((i = 0; i < 20000; i++)); do
+	printf "  +-o trailing%s <class IORegistryEntry, id 0x%s>\n" "$i" "$i"
+done'
 
+	set +e
 	physical_a="$(PATH="${bin_dir}:$PATH" SERIAL_TEST_IOREG_EPOCH=a SERIAL_TEST_PORT="$serial_port" serial_session_usb_physical_identity "$serial_port")"
+	physical_a_status=$?
 	physical_b="$(PATH="${bin_dir}:$PATH" SERIAL_TEST_IOREG_EPOCH=b SERIAL_TEST_PORT="$serial_port" serial_session_usb_physical_identity "$serial_port")"
+	physical_b_status=$?
+	set -e
 	enumeration_a="$(PATH="${bin_dir}:$PATH" SERIAL_TEST_IOREG_EPOCH=a SERIAL_TEST_PORT="$serial_port" SERIAL_SESSION_NODE_IDENTITY_BIN="${bin_dir}/node-identity" serial_session_usb_enumeration_identity "$serial_port")"
 	enumeration_b="$(PATH="${bin_dir}:$PATH" SERIAL_TEST_IOREG_EPOCH=b SERIAL_TEST_PORT="$serial_port" SERIAL_SESSION_NODE_IDENTITY_BIN="${bin_dir}/node-identity" serial_session_usb_enumeration_identity "$serial_port")"
 
+	[[ "$physical_a_status" == "0" && "$physical_b_status" == "0" ]] || fail "Darwin physical identity did not drain ioreg under pipefail"
 	[[ "$physical_a" == "$physical_b" ]] || fail "Darwin physical identity changed with tty/registry fields"
 	[[ "$enumeration_a" != "$enumeration_b" ]] || fail "Darwin enumeration identity did not change"
 }

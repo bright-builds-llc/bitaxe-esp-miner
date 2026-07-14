@@ -110,6 +110,7 @@ serial_session_darwin_usb_physical_fields() {
 	local product_value=""
 	local serial_value=""
 	local location_value=""
+	local target_count=0
 	local -a usb_node=()
 	local -a vendor=()
 	local -a product=()
@@ -156,24 +157,25 @@ serial_session_darwin_usb_physical_fields() {
 			continue
 		fi
 
-		for ((i = 0; i <= current_indent; i++)); do
-			[[ "${usb_node[i]:-0}" == "1" ]] || continue
-			[[ -z "${vendor[i]:-}" ]] || vendor_value="${vendor[i]}"
-			[[ -z "${product[i]:-}" ]] || product_value="${product[i]}"
-			[[ -z "${serial[i]:-}" ]] || serial_value="${serial[i]}"
-			[[ -z "${location[i]:-}" ]] || location_value="${location[i]}"
-		done
-
-		[[ -n "$vendor_value" && -n "$product_value" ]] || return 1
-		[[ -n "$serial_value" || -n "$location_value" ]] || return 1
-		printf 'idVendor=%s\n' "$vendor_value"
-		printf 'idProduct=%s\n' "$product_value"
-		[[ -z "$serial_value" ]] || printf 'USB Serial Number=%s\n' "$serial_value"
-		[[ -z "$location_value" ]] || printf 'locationID=%s\n' "$location_value"
-		return 0
+		((target_count += 1))
+		if ((target_count == 1)); then
+			for ((i = 0; i <= current_indent; i++)); do
+				[[ "${usb_node[i]:-0}" == "1" ]] || continue
+				[[ -z "${vendor[i]:-}" ]] || vendor_value="${vendor[i]}"
+				[[ -z "${product[i]:-}" ]] || product_value="${product[i]}"
+				[[ -z "${serial[i]:-}" ]] || serial_value="${serial[i]}"
+				[[ -z "${location[i]:-}" ]] || location_value="${location[i]}"
+			done
+		fi
 	done
 
-	return 1
+	[[ "$target_count" == "1" ]] || return 1
+	[[ -n "$vendor_value" && -n "$product_value" ]] || return 1
+	[[ -n "$serial_value" || -n "$location_value" ]] || return 1
+	printf 'idVendor=%s\n' "$vendor_value"
+	printf 'idProduct=%s\n' "$product_value"
+	[[ -z "$serial_value" ]] || printf 'USB Serial Number=%s\n' "$serial_value"
+	[[ -z "$location_value" ]] || printf 'locationID=%s\n' "$location_value"
 }
 
 serial_session_usb_physical_identity() {
