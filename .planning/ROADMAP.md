@@ -17,7 +17,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 **Phase numbering:** Integer phases continue after completed Phase 30. Decimal phases are reserved for urgent insertions and are not part of the initial v1.2 roadmap.
 
 - [x] **Phase 31: Operator Claim and Telemetry Contract** — Define truthful observation, settings, health, and promotion states before effectful integration. (completed 2026-07-13)
-- [ ] **Phase 32: Shared I2C and Read-Only Sensor Acquisition** — Establish one bounded I2C0 owner for startup display handoff and read-only INA260/EMC2101 observations.
+- [x] **Phase 32: Shared I2C and Read-Only Sensor Acquisition** — Establish one bounded I2C0 owner for startup display handoff and read-only INA260/EMC2101 observations. (completed 2026-07-14)
 - [ ] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, immediately visible, and reboot-durable storage truth.
 - [ ] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot.
 - [ ] **Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion** — Prove the completed chain on one Ultra 205 and promote only specifically supported rows.
@@ -57,7 +57,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 1. One sensor failure does not block the API or unaffected observations, and the failed observation becomes stale or faulted without request-driven refresh.
 1. The phase performs no fan/configuration-register, voltage, reset, power, ASIC, fault-stimulus, self-test, mining, credential, direct-UART/pin, OTA, or other-board effect.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 ### Phase 33: Confirmed Settings Durability
 
@@ -130,7 +130,7 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | Phase | Name | Requirements | Status |
 | --- | --- | ---: | --- |
 | 31 | Operator Claim and Telemetry Contract | 2 | Complete |
-| 32 | 2/3 | In Progress|  |
+| 32 | 3/3 | Complete   | 2026-07-14 |
 | 33 | Confirmed Settings Durability | 5 | Not started |
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Not started |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 6 | Not started |

@@ -1,9 +1,9 @@
 ---
 phase: 32
 slug: shared-i2c-and-read-only-sensor-acquisition
-status: draft
+status: complete
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-07-13
 lifecycle_mode: yolo
 phase_lifecycle_id: 32-2026-07-13T23-12-34
@@ -34,21 +34,21 @@ phase_lifecycle_id: 32-2026-07-13T23-12-34
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 32-01-01 | 01 | 1 | OBS-03, OBS-04 | T-32-01 | Signed and sentinel raw values cannot become invalid fresh facts. | unit | `cargo test -p bitaxe-safety sensor_acquisition` | ❌ W0 | ⬜ pending |
-| 32-01-02 | 01 | 1 | OBS-03, OBS-04, OBS-05 | T-32-01, T-32-03 | Failures preserve stamps; power is atomic; thermal facts are independent. | unit | `cargo test -p bitaxe-safety sensor_acquisition` | ❌ W0 | ⬜ pending |
-| 32-02-01 | 02 | 2 | OBS-02 | T-32-02 | One finite-timeout I2C0 lifecycle excludes producer writes. | source/build | `cargo test -p bitaxe-parity phase32_i2c_source_guard` and `just build` | ❌ W0 | ⬜ pending |
-| 32-02-02 | 02 | 2 | OBS-03, OBS-04 | T-32-01, T-32-02 | Closed readers return only typed read outcomes. | unit/source/build | `cargo test -p bitaxe-safety sensor_acquisition`, `cargo test -p bitaxe-parity phase32_sensor_source_guard`, and `just build` | ❌ W0 | ⬜ pending |
-| 32-03-01 | 03 | 3 | OBS-02, OBS-03, OBS-04, OBS-05 | T-32-02, T-32-03 | One producer owns sequences and continues after failures. | source/build | `cargo test -p bitaxe-parity phase32_runtime_source_guard` and `just build` | ❌ W0 | ⬜ pending |
-| 32-03-02 | 03 | 3 | OBS-05 | T-32-03 | Request reads remain clone-only and preserve metadata; firmware wiring stays acquisition-free. | integration/source/build | `cargo test -p bitaxe-api observation`, `cargo test -p bitaxe-api telemetry`, `cargo test -p bitaxe-parity phase32_consumer_source_guard`, and `just build` | Existing + ❌ W0 guard | ⬜ pending |
-| 32-03-03 | 03 | 3 | OBS-02, OBS-03, OBS-04, OBS-05 | T-32-04 | Full host/firmware/package/reference gates pass; hardware remains pending until a compliant wrapper exists. | build/policy | ordered Rust gate, `just build`, `just package`, and `just verify-reference` | Existing | ⬜ pending |
+| 32-01-01 | 01 | 1 | OBS-03, OBS-04 | T-32-01 | Signed and sentinel raw values cannot become invalid fresh facts. | unit | `cargo test -p bitaxe-safety sensor_acquisition` | ✅ | ✅ green |
+| 32-01-02 | 01 | 1 | OBS-03, OBS-04, OBS-05 | T-32-01, T-32-03 | Failures preserve stamps; power is atomic; thermal facts are independent. | unit | `cargo test -p bitaxe-safety sensor_acquisition` | ✅ | ✅ green |
+| 32-02-01 | 02 | 2 | OBS-02 | T-32-02 | One finite-timeout I2C0 lifecycle excludes producer writes. | source/build | `cargo test -p bitaxe-parity phase32_i2c_source_guard` and `just build` | ✅ | ✅ green |
+| 32-02-02 | 02 | 2 | OBS-03, OBS-04 | T-32-01, T-32-02 | Closed readers return only typed read outcomes. | unit/source/build | `cargo test -p bitaxe-safety sensor_acquisition`, `cargo test -p bitaxe-parity phase32_sensor_source_guard`, and `just build` | ✅ | ✅ green |
+| 32-03-01 | 03 | 3 | OBS-02, OBS-03, OBS-04, OBS-05 | T-32-02, T-32-03 | One producer owns sequences and continues after failures. | source/build | `cargo test -p bitaxe-parity phase32_runtime_source_guard` and `just build` | ✅ | ✅ green |
+| 32-03-02 | 03 | 3 | OBS-05 | T-32-03 | Request reads remain clone-only and preserve metadata; firmware wiring stays acquisition-free. | integration/source/build | `cargo test -p bitaxe-api observation`, `cargo test -p bitaxe-api telemetry`, `cargo test -p bitaxe-parity phase32_consumer_source_guard`, and `just build` | ✅ | ✅ green |
+| 32-03-03 | 03 | 3 | OBS-02, OBS-03, OBS-04, OBS-05 | T-32-04 | Full host/firmware/package/reference gates pass; hardware remains pending until a compliant wrapper exists. | build/policy | ordered Rust gate, `just build`, `just package`, and `just verify-reference` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
 ## Wave 0 Requirements
 
-- [ ] Pure raw-decoder and sweep-reducer tests for signed INA260 current, EMC2101 sentinel/temperature/tachometer behavior, atomic power admission, independent thermal facts, stamp preservation, and stale timing.
-- [ ] `tools/parity` source guards for finite timeout forwarding, one-owner handoff, prohibited identifiers, and normal-producer/store wiring.
-- [ ] Producer/store behavior in pure `bitaxe-safety`/`bitaxe-api` tests proving one failed source does not block later facts, API reads, or complete snapshot replacement.
+- [x] Pure raw-decoder and sweep-reducer tests for signed INA260 current, EMC2101 sentinel/temperature/tachometer behavior, atomic power admission, independent thermal facts, stamp preservation, and stale timing.
+- [x] `tools/parity` source guards for finite timeout forwarding, one-owner handoff, prohibited identifiers, and normal-producer/store wiring.
+- [x] Producer/store behavior in pure `bitaxe-safety`/`bitaxe-api` tests proving one failed source does not block later facts, API reads, or complete snapshot replacement.
 
 ## Manual-Only Verifications
 
@@ -68,11 +68,11 @@ phase_lifecycle_id: 32-2026-07-13T23-12-34
 
 ## Validation Sign-Off
 
-- [ ] All planned task groups have automated verification or completed Wave 0 dependencies.
-- [ ] Sampling continuity: no three consecutive tasks without automated verification.
-- [ ] Wave 0 covers every missing behavior fixture and source guard.
+- [x] All planned task groups have automated verification or completed Wave 0 dependencies.
+- [x] Sampling continuity: no three consecutive tasks without automated verification.
+- [x] Wave 0 covers every missing behavior fixture and source guard.
 - [x] No watch-mode flags.
 - [x] Host feedback latency target is below 60 seconds.
 - [x] `nyquist_compliant: true` is set in frontmatter.
 
-**Approval:** pending execution; map aligned to the final three-plan, seven-task structure.
+**Approval:** software validation complete; hardware observations remain explicitly pending under the manual-only contract.
