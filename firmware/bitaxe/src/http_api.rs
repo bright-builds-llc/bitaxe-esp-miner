@@ -51,6 +51,8 @@ const UPGRADE_HEADER: &[u8] = b"Upgrade\0";
 const UPDATE_AP_MODE_REJECTION_BODY: &str = "Not allowed in AP mode";
 const WEBSOCKET_UPGRADE_REQUIRED_BODY: &str = "WebSocket upgrade required";
 const LIVE_TELEMETRY_THREAD_STACK_BYTES: usize = 16 * 1024;
+const RESTART_THREAD_STACK_BYTES: usize = 8 * 1024;
+const RESTART_POST_RESPONSE_DELAY_MS: u64 = 1_000;
 const SETTINGS_EFFECTS_THREAD_STACK_BYTES: usize = 8 * 1024;
 const SETTINGS_EFFECTS_POST_RESPONSE_DELAY_MS: u64 = 100;
 
@@ -413,7 +415,7 @@ fn handle_command<'request, 'connection>(
     handle_with_access_gate(request, |request| {
         let effect = plan.effect;
         send_json(request, &plan.response)?;
-        apply_command_effect(effect);
+        apply_command_effect(effect)?;
         Ok(())
     })
 }
@@ -1081,7 +1083,7 @@ fn apply_hostname_effect(hostname: &str) {
     log::warn!("axeos_settings_effect=hostname_skipped reason=netif_unavailable");
 }
 
-fn apply_command_effect(effect: CommandEffect) {
+fn apply_command_effect(effect: CommandEffect) -> anyhow::Result<()> {
     match effect {
         CommandEffect::MiningActivity(effect) => {
             apply_mining_activity_command(effect);
@@ -1091,8 +1093,7 @@ fn apply_command_effect(effect: CommandEffect) {
             );
         }
         CommandEffect::RestartAfterResponse => {
-            log::info!("axeos_command_effect=restart_after_response");
-            unsafe { sys::esp_restart() };
+            schedule_restart_after_response()?;
         }
         CommandEffect::Identify(effect) => match effect {
             IdentifyModeEffect::Enable { duration_ms } => {
@@ -1113,6 +1114,22 @@ fn apply_command_effect(effect: CommandEffect) {
             );
         }
     }
+
+    Ok(())
+}
+
+fn schedule_restart_after_response() -> anyhow::Result<()> {
+    // esp-idf-svc completes the chunked response only after this handler returns.
+    std::thread::Builder::new()
+        .name("command-restart".to_owned())
+        .stack_size(RESTART_THREAD_STACK_BYTES)
+        .spawn(|| {
+            std::thread::sleep(Duration::from_millis(RESTART_POST_RESPONSE_DELAY_MS));
+            log::info!("axeos_command_effect=restart_after_response");
+            unsafe { sys::esp_restart() };
+        })?;
+
+    Ok(())
 }
 
 fn record_firmware_ota_status(status: FirmwareOtaStatus) {

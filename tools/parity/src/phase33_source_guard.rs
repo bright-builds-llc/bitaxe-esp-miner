@@ -170,6 +170,51 @@ fn phase33_settings_source_guard_limits_post_response_effect_to_hostname() {
     assert!(!apply_effects.contains("refresh_from_settings"));
 }
 
+#[test]
+fn phase33_restart_source_guard_completes_response_before_delayed_restart() {
+    // Arrange
+    let handler = source_between(
+        HTTP_API_SOURCE,
+        "fn handle_command",
+        "fn handle_firmware_ota_update",
+    );
+    let restart_arm = source_between(
+        HTTP_API_SOURCE,
+        "CommandEffect::RestartAfterResponse",
+        "CommandEffect::Identify",
+    );
+    let schedule = source_between(
+        HTTP_API_SOURCE,
+        "fn schedule_restart_after_response",
+        "fn record_firmware_ota_status",
+    );
+
+    // Act
+    let response = handler
+        .find("send_json(request, &plan.response)?")
+        .expect("response write");
+    let effect = handler
+        .find("apply_command_effect(effect)?")
+        .expect("effect schedule");
+    let delay = schedule
+        .find("std::thread::sleep(Duration::from_millis(RESTART_POST_RESPONSE_DELAY_MS))")
+        .expect("post-response delay");
+    let marker = schedule
+        .find("axeos_command_effect=restart_after_response")
+        .expect("restart marker");
+    let restart = schedule.find("sys::esp_restart()").expect("restart call");
+
+    // Assert
+    assert!(HTTP_API_SOURCE.contains("const RESTART_POST_RESPONSE_DELAY_MS: u64 = 1_000;"));
+    assert!(HTTP_API_SOURCE.contains("const RESTART_THREAD_STACK_BYTES: usize = 8 * 1024;"));
+    assert!(response < effect);
+    assert!(restart_arm.contains("schedule_restart_after_response()?"));
+    assert!(!restart_arm.contains("sys::esp_restart()"));
+    assert!(schedule.contains(".name(\"command-restart\".to_owned())"));
+    assert!(schedule.contains(".stack_size(RESTART_THREAD_STACK_BYTES)"));
+    assert!(delay < marker && marker < restart);
+}
+
 fn source_between<'a>(source: &'a str, start: &str, end: &str) -> &'a str {
     let (_, tail) = source.split_once(start).expect("source start delimiter");
     let (section, _) = tail.split_once(end).expect("source end delimiter");
