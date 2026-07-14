@@ -10,6 +10,7 @@ rust_library(
         "src/mining_preconditions.rs",
         "src/observation.rs",
         "src/power.rs",
+        "src/sensor_acquisition.rs",
         "src/self_test.rs",
         "src/status.rs",
         "src/thermal.rs",

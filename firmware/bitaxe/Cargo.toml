@@ -13,6 +13,7 @@ bitaxe-core = { path = "../../crates/bitaxe-core" }
 bitaxe-safety = { path = "../../crates/bitaxe-safety" }
 bitaxe-stratum = { path = "../../crates/bitaxe-stratum" }
 embedded-graphics.workspace = true
+embedded-hal.workspace = true
 esp-idf-svc.workspace = true
 esp-idf-sys.workspace = true
 log.workspace = true

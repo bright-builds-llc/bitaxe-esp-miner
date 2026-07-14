@@ -3,9 +3,15 @@
 //! Reference: `reference/esp-miner/main/power/INA260.c`
 
 use anyhow::Result;
-use bitaxe_safety::power::{Ina260RawSample, PowerObservation, PowerSampleAgeMs};
+use bitaxe_safety::{
+    power::{Ina260RawSample, PowerObservation, PowerSampleAgeMs},
+    sensor_acquisition::{decode_ina260, AcquisitionOutcome},
+};
 
-use super::{i2c_bus::BitaxeI2cBus, power::INA260_I2C_ADDRESS};
+use super::{
+    i2c_bus::{BitaxeI2cBus, Ina260ReadRegister, ReadOnlySensorBus},
+    power::INA260_I2C_ADDRESS,
+};
 
 const INA260_REG_CURRENT: u8 = 0x01;
 const INA260_REG_BUS_VOLTAGE: u8 = 0x02;
@@ -15,6 +21,24 @@ pub struct Ina260Sample {
     pub current_ma: f64,
     pub bus_voltage_mv: f64,
     pub power_mw: f64,
+}
+
+/// Reads one complete INA260 triple through the closed read-only capability.
+pub fn read_acquisition(
+    bus: &mut ReadOnlySensorBus<'_, '_>,
+) -> AcquisitionOutcome<Ina260RawSample> {
+    let mut current = [0_u8; 2];
+    let mut bus_voltage = [0_u8; 2];
+    let mut power = [0_u8; 2];
+
+    let current_result = bus.read_ina260(Ina260ReadRegister::Current, &mut current);
+    let bus_voltage_result = bus.read_ina260(Ina260ReadRegister::BusVoltage, &mut bus_voltage);
+    let power_result = bus.read_ina260(Ina260ReadRegister::Power, &mut power);
+    if current_result.is_err() || bus_voltage_result.is_err() || power_result.is_err() {
+        return AcquisitionOutcome::ReadFailed;
+    }
+
+    AcquisitionOutcome::Success(decode_ina260(current, bus_voltage, power))
 }
 
 pub fn read_sample(bus: &mut BitaxeI2cBus<'_>) -> Result<Ina260Sample> {

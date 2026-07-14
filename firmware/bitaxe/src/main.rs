@@ -86,15 +86,23 @@ fn main() -> anyhow::Result<()> {
                     },
                 )
             } else {
-                if let Err(error) = display_adapter::render_startup_debug_text(
-                    peripherals.i2c0,
-                    pins.gpio47,
-                    pins.gpio48,
-                    &startup_debug_text,
-                ) {
-                    log::warn!(
-                        "display_status=unavailable reason=startup_text_render_failed error={error:#}"
-                    );
+                match safety_adapter::BitaxeI2cBus::new(peripherals.i2c0, pins.gpio47, pins.gpio48)
+                {
+                    Ok(mut bus) => {
+                        if let Err(error) = display_adapter::render_startup_debug_text(
+                            &mut bus,
+                            &startup_debug_text,
+                        ) {
+                            log::warn!(
+                                "display_status=unavailable reason=startup_text_render_failed error={error:#}"
+                            );
+                        }
+                    }
+                    Err(error) => {
+                        log::warn!(
+                            "display_status=unavailable reason=i2c0_init_failed error={error:#}"
+                        );
+                    }
                 }
                 asic_adapter::run_boot_gate_with_peripherals(boot_peripherals)
             };

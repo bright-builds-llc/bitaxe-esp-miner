@@ -35,6 +35,8 @@ mod api_compare;
 mod claim_ladder;
 mod mining_allow;
 mod operator_evidence;
+#[cfg(test)]
+mod phase32_source_guard;
 mod release_evidence;
 mod release_gate;
 mod safety_allow;

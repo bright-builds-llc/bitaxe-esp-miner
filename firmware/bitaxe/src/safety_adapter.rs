@@ -15,6 +15,7 @@ pub mod power_probe;
 mod thermal;
 mod watchdog;
 
+pub(crate) use i2c_bus::BitaxeI2cBus;
 pub(crate) use observation_store::{observation_snapshot, replace_observations_from_producer};
 pub use phase27_bring_up::{
     phase27_bring_up_complete, phase27_safety_snapshot, run_phase27_hardware_bring_up,

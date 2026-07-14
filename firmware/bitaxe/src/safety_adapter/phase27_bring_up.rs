@@ -33,6 +33,14 @@ pub trait Phase27BringUpReset {
     fn reset_pulse(&mut self, low_ms: u32, high_ms: u32) -> Result<()>;
 }
 
+pub(super) struct Phase27ActiveI2cToken(());
+
+impl Phase27ActiveI2cToken {
+    fn new() -> Self {
+        Self(())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Phase27SafetySnapshot {
     pub bring_up_complete: bool,
@@ -104,10 +112,6 @@ where
     asic_enable.enable_power()?;
 
     let defaults = ultra_205_defaults();
-    ds4432u::set_core_voltage_mv(&mut bus, defaults.asic_voltage_mv())?;
-
-    emc2101::init(&mut bus)?;
-
     let fan_inputs = FanControlInputs {
         mode: FanControlMode::Startup,
         observation: ThermalObservation::from_reading(Some(ThermalReading {
@@ -117,7 +121,13 @@ where
         })),
     };
     let fan_decision = FanControlDecision::from_inputs(fan_inputs)?;
-    emc2101::set_fan_duty_percent(&mut bus, fan_decision.duty_percent)?;
+    let active_token = Phase27ActiveI2cToken::new();
+    {
+        let mut active_bus = bus.active_for_phase27(&active_token);
+        ds4432u::set_core_voltage_mv(&mut active_bus, defaults.asic_voltage_mv())?;
+        emc2101::init(&mut active_bus)?;
+        emc2101::set_fan_duty_percent(&mut active_bus, fan_decision.duty_percent)?;
+    }
 
     std::thread::sleep(std::time::Duration::from_millis(BRING_UP_SETTLE_MS));
 

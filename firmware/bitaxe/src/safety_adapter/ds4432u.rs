@@ -4,7 +4,7 @@
 
 use anyhow::{ensure, Result};
 
-use super::{i2c_bus::BitaxeI2cBus, power::DS4432U_I2C_ADDRESS};
+use super::{i2c_bus::ActiveI2cBus, power::DS4432U_I2C_ADDRESS};
 
 pub const DS4432U_OUT0_REG: u8 = 0xF8;
 
@@ -33,7 +33,7 @@ pub fn register_for_voltage_v(vout: f64) -> Option<u8> {
     Some(reg)
 }
 
-pub fn set_core_voltage_v(bus: &mut BitaxeI2cBus<'_>, vout: f64) -> Result<()> {
+pub fn set_core_voltage_v(bus: &mut ActiveI2cBus<'_, '_>, vout: f64) -> Result<()> {
     let reg = register_for_voltage_v(vout)
         .ok_or_else(|| anyhow::anyhow!("ds4432u voltage out of range: {vout}"))?;
     bus.write_register(DS4432U_I2C_ADDRESS, DS4432U_OUT0_REG, reg)?;
@@ -41,7 +41,7 @@ pub fn set_core_voltage_v(bus: &mut BitaxeI2cBus<'_>, vout: f64) -> Result<()> {
     Ok(())
 }
 
-pub fn set_core_voltage_mv(bus: &mut BitaxeI2cBus<'_>, setpoint_mv: u16) -> Result<()> {
+pub fn set_core_voltage_mv(bus: &mut ActiveI2cBus<'_, '_>, setpoint_mv: u16) -> Result<()> {
     let vout = f64::from(setpoint_mv) / 1000.0;
     ensure!(setpoint_mv > 0, "ds4432u setpoint must be positive");
     set_core_voltage_v(bus, vout)

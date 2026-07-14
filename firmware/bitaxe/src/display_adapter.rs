@@ -6,7 +6,7 @@
 //! - `reference/esp-miner/main/screen.c`
 //! - parity checklist rows `IO-001`, `UI-001`, and `UI-002`
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bitaxe_core::{StartupDebugText, STARTUP_DEBUG_LINE_COUNT, STARTUP_DEBUG_LINE_STRIDE_PX};
 use embedded_graphics::{
     mono_font::{ascii::FONT_5X7, MonoTextStyleBuilder},
@@ -14,12 +14,9 @@ use embedded_graphics::{
     prelude::*,
     text::{Baseline, Text},
 };
-use esp_idf_svc::hal::{
-    gpio::{InputPin, OutputPin},
-    i2c::{I2c, I2cConfig, I2cDriver},
-    units::FromValueType,
-};
 use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306};
+
+use crate::safety_adapter::BitaxeI2cBus;
 
 pub const DISPLAY_I2C_ADDRESS: u8 = 0x3c;
 pub const DISPLAY_I2C_SDA_GPIO: i32 = 47;
@@ -32,17 +29,10 @@ pub fn publish_runtime_display_input_boundary() {
     );
 }
 
-pub fn render_startup_debug_text<I2C, SDA, SCL>(
-    i2c: I2C,
-    sda: SDA,
-    scl: SCL,
+pub fn render_startup_debug_text(
+    bus: &mut BitaxeI2cBus<'_>,
     text: &StartupDebugText,
-) -> Result<()>
-where
-    I2C: I2c + 'static,
-    SDA: InputPin + OutputPin + 'static,
-    SCL: InputPin + OutputPin + 'static,
-{
+) -> Result<()> {
     debug_assert_eq!(DISPLAY_I2C_ADDRESS, 0x3c);
     debug_assert_eq!(DISPLAY_I2C_SDA_GPIO, 47);
     debug_assert_eq!(DISPLAY_I2C_SCL_GPIO, 48);
@@ -50,10 +40,8 @@ where
     debug_assert_eq!(text.lines().len(), STARTUP_DEBUG_LINE_COUNT);
     debug_assert!(text.fits_ultra_205_display());
 
-    let config = I2cConfig::new().baudrate(400_u32.kHz().into());
-    let driver =
-        I2cDriver::new(i2c, sda, scl, &config).context("initialize display I2C0 adapter")?;
-    let interface = I2CDisplayInterface::new_custom_address(driver, DISPLAY_I2C_ADDRESS);
+    let interface =
+        I2CDisplayInterface::new_custom_address(bus.startup_display(), DISPLAY_I2C_ADDRESS);
     let mut display = Ssd1306::new(interface, DisplaySize128x32, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
 

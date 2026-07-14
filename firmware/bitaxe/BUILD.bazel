@@ -15,6 +15,18 @@ filegroup(
     visibility = ["//scripts:__pkg__"],
 )
 
+filegroup(
+    name = "phase32_i2c_sources",
+    srcs = [
+        "src/display_adapter.rs",
+        "src/main.rs",
+        "src/safety_adapter/emc2101.rs",
+        "src/safety_adapter/i2c_bus.rs",
+        "src/safety_adapter/ina260.rs",
+    ],
+    visibility = ["//tools/parity:__pkg__"],
+)
+
 genrule(
     name = "firmware",
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by

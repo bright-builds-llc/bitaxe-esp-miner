@@ -36,6 +36,7 @@ camino = "1.2.3"
 clap = { version = "4.6.1", features = ["derive"] }
 embuild = "0.33.1"
 embedded-graphics = "0.8.2"
+embedded-hal = "1.0.0"
 esp-idf-svc = "0.52.1"
 esp-idf-sys = "0.37.2"
 log = "0.4"
