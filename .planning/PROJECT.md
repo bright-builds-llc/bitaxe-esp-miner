@@ -16,7 +16,7 @@ v1.0 Ultra 205 Parity shipped on 2026-07-04 with 64/64 requirements satisfied ac
 
 v1.1 Ultra 205 Trusted Production Mining shipped administratively on 2026-07-13 with accepted gaps across 18 phases, 76 plans, and 170 tasks. The milestone delivered the safety-gated BM1366/Stratum software path, telemetry and evidence automation, and hardware-backed blocker isolation. It did not prove live Rust nonce correlation or a live share outcome: 18/21 requirements are satisfied, while STR-09, ASIC-11, and CFG-07 remain unresolved. Phase 30 closed with a conservative no-promotion disposition.
 
-v1.2 is in progress. Phase 31 is complete with 2/27 milestone requirements satisfied: operator observations now use explicit per-fact truth and producer-owned stamps, hostname is the complete effect-free v1.2 settings capability, and Phase 31 claim admission is closed to its two exact claims. A real read-only telemetry producer remains Phase 32 work, and settings persistence remains Phase 33 work.
+v1.2 is in progress. Phases 31 and 32 are complete with 6/27 milestone requirements satisfied: operator observations use explicit per-fact truth and producer-owned stamps, one bounded firmware-owned I2C0 lifecycle hands startup display access to a sole read-only INA260/EMC2101 producer, and consumers remain clone-only under independent sensor failure. Physical sensor/display evidence and parity promotion remain pending for Phase 35; settings persistence is next in Phase 33.
 
 Historical milestone roadmaps, requirements, audits, and phase artifacts live under `.planning/milestones/`.
 
@@ -45,6 +45,7 @@ Roadmap phase numbering continues after Phase 30. The archived Phase 28.1.1 line
 - Real Stratum v1 socket lifecycle, fake-pool coverage, bounded safe stop, watchdog checkpoints, and telemetry projection into API/WebSocket/statistics/scoreboard views — v1.1 within the exact evidence boundaries recorded by the archive.
 - Hardware-backed isolation of the remaining Rust firmware nonce-production blocker and preservation of evidence-supported wire-parity corrections — v1.1 without live-result promotion.
 - Per-fact observation truth, producer-owned stamp semantics, hostname-only v1.2 capability classification, and exact Phase 31 claim admission — Phase 31.
+- One bounded I2C0 owner, consuming post-display read-only capability, atomic stamped INA260 power, independent EMC2101 temperature/tachometer acquisition, and clone-only failure-isolated consumers — Phase 32 at software verification scope; physical evidence remains Phase 35-owned.
 
 ### Accepted Unresolved Debt
 
@@ -109,6 +110,7 @@ The monorepo separates hardware-bound firmware under `firmware/bitaxe` from test
 | Archived diagnostic work cannot be reopened by autonomous routing. | Historical artifacts must not become executable work or synthetic proof. | Phase 30 is complete; future work requires a new milestone and new evidence. |
 | v1.2 establishes operator-ready observation before active hardware control. | Fresh telemetry, configuration persistence, provenance, and health visibility reduce uncertainty and create the recovery foundation needed for later actuation. | Active fan, voltage, reset, power sequencing, fault injection, and renewed mining diagnostics are excluded from v1.2. |
 | Unstamped compatibility telemetry cannot authenticate freshness. | Legacy aggregate status and numeric fallbacks can otherwise contradict per-fact truth. | Phase 31 projects unstamped legacy data as unavailable/zero; Phase 32 owns the first real stamped producer. |
+| The post-display sensor producer owns a distinct read-only I2C type-state. | Normal runtime telemetry must not retain display writes, arbitrary register writes, or active Phase 27 capabilities. | Phase 32 consumes the shared owner after startup display and exposes only allowlisted INA260/EMC2101 reads to the sole producer. |
 
 ## Evolution
 
@@ -127,4 +129,4 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
-*Last updated: 2026-07-13 after completing Phase 31 Operator Claim and Telemetry Contract*
+*Last updated: 2026-07-14 after completing Phase 32 Shared I2C and Read-Only Sensor Acquisition*

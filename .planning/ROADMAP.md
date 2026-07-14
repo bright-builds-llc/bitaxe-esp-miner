@@ -130,12 +130,12 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | Phase | Name | Requirements | Status |
 | --- | --- | ---: | --- |
 | 31 | Operator Claim and Telemetry Contract | 2 | Complete |
-| 32 | 3/3 | Complete   | 2026-07-14 |
+| 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
 | 33 | Confirmed Settings Durability | 5 | Not started |
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Not started |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 6 | Not started |
 
-**Overall:** 1/5 phases complete; 2/27 requirements complete.
+**Overall:** 2/5 phases complete; 6/27 requirements complete.
 
 ## Coverage
 
