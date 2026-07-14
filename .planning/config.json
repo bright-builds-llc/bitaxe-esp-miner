@@ -34,7 +34,8 @@
     "yolo_ralph_stage_tick_seconds": 1,
     "use_worktrees": false,
     "prefer_hardware_evidence": true,
-    "min_flash_monitor_timeout_seconds": 360
+    "min_flash_monitor_timeout_seconds": 360,
+    "_auto_chain_active": false
   },
   "hooks": {
     "context_warnings": true
