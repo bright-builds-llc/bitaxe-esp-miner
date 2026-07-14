@@ -111,7 +111,12 @@ pub enum V12SettingsDecision {
     /// The input is the one closed v1.2 write capability.
     Authorized(V12SettingsChange),
     /// The input remains compatibility-only and cannot create effects.
-    CompatibilityOnly(V12SettingsExclusionReason),
+    CompatibilityOnly {
+        /// Stable category suitable for retained diagnostics.
+        reason: V12SettingsExclusionReason,
+        /// Number of top-level fields, without retaining their values.
+        field_count: usize,
+    },
 }
 
 /// Parses a raw body and classifies its v1.2 authority without side effects.
@@ -124,41 +129,39 @@ pub fn decide_v12_settings_body(body: &str) -> Result<V12SettingsDecision, Setti
 pub fn decide_v12_settings_value(
     value: &Value,
 ) -> Result<V12SettingsDecision, SettingsPatchFailure> {
+    plan_settings_patch_value(value)?;
+
     let Some(object) = value.as_object() else {
-        return plan_settings_patch_value(value).map(|_| {
-            V12SettingsDecision::CompatibilityOnly(V12SettingsExclusionReason::UnknownField)
-        });
+        unreachable!("compatibility validation rejects non-object JSON");
     };
 
     if object.is_empty() {
-        return Ok(V12SettingsDecision::CompatibilityOnly(
+        return Ok(compatibility_only(
             V12SettingsExclusionReason::EmptyPatch,
+            0,
         ));
     }
 
     if object.len() > 1 {
-        return Ok(V12SettingsDecision::CompatibilityOnly(
+        return Ok(compatibility_only(
             V12SettingsExclusionReason::MixedFieldSet,
+            object.len(),
         ));
     }
 
     let Some((field, raw_value)) = object.iter().next() else {
-        return Ok(V12SettingsDecision::CompatibilityOnly(
+        return Ok(compatibility_only(
             V12SettingsExclusionReason::EmptyPatch,
+            0,
         ));
     };
 
     if field != "hostname" {
-        return Ok(V12SettingsDecision::CompatibilityOnly(exclusion_for_field(
-            field,
-        )));
+        return Ok(compatibility_only(exclusion_for_field(field), 1));
     }
 
-    plan_settings_patch_value(value)?;
     let Some(raw_hostname) = raw_value.as_str() else {
-        return plan_settings_patch_value(value).map(|_| {
-            V12SettingsDecision::CompatibilityOnly(V12SettingsExclusionReason::BroaderKnownField)
-        });
+        unreachable!("compatibility validation accepts hostname strings only");
     };
     let hostname = ConfigHostname::parse(raw_hostname.to_owned())
         .map_err(|error| wrong_input(vec![SettingsPatchFieldError::Validation(error)]))?;
@@ -166,6 +169,16 @@ pub fn decide_v12_settings_value(
     Ok(V12SettingsDecision::Authorized(
         V12SettingsChange::Hostname(Hostname(hostname)),
     ))
+}
+
+fn compatibility_only(
+    reason: V12SettingsExclusionReason,
+    field_count: usize,
+) -> V12SettingsDecision {
+    V12SettingsDecision::CompatibilityOnly {
+        reason,
+        field_count,
+    }
 }
 
 fn exclusion_for_field(field: &str) -> V12SettingsExclusionReason {
@@ -201,8 +214,7 @@ fn known_rest_field_names() -> BTreeSet<String> {
 
 #[cfg(test)]
 mod tests {
-    use bitaxe_config::all_settings_schema;
-    use serde_json::{json, Map, Value};
+    use serde_json::json;
 
     use super::{
         decide_v12_settings_body, decide_v12_settings_value, V12SettingsChange,
@@ -228,32 +240,6 @@ mod tests {
     }
 
     #[test]
-    fn settings_v12_every_other_known_schema_field_is_compatibility_only() {
-        // Arrange
-        let field_names = all_settings_schema()
-            .into_iter()
-            .filter_map(|setting| setting.rest_name)
-            .map(|rest_name| rest_name.as_str().to_owned())
-            .filter(|field| field != "hostname")
-            .collect::<Vec<_>>();
-
-        for field in field_names {
-            let mut object = Map::new();
-            object.insert(field.clone(), Value::Null);
-
-            // Act
-            let decision = decide_v12_settings_value(&Value::Object(object))
-                .expect("well-formed broader field must classify");
-
-            // Assert
-            assert!(matches!(
-                decision,
-                V12SettingsDecision::CompatibilityOnly(_)
-            ));
-        }
-    }
-
-    #[test]
     fn settings_v12_exclusion_categories_are_deterministic() {
         // Arrange
         let cases = [
@@ -263,7 +249,7 @@ mod tests {
                 V12SettingsExclusionReason::UnknownField,
             ),
             (
-                json!({"display": "compact"}),
+                json!({"rotation": 0}),
                 V12SettingsExclusionReason::BroaderKnownField,
             ),
             (
@@ -279,17 +265,26 @@ mod tests {
                 V12SettingsExclusionReason::MiningOrSelfTestField,
             ),
             (
-                json!({"hostname": "axe-205", "display": "compact"}),
+                json!({"hostname": "axe-205", "rotation": 0}),
                 V12SettingsExclusionReason::MixedFieldSet,
             ),
         ];
 
         for (input, expected) in cases {
             // Act
+            let field_count = input.as_object().map_or(0, serde_json::Map::len);
+
+            // Act
             let decision = decide_v12_settings_value(&input).expect("input must classify");
 
             // Assert
-            assert_eq!(decision, V12SettingsDecision::CompatibilityOnly(expected));
+            assert_eq!(
+                decision,
+                V12SettingsDecision::CompatibilityOnly {
+                    reason: expected,
+                    field_count,
+                }
+            );
         }
     }
 
@@ -306,7 +301,10 @@ mod tests {
         // Assert
         assert_eq!(
             decision,
-            V12SettingsDecision::CompatibilityOnly(V12SettingsExclusionReason::MixedFieldSet)
+            V12SettingsDecision::CompatibilityOnly {
+                reason: V12SettingsExclusionReason::MixedFieldSet,
+                field_count: 2,
+            }
         );
         assert!(!diagnostics.contains(secret));
         assert!(!diagnostics.contains("axe-205"));
@@ -322,22 +320,68 @@ mod tests {
             ("frequency", json!(485)),
             ("stratumProtocol", json!("SV1")),
             ("selfTest", json!(true)),
-            ("display", json!("compact")),
+            ("rotation", json!(0)),
         ];
 
         for (field, raw_value) in broader_fields {
-            let mut object = Map::new();
+            let mut object = serde_json::Map::new();
             object.insert("hostname".to_owned(), json!("axe-205"));
             object.insert(field.to_owned(), raw_value);
 
             // Act
-            let decision = decide_v12_settings_value(&Value::Object(object))
+            let decision = decide_v12_settings_value(&serde_json::Value::Object(object))
                 .expect("mixed compatibility input must classify");
 
             // Assert
             assert_eq!(
                 decision,
-                V12SettingsDecision::CompatibilityOnly(V12SettingsExclusionReason::MixedFieldSet)
+                V12SettingsDecision::CompatibilityOnly {
+                    reason: V12SettingsExclusionReason::MixedFieldSet,
+                    field_count: 2,
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn settings_v12_compatibility_matrix_closes_effect_authority() {
+        // Arrange
+        let compatibility_only = [
+            json!({}),
+            json!({"futureField": true}),
+            json!({"rotation": 0}),
+            json!({"hostname": "axe-205", "rotation": 0}),
+        ];
+
+        for input in compatibility_only {
+            // Act
+            let decision = decide_v12_settings_value(&input).expect("valid input must classify");
+
+            // Assert
+            assert!(matches!(
+                decision,
+                V12SettingsDecision::CompatibilityOnly { .. }
+            ));
+        }
+    }
+
+    #[test]
+    fn settings_v12_invalid_known_fields_in_mixed_input_are_rejected_before_classification() {
+        // Arrange
+        let invalid_mixed_inputs = [
+            json!({"hostname": "", "rotation": 0}),
+            json!({"hostname": "axe-205", "manualFanSpeed": 101}),
+        ];
+
+        for input in invalid_mixed_inputs {
+            // Act
+            let error = decide_v12_settings_value(&input)
+                .expect_err("invalid known fields must reject atomically");
+
+            // Assert
+            assert_eq!(
+                error.public_error(),
+                SettingsPatchPublicError::WrongApiInput
             );
         }
     }
@@ -384,6 +428,19 @@ mod tests {
 
         // Act
         let error = decide_v12_settings_body(malformed).expect_err("malformed JSON must reject");
+
+        // Assert
+        assert_eq!(error.public_error(), SettingsPatchPublicError::InvalidJson);
+        assert_eq!(error.public_error().body(), "Invalid JSON");
+    }
+
+    #[test]
+    fn settings_v12_non_object_json_keeps_generic_public_error() {
+        // Arrange
+        let non_object = json!(["hostname", "axe-205"]);
+
+        // Act
+        let error = decide_v12_settings_value(&non_object).expect_err("non-object must reject");
 
         // Assert
         assert_eq!(error.public_error(), SettingsPatchPublicError::InvalidJson);
