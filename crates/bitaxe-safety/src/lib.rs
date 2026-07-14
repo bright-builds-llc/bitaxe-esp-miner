@@ -5,6 +5,7 @@ pub mod mining_preconditions;
 pub mod observation;
 pub mod power;
 pub mod self_test;
+pub mod sensor_acquisition;
 pub mod status;
 pub mod thermal;
 pub mod watchdog;

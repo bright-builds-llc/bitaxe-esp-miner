@@ -82,6 +82,13 @@ pub struct PowerObservation {
 
 impl PowerObservation {
     #[must_use]
+    pub const fn unavailable(reason: UnavailableReason) -> Self {
+        Self {
+            truth: Observation::unavailable(reason),
+        }
+    }
+
+    #[must_use]
     pub fn from_ina260_sample(
         maybe_sample: Option<Ina260RawSample>,
         age: PowerSampleAgeMs,
@@ -109,28 +116,25 @@ impl PowerObservation {
     ) -> Result<(Self, ObservationSequence), SequenceOverflow> {
         let Some(sample) = maybe_sample else {
             return Ok((
-                Self {
-                    truth: Observation::unavailable(UnavailableReason::PowerSampleUnavailable),
-                },
+                Self::unavailable(UnavailableReason::PowerSampleUnavailable),
                 prior_sequence,
             ));
         };
 
-        if sample.read_failed {
-            return Ok((
-                Self::fault_without_last_good(FaultReason::Ina260ReadFailed),
-                prior_sequence,
-            ));
+        let previous = Self::unavailable(UnavailableReason::PowerSampleUnavailable);
+        let (observation, sequence) = previous.record_ina260_success(
+            sample,
+            board_power_target_watts,
+            boot_session,
+            prior_sequence,
+            acquired_at,
+        )?;
+
+        if !observation.is_fresh_safe() {
+            return Ok((observation, sequence));
         }
 
-        let reading = match validated_power_reading(sample, board_power_target_watts) {
-            Ok(reading) => reading,
-            Err(reason) => {
-                return Ok((Self::fault_without_last_good(reason), prior_sequence));
-            }
-        };
-        let (fresh, sequence) =
-            Observation::record_success(reading, boot_session, prior_sequence, acquired_at)?;
+        let fresh = observation.truth;
         let truth = if age.0 > POWER_SAMPLE_STALE_AFTER_MS {
             let Some(last_good) = fresh.maybe_last_good().copied() else {
                 unreachable!("a fresh observation always owns a last-good sample");
@@ -142,6 +146,35 @@ impl PowerObservation {
         } else {
             fresh
         };
+
+        Ok((Self { truth }, sequence))
+    }
+
+    /// Records one complete validated INA260 acquisition against the prior truth.
+    ///
+    /// Validation failures preserve the prior last-good sample and do not advance
+    /// the source-local sequence.
+    pub fn record_ina260_success(
+        self,
+        sample: Ina260RawSample,
+        board_power_target_watts: f64,
+        boot_session: BootSessionId,
+        prior_sequence: ObservationSequence,
+        acquired_at: MonotonicMillis,
+    ) -> Result<(Self, ObservationSequence), SequenceOverflow> {
+        if sample.read_failed {
+            return Ok((
+                self.record_fault(FaultReason::Ina260ReadFailed),
+                prior_sequence,
+            ));
+        }
+
+        let reading = match validated_power_reading(sample, board_power_target_watts) {
+            Ok(reading) => reading,
+            Err(reason) => return Ok((self.record_fault(reason), prior_sequence)),
+        };
+        let (truth, sequence) =
+            Observation::record_success(reading, boot_session, prior_sequence, acquired_at)?;
 
         Ok((Self { truth }, sequence))
     }
@@ -211,15 +244,6 @@ impl PowerObservation {
         };
 
         reading.power_watts()
-    }
-
-    const fn fault_without_last_good(reason: FaultReason) -> Self {
-        Self {
-            truth: Observation::Fault {
-                reason,
-                maybe_last_good: None,
-            },
-        }
     }
 }
 
