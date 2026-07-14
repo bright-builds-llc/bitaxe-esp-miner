@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 32 context gathered
-last_updated: "2026-07-13T23:45:16.037Z"
+stopped_at: Completed 32-01-PLAN.md
+last_updated: "2026-07-14T00:02:51.363Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
-  percent: 50
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -21,12 +21,12 @@ Last activity: 2026-07-13
 ## Current Position
 
 Phase: 32 (Shared I2C and Read-Only Sensor Acquisition) — EXECUTING
-Plan: 1 of 3
+Plan: 2 of 3
 
 - **Phase:** 32 of 35 (shared i2c and read only sensor acquisition)
-- **Plan:** Not started
+- **Plan:** 2 of 3
 - **Status:** Executing Phase 32
-- **Next step:** Discuss Phase 32, then create its implementation plan.
+- **Next step:** Execute 32-02-PLAN.md.
 
 ## Project Reference
 
@@ -56,6 +56,12 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 
 - Only exact validated hostname input constructs v1.2 settings authority; compatibility parsing remains broad for stable responses while persistence integration stays Phase 33-owned.
 - Phase 31 claim admission is closed, typed, and requirement-scoped: OBS-01 and CFG-08 evidence authenticate only their exact claims, while excluded categories, strings, and schema growth fail closed.
+
+## Decisions (Phase 32 Plan 01)
+
+- One validated INA260 triple advances one shared power observation sequence; a partial or invalid attempt advances nothing.
+- Temperature and tachometer retain separate outcomes, sequences, and last-good stamps.
+- Only producer-supplied monotonic time may transition fresh observations to stale.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -198,6 +204,7 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 | Phase 31 P01 | 12 min | 2 tasks | 6 files |
 | Phase 31 P02 | 15 min | 2 tasks | 15 files |
 | Phase 31 P03 | 14 min | 2 tasks | 7 files |
+| Phase 32 P01 | 17 min | 2 tasks | 3 files |
 
 ### Quick Tasks Completed
 
@@ -230,5 +237,5 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Phase 32 context gathered
-- **Resume:** Verify Phase 31; preserve all v1.2 read-only and terminal-archive prohibitions.
+- **Stopped at:** Completed 32-01-PLAN.md
+- **Resume:** Execute 32-02-PLAN.md; preserve all v1.2 read-only and terminal-archive prohibitions.

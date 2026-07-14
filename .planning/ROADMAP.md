@@ -57,7 +57,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 1. One sensor failure does not block the API or unaffected observations, and the failed observation becomes stale or faulted without request-driven refresh.
 1. The phase performs no fan/configuration-register, voltage, reset, power, ASIC, fault-stimulus, self-test, mining, credential, direct-UART/pin, OTA, or other-board effect.
 
-**Plans:** TBD
+**Plans:** 1/3 plans executed
 
 ### Phase 33: Confirmed Settings Durability
 
@@ -130,7 +130,7 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | Phase | Name | Requirements | Status |
 | --- | --- | ---: | --- |
 | 31 | Operator Claim and Telemetry Contract | 2 | Complete |
-| 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Not started |
+| 32 | 1/3 | In Progress|  |
 | 33 | Confirmed Settings Durability | 5 | Not started |
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Not started |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 6 | Not started |
