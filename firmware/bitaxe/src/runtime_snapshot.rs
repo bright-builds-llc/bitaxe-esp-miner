@@ -313,8 +313,8 @@ impl CommandVisibleState {
 }
 
 fn apply_settings_snapshot(snapshot: &mut ApiSnapshot) {
-    let settings = crate::settings_adapter::current_settings_snapshot();
-    let loaded = reload_snapshot(&settings);
+    let confirmed_settings = crate::settings_adapter::current_settings_snapshot();
+    let loaded = reload_snapshot(&confirmed_settings);
 
     if let Some(LoadedValue::Str(hostname)) = loaded.loaded_value("hostname") {
         snapshot.platform.hostname = hostname.clone();

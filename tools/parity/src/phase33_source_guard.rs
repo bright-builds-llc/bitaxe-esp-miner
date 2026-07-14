@@ -70,10 +70,44 @@ fn phase33_settings_source_guard_closes_route_authority_and_optimistic_overlays(
     assert!(handler.contains("decide_v12_settings_body(&body)"));
     assert!(handler.contains("V12SettingsDecision::CompatibilityOnly"));
     assert!(handler.contains("SettingsPersistencePlan::for_hostname(hostname)"));
+    let decision = handler
+        .find("decide_v12_settings_body(&body)")
+        .expect("closed authority decision");
+    let compatibility = handler
+        .find("V12SettingsDecision::CompatibilityOnly")
+        .expect("compatibility-only branch");
+    let adapter = handler
+        .find("FirmwareSettingsAdapter::open()")
+        .expect("authorized adapter open");
+    assert!(decision < compatibility && compatibility < adapter);
     assert!(!handler.contains("plan_settings_patch_body(&body)"));
     assert!(!handler.contains("from_accepted_patch"));
     assert!(!HTTP_API_SOURCE.contains("apply_persisted_settings_writes"));
     assert!(!SETTINGS_ADAPTER_SOURCE.contains("apply_persisted_settings_writes"));
+}
+
+#[test]
+fn phase33_settings_source_guard_keeps_compatibility_and_errors_effect_free() {
+    // Arrange
+    let handler = source_between(
+        HTTP_API_SOURCE,
+        "fn handle_settings_patch",
+        "fn handle_logs_download",
+    );
+    let compatibility = source_between(
+        handler,
+        "V12SettingsDecision::CompatibilityOnly",
+        "let mut adapter",
+    );
+
+    // Act / Assert
+    assert!(compatibility.contains("SettingsPublicResponse::EmptySuccess"));
+    assert!(compatibility.contains("return Ok(())"));
+    assert!(!compatibility.contains("FirmwareSettingsAdapter::open"));
+    assert!(!compatibility.contains("schedule_settings_effects"));
+    assert!(handler.contains("error.public_error().body()"));
+    assert!(!handler.contains("body={"));
+    assert!(!handler.contains("hostname.as_str()"));
 }
 
 #[test]
@@ -96,9 +130,28 @@ fn phase33_settings_source_guard_responds_after_publish_and_projects_confirmed_t
 
     // Act / Assert
     assert!(execute < response && response < effects);
-    assert!(RUNTIME_SNAPSHOT_SOURCE.contains("settings_adapter::current_settings_snapshot()"));
+    assert!(RUNTIME_SNAPSHOT_SOURCE
+        .contains("let confirmed_settings = crate::settings_adapter::current_settings_snapshot()"));
+    assert!(RUNTIME_SNAPSHOT_SOURCE.contains("reload_snapshot(&confirmed_settings)"));
     assert!(RUNTIME_SNAPSHOT_SOURCE.contains("snapshot.platform.hostname = hostname.clone()"));
     assert!(!RUNTIME_SNAPSHOT_SOURCE.contains("apply_persisted_settings_writes"));
+}
+
+#[test]
+fn phase33_settings_source_guard_limits_post_response_effect_to_hostname() {
+    // Arrange
+    let apply_effects = source_between(
+        HTTP_API_SOURCE,
+        "fn apply_settings_effects",
+        "fn apply_hostname_effect",
+    );
+
+    // Act / Assert
+    assert!(apply_effects.contains("BestEffortApplyHostname"));
+    assert!(apply_effects.contains("apply_hostname_effect(hostname)"));
+    assert!(!apply_effects.contains("controlled_mining_runtime"));
+    assert!(!apply_effects.contains("live_stratum_runtime"));
+    assert!(!apply_effects.contains("refresh_from_settings"));
 }
 
 fn source_between<'a>(source: &'a str, start: &str, end: &str) -> &'a str {
