@@ -49,7 +49,7 @@ pub use route_shell::{
     WebSocketUpgradeDecision, MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY,
     UNKNOWN_API_ROUTE_BODY,
 };
-pub use runtime_projection::{project_api_views, ProjectedApiViews};
+pub use runtime_projection::{project_api_views, project_system_info, ProjectedApiViews};
 pub use scoreboard::{scoreboard_response, ScoreboardEntry, ScoreboardEntryWire};
 pub use settings::{
     execute_settings_persistence_plan, plan_settings_patch_body, plan_settings_patch_value,

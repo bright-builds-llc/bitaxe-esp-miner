@@ -4,7 +4,7 @@ use std::sync::{Mutex, OnceLock};
 
 use bitaxe_api::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
-    project_api_views, scoreboard_response, statistics_response, ApiSnapshot,
+    project_api_views, project_system_info, scoreboard_response, statistics_response, ApiSnapshot,
     BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect,
     IdentifyModeState, MiningActivityEffect, PlatformSnapshot, ProjectedApiViews,
     SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsWire, SystemInfoWire,
@@ -75,9 +75,9 @@ pub fn collect_projected_api_views(timestamp_ms: u64, response_time_ms: f64) -> 
 }
 
 /// Returns projection-backed `/api/system/info` data without consuming statistics markers.
-pub fn projected_system_info(timestamp_ms: u64) -> SystemInfoWire {
-    let views = collect_projected_api_views_with_sample_policy(timestamp_ms, 0.0, false);
-    SystemInfoWire::from_snapshot(&views.snapshot)
+pub fn projected_system_info(_timestamp_ms: u64) -> SystemInfoWire {
+    let (projection, _) = runtime_projection_for_api_views(false);
+    project_system_info(collect_api_snapshot(), &projection)
 }
 
 /// Returns projection-backed `/api/system/statistics` data.

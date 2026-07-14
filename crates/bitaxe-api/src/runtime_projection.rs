@@ -16,6 +16,16 @@ pub struct ProjectedApiViews {
     pub telemetry_payload: Value,
 }
 
+/// Builds the system-info DTO directly without allocating unrelated API views.
+#[must_use]
+pub fn project_system_info(
+    mut base: ApiSnapshot,
+    projection: &RuntimeTelemetryProjection,
+) -> SystemInfoWire {
+    base.mining = projection.state().clone();
+    SystemInfoWire::from_snapshot(&base)
+}
+
 /// Builds upstream-compatible API views from the shared runtime projection.
 #[must_use]
 pub fn project_api_views(
@@ -85,6 +95,22 @@ mod tests {
         assert!(!wire.mining_paused);
         assert_eq!(public_json.get("hashRate"), Some(&Value::from(2_500.0)));
         assert_eq!(public_json.get("sharesAccepted"), Some(&Value::from(1)));
+    }
+
+    #[test]
+    fn direct_system_info_projection_uses_runtime_state() {
+        // Arrange
+        let projection = active_projection_with_share_counters();
+        let base = ApiSnapshot::safe_ultra_205();
+
+        // Act
+        let wire = super::project_system_info(base, &projection);
+
+        // Assert
+        assert_eq!(wire.hash_rate, 2_500.0);
+        assert_eq!(wire.shares_accepted, 1);
+        assert_eq!(wire.shares_rejected, 1);
+        assert_eq!(wire.pool_connection_info, "active");
     }
 
     #[test]

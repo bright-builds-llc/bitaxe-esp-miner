@@ -138,6 +138,22 @@ fn phase33_settings_source_guard_responds_after_publish_and_projects_confirmed_t
 }
 
 #[test]
+fn phase33_system_info_source_guard_avoids_duplicate_full_view_materialization() {
+    // Arrange
+    let projection = source_between(
+        RUNTIME_SNAPSHOT_SOURCE,
+        "pub fn projected_system_info",
+        "/// Returns projection-backed `/api/system/statistics` data.",
+    );
+
+    // Act / Assert
+    assert!(projection.contains("project_system_info(collect_api_snapshot(), &projection)"));
+    assert!(!projection.contains("collect_projected_api_views_with_sample_policy"));
+    assert!(!projection.contains("ProjectedApiViews"));
+    assert!(!projection.contains("telemetry_payload"));
+}
+
+#[test]
 fn phase33_settings_source_guard_limits_post_response_effect_to_hostname() {
     // Arrange
     let apply_effects = source_between(
