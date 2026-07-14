@@ -3,30 +3,30 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 32-01-PLAN.md
-last_updated: "2026-07-14T00:02:51.363Z"
-last_activity: 2026-07-13
+stopped_at: Completed 32-02-PLAN.md
+last_updated: "2026-07-14T00:25:41.968Z"
+last_activity: 2026-07-14
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
 
-Last activity: 2026-07-13
+Last activity: 2026-07-14
 
 ## Current Position
 
 Phase: 32 (Shared I2C and Read-Only Sensor Acquisition) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 - **Phase:** 32 of 35 (shared i2c and read only sensor acquisition)
-- **Plan:** 2 of 3
-- **Status:** Executing Phase 32
-- **Next step:** Execute 32-02-PLAN.md.
+- **Plan:** 3 of 3
+- **Status:** Ready to execute
+- **Next step:** Execute 32-03-PLAN.md.
 
 ## Project Reference
 
@@ -62,6 +62,12 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 - One validated INA260 triple advances one shared power observation sequence; a partial or invalid attempt advances nothing.
 - Temperature and tachometer retain separate outcomes, sequences, and last-good stamps.
 - Only producer-supplied monotonic time may transition fresh observations to stale.
+
+## Decisions (Phase 32 Plan 02)
+
+- All I2C operations convert a named 50 ms bound with `TickType` before calling ESP-IDF.
+- The startup display borrows the shared driver through a bounded embedded-hal adapter and never selects `BLOCK`.
+- Normal sensor code can name only the seven allowlisted read registers; active writes require a token constructible only inside the gated Phase 27 module.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -205,6 +211,7 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 | Phase 31 P02 | 15 min | 2 tasks | 15 files |
 | Phase 31 P03 | 14 min | 2 tasks | 7 files |
 | Phase 32 P01 | 17 min | 2 tasks | 3 files |
+| Phase 32 P02 | 21 min | 2 tasks | 17 files |
 
 ### Quick Tasks Completed
 
@@ -237,5 +244,5 @@ See `.planning/PROJECT.md` (updated 2026-07-13). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 32-01-PLAN.md
-- **Resume:** Execute 32-02-PLAN.md; preserve all v1.2 read-only and terminal-archive prohibitions.
+- **Stopped at:** Completed 32-02-PLAN.md
+- **Resume:** Execute 32-03-PLAN.md; preserve all v1.2 read-only and terminal-archive prohibitions.
