@@ -96,6 +96,86 @@ serial_session_node_identity() {
 	fi
 }
 
+serial_session_darwin_usb_physical_fields() {
+	local port="$1"
+	local line
+	local node_prefix
+	local key
+	local value
+	local current_indent=-1
+	local max_indent=0
+	local indent
+	local i
+	local vendor_value=""
+	local product_value=""
+	local serial_value=""
+	local location_value=""
+	local -a usb_node=()
+	local -a vendor=()
+	local -a product=()
+	local -a serial=()
+	local -a location=()
+
+	while IFS= read -r line; do
+		if [[ "$line" == *"+-o "* ]]; then
+			node_prefix="${line%%+-o *}"
+			indent="${#node_prefix}"
+			for ((i = indent; i <= max_indent; i++)); do
+				unset 'usb_node[i]' 'vendor[i]' 'product[i]' 'serial[i]' 'location[i]'
+			done
+			current_indent="$indent"
+			if [[ "$line" =~ class[[:space:]]+IOUSBHost(Device|Interface) ]]; then
+				usb_node[indent]=1
+			else
+				usb_node[indent]=0
+			fi
+			if ((indent > max_indent)); then
+				max_indent="$indent"
+			fi
+			continue
+		fi
+
+		((current_indent >= 0)) || continue
+		if [[ ! "$line" =~ \"([^\"]+)\"[[:space:]]*=[[:space:]]*(.*)$ ]]; then
+			continue
+		fi
+		key="${BASH_REMATCH[1]}"
+		value="${BASH_REMATCH[2]}"
+		value="${value%"${value##*[![:space:]]}"}"
+
+		if [[ "${usb_node[current_indent]:-0}" == "1" ]]; then
+			case "$key" in
+			idVendor) vendor[current_indent]="$value" ;;
+			idProduct) product[current_indent]="$value" ;;
+			"USB Serial Number") serial[current_indent]="$value" ;;
+			locationID) location[current_indent]="$value" ;;
+			esac
+		fi
+
+		if [[ "$key" != "IOCalloutDevice" && "$key" != "IODialinDevice" ]] || [[ "$value" != "\"${port}\"" ]]; then
+			continue
+		fi
+
+		for ((i = 0; i <= current_indent; i++)); do
+			[[ "${usb_node[i]:-0}" == "1" ]] || continue
+			[[ -z "${vendor[i]:-}" ]] || vendor_value="${vendor[i]}"
+			[[ -z "${product[i]:-}" ]] || product_value="${product[i]}"
+			[[ -z "${serial[i]:-}" ]] || serial_value="${serial[i]}"
+			[[ -z "${location[i]:-}" ]] || location_value="${location[i]}"
+		done
+
+		[[ -n "$vendor_value" && -n "$product_value" ]] || return 1
+		[[ -n "$serial_value" || -n "$location_value" ]] || return 1
+		printf 'idVendor=%s\n' "$vendor_value"
+		printf 'idProduct=%s\n' "$product_value"
+		[[ -z "$serial_value" ]] || printf 'USB Serial Number=%s\n' "$serial_value"
+		[[ -z "$location_value" ]] || printf 'locationID=%s\n' "$location_value"
+		return 0
+	done
+
+	return 1
+}
+
 serial_session_usb_physical_identity() {
 	local port="$1"
 	local tty_name="${port##*/}"
@@ -110,17 +190,10 @@ serial_session_usb_physical_identity() {
 		return
 	fi
 	if [[ "$(uname -s)" == "Darwin" ]] && command -v ioreg >/dev/null 2>&1; then
-		local identity_block
 		local stable_identity_fields
-		identity_block="$(ioreg -r -c IOSerialBSDClient -l -w 0 |
-			awk -v port="$port" 'BEGIN { RS="\\n[+]?-o " } index($0, port) { print }')"
-		[[ -n "$identity_block" ]] || return 1
-		stable_identity_fields="$(printf '%s\n' "$identity_block" | awk '
-			/"(USB Serial Number|idVendor|idProduct|locationID)" =/ { print }
-		')"
-		printf '%s\n' "$stable_identity_fields" | grep -q '"idVendor" =' || return 1
-		printf '%s\n' "$stable_identity_fields" | grep -q '"idProduct" =' || return 1
-		printf '%s\n' "$stable_identity_fields" | grep -Eq '"(USB Serial Number|locationID)" =' || return 1
+		stable_identity_fields="$(ioreg -p IOService -r -c IOSerialBSDClient -l -w 0 -t |
+			serial_session_darwin_usb_physical_fields "$port")" || return 1
+		[[ -n "$stable_identity_fields" ]] || return 1
 		printf '%s\n' "$stable_identity_fields" | serial_session_hash_text
 		return
 	fi

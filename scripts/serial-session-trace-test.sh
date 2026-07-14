@@ -111,15 +111,34 @@ test_darwin_physical_identity_excludes_enumeration_fields() {
 	write_executable "${bin_dir}/uname" 'printf "Darwin\n"'
 	write_executable "${bin_dir}/node-identity" 'printf "%s\n" "node-${SERIAL_TEST_IOREG_EPOCH:?}"'
 	write_executable "${bin_dir}/ioreg" 'epoch="${SERIAL_TEST_IOREG_EPOCH:?}"
-printf "+-o serial%s <class IOSerialBSDClient, id 0x%s>\n" "$epoch" "$epoch"
-printf "  \"IOCalloutDevice\" = \"%s\"\n" "${SERIAL_TEST_PORT:?}"
-printf "  \"IODialinDevice\" = \"/dev/tty.epoch%s\"\n" "$epoch"
-printf "  \"IOTTYDevice\" = \"cu.epoch%s\"\n" "$epoch"
-printf "  \"IOTTYBaseName\" = \"epoch%s\"\n" "$epoch"
-printf "  \"USB Serial Number\" = \"physical-205\"\n"
-printf "  \"idVendor\" = 1234\n"
-printf "  \"idProduct\" = 5678\n"
-printf "  \"locationID\" = 42\n"'
+if [[ " $* " != *" -p IOService "* || " $* " != *" -t "* ]]; then
+	printf "+-o serial%s <class IOSerialBSDClient, id 0x%s>\n" "$epoch" "$epoch"
+	printf "  \"IOCalloutDevice\" = \"%s\"\n" "${SERIAL_TEST_PORT:?}"
+	printf "  \"IODialinDevice\" = \"/dev/tty.epoch%s\"\n" "$epoch"
+	printf "  \"IOTTYDevice\" = \"cu.epoch%s\"\n" "$epoch"
+	printf "  \"IOTTYBaseName\" = \"epoch%s\"\n" "$epoch"
+	exit 0
+fi
+printf "+-o Root <class IORegistryEntry, id 0x1>\n"
+printf "  +-o unrelated-usb <class IOUSBHostDevice, id 0x2>\n"
+printf "    \"USB Serial Number\" = \"unrelated-%s\"\n" "$epoch"
+printf "    \"idVendor\" = 9999\n"
+printf "    \"idProduct\" = 8888\n"
+printf "    \"locationID\" = 77\n"
+printf "    +-o unrelated-interface <class IOUSBHostInterface, id 0x3>\n"
+printf "      +-o unrelated-serial <class IOSerialBSDClient, id 0x4>\n"
+printf "        \"IOCalloutDevice\" = \"/dev/cu.unrelated\"\n"
+printf "  +-o target-usb <class IOUSBHostDevice, id 0x5>\n"
+printf "    \"USB Serial Number\" = \"physical-205\"\n"
+printf "    \"idVendor\" = 1234\n"
+printf "    \"idProduct\" = 5678\n"
+printf "    +-o target-interface <class IOUSBHostInterface, id 0x6>\n"
+printf "      \"locationID\" = 42\n"
+printf "      +-o serial%s <class IOSerialBSDClient, id 0x%s>\n" "$epoch" "$epoch"
+printf "        \"IOCalloutDevice\" = \"%s\"\n" "${SERIAL_TEST_PORT:?}"
+printf "        \"IODialinDevice\" = \"/dev/tty.epoch%s\"\n" "$epoch"
+printf "        \"IOTTYDevice\" = \"cu.epoch%s\"\n" "$epoch"
+printf "        \"IOTTYBaseName\" = \"epoch%s\"\n" "$epoch"'
 
 	physical_a="$(PATH="${bin_dir}:$PATH" SERIAL_TEST_IOREG_EPOCH=a SERIAL_TEST_PORT="$serial_port" serial_session_usb_physical_identity "$serial_port")"
 	physical_b="$(PATH="${bin_dir}:$PATH" SERIAL_TEST_IOREG_EPOCH=b SERIAL_TEST_PORT="$serial_port" serial_session_usb_physical_identity "$serial_port")"
@@ -128,6 +147,50 @@ printf "  \"locationID\" = 42\n"'
 
 	[[ "$physical_a" == "$physical_b" ]] || fail "Darwin physical identity changed with tty/registry fields"
 	[[ "$enumeration_a" != "$enumeration_b" ]] || fail "Darwin enumeration identity did not change"
+}
+
+# shellcheck disable=SC2016 # Generated fixtures expand variables in fresh processes.
+test_darwin_physical_identity_requires_vendor_and_product() {
+	local bin_dir="${tmp_root}/darwin-missing-product-bin"
+	local output
+	local status
+	mkdir -p "$bin_dir"
+	write_executable "${bin_dir}/uname" 'printf "Darwin\n"'
+	write_executable "${bin_dir}/ioreg" 'printf "+-o target-usb <class IOUSBHostDevice, id 0x1>\n"
+printf "  \"USB Serial Number\" = \"physical-205\"\n"
+printf "  \"idVendor\" = 1234\n"
+printf "  +-o target-interface <class IOUSBHostInterface, id 0x2>\n"
+printf "    +-o target-serial <class IOSerialBSDClient, id 0x3>\n"
+printf "      \"IOCalloutDevice\" = \"%s\"\n" "${SERIAL_TEST_PORT:?}"'
+
+	set +e
+	output="$(PATH="${bin_dir}:$PATH" SERIAL_TEST_PORT="$serial_port" serial_session_usb_physical_identity "$serial_port")"
+	status=$?
+	set -e
+	[[ "$status" -ne 0 ]] || fail "Darwin identity without a product unexpectedly passed"
+	[[ -z "$output" ]] || fail "Darwin identity without a product produced a hash"
+}
+
+# shellcheck disable=SC2016 # Generated fixtures expand variables in fresh processes.
+test_darwin_physical_identity_requires_serial_or_location() {
+	local bin_dir="${tmp_root}/darwin-missing-locator-bin"
+	local output
+	local status
+	mkdir -p "$bin_dir"
+	write_executable "${bin_dir}/uname" 'printf "Darwin\n"'
+	write_executable "${bin_dir}/ioreg" 'printf "+-o target-usb <class IOUSBHostDevice, id 0x1>\n"
+printf "  \"idVendor\" = 1234\n"
+printf "  \"idProduct\" = 5678\n"
+printf "  +-o target-interface <class IOUSBHostInterface, id 0x2>\n"
+printf "    +-o target-serial <class IOSerialBSDClient, id 0x3>\n"
+printf "      \"IOCalloutDevice\" = \"%s\"\n" "${SERIAL_TEST_PORT:?}"'
+
+	set +e
+	output="$(PATH="${bin_dir}:$PATH" SERIAL_TEST_PORT="$serial_port" serial_session_usb_physical_identity "$serial_port")"
+	status=$?
+	set -e
+	[[ "$status" -ne 0 ]] || fail "Darwin identity without a serial or location unexpectedly passed"
+	[[ -z "$output" ]] || fail "Darwin identity without a serial or location produced a hash"
 }
 
 test_linux_physical_identity_survives_new_tty_epoch() {
@@ -249,6 +312,8 @@ chmod 600 "$serial_port"
 test_trace_permissions_and_stable_readiness
 test_identity_change_fails_closed
 test_darwin_physical_identity_excludes_enumeration_fields
+test_darwin_physical_identity_requires_vendor_and_product
+test_darwin_physical_identity_requires_serial_or_location
 test_linux_physical_identity_survives_new_tty_epoch
 test_holder_fails_closed
 test_unavailable_ownership_probe_fails_closed
