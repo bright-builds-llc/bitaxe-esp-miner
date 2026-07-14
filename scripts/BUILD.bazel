@@ -236,6 +236,17 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase33_confirmed_settings_durability",
+    srcs = ["phase33-confirmed-settings-durability.sh"],
+    data = [
+        "phase13-monitor-capture.sh",
+        "process-group.sh",
+        "serial-session-trace.sh",
+    ],
+    tags = ["local"],
+)
+
+sh_binary(
     name = "phase29_doc_redaction_check",
     srcs = ["phase29-doc-redaction-check.sh"],
     data = [
@@ -668,6 +679,17 @@ sh_test(
         "//:docs/parity/evidence/phase-29-evidence-workflow-automation-closure/summary.md",
         "//:docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md",
         "//:docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase33_confirmed_settings_durability_test",
+    srcs = ["phase33-confirmed-settings-durability-test.sh"],
+    data = [
+        "phase33-confirmed-settings-durability.sh",
+        "serial-session-trace.sh",
     ],
     env_inherit = ["PATH"],
     tags = ["local"],
