@@ -20,9 +20,12 @@ filegroup(
     srcs = [
         "src/display_adapter.rs",
         "src/main.rs",
+        "src/operator_sensor_runtime.rs",
+        "src/runtime_snapshot.rs",
         "src/safety_adapter/emc2101.rs",
         "src/safety_adapter/i2c_bus.rs",
         "src/safety_adapter/ina260.rs",
+        "src/safety_adapter/observation_store.rs",
     ],
     visibility = ["//tools/parity:__pkg__"],
 )

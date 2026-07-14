@@ -23,6 +23,21 @@ pub use phase27_bring_up::{
 };
 
 use bitaxe_safety::{effects::SafetyEffect, status::SafetyStatus};
+use bitaxe_safety::{power::Ina260RawSample, sensor_acquisition::AcquisitionOutcome};
+
+pub(crate) fn read_power_acquisition(
+    bus: &mut BitaxeI2cBus<'_>,
+) -> AcquisitionOutcome<Ina260RawSample> {
+    ina260::read_acquisition(&mut bus.read_only_sensors())
+}
+
+pub(crate) fn read_temperature_acquisition(bus: &mut BitaxeI2cBus<'_>) -> AcquisitionOutcome<f64> {
+    emc2101::read_external_temperature_acquisition(&mut bus.read_only_sensors())
+}
+
+pub(crate) fn read_tachometer_acquisition(bus: &mut BitaxeI2cBus<'_>) -> AcquisitionOutcome<u16> {
+    emc2101::read_tachometer_acquisition(&mut bus.read_only_sensors())
+}
 
 pub fn interpret_safety_effects(effects: &[SafetyEffect]) {
     for effect in effects {

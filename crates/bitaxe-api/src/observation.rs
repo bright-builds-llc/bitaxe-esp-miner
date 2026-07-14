@@ -471,6 +471,64 @@ mod tests {
     }
 
     #[test]
+    fn phase32_consumer_reads_preserve_failed_source_and_unaffected_fresh_facts() {
+        // Arrange
+        let failed_temperature = fresh(55.0).record_fault(FaultReason::ReadFailed);
+        let observations = TelemetryObservations {
+            power_watts: fresh(10.0),
+            bus_voltage_volts: fresh(5.0),
+            current_amps: fresh(2.0),
+            chip_temp_celsius: failed_temperature,
+            vr_temp_celsius: Observation::unavailable(UnavailableReason::ThermalReadingUnavailable),
+            fan_rpm: fresh_u16(3_200),
+        };
+        let mut store = ObservationStore::new(observations);
+
+        // Act
+        let first = store.read();
+        let second = store.read();
+        let mut first_snapshot = ApiSnapshot::safe_ultra_205();
+        first_snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&first);
+        let first_wire = SystemInfoWire::from_snapshot(&first_snapshot);
+        let (next_temperature, _) = Observation::record_success(
+            56.0,
+            BootSessionId::new(7),
+            ObservationSequence::new(10),
+            MonotonicMillis::new(500),
+        )
+        .expect("producer replacement sequence should advance");
+        store.replace(TelemetryObservations {
+            chip_temp_celsius: next_temperature,
+            ..second
+        });
+        let replaced = store.read();
+
+        // Assert
+        assert_eq!(first, observations);
+        assert_eq!(second, observations);
+        assert_eq!(first.chip_temp_celsius.state_label(), "fault");
+        assert!(first.power_watts.is_fresh());
+        assert!(first.fan_rpm.is_fresh());
+        assert_eq!(
+            first_wire.chip_temp_status.state,
+            ObservationStateWire::Fault
+        );
+        assert_eq!(first_wire.power_status.state, ObservationStateWire::Fresh);
+        assert_eq!(first_wire.fan_rpm_status.state, ObservationStateWire::Fresh);
+        assert_eq!(replaced.power_watts, observations.power_watts);
+        assert_eq!(replaced.fan_rpm, observations.fan_rpm);
+        assert_eq!(
+            replaced
+                .chip_temp_celsius
+                .maybe_last_good()
+                .expect("producer replacement should be fresh")
+                .sequence()
+                .get(),
+            11
+        );
+    }
+
+    #[test]
     fn projection_mapping_copies_state_and_stamp_without_advancing_metadata() {
         // Arrange
         let source = fresh(5.0)

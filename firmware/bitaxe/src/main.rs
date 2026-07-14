@@ -14,6 +14,7 @@ mod live_stratum_runtime;
 mod log_buffer;
 mod mining_evidence_mode;
 mod network_stack;
+mod operator_sensor_runtime;
 mod ota_update;
 mod runtime_snapshot;
 mod runtime_uptime;
@@ -89,12 +90,22 @@ fn main() -> anyhow::Result<()> {
                 match safety_adapter::BitaxeI2cBus::new(peripherals.i2c0, pins.gpio47, pins.gpio48)
                 {
                     Ok(mut bus) => {
-                        if let Err(error) = display_adapter::render_startup_debug_text(
+                        match display_adapter::render_startup_debug_text(
                             &mut bus,
                             &startup_debug_text,
                         ) {
+                            Ok(()) => {
+                                log::info!("operator_sensor_display=rendered");
+                            }
+                            Err(error) => {
+                                log::warn!(
+                                    "display_status=unavailable reason=startup_text_render_failed error={error:#}"
+                                );
+                            }
+                        }
+                        if let Err(error) = operator_sensor_runtime::start(bus) {
                             log::warn!(
-                                "display_status=unavailable reason=startup_text_render_failed error={error:#}"
+                                "operator_sensor_runtime=unavailable reason=thread_spawn_failed error={error:#}"
                             );
                         }
                     }
