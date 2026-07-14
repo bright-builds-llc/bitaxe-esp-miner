@@ -22,7 +22,8 @@ pub use nvs::{
     StoredValue, NVS_KEY_NAME_MAX_BYTES, NVS_NAMESPACE,
 };
 pub use persistence::{
-    apply_patch_to_snapshot, load_snapshot, reload_snapshot, NvsSnapshot, PersistenceDecision,
+    apply_patch_to_snapshot, confirm_hostname_snapshot, load_snapshot, reload_snapshot,
+    ConfirmedHostnameSnapshot, ConfirmedHostnameSnapshotError, NvsSnapshot, PersistenceDecision,
 };
 pub use settings::{
     apply_settings_patch, RawSettingValue, SettingsPatch, SettingsUpdateDecision,

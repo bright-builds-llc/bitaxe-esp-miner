@@ -55,9 +55,9 @@ pub use settings::{
     execute_settings_persistence_plan, plan_settings_patch_body, plan_settings_patch_value,
     AcceptedSettingsPatch, SettingsAdapterFailure, SettingsPatchFailure,
     SettingsPatchFailureReason, SettingsPatchPublicError, SettingsPersistenceAdapter,
-    SettingsPersistenceEffect, SettingsPersistenceFailure, SettingsPersistenceFailureReport,
-    SettingsPersistencePlan, SettingsPersistenceStep, SettingsPersistenceSuccess,
-    SettingsPublicResponse,
+    SettingsPersistenceEffect, SettingsPersistenceFailure, SettingsPersistenceFailureDisposition,
+    SettingsPersistenceFailureReport, SettingsPersistencePlan, SettingsPersistenceStep,
+    SettingsPersistenceSuccess, SettingsPersistenceTransaction, SettingsPublicResponse,
 };
 pub use snapshot::{
     ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, SafeTelemetrySnapshot,

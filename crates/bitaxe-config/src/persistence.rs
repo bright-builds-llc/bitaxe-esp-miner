@@ -9,13 +9,83 @@
 //!   effects remain outside this crate.
 
 use std::collections::BTreeMap;
+use std::fmt;
+
+use thiserror::Error;
 
 use crate::nvs::StoredValueKind;
 use crate::{
     all_settings_schema, apply_settings_patch, load_setting_value, migration_decisions,
-    ConfigValidationError, LoadedValue, MigrationDecision, NvsErase, NvsWrite, SettingsPatch,
-    SettingsUpdateDecision, StoredValue,
+    ConfigValidationError, Hostname, LoadedValue, MigrationDecision, NvsErase, NvsWrite,
+    SettingsPatch, SettingsUpdateDecision, StoredValue,
 };
+
+/// Independently loaded snapshot whose stored hostname is present, string-typed, and valid.
+#[derive(Clone, PartialEq, Eq)]
+pub struct ConfirmedHostnameSnapshot {
+    snapshot: NvsSnapshot,
+    hostname: Hostname,
+}
+
+impl ConfirmedHostnameSnapshot {
+    /// Returns the independently loaded complete snapshot for atomic publication.
+    #[must_use]
+    pub const fn snapshot(&self) -> &NvsSnapshot {
+        &self.snapshot
+    }
+
+    /// Returns the typed hostname read from storage.
+    #[must_use]
+    pub const fn hostname(&self) -> &Hostname {
+        &self.hostname
+    }
+
+    /// Consumes the confirmation evidence and returns its complete snapshot.
+    #[must_use]
+    pub fn into_snapshot(self) -> NvsSnapshot {
+        self.snapshot
+    }
+}
+
+impl fmt::Debug for ConfirmedHostnameSnapshot {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ConfirmedHostnameSnapshot")
+            .field("hostname", &"[redacted]")
+            .field("stored_value_count", &self.snapshot.values.len())
+            .finish()
+    }
+}
+
+/// Failure to construct strict hostname confirmation evidence from an NVS snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum ConfirmedHostnameSnapshotError {
+    /// The independently loaded snapshot did not contain the required hostname key.
+    #[error("confirmed hostname key is missing")]
+    Missing,
+    /// The hostname key was stored using a non-string NVS type.
+    #[error("confirmed hostname has the wrong storage type")]
+    WrongStoredType,
+    /// The stored hostname failed its domain validation.
+    #[error("confirmed hostname failed validation")]
+    Invalid,
+}
+
+/// Parses strict hostname confirmation evidence without applying defaults or migrations.
+pub fn confirm_hostname_snapshot(
+    snapshot: NvsSnapshot,
+) -> Result<ConfirmedHostnameSnapshot, ConfirmedHostnameSnapshotError> {
+    let Some(stored) = snapshot.maybe_stored_value("hostname") else {
+        return Err(ConfirmedHostnameSnapshotError::Missing);
+    };
+    let StoredValueKind::String(raw_hostname) = &stored.value else {
+        return Err(ConfirmedHostnameSnapshotError::WrongStoredType);
+    };
+    let hostname = Hostname::parse(raw_hostname.clone())
+        .map_err(|_| ConfirmedHostnameSnapshotError::Invalid)?;
+
+    Ok(ConfirmedHostnameSnapshot { snapshot, hostname })
+}
 
 /// Deterministic in-memory snapshot of raw NVS key/value pairs.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -224,8 +294,9 @@ fn stored_value_from_write(write: &NvsWrite) -> StoredValue {
 #[cfg(test)]
 mod tests {
     use crate::{
-        apply_patch_to_snapshot, load_snapshot, reload_snapshot, LoadedValue, NvsSnapshot,
-        NvsWrite, RawSettingValue, SettingsPatch, StoredValue,
+        apply_patch_to_snapshot, confirm_hostname_snapshot, load_snapshot, reload_snapshot,
+        ConfirmedHostnameSnapshotError, LoadedValue, NvsSnapshot, NvsWrite, RawSettingValue,
+        SettingsPatch, StoredValue,
     };
 
     #[test]
@@ -441,5 +512,48 @@ mod tests {
             reloaded.loaded_value("manualfanspeed"),
             Some(&LoadedValue::U16(55))
         );
+    }
+
+    #[test]
+    fn persistence_confirmed_hostname_requires_exact_stored_string() {
+        // Arrange
+        let valid = NvsSnapshot::from_values([
+            StoredValue::string("hostname", "axe-205"),
+            StoredValue::u16("manualfanspeed", 55),
+        ]);
+
+        // Act
+        let confirmed =
+            confirm_hostname_snapshot(valid.clone()).expect("stored valid hostname must confirm");
+
+        // Assert
+        assert_eq!(confirmed.hostname().as_str(), "axe-205");
+        assert_eq!(confirmed.snapshot(), &valid);
+        assert!(!format!("{confirmed:?}").contains("axe-205"));
+    }
+
+    #[test]
+    fn persistence_confirmed_hostname_rejects_missing_wrong_type_and_invalid_values() {
+        // Arrange
+        let cases = [
+            (NvsSnapshot::new(), ConfirmedHostnameSnapshotError::Missing),
+            (
+                NvsSnapshot::from_values([StoredValue::u16("hostname", 205)]),
+                ConfirmedHostnameSnapshotError::WrongStoredType,
+            ),
+            (
+                NvsSnapshot::from_values([StoredValue::string("hostname", "")]),
+                ConfirmedHostnameSnapshotError::Invalid,
+            ),
+        ];
+
+        for (snapshot, expected) in cases {
+            // Act
+            let error = confirm_hostname_snapshot(snapshot)
+                .expect_err("unconfirmed hostname evidence must reject");
+
+            // Assert
+            assert_eq!(error, expected);
+        }
     }
 }
