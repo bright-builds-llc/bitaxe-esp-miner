@@ -6,8 +6,9 @@ use bitaxe_api::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
     project_api_views, project_system_info, scoreboard_response, statistics_response, ApiSnapshot,
     BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect,
-    IdentifyModeState, MiningActivityEffect, PlatformSnapshot, ProjectedApiViews,
-    SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsWire, SystemInfoWire,
+    IdentifyModeState, MiningActivityEffect, OperatorSnapshotIdentity, OperatorSnapshotSequence,
+    PlatformSnapshot, ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire,
+    StatisticsWire, SystemInfoWire,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
@@ -24,6 +25,7 @@ use bitaxe_stratum::v1::{
 use esp_idf_svc::sys;
 
 static COMMAND_VISIBLE_STATE: OnceLock<Mutex<CommandVisibleState>> = OnceLock::new();
+static OPERATOR_SNAPSHOT_SEQUENCE: OnceLock<Mutex<OperatorSnapshotSequence>> = OnceLock::new();
 
 #[derive(Debug, Clone, PartialEq)]
 struct CommandVisibleState {
@@ -52,15 +54,30 @@ impl Default for CommandVisibleState {
 /// Collects current firmware facts and overlays them on the safe Ultra 205 API
 /// snapshot used by the pure contract mappers.
 pub fn collect_api_snapshot() -> ApiSnapshot {
-    let mut snapshot = ApiSnapshot::safe_ultra_205();
+    let operator_snapshot_identity = reserve_operator_snapshot_identity();
     let command_state = command_visible_state();
-    snapshot.mining = command_state.mining;
-    snapshot.block_found = command_state.block_found;
+    collect_completed_api_snapshot(
+        operator_snapshot_identity,
+        command_state.mining,
+        command_state.block_found,
+    )
+}
+
+fn collect_completed_api_snapshot(
+    operator_snapshot_identity: OperatorSnapshotIdentity,
+    mining: MiningRuntimeState,
+    block_found: BlockFoundNotificationState,
+) -> ApiSnapshot {
+    let mut snapshot = ApiSnapshot::safe_ultra_205();
+    snapshot.operator_snapshot_identity = operator_snapshot_identity;
+    snapshot.mining = mining;
+    snapshot.block_found = block_found;
     snapshot.platform = collect_platform_snapshot(snapshot.platform);
     let observations = crate::safety_adapter::observation_snapshot();
     snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
     apply_wifi_snapshot(&mut snapshot);
     apply_settings_snapshot(&mut snapshot);
+    retain_completed_operator_snapshot(snapshot.operator_snapshot_identity);
     snapshot
 }
 
@@ -76,8 +93,14 @@ pub fn collect_projected_api_views(timestamp_ms: u64, response_time_ms: f64) -> 
 
 /// Returns projection-backed `/api/system/info` data without consuming statistics markers.
 pub fn projected_system_info(_timestamp_ms: u64) -> SystemInfoWire {
-    let (projection, _) = runtime_projection_for_api_views(false);
-    project_system_info(collect_api_snapshot(), &projection)
+    let operator_snapshot_identity = reserve_operator_snapshot_identity();
+    let (projection, _, block_found) = runtime_projection_for_api_views(false);
+    let snapshot = collect_completed_api_snapshot(
+        operator_snapshot_identity,
+        projection.state().clone(),
+        block_found,
+    );
+    project_system_info(snapshot, &projection)
 }
 
 /// Returns projection-backed `/api/system/statistics` data.
@@ -255,9 +278,16 @@ fn collect_projected_api_views_with_sample_policy(
     response_time_ms: f64,
     drain_sample_marker: bool,
 ) -> ProjectedApiViews {
-    let (projection, maybe_sample_marker) = runtime_projection_for_api_views(drain_sample_marker);
+    let operator_snapshot_identity = reserve_operator_snapshot_identity();
+    let (projection, maybe_sample_marker, block_found) =
+        runtime_projection_for_api_views(drain_sample_marker);
+    let snapshot = collect_completed_api_snapshot(
+        operator_snapshot_identity,
+        projection.state().clone(),
+        block_found,
+    );
     project_api_views(
-        collect_api_snapshot(),
+        snapshot,
         &projection,
         maybe_sample_marker,
         timestamp_ms,
@@ -270,11 +300,16 @@ fn runtime_projection_for_api_views(
 ) -> (
     RuntimeTelemetryProjection,
     Option<RuntimeProjectionSampleMarker>,
+    BlockFoundNotificationState,
 ) {
     mutate_command_visible_state_with_result(
         (
             RuntimeTelemetryProjection::new(PoolSessionGeneration::initial()),
             None,
+            BlockFoundNotificationState {
+                block_found: 0,
+                show_new_block: false,
+            },
         ),
         |state| {
             let maybe_sample_marker = if drain_sample_marker {
@@ -282,9 +317,34 @@ fn runtime_projection_for_api_views(
             } else {
                 None
             };
-            (state.runtime_projection.clone(), maybe_sample_marker)
+            (
+                state.runtime_projection.clone(),
+                maybe_sample_marker,
+                state.block_found,
+            )
         },
     )
+}
+
+fn reserve_operator_snapshot_identity() -> OperatorSnapshotIdentity {
+    let sequence =
+        OPERATOR_SNAPSHOT_SEQUENCE.get_or_init(|| Mutex::new(OperatorSnapshotSequence::new()));
+    let mut sequence = match sequence.lock() {
+        Ok(sequence) => sequence,
+        Err(poisoned) => {
+            log::warn!("operator_snapshot_sequence=recovered reason=mutex_poisoned");
+            poisoned.into_inner()
+        }
+    };
+    sequence
+        .next_identity(crate::boot_evidence::operator_snapshot_boot_session())
+        .expect("operator snapshot revision cannot exhaust within one boot")
+}
+
+fn retain_completed_operator_snapshot(identity: OperatorSnapshotIdentity) {
+    let marker = identity.retained_marker();
+    log::info!("{marker}");
+    crate::log_buffer::append_runtime_log_line(&marker);
 }
 
 fn mutate_command_visible_state_with_result<T>(

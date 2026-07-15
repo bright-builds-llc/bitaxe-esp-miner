@@ -21,6 +21,7 @@ rust_binary(
         "src/operator_evidence/inventory.rs",
         "src/operator_evidence/profile.rs",
         "src/operator_evidence/tests.rs",
+        "src/operator_snapshot_evidence.rs",
         "src/phase32_source_guard.rs",
         "src/phase33_source_guard.rs",
         "src/phase34_source_guard.rs",

@@ -38,6 +38,7 @@ mod api_compare;
 mod claim_ladder;
 mod mining_allow;
 mod operator_evidence;
+mod operator_snapshot_evidence;
 #[cfg(test)]
 mod phase32_source_guard;
 #[cfg(test)]

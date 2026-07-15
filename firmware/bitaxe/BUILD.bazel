@@ -94,8 +94,12 @@ filegroup(
         "//crates/bitaxe-api:phase34_identity_sources",
         "//crates/bitaxe-core:phase34_identity_sources",
         "build.rs",
+        "src/boot_evidence.rs",
+        "src/http_api.rs",
+        "src/log_buffer.rs",
         "src/main.rs",
         "src/runtime_snapshot.rs",
+        "src/websocket_api.rs",
     ],
     visibility = ["//tools/parity:__pkg__"],
 )

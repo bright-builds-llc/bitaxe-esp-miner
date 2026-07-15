@@ -179,7 +179,20 @@ fn phase33_system_info_source_guard_avoids_duplicate_full_view_materialization()
     );
 
     // Act / Assert
-    assert!(projection.contains("project_system_info(collect_api_snapshot(), &projection)"));
+    let identity = projection
+        .find("reserve_operator_snapshot_identity()")
+        .expect("snapshot identity reservation");
+    let state = projection
+        .find("runtime_projection_for_api_views(false)")
+        .expect("single runtime-state projection read");
+    let snapshot = projection
+        .find("collect_completed_api_snapshot(")
+        .expect("single completed snapshot materialization");
+    let response = projection
+        .find("project_system_info(snapshot, &projection)")
+        .expect("system-info projection from the completed snapshot");
+
+    assert!(identity < state && state < snapshot && snapshot < response);
     assert!(!projection.contains("collect_projected_api_views_with_sample_policy"));
     assert!(!projection.contains("ProjectedApiViews"));
     assert!(!projection.contains("telemetry_payload"));

@@ -13,6 +13,7 @@ use bitaxe_api::boot_identity::{
 use bitaxe_api::logs::{
     RuntimeHeartbeatModel, ACCEPTED_STATE_REPLAY_INTERVAL_MS, ACCEPTED_STATE_REPLAY_WINDOW_MS,
 };
+use bitaxe_api::BootSessionId;
 use esp_idf_svc::sys;
 
 use crate::{asic_adapter, log_buffer, rtc_boot_ordinal, runtime_uptime};
@@ -125,6 +126,11 @@ pub fn record_listener_armed() {
     if asic_adapter::accepted_state_snapshot_enabled() {
         record(boot_session(), BootEvidenceState::ListenerArmed);
     }
+}
+
+/// Returns the typed operator-snapshot session backed by the existing hardware-RNG nonce.
+pub fn operator_snapshot_boot_session() -> BootSessionId {
+    BootSessionId::from_words(boot_session().0)
 }
 
 fn boot_session() -> BootSessionNonce {
