@@ -3,6 +3,7 @@
 use std::ffi::{CStr, CString};
 use std::net::Ipv4Addr;
 use std::ptr;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use bitaxe_api::{
@@ -10,8 +11,9 @@ use bitaxe_api::{
     execute_settings_persistence_plan, identify_plan, log_download_headers,
     origin_gate_from_header, pause_mining_plan, phase07_route_report, plan_http_access,
     plan_settings_patch_body_size, plan_update_request, plan_websocket_upgrade, restart_plan,
-    resume_mining_plan, unknown_api_route_response, unsupported_update_response, CommandEffect,
-    CommandPlan, HttpAccessDecision, IdentifyModeEffect, OriginGate, PublicHttpResponse,
+    resume_mining_plan, spawn_deferred_effect_worker, unknown_api_route_response,
+    unsupported_update_response, CommandEffect, CommandPlan, DeferredEffectLease,
+    DeferredEffectQueue, HttpAccessDecision, IdentifyModeEffect, OriginGate, PublicHttpResponse,
     RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchFailureReason,
     SettingsPatchPublicError, SettingsPersistenceEffect, SettingsPersistenceFailure,
     SettingsPersistencePlan, SettingsPublicResponse, UpdateRequestDecision, UpdateRequestInput,
@@ -51,15 +53,24 @@ const UPGRADE_HEADER: &[u8] = b"Upgrade\0";
 const UPDATE_AP_MODE_REJECTION_BODY: &str = "Not allowed in AP mode";
 const WEBSOCKET_UPGRADE_REQUIRED_BODY: &str = "WebSocket upgrade required";
 const LIVE_TELEMETRY_THREAD_STACK_BYTES: usize = 16 * 1024;
-const RESTART_THREAD_STACK_BYTES: usize = 8 * 1024;
+const DEFERRED_EFFECT_QUEUE_CAPACITY: usize = 8;
+const DEFERRED_EFFECT_THREAD_STACK_BYTES: usize = 8 * 1024;
 const RESTART_POST_RESPONSE_DELAY_MS: u64 = 1_000;
-const SETTINGS_EFFECTS_THREAD_STACK_BYTES: usize = 8 * 1024;
 const SETTINGS_EFFECTS_POST_RESPONSE_DELAY_MS: u64 = 100;
+
+static DEFERRED_EFFECT_QUEUE: OnceLock<DeferredEffectQueue<DeferredFirmwareEffect>> =
+    OnceLock::new();
+
+enum DeferredFirmwareEffect {
+    Settings(Vec<SettingsPersistenceEffect>),
+    Restart,
+}
 
 /// Starts the HTTP route shell and intentionally leaks the server so ESP-IDF's
 /// server task keeps running for the lifetime of the firmware process.
 pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()> {
     network_stack::initialize()?;
+    initialize_deferred_effect_worker()?;
 
     let config = Configuration {
         stack_size: 8192,
@@ -319,11 +330,26 @@ fn handle_settings_patch<'request, 'connection>(
         };
         let effects = success.effects().to_vec();
         settings_patch_retained("axeos_settings_patch=persistence_confirmed category=hostname");
+        let effect_lease = match prepare_settings_effects(effects) {
+            Ok(effect_lease) => effect_lease,
+            Err(_) => {
+                settings_patch_warn_retained(
+                    "axeos_settings_patch=effects_unavailable reason=worker_ownership",
+                );
+                return send_text_error(
+                    request,
+                    400,
+                    SettingsPatchPublicError::WrongApiInput.body(),
+                );
+            }
+        };
         send_settings_response(request, success.public_response())?;
         settings_patch_retained(
             "axeos_settings_patch=response_scheduled status=200 empty_body=true",
         );
-        schedule_settings_effects(effects);
+        effect_lease
+            .release_after_response()
+            .map_err(|_| anyhow::anyhow!("settings effect worker unavailable after ownership"))?;
         Ok(())
     })
 }
@@ -414,8 +440,9 @@ fn handle_command<'request, 'connection>(
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
         let effect = plan.effect;
+        let maybe_deferred_effect = prepare_deferred_command_effect(&effect)?;
         send_json(request, &plan.response)?;
-        apply_command_effect(effect)?;
+        apply_command_effect(effect, maybe_deferred_effect)?;
         Ok(())
     })
 }
@@ -1018,26 +1045,60 @@ fn settings_patch_warn_retained(line: &str) {
     log_buffer::append_runtime_log_line(line);
 }
 
-fn schedule_settings_effects(effects: Vec<SettingsPersistenceEffect>) {
+fn initialize_deferred_effect_worker() -> anyhow::Result<()> {
+    if DEFERRED_EFFECT_QUEUE.get().is_some() {
+        return Ok(());
+    }
+
+    let queue = spawn_deferred_effect_worker(
+        DEFERRED_EFFECT_QUEUE_CAPACITY,
+        |worker| {
+            std::thread::Builder::new()
+                .name("deferred-effects".to_owned())
+                .stack_size(DEFERRED_EFFECT_THREAD_STACK_BYTES)
+                .spawn(worker)
+                .map(|_| ())
+                .map_err(|_| ())
+        },
+        execute_deferred_firmware_effect,
+    )
+    .map_err(|_| anyhow::anyhow!("deferred effect worker spawn failed"))?;
+
+    DEFERRED_EFFECT_QUEUE
+        .set(queue)
+        .map_err(|_| anyhow::anyhow!("deferred effect worker already initialized"))
+}
+
+fn deferred_effect_queue() -> anyhow::Result<&'static DeferredEffectQueue<DeferredFirmwareEffect>> {
+    DEFERRED_EFFECT_QUEUE
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("deferred effect worker unavailable"))
+}
+
+fn prepare_settings_effects(
+    effects: Vec<SettingsPersistenceEffect>,
+) -> anyhow::Result<DeferredEffectLease> {
+    let effect_lease = deferred_effect_queue()?
+        .acquire(DeferredFirmwareEffect::Settings(effects))
+        .map_err(|_| anyhow::anyhow!("settings effect worker unavailable"))?;
     settings_patch_retained("axeos_settings_patch=effects_scheduled");
-    let fallback_effects = effects.clone();
-    let result = std::thread::Builder::new()
-        .name("settings-effects".to_owned())
-        .stack_size(SETTINGS_EFFECTS_THREAD_STACK_BYTES)
-        .spawn(move || {
+    Ok(effect_lease)
+}
+
+fn execute_deferred_firmware_effect(effect: DeferredFirmwareEffect) {
+    match effect {
+        DeferredFirmwareEffect::Settings(effects) => {
             std::thread::sleep(Duration::from_millis(
                 SETTINGS_EFFECTS_POST_RESPONSE_DELAY_MS,
             ));
             apply_settings_effects(&effects);
             settings_patch_retained("axeos_settings_patch=effects_applied");
-        });
-
-    if let Err(error) = result {
-        settings_patch_warn_retained(&format!(
-            "axeos_settings_patch=effects_thread_failed error={error}"
-        ));
-        apply_settings_effects(&fallback_effects);
-        settings_patch_retained("axeos_settings_patch=effects_applied fallback=inline");
+        }
+        DeferredFirmwareEffect::Restart => {
+            std::thread::sleep(Duration::from_millis(RESTART_POST_RESPONSE_DELAY_MS));
+            log::info!("axeos_command_effect=restart_after_response");
+            unsafe { sys::esp_restart() };
+        }
     }
 }
 
@@ -1083,7 +1144,19 @@ fn apply_hostname_effect(hostname: &str) {
     log::warn!("axeos_settings_effect=hostname_skipped reason=netif_unavailable");
 }
 
-fn apply_command_effect(effect: CommandEffect) -> anyhow::Result<()> {
+fn prepare_deferred_command_effect(
+    effect: &CommandEffect,
+) -> anyhow::Result<Option<DeferredEffectLease>> {
+    match effect {
+        CommandEffect::RestartAfterResponse => prepare_restart_after_response().map(Some),
+        _ => Ok(None),
+    }
+}
+
+fn apply_command_effect(
+    effect: CommandEffect,
+    maybe_deferred_effect: Option<DeferredEffectLease>,
+) -> anyhow::Result<()> {
     match effect {
         CommandEffect::MiningActivity(effect) => {
             apply_mining_activity_command(effect);
@@ -1093,7 +1166,12 @@ fn apply_command_effect(effect: CommandEffect) -> anyhow::Result<()> {
             );
         }
         CommandEffect::RestartAfterResponse => {
-            schedule_restart_after_response()?;
+            let Some(deferred_effect) = maybe_deferred_effect else {
+                return Err(anyhow::anyhow!("restart effect ownership missing"));
+            };
+            deferred_effect.release_after_response().map_err(|_| {
+                anyhow::anyhow!("restart effect worker unavailable after ownership")
+            })?;
         }
         CommandEffect::Identify(effect) => match effect {
             IdentifyModeEffect::Enable { duration_ms } => {
@@ -1118,18 +1196,12 @@ fn apply_command_effect(effect: CommandEffect) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn schedule_restart_after_response() -> anyhow::Result<()> {
-    // esp-idf-svc completes the chunked response only after this handler returns.
-    std::thread::Builder::new()
-        .name("command-restart".to_owned())
-        .stack_size(RESTART_THREAD_STACK_BYTES)
-        .spawn(|| {
-            std::thread::sleep(Duration::from_millis(RESTART_POST_RESPONSE_DELAY_MS));
-            log::info!("axeos_command_effect=restart_after_response");
-            unsafe { sys::esp_restart() };
-        })?;
-
-    Ok(())
+fn prepare_restart_after_response() -> anyhow::Result<DeferredEffectLease> {
+    // The process-lifetime worker owns the restart before success is serialized.
+    // Its delay begins only after the handler schedules the public response.
+    deferred_effect_queue()?
+        .acquire(DeferredFirmwareEffect::Restart)
+        .map_err(|_| anyhow::anyhow!("restart effect worker unavailable"))
 }
 
 fn record_firmware_ota_status(status: FirmwareOtaStatus) {

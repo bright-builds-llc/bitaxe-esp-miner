@@ -8,6 +8,7 @@
 pub mod asic;
 pub mod boot_identity;
 pub mod commands;
+pub mod deferred_effect;
 pub mod logs;
 pub mod mining;
 pub mod observation;
@@ -32,6 +33,10 @@ pub use commands::{
     block_found_dismiss_plan, identify_plan, pause_mining_plan, restart_plan, resume_mining_plan,
     BlockFoundDismissEffect, BlockFoundNotificationState, CommandEffect, CommandPlan, IdentifyMode,
     IdentifyModeEffect, IdentifyModeState, MiningActivityEffect, IDENTIFY_DURATION_MS,
+};
+pub use deferred_effect::{
+    spawn_deferred_effect_worker, DeferredEffectLease, DeferredEffectQueue,
+    DeferredEffectQueueUnavailable,
 };
 pub use logs::{
     log_download_headers, LogDownloadHeaders, RawLogStreamPlanner, RetainedLogBuffer,

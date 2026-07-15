@@ -6,6 +6,7 @@ rust_library(
         "src/asic.rs",
         "src/boot_identity.rs",
         "src/commands.rs",
+        "src/deferred_effect.rs",
         "src/lib.rs",
         "src/logs.rs",
         "src/mining.rs",
