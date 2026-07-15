@@ -14,7 +14,7 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 - [x] **OBS-03**: An Ultra 205 operator can observe INA260 current, bus voltage, and power values only when a producer-owned sequence and monotonic acquisition time prove a fresh read.
 - [x] **OBS-04**: An Ultra 205 operator can observe EMC2101 temperature and independently available tachometer data through read-only transactions, with missing or invalid data represented explicitly.
 - [x] **OBS-05**: An Ultra 205 operator can still use the API and unaffected observations when one sensor read fails, and the last affected value becomes stale or failed without being refreshed by a request.
-- [ ] **OBS-06**: An Ultra 205 operator sees system-info, live-WebSocket, retained-log, and evidence projections derived from the same boot session and monotonic operator-snapshot revision.
+- [x] **OBS-06**: An Ultra 205 operator sees system-info, live-WebSocket, retained-log, and evidence projections derived from the same boot session and monotonic operator-snapshot revision.
 
 ### Confirmed Configuration
 
@@ -103,7 +103,7 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | OBS-03 | Phase 32 | Complete |
 | OBS-04 | Phase 32 | Complete |
 | OBS-05 | Phase 32 | Complete |
-| OBS-06 | Phase 34 | Pending |
+| OBS-06 | Phase 34 | Complete |
 | CFG-08 | Phase 31 | Complete |
 | CFG-09 | Phase 33 | Complete |
 | CFG-10 | Phase 33 | Complete |
@@ -134,4 +134,4 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 - Duplicate mappings: 0
 
 *Requirements defined: 2026-07-13*
-*Last updated: 2026-07-15 after Phase 34 Plan 01 completed SYS-01 and SYS-02*
+*Last updated: 2026-07-15 after Phase 34 Plan 02 completed OBS-06*

@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 34 Plan 01 completed; canonical build identity and exact pre-hardware admission are green.
-last_updated: "2026-07-15T05:35:50.000Z"
+stopped_at: Completed 34-02-PLAN.md
+last_updated: "2026-07-15T15:43:08.925Z"
 last_activity: "2026-07-15"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 10
-  percent: 77
+  completed_plans: 11
+  percent: 85
 ---
 
 # Project State
@@ -21,12 +21,12 @@ Last activity: 2026-07-15
 ## Current Position
 
 Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — EXECUTING
-Plan: 1 of 4
+Plan: 2 of 4 complete
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 1 of 4 complete
-- **Status:** Plan 01 complete; Plans 02-04 pending
-- **Next step:** Execute Phase 34 Plan 02 to establish the coherent boot-session/operator-snapshot revision.
+- **Plan:** 2 of 4 complete
+- **Status:** Plan 02 complete; Plans 03-04 pending
+- **Next step:** Execute Phase 34 Plan 03 for remaining truthful platform identity and runtime facts.
 
 ## Project Reference
 
@@ -102,6 +102,12 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Clean tagged and clean untagged dev packages are eligible. A dirty package or dirty current workspace fails before port discovery, credential reads, or any device action.
 - Managed `esptool.py elf2image --elf-sha256-offset 0xb0` owns the application descriptor SHA because `espflash save-image` left that field zero; factory packaging uses the one generated ESP-IDF build whose sdkconfig matches the exact build label.
 - Clean exact commit `694cf0ceb72c78fd16b20bc57beeac914f098ac6` passed package, descriptor, digest, and inert-port admission checks. No hardware or credentials were used.
+
+## Decisions (Phase 34 Plan 02)
+
+- The existing hardware-RNG boot observer supplies the only operator-snapshot session; firmware owns one checked revision sequence for every public capture.
+- A retained correlation marker is emitted only after one complete `ApiSnapshot` is assembled, and system-info plus live WebSocket copy the attached identity without generating their own.
+- Historical Phase 23/25/27/28 operator-evidence acceptance remains unchanged; OBS-06 coherence is an explicit fail-closed opt-in.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -250,6 +256,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 33 P01 | 12 min | 2 tasks | 5 files |
 | Phase 33 P02 | 9min | 2 tasks | 7 files |
 | Phase 33 P03 | 26min | 2 tasks | 29 files |
+| Phase 34 P02 | 30min | 3 tasks | 15 files |
 
 ### Quick Tasks Completed
 
@@ -283,5 +290,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Phase 34 Plan 01 completed with canonical provenance and exact pre-hardware admission green.
-- **Resume:** Execute Phase 34 Plan 02 without hardware, preserving Phase 35-only CFG-12/EVD-13 qualification and promotion plus all terminal-archive prohibitions.
+- **Stopped at:** Completed 34-02-PLAN.md
+- **Resume:** Execute Phase 34 Plan 03 without hardware, preserving Phase 35-only CFG-12/EVD-13 qualification and promotion plus all terminal-archive prohibitions.
