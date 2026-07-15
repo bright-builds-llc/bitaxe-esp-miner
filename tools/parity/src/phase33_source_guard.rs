@@ -143,17 +143,25 @@ fn phase33_settings_source_guard_responds_after_publish_and_projects_confirmed_t
         .find("execute_settings_persistence_plan")
         .expect("confirmed executor call");
     let ownership = handler
-        .find("prepare_settings_effects(effects)")
-        .expect("worker ownership before response");
+        .find("maybe_acquire_best_effort_effect_lease(prepare_settings_effects)")
+        .expect("best-effort worker ownership before response");
     let response = handler
         .find("send_settings_response(request, success.public_response())")
         .expect("public success response");
     let release = handler
         .find(".release_after_response()")
         .expect("post-response effect release");
+    let confirmed_success = source_between(
+        handler,
+        "axeos_settings_patch=persistence_confirmed",
+        "send_settings_response(request, success.public_response())",
+    );
 
     // Act / Assert
     assert!(execute < ownership && ownership < response && response < release);
+    assert!(confirmed_success.contains("effects_degraded category=worker_unavailable"));
+    assert!(!confirmed_success.contains("send_text_error"));
+    assert!(!handler.contains("settings effect worker unavailable after ownership"));
     assert!(RUNTIME_SNAPSHOT_SOURCE
         .contains("let confirmed_settings = crate::settings_adapter::current_settings_snapshot()"));
     assert!(RUNTIME_SNAPSHOT_SOURCE.contains("reload_snapshot(&confirmed_settings)"));

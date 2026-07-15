@@ -328,28 +328,25 @@ fn handle_settings_patch<'request, 'connection>(
                 return send_text_error(request, 400, error.public_error().body());
             }
         };
-        let effects = success.effects().to_vec();
         settings_patch_retained("axeos_settings_patch=persistence_confirmed category=hostname");
-        let effect_lease = match prepare_settings_effects(effects) {
-            Ok(effect_lease) => effect_lease,
-            Err(_) => {
-                settings_patch_warn_retained(
-                    "axeos_settings_patch=effects_unavailable reason=worker_ownership",
-                );
-                return send_text_error(
-                    request,
-                    400,
-                    SettingsPatchPublicError::WrongApiInput.body(),
-                );
-            }
-        };
+        let maybe_effect_lease =
+            success.maybe_acquire_best_effort_effect_lease(prepare_settings_effects);
+        if maybe_effect_lease.is_none() {
+            settings_patch_warn_retained(
+                "axeos_settings_patch=effects_degraded category=worker_unavailable",
+            );
+        }
         send_settings_response(request, success.public_response())?;
         settings_patch_retained(
             "axeos_settings_patch=response_scheduled status=200 empty_body=true",
         );
-        effect_lease
-            .release_after_response()
-            .map_err(|_| anyhow::anyhow!("settings effect worker unavailable after ownership"))?;
+        if maybe_effect_lease
+            .is_some_and(|effect_lease| effect_lease.release_after_response().is_err())
+        {
+            settings_patch_warn_retained(
+                "axeos_settings_patch=effects_degraded category=worker_disconnected",
+            );
+        }
         Ok(())
     })
 }

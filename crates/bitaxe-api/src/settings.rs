@@ -307,6 +307,15 @@ impl SettingsPersistenceSuccess {
     pub fn effects(&self) -> &[SettingsPersistenceEffect] {
         &self.effects
     }
+
+    /// Best-effort transfers the confirmed live effects without changing success authority.
+    #[must_use]
+    pub fn maybe_acquire_best_effort_effect_lease<EffectLease, AcquisitionError>(
+        &self,
+        acquire: impl FnOnce(Vec<SettingsPersistenceEffect>) -> Result<EffectLease, AcquisitionError>,
+    ) -> Option<EffectLease> {
+        acquire(self.effects.clone()).ok()
+    }
 }
 
 /// Failed settings persistence execution.
@@ -600,7 +609,10 @@ mod tests {
         SettingsPersistenceFailureDisposition, SettingsPersistencePlan, SettingsPersistenceStep,
         SettingsPersistenceTransaction, SettingsPublicResponse,
     };
-    use crate::{decide_v12_settings_value, Hostname, V12SettingsChange, V12SettingsDecision};
+    use crate::{
+        decide_v12_settings_value, spawn_deferred_effect_worker, Hostname, V12SettingsChange,
+        V12SettingsDecision,
+    };
 
     #[derive(Debug, Deserialize)]
     struct Fixture {
@@ -1020,6 +1032,38 @@ mod tests {
                 hostname: "axe-205".to_owned(),
             }]
         );
+        assert_eq!(shared.borrow().published_hostname, "axe-205");
+    }
+
+    #[test]
+    fn unavailable_best_effort_worker_preserves_confirmed_api_success_and_storage_truth() {
+        // Arrange
+        let shared = Rc::new(RefCell::new(SharedAdapterState::new("bitaxe")));
+        let plan = persistence_plan("axe-205");
+        let mut adapter = RecordingAdapter::new("writer-1", Rc::clone(&shared));
+        let queue = spawn_deferred_effect_worker(
+            1,
+            |worker| {
+                drop(worker);
+                Ok::<(), ()>(())
+            },
+            |_effects: Vec<SettingsPersistenceEffect>| {},
+        )
+        .expect("fake spawn should return a disconnected queue");
+
+        // Act
+        let success = execute_settings_persistence_plan(&plan, &mut adapter)
+            .expect("durable confirmation should remain authoritative");
+        let maybe_effect_lease =
+            success.maybe_acquire_best_effort_effect_lease(|effects| queue.acquire(effects));
+
+        // Assert
+        assert_eq!(
+            success.public_response(),
+            SettingsPublicResponse::EmptySuccess
+        );
+        assert!(maybe_effect_lease.is_none());
+        assert_eq!(shared.borrow().persisted_hostname, "axe-205");
         assert_eq!(shared.borrow().published_hostname, "axe-205");
     }
 
