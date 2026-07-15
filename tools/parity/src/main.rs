@@ -11,8 +11,8 @@ use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
 use operator_evidence::{
     complete_operator_evidence, consolidate_phase28_evidence, load_operator_evidence_documents,
-    render_operator_evidence_report, validate_operator_evidence_documents, OperatorEvidenceFilters,
-    OperatorEvidenceProfile, WorkflowStatus,
+    render_operator_evidence_report, validate_operator_evidence_documents_with_snapshot_coherence,
+    OperatorEvidenceFilters, OperatorEvidenceProfile, WorkflowStatus,
 };
 use release_evidence::{
     parse_flash_evidence_json, parse_release_evidence_manifest_json,
@@ -191,6 +191,9 @@ struct OperatorEvidenceArgs {
 
     #[arg(long = "require-redaction-passed")]
     require_redaction_passed: bool,
+
+    #[arg(long = "require-operator-snapshot-coherence")]
+    require_operator_snapshot_coherence: bool,
 }
 
 #[derive(Debug, Parser)]
@@ -843,7 +846,12 @@ fn run_operator_evidence_command(
     let filters = OperatorEvidenceFilters {
         require_redaction_passed: args.require_redaction_passed,
     };
-    let report = validate_operator_evidence_documents(args.profile, &documents, &filters);
+    let report = validate_operator_evidence_documents_with_snapshot_coherence(
+        args.profile,
+        &documents,
+        &filters,
+        args.require_operator_snapshot_coherence,
+    );
     let output = render_operator_evidence_report(&documents, &report);
 
     if !report.passed() {
