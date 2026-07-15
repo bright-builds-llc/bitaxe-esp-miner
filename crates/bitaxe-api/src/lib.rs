@@ -7,6 +7,7 @@
 
 pub mod asic;
 pub mod boot_identity;
+pub mod build_identity;
 pub mod commands;
 pub mod deferred_effect;
 pub mod logs;
@@ -28,6 +29,10 @@ pub mod websocket_state;
 pub mod wire;
 
 pub use asic::asic_settings_from_snapshot;
+pub use build_identity::{
+    BuildChannel, BuildIdentity, BuildIdentityError, BuildProvenance, BUILD_LABEL_MAX_BYTES,
+    BUILD_PROVENANCE_SCHEMA_VERSION, FULL_COMMIT_BYTES, SHORT_COMMIT_BYTES,
+};
 pub use commands::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
     block_found_dismiss_plan, identify_plan, pause_mining_plan, restart_plan, resume_mining_plan,

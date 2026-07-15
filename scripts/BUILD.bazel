@@ -260,6 +260,22 @@ sh_binary(
     srcs = ["source-commit-stamp.sh"],
 )
 
+sh_binary(
+    name = "build_identity_status",
+    srcs = ["build-identity-status.sh"],
+    data = ["build-identity-pathspecs.txt"],
+)
+
+sh_test(
+    name = "build_identity_status_test",
+    srcs = ["build-identity-status-test.sh"],
+    data = [
+        "build-identity-pathspecs.txt",
+        "build-identity-status.sh",
+    ],
+    tags = ["local"],
+)
+
 genrule(
     name = "source_commit_stamp",
     srcs = [

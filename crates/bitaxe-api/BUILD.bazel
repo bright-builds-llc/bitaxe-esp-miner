@@ -5,6 +5,7 @@ rust_library(
     srcs = [
         "src/asic.rs",
         "src/boot_identity.rs",
+        "src/build_identity.rs",
         "src/commands.rs",
         "src/deferred_effect.rs",
         "src/lib.rs",

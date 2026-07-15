@@ -1,0 +1,24 @@
+# Firmware and shared Rust sources
+:(top,glob)firmware/**
+:(top,glob)crates/**
+:(top,glob).cargo/**
+:(top,glob)tools/xtask/**
+
+# Canonical root build inputs
+:(top)Cargo.toml
+:(top)Cargo.lock
+:(top)rust-toolchain.toml
+:(top).bazelversion
+:(top).bazelrc
+:(top)MODULE.bazel
+:(top)MODULE.bazel.lock
+:(top)BUILD.bazel
+:(top)Justfile
+
+# Firmware build, package, and identity automation
+:(top)scripts/BUILD.bazel
+:(top)scripts/build-firmware.sh
+:(top)scripts/package-firmware.sh
+:(top)scripts/build-identity-status.sh
+:(top)scripts/build-identity-pathspecs.txt
+:(top)scripts/build_identity.bzl
