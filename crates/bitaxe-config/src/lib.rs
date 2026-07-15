@@ -1,6 +1,7 @@
 use bitaxe_core::{AsicTarget, BoardTarget};
 
 pub mod catalog;
+pub mod confirmed_snapshot;
 pub mod defaults;
 pub mod nvs;
 pub mod persistence;
@@ -13,6 +14,10 @@ mod golden_tests;
 pub use catalog::{
     board_catalog, ultra_205_catalog_entry, AsicProfile, BoardCapabilities, BoardCatalogEntry,
     VerificationScope,
+};
+pub use confirmed_snapshot::{
+    ConfirmedSnapshotCell, ConfirmedSnapshotPublicationFailure, ConfirmedSnapshotRead,
+    ConfirmedSnapshotReadHealth,
 };
 pub use defaults::{ultra_205_defaults, Ultra205Defaults};
 pub use nvs::{

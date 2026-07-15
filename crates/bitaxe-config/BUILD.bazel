@@ -4,6 +4,7 @@ rust_library(
     name = "bitaxe_config",
     srcs = [
         "src/catalog.rs",
+        "src/confirmed_snapshot.rs",
         "src/defaults.rs",
         "src/golden_tests.rs",
         "src/lib.rs",

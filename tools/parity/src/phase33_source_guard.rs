@@ -35,8 +35,24 @@ fn phase33_settings_source_guard_serializes_reload_through_publication() {
     assert!(transaction.contains("NVS_NAMESPACE, false"));
     assert!(transaction.contains("read_current_settings_snapshot_strict"));
     assert!(transaction.contains("confirm_hostname_snapshot(candidate)"));
-    assert!(transaction.contains("*current = candidate.into_snapshot()"));
+    assert!(transaction.contains(".publish(candidate.into_snapshot())"));
     assert!(!transaction.contains("refresh_current_settings_snapshot_best_effort"));
+}
+
+#[test]
+fn phase33_settings_source_guard_retains_poisoned_confirmed_snapshot() {
+    // Arrange
+    let read = source_between(
+        SETTINGS_ADAPTER_SOURCE,
+        "pub fn current_settings_snapshot",
+        "fn current_snapshot_cell",
+    );
+
+    // Act / Assert
+    assert!(read.contains("ConfirmedSnapshotReadHealth::PoisonRecovered"));
+    assert!(read.contains("mutex_poisoned_inner_retained"));
+    assert!(read.contains("read.into_snapshot()"));
+    assert!(!read.contains("NvsSnapshot::new()"));
 }
 
 #[test]

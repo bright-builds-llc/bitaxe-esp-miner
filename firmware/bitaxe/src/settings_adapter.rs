@@ -8,14 +8,14 @@ use bitaxe_api::{
 };
 use bitaxe_config::nvs::StoredValueKind;
 use bitaxe_config::{
-    all_settings_schema, confirm_hostname_snapshot, ConfirmedHostnameSnapshot, NvsSnapshot,
-    StoredValue, NVS_NAMESPACE,
+    all_settings_schema, confirm_hostname_snapshot, ConfirmedHostnameSnapshot,
+    ConfirmedSnapshotCell, ConfirmedSnapshotReadHealth, NvsSnapshot, StoredValue, NVS_NAMESPACE,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDataType, NvsDefault};
 use esp_idf_svc::sys;
 
-static CURRENT_SETTINGS_SNAPSHOT: OnceLock<Mutex<NvsSnapshot>> = OnceLock::new();
+static CURRENT_SETTINGS_SNAPSHOT: OnceLock<ConfirmedSnapshotCell> = OnceLock::new();
 static SETTINGS_TRANSACTION_LOCK: Mutex<()> = Mutex::new(());
 
 /// Firmware coordinator that opens writable NVS only after exact authority.
@@ -74,11 +74,9 @@ impl SettingsPersistenceTransaction for FirmwareSettingsTransaction {
         &mut self,
         candidate: ConfirmedHostnameSnapshot,
     ) -> Result<(), SettingsAdapterFailure> {
-        let mut current = current_snapshot_cell()
-            .lock()
-            .map_err(|_| SettingsAdapterFailure::failed("settings snapshot lock poisoned"))?;
-        *current = candidate.into_snapshot();
-        Ok(())
+        current_snapshot_cell()
+            .publish(candidate.into_snapshot())
+            .map_err(|_| SettingsAdapterFailure::failed("settings snapshot lock poisoned"))
     }
 }
 
@@ -118,28 +116,23 @@ pub fn initialize_current_settings_snapshot() -> Result<(), SettingsAdapterFailu
 /// Returns the last atomically published settings snapshot.
 #[must_use]
 pub fn current_settings_snapshot() -> NvsSnapshot {
-    let snapshot = current_snapshot_cell();
-    let Ok(snapshot) = snapshot.lock() else {
-        log::warn!("axeos_settings_snapshot=unavailable reason=mutex_poisoned");
-        return NvsSnapshot::new();
-    };
+    let read = current_snapshot_cell().read();
+    if read.health() == ConfirmedSnapshotReadHealth::PoisonRecovered {
+        log::warn!("axeos_settings_snapshot=degraded reason=mutex_poisoned_inner_retained");
+    }
 
-    snapshot.clone()
+    read.into_snapshot()
 }
 
-fn current_snapshot_cell() -> &'static Mutex<NvsSnapshot> {
-    CURRENT_SETTINGS_SNAPSHOT.get_or_init(|| Mutex::new(NvsSnapshot::new()))
+fn current_snapshot_cell() -> &'static ConfirmedSnapshotCell {
+    CURRENT_SETTINGS_SNAPSHOT.get_or_init(|| ConfirmedSnapshotCell::new(NvsSnapshot::new()))
 }
 
 fn refresh_current_settings_snapshot_best_effort(nvs: &EspNvs<NvsDefault>) {
     let snapshot = read_current_settings_snapshot_best_effort(nvs);
-    let cell = current_snapshot_cell();
-    let Ok(mut current) = cell.lock() else {
+    if current_snapshot_cell().publish(snapshot).is_err() {
         log::warn!("axeos_settings_snapshot=refresh_failed reason=mutex_poisoned");
-        return;
-    };
-
-    *current = snapshot;
+    }
 }
 
 fn read_current_settings_snapshot_best_effort(nvs: &EspNvs<NvsDefault>) -> NvsSnapshot {
