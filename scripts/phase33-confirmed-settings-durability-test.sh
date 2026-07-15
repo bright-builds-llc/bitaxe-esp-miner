@@ -153,6 +153,32 @@ set -e
 grep -Fq 'failure_category=local_raw_root_unsafe' "$unsafe_output" || fail "tracked local root category mismatch"
 [[ ! -e "${unsafe_state}/calls.log" ]] || fail "unsafe root reached a detector, flash, or HTTP command"
 
+tracked_ignored_repo="${tmp_root}/tracked-ignored-repo"
+tracked_ignored_state="${tmp_root}/tracked-ignored-state"
+tracked_ignored_output="${tmp_root}/tracked-ignored-root.out"
+git init -q "$tracked_ignored_repo"
+mkdir "${tracked_ignored_repo}/raw"
+printf 'raw/\n' >"${tracked_ignored_repo}/.gitignore"
+printf 'tracked raw evidence sentinel\n' >"${tracked_ignored_repo}/raw/tracked.txt"
+git -C "$tracked_ignored_repo" add .gitignore
+git -C "$tracked_ignored_repo" add -f raw/tracked.txt
+set +e
+(
+	cd "$tracked_ignored_repo"
+	PHASE33_ALLOW_TEST_MODE=1 PHASE33_FAKE_STATE_ROOT="$tracked_ignored_state" \
+		PHASE33_JUST_COMMAND="${fake_bin}/just" PHASE33_CURL_COMMAND="${fake_bin}/curl" \
+		PHASE33_CLASSIFIER="${fake_bin}/classifier" PHASE33_IDENTITY_COMMAND="${fake_bin}/identity" \
+		PHASE33_PASSIVE_MONITOR_COMMAND="${fake_bin}/monitor" \
+		bash "$wrapper" --mode simulate --scenario success --capture-seconds 1 \
+		--manifest "$manifest" --shareable-out "${tmp_root}/tracked-ignored.md" \
+		--local-root raw
+) >"$tracked_ignored_output" 2>&1
+tracked_ignored_status=$?
+set -e
+[[ "$tracked_ignored_status" != "0" ]] || fail "tracked-but-ignored local root unexpectedly passed"
+grep -Fq 'failure_category=local_raw_root_unsafe' "$tracked_ignored_output" || fail "tracked-but-ignored root category mismatch"
+[[ ! -e "${tracked_ignored_state}/calls.log" ]] || fail "tracked-but-ignored root reached a detector, flash, or HTTP command"
+
 mkdir -m 700 "${tmp_root}/real-root"
 ln -s "${tmp_root}/real-root" "${tmp_root}/symlink-root"
 symlink_output="${tmp_root}/symlink-root.out"

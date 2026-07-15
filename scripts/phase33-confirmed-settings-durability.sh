@@ -142,6 +142,15 @@ canonicalize_local_root() {
 	printf '%s%s\n' "${canonical_existing%/}" "$suffix"
 }
 
+repo_local_root_is_untracked_and_ignored() {
+	local repo_root="$1"
+	local relative="$2"
+	local tracked_entries
+	tracked_entries="$(git -C "$repo_root" ls-files --cached --stage -- ":(literal)${relative}")" || return 1
+	[[ -z "$tracked_entries" ]] || return 1
+	git -C "$repo_root" check-ignore -q -- "$relative"
+}
+
 prepare_local_root() {
 	local requested="$1"
 	local repo_root
@@ -155,7 +164,7 @@ prepare_local_root() {
 	fi
 	if [[ "$canonical" == "${repo_root}/"* ]]; then
 		local relative="${canonical#"${repo_root}/"}"
-		git -C "$repo_root" check-ignore -q --no-index -- "$relative" || return 1
+		repo_local_root_is_untracked_and_ignored "$repo_root" "$relative" || return 1
 	elif [[ -e "$canonical" ]]; then
 		[[ "$(stat -f '%Lp' "$canonical")" == "700" ]] || return 1
 	fi
