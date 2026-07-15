@@ -688,6 +688,7 @@ sh_test(
     name = "phase33_confirmed_settings_durability_test",
     srcs = ["phase33-confirmed-settings-durability-test.sh"],
     data = [
+        "phase33-confirmed-settings-durability-fixture.sh",
         "phase33-confirmed-settings-durability.sh",
         "serial-session-trace.sh",
     ],
