@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: executing
-stopped_at: Phase 34 verification found three software gaps; gap planning is required before Phase 35.
-last_updated: "2026-07-15T16:50:23.000Z"
+status: ready_to_execute
+stopped_at: Phase 34 verification-gap plans 34-05 through 34-07 are ready to execute.
+last_updated: "2026-07-15T18:47:20.501Z"
 last_activity: "2026-07-15"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 13
+  total_plans: 16
   completed_plans: 13
-  percent: 100
+  percent: 81
 ---
 
 # Project State
@@ -20,13 +20,13 @@ Last activity: 2026-07-15
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAPS FOUND
-Plan: 4 of 4 complete
+Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAP CLOSURE PLANNED
+Plan: 4 of 7 complete; 3 gap plans ready
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 4 of 4 implemented
-- **Status:** Verification gaps found; 6/10 requirements satisfied
-- **Next step:** Plan Phase 34 gap closure for factory-image admission, supervisor checkpoint liveness, and ordered snapshot publication. Phase 35 remains blocked.
+- **Plan:** 4 of 7 implemented; Plans 34-05 through 34-07 ready
+- **Status:** Ready to execute
+- **Next step:** Execute Phase 34 gap plans for factory-image admission, supervisor checkpoint liveness, and ordered snapshot publication, then run fresh Phase 34 review and verification. Phase 35 remains blocked.
 
 ## Project Reference
 
@@ -311,5 +311,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 34-04-PLAN.md
-- **Resume:** Plan Phase 35 without hardware use until its detector-gated evidence workflow explicitly authorizes the next bounded action.
+- **Stopped at:** Phase 34 verification-gap plans 34-05 through 34-07 are ready to execute.
+- **Resume:** Run `/gsd-execute-phase 34 --gaps-only`; do not begin Phase 35 until fresh Phase 34 verification passes.

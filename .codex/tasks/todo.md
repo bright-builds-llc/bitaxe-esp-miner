@@ -102,3 +102,13 @@ Completion review: Canonical identity implementation is committed through `694cf
 - [ ] Complete Phase 34 tracking only after the verifier passes, without hardware or Phase 35 work.
 
 Completion review: Phase execution produced all four planned implementations, but independent review and verification confirmed three reachable production defects. Phase 34 remains `gaps_found` at 6/10 requirements: OBS-06, SYS-02, HLT-02, and HLT-04 are pending. Phase 35 remains blocked; the next action is deterministic Phase 34 gap planning and software-only closure. No hardware, credentials, push, or archived-lineage work occurred.
+
+## task-phase34-verification-gap-plans | 2026-07-15 13:47 | Plan Phase 34 software gap closure
+
+- [x] Derive focused closure work from the Phase 34 review and verification gaps.
+- [x] Plan structural factory-image admission for SYS-02.
+- [x] Plan recurring supervisor checkpoint publication for HLT-02 and HLT-04.
+- [x] Plan completion-ordered retained and HTTP/WebSocket snapshot issuance for OBS-06.
+- [x] Pass fresh plan checking, lifecycle validation, requirement coverage, threat-model, and scope gates.
+
+Completion review: Plans 34-05 through 34-07 are ready in sequential Waves 5-7. They cover all four pending requirements with production-path behavioral regressions, ASVS L1 threat controls, exact Rust pre-commit sequencing, and software-only boundaries. Phase 35 remains blocked until these plans are implemented and fresh Phase 34 verification passes. No hardware, credentials, push, or archived-lineage work occurred.

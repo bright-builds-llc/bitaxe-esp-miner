@@ -97,14 +97,17 @@ No additional Phase 33 hardware attempt is permitted.
 1. Supervisor availability, checkpoint category, sequence, and age become stale or unhealthy when progress stalls, and remain explicitly distinct from unproved ESP task-watchdog participation.
 1. No fixture or host-checkout substitution, synthetic placeholder, active watchdog intervention, load/fault experiment, hardware actuation, mining or Phase 28.1.1 work, credential access, direct-UART/pin work, OTA, other-board evidence, or broad promotion occurs.
 
-**Plans:** 4/4 plans complete
+**Plans:** 4/7 plans complete; 3 verification-gap plans ready
 
 - [x] 34-01 — Canonical build identity, LCD/API/log projection, manifest v3, and exact pre-hardware admission
 - [x] 34-02 — Coherent boot-session and operator-snapshot revision
 - [x] 34-03 — Remaining truthful platform identity and runtime facts
 - [x] 34-04 — Passive runtime-health projection
+- [ ] 34-05 — Structurally bind the selected factory image to admitted package provenance
+- [ ] 34-06 — Preserve recurring supervisor checkpoints when duplicate yield logs are suppressed
+- [ ] 34-07 — Serialize snapshot identity, retention, and actual HTTP/WebSocket issuance
 
-**Verification:** Gaps found at 6/10 requirements. OBS-06, SYS-02, HLT-02, and HLT-04 remain pending until selected factory bytes are bound to admitted provenance, recurring supervisor checkpoints survive yield-log suppression, and snapshot publication is serialized monotonically. Phase 35 remains blocked.
+**Verification:** Gaps found at 6/10 requirements. Plans 34-05 through 34-07 are ready to close OBS-06, SYS-02, HLT-02, and HLT-04 by binding selected factory bytes to admitted provenance, preserving recurring supervisor checkpoints through yield-log suppression, and ordering snapshot retention with actual HTTP/WebSocket issuance. Phase 35 remains blocked until implementation and fresh Phase 34 verification pass.
 
 ### Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion
 
