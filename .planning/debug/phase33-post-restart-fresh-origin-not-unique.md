@@ -1,16 +1,23 @@
 ---
-status: verification_pending
+status: resolved
 trigger: "Phase 33 receives no fresh post-restart device origin because native USB resumes delivering application bytes only after the new boot's one-shot markers have passed."
 created: 2026-07-14T23:47:25Z
-updated: 2026-07-15T00:19:06Z
+updated: 2026-07-15T00:43:46Z
 ---
 
 ## Current Focus
 
-hypothesis: Confirmed and implemented — the durable proof surface must outlive the native USB enumeration gap. Firmware now retains a validated boot ordinal in RTC no-init memory and replays typed boot identity for the boot lifetime plus a session-bound origin for 360 seconds after Wi-Fi connection.
-test: Pure RTC transitions, typed evidence classification, wrapper simulation/source guards, mandatory Rust gates, targeted Bazel tests, canonical firmware build/package, linker-section inspection, shell static checks, and reference cleanliness all passed. No hardware command ran.
-expecting: Software evidence passes; real Ultra 205 verification must still prove the retained ordinal and replay survive the observed native-USB reset gap.
-next_action: Commit the software-qualified fix, rebuild its exact package, and run the sole detector-gated Phase 33 hardware verification. Move this record to resolved only if the typed classifier passes without retry.
+hypothesis: Confirmed and resolved — the durable proof surface outlives the native USB enumeration gap through RTC-backed boot ordinals and bounded typed replay.
+test: The exact `a630455` package passed the sole detector-gated Ultra 205 attempt with typed A/N to B/N+1 replay, software CPU reset, one fresh B/N+1 origin binding, stable physical identity, durable hostname-digest equality, cleanup, and restoration.
+expecting: Satisfied by the redacted hardware proof at `docs/evidence/phase-33/hardware-summary.md`.
+next_action: None for this diagnosis. Preserve the proof as Phase 33 durability evidence only; Phase 35 still owns admission and parity promotion.
+
+## Resolution
+
+resolved_at: 2026-07-15T00:43:46Z
+proof: `docs/evidence/phase-33/hardware-summary.md`
+result: The one eligible fresh hardware attempt passed without retry. The classifier proved the reset-surviving ordinal transition and bounded replay facts that were absent from the earlier lossy native-USB capture. Process/holder cleanup and original-hostname restoration also passed.
+non_claims: No raw identifiers or settings values were promoted, no parity row changed, and no Phase 35 admission occurred.
 
 ## Symptoms
 

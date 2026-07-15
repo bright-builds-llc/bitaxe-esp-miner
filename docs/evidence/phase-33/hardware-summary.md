@@ -1,0 +1,30 @@
+# Phase 33 Confirmed Settings Durability Evidence
+
+- board_category: Ultra 205
+- source_commit_sha256_input: a6304553343ef32758eb37d62190c66d9f108656
+- reference_commit_sha256_input: c1915b0a63bfabebdb95a515cedfee05146c1d50
+- package_manifest_sha256: e4425f9471ecaa6b34aade59552647f742aa66a30dbd9a4eb5eb8c9a47686ddf
+- command_categories: detector, package-flash-monitor, settings-patch, system-info-readback, passive-monitor, application-restart, settings-restore
+- setup_capture_seconds: 360
+- passive_capture_seconds: 360
+- detector_count: 1
+- package_flash_required: true
+- package_flash_complete: true
+- immediate_hostname_digest_sha256: 03906c295eb79fd58b2cb89efe80b9b21f002b65e969659b2c5ffa5af1a121ff
+- post_reboot_hostname_digest_sha256: 03906c295eb79fd58b2cb89efe80b9b21f002b65e969659b2c5ffa5af1a121ff
+- restored_hostname_digest_sha256: dca159c3801e5419c5b0767105141823f6ea2afcb6e72fd87e8a9672ec5e1346
+- immediate_post_reboot_match: true
+- application_restart_count: 1
+- baseline_boot_ordinal: 1
+- post_restart_boot_ordinal: 2
+- passive_byte_delivery_before_post: true
+- post_restart_reset_reason: software_cpu
+- post_restart_origin_binding: unique
+- response_before_effect: true
+- same_physical_identity: true
+- passive_monitor_contract_complete: true
+- process_cleanup_complete: true
+- serial_holder_cleanup_complete: true
+- restoration_complete: 1
+- protected_trace_sha256: 537f0709907d7cb56d3ff5b86af223ab4b50e185acf625425d9f0f0f2ea8db5a
+- conclusion: passed durability evidence only; Phase 35 admission and parity promotion remain unclaimed
