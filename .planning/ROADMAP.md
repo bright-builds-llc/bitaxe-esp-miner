@@ -146,7 +146,7 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Gaps Found (4/4 plans) |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | Not started |
 
-**Overall:** 4/5 phases complete; 20/27 requirements complete.
+**Overall:** 3/5 phases complete; 16/27 requirements complete.
 
 ## Coverage
 
