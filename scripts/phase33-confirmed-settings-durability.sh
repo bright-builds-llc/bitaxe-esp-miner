@@ -19,6 +19,7 @@ device_url=""
 original_hostname=""
 hostname_changed=0
 restore_complete=0
+phase33_classifier="${PHASE33_CLASSIFIER:-bazel-bin/tools/parity/report}"
 
 usage() {
 	printf 'usage: %s [--mode hardware|simulate] [--scenario NAME] [--capture-seconds N] [--manifest PATH] [--wifi-credentials PATH] [--shareable-out PATH] [--local-root PATH]\n' "$(basename "$0")" >&2
@@ -102,10 +103,15 @@ run_simulation() {
 	board_info_failure) category="board_info_failure" ;;
 	missing_flash) category="required_package_missing" ;;
 	failed_flash) category="required_package_flash_failed" ;;
-	zero_origin) category="fresh_origin_missing" ;;
-	multiple_origin) category="fresh_origin_ambiguous" ;;
+	zero_origin) category="runtime_origin_missing" ;;
+	multiple_origin) category="runtime_origin_multiple" ;;
 	identity_change) category="physical_identity_changed" ;;
-	extra_reset) category="application_restart_count_invalid" ;;
+	unchanged_session) category="post_restart_session_unchanged" ;;
+	multiple_session) category="post_restart_multiple_sessions" ;;
+	ordinal_n_plus_two) category="post_restart_ordinal_nonmonotonic" ;;
+	wrong_reset) category="post_restart_reset_reason_wrong" ;;
+	wrong_session_origin) category="runtime_origin_wrong_session" ;;
+	extra_reset) category="post_restart_multiple_sessions" ;;
 	response_reversal) category="response_before_effect_unproved" ;;
 	immediate_missing) category="immediate_readback_missing" ;;
 	immediate_mismatch) category="immediate_readback_mismatch" ;;
@@ -200,30 +206,11 @@ cleanup_passive() {
 
 trap 'cleanup_passive' EXIT INT TERM
 
-validate_origin() {
-	local value="$1"
-	local rest
-	case "$value" in
-	http://*) rest="${value#http://}" ;;
-	https://*) rest="${value#https://}" ;;
-	*) return 1 ;;
-	esac
-	[[ -n "$rest" && "$rest" != *"@"* && "$rest" != *"?"* && "$rest" != *"#"* ]] || return 1
-	[[ "$rest" != */* || "$rest" == */ ]] || return 1
-}
-
-extract_one_origin() {
-	local path="$1"
-	local maybe_start_byte="${2:-1}"
-	local values
-	values="$(tail -c "+${maybe_start_byte}" "$path" | LC_ALL=C tr -d '\000\r' | rg -o 'device_url=https?://[^[:space:]"<>]+' | cut -d= -f2- | sort -u)"
-	local count
-	count="$(printf '%s\n' "$values" | sed '/^$/d' | wc -l | tr -d ' ')"
-	[[ "$count" == "1" ]] || return 1
-	local value
-	value="$(printf '%s\n' "$values" | sed -n '1p')"
-	validate_origin "$value" || return 1
-	printf '%s\n' "${value%/}"
+classify_trace() {
+	local output="$1"
+	shift
+	"$phase33_classifier" phase33-classify "$@" >"$output"
+	chmod 600 "$output"
 }
 
 http_json_field() {
@@ -278,6 +265,11 @@ fail_proof() {
 	exit 1
 }
 
+if [[ "$phase33_classifier" == "bazel-bin/tools/parity/report" ]]; then
+	bazel build //tools/parity:report >/dev/null || fail_proof phase33_classifier_build_failed
+fi
+[[ -x "$phase33_classifier" ]] || fail_proof phase33_classifier_unavailable
+
 printf '[phase33] detector preflight starting; this is the only detector invocation\n'
 set +e
 just detect-ultra205 >"$detector_log" 2>&1
@@ -303,7 +295,12 @@ set -e
 ((flash_status == 0)) || fail_proof required_package_flash_failed
 monitor_log="${flash_dir}/flash-monitor.log"
 [[ -s "$monitor_log" ]] || fail_proof flash_monitor_log_missing
-device_url="$(extract_one_origin "$monitor_log")" || fail_proof settled_origin_not_unique
+baseline_json="${local_root}/baseline-classification.json"
+classify_trace "$baseline_json" --trace "$monitor_log" --mode baseline || fail_proof baseline_classifier_failed
+[[ "$(jq -er '.status' "$baseline_json")" == "passed" ]] || fail_proof "$(jq -er '.category' "$baseline_json")"
+baseline_session="$(jq -er '.session' "$baseline_json")"
+baseline_ordinal="$(jq -er '.boot_ordinal' "$baseline_json")"
+device_url="$(jq -er '.device_url' "$baseline_json")"
 printf '[phase33] setup capture complete; starting confirmed PATCH and passive proof\n'
 
 original_hostname="$(http_json_field "$device_url" hostname "${http_dir}/original.json")" || fail_proof original_hostname_unavailable
@@ -330,7 +327,19 @@ for _ in $(seq 1 80); do
 	sleep 0.25
 done
 [[ -s "$passive_ready" ]] || fail_proof passive_monitor_not_ready
-proof_offset=$(($(wc -c <"$passive_raw" | tr -d ' ') + 1))
+delivery_offset="$(wc -c <"$passive_raw" | tr -d ' ')"
+delivery_json="${local_root}/delivery-classification.json"
+delivery_proved=0
+for _ in $(seq 1 160); do
+	classify_trace "$delivery_json" --trace "$passive_raw" --mode delivery --start-byte "$delivery_offset" --expected-session "$baseline_session" --expected-ordinal "$baseline_ordinal" || fail_proof passive_delivery_classifier_failed
+	if [[ "$(jq -er '.status' "$delivery_json")" == "passed" ]]; then
+		delivery_proved=1
+		break
+	fi
+	kill -0 "$passive_pid" >/dev/null 2>&1 || fail_proof passive_monitor_exited_before_delivery
+	sleep 0.25
+done
+((delivery_proved == 1)) || fail_proof passive_byte_delivery_unproved
 
 restart_body="${http_dir}/restart-response.json"
 set +e
@@ -349,6 +358,7 @@ for _ in $(seq 1 80); do
 	sleep 0.25
 done
 ((service_lost == 1)) || fail_proof service_loss_unproved
+proof_offset="$(wc -c <"$passive_raw" | tr -d ' ')"
 
 printf '[phase33] application restart response received; passive %ss capture is in progress\n' "$capture_seconds"
 set +e
@@ -361,11 +371,11 @@ rg -q '^serial_trace_post_readiness=ready$' "$passive_log" || fail_proof serial_
 rg -q '^serial_trace_active_owner_verified=true$' "$passive_log" || fail_proof serial_ownership_unproved
 [[ ! -s "$passive_state" ]] || fail_proof monitor_process_cleanup_failed
 
-fresh_origin="$(extract_one_origin "$passive_raw" "$proof_offset")" || fail_proof fresh_origin_not_unique
-device_url="$fresh_origin"
-boot_count="$(tail -c "+${proof_offset}" "$passive_raw" | LC_ALL=C rg -c 'bitaxe-rust boot: board=Ultra 205 asic=BM1366')"
-restart_marker_count="$(tail -c "+${proof_offset}" "$passive_raw" | LC_ALL=C rg -c 'axeos_command_effect=restart_after_response')"
-[[ "$boot_count" == "1" && "$restart_marker_count" == "1" ]] || fail_proof application_restart_count_invalid
+post_json="${local_root}/post-restart-classification.json"
+classify_trace "$post_json" --trace "$passive_raw" --mode post-restart --start-byte "$proof_offset" --expected-session "$baseline_session" --expected-ordinal "$baseline_ordinal" || fail_proof post_restart_classifier_failed
+[[ "$(jq -er '.status' "$post_json")" == "passed" ]] || fail_proof "$(jq -er '.category' "$post_json")"
+device_url="$(jq -er '.device_url' "$post_json")"
+post_ordinal="$(jq -er '.boot_ordinal' "$post_json")"
 physical_identity_after="$(serial_session_usb_physical_identity "$port")" || fail_proof physical_identity_unavailable
 [[ "$physical_identity_after" == "$physical_identity_before" ]] || fail_proof physical_identity_changed
 
@@ -398,6 +408,11 @@ cat >"$shareable_out" <<EOF
 - restored_hostname_digest_sha256: ${original_digest}
 - immediate_post_reboot_match: true
 - application_restart_count: 1
+- baseline_boot_ordinal: ${baseline_ordinal}
+- post_restart_boot_ordinal: ${post_ordinal}
+- passive_byte_delivery_before_post: true
+- post_restart_reset_reason: software_cpu
+- post_restart_origin_binding: unique
 - response_before_effect: true
 - same_physical_identity: true
 - passive_monitor_contract_complete: true

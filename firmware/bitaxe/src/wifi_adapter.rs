@@ -9,7 +9,7 @@ use esp_idf_svc::wifi::{
     AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi, WifiDeviceId,
 };
 
-use crate::{log_buffer, network_stack, settings_adapter};
+use crate::{boot_evidence, log_buffer, network_stack, settings_adapter};
 
 static WIFI_RUNTIME_SNAPSHOT: OnceLock<Mutex<WifiRuntimeSnapshot>> = OnceLock::new();
 
@@ -106,6 +106,7 @@ pub fn start_wifi_sta(modem: Modem<'static>) -> anyhow::Result<()> {
     log_runtime_line(&format!(
         "wifi_status=connected ipv4={ipv4} device_url=http://{ipv4}"
     ));
+    boot_evidence::publish_connected_origin(format!("http://{ipv4}"));
 
     Box::leak(Box::new(wifi));
     Ok(())

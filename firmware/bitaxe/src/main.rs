@@ -16,6 +16,7 @@ mod mining_evidence_mode;
 mod network_stack;
 mod operator_sensor_runtime;
 mod ota_update;
+mod rtc_boot_ordinal;
 mod runtime_snapshot;
 mod runtime_uptime;
 mod safety_adapter;

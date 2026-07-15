@@ -34,10 +34,15 @@ failure_cases='detector_ambiguous detector_ambiguous
 board_info_failure board_info_failure
 missing_flash required_package_missing
 failed_flash required_package_flash_failed
-zero_origin fresh_origin_missing
-multiple_origin fresh_origin_ambiguous
+zero_origin runtime_origin_missing
+multiple_origin runtime_origin_multiple
 identity_change physical_identity_changed
-extra_reset application_restart_count_invalid
+unchanged_session post_restart_session_unchanged
+multiple_session post_restart_multiple_sessions
+ordinal_n_plus_two post_restart_ordinal_nonmonotonic
+wrong_reset post_restart_reset_reason_wrong
+wrong_session_origin runtime_origin_wrong_session
+extra_reset post_restart_multiple_sessions
 response_reversal response_before_effect_unproved
 immediate_missing immediate_readback_missing
 immediate_mismatch immediate_readback_mismatch
@@ -72,6 +77,15 @@ grep -Fq -- '--before no-reset-no-sync --after no-reset --no-reset' "$wrapper" |
 [[ "$(grep -Fc 'just detect-ultra205' "$wrapper")" == "1" ]] || fail "detector source count is not exactly one"
 grep -Fq 'capture_seconds >= 360' "$wrapper" || fail "minimum capture gate missing"
 [[ "$(grep -Fc 'just flash-monitor' "$wrapper")" == "1" ]] || fail "required package flash source count is not exactly one"
+grep -Fq 'phase33-classify' "$wrapper" || fail "typed classifier missing"
+grep -Fq 'passive_byte_delivery_unproved' "$wrapper" || fail "pre-POST byte delivery gate missing"
+[[ "$(grep -Fc '/api/system/restart' "$wrapper")" == "1" ]] || fail "restart POST source count is not exactly one"
+service_loss_line="$(grep -nF '((service_lost == 1)) || fail_proof service_loss_unproved' "$wrapper" | cut -d: -f1)"
+# The command substitution is intentionally literal because this inspects wrapper source.
+# shellcheck disable=SC2016
+proof_offset_line="$(grep -nF 'proof_offset="$(wc -c <"$passive_raw"' "$wrapper" | cut -d: -f1)"
+post_classifier_line="$(grep -nF -- '--mode post-restart' "$wrapper" | cut -d: -f1)"
+[[ "$service_loss_line" -lt "$proof_offset_line" && "$proof_offset_line" -lt "$post_classifier_line" ]] || fail "post-restart byte boundary is not service-loss scoped"
 if grep -Eq -- '--skip-flash|retained-runtime' "$wrapper"; then
 	fail "wrapper exposes an unauthorized skip-flash path"
 fi

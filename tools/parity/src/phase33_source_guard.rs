@@ -3,6 +3,11 @@ const SETTINGS_ADAPTER_SOURCE: &str =
 const HTTP_API_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/http_api.rs");
 const RUNTIME_SNAPSHOT_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_snapshot.rs");
+const BOOT_EVIDENCE_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/boot_evidence.rs");
+const RTC_BOOT_ORDINAL_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/rtc_boot_ordinal.rs");
+const WIFI_ADAPTER_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/wifi_adapter.rs");
+const MAIN_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/main.rs");
 
 #[test]
 fn phase33_settings_source_guard_serializes_reload_through_publication() {
@@ -213,6 +218,47 @@ fn phase33_restart_source_guard_completes_response_before_delayed_restart() {
     assert!(schedule.contains(".name(\"command-restart\".to_owned())"));
     assert!(schedule.contains(".stack_size(RESTART_THREAD_STACK_BYTES)"));
     assert!(delay < marker && marker < restart);
+}
+
+#[test]
+fn phase33_boot_identity_source_guard_initializes_rtc_before_workers() {
+    // Arrange
+    let main = source_between(MAIN_SOURCE, "fn main()", "let safe_state");
+    let initialize = source_between(
+        BOOT_EVIDENCE_SOURCE,
+        "pub fn initialize_observer()",
+        "/// Publishes the connected HTTP origin",
+    );
+
+    // Act / Assert
+    assert!(RTC_BOOT_ORDINAL_SOURCE.contains("#[link_section = \".rtc_noinit\"]"));
+    assert!(RTC_BOOT_ORDINAL_SOURCE.contains("read_volatile"));
+    assert!(RTC_BOOT_ORDINAL_SOURCE.contains("write_volatile"));
+    assert!(initialize.contains("rtc_boot_ordinal::initialize(reset_reason)"));
+    assert!(
+        initialize
+            .find("rtc_boot_ordinal::initialize(reset_reason)")
+            .expect("RTC init")
+            < initialize
+                .find(".spawn(observe_boot_lifetime)")
+                .expect("observer spawn")
+    );
+    assert!(
+        main.find("boot_evidence::initialize_observer()")
+            .expect("boot observer")
+            < main.find("let safe_state").unwrap_or(main.len())
+    );
+}
+
+#[test]
+fn phase33_boot_identity_source_guard_replays_identity_and_typed_origin() {
+    // Arrange / Act / Assert
+    assert!(BOOT_EVIDENCE_SOURCE.contains("emit_boot_identity(nonce, ordinal, reset_reason"));
+    assert!(BOOT_EVIDENCE_SOURCE.contains("BOOT_EVIDENCE_INTERVAL_MS"));
+    assert!(BOOT_EVIDENCE_SOURCE.contains("ORIGIN_REPLAY_WINDOW_MS"));
+    assert!(BOOT_EVIDENCE_SOURCE.contains("runtime_origin_marker"));
+    assert!(WIFI_ADAPTER_SOURCE.contains("boot_evidence::publish_connected_origin"));
+    assert!(BOOT_EVIDENCE_SOURCE.contains("RuntimeHeartbeatModel"));
 }
 
 fn source_between<'a>(source: &'a str, start: &str, end: &str) -> &'a str {

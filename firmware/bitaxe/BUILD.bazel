@@ -33,9 +33,13 @@ filegroup(
 filegroup(
     name = "phase33_settings_sources",
     srcs = [
+        "src/boot_evidence.rs",
         "src/http_api.rs",
+        "src/main.rs",
+        "src/rtc_boot_ordinal.rs",
         "src/runtime_snapshot.rs",
         "src/settings_adapter.rs",
+        "src/wifi_adapter.rs",
     ],
     visibility = ["//tools/parity:__pkg__"],
 )

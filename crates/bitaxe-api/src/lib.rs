@@ -6,10 +6,12 @@
 //! - `reference/esp-miner/main/http_server/axe-os/api/system/asic_settings.c`
 
 pub mod asic;
+pub mod boot_identity;
 pub mod commands;
 pub mod logs;
 pub mod mining;
 pub mod observation;
+pub mod phase33_evidence;
 pub mod route_shell;
 pub mod runtime_projection;
 pub mod scoreboard;
