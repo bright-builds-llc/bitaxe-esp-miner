@@ -251,6 +251,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | 260712-pw5 | Persist direct-UART and pin-manipulation authorization rule | 2026-07-12 | this commit | Plan 14 hardware cancelled; non-invasive replanning required | [260712-pw5-persist-repo-rule-prohibiting-assumed-di](./quick/260712-pw5-persist-repo-rule-prohibiting-assumed-di/) |
 | 260713-p28 | Close Phase 28.1.1 without claiming unresolved parity | 2026-07-13 | this commit | Closed — Won't Do (unresolved); Phase 30 next | — |
 | 260713-egi | Close Phase 28.1.1 lineage as terminal archived unresolved work and guard all reopening paths | 2026-07-13 | 2285ebe | Verified | [260713-egi-close-phase-28-1-1-and-descendants-as-ar](./quick/260713-egi-close-phase-28-1-1-and-descendants-as-ar/) |
+| 260714-unf | Remap CFG-12 from Phase 33 to Phase 35 and re-verify Phase 33 without hardware | 2026-07-15 | 94ac313 | Verified | [260714-unf-remap-cfg-12-from-phase-33-to-phase-35-a](./quick/260714-unf-remap-cfg-12-from-phase-33-to-phase-35-a/) |
 
 ## Decisions (Phase 28.1.1.5)
 
