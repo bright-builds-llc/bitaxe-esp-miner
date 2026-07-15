@@ -97,11 +97,11 @@ No additional Phase 33 hardware attempt is permitted.
 1. Supervisor availability, checkpoint category, sequence, and age become stale or unhealthy when progress stalls, and remain explicitly distinct from unproved ESP task-watchdog participation.
 1. No fixture or host-checkout substitution, synthetic placeholder, active watchdog intervention, load/fault experiment, hardware actuation, mining or Phase 28.1.1 work, credential access, direct-UART/pin work, OTA, other-board evidence, or broad promotion occurs.
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 - [x] 34-01 — Canonical build identity, LCD/API/log projection, manifest v3, and exact pre-hardware admission
 - [x] 34-02 — Coherent boot-session and operator-snapshot revision
-- [ ] 34-03 — Remaining truthful platform identity and runtime facts
+- [x] 34-03 — Remaining truthful platform identity and runtime facts
 - [ ] 34-04 — Passive runtime-health projection
 
 ### Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion
@@ -141,10 +141,10 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | 31 | Operator Claim and Telemetry Contract | 2 | Complete |
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
 | 33 | Confirmed Settings Durability | 4 | Complete (8/8 software) |
-| 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | In Progress (2/4 plans) |
+| 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | In Progress (3/4 plans) |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | Not started |
 
-**Overall:** 3/5 phases complete; 11/27 requirements complete.
+**Overall:** 3/5 phases complete; 16/27 requirements complete.
 
 ## Coverage
 

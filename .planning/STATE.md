@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 34-02-PLAN.md
-last_updated: "2026-07-15T15:43:08.925Z"
+stopped_at: Completed 34-03-PLAN.md
+last_updated: "2026-07-15T16:05:35.791Z"
 last_activity: "2026-07-15"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
-  percent: 85
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State
@@ -21,12 +21,12 @@ Last activity: 2026-07-15
 ## Current Position
 
 Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — EXECUTING
-Plan: 2 of 4 complete
+Plan: 3 of 4 complete
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 2 of 4 complete
-- **Status:** Plan 02 complete; Plans 03-04 pending
-- **Next step:** Execute Phase 34 Plan 03 for remaining truthful platform identity and runtime facts.
+- **Plan:** 3 of 4 complete
+- **Status:** Ready to execute
+- **Next step:** Execute Phase 34 Plan 04 for passive runtime-health projection.
 
 ## Project Reference
 
@@ -108,6 +108,12 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - The existing hardware-RNG boot observer supplies the only operator-snapshot session; firmware owns one checked revision sequence for every public capture.
 - A retained correlation marker is emitted only after one complete `ApiSnapshot` is assembled, and system-info plus live WebSocket copy the attached identity without generating their own.
 - Historical Phase 23/25/27/28 operator-evidence acceptance remains unchanged; OBS-06 coherence is an explicit fail-closed opt-in.
+
+## Decisions (Phase 34 Plan 03)
+
+- Every platform fact carries its own available or unavailable state; zero and compatibility defaults never authenticate proof.
+- The embedded static release asset and current ESP-IDF reads are the only production sources for running-platform identity.
+- Existing compatibility scalars are projected conservatively from the same typed candidate captured under one Plan 02 session and revision.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -257,6 +263,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 33 P02 | 9min | 2 tasks | 7 files |
 | Phase 33 P03 | 26min | 2 tasks | 29 files |
 | Phase 34 P02 | 30min | 3 tasks | 15 files |
+| Phase 34 P03 | 18min | 2 tasks | 12 files |
 
 ### Quick Tasks Completed
 
@@ -290,5 +297,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 34-02-PLAN.md
-- **Resume:** Execute Phase 34 Plan 03 without hardware, preserving Phase 35-only CFG-12/EVD-13 qualification and promotion plus all terminal-archive prohibitions.
+- **Stopped at:** Completed 34-03-PLAN.md
+- **Resume:** Execute Phase 34 Plan 04 without hardware, preserving Phase 35-only CFG-12/EVD-13 qualification and promotion plus all terminal-archive prohibitions.

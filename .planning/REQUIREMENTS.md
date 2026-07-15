@@ -29,9 +29,9 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 
 - [x] **SYS-01**: An Ultra 205 operator can inspect the running firmware's semantic version and embedded source commit without host-checkout substitution.
 - [x] **SYS-02**: An Ultra 205 operator can correlate the running firmware with its pinned reference commit and flashed package identity.
-- [ ] **SYS-03**: An Ultra 205 operator can inspect truthful ESP-IDF, AxeOS/static-asset, board `205`, BM1366, and running-partition identity.
-- [ ] **SYS-04**: An Ultra 205 operator can inspect decoded reset reason, uptime, and heap-health facts from the running firmware.
-- [ ] **SYS-05**: An Ultra 205 operator sees an explicit unavailable state for any identity or runtime fact the firmware cannot prove; live surfaces never substitute fixtures or synthetic placeholders.
+- [x] **SYS-03**: An Ultra 205 operator can inspect truthful ESP-IDF, AxeOS/static-asset, board `205`, BM1366, and running-partition identity.
+- [x] **SYS-04**: An Ultra 205 operator can inspect decoded reset reason, uptime, and heap-health facts from the running firmware.
+- [x] **SYS-05**: An Ultra 205 operator sees an explicit unavailable state for any identity or runtime fact the firmware cannot prove; live surfaces never substitute fixtures or synthetic placeholders.
 
 ### Passive Runtime Health
 
@@ -112,9 +112,9 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | CFG-13 | Phase 33 | Complete |
 | SYS-01 | Phase 34 | Complete |
 | SYS-02 | Phase 34 | Complete |
-| SYS-03 | Phase 34 | Pending |
-| SYS-04 | Phase 34 | Pending |
-| SYS-05 | Phase 34 | Pending |
+| SYS-03 | Phase 34 | Complete |
+| SYS-04 | Phase 34 | Complete |
+| SYS-05 | Phase 34 | Complete |
 | HLT-01 | Phase 34 | Pending |
 | HLT-02 | Phase 34 | Pending |
 | HLT-03 | Phase 34 | Pending |
