@@ -81,6 +81,8 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 
 No additional Phase 33 hardware attempt is permitted.
 
+Phase 34 is next for discussion and planning.
+
 ### Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot
 
 **Goal:** An Ultra 205 operator can inspect one internally coherent snapshot of read-only telemetry, confirmed settings, truthful identity, and passive runtime health across system-info, WebSocket, retained logs, and evidence projections.
