@@ -2,13 +2,19 @@ load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 filegroup(
     name = "phase34_identity_sources",
-    srcs = ["src/lib.rs"],
+    srcs = [
+        "src/lib.rs",
+        "src/runtime_health.rs",
+    ],
     visibility = ["//firmware/bitaxe:__pkg__"],
 )
 
 rust_library(
     name = "bitaxe_core",
-    srcs = ["src/lib.rs"],
+    srcs = [
+        "src/lib.rs",
+        "src/runtime_health.rs",
+    ],
     crate_name = "bitaxe_core",
     edition = "2021",
     visibility = ["//visibility:public"],
@@ -17,4 +23,5 @@ rust_library(
 rust_test(
     name = "tests",
     crate = ":bitaxe_core",
+    visibility = ["//firmware/bitaxe:__pkg__"],
 )

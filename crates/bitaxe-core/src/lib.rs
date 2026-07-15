@@ -1,3 +1,5 @@
+pub mod runtime_health;
+
 /// First Phase 1 board target for boot/log bring-up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoardTarget {

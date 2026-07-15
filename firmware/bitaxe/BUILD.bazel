@@ -99,10 +99,26 @@ filegroup(
         "src/log_buffer.rs",
         "src/main.rs",
         "src/platform_identity.rs",
+        "src/runtime_health_adapter.rs",
         "src/runtime_snapshot.rs",
+        "src/safety_adapter/watchdog.rs",
         "src/websocket_api.rs",
     ],
     visibility = ["//tools/parity:__pkg__"],
+)
+
+test_suite(
+    name = "runtime_health_tests",
+    tests = [
+        "//crates/bitaxe-api:tests",
+        "//crates/bitaxe-core:tests",
+        "//tools/parity:tests",
+    ],
+)
+
+alias(
+    name = "runtime_health_no_effects_test",
+    actual = "//tools/parity:tests",
 )
 
 genrule(

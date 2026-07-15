@@ -8,6 +8,7 @@ use bitaxe_asic::bm1366::observation::AsicInitStatus;
 use bitaxe_config::{
     ultra_205_catalog_entry, ultra_205_defaults, BoardCatalogEntry, Ultra205Defaults,
 };
+use bitaxe_core::runtime_health::RuntimeHealthSnapshot;
 use bitaxe_safety::evidence::SafetyCriticalEvidence;
 use bitaxe_safety::observation::{Observation, UnavailableReason};
 use bitaxe_stratum::v1::state::MiningRuntimeState;
@@ -24,6 +25,8 @@ pub struct ApiSnapshot {
     pub operator_snapshot_identity: OperatorSnapshotIdentity,
     /// Typed running-platform facts; fixture construction authenticates none of them.
     pub platform_identity: PlatformIdentity,
+    /// Passive runtime-health facts captured with this operator snapshot.
+    pub runtime_health: RuntimeHealthSnapshot,
     pub config: ConfigSnapshot,
     pub catalog: BoardCatalogEntry,
     pub mining: MiningRuntimeState,
@@ -42,6 +45,7 @@ impl ApiSnapshot {
         Self {
             operator_snapshot_identity: OperatorSnapshotIdentity::fixture_only(),
             platform_identity: PlatformIdentity::fixture_only(),
+            runtime_health: RuntimeHealthSnapshot::fixture_unavailable(),
             config: ConfigSnapshot::ultra_205(),
             catalog: ultra_205_catalog_entry(),
             mining: MiningRuntimeState::default(),

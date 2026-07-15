@@ -21,6 +21,7 @@ pub use phase27_bring_up::{
     phase27_bring_up_complete, phase27_safety_snapshot, run_phase27_hardware_bring_up,
     Phase27BringUpReset,
 };
+pub(crate) use watchdog::supervisor_checkpoint_history;
 
 use bitaxe_safety::{effects::SafetyEffect, status::SafetyStatus};
 use bitaxe_safety::{power::Ina260RawSample, sensor_acquisition::AcquisitionOutcome};

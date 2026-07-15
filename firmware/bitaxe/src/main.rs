@@ -16,6 +16,7 @@ mod operator_sensor_runtime;
 mod ota_update;
 mod platform_identity;
 mod rtc_boot_ordinal;
+mod runtime_health_adapter;
 mod runtime_snapshot;
 mod runtime_uptime;
 mod safety_adapter;

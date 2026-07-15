@@ -72,11 +72,13 @@ fn collect_completed_api_snapshot(
     snapshot.block_found = block_found;
     snapshot.platform_identity = crate::platform_identity::collect();
     snapshot.platform = collect_platform_snapshot(snapshot.platform, &snapshot.platform_identity);
+    snapshot.runtime_health =
+        crate::runtime_health_adapter::collect(crate::runtime_uptime::millis());
     let observations = crate::safety_adapter::observation_snapshot();
     snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
     apply_wifi_snapshot(&mut snapshot);
     apply_settings_snapshot(&mut snapshot);
-    retain_completed_operator_snapshot(snapshot.operator_snapshot_identity);
+    retain_completed_operator_snapshot(&snapshot);
     snapshot
 }
 
@@ -340,10 +342,17 @@ fn reserve_operator_snapshot_identity() -> OperatorSnapshotIdentity {
         .expect("operator snapshot revision cannot exhaust within one boot")
 }
 
-fn retain_completed_operator_snapshot(identity: OperatorSnapshotIdentity) {
-    let marker = identity.retained_marker();
+fn retain_completed_operator_snapshot(snapshot: &ApiSnapshot) {
+    let marker = snapshot.operator_snapshot_identity.retained_marker();
     log::info!("{marker}");
     crate::log_buffer::append_runtime_log_line(&marker);
+    let runtime_health_record = bitaxe_api::retained_runtime_health_record(
+        snapshot.operator_snapshot_identity.boot_session(),
+        snapshot.operator_snapshot_identity.revision(),
+        &snapshot.runtime_health,
+    );
+    log::info!("{runtime_health_record}");
+    crate::log_buffer::append_runtime_log_line(&runtime_health_record);
 }
 
 fn mutate_command_visible_state_with_result<T>(

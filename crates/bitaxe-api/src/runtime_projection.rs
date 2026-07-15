@@ -57,6 +57,9 @@ pub fn project_api_views(
 
 #[cfg(test)]
 mod tests {
+    use bitaxe_core::runtime_health::{
+        CheckpointObservation, PassiveSelfTestState, RuntimeHealthSnapshot,
+    };
     use bitaxe_stratum::v1::messages::PoolDifficulty;
     use bitaxe_stratum::v1::production_work::PoolSessionGeneration;
     use bitaxe_stratum::v1::state::{HashrateInputs, PoolLifecycleStatus, ShareDifficulty};
@@ -69,8 +72,8 @@ mod tests {
 
     use super::{project_api_views, project_system_info, ProjectedApiViews};
     use crate::{
-        scoreboard_response, statistics_response, ApiSnapshot, SystemInfoWire, WebSocketRouteKind,
-        WebSocketState,
+        retained_runtime_health_record, scoreboard_response, statistics_response, ApiSnapshot,
+        SystemInfoWire, WebSocketRouteKind, WebSocketState,
     };
 
     #[test]
@@ -121,6 +124,59 @@ mod tests {
             live["operatorSnapshotRevision"],
             direct.operator_snapshot_revision.get()
         );
+    }
+
+    #[test]
+    fn direct_and_live_system_info_share_one_captured_runtime_health_value() {
+        // Arrange
+        let projection = active_projection_with_share_counters();
+        let checkpoint =
+            CheckpointObservation::new("telemetry", 12, 4_000).expect("checkpoint should be valid");
+        let mut base = ApiSnapshot::safe_ultra_205();
+        base.runtime_health = RuntimeHealthSnapshot::evaluate(
+            PassiveSelfTestState::Idle,
+            None,
+            Some(&checkpoint),
+            4_100,
+            500,
+        );
+        let runtime_health = base.runtime_health.clone();
+
+        // Act
+        let direct = project_system_info(base.clone(), &projection);
+        let live = project_api_views(base, &projection, None, 4_100, 0.0).telemetry_payload;
+        let direct_health =
+            serde_json::to_value(&direct.runtime_health).expect("runtime health should serialize");
+        let retained = retained_runtime_health_record(
+            direct.boot_session,
+            direct.operator_snapshot_revision,
+            &runtime_health,
+        );
+
+        // Assert
+        assert_eq!(live["runtimeHealth"], direct_health);
+        assert_eq!(live["bootSession"], direct.boot_session.to_string());
+        assert_eq!(
+            live["operatorSnapshotRevision"],
+            direct.operator_snapshot_revision.get()
+        );
+        for correlated_value in [
+            format!("boot_session={}", direct.boot_session),
+            format!(
+                "operator_snapshot_revision={}",
+                direct.operator_snapshot_revision.get()
+            ),
+            "self_test=idle".to_owned(),
+            "supervisor=available".to_owned(),
+            "checkpoint_category=telemetry".to_owned(),
+            "checkpoint_sequence=12".to_owned(),
+            "checkpoint_age_millis=100".to_owned(),
+            "checkpoint_health=healthy".to_owned(),
+            "task_watchdog_participation=unavailable".to_owned(),
+            "task_watchdog_reason=unproved".to_owned(),
+        ] {
+            assert!(retained.contains(&correlated_value));
+        }
     }
 
     #[test]

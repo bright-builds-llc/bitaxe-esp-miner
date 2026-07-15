@@ -109,7 +109,7 @@ pub use v12_settings::{
     V12SettingsDecision, V12SettingsExclusionReason,
 };
 pub use websocket_state::{WebSocketRegisterOutcome, WebSocketState, MAX_WEBSOCKET_CLIENTS};
-pub use wire::{SystemAsicWire, SystemInfoWire};
+pub use wire::{retained_runtime_health_record, RuntimeHealthWire, SystemAsicWire, SystemInfoWire};
 
 #[cfg(test)]
 mod tests {

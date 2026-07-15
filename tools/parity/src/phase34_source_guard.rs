@@ -2,6 +2,10 @@ const BUILD_SCRIPT_SOURCE: &str = include_str!("../../../firmware/bitaxe/build.r
 const MAIN_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/main.rs");
 const RUNTIME_SNAPSHOT_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_snapshot.rs");
+const RUNTIME_HEALTH_ADAPTER_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/runtime_health_adapter.rs");
+const RUNTIME_HEALTH_CORE_SOURCE: &str =
+    include_str!("../../../crates/bitaxe-core/src/runtime_health.rs");
 const PLATFORM_IDENTITY_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/platform_identity.rs");
 const CORE_SOURCE: &str = include_str!("../../../crates/bitaxe-core/src/lib.rs");
@@ -104,7 +108,7 @@ fn phase34_source_guard_rejects_platform_substitution_and_effects() {
         .find("snapshot.platform_identity = crate::platform_identity::collect()")
         .expect("platform candidate capture");
     let retained_marker = completed_snapshot
-        .find("retain_completed_operator_snapshot(snapshot.operator_snapshot_identity)")
+        .find("retain_completed_operator_snapshot(&snapshot)")
         .expect("completed snapshot retained marker");
     assert!(identity_assignment < platform_capture && platform_capture < retained_marker);
     assert_eq!(
@@ -153,6 +157,103 @@ fn phase34_source_guard_rejects_platform_substitution_and_effects() {
             !PLATFORM_IDENTITY_SOURCE.contains(request_time_mutation),
             "platform adapter contains request-time mutation token {request_time_mutation}"
         );
+    }
+}
+
+#[test]
+fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
+    // Arrange
+    let completed_snapshot = source_between(
+        RUNTIME_SNAPSHOT_SOURCE,
+        "fn collect_completed_api_snapshot",
+        "/// Returns the current command-visible mining state.",
+    );
+    let retained_projection = source_between(
+        RUNTIME_SNAPSHOT_SOURCE,
+        "fn retain_completed_operator_snapshot",
+        "fn mutate_command_visible_state_with_result",
+    );
+    let passive_sources = [RUNTIME_HEALTH_CORE_SOURCE, RUNTIME_HEALTH_ADAPTER_SOURCE];
+
+    // Act / Assert
+    assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("RuntimeHealthSnapshot::evaluate"));
+    assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("supervisor_checkpoint_history"));
+    assert_eq!(
+        completed_snapshot
+            .matches("runtime_health_adapter::collect")
+            .count(),
+        1
+    );
+    let identity_assignment = completed_snapshot
+        .find("snapshot.operator_snapshot_identity = operator_snapshot_identity")
+        .expect("capture identity assignment");
+    let health_capture = completed_snapshot
+        .find("runtime_health_adapter::collect")
+        .expect("runtime health capture");
+    let retained_marker = completed_snapshot
+        .find("retain_completed_operator_snapshot(&snapshot)")
+        .expect("completed snapshot retained marker");
+    assert!(identity_assignment < health_capture && health_capture < retained_marker);
+
+    assert!(retained_projection.contains("retained_runtime_health_record"));
+    for marker in [
+        "boot_session={boot_session}",
+        "operator_snapshot_revision={}",
+        "self_test={}",
+        "supervisor={}",
+        "checkpoint_category={checkpoint_category}",
+        "checkpoint_sequence={checkpoint_sequence}",
+        "checkpoint_age_millis={checkpoint_age_millis}",
+        "checkpoint_health={}",
+        "task_watchdog_participation={}",
+        "task_watchdog_reason={task_watchdog_reason}",
+        "redacted=true",
+    ] {
+        assert!(
+            API_WIRE_SOURCE.contains(marker),
+            "missing retained health marker {marker}"
+        );
+    }
+    for field in [
+        "runtimeHealth",
+        "selfTestState",
+        "supervisorAvailability",
+        "checkpointCategory",
+        "checkpointSequence",
+        "checkpointAgeMillis",
+        "checkpointHealth",
+        "taskWatchdogParticipation",
+        "taskWatchdogReason",
+    ] {
+        assert!(API_WIRE_SOURCE.contains(field), "missing API field {field}");
+    }
+
+    for source in passive_sources {
+        for forbidden in [
+            "SelfTestLifecycle::apply",
+            "SelfTestCommand::",
+            "start_safety_supervisor",
+            "esp_task_wdt_",
+            "std::thread",
+            "thread::sleep",
+            "gpio",
+            "i2c",
+            "reset",
+            "power",
+            "fan",
+            "voltage",
+            "asic",
+            "mining",
+            "load",
+            "fault",
+        ] {
+            assert!(
+                !source
+                    .to_ascii_lowercase()
+                    .contains(&forbidden.to_ascii_lowercase()),
+                "passive runtime-health source contains prohibited token {forbidden}"
+            );
+        }
     }
 }
 

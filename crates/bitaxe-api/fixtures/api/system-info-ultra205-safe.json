@@ -47,6 +47,16 @@
       "reason": "fixture_only"
     }
   },
+  "runtimeHealth": {
+    "selfTestState": "unavailable",
+    "supervisorAvailability": "unavailable",
+    "checkpointCategory": null,
+    "checkpointSequence": null,
+    "checkpointAgeMillis": null,
+    "checkpointHealth": "unavailable",
+    "taskWatchdogParticipation": "unavailable",
+    "taskWatchdogReason": "unproved"
+  },
   "ASICModel": "BM1366",
   "boardVersion": "205",
   "hashRate": 0.0,

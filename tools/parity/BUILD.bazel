@@ -59,4 +59,5 @@ rust_binary(
 rust_test(
     name = "tests",
     crate = ":report",
+    visibility = ["//firmware/bitaxe:__pkg__"],
 )

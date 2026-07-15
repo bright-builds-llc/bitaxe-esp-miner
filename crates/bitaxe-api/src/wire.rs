@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
+use bitaxe_core::runtime_health::RuntimeHealthSnapshot;
+
 use crate::mining::{mining_state_from_runtime, SharesRejectedReasonWire};
 use crate::{
     ApiSnapshot, BootSessionId, ObservationTruthWire, OperatorSnapshotRevision, PlatformIdentity,
@@ -44,6 +46,8 @@ pub struct SystemInfoWire {
     pub operator_snapshot_revision: OperatorSnapshotRevision,
     #[serde(rename = "platformIdentity")]
     pub platform_identity: PlatformIdentity,
+    #[serde(rename = "runtimeHealth")]
+    pub runtime_health: RuntimeHealthWire,
     #[serde(rename = "ASICModel")]
     pub asic_model: String,
     #[serde(rename = "boardVersion")]
@@ -203,6 +207,7 @@ impl SystemInfoWire {
             boot_session: snapshot.operator_snapshot_identity.boot_session(),
             operator_snapshot_revision: snapshot.operator_snapshot_identity.revision(),
             platform_identity: snapshot.platform_identity.clone(),
+            runtime_health: RuntimeHealthWire::from(&snapshot.runtime_health),
             asic_model: snapshot.catalog.asic().model().to_owned(),
             board_version: snapshot.catalog.board_version().to_owned(),
             hash_rate: mining_state.hash_rate,
@@ -279,6 +284,72 @@ impl SystemInfoWire {
     }
 }
 
+/// Additive passive runtime-health projection shared by system-info and live telemetry.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct RuntimeHealthWire {
+    #[serde(rename = "selfTestState")]
+    pub self_test_state: String,
+    #[serde(rename = "supervisorAvailability")]
+    pub supervisor_availability: String,
+    #[serde(rename = "checkpointCategory")]
+    pub maybe_checkpoint_category: Option<String>,
+    #[serde(rename = "checkpointSequence")]
+    pub maybe_checkpoint_sequence: Option<u64>,
+    #[serde(rename = "checkpointAgeMillis")]
+    pub maybe_checkpoint_age_millis: Option<u64>,
+    #[serde(rename = "checkpointHealth")]
+    pub checkpoint_health: String,
+    #[serde(rename = "taskWatchdogParticipation")]
+    pub task_watchdog_participation: String,
+    #[serde(rename = "taskWatchdogReason")]
+    pub maybe_task_watchdog_reason: Option<String>,
+}
+
+impl From<&RuntimeHealthSnapshot> for RuntimeHealthWire {
+    fn from(snapshot: &RuntimeHealthSnapshot) -> Self {
+        Self {
+            self_test_state: snapshot.passive_self_test_state().as_str().to_owned(),
+            supervisor_availability: snapshot.supervisor_availability().as_str().to_owned(),
+            maybe_checkpoint_category: snapshot.maybe_checkpoint_category().map(str::to_owned),
+            maybe_checkpoint_sequence: snapshot.maybe_checkpoint_sequence(),
+            maybe_checkpoint_age_millis: snapshot.maybe_checkpoint_age_millis(),
+            checkpoint_health: snapshot.checkpoint_health().as_str().to_owned(),
+            task_watchdog_participation: snapshot.task_watchdog_participation().as_str().to_owned(),
+            maybe_task_watchdog_reason: snapshot.maybe_task_watchdog_reason().map(str::to_owned),
+        }
+    }
+}
+
+/// Renders the redacted retained runtime-health record for one coherent capture.
+#[must_use]
+pub fn retained_runtime_health_record(
+    boot_session: BootSessionId,
+    operator_snapshot_revision: OperatorSnapshotRevision,
+    snapshot: &RuntimeHealthSnapshot,
+) -> String {
+    let checkpoint_category = snapshot
+        .maybe_checkpoint_category()
+        .unwrap_or("unavailable");
+    let checkpoint_sequence = optional_u64(snapshot.maybe_checkpoint_sequence());
+    let checkpoint_age_millis = optional_u64(snapshot.maybe_checkpoint_age_millis());
+    let task_watchdog_reason = snapshot
+        .maybe_task_watchdog_reason()
+        .unwrap_or("unavailable");
+
+    format!(
+        "runtime_health boot_session={boot_session} operator_snapshot_revision={} self_test={} supervisor={} checkpoint_category={checkpoint_category} checkpoint_sequence={checkpoint_sequence} checkpoint_age_millis={checkpoint_age_millis} checkpoint_health={} task_watchdog_participation={} task_watchdog_reason={task_watchdog_reason} redacted=true",
+        operator_snapshot_revision.get(),
+        snapshot.passive_self_test_state().as_str(),
+        snapshot.supervisor_availability().as_str(),
+        snapshot.checkpoint_health().as_str(),
+        snapshot.task_watchdog_participation().as_str(),
+    )
+}
+
+fn optional_u64(maybe_value: Option<u64>) -> String {
+    maybe_value.map_or_else(|| "unavailable".to_owned(), |value| value.to_string())
+}
+
 /// Initial `/api/system/asic` wire DTO.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SystemAsicWire {
@@ -347,7 +418,11 @@ mod tests {
     };
     use serde_json::{json, Value};
 
-    use super::require_wire_keys;
+    use bitaxe_core::runtime_health::{
+        CheckpointObservation, PassiveSelfTestState, RuntimeHealthSnapshot,
+    };
+
+    use super::{require_wire_keys, retained_runtime_health_record};
     use crate::{
         ApiSnapshot, SafeTelemetrySnapshot, SystemAsicWire, SystemInfoWire, TelemetryObservations,
     };
@@ -380,6 +455,12 @@ mod tests {
         assert_eq!(value.get("releaseTag"), Some(&Value::Null));
         assert_eq!(value.get("bootSession"), Some(&json!("0".repeat(32))));
         assert_eq!(value.get("operatorSnapshotRevision"), Some(&json!(1)));
+        assert_eq!(value["runtimeHealth"]["selfTestState"], "unavailable");
+        assert_eq!(
+            value["runtimeHealth"]["taskWatchdogParticipation"],
+            "unavailable"
+        );
+        assert_eq!(value["runtimeHealth"]["taskWatchdogReason"], "unproved");
         assert_eq!(
             value["platformIdentity"]["uptimeMilliseconds"]["state"],
             "unavailable"
@@ -400,6 +481,77 @@ mod tests {
             ],
         )
         .is_ok());
+    }
+
+    #[test]
+    fn runtime_health_serializes_exact_passive_values() {
+        // Arrange
+        let latest =
+            CheckpointObservation::new("telemetry", 9, 1_000).expect("checkpoint should be valid");
+        let mut snapshot = ApiSnapshot::safe_ultra_205();
+        snapshot.runtime_health = RuntimeHealthSnapshot::evaluate(
+            PassiveSelfTestState::Idle,
+            None,
+            Some(&latest),
+            1_100,
+            500,
+        );
+
+        // Act
+        let value = serde_json::to_value(SystemInfoWire::from_snapshot(&snapshot))
+            .expect("system info should serialize");
+
+        // Assert
+        assert_eq!(value["runtimeHealth"]["selfTestState"], "idle");
+        assert_eq!(
+            value["runtimeHealth"]["supervisorAvailability"],
+            "available"
+        );
+        assert_eq!(value["runtimeHealth"]["checkpointCategory"], "telemetry");
+        assert_eq!(value["runtimeHealth"]["checkpointSequence"], 9);
+        assert_eq!(value["runtimeHealth"]["checkpointAgeMillis"], 100);
+        assert_eq!(value["runtimeHealth"]["checkpointHealth"], "healthy");
+        assert_eq!(
+            value["runtimeHealth"]["taskWatchdogParticipation"],
+            "unavailable"
+        );
+        assert_eq!(value["runtimeHealth"]["taskWatchdogReason"], "unproved");
+    }
+
+    #[test]
+    fn retained_runtime_health_record_is_correlated_and_redacted() {
+        // Arrange
+        let latest =
+            CheckpointObservation::new("telemetry", 9, 1_000).expect("checkpoint should be valid");
+        let snapshot = RuntimeHealthSnapshot::evaluate(
+            PassiveSelfTestState::Idle,
+            None,
+            Some(&latest),
+            1_100,
+            500,
+        );
+        let identity = ApiSnapshot::safe_ultra_205().operator_snapshot_identity;
+
+        // Act
+        let record =
+            retained_runtime_health_record(identity.boot_session(), identity.revision(), &snapshot);
+
+        // Assert
+        assert_eq!(
+            record,
+            "runtime_health boot_session=00000000000000000000000000000000 operator_snapshot_revision=1 self_test=idle supervisor=available checkpoint_category=telemetry checkpoint_sequence=9 checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=unavailable task_watchdog_reason=unproved redacted=true"
+        );
+        for prohibited in [
+            "credential",
+            "ssid",
+            "ipv4",
+            "mac_addr",
+            "device_id",
+            "target",
+            "secret",
+        ] {
+            assert!(!record.contains(prohibited));
+        }
     }
 
     #[test]
