@@ -15,6 +15,7 @@ pub mod mining;
 pub mod observation;
 pub mod operator_snapshot;
 pub mod phase33_evidence;
+pub mod platform_identity;
 pub mod route_shell;
 pub mod runtime_projection;
 pub mod scoreboard;
@@ -57,6 +58,10 @@ pub use operator_snapshot::{
     BootSessionId, OperatorSnapshotIdentity, OperatorSnapshotIdentityError,
     OperatorSnapshotRevision, OperatorSnapshotSequence, OperatorSnapshotSequenceError,
     BOOT_SESSION_BYTES, BOOT_SESSION_HEX_BYTES,
+};
+pub use platform_identity::{
+    PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity, PlatformResetReason,
+    PlatformUnavailableReason,
 };
 pub use route_shell::{
     maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, phase07_route_report,

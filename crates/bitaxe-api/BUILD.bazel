@@ -5,6 +5,7 @@ filegroup(
     srcs = [
         "src/build_identity.rs",
         "src/operator_snapshot.rs",
+        "src/platform_identity.rs",
         "src/snapshot.rs",
         "src/wire.rs",
     ],
@@ -24,6 +25,7 @@ rust_library(
         "src/mining.rs",
         "src/observation.rs",
         "src/operator_snapshot.rs",
+        "src/platform_identity.rs",
         "src/phase33_evidence.rs",
         "src/route_shell.rs",
         "src/runtime_projection.rs",

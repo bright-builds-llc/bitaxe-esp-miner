@@ -14,7 +14,7 @@ use bitaxe_stratum::v1::state::MiningRuntimeState;
 
 use crate::{
     BlockFoundNotificationState, ObservationReasonWire, ObservationStateWire, ObservationTruthWire,
-    OperatorSnapshotIdentity, TelemetryObservations,
+    OperatorSnapshotIdentity, PlatformIdentity, TelemetryObservations,
 };
 
 /// Complete pure input snapshot for the initial AxeOS API contract slice.
@@ -22,6 +22,8 @@ use crate::{
 pub struct ApiSnapshot {
     /// Fixture construction uses a deterministic identity; firmware must replace it before projection.
     pub operator_snapshot_identity: OperatorSnapshotIdentity,
+    /// Typed running-platform facts; fixture construction authenticates none of them.
+    pub platform_identity: PlatformIdentity,
     pub config: ConfigSnapshot,
     pub catalog: BoardCatalogEntry,
     pub mining: MiningRuntimeState,
@@ -39,6 +41,7 @@ impl ApiSnapshot {
     pub fn safe_ultra_205() -> Self {
         Self {
             operator_snapshot_identity: OperatorSnapshotIdentity::fixture_only(),
+            platform_identity: PlatformIdentity::fixture_only(),
             config: ConfigSnapshot::ultra_205(),
             catalog: ultra_205_catalog_entry(),
             mining: MiningRuntimeState::default(),

@@ -1,6 +1,52 @@
 {
   "bootSession": "00000000000000000000000000000000",
   "operatorSnapshotRevision": 1,
+  "platformIdentity": {
+    "espIdfVersion": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    },
+    "axeOsStaticAsset": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    },
+    "board": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    },
+    "asic": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    },
+    "runningPartition": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    },
+    "resetReason": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    },
+    "uptimeMilliseconds": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    },
+    "internalHeapFreeBytes": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    },
+    "internalHeapMinimumFreeBytes": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    },
+    "internalHeapLargestFreeBlockBytes": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    },
+    "psramAvailable": {
+      "state": "unavailable",
+      "reason": "fixture_only"
+    }
+  },
   "ASICModel": "BM1366",
   "boardVersion": "205",
   "hashRate": 0.0,

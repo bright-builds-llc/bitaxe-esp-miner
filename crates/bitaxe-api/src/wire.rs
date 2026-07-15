@@ -10,7 +10,9 @@ use serde_json::Value;
 use thiserror::Error;
 
 use crate::mining::{mining_state_from_runtime, SharesRejectedReasonWire};
-use crate::{ApiSnapshot, BootSessionId, ObservationTruthWire, OperatorSnapshotRevision};
+use crate::{
+    ApiSnapshot, BootSessionId, ObservationTruthWire, OperatorSnapshotRevision, PlatformIdentity,
+};
 
 /// Error type for host-side fixture compatibility helpers.
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -40,6 +42,8 @@ pub struct SystemInfoWire {
     pub boot_session: BootSessionId,
     #[serde(rename = "operatorSnapshotRevision")]
     pub operator_snapshot_revision: OperatorSnapshotRevision,
+    #[serde(rename = "platformIdentity")]
+    pub platform_identity: PlatformIdentity,
     #[serde(rename = "ASICModel")]
     pub asic_model: String,
     #[serde(rename = "boardVersion")]
@@ -198,6 +202,7 @@ impl SystemInfoWire {
         Self {
             boot_session: snapshot.operator_snapshot_identity.boot_session(),
             operator_snapshot_revision: snapshot.operator_snapshot_identity.revision(),
+            platform_identity: snapshot.platform_identity.clone(),
             asic_model: snapshot.catalog.asic().model().to_owned(),
             board_version: snapshot.catalog.board_version().to_owned(),
             hash_rate: mining_state.hash_rate,
@@ -375,6 +380,14 @@ mod tests {
         assert_eq!(value.get("releaseTag"), Some(&Value::Null));
         assert_eq!(value.get("bootSession"), Some(&json!("0".repeat(32))));
         assert_eq!(value.get("operatorSnapshotRevision"), Some(&json!(1)));
+        assert_eq!(
+            value["platformIdentity"]["uptimeMilliseconds"]["state"],
+            "unavailable"
+        );
+        assert_eq!(
+            value["platformIdentity"]["uptimeMilliseconds"]["reason"],
+            "fixture_only"
+        );
         assert!(require_wire_keys(
             &value,
             &[
