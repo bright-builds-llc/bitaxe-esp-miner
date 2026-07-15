@@ -2,13 +2,13 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: planning
-stopped_at: Completed 33-03-PLAN.md
-last_updated: "2026-07-15T00:48:06.705Z"
+status: verification_gaps
+stopped_at: "Phase 33 verification gaps_found: CFG-12 exact-source proof covers a630455, not current HEAD"
+last_updated: "2026-07-15T02:11:37Z"
 last_activity: "2026-07-15"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 2
   total_plans: 9
   completed_plans: 9
   percent: 100
@@ -20,13 +20,13 @@ Last activity: 2026-07-15
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — PLANNING
-Plan: Not started
+Phase: 33 (confirmed-settings-durability) — VERIFICATION GAPS
+Plan: 3 of 3 complete
 
-- **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** Not started
-- **Status:** Ready to plan
-- **Next step:** Plan Phase 34 provenance, runtime health, and coherent operator snapshot work.
+- **Phase:** 33 of 35 (confirmed settings durability)
+- **Plan:** 3 of 3 complete
+- **Status:** Gaps found — 8/9 must-haves verified
+- **Next step:** Preserve the current-source CFG-12 gap and await an explicit disposition; do not rerun the one-shot hardware procedure.
 
 ## Project Reference
 
@@ -90,7 +90,8 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 ## Decisions (Phase 33 Plan 03)
 
 - Reset-spanning evidence uses an RTC-backed boot ordinal and bounded typed boot/origin replay because native USB may lose early bytes across an application reset.
-- The exact `a630455` package passed the sole detector-gated, one-restart hardware attempt with cleanup and restoration; Phase 35 admission and parity promotion remain deferred.
+- The exact `a630455` package passed the sole detector-gated, one-restart hardware attempt with cleanup and restoration; it remains credible historical exact-source evidence.
+- Subsequent review fixes materially changed current firmware snapshot and deferred restart/effect behavior, so the `a630455` proof cannot qualify current HEAD. Phase 33 verification is `gaps_found`, CFG-12 remains pending, the no-retry guard remains binding, and Phase 35 admission/promotion remains deferred.
 
 ## Decisions (v1.1 Milestone Archive)
 

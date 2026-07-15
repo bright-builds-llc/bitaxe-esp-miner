@@ -18,7 +18,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 
 - [x] **Phase 31: Operator Claim and Telemetry Contract** — Define truthful observation, settings, health, and promotion states before effectful integration. (completed 2026-07-13)
 - [x] **Phase 32: Shared I2C and Read-Only Sensor Acquisition** — Establish one bounded I2C0 owner for startup display handoff and read-only INA260/EMC2101 observations. (completed 2026-07-14)
-- [x] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, immediately visible, and reboot-durable storage truth. (completed 2026-07-15)
+- [ ] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, immediately visible, and reboot-durable storage truth. (verification gaps found 2026-07-15; the sole hardware proof covers `a630455`, not current HEAD)
 - [ ] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot.
 - [ ] **Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion** — Prove the completed chain on one Ultra 205 and promote only specifically supported rows.
 
@@ -40,6 +40,8 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 1. Typed capability and admission boundaries cannot represent active control, self-test effects, mining or Phase 28.1.1 work, credentials, direct-UART/pin work, OTA, other-board, or broad-promotion claims as eligible v1.2 outcomes.
 
 **Plans:** 3/3 plans complete
+
+**Verification:** 8/9 must-haves verified; CFG-12 remains pending because post-proof firmware changes moved current HEAD beyond the sole eligible exact-source hardware package, and the binding no-retry guard prohibits requalification.
 
 ### Phase 32: Shared I2C and Read-Only Sensor Acquisition
 
@@ -131,11 +133,11 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | --- | --- | ---: | --- |
 | 31 | Operator Claim and Telemetry Contract | 2 | Complete |
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
-| 33 | Confirmed Settings Durability | 5 | Complete |
+| 33 | Confirmed Settings Durability | 5 | Gaps found (8/9) |
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Not started |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 6 | Not started |
 
-**Overall:** 3/5 phases complete; 11/27 requirements complete.
+**Overall:** 2/5 phases complete; 10/27 requirements complete.
 
 ## Coverage
 
