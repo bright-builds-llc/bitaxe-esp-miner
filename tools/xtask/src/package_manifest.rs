@@ -7,17 +7,22 @@ use camino::Utf8Path;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+use bitaxe_api::BuildProvenance;
+
 use crate::{
     validate_package_request, PackageEnvironment, PackageRequest, DEFAULT_ELF_NAME,
     EXPECTED_REFERENCE_COMMIT, FACTORY_IMAGE_NAME, RUST_TARGET, UNAVAILABLE,
 };
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct PackageManifestV2 {
+pub(crate) struct PackageManifestV3 {
     pub(crate) schema_version: u32,
     pub(crate) release_name: String,
+    pub(crate) semantic_version: String,
     pub(crate) source_commit: String,
     pub(crate) reference_commit: String,
+    pub(crate) app_elf_sha256: String,
+    pub(crate) build_identity: ManifestBuildIdentity,
     pub(crate) default_flash_image: String,
     pub(crate) image_metadata: ImageMetadata,
     pub(crate) tool_versions: ToolVersions,
@@ -26,6 +31,14 @@ pub(crate) struct PackageManifestV2 {
     pub(crate) provenance_manifest: String,
     pub(crate) otadata_source: String,
     pub(crate) artifacts: Vec<ReleaseArtifact>,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct ManifestBuildIdentity {
+    pub(crate) label: String,
+    pub(crate) channel: String,
+    pub(crate) source_dirty: bool,
+    pub(crate) release_tag: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -94,22 +107,37 @@ pub(crate) struct ToolVersions {
 pub(crate) fn build_manifest(
     package_request: &PackageRequest,
     environment: &impl PackageEnvironment,
-) -> Result<PackageManifestV2> {
+) -> Result<PackageManifestV3> {
     environment.run_reference_guard()?;
     validate_package_request(package_request)?;
 
-    let source_commit = environment
-        .firmware_commit()
-        .unwrap_or_else(|_| UNAVAILABLE.to_owned());
-    let reference_commit = environment.reference_commit()?;
-    if reference_commit != EXPECTED_REFERENCE_COMMIT {
+    let stamp = fs::read_to_string(package_request.build_provenance_stamp.as_std_path())
+        .with_context(|| {
+            format!(
+                "failed to read build provenance stamp {}",
+                package_request.build_provenance_stamp
+            )
+        })?;
+    let provenance =
+        BuildProvenance::parse_stamp(&stamp).context("invalid canonical build provenance stamp")?;
+    if provenance.reference_commit() != EXPECTED_REFERENCE_COMMIT {
         bail!(
-            "reference commit mismatch after guard: expected {EXPECTED_REFERENCE_COMMIT}, found {reference_commit}"
+            "reference commit mismatch after guard: expected {EXPECTED_REFERENCE_COMMIT}, found {}",
+            provenance.reference_commit()
         );
     }
+    let identity = provenance.build_identity();
+    if package_request.app_descriptor_version != identity.build_label() {
+        bail!(
+            "ESP application descriptor version must equal build_label: expected {}, found {}",
+            identity.build_label(),
+            package_request.app_descriptor_version
+        );
+    }
+    validate_app_elf_sha256(&package_request.app_elf_sha256)?;
 
     let Some(factory_image) = &package_request.factory_image else {
-        bail!("factory image is required for package manifest v2");
+        bail!("factory image is required for package manifest v3");
     };
 
     let artifacts = vec![
@@ -151,11 +179,19 @@ pub(crate) fn build_manifest(
         )?,
     ];
 
-    Ok(PackageManifestV2 {
-        schema_version: 2,
+    Ok(PackageManifestV3 {
+        schema_version: 3,
         release_name: package_request.release_name.clone(),
-        source_commit,
-        reference_commit,
+        semantic_version: provenance.semantic_version().to_owned(),
+        source_commit: identity.source_commit().to_owned(),
+        reference_commit: provenance.reference_commit().to_owned(),
+        app_elf_sha256: package_request.app_elf_sha256.clone(),
+        build_identity: ManifestBuildIdentity {
+            label: identity.build_label().to_owned(),
+            channel: identity.build_channel().as_str().to_owned(),
+            source_dirty: identity.source_dirty(),
+            release_tag: identity.maybe_release_tag().map(str::to_owned),
+        },
         default_flash_image: manifest_relative_path(
             &package_request.manifest,
             &package_request.default_flash_image,
@@ -204,19 +240,35 @@ pub(crate) fn validate_default_flash_image(default_flash_image: &Utf8Path) -> Re
     Ok(())
 }
 
-pub(crate) fn read_manifest_v2(path: &Utf8Path) -> Result<PackageManifestV2> {
+pub(crate) fn read_manifest_v3(path: &Utf8Path) -> Result<PackageManifestV3> {
     let contents = fs::read_to_string(path.as_std_path())
         .with_context(|| format!("failed to read package manifest {path}"))?;
-    serde_json::from_str(&contents).with_context(|| format!("failed to parse manifest v2 {path}"))
+    serde_json::from_str(&contents).with_context(|| format!("failed to parse manifest v3 {path}"))
 }
 
-pub(crate) fn validate_package_manifest_v2(manifest: &PackageManifestV2) -> Result<()> {
-    if manifest.schema_version != 2 {
+pub(crate) fn validate_package_manifest_v3(manifest: &PackageManifestV3) -> Result<()> {
+    if manifest.schema_version != 3 {
         bail!(
-            "package manifest schema_version must be 2, found {}",
+            "package manifest schema_version must be 3, found {}",
             manifest.schema_version
         );
     }
+
+    let provenance = BuildProvenance::new(
+        &manifest.semantic_version,
+        &manifest.source_commit,
+        manifest.build_identity.source_dirty,
+        manifest.build_identity.release_tag.as_deref(),
+        &manifest.reference_commit,
+    )
+    .context("package manifest contains invalid build provenance")?;
+    let identity = provenance.build_identity();
+    if manifest.build_identity.label != identity.build_label()
+        || manifest.build_identity.channel != identity.build_channel().as_str()
+    {
+        bail!("package manifest build_identity contradicts canonical provenance");
+    }
+    validate_app_elf_sha256(&manifest.app_elf_sha256)?;
 
     validate_default_flash_image(Utf8Path::new(&manifest.default_flash_image))?;
     require_non_empty("release_name", &manifest.release_name)?;
@@ -289,7 +341,7 @@ fn require_non_empty(label: &str, value: &str) -> Result<()> {
 }
 
 fn require_artifact_kind(
-    manifest: &PackageManifestV2,
+    manifest: &PackageManifestV3,
     kind: ArtifactKind,
 ) -> Result<&ReleaseArtifact> {
     manifest
@@ -302,8 +354,8 @@ fn require_artifact_kind(
 fn validate_sha256(kind: &ArtifactKind, sha256: &str) -> Result<()> {
     if sha256.len() == 64
         && sha256
-            .chars()
-            .all(|character| character.is_ascii_hexdigit())
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
     {
         return Ok(());
     }
@@ -311,8 +363,21 @@ fn validate_sha256(kind: &ArtifactKind, sha256: &str) -> Result<()> {
     bail!("{kind} sha256 must be a 64 character hex string");
 }
 
+fn validate_app_elf_sha256(sha256: &str) -> Result<()> {
+    if sha256.len() == 64
+        && sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        && sha256.bytes().any(|byte| byte != b'0')
+    {
+        return Ok(());
+    }
+
+    bail!("app_elf_sha256 must be a nonzero 64-character lowercase hexadecimal string")
+}
+
 fn require_artifact_offset(
-    manifest: &PackageManifestV2,
+    manifest: &PackageManifestV3,
     kind: ArtifactKind,
     expected_offset: &str,
 ) -> Result<()> {
@@ -428,7 +493,7 @@ pub(crate) fn tool_versions(environment: &impl PackageEnvironment) -> ToolVersio
     }
 }
 
-pub(crate) fn write_manifest(path: &Utf8Path, manifest: &PackageManifestV2) -> Result<()> {
+pub(crate) fn write_manifest(path: &Utf8Path, manifest: &PackageManifestV3) -> Result<()> {
     let mut json =
         serde_json::to_string_pretty(manifest).context("failed to serialize package manifest")?;
     json.push('\n');
@@ -455,8 +520,11 @@ mod tests {
     use camino::Utf8PathBuf;
     use tempfile::{tempdir, TempDir};
 
+    const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
+    const APP_ELF_SHA256: &str = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+
     #[test]
-    fn package_manifest_v2_requires_release_metadata_and_artifact_kinds() {
+    fn package_manifest_v3_requires_identity_and_release_artifact_kinds() {
         // Arrange
         let artifact_kinds = [
             ArtifactKind::FirmwareElf,
@@ -469,11 +537,19 @@ mod tests {
         ];
 
         // Act
-        let manifest = PackageManifestV2 {
-            schema_version: 2,
+        let manifest = PackageManifestV3 {
+            schema_version: 3,
             release_name: "bitaxe-ultra205-v1".to_owned(),
-            source_commit: "source-commit".to_owned(),
+            semantic_version: "0.1.0".to_owned(),
+            source_commit: SOURCE_COMMIT.to_owned(),
             reference_commit: EXPECTED_REFERENCE_COMMIT.to_owned(),
+            app_elf_sha256: APP_ELF_SHA256.to_owned(),
+            build_identity: ManifestBuildIdentity {
+                label: "0123456789ab-dev".to_owned(),
+                channel: "dev".to_owned(),
+                source_dirty: false,
+                release_tag: None,
+            },
             default_flash_image: "bitaxe-ultra205.elf".to_owned(),
             image_metadata: ImageMetadata {
                 board: "205".to_owned(),
@@ -507,7 +583,7 @@ mod tests {
         };
 
         // Assert
-        assert_eq!(manifest.schema_version, 2);
+        assert_eq!(manifest.schema_version, 3);
         assert_eq!(manifest.default_flash_image, "bitaxe-ultra205.elf");
         assert!(manifest
             .artifacts
@@ -524,7 +600,7 @@ mod tests {
     }
 
     #[test]
-    fn package_manifest_v2_builds_release_artifacts_from_real_outputs() {
+    fn package_manifest_v3_builds_identity_and_release_artifacts_from_real_outputs() {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let package_elf = write_fixture(&dir, DEFAULT_ELF_NAME, b"elf");
@@ -536,9 +612,13 @@ mod tests {
         let install_notes = write_fixture(&dir, "ultra-205.md", b"install");
         let license_inventory = write_fixture(&dir, "license-inventory.md", b"license");
         let provenance_manifest = write_fixture(&dir, "provenance-manifest.md", b"provenance");
+        let build_provenance_stamp = write_provenance_stamp(&dir);
         let request = PackageRequest {
             board: BoardId::Ultra205,
             firmware_elf: package_elf.clone(),
+            build_provenance_stamp,
+            app_descriptor_version: "0123456789ab-dev".to_owned(),
+            app_elf_sha256: APP_ELF_SHA256.to_owned(),
             firmware_ota_image: firmware_ota_image.clone(),
             www_bin: www_bin.clone(),
             partition_table: partition_table.clone(),
@@ -559,11 +639,17 @@ mod tests {
         let manifest = build_manifest(&request, &environment).expect("manifest");
 
         // Assert
-        assert_eq!(manifest.schema_version, 2);
+        assert_eq!(manifest.schema_version, 3);
         assert_eq!(manifest.release_name, "bitaxe-ultra205");
         assert_eq!(manifest.default_flash_image, DEFAULT_ELF_NAME);
-        assert_eq!(manifest.source_commit, "source-commit");
+        assert_eq!(manifest.semantic_version, "0.1.0");
+        assert_eq!(manifest.source_commit, SOURCE_COMMIT);
         assert_eq!(manifest.reference_commit, EXPECTED_REFERENCE_COMMIT);
+        assert_eq!(manifest.app_elf_sha256, APP_ELF_SHA256);
+        assert_eq!(manifest.build_identity.label, "0123456789ab-dev");
+        assert_eq!(manifest.build_identity.channel, "dev");
+        assert!(!manifest.build_identity.source_dirty);
+        assert_eq!(manifest.build_identity.release_tag, None);
         assert_eq!(
             manifest.image_metadata.esp_idf_version,
             crate::ESP_IDF_VERSION
@@ -637,7 +723,21 @@ mod tests {
         Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).expect("utf8 path")
     }
 
-    fn assert_artifact(manifest: &PackageManifestV2, kind: ArtifactKind, path: &str, offset: &str) {
+    fn write_provenance_stamp(dir: &TempDir) -> Utf8PathBuf {
+        let path = dir_path(dir).join("build-provenance.stamp");
+        let provenance = BuildProvenance::new(
+            "0.1.0",
+            SOURCE_COMMIT,
+            false,
+            None::<&str>,
+            EXPECTED_REFERENCE_COMMIT,
+        )
+        .expect("valid provenance");
+        std::fs::write(path.as_std_path(), provenance.render_stamp()).expect("write stamp");
+        path
+    }
+
+    fn assert_artifact(manifest: &PackageManifestV3, kind: ArtifactKind, path: &str, offset: &str) {
         let artifact = manifest
             .artifacts
             .iter()
@@ -654,14 +754,6 @@ mod tests {
     impl PackageEnvironment for FakePackageEnvironment {
         fn run_reference_guard(&self) -> Result<()> {
             Ok(())
-        }
-
-        fn firmware_commit(&self) -> Result<String> {
-            Ok("source-commit".to_owned())
-        }
-
-        fn reference_commit(&self) -> Result<String> {
-            Ok(EXPECTED_REFERENCE_COMMIT.to_owned())
         }
 
         fn maybe_tool_version(&self, tool: &str) -> Option<String> {

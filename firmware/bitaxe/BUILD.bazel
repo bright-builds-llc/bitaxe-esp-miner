@@ -138,7 +138,7 @@ genrule(
         "bitaxe-ultra205-factory.bin",
         "bitaxe-ultra205-package.json",
     ],
-    cmd = "$(location //scripts:package_firmware) --reference-guard $(location //scripts:verify_reference_clean) --firmware-elf $(location //firmware/bitaxe:firmware) --out-dir $(@D) --manifest $(@D)/bitaxe-ultra205-package.json",
+    cmd = "$(location //scripts:package_firmware) --reference-guard $(location //scripts:verify_reference_clean) --firmware-elf $(location //firmware/bitaxe:firmware) --build-provenance-stamp $(location :build_provenance_stamp) --out-dir $(@D) --manifest $(@D)/bitaxe-ultra205-package.json",
     local = True,
     tags = [
         "local",

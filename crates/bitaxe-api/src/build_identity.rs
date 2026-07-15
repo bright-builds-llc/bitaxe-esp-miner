@@ -250,6 +250,62 @@ impl BuildProvenance {
 
         Ok(provenance)
     }
+
+    pub fn parse_workspace_status(status: &str) -> Result<Self, BuildIdentityError> {
+        const EXPECTED_KEYS: [&str; 5] = [
+            "STABLE_BITAXE_SOURCE_COMMIT",
+            "STABLE_BITAXE_SOURCE_DIRTY",
+            "STABLE_BITAXE_RELEASE_TAG",
+            "STABLE_BITAXE_SEMANTIC_VERSION",
+            "STABLE_BITAXE_REFERENCE_COMMIT",
+        ];
+
+        let mut fields = BTreeMap::new();
+        for line in status.lines() {
+            let mut parts = line.split_ascii_whitespace();
+            let Some(key) = parts.next() else {
+                continue;
+            };
+            if key.starts_with("STABLE_BITAXE_") && !EXPECTED_KEYS.contains(&key) {
+                return Err(BuildIdentityError::new(format!(
+                    "unknown Bitaxe workspace status key {key}"
+                )));
+            }
+            if !EXPECTED_KEYS.contains(&key) {
+                continue;
+            }
+            let Some(value) = parts.next() else {
+                return Err(BuildIdentityError::new(format!(
+                    "workspace status key {key} has no value"
+                )));
+            };
+            if parts.next().is_some() {
+                return Err(BuildIdentityError::new(format!(
+                    "workspace status key {key} has multiple values"
+                )));
+            }
+            if fields.insert(key.to_owned(), value.to_owned()).is_some() {
+                return Err(BuildIdentityError::new(format!(
+                    "duplicate Bitaxe workspace status key {key}"
+                )));
+            }
+        }
+
+        let source_commit = take_field(&mut fields, "STABLE_BITAXE_SOURCE_COMMIT")?;
+        let source_dirty = parse_bool(&take_field(&mut fields, "STABLE_BITAXE_SOURCE_DIRTY")?)?;
+        let release_tag = take_field(&mut fields, "STABLE_BITAXE_RELEASE_TAG")?;
+        let maybe_release_tag = (release_tag != UNAVAILABLE).then_some(release_tag);
+        let semantic_version = take_field(&mut fields, "STABLE_BITAXE_SEMANTIC_VERSION")?;
+        let reference_commit = take_field(&mut fields, "STABLE_BITAXE_REFERENCE_COMMIT")?;
+
+        Self::new(
+            semantic_version,
+            source_commit,
+            source_dirty,
+            maybe_release_tag,
+            reference_commit,
+        )
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -499,5 +555,25 @@ mod tests {
         // Assert
         assert!(BuildProvenance::parse_stamp(&unsupported).is_err());
         assert!(BuildProvenance::parse_stamp(&invalid_bool).is_err());
+    }
+
+    #[test]
+    fn workspace_status_parses_only_the_canonical_stable_keys() {
+        // Arrange
+        let status = format!(
+            "BUILD_USER local\nSTABLE_BITAXE_SOURCE_COMMIT {SOURCE_COMMIT}\nSTABLE_BITAXE_SOURCE_DIRTY false\nSTABLE_BITAXE_RELEASE_TAG unavailable\nSTABLE_BITAXE_SEMANTIC_VERSION 0.1.0\nSTABLE_BITAXE_REFERENCE_COMMIT {REFERENCE_COMMIT}\n"
+        );
+
+        // Act
+        let provenance =
+            BuildProvenance::parse_workspace_status(&status).expect("valid workspace status");
+
+        // Assert
+        assert_eq!(provenance.build_identity().source_commit(), SOURCE_COMMIT);
+        assert_eq!(
+            provenance.build_identity().build_label(),
+            "0123456789ab-dev"
+        );
+        assert!(!provenance.build_identity().source_dirty());
     }
 }

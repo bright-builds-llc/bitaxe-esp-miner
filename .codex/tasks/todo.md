@@ -82,3 +82,11 @@ Completion review: Milestone v1.1 is administratively complete but audits as `ga
 - [x] Run mandatory Rust pre-commit gates and prepare the archive plus active-requirements removal commits.
 
 Completion review: Archive validation passed with 18 phase directories, 76 top-level plans, 76 summaries, and 170 tasks. Lifecycles 28.1.1 through 28.1.1.7 plus Phases 29 and 30 validate from the archive; routing reports no active work; terminal guards, Phase 30 no-promotion, Phase 29 redaction, parity, reference, diff, and Rust gates pass. Safety commit `04c6101` preserves the archive before active requirements removal. STR-09, ASIC-11, and CFG-07 remain unresolved. No hardware or credentials were used.
+
+## task-phase34-canonical-build-identity | 2026-07-15 00:19 | Implement Phase 34 Plan 01 build provenance
+
+- [x] Remap CFG-12 to Phase 35 and complete Phase 33 as software-ready without a new hardware attempt.
+- [x] Define and stamp one canonical build identity through Bazel, Cargo, ESP-IDF metadata, LCD, logs, and system info.
+- [x] Migrate the package manifest and pre-hardware admission boundary to schema v3 with exact clean-source checks.
+- [ ] Run focused and repository-wide Rust, shell, Bazel, firmware, packaging, reference, style, and diff verification.
+- [ ] Commit the verified admission change and record the Phase 34 Plan 01 completion review without hardware or push.

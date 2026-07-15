@@ -6,9 +6,11 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+bitaxe-api = { path = "../../crates/bitaxe-api" }
 bitaxe-config = { path = "../../crates/bitaxe-config" }
 camino.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 tempfile.workspace = true

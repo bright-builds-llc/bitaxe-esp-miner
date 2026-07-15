@@ -1,5 +1,14 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 
+filegroup(
+    name = "phase34_package_identity_sources",
+    srcs = [
+        "src/main.rs",
+        "src/package_manifest.rs",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 rust_binary(
     name = "xtask",
     srcs = [

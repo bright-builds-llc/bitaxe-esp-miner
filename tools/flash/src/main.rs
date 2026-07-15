@@ -8,6 +8,7 @@ use std::str::FromStr;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
+use bitaxe_api::BuildProvenance;
 use bitaxe_config::{
     apply_settings_patch, ConfigValidationError, NvsWrite, RawSettingValue, SettingsPatch,
     SettingsUpdateDecision, NVS_NAMESPACE,
@@ -15,6 +16,7 @@ use bitaxe_config::{
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 const PACKAGE_BUILD_DISPLAY: &str = "bazel build //firmware/bitaxe:firmware_image";
 const PACKAGE_BUILD_TARGET: &str = "//firmware/bitaxe:firmware_image";
@@ -27,6 +29,7 @@ const NVS_PARTITION_OFFSET: &str = "0x9000";
 const NVS_PARTITION_SIZE: &str = "0x6000";
 const NVS_GENERATOR_PYTHON_RELATIVE_PATH: &str =
     ".embuild/espressif/python_env/idf5.5_py3.9_env/bin/python";
+const BUILD_IDENTITY_STATUS_RELATIVE_PATH: &str = "scripts/build-identity-status.sh";
 const UNAVAILABLE: &str = "Unavailable";
 
 #[derive(Debug, Parser)]
@@ -257,15 +260,29 @@ struct EvidenceRecordInput<'a> {
 
 #[derive(Debug, Deserialize)]
 struct PackageManifest {
+    schema_version: u32,
+    semantic_version: String,
+    source_commit: String,
+    reference_commit: String,
+    app_elf_sha256: String,
+    build_identity: PackageBuildIdentity,
     default_flash_image: String,
-    #[serde(default)]
     artifacts: Vec<PackageArtifact>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PackageBuildIdentity {
+    label: String,
+    channel: String,
+    source_dirty: bool,
+    release_tag: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct PackageArtifact {
     kind: String,
     path: String,
+    sha256: String,
 }
 
 trait FlashEnvironment {
@@ -275,7 +292,9 @@ trait FlashEnvironment {
         path.to_owned()
     }
     fn read_to_string(&self, path: &Utf8Path) -> Result<String>;
+    fn read_bytes(&self, path: &Utf8Path) -> Result<Vec<u8>>;
     fn path_exists(&self, path: &Utf8Path) -> bool;
+    fn current_provenance(&self) -> Result<BuildProvenance>;
     fn list_ports(&self) -> Result<String>;
     fn write_file(&self, path: &Utf8Path, contents: &str) -> Result<()>;
     fn generate_nvs_partition(
@@ -411,8 +430,23 @@ impl FlashEnvironment for LocalFlashEnvironment {
         fs::read_to_string(path.as_std_path()).with_context(|| format!("failed to read {path}"))
     }
 
+    fn read_bytes(&self, path: &Utf8Path) -> Result<Vec<u8>> {
+        fs::read(path.as_std_path()).with_context(|| format!("failed to read {path}"))
+    }
+
     fn path_exists(&self, path: &Utf8Path) -> bool {
         path.is_file()
+    }
+
+    fn current_provenance(&self) -> Result<BuildProvenance> {
+        let status_command = self.workspace_dir.join(BUILD_IDENTITY_STATUS_RELATIVE_PATH);
+        let output = Command::new(status_command.as_std_path())
+            .current_dir(self.workspace_dir.as_std_path())
+            .output()
+            .context("failed to run canonical build identity status command")?;
+        let status = command_output_to_string(output, "build identity status command")?;
+        BuildProvenance::parse_workspace_status(&status)
+            .context("current workspace build identity is invalid")
     }
 
     fn list_ports(&self) -> Result<String> {
@@ -723,8 +757,8 @@ fn prepare_flash(
     environment: &impl FlashEnvironment,
 ) -> Result<FlashOutcome> {
     ensure_ultra_205(command.common.board)?;
-    let port = resolve_port(command.common.port.as_deref(), environment)?;
     let (maybe_manifest, flash_image) = resolve_flash_image(command, environment)?;
+    let port = resolve_port(command.common.port.as_deref(), environment)?;
     let flash_command = flash_command_for_image(&port, &flash_image)?;
     let nvs_seed = match &command.wifi_credentials {
         Some(path) => Some(prepare_wifi_nvs_seed(&port, path, environment)?),
@@ -933,11 +967,20 @@ fn resolve_flash_image(
     command: &FlashCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<(Option<Utf8PathBuf>, Utf8PathBuf)> {
-    if let Some(image) = &command.image {
+    if command.common.dry_run && command.manifest.is_none() {
+        let Some(image) = &command.image else {
+            bail!("identity_admission=blocked reason=dry_run_requires_image_or_v3_manifest");
+        };
         return Ok((None, environment.workspace_path(image)));
     }
 
-    environment.build_package()?;
+    if command.image.is_some() && command.manifest.is_none() {
+        bail!("identity_admission=blocked reason=explicit_image_requires_v3_manifest");
+    }
+
+    if command.manifest.is_none() {
+        environment.build_package()?;
+    }
     let manifest = match &command.manifest {
         Some(path) => environment.workspace_path(path),
         None => environment
@@ -947,13 +990,182 @@ fn resolve_flash_image(
     let manifest_contents = environment.read_to_string(&manifest)?;
     let package_manifest: PackageManifest = serde_json::from_str(&manifest_contents)
         .with_context(|| format!("failed to parse package manifest {manifest}"))?;
-    let flash_image = resolve_manifest_flash_image(&manifest, &package_manifest)?;
+    let current_provenance = environment.current_provenance()?;
+    validate_identity_admission(
+        &manifest,
+        &package_manifest,
+        &current_provenance,
+        environment,
+    )?;
+    let flash_image = match &command.image {
+        Some(image) => {
+            let image = environment.workspace_path(image);
+            require_manifest_artifact_for_path(&manifest, &package_manifest, &image)?;
+            image
+        }
+        None => resolve_manifest_flash_image(&manifest, &package_manifest)?,
+    };
 
     if !environment.path_exists(&flash_image) {
         bail!("manifest default flash image does not exist: {flash_image}");
     }
+    validate_artifact_digest_for_path(&manifest, &package_manifest, &flash_image, environment)?;
 
     Ok((Some(manifest), flash_image))
+}
+
+fn validate_identity_admission(
+    manifest_path: &Utf8Path,
+    manifest: &PackageManifest,
+    current_provenance: &BuildProvenance,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    if manifest.schema_version != 3 {
+        bail!("identity_admission=blocked reason=manifest_schema_not_v3");
+    }
+    let manifest_provenance = BuildProvenance::new(
+        &manifest.semantic_version,
+        &manifest.source_commit,
+        manifest.build_identity.source_dirty,
+        manifest.build_identity.release_tag.as_deref(),
+        &manifest.reference_commit,
+    )
+    .context("identity_admission=blocked reason=manifest_provenance_invalid")?;
+    let identity = manifest_provenance.build_identity();
+    if manifest.build_identity.label != identity.build_label()
+        || manifest.build_identity.channel != identity.build_channel().as_str()
+    {
+        bail!("identity_admission=blocked reason=manifest_identity_contradictory");
+    }
+    if identity.source_dirty() {
+        bail!("identity_admission=blocked reason=package_source_dirty");
+    }
+    if current_provenance.build_identity().source_dirty() {
+        bail!("identity_admission=blocked reason=current_workspace_dirty");
+    }
+    if &manifest_provenance != current_provenance {
+        bail!("identity_admission=blocked reason=package_workspace_identity_mismatch");
+    }
+    validate_lower_hex("app_elf_sha256", &manifest.app_elf_sha256, true)?;
+    let _ = resolve_manifest_default(manifest_path, Utf8Path::new(&manifest.default_flash_image))?;
+
+    let elf_artifact = require_artifact(manifest, "firmware_elf")?;
+    let elf_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&elf_artifact.path))?;
+    validate_artifact_digest(elf_artifact, &elf_path, environment)?;
+
+    let ota_artifact = require_artifact(manifest, "firmware_ota_image")?;
+    let ota_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&ota_artifact.path))?;
+    validate_artifact_digest(ota_artifact, &ota_path, environment)?;
+    let ota_bytes = environment.read_bytes(&ota_path)?;
+    if !contains_bytes(&ota_bytes, manifest.source_commit.as_bytes()) {
+        bail!("identity_admission=blocked reason=embedded_source_commit_mismatch");
+    }
+    if !contains_bytes(&ota_bytes, manifest.build_identity.label.as_bytes()) {
+        bail!("identity_admission=blocked reason=embedded_build_label_mismatch");
+    }
+    let app_elf_sha256 = decode_lower_hex(&manifest.app_elf_sha256)?;
+    if !contains_bytes(&ota_bytes, &app_elf_sha256) {
+        bail!("identity_admission=blocked reason=app_descriptor_sha_mismatch");
+    }
+
+    Ok(())
+}
+
+fn require_artifact<'a>(manifest: &'a PackageManifest, kind: &str) -> Result<&'a PackageArtifact> {
+    manifest
+        .artifacts
+        .iter()
+        .find(|artifact| artifact.kind == kind)
+        .with_context(|| format!("identity_admission=blocked reason=missing_{kind}_artifact"))
+}
+
+fn require_manifest_artifact_for_path<'a>(
+    manifest_path: &Utf8Path,
+    manifest: &'a PackageManifest,
+    path: &Utf8Path,
+) -> Result<&'a PackageArtifact> {
+    for artifact in &manifest.artifacts {
+        let resolved = resolve_manifest_sibling(manifest_path, Utf8Path::new(&artifact.path))?;
+        if resolved == path {
+            return Ok(artifact);
+        }
+    }
+
+    bail!("identity_admission=blocked reason=explicit_image_not_in_manifest")
+}
+
+fn validate_artifact_digest_for_path(
+    manifest_path: &Utf8Path,
+    manifest: &PackageManifest,
+    path: &Utf8Path,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    let artifact = require_manifest_artifact_for_path(manifest_path, manifest, path)?;
+    validate_artifact_digest(artifact, path, environment)
+}
+
+fn validate_artifact_digest(
+    artifact: &PackageArtifact,
+    path: &Utf8Path,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    validate_lower_hex("artifact_sha256", &artifact.sha256, false)?;
+    let bytes = environment.read_bytes(path)?;
+    if sha256_bytes(&bytes) != artifact.sha256 {
+        bail!("identity_admission=blocked reason=package_artifact_digest_mismatch");
+    }
+    Ok(())
+}
+
+fn validate_lower_hex(label: &str, value: &str, reject_zero: bool) -> Result<()> {
+    let valid = value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte));
+    if valid && (!reject_zero || value.bytes().any(|byte| byte != b'0')) {
+        return Ok(());
+    }
+
+    bail!("identity_admission=blocked reason=invalid_{label}")
+}
+
+fn decode_lower_hex(value: &str) -> Result<Vec<u8>> {
+    validate_lower_hex("app_elf_sha256", value, true)?;
+    value
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            let high = hex_nibble(pair[0])?;
+            let low = hex_nibble(pair[1])?;
+            Ok((high << 4) | low)
+        })
+        .collect()
+}
+
+fn hex_nibble(byte: u8) -> Result<u8> {
+    match byte {
+        b'0'..=b'9' => Ok(byte - b'0'),
+        b'a'..=b'f' => Ok(byte - b'a' + 10),
+        _ => bail!("identity_admission=blocked reason=invalid_hex_nibble"),
+    }
+}
+
+fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
+    !needle.is_empty()
+        && haystack
+            .windows(needle.len())
+            .any(|window| window == needle)
+}
+
+fn sha256_bytes(bytes: &[u8]) -> String {
+    let digest = Sha256::digest(bytes);
+    let mut encoded = String::with_capacity(digest.len() * 2);
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    for byte in digest {
+        encoded.push(char::from(HEX[usize::from(byte >> 4)]));
+        encoded.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+    encoded
 }
 
 fn resolve_manifest_flash_image(
@@ -1877,6 +2089,11 @@ mod tests {
     use std::cell::RefCell;
     use tempfile::{tempdir, TempDir};
 
+    const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
+    const REFERENCE_COMMIT: &str = "abcdef0123456789abcdef0123456789abcdef01";
+    const BUILD_LABEL: &str = "0123456789ab-dev";
+    const APP_ELF_SHA256: &str = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+
     #[test]
     fn parses_key_value_aliases_for_flash() {
         // Arrange
@@ -2043,13 +2260,14 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let credentials_path = write_wifi_credentials(&dir, "LabNet", "super-secret");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
         let command = FlashCommand {
             common: CommonArgs {
                 dry_run: false,
                 ..common_args()
             },
-            image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
-            manifest: None,
+            image: None,
+            manifest: Some(manifest),
             wifi_credentials: Some(credentials_path),
         };
         let environment = FakeFlashEnvironment::default();
@@ -2077,12 +2295,13 @@ mod tests {
                 CommandSpec::new(
                     "espflash",
                     [
-                        "flash",
+                        "write-bin",
                         "--chip",
                         "esp32s3",
                         "--port",
                         "/dev/cu.usbmodem101",
-                        "/tmp/bitaxe-ultra205.elf",
+                        "0x0",
+                        outcome.flash_image.as_str(),
                     ],
                 ),
                 CommandSpec::new(
@@ -2138,7 +2357,7 @@ mod tests {
     }
 
     #[test]
-    fn dry_run_flash_resolves_manifest_default_elf() {
+    fn dry_run_flash_resolves_admitted_factory_artifact() {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let manifest = write_manifest(&dir, DEFAULT_ELF_NAME);
@@ -2157,16 +2376,17 @@ mod tests {
         assert_eq!(outcome.manifest.as_ref(), Some(&manifest));
         assert_eq!(
             outcome.flash_image,
-            manifest.parent().expect("parent").join(DEFAULT_ELF_NAME)
+            manifest.parent().expect("parent").join(FACTORY_IMAGE_NAME)
         );
         assert_eq!(
             outcome.command.args,
             vec![
-                "flash",
+                "write-bin",
                 "--chip",
                 "esp32s3",
                 "--port",
                 "/dev/cu.usbmodem101",
+                "0x0",
                 outcome.flash_image.as_str(),
             ]
         );
@@ -2224,7 +2444,7 @@ mod tests {
             outcome.flash_image,
             workspace_dir
                 .join("docs/evidence/package")
-                .join(DEFAULT_ELF_NAME)
+                .join(FACTORY_IMAGE_NAME)
         );
     }
 
@@ -2249,10 +2469,10 @@ mod tests {
     }
 
     #[test]
-    fn manifest_v2_uses_factory_artifact_for_full_flash() {
+    fn manifest_v3_uses_factory_artifact_for_full_flash() {
         // Arrange
         let dir = tempdir().expect("tempdir");
-        let manifest = write_manifest_v2(&dir, DEFAULT_ELF_NAME);
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
         let command = FlashCommand {
             common: common_args(),
             image: None,
@@ -2285,10 +2505,172 @@ mod tests {
     }
 
     #[test]
-    fn manifest_v2_rejects_wrong_factory_artifact_name() {
+    fn identity_admission_accepts_clean_dev_and_release_builds() {
+        // Arrange
+        let cases = [
+            BuildProvenance::new(
+                "0.1.0",
+                SOURCE_COMMIT,
+                false,
+                None::<&str>,
+                REFERENCE_COMMIT,
+            )
+            .expect("dev provenance"),
+            BuildProvenance::new(
+                "1.2.0",
+                SOURCE_COMMIT,
+                false,
+                Some("v1.2"),
+                REFERENCE_COMMIT,
+            )
+            .expect("release provenance"),
+        ];
+
+        for provenance in cases {
+            let dir = tempdir().expect("tempdir");
+            let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+            rewrite_manifest_provenance(&manifest, &provenance);
+            let command = FlashCommand {
+                common: common_args(),
+                image: None,
+                manifest: Some(manifest),
+                wifi_credentials: None,
+            };
+            let environment =
+                FakeFlashEnvironment::default().with_current_provenance(provenance.clone());
+
+            // Act
+            let outcome = run_flash(&command, &environment);
+
+            // Assert
+            assert!(outcome.is_ok(), "{outcome:#?}");
+        }
+    }
+
+    #[test]
+    fn identity_admission_rejects_dirty_package_before_port_or_credentials() {
         // Arrange
         let dir = tempdir().expect("tempdir");
-        let manifest = write_manifest_v2_with_factory_artifact(&dir, DEFAULT_ELF_NAME, "wrong.bin");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let dirty_provenance =
+            BuildProvenance::new("0.1.0", SOURCE_COMMIT, true, None::<&str>, REFERENCE_COMMIT)
+                .expect("dirty provenance");
+        rewrite_manifest_provenance(&manifest, &dirty_provenance);
+        let command = FlashCommand {
+            common: CommonArgs {
+                port: None,
+                dry_run: false,
+                ..common_args()
+            },
+            image: None,
+            manifest: Some(manifest),
+            wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        };
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+        );
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("identity_admission=blocked reason=package_source_dirty"));
+        assert!(!error.contains("Ambiguous serial ports"));
+        assert!(!error.contains("credentials"));
+    }
+
+    #[test]
+    fn identity_admission_rejects_dirty_current_workspace_before_port() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let dirty_provenance =
+            BuildProvenance::new("0.1.0", SOURCE_COMMIT, true, None::<&str>, REFERENCE_COMMIT)
+                .expect("dirty provenance");
+        let command = FlashCommand {
+            common: CommonArgs {
+                port: None,
+                dry_run: false,
+                ..common_args()
+            },
+            image: None,
+            manifest: Some(manifest),
+            wifi_credentials: None,
+        };
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+        )
+        .with_current_provenance(dirty_provenance);
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("identity_admission=blocked reason=current_workspace_dirty"));
+        assert!(!error.contains("Ambiguous serial ports"));
+    }
+
+    #[test]
+    fn identity_admission_rejects_unmanifested_explicit_image_before_port() {
+        // Arrange
+        let command = FlashCommand {
+            common: CommonArgs {
+                port: None,
+                dry_run: false,
+                ..common_args()
+            },
+            image: Some(Utf8PathBuf::from("/tmp/firmware.bin")),
+            manifest: None,
+            wifi_credentials: None,
+        };
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+        );
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(
+            error.contains("identity_admission=blocked reason=explicit_image_requires_v3_manifest")
+        );
+        assert!(!error.contains("Ambiguous serial ports"));
+    }
+
+    #[test]
+    fn identity_admission_rejects_package_digest_mismatch() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let ota = manifest
+            .parent()
+            .expect("manifest parent")
+            .join("esp-miner.bin");
+        std::fs::write(ota.as_std_path(), b"tampered ota").expect("tamper ota");
+        let command = FlashCommand {
+            common: common_args(),
+            image: None,
+            manifest: Some(manifest),
+            wifi_credentials: None,
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        assert!(format!("{result:#?}")
+            .contains("identity_admission=blocked reason=package_artifact_digest_mismatch"));
+    }
+
+    #[test]
+    fn manifest_v3_rejects_wrong_factory_artifact_name() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3_with_factory_artifact(&dir, DEFAULT_ELF_NAME, "wrong.bin");
         let command = FlashCommand {
             common: common_args(),
             image: None,
@@ -2480,17 +2862,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let command = FlashMonitorCommand {
-            common: CommonArgs {
-                evidence_dir: Some(evidence_dir.clone()),
-                dry_run: false,
-                ..common_args()
-            },
-            image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
-            manifest: None,
-            wifi_credentials: None,
-            capture_timeout_seconds: DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS,
-        };
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
         let environment = FakeFlashEnvironment::default();
 
         // Act
@@ -2512,7 +2884,7 @@ mod tests {
         let workspace = tempdir().expect("workspace");
         let workspace_dir = dir_path(&workspace);
         let evidence_dir = Utf8PathBuf::from("docs/parity/evidence/phase-09-test");
-        let command = flash_monitor_command(evidence_dir.clone());
+        let command = flash_monitor_fixture(&workspace, evidence_dir.clone());
         let environment = FakeFlashEnvironment::default().with_workspace_dir(workspace_dir.clone());
 
         // Act
@@ -2536,7 +2908,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let command = flash_monitor_command(evidence_dir);
+        let command = flash_monitor_fixture(&dir, evidence_dir);
         let environment = FakeFlashEnvironment::default();
 
         // Act
@@ -2564,7 +2936,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let command = flash_monitor_command(evidence_dir.clone());
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
         let environment = FakeFlashEnvironment::default();
 
         // Act
@@ -2602,14 +2974,15 @@ mod tests {
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
         let credentials_path = write_wifi_credentials(&dir, "LabNet", "super-secret");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
         let command = FlashCommand {
             common: CommonArgs {
                 evidence_dir: Some(evidence_dir.clone()),
                 dry_run: false,
                 ..common_args()
             },
-            image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
-            manifest: None,
+            image: None,
+            manifest: Some(manifest),
             wifi_credentials: Some(credentials_path.clone()),
         };
         let environment = FakeFlashEnvironment::default();
@@ -2637,7 +3010,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let command = flash_monitor_command(evidence_dir.clone());
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
         let sensitive_log = format!(
             "{}\nI (3863) wifi:connected with LabNet, aid = 1, channel 11, BW20, bssid = aa:bb:cc:dd:ee:ff\nwifi_status=connected ssid=lab-net password=super-secret token=api-secret ipv4=192.168.1.24 mac=aa:bb:cc:dd:ee:ff device_url=http://192.168.1.24\n",
             trusted_monitor_log()
@@ -2666,7 +3039,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let mut command = flash_monitor_command(evidence_dir.clone());
+        let mut command = flash_monitor_fixture(&dir, evidence_dir.clone());
         command.common.redact_evidence = true;
         let sensitive_log = format!(
             "{}\nI (3863) wifi:connected with LabNet, aid = 1, channel 11, BW20, bssid = aa:bb:cc:dd:ee:ff\nwifi_status=connected ssid=lab-net password=super-secret ipv4=192.168.1.24 mac=aa:bb:cc:dd:ee:ff device_url=http://192.168.1.24\n",
@@ -2739,7 +3112,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let command = flash_monitor_command(evidence_dir.clone());
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
         let environment =
             FakeFlashEnvironment::default().with_capture_status(CaptureProcessStatus::TimedOut);
 
@@ -2758,7 +3131,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let command = flash_monitor_command(evidence_dir.clone());
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
         let environment = FakeFlashEnvironment::default()
             .with_capture_status(CaptureProcessStatus::TimedOut)
             .with_log_contents("untrusted monitor log\n");
@@ -2779,7 +3152,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let command = flash_monitor_command(evidence_dir.clone());
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
         let stale_log = trusted_monitor_log().replace(
             "firmware_commit=0123456789ab",
             "firmware_commit=fedcba987654",
@@ -2803,7 +3176,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let command = flash_monitor_command(evidence_dir.clone());
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
         let truncated_log =
             trusted_monitor_log().replace("firmware_commit=0123456789ab", "firmware_commit=0");
         let environment = FakeFlashEnvironment::default().with_log_contents(&truncated_log);
@@ -2825,7 +3198,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let command = flash_monitor_command(evidence_dir.clone());
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
         let prefixed_log = trusted_monitor_log().replace(
             "firmware_commit=0123456789ab",
             "not_firmware_commit=0123456789ab",
@@ -2849,7 +3222,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
-        let command = flash_monitor_command(evidence_dir.clone());
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
         let environment = FakeFlashEnvironment::default().with_capture_status(
             CaptureProcessStatus::ExitedFailure("exit status 1".to_owned()),
         );
@@ -2919,15 +3292,16 @@ mod tests {
         .join("\n")
     }
 
-    fn flash_monitor_command(evidence_dir: Utf8PathBuf) -> FlashMonitorCommand {
+    fn flash_monitor_fixture(dir: &TempDir, evidence_dir: Utf8PathBuf) -> FlashMonitorCommand {
+        let manifest = write_manifest_v3(dir, DEFAULT_ELF_NAME);
         FlashMonitorCommand {
             common: CommonArgs {
                 evidence_dir: Some(evidence_dir),
                 dry_run: false,
                 ..common_args()
             },
-            image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
-            manifest: None,
+            image: None,
+            manifest: Some(manifest),
             wifi_credentials: None,
             capture_timeout_seconds: DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS,
         }
@@ -2968,83 +3342,123 @@ mod tests {
         let manifest = workspace_dir.join(manifest_relative_path);
         let manifest_dir = manifest.parent().expect("parent");
         std::fs::create_dir_all(manifest_dir.as_std_path()).expect("create manifest dir");
-        let default_image = manifest_dir.join(default_flash_image);
-        std::fs::write(default_image.as_std_path(), b"image").expect("write image");
-        std::fs::write(
-            manifest.as_std_path(),
-            format!(r#"{{"default_flash_image":"{default_flash_image}"}}"#),
-        )
-        .expect("write manifest");
+        write_manifest_v3_contents(&manifest, default_flash_image, FACTORY_IMAGE_NAME);
         manifest
     }
 
-    fn write_manifest_v2(dir: &TempDir, default_flash_image: &str) -> Utf8PathBuf {
-        write_manifest_v2_with_factory_artifact(dir, default_flash_image, FACTORY_IMAGE_NAME)
+    fn write_manifest_v3(dir: &TempDir, default_flash_image: &str) -> Utf8PathBuf {
+        write_manifest_v3_with_factory_artifact(dir, default_flash_image, FACTORY_IMAGE_NAME)
     }
 
-    fn write_manifest_v2_with_factory_artifact(
+    fn write_manifest_v3_with_factory_artifact(
         dir: &TempDir,
         default_flash_image: &str,
         factory_artifact_path: &str,
     ) -> Utf8PathBuf {
         let dir_path = dir_path(dir);
         let manifest = dir_path.join(PACKAGE_MANIFEST_RELATIVE_PATH);
+        write_manifest_v3_contents(&manifest, default_flash_image, factory_artifact_path);
+        manifest
+    }
+
+    fn write_manifest_v3_contents(
+        manifest: &Utf8Path,
+        default_flash_image: &str,
+        factory_artifact_path: &str,
+    ) {
         let manifest_dir = manifest.parent().expect("parent");
         std::fs::create_dir_all(manifest_dir.as_std_path()).expect("create manifest dir");
-        let default_image = manifest_dir.join(default_flash_image);
-        std::fs::write(default_image.as_std_path(), b"image").expect("write image");
-        for file_name in [
-            DEFAULT_ELF_NAME,
-            "esp-miner.bin",
-            "www.bin",
-            "otadata-initial.bin",
-            FACTORY_IMAGE_NAME,
-        ] {
-            let path = manifest_dir.join(file_name);
-            if !path.is_file() {
-                std::fs::write(path.as_std_path(), b"artifact").expect("write artifact");
-            }
+        let elf = b"synthetic firmware elf".to_vec();
+        let mut ota = b"synthetic ota image ".to_vec();
+        ota.extend_from_slice(SOURCE_COMMIT.as_bytes());
+        ota.push(b' ');
+        ota.extend_from_slice(BUILD_LABEL.as_bytes());
+        ota.push(b' ');
+        ota.extend_from_slice(&decode_lower_hex(APP_ELF_SHA256).expect("valid app hash"));
+        let factory = b"synthetic factory package".to_vec();
+        let www = b"synthetic www".to_vec();
+        let otadata = b"synthetic otadata".to_vec();
+        let artifacts = [
+            ("firmware_elf", DEFAULT_ELF_NAME, elf.as_slice()),
+            ("firmware_ota_image", "esp-miner.bin", ota.as_slice()),
+            (
+                "factory_merged_image",
+                factory_artifact_path,
+                factory.as_slice(),
+            ),
+            ("www_spiffs_image", "www.bin", www.as_slice()),
+            ("otadata_initial", "otadata-initial.bin", otadata.as_slice()),
+        ];
+        let mut artifact_values = Vec::new();
+        for (kind, path, bytes) in artifacts {
+            std::fs::write(manifest_dir.join(path).as_std_path(), bytes).expect("write artifact");
+            artifact_values.push(serde_json::json!({
+                "kind": kind,
+                "path": path,
+                "offset": "Unavailable",
+                "sha256": sha256_bytes(bytes),
+            }));
         }
+        let value = serde_json::json!({
+            "schema_version": 3,
+            "release_name": "bitaxe-ultra205",
+            "semantic_version": "0.1.0",
+            "source_commit": SOURCE_COMMIT,
+            "reference_commit": REFERENCE_COMMIT,
+            "app_elf_sha256": APP_ELF_SHA256,
+            "build_identity": {
+                "label": BUILD_LABEL,
+                "channel": "dev",
+                "source_dirty": false,
+                "release_tag": null
+            },
+            "default_flash_image": default_flash_image,
+            "artifacts": artifact_values,
+        });
+        std::fs::write(
+            manifest.as_std_path(),
+            serde_json::to_string_pretty(&value).expect("manifest json"),
+        )
+        .expect("write manifest");
+    }
+
+    fn rewrite_manifest_provenance(manifest: &Utf8Path, provenance: &BuildProvenance) {
+        let contents = std::fs::read_to_string(manifest.as_std_path()).expect("read manifest");
+        let mut value: serde_json::Value = serde_json::from_str(&contents).expect("manifest json");
+        let identity = provenance.build_identity();
+        value["semantic_version"] = serde_json::json!(provenance.semantic_version());
+        value["source_commit"] = serde_json::json!(identity.source_commit());
+        value["reference_commit"] = serde_json::json!(provenance.reference_commit());
+        value["build_identity"] = serde_json::json!({
+            "label": identity.build_label(),
+            "channel": identity.build_channel().as_str(),
+            "source_dirty": identity.source_dirty(),
+            "release_tag": identity.maybe_release_tag(),
+        });
+
+        let mut ota = b"synthetic ota image ".to_vec();
+        ota.extend_from_slice(identity.source_commit().as_bytes());
+        ota.push(b' ');
+        ota.extend_from_slice(identity.build_label().as_bytes());
+        ota.push(b' ');
+        ota.extend_from_slice(&decode_lower_hex(APP_ELF_SHA256).expect("valid app hash"));
+        let ota_path = manifest
+            .parent()
+            .expect("manifest parent")
+            .join("esp-miner.bin");
+        std::fs::write(ota_path.as_std_path(), &ota).expect("rewrite ota");
+        let artifacts = value["artifacts"].as_array_mut().expect("artifacts array");
+        let ota_artifact = artifacts
+            .iter_mut()
+            .find(|artifact| artifact["kind"] == "firmware_ota_image")
+            .expect("ota artifact");
+        ota_artifact["sha256"] = serde_json::json!(sha256_bytes(&ota));
 
         std::fs::write(
             manifest.as_std_path(),
-            format!(
-                r#"{{
-  "schema_version": 2,
-  "release_name": "bitaxe-ultra205",
-  "source_commit": "source-commit",
-  "reference_commit": "reference-commit",
-  "default_flash_image": "{default_flash_image}",
-  "image_metadata": {{
-    "board": "205",
-    "device_model": "Ultra 205",
-    "asic": "BM1366",
-    "esp_idf_version": "v5.5.4",
-    "rust_target": "xtensa-esp32s3-espidf"
-  }},
-  "tool_versions": {{
-    "cargo": "cargo 1.0.0",
-    "rustc": "rustc 1.0.0",
-    "bazel": "bazel 1.0.0",
-    "espflash": "espflash 1.0.0"
-  }},
-  "install_notes": {{"path": "docs/release/ultra-205.md", "summary": "Ultra 205 guide"}},
-  "license_inventory": "docs/release/license-inventory.md",
-  "provenance_manifest": "docs/release/provenance-manifest.md",
-  "otadata_source": "generated-erased-flash",
-  "artifacts": [
-    {{"kind": "firmware_elf", "path": "bitaxe-ultra205.elf", "offset": "Unavailable", "sha256": "00"}},
-    {{"kind": "firmware_ota_image", "path": "esp-miner.bin", "offset": "0x10000", "sha256": "11"}},
-    {{"kind": "www_spiffs_image", "path": "www.bin", "offset": "0x410000", "sha256": "22"}},
-	    {{"kind": "factory_merged_image", "path": "{factory_artifact_path}", "offset": "0x0", "sha256": "33"}},
-    {{"kind": "partition_table", "path": "firmware/bitaxe/partitions-ultra205.csv", "offset": "Unavailable", "sha256": "44"}},
-    {{"kind": "otadata_initial", "path": "otadata-initial.bin", "offset": "0xf10000", "sha256": "55"}}
-  ]
-}}"#
-            ),
+            serde_json::to_string_pretty(&value).expect("manifest json"),
         )
-        .expect("write manifest");
-        manifest
+        .expect("rewrite manifest");
     }
 
     #[derive(Debug)]
@@ -3056,6 +3470,7 @@ mod tests {
         generated_nvs_partitions: RefCell<Vec<(Utf8PathBuf, Utf8PathBuf, String)>>,
         capture_status: CaptureProcessStatus,
         log_contents: String,
+        current_provenance: BuildProvenance,
     }
 
     impl Default for FakeFlashEnvironment {
@@ -3075,6 +3490,14 @@ mod tests {
                 generated_nvs_partitions: RefCell::new(Vec::new()),
                 capture_status: CaptureProcessStatus::ExitedSuccess,
                 log_contents: trusted_monitor_log(),
+                current_provenance: BuildProvenance::new(
+                    "0.1.0",
+                    SOURCE_COMMIT,
+                    false,
+                    None::<&str>,
+                    REFERENCE_COMMIT,
+                )
+                .expect("default provenance"),
             }
         }
 
@@ -3104,6 +3527,11 @@ mod tests {
             self.workspace_dir = workspace_dir;
             self
         }
+
+        fn with_current_provenance(mut self, current_provenance: BuildProvenance) -> Self {
+            self.current_provenance = current_provenance;
+            self
+        }
     }
 
     impl FlashEnvironment for FakeFlashEnvironment {
@@ -3128,8 +3556,17 @@ mod tests {
                 .with_context(|| format!("failed to read fake manifest {path}"))
         }
 
+        fn read_bytes(&self, path: &Utf8Path) -> Result<Vec<u8>> {
+            std::fs::read(path.as_std_path())
+                .with_context(|| format!("failed to read fake artifact {path}"))
+        }
+
         fn path_exists(&self, path: &Utf8Path) -> bool {
             path.is_file()
+        }
+
+        fn current_provenance(&self) -> Result<BuildProvenance> {
+            Ok(self.current_provenance.clone())
         }
 
         fn list_ports(&self) -> Result<String> {

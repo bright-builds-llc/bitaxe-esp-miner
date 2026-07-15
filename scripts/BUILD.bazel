@@ -94,6 +94,14 @@ sh_binary(
     srcs = ["package-firmware.sh"],
 )
 
+sh_test(
+    name = "package_firmware_test",
+    srcs = ["package-firmware-test.sh"],
+    data = ["package-firmware.sh"],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
 sh_binary(
     name = "phase13_firmware_ota_smoke",
     srcs = ["phase13-firmware-ota-smoke.sh"],

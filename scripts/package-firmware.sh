@@ -7,13 +7,13 @@ readonly FIRMWARE_OTA_IMAGE_NAME="esp-miner.bin"
 readonly WWW_IMAGE_NAME="www.bin"
 readonly OTADATA_INITIAL_NAME="otadata-initial.bin"
 readonly FACTORY_IMAGE_NAME="bitaxe-ultra205-factory.bin"
-readonly FACTORY_BASE_IMAGE_NAME="bitaxe-ultra205-factory-base.bin"
 readonly MANIFEST_NAME="bitaxe-ultra205-package.json"
 readonly ULTRA205_PARTITION_TABLE="firmware/bitaxe/partitions-ultra205.csv"
 readonly WWW_SOURCE_DIR="firmware/bitaxe/static/www"
 readonly WWW_SMOKE_ASSET="firmware/bitaxe/static/www/assets/app.css.gz"
 readonly WWW_SPIFFS_SIZE="0x300000"
 readonly WWW_SPIFFS_OBJ_NAME_LEN="64"
+readonly OTA_PARTITION_SIZE_BYTES="$((0x400000))"
 
 detect_workspace_dir() {
 	local maybe_git_dir
@@ -33,7 +33,7 @@ detect_workspace_dir() {
 }
 
 usage() {
-	printf 'usage: %s --firmware-elf <path> --out-dir <path> [--manifest <path>] [--reference-guard <path>]\n' "$0" >&2
+	printf 'usage: %s --firmware-elf <path> --build-provenance-stamp <path> --out-dir <path> [--manifest <path>] [--reference-guard <path>]\n' "$0" >&2
 }
 
 find_spiffsgen() {
@@ -53,7 +53,7 @@ find_spiffsgen() {
 		fi
 	done
 
-	printf 'error: spiffsgen.py not found; run `just doctor` to inspect ESP dependencies\n' >&2
+	printf 'error: spiffsgen.py not found; run just doctor to inspect ESP dependencies\n' >&2
 	printf 'advanced override: set IDF_PATH so IDF_PATH/components/spiffs/spiffsgen.py exists\n' >&2
 	return 1
 }
@@ -74,23 +74,63 @@ find_esptool() {
 		fi
 	done
 
-	printf 'error: esptool.py not found; run `just doctor` to inspect ESP dependencies\n' >&2
+	printf 'error: esptool.py not found; run just doctor to inspect ESP dependencies\n' >&2
 	printf 'expected managed Esptool under .embuild/espressif after the first ESP-IDF firmware build\n' >&2
 	return 1
 }
 
-find_generated_otadata() {
-	local candidate
-	for candidate in \
-		target/xtensa-esp32s3-espidf/release/build/esp-idf-sys-*/out/build/ota_data_initial.bin \
-		target/xtensa-esp32s3-espidf/debug/build/esp-idf-sys-*/out/build/ota_data_initial.bin; do
-		if [[ -f "$candidate" ]]; then
-			printf '%s\n' "$candidate"
-			return 0
+read_stamp_field() {
+	local stamp="$1"
+	local expected_key="$2"
+	local value=""
+	local count=0
+	local key
+	local candidate_value
+	while IFS='=' read -r key candidate_value; do
+		if [[ "$key" == "$expected_key" ]]; then
+			value="$candidate_value"
+			count=$((count + 1))
 		fi
+	done <"$stamp"
+	if [[ "$count" -ne 1 || -z "$value" ]]; then
+		printf 'error: provenance stamp must contain exactly one non-empty %s field\n' "$expected_key" >&2
+		return 1
+	fi
+	printf '%s\n' "$value"
+}
+
+find_generated_idf_build_dir() {
+	local expected_label="$1"
+	local candidates=()
+	if [[ -n "${ESP_IDF_BUILD_DIR:-}" ]]; then
+		candidates+=("$ESP_IDF_BUILD_DIR")
+	else
+		candidates+=(target/xtensa-esp32s3-espidf/release/build/esp-idf-sys-*/out)
+	fi
+
+	local matches=()
+	local candidate
+	for candidate in "${candidates[@]}"; do
+		if [[ ! -f "${candidate}/sdkconfig" ]]; then
+			continue
+		fi
+		if ! grep -Fqx "CONFIG_APP_PROJECT_VER=\"${expected_label}\"" "${candidate}/sdkconfig"; then
+			continue
+		fi
+		if ! grep -Fqx 'CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64' "${candidate}/sdkconfig"; then
+			continue
+		fi
+		if [[ ! -f "${candidate}/build/bootloader/bootloader.bin" || ! -f "${candidate}/build/partition_table/partition-table.bin" || ! -f "${candidate}/build/ota_data_initial.bin" ]]; then
+			continue
+		fi
+		matches+=("$candidate")
 	done
 
-	return 1
+	if [[ "${#matches[@]}" -ne 1 ]]; then
+		printf 'error: expected exactly one generated ESP-IDF build for label %s, found %s\n' "$expected_label" "${#matches[@]}" >&2
+		return 1
+	fi
+	printf '%s\n' "${matches[0]}"
 }
 
 absolute_existing_path() {
@@ -112,13 +152,9 @@ absolute_path() {
 	printf '%s/%s\n' "$(cd "$dir" && pwd)" "$base"
 }
 
-write_erased_otadata() {
-	local output="$1"
-	python3 -c 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"\xff" * 8192)' "$output"
-}
-
 reference_guard="$DEFAULT_REFERENCE_GUARD"
 firmware_elf=""
+build_provenance_stamp=""
 out_dir=""
 manifest=""
 
@@ -148,6 +184,14 @@ while [[ "$#" -gt 0 ]]; do
 			exit 2
 		fi
 		firmware_elf="$2"
+		shift 2
+		;;
+	--build-provenance-stamp)
+		if [[ "$#" -lt 2 ]]; then
+			usage
+			exit 2
+		fi
+		build_provenance_stamp="$2"
 		shift 2
 		;;
 	--out-dir)
@@ -195,6 +239,12 @@ if [[ -z "$out_dir" ]]; then
 	exit 2
 fi
 
+if [[ -z "$build_provenance_stamp" ]]; then
+	printf 'error: missing --build-provenance-stamp <path>\n' >&2
+	usage
+	exit 2
+fi
+
 if [[ ! -f "$firmware_elf" ]]; then
 	printf 'error: firmware ELF path does not exist: %s\n' "$firmware_elf" >&2
 	exit 1
@@ -211,6 +261,7 @@ if [[ -z "$manifest" ]]; then
 fi
 
 firmware_elf="$(absolute_existing_path "$firmware_elf")"
+build_provenance_stamp="$(absolute_existing_path "$build_provenance_stamp")"
 mkdir -p "$out_dir"
 out_dir="$(absolute_existing_path "$out_dir")"
 manifest="$(absolute_path "$manifest")"
@@ -221,25 +272,12 @@ cd "$workspace_dir"
 
 "$reference_guard"
 
-if ! command -v espflash >/dev/null; then
-	printf 'error: espflash not found; run `just doctor` to inspect ESP dependencies\n' >&2
-	printf 'run `just bootstrap-esp` to install espflash through Cargo\n' >&2
-	exit 1
-fi
-
 mkdir -p "$out_dir"
-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/bitaxe-package.XXXXXX")"
-cleanup() {
-	rm -rf "$tmp_dir"
-}
-trap cleanup EXIT
-
 package_elf="${out_dir}/${PACKAGE_ELF_NAME}"
 firmware_ota_image="${out_dir}/${FIRMWARE_OTA_IMAGE_NAME}"
 www_image="${out_dir}/${WWW_IMAGE_NAME}"
 otadata_initial="${out_dir}/${OTADATA_INITIAL_NAME}"
 factory_image="${out_dir}/${FACTORY_IMAGE_NAME}"
-factory_base_image="${tmp_dir}/${FACTORY_BASE_IMAGE_NAME}"
 
 cp "$firmware_elf" "$package_elf"
 
@@ -259,6 +297,12 @@ if [[ ! -f "$WWW_SMOKE_ASSET" ]]; then
 fi
 
 spiffsgen="$(find_spiffsgen)"
+esptool="$(find_esptool)"
+expected_build_label="$(read_stamp_field "$build_provenance_stamp" build_label)"
+generated_idf_build_dir="$(find_generated_idf_build_dir "$expected_build_label")"
+generated_bootloader="${generated_idf_build_dir}/build/bootloader/bootloader.bin"
+generated_partition_table="${generated_idf_build_dir}/build/partition_table/partition-table.bin"
+generated_otadata="${generated_idf_build_dir}/build/ota_data_initial.bin"
 spiffs_cmd=(
 	python3
 	"$spiffsgen"
@@ -275,32 +319,32 @@ printf '\n'
 
 "${spiffs_cmd[@]}"
 
-if generated_otadata="$(find_generated_otadata)"; then
-	cp "$generated_otadata" "$otadata_initial"
-	otadata_source="$generated_otadata"
-else
-	write_erased_otadata "$otadata_initial"
-	otadata_source="generated-erased-flash"
-fi
+cp "$generated_otadata" "$otadata_initial"
+otadata_source="$generated_otadata"
 printf '[package-firmware] otadata_source=%s\n' "$otadata_source"
 
 firmware_ota_cmd=(
-	espflash
-	save-image
+	"$esptool"
 	--chip
 	esp32s3
-	--flash-size
-	16mb
-	--flash-mode
+	elf2image
+	--version
+	2
+	--flash_size
+	16MB
+	--flash_mode
 	dio
-	--flash-freq
-	80mhz
-	--partition-table
-	"$ULTRA205_PARTITION_TABLE"
-	--target-app-partition
-	ota_0
-	"$package_elf"
+	--flash_freq
+	80m
+	--elf-sha256-offset
+	0xb0
+	--min-rev-full
+	0
+	--max-rev-full
+	99
+	-o
 	"$firmware_ota_image"
+	"$package_elf"
 )
 
 printf '[package-firmware] firmware_ota_command='
@@ -308,39 +352,34 @@ printf '%q ' "${firmware_ota_cmd[@]}"
 printf '\n'
 
 if ! "${firmware_ota_cmd[@]}"; then
-	printf 'error: espflash save-image failed for %s; run `just doctor` to inspect ESP dependencies\n' "$FIRMWARE_OTA_IMAGE_NAME" >&2
+	printf 'error: esptool.py elf2image failed for %s; run just doctor to inspect managed .embuild ESP tools\n' "$FIRMWARE_OTA_IMAGE_NAME" >&2
 	exit 1
 fi
 
-espflash_cmd=(
-	espflash
-	save-image
-	--chip
-	esp32s3
-	--flash-size
-	16mb
-	--flash-mode
-	dio
-	--flash-freq
-	80mhz
-	--partition-table
-	"$ULTRA205_PARTITION_TABLE"
-	--skip-padding
-	--merge
-	"$package_elf"
-	"$factory_base_image"
-)
+firmware_ota_size="$(wc -c <"$firmware_ota_image")"
+if [[ "$firmware_ota_size" -gt "$OTA_PARTITION_SIZE_BYTES" ]]; then
+	printf 'error: firmware OTA image is %s bytes, exceeding ota_0 size %s\n' "$firmware_ota_size" "$OTA_PARTITION_SIZE_BYTES" >&2
+	exit 1
+fi
+app_descriptor_info="$("$esptool" image_info --version 2 "$firmware_ota_image")"
+app_descriptor_version=""
+app_elf_sha256=""
+while IFS= read -r line; do
+	case "$line" in
+	"App version: "*) app_descriptor_version="${line#App version: }" ;;
+	"ELF file SHA256: "*) app_elf_sha256="${line#ELF file SHA256: }" ;;
+	esac
+done <<<"$app_descriptor_info"
 
-printf '[package-firmware] factory_base_command='
-printf '%q ' "${espflash_cmd[@]}"
-printf '\n'
-
-if ! "${espflash_cmd[@]}"; then
-	printf 'error: espflash save-image failed for base factory image; run `just doctor` to inspect ESP dependencies\n' >&2
+if [[ -z "$app_descriptor_version" ]]; then
+	printf 'error: ESP application descriptor did not contain App version\n' >&2
+	exit 1
+fi
+if [[ ! "$app_elf_sha256" =~ ^[0-9a-f]{64}$ || "$app_elf_sha256" =~ ^0+$ ]]; then
+	printf 'error: ESP application descriptor did not contain a nonzero lowercase ELF SHA-256\n' >&2
 	exit 1
 fi
 
-esptool="$(find_esptool)"
 factory_merge_cmd=(
 	"$esptool"
 	--chip
@@ -353,7 +392,11 @@ factory_merge_cmd=(
 	--flash_freq
 	80m
 	0x0
-	"$factory_base_image"
+	"$generated_bootloader"
+	0x8000
+	"$generated_partition_table"
+	0x10000
+	"$firmware_ota_image"
 	0x410000
 	"$www_image"
 	0xf10000
@@ -367,7 +410,7 @@ printf '%q ' "${factory_merge_cmd[@]}"
 printf '\n'
 
 if ! "${factory_merge_cmd[@]}"; then
-	printf 'error: esptool.py merge_bin failed for %s; run `just doctor` to inspect managed .embuild ESP tools\n' "$FACTORY_IMAGE_NAME" >&2
+	printf 'error: esptool.py merge_bin failed for %s; run just doctor to inspect managed .embuild ESP tools\n' "$FACTORY_IMAGE_NAME" >&2
 	exit 1
 fi
 
@@ -382,6 +425,12 @@ cargo_cmd=(
 	205
 	--firmware-elf
 	"$package_elf"
+	--build-provenance-stamp
+	"$build_provenance_stamp"
+	--app-descriptor-version
+	"$app_descriptor_version"
+	--app-elf-sha256
+	"$app_elf_sha256"
 	--firmware-ota-image
 	"$firmware_ota_image"
 	--www-bin

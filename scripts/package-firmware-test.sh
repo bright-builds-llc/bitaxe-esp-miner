@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016 # Stub bodies must expand only when the generated scripts execute.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -86,6 +87,11 @@ output="${@: -1}"
 printf "base-image" >"$output"
 '
 	write_executable "${bin_dir}/esptool.py" 'printf "esptool.py %s\n" "$*" >>"${PACKAGE_FIRMWARE_TEST_LOG:?}"
+if [[ " $* " == *" image_info "* ]]; then
+  printf "App version: 0123456789ab-dev\n"
+  printf "ELF file SHA256: 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef\n"
+  exit 0
+fi
 output=""
 previous=""
 for arg in "$@"; do
@@ -126,30 +132,43 @@ create_reference_guard() {
 	write_executable "$path" 'printf "reference clean\n"'
 }
 
-test_package_script_uses_esptool_merge_bin() {
+test_package_script_uses_managed_esptool_images() {
 	local bin_dir="${tmp_root}/bin"
 	local idf_path="${tmp_root}/idf"
 	local out_dir="${tmp_root}/out"
 	local firmware_elf="${tmp_root}/firmware.elf"
+	local build_provenance_stamp="${tmp_root}/build-provenance.stamp"
+	local generated_idf_build_dir="${tmp_root}/generated-idf"
 	local reference_guard="${tmp_root}/verify-reference-clean.sh"
 	local output_file="${tmp_root}/package.out"
 	local log_file="${tmp_root}/commands.log"
 
 	create_tool_stubs "$bin_dir"
 	create_reference_guard "$reference_guard"
-	mkdir -p "${idf_path}/components/spiffs" "$out_dir"
+	mkdir -p \
+		"${idf_path}/components/spiffs" \
+		"${generated_idf_build_dir}/build/bootloader" \
+		"${generated_idf_build_dir}/build/partition_table" \
+		"$out_dir"
 	touch "${idf_path}/components/spiffs/spiffsgen.py"
 	printf 'elf' >"$firmware_elf"
+	printf 'build_label=0123456789ab-dev\n' >"$build_provenance_stamp"
+	printf 'CONFIG_APP_PROJECT_VER="0123456789ab-dev"\nCONFIG_APP_RETRIEVE_LEN_ELF_SHA=64\n' >"${generated_idf_build_dir}/sdkconfig"
+	printf 'bootloader' >"${generated_idf_build_dir}/build/bootloader/bootloader.bin"
+	printf 'partitions' >"${generated_idf_build_dir}/build/partition_table/partition-table.bin"
+	printf 'otadata' >"${generated_idf_build_dir}/build/ota_data_initial.bin"
 	: >"$log_file"
 
 	if ! capture_command "$output_file" env \
 		HOME="${tmp_root}/home" \
 		IDF_PATH="$idf_path" \
+		ESP_IDF_BUILD_DIR="$generated_idf_build_dir" \
 		PACKAGE_FIRMWARE_TEST_LOG="$log_file" \
 		PATH="${bin_dir}:${PATH}" \
 		"$BASH" "$package_script" \
 		--reference-guard "$reference_guard" \
 		--firmware-elf "$firmware_elf" \
+		--build-provenance-stamp "$build_provenance_stamp" \
 		--out-dir "$out_dir" \
 		--manifest "${out_dir}/bitaxe-ultra205-package.json"; then
 		printf 'Package output:\n%s\n' "$(cat "$output_file")" >&2
@@ -159,12 +178,19 @@ test_package_script_uses_esptool_merge_bin() {
 
 	local output
 	output="$(cat "$output_file")"$'\n'"$(cat "$log_file")"
-	assert_contains "$output" "[package-firmware] factory_base_command="
+	assert_contains "$output" "[package-firmware] firmware_ota_command="
 	assert_contains "$output" "[package-firmware] factory_merge_command="
 	assert_contains "$output" "--obj-name-len 64"
-	assert_contains "$output" "--skip-padding"
 	assert_contains "$output" "esptool.py --chip esp32s3 merge_bin"
+	assert_contains "$output" "esptool.py image_info --version 2"
+	assert_contains "$output" "esptool.py --chip esp32s3 elf2image"
+	assert_contains "$output" "--elf-sha256-offset 0xb0"
+	assert_contains "$output" "--build-provenance-stamp"
+	assert_contains "$output" "--app-descriptor-version 0123456789ab-dev"
+	assert_contains "$output" "--app-elf-sha256 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 	assert_contains "$output" "0x0"
+	assert_contains "$output" "0x8000"
+	assert_contains "$output" "0x10000"
 	assert_contains "$output" "0x410000"
 	assert_contains "$output" "0xf10000"
 	assert_contains "$output" "bitaxe-ultra205-factory.bin"
@@ -176,6 +202,6 @@ if [[ ! -f "$package_script" ]]; then
 fi
 
 cd "$workspace_dir"
-test_package_script_uses_esptool_merge_bin
+test_package_script_uses_managed_esptool_images
 
 printf 'package firmware tests passed\n'

@@ -196,11 +196,13 @@ name = "bitaxe-flash"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitaxe-api",
  "bitaxe-config",
  "camino",
  "clap",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
 ]
 

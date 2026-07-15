@@ -13,7 +13,7 @@ mod package_manifest;
 mod partition_contract;
 
 use package_manifest::{
-    build_manifest, read_manifest_v2, validate_default_flash_image, validate_package_manifest_v2,
+    build_manifest, read_manifest_v3, validate_default_flash_image, validate_package_manifest_v3,
     write_manifest,
 };
 
@@ -22,7 +22,6 @@ const UNAVAILABLE: &str = "Unavailable";
 const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
 const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
 const DEFAULT_REFERENCE_GUARD: &str = "scripts/verify-reference-clean.sh";
-const DEFAULT_REFERENCE_DIR: &str = "reference/esp-miner";
 const ESP_IDF_VERSION: &str = "v5.5.4";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";
 const WWW_IMAGE_OFFSET: usize = 0x410000;
@@ -65,6 +64,15 @@ struct PackageArgs {
 
     #[arg(long = "firmware-elf", value_parser = parse_utf8_path)]
     firmware_elf: Utf8PathBuf,
+
+    #[arg(long = "build-provenance-stamp", value_parser = parse_utf8_path)]
+    build_provenance_stamp: Utf8PathBuf,
+
+    #[arg(long = "app-descriptor-version")]
+    app_descriptor_version: String,
+
+    #[arg(long = "app-elf-sha256")]
+    app_elf_sha256: String,
 
     #[arg(long = "firmware-ota-image", value_parser = parse_utf8_path)]
     firmware_ota_image: Utf8PathBuf,
@@ -119,6 +127,9 @@ struct ValidatePackageArgs {
 struct PackageRequest {
     board: BoardId,
     firmware_elf: Utf8PathBuf,
+    build_provenance_stamp: Utf8PathBuf,
+    app_descriptor_version: String,
+    app_elf_sha256: String,
     firmware_ota_image: Utf8PathBuf,
     www_bin: Utf8PathBuf,
     partition_table: Utf8PathBuf,
@@ -139,6 +150,9 @@ impl From<PackageArgs> for PackageRequest {
         Self {
             board: args.board,
             firmware_elf: args.firmware_elf,
+            build_provenance_stamp: args.build_provenance_stamp,
+            app_descriptor_version: args.app_descriptor_version,
+            app_elf_sha256: args.app_elf_sha256,
             firmware_ota_image: args.firmware_ota_image,
             www_bin: args.www_bin,
             partition_table: args.partition_table,
@@ -188,8 +202,6 @@ impl fmt::Display for BoardId {
 
 trait PackageEnvironment {
     fn run_reference_guard(&self) -> Result<()>;
-    fn firmware_commit(&self) -> Result<String>;
-    fn reference_commit(&self) -> Result<String>;
     fn maybe_tool_version(&self, tool: &str) -> Option<String>;
 }
 
@@ -226,28 +238,6 @@ impl PackageEnvironment for LocalPackageEnvironment {
             "reference guard blocked package manifest generation: {}",
             command_stderr_or_status(&output)
         );
-    }
-
-    fn firmware_commit(&self) -> Result<String> {
-        command_stdout_trimmed(
-            ProcessCommand::new("git")
-                .current_dir(self.workspace_dir.as_std_path())
-                .arg("rev-parse")
-                .arg("HEAD"),
-            "git rev-parse HEAD",
-        )
-    }
-
-    fn reference_commit(&self) -> Result<String> {
-        let reference_dir = self.workspace_dir.join(DEFAULT_REFERENCE_DIR);
-        command_stdout_trimmed(
-            ProcessCommand::new("git")
-                .arg("-C")
-                .arg(reference_dir.as_str())
-                .arg("rev-parse")
-                .arg("HEAD"),
-            "git -C reference/esp-miner rev-parse HEAD",
-        )
     }
 
     fn maybe_tool_version(&self, tool: &str) -> Option<String> {
@@ -289,91 +279,17 @@ fn main() -> Result<()> {
 fn materialize_build_provenance(args: &MaterializeBuildProvenanceArgs) -> Result<()> {
     let status = fs::read_to_string(args.status_file.as_std_path())
         .with_context(|| format!("failed to read workspace status {}", args.status_file))?;
-    let fields = parse_bitaxe_workspace_status(&status)?;
-    let source_dirty = match fields.source_dirty.as_str() {
-        "true" => true,
-        "false" => false,
-        _ => bail!("STABLE_BITAXE_SOURCE_DIRTY must be true or false"),
-    };
-    let maybe_release_tag = if fields.release_tag == "unavailable" {
-        None
-    } else {
-        Some(fields.release_tag)
-    };
-    let provenance = BuildProvenance::new(
-        fields.semantic_version,
-        fields.source_commit,
-        source_dirty,
-        maybe_release_tag,
-        fields.reference_commit,
-    )
-    .context("invalid Bitaxe build provenance")?;
+    let provenance = BuildProvenance::parse_workspace_status(&status)
+        .context("invalid Bitaxe build provenance")?;
 
     write_parented_file(&args.stamp_out, &provenance.render_stamp())?;
     write_parented_file(
         &args.sdkconfig_defaults_out,
         &format!(
-            "CONFIG_APP_PROJECT_VER_FROM_CONFIG=y\nCONFIG_APP_PROJECT_VER=\"{}\"\n",
+            "CONFIG_APP_PROJECT_VER_FROM_CONFIG=y\nCONFIG_APP_PROJECT_VER=\"{}\"\nCONFIG_APP_RETRIEVE_LEN_ELF_SHA=64\n",
             provenance.build_identity().build_label()
         ),
     )
-}
-
-#[derive(Debug, Eq, PartialEq)]
-struct WorkspaceStatusFields {
-    source_commit: String,
-    source_dirty: String,
-    release_tag: String,
-    semantic_version: String,
-    reference_commit: String,
-}
-
-fn parse_bitaxe_workspace_status(status: &str) -> Result<WorkspaceStatusFields> {
-    use std::collections::BTreeMap;
-
-    const EXPECTED_KEYS: [&str; 5] = [
-        "STABLE_BITAXE_SOURCE_COMMIT",
-        "STABLE_BITAXE_SOURCE_DIRTY",
-        "STABLE_BITAXE_RELEASE_TAG",
-        "STABLE_BITAXE_SEMANTIC_VERSION",
-        "STABLE_BITAXE_REFERENCE_COMMIT",
-    ];
-
-    let mut fields = BTreeMap::new();
-    for line in status.lines() {
-        let mut parts = line.split_ascii_whitespace();
-        let Some(key) = parts.next() else {
-            continue;
-        };
-        if key.starts_with("STABLE_BITAXE_") && !EXPECTED_KEYS.contains(&key) {
-            bail!("unknown Bitaxe workspace status key {key}");
-        }
-        if !EXPECTED_KEYS.contains(&key) {
-            continue;
-        }
-        let Some(value) = parts.next() else {
-            bail!("workspace status key {key} has no value");
-        };
-        if parts.next().is_some() {
-            bail!("workspace status key {key} has multiple values");
-        }
-        if fields.insert(key.to_owned(), value.to_owned()).is_some() {
-            bail!("duplicate Bitaxe workspace status key {key}");
-        }
-    }
-
-    let mut take = |key: &str| {
-        fields
-            .remove(key)
-            .with_context(|| format!("missing Bitaxe workspace status key {key}"))
-    };
-    Ok(WorkspaceStatusFields {
-        source_commit: take("STABLE_BITAXE_SOURCE_COMMIT")?,
-        source_dirty: take("STABLE_BITAXE_SOURCE_DIRTY")?,
-        release_tag: take("STABLE_BITAXE_RELEASE_TAG")?,
-        semantic_version: take("STABLE_BITAXE_SEMANTIC_VERSION")?,
-        reference_commit: take("STABLE_BITAXE_REFERENCE_COMMIT")?,
-    })
 }
 
 fn write_parented_file(path: &Utf8PathBuf, contents: &str) -> Result<()> {
@@ -398,7 +314,7 @@ fn run_package_firmware(
             package_request.out_dir
         )
     })?;
-    validate_package_manifest_v2(&manifest)?;
+    validate_package_manifest_v3(&manifest)?;
     write_manifest(&package_request.manifest, &manifest)?;
     run_validate_package(&ValidatePackageArgs {
         manifest: package_request.manifest.clone(),
@@ -407,8 +323,8 @@ fn run_package_firmware(
 }
 
 fn run_validate_package(args: &ValidatePackageArgs) -> Result<()> {
-    let manifest = read_manifest_v2(&args.manifest)?;
-    validate_package_manifest_v2(&manifest)?;
+    let manifest = read_manifest_v3(&args.manifest)?;
+    validate_package_manifest_v3(&manifest)?;
     partition_contract::validate_ultra205_partition_contract(&args.partition_table)
 }
 
@@ -424,6 +340,13 @@ fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
         bail!(
             "firmware ELF does not exist: {}",
             package_request.firmware_elf
+        );
+    }
+
+    if !package_request.build_provenance_stamp.is_file() {
+        bail!(
+            "build provenance stamp does not exist: {}",
+            package_request.build_provenance_stamp
         );
     }
 
@@ -477,7 +400,7 @@ fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
             "otadata-initial.bin",
         )?;
     } else {
-        bail!("factory image is required for package manifest v2");
+        bail!("factory image is required for package manifest v3");
     }
 
     if package_request.release_name.trim().is_empty() {
@@ -571,28 +494,6 @@ fn detect_workspace_dir() -> Result<Utf8PathBuf> {
     Ok(Utf8PathBuf::from(trimmed))
 }
 
-fn command_stdout_trimmed(command: &mut ProcessCommand, description: &str) -> Result<String> {
-    let output = command
-        .output()
-        .with_context(|| format!("failed to run {description}"))?;
-
-    if !output.status.success() {
-        bail!(
-            "{description} failed: {}",
-            command_stderr_or_status(&output)
-        );
-    }
-
-    let stdout = String::from_utf8(output.stdout)
-        .with_context(|| format!("{description} output was not valid UTF-8"))?;
-    let trimmed = stdout.trim();
-    if trimmed.is_empty() {
-        bail!("{description} output was empty");
-    }
-
-    Ok(trimmed.to_owned())
-}
-
 fn command_stderr_or_status(output: &std::process::Output) -> String {
     let stderr = String::from_utf8_lossy(&output.stderr);
     let trimmed_stderr = stderr.trim();
@@ -611,6 +512,8 @@ mod tests {
     use tempfile::{tempdir, TempDir};
 
     const BUILD_STATUS: &str = "BUILD_USER local\nSTABLE_BITAXE_SOURCE_COMMIT 0123456789abcdef0123456789abcdef01234567\nSTABLE_BITAXE_SOURCE_DIRTY true\nSTABLE_BITAXE_RELEASE_TAG unavailable\nSTABLE_BITAXE_SEMANTIC_VERSION 0.1.0\nSTABLE_BITAXE_REFERENCE_COMMIT abcdef0123456789abcdef0123456789abcdef01\n";
+    const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
+    const APP_ELF_SHA256: &str = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 
     #[test]
     fn materialize_build_provenance_writes_canonical_stamp_and_sdkconfig() {
@@ -643,7 +546,7 @@ mod tests {
         );
         assert_eq!(
             fs::read_to_string(sdkconfig_defaults_out).expect("read defaults"),
-            "CONFIG_APP_PROJECT_VER_FROM_CONFIG=y\nCONFIG_APP_PROJECT_VER=\"0123456789ab-dirty-dev\"\n"
+            "CONFIG_APP_PROJECT_VER_FROM_CONFIG=y\nCONFIG_APP_PROJECT_VER=\"0123456789ab-dirty-dev\"\nCONFIG_APP_RETRIEVE_LEN_ELF_SHA=64\n"
         );
     }
 
@@ -655,9 +558,9 @@ mod tests {
         let missing = BUILD_STATUS.replace("STABLE_BITAXE_SEMANTIC_VERSION 0.1.0\n", "");
 
         // Act / Assert
-        assert!(parse_bitaxe_workspace_status(&unknown).is_err());
-        assert!(parse_bitaxe_workspace_status(&duplicate).is_err());
-        assert!(parse_bitaxe_workspace_status(&missing).is_err());
+        assert!(BuildProvenance::parse_workspace_status(&unknown).is_err());
+        assert!(BuildProvenance::parse_workspace_status(&duplicate).is_err());
+        assert!(BuildProvenance::parse_workspace_status(&missing).is_err());
     }
 
     #[test]
@@ -676,7 +579,7 @@ mod tests {
         let manifest = build_manifest(&request, &environment).expect("manifest");
 
         // Assert
-        assert_eq!(manifest.schema_version, 2);
+        assert_eq!(manifest.schema_version, 3);
         assert_eq!(manifest.image_metadata.board, "205");
         assert_eq!(manifest.image_metadata.device_model, "Ultra 205");
         assert_eq!(manifest.image_metadata.asic, "BM1366");
@@ -952,10 +855,18 @@ mod tests {
         }
 
         let mut manifest = serde_json::json!({
-            "schema_version": 2,
+            "schema_version": 3,
             "release_name": "bitaxe-ultra205-v1",
-            "source_commit": "source-commit",
+            "semantic_version": "0.1.0",
+            "source_commit": SOURCE_COMMIT,
             "reference_commit": EXPECTED_REFERENCE_COMMIT,
+            "app_elf_sha256": APP_ELF_SHA256,
+            "build_identity": {
+                "label": "0123456789ab-dev",
+                "channel": "dev",
+                "source_dirty": false,
+                "release_tag": null
+            },
             "default_flash_image": "bitaxe-ultra205.elf",
             "image_metadata": {
                 "board": "205",
@@ -982,7 +893,7 @@ mod tests {
             });
         }
 
-        let path = temp_path(dir, "manifest-v2.json");
+        let path = temp_path(dir, "manifest-v3.json");
         std::fs::write(
             path.as_std_path(),
             serde_json::to_string_pretty(&manifest).expect("manifest json"),
@@ -1030,6 +941,19 @@ mod tests {
         let install_notes = temp_path(dir, "ultra-205.md");
         let license_inventory = temp_path(dir, "license-inventory.md");
         let provenance_manifest = temp_path(dir, "provenance-manifest.md");
+        let build_provenance_stamp = temp_path(dir, "build-provenance.stamp");
+        let provenance = BuildProvenance::new(
+            "0.1.0",
+            SOURCE_COMMIT,
+            false,
+            None::<&str>,
+            EXPECTED_REFERENCE_COMMIT,
+        )
+        .expect("valid provenance");
+        write_fixture(
+            &build_provenance_stamp,
+            provenance.render_stamp().as_bytes(),
+        );
         for path in [
             &firmware_ota_image,
             &www_bin,
@@ -1047,6 +971,9 @@ mod tests {
         PackageRequest {
             board: BoardId::Ultra205,
             firmware_elf: temp_path(dir, DEFAULT_ELF_NAME),
+            build_provenance_stamp,
+            app_descriptor_version: "0123456789ab-dev".to_owned(),
+            app_elf_sha256: APP_ELF_SHA256.to_owned(),
             firmware_ota_image,
             www_bin,
             partition_table,
@@ -1099,14 +1026,6 @@ mod tests {
             }
 
             Ok(())
-        }
-
-        fn firmware_commit(&self) -> Result<String> {
-            Ok("firmware-commit".to_owned())
-        }
-
-        fn reference_commit(&self) -> Result<String> {
-            Ok(EXPECTED_REFERENCE_COMMIT.to_owned())
         }
 
         fn maybe_tool_version(&self, tool: &str) -> Option<String> {

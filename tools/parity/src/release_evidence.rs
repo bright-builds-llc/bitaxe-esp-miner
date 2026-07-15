@@ -2,16 +2,28 @@ use anyhow::{Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::Deserialize;
 
+use bitaxe_api::BuildProvenance;
+
 const PACKAGE_MANIFEST_FILE_NAME: &str = "bitaxe-ultra205-package.json";
 const FACTORY_IMAGE_FILE_NAME: &str = "bitaxe-ultra205-factory.bin";
-const MIN_OBSERVED_COMMIT_PREFIX_LENGTH: usize = 12;
-
 #[derive(Debug, Deserialize, Eq, PartialEq)]
 pub(crate) struct ReleaseEvidenceManifest {
+    pub(crate) schema_version: u32,
+    pub(crate) semantic_version: String,
     pub(crate) source_commit: String,
     pub(crate) reference_commit: String,
+    pub(crate) app_elf_sha256: String,
+    pub(crate) build_identity: ReleaseEvidenceBuildIdentity,
     #[serde(default)]
     pub(crate) artifacts: Vec<ReleaseEvidenceArtifact>,
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq)]
+pub(crate) struct ReleaseEvidenceBuildIdentity {
+    pub(crate) label: String,
+    pub(crate) channel: String,
+    pub(crate) source_dirty: bool,
+    pub(crate) release_tag: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -112,6 +124,7 @@ pub(crate) fn validate_release_evidence(
 ) -> ReleaseEvidenceReport {
     let mut validation_errors = Vec::new();
 
+    validate_manifest_identity(&mut validation_errors, documents);
     validate_current_commit(&mut validation_errors, documents);
     validate_redaction_review(&mut validation_errors, documents, require_redaction_passed);
 
@@ -120,6 +133,49 @@ pub(crate) fn validate_release_evidence(
     }
 
     ReleaseEvidenceReport { validation_errors }
+}
+
+fn validate_manifest_identity(
+    validation_errors: &mut Vec<String>,
+    documents: &ReleaseEvidenceDocuments,
+) {
+    let manifest = &documents.manifest;
+    if manifest.schema_version != 3 {
+        validation_errors.push("package manifest schema_version must be 3".to_owned());
+        return;
+    }
+    let provenance = match BuildProvenance::new(
+        &manifest.semantic_version,
+        &manifest.source_commit,
+        manifest.build_identity.source_dirty,
+        manifest.build_identity.release_tag.as_deref(),
+        &manifest.reference_commit,
+    ) {
+        Ok(provenance) => provenance,
+        Err(error) => {
+            validation_errors.push(format!("package build identity is invalid: {error}"));
+            return;
+        }
+    };
+    let identity = provenance.build_identity();
+    if manifest.build_identity.label != identity.build_label()
+        || manifest.build_identity.channel != identity.build_channel().as_str()
+    {
+        validation_errors.push("package build identity fields are contradictory".to_owned());
+    }
+    if identity.source_dirty() {
+        validation_errors.push("dirty package cannot qualify release evidence".to_owned());
+    }
+    let valid_app_hash = manifest.app_elf_sha256.len() == 64
+        && manifest
+            .app_elf_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        && manifest.app_elf_sha256.bytes().any(|byte| byte != b'0');
+    if !valid_app_hash {
+        validation_errors
+            .push("package app_elf_sha256 must be a nonzero lowercase SHA-256".to_owned());
+    }
 }
 
 pub(crate) fn render_release_evidence_report(
@@ -316,8 +372,6 @@ fn validate_flash_evidence(
 
 fn observed_firmware_commit_matches(source_commit: &str, observed_commit: &str) -> bool {
     observed_commit == source_commit
-        || (observed_commit.len() >= MIN_OBSERVED_COMMIT_PREFIX_LENGTH
-            && source_commit.starts_with(observed_commit))
 }
 
 fn flash_evidence_references_factory_image(flash_evidence: &ReleaseEvidenceFlashEvidence) -> bool {
@@ -404,6 +458,27 @@ mod tests {
         assert_error(
             &report,
             "current git HEAD does not match package source_commit",
+        );
+    }
+
+    #[test]
+    fn release_evidence_rejects_v2_and_dirty_manifests() {
+        // Arrange
+        let mut v2_documents = complete_documents();
+        v2_documents.manifest.schema_version = 2;
+        let mut dirty_documents = complete_documents();
+        dirty_documents.manifest.build_identity.source_dirty = true;
+        dirty_documents.manifest.build_identity.label = "0123456789ab-dirty-dev".to_owned();
+
+        // Act
+        let v2_report = validate_release_evidence(&v2_documents, false);
+        let dirty_report = validate_release_evidence(&dirty_documents, false);
+
+        // Assert
+        assert_error(&v2_report, "package manifest schema_version must be 3");
+        assert_error(
+            &dirty_report,
+            "dirty package cannot qualify release evidence",
         );
     }
 
@@ -582,14 +657,14 @@ mod tests {
     }
 
     #[test]
-    fn release_evidence_rejects_short_observed_commit_prefix() {
+    fn release_evidence_rejects_observed_commit_prefix() {
         // Arrange
         let mut documents = complete_documents();
         documents
             .maybe_flash_evidence
             .as_mut()
             .expect("flash evidence")
-            .observed_firmware_commit = SOURCE_COMMIT[..11].to_owned();
+            .observed_firmware_commit = SOURCE_COMMIT[..12].to_owned();
 
         // Act
         let report = validate_release_evidence(&documents, false);
@@ -601,8 +676,17 @@ mod tests {
     fn complete_documents() -> ReleaseEvidenceDocuments {
         ReleaseEvidenceDocuments {
             manifest: ReleaseEvidenceManifest {
+                schema_version: 3,
+                semantic_version: "0.1.0".to_owned(),
                 source_commit: SOURCE_COMMIT.to_owned(),
                 reference_commit: REFERENCE_COMMIT.to_owned(),
+                app_elf_sha256: "6".repeat(64),
+                build_identity: ReleaseEvidenceBuildIdentity {
+                    label: "0123456789ab-dev".to_owned(),
+                    channel: "dev".to_owned(),
+                    source_dirty: false,
+                    release_tag: None,
+                },
                 artifacts: vec![
                     ReleaseEvidenceArtifact {
                         path: "esp-miner.bin".to_owned(),
@@ -629,7 +713,7 @@ mod tests {
                     "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
                 ),
                 trusted_output: true,
-                observed_firmware_commit: SOURCE_COMMIT[..12].to_owned(),
+                observed_firmware_commit: SOURCE_COMMIT.to_owned(),
                 observed_reference_commit: REFERENCE_COMMIT.to_owned(),
                 flash_image_path: Some(Utf8PathBuf::from(
                     "bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin",

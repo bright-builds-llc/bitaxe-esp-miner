@@ -1,6 +1,8 @@
 use camino::Utf8PathBuf;
 use serde_json::Value;
 
+use bitaxe_api::BuildProvenance;
+
 pub(crate) const DEFAULT_LICENSE_INVENTORY_PATH: &str = "docs/release/license-inventory.md";
 pub(crate) const DEFAULT_PROVENANCE_PATH: &str = "docs/release/provenance-manifest.md";
 pub(crate) const DEFAULT_CARGO_ABOUT_PATH: &str = "docs/release/cargo-about.html";
@@ -227,6 +229,7 @@ fn validate_manifest_if_provided(
 
     validate_manifest_schema_version(errors, manifest_path, &manifest);
     validate_manifest_required_strings(errors, manifest_path, &manifest);
+    validate_manifest_build_identity(errors, manifest_path, &manifest);
     validate_manifest_exact_strings(errors, manifest_path, &manifest);
     validate_manifest_path(errors, manifest_path);
     validate_manifest_required_artifacts(errors, manifest_path, &manifest);
@@ -237,12 +240,12 @@ fn validate_manifest_schema_version(
     manifest_path: &Utf8PathBuf,
     manifest: &Value,
 ) {
-    if manifest.get("schema_version").and_then(Value::as_u64) == Some(2) {
+    if manifest.get("schema_version").and_then(Value::as_u64) == Some(3) {
         return;
     }
 
     errors.push(format!(
-        "package manifest `{manifest_path}` schema_version must be 2"
+        "package manifest `{manifest_path}` schema_version must be 3"
     ));
 }
 
@@ -252,8 +255,12 @@ fn validate_manifest_required_strings(
     manifest: &Value,
 ) {
     for (pointer, label) in [
+        ("/semantic_version", "semantic_version"),
         ("/source_commit", "source_commit"),
         ("/reference_commit", "reference_commit"),
+        ("/app_elf_sha256", "app_elf_sha256"),
+        ("/build_identity/label", "build_identity.label"),
+        ("/build_identity/channel", "build_identity.channel"),
         ("/otadata_source", "otadata_source"),
         ("/tool_versions/espflash", "tool_versions.espflash"),
     ] {
@@ -264,6 +271,90 @@ fn validate_manifest_required_strings(
 
         errors.push(format!(
             "package manifest `{manifest_path}` field `{label}` must be non-empty"
+        ));
+    }
+}
+
+fn validate_manifest_build_identity(
+    errors: &mut Vec<String>,
+    manifest_path: &Utf8PathBuf,
+    manifest: &Value,
+) {
+    let Some(semantic_version) = manifest.get("semantic_version").and_then(Value::as_str) else {
+        return;
+    };
+    let Some(source_commit) = manifest.get("source_commit").and_then(Value::as_str) else {
+        return;
+    };
+    let Some(reference_commit) = manifest.get("reference_commit").and_then(Value::as_str) else {
+        return;
+    };
+    let Some(source_dirty) = manifest
+        .pointer("/build_identity/source_dirty")
+        .and_then(Value::as_bool)
+    else {
+        errors.push(format!(
+            "package manifest `{manifest_path}` field `build_identity.source_dirty` must be boolean"
+        ));
+        return;
+    };
+    let maybe_release_tag = match manifest.pointer("/build_identity/release_tag") {
+        Some(Value::String(release_tag)) => Some(release_tag.as_str()),
+        Some(Value::Null) => None,
+        _ => {
+            errors.push(format!(
+                "package manifest `{manifest_path}` field `build_identity.release_tag` must be a string or null"
+            ));
+            return;
+        }
+    };
+    let provenance = match BuildProvenance::new(
+        semantic_version,
+        source_commit,
+        source_dirty,
+        maybe_release_tag,
+        reference_commit,
+    ) {
+        Ok(provenance) => provenance,
+        Err(error) => {
+            errors.push(format!(
+                "package manifest `{manifest_path}` build identity is invalid: {error}"
+            ));
+            return;
+        }
+    };
+    let identity = provenance.build_identity();
+    let label_matches = manifest
+        .pointer("/build_identity/label")
+        .and_then(Value::as_str)
+        == Some(identity.build_label());
+    let channel_matches = manifest
+        .pointer("/build_identity/channel")
+        .and_then(Value::as_str)
+        == Some(identity.build_channel().as_str());
+    if !label_matches || !channel_matches {
+        errors.push(format!(
+            "package manifest `{manifest_path}` build identity fields are contradictory"
+        ));
+    }
+    if source_dirty {
+        errors.push(format!(
+            "package manifest `{manifest_path}` is dirty and cannot qualify release evidence"
+        ));
+    }
+
+    let app_elf_sha256 = manifest
+        .get("app_elf_sha256")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let valid_app_hash = app_elf_sha256.len() == 64
+        && app_elf_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        && app_elf_sha256.bytes().any(|byte| byte != b'0');
+    if !valid_app_hash {
+        errors.push(format!(
+            "package manifest `{manifest_path}` app_elf_sha256 must be a nonzero lowercase SHA-256"
         ));
     }
 }
@@ -785,7 +876,7 @@ mod tests {
     }
 
     #[test]
-    fn release_gate_manifest_requires_schema_two() {
+    fn release_gate_manifest_requires_schema_three() {
         // Arrange
         let mut manifest = valid_manifest_value();
         manifest["schema_version"] = serde_json::json!(1);
@@ -799,7 +890,7 @@ mod tests {
         assert!(report
             .errors
             .iter()
-            .any(|error| error.contains("schema_version") && error.contains('2')));
+            .any(|error| error.contains("schema_version") && error.contains('3')));
     }
 
     #[test]
@@ -940,10 +1031,18 @@ mod tests {
 
     fn valid_manifest_value() -> serde_json::Value {
         serde_json::json!({
-            "schema_version": 2,
+            "schema_version": 3,
             "release_name": "bitaxe-ultra205",
-            "source_commit": "abc123",
+            "semantic_version": "0.1.0",
+            "source_commit": "0123456789abcdef0123456789abcdef01234567",
             "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+            "app_elf_sha256": "6".repeat(64),
+            "build_identity": {
+                "label": "0123456789ab-dev",
+                "channel": "dev",
+                "source_dirty": false,
+                "release_tag": null
+            },
             "default_flash_image": "bitaxe-ultra205.elf",
             "image_metadata": {
                 "board": "205",
