@@ -14,7 +14,7 @@ generated_at: 2026-07-14T01:54:30.445Z
 <domain>
 ## Phase Boundary
 
-Phase 33 makes `hostname` the only effectful v1.2 settings PATCH and makes its public success mean serialized NVS write, commit, independent reload, typed reconciliation, atomic publication, immediate readback, and preservation across one approved normal reboot on the same detector-gated Ultra 205. It preserves existing compatibility responses for every other field without granting those inputs write authority or hardware effects. Phase 34 still owns the globally revisioned coherent operator snapshot, and Phase 35 still owns final correlated evidence admission and parity promotion.
+Phase 33 makes `hostname` the only effectful v1.2 settings PATCH and makes its public success mean serialized NVS write, commit, independent reload, typed reconciliation, atomic publication, and immediate readback. It preserves existing compatibility responses for every other field without granting those inputs write authority or hardware effects, and supplies a fail-closed evidence classifier for later exact-current-package reboot qualification. Phase 34 still owns the globally revisioned coherent operator snapshot, and Phase 35 owns CFG-12 closure, final correlated evidence admission, and parity promotion.
 
 </domain>
 
@@ -51,6 +51,14 @@ Phase 33 makes `hostname` the only effectful v1.2 settings PATCH and makes its p
 - Whether the atomic confirmed snapshot lives in the existing settings store or a narrowed confirmed-settings store, provided every immediate consumer reads the same reloaded truth and requested-write overlays are impossible.
 - Exact repo-owned Phase 33 evidence helper or narrow flash-tool extension, provided it enforces the detector, passive-session, same-board, timeout, redaction, and cleanup contract without reviving archived or direct-UART/pin paths.
 - Exact category-only retained log labels and digest formats, provided they are stable, deterministic, and never expose settings values beyond the intentionally generated non-secret hostname proof.
+
+### Superseding Phase Disposition
+
+- The software transaction, immediate publication, inert compatibility behavior, and fail-closed evidence-readiness contract are the Phase 33 completion boundary.
+- The exact `a630455` run remains credible historical proof for that exact package only. It cannot qualify later firmware and remains non-promotional.
+- CFG-12 remains pending under Phase 35. One final detector-gated exact-current-package run must jointly close CFG-12 and EVD-13 through the correlated pre-PATCH, storage-confirmed immediate, and same-board post-reboot hostname chain.
+- No administrative remapping supplies physical evidence or weakens exact-source, identity, cleanup, redaction, restoration, or no-retry gates.
+- No additional Phase 33 hardware attempt is permitted.
 
 </decisions>
 

@@ -108,7 +108,7 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | CFG-09 | Phase 33 | Complete |
 | CFG-10 | Phase 33 | Complete |
 | CFG-11 | Phase 33 | Complete |
-| CFG-12 | Phase 33 | Pending |
+| CFG-12 | Phase 35 | Pending |
 | CFG-13 | Phase 33 | Complete |
 | SYS-01 | Phase 34 | Pending |
 | SYS-02 | Phase 34 | Pending |
@@ -134,4 +134,4 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 - Duplicate mappings: 0
 
 *Requirements defined: 2026-07-13*
-*Last updated: 2026-07-15 after Phase 33 current-source verification*
+*Last updated: 2026-07-15 after CFG-12 ownership moved to Phase 35*

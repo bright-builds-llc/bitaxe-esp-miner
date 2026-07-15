@@ -18,7 +18,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 
 - [x] **Phase 31: Operator Claim and Telemetry Contract** — Define truthful observation, settings, health, and promotion states before effectful integration. (completed 2026-07-13)
 - [x] **Phase 32: Shared I2C and Read-Only Sensor Acquisition** — Establish one bounded I2C0 owner for startup display handoff and read-only INA260/EMC2101 observations. (completed 2026-07-14)
-- [ ] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, immediately visible, and reboot-durable storage truth. (verification gaps found 2026-07-15; the sole hardware proof covers `a630455`, not current HEAD)
+- [x] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, and immediately visible storage truth, with a fail-closed classifier ready for later reboot qualification. (completed 2026-07-15 on the remapped software boundary; CFG-12 remains pending for Phase 35)
 - [ ] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot.
 - [ ] **Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion** — Prove the completed chain on one Ultra 205 and promote only specifically supported rows.
 
@@ -61,23 +61,25 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 
 ### Phase 33: Confirmed Settings Durability
 
-**Goal:** An Ultra 205 operator receives hostname PATCH success only when firmware storage truth is committed, reloaded, reconciled, immediately published, and preserved across one approved normal reboot.
+**Goal:** An Ultra 205 operator receives hostname PATCH success only when firmware storage truth is committed, reloaded, reconciled, and immediately published, while a fail-closed evidence classifier is ready for later exact-current-package reboot qualification.
 
 **Depends on:** Phase 32
 
-**Requirements:** CFG-09, CFG-10, CFG-11, CFG-12, CFG-13
+**Requirements:** CFG-09, CFG-10, CFG-11, CFG-13
 
 **Success Criteria** (what must be TRUE):
 
 1. Invalid known hostname input fails generically and atomically with no NVS write, commit, live-state replacement, partial change, or hardware effect.
 1. Successful hostname PATCH occurs only after serialized write and commit, actual NVS reload, and typed reconciliation against the requested non-secret value.
 1. Immediate API readback and the coherent operator snapshot expose the storage-confirmed hostname rather than an optimistic overlay.
-1. The same storage-confirmed hostname is observed after one phase-approved normal reboot and detector-gated reacquisition of the same board.
+1. A fail-closed evidence classifier rejects extra resets, identity or origin ambiguity, stale source/package provenance, ownership or cleanup failures, and unredacted output before later hardware qualification.
 1. Unknown and unsupported fields preserve existing compatibility behavior without writes, secrets, credentials, target changes, actuation, raw reset/power operations, mining, direct-UART/pin work, or broader settings promotion.
 
 **Plans:** 3/3 plans complete
 
-**Verification:** 8/9 must-haves verified; CFG-12 remains pending because post-proof firmware changes moved current HEAD beyond the sole eligible exact-source hardware package, and the binding no-retry guard prohibits requalification.
+**Verification:** Passed on the 8/8 remapped software boundary. The sole `a630455` run remains credible historical non-promotional proof for that exact package only; CFG-12 remains pending for Phase 35 and does not qualify current firmware.
+
+No additional Phase 33 hardware attempt is permitted.
 
 ### Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot
 
@@ -103,13 +105,13 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 
 **Depends on:** Phase 34
 
-**Requirements:** EVD-10, EVD-11, EVD-12, EVD-13, EVD-14, EVD-15
+**Requirements:** CFG-12, EVD-10, EVD-11, EVD-12, EVD-13, EVD-14, EVD-15
 
 **Success Criteria** (what must be TRUE):
 
 1. The evidence workflow stops before target, credential, flash, reset, monitor, or promotion work unless `just detect-ultra205` finds exactly one board `205` candidate and board-info succeeds.
 1. One evidence root binds the exact source and reference commits, package manifest and digest, board category, target-lock provenance, boot session, bounded chronology, and correlated operator-snapshot revisions.
-1. Read-only sensor acquisitions correlate with system-info, live-WebSocket, and retained-log projections, while pre-PATCH, committed-and-reloaded, and post-reboot hostname observations correlate without recording credentials, network identities, raw targets, or secrets.
+1. One final detector-gated exact-current-package run jointly closes CFG-12 and EVD-13 by correlating pre-PATCH, storage-confirmed immediate readback, and the matching storage-confirmed hostname after one approved normal reboot and same-board reacquisition, without recording credentials, network identities, raw targets, or secrets.
 1. Inventory, redaction, lifecycle cleanup, no-actuation, reference-cleanliness, and current-head validation all pass before atomic evidence admission.
 1. Only explicitly allowlisted operator-runtime parity rows supported by eligible evidence promote; active control, self-test effects, watchdog intervention, mining and Phase 28.1.1, credentials, direct UART/pins, OTA, other boards, and every other excluded or broad claim receive deterministic non-promotion.
 
@@ -133,11 +135,11 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | --- | --- | ---: | --- |
 | 31 | Operator Claim and Telemetry Contract | 2 | Complete |
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
-| 33 | Confirmed Settings Durability | 5 | Gaps found (8/9) |
+| 33 | Confirmed Settings Durability | 4 | Complete (8/8 software) |
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Not started |
-| 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 6 | Not started |
+| 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | Not started |
 
-**Overall:** 2/5 phases complete; 10/27 requirements complete.
+**Overall:** 3/5 phases complete; 10/27 requirements complete.
 
 ## Coverage
 

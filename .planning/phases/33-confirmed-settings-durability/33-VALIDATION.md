@@ -1,7 +1,7 @@
 ---
 phase: 33
 slug: confirmed-settings-durability
-status: gaps_found
+status: passed
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-07-14
@@ -21,13 +21,13 @@ phase_lifecycle_id: 33-2026-07-14T01-50-49
 | **Config file** | Workspace `Cargo.toml`, `Cargo.lock`, `MODULE.bazel`, `scripts/BUILD.bazel`, and repo `justfile` |
 | **Quick run command** | `cargo test -p bitaxe-api settings` or the narrow affected package/script target |
 | **Full suite command** | `cargo test --all-features` plus affected Bazel targets |
-| **Estimated runtime** | ~20 seconds host-only; firmware/package and the ≥360-second hardware capture are separate bounded gates |
+| **Estimated runtime** | ~20 seconds host-only; firmware/package verification is a separate bounded software gate, while physical reboot qualification belongs to Phase 35 |
 
 ## Sampling Rate
 
 - **After every task commit:** Run the narrow affected Cargo or shell/Bazel test plus any task-specific source guard.
 - **After every plan wave:** Run `cargo test --all-features`, affected Bazel targets, and `git diff --check`.
-- **Before phase verification:** Run the ordered Rust gate, canonical firmware build/package/reference checks, all Phase 33 simulation/source guards, then the approved detector-gated durability run.
+- **Before phase verification:** Run the ordered Rust gate, canonical firmware build/package/reference checks, and all Phase 33 simulation/source guards. Do not run hardware for Phase 33 completion.
 - **Max host feedback latency:** 60 seconds.
 
 ## Per-Task Verification Map
@@ -38,8 +38,8 @@ phase_lifecycle_id: 33-2026-07-14T01-50-49
 | 33-01-02 | 01 | 1 | CFG-10 | T-33-02, T-33-03, T-33-05 | Ordered confirmation handles every failure and serializes concurrent writers through publication. | unit | `cargo test -p bitaxe-api settings` | ✅ | ✅ green |
 | 33-02-01 | 02 | 2 | CFG-10, CFG-11 | T-33-02, T-33-03 | Firmware reload returns a fallible candidate and publishes only an exact typed match. | integration/source/build | affected firmware tests, Phase 33 source guard, and `just build` | ✅ | ✅ green |
 | 33-02-02 | 02 | 2 | CFG-09, CFG-11, CFG-13 | PATCH routing preserves generic/no-op responses and immediate system-info reads confirmed storage truth without overlays. | integration | `cargo test -p bitaxe-api settings`, firmware host tests, and source guard | ✅ | ✅ green |
-| 33-03-01 | 03 | 3 | CFG-12 | T-33-06, T-33-07, T-33-08 | Simulated evidence rejects extra reset, identity/origin ambiguity, leaks, and unredacted output. | shell/Bazel | `bash scripts/phase33-confirmed-settings-durability-test.sh` and `bazel test //scripts:phase33_confirmed_settings_durability_test` | ✅ | ✅ green |
-| 33-03-02 | 03 | 3 | CFG-09, CFG-10, CFG-11, CFG-12, CFG-13 | T-33-01 through T-33-08 | Full host/firmware/package/reference gates pass before one bounded same-board application-reboot proof. | build/hardware/policy | ordered Rust gate, affected Bazel tests, `just build`, `just package`, `just verify-reference`, then Phase 33 hardware wrapper | ✅ | ⚠️ historical exact-source proof passed at `a630455`; current HEAD changed materially afterward and cannot be requalified under the no-retry guard |
+| 33-03-01 | 03 | 3 | Phase 35 prerequisite for CFG-12 | T-33-06, T-33-07, T-33-08 | Simulated evidence rejects extra reset, identity/origin ambiguity, leaks, and unredacted output. | shell/Bazel | `bash scripts/phase33-confirmed-settings-durability-test.sh` and `bazel test //scripts:phase33_confirmed_settings_durability_test` | ✅ | ✅ green |
+| 33-03-02 | 03 | 3 | CFG-09, CFG-10, CFG-11, CFG-13 | T-33-01 through T-33-08 | Full host, firmware, package, reference, classifier, and policy gates pass without treating physical reboot qualification as Phase 33 completion evidence. | build/policy | ordered Rust gate, affected Bazel tests, `just build`, `just package`, and `just verify-reference` | ✅ | ✅ green; historical exact-source proof passed at `a630455`, remains non-promotional, and cannot qualify later firmware |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -54,7 +54,7 @@ phase_lifecycle_id: 33-2026-07-14T01-50-49
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Storage-confirmed hostname survives one approved application reboot on the same Ultra 205. | CFG-12 | Host simulation and firmware compilation cannot prove physical ESP-IDF NVS durability across reboot. | The 2026-07-15 repo-owned run passed for exact package `a630455`, with one detector/board-info preflight, 360-second setup and passive captures, one successful restart POST, typed A/N to B/N+1 proof, cleanup, and restoration. Subsequent review fixes materially changed current firmware snapshot and deferred restart/effect behavior, so this historical proof does not qualify current HEAD. The no-retry guard prohibits requalification; CFG-12 remains pending. |
+| Storage-confirmed hostname survives one approved application reboot on the same Ultra 205. | CFG-12 (Phase 35) | Host simulation and firmware compilation cannot prove physical ESP-IDF NVS durability across reboot. | Phase 35 alone owns current-package closure. Its final detector-gated exact-current-package run must jointly close CFG-12 and EVD-13 through pre-PATCH, storage-confirmed immediate, and same-board post-reboot correlation. The 2026-07-15 run for exact package `a630455` remains credible historical non-promotional proof only and does not qualify later firmware. |
 
 ## Threat Model
 
@@ -78,4 +78,4 @@ phase_lifecycle_id: 33-2026-07-14T01-50-49
 - [x] Host feedback latency target is below 60 seconds.
 - [x] `nyquist_compliant: true` is set in frontmatter.
 
-**Disposition:** Wave 0, firmware integration, ordered Rust verification, direct and Bazel serial/detector/passive/Phase 33/parity regressions, canonical build/package, and reference cleanliness are green. The sole fresh 2026-07-15 execution passed on exact source `a630455`, but later review fixes materially changed current firmware snapshot and deferred restart/effect behavior. The historical artifact remains redacted and non-promotional; it cannot qualify current HEAD. Phase 33 verification is `gaps_found`, CFG-12 remains pending, the no-retry guard remains binding, and Phase 35 admission/promotion remains unclaimed.
+**Disposition:** Wave 0, firmware integration, ordered Rust verification, direct and Bazel serial/detector/passive/Phase 33/parity regressions, canonical build/package, and reference cleanliness are green. Phase 33 passes its remapped software and evidence-readiness boundary. The sole 2026-07-15 execution on exact source `a630455` remains credible historical non-promotional proof for that package only and cannot qualify later firmware. CFG-12 remains pending, and Phase 35 alone may close it through the final detector-gated exact-current-package run that also closes EVD-13. Exact-source, identity, cleanup, redaction, restoration, and no-retry gates remain binding. No additional Phase 33 hardware attempt is permitted.
