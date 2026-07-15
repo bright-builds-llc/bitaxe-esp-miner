@@ -41,8 +41,6 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 
 **Plans:** 3/3 plans complete
 
-**Verification:** 8/9 must-haves verified; CFG-12 remains pending because post-proof firmware changes moved current HEAD beyond the sole eligible exact-source hardware package, and the binding no-retry guard prohibits requalification.
-
 ### Phase 32: Shared I2C and Read-Only Sensor Acquisition
 
 **Goal:** An Ultra 205 operator receives attributable, bounded, read-only power and thermal observations from one firmware-owned I2C0 lifecycle without disrupting startup display behavior.
@@ -78,6 +76,8 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 1. Unknown and unsupported fields preserve existing compatibility behavior without writes, secrets, credentials, target changes, actuation, raw reset/power operations, mining, direct-UART/pin work, or broader settings promotion.
 
 **Plans:** 3/3 plans complete
+
+**Verification:** 8/9 must-haves verified; CFG-12 remains pending because post-proof firmware changes moved current HEAD beyond the sole eligible exact-source hardware package, and the binding no-retry guard prohibits requalification.
 
 ### Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot
 
