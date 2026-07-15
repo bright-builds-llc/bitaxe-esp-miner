@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 34-03-PLAN.md
-last_updated: "2026-07-15T16:05:35.791Z"
+stopped_at: Completed 34-04-PLAN.md
+last_updated: "2026-07-15T16:30:47.326Z"
 last_activity: "2026-07-15"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -20,13 +20,13 @@ Last activity: 2026-07-15
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — EXECUTING
-Plan: 3 of 4 complete
+Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — COMPLETE
+Plan: 4 of 4 complete
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 3 of 4 complete
-- **Status:** Ready to execute
-- **Next step:** Execute Phase 34 Plan 04 for passive runtime-health projection.
+- **Plan:** 4 of 4 complete
+- **Status:** Phase complete
+- **Next step:** Plan Phase 35 detector-gated correlated evidence without weakening its admission gates.
 
 ## Project Reference
 
@@ -114,6 +114,11 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Every platform fact carries its own available or unavailable state; zero and compatibility defaults never authenticate proof.
 - The embedded static release asset and current ESP-IDF reads are the only production sources for running-platform identity.
 - Existing compatibility scalars are projected conservatively from the same typed candidate captured under one Plan 02 session and revision.
+
+## Decisions (Phase 34 Plan 04)
+
+- Runtime health remains an immutable captured value: the pure evaluator receives only producer-owned observations and monotonic time, while public and retained surfaces project the same snapshot.
+- Supervisor checkpoint visibility and ESP task-watchdog participation are independent; Phase 34 reports watchdog participation unavailable with reason `unproved`.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -264,6 +269,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 33 P03 | 26min | 2 tasks | 29 files |
 | Phase 34 P02 | 30min | 3 tasks | 15 files |
 | Phase 34 P03 | 18min | 2 tasks | 12 files |
+| Phase 34 P04 | 19 min | 1 tasks | 20 files |
 
 ### Quick Tasks Completed
 
@@ -297,5 +303,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 34-03-PLAN.md
-- **Resume:** Execute Phase 34 Plan 04 without hardware, preserving Phase 35-only CFG-12/EVD-13 qualification and promotion plus all terminal-archive prohibitions.
+- **Stopped at:** Completed 34-04-PLAN.md
+- **Resume:** Plan Phase 35 without hardware use until its detector-gated evidence workflow explicitly authorizes the next bounded action.
