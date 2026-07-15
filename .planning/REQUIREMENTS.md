@@ -22,7 +22,7 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 - [x] **CFG-09**: An Ultra 205 operator receives a stable generic error for an invalid known `hostname`, with no NVS write, commit, live-state replacement, or partial change.
 - [x] **CFG-10**: An Ultra 205 operator receives PATCH success only after the hostname write commits, the firmware performs an actual NVS reload, and typed reconciliation matches the requested non-secret value.
 - [x] **CFG-11**: An Ultra 205 operator sees the storage-confirmed hostname in the immediate API readback and coherent operator snapshot after a successful PATCH.
-- [ ] **CFG-12**: An Ultra 205 operator sees the same storage-confirmed hostname after one phase-approved normal reboot and reacquisition of the same detector-gated board.
+- [x] **CFG-12**: An Ultra 205 operator sees the same storage-confirmed hostname after one phase-approved normal reboot and reacquisition of the same detector-gated board.
 - [x] **CFG-13**: An Ultra 205 operator can send unknown or unsupported settings fields without unintended writes or hardware effects, following the existing compatibility behavior while exposing no secret values.
 
 ### Truthful System Identity
@@ -108,7 +108,7 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | CFG-09 | Phase 33 | Complete |
 | CFG-10 | Phase 33 | Complete |
 | CFG-11 | Phase 33 | Complete |
-| CFG-12 | Phase 33 | Pending |
+| CFG-12 | Phase 33 | Complete |
 | CFG-13 | Phase 33 | Complete |
 | SYS-01 | Phase 34 | Pending |
 | SYS-02 | Phase 34 | Pending |

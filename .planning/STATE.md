@@ -2,31 +2,31 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: executing
-stopped_at: Completed 33-02-PLAN.md
-last_updated: "2026-07-14T15:05:02.257Z"
-last_activity: "2026-07-14"
+status: planning
+stopped_at: Completed 33-03-PLAN.md
+last_updated: "2026-07-15T00:48:06.705Z"
+last_activity: "2026-07-15"
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
-  percent: 89
+  completed_plans: 9
+  percent: 100
 ---
 
 # Project State
 
-Last activity: 2026-07-14
+Last activity: 2026-07-15
 
 ## Current Position
 
-Phase: 33 (confirmed-settings-durability) — EXECUTING
-Plan: 1 of 3
+Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — PLANNING
+Plan: Not started
 
-- **Phase:** 33 of 35 (confirmed settings durability)
-- **Plan:** 2 of 3 complete
-- **Status:** Executing Phase 33
-- **Next step:** Execute 33-03 detector-gated durability evidence.
+- **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
+- **Plan:** Not started
+- **Status:** Ready to plan
+- **Next step:** Plan Phase 34 provenance, runtime health, and coherent operator snapshot work.
 
 ## Project Reference
 
@@ -86,6 +86,11 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Writable NVS opens only after exact hostname authority and under one transaction lock held through confirmed publication.
 - Strict independent reload remains non-publishing until typed exact reconciliation succeeds; requested values never overlay public truth.
 - Compatibility-only and invalid requests never construct the adapter, and hostname application is the sole post-response live effect.
+
+## Decisions (Phase 33 Plan 03)
+
+- Reset-spanning evidence uses an RTC-backed boot ordinal and bounded typed boot/origin replay because native USB may lose early bytes across an application reset.
+- The exact `a630455` package passed the sole detector-gated, one-restart hardware attempt with cleanup and restoration; Phase 35 admission and parity promotion remain deferred.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -233,6 +238,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 32 P03 | 15 min | 3 tasks | 7 files |
 | Phase 33 P01 | 12 min | 2 tasks | 5 files |
 | Phase 33 P02 | 9min | 2 tasks | 7 files |
+| Phase 33 P03 | 26min | 2 tasks | 29 files |
 
 ### Quick Tasks Completed
 
@@ -265,5 +271,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 33-02-PLAN.md
-- **Resume:** Execute 33-03 detector-gated durability evidence; preserve all v1.2 exclusions and terminal-archive prohibitions.
+- **Stopped at:** Completed 33-03-PLAN.md
+- **Resume:** Plan Phase 34 while preserving all v1.2 exclusions, Phase 35-only promotion, and terminal-archive prohibitions.
