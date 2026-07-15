@@ -1,6 +1,6 @@
 ---
 generated_by: gsd-plan-phase
-lifecycle_mode: prd-express
+lifecycle_mode: interactive
 phase_lifecycle_id: 34-2026-07-15T03-26-15
 generated_at: "2026-07-15T03:26:15.749Z"
 ---
@@ -23,13 +23,14 @@ Phase 34 creates one coherent read-only operator snapshot and truthful identity/
 
 ### Canonical identity
 - One typed identity owns full 40-character source commit, derived 12-character short commit and label, release/dev channel, firmware-input dirty boolean, and optional exact release tag.
+- One versioned provenance stamp wraps that identity with the separately declared semantic version and full pinned reference commit. The shared Rust model is the sole derivation/validation authority; shell gathers primitive inputs and Starlark only transports them.
 - Allowed exact tags match `vMAJOR.MINOR` or `vMAJOR.MINOR.PATCH`; zero means dev, one means release, and multiple matching tags fail closed.
 - Labels are exactly `<hash>`, `<hash>-dirty`, `<hash>-dev`, or `<hash>-dirty-dev`. Dirty precedes dev and remains independent from channel.
 - Clean dev and clean release builds may qualify exact-source engineering evidence. Dirty builds are rejected before hardware admission.
 
 ### Dirty scope and build graph
 - Dirty includes staged, unstaged, deleted, renamed, and untracked nonignored firmware/package inputs from one checked-in pathspec contract. Planning, docs, evidence, reference, scratch, ignored files, and unrelated host tools do not affect the label.
-- Bazel workspace status emits stable Bitaxe keys; a Starlark rule consumes `ctx.info_file`, ignores ordinary Bazel status keys, and rejects unknown, duplicate, missing, or malformed Bitaxe keys.
+- Bazel workspace status emits only the five stable primitive Bitaxe keys for source commit, dirty state, release tag, semantic version, and reference commit. A Starlark rule consumes `ctx.info_file`, ignores ordinary Bazel status keys, rejects unknown Bitaxe keys, and invokes the shared Rust materializer rather than deriving identity itself.
 - Firmware actions explicitly depend on all transitive Rust/root/build inputs so dirty-to-dirty edits invalidate the action independently of the boolean status transition.
 - ELF and manifest consume the same generated identity stamp. Packaging never re-queries live Git for the firmware identity.
 
@@ -37,13 +38,14 @@ Phase 34 creates one coherent read-only operator snapshot and truthful identity/
 - Canonical firmware Cargo builds require the identity stamp and fail with a `just build` instruction when it is absent or invalid.
 - Output-local supplemental sdkconfig defaults set the ESP-IDF application version to the build label; a generated output-local sdkconfig prevents stale local override.
 - LCD renders `fw <build_label>` without truncation. The retained machine marker is the unsuffixed full hash, followed by one redacted structured build-identity record.
-- System-info keeps `version` as the human label and adds `sourceCommit`, `buildChannel`, `sourceDirty`, and nullable `releaseTag`; live WebSocket receives the same additive fields.
+- System-info keeps `version` as the human label and adds `semanticVersion`, `sourceCommit`, `referenceCommit`, `appElfSha256`, `buildChannel`, `sourceDirty`, and nullable `releaseTag`; live WebSocket receives the same additive fields.
+- The running ESP-IDF application descriptor's lowercase ELF SHA-256 is the non-circular flashed-package identifier. It is compared with host ELF inspection; the final package digest remains a separate host-side evidence field.
 - Heartbeat, PATCH, restart, and unrelated public response shapes remain unchanged. Machine evidence never parses the presentation label.
 
 ### Package and admission
-- Active package manifests become schema v3, retain top-level full `source_commit`, and add structured `build_identity` fields derived from the same stamp.
+- Active package manifests become schema v3, retain top-level full `source_commit`, and add semantic version, pinned reference commit, inspected application-descriptor ELF SHA-256, and structured `build_identity` fields derived from the same stamp.
 - Historical v2 evidence is not rewritten and remains readable only where historical evidence intentionally requires it.
-- Active admission validates schema v3 and identity consistency, rejects dirty packages before hardware interaction, and accepts clean dev or release packages when full commit, HEAD, embedded identity, and package digest agree.
+- Active admission validates schema v3 and identity consistency in the concrete `tools/flash` flash/flash-monitor path before USB port resolution, rejects explicit-image hardware runs without an admitted manifest and every dirty package, and accepts clean dev or release packages when full commit, HEAD, embedded identity, application-descriptor ELF SHA-256, and package digest agree.
 
 ### Later Phase 34 plans
 - Later waves must cover OBS-06, SYS-03, SYS-04, SYS-05, HLT-01, HLT-02, HLT-03, and HLT-04 without expanding Plan 01.

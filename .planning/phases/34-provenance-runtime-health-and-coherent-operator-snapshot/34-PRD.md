@@ -18,10 +18,11 @@ Plan the complete Phase 34 roadmap scope, but make build identity and LCD proven
 - Dirty detection includes staged, unstaged, deleted, renamed, and untracked nonignored firmware/package inputs. It excludes planning, docs, evidence, reference, scratch, ignored files, and unrelated host tooling.
 - Store the dirty scope in one checked-in pathspec contract covering `firmware/**`, `crates/**`, `.cargo/**`, `tools/xtask/**`, root Cargo/Rust/Bazel/Just inputs, firmware/package Bazel rules, and firmware build/package/identity scripts.
 - Dirty builds are never eligible for hardware admission. Clean dev and clean release builds may qualify by full commit and package digest.
+- Keep semantic version separate from the human build label. The versioned provenance stamp contains semantic version, the canonical build identity, and the full pinned reference commit.
 
 ## Build And Cache Contract
 
-- Replace the short commit genrule with a workspace-status command emitting only `STABLE_BITAXE_*` keys and a custom Starlark rule that consumes `ctx.info_file` and produces a strict versioned identity stamp.
+- Replace the short commit genrule with a workspace-status command emitting exactly five primitive `STABLE_BITAXE_*` keys for source commit, dirty state, release tag, semantic version, and reference commit. A custom Starlark rule consumes `ctx.info_file` and invokes the shared Rust materializer to produce a strict versioned provenance stamp; Starlark does not duplicate label/channel derivation.
 - Ignore Bazel's ordinary `BUILD_*` status keys, but reject missing, duplicate, malformed, or unknown `STABLE_BITAXE_*` keys.
 - Add `.bazelrc` workspace-status wiring. Do not globally enable `--stamp`.
 - Explicitly declare all firmware transitive Rust/root/build inputs in Bazel so dirty-to-dirty source edits invalidate the firmware action even while `source_dirty` remains true.
@@ -33,16 +34,16 @@ Plan the complete Phase 34 roadmap scope, but make build identity and LCD proven
 - Generate an output-local supplemental sdkconfig defaults file containing `CONFIG_APP_PROJECT_VER_FROM_CONFIG=y` and `CONFIG_APP_PROJECT_VER="<build-label>"`; use an output-local generated sdkconfig so stale local configuration cannot override identity.
 - Keep the existing heartbeat, PATCH, restart, and unrelated public contracts byte-for-byte unchanged.
 - LCD fourth line is exactly `fw <build_label>`. The 22-character maximum label must fit the existing 25-character line without truncation.
-- Keep retained `firmware_commit=<full-40-character-hash>` as the machine marker. Add `runtime_build_identity label=<label> channel=<release|dev> source_dirty=<true|false> release_tag=<tag|unavailable> redacted=true`.
-- `/api/system/info.version` becomes the human build label. Add `sourceCommit`, `buildChannel`, `sourceDirty`, and nullable `releaseTag`. The live WebSocket projection receives the same additive fields through the shared system-info wire model.
-- Machine evidence compares only full embedded commit, manifest commit, current HEAD, and package digest. It must never parse the LCD/API label.
+- Keep retained `firmware_commit=<full-40-character-hash>` as the machine marker. Add full pinned-reference and application-descriptor ELF-SHA machine markers plus `runtime_build_identity semantic_version=<version> label=<label> channel=<release|dev> source_dirty=<true|false> release_tag=<tag|unavailable> redacted=true`.
+- `/api/system/info.version` becomes the human build label. Add `semanticVersion`, `sourceCommit`, `referenceCommit`, `appElfSha256`, `buildChannel`, `sourceDirty`, and nullable `releaseTag`. The live WebSocket projection receives the same additive fields through the shared system-info wire model.
+- The running ESP-IDF application descriptor's lowercase 64-character ELF SHA-256 is the non-circular flashed-package identifier. Machine evidence compares it with host inspection while separately comparing the final package digest; it must never parse the LCD/API label.
 
 ## Package And Admission Contract
 
 - Bump the active package manifest to schema v3 while preserving top-level `source_commit` as the full bare hash.
-- Add structured `build_identity` with `label`, `channel`, `source_dirty`, and nullable `release_tag`; validate its relationship to top-level `source_commit`.
+- Add semantic version, pinned reference commit, application-descriptor ELF SHA-256, and structured `build_identity` with `label`, `channel`, `source_dirty`, and nullable `release_tag`; validate every relationship to the versioned provenance stamp and top-level `source_commit`.
 - Preserve committed historical v2 evidence unchanged and readable only where historical evidence intentionally requires it.
-- Update active release/admission gates and fixtures for v3. Reject dirty packages before detector, port, flash, monitor, or other hardware interaction; accept clean dev and clean release packages.
+- Update active release/admission gates, the concrete `tools/flash` flash/flash-monitor entrypoints, and fixtures for v3. Perform manifest/dirty admission before USB port resolution or credential reads, reject explicit-image hardware runs without an admitted v3 manifest, and accept clean dev and clean release packages.
 
 ## Required Plan 01 Tests
 

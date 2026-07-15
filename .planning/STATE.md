@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: active
-stopped_at: "Phase 33 complete on its remapped software boundary; Phase 34 next for discussion and planning"
-last_updated: "2026-07-15T03:20:00Z"
+status: executing
+stopped_at: Phase 33 completed on its remapped software boundary; CFG-12 deferred to Phase 35.
+last_updated: "2026-07-15T04:16:16.094Z"
 last_activity: "2026-07-15"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 9
+  total_plans: 13
   completed_plans: 9
-  percent: 100
+  percent: 69
 ---
 
 # Project State
@@ -25,7 +25,7 @@ Plan: 0 of TBD
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
 - **Plan:** Not yet planned
-- **Status:** Phase 33 is complete on its 8/8 remapped software boundary; CFG-12 remains pending under Phase 35.
+- **Status:** Ready to execute
 - **Next step:** Phase 34 is next for discussion and planning.
 
 ## Project Reference
