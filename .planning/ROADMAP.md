@@ -81,8 +81,6 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 
 No additional Phase 33 hardware attempt is permitted.
 
-Phase 34 is next for discussion and planning.
-
 ### Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot
 
 **Goal:** An Ultra 205 operator can inspect one internally coherent snapshot of read-only telemetry, confirmed settings, truthful identity, and passive runtime health across system-info, WebSocket, retained logs, and evidence projections.
@@ -99,7 +97,12 @@ Phase 34 is next for discussion and planning.
 1. Supervisor availability, checkpoint category, sequence, and age become stale or unhealthy when progress stalls, and remain explicitly distinct from unproved ESP task-watchdog participation.
 1. No fixture or host-checkout substitution, synthetic placeholder, active watchdog intervention, load/fault experiment, hardware actuation, mining or Phase 28.1.1 work, credential access, direct-UART/pin work, OTA, other-board evidence, or broad promotion occurs.
 
-**Plans:** TBD
+**Plans:** 1/4 plans complete
+
+- [x] 34-01 — Canonical build identity, LCD/API/log projection, manifest v3, and exact pre-hardware admission
+- [ ] 34-02 — Coherent boot-session and operator-snapshot revision
+- [ ] 34-03 — Remaining truthful platform identity and runtime facts
+- [ ] 34-04 — Passive runtime-health projection
 
 ### Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion
 

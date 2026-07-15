@@ -1,9 +1,9 @@
 ---
 phase: "34"
 slug: provenance-runtime-health-and-coherent-operator-snapshot
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-07-15"
 ---
 
@@ -32,10 +32,10 @@ created: "2026-07-15"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 34-01-01 | 01 | 1 | SYS-01, SYS-02 | T-34-01, T-34-12 | The shared Rust authority derives all four labels and a strict semantic/source/reference provenance stamp from scoped primitive inputs. | unit/shell/Bazel | `cargo test -p bitaxe-api build_identity && bash scripts/build-identity-status-test.sh && bazel test //scripts:build_identity_status_test` | ❌ W0 | ⬜ pending |
-| 34-01-02 | 01 | 1 | SYS-01, SYS-02 | T-34-02, T-34-03 | Bazel transports one Rust-materialized stamp; relevant dirty-to-dirty edits rebuild and the output-local ESP-IDF descriptor uses its label. | integration/Bazel/build | `bazel test //scripts:build_identity_status_test //scripts:build_identity_cache_invalidation_test && bazel build //firmware/bitaxe:build_provenance_stamp && just build` | ❌ W0 | ⬜ pending |
-| 34-01-03 | 01 | 1 | SYS-01, SYS-02 | T-34-03, T-34-04 | LCD/API/WebSocket/log surfaces expose separate semantic, source, reference, label, and ELF-SHA fields without parsing presentation text. | unit/integration | `cargo test -p bitaxe-core && cargo test -p bitaxe-api system_info && cargo test -p bitaxe-api runtime_projection && cargo test -p bitaxe-parity phase34_identity_runtime_source_guard` | ❌ W0 | ⬜ pending |
-| 34-01-04 | 01 | 1 | SYS-02 | T-34-01, T-34-04 | Manifest v3 and tools/flash validate full source/reference/ELF/package identity and reject dirty input before port resolution. | integration/Bazel | `cargo test -p xtask package_manifest && cargo test -p bitaxe-flash identity_admission && cargo test -p bitaxe-parity release_gate && cargo test -p bitaxe-parity release_evidence && bash scripts/package-firmware-test.sh && bazel test //scripts:package_firmware_test //tools/xtask:tests //tools/flash:tests //tools/parity:tests && just package` | ❌ W0 | ⬜ pending |
+| 34-01-01 | 01 | 1 | SYS-01, SYS-02 | T-34-01, T-34-12 | The shared Rust authority derives all four labels and a strict semantic/source/reference provenance stamp from scoped primitive inputs. | unit/shell/Bazel | `cargo test -p bitaxe-api build_identity && bash scripts/build-identity-status-test.sh && bazel test //scripts:build_identity_status_test` | ✅ | ✅ green |
+| 34-01-02 | 01 | 1 | SYS-01, SYS-02 | T-34-02, T-34-03 | Bazel transports one Rust-materialized stamp; relevant dirty-to-dirty edits rebuild and the output-local ESP-IDF descriptor uses its label. | integration/Bazel/build | `bazel test //scripts:build_identity_status_test //scripts:build_identity_cache_invalidation_test && bazel build //firmware/bitaxe:build_provenance_stamp && just build` | ✅ | ✅ green |
+| 34-01-03 | 01 | 1 | SYS-01, SYS-02 | T-34-03, T-34-04 | LCD/API/WebSocket/log surfaces expose separate semantic, source, reference, label, and ELF-SHA fields without parsing presentation text. | unit/integration | `cargo test -p bitaxe-core && cargo test -p bitaxe-api system_info && cargo test -p bitaxe-api runtime_projection && cargo test -p bitaxe-parity phase34_identity_runtime_source_guard` | ✅ | ✅ green |
+| 34-01-04 | 01 | 1 | SYS-02 | T-34-01, T-34-04 | Manifest v3 and tools/flash validate full source/reference/ELF/package identity and reject dirty input before port resolution. | integration/Bazel | `cargo test -p xtask package_manifest && cargo test -p bitaxe-flash identity_admission && cargo test -p bitaxe-parity release_gate && cargo test -p bitaxe-parity release_evidence && bash scripts/package-firmware-test.sh && bazel test //scripts:package_firmware_test //tools/xtask:tests //tools/flash:tests //tools/parity:tests && just package` | ✅ | ✅ green |
 | 34-02-01 | 02 | 2 | OBS-06 | T-34-05, T-34-08 | Domain correlation pair rejects zero, malformed, and regressing revisions. | unit | `cargo test -p bitaxe-api operator_snapshot && cargo test -p bitaxe-api direct_system_info_projection && cargo test -p bitaxe-api projection_system_info_preserves_axeos_fields && bazel test //crates/bitaxe-api:tests` | ✅ | ⬜ pending |
 | 34-02-02 | 02 | 2 | OBS-06 | T-34-08, T-34-09 | Firmware assigns one boot session/revision and retains the same marker across projections. | unit/integration | `cargo test -p bitaxe-parity phase34_operator_snapshot_runtime_source_guard && bazel test //crates/bitaxe-api:tests //tools/parity:tests && just build` | ✅ | ⬜ pending |
 | 34-02-03 | 02 | 2 | OBS-06 | T-34-10, T-34-11 | Evidence parser rejects mixed, duplicate, partial, or effectful correlation paths without hardware. | source guard/integration | `cargo test -p bitaxe-parity operator_snapshot_evidence && cargo test -p bitaxe-parity operator_evidence && bazel test //tools/parity:tests` | ✅ | ⬜ pending |
@@ -47,11 +47,11 @@ created: "2026-07-15"
 
 ## Wave 0 Requirements
 
-- [ ] Typed build-identity unit tests and Bazel target.
-- [ ] Workspace-status shell behavior test with temporary Git repositories.
-- [ ] LCD/system-info/live-WebSocket identity projection tests.
-- [ ] Manifest v3 and dirty-admission tests.
-- [ ] Cache invalidation regression proving a second dirty source edit changes the firmware action inputs.
+- [x] Typed build-identity unit tests and Bazel target.
+- [x] Workspace-status shell behavior test with temporary Git repositories.
+- [x] LCD/system-info/live-WebSocket identity projection tests.
+- [x] Manifest v3 and dirty-admission tests.
+- [x] Cache invalidation regression proving a second dirty source edit changes the firmware action inputs.
 
 Existing Cargo/Bazel/shell infrastructure covers later Phase 34 plans.
 
@@ -61,11 +61,11 @@ None for Plan 01. The application descriptor, embedded commit, manifest, and dir
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verification or Wave 0 dependencies.
-- [ ] Sampling continuity: no three consecutive tasks without automated verification.
-- [ ] Wave 0 covers all missing references.
-- [ ] No watch-mode flags.
-- [ ] Feedback latency is under 180 seconds for host checks.
-- [ ] `nyquist_compliant: true` is set in frontmatter after all planned tests exist.
+- [x] All tasks have `<automated>` verification or Wave 0 dependencies.
+- [x] Sampling continuity: no three consecutive tasks without automated verification.
+- [x] Wave 0 covers all missing references.
+- [x] No watch-mode flags.
+- [x] Feedback latency is under 180 seconds for host checks.
+- [x] `nyquist_compliant: true` is set in frontmatter after all planned tests exist.
 
-**Approval:** pending
+**Approval:** approved — Plan 01 green; later plans remain pending execution.

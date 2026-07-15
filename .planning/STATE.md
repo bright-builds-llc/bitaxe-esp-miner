@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 33 completed on its remapped software boundary; CFG-12 deferred to Phase 35.
-last_updated: "2026-07-15T04:16:16.094Z"
+stopped_at: Phase 34 Plan 01 completed; canonical build identity and exact pre-hardware admission are green.
+last_updated: "2026-07-15T05:35:50.000Z"
 last_activity: "2026-07-15"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 9
-  percent: 69
+  completed_plans: 10
+  percent: 77
 ---
 
 # Project State
@@ -20,13 +20,13 @@ Last activity: 2026-07-15
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — READY FOR DISCUSSION/PLANNING
-Plan: 0 of TBD
+Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — EXECUTING
+Plan: 1 of 4
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** Not yet planned
-- **Status:** Ready to execute
-- **Next step:** Phase 34 is next for discussion and planning.
+- **Plan:** 1 of 4 complete
+- **Status:** Plan 01 complete; Plans 02-04 pending
+- **Next step:** Execute Phase 34 Plan 02 to establish the coherent boot-session/operator-snapshot revision.
 
 ## Project Reference
 
@@ -94,6 +94,14 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Subsequent review fixes materially changed current firmware snapshot and deferred restart/effect behavior, so the `a630455` proof cannot qualify current firmware and remains non-promotional.
 - Phase 33 is complete for CFG-09, CFG-10, CFG-11, and CFG-13. CFG-12 remains pending under Phase 35, whose final detector-gated exact-current-package run must jointly close CFG-12 and EVD-13 without weakening source, identity, cleanup, redaction, restoration, or no-retry gates.
 - No additional Phase 33 hardware attempt is permitted.
+
+## Decisions (Phase 34 Plan 01)
+
+- One shared Rust authority derives the full source identity, short human label, release/dev channel, scoped dirty state, semantic version, and pinned reference commit from the closed five-key Bazel workspace status.
+- LCD, system-info, live WebSocket, retained logs, ESP-IDF application metadata, and manifest schema v3 consume the same declared provenance stamp; presentation labels never authenticate source.
+- Clean tagged and clean untagged dev packages are eligible. A dirty package or dirty current workspace fails before port discovery, credential reads, or any device action.
+- Managed `esptool.py elf2image --elf-sha256-offset 0xb0` owns the application descriptor SHA because `espflash save-image` left that field zero; factory packaging uses the one generated ESP-IDF build whose sdkconfig matches the exact build label.
+- Clean exact commit `694cf0ceb72c78fd16b20bc57beeac914f098ac6` passed package, descriptor, digest, and inert-port admission checks. No hardware or credentials were used.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -275,5 +283,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Phase 33 completed on its remapped software boundary; CFG-12 deferred to Phase 35.
-- **Resume:** Discuss and plan Phase 34 while preserving all v1.2 exclusions, Phase 35-only CFG-12/EVD-13 qualification and promotion, and terminal-archive prohibitions.
+- **Stopped at:** Phase 34 Plan 01 completed with canonical provenance and exact pre-hardware admission green.
+- **Resume:** Execute Phase 34 Plan 02 without hardware, preserving Phase 35-only CFG-12/EVD-13 qualification and promotion plus all terminal-archive prohibitions.

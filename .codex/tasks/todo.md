@@ -88,5 +88,7 @@ Completion review: Archive validation passed with 18 phase directories, 76 top-l
 - [x] Remap CFG-12 to Phase 35 and complete Phase 33 as software-ready without a new hardware attempt.
 - [x] Define and stamp one canonical build identity through Bazel, Cargo, ESP-IDF metadata, LCD, logs, and system info.
 - [x] Migrate the package manifest and pre-hardware admission boundary to schema v3 with exact clean-source checks.
-- [ ] Run focused and repository-wide Rust, shell, Bazel, firmware, packaging, reference, style, and diff verification.
-- [ ] Commit the verified admission change and record the Phase 34 Plan 01 completion review without hardware or push.
+- [x] Run focused and repository-wide Rust, shell, Bazel, firmware, packaging, reference, style, and diff verification.
+- [x] Commit the verified admission change and record the Phase 34 Plan 01 completion review without hardware or push.
+
+Completion review: Canonical identity implementation is committed through `694cf0c`. A real clean exact-commit dev package passed manifest, embedded label, ESP application descriptor SHA, artifact-digest, current-HEAD, current-clean-workspace, and inert-port admission checks; a real dirty package failed before port discovery. Focused Cargo/shell/Bazel, mandatory Rust, Phase 33 regression, canonical build/package/reference, shell style, and diff gates passed. The full Bazel sweep passed 56/57 with only a terminal-archive lifecycle test outside permitted diagnostic scope. No hardware, credentials, or push were used; Phase 34 Plans 02-04 and all Phase 35 qualification remain pending.
