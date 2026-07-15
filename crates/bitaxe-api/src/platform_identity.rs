@@ -309,6 +309,24 @@ mod tests {
         assert_eq!(maybe_proved_uptime, None);
     }
 
+    #[test]
+    fn one_unavailable_platform_fact_preserves_unrelated_proved_facts() {
+        // Arrange
+        let mut identity = all_available_identity();
+        identity.running_partition =
+            PlatformFact::unavailable(PlatformUnavailableReason::RunningPartitionUnavailable);
+
+        // Act
+        let maybe_partition = identity.running_partition.maybe_value();
+        let maybe_idf_version = identity.esp_idf_version.maybe_value();
+        let maybe_reset_reason = identity.reset_reason.maybe_value();
+
+        // Assert
+        assert_eq!(maybe_partition, None);
+        assert_eq!(maybe_idf_version.map(String::as_str), Some("v5.5.4"));
+        assert_eq!(maybe_reset_reason, Some(&PlatformResetReason::PowerOn));
+    }
+
     fn all_available_identity() -> PlatformIdentity {
         PlatformIdentity {
             esp_idf_version: PlatformFact::available("v5.5.4".to_owned()),

@@ -98,6 +98,7 @@ filegroup(
         "src/http_api.rs",
         "src/log_buffer.rs",
         "src/main.rs",
+        "src/platform_identity.rs",
         "src/runtime_snapshot.rs",
         "src/websocket_api.rs",
     ],

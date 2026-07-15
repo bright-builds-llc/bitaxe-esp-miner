@@ -7,8 +7,8 @@ use bitaxe_api::{
     project_api_views, project_system_info, scoreboard_response, statistics_response, ApiSnapshot,
     BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect,
     IdentifyModeState, MiningActivityEffect, OperatorSnapshotIdentity, OperatorSnapshotSequence,
-    PlatformSnapshot, ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire,
-    StatisticsWire, SystemInfoWire,
+    PlatformFact, PlatformIdentity, PlatformSnapshot, ProjectedApiViews, SafeTelemetrySnapshot,
+    ScoreboardEntryWire, StatisticsWire, SystemInfoWire,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
@@ -22,8 +22,6 @@ use bitaxe_stratum::v1::{
         RuntimeTelemetryProjection, RuntimeTelemetrySequence,
     },
 };
-use esp_idf_svc::sys;
-
 static COMMAND_VISIBLE_STATE: OnceLock<Mutex<CommandVisibleState>> = OnceLock::new();
 static OPERATOR_SNAPSHOT_SEQUENCE: OnceLock<Mutex<OperatorSnapshotSequence>> = OnceLock::new();
 
@@ -72,7 +70,8 @@ fn collect_completed_api_snapshot(
     snapshot.operator_snapshot_identity = operator_snapshot_identity;
     snapshot.mining = mining;
     snapshot.block_found = block_found;
-    snapshot.platform = collect_platform_snapshot(snapshot.platform);
+    snapshot.platform_identity = crate::platform_identity::collect();
+    snapshot.platform = collect_platform_snapshot(snapshot.platform, &snapshot.platform_identity);
     let observations = crate::safety_adapter::observation_snapshot();
     snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
     apply_wifi_snapshot(&mut snapshot);
@@ -409,7 +408,10 @@ fn apply_wifi_snapshot(snapshot: &mut ApiSnapshot) {
     }
 }
 
-fn collect_platform_snapshot(mut platform: PlatformSnapshot) -> PlatformSnapshot {
+fn collect_platform_snapshot(
+    mut platform: PlatformSnapshot,
+    identity: &PlatformIdentity,
+) -> PlatformSnapshot {
     platform.version = crate::build_label().to_owned();
     platform.semantic_version = crate::semantic_version().to_owned();
     platform.source_commit = crate::firmware_commit().to_owned();
@@ -418,29 +420,35 @@ fn collect_platform_snapshot(mut platform: PlatformSnapshot) -> PlatformSnapshot
     platform.build_channel = crate::build_channel().to_owned();
     platform.source_dirty = crate::source_dirty();
     platform.maybe_release_tag = crate::maybe_release_tag().map(str::to_owned);
-    platform.idf_version = crate::ESP_IDF_VERSION.to_owned();
-    platform.reset_reason = crate::reset_reason().to_string();
-    platform.running_partition = crate::partition_label();
-    platform.psram_available = crate::psram_status() == "available";
-    platform.free_heap = heap_free(sys::MALLOC_CAP_DEFAULT);
-    platform.free_heap_internal = heap_free(sys::MALLOC_CAP_INTERNAL);
-    platform.free_heap_spiram = heap_free(sys::MALLOC_CAP_SPIRAM);
-    platform.min_free_heap = heap_min_free(sys::MALLOC_CAP_DEFAULT);
-    platform.max_alloc_heap = heap_largest_free_block(sys::MALLOC_CAP_DEFAULT);
-    platform.uptime_seconds = crate::runtime_uptime::seconds();
+    platform.idf_version = compatibility_string(&identity.esp_idf_version);
+    platform.axe_os_version = compatibility_string(&identity.axe_os_static_asset);
+    platform.reset_reason = identity.reset_reason.maybe_value().map_or_else(
+        || "Unavailable".to_owned(),
+        |reason| reason.compatibility_text().to_owned(),
+    );
+    platform.running_partition = compatibility_string(&identity.running_partition);
+    platform.psram_available = identity
+        .psram_available
+        .maybe_value()
+        .copied()
+        .unwrap_or(false);
+    platform.free_heap = compatibility_u64(&identity.internal_heap_free_bytes);
+    platform.free_heap_internal = compatibility_u64(&identity.internal_heap_free_bytes);
+    platform.free_heap_spiram = 0;
+    platform.min_free_heap = compatibility_u64(&identity.internal_heap_minimum_free_bytes);
+    platform.max_alloc_heap = compatibility_u64(&identity.internal_heap_largest_free_block_bytes);
+    platform.uptime_seconds = compatibility_u64(&identity.uptime_milliseconds) / 1_000;
     platform
 }
 
-fn heap_free(caps: u32) -> u64 {
-    unsafe { sys::heap_caps_get_free_size(caps) as u64 }
+fn compatibility_string(fact: &PlatformFact<String>) -> String {
+    fact.maybe_value()
+        .cloned()
+        .unwrap_or_else(|| "Unavailable".to_owned())
 }
 
-fn heap_min_free(caps: u32) -> u64 {
-    unsafe { sys::heap_caps_get_minimum_free_size(caps) as u64 }
-}
-
-fn heap_largest_free_block(caps: u32) -> u64 {
-    unsafe { sys::heap_caps_get_largest_free_block(caps) as u64 }
+fn compatibility_u64(fact: &PlatformFact<u64>) -> u64 {
+    fact.maybe_value().copied().unwrap_or(0)
 }
 
 #[cfg(test)]

@@ -2,6 +2,8 @@ const BUILD_SCRIPT_SOURCE: &str = include_str!("../../../firmware/bitaxe/build.r
 const MAIN_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/main.rs");
 const RUNTIME_SNAPSHOT_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_snapshot.rs");
+const PLATFORM_IDENTITY_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/platform_identity.rs");
 const CORE_SOURCE: &str = include_str!("../../../crates/bitaxe-core/src/lib.rs");
 const API_WIRE_SOURCE: &str = include_str!("../../../crates/bitaxe-api/src/wire.rs");
 const BUILD_IDENTITY_SOURCE: &str =
@@ -20,7 +22,7 @@ fn phase34_identity_runtime_source_guard() {
     let platform_identity = source_between(
         RUNTIME_SNAPSHOT_SOURCE,
         "fn collect_platform_snapshot",
-        "fn heap_free",
+        "fn compatibility_string",
     );
 
     // Act / Assert
@@ -70,6 +72,87 @@ fn phase34_identity_runtime_source_guard() {
         "releaseTag",
     ] {
         assert!(API_WIRE_SOURCE.contains(field), "missing API field {field}");
+    }
+}
+
+#[test]
+fn phase34_source_guard_rejects_platform_substitution_and_effects() {
+    // Arrange
+    let production_identity_sources = [PLATFORM_IDENTITY_SOURCE, RUNTIME_SNAPSHOT_SOURCE];
+    let completed_snapshot = source_between(
+        RUNTIME_SNAPSHOT_SOURCE,
+        "fn collect_completed_api_snapshot",
+        "/// Returns the current command-visible mining state.",
+    );
+
+    // Act / Assert
+    assert!(
+        PLATFORM_IDENTITY_SOURCE.contains("include_str!(\"../static/www/assets/release.json\")")
+    );
+    assert!(PLATFORM_IDENTITY_SOURCE.contains("sys::esp_get_idf_version()"));
+    assert!(PLATFORM_IDENTITY_SOURCE.contains("PlatformBoard::Ultra205"));
+    assert!(PLATFORM_IDENTITY_SOURCE.contains("PlatformAsic::Bm1366"));
+    assert!(PLATFORM_IDENTITY_SOURCE.contains("sys::esp_ota_get_running_partition()"));
+    assert!(PLATFORM_IDENTITY_SOURCE.contains("PlatformResetReason::decode"));
+    assert!(PLATFORM_IDENTITY_SOURCE.contains("sys::esp_timer_get_time()"));
+    assert!(RUNTIME_SNAPSHOT_SOURCE
+        .contains("snapshot.platform_identity = crate::platform_identity::collect()"));
+    let identity_assignment = completed_snapshot
+        .find("snapshot.operator_snapshot_identity = operator_snapshot_identity")
+        .expect("capture identity assignment");
+    let platform_capture = completed_snapshot
+        .find("snapshot.platform_identity = crate::platform_identity::collect()")
+        .expect("platform candidate capture");
+    let retained_marker = completed_snapshot
+        .find("retain_completed_operator_snapshot(snapshot.operator_snapshot_identity)")
+        .expect("completed snapshot retained marker");
+    assert!(identity_assignment < platform_capture && platform_capture < retained_marker);
+    assert_eq!(
+        completed_snapshot
+            .matches("crate::platform_identity::collect()")
+            .count(),
+        1
+    );
+
+    for source in production_identity_sources {
+        for forbidden in [
+            "fixtures/",
+            "safe-fixture",
+            "placeholder",
+            "std::process",
+            "Command::new",
+            "git rev-parse",
+            "esp_restart",
+            "esp_ota_begin",
+            "esp_ota_write",
+            "esp_ota_end",
+            "esp_ota_set_boot_partition",
+            "esp_task_wdt",
+            "uart_",
+            "gpio_set",
+            "credential",
+            "BM1370",
+            "Gamma601",
+        ] {
+            assert!(
+                !source.contains(forbidden),
+                "production platform identity contains prohibited token {forbidden}"
+            );
+        }
+    }
+
+    for request_time_mutation in [
+        "static mut",
+        "Atomic",
+        "Mutex",
+        "OnceLock",
+        "fn set",
+        "fn write",
+    ] {
+        assert!(
+            !PLATFORM_IDENTITY_SOURCE.contains(request_time_mutation),
+            "platform adapter contains request-time mutation token {request_time_mutation}"
+        );
     }
 }
 

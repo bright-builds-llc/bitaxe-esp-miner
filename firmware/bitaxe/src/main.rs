@@ -1,5 +1,3 @@
-use std::ffi::CStr;
-
 use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState, StartupDebugText};
 use esp_idf_svc::{hal::peripherals::Peripherals, sys};
 
@@ -16,6 +14,7 @@ mod mining_evidence_mode;
 mod network_stack;
 mod operator_sensor_runtime;
 mod ota_update;
+mod platform_identity;
 mod rtc_boot_ordinal;
 mod runtime_snapshot;
 mod runtime_uptime;
@@ -26,11 +25,9 @@ mod websocket_api;
 mod wifi_adapter;
 
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
-const ESP_IDF_VERSION: &str = "v5.5.4";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";
 const SAFE_STATE_LOG_LINE: &str =
     "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled";
-const UNAVAILABLE: &str = "Unavailable";
 
 fn main() -> anyhow::Result<()> {
     sys::link_patches();
@@ -157,48 +154,28 @@ fn main() -> anyhow::Result<()> {
     if mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
         live_stratum_runtime::schedule_phase27_bridge_after_http_ready(network_ready);
     }
-    info_retained(&format!("reset_reason={}", reset_reason()));
-    info_retained(&format!("partition={}", partition_label()));
-    info_retained(&format!("psram_status={}", psram_status()));
-    info_retained(&format!("esp_idf_version={ESP_IDF_VERSION}"));
+    let platform_snapshot = runtime_snapshot::collect_api_snapshot();
+    info_retained(&format!(
+        "reset_reason={}",
+        platform_snapshot.platform.reset_reason
+    ));
+    info_retained(&format!(
+        "partition={}",
+        platform_snapshot.platform.running_partition
+    ));
+    let psram_status = if platform_snapshot.platform.psram_available {
+        "available"
+    } else {
+        "unavailable"
+    };
+    info_retained(&format!("psram_status={psram_status}"));
+    info_retained(&format!(
+        "esp_idf_version={}",
+        platform_snapshot.platform.idf_version
+    ));
     info_retained(&format!("rust_target={RUST_TARGET}"));
 
     Ok(())
-}
-
-fn reset_reason() -> i32 {
-    // ESP-IDF owns the reset register interpretation at this boundary.
-    unsafe { sys::esp_reset_reason() as i32 }
-}
-
-fn partition_label() -> String {
-    let Some(label) = maybe_partition_label() else {
-        return UNAVAILABLE.to_owned();
-    };
-
-    label
-}
-
-fn maybe_partition_label() -> Option<String> {
-    // ESP-IDF returns a static partition pointer for the running image.
-    let maybe_partition = unsafe { sys::esp_ota_get_running_partition() };
-    if maybe_partition.is_null() {
-        return None;
-    }
-
-    // The partition label is a null-terminated field owned by ESP-IDF.
-    let label = unsafe { CStr::from_ptr((*maybe_partition).label.as_ptr()) };
-    Some(label.to_string_lossy().into_owned())
-}
-
-fn psram_status() -> &'static str {
-    // ESP-IDF heap capabilities expose whether external memory is present.
-    let psram_bytes = unsafe { sys::heap_caps_get_total_size(sys::MALLOC_CAP_SPIRAM) };
-    if psram_bytes > 0 {
-        return "available";
-    }
-
-    "unavailable"
 }
 
 fn firmware_commit() -> &'static str {
