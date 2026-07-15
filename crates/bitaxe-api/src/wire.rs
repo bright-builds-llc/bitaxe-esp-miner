@@ -10,7 +10,7 @@ use serde_json::Value;
 use thiserror::Error;
 
 use crate::mining::{mining_state_from_runtime, SharesRejectedReasonWire};
-use crate::{ApiSnapshot, ObservationTruthWire};
+use crate::{ApiSnapshot, BootSessionId, ObservationTruthWire, OperatorSnapshotRevision};
 
 /// Error type for host-side fixture compatibility helpers.
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -36,6 +36,10 @@ pub fn require_wire_keys(
 /// Initial `/api/system/info` wire DTO slice.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SystemInfoWire {
+    #[serde(rename = "bootSession")]
+    pub boot_session: BootSessionId,
+    #[serde(rename = "operatorSnapshotRevision")]
+    pub operator_snapshot_revision: OperatorSnapshotRevision,
     #[serde(rename = "ASICModel")]
     pub asic_model: String,
     #[serde(rename = "boardVersion")]
@@ -192,6 +196,8 @@ impl SystemInfoWire {
         let platform = &snapshot.platform;
 
         Self {
+            boot_session: snapshot.operator_snapshot_identity.boot_session(),
+            operator_snapshot_revision: snapshot.operator_snapshot_identity.revision(),
             asic_model: snapshot.catalog.asic().model().to_owned(),
             board_version: snapshot.catalog.board_version().to_owned(),
             hash_rate: mining_state.hash_rate,
@@ -367,6 +373,8 @@ mod tests {
         assert_eq!(value.get("buildChannel"), Some(&json!("dev")));
         assert_eq!(value.get("sourceDirty"), Some(&Value::Bool(false)));
         assert_eq!(value.get("releaseTag"), Some(&Value::Null));
+        assert_eq!(value.get("bootSession"), Some(&json!("0".repeat(32))));
+        assert_eq!(value.get("operatorSnapshotRevision"), Some(&json!(1)));
         assert!(require_wire_keys(
             &value,
             &[

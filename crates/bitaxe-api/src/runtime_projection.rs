@@ -67,7 +67,7 @@ mod tests {
     };
     use serde_json::Value;
 
-    use super::{project_api_views, ProjectedApiViews};
+    use super::{project_api_views, project_system_info, ProjectedApiViews};
     use crate::{
         scoreboard_response, statistics_response, ApiSnapshot, SystemInfoWire, WebSocketRouteKind,
         WebSocketState,
@@ -95,6 +95,32 @@ mod tests {
         assert!(!wire.mining_paused);
         assert_eq!(public_json.get("hashRate"), Some(&Value::from(2_500.0)));
         assert_eq!(public_json.get("sharesAccepted"), Some(&Value::from(1)));
+        assert_eq!(
+            public_json.get("bootSession"),
+            Some(&Value::from(wire.boot_session.to_string()))
+        );
+        assert_eq!(
+            public_json.get("operatorSnapshotRevision"),
+            Some(&Value::from(wire.operator_snapshot_revision.get()))
+        );
+    }
+
+    #[test]
+    fn direct_and_live_system_info_share_one_captured_identity() {
+        // Arrange
+        let projection = active_projection_with_share_counters();
+        let base = ApiSnapshot::safe_ultra_205();
+
+        // Act
+        let direct = project_system_info(base.clone(), &projection);
+        let live = project_api_views(base, &projection, None, 10_000, 12.5).telemetry_payload;
+
+        // Assert
+        assert_eq!(live["bootSession"], direct.boot_session.to_string());
+        assert_eq!(
+            live["operatorSnapshotRevision"],
+            direct.operator_snapshot_revision.get()
+        );
     }
 
     #[test]

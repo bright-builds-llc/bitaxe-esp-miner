@@ -13,6 +13,7 @@ pub mod deferred_effect;
 pub mod logs;
 pub mod mining;
 pub mod observation;
+pub mod operator_snapshot;
 pub mod phase33_evidence;
 pub mod route_shell;
 pub mod runtime_projection;
@@ -51,6 +52,11 @@ pub use mining::{mining_state_from_runtime, MiningStateWire, SharesRejectedReaso
 pub use observation::{
     project_observation, ObservationReasonWire, ObservationStampWire, ObservationStateWire,
     ObservationStore, ObservationTruthWire, TelemetryObservations,
+};
+pub use operator_snapshot::{
+    BootSessionId, OperatorSnapshotIdentity, OperatorSnapshotIdentityError,
+    OperatorSnapshotRevision, OperatorSnapshotSequence, OperatorSnapshotSequenceError,
+    BOOT_SESSION_BYTES, BOOT_SESSION_HEX_BYTES,
 };
 pub use route_shell::{
     maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, phase07_route_report,

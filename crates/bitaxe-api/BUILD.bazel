@@ -4,6 +4,7 @@ filegroup(
     name = "phase34_identity_sources",
     srcs = [
         "src/build_identity.rs",
+        "src/operator_snapshot.rs",
         "src/snapshot.rs",
         "src/wire.rs",
     ],
@@ -22,6 +23,7 @@ rust_library(
         "src/logs.rs",
         "src/mining.rs",
         "src/observation.rs",
+        "src/operator_snapshot.rs",
         "src/phase33_evidence.rs",
         "src/route_shell.rs",
         "src/runtime_projection.rs",

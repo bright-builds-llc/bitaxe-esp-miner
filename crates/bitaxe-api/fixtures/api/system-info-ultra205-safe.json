@@ -1,4 +1,6 @@
 {
+  "bootSession": "00000000000000000000000000000000",
+  "operatorSnapshotRevision": 1,
   "ASICModel": "BM1366",
   "boardVersion": "205",
   "hashRate": 0.0,
