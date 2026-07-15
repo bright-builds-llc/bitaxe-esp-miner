@@ -88,6 +88,18 @@ filegroup(
     visibility = ["//tools/parity:__pkg__"],
 )
 
+filegroup(
+    name = "phase34_identity_sources",
+    srcs = [
+        "//crates/bitaxe-api:phase34_identity_sources",
+        "//crates/bitaxe-core:phase34_identity_sources",
+        "build.rs",
+        "src/main.rs",
+        "src/runtime_snapshot.rs",
+    ],
+    visibility = ["//tools/parity:__pkg__"],
+)
+
 genrule(
     name = "firmware",
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by

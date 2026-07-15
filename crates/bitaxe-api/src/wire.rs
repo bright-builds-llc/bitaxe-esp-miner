@@ -136,6 +136,20 @@ pub struct SystemInfoWire {
     pub wifi_status: String,
     #[serde(rename = "version")]
     pub version: String,
+    #[serde(rename = "semanticVersion")]
+    pub semantic_version: String,
+    #[serde(rename = "sourceCommit")]
+    pub source_commit: String,
+    #[serde(rename = "referenceCommit")]
+    pub reference_commit: String,
+    #[serde(rename = "appElfSha256")]
+    pub app_elf_sha256: String,
+    #[serde(rename = "buildChannel")]
+    pub build_channel: String,
+    #[serde(rename = "sourceDirty")]
+    pub source_dirty: bool,
+    #[serde(rename = "releaseTag")]
+    pub maybe_release_tag: Option<String>,
     #[serde(rename = "axeOSVersion")]
     pub axe_os_version: String,
     #[serde(rename = "idfVersion")]
@@ -228,6 +242,13 @@ impl SystemInfoWire {
             wifi_rssi: safe_telemetry.wifi_rssi_dbm,
             wifi_status: platform.wifi_status.clone(),
             version: platform.version.clone(),
+            semantic_version: platform.semantic_version.clone(),
+            source_commit: platform.source_commit.clone(),
+            reference_commit: platform.reference_commit.clone(),
+            app_elf_sha256: platform.app_elf_sha256.clone(),
+            build_channel: platform.build_channel.clone(),
+            source_dirty: platform.source_dirty,
+            maybe_release_tag: platform.maybe_release_tag.clone(),
             axe_os_version: platform.axe_os_version.clone(),
             idf_version: platform.idf_version.clone(),
             reset_reason: platform.reset_reason.clone(),
@@ -338,6 +359,14 @@ mod tests {
         assert_eq!(value.get("apEnabled"), Some(&json!(0)));
         assert_eq!(value.get("autofanspeed"), Some(&json!(1)));
         assert_eq!(value.get("showNewBlock"), Some(&Value::Bool(false)));
+        assert_eq!(value.get("version"), Some(&json!("000000000000-dev")));
+        assert_eq!(value.get("semanticVersion"), Some(&json!("0.0.0-safe")));
+        assert_eq!(value.get("sourceCommit"), Some(&json!("0".repeat(40))));
+        assert_eq!(value.get("referenceCommit"), Some(&json!("0".repeat(40))));
+        assert_eq!(value.get("appElfSha256"), Some(&json!("0".repeat(64))));
+        assert_eq!(value.get("buildChannel"), Some(&json!("dev")));
+        assert_eq!(value.get("sourceDirty"), Some(&Value::Bool(false)));
+        assert_eq!(value.get("releaseTag"), Some(&Value::Null));
         assert!(require_wire_keys(
             &value,
             &[

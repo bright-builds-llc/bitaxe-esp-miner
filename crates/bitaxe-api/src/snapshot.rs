@@ -99,6 +99,13 @@ impl AsicSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlatformSnapshot {
     pub version: String,
+    pub semantic_version: String,
+    pub source_commit: String,
+    pub reference_commit: String,
+    pub app_elf_sha256: String,
+    pub build_channel: String,
+    pub source_dirty: bool,
+    pub maybe_release_tag: Option<String>,
     pub axe_os_version: String,
     pub idf_version: String,
     pub reset_reason: String,
@@ -125,7 +132,14 @@ impl PlatformSnapshot {
     #[must_use]
     pub fn safe_ultra_205() -> Self {
         Self {
-            version: "bitaxe-rust-safe".to_owned(),
+            version: "000000000000-dev".to_owned(),
+            semantic_version: "0.0.0-safe".to_owned(),
+            source_commit: "0".repeat(40),
+            reference_commit: "0".repeat(40),
+            app_elf_sha256: "0".repeat(64),
+            build_channel: "dev".to_owned(),
+            source_dirty: false,
+            maybe_release_tag: None,
             axe_os_version: "safe-fixture".to_owned(),
             idf_version: "v5.5.4".to_owned(),
             reset_reason: "Reset due to power-on event".to_owned(),

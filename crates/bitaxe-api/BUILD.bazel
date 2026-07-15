@@ -1,5 +1,15 @@
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
+filegroup(
+    name = "phase34_identity_sources",
+    srcs = [
+        "src/build_identity.rs",
+        "src/snapshot.rs",
+        "src/wire.rs",
+    ],
+    visibility = ["//firmware/bitaxe:__pkg__"],
+)
+
 rust_library(
     name = "bitaxe_api",
     srcs = [

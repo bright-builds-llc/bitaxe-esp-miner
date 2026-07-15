@@ -350,7 +350,14 @@ fn apply_wifi_snapshot(snapshot: &mut ApiSnapshot) {
 }
 
 fn collect_platform_snapshot(mut platform: PlatformSnapshot) -> PlatformSnapshot {
-    platform.version = crate::firmware_commit().to_owned();
+    platform.version = crate::build_label().to_owned();
+    platform.semantic_version = crate::semantic_version().to_owned();
+    platform.source_commit = crate::firmware_commit().to_owned();
+    platform.reference_commit = crate::reference_commit().to_owned();
+    platform.app_elf_sha256 = crate::app_elf_sha256();
+    platform.build_channel = crate::build_channel().to_owned();
+    platform.source_dirty = crate::source_dirty();
+    platform.maybe_release_tag = crate::maybe_release_tag().map(str::to_owned);
     platform.idf_version = crate::ESP_IDF_VERSION.to_owned();
     platform.reset_reason = crate::reset_reason().to_string();
     platform.running_partition = crate::partition_label();

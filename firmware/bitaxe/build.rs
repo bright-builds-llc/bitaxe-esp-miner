@@ -40,6 +40,10 @@ fn main() {
         "cargo:rustc-env=BITAXE_REFERENCE_COMMIT={}",
         provenance.reference_commit()
     );
+    println!(
+        "cargo:rustc-env=BITAXE_RUNTIME_BUILD_IDENTITY={}",
+        provenance.runtime_identity_record()
+    );
 }
 
 fn assert_console_contract() {

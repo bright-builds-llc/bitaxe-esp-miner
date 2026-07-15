@@ -160,6 +160,18 @@ impl BuildProvenance {
         )
     }
 
+    pub fn runtime_identity_record(&self) -> String {
+        let identity = self.build_identity();
+        format!(
+            "runtime_build_identity semantic_version={} label={} channel={} source_dirty={} release_tag={} redacted=true",
+            self.semantic_version(),
+            identity.build_label(),
+            identity.build_channel().as_str(),
+            identity.source_dirty(),
+            identity.maybe_release_tag().unwrap_or(UNAVAILABLE),
+        )
+    }
+
     pub fn parse_stamp(stamp: &str) -> Result<Self, BuildIdentityError> {
         if !stamp.is_ascii() {
             return Err(BuildIdentityError::new("provenance stamp must be ASCII"));
@@ -401,6 +413,25 @@ mod tests {
 
         // Assert
         assert_eq!(parsed, provenance);
+    }
+
+    #[test]
+    fn provenance_renders_exact_retained_runtime_identity_record() {
+        // Arrange
+        let provenance =
+            BuildProvenance::new("0.1.0", SOURCE_COMMIT, true, None::<&str>, REFERENCE_COMMIT)
+                .expect("valid provenance");
+
+        // Act
+        let record = provenance.runtime_identity_record();
+
+        // Assert
+        assert_eq!(
+            record,
+            "runtime_build_identity semantic_version=0.1.0 label=0123456789ab-dirty-dev channel=dev source_dirty=true release_tag=unavailable redacted=true"
+        );
+        assert!(!record.contains(SOURCE_COMMIT));
+        assert!(!record.contains(REFERENCE_COMMIT));
     }
 
     #[test]

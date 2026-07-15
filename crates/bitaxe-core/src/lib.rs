@@ -77,9 +77,6 @@ pub const STARTUP_DEBUG_MAX_LINE_CHARS: usize =
 /// Maximum startup debug lines that fit on the display.
 pub const STARTUP_DEBUG_MAX_LINES: usize =
     STARTUP_DEBUG_SCREEN_HEIGHT_PX / STARTUP_DEBUG_LINE_STRIDE_PX;
-/// Maximum source commit characters shown on the startup debug screen.
-pub const STARTUP_DEBUG_COMMIT_CHARS: usize = 12;
-
 /// Safe boot/log state for Phase 1.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Phase1SafeState {
@@ -133,14 +130,14 @@ impl StartupDebugText {
         board: BoardTarget,
         asic: AsicTarget,
         safe_state: Phase1SafeState,
-        maybe_firmware_commit: Option<&str>,
+        maybe_build_label: Option<&str>,
     ) -> Self {
-        let firmware_commit = startup_debug_commit(maybe_firmware_commit);
+        let build_label = startup_debug_build_label(maybe_build_label);
         let lines = [
             "Bitaxe Rust".to_owned(),
             format!("{} {}", board.display_name(), asic.display_name()),
             safe_state.startup_debug_line().to_owned(),
-            format!("fw {firmware_commit}"),
+            format!("fw {build_label}"),
         ];
 
         Self { lines }
@@ -168,19 +165,16 @@ impl StartupDebugText {
     }
 }
 
-fn startup_debug_commit(maybe_firmware_commit: Option<&str>) -> String {
-    let Some(firmware_commit) = maybe_firmware_commit else {
+fn startup_debug_build_label(maybe_build_label: Option<&str>) -> String {
+    let Some(build_label) = maybe_build_label else {
         return "Unavailable".to_owned();
     };
-    let firmware_commit = firmware_commit.trim();
-    if firmware_commit.is_empty() || firmware_commit == "Unavailable" {
+    let build_label = build_label.trim();
+    if build_label.is_empty() || build_label == "Unavailable" {
         return "Unavailable".to_owned();
     }
 
-    firmware_commit
-        .chars()
-        .take(STARTUP_DEBUG_COMMIT_CHARS)
-        .collect()
+    build_label.to_owned()
 }
 
 #[cfg(test)]
@@ -270,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn startup_debug_text_renders_exact_identity_state_and_commit_lines() {
+    fn startup_debug_text_renders_exact_identity_state_and_build_label_lines() {
         // Arrange
         let safe_state = Phase1SafeState::default();
 
@@ -308,20 +302,29 @@ mod tests {
     }
 
     #[test]
-    fn startup_debug_text_truncates_commit_to_twelve_characters() {
+    fn startup_debug_text_preserves_canonical_build_label_suffixes() {
         // Arrange
         let safe_state = Phase1SafeState::default();
+        let labels = [
+            "abcdef123456",
+            "abcdef123456-dirty",
+            "abcdef123456-dev",
+            "abcdef123456-dirty-dev",
+        ];
 
-        // Act
-        let text = StartupDebugText::new(
-            BoardTarget::Ultra205,
-            AsicTarget::Bm1366,
-            safe_state,
-            Some("abcdef1234567890"),
-        );
+        for label in labels {
+            // Act
+            let text = StartupDebugText::new(
+                BoardTarget::Ultra205,
+                AsicTarget::Bm1366,
+                safe_state,
+                Some(label),
+            );
 
-        // Assert
-        assert_eq!(text.lines()[3], "fw abcdef123456");
+            // Assert
+            assert_eq!(text.lines()[3], format!("fw {label}"));
+            assert!(text.fits_ultra_205_display());
+        }
     }
 
     #[test]
@@ -332,7 +335,7 @@ mod tests {
             BoardTarget::Ultra205,
             AsicTarget::Bm1366,
             safe_state,
-            Some("abcdef123456"),
+            Some("abcdef123456-dirty-dev"),
         );
 
         // Act
@@ -345,5 +348,6 @@ mod tests {
             assert!(line.chars().count() <= STARTUP_DEBUG_MAX_LINE_CHARS);
         }
         assert!(text.fits_ultra_205_display());
+        assert_eq!(lines[3].chars().count(), STARTUP_DEBUG_MAX_LINE_CHARS);
     }
 }

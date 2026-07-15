@@ -27,8 +27,6 @@ mod wifi_adapter;
 
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
 const ESP_IDF_VERSION: &str = "v5.5.4";
-const REFERENCE_COMMIT: &str = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
-const REFERENCE_COMMIT_LOG_LINE: &str = "reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";
 const SAFE_STATE_LOG_LINE: &str =
     "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled";
@@ -54,6 +52,7 @@ fn main() -> anyhow::Result<()> {
     info_retained(&boot_log_line);
     boot_evidence::record_booted();
     info_retained(&safe_state_log_line);
+    retain_build_identity();
     if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
     }
@@ -61,7 +60,7 @@ fn main() -> anyhow::Result<()> {
         BoardTarget::Ultra205,
         AsicTarget::Bm1366,
         safe_state,
-        Some(firmware_commit()),
+        Some(build_label()),
     );
     let is_phase27_bridge =
         mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge();
@@ -161,13 +160,6 @@ fn main() -> anyhow::Result<()> {
     info_retained(&format!("reset_reason={}", reset_reason()));
     info_retained(&format!("partition={}", partition_label()));
     info_retained(&format!("psram_status={}", psram_status()));
-    info_retained(&format!("firmware_commit={}", firmware_commit()));
-    debug_assert_eq!(
-        REFERENCE_COMMIT_LOG_LINE,
-        format!("reference_commit={REFERENCE_COMMIT}")
-    );
-
-    info_retained(REFERENCE_COMMIT_LOG_LINE);
     info_retained(&format!("esp_idf_version={ESP_IDF_VERSION}"));
     info_retained(&format!("rust_target={RUST_TARGET}"));
 
@@ -210,7 +202,54 @@ fn psram_status() -> &'static str {
 }
 
 fn firmware_commit() -> &'static str {
-    option_env!("BITAXE_FIRMWARE_COMMIT").unwrap_or(UNAVAILABLE)
+    env!("BITAXE_FIRMWARE_COMMIT")
+}
+
+fn semantic_version() -> &'static str {
+    env!("BITAXE_SEMANTIC_VERSION")
+}
+
+fn build_label() -> &'static str {
+    env!("BITAXE_BUILD_LABEL")
+}
+
+fn build_channel() -> &'static str {
+    env!("BITAXE_BUILD_CHANNEL")
+}
+
+fn source_dirty() -> bool {
+    env!("BITAXE_SOURCE_DIRTY") == "true"
+}
+
+fn maybe_release_tag() -> Option<&'static str> {
+    let release_tag = env!("BITAXE_RELEASE_TAG");
+    (release_tag != "unavailable").then_some(release_tag)
+}
+
+fn reference_commit() -> &'static str {
+    env!("BITAXE_REFERENCE_COMMIT")
+}
+
+fn app_elf_sha256() -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+
+    let maybe_description = unsafe { sys::esp_app_get_description().as_ref() };
+    let Some(description) = maybe_description else {
+        return "unavailable".to_owned();
+    };
+    let mut digest = String::with_capacity(description.app_elf_sha256.len() * 2);
+    for byte in description.app_elf_sha256 {
+        digest.push(char::from(HEX[usize::from(byte >> 4)]));
+        digest.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+    digest
+}
+
+fn retain_build_identity() {
+    info_retained(&format!("firmware_commit={}", firmware_commit()));
+    info_retained(&format!("reference_commit={}", reference_commit()));
+    info_retained(&format!("app_elf_sha256={}", app_elf_sha256()));
+    info_retained(env!("BITAXE_RUNTIME_BUILD_IDENTITY"));
 }
 
 fn info_retained(line: &str) {
