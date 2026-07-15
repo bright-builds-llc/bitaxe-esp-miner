@@ -3,12 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 34-04-PLAN.md
-last_updated: "2026-07-15T16:30:47.326Z"
+stopped_at: Phase 34 verification found three software gaps; gap planning is required before Phase 35.
+last_updated: "2026-07-15T16:50:23.000Z"
 last_activity: "2026-07-15"
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 3
   total_plans: 13
   completed_plans: 13
   percent: 100
@@ -20,13 +20,13 @@ Last activity: 2026-07-15
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — COMPLETE
+Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAPS FOUND
 Plan: 4 of 4 complete
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 4 of 4 complete
-- **Status:** Phase complete
-- **Next step:** Plan Phase 35 detector-gated correlated evidence without weakening its admission gates.
+- **Plan:** 4 of 4 implemented
+- **Status:** Verification gaps found; 6/10 requirements satisfied
+- **Next step:** Plan Phase 34 gap closure for factory-image admission, supervisor checkpoint liveness, and ordered snapshot publication. Phase 35 remains blocked.
 
 ## Project Reference
 
@@ -119,6 +119,14 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 - Runtime health remains an immutable captured value: the pure evaluator receives only producer-owned observations and monotonic time, while public and retained surfaces project the same snapshot.
 - Supervisor checkpoint visibility and ESP task-watchdog participation are independent; Phase 34 reports watchdog participation unavailable with reason `unproved`.
+
+## Decisions (Phase 34 Verification)
+
+- Phase 34 verification is `gaps_found` at 6/10 requirements; green unit and Bazel suites do not override reachable production-path defects.
+- OBS-06 remains pending because concurrent HTTP/WebSocket captures can reserve revisions and retain or publish them in decreasing completion order.
+- SYS-02 remains pending because normal flashing selects the factory image while identity admission authenticates markers only in its OTA sibling, without proving app-byte equivalence.
+- HLT-02 and HLT-04 remain pending because duplicate yield-log suppression returns before recurring supervisor checkpoint publication, making a live loop appear stale and unhealthy.
+- Phase 35 is blocked until deterministic software gap closure and fresh Phase 34 verification pass; no hardware can repair or disprove these defects.
 
 ## Decisions (v1.1 Milestone Archive)
 

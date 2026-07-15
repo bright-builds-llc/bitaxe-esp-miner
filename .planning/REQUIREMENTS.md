@@ -14,7 +14,7 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 - [x] **OBS-03**: An Ultra 205 operator can observe INA260 current, bus voltage, and power values only when a producer-owned sequence and monotonic acquisition time prove a fresh read.
 - [x] **OBS-04**: An Ultra 205 operator can observe EMC2101 temperature and independently available tachometer data through read-only transactions, with missing or invalid data represented explicitly.
 - [x] **OBS-05**: An Ultra 205 operator can still use the API and unaffected observations when one sensor read fails, and the last affected value becomes stale or failed without being refreshed by a request.
-- [x] **OBS-06**: An Ultra 205 operator sees system-info, live-WebSocket, retained-log, and evidence projections derived from the same boot session and monotonic operator-snapshot revision.
+- [ ] **OBS-06**: An Ultra 205 operator sees system-info, live-WebSocket, retained-log, and evidence projections derived from the same boot session and monotonic operator-snapshot revision.
 
 ### Confirmed Configuration
 
@@ -28,7 +28,7 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 ### Truthful System Identity
 
 - [x] **SYS-01**: An Ultra 205 operator can inspect the running firmware's semantic version and embedded source commit without host-checkout substitution.
-- [x] **SYS-02**: An Ultra 205 operator can correlate the running firmware with its pinned reference commit and flashed package identity.
+- [ ] **SYS-02**: An Ultra 205 operator can correlate the running firmware with its pinned reference commit and flashed package identity.
 - [x] **SYS-03**: An Ultra 205 operator can inspect truthful ESP-IDF, AxeOS/static-asset, board `205`, BM1366, and running-partition identity.
 - [x] **SYS-04**: An Ultra 205 operator can inspect decoded reset reason, uptime, and heap-health facts from the running firmware.
 - [x] **SYS-05**: An Ultra 205 operator sees an explicit unavailable state for any identity or runtime fact the firmware cannot prove; live surfaces never substitute fixtures or synthetic placeholders.
@@ -36,9 +36,9 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 ### Passive Runtime Health
 
 - [x] **HLT-01**: An Ultra 205 operator can inspect passive self-test lifecycle state as idle, blocked, running, passed, failed, canceled, or unavailable without v1.2 starting a hardware self-test submode.
-- [x] **HLT-02**: An Ultra 205 operator can inspect supervisor availability, the latest bounded checkpoint category, checkpoint sequence, and checkpoint age through the coherent operator snapshot.
+- [ ] **HLT-02**: An Ultra 205 operator can inspect supervisor availability, the latest bounded checkpoint category, checkpoint sequence, and checkpoint age through the coherent operator snapshot.
 - [x] **HLT-03**: An Ultra 205 operator can distinguish pure supervisor/checkpoint visibility from actual ESP task-watchdog participation; unproved task-watchdog configuration is reported unavailable.
-- [x] **HLT-04**: An Ultra 205 operator sees stalled or over-age checkpoints as stale or unhealthy rather than continuing to receive a healthy status from a one-time startup marker.
+- [ ] **HLT-04**: An Ultra 205 operator sees stalled or over-age checkpoints as stale or unhealthy rather than continuing to receive a healthy status from a one-time startup marker.
 
 ### Correlated Hardware Evidence
 
@@ -103,7 +103,7 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | OBS-03 | Phase 32 | Complete |
 | OBS-04 | Phase 32 | Complete |
 | OBS-05 | Phase 32 | Complete |
-| OBS-06 | Phase 34 | Complete |
+| OBS-06 | Phase 34 | Pending |
 | CFG-08 | Phase 31 | Complete |
 | CFG-09 | Phase 33 | Complete |
 | CFG-10 | Phase 33 | Complete |
@@ -111,14 +111,14 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | CFG-12 | Phase 35 | Pending |
 | CFG-13 | Phase 33 | Complete |
 | SYS-01 | Phase 34 | Complete |
-| SYS-02 | Phase 34 | Complete |
+| SYS-02 | Phase 34 | Pending |
 | SYS-03 | Phase 34 | Complete |
 | SYS-04 | Phase 34 | Complete |
 | SYS-05 | Phase 34 | Complete |
 | HLT-01 | Phase 34 | Complete |
-| HLT-02 | Phase 34 | Complete |
+| HLT-02 | Phase 34 | Pending |
 | HLT-03 | Phase 34 | Complete |
-| HLT-04 | Phase 34 | Complete |
+| HLT-04 | Phase 34 | Pending |
 | EVD-10 | Phase 35 | Pending |
 | EVD-11 | Phase 35 | Pending |
 | EVD-12 | Phase 35 | Pending |
@@ -134,4 +134,4 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 - Duplicate mappings: 0
 
 *Requirements defined: 2026-07-13*
-*Last updated: 2026-07-15 after Phase 34 Plan 02 completed OBS-06*
+*Last updated: 2026-07-15 after Phase 34 verification found gaps in OBS-06, SYS-02, HLT-02, and HLT-04*

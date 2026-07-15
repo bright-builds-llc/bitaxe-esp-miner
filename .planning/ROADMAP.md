@@ -19,7 +19,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 - [x] **Phase 31: Operator Claim and Telemetry Contract** — Define truthful observation, settings, health, and promotion states before effectful integration. (completed 2026-07-13)
 - [x] **Phase 32: Shared I2C and Read-Only Sensor Acquisition** — Establish one bounded I2C0 owner for startup display handoff and read-only INA260/EMC2101 observations. (completed 2026-07-14)
 - [x] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, and immediately visible storage truth, with a fail-closed classifier ready for later reboot qualification. (completed 2026-07-15 on the remapped software boundary; CFG-12 remains pending for Phase 35)
-- [x] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot. (completed 2026-07-15)
+- [ ] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot. (4/4 plans implemented; verification gaps found 2026-07-15)
 - [ ] **Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion** — Prove the completed chain on one Ultra 205 and promote only specifically supported rows.
 
 ## Phase Details
@@ -104,6 +104,8 @@ No additional Phase 33 hardware attempt is permitted.
 - [x] 34-03 — Remaining truthful platform identity and runtime facts
 - [x] 34-04 — Passive runtime-health projection
 
+**Verification:** Gaps found at 6/10 requirements. OBS-06, SYS-02, HLT-02, and HLT-04 remain pending until selected factory bytes are bound to admitted provenance, recurring supervisor checkpoints survive yield-log suppression, and snapshot publication is serialized monotonically. Phase 35 remains blocked.
+
 ### Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion
 
 **Goal:** One bounded, detector-gated Ultra 205 evidence chain proves the eligible v1.2 operator-runtime outcomes and deterministically preserves every excluded claim as a non-promotion.
@@ -141,7 +143,7 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | 31 | Operator Claim and Telemetry Contract | 2 | Complete |
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
 | 33 | Confirmed Settings Durability | 4 | Complete (8/8 software) |
-| 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Complete (4/4 plans) |
+| 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Gaps Found (4/4 plans) |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | Not started |
 
 **Overall:** 4/5 phases complete; 20/27 requirements complete.
