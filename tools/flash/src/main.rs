@@ -1023,6 +1023,7 @@ fn validate_identity_admission(
     if manifest.schema_version != 3 {
         bail!("identity_admission=blocked reason=manifest_schema_not_v3");
     }
+    validate_required_artifact_kinds(manifest)?;
     let manifest_provenance = BuildProvenance::new(
         &manifest.semantic_version,
         &manifest.source_commit,
@@ -1072,11 +1073,33 @@ fn validate_identity_admission(
 }
 
 fn require_artifact<'a>(manifest: &'a PackageManifest, kind: &str) -> Result<&'a PackageArtifact> {
-    manifest
+    let mut matches = manifest
         .artifacts
         .iter()
-        .find(|artifact| artifact.kind == kind)
-        .with_context(|| format!("identity_admission=blocked reason=missing_{kind}_artifact"))
+        .filter(|artifact| artifact.kind == kind);
+    let Some(artifact) = matches.next() else {
+        bail!("identity_admission=blocked reason=missing_{kind}_artifact");
+    };
+    if matches.next().is_some() {
+        bail!("identity_admission=blocked reason=duplicate_{kind}_artifact");
+    }
+
+    Ok(artifact)
+}
+
+fn validate_required_artifact_kinds(manifest: &PackageManifest) -> Result<()> {
+    for kind in [
+        "firmware_elf",
+        "firmware_ota_image",
+        "www_spiffs_image",
+        "factory_merged_image",
+        "partition_table",
+        "otadata_initial",
+    ] {
+        require_artifact(manifest, kind)?;
+    }
+
+    Ok(())
 }
 
 fn require_manifest_artifact_for_path<'a>(
@@ -1172,16 +1195,8 @@ fn resolve_manifest_flash_image(
     manifest: &Utf8Path,
     package_manifest: &PackageManifest,
 ) -> Result<Utf8PathBuf> {
-    if let Some(factory_artifact) = package_manifest
-        .artifacts
-        .iter()
-        .find(|artifact| artifact.kind == "factory_merged_image")
-    {
-        return resolve_manifest_factory_artifact(manifest, Utf8Path::new(&factory_artifact.path));
-    }
-
-    let default_flash_image = Utf8PathBuf::from(&package_manifest.default_flash_image);
-    resolve_manifest_default(manifest, &default_flash_image)
+    let factory_artifact = require_artifact(package_manifest, "factory_merged_image")?;
+    resolve_manifest_factory_artifact(manifest, Utf8Path::new(&factory_artifact.path))
 }
 
 fn resolve_manifest_default(
@@ -2667,6 +2682,68 @@ mod tests {
     }
 
     #[test]
+    fn identity_admission_rejects_duplicate_ota_before_port_or_credentials() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        duplicate_manifest_artifact(&manifest, "firmware_ota_image");
+        let command = FlashCommand {
+            common: CommonArgs {
+                port: None,
+                dry_run: false,
+                ..common_args()
+            },
+            image: None,
+            manifest: Some(manifest),
+            wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        };
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+        );
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error
+            .contains("identity_admission=blocked reason=duplicate_firmware_ota_image_artifact"));
+        assert!(!error.contains("Ambiguous serial ports"));
+        assert!(!error.contains("credentials"));
+    }
+
+    #[test]
+    fn identity_admission_rejects_duplicate_factory_before_port_or_credentials() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        duplicate_manifest_artifact(&manifest, "factory_merged_image");
+        let command = FlashCommand {
+            common: CommonArgs {
+                port: None,
+                dry_run: false,
+                ..common_args()
+            },
+            image: None,
+            manifest: Some(manifest),
+            wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        };
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+        );
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error
+            .contains("identity_admission=blocked reason=duplicate_factory_merged_image_artifact"));
+        assert!(!error.contains("Ambiguous serial ports"));
+        assert!(!error.contains("credentials"));
+    }
+
+    #[test]
     fn manifest_v3_rejects_wrong_factory_artifact_name() {
         // Arrange
         let dir = tempdir().expect("tempdir");
@@ -3378,6 +3455,7 @@ mod tests {
         let factory = b"synthetic factory package".to_vec();
         let www = b"synthetic www".to_vec();
         let otadata = b"synthetic otadata".to_vec();
+        let partition_table = b"synthetic partition table".to_vec();
         let artifacts = [
             ("firmware_elf", DEFAULT_ELF_NAME, elf.as_slice()),
             ("firmware_ota_image", "esp-miner.bin", ota.as_slice()),
@@ -3387,6 +3465,11 @@ mod tests {
                 factory.as_slice(),
             ),
             ("www_spiffs_image", "www.bin", www.as_slice()),
+            (
+                "partition_table",
+                "partition-table.bin",
+                partition_table.as_slice(),
+            ),
             ("otadata_initial", "otadata-initial.bin", otadata.as_slice()),
         ];
         let mut artifact_values = Vec::new();
@@ -3454,6 +3537,23 @@ mod tests {
             .expect("ota artifact");
         ota_artifact["sha256"] = serde_json::json!(sha256_bytes(&ota));
 
+        std::fs::write(
+            manifest.as_std_path(),
+            serde_json::to_string_pretty(&value).expect("manifest json"),
+        )
+        .expect("rewrite manifest");
+    }
+
+    fn duplicate_manifest_artifact(manifest: &Utf8Path, kind: &str) {
+        let contents = std::fs::read_to_string(manifest.as_std_path()).expect("read manifest");
+        let mut value: serde_json::Value = serde_json::from_str(&contents).expect("manifest json");
+        let artifacts = value["artifacts"].as_array_mut().expect("artifacts array");
+        let duplicate = artifacts
+            .iter()
+            .find(|artifact| artifact["kind"] == kind)
+            .expect("artifact kind")
+            .clone();
+        artifacts.push(duplicate);
         std::fs::write(
             manifest.as_std_path(),
             serde_json::to_string_pretty(&value).expect("manifest json"),

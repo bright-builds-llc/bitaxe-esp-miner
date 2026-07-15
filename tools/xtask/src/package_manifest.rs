@@ -344,11 +344,18 @@ fn require_artifact_kind(
     manifest: &PackageManifestV3,
     kind: ArtifactKind,
 ) -> Result<&ReleaseArtifact> {
-    manifest
+    let mut matches = manifest
         .artifacts
         .iter()
-        .find(|artifact| artifact.kind == kind)
-        .with_context(|| required_artifact_message(kind))
+        .filter(|artifact| artifact.kind == kind);
+    let Some(artifact) = matches.next() else {
+        bail!(required_artifact_message(kind));
+    };
+    if matches.next().is_some() {
+        bail!(duplicate_artifact_message(kind));
+    }
+
+    Ok(artifact)
 }
 
 fn validate_sha256(kind: &ArtifactKind, sha256: &str) -> Result<()> {
@@ -410,6 +417,10 @@ fn required_artifact_message(kind: ArtifactKind) -> String {
             "required artifact kind update_only_image missing".to_owned()
         }
     }
+}
+
+fn duplicate_artifact_message(kind: ArtifactKind) -> String {
+    format!("required artifact kind {kind} duplicate")
 }
 
 fn artifact_entry(
@@ -695,6 +706,133 @@ mod tests {
             "otadata-initial.bin",
             "0xf10000",
         );
+    }
+
+    #[test]
+    fn package_manifest_v3_rejects_duplicate_ota_artifact() {
+        // Arrange
+        let mut manifest = valid_manifest_v3();
+        let duplicate = manifest
+            .artifacts
+            .iter()
+            .find(|artifact| artifact.kind == ArtifactKind::FirmwareOtaImage)
+            .expect("ota artifact")
+            .clone();
+        manifest.artifacts.push(duplicate);
+
+        // Act
+        let result = validate_package_manifest_v3(&manifest);
+
+        // Assert
+        assert_eq!(
+            result.expect_err("duplicate OTA must fail").to_string(),
+            "required artifact kind firmware_ota_image duplicate"
+        );
+    }
+
+    #[test]
+    fn package_manifest_v3_rejects_duplicate_factory_artifact() {
+        // Arrange
+        let mut manifest = valid_manifest_v3();
+        let duplicate = manifest
+            .artifacts
+            .iter()
+            .find(|artifact| artifact.kind == ArtifactKind::FactoryMergedImage)
+            .expect("factory artifact")
+            .clone();
+        manifest.artifacts.push(duplicate);
+
+        // Act
+        let result = validate_package_manifest_v3(&manifest);
+
+        // Assert
+        assert_eq!(
+            result.expect_err("duplicate factory must fail").to_string(),
+            "required artifact kind factory_merged_image duplicate"
+        );
+    }
+
+    #[test]
+    fn package_manifest_v3_distinguishes_missing_and_duplicate_artifacts() {
+        // Arrange
+        let mut missing_manifest = valid_manifest_v3();
+        missing_manifest
+            .artifacts
+            .retain(|artifact| artifact.kind != ArtifactKind::FirmwareOtaImage);
+        let mut duplicate_manifest = valid_manifest_v3();
+        let duplicate = duplicate_manifest
+            .artifacts
+            .iter()
+            .find(|artifact| artifact.kind == ArtifactKind::FirmwareOtaImage)
+            .expect("ota artifact")
+            .clone();
+        duplicate_manifest.artifacts.push(duplicate);
+
+        // Act
+        let missing = validate_package_manifest_v3(&missing_manifest);
+        let duplicate = validate_package_manifest_v3(&duplicate_manifest);
+
+        // Assert
+        assert_eq!(
+            missing.expect_err("missing OTA must fail").to_string(),
+            "required artifact kind firmware_ota_image missing"
+        );
+        assert_eq!(
+            duplicate.expect_err("duplicate OTA must fail").to_string(),
+            "required artifact kind firmware_ota_image duplicate"
+        );
+    }
+
+    fn valid_manifest_v3() -> PackageManifestV3 {
+        let artifact = |kind, offset: &str| ReleaseArtifact {
+            kind,
+            path: format!("{kind}.bin"),
+            offset: offset.to_owned(),
+            sha256: "0".repeat(64),
+        };
+        PackageManifestV3 {
+            schema_version: 3,
+            release_name: "bitaxe-ultra205-v1".to_owned(),
+            semantic_version: "0.1.0".to_owned(),
+            source_commit: SOURCE_COMMIT.to_owned(),
+            reference_commit: EXPECTED_REFERENCE_COMMIT.to_owned(),
+            app_elf_sha256: APP_ELF_SHA256.to_owned(),
+            build_identity: ManifestBuildIdentity {
+                label: "0123456789ab-dev".to_owned(),
+                channel: "dev".to_owned(),
+                source_dirty: false,
+                release_tag: None,
+            },
+            default_flash_image: DEFAULT_ELF_NAME.to_owned(),
+            image_metadata: ImageMetadata {
+                board: "205".to_owned(),
+                device_model: "Ultra 205".to_owned(),
+                asic: "BM1366".to_owned(),
+                esp_idf_version: "v5.5.4".to_owned(),
+                rust_target: RUST_TARGET.to_owned(),
+            },
+            tool_versions: ToolVersions {
+                cargo: "cargo 1.0.0".to_owned(),
+                rustc: "rustc 1.0.0".to_owned(),
+                bazel: "bazel 1.0.0".to_owned(),
+                espflash: "espflash 1.0.0".to_owned(),
+            },
+            install_notes: ReleaseNotes {
+                path: "ultra-205.md".to_owned(),
+                summary: "install".to_owned(),
+            },
+            license_inventory: "license-inventory.md".to_owned(),
+            provenance_manifest: "provenance-manifest.md".to_owned(),
+            otadata_source: "generated-erased-flash".to_owned(),
+            artifacts: vec![
+                artifact(ArtifactKind::FirmwareElf, UNAVAILABLE),
+                artifact(ArtifactKind::FirmwareOtaImage, "0x10000"),
+                artifact(ArtifactKind::WwwSpiffsImage, "0x410000"),
+                artifact(ArtifactKind::FactoryMergedImage, "0x0"),
+                artifact(ArtifactKind::PartitionTable, "0x8000"),
+                artifact(ArtifactKind::OtadataInitial, "0xf10000"),
+            ],
+        }
     }
 
     fn write_fixture(dir: &TempDir, file_name: &str, contents: &[u8]) -> Utf8PathBuf {
