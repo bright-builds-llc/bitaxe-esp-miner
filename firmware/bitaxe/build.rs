@@ -1,22 +1,45 @@
+use bitaxe_api::BuildProvenance;
 use std::env;
 use std::fs;
-use std::process::Command;
 
 fn main() {
     embuild::espidf::sysenv::output();
     assert_console_contract();
-    println!("cargo:rerun-if-env-changed=BITAXE_SOURCE_COMMIT");
+    println!("cargo:rerun-if-env-changed=BITAXE_BUILD_PROVENANCE_STAMP");
     println!("cargo:rerun-if-env-changed=BITAXE_MINING_EVIDENCE_MODE");
     println!("cargo:rerun-if-env-changed=BITAXE_HARDWARE_EVIDENCE_ACK");
     println!("cargo:rerun-if-env-changed=BITAXE_WORK_RESULT_INVESTIGATION");
     println!("cargo:rerun-if-env-changed=BITAXE_CHIP_DETECT_INVESTIGATION");
-    emit_git_rerun_hints();
-
-    let Some(commit) = maybe_git_commit() else {
-        return;
-    };
-
-    println!("cargo:rustc-env=BITAXE_FIRMWARE_COMMIT={commit}");
+    let provenance = required_build_provenance();
+    let identity = provenance.build_identity();
+    println!(
+        "cargo:rustc-env=BITAXE_SEMANTIC_VERSION={}",
+        provenance.semantic_version()
+    );
+    println!(
+        "cargo:rustc-env=BITAXE_FIRMWARE_COMMIT={}",
+        identity.source_commit()
+    );
+    println!(
+        "cargo:rustc-env=BITAXE_BUILD_LABEL={}",
+        identity.build_label()
+    );
+    println!(
+        "cargo:rustc-env=BITAXE_BUILD_CHANNEL={}",
+        identity.build_channel().as_str()
+    );
+    println!(
+        "cargo:rustc-env=BITAXE_SOURCE_DIRTY={}",
+        identity.source_dirty()
+    );
+    println!(
+        "cargo:rustc-env=BITAXE_RELEASE_TAG={}",
+        identity.maybe_release_tag().unwrap_or("unavailable")
+    );
+    println!(
+        "cargo:rustc-env=BITAXE_REFERENCE_COMMIT={}",
+        provenance.reference_commit()
+    );
 }
 
 fn assert_console_contract() {
@@ -37,55 +60,15 @@ fn assert_console_contract() {
     }
 }
 
-fn emit_git_rerun_hints() {
-    if let Some(head_path) = git_path("HEAD") {
-        println!("cargo:rerun-if-changed={head_path}");
-    }
-
-    let Some(ref_name) = git_stdout(["symbolic-ref", "-q", "HEAD"]) else {
-        return;
-    };
-    let Some(ref_path) = git_path(ref_name.trim()) else {
-        return;
-    };
-
-    println!("cargo:rerun-if-changed={ref_path}");
-}
-
-fn maybe_git_commit() -> Option<String> {
-    if let Some(commit) = maybe_env_commit() {
-        return Some(commit);
-    }
-
-    git_stdout(["rev-parse", "--short=12", "HEAD"])
-}
-
-fn maybe_env_commit() -> Option<String> {
-    let commit = env::var("BITAXE_SOURCE_COMMIT").ok()?;
-    let commit = commit.trim();
-    if commit.is_empty() {
-        return None;
-    }
-
-    Some(commit.to_owned())
-}
-
-fn git_path(path: &str) -> Option<String> {
-    git_stdout(["rev-parse", "--git-path", path])
-}
-
-fn git_stdout<const N: usize>(args: [&str; N]) -> Option<String> {
-    let maybe_output = Command::new("git").args(args).output().ok()?;
-
-    if !maybe_output.status.success() {
-        return None;
-    }
-
-    let commit = String::from_utf8(maybe_output.stdout).ok()?;
-    let commit = commit.trim();
-    if commit.is_empty() {
-        return None;
-    }
-
-    Some(commit.to_owned())
+fn required_build_provenance() -> BuildProvenance {
+    let stamp_path = env::var("BITAXE_BUILD_PROVENANCE_STAMP").unwrap_or_else(|_| {
+        panic!("canonical firmware build requires build provenance; run `just build`")
+    });
+    println!("cargo:rerun-if-changed={stamp_path}");
+    let stamp = fs::read_to_string(&stamp_path).unwrap_or_else(|error| {
+        panic!("failed to read canonical build provenance {stamp_path}: {error}")
+    });
+    BuildProvenance::parse_stamp(&stamp).unwrap_or_else(|error| {
+        panic!("invalid canonical build provenance; run `just build`: {error}")
+    })
 }

@@ -22,6 +22,7 @@ serde_json.workspace = true
 ssd1306.workspace = true
 
 [build-dependencies]
+bitaxe-api = { path = "../../crates/bitaxe-api" }
 embuild.workspace = true
 
 [package.metadata.esp-idf-sys]

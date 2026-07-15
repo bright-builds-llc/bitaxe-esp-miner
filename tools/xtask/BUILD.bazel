@@ -10,6 +10,7 @@ rust_binary(
     crate_name = "xtask",
     edition = "2021",
     deps = [
+        "//crates/bitaxe-api:bitaxe_api",
         "@crates//:anyhow",
         "@crates//:camino",
         "@crates//:clap",

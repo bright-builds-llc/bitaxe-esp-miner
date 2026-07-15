@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+bitaxe-api = { path = "../../crates/bitaxe-api" }
 camino.workspace = true
 clap.workspace = true
 esp-idf-part = "0.6.0"

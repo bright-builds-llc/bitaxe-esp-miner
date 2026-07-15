@@ -1,7 +1,51 @@
+load("//scripts:build_identity.bzl", "build_provenance")
+
 exports_files([
+    "BUILD.bazel",
     "partitions-ultra205.csv",
     "sdkconfig.defaults",
 ])
+
+filegroup(
+    name = "build_provenance_inputs",
+    srcs = [
+        "//:firmware_root_build_inputs",
+        "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-asic:bitaxe_asic",
+        "//crates/bitaxe-config:bitaxe_config",
+        "//crates/bitaxe-core:bitaxe_core",
+        "//crates/bitaxe-safety:bitaxe_safety",
+        "//crates/bitaxe-stratum:bitaxe_stratum",
+        "//scripts:build_identity_status",
+    ] + glob([
+        "src/**/*.rs",
+        "static/**",
+    ]) + [
+        "BUILD.bazel",
+        "Cargo.toml",
+        "build.rs",
+        "partitions-ultra205.csv",
+        "sdkconfig.defaults",
+    ],
+)
+
+build_provenance(
+    name = "_build_provenance",
+    srcs = [":build_provenance_inputs"],
+)
+
+filegroup(
+    name = "build_provenance_stamp",
+    srcs = [":_build_provenance"],
+    output_group = "stamp",
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "build_identity_sdkconfig_defaults",
+    srcs = [":_build_provenance"],
+    output_group = "sdkconfig_defaults",
+)
 
 filegroup(
     name = "phase28_boot_replay_sources",
@@ -49,14 +93,16 @@ genrule(
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by
     # //scripts:build_firmware.
     srcs = glob(["src/**/*.rs"]) + [
-        "//scripts:source_commit_stamp",
+        ":build_identity_sdkconfig_defaults",
+        ":build_provenance_inputs",
+        ":build_provenance_stamp",
         "Cargo.toml",
         "build.rs",
         "partitions-ultra205.csv",
         "sdkconfig.defaults",
     ] + glob(["static/**"]),
     outs = ["bitaxe-firmware.elf"],
-    cmd = "$(location //scripts:build_firmware) $(@D) $(location //scripts:source_commit_stamp)",
+    cmd = "$(location //scripts:build_firmware) $(@D) $(location :build_provenance_stamp) $(location :build_identity_sdkconfig_defaults)",
     local = True,
     tags = [
         "local",
@@ -70,7 +116,7 @@ genrule(
     name = "firmware_image",
     srcs = [
         "//firmware/bitaxe:firmware",
-        "//scripts:source_commit_stamp",
+        ":build_provenance_stamp",
     ],
     outs = [
         "bitaxe-ultra205.elf",

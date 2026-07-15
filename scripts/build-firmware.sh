@@ -7,78 +7,86 @@ readonly ESP_IDF_VERSION_PIN="tag:v5.5.4"
 readonly PACKAGE_NAME="bitaxe-firmware"
 
 usage() {
-  printf 'usage: %s <bazel-output-dir> [source-commit-file]\n' "$0" >&2
+	printf 'usage: %s <bazel-output-dir> <build-provenance-stamp> <identity-sdkconfig-defaults>\n' "$0" >&2
 }
 
-if [[ "$#" -lt 1 || "$#" -gt 2 ]]; then
-  usage
-  exit 2
+if [[ "$#" -ne 3 ]]; then
+	usage
+	exit 2
 fi
 
-readonly OUTPUT_DIR="$1"
-readonly SOURCE_COMMIT_FILE="${2:-}"
+mkdir -p "$1"
+OUTPUT_DIR="$(cd "$1" && pwd -P)"
+readonly OUTPUT_DIR
+BUILD_PROVENANCE_STAMP="$(cd "$(dirname "$2")" && pwd -P)/$(basename "$2")"
+readonly BUILD_PROVENANCE_STAMP
+IDENTITY_SDKCONFIG_DEFAULTS="$(cd "$(dirname "$3")" && pwd -P)/$(basename "$3")"
+readonly IDENTITY_SDKCONFIG_DEFAULTS
 if [[ -z "${HOME:-}" ]]; then
-  HOME="$(cd ~ && pwd)"
-  export HOME
+	HOME="$(cd ~ && pwd)"
+	export HOME
 fi
 
 readonly ESP_EXPORT="${HOME}/export-esp.sh"
 
 if [[ ! -f "$ESP_EXPORT" ]]; then
-  printf 'error: missing ESP environment export at %s\n' "$ESP_EXPORT" >&2
-  printf 'run `just doctor` to inspect ESP dependencies\n' >&2
-  printf 'run `just bootstrap-esp` to install ESP Rust tooling, then source %s or open a new shell\n' "$ESP_EXPORT" >&2
-  exit 1
+	printf 'error: missing ESP environment export at %s\n' "$ESP_EXPORT" >&2
+	printf 'run just doctor to inspect ESP dependencies\n' >&2
+	printf 'run just bootstrap-esp to install ESP Rust tooling, then source %s or open a new shell\n' "$ESP_EXPORT" >&2
+	exit 1
 fi
-
-mkdir -p "$OUTPUT_DIR"
 
 printf '[build-firmware] MCU=%s\n' "$MCU_NAME"
 printf '[build-firmware] target=%s\n' "$TARGET"
 printf '[build-firmware] esp_idf_version=%s\n' "$ESP_IDF_VERSION_PIN"
 printf '[build-firmware] output_dir=%s\n' "$OUTPUT_DIR"
 
-if [[ -n "$SOURCE_COMMIT_FILE" ]]; then
-  if [[ ! -f "$SOURCE_COMMIT_FILE" ]]; then
-    printf 'error: source commit file not found: %s\n' "$SOURCE_COMMIT_FILE" >&2
-    exit 1
-  fi
+[[ -f "$BUILD_PROVENANCE_STAMP" ]] || {
+	printf 'error: build provenance stamp not found: %s\n' "$BUILD_PROVENANCE_STAMP" >&2
+	exit 1
+}
+[[ -f "$IDENTITY_SDKCONFIG_DEFAULTS" ]] || {
+	printf 'error: identity sdkconfig defaults not found: %s\n' "$IDENTITY_SDKCONFIG_DEFAULTS" >&2
+	exit 1
+}
 
-  BITAXE_SOURCE_COMMIT="$(tr -d '[:space:]' <"$SOURCE_COMMIT_FILE")"
-  if [[ -z "$BITAXE_SOURCE_COMMIT" ]]; then
-    printf 'error: source commit file was empty: %s\n' "$SOURCE_COMMIT_FILE" >&2
-    exit 1
-  fi
-  export BITAXE_SOURCE_COMMIT
-  printf '[build-firmware] source_commit=%s\n' "$BITAXE_SOURCE_COMMIT"
-fi
+readonly OUTPUT_SDKCONFIG="${OUTPUT_DIR}/sdkconfig"
+readonly OUTPUT_SDKCONFIG_DEFAULTS="${OUTPUT_DIR}/sdkconfig.defaults"
+rm -f "$OUTPUT_SDKCONFIG" "$OUTPUT_SDKCONFIG_DEFAULTS"
+cp firmware/bitaxe/sdkconfig.defaults "$OUTPUT_SDKCONFIG_DEFAULTS"
+printf '\n' >>"$OUTPUT_SDKCONFIG_DEFAULTS"
+while IFS= read -r line || [[ -n "$line" ]]; do
+	printf '%s\n' "$line" >>"$OUTPUT_SDKCONFIG_DEFAULTS"
+done <"$IDENTITY_SDKCONFIG_DEFAULTS"
+export BITAXE_BUILD_PROVENANCE_STAMP="$BUILD_PROVENANCE_STAMP"
 
+# shellcheck source=/dev/null
 source "$ESP_EXPORT"
 
-export ESP_IDF_SDKCONFIG="firmware/bitaxe/sdkconfig"
-export ESP_IDF_SDKCONFIG_DEFAULTS="firmware/bitaxe/sdkconfig.defaults"
+export ESP_IDF_SDKCONFIG="$OUTPUT_SDKCONFIG"
+export ESP_IDF_SDKCONFIG_DEFAULTS="$OUTPUT_SDKCONFIG_DEFAULTS"
 export ESP_IDF_SYS_ROOT_CRATE="$PACKAGE_NAME"
 export ESP_IDF_TOOLS_INSTALL_DIR="workspace"
 export ESP_IDF_VERSION="$ESP_IDF_VERSION_PIN"
 
 if [[ -x "${HOME}/.cargo/bin/cargo" ]]; then
-  PATH="${HOME}/.cargo/bin:${PATH}"
-  export PATH
+	PATH="${HOME}/.cargo/bin:${PATH}"
+	export PATH
 fi
 
 if ! command -v cargo >/dev/null; then
-  printf 'error: cargo not found after sourcing %s\n' "$ESP_EXPORT" >&2
-  printf 'run `just doctor` to inspect ESP dependencies\n' >&2
-  printf 'run `just bootstrap-esp` after installing Rust/Cargo with rustup\n' >&2
-  exit 1
+	printf 'error: cargo not found after sourcing %s\n' "$ESP_EXPORT" >&2
+	printf 'run just doctor to inspect ESP dependencies\n' >&2
+	printf 'run just bootstrap-esp after installing Rust/Cargo with rustup\n' >&2
+	exit 1
 fi
 
 cargo_cmd=(
-  cargo
-  build
-  -p "$PACKAGE_NAME"
-  --release
-  --target "$TARGET"
+	cargo
+	build
+	-p "$PACKAGE_NAME"
+	--release
+	--target "$TARGET"
 )
 
 printf '[build-firmware] cargo_command='
@@ -91,8 +99,8 @@ readonly SOURCE_ELF="target/${TARGET}/release/${PACKAGE_NAME}"
 readonly OUTPUT_ELF="${OUTPUT_DIR}/${PACKAGE_NAME}.elf"
 
 if [[ ! -f "$SOURCE_ELF" ]]; then
-  printf 'error: expected firmware ELF was not produced: %s\n' "$SOURCE_ELF" >&2
-  exit 1
+	printf 'error: expected firmware ELF was not produced: %s\n' "$SOURCE_ELF" >&2
+	exit 1
 fi
 
 cp "$SOURCE_ELF" "$OUTPUT_ELF"

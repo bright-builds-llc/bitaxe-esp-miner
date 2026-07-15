@@ -16,3 +16,18 @@ exports_files([
     "docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md",
     "docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md",
 ])
+
+filegroup(
+    name = "firmware_root_build_inputs",
+    srcs = [
+        ".bazelrc",
+        ".bazelversion",
+        "BUILD.bazel",
+        "Cargo.lock",
+        "Cargo.toml",
+        "Justfile",
+        "MODULE.bazel",
+        "MODULE.bazel.lock",
+        "rust-toolchain.toml",
+    ],
+)

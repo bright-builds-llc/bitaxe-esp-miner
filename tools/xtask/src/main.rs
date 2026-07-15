@@ -5,6 +5,7 @@ use std::process::Command as ProcessCommand;
 use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
+use bitaxe_api::BuildProvenance;
 use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
 
@@ -37,10 +38,24 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum CliCommand {
+    #[command(name = "materialize-build-provenance")]
+    MaterializeBuildProvenance(MaterializeBuildProvenanceArgs),
     #[command(name = "package-firmware")]
     PackageFirmware(Box<PackageArgs>),
     #[command(name = "validate-package")]
     ValidatePackage(ValidatePackageArgs),
+}
+
+#[derive(Debug, Parser)]
+struct MaterializeBuildProvenanceArgs {
+    #[arg(long = "status-file", value_parser = parse_utf8_path)]
+    status_file: Utf8PathBuf,
+
+    #[arg(long = "stamp-out", value_parser = parse_utf8_path)]
+    stamp_out: Utf8PathBuf,
+
+    #[arg(long = "sdkconfig-defaults-out", value_parser = parse_utf8_path)]
+    sdkconfig_defaults_out: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -253,10 +268,13 @@ impl PackageEnvironment for LocalPackageEnvironment {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let environment = LocalPackageEnvironment::detect()?;
 
     match cli.command {
+        CliCommand::MaterializeBuildProvenance(args) => {
+            materialize_build_provenance(&args)?;
+        }
         CliCommand::PackageFirmware(args) => {
+            let environment = LocalPackageEnvironment::detect()?;
             let request = PackageRequest::from(*args);
             run_package_firmware(&request, &environment)?;
         }
@@ -266,6 +284,105 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn materialize_build_provenance(args: &MaterializeBuildProvenanceArgs) -> Result<()> {
+    let status = fs::read_to_string(args.status_file.as_std_path())
+        .with_context(|| format!("failed to read workspace status {}", args.status_file))?;
+    let fields = parse_bitaxe_workspace_status(&status)?;
+    let source_dirty = match fields.source_dirty.as_str() {
+        "true" => true,
+        "false" => false,
+        _ => bail!("STABLE_BITAXE_SOURCE_DIRTY must be true or false"),
+    };
+    let maybe_release_tag = if fields.release_tag == "unavailable" {
+        None
+    } else {
+        Some(fields.release_tag)
+    };
+    let provenance = BuildProvenance::new(
+        fields.semantic_version,
+        fields.source_commit,
+        source_dirty,
+        maybe_release_tag,
+        fields.reference_commit,
+    )
+    .context("invalid Bitaxe build provenance")?;
+
+    write_parented_file(&args.stamp_out, &provenance.render_stamp())?;
+    write_parented_file(
+        &args.sdkconfig_defaults_out,
+        &format!(
+            "CONFIG_APP_PROJECT_VER_FROM_CONFIG=y\nCONFIG_APP_PROJECT_VER=\"{}\"\n",
+            provenance.build_identity().build_label()
+        ),
+    )
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct WorkspaceStatusFields {
+    source_commit: String,
+    source_dirty: String,
+    release_tag: String,
+    semantic_version: String,
+    reference_commit: String,
+}
+
+fn parse_bitaxe_workspace_status(status: &str) -> Result<WorkspaceStatusFields> {
+    use std::collections::BTreeMap;
+
+    const EXPECTED_KEYS: [&str; 5] = [
+        "STABLE_BITAXE_SOURCE_COMMIT",
+        "STABLE_BITAXE_SOURCE_DIRTY",
+        "STABLE_BITAXE_RELEASE_TAG",
+        "STABLE_BITAXE_SEMANTIC_VERSION",
+        "STABLE_BITAXE_REFERENCE_COMMIT",
+    ];
+
+    let mut fields = BTreeMap::new();
+    for line in status.lines() {
+        let mut parts = line.split_ascii_whitespace();
+        let Some(key) = parts.next() else {
+            continue;
+        };
+        if key.starts_with("STABLE_BITAXE_") && !EXPECTED_KEYS.contains(&key) {
+            bail!("unknown Bitaxe workspace status key {key}");
+        }
+        if !EXPECTED_KEYS.contains(&key) {
+            continue;
+        }
+        let Some(value) = parts.next() else {
+            bail!("workspace status key {key} has no value");
+        };
+        if parts.next().is_some() {
+            bail!("workspace status key {key} has multiple values");
+        }
+        if fields.insert(key.to_owned(), value.to_owned()).is_some() {
+            bail!("duplicate Bitaxe workspace status key {key}");
+        }
+    }
+
+    let mut take = |key: &str| {
+        fields
+            .remove(key)
+            .with_context(|| format!("missing Bitaxe workspace status key {key}"))
+    };
+    Ok(WorkspaceStatusFields {
+        source_commit: take("STABLE_BITAXE_SOURCE_COMMIT")?,
+        source_dirty: take("STABLE_BITAXE_SOURCE_DIRTY")?,
+        release_tag: take("STABLE_BITAXE_RELEASE_TAG")?,
+        semantic_version: take("STABLE_BITAXE_SEMANTIC_VERSION")?,
+        reference_commit: take("STABLE_BITAXE_REFERENCE_COMMIT")?,
+    })
+}
+
+fn write_parented_file(path: &Utf8PathBuf, contents: &str) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent.as_std_path())
+            .with_context(|| format!("failed to create output directory {parent}"))?;
+    }
+    fs::write(path.as_std_path(), contents)
+        .with_context(|| format!("failed to write output {path}"))
 }
 
 fn run_package_firmware(
@@ -492,6 +609,56 @@ mod tests {
     use crate::package_manifest::{sha256_file, tool_versions};
     use camino::Utf8Path;
     use tempfile::{tempdir, TempDir};
+
+    const BUILD_STATUS: &str = "BUILD_USER local\nSTABLE_BITAXE_SOURCE_COMMIT 0123456789abcdef0123456789abcdef01234567\nSTABLE_BITAXE_SOURCE_DIRTY true\nSTABLE_BITAXE_RELEASE_TAG unavailable\nSTABLE_BITAXE_SEMANTIC_VERSION 0.1.0\nSTABLE_BITAXE_REFERENCE_COMMIT abcdef0123456789abcdef0123456789abcdef01\n";
+
+    #[test]
+    fn materialize_build_provenance_writes_canonical_stamp_and_sdkconfig() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let status_file = temp_path(&dir, "stable-status.txt");
+        let stamp_out = temp_path(&dir, "build-provenance.stamp");
+        let sdkconfig_defaults_out = temp_path(&dir, "build-identity.defaults");
+        write_fixture(&status_file, BUILD_STATUS.as_bytes());
+        let args = MaterializeBuildProvenanceArgs {
+            status_file,
+            stamp_out: stamp_out.clone(),
+            sdkconfig_defaults_out: sdkconfig_defaults_out.clone(),
+        };
+
+        // Act
+        materialize_build_provenance(&args).expect("materialize provenance");
+
+        // Assert
+        let stamp = fs::read_to_string(stamp_out).expect("read stamp");
+        let provenance = BuildProvenance::parse_stamp(&stamp).expect("parse stamp");
+        assert_eq!(
+            provenance.build_identity().build_label(),
+            "0123456789ab-dirty-dev"
+        );
+        assert_eq!(provenance.semantic_version(), "0.1.0");
+        assert_eq!(
+            provenance.reference_commit(),
+            "abcdef0123456789abcdef0123456789abcdef01"
+        );
+        assert_eq!(
+            fs::read_to_string(sdkconfig_defaults_out).expect("read defaults"),
+            "CONFIG_APP_PROJECT_VER_FROM_CONFIG=y\nCONFIG_APP_PROJECT_VER=\"0123456789ab-dirty-dev\"\n"
+        );
+    }
+
+    #[test]
+    fn workspace_status_rejects_unknown_duplicate_and_missing_bitaxe_keys() {
+        // Arrange
+        let unknown = format!("{BUILD_STATUS}STABLE_BITAXE_BRANCH main\n");
+        let duplicate = format!("{BUILD_STATUS}STABLE_BITAXE_SOURCE_DIRTY false\n");
+        let missing = BUILD_STATUS.replace("STABLE_BITAXE_SEMANTIC_VERSION 0.1.0\n", "");
+
+        // Act / Assert
+        assert!(parse_bitaxe_workspace_status(&unknown).is_err());
+        assert!(parse_bitaxe_workspace_status(&duplicate).is_err());
+        assert!(parse_bitaxe_workspace_status(&missing).is_err());
+    }
 
     #[test]
     fn manifest_serializes_ultra205_default_elf_and_release_artifacts() {
