@@ -464,6 +464,9 @@ mod tests {
         include_str!("../../../firmware/bitaxe/src/boot_evidence.rs");
     const RUNTIME_SNAPSHOT_SOURCE: &str =
         include_str!("../../../firmware/bitaxe/src/runtime_snapshot.rs");
+    const OPERATOR_SNAPSHOT_RETENTION_SOURCE: &str =
+        include_str!("../../../firmware/bitaxe/src/operator_snapshot_retention.rs");
+    const LOG_BUFFER_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/log_buffer.rs");
 
     #[test]
     fn coherent_same_capture_projects_exact_redacted_fields() {
@@ -902,12 +905,6 @@ mod tests {
             "fn collect_operator_snapshot_candidate",
             "fn runtime_projection_for_api_views",
         );
-        let retention = source_between(
-            RUNTIME_SNAPSHOT_SOURCE,
-            "fn retain_completed_operator_snapshot",
-            "fn mutate_command_visible_state_with_result",
-        );
-
         // Act / Assert
         assert_eq!(BOOT_EVIDENCE_SOURCE.matches("esp_random()").count(), 4);
         assert_eq!(
@@ -939,7 +936,7 @@ mod tests {
             .find("|candidate, identity|")
             .expect("identity completion adapter");
         let retain_adapter = publication
-            .find("retain_completed_operator_snapshot(publication)")
+            .find("operator_snapshot_retention::retain_completed_operator_snapshot")
             .expect("retained chronology adapter");
         let issue_adapter = publication
             .find("|publication| issue(publication.output)")
@@ -948,8 +945,22 @@ mod tests {
         assert!(complete_adapter < retain_adapter && retain_adapter < issue_adapter);
         assert!(!collection.contains("OperatorSnapshotIdentity"));
         assert!(!collection.contains("next_identity"));
-        assert!(retention.contains("append_runtime_log_line(&publication.retained_marker)"));
-        assert!(retention.contains("append_runtime_log_line(&publication.retained_runtime_health)"));
+        assert!(OPERATOR_SNAPSHOT_RETENTION_SOURCE.contains("retain_operator_snapshot_pair"));
+        assert_eq!(
+            OPERATOR_SNAPSHOT_RETENTION_SOURCE
+                .matches("retain_operator_snapshot_pair(")
+                .count(),
+            1
+        );
+        assert!(LOG_BUFFER_SOURCE.contains("pub fn retain_operator_snapshot_pair"));
+        assert!(!publication.contains("Ok::<(), E>(())"));
+        assert_eq!(
+            OPERATOR_SNAPSHOT_RETENTION_SOURCE
+                .matches("append_runtime_log_line")
+                .count(),
+            0
+        );
+        assert!(PUBLICATION_SOURCE.contains("RetentionError, IssueError"));
         assert!(
             API_IDENTITY_SOURCE.contains("operator_snapshot session={} revision={} redacted=true")
         );

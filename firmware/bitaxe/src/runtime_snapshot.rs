@@ -2,6 +2,7 @@
 
 use std::sync::{Mutex, OnceLock};
 
+use crate::log_buffer::RetainedPairStorageError;
 use bitaxe_api::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
     project_api_views, project_system_info, scoreboard_response, statistics_response, ApiSnapshot,
@@ -120,7 +121,7 @@ pub fn collect_projected_api_views(timestamp_ms: u64, response_time_ms: f64) -> 
 pub fn publish_projected_system_info<T, E>(
     _timestamp_ms: u64,
     issue: impl FnOnce(SystemInfoWire) -> Result<T, E>,
-) -> Result<T, OperatorSnapshotPublishError<E>> {
+) -> Result<T, OperatorSnapshotPublishError<RetainedPairStorageError, E>> {
     publish_operator_snapshot(
         false,
         |snapshot, projection, _maybe_sample_marker| project_system_info(snapshot, &projection),
@@ -144,7 +145,7 @@ pub fn projected_scoreboard(timestamp_ms: u64) -> Vec<ScoreboardEntryWire> {
 pub fn publish_projected_live_telemetry_payload<T, E>(
     timestamp_ms: u64,
     issue: impl FnOnce(serde_json::Value) -> Result<T, E>,
-) -> Result<T, OperatorSnapshotPublishError<E>> {
+) -> Result<T, OperatorSnapshotPublishError<RetainedPairStorageError, E>> {
     publish_operator_snapshot(
         false,
         |snapshot, projection, maybe_sample_marker| {
@@ -344,7 +345,7 @@ fn publish_operator_snapshot<Publication, T, E>(
         Option<RuntimeProjectionSampleMarker>,
     ) -> Publication,
     issue: impl FnOnce(Publication) -> Result<T, E>,
-) -> Result<T, OperatorSnapshotPublishError<E>> {
+) -> Result<T, OperatorSnapshotPublishError<RetainedPairStorageError, E>> {
     let publisher = OPERATOR_SNAPSHOT_PUBLISHER.get_or_init(OperatorSnapshotPublisher::new);
     let result = publisher.publish(
         crate::boot_evidence::operator_snapshot_boot_session(),
@@ -366,8 +367,10 @@ fn publish_operator_snapshot<Publication, T, E>(
             }
         },
         |publication| {
-            retain_completed_operator_snapshot(publication);
-            Ok::<(), E>(())
+            crate::operator_snapshot_retention::retain_completed_operator_snapshot(
+                &publication.retained_marker,
+                &publication.retained_runtime_health,
+            )
         },
         |publication| issue(publication.output),
     );
@@ -430,15 +433,11 @@ fn runtime_projection_for_api_views(
     )
 }
 
-fn retain_completed_operator_snapshot<T>(publication: &CompletedOperatorSnapshot<T>) {
-    log::info!("{}", publication.retained_marker);
-    crate::log_buffer::append_runtime_log_line(&publication.retained_marker);
-    log::info!("{}", publication.retained_runtime_health);
-    crate::log_buffer::append_runtime_log_line(&publication.retained_runtime_health);
-}
-
-fn log_recovered_publication_lock<T, E>(
-    result: &Result<bitaxe_api::OperatorSnapshotPublication<T>, OperatorSnapshotPublishError<E>>,
+fn log_recovered_publication_lock<T, RetentionError, IssueError>(
+    result: &Result<
+        bitaxe_api::OperatorSnapshotPublication<T>,
+        OperatorSnapshotPublishError<RetentionError, IssueError>,
+    >,
 ) {
     let recovered = match result {
         Ok(publication) => publication.lock_health == OperatorSnapshotLockHealth::RecoveredPoison,

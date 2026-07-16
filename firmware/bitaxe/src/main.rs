@@ -13,6 +13,7 @@ mod log_buffer;
 mod mining_evidence_mode;
 mod network_stack;
 mod operator_sensor_runtime;
+mod operator_snapshot_retention;
 mod ota_update;
 mod platform_identity;
 mod rtc_boot_ordinal;

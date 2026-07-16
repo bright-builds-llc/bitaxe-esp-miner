@@ -6,6 +6,9 @@ const HTTP_API_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/http_ap
 const SNAPSHOT_PUBLICATION_SOURCE: &str =
     include_str!("../../../crates/bitaxe-api/src/operator_snapshot_publication.rs");
 const SNAPSHOT_EVIDENCE_SOURCE: &str = include_str!("operator_snapshot_evidence.rs");
+const SNAPSHOT_RETENTION_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/operator_snapshot_retention.rs");
+const LOG_BUFFER_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/log_buffer.rs");
 const RUNTIME_HEALTH_ADAPTER_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_health_adapter.rs");
 const RUNTIME_HEALTH_CORE_SOURCE: &str =
@@ -341,7 +344,7 @@ fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
         .find("|candidate, identity|")
         .expect("completion adapter");
     let retain = publication
-        .find("retain_completed_operator_snapshot(publication)")
+        .find("operator_snapshot_retention::retain_completed_operator_snapshot")
         .expect("retention adapter");
     let issue = publication
         .find("issue(publication.output)")
@@ -349,6 +352,11 @@ fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
     assert!(collect < complete && complete < retain && retain < issue);
     assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("let candidate = collect();"));
     assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("issue(publication).map_err"));
+    assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("RetentionError, IssueError"));
+    assert!(SNAPSHOT_RETENTION_SOURCE.contains("retain_operator_snapshot_pair"));
+    assert!(LOG_BUFFER_SOURCE.contains("pub fn retain_operator_snapshot_pair"));
+    assert!(!publication.contains("Ok::<(), E>(())"));
+    assert!(!SNAPSHOT_RETENTION_SOURCE.contains("append_runtime_log_line"));
 
     assert!(system_info.contains("publish_projected_system_info"));
     assert!(system_info.contains("send_json(request, &system_info)"));

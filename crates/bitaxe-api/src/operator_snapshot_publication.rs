@@ -36,7 +36,7 @@ pub struct OperatorSnapshotPublication<T> {
 
 /// Fail-closed publication failure classified by stage.
 #[derive(Debug, Eq, PartialEq)]
-pub enum OperatorSnapshotPublishError<E> {
+pub enum OperatorSnapshotPublishError<RetentionError, IssueError> {
     /// Same-thread recursion was rejected before candidate collection.
     Reentrant,
     /// The within-boot revision sequence cannot advance without wrapping.
@@ -47,20 +47,20 @@ pub enum OperatorSnapshotPublishError<E> {
     /// Retained chronology could not be appended, so issuance was skipped.
     Retention {
         /// Adapter-local failure.
-        source: E,
+        source: RetentionError,
         /// Health observed while acquiring the ordering mutex.
         lock_health: OperatorSnapshotLockHealth,
     },
     /// Final external issuance failed after retained chronology was appended.
     Issuance {
         /// Adapter-local failure.
-        source: E,
+        source: IssueError,
         /// Health observed while acquiring the ordering mutex.
         lock_health: OperatorSnapshotLockHealth,
     },
 }
 
-impl<E> OperatorSnapshotPublishError<E> {
+impl<RetentionError, IssueError> OperatorSnapshotPublishError<RetentionError, IssueError> {
     /// Returns ordering-lock health when the failing attempt acquired the lock.
     #[must_use]
     pub const fn maybe_lock_health(&self) -> Option<OperatorSnapshotLockHealth> {
@@ -73,7 +73,9 @@ impl<E> OperatorSnapshotPublishError<E> {
     }
 }
 
-impl<E: fmt::Display> fmt::Display for OperatorSnapshotPublishError<E> {
+impl<RetentionError: fmt::Display, IssueError: fmt::Display> fmt::Display
+    for OperatorSnapshotPublishError<RetentionError, IssueError>
+{
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Reentrant => formatter.write_str("operator snapshot publication is reentrant"),
@@ -100,14 +102,17 @@ impl OperatorSnapshotPublisher {
     }
 
     /// Collects outside ordering, then serializes identity, retention, and issuance.
-    pub fn publish<Candidate, Publication, T, E>(
+    pub fn publish<Candidate, Publication, T, RetentionError, IssueError>(
         &self,
         boot_session: BootSessionId,
         collect: impl FnOnce() -> Candidate,
         complete: impl FnOnce(Candidate, OperatorSnapshotIdentity) -> Publication,
-        retain: impl FnOnce(&Publication) -> Result<(), E>,
-        issue: impl FnOnce(Publication) -> Result<T, E>,
-    ) -> Result<OperatorSnapshotPublication<T>, OperatorSnapshotPublishError<E>> {
+        retain: impl FnOnce(&Publication) -> Result<(), RetentionError>,
+        issue: impl FnOnce(Publication) -> Result<T, IssueError>,
+    ) -> Result<
+        OperatorSnapshotPublication<T>,
+        OperatorSnapshotPublishError<RetentionError, IssueError>,
+    > {
         let Some(_depth_guard) = PublicationDepthGuard::enter() else {
             return Err(OperatorSnapshotPublishError::Reentrant);
         };
@@ -188,11 +193,71 @@ mod tests {
         identity: OperatorSnapshotIdentity,
     }
 
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    struct DistinctRetentionError;
+
+    impl fmt::Display for DistinctRetentionError {
+        fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("retention")
+        }
+    }
+
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    struct DistinctIssueError;
+
+    impl fmt::Display for DistinctIssueError {
+        fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("issuance")
+        }
+    }
+
     fn complete(candidate: &'static str, identity: OperatorSnapshotIdentity) -> Completed {
         Completed {
             candidate,
             identity,
         }
+    }
+
+    #[test]
+    fn retention_and_issuance_preserve_distinct_error_sources() {
+        // Arrange
+        let publisher = OperatorSnapshotPublisher::new();
+
+        // Act
+        let retention_error = publisher
+            .publish(
+                session(),
+                || "retention",
+                complete,
+                |_| Err(DistinctRetentionError),
+                |_| Ok::<(), DistinctIssueError>(()),
+            )
+            .expect_err("retention failure must be preserved");
+        let issuance_error = publisher
+            .publish(
+                session(),
+                || "issuance",
+                complete,
+                |_| Ok::<(), DistinctRetentionError>(()),
+                |_| Err::<(), DistinctIssueError>(DistinctIssueError),
+            )
+            .expect_err("issuance failure must be preserved");
+
+        // Assert
+        assert!(matches!(
+            retention_error,
+            OperatorSnapshotPublishError::Retention {
+                source: DistinctRetentionError,
+                lock_health: OperatorSnapshotLockHealth::Healthy,
+            }
+        ));
+        assert!(matches!(
+            issuance_error,
+            OperatorSnapshotPublishError::Issuance {
+                source: DistinctIssueError,
+                lock_health: OperatorSnapshotLockHealth::Healthy,
+            }
+        ));
     }
 
     #[test]
@@ -350,7 +415,7 @@ mod tests {
                 |_| Err("retain"),
                 |_| {
                     issued.set(true);
-                    Ok(())
+                    Ok::<(), &'static str>(())
                 },
             )
             .expect_err("retention failure must fail publication");
@@ -387,7 +452,7 @@ mod tests {
                 session(),
                 || "failed-issue",
                 complete,
-                |_| Ok(()),
+                |_| Ok::<(), &'static str>(()),
                 |_| Err::<(), &'static str>("issue"),
             )
             .expect_err("issuance failure must fail publication");
