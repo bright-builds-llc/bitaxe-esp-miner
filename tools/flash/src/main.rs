@@ -201,6 +201,97 @@ struct FlashOutcome {
     nvs_seed: Option<NvsSeedOutcome>,
 }
 
+struct PreparedFlash {
+    outcome: FlashOutcome,
+    execution_command: CommandSpec,
+    _execution_snapshot: Option<AdmittedExecutionSnapshot>,
+}
+
+struct AdmittedFactoryImage {
+    manifest: Utf8PathBuf,
+    display_path: Utf8PathBuf,
+    bytes: Vec<u8>,
+}
+
+enum AdmittedFlashImage {
+    DeveloperDryRun { display_path: Utf8PathBuf },
+    Factory(AdmittedFactoryImage),
+}
+
+impl AdmittedFlashImage {
+    fn maybe_manifest(&self) -> Option<&Utf8Path> {
+        match self {
+            Self::DeveloperDryRun { .. } => None,
+            Self::Factory(factory) => Some(&factory.manifest),
+        }
+    }
+
+    fn display_path(&self) -> &Utf8Path {
+        match self {
+            Self::DeveloperDryRun { display_path } => display_path,
+            Self::Factory(factory) => &factory.display_path,
+        }
+    }
+
+    fn maybe_factory_bytes(&self) -> Option<&[u8]> {
+        match self {
+            Self::DeveloperDryRun { .. } => None,
+            Self::Factory(factory) => Some(&factory.bytes),
+        }
+    }
+}
+
+struct AdmittedExecutionSnapshot {
+    _file: tempfile::NamedTempFile,
+    path: Utf8PathBuf,
+}
+
+impl AdmittedExecutionSnapshot {
+    fn materialize(bytes: &[u8]) -> Result<Self> {
+        let mut file = tempfile::NamedTempFile::new().map_err(|_| {
+            anyhow::anyhow!("identity_admission=blocked reason=execution_snapshot_create_failed")
+        })?;
+        file.as_file_mut().write_all(bytes).map_err(|_| {
+            anyhow::anyhow!("identity_admission=blocked reason=execution_snapshot_write_failed")
+        })?;
+        file.as_file_mut().flush().map_err(|_| {
+            anyhow::anyhow!("identity_admission=blocked reason=execution_snapshot_write_failed")
+        })?;
+        file.as_file().sync_all().map_err(|_| {
+            anyhow::anyhow!("identity_admission=blocked reason=execution_snapshot_sync_failed")
+        })?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            let mut permissions = file
+                .as_file()
+                .metadata()
+                .map_err(|_| {
+                    anyhow::anyhow!(
+                        "identity_admission=blocked reason=execution_snapshot_permissions_failed"
+                    )
+                })?
+                .permissions();
+            permissions.set_mode(0o600);
+            file.as_file().set_permissions(permissions).map_err(|_| {
+                anyhow::anyhow!(
+                    "identity_admission=blocked reason=execution_snapshot_permissions_failed"
+                )
+            })?;
+        }
+        let path = Utf8PathBuf::from_path_buf(file.path().to_path_buf()).map_err(|_| {
+            anyhow::anyhow!("identity_admission=blocked reason=execution_snapshot_path_invalid")
+        })?;
+
+        Ok(Self { _file: file, path })
+    }
+
+    fn path(&self) -> &Utf8Path {
+        &self.path
+    }
+}
+
 #[derive(Debug)]
 struct NvsSeedOutcome {
     image: Utf8PathBuf,
@@ -295,7 +386,12 @@ trait FlashEnvironment {
     }
     fn read_to_string(&self, path: &Utf8Path) -> Result<String>;
     fn read_bytes(&self, path: &Utf8Path) -> Result<Vec<u8>>;
-    fn path_exists(&self, path: &Utf8Path) -> bool;
+    fn create_admitted_execution_snapshot(
+        &self,
+        bytes: &[u8],
+    ) -> Result<AdmittedExecutionSnapshot> {
+        AdmittedExecutionSnapshot::materialize(bytes)
+    }
     fn current_provenance(&self) -> Result<BuildProvenance>;
     fn list_ports(&self) -> Result<String>;
     fn write_file(&self, path: &Utf8Path, contents: &str) -> Result<()>;
@@ -434,10 +530,6 @@ impl FlashEnvironment for LocalFlashEnvironment {
 
     fn read_bytes(&self, path: &Utf8Path) -> Result<Vec<u8>> {
         fs::read(path.as_std_path()).with_context(|| format!("failed to read {path}"))
-    }
-
-    fn path_exists(&self, path: &Utf8Path) -> bool {
-        path.is_file()
     }
 
     fn current_provenance(&self) -> Result<BuildProvenance> {
@@ -645,11 +737,17 @@ fn parse_bool_alias(value: &str) -> bool {
 }
 
 fn run_flash(command: &FlashCommand, environment: &impl FlashEnvironment) -> Result<FlashOutcome> {
-    let outcome = prepare_flash(command, environment)?;
+    let PreparedFlash {
+        outcome,
+        execution_command,
+        _execution_snapshot,
+    } = prepare_flash(command, environment)?;
     emit_flash_outcome(&outcome)?;
 
     if !command.common.dry_run {
-        environment.execute(&outcome.command)?;
+        environment.execute(&execution_command).map_err(|_| {
+            anyhow::anyhow!("flash_execution=failed reason=admitted_image_child_failed")
+        })?;
         if let Some(nvs_seed) = &outcome.nvs_seed {
             environment.execute(&nvs_seed.command)?;
         }
@@ -757,28 +855,63 @@ fn run_flash_monitor(
 fn prepare_flash(
     command: &FlashCommand,
     environment: &impl FlashEnvironment,
-) -> Result<FlashOutcome> {
+) -> Result<PreparedFlash> {
     ensure_ultra_205(command.common.board)?;
-    let (maybe_manifest, flash_image) = resolve_flash_image(command, environment)?;
+    let admitted_image = resolve_flash_image(command, environment)?;
+    let maybe_execution_snapshot = if command.common.dry_run {
+        None
+    } else {
+        let Some(factory_bytes) = admitted_image.maybe_factory_bytes() else {
+            bail!("identity_admission=blocked reason=developer_image_requires_dry_run");
+        };
+        Some(environment.create_admitted_execution_snapshot(factory_bytes)?)
+    };
+    let execution_path = maybe_execution_snapshot
+        .as_ref()
+        .map(AdmittedExecutionSnapshot::path)
+        .unwrap_or_else(|| admitted_image.display_path());
     let port = resolve_port(command.common.port.as_deref(), environment)?;
-    let flash_command = flash_command_for_image(&port, &flash_image)?;
+    let execution_command = flash_command_for_admitted_image(
+        &port,
+        &admitted_image,
+        execution_path,
+        command.common.dry_run,
+    )?;
+    let display_command = if maybe_execution_snapshot.is_some() {
+        flash_command_for_admitted_image(
+            &port,
+            &admitted_image,
+            Utf8Path::new("<admitted-factory-snapshot>"),
+            command.common.dry_run,
+        )?
+    } else {
+        execution_command.clone()
+    };
     let nvs_seed = match &command.wifi_credentials {
         Some(path) => Some(prepare_wifi_nvs_seed(&port, path, environment)?),
         None => None,
     };
 
-    Ok(FlashOutcome {
-        manifest: maybe_manifest,
-        flash_image,
-        command: flash_command,
-        nvs_seed,
+    Ok(PreparedFlash {
+        outcome: FlashOutcome {
+            manifest: admitted_image.maybe_manifest().map(Utf8Path::to_owned),
+            flash_image: admitted_image.display_path().to_owned(),
+            command: display_command,
+            nvs_seed,
+        },
+        execution_command,
+        _execution_snapshot: maybe_execution_snapshot,
     })
 }
 
-fn flash_command_for_image(port: &str, flash_image: &Utf8Path) -> Result<CommandSpec> {
-    let file_name = flash_image.file_name().unwrap_or_default();
-    if file_name == FACTORY_IMAGE_NAME {
-        return Ok(CommandSpec::new(
+fn flash_command_for_admitted_image(
+    port: &str,
+    admitted_image: &AdmittedFlashImage,
+    execution_path: &Utf8Path,
+    dry_run: bool,
+) -> Result<CommandSpec> {
+    match admitted_image {
+        AdmittedFlashImage::Factory(_) => Ok(CommandSpec::new(
             "espflash",
             [
                 "write-bin",
@@ -787,22 +920,24 @@ fn flash_command_for_image(port: &str, flash_image: &Utf8Path) -> Result<Command
                 "--port",
                 port,
                 "0x0",
-                flash_image.as_str(),
+                execution_path.as_str(),
             ],
-        ));
+        )),
+        AdmittedFlashImage::DeveloperDryRun { .. } if dry_run => Ok(CommandSpec::new(
+            "espflash",
+            [
+                "flash",
+                "--chip",
+                "esp32s3",
+                "--port",
+                port,
+                execution_path.as_str(),
+            ],
+        )),
+        AdmittedFlashImage::DeveloperDryRun { .. } => {
+            bail!("identity_admission=blocked reason=developer_image_requires_dry_run")
+        }
     }
-
-    Ok(CommandSpec::new(
-        "espflash",
-        [
-            "flash",
-            "--chip",
-            "esp32s3",
-            "--port",
-            port,
-            flash_image.as_str(),
-        ],
-    ))
 }
 
 fn prepare_wifi_nvs_seed(
@@ -968,12 +1103,14 @@ fn csv_cell(value: &str) -> String {
 fn resolve_flash_image(
     command: &FlashCommand,
     environment: &impl FlashEnvironment,
-) -> Result<(Option<Utf8PathBuf>, Utf8PathBuf)> {
+) -> Result<AdmittedFlashImage> {
     if command.common.dry_run && command.manifest.is_none() {
         let Some(image) = &command.image else {
             bail!("identity_admission=blocked reason=dry_run_requires_image_or_v3_manifest");
         };
-        return Ok((None, environment.workspace_path(image)));
+        return Ok(AdmittedFlashImage::DeveloperDryRun {
+            display_path: environment.workspace_path(image),
+        });
     }
 
     if command.image.is_some() && command.manifest.is_none() {
@@ -993,27 +1130,20 @@ fn resolve_flash_image(
     let package_manifest: PackageManifest = serde_json::from_str(&manifest_contents)
         .with_context(|| format!("failed to parse package manifest {manifest}"))?;
     let current_provenance = environment.current_provenance()?;
-    validate_identity_admission(
+    let admitted_factory = validate_identity_admission(
         &manifest,
         &package_manifest,
         &current_provenance,
         environment,
     )?;
-    let flash_image = match &command.image {
-        Some(image) => {
-            let image = environment.workspace_path(image);
-            require_manifest_artifact_for_path(&manifest, &package_manifest, &image)?;
-            image
+    if let Some(image) = &command.image {
+        let explicit_image = environment.workspace_path(image);
+        if explicit_image != admitted_factory.display_path {
+            bail!("identity_admission=blocked reason=explicit_image_not_admitted_factory");
         }
-        None => resolve_manifest_flash_image(&manifest, &package_manifest)?,
-    };
-
-    if !environment.path_exists(&flash_image) {
-        bail!("manifest default flash image does not exist: {flash_image}");
     }
-    validate_artifact_digest_for_path(&manifest, &package_manifest, &flash_image, environment)?;
 
-    Ok((Some(manifest), flash_image))
+    Ok(AdmittedFlashImage::Factory(admitted_factory))
 }
 
 fn validate_identity_admission(
@@ -1021,7 +1151,7 @@ fn validate_identity_admission(
     manifest: &PackageManifest,
     current_provenance: &BuildProvenance,
     environment: &impl FlashEnvironment,
-) -> Result<()> {
+) -> Result<AdmittedFactoryImage> {
     if manifest.schema_version != 3 {
         bail!("identity_admission=blocked reason=manifest_schema_not_v3");
     }
@@ -1054,18 +1184,16 @@ fn validate_identity_admission(
 
     let elf_artifact = require_artifact(manifest, "firmware_elf")?;
     let elf_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&elf_artifact.path))?;
-    validate_artifact_digest(elf_artifact, &elf_path, environment)?;
+    read_validated_artifact(elf_artifact, &elf_path, environment)?;
 
     let ota_artifact = require_artifact(manifest, "firmware_ota_image")?;
     let ota_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&ota_artifact.path))?;
-    validate_artifact_digest(ota_artifact, &ota_path, environment)?;
-    let ota_bytes = environment.read_bytes(&ota_path)?;
+    let ota_bytes = read_validated_artifact(ota_artifact, &ota_path, environment)?;
     let app_elf_sha256 = decode_lower_hex(&manifest.app_elf_sha256)?;
     let factory_artifact = require_artifact(manifest, "factory_merged_image")?;
     let factory_path =
-        resolve_manifest_sibling(manifest_path, Utf8Path::new(&factory_artifact.path))?;
-    validate_artifact_digest(factory_artifact, &factory_path, environment)?;
-    let factory_bytes = environment.read_bytes(&factory_path)?;
+        resolve_manifest_factory_artifact(manifest_path, Utf8Path::new(&factory_artifact.path))?;
+    let factory_bytes = read_validated_artifact(factory_artifact, &factory_path, environment)?;
     package_admission::validate_factory_ota_identity(
         &factory_bytes,
         &ota_bytes,
@@ -1076,7 +1204,11 @@ fn validate_identity_admission(
         },
     )?;
 
-    Ok(())
+    Ok(AdmittedFactoryImage {
+        manifest: manifest_path.to_owned(),
+        display_path: factory_path,
+        bytes: factory_bytes,
+    })
 }
 
 fn require_artifact<'a>(manifest: &'a PackageManifest, kind: &str) -> Result<&'a PackageArtifact> {
@@ -1109,42 +1241,17 @@ fn validate_required_artifact_kinds(manifest: &PackageManifest) -> Result<()> {
     Ok(())
 }
 
-fn require_manifest_artifact_for_path<'a>(
-    manifest_path: &Utf8Path,
-    manifest: &'a PackageManifest,
-    path: &Utf8Path,
-) -> Result<&'a PackageArtifact> {
-    for artifact in &manifest.artifacts {
-        let resolved = resolve_manifest_sibling(manifest_path, Utf8Path::new(&artifact.path))?;
-        if resolved == path {
-            return Ok(artifact);
-        }
-    }
-
-    bail!("identity_admission=blocked reason=explicit_image_not_in_manifest")
-}
-
-fn validate_artifact_digest_for_path(
-    manifest_path: &Utf8Path,
-    manifest: &PackageManifest,
-    path: &Utf8Path,
-    environment: &impl FlashEnvironment,
-) -> Result<()> {
-    let artifact = require_manifest_artifact_for_path(manifest_path, manifest, path)?;
-    validate_artifact_digest(artifact, path, environment)
-}
-
-fn validate_artifact_digest(
+fn read_validated_artifact(
     artifact: &PackageArtifact,
     path: &Utf8Path,
     environment: &impl FlashEnvironment,
-) -> Result<()> {
+) -> Result<Vec<u8>> {
     validate_lower_hex("artifact_sha256", &artifact.sha256, false)?;
     let bytes = environment.read_bytes(path)?;
     if sha256_bytes(&bytes) != artifact.sha256 {
         bail!("identity_admission=blocked reason=package_artifact_digest_mismatch");
     }
-    Ok(())
+    Ok(bytes)
 }
 
 fn validate_lower_hex(label: &str, value: &str, reject_zero: bool) -> Result<()> {
@@ -1189,14 +1296,6 @@ fn sha256_bytes(bytes: &[u8]) -> String {
         encoded.push(char::from(HEX[usize::from(byte & 0x0f)]));
     }
     encoded
-}
-
-fn resolve_manifest_flash_image(
-    manifest: &Utf8Path,
-    package_manifest: &PackageManifest,
-) -> Result<Utf8PathBuf> {
-    let factory_artifact = require_artifact(package_manifest, "factory_merged_image")?;
-    resolve_manifest_factory_artifact(manifest, Utf8Path::new(&factory_artifact.path))
 }
 
 fn resolve_manifest_default(
@@ -2292,6 +2391,8 @@ mod tests {
 
         // Assert
         let nvs_seed = outcome.nvs_seed.as_ref().expect("nvs seed");
+        let observed = environment.observed_flashes();
+        let executed_flash_path = observed[0].path.as_str();
         assert_eq!(
             environment.generated_nvs_partitions(),
             vec![(
@@ -2316,7 +2417,7 @@ mod tests {
                         "--port",
                         "/dev/cu.usbmodem101",
                         "0x0",
-                        outcome.flash_image.as_str(),
+                        executed_flash_path,
                     ],
                 ),
                 CommandSpec::new(
@@ -2780,6 +2881,233 @@ mod tests {
         assert!(!error.contains("Ambiguous serial ports"));
         assert!(!error.contains("credentials"));
         assert!(environment.executed_commands().is_empty());
+    }
+
+    #[test]
+    fn identity_admission_rejects_explicit_manifest_elf_before_effects() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let image = manifest
+            .parent()
+            .expect("manifest parent")
+            .join(DEFAULT_ELF_NAME);
+
+        // Act
+        let error = run_explicit_image_admission(&manifest, image)
+            .expect_err("manifest ELF must not enter full-flash execution");
+
+        // Assert
+        assert!(format!("{error:#}")
+            .contains("identity_admission=blocked reason=explicit_image_not_admitted_factory"));
+    }
+
+    #[test]
+    fn identity_admission_rejects_explicit_extra_artifact_before_effects() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let image = add_manifest_artifact(&manifest, "extra", "extra.bin", b"extra image");
+
+        // Act
+        let error = run_explicit_image_admission(&manifest, image)
+            .expect_err("extra artifact must not enter full-flash execution");
+
+        // Assert
+        assert!(format!("{error:#}")
+            .contains("identity_admission=blocked reason=explicit_image_not_admitted_factory"));
+    }
+
+    #[test]
+    fn identity_admission_rejects_explicit_factory_path_alias_before_effects() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let manifest_dir = manifest.parent().expect("manifest parent");
+        let factory = manifest_dir.join(FACTORY_IMAGE_NAME);
+        let factory_bytes = std::fs::read(factory.as_std_path()).expect("factory image");
+        let alias = add_manifest_artifact(
+            &manifest,
+            "factory_alias",
+            "factory-alias.bin",
+            &factory_bytes,
+        );
+
+        // Act
+        let error = run_explicit_image_admission(&manifest, alias)
+            .expect_err("factory path alias must not enter full-flash execution");
+
+        // Assert
+        assert!(format!("{error:#}")
+            .contains("identity_admission=blocked reason=explicit_image_not_admitted_factory"));
+    }
+
+    #[test]
+    fn identity_admission_rejects_explicit_factory_named_extra_before_effects() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let image = add_manifest_artifact(
+            &manifest,
+            "factory_named_extra",
+            "nested/bitaxe-ultra205-factory.bin",
+            b"factory-named extra",
+        );
+
+        // Act
+        let error = run_explicit_image_admission(&manifest, image)
+            .expect_err("factory-like basename must not enter full-flash execution");
+
+        // Assert
+        assert!(format!("{error:#}")
+            .contains("identity_admission=blocked reason=explicit_image_not_admitted_factory"));
+    }
+
+    #[test]
+    fn admitted_execution_uses_original_bytes_after_package_replacement() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let factory_path = manifest
+            .parent()
+            .expect("manifest parent")
+            .join(FACTORY_IMAGE_NAME);
+        let admitted_bytes = std::fs::read(factory_path.as_std_path()).expect("factory image");
+        let command = FlashCommand {
+            common: CommonArgs {
+                dry_run: false,
+                ..common_args()
+            },
+            image: None,
+            manifest: Some(manifest),
+            wifi_credentials: None,
+        };
+        let environment = FakeFlashEnvironment::default()
+            .with_source_replacement(factory_path.clone(), b"replaced package bytes".to_vec());
+
+        // Act
+        run_flash(&command, &environment).expect("admitted flash");
+
+        // Assert
+        let observed = environment.observed_flashes();
+        assert_eq!(observed.len(), 1);
+        assert_ne!(observed[0].path, factory_path);
+        assert_eq!(observed[0].bytes, admitted_bytes);
+        #[cfg(unix)]
+        assert_eq!(observed[0].unix_mode, Some(0o600));
+        assert!(!observed[0].path.exists());
+    }
+
+    #[test]
+    fn admitted_execution_child_failure_cleans_private_snapshot() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let command = FlashCommand {
+            common: CommonArgs {
+                dry_run: false,
+                ..common_args()
+            },
+            image: None,
+            manifest: Some(manifest),
+            wifi_credentials: None,
+        };
+        let environment = FakeFlashEnvironment::default().with_execute_failure();
+
+        // Act
+        let error = run_flash(&command, &environment).expect_err("child failure");
+
+        // Assert
+        let error = format!("{error:#}");
+        assert!(error.contains("flash_execution=failed reason=admitted_image_child_failed"));
+        assert!(!error.contains("sentinel child failure"));
+        let observed = environment.observed_flashes();
+        assert_eq!(observed.len(), 1);
+        assert!(!error.contains(observed[0].path.as_str()));
+        assert!(!observed[0].path.exists());
+    }
+
+    #[test]
+    fn admitted_execution_snapshot_write_failure_precedes_later_effects() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let command = FlashCommand {
+            common: CommonArgs {
+                port: None,
+                dry_run: false,
+                ..common_args()
+            },
+            image: None,
+            manifest: Some(manifest),
+            wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        };
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+        )
+        .with_snapshot_write_failure();
+
+        // Act
+        let error = run_flash(&command, &environment).expect_err("snapshot write failure");
+
+        // Assert
+        let error = format!("{error:#}");
+        assert!(error.contains("execution_snapshot_write_failed"));
+        assert!(!error.contains("Ambiguous serial ports"));
+        assert!(!error.contains("credentials"));
+        assert!(environment.executed_commands().is_empty());
+    }
+
+    #[test]
+    fn admitted_execution_later_preparation_failure_cleans_private_snapshot() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let command = FlashCommand {
+            common: CommonArgs {
+                dry_run: false,
+                ..common_args()
+            },
+            image: None,
+            manifest: Some(manifest),
+            wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let error = run_flash(&command, &environment).expect_err("preparation failure");
+
+        // Assert
+        assert!(format!("{error:#}").contains("Wi-Fi credential file"));
+        let paths = environment.created_snapshot_paths();
+        assert_eq!(paths.len(), 1);
+        assert!(!paths[0].exists());
+        assert!(environment.executed_commands().is_empty());
+    }
+
+    #[test]
+    fn admitted_execution_command_construction_failure_cleans_private_snapshot() {
+        // Arrange
+        let snapshot =
+            AdmittedExecutionSnapshot::materialize(b"admitted bytes").expect("private snapshot");
+        let snapshot_path = snapshot.path().to_owned();
+        let developer_image = AdmittedFlashImage::DeveloperDryRun {
+            display_path: Utf8PathBuf::from("developer.elf"),
+        };
+
+        // Act
+        let error = flash_command_for_admitted_image(
+            "/dev/cu.usbmodem101",
+            &developer_image,
+            snapshot.path(),
+            false,
+        )
+        .expect_err("non-dry-run developer command");
+        drop(snapshot);
+
+        // Assert
+        assert!(format!("{error:#}").contains("developer_image_requires_dry_run"));
+        assert!(!snapshot_path.exists());
     }
 
     #[test]
@@ -3602,6 +3930,57 @@ mod tests {
         .expect("rewrite manifest");
     }
 
+    fn add_manifest_artifact(
+        manifest: &Utf8Path,
+        kind: &str,
+        relative_path: &str,
+        bytes: &[u8],
+    ) -> Utf8PathBuf {
+        let manifest_dir = manifest.parent().expect("manifest parent");
+        let path = manifest_dir.join(relative_path);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent.as_std_path()).expect("create artifact parent");
+        }
+        std::fs::write(path.as_std_path(), bytes).expect("write extra artifact");
+        let contents = std::fs::read_to_string(manifest.as_std_path()).expect("read manifest");
+        let mut value: serde_json::Value = serde_json::from_str(&contents).expect("manifest json");
+        value["artifacts"]
+            .as_array_mut()
+            .expect("artifacts array")
+            .push(serde_json::json!({
+                "kind": kind,
+                "path": relative_path,
+                "offset": "Unavailable",
+                "sha256": sha256_bytes(bytes),
+            }));
+        std::fs::write(
+            manifest.as_std_path(),
+            serde_json::to_string_pretty(&value).expect("manifest json"),
+        )
+        .expect("rewrite manifest");
+        path
+    }
+
+    fn run_explicit_image_admission(
+        manifest: &Utf8Path,
+        image: Utf8PathBuf,
+    ) -> Result<FlashOutcome> {
+        let command = FlashCommand {
+            common: CommonArgs {
+                port: None,
+                dry_run: false,
+                ..common_args()
+            },
+            image: Some(image),
+            manifest: Some(manifest.to_owned()),
+            wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        };
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+        );
+        run_flash(&command, &environment)
+    }
+
     fn rewrite_manifest_artifact_digest(manifest: &Utf8Path, kind: &str, bytes: &[u8]) {
         let contents = std::fs::read_to_string(manifest.as_std_path()).expect("read manifest");
         let mut value: serde_json::Value = serde_json::from_str(&contents).expect("manifest json");
@@ -3687,6 +4066,13 @@ mod tests {
     }
 
     #[derive(Debug)]
+    struct ObservedFlash {
+        path: Utf8PathBuf,
+        bytes: Vec<u8>,
+        unix_mode: Option<u32>,
+    }
+
+    #[derive(Debug)]
     struct FakeFlashEnvironment {
         ports: String,
         workspace_dir: Utf8PathBuf,
@@ -3696,6 +4082,11 @@ mod tests {
         capture_status: CaptureProcessStatus,
         log_contents: String,
         current_provenance: BuildProvenance,
+        source_replacement: Option<(Utf8PathBuf, Vec<u8>)>,
+        execute_failure: bool,
+        snapshot_write_failure: bool,
+        created_snapshot_paths: RefCell<Vec<Utf8PathBuf>>,
+        observed_flash: RefCell<Vec<ObservedFlash>>,
     }
 
     impl Default for FakeFlashEnvironment {
@@ -3723,6 +4114,11 @@ mod tests {
                     REFERENCE_COMMIT,
                 )
                 .expect("default provenance"),
+                source_replacement: None,
+                execute_failure: false,
+                snapshot_write_failure: false,
+                created_snapshot_paths: RefCell::new(Vec::new()),
+                observed_flash: RefCell::new(Vec::new()),
             }
         }
 
@@ -3757,6 +4153,29 @@ mod tests {
             self.current_provenance = current_provenance;
             self
         }
+
+        fn with_source_replacement(mut self, path: Utf8PathBuf, bytes: Vec<u8>) -> Self {
+            self.source_replacement = Some((path, bytes));
+            self
+        }
+
+        fn with_execute_failure(mut self) -> Self {
+            self.execute_failure = true;
+            self
+        }
+
+        fn with_snapshot_write_failure(mut self) -> Self {
+            self.snapshot_write_failure = true;
+            self
+        }
+
+        fn created_snapshot_paths(&self) -> std::cell::Ref<'_, Vec<Utf8PathBuf>> {
+            self.created_snapshot_paths.borrow()
+        }
+
+        fn observed_flashes(&self) -> std::cell::Ref<'_, Vec<ObservedFlash>> {
+            self.observed_flash.borrow()
+        }
     }
 
     impl FlashEnvironment for FakeFlashEnvironment {
@@ -3786,8 +4205,18 @@ mod tests {
                 .with_context(|| format!("failed to read fake artifact {path}"))
         }
 
-        fn path_exists(&self, path: &Utf8Path) -> bool {
-            path.is_file()
+        fn create_admitted_execution_snapshot(
+            &self,
+            bytes: &[u8],
+        ) -> Result<AdmittedExecutionSnapshot> {
+            if self.snapshot_write_failure {
+                bail!("identity_admission=blocked reason=execution_snapshot_write_failed");
+            }
+            let snapshot = AdmittedExecutionSnapshot::materialize(bytes)?;
+            self.created_snapshot_paths
+                .borrow_mut()
+                .push(snapshot.path().to_owned());
+            Ok(snapshot)
         }
 
         fn current_provenance(&self) -> Result<BuildProvenance> {
@@ -3828,6 +4257,41 @@ mod tests {
             self.executed_commands
                 .borrow_mut()
                 .push(command_spec.clone());
+            if command_spec.args.first().map(String::as_str) == Some("write-bin")
+                && command_spec.args.iter().any(|argument| argument == "0x0")
+            {
+                if let Some((path, bytes)) = &self.source_replacement {
+                    std::fs::write(path.as_std_path(), bytes).expect("replace package source");
+                }
+                let path = Utf8PathBuf::from(
+                    command_spec
+                        .args
+                        .last()
+                        .expect("full flash command image path"),
+                );
+                let bytes = std::fs::read(path.as_std_path()).expect("read executed image");
+                #[cfg(unix)]
+                let unix_mode = {
+                    use std::os::unix::fs::PermissionsExt;
+                    Some(
+                        std::fs::metadata(path.as_std_path())
+                            .expect("executed image metadata")
+                            .permissions()
+                            .mode()
+                            & 0o777,
+                    )
+                };
+                #[cfg(not(unix))]
+                let unix_mode = None;
+                self.observed_flash.borrow_mut().push(ObservedFlash {
+                    path,
+                    bytes,
+                    unix_mode,
+                });
+            }
+            if self.execute_failure {
+                bail!("sentinel child failure");
+            }
             Ok(())
         }
 

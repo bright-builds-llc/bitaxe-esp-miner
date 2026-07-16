@@ -375,7 +375,18 @@ fn phase34_package_and_hardware_admission_source_guard() {
     let flash_preparation = source_between(
         FLASH_SOURCE,
         "fn prepare_flash",
-        "fn flash_command_for_image",
+        "fn flash_command_for_admitted_image",
+    );
+    let flash_execution = source_between(FLASH_SOURCE, "fn run_flash", "fn run_monitor");
+    let snapshot_materialization = source_between(
+        FLASH_SOURCE,
+        "impl AdmittedExecutionSnapshot",
+        "#[derive(Debug)]\nstruct NvsSeedOutcome",
+    );
+    let admitted_command_builder = source_between(
+        FLASH_SOURCE,
+        "fn flash_command_for_admitted_image",
+        "fn prepare_wifi_nvs_seed",
     );
     let manifest_builder = source_between(
         PACKAGE_MANIFEST_SOURCE,
@@ -398,7 +409,53 @@ fn phase34_package_and_hardware_admission_source_guard() {
     let port_resolution = flash_preparation
         .find("resolve_port")
         .expect("port resolution must remain explicit");
-    assert!(image_resolution < port_resolution);
+    let snapshot_creation = flash_preparation
+        .find("create_admitted_execution_snapshot")
+        .expect("the admitted bytes must be snapshotted before external effects");
+    assert!(image_resolution < snapshot_creation && snapshot_creation < port_resolution);
+    assert!(flash_execution.contains("_execution_snapshot"));
+    assert!(flash_execution.contains("environment.execute(&execution_command)"));
+    assert!(flash_execution.contains("admitted_image_child_failed"));
+    for marker in [
+        "NamedTempFile",
+        "write_all",
+        "flush",
+        "sync_all",
+        "set_mode(0o600)",
+    ] {
+        assert!(
+            snapshot_materialization.contains(marker),
+            "missing immutable snapshot marker {marker}"
+        );
+    }
+    assert!(admitted_command_builder.contains("AdmittedFlashImage::Factory"));
+    assert!(admitted_command_builder.contains("AdmittedFlashImage::DeveloperDryRun"));
+    assert!(!admitted_command_builder.contains("file_name"));
+    assert!(!admitted_command_builder.contains("FACTORY_IMAGE_NAME"));
+    for marker in [
+        "struct AdmittedFactoryImage",
+        "enum AdmittedFlashImage",
+        "struct AdmittedExecutionSnapshot",
+        "explicit_image_not_admitted_factory",
+        "<admitted-factory-snapshot>",
+        "read_validated_artifact",
+    ] {
+        assert!(
+            FLASH_SOURCE.contains(marker),
+            "missing exact admitted-image marker {marker}"
+        );
+    }
+    for forbidden in [
+        "require_manifest_artifact_for_path",
+        "validate_artifact_digest_for_path",
+        "resolve_manifest_flash_image",
+        "environment.read_bytes(&factory_path)",
+    ] {
+        assert!(
+            !FLASH_SOURCE.contains(forbidden),
+            "forbidden admission bypass remains: {forbidden}"
+        );
+    }
     for marker in [
         "package_source_dirty",
         "current_workspace_dirty",
@@ -438,7 +495,7 @@ fn phase34_package_and_hardware_admission_source_guard() {
         "fn require_artifact",
     );
     let factory_digest = identity_admission
-        .find("validate_artifact_digest(factory_artifact")
+        .find("read_validated_artifact(factory_artifact")
         .expect("factory digest admission");
     let factory_binding = identity_admission
         .find("validate_factory_ota_identity")
