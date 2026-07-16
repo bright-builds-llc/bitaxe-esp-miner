@@ -6,9 +6,10 @@ use bitaxe_api::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
     project_api_views, project_system_info, scoreboard_response, statistics_response, ApiSnapshot,
     BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect,
-    IdentifyModeState, MiningActivityEffect, OperatorSnapshotIdentity, OperatorSnapshotSequence,
-    PlatformFact, PlatformIdentity, PlatformSnapshot, ProjectedApiViews, SafeTelemetrySnapshot,
-    ScoreboardEntryWire, StatisticsWire, SystemInfoWire,
+    IdentifyModeState, MiningActivityEffect, OperatorSnapshotIdentity, OperatorSnapshotLockHealth,
+    OperatorSnapshotPublishError, OperatorSnapshotPublisher, PlatformFact, PlatformIdentity,
+    PlatformSnapshot, ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire,
+    StatisticsWire, SystemInfoWire,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
@@ -23,7 +24,33 @@ use bitaxe_stratum::v1::{
     },
 };
 static COMMAND_VISIBLE_STATE: OnceLock<Mutex<CommandVisibleState>> = OnceLock::new();
-static OPERATOR_SNAPSHOT_SEQUENCE: OnceLock<Mutex<OperatorSnapshotSequence>> = OnceLock::new();
+static OPERATOR_SNAPSHOT_PUBLISHER: OnceLock<OperatorSnapshotPublisher> = OnceLock::new();
+
+struct OperatorSnapshotCandidate {
+    projection: RuntimeTelemetryProjection,
+    maybe_sample_marker: Option<RuntimeProjectionSampleMarker>,
+    block_found: BlockFoundNotificationState,
+    platform_identity: PlatformIdentity,
+    platform: PlatformSnapshot,
+    runtime_health: bitaxe_core::runtime_health::RuntimeHealthSnapshot,
+    safe_telemetry: SafeTelemetrySnapshot,
+    settings: SettingsProjection,
+    wifi: crate::wifi_adapter::WifiRuntimeSnapshot,
+}
+
+struct SettingsProjection {
+    maybe_hostname: Option<String>,
+    maybe_frequency: Option<f64>,
+    maybe_voltage: Option<u16>,
+    maybe_auto_fan_speed: Option<bool>,
+    maybe_manual_fan_speed: Option<u16>,
+}
+
+struct CompletedOperatorSnapshot<T> {
+    output: T,
+    retained_marker: String,
+    retained_runtime_health: String,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 struct CommandVisibleState {
@@ -52,33 +79,30 @@ impl Default for CommandVisibleState {
 /// Collects current firmware facts and overlays them on the safe Ultra 205 API
 /// snapshot used by the pure contract mappers.
 pub fn collect_api_snapshot() -> ApiSnapshot {
-    let operator_snapshot_identity = reserve_operator_snapshot_identity();
-    let command_state = command_visible_state();
-    collect_completed_api_snapshot(
-        operator_snapshot_identity,
-        command_state.mining,
-        command_state.block_found,
-    )
+    match publish_operator_snapshot(
+        false,
+        |snapshot, _projection, _maybe_sample_marker| snapshot,
+        Ok::<ApiSnapshot, core::convert::Infallible>,
+    ) {
+        Ok(snapshot) => snapshot,
+        Err(error) => panic!("operator snapshot publication failed: {error:?}"),
+    }
 }
 
-fn collect_completed_api_snapshot(
+fn complete_operator_snapshot(
+    candidate: OperatorSnapshotCandidate,
     operator_snapshot_identity: OperatorSnapshotIdentity,
-    mining: MiningRuntimeState,
-    block_found: BlockFoundNotificationState,
 ) -> ApiSnapshot {
     let mut snapshot = ApiSnapshot::safe_ultra_205();
     snapshot.operator_snapshot_identity = operator_snapshot_identity;
-    snapshot.mining = mining;
-    snapshot.block_found = block_found;
-    snapshot.platform_identity = crate::platform_identity::collect();
-    snapshot.platform = collect_platform_snapshot(snapshot.platform, &snapshot.platform_identity);
-    snapshot.runtime_health =
-        crate::runtime_health_adapter::collect(crate::runtime_uptime::millis());
-    let observations = crate::safety_adapter::observation_snapshot();
-    snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
-    apply_wifi_snapshot(&mut snapshot);
-    apply_settings_snapshot(&mut snapshot);
-    retain_completed_operator_snapshot(&snapshot);
+    snapshot.mining = candidate.projection.state().clone();
+    snapshot.block_found = candidate.block_found;
+    snapshot.platform_identity = candidate.platform_identity;
+    snapshot.platform = candidate.platform;
+    snapshot.runtime_health = candidate.runtime_health;
+    snapshot.safe_telemetry = candidate.safe_telemetry;
+    apply_wifi_snapshot(&mut snapshot, candidate.wifi);
+    apply_settings_snapshot(&mut snapshot, candidate.settings);
     snapshot
 }
 
@@ -93,15 +117,15 @@ pub fn collect_projected_api_views(timestamp_ms: u64, response_time_ms: f64) -> 
 }
 
 /// Returns projection-backed `/api/system/info` data without consuming statistics markers.
-pub fn projected_system_info(_timestamp_ms: u64) -> SystemInfoWire {
-    let operator_snapshot_identity = reserve_operator_snapshot_identity();
-    let (projection, _, block_found) = runtime_projection_for_api_views(false);
-    let snapshot = collect_completed_api_snapshot(
-        operator_snapshot_identity,
-        projection.state().clone(),
-        block_found,
-    );
-    project_system_info(snapshot, &projection)
+pub fn publish_projected_system_info<T, E>(
+    _timestamp_ms: u64,
+    issue: impl FnOnce(SystemInfoWire) -> Result<T, E>,
+) -> Result<T, OperatorSnapshotPublishError<E>> {
+    publish_operator_snapshot(
+        false,
+        |snapshot, projection, _maybe_sample_marker| project_system_info(snapshot, &projection),
+        issue,
+    )
 }
 
 /// Returns projection-backed `/api/system/statistics` data.
@@ -117,8 +141,23 @@ pub fn projected_scoreboard(timestamp_ms: u64) -> Vec<ScoreboardEntryWire> {
 }
 
 /// Returns projection-backed `/api/ws/live` payload JSON.
-pub fn projected_live_telemetry_payload(timestamp_ms: u64) -> serde_json::Value {
-    collect_projected_api_views_with_sample_policy(timestamp_ms, 0.0, false).telemetry_payload
+pub fn publish_projected_live_telemetry_payload<T, E>(
+    timestamp_ms: u64,
+    issue: impl FnOnce(serde_json::Value) -> Result<T, E>,
+) -> Result<T, OperatorSnapshotPublishError<E>> {
+    publish_operator_snapshot(
+        false,
+        |snapshot, projection, maybe_sample_marker| {
+            project_api_views(
+                snapshot,
+                &projection,
+                maybe_sample_marker,
+                timestamp_ms,
+                0.0,
+            )
+        },
+        |views| issue(views.telemetry_payload),
+    )
 }
 
 /// Folds a lifecycle event into the shared runtime telemetry projection.
@@ -279,21 +318,85 @@ fn collect_projected_api_views_with_sample_policy(
     response_time_ms: f64,
     drain_sample_marker: bool,
 ) -> ProjectedApiViews {
-    let operator_snapshot_identity = reserve_operator_snapshot_identity();
+    match publish_operator_snapshot(
+        drain_sample_marker,
+        |snapshot, projection, maybe_sample_marker| {
+            project_api_views(
+                snapshot,
+                &projection,
+                maybe_sample_marker,
+                timestamp_ms,
+                response_time_ms,
+            )
+        },
+        Ok::<ProjectedApiViews, core::convert::Infallible>,
+    ) {
+        Ok(views) => views,
+        Err(error) => panic!("operator snapshot publication failed: {error:?}"),
+    }
+}
+
+fn publish_operator_snapshot<Publication, T, E>(
+    drain_sample_marker: bool,
+    project: impl FnOnce(
+        ApiSnapshot,
+        RuntimeTelemetryProjection,
+        Option<RuntimeProjectionSampleMarker>,
+    ) -> Publication,
+    issue: impl FnOnce(Publication) -> Result<T, E>,
+) -> Result<T, OperatorSnapshotPublishError<E>> {
+    let publisher = OPERATOR_SNAPSHOT_PUBLISHER.get_or_init(OperatorSnapshotPublisher::new);
+    let result = publisher.publish(
+        crate::boot_evidence::operator_snapshot_boot_session(),
+        || collect_operator_snapshot_candidate(drain_sample_marker),
+        |candidate, identity| {
+            let maybe_sample_marker = candidate.maybe_sample_marker;
+            let projection = candidate.projection.clone();
+            let snapshot = complete_operator_snapshot(candidate, identity);
+            let retained_marker = identity.retained_marker();
+            let retained_runtime_health = bitaxe_api::retained_runtime_health_record(
+                identity.boot_session(),
+                identity.revision(),
+                &snapshot.runtime_health,
+            );
+            CompletedOperatorSnapshot {
+                output: project(snapshot, projection, maybe_sample_marker),
+                retained_marker,
+                retained_runtime_health,
+            }
+        },
+        |publication| {
+            retain_completed_operator_snapshot(publication);
+            Ok::<(), E>(())
+        },
+        |publication| issue(publication.output),
+    );
+    log_recovered_publication_lock(&result);
+    result.map(|publication| publication.output)
+}
+
+fn collect_operator_snapshot_candidate(drain_sample_marker: bool) -> OperatorSnapshotCandidate {
     let (projection, maybe_sample_marker, block_found) =
         runtime_projection_for_api_views(drain_sample_marker);
-    let snapshot = collect_completed_api_snapshot(
-        operator_snapshot_identity,
-        projection.state().clone(),
-        block_found,
-    );
-    project_api_views(
-        snapshot,
-        &projection,
+    let platform_identity = crate::platform_identity::collect();
+    let platform =
+        collect_platform_snapshot(PlatformSnapshot::safe_ultra_205(), &platform_identity);
+    let runtime_health = crate::runtime_health_adapter::collect(crate::runtime_uptime::millis());
+    let observations = crate::safety_adapter::observation_snapshot();
+    let safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
+    let settings = collect_settings_projection();
+    let wifi = crate::wifi_adapter::current_wifi_snapshot();
+    OperatorSnapshotCandidate {
+        projection,
         maybe_sample_marker,
-        timestamp_ms,
-        response_time_ms,
-    )
+        block_found,
+        platform_identity,
+        platform,
+        runtime_health,
+        safe_telemetry,
+        settings,
+        wifi,
+    }
 }
 
 fn runtime_projection_for_api_views(
@@ -327,32 +430,25 @@ fn runtime_projection_for_api_views(
     )
 }
 
-fn reserve_operator_snapshot_identity() -> OperatorSnapshotIdentity {
-    let sequence =
-        OPERATOR_SNAPSHOT_SEQUENCE.get_or_init(|| Mutex::new(OperatorSnapshotSequence::new()));
-    let mut sequence = match sequence.lock() {
-        Ok(sequence) => sequence,
-        Err(poisoned) => {
-            log::warn!("operator_snapshot_sequence=recovered reason=mutex_poisoned");
-            poisoned.into_inner()
-        }
-    };
-    sequence
-        .next_identity(crate::boot_evidence::operator_snapshot_boot_session())
-        .expect("operator snapshot revision cannot exhaust within one boot")
+fn retain_completed_operator_snapshot<T>(publication: &CompletedOperatorSnapshot<T>) {
+    log::info!("{}", publication.retained_marker);
+    crate::log_buffer::append_runtime_log_line(&publication.retained_marker);
+    log::info!("{}", publication.retained_runtime_health);
+    crate::log_buffer::append_runtime_log_line(&publication.retained_runtime_health);
 }
 
-fn retain_completed_operator_snapshot(snapshot: &ApiSnapshot) {
-    let marker = snapshot.operator_snapshot_identity.retained_marker();
-    log::info!("{marker}");
-    crate::log_buffer::append_runtime_log_line(&marker);
-    let runtime_health_record = bitaxe_api::retained_runtime_health_record(
-        snapshot.operator_snapshot_identity.boot_session(),
-        snapshot.operator_snapshot_identity.revision(),
-        &snapshot.runtime_health,
-    );
-    log::info!("{runtime_health_record}");
-    crate::log_buffer::append_runtime_log_line(&runtime_health_record);
+fn log_recovered_publication_lock<T, E>(
+    result: &Result<bitaxe_api::OperatorSnapshotPublication<T>, OperatorSnapshotPublishError<E>>,
+) {
+    let recovered = match result {
+        Ok(publication) => publication.lock_health == OperatorSnapshotLockHealth::RecoveredPoison,
+        Err(error) => {
+            error.maybe_lock_health() == Some(OperatorSnapshotLockHealth::RecoveredPoison)
+        }
+    };
+    if recovered {
+        log::warn!("operator_snapshot_publisher=recovered reason=mutex_poisoned");
+    }
 }
 
 fn mutate_command_visible_state_with_result<T>(
@@ -380,33 +476,56 @@ impl CommandVisibleState {
     }
 }
 
-fn apply_settings_snapshot(snapshot: &mut ApiSnapshot) {
+fn collect_settings_projection() -> SettingsProjection {
     let confirmed_settings = crate::settings_adapter::current_settings_snapshot();
     let loaded = reload_snapshot(&confirmed_settings);
-
-    if let Some(LoadedValue::Str(hostname)) = loaded.loaded_value("hostname") {
-        snapshot.platform.hostname = hostname.clone();
-    }
-
-    if let Some(LoadedValue::Float(frequency)) = loaded.loaded_value("asicfrequency_f") {
-        snapshot.config.asic_frequency_mhz = f64::from(*frequency);
-    }
-
-    if let Some(LoadedValue::U16(voltage)) = loaded.loaded_value("asicvoltage") {
-        snapshot.config.asic_voltage_mv = *voltage;
-    }
-
-    if let Some(LoadedValue::Bool(auto_fan_speed)) = loaded.loaded_value("autofanspeed") {
-        snapshot.config.auto_fan_speed = *auto_fan_speed;
-    }
-
-    if let Some(LoadedValue::U16(manual_fan_speed)) = loaded.loaded_value("manualfanspeed") {
-        snapshot.config.manual_fan_speed = *manual_fan_speed;
+    SettingsProjection {
+        maybe_hostname: match loaded.loaded_value("hostname") {
+            Some(LoadedValue::Str(hostname)) => Some(hostname.clone()),
+            _ => None,
+        },
+        maybe_frequency: match loaded.loaded_value("asicfrequency_f") {
+            Some(LoadedValue::Float(frequency)) => Some(f64::from(*frequency)),
+            _ => None,
+        },
+        maybe_voltage: match loaded.loaded_value("asicvoltage") {
+            Some(LoadedValue::U16(voltage)) => Some(*voltage),
+            _ => None,
+        },
+        maybe_auto_fan_speed: match loaded.loaded_value("autofanspeed") {
+            Some(LoadedValue::Bool(auto_fan_speed)) => Some(*auto_fan_speed),
+            _ => None,
+        },
+        maybe_manual_fan_speed: match loaded.loaded_value("manualfanspeed") {
+            Some(LoadedValue::U16(manual_fan_speed)) => Some(*manual_fan_speed),
+            _ => None,
+        },
     }
 }
 
-fn apply_wifi_snapshot(snapshot: &mut ApiSnapshot) {
-    let wifi = crate::wifi_adapter::current_wifi_snapshot();
+fn apply_settings_snapshot(snapshot: &mut ApiSnapshot, settings: SettingsProjection) {
+    if let Some(hostname) = settings.maybe_hostname {
+        snapshot.platform.hostname = hostname;
+    }
+
+    if let Some(frequency) = settings.maybe_frequency {
+        snapshot.config.asic_frequency_mhz = frequency;
+    }
+
+    if let Some(voltage) = settings.maybe_voltage {
+        snapshot.config.asic_voltage_mv = voltage;
+    }
+
+    if let Some(auto_fan_speed) = settings.maybe_auto_fan_speed {
+        snapshot.config.auto_fan_speed = auto_fan_speed;
+    }
+
+    if let Some(manual_fan_speed) = settings.maybe_manual_fan_speed {
+        snapshot.config.manual_fan_speed = manual_fan_speed;
+    }
+}
+
+fn apply_wifi_snapshot(snapshot: &mut ApiSnapshot, wifi: crate::wifi_adapter::WifiRuntimeSnapshot) {
     snapshot.platform.wifi_status = wifi.wifi_status;
     snapshot.platform.ssid = wifi.ssid;
     snapshot.platform.ipv4 = wifi.ipv4;
@@ -597,7 +716,10 @@ mod tests {
         publish_runtime_bounded_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
 
         // Act
-        let system_info = projected_system_info(50_000);
+        let system_info = publish_projected_system_info(50_000, |system_info| {
+            Ok::<SystemInfoWire, core::convert::Infallible>(system_info)
+        })
+        .expect("system info publication must succeed");
         let first_statistics = projected_statistics(50_000);
         let second_statistics = projected_statistics(50_500);
         let scoreboard = projected_scoreboard(50_000);
@@ -619,7 +741,10 @@ mod tests {
         // Act
         publish_runtime_blocked("phase25_safe_stop");
         publish_runtime_safe_stopped("phase25_safe_stop");
-        let payload = projected_live_telemetry_payload(60_000);
+        let payload = publish_projected_live_telemetry_payload(60_000, |payload| {
+            Ok::<serde_json::Value, core::convert::Infallible>(payload)
+        })
+        .expect("live telemetry publication must succeed");
         let rendered = payload.to_string();
 
         // Assert

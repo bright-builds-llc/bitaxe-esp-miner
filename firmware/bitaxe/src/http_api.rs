@@ -13,12 +13,13 @@ use bitaxe_api::{
     plan_settings_patch_body_size, plan_update_request, plan_websocket_upgrade, restart_plan,
     resume_mining_plan, spawn_deferred_effect_worker, unknown_api_route_response,
     unsupported_update_response, CommandEffect, CommandPlan, DeferredEffectLease,
-    DeferredEffectQueue, HttpAccessDecision, IdentifyModeEffect, OriginGate, PublicHttpResponse,
-    RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchFailureReason,
-    SettingsPatchPublicError, SettingsPersistenceEffect, SettingsPersistenceFailure,
-    SettingsPersistencePlan, SettingsPublicResponse, UpdateRequestDecision, UpdateRequestInput,
-    UpdateRouteKind, V12SettingsChange, V12SettingsDecision, V12SettingsExclusionReason,
-    WebSocketRouteKind, WebSocketUpgradeDecision, LIVE_TELEMETRY_CADENCE_MS,
+    DeferredEffectQueue, HttpAccessDecision, IdentifyModeEffect, OperatorSnapshotPublishError,
+    OriginGate, PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision,
+    SettingsPatchFailureReason, SettingsPatchPublicError, SettingsPersistenceEffect,
+    SettingsPersistenceFailure, SettingsPersistencePlan, SettingsPublicResponse,
+    UpdateRequestDecision, UpdateRequestInput, UpdateRouteKind, V12SettingsChange,
+    V12SettingsDecision, V12SettingsExclusionReason, WebSocketRouteKind, WebSocketUpgradeDecision,
+    LIVE_TELEMETRY_CADENCE_MS,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
@@ -32,8 +33,8 @@ use crate::ota_update::{FirmwareOtaApplyResult, FirmwareOtaStatus};
 use crate::runtime_snapshot::{
     apply_block_found_dismiss_command, apply_identify_mode_command, apply_mining_activity_command,
     block_found_notification_state, collect_api_snapshot, identify_mode, mining_runtime_state,
-    projected_live_telemetry_payload, projected_scoreboard, projected_statistics,
-    projected_system_info,
+    projected_scoreboard, projected_statistics, publish_projected_live_telemetry_payload,
+    publish_projected_system_info,
 };
 use crate::{log_buffer, network_stack, settings_adapter, static_files, websocket_api};
 
@@ -64,6 +65,16 @@ static DEFERRED_EFFECT_QUEUE: OnceLock<DeferredEffectQueue<DeferredFirmwareEffec
 enum DeferredFirmwareEffect {
     Settings(Vec<SettingsPersistenceEffect>),
     Restart,
+}
+
+#[derive(Clone, Copy)]
+enum LiveCadenceIssueError {
+    SerializeFrame,
+}
+
+struct WebSocketSendFailure {
+    session: i32,
+    error: sys::esp_err_t,
 }
 
 /// Starts the HTTP route shell and intentionally leaks the server so ESP-IDF's
@@ -122,22 +133,36 @@ fn live_telemetry_cadence_loop(server_addr: usize) {
 }
 
 fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
-    let current = projected_live_telemetry_payload(crate::runtime_uptime::millis());
-    let Some(frame) = websocket_api::live_cadence_frame(current) else {
-        return;
-    };
-    let Ok(body) = serde_json::to_string(&frame) else {
-        log::warn!("axeos_websocket_live_cadence=skipped reason=serialize_frame");
-        return;
-    };
-
-    broadcast_websocket_text_frame(server, WebSocketRouteKind::LiveTelemetry, &body);
+    let result =
+        publish_projected_live_telemetry_payload(crate::runtime_uptime::millis(), |current| {
+            let Some(frame) = websocket_api::live_cadence_frame(current) else {
+                return Ok(Vec::new());
+            };
+            let body =
+                serde_json::to_string(&frame).map_err(|_| LiveCadenceIssueError::SerializeFrame)?;
+            Ok(broadcast_websocket_text_frame(
+                server,
+                WebSocketRouteKind::LiveTelemetry,
+                &body,
+            ))
+        });
+    match result {
+        Ok(failures) => handle_websocket_send_failures(WebSocketRouteKind::LiveTelemetry, failures),
+        Err(OperatorSnapshotPublishError::Issuance {
+            source: LiveCadenceIssueError::SerializeFrame,
+            ..
+        }) => log::warn!("axeos_websocket_live_cadence=skipped reason=serialize_frame"),
+        Err(_) => {
+            log::warn!("axeos_websocket_live_cadence=skipped reason=snapshot_publication")
+        }
+    }
 }
 
 fn broadcast_raw_log_chunks(server: sys::httpd_handle_t) {
     let buffer = log_buffer::retained_log_buffer();
     for chunk in websocket_api::raw_log_chunks(&buffer) {
-        broadcast_websocket_text_frame(server, WebSocketRouteKind::Logs, &chunk);
+        let failures = broadcast_websocket_text_frame(server, WebSocketRouteKind::Logs, &chunk);
+        handle_websocket_send_failures(WebSocketRouteKind::Logs, failures);
     }
 }
 
@@ -164,17 +189,29 @@ fn broadcast_websocket_text_frame(
     server: sys::httpd_handle_t,
     route: WebSocketRouteKind,
     body: &str,
-) {
+) -> Vec<WebSocketSendFailure> {
+    let mut failures = Vec::new();
     for session in websocket_api::client_sessions(route) {
         let result = send_websocket_text_frame_async(server, session, body);
         if result == sys::ESP_OK {
             continue;
         }
+        failures.push(WebSocketSendFailure {
+            session,
+            error: result,
+        });
+    }
+    failures
+}
 
+fn handle_websocket_send_failures(route: WebSocketRouteKind, failures: Vec<WebSocketSendFailure>) {
+    for failure in failures {
         log::warn!(
-            "axeos_websocket_broadcast=unregistering_stale route={route:?} session={session} error={result}"
+            "axeos_websocket_broadcast=unregistering_stale route={route:?} session={} error={}",
+            failure.session,
+            failure.error
         );
-        websocket_api::unregister_client(session);
+        websocket_api::unregister_client(failure.session);
     }
 }
 
@@ -248,10 +285,10 @@ fn handle_system_info<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        send_json(
-            request,
-            &projected_system_info(crate::runtime_uptime::millis()),
-        )
+        publish_projected_system_info(crate::runtime_uptime::millis(), |system_info| {
+            send_json(request, &system_info)
+        })
+        .map_err(|error| anyhow::anyhow!("operator snapshot publication failed: {error}"))
     })
 }
 
@@ -802,14 +839,24 @@ fn send_websocket_connect_frames(
             sys::ESP_OK
         }
         WebSocketRouteKind::LiveTelemetry => {
-            let current = projected_live_telemetry_payload(crate::runtime_uptime::millis());
-            let Some(frame) = websocket_api::live_connect_frame(current) else {
-                return sys::ESP_FAIL;
-            };
-            let Ok(body) = serde_json::to_string(&frame) else {
-                return sys::ESP_FAIL;
-            };
-            send_websocket_text_frame(request, &body)
+            match publish_projected_live_telemetry_payload(
+                crate::runtime_uptime::millis(),
+                |current| {
+                    let Some(frame) = websocket_api::live_connect_frame(current) else {
+                        return Err(sys::ESP_FAIL);
+                    };
+                    let body = serde_json::to_string(&frame).map_err(|_| sys::ESP_FAIL)?;
+                    let result = send_websocket_text_frame(request, &body);
+                    if result == sys::ESP_OK {
+                        return Ok(result);
+                    }
+                    Err(result)
+                },
+            ) {
+                Ok(result) => result,
+                Err(OperatorSnapshotPublishError::Issuance { source, .. }) => source,
+                Err(_) => sys::ESP_FAIL,
+            }
         }
     }
 }

@@ -447,12 +447,19 @@ fn identity_key(identity: OperatorSnapshotIdentity) -> (String, u64) {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{mpsc, Arc, Mutex};
+    use std::thread;
+
+    use bitaxe_api::OperatorSnapshotPublisher;
+
     use super::*;
 
     const SESSION: &str = "0123456789abcdef0011223344556677";
     const OTHER_SESSION: &str = "fedcba9876543210ffeeddccbbaa9988";
     const API_IDENTITY_SOURCE: &str =
         include_str!("../../../crates/bitaxe-api/src/operator_snapshot.rs");
+    const PUBLICATION_SOURCE: &str =
+        include_str!("../../../crates/bitaxe-api/src/operator_snapshot_publication.rs");
     const BOOT_EVIDENCE_SOURCE: &str =
         include_str!("../../../firmware/bitaxe/src/boot_evidence.rs");
     const RUNTIME_SNAPSHOT_SOURCE: &str =
@@ -633,18 +640,267 @@ mod tests {
             .any(|error| error.contains("operator_snapshot_projection_mismatch")));
     }
 
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    enum NamedCandidate {
+        HttpSystemInfoCapture1,
+        LiveWebSocketCapture2,
+    }
+
+    #[derive(Clone, Debug)]
+    struct EvidencePublication {
+        candidate: NamedCandidate,
+        identity: OperatorSnapshotIdentity,
+        payload: Vec<u8>,
+        retained_marker: String,
+        retained_runtime_health: String,
+    }
+
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    enum IssuedPayload {
+        Http(Vec<u8>),
+        LiveWebSocket(Vec<u8>),
+    }
+
+    fn complete_evidence_publication(
+        candidate: NamedCandidate,
+        identity: OperatorSnapshotIdentity,
+    ) -> EvidencePublication {
+        let payload = serde_json::to_vec(&serde_json::json!({
+            "bootSession": identity.boot_session(),
+            "operatorSnapshotRevision": identity.revision(),
+            "runtimeHealth": {
+                "checkpointHealth": "healthy",
+            },
+        }))
+        .expect("identity-bearing evidence payload must serialize");
+        EvidencePublication {
+            candidate,
+            identity,
+            payload,
+            retained_marker: identity.retained_marker(),
+            retained_runtime_health: format!(
+                "runtime_health boot_session={} operator_snapshot_revision={} checkpoint_health=healthy redacted=true",
+                identity.boot_session(),
+                identity.revision()
+            ),
+        }
+    }
+
+    fn issue_http_response(
+        issued: &Mutex<Vec<IssuedPayload>>,
+        publication: EvidencePublication,
+    ) -> Result<(), &'static str> {
+        assert_eq!(
+            publication.candidate,
+            NamedCandidate::HttpSystemInfoCapture1
+        );
+        assert!(publication.payload.windows(32).any(|window| {
+            window == publication.identity.boot_session().to_string().as_bytes()
+        }));
+        issued
+            .lock()
+            .expect("issued history must be available")
+            .push(IssuedPayload::Http(publication.payload));
+        Ok(())
+    }
+
+    fn issue_live_websocket_frame(
+        issued: &Mutex<Vec<IssuedPayload>>,
+        publication: EvidencePublication,
+    ) -> Result<(), &'static str> {
+        assert_eq!(publication.candidate, NamedCandidate::LiveWebSocketCapture2);
+        assert!(publication.payload.windows(32).any(|window| {
+            window == publication.identity.boot_session().to_string().as_bytes()
+        }));
+        issued
+            .lock()
+            .expect("issued history must be available")
+            .push(IssuedPayload::LiveWebSocket(publication.payload));
+        Ok(())
+    }
+
+    #[test]
+    fn operator_snapshot_publication_reverse_completion_preserves_direct_chronology() {
+        // Arrange
+        let publisher = Arc::new(OperatorSnapshotPublisher::new());
+        let retained = Arc::new(Mutex::new(Vec::<(String, String)>::new()));
+        let issued = Arc::new(Mutex::new(Vec::<IssuedPayload>::new()));
+        let completed = Arc::new(Mutex::new(Vec::<NamedCandidate>::new()));
+        let (capture1_entered_tx, capture1_entered_rx) = mpsc::channel();
+        let (release_capture1_tx, release_capture1_rx) = mpsc::channel();
+        let session = SESSION
+            .parse::<BootSessionId>()
+            .expect("test boot session must be valid");
+        let capture1_publisher = Arc::clone(&publisher);
+        let capture1_retained = Arc::clone(&retained);
+        let capture1_issued = Arc::clone(&issued);
+        let capture1_completed = Arc::clone(&completed);
+
+        // Act
+        let capture1 = thread::spawn(move || {
+            capture1_publisher.publish(
+                session,
+                || {
+                    capture1_entered_tx
+                        .send(())
+                        .expect("capture 1 collection entry must be observable");
+                    release_capture1_rx
+                        .recv()
+                        .expect("capture 1 release must arrive");
+                    NamedCandidate::HttpSystemInfoCapture1
+                },
+                |candidate, identity| {
+                    capture1_completed
+                        .lock()
+                        .expect("completion history must be available")
+                        .push(candidate);
+                    complete_evidence_publication(candidate, identity)
+                },
+                |publication| {
+                    capture1_retained
+                        .lock()
+                        .expect("retained history must be available")
+                        .push((
+                            publication.retained_marker.clone(),
+                            publication.retained_runtime_health.clone(),
+                        ));
+                    Ok::<(), &'static str>(())
+                },
+                |publication| issue_http_response(&capture1_issued, publication),
+            )
+        });
+        capture1_entered_rx
+            .recv()
+            .expect("capture 1 must enter collection");
+
+        let capture2_publisher = Arc::clone(&publisher);
+        let capture2_retained = Arc::clone(&retained);
+        let capture2_issued = Arc::clone(&issued);
+        let capture2_completed = Arc::clone(&completed);
+        let capture2 = thread::spawn(move || {
+            capture2_publisher.publish(
+                session,
+                || NamedCandidate::LiveWebSocketCapture2,
+                |candidate, identity| {
+                    capture2_completed
+                        .lock()
+                        .expect("completion history must be available")
+                        .push(candidate);
+                    complete_evidence_publication(candidate, identity)
+                },
+                |publication| {
+                    capture2_retained
+                        .lock()
+                        .expect("retained history must be available")
+                        .push((
+                            publication.retained_marker.clone(),
+                            publication.retained_runtime_health.clone(),
+                        ));
+                    Ok::<(), &'static str>(())
+                },
+                |publication| issue_live_websocket_frame(&capture2_issued, publication),
+            )
+        });
+        capture2
+            .join()
+            .expect("capture 2 thread must not panic")
+            .expect("capture 2 publication must succeed");
+        release_capture1_tx
+            .send(())
+            .expect("capture 1 collection must be releasable");
+        capture1
+            .join()
+            .expect("capture 1 thread must not panic")
+            .expect("capture 1 publication must succeed");
+
+        // Assert
+        assert_eq!(
+            *completed
+                .lock()
+                .expect("completion history must be available"),
+            [
+                NamedCandidate::LiveWebSocketCapture2,
+                NamedCandidate::HttpSystemInfoCapture1,
+            ]
+        );
+        let retained = retained.lock().expect("retained history must be available");
+        let retained_identities = retained
+            .iter()
+            .map(|(marker, _health)| {
+                let (session, revision) = parse_retained_marker_fields(marker)
+                    .expect("retained marker must remain exact");
+                (
+                    session.to_owned(),
+                    revision
+                        .parse::<u64>()
+                        .expect("retained revision must be numeric"),
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            retained_identities
+                .iter()
+                .map(|(_, revision)| *revision)
+                .collect::<Vec<_>>(),
+            [1, 2]
+        );
+        for ((session, revision), (_, runtime_health)) in retained_identities.iter().zip(&*retained)
+        {
+            assert!(runtime_health.contains(&format!("boot_session={session}")));
+            assert!(runtime_health.contains(&format!("operator_snapshot_revision={revision}")));
+            assert!(runtime_health.contains("checkpoint_health=healthy"));
+        }
+
+        let issued = issued.lock().expect("issued history must be available");
+        assert!(matches!(issued[0], IssuedPayload::LiveWebSocket(_)));
+        assert!(matches!(issued[1], IssuedPayload::Http(_)));
+        let issued_json = issued
+            .iter()
+            .map(|payload| match payload {
+                IssuedPayload::Http(bytes) | IssuedPayload::LiveWebSocket(bytes) => {
+                    String::from_utf8(bytes.clone()).expect("issued JSON must be UTF-8")
+                }
+            })
+            .collect::<Vec<_>>();
+        let issued_revisions = issued_json
+            .iter()
+            .map(|json| {
+                serde_json::from_str::<serde_json::Value>(json).expect("issued JSON must parse")
+                    ["operatorSnapshotRevision"]
+                    .as_u64()
+                    .expect("issued revision must be numeric")
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(issued_revisions, [1, 2]);
+        let retained_log = retained
+            .iter()
+            .flat_map(|(marker, health)| [marker.as_str(), health.as_str()])
+            .collect::<Vec<_>>()
+            .join("\n");
+        let projections = issued_json
+            .iter()
+            .enumerate()
+            .map(|(index, json)| JsonProjection {
+                label: if index == 0 { "websocket.md" } else { "api.md" },
+                json,
+            })
+            .collect::<Vec<_>>();
+        let report = validate_operator_snapshot_evidence(&projections, &retained_log);
+        assert!(report.validation_errors.is_empty(), "{report:#?}");
+    }
+
     #[test]
     fn phase34_operator_snapshot_runtime_source_guard() {
         // Arrange
-        let capture = source_between(
+        let publication = source_between(
             RUNTIME_SNAPSHOT_SOURCE,
-            "pub fn collect_api_snapshot",
-            "/// Returns the current command-visible mining state.",
+            "fn publish_operator_snapshot",
+            "fn collect_operator_snapshot_candidate",
         );
-        let reservation = source_between(
+        let collection = source_between(
             RUNTIME_SNAPSHOT_SOURCE,
-            "fn reserve_operator_snapshot_identity",
-            "fn retain_completed_operator_snapshot",
+            "fn collect_operator_snapshot_candidate",
+            "fn runtime_projection_for_api_views",
         );
         let retention = source_between(
             RUNTIME_SNAPSHOT_SOURCE,
@@ -663,44 +919,42 @@ mod tests {
 
         assert_eq!(
             RUNTIME_SNAPSHOT_SOURCE
-                .matches("static OPERATOR_SNAPSHOT_SEQUENCE:")
+                .matches("static OPERATOR_SNAPSHOT_PUBLISHER:")
                 .count(),
             1
         );
-        assert_eq!(
-            RUNTIME_SNAPSHOT_SOURCE.matches(".next_identity(").count(),
-            1
-        );
+        assert_eq!(PUBLICATION_SOURCE.matches(".next_identity(").count(), 1);
         assert_eq!(
             RUNTIME_SNAPSHOT_SOURCE
                 .matches("snapshot.operator_snapshot_identity = operator_snapshot_identity")
                 .count(),
             1
         );
-        assert!(RUNTIME_SNAPSHOT_SOURCE.contains(
-            "static OPERATOR_SNAPSHOT_SEQUENCE: OnceLock<Mutex<OperatorSnapshotSequence>>"
-        ));
-        assert!(reservation.contains("operator_snapshot_boot_session()"));
-        assert!(reservation.contains("cannot exhaust within one boot"));
-
-        let reservation_index = capture
-            .find("reserve_operator_snapshot_identity")
-            .expect("capture must reserve one identity");
-        let fixture_index = capture
-            .find("ApiSnapshot::safe_ultra_205")
-            .expect("capture must collect the base snapshot");
-        let retention_index = capture
-            .find("retain_completed_operator_snapshot")
-            .expect("completed capture must retain its marker");
-        assert!(reservation_index < fixture_index);
-        assert!(fixture_index < retention_index);
-        assert!(retention.contains("identity.retained_marker()"));
-        assert!(retention.contains("append_runtime_log_line(&marker)"));
+        assert!(RUNTIME_SNAPSHOT_SOURCE
+            .contains("static OPERATOR_SNAPSHOT_PUBLISHER: OnceLock<OperatorSnapshotPublisher>"));
+        let collect_adapter = publication
+            .find("|| collect_operator_snapshot_candidate(drain_sample_marker)")
+            .expect("unnumbered candidate collection adapter");
+        let complete_adapter = publication
+            .find("|candidate, identity|")
+            .expect("identity completion adapter");
+        let retain_adapter = publication
+            .find("retain_completed_operator_snapshot(publication)")
+            .expect("retained chronology adapter");
+        let issue_adapter = publication
+            .find("|publication| issue(publication.output)")
+            .expect("external issuance adapter");
+        assert!(collect_adapter < complete_adapter);
+        assert!(complete_adapter < retain_adapter && retain_adapter < issue_adapter);
+        assert!(!collection.contains("OperatorSnapshotIdentity"));
+        assert!(!collection.contains("next_identity"));
+        assert!(retention.contains("append_runtime_log_line(&publication.retained_marker)"));
+        assert!(retention.contains("append_runtime_log_line(&publication.retained_runtime_health)"));
         assert!(
             API_IDENTITY_SOURCE.contains("operator_snapshot session={} revision={} redacted=true")
         );
-        assert!(API_IDENTITY_SOURCE
-            .contains("shared_sequence_assigns_unique_revisions_to_concurrent_callers"));
+        assert!(PUBLICATION_SOURCE
+            .contains("reverse_collection_completion_publishes_direct_revisions_in_order"));
 
         for forbidden in [
             "esp_random",
@@ -711,8 +965,8 @@ mod tests {
             "fixture_only",
         ] {
             assert!(
-                !reservation.contains(forbidden),
-                "reservation contains forbidden fallback {forbidden}"
+                !publication.contains(forbidden),
+                "publication contains forbidden fallback {forbidden}"
             );
         }
     }

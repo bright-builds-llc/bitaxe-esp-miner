@@ -165,7 +165,7 @@ fn phase33_settings_source_guard_responds_after_publish_and_projects_confirmed_t
     assert!(RUNTIME_SNAPSHOT_SOURCE
         .contains("let confirmed_settings = crate::settings_adapter::current_settings_snapshot()"));
     assert!(RUNTIME_SNAPSHOT_SOURCE.contains("reload_snapshot(&confirmed_settings)"));
-    assert!(RUNTIME_SNAPSHOT_SOURCE.contains("snapshot.platform.hostname = hostname.clone()"));
+    assert!(RUNTIME_SNAPSHOT_SOURCE.contains("snapshot.platform.hostname = hostname"));
     assert!(!RUNTIME_SNAPSHOT_SOURCE.contains("apply_persisted_settings_writes"));
 }
 
@@ -174,25 +174,13 @@ fn phase33_system_info_source_guard_avoids_duplicate_full_view_materialization()
     // Arrange
     let projection = source_between(
         RUNTIME_SNAPSHOT_SOURCE,
-        "pub fn projected_system_info",
+        "pub fn publish_projected_system_info",
         "/// Returns projection-backed `/api/system/statistics` data.",
     );
 
     // Act / Assert
-    let identity = projection
-        .find("reserve_operator_snapshot_identity()")
-        .expect("snapshot identity reservation");
-    let state = projection
-        .find("runtime_projection_for_api_views(false)")
-        .expect("single runtime-state projection read");
-    let snapshot = projection
-        .find("collect_completed_api_snapshot(")
-        .expect("single completed snapshot materialization");
-    let response = projection
-        .find("project_system_info(snapshot, &projection)")
-        .expect("system-info projection from the completed snapshot");
-
-    assert!(identity < state && state < snapshot && snapshot < response);
+    assert!(projection.contains("publish_operator_snapshot("));
+    assert!(projection.contains("project_system_info(snapshot, &projection)"));
     assert!(!projection.contains("collect_projected_api_views_with_sample_policy"));
     assert!(!projection.contains("ProjectedApiViews"));
     assert!(!projection.contains("telemetry_payload"));

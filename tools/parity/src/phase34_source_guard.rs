@@ -2,6 +2,10 @@ const BUILD_SCRIPT_SOURCE: &str = include_str!("../../../firmware/bitaxe/build.r
 const MAIN_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/main.rs");
 const RUNTIME_SNAPSHOT_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_snapshot.rs");
+const HTTP_API_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/http_api.rs");
+const SNAPSHOT_PUBLICATION_SOURCE: &str =
+    include_str!("../../../crates/bitaxe-api/src/operator_snapshot_publication.rs");
+const SNAPSHOT_EVIDENCE_SOURCE: &str = include_str!("operator_snapshot_evidence.rs");
 const RUNTIME_HEALTH_ADAPTER_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_health_adapter.rs");
 const RUNTIME_HEALTH_CORE_SOURCE: &str =
@@ -88,8 +92,13 @@ fn phase34_source_guard_rejects_platform_substitution_and_effects() {
     let production_identity_sources = [PLATFORM_IDENTITY_SOURCE, RUNTIME_SNAPSHOT_SOURCE];
     let completed_snapshot = source_between(
         RUNTIME_SNAPSHOT_SOURCE,
-        "fn collect_completed_api_snapshot",
+        "fn complete_operator_snapshot",
         "/// Returns the current command-visible mining state.",
+    );
+    let candidate_collection = source_between(
+        RUNTIME_SNAPSHOT_SOURCE,
+        "fn collect_operator_snapshot_candidate",
+        "fn runtime_projection_for_api_views",
     );
 
     // Act / Assert
@@ -102,20 +111,16 @@ fn phase34_source_guard_rejects_platform_substitution_and_effects() {
     assert!(PLATFORM_IDENTITY_SOURCE.contains("sys::esp_ota_get_running_partition()"));
     assert!(PLATFORM_IDENTITY_SOURCE.contains("PlatformResetReason::decode"));
     assert!(PLATFORM_IDENTITY_SOURCE.contains("sys::esp_timer_get_time()"));
-    assert!(RUNTIME_SNAPSHOT_SOURCE
-        .contains("snapshot.platform_identity = crate::platform_identity::collect()"));
+    assert!(candidate_collection.contains("crate::platform_identity::collect()"));
     let identity_assignment = completed_snapshot
         .find("snapshot.operator_snapshot_identity = operator_snapshot_identity")
         .expect("capture identity assignment");
-    let platform_capture = completed_snapshot
-        .find("snapshot.platform_identity = crate::platform_identity::collect()")
-        .expect("platform candidate capture");
-    let retained_marker = completed_snapshot
-        .find("retain_completed_operator_snapshot(&snapshot)")
-        .expect("completed snapshot retained marker");
-    assert!(identity_assignment < platform_capture && platform_capture < retained_marker);
+    let platform_attachment = completed_snapshot
+        .find("snapshot.platform_identity = candidate.platform_identity")
+        .expect("platform candidate attachment");
+    assert!(identity_assignment < platform_attachment);
     assert_eq!(
-        completed_snapshot
+        candidate_collection
             .matches("crate::platform_identity::collect()")
             .count(),
         1
@@ -168,13 +173,18 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
     // Arrange
     let completed_snapshot = source_between(
         RUNTIME_SNAPSHOT_SOURCE,
-        "fn collect_completed_api_snapshot",
+        "fn complete_operator_snapshot",
         "/// Returns the current command-visible mining state.",
+    );
+    let candidate_collection = source_between(
+        RUNTIME_SNAPSHOT_SOURCE,
+        "fn collect_operator_snapshot_candidate",
+        "fn runtime_projection_for_api_views",
     );
     let retained_projection = source_between(
         RUNTIME_SNAPSHOT_SOURCE,
-        "fn retain_completed_operator_snapshot",
-        "fn mutate_command_visible_state_with_result",
+        "fn publish_operator_snapshot",
+        "fn collect_operator_snapshot_candidate",
     );
     let passive_sources = [RUNTIME_HEALTH_CORE_SOURCE, RUNTIME_HEALTH_ADAPTER_SOURCE];
 
@@ -182,7 +192,7 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("RuntimeHealthSnapshot::evaluate"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("supervisor_checkpoint_history"));
     assert_eq!(
-        completed_snapshot
+        candidate_collection
             .matches("runtime_health_adapter::collect")
             .count(),
         1
@@ -190,13 +200,10 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
     let identity_assignment = completed_snapshot
         .find("snapshot.operator_snapshot_identity = operator_snapshot_identity")
         .expect("capture identity assignment");
-    let health_capture = completed_snapshot
-        .find("runtime_health_adapter::collect")
-        .expect("runtime health capture");
-    let retained_marker = completed_snapshot
-        .find("retain_completed_operator_snapshot(&snapshot)")
-        .expect("completed snapshot retained marker");
-    assert!(identity_assignment < health_capture && health_capture < retained_marker);
+    let health_attachment = completed_snapshot
+        .find("snapshot.runtime_health = candidate.runtime_health")
+        .expect("runtime health candidate attachment");
+    assert!(identity_assignment < health_attachment);
 
     assert!(retained_projection.contains("retained_runtime_health_record"));
     for marker in [
@@ -288,6 +295,78 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
             "supervisor checkpoint adapter contains prohibited effect {forbidden}"
         );
     }
+}
+
+#[test]
+fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
+    // Arrange
+    let publication = source_between(
+        RUNTIME_SNAPSHOT_SOURCE,
+        "fn publish_operator_snapshot",
+        "fn collect_operator_snapshot_candidate",
+    );
+    let system_info = source_between(
+        HTTP_API_SOURCE,
+        "fn handle_system_info",
+        "fn handle_settings_patch",
+    );
+    let live_cadence = source_between(
+        HTTP_API_SOURCE,
+        "fn broadcast_live_telemetry_cadence",
+        "fn broadcast_raw_log_chunks",
+    );
+    let live_connect = source_between(
+        HTTP_API_SOURCE,
+        "fn send_websocket_connect_frames",
+        "fn send_websocket_text_frame(",
+    );
+    let adversarial_regression = source_between(
+        SNAPSHOT_EVIDENCE_SOURCE,
+        "fn operator_snapshot_publication_reverse_completion_preserves_direct_chronology",
+        "#[test]\n    fn phase34_operator_snapshot_runtime_source_guard",
+    );
+
+    // Act / Assert
+    assert_eq!(
+        RUNTIME_SNAPSHOT_SOURCE
+            .matches("static OPERATOR_SNAPSHOT_PUBLISHER:")
+            .count(),
+        1
+    );
+    assert!(!RUNTIME_SNAPSHOT_SOURCE.contains("OPERATOR_SNAPSHOT_SEQUENCE"));
+    let collect = publication
+        .find("collect_operator_snapshot_candidate")
+        .expect("collection adapter");
+    let complete = publication
+        .find("|candidate, identity|")
+        .expect("completion adapter");
+    let retain = publication
+        .find("retain_completed_operator_snapshot(publication)")
+        .expect("retention adapter");
+    let issue = publication
+        .find("issue(publication.output)")
+        .expect("issuance adapter");
+    assert!(collect < complete && complete < retain && retain < issue);
+    assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("let candidate = collect();"));
+    assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("issue(publication).map_err"));
+
+    assert!(system_info.contains("publish_projected_system_info"));
+    assert!(system_info.contains("send_json(request, &system_info)"));
+    assert!(live_cadence.contains("publish_projected_live_telemetry_payload"));
+    assert!(live_cadence.contains("websocket_api::live_cadence_frame(current)"));
+    assert!(live_cadence.contains("broadcast_websocket_text_frame("));
+    assert!(live_connect.contains("publish_projected_live_telemetry_payload"));
+    assert!(live_connect.contains("websocket_api::live_connect_frame(current)"));
+    assert!(live_connect.contains("send_websocket_text_frame(request, &body)"));
+    assert!(HTTP_API_SOURCE.contains("send_websocket_text_frame_async(server, session, body)"));
+    assert!(!RUNTIME_SNAPSHOT_SOURCE.contains("pub fn projected_system_info"));
+    assert!(!RUNTIME_SNAPSHOT_SOURCE.contains("pub fn projected_live_telemetry_payload"));
+
+    assert!(adversarial_regression.contains("OperatorSnapshotPublisher::new()"));
+    assert!(adversarial_regression.contains("IssuedPayload::Http"));
+    assert!(adversarial_regression.contains("IssuedPayload::LiveWebSocket"));
+    assert!(adversarial_regression.contains("assert_eq!(issued_revisions, [1, 2])"));
+    assert!(!adversarial_regression.contains(".sort"));
 }
 
 #[test]
