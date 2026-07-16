@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: executing
-stopped_at: Completed 34-08-PLAN.md
-last_updated: "2026-07-16T03:35:09.210Z"
+status: verification_pending
+stopped_at: Completed 34-09-PLAN.md; fresh Phase 34 review and verification pending
+last_updated: "2026-07-16T05:01:52.798Z"
 last_activity: "2026-07-16"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 18
-  completed_plans: 17
-  percent: 94
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -20,13 +20,13 @@ Last activity: 2026-07-16
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — EXECUTING
-Plan: 8 of 9 implemented; Plan 34-09 ready
+Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — VERIFICATION PENDING
+Plan: 9 of 9 implemented; fresh Phase 34 review and verification pending
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 8 of 9 implemented; Plan 34-09 ready
-- **Status:** Executing Phase 34 gap closure
-- **Next step:** Execute Plan 34-09 for transactional retained correlation, then re-run Phase 34 review and verification. Phase 35 remains blocked.
+- **Plan:** 9 of 9 implemented; fresh Phase 34 review and verification pending
+- **Status:** Gap implementation complete; verification pending
+- **Next step:** Run fresh Phase 34 code review and independent verification. Phase 35 remains blocked until they pass.
 
 ## Project Reference
 
@@ -133,6 +133,13 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Plan 34-08 closes SYS-02 through a closed admitted factory kind, a mode-0600 admission-owned execution snapshot, and complete ESP32-S3 image-envelope validation.
 - Plan 34-09 closes OBS-06 through one atomic fallible retained-pair transaction, distinct retention/issuance publisher error types, and a named production adapter compiled in host behavioral tests.
 - Plans 34-08 and 34-09 run sequentially because their Phase 34 source guards overlap; fresh code review and independent verification remain the only completion authority.
+
+## Decisions (Phase 34 Plan 09)
+
+- Correlation retention validates and preflights the complete normalized pair before one production mutex acquisition appends marker then runtime-health record.
+- Publication preserves independent concrete retention and issuance error sources plus ordering-lock health; no shared wrapper or lossy coercion is permitted.
+- A production retention failure skips external issuance, consumes its revision, releases ordering ownership, and permits only the next strictly greater revision.
+- OBS-06 remains pending fresh Phase 34 review and independent verification; Plan 09 completion alone does not promote the requirement or unblock Phase 35.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -285,6 +292,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 34 P03 | 18min | 2 tasks | 12 files |
 | Phase 34 P04 | 19 min | 1 tasks | 20 files |
 | Phase 34 P08 | 32min | 2 tasks | 3 files |
+| Phase 34 P09 | 1h 20m | 2 tasks | 11 files |
 
 ### Quick Tasks Completed
 
@@ -318,5 +326,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 34-08-PLAN.md
-- **Resume:** Execute Plan 34-09; do not begin Phase 35 until Plan 34-09 and fresh Phase 34 review and verification pass.
+- **Stopped at:** Completed 34-09-PLAN.md; fresh Phase 34 review and verification pending
+- **Resume:** Run fresh Phase 34 code review and independent verification; do not begin Phase 35 until both pass.

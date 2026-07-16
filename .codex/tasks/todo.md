@@ -132,3 +132,13 @@ Completion review: Plans 34-05 through 34-07 are implemented and committed. Fres
 - [x] Preserve software-only scope and keep Phase 35 blocked pending fresh verification.
 
 Completion review: Checker-approved Plans 34-08 and 34-09 are ready in sequential Waves 8 and 9. Plan 34-08 owns SYS-02's complete admission-to-consumption boundary. Plan 34-09 owns OBS-06's transactional production retention, including separate typed error channels and the exact host-compiled firmware adapter. No hardware, credentials, source changes, push, Phase 35, or archived-lineage work occurred.
+
+## task-phase34-plan09-transactional-retention | 2026-07-15 22:40 | Execute Phase 34 Plan 09
+
+- [x] Add a validated retained-pair type and one atomic bounded append operation.
+- [x] Add the named production retention adapter and host-compile the exact firmware modules in behavioral tests.
+- [x] Split retention and issuance error channels throughout the publisher and firmware callers.
+- [x] Run the exact Rust sequence before every commit plus all focused, Bazel, build, package, reference, source-guard, and diff gates.
+- [x] Create the lifecycle-valid Plan 34-09 summary and update GSD state/roadmap without promoting OBS-06 or entering Phase 35.
+
+Completion review: Plan 34-09 is implemented in `39c19c3b` and `e8fdd0d6`. The exact production retention adapter and log-buffer transaction now prevent issue after unavailable, poisoned, or insufficient retained storage while consuming failed revisions monotonically. All focused and repository-wide software gates passed; OBS-06 remains pending fresh independent Phase 34 review and verification. No hardware, credentials, push, Phase 35, or archived-lineage work occurred.
