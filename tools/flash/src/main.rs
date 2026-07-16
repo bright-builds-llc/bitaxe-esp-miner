@@ -1185,7 +1185,10 @@ fn validate_identity_admission(
 
     let elf_artifact = require_artifact(manifest, "firmware_elf")?;
     let elf_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&elf_artifact.path))?;
-    read_validated_artifact(elf_artifact, &elf_path, environment)?;
+    let elf_bytes = read_validated_artifact(elf_artifact, &elf_path, environment)?;
+    if sha256_bytes(&elf_bytes) != manifest.app_elf_sha256 {
+        bail!("identity_admission=blocked reason=firmware_elf_app_sha_mismatch");
+    }
 
     let ota_artifact = require_artifact(manifest, "firmware_ota_image")?;
     let ota_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&ota_artifact.path))?;
@@ -2207,7 +2210,7 @@ mod tests {
     const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
     const REFERENCE_COMMIT: &str = "abcdef0123456789abcdef0123456789abcdef01";
     const BUILD_LABEL: &str = "0123456789ab-dev";
-    const APP_ELF_SHA256: &str = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    const APP_ELF_SHA256: &str = "ca16ef5bd57d7e4b2f2f016ffb9236c426e68f16072bc1c5a53ef0e515f1d063";
 
     #[test]
     fn parses_key_value_aliases_for_flash() {
@@ -2945,6 +2948,73 @@ mod tests {
         // Assert
         let error = result.expect_err("mapped mismatch").to_string();
         assert!(error.contains("ota_mapped_segment_misaligned"), "{error}");
+        assert!(!error.contains("Ambiguous serial ports"));
+        assert!(!error.contains("credentials"));
+        assert!(environment.executed_commands().is_empty());
+        assert!(environment.created_snapshot_paths().is_empty());
+    }
+
+    #[test]
+    fn firmware_elf_app_sha_rejects_changed_elf_in_parsed_dry_run_before_later_reads() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        rewrite_manifest_elf_artifact_only(&manifest, b"changed firmware elf");
+        let cli = parse_cli([
+            "bitaxe-flash".to_owned(),
+            "flash".to_owned(),
+            "dry-run=true".to_owned(),
+            "port=/dev/null".to_owned(),
+            format!("manifest={manifest}"),
+        ])
+        .expect("parsed dry-run command");
+        let CliCommand::Flash(command) = cli.command else {
+            panic!("expected flash command");
+        };
+        let ota_path = manifest
+            .parent()
+            .expect("manifest parent")
+            .join("esp-miner.bin");
+        std::fs::remove_file(ota_path.as_std_path()).expect("remove later OTA artifact");
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = result.expect_err("ELF relationship mismatch").to_string();
+        assert!(error.contains("firmware_elf_app_sha_mismatch"));
+        assert!(!error.contains("failed to read fake artifact"));
+        assert!(environment.executed_commands().is_empty());
+        assert!(environment.created_snapshot_paths().is_empty());
+    }
+
+    #[test]
+    fn firmware_elf_app_sha_rejects_changed_elf_in_parsed_non_dry_run_before_effects() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        rewrite_manifest_elf_artifact_only(&manifest, b"changed firmware elf");
+        let cli = parse_cli([
+            "bitaxe-flash".to_owned(),
+            "flash".to_owned(),
+            format!("manifest={manifest}"),
+            "wifi-credentials=/missing/credentials.json".to_owned(),
+        ])
+        .expect("parsed non-dry command");
+        let CliCommand::Flash(command) = cli.command else {
+            panic!("expected flash command");
+        };
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+        );
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = result.expect_err("ELF relationship mismatch").to_string();
+        assert!(error.contains("firmware_elf_app_sha_mismatch"));
         assert!(!error.contains("Ambiguous serial ports"));
         assert!(!error.contains("credentials"));
         assert!(environment.executed_commands().is_empty());
@@ -4076,6 +4146,15 @@ mod tests {
         std::fs::write(factory_path.as_std_path(), &factory).expect("rewrite factory image");
         rewrite_manifest_artifact_digest(manifest, "firmware_ota_image", ota);
         rewrite_manifest_artifact_digest(manifest, "factory_merged_image", &factory);
+    }
+
+    fn rewrite_manifest_elf_artifact_only(manifest: &Utf8Path, elf: &[u8]) {
+        let elf_path = manifest
+            .parent()
+            .expect("manifest parent")
+            .join(DEFAULT_ELF_NAME);
+        std::fs::write(elf_path.as_std_path(), elf).expect("rewrite firmware ELF");
+        rewrite_manifest_artifact_digest(manifest, "firmware_elf", elf);
     }
 
     fn esp_application_fixture(source_commit: &str, build_label: &str) -> Vec<u8> {

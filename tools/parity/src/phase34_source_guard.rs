@@ -407,6 +407,9 @@ fn phase34_package_and_hardware_admission_source_guard() {
     assert!(manifest_builder.contains("BuildProvenance::parse_stamp"));
     assert!(manifest_builder.contains("schema_version: 3"));
     assert!(manifest_builder.contains("app_elf_sha256"));
+    assert!(manifest_builder.contains("validate_package_manifest_v3(&manifest)?"));
+    assert!(PACKAGE_MANIFEST_SOURCE.contains("validate_firmware_elf_app_sha_relationship"));
+    assert!(PACKAGE_MANIFEST_SOURCE.contains("firmware_elf_app_sha_mismatch"));
     assert!(!manifest_builder.contains("Command::new"));
     assert!(!manifest_builder.contains("git describe"));
     assert!(!XTASK_SOURCE.contains("fn firmware_commit"));
@@ -520,10 +523,20 @@ fn phase34_package_and_hardware_admission_source_guard() {
     let factory_digest = identity_admission
         .find("read_validated_artifact(factory_artifact")
         .expect("factory digest admission");
+    let elf_digest = identity_admission
+        .find("read_validated_artifact(elf_artifact")
+        .expect("firmware ELF digest admission");
+    let elf_app_binding = identity_admission
+        .find("firmware_elf_app_sha_mismatch")
+        .expect("firmware ELF application SHA binding");
+    let ota_digest = identity_admission
+        .find("read_validated_artifact(ota_artifact")
+        .expect("OTA digest admission");
     let factory_binding = identity_admission
         .find("validate_factory_ota_identity")
         .expect("factory and OTA structural binding");
     assert!(factory_digest < factory_binding);
+    assert!(elf_digest < elf_app_binding && elf_app_binding < ota_digest);
     assert!(!FLASH_SOURCE.contains("contains_bytes(&ota_bytes"));
     assert!(!FLASH_SOURCE.contains("contains_bytes(&factory_bytes"));
     assert!(PACKAGE_SCRIPT_SOURCE.contains("esptool\" image_info --version 2"));

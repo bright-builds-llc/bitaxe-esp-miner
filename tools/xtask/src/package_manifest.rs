@@ -179,7 +179,7 @@ pub(crate) fn build_manifest(
         )?,
     ];
 
-    Ok(PackageManifestV3 {
+    let manifest = PackageManifestV3 {
         schema_version: 3,
         release_name: package_request.release_name.clone(),
         semantic_version: provenance.semantic_version().to_owned(),
@@ -218,7 +218,10 @@ pub(crate) fn build_manifest(
         ),
         otadata_source: package_request.otadata_source.clone(),
         artifacts,
-    })
+    };
+    validate_package_manifest_v3(&manifest)?;
+
+    Ok(manifest)
 }
 
 pub(crate) fn validate_default_flash_image(default_flash_image: &Utf8Path) -> Result<()> {
@@ -314,6 +317,7 @@ pub(crate) fn validate_package_manifest_v3(manifest: &PackageManifestV3) -> Resu
         require_non_empty("artifact.path", &artifact.path)?;
         require_non_empty("artifact.offset", &artifact.offset)?;
     }
+    validate_firmware_elf_app_sha_relationship(manifest)?;
 
     require_artifact_offset(manifest, ArtifactKind::FirmwareElf, UNAVAILABLE)?;
     require_artifact_offset(manifest, ArtifactKind::FirmwareOtaImage, "0x10000")?;
@@ -356,6 +360,15 @@ fn require_artifact_kind(
     }
 
     Ok(artifact)
+}
+
+fn validate_firmware_elf_app_sha_relationship(manifest: &PackageManifestV3) -> Result<()> {
+    let firmware_elf = require_artifact_kind(manifest, ArtifactKind::FirmwareElf)?;
+    if firmware_elf.sha256 != manifest.app_elf_sha256 {
+        bail!("firmware_elf_app_sha_mismatch");
+    }
+
+    Ok(())
 }
 
 fn validate_sha256(kind: &ArtifactKind, sha256: &str) -> Result<()> {
@@ -532,7 +545,7 @@ mod tests {
     use tempfile::{tempdir, TempDir};
 
     const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
-    const APP_ELF_SHA256: &str = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    const APP_ELF_SHA256: &str = "780d84b20d7ae7e6292919399348bdbf96025270136198083fc8a4da398b5ca9";
 
     #[test]
     fn package_manifest_v3_requires_identity_and_release_artifact_kinds() {
@@ -614,36 +627,7 @@ mod tests {
     fn package_manifest_v3_builds_identity_and_release_artifacts_from_real_outputs() {
         // Arrange
         let dir = tempdir().expect("tempdir");
-        let package_elf = write_fixture(&dir, DEFAULT_ELF_NAME, b"elf");
-        let firmware_ota_image = write_fixture(&dir, "esp-miner.bin", b"ota");
-        let www_bin = write_fixture(&dir, "www.bin", b"www");
-        let otadata_initial = write_fixture(&dir, "otadata-initial.bin", b"otadata");
-        let factory_image = write_factory_fixture(&dir, &www_bin, &otadata_initial);
-        let partition_table = write_fixture(&dir, "partitions-ultra205.csv", b"partition-csv");
-        let install_notes = write_fixture(&dir, "ultra-205.md", b"install");
-        let license_inventory = write_fixture(&dir, "license-inventory.md", b"license");
-        let provenance_manifest = write_fixture(&dir, "provenance-manifest.md", b"provenance");
-        let build_provenance_stamp = write_provenance_stamp(&dir);
-        let request = PackageRequest {
-            board: BoardId::Ultra205,
-            firmware_elf: package_elf.clone(),
-            build_provenance_stamp,
-            app_descriptor_version: "0123456789ab-dev".to_owned(),
-            app_elf_sha256: APP_ELF_SHA256.to_owned(),
-            firmware_ota_image: firmware_ota_image.clone(),
-            www_bin: www_bin.clone(),
-            partition_table: partition_table.clone(),
-            otadata_initial: otadata_initial.clone(),
-            default_flash_image: package_elf,
-            out_dir: dir_path(&dir),
-            manifest: dir_path(&dir).join("bitaxe-ultra205-package.json"),
-            factory_image: Some(factory_image),
-            release_name: "bitaxe-ultra205".to_owned(),
-            install_notes,
-            license_inventory,
-            provenance_manifest,
-            otadata_source: "generated-erased-flash".to_owned(),
-        };
+        let request = package_request_fixture(&dir, APP_ELF_SHA256);
         let environment = FakePackageEnvironment;
 
         // Act
@@ -709,6 +693,22 @@ mod tests {
     }
 
     #[test]
+    fn build_manifest_rejects_firmware_elf_app_sha_mismatch_before_output() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let request = package_request_fixture(&dir, &"a".repeat(64));
+        let environment = FakePackageEnvironment;
+
+        // Act
+        let error = build_manifest(&request, &environment)
+            .expect_err("producer must reject ELF relationship mismatch");
+
+        // Assert
+        assert_eq!(error.to_string(), "firmware_elf_app_sha_mismatch");
+        assert!(!request.manifest.exists());
+    }
+
+    #[test]
     fn package_manifest_v3_rejects_duplicate_ota_artifact() {
         // Arrange
         let mut manifest = valid_manifest_v3();
@@ -753,6 +753,25 @@ mod tests {
     }
 
     #[test]
+    fn package_manifest_v3_rejects_firmware_elf_app_sha_mismatch() {
+        // Arrange
+        let mut manifest = valid_manifest_v3();
+        let firmware_elf = manifest
+            .artifacts
+            .iter_mut()
+            .find(|artifact| artifact.kind == ArtifactKind::FirmwareElf)
+            .expect("firmware ELF artifact");
+        firmware_elf.sha256 = "a".repeat(64);
+
+        // Act
+        let error = validate_package_manifest_v3(&manifest)
+            .expect_err("firmware ELF must bind to app ELF SHA");
+
+        // Assert
+        assert_eq!(error.to_string(), "firmware_elf_app_sha_mismatch");
+    }
+
+    #[test]
     fn package_manifest_v3_distinguishes_missing_and_duplicate_artifacts() {
         // Arrange
         let mut missing_manifest = valid_manifest_v3();
@@ -788,7 +807,11 @@ mod tests {
             kind,
             path: format!("{kind}.bin"),
             offset: offset.to_owned(),
-            sha256: "0".repeat(64),
+            sha256: if kind == ArtifactKind::FirmwareElf {
+                APP_ELF_SHA256.to_owned()
+            } else {
+                "0".repeat(64)
+            },
         };
         PackageManifestV3 {
             schema_version: 3,
@@ -832,6 +855,38 @@ mod tests {
                 artifact(ArtifactKind::PartitionTable, "0x8000"),
                 artifact(ArtifactKind::OtadataInitial, "0xf10000"),
             ],
+        }
+    }
+
+    fn package_request_fixture(dir: &TempDir, app_elf_sha256: &str) -> PackageRequest {
+        let package_elf = write_fixture(dir, DEFAULT_ELF_NAME, b"elf");
+        let firmware_ota_image = write_fixture(dir, "esp-miner.bin", b"ota");
+        let www_bin = write_fixture(dir, "www.bin", b"www");
+        let otadata_initial = write_fixture(dir, "otadata-initial.bin", b"otadata");
+        let factory_image = write_factory_fixture(dir, &www_bin, &otadata_initial);
+        let partition_table = write_fixture(dir, "partitions-ultra205.csv", b"partition-csv");
+        let install_notes = write_fixture(dir, "ultra-205.md", b"install");
+        let license_inventory = write_fixture(dir, "license-inventory.md", b"license");
+        let provenance_manifest = write_fixture(dir, "provenance-manifest.md", b"provenance");
+        PackageRequest {
+            board: BoardId::Ultra205,
+            firmware_elf: package_elf.clone(),
+            build_provenance_stamp: write_provenance_stamp(dir),
+            app_descriptor_version: "0123456789ab-dev".to_owned(),
+            app_elf_sha256: app_elf_sha256.to_owned(),
+            firmware_ota_image,
+            www_bin,
+            partition_table,
+            otadata_initial,
+            default_flash_image: package_elf,
+            out_dir: dir_path(dir),
+            manifest: dir_path(dir).join("bitaxe-ultra205-package.json"),
+            factory_image: Some(factory_image),
+            release_name: "bitaxe-ultra205".to_owned(),
+            install_notes,
+            license_inventory,
+            provenance_manifest,
+            otadata_source: "generated-erased-flash".to_owned(),
         }
     }
 

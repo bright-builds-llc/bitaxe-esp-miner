@@ -513,7 +513,7 @@ mod tests {
 
     const BUILD_STATUS: &str = "BUILD_USER local\nSTABLE_BITAXE_SOURCE_COMMIT 0123456789abcdef0123456789abcdef01234567\nSTABLE_BITAXE_SOURCE_DIRTY true\nSTABLE_BITAXE_RELEASE_TAG unavailable\nSTABLE_BITAXE_SEMANTIC_VERSION 0.1.0\nSTABLE_BITAXE_REFERENCE_COMMIT abcdef0123456789abcdef0123456789abcdef01\n";
     const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
-    const APP_ELF_SHA256: &str = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    const APP_ELF_SHA256: &str = "780d84b20d7ae7e6292919399348bdbf96025270136198083fc8a4da398b5ca9";
 
     #[test]
     fn materialize_build_provenance_writes_canonical_stamp_and_sdkconfig() {
@@ -903,11 +903,16 @@ mod tests {
     }
 
     fn artifact_json(kind: &str, path: &str, offset: &str) -> serde_json::Value {
+        let sha256 = if kind == "firmware_elf" {
+            APP_ELF_SHA256
+        } else {
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        };
         serde_json::json!({
             "kind": kind,
             "path": path,
             "offset": offset,
-            "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            "sha256": sha256
         })
     }
 
