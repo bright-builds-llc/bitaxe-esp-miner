@@ -122,6 +122,14 @@ alias(
     actual = "//tools/parity:tests",
 )
 
+test_suite(
+    name = "operator_snapshot_publication_tests",
+    tests = [
+        "//crates/bitaxe-api:tests",
+        "//tools/parity:tests",
+    ],
+)
+
 rust_test(
     name = "supervisor_checkpoint_production_tests",
     srcs = ["src/safety_adapter/watchdog.rs"],

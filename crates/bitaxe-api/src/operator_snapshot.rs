@@ -197,6 +197,11 @@ impl OperatorSnapshotSequence {
         Self { last_revision: 0 }
     }
 
+    #[cfg(test)]
+    pub(crate) const fn with_last_revision_for_test(last_revision: u64) -> Self {
+        Self { last_revision }
+    }
+
     /// Reserves the next unique identity or fails rather than wrapping.
     pub fn next_identity(
         &mut self,

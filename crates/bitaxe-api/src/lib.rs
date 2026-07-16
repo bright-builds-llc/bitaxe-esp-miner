@@ -14,6 +14,7 @@ pub mod logs;
 pub mod mining;
 pub mod observation;
 pub mod operator_snapshot;
+pub mod operator_snapshot_publication;
 pub mod phase33_evidence;
 pub mod platform_identity;
 pub mod route_shell;
@@ -58,6 +59,10 @@ pub use operator_snapshot::{
     BootSessionId, OperatorSnapshotIdentity, OperatorSnapshotIdentityError,
     OperatorSnapshotRevision, OperatorSnapshotSequence, OperatorSnapshotSequenceError,
     BOOT_SESSION_BYTES, BOOT_SESSION_HEX_BYTES,
+};
+pub use operator_snapshot_publication::{
+    OperatorSnapshotLockHealth, OperatorSnapshotPublication, OperatorSnapshotPublishError,
+    OperatorSnapshotPublisher,
 };
 pub use platform_identity::{
     PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity, PlatformResetReason,
