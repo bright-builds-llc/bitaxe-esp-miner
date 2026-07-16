@@ -5,122 +5,99 @@ score: "9/10 requirements satisfied"
 generated_by: gsd-verifier
 lifecycle_mode: interactive
 phase_lifecycle_id: 34-2026-07-15T03-26-15
-generated_at: 2026-07-16T05:30:56Z
+generated_at: 2026-07-16T21:19:23Z
 lifecycle_validated: true
 ---
 
-# Phase 34 Verification Report
+# Phase 34 Verification
 
 ## Verification Result
 
-Phase 34 remains **gaps found** at **9/10 requirements satisfied**.
+**Status:** `gaps_found`
+**Score:** 9/10 requirements satisfied
 
-Plan 34-09 closes the prior OBS-06 retention gap in the real production path. One publication authority now collects an unnumbered candidate, assigns a monotonic revision after collection, constructs the public and retained projections, transactionally retains the complete marker/runtime-health pair through the named fallible firmware adapter, and only then performs the actual system-info or live-WebSocket issue call. Production retention failures preserve their concrete error, skip issuance, consume the failed revision, release the ordering lock, and permit the next strictly greater revision. OBS-06 passes.
+Nine Phase 34 requirements are supported by production-source inspection and executable software-only evidence. `SYS-02` remains unsatisfied because the canonical ESP32-S3 application-image admission path does not enforce two required layout invariants: the descriptor-bearing first segment is not required to be DROM, and decoded segment destinations are not checked for pairwise direct or D/IRAM alias overlap.
 
-SYS-02 remains blocked by two independently reproduced exact-package admission gaps from the current `34-REVIEW.md`. Current admission accepts both a package whose application entry/load addresses make it non-bootable and a package whose declared `firmware_elf` artifact contradicts the application descriptor's `app_elf_sha256`. The normal package generator emits a coherent package, but the admission boundary does not enforce these relationships. Phase 35 therefore remains blocked.
+The repo-local guidance, Bright Builds workflow, architecture, testing, verification, code-shape, and Rust standards materially informed this result. No active standards override applies. This verification performed no hardware, device, credential, network-discovery, flash, monitor, OTA, UART, pin, or archived Phase 28 lineage work.
 
-The repo-local GSD, exact-source/package, software-only Phase 34, evidence-redaction, no-hardware, no-direct-UART/pin, Phase 35, and archived-lineage rules materially informed this result. `AGENTS.bright-builds.md`, `standards/core/architecture.md`, `standards/core/testing.md`, `standards/core/verification.md`, and `standards/languages/rust.md` informed the production-boundary and behavioral-proof assessment. No active standards override applies.
+## Requirements
 
-## Requirement Score
-
-| Requirement | Score | Status | Direct evidence |
-| --- | ---: | --- | --- |
-| OBS-06 | 1/1 | PASSED | `OperatorSnapshotPublisher::publish` collects before locking and holds one mutex through identity allocation, completion, retention, and issue. `runtime_snapshot.rs` returns the named production retention adapter result directly. `log_buffer.rs` validates and appends one `RetainedPair` under one singleton mutex acquisition. `http_api.rs` performs system-info, cadence, and live-connect issuance inside the publisher issue closure. Exact production modules are compiled together in `retained_pair_production_tests`; unavailable, undersized, and poisoned storage skip issue, retain no partial pair, consume the revision, and allow the next revision. |
-| SYS-01 | 1/1 | PASSED | `BuildProvenance` validates semantic version and full embedded source commit; `firmware/bitaxe/build.rs` requires generated stamp fields and performs no runtime/host Git substitution. `runtime_snapshot.rs` copies the compiled semantic version and full source commit into the coherent candidate. |
-| SYS-02 | 0/1 | GAP | Reference commit, descriptor ELF SHA, manifest digests, unique factory selection, factory/OTA equality, and immutable execution bytes are present. However, entry/load-address mutations and an independently changed packaged ELF both pass the real admission path after enclosing digests are recomputed. The admitted package can therefore be non-bootable or internally contradictory. |
-| SYS-03 | 1/1 | PASSED | `platform_identity.rs` uses the embedded static asset plus read-only ESP-IDF calls for IDF version and running partition, with closed board `205` and BM1366 types. |
-| SYS-04 | 1/1 | PASSED | The same adapter reads and types reset reason, monotonic uptime, internal free/minimum/largest heap facts, and PSRAM availability. Unknown/nonpositive facts fail to explicit unavailable states. |
-| SYS-05 | 1/1 | PASSED | `PlatformFact<T>` is a closed available/unavailable sum type. Fixture candidates authenticate no fact, unknown reset reasons remain unavailable, and compatibility zero/`Unavailable` projections do not promote availability. |
-| HLT-01 | 1/1 | PASSED | `PassiveSelfTestState` contains exactly idle, blocked, running, passed, failed, canceled, and unavailable. The Phase 34 adapter reads existing state only and exposes no self-test start operation. |
-| HLT-02 | 1/1 | PASSED | The production supervisor records bounded category `telemetry`, checked sequence, and monotonic observation time on every completed step; the coherent candidate copies the latest history and derived age. |
-| HLT-03 | 1/1 | PASSED | Supervisor availability/checkpoint health and task-watchdog participation are separate fields. Without direct proof, the evaluator emits task-watchdog `unavailable` with reason `unproved`; the Phase 34 path contains no `esp_task_wdt_*` mutation. |
-| HLT-04 | 1/1 | PASSED | Fixed checkpoints age from healthy through stale to unhealthy at checked `3 * cadence` and `10 * cadence` boundaries. The production supervisor regression proves recurring steps continue advancing checkpoints after one-time yield-log suppression. |
-
-**Total: 9/10.**
-
-## Consolidated Must-Have Adjudication
-
-| Phase must-have | Status | Evidence |
+| Requirement | Status | Verification basis |
 | --- | --- | --- |
-| One completed capture carries read-only telemetry, confirmed settings, platform identity, and passive health before revision assignment. | VERIFIED | `collect_operator_snapshot_candidate` gathers projection state, platform facts, runtime health, sensor observations, storage-confirmed settings, and Wi-Fi facts before `OperatorSnapshotPublisher::publish` acquires its ordering mutex. `complete_operator_snapshot` attaches the assigned identity once. |
-| System-info, live WebSocket, retained records, and evidence projections use the same typed boot session/revision and cannot publish in decreasing order. | VERIFIED | System-info and live telemetry serialize the same `SystemInfoWire` identity fields. The production publisher owns retention and actual issuance. The reverse-completion regression observes direct retained and combined HTTP/WebSocket revisions `[1, 2]` without sorting. |
-| Retained marker/runtime-health correlation is atomic, fallible, and required before public issue. | VERIFIED | `RetainedPair::try_new` normalizes and validates both records; `RetainedLogBuffer::try_append_pair` preflights complete capacity/counter state; `retain_operator_snapshot_pair` holds one production mutex guard; the named adapter returns its concrete error unchanged; the publisher's `?` skips issue on retention failure. |
-| Retention and issuance preserve distinct concrete error sources and ordering-lock health. | VERIFIED | `OperatorSnapshotPublishError<RetentionError, IssueError>` has separate `Retention` and `Issuance` sources. Focused unit tests use different sentinel types; firmware compiles internal `Infallible`, system-info `anyhow::Error`, cadence `LiveCadenceIssueError`, and WebSocket `esp_err_t` issue channels alongside `RetainedPairStorageError`. |
-| Only the unique admitted factory artifact reaches non-dry-run flashing, and execution consumes immutable admitted bytes. | VERIFIED | Explicit ELF/extra/alias/factory-like selections fail. `AdmittedFlashImage::Factory` owns the validated factory bytes, and `AdmittedExecutionSnapshot` writes a mode-0600 owner-held private snapshot before port/credential work. Race and cleanup regressions prove the child does not reopen the package path. |
-| The admitted OTA is a complete supported, bootable ESP32-S3 application. | GAP | Chip/revision, segment bounds, checksum, padding, appended digest, descriptor, and exact EOF are checked, but main-header entry/SPI fields and segment load addresses are ignored. A zero entry address and zero first-segment load address pass after digest recomputation. |
-| The versioned package has one internally consistent ELF/application identity. | GAP | The generator normally emits equal `app_elf_sha256` and `firmware_elf.sha256`, but manifest validation and active admission validate them independently. A changed packaged ELF with only its artifact digest updated is accepted. |
-| Missing facts stay unavailable and excluded scopes/evidence gates remain closed. | VERIFIED | Typed platform/health unavailability and source guards remain intact. Verification used no hardware, USB, serial, credentials, network discovery, flash, OTA, UART/pins, Phase 35, or archived-lineage operation. |
+| `SYS-01` | **verified** | Strict typed build identity and provenance are parsed from the required build stamp, embedded at compile time without a Git fallback, and projected into runtime identity. Contradictory or malformed identity inputs fail closed. |
+| `SYS-02` | **gaps_found** | Schema-v3 packaging, ELF/application digest binding, entry and load-address validation, descriptor validation, trailer validation, unique factory selection, and immutable execution snapshots are present. The parser does not require the descriptor-bearing first segment to be DROM and does not reject pairwise direct or D/IRAM alias overlap, so the declared canonical producer envelope is incomplete. |
+| `SYS-03` | **verified** | Board `205`, BM1366 ASIC identity, ESP-IDF version, firmware identity, and running-partition facts use typed, closed production adapters with explicit availability. |
+| `SYS-04` | **verified** | Reset reason, monotonic uptime, internal-heap free/minimum/largest-block values, and PSRAM capacity/free values are read through production platform adapters. |
+| `SYS-05` | **verified** | Platform facts use an explicit available/unavailable tagged representation. Zero values and unknown reset codes do not authenticate unavailable evidence. |
+| `OBS-06` | **verified** | The single production publisher orders revision allocation, completion, fallible retained-pair publication, and issuance under one mutex. Collection occurs before the lock; retention and issuance failures remain distinct; poison and reentrancy paths fail closed without collapsing revision identity. |
+| `HLT-01` | **verified** | The core model exposes exactly the seven passive health states. Production currently reports unavailable where proof is absent and introduces no task-start or other effectful control surface. |
+| `HLT-02` | **verified** | Recurring producer-owned checkpoints advance category, sequence, and monotonic time; snapshots derive freshness age from checkpoint history. |
+| `HLT-03` | **verified** | Task-watchdog participation is modeled separately from producer liveness and remains explicitly unavailable when unproved. The snapshot path does not mutate task-watchdog state. |
+| `HLT-04` | **verified** | Freshness derives healthy/stale/unhealthy states from cadence thresholds, and production tests show recurring checkpoint sequence advancement is independent of duplicate-yield log suppression. |
 
-## Review Warning Adjudication
+## Plan Must-Have Rollup
 
-### WR-01 — Confirmed: ignored entry and segment load addresses admit a non-bootable image
+| Plan | Result | Verification conclusion |
+| --- | --- | --- |
+| `34-01` | **verified in declared scope** | Canonical build identity, runtime projections, schema-v3 package identity, and pre-effect dirty-build admission are present. The later `SYS-02` layout gap still applies. |
+| `34-02` | **verified** | Typed boot-session, revision, and correlation semantics are present; completion-order publication was subsequently strengthened by `34-07`. |
+| `34-03` | **verified** | Platform truth and explicit unavailable-state modeling are implemented through production adapters. |
+| `34-04` | **verified** | Passive health vocabulary, freshness age, and watchdog separation are implemented, with the recurring-checkpoint correction supplied by `34-06`. |
+| `34-05` | **verified** | Required package artifacts, OTA/factory structural validation, and application-byte binding are present. |
+| `34-06` | **verified** | Recurring producer checkpoints advance independently of one-time or duplicate-suppressed logging. |
+| `34-07` | **verified** | Completion-ordered publication, retained-pair semantics, and real issuance are implemented in the production publisher. |
+| `34-08` | **verified in declared scope** | The basic executable envelope, closed factory selection, and immutable execution snapshot are present; these checks alone do not close the later canonical-layout requirements. |
+| `34-09` | **verified** | Retained previous/current publication is atomic and fallible, with retention and issuance represented as distinct failure channels. |
+| `34-10` | **gaps_found** | Entry/load-address and packaged-ELF contradiction gaps are closed, but canonical layout enforcement remains incomplete because descriptor-segment family and pairwise destination non-overlap are not enforced. |
 
-`tools/flash/src/package_admission.rs:64-160` reads main-header bytes 12 through 23 but never parses bytes 2 through 11. Most importantly, it ignores the four-byte `entry_addr` at bytes 4 through 7. Its segment loop reads only `data_len` from segment-header bytes 4 through 7 and never reads the segment `load_addr` in bytes 0 through 3.
+## SYS-02 Functional Conformance
 
-The pinned ESP-IDF contract identifies these as executable fields: `esp_image_header_t.entry_addr` and `esp_image_segment_header_t.load_addr` in `.embuild/espressif/esp-idf/v5.5.4/components/bootloader_support/include/esp_app_format.h`. The bootloader uses the header entry address as the final function pointer and validates segment load/mapping ranges in `components/bootloader_support/src/esp_image_format.c` and `bootloader_utility.c`.
+The current production chain is coherent from package construction through schema-v3 validation, active admission, and immutable execution snapshotting. The packaged ELF digest is bound to the application digest, and active admission rechecks the actual ELF before reading OTA or factory application bytes. The earlier zero or redirected entry/load-address gap and the contradictory packaged-ELF gap are closed.
 
-Concrete production-path reproduction at source `02f42eb9c34f5b15af0af0bb7272ea0f465227c5`:
+The canonical package produced at the current commit is accepted and independently described as a valid ESP32-S3 image by the managed ESP-IDF tooling. That is necessary positive evidence, but it does not prove rejection coverage for every declared invariant.
 
-1. Built a fresh current clean package with `just package`.
-2. In a temporary copy only, zeroed the OTA main-header entry address and first segment load address, made the identical mutations in the factory partition, recomputed the OTA appended SHA-256, and updated the OTA/factory manifest artifact digests.
-3. Invoked the real `bitaxe-flash flash --board 205 --port /dev/null --dry-run` path with that manifest and admitted factory image.
-4. Admission succeeded and prepared `espflash write-bin` instead of rejecting before the effect boundary.
+Two functional invariants are absent from `esp32s3_image` admission:
 
-The checksum, descriptor identity, source marker, factory/OTA equality, appended digest, and manifest digests all remained self-consistent. The accepted application nevertheless has a zero entry point and invalid first segment destination. This directly blocks SYS-02.
+1. The descriptor is decoded at offset zero of the first non-empty payload, but that descriptor-bearing segment is not required to belong to the DROM memory family.
+2. Segment destinations are validated individually, but the complete segment set is not checked for pairwise overlap, including direct numeric overlap and D/IRAM physical alias overlap.
 
-### WR-02 — Confirmed: packaged ELF digest is not bound to `app_elf_sha256`
+Because both invariants are part of the canonical ESP-IDF producer envelope required by Plan `34-10`, their absence blocks `SYS-02` and Phase 34 completion.
 
-At `tools/flash/src/main.rs:1182-1205`, active admission validates the top-level `app_elf_sha256`, reads and digest-checks the unique `firmware_elf`, then discards those bytes. Only the independently declared top-level value reaches application-descriptor validation. At `tools/xtask/src/package_manifest.rs:249-332`, manifest validation checks the top-level value and every artifact digest independently but never requires the `firmware_elf` artifact digest to equal `app_elf_sha256`.
+## Executable Evidence
 
-Concrete production-path reproduction against the same fresh package:
-
-1. Appended different bytes to the temporary packaged `firmware_elf`.
-2. Updated only that artifact's manifest SHA-256; left the OTA, factory, descriptor, and top-level `app_elf_sha256` unchanged.
-3. Invoked the real dry-run flash admission path.
-4. Admission succeeded and prepared the flash command.
-
-The package therefore claims one packaged ELF while the descriptor and top-level identity attest another. The generator's current equal output is useful evidence but cannot replace enforcing the relationship at manifest validation and active admission. This also blocks SYS-02.
-
-## Focused Verification Evidence
-
-All commands ran without hardware or external inputs.
-
-| Command | Result |
+| Evidence | Result |
 | --- | --- |
-| `cargo test -p bitaxe-flash package_admission` | PASS — 22 tests. Confirms Plan 34-08 chip/revision, bounds, checksum, padding, digest, EOF, descriptor, source, partition, and factory/OTA checks; no entry/load-address regression exists. |
-| `cargo test -p bitaxe-flash identity_admission` | PASS — 12 tests. Confirms explicit artifact/basename/alias closure and fail-before-effect ordering; no ELF/top-level digest relationship regression exists. |
-| `cargo test -p bitaxe-flash admitted_execution` | PASS — 5 tests. Confirms immutable private execution bytes and success/failure cleanup. |
-| `cargo test -p xtask package_manifest` | PASS — 6 tests. Confirms required-kind uniqueness and normal manifest construction; no contradictory ELF hash test exists. |
-| `cargo test -p bitaxe-api operator_snapshot_publication` | PASS — 8 tests covering completion order, distinct stage errors, retention/issue failure, poison, reentrancy, and exhaustion. |
-| `cargo test -p bitaxe-api retained_pair` | PASS — 8 atomic pair validation/capacity/counter tests. |
-| `cargo test -p bitaxe-api platform_identity` | PASS — 6 typed platform truth/unavailability tests. |
-| `cargo test -p bitaxe-api runtime_projection` | PASS — 11 shared identity/health and compatibility tests. |
-| `cargo test -p bitaxe-core runtime_health` | PASS — 11 vocabulary, transition, age-boundary, freeze, recovery, and watchdog-separation tests. |
-| `cargo test -p bitaxe-parity operator_snapshot_evidence` | PASS — 6 coherence, chronology, redaction, and production-publisher tests. |
-| `cargo test -p bitaxe-parity phase34_source_guard` | PASS — 5 identity, publication, platform, health, and package guards. |
-| Focused Phase 34 Bazel test set | PASS — API, core, exact production retention, production supervisor, flash, and parity targets; seven unique targets after suite expansion. |
-| `just package` | PASS — current clean package built at source `02f42eb9c34f5b15af0af0bb7272ea0f465227c5`; normal package has equal top-level and ELF artifact SHA-256. |
-| Adversarial real dry-run admission: zero entry/load address | ACCEPTED — concrete WR-01 gap; no hardware/process effect executed. |
-| Adversarial real dry-run admission: contradictory packaged ELF | ACCEPTED — concrete WR-02 gap; no hardware/process effect executed. |
+| `just package` at `2cd1bd05b0af1cf435b3bc6857f8b99c9a072a08` | **passed**; produced the real schema-v3 firmware package. Existing firmware dead-code warnings were unchanged and non-blocking. |
+| Managed ESP-IDF `esptool.py image_info` inspection of the canonical application image | **passed**; reported a valid six-segment ESP32-S3 image with valid checksum/hash and expected descriptor/MMU metadata. |
+| `cargo test -p bitaxe-api` | **passed**, 208 tests. |
+| `cargo test -p bitaxe-core` | **passed**, 21 tests. |
+| `cargo test -p bitaxe-flash` | **passed**, 100 tests. |
+| Focused `xtask` package-manifest tests | **passed**, 8 tests. |
+| Focused Phase 34 source-guard tests | **passed**, 5 tests. |
+| Focused operator-snapshot evidence tests | **passed**, 6 tests. |
+| Focused Bazel production and tool targets | **passed** for retained-pair, supervisor-checkpoint, operator-snapshot publication, flash, parity, xtask, and API targets. |
+| Canonical software-only flash dry-run using the generated package and `/dev/null` | **passed**; admission completed without execution. |
+| `just verify-reference` | **passed**; pinned reference tree was clean. |
 
-## Required Gap Closure
+The committed `34-REVIEW.md` independently reaches the same `SYS-02` conclusion and records both missing invariants as blocking warnings. No source change after the reviewed implementation invalidates that review; current `HEAD` adds the review artifact only.
 
-1. Extend active OTA admission to validate the concrete supported main-header policy and every entry/load address needed for a bootable ESP32-S3 application. At minimum, reject invalid entry points, invalid/overflowing segment destination ranges, and invalid mapped-segment alignment/range combinations. Add production-path mutations that recompute all enclosing hashes and still fail before port, credential, command, USB, or hardware work.
-2. Require the unique `firmware_elf.sha256` artifact digest to equal `manifest.app_elf_sha256` in both `validate_package_manifest_v3` and active flash admission. Add a production-path regression that changes the packaged ELF and its artifact digest while leaving the descriptor identity unchanged, then proves rejection before later effects.
-3. Rerun the exact Rust sequence, focused Cargo/Bazel regressions, repository-wide Bazel tests, canonical build/package/reference gates, code review, and a fresh independent Phase 34 verifier. Phase 35 remains blocked until that verifier passes.
+## Gaps Requiring Closure
+
+1. Require the descriptor-bearing first non-empty application segment to be DROM while preserving the existing descriptor-at-offset-zero validation.
+2. Reject pairwise direct destination overlap and D/IRAM physical alias overlap across decoded non-empty segments. Preserve half-open interval semantics so adjacent segments remain valid and zero-length segments contribute no range.
+3. Add focused parser, full-admission, and pre-effect regression coverage for both invariants, then rerun the Phase 34 code review and lifecycle-bound verification.
 
 ## Human Verification
 
-None. The remaining gap is deterministic at the software admission boundary; hardware cannot repair or supersede it.
+None required. Phase 34 remains software-only, and the outstanding gaps are deterministically verifiable through source inspection and executable tests.
 
-## Exact Non-Claims
+## Non-Claims
 
-- This report does not claim Phase 34 passed or SYS-02 is complete.
-- It does not claim every admitted application is bootable on ESP32-S3.
-- It does not claim `firmware_elf` is bound to the application descriptor's ELF SHA-256.
-- It does not qualify any package on hardware or provide Phase 35 evidence.
-- It does not promote CFG-12, EVD-10 through EVD-15, parity, mining, OTA/recovery, active health/control, credentials, other boards, or archived-lineage claims.
+- This result does not claim hardware, USB, flash, monitor, OTA execution, Wi-Fi, pool, mining, ASIC, thermal, fan, voltage, or watchdog-registration evidence.
+- Acceptance of the clean canonical package is not treated as proof that malformed or noncanonical layouts are rejected.
+- Administrative artifact completeness is not treated as requirement verification.
+- Phase 35 is not authorized to proceed while `SYS-02` remains unsatisfied.
 
-## Completion Summary
+## Next Action
 
-Plan 34-09 successfully closes OBS-06, and SYS-01, SYS-03 through SYS-05, and HLT-01 through HLT-04 remain satisfied. Phase 34 is not complete because current exact-package admission accepts a non-bootable ESP32-S3 application and a contradictory packaged ELF. The final score is **9/10 requirements satisfied**, with SYS-02 as the sole remaining requirement gap.
+Implement the two narrow `SYS-02` layout checks and their regression coverage, then run a fresh code review and `gsd-verifier` pass for lifecycle `34-2026-07-15T03-26-15`. Until that evidence passes, keep Phase 34 at `gaps_found` and Phase 35 blocked.
