@@ -1,47 +1,18 @@
 ---
 phase: 34-provenance-runtime-health-and-coherent-operator-snapshot
+plan: "10"
 status: issues_found
-depth: standard
-files_reviewed: 38
+depth: deep
+files_reviewed: 7
 files_reviewed_list:
-  - Cargo.lock
-  - MODULE.bazel.lock
-  - crates/bitaxe-api/BUILD.bazel
-  - crates/bitaxe-api/src/build_identity.rs
-  - crates/bitaxe-api/src/lib.rs
-  - crates/bitaxe-api/src/logs.rs
-  - crates/bitaxe-api/src/operator_snapshot.rs
-  - crates/bitaxe-api/src/operator_snapshot_publication.rs
-  - crates/bitaxe-api/src/platform_identity.rs
-  - crates/bitaxe-api/src/runtime_projection.rs
-  - crates/bitaxe-api/src/snapshot.rs
-  - crates/bitaxe-api/src/wire.rs
-  - crates/bitaxe-core/src/runtime_health.rs
-  - firmware/bitaxe/BUILD.bazel
-  - firmware/bitaxe/build.rs
-  - firmware/bitaxe/src/boot_evidence.rs
-  - firmware/bitaxe/src/http_api.rs
-  - firmware/bitaxe/src/log_buffer.rs
-  - firmware/bitaxe/src/main.rs
-  - firmware/bitaxe/src/operator_snapshot_retention.rs
-  - firmware/bitaxe/src/operator_snapshot_retention_production_tests.rs
-  - firmware/bitaxe/src/platform_identity.rs
-  - firmware/bitaxe/src/runtime_health_adapter.rs
-  - firmware/bitaxe/src/runtime_snapshot.rs
-  - firmware/bitaxe/src/safety_adapter/watchdog.rs
-  - scripts/build-identity-pathspecs.txt
-  - scripts/build-identity-status.sh
-  - scripts/build_identity.bzl
-  - scripts/package-firmware.sh
-  - tools/flash/BUILD.bazel
-  - tools/flash/Cargo.toml
-  - tools/flash/src/main.rs
+  - tools/flash/src/esp32s3_image.rs
   - tools/flash/src/package_admission.rs
-  - tools/parity/src/operator_evidence.rs
-  - tools/parity/src/operator_snapshot_evidence.rs
-  - tools/parity/src/phase33_source_guard.rs
-  - tools/parity/src/phase34_source_guard.rs
+  - tools/flash/src/main.rs
+  - tools/flash/BUILD.bazel
   - tools/xtask/src/package_manifest.rs
+  - tools/xtask/src/main.rs
+  - tools/parity/src/phase34_source_guard.rs
+diff_base: 72a66548
 findings:
   critical: 0
   warning: 2
@@ -50,73 +21,72 @@ findings:
 blocking_correctness_issue: true
 generated_by: gsd-code-reviewer
 generated_at: "2026-07-16"
-reviewed_source: 5c6d0a8eb9203a787c0fd9d9dc825a4457fa5519
+reviewed_source: 77430a1a1356bccbb15a7c3fb86805cfe2f2199f
 ---
 
-# Phase 34 Code Review
+# Phase 34 Plan 10 Code Review
 
 ## Summary
 
-The explicit-image bypass, mutable-package time-of-check/time-of-use window, and false-success retained-correlation adapter reported by the preceding review are fixed. The admitted factory bytes are now copied into an admission-owned, owner-only temporary snapshot and held through child-process completion. Retained snapshot correlation now performs one preflighted pair append under one production mutex acquisition, and retention and issuance failures preserve distinct typed sources.
+The two prior SYS-02 reproductions now reach closed production checks. The real flash path hashes the selected ELF bytes and compares that digest with `app_elf_sha256` before reading OTA or factory artifacts, and both OTA bytes and the factory-embedded application are routed through the same typed ESP32-S3 validator before port, credential, snapshot, command, USB, or hardware work.
 
-Two exact-package admission gaps remain. Both block SYS-02 even though the new tests and the normal package path pass. No hardware, USB, network, credential, flash, monitor, archived-lineage, or Phase 35 operation was used during this review.
+Two executable-layout invariants remain incomplete. The parser authenticates descriptor bytes at the start of segment 0 without requiring the segment to be DROM, and it validates every destination range independently without rejecting overlaps between segments or overlaps through the ESP32-S3 D/IRAM aliases. Either omission permits a structurally sealed package that does not represent the canonical ESP-IDF application layout. Both warnings block SYS-02.
+
+The repo-local exact-package, immutable-admission, software-only, no-hardware, and frontmatter guidance materially informed this review. `AGENTS.bright-builds.md`, `standards/core/architecture.md`, `standards/core/code-shape.md`, `standards/core/testing.md`, `standards/core/verification.md`, and `standards/languages/rust.md` informed the boundary parsing, typed-invariant, and regression assessment. No active standards override applies.
 
 ## Warnings
 
-### WR-01: The ESP32-S3 image-envelope validator still ignores executable header and segment-address fields
+### WR-01: Segment 0 is not required to be the canonical DROM application-descriptor segment
 
-**Evidence:** `tools/flash/src/package_admission.rs:64-160`
+**Evidence:** `tools/flash/src/esp32s3_image.rs:183-196` and `tools/flash/src/esp32s3_image.rs:322-340`
 
-`validate_ota_identity` validates the magic, segment count and lengths, descriptor identity, checksum, padding, optional appended SHA-256, and exact end of file. However, `validate_esp32_s3_header` starts at header byte 12. It never checks bytes 2 through 11: SPI mode, SPI speed/size, entry address, write-protect pin, or SPI drive settings. The segment loop likewise reads only `data_len` from each segment header and ignores its `load_addr` field.
+`validate_load_address` classifies segment 0 like any other admitted family. `validate_descriptor` then takes the first payload and authenticates its descriptor bytes, but never requires `segments[0].maybe_memory_family == Some(MemoryFamily::Drom)`. The pinned `esp_app_desc.h` defines `esp_app_desc_t` as residing in DROM, `esp_app_desc.c` places it in `.rodata_desc`, and the ESP32-S3 linker script places `.flash.appdesc` at the beginning of the flash-rodata/DROM segment. The ELF therefore continues to reference the descriptor at its linked DROM address even if the image header redirects that payload into DRAM or another family.
 
-Those fields determine whether the admitted image is a bootable ESP32-S3 application and where its segments execute. An image can therefore preserve the expected descriptor and source marker, replace the entry point or segment load addresses with unsupported values, recompute the ESP checksum/appended digest and manifest factory/OTA digests, and pass admission. The pinned ESP-IDF image format defines these fields and validates target memory ranges; they are not opaque payload bytes.
+Regression shape confirmed through the current parsed dry-run CLI: begin with the freshly generated canonical package; change only segment 0's load address from DROM to an admitted DRAM address; recompute the appended image digest, replace the factory-embedded OTA bytes, and update the OTA/factory artifact digests. Admission reaches flash-command preparation instead of rejecting the noncanonical descriptor placement. A smaller unit regression can use a nonoverlapping DRAM segment 0 containing the descriptor plus a valid executable IRAM segment, then assert a stable descriptor-segment-family rejection.
 
-**Required fix:** Validate the concrete main-header policy emitted by the pinned ESP32-S3 package flow and every entry/segment address against supported ESP32-S3 executable ranges, or delegate the complete check to a trusted parser over the already-admitted bytes. Add regressions that mutate each currently ignored field class, recompute all enclosing checksums and digests, and prove rejection before port discovery, credential handling, or process execution.
+**Required fix:** Make the descriptor-bearing first segment a typed invariant: it must be non-empty, mapped DROM, contain the complete descriptor at payload offset zero, and satisfy the existing mapped congruence rule. Add direct parser, full OTA/factory admission, and parsed pre-effect CLI regressions for a descriptor-bearing first segment redirected to each other otherwise-admitted family.
 
-### WR-02: Admission does not bind `app_elf_sha256` to the packaged `firmware_elf` artifact
+### WR-02: Independently valid segments may overlap directly or through D/IRAM aliases
 
-**Evidence:** `tools/flash/src/main.rs:1182-1205` and `tools/xtask/src/package_manifest.rs:249-318`
+**Evidence:** `tools/flash/src/esp32s3_image.rs:183-195` and `tools/flash/src/esp32s3_image.rs:257-271`
 
-Active admission independently validates the top-level `manifest.app_elf_sha256` format, reads and digest-checks the `firmware_elf` artifact, then discards those bytes. It passes only the top-level value to the OTA application-descriptor check. Neither active admission nor the manifest validator requires the `firmware_elf` artifact's SHA-256 to equal `app_elf_sha256`.
+Each non-empty segment is checked for a nonoverflowing end and containment in one admitted envelope, then appended to `segments`. Validation proceeds directly to entry, descriptor, and trailer checks; there is no pairwise destination-range validation. This accepts two ranges that overlap numerically. It also accepts a DRAM range and an IRAM range that refer to the same ESP32-S3 D/IRAM physical SRAM through `SOC_I_D_OFFSET`, even though loading the later segment overwrites bytes from the earlier one. The canonical linker/`elf2image` output does not emit either layout, and the existing conservative ceilings only exclude bootloader-reserved aliases; they do not prevent application segments from colliding with each other.
 
-Consequently, a manifest can point `firmware_elf` at different bytes, update only that artifact's self-declared digest, leave the canonical descriptor/factory/OTA identity unchanged, and pass admission with a contradictory release package. The normal package generator currently produces equal values, but the admission boundary must validate the relationship rather than trust that producer behavior.
+The current tests cannot expose this because their synthetic positive fixtures use one small disjoint range per family and assert only per-segment containment. A focused regression should construct two individually admitted numeric-overlap ranges, then a separate DRAM/IRAM alias-overlap pair using the pinned ESP32-S3 alias mapping, and require rejection before descriptor/trailer success. Include adjacent half-open ranges as a positive boundary case.
 
-**Required fix:** Require the unique `firmware_elf` artifact digest to equal `app_elf_sha256` in both manifest validation and active flash admission. Add a production-path regression that replaces the packaged ELF, recomputes `firmware_elf.sha256`, and proves admission fails before port discovery, credential handling, or execution.
+**Required fix:** After parsing all non-empty segments, reject pairwise numeric intersections and normalize the D/IRAM portions into one physical-address representation before checking alias intersections. Keep zero-length segments range-free. Store the resulting nonoverlapping segment set in the validated type so later entry/descriptor checks cannot observe an unchecked layout.
 
-## Gap-Fix Adjudication
+## Prior SYS-02 Reproduction Adjudication
 
-- The former explicit-image bypass is resolved: explicit selection must lexically equal the admitted factory artifact, and execution dispatch is closed over `AdmittedFlashImage`.
-- The former mutable-package race is resolved: admitted factory bytes are copied to an owned mode-0600 temporary snapshot before later effects, and its owner remains live across child execution.
-- The former retained-correlation false success is resolved: `RetainedPair` preflights the whole pair, the production adapter acquires the singleton mutex once, storage failures are typed, and issuance is skipped after retention failure while the revision remains consumed.
-- The former incomplete-envelope warning is only partially resolved. Chip/revision policy and the complete trailer are now checked, but WR-01 identifies the remaining executable-header and segment-address omissions.
+- The prior entry/load-address reproduction is closed for the classes now encoded: zero, unaligned, out-of-envelope, overflowing, cross-boundary, reserved-envelope, and mapped-congruence mutations fail in `esp32s3_image::validate`, which is called for both OTA and factory application bytes.
+- The prior contradictory-ELF reproduction is closed. `tools/xtask/src/package_manifest.rs:143-224` hashes the real ELF while constructing the manifest and validates the relationship; `tools/xtask/src/package_manifest.rs:304-320` enforces unique-kind validation followed by digest equality for supplied manifests; `tools/flash/src/main.rs:1186-1195` hashes the selected ELF bytes and rejects disagreement before any later application artifact is read.
+- The immutable factory snapshot remains closed: active admission returns owned factory bytes, and later execution consumes the admission-owned snapshot rather than reopening the package artifact.
 
 ## Verified Strengths
 
-- The immutable admission snapshot binds the exact factory bytes checked in memory to the path consumed by the CLI boundary.
-- Retained marker and runtime-health records append atomically with respect to validation, capacity, counter state, and the production lock.
-- `OperatorSnapshotPublishError<RetentionError, IssueError>` preserves stage-specific error sources and lock health without collapsing retention into issuance.
-- Production-module tests cover unavailable storage, insufficient capacity, mutex poison, skipped issuance, revision consumption, and redaction-safe errors.
-- HTTP and WebSocket snapshot paths continue to issue only through the shared publication authority.
+- Header parsing covers the exact canonical DIO, 80 MHz/16 MiB, WP, drive, chip/revision, reserved-byte, and appended-hash fields.
+- Segment length, offset, load-end, trailer, and digest arithmetic uses checked operations and bounded slices. Loader-valid zero-length semantics are preserved while mapped zero-length segments retain congruence checks.
+- Entry validation requires four-byte alignment and containment in a non-empty admitted IRAM or IROM segment.
+- Descriptor version, ELF SHA, MMU log2 value, source marker, segment checksum, zero padding, appended SHA-256, and exact end-of-file are checked.
+- Manifest construction, manifest validation, and active admission independently enforce the unique firmware ELF/application digest relationship using actual ELF bytes at producer and consumer boundaries.
+- Active rejection remains ordered before OTA/factory reads for ELF mismatch and before port discovery, credentials, command execution, USB, or hardware for executable-image mismatch.
 
 ## Verification
 
-All executed checks passed:
+All software-only checks executed for this review passed:
 
-- `cargo test -p bitaxe-flash package_admission` (22 passed)
-- `cargo test -p bitaxe-flash identity_admission` (12 passed)
-- `cargo test -p bitaxe-flash admitted_execution` (5 passed)
-- `cargo test -p bitaxe-api operator_snapshot_publication` (8 passed)
-- `cargo test -p bitaxe-api retained_pair` (8 passed)
-- `cargo test -p bitaxe-parity operator_snapshot_evidence` (6 passed)
-- `cargo test -p bitaxe-parity phase34_source_guard` (5 passed)
-- `bazel test //firmware/bitaxe:retained_pair_production_tests //firmware/bitaxe:operator_snapshot_publication_tests //tools/flash:tests //tools/parity:tests //crates/bitaxe-api:tests //crates/bitaxe-core:tests`
-- `just build`
-- `just package`
-- `just verify-reference`
-- `git diff --check`
+- `cargo test -p bitaxe-flash esp32s3_image` — 12 passed.
+- `cargo test -p bitaxe-flash package_admission` — 26 passed.
+- `cargo test -p bitaxe-flash executable_admission` — 2 passed.
+- `cargo test -p bitaxe-flash firmware_elf_app_sha` — 2 passed.
+- `cargo test -p xtask package_manifest` — 8 passed.
+- `cargo test -p bitaxe-parity phase34_source_guard` — 5 passed.
+- `just package` completed successfully for source `77430a1a1356bccbb15a7c3fb86805cfe2f2199f`.
+- The clean current package passed the parsed software-only dry-run admission path.
+- `git diff --check` passed before the review artifact was written.
 
-The passing suite does not exercise the ignored image-header/address fields or the missing relationship between the two ELF digest declarations.
+No hardware, USB, serial, credentials, network discovery, flashing, OTA execution, direct UART/pins, Phase 35, or archived-lineage operation was used.
 
 ## Conclusion
 
-**Status: issues found.** No critical finding remains from the requested gap repairs, and the production retained-correlation fix is sound. WR-01 and WR-02 are blocking correctness gaps in exact-package admission, so Phase 34 should remain unverified and Phase 35 blocked until both relationships are enforced and covered by pre-effect production-path regressions.
+**Status: issues found.** The original zero-entry/load-address and contradictory-ELF gaps are materially repaired, and the ELF identity ordering is sound. WR-01 and WR-02 leave the claimed canonical executable layout incomplete, so SYS-02 and Phase 34 should remain unverified until both invariants have production-path regression coverage and a fresh independent verifier passes.
