@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: ready_to_execute
-stopped_at: Phase 34 verification-gap plans 34-05 through 34-07 are ready to execute.
-last_updated: "2026-07-15T18:47:20.501Z"
+status: executing
+stopped_at: Phase 34 verification found two remaining software requirement gaps; another gap-planning cycle is required before Phase 35.
+last_updated: "2026-07-16T01:06:53Z"
 last_activity: "2026-07-15"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
-  percent: 81
+  completed_plans: 16
+  percent: 100
 ---
 
 # Project State
@@ -20,13 +20,13 @@ Last activity: 2026-07-15
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAP CLOSURE PLANNED
-Plan: 4 of 7 complete; 3 gap plans ready
+Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAPS FOUND
+Plan: 7 of 7
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 4 of 7 implemented; Plans 34-05 through 34-07 ready
-- **Status:** Ready to execute
-- **Next step:** Execute Phase 34 gap plans for factory-image admission, supervisor checkpoint liveness, and ordered snapshot publication, then run fresh Phase 34 review and verification. Phase 35 remains blocked.
+- **Plan:** 7 of 7 implemented
+- **Status:** Verification gaps found; 8 of 10 Phase 34 requirements satisfied
+- **Next step:** Plan software-only closure for exact admission-to-consumption binding and transactional retained correlation, then re-run Phase 34 review and verification. Phase 35 remains blocked.
 
 ## Project Reference
 
@@ -122,10 +122,10 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Decisions (Phase 34 Verification)
 
-- Phase 34 verification is `gaps_found` at 6/10 requirements; green unit and Bazel suites do not override reachable production-path defects.
-- OBS-06 remains pending because concurrent HTTP/WebSocket captures can reserve revisions and retain or publish them in decreasing completion order.
-- SYS-02 remains pending because normal flashing selects the factory image while identity admission authenticates markers only in its OTA sibling, without proving app-byte equivalence.
-- HLT-02 and HLT-04 remain pending because duplicate yield-log suppression returns before recurring supervisor checkpoint publication, making a live loop appear stale and unhealthy.
+- Plans 34-05 through 34-07 close the prior default factory/OTA mismatch, recurring supervisor-checkpoint defect, and snapshot publication-order defect; HLT-02 and HLT-04 now pass.
+- Phase 34 verification remains `gaps_found` at 8/10 requirements; green unit and Bazel suites do not override reachable production-path defects.
+- OBS-06 remains pending because the concrete retained-log adapter can silently report success after dropping both correlation records or retaining only part of the pair.
+- SYS-02 remains pending because explicit image selection can bypass structural admission, admitted paths are reopened after validation, and the parser does not yet validate the complete ESP32-S3 image contract.
 - Phase 35 is blocked until deterministic software gap closure and fresh Phase 34 verification pass; no hardware can repair or disprove these defects.
 
 ## Decisions (v1.1 Milestone Archive)
@@ -311,5 +311,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Phase 34 verification-gap plans 34-05 through 34-07 are ready to execute.
-- **Resume:** Run `/gsd-execute-phase 34 --gaps-only`; do not begin Phase 35 until fresh Phase 34 verification passes.
+- **Stopped at:** Phase 34 verification found two remaining software requirement gaps after Plans 34-05 through 34-07.
+- **Resume:** Run `/gsd-plan-phase 34 --gaps`; do not begin Phase 35 until another gap cycle and fresh Phase 34 verification pass.

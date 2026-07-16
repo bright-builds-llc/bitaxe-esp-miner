@@ -36,9 +36,9 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 ### Passive Runtime Health
 
 - [x] **HLT-01**: An Ultra 205 operator can inspect passive self-test lifecycle state as idle, blocked, running, passed, failed, canceled, or unavailable without v1.2 starting a hardware self-test submode.
-- [ ] **HLT-02**: An Ultra 205 operator can inspect supervisor availability, the latest bounded checkpoint category, checkpoint sequence, and checkpoint age through the coherent operator snapshot.
+- [x] **HLT-02**: An Ultra 205 operator can inspect supervisor availability, the latest bounded checkpoint category, checkpoint sequence, and checkpoint age through the coherent operator snapshot.
 - [x] **HLT-03**: An Ultra 205 operator can distinguish pure supervisor/checkpoint visibility from actual ESP task-watchdog participation; unproved task-watchdog configuration is reported unavailable.
-- [ ] **HLT-04**: An Ultra 205 operator sees stalled or over-age checkpoints as stale or unhealthy rather than continuing to receive a healthy status from a one-time startup marker.
+- [x] **HLT-04**: An Ultra 205 operator sees stalled or over-age checkpoints as stale or unhealthy rather than continuing to receive a healthy status from a one-time startup marker.
 
 ### Correlated Hardware Evidence
 
@@ -116,9 +116,9 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | SYS-04 | Phase 34 | Complete |
 | SYS-05 | Phase 34 | Complete |
 | HLT-01 | Phase 34 | Complete |
-| HLT-02 | Phase 34 | Pending |
+| HLT-02 | Phase 34 | Complete |
 | HLT-03 | Phase 34 | Complete |
-| HLT-04 | Phase 34 | Pending |
+| HLT-04 | Phase 34 | Complete |
 | EVD-10 | Phase 35 | Pending |
 | EVD-11 | Phase 35 | Pending |
 | EVD-12 | Phase 35 | Pending |
@@ -134,4 +134,4 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 - Duplicate mappings: 0
 
 *Requirements defined: 2026-07-13*
-*Last updated: 2026-07-15 after Phase 34 verification found gaps in OBS-06, SYS-02, HLT-02, and HLT-04*
+*Last updated: 2026-07-15 after Phase 34 gap execution closed HLT-02 and HLT-04; OBS-06 and SYS-02 remain pending*

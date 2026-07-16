@@ -19,7 +19,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 - [x] **Phase 31: Operator Claim and Telemetry Contract** — Define truthful observation, settings, health, and promotion states before effectful integration. (completed 2026-07-13)
 - [x] **Phase 32: Shared I2C and Read-Only Sensor Acquisition** — Establish one bounded I2C0 owner for startup display handoff and read-only INA260/EMC2101 observations. (completed 2026-07-14)
 - [x] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, and immediately visible storage truth, with a fail-closed classifier ready for later reboot qualification. (completed 2026-07-15 on the remapped software boundary; CFG-12 remains pending for Phase 35)
-- [ ] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot. (4/4 plans implemented; verification gaps found 2026-07-15)
+- [ ] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot. (7/7 plans implemented; verification gaps found 2026-07-15)
 - [ ] **Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion** — Prove the completed chain on one Ultra 205 and promote only specifically supported rows.
 
 ## Phase Details
@@ -97,17 +97,17 @@ No additional Phase 33 hardware attempt is permitted.
 1. Supervisor availability, checkpoint category, sequence, and age become stale or unhealthy when progress stalls, and remain explicitly distinct from unproved ESP task-watchdog participation.
 1. No fixture or host-checkout substitution, synthetic placeholder, active watchdog intervention, load/fault experiment, hardware actuation, mining or Phase 28.1.1 work, credential access, direct-UART/pin work, OTA, other-board evidence, or broad promotion occurs.
 
-**Plans:** 4/7 plans complete; 3 verification-gap plans ready
+**Plans:** 7/7 plans complete
 
 - [x] 34-01 — Canonical build identity, LCD/API/log projection, manifest v3, and exact pre-hardware admission
 - [x] 34-02 — Coherent boot-session and operator-snapshot revision
 - [x] 34-03 — Remaining truthful platform identity and runtime facts
 - [x] 34-04 — Passive runtime-health projection
-- [ ] 34-05 — Structurally bind the selected factory image to admitted package provenance
-- [ ] 34-06 — Preserve recurring supervisor checkpoints when duplicate yield logs are suppressed
-- [ ] 34-07 — Serialize snapshot identity, retention, and actual HTTP/WebSocket issuance
+- [x] 34-05 — Structurally bind the selected factory image to admitted package provenance
+- [x] 34-06 — Preserve recurring supervisor checkpoints when duplicate yield logs are suppressed
+- [x] 34-07 — Serialize snapshot identity, retention, and actual HTTP/WebSocket issuance
 
-**Verification:** Gaps found at 6/10 requirements. Plans 34-05 through 34-07 are ready to close OBS-06, SYS-02, HLT-02, and HLT-04 by binding selected factory bytes to admitted provenance, preserving recurring supervisor checkpoints through yield-log suppression, and ordering snapshot retention with actual HTTP/WebSocket issuance. Phase 35 remains blocked until implementation and fresh Phase 34 verification pass.
+**Verification:** Gaps found at 8/10 requirements after Plans 34-05 through 34-07. HLT-02 and HLT-04 now pass. OBS-06 remains pending because production retention can silently report success without storing the correlated pair. SYS-02 remains pending because explicit artifact selection can bypass structural admission, execution reopens mutable paths after admission, and ESP32-S3 image validation is incomplete. Phase 35 remains blocked until another software-only gap cycle and fresh Phase 34 verification pass.
 
 ### Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion
 
@@ -146,10 +146,10 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | 31 | Operator Claim and Telemetry Contract | 2 | Complete |
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
 | 33 | Confirmed Settings Durability | 4 | Complete (8/8 software) |
-| 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Gaps Found (4/4 plans) |
+| 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Gaps Found (7/7 plans) |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | Not started |
 
-**Overall:** 3/5 phases complete; 16/27 requirements complete.
+**Overall:** 3/5 phases complete; 18/27 requirements complete.
 
 ## Coverage
 

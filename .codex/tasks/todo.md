@@ -112,3 +112,13 @@ Completion review: Phase execution produced all four planned implementations, bu
 - [x] Pass fresh plan checking, lifecycle validation, requirement coverage, threat-model, and scope gates.
 
 Completion review: Plans 34-05 through 34-07 are ready in sequential Waves 5-7. They cover all four pending requirements with production-path behavioral regressions, ASVS L1 threat controls, exact Rust pre-commit sequencing, and software-only boundaries. Phase 35 remains blocked until these plans are implemented and fresh Phase 34 verification passes. No hardware, credentials, push, or archived-lineage work occurred.
+
+## task-phase34-gap-execution | 2026-07-15 20:07 | Execute Phase 34 software gap plans
+
+- [x] Implement structural default factory/OTA admission and exact app-byte comparison.
+- [x] Restore recurring supervisor checkpoint publication independently from one-time yield logging.
+- [x] Serialize snapshot identity allocation, retention, and actual HTTP/WebSocket issuance.
+- [x] Run mandatory Rust, focused, repository-wide Bazel, canonical build/package/reference, review, lifecycle, schema-drift, and diff gates.
+- [x] Reconcile Phase 34 tracking from the fresh independent verifier without hardware or Phase 35 work.
+
+Completion review: Plans 34-05 through 34-07 are implemented and committed. Fresh verification improves Phase 34 from 6/10 to 8/10 and closes HLT-02 and HLT-04. Review and independent source tracing confirm two remaining requirement gaps: SYS-02 needs a closed immutable admission-to-consumption boundary plus complete ESP32-S3 image validation, and OBS-06 needs transactional fallible retained-pair storage. Phase 35 remains blocked. No hardware, credentials, push, or archived-lineage work occurred.
