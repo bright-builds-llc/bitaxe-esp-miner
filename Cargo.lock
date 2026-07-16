@@ -201,6 +201,7 @@ dependencies = [
  "bitaxe-config",
  "camino",
  "clap",
+ "esp-idf-part",
  "serde",
  "serde_json",
  "sha2",

@@ -10,6 +10,7 @@ bitaxe-api = { path = "../../crates/bitaxe-api" }
 bitaxe-config = { path = "../../crates/bitaxe-config" }
 camino.workspace = true
 clap.workspace = true
+esp-idf-part = "0.6.0"
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

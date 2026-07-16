@@ -2,13 +2,19 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 
 filegroup(
     name = "phase34_identity_admission_sources",
-    srcs = ["src/main.rs"],
+    srcs = [
+        "src/main.rs",
+        "src/package_admission.rs",
+    ],
     visibility = ["//visibility:public"],
 )
 
 rust_binary(
     name = "flash",
-    srcs = ["src/main.rs"],
+    srcs = [
+        "src/main.rs",
+        "src/package_admission.rs",
+    ],
     crate_name = "bitaxe_flash",
     edition = "2021",
     deps = [
@@ -17,6 +23,7 @@ rust_binary(
         "@crates//:anyhow",
         "@crates//:camino",
         "@crates//:clap",
+        "@crates//:esp-idf-part",
         "@crates//:serde",
         "@crates//:serde_json",
         "@crates//:sha2",

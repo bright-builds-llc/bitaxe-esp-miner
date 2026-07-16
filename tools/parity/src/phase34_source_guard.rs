@@ -15,6 +15,7 @@ const BUILD_IDENTITY_SOURCE: &str =
 const XTASK_SOURCE: &str = include_str!("../../xtask/src/main.rs");
 const PACKAGE_MANIFEST_SOURCE: &str = include_str!("../../xtask/src/package_manifest.rs");
 const FLASH_SOURCE: &str = include_str!("../../flash/src/main.rs");
+const FLASH_PACKAGE_ADMISSION_SOURCE: &str = include_str!("../../flash/src/package_admission.rs");
 const PACKAGE_SCRIPT_SOURCE: &str = include_str!("../../../scripts/package-firmware.sh");
 
 #[test]
@@ -291,14 +292,40 @@ fn phase34_package_and_hardware_admission_source_guard() {
         "package_source_dirty",
         "current_workspace_dirty",
         "package_workspace_identity_mismatch",
-        "embedded_source_commit_mismatch",
-        "app_descriptor_sha_mismatch",
     ] {
         assert!(
             FLASH_SOURCE.contains(marker),
             "missing admission gate {marker}"
         );
     }
+    for marker in [
+        "validate_factory_ota_identity",
+        "PartitionTable::try_from_bytes",
+        "ESP_APP_DESCRIPTOR_MAGIC",
+        "factory_ota_image_mismatch",
+        "embedded_source_commit_mismatch",
+        "app_descriptor_version_mismatch",
+        "app_descriptor_sha_mismatch",
+    ] {
+        assert!(
+            FLASH_PACKAGE_ADMISSION_SOURCE.contains(marker),
+            "missing structural admission marker {marker}"
+        );
+    }
+    let identity_admission = source_between(
+        FLASH_SOURCE,
+        "fn validate_identity_admission",
+        "fn require_artifact",
+    );
+    let factory_digest = identity_admission
+        .find("validate_artifact_digest(factory_artifact")
+        .expect("factory digest admission");
+    let factory_binding = identity_admission
+        .find("validate_factory_ota_identity")
+        .expect("factory and OTA structural binding");
+    assert!(factory_digest < factory_binding);
+    assert!(!FLASH_SOURCE.contains("contains_bytes(&ota_bytes"));
+    assert!(!FLASH_SOURCE.contains("contains_bytes(&factory_bytes"));
     assert!(PACKAGE_SCRIPT_SOURCE.contains("esptool\" image_info --version 2"));
     assert!(PACKAGE_SCRIPT_SOURCE.contains("--elf-sha256-offset"));
     assert!(PACKAGE_SCRIPT_SOURCE.contains("generated_partition_table"));

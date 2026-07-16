@@ -18,6 +18,8 @@ use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+mod package_admission;
+
 const PACKAGE_BUILD_DISPLAY: &str = "bazel build //firmware/bitaxe:firmware_image";
 const PACKAGE_BUILD_TARGET: &str = "//firmware/bitaxe:firmware_image";
 const PACKAGE_MANIFEST_RELATIVE_PATH: &str = "firmware/bitaxe/bitaxe-ultra205-package.json";
@@ -1058,16 +1060,21 @@ fn validate_identity_admission(
     let ota_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&ota_artifact.path))?;
     validate_artifact_digest(ota_artifact, &ota_path, environment)?;
     let ota_bytes = environment.read_bytes(&ota_path)?;
-    if !contains_bytes(&ota_bytes, manifest.source_commit.as_bytes()) {
-        bail!("identity_admission=blocked reason=embedded_source_commit_mismatch");
-    }
-    if !contains_bytes(&ota_bytes, manifest.build_identity.label.as_bytes()) {
-        bail!("identity_admission=blocked reason=embedded_build_label_mismatch");
-    }
     let app_elf_sha256 = decode_lower_hex(&manifest.app_elf_sha256)?;
-    if !contains_bytes(&ota_bytes, &app_elf_sha256) {
-        bail!("identity_admission=blocked reason=app_descriptor_sha_mismatch");
-    }
+    let factory_artifact = require_artifact(manifest, "factory_merged_image")?;
+    let factory_path =
+        resolve_manifest_sibling(manifest_path, Utf8Path::new(&factory_artifact.path))?;
+    validate_artifact_digest(factory_artifact, &factory_path, environment)?;
+    let factory_bytes = environment.read_bytes(&factory_path)?;
+    package_admission::validate_factory_ota_identity(
+        &factory_bytes,
+        &ota_bytes,
+        package_admission::ExpectedApplicationIdentity {
+            build_label: &manifest.build_identity.label,
+            source_commit: &manifest.source_commit,
+            app_elf_sha256: &app_elf_sha256,
+        },
+    )?;
 
     Ok(())
 }
@@ -1171,13 +1178,6 @@ fn hex_nibble(byte: u8) -> Result<u8> {
         b'a'..=b'f' => Ok(byte - b'a' + 10),
         _ => bail!("identity_admission=blocked reason=invalid_hex_nibble"),
     }
-}
-
-fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
-    !needle.is_empty()
-        && haystack
-            .windows(needle.len())
-            .any(|window| window == needle)
 }
 
 fn sha256_bytes(bytes: &[u8]) -> String {
@@ -2744,6 +2744,45 @@ mod tests {
     }
 
     #[test]
+    fn identity_admission_rejects_digest_rewritten_factory_app_tamper_before_effects() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let factory_path = manifest
+            .parent()
+            .expect("manifest parent")
+            .join(FACTORY_IMAGE_NAME);
+        let mut factory = std::fs::read(factory_path.as_std_path()).expect("factory image");
+        let tamper_offset = 0x10000 + 40;
+        factory[tamper_offset] ^= 0x01;
+        std::fs::write(factory_path.as_std_path(), &factory).expect("tampered factory image");
+        rewrite_manifest_artifact_digest(&manifest, "factory_merged_image", &factory);
+        let command = FlashCommand {
+            common: CommonArgs {
+                port: None,
+                dry_run: false,
+                ..common_args()
+            },
+            image: None,
+            manifest: Some(manifest),
+            wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        };
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+        );
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = format!("{result:#?}");
+        assert!(error.contains("identity_admission=blocked reason=factory_ota_image_mismatch"));
+        assert!(!error.contains("Ambiguous serial ports"));
+        assert!(!error.contains("credentials"));
+        assert!(environment.executed_commands().is_empty());
+    }
+
+    #[test]
     fn manifest_v3_rejects_wrong_factory_artifact_name() {
         // Arrange
         let dir = tempdir().expect("tempdir");
@@ -3446,16 +3485,11 @@ mod tests {
         let manifest_dir = manifest.parent().expect("parent");
         std::fs::create_dir_all(manifest_dir.as_std_path()).expect("create manifest dir");
         let elf = b"synthetic firmware elf".to_vec();
-        let mut ota = b"synthetic ota image ".to_vec();
-        ota.extend_from_slice(SOURCE_COMMIT.as_bytes());
-        ota.push(b' ');
-        ota.extend_from_slice(BUILD_LABEL.as_bytes());
-        ota.push(b' ');
-        ota.extend_from_slice(&decode_lower_hex(APP_ELF_SHA256).expect("valid app hash"));
-        let factory = b"synthetic factory package".to_vec();
+        let ota = esp_application_fixture(SOURCE_COMMIT, BUILD_LABEL);
+        let partition_table = factory_partition_table_fixture();
+        let factory = factory_image_fixture(&partition_table, &ota);
         let www = b"synthetic www".to_vec();
         let otadata = b"synthetic otadata".to_vec();
-        let partition_table = b"synthetic partition table".to_vec();
         let artifacts = [
             ("firmware_elf", DEFAULT_ELF_NAME, elf.as_slice()),
             ("firmware_ota_image", "esp-miner.bin", ota.as_slice()),
@@ -3519,23 +3553,30 @@ mod tests {
             "release_tag": identity.maybe_release_tag(),
         });
 
-        let mut ota = b"synthetic ota image ".to_vec();
-        ota.extend_from_slice(identity.source_commit().as_bytes());
-        ota.push(b' ');
-        ota.extend_from_slice(identity.build_label().as_bytes());
-        ota.push(b' ');
-        ota.extend_from_slice(&decode_lower_hex(APP_ELF_SHA256).expect("valid app hash"));
+        let ota = esp_application_fixture(identity.source_commit(), identity.build_label());
         let ota_path = manifest
             .parent()
             .expect("manifest parent")
             .join("esp-miner.bin");
         std::fs::write(ota_path.as_std_path(), &ota).expect("rewrite ota");
+        let partition_table = factory_partition_table_fixture();
+        let factory = factory_image_fixture(&partition_table, &ota);
+        let factory_path = manifest
+            .parent()
+            .expect("manifest parent")
+            .join(FACTORY_IMAGE_NAME);
+        std::fs::write(factory_path.as_std_path(), &factory).expect("rewrite factory");
         let artifacts = value["artifacts"].as_array_mut().expect("artifacts array");
         let ota_artifact = artifacts
             .iter_mut()
             .find(|artifact| artifact["kind"] == "firmware_ota_image")
             .expect("ota artifact");
         ota_artifact["sha256"] = serde_json::json!(sha256_bytes(&ota));
+        let factory_artifact = artifacts
+            .iter_mut()
+            .find(|artifact| artifact["kind"] == "factory_merged_image")
+            .expect("factory artifact");
+        factory_artifact["sha256"] = serde_json::json!(sha256_bytes(&factory));
 
         std::fs::write(
             manifest.as_std_path(),
@@ -3559,6 +3600,83 @@ mod tests {
             serde_json::to_string_pretty(&value).expect("manifest json"),
         )
         .expect("rewrite manifest");
+    }
+
+    fn rewrite_manifest_artifact_digest(manifest: &Utf8Path, kind: &str, bytes: &[u8]) {
+        let contents = std::fs::read_to_string(manifest.as_std_path()).expect("read manifest");
+        let mut value: serde_json::Value = serde_json::from_str(&contents).expect("manifest json");
+        let artifact = value["artifacts"]
+            .as_array_mut()
+            .expect("artifacts array")
+            .iter_mut()
+            .find(|artifact| artifact["kind"] == kind)
+            .expect("artifact kind");
+        artifact["sha256"] = serde_json::json!(sha256_bytes(bytes));
+        std::fs::write(
+            manifest.as_std_path(),
+            serde_json::to_string_pretty(&value).expect("manifest json"),
+        )
+        .expect("rewrite manifest");
+    }
+
+    fn esp_application_fixture(source_commit: &str, build_label: &str) -> Vec<u8> {
+        const IMAGE_HEADER_LEN: usize = 24;
+        const SEGMENT_HEADER_LEN: usize = 8;
+        const APP_DESCRIPTOR_LEN: usize = 256;
+        const VERSION_OFFSET: usize = 16;
+        const VERSION_LEN: usize = 32;
+        const ELF_SHA_OFFSET: usize = 144;
+
+        let mut descriptor = vec![0_u8; APP_DESCRIPTOR_LEN];
+        descriptor[..4].copy_from_slice(&0xABCD_5432_u32.to_le_bytes());
+        descriptor[VERSION_OFFSET..VERSION_OFFSET + build_label.len()]
+            .copy_from_slice(build_label.as_bytes());
+        descriptor[ELF_SHA_OFFSET..ELF_SHA_OFFSET + 32]
+            .copy_from_slice(&decode_lower_hex(APP_ELF_SHA256).expect("valid app hash"));
+        assert!(build_label.len() < VERSION_LEN);
+
+        let mut payload = descriptor;
+        payload.extend_from_slice(source_commit.as_bytes());
+        let mut image = vec![0_u8; IMAGE_HEADER_LEN];
+        image[0] = 0xe9;
+        image[1] = 1;
+        image[12..14].copy_from_slice(&9_u16.to_le_bytes());
+        image.extend_from_slice(&0x3c00_0020_u32.to_le_bytes());
+        image.extend_from_slice(
+            &u32::try_from(payload.len())
+                .expect("fixture payload length")
+                .to_le_bytes(),
+        );
+        image.extend_from_slice(&payload);
+        assert_eq!(
+            image.len(),
+            IMAGE_HEADER_LEN + SEGMENT_HEADER_LEN + payload.len()
+        );
+        image
+    }
+
+    fn factory_partition_table_fixture() -> Vec<u8> {
+        let mut record = [0_u8; 32];
+        record[..2].copy_from_slice(&[0xaa, 0x50]);
+        record[2] = 0x00;
+        record[3] = 0x00;
+        record[4..8].copy_from_slice(&0x10000_u32.to_le_bytes());
+        record[8..12].copy_from_slice(&0x400000_u32.to_le_bytes());
+        record[12..19].copy_from_slice(b"factory");
+        let mut table = record.to_vec();
+        table.extend_from_slice(&[0xff; 32]);
+        table
+    }
+
+    fn factory_image_fixture(partition_table: &[u8], ota: &[u8]) -> Vec<u8> {
+        const PARTITION_TABLE_OFFSET: usize = 0x8000;
+        const FACTORY_APP_OFFSET: usize = 0x10000;
+
+        let mut factory = vec![0xff; FACTORY_APP_OFFSET + ota.len()];
+        factory[PARTITION_TABLE_OFFSET..PARTITION_TABLE_OFFSET + partition_table.len()]
+            .copy_from_slice(partition_table);
+        factory[FACTORY_APP_OFFSET..FACTORY_APP_OFFSET + ota.len()].copy_from_slice(ota);
+        factory
     }
 
     #[derive(Debug)]
