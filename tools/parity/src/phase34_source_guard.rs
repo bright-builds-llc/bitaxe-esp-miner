@@ -24,6 +24,7 @@ const BUILD_IDENTITY_SOURCE: &str =
 const XTASK_SOURCE: &str = include_str!("../../xtask/src/main.rs");
 const PACKAGE_MANIFEST_SOURCE: &str = include_str!("../../xtask/src/package_manifest.rs");
 const FLASH_SOURCE: &str = include_str!("../../flash/src/main.rs");
+const FLASH_ESP32S3_IMAGE_SOURCE: &str = include_str!("../../flash/src/esp32s3_image.rs");
 const FLASH_PACKAGE_ADMISSION_SOURCE: &str = include_str!("../../flash/src/package_admission.rs");
 const PACKAGE_SCRIPT_SOURCE: &str = include_str!("../../../scripts/package-firmware.sh");
 
@@ -477,23 +478,37 @@ fn phase34_package_and_hardware_admission_source_guard() {
     for marker in [
         "validate_factory_ota_identity",
         "PartitionTable::try_from_bytes",
-        "ESP_APP_DESCRIPTOR_MAGIC",
-        "ESP32_S3_CHIP_ID",
-        "ota_chip_id_mismatch",
-        "ota_header_policy_unsupported",
-        "ota_segment_checksum_mismatch",
-        "ota_alignment_padding_invalid",
-        "ota_hash_declaration_mismatch",
-        "ota_appended_sha256_mismatch",
-        "ota_appended_sha256_truncated",
-        "ota_trailing_data",
         "factory_ota_image_mismatch",
-        "embedded_source_commit_mismatch",
-        "app_descriptor_version_mismatch",
-        "app_descriptor_sha_mismatch",
     ] {
         assert!(
             FLASH_PACKAGE_ADMISSION_SOURCE.contains(marker),
+            "missing package admission marker {marker}"
+        );
+    }
+    for marker in [
+        "ESP_APP_DESCRIPTOR_MAGIC",
+        "ESP32_S3_CHIP_ID",
+        "SPI_MODE_DIO",
+        "SPI_SPEED_80MHZ_SIZE_16MB",
+        "APP_MMU_PAGE_SIZE_LOG2",
+        "MappedSegmentMisaligned",
+        "EntryAddressUnsupported",
+        "ota_chip_id_mismatch",
+        "ota_header_policy_unsupported",
+        "ota_segment_load_address_unsupported",
+        "ota_entry_address_unsupported",
+        "ota_segment_checksum_mismatch",
+        "ota_alignment_padding_invalid",
+        "ota_appended_sha256_mismatch",
+        "ota_appended_sha256_truncated",
+        "ota_trailing_data",
+        "embedded_source_commit_mismatch",
+        "app_descriptor_version_mismatch",
+        "app_descriptor_sha_mismatch",
+        "app_descriptor_mmu_page_size_mismatch",
+    ] {
+        assert!(
+            FLASH_ESP32S3_IMAGE_SOURCE.contains(marker),
             "missing structural admission marker {marker}"
         );
     }

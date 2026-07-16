@@ -3,6 +3,7 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 filegroup(
     name = "phase34_identity_admission_sources",
     srcs = [
+        "src/esp32s3_image.rs",
         "src/main.rs",
         "src/package_admission.rs",
     ],
@@ -12,6 +13,7 @@ filegroup(
 rust_binary(
     name = "flash",
     srcs = [
+        "src/esp32s3_image.rs",
         "src/main.rs",
         "src/package_admission.rs",
     ],

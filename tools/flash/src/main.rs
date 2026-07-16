@@ -18,6 +18,7 @@ use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+mod esp32s3_image;
 mod package_admission;
 
 const PACKAGE_BUILD_DISPLAY: &str = "bazel build //firmware/bitaxe:firmware_image";
@@ -2876,11 +2877,78 @@ mod tests {
         let result = run_flash(&command, &environment);
 
         // Assert
-        let error = format!("{result:#?}");
-        assert!(error.contains("identity_admission=blocked reason=factory_ota_image_mismatch"));
+        let error = result.expect_err("factory application tamper").to_string();
+        assert!(error.contains("identity_admission=blocked reason=ota_segment_checksum_mismatch"));
         assert!(!error.contains("Ambiguous serial ports"));
         assert!(!error.contains("credentials"));
         assert!(environment.executed_commands().is_empty());
+    }
+
+    #[test]
+    fn executable_admission_rejects_zero_load_address_in_parsed_dry_run_before_effects() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let mut ota = esp_application_fixture(SOURCE_COMMIT, BUILD_LABEL);
+        ota[24..28].copy_from_slice(&0_u32.to_le_bytes());
+        reseal_esp_application(&mut ota);
+        rewrite_manifest_application(&manifest, &ota);
+        let cli = parse_cli([
+            "bitaxe-flash".to_owned(),
+            "flash".to_owned(),
+            "dry-run=true".to_owned(),
+            "port=/dev/null".to_owned(),
+            format!("manifest={manifest}"),
+        ])
+        .expect("parsed dry-run command");
+        let CliCommand::Flash(command) = cli.command else {
+            panic!("expected flash command");
+        };
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = result.expect_err("zero load address").to_string();
+        assert!(error.contains("ota_segment_load_address_unsupported"));
+        assert!(environment.executed_commands().is_empty());
+        assert!(environment.created_snapshot_paths().is_empty());
+    }
+
+    #[test]
+    fn executable_admission_rejects_mapped_mismatch_in_parsed_non_dry_run_before_effects() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let mut ota = esp_application_fixture(SOURCE_COMMIT, BUILD_LABEL);
+        ota[24..28].copy_from_slice(&0x3c00_0024_u32.to_le_bytes());
+        reseal_esp_application(&mut ota);
+        rewrite_manifest_application(&manifest, &ota);
+        let cli = parse_cli([
+            "bitaxe-flash".to_owned(),
+            "flash".to_owned(),
+            format!("manifest={manifest}"),
+            "wifi-credentials=/missing/credentials.json".to_owned(),
+        ])
+        .expect("parsed non-dry command");
+        let CliCommand::Flash(command) = cli.command else {
+            panic!("expected flash command");
+        };
+        let environment = FakeFlashEnvironment::with_ports(
+            "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+        );
+
+        // Act
+        let result = run_flash(&command, &environment);
+
+        // Assert
+        let error = result.expect_err("mapped mismatch").to_string();
+        assert!(error.contains("ota_mapped_segment_misaligned"), "{error}");
+        assert!(!error.contains("Ambiguous serial ports"));
+        assert!(!error.contains("credentials"));
+        assert!(environment.executed_commands().is_empty());
+        assert!(environment.created_snapshot_paths().is_empty());
     }
 
     #[test]
@@ -3998,12 +4066,25 @@ mod tests {
         .expect("rewrite manifest");
     }
 
+    fn rewrite_manifest_application(manifest: &Utf8Path, ota: &[u8]) {
+        let manifest_dir = manifest.parent().expect("manifest parent");
+        let ota_path = manifest_dir.join("esp-miner.bin");
+        std::fs::write(ota_path.as_std_path(), ota).expect("rewrite OTA image");
+        let partition_table = factory_partition_table_fixture();
+        let factory = factory_image_fixture(&partition_table, ota);
+        let factory_path = manifest_dir.join(FACTORY_IMAGE_NAME);
+        std::fs::write(factory_path.as_std_path(), &factory).expect("rewrite factory image");
+        rewrite_manifest_artifact_digest(manifest, "firmware_ota_image", ota);
+        rewrite_manifest_artifact_digest(manifest, "factory_merged_image", &factory);
+    }
+
     fn esp_application_fixture(source_commit: &str, build_label: &str) -> Vec<u8> {
         const IMAGE_HEADER_LEN: usize = 24;
         const APP_DESCRIPTOR_LEN: usize = 256;
         const VERSION_OFFSET: usize = 16;
         const VERSION_LEN: usize = 32;
         const ELF_SHA_OFFSET: usize = 144;
+        const MMU_PAGE_SIZE_OFFSET: usize = 180;
 
         let mut descriptor = vec![0_u8; APP_DESCRIPTOR_LEN];
         descriptor[..4].copy_from_slice(&0xABCD_5432_u32.to_le_bytes());
@@ -4011,14 +4092,18 @@ mod tests {
             .copy_from_slice(build_label.as_bytes());
         descriptor[ELF_SHA_OFFSET..ELF_SHA_OFFSET + 32]
             .copy_from_slice(&decode_lower_hex(APP_ELF_SHA256).expect("valid app hash"));
+        descriptor[MMU_PAGE_SIZE_OFFSET] = 16;
         assert!(build_label.len() < VERSION_LEN);
 
         let mut payload = descriptor;
         payload.extend_from_slice(source_commit.as_bytes());
-        payload.push(0x5a);
         let mut image = vec![0_u8; IMAGE_HEADER_LEN];
         image[0] = 0xe9;
-        image[1] = 1;
+        image[1] = 2;
+        image[2] = 2;
+        image[3] = 0x4f;
+        image[4..8].copy_from_slice(&0x4037_4000_u32.to_le_bytes());
+        image[8] = 0xee;
         image[12..14].copy_from_slice(&9_u16.to_le_bytes());
         image[15..17].copy_from_slice(&0_u16.to_le_bytes());
         image[17..19].copy_from_slice(&99_u16.to_le_bytes());
@@ -4030,15 +4115,40 @@ mod tests {
                 .to_le_bytes(),
         );
         image.extend_from_slice(&payload);
-        let checksum = payload
-            .iter()
-            .fold(0xef_u8, |checksum, byte| checksum ^ byte);
-        let padding_len = (15 - (image.len() % 16)) % 16;
-        image.resize(image.len() + padding_len, 0);
-        image.push(checksum);
-        let digest = Sha256::digest(&image);
-        image.extend_from_slice(&digest);
+        image.extend_from_slice(&0x4037_4000_u32.to_le_bytes());
+        image.extend_from_slice(&4_u32.to_le_bytes());
+        image.extend_from_slice(&[0x13, 0, 0, 0]);
+        reseal_esp_application(&mut image);
         image
+    }
+
+    fn reseal_esp_application(image: &mut Vec<u8>) {
+        const IMAGE_HEADER_LEN: usize = 24;
+        const SEGMENT_HEADER_LEN: usize = 8;
+
+        let mut cursor = IMAGE_HEADER_LEN;
+        let mut checksum = 0xef_u8;
+        for _ in 0..usize::from(image[1]) {
+            let payload_start = cursor + SEGMENT_HEADER_LEN;
+            let payload_len = usize::try_from(u32::from_le_bytes([
+                image[cursor + 4],
+                image[cursor + 5],
+                image[cursor + 6],
+                image[cursor + 7],
+            ]))
+            .expect("fixture payload length");
+            let payload_end = payload_start + payload_len;
+            checksum = image[payload_start..payload_end]
+                .iter()
+                .fold(checksum, |value, byte| value ^ byte);
+            cursor = payload_end;
+        }
+        let padding_len = (15 - (cursor % 16)) % 16;
+        image.truncate(cursor);
+        image.resize(cursor + padding_len, 0);
+        image.push(checksum);
+        let digest = Sha256::digest(&*image);
+        image.extend_from_slice(&digest);
     }
 
     fn factory_partition_table_fixture() -> Vec<u8> {
