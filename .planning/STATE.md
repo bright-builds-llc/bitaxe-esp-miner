@@ -2,31 +2,31 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: executing
-stopped_at: Phase 34 verification found two remaining software requirement gaps; another gap-planning cycle is required before Phase 35.
-last_updated: "2026-07-16T01:06:53Z"
-last_activity: "2026-07-15"
+status: ready_to_execute
+stopped_at: Phase 34 gap plans 34-08 and 34-09 are checker-approved and ready to execute.
+last_updated: "2026-07-16T01:49:38.613Z"
+last_activity: "2026-07-16"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 16
+  total_plans: 18
   completed_plans: 16
-  percent: 100
+  percent: 89
 ---
 
 # Project State
 
-Last activity: 2026-07-15
+Last activity: 2026-07-16
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAPS FOUND
-Plan: 7 of 7
+Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAP CLOSURE PLANNED
+Plan: 7 of 9 complete; 2 gap plans ready
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 7 of 7 implemented
-- **Status:** Verification gaps found; 8 of 10 Phase 34 requirements satisfied
-- **Next step:** Plan software-only closure for exact admission-to-consumption binding and transactional retained correlation, then re-run Phase 34 review and verification. Phase 35 remains blocked.
+- **Plan:** 7 of 9 implemented; Plans 34-08 and 34-09 ready
+- **Status:** Ready to execute checker-approved gap plans
+- **Next step:** Execute Plan 34-08 for exact immutable package admission, then Plan 34-09 for transactional retained correlation; re-run Phase 34 review and verification afterward. Phase 35 remains blocked.
 
 ## Project Reference
 
@@ -127,6 +127,12 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - OBS-06 remains pending because the concrete retained-log adapter can silently report success after dropping both correlation records or retaining only part of the pair.
 - SYS-02 remains pending because explicit image selection can bypass structural admission, admitted paths are reopened after validation, and the parser does not yet validate the complete ESP32-S3 image contract.
 - Phase 35 is blocked until deterministic software gap closure and fresh Phase 34 verification pass; no hardware can repair or disprove these defects.
+
+## Decisions (Phase 34 Gap Planning Round 2)
+
+- Plan 34-08 closes SYS-02 through a closed admitted factory kind, a mode-0600 admission-owned execution snapshot, and complete ESP32-S3 image-envelope validation.
+- Plan 34-09 closes OBS-06 through one atomic fallible retained-pair transaction, distinct retention/issuance publisher error types, and a named production adapter compiled in host behavioral tests.
+- Plans 34-08 and 34-09 run sequentially because their Phase 34 source guards overlap; fresh code review and independent verification remain the only completion authority.
 
 ## Decisions (v1.1 Milestone Archive)
 
@@ -311,5 +317,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Phase 34 verification found two remaining software requirement gaps after Plans 34-05 through 34-07.
-- **Resume:** Run `/gsd-plan-phase 34 --gaps`; do not begin Phase 35 until another gap cycle and fresh Phase 34 verification pass.
+- **Stopped at:** Phase 34 gap plans 34-08 and 34-09 are checker-approved and ready to execute.
+- **Resume:** Run `/gsd-execute-phase 34 --gaps-only`; do not begin Phase 35 until both plans and fresh Phase 34 verification pass.

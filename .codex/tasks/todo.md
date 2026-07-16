@@ -122,3 +122,13 @@ Completion review: Plans 34-05 through 34-07 are ready in sequential Waves 5-7. 
 - [x] Reconcile Phase 34 tracking from the fresh independent verifier without hardware or Phase 35 work.
 
 Completion review: Plans 34-05 through 34-07 are implemented and committed. Fresh verification improves Phase 34 from 6/10 to 8/10 and closes HLT-02 and HLT-04. Review and independent source tracing confirm two remaining requirement gaps: SYS-02 needs a closed immutable admission-to-consumption boundary plus complete ESP32-S3 image validation, and OBS-06 needs transactional fallible retained-pair storage. Phase 35 remains blocked. No hardware, credentials, push, or archived-lineage work occurred.
+
+## task-phase34-gap-planning-round2 | 2026-07-15 20:49 | Plan final Phase 34 software gaps
+
+- [x] Translate SYS-02 review findings into closed artifact selection, immutable child-consumed bytes, and complete ESP32-S3 image validation.
+- [x] Translate OBS-06 review findings into atomic retained-pair storage and distinct retention/issuance error channels.
+- [x] Require production-boundary behavioral tests, ASVS L1 controls, and the exact Rust pre-commit sequence.
+- [x] Pass GSD plan structure, lifecycle, requirement coverage, and independent checker gates.
+- [x] Preserve software-only scope and keep Phase 35 blocked pending fresh verification.
+
+Completion review: Checker-approved Plans 34-08 and 34-09 are ready in sequential Waves 8 and 9. Plan 34-08 owns SYS-02's complete admission-to-consumption boundary. Plan 34-09 owns OBS-06's transactional production retention, including separate typed error channels and the exact host-compiled firmware adapter. No hardware, credentials, source changes, push, Phase 35, or archived-lineage work occurred.
