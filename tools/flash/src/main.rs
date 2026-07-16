@@ -3621,7 +3621,6 @@ mod tests {
 
     fn esp_application_fixture(source_commit: &str, build_label: &str) -> Vec<u8> {
         const IMAGE_HEADER_LEN: usize = 24;
-        const SEGMENT_HEADER_LEN: usize = 8;
         const APP_DESCRIPTOR_LEN: usize = 256;
         const VERSION_OFFSET: usize = 16;
         const VERSION_LEN: usize = 32;
@@ -3637,10 +3636,14 @@ mod tests {
 
         let mut payload = descriptor;
         payload.extend_from_slice(source_commit.as_bytes());
+        payload.push(0x5a);
         let mut image = vec![0_u8; IMAGE_HEADER_LEN];
         image[0] = 0xe9;
         image[1] = 1;
         image[12..14].copy_from_slice(&9_u16.to_le_bytes());
+        image[15..17].copy_from_slice(&0_u16.to_le_bytes());
+        image[17..19].copy_from_slice(&99_u16.to_le_bytes());
+        image[23] = 1;
         image.extend_from_slice(&0x3c00_0020_u32.to_le_bytes());
         image.extend_from_slice(
             &u32::try_from(payload.len())
@@ -3648,10 +3651,14 @@ mod tests {
                 .to_le_bytes(),
         );
         image.extend_from_slice(&payload);
-        assert_eq!(
-            image.len(),
-            IMAGE_HEADER_LEN + SEGMENT_HEADER_LEN + payload.len()
-        );
+        let checksum = payload
+            .iter()
+            .fold(0xef_u8, |checksum, byte| checksum ^ byte);
+        let padding_len = (15 - (image.len() % 16)) % 16;
+        image.resize(image.len() + padding_len, 0);
+        image.push(checksum);
+        let digest = Sha256::digest(&image);
+        image.extend_from_slice(&digest);
         image
     }
 

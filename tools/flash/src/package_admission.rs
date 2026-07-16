@@ -2,11 +2,19 @@ use std::ops::Range;
 
 use anyhow::{bail, Context, Result};
 use esp_idf_part::{AppType, Error as PartitionError, Partition, PartitionTable, SubType, Type};
+use sha2::{Digest, Sha256};
 
 const ESP_IMAGE_MAGIC: u8 = 0xe9;
 const ESP_IMAGE_HEADER_LEN: usize = 24;
 const ESP_IMAGE_MAX_SEGMENTS: usize = 16;
 const ESP_SEGMENT_HEADER_LEN: usize = 8;
+const ESP32_S3_CHIP_ID: u16 = 9;
+const SUPPORTED_MIN_CHIP_REV: u8 = 0;
+const SUPPORTED_MIN_CHIP_REV_FULL: u16 = 0;
+const SUPPORTED_MAX_CHIP_REV_FULL: u16 = 99;
+const ESP_IMAGE_CHECKSUM_SEED: u8 = 0xef;
+const ESP_IMAGE_ALIGNMENT: usize = 16;
+const ESP_IMAGE_DIGEST_LEN: usize = 32;
 const ESP_APP_DESCRIPTOR_MAGIC: u32 = 0xABCD_5432;
 const ESP_APP_DESCRIPTOR_LEN: usize = 256;
 const APP_VERSION_OFFSET: usize = 16;
@@ -29,13 +37,7 @@ pub(crate) fn validate_factory_ota_identity(
     ota_bytes: &[u8],
     expected: ExpectedApplicationIdentity<'_>,
 ) -> Result<()> {
-    let segment_payloads = validate_ota_identity(ota_bytes, &expected)?;
-    if !segment_payloads
-        .iter()
-        .any(|range| contains_bytes(&ota_bytes[range.clone()], expected.source_commit.as_bytes()))
-    {
-        bail!("identity_admission=blocked reason=embedded_source_commit_mismatch");
-    }
+    validate_ota_identity(ota_bytes, &expected)?;
 
     let factory_partition = parse_factory_partition(factory_bytes)?;
     validate_factory_layout(&factory_partition)?;
@@ -62,13 +64,14 @@ pub(crate) fn validate_factory_ota_identity(
 fn validate_ota_identity(
     ota_bytes: &[u8],
     expected: &ExpectedApplicationIdentity<'_>,
-) -> Result<Vec<Range<usize>>> {
+) -> Result<()> {
     let Some(header) = ota_bytes.get(..ESP_IMAGE_HEADER_LEN) else {
         bail!("identity_admission=blocked reason=ota_image_header_truncated");
     };
     if header[0] != ESP_IMAGE_MAGIC {
         bail!("identity_admission=blocked reason=ota_image_magic_invalid");
     }
+    validate_esp32_s3_header(header)?;
     let segment_count = usize::from(header[1]);
     if segment_count == 0 || segment_count > ESP_IMAGE_MAX_SEGMENTS {
         bail!("identity_admission=blocked reason=ota_segment_count_invalid");
@@ -76,6 +79,7 @@ fn validate_ota_identity(
 
     let mut payloads = Vec::with_capacity(segment_count);
     let mut cursor = ESP_IMAGE_HEADER_LEN;
+    let mut checksum = ESP_IMAGE_CHECKSUM_SEED;
     for _ in 0..segment_count {
         let segment_header_end = cursor
             .checked_add(ESP_SEGMENT_HEADER_LEN)
@@ -96,10 +100,12 @@ fn validate_ota_identity(
         if payload_end > ota_bytes.len() {
             bail!("identity_admission=blocked reason=ota_segment_truncated");
         }
+        for byte in &ota_bytes[segment_header_end..payload_end] {
+            checksum ^= byte;
+        }
         payloads.push(segment_header_end..payload_end);
         cursor = payload_end;
     }
-
     let descriptor_range = descriptor_range(&payloads)?;
     let descriptor = &ota_bytes[descriptor_range];
     let magic = u32::from_le_bytes([descriptor[0], descriptor[1], descriptor[2], descriptor[3]]);
@@ -119,8 +125,90 @@ fn validate_ota_identity(
     {
         bail!("identity_admission=blocked reason=app_descriptor_sha_mismatch");
     }
+    if !payloads
+        .iter()
+        .any(|range| contains_bytes(&ota_bytes[range.clone()], expected.source_commit.as_bytes()))
+    {
+        bail!("identity_admission=blocked reason=embedded_source_commit_mismatch");
+    }
+    validate_esp_image_trailer(ota_bytes, header[23], cursor, checksum)?;
 
-    Ok(payloads)
+    Ok(())
+}
+
+fn validate_esp32_s3_header(header: &[u8]) -> Result<()> {
+    let chip_id = u16::from_le_bytes([header[12], header[13]]);
+    if chip_id != ESP32_S3_CHIP_ID {
+        bail!("identity_admission=blocked reason=ota_chip_id_mismatch");
+    }
+
+    let min_chip_rev = header[14];
+    let min_chip_rev_full = u16::from_le_bytes([header[15], header[16]]);
+    let max_chip_rev_full = u16::from_le_bytes([header[17], header[18]]);
+    let reserved = &header[19..23];
+    if min_chip_rev != SUPPORTED_MIN_CHIP_REV
+        || min_chip_rev_full != SUPPORTED_MIN_CHIP_REV_FULL
+        || max_chip_rev_full != SUPPORTED_MAX_CHIP_REV_FULL
+        || reserved.iter().any(|byte| *byte != 0)
+    {
+        bail!("identity_admission=blocked reason=ota_header_policy_unsupported");
+    }
+    if header[23] > 1 {
+        bail!("identity_admission=blocked reason=ota_hash_declaration_invalid");
+    }
+
+    Ok(())
+}
+
+fn validate_esp_image_trailer(
+    ota_bytes: &[u8],
+    hash_appended: u8,
+    segment_end: usize,
+    checksum: u8,
+) -> Result<()> {
+    let padding_len =
+        (ESP_IMAGE_ALIGNMENT - 1 - (segment_end % ESP_IMAGE_ALIGNMENT)) % ESP_IMAGE_ALIGNMENT;
+    let checksum_index = segment_end
+        .checked_add(padding_len)
+        .context("identity_admission=blocked reason=ota_trailer_range_overflow")?;
+    let Some(padding) = ota_bytes.get(segment_end..checksum_index) else {
+        bail!("identity_admission=blocked reason=ota_segment_checksum_truncated");
+    };
+    if padding.iter().any(|byte| *byte != 0) {
+        bail!("identity_admission=blocked reason=ota_alignment_padding_invalid");
+    }
+    let Some(stored_checksum) = ota_bytes.get(checksum_index) else {
+        bail!("identity_admission=blocked reason=ota_segment_checksum_truncated");
+    };
+    if *stored_checksum != checksum {
+        bail!("identity_admission=blocked reason=ota_segment_checksum_mismatch");
+    }
+    let image_end = checksum_index
+        .checked_add(1)
+        .context("identity_admission=blocked reason=ota_trailer_range_overflow")?;
+
+    if hash_appended == 0 {
+        if ota_bytes.len() != image_end {
+            bail!("identity_admission=blocked reason=ota_hash_declaration_mismatch");
+        }
+        return Ok(());
+    }
+
+    let digest_end = image_end
+        .checked_add(ESP_IMAGE_DIGEST_LEN)
+        .context("identity_admission=blocked reason=ota_trailer_range_overflow")?;
+    let Some(appended_digest) = ota_bytes.get(image_end..digest_end) else {
+        bail!("identity_admission=blocked reason=ota_appended_sha256_truncated");
+    };
+    if ota_bytes.len() > digest_end {
+        bail!("identity_admission=blocked reason=ota_trailing_data");
+    }
+    let expected_digest = Sha256::digest(&ota_bytes[..image_end]);
+    if appended_digest != expected_digest.as_slice() {
+        bail!("identity_admission=blocked reason=ota_appended_sha256_mismatch");
+    }
+
+    Ok(())
 }
 
 fn descriptor_range(payloads: &[Range<usize>]) -> Result<Range<usize>> {
@@ -204,6 +292,7 @@ fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
 mod tests {
     use super::*;
     use esp_idf_part::Flags;
+    use sha2::{Digest, Sha256};
 
     const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
     const BUILD_LABEL: &str = "0123456789ab-dev";
@@ -220,6 +309,121 @@ mod tests {
 
         // Assert
         assert!(result.is_ok(), "{result:#?}");
+    }
+
+    #[test]
+    fn package_admission_rejects_foreign_chip_id() {
+        // Arrange
+        let mut ota = ota_fixture();
+        ota[12..14].copy_from_slice(&0_u16.to_le_bytes());
+        let factory = factory_fixture(&factory_table(), &ota);
+
+        // Act
+        let error = validate_fixture(&factory, &ota).expect_err("foreign chip");
+
+        // Assert
+        assert!(error.to_string().contains("ota_chip_id_mismatch"));
+    }
+
+    #[test]
+    fn package_admission_rejects_unsupported_header_policy() {
+        // Arrange
+        let mut ota = ota_fixture();
+        ota[19] = 1;
+        let factory = factory_fixture(&factory_table(), &ota);
+
+        // Act
+        let error = validate_fixture(&factory, &ota).expect_err("reserved header byte");
+
+        // Assert
+        assert!(error.to_string().contains("ota_header_policy_unsupported"));
+    }
+
+    #[test]
+    fn package_admission_rejects_segment_checksum_mismatch() {
+        // Arrange
+        let mut ota = ota_fixture();
+        let payload_range = first_payload_range(&ota);
+        ota[payload_range.end - 1] ^= 0x01;
+        let factory = factory_fixture(&factory_table(), &ota);
+
+        // Act
+        let error = validate_fixture(&factory, &ota).expect_err("checksum mismatch");
+
+        // Assert
+        assert!(error.to_string().contains("ota_segment_checksum_mismatch"));
+    }
+
+    #[test]
+    fn package_admission_rejects_nonzero_alignment_padding() {
+        // Arrange
+        let mut ota = ota_fixture();
+        let checksum_index = ota.len() - 32 - 1;
+        ota[checksum_index - 1] = 1;
+        let factory = factory_fixture(&factory_table(), &ota);
+
+        // Act
+        let error = validate_fixture(&factory, &ota).expect_err("nonzero padding");
+
+        // Assert
+        assert!(error.to_string().contains("ota_alignment_padding_invalid"));
+    }
+
+    #[test]
+    fn package_admission_rejects_missing_hash_declaration() {
+        // Arrange
+        let mut ota = ota_fixture();
+        ota[23] = 0;
+        let factory = factory_fixture(&factory_table(), &ota);
+
+        // Act
+        let error = validate_fixture(&factory, &ota).expect_err("hash declaration");
+
+        // Assert
+        assert!(error.to_string().contains("ota_hash_declaration_mismatch"));
+    }
+
+    #[test]
+    fn package_admission_rejects_appended_digest_mismatch() {
+        // Arrange
+        let mut ota = ota_fixture();
+        let digest_index = ota.len() - 1;
+        ota[digest_index] ^= 0x01;
+        let factory = factory_fixture(&factory_table(), &ota);
+
+        // Act
+        let error = validate_fixture(&factory, &ota).expect_err("digest mismatch");
+
+        // Assert
+        assert!(error.to_string().contains("ota_appended_sha256_mismatch"));
+    }
+
+    #[test]
+    fn package_admission_rejects_truncated_appended_digest() {
+        // Arrange
+        let mut ota = ota_fixture();
+        ota.pop();
+        let factory = factory_fixture(&factory_table(), &ota);
+
+        // Act
+        let error = validate_fixture(&factory, &ota).expect_err("truncated digest");
+
+        // Assert
+        assert!(error.to_string().contains("ota_appended_sha256_truncated"));
+    }
+
+    #[test]
+    fn package_admission_rejects_trailing_data() {
+        // Arrange
+        let mut ota = ota_fixture();
+        ota.push(0);
+        let factory = factory_fixture(&factory_table(), &ota);
+
+        // Act
+        let error = validate_fixture(&factory, &ota).expect_err("trailing data");
+
+        // Assert
+        assert!(error.to_string().contains("ota_trailing_data"));
     }
 
     #[test]
@@ -255,6 +459,9 @@ mod tests {
         let mut ota = vec![0_u8; ESP_IMAGE_HEADER_LEN];
         ota[0] = ESP_IMAGE_MAGIC;
         ota[1] = 1;
+        ota[12..14].copy_from_slice(&ESP32_S3_CHIP_ID.to_le_bytes());
+        ota[17..19].copy_from_slice(&SUPPORTED_MAX_CHIP_REV_FULL.to_le_bytes());
+        ota[23] = 1;
         let factory = factory_fixture(&factory_table(), &ota);
 
         // Act
@@ -327,7 +534,7 @@ mod tests {
     fn package_admission_ignores_source_commit_outside_validated_segments() {
         // Arrange
         let mut ota = ota_fixture();
-        let commit_start = ota.len() - SOURCE_COMMIT.len();
+        let commit_start = ESP_IMAGE_HEADER_LEN + ESP_SEGMENT_HEADER_LEN + ESP_APP_DESCRIPTOR_LEN;
         ota[commit_start..].fill(b'x');
         ota.extend_from_slice(SOURCE_COMMIT.as_bytes());
         let factory = factory_fixture(&factory_table(), &ota);
@@ -446,14 +653,39 @@ mod tests {
             .copy_from_slice(&APP_SHA);
         let mut payload = descriptor;
         payload.extend_from_slice(SOURCE_COMMIT.as_bytes());
+        payload.push(0x5a);
 
         let mut image = vec![0_u8; ESP_IMAGE_HEADER_LEN];
         image[0] = ESP_IMAGE_MAGIC;
         image[1] = 1;
+        image[12..14].copy_from_slice(&ESP32_S3_CHIP_ID.to_le_bytes());
+        image[15..17].copy_from_slice(&0_u16.to_le_bytes());
+        image[17..19].copy_from_slice(&SUPPORTED_MAX_CHIP_REV_FULL.to_le_bytes());
+        image[23] = 1;
         image.extend_from_slice(&0x3c00_0020_u32.to_le_bytes());
         image.extend_from_slice(&(payload.len() as u32).to_le_bytes());
         image.extend_from_slice(&payload);
+        let checksum = payload
+            .iter()
+            .fold(ESP_IMAGE_CHECKSUM_SEED, |checksum, byte| checksum ^ byte);
+        let padding_len = (15 - (image.len() % 16)) % 16;
+        image.resize(image.len() + padding_len, 0);
+        image.push(checksum);
+        let digest = Sha256::digest(&image);
+        image.extend_from_slice(&digest);
         image
+    }
+
+    fn first_payload_range(image: &[u8]) -> Range<usize> {
+        let start = ESP_IMAGE_HEADER_LEN + ESP_SEGMENT_HEADER_LEN;
+        let payload_len = usize::try_from(u32::from_le_bytes([
+            image[ESP_IMAGE_HEADER_LEN + 4],
+            image[ESP_IMAGE_HEADER_LEN + 5],
+            image[ESP_IMAGE_HEADER_LEN + 6],
+            image[ESP_IMAGE_HEADER_LEN + 7],
+        ]))
+        .expect("fixture payload length");
+        start..start + payload_len
     }
 
     fn factory_table() -> Vec<u8> {
