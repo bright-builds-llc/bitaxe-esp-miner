@@ -152,3 +152,13 @@ Completion review: Plan 34-09 is implemented in `39c19c3b` and `e8fdd0d6`. The e
 - [x] Record the verified 9/10 disposition and keep SYS-02 and Phase 35 pending.
 
 Completion review: Plans 34-08 and 34-09 are implemented and committed. OBS-06 now passes through the exact production adapter. Independent review and verifier reproductions confirm SYS-02 remains open: executable entry/load-address mutations and a contradictory packaged ELF can pass real dry-run admission after enclosing digests are recomputed. Phase 34 remains `gaps_found` at 9/10; Phase 35 remains blocked. No hardware, credentials, network discovery, push, OTA, direct UART/pins, or archived-lineage work occurred.
+
+## task-phase34-gap-planning-round3 | 2026-07-16 10:26 | Plan sole remaining SYS-02 closure
+
+- [x] Translate the verified executable entry/load-address gap into one host-testable canonical ESP32-S3 producer-envelope task.
+- [x] Translate the contradictory packaged-ELF gap into manifest and active-admission digest binding.
+- [x] Preserve zero-length segment semantics, fixed MMU authority, conservative linker bounds, immutable execution bytes, and fail-before-effect ordering.
+- [x] Include ASVS L1 threats, RED-first recomputed-envelope tests, exact Rust gates, canonical package acceptance, and software-only exclusions.
+- [x] Pass GSD plan structure, lifecycle, SYS-02 coverage, and the bounded independent checker revision loop.
+
+Completion review: Checker-approved Plan 34-10 is ready in Wave 10 and is the only incomplete Phase 34 plan. Two targeted revisions corrected loader semantics, MMU authority, conservative linker/alias bounds, manifest wording, and application-descriptor source attribution. No source, hardware, credentials, network discovery, push, OTA, direct UART/pins, Phase 35, or archived-lineage work occurred.

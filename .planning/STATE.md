@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: gaps_found
-stopped_at: Phase 34 verification found one remaining SYS-02 package-admission gap at 9/10 requirements.
-last_updated: "2026-07-16T05:35:06Z"
+status: ready_to_execute
+stopped_at: Phase 34 Plan 34-10 is checker-approved and ready to execute.
+last_updated: "2026-07-16T15:26:41Z"
 last_activity: "2026-07-16"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 18
+  total_plans: 19
   completed_plans: 18
-  percent: 100
+  percent: 95
 ---
 
 # Project State
@@ -20,13 +20,13 @@ Last activity: 2026-07-16
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAPS FOUND
-Plan: 9 of 9 implemented; fresh verification passed 9 of 10 requirements
+Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAP CLOSURE PLANNED
+Plan: 9 of 10 implemented; Plan 34-10 ready
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 9 of 9 implemented; fresh review and verification complete
-- **Status:** Gaps found; OBS-06 passed, SYS-02 remains pending
-- **Next step:** Plan the verified SYS-02 gaps for executable header/load-address validation and ELF/application-digest binding. Phase 35 remains blocked.
+- **Plan:** 9 of 10 implemented; checker-approved Plan 34-10 ready
+- **Status:** Ready to execute the sole remaining SYS-02 gap plan
+- **Next step:** Execute Plan 34-10 with `$gsd-execute-phase 34 --gaps-only`, then rerun fresh Phase 34 review and independent verification. Phase 35 remains blocked.
 
 ## Project Reference
 
@@ -140,6 +140,14 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Plan 34-08 closes explicit artifact selection and mutable-path reopening, but SYS-02 remains pending because current admission ignores executable entry/load-address fields and does not bind the packaged ELF artifact digest to `app_elf_sha256`.
 - Fresh production-path dry-run reproductions accepted both a non-bootable self-consistent application image and a contradictory packaged ELF after enclosing digests were recomputed.
 - Phase 34 remains `gaps_found` at 9/10 requirements. Phase 35 stays blocked; no hardware attempt is authorized from this disposition.
+
+## Decisions (Phase 34 Gap Planning Round 3)
+
+- Plan 34-10 closes only SYS-02 through one canonical ESP32-S3 application-producer envelope and one package-level ELF/application digest relationship; all other Phase 34 requirements remain closed.
+- Host admission uses pinned stable application-linker bounds rather than claiming equivalence with device-time bootloader checks whose linker symbols, stack pointer, eFuses, and hardware state are unavailable in schema v3.
+- Zero-length segments retain pinned ESP-IDF semantics, mapped congruence uses fixed `CONFIG_MMU_PAGE_SIZE`, and descriptor value `16` is separately attributed to the ESP-IDF application build and carried through `elf2image`.
+- The unique `firmware_elf` artifact digest must equal top-level `app_elf_sha256` in manifest construction, validation, and active admission before any port, credential, command, USB, or hardware effect.
+- Plan 34-10 remains software-only and requires fresh review and independent verification before Phase 34 or SYS-02 can pass; Phase 35 stays blocked.
 
 ## Decisions (Phase 34 Plan 09)
 
@@ -333,5 +341,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Phase 34 fresh verification found SYS-02 as the sole remaining gap at 9/10 requirements.
-- **Resume:** Run `$gsd-plan-phase 34 --gaps`; do not begin Phase 35 until SYS-02 passes fresh review and verification.
+- **Stopped at:** Phase 34 Plan 34-10 is checker-approved and ready to execute.
+- **Resume:** Run `$gsd-execute-phase 34 --gaps-only`; do not begin Phase 35 until SYS-02 passes fresh review and verification.
