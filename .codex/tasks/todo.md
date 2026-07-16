@@ -142,3 +142,13 @@ Completion review: Checker-approved Plans 34-08 and 34-09 are ready in sequentia
 - [x] Create the lifecycle-valid Plan 34-09 summary and update GSD state/roadmap without promoting OBS-06 or entering Phase 35.
 
 Completion review: Plan 34-09 is implemented in `39c19c3b` and `e8fdd0d6`. The exact production retention adapter and log-buffer transaction now prevent issue after unavailable, poisoned, or insufficient retained storage while consuming failed revisions monotonically. All focused and repository-wide software gates passed; OBS-06 remains pending fresh independent Phase 34 review and verification. No hardware, credentials, push, Phase 35, or archived-lineage work occurred.
+
+## task-phase34-gap-execution-round2 | 2026-07-16 00:35 | Execute and verify Phase 34 Plans 08-09
+
+- [x] Validate the complete currently supported ESP32-S3 image envelope and execute only immutable admitted factory bytes.
+- [x] Retain operator-snapshot correlation as one atomic fallible production transaction with distinct retention and issuance errors.
+- [x] Run exact Rust, focused Cargo/Bazel, repository-wide Bazel, canonical build/package/reference, lifecycle, review, schema, and diff gates.
+- [x] Independently re-verify all ten Phase 34 requirements without hardware or Phase 35 work.
+- [x] Record the verified 9/10 disposition and keep SYS-02 and Phase 35 pending.
+
+Completion review: Plans 34-08 and 34-09 are implemented and committed. OBS-06 now passes through the exact production adapter. Independent review and verifier reproductions confirm SYS-02 remains open: executable entry/load-address mutations and a contradictory packaged ELF can pass real dry-run admission after enclosing digests are recomputed. Phase 34 remains `gaps_found` at 9/10; Phase 35 remains blocked. No hardware, credentials, network discovery, push, OTA, direct UART/pins, or archived-lineage work occurred.

@@ -2,9 +2,9 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: verification_pending
-stopped_at: Completed 34-09-PLAN.md; fresh Phase 34 review and verification pending
-last_updated: "2026-07-16T05:01:52.798Z"
+status: gaps_found
+stopped_at: Phase 34 verification found one remaining SYS-02 package-admission gap at 9/10 requirements.
+last_updated: "2026-07-16T05:35:06Z"
 last_activity: "2026-07-16"
 progress:
   total_phases: 5
@@ -20,13 +20,13 @@ Last activity: 2026-07-16
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — VERIFICATION PENDING
-Plan: 9 of 9 implemented; fresh Phase 34 review and verification pending
+Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAPS FOUND
+Plan: 9 of 9 implemented; fresh verification passed 9 of 10 requirements
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 9 of 9 implemented; fresh Phase 34 review and verification pending
-- **Status:** Gap implementation complete; verification pending
-- **Next step:** Run fresh Phase 34 code review and independent verification. Phase 35 remains blocked until they pass.
+- **Plan:** 9 of 9 implemented; fresh review and verification complete
+- **Status:** Gaps found; OBS-06 passed, SYS-02 remains pending
+- **Next step:** Plan the verified SYS-02 gaps for executable header/load-address validation and ELF/application-digest binding. Phase 35 remains blocked.
 
 ## Project Reference
 
@@ -133,6 +133,13 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Plan 34-08 closes SYS-02 through a closed admitted factory kind, a mode-0600 admission-owned execution snapshot, and complete ESP32-S3 image-envelope validation.
 - Plan 34-09 closes OBS-06 through one atomic fallible retained-pair transaction, distinct retention/issuance publisher error types, and a named production adapter compiled in host behavioral tests.
 - Plans 34-08 and 34-09 run sequentially because their Phase 34 source guards overlap; fresh code review and independent verification remain the only completion authority.
+
+## Decisions (Phase 34 Verification Round 2)
+
+- Plan 34-09 closes OBS-06 in the exact production path: retained correlation is atomic and fallible, retention and issuance errors remain distinct, and retention failure skips external issuance while consuming the failed revision.
+- Plan 34-08 closes explicit artifact selection and mutable-path reopening, but SYS-02 remains pending because current admission ignores executable entry/load-address fields and does not bind the packaged ELF artifact digest to `app_elf_sha256`.
+- Fresh production-path dry-run reproductions accepted both a non-bootable self-consistent application image and a contradictory packaged ELF after enclosing digests were recomputed.
+- Phase 34 remains `gaps_found` at 9/10 requirements. Phase 35 stays blocked; no hardware attempt is authorized from this disposition.
 
 ## Decisions (Phase 34 Plan 09)
 
@@ -326,5 +333,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 34-09-PLAN.md; fresh Phase 34 review and verification pending
-- **Resume:** Run fresh Phase 34 code review and independent verification; do not begin Phase 35 until both pass.
+- **Stopped at:** Phase 34 fresh verification found SYS-02 as the sole remaining gap at 9/10 requirements.
+- **Resume:** Run `$gsd-plan-phase 34 --gaps`; do not begin Phase 35 until SYS-02 passes fresh review and verification.

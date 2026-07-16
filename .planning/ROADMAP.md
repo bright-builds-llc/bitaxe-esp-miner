@@ -19,7 +19,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 - [x] **Phase 31: Operator Claim and Telemetry Contract** — Define truthful observation, settings, health, and promotion states before effectful integration. (completed 2026-07-13)
 - [x] **Phase 32: Shared I2C and Read-Only Sensor Acquisition** — Establish one bounded I2C0 owner for startup display handoff and read-only INA260/EMC2101 observations. (completed 2026-07-14)
 - [x] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, and immediately visible storage truth, with a fail-closed classifier ready for later reboot qualification. (completed 2026-07-15 on the remapped software boundary; CFG-12 remains pending for Phase 35)
-- [ ] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot. (9/9 plans implemented; fresh review and verification pending)
+- [ ] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot. (9/9 plans implemented; gaps found at 9/10 requirements)
 - [ ] **Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion** — Prove the completed chain on one Ultra 205 and promote only specifically supported rows.
 
 ## Phase Details
@@ -109,7 +109,7 @@ No additional Phase 33 hardware attempt is permitted.
 - [x] 34-08 — Bind complete admitted ESP32-S3 factory bytes immutably through child execution
 - [x] 34-09 — Make concrete retained correlation transactional, fallible, and host-verified
 
-**Verification:** Gaps found at 8/10 requirements after Plans 34-05 through 34-07. HLT-02 and HLT-04 pass. Plans 34-08 and 34-09 now implement regression coverage for SYS-02's admission-to-consumption boundary and OBS-06's concrete retained-pair transaction without promoting either requirement. Fresh Phase 34 code review and independent verification remain required; Phase 35 stays blocked until both pass.
+**Verification:** Fresh review and independent verification after Plans 34-08 and 34-09 report `gaps_found` at 9/10 requirements. OBS-06 now passes through the exact atomic, fallible production retention path. SYS-02 remains pending because admission ignores executable entry/load-address fields and does not bind the packaged ELF artifact digest to `app_elf_sha256`; both defects were reproduced through the real dry-run admission path. Phase 35 stays blocked.
 
 ### Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion
 

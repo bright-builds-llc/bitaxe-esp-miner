@@ -103,7 +103,7 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | OBS-03 | Phase 32 | Complete |
 | OBS-04 | Phase 32 | Complete |
 | OBS-05 | Phase 32 | Complete |
-| OBS-06 | Phase 34 | Pending |
+| OBS-06 | Phase 34 | Complete |
 | CFG-08 | Phase 31 | Complete |
 | CFG-09 | Phase 33 | Complete |
 | CFG-10 | Phase 33 | Complete |
