@@ -6,6 +6,8 @@
 //! - `reference/esp-miner/main/http_server/websocket_log.c`
 
 use std::collections::TryReserveError;
+use std::error::Error;
+use std::fmt;
 
 /// Upstream retained log buffer size: 512 KiB.
 pub const LOG_RETENTION_BYTES: usize = 512 * 1024;
@@ -127,6 +129,106 @@ pub struct LogDownloadHeaders {
     pub content_disposition: &'static str,
 }
 
+/// A validated marker/runtime-health pair ready for atomic retained storage.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RetainedPair {
+    marker: String,
+    runtime_health: String,
+    required_bytes: usize,
+}
+
+impl RetainedPair {
+    /// Validates two complete single-line records and normalizes one trailing newline each.
+    pub fn try_new(marker: &str, runtime_health: &str) -> Result<Self, RetainedPairError> {
+        let marker = normalize_retained_record(marker)?;
+        let runtime_health = normalize_retained_record(runtime_health)?;
+        let required_bytes = checked_retained_pair_bytes(marker.len(), runtime_health.len())?;
+
+        Ok(Self {
+            marker,
+            runtime_health,
+            required_bytes,
+        })
+    }
+
+    /// Returns the normalized marker record.
+    #[must_use]
+    pub fn marker(&self) -> &str {
+        &self.marker
+    }
+
+    /// Returns the normalized runtime-health record.
+    #[must_use]
+    pub fn runtime_health(&self) -> &str {
+        &self.runtime_health
+    }
+
+    /// Returns the complete number of bytes required to retain both records.
+    #[must_use]
+    pub const fn required_bytes(&self) -> usize {
+        self.required_bytes
+    }
+}
+
+/// Closed, redaction-safe retained-pair construction and append failures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RetainedPairError {
+    EmptyRecord,
+    EmbeddedLineBreak,
+    SizeOverflow,
+    StorageUnavailable,
+    PairExceedsCapacity,
+    CounterOverflow,
+}
+
+impl fmt::Display for RetainedPairError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let category = match self {
+            Self::EmptyRecord => "empty_record",
+            Self::EmbeddedLineBreak => "embedded_line_break",
+            Self::SizeOverflow => "size_overflow",
+            Self::StorageUnavailable => "storage_unavailable",
+            Self::PairExceedsCapacity => "pair_exceeds_capacity",
+            Self::CounterOverflow => "counter_overflow",
+        };
+        write!(formatter, "retained_pair={category}")
+    }
+}
+
+impl Error for RetainedPairError {}
+
+fn normalize_retained_record(record: &str) -> Result<String, RetainedPairError> {
+    let record = record.trim_end_matches(['\r', '\n']);
+    if record.is_empty() {
+        return Err(RetainedPairError::EmptyRecord);
+    }
+    if record.contains(['\r', '\n']) {
+        return Err(RetainedPairError::EmbeddedLineBreak);
+    }
+
+    let mut normalized = String::new();
+    normalized
+        .try_reserve_exact(
+            record
+                .len()
+                .checked_add(1)
+                .ok_or(RetainedPairError::SizeOverflow)?,
+        )
+        .map_err(|_| RetainedPairError::StorageUnavailable)?;
+    normalized.push_str(record);
+    normalized.push('\n');
+    Ok(normalized)
+}
+
+fn checked_retained_pair_bytes(
+    marker_bytes: usize,
+    runtime_health_bytes: usize,
+) -> Result<usize, RetainedPairError> {
+    marker_bytes
+        .checked_add(runtime_health_bytes)
+        .ok_or(RetainedPairError::SizeOverflow)
+}
+
 /// Returns the upstream-compatible log download headers.
 #[must_use]
 pub const fn log_download_headers() -> LogDownloadHeaders {
@@ -211,6 +313,26 @@ impl RetainedLogBuffer {
             self.total_written += write_len as u64;
             remaining = &remaining[write_len..];
         }
+    }
+
+    /// Atomically admits one complete marker/runtime-health pair.
+    pub fn try_append_pair(&mut self, pair: &RetainedPair) -> Result<(), RetainedPairError> {
+        if self.buffer.is_empty() {
+            return Err(RetainedPairError::StorageUnavailable);
+        }
+        if pair.required_bytes() > self.buffer.len() {
+            return Err(RetainedPairError::PairExceedsCapacity);
+        }
+
+        let pair_bytes =
+            u64::try_from(pair.required_bytes()).map_err(|_| RetainedPairError::CounterOverflow)?;
+        self.total_written
+            .checked_add(pair_bytes)
+            .ok_or(RetainedPairError::CounterOverflow)?;
+
+        self.append(pair.marker());
+        self.append(pair.runtime_health());
+        Ok(())
     }
 
     /// Returns total bytes ever written to the absolute log stream.
@@ -422,7 +544,8 @@ mod tests {
     use serde::Deserialize;
 
     use crate::logs::{
-        log_download_headers, AcceptedStateReplayCadence, RawLogStreamPlanner, RetainedLogBuffer,
+        checked_retained_pair_bytes, log_download_headers, AcceptedStateReplayCadence,
+        RawLogStreamPlanner, RetainedLogBuffer, RetainedPair, RetainedPairError,
         RuntimeHeartbeatModel, ACCEPTED_STATE_MONITOR_ATTACHMENT_MS,
         ACCEPTED_STATE_REPLAY_INTERVAL_MS, ACCEPTED_STATE_REPLAY_WINDOW_MS,
         ACCEPTED_STATE_RESTORE_WATCH_MS, DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE,
@@ -430,6 +553,150 @@ mod tests {
     };
 
     const HEARTBEAT_SESSION: [u32; 4] = [0, 1, u32::MAX, 0x1234_abcd];
+
+    fn retained_text(buffer: &RetainedLogBuffer) -> String {
+        buffer.download_chunks().concat()
+    }
+
+    #[test]
+    fn retained_pair_rejects_empty_records() {
+        // Arrange
+        let marker = "";
+        let runtime_health = "runtime_health status=healthy";
+
+        // Act
+        let result = RetainedPair::try_new(marker, runtime_health);
+
+        // Assert
+        assert_eq!(result, Err(RetainedPairError::EmptyRecord));
+    }
+
+    #[test]
+    fn retained_pair_rejects_embedded_line_breaks() {
+        // Arrange
+        let marker = "operator_snapshot revision=1\npartial=true";
+        let runtime_health = "runtime_health status=healthy";
+
+        // Act
+        let result = RetainedPair::try_new(marker, runtime_health);
+
+        // Assert
+        assert_eq!(result, Err(RetainedPairError::EmbeddedLineBreak));
+    }
+
+    #[test]
+    fn retained_pair_normalizes_exactly_one_newline_per_record() {
+        // Arrange
+        let marker = "operator_snapshot revision=1\n\n";
+        let runtime_health = "runtime_health status=healthy\r\n";
+
+        // Act
+        let pair = RetainedPair::try_new(marker, runtime_health)
+            .expect("complete records should construct a retained pair");
+
+        // Assert
+        assert_eq!(pair.marker(), "operator_snapshot revision=1\n");
+        assert_eq!(pair.runtime_health(), "runtime_health status=healthy\n");
+        assert_eq!(
+            pair.required_bytes(),
+            pair.marker().len() + pair.runtime_health().len()
+        );
+    }
+
+    #[test]
+    fn retained_pair_size_rejects_checked_arithmetic_overflow() {
+        // Arrange
+        let marker_bytes = usize::MAX;
+        let runtime_health_bytes = 1;
+
+        // Act
+        let result = checked_retained_pair_bytes(marker_bytes, runtime_health_bytes);
+
+        // Assert
+        assert_eq!(result, Err(RetainedPairError::SizeOverflow));
+    }
+
+    #[test]
+    fn retained_pair_rejects_unavailable_storage_without_mutation() {
+        // Arrange
+        let pair = RetainedPair::try_new(
+            "operator_snapshot revision=1",
+            "runtime_health status=healthy",
+        )
+        .expect("complete records should construct a retained pair");
+        let mut buffer = RetainedLogBuffer::empty();
+
+        // Act
+        let result = buffer.try_append_pair(&pair);
+
+        // Assert
+        assert_eq!(result, Err(RetainedPairError::StorageUnavailable));
+        assert_eq!(buffer.total_written(), 0);
+        assert_eq!(retained_text(&buffer), "");
+    }
+
+    #[test]
+    fn retained_pair_rejects_capacity_one_byte_short_without_partial_append() {
+        // Arrange
+        let pair = RetainedPair::try_new(
+            "operator_snapshot revision=1",
+            "runtime_health status=healthy",
+        )
+        .expect("complete records should construct a retained pair");
+        let mut buffer = RetainedLogBuffer::with_capacity(pair.required_bytes() - 1);
+
+        // Act
+        let result = buffer.try_append_pair(&pair);
+
+        // Assert
+        assert_eq!(result, Err(RetainedPairError::PairExceedsCapacity));
+        assert_eq!(buffer.total_written(), 0);
+        assert!(!retained_text(&buffer).contains("operator_snapshot"));
+        assert!(!retained_text(&buffer).contains("runtime_health"));
+    }
+
+    #[test]
+    fn retained_pair_failure_preserves_preexisting_bytes_and_counter() {
+        // Arrange
+        let pair = RetainedPair::try_new(
+            "operator_snapshot revision=1",
+            "runtime_health status=healthy",
+        )
+        .expect("complete records should construct a retained pair");
+        let mut buffer = RetainedLogBuffer::with_capacity(pair.required_bytes() - 1);
+        buffer.append("preexisting\n");
+        let before = buffer.clone();
+
+        // Act
+        let result = buffer.try_append_pair(&pair);
+
+        // Assert
+        assert_eq!(result, Err(RetainedPairError::PairExceedsCapacity));
+        assert_eq!(buffer, before);
+        assert_eq!(retained_text(&buffer), "preexisting\n");
+    }
+
+    #[test]
+    fn retained_pair_appends_marker_then_health_as_complete_lines() {
+        // Arrange
+        let pair = RetainedPair::try_new(
+            "operator_snapshot revision=1\n",
+            "runtime_health status=healthy",
+        )
+        .expect("complete records should construct a retained pair");
+        let mut buffer = RetainedLogBuffer::with_capacity(pair.required_bytes());
+
+        // Act
+        let result = buffer.try_append_pair(&pair);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+        assert_eq!(buffer.total_written(), pair.required_bytes() as u64);
+        assert_eq!(
+            retained_text(&buffer),
+            "operator_snapshot revision=1\nruntime_health status=healthy\n"
+        );
+    }
 
     #[test]
     fn runtime_heartbeat_renders_exact_redacted_marker() {

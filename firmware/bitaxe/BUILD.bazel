@@ -99,6 +99,7 @@ filegroup(
         "src/http_api.rs",
         "src/log_buffer.rs",
         "src/main.rs",
+        "src/operator_snapshot_retention.rs",
         "src/platform_identity.rs",
         "src/runtime_health_adapter.rs",
         "src/runtime_snapshot.rs",
@@ -138,6 +139,22 @@ rust_test(
     deps = [
         "//crates/bitaxe-core:bitaxe_core",
         "//crates/bitaxe-safety:bitaxe_safety",
+        "@crates//:log",
+    ],
+)
+
+rust_test(
+    name = "retained_pair_production_tests",
+    srcs = [
+        "src/log_buffer.rs",
+        "src/operator_snapshot_retention.rs",
+        "src/operator_snapshot_retention_production_tests.rs",
+    ],
+    crate_name = "retained_pair_production_tests",
+    crate_root = "src/operator_snapshot_retention_production_tests.rs",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-api:bitaxe_api",
         "@crates//:log",
     ],
 )
