@@ -6,6 +6,8 @@ const RUNTIME_HEALTH_ADAPTER_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_health_adapter.rs");
 const RUNTIME_HEALTH_CORE_SOURCE: &str =
     include_str!("../../../crates/bitaxe-core/src/runtime_health.rs");
+const WATCHDOG_ADAPTER_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/safety_adapter/watchdog.rs");
 const PLATFORM_IDENTITY_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/platform_identity.rs");
 const CORE_SOURCE: &str = include_str!("../../../crates/bitaxe-core/src/lib.rs");
@@ -255,6 +257,36 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
                 "passive runtime-health source contains prohibited token {forbidden}"
             );
         }
+    }
+
+    let supervisor_transition = source_between(
+        WATCHDOG_ADAPTER_SOURCE,
+        "fn transition_supervisor_step",
+        "/// Returns a read-only copy",
+    );
+    let decision_handling = supervisor_transition
+        .find("let maybe_log = match decision")
+        .expect("supervisor decision handling");
+    let checkpoint_publication = supervisor_transition
+        .find("record_supervisor_checkpoint(checkpoints, observed_at_millis)")
+        .expect("recurring checkpoint publication");
+    assert!(decision_handling < checkpoint_publication);
+    assert!(!supervisor_transition.contains("return SupervisorStepOutcome::default()"));
+    assert!(supervisor_transition.contains("if *logged_yield"));
+
+    for forbidden in [
+        "esp_task_wdt_",
+        "esp_restart",
+        "gpio_set",
+        "i2c_master",
+        "uart_",
+        "credential",
+        "std::net",
+    ] {
+        assert!(
+            !WATCHDOG_ADAPTER_SOURCE.contains(forbidden),
+            "supervisor checkpoint adapter contains prohibited effect {forbidden}"
+        );
     }
 }
 

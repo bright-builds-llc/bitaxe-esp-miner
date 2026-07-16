@@ -1,4 +1,5 @@
 load("//scripts:build_identity.bzl", "build_provenance")
+load("@rules_rust//rust:defs.bzl", "rust_test")
 
 exports_files([
     "BUILD.bazel",
@@ -119,6 +120,18 @@ test_suite(
 alias(
     name = "runtime_health_no_effects_test",
     actual = "//tools/parity:tests",
+)
+
+rust_test(
+    name = "supervisor_checkpoint_production_tests",
+    srcs = ["src/safety_adapter/watchdog.rs"],
+    crate_name = "supervisor_checkpoint_production_tests",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-core:bitaxe_core",
+        "//crates/bitaxe-safety:bitaxe_safety",
+        "@crates//:log",
+    ],
 )
 
 genrule(
