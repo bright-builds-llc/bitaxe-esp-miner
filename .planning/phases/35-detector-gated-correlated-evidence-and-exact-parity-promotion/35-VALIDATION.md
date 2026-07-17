@@ -34,11 +34,15 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 35-01-01 | 01 | 1 | EVD-11, EVD-12 | T-35-01 through T-35-04 | Reject malformed provenance, mixed epochs, chronology drift, and inventory drift | Rust fixture | `bazel test //tools/parity:tests` | ✅ | ⬜ pending |
-| 35-01-02 | 01 | 1 | EVD-14, EVD-15 | T-35-05 through T-35-08 | Redaction is allowlisted and every claim scope receives a typed decision | Rust fixture | `bazel test //tools/parity:tests` | ✅ | ⬜ pending |
-| 35-02-01 | 02 | 2 | CFG-12, EVD-10, EVD-13 | T-35-09 through T-35-12 | No target/effect before detector; one approved reboot; restoration and cleanup on every exit | Shell simulation | `bazel test //scripts:phase35_correlated_evidence_test` | ❌ W0 | ⬜ pending |
-| 35-03-01 | 03 | 3 | EVD-14, EVD-15 | T-35-13 through T-35-16 | Admission is atomic; excluded rows and Phase 30 non-promotions are unchanged | Integration | `bazel test //tools/parity:tests //scripts:phase30_no_promotion_contract_test` | ✅ | ⬜ pending |
-| 35-04-01 | 04 | 4 | CFG-12, EVD-10–EVD-15 | T-35-17 through T-35-20 | One eligible root passes all gates or deterministically seals non-promotion | Hardware + admission | `just phase35-evidence capture-timeout-seconds=360` | ❌ W0 | ⬜ pending |
+| 35-01-01 | 01 | 1 | EVD-11, EVD-12, EVD-14 | T-35-01 through T-35-04 | Reject malformed exact-package/detector/root provenance, mixed epochs, event-chain drift, inventory drift, or raw projection fields | Rust fixture | `bazel test //tools/parity:tests` | ✅ | ⬜ pending |
+| 35-01-02 | 01 | 1 | EVD-11, EVD-12, EVD-14 | T-35-01 through T-35-04 | Every evidence, chronology, cleanup, lifecycle, no-actuation, and redaction boundary has an exact negative fixture | Rust fixture | `bazel test //tools/parity:tests` | ✅ | ⬜ pending |
+| 35-02-01 | 02 | 2 | CFG-12, EVD-10–EVD-14 | T-35-09 through T-35-12 | Gate 1 freezes exact package, Gate 2 invokes the detector once, and Gate 3 alone may perform the bounded capture/recovery sequence | Shell build/static | `bazel build //scripts:phase35_correlated_evidence` | ❌ W0 | ⬜ pending |
+| 35-02-02 | 02 | 2 | CFG-12, EVD-10–EVD-14 | T-35-09 through T-35-12 | Zero/multiple/wrong detector and every post-mutation failure prove short-circuit, restoration, cleanup, and sealing | Shell simulation | `bazel test //scripts:phase35_correlated_evidence_test` | ❌ W0 | ⬜ pending |
+| 35-03-01 | 03 | 3 | EVD-14, EVD-15 | T-35-13 through T-35-16 | Every claim scope has one exact decision and live admission rechecks precede promotion | Rust integration | `bazel test //tools/parity:tests //scripts:phase30_no_promotion_contract_test` | ✅ | ⬜ pending |
+| 35-03-02 | 03 | 3 | EVD-14, EVD-15 | T-35-13 through T-35-16 | Atomic failures preserve the previous generation and every non-allowlisted row remains unchanged | Shell + Rust integration | `bazel test //tools/parity:tests //scripts:phase35_promotion_contract_test //scripts:phase30_no_promotion_contract_test` | ❌ W0 | ⬜ pending |
+| 35-04-01 | 04 | 4 | CFG-12, EVD-10–EVD-15 | T-35-17 through T-35-20 | Ordered Rust/Bazel/reference/parity/lifecycle/exact-package preflight passes before detector use | Software preflight | `just phase35-evidence preflight-only=true` | ❌ W0 | ⬜ pending |
+| 35-04-02 | 04 | 4 | CFG-12, EVD-10–EVD-15 | T-35-17 through T-35-20 | The command performs the sole detector call and admits one eligible two-epoch root; safe non-promotion remains phase failure | Hardware + admission | `just phase35-evidence capture-timeout-seconds=360` | ❌ W0 | ⬜ pending |
+| 35-04-03 | 04 | 4 | CFG-12, EVD-10–EVD-15 | T-35-17 through T-35-20 | Committed digests, redaction, exact row diff, exhaustive non-claims, parity, and lifecycle revalidate | Admission audit | `bazel test //tools/parity:tests //scripts:phase35_promotion_contract_test //scripts:phase30_no_promotion_contract_test` | ❌ W0 | ⬜ pending |
 
 ## Wave 0 Requirements
 
@@ -51,7 +55,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Run `just detect-ultra205`; only on exactly one board-205 candidate and successful board-info run the planned Phase 35 command with ≥360-second capture, ignored credential paths, protected local root, restoration, cleanup, redaction, and admission gates. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Invoke `just phase35-evidence capture-timeout-seconds=360 wifi-credentials=wifi-credentials.json` once with ≥420-second caller wall clock. The command owns the sole detector call; the caller must not check/open/stat the opaque credential path, and the command may validate/access it only after detector capability succeeds. Require protected root, restoration, cleanup, redaction, exact admission, and one eligible atomically admitted result. |
 
 ## Validation Sign-Off
 
