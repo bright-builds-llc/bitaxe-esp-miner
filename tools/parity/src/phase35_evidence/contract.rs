@@ -182,6 +182,9 @@ pub(crate) struct ValidatedPhase35Evidence {
     pub(super) inventory_count: u64,
     pub(super) boot_a: RedactedEpochFacts,
     pub(super) boot_b: RedactedEpochFacts,
+    pub(super) exact_package: ExactPackageCapability,
+    pub(super) detector_run: DetectorRunCapability,
+    pub(super) admission_facts: RootAdmissionFacts,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

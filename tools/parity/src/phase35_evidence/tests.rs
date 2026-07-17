@@ -8,13 +8,13 @@ const SESSION_B: &str = "fedcba9876543210ffeeddccbbaa9988";
 type InputMutation = fn(&mut Phase35EvidenceRootInput);
 type InputCase = (&'static str, InputMutation, Phase35EvidenceError);
 
-struct EligibleFixture {
+pub(crate) struct EligibleFixture {
     input: Phase35EvidenceRootInput,
     artifacts: BTreeMap<String, InventoryArtifact>,
 }
 
 impl EligibleFixture {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let artifact_bytes = BTreeMap::from([
             ("package_manifest", b"synthetic manifest-v3".to_vec()),
             ("executable_image", b"synthetic executable".to_vec()),
@@ -151,7 +151,7 @@ impl EligibleFixture {
         Self { input, artifacts }
     }
 
-    fn validate(&self) -> Result<ValidatedPhase35Evidence, Phase35EvidenceError> {
+    pub(crate) fn validate(&self) -> Result<ValidatedPhase35Evidence, Phase35EvidenceError> {
         validate_phase35_evidence(&self.input, &self.artifacts)
     }
 

@@ -78,6 +78,10 @@ impl PromotionContext {
         Self::acquire_inner(destination, true)
     }
 
+    pub(super) fn acquire_unvalidated(destination: &Utf8Path) -> GenerationResult<Self> {
+        Self::acquire_inner(destination, false)
+    }
+
     #[cfg(test)]
     pub(super) fn acquire_for_test(destination: &Utf8Path) -> GenerationResult<Self> {
         Self::acquire_inner(destination, false)

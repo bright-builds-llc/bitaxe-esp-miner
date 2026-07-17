@@ -11,13 +11,11 @@ mod digests;
 mod inventory;
 mod projection;
 
-#[cfg(test)]
-pub(crate) use contract::RootAdmissionFacts;
 pub(crate) use contract::{
     ArtifactFileKind, DetectorRunCapability, EvidenceEpochInput, EvidenceEventCategory,
     EvidenceEventInput, ExactPackageCapability, InventoryArtifact, InventoryEntryInput,
-    Phase35EvidenceError, Phase35EvidenceRootInput, RedactedEpochFacts, ShareablePhase35Projection,
-    ValidatedPhase35Evidence,
+    Phase35EvidenceError, Phase35EvidenceRootInput, RedactedEpochFacts, RootAdmissionFacts,
+    ShareablePhase35Projection, ValidatedPhase35Evidence,
 };
 pub(crate) use digests::{
     detector_run_capability_digest, evidence_epoch_digest, evidence_event_digest,
@@ -64,9 +62,20 @@ const EVENT_CATEGORIES: [EvidenceEventCategory; 9] = [
 ];
 
 impl ValidatedPhase35Evidence {
-    #[cfg(test)]
     pub(crate) fn root_digest(&self) -> &str {
         &self.root_digest
+    }
+
+    pub(crate) fn exact_package(&self) -> &ExactPackageCapability {
+        &self.exact_package
+    }
+
+    pub(crate) fn detector_run(&self) -> &DetectorRunCapability {
+        &self.detector_run
+    }
+
+    pub(crate) fn admission_facts(&self) -> &RootAdmissionFacts {
+        &self.admission_facts
     }
 
     pub(crate) fn shareable_projection(
@@ -117,6 +126,9 @@ pub(crate) fn validate_phase35_evidence(
         inventory_count: input.inventory.len() as u64,
         boot_a,
         boot_b,
+        exact_package: input.exact_package.clone(),
+        detector_run: input.detector_run.clone(),
+        admission_facts: input.admission_facts.clone(),
     };
     let projection = validated.shareable_projection()?;
     let raw_canaries = raw_projection_canaries(input);
@@ -124,6 +136,42 @@ pub(crate) fn validate_phase35_evidence(
         .map_err(|_| Phase35EvidenceError::ForbiddenProjectionField)?;
     validate_projection_value(&projection_value, &raw_canaries)?;
     Ok(validated)
+}
+
+pub(crate) fn inventory_artifact_digest(
+    input: &Phase35EvidenceRootInput,
+    artifacts: &BTreeMap<String, InventoryArtifact>,
+    role: &str,
+) -> Result<String, Phase35EvidenceError> {
+    let entry = input
+        .inventory
+        .iter()
+        .find(|entry| entry.role == role)
+        .ok_or(Phase35EvidenceError::InventoryMismatch)?;
+    let artifact = artifacts
+        .get(&entry.path)
+        .ok_or(Phase35EvidenceError::InventoryMismatch)?;
+    if artifact.file_kind != ArtifactFileKind::Regular {
+        return Err(Phase35EvidenceError::InventoryMismatch);
+    }
+    Ok(sha256_hex(&artifact.bytes))
+}
+
+pub(crate) fn inventory_artifact_equals(
+    input: &Phase35EvidenceRootInput,
+    artifacts: &BTreeMap<String, InventoryArtifact>,
+    role: &str,
+    expected: &[u8],
+) -> Result<bool, Phase35EvidenceError> {
+    let entry = input
+        .inventory
+        .iter()
+        .find(|entry| entry.role == role)
+        .ok_or(Phase35EvidenceError::InventoryMismatch)?;
+    let artifact = artifacts
+        .get(&entry.path)
+        .ok_or(Phase35EvidenceError::InventoryMismatch)?;
+    Ok(artifact.file_kind == ArtifactFileKind::Regular && artifact.bytes == expected)
 }
 
 fn validate_static_facts(input: &Phase35EvidenceRootInput) -> Result<(), Phase35EvidenceError> {
@@ -422,4 +470,4 @@ fn parse_snapshot_identity(
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

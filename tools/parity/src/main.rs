@@ -11,8 +11,9 @@ use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
 use operator_evidence::{
     complete_operator_evidence, consolidate_phase28_evidence, load_operator_evidence_documents,
-    render_operator_evidence_report, validate_operator_evidence_documents_with_snapshot_coherence,
-    OperatorEvidenceFilters, OperatorEvidenceProfile, WorkflowStatus,
+    publish_phase35_generation, render_operator_evidence_report,
+    validate_operator_evidence_documents_with_snapshot_coherence, OperatorEvidenceFilters,
+    OperatorEvidenceProfile, Phase35GenerationDocuments, Phase35PublicationOptions, WorkflowStatus,
 };
 use release_evidence::{
     parse_flash_evidence_json, parse_release_evidence_manifest_json,
@@ -33,6 +34,9 @@ const DEFAULT_API_COMPARE_MANIFEST: &str = "tools/parity/fixtures/api/phase05-re
 const DEFAULT_AXEOS_ROUTE_USAGE: &str = "tools/parity/fixtures/api/axeos-route-usage.json";
 const DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH: &str =
     "docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md";
+const PHASE35_DESTINATION_ROOT: &str =
+    "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion";
+const PHASE35_CHECKLIST_PATH: &str = "docs/parity/checklist.md";
 
 mod api_compare;
 mod claim_ladder;
@@ -46,6 +50,7 @@ mod phase33_source_guard;
 #[cfg(test)]
 mod phase34_source_guard;
 mod phase35_evidence;
+mod phase35_promotion;
 mod release_evidence;
 mod release_gate;
 mod safety_allow;
@@ -72,6 +77,7 @@ enum CliCommand {
     ConsolidatePhase28Evidence(ConsolidatePhase28EvidenceArgs),
     Phase33Classify(Phase33ClassifyArgs),
     ValidatePhase35Evidence(ValidatePhase35EvidenceArgs),
+    AdmitPhase35Evidence(AdmitPhase35EvidenceArgs),
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -103,6 +109,15 @@ struct Phase33ClassifyArgs {
 struct ValidatePhase35EvidenceArgs {
     #[arg(long, value_parser = parse_utf8_path)]
     root: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct AdmitPhase35EvidenceArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    root: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    staging: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -644,12 +659,121 @@ fn main() -> Result<()> {
         CliCommand::ValidatePhase35Evidence(args) => {
             run_validate_phase35_evidence_command(args, &environment)?
         }
+        CliCommand::AdmitPhase35Evidence(args) => {
+            run_admit_phase35_evidence_command(args, &environment)?
+        }
     };
 
     let mut stdout = io::stdout().lock();
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_admit_phase35_evidence_command(
+    args: AdmitPhase35EvidenceArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    use phase35_evidence::{
+        detector_run_capability_digest, inventory_artifact_digest, inventory_artifact_equals,
+        load_phase35_evidence_root, validate_phase35_evidence, Phase35EvidenceError,
+        PHASE35_LIFECYCLE_ID,
+    };
+    use phase35_promotion::{
+        evaluate_phase35_promotion, ChecklistSnapshot, Phase35EvidenceSource, Phase35LiveRechecks,
+    };
+
+    let evidence_root = environment.workspace_path(&args.root);
+    let (input, artifacts) =
+        load_phase35_evidence_root(&evidence_root).map_err(anyhow::Error::msg)?;
+    let validated = validate_phase35_evidence(&input, &artifacts).map_err(anyhow::Error::msg)?;
+
+    let current_head = environment
+        .current_git_head()
+        .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::StaleCurrentHead))?;
+    environment
+        .run_reference_guard()
+        .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::DirtyReference))?;
+    let reference_commit = environment
+        .reference_commit()
+        .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::DirtyReference))?;
+    let lifecycle_document = std::fs::read_to_string(
+        environment
+            .workspace_dir
+            .join(
+                ".planning/phases/35-detector-gated-correlated-evidence-and-exact-parity-promotion/35-03-PLAN.md",
+            )
+            .as_std_path(),
+    )
+    .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::LifecycleMismatch))?;
+    let lifecycle_verified =
+        lifecycle_document.contains(&format!("phase_lifecycle_id: {PHASE35_LIFECYCLE_ID}"));
+    let actual_digest = |role: &str| {
+        inventory_artifact_digest(&input, &artifacts, role).map_err(anyhow::Error::msg)
+    };
+    let no_actuation_verified = inventory_artifact_equals(
+        &input,
+        &artifacts,
+        "no_actuation",
+        b"no_actuation_verified=true\n",
+    )
+    .map_err(anyhow::Error::msg)?;
+    let live = Phase35LiveRechecks {
+        lifecycle_id: if lifecycle_verified {
+            PHASE35_LIFECYCLE_ID.to_owned()
+        } else {
+            String::new()
+        },
+        current_head,
+        reference_commit,
+        reference_clean: true,
+        manifest_schema: input.exact_package.manifest_schema.clone(),
+        manifest_digest: actual_digest("package_manifest")?,
+        executable_image_digest: actual_digest("executable_image")?,
+        factory_image_digest: actual_digest("factory_image")?,
+        package_digest: actual_digest("package")?,
+        runtime_identity_digest: actual_digest("runtime_identity")?,
+        detector_capability_digest: detector_run_capability_digest(&input.detector_run),
+        detector_single_candidate: input.detector_run.single_candidate_verified,
+        detector_board_info: input.detector_run.board_info_verified,
+        board_category: input.detector_run.board_category.clone(),
+        root_contract_digest: input.admission_facts.root_contract_digest.clone(),
+        root_event_chain_verified: true,
+        no_actuation_verified,
+        evidence_sources: vec![Phase35EvidenceSource::ProtectedEvidenceRoot],
+    };
+
+    let checklist_path = environment.workspace_path(Utf8Path::new(PHASE35_CHECKLIST_PATH));
+    let checklist_contents = std::fs::read_to_string(checklist_path.as_std_path())
+        .with_context(|| format!("failed to read Phase 35 checklist {checklist_path}"))?;
+    let checklist =
+        ChecklistSnapshot::capture(checklist_contents, live).map_err(anyhow::Error::msg)?;
+    let matrix = evaluate_phase35_promotion(&validated, &checklist).map_err(anyhow::Error::msg)?;
+    let projection = validated
+        .shareable_projection()
+        .map_err(anyhow::Error::msg)?;
+    let documents = Phase35GenerationDocuments {
+        projection_json: serde_json::to_string_pretty(&projection)?,
+        matrix_json: serde_json::to_string_pretty(&matrix)?,
+        projected_checklist: matrix.projected_checklist.clone(),
+        expected_checklist_fingerprint: matrix.checklist_fingerprint_before.clone(),
+    };
+    publish_phase35_generation(
+        &environment.workspace_dir,
+        &args.staging,
+        Utf8Path::new(PHASE35_DESTINATION_ROOT),
+        Utf8Path::new(PHASE35_CHECKLIST_PATH),
+        &documents,
+        Phase35PublicationOptions::default(),
+    )
+    .map_err(anyhow::Error::msg)?;
+
+    serde_json::to_string_pretty(&serde_json::json!({
+        "status": "admitted",
+        "evidence_root_digest": matrix.evidence_root_digest,
+        "promoted_rows": matrix.promoted_row_ids(),
+    }))
+    .context("failed to serialize Phase 35 admission result")
 }
 
 fn run_validate_phase35_evidence_command(
