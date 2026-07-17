@@ -147,7 +147,7 @@ pub(crate) struct Phase35LiveRechecks {
 
 impl Phase35LiveRechecks {
     #[cfg(test)]
-    pub(super) fn matching(validated: &ValidatedPhase35Evidence) -> Self {
+    pub(crate) fn matching(validated: &ValidatedPhase35Evidence) -> Self {
         let package = validated.exact_package();
         let detector = validated.detector_run();
         Self {

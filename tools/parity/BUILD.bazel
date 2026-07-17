@@ -1,5 +1,16 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 
+filegroup(
+    name = "phase35_promotion_sources",
+    srcs = [
+        "src/phase35_promotion.rs",
+        "src/phase35_promotion/checklist.rs",
+        "src/phase35_promotion/evaluator.rs",
+        "src/phase35_promotion/types.rs",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 rust_binary(
     name = "report",
     srcs = [
@@ -76,5 +87,8 @@ rust_binary(
 rust_test(
     name = "tests",
     crate = ":report",
-    visibility = ["//firmware/bitaxe:__pkg__"],
+    visibility = [
+        "//firmware/bitaxe:__pkg__",
+        "//scripts:__pkg__",
+    ],
 )

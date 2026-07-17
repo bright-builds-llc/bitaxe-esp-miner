@@ -761,6 +761,19 @@ sh_test(
     tags = ["local"],
 )
 
+sh_test(
+    name = "phase35_promotion_contract_test",
+    srcs = ["phase35-promotion-contract-test.sh"],
+    data = [
+        "//:docs/parity/checklist.md",
+        "//:docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md",
+        "//tools/parity:phase35_promotion_sources",
+        "//tools/parity:tests",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
 sh_binary(
     name = "phase21_live_mining_package",
     srcs = ["phase21-live-mining-package.sh"],

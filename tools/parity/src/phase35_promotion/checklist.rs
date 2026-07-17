@@ -59,7 +59,7 @@ pub(super) fn render_projected_checklist(
         cells[4] = "verified".to_owned();
         cells[5] = "hardware-smoke".to_owned();
         cells[6] = format!(
-            "Phase 35 proves this exact passive board `205` category from admitted root digest `{root_digest}`; no active control, self-test effects, watchdog intervention, mining, credentials, OTA, or other-board parity is implied."
+            "Phase 35 proves only this exact passive board `205` category from admitted protected-root digest `{root_digest}`; scope is not widened beyond this row."
         );
         lines[row.line_index] = format!("| {} |", cells.join(" | "));
     }
