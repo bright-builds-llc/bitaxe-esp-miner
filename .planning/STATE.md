@@ -2,31 +2,31 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: ready_to_execute
-stopped_at: Phase 34 Plan 34-10 is checker-approved and ready to execute.
-last_updated: "2026-07-16T15:26:41Z"
-last_activity: "2026-07-16"
+status: executing
+stopped_at: Phase 34 Plan 34-11 is planned and ready to execute.
+last_updated: "2026-07-17T02:16:02.912Z"
+last_activity: "2026-07-17"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 19
-  completed_plans: 18
+  total_plans: 20
+  completed_plans: 19
   percent: 95
 ---
 
 # Project State
 
-Last activity: 2026-07-16
+Last activity: 2026-07-17
 
 ## Current Position
 
 Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — GAP CLOSURE PLANNED
-Plan: 9 of 10 implemented; Plan 34-10 ready
+Plan: 10 of 11 implemented; Plan 34-11 ready
 
 - **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 9 of 10 implemented; checker-approved Plan 34-10 ready
-- **Status:** Ready to execute the sole remaining SYS-02 gap plan
-- **Next step:** Execute Plan 34-10 with `$gsd-execute-phase 34 --gaps-only`, then rerun fresh Phase 34 review and independent verification. Phase 35 remains blocked.
+- **Plan:** 10 of 11 implemented; Plan 34-11 planned and ready
+- **Status:** Ready to execute
+- **Next step:** Execute Plan 34-11 with `$gsd-execute-phase 34 --gaps-only`, then rerun fresh Phase 34 review and independent verification. Phase 35 remains blocked.
 
 ## Project Reference
 
@@ -148,6 +148,18 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Zero-length segments retain pinned ESP-IDF semantics, mapped congruence uses fixed `CONFIG_MMU_PAGE_SIZE`, and descriptor value `16` is separately attributed to the ESP-IDF application build and carried through `elf2image`.
 - The unique `firmware_elf` artifact digest must equal top-level `app_elf_sha256` in manifest construction, validation, and active admission before any port, credential, command, USB, or hardware effect.
 - Plan 34-10 remains software-only and requires fresh review and independent verification before Phase 34 or SYS-02 can pass; Phase 35 stays blocked.
+
+## Decisions (Phase 34 Verification Round 3)
+
+- Implemented Plan 34-10 closes its exact supported header, checked arithmetic, entry/load bounds, mapped congruence, descriptor/MMU/digest/trailer, ELF/application SHA binding, unique factory, immutable snapshot, and schema-v3 objectives.
+- Phase 34 remains `gaps_found` at 9/10 requirements because segment 0 can carry an authentic descriptor outside DROM and individually valid segment destinations can overlap directly or through ESP32-S3 D/IRAM physical aliases.
+- SYS-02 remains pending and Phase 35 stays blocked. Green Plan 34-10 gates and administrative implementation do not override these reproduced production-path gaps.
+
+## Decisions (Phase 34 Gap Planning Round 4)
+
+- Plan 34-11 closes only the two remaining SYS-02 layout invariants: a non-empty DROM descriptor segment at index/payload offset zero and pairwise non-overlapping non-empty destinations under direct and ESP32-S3 D/IRAM alias comparison.
+- Exact adjacency remains valid, zero-length non-descriptor segments remain range-free, and every Plan 34-10 invariant remains closed without dependency, public API, schema, or requirement-truth changes.
+- Plan 34-11 is software-only and requires pure parser, full OTA/factory package, and real parsed pre-effect CLI proof plus fresh code review and independent verification. No hardware, USB/serial/ports, credentials, network discovery, flash/OTA execution, Phase 35, direct UART/pins, or archived Phase 28.1.1 work is authorized.
 
 ## Decisions (Phase 34 Plan 09)
 
@@ -341,5 +353,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Phase 34 Plan 34-10 is checker-approved and ready to execute.
-- **Resume:** Run `$gsd-execute-phase 34 --gaps-only`; do not begin Phase 35 until SYS-02 passes fresh review and verification.
+- **Stopped at:** Phase 34 Plan 34-11 is planned and ready to execute.
+- **Resume:** Run `$gsd-execute-phase 34 --gaps-only`; do not begin Phase 35 until SYS-02 passes fresh review and independent verification.
