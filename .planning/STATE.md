@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 context gathered
-last_updated: "2026-07-17T20:57:27.350Z"
+stopped_at: Completed 35-01-PLAN.md
+last_updated: "2026-07-17T21:37:53.441Z"
 last_activity: "2026-07-17"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 24
-  completed_plans: 20
-  percent: 83
+  completed_plans: 21
+  percent: 88
 ---
 
 # Project State
@@ -24,9 +24,9 @@ Phase: 35 (Detector-Gated Correlated Evidence and Exact Parity Promotion) — EX
 Plan: 1 of 4
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
-- **Plan:** Not started
+- **Plan:** 1 of 4 completed
 - **Status:** Executing Phase 35
-- **Next step:** Run the required Phase 34 security audit, then discuss and plan Phase 35 without starting hardware qualification early.
+- **Next step:** Execute Plan 35-02's software capture shell and simulation suite; do not begin hardware qualification before its owning plan gate.
 
 ## Project Reference
 
@@ -173,6 +173,12 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Fresh goal-backward verification passed all 10 Phase 34 requirements at reviewed source `fdd3c7ab3547165fecf35b3267184fc5098b5599`.
 - SYS-02 now closes the earlier entry/load, ELF-identity, descriptor-placement, direct-overlap, and D/IRAM alias-overlap reproductions at pure parser, package, parsed CLI, immutable-snapshot, and pre-effect boundaries.
 - OBS-06 and all previously completed SYS/HLT requirements passed regression verification. Phase 35 is unblocked for its own discussion and planning; no Phase 35 hardware action occurred.
+
+## Decisions (Phase 35 Plan 01)
+
+- Phase 35 admission is a pure typed core; the CLI shell performs only read-only live rechecks before serializing a closed redacted projection.
+- Both boot epochs retain the existing Phase 34 coherent-snapshot validator unchanged, with Phase 35 adding only the exact N-to-N+1 cross-epoch join.
+- The evidence core is split into contract, digest, inventory, and projection modules so every production file remains within repository code-shape guidance.
 
 ## Decisions (Phase 34 Plan 09)
 
@@ -334,6 +340,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 34 P08 | 32min | 2 tasks | 3 files |
 | Phase 34 P09 | 1h 20m | 2 tasks | 11 files |
 | Phase 34 P11 | 32m | 2 tasks | 4 files |
+| Phase 35 P01 | 37min | 2 tasks | 54 files |
 
 ### Quick Tasks Completed
 
@@ -367,5 +374,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Phase 35 context gathered
-- **Resume:** Run `$gsd-secure-phase 34`, then `$gsd-discuss-phase 35`; do not begin Phase 35 hardware qualification before its owning plan authorizes it.
+- **Stopped at:** Completed 35-01-PLAN.md
+- **Resume:** Execute `35-02-PLAN.md`; preserve all detector, credential, hardware, and archived-lineage gates.
