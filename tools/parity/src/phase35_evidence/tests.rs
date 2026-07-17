@@ -429,3 +429,4 @@ fn phase35_projection_rejects_forbidden_keys_and_raw_canaries() {
 }
 
 mod admission;
+mod fixtures;

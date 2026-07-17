@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ExactPackageCapability {
     pub(crate) source_commit: String,
@@ -17,7 +17,7 @@ pub(crate) struct ExactPackageCapability {
     pub(crate) capability_digest: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct DetectorRunCapability {
     pub(crate) board_category: String,
@@ -29,7 +29,7 @@ pub(crate) struct DetectorRunCapability {
     pub(crate) capability_digest: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct RootAdmissionFacts {
     pub(crate) root_contract_digest: String,
@@ -77,7 +77,7 @@ impl EvidenceEventCategory {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct EvidenceEventInput {
     pub(crate) sequence: u64,
@@ -87,7 +87,7 @@ pub(crate) struct EvidenceEventInput {
     pub(crate) predecessor_event_digest: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct InventoryEntryInput {
     pub(crate) role: String,
@@ -95,7 +95,7 @@ pub(crate) struct InventoryEntryInput {
     pub(crate) sha256: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct EvidenceEpochInput {
     pub(crate) boot_ordinal: u64,
@@ -117,7 +117,7 @@ pub(crate) struct EvidenceEpochInput {
     pub(crate) physical_identity_digest: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Phase35EvidenceRootInput {
     pub(crate) schema_version: String,

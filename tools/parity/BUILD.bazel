@@ -29,6 +29,8 @@ rust_binary(
         "src/phase35_evidence/projection.rs",
         "src/phase35_evidence/tests.rs",
         "src/phase35_evidence/tests/admission.rs",
+        "src/phase35_evidence/tests/fixtures.rs",
+        "src/phase35_evidence/tests/fixtures/catalog.rs",
         "src/phase32_source_guard.rs",
         "src/phase33_source_guard.rs",
         "src/phase34_source_guard.rs",
@@ -68,6 +70,5 @@ rust_binary(
 rust_test(
     name = "tests",
     crate = ":report",
-    deps = ["@crates//:tempfile"],
     visibility = ["//firmware/bitaxe:__pkg__"],
 )
