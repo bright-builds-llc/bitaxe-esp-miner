@@ -47,7 +47,7 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 - [x] **EVD-12**: A v1.2 evidence root correlates read-only sensor acquisitions with system-info, live-WebSocket, and retained-log projections from the same operator-snapshot revisions.
 - [x] **EVD-13**: A v1.2 evidence root correlates pre-PATCH, committed-and-reloaded, and post-reboot hostname observations without recording credentials, network identities, raw targets, or other secret values.
 - [x] **EVD-14**: A v1.2 evidence root passes complete inventory, redaction, lifecycle cleanup, no-actuation, reference-cleanliness, and current-head validation before atomic promotion.
-- [ ] **EVD-15**: Phase 35 promotes only explicitly allowlisted operator-runtime parity rows supported by eligible evidence and records deterministic non-promotion for active control, self-test effects, watchdog intervention, mining, credentials, other boards, and every other excluded claim.
+- [x] **EVD-15**: Phase 35 promotes only explicitly allowlisted operator-runtime parity rows supported by eligible evidence and records deterministic non-promotion for active control, self-test effects, watchdog intervention, mining, credentials, other boards, and every other excluded claim.
 
 ## Future Requirements
 
@@ -124,7 +124,7 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | EVD-12 | Phase 35 | Complete |
 | EVD-13 | Phase 35 | Complete |
 | EVD-14 | Phase 35 | Complete |
-| EVD-15 | Phase 35 | Pending |
+| EVD-15 | Phase 35 | Complete |
 
 **Coverage:**
 

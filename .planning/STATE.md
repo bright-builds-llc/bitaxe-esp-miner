@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 35-02-PLAN.md
-last_updated: "2026-07-17T22:11:59.568Z"
+stopped_at: Completed 35-03-PLAN.md
+last_updated: "2026-07-17T22:41:47.160Z"
 last_activity: "2026-07-17"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 24
-  completed_plans: 22
-  percent: 92
+  completed_plans: 23
+  percent: 96
 ---
 
 # Project State
@@ -21,12 +21,12 @@ Last activity: 2026-07-17
 ## Current Position
 
 Phase: 35 (Detector-Gated Correlated Evidence and Exact Parity Promotion) — EXECUTING
-Plan: 2 of 4 completed
+Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
-- **Plan:** 2 of 4 completed
+- **Plan:** 3 of 4 completed
 - **Status:** Ready to execute
-- **Next step:** Execute Plan 35-03's closed exact-promotion matrix and atomic publication boundary; do not treat software completion as live evidence.
+- **Next step:** Execute Plan 35-04's detector-gated live capture and admit only a fully eligible real protected root.
 
 ## Project Reference
 
@@ -349,6 +349,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 34 P11 | 32m | 2 tasks | 4 files |
 | Phase 35 P01 | 37min | 2 tasks | 54 files |
 | Phase 35 P02 | 30min | 2 tasks | 8 files |
+| Phase 35 P03 | 25m | 2 tasks | 18 files |
 
 ### Quick Tasks Completed
 
@@ -382,5 +383,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 35-02-PLAN.md
-- **Resume:** Execute `35-03-PLAN.md`; require an eligible Phase 35 root for every narrow promotion and preserve every excluded non-claim.
+- **Stopped at:** Completed 35-03-PLAN.md
+- **Resume:** Execute `35-04-PLAN.md`; require an eligible real Phase 35 root for every narrow promotion and preserve every excluded non-claim.
