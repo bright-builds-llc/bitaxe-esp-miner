@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 35-01-PLAN.md
-last_updated: "2026-07-17T21:37:53.441Z"
+stopped_at: Completed 35-02-PLAN.md
+last_updated: "2026-07-17T22:11:59.568Z"
 last_activity: "2026-07-17"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 24
-  completed_plans: 21
-  percent: 88
+  completed_plans: 22
+  percent: 92
 ---
 
 # Project State
@@ -21,12 +21,12 @@ Last activity: 2026-07-17
 ## Current Position
 
 Phase: 35 (Detector-Gated Correlated Evidence and Exact Parity Promotion) — EXECUTING
-Plan: 1 of 4
+Plan: 2 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
-- **Plan:** 1 of 4 completed
-- **Status:** Executing Phase 35
-- **Next step:** Execute Plan 35-02's software capture shell and simulation suite; do not begin hardware qualification before its owning plan gate.
+- **Plan:** 2 of 4 completed
+- **Status:** Ready to execute
+- **Next step:** Execute Plan 35-03's closed exact-promotion matrix and atomic publication boundary; do not treat software completion as live evidence.
 
 ## Project Reference
 
@@ -179,6 +179,13 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Phase 35 admission is a pure typed core; the CLI shell performs only read-only live rechecks before serializing a closed redacted projection.
 - Both boot epochs retain the existing Phase 34 coherent-snapshot validator unchanged, with Phase 35 adding only the exact N-to-N+1 cross-epoch join.
 - The evidence core is split into contract, digest, inventory, and projection modules so every production file remains within repository code-shape guidance.
+
+## Decisions (Phase 35 Plan 02)
+
+- Full mode owns exactly one detector invocation after exact-package admission; preflight mode owns zero detector invocations and permits no effects.
+- Credential-path validation occurs only after one board-205 detector capability, and raw values never enter shareable output.
+- Every post-mutation exit attempts restoration before cleanup and seals failed evidence roots as non-promotable and non-reusable.
+- The supervisor preserves child-command status explicitly because Bash conditional call stacks disable implicit `errexit`.
 
 ## Decisions (Phase 34 Plan 09)
 
@@ -341,6 +348,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 34 P09 | 1h 20m | 2 tasks | 11 files |
 | Phase 34 P11 | 32m | 2 tasks | 4 files |
 | Phase 35 P01 | 37min | 2 tasks | 54 files |
+| Phase 35 P02 | 30min | 2 tasks | 8 files |
 
 ### Quick Tasks Completed
 
@@ -374,5 +382,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 35-01-PLAN.md
-- **Resume:** Execute `35-02-PLAN.md`; preserve all detector, credential, hardware, and archived-lineage gates.
+- **Stopped at:** Completed 35-02-PLAN.md
+- **Resume:** Execute `35-03-PLAN.md`; require an eligible Phase 35 root for every narrow promotion and preserve every excluded non-claim.

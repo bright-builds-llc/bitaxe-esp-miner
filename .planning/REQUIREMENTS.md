@@ -22,7 +22,7 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 - [x] **CFG-09**: An Ultra 205 operator receives a stable generic error for an invalid known `hostname`, with no NVS write, commit, live-state replacement, or partial change.
 - [x] **CFG-10**: An Ultra 205 operator receives PATCH success only after the hostname write commits, the firmware performs an actual NVS reload, and typed reconciliation matches the requested non-secret value.
 - [x] **CFG-11**: An Ultra 205 operator sees the storage-confirmed hostname in the immediate API readback and coherent operator snapshot after a successful PATCH.
-- [ ] **CFG-12**: An Ultra 205 operator sees the same storage-confirmed hostname after one phase-approved normal reboot and reacquisition of the same detector-gated board.
+- [x] **CFG-12**: An Ultra 205 operator sees the same storage-confirmed hostname after one phase-approved normal reboot and reacquisition of the same detector-gated board.
 - [x] **CFG-13**: An Ultra 205 operator can send unknown or unsupported settings fields without unintended writes or hardware effects, following the existing compatibility behavior while exposing no secret values.
 
 ### Truthful System Identity
@@ -42,10 +42,10 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 
 ### Correlated Hardware Evidence
 
-- [ ] **EVD-10**: A v1.2 hardware run stops before target, credential, flash, reset, monitor, or evidence-promotion work unless `just detect-ultra205` finds exactly one board `205` candidate and board-info succeeds.
+- [x] **EVD-10**: A v1.2 hardware run stops before target, credential, flash, reset, monitor, or evidence-promotion work unless `just detect-ultra205` finds exactly one board `205` candidate and board-info succeeds.
 - [x] **EVD-11**: A v1.2 evidence root binds one exact source commit, reference commit, package manifest and digest, board category, boot session, target-lock provenance, and bounded capture chronology.
 - [x] **EVD-12**: A v1.2 evidence root correlates read-only sensor acquisitions with system-info, live-WebSocket, and retained-log projections from the same operator-snapshot revisions.
-- [ ] **EVD-13**: A v1.2 evidence root correlates pre-PATCH, committed-and-reloaded, and post-reboot hostname observations without recording credentials, network identities, raw targets, or other secret values.
+- [x] **EVD-13**: A v1.2 evidence root correlates pre-PATCH, committed-and-reloaded, and post-reboot hostname observations without recording credentials, network identities, raw targets, or other secret values.
 - [x] **EVD-14**: A v1.2 evidence root passes complete inventory, redaction, lifecycle cleanup, no-actuation, reference-cleanliness, and current-head validation before atomic promotion.
 - [ ] **EVD-15**: Phase 35 promotes only explicitly allowlisted operator-runtime parity rows supported by eligible evidence and records deterministic non-promotion for active control, self-test effects, watchdog intervention, mining, credentials, other boards, and every other excluded claim.
 
@@ -108,7 +108,7 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | CFG-09 | Phase 33 | Complete |
 | CFG-10 | Phase 33 | Complete |
 | CFG-11 | Phase 33 | Complete |
-| CFG-12 | Phase 35 | Pending |
+| CFG-12 | Phase 35 | Complete |
 | CFG-13 | Phase 33 | Complete |
 | SYS-01 | Phase 34 | Complete |
 | SYS-02 | Phase 34 | Complete |
@@ -119,10 +119,10 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | HLT-02 | Phase 34 | Complete |
 | HLT-03 | Phase 34 | Complete |
 | HLT-04 | Phase 34 | Complete |
-| EVD-10 | Phase 35 | Pending |
+| EVD-10 | Phase 35 | Complete |
 | EVD-11 | Phase 35 | Complete |
 | EVD-12 | Phase 35 | Complete |
-| EVD-13 | Phase 35 | Pending |
+| EVD-13 | Phase 35 | Complete |
 | EVD-14 | Phase 35 | Complete |
 | EVD-15 | Phase 35 | Pending |
 

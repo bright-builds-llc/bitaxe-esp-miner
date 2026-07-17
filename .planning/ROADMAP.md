@@ -129,7 +129,7 @@ No additional Phase 33 hardware attempt is permitted.
 1. Inventory, redaction, lifecycle cleanup, no-actuation, reference-cleanliness, and current-head validation all pass before atomic evidence admission.
 1. Only explicitly allowlisted operator-runtime parity rows supported by eligible evidence promote; active control, self-test effects, watchdog intervention, mining and Phase 28.1.1, credentials, direct UART/pins, OTA, other boards, and every other excluded or broad claim receive deterministic non-promotion.
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 ## Dependency Order
 
@@ -151,9 +151,9 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
 | 33 | Confirmed Settings Durability | 4 | Complete (8/8 software) |
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Complete |
-| 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | In Progress (1/4 plans) |
+| 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | In Progress (2/4 plans) |
 
-**Overall:** 4/5 phases complete; 23/27 requirements complete.
+**Overall:** 4/5 phases complete; 26/27 requirements complete.
 
 ## Coverage
 
