@@ -45,6 +45,7 @@ mod phase32_source_guard;
 mod phase33_source_guard;
 #[cfg(test)]
 mod phase34_source_guard;
+mod phase35_evidence;
 mod release_evidence;
 mod release_gate;
 mod safety_allow;
@@ -70,6 +71,7 @@ enum CliCommand {
     CompleteOperatorEvidence(CompleteOperatorEvidenceArgs),
     ConsolidatePhase28Evidence(ConsolidatePhase28EvidenceArgs),
     Phase33Classify(Phase33ClassifyArgs),
+    ValidatePhase35Evidence(ValidatePhase35EvidenceArgs),
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -95,6 +97,12 @@ struct Phase33ClassifyArgs {
 
     #[arg(long)]
     expected_ordinal: Option<u64>,
+}
+
+#[derive(Debug, Parser)]
+struct ValidatePhase35EvidenceArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    root: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -633,12 +641,70 @@ fn main() -> Result<()> {
             run_consolidate_phase28_evidence_command(args, &environment)?
         }
         CliCommand::Phase33Classify(args) => run_phase33_classify_command(args, &environment)?,
+        CliCommand::ValidatePhase35Evidence(args) => {
+            run_validate_phase35_evidence_command(args, &environment)?
+        }
     };
 
     let mut stdout = io::stdout().lock();
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_validate_phase35_evidence_command(
+    args: ValidatePhase35EvidenceArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    use phase35_evidence::{
+        load_phase35_evidence_root, validate_phase35_evidence, Phase35EvidenceError,
+        PHASE35_LIFECYCLE_ID,
+    };
+
+    let evidence_root = environment.workspace_path(&args.root);
+    let (input, artifacts) =
+        load_phase35_evidence_root(&evidence_root).map_err(|error| anyhow::anyhow!(error))?;
+    let validated =
+        validate_phase35_evidence(&input, &artifacts).map_err(|error| anyhow::anyhow!(error))?;
+
+    let current_head = environment
+        .current_git_head()
+        .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::StaleCurrentHead))?;
+    if current_head != input.exact_package.source_commit {
+        return Err(anyhow::anyhow!(Phase35EvidenceError::StaleCurrentHead));
+    }
+    environment
+        .run_reference_guard()
+        .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::DirtyReference))?;
+    let reference_commit = environment
+        .reference_commit()
+        .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::DirtyReference))?;
+    if reference_commit != input.exact_package.reference_commit {
+        return Err(anyhow::anyhow!(Phase35EvidenceError::DirtyReference));
+    }
+    let lifecycle_document = std::fs::read_to_string(
+        environment
+            .workspace_dir
+            .join(
+                ".planning/phases/35-detector-gated-correlated-evidence-and-exact-parity-promotion/35-01-PLAN.md",
+            )
+            .as_std_path(),
+    )
+    .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::LifecycleMismatch))?;
+    if input.admission_facts.lifecycle_id != PHASE35_LIFECYCLE_ID
+        || !lifecycle_document.contains(&format!(
+            "phase_lifecycle_id: {}",
+            input.admission_facts.lifecycle_id
+        ))
+    {
+        return Err(anyhow::anyhow!(Phase35EvidenceError::LifecycleMismatch));
+    }
+
+    let projection = validated
+        .shareable_projection()
+        .map_err(|error| anyhow::anyhow!(error))?;
+    serde_json::to_string_pretty(&projection)
+        .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::ForbiddenProjectionField))
 }
 
 #[derive(Serialize)]
