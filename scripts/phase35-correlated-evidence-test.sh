@@ -4,6 +4,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly supervisor="${script_dir}/phase35-correlated-evidence.sh"
 readonly fixture="${script_dir}/phase35-correlated-evidence-fixture.sh"
+readonly justfile="${script_dir}/../Justfile"
 readonly test_root="${TEST_TMPDIR:-$(mktemp -d)}/phase35"
 readonly workspace="${test_root}/workspace"
 readonly source_commit="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -94,6 +95,61 @@ run_supervisor() {
 		"$@" >"$case_dir/stdout.log" 2>"$case_dir/stderr.log"
 	run_status=$?
 	set -e
+}
+
+test_runfiles_entrypoint_resolves_sibling_helpers() {
+	# Arrange
+	prepare_case runfiles_preflight
+	local isolated_supervisor="${case_dir}/phase35_correlated_evidence"
+	local runfiles_scripts="${isolated_supervisor}.runfiles/_main/scripts"
+	mkdir -p "$runfiles_scripts"
+	cp "$supervisor" "$isolated_supervisor"
+	chmod 700 "$isolated_supervisor"
+	cp \
+		"${script_dir}/phase35-correlated-evidence-root.sh" \
+		"${script_dir}/phase35-correlated-evidence-effects.sh" \
+		"${script_dir}/phase35-correlated-evidence-document.sh" \
+		"${script_dir}/serial-session-trace.sh" \
+		"$runfiles_scripts/"
+
+	# Act
+	set +e
+	BUILD_WORKSPACE_DIRECTORY="$workspace" \
+		PHASE35_FIXTURE_COMMAND="$fixture" \
+		PHASE35_FIXTURE_STATE="$state_dir" \
+		PHASE35_FIXTURE_SCENARIO=success \
+		"$isolated_supervisor" \
+		"manifest=${manifest_dir}/manifest.json" \
+		"local-root=${evidence_root}" \
+		preflight-only=true \
+		capture-timeout-seconds=360 \
+		caller-wall-clock-seconds=420 >"$case_dir/stdout.log" 2>"$case_dir/stderr.log"
+	run_status=$?
+	set -e
+
+	# Assert
+	[[ "$run_status" == 0 ]] || fail_test "runfiles preflight failed"
+	assert_contains "$case_dir/stdout.log" '^status=preflight_passed$'
+	assert_count 1 package_admission "$calls"
+	assert_count 0 detector "$calls"
+}
+
+test_just_entrypoint_builds_the_current_package_before_supervisor() {
+	# Arrange
+	local expected_recipe
+	expected_recipe=$'phase35-evidence *args:\n    bazel build //firmware/bitaxe:firmware_image\n    bazel run //scripts:phase35_correlated_evidence -- {{ args }}'
+
+	# Act
+	local actual_recipe
+	actual_recipe="$(awk '
+		/^phase35-evidence \*args:$/ { capture = 1 }
+		capture && /^[^[:space:]]/ && $0 !~ /^phase35-evidence \*args:$/ { exit }
+		capture { print }
+	' "$justfile")"
+
+	# Assert
+	[[ "$actual_recipe" == "$expected_recipe" ]] ||
+		fail_test "phase35-evidence did not build the exact current package first"
 }
 
 assert_detector_stopped_effects() {
@@ -309,6 +365,8 @@ test_success_ordering_and_private_root() {
 	assert_absent "$case_dir/stdout.log" 'fixture-target|fixture-device|fixture-setting'
 }
 
+test_runfiles_entrypoint_resolves_sibling_helpers
+test_just_entrypoint_builds_the_current_package_before_supervisor
 test_preflight_has_no_detector_or_effects
 test_detector_failures_stop_all_later_commands
 test_gate_one_drift_failures

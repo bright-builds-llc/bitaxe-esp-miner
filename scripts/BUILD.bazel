@@ -750,6 +750,7 @@ sh_test(
     name = "phase35_correlated_evidence_test",
     srcs = ["phase35-correlated-evidence-test.sh"],
     data = [
+        "//:Justfile",
         "phase35-correlated-evidence-document.sh",
         "phase35-correlated-evidence-effects.sh",
         "phase35-correlated-evidence-fixture.sh",

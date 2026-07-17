@@ -14,7 +14,29 @@ readonly PASSIVE_MONITOR_ARGS=(
 	--non-interactive
 )
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+resolve_script_dir() {
+	local direct_dir
+	direct_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+	if [[ -f "${direct_dir}/phase35-correlated-evidence-root.sh" ]]; then
+		printf '%s\n' "$direct_dir"
+		return 0
+	fi
+
+	local candidate
+	for candidate in \
+		"${BASH_SOURCE[0]}.runfiles/_main/scripts" \
+		"${RUNFILES_DIR:-}/_main/scripts"; do
+		if [[ -f "${candidate}/phase35-correlated-evidence-root.sh" ]]; then
+			printf '%s\n' "$candidate"
+			return 0
+		fi
+	done
+
+	printf 'failure_category=runfiles_incomplete\n' >&2
+	return 1
+}
+
+script_dir="$(resolve_script_dir)" || exit 1
 workspace_dir="${BUILD_WORKSPACE_DIRECTORY:-$(git rev-parse --show-toplevel)}"
 manifest="${workspace_dir}/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json"
 wifi_credentials=""
