@@ -19,7 +19,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 - [x] **Phase 31: Operator Claim and Telemetry Contract** — Define truthful observation, settings, health, and promotion states before effectful integration. (completed 2026-07-13)
 - [x] **Phase 32: Shared I2C and Read-Only Sensor Acquisition** — Establish one bounded I2C0 owner for startup display handoff and read-only INA260/EMC2101 observations. (completed 2026-07-14)
 - [x] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, and immediately visible storage truth, with a fail-closed classifier ready for later reboot qualification. (completed 2026-07-15 on the remapped software boundary; CFG-12 remains pending for Phase 35)
-- [ ] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot. (11/11 plans implemented; fresh review and independent verification pending)
+- [x] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot. (completed 2026-07-17; 11/11 plans and 10/10 requirements passed)
 - [ ] **Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion** — Prove the completed chain on one Ultra 205 and promote only specifically supported rows.
 
 ## Phase Details
@@ -111,7 +111,7 @@ No additional Phase 33 hardware attempt is permitted.
 - [x] 34-10 — Enforce the canonical ESP32-S3 executable envelope and bind packaged ELF identity
 - [x] 34-11 — Require canonical DROM descriptor placement and non-overlapping segment destinations
 
-**Verification:** Plan 34-11 is implemented and its complete software regression surface passes, but SYS-02 and Phase 34 remain pending until fresh code review and independent verification confirm the two final layout invariants. Phase 35 stays blocked pending both authorities.
+**Verification:** Passed 10/10 requirements after Plan 34-11, a clean deep review, and fresh goal-backward verification at reviewed source `fdd3c7ab3547165fecf35b3267184fc5098b5599`. SYS-02 closes the earlier entry/load, ELF-identity, descriptor-placement, direct-overlap, and D/IRAM alias-overlap reproductions without hardware. Phase 35 is unblocked for its own discussion and planning.
 
 ### Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion
 
@@ -150,10 +150,10 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | 31 | Operator Claim and Telemetry Contract | 2 | Complete |
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
 | 33 | Confirmed Settings Durability | 4 | Complete (8/8 software) |
-| 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Awaiting fresh review and independent verification (11/11 implemented; SYS-02 pending) |
+| 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Complete |
 | 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | Not started |
 
-**Overall:** 3/5 phases complete; 18/27 requirements complete.
+**Overall:** 4/5 phases complete; 20/27 requirements complete.
 
 ## Coverage
 

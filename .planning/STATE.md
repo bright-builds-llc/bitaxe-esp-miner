@@ -2,13 +2,13 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: executing
-stopped_at: Completed 34-11-PLAN.md; fresh Phase 34 review and independent verification required before SYS-02 or Phase 34 promotion.
-last_updated: "2026-07-17T13:35:42.276Z"
+status: planning
+stopped_at: Phase 34 passed fresh deep review and independent verification; Phase 35 is ready for its own planning workflow.
+last_updated: "2026-07-17T14:08:59.745Z"
 last_activity: "2026-07-17"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 20
   completed_plans: 20
   percent: 100
@@ -20,13 +20,13 @@ Last activity: 2026-07-17
 
 ## Current Position
 
-Phase: 34 (provenance-runtime-health-and-coherent-operator-snapshot) — AWAITING REVIEW AND VERIFICATION
-Plan: 11 of 11 implemented
+Phase: 35 (detector-gated-correlated-evidence-and-exact-parity-promotion) — READY TO DISCUSS
+Plan: Not started
 
-- **Phase:** 34 of 35 (provenance, runtime health, and coherent operator snapshot)
-- **Plan:** 11 of 11 implemented
-- **Status:** Awaiting fresh Phase 34 review and independent verification; SYS-02 remains pending
-- **Next step:** Run fresh Phase 34 code review and independent verification. Phase 35 remains blocked until both pass.
+- **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
+- **Plan:** Not started
+- **Status:** Ready to discuss
+- **Next step:** Run the required Phase 34 security audit, then discuss and plan Phase 35 without starting hardware qualification early.
 
 ## Project Reference
 
@@ -166,6 +166,13 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Only a non-empty descriptor-sized DROM segment 0 can construct the validated image layout; descriptor fields remain anchored at payload offset zero.
 - Direct destination intersections are classified before D/IRAM aliases, with checked IRAM normalization by `SOC_I_D_OFFSET = 0x006f0000`.
 - Plan 34-11 preserves range-free zero-length segments and exact adjacency while SYS-02 and Phase 34 remain pending fresh review and independent verification.
+
+## Decisions (Phase 34 Final Verification)
+
+- Fresh deep review of the four Plan 34-11 source files completed cleanly with zero findings.
+- Fresh goal-backward verification passed all 10 Phase 34 requirements at reviewed source `fdd3c7ab3547165fecf35b3267184fc5098b5599`.
+- SYS-02 now closes the earlier entry/load, ELF-identity, descriptor-placement, direct-overlap, and D/IRAM alias-overlap reproductions at pure parser, package, parsed CLI, immutable-snapshot, and pre-effect boundaries.
+- OBS-06 and all previously completed SYS/HLT requirements passed regression verification. Phase 35 is unblocked for its own discussion and planning; no Phase 35 hardware action occurred.
 
 ## Decisions (Phase 34 Plan 09)
 
@@ -360,5 +367,5 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Session
 
-- **Stopped at:** Completed 34-11-PLAN.md; fresh Phase 34 review and independent verification required before SYS-02 or Phase 34 promotion.
-- **Resume:** Run fresh Phase 34 code review and independent verification; do not begin Phase 35 until SYS-02 and Phase 34 pass both authorities.
+- **Stopped at:** Phase 34 completed after a clean deep review and independent 10/10 verification.
+- **Resume:** Run `$gsd-secure-phase 34`, then `$gsd-discuss-phase 35`; do not begin Phase 35 hardware qualification before its owning plan authorizes it.
