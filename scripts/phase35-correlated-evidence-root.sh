@@ -106,16 +106,25 @@ require_unique_artifact() {
 run_package_admission() {
 	local admission_log="$local_root/raw/package-admission.log"
 	if [[ -n "$fixture_command" ]]; then
-		fixture package_admission "$manifest" >"$admission_log" 2>&1
+		if ! fixture package_admission "$manifest" >"$admission_log" 2>&1; then
+			chmod 600 "$admission_log"
+			return 1
+		fi
 	else
 		if [[ ! -x "${workspace_dir}/bazel-bin/tools/flash/flash" ]]; then
-			bazel build //tools/flash:flash >"$admission_log" 2>&1
+			if ! bazel build //tools/flash:flash >"$admission_log" 2>&1; then
+				chmod 600 "$admission_log"
+				return 1
+			fi
 		fi
-		"${workspace_dir}/bazel-bin/tools/flash/flash" flash \
+		if ! "${workspace_dir}/bazel-bin/tools/flash/flash" flash \
 			--dry-run \
 			--board 205 \
 			--port phase35-gate1-inert \
-			--manifest "$manifest" >>"$admission_log" 2>&1
+			--manifest "$manifest" >>"$admission_log" 2>&1; then
+			chmod 600 "$admission_log"
+			return 1
+		fi
 	fi
 	chmod 600 "$admission_log"
 }

@@ -202,8 +202,9 @@ snapshot_setting_matches() {
 	local snapshot="$1"
 	local expected="$2"
 	local maybe_digest
-	maybe_digest="$(jq -er '.setting_digest // empty' "$snapshot")"
-	[[ -z "$maybe_digest" || "$maybe_digest" == "$(sha256_text "$expected")" ]]
+	maybe_digest="$(jq -er '.setting_digest | select(type == "string" and test("^[0-9a-f]{64}$"))' "$snapshot")" ||
+		return 1
+	[[ "$maybe_digest" == "$(sha256_text "$expected")" ]]
 }
 
 run_live_rechecks() {
@@ -247,11 +248,19 @@ run_live_rechecks() {
 run_validator() {
 	local projection="$local_root/result.json"
 	if [[ -n "$fixture_command" ]]; then
-		fixture validator "$local_root" >"$projection"
+		if ! fixture validator "$local_root" >"$projection"; then
+			chmod 600 "$projection"
+			failure_category="validator_rejected"
+			return 1
+		fi
 	else
-		"${workspace_dir}/bazel-bin/tools/parity/report" \
+		if ! "${workspace_dir}/bazel-bin/tools/parity/report" \
 			validate-phase35-evidence \
-			--root "$local_root" >"$projection"
+			--root "$local_root" >"$projection"; then
+			chmod 600 "$projection"
+			failure_category="validator_rejected"
+			return 1
+		fi
 	fi
 	chmod 600 "$projection"
 	if rg -qi '"[^"]*(credential|device|endpoint|hostname|ip|mac|network|origin|password|path|pid|pool|port|raw|secret|ssid|target)[^"]*"[[:space:]]*:' "$projection"; then

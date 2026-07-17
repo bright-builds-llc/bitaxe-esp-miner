@@ -114,7 +114,10 @@ production_classify_boot() {
 run_flash_boot_a() {
 	local output="$local_root/raw/boot-a-setup.json"
 	if [[ -n "$fixture_command" ]]; then
-		fixture flash_boot_a "$capture_timeout_seconds" >"$output"
+		if ! fixture flash_boot_a "$capture_timeout_seconds" >"$output"; then
+			chmod 600 "$output"
+			return 1
+		fi
 		chmod 600 "$output"
 		return
 	fi
@@ -132,7 +135,10 @@ run_flash_boot_a() {
 	if [[ -n "$wifi_credentials" ]]; then
 		args+=("wifi-credentials=${wifi_credentials}")
 	fi
-	just flash-monitor "${args[@]}" >"$local_root/raw/flash-command.log" 2>&1
+	if ! just flash-monitor "${args[@]}" >"$local_root/raw/flash-command.log" 2>&1; then
+		chmod 600 "$local_root/raw/flash-command.log"
+		return 1
+	fi
 	chmod 600 "$local_root/raw/flash-command.log"
 	local monitor_log="$flash_dir/flash-monitor.log"
 	[[ -s "$monitor_log" ]] || return 1
@@ -157,7 +163,10 @@ capture_epoch() {
 	local label="$1"
 	local output="$local_root/raw/${label}.json"
 	if [[ -n "$fixture_command" ]]; then
-		fixture capture_epoch "$label" "$target_token" >"$output"
+		if ! fixture capture_epoch "$label" "$target_token" >"$output"; then
+			chmod 600 "$output"
+			return 1
+		fi
 		chmod 600 "$output"
 		printf '%s\n' "$output"
 		return

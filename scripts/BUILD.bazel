@@ -746,6 +746,21 @@ sh_test(
     tags = ["local"],
 )
 
+sh_test(
+    name = "phase35_correlated_evidence_test",
+    srcs = ["phase35-correlated-evidence-test.sh"],
+    data = [
+        "phase35-correlated-evidence-document.sh",
+        "phase35-correlated-evidence-effects.sh",
+        "phase35-correlated-evidence-fixture.sh",
+        "phase35-correlated-evidence-root.sh",
+        "phase35-correlated-evidence.sh",
+        "serial-session-trace.sh",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
 sh_binary(
     name = "phase21_live_mining_package",
     srcs = ["phase21-live-mining-package.sh"],
