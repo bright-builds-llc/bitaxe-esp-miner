@@ -2204,7 +2204,7 @@ fn git_output<const N: usize>(workspace_dir: &Utf8Path, args: [&str; N]) -> Opti
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::cell::RefCell;
+    use std::cell::{Cell, RefCell};
     use tempfile::{tempdir, TempDir};
 
     const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
@@ -2952,6 +2952,40 @@ mod tests {
         assert!(!error.contains("credentials"));
         assert!(environment.executed_commands().is_empty());
         assert!(environment.created_snapshot_paths().is_empty());
+    }
+
+    #[test]
+    fn identity_admission_rejects_all_layout_classes_in_parsed_dry_run_before_effects() {
+        for (fixture_kind, reason) in [
+            (
+                LayoutFixtureKind::DescriptorNotDrom,
+                "app_descriptor_segment_not_drom",
+            ),
+            (
+                LayoutFixtureKind::DestinationOverlap,
+                "ota_segment_destination_overlap",
+            ),
+            (LayoutFixtureKind::AliasOverlap, "ota_segment_alias_overlap"),
+        ] {
+            assert_parsed_layout_rejected_before_effects(fixture_kind, reason, true);
+        }
+    }
+
+    #[test]
+    fn identity_admission_rejects_all_layout_classes_in_parsed_non_dry_run_before_effects() {
+        for (fixture_kind, reason) in [
+            (
+                LayoutFixtureKind::DescriptorNotDrom,
+                "app_descriptor_segment_not_drom",
+            ),
+            (
+                LayoutFixtureKind::DestinationOverlap,
+                "ota_segment_destination_overlap",
+            ),
+            (LayoutFixtureKind::AliasOverlap, "ota_segment_alias_overlap"),
+        ] {
+            assert_parsed_layout_rejected_before_effects(fixture_kind, reason, false);
+        }
     }
 
     #[test]
@@ -4157,6 +4191,138 @@ mod tests {
         rewrite_manifest_artifact_digest(manifest, "firmware_elf", elf);
     }
 
+    #[derive(Clone, Copy)]
+    enum LayoutFixtureKind {
+        DescriptorNotDrom,
+        DestinationOverlap,
+        AliasOverlap,
+    }
+
+    fn assert_parsed_layout_rejected_before_effects(
+        fixture_kind: LayoutFixtureKind,
+        expected_reason: &str,
+        dry_run: bool,
+    ) {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let ota = layout_fixture(fixture_kind);
+        rewrite_manifest_application(&manifest, &ota);
+        let mut args = vec![
+            "bitaxe-flash".to_owned(),
+            "flash".to_owned(),
+            "--board".to_owned(),
+            "205".to_owned(),
+            "--manifest".to_owned(),
+            manifest.to_string(),
+        ];
+        let environment = if dry_run {
+            args.extend([
+                "--port".to_owned(),
+                "/dev/null".to_owned(),
+                "--dry-run".to_owned(),
+            ]);
+            FakeFlashEnvironment::default()
+        } else {
+            args.extend([
+                "--wifi-credentials".to_owned(),
+                "/missing/credentials.json".to_owned(),
+            ]);
+            FakeFlashEnvironment::with_ports(
+                "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
+            )
+        };
+        let cli = parse_cli(args).expect("parsed flash command");
+        let CliCommand::Flash(command) = cli.command else {
+            panic!("expected flash command");
+        };
+
+        // Act
+        let error = run_flash(&command, &environment)
+            .expect_err("layout admission")
+            .to_string();
+
+        // Assert
+        assert_eq!(
+            error,
+            format!("identity_admission=blocked reason={expected_reason}")
+        );
+        assert_eq!(environment.list_ports_calls(), 0);
+        assert!(!environment
+            .read_string_paths()
+            .iter()
+            .any(|path| path.as_str().contains("credentials")));
+        assert!(environment.generated_nvs_partitions().is_empty());
+        assert!(environment.created_snapshot_paths().is_empty());
+        assert!(environment.captured_commands().is_empty());
+        assert!(environment.executed_commands().is_empty());
+        assert!(environment.observed_flashes().is_empty());
+    }
+
+    fn layout_fixture(fixture_kind: LayoutFixtureKind) -> Vec<u8> {
+        let mut image = esp_application_fixture(SOURCE_COMMIT, BUILD_LABEL);
+        match fixture_kind {
+            LayoutFixtureKind::DescriptorNotDrom => {
+                image[24..28].copy_from_slice(&0x3fc8_8000_u32.to_le_bytes());
+            }
+            LayoutFixtureKind::DestinationOverlap => {
+                append_esp_segment(&mut image, 0x4037_4000, &[0; 4]);
+            }
+            LayoutFixtureKind::AliasOverlap => {
+                image[4..8].copy_from_slice(&0x4037_8000_u32.to_le_bytes());
+                let executable_header = second_esp_segment_header(&image);
+                image[executable_header..executable_header + 4]
+                    .copy_from_slice(&0x4037_8000_u32.to_le_bytes());
+                append_esp_segment(&mut image, 0x3fc8_8000, &[0; 4]);
+            }
+        }
+        reseal_esp_application(&mut image);
+        image
+    }
+
+    fn append_esp_segment(image: &mut Vec<u8>, load_address: u32, payload: &[u8]) {
+        let data_end = esp_segment_data_end(image);
+        image.truncate(data_end);
+        image[1] = image[1].checked_add(1).expect("fixture segment count");
+        image.extend_from_slice(&load_address.to_le_bytes());
+        image.extend_from_slice(
+            &u32::try_from(payload.len())
+                .expect("fixture payload length")
+                .to_le_bytes(),
+        );
+        image.extend_from_slice(payload);
+    }
+
+    fn esp_segment_data_end(image: &[u8]) -> usize {
+        const IMAGE_HEADER_LEN: usize = 24;
+        const SEGMENT_HEADER_LEN: usize = 8;
+
+        let mut cursor = IMAGE_HEADER_LEN;
+        for _ in 0..usize::from(image[1]) {
+            let payload_len = usize::try_from(u32::from_le_bytes(
+                image[cursor + 4..cursor + 8]
+                    .try_into()
+                    .expect("fixture segment length"),
+            ))
+            .expect("fixture payload length");
+            cursor += SEGMENT_HEADER_LEN + payload_len;
+        }
+        cursor
+    }
+
+    fn second_esp_segment_header(image: &[u8]) -> usize {
+        const IMAGE_HEADER_LEN: usize = 24;
+        const SEGMENT_HEADER_LEN: usize = 8;
+
+        let first_payload_len = usize::try_from(u32::from_le_bytes(
+            image[IMAGE_HEADER_LEN + 4..IMAGE_HEADER_LEN + 8]
+                .try_into()
+                .expect("fixture segment length"),
+        ))
+        .expect("fixture payload length");
+        IMAGE_HEADER_LEN + SEGMENT_HEADER_LEN + first_payload_len
+    }
+
     fn esp_application_fixture(source_commit: &str, build_label: &str) -> Vec<u8> {
         const IMAGE_HEADER_LEN: usize = 24;
         const APP_DESCRIPTOR_LEN: usize = 256;
@@ -4274,6 +4440,8 @@ mod tests {
         source_replacement: Option<(Utf8PathBuf, Vec<u8>)>,
         execute_failure: bool,
         snapshot_write_failure: bool,
+        list_ports_calls: Cell<usize>,
+        read_string_paths: RefCell<Vec<Utf8PathBuf>>,
         created_snapshot_paths: RefCell<Vec<Utf8PathBuf>>,
         observed_flash: RefCell<Vec<ObservedFlash>>,
     }
@@ -4306,6 +4474,8 @@ mod tests {
                 source_replacement: None,
                 execute_failure: false,
                 snapshot_write_failure: false,
+                list_ports_calls: Cell::new(0),
+                read_string_paths: RefCell::new(Vec::new()),
                 created_snapshot_paths: RefCell::new(Vec::new()),
                 observed_flash: RefCell::new(Vec::new()),
             }
@@ -4362,6 +4532,14 @@ mod tests {
             self.created_snapshot_paths.borrow()
         }
 
+        fn list_ports_calls(&self) -> usize {
+            self.list_ports_calls.get()
+        }
+
+        fn read_string_paths(&self) -> std::cell::Ref<'_, Vec<Utf8PathBuf>> {
+            self.read_string_paths.borrow()
+        }
+
         fn observed_flashes(&self) -> std::cell::Ref<'_, Vec<ObservedFlash>> {
             self.observed_flash.borrow()
         }
@@ -4385,6 +4563,7 @@ mod tests {
         }
 
         fn read_to_string(&self, path: &Utf8Path) -> Result<String> {
+            self.read_string_paths.borrow_mut().push(path.to_owned());
             std::fs::read_to_string(path.as_std_path())
                 .with_context(|| format!("failed to read fake manifest {path}"))
         }
@@ -4413,6 +4592,8 @@ mod tests {
         }
 
         fn list_ports(&self) -> Result<String> {
+            self.list_ports_calls
+                .set(self.list_ports_calls.get().saturating_add(1));
             Ok(self.ports.clone())
         }
 

@@ -482,6 +482,11 @@ fn phase34_package_and_hardware_admission_source_guard() {
         "validate_factory_ota_identity",
         "PartitionTable::try_from_bytes",
         "factory_ota_image_mismatch",
+        "package_admission_rejects_non_drom_descriptor_in_ota_and_factory",
+        "package_admission_rejects_destination_overlap_in_ota_and_factory",
+        "package_admission_rejects_alias_overlap_in_ota_and_factory",
+        "package_admission_accepts_exact_destination_and_alias_adjacency",
+        "package_admission_accepts_range_free_zero_length_segment",
     ] {
         assert!(
             FLASH_PACKAGE_ADMISSION_SOURCE.contains(marker),
@@ -566,6 +571,23 @@ fn phase34_package_and_hardware_admission_source_guard() {
         .expect("factory and OTA structural binding");
     assert!(factory_digest < factory_binding);
     assert!(elf_digest < elf_app_binding && elf_app_binding < ota_digest);
+    for marker in [
+        "identity_admission_rejects_all_layout_classes_in_parsed_dry_run_before_effects",
+        "identity_admission_rejects_all_layout_classes_in_parsed_non_dry_run_before_effects",
+        "assert_parsed_layout_rejected_before_effects",
+        "list_ports_calls",
+        "read_string_paths",
+        "generated_nvs_partitions",
+        "created_snapshot_paths",
+        "captured_commands",
+        "executed_commands",
+        "observed_flashes",
+    ] {
+        assert!(
+            FLASH_SOURCE.contains(marker),
+            "missing parsed pre-effect layout marker {marker}"
+        );
+    }
     assert!(!FLASH_SOURCE.contains("contains_bytes(&ota_bytes"));
     assert!(!FLASH_SOURCE.contains("contains_bytes(&factory_bytes"));
     assert!(PACKAGE_SCRIPT_SOURCE.contains("esptool\" image_info --version 2"));

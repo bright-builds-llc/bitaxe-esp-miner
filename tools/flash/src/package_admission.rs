@@ -132,6 +132,58 @@ mod tests {
     }
 
     #[test]
+    fn package_admission_rejects_non_drom_descriptor_in_ota_and_factory() {
+        assert_layout_rejected_at_ota_and_factory(
+            LayoutFixtureKind::DescriptorNotDrom,
+            "app_descriptor_segment_not_drom",
+        );
+    }
+
+    #[test]
+    fn package_admission_rejects_destination_overlap_in_ota_and_factory() {
+        assert_layout_rejected_at_ota_and_factory(
+            LayoutFixtureKind::DestinationOverlap,
+            "ota_segment_destination_overlap",
+        );
+    }
+
+    #[test]
+    fn package_admission_rejects_alias_overlap_in_ota_and_factory() {
+        assert_layout_rejected_at_ota_and_factory(
+            LayoutFixtureKind::AliasOverlap,
+            "ota_segment_alias_overlap",
+        );
+    }
+
+    #[test]
+    fn package_admission_accepts_exact_destination_and_alias_adjacency() {
+        // Arrange
+        let direct = layout_fixture(LayoutFixtureKind::DestinationAdjacent);
+        let alias = layout_fixture(LayoutFixtureKind::AliasAdjacent);
+
+        // Act
+        let direct_result = validate_fixture(&factory_fixture(&factory_table(), &direct), &direct);
+        let alias_result = validate_fixture(&factory_fixture(&factory_table(), &alias), &alias);
+
+        // Assert
+        assert!(direct_result.is_ok(), "{direct_result:#?}");
+        assert!(alias_result.is_ok(), "{alias_result:#?}");
+    }
+
+    #[test]
+    fn package_admission_accepts_range_free_zero_length_segment() {
+        // Arrange
+        let ota = layout_fixture(LayoutFixtureKind::ZeroLengthInsideRange);
+        let factory = factory_fixture(&factory_table(), &ota);
+
+        // Act
+        let result = validate_fixture(&factory, &ota);
+
+        // Assert
+        assert!(result.is_ok(), "{result:#?}");
+    }
+
+    #[test]
     fn package_admission_rejects_unsupported_spi_header() {
         // Arrange
         let mut ota = ota_fixture();
@@ -525,6 +577,111 @@ mod tests {
                 app_elf_sha256: &APP_SHA,
             },
         )
+    }
+
+    #[derive(Clone, Copy)]
+    enum LayoutFixtureKind {
+        DescriptorNotDrom,
+        DestinationAdjacent,
+        DestinationOverlap,
+        AliasAdjacent,
+        AliasOverlap,
+        ZeroLengthInsideRange,
+    }
+
+    fn assert_layout_rejected_at_ota_and_factory(
+        fixture_kind: LayoutFixtureKind,
+        expected_reason: &str,
+    ) {
+        // Arrange
+        let malformed = layout_fixture(fixture_kind);
+        let valid = match fixture_kind {
+            LayoutFixtureKind::DescriptorNotDrom => ota_fixture(),
+            LayoutFixtureKind::DestinationOverlap => {
+                layout_fixture(LayoutFixtureKind::DestinationAdjacent)
+            }
+            LayoutFixtureKind::AliasOverlap => layout_fixture(LayoutFixtureKind::AliasAdjacent),
+            _ => panic!("fixture must represent a rejected layout"),
+        };
+        assert_eq!(malformed.len(), valid.len(), "paired fixture length");
+        let malformed_factory = factory_fixture(&factory_table(), &malformed);
+
+        // Act
+        let ota_error = validate_fixture(&malformed_factory, &malformed)
+            .expect_err("malformed OTA layout")
+            .to_string();
+        let factory_error = validate_fixture(&malformed_factory, &valid)
+            .expect_err("malformed factory layout")
+            .to_string();
+
+        // Assert
+        let expected = format!("identity_admission=blocked reason={expected_reason}");
+        assert_eq!(ota_error, expected);
+        assert_eq!(factory_error, expected);
+    }
+
+    fn layout_fixture(fixture_kind: LayoutFixtureKind) -> Vec<u8> {
+        let mut image = ota_fixture();
+        match fixture_kind {
+            LayoutFixtureKind::DescriptorNotDrom => {
+                image[24..28].copy_from_slice(&0x3fc8_8000_u32.to_le_bytes());
+            }
+            LayoutFixtureKind::DestinationAdjacent => {
+                append_segment(&mut image, 0x4037_4004, &[0; 4]);
+            }
+            LayoutFixtureKind::DestinationOverlap => {
+                append_segment(&mut image, 0x4037_4000, &[0; 4]);
+            }
+            LayoutFixtureKind::AliasAdjacent | LayoutFixtureKind::AliasOverlap => {
+                image[4..8].copy_from_slice(&0x4037_8000_u32.to_le_bytes());
+                let executable_header = second_segment_header(&image);
+                image[executable_header..executable_header + 4]
+                    .copy_from_slice(&0x4037_8000_u32.to_le_bytes());
+                let dram_address = if matches!(fixture_kind, LayoutFixtureKind::AliasAdjacent) {
+                    0x3fc8_8004
+                } else {
+                    0x3fc8_8000
+                };
+                append_segment(&mut image, dram_address, &[0; 4]);
+            }
+            LayoutFixtureKind::ZeroLengthInsideRange => {
+                append_segment(&mut image, 0x4037_4000, &[]);
+            }
+        }
+        reseal_image(&mut image);
+        image
+    }
+
+    fn append_segment(image: &mut Vec<u8>, load_address: u32, payload: &[u8]) {
+        let data_end = segment_data_end(image);
+        image.truncate(data_end);
+        image[1] = image[1].checked_add(1).expect("fixture segment count");
+        image.extend_from_slice(&load_address.to_le_bytes());
+        image.extend_from_slice(
+            &u32::try_from(payload.len())
+                .expect("fixture payload length")
+                .to_le_bytes(),
+        );
+        image.extend_from_slice(payload);
+    }
+
+    fn segment_data_end(image: &[u8]) -> usize {
+        let mut cursor = ESP_IMAGE_HEADER_LEN;
+        for _ in 0..usize::from(image[1]) {
+            let payload_len = usize::try_from(u32::from_le_bytes(
+                image[cursor + 4..cursor + 8]
+                    .try_into()
+                    .expect("fixture segment length"),
+            ))
+            .expect("fixture payload length");
+            cursor += ESP_SEGMENT_HEADER_LEN + payload_len;
+        }
+        cursor
+    }
+
+    fn second_segment_header(image: &[u8]) -> usize {
+        let first_payload = first_payload_range(image);
+        first_payload.end
     }
 
     fn ota_fixture() -> Vec<u8> {
