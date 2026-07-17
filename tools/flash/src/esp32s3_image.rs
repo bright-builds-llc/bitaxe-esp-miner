@@ -16,6 +16,7 @@ const IMAGE_ALIGNMENT: usize = 16;
 const DIGEST_LEN: usize = 32;
 const MAX_SEGMENT_LEN: u32 = 16 * 1024 * 1024;
 const MMU_PAGE_SIZE: u32 = 64 * 1024;
+const SOC_I_D_OFFSET: u32 = 0x006f_0000;
 const ESP_APP_DESCRIPTOR_MAGIC: u32 = 0xABCD_5432;
 const APP_DESCRIPTOR_LEN: usize = 256;
 const APP_VERSION_OFFSET: usize = 16;
@@ -38,10 +39,10 @@ pub(crate) struct ExpectedApplication<'a> {
     pub(crate) app_elf_sha256: &'a [u8],
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ValidatedEsp32S3Image {
-    segment_count: usize,
-    entry_address: u32,
+    _layout: ValidatedSegmentLayout,
+    _entry_address: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,6 +60,10 @@ pub(crate) enum ImageValidationError {
     MappedSegmentMisaligned,
     EntryAddressUnaligned,
     EntryAddressUnsupported,
+    AppDescriptorSegmentEmpty,
+    AppDescriptorSegmentNotDrom,
+    SegmentDestinationOverlap,
+    SegmentAliasOverlap,
     DescriptorMissing,
     DescriptorTruncated,
     DescriptorMagicInvalid,
@@ -93,6 +98,10 @@ impl ImageValidationError {
             Self::MappedSegmentMisaligned => "ota_mapped_segment_misaligned",
             Self::EntryAddressUnaligned => "ota_entry_address_unaligned",
             Self::EntryAddressUnsupported => "ota_entry_address_unsupported",
+            Self::AppDescriptorSegmentEmpty => "app_descriptor_segment_empty",
+            Self::AppDescriptorSegmentNotDrom => "app_descriptor_segment_not_drom",
+            Self::SegmentDestinationOverlap => "ota_segment_destination_overlap",
+            Self::SegmentAliasOverlap => "ota_segment_alias_overlap",
             Self::DescriptorMissing => "app_descriptor_missing",
             Self::DescriptorTruncated => "app_descriptor_truncated",
             Self::DescriptorMagicInvalid => "app_descriptor_magic_invalid",
@@ -135,12 +144,24 @@ enum MemoryFamily {
     RtcFast,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct ValidatedSegment {
     load_address: u32,
     end_address: u32,
     payload: Range<usize>,
     maybe_memory_family: Option<MemoryFamily>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct ValidatedDestinationRange {
+    range: Range<u32>,
+    memory_family: MemoryFamily,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct ValidatedSegmentLayout {
+    segments: Vec<ValidatedSegment>,
+    destination_ranges: Vec<ValidatedDestinationRange>,
 }
 
 pub(crate) fn validate(
@@ -192,14 +213,107 @@ pub(crate) fn validate(
         cursor = payload_end;
     }
 
-    validate_entry_address(entry_address, &segments)?;
-    validate_descriptor(image, &segments, &expected)?;
+    let layout = ValidatedSegmentLayout::try_new(segments)?;
+    validate_entry_address(entry_address, &layout)?;
+    validate_descriptor(image, &layout, &expected)?;
     validate_trailer(image, cursor, checksum)?;
 
     Ok(ValidatedEsp32S3Image {
-        segment_count,
-        entry_address,
+        _layout: layout,
+        _entry_address: entry_address,
     })
+}
+
+impl ValidatedSegmentLayout {
+    fn try_new(segments: Vec<ValidatedSegment>) -> Result<Self, ImageValidationError> {
+        validate_descriptor_segment(&segments)?;
+        let destination_ranges = checked_destination_ranges(&segments);
+        validate_destination_disjointness(&destination_ranges)?;
+        validate_alias_disjointness(&destination_ranges)?;
+
+        Ok(Self {
+            segments,
+            destination_ranges,
+        })
+    }
+}
+
+fn validate_descriptor_segment(segments: &[ValidatedSegment]) -> Result<(), ImageValidationError> {
+    let descriptor_segment = segments
+        .first()
+        .ok_or(ImageValidationError::DescriptorMissing)?;
+    if descriptor_segment.load_address == descriptor_segment.end_address {
+        return Err(ImageValidationError::AppDescriptorSegmentEmpty);
+    }
+    if descriptor_segment.payload.len() < APP_DESCRIPTOR_LEN {
+        return Err(ImageValidationError::DescriptorTruncated);
+    }
+    if descriptor_segment.maybe_memory_family != Some(MemoryFamily::Drom) {
+        return Err(ImageValidationError::AppDescriptorSegmentNotDrom);
+    }
+
+    Ok(())
+}
+
+fn checked_destination_ranges(segments: &[ValidatedSegment]) -> Vec<ValidatedDestinationRange> {
+    segments
+        .iter()
+        .filter_map(|segment| {
+            let memory_family = segment.maybe_memory_family?;
+            (segment.load_address < segment.end_address).then_some(ValidatedDestinationRange {
+                range: segment.load_address..segment.end_address,
+                memory_family,
+            })
+        })
+        .collect()
+}
+
+fn validate_destination_disjointness(
+    ranges: &[ValidatedDestinationRange],
+) -> Result<(), ImageValidationError> {
+    for (index, left) in ranges.iter().enumerate() {
+        for right in &ranges[index + 1..] {
+            if ranges_overlap(&left.range, &right.range) {
+                return Err(ImageValidationError::SegmentDestinationOverlap);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_alias_disjointness(
+    ranges: &[ValidatedDestinationRange],
+) -> Result<(), ImageValidationError> {
+    for dram in ranges
+        .iter()
+        .filter(|range| range.memory_family == MemoryFamily::Dram)
+    {
+        for iram in ranges
+            .iter()
+            .filter(|range| range.memory_family == MemoryFamily::Iram)
+        {
+            let normalized_iram = iram
+                .range
+                .start
+                .checked_sub(SOC_I_D_OFFSET)
+                .ok_or(ImageValidationError::SegmentRangeOverflow)?
+                ..iram
+                    .range
+                    .end
+                    .checked_sub(SOC_I_D_OFFSET)
+                    .ok_or(ImageValidationError::SegmentRangeOverflow)?;
+            if ranges_overlap(&dram.range, &normalized_iram) {
+                return Err(ImageValidationError::SegmentAliasOverlap);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn ranges_overlap(left: &Range<u32>, right: &Range<u32>) -> bool {
+    left.start < right.end && right.start < left.end
 }
 
 fn validate_header(header: &[u8]) -> Result<(), ImageValidationError> {
@@ -299,12 +413,12 @@ fn validate_mapped_congruence(
 
 fn validate_entry_address(
     entry_address: u32,
-    segments: &[ValidatedSegment],
+    layout: &ValidatedSegmentLayout,
 ) -> Result<(), ImageValidationError> {
     if entry_address % 4 != 0 {
         return Err(ImageValidationError::EntryAddressUnaligned);
     }
-    let contained = segments.iter().any(|segment| {
+    let contained = layout.segments.iter().any(|segment| {
         matches!(
             segment.maybe_memory_family,
             Some(MemoryFamily::Iram | MemoryFamily::Irom)
@@ -321,10 +435,11 @@ fn validate_entry_address(
 
 fn validate_descriptor(
     image: &[u8],
-    segments: &[ValidatedSegment],
+    layout: &ValidatedSegmentLayout,
     expected: &ExpectedApplication<'_>,
 ) -> Result<(), ImageValidationError> {
-    let first_payload = segments
+    let first_payload = layout
+        .segments
         .first()
         .ok_or(ImageValidationError::DescriptorMissing)?;
     let descriptor_end = first_payload
@@ -360,7 +475,7 @@ fn validate_descriptor(
     if descriptor.get(APP_MMU_PAGE_SIZE_OFFSET).copied() != Some(APP_MMU_PAGE_SIZE_LOG2) {
         return Err(ImageValidationError::DescriptorMmuPageSizeMismatch);
     }
-    if !segments.iter().any(|segment| {
+    if !layout.segments.iter().any(|segment| {
         image
             .get(segment.payload.clone())
             .is_some_and(|payload| contains_bytes(payload, expected.source_commit.as_bytes()))
@@ -484,6 +599,184 @@ mod tests {
             (0x3c00_0020, descriptor_payload()),
             (0, Vec::new()),
             (4, Vec::new()),
+            (0x4037_0000, vec![0; 4]),
+        ]);
+
+        // Act
+        let result = validate_fixture(&image);
+
+        // Assert
+        assert!(result.is_ok(), "{result:?}");
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_empty_descriptor_segment() {
+        // Arrange
+        let image = image_fixture(&[
+            (0x3c00_0020, Vec::new()),
+            (0x3c00_0028, descriptor_payload()),
+            (0x4037_0000, vec![0; 4]),
+        ]);
+
+        // Act
+        let error = validate_fixture(&image).expect_err("empty descriptor segment");
+
+        // Assert
+        assert_eq!(error, ImageValidationError::AppDescriptorSegmentEmpty);
+        assert_eq!(error.reason(), "app_descriptor_segment_empty");
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_descriptor_segment_in_dram() {
+        assert_descriptor_segment_family_rejected(0x3fc8_8000);
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_descriptor_segment_in_iram() {
+        assert_descriptor_segment_family_rejected(0x4037_0000);
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_descriptor_segment_in_irom() {
+        assert_descriptor_segment_family_rejected(0x4200_0020);
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_descriptor_segment_in_rtc_data() {
+        assert_descriptor_segment_family_rejected(0x5000_0000);
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_descriptor_segment_in_rtc_fast() {
+        assert_descriptor_segment_family_rejected(0x600f_e000);
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_descriptor_shifted_inside_drom_segment() {
+        // Arrange
+        let mut shifted_descriptor = vec![0_u8; 4];
+        shifted_descriptor.extend_from_slice(&descriptor_payload());
+        let image = image_fixture(&[(0x3c00_0020, shifted_descriptor), (0x4037_0000, vec![0; 4])]);
+
+        // Act
+        let error = validate_fixture(&image).expect_err("shifted descriptor");
+
+        // Assert
+        assert_eq!(error, ImageValidationError::DescriptorMagicInvalid);
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_partial_destination_overlap() {
+        // Arrange
+        let image = image_fixture(&[
+            (0x3c00_0020, descriptor_payload()),
+            (0x3fc8_8000, vec![0; 16]),
+            (0x3fc8_8008, vec![0; 16]),
+            (0x4037_0000, vec![0; 4]),
+        ]);
+
+        // Act
+        let error = validate_fixture(&image).expect_err("partial destination overlap");
+
+        // Assert
+        assert_eq!(error, ImageValidationError::SegmentDestinationOverlap);
+        assert_eq!(error.reason(), "ota_segment_destination_overlap");
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_contained_destination_overlap() {
+        // Arrange
+        let image = image_fixture(&[
+            (0x3c00_0020, descriptor_payload()),
+            (0x3fc8_8000, vec![0; 32]),
+            (0x3fc8_8008, vec![0; 8]),
+            (0x4037_0000, vec![0; 4]),
+        ]);
+
+        // Act
+        let error = validate_fixture(&image).expect_err("contained destination overlap");
+
+        // Assert
+        assert_eq!(error, ImageValidationError::SegmentDestinationOverlap);
+        assert_eq!(error.reason(), "ota_segment_destination_overlap");
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_identical_destination_ranges() {
+        // Arrange
+        let image = image_fixture(&[
+            (0x3c00_0020, descriptor_payload()),
+            (0x3fc8_8000, vec![0; 8]),
+            (0x3fc8_8000, vec![0; 8]),
+            (0x4037_0000, vec![0; 4]),
+        ]);
+
+        // Act
+        let error = validate_fixture(&image).expect_err("identical destination ranges");
+
+        // Assert
+        assert_eq!(error, ImageValidationError::SegmentDestinationOverlap);
+        assert_eq!(error.reason(), "ota_segment_destination_overlap");
+    }
+
+    #[test]
+    fn esp32s3_image_rejects_dram_iram_alias_overlap() {
+        // Arrange
+        let image = image_fixture(&[
+            (0x3c00_0020, descriptor_payload()),
+            (0x3fc8_8000, vec![0; 16]),
+            (0x4037_8008, vec![0; 16]),
+        ]);
+
+        // Act
+        let error = validate_fixture(&image).expect_err("D/IRAM alias overlap");
+
+        // Assert
+        assert_eq!(error, ImageValidationError::SegmentAliasOverlap);
+        assert_eq!(error.reason(), "ota_segment_alias_overlap");
+    }
+
+    #[test]
+    fn esp32s3_image_accepts_exact_destination_adjacency() {
+        // Arrange
+        let image = image_fixture(&[
+            (0x3c00_0020, descriptor_payload()),
+            (0x3fc8_8000, vec![0; 8]),
+            (0x3fc8_8008, vec![0; 8]),
+            (0x4037_0000, vec![0; 4]),
+        ]);
+
+        // Act
+        let result = validate_fixture(&image);
+
+        // Assert
+        assert!(result.is_ok(), "{result:?}");
+    }
+
+    #[test]
+    fn esp32s3_image_accepts_exact_dram_iram_alias_adjacency() {
+        // Arrange
+        let image = image_fixture(&[
+            (0x3c00_0020, descriptor_payload()),
+            (0x3fc8_8000, vec![0; 8]),
+            (0x4037_8008, vec![0; 8]),
+            (0x4037_0000, vec![0; 4]),
+        ]);
+
+        // Act
+        let result = validate_fixture(&image);
+
+        // Assert
+        assert!(result.is_ok(), "{result:?}");
+    }
+
+    #[test]
+    fn esp32s3_image_accepts_zero_length_segment_inside_destination_range() {
+        // Arrange
+        let image = image_fixture(&[
+            (0x3c00_0020, descriptor_payload()),
+            (0x3fc8_8000, vec![0; 16]),
+            (0x3fc8_8004, Vec::new()),
             (0x4037_0000, vec![0; 4]),
         ]);
 
@@ -701,6 +994,21 @@ mod tests {
                 app_elf_sha256: &APP_SHA,
             },
         )
+    }
+
+    fn assert_descriptor_segment_family_rejected(load_address: u32) {
+        // Arrange
+        let image = image_fixture(&[
+            (load_address, descriptor_payload()),
+            (0x4037_4000, vec![0; 4]),
+        ]);
+
+        // Act
+        let error = validate_fixture(&image).expect_err("descriptor outside DROM");
+
+        // Assert
+        assert_eq!(error, ImageValidationError::AppDescriptorSegmentNotDrom);
+        assert_eq!(error.reason(), "app_descriptor_segment_not_drom");
     }
 
     fn descriptor_payload() -> Vec<u8> {

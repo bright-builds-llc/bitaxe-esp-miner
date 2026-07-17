@@ -509,12 +509,41 @@ fn phase34_package_and_hardware_admission_source_guard() {
         "app_descriptor_version_mismatch",
         "app_descriptor_sha_mismatch",
         "app_descriptor_mmu_page_size_mismatch",
+        "app_descriptor_segment_empty",
+        "app_descriptor_segment_not_drom",
+        "ota_segment_destination_overlap",
+        "ota_segment_alias_overlap",
+        "ValidatedSegmentLayout",
+        "SOC_I_D_OFFSET",
+        "0x006f_0000",
     ] {
         assert!(
             FLASH_ESP32S3_IMAGE_SOURCE.contains(marker),
             "missing structural admission marker {marker}"
         );
     }
+    let layout_constructor = source_between(
+        FLASH_ESP32S3_IMAGE_SOURCE,
+        "impl ValidatedSegmentLayout",
+        "fn validate_header",
+    );
+    let descriptor_segment_gate = layout_constructor
+        .find("validate_descriptor_segment")
+        .expect("descriptor segment gate");
+    let direct_overlap_gate = layout_constructor
+        .find("validate_destination_disjointness")
+        .expect("direct destination overlap gate");
+    let alias_overlap_gate = layout_constructor
+        .find("validate_alias_disjointness")
+        .expect("D/IRAM alias overlap gate");
+    assert!(descriptor_segment_gate < direct_overlap_gate);
+    assert!(direct_overlap_gate < alias_overlap_gate);
+    assert!(FLASH_ESP32S3_IMAGE_SOURCE.contains(
+        "fn validate_entry_address(\n    entry_address: u32,\n    layout: &ValidatedSegmentLayout,"
+    ));
+    assert!(FLASH_ESP32S3_IMAGE_SOURCE.contains(
+        "fn validate_descriptor(\n    image: &[u8],\n    layout: &ValidatedSegmentLayout,"
+    ));
     let identity_admission = source_between(
         FLASH_SOURCE,
         "fn validate_identity_admission",
