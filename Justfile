@@ -55,5 +55,8 @@ phase28-evidence *args:
 phase33-settings-durability *args:
     ./scripts/phase33-confirmed-settings-durability.sh {{ args }}
 
+phase35-evidence *args:
+    bazel run //scripts:phase35_correlated_evidence -- {{ args }}
+
 phase27-package:
     scripts/phase27-live-hardware-bridge-package.sh

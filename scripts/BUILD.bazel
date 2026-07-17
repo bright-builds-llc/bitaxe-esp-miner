@@ -255,6 +255,23 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase35_correlated_evidence",
+    srcs = ["phase35-correlated-evidence.sh"],
+    data = [
+        "phase13-monitor-capture.sh",
+        "phase17-websocket-capture.mjs",
+        "phase35-correlated-evidence-document.sh",
+        "phase35-correlated-evidence-effects.sh",
+        "phase35-correlated-evidence-root.sh",
+        "serial-session-trace.sh",
+        "verify-reference-clean.sh",
+        "//tools/flash:flash",
+        "//tools/parity:report",
+    ],
+    tags = ["local"],
+)
+
+sh_binary(
     name = "phase29_doc_redaction_check",
     srcs = ["phase29-doc-redaction-check.sh"],
     data = [
