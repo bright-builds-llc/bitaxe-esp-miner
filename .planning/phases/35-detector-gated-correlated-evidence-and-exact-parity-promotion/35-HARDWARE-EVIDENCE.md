@@ -2,7 +2,7 @@
 phase: 35
 lifecycle_id: 35-2026-07-17T17-00-37
 board_category: "205"
-evidence_state: software_preflight_passed
+evidence_state: hardware_attempt_non_promotion
 redaction_mode: typed_redacted_projection
 ---
 
@@ -61,3 +61,20 @@ effects disabled.
 The software preflight is evidence of package identity and gate readiness only. It
 is not hardware parity evidence and does not authorize or imply any checklist
 promotion.
+
+## Hardware Attempt Conclusion
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-17T22:59:25Z` |
+| Conclusion | `non_promotion` |
+| Failure category | `wifi_credentials_path_missing` |
+| Restoration | `not_needed` |
+| Process-tree cleanup | `true` |
+| Unexpected serial-holder count | `0` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Checklist changed | `false` |
+
+The protected root was sealed non-promotable. Admission was not invoked, no retry
+was attempted, and Phase 35 remains incomplete.

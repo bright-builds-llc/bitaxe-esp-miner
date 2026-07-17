@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 35-03-PLAN.md
-last_updated: "2026-07-17T22:41:47.160Z"
+stopped_at: Phase 35 Plan 04 Task 2 safe non-promotion checkpoint
+last_updated: "2026-07-17T23:02:07.588Z"
 last_activity: "2026-07-17"
 progress:
   total_phases: 5
@@ -381,7 +381,15 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - `next_hypothesis=version_rolling_negotiation`; `wire_parity_rx_loop_retained` + ASIC-256 retained
 - `phase30_promotion_input=pending`; checklist verified rows untouched
 
+## Blockers
+
+- Phase 35 Plan 04 Task 2 is blocked after the single allowed hardware attempt sealed
+  non-promotion with `wifi_credentials_path_missing`. Restoration was not needed,
+  cleanup passed, zero unexpected serial holders remained, admission was not invoked,
+  and no checklist row changed. The protected root is non-reusable; do not retry it.
+
 ## Session
 
-- **Stopped at:** Completed 35-03-PLAN.md
-- **Resume:** Execute `35-04-PLAN.md`; require an eligible real Phase 35 root for every narrow promotion and preserve every excluded non-claim.
+- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after safe non-promotion
+- **Resume:** Supply the ignored local `wifi-credentials.json`, then start a fresh
+  continuation run. Do not reuse or retry the sealed root.
