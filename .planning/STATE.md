@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 path-resolution repair checkpoint
-last_updated: "2026-07-18T00:36:49Z"
+stopped_at: Phase 35 Plan 04 Task 2 software repair checkpoint after third sealed attempt
+last_updated: "2026-07-18T16:34:20Z"
 last_activity: "2026-07-18"
 progress:
   total_phases: 5
@@ -383,16 +383,23 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 2 sealed
-  non-promotion with corrected category `path_resolution_failure`. The attempt stopped
-  before mutation, cleanup passed, zero unexpected serial holders remained, admission
-  was not invoked, and no checklist row changed. The protected root is non-reusable.
-  The Bazel/runfiles resolution bug is repaired in software; a fresh continuation must
-  own any later one-shot attempt.
+- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 3 sealed
+  non-promotion with category `flash_or_boot_a_failed`. Gate 1, the sole board-205
+  detector gate, and post-detector opaque input validation passed; the failure
+  occurred at a pre-capture wrapper boundary before any emitted flash, NVS-seed,
+  monitor, capture, qualification, or mutation fact. It does not prove a device
+  flash hard error. Restoration was not needed, cleanup passed, zero unexpected
+  serial holders remained, admission was not invoked, and no checklist row changed.
+  The protected root is non-reusable. Commit `46fe7f0b` repairs the diagnosed
+  recursive wrapper in software by invoking the already-built flash executable
+  directly; hermetic tests prove the detector-to-credential-to-flash ordering and
+  prohibit nested `just` or Bazel. The repair is not evidence, and no retry is
+  authorized in the completed continuation.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 path-resolution repair checkpoint after safe
-  non-promotion
-- **Resume:** Start a fresh continuation for the next one-shot attempt. Do not reuse
-  or retry either sealed root, and do not treat the software repair as evidence.
+- **Stopped at:** Phase 35 Plan 04 Task 2 software repair checkpoint after the third
+  sealed non-promotion attempt
+- **Resume:** Await an explicit continuation decision. Do not reuse, retry, or splice
+  any sealed root, and do not treat cleanup, the software repair, or administrative
+  closure as evidence.

@@ -100,3 +100,71 @@ wrong working directory. No hardware command was retried after diagnosis.
 The protected root remains sealed non-promotable. The software repair does not
 admit evidence, update a checklist row, complete Task 2, or authorize an automatic
 retry. A fresh continuation must own any later one-shot attempt.
+
+## Continuation Attempt 3 Checkpoint
+
+The third fresh attempt ran the full Phase 35 command exactly once. Gate 1
+revalidated the exact current package, the sole detector gate admitted one
+board-205 candidate with successful board-info, and the post-detector opaque input
+gate passed. The attempt then failed during the flash/Boot A boundary before any
+PATCH or settings mutation. The protected log contains no emitted flash command,
+NVS-seed command, monitor command, capture outcome, or monitor log. The exact
+sub-boundary is therefore a pre-capture wrapper failure: it does not prove a device
+flash hard error, and Boot A capture or qualification did not begin.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-18T16:15:57Z` |
+| Attempt ordinal | `3` |
+| Source commit | `cd468b9197637be7b994ef97b38320e96bc66e54` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Failure category | `flash_or_boot_a_failed` |
+| Failure boundary | `pre_capture_wrapper_failure` |
+| Device flash hard error proven | `false` |
+| Boot A capture started | `false` |
+| Boot A qualification ran | `false` |
+| Pre-mutation | `true` |
+| Restoration | `not_needed` |
+| Process-tree cleanup | `true` |
+| Unexpected serial-holder count | `0` |
+| Protected root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Checklist changed | `false` |
+
+The protected root is sealed non-promotable and cannot be reused or spliced.
+Task 2 and Phase 35 remain incomplete. No admission, checklist promotion, Task 3
+audit, or plan summary is authorized from this attempt.
+
+## Software Repair After Attempt 3
+
+Commit `46fe7f0b2837255749ef63a6f6f7aa4f3ad605d1` repairs the diagnosed
+pre-capture wrapper boundary without touching hardware. After detector and opaque
+input validation, the supervisor now resolves the already-built flash executable
+from the workspace `bazel-bin` tree or its Bazel runfiles and invokes
+`flash-monitor` directly. It no longer starts a nested `just flash-monitor` or
+Bazel process.
+
+The hermetic regression test makes nested `just` and Bazel executables fail on
+invocation, then proves exactly one direct `flash-monitor` call after detector and
+credential validation. It checks the exact admitted manifest path, detector-derived
+port category, opaque workspace credential path, protected evidence directory, and
+360-second capture timeout without real hardware or secret material.
+
+| Software verification | Result |
+| --- | --- |
+| Shell syntax, formatting, and lint checks | passed |
+| Phase 35 correlated-evidence regression suite | passed |
+| Phase 35 promotion and Phase 30 non-promotion contracts | passed |
+| Parity tests and checklist validation | passed |
+| Reference cleanliness | passed |
+| Phase 35 lifecycle verification | passed |
+| Ordered Rust format, lint, build, and test gates | passed |
+| Diff and redaction review | passed |
+
+This software repair is not hardware evidence. It does not reopen or qualify the
+sealed attempt-3 root, admit evidence, change a checklist row, complete Task 2, or
+authorize a retry. Any later hardware action requires a separately owned explicit
+continuation decision and a fresh protected root.
