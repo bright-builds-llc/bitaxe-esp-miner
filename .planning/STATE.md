@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 checkpoint after fourth sealed non-promotion and software repair
-last_updated: "2026-07-18T18:42:05Z"
+stopped_at: Phase 35 Plan 04 Task 2 checkpoint after fifth sealed non-promotion
+last_updated: "2026-07-18T23:46:44Z"
 last_activity: "2026-07-18"
 progress:
   total_phases: 5
@@ -26,7 +26,9 @@ Plan: 3 of 4 completed
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
 - **Status:** Ready to execute
-- **Next step:** Execute Plan 35-04's detector-gated live capture and admit only a fully eligible real protected root.
+- **Next step:** Await an explicit continuation decision. Any later attempt must use
+  one fresh protected root and the full detector-gated Phase 35 command exactly
+  once.
 
 ## Project Reference
 
@@ -383,25 +385,23 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 4 sealed
-  non-promotion. The one full command revalidated the exact package, admitted one
-  board-205 detector candidate with successful board-info, passed the opaque-input
-  gate, completed the direct flash command, and produced a non-empty Boot A monitor
-  capture. Typed Boot A qualification then rejected multiple boot-session
-  identities; no current-session origin was admitted. The supervisor emitted
-  `target_missing`, masking the earlier `baseline_multiple_sessions` rejection.
-  No HTTP settings read, PATCH, reboot, or mutation began; restoration was not
-  needed. Cleanup passed with zero unexpected serial holders and zero remaining
-  Phase 35 processes. Admission was not invoked, no evidence generation or
-  checklist row changed, and the protected root is non-reusable. Commit
-  `572da638` repairs the deterministic supervisor/classifier status contract with
-  hermetic fail-closed coverage. The repair is not evidence and does not authorize
-  a hardware retry.
+- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 5 sealed
+  non-promotion. The one full command revalidated the exact package and made the
+  sole detector invocation. Exactly one candidate reached one board-info command,
+  which failed with typed category `connection_failure` at the
+  `board_info_transport_connection` boundary. Private category-level diagnosis
+  distinguished this from no or multiple candidates, open or ownership failure,
+  and a deterministic detector/supervisor defect. No credential access, flash,
+  capture, target derivation, HTTP settings read, PATCH, reboot, or mutation began;
+  restoration was not needed. Cleanup passed with zero unexpected serial holders
+  and zero remaining Phase 35 processes. Admission was not invoked, no evidence
+  generation or checklist row changed, and the protected root is non-reusable.
+  No retry occurred in this continuation.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 software repair checkpoint after the fourth
-  sealed non-promotion attempt
+- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after the fifth sealed
+  non-promotion attempt
 - **Resume:** Await an explicit continuation decision. Do not reuse, retry, or splice
-  any sealed root, and do not treat cleanup, either software repair, or
-  administrative closure as evidence.
+  any sealed root, and do not treat cleanup, software repairs, or administrative
+  closure as evidence.

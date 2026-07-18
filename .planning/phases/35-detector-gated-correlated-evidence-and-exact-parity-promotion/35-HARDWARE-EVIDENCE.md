@@ -250,3 +250,56 @@ projection and proves that the supervisor:
 This repair is software-only. It does not change the attempt-4 result, admit an
 evidence generation, update a checklist row, complete Task 2, or authorize a
 hardware retry.
+
+## Continuation Attempt 5 Checkpoint
+
+The fifth fresh attempt ran the full Phase 35 command exactly once from clean
+source `8265520c4888bcb8eeca3363c11b4716e33d7385`. Gate 1 revalidated the
+exact-current package. The supervisor then made its sole detector invocation,
+selected exactly one candidate, and invoked board-info exactly once. Board-info
+failed at the transport connection boundary, so detector admission did not
+complete.
+
+Private category-level diagnosis distinguished this outcome from no candidate,
+multiple candidates, an open or ownership failure, and a deterministic
+detector/supervisor defect. No deterministic software defect was proven. The
+attempt stopped before the opaque credential gate, flash, Boot A capture, target
+derivation, HTTP settings reads, PATCH, reboot, or any settings mutation.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-18T23:46:44Z` |
+| Attempt ordinal | `5` |
+| Source commit | `8265520c4888bcb8eeca3363c11b4716e33d7385` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Exact-package Gate 1 passed | `true` |
+| Detector invocations | `1` |
+| Selected candidate count | `1` |
+| Board-info invocations | `1` |
+| Board-info verified | `false` |
+| Failure category | `connection_failure` |
+| Failure boundary | `board_info_transport_connection` |
+| Deterministic software defect proven | `false` |
+| Opaque credential gate reached | `false` |
+| Flash started | `false` |
+| Boot A capture started | `false` |
+| HTTP settings read started | `false` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration | `not_needed` |
+| Process-tree cleanup | `true` |
+| Unexpected serial-holder count | `0` |
+| Remaining Phase 35 process count | `0` |
+| Protected root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Evidence generation changed | `false` |
+| Checklist changed | `false` |
+
+The protected root is sealed non-promotable and cannot be reused, retried, or
+spliced. No hardware retry occurred in this continuation. Attempt 5 does not
+complete Task 2, authorize Task 3, or support a plan summary. Any later hardware
+action requires a separately owned explicit continuation decision and a fresh
+protected root.
