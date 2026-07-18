@@ -168,3 +168,85 @@ This software repair is not hardware evidence. It does not reopen or qualify the
 sealed attempt-3 root, admit evidence, change a checklist row, complete Task 2, or
 authorize a retry. Any later hardware action requires a separately owned explicit
 continuation decision and a fresh protected root.
+
+## Continuation Attempt 4 Checkpoint
+
+The fourth fresh attempt ran the full Phase 35 command exactly once from clean
+source `28b68dcccd3b8547a7781db0212cab774ad97ab7`. Gate 1 revalidated the
+exact-current package, the sole detector gate admitted one board-205 candidate
+with successful board-info, and the post-detector opaque input gate passed. The
+direct flash command completed and produced a non-empty Boot A monitor capture,
+but the typed baseline classifier rejected that capture because it contained
+multiple boot-session identities. No current-session origin was admitted.
+
+The supervisor emitted `target_missing` after reading the rejected classifier
+projection. Private software-only diagnosis established that this category masked
+the earlier typed `baseline_multiple_sessions` rejection. The attempt stopped
+before any HTTP settings read, PATCH, reboot, or settings mutation.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-18T18:34:10Z` |
+| Attempt ordinal | `4` |
+| Source commit | `28b68dcccd3b8547a7781db0212cab774ad97ab7` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Detector invocations | `1` |
+| Single candidate verified | `true` |
+| Board-info verified | `true` |
+| Opaque input gate passed | `true` |
+| Flash command completed | `true` |
+| Boot A monitor capture non-empty | `true` |
+| Boot A classification status | `failed` |
+| Boot A classification category | `baseline_multiple_sessions` |
+| Supervisor-emitted category | `target_missing` |
+| Failure boundary | `boot_a_baseline_qualification` |
+| Current-session origin admitted | `false` |
+| HTTP settings read started | `false` |
+| PATCH mutation started | `false` |
+| Restoration | `not_needed` |
+| Process-tree cleanup | `true` |
+| Unexpected serial-holder count | `0` |
+| Remaining Phase 35 process count | `0` |
+| Protected root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Checklist changed | `false` |
+
+The protected root is sealed non-promotable and cannot be reused, retried, or
+spliced. Attempt 4 does not complete Task 2, authorize Task 3, or support a plan
+summary.
+
+## Software Repair After Attempt 4
+
+Commit `572da63864fd73efefb7672dbe8c2908d4885d13` fixes the deterministic
+supervisor/classifier contract defect diagnosed from the sealed attempt. The
+supervisor now checks the classifier document's typed status before target
+derivation, rejects invalid classifier output, preserves a safe classifier rejection
+category, and explicitly propagates that category through Boot A failure handling.
+
+The hermetic direct-flash regression supplies a rejected Boot A classifier
+projection and proves that the supervisor:
+
+- preserves `baseline_multiple_sessions` in stderr and the non-promotion seal;
+- stops before settings reads, capture epochs, PATCH, reboot, restoration, or
+  validation;
+- performs cleanup after exactly one detector, opaque-input, and direct-flash
+  sequence.
+
+| Software verification | Result |
+| --- | --- |
+| Shell syntax and format checks | passed |
+| Shell lint for changed paths | passed |
+| Ordered Rust format, lint, build, and test gates | passed |
+| Phase 35 correlated-evidence regression suite | passed |
+| Phase 35 promotion and Phase 30 non-promotion contracts | passed |
+| Parity tests and checklist validation | passed |
+| Reference cleanliness | passed |
+| Phase 35 lifecycle verification | passed |
+| Diff and redaction review | passed |
+
+This repair is software-only. It does not change the attempt-4 result, admit an
+evidence generation, update a checklist row, complete Task 2, or authorize a
+hardware retry.

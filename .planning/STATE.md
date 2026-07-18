@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 software repair checkpoint after third sealed attempt
-last_updated: "2026-07-18T16:34:20Z"
+stopped_at: Phase 35 Plan 04 Task 2 checkpoint after fourth sealed non-promotion and software repair
+last_updated: "2026-07-18T18:42:05Z"
 last_activity: "2026-07-18"
 progress:
   total_phases: 5
@@ -383,23 +383,25 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 3 sealed
-  non-promotion with category `flash_or_boot_a_failed`. Gate 1, the sole board-205
-  detector gate, and post-detector opaque input validation passed; the failure
-  occurred at a pre-capture wrapper boundary before any emitted flash, NVS-seed,
-  monitor, capture, qualification, or mutation fact. It does not prove a device
-  flash hard error. Restoration was not needed, cleanup passed, zero unexpected
-  serial holders remained, admission was not invoked, and no checklist row changed.
-  The protected root is non-reusable. Commit `46fe7f0b` repairs the diagnosed
-  recursive wrapper in software by invoking the already-built flash executable
-  directly; hermetic tests prove the detector-to-credential-to-flash ordering and
-  prohibit nested `just` or Bazel. The repair is not evidence, and no retry is
-  authorized in the completed continuation.
+- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 4 sealed
+  non-promotion. The one full command revalidated the exact package, admitted one
+  board-205 detector candidate with successful board-info, passed the opaque-input
+  gate, completed the direct flash command, and produced a non-empty Boot A monitor
+  capture. Typed Boot A qualification then rejected multiple boot-session
+  identities; no current-session origin was admitted. The supervisor emitted
+  `target_missing`, masking the earlier `baseline_multiple_sessions` rejection.
+  No HTTP settings read, PATCH, reboot, or mutation began; restoration was not
+  needed. Cleanup passed with zero unexpected serial holders and zero remaining
+  Phase 35 processes. Admission was not invoked, no evidence generation or
+  checklist row changed, and the protected root is non-reusable. Commit
+  `572da638` repairs the deterministic supervisor/classifier status contract with
+  hermetic fail-closed coverage. The repair is not evidence and does not authorize
+  a hardware retry.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 software repair checkpoint after the third
+- **Stopped at:** Phase 35 Plan 04 Task 2 software repair checkpoint after the fourth
   sealed non-promotion attempt
 - **Resume:** Await an explicit continuation decision. Do not reuse, retry, or splice
-  any sealed root, and do not treat cleanup, the software repair, or administrative
-  closure as evidence.
+  any sealed root, and do not treat cleanup, either software repair, or
+  administrative closure as evidence.
