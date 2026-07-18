@@ -171,7 +171,7 @@ main() {
 	record_checkpoint root_admitted "$package_capability_digest"
 	validate_credential_path_after_detector || fail "${failure_category:-credential_path_invalid}"
 
-	run_flash_boot_a || fail "flash_or_boot_a_failed"
+	run_flash_boot_a || fail "${failure_category:-flash_or_boot_a_failed}"
 	target_token="$(jq -er '.target_token // .device_url' "$local_root/raw/boot-a-setup.json")" ||
 		fail "target_missing"
 	validate_target_after_capture || fail "target_invalid"

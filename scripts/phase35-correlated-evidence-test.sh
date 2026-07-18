@@ -191,8 +191,18 @@ apply_parity_stub() {
 	printf '%s\n' \
 		'#!/usr/bin/env bash' \
 		'set -euo pipefail' \
-		'jq -cn '"'"'{target_token:"fixture-target"}'"'" \
+		'jq -cn '"'"'{status:"passed",category:"none",session:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",boot_ordinal:7,device_url:"fixture-target"}'"'" \
 		>"$destination"
+}
+
+apply_rejecting_parity_stub() {
+	local destination="$1"
+	printf '%s\n' \
+		'#!/usr/bin/env bash' \
+		'set -euo pipefail' \
+		'jq -cn '"'"'{status:"failed",category:"baseline_multiple_sessions",session:null,boot_ordinal:null,device_url:null}'"'" \
+		>"$destination"
+	chmod 700 "$destination"
 }
 
 # shellcheck disable=SC2016 # Generated stubs must expand variables when they execute.
@@ -294,6 +304,29 @@ test_runfiles_invokes_direct_flash_once_without_nested_build_tools() {
 	flash_line="$(line_number direct_flash "$calls")"
 	[[ "$detector_line" -lt "$credential_line" && "$credential_line" -lt "$flash_line" ]] ||
 		fail_test "direct flash ran before detector and credential gates"
+}
+
+test_direct_flash_classifier_rejection_preserves_typed_category() {
+	# Arrange
+	prepare_case runfiles_classifier_rejection
+	prepare_isolated_supervisor
+	prepare_direct_flash_stubs
+	apply_rejecting_parity_stub "${workspace}/bazel-bin/tools/parity/report"
+	printf 'opaque-fixture-input\n' >"${workspace}/wifi-credentials.json"
+	fixture_direct_flash=true
+
+	# Act
+	run_isolated_supervisor success
+
+	# Assert
+	[[ "$run_status" != 0 ]] || fail_test "rejected Boot A classification was accepted"
+	assert_line "$case_dir/stderr.log" 'failure_category=baseline_multiple_sessions'
+	assert_line "$evidence_root/non-promotion.seal" 'category=baseline_multiple_sessions'
+	assert_count 1 detector "$calls"
+	assert_count 1 credential_path "$calls"
+	assert_count 1 direct_flash "$calls"
+	assert_count 1 cleanup "$calls"
+	assert_absent "$calls" 'read_setting_|capture_|mutated_setting|patch|reboot|restore|validator'
 }
 
 test_just_entrypoint_builds_the_current_package_before_supervisor() {
@@ -530,6 +563,7 @@ test_success_ordering_and_private_root() {
 test_runfiles_entrypoint_resolves_sibling_helpers
 test_runfiles_resolves_repo_root_credential_only_after_detector
 test_runfiles_invokes_direct_flash_once_without_nested_build_tools
+test_direct_flash_classifier_rejection_preserves_typed_category
 test_just_entrypoint_builds_the_current_package_before_supervisor
 test_preflight_has_no_detector_or_effects
 test_detector_failures_stop_all_later_commands

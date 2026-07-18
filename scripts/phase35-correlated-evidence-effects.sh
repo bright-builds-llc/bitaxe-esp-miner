@@ -115,9 +115,35 @@ production_classify_boot() {
 	local mode="$1"
 	local trace="$2"
 	local output="$3"
-	"${workspace_dir}/bazel-bin/tools/parity/report" phase33-classify \
+	if ! "${workspace_dir}/bazel-bin/tools/parity/report" phase33-classify \
 		--trace "$trace" \
-		--mode "$mode" >"$output"
+		--mode "$mode" >"$output"; then
+		failure_category="boot_classifier_failed"
+		return 1
+	fi
+
+	local classification_status
+	classification_status="$(jq -er '.status' "$output")" || {
+		failure_category="boot_classifier_output_invalid"
+		return 1
+	}
+	if [[ "$classification_status" == "passed" ]]; then
+		return 0
+	fi
+	if [[ "$classification_status" != "failed" ]]; then
+		failure_category="boot_classifier_output_invalid"
+		return 1
+	fi
+
+	local classification_category
+	classification_category="$(jq -er \
+		'.category | select(type == "string") | select(test("^[a-z0-9_]+$"))' \
+		"$output")" || {
+		failure_category="boot_classifier_rejected"
+		return 1
+	}
+	failure_category="$classification_category"
+	return 1
 }
 
 run_flash_boot_a() {
@@ -162,7 +188,10 @@ run_flash_boot_a() {
 	chmod 600 "$local_root/raw/flash-command.log"
 	local monitor_log="$flash_dir/flash-monitor.log"
 	[[ -s "$monitor_log" ]] || return 1
-	production_classify_boot baseline "$monitor_log" "$output"
+	if ! production_classify_boot baseline "$monitor_log" "$output"; then
+		chmod 600 "$output"
+		return 1
+	fi
 	chmod 600 "$output"
 }
 
