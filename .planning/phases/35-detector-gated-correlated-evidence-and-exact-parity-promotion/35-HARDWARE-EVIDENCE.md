@@ -78,3 +78,25 @@ promotion.
 
 The protected root was sealed non-promotable. Admission was not invoked, no retry
 was attempted, and Phase 35 remains incomplete.
+
+## Continuation Attempt 2 Checkpoint
+
+The second fresh attempt stopped at the post-detector opaque-input boundary. A
+software-only diagnosis corrected the emitted category: the input was available,
+but the Bazel/runfiles process resolved the caller-relative argument against the
+wrong working directory. No hardware command was retried after diagnosis.
+
+| Field | Recorded value |
+| --- | --- |
+| Attempt ordinal | `2` |
+| Corrected category | `path_resolution_failure` |
+| Pre-mutation | `true` |
+| Cleanup confirmed | `true` |
+| Unexpected serial-holder count | `0` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Tracked diff count at root close | `0` |
+
+The protected root remains sealed non-promotable. The software repair does not
+admit evidence, update a checklist row, complete Task 2, or authorize an automatic
+retry. A fresh continuation must own any later one-shot attempt.

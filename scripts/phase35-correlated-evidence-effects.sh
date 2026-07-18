@@ -88,18 +88,27 @@ run_detector_gate() {
 
 validate_credential_path_after_detector() {
 	[[ -n "$wifi_credentials" ]] || return 0
+	local resolved_credentials
+	resolved_credentials="$(absolute_path "$wifi_credentials")"
 	if [[ -n "$fixture_command" ]]; then
-		fixture credential_path "$wifi_credentials" >/dev/null
+		fixture credential_path "$resolved_credentials" >/dev/null
+		wifi_credentials="$resolved_credentials"
 		return
 	fi
-	[[ -f "$wifi_credentials" ]] || {
+	[[ -f "$resolved_credentials" ]] || {
 		failure_category="wifi_credentials_path_missing"
 		return 1
 	}
-	git -C "$workspace_dir" check-ignore -q -- "$wifi_credentials" || {
+	[[ "$resolved_credentials" == "${workspace_dir}/"* ]] || {
 		failure_category="wifi_credentials_path_not_ignored"
 		return 1
 	}
+	local workspace_relative_credentials="${resolved_credentials#"${workspace_dir}/"}"
+	git -C "$workspace_dir" check-ignore -q -- "$workspace_relative_credentials" || {
+		failure_category="wifi_credentials_path_not_ignored"
+		return 1
+	}
+	wifi_credentials="$resolved_credentials"
 }
 
 production_classify_boot() {

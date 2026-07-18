@@ -9,6 +9,7 @@ readonly source_commit="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 readonly other_commit="cccccccccccccccccccccccccccccccccccccccc"
 readonly identity_digest="dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 readonly other_identity_digest="eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+readonly expected_credential_path="${PHASE35_FIXTURE_EXPECTED_CREDENTIAL_PATH:-}"
 
 mkdir -p "$fixture_state"
 
@@ -194,6 +195,9 @@ physical_identity_after)
 	;;
 credential_path)
 	record credential_path
+	if [[ -n "$expected_credential_path" ]]; then
+		[[ "$#" == 1 && "$1" == "$expected_credential_path" && -f "$1" ]]
+	fi
 	;;
 flash_boot_a)
 	record flash_boot_a

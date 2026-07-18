@@ -3,9 +3,9 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 safe non-promotion checkpoint
-last_updated: "2026-07-17T23:02:07.588Z"
-last_activity: "2026-07-17"
+stopped_at: Phase 35 Plan 04 Task 2 path-resolution repair checkpoint
+last_updated: "2026-07-18T00:36:49Z"
+last_activity: "2026-07-18"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-17
+Last activity: 2026-07-18
 
 ## Current Position
 
@@ -383,13 +383,16 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 is blocked after the single allowed hardware attempt sealed
-  non-promotion with `wifi_credentials_path_missing`. Restoration was not needed,
-  cleanup passed, zero unexpected serial holders remained, admission was not invoked,
-  and no checklist row changed. The protected root is non-reusable; do not retry it.
+- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 2 sealed
+  non-promotion with corrected category `path_resolution_failure`. The attempt stopped
+  before mutation, cleanup passed, zero unexpected serial holders remained, admission
+  was not invoked, and no checklist row changed. The protected root is non-reusable.
+  The Bazel/runfiles resolution bug is repaired in software; a fresh continuation must
+  own any later one-shot attempt.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after safe non-promotion
-- **Resume:** Supply the ignored local `wifi-credentials.json`, then start a fresh
-  continuation run. Do not reuse or retry the sealed root.
+- **Stopped at:** Phase 35 Plan 04 Task 2 path-resolution repair checkpoint after safe
+  non-promotion
+- **Resume:** Start a fresh continuation for the next one-shot attempt. Do not reuse
+  or retry either sealed root, and do not treat the software repair as evidence.

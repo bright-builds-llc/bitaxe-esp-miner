@@ -97,10 +97,8 @@ run_supervisor() {
 	set -e
 }
 
-test_runfiles_entrypoint_resolves_sibling_helpers() {
-	# Arrange
-	prepare_case runfiles_preflight
-	local isolated_supervisor="${case_dir}/phase35_correlated_evidence"
+prepare_isolated_supervisor() {
+	isolated_supervisor="${case_dir}/phase35_correlated_evidence"
 	local runfiles_scripts="${isolated_supervisor}.runfiles/_main/scripts"
 	mkdir -p "$runfiles_scripts"
 	cp "$supervisor" "$isolated_supervisor"
@@ -111,27 +109,78 @@ test_runfiles_entrypoint_resolves_sibling_helpers() {
 		"${script_dir}/phase35-correlated-evidence-document.sh" \
 		"${script_dir}/serial-session-trace.sh" \
 		"$runfiles_scripts/"
+}
 
-	# Act
+run_isolated_supervisor() {
+	local scenario="$1"
+	shift
+	active_scenario="$scenario"
 	set +e
-	BUILD_WORKSPACE_DIRECTORY="$workspace" \
-		PHASE35_FIXTURE_COMMAND="$fixture" \
-		PHASE35_FIXTURE_STATE="$state_dir" \
-		PHASE35_FIXTURE_SCENARIO=success \
-		"$isolated_supervisor" \
-		"manifest=${manifest_dir}/manifest.json" \
-		"local-root=${evidence_root}" \
-		preflight-only=true \
-		capture-timeout-seconds=360 \
-		caller-wall-clock-seconds=420 >"$case_dir/stdout.log" 2>"$case_dir/stderr.log"
+	(
+		cd "$case_dir"
+		BUILD_WORKSPACE_DIRECTORY="$workspace" \
+			PHASE35_FIXTURE_COMMAND="$fixture" \
+			PHASE35_FIXTURE_STATE="$state_dir" \
+			PHASE35_FIXTURE_SCENARIO="$scenario" \
+			PHASE35_FIXTURE_EXPECTED_CREDENTIAL_PATH="${workspace}/wifi-credentials.json" \
+			"$isolated_supervisor" \
+			"manifest=${manifest_dir}/manifest.json" \
+			"local-root=${evidence_root}" \
+			wifi-credentials=wifi-credentials.json \
+			capture-timeout-seconds=360 \
+			caller-wall-clock-seconds=420 \
+			"$@"
+	) >"$case_dir/stdout.log" 2>"$case_dir/stderr.log"
 	run_status=$?
 	set -e
+}
+
+test_runfiles_entrypoint_resolves_sibling_helpers() {
+	# Arrange
+	prepare_case runfiles_preflight
+	prepare_isolated_supervisor
+
+	# Act
+	run_isolated_supervisor success preflight-only=true
 
 	# Assert
 	[[ "$run_status" == 0 ]] || fail_test "runfiles preflight failed"
 	assert_contains "$case_dir/stdout.log" '^status=preflight_passed$'
 	assert_count 1 package_admission "$calls"
 	assert_count 0 detector "$calls"
+	assert_count 0 credential_path "$calls"
+}
+
+test_runfiles_resolves_repo_root_credential_only_after_detector() {
+	# Arrange: a detector failure must not touch the opaque credential path.
+	prepare_case runfiles_detector_failure
+	prepare_isolated_supervisor
+
+	# Act
+	run_isolated_supervisor zero_candidates
+
+	# Assert
+	assert_pre_patch_failure
+	assert_count 1 detector "$calls"
+	assert_count 0 credential_path "$calls"
+
+	# Arrange: the same relative argument exists only at the original workspace root.
+	prepare_case runfiles_credential_success
+	prepare_isolated_supervisor
+	printf 'opaque-fixture-input\n' >"${workspace}/wifi-credentials.json"
+
+	# Act
+	run_isolated_supervisor success
+
+	# Assert
+	[[ "$run_status" == 0 ]] || fail_test "workspace-root credential resolution failed"
+	assert_count 1 detector "$calls"
+	assert_count 1 credential_path "$calls"
+	local detector_line credential_line
+	detector_line="$(line_number detector "$calls")"
+	credential_line="$(line_number credential_path "$calls")"
+	[[ "$detector_line" -lt "$credential_line" ]] ||
+		fail_test "credential path was resolved before detector authority"
 }
 
 test_just_entrypoint_builds_the_current_package_before_supervisor() {
@@ -366,6 +415,7 @@ test_success_ordering_and_private_root() {
 }
 
 test_runfiles_entrypoint_resolves_sibling_helpers
+test_runfiles_resolves_repo_root_credential_only_after_detector
 test_just_entrypoint_builds_the_current_package_before_supervisor
 test_preflight_has_no_detector_or_effects
 test_detector_failures_stop_all_later_commands
