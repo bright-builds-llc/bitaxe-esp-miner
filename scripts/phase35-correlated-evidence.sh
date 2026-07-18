@@ -45,6 +45,23 @@ capture_timeout_seconds=360
 caller_wall_clock_seconds=420
 preflight_only=false
 fixture_command="${PHASE35_FIXTURE_COMMAND:-}"
+fixture_direct_flash="${PHASE35_FIXTURE_DIRECT_FLASH:-false}"
+
+resolve_flash_executable() {
+	local candidate
+	for candidate in \
+		"${workspace_dir}/bazel-bin/tools/flash/flash" \
+		"${BASH_SOURCE[0]}.runfiles/_main/tools/flash/flash" \
+		"${RUNFILES_DIR:-}/_main/tools/flash/flash"; do
+		if [[ -x "$candidate" ]]; then
+			printf '%s\n' "$candidate"
+			return 0
+		fi
+	done
+
+	printf 'failure_category=flash_executable_unavailable\n' >&2
+	return 1
+}
 
 run_id_digest=""
 root_contract_digest=""
@@ -119,6 +136,14 @@ done
 	printf 'failure_category=caller_wall_clock_too_short\n' >&2
 	exit 2
 }
+fixture_direct_flash="$(parse_bool "$fixture_direct_flash")" || {
+	printf 'failure_category=invalid_fixture_direct_flash\n' >&2
+	exit 2
+}
+if [[ "$fixture_direct_flash" == true && -z "$fixture_command" ]]; then
+	printf 'failure_category=fixture_direct_flash_without_fixture\n' >&2
+	exit 2
+fi
 
 # shellcheck source=scripts/phase35-correlated-evidence-root.sh
 source "${script_dir}/phase35-correlated-evidence-root.sh"

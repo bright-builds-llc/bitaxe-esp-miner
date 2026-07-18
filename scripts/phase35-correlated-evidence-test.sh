@@ -24,6 +24,12 @@ assert_contains() {
 	rg -q "$pattern" "$file" || fail_test "expected ${pattern} in ${file##*/}"
 }
 
+assert_line() {
+	local file="$1"
+	local expected="$2"
+	rg -Fqx -- "$expected" "$file" || fail_test "expected exact line in ${file##*/}: ${expected}"
+}
+
 assert_absent() {
 	local file="$1"
 	local pattern="$2"
@@ -62,6 +68,10 @@ prepare_case() {
 	manifest_dir="${case_dir}/package"
 	evidence_root="${case_dir}/evidence"
 	calls="${state_dir}/calls.log"
+	fixture_direct_flash=false
+	supervisor_path="$PATH"
+	direct_flash_calls="${state_dir}/direct-flash-calls.log"
+	nested_tool_calls="${state_dir}/nested-tool-calls.log"
 	mkdir -p "$state_dir" "$manifest_dir"
 	printf 'fixture-setting-before\n' >"$state_dir/current-setting.txt"
 	printf 'fixture-executable\n' >"$manifest_dir/firmware.elf"
@@ -119,10 +129,14 @@ run_isolated_supervisor() {
 	(
 		cd "$case_dir"
 		BUILD_WORKSPACE_DIRECTORY="$workspace" \
+			PATH="$supervisor_path" \
 			PHASE35_FIXTURE_COMMAND="$fixture" \
+			PHASE35_FIXTURE_DIRECT_FLASH="$fixture_direct_flash" \
 			PHASE35_FIXTURE_STATE="$state_dir" \
 			PHASE35_FIXTURE_SCENARIO="$scenario" \
 			PHASE35_FIXTURE_EXPECTED_CREDENTIAL_PATH="${workspace}/wifi-credentials.json" \
+			PHASE35_DIRECT_FLASH_CALLS="$direct_flash_calls" \
+			PHASE35_NESTED_TOOL_CALLS="$nested_tool_calls" \
 			"$isolated_supervisor" \
 			"manifest=${manifest_dir}/manifest.json" \
 			"local-root=${evidence_root}" \
@@ -133,6 +147,63 @@ run_isolated_supervisor() {
 	) >"$case_dir/stdout.log" 2>"$case_dir/stderr.log"
 	run_status=$?
 	set -e
+}
+
+prepare_direct_flash_stubs() {
+	local flash_bin="${workspace}/bazel-bin/tools/flash/flash"
+	local parity_bin="${workspace}/bazel-bin/tools/parity/report"
+	local blocked_bin="${case_dir}/blocked-bin"
+	mkdir -p "$(dirname "$flash_bin")" "$(dirname "$parity_bin")" "$blocked_bin"
+	apply_direct_flash_stub "$flash_bin"
+	apply_parity_stub "$parity_bin"
+	apply_blocked_tool_stub "$blocked_bin/just"
+	apply_blocked_tool_stub "$blocked_bin/bazel"
+	chmod 700 "$flash_bin" "$parity_bin" "$blocked_bin/just" "$blocked_bin/bazel"
+	supervisor_path="${blocked_bin}:${PATH}"
+}
+
+# shellcheck disable=SC2016 # Generated stubs must expand variables when they execute.
+apply_direct_flash_stub() {
+	local destination="$1"
+	printf '%s\n' \
+		'#!/usr/bin/env bash' \
+		'set -euo pipefail' \
+		'printf "CALL\n" >>"${PHASE35_DIRECT_FLASH_CALLS:?}"' \
+		'printf "arg=%s\n" "$@" >>"${PHASE35_DIRECT_FLASH_CALLS:?}"' \
+		'printf "direct_flash\n" >>"${PHASE35_FIXTURE_STATE:?}/calls.log"' \
+		'evidence_dir=""' \
+		'while (($#)); do' \
+		'  if [[ "$1" == "--evidence-dir" ]]; then' \
+		'    evidence_dir="$2"' \
+		'    shift 2' \
+		'    continue' \
+		'  fi' \
+		'  shift' \
+		'done' \
+		'[[ -n "$evidence_dir" ]]' \
+		'mkdir -p "$evidence_dir"' \
+		'printf "fixture-monitor\n" >"${evidence_dir}/flash-monitor.log"' \
+		>"$destination"
+}
+
+apply_parity_stub() {
+	local destination="$1"
+	printf '%s\n' \
+		'#!/usr/bin/env bash' \
+		'set -euo pipefail' \
+		'jq -cn '"'"'{target_token:"fixture-target"}'"'" \
+		>"$destination"
+}
+
+# shellcheck disable=SC2016 # Generated stubs must expand variables when they execute.
+apply_blocked_tool_stub() {
+	local destination="$1"
+	printf '%s\n' \
+		'#!/usr/bin/env bash' \
+		'set -euo pipefail' \
+		'printf "%s\n" "${0##*/}" >>"${PHASE35_NESTED_TOOL_CALLS:?}"' \
+		'exit 97' \
+		>"$destination"
 }
 
 test_runfiles_entrypoint_resolves_sibling_helpers() {
@@ -181,6 +252,48 @@ test_runfiles_resolves_repo_root_credential_only_after_detector() {
 	credential_line="$(line_number credential_path "$calls")"
 	[[ "$detector_line" -lt "$credential_line" ]] ||
 		fail_test "credential path was resolved before detector authority"
+}
+
+test_runfiles_invokes_direct_flash_once_without_nested_build_tools() {
+	# Arrange
+	prepare_case runfiles_direct_flash
+	prepare_isolated_supervisor
+	prepare_direct_flash_stubs
+	printf 'opaque-fixture-input\n' >"${workspace}/wifi-credentials.json"
+	fixture_direct_flash=true
+
+	# Act
+	run_isolated_supervisor success
+
+	# Assert
+	[[ "$run_status" == 0 ]] || fail_test "direct flash fixture scenario failed"
+	assert_count 1 detector "$calls"
+	assert_count 1 credential_path "$calls"
+	assert_count 1 direct_flash "$calls"
+	assert_count 1 CALL "$direct_flash_calls"
+	[[ "$(rg -c '^arg=' "$direct_flash_calls")" == 13 ]] ||
+		fail_test "direct flash received unexpected or missing arguments"
+	[[ ! -s "$nested_tool_calls" ]] || fail_test "direct flash path invoked nested just or Bazel"
+	assert_line "$direct_flash_calls" 'arg=flash-monitor'
+	assert_line "$direct_flash_calls" 'arg=--board'
+	assert_line "$direct_flash_calls" 'arg=205'
+	assert_line "$direct_flash_calls" 'arg=--port'
+	assert_line "$direct_flash_calls" 'arg=fixture-device'
+	assert_line "$direct_flash_calls" 'arg=--manifest'
+	assert_line "$direct_flash_calls" "arg=${manifest_dir}/manifest.json"
+	assert_line "$direct_flash_calls" 'arg=--evidence-dir'
+	assert_line "$direct_flash_calls" "arg=${evidence_root}/raw/flash"
+	assert_line "$direct_flash_calls" 'arg=--capture-timeout-seconds'
+	assert_line "$direct_flash_calls" 'arg=360'
+	assert_line "$direct_flash_calls" 'arg=--wifi-credentials'
+	assert_line "$direct_flash_calls" "arg=${workspace}/wifi-credentials.json"
+
+	local detector_line credential_line flash_line
+	detector_line="$(line_number detector "$calls")"
+	credential_line="$(line_number credential_path "$calls")"
+	flash_line="$(line_number direct_flash "$calls")"
+	[[ "$detector_line" -lt "$credential_line" && "$credential_line" -lt "$flash_line" ]] ||
+		fail_test "direct flash ran before detector and credential gates"
 }
 
 test_just_entrypoint_builds_the_current_package_before_supervisor() {
@@ -416,6 +529,7 @@ test_success_ordering_and_private_root() {
 
 test_runfiles_entrypoint_resolves_sibling_helpers
 test_runfiles_resolves_repo_root_credential_only_after_detector
+test_runfiles_invokes_direct_flash_once_without_nested_build_tools
 test_just_entrypoint_builds_the_current_package_before_supervisor
 test_preflight_has_no_detector_or_effects
 test_detector_failures_stop_all_later_commands

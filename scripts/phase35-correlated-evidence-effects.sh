@@ -122,7 +122,7 @@ production_classify_boot() {
 
 run_flash_boot_a() {
 	local output="$local_root/raw/boot-a-setup.json"
-	if [[ -n "$fixture_command" ]]; then
+	if [[ -n "$fixture_command" && "$fixture_direct_flash" != true ]]; then
 		if ! fixture flash_boot_a "$capture_timeout_seconds" >"$output"; then
 			chmod 600 "$output"
 			return 1
@@ -134,17 +134,28 @@ run_flash_boot_a() {
 	local flash_dir="$local_root/raw/flash"
 	mkdir -p "$flash_dir"
 	chmod 700 "$flash_dir"
+	local flash_executable
+	flash_executable="$(resolve_flash_executable)" || {
+		failure_category="flash_executable_unavailable"
+		return 1
+	}
 	local args=(
-		board=205
-		"port=${port}"
-		"manifest=${manifest}"
-		"evidence-dir=${flash_dir}"
-		"capture-timeout-seconds=${capture_timeout_seconds}"
+		flash-monitor
+		--board
+		205
+		--port
+		"$port"
+		--manifest
+		"$manifest"
+		--evidence-dir
+		"$flash_dir"
+		--capture-timeout-seconds
+		"$capture_timeout_seconds"
 	)
 	if [[ -n "$wifi_credentials" ]]; then
-		args+=("wifi-credentials=${wifi_credentials}")
+		args+=(--wifi-credentials "$wifi_credentials")
 	fi
-	if ! just flash-monitor "${args[@]}" >"$local_root/raw/flash-command.log" 2>&1; then
+	if ! "$flash_executable" "${args[@]}" >"$local_root/raw/flash-command.log" 2>&1; then
 		chmod 600 "$local_root/raw/flash-command.log"
 		return 1
 	fi
