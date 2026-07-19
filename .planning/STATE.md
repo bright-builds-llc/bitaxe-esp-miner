@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 checkpoint after eighth sealed non-promotion and software repair
-last_updated: "2026-07-19T05:19:35Z"
+stopped_at: Phase 35 Plan 04 Task 2 checkpoint after ninth sealed non-promotion
+last_updated: "2026-07-19T13:18:23Z"
 last_activity: "2026-07-19"
 progress:
   total_phases: 5
@@ -25,12 +25,12 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Blocked at Task 2 after sealed non-promotion and software repair
+- **Status:** Blocked at Task 2 after sealed non-promotion attempt 9
 - **Next step:** A separately authorized fresh continuation may decide whether
-  to run one new exact-current-package detector-gated attempt from repair commit
-  `9fb0a488`. It must use a new protected root and may not reuse or splice the
-  sealed attempt-8 root. No further physical action or hardware command is
-  authorized in this continuation.
+  to run one new exact-current-package detector-gated attempt. It must use a new
+  protected root and may not reuse or splice the sealed attempt-9 root. No
+  further physical action or hardware command is authorized in this
+  continuation.
 
 ## Project Reference
 
@@ -387,28 +387,27 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 8 sealed
-  non-promotion. The completed USB-only re-enumeration resolved the prior
-  board-info transport failure: exactly one candidate and one board-info passed,
-  the opaque input gate passed, direct flash completed, and Boot A capture was
-  non-empty. The strict classifier rejected 59 distinct sequential boot sessions
-  with category `baseline_multiple_sessions`; 52 explicitly reported stack
-  overflow in firmware task `main`, with 53 `panic`, five `watchdog`, and one
-  `other` reset category. The attempt stopped before target admission, HTTP,
-  PATCH, approved reboot, or mutation. Cleanup confirmed zero remaining Phase 35
-  processes and zero unexpected serial holders. The root is sealed and
-  non-reusable; admission, evidence generation, checklist changes, Task 3,
-  summary, and retry did not occur. Software-only repair `9fb0a488` raises the
-  ESP-IDF main-task stack to 16 KiB and adds a hermetic minimum-capacity
-  regression; all required software verification passed. A separately authorized
-  fresh continuation must own any later exact-current-package one-shot attempt.
+- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 9 sealed
+  non-promotion. The exact current package included the 16 KiB main-task stack
+  repair and produced one coherent Boot A session without the attempt-8 restart
+  loop or stack overflow. Exactly one candidate and board-info passed, the
+  opaque input gate passed, direct flash completed, and the fresh target was
+  derived and shape-validated. The original settings request then timed out
+  before producing a response body, so JSON and hostname schema/value validation
+  did not begin. No deterministic supervisor or API-path defect was proven. The
+  attempt stopped before PATCH, approved reboot, or mutation. Cleanup confirmed
+  zero remaining Phase 35 processes and zero unexpected serial holders; no
+  restoration was needed. The root is sealed and non-reusable; admission,
+  evidence generation, checklist changes, Task 3, summary, and retry did not
+  occur. A separately authorized fresh continuation must own any later
+  exact-current-package one-shot attempt.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after the eighth sealed
-  non-promotion attempt and software repair `9fb0a488`
-- **Resume:** Start only through a separately authorized fresh continuation from
-  the clean repair commit. Rebuild and lock the exact current package, create a
-  fresh protected root, and preserve the one-full-command/one-detector/no-retry
-  contract. Do not reuse, retry, or splice the sealed attempt-8 root. Do not run
-  Task 3 or create `35-04-SUMMARY.md` unless a later root is genuinely admitted.
+- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after the ninth sealed
+  non-promotion attempt
+- **Resume:** Start only through a separately authorized fresh continuation.
+  Rebuild and lock the exact current package, create a fresh protected root, and
+  preserve the one-full-command/one-detector/no-retry contract. Do not reuse,
+  retry, or splice the sealed attempt-9 root. Do not run Task 3 or create
+  `35-04-SUMMARY.md` unless a later root is genuinely admitted.

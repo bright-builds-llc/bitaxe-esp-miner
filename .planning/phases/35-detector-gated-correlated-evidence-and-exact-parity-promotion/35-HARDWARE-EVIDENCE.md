@@ -534,3 +534,78 @@ The next allowed action is a separately authorized fresh continuation from the
 clean repair commit. Any such continuation must rebuild and lock the exact
 current package, use a new protected root, and make its own explicit one-shot
 hardware decision. No further physical action is requested at this checkpoint.
+
+## Continuation Attempt 9 Checkpoint
+
+The ninth fresh continuation ran the full Phase 35 command exactly once from
+clean source `bc35f9579200450ca03d78bc545cf2691a2cec87`. The repo-owned
+entrypoint rebuilt and locked the exact current package containing the 16 KiB
+main-task stack repair before the supervisor ran.
+
+The corrected protected-root contract passed immediately before launch. The
+supervisor created the nonexistent child, passed exact-package Gate 1, made its
+sole detector invocation, selected exactly one candidate, and completed its
+single board-info invocation successfully. The post-detector opaque input gate
+passed, direct flash completed, and the strict Boot A classifier admitted one
+coherent session. No restart loop or main-task stack overflow recurred, so this
+attempt confirms the attempt-8 stack-capacity repair at the exact-current-package
+hardware boundary.
+
+The fresh current-session target was derived and passed the closed target-shape
+validation. The first original-settings request then timed out before producing
+any response body. Because no body existed, JSON parsing and hostname-field
+schema/value validation did not begin. Private software-only diagnosis found no
+deterministic supervisor or API-path defect from this outcome. The supervisor
+sealed typed category `original_setting_unavailable` and stopped before any
+PATCH, approved normal reboot, or settings mutation.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-19T13:18:23Z` |
+| Attempt ordinal | `9` |
+| Source commit | `bc35f9579200450ca03d78bc545cf2691a2cec87` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Exact current package rebuilt and locked | `true` |
+| Main-task stack capacity | `16384` |
+| Exact-package Gate 1 passed | `true` |
+| Detector invocations | `1` |
+| Selected candidate count | `1` |
+| Board-info invocations | `1` |
+| Board-info verified | `true` |
+| Opaque input gate passed | `true` |
+| Flash command completed | `true` |
+| Boot A monitor capture non-empty | `true` |
+| Boot A classification status | `passed` |
+| Boot A coherent session count | `1` |
+| Runtime restart loop observed | `false` |
+| Main-task stack overflow observed | `false` |
+| Target derived | `true` |
+| Target shape validated | `true` |
+| Original settings request outcome | `timeout` |
+| Original settings response body | `missing` |
+| Hostname schema validation reached | `false` |
+| Failure category | `original_setting_unavailable` |
+| Failure boundary | `original_settings_http_read` |
+| Deterministic repository defect proven | `false` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration | `not_needed` |
+| Process-tree cleanup | `true` |
+| Unexpected serial-holder count | `0` |
+| Remaining Phase 35 process count | `0` |
+| Protected root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Evidence generation changed | `false` |
+| Checklist changed | `false` |
+| Task 3 authorized | `false` |
+| Plan summary created | `false` |
+| Retry in this continuation | `false` |
+
+The protected root is sealed non-promotable and cannot be reused, retried, or
+spliced. Task 2 and Phase 35 remain incomplete, and Task 3 is not authorized.
+No hardware retry occurred. Any later hardware attempt requires a separately
+authorized fresh continuation and a new protected root; no further hardware
+action is authorized by this checkpoint.
