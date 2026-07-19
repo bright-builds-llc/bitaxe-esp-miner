@@ -5,10 +5,12 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly supervisor="${script_dir}/phase35-correlated-evidence.sh"
 readonly fixture="${script_dir}/phase35-correlated-evidence-fixture.sh"
 readonly justfile="${script_dir}/../Justfile"
+readonly sdkconfig_defaults="${script_dir}/../firmware/bitaxe/sdkconfig.defaults"
 readonly test_root="${TEST_TMPDIR:-$(mktemp -d)}/phase35"
 readonly workspace="${test_root}/workspace"
 readonly source_commit="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 readonly reference_commit="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+readonly minimum_main_task_stack_bytes=16384
 active_scenario=""
 
 mkdir -p "$workspace"
@@ -58,6 +60,29 @@ line_number() {
 file_mode() {
 	local file="$1"
 	stat -f '%Lp' "$file" 2>/dev/null || stat -c '%a' "$file"
+}
+
+test_main_task_stack_capacity() {
+	# Arrange
+	local assignment_count
+	assignment_count="$(rg -c '^CONFIG_ESP_MAIN_TASK_STACK_SIZE=[0-9]+$' "$sdkconfig_defaults")"
+	[[ "$assignment_count" == 1 ]] ||
+		fail_test "expected one ESP main-task stack assignment"
+	local configured_stack_bytes
+	configured_stack_bytes="$(
+		sed -n 's/^CONFIG_ESP_MAIN_TASK_STACK_SIZE=//p' "$sdkconfig_defaults"
+	)"
+
+	# Act
+	local capacity_is_sufficient=false
+	if [[ "$configured_stack_bytes" =~ ^[0-9]+$ ]] &&
+		((configured_stack_bytes >= minimum_main_task_stack_bytes)); then
+		capacity_is_sufficient=true
+	fi
+
+	# Assert
+	[[ "$capacity_is_sufficient" == true ]] ||
+		fail_test "ESP main-task stack is below the Phase 35 runtime minimum"
 }
 
 prepare_case() {
@@ -560,6 +585,7 @@ test_success_ordering_and_private_root() {
 	assert_absent "$case_dir/stdout.log" 'fixture-target|fixture-device|fixture-setting'
 }
 
+test_main_task_stack_capacity
 test_runfiles_entrypoint_resolves_sibling_helpers
 test_runfiles_resolves_repo_root_credential_only_after_detector
 test_runfiles_invokes_direct_flash_once_without_nested_build_tools

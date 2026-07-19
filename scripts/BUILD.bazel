@@ -751,6 +751,7 @@ sh_test(
     srcs = ["phase35-correlated-evidence-test.sh"],
     data = [
         "//:Justfile",
+        "//firmware/bitaxe:sdkconfig.defaults",
         "phase35-correlated-evidence-document.sh",
         "phase35-correlated-evidence-effects.sh",
         "phase35-correlated-evidence-fixture.sh",
