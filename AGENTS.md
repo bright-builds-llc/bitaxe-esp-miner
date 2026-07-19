@@ -259,6 +259,15 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 
 ## Repo-Local Guidance
 
+### Deterministic Active-Lesson Loading and Audits
+
+- Before the first substantive plan, review, implementation, diagnosis, audit, or answer about repository work, resolve and load the active lesson inputs. The global input is `/Users/peterryszkiewicz/.codex/tasks/lessons.md`. The repository input is exactly one file: `tasks/lessons.md` when the repository root contains `tasks/`, otherwise `.codex/tasks/lessons.md`. Resolve both paths canonically and de-duplicate them when they identify the same file. Missing active files count as zero bytes. Exclude every archive file and archive directory from startup loading.
+- Measure each present active file in bytes. The combined byte count is their sum; the deterministic conservative token estimate is the sum of `ceil(file_bytes / 3)` for each present file. Read both active files completely if and only if the combined content is at most 24,000 bytes and the summed estimate is at most 8,000.
+- If either limit is exceeded, inventory all lesson headings first. Then load only complete lesson blocks in this priority order: safety, privacy, security, authorization, and evidence guardrails; blocks relevant to the current task; global blocks; blocks created or materially changed in the previous 90 days; then remaining blocks as capacity permits. Never split a lesson block: stop at the preceding block boundary, disclose every active file or block not read, and flag a lesson audit.
+- Run a lesson audit only when one of these triggers occurs: no audit baseline exists; the active combined total crosses 75% of either the 24,000-byte limit or the summed 8,000-estimated-token limit for the first time since the last baseline; 90 days have elapsed since the last baseline and active lessons changed; 10 new active lessons have accumulated since the last baseline; or a proposed append would make the combined active total exceed 24,000 bytes or the sum of `ceil(file_bytes / 3)` for each present file exceed 8,000. A completed audit above 75% does not recursively trigger another audit unless a distinct later trigger occurs.
+- Consolidate lesson blocks only when they have the same durable cause, preventive rule, and trigger signal, retaining the clearest stable lesson ID. Archive only lessons proven obsolete, duplicate, or fully superseded. Preserve the original date, what went wrong, preventive rule, and trigger signal, plus archive date, archive reason, and replacement ID when applicable. Age or size alone is never sufficient. Safety, privacy, security, authorization, and evidence guardrails may be consolidated or archived only when an equally strong active replacement exists.
+- Keep lesson and lesson-audit files append-only with stable timestamped block IDs. Append new blocks at the end, and edit only the targeted block when a correction is required.
+
 ### ESP-IDF Tooling Preference
 
 - Treat ESP-IDF as a standard repository dependency through the pinned `esp-idf-sys` metadata, the checked-in `.cargo/config.toml`, and the ESP Rust toolchain installed by `espup`.
