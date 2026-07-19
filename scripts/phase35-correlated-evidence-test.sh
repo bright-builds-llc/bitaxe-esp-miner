@@ -1,7 +1,51 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${PHASE35_TEST_STUB_DISPATCH:-false}" == true ]]; then
+	case "${0##*/}" in
+	flash)
+		printf 'CALL\n' >>"${PHASE35_DIRECT_FLASH_CALLS:?}"
+		printf 'arg=%s\n' "$@" >>"${PHASE35_DIRECT_FLASH_CALLS:?}"
+		printf 'direct_flash\n' >>"${PHASE35_FIXTURE_STATE:?}/calls.log"
+		evidence_dir=""
+		while (($#)); do
+			if [[ "$1" == "--evidence-dir" ]]; then
+				evidence_dir="$2"
+				shift 2
+				continue
+			fi
+			shift
+		done
+		[[ -n "$evidence_dir" ]]
+		mkdir -p "$evidence_dir"
+		printf 'fixture-monitor\n' >"${evidence_dir}/flash-monitor.log"
+		;;
+	report)
+		case "${PHASE35_TEST_PARITY_OUTCOME:?}" in
+		passed)
+			jq -cn '{status:"passed",category:"none",session:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",boot_ordinal:7,device_url:"fixture-target"}'
+			;;
+		rejected)
+			jq -cn '{status:"failed",category:"baseline_multiple_sessions",session:null,boot_ordinal:null,device_url:null}'
+			;;
+		*)
+			exit 98
+			;;
+		esac
+		;;
+	just | bazel)
+		printf '%s\n' "${0##*/}" >>"${PHASE35_NESTED_TOOL_CALLS:?}"
+		exit 97
+		;;
+	*)
+		exit 98
+		;;
+	esac
+	exit 0
+fi
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly test_entrypoint="${script_dir}/phase35-correlated-evidence-test.sh"
 readonly supervisor="${script_dir}/phase35-correlated-evidence.sh"
 readonly fixture="${script_dir}/phase35-correlated-evidence-fixture.sh"
 readonly justfile="${script_dir}/../Justfile"
@@ -62,6 +106,16 @@ file_mode() {
 	stat -f '%Lp' "$file" 2>/dev/null || stat -c '%a' "$file"
 }
 
+path_metadata() {
+	local path="$1"
+	stat -f '%HT:%Lp:%z:%m:%c' "$path" 2>/dev/null ||
+		stat -c '%F:%a:%s:%Y:%Z' "$path"
+}
+
+file_digest() {
+	shasum -a 256 "$1" | awk '{print $1}'
+}
+
 test_main_task_stack_capacity() {
 	# Arrange
 	local assignment_count
@@ -94,7 +148,10 @@ prepare_case() {
 	evidence_root="${case_dir}/evidence"
 	calls="${state_dir}/calls.log"
 	fixture_direct_flash=false
+	stub_parity_outcome=passed
 	supervisor_path="$PATH"
+	supervisor_stdout="${case_dir}/stdout.log"
+	supervisor_stderr="${case_dir}/stderr.log"
 	direct_flash_calls="${state_dir}/direct-flash-calls.log"
 	nested_tool_calls="${state_dir}/nested-tool-calls.log"
 	mkdir -p "$state_dir" "$manifest_dir"
@@ -136,8 +193,7 @@ prepare_isolated_supervisor() {
 	isolated_supervisor="${case_dir}/phase35_correlated_evidence"
 	local runfiles_scripts="${isolated_supervisor}.runfiles/_main/scripts"
 	mkdir -p "$runfiles_scripts"
-	cp "$supervisor" "$isolated_supervisor"
-	chmod 700 "$isolated_supervisor"
+	ln -s "$supervisor" "$isolated_supervisor"
 	cp \
 		"${script_dir}/phase35-correlated-evidence-root.sh" \
 		"${script_dir}/phase35-correlated-evidence-effects.sh" \
@@ -162,6 +218,8 @@ run_isolated_supervisor() {
 			PHASE35_FIXTURE_EXPECTED_CREDENTIAL_PATH="${workspace}/wifi-credentials.json" \
 			PHASE35_DIRECT_FLASH_CALLS="$direct_flash_calls" \
 			PHASE35_NESTED_TOOL_CALLS="$nested_tool_calls" \
+			PHASE35_TEST_PARITY_OUTCOME="$stub_parity_outcome" \
+			PHASE35_TEST_STUB_DISPATCH=true \
 			"$isolated_supervisor" \
 			"manifest=${manifest_dir}/manifest.json" \
 			"local-root=${evidence_root}" \
@@ -169,7 +227,7 @@ run_isolated_supervisor() {
 			capture-timeout-seconds=360 \
 			caller-wall-clock-seconds=420 \
 			"$@"
-	) >"$case_dir/stdout.log" 2>"$case_dir/stderr.log"
+	) >"$supervisor_stdout" 2>"$supervisor_stderr"
 	run_status=$?
 	set -e
 }
@@ -179,66 +237,88 @@ prepare_direct_flash_stubs() {
 	local parity_bin="${workspace}/bazel-bin/tools/parity/report"
 	local blocked_bin="${case_dir}/blocked-bin"
 	mkdir -p "$(dirname "$flash_bin")" "$(dirname "$parity_bin")" "$blocked_bin"
-	apply_direct_flash_stub "$flash_bin"
-	apply_parity_stub "$parity_bin"
-	apply_blocked_tool_stub "$blocked_bin/just"
-	apply_blocked_tool_stub "$blocked_bin/bazel"
-	chmod 700 "$flash_bin" "$parity_bin" "$blocked_bin/just" "$blocked_bin/bazel"
+	rm -f "$flash_bin" "$parity_bin"
+	ln -s "$test_entrypoint" "$flash_bin"
+	ln -s "$test_entrypoint" "$parity_bin"
+	ln -s "$test_entrypoint" "$blocked_bin/just"
+	ln -s "$test_entrypoint" "$blocked_bin/bazel"
 	supervisor_path="${blocked_bin}:${PATH}"
 }
 
-# shellcheck disable=SC2016 # Generated stubs must expand variables when they execute.
-apply_direct_flash_stub() {
-	local destination="$1"
-	printf '%s\n' \
-		'#!/usr/bin/env bash' \
-		'set -euo pipefail' \
-		'printf "CALL\n" >>"${PHASE35_DIRECT_FLASH_CALLS:?}"' \
-		'printf "arg=%s\n" "$@" >>"${PHASE35_DIRECT_FLASH_CALLS:?}"' \
-		'printf "direct_flash\n" >>"${PHASE35_FIXTURE_STATE:?}/calls.log"' \
-		'evidence_dir=""' \
-		'while (($#)); do' \
-		'  if [[ "$1" == "--evidence-dir" ]]; then' \
-		'    evidence_dir="$2"' \
-		'    shift 2' \
-		'    continue' \
-		'  fi' \
-		'  shift' \
-		'done' \
-		'[[ -n "$evidence_dir" ]]' \
-		'mkdir -p "$evidence_dir"' \
-		'printf "fixture-monitor\n" >"${evidence_dir}/flash-monitor.log"' \
-		>"$destination"
+test_runfiles_rejects_existing_child_before_admission_or_effects() {
+	# Arrange
+	prepare_case runfiles_existing_child
+	prepare_isolated_supervisor
+	mkdir -p "$evidence_root"
+	chmod 700 "$evidence_root"
+	local sentinel="${evidence_root}/sentinel"
+	printf 'opaque-sentinel\n' >"$sentinel"
+	chmod 600 "$sentinel"
+	local child_metadata_before sentinel_metadata_before sentinel_digest_before
+	child_metadata_before="$(path_metadata "$evidence_root")"
+	sentinel_metadata_before="$(path_metadata "$sentinel")"
+	sentinel_digest_before="$(file_digest "$sentinel")"
+
+	# Act
+	run_isolated_supervisor success
+
+	# Assert
+	[[ "$run_status" != 0 ]] || fail_test "existing evidence child was accepted"
+	assert_line "$case_dir/stderr.log" 'failure_category=evidence_root_already_exists'
+	[[ ! -e "$calls" ]] ||
+		fail_test "existing evidence child reached package admission or a later command"
+	[[ "$(path_metadata "$evidence_root")" == "$child_metadata_before" ]] ||
+		fail_test "existing evidence child metadata changed after rejection"
+	[[ "$(path_metadata "$sentinel")" == "$sentinel_metadata_before" ]] ||
+		fail_test "existing evidence sentinel metadata changed after rejection"
+	[[ "$(file_digest "$sentinel")" == "$sentinel_digest_before" ]] ||
+		fail_test "existing evidence sentinel content changed after rejection"
+	[[ "$(find "$evidence_root" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')" == 1 ]] ||
+		fail_test "existing evidence child gained artifacts after rejection"
 }
 
-apply_parity_stub() {
-	local destination="$1"
-	printf '%s\n' \
-		'#!/usr/bin/env bash' \
-		'set -euo pipefail' \
-		'jq -cn '"'"'{status:"passed",category:"none",session:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",boot_ordinal:7,device_url:"fixture-target"}'"'" \
-		>"$destination"
-}
+test_runfiles_preserves_caller_owned_parent_and_sibling_outputs() {
+	# Arrange
+	prepare_case runfiles_protected_parent
+	prepare_isolated_supervisor
+	local protected_parent="${case_dir}/protected"
+	mkdir -p "$protected_parent"
+	chmod 700 "$protected_parent"
+	evidence_root="${protected_parent}/supervisor-child"
+	supervisor_stdout="${protected_parent}/wrapper.stdout"
+	supervisor_stderr="${protected_parent}/wrapper.stderr"
+	[[ ! -e "$evidence_root" ]] ||
+		fail_test "supervisor child existed before sibling output creation"
+	: >"$supervisor_stdout"
+	: >"$supervisor_stderr"
+	chmod 600 "$supervisor_stdout" "$supervisor_stderr"
+	[[ -f "$supervisor_stdout" && -f "$supervisor_stderr" ]] ||
+		fail_test "caller-owned sibling outputs were not created"
+	[[ ! -e "$evidence_root" ]] ||
+		fail_test "sibling output creation pre-created the supervisor child"
 
-apply_rejecting_parity_stub() {
-	local destination="$1"
-	printf '%s\n' \
-		'#!/usr/bin/env bash' \
-		'set -euo pipefail' \
-		'jq -cn '"'"'{status:"failed",category:"baseline_multiple_sessions",session:null,boot_ordinal:null,device_url:null}'"'" \
-		>"$destination"
-	chmod 700 "$destination"
-}
+	# Act
+	run_isolated_supervisor success preflight-only=true
 
-# shellcheck disable=SC2016 # Generated stubs must expand variables when they execute.
-apply_blocked_tool_stub() {
-	local destination="$1"
-	printf '%s\n' \
-		'#!/usr/bin/env bash' \
-		'set -euo pipefail' \
-		'printf "%s\n" "${0##*/}" >>"${PHASE35_NESTED_TOOL_CALLS:?}"' \
-		'exit 97' \
-		>"$destination"
+	# Assert
+	[[ "$run_status" == 0 ]] || fail_test "protected-parent preflight failed"
+	[[ -d "$evidence_root" ]] ||
+		fail_test "supervisor did not create its child after sibling outputs"
+	[[ "$(file_mode "$protected_parent")" == "700" ]] ||
+		fail_test "caller-owned protected parent mode is not 0700"
+	[[ "$(file_mode "$supervisor_stdout")" == "600" ]] ||
+		fail_test "wrapper stdout mode is not 0600"
+	[[ "$(file_mode "$supervisor_stderr")" == "600" ]] ||
+		fail_test "wrapper stderr mode is not 0600"
+	while IFS= read -r directory; do
+		[[ "$(file_mode "$directory")" == "700" ]] ||
+			fail_test "supervisor-created directory mode is not 0700"
+	done < <(find "$evidence_root" -type d)
+	while IFS= read -r file; do
+		[[ "$(file_mode "$file")" == "600" ]] ||
+			fail_test "supervisor-created file mode is not 0600"
+	done < <(find "$evidence_root" -type f)
+	assert_contains "$supervisor_stdout" '^status=preflight_passed$'
 }
 
 test_runfiles_entrypoint_resolves_sibling_helpers() {
@@ -336,7 +416,7 @@ test_direct_flash_classifier_rejection_preserves_typed_category() {
 	prepare_case runfiles_classifier_rejection
 	prepare_isolated_supervisor
 	prepare_direct_flash_stubs
-	apply_rejecting_parity_stub "${workspace}/bazel-bin/tools/parity/report"
+	stub_parity_outcome=rejected
 	printf 'opaque-fixture-input\n' >"${workspace}/wifi-credentials.json"
 	fixture_direct_flash=true
 
@@ -586,6 +666,8 @@ test_success_ordering_and_private_root() {
 }
 
 test_main_task_stack_capacity
+test_runfiles_rejects_existing_child_before_admission_or_effects
+test_runfiles_preserves_caller_owned_parent_and_sibling_outputs
 test_runfiles_entrypoint_resolves_sibling_helpers
 test_runfiles_resolves_repo_root_credential_only_after_detector
 test_runfiles_invokes_direct_flash_once_without_nested_build_tools
