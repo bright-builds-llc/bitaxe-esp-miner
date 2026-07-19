@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 human-action checkpoint after seventh sealed non-promotion
-last_updated: "2026-07-19T00:21:09Z"
+stopped_at: Phase 35 Plan 04 Task 2 checkpoint after eighth sealed non-promotion and software repair
+last_updated: "2026-07-19T05:19:35Z"
 last_activity: "2026-07-19"
 progress:
   total_phases: 5
@@ -25,12 +25,12 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Awaiting human action
-- **Next step:** Await the human-action USB re-enumeration checkpoint. Leave
-  barrel/DC power connected and unchanged; unplug only the provided USB cable,
-  wait for the USB node to disappear, reconnect the same USB cable, and wait for
-  re-enumeration. This is not a cold start or barrel-power cycle. Do not invoke
-  another detector or hardware command in this continuation.
+- **Status:** Blocked at Task 2 after sealed non-promotion and software repair
+- **Next step:** A separately authorized fresh continuation may decide whether
+  to run one new exact-current-package detector-gated attempt from repair commit
+  `9fb0a488`. It must use a new protected root and may not reuse or splice the
+  sealed attempt-8 root. No further physical action or hardware command is
+  authorized in this continuation.
 
 ## Project Reference
 
@@ -387,27 +387,28 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 7 sealed
-  non-promotion. The corrected private-parent/nonexistent-child/sibling-wrapper
-  contract passed, exact-package Gate 1 passed, and the sole detector selected one
-  candidate before its single board-info invocation failed at the transport
-  connection boundary with typed category `connection_failure`. This matches
-  attempt 5 and is not a candidate-count, open/ownership, leaked-holder, or
-  deterministic repository defect. The attempt stopped before credential access,
-  flash, monitor capture, target derivation, HTTP, PATCH, reboot, or mutation.
-  Cleanup confirmed zero remaining Phase 35 processes and zero unexpected serial
-  holders. The root is sealed and non-reusable; admission, evidence generation,
-  checklist changes, Task 3, plan summary, and retry did not occur. USB
-  re-enumeration is now required as a human action before any separately
-  authorized later continuation.
+- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 8 sealed
+  non-promotion. The completed USB-only re-enumeration resolved the prior
+  board-info transport failure: exactly one candidate and one board-info passed,
+  the opaque input gate passed, direct flash completed, and Boot A capture was
+  non-empty. The strict classifier rejected 59 distinct sequential boot sessions
+  with category `baseline_multiple_sessions`; 52 explicitly reported stack
+  overflow in firmware task `main`, with 53 `panic`, five `watchdog`, and one
+  `other` reset category. The attempt stopped before target admission, HTTP,
+  PATCH, approved reboot, or mutation. Cleanup confirmed zero remaining Phase 35
+  processes and zero unexpected serial holders. The root is sealed and
+  non-reusable; admission, evidence generation, checklist changes, Task 3,
+  summary, and retry did not occur. Software-only repair `9fb0a488` raises the
+  ESP-IDF main-task stack to 16 KiB and adds a hermetic minimum-capacity
+  regression; all required software verification passed. A separately authorized
+  fresh continuation must own any later exact-current-package one-shot attempt.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 human-action checkpoint after the
-  seventh sealed non-promotion attempt
-- **Resume:** Leave barrel/DC power connected and unchanged. Unplug only the
-  provided USB cable from the computer or device, wait for the USB node to
-  disappear, reconnect the same USB cable, and wait for USB re-enumeration. This
-  is USB re-enumeration, not a cold start or barrel-power cycle. Do not reuse,
-  retry, or splice the sealed root, and do not run another detector or hardware
-  command in this continuation.
+- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after the eighth sealed
+  non-promotion attempt and software repair `9fb0a488`
+- **Resume:** Start only through a separately authorized fresh continuation from
+  the clean repair commit. Rebuild and lock the exact current package, create a
+  fresh protected root, and preserve the one-full-command/one-detector/no-retry
+  contract. Do not reuse, retry, or splice the sealed attempt-8 root. Do not run
+  Task 3 or create `35-04-SUMMARY.md` unless a later root is genuinely admitted.

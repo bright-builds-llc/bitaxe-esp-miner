@@ -425,3 +425,112 @@ for the USB node to disappear; reconnect the same USB cable; and wait for USB
 re-enumeration. This is USB re-enumeration, not a cold start or barrel-power
 cycle. It does not authorize direct UART, pins, pads, probes, or other electrical
 manipulation.
+
+## Continuation Attempt 8 Checkpoint
+
+The user completed the requested USB-only re-enumeration while barrel/DC power
+remained connected and unchanged. This was not a cold start or barrel-power
+cycle. The eighth fresh continuation then ran the full Phase 35 command exactly
+once from clean source `564153c57cea64da26f380e793c542a18bfa7c7a`.
+
+The corrected protected-root contract passed immediately before launch. The
+supervisor created the nonexistent child, passed exact-package Gate 1, made its
+sole detector invocation, selected exactly one candidate, and completed its
+single board-info invocation successfully. The USB re-enumeration therefore
+resolved the transport connection boundary that blocked attempts 5 and 7. The
+post-detector opaque input gate passed, the direct flash command completed, and
+Boot A monitor capture was non-empty.
+
+The strict Boot A classifier rejected the capture with
+`baseline_multiple_sessions`. The capture contained 59 distinct boot sessions
+and 59 distinct boot ordinals, with every observed transition advancing the
+ordinal by one. Its reset-category distribution was one `other`, 53 `panic`,
+and five `watchdog`; 52 sessions explicitly reported a stack overflow in the
+firmware `main` task. The first stack overflow preceded the second boot identity.
+This is a current-firmware restart loop, not expected flash, NVS-seed, or monitor
+boundary noise. The classifier correctly refused to select an arbitrary session
+or weaken the one-coherent-session admission rule.
+
+The attempt stopped before target admission, HTTP settings reads, PATCH, the
+approved normal reboot, or any settings mutation. Finalization recorded cleanup
+once, confirmed zero unexpected serial holders and zero remaining Phase 35
+processes, and sealed the protected root non-promotable and non-reusable.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-19T05:19:35Z` |
+| Attempt ordinal | `8` |
+| Source commit | `564153c57cea64da26f380e793c542a18bfa7c7a` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Corrected protected-root contract | `true` |
+| Exact `local-root` child absent before launch | `true` |
+| Sibling wrapper mode | `0600` |
+| Exact-package Gate 1 passed | `true` |
+| Detector invocations | `1` |
+| Selected candidate count | `1` |
+| Board-info invocations | `1` |
+| Board-info verified | `true` |
+| USB re-enumeration resolved prior transport blocker | `true` |
+| Opaque input gate passed | `true` |
+| Flash command completed | `true` |
+| Boot A monitor capture non-empty | `true` |
+| Boot A distinct session count | `59` |
+| Boot A distinct ordinal count | `59` |
+| Boot ordinal transition pattern | `increment_one` |
+| Reset-category counts | `other:1, panic:53, watchdog:5` |
+| Main-task stack-overflow count | `52` |
+| Boot A classification status | `failed` |
+| Failure category | `baseline_multiple_sessions` |
+| Failure boundary | `boot_a_baseline_qualification` |
+| Runtime restart loop proven | `true` |
+| Expected flash/NVS/monitor boundary noise | `false` |
+| Current-session origin admitted | `false` |
+| HTTP settings read started | `false` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration | `not_needed` |
+| Process-tree cleanup | `true` |
+| Unexpected serial-holder count | `0` |
+| Remaining Phase 35 process count | `0` |
+| Protected root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Evidence generation changed | `false` |
+| Checklist changed | `false` |
+| Task 3 authorized | `false` |
+| Plan summary created | `false` |
+| Retry in this continuation | `false` |
+
+The protected root is sealed non-promotable and cannot be reused, retried, or
+spliced. Task 2 and Phase 35 remain incomplete, and Task 3 is not authorized.
+
+## Software Repair After Attempt 8
+
+Commit `9fb0a488d95a40303e8db6773af0ffb132d0b044` repairs the deterministic
+runtime defect without touching hardware. The ESP-IDF `main` task stack is now
+16 KiB instead of 8 KiB, and the Phase 35 hermetic regression requires exactly
+one numeric stack assignment at or above that minimum. The strict classifier,
+detector order, opaque input boundary, flash behavior, one-reboot rule,
+restoration, cleanup, redaction, and admission contracts are unchanged.
+
+| Software verification | Result |
+| --- | --- |
+| Shell syntax, formatting, and lint checks | passed |
+| Ordered Rust format, lint, build, and test gates | passed |
+| Phase 35 correlated-evidence regression suite | passed |
+| Phase 35 promotion and Phase 30 non-promotion contracts | passed |
+| Parity tests and checklist validation | passed |
+| Canonical firmware image build and package | passed |
+| Reference cleanliness | passed |
+| Phase 35 lifecycle verification | passed |
+| Diff review | passed |
+
+This software repair is not hardware evidence. It does not reopen or qualify the
+sealed attempt-8 root, admit an evidence generation, update a checklist row,
+complete Task 2, authorize Task 3, or authorize a retry in this continuation.
+The next allowed action is a separately authorized fresh continuation from the
+clean repair commit. Any such continuation must rebuild and lock the exact
+current package, use a new protected root, and make its own explicit one-shot
+hardware decision. No further physical action is requested at this checkpoint.
