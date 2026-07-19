@@ -22,9 +22,9 @@
 ## lesson-cross-process-tests-use-real-boundaries | 2026-07-11 14:55
 
 1. Date: 2026-07-11
-2. What went wrong: In-process fixtures passed while the first real lifecycle continuation failed because a Unix-socket receiver mixed buffered line input with unbuffered payload reads. Other live-only failures involved process-group descendants and fresh-process capability parsing.
-3. Preventive rule: Test IPC, process ownership, framing, and capabilities through real fresh processes, Unix sockets, coalesced and fragmented writes, process groups, and mode-enforced files. Keep pure tests too, but do not let them substitute for the operating-system boundary that production uses.
-4. Trigger signal to catch it earlier: A test injects a function or prebuilt object where production crosses a socket, process, PTY, file-permission, or process-group boundary.
+2. What went wrong: In-process fixtures passed while the first real lifecycle continuation failed because a Unix-socket receiver mixed buffered line input with unbuffered payload reads. Other live-only failures involved process-group descendants, fresh-process capability parsing, and Bazel/runfiles execution resolving helpers or tools differently from the source-tree shell.
+3. Preventive rule: Test IPC, process ownership, framing, capabilities, and Bazel/runfiles entrypoints through real fresh processes, Unix sockets, coalesced and fragmented writes, process groups, and mode-enforced files. Exercise sibling helper and tool resolution from the deployed layout, and prevent production children from invoking nested build tools. Keep pure tests too, but do not let them substitute for the operating-system boundary that production uses.
+4. Trigger signal to catch it earlier: A test injects a function or prebuilt object where production crosses a socket, process, PTY, file-permission, process-group, or runfiles boundary; resolves helpers only from the source tree; or allows a launched child to call the build runner again.
 
 ## lesson-espflash-no-reset-is-not-passive | 2026-07-11 14:55
 
@@ -88,3 +88,31 @@
 2. What went wrong: The next hardware plan treated a direct external-UART fixture as acceptable after native-USB evidence remained blocked, even though the user had not agreed to wire UART or manipulate board pads and pins.
 3. Preventive rule: Default to the device's provided USB and barrel-power interfaces. Do not propose, request, instruct, or perform direct UART, probe, pin, pad, header, GPIO, jumper, solder, or injected-signal work unless the user explicitly requests that path, or a permanent blocker is documented after non-invasive paths are exhausted; in either case, obtain fresh explicit user authorization before physical instructions or hardware contact.
 4. Trigger signal to catch it earlier: A plan or next action mentions RX/GND wiring, test pads, Tag-Connect pins, probes, soldering, jumpers, GPIO manipulation, or an external UART adapter without a recorded explicit authorization checkpoint.
+
+## lesson-protected-evidence-root-ownership | 2026-07-19 10:31
+
+1. Date: 2026-07-19
+2. What went wrong: A wrapper could pre-create the exact evidence child through output redirection, weakening the supervisor's exclusive creation and rejection boundary before admission or effects.
+3. Preventive rule: Create one private parent, prove the supervisor-owned child is absent immediately before launch, and capture wrapper output in separately created private sibling files. The supervisor must reject any existing child before admission, discovery, sensitive-input access, or effects.
+4. Trigger signal to catch it earlier: A caller redirects stdout or stderr beneath the requested child, creates the child on the supervisor's behalf, or launches without a fresh absence assertion.
+
+## lesson-earliest-typed-failure-precedence | 2026-07-19 10:31
+
+1. Date: 2026-07-19
+2. What went wrong: Cleanup or a later classifier result could replace the earliest typed failure, obscuring the boundary that actually stopped the workflow and routing recovery incorrectly.
+3. Preventive rule: Capture the first typed failure once and preserve it through restoration, cleanup, sealing, and reporting. Later failures may be recorded separately but must not overwrite the original cause.
+4. Trigger signal to catch it earlier: A mutable failure category is assigned in multiple phases after the first error, or a terminal report names cleanup instead of the earlier admission, discovery, transport, or validation boundary.
+
+## lesson-esp-idf-main-task-runtime-capacity | 2026-07-19 10:31
+
+1. Date: 2026-07-19
+2. What went wrong: Host checks passed while the ESP-IDF main task lacked the runtime capacity required by the composed firmware startup and service stack.
+3. Preventive rule: Treat the ESP-IDF main-task stack setting as an explicit runtime contract, keep one authoritative assignment, and regression-test its minimum capacity alongside the code paths that depend on it.
+4. Trigger signal to catch it earlier: Firmware adds startup, parsing, service, or orchestration work without checking the configured main-task stack, or multiple stack assignments make the effective capacity ambiguous.
+
+## lesson-http-liveness-is-not-response-readiness | 2026-07-19 10:31
+
+1. Date: 2026-07-19
+2. What went wrong: Route registration, server-start markers, connectivity, and continuing application liveness were treated as if they proved that an HTTP request could deliver a complete parseable response.
+3. Preventive rule: Keep connection establishment, request transmission, response status and headers, body receipt, and schema parsing as separate typed boundaries. Do not infer response readiness from route, startup, connectivity, or heartbeat markers.
+4. Trigger signal to catch it earlier: Evidence shows a live application and registered route but has no independently observed response status, headers, body bytes, or completed parse.

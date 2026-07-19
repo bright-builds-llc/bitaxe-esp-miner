@@ -162,3 +162,16 @@ Completion review: Plans 34-08 and 34-09 are implemented and committed. OBS-06 n
 - [x] Pass GSD plan structure, lifecycle, SYS-02 coverage, and the bounded independent checker revision loop.
 
 Completion review: Checker-approved Plan 34-10 is ready in Wave 10 and is the only incomplete Phase 34 plan. Two targeted revisions corrected loader semantics, MMU authority, conservative linker/alias bounds, manifest wording, and application-descriptor source attribution. No source, hardware, credentials, network discovery, push, OTA, direct UART/pins, Phase 35, or archived-lineage work occurred.
+
+## task-phase35-redacted-http-boundary-diagnostic | 2026-07-19 10:31 | Separate HTTP response-readiness boundaries
+
+- [ ] Create a separate scoped plan for redacted pre-mutation HTTP instrumentation.
+- [ ] Distinguish TCP connection establishment and TLS establishment when applicable.
+- [ ] Record whether request transmission completed.
+- [ ] Record response status and header receipt separately from connection and transmission.
+- [ ] Record body-byte receipt, bounded byte counts, and completion separately from response headers.
+- [ ] Record JSON parsing and hostname-schema parsing as separate typed outcomes.
+- [ ] Persist only redacted categories, booleans, counts, and bounded durations.
+- [ ] Software-verify every boundary and fail-closed outcome before considering any external attempt.
+
+This pending todo authorizes no hardware, request retry, PATCH, reboot, credential access, evidence promotion, or Phase 35 truth change.

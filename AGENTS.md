@@ -353,3 +353,10 @@ Agents executing phase evidence wrappers (`phase23-evidence`, `phase25-evidence`
 - In GSD artifacts and other Markdown files parsed with YAML frontmatter, use standalone `---` only for the opening and closing frontmatter delimiters at the top of the file.
 - Do not use standalone `---` as a body separator after frontmatter; the GSD parser scans all such blocks and may treat the last pair as frontmatter, breaking lifecycle validation. Use headings or `***` for body breaks instead.
 - Markdown table separator rows such as `| --- | --- |` are valid and are not affected by this rule.
+
+### Protected Evidence Root Ownership
+
+- A caller of a protected evidence workflow must create one mode-0700 protected parent and prove the intended supervisor-owned child does not exist immediately before launch.
+- The caller must create wrapper stdout and stderr as separate mode-0600 sibling files under the protected parent. Never redirect wrapper output into the intended child or otherwise pre-create that child.
+- The supervisor must reject any existing requested child before package admission, detector discovery, credential access, or effects.
+- Phase 35 may not make another hardware attempt at the same ambiguous HTTP boundary until a separate scoped plan implements and software-verifies redacted pre-mutation instrumentation that distinguishes the unresolved boundaries. This guardrail does not authorize that instrumentation or any hardware action.
