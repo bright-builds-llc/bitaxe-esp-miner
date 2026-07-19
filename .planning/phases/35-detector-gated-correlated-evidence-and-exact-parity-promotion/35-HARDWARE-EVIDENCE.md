@@ -303,3 +303,58 @@ spliced. No hardware retry occurred in this continuation. Attempt 5 does not
 complete Task 2, authorize Task 3, or support a plan summary. Any later hardware
 action requires a separately owned explicit continuation decision and a fresh
 protected root.
+
+## Continuation Attempt 6 Checkpoint
+
+The sixth fresh continuation invoked the full Phase 35 command exactly once from
+clean source `fa6dbf9e8d12b34b3238eae4b4541d4cc5b805fa`. The caller created the
+exact path passed as `local-root` before launch so it could place the wrapper log
+inside that directory. The fail-closed supervisor correctly rejected the existing
+path with typed category `evidence_root_already_exists` before exact-package Gate
+1 and before its sole detector boundary.
+
+This was a caller setup error, not a deterministic repository defect. The
+supervisor contract must continue to require that the exact `local-root` child
+does not exist at launch. No detector, opaque credential gate, serial session,
+flash, monitor, reset, target derivation, HTTP operation, PATCH, reboot,
+restoration mutation, admission, evidence publication, checklist update, or
+generation change occurred.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-19T00:08:03Z` |
+| Attempt ordinal | `6` |
+| Source commit | `fa6dbf9e8d12b34b3238eae4b4541d4cc5b805fa` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Exact-package Gate 1 reached | `false` |
+| Detector invocations | `0` |
+| Failure category | `evidence_root_already_exists` |
+| Failure boundary | `protected_root_initialization` |
+| Deterministic repository defect proven | `false` |
+| Opaque credential gate reached | `false` |
+| Serial sessions started | `0` |
+| Flash or monitor started | `false` |
+| HTTP settings read started | `false` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration | `not_needed` |
+| Process-tree cleanup | `true` |
+| Unexpected serial-holder count | `0` |
+| Remaining Phase 35 process count | `0` |
+| Protected root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Evidence generation changed | `false` |
+| Checklist changed | `false` |
+| Plan summary created | `false` |
+| Retry in this continuation | `false` |
+
+The protected root is sealed non-promotable and cannot be reused, retried, or
+spliced. Task 2 and Phase 35 remain incomplete, and Task 3 is not authorized.
+
+For any separately authorized later attempt, create a private mode-`0700` parent,
+keep the exact child passed as `local-root` nonexistent, and redirect the
+mode-`0600` wrapper output to a sibling file in the private parent. Never place
+wrapper output inside the nonexistent child before the supervisor creates it.

@@ -3,9 +3,9 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 checkpoint after fifth sealed non-promotion
-last_updated: "2026-07-18T23:46:44Z"
-last_activity: "2026-07-18"
+stopped_at: Phase 35 Plan 04 Task 2 checkpoint after sixth sealed non-promotion
+last_updated: "2026-07-19T00:08:03Z"
+last_activity: "2026-07-19"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-18
+Last activity: 2026-07-19
 
 ## Current Position
 
@@ -27,8 +27,9 @@ Plan: 3 of 4 completed
 - **Plan:** 3 of 4 completed
 - **Status:** Ready to execute
 - **Next step:** Await an explicit continuation decision. Any later attempt must use
-  one fresh protected root and the full detector-gated Phase 35 command exactly
-  once.
+  one fresh protected parent, leave the exact `local-root` child nonexistent, keep
+  wrapper output in a mode-0600 sibling file, and invoke the full detector-gated
+  Phase 35 command exactly once.
 
 ## Project Reference
 
@@ -385,23 +386,25 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 5 sealed
-  non-promotion. The one full command revalidated the exact package and made the
-  sole detector invocation. Exactly one candidate reached one board-info command,
-  which failed with typed category `connection_failure` at the
-  `board_info_transport_connection` boundary. Private category-level diagnosis
-  distinguished this from no or multiple candidates, open or ownership failure,
-  and a deterministic detector/supervisor defect. No credential access, flash,
-  capture, target derivation, HTTP settings read, PATCH, reboot, or mutation began;
-  restoration was not needed. Cleanup passed with zero unexpected serial holders
-  and zero remaining Phase 35 processes. Admission was not invoked, no evidence
-  generation or checklist row changed, and the protected root is non-reusable.
-  No retry occurred in this continuation.
+- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 6 sealed
+  non-promotion. The caller pre-created the exact path passed as `local-root` to
+  place wrapper output inside it, so the one full command correctly failed closed
+  with `evidence_root_already_exists` before exact-package Gate 1 and before the
+  detector. This is a caller setup error, not a deterministic repository defect;
+  the supervisor must continue to reject an existing evidence root. No credential,
+  serial, flash, monitor, reset, target, HTTP, PATCH, reboot, restoration mutation,
+  admission, generation, checklist, or summary action occurred. Cleanup confirmed
+  zero remaining Phase 35 processes and zero unexpected serial holders. The root
+  is sealed and non-reusable, and no retry occurred. A separately authorized later
+  attempt must create a mode-0700 private parent, leave the passed `local-root`
+  child nonexistent, and redirect mode-0600 wrapper output to a sibling file.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after the fifth sealed
+- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after the sixth sealed
   non-promotion attempt
 - **Resume:** Await an explicit continuation decision. Do not reuse, retry, or splice
-  any sealed root, and do not treat cleanup, software repairs, or administrative
-  closure as evidence.
+  any sealed root. A later one-shot invocation must keep the exact `local-root`
+  child nonexistent until the supervisor creates it and must keep wrapper output
+  in a protected sibling file. Do not treat cleanup, caller repair, or
+  administrative closure as evidence.
