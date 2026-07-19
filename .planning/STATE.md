@@ -4,7 +4,7 @@ milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
 stopped_at: Phase 35 Plan 04 Task 2 checkpoint after tenth sealed non-promotion
-last_updated: "2026-07-19T14:11:46Z"
+last_updated: "2026-07-19T16:19:09Z"
 last_activity: "2026-07-19"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-19
+Last activity: 2026-07-19 - Completed quick task 260719-e8b: Persist Phase 35 lessons and guardrails
 
 ## Current Position
 
@@ -365,6 +365,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | 260713-p28 | Close Phase 28.1.1 without claiming unresolved parity | 2026-07-13 | this commit | Closed — Won't Do (unresolved); Phase 30 next | — |
 | 260713-egi | Close Phase 28.1.1 lineage as terminal archived unresolved work and guard all reopening paths | 2026-07-13 | 2285ebe | Verified | [260713-egi-close-phase-28-1-1-and-descendants-as-ar](./quick/260713-egi-close-phase-28-1-1-and-descendants-as-ar/) |
 | 260714-unf | Remap CFG-12 from Phase 33 to Phase 35 and re-verify Phase 33 without hardware | 2026-07-15 | 94ac313 | Verified | [260714-unf-remap-cfg-12-from-phase-33-to-phase-35-a](./quick/260714-unf-remap-cfg-12-from-phase-33-to-phase-35-a/) |
+| 260719-e8b | Persist Phase 35 lessons and guardrails | 2026-07-19 | 9eb1aca5 | Verified | [260719-e8b-persist-phase-35-lessons-and-guardrails](./quick/260719-e8b-persist-phase-35-lessons-and-guardrails/) |
 
 ## Decisions (Phase 28.1.1.5)
 
