@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 checkpoint after sixth sealed non-promotion
-last_updated: "2026-07-19T00:08:03Z"
+stopped_at: Phase 35 Plan 04 Task 2 human-action checkpoint after seventh sealed non-promotion
+last_updated: "2026-07-19T00:21:09Z"
 last_activity: "2026-07-19"
 progress:
   total_phases: 5
@@ -25,11 +25,12 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Ready to execute
-- **Next step:** Await an explicit continuation decision. Any later attempt must use
-  one fresh protected parent, leave the exact `local-root` child nonexistent, keep
-  wrapper output in a mode-0600 sibling file, and invoke the full detector-gated
-  Phase 35 command exactly once.
+- **Status:** Awaiting human action
+- **Next step:** Await the human-action USB re-enumeration checkpoint. Leave
+  barrel/DC power connected and unchanged; unplug only the provided USB cable,
+  wait for the USB node to disappear, reconnect the same USB cable, and wait for
+  re-enumeration. This is not a cold start or barrel-power cycle. Do not invoke
+  another detector or hardware command in this continuation.
 
 ## Project Reference
 
@@ -386,25 +387,27 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 6 sealed
-  non-promotion. The caller pre-created the exact path passed as `local-root` to
-  place wrapper output inside it, so the one full command correctly failed closed
-  with `evidence_root_already_exists` before exact-package Gate 1 and before the
-  detector. This is a caller setup error, not a deterministic repository defect;
-  the supervisor must continue to reject an existing evidence root. No credential,
-  serial, flash, monitor, reset, target, HTTP, PATCH, reboot, restoration mutation,
-  admission, generation, checklist, or summary action occurred. Cleanup confirmed
-  zero remaining Phase 35 processes and zero unexpected serial holders. The root
-  is sealed and non-reusable, and no retry occurred. A separately authorized later
-  attempt must create a mode-0700 private parent, leave the passed `local-root`
-  child nonexistent, and redirect mode-0600 wrapper output to a sibling file.
+- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 7 sealed
+  non-promotion. The corrected private-parent/nonexistent-child/sibling-wrapper
+  contract passed, exact-package Gate 1 passed, and the sole detector selected one
+  candidate before its single board-info invocation failed at the transport
+  connection boundary with typed category `connection_failure`. This matches
+  attempt 5 and is not a candidate-count, open/ownership, leaked-holder, or
+  deterministic repository defect. The attempt stopped before credential access,
+  flash, monitor capture, target derivation, HTTP, PATCH, reboot, or mutation.
+  Cleanup confirmed zero remaining Phase 35 processes and zero unexpected serial
+  holders. The root is sealed and non-reusable; admission, evidence generation,
+  checklist changes, Task 3, plan summary, and retry did not occur. USB
+  re-enumeration is now required as a human action before any separately
+  authorized later continuation.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after the sixth sealed
-  non-promotion attempt
-- **Resume:** Await an explicit continuation decision. Do not reuse, retry, or splice
-  any sealed root. A later one-shot invocation must keep the exact `local-root`
-  child nonexistent until the supervisor creates it and must keep wrapper output
-  in a protected sibling file. Do not treat cleanup, caller repair, or
-  administrative closure as evidence.
+- **Stopped at:** Phase 35 Plan 04 Task 2 human-action checkpoint after the
+  seventh sealed non-promotion attempt
+- **Resume:** Leave barrel/DC power connected and unchanged. Unplug only the
+  provided USB cable from the computer or device, wait for the USB node to
+  disappear, reconnect the same USB cable, and wait for USB re-enumeration. This
+  is USB re-enumeration, not a cold start or barrel-power cycle. Do not reuse,
+  retry, or splice the sealed root, and do not run another detector or hardware
+  command in this continuation.

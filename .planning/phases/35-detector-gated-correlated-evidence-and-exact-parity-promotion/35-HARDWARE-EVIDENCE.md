@@ -358,3 +358,70 @@ For any separately authorized later attempt, create a private mode-`0700` parent
 keep the exact child passed as `local-root` nonexistent, and redirect the
 mode-`0600` wrapper output to a sibling file in the private parent. Never place
 wrapper output inside the nonexistent child before the supervisor creates it.
+
+## Continuation Attempt 7 Checkpoint
+
+The seventh fresh continuation corrected the caller root contract before invoking
+the full Phase 35 command exactly once from clean source
+`a53831d47f38a92443b78eab743fb85104f9caf5`. The caller created one ignored
+mode-`0700` private parent, left the supervisor-owned `local-root` child
+nonexistent through the immediate pre-launch assertion, and placed mode-`0600`
+wrapper output in a sibling file. The supervisor created the child successfully,
+passed exact-package Gate 1, and made its sole detector invocation.
+
+The detector selected exactly one candidate and invoked board-info exactly once.
+Board-info failed at the transport connection boundary with typed category
+`connection_failure`, matching the category-level outcome from attempt 5. This
+was not a missing or ambiguous candidate, open or ownership failure, leaked-holder
+failure, or deterministic repository defect. The attempt stopped before the
+opaque credential gate, flash, Boot A capture, target derivation, HTTP settings
+reads, PATCH, reboot, or any settings mutation.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-19T00:21:09Z` |
+| Attempt ordinal | `7` |
+| Source commit | `a53831d47f38a92443b78eab743fb85104f9caf5` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Corrected protected-root contract | `true` |
+| Exact `local-root` child absent before launch | `true` |
+| Sibling wrapper mode | `0600` |
+| Supervisor root initialization passed | `true` |
+| Exact-package Gate 1 passed | `true` |
+| Detector invocations | `1` |
+| Selected candidate count | `1` |
+| Board-info invocations | `1` |
+| Board-info verified | `false` |
+| Failure category | `connection_failure` |
+| Failure boundary | `board_info_transport_connection` |
+| Matches attempt-5 typed category | `true` |
+| Deterministic repository defect proven | `false` |
+| Opaque credential gate reached | `false` |
+| Flash started | `false` |
+| Boot A capture started | `false` |
+| HTTP settings read started | `false` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration | `not_needed` |
+| Process-tree cleanup | `true` |
+| Unexpected serial-holder count | `0` |
+| Remaining Phase 35 process count | `0` |
+| Protected root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Evidence generation changed | `false` |
+| Checklist changed | `false` |
+| Plan summary created | `false` |
+| Retry in this continuation | `false` |
+
+The protected root is sealed non-promotable and cannot be reused, retried, or
+spliced. Task 2 and Phase 35 remain incomplete, and Task 3 is not authorized.
+After the repeated board-info transport connection failure, the next checkpoint
+is a human-action USB re-enumeration: leave barrel/DC power connected and
+unchanged; unplug only the provided USB cable from the computer or device; wait
+for the USB node to disappear; reconnect the same USB cable; and wait for USB
+re-enumeration. This is USB re-enumeration, not a cold start or barrel-power
+cycle. It does not authorize direct UART, pins, pads, probes, or other electrical
+manipulation.
