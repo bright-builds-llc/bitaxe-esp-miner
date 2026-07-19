@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 checkpoint after ninth sealed non-promotion
-last_updated: "2026-07-19T13:18:23Z"
+stopped_at: Phase 35 Plan 04 Task 2 checkpoint after tenth sealed non-promotion
+last_updated: "2026-07-19T14:11:46Z"
 last_activity: "2026-07-19"
 progress:
   total_phases: 5
@@ -25,11 +25,12 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Blocked at Task 2 after sealed non-promotion attempt 9
+- **Status:** Blocked at Task 2 after sealed non-promotion attempt 10
 - **Next step:** A separately authorized fresh continuation may decide whether
-  to run one new exact-current-package detector-gated attempt. It must use a new
-  protected root and may not reuse or splice the sealed attempt-9 root. No
-  further physical action or hardware command is authorized in this
+  to add a redacted pre-mutation HTTP transport/readiness diagnostic before any
+  later exact-current-package detector-gated attempt. Any later attempt must use
+  a new protected root and may not reuse or splice the sealed attempt-10 root.
+  No further physical action or hardware command is authorized in this
   continuation.
 
 ## Project Reference
@@ -387,27 +388,35 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 9 sealed
-  non-promotion. The exact current package included the 16 KiB main-task stack
-  repair and produced one coherent Boot A session without the attempt-8 restart
-  loop or stack overflow. Exactly one candidate and board-info passed, the
-  opaque input gate passed, direct flash completed, and the fresh target was
-  derived and shape-validated. The original settings request then timed out
-  before producing a response body, so JSON and hostname schema/value validation
-  did not begin. No deterministic supervisor or API-path defect was proven. The
-  attempt stopped before PATCH, approved reboot, or mutation. Cleanup confirmed
-  zero remaining Phase 35 processes and zero unexpected serial holders; no
-  restoration was needed. The root is sealed and non-reusable; admission,
-  evidence generation, checklist changes, Task 3, summary, and retry did not
-  occur. A separately authorized fresh continuation must own any later
-  exact-current-package one-shot attempt.
+- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 10 sealed
+  non-promotion. All ordered software and exact-package gates passed. Exactly
+  one candidate and board-info passed, the opaque input gate passed, direct
+  flash completed, one coherent Boot A session passed, and the fresh target was
+  present and shape-validated. The first original-settings request then failed
+  while receiving network data and produced no body, so JSON and hostname
+  schema/value validation did not begin. Private software-only comparison with
+  attempt 9 found the same fail-closed boundary but different host-side
+  outcomes: timeout versus receive failure. Both captures showed Wi-Fi
+  connected, the HTTP route shell started, and continued heartbeats without a
+  reset, panic, HTTP-startup failure, publication failure, or disconnect marker.
+  The sealed evidence cannot distinguish device/host transport loss from an
+  unobserved HTTP responsiveness failure, so no deterministic repository defect
+  was proven and no speculative repair was made. The attempt stopped before
+  PATCH, approved reboot, or mutation. Cleanup confirmed zero remaining Phase
+  35 processes and zero unexpected serial holders; no restoration was needed.
+  The root is sealed and non-reusable; admission, evidence generation, checklist
+  changes, Task 3, summary, and retry did not occur. A separately authorized
+  fresh continuation should first own a redacted pre-mutation HTTP
+  transport/readiness diagnostic before deciding on any later one-shot attempt.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after the ninth sealed
+- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after the tenth sealed
   non-promotion attempt
 - **Resume:** Start only through a separately authorized fresh continuation.
-  Rebuild and lock the exact current package, create a fresh protected root, and
-  preserve the one-full-command/one-detector/no-retry contract. Do not reuse,
-  retry, or splice the sealed attempt-9 root. Do not run Task 3 or create
+  First decide whether to add a redacted pre-mutation HTTP
+  transport/readiness diagnostic. Any later attempt must rebuild and lock the
+  exact current package, create a fresh protected root, and preserve the
+  one-full-command/one-detector/no-retry contract. Do not reuse, retry, or
+  splice the sealed attempt-10 root. Do not run Task 3 or create
   `35-04-SUMMARY.md` unless a later root is genuinely admitted.

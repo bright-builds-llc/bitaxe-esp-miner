@@ -609,3 +609,99 @@ spliced. Task 2 and Phase 35 remain incomplete, and Task 3 is not authorized.
 No hardware retry occurred. Any later hardware attempt requires a separately
 authorized fresh continuation and a new protected root; no further hardware
 action is authorized by this checkpoint.
+
+## Continuation Attempt 10 Checkpoint
+
+The tenth fresh continuation first refreshed remote state and proved the clean
+current commit was an exact descendant of the attempt-9 checkpoint with no newer
+upstream commit. All nine ordered Rust, Bazel, reference, parity, lifecycle, and
+preflight-only gates passed. The canonical package manifest source equaled the
+current commit before the full command began.
+
+The caller created one fresh ignored mode-`0700` private parent, left the
+supervisor-owned child nonexistent through the immediate pre-launch assertion,
+and placed mode-`0600` wrapper output in a sibling file. The full Phase 35 command
+then ran exactly once with the literal opaque credential-path argument, a
+360-second capture budget, and detector ownership inside the command.
+
+The supervisor created the child, passed exact-package Gate 1, made its sole
+detector invocation, selected exactly one candidate, and completed board-info
+successfully. The post-detector opaque input gate passed, direct flash completed,
+and the strict Boot A classifier admitted one coherent session. The fresh target
+was present and passed the closed target-shape validation.
+
+The first original-settings request then failed while receiving network data
+without producing a response body. JSON parsing and hostname schema/value
+validation therefore did not begin. The supervisor sealed typed category
+`original_setting_unavailable` and stopped before PATCH, approved reboot, or any
+settings mutation.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-19T14:03:22Z` |
+| Attempt ordinal | `10` |
+| Source commit | `fbb667c282be0e55d4b644c42e86f659f939aec9` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Full command duration seconds | `480` |
+| Exact current package rebuilt and locked | `true` |
+| Exact-package Gate 1 passed | `true` |
+| Package capability digest | `ef6f947bede18a040b146f68d5251bd42b8754eb41282947a806dc38358d94fc` |
+| Manifest digest | `8a632ce5192472e0f6e2b29137fbc5715f6ca432569ad129202ead6cd6884a41` |
+| Executable-image digest | `81291cb80ab16492ab9b796d7010de0bb0b0e6bfe7d49f1fe183ebf60bf500b8` |
+| Factory-image digest | `a31686e73c36e6911ba61f5de618289372a12e5a45b26d1f835996bca6fbbefd` |
+| Package digest | `4c8aac79e8dbe669ba9a19e81e14bcff7beb93715c0fc9e4326765f72e19ad30` |
+| Runtime-identity digest | `45f002bd3d73e0e84bd10eaf73f2d7fcd71ed96857877d6e5d6ba097ad43cff9` |
+| Detector invocations | `1` |
+| Selected candidate count | `1` |
+| Board-info verified | `true` |
+| Opaque input gate passed | `true` |
+| Flash command completed | `true` |
+| Boot A classification status | `passed` |
+| Boot A coherent session count | `1` |
+| Target present and shape validated | `true` |
+| Original settings request outcome | `receive_failure` |
+| Original settings response body | `missing` |
+| Hostname schema validation reached | `false` |
+| Failure category | `original_setting_unavailable` |
+| Failure boundary | `original_settings_http_read` |
+| Deterministic repository defect proven | `false` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration | `not_needed` |
+| Process-tree cleanup | `true` |
+| Unexpected serial-holder count | `0` |
+| Remaining Phase 35 process count | `0` |
+| Protected root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Evidence generation changed | `false` |
+| Checklist changed | `false` |
+| Task 3 authorized | `false` |
+| Plan summary created | `false` |
+| Retry in this continuation | `false` |
+
+### Software-Only Diagnosis
+
+Private category-only comparison with attempt 9 found the same sealed
+`original_setting_unavailable` boundary but different host-side outcomes:
+attempt 9 timed out, while attempt 10 failed while receiving network data. Both
+captures recorded one Wi-Fi-connected runtime, one started HTTP route shell,
+continued boot-lifetime heartbeats after HTTP startup, and no panic, restart,
+HTTP-server startup failure, snapshot-publication failure, or Wi-Fi disconnect
+marker. Neither request produced a body.
+
+The sealed traces therefore do not prove a deterministic supervisor, firmware
+HTTP-service, readiness, or route-path defect, and they cannot distinguish
+device/host transport loss from an unobserved HTTP responsiveness failure. The
+single request failed closed exactly as required. No speculative retry or
+software repair was made.
+
+The protected root is sealed non-promotable and cannot be reused, retried, or
+spliced. Task 2 and Phase 35 remain incomplete, and Task 3 and
+`35-04-SUMMARY.md` remain unauthorized. Any later work requires a separately
+authorized fresh continuation and should first own a redacted, pre-mutation HTTP
+transport/readiness diagnostic that can distinguish connection, request,
+response, and valid-body boundaries without weakening the exact original-setting
+readback, restoration, cleanup, redaction, or admission gates.
