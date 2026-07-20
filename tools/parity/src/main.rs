@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use std::env;
+use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::process::Command as ProcessCommand;
 
 use anyhow::{bail, Context, Result};
@@ -50,6 +52,7 @@ mod phase33_source_guard;
 #[cfg(test)]
 mod phase34_source_guard;
 mod phase35_evidence;
+mod phase35_http;
 mod phase35_promotion;
 mod release_evidence;
 mod release_gate;
@@ -76,6 +79,7 @@ enum CliCommand {
     CompleteOperatorEvidence(CompleteOperatorEvidenceArgs),
     ConsolidatePhase28Evidence(ConsolidatePhase28EvidenceArgs),
     Phase33Classify(Phase33ClassifyArgs),
+    ClassifyPhase35Http(ClassifyPhase35HttpArgs),
     ValidatePhase35Evidence(ValidatePhase35EvidenceArgs),
     AdmitPhase35Evidence(AdmitPhase35EvidenceArgs),
 }
@@ -103,6 +107,21 @@ struct Phase33ClassifyArgs {
 
     #[arg(long)]
     expected_ordinal: Option<u64>,
+}
+
+#[derive(Debug, Parser)]
+struct ClassifyPhase35HttpArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    metrics_input: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    body_input: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    projection_output: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    hostname_output: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -656,6 +675,9 @@ fn main() -> Result<()> {
             run_consolidate_phase28_evidence_command(args, &environment)?
         }
         CliCommand::Phase33Classify(args) => run_phase33_classify_command(args, &environment)?,
+        CliCommand::ClassifyPhase35Http(args) => {
+            run_classify_phase35_http_command(args, &environment)?
+        }
         CliCommand::ValidatePhase35Evidence(args) => {
             run_validate_phase35_evidence_command(args, &environment)?
         }
@@ -667,6 +689,150 @@ fn main() -> Result<()> {
     let mut stdout = io::stdout().lock();
     writeln!(stdout, "{output}")?;
 
+    Ok(())
+}
+
+fn run_classify_phase35_http_command(
+    args: ClassifyPhase35HttpArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    use phase35_http::{classify_phase35_http, HttpTerminalCategory};
+
+    let metrics_input = environment.workspace_path(&args.metrics_input);
+    let body_input = environment.workspace_path(&args.body_input);
+    let projection_output = environment.workspace_path(&args.projection_output);
+    let hostname_output = environment.workspace_path(&args.hostname_output);
+
+    let metrics_metadata = validate_private_input(&metrics_input)?;
+    let body_metadata = validate_private_input(&body_input)?;
+    if (metrics_metadata.dev(), metrics_metadata.ino())
+        == (body_metadata.dev(), body_metadata.ino())
+    {
+        bail!("Phase 35 HTTP diagnostic input aliases another input");
+    }
+
+    let metrics_identity = canonical_private_path(&metrics_input)?;
+    let body_identity = canonical_private_path(&body_input)?;
+    let projection_identity = validate_private_output(&projection_output)?;
+    let hostname_identity = validate_private_output(&hostname_output)?;
+    let identities = [
+        metrics_identity,
+        body_identity,
+        projection_identity,
+        hostname_identity,
+    ];
+    for left in 0..identities.len() {
+        for right in (left + 1)..identities.len() {
+            if identities[left] == identities[right] {
+                bail!("Phase 35 HTTP diagnostic paths must be distinct");
+            }
+        }
+    }
+
+    let metrics = fs::read(metrics_input.as_std_path())
+        .context("failed to read private Phase 35 HTTP metrics")?;
+    let body =
+        fs::read(body_input.as_std_path()).context("failed to read private Phase 35 HTTP body")?;
+    let classified = classify_phase35_http(&metrics, &body)
+        .map_err(|_| anyhow::anyhow!("category=http_diagnostic_invalid"))?;
+    let mut projection =
+        serde_json::to_vec_pretty(&classified.projection).context("failed to encode projection")?;
+    projection.push(b'\n');
+    write_private_new(&projection_output, &projection)?;
+
+    if classified.terminal_category != HttpTerminalCategory::Ready {
+        bail!("category={}", classified.terminal_category.as_str());
+    }
+    let hostname = classified
+        .maybe_hostname
+        .as_deref()
+        .context("ready HTTP classification omitted private hostname")?;
+    let mut hostname_bytes = hostname.as_bytes().to_vec();
+    hostname_bytes.push(b'\n');
+    write_private_new(&hostname_output, &hostname_bytes)?;
+
+    Ok("category=ready".to_owned())
+}
+
+fn validate_private_input(path: &Utf8Path) -> Result<fs::Metadata> {
+    let metadata = fs::symlink_metadata(path.as_std_path())
+        .context("failed to inspect private Phase 35 HTTP input")?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        bail!("Phase 35 HTTP diagnostic input must be a non-aliased regular file");
+    }
+    if metadata.permissions().mode() & 0o777 != 0o600 {
+        bail!("Phase 35 HTTP diagnostic input must have mode 0600");
+    }
+    validate_private_parent(path)?;
+    let _ = canonical_private_path(path)?;
+    Ok(metadata)
+}
+
+fn validate_private_output(path: &Utf8Path) -> Result<Utf8PathBuf> {
+    if fs::symlink_metadata(path.as_std_path()).is_ok() {
+        bail!("Phase 35 HTTP diagnostic output must not pre-exist");
+    }
+    if let Err(error) = fs::symlink_metadata(path.as_std_path()) {
+        if error.kind() != ErrorKind::NotFound {
+            return Err(error).context("failed to inspect private Phase 35 HTTP output");
+        }
+    }
+    validate_private_parent(path)?;
+    let parent = path
+        .parent()
+        .context("Phase 35 HTTP diagnostic output has no parent")?;
+    let file_name = path
+        .file_name()
+        .context("Phase 35 HTTP diagnostic output has no file name")?;
+    Ok(canonical_private_path(parent)?.join(file_name))
+}
+
+fn validate_private_parent(path: &Utf8Path) -> Result<()> {
+    let parent = path
+        .parent()
+        .context("Phase 35 HTTP diagnostic path has no parent")?;
+    let metadata = fs::symlink_metadata(parent.as_std_path())
+        .context("failed to inspect private Phase 35 HTTP parent")?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        bail!("Phase 35 HTTP diagnostic parent must be a non-aliased directory");
+    }
+    if metadata.permissions().mode() & 0o777 != 0o700 {
+        bail!("Phase 35 HTTP diagnostic parent must have mode 0700");
+    }
+    let _ = canonical_private_path(parent)?;
+    Ok(())
+}
+
+fn canonical_private_path(path: &Utf8Path) -> Result<Utf8PathBuf> {
+    let canonical = fs::canonicalize(path.as_std_path())
+        .context("failed to canonicalize private Phase 35 HTTP path")?;
+    Utf8PathBuf::from_path_buf(canonical)
+        .map_err(|_| anyhow::anyhow!("private Phase 35 HTTP path is not valid UTF-8"))
+}
+
+fn write_private_new(path: &Utf8Path, contents: &[u8]) -> Result<()> {
+    let mut output = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path.as_std_path())
+        .context("failed to create private Phase 35 HTTP output")?;
+    output
+        .write_all(contents)
+        .context("failed to write private Phase 35 HTTP output")?;
+    output
+        .sync_all()
+        .context("failed to sync private Phase 35 HTTP output")?;
+    if output
+        .metadata()
+        .context("failed to inspect private Phase 35 HTTP output")?
+        .permissions()
+        .mode()
+        & 0o777
+        != 0o600
+    {
+        bail!("Phase 35 HTTP diagnostic output must have mode 0600");
+    }
     Ok(())
 }
 
