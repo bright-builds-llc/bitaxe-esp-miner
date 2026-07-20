@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-19 - Completed quick task 260719-g3g: Add deterministic lesson loading and maintenance with an 8k-token budget, selective over-budget loading, and append-only audits
+Last activity: 2026-07-20 - Completed quick task 260719-tfu: Instrument Phase 35 setting reads with typed redacted HTTP boundary diagnostics, preserve primary failure precedence, and software-verify without hardware
 
 ## Current Position
 
@@ -367,6 +367,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | 260714-unf | Remap CFG-12 from Phase 33 to Phase 35 and re-verify Phase 33 without hardware | 2026-07-15 | 94ac313 | Verified | [260714-unf-remap-cfg-12-from-phase-33-to-phase-35-a](./quick/260714-unf-remap-cfg-12-from-phase-33-to-phase-35-a/) |
 | 260719-e8b | Persist Phase 35 lessons and guardrails | 2026-07-19 | 9eb1aca5 | Verified | [260719-e8b-persist-phase-35-lessons-and-guardrails](./quick/260719-e8b-persist-phase-35-lessons-and-guardrails/) |
 | 260719-g3g | Add deterministic lesson loading and maintenance with an 8k-token budget, selective over-budget loading, and append-only audits | 2026-07-19 | 713fe593 | Verified | [260719-g3g-add-deterministic-lesson-loading-and-mai](./quick/260719-g3g-add-deterministic-lesson-loading-and-mai/) |
+| 260719-tfu | Instrument Phase 35 setting reads with typed redacted HTTP boundary diagnostics, preserve primary failure precedence, and software-verify without hardware | 2026-07-20 | fbe6b8ff | Verified | [260719-tfu-instrument-phase-35-setting-reads-with-t](./quick/260719-tfu-instrument-phase-35-setting-reads-with-t/) |
 
 ## Decisions (Phase 28.1.1.5)
 
