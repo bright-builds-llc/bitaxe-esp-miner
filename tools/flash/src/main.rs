@@ -3,9 +3,9 @@ use std::env;
 use std::fmt;
 use std::fs;
 use std::io::{self, Write};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::str::FromStr;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
 use bitaxe_api::BuildProvenance;
@@ -14,11 +14,12 @@ use bitaxe_config::{
     SettingsUpdateDecision, NVS_NAMESPACE,
 };
 use camino::{Utf8Path, Utf8PathBuf};
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 mod esp32s3_image;
+mod evidence;
 mod package_admission;
 
 const PACKAGE_BUILD_DISPLAY: &str = "bazel build //firmware/bitaxe:firmware_image";
@@ -34,6 +35,7 @@ const NVS_GENERATOR_PYTHON_RELATIVE_PATH: &str =
     ".embuild/espressif/python_env/idf5.5_py3.9_env/bin/python";
 const BUILD_IDENTITY_STATUS_RELATIVE_PATH: &str = "scripts/build-identity-status.sh";
 const UNAVAILABLE: &str = "Unavailable";
+const PROTECTED_OPERATIONAL: &str = "protected-operational";
 
 #[derive(Debug, Parser)]
 #[command(name = "bitaxe-flash")]
@@ -64,6 +66,9 @@ struct CommonArgs {
 
     #[arg(long = "redact-evidence")]
     redact_evidence: bool,
+
+    #[arg(long = "evidence-mode", value_enum, conflicts_with = "redact_evidence")]
+    evidence_mode: Option<EvidenceMode>,
 
     #[arg(long = "evidence-dir", value_parser = parse_utf8_path)]
     evidence_dir: Option<Utf8PathBuf>,
@@ -114,9 +119,14 @@ enum BoardId {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum EvidenceRedactionMode {
+pub(crate) enum EvidenceRedactionMode {
     DeveloperRaw,
     CommitRedacted,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+enum EvidenceMode {
+    Dual,
 }
 
 impl EvidenceRedactionMode {
@@ -349,7 +359,16 @@ struct EvidenceRecordInput<'a> {
     flash_command: &'a str,
     monitor_command: &'a str,
     log_path: &'a Utf8Path,
+    private_log_path: Option<&'a Utf8Path>,
+    private_log_sha256: Option<&'a str>,
+    admitted_log_sha256: Option<&'a str>,
     capture_outcome: &'a MonitorCaptureOutcome,
+}
+
+struct MonitorEvidenceArtifacts<'a> {
+    admitted_log: &'a Utf8Path,
+    dual_paths: Option<&'a evidence::DualEvidencePaths>,
+    dual_digests: Option<&'a evidence::DualEvidenceDigests>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -408,6 +427,8 @@ trait FlashEnvironment {
         command_spec: &CommandSpec,
         log_path: &Utf8Path,
         timeout_seconds: u64,
+        redaction_mode: EvidenceRedactionMode,
+        create_new: bool,
     ) -> Result<CaptureProcessResult>;
     fn firmware_commit(&self) -> String;
     fn reference_commit(&self) -> String;
@@ -447,64 +468,16 @@ impl FlashEnvironment for LocalFlashEnvironment {
         command_spec: &CommandSpec,
         log_path: &Utf8Path,
         timeout_seconds: u64,
+        redaction_mode: EvidenceRedactionMode,
+        create_new: bool,
     ) -> Result<CaptureProcessResult> {
-        if command_spec.program != "espflash" {
-            bail!("unsupported command program: {}", command_spec.program);
-        }
-
-        if let Some(parent) = log_path.parent() {
-            fs::create_dir_all(parent.as_std_path())
-                .with_context(|| format!("failed to create log directory {parent}"))?;
-        }
-
-        let log_file = fs::File::create(log_path.as_std_path())
-            .with_context(|| format!("failed to create monitor log {log_path}"))?;
-        let stderr_log = log_file
-            .try_clone()
-            .with_context(|| format!("failed to clone monitor log handle {log_path}"))?;
-
-        let mut command = Command::new("espflash");
-        for arg in &command_spec.args {
-            command.arg(arg);
-        }
-
-        let mut child = command
-            .stdout(Stdio::from(log_file))
-            .stderr(Stdio::from(stderr_log))
-            .spawn()
-            .with_context(|| format!("failed to spawn {}", command_spec.display()))?;
-
-        let deadline = Duration::from_secs(timeout_seconds);
-        let started = Instant::now();
-        loop {
-            if let Some(status) = child
-                .try_wait()
-                .with_context(|| format!("failed to poll {}", command_spec.display()))?
-            {
-                let capture_status = if status.success() {
-                    CaptureProcessStatus::ExitedSuccess
-                } else {
-                    CaptureProcessStatus::ExitedFailure(status.to_string())
-                };
-                return Ok(CaptureProcessResult {
-                    status: capture_status,
-                });
-            }
-
-            if started.elapsed() >= deadline {
-                child
-                    .kill()
-                    .with_context(|| format!("failed to stop {}", command_spec.display()))?;
-                child
-                    .wait()
-                    .with_context(|| format!("failed to reap {}", command_spec.display()))?;
-                return Ok(CaptureProcessResult {
-                    status: CaptureProcessStatus::TimedOut,
-                });
-            }
-
-            std::thread::sleep(Duration::from_millis(200));
-        }
+        evidence::capture_command(
+            command_spec,
+            log_path,
+            timeout_seconds,
+            redaction_mode,
+            create_new,
+        )
     }
 
     fn bazel_bin(&self) -> Result<Utf8PathBuf> {
@@ -676,7 +649,17 @@ where
     S: Into<String>,
 {
     let normalized = normalize_args(args);
-    Cli::try_parse_from(normalized).map_err(anyhow::Error::new)
+    let cli = Cli::try_parse_from(normalized).map_err(anyhow::Error::new)?;
+    match &cli.command {
+        CliCommand::Flash(command) if command.common.evidence_mode.is_some() => {
+            bail!("--evidence-mode dual is supported only by flash-monitor");
+        }
+        CliCommand::Monitor(command) if command.common.evidence_mode.is_some() => {
+            bail!("--evidence-mode dual is supported only by flash-monitor");
+        }
+        _ => {}
+    }
+    Ok(cli)
 }
 
 fn normalize_args<I, S>(args: I) -> Vec<String>
@@ -707,6 +690,9 @@ where
             }
             "evidence-dir" | "evidence_dir" => {
                 push_flag_value(&mut normalized, "--evidence-dir", value)
+            }
+            "evidence-mode" | "evidence_mode" => {
+                push_flag_value(&mut normalized, "--evidence-mode", value)
             }
             "capture-timeout-seconds" | "capture_timeout_seconds" => {
                 push_flag_value(&mut normalized, "--capture-timeout-seconds", value)
@@ -743,7 +729,10 @@ fn run_flash(command: &FlashCommand, environment: &impl FlashEnvironment) -> Res
         execution_command,
         _execution_snapshot,
     } = prepare_flash(command, environment)?;
-    emit_flash_outcome(&outcome)?;
+    emit_flash_outcome(
+        &outcome,
+        command.common.evidence_mode != Some(EvidenceMode::Dual),
+    )?;
 
     if !command.common.dry_run {
         environment.execute(&execution_command).map_err(|_| {
@@ -773,6 +762,22 @@ fn run_flash_monitor(
     command: &FlashMonitorCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
+    let resolved_dir = resolved_evidence_dir(&command.common, environment);
+    if command.common.evidence_mode.is_some() && resolved_dir.is_none() {
+        bail!("--evidence-mode dual requires --evidence-dir");
+    }
+    let dual_paths =
+        if command.common.evidence_mode == Some(EvidenceMode::Dual) {
+            let evidence_dir = resolved_dir
+                .as_deref()
+                .context("dual evidence mode requires an evidence directory")?;
+            Some(evidence::preflight_dual_paths(evidence_dir).map_err(|_| {
+                anyhow::anyhow!("dual_evidence=failed reason=path_preflight_failed")
+            })?)
+        } else {
+            None
+        };
+
     let mut flash_common = command.common.clone();
     flash_common.evidence_dir = None;
     let flash_command = FlashCommand {
@@ -781,53 +786,117 @@ fn run_flash_monitor(
         manifest: command.manifest.clone(),
         wifi_credentials: command.wifi_credentials.clone(),
     };
-    let flash_outcome = run_flash(&flash_command, environment)?;
+    let flash_outcome = run_flash(&flash_command, environment).map_err(|error| {
+        if command.common.evidence_mode == Some(EvidenceMode::Dual) {
+            return anyhow::anyhow!("dual_evidence=failed reason=flash_workflow_failed");
+        }
+        error
+    })?;
 
-    if let Some(evidence_dir) = resolved_evidence_dir(&command.common, environment) {
-        let monitor_command = prepare_evidence_monitor_command(&command.common, environment)?;
-        emit_command("monitor_command", &monitor_command)?;
+    if let Some(evidence_dir) = resolved_dir {
+        let monitor_command = prepare_evidence_monitor_command(&command.common, environment)
+            .map_err(|error| {
+                if command.common.evidence_mode == Some(EvidenceMode::Dual) {
+                    return anyhow::anyhow!(
+                        "dual_evidence=failed reason=monitor_preparation_failed"
+                    );
+                }
+                error
+            })?;
+        emit_operational_command(
+            "monitor_command",
+            &monitor_command,
+            command.common.evidence_mode != Some(EvidenceMode::Dual),
+        )?;
         let log_path = evidence_dir.join("flash-monitor.log");
+        let capture_log_path = dual_paths
+            .as_ref()
+            .map(|paths| paths.private_log.as_path())
+            .unwrap_or(log_path.as_path());
         let capture_outcome = if command.common.dry_run {
-            environment.write_evidence(
-                &log_path,
-                "dry-run: espflash monitor was not executed; no hardware log captured\n",
-            )?;
+            let dry_run_text =
+                "dry-run: espflash monitor was not executed; no hardware log captured\n";
+            if let Some(paths) = &dual_paths {
+                evidence::write_dual_private_text(&paths.private_log, dry_run_text).map_err(
+                    |_| anyhow::anyhow!("dual_evidence=failed reason=private_capture_failed"),
+                )?;
+            } else {
+                environment.write_evidence(&log_path, dry_run_text)?;
+            }
             dry_run_monitor_capture_outcome(command.capture_timeout_seconds)
         } else {
-            let capture_result = environment.execute_capturing(
-                &monitor_command,
-                &log_path,
-                command.capture_timeout_seconds,
-            )?;
+            let capture_result = environment
+                .execute_capturing(
+                    &monitor_command,
+                    capture_log_path,
+                    command.capture_timeout_seconds,
+                    if dual_paths.is_some() {
+                        EvidenceRedactionMode::DeveloperRaw
+                    } else {
+                        EvidenceRedactionMode::from_common(&command.common)
+                    },
+                    dual_paths.is_some(),
+                )
+                .map_err(|error| {
+                    if command.common.evidence_mode != Some(EvidenceMode::Dual) {
+                        return error;
+                    }
+                    if format!("{error:#}").contains("evidence_sanitization_invalid") {
+                        return anyhow::anyhow!("evidence_sanitization_invalid");
+                    }
+                    anyhow::anyhow!("dual_evidence=failed reason=capture_failed")
+                })?;
             let monitor_log = environment
-                .read_to_string(&log_path)
-                .with_context(|| format!("failed to read monitor log {log_path}"))?;
-            let capture_outcome = monitor_capture_outcome(
+                .read_to_string(capture_log_path)
+                .map_err(|error| {
+                    if command.common.evidence_mode == Some(EvidenceMode::Dual) {
+                        return anyhow::anyhow!(
+                            "dual_evidence=failed reason=private_capture_unreadable"
+                        );
+                    }
+                    error.context(format!("failed to read monitor log {capture_log_path}"))
+                })?;
+            monitor_capture_outcome(
                 &capture_result.status,
                 &monitor_log,
                 command.capture_timeout_seconds,
                 &environment.firmware_commit(),
                 &environment.reference_commit(),
-            );
-            environment.write_evidence(
-                &log_path,
-                &sanitize_evidence_text(
-                    &monitor_log,
-                    EvidenceRedactionMode::from_common(&command.common),
-                ),
-            )?;
-            capture_outcome
+            )
         };
+        let maybe_dual_digests = dual_paths
+            .as_ref()
+            .map(evidence::derive_admitted_log)
+            .transpose()
+            .map_err(|error| {
+                if command.common.evidence_mode == Some(EvidenceMode::Dual) {
+                    return anyhow::anyhow!("dual_evidence=failed reason=derivation_failed");
+                }
+                error
+            })?;
         write_flash_monitor_evidence_if_requested(
             &command.common,
             &flash_outcome,
             &monitor_command,
             &evidence_dir,
-            &log_path,
+            MonitorEvidenceArtifacts {
+                admitted_log: &log_path,
+                dual_paths: dual_paths.as_ref(),
+                dual_digests: maybe_dual_digests.as_ref(),
+            },
             &capture_outcome,
             environment,
-        )?;
+        )
+        .map_err(|error| {
+            if command.common.evidence_mode == Some(EvidenceMode::Dual) {
+                return anyhow::anyhow!("dual_evidence=failed reason=evidence_record_failed");
+            }
+            error
+        })?;
         if !command.common.dry_run && !capture_outcome.accepted() {
+            if command.common.evidence_mode == Some(EvidenceMode::Dual) {
+                bail!("dual_evidence=failed reason=capture_not_accepted");
+            }
             let port = command_port(&monitor_command).unwrap_or_else(|| UNAVAILABLE.to_owned());
             let user_evidence_dir = command
                 .common
@@ -1612,7 +1681,20 @@ fn ensure_ultra_205(board: BoardId) -> Result<()> {
     Ok(())
 }
 
-fn emit_flash_outcome(outcome: &FlashOutcome) -> Result<()> {
+fn emit_flash_outcome(outcome: &FlashOutcome, expose_operational: bool) -> Result<()> {
+    if !expose_operational {
+        if outcome.manifest.is_some() {
+            emit_line("manifest", operational_console_value("", false))?;
+        }
+        emit_line("flash_image", operational_console_value("", false))?;
+        emit_line("flash_command", operational_console_value("", false))?;
+        if outcome.nvs_seed.is_some() {
+            emit_line("nvs_seed_status", "provided")?;
+            emit_line("nvs_seed_image", operational_console_value("", false))?;
+            emit_line("nvs_seed_command", operational_console_value("", false))?;
+        }
+        return Ok(());
+    }
     if let Some(manifest) = &outcome.manifest {
         emit_line("manifest", manifest.as_str())?;
     }
@@ -1624,6 +1706,24 @@ fn emit_flash_outcome(outcome: &FlashOutcome) -> Result<()> {
         emit_command("nvs_seed_command", &nvs_seed.command)?;
     }
     Ok(())
+}
+
+fn emit_operational_command(
+    label: &str,
+    command: &CommandSpec,
+    expose_operational: bool,
+) -> Result<()> {
+    if expose_operational {
+        return emit_command(label, command);
+    }
+    emit_line(label, operational_console_value("", false))
+}
+
+fn operational_console_value(value: &str, expose_operational: bool) -> &str {
+    if expose_operational {
+        return value;
+    }
+    PROTECTED_OPERATIONAL
 }
 
 fn emit_command(label: &str, command: &CommandSpec) -> Result<()> {
@@ -1659,6 +1759,9 @@ fn write_evidence_if_requested(
             flash_command: &flash_command_display,
             monitor_command: UNAVAILABLE,
             log_path: &log_path,
+            private_log_path: None,
+            private_log_sha256: None,
+            admitted_log_sha256: None,
             capture_outcome: &capture_outcome,
         },
         environment,
@@ -1670,7 +1773,7 @@ fn write_flash_monitor_evidence_if_requested(
     outcome: &FlashOutcome,
     monitor_command: &CommandSpec,
     evidence_dir: &Utf8Path,
-    log_path: &Utf8Path,
+    artifacts: MonitorEvidenceArtifacts<'_>,
     capture_outcome: &MonitorCaptureOutcome,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
@@ -1687,7 +1790,16 @@ fn write_flash_monitor_evidence_if_requested(
             command: &command,
             flash_command: &flash_command_display,
             monitor_command: &monitor_command_display,
-            log_path,
+            log_path: artifacts.admitted_log,
+            private_log_path: artifacts
+                .dual_paths
+                .map(|paths| paths.private_log.as_path()),
+            private_log_sha256: artifacts
+                .dual_digests
+                .map(|digests| digests.private_sha256.as_str()),
+            admitted_log_sha256: artifacts
+                .dual_digests
+                .map(|digests| digests.admitted_sha256.as_str()),
             capture_outcome,
         },
         environment,
@@ -1702,6 +1814,7 @@ fn write_evidence_record(
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
     let redaction_mode = EvidenceRedactionMode::from_common(common);
+    let dual_mode = common.evidence_mode == Some(EvidenceMode::Dual);
     let record = EvidenceRecord {
         command: input.command.to_owned(),
         command_kind: input.command_kind.to_owned(),
@@ -1739,14 +1852,24 @@ fn write_evidence_record(
         } else {
             UNAVAILABLE.to_owned()
         },
-        redaction_mode: redaction_mode.as_str().to_owned(),
-        commit_ready: redaction_mode.commit_ready(),
+        redaction_mode: if dual_mode {
+            "dual".to_owned()
+        } else {
+            redaction_mode.as_str().to_owned()
+        },
+        commit_ready: dual_mode || redaction_mode.commit_ready(),
         wifi_credentials_source: if outcome.nvs_seed.is_some() {
             "provided-redacted".to_owned()
         } else {
             "not-provided".to_owned()
         },
         monitor_log_path: input.log_path.as_str().to_owned(),
+        private_log_role: input
+            .private_log_path
+            .map(|_| "classifier-input-private".to_owned()),
+        private_monitor_log_path: input.private_log_path.map(|path| path.as_str().to_owned()),
+        private_monitor_log_sha256: input.private_log_sha256.map(str::to_owned),
+        monitor_log_sha256: input.admitted_log_sha256.map(str::to_owned),
         capture_mode: input.capture_outcome.capture_mode.clone(),
         capture_status: input.capture_outcome.capture_status,
         capture_timeout_seconds: input.capture_outcome.capture_timeout_seconds,
@@ -1755,6 +1878,37 @@ fn write_evidence_record(
         observed_reference_commit: input.capture_outcome.observed_reference_commit.clone(),
         conclusion: input.capture_outcome.conclusion.clone(),
     };
+    if dual_mode {
+        let paths = evidence::DualEvidencePaths {
+            private_log: input
+                .private_log_path
+                .context("dual evidence record requires private log path")?
+                .to_owned(),
+            admitted_log: input.log_path.to_owned(),
+            private_record: evidence_dir.join("flash-command-evidence.private.json"),
+            admitted_record: evidence_dir.join("flash-command-evidence.json"),
+        };
+        let private_json = serde_json::to_string_pretty(&record)
+            .context("failed to serialize private evidence")?;
+        evidence::write_dual_private_text(&paths.private_record, &private_json)?;
+
+        let mut admitted_record = record;
+        admitted_record.command = "protected-operational".to_owned();
+        admitted_record.flash_command = "protected-operational".to_owned();
+        admitted_record.monitor_command = "protected-operational".to_owned();
+        admitted_record.port = "[redacted]".to_owned();
+        admitted_record.manifest_path = "protected-operational".to_owned();
+        admitted_record.flash_image_path = "protected-operational".to_owned();
+        admitted_record.log_path = "flash-monitor.log".to_owned();
+        admitted_record.monitor_log_path = "flash-monitor.log".to_owned();
+        admitted_record.private_log_role = None;
+        admitted_record.private_monitor_log_path = None;
+        admitted_record.private_monitor_log_sha256 = None;
+        let admitted_json = serde_json::to_string_pretty(&admitted_record)
+            .context("failed to serialize admitted evidence")?;
+        return evidence::write_dual_admitted_text(&paths.admitted_record, &admitted_json);
+    }
+
     let json = serde_json::to_string_pretty(&record).context("failed to serialize evidence")?;
     environment.write_evidence(
         &evidence_dir.join("flash-command-evidence.json"),
@@ -1772,53 +1926,177 @@ fn flash_workflow_command(outcome: &FlashOutcome) -> String {
 }
 
 fn sanitize_evidence_text(text: &str, redaction_mode: EvidenceRedactionMode) -> String {
-    let without_secret_json_fields = redact_json_string_fields(
-        text,
-        &[
-            "wifiPass",
-            "wifipass",
-            "wifi_password",
-            "password",
-            "pass",
-            "token",
-            "apiKey",
-            "api_key",
-            "pool_password",
-            "poolPassword",
-            "stratumPassword",
-            "nvsSecret",
-            "secret",
-        ],
-    );
-    let without_secret_tokens = redact_key_value_tokens(
-        &without_secret_json_fields,
-        &[
-            "wifiPass",
-            "wifipass",
-            "wifi_password",
-            "password",
-            "pass",
-            "token",
-            "apiKey",
-            "api_key",
-            "pool_password",
-            "poolPassword",
-            "stratumPassword",
-            "nvsSecret",
-            "secret",
-        ],
-    );
+    const NEVER_PERSIST_FIELDS: &[&str] = &[
+        "wifiPass",
+        "wifipass",
+        "wifi_password",
+        "password",
+        "pass",
+        "token",
+        "apiKey",
+        "api_key",
+        "pool_password",
+        "poolPassword",
+        "stratumPassword",
+        "nvsSecret",
+        "secret",
+        "poolURL",
+        "poolPort",
+        "poolUser",
+        "poolWorker",
+        "worker",
+        "ownerAddress",
+        "btcAddress",
+    ];
+    let without_secret_json_fields = redact_json_string_fields(text, NEVER_PERSIST_FIELDS);
+    let without_secret_json_scalars =
+        redact_json_scalar_fields(&without_secret_json_fields, NEVER_PERSIST_FIELDS);
+    let without_secret_tokens =
+        redact_key_value_tokens(&without_secret_json_scalars, NEVER_PERSIST_FIELDS);
 
     if redaction_mode == EvidenceRedactionMode::DeveloperRaw {
         return without_secret_tokens;
     }
 
-    let without_network_json_fields = redact_json_string_fields(&without_secret_tokens, &["ssid"]);
+    let without_network_json_fields =
+        redact_json_string_fields(&without_secret_tokens, &["ssid", "hostname", "hostName"]);
     let without_urls = redact_urls(&without_network_json_fields);
     let without_macs = redact_mac_addresses(&without_urls);
     let without_ips = redact_ipv4_addresses(&without_macs);
     let without_wifi_driver_ssids = redact_wifi_driver_connected_ssids(&without_ips);
-    redact_key_value_tokens(&without_wifi_driver_ssids, &["ssid"])
+    let without_operational_tokens = redact_key_value_tokens(
+        &without_wifi_driver_ssids,
+        &[
+            "ssid",
+            "SSID",
+            "hostname",
+            "hostName",
+            "pid",
+            "pgid",
+            "USB_serial",
+            "usb_serial",
+            "USB-serial",
+        ],
+    );
+    let without_local_paths = redact_local_paths(&without_operational_tokens);
+    redact_http_metadata(&without_local_paths)
+}
+
+fn redact_json_scalar_fields(text: &str, fields: &[&str]) -> String {
+    fields.iter().fold(text.to_owned(), |sanitized, field| {
+        redact_json_scalar_field(&sanitized, field)
+    })
+}
+
+fn redact_json_scalar_field(text: &str, field: &str) -> String {
+    let pattern = format!("\"{field}\"");
+    let mut output = String::with_capacity(text.len());
+    let mut index = 0;
+    while index < text.len() {
+        let Some(relative_start) = text[index..].find(&pattern) else {
+            output.push_str(&text[index..]);
+            break;
+        };
+        let field_start = index + relative_start;
+        let field_end = field_start + pattern.len();
+        output.push_str(&text[index..field_end]);
+        let mut cursor = field_end;
+        while text
+            .as_bytes()
+            .get(cursor)
+            .is_some_and(u8::is_ascii_whitespace)
+        {
+            cursor += 1;
+        }
+        if text.as_bytes().get(cursor) != Some(&b':') {
+            index = field_end;
+            continue;
+        }
+        cursor += 1;
+        while text
+            .as_bytes()
+            .get(cursor)
+            .is_some_and(u8::is_ascii_whitespace)
+        {
+            cursor += 1;
+        }
+        if text.as_bytes().get(cursor) == Some(&b'"') {
+            index = field_end;
+            continue;
+        }
+        output.push_str(&text[field_end..cursor]);
+        output.push_str("\"[redacted]\"");
+        while let Some(byte) = text.as_bytes().get(cursor) {
+            if matches!(byte, b',' | b'}' | b']') || byte.is_ascii_whitespace() {
+                break;
+            }
+            cursor += 1;
+        }
+        index = cursor;
+    }
+    output
+}
+
+fn redact_local_paths(text: &str) -> String {
+    let mut output = String::with_capacity(text.len());
+    let mut index = 0;
+    while index < text.len() {
+        let rest = &text[index..];
+        let is_unix_path = ["/Users/", "/home/", "/dev/cu", "/dev/tty"]
+            .iter()
+            .any(|prefix| rest.starts_with(prefix));
+        let is_windows_path = rest.as_bytes().get(1) == Some(&b':')
+            && rest.as_bytes().first().is_some_and(u8::is_ascii_alphabetic)
+            && matches!(rest.as_bytes().get(2), Some(b'\\'));
+        if is_unix_path || is_windows_path {
+            output.push_str("[redacted-path]");
+            while index < text.len() {
+                let character = text[index..].chars().next().expect("character");
+                if character.is_whitespace() || matches!(character, '"' | '\'' | ',' | '}') {
+                    break;
+                }
+                index += character.len_utf8();
+            }
+            continue;
+        }
+        let character = rest.chars().next().expect("character");
+        output.push(character);
+        index += character.len_utf8();
+    }
+    output
+}
+
+fn redact_http_metadata(text: &str) -> String {
+    let mut output = String::with_capacity(text.len());
+    for line in text.split_inclusive('\n') {
+        let line_without_protocol = if let Some(index) = line.find("HTTP/") {
+            let protocol_end = line[index..]
+                .find(char::is_whitespace)
+                .map(|end| index + end)
+                .unwrap_or(line.len());
+            format!("{}[redacted-http]{}", &line[..index], &line[protocol_end..])
+        } else {
+            line.to_owned()
+        };
+        if line_without_protocol
+            .trim_start()
+            .to_ascii_lowercase()
+            .starts_with("host:")
+        {
+            let leading = line_without_protocol.len() - line_without_protocol.trim_start().len();
+            let newline = if line_without_protocol.ends_with('\n') {
+                "\n"
+            } else {
+                ""
+            };
+            output.push_str(&line_without_protocol[..leading]);
+            output.push_str("Host: [redacted]");
+            output.push_str(newline);
+        } else {
+            output.push_str(&line_without_protocol);
+        }
+    }
+    output
 }
 
 fn redact_wifi_driver_connected_ssids(text: &str) -> String {
@@ -2097,7 +2375,7 @@ fn command_port(command: &CommandSpec) -> Option<String> {
         .map(|window| window[1].clone())
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 struct EvidenceRecord {
     command: String,
     command_kind: String,
@@ -2119,6 +2397,14 @@ struct EvidenceRecord {
     commit_ready: bool,
     wifi_credentials_source: String,
     monitor_log_path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    private_log_role: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    private_monitor_log_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    private_monitor_log_sha256: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    monitor_log_sha256: Option<String>,
     capture_mode: String,
     capture_status: CaptureStatus,
     capture_timeout_seconds: u64,
@@ -2302,6 +2588,109 @@ mod tests {
         };
         assert!(hyphenated_command.common.redact_evidence);
         assert!(underscored_command.common.redact_evidence);
+    }
+
+    #[test]
+    fn flash_monitor_parses_dual_evidence_mode_aliases() {
+        // Arrange
+        let hyphenated_args = [
+            "bitaxe-flash",
+            "flash-monitor",
+            "evidence-dir=/tmp/evidence",
+            "evidence-mode=dual",
+        ];
+        let underscored_args = [
+            "bitaxe-flash",
+            "flash-monitor",
+            "evidence_dir=/tmp/evidence",
+            "evidence_mode=dual",
+        ];
+
+        // Act
+        let hyphenated_cli = parse_cli(hyphenated_args).expect("hyphenated cli");
+        let underscored_cli = parse_cli(underscored_args).expect("underscored cli");
+
+        // Assert
+        let CliCommand::FlashMonitor(hyphenated_command) = hyphenated_cli.command else {
+            panic!("expected flash-monitor command");
+        };
+        let CliCommand::FlashMonitor(underscored_command) = underscored_cli.command else {
+            panic!("expected flash-monitor command");
+        };
+        assert_eq!(
+            hyphenated_command.common.evidence_mode,
+            Some(EvidenceMode::Dual)
+        );
+        assert_eq!(
+            underscored_command.common.evidence_mode,
+            Some(EvidenceMode::Dual)
+        );
+    }
+
+    #[test]
+    fn flash_monitor_rejects_conflicting_evidence_modes() {
+        // Arrange
+        let args = [
+            "bitaxe-flash",
+            "flash-monitor",
+            "--evidence-dir",
+            "/tmp/evidence",
+            "--evidence-mode",
+            "dual",
+            "--redact-evidence",
+        ];
+
+        // Act
+        let result = parse_cli(args);
+
+        // Assert
+        let error = result.expect_err("conflicting modes");
+        assert!(format!("{error:#}").contains("cannot be used with"));
+    }
+
+    #[test]
+    fn non_flash_monitor_commands_reject_dual_mode() {
+        // Arrange
+        let flash_args = [
+            "bitaxe-flash",
+            "flash",
+            "--evidence-mode",
+            "dual",
+            "--evidence-dir",
+            "/tmp/evidence",
+        ];
+        let monitor_args = [
+            "bitaxe-flash",
+            "monitor",
+            "--evidence-mode",
+            "dual",
+            "--evidence-dir",
+            "/tmp/evidence",
+        ];
+
+        // Act
+        let flash_result = parse_cli(flash_args);
+        let monitor_result = parse_cli(monitor_args);
+
+        // Assert
+        assert!(format!("{:#}", flash_result.expect_err("flash dual")).contains("only"));
+        assert!(format!("{:#}", monitor_result.expect_err("monitor dual")).contains("only"));
+    }
+
+    #[test]
+    fn dual_console_value_never_exposes_operational_input() {
+        // Arrange
+        let operational = "/Users/operator/private.log --port /dev/cu.usbmodem101";
+
+        // Act
+        let dual_value = operational_console_value(operational, false);
+        let legacy_value = operational_console_value(operational, true);
+
+        // Assert
+        assert_eq!(dual_value, PROTECTED_OPERATIONAL);
+        assert_eq!(legacy_value, operational);
+        assert!(!dual_value.contains("/Users"));
+        assert!(!dual_value.contains("/dev/"));
     }
 
     #[test]
@@ -3684,6 +4073,110 @@ mod tests {
     }
 
     #[test]
+    fn flash_monitor_dual_mode_preserves_private_classifier_input_and_derives_admitted_log() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let mut command = flash_monitor_fixture(&dir, evidence_dir.clone());
+        command.common.evidence_mode = Some(EvidenceMode::Dual);
+        let sensitive_log = format!(
+            "{}\nwifi_status=connected ssid=lab-net password=super-secret ipv4=192.168.1.24 path=/Users/operator/private.log pid=123\n",
+            trusted_monitor_log()
+        );
+        let environment = FakeFlashEnvironment::default().with_log_contents(&sensitive_log);
+
+        // Act
+        run_flash_monitor(&command, &environment).expect("flash-monitor");
+
+        // Assert
+        let private_path = evidence_dir.join("flash-monitor.classifier-input.log");
+        let admitted_path = evidence_dir.join("flash-monitor.log");
+        let private = std::fs::read_to_string(private_path.as_std_path()).expect("private");
+        let admitted = std::fs::read_to_string(admitted_path.as_std_path()).expect("admitted");
+        assert!(private.contains("ssid=lab-net"));
+        assert!(private.contains("ipv4=192.168.1.24"));
+        assert!(private.contains("/Users/operator/private.log"));
+        assert!(private.contains("pid=123"));
+        assert!(private.contains("password=[redacted]"));
+        assert!(!private.contains("super-secret"));
+        assert!(!admitted.contains("lab-net"));
+        assert!(!admitted.contains("192.168.1.24"));
+        assert!(!admitted.contains("/Users/operator/private.log"));
+        assert!(!admitted.contains("pid=123"));
+        let admitted_evidence = std::fs::read_to_string(
+            evidence_dir
+                .join("flash-command-evidence.json")
+                .as_std_path(),
+        )
+        .expect("admitted evidence");
+        let evidence = std::fs::read_to_string(
+            evidence_dir
+                .join("flash-command-evidence.private.json")
+                .as_std_path(),
+        )
+        .expect("private evidence");
+        let json: serde_json::Value = serde_json::from_str(&evidence).expect("private json");
+        assert_eq!(json["redaction_mode"], "dual");
+        assert_eq!(json["monitor_log_path"], admitted_path.as_str());
+        assert_eq!(json["private_monitor_log_path"], private_path.as_str());
+        assert_eq!(json["private_log_role"], "classifier-input-private");
+        assert_eq!(
+            json["private_monitor_log_sha256"],
+            sha256_bytes(private.as_bytes())
+        );
+        assert_eq!(
+            json["monitor_log_sha256"],
+            sha256_bytes(admitted.as_bytes())
+        );
+        let admitted_json: serde_json::Value =
+            serde_json::from_str(&admitted_evidence).expect("admitted json");
+        assert_eq!(admitted_json["monitor_log_path"], "flash-monitor.log");
+        assert!(admitted_json.get("private_monitor_log_path").is_none());
+        assert!(admitted_json.get("private_monitor_log_sha256").is_none());
+        assert!(!admitted_evidence.contains(private_path.as_str()));
+        #[cfg(unix)]
+        for path in [
+            private_path,
+            admitted_path,
+            evidence_dir.join("flash-command-evidence.private.json"),
+            evidence_dir.join("flash-command-evidence.json"),
+        ] {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(path.as_std_path())
+                .expect("evidence metadata")
+                .permissions()
+                .mode()
+                & 0o777;
+            assert_eq!(mode, 0o600);
+        }
+    }
+
+    #[test]
+    fn flash_monitor_dual_mode_rejects_existing_destination_before_flash() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        std::fs::create_dir_all(evidence_dir.as_std_path()).expect("evidence dir");
+        std::fs::write(
+            evidence_dir.join("flash-monitor.log").as_std_path(),
+            "existing",
+        )
+        .expect("existing output");
+        let mut command = flash_monitor_fixture(&dir, evidence_dir);
+        command.common.evidence_mode = Some(EvidenceMode::Dual);
+        let environment = FakeFlashEnvironment::default();
+
+        // Act
+        let result = run_flash_monitor(&command, &environment);
+
+        // Assert
+        let error = result.expect_err("existing destination");
+        assert!(format!("{error:#}").contains("path_preflight_failed"));
+        assert!(environment.executed_commands().is_empty());
+        assert!(environment.captured_commands().is_empty());
+    }
+
+    #[test]
     fn evidence_sanitizer_developer_raw_preserves_network_fields_and_redacts_secrets() {
         // Arrange
         let text = r#"{"ssid":"lab-net","wifiPass":"super-secret","ipv4":"192.168.1.24","mac":"aa:bb:cc:dd:ee:ff","device_url":"http://192.168.1.24","token":"api-secret"}"#;
@@ -3703,9 +4196,32 @@ mod tests {
     }
 
     #[test]
+    fn evidence_sanitizer_redacts_numeric_never_persist_json_scalars() {
+        // Arrange
+        let text = r#"{"poolPort":3333,"poolUser":"owner.worker","wifiPass":"super-secret"}"#;
+
+        // Act
+        let sanitized = sanitize_evidence_text(text, EvidenceRedactionMode::DeveloperRaw);
+
+        // Assert
+        assert!(sanitized.contains(r#""poolPort":"[redacted]""#));
+        assert!(sanitized.contains(r#""poolUser":"[redacted]""#));
+        assert!(sanitized.contains(r#""wifiPass":"[redacted]""#));
+        assert!(!sanitized.contains("3333"));
+        assert!(!sanitized.contains("owner.worker"));
+        assert!(!sanitized.contains("super-secret"));
+    }
+
+    #[test]
     fn evidence_sanitizer_commit_redacted_redacts_json_wifi_fields_network_urls_ips_and_macs() {
         // Arrange
-        let text = r#"{"ssid":"lab-net","wifiPass":"super-secret","ipv4":"192.168.1.24","mac":"aa:bb:cc:dd:ee:ff","device_url":"http://192.168.1.24"}"#;
+        let text = concat!(
+            r#"{"ssid":"lab-net","wifiPass":"super-secret","ipv4":"192.168.1.24","#,
+            r#""mac":"aa:bb:cc:dd:ee:ff","device_url":"http://192.168.1.24","#,
+            r#""hostname":"miner.local","poolUser":"owner.worker"}"#,
+            "\npath=/Users/operator/private.log port=/dev/cu.usbmodem101 pid=123 pgid=456\n",
+            "GET /api/system/info HTTP/1.1\nHost: miner.local\n",
+        );
 
         // Act
         let sanitized = sanitize_evidence_text(text, EvidenceRedactionMode::CommitRedacted);
@@ -3721,6 +4237,15 @@ mod tests {
         assert!(!sanitized.contains("192.168.1.24"));
         assert!(!sanitized.contains("aa:bb:cc:dd:ee:ff"));
         assert!(!sanitized.contains("http://192.168.1.24"));
+        assert!(!sanitized.contains("miner.local"));
+        assert!(!sanitized.contains("owner.worker"));
+        assert!(!sanitized.contains("/Users/operator"));
+        assert!(!sanitized.contains("/dev/cu.usbmodem101"));
+        assert!(!sanitized.contains("pid=123"));
+        assert!(!sanitized.contains("pgid=456"));
+        assert!(!sanitized.contains("HTTP/1.1"));
+        assert!(sanitized.contains("[redacted-path]"));
+        assert!(sanitized.contains("[redacted-http]"));
     }
 
     #[test]
@@ -3889,6 +4414,7 @@ mod tests {
             port: Some("/dev/cu.usbmodem101".to_owned()),
             dry_run: true,
             redact_evidence: false,
+            evidence_mode: None,
             evidence_dir: None,
         }
     }
@@ -4670,6 +5196,8 @@ mod tests {
             command_spec: &CommandSpec,
             log_path: &Utf8Path,
             _timeout_seconds: u64,
+            redaction_mode: EvidenceRedactionMode,
+            create_new: bool,
         ) -> Result<CaptureProcessResult> {
             self.captured_commands
                 .borrow_mut()
@@ -4677,8 +5205,13 @@ mod tests {
             if let Some(parent) = log_path.parent() {
                 std::fs::create_dir_all(parent.as_std_path()).expect("create fake log dir");
             }
-            std::fs::write(log_path.as_std_path(), &self.log_contents)
-                .expect("write fake monitor log");
+            let sanitized = sanitize_evidence_text(&self.log_contents, redaction_mode);
+            if create_new {
+                evidence::write_dual_private_text(log_path, &sanitized)
+                    .expect("write fake private monitor log");
+            } else {
+                std::fs::write(log_path.as_std_path(), sanitized).expect("write fake monitor log");
+            }
             Ok(CaptureProcessResult {
                 status: self.capture_status.clone(),
             })

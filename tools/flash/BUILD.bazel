@@ -4,6 +4,7 @@ filegroup(
     name = "phase34_identity_admission_sources",
     srcs = [
         "src/esp32s3_image.rs",
+        "src/evidence.rs",
         "src/main.rs",
         "src/package_admission.rs",
     ],
@@ -14,6 +15,7 @@ rust_binary(
     name = "flash",
     srcs = [
         "src/esp32s3_image.rs",
+        "src/evidence.rs",
         "src/main.rs",
         "src/package_admission.rs",
     ],
