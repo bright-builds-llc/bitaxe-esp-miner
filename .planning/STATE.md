@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 checkpoint after eleventh sealed non-promotion
-last_updated: "2026-07-20T15:01:29Z"
+stopped_at: Phase 35 Plan 04 Task 2 awaiting separate attempt-12 authorization after verified private-first repair
+last_updated: "2026-07-20T21:56:10Z"
 last_activity: "2026-07-20"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-20 - Sealed Phase 35 attempt 11 before HTTP after commit-redacted Boot A input failed private runtime-origin classification
+Last activity: 2026-07-20 - Verified the private-first dual-artifact repair and redaction guard without hardware; attempt 12 remains separately gated
 
 ## Current Position
 
@@ -25,14 +25,13 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Blocked at Task 2 after sealed non-promotion attempt 11
-- **Next step:** Plan and regression-test a dual-boundary Boot A capture that
-  preserves mode-`0600` private raw classifier input while producing distinct
-  commit-redacted evidence. Only after that software boundary is verified may a
-  separately authorized fresh continuation consider another
-  exact-current-package detector-gated attempt. Do not reuse or splice the
-  sealed attempt-11 root. No further physical action or hardware command is
-  authorized in this continuation.
+- **Status:** Task 2 software repair verified; awaiting separate attempt-12
+  authorization
+- **Next step:** After the final GSD artifact commit, re-run the exact-current-head
+  software preflight and present its result. Do not run a detector, access
+  credentials, issue a device request, or begin attempt 12 without fresh user
+  authorization. Any authorized continuation must use a fresh protected root
+  and must not reuse or splice the sealed attempt-11 root.
 
 ## Project Reference
 
@@ -242,11 +241,12 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - The retained-package lifecycle member prohibits package/flash/reset/detector/credential actions after arming and requires an exact five-stage reinit before requesting physical power action
 - Two reinit attempts missed that prerequisite and final board-info failed; the checkpoint remained unarmed and Phase 30 remains pending
 
-## Decisions (Phase 28.1.1.7)
+## Decisions (Phase 28.1.1 child 7)
 
 - Forced A/B label: `pool_negotiated_mask_asic_reload` (D-04/D-12)
 - Gate lever on `mask_reload_tx_observed` / `post_configure_runtime` after configure — not mask-value delta (D-05)
-- Wave 0 comparator: `scripts/phase28.1.1.7-asic-mask-reload-compare.mjs` extending 28.1.1.6 taxonomy
+- Wave 0 comparator: the child-7 ASIC mask-reload comparator extending the
+  child-6 taxonomy
 - HARD BAN includes prior falsified knobs + `negotiated_version_mask_work_field_parity`
 - Plan 02 hook: `apply_negotiated_version_mask` in production.rs; flush from live_stratum_runtime after configure + production_ready
 - Plan 03: promote only if improved+correlate/submit; else evidence-named next_hypothesis (default placeholder `remaining_nonce_production_blocker_narrowing` if silent); no second speculative patch
@@ -265,7 +265,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - `next_hypothesis=remaining_nonce_production_blocker_narrowing`; mask-reload + mask-on-MiningWork + ASIC-256 + RX-loop wire retained
 - `phase30_promotion_input=pending`; checklist verified rows untouched
 
-## Decisions (Phase 28.1.1.6)
+## Decisions (Phase 28.1.1 child 6)
 
 - `forced_ab_label` defaults to `negotiated_version_mask_work_field_parity` when configure+mask_stored and `mask_applied_to_work` false
 - `recommended_investigation` closed to `negotiated_version_mask_work_field_parity` | `pool_negotiated_mask_asic_reload` | `none`
@@ -282,7 +282,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - `next_hypothesis=pool_negotiated_mask_asic_reload`; mask-on-MiningWork + ASIC-256 + RX-loop retained
 - `phase30_promotion_input=pending`; checklist verified rows untouched
 
-## Decisions (Phase 28.1.1.4)
+## Decisions (Phase 28.1.1 child 4)
 
 - Skipped optional `asic_init_sequencing_summary` firmware marker; uart_trace suffices for Wave 0 (D-08 discretion)
 - Init-sequencing recommender closed to `ticket_mask_asic_difficulty` | `match_upstream_chip_enumerate_before_init` | `none`
@@ -296,7 +296,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Chip-enumerate not implemented in Plan 03; deferred as next_hypothesis only
 - Final `verification_result: gaps_found`; `phase30_promotion_input: pending`; checklist verified rows untouched
 
-## Decisions (Phase 28.1.1.3)
+## Decisions (Phase 28.1.1 child 3)
 
 - Recommender: `job_tx>0` + `result_read_attempt>0` + `!result_correlated` → `result_rx_acquisition_model` (no `partial_frame≥5`)
 - Never emit `match_upstream_register_read_poll` or `post_max_baud_delay_2000` from RX-acquisition comparator
@@ -310,26 +310,26 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
-| 28.1.1.3 | 01 | 2 min | 2 | 4 |
-| 28.1.1.3 | 02 | 10 min | 2 | 7 |
-| 28.1.1.3 | 03 | 1 min | 2 | 1 |
-| 28.1.1.3 | 04 | 2 min | 2 | 5 |
-| 28.1.1.4 | 01 | 7 min | 2 | 2 |
-| 28.1.1.4 | 02 | 10 min | 2 | 10 |
-| 28.1.1.4 | 03 | 1 min | 2 | 1 |
-| 28.1.1.4 | 04 | 1 min | 2 | 5 |
-| 28.1.1.5 | 01 | 2 min | 2 | 2 |
-| 28.1.1.5 | 02 | 25 min | 2 | 7 |
-| 28.1.1.5 | 03 | 1 min | 2 | 1 |
-| 28.1.1.5 | 04 | 2 min | 2 | 5 |
-| Phase 28.1.1.6 P01 | 2 min | 2 tasks | 2 files |
-| Phase 28.1.1.6 P02 | 11 min | 2 tasks | 7 files |
-| Phase 28.1.1.6 P03 | 1 min | 2 tasks | 1 files |
-| Phase 28.1.1.6 P04 | 5 min | 2 tasks | 5 files |
-| Phase 28.1.1.7 P01 | 2 min | 2 tasks | 2 files |
-| Phase 28.1.1.7 P02 | 14min | 2 tasks | 10 files |
-| Phase 28.1.1.7 P03 | 1 min | 2 tasks | 1 files |
-| Phase 28.1.1.7 P04 | 3 min | 2 tasks | 5 files |
+| 28.1.1 child 3 | 01 | 2 min | 2 | 4 |
+| 28.1.1 child 3 | 02 | 10 min | 2 | 7 |
+| 28.1.1 child 3 | 03 | 1 min | 2 | 1 |
+| 28.1.1 child 3 | 04 | 2 min | 2 | 5 |
+| 28.1.1 child 4 | 01 | 7 min | 2 | 2 |
+| 28.1.1 child 4 | 02 | 10 min | 2 | 10 |
+| 28.1.1 child 4 | 03 | 1 min | 2 | 1 |
+| 28.1.1 child 4 | 04 | 1 min | 2 | 5 |
+| 28.1.1 child 5 | 01 | 2 min | 2 | 2 |
+| 28.1.1 child 5 | 02 | 25 min | 2 | 7 |
+| 28.1.1 child 5 | 03 | 1 min | 2 | 1 |
+| 28.1.1 child 5 | 04 | 2 min | 2 | 5 |
+| Phase 28.1.1 child 6 P01 | 2 min | 2 tasks | 2 files |
+| Phase 28.1.1 child 6 P02 | 11 min | 2 tasks | 7 files |
+| Phase 28.1.1 child 6 P03 | 1 min | 2 tasks | 1 files |
+| Phase 28.1.1 child 6 P04 | 5 min | 2 tasks | 5 files |
+| Phase 28.1.1 child 7 P01 | 2 min | 2 tasks | 2 files |
+| Phase 28.1.1 child 7 P02 | 14min | 2 tasks | 10 files |
+| Phase 28.1.1 child 7 P03 | 1 min | 2 tasks | 1 files |
+| Phase 28.1.1 child 7 P04 | 3 min | 2 tasks | 5 files |
 | Phase 28.1.1 P07 | 28min | 2 tasks | 8 files |
 | Phase 28.1.1 P08 | 15min | 3 tasks | 4 files |
 | Phase 28.1.1 P10 | 39 min | 3 tasks | 14 files |
@@ -369,8 +369,23 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | 260719-e8b | Persist Phase 35 lessons and guardrails | 2026-07-19 | 9eb1aca5 | Verified | [260719-e8b-persist-phase-35-lessons-and-guardrails](./quick/260719-e8b-persist-phase-35-lessons-and-guardrails/) |
 | 260719-g3g | Add deterministic lesson loading and maintenance with an 8k-token budget, selective over-budget loading, and append-only audits | 2026-07-19 | 713fe593 | Verified | [260719-g3g-add-deterministic-lesson-loading-and-mai](./quick/260719-g3g-add-deterministic-lesson-loading-and-mai/) |
 | 260719-tfu | Instrument Phase 35 setting reads with typed redacted HTTP boundary diagnostics, preserve primary failure precedence, and software-verify without hardware | 2026-07-20 | fbe6b8ff | Verified | [260719-tfu-instrument-phase-35-setting-reads-with-t](./quick/260719-tfu-instrument-phase-35-setting-reads-with-t/) |
+| 260720-jwt | Implement repository-wide private-first evidence policy, additive dual-artifact capture, Phase 35 classifier-input repair, and staged/CI redaction guard | 2026-07-20 | 28fdd115 | Verified | [260720-jwt-implement-repository-wide-private-first-](./quick/260720-jwt-implement-repository-wide-private-first-/) |
 
-## Decisions (Phase 28.1.1.5)
+## Decisions (Quick 260720-jwt)
+
+- Secrets never persist; operational identifiers may exist only in
+  secret-sanitized mode-`0600` private artifacts beneath ignored mode-`0700`
+  roots.
+- Dual flash capture creates only immutable private classifier input. A
+  digest-bound software finalizer creates the separate admitted projection only
+  after classification succeeds.
+- The repository redaction guard scans staged or CI destination content plus
+  the complete admitted tree. Changed content never receives legacy exceptions;
+  zero-base pushes compare against the trusted default-branch merge base.
+- Attempts 1-11 remain immutable. The next possible continuation is attempt 12
+  with a fresh root, exact-current-head preflight, and separate authorization.
+
+## Decisions (Phase 28.1.1 child 5)
 
 - Wave 0: `forced_ab_label` defaults to `count_asic_chips_rx_loop_parity` for Ultra 205 TX-match + interval_256 + config_expected/immediate
 - `recommended_investigation` closed to `match_upstream_chip_enumerate_before_init` | `version_rolling_negotiation` | `none`
@@ -392,29 +407,18 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains blocked after continuation attempt 11 sealed
-  non-promotion. All nine ordered software and exact-package gates passed.
-  Exactly one candidate and board-info passed, the opaque input gate passed,
-  and direct flash/monitor completed. Commit-redacted flash evidence then
-  removed the private origin value before the strict Boot A classifier consumed
-  it, so classification failed closed as `runtime_origin_corrupt`. No HTTP
-  target was derived, the instrumented original-settings GET was not reached,
-  and PATCH, reboot, restoration, and mutation did not begin. Cleanup confirmed
-  zero unexpected serial holders with no secondary failure. The root is sealed
-  and non-reusable; admission, evidence generation, checklist changes, Task 3,
-  summary, and retry did not occur. A deterministic private-classification
-  versus shareable-redaction ordering defect is proven. It requires a separately
-  planned and regression-tested dual-boundary capture before any separately
-  authorized fresh hardware attempt.
+- Phase 35 Plan 04 Task 2 is software-ready but remains blocked on fresh user
+  authorization for attempt 12. The attempt-11 classifier-input ordering defect
+  is repaired and independently verified; this does not authorize detector,
+  credential, device, mutation, reboot, admission, promotion, or retry activity.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 checkpoint after the eleventh sealed
-  non-promotion attempt
-- **Resume:** Start only through a separately authorized fresh continuation.
-  First plan and regression-test a mode-`0600` private raw classifier input plus
-  a distinct commit-redacted evidence copy. Any later attempt must rebuild and
-  lock the exact current package, create a fresh protected root, and preserve
+- **Stopped at:** Phase 35 Plan 04 Task 2 after independently verified
+  private-first evidence repair
+- **Resume:** Reconfirm the exact-current-head software preflight, then await
+  separate user authorization for attempt 12. An authorized attempt must rebuild
+  and lock the exact current package, create a fresh protected root, and preserve
   the one-full-command/one-detector/no-retry contract. Do not reuse, retry, or
   splice the sealed attempt-11 root. Do not run Task 3 or create
   `35-04-SUMMARY.md` unless a later root is genuinely admitted.
