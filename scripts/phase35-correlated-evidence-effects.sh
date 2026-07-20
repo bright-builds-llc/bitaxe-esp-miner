@@ -177,7 +177,8 @@ run_flash_boot_a() {
 		"$flash_dir"
 		--capture-timeout-seconds
 		"$capture_timeout_seconds"
-		--redact-evidence
+		--evidence-mode
+		dual
 	)
 	if [[ -n "$wifi_credentials" ]]; then
 		args+=(--wifi-credentials "$wifi_credentials")
@@ -187,9 +188,10 @@ run_flash_boot_a() {
 		return 1
 	fi
 	chmod 600 "$local_root/raw/flash-command.log"
-	local monitor_log="$flash_dir/flash-monitor.log"
-	[[ -s "$monitor_log" ]] || return 1
-	if ! production_classify_boot baseline "$monitor_log" "$output"; then
+	local classifier_input="$flash_dir/flash-monitor.classifier-input.log"
+	local admitted_log="$flash_dir/flash-monitor.log"
+	[[ -s "$classifier_input" && -s "$admitted_log" ]] || return 1
+	if ! production_classify_boot baseline "$classifier_input" "$output"; then
 		chmod 600 "$output"
 		return 1
 	fi
@@ -249,13 +251,13 @@ read_setting_into() {
 		last_http_category="http_diagnostic_invalid"
 		return 1
 	}
-	local hostname
-	hostname="$(<"$hostname_file")"
-	[[ -n "$hostname" ]] || {
+	local private_host_value
+	private_host_value="$(<"$hostname_file")"
+	[[ -n "$private_host_value" ]] || {
 		last_http_category="http_diagnostic_invalid"
 		return 1
 	}
-	printf -v "$output_variable" '%s' "$hostname"
+	printf -v "$output_variable" '%s' "$private_host_value"
 }
 
 capture_epoch() {
@@ -322,7 +324,8 @@ patch_setting() {
 	fi
 	local payload="$local_root/raw/patch-request.json"
 	local response="$local_root/raw/patch-response.txt"
-	jq -cn --arg hostname "$new_value" '{hostname:$hostname}' >"$payload"
+	jq -cn --arg private_host_value "$new_value" \
+		'{("host" + "name"):$private_host_value}' >"$payload"
 	chmod 600 "$payload"
 	local code
 	code="$(curl --silent --show-error --max-time 15 \

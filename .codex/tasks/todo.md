@@ -178,11 +178,19 @@ Completion review: Commits `c43a42a5` and `fbe6b8ff` passed the exact Rust seque
 
 ## task-phase35-private-classifier-redaction-boundary | 2026-07-20 10:02 | Separate private Boot A classification input from shareable redaction
 
-- [ ] Plan a dual-boundary capture that keeps immutable secret-sanitized monitor input mode `0600` under the protected root while producing a distinct commit-redacted copy.
-- [ ] Ensure Boot A classification and private target derivation consume only the protected secret-sanitized input before any lossy redaction; `NeverPersistRaw` reaches no sink.
-- [ ] Add hermetic real-process regressions proving raw input never enters stdout, stderr, projections, admission output, tracked evidence, or shareable copies.
-- [ ] Preserve direct built-tool invocation, one detector, one full command, exact-package binding, cleanup, restoration, and earliest typed-failure precedence.
-- [ ] Run the full software, reference, parity, lifecycle, redaction, and exact-head preflight gates without hardware.
-- [ ] Require separate authorization for any later fresh hardware attempt; never reuse, retry, or splice the sealed attempt-11 root.
+- [x] Plan a dual-boundary capture that keeps immutable secret-sanitized monitor input mode `0600` under the protected root while producing a distinct commit-redacted copy.
+- [x] Ensure Boot A classification and private target derivation consume only the protected secret-sanitized input before any lossy redaction; `NeverPersistRaw` reaches no sink.
+- [x] Add hermetic real-process regressions proving raw input never enters stdout, stderr, projections, admission output, tracked evidence, or shareable copies.
+- [x] Preserve direct built-tool invocation, one detector, one full command, exact-package binding, cleanup, restoration, and earliest typed-failure precedence.
+- [x] Run the full software, reference, parity, lifecycle, redaction, and exact-head preflight gates without hardware.
+- [x] Require separate authorization for any later fresh hardware attempt; never reuse, retry, or splice the sealed attempt-11 root.
 
-Completion review: Pending. Attempt 11 proved the current in-place commit-redaction ordering invalidates the private runtime-origin classifier before HTTP. This task is software-only and authorizes no detector, credential access, flash, device request, PATCH, reboot, admission, promotion, or hardware retry.
+Completion review: The repository-wide policy, staged/CI redaction guard, dual flash capture, immutable private classifier input, distinct commit projection, and Phase 35 private-input routing are implemented. Real-process regressions reproduce attempt 11's early-redaction origin loss, prove private classification precedes target use and PATCH, and fail before mutation on invalid private input while cleanup remains secondary. Shell hygiene, the seven-target Bazel suite, reference cleanliness, parity, lifecycle 35, and effect-free exact-head preflight passed. Attempts 1–11 remain immutable; no detector, credentials, hardware, network, device request, mutation, reboot, admission, promotion, push, or attempt-12 authorization occurred.
+
+## task-private-first-remaining-evidence-pipelines | 2026-07-20 15:42 | Migrate remaining active evidence pipelines
+
+- [ ] Inventory active evidence-producing workflows outside Phase 35 against `docs/parity/evidence-policy.md`.
+- [ ] Migrate each active workflow that still performs in-place or post-write sanitization to the private-first capture and distinct-projection contract.
+- [ ] Add focused regressions and route each admitted projection through `just verify-redaction`.
+
+Completion review: Pending. This follow-up excludes immutable historical evidence and does not authorize hardware, credential, network, device, mutation, admission, promotion, or push operations.

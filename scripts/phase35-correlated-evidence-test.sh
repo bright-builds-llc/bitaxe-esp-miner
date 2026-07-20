@@ -18,12 +18,41 @@ if [[ "${PHASE35_TEST_STUB_DISPATCH:-false}" == true ]]; then
 		done
 		[[ -n "$evidence_dir" ]]
 		mkdir -p "$evidence_dir"
-		printf 'fixture-monitor\n' >"${evidence_dir}/flash-monitor.log"
+		chmod 700 "$evidence_dir"
+		if [[ "${PHASE35_TEST_PRIVATE_INPUT:?}" == valid ]]; then
+			printf 'device_%s=%s%s password=[redacted]\n' url http '://fixture-target' \
+				>"${evidence_dir}/flash-monitor.classifier-input.log"
+		else
+			printf 'fixture-monitor-without-origin\n' \
+				>"${evidence_dir}/flash-monitor.classifier-input.log"
+		fi
+		printf 'device_url=[redacted-url] password=[redacted]\n' \
+			>"${evidence_dir}/flash-monitor.log"
+		chmod 600 \
+			"${evidence_dir}/flash-monitor.classifier-input.log" \
+			"${evidence_dir}/flash-monitor.log"
 		;;
 	report)
+		trace=""
+		while (($#)); do
+			if [[ "$1" == "--trace" ]]; then
+				trace="$2"
+				shift 2
+				continue
+			fi
+			shift
+		done
+		printf 'trace=%s\n' "$trace" >>"${PHASE35_CLASSIFIER_CALLS:?}"
+		printf 'classifier\n' >>"${PHASE35_FIXTURE_STATE:?}/calls.log"
 		case "${PHASE35_TEST_PARITY_OUTCOME:?}" in
 		passed)
-			jq -cn '{status:"passed",category:"none",session:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",boot_ordinal:7,device_url:"fixture-target"}'
+			private_origin_pattern="$(printf 'device_%s=%s%s' url http '://fixture-target')"
+			if [[ "${trace##*/}" == flash-monitor.classifier-input.log ]] &&
+				rg -Fq "$private_origin_pattern" "$trace"; then
+				jq -cn '{status:"passed",category:"none",session:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",boot_ordinal:7,device_url:"fixture-target"}'
+			else
+				jq -cn '{status:"failed",category:"baseline_origin_missing",session:null,boot_ordinal:null,device_url:null}'
+			fi
 			;;
 		rejected)
 			jq -cn '{status:"failed",category:"baseline_multiple_sessions",session:null,boot_ordinal:null,device_url:null}'
@@ -149,10 +178,12 @@ prepare_case() {
 	calls="${state_dir}/calls.log"
 	fixture_direct_flash=false
 	stub_parity_outcome=passed
+	stub_private_input=valid
 	supervisor_path="$PATH"
 	supervisor_stdout="${case_dir}/stdout.log"
 	supervisor_stderr="${case_dir}/stderr.log"
 	direct_flash_calls="${state_dir}/direct-flash-calls.log"
+	classifier_calls="${state_dir}/classifier-calls.log"
 	nested_tool_calls="${state_dir}/nested-tool-calls.log"
 	mkdir -p "$state_dir" "$manifest_dir"
 	printf 'fixture-setting-before\n' >"$state_dir/current-setting.txt"
@@ -217,7 +248,9 @@ run_isolated_supervisor() {
 			PHASE35_FIXTURE_SCENARIO="$scenario" \
 			PHASE35_FIXTURE_EXPECTED_CREDENTIAL_PATH="${workspace}/wifi-credentials.json" \
 			PHASE35_DIRECT_FLASH_CALLS="$direct_flash_calls" \
+			PHASE35_CLASSIFIER_CALLS="$classifier_calls" \
 			PHASE35_NESTED_TOOL_CALLS="$nested_tool_calls" \
+			PHASE35_TEST_PRIVATE_INPUT="$stub_private_input" \
 			PHASE35_TEST_PARITY_OUTCOME="$stub_parity_outcome" \
 			PHASE35_TEST_STUB_DISPATCH=true \
 			"$isolated_supervisor" \
@@ -386,7 +419,7 @@ test_runfiles_invokes_direct_flash_once_without_nested_build_tools() {
 	assert_count 1 credential_path "$calls"
 	assert_count 1 direct_flash "$calls"
 	assert_count 1 CALL "$direct_flash_calls"
-	[[ "$(rg -c '^arg=' "$direct_flash_calls")" == 14 ]] ||
+	[[ "$(rg -c '^arg=' "$direct_flash_calls")" == 15 ]] ||
 		fail_test "direct flash received unexpected or missing arguments"
 	[[ ! -s "$nested_tool_calls" ]] || fail_test "direct flash path invoked nested just or Bazel"
 	assert_line "$direct_flash_calls" 'arg=flash-monitor'
@@ -400,16 +433,84 @@ test_runfiles_invokes_direct_flash_once_without_nested_build_tools() {
 	assert_line "$direct_flash_calls" "arg=${evidence_root}/raw/flash"
 	assert_line "$direct_flash_calls" 'arg=--capture-timeout-seconds'
 	assert_line "$direct_flash_calls" 'arg=360'
-	assert_line "$direct_flash_calls" 'arg=--redact-evidence'
+	assert_line "$direct_flash_calls" 'arg=--evidence-mode'
+	assert_line "$direct_flash_calls" 'arg=dual'
+	assert_absent "$direct_flash_calls" 'arg=--redact-evidence'
 	assert_line "$direct_flash_calls" 'arg=--wifi-credentials'
 	assert_line "$direct_flash_calls" "arg=${workspace}/wifi-credentials.json"
+	assert_line "$classifier_calls" \
+		"trace=${evidence_root}/raw/flash/flash-monitor.classifier-input.log"
+	local private_origin_pattern
+	private_origin_pattern="$(printf 'device_%s=%s%s' url http '://fixture-target')"
+	assert_contains "$evidence_root/raw/flash/flash-monitor.classifier-input.log" \
+		"$private_origin_pattern"
+	assert_absent "$evidence_root/raw/flash/flash-monitor.log" \
+		"$private_origin_pattern"
 
-	local detector_line credential_line flash_line
+	local detector_line credential_line flash_line classifier_line original_read_line
 	detector_line="$(line_number detector "$calls")"
 	credential_line="$(line_number credential_path "$calls")"
 	flash_line="$(line_number direct_flash "$calls")"
+	classifier_line="$(line_number classifier "$calls")"
+	original_read_line="$(line_number read_setting_original "$calls")"
 	[[ "$detector_line" -lt "$credential_line" && "$credential_line" -lt "$flash_line" ]] ||
 		fail_test "direct flash ran before detector and credential gates"
+	[[ "$flash_line" -lt "$classifier_line" && "$classifier_line" -lt "$original_read_line" ]] ||
+		fail_test "private classification did not precede target use and PATCH"
+}
+
+test_commit_redacted_copy_reproduces_attempt_11_origin_loss() {
+	# Arrange
+	prepare_case runfiles_early_redaction
+	prepare_isolated_supervisor
+	prepare_direct_flash_stubs
+	printf 'opaque-fixture-input\n' >"${workspace}/wifi-credentials.json"
+	fixture_direct_flash=true
+
+	# Act
+	run_isolated_supervisor success
+	local public_result
+	public_result="$(
+		PHASE35_FIXTURE_STATE="$state_dir" \
+			PHASE35_CLASSIFIER_CALLS="$classifier_calls" \
+			PHASE35_TEST_PARITY_OUTCOME=passed \
+			PHASE35_TEST_PRIVATE_INPUT=valid \
+			PHASE35_TEST_STUB_DISPATCH=true \
+			"${workspace}/bazel-bin/tools/parity/report" \
+			phase33-classify \
+			--trace "${evidence_root}/raw/flash/flash-monitor.log" \
+			--mode baseline
+	)"
+
+	# Assert
+	[[ "$run_status" == 0 ]] || fail_test "private classifier input was rejected"
+	[[ "$(jq -r '.status' <<<"$public_result")" == failed ]] ||
+		fail_test "commit-redacted copy unexpectedly retained classifier origin"
+	[[ "$(jq -r '.category' <<<"$public_result")" == baseline_origin_missing ]] ||
+		fail_test "attempt-11 early-redaction defect was not reproduced"
+}
+
+test_invalid_private_classifier_input_stops_before_mutation() {
+	# Arrange
+	prepare_case runfiles_invalid_private_input
+	prepare_isolated_supervisor
+	prepare_direct_flash_stubs
+	stub_private_input=invalid
+	printf 'opaque-fixture-input\n' >"${workspace}/wifi-credentials.json"
+	fixture_direct_flash=true
+
+	# Act
+	run_isolated_supervisor success
+
+	# Assert
+	[[ "$run_status" != 0 ]] || fail_test "invalid private classifier input was accepted"
+	assert_line "$case_dir/stderr.log" 'failure_category=baseline_origin_missing'
+	assert_count 1 classifier "$calls"
+	assert_count 0 restore "$calls"
+	assert_count 1 cleanup "$calls"
+	assert_absent "$calls" 'read_setting_|capture_|mutated_setting|patch|reboot|validator'
+	assert_line "$evidence_root/non-promotion.seal" \
+		'category=baseline_origin_missing'
 }
 
 test_direct_flash_classifier_rejection_preserves_typed_category() {
@@ -729,6 +830,8 @@ test_runfiles_preserves_caller_owned_parent_and_sibling_outputs
 test_runfiles_entrypoint_resolves_sibling_helpers
 test_runfiles_resolves_repo_root_credential_only_after_detector
 test_runfiles_invokes_direct_flash_once_without_nested_build_tools
+test_commit_redacted_copy_reproduces_attempt_11_origin_loss
+test_invalid_private_classifier_input_stops_before_mutation
 test_direct_flash_classifier_rejection_preserves_typed_category
 test_just_entrypoint_builds_the_current_package_before_supervisor
 test_preflight_has_no_detector_or_effects
