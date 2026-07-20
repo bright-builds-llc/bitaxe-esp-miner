@@ -212,6 +212,14 @@ validate_target)
 read_setting)
 	label="${1:?read label is required}"
 	record "read_setting_${label}"
+	if [[ "$scenario" == "original_tcp_connection_failure" && "$label" == "original" ]]; then
+		printf 'category=tcp_connection_failure\n'
+		exit 1
+	fi
+	if [[ "$scenario" == "primary_with_finalization_failures" && "$label" == "immediate" ]]; then
+		printf 'category=invalid_json\n'
+		exit 1
+	fi
 	if [[ "$scenario" == "immediate_storage_readback_mismatch" && "$label" == "immediate" ]]; then
 		printf 'fixture-other-setting\n'
 	else
@@ -252,13 +260,15 @@ reboot)
 	;;
 restore)
 	record restore
-	[[ "$scenario" != "restoration_failure" ]] || exit 1
+	case "$scenario" in
+	restoration_failure | primary_with_finalization_failures | finalization_only_failure) exit 1 ;;
+	esac
 	printf '%s\n' "${2:?original setting is required}" >"$current_setting"
 	;;
 cleanup)
 	record cleanup
 	case "$scenario" in
-	cleanup_failure | pid_leak | holder_leak) exit 1 ;;
+	cleanup_failure | pid_leak | holder_leak | primary_with_finalization_failures | finalization_only_failure) exit 1 ;;
 	esac
 	;;
 recheck)

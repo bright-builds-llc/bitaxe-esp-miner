@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091,SC2034
+# Sourced helper modules consume shared supervisor state.
 set -euo pipefail
-# shellcheck disable=SC2034 # Sourced helper modules consume shared supervisor state.
 
 readonly PHASE35_LIFECYCLE_ID="35-2026-07-17T17-00-37"
 readonly PHASE35_SCHEMA="phase35-evidence-v1"
@@ -76,8 +77,14 @@ mutated_setting=""
 mutation_started=0
 restoration_complete=0
 cleanup_complete=0
+restoration_attempted=0
+cleanup_attempted=0
 finalizer_ran=0
 failure_category=""
+primary_failure_category=""
+last_http_category=""
+restoration_secondary_category=""
+cleanup_secondary_category=""
 event_sequence=0
 event_predecessor=""
 last_event_millis=0
@@ -175,7 +182,9 @@ main() {
 	target_token="$(jq -er '.target_token // .device_url' "$local_root/raw/boot-a-setup.json")" ||
 		fail "target_missing"
 	validate_target_after_capture || fail "target_invalid"
-	original_setting="$(read_setting original)" || fail "original_setting_unavailable"
+	read_setting_into original original_setting ||
+		fail "${last_http_category:-original_setting_unavailable}"
+	record_checkpoint original_setting_ready "$(hash_fields phase35-http-read-v1 original ready)"
 
 	local boot_a_pre
 	boot_a_pre="$(capture_epoch boot-a-pre)" || fail "boot_a_pre_capture_failed"
@@ -190,8 +199,9 @@ main() {
 	mutation_started=1
 	patch_setting "$mutated_setting" || fail "patch_not_committed"
 	record_checkpoint patch_responded "$(sha256_text "$mutated_setting")"
-	local immediate
-	immediate="$(read_setting immediate)" || fail "immediate_readback_missing"
+	local immediate=""
+	read_setting_into immediate immediate ||
+		fail "${last_http_category:-immediate_readback_missing}"
 	[[ "$immediate" == "$mutated_setting" ]] || fail "immediate_readback_mismatch"
 	record_checkpoint storage_confirmed "$(sha256_text "$immediate")"
 
@@ -214,8 +224,7 @@ main() {
 
 	write_private "$local_root/artifacts/no-actuation.txt" "no_actuation_verified=true"
 	record_checkpoint no_actuation_verified "$(sha256_file "$local_root/artifacts/no-actuation.txt")"
-	restore_setting_once || fail "restoration_failed"
-	cleanup_resources_once || fail "cleanup_failed"
+	finalize_resources_once || fail "supervisor_finalization_failed"
 	run_live_rechecks || fail "${failure_category:-live_recheck_failed}"
 
 	local setting_digest

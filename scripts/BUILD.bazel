@@ -262,12 +262,20 @@ sh_binary(
         "phase17-websocket-capture.mjs",
         "phase35-correlated-evidence-document.sh",
         "phase35-correlated-evidence-effects.sh",
+        "phase35-http-boundary-read.sh",
         "phase35-correlated-evidence-root.sh",
         "serial-session-trace.sh",
         "verify-reference-clean.sh",
         "//tools/flash:flash",
         "//tools/parity:report",
     ],
+    tags = ["local"],
+)
+
+sh_binary(
+    name = "phase35_http_boundary_read",
+    srcs = ["phase35-http-boundary-read.sh"],
+    data = ["//tools/parity:report"],
     tags = ["local"],
 )
 
@@ -747,6 +755,17 @@ sh_test(
 )
 
 sh_test(
+    name = "phase35_http_boundary_read_test",
+    srcs = ["phase35-http-boundary-read-test.sh"],
+    data = [
+        "phase35-http-boundary-read.sh",
+        "//tools/parity:report",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
+sh_test(
     name = "phase35_correlated_evidence_test",
     srcs = ["phase35-correlated-evidence-test.sh"],
     data = [
@@ -755,6 +774,7 @@ sh_test(
         "phase35-correlated-evidence-document.sh",
         "phase35-correlated-evidence-effects.sh",
         "phase35-correlated-evidence-fixture.sh",
+        "phase35-http-boundary-read.sh",
         "phase35-correlated-evidence-root.sh",
         "phase35-correlated-evidence.sh",
         "serial-session-trace.sh",

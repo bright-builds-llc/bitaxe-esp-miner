@@ -560,6 +560,47 @@ test_target_and_capture_failures_before_patch() {
 	done
 }
 
+test_original_typed_failure_stops_before_mutation() {
+	# Arrange
+	prepare_case original_tcp_connection_failure
+
+	# Act
+	run_supervisor original_tcp_connection_failure
+
+	# Assert
+	assert_pre_patch_failure
+	assert_line "$evidence_root/non-promotion.seal" 'category=tcp_connection_failure'
+	assert_absent "$calls" 'capture_|mutated_setting|patch|reboot|restore|validator'
+}
+
+test_primary_survives_restoration_and_cleanup_failures() {
+	# Arrange
+	prepare_case primary_with_finalization_failures
+
+	# Act
+	run_supervisor primary_with_finalization_failures
+
+	# Assert
+	assert_post_patch_failure
+	assert_line "$evidence_root/non-promotion.seal" 'category=invalid_json'
+	assert_line "$evidence_root/non-promotion.seal" 'restoration_secondary_category=restoration_action_failed'
+	assert_line "$evidence_root/non-promotion.seal" 'cleanup_secondary_category=cleanup_resource_failure'
+}
+
+test_finalization_only_failure_uses_supervisor_category() {
+	# Arrange
+	prepare_case finalization_only_failure
+
+	# Act
+	run_supervisor finalization_only_failure
+
+	# Assert
+	assert_post_patch_failure
+	assert_line "$evidence_root/non-promotion.seal" 'category=supervisor_finalization_failed'
+	assert_line "$evidence_root/non-promotion.seal" 'restoration_secondary_category=restoration_action_failed'
+	assert_line "$evidence_root/non-promotion.seal" 'cleanup_secondary_category=cleanup_resource_failure'
+}
+
 test_timeout_floor_precedes_root_and_commands() {
 	# Arrange
 	prepare_case timeout_floor
@@ -631,6 +672,9 @@ test_success_ordering_and_private_root() {
 	assert_count 1 detector "$calls"
 	assert_count 1 physical_identity "$calls"
 	assert_count 1 flash_boot_a "$calls"
+	assert_count 1 read_setting_original "$calls"
+	assert_count 1 read_setting_immediate "$calls"
+	assert_count 1 read_setting_restoration "$calls"
 	assert_count 1 capture_boot-a-pre "$calls"
 	assert_count 1 capture_boot-a "$calls"
 	assert_count 1 reboot "$calls"
@@ -663,6 +707,19 @@ test_success_ordering_and_private_root() {
 		fail_test "event chain was incomplete"
 	assert_contains "$case_dir/stdout.log" '^status=eligible$'
 	assert_absent "$case_dir/stdout.log" 'fixture-target|fixture-device|fixture-setting'
+	local original_ready_line patch_line
+	original_ready_line="$(
+		rg -n $'^2\toriginal_setting_ready\t' "$evidence_root/raw/chronology.tsv" |
+			head -1 |
+			cut -d: -f1
+	)"
+	patch_line="$(
+		rg -n $'^4\tpatch_responded\t' "$evidence_root/raw/chronology.tsv" |
+			head -1 |
+			cut -d: -f1
+	)"
+	[[ -n "$original_ready_line" && -n "$patch_line" && "$original_ready_line" -lt "$patch_line" ]] ||
+		fail_test "original ready checkpoint did not precede mutation"
 }
 
 test_main_task_stack_capacity
@@ -677,6 +734,9 @@ test_preflight_has_no_detector_or_effects
 test_detector_failures_stop_all_later_commands
 test_gate_one_drift_failures
 test_target_and_capture_failures_before_patch
+test_original_typed_failure_stops_before_mutation
+test_primary_survives_restoration_and_cleanup_failures
+test_finalization_only_failure_uses_supervisor_category
 test_timeout_floor_precedes_root_and_commands
 test_post_patch_failures_restore_then_cleanup
 test_success_ordering_and_private_root

@@ -195,17 +195,66 @@ run_flash_boot_a() {
 	chmod 600 "$output"
 }
 
-read_setting() {
+read_setting_into() {
 	local label="$1"
+	local output_variable="$2"
+	last_http_category=""
 	if [[ -n "$fixture_command" ]]; then
-		fixture read_setting "$label" "$target_token"
-		return
+		local fixture_output
+		local fixture_status
+		set +e
+		fixture_output="$(fixture read_setting "$label" "$target_token")"
+		fixture_status=$?
+		set -e
+		if ((fixture_status != 0)); then
+			last_http_category="$(
+				sed -n 's/^category=\([a-z0-9_]*\)$/\1/p' <<<"$fixture_output" | tail -1
+			)"
+			return 1
+		fi
+		printf -v "$output_variable" '%s' "$fixture_output"
+		return 0
 	fi
-	local body="$local_root/raw/${label}-system-info.json"
-	curl --silent --show-error --fail --max-time 10 \
-		--output "$body" "${target_token}/api/system/info"
-	chmod 600 "$body"
-	jq -er '.hostname | select(type == "string")' "$body"
+
+	local adapter="${script_dir}/phase35-http-boundary-read.sh"
+	[[ -x "$adapter" ]] || {
+		last_http_category="http_diagnostic_invalid"
+		return 1
+	}
+	local adapter_output
+	local adapter_status
+	set +e
+	adapter_output="$(
+		"$adapter" \
+			"label=${label}" \
+			"protected-root=${local_root}/raw" \
+			"url=${target_token}"
+	)"
+	adapter_status=$?
+	set -e
+	local category
+	category="$(
+		sed -n 's/^category=\([a-z0-9_]*\)$/\1/p' <<<"$adapter_output"
+	)" || return 1
+	[[ -n "$category" && "$(wc -l <<<"$category" | tr -d ' ')" == 1 ]] || {
+		last_http_category="http_diagnostic_invalid"
+		return 1
+	}
+	last_http_category="$category"
+	[[ "$category" == ready && "$adapter_status" == 0 ]] || return 1
+
+	local hostname_file="${local_root}/raw/http-${label}/private-hostname"
+	[[ -f "$hostname_file" && ! -L "$hostname_file" ]] || {
+		last_http_category="http_diagnostic_invalid"
+		return 1
+	}
+	local hostname
+	hostname="$(<"$hostname_file")"
+	[[ -n "$hostname" ]] || {
+		last_http_category="http_diagnostic_invalid"
+		return 1
+	}
+	printf -v "$output_variable" '%s' "$hostname"
 }
 
 capture_epoch() {
@@ -336,27 +385,56 @@ verify_same_identity() {
 
 restore_setting_once() {
 	((mutation_started == 1)) || return 0
-	((restoration_complete == 0)) || return 0
-	if [[ -n "$fixture_command" ]]; then
-		fixture restore "$target_token" "$original_setting" || return 1
-	else
-		patch_setting "$original_setting" || return 1
+	if ((restoration_attempted == 1)); then
+		((restoration_complete == 1))
+		return
 	fi
-	local restored
-	restored="$(read_setting restoration)" || return 1
-	[[ "$restored" == "$original_setting" ]] || return 1
+	restoration_attempted=1
+	if [[ -n "$fixture_command" ]]; then
+		fixture restore "$target_token" "$original_setting" || {
+			restoration_secondary_category="restoration_action_failed"
+			return 1
+		}
+	else
+		patch_setting "$original_setting" || {
+			restoration_secondary_category="restoration_action_failed"
+			return 1
+		}
+	fi
+	local restored=""
+	read_setting_into restoration restored || {
+		restoration_secondary_category="${last_http_category:-restoration_read_failed}"
+		return 1
+	}
+	[[ "$restored" == "$original_setting" ]] || {
+		restoration_secondary_category="restoration_value_mismatch"
+		return 1
+	}
 	restoration_complete=1
 	record_checkpoint restoration_confirmed "$(hash_fields phase35-restoration-v1 true)"
 }
 
 cleanup_resources_once() {
-	((cleanup_complete == 0)) || return 0
+	if ((cleanup_attempted == 1)); then
+		((cleanup_complete == 1))
+		return
+	fi
+	cleanup_attempted=1
 	if [[ -n "$fixture_command" ]]; then
-		fixture cleanup || return 1
+		fixture cleanup || {
+			cleanup_secondary_category="cleanup_resource_failure"
+			return 1
+		}
 	elif [[ -n "$port" ]]; then
 		local maybe_holders=""
-		maybe_holders="$(serial_session_holder_pids "$port")" || return 1
-		[[ -z "$maybe_holders" ]] || return 1
+		maybe_holders="$(serial_session_holder_pids "$port")" || {
+			cleanup_secondary_category="cleanup_holder_check_failed"
+			return 1
+		}
+		[[ -z "$maybe_holders" ]] || {
+			cleanup_secondary_category="cleanup_holder_present"
+			return 1
+		}
 	fi
 	cleanup_complete=1
 	record_checkpoint cleanup_confirmed "$(hash_fields phase35-cleanup-v1 true)"
@@ -368,34 +446,44 @@ seal_non_promotion() {
 	write_private "$local_root/non-promotion.seal" \
 		"status=non_promotion" \
 		"category=${category}" \
+		"restoration_secondary_category=${restoration_secondary_category:-none}" \
+		"cleanup_secondary_category=${cleanup_secondary_category:-none}" \
 		"root_reusable=false"
+}
+
+capture_primary_failure() {
+	local category="$1"
+	[[ -n "$primary_failure_category" ]] || primary_failure_category="$category"
+	failure_category="$primary_failure_category"
+}
+
+finalize_resources_once() {
+	local restoration_status=0
+	local cleanup_status=0
+	set +e
+	restore_setting_once
+	restoration_status=$?
+	cleanup_resources_once
+	cleanup_status=$?
+	set -e
+	((restoration_status == 0 && cleanup_status == 0))
 }
 
 finalize_once() {
 	local incoming_status="$1"
 	((finalizer_ran == 0)) || return "$incoming_status"
 	finalizer_ran=1
-	set +e
-	local restoration_status=0
-	local cleanup_status=0
-	restore_setting_once
-	restoration_status=$?
-	cleanup_resources_once
-	cleanup_status=$?
-	set -e
-	if ((restoration_status != 0)); then
-		failure_category="restoration_failed"
-		seal_non_promotion "$failure_category"
-		return 1
-	fi
-	if ((cleanup_status != 0)); then
-		failure_category="cleanup_failed"
-		seal_non_promotion "$failure_category"
-		return 1
-	fi
+	local finalization_status=0
+	finalize_resources_once || finalization_status=$?
 	if ((incoming_status != 0)); then
-		seal_non_promotion "${failure_category:-supervisor_failed}"
+		capture_primary_failure "${primary_failure_category:-${failure_category:-supervisor_failed}}"
+		seal_non_promotion "$primary_failure_category"
 		return "$incoming_status"
+	fi
+	if ((finalization_status != 0)); then
+		capture_primary_failure supervisor_finalization_failed
+		seal_non_promotion "$primary_failure_category"
+		return 1
 	fi
 	return 0
 }
@@ -410,7 +498,7 @@ on_exit() {
 }
 
 fail() {
-	failure_category="$1"
-	printf 'failure_category=%s\n' "$failure_category" >&2
+	capture_primary_failure "$1"
+	printf 'failure_category=%s\n' "$primary_failure_category" >&2
 	exit 1
 }
