@@ -19,4 +19,14 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD_REF: ${{ github.sha }}
-        run: just verify-redaction --base "$BASE_REF" --head "$HEAD_REF"
+          NEW_BRANCH_BASE_REF: origin/${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          if [[ "$BASE_REF" == 0000000000000000000000000000000000000000 ]]; then
+            just verify-redaction \
+              --base "$BASE_REF" \
+              --head "$HEAD_REF" \
+              --new-branch-base "$NEW_BRANCH_BASE_REF"
+          else
+            just verify-redaction --base "$BASE_REF" --head "$HEAD_REF"
+          fi

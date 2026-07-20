@@ -46,6 +46,21 @@ assert_fails_without_echo() {
 	[[ "$output" != *"$forbidden"* ]]
 }
 
+if [[ -n "${VERIFY_REDACTION_REAL_REPO_ROOT:-}" ]]; then
+	real_repo_root="$(cd "$VERIFY_REDACTION_REAL_REPO_ROOT" && pwd -P)"
+	[[ "$(git -C "$real_repo_root" rev-parse --show-toplevel)" == "$real_repo_root" ]]
+	real_repo_head="$(git -C "$real_repo_root" rev-parse HEAD)"
+	set +e
+	real_repo_output="$(cd "$real_repo_root" && bash ./scripts/verify-redaction.sh \
+		--base 0000000000000000000000000000000000000000 --head "$real_repo_head" \
+		--new-branch-base "$real_repo_head" 2>&1)"
+	real_repo_status=$?
+	set -e
+	[[ "$real_repo_status" -eq 0 ]]
+	[[ "$real_repo_output" == "verify_redaction: passed" ]]
+	[[ "${#real_repo_output}" -lt 4096 ]]
+fi
+
 repo="$(new_repo staged)"
 staged_secret="fixture-stage-secret"
 printf '%s%s\n' 'pass' "word=${staged_secret}" >"${repo}/staged.txt"
@@ -77,11 +92,16 @@ printf 'RED-9001\tcredential-secret\tdocs/parity/evidence/reviewed.txt\tsyntheti
 	>>"${repo}/scripts/redaction-exceptions.tsv"
 git -C "$repo" add docs/parity/evidence/reviewed.txt scripts/redaction-exceptions.tsv
 git -C "$repo" commit -qm reviewed-baseline
+exception_base="$(git -C "$repo" rev-parse HEAD)"
 (cd "$repo" && bash ./scripts/verify-redaction.sh >/dev/null)
 changed_exception_secret="fixture-changed-reviewed-secret"
 printf '%s%s\n' 'pass' "word=${changed_exception_secret}" >"${repo}/docs/parity/evidence/reviewed.txt"
 git -C "$repo" add docs/parity/evidence/reviewed.txt
 assert_fails_without_echo "$repo" "$changed_exception_secret" bash ./scripts/verify-redaction.sh
+git -C "$repo" commit -qm changed-reviewed-content
+exception_head="$(git -C "$repo" rev-parse HEAD)"
+assert_fails_without_echo "$repo" "$changed_exception_secret" \
+	bash ./scripts/verify-redaction.sh --base "$exception_base" --head "$exception_head"
 
 repo="$(new_repo source-operational)"
 mkdir -p "${repo}/src"
@@ -112,13 +132,72 @@ set -e
 [[ "$malformed_output" == *"rule=CONFIG category=exception-registry"* ]]
 
 repo="$(new_repo new-branch)"
+new_branch_base="$(git -C "$repo" rev-parse HEAD)"
 new_branch_secret="fixture-new-branch-secret"
 printf '%s%s\n' 'to' "ken=${new_branch_secret}" >"${repo}/already-at-head.txt"
 git -C "$repo" add already-at-head.txt
 git -C "$repo" commit -qm new-branch-head
 new_branch_head="$(git -C "$repo" rev-parse HEAD)"
 assert_fails_without_echo "$repo" "$new_branch_secret" bash ./scripts/verify-redaction.sh \
-	--base 0000000000000000000000000000000000000000 --head "$new_branch_head"
+	--base 0000000000000000000000000000000000000000 --head "$new_branch_head" \
+	--new-branch-base "$new_branch_base"
+
+repo="$(new_repo new-branch-reviewed-baseline)"
+reviewed_baseline_secret="fixture-new-branch-reviewed-baseline"
+printf '%s%s\n' 'pass' "word=${reviewed_baseline_secret}" \
+	>"${repo}/docs/parity/evidence/reviewed-new-branch.txt"
+printf 'RED-9002\tcredential-secret\tdocs/parity/evidence/reviewed-new-branch.txt\tsynthetic inherited baseline\t2099-01-01\n' \
+	>>"${repo}/scripts/redaction-exceptions.tsv"
+git -C "$repo" add docs/parity/evidence/reviewed-new-branch.txt scripts/redaction-exceptions.tsv
+git -C "$repo" commit -qm reviewed-new-branch-baseline
+new_branch_base="$(git -C "$repo" rev-parse HEAD)"
+printf 'safe branch content\n' >"${repo}/branch-safe.txt"
+git -C "$repo" add branch-safe.txt
+git -C "$repo" commit -qm safe-branch-content
+new_branch_head="$(git -C "$repo" rev-parse HEAD)"
+(cd "$repo" && bash ./scripts/verify-redaction.sh \
+	--base 0000000000000000000000000000000000000000 --head "$new_branch_head" \
+	--new-branch-base "$new_branch_base" >/dev/null)
+
+changed_baseline_secret="fixture-new-branch-changed-baseline"
+printf '%s%s\n' 'pass' "word=${changed_baseline_secret}" \
+	>"${repo}/docs/parity/evidence/reviewed-new-branch.txt"
+git -C "$repo" add docs/parity/evidence/reviewed-new-branch.txt
+git -C "$repo" commit -qm changed-reviewed-new-branch-content
+new_branch_head="$(git -C "$repo" rev-parse HEAD)"
+assert_fails_without_echo "$repo" "$changed_baseline_secret" bash ./scripts/verify-redaction.sh \
+	--base 0000000000000000000000000000000000000000 --head "$new_branch_head" \
+	--new-branch-base "$new_branch_base"
+
+repo="$(new_repo new-branch-missing-base)"
+missing_base_head="$(git -C "$repo" rev-parse HEAD)"
+set +e
+missing_base_output="$(cd "$repo" && bash ./scripts/verify-redaction.sh \
+	--base 0000000000000000000000000000000000000000 --head "$missing_base_head" 2>&1)"
+missing_base_status=$?
+set -e
+[[ "$missing_base_status" -eq 2 ]]
+[[ "$missing_base_output" == *"rule=CONFIG category=new-branch-base"* ]]
+
+repo="$(new_repo bounded-output)"
+bounded_base="$(git -C "$repo" rev-parse HEAD)"
+bounded_secret="fixture-bounded-secret"
+for line_number in $(seq 1 1000); do
+	printf '%s%s-%s\n' 'to' "ken=${bounded_secret}" "$line_number"
+done >"${repo}/bounded.txt"
+git -C "$repo" add bounded.txt
+git -C "$repo" commit -qm bounded-output-head
+bounded_head="$(git -C "$repo" rev-parse HEAD)"
+set +e
+bounded_output="$(cd "$repo" && bash ./scripts/verify-redaction.sh \
+	--base 0000000000000000000000000000000000000000 --head "$bounded_head" \
+	--new-branch-base "$bounded_base" 2>&1)"
+bounded_status=$?
+set -e
+[[ "$bounded_status" -eq 1 ]]
+[[ "$bounded_output" == *"rule=SUMMARY category=suppressed"* ]]
+[[ "$bounded_output" != *"$bounded_secret"* ]]
+[[ "${#bounded_output}" -lt 16384 ]]
 
 repo="$(new_repo bad-revision)"
 bad_head="$(git -C "$repo" rev-parse HEAD)"

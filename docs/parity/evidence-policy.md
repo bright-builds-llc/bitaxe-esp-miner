@@ -95,7 +95,11 @@ Reviewed exceptions live only in `scripts/redaction-exceptions.tsv`. Each entry
 has a stable ID, exact category, exact repository-relative path, non-empty
 reason, and optional ISO expiry date. Wildcards, inline suppressions, command
 line bypasses, and environment-variable bypasses are forbidden. Exceptions
-Exceptions apply only to unchanged tracked files during the complete admitted
+apply only to unchanged tracked files during the complete admitted
 baseline scan. Staged, changed, base/head, and new-branch destination blobs never
-receive an exception. An all-zero push base means a new branch, so every blob at
-the destination `HEAD` is scanned; malformed ordinary revisions fail closed.
+receive an exception. An all-zero push base means a new branch: the scanner must
+resolve a trustworthy default-branch comparison commit, scan every destination
+blob changed since its merge base with exceptions disabled, and still scan the
+complete tracked admitted baseline. Missing, malformed, or unrelated comparison
+revisions fail closed. Findings are non-echoing and capped without weakening the
+failure result.

@@ -2,11 +2,12 @@
 set -euo pipefail
 
 usage() {
-	printf 'usage: verify-redaction [--base COMMIT --head COMMIT]\n' >&2
+	printf 'usage: verify-redaction [--base COMMIT --head COMMIT] [--new-branch-base COMMIT]\n' >&2
 }
 
 base_ref=""
 head_ref=""
+new_branch_base_ref=""
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -16,6 +17,10 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--head)
 		head_ref="${2:-}"
+		shift 2
+		;;
+	--new-branch-base)
+		new_branch_base_ref="${2:-}"
 		shift 2
 		;;
 	-h | --help)
@@ -84,6 +89,7 @@ if ! awk -F '\t' -v today="$today" '
 fi
 
 readonly zero_revision="0000000000000000000000000000000000000000"
+destination_base_ref="$base_ref"
 
 if [[ -n "$base_ref" ]]; then
 	if { [[ "$base_ref" != "$zero_revision" ]] &&
@@ -92,9 +98,37 @@ if [[ -n "$base_ref" ]]; then
 		printf 'redaction_violation: rule=CONFIG category=revision path=scripts/verify-redaction.sh line=0\n' >&2
 		exit 2
 	fi
+	if [[ "$base_ref" == "$zero_revision" ]]; then
+		if [[ -z "$new_branch_base_ref" ]]; then
+			maybe_default_branch_ref=""
+			if maybe_default_branch_ref="$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null)"; then
+				new_branch_base_ref="$maybe_default_branch_ref"
+			fi
+		fi
+		if [[ -z "$new_branch_base_ref" ]] ||
+			! git cat-file -e "${new_branch_base_ref}^{commit}" 2>/dev/null; then
+			printf 'redaction_violation: rule=CONFIG category=new-branch-base path=scripts/verify-redaction.sh line=0\n' >&2
+			exit 2
+		fi
+		if ! destination_base_ref="$(git merge-base "$new_branch_base_ref" "$head_ref")" ||
+			[[ -z "$destination_base_ref" ]]; then
+			printf 'redaction_violation: rule=CONFIG category=new-branch-base path=scripts/verify-redaction.sh line=0\n' >&2
+			exit 2
+		fi
+	elif [[ -n "$new_branch_base_ref" ]]; then
+		printf 'redaction_violation: rule=CONFIG category=arguments path=scripts/verify-redaction.sh line=0\n' >&2
+		exit 2
+	fi
+elif [[ -n "$new_branch_base_ref" ]]; then
+	printf 'redaction_violation: rule=CONFIG category=arguments path=scripts/verify-redaction.sh line=0\n' >&2
+	exit 2
 fi
+readonly destination_base_ref
 
 violations=0
+reported_violations=0
+readonly max_reported_violations=100
+changed_paths=("")
 exception_pairs=()
 while IFS=$'\t' read -r exception_id category target_path _reason _expires_on; do
 	if [[ "$exception_id" == "exception_id" ]]; then
@@ -128,9 +162,25 @@ report_violation() {
 		return
 	fi
 
+	violations=$((violations + 1))
+	if [[ "$reported_violations" -ge "$max_reported_violations" ]]; then
+		return
+	fi
 	printf 'redaction_violation: rule=%s category=%s path=%s line=%s\n' \
 		"$rule_id" "$category" "$target_path" "$line_number" >&2
-	violations=$((violations + 1))
+	reported_violations=$((reported_violations + 1))
+}
+
+path_is_changed() {
+	local requested_path="$1"
+	local changed_path
+
+	for changed_path in "${changed_paths[@]}"; do
+		if [[ "$changed_path" == "$requested_path" ]]; then
+			return 0
+		fi
+	done
+	return 1
 }
 
 is_shareable_sink() {
@@ -274,30 +324,23 @@ scan_changed_paths() {
 	local target_path
 
 	if [[ -n "$base_ref" ]]; then
-		if [[ "$base_ref" == "$zero_revision" ]]; then
-			while IFS= read -r -d '' target_path; do
-				[[ -n "$target_path" ]] || continue
-				if [[ "$(git cat-file -t "${head_ref}:${target_path}")" == "blob" ]]; then
-					scan_git_blob "$target_path" "${head_ref}:${target_path}"
-				fi
-			done < <(git ls-tree -r --name-only -z "$head_ref")
-			return
-		fi
-		while IFS= read -r target_path; do
+		while IFS= read -r -d '' target_path; do
 			[[ -n "$target_path" ]] || continue
+			changed_paths+=("$target_path")
 			if git cat-file -e "${head_ref}:${target_path}" 2>/dev/null; then
 				scan_git_blob "$target_path" "${head_ref}:${target_path}"
 			fi
-		done < <(git diff --name-only --diff-filter=ACMR "$base_ref" "$head_ref" --)
+		done < <(git diff --name-only -z --diff-filter=ACMR "$destination_base_ref" "$head_ref" --)
 		return
 	fi
 
-	while IFS= read -r target_path; do
+	while IFS= read -r -d '' target_path; do
 		[[ -n "$target_path" ]] || continue
+		changed_paths+=("$target_path")
 		if git cat-file -e ":${target_path}" 2>/dev/null; then
 			scan_git_blob "$target_path" ":${target_path}"
 		fi
-	done < <(git diff --cached --name-only --diff-filter=ACMR --)
+	done < <(git diff --cached --name-only -z --diff-filter=ACMR --)
 }
 
 scan_admitted_root() {
@@ -319,7 +362,8 @@ scan_admitted_root() {
 			continue
 		fi
 		allow_exception="false"
-		if git diff --quiet -- "$target_path" &&
+		if ! path_is_changed "$target_path" &&
+			git diff --quiet -- "$target_path" &&
 			git diff --cached --quiet -- "$target_path"; then
 			allow_exception="true"
 		fi
@@ -339,6 +383,10 @@ scan_admitted_root "$admitted_root"
 scan_admitted_root "$secondary_admitted_root"
 
 if [[ "$violations" -ne 0 ]]; then
+	if [[ "$violations" -gt "$reported_violations" ]]; then
+		printf 'redaction_violation: rule=SUMMARY category=suppressed path=- line=%s\n' \
+			"$((violations - reported_violations))" >&2
+	fi
 	exit 1
 fi
 
