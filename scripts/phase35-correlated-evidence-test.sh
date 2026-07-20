@@ -386,7 +386,7 @@ test_runfiles_invokes_direct_flash_once_without_nested_build_tools() {
 	assert_count 1 credential_path "$calls"
 	assert_count 1 direct_flash "$calls"
 	assert_count 1 CALL "$direct_flash_calls"
-	[[ "$(rg -c '^arg=' "$direct_flash_calls")" == 13 ]] ||
+	[[ "$(rg -c '^arg=' "$direct_flash_calls")" == 14 ]] ||
 		fail_test "direct flash received unexpected or missing arguments"
 	[[ ! -s "$nested_tool_calls" ]] || fail_test "direct flash path invoked nested just or Bazel"
 	assert_line "$direct_flash_calls" 'arg=flash-monitor'
@@ -400,6 +400,7 @@ test_runfiles_invokes_direct_flash_once_without_nested_build_tools() {
 	assert_line "$direct_flash_calls" "arg=${evidence_root}/raw/flash"
 	assert_line "$direct_flash_calls" 'arg=--capture-timeout-seconds'
 	assert_line "$direct_flash_calls" 'arg=360'
+	assert_line "$direct_flash_calls" 'arg=--redact-evidence'
 	assert_line "$direct_flash_calls" 'arg=--wifi-credentials'
 	assert_line "$direct_flash_calls" "arg=${workspace}/wifi-credentials.json"
 

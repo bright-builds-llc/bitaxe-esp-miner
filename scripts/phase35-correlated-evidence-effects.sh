@@ -177,6 +177,7 @@ run_flash_boot_a() {
 		"$flash_dir"
 		--capture-timeout-seconds
 		"$capture_timeout_seconds"
+		--redact-evidence
 	)
 	if [[ -n "$wifi_credentials" ]]; then
 		args+=(--wifi-credentials "$wifi_credentials")
