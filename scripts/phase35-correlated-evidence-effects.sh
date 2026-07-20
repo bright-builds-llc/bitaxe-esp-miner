@@ -189,13 +189,54 @@ run_flash_boot_a() {
 	fi
 	chmod 600 "$local_root/raw/flash-command.log"
 	local classifier_input="$flash_dir/flash-monitor.classifier-input.log"
+	local private_record="$flash_dir/flash-command-evidence.private.json"
 	local admitted_log="$flash_dir/flash-monitor.log"
-	[[ -s "$classifier_input" && -s "$admitted_log" ]] || return 1
+	local admitted_record="$flash_dir/flash-command-evidence.json"
+	[[ -s "$classifier_input" && -s "$private_record" ]] || {
+		failure_category="private_capture_incomplete"
+		return 1
+	}
+	[[ ! -e "$admitted_log" && ! -e "$admitted_record" ]] || {
+		failure_category="admitted_projection_created_before_classification"
+		return 1
+	}
+	local private_digest
+	private_digest="$(jq -er \
+		'.private_monitor_log_sha256 | select(type == "string") | select(test("^[0-9a-f]{64}$"))' \
+		"$private_record")" || {
+		failure_category="private_digest_record_invalid"
+		return 1
+	}
+	[[ "$(sha256_file "$classifier_input")" == "$private_digest" ]] || {
+		failure_category="private_digest_record_mismatch"
+		return 1
+	}
 	if ! production_classify_boot baseline "$classifier_input" "$output"; then
 		chmod 600 "$output"
 		return 1
 	fi
 	chmod 600 "$output"
+	[[ "$(sha256_file "$classifier_input")" == "$private_digest" ]] || {
+		failure_category="private_input_changed_during_classification"
+		return 1
+	}
+	if ! "$flash_executable" finalize-evidence \
+		--evidence-dir "$flash_dir" \
+		--expected-private-sha256 "$private_digest" \
+		>"$local_root/raw/flash-finalize-command.log" 2>&1; then
+		chmod 600 "$local_root/raw/flash-finalize-command.log"
+		failure_category="admitted_projection_finalization_failed"
+		return 1
+	fi
+	chmod 600 "$local_root/raw/flash-finalize-command.log"
+	[[ "$(sha256_file "$classifier_input")" == "$private_digest" ]] || {
+		failure_category="private_input_changed_during_finalization"
+		return 1
+	}
+	[[ -s "$admitted_log" && -s "$admitted_record" ]] || {
+		failure_category="admitted_projection_incomplete"
+		return 1
+	}
 }
 
 read_setting_into() {

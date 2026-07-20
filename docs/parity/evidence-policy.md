@@ -41,9 +41,10 @@ explicit policy-owned retention or purge decision applies.
 
 ## Capture and derivation order
 
-Child output is captured through pipes and passed through an incremental,
-bounded `NeverPersistRaw` sanitizer before any disk write. Raw child bytes never
-reach inherited stdout or stderr and never reach a file.
+Child stdout and stderr are captured through distinct pipe identities and passed
+through independent, incremental, bounded `NeverPersistRaw` line state before
+any disk write. Raw child bytes never reach inherited stdout or stderr and never
+reach a file; partial lines from different streams are never joined.
 
 When a private classifier needs operational structure, the workflow must:
 
@@ -56,6 +57,11 @@ When a private classifier needs operational structure, the workflow must:
 5. prove the private digest did not change.
 
 Lossy shareable redaction must never run in place before private classification.
+For dual flash evidence, `flash-monitor` performs only steps 1 and 2 and writes
+only the private log and private record. After the authorized classifier passes,
+the software-only `finalize-evidence` command verifies the classified digest,
+creates the distinct admitted log and record, and rechecks the private digest.
+Classifier failure therefore produces no admitted projection.
 
 ## Admission and sinks
 
@@ -74,8 +80,10 @@ proved.
 
 ## Repository redaction guard
 
-`just verify-redaction` is the single repository adapter. It scans the complete
-admitted evidence tree and either:
+`just verify-redaction` is the single repository adapter. It applies
+`NeverPersistRaw` rules to every changed destination blob, applies
+`ProtectedOperational` rules only to committed shareable, documentation, and
+admission sinks, scans the complete tracked admitted evidence tree, and either:
 
 - the staged snapshot, by default; or
 - the changed snapshot at an explicit `--base` and `--head`, in CI.
@@ -87,4 +95,7 @@ Reviewed exceptions live only in `scripts/redaction-exceptions.tsv`. Each entry
 has a stable ID, exact category, exact repository-relative path, non-empty
 reason, and optional ISO expiry date. Wildcards, inline suppressions, command
 line bypasses, and environment-variable bypasses are forbidden. Exceptions
-document immutable legacy artifacts; they do not authorize new raw evidence.
+Exceptions apply only to unchanged tracked files during the complete admitted
+baseline scan. Staged, changed, base/head, and new-branch destination blobs never
+receive an exception. An all-zero push base means a new branch, so every blob at
+the destination `HEAD` is scanned; malformed ordinary revisions fail closed.

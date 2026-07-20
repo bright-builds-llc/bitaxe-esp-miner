@@ -48,7 +48,7 @@ Deliver one bounded, detector-gated Ultra 205 evidence chain for the exact curre
 ### Attempt lineage and private classifier boundary
 
 - **D-16:** Attempts 1 through 11 are sealed, immutable historical evidence. The private-first software correction does not rewrite, retry, splice, promote, or change the conclusion of any prior attempt.
-- **D-17:** Boot A classification and private target derivation consume only the immutable, secret-sanitized `flash-monitor.classifier-input.log` below the protected root. `flash-monitor.log` remains the distinct commit-redacted compatibility and admission projection.
+- **D-17:** Boot A classification and private target derivation consume only the immutable, secret-sanitized `flash-monitor.classifier-input.log` below the protected root. Dual `flash-monitor` closes and hashes that private log and its private record without creating `flash-monitor.log`. Only after the classifier passes does the supervisor invoke the already-built software-only finalizer with the verified digest; that finalizer creates the distinct commit-redacted compatibility and admission projection and proves the private digest is unchanged.
 - **D-18:** The next possible hardware run is attempt 12. It requires a newly passing exact-current-HEAD preflight and separate fresh user authorization after that preflight; software completion alone does not authorize detector, credential, flash, device, HTTP, mutation, reboot, admission, or promotion effects.
 
 ### the agent's Discretion

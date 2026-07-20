@@ -4,33 +4,73 @@ set -euo pipefail
 if [[ "${PHASE35_TEST_STUB_DISPATCH:-false}" == true ]]; then
 	case "${0##*/}" in
 	flash)
-		printf 'CALL\n' >>"${PHASE35_DIRECT_FLASH_CALLS:?}"
-		printf 'arg=%s\n' "$@" >>"${PHASE35_DIRECT_FLASH_CALLS:?}"
-		printf 'direct_flash\n' >>"${PHASE35_FIXTURE_STATE:?}/calls.log"
+		subcommand="${1:-}"
+		case "$subcommand" in
+		flash-monitor)
+			printf 'CALL\n' >>"${PHASE35_DIRECT_FLASH_CALLS:?}"
+			printf 'arg=%s\n' "$@" >>"${PHASE35_DIRECT_FLASH_CALLS:?}"
+			printf 'direct_flash\n' >>"${PHASE35_FIXTURE_STATE:?}/calls.log"
+			;;
+		finalize-evidence)
+			printf 'CALL\n' >>"${PHASE35_FINALIZER_CALLS:?}"
+			printf 'arg=%s\n' "$@" >>"${PHASE35_FINALIZER_CALLS:?}"
+			printf 'finalize_evidence\n' >>"${PHASE35_FIXTURE_STATE:?}/calls.log"
+			;;
+		*) exit 98 ;;
+		esac
 		evidence_dir=""
+		expected_private_sha256=""
 		while (($#)); do
 			if [[ "$1" == "--evidence-dir" ]]; then
 				evidence_dir="$2"
 				shift 2
 				continue
 			fi
+			if [[ "$1" == "--expected-private-sha256" ]]; then
+				expected_private_sha256="$2"
+				shift 2
+				continue
+			fi
 			shift
 		done
 		[[ -n "$evidence_dir" ]]
-		mkdir -p "$evidence_dir"
-		chmod 700 "$evidence_dir"
-		if [[ "${PHASE35_TEST_PRIVATE_INPUT:?}" == valid ]]; then
-			printf 'device_%s=%s%s password=[redacted]\n' url http '://fixture-target' \
-				>"${evidence_dir}/flash-monitor.classifier-input.log"
-		else
-			printf 'fixture-monitor-without-origin\n' \
-				>"${evidence_dir}/flash-monitor.classifier-input.log"
+		if [[ "$subcommand" == flash-monitor ]]; then
+			mkdir -p "$evidence_dir"
+			chmod 700 "$evidence_dir"
+			if [[ "${PHASE35_TEST_PRIVATE_INPUT:?}" == valid ]]; then
+				printf 'device_%s=%s%s password=[redacted]\n' url http '://fixture-target' \
+					>"${evidence_dir}/flash-monitor.classifier-input.log"
+			else
+				printf 'fixture-monitor-without-origin\n' \
+					>"${evidence_dir}/flash-monitor.classifier-input.log"
+			fi
+			private_digest="$(shasum -a 256 \
+				"${evidence_dir}/flash-monitor.classifier-input.log" | awk '{print $1}')"
+			jq -cn \
+				--arg private_monitor_log_sha256 "$private_digest" \
+				'{redaction_mode:"dual",commit_ready:false,private_monitor_log_sha256:$private_monitor_log_sha256}' \
+				>"${evidence_dir}/flash-command-evidence.private.json"
+			chmod 600 \
+				"${evidence_dir}/flash-monitor.classifier-input.log" \
+				"${evidence_dir}/flash-command-evidence.private.json"
+			exit 0
 		fi
+		[[ -n "$expected_private_sha256" ]]
+		[[ ! -e "${evidence_dir}/flash-monitor.log" ]]
+		[[ ! -e "${evidence_dir}/flash-command-evidence.json" ]]
+		actual_private_sha256="$(shasum -a 256 \
+			"${evidence_dir}/flash-monitor.classifier-input.log" | awk '{print $1}')"
+		[[ "$actual_private_sha256" == "$expected_private_sha256" ]]
 		printf 'device_url=[redacted-url] password=[redacted]\n' \
 			>"${evidence_dir}/flash-monitor.log"
+		jq -cn \
+			--arg monitor_log_sha256 "$(shasum -a 256 \
+				"${evidence_dir}/flash-monitor.log" | awk '{print $1}')" \
+			'{redaction_mode:"dual",commit_ready:true,monitor_log_path:"flash-monitor.log",monitor_log_sha256:$monitor_log_sha256}' \
+			>"${evidence_dir}/flash-command-evidence.json"
 		chmod 600 \
-			"${evidence_dir}/flash-monitor.classifier-input.log" \
-			"${evidence_dir}/flash-monitor.log"
+			"${evidence_dir}/flash-monitor.log" \
+			"${evidence_dir}/flash-command-evidence.json"
 		;;
 	report)
 		trace=""
@@ -44,6 +84,10 @@ if [[ "${PHASE35_TEST_STUB_DISPATCH:-false}" == true ]]; then
 		done
 		printf 'trace=%s\n' "$trace" >>"${PHASE35_CLASSIFIER_CALLS:?}"
 		printf 'classifier\n' >>"${PHASE35_FIXTURE_STATE:?}/calls.log"
+		if [[ "${trace##*/}" == flash-monitor.classifier-input.log ]]; then
+			[[ ! -e "$(dirname "$trace")/flash-monitor.log" ]]
+			[[ ! -e "$(dirname "$trace")/flash-command-evidence.json" ]]
+		fi
 		case "${PHASE35_TEST_PARITY_OUTCOME:?}" in
 		passed)
 			private_origin_pattern="$(printf 'device_%s=%s%s' url http '://fixture-target')"
@@ -183,6 +227,7 @@ prepare_case() {
 	supervisor_stdout="${case_dir}/stdout.log"
 	supervisor_stderr="${case_dir}/stderr.log"
 	direct_flash_calls="${state_dir}/direct-flash-calls.log"
+	finalizer_calls="${state_dir}/finalizer-calls.log"
 	classifier_calls="${state_dir}/classifier-calls.log"
 	nested_tool_calls="${state_dir}/nested-tool-calls.log"
 	mkdir -p "$state_dir" "$manifest_dir"
@@ -248,6 +293,7 @@ run_isolated_supervisor() {
 			PHASE35_FIXTURE_SCENARIO="$scenario" \
 			PHASE35_FIXTURE_EXPECTED_CREDENTIAL_PATH="${workspace}/wifi-credentials.json" \
 			PHASE35_DIRECT_FLASH_CALLS="$direct_flash_calls" \
+			PHASE35_FINALIZER_CALLS="$finalizer_calls" \
 			PHASE35_CLASSIFIER_CALLS="$classifier_calls" \
 			PHASE35_NESTED_TOOL_CALLS="$nested_tool_calls" \
 			PHASE35_TEST_PRIVATE_INPUT="$stub_private_input" \
@@ -418,7 +464,9 @@ test_runfiles_invokes_direct_flash_once_without_nested_build_tools() {
 	assert_count 1 detector "$calls"
 	assert_count 1 credential_path "$calls"
 	assert_count 1 direct_flash "$calls"
+	assert_count 1 finalize_evidence "$calls"
 	assert_count 1 CALL "$direct_flash_calls"
+	assert_count 1 CALL "$finalizer_calls"
 	[[ "$(rg -c '^arg=' "$direct_flash_calls")" == 15 ]] ||
 		fail_test "direct flash received unexpected or missing arguments"
 	[[ ! -s "$nested_tool_calls" ]] || fail_test "direct flash path invoked nested just or Bazel"
@@ -438,6 +486,12 @@ test_runfiles_invokes_direct_flash_once_without_nested_build_tools() {
 	assert_absent "$direct_flash_calls" 'arg=--redact-evidence'
 	assert_line "$direct_flash_calls" 'arg=--wifi-credentials'
 	assert_line "$direct_flash_calls" "arg=${workspace}/wifi-credentials.json"
+	[[ "$(rg -c '^arg=' "$finalizer_calls")" == 5 ]] ||
+		fail_test "finalizer received unexpected or missing arguments"
+	assert_line "$finalizer_calls" 'arg=finalize-evidence'
+	assert_line "$finalizer_calls" 'arg=--evidence-dir'
+	assert_line "$finalizer_calls" "arg=${evidence_root}/raw/flash"
+	assert_line "$finalizer_calls" 'arg=--expected-private-sha256'
 	assert_line "$classifier_calls" \
 		"trace=${evidence_root}/raw/flash/flash-monitor.classifier-input.log"
 	local private_origin_pattern
@@ -446,17 +500,26 @@ test_runfiles_invokes_direct_flash_once_without_nested_build_tools() {
 		"$private_origin_pattern"
 	assert_absent "$evidence_root/raw/flash/flash-monitor.log" \
 		"$private_origin_pattern"
+	local private_digest
+	private_digest="$(file_digest \
+		"$evidence_root/raw/flash/flash-monitor.classifier-input.log")"
+	assert_line "$finalizer_calls" "arg=${private_digest}"
+	[[ -s "$evidence_root/raw/flash/flash-monitor.log" ]] ||
+		fail_test "finalizer did not create the legacy admitted log"
+	[[ -s "$evidence_root/raw/flash/flash-command-evidence.json" ]] ||
+		fail_test "finalizer did not create the admitted record"
 
-	local detector_line credential_line flash_line classifier_line original_read_line
+	local detector_line credential_line flash_line classifier_line finalizer_line original_read_line
 	detector_line="$(line_number detector "$calls")"
 	credential_line="$(line_number credential_path "$calls")"
 	flash_line="$(line_number direct_flash "$calls")"
 	classifier_line="$(line_number classifier "$calls")"
+	finalizer_line="$(line_number finalize_evidence "$calls")"
 	original_read_line="$(line_number read_setting_original "$calls")"
 	[[ "$detector_line" -lt "$credential_line" && "$credential_line" -lt "$flash_line" ]] ||
 		fail_test "direct flash ran before detector and credential gates"
-	[[ "$flash_line" -lt "$classifier_line" && "$classifier_line" -lt "$original_read_line" ]] ||
-		fail_test "private classification did not precede target use and PATCH"
+	[[ "$flash_line" -lt "$classifier_line" && "$classifier_line" -lt "$finalizer_line" && "$finalizer_line" -lt "$original_read_line" ]] ||
+		fail_test "private classification and finalization did not precede target use and PATCH"
 }
 
 test_commit_redacted_copy_reproduces_attempt_11_origin_loss() {
@@ -506,9 +569,14 @@ test_invalid_private_classifier_input_stops_before_mutation() {
 	[[ "$run_status" != 0 ]] || fail_test "invalid private classifier input was accepted"
 	assert_line "$case_dir/stderr.log" 'failure_category=baseline_origin_missing'
 	assert_count 1 classifier "$calls"
+	assert_count 0 finalize_evidence "$calls"
 	assert_count 0 restore "$calls"
 	assert_count 1 cleanup "$calls"
 	assert_absent "$calls" 'read_setting_|capture_|mutated_setting|patch|reboot|validator'
+	[[ ! -e "$evidence_root/raw/flash/flash-monitor.log" ]] ||
+		fail_test "classifier failure created an admitted log"
+	[[ ! -e "$evidence_root/raw/flash/flash-command-evidence.json" ]] ||
+		fail_test "classifier failure created an admitted record"
 	assert_line "$evidence_root/non-promotion.seal" \
 		'category=baseline_origin_missing'
 }
@@ -532,8 +600,11 @@ test_direct_flash_classifier_rejection_preserves_typed_category() {
 	assert_count 1 detector "$calls"
 	assert_count 1 credential_path "$calls"
 	assert_count 1 direct_flash "$calls"
+	assert_count 0 finalize_evidence "$calls"
 	assert_count 1 cleanup "$calls"
 	assert_absent "$calls" 'read_setting_|capture_|mutated_setting|patch|reboot|restore|validator'
+	[[ ! -e "$evidence_root/raw/flash/flash-monitor.log" ]] ||
+		fail_test "classifier rejection created an admitted log"
 }
 
 test_just_entrypoint_builds_the_current_package_before_supervisor() {

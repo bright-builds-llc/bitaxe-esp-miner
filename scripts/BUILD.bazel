@@ -778,6 +778,8 @@ sh_test(
         "phase35-correlated-evidence-root.sh",
         "phase35-correlated-evidence.sh",
         "serial-session-trace.sh",
+        "//tools/flash:flash",
+        "//tools/parity:report",
     ],
     env_inherit = ["PATH"],
     tags = ["local"],
