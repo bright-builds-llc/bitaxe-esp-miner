@@ -923,3 +923,20 @@ sh_test(
     ],
     tags = ["local"],
 )
+sh_binary(
+    name = "verify_redaction",
+    srcs = ["verify-redaction.sh"],
+    data = ["redaction-exceptions.tsv"],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "verify_redaction_test",
+    srcs = ["verify-redaction-test.sh"],
+    data = [
+        "redaction-exceptions.tsv",
+        "verify-redaction.sh",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)

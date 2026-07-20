@@ -1,0 +1,228 @@
+exception_id	category	path	reason	expires_on
+RED-0001	local-path	docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening.md	legacy admitted before private-first policy
+RED-0002	local-path	docs/parity/evidence/phase-11-safety-controller-hardware-regression-evidence/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0003	local-path	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence.md	legacy admitted before private-first policy
+RED-0004	local-path	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/chip-detect/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0005	local-path	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot-restore/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0006	local-path	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0007	local-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot.md	legacy admitted before private-first policy
+RED-0008	local-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0009	local-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load/current-serial/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0010	local-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0011	local-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0012	local-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/package-command.log	legacy admitted before private-first policy
+RED-0013	local-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot.md	legacy admitted before private-first policy
+RED-0014	local-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0015	local-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota/firmware-ota-smoke.log	legacy admitted before private-first policy
+RED-0016	local-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/package-release-gate/package-command.log	legacy admitted before private-first policy
+RED-0017	local-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/serial-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0018	local-path	docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/package-command.log	legacy admitted before private-first policy
+RED-0019	local-path	docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0020	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0021	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205-factory.bin	legacy admitted before private-first policy
+RED-0022	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205.elf	legacy admitted before private-first policy
+RED-0023	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/esp-miner.bin	legacy admitted before private-first policy
+RED-0024	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0025	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205-factory.bin	legacy admitted before private-first policy
+RED-0026	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205.elf	legacy admitted before private-first policy
+RED-0027	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/esp-miner.bin	legacy admitted before private-first policy
+RED-0028	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/controlled-package-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0029	local-path	docs/parity/evidence/ultra-205-repo-firmware-smoke-2026-06-25.md	legacy admitted before private-first policy
+RED-0030	network-address	docs/parity/evidence/phase-08-ultra-205-release-summary.md	legacy admitted before private-first policy
+RED-0031	network-address	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/detect-ultra205.log	legacy admitted before private-first policy
+RED-0032	network-address	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/restore-detect-ultra205.log	legacy admitted before private-first policy
+RED-0033	network-address	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/detect-ultra205.log	legacy admitted before private-first policy
+RED-0034	network-address	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect/detect-ultra205.log	legacy admitted before private-first policy
+RED-0035	network-address	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect/package/bitaxe-ultra205-package.json	legacy admitted before private-first policy
+RED-0036	network-address	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/detect-ultra205.log	legacy admitted before private-first policy
+RED-0037	network-address	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/package/bitaxe-ultra205-package.json	legacy admitted before private-first policy
+RED-0038	network-address	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/package-release-gate/bitaxe-ultra205-package.json	legacy admitted before private-first policy
+RED-0039	network-address	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/detect-ultra205.log	legacy admitted before private-first policy
+RED-0040	network-address	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/package-release-gate/bitaxe-ultra205-package.json	legacy admitted before private-first policy
+RED-0041	network-address	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/redaction-review.md	legacy admitted before private-first policy
+RED-0042	network-address	docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json	legacy admitted before private-first policy
+RED-0043	network-address	docs/parity/evidence/ultra-205-factory-reflash-2026-06-25.md	legacy admitted before private-first policy
+RED-0044	network-address	docs/parity/evidence/ultra-205-pivot-safe-state-smoke-2026-06-26.md	legacy admitted before private-first policy
+RED-0045	network-address	docs/parity/evidence/ultra-205-repo-firmware-smoke-2026-06-25.md	legacy admitted before private-first policy
+RED-0046	network-address	docs/parity/evidence/ultra-205-startup-display-debug-2026-06-27.md	legacy admitted before private-first policy
+RED-0047	pool-owner	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/bounded-soak.md	legacy admitted before private-first policy
+RED-0048	pool-owner	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke.md	legacy admitted before private-first policy
+RED-0049	raw-http	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota/invalid-firmware-ota.headers.txt	legacy admitted before private-first policy
+RED-0050	raw-http	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota/valid-firmware-ota.headers.txt	legacy admitted before private-first policy
+RED-0051	usb-path	docs/parity/evidence/phase-01-gamma-601-boot-log.md	legacy admitted before private-first policy
+RED-0052	usb-path	docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening.md	legacy admitted before private-first policy
+RED-0053	usb-path	docs/parity/evidence/phase-11-safety-controller-hardware-regression-evidence/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0054	usb-path	docs/parity/evidence/phase-11-safety-controller-hardware-regression-evidence/redaction-review.md	legacy admitted before private-first policy
+RED-0055	usb-path	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence.md	legacy admitted before private-first policy
+RED-0056	usb-path	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/chip-detect/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0057	usb-path	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/detect-ultra205.log	legacy admitted before private-first policy
+RED-0058	usb-path	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/restore-detect-ultra205.log	legacy admitted before private-first policy
+RED-0059	usb-path	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot-restore/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0060	usb-path	docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence/safe-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0061	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/detect-ultra205.log	legacy admitted before private-first policy
+RED-0062	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/firmware-ota.md	legacy admitted before private-first policy
+RED-0063	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/firmware-ota/firmware-ota-smoke.log	legacy admitted before private-first policy
+RED-0064	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/hardware-detection.md	legacy admitted before private-first policy
+RED-0065	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/http-static-recovery.md	legacy admitted before private-first policy
+RED-0066	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/package-release-gate.md	legacy admitted before private-first policy
+RED-0067	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression.md	legacy admitted before private-first policy
+RED-0068	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/recovery-regression/recovery-regression.log	legacy admitted before private-first policy
+RED-0069	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot.md	legacy admitted before private-first policy
+RED-0070	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0071	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion.md	legacy admitted before private-first policy
+RED-0072	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/display-input.md	legacy admitted before private-first policy
+RED-0073	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/display-input/allow-display-input.json	legacy admitted before private-first policy
+RED-0074	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/live-api-websocket-telemetry.md	legacy admitted before private-first policy
+RED-0075	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/live-api-websocket-telemetry/allow-live-telemetry.json	legacy admitted before private-first policy
+RED-0076	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/power-telemetry.md	legacy admitted before private-first policy
+RED-0077	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/power-telemetry/allow-power-telemetry.json	legacy admitted before private-first policy
+RED-0078	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load.md	legacy admitted before private-first policy
+RED-0079	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load/allow-self-test-watchdog-load.json	legacy admitted before private-first policy
+RED-0080	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load/current-serial/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0081	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/thermal-fan.md	legacy admitted before private-first policy
+RED-0082	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/thermal-fan/allow-thermal-fan.json	legacy admitted before private-first policy
+RED-0083	usb-path	docs/parity/evidence/phase-14-safety-hardware-evidence-completion/voltage-control.md	legacy admitted before private-first policy
+RED-0084	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion.md	legacy admitted before private-first policy
+RED-0085	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/bounded-soak.md	legacy admitted before private-first policy
+RED-0086	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/bounded-soak/allow-bounded-soak.json	legacy admitted before private-first policy
+RED-0087	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/bounded-soak/detect-ultra205.log	legacy admitted before private-first policy
+RED-0088	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect.md	legacy admitted before private-first policy
+RED-0089	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect/allow-chip-detect.json	legacy admitted before private-first policy
+RED-0090	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect/detect-ultra205.log	legacy admitted before private-first policy
+RED-0091	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/chip-detect/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0092	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke.md	legacy admitted before private-first policy
+RED-0093	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke/allow-mining-smoke.json	legacy admitted before private-first policy
+RED-0094	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/mining-smoke/detect-ultra205.log	legacy admitted before private-first policy
+RED-0095	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result.md	legacy admitted before private-first policy
+RED-0096	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/allow-work-result.json	legacy admitted before private-first policy
+RED-0097	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/detect-ultra205.log	legacy admitted before private-first policy
+RED-0098	usb-path	docs/parity/evidence/phase-15-bm1366-mining-evidence-completion/work-result/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0099	usb-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/firmware-ota.md	legacy admitted before private-first policy
+RED-0100	usb-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/firmware-ota/firmware-ota-smoke.log	legacy admitted before private-first policy
+RED-0101	usb-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/firmware-ota/post-ota-detect-ultra205.log	legacy admitted before private-first policy
+RED-0102	usb-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/recovery-regression.md	legacy admitted before private-first policy
+RED-0103	usb-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/recovery-regression/recovery-regression.log	legacy admitted before private-first policy
+RED-0104	usb-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot.md	legacy admitted before private-first policy
+RED-0105	usb-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/detect-ultra205.log	legacy admitted before private-first policy
+RED-0106	usb-path	docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0107	usb-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota.md	legacy admitted before private-first policy
+RED-0108	usb-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota/firmware-ota-smoke.log	legacy admitted before private-first policy
+RED-0109	usb-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota/post-ota-detect-ultra205.log	legacy admitted before private-first policy
+RED-0110	usb-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota/post-ota-monitor.log	legacy admitted before private-first policy
+RED-0111	usb-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/redaction-review.md	legacy admitted before private-first policy
+RED-0112	usb-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/serial-boot.md	legacy admitted before private-first policy
+RED-0113	usb-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/serial-boot/detect-ultra205.log	legacy admitted before private-first policy
+RED-0114	usb-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/serial-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0115	usb-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/summary.md	legacy admitted before private-first policy
+RED-0116	usb-path	docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/target-lock.json	legacy admitted before private-first policy
+RED-0117	usb-path	docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/recovery-regression.md	legacy admitted before private-first policy
+RED-0118	usb-path	docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/recovery-regression/recovery-regression.log	legacy admitted before private-first policy
+RED-0119	usb-path	docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot.md	legacy admitted before private-first policy
+RED-0120	usb-path	docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot/detect-ultra205.log	legacy admitted before private-first policy
+RED-0121	usb-path	docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0122	usb-path	docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/summary.md	legacy admitted before private-first policy
+RED-0123	usb-path	docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/target-lock.json	legacy admitted before private-first policy
+RED-0124	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/allow-chip-detect.json	legacy admitted before private-first policy
+RED-0125	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/detect-ultra205.log	legacy admitted before private-first policy
+RED-0126	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0127	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/allow-work-result.json	legacy admitted before private-first policy
+RED-0128	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/detect-ultra205.log	legacy admitted before private-first policy
+RED-0129	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0130	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/allow-live-mining-smoke.json	legacy admitted before private-first policy
+RED-0131	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/controlled-package-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0132	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/controlled-package-boot/flash-monitor.log	legacy admitted before private-first policy
+RED-0133	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke/detect-ultra205.log	legacy admitted before private-first policy
+RED-0134	usb-path	docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/mining-allow.json	legacy admitted before private-first policy
+RED-0135	usb-path	docs/parity/evidence/ultra-205-factory-reflash-2026-06-25.md	legacy admitted before private-first policy
+RED-0136	usb-path	docs/parity/evidence/ultra-205-pivot-safe-state-smoke-2026-06-26.md	legacy admitted before private-first policy
+RED-0137	usb-path	docs/parity/evidence/ultra-205-repo-firmware-smoke-2026-06-25.md	legacy admitted before private-first policy
+RED-0138	usb-path	docs/parity/evidence/ultra-205-startup-display-debug-2026-06-27.md	legacy admitted before private-first policy
+RED-0139	local-path	AGENTS.md	canonical active-lesson path in repository guidance
+RED-0140	credential-secret	AGENTS.md	legacy non-credential action-token example in repository guidance
+RED-0141	network-address	scripts/verify-redaction-test.sh	synthetic scanner regression fixture
+RED-0142	local-path	scripts/verify-redaction.sh	scanner rule definition, not persisted operational evidence
+RED-0143	network-address	.codex/tasks/todo.md	legacy dotted phase identifier in task history
+RED-0144	network-address	AGENTS.md	legacy dotted phase identifier in repository guidance
+RED-0145	network-address	scripts/BUILD.bazel	dotted phase target names, not operational addresses
+RED-0146	network-address	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205-factory.bin	legacy admitted firmware strings
+RED-0147	raw-http	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205-factory.bin	legacy admitted firmware strings
+RED-0148	ssid	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205-factory.bin	legacy admitted firmware strings
+RED-0149	network-address	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205.elf	legacy admitted firmware strings
+RED-0150	raw-http	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205.elf	legacy admitted firmware strings
+RED-0151	ssid	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205.elf	legacy admitted firmware strings
+RED-0152	network-address	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/esp-miner.bin	legacy admitted firmware strings
+RED-0153	raw-http	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/esp-miner.bin	legacy admitted firmware strings
+RED-0154	ssid	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/esp-miner.bin	legacy admitted firmware strings
+RED-0155	network-address	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205-factory.bin	legacy admitted firmware strings
+RED-0156	raw-http	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205-factory.bin	legacy admitted firmware strings
+RED-0157	ssid	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205-factory.bin	legacy admitted firmware strings
+RED-0158	network-address	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205.elf	legacy admitted firmware strings
+RED-0159	raw-http	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205.elf	legacy admitted firmware strings
+RED-0160	ssid	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205.elf	legacy admitted firmware strings
+RED-0161	network-address	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/esp-miner.bin	legacy admitted firmware strings
+RED-0162	raw-http	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/esp-miner.bin	legacy admitted firmware strings
+RED-0163	ssid	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/esp-miner.bin	legacy admitted firmware strings
+RED-0164	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205-factory.bin	legacy admitted opaque firmware artifact
+RED-0165	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/bitaxe-ultra205.elf	legacy admitted opaque firmware artifact
+RED-0166	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/esp-miner.bin	legacy admitted opaque firmware artifact
+RED-0167	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205-factory.bin	legacy admitted opaque firmware artifact
+RED-0168	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/bitaxe-ultra205.elf	legacy admitted opaque firmware artifact
+RED-0169	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/esp-miner.bin	legacy admitted opaque firmware artifact
+RED-0170	local-path	docs/parity/evidence/phase-01-ultra-205-misidentified-board-smoke.md	legacy admitted before private-first policy
+RED-0171	local-path	docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke.md	legacy admitted before private-first policy
+RED-0172	local-path	docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0173	local-path	docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0174	local-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/safe-baseline/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0175	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight/package-release-gate/package-command.log	legacy admitted before private-first policy
+RED-0176	local-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight/safe-baseline/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0177	network-address	docs/parity/evidence/phase-01-ultra-205-misidentified-board-smoke.md	legacy admitted before private-first policy
+RED-0178	network-address	docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke.md	legacy admitted before private-first policy
+RED-0179	network-address	docs/parity/evidence/phase-08-ultra-205-release-gate.md	legacy admitted before private-first policy
+RED-0180	network-address	docs/parity/evidence/phase-11-safety-controller-hardware-regression-evidence.md	legacy admitted before private-first policy
+RED-0181	network-address	docs/parity/evidence/phase-17-live-http-api-and-static-evidence/package-release-gate/bitaxe-ultra205-package.json	legacy admitted before private-first policy
+RED-0182	network-address	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/package-release-gate/bitaxe-ultra205-package.json	legacy admitted before private-first policy
+RED-0183	network-address	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/bitaxe-ultra205-package.json	legacy admitted before private-first policy
+RED-0184	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/www.bin	legacy admitted before private-first policy
+RED-0185	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/work-result/package/www.bin	legacy admitted before private-first policy
+RED-0186	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/bitaxe-ultra205-factory.bin	legacy admitted before private-first policy
+RED-0187	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/bitaxe-ultra205.elf	legacy admitted before private-first policy
+RED-0188	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/esp-miner.bin	legacy admitted before private-first policy
+RED-0189	opaque-binary	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/www.bin	legacy admitted before private-first policy
+RED-0190	usb-path	docs/parity/evidence/phase-01-ultra-205-misidentified-board-smoke.md	legacy admitted before private-first policy
+RED-0191	usb-path	docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke.md	legacy admitted before private-first policy
+RED-0192	usb-path	docs/parity/evidence/phase-08-ultra-205-release-gate.md	legacy admitted before private-first policy
+RED-0193	usb-path	docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0194	usb-path	docs/parity/evidence/phase-11-safety-controller-hardware-regression-evidence.md	legacy admitted before private-first policy
+RED-0195	usb-path	docs/parity/evidence/phase-13-final-ultra-205-release-evidence.md	legacy admitted before private-first policy
+RED-0196	usb-path	docs/parity/evidence/phase-17-live-http-api-and-static-evidence/http-static-api.md	legacy admitted before private-first policy
+RED-0197	usb-path	docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot.md	legacy admitted before private-first policy
+RED-0198	usb-path	docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot/detect-ultra205.log	legacy admitted before private-first policy
+RED-0199	usb-path	docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0200	usb-path	docs/parity/evidence/phase-17-live-http-api-and-static-evidence/summary.md	legacy admitted before private-first policy
+RED-0201	usb-path	docs/parity/evidence/phase-17-live-http-api-and-static-evidence/target-lock.json	legacy admitted before private-first policy
+RED-0202	usb-path	docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket.md	legacy admitted before private-first policy
+RED-0203	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage.md	legacy admitted before private-first policy
+RED-0204	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage/power-telemetry/allow-power-telemetry.json	legacy admitted before private-first policy
+RED-0205	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage/voltage-control/allow-voltage-control.json	legacy admitted before private-first policy
+RED-0206	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-thermal-fan.md	legacy admitted before private-first policy
+RED-0207	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-thermal-fan/fan-duty/allow-fan-duty-blocked.json	legacy admitted before private-first policy
+RED-0208	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/active-thermal-fan/thermal-read/allow-thermal-fan-read.json	legacy admitted before private-first policy
+RED-0209	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths.md	legacy admitted before private-first policy
+RED-0210	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths/allow-failure-paths.json	legacy admitted before private-first policy
+RED-0211	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/live-api-websocket-telemetry/allow-live-telemetry.json	legacy admitted before private-first policy
+RED-0212	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/redaction-review.md	legacy admitted before private-first policy
+RED-0213	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/runtime-display-input.md	legacy admitted before private-first policy
+RED-0214	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/runtime-display-input/allow-display-input.json	legacy admitted before private-first policy
+RED-0215	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/safe-baseline.md	legacy admitted before private-first policy
+RED-0216	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/safe-baseline/detect-ultra205.log	legacy admitted before private-first policy
+RED-0217	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/safe-baseline/flash-command-evidence.json	legacy admitted before private-first policy
+RED-0218	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/self-test-watchdog-load.md	legacy admitted before private-first policy
+RED-0219	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/self-test-watchdog-load/allow-self-test-watchdog-load.json	legacy admitted before private-first policy
+RED-0220	usb-path	docs/parity/evidence/phase-20-active-safety-hardware-telemetry-evidence/target-lock.json	legacy admitted before private-first policy
+RED-0221	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result.md	legacy admitted before private-first policy
+RED-0222	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/allow-bounded-soak.json	legacy admitted before private-first policy
+RED-0223	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bounded-soak/detect-ultra205.log	legacy admitted before private-first policy
+RED-0224	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-smoke.md	legacy admitted before private-first policy
+RED-0225	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight.md	legacy admitted before private-first policy
+RED-0226	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight/safe-baseline/detect-ultra205.log	legacy admitted before private-first policy
+RED-0227	usb-path	docs/parity/evidence/phase-21-live-mining-and-soak-evidence/preflight/safe-baseline/flash-command-evidence.json	legacy admitted before private-first policy

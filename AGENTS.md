@@ -369,3 +369,10 @@ Agents executing phase evidence wrappers (`phase23-evidence`, `phase25-evidence`
 - The caller must create wrapper stdout and stderr as separate mode-0600 sibling files under the protected parent. Never redirect wrapper output into the intended child or otherwise pre-create that child.
 - The supervisor must reject any existing requested child before package admission, detector discovery, credential access, or effects.
 - Phase 35 may not make another hardware attempt at the same ambiguous HTTP boundary until a separate scoped plan implements and software-verifies redacted pre-mutation instrumentation that distinguishes the unresolved boundaries. This guardrail does not authorize that instrumentation or any hardware action.
+
+### Repository-Wide Evidence Privacy
+
+- Follow `docs/parity/evidence-policy.md`: `NeverPersistRaw` values never reach disk or terminal output; `ProtectedOperational` values remain only in mode-0600 files below ignored mode-0700 roots.
+- Private classifiers consume an immutable secret-sanitized artifact before a distinct commit-redacted projection is derived. Cleanup never implies artifact deletion.
+- Before committing evidence-related changes, run `just verify-redaction`. CI must call the same command with an explicit base and head.
+- Redaction exceptions require a reviewed exact path/category entry in `scripts/redaction-exceptions.tsv`; inline, CLI, wildcard, and environment bypasses are forbidden.

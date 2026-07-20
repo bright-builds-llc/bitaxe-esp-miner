@@ -178,8 +178,8 @@ Completion review: Commits `c43a42a5` and `fbe6b8ff` passed the exact Rust seque
 
 ## task-phase35-private-classifier-redaction-boundary | 2026-07-20 10:02 | Separate private Boot A classification input from shareable redaction
 
-- [ ] Plan a dual-boundary capture that keeps raw monitor input mode `0600` under the protected root while producing a distinct commit-redacted copy.
-- [ ] Ensure Boot A classification and private target derivation consume only the protected raw input before any lossy redaction.
+- [ ] Plan a dual-boundary capture that keeps immutable secret-sanitized monitor input mode `0600` under the protected root while producing a distinct commit-redacted copy.
+- [ ] Ensure Boot A classification and private target derivation consume only the protected secret-sanitized input before any lossy redaction; `NeverPersistRaw` reaches no sink.
 - [ ] Add hermetic real-process regressions proving raw input never enters stdout, stderr, projections, admission output, tracked evidence, or shareable copies.
 - [ ] Preserve direct built-tool invocation, one detector, one full command, exact-package binding, cleanup, restoration, and earliest typed-failure precedence.
 - [ ] Run the full software, reference, parity, lifecycle, redaction, and exact-head preflight gates without hardware.

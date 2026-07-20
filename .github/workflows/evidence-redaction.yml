@@ -1,0 +1,22 @@
+name: Evidence redaction
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-redaction:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: extractions/setup-just@v3
+      - name: Verify changed and admitted evidence
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_REF: ${{ github.sha }}
+        run: just verify-redaction --base "$BASE_REF" --head "$HEAD_REF"
