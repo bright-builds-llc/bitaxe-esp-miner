@@ -31,10 +31,16 @@ pub(crate) struct DualEvidenceDigests {
     pub(crate) admitted_sha256: String,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PipeStream {
+    Stdout,
+    Stderr,
+}
+
 enum PipeEvent {
-    Bytes(Vec<u8>),
-    ReadFailed,
-    Closed,
+    Bytes(PipeStream, Vec<u8>),
+    ReadFailed(PipeStream),
+    Closed(PipeStream),
 }
 
 pub(crate) fn preflight_dual_paths(evidence_dir: &Utf8Path) -> Result<DualEvidencePaths> {
@@ -63,10 +69,13 @@ pub(crate) fn preflight_dual_paths(evidence_dir: &Utf8Path) -> Result<DualEviden
         }
     }
 
-    let private_log = evidence_dir.join("flash-monitor.classifier-input.log");
-    let admitted_log = evidence_dir.join("flash-monitor.log");
-    let private_record = evidence_dir.join("flash-command-evidence.private.json");
-    let admitted_record = evidence_dir.join("flash-command-evidence.json");
+    let paths = dual_paths(evidence_dir);
+    let DualEvidencePaths {
+        private_log,
+        admitted_log,
+        private_record,
+        admitted_record,
+    } = &paths;
     if private_log == admitted_log {
         bail!("dual evidence path preflight failed: evidence paths alias");
     }
@@ -91,12 +100,66 @@ pub(crate) fn preflight_dual_paths(evidence_dir: &Utf8Path) -> Result<DualEviden
         }
     }
 
-    Ok(DualEvidencePaths {
-        private_log,
-        admitted_log,
-        private_record,
-        admitted_record,
-    })
+    Ok(paths)
+}
+
+pub(crate) fn preflight_dual_finalization_paths(
+    evidence_dir: &Utf8Path,
+) -> Result<DualEvidencePaths> {
+    let metadata = fs::symlink_metadata(evidence_dir.as_std_path())
+        .with_context(|| format!("failed to inspect evidence directory {evidence_dir}"))?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        bail!("dual evidence finalization failed: evidence root must be an owned directory");
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if metadata.permissions().mode() & 0o777 != 0o700 {
+            bail!("dual evidence finalization failed: evidence root is not mode 0700");
+        }
+    }
+
+    let paths = dual_paths(evidence_dir);
+    for path in [&paths.private_log, &paths.private_record] {
+        let metadata = fs::symlink_metadata(path.as_std_path())
+            .with_context(|| format!("missing private evidence input {path}"))?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() {
+            bail!("dual evidence finalization failed: private input is not a regular file");
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if metadata.permissions().mode() & 0o777 != 0o600 {
+                bail!("dual evidence finalization failed: private input is not mode 0600");
+            }
+        }
+        if path.parent() != Some(evidence_dir) {
+            bail!("dual evidence finalization failed: private input escapes evidence root");
+        }
+    }
+    for path in [&paths.admitted_log, &paths.admitted_record] {
+        match fs::symlink_metadata(path.as_std_path()) {
+            Ok(_) => bail!("dual evidence finalization failed: destination already exists"),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(error)
+                    .with_context(|| format!("failed to inspect evidence path {path}"));
+            }
+        }
+        if path.parent() != Some(evidence_dir) {
+            bail!("dual evidence finalization failed: destination escapes evidence root");
+        }
+    }
+    Ok(paths)
+}
+
+fn dual_paths(evidence_dir: &Utf8Path) -> DualEvidencePaths {
+    DualEvidencePaths {
+        private_log: evidence_dir.join("flash-monitor.classifier-input.log"),
+        admitted_log: evidence_dir.join("flash-monitor.log"),
+        private_record: evidence_dir.join("flash-command-evidence.private.json"),
+        admitted_record: evidence_dir.join("flash-command-evidence.json"),
+    }
 }
 
 pub(crate) fn capture_command(
@@ -133,8 +196,8 @@ pub(crate) fn capture_command(
         .context("failed to capture monitor stderr")?;
 
     let (sender, receiver) = mpsc::channel();
-    spawn_reader(stdout, sender.clone());
-    spawn_reader(stderr, sender);
+    spawn_reader(stdout, sender.clone(), PipeStream::Stdout);
+    spawn_reader(stderr, sender, PipeStream::Stderr);
     capture_pipes(
         &mut child,
         receiver,
@@ -145,12 +208,24 @@ pub(crate) fn capture_command(
     )
 }
 
-pub(crate) fn derive_admitted_log(paths: &DualEvidencePaths) -> Result<DualEvidenceDigests> {
+pub(crate) fn private_log_sha256(path: &Utf8Path) -> Result<String> {
+    let bytes = fs::read(path.as_std_path())
+        .with_context(|| format!("failed to read private evidence {path}"))?;
+    Ok(sha256_hex(&bytes))
+}
+
+pub(crate) fn derive_admitted_log(
+    paths: &DualEvidencePaths,
+    expected_private_sha256: &str,
+) -> Result<DualEvidenceDigests> {
     let private_bytes = fs::read(paths.private_log.as_std_path())
         .with_context(|| format!("failed to read private evidence {}", paths.private_log))?;
     let private_text = std::str::from_utf8(&private_bytes)
         .map_err(|_| anyhow::anyhow!("evidence_sanitization_invalid"))?;
     let private_sha256 = sha256_hex(&private_bytes);
+    if private_sha256 != expected_private_sha256 {
+        bail!("private evidence digest does not match classified input");
+    }
     let admitted = sanitize_evidence_text(private_text, EvidenceRedactionMode::CommitRedacted);
     let mut admitted_file = open_private_output(&paths.admitted_log, true)?;
     admitted_file
@@ -216,25 +291,29 @@ fn open_private_output(path: &Utf8Path, create_new: bool) -> Result<File> {
     Ok(file)
 }
 
-fn spawn_reader(mut reader: impl Read + Send + 'static, sender: Sender<PipeEvent>) {
+fn spawn_reader(
+    mut reader: impl Read + Send + 'static,
+    sender: Sender<PipeEvent>,
+    stream: PipeStream,
+) {
     std::thread::spawn(move || {
         let mut buffer = [0_u8; READ_CHUNK_BYTES];
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => {
-                    let _ = sender.send(PipeEvent::Closed);
+                    let _ = sender.send(PipeEvent::Closed(stream));
                     return;
                 }
                 Ok(length) => {
                     if sender
-                        .send(PipeEvent::Bytes(buffer[..length].to_vec()))
+                        .send(PipeEvent::Bytes(stream, buffer[..length].to_vec()))
                         .is_err()
                     {
                         return;
                     }
                 }
                 Err(_) => {
-                    let _ = sender.send(PipeEvent::ReadFailed);
+                    let _ = sender.send(PipeEvent::ReadFailed(stream));
                     return;
                 }
             }
@@ -250,7 +329,7 @@ fn capture_pipes(
     redaction_mode: EvidenceRedactionMode,
     command_spec: &CommandSpec,
 ) -> Result<CaptureProcessResult> {
-    let mut sanitizer = IncrementalSanitizer::new(log_file, redaction_mode);
+    let mut sanitizer = InterleavedSanitizer::new(log_file, redaction_mode);
     let started = Instant::now();
     let deadline = Duration::from_secs(timeout_seconds);
     let mut closed_pipes = 0_u8;
@@ -290,7 +369,7 @@ fn capture_pipes(
 fn drain_pipe_events(
     child: &mut Child,
     receiver: &Receiver<PipeEvent>,
-    sanitizer: &mut IncrementalSanitizer,
+    sanitizer: &mut InterleavedSanitizer,
     closed_pipes: &mut u8,
 ) -> Result<()> {
     let drain_deadline = Instant::now() + Duration::from_secs(2);
@@ -308,22 +387,22 @@ fn drain_pipe_events(
 
 fn handle_pipe_event(
     child: &mut Child,
-    sanitizer: &mut IncrementalSanitizer,
+    sanitizer: &mut InterleavedSanitizer,
     event: PipeEvent,
     closed_pipes: &mut u8,
 ) -> Result<()> {
     match event {
-        PipeEvent::Bytes(bytes) => {
-            if let Err(error) = sanitizer.push(&bytes) {
+        PipeEvent::Bytes(stream, bytes) => {
+            if let Err(error) = sanitizer.push(stream, &bytes) {
                 stop_child_after_capture_failure(child)?;
                 return Err(error);
             }
         }
-        PipeEvent::ReadFailed => {
+        PipeEvent::ReadFailed(_stream) => {
             stop_child_after_capture_failure(child)?;
             bail!("evidence_sanitization_invalid");
         }
-        PipeEvent::Closed => *closed_pipes += 1,
+        PipeEvent::Closed(_stream) => *closed_pipes += 1,
     }
     Ok(())
 }
@@ -346,28 +425,26 @@ fn stop_child_after_capture_failure(child: &mut Child) -> Result<()> {
 }
 
 struct IncrementalSanitizer {
-    output: File,
     pending: Vec<u8>,
     redaction_mode: EvidenceRedactionMode,
 }
 
 impl IncrementalSanitizer {
-    fn new(output: File, redaction_mode: EvidenceRedactionMode) -> Self {
+    fn new(redaction_mode: EvidenceRedactionMode) -> Self {
         Self {
-            output,
             pending: Vec::new(),
             redaction_mode,
         }
     }
 
-    fn push(&mut self, bytes: &[u8]) -> Result<()> {
+    fn push(&mut self, bytes: &[u8], output: &mut File) -> Result<()> {
         self.pending.extend_from_slice(bytes);
         if self.pending.len() > MAX_PENDING_LINE_BYTES && !self.pending.contains(&b'\n') {
             bail!("evidence_sanitization_invalid");
         }
         while let Some(newline) = self.pending.iter().position(|byte| *byte == b'\n') {
             let line = self.pending.drain(..=newline).collect::<Vec<_>>();
-            self.write_valid(&line)?;
+            self.write_valid(&line, output)?;
         }
         if self.pending.len() > MAX_PENDING_LINE_BYTES {
             bail!("evidence_sanitization_invalid");
@@ -375,23 +452,52 @@ impl IncrementalSanitizer {
         Ok(())
     }
 
-    fn finish(mut self) -> Result<()> {
+    fn finish(&mut self, output: &mut File) -> Result<()> {
         if !self.pending.is_empty() {
             let pending = std::mem::take(&mut self.pending);
-            self.write_valid(&pending)?;
+            self.write_valid(&pending, output)?;
         }
-        self.output
-            .sync_all()
-            .context("failed to sync captured evidence")
+        Ok(())
     }
 
-    fn write_valid(&mut self, bytes: &[u8]) -> Result<()> {
+    fn write_valid(&self, bytes: &[u8], output: &mut File) -> Result<()> {
         let text = std::str::from_utf8(bytes)
             .map_err(|_| anyhow::anyhow!("evidence_sanitization_invalid"))?;
         let sanitized = sanitize_evidence_text(text, self.redaction_mode);
-        self.output
+        output
             .write_all(sanitized.as_bytes())
             .context("failed to write sanitized evidence")
+    }
+}
+
+struct InterleavedSanitizer {
+    output: File,
+    stdout: IncrementalSanitizer,
+    stderr: IncrementalSanitizer,
+}
+
+impl InterleavedSanitizer {
+    fn new(output: File, redaction_mode: EvidenceRedactionMode) -> Self {
+        Self {
+            output,
+            stdout: IncrementalSanitizer::new(redaction_mode),
+            stderr: IncrementalSanitizer::new(redaction_mode),
+        }
+    }
+
+    fn push(&mut self, stream: PipeStream, bytes: &[u8]) -> Result<()> {
+        match stream {
+            PipeStream::Stdout => self.stdout.push(bytes, &mut self.output),
+            PipeStream::Stderr => self.stderr.push(bytes, &mut self.output),
+        }
+    }
+
+    fn finish(mut self) -> Result<()> {
+        self.stdout.finish(&mut self.output)?;
+        self.stderr.finish(&mut self.output)?;
+        self.output
+            .sync_all()
+            .context("failed to sync captured evidence")
     }
 }
 
@@ -417,8 +523,8 @@ mod tests {
         let stdout = child.stdout.take().context("fixture stdout")?;
         let stderr = child.stderr.take().context("fixture stderr")?;
         let (sender, receiver) = mpsc::channel();
-        spawn_reader(stdout, sender.clone());
-        spawn_reader(stderr, sender);
+        spawn_reader(stdout, sender.clone(), PipeStream::Stdout);
+        spawn_reader(stderr, sender, PipeStream::Stderr);
         capture_pipes(
             &mut child,
             receiver,
@@ -435,20 +541,48 @@ mod tests {
         let dir = tempdir().expect("tempdir");
         let path = Utf8PathBuf::from_path_buf(dir.path().join("capture.log")).expect("utf8 path");
         let file = open_private_output(&path, true).expect("output");
-        let mut sanitizer = IncrementalSanitizer::new(file, EvidenceRedactionMode::DeveloperRaw);
+        let mut sanitizer = IncrementalSanitizer::new(EvidenceRedactionMode::DeveloperRaw);
+        let mut file = file;
 
         // Act
         sanitizer
-            .push(b"status password=super-")
+            .push(b"status password=super-", &mut file)
             .expect("chunk one");
         sanitizer
-            .push(b"secret token=api-secret\n")
+            .push(b"secret token=api-secret\n", &mut file)
             .expect("chunk two");
-        sanitizer.finish().expect("finish");
+        sanitizer.finish(&mut file).expect("finish");
+        file.sync_all().expect("sync");
 
         // Assert
         let captured = fs::read_to_string(path.as_std_path()).expect("captured");
         assert_eq!(captured, "status password=[redacted] token=[redacted]\n");
+    }
+
+    #[test]
+    fn interleaved_sanitizer_keeps_partial_lines_independent_by_stream() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let path = Utf8PathBuf::from_path_buf(dir.path().join("capture.log")).expect("utf8 path");
+        let file = open_private_output(&path, true).expect("output");
+        let mut sanitizer = InterleavedSanitizer::new(file, EvidenceRedactionMode::DeveloperRaw);
+
+        // Act
+        sanitizer
+            .push(PipeStream::Stdout, b"password=super-")
+            .expect("stdout prefix");
+        sanitizer
+            .push(PipeStream::Stderr, b"status=complete\n")
+            .expect("stderr line");
+        sanitizer
+            .push(PipeStream::Stdout, b"secret\n")
+            .expect("stdout tail");
+        sanitizer.finish().expect("finish");
+
+        // Assert
+        let captured = fs::read_to_string(path.as_std_path()).expect("captured");
+        assert_eq!(captured, "status=complete\npassword=[redacted]\n");
+        assert!(!captured.contains("super-secret"));
     }
 
     #[test]
@@ -474,6 +608,31 @@ mod tests {
         assert!(captured.contains("token=[redacted]"));
         assert!(!captured.contains("super-secret"));
         assert!(!captured.contains("api-secret"));
+    }
+
+    #[test]
+    fn real_process_capture_keeps_interleaved_partial_lines_stream_local() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let path = Utf8PathBuf::from_path_buf(dir.path().join("capture.log")).expect("utf8 path");
+
+        // Act
+        let outcome = capture_shell(
+            "printf 'password=super-'; sleep 0.1; printf 'status=complete\\n' >&2; sleep 0.1; printf 'secret\\n'",
+            &path,
+        )
+        .expect("capture");
+
+        // Assert
+        assert!(matches!(
+            outcome.status,
+            CaptureProcessStatus::ExitedSuccess
+        ));
+        let captured = fs::read_to_string(path.as_std_path()).expect("captured");
+        assert!(captured.contains("status=complete\n"));
+        assert!(captured.contains("password=[redacted]\n"));
+        assert!(!captured.contains("super-secret"));
+        assert!(!captured.contains("super-"));
     }
 
     #[test]
@@ -532,10 +691,11 @@ mod tests {
         let dir = tempdir().expect("tempdir");
         let path = Utf8PathBuf::from_path_buf(dir.path().join("capture.log")).expect("utf8 path");
         let file = open_private_output(&path, true).expect("output");
-        let mut sanitizer = IncrementalSanitizer::new(file, EvidenceRedactionMode::DeveloperRaw);
+        let mut sanitizer = IncrementalSanitizer::new(EvidenceRedactionMode::DeveloperRaw);
+        let mut file = file;
 
         // Act
-        let result = sanitizer.push(&[0xff, b'\n']);
+        let result = sanitizer.push(&[0xff, b'\n'], &mut file);
 
         // Assert
         let error = result.expect_err("invalid utf8");
@@ -548,11 +708,12 @@ mod tests {
         let dir = tempdir().expect("tempdir");
         let path = Utf8PathBuf::from_path_buf(dir.path().join("capture.log")).expect("utf8 path");
         let file = open_private_output(&path, true).expect("output");
-        let mut sanitizer = IncrementalSanitizer::new(file, EvidenceRedactionMode::DeveloperRaw);
+        let mut sanitizer = IncrementalSanitizer::new(EvidenceRedactionMode::DeveloperRaw);
+        let mut file = file;
         let overlong = vec![b'a'; MAX_PENDING_LINE_BYTES + 1];
 
         // Act
-        let result = sanitizer.push(&overlong);
+        let result = sanitizer.push(&overlong, &mut file);
 
         // Assert
         let error = result.expect_err("overlong line");
@@ -574,7 +735,7 @@ mod tests {
         let before = sha256_hex(&fs::read(paths.private_log.as_std_path()).expect("private bytes"));
 
         // Act
-        let digests = derive_admitted_log(&paths).expect("derive");
+        let digests = derive_admitted_log(&paths, &before).expect("derive");
 
         // Assert
         assert_eq!(digests.private_sha256, before);
@@ -605,5 +766,24 @@ mod tests {
                 & 0o777;
             assert_eq!(mode, 0o600);
         }
+    }
+
+    #[test]
+    fn dual_derivation_rejects_unclassified_digest_before_admitted_output() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir =
+            Utf8PathBuf::from_path_buf(dir.path().join("evidence")).expect("utf8 path");
+        let paths = preflight_dual_paths(&evidence_dir).expect("preflight");
+        write_dual_private_text(&paths.private_log, "status=complete\n").expect("private capture");
+
+        // Act
+        let result = derive_admitted_log(&paths, &"0".repeat(64));
+
+        // Assert
+        let error = result.expect_err("unclassified digest");
+        assert!(format!("{error:#}").contains("classified input"));
+        assert!(!paths.admitted_log.exists());
+        assert!(!paths.admitted_record.exists());
     }
 }

@@ -51,6 +51,8 @@ enum CliCommand {
     Monitor(MonitorCommand),
     #[command(name = "flash-monitor")]
     FlashMonitor(FlashMonitorCommand),
+    #[command(name = "finalize-evidence")]
+    FinalizeEvidence(FinalizeEvidenceCommand),
 }
 
 #[derive(Debug, Args, Clone)]
@@ -111,6 +113,15 @@ struct FlashMonitorCommand {
 
     #[arg(long = "capture-timeout-seconds", default_value_t = DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS)]
     capture_timeout_seconds: u64,
+}
+
+#[derive(Debug, Parser, Clone)]
+struct FinalizeEvidenceCommand {
+    #[arg(long = "evidence-dir", value_parser = parse_utf8_path)]
+    evidence_dir: Utf8PathBuf,
+
+    #[arg(long = "expected-private-sha256", value_parser = parse_sha256)]
+    expected_private_sha256: String,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -322,7 +333,7 @@ enum CaptureProcessStatus {
     TimedOut,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 enum CaptureStatus {
     Completed,
@@ -368,7 +379,7 @@ struct EvidenceRecordInput<'a> {
 struct MonitorEvidenceArtifacts<'a> {
     admitted_log: &'a Utf8Path,
     dual_paths: Option<&'a evidence::DualEvidencePaths>,
-    dual_digests: Option<&'a evidence::DualEvidenceDigests>,
+    private_log_sha256: Option<&'a str>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -412,6 +423,7 @@ trait FlashEnvironment {
     ) -> Result<AdmittedExecutionSnapshot> {
         AdmittedExecutionSnapshot::materialize(bytes)
     }
+    fn approve_private_evidence_root(&self, path: &Utf8Path) -> Result<()>;
     fn current_provenance(&self) -> Result<BuildProvenance>;
     fn list_ports(&self) -> Result<String>;
     fn write_file(&self, path: &Utf8Path, contents: &str) -> Result<()>;
@@ -448,6 +460,65 @@ impl LocalFlashEnvironment {
     }
 }
 
+fn approve_local_private_evidence_root(
+    workspace_dir: &Utf8Path,
+    requested_root: &Utf8Path,
+) -> Result<()> {
+    let canonical_workspace = fs::canonicalize(workspace_dir.as_std_path())
+        .context("failed to resolve workspace for private evidence admission")?;
+    let canonical_workspace = Utf8PathBuf::from_path_buf(canonical_workspace)
+        .map_err(|_| anyhow::anyhow!("private_evidence_root=blocked reason=non_utf8_workspace"))?;
+    let relative_root = if requested_root.is_absolute() {
+        requested_root
+            .strip_prefix(&canonical_workspace)
+            .or_else(|_| requested_root.strip_prefix(workspace_dir))
+            .map(Utf8Path::to_owned)
+            .map_err(|_| {
+                anyhow::anyhow!("private_evidence_root=blocked reason=outside_workspace")
+            })?
+    } else {
+        requested_root.to_owned()
+    };
+    if relative_root.as_str().is_empty()
+        || relative_root.as_std_path().components().any(|component| {
+            !matches!(
+                component,
+                std::path::Component::Normal(_) | std::path::Component::CurDir
+            )
+        })
+    {
+        bail!("private_evidence_root=blocked reason=invalid_workspace_path");
+    }
+
+    let canonical_candidate = canonical_workspace.join(&relative_root);
+    let mut maybe_existing = Some(canonical_candidate.as_path());
+    let existing_ancestor = loop {
+        let Some(candidate) = maybe_existing else {
+            bail!("private_evidence_root=blocked reason=missing_workspace_ancestor");
+        };
+        if candidate.exists() {
+            break candidate;
+        }
+        maybe_existing = candidate.parent();
+    };
+    let canonical_ancestor = fs::canonicalize(existing_ancestor.as_std_path())
+        .context("failed to resolve private evidence ancestor")?;
+    if !canonical_ancestor.starts_with(canonical_workspace.as_std_path()) {
+        bail!("private_evidence_root=blocked reason=symlink_escape");
+    }
+
+    let status = Command::new("git")
+        .current_dir(canonical_workspace.as_std_path())
+        .args(["check-ignore", "--quiet", "--"])
+        .arg(relative_root.as_std_path())
+        .status()
+        .context("failed to verify private evidence ignore admission")?;
+    if !status.success() {
+        bail!("private_evidence_root=blocked reason=not_repo_ignored");
+    }
+    Ok(())
+}
+
 impl FlashEnvironment for LocalFlashEnvironment {
     fn build_package(&self) -> Result<()> {
         let status = Command::new("bazel")
@@ -478,6 +549,10 @@ impl FlashEnvironment for LocalFlashEnvironment {
             redaction_mode,
             create_new,
         )
+    }
+
+    fn approve_private_evidence_root(&self, path: &Utf8Path) -> Result<()> {
+        approve_local_private_evidence_root(&self.workspace_dir, path)
     }
 
     fn bazel_bin(&self) -> Result<Utf8PathBuf> {
@@ -638,6 +713,9 @@ fn main() -> Result<()> {
         CliCommand::FlashMonitor(command) => {
             run_flash_monitor(&command, &environment)?;
         }
+        CliCommand::FinalizeEvidence(command) => {
+            run_finalize_evidence(&command, &environment)?;
+        }
     }
 
     Ok(())
@@ -693,6 +771,9 @@ where
             }
             "evidence-mode" | "evidence_mode" => {
                 push_flag_value(&mut normalized, "--evidence-mode", value)
+            }
+            "expected-private-sha256" | "expected_private_sha256" => {
+                push_flag_value(&mut normalized, "--expected-private-sha256", value)
             }
             "capture-timeout-seconds" | "capture_timeout_seconds" => {
                 push_flag_value(&mut normalized, "--capture-timeout-seconds", value)
@@ -766,17 +847,21 @@ fn run_flash_monitor(
     if command.common.evidence_mode.is_some() && resolved_dir.is_none() {
         bail!("--evidence-mode dual requires --evidence-dir");
     }
-    let dual_paths =
-        if command.common.evidence_mode == Some(EvidenceMode::Dual) {
-            let evidence_dir = resolved_dir
-                .as_deref()
-                .context("dual evidence mode requires an evidence directory")?;
-            Some(evidence::preflight_dual_paths(evidence_dir).map_err(|_| {
+    let dual_paths = if command.common.evidence_mode == Some(EvidenceMode::Dual) {
+        let evidence_dir = resolved_dir
+            .as_deref()
+            .context("dual evidence mode requires an evidence directory")?;
+        environment
+            .approve_private_evidence_root(evidence_dir)
+            .map_err(|_| anyhow::anyhow!("dual_evidence=failed reason=root_admission_failed"))?;
+        Some(
+            evidence::preflight_dual_paths(evidence_dir).map_err(|_| {
                 anyhow::anyhow!("dual_evidence=failed reason=path_preflight_failed")
-            })?)
-        } else {
-            None
-        };
+            })?,
+        )
+    } else {
+        None
+    };
 
     let mut flash_common = command.common.clone();
     flash_common.evidence_dir = None;
@@ -864,13 +949,13 @@ fn run_flash_monitor(
                 &environment.reference_commit(),
             )
         };
-        let maybe_dual_digests = dual_paths
+        let maybe_private_sha256 = dual_paths
             .as_ref()
-            .map(evidence::derive_admitted_log)
+            .map(|paths| evidence::private_log_sha256(&paths.private_log))
             .transpose()
             .map_err(|error| {
                 if command.common.evidence_mode == Some(EvidenceMode::Dual) {
-                    return anyhow::anyhow!("dual_evidence=failed reason=derivation_failed");
+                    return anyhow::anyhow!("dual_evidence=failed reason=private_digest_failed");
                 }
                 error
             })?;
@@ -882,7 +967,7 @@ fn run_flash_monitor(
             MonitorEvidenceArtifacts {
                 admitted_log: &log_path,
                 dual_paths: dual_paths.as_ref(),
-                dual_digests: maybe_dual_digests.as_ref(),
+                private_log_sha256: maybe_private_sha256.as_deref(),
             },
             &capture_outcome,
             environment,
@@ -920,6 +1005,70 @@ fn run_flash_monitor(
     }
 
     Ok(())
+}
+
+fn run_finalize_evidence(
+    command: &FinalizeEvidenceCommand,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    let evidence_dir = environment.workspace_path(&command.evidence_dir);
+    environment
+        .approve_private_evidence_root(&evidence_dir)
+        .map_err(|_| anyhow::anyhow!("dual_evidence=failed reason=root_admission_failed"))?;
+    let paths = evidence::preflight_dual_finalization_paths(&evidence_dir)
+        .map_err(|_| anyhow::anyhow!("dual_evidence=failed reason=finalize_preflight_failed"))?;
+    let private_sha256 = evidence::private_log_sha256(&paths.private_log)
+        .map_err(|_| anyhow::anyhow!("dual_evidence=failed reason=private_digest_failed"))?;
+    if private_sha256 != command.expected_private_sha256 {
+        bail!("dual_evidence=failed reason=classified_digest_mismatch");
+    }
+
+    let private_json = environment
+        .read_to_string(&paths.private_record)
+        .map_err(|_| anyhow::anyhow!("dual_evidence=failed reason=private_record_unreadable"))?;
+    let mut record: EvidenceRecord = serde_json::from_str(&private_json)
+        .map_err(|_| anyhow::anyhow!("dual_evidence=failed reason=private_record_invalid"))?;
+    if record.redaction_mode != "dual"
+        || record.commit_ready
+        || record.private_monitor_log_path.as_deref() != Some(paths.private_log.as_str())
+        || record.private_monitor_log_sha256.as_deref()
+            != Some(command.expected_private_sha256.as_str())
+        || record.monitor_log_sha256.is_some()
+    {
+        bail!("dual_evidence=failed reason=private_record_mismatch");
+    }
+
+    let finalize_result = (|| -> Result<()> {
+        let digests =
+            evidence::derive_admitted_log(&paths, command.expected_private_sha256.as_str())?;
+        record.command = PROTECTED_OPERATIONAL.to_owned();
+        record.flash_command = PROTECTED_OPERATIONAL.to_owned();
+        record.monitor_command = PROTECTED_OPERATIONAL.to_owned();
+        record.port = "[redacted]".to_owned();
+        record.manifest_path = PROTECTED_OPERATIONAL.to_owned();
+        record.flash_image_path = PROTECTED_OPERATIONAL.to_owned();
+        record.log_path = "flash-monitor.log".to_owned();
+        record.monitor_log_path = "flash-monitor.log".to_owned();
+        record.private_log_role = None;
+        record.private_monitor_log_path = None;
+        record.private_monitor_log_sha256 = None;
+        record.monitor_log_sha256 = Some(digests.admitted_sha256);
+        record.commit_ready = true;
+        let admitted_json = serde_json::to_string_pretty(&record)
+            .context("failed to serialize admitted evidence")?;
+        evidence::write_dual_admitted_text(&paths.admitted_record, &admitted_json)
+    })();
+    if let Err(error) = finalize_result {
+        for path in [&paths.admitted_log, &paths.admitted_record] {
+            if let Err(remove_error) = fs::remove_file(path.as_std_path()) {
+                if remove_error.kind() != std::io::ErrorKind::NotFound {
+                    return Err(remove_error).context("failed to roll back admitted evidence");
+                }
+            }
+        }
+        return Err(error).context("dual_evidence=failed reason=finalization_failed");
+    }
+    emit_line("dual_evidence", "finalized")
 }
 
 fn prepare_flash(
@@ -1794,12 +1943,8 @@ fn write_flash_monitor_evidence_if_requested(
             private_log_path: artifacts
                 .dual_paths
                 .map(|paths| paths.private_log.as_path()),
-            private_log_sha256: artifacts
-                .dual_digests
-                .map(|digests| digests.private_sha256.as_str()),
-            admitted_log_sha256: artifacts
-                .dual_digests
-                .map(|digests| digests.admitted_sha256.as_str()),
+            private_log_sha256: artifacts.private_log_sha256,
+            admitted_log_sha256: None,
             capture_outcome,
         },
         environment,
@@ -1857,7 +2002,7 @@ fn write_evidence_record(
         } else {
             redaction_mode.as_str().to_owned()
         },
-        commit_ready: dual_mode || redaction_mode.commit_ready(),
+        commit_ready: !dual_mode && redaction_mode.commit_ready(),
         wifi_credentials_source: if outcome.nvs_seed.is_some() {
             "provided-redacted".to_owned()
         } else {
@@ -1891,22 +2036,7 @@ fn write_evidence_record(
         let private_json = serde_json::to_string_pretty(&record)
             .context("failed to serialize private evidence")?;
         evidence::write_dual_private_text(&paths.private_record, &private_json)?;
-
-        let mut admitted_record = record;
-        admitted_record.command = "protected-operational".to_owned();
-        admitted_record.flash_command = "protected-operational".to_owned();
-        admitted_record.monitor_command = "protected-operational".to_owned();
-        admitted_record.port = "[redacted]".to_owned();
-        admitted_record.manifest_path = "protected-operational".to_owned();
-        admitted_record.flash_image_path = "protected-operational".to_owned();
-        admitted_record.log_path = "flash-monitor.log".to_owned();
-        admitted_record.monitor_log_path = "flash-monitor.log".to_owned();
-        admitted_record.private_log_role = None;
-        admitted_record.private_monitor_log_path = None;
-        admitted_record.private_monitor_log_sha256 = None;
-        let admitted_json = serde_json::to_string_pretty(&admitted_record)
-            .context("failed to serialize admitted evidence")?;
-        return evidence::write_dual_admitted_text(&paths.admitted_record, &admitted_json);
+        return Ok(());
     }
 
     let json = serde_json::to_string_pretty(&record).context("failed to serialize evidence")?;
@@ -2375,7 +2505,7 @@ fn command_port(command: &CommandSpec) -> Option<String> {
         .map(|window| window[1].clone())
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct EvidenceRecord {
     command: String,
     command_kind: String,
@@ -2427,6 +2557,13 @@ fn parse_board(value: &str) -> std::result::Result<BoardId, String> {
 
 fn parse_utf8_path(value: &str) -> std::result::Result<Utf8PathBuf, String> {
     Ok(Utf8PathBuf::from(value))
+}
+
+fn parse_sha256(value: &str) -> std::result::Result<String, String> {
+    if value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Ok(value.to_ascii_lowercase());
+    }
+    Err("expected a 64-character SHA-256 digest".to_owned())
 }
 
 fn command_output_to_string(output: std::process::Output, description: &str) -> Result<String> {
@@ -2625,6 +2762,31 @@ mod tests {
             underscored_command.common.evidence_mode,
             Some(EvidenceMode::Dual)
         );
+    }
+
+    #[test]
+    fn finalize_evidence_parses_software_only_inputs() {
+        // Arrange
+        let digest = "a".repeat(64);
+        let args = [
+            "bitaxe-flash".to_owned(),
+            "finalize-evidence".to_owned(),
+            "evidence_dir=scratch/private-evidence".to_owned(),
+            format!("expected_private_sha256={digest}"),
+        ];
+
+        // Act
+        let cli = parse_cli(args).expect("finalize cli");
+
+        // Assert
+        let CliCommand::FinalizeEvidence(command) = cli.command else {
+            panic!("expected finalize-evidence command");
+        };
+        assert_eq!(
+            command.evidence_dir,
+            Utf8PathBuf::from("scratch/private-evidence")
+        );
+        assert_eq!(command.expected_private_sha256, digest);
     }
 
     #[test]
@@ -4073,7 +4235,7 @@ mod tests {
     }
 
     #[test]
-    fn flash_monitor_dual_mode_preserves_private_classifier_input_and_derives_admitted_log() {
+    fn flash_monitor_dual_mode_stages_private_input_until_explicit_finalization() {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
@@ -4092,23 +4254,14 @@ mod tests {
         let private_path = evidence_dir.join("flash-monitor.classifier-input.log");
         let admitted_path = evidence_dir.join("flash-monitor.log");
         let private = std::fs::read_to_string(private_path.as_std_path()).expect("private");
-        let admitted = std::fs::read_to_string(admitted_path.as_std_path()).expect("admitted");
         assert!(private.contains("ssid=lab-net"));
         assert!(private.contains("ipv4=192.168.1.24"));
         assert!(private.contains("/Users/operator/private.log"));
         assert!(private.contains("pid=123"));
         assert!(private.contains("password=[redacted]"));
         assert!(!private.contains("super-secret"));
-        assert!(!admitted.contains("lab-net"));
-        assert!(!admitted.contains("192.168.1.24"));
-        assert!(!admitted.contains("/Users/operator/private.log"));
-        assert!(!admitted.contains("pid=123"));
-        let admitted_evidence = std::fs::read_to_string(
-            evidence_dir
-                .join("flash-command-evidence.json")
-                .as_std_path(),
-        )
-        .expect("admitted evidence");
+        assert!(!admitted_path.exists());
+        assert!(!evidence_dir.join("flash-command-evidence.json").exists());
         let evidence = std::fs::read_to_string(
             evidence_dir
                 .join("flash-command-evidence.private.json")
@@ -4120,17 +4273,47 @@ mod tests {
         assert_eq!(json["monitor_log_path"], admitted_path.as_str());
         assert_eq!(json["private_monitor_log_path"], private_path.as_str());
         assert_eq!(json["private_log_role"], "classifier-input-private");
+        assert_eq!(json["commit_ready"], false);
         assert_eq!(
             json["private_monitor_log_sha256"],
             sha256_bytes(private.as_bytes())
         );
+        assert!(json.get("monitor_log_sha256").is_none());
+
+        // Act
+        run_finalize_evidence(
+            &FinalizeEvidenceCommand {
+                evidence_dir: evidence_dir.clone(),
+                expected_private_sha256: sha256_bytes(private.as_bytes()),
+            },
+            &environment,
+        )
+        .expect("finalize evidence");
+
+        // Assert
+        let admitted = std::fs::read_to_string(admitted_path.as_std_path()).expect("admitted");
+        assert!(!admitted.contains("lab-net"));
+        assert!(!admitted.contains("192.168.1.24"));
+        assert!(!admitted.contains("/Users/operator/private.log"));
+        assert!(!admitted.contains("pid=123"));
         assert_eq!(
-            json["monitor_log_sha256"],
-            sha256_bytes(admitted.as_bytes())
+            sha256_bytes(private.as_bytes()),
+            evidence::private_log_sha256(&private_path).expect("private digest after finalization")
         );
+        let admitted_evidence = std::fs::read_to_string(
+            evidence_dir
+                .join("flash-command-evidence.json")
+                .as_std_path(),
+        )
+        .expect("admitted evidence");
         let admitted_json: serde_json::Value =
             serde_json::from_str(&admitted_evidence).expect("admitted json");
+        assert_eq!(admitted_json["commit_ready"], true);
         assert_eq!(admitted_json["monitor_log_path"], "flash-monitor.log");
+        assert_eq!(
+            admitted_json["monitor_log_sha256"],
+            sha256_bytes(admitted.as_bytes())
+        );
         assert!(admitted_json.get("private_monitor_log_path").is_none());
         assert!(admitted_json.get("private_monitor_log_sha256").is_none());
         assert!(!admitted_evidence.contains(private_path.as_str()));
@@ -4149,6 +4332,70 @@ mod tests {
                 & 0o777;
             assert_eq!(mode, 0o600);
         }
+    }
+
+    #[test]
+    fn flash_monitor_dual_mode_rejects_unapproved_root_before_any_flash_effect() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("shareable-evidence");
+        let mut command = flash_monitor_fixture(&dir, evidence_dir);
+        command.common.evidence_mode = Some(EvidenceMode::Dual);
+        let environment = FakeFlashEnvironment::default().with_private_root_rejected();
+
+        // Act
+        let result = run_flash_monitor(&command, &environment);
+
+        // Assert
+        let error = result.expect_err("unapproved private evidence root");
+        assert!(format!("{error:#}").contains("root_admission_failed"));
+        assert_eq!(environment.private_root_admission_calls(), 1);
+        assert_eq!(environment.list_ports_calls(), 0);
+        assert!(environment.executed_commands().is_empty());
+        assert!(environment.captured_commands().is_empty());
+    }
+
+    #[test]
+    fn local_private_root_admission_requires_workspace_containment_and_git_ignore() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let workspace = dir_path(&dir).join("workspace");
+        std::fs::create_dir_all(workspace.join("docs/shareable").as_std_path())
+            .expect("shareable dir");
+        std::fs::write(workspace.join(".gitignore").as_std_path(), "scratch/\n")
+            .expect("gitignore");
+        std::fs::write(
+            workspace.join("docs/shareable/marker.md").as_std_path(),
+            "tracked\n",
+        )
+        .expect("tracked marker");
+        let init_status = Command::new("git")
+            .current_dir(workspace.as_std_path())
+            .args(["init", "--quiet"])
+            .status()
+            .expect("git init");
+        assert!(init_status.success());
+        let add_status = Command::new("git")
+            .current_dir(workspace.as_std_path())
+            .args(["add", ".gitignore", "docs/shareable/marker.md"])
+            .status()
+            .expect("git add");
+        assert!(add_status.success());
+
+        // Act
+        let ignored = approve_local_private_evidence_root(
+            &workspace,
+            &workspace.join("scratch/phase35-private"),
+        );
+        let tracked =
+            approve_local_private_evidence_root(&workspace, &workspace.join("docs/shareable"));
+        let outside =
+            approve_local_private_evidence_root(&workspace, &dir_path(&dir).join("outside"));
+
+        // Assert
+        ignored.expect("ignored private root");
+        assert!(format!("{:#}", tracked.expect_err("tracked root")).contains("not_repo_ignored"));
+        assert!(format!("{:#}", outside.expect_err("outside root")).contains("outside_workspace"));
     }
 
     #[test]
@@ -4970,6 +5217,8 @@ mod tests {
         read_string_paths: RefCell<Vec<Utf8PathBuf>>,
         created_snapshot_paths: RefCell<Vec<Utf8PathBuf>>,
         observed_flash: RefCell<Vec<ObservedFlash>>,
+        private_root_admitted: bool,
+        private_root_admission_calls: Cell<usize>,
     }
 
     impl Default for FakeFlashEnvironment {
@@ -5004,6 +5253,8 @@ mod tests {
                 read_string_paths: RefCell::new(Vec::new()),
                 created_snapshot_paths: RefCell::new(Vec::new()),
                 observed_flash: RefCell::new(Vec::new()),
+                private_root_admitted: true,
+                private_root_admission_calls: Cell::new(0),
             }
         }
 
@@ -5052,6 +5303,15 @@ mod tests {
         fn with_snapshot_write_failure(mut self) -> Self {
             self.snapshot_write_failure = true;
             self
+        }
+
+        fn with_private_root_rejected(mut self) -> Self {
+            self.private_root_admitted = false;
+            self
+        }
+
+        fn private_root_admission_calls(&self) -> usize {
+            self.private_root_admission_calls.get()
         }
 
         fn created_snapshot_paths(&self) -> std::cell::Ref<'_, Vec<Utf8PathBuf>> {
@@ -5111,6 +5371,15 @@ mod tests {
                 .borrow_mut()
                 .push(snapshot.path().to_owned());
             Ok(snapshot)
+        }
+
+        fn approve_private_evidence_root(&self, _path: &Utf8Path) -> Result<()> {
+            self.private_root_admission_calls
+                .set(self.private_root_admission_calls.get().saturating_add(1));
+            if !self.private_root_admitted {
+                bail!("private evidence root rejected by fixture");
+            }
+            Ok(())
         }
 
         fn current_provenance(&self) -> Result<BuildProvenance> {
