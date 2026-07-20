@@ -705,3 +705,89 @@ authorized fresh continuation and should first own a redacted, pre-mutation HTTP
 transport/readiness diagnostic that can distinguish connection, request,
 response, and valid-body boundaries without weakening the exact original-setting
 readback, restoration, cleanup, redaction, or admission gates.
+
+## Continuation Attempt 11 Checkpoint
+
+The eleventh fresh continuation ran only after all nine ordered software gates
+passed against clean exact source `812aba9a429cccdbe252245dc593cb7c419d7b39`.
+Before launch, the caller created one ignored mode-`0700` private parent, left
+the supervisor-owned child nonexistent, and created mode-`0600` sibling wrapper
+logs. The full Phase 35 command then ran exactly once with its internal detector,
+the literal opaque credential-path argument, a 360-second capture budget, and
+commit-redacted flash evidence.
+
+The supervisor created the child, passed exact-package Gate 1, made its sole
+detector invocation, selected exactly one board-205 candidate, completed
+board-info, passed the post-detector opaque-input gate, and completed the direct
+flash/monitor command. The strict Boot A classifier then stopped with typed
+category `runtime_origin_corrupt`. The supervisor never derived or validated an
+HTTP target, never invoked the instrumented original-settings GET, and never
+started PATCH or any settings mutation. Cleanup completed with no secondary
+failure, and the protected root was sealed non-promotable and non-reusable.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-20T15:00:02Z` |
+| Attempt ordinal | `11` |
+| Source commit | `812aba9a429cccdbe252245dc593cb7c419d7b39` |
+| Reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Supervisor event span seconds | `471` |
+| Exact current package rebuilt and locked | `true` |
+| Exact-package Gate 1 passed | `true` |
+| Package capability digest | `f2cb29844bbdf23f8a01ccf6212d1f669927633a71c45d8f92c9000746467a3c` |
+| Manifest digest | `9a0802ac4b9696aa4b6e30a24e80662d4904997513c9edc7251e6a4b8d263c30` |
+| Executable-image digest | `8c02621411aeb9f815f5a016b5546be767fbfa4b8284a7bb4f49fc22ef749069` |
+| Factory-image digest | `137f51c6025396e5718e7ccbc91e2b4dd2424242593094fda8ec65fa2f5310d8` |
+| Package digest | `8a7f62463bbc8cdbf27d76eddd28ce309921e6d0ecadb88c4cf1ec89bd7ebecb` |
+| Runtime-identity digest | `c22589c01a7f78ffa8d3bc2260d2f5f57e1737734693058774b72fe438f5dbac` |
+| Detector invocations | `1` |
+| Selected candidate count | `1` |
+| Board-info verified | `true` |
+| Opaque input gate passed | `true` |
+| Flash evidence redaction mode | `commit_redacted` |
+| Flash command completed | `true` |
+| Boot A monitor capture non-empty | `true` |
+| Boot A classification status | `failed` |
+| Failure category | `runtime_origin_corrupt` |
+| Failure boundary | `boot_a_runtime_origin_classification` |
+| HTTP target derived | `false` |
+| Instrumented original-settings GET reached | `false` |
+| HTTP boundary projection count | `0` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration | `not_needed` |
+| Process-tree cleanup | `true` |
+| Unexpected serial-holder count | `0` |
+| Protected root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Deterministic repository defect proven | `true` |
+| Admission invoked | `false` |
+| Evidence generation changed | `false` |
+| Checklist changed | `false` |
+| Task 3 authorized | `false` |
+| Plan summary created | `false` |
+| Retry in this continuation | `false` |
+
+### Redaction-Boundary Diagnosis
+
+The production adapter correctly forwarded the required commit-redaction flag.
+That mode redacted the runtime origin inside the monitor evidence before the
+Phase 33 Boot A classifier consumed the file. The classifier intentionally
+requires an origin-only URL so it can validate the current-session origin and
+privately derive the HTTP target; the already-redacted value therefore failed
+closed as `runtime_origin_corrupt`.
+
+This is a deterministic ordering defect between private classification and
+shareable redaction, not HTTP evidence. A future software change must preserve a
+mode-`0600` private raw classifier input while producing a distinct redacted
+evidence projection, or equivalently complete private classification before
+redacting the shareable copy. That boundary must be planned and regression-tested
+before another separately authorized hardware attempt. No retry, diagnostic
+probe, admission, checklist promotion, Task 3 audit, or
+`35-04-SUMMARY.md` creation occurred in this continuation.
+
+The attempt-11 root is sealed non-promotable and cannot be reused, retried, or
+spliced. Task 2 and Phase 35 remain incomplete.

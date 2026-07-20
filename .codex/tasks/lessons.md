@@ -116,3 +116,10 @@
 2. What went wrong: Route registration, server-start markers, connectivity, and continuing application liveness were treated as if they proved that an HTTP request could deliver a complete parseable response.
 3. Preventive rule: Keep connection establishment, request transmission, response status and headers, body receipt, and schema parsing as separate typed boundaries. Do not infer response readiness from route, startup, connectivity, or heartbeat markers.
 4. Trigger signal to catch it earlier: Evidence shows a live application and registered route but has no independently observed response status, headers, body bytes, or completed parse.
+
+## lesson-redact-after-private-classification | 2026-07-20 10:02
+
+1. Date: 2026-07-20
+2. What went wrong: Commit redaction transformed the same protected monitor artifact that the Boot A classifier still needed, so required private runtime-origin structure became invalid before the HTTP diagnostic boundary was reached.
+3. Preventive rule: Preserve mode-`0600` raw input for private classification and produce a distinct redacted shareable copy; never run a lossy redactor in place before all authorized private classifiers have consumed their required fields.
+4. Trigger signal to catch it earlier: A downstream classifier requires a sensitive structured field from an artifact that an upstream step also sanitizes, redacts, truncates, or rewrites for sharing.

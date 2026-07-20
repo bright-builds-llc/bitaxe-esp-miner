@@ -175,3 +175,14 @@ Completion review: Checker-approved Plan 34-10 is ready in Wave 10 and is the on
 - [x] Software-verify every boundary and fail-closed outcome before considering any external attempt.
 
 Completion review: Commits `c43a42a5` and `fbe6b8ff` passed the exact Rust sequence, Bash syntax/format/lint, direct fake-curl boundary tests, fresh Bazel parity/adapter/supervisor/Phase 35/Phase 30 tests, Bazel build, reference cleanliness, parity, exact Phase 35 lifecycle, diff/redaction scans, and effect-free `just phase35-evidence preflight-only=true`. No hardware or real network request occurred. Attempts 1–10 remain sealed and immutable, Phase 35 Plan 04 Task 2 remains incomplete, and this diagnostic neither authorizes another attempt nor changes evidence truth.
+
+## task-phase35-private-classifier-redaction-boundary | 2026-07-20 10:02 | Separate private Boot A classification input from shareable redaction
+
+- [ ] Plan a dual-boundary capture that keeps raw monitor input mode `0600` under the protected root while producing a distinct commit-redacted copy.
+- [ ] Ensure Boot A classification and private target derivation consume only the protected raw input before any lossy redaction.
+- [ ] Add hermetic real-process regressions proving raw input never enters stdout, stderr, projections, admission output, tracked evidence, or shareable copies.
+- [ ] Preserve direct built-tool invocation, one detector, one full command, exact-package binding, cleanup, restoration, and earliest typed-failure precedence.
+- [ ] Run the full software, reference, parity, lifecycle, redaction, and exact-head preflight gates without hardware.
+- [ ] Require separate authorization for any later fresh hardware attempt; never reuse, retry, or splice the sealed attempt-11 root.
+
+Completion review: Pending. Attempt 11 proved the current in-place commit-redaction ordering invalidates the private runtime-origin classifier before HTTP. This task is software-only and authorizes no detector, credential access, flash, device request, PATCH, reboot, admission, promotion, or hardware retry.
