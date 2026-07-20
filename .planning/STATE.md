@@ -2,9 +2,9 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: executing
-stopped_at: Phase 35 Plan 04 Task 2 awaiting separate attempt-12 authorization after verified private-first repair
-last_updated: "2026-07-20T21:56:10Z"
+status: blocked
+stopped_at: Phase 35 Plan 04 Task 2 sealed after attempt-12 http_diagnostic_invalid
+last_updated: "2026-07-20T22:30:14Z"
 last_activity: "2026-07-20"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-20 - Verified the private-first dual-artifact repair and redaction guard without hardware; attempt 12 remains separately gated
+Last activity: 2026-07-20 - Sealed the sole authorized attempt-12 root after typed HTTP diagnostic failure with cleanup confirmed
 
 ## Current Position
 
@@ -25,13 +25,13 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 software repair verified; awaiting separate attempt-12
-  authorization
-- **Next step:** After the final GSD artifact commit, re-run the exact-current-head
-  software preflight and present its result. Do not run a detector, access
-  credentials, issue a device request, or begin attempt 12 without fresh user
-  authorization. Any authorized continuation must use a fresh protected root
-  and must not reuse or splice the sealed attempt-11 root.
+- **Status:** Task 2 blocked after the sole authorized attempt 12 failed closed
+  at `http_diagnostic_invalid`
+- **Next step:** Stop. Attempts 1 through 12 are sealed immutable history and no
+  attempt beyond 12 is authorized. Do not run Task 3, admit or promote evidence,
+  change the checklist, or create `35-04-SUMMARY.md` from this outcome. Any
+  future continuation requires separately planned scope and fresh explicit user
+  authority; it must not reuse, retry, or splice an existing root.
 
 ## Project Reference
 
@@ -385,6 +385,21 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Attempts 1-11 remain immutable. The next possible continuation is attempt 12
   with a fresh root, exact-current-head preflight, and separate authorization.
 
+## Decisions (Phase 35 Attempt 12)
+
+- All nine ordered software gates passed at exact source
+  `7fcad7090b94c04bee40a13552c857a3ac3ad2f1` with current-head equality and
+  public package capability digest
+  `2339efb0238f696abfffb4afcb9ffdb0452b65fe15fe02c3e7d8faee64b6be3d`.
+- The sole authorized attempt-12 command preserved the private-first ordering
+  through successful Boot A classification and digest-bound flash projection,
+  then failed closed at the original-settings HTTP diagnostic classifier with
+  primary category `http_diagnostic_invalid` before PATCH or mutation.
+- The fresh root is sealed non-promotable and non-reusable. Cleanup completed
+  with no restoration or cleanup secondary category and no remaining Phase 35
+  process. No retry, admission, generation change, checklist promotion, Task 3,
+  plan summary, or push is permitted from this result.
+
 ## Decisions (Phase 28.1.1 child 5)
 
 - Wave 0: `forced_ab_label` defaults to `count_asic_chips_rx_loop_parity` for Ultra 205 TX-match + interval_256 + config_expected/immediate
@@ -407,18 +422,16 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 is software-ready but remains blocked on fresh user
-  authorization for attempt 12. The attempt-11 classifier-input ordering defect
-  is repaired and independently verified; this does not authorize detector,
-  credential, device, mutation, reboot, admission, promotion, or retry activity.
+- Phase 35 Plan 04 Task 2 remains incomplete after the sole authorized attempt
+  12 failed closed with `http_diagnostic_invalid`. Attempts 1 through 12 are
+  sealed, non-promotable, and non-reusable; no retry or attempt beyond 12 is
+  authorized. Task 3 and `35-04-SUMMARY.md` remain prohibited.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 after independently verified
-  private-first evidence repair
-- **Resume:** Reconfirm the exact-current-head software preflight, then await
-  separate user authorization for attempt 12. An authorized attempt must rebuild
-  and lock the exact current package, create a fresh protected root, and preserve
-  the one-full-command/one-detector/no-retry contract. Do not reuse, retry, or
-  splice the sealed attempt-11 root. Do not run Task 3 or create
-  `35-04-SUMMARY.md` unless a later root is genuinely admitted.
+- **Stopped at:** Phase 35 Plan 04 Task 2 after attempt-12
+  `http_diagnostic_invalid` non-promotion seal
+- **Resume:** Do not resume the Phase 35 hardware attempt lineage. Attempts 1
+  through 12 are sealed and no later attempt is authorized. Any future work
+  requires new user-directed scope and authority; Task 3, evidence admission,
+  checklist promotion, and `35-04-SUMMARY.md` remain blocked.

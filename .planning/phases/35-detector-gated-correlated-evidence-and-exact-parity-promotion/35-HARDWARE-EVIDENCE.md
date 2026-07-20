@@ -791,3 +791,81 @@ probe, admission, checklist promotion, Task 3 audit, or
 
 The attempt-11 root is sealed non-promotable and cannot be reused, retried, or
 spliced. Task 2 and Phase 35 remain incomplete.
+
+## Continuation Attempt 12 Checkpoint
+
+The twelfth fresh continuation ran only after all nine ordered software gates
+passed against clean exact source
+`7fcad7090b94c04bee40a13552c857a3ac3ad2f1`. The caller created one fresh
+mode-`0700` private parent, left the supervisor-owned child nonexistent through
+the immediate pre-launch assertion, and created distinct mode-`0600` sibling
+wrapper logs. The full Phase 35 command then ran exactly once with its internal
+detector, literal opaque credential-path argument, dual private-first evidence,
+a 360-second capture budget, and a caller budget of at least 420 seconds.
+
+Gate 1 revalidated the exact-current package, the sole detector gate admitted
+one board-205 candidate with successful board-info, and the post-detector opaque
+input gate passed. Direct flash/monitor completed. The immutable private Boot A
+classifier input retained its recorded digest through classification and the
+digest-bound finalizer created the separate admitted flash projection only after
+Boot A classification succeeded.
+
+The instrumented original-settings GET then reached its private HTTP diagnostic
+classification boundary. That boundary failed closed with primary typed category
+`http_diagnostic_invalid`. The supervisor preserved that earliest category
+through finalization, stopped before PATCH or any settings mutation, recorded no
+restoration or cleanup secondary failure, confirmed cleanup exactly once, and
+sealed the fresh root non-promotable and non-reusable.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-20T22:30:14Z` |
+| Attempt ordinal | `12` |
+| Source commit | `7fcad7090b94c04bee40a13552c857a3ac3ad2f1` |
+| Reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Ordered software gates passed | `true` |
+| Exact current package rebuilt and locked | `true` |
+| Exact-package Gate 1 passed | `true` |
+| Package capability digest | `2339efb0238f696abfffb4afcb9ffdb0452b65fe15fe02c3e7d8faee64b6be3d` |
+| Manifest digest | `41bc1f095039b1646f62eb4b1fb55f6c97dc4e30b0e22929c1dee3c03e9a224e` |
+| Executable-image digest | `3dd47c456cd2f4c9614415942c919f911be94141d46e48bd478588202da9dc3a` |
+| Factory-image digest | `e7261aa4b7f6481480c1a733908e1bf888085f36190efc64b01e6b3c5ab300dd` |
+| Package digest | `897bdfc56745439054ea0fd033bd7ef5a2d214eb4d57b86256c1012e7dd5414f` |
+| Runtime-identity digest | `00a6fa9b8706ea0c4ffac810139baf987d12114af4f761d3efccf15bf804e666` |
+| Detector invocations | `1` |
+| Selected candidate count | `1` |
+| Board-info verified | `true` |
+| Opaque input gate passed | `true` |
+| Evidence mode | `dual_private_first` |
+| Flash command completed | `true` |
+| Boot A classification status | `passed` |
+| Private classifier digest stable | `true` |
+| Admitted flash projection created after classification | `true` |
+| Instrumented original-settings GET reached | `true` |
+| HTTP diagnostic classification status | `failed` |
+| Failure category | `http_diagnostic_invalid` |
+| Failure boundary | `original_settings_http_diagnostic_classification` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration | `not_needed` |
+| Restoration secondary category | `none` |
+| Process-tree cleanup | `true` |
+| Cleanup secondary category | `none` |
+| Unexpected serial-holder count | `0` |
+| Remaining Phase 35 process count | `0` |
+| Protected root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Evidence generation changed | `false` |
+| Checklist changed | `false` |
+| Task 3 authorized | `false` |
+| Plan summary created | `false` |
+| Retry in this continuation | `false` |
+
+The attempt-12 root is sealed non-promotable and cannot be reused, retried, or
+spliced. Attempts beyond 12 are not authorized. Task 2 and Phase 35 remain
+incomplete; Task 3, checklist promotion, evidence admission, and
+`35-04-SUMMARY.md` remain prohibited from this outcome.
