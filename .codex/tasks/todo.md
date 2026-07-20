@@ -165,13 +165,13 @@ Completion review: Checker-approved Plan 34-10 is ready in Wave 10 and is the on
 
 ## task-phase35-redacted-http-boundary-diagnostic | 2026-07-19 10:31 | Separate HTTP response-readiness boundaries
 
-- [ ] Create a separate scoped plan for redacted pre-mutation HTTP instrumentation.
-- [ ] Distinguish TCP connection establishment and TLS establishment when applicable.
-- [ ] Record whether request transmission completed.
-- [ ] Record response status and header receipt separately from connection and transmission.
-- [ ] Record body-byte receipt, bounded byte counts, and completion separately from response headers.
-- [ ] Record JSON parsing and hostname-schema parsing as separate typed outcomes.
-- [ ] Persist only redacted categories, booleans, counts, and bounded durations.
-- [ ] Software-verify every boundary and fail-closed outcome before considering any external attempt.
+- [x] Create a separate scoped plan for redacted pre-mutation HTTP instrumentation.
+- [x] Distinguish TCP connection establishment and TLS establishment when applicable.
+- [x] Record whether request transmission completed.
+- [x] Record response status and header receipt separately from connection and transmission.
+- [x] Record body-byte receipt, bounded byte counts, and completion separately from response headers.
+- [x] Record JSON parsing and hostname-schema parsing as separate typed outcomes.
+- [x] Persist only redacted categories, booleans, counts, and bounded durations.
+- [x] Software-verify every boundary and fail-closed outcome before considering any external attempt.
 
-This pending todo authorizes no hardware, request retry, PATCH, reboot, credential access, evidence promotion, or Phase 35 truth change.
+Completion review: Commits `c43a42a5` and `fbe6b8ff` passed the exact Rust sequence, Bash syntax/format/lint, direct fake-curl boundary tests, fresh Bazel parity/adapter/supervisor/Phase 35/Phase 30 tests, Bazel build, reference cleanliness, parity, exact Phase 35 lifecycle, diff/redaction scans, and effect-free `just phase35-evidence preflight-only=true`. No hardware or real network request occurred. Attempts 1–10 remain sealed and immutable, Phase 35 Plan 04 Task 2 remains incomplete, and this diagnostic neither authorizes another attempt nor changes evidence truth.
