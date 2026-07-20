@@ -83,8 +83,11 @@ if ! awk -F '\t' -v today="$today" '
 	exit 2
 fi
 
+readonly zero_revision="0000000000000000000000000000000000000000"
+
 if [[ -n "$base_ref" ]]; then
-	if ! git cat-file -e "${base_ref}^{commit}" 2>/dev/null ||
+	if { [[ "$base_ref" != "$zero_revision" ]] &&
+		! git cat-file -e "${base_ref}^{commit}" 2>/dev/null; } ||
 		! git cat-file -e "${head_ref}^{commit}" 2>/dev/null; then
 		printf 'redaction_violation: rule=CONFIG category=revision path=scripts/verify-redaction.sh line=0\n' >&2
 		exit 2
@@ -119,14 +122,26 @@ report_violation() {
 	local category="$2"
 	local target_path="$3"
 	local line_number="$4"
+	local allow_exception="$5"
 
-	if exception_allows "$category" "$target_path"; then
+	if [[ "$allow_exception" == "true" ]] && exception_allows "$category" "$target_path"; then
 		return
 	fi
 
 	printf 'redaction_violation: rule=%s category=%s path=%s line=%s\n' \
 		"$rule_id" "$category" "$target_path" "$line_number" >&2
 	violations=$((violations + 1))
+}
+
+is_shareable_sink() {
+	local target_path="$1"
+
+	case "$target_path" in
+	docs/* | .planning/* | .codex/tasks/* | tasks/* | *.md | *.mdx)
+		return 0
+		;;
+	esac
+	return 1
 }
 
 safe_value() {
@@ -144,6 +159,8 @@ scan_line() {
 	local target_path="$1"
 	local line_number="$2"
 	local content="$3"
+	local check_operational="$4"
+	local allow_exception="$5"
 	local assignment_pattern
 	local maybe_value
 
@@ -151,7 +168,7 @@ scan_line() {
 	if [[ "$content" =~ $assignment_pattern ]]; then
 		maybe_value="${BASH_REMATCH[3]}"
 		if ! safe_value "$maybe_value"; then
-			report_violation NP-001 credential-secret "$target_path" "$line_number"
+			report_violation NP-001 credential-secret "$target_path" "$line_number" "$allow_exception"
 		fi
 	fi
 
@@ -159,31 +176,35 @@ scan_line() {
 	if [[ "$content" =~ $assignment_pattern ]]; then
 		maybe_value="${BASH_REMATCH[3]}"
 		if ! safe_value "$maybe_value"; then
-			report_violation NP-002 pool-owner "$target_path" "$line_number"
+			report_violation NP-002 pool-owner "$target_path" "$line_number" "$allow_exception"
 		fi
+	fi
+
+	if [[ "$check_operational" != "true" ]]; then
+		return
 	fi
 
 	if [[ "$content" =~ /Users/[^[:space:]]+ ]] ||
 		[[ "$content" =~ /home/[^[:space:]]+ ]] ||
 		[[ "$content" =~ [A-Za-z]:\\\\[^[:space:]]+ ]]; then
-		report_violation OP-001 local-path "$target_path" "$line_number"
+		report_violation OP-001 local-path "$target_path" "$line_number" "$allow_exception"
 	fi
 
 	if [[ "$content" =~ /dev/(cu|tty)[^[:space:]]* ]] ||
 		[[ "$content" =~ USB[_[:space:]-]*(serial|identity)[=:][^[:space:]]+ ]]; then
-		report_violation OP-002 usb-path "$target_path" "$line_number"
+		report_violation OP-002 usb-path "$target_path" "$line_number" "$allow_exception"
 	fi
 
 	if [[ "$content" =~ (^|[^0-9.])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9.]|$) ]] ||
 		[[ "$content" =~ (^|[^[:xdigit:]])[[:xdigit:]]{2}(:[[:xdigit:]]{2}){5}([^[:xdigit:]]|$) ]]; then
-		report_violation OP-003 network-address "$target_path" "$line_number"
+		report_violation OP-003 network-address "$target_path" "$line_number" "$allow_exception"
 	fi
 
 	assignment_pattern='(device_url|deviceUrl|origin)[[:space:]]*["]*[=:][[:space:]]*["]*(https?://[^[:space:]",}]+)'
 	if [[ "$content" =~ $assignment_pattern ]]; then
 		maybe_value="${BASH_REMATCH[2]}"
 		if ! safe_value "$maybe_value"; then
-			report_violation OP-004 device-origin "$target_path" "$line_number"
+			report_violation OP-004 device-origin "$target_path" "$line_number" "$allow_exception"
 		fi
 	fi
 
@@ -191,7 +212,7 @@ scan_line() {
 	if [[ "$content" =~ $assignment_pattern ]]; then
 		maybe_value="${BASH_REMATCH[2]}"
 		if ! safe_value "$maybe_value"; then
-			report_violation OP-005 ssid "$target_path" "$line_number"
+			report_violation OP-005 ssid "$target_path" "$line_number" "$allow_exception"
 		fi
 	fi
 
@@ -199,51 +220,69 @@ scan_line() {
 	if [[ "$content" =~ $assignment_pattern ]]; then
 		maybe_value="${BASH_REMATCH[2]}"
 		if ! safe_value "$maybe_value"; then
-			report_violation OP-006 hostname "$target_path" "$line_number"
+			report_violation OP-006 hostname "$target_path" "$line_number" "$allow_exception"
 		fi
 	fi
 
 	if [[ "$content" =~ (^|[^[:alnum:]_])(pid|pgid)[=:][[:space:]]*[0-9]+ ]]; then
-		report_violation OP-007 process-id "$target_path" "$line_number"
+		report_violation OP-007 process-id "$target_path" "$line_number" "$allow_exception"
 	fi
 
 	if [[ "$content" =~ HTTP/[12]\.[0-9] ]] ||
 		[[ "$content" =~ (^|[[:space:]])Host:[[:space:]]*[^[:space:]]+ ]]; then
-		report_violation OP-008 raw-http "$target_path" "$line_number"
+		report_violation OP-008 raw-http "$target_path" "$line_number" "$allow_exception"
 	fi
 }
 
 scan_stream() {
 	local target_path="$1"
+	local check_operational="$2"
+	local allow_exception="$3"
 	local line_number=0
 	local content
 
 	while IFS= read -r content || [[ -n "$content" ]]; do
 		line_number=$((line_number + 1))
-		scan_line "$target_path" "$line_number" "$content"
+		scan_line "$target_path" "$line_number" "$content" "$check_operational" "$allow_exception"
 	done
 }
 
 scan_git_blob() {
 	local target_path="$1"
 	local blob="$2"
+	local check_operational="false"
+
+	if is_shareable_sink "$target_path"; then
+		check_operational="true"
+	fi
 
 	if [[ "$(git cat-file -s "$blob")" -eq 0 ]]; then
 		return
 	fi
 
 	if git show "$blob" | LC_ALL=C grep -I '' >/dev/null; then
-		scan_stream "$target_path" < <(git show "$blob")
+		scan_stream "$target_path" "$check_operational" false < <(git show "$blob")
 		return
 	fi
 
-	report_violation OP-009 opaque-binary "$target_path" 0
+	if [[ "$check_operational" == "true" ]]; then
+		report_violation OP-009 opaque-binary "$target_path" 0 false
+	fi
 }
 
 scan_changed_paths() {
 	local target_path
 
 	if [[ -n "$base_ref" ]]; then
+		if [[ "$base_ref" == "$zero_revision" ]]; then
+			while IFS= read -r -d '' target_path; do
+				[[ -n "$target_path" ]] || continue
+				if [[ "$(git cat-file -t "${head_ref}:${target_path}")" == "blob" ]]; then
+					scan_git_blob "$target_path" "${head_ref}:${target_path}"
+				fi
+			done < <(git ls-tree -r --name-only -z "$head_ref")
+			return
+		fi
 		while IFS= read -r target_path; do
 			[[ -n "$target_path" ]] || continue
 			if git cat-file -e "${head_ref}:${target_path}" 2>/dev/null; then
@@ -265,27 +304,34 @@ scan_admitted_root() {
 	local root="$1"
 	local artifact
 	local target_path
+	local tracked_root
+	local allow_exception
 
 	if [[ ! -d "$root" ]]; then
 		return
 	fi
+	tracked_root="${root#"${workspace_root}/"}"
 
-	while IFS= read -r -d '' artifact; do
+	while IFS= read -r -d '' target_path; do
+		artifact="${workspace_root}/${target_path}"
 		if [[ -L "$artifact" || ! -f "$artifact" ]]; then
-			target_path="${artifact#"${workspace_root}/"}"
-			report_violation CONFIG admitted-artifact "$target_path" 0
+			report_violation CONFIG admitted-artifact "$target_path" 0 false
 			continue
 		fi
-		target_path="${artifact#"${workspace_root}/"}"
+		allow_exception="false"
+		if git diff --quiet -- "$target_path" &&
+			git diff --cached --quiet -- "$target_path"; then
+			allow_exception="true"
+		fi
 		if [[ ! -s "$artifact" ]]; then
 			continue
 		fi
 		if LC_ALL=C grep -Iq '' "$artifact"; then
-			scan_stream "$target_path" <"$artifact"
+			scan_stream "$target_path" true "$allow_exception" <"$artifact"
 		else
-			report_violation OP-009 opaque-binary "$target_path" 0
+			report_violation OP-009 opaque-binary "$target_path" 0 "$allow_exception"
 		fi
-	done < <(find "$root" \( -type f -o -type l \) -print0)
+	done < <(git ls-files -z -- "$tracked_root")
 }
 
 scan_changed_paths
