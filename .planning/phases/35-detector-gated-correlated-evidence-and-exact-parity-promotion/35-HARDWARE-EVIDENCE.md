@@ -965,3 +965,48 @@ fresh root was sealed non-promotable and non-reusable.
 Attempt 13 is immutable non-promotion history. The progress-gated loop stops at
 this repeated post-fix boundary. Phase 35 Task 2 remains incomplete; Task 3,
 evidence admission, checklist promotion, and `35-04-SUMMARY.md` remain blocked.
+
+## Attempt 13 Diagnostic Repair and Attempt 14 Authority
+
+The sealed attempt-13 HTTP shape was replayed through the built adapter and
+runfiles classifier without hardware, network, credentials, or raw protected
+output. The replay deterministically reproduced the all-zero
+`http_diagnostic_invalid` fallback twice. It then proved two independent adapter
+defects: curl's case-insensitive scheme token was not canonicalized, and a
+configured 10-second request deadline was also enforced as an exact maximum
+observed duration even though the real timeout observation finished within five
+milliseconds after that deadline.
+
+Commit `53d8bcee` canonicalizes scheme case and separates the configured
+10-second request timeout from a bounded 11-second observation ceiling in the
+shell and Rust classifier. The unchanged sealed shape now reaches the precise
+earliest category `request_transmission_incomplete`; observations above the
+11-second ceiling remain invalid. The original root and its conclusion remain
+immutable.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-21T21:40:53Z` |
+| Repair commit | `53d8bcee` |
+| Hardware command invoked | `false` |
+| Detector invoked | `false` |
+| Credential accessed | `false` |
+| Device or network request made | `false` |
+| Sealed root changed | `false` |
+| Pre-fix replay category | `http_diagnostic_invalid` |
+| Post-fix replay category | `request_transmission_incomplete` |
+| Scheme case normalized | `true` |
+| Configured request timeout seconds | `10` |
+| Maximum observed-duration seconds | `11` |
+| Above-bound rejection retained | `true` |
+| Focused Rust tests passed | `13` |
+| Bazel adapter/runfiles tests passed | `true` |
+| Redaction verification passed | `true` |
+| Progress decision | `continue_after_verified_fix` |
+| Next authorized attempt ordinal | `14` |
+
+The user's 2026-07-21 standing authority permits attempt 14 and later fresh
+ordinals after distinct verified fixes or confirmed non-invasive remediation,
+without a fixed total cap. Every attempt still requires a new ordinal, fresh
+protected root, exact committed package, complete software/preflight gate, and
+one full hardware invocation. Blind retries remain prohibited.

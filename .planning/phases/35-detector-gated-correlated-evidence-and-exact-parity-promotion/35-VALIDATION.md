@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 13 invoked the command once from exact source `02f128db56b332e50e11f57935f29e22e3830f66`. The detector, Boot A private classification, and cleanup passed, but the original-settings boundary repeated `http_diagnostic_invalid` after its targeted fix. The root is sealed non-promotion and the selected decision is `stop_repeated_boundary`; no eligible evidence root or later ordinal is authorized. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 13 remains sealed non-promotion. Its private shape was reproduced without hardware and now reaches `request_transmission_incomplete` after the regression-backed fix in `53d8bcee`. Attempt 14 is the next authorized fresh ordinal after the complete exact-current-HEAD gate. Later ordinals have no fixed cap but each requires a distinct verified fix or confirmed non-invasive remediation; unchanged retries remain prohibited. |
 
 ## Validation Sign-Off
 
