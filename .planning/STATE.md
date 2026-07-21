@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 gating authorized attempt 15
-last_updated: "2026-07-21T22:21:54Z"
+stopped_at: Phase 35 Plan 04 Task 2 diagnosing attempt 15 timeout boundary
+last_updated: "2026-07-21T22:38:30Z"
 last_activity: "2026-07-21"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-21 - Fixed attempt 14 receive-error classification and authorized exact-head-gated attempt 15
+Last activity: 2026-07-21 - Sealed attempt 15 after a timeout repeated the request-transmission category
 
 ## Current Position
 
@@ -25,12 +25,12 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 is active. Attempt 14's receive-error misclassification is
-  fixed in `0dd2134e`; attempts 1 through 14 remain sealed non-promotable and
-  non-reusable.
-- **Next step:** Run the complete exact-current-HEAD gate and preflight, then
-  invoke fresh attempt 15 exactly once. Task 3 and `35-04-SUMMARY.md` remain
-  blocked until `complete`.
+- **Status:** Task 2 is active after attempt 15 repeated
+  `request_transmission_incomplete` with a distinct curl timeout signal.
+  Attempts 1 through 15 remain sealed non-promotable and non-reusable.
+- **Next step:** Diagnose the attempt-15 timeout boundary in software. The
+  current policy selects `stop_repeated_boundary`; no attempt 16, Task 3, or
+  `35-04-SUMMARY.md` is authorized.
 
 ## Project Reference
 
@@ -470,6 +470,21 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
   selects `continue_after_verified_fix`; attempt 15 is authorized after the
   complete exact-current-HEAD gate. No unchanged retry is authorized.
 
+## Decisions (Phase 35 Attempt 15)
+
+- The exact-current-HEAD gate and preflight passed at source
+  `1c4979f67c0b12daee356ae5df1c1c5468ba1013`, and the full command ran exactly
+  once from a fresh protected root.
+- Attempt 15 repeated `request_transmission_incomplete`, but curl timed out after
+  TCP connection at the configured deadline instead of returning attempt 14's
+  receive-error category. The raw request-byte counter and all response facts
+  remained zero.
+- PATCH and reboot did not start. Cleanup completed without a secondary
+  failure, and the root is sealed non-promotable and non-reusable.
+- The current policy selects `stop_repeated_boundary`. Software diagnosis is
+  allowed; attempt 16 requires a later explicit policy decision after a distinct
+  verified fix rather than relying only on the standing no-cap authority.
+
 ## Decisions (Phase 28.1.1 child 5)
 
 - Wave 0: `forced_ab_label` defaults to `count_asic_chips_rx_loop_parity` for Ultra 205 TX-match + interval_256 + config_expected/immediate
@@ -492,14 +507,15 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 14 are sealed,
-  non-promotable, and non-reusable. Attempt 15 is authorized only after the
-  complete exact-current-HEAD gate and preflight. Task 3 and
-  `35-04-SUMMARY.md` remain prohibited until `complete`.
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 15 are sealed,
+  non-promotable, and non-reusable. The current policy selects
+  `stop_repeated_boundary`; no attempt 16, Task 3, or `35-04-SUMMARY.md` is
+  authorized while software diagnosis proceeds.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 gating authorized attempt 15
-- **Resume:** Run the complete exact-current-HEAD gate and preflight, then invoke
-  fresh attempt 15 exactly once. Task 3, evidence admission, checklist
-  promotion, and `35-04-SUMMARY.md` remain blocked until `complete`.
+- **Stopped at:** Phase 35 Plan 04 Task 2 diagnosing attempt 15 timeout boundary
+- **Resume:** Diagnose the timeout-after-connect semantics with deterministic
+  regression coverage. No attempt 16, Task 3, evidence admission, checklist
+  promotion, or `35-04-SUMMARY.md` is authorized under the current repeated-
+  boundary stop.

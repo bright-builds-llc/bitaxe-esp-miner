@@ -1106,3 +1106,50 @@ software gate, passing Phase 35 preflight, fresh protected parent, nonexistent
 supervisor child, mode-0600 sibling output, and exactly one full invocation.
 The standing authority has no fixed ordinal cap, but every later attempt must
 follow a distinct verified fix or confirmed non-invasive remediation.
+
+## Attempt 15 Checkpoint
+
+Attempt 15 ran the full Phase 35 command exactly once from clean exact source
+`1c4979f67c0b12daee356ae5df1c1c5468ba1013` after the complete software gate and
+preflight passed. The command stopped before mutation or reboot with the same
+primary category as attempt 14, but the redacted transport facts are distinct:
+curl reached TCP connection and then its configured timeout boundary rather
+than returning the previously repaired receive-error category.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-21T22:38:30Z` |
+| Attempt ordinal | `15` |
+| Source commit | `1c4979f67c0b12daee356ae5df1c1c5468ba1013` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Exact package capability digest | `9e3376818f4e1a302e8c5c057fadcb9b87fe53d3dfd1407700938e6f7f255650` |
+| Current HEAD verified | `true` |
+| Protected parent mode | `0700` |
+| Wrapper output mode | `0600` |
+| HTTP terminal category | `request_transmission_incomplete` |
+| TCP connected | `true` |
+| Curl exit category | `28` |
+| Request bytes | `0` |
+| TCP connect duration milliseconds | `434` |
+| Total duration milliseconds | `10005` |
+| Response status received | `false` |
+| Response headers received | `false` |
+| Response body received | `false` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration secondary category | `none` |
+| Cleanup secondary category | `none` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Checklist changed | `false` |
+| Task 3 authorized | `false` |
+| Plan summary created | `false` |
+| Progress decision | `stop_repeated_boundary` |
+
+The attempt-15 root is sealed non-promotable and non-reusable. The user's
+standing authority removes a fixed ordinal cap only for qualifying progress;
+it does not erase the repository's repeated-primary-category stop. Software
+diagnosis of the timeout semantics remains authorized. No attempt 16 is
+authorized unless a later explicit policy decision validly reopens the loop
+after a distinct regression-backed fix.
