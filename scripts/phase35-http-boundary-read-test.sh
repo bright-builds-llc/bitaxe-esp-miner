@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "${PHASE35_HTTP_TEST_CURL_DISPATCH:-false}" == true ]]; then
+if [[ "${PHASE35_HTTP_TEST_PROBE_DISPATCH:-false}" == true ]]; then
 	state_dir="${PHASE35_HTTP_TEST_STATE:?}"
 	scenario="${PHASE35_HTTP_TEST_SCENARIO:?}"
 	printf 'invoked\n' >>"${state_dir}/invocations"
@@ -9,132 +9,130 @@ if [[ "${PHASE35_HTTP_TEST_CURL_DISPATCH:-false}" == true ]]; then
 
 	body_path=""
 	header_path=""
-	stderr_path=""
+	metrics_path=""
+	[[ "${1:-}" == probe-phase35-http ]]
+	shift
 	while (($#)); do
 		case "$1" in
-		--output)
+		--body-output)
 			body_path="$2"
 			shift 2
 			;;
-		--dump-header)
+		--headers-output)
 			header_path="$2"
 			shift 2
 			;;
-		--stderr)
-			stderr_path="$2"
+		--metrics-output)
+			metrics_path="$2"
 			shift 2
 			;;
+		--url) shift 2 ;;
 		*)
 			shift
 			;;
 		esac
 	done
-	[[ -n "$body_path" && -n "$header_path" && -n "$stderr_path" ]]
+	[[ -n "$body_path" && -n "$header_path" && -n "$metrics_path" ]]
 
 	scheme=http
-	exit_code=0
+	transport_outcome=complete
 	actual_exit=0
-	tcp_seconds=0.005
-	tls_seconds=0.000
-	request_bytes=128
+	tcp_millis=5
+	tls_millis=0
+	request_send_complete_millis=7
+	request_bytes=93
 	response_status=200
-	total_seconds=0.012
-	first_byte_seconds=0.009
-	tls_verify_result=0
+	total_millis=12
+	first_byte_millis=9
+	tls_verification=not_applicable
 	body='{"hostname":"fixture-host"}'
 	headers=$'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 27\r\n\r\n'
-	extra_metric=""
+	extra_metric=false
 
 	case "$scenario" in
 	ready) ;;
-	uppercase_ready) scheme=HTTP ;;
 	attempt13_timeout_boundary)
-		scheme=HTTP
-		exit_code=28
-		actual_exit=28
-		request_bytes=0
+		transport_outcome=response_timeout
 		response_status=0
-		total_seconds=10.003
-		first_byte_seconds=0.000
+		total_millis=10003
+		first_byte_millis=0
 		body=""
 		headers=""
 		;;
 	attempt14_receive_failure)
-		exit_code=56
-		actual_exit=56
-		tcp_seconds=0.261
-		request_bytes=0
+		transport_outcome=receive_failed
+		tcp_millis=261
+		request_send_complete_millis=262
 		response_status=0
-		total_seconds=6.539
-		first_byte_seconds=0.000
+		total_millis=6539
+		first_byte_millis=0
 		body=""
 		headers=""
 		;;
 	receive_failure_after_partial_response)
-		exit_code=56
-		actual_exit=56
-		request_bytes=0
+		transport_outcome=receive_failed
 		;;
 	submillisecond_ready)
-		tcp_seconds=0.0004
-		total_seconds=0.0009
-		first_byte_seconds=0.0008
+		tcp_millis=1
+		request_send_complete_millis=1
+		total_millis=1
+		first_byte_millis=1
 		;;
 	submillisecond_https_ready)
 		scheme=https
-		tcp_seconds=0.0002
-		tls_seconds=0.0004
-		total_seconds=0.0009
-		first_byte_seconds=0.0008
+		tcp_millis=1
+		tls_millis=1
+		request_send_complete_millis=1
+		total_millis=1
+		first_byte_millis=1
+		tls_verification=verified
 		;;
 	submillisecond_non_success)
-		tcp_seconds=0.0004
-		total_seconds=0.0009
-		first_byte_seconds=0.0008
+		tcp_millis=1
+		request_send_complete_millis=1
+		total_millis=1
+		first_byte_millis=1
 		response_status=503
 		headers=$'HTTP/1.1 503 Service Unavailable\r\nContent-Type: application/json\r\nContent-Length: 27\r\n\r\n'
 		;;
 	tcp_connection_failure)
-		exit_code=7
-		actual_exit=7
-		tcp_seconds=0.000
+		transport_outcome=tcp_connection_failure
+		tcp_millis=0
+		request_send_complete_millis=0
 		request_bytes=0
 		response_status=0
-		first_byte_seconds=0.000
+		first_byte_millis=0
 		body=""
 		headers=""
 		;;
 	tls_handshake_failure)
 		scheme=https
-		exit_code=35
-		actual_exit=35
+		transport_outcome=tls_handshake_failure
+		request_send_complete_millis=0
 		request_bytes=0
 		response_status=0
-		first_byte_seconds=0.000
-		tls_verify_result=1
+		first_byte_millis=0
+		tls_verification=failed
 		body=""
 		headers=""
 		;;
 	request_transmission_incomplete)
-		exit_code=55
-		actual_exit=55
-		request_bytes=0
+		transport_outcome=request_send_failure
+		request_send_complete_millis=0
+		request_bytes=17
 		response_status=0
-		first_byte_seconds=0.000
+		first_byte_millis=0
 		body=""
 		headers=""
 		;;
 	response_status_missing)
-		exit_code=52
-		actual_exit=52
+		transport_outcome=receive_failed
 		response_status=0
-		first_byte_seconds=0.000
+		first_byte_millis=0
 		body=""
 		headers=""
 		;;
 	response_headers_missing)
-		exit_code=8
-		actual_exit=8
 		body=""
 		headers=""
 		;;
@@ -147,8 +145,7 @@ if [[ "${PHASE35_HTTP_TEST_CURL_DISPATCH:-false}" == true ]]; then
 		headers=$'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 0\r\n\r\n'
 		;;
 	response_body_incomplete_or_over_limit)
-		exit_code=18
-		actual_exit=18
+		transport_outcome=response_over_limit
 		;;
 	invalid_json)
 		body='{'
@@ -159,20 +156,13 @@ if [[ "${PHASE35_HTTP_TEST_CURL_DISPATCH:-false}" == true ]]; then
 		headers=$'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n'
 		;;
 	malformed_extra)
-		extra_metric=$'unexpected_key=1\n'
+		extra_metric=true
 		;;
 	process_status_mismatch)
-		exit_code=7
-		actual_exit=28
-		tcp_seconds=0.000
-		request_bytes=0
-		response_status=0
-		first_byte_seconds=0.000
-		body=""
-		headers=""
+		actual_exit=1
 		;;
 	body_size_mismatch) ;;
-	total_duration_out_of_bound) total_seconds=11.001 ;;
+	total_duration_out_of_bound) total_millis=11001 ;;
 	*)
 		exit 96
 		;;
@@ -180,25 +170,32 @@ if [[ "${PHASE35_HTTP_TEST_CURL_DISPATCH:-false}" == true ]]; then
 
 	printf '%s' "$body" >"$body_path"
 	printf '%s' "$headers" >"$header_path"
-	printf '%s\n' 'raw-curl-error-canary' >"$stderr_path"
+	chmod 600 "$body_path" "$header_path"
 	body_bytes="$(wc -c <"$body_path" | tr -d ' ')"
 	header_bytes="$(wc -c <"$header_path" | tr -d ' ')"
+	header_count="$(awk '/^[^[:space:]][^:]*:/ { count += 1 } END { print count + 0 }' "$header_path")"
 	if [[ "$scenario" == body_size_mismatch ]]; then
 		body_bytes=$((body_bytes + 1))
 	fi
-
-	printf 'scheme_category=%s\n' "$scheme"
-	printf 'curl_exit_code=%s\n' "$exit_code"
-	printf 'tcp_connect_seconds=%s\n' "$tcp_seconds"
-	printf 'tls_connect_seconds=%s\n' "$tls_seconds"
-	printf 'request_bytes=%s\n' "$request_bytes"
-	printf 'response_status=%s\n' "$response_status"
-	printf 'response_header_bytes=%s\n' "$header_bytes"
-	printf 'response_body_bytes=%s\n' "$body_bytes"
-	printf 'total_seconds=%s\n' "$total_seconds"
-	printf 'first_byte_seconds=%s\n' "$first_byte_seconds"
-	printf 'tls_verify_result=%s\n' "$tls_verify_result"
-	printf '%s' "$extra_metric"
+	jq -cn \
+		--arg scheme_category "$scheme" \
+		--arg transport_outcome "$transport_outcome" \
+		--argjson tcp_connect_millis "$tcp_millis" \
+		--argjson tls_handshake_millis "$tls_millis" \
+		--argjson request_send_complete_millis "$request_send_complete_millis" \
+		--argjson request_bytes "$request_bytes" \
+		--argjson response_status "$response_status" \
+		--argjson response_header_count "$header_count" \
+		--argjson response_header_bytes "$header_bytes" \
+		--argjson response_body_bytes "$body_bytes" \
+		--argjson total_millis "$total_millis" \
+		--argjson first_byte_millis "$first_byte_millis" \
+		--arg tls_verification "$tls_verification" \
+		--argjson extra_metric "$extra_metric" \
+		'{scheme_category:$scheme_category,transport_outcome:$transport_outcome,tcp_connect_millis:$tcp_connect_millis,tls_handshake_millis:$tls_handshake_millis,request_send_complete_millis:$request_send_complete_millis,request_bytes:$request_bytes,response_status:$response_status,response_header_count:$response_header_count,response_header_bytes:$response_header_bytes,response_body_bytes:$response_body_bytes,total_millis:$total_millis,first_byte_millis:$first_byte_millis,tls_verification:$tls_verification} + (if $extra_metric then {unexpected_key:1} else {} end)' \
+		>"$metrics_path"
+	chmod 600 "$metrics_path"
+	printf 'status=probe_complete\n'
 	exit "$actual_exit"
 fi
 
@@ -238,13 +235,13 @@ prepare_case() {
 	case_dir="${test_root}/${name}"
 	protected_root="${case_dir}/protected"
 	state_dir="${case_dir}/state"
-	curl_bin="${case_dir}/bin/curl"
+	probe_bin="${case_dir}/bin/probe"
 	nested_bin="${case_dir}/blocked"
 	stdout_file="${case_dir}/stdout"
 	stderr_file="${case_dir}/stderr"
-	mkdir -p "$protected_root" "$state_dir" "$(dirname "$curl_bin")" "$nested_bin"
-	chmod 700 "$case_dir" "$protected_root" "$state_dir" "$(dirname "$curl_bin")" "$nested_bin"
-	ln -s "$test_entrypoint" "$curl_bin"
+	mkdir -p "$protected_root" "$state_dir" "$(dirname "$probe_bin")" "$nested_bin"
+	chmod 700 "$case_dir" "$protected_root" "$state_dir" "$(dirname "$probe_bin")" "$nested_bin"
+	ln -s "$test_entrypoint" "$probe_bin"
 	ln -s "$test_entrypoint" "${nested_bin}/just"
 	ln -s "$test_entrypoint" "${nested_bin}/bazel"
 	: >"$stdout_file"
@@ -264,8 +261,8 @@ run_case() {
 	BUILD_WORKSPACE_DIRECTORY="${script_dir}/.." \
 		PATH="${nested_bin}:${PATH}" \
 		PHASE35_HTTP_FIXTURE_AUTHORITY=true \
-		PHASE35_HTTP_CURL_EXECUTABLE="$curl_bin" \
-		PHASE35_HTTP_TEST_CURL_DISPATCH=true \
+		PHASE35_HTTP_PROBE_EXECUTABLE="$probe_bin" \
+		PHASE35_HTTP_TEST_PROBE_DISPATCH=true \
 		PHASE35_HTTP_TEST_STATE="$state_dir" \
 		PHASE35_HTTP_TEST_SCENARIO="$scenario" \
 		PHASE35_HTTP_TEST_BLOCKED_TOOL_DISPATCH=true \
@@ -281,28 +278,18 @@ run_case() {
 
 assert_exact_request_contract() {
 	[[ "$(rg -c '^invoked$' "${state_dir}/invocations")" == 1 ]] ||
-		fail_test "curl was not invoked exactly once"
+		fail_test "probe was not invoked exactly once"
 	local argv="${state_dir}/argv"
 	local option
 	for option in \
-		'arg=--request' \
-		'arg=GET' \
-		'arg=--http1.1' \
-		"arg=--noproxy" \
-		"arg=*" \
-		'arg=--max-redirs' \
-		'arg=0' \
-		'arg=--connect-timeout' \
-		'arg=5' \
-		'arg=--max-time' \
-		'arg=10' \
-		'arg=--max-filesize' \
-		'arg=65536' \
-		'arg=--retry'; do
+		'arg=probe-phase35-http' \
+		'arg=--url' \
+		'arg=--metrics-output' \
+		'arg=--headers-output' \
+		'arg=--body-output'; do
 		assert_line "$argv" "$option"
 	done
-	[[ "$(rg -c '^arg=0$' "$argv")" -ge 2 ]] || fail_test "zero redirect/retry values missing"
-	assert_absent "$argv" '^arg=--location$'
+	assert_absent "$argv" '^arg=--request$'
 	assert_absent "$argv" '^arg=--fail$'
 }
 
@@ -323,9 +310,9 @@ assert_projection_allowlist() {
 	local actual
 	actual="$(jq -r 'keys | sort | join(",")' "$projection")"
 	local expected
-	expected="curl_exit_code,first_byte_millis,hostname_schema_valid,json_parsed,request_bytes,request_transmission_complete,response_body_bytes,response_body_complete,response_body_received,response_header_bytes,response_header_count,response_headers_received,response_status_class,response_status_received,schema_version,tcp_connect_millis,tcp_connected,terminal_category,tls_applicable,tls_established,tls_handshake_millis,tls_verified,total_millis"
+	expected="first_byte_millis,hostname_schema_valid,json_parsed,request_bytes,request_send_complete_millis,request_transmission_complete,response_body_bytes,response_body_complete,response_body_received,response_header_bytes,response_header_count,response_headers_received,response_status_class,response_status_received,schema_version,tcp_connect_millis,tcp_connected,terminal_category,tls_applicable,tls_established,tls_handshake_millis,tls_verified,total_millis,transport_outcome"
 	[[ "$actual" == "$expected" ]] || fail_test "projection field allowlist drifted"
-	[[ "$(jq -r '.schema_version' "$projection")" == phase35-http-boundary-v1 ]] ||
+	[[ "$(jq -r '.schema_version' "$projection")" == phase35-http-boundary-v2 ]] ||
 		fail_test "projection schema drifted"
 }
 
@@ -345,7 +332,6 @@ test_terminal_matrix_and_invalid_fallback() {
 		invalid_json \
 		invalid_hostname_schema \
 		ready \
-		uppercase_ready \
 		submillisecond_ready \
 		submillisecond_https_ready \
 		submillisecond_non_success \
@@ -362,7 +348,7 @@ test_terminal_matrix_and_invalid_fallback() {
 		# Assert
 		expected="$scenario"
 		case "$scenario" in
-		submillisecond_ready | submillisecond_https_ready | uppercase_ready)
+		submillisecond_ready | submillisecond_https_ready)
 			expected=ready
 			;;
 		submillisecond_non_success)
@@ -387,9 +373,9 @@ test_terminal_matrix_and_invalid_fallback() {
 		assert_private_artifacts
 		assert_projection_allowlist
 		[[ ! -s "${state_dir}/nested-calls" ]] || fail_test "adapter invoked nested build tool"
-		assert_absent "$stdout_file" 'raw-origin-canary|fixture-host|raw-curl-error-canary'
-		assert_absent "$stderr_file" 'raw-origin-canary|fixture-host|raw-curl-error-canary'
-		assert_absent "${protected_root}/http-original/projection" 'raw-origin-canary|fixture-host|raw-curl-error-canary'
+		assert_absent "$stdout_file" 'raw-origin-canary|fixture-host'
+		assert_absent "$stderr_file" 'raw-origin-canary|fixture-host'
+		assert_absent "${protected_root}/http-original/projection" 'raw-origin-canary|fixture-host'
 	done
 }
 
@@ -408,7 +394,7 @@ test_submillisecond_observation_preserves_terminal_precedence() {
 		fail_test "sub-millisecond observation lost its precise terminal category"
 }
 
-test_real_curl_timeout_shape_preserves_terminal_precedence() {
+test_completed_send_timeout_reaches_response_boundary() {
 	# Arrange
 	prepare_case attempt_13_timeout_boundary
 
@@ -416,11 +402,11 @@ test_real_curl_timeout_shape_preserves_terminal_precedence() {
 	run_case attempt13_timeout_boundary
 
 	# Assert
-	[[ "$run_status" != 0 ]] || fail_test "incomplete request unexpectedly became ready"
-	assert_line "$stdout_file" 'category=request_transmission_incomplete'
-	jq -e '.terminal_category == "request_transmission_incomplete"' \
+	[[ "$run_status" != 0 ]] || fail_test "missing response unexpectedly became ready"
+	assert_line "$stdout_file" 'category=response_status_missing'
+	jq -e '.terminal_category == "response_status_missing" and .request_transmission_complete' \
 		"${protected_root}/http-original/projection" >/dev/null ||
-		fail_test "real curl timeout shape lost its precise terminal category"
+		fail_test "completed send timeout lost its response boundary"
 }
 
 test_receive_failure_does_not_reclassify_as_send_failure() {
@@ -437,8 +423,9 @@ test_receive_failure_does_not_reclassify_as_send_failure() {
 		'.terminal_category == "response_status_missing" and
 		 .tcp_connected and
 		 .request_transmission_complete and
-		 .curl_exit_code == 56 and
-		 .request_bytes == 0 and
+		 .transport_outcome == "receive_failed" and
+		 .request_send_complete_millis == 262 and
+		 .request_bytes == 93 and
 		 .tcp_connect_millis == 261 and
 		 .total_millis == 6539' \
 		"${protected_root}/http-original/projection" >/dev/null ||
@@ -502,13 +489,13 @@ test_ready_separates_private_hostname() {
 	assert_absent "${protected_root}/http-original/projection" 'fixture-host'
 }
 
-test_unauthorized_override_persists_invalid_projection_without_curl() {
+test_unauthorized_override_persists_invalid_projection_without_probe() {
 	# Arrange
 	prepare_case unauthorized_override
 
 	# Act
 	set +e
-	PHASE35_HTTP_CURL_EXECUTABLE="$curl_bin" \
+	PHASE35_HTTP_PROBE_EXECUTABLE="$probe_bin" \
 		"$adapter" \
 		"label=original" \
 		"protected-root=${protected_root}" \
@@ -521,7 +508,7 @@ test_unauthorized_override_persists_invalid_projection_without_curl() {
 	assert_line "$stdout_file" 'category=http_diagnostic_invalid'
 	[[ "$(jq -r '.terminal_category' "${protected_root}/http-original/projection")" == http_diagnostic_invalid ]] ||
 		fail_test "unauthorized override did not persist its invalid projection"
-	[[ ! -e "${state_dir}/invocations" ]] || fail_test "unauthorized override invoked curl"
+	[[ ! -e "${state_dir}/invocations" ]] || fail_test "unauthorized override invoked probe"
 	assert_private_artifacts
 	assert_projection_allowlist
 	assert_absent "$stdout_file" 'raw-origin-canary'
@@ -529,12 +516,111 @@ test_unauthorized_override_persists_invalid_projection_without_curl() {
 	assert_absent "${protected_root}/http-original/projection" 'raw-origin-canary'
 }
 
+run_real_loopback_case() {
+	local scenario="$1"
+	prepare_case "real-loopback-${scenario}"
+	local port_file="${case_dir}/loopback-port"
+	: >"$port_file"
+	chmod 600 "$port_file"
+	python3 -c '
+import socket
+import sys
+import time
+
+port_path, scenario = sys.argv[1:]
+listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+listener.bind(("127.0.0.1", 0))
+listener.listen(1)
+with open(port_path, "w", encoding="ascii") as port_file:
+    port_file.write(str(listener.getsockname()[1]))
+connection, _ = listener.accept()
+request = b""
+while not request.endswith(b"\r\n\r\n"):
+    chunk = connection.recv(256)
+    if not chunk:
+        break
+    request += chunk
+if scenario == "ready":
+    body = b"{\"hostname\":\"loopback-fixture\"}"
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Type: application/json\r\n"
+        + b"Content-Length: " + str(len(body)).encode("ascii") + b"\r\n"
+        b"Connection: close\r\n\r\n"
+    )
+    connection.sendall(headers + body)
+else:
+    time.sleep(11)
+connection.close()
+listener.close()
+' "$port_file" "$scenario" &
+	local peer_pid=$!
+	local attempts=0
+	while [[ ! -s "$port_file" ]]; do
+		((attempts += 1))
+		((attempts <= 100)) || fail_test "loopback peer did not publish readiness"
+		sleep 0.01
+	done
+	local port
+	port="$(<"$port_file")"
+	set +e
+	BUILD_WORKSPACE_DIRECTORY="${script_dir}/.." \
+		PATH="${nested_bin}:${PATH}" \
+		PHASE35_HTTP_TEST_BLOCKED_TOOL_DISPATCH=true \
+		PHASE35_HTTP_TEST_NESTED_CALLS="${state_dir}/nested-calls" \
+		"$adapter" \
+		"label=original" \
+		"protected-root=${protected_root}" \
+		"url=http://127.0.0.1:${port}" >"$stdout_file" 2>"$stderr_file"
+	run_status=$?
+	wait "$peer_pid"
+	set -e
+}
+
+test_real_probe_crosses_direct_and_runfiles_boundaries() {
+	# Arrange / Act: the real probe sends a complete GET and receives a valid response.
+	run_real_loopback_case ready
+
+	# Assert
+	[[ "$run_status" == 0 ]] || fail_test "real loopback ready probe failed"
+	assert_line "$stdout_file" 'category=ready'
+	jq -e \
+		'.terminal_category == "ready" and
+		 .request_transmission_complete and
+		 .request_send_complete_millis > 0 and
+		 .request_bytes > 0 and
+		 .transport_outcome == "complete"' \
+		"${protected_root}/http-original/projection" >/dev/null ||
+		fail_test "real loopback ready projection lost send evidence"
+	assert_absent "$stdout_file" '127[.]0[.]0[.]1|loopback-fixture'
+	assert_absent "$stderr_file" '127[.]0[.]0[.]1|loopback-fixture'
+	assert_absent "${protected_root}/http-original/projection" '127[.]0[.]0[.]1|loopback-fixture'
+
+	# Arrange / Act: the peer receives the request but deliberately sends no response.
+	run_real_loopback_case timeout
+
+	# Assert
+	[[ "$run_status" != 0 ]] || fail_test "silent loopback unexpectedly became ready"
+	assert_line "$stdout_file" 'category=response_status_missing'
+	jq -e \
+		'.terminal_category == "response_status_missing" and
+		 .request_transmission_complete and
+		 .request_send_complete_millis > 0 and
+		 .request_bytes > 0 and
+		 .transport_outcome == "response_timeout"' \
+		"${protected_root}/http-original/projection" >/dev/null ||
+		fail_test "silent loopback was reclassified as incomplete transmission"
+	[[ ! -s "${state_dir}/nested-calls" ]] || fail_test "real probe invoked nested build tool"
+}
+
 test_terminal_matrix_and_invalid_fallback
 test_duration_quantization_preserves_presence
 test_submillisecond_observation_preserves_terminal_precedence
-test_real_curl_timeout_shape_preserves_terminal_precedence
+test_completed_send_timeout_reaches_response_boundary
 test_receive_failure_does_not_reclassify_as_send_failure
 test_ready_separates_private_hostname
-test_unauthorized_override_persists_invalid_projection_without_curl
+test_unauthorized_override_persists_invalid_projection_without_probe
+test_real_probe_crosses_direct_and_runfiles_boundaries
 
 printf 'phase35 HTTP boundary adapter tests passed\n'

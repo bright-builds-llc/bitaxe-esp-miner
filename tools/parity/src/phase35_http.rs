@@ -2,29 +2,28 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
-pub(crate) const PHASE35_HTTP_SCHEMA: &str = "phase35-http-boundary-v1";
+pub(crate) const PHASE35_HTTP_SCHEMA: &str = "phase35-http-boundary-v2";
 
-const MAX_CURL_EXIT_CODE: u16 = 255;
-const CURL_RECV_ERROR: u16 = 56;
 const MAX_TCP_CONNECT_MILLIS: u64 = 5_000;
-const CURL_TIMEOUT_MILLIS: u64 = 10_000;
-const CURL_TIMEOUT_OBSERVATION_GRACE_MILLIS: u64 = 1_000;
-const MAX_OBSERVED_TOTAL_MILLIS: u64 = CURL_TIMEOUT_MILLIS + CURL_TIMEOUT_OBSERVATION_GRACE_MILLIS;
+const REQUEST_TIMEOUT_MILLIS: u64 = 10_000;
+const REQUEST_TIMEOUT_OBSERVATION_GRACE_MILLIS: u64 = 1_000;
+const MAX_OBSERVED_TOTAL_MILLIS: u64 =
+    REQUEST_TIMEOUT_MILLIS + REQUEST_TIMEOUT_OBSERVATION_GRACE_MILLIS;
 const MAX_REQUEST_BYTES: u64 = 65_536;
 const MAX_RESPONSE_HEADER_COUNT: u64 = 1_024;
 const MAX_RESPONSE_HEADER_BYTES: u64 = 65_536;
 const MAX_RESPONSE_BODY_BYTES: u64 = 65_536;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-enum SchemeCategory {
+pub(crate) enum SchemeCategory {
     Http,
     Https,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-enum TlsVerification {
+pub(crate) enum TlsVerification {
     NotApplicable,
     Failed,
     Verified,
@@ -70,24 +69,16 @@ impl BoundedMillis {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct CurlExitCode(u16);
-
-impl CurlExitCode {
-    fn parse(value: u16) -> Result<Self, Phase35HttpDiagnosticError> {
-        if value > MAX_CURL_EXIT_CODE {
-            return Err(Phase35HttpDiagnosticError::OutOfBounds("curl_exit_code"));
-        }
-        Ok(Self(value))
-    }
-
-    const fn get(self) -> u16 {
-        self.0
-    }
-
-    const fn is_receive_error(self) -> bool {
-        self.get() == CURL_RECV_ERROR
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum TransportOutcome {
+    Complete,
+    TcpConnectionFailure,
+    TlsHandshakeFailure,
+    RequestSendFailure,
+    ResponseTimeout,
+    ReceiveFailed,
+    ResponseOverLimit,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -133,9 +124,10 @@ impl ResponseStatusClass {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct HttpObservation {
     scheme: SchemeCategory,
-    curl_exit_code: CurlExitCode,
+    transport_outcome: TransportOutcome,
     tcp_connect_millis: BoundedMillis,
     tls_handshake_millis: BoundedMillis,
+    request_send_complete_millis: BoundedMillis,
     request_bytes: BoundedBytes,
     response_status: ResponseStatus,
     response_header_count: BoundedBytes,
@@ -146,21 +138,49 @@ struct HttpObservation {
     tls_verification: TlsVerification,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct RawHttpMetrics {
-    scheme_category: SchemeCategory,
-    curl_exit_code: u16,
-    tcp_connect_millis: u64,
-    tls_handshake_millis: u64,
-    request_bytes: u64,
-    response_status: u16,
-    response_header_count: u64,
-    response_header_bytes: u64,
-    response_body_bytes: u64,
-    total_millis: u64,
-    first_byte_millis: u64,
-    tls_verification: TlsVerification,
+pub(crate) struct RawHttpMetrics {
+    pub(crate) scheme_category: SchemeCategory,
+    pub(crate) transport_outcome: TransportOutcome,
+    pub(crate) tcp_connect_millis: u64,
+    pub(crate) tls_handshake_millis: u64,
+    pub(crate) request_send_complete_millis: u64,
+    pub(crate) request_bytes: u64,
+    pub(crate) response_status: u16,
+    pub(crate) response_header_count: u64,
+    pub(crate) response_header_bytes: u64,
+    pub(crate) response_body_bytes: u64,
+    pub(crate) total_millis: u64,
+    pub(crate) first_byte_millis: u64,
+    pub(crate) tls_verification: TlsVerification,
+}
+
+impl RawHttpMetrics {
+    pub(crate) const fn empty(
+        scheme_category: SchemeCategory,
+        transport_outcome: TransportOutcome,
+        total_millis: u64,
+    ) -> Self {
+        Self {
+            scheme_category,
+            transport_outcome,
+            tcp_connect_millis: 0,
+            tls_handshake_millis: 0,
+            request_send_complete_millis: 0,
+            request_bytes: 0,
+            response_status: 0,
+            response_header_count: 0,
+            response_header_bytes: 0,
+            response_body_bytes: 0,
+            total_millis,
+            first_byte_millis: 0,
+            tls_verification: match scheme_category {
+                SchemeCategory::Http => TlsVerification::NotApplicable,
+                SchemeCategory::Https => TlsVerification::Failed,
+            },
+        }
+    }
 }
 
 impl HttpObservation {
@@ -169,7 +189,7 @@ impl HttpObservation {
             .map_err(|_| Phase35HttpDiagnosticError::MalformedMetrics)?;
         let observation = Self {
             scheme: raw.scheme_category,
-            curl_exit_code: CurlExitCode::parse(raw.curl_exit_code)?,
+            transport_outcome: raw.transport_outcome,
             tcp_connect_millis: BoundedMillis::parse(
                 raw.tcp_connect_millis,
                 MAX_TCP_CONNECT_MILLIS,
@@ -179,6 +199,11 @@ impl HttpObservation {
                 raw.tls_handshake_millis,
                 MAX_OBSERVED_TOTAL_MILLIS,
                 "tls_handshake_millis",
+            )?,
+            request_send_complete_millis: BoundedMillis::parse(
+                raw.request_send_complete_millis,
+                MAX_OBSERVED_TOTAL_MILLIS,
+                "request_send_complete_millis",
             )?,
             request_bytes: BoundedBytes::parse(
                 raw.request_bytes,
@@ -228,6 +253,7 @@ impl HttpObservation {
         if self.first_byte_millis.get() > self.total_millis.get()
             || self.tcp_connect_millis.get() > self.total_millis.get()
             || self.tls_handshake_millis.get() > self.total_millis.get()
+            || self.request_send_complete_millis.get() > self.total_millis.get()
         {
             return Err(Phase35HttpDiagnosticError::Inconsistent("timing_order"));
         }
@@ -249,15 +275,59 @@ impl HttpObservation {
         }
 
         let tcp_connected = self.tcp_connect_millis.get() > 0;
+        match self.transport_outcome {
+            TransportOutcome::TcpConnectionFailure if !tcp_connected => {}
+            TransportOutcome::TlsHandshakeFailure
+                if self.scheme == SchemeCategory::Https
+                    && tcp_connected
+                    && self.tls_handshake_millis.get() == 0 => {}
+            TransportOutcome::RequestSendFailure if tcp_connected => {}
+            TransportOutcome::Complete
+            | TransportOutcome::ResponseTimeout
+            | TransportOutcome::ReceiveFailed
+            | TransportOutcome::ResponseOverLimit => {}
+            _ => {
+                return Err(Phase35HttpDiagnosticError::Inconsistent(
+                    "transport_outcome",
+                ));
+            }
+        }
         if !tcp_connected
             && (self.request_bytes.get() > 0
-                || self.curl_exit_code.is_receive_error()
+                || self.request_send_complete_millis.get() > 0
                 || self.response_status.get() > 0
                 || header_count_present
                 || self.response_body_bytes.get() > 0
                 || self.first_byte_millis.get() > 0)
         {
             return Err(Phase35HttpDiagnosticError::Inconsistent("tcp_connection"));
+        }
+        if self.request_send_complete_millis.get() == 0
+            && !matches!(
+                self.transport_outcome,
+                TransportOutcome::TcpConnectionFailure
+                    | TransportOutcome::TlsHandshakeFailure
+                    | TransportOutcome::RequestSendFailure
+            )
+        {
+            return Err(Phase35HttpDiagnosticError::Inconsistent(
+                "request_completion_missing",
+            ));
+        }
+        if self.request_send_complete_millis.get() > 0
+            && matches!(
+                self.transport_outcome,
+                TransportOutcome::TcpConnectionFailure
+                    | TransportOutcome::TlsHandshakeFailure
+                    | TransportOutcome::RequestSendFailure
+            )
+        {
+            return Err(Phase35HttpDiagnosticError::Inconsistent(
+                "request_completion_outcome",
+            ));
+        }
+        if self.request_send_complete_millis.get() > 0 && self.request_bytes.get() == 0 {
+            return Err(Phase35HttpDiagnosticError::Inconsistent("request_bytes"));
         }
         if !self.request_transmission_complete()
             && (self.response_status.get() > 0
@@ -290,7 +360,7 @@ impl HttpObservation {
     }
 
     const fn request_transmission_complete(self) -> bool {
-        self.request_bytes.get() > 0 || self.curl_exit_code.is_receive_error()
+        self.request_send_complete_millis.get() > 0
     }
 }
 
@@ -350,7 +420,8 @@ pub(crate) struct Phase35HttpProjection {
     pub(crate) response_body_complete: bool,
     pub(crate) json_parsed: bool,
     pub(crate) hostname_schema_valid: bool,
-    pub(crate) curl_exit_code: u16,
+    pub(crate) transport_outcome: TransportOutcome,
+    pub(crate) request_send_complete_millis: u64,
     pub(crate) request_bytes: u64,
     pub(crate) response_header_count: u64,
     pub(crate) response_header_bytes: u64,
@@ -443,7 +514,7 @@ fn classify_terminal(
     if observation.response_body_bytes.get() == 0 {
         return HttpTerminalCategory::ResponseBodyMissing;
     }
-    if observation.curl_exit_code.get() != 0 {
+    if observation.transport_outcome != TransportOutcome::Complete {
         return HttpTerminalCategory::ResponseBodyIncompleteOrOverLimit;
     }
     if !json_parsed {
@@ -473,10 +544,12 @@ fn projection(
         response_status_received: observation.response_status.get() > 0,
         response_headers_received: observation.response_header_count.get() > 0,
         response_body_received,
-        response_body_complete: response_body_received && observation.curl_exit_code.get() == 0,
+        response_body_complete: response_body_received
+            && observation.transport_outcome == TransportOutcome::Complete,
         json_parsed,
         hostname_schema_valid,
-        curl_exit_code: observation.curl_exit_code.get(),
+        transport_outcome: observation.transport_outcome,
+        request_send_complete_millis: observation.request_send_complete_millis.get(),
         request_bytes: observation.request_bytes.get(),
         response_header_count: observation.response_header_count.get(),
         response_header_bytes: observation.response_header_bytes.get(),

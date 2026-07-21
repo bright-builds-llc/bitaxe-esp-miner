@@ -53,6 +53,7 @@ mod phase33_source_guard;
 mod phase34_source_guard;
 mod phase35_evidence;
 mod phase35_http;
+mod phase35_http_probe;
 mod phase35_promotion;
 mod release_evidence;
 mod release_gate;
@@ -80,6 +81,7 @@ enum CliCommand {
     ConsolidatePhase28Evidence(ConsolidatePhase28EvidenceArgs),
     Phase33Classify(Phase33ClassifyArgs),
     ClassifyPhase35Http(ClassifyPhase35HttpArgs),
+    ProbePhase35Http(ProbePhase35HttpArgs),
     ValidatePhase35Evidence(ValidatePhase35EvidenceArgs),
     AdmitPhase35Evidence(AdmitPhase35EvidenceArgs),
 }
@@ -122,6 +124,21 @@ struct ClassifyPhase35HttpArgs {
 
     #[arg(long, value_parser = parse_utf8_path)]
     hostname_output: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct ProbePhase35HttpArgs {
+    #[arg(long)]
+    url: String,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    metrics_output: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    headers_output: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    body_output: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -678,6 +695,7 @@ fn main() -> Result<()> {
         CliCommand::ClassifyPhase35Http(args) => {
             run_classify_phase35_http_command(args, &environment)?
         }
+        CliCommand::ProbePhase35Http(args) => run_probe_phase35_http_command(args, &environment)?,
         CliCommand::ValidatePhase35Evidence(args) => {
             run_validate_phase35_evidence_command(args, &environment)?
         }
@@ -690,6 +708,40 @@ fn main() -> Result<()> {
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_probe_phase35_http_command(
+    args: ProbePhase35HttpArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    use phase35_http_probe::probe_phase35_http;
+
+    let metrics_output = environment.workspace_path(&args.metrics_output);
+    let headers_output = environment.workspace_path(&args.headers_output);
+    let body_output = environment.workspace_path(&args.body_output);
+    let identities = [
+        validate_private_output(&metrics_output)?,
+        validate_private_output(&headers_output)?,
+        validate_private_output(&body_output)?,
+    ];
+    for left in 0..identities.len() {
+        for right in (left + 1)..identities.len() {
+            if identities[left] == identities[right] {
+                bail!("Phase 35 HTTP probe output paths must be distinct");
+            }
+        }
+    }
+
+    let result = probe_phase35_http(&args.url).map_err(|_| {
+        anyhow::anyhow!("Phase 35 HTTP probe rejected its private request contract")
+    })?;
+    let mut metrics =
+        serde_json::to_vec_pretty(&result.metrics).context("failed to encode HTTP metrics")?;
+    metrics.push(b'\n');
+    write_private_new(&metrics_output, &metrics)?;
+    write_private_new(&headers_output, &result.headers)?;
+    write_private_new(&body_output, &result.body)?;
+    Ok("status=probe_complete".to_owned())
 }
 
 fn run_classify_phase35_http_command(
@@ -2184,7 +2236,7 @@ fn has_evidence_token(row: &ChecklistRow, expected: &str) -> bool {
     row.evidence
         .split(',')
         .map(normalize)
-        .any(|token| token == expected)
+        .any(|evidence_kind| evidence_kind == expected)
 }
 
 fn row_contains_live_evidence_blocker(row: &ChecklistRow) -> bool {

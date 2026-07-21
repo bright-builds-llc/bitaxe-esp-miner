@@ -5,9 +5,10 @@ use std::collections::BTreeSet;
 fn ready_metrics() -> Value {
     json!({
         "scheme_category": "http",
-        "curl_exit_code": 0,
+        "transport_outcome": "complete",
         "tcp_connect_millis": 5,
         "tls_handshake_millis": 0,
+        "request_send_complete_millis": 7,
         "request_bytes": 128,
         "response_status": 200,
         "response_header_count": 4,
@@ -47,7 +48,9 @@ fn classifies_the_exact_ordered_terminal_matrix() {
     let mut cases = Vec::new();
 
     let mut tcp = ready_metrics();
+    tcp["transport_outcome"] = json!("tcp_connection_failure");
     tcp["tcp_connect_millis"] = json!(0);
+    tcp["request_send_complete_millis"] = json!(0);
     tcp["request_bytes"] = json!(0);
     tcp["response_status"] = json!(0);
     tcp["response_header_count"] = json!(0);
@@ -58,7 +61,9 @@ fn classifies_the_exact_ordered_terminal_matrix() {
 
     let mut tls = ready_metrics();
     tls["scheme_category"] = json!("https");
+    tls["transport_outcome"] = json!("tls_handshake_failure");
     tls["tls_verification"] = json!("failed");
+    tls["request_send_complete_millis"] = json!(0);
     tls["request_bytes"] = json!(0);
     tls["response_status"] = json!(0);
     tls["response_header_count"] = json!(0);
@@ -68,7 +73,9 @@ fn classifies_the_exact_ordered_terminal_matrix() {
     cases.push((tls, Vec::new(), HttpTerminalCategory::TlsHandshakeFailure));
 
     let mut request = ready_metrics();
-    request["request_bytes"] = json!(0);
+    request["transport_outcome"] = json!("request_send_failure");
+    request["request_send_complete_millis"] = json!(0);
+    request["request_bytes"] = json!(17);
     request["response_status"] = json!(0);
     request["response_header_count"] = json!(0);
     request["response_header_bytes"] = json!(0);
@@ -81,6 +88,7 @@ fn classifies_the_exact_ordered_terminal_matrix() {
     ));
 
     let mut status = ready_metrics();
+    status["transport_outcome"] = json!("response_timeout");
     status["response_status"] = json!(0);
     status["response_header_count"] = json!(0);
     status["response_header_bytes"] = json!(0);
@@ -119,7 +127,7 @@ fn classifies_the_exact_ordered_terminal_matrix() {
     ));
 
     let mut incomplete = ready_metrics();
-    incomplete["curl_exit_code"] = json!(18);
+    incomplete["transport_outcome"] = json!("receive_failed");
     cases.push((
         incomplete,
         body.to_vec(),
@@ -165,8 +173,9 @@ fn earliest_boundary_wins_when_later_facts_also_fail() {
 fn accepts_bounded_timeout_observation_overshoot() {
     // Arrange
     let mut metrics = ready_metrics();
-    metrics["curl_exit_code"] = json!(28);
-    metrics["request_bytes"] = json!(0);
+    metrics["transport_outcome"] = json!("response_timeout");
+    metrics["request_send_complete_millis"] = json!(6);
+    metrics["request_bytes"] = json!(93);
     metrics["response_status"] = json!(0);
     metrics["response_header_count"] = json!(0);
     metrics["response_header_bytes"] = json!(0);
@@ -175,20 +184,17 @@ fn accepts_bounded_timeout_observation_overshoot() {
     metrics["first_byte_millis"] = json!(0);
 
     // Act / Assert
-    assert_category(
-        metrics,
-        b"",
-        HttpTerminalCategory::RequestTransmissionIncomplete,
-    );
+    assert_category(metrics, b"", HttpTerminalCategory::ResponseStatusMissing);
 }
 
 #[test]
-fn receive_error_proves_bodyless_get_transmission_when_size_request_is_zero() {
+fn positive_send_completion_is_authoritative_for_a_missing_response() {
     // Arrange
     let mut metrics = ready_metrics();
-    metrics["curl_exit_code"] = json!(56);
+    metrics["transport_outcome"] = json!("receive_failed");
     metrics["tcp_connect_millis"] = json!(261);
-    metrics["request_bytes"] = json!(0);
+    metrics["request_send_complete_millis"] = json!(262);
+    metrics["request_bytes"] = json!(93);
     metrics["response_status"] = json!(0);
     metrics["response_header_count"] = json!(0);
     metrics["response_header_bytes"] = json!(0);
@@ -197,7 +203,7 @@ fn receive_error_proves_bodyless_get_transmission_when_size_request_is_zero() {
     metrics["first_byte_millis"] = json!(0);
 
     // Act
-    let result = classify(metrics, b"").expect("receive failure observation should classify");
+    let result = classify(metrics, b"").expect("missing response observation should classify");
 
     // Assert
     assert_eq!(
@@ -205,7 +211,8 @@ fn receive_error_proves_bodyless_get_transmission_when_size_request_is_zero() {
         HttpTerminalCategory::ResponseStatusMissing
     );
     assert!(result.projection.request_transmission_complete);
-    assert_eq!(result.projection.request_bytes, 0);
+    assert_eq!(result.projection.request_bytes, 93);
+    assert_eq!(result.projection.request_send_complete_millis, 262);
 }
 
 #[test]
@@ -313,8 +320,8 @@ fn rejects_inconsistent_body_size_and_impossible_tls_state() {
 #[test]
 fn rejects_out_of_bound_counts_durations_and_body() {
     // Arrange
-    let mut curl_exit = ready_metrics();
-    curl_exit["curl_exit_code"] = json!(256);
+    let mut send_complete = ready_metrics();
+    send_complete["request_send_complete_millis"] = json!(11_001);
     let mut tcp = ready_metrics();
     tcp["tcp_connect_millis"] = json!(5_001);
     let mut total = ready_metrics();
@@ -326,7 +333,7 @@ fn rejects_out_of_bound_counts_durations_and_body() {
     over_limit["response_body_bytes"] = json!(over_limit_body.len());
 
     // Act / Assert
-    for candidate in [curl_exit, tcp, total, headers] {
+    for candidate in [send_complete, tcp, total, headers] {
         assert!(classify(candidate, b"").is_err());
     }
     assert!(classify(over_limit, &over_limit_body).is_err());
@@ -341,12 +348,25 @@ fn rejects_timing_and_boundary_inconsistencies() {
     tcp_after_total["tcp_connect_millis"] = json!(13);
     let mut missing_tcp_with_response = ready_metrics();
     missing_tcp_with_response["tcp_connect_millis"] = json!(0);
+    let mut missing_completion = ready_metrics();
+    missing_completion["request_send_complete_millis"] = json!(0);
+    let mut false_tcp_outcome = ready_metrics();
+    false_tcp_outcome["transport_outcome"] = json!("tcp_connection_failure");
+    false_tcp_outcome["request_send_complete_millis"] = json!(0);
+    false_tcp_outcome["request_bytes"] = json!(0);
+    false_tcp_outcome["response_status"] = json!(0);
+    false_tcp_outcome["response_header_count"] = json!(0);
+    false_tcp_outcome["response_header_bytes"] = json!(0);
+    false_tcp_outcome["response_body_bytes"] = json!(0);
+    false_tcp_outcome["first_byte_millis"] = json!(0);
 
     // Act / Assert
     for candidate in [
         first_byte_after_total,
         tcp_after_total,
         missing_tcp_with_response,
+        missing_completion,
+        false_tcp_outcome,
     ] {
         assert!(classify(candidate, br#"{"hostname":"fixture-host"}"#).is_err());
     }
@@ -381,7 +401,8 @@ fn projection_has_the_exact_allowlisted_fields() {
         "response_body_complete",
         "json_parsed",
         "hostname_schema_valid",
-        "curl_exit_code",
+        "transport_outcome",
+        "request_send_complete_millis",
         "request_bytes",
         "response_header_count",
         "response_header_bytes",

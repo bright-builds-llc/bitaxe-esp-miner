@@ -23,3 +23,13 @@ Resolved debug sessions. Used by `gsd-debugger` to surface known-pattern hypothe
 - **Files changed:** scripts/phase35-http-boundary-read.sh, scripts/phase35-http-boundary-read-test.sh, tools/parity/src/phase35_http.rs, tools/parity/src/phase35_http/tests.rs
 
 ***
+
+## phase35-attempt15-timeout — Host curl request-size counter stayed zero after complete GETs
+
+- **Date:** 2026-07-21
+- **Error patterns:** request_transmission_incomplete, response timeout, curl exit 28, size_request zero, successful GET counterexample
+- **Root cause:** The host curl build reported `%{size_request}=0` after peers received the complete bodyless request, including on successful responses. Fake fixtures supplied positive values and concealed that the classifier was using an unusable counter as its primary send boundary.
+- **Fix:** Replace curl with a repo-owned schema-v2 Rust probe. Mark transmission complete only after the full request write and transport flush succeed; retain partial-byte counts and typed transport outcomes without persisting raw request material.
+- **Files changed:** scripts/phase35-http-boundary-read.sh, scripts/phase35-http-boundary-read-test.sh, tools/parity/src/main.rs, tools/parity/src/phase35_http.rs, tools/parity/src/phase35_http/tests.rs, tools/parity/src/phase35_http_probe.rs, tools/parity/src/phase35_http_probe/tests.rs
+
+***
