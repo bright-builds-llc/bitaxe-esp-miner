@@ -5,6 +5,7 @@ use thiserror::Error;
 pub(crate) const PHASE35_HTTP_SCHEMA: &str = "phase35-http-boundary-v1";
 
 const MAX_CURL_EXIT_CODE: u16 = 255;
+const CURL_RECV_ERROR: u16 = 56;
 const MAX_TCP_CONNECT_MILLIS: u64 = 5_000;
 const CURL_TIMEOUT_MILLIS: u64 = 10_000;
 const CURL_TIMEOUT_OBSERVATION_GRACE_MILLIS: u64 = 1_000;
@@ -82,6 +83,10 @@ impl CurlExitCode {
 
     const fn get(self) -> u16 {
         self.0
+    }
+
+    const fn is_receive_error(self) -> bool {
+        self.get() == CURL_RECV_ERROR
     }
 }
 
@@ -246,6 +251,7 @@ impl HttpObservation {
         let tcp_connected = self.tcp_connect_millis.get() > 0;
         if !tcp_connected
             && (self.request_bytes.get() > 0
+                || self.curl_exit_code.is_receive_error()
                 || self.response_status.get() > 0
                 || header_count_present
                 || self.response_body_bytes.get() > 0
@@ -253,7 +259,7 @@ impl HttpObservation {
         {
             return Err(Phase35HttpDiagnosticError::Inconsistent("tcp_connection"));
         }
-        if self.request_bytes.get() == 0
+        if !self.request_transmission_complete()
             && (self.response_status.get() > 0
                 || header_count_present
                 || self.response_body_bytes.get() > 0
@@ -281,6 +287,10 @@ impl HttpObservation {
             ));
         }
         Ok(())
+    }
+
+    const fn request_transmission_complete(self) -> bool {
+        self.request_bytes.get() > 0 || self.curl_exit_code.is_receive_error()
     }
 }
 
@@ -418,7 +428,7 @@ fn classify_terminal(
     if observation.scheme == SchemeCategory::Https && observation.tls_handshake_millis.get() == 0 {
         return HttpTerminalCategory::TlsHandshakeFailure;
     }
-    if observation.request_bytes.get() == 0 {
+    if !observation.request_transmission_complete() {
         return HttpTerminalCategory::RequestTransmissionIncomplete;
     }
     if observation.response_status.get() == 0 {
@@ -459,7 +469,7 @@ fn projection(
         tls_applicable,
         tls_established: tls_applicable && observation.tls_handshake_millis.get() > 0,
         tls_verified: tls_applicable && observation.tls_verification == TlsVerification::Verified,
-        request_transmission_complete: observation.request_bytes.get() > 0,
+        request_transmission_complete: observation.request_transmission_complete(),
         response_status_received: observation.response_status.get() > 0,
         response_headers_received: observation.response_header_count.get() > 0,
         response_body_received,

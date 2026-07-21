@@ -7,6 +7,7 @@ readonly CURL_MAX_TIME_SECONDS=10
 readonly CURL_TIMEOUT_OBSERVATION_GRACE_MILLIS=1000
 readonly MAX_OBSERVED_TOTAL_MILLIS=$((\
 	CURL_MAX_TIME_SECONDS * 1000 + CURL_TIMEOUT_OBSERVATION_GRACE_MILLIS))
+readonly CURL_RECV_ERROR=56
 readonly MAX_REQUEST_BYTES=65536
 readonly MAX_RESPONSE_HEADER_COUNT=1024
 readonly MAX_RESPONSE_HEADER_BYTES=65536
@@ -290,11 +291,12 @@ actual_body_bytes="$(wc -c <"$body_path" | tr -d ' ')"
 	invalid_diagnostic
 
 if ((tcp_connect_millis == 0)); then
-	((request_bytes == 0 && response_status == 0 && response_header_count == 0 && \
+	((curl_exit_code != CURL_RECV_ERROR && request_bytes == 0 && \
+	response_status == 0 && response_header_count == 0 && \
 	response_header_bytes == 0 && response_body_bytes == 0 && first_byte_millis == 0)) ||
 		invalid_diagnostic
 fi
-if ((request_bytes == 0)); then
+if ((request_bytes == 0 && curl_exit_code != CURL_RECV_ERROR)); then
 	((response_status == 0 && response_header_count == 0 && \
 	response_header_bytes == 0 && response_body_bytes == 0 && first_byte_millis == 0)) ||
 		invalid_diagnostic

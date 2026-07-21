@@ -183,6 +183,32 @@ fn accepts_bounded_timeout_observation_overshoot() {
 }
 
 #[test]
+fn receive_error_proves_bodyless_get_transmission_when_size_request_is_zero() {
+    // Arrange
+    let mut metrics = ready_metrics();
+    metrics["curl_exit_code"] = json!(56);
+    metrics["tcp_connect_millis"] = json!(261);
+    metrics["request_bytes"] = json!(0);
+    metrics["response_status"] = json!(0);
+    metrics["response_header_count"] = json!(0);
+    metrics["response_header_bytes"] = json!(0);
+    metrics["response_body_bytes"] = json!(0);
+    metrics["total_millis"] = json!(6_539);
+    metrics["first_byte_millis"] = json!(0);
+
+    // Act
+    let result = classify(metrics, b"").expect("receive failure observation should classify");
+
+    // Assert
+    assert_eq!(
+        result.terminal_category,
+        HttpTerminalCategory::ResponseStatusMissing
+    );
+    assert!(result.projection.request_transmission_complete);
+    assert_eq!(result.projection.request_bytes, 0);
+}
+
+#[test]
 fn tls_is_not_applicable_to_http_and_required_for_https() {
     // Arrange
     let body = br#"{"hostname":"fixture-host"}"#;

@@ -59,6 +59,22 @@ if [[ "${PHASE35_HTTP_TEST_CURL_DISPATCH:-false}" == true ]]; then
 		body=""
 		headers=""
 		;;
+	attempt14_receive_failure)
+		exit_code=56
+		actual_exit=56
+		tcp_seconds=0.261
+		request_bytes=0
+		response_status=0
+		total_seconds=6.539
+		first_byte_seconds=0.000
+		body=""
+		headers=""
+		;;
+	receive_failure_after_partial_response)
+		exit_code=56
+		actual_exit=56
+		request_bytes=0
+		;;
 	submillisecond_ready)
 		tcp_seconds=0.0004
 		total_seconds=0.0009
@@ -325,6 +341,7 @@ test_terminal_matrix_and_invalid_fallback() {
 		non_success_response_status \
 		response_body_missing \
 		response_body_incomplete_or_over_limit \
+		receive_failure_after_partial_response \
 		invalid_json \
 		invalid_hostname_schema \
 		ready \
@@ -350,6 +367,9 @@ test_terminal_matrix_and_invalid_fallback() {
 			;;
 		submillisecond_non_success)
 			expected=non_success_response_status
+			;;
+		receive_failure_after_partial_response)
+			expected=response_body_incomplete_or_over_limit
 			;;
 		malformed_extra | process_status_mismatch | body_size_mismatch | total_duration_out_of_bound)
 			expected=http_diagnostic_invalid
@@ -401,6 +421,28 @@ test_real_curl_timeout_shape_preserves_terminal_precedence() {
 	jq -e '.terminal_category == "request_transmission_incomplete"' \
 		"${protected_root}/http-original/projection" >/dev/null ||
 		fail_test "real curl timeout shape lost its precise terminal category"
+}
+
+test_receive_failure_does_not_reclassify_as_send_failure() {
+	# Arrange
+	prepare_case attempt_14_receive_failure
+
+	# Act
+	run_case attempt14_receive_failure
+
+	# Assert
+	[[ "$run_status" != 0 ]] || fail_test "missing response status unexpectedly became ready"
+	assert_line "$stdout_file" 'category=response_status_missing'
+	jq -e \
+		'.terminal_category == "response_status_missing" and
+		 .tcp_connected and
+		 .request_transmission_complete and
+		 .curl_exit_code == 56 and
+		 .request_bytes == 0 and
+		 .tcp_connect_millis == 261 and
+		 .total_millis == 6539' \
+		"${protected_root}/http-original/projection" >/dev/null ||
+		fail_test "receive failure was reclassified as incomplete request transmission"
 }
 
 test_duration_quantization_preserves_presence() {
@@ -491,6 +533,7 @@ test_terminal_matrix_and_invalid_fallback
 test_duration_quantization_preserves_presence
 test_submillisecond_observation_preserves_terminal_precedence
 test_real_curl_timeout_shape_preserves_terminal_precedence
+test_receive_failure_does_not_reclassify_as_send_failure
 test_ready_separates_private_hostname
 test_unauthorized_override_persists_invalid_projection_without_curl
 

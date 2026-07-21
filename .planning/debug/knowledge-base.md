@@ -13,3 +13,13 @@ Resolved debug sessions. Used by `gsd-debugger` to surface known-pattern hypothe
 - **Files changed:** scripts/phase35-http-boundary-read.sh, scripts/phase35-http-boundary-read-test.sh
 
 ***
+
+## phase35-request-transmission-incomplete-attempt14 — Receive failure misclassified from a zero curl request counter
+
+- **Date:** 2026-07-21
+- **Error patterns:** request_transmission_incomplete, size_request zero, curl exit 56, response receive failure, request bytes zero
+- **Root cause:** Curl exit 56 is a receive-side failure and can occur after a complete bodyless GET even while `%{size_request}` remains zero. The classifier treated that raw counter as the sole proof of request transmission and emitted the earlier inaccurate category.
+- **Fix:** Preserve raw request bytes, but derive bodyless-GET transmission completion from positive request bytes or curl receive error 56 in both shell and Rust. Keep exit 55 as the send-failure boundary and cover missing-response plus partial-response receive failures.
+- **Files changed:** scripts/phase35-http-boundary-read.sh, scripts/phase35-http-boundary-read-test.sh, tools/parity/src/phase35_http.rs, tools/parity/src/phase35_http/tests.rs
+
+***
