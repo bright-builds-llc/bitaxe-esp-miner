@@ -1232,3 +1232,43 @@ unchanged attempt 17. A later attempt requires a deterministic reproduction,
 regression-backed verified fix, clean committed head, and passing preflight, or
 a confirmed permitted non-invasive remediation. Task 3, evidence admission,
 checklist promotion, and `35-04-SUMMARY.md` remain blocked.
+
+## Attempt 16 Diagnostic Repair and Attempt 17 Authority
+
+Exact release-ELF analysis isolated attempt 16's response timeout to the
+firmware request task. The Phase 34 ordered snapshot publisher's system-info
+instantiation reserves 6,080 bytes and candidate collection reserves 1,456
+bytes before the HTTP framework, retained-record construction, and JSON writer.
+The server task still had the historical 8 KiB allocation. This leaves no safe
+request-execution margin and matches the connection-specific timeout while the
+listener and firmware remain alive.
+
+The repair raises only the ESP-IDF HTTP server task to an explicit 16 KiB and
+adds a source regression that rejects the previous literal 8 KiB configuration.
+It does not weaken Phase 34's completion-ordered retention and external issuance
+contract or change any Phase 35 classifier, mutation, restoration, cleanup,
+redaction, or admission rule.
+
+| Field | Recorded value |
+| --- | --- |
+| Repair completion | `2026-07-21T23:47:16Z` |
+| Hardware invoked during diagnosis or repair | `false` |
+| Device request issued during diagnosis or repair | `false` |
+| Credential access during diagnosis or repair | `false` |
+| Pre-fix HTTP server task stack | `8192` |
+| Post-fix HTTP server task stack | `16384` |
+| Ordered publisher frame observed | `6080` |
+| Candidate collector frame observed | `1456` |
+| Phase 34 publication ordering changed | `false` |
+| Source regression | `passed` |
+| Affected uncached Bazel suites | `passed` |
+| Canonical firmware build | `passed` |
+| Progress decision | `continue_after_verified_fix` |
+| Next authorized attempt ordinal | `17` |
+
+The user's standing authority and this distinct regression-backed fix select
+`continue_after_verified_fix`. Fresh attempt 17 is authorized only after the
+complete clean exact-current-HEAD software gate and preflight pass. It must use
+a fresh protected parent, nonexistent supervisor child, mode-0600 sibling
+output, and exactly one full command invocation. An unchanged retry or reuse of
+attempt 16 remains prohibited.

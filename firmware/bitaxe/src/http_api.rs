@@ -53,6 +53,7 @@ const HTTPD_401: &[u8] = b"401 Unauthorized\0";
 const UPGRADE_HEADER: &[u8] = b"Upgrade\0";
 const UPDATE_AP_MODE_REJECTION_BODY: &str = "Not allowed in AP mode";
 const WEBSOCKET_UPGRADE_REQUIRED_BODY: &str = "WebSocket upgrade required";
+const HTTP_SERVER_TASK_STACK_BYTES: usize = 16 * 1024;
 const LIVE_TELEMETRY_THREAD_STACK_BYTES: usize = 16 * 1024;
 const DEFERRED_EFFECT_QUEUE_CAPACITY: usize = 8;
 const DEFERRED_EFFECT_THREAD_STACK_BYTES: usize = 8 * 1024;
@@ -84,7 +85,7 @@ pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()>
     initialize_deferred_effect_worker()?;
 
     let config = Configuration {
-        stack_size: 8192,
+        stack_size: HTTP_SERVER_TASK_STACK_BYTES,
         max_open_sockets: 7,
         max_uri_handlers: 32,
         max_resp_headers: 8,

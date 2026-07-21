@@ -79,6 +79,21 @@ fn phase33_settings_source_guard_keeps_candidate_loading_fallible_and_nonpublish
 }
 
 #[test]
+fn phase33_system_info_source_guard_retains_http_server_stack_margin() {
+    // Arrange
+    let startup = source_between(
+        HTTP_API_SOURCE,
+        "pub fn start_http_api",
+        "fn start_live_telemetry_cadence_task",
+    );
+
+    // Act / Assert
+    assert!(HTTP_API_SOURCE.contains("const HTTP_SERVER_TASK_STACK_BYTES: usize = 16 * 1024;"));
+    assert!(startup.contains("stack_size: HTTP_SERVER_TASK_STACK_BYTES"));
+    assert!(!startup.contains("stack_size: 8192"));
+}
+
+#[test]
 fn phase33_settings_source_guard_closes_route_authority_and_optimistic_overlays() {
     // Arrange
     let handler = source_between(
@@ -226,7 +241,7 @@ fn phase33_restart_source_guard_completes_response_before_delayed_restart() {
         "fn apply_command_effect",
         "fn prepare_restart_after_response",
     );
-    let worker = source_between(
+    let deferred_worker = source_between(
         HTTP_API_SOURCE,
         "fn initialize_deferred_effect_worker",
         "fn apply_settings_effects",
@@ -247,13 +262,15 @@ fn phase33_restart_source_guard_completes_response_before_delayed_restart() {
     let effect = handler
         .find("apply_command_effect(effect, maybe_deferred_effect)?")
         .expect("effect release");
-    let delay = worker
+    let delay = deferred_worker
         .find("std::thread::sleep(Duration::from_millis(RESTART_POST_RESPONSE_DELAY_MS))")
         .expect("post-response delay");
-    let marker = worker
+    let marker = deferred_worker
         .find("axeos_command_effect=restart_after_response")
         .expect("restart marker");
-    let restart_call = worker.find("sys::esp_restart()").expect("restart call");
+    let restart_call = deferred_worker
+        .find("sys::esp_restart()")
+        .expect("restart call");
 
     // Assert
     assert!(HTTP_API_SOURCE.contains("const RESTART_POST_RESPONSE_DELAY_MS: u64 = 1_000;"));
@@ -269,8 +286,8 @@ fn phase33_restart_source_guard_completes_response_before_delayed_restart() {
     assert!(ownership < response && response < effect);
     assert!(prepare.contains("prepare_restart_after_response().map(Some)"));
     assert!(release.contains("deferred_effect.release_after_response()"));
-    assert!(worker.contains(".name(\"deferred-effects\".to_owned())"));
-    assert!(worker.contains(".stack_size(DEFERRED_EFFECT_THREAD_STACK_BYTES)"));
+    assert!(deferred_worker.contains(".name(\"deferred-effects\".to_owned())"));
+    assert!(deferred_worker.contains(".stack_size(DEFERRED_EFFECT_THREAD_STACK_BYTES)"));
     assert!(restart.contains(".acquire(DeferredFirmwareEffect::Restart)"));
     assert!(!restart.contains("sys::esp_restart()"));
     assert!(delay < marker && marker < restart_call);
