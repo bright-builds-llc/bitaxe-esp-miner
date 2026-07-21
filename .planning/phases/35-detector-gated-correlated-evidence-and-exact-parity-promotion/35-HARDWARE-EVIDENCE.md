@@ -1067,3 +1067,42 @@ The attempt-14 root is sealed non-promotable and non-reusable. The new typed
 boundary authorizes software diagnosis, not an unchanged retry. Attempt 15
 requires a deterministic reproduction, regression-backed fix, clean commit, and
 fresh exact-current-HEAD gate.
+
+## Attempt 14 Diagnostic Repair and Attempt 15 Authority
+
+The attempt-14 category was reproduced through the built adapter/classifier
+seam. An isolated local loopback peer observed a complete 93-byte bodyless GET
+before forcing curl's typed receive-side failure; curl retained a raw request
+byte count of zero. This demonstrates that the counter is not authoritative
+negative proof once curl has entered its receive-failure boundary.
+
+Commit `0dd2134e` preserves the raw zero counter and derives request
+transmission completion from either a positive count or the closed receive-error
+category. The send-failure category remains `request_transmission_incomplete`.
+A receive failure without response facts advances to `response_status_missing`,
+and a receive failure after a partial response advances to
+`response_body_incomplete_or_over_limit`.
+
+| Field | Recorded value |
+| --- | --- |
+| Repair completion | `2026-07-21T22:21:54Z` |
+| Hardware invoked during diagnosis | `false` |
+| Device request issued during diagnosis | `false` |
+| Credential access during diagnosis | `false` |
+| Deterministic adapter regression | `passed` |
+| Isolated loopback request bytes observed | `93` |
+| Raw curl request-byte metric preserved | `0` |
+| Curl receive category | `56` |
+| Curl send category guard retained | `55` |
+| Pre-fix sealed replay category | `request_transmission_incomplete` |
+| Post-fix sealed replay category | `response_status_missing` |
+| Sealed input digests unchanged | `true` |
+| Repair commit | `0dd2134e` |
+| Progress decision | `continue_after_verified_fix` |
+| Next authorized attempt ordinal | `15` |
+
+Attempt 15 requires a clean committed head, complete exact-current-HEAD
+software gate, passing Phase 35 preflight, fresh protected parent, nonexistent
+supervisor child, mode-0600 sibling output, and exactly one full invocation.
+The standing authority has no fixed ordinal cap, but every later attempt must
+follow a distinct verified fix or confirmed non-invasive remediation.

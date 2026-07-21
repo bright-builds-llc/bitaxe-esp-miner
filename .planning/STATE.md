@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 diagnosing attempt 14 request_transmission_incomplete
-last_updated: "2026-07-21T21:54:06Z"
+stopped_at: Phase 35 Plan 04 Task 2 gating authorized attempt 15
+last_updated: "2026-07-21T22:21:54Z"
 last_activity: "2026-07-21"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-21 - Sealed attempt 14 after it exposed request_transmission_incomplete before mutation
+Last activity: 2026-07-21 - Fixed attempt 14 receive-error classification and authorized exact-head-gated attempt 15
 
 ## Current Position
 
@@ -25,13 +25,12 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 is active after attempt 14 exposed the newly discriminating
-  `request_transmission_incomplete` boundary before mutation. Attempts 1 through
-  14 remain sealed non-promotable and non-reusable.
-- **Next step:** Reproduce the attempt-14 request-transmission boundary in
-  software, add a regression, implement and verify the root-cause fix, then
-  commit and run a fresh exact-current-HEAD gate before attempt 15. Task 3 and
-  `35-04-SUMMARY.md` remain blocked until `complete`.
+- **Status:** Task 2 is active. Attempt 14's receive-error misclassification is
+  fixed in `0dd2134e`; attempts 1 through 14 remain sealed non-promotable and
+  non-reusable.
+- **Next step:** Run the complete exact-current-HEAD gate and preflight, then
+  invoke fresh attempt 15 exactly once. Task 3 and `35-04-SUMMARY.md` remain
+  blocked until `complete`.
 
 ## Project Reference
 
@@ -462,9 +461,14 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - PATCH and reboot did not start. Restoration was not needed, cleanup passed,
   and no secondary failure replaced the primary category. The root is sealed
   non-promotable and non-reusable.
-- Attempt 15 requires a deterministic software reproduction and
-  regression-backed fix for this new boundary before a fresh exact-current-HEAD
-  gate. No unchanged retry is authorized.
+- A deterministic fake-curl regression and isolated loopback observation proved
+  curl exit 56 can follow a complete bodyless GET even when its raw request-byte
+  counter remains zero. Commit `0dd2134e` preserves the counter, recognizes the
+  closed receive-error category, and retains exit 55 as the send-failure guard.
+- Exact sealed-input replay advances from `request_transmission_incomplete` to
+  `response_status_missing` with unchanged input digests. The verified fix
+  selects `continue_after_verified_fix`; attempt 15 is authorized after the
+  complete exact-current-HEAD gate. No unchanged retry is authorized.
 
 ## Decisions (Phase 28.1.1 child 5)
 
@@ -489,15 +493,13 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 ## Blockers
 
 - Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 14 are sealed,
-  non-promotable, and non-reusable. The attempt-14 request-transmission boundary
-  is pending deterministic software diagnosis and fix. Task 3 and
+  non-promotable, and non-reusable. Attempt 15 is authorized only after the
+  complete exact-current-HEAD gate and preflight. Task 3 and
   `35-04-SUMMARY.md` remain prohibited until `complete`.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 diagnosing attempt 14
-  `request_transmission_incomplete`
-- **Resume:** Commit the redacted attempt-14 checkpoint, reproduce and fix the
-  request-transmission boundary with regression coverage, then run the complete
-  exact-current-HEAD gate before attempt 15. Task 3, evidence admission,
-  checklist promotion, and `35-04-SUMMARY.md` remain blocked until `complete`.
+- **Stopped at:** Phase 35 Plan 04 Task 2 gating authorized attempt 15
+- **Resume:** Run the complete exact-current-HEAD gate and preflight, then invoke
+  fresh attempt 15 exactly once. Task 3, evidence admission, checklist
+  promotion, and `35-04-SUMMARY.md` remain blocked until `complete`.
