@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 13 remains sealed non-promotion. Its private shape was reproduced without hardware and now reaches `request_transmission_incomplete` after the regression-backed fix in `53d8bcee`. Attempt 14 is the next authorized fresh ordinal after the complete exact-current-HEAD gate. Later ordinals have no fixed cap but each requires a distinct verified fix or confirmed non-invasive remediation; unchanged retries remain prohibited. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 14 invoked the command once at exact source `8afbed3248fb00e02d1a09f726b48ec241b552da` and stopped before mutation with `request_transmission_incomplete`. The root is sealed non-promotion. Attempt 15 requires deterministic software reproduction and a regression-backed fix before another complete exact-current-HEAD gate; unchanged retries remain prohibited. |
 
 ## Validation Sign-Off
 

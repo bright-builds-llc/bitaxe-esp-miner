@@ -1010,3 +1010,60 @@ ordinals after distinct verified fixes or confirmed non-invasive remediation,
 without a fixed total cap. Every attempt still requires a new ordinal, fresh
 protected root, exact committed package, complete software/preflight gate, and
 one full hardware invocation. Blind retries remain prohibited.
+
+## Attempt 14 Checkpoint
+
+Attempt 14 ran the full Phase 35 command exactly once from clean exact source
+`8afbed3248fb00e02d1a09f726b48ec241b552da`. Exact-package admission, the sole
+internal detector, opaque input gate, dual private-first flash, and Boot A
+classification passed. The instrumented original-settings read then produced
+the newly discriminating category `request_transmission_incomplete`: TCP
+connected, but zero request bytes were recorded before curl exited with its
+typed transport status. The command stopped before PATCH, mutation, or reboot.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-21T21:54:06Z` |
+| Attempt ordinal | `14` |
+| Source commit | `8afbed3248fb00e02d1a09f726b48ec241b552da` |
+| Reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Exact package capability digest | `4d48514480b7b1d325dbd88e16ad86ce3a2917b20291b8f39815a29e16e0b116` |
+| Package digest | `a7fcab90daa1036148b84236d754feef11e9e60e54353c94f20f65137449a54c` |
+| Current HEAD verified | `true` |
+| Detector invocations | `1` |
+| Selected candidate count | `1` |
+| Board-info verified | `true` |
+| Opaque input gate passed | `true` |
+| Evidence mode | `dual_private_first` |
+| Private classifier input present | `true` |
+| Commit-redacted derivative present | `true` |
+| Boot A classification status | `passed` |
+| Boot A ordinal | `10970` |
+| Instrumented original-settings GET reached | `true` |
+| HTTP terminal category | `request_transmission_incomplete` |
+| TCP connected | `true` |
+| Curl exit code | `56` |
+| Request bytes | `0` |
+| TCP connect duration milliseconds | `261` |
+| Total duration milliseconds | `6539` |
+| Response status received | `false` |
+| Response headers received | `false` |
+| Response body received | `false` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration | `not_needed` |
+| Restoration secondary category | `none` |
+| Process-tree cleanup | `true` |
+| Cleanup secondary category | `none` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Checklist changed | `false` |
+| Task 3 authorized | `false` |
+| Plan summary created | `false` |
+
+The attempt-14 root is sealed non-promotable and non-reusable. The new typed
+boundary authorizes software diagnosis, not an unchanged retry. Attempt 15
+requires a deterministic reproduction, regression-backed fix, clean commit, and
+fresh exact-current-HEAD gate.
