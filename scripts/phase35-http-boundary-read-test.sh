@@ -47,6 +47,18 @@ if [[ "${PHASE35_HTTP_TEST_CURL_DISPATCH:-false}" == true ]]; then
 
 	case "$scenario" in
 	ready) ;;
+	uppercase_ready) scheme=HTTP ;;
+	attempt13_timeout_boundary)
+		scheme=HTTP
+		exit_code=28
+		actual_exit=28
+		request_bytes=0
+		response_status=0
+		total_seconds=10.003
+		first_byte_seconds=0.000
+		body=""
+		headers=""
+		;;
 	submillisecond_ready)
 		tcp_seconds=0.0004
 		total_seconds=0.0009
@@ -144,6 +156,7 @@ if [[ "${PHASE35_HTTP_TEST_CURL_DISPATCH:-false}" == true ]]; then
 		headers=""
 		;;
 	body_size_mismatch) ;;
+	total_duration_out_of_bound) total_seconds=11.001 ;;
 	*)
 		exit 96
 		;;
@@ -315,12 +328,14 @@ test_terminal_matrix_and_invalid_fallback() {
 		invalid_json \
 		invalid_hostname_schema \
 		ready \
+		uppercase_ready \
 		submillisecond_ready \
 		submillisecond_https_ready \
 		submillisecond_non_success \
 		malformed_extra \
 		process_status_mismatch \
-		body_size_mismatch; do
+		body_size_mismatch \
+		total_duration_out_of_bound; do
 		# Arrange
 		prepare_case "$scenario"
 
@@ -330,13 +345,13 @@ test_terminal_matrix_and_invalid_fallback() {
 		# Assert
 		expected="$scenario"
 		case "$scenario" in
-		submillisecond_ready | submillisecond_https_ready)
+		submillisecond_ready | submillisecond_https_ready | uppercase_ready)
 			expected=ready
 			;;
 		submillisecond_non_success)
 			expected=non_success_response_status
 			;;
-		malformed_extra | process_status_mismatch | body_size_mismatch)
+		malformed_extra | process_status_mismatch | body_size_mismatch | total_duration_out_of_bound)
 			expected=http_diagnostic_invalid
 			;;
 		esac
@@ -371,6 +386,21 @@ test_submillisecond_observation_preserves_terminal_precedence() {
 	jq -e '.terminal_category == "non_success_response_status"' \
 		"${protected_root}/http-original/projection" >/dev/null ||
 		fail_test "sub-millisecond observation lost its precise terminal category"
+}
+
+test_real_curl_timeout_shape_preserves_terminal_precedence() {
+	# Arrange
+	prepare_case attempt_13_timeout_boundary
+
+	# Act
+	run_case attempt13_timeout_boundary
+
+	# Assert
+	[[ "$run_status" != 0 ]] || fail_test "incomplete request unexpectedly became ready"
+	assert_line "$stdout_file" 'category=request_transmission_incomplete'
+	jq -e '.terminal_category == "request_transmission_incomplete"' \
+		"${protected_root}/http-original/projection" >/dev/null ||
+		fail_test "real curl timeout shape lost its precise terminal category"
 }
 
 test_duration_quantization_preserves_presence() {
@@ -460,6 +490,7 @@ test_unauthorized_override_persists_invalid_projection_without_curl() {
 test_terminal_matrix_and_invalid_fallback
 test_duration_quantization_preserves_presence
 test_submillisecond_observation_preserves_terminal_precedence
+test_real_curl_timeout_shape_preserves_terminal_precedence
 test_ready_separates_private_hostname
 test_unauthorized_override_persists_invalid_projection_without_curl
 

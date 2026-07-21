@@ -162,6 +162,27 @@ fn earliest_boundary_wins_when_later_facts_also_fail() {
 }
 
 #[test]
+fn accepts_bounded_timeout_observation_overshoot() {
+    // Arrange
+    let mut metrics = ready_metrics();
+    metrics["curl_exit_code"] = json!(28);
+    metrics["request_bytes"] = json!(0);
+    metrics["response_status"] = json!(0);
+    metrics["response_header_count"] = json!(0);
+    metrics["response_header_bytes"] = json!(0);
+    metrics["response_body_bytes"] = json!(0);
+    metrics["total_millis"] = json!(10_003);
+    metrics["first_byte_millis"] = json!(0);
+
+    // Act / Assert
+    assert_category(
+        metrics,
+        b"",
+        HttpTerminalCategory::RequestTransmissionIncomplete,
+    );
+}
+
+#[test]
 fn tls_is_not_applicable_to_http_and_required_for_https() {
     // Arrange
     let body = br#"{"hostname":"fixture-host"}"#;
@@ -271,7 +292,7 @@ fn rejects_out_of_bound_counts_durations_and_body() {
     let mut tcp = ready_metrics();
     tcp["tcp_connect_millis"] = json!(5_001);
     let mut total = ready_metrics();
-    total["total_millis"] = json!(10_001);
+    total["total_millis"] = json!(11_001);
     let mut headers = ready_metrics();
     headers["response_header_count"] = json!(1_025);
     let over_limit_body = vec![b'x'; 65_537];

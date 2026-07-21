@@ -6,7 +6,9 @@ pub(crate) const PHASE35_HTTP_SCHEMA: &str = "phase35-http-boundary-v1";
 
 const MAX_CURL_EXIT_CODE: u16 = 255;
 const MAX_TCP_CONNECT_MILLIS: u64 = 5_000;
-const MAX_TOTAL_MILLIS: u64 = 10_000;
+const CURL_TIMEOUT_MILLIS: u64 = 10_000;
+const CURL_TIMEOUT_OBSERVATION_GRACE_MILLIS: u64 = 1_000;
+const MAX_OBSERVED_TOTAL_MILLIS: u64 = CURL_TIMEOUT_MILLIS + CURL_TIMEOUT_OBSERVATION_GRACE_MILLIS;
 const MAX_REQUEST_BYTES: u64 = 65_536;
 const MAX_RESPONSE_HEADER_COUNT: u64 = 1_024;
 const MAX_RESPONSE_HEADER_BYTES: u64 = 65_536;
@@ -170,7 +172,7 @@ impl HttpObservation {
             )?,
             tls_handshake_millis: BoundedMillis::parse(
                 raw.tls_handshake_millis,
-                MAX_TOTAL_MILLIS,
+                MAX_OBSERVED_TOTAL_MILLIS,
                 "tls_handshake_millis",
             )?,
             request_bytes: BoundedBytes::parse(
@@ -194,10 +196,14 @@ impl HttpObservation {
                 MAX_RESPONSE_BODY_BYTES,
                 "response_body_bytes",
             )?,
-            total_millis: BoundedMillis::parse(raw.total_millis, MAX_TOTAL_MILLIS, "total_millis")?,
+            total_millis: BoundedMillis::parse(
+                raw.total_millis,
+                MAX_OBSERVED_TOTAL_MILLIS,
+                "total_millis",
+            )?,
             first_byte_millis: BoundedMillis::parse(
                 raw.first_byte_millis,
-                MAX_TOTAL_MILLIS,
+                MAX_OBSERVED_TOTAL_MILLIS,
                 "first_byte_millis",
             )?,
             tls_verification: raw.tls_verification,

@@ -3,7 +3,10 @@ set -euo pipefail
 
 readonly PHASE35_HTTP_SCHEMA="phase35-http-boundary-v1"
 readonly MAX_TCP_CONNECT_MILLIS=5000
-readonly MAX_TOTAL_MILLIS=10000
+readonly CURL_MAX_TIME_SECONDS=10
+readonly CURL_TIMEOUT_OBSERVATION_GRACE_MILLIS=1000
+readonly MAX_OBSERVED_TOTAL_MILLIS=$((\
+	CURL_MAX_TIME_SECONDS * 1000 + CURL_TIMEOUT_OBSERVATION_GRACE_MILLIS))
 readonly MAX_REQUEST_BYTES=65536
 readonly MAX_RESPONSE_HEADER_COUNT=1024
 readonly MAX_RESPONSE_HEADER_BYTES=65536
@@ -148,7 +151,7 @@ set +e
 	--noproxy '*' \
 	--max-redirs 0 \
 	--connect-timeout 5 \
-	--max-time 10 \
+	--max-time "$CURL_MAX_TIME_SECONDS" \
 	--max-filesize 65536 \
 	--retry 0 \
 	--dump-header "$headers_path" \
@@ -210,7 +213,7 @@ for key in tcp_connect_seconds tls_connect_seconds total_seconds first_byte_seco
 	[[ "$value" =~ $seconds_pattern ]] || invalid_diagnostic
 	printf -v "$key" '%s' "$value"
 done
-scheme_category="$(metric_value scheme_category)"
+scheme_category="$(metric_value scheme_category | tr '[:upper:]' '[:lower:]')"
 case "$scheme_category" in
 http | https) ;;
 *) invalid_diagnostic ;;
@@ -272,8 +275,8 @@ actual_body_bytes="$(wc -c <"$body_path" | tr -d ' ')"
 ((curl_process_status == curl_exit_code)) || invalid_diagnostic
 ((curl_exit_code <= 255)) || invalid_diagnostic
 ((tcp_connect_millis <= MAX_TCP_CONNECT_MILLIS)) || invalid_diagnostic
-((tls_handshake_millis <= MAX_TOTAL_MILLIS)) || invalid_diagnostic
-((total_millis <= MAX_TOTAL_MILLIS)) || invalid_diagnostic
+((tls_handshake_millis <= MAX_OBSERVED_TOTAL_MILLIS)) || invalid_diagnostic
+((total_millis <= MAX_OBSERVED_TOTAL_MILLIS)) || invalid_diagnostic
 ((first_byte_millis <= total_millis)) || invalid_diagnostic
 ((tcp_connect_millis <= total_millis)) || invalid_diagnostic
 ((tls_connect_millis <= total_millis)) || invalid_diagnostic
