@@ -218,7 +218,30 @@ esac
 [[ "${url%%:*}" == "$scheme_category" ]] || invalid_diagnostic
 
 seconds_to_millis() {
-	awk -v seconds="$1" 'BEGIN { printf "%.0f\n", seconds * 1000 }'
+	awk -v seconds="$1" 'BEGIN {
+		millis = seconds * 1000
+		if (seconds > 0 && millis < 1) {
+			millis = 1
+		}
+		printf "%.0f\n", millis
+	}'
+}
+
+seconds_delta_to_millis() {
+	awk -v started="$1" -v completed="$2" 'BEGIN {
+		if (completed < started) {
+			exit 1
+		}
+		if (completed == 0) {
+			print 0
+			exit
+		}
+		millis = (completed - started) * 1000
+		if (millis < 1) {
+			millis = 1
+		}
+		printf "%.0f\n", millis
+	}'
 }
 
 tcp_connect_millis="$(seconds_to_millis "$tcp_connect_seconds")"
@@ -230,8 +253,9 @@ tls_verification=not_applicable
 if [[ "$scheme_category" == https ]]; then
 	tls_verification=failed
 	if ((tls_connect_millis > 0)); then
-		((tls_connect_millis >= tcp_connect_millis)) || invalid_diagnostic
-		tls_handshake_millis=$((tls_connect_millis - tcp_connect_millis))
+		tls_handshake_millis="$(
+			seconds_delta_to_millis "$tcp_connect_seconds" "$tls_connect_seconds"
+		)" || invalid_diagnostic
 		[[ "$tls_verify_result" == 0 ]] || invalid_diagnostic
 		tls_verification=verified
 	fi

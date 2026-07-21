@@ -47,6 +47,25 @@ if [[ "${PHASE35_HTTP_TEST_CURL_DISPATCH:-false}" == true ]]; then
 
 	case "$scenario" in
 	ready) ;;
+	submillisecond_ready)
+		tcp_seconds=0.0004
+		total_seconds=0.0009
+		first_byte_seconds=0.0008
+		;;
+	submillisecond_https_ready)
+		scheme=https
+		tcp_seconds=0.0002
+		tls_seconds=0.0004
+		total_seconds=0.0009
+		first_byte_seconds=0.0008
+		;;
+	submillisecond_non_success)
+		tcp_seconds=0.0004
+		total_seconds=0.0009
+		first_byte_seconds=0.0008
+		response_status=503
+		headers=$'HTTP/1.1 503 Service Unavailable\r\nContent-Type: application/json\r\nContent-Length: 27\r\n\r\n'
+		;;
 	tcp_connection_failure)
 		exit_code=7
 		actual_exit=7
@@ -209,7 +228,7 @@ run_case() {
 	local scenario="$1"
 	shift
 	local case_url="$raw_origin_canary"
-	if [[ "$scenario" == tls_handshake_failure ]]; then
+	if [[ "$scenario" == tls_handshake_failure || "$scenario" == submillisecond_https_ready ]]; then
 		case_url="https://raw-origin-canary.invalid:18443"
 	fi
 	set +e
@@ -296,6 +315,9 @@ test_terminal_matrix_and_invalid_fallback() {
 		invalid_json \
 		invalid_hostname_schema \
 		ready \
+		submillisecond_ready \
+		submillisecond_https_ready \
+		submillisecond_non_success \
 		malformed_extra \
 		process_status_mismatch \
 		body_size_mismatch; do
@@ -308,12 +330,18 @@ test_terminal_matrix_and_invalid_fallback() {
 		# Assert
 		expected="$scenario"
 		case "$scenario" in
+		submillisecond_ready | submillisecond_https_ready)
+			expected=ready
+			;;
+		submillisecond_non_success)
+			expected=non_success_response_status
+			;;
 		malformed_extra | process_status_mismatch | body_size_mismatch)
 			expected=http_diagnostic_invalid
 			;;
 		esac
 		if [[ "$expected" == ready ]]; then
-			[[ "$run_status" == 0 ]] || fail_test "ready adapter case failed"
+			[[ "$run_status" == 0 ]] || fail_test "${scenario} ready adapter case failed"
 		else
 			[[ "$run_status" != 0 ]] || fail_test "${scenario} unexpectedly succeeded"
 		fi
@@ -328,6 +356,64 @@ test_terminal_matrix_and_invalid_fallback() {
 		assert_absent "$stderr_file" 'raw-origin-canary|fixture-host|raw-curl-error-canary'
 		assert_absent "${protected_root}/http-original/projection" 'raw-origin-canary|fixture-host|raw-curl-error-canary'
 	done
+}
+
+test_submillisecond_observation_preserves_terminal_precedence() {
+	# Arrange
+	prepare_case attempt_12_terminal_precedence
+
+	# Act
+	run_case submillisecond_non_success
+
+	# Assert
+	[[ "$run_status" != 0 ]] || fail_test "non-success response unexpectedly became ready"
+	assert_line "$stdout_file" 'category=non_success_response_status'
+	jq -e '.terminal_category == "non_success_response_status"' \
+		"${protected_root}/http-original/projection" >/dev/null ||
+		fail_test "sub-millisecond observation lost its precise terminal category"
+}
+
+test_duration_quantization_preserves_presence() {
+	# Arrange / Act: exact zero retains the absence sentinel.
+	prepare_case exact_zero_duration
+	run_case tcp_connection_failure
+
+	# Assert
+	jq -e '.tcp_connect_millis == 0' \
+		"${protected_root}/http-original/projection" >/dev/null ||
+		fail_test "exact zero TCP duration did not remain absent"
+
+	# Arrange / Act: ordinary durations retain their current integer projection.
+	prepare_case ordinary_durations
+	run_case ready
+
+	# Assert
+	jq -e \
+		'.tcp_connect_millis == 5 and .tls_handshake_millis == 0 and .first_byte_millis == 9 and .total_millis == 12' \
+		"${protected_root}/http-original/projection" >/dev/null ||
+		fail_test "ordinary duration projection changed"
+
+	# Arrange / Act: positive sub-millisecond HTTP durations remain present.
+	prepare_case attempt_12_submillisecond_http
+	run_case submillisecond_ready
+
+	# Assert
+	[[ "$run_status" == 0 ]] || fail_test "attempt-12 boundary did not reach ready"
+	jq -e \
+		'.tcp_connect_millis == 1 and .tls_handshake_millis == 0 and .first_byte_millis == 1 and .total_millis == 1 and .terminal_category == "ready"' \
+		"${protected_root}/http-original/projection" >/dev/null ||
+		fail_test "sub-millisecond HTTP durations lost presence"
+
+	# Arrange / Act: derived positive TLS duration also remains present.
+	prepare_case submillisecond_https
+	run_case submillisecond_https_ready
+
+	# Assert
+	[[ "$run_status" == 0 ]] || fail_test "sub-millisecond HTTPS boundary did not reach ready"
+	jq -e \
+		'.tcp_connect_millis == 1 and .tls_handshake_millis == 1 and .first_byte_millis == 1 and .total_millis == 1 and .terminal_category == "ready"' \
+		"${protected_root}/http-original/projection" >/dev/null ||
+		fail_test "sub-millisecond HTTPS durations lost presence"
 }
 
 test_ready_separates_private_hostname() {
@@ -372,6 +458,8 @@ test_unauthorized_override_persists_invalid_projection_without_curl() {
 }
 
 test_terminal_matrix_and_invalid_fallback
+test_duration_quantization_preserves_presence
+test_submillisecond_observation_preserves_terminal_precedence
 test_ready_separates_private_hostname
 test_unauthorized_override_persists_invalid_projection_without_curl
 
