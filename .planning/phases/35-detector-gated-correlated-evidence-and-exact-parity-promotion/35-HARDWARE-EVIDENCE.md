@@ -869,3 +869,37 @@ The attempt-12 root is sealed non-promotable and cannot be reused, retried, or
 spliced. Attempts beyond 12 are not authorized. Task 2 and Phase 35 remain
 incomplete; Task 3, checklist promotion, evidence admission, and
 `35-04-SUMMARY.md` remain prohibited from this outcome.
+
+## Attempt 13 Exact-Head Software Gate
+
+The progress-gated hardware policy and Phase 35 attempt authority were committed
+before hardware preparation. At clean exact source
+`c93c34cc2d0956a6df3a598a1654f29b689e141d`, the policy contract, Phase 35
+HTTP/correlated/promotion contracts, Phase 30 non-promotion contract, reference,
+parity, lifecycle, redaction, diff, and mandatory Rust gates passed. The
+repo-owned preflight-only command then rebuilt and admitted the exact package in
+software, reported `status=preflight_passed`, and proved current-HEAD equality.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-21T05:20:00Z` |
+| Next authorized attempt ordinal | `13` |
+| Attempt 13 command invoked | `false` |
+| Source commit | `c93c34cc2d0956a6df3a598a1654f29b689e141d` |
+| Reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
+| Board category | `205` |
+| Ordered software gates passed | `true` |
+| Hardware policy contract passed | `true` |
+| Exact package capability digest | `de19eee758a1eaa08a369bb7d1dea8e43a6be73cf595e8aea0626e786e999e24` |
+| Preflight status | `preflight_passed` |
+| Current HEAD equal | `true` |
+| Preflight effects permitted | `false` |
+| Detector invoked | `false` |
+| Credential accessed | `false` |
+| Device or network request made | `false` |
+| Evidence admitted or promoted | `false` |
+
+This software checkpoint does not reuse or alter attempts 1 through 12 and does
+not itself consume attempt ordinal 13. The next action is to commit this redacted
+checkpoint, rerun preflight at that resulting exact head, and then invoke the
+full attempt-13 command exactly once with a fresh protected root.
