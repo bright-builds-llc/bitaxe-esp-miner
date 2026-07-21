@@ -903,3 +903,65 @@ This software checkpoint does not reuse or alter attempts 1 through 12 and does
 not itself consume attempt ordinal 13. The next action is to commit this redacted
 checkpoint, rerun preflight at that resulting exact head, and then invoke the
 full attempt-13 command exactly once with a fresh protected root.
+
+## Attempt 13 Stop Checkpoint
+
+Attempt 13 ran the full Phase 35 command exactly once from clean exact source
+`02f128db56b332e50e11f57935f29e22e3830f66`. The exact-current-package gate,
+sole internal detector, opaque credential gate, dual private-first flash and
+Boot A classification all passed. The instrumented original-settings read then
+failed closed with primary category `http_diagnostic_invalid` before PATCH,
+mutation, or reboot.
+
+The same primary category recurred after the targeted sub-millisecond timing
+fix from `58b7e33a`. The canonical progress decision is therefore
+`stop_repeated_boundary`, not another fresh ordinal. The private HTTP projection
+remained category-safe, restoration was not needed, cleanup completed, and the
+fresh root was sealed non-promotable and non-reusable.
+
+| Field | Recorded value |
+| --- | --- |
+| Completion | `2026-07-21T05:34:36Z` |
+| Attempt ordinal | `13` |
+| Source commit | `02f128db56b332e50e11f57935f29e22e3830f66` |
+| Reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
+| Board category | `205` |
+| Full command invocations | `1` |
+| Exact package capability digest | `a999925e633af27ac8777dea8fab202caecdec4b3c6d0b86c109253d988826e2` |
+| Package digest | `c07c0a6110895519b76f5d2442d5af8998d93a7820149bf64edc1f4e5c898fe5` |
+| Current HEAD verified | `true` |
+| Detector invocations | `1` |
+| Selected candidate count | `1` |
+| Board-info verified | `true` |
+| Opaque input gate passed | `true` |
+| Evidence mode | `dual_private_first` |
+| Private classifier input present | `true` |
+| Commit-redacted derivative present | `true` |
+| Boot A classification status | `passed` |
+| Boot A ordinal | `10967` |
+| Instrumented original-settings GET reached | `true` |
+| HTTP diagnostic classification status | `failed` |
+| Failure category | `http_diagnostic_invalid` |
+| Failure boundary | `original_settings_http_diagnostic_classification` |
+| Same category after targeted fix | `true` |
+| Progress decision | `stop_repeated_boundary` |
+| PATCH mutation started | `false` |
+| Approved reboot started | `false` |
+| Restoration | `not_needed` |
+| Restoration secondary category | `none` |
+| Process-tree cleanup | `true` |
+| Cleanup secondary category | `none` |
+| Protected parent mode | `0700` |
+| Supervisor root mode | `0700` |
+| Private file modes | `0600` |
+| Protected root reusable | `false` |
+| Admission invoked | `false` |
+| Evidence generation changed | `false` |
+| Checklist changed | `false` |
+| Task 3 authorized | `false` |
+| Plan summary created | `false` |
+| Later ordinal authorized | `false` |
+
+Attempt 13 is immutable non-promotion history. The progress-gated loop stops at
+this repeated post-fix boundary. Phase 35 Task 2 remains incomplete; Task 3,
+evidence admission, checklist promotion, and `35-04-SUMMARY.md` remain blocked.

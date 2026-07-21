@@ -2,9 +2,9 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: executing
-stopped_at: Phase 35 Plan 04 Task 2 preparing authorized attempt 13 under the progress-gated hardware policy
-last_updated: "2026-07-21T05:05:30Z"
+status: blocked
+stopped_at: Phase 35 Plan 04 Task 2 stop_repeated_boundary after attempt 13 repeated http_diagnostic_invalid
+last_updated: "2026-07-21T05:34:36Z"
 last_activity: "2026-07-21"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-21 - Persisted the progress-gated hardware policy and prepared Phase 35 attempt 13 authority without running hardware
+Last activity: 2026-07-21 - Sealed attempt 13 and stopped the hardware loop after the post-fix HTTP diagnostic boundary repeated
 
 ## Current Position
 
@@ -25,16 +25,12 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 is active after the attempt-12 `http_diagnostic_invalid`
-  root was sealed and its sub-millisecond timing defect was repaired in
-  `58b7e33a`.
-- **Next step:** Commit and verify the synchronized policy artifacts, rerun the
-  complete exact-current-HEAD software/preflight gate, then run authorized
-  attempt 13 once with a fresh protected root. Attempts 1 through 12 remain
-  immutable and non-reusable. A later fresh ordinal requires
-  `continue_after_verified_fix` or `continue_after_manual_remediation`; only
-  `complete` unlocks Task 3, evidence admission, checklist promotion, or
-  `35-04-SUMMARY.md`.
+- **Status:** Task 2 is blocked after attempt 13 repeated
+  `http_diagnostic_invalid` following the targeted timing fix. The fresh root is
+  sealed non-promotable and non-reusable.
+- **Next step:** Preserve the `stop_repeated_boundary` disposition. No attempt
+  14, Task 3, evidence admission, checklist promotion, or `35-04-SUMMARY.md` is
+  authorized by the current workflow.
 
 ## Project Reference
 
@@ -424,6 +420,21 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
   process. No retry, admission, generation change, checklist promotion, Task 3,
   plan summary, or push is permitted from this result.
 
+## Decisions (Phase 35 Attempt 13)
+
+- Exact-head software gates and preflight passed at source
+  `02f128db56b332e50e11f57935f29e22e3830f66`, with package capability digest
+  `a999925e633af27ac8777dea8fab202caecdec4b3c6d0b86c109253d988826e2`.
+- The full hardware command ran exactly once. The sole detector, opaque input
+  gate, dual private-first flash, and Boot A classification passed before the
+  original-settings HTTP classifier failed with `http_diagnostic_invalid`.
+- PATCH and reboot did not start. Restoration was not needed, cleanup passed,
+  and no secondary category replaced the primary failure. The fresh root is
+  sealed non-promotable and non-reusable.
+- Because the same primary category recurred after its targeted verified fix,
+  the canonical decision is `stop_repeated_boundary`. No attempt 14 or Phase 35
+  promotion work is authorized by the current workflow.
+
 ## Decisions (Phase 28.1.1 child 5)
 
 - Wave 0: `forced_ab_label` defaults to `count_asic_chips_rx_loop_parity` for Ultra 205 TX-match + interval_256 + config_expected/immediate
@@ -446,18 +457,16 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete after attempt 12 failed closed with
-  `http_diagnostic_invalid`. Attempts 1 through 12 are sealed, non-promotable,
-  and non-reusable. No hard blocker is currently active: attempt 13 is the first
-  authorized fresh ordinal after the synchronized exact-current-HEAD gate.
-  Task 3 and `35-04-SUMMARY.md` remain prohibited until `complete`.
+- Phase 35 Plan 04 Task 2 remains incomplete after attempt 13 repeated the
+  post-fix `http_diagnostic_invalid` boundary. Attempts 1 through 13 are sealed,
+  non-promotable, and non-reusable. The selected policy outcome is
+  `stop_repeated_boundary`; Task 3 and `35-04-SUMMARY.md` remain prohibited.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 before the exact-current-HEAD gate for
-  authorized attempt 13
-- **Resume:** Finish the quick-task artifact verification/commit, rerun every
-  Phase 35 software and preflight gate at that exact head, then invoke attempt
-  13 exactly once with a fresh protected root. Follow the canonical progress
-  decision after any sealed failure. Task 3, evidence admission, checklist
-  promotion, and `35-04-SUMMARY.md` remain blocked until `complete`.
+- **Stopped at:** Phase 35 Plan 04 Task 2 with `stop_repeated_boundary` after
+  attempt 13
+- **Resume:** Do not run attempt 14 under the current workflow. Preserve the
+  sealed roots and pending parity truth unless a separately authorized plan
+  changes the blocked contract. Task 3, evidence admission, checklist
+  promotion, and `35-04-SUMMARY.md` remain blocked.

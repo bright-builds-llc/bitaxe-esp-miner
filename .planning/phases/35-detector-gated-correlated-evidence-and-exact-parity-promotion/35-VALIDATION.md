@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 13 is the first authorized fresh ordinal. Invoke `just phase35-evidence capture-timeout-seconds=360 wifi-credentials=wifi-credentials.json` exactly once for each fresh root with ≥420-second caller wall clock. The command owns the sole detector call; the caller must not check/open/stat the opaque credential path, and the command may validate/access it only after detector capability succeeds. A later ordinal requires `continue_after_verified_fix` or `continue_after_manual_remediation`. Require protected root, restoration, cleanup, redaction, exact admission, and the first eligible atomically admitted result. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 13 invoked the command once from exact source `02f128db56b332e50e11f57935f29e22e3830f66`. The detector, Boot A private classification, and cleanup passed, but the original-settings boundary repeated `http_diagnostic_invalid` after its targeted fix. The root is sealed non-promotion and the selected decision is `stop_repeated_boundary`; no eligible evidence root or later ordinal is authorized. |
 
 ## Validation Sign-Off
 
