@@ -128,5 +128,5 @@
 
 1. Date: 2026-07-20
 2. What went wrong: Repeating a hardware attempt without a verified fix or objectively changed boundary consumed a fresh ordinal but added no information and could reproduce the same failure indefinitely.
-3. Preventive rule: Permit another hardware attempt only after one targeted fix is verified across the real failing boundary or an authorized non-invasive remediation objectively proves that boundary changed; stop when the same typed failure recurs after its targeted verified fix.
-4. Trigger signal to catch it earlier: A proposed continuation changes only the attempt number, evidence root, timing, or hope of success while the code, inputs, physical state, and measured failure boundary remain unchanged.
+3. Preventive rule: Permit another hardware attempt only after one targeted fix is verified across the real failing boundary or an authorized non-invasive remediation objectively proves that boundary changed; stop when the same redacted authoritative boundary signature recurs after its targeted verified fix. A repeated coarse category may return to diagnosis only when closed discriminator fields prove a distinct signature.
+4. Trigger signal to catch it earlier: A proposed continuation changes only the attempt number, evidence root, category label, timing, or hope of success while the code, inputs, physical state, and measured boundary signature remain unchanged.

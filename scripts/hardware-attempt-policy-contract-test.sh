@@ -106,7 +106,11 @@ OUTCOMES
 require_policy_literal 'There is no fixed numeric attempt cap.' attempt-cap
 require_policy_literal 'There is also no unchanged blind retry:' blind-retry
 forbid_policy_regex '(maximum|max|at most|no more than)[[:space:]]+[0-9]+[[:space:]]+(hardware[[:space:]]+)?attempts?' numeric-attempt-cap
-require_policy_literal 'The same typed failure recurred once after its targeted fix was verified at the real boundary.' repeated-boundary
+require_policy_literal 'The same authoritative boundary signature recurred once after its targeted fix was verified at the real boundary.' repeated-boundary
+require_policy_literal 'category plus the minimum shareable discriminator fields needed to distinguish' boundary-signature
+require_policy_literal 'A repeated coarse category with a newly' boundary-signature
+require_policy_literal 'renamed category or discriminator that describes unchanged conditions is not a' boundary-signature
+require_policy_literal 'raw identifiers, secrets, paths,' boundary-signature
 require_policy_literal "The active phase's genuine hardware success and evidence criteria are all satisfied." genuine-completion
 
 while IFS= read -r invariant; do
@@ -127,7 +131,7 @@ INVARIANTS
 while IFS= read -r progress_requirement; do
 	require_policy_literal "$progress_requirement" progress-decision
 done <<'PROGRESS'
-diagnosis of the
+diagnosis of the authoritative boundary signature
 one targeted fix
 regression that crosses the real production
 all required software verification gates

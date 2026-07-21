@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 15 invoked the command once at exact source `1c4979f67c0b12daee356ae5df1c1c5468ba1013` and repeated `request_transmission_incomplete`, now with curl timeout category 28 after TCP connection. The root is sealed non-promotion. The current policy selects `stop_repeated_boundary`; software diagnosis is allowed, but no attempt 16 is authorized without a later explicit policy decision after a distinct verified fix. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 15 invoked the command once at exact source `1c4979f67c0b12daee356ae5df1c1c5468ba1013` and sealed non-promotion. Commit `d097bbbf` replaces the invalid host curl counter with schema-v2 positive send-completion evidence and passes real adapter/runfiles regressions. The clarified signature policy plus the user's latest post-fix authority permits attempt 16 only after another complete exact-current-HEAD gate; unchanged retries remain prohibited. |
 
 ## Validation Sign-Off
 

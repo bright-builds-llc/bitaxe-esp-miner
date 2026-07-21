@@ -1153,3 +1153,44 @@ it does not erase the repository's repeated-primary-category stop. Software
 diagnosis of the timeout semantics remains authorized. No attempt 16 is
 authorized unless a later explicit policy decision validly reopens the loop
 after a distinct regression-backed fix.
+
+## Attempt 15 Diagnostic Repair and Attempt 16 Authority
+
+Deterministic local peers proved that the host curl build reports a zero request
+size after receiving confirmation that the complete bodyless GET arrived,
+including on a successful response. Attempt 15 therefore did not prove an
+incomplete send; its coarse terminal category concealed a distinct response-
+timeout transport signature.
+
+Commit `d097bbbf` replaces the production curl request with a schema-v2
+repo-owned Rust probe. It records a positive request-send completion timestamp
+only after every request byte is accepted and the transport flush succeeds.
+Partial bytes remain bounded diagnostic facts, TLS uses certificate and hostname
+verification, and raw request material never reaches disk or terminal output.
+
+| Field | Recorded value |
+| --- | --- |
+| Repair completion | `2026-07-21T23:20:46Z` |
+| Hardware invoked during diagnosis or repair | `false` |
+| Device request issued during diagnosis or repair | `false` |
+| Credential access during diagnosis or repair | `false` |
+| HTTP boundary schema | `phase35-http-boundary-v2` |
+| Positive send boundary | `full_write_and_transport_flush` |
+| Valid-response real adapter regression | `passed` |
+| Silent-response real adapter regression | `response_status_missing` |
+| Short-write regression | `request_transmission_incomplete` |
+| TLS failure regression | `tls_handshake_failure` |
+| Correlated supervisor regression | `passed` |
+| Direct and Bazel/runfiles coverage | `passed` |
+| Raw request persisted | `false` |
+| Repair commit | `d097bbbf` |
+| Progress decision | `continue_after_verified_fix` |
+| Next authorized attempt ordinal | `16` |
+
+The clarified hardware policy compares a phase-declared redacted authoritative
+boundary signature: the terminal category plus its minimum closed discriminator
+fields. It still stops the same post-fix signature and explicitly forbids
+renaming unchanged conditions. The user's latest 2026-07-21 post-fix authority
+permits attempt 16 only after the clean exact-current-HEAD software gate and
+preflight. The fresh-root, one-invocation, safety, privacy, restoration, cleanup,
+and no-promotion rules remain unchanged.

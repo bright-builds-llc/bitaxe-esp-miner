@@ -14,7 +14,7 @@ continuation decision:
 | `continue_after_verified_fix`       | A diagnosed repository defect received one targeted fix, the real failing boundary has a regression, every required software gate passes, and a fresh preflight binds the new exact HEAD and package identity. |
 | `continue_after_manual_remediation` | An authorized non-invasive remediation has objective evidence that the failed boundary changed.                                                                                                                |
 | `complete`                          | The active phase's genuine hardware success and evidence criteria are all satisfied.                                                                                                                           |
-| `stop_repeated_boundary`            | The same typed failure recurred once after its targeted fix was verified at the real boundary.                                                                                                                 |
+| `stop_repeated_boundary`            | The same authoritative boundary signature recurred once after its targeted fix was verified at the real boundary.                                                                                             |
 | `stop_hardware_blocker`             | An unresolved hardware or physical-environment boundary prevents truthful progress.                                                                                                                            |
 | `stop_authority_boundary`           | The next action exceeds the user's, repository's, or active phase's authority.                                                                                                                                 |
 | `stop_impossible_contract`          | The required evidence contract cannot be satisfied without contradiction or weakened truth.                                                                                                                    |
@@ -22,9 +22,19 @@ continuation decision:
 There is no fixed numeric attempt cap. There is also no unchanged blind retry:
 an attempt may continue only after verified repository progress or an authorized
 manual remediation with objective proof that the failed boundary changed. A
-repeated post-fix typed boundary stops immediately. Completion is reserved for
+repeated post-fix boundary signature stops immediately. Completion is reserved for
 real phase success; unresolved hardware, authority, and impossible-contract
 outcomes must remain explicit instead of being relabeled or weakened.
+
+An authoritative boundary signature is a closed, redacted tuple declared by
+the active phase and produced by its typed diagnostic. It includes the terminal
+category plus the minimum shareable discriminator fields needed to distinguish
+where that category arose. It never includes raw identifiers, secrets, paths,
+unbounded values, or free-form errors. A repeated coarse category with a newly
+discriminating signature may return to diagnosis, but it authorizes no attempt
+until its distinct cause has a real-boundary regression and verified fix. A
+renamed category or discriminator that describes unchanged conditions is not a
+new signature and cannot evade the repeated-boundary stop.
 
 ## Fresh-attempt contract
 
@@ -50,12 +60,11 @@ Every continuation is a new attempt and must satisfy all of these invariants:
 
 ## Progress decisions
 
-A verified-fix continuation requires all of the following: diagnosis of the
-typed failure, one targeted fix, a regression that crosses the real production
-boundary, all required software verification gates, and a new exact-current-HEAD
-preflight whose source and package identities agree. Tests at a mocked or
-in-process substitute do not replace a required operating-system, runfiles,
-transport, or device boundary.
+A verified-fix continuation requires all of the following: diagnosis of the authoritative boundary signature,
+one targeted fix, a regression that crosses the real production boundary, all required software verification gates, and a
+new exact-current-HEAD preflight whose source and package identities agree.
+Tests at a mocked or in-process substitute do not replace a required
+operating-system, runfiles, transport, or device boundary.
 
 A manual-remediation continuation is limited to an action already authorized by
 the active plan and repository guidance. It must be non-invasive and must yield
