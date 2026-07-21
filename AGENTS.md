@@ -376,3 +376,10 @@ Agents executing phase evidence wrappers (`phase23-evidence`, `phase25-evidence`
 - Private classifiers consume an immutable secret-sanitized artifact before a distinct commit-redacted projection is derived. Cleanup never implies artifact deletion.
 - Before committing evidence-related changes, run `just verify-redaction`. CI must call the same command with an explicit base and head.
 - Redaction exceptions require a reviewed exact path/category entry in `scripts/redaction-exceptions.tsv`; inline, CLI, wildcard, and environment bypasses are forbidden.
+
+### Progress-Gated Hardware Attempts
+
+- Follow `docs/hardware/hardware-attempt-policy.md` for every current or future hardware attempt. The closed outcomes are `continue_after_verified_fix`, `continue_after_manual_remediation`, `complete`, `stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`, and `stop_impossible_contract`.
+- There is no fixed attempt cap and no unchanged blind retry. Continuation requires verified repository progress or authorized non-invasive remediation with objective boundary-change proof; one recurrence of the same typed boundary after its targeted verified fix selects the repeated-boundary stop.
+- Every continuation uses a fresh ordinal, exact-current-HEAD package/preflight, a mode-0700 parent, a nonexistent supervisor-owned child, distinct mode-0600 sibling logs, an immutable root, earliest-failure precedence, and one repo-owned command invocation.
+- Detection, effects, safety, recovery, evidence, tests, direct-UART/pin authority, archived Phase 28.1.1 closure, Phase 30 non-promotion, and evidence privacy remain phase-gated and unchanged.

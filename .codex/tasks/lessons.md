@@ -123,3 +123,10 @@
 2. What went wrong: Commit redaction transformed the same protected monitor artifact that the Boot A classifier still needed, so required private runtime-origin structure became invalid before the HTTP diagnostic boundary was reached.
 3. Preventive rule: Remove `NeverPersistRaw` values before the first write, preserve the resulting mode-`0600` secret-sanitized input for private classification, and produce a distinct commit-redacted shareable copy; never run a lossy redactor in place before all authorized private classifiers have consumed their required fields.
 4. Trigger signal to catch it earlier: A downstream classifier requires a sensitive structured field from an artifact that an upstream step also sanitizes, redacts, truncates, or rewrites for sharing.
+
+## lesson-hardware-retries-require-new-information | 2026-07-20 23:43
+
+1. Date: 2026-07-20
+2. What went wrong: Repeating a hardware attempt without a verified fix or objectively changed boundary consumed a fresh ordinal but added no information and could reproduce the same failure indefinitely.
+3. Preventive rule: Permit another hardware attempt only after one targeted fix is verified across the real failing boundary or an authorized non-invasive remediation objectively proves that boundary changed; stop when the same typed failure recurs after its targeted verified fix.
+4. Trigger signal to catch it earlier: A proposed continuation changes only the attempt number, evidence root, timing, or hope of success while the code, inputs, physical state, and measured failure boundary remain unchanged.
