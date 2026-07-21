@@ -1194,3 +1194,41 @@ renaming unchanged conditions. The user's latest 2026-07-21 post-fix authority
 permits attempt 16 only after the clean exact-current-HEAD software gate and
 preflight. The fresh-root, one-invocation, safety, privacy, restoration, cleanup,
 and no-promotion rules remain unchanged.
+
+## Attempt 16 Checkpoint
+
+Attempt 16 ran the full Phase 35 command exactly once from clean exact source
+`823309599209cde451435c85bb882fe8a456f80d` after the complete software gate and
+exact-head preflight passed. It stopped before PATCH or mutation with the new
+authoritative boundary signature `response_status_missing` plus transport
+outcome `response_timeout`: TCP connected, the repository-owned probe completed
+and flushed the full request, and no response status, headers, or body arrived
+before the bounded deadline.
+
+| Field | Recorded value |
+| --- | --- |
+| Attempt ordinal | `16` |
+| Invocation count for root | `1` |
+| Source commit | `823309599209cde451435c85bb882fe8a456f80d` |
+| Software gate | `passed` |
+| Exact-head preflight | `passed` |
+| Supervisor result | `non_promotion` |
+| HTTP boundary schema | `phase35-http-boundary-v2` |
+| HTTP terminal category | `response_status_missing` |
+| Transport outcome | `response_timeout` |
+| TCP connected | `true` |
+| Request transmission complete | `true` |
+| Response status received | `false` |
+| Response headers received | `false` |
+| Response body received | `false` |
+| Mutation started | `false` |
+| Root reusable | `false` |
+| Progress decision | `diagnose_new_boundary` |
+
+The attempt-16 root is sealed non-promotable and non-reusable. This signature
+is distinct from the post-fix request-boundary signatures in attempts 14 and
+15, so the progress-gated policy authorizes software diagnosis but not an
+unchanged attempt 17. A later attempt requires a deterministic reproduction,
+regression-backed verified fix, clean committed head, and passing preflight, or
+a confirmed permitted non-invasive remediation. Task 3, evidence admission,
+checklist promotion, and `35-04-SUMMARY.md` remain blocked.

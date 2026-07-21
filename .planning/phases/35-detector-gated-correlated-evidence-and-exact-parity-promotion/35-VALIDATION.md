@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 15 invoked the command once at exact source `1c4979f67c0b12daee356ae5df1c1c5468ba1013` and sealed non-promotion. Commit `d097bbbf` replaces the invalid host curl counter with schema-v2 positive send-completion evidence and passes real adapter/runfiles regressions. The clarified signature policy plus the user's latest post-fix authority permits attempt 16 only after another complete exact-current-HEAD gate; unchanged retries remain prohibited. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 16 invoked the command once at exact source `823309599209cde451435c85bb882fe8a456f80d` after the complete gate passed. It proved TCP connection and complete request transmission, then sealed non-promotion with `response_status_missing` plus `response_timeout` before mutation. A later ordinal requires deterministic diagnosis and a verified fix or confirmed permitted non-invasive remediation; unchanged retry remains prohibited. |
 
 ## Validation Sign-Off
 

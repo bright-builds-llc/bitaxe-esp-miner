@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 gating authorized attempt 16
-last_updated: "2026-07-21T23:20:46Z"
+stopped_at: Phase 35 Plan 04 Task 2 diagnosing attempt 16 response timeout
+last_updated: "2026-07-21T23:38:12Z"
 last_activity: "2026-07-21"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-21 - Replaced the curl counter with positive send evidence and authorized exact-head-gated attempt 16
+Last activity: 2026-07-21 - Attempt 16 proved complete request transmission and exposed a response timeout
 
 ## Current Position
 
@@ -25,12 +25,14 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 is active. Attempt 15's false send-boundary classifier is
-  fixed in `d097bbbf`; attempts 1 through 15 remain sealed non-promotable and
-  non-reusable.
-- **Next step:** Run the complete exact-current-HEAD gate and preflight, then
-  invoke fresh attempt 16 exactly once. Task 3 and `35-04-SUMMARY.md` remain
-  blocked until `complete`.
+- **Status:** Task 2 is active. Attempts 1 through 16 remain sealed
+  non-promotable and non-reusable. Attempt 16 proved complete request
+  transmission and stopped at `response_status_missing` plus
+  `response_timeout` before mutation.
+- **Next step:** Reproduce and diagnose the attempt-16 response boundary. A
+  later attempt requires a verified fix or confirmed permitted non-invasive
+  remediation plus the complete exact-current-HEAD gate. Task 3 and
+  `35-04-SUMMARY.md` remain blocked until `complete`.
 
 ## Project Reference
 
@@ -520,14 +522,16 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 15 are sealed,
-  non-promotable, and non-reusable. Attempt 16 is authorized only after the
-  complete exact-current-HEAD gate and preflight. Task 3 and
-  `35-04-SUMMARY.md` remain prohibited until `complete`.
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 16 are sealed,
+  non-promotable, and non-reusable. Attempt 16 exposed the new authoritative
+  signature `response_status_missing` plus `response_timeout`; unchanged retry
+  is prohibited. Task 3 and `35-04-SUMMARY.md` remain prohibited until
+  `complete`.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 gating authorized attempt 16
-- **Resume:** Run the complete exact-current-HEAD gate and preflight, then invoke
-  fresh attempt 16 exactly once. Task 3, evidence admission, checklist
-  promotion, and `35-04-SUMMARY.md` remain blocked until `complete`.
+- **Stopped at:** Phase 35 Plan 04 Task 2 diagnosing attempt 16 response timeout
+- **Resume:** Deterministically reproduce and diagnose the response-side
+  boundary, then add a regression-backed fix or record a defined blocker. Task
+  3, evidence admission, checklist promotion, and `35-04-SUMMARY.md` remain
+  blocked until `complete`.
