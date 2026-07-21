@@ -47,9 +47,10 @@ Deliver one bounded, detector-gated Ultra 205 evidence chain for the exact curre
 
 ### Attempt lineage and private classifier boundary
 
-- **D-16:** Attempts 1 through 11 are sealed, immutable historical evidence. The private-first software correction does not rewrite, retry, splice, promote, or change the conclusion of any prior attempt.
+- **D-16:** Attempts 1 through 12 are sealed, immutable historical evidence. The private-first and HTTP-timing software corrections do not rewrite, retry, splice, promote, or change the conclusion of any prior attempt.
 - **D-17:** Boot A classification and private target derivation consume only the immutable, secret-sanitized `flash-monitor.classifier-input.log` below the protected root. Dual `flash-monitor` closes and hashes that private log and its private record without creating `flash-monitor.log`. Only after the classifier passes does the supervisor invoke the already-built software-only finalizer with the verified digest; that finalizer creates the distinct commit-redacted compatibility and admission projection and proves the private digest is unchanged.
-- **D-18:** The next possible hardware run is attempt 12. It requires a newly passing exact-current-HEAD preflight and separate fresh user authorization after that preflight; software completion alone does not authorize detector, credential, flash, device, HTTP, mutation, reboot, admission, or promotion effects.
+- **D-18:** Attempt 12 is sealed non-promotion history after `http_diagnostic_invalid` before PATCH or mutation. Its root remains non-reusable, and the verified HTTP-timing repair does not retroactively change that conclusion.
+- **D-19:** Attempt 13 is the first authorized fresh continuation. It requires a passing exact-current-HEAD preflight and every fresh-attempt invariant in `docs/hardware/hardware-attempt-policy.md`. Any later fresh ordinal requires `continue_after_verified_fix` or `continue_after_manual_remediation`; elapsed time, a renamed category, or an unchanged retry is never progress. Each fresh root invokes the full Phase 35 hardware command exactly once, and only `complete` may unlock admission audit or `35-04-SUMMARY.md`.
 
 ### the agent's Discretion
 
@@ -127,7 +128,7 @@ Deliver one bounded, detector-gated Ultra 205 evidence chain for the exact curre
 - Add a Phase 35 `just`/Bazel evidence entrypoint that composes the detector, package admission, the Phase 33-compatible hardware shell, and the parity CLI.
 - Extend the parity tool with Phase 35 run-contract parsing, two-epoch correlation, inventory/redaction/no-actuation validation, and the exhaustive promotion matrix.
 - Extend the checked-in parity checklist only through the admitted Phase 35 generation and exact row allowlist.
-- Add simulation/failure-injection fixtures for every gate before the sole real hardware qualification is attempted.
+- Keep simulation and failure-injection fixtures green before each fresh real-hardware qualification attempt.
 
 </code-context>
 

@@ -2,10 +2,10 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: blocked
-stopped_at: Phase 35 Plan 04 Task 2 sealed after attempt-12 http_diagnostic_invalid
-last_updated: "2026-07-20T22:30:14Z"
-last_activity: "2026-07-20"
+status: executing
+stopped_at: Phase 35 Plan 04 Task 2 preparing authorized attempt 13 under the progress-gated hardware policy
+last_updated: "2026-07-21T05:05:30Z"
+last_activity: "2026-07-21"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-20 - Sealed the sole authorized attempt-12 root after typed HTTP diagnostic failure with cleanup confirmed
+Last activity: 2026-07-21 - Persisted the progress-gated hardware policy and prepared Phase 35 attempt 13 authority without running hardware
 
 ## Current Position
 
@@ -25,13 +25,16 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 blocked after the sole authorized attempt 12 failed closed
-  at `http_diagnostic_invalid`
-- **Next step:** Stop. Attempts 1 through 12 are sealed immutable history and no
-  attempt beyond 12 is authorized. Do not run Task 3, admit or promote evidence,
-  change the checklist, or create `35-04-SUMMARY.md` from this outcome. Any
-  future continuation requires separately planned scope and fresh explicit user
-  authority; it must not reuse, retry, or splice an existing root.
+- **Status:** Task 2 is active after the attempt-12 `http_diagnostic_invalid`
+  root was sealed and its sub-millisecond timing defect was repaired in
+  `58b7e33a`.
+- **Next step:** Commit and verify the synchronized policy artifacts, rerun the
+  complete exact-current-HEAD software/preflight gate, then run authorized
+  attempt 13 once with a fresh protected root. Attempts 1 through 12 remain
+  immutable and non-reusable. A later fresh ordinal requires
+  `continue_after_verified_fix` or `continue_after_manual_remediation`; only
+  `complete` unlocks Task 3, evidence admission, checklist promotion, or
+  `35-04-SUMMARY.md`.
 
 ## Project Reference
 
@@ -370,6 +373,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | 260719-g3g | Add deterministic lesson loading and maintenance with an 8k-token budget, selective over-budget loading, and append-only audits | 2026-07-19 | 713fe593 | Verified | [260719-g3g-add-deterministic-lesson-loading-and-mai](./quick/260719-g3g-add-deterministic-lesson-loading-and-mai/) |
 | 260719-tfu | Instrument Phase 35 setting reads with typed redacted HTTP boundary diagnostics, preserve primary failure precedence, and software-verify without hardware | 2026-07-20 | fbe6b8ff | Verified | [260719-tfu-instrument-phase-35-setting-reads-with-t](./quick/260719-tfu-instrument-phase-35-setting-reads-with-t/) |
 | 260720-jwt | Implement repository-wide private-first evidence policy, additive dual-artifact capture, Phase 35 classifier-input repair, and staged/CI redaction guard | 2026-07-20 | 28fdd115 | Verified | [260720-jwt-implement-repository-wide-private-first-](./quick/260720-jwt-implement-repository-wide-private-first-/) |
+| 260720-wfa | Persist a repository-wide progress-gated hardware repair loop and synchronize Phase 35 for attempt 13 | 2026-07-21 | fc5c2f8d | Verified | [260720-wfa-persist-a-repository-wide-progress-gated](./quick/260720-wfa-persist-a-repository-wide-progress-gated/) |
 
 ## Decisions (Quick 260720-jwt)
 
@@ -382,8 +386,28 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - The repository redaction guard scans staged or CI destination content plus
   the complete admitted tree. Changed content never receives legacy exceptions;
   zero-base pushes compare against the trusted default-branch merge base.
-- Attempts 1-11 remain immutable. The next possible continuation is attempt 12
-  with a fresh root, exact-current-head preflight, and separate authorization.
+- At Quick 260720-jwt completion, attempts 1-11 were immutable and attempt 12
+  was the next separately authorized fresh-root continuation. The later
+  progress-gated decision below supersedes only that authorization procedure,
+  not the historical evidence conclusion.
+
+## Decisions (Quick 260720-wfa)
+
+- `docs/hardware/hardware-attempt-policy.md` defines the closed progress
+  decisions for every phase-gated repo-owned hardware workflow. There is no
+  fixed attempt cap and no unchanged blind retry.
+- Every continuation owns a fresh ordinal, protected parent, nonexistent
+  supervisor child, mode-0600 sibling logs, immutable root, exact current HEAD,
+  and one full hardware-command invocation.
+- Attempts 1 through 12 remain sealed history. Attempt 13 is authorized after a
+  fresh exact-current-HEAD software/preflight gate. Later ordinals require
+  `continue_after_verified_fix` or `continue_after_manual_remediation`; a
+  repeated post-fix typed boundary selects `stop_repeated_boundary`.
+- Direct UART/pins, archived Phase 28.1.1, evidence privacy, Phase 30
+  non-promotion, and electrical-overstress restrictions remain unchanged.
+- Quick implementation commits `f481cf4a` and `fc5c2f8d` passed the software
+  policy, regression, Rust, redaction, reference, parity, lifecycle, and inert
+  preflight gates. This quick task did not execute attempt 13 or touch hardware.
 
 ## Decisions (Phase 35 Attempt 12)
 
@@ -391,7 +415,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
   `7fcad7090b94c04bee40a13552c857a3ac3ad2f1` with current-head equality and
   public package capability digest
   `2339efb0238f696abfffb4afcb9ffdb0452b65fe15fe02c3e7d8faee64b6be3d`.
-- The sole authorized attempt-12 command preserved the private-first ordering
+- The authorized attempt-12 command preserved the private-first ordering
   through successful Boot A classification and digest-bound flash projection,
   then failed closed at the original-settings HTTP diagnostic classifier with
   primary category `http_diagnostic_invalid` before PATCH or mutation.
@@ -422,16 +446,18 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete after the sole authorized attempt
-  12 failed closed with `http_diagnostic_invalid`. Attempts 1 through 12 are
-  sealed, non-promotable, and non-reusable; no retry or attempt beyond 12 is
-  authorized. Task 3 and `35-04-SUMMARY.md` remain prohibited.
+- Phase 35 Plan 04 Task 2 remains incomplete after attempt 12 failed closed with
+  `http_diagnostic_invalid`. Attempts 1 through 12 are sealed, non-promotable,
+  and non-reusable. No hard blocker is currently active: attempt 13 is the first
+  authorized fresh ordinal after the synchronized exact-current-HEAD gate.
+  Task 3 and `35-04-SUMMARY.md` remain prohibited until `complete`.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 after attempt-12
-  `http_diagnostic_invalid` non-promotion seal
-- **Resume:** Do not resume the Phase 35 hardware attempt lineage. Attempts 1
-  through 12 are sealed and no later attempt is authorized. Any future work
-  requires new user-directed scope and authority; Task 3, evidence admission,
-  checklist promotion, and `35-04-SUMMARY.md` remain blocked.
+- **Stopped at:** Phase 35 Plan 04 Task 2 before the exact-current-HEAD gate for
+  authorized attempt 13
+- **Resume:** Finish the quick-task artifact verification/commit, rerun every
+  Phase 35 software and preflight gate at that exact head, then invoke attempt
+  13 exactly once with a fresh protected root. Follow the canonical progress
+  decision after any sealed failure. Task 3, evidence admission, checklist
+  promotion, and `35-04-SUMMARY.md` remain blocked until `complete`.
