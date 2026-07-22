@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 17 invoked the command once at exact source `98463e8a735233b4e283b6535d3c9f375a984523` after both gates passed. It validates the 16 KiB HTTP task repair with a complete ready response, then seals non-promotion at the new pre-mutation category `pre_patch_mismatch`. The production epoch and post-loss reboot-boundary repair is regression-backed and selects `continue_after_verified_fix`; attempt 18 is authorized only after the complete exact-current-HEAD gate and fresh preflight. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 18 invoked the command once at exact source `065240279c4657945ffce70d2baa501b4da7ceae` after both gates passed. Boot A pre-capture and PATCH succeeded, then the post-PATCH retained-log response exposed malformed chunk framing after a coherent WebSocket capture. Restoration and cleanup passed. The missing WebSocket close-handshake boundary is regression-backed and selects `continue_after_verified_fix`; attempt 19 is authorized only after the complete exact-current-HEAD gate and fresh preflight. |
 
 ## Validation Sign-Off
 

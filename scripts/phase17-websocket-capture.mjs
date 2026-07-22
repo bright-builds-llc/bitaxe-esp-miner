@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 const allowedWebSocketPaths = new Set(["/api/ws", "/api/ws/live"]);
 const maxDurationMs = 30_000;
 const maxAllowedFrames = 10;
+const closeHandshakeTimeoutMs = 2_000;
 
 function parseArgs(argv) {
   const args = {
@@ -126,8 +127,6 @@ function maybeParseOriginDeviceUrl(value) {
 function websocketUrlFromDeviceUrl(deviceUrl, path) {
   const parsed = new URL(deviceUrl.toString());
   parsed.protocol = parsed.protocol === "https:" ? "wss:" : "ws:";
-  parsed.username = "";
-  parsed.password = "";
   parsed.pathname = path;
   parsed.search = "";
   parsed.hash = "";
@@ -330,20 +329,52 @@ async function captureReal(args, wsUrl) {
     return;
   }
 
-  await new Promise((resolve) => {
-    let settled = false;
+  await new Promise((resolve, reject) => {
+    let finished = false;
     let opened = false;
     let frames = 0;
+    let outcomeRecorded = false;
+    let maybeCloseTimer;
     const socket = new globalThis.WebSocket(wsUrl);
-    const timer = setTimeout(() => {
-      if (settled) {
+    const finishAfterClose = () => {
+      if (finished) {
         return;
       }
-      settled = true;
+      finished = true;
+      clearTimeout(timer);
+      clearTimeout(maybeCloseTimer);
+      lines.push("websocket_close_status=closed");
+      resolve();
+    };
+    const requestCleanClose = () => {
+      if (finished || maybeCloseTimer) {
+        return;
+      }
+      maybeCloseTimer = setTimeout(() => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        clearTimeout(timer);
+        reject(new Error("websocket close handshake timeout"));
+      }, closeHandshakeTimeoutMs);
+      try {
+        socket.close();
+      } catch {
+        finished = true;
+        clearTimeout(timer);
+        clearTimeout(maybeCloseTimer);
+        reject(new Error("websocket close handshake failed"));
+      }
+    };
+    const timer = setTimeout(() => {
+      if (finished || outcomeRecorded) {
+        return;
+      }
+      outcomeRecorded = true;
       lines.push(opened ? "websocket_open_status=opened" : "websocket_open_status=not-run");
       lines.push(statusForTimeout(args.path, frames, opened));
-      socket.close();
-      resolve();
+      requestCleanClose();
     }, args.durationMs);
 
     socket.addEventListener("open", () => {
@@ -353,26 +384,32 @@ async function captureReal(args, wsUrl) {
     socket.addEventListener("message", (event) => {
       frames += 1;
       lines.push(`websocket_frame_${frames}=${redactText(event.data)}`);
-      if (frames >= args.maxFrames && !settled) {
-        settled = true;
-        clearTimeout(timer);
+      if (frames >= args.maxFrames && !finished && !outcomeRecorded) {
+        outcomeRecorded = true;
         lines.push("websocket_open_status=opened");
         lines.push(`websocket_frame_status=passed frames=${frames}`);
-        socket.close();
-        resolve();
+        requestCleanClose();
       }
     });
 
     socket.addEventListener("error", (event) => {
-      if (settled) {
+      if (finished || outcomeRecorded) {
         return;
       }
-      settled = true;
-      clearTimeout(timer);
+      outcomeRecorded = true;
       lines.push(opened ? "websocket_open_status=opened" : "websocket_open_status=not-run");
       lines.push(`websocket_error=${redactText(event.message || "connection error")}`);
       lines.push(statusForConnectionError(frames));
-      resolve();
+      requestCleanClose();
+    });
+
+    socket.addEventListener("close", () => {
+      if (!outcomeRecorded) {
+        outcomeRecorded = true;
+        lines.push(opened ? "websocket_open_status=opened" : "websocket_open_status=not-run");
+        lines.push(statusForConnectionError(frames));
+      }
+      finishAfterClose();
     });
   });
 

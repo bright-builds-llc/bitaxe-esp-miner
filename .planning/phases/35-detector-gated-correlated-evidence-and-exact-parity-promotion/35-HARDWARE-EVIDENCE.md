@@ -1351,3 +1351,72 @@ software gate and preflight pass. It must use a fresh protected parent,
 nonexistent supervisor child, mode-0600 sibling output, and exactly one full
 command invocation. Attempt 17 remains immutable, non-promotable,
 non-reusable, and ineligible for evidence splicing.
+
+## Attempt 18 Checkpoint
+
+Attempt 18 ran the full Phase 35 command exactly once from clean exact source
+`065240279c4657945ffce70d2baa501b4da7ceae` after the complete software gate
+and exact-head preflight passed. Boot A pre-capture and PATCH completed. The
+post-PATCH API and WebSocket artifacts were coherent, then the actual
+retained-log response failed at a malformed chunk-framing boundary. The
+supervisor preserved `boot_a_capture_failed`, confirmed restoration and
+cleanup, and sealed the root non-promotable and non-reusable.
+
+| Field | Recorded value |
+| --- | --- |
+| Attempt ordinal | `18` |
+| Invocation count for root | `1` |
+| Source commit | `065240279c4657945ffce70d2baa501b4da7ceae` |
+| Software gate | `passed` |
+| Exact-head preflight | `passed` |
+| Supervisor result | `non_promotion` |
+| Boot A pre-capture | `passed` |
+| PATCH response | `passed` |
+| Post-PATCH API capture | `passed` |
+| Post-PATCH WebSocket capture | `passed` |
+| Retained-log transport | `malformed_chunk_framing` |
+| Primary category | `boot_a_capture_failed` |
+| Mutation started | `true` |
+| Restoration secondary | `none` |
+| Cleanup secondary | `none` |
+| Root reusable | `false` |
+| Progress decision | `diagnose_new_boundary` |
+
+Attempts 1 through 18 remain immutable, non-promotable, non-reusable, and
+ineligible for evidence splicing. Task 3, admission, checklist promotion, and
+`35-04-SUMMARY.md` remain blocked.
+
+## Attempt 18 Diagnostic Repair and Attempt 19 Authority
+
+Protected structural inspection isolated the failure to the handoff between a
+successful WebSocket capture and the following retained-log GET. The helper
+called close after its terminal frame but resolved before receiving the close
+event. The supervisor therefore had no proof that the upgraded connection had
+completed its lifecycle before opening the next HTTP request.
+
+The helper now waits for the close event under a strict timeout and emits an
+exact closed marker only after that boundary. Phase 35 requires the marker
+before retained-log capture. A real loopback peer deliberately delays its close
+response and proves the helper cannot return early; the existing Phase 17 and
+Phase 35 suites preserve compatibility and request ordering.
+
+| Field | Recorded value |
+| --- | --- |
+| Repair completion | `2026-07-22T00:49:49Z` |
+| Hardware invoked during diagnosis or repair | `false` |
+| Device request issued during diagnosis or repair | `false` |
+| Credential access during diagnosis or repair | `false` |
+| WebSocket peer-close proof required | `true` |
+| Close-handshake timeout bounded | `true` |
+| Following HTTP request gated by close marker | `true` |
+| Delayed-close real-process regression | `passed` |
+| Focused Phase 17 and Phase 35 suites | `passed` |
+| Full software gate | `passed` |
+| Progress decision | `continue_after_verified_fix` |
+| Next authorized attempt ordinal | `19` |
+
+Fresh attempt 19 is authorized only after the full clean exact-current-HEAD
+software gate and preflight pass. It must use a fresh protected parent,
+nonexistent supervisor child, mode-0600 sibling output, and exactly one full
+command invocation. Attempt 18 remains immutable, non-promotable,
+non-reusable, and ineligible for evidence splicing.

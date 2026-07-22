@@ -752,6 +752,7 @@ run_production_capture_case() {
 				--argjson revision "$revision" \
 				'{event:"system_info",data:{bootSession:$session,operatorSnapshotRevision:$revision}}' |
 				sed 's/^/websocket_frame_1=/' >"$output"
+			printf 'websocket_close_status=closed\n' >>"$output"
 		}
 
 		capture_epoch boot-a-pre

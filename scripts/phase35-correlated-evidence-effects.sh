@@ -356,6 +356,8 @@ capture_epoch() {
 		[[ ! -e "$websocket_log" ]] || chmod 600 "$websocket_log"
 		return 1
 	}
+	rg -Fqx 'websocket_close_status=closed' "$websocket_log" >/dev/null 2>&1 ||
+		return 1
 	curl --silent --show-error --fail --http1.1 --noproxy '*' --proto '=http,https' \
 		--connect-timeout 5 --max-time 10 --max-filesize 524288 \
 		--output "$retained_log" "${target_token}/api/system/logs" 2>"$retained_stderr" || {

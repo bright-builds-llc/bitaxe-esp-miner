@@ -481,6 +481,20 @@ sh_test(
 )
 
 sh_test(
+    name = "phase17_websocket_capture_close_test",
+    srcs = ["phase17-websocket-capture-close-test.sh"],
+    data = [
+        "phase17-websocket-capture.mjs",
+        "phase17-websocket-close-peer.mjs",
+    ],
+    env_inherit = [
+        "NODE_BIN",
+        "PATH",
+    ],
+    tags = ["local"],
+)
+
+sh_test(
     name = "phase18_firmware_ota_evidence_test",
     srcs = ["phase18-firmware-ota-evidence-test.sh"],
     data = [
