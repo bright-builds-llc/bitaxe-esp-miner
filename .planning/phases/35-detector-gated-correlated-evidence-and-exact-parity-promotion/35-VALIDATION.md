@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 18 invoked the command once at exact source `065240279c4657945ffce70d2baa501b4da7ceae` after both gates passed. Boot A pre-capture and PATCH succeeded, then the post-PATCH retained-log response exposed malformed chunk framing after a coherent WebSocket capture. Restoration and cleanup passed. The missing WebSocket close-handshake boundary is regression-backed and selects `continue_after_verified_fix`; attempt 19 is authorized only after the complete exact-current-HEAD gate and fresh preflight. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 19 invoked the command once at exact source `6a88300f84d0db1907455974372fe0468f4957e3` after both gates passed. The internal detector admitted the target, then flash connection failed before Boot A capture or mutation; cleanup passed. Policy selects one confirmed USB and barrel-power remediation before fresh attempt 20 and stops as a hardware blocker if the same redacted connection signature recurs. |
 
 ## Validation Sign-Off
 

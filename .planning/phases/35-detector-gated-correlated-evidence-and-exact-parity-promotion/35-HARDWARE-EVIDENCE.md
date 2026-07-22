@@ -1420,3 +1420,41 @@ software gate and preflight pass. It must use a fresh protected parent,
 nonexistent supervisor child, mode-0600 sibling output, and exactly one full
 command invocation. Attempt 18 remains immutable, non-promotable,
 non-reusable, and ineligible for evidence splicing.
+
+## Attempt 19 Checkpoint and Manual-Remediation Gate
+
+Attempt 19 ran the full Phase 35 command exactly once from clean exact source
+`6a88300f84d0db1907455974372fe0468f4957e3` after the complete software gate
+and exact-head preflight passed. The internal detector admitted one board-205
+target. The flash process then failed to establish its target connection before
+Boot A capture or mutation. Cleanup passed, and the root is sealed
+non-promotable and non-reusable.
+
+| Field | Recorded value |
+| --- | --- |
+| Attempt ordinal | `19` |
+| Invocation count for root | `1` |
+| Source commit | `6a88300f84d0db1907455974372fe0468f4957e3` |
+| Software gate | `passed` |
+| Exact-head preflight | `passed` |
+| Detector admission | `passed` |
+| Supervisor result | `non_promotion` |
+| Coarse category | `flash_or_boot_a_failed` |
+| Authoritative discriminator | `target_connection_failed` |
+| Boot A capture started | `false` |
+| Mutation started | `false` |
+| Restoration | `not_needed` |
+| Cleanup secondary | `none` |
+| Root reusable | `false` |
+| Progress decision | `continue_after_manual_remediation` |
+
+Attempts 1 through 19 remain immutable, non-promotable, non-reusable, and
+ineligible for evidence splicing. One exact non-invasive remediation is now
+required: disconnect USB and barrel power, reconnect barrel power, reconnect
+USB, and confirm completion after the target has had time to re-enumerate. The
+agent must wait for that confirmation. Fresh attempt 20 then requires another
+clean exact-current-HEAD preflight, fresh protected parent, nonexistent
+supervisor child, mode-0600 sibling output, and one invocation. If the same
+`flash_or_boot_a_failed` plus `target_connection_failed` signature recurs after
+that remediation, policy selects `stop_hardware_blocker`. Task 3, admission,
+checklist promotion, and `35-04-SUMMARY.md` remain blocked.

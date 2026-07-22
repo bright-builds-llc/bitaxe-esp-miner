@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 committing attempt 18 transport repair
-last_updated: "2026-07-22T00:54:32Z"
+stopped_at: Phase 35 Plan 04 Task 2 awaiting attempt 19 manual remediation
+last_updated: "2026-07-22T01:05:14Z"
 last_activity: "2026-07-21"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-21 - Repaired the WebSocket close boundary exposed by attempt 18
+Last activity: 2026-07-21 - Attempt 19 exposed a target connection boundary after detector admission
 
 ## Current Position
 
@@ -25,11 +25,11 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 is active. Attempts 1 through 18 remain sealed
-  non-promotable and non-reusable. The attempt-18 WebSocket close-handshake
-  boundary is repaired with a delayed-close real-process regression.
-- **Next step:** Commit the verified fix, run exact-current-HEAD preflight, and
-  invoke fresh attempt 19. Task 3 and
+- **Status:** Task 2 is active. Attempts 1 through 19 remain sealed
+  non-promotable and non-reusable. Attempt 19 failed to connect at the flash
+  boundary after detector admission and completed cleanup before mutation.
+- **Next step:** Wait for confirmation of one USB and barrel-power reset, then
+  run exact-current-HEAD preflight and fresh attempt 20. Task 3 and
   `35-04-SUMMARY.md` remain blocked until `complete`.
 
 ## Project Reference
@@ -520,14 +520,15 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 18 are sealed,
-  non-promotable, and non-reusable. The attempt-18 transport repair requires
-  the full gate, commit, and exact-head preflight before fresh attempt 19.
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 19 are sealed,
+  non-promotable, and non-reusable. Fresh attempt 20 requires confirmation of
+  the exact USB and barrel-power remediation plus a new exact-head preflight.
   Task 3 and `35-04-SUMMARY.md` remain prohibited until `complete`.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 committing attempt 18 transport repair
-- **Resume:** Commit the repair, preflight exact HEAD, and run fresh attempt 19.
+- **Stopped at:** Phase 35 Plan 04 Task 2 awaiting attempt 19 manual remediation
+- **Resume:** After the user confirms one USB and barrel-power reset, preflight
+  exact HEAD and run fresh attempt 20 once.
   Task 3, evidence admission, checklist promotion, and
   `35-04-SUMMARY.md` remain blocked until `complete`.
