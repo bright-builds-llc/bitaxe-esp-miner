@@ -4,8 +4,14 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/serial-session-trace.sh
 source "${script_dir}/serial-session-trace.sh"
+# shellcheck source=scripts/espflash-tool.sh
+source "${script_dir}/espflash-tool.sh"
 
-readonly espflash_bin="${ESPFLASH_BIN:-espflash}"
+espflash_bin="$(espflash_resolve_bin)" || {
+	printf 'failure_category=espflash_unavailable\n' >&2
+	exit 1
+}
+readonly espflash_bin
 candidates=()
 explicit_port=""
 
@@ -44,21 +50,20 @@ done
 }
 
 serial_session_trace_init detect-ultra205
-tool_version="${SERIAL_SESSION_TOOL_VERSION:-}"
-if [[ -z "$tool_version" ]]; then
-	set +e
-	tool_version="$("$espflash_bin" --version 2>&1 | head -1)"
-	tool_version_status=$?
-	set -e
-	if ((tool_version_status != 0)) || [[ -z "$tool_version" ]]; then
-		tool_version="unavailable"
-	fi
-fi
+tool_version="$(espflash_version "$espflash_bin")" || {
+	printf 'failure_category=espflash_version_mismatch\n' >&2
+	exit 1
+}
+tool_digest="$(espflash_executable_digest "$espflash_bin")" || {
+	printf 'failure_category=espflash_digest_unavailable\n' >&2
+	exit 1
+}
 serial_session_trace_event "detector_start" "$(jq -cn \
-	--arg tool "$espflash_bin" \
+	--arg tool espflash \
 	--arg tool_version "$tool_version" \
+	--arg tool_digest "$tool_digest" \
 	--argjson exact_port_mode "$([[ -n "$explicit_port" ]] && printf true || printf false)" \
-	'{tool:$tool,tool_version:$tool_version,exact_port_mode:$exact_port_mode,list_ports_reset_policy:"none",board_info_reset_policy:{before:"usb-reset",after:"hard-reset"}}')"
+	'{tool:$tool,tool_version:$tool_version,tool_digest:$tool_digest,exact_port_mode:$exact_port_mode,list_ports_reset_policy:"none",board_info_reset_policy:{before:"usb-reset",after:"hard-reset"}}')"
 
 is_likely_esp_port() {
 	local port="$1"
@@ -166,9 +171,7 @@ board_info_command=(
 	hard-reset
 )
 
-printf '[detect-ultra205] board_info_command=' >&2
-printf '%q ' "${board_info_command[@]}" >&2
-printf '\n' >&2
+printf '[detect-ultra205] board_info_command=protected-operational reset_contract=usb-reset/hard-reset\n' >&2
 
 board_info_output="$("${board_info_command[@]}" 2>&1)" || {
 	status=$?

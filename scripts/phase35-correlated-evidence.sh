@@ -69,6 +69,7 @@ root_contract_digest=""
 package_capability_digest=""
 detector_capability_digest=""
 physical_identity_digest=""
+stage_identity_digest=""
 target_lock_digest=""
 port=""
 target_token=""
@@ -85,6 +86,9 @@ primary_failure_category=""
 last_http_category=""
 restoration_secondary_category=""
 cleanup_secondary_category=""
+flash_boundary_schema=""
+flash_stage=""
+flash_boundary=""
 passive_monitor_pid=""
 event_sequence=0
 event_predecessor=""
@@ -159,6 +163,8 @@ source "${script_dir}/phase35-correlated-evidence-root.sh"
 source "${script_dir}/phase35-correlated-evidence-effects.sh"
 # shellcheck source=scripts/phase35-correlated-evidence-document.sh
 source "${script_dir}/phase35-correlated-evidence-document.sh"
+# shellcheck source=scripts/espflash-tool.sh
+source "${script_dir}/espflash-tool.sh"
 
 main() {
 	prepare_root
@@ -177,6 +183,7 @@ main() {
 
 	run_detector_gate || fail "${failure_category:-detector_failed}"
 	record_checkpoint root_admitted "$package_capability_digest"
+	run_checksum_probe || fail "${failure_category:-flash_probe_failed}"
 	validate_credential_path_after_detector || fail "${failure_category:-credential_path_invalid}"
 
 	run_flash_boot_a || fail "${failure_category:-flash_or_boot_a_failed}"

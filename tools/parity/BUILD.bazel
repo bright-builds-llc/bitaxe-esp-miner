@@ -43,6 +43,7 @@ rust_binary(
         "src/phase35_evidence/tests/admission.rs",
         "src/phase35_evidence/tests/fixtures.rs",
         "src/phase35_evidence/tests/fixtures/catalog.rs",
+        "src/phase35_flash.rs",
         "src/phase35_http.rs",
         "src/phase35_http_probe.rs",
         "src/phase35_http_probe/tests.rs",

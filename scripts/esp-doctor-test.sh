@@ -99,11 +99,13 @@ echo "rustup stub $*"
 '
 	write_executable "${bin_dir}/ldproxy" 'echo "ldproxy 1.0.0"
 '
-	write_executable "${bin_dir}/espflash" 'echo "espflash 1.0.0"
+	write_executable "${bin_dir}/espflash" 'echo "espflash 4.5.0"
 '
 	write_executable "${bin_dir}/python3" 'echo "Python 3.12.0"
 '
 	write_executable "${bin_dir}/bazel" 'echo "bazel 9.1.1"
+'
+	write_executable "${bin_dir}/shasum" 'echo "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  $3"
 '
 }
 
@@ -204,7 +206,27 @@ echo "rustup stub $*"
 	output="$(cat "$output_file")"
 	assert_contains "$output" "cargo install espup --locked"
 	assert_contains "$output" "espup install --targets esp32s3 --std"
-	assert_contains "$output" "cargo install espflash --locked"
+	assert_contains "$output" "cargo install espflash --version 4.5.0 --locked"
+}
+
+test_doctor_rejects_mismatched_espflash_version() {
+	local workspace="${tmp_root}/mismatch-workspace"
+	local home_dir="${tmp_root}/mismatch-home"
+	local bin_dir="${tmp_root}/mismatch-bin"
+	local output_file="${tmp_root}/mismatch.out"
+
+	create_workspace "$workspace"
+	create_common_tool_stubs "$bin_dir"
+	write_executable "${bin_dir}/espflash" 'echo "espflash 4.0.1"'
+	mkdir -p "$home_dir"
+	printf 'export ESP_STUB=1\n' >"${home_dir}/export-esp.sh"
+
+	if capture_command "$output_file" env HOME="$home_dir" PATH="$bin_dir" WORKSPACE_DIR="$workspace" "$BASH" "$doctor_script"; then
+		fail "doctor accepted mismatched espflash version"
+	fi
+
+	assert_contains "$(cat "$output_file")" "espflash 4.5.0 (found espflash 4.0.1)"
+	assert_contains "$(cat "$output_file")" "cargo install espflash --version 4.5.0 --locked"
 }
 
 if [[ ! -f "$doctor_script" ]]; then
@@ -219,5 +241,6 @@ test_doctor_missing_tools_fails_with_bootstrap_hint
 test_doctor_passes_with_stubbed_tools
 test_doctor_reports_managed_embuild_tools
 test_bootstrap_dry_run_prints_install_actions
+test_doctor_rejects_mismatched_espflash_version
 
 printf 'esp doctor tests passed\n'

@@ -14,6 +14,7 @@ filegroup(
 sh_binary(
     name = "bootstrap_esp",
     srcs = ["bootstrap-esp.sh"],
+    data = ["espflash-tool.sh"],
 )
 
 sh_binary(
@@ -24,7 +25,10 @@ sh_binary(
 sh_binary(
     name = "detect_ultra205",
     srcs = ["detect-ultra205.sh"],
-    data = ["serial-session-trace.sh"],
+    data = [
+        "espflash-tool.sh",
+        "serial-session-trace.sh",
+    ],
 )
 
 sh_binary(
@@ -82,6 +86,7 @@ sh_binary(
 sh_binary(
     name = "esp_doctor",
     srcs = ["esp-doctor.sh"],
+    data = ["espflash-tool.sh"],
 )
 
 sh_binary(
@@ -258,12 +263,14 @@ sh_binary(
     name = "phase35_correlated_evidence",
     srcs = ["phase35-correlated-evidence.sh"],
     data = [
+        "espflash-tool.sh",
         "phase13-monitor-capture.sh",
         "phase17-websocket-capture.mjs",
         "phase35-correlated-evidence-document.sh",
         "phase35-correlated-evidence-effects.sh",
         "phase35-http-boundary-read.sh",
         "phase35-correlated-evidence-root.sh",
+        "phase35-stage-readiness.sh",
         "serial-session-trace.sh",
         "verify-reference-clean.sh",
         "//tools/flash:flash",
@@ -339,6 +346,7 @@ sh_test(
     srcs = ["detect-ultra205-test.sh"],
     data = [
         "detect-ultra205.sh",
+        "espflash-tool.sh",
         "serial-session-trace.sh",
     ],
     tags = ["local"],
@@ -433,6 +441,7 @@ sh_test(
     srcs = ["esp-doctor-test.sh"],
     data = [
         "bootstrap-esp.sh",
+        "espflash-tool.sh",
         "esp-doctor.sh",
     ],
     tags = ["local"],
@@ -796,17 +805,29 @@ sh_test(
     data = [
         "//:Justfile",
         "//firmware/bitaxe:sdkconfig.defaults",
+        "espflash-tool.sh",
         "phase35-correlated-evidence-document.sh",
         "phase35-correlated-evidence-effects.sh",
         "phase35-correlated-evidence-fixture.sh",
         "phase35-http-boundary-read.sh",
         "phase35-correlated-evidence-root.sh",
         "phase35-correlated-evidence.sh",
+        "phase35-stage-readiness.sh",
         "serial-session-trace.sh",
         "//tools/flash:flash",
         "//tools/parity:report",
     ],
     env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
+sh_test(
+    name = "phase35_stage_readiness_test",
+    srcs = ["phase35-stage-readiness-test.sh"],
+    data = [
+        "phase35-stage-readiness.sh",
+        "serial-session-trace.sh",
+    ],
     tags = ["local"],
 )
 

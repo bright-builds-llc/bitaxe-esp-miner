@@ -164,28 +164,35 @@ fn dual_paths(evidence_dir: &Utf8Path) -> DualEvidencePaths {
 
 pub(crate) fn capture_command(
     command_spec: &CommandSpec,
+    trusted_program: &Utf8Path,
     log_path: &Utf8Path,
     timeout_seconds: u64,
     redaction_mode: EvidenceRedactionMode,
     create_new: bool,
 ) -> Result<CaptureProcessResult> {
-    if command_spec.program != "espflash" {
-        bail!("unsupported command program: {}", command_spec.program);
-    }
+    validate_trusted_program(command_spec, trusted_program)?;
     if let Some(parent) = log_path.parent() {
         fs::create_dir_all(parent.as_std_path())
             .with_context(|| format!("failed to create log directory {parent}"))?;
     }
 
     let log_file = open_private_output(log_path, create_new)?;
-    let mut command = Command::new("espflash");
+    let mut command = Command::new(&command_spec.program);
     command
         .args(&command_spec.args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let mut child = command
-        .spawn()
-        .with_context(|| format!("failed to spawn {}", command_spec.display()))?;
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(_) => {
+            let mut sanitizer = InterleavedSanitizer::new(log_file, redaction_mode);
+            sanitizer.push(PipeStream::Stderr, b"phase35_child_spawn_failed\n")?;
+            sanitizer.finish()?;
+            return Ok(CaptureProcessResult {
+                status: CaptureProcessStatus::SpawnFailed,
+            });
+        }
+    };
     let stdout = child
         .stdout
         .take()
@@ -206,6 +213,31 @@ pub(crate) fn capture_command(
         redaction_mode,
         command_spec,
     )
+}
+
+fn validate_trusted_program(command_spec: &CommandSpec, trusted_program: &Utf8Path) -> Result<()> {
+    let requested_program = Utf8Path::new(&command_spec.program);
+    if requested_program != trusted_program || !trusted_program.is_absolute() {
+        bail!("capture_command=blocked reason=untrusted_program");
+    }
+    let canonical = fs::canonicalize(trusted_program.as_std_path())
+        .context("capture_command=blocked reason=untrusted_program")?;
+    if canonical != trusted_program.as_std_path() {
+        bail!("capture_command=blocked reason=untrusted_program");
+    }
+    let metadata = fs::metadata(trusted_program.as_std_path())
+        .context("capture_command=blocked reason=untrusted_program")?;
+    if !metadata.is_file() {
+        bail!("capture_command=blocked reason=untrusted_program");
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if metadata.permissions().mode() & 0o111 == 0 {
+            bail!("capture_command=blocked reason=untrusted_program");
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn private_log_sha256(path: &Utf8Path) -> Result<String> {
@@ -608,6 +640,67 @@ mod tests {
         assert!(captured.contains("token=[redacted]"));
         assert!(!captured.contains("super-secret"));
         assert!(!captured.contains("api-secret"));
+    }
+
+    #[test]
+    fn capture_command_binds_execution_to_trusted_program_and_sanitizes_output() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let path = Utf8PathBuf::from_path_buf(dir.path().join("capture.log")).expect("utf8 path");
+        let trusted_program =
+            Utf8PathBuf::from_path_buf(fs::canonicalize("/bin/sh").expect("canonical shell"))
+                .expect("utf8 shell");
+        let command = CommandSpec::new(
+            trusted_program.as_str(),
+            ["-c", "printf 'password=super-secret\\n'"],
+        );
+
+        // Act
+        let outcome = capture_command(
+            &command,
+            &trusted_program,
+            &path,
+            5,
+            EvidenceRedactionMode::DeveloperRaw,
+            true,
+        )
+        .expect("capture");
+
+        // Assert
+        assert_eq!(outcome.status, CaptureProcessStatus::ExitedSuccess);
+        assert_eq!(
+            fs::read_to_string(path.as_std_path()).expect("captured"),
+            "password=[redacted]\n"
+        );
+    }
+
+    #[test]
+    fn capture_command_rejects_program_other_than_trusted_before_creating_output() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let path = Utf8PathBuf::from_path_buf(dir.path().join("capture.log")).expect("utf8 path");
+        let trusted_program =
+            Utf8PathBuf::from_path_buf(fs::canonicalize("/bin/sh").expect("canonical shell"))
+                .expect("utf8 shell");
+        let untrusted_program =
+            Utf8PathBuf::from_path_buf(fs::canonicalize("/bin/echo").expect("canonical echo"))
+                .expect("utf8 echo");
+        let command = CommandSpec::new(untrusted_program.as_str(), ["unsafe"]);
+
+        // Act
+        let result = capture_command(
+            &command,
+            &trusted_program,
+            &path,
+            5,
+            EvidenceRedactionMode::DeveloperRaw,
+            true,
+        );
+
+        // Assert
+        let error = result.expect_err("untrusted program must be rejected");
+        assert!(format!("{error:#}").contains("untrusted_program"));
+        assert!(!path.exists());
     }
 
     #[test]

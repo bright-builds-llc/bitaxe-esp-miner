@@ -1,11 +1,11 @@
 use std::collections::BTreeSet;
 use std::env;
 use std::fmt;
-use std::fs;
+use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::process::Command;
 use std::str::FromStr;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
 use bitaxe_api::BuildProvenance;
@@ -36,6 +36,8 @@ const NVS_GENERATOR_PYTHON_RELATIVE_PATH: &str =
 const BUILD_IDENTITY_STATUS_RELATIVE_PATH: &str = "scripts/build-identity-status.sh";
 const UNAVAILABLE: &str = "Unavailable";
 const PROTECTED_OPERATIONAL: &str = "protected-operational";
+const ESPFLASH_EXPECTED_VERSION: &str = "4.5.0";
+const PHASE35_FLASH_SCHEMA: &str = "phase35-flash-boundary-v1";
 
 #[derive(Debug, Parser)]
 #[command(name = "bitaxe-flash")]
@@ -53,6 +55,8 @@ enum CliCommand {
     FlashMonitor(FlashMonitorCommand),
     #[command(name = "finalize-evidence")]
     FinalizeEvidence(FinalizeEvidenceCommand),
+    #[command(name = "phase35-probe")]
+    Phase35Probe(Phase35ProbeCommand),
 }
 
 #[derive(Debug, Args, Clone)]
@@ -122,6 +126,21 @@ struct FinalizeEvidenceCommand {
 
     #[arg(long = "expected-private-sha256", value_parser = parse_sha256)]
     expected_private_sha256: String,
+}
+
+#[derive(Debug, Parser, Clone)]
+struct Phase35ProbeCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    board: BoardId,
+
+    #[arg(long)]
+    port: String,
+
+    #[arg(long = "stage-root", value_parser = parse_utf8_path)]
+    stage_root: Utf8PathBuf,
+
+    #[arg(long = "timeout-seconds", default_value_t = 30)]
+    timeout_seconds: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -328,6 +347,7 @@ struct CaptureProcessResult {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum CaptureProcessStatus {
+    SpawnFailed,
     ExitedSuccess,
     ExitedFailure(String),
     TimedOut,
@@ -434,6 +454,9 @@ trait FlashEnvironment {
         size: &str,
     ) -> Result<()>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
+    fn phase35_stage_readiness_gate(&self, _stage: &str, _port: &str) -> Result<()> {
+        Ok(())
+    }
     fn execute_capturing(
         &self,
         command_spec: &CommandSpec,
@@ -450,12 +473,31 @@ trait FlashEnvironment {
 #[derive(Debug)]
 struct LocalFlashEnvironment {
     workspace_dir: Utf8PathBuf,
+    espflash_bin: Utf8PathBuf,
+    espflash_version: String,
+    espflash_sha256: String,
 }
 
 impl LocalFlashEnvironment {
     fn detect() -> Result<Self> {
+        let espflash_bin = resolve_espflash_executable()?;
+        let output = Command::new(espflash_bin.as_std_path())
+            .arg("--version")
+            .output()
+            .context("failed to query espflash version")?;
+        let espflash_version = command_output_to_string(output, "espflash --version")?;
+        if espflash_version != format!("espflash {ESPFLASH_EXPECTED_VERSION}") {
+            bail!("espflash_version_mismatch expected={ESPFLASH_EXPECTED_VERSION}");
+        }
+        let espflash_sha256 = sha256_bytes(
+            &fs::read(espflash_bin.as_std_path())
+                .context("failed to digest espflash executable")?,
+        );
         Ok(Self {
             workspace_dir: detect_workspace_dir()?,
+            espflash_bin,
+            espflash_version,
+            espflash_sha256,
         })
     }
 }
@@ -542,13 +584,50 @@ impl FlashEnvironment for LocalFlashEnvironment {
         redaction_mode: EvidenceRedactionMode,
         create_new: bool,
     ) -> Result<CaptureProcessResult> {
-        evidence::capture_command(
-            command_spec,
+        let mut resolved_command = command_spec.clone();
+        resolved_command.program = self.espflash_bin.to_string();
+        let result = evidence::capture_command(
+            &resolved_command,
+            &self.espflash_bin,
             log_path,
             timeout_seconds,
             redaction_mode,
             create_new,
-        )
+        )?;
+        if let Ok(stage_root) = env::var("PHASE35_FLASH_STAGE_ROOT") {
+            if !stage_root.is_empty() {
+                let private_log = fs::read(log_path.as_std_path())?;
+                let observed_bytes = !private_log.is_empty();
+                let launched = !matches!(result.status, CaptureProcessStatus::SpawnFailed);
+                let connected = launched && observed_bytes;
+                let completed = connected
+                    && !matches!(
+                        result.status,
+                        CaptureProcessStatus::SpawnFailed | CaptureProcessStatus::ExitedFailure(_)
+                    );
+                let metrics = serde_json::json!({
+                    "schema_version": PHASE35_FLASH_SCHEMA,
+                    "stage": "monitor",
+                    "tool_version_valid": true,
+                    "launched": launched,
+                    "connected": connected,
+                    "device_info_complete": connected,
+                    "transfer_started": connected,
+                    "completed": completed,
+                    "duration_millis": timeout_seconds.saturating_mul(1_000),
+                });
+                let stage_root = Utf8Path::new(&stage_root);
+                fs::create_dir_all(stage_root.as_std_path())?;
+                set_private_directory_mode(stage_root)?;
+                let monitor_log = stage_root.join("monitor.private.log");
+                let monitor_metrics = stage_root.join("monitor.metrics.json");
+                write_private_new_bytes(&monitor_log, &private_log)?;
+                let mut encoded = serde_json::to_vec_pretty(&metrics)?;
+                encoded.push(b'\n');
+                write_private_new_bytes(&monitor_metrics, &encoded)?;
+            }
+        }
+        Ok(result)
     }
 
     fn approve_private_evidence_root(&self, path: &Utf8Path) -> Result<()> {
@@ -593,7 +672,7 @@ impl FlashEnvironment for LocalFlashEnvironment {
     }
 
     fn list_ports(&self) -> Result<String> {
-        let output = Command::new("espflash")
+        let output = Command::new(self.espflash_bin.as_std_path())
             .arg("list-ports")
             .output()
             .context("failed to run espflash list-ports")?;
@@ -640,7 +719,19 @@ impl FlashEnvironment for LocalFlashEnvironment {
             bail!("unsupported command program: {}", command_spec.program);
         }
 
-        let mut command = Command::new("espflash");
+        if let Some(stage) = phase35_stage_for_command(command_spec) {
+            if let Ok(stage_root) = env::var("PHASE35_FLASH_STAGE_ROOT") {
+                if !stage_root.is_empty() {
+                    return self.execute_phase35_stage(
+                        command_spec,
+                        stage,
+                        Utf8Path::new(&stage_root),
+                    );
+                }
+            }
+        }
+
+        let mut command = Command::new(self.espflash_bin.as_std_path());
         for arg in &command_spec.args {
             command.arg(arg);
         }
@@ -652,6 +743,61 @@ impl FlashEnvironment for LocalFlashEnvironment {
             bail!("{} failed with {status}", command_spec.display());
         }
 
+        Ok(())
+    }
+
+    fn phase35_stage_readiness_gate(&self, stage: &str, port: &str) -> Result<()> {
+        let Ok(stage_root) = env::var("PHASE35_FLASH_STAGE_ROOT") else {
+            return Ok(());
+        };
+        if stage_root.is_empty() {
+            return Ok(());
+        }
+        if !matches!(stage, "after-factory" | "after-nvs") {
+            bail!("phase35_stage_readiness=blocked reason=invalid_stage");
+        }
+
+        let expected_gate = self
+            .workspace_dir
+            .join("scripts/phase35-stage-readiness.sh");
+        let expected_gate = fs::canonicalize(expected_gate.as_std_path())
+            .context("phase35_stage_readiness=blocked reason=gate_unavailable")?;
+        let requested_gate = env::var("PHASE35_STAGE_READINESS_BIN")
+            .context("phase35_stage_readiness=blocked reason=gate_unavailable")?;
+        let requested_gate = fs::canonicalize(&requested_gate)
+            .context("phase35_stage_readiness=blocked reason=gate_unavailable")?;
+        if requested_gate != expected_gate {
+            bail!("phase35_stage_readiness=blocked reason=untrusted_gate");
+        }
+        let expected_physical_identity = env::var("PHASE35_EXPECTED_PHYSICAL_IDENTITY")
+            .context("phase35_stage_readiness=blocked reason=identity_unavailable")?;
+        if !is_lower_hex_digest(&expected_physical_identity) {
+            bail!("phase35_stage_readiness=blocked reason=identity_invalid");
+        }
+        let trace_root = Utf8Path::new(&stage_root).join("readiness");
+        fs::create_dir_all(trace_root.as_std_path())
+            .context("phase35_stage_readiness=blocked reason=trace_root_invalid")?;
+        set_private_directory_mode(&trace_root)?;
+
+        let output = Command::new(expected_gate)
+            .args([
+                "--stage",
+                stage,
+                "--port",
+                port,
+                "--expected-physical-identity",
+                expected_physical_identity.as_str(),
+                "--trace-root",
+                trace_root.as_str(),
+            ])
+            .output()
+            .context("phase35_stage_readiness=failed reason=spawn_failure")?;
+        if !output.status.success() {
+            bail!("phase35_stage_readiness=failed reason=gate_rejected");
+        }
+        let stdout = std::str::from_utf8(&output.stdout)
+            .context("phase35_stage_readiness=failed reason=output_invalid")?;
+        validate_phase35_readiness_output(stdout)?;
         Ok(())
     }
 
@@ -681,6 +827,67 @@ impl FlashEnvironment for LocalFlashEnvironment {
 }
 
 impl LocalFlashEnvironment {
+    fn execute_phase35_stage(
+        &self,
+        command_spec: &CommandSpec,
+        stage: &str,
+        stage_root: &Utf8Path,
+    ) -> Result<()> {
+        fs::create_dir_all(stage_root.as_std_path())
+            .context("failed to create private Phase 35 stage root")?;
+        set_private_directory_mode(stage_root)?;
+        let log_path = stage_root.join(format!("{stage}.private.log"));
+        let metrics_path = stage_root.join(format!("{stage}.metrics.json"));
+        if log_path.exists() || metrics_path.exists() {
+            bail!("phase35_stage_capture=blocked reason=destination_exists");
+        }
+
+        let mut resolved_command = command_spec.clone();
+        resolved_command.program = self.espflash_bin.to_string();
+        let started = Instant::now();
+        let capture = evidence::capture_command(
+            &resolved_command,
+            &self.espflash_bin,
+            &log_path,
+            360,
+            EvidenceRedactionMode::DeveloperRaw,
+            true,
+        )?;
+        let duration_millis = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+        let launched = !matches!(capture.status, CaptureProcessStatus::SpawnFailed);
+        let success = matches!(capture.status, CaptureProcessStatus::ExitedSuccess);
+        let log = fs::read_to_string(log_path.as_std_path())
+            .context("failed to read sanitized Phase 35 stage log")?;
+        let connected = launched && flash_log_connected(&log);
+        let device_info_complete = connected && flash_log_device_info_complete(&log);
+        let transfer_started =
+            device_info_complete && (success || flash_log_transfer_started(&log));
+        let completed = transfer_started && success;
+        let metrics = serde_json::json!({
+            "schema_version": PHASE35_FLASH_SCHEMA,
+            "stage": stage,
+            "tool_version_valid": self.espflash_version == format!("espflash {ESPFLASH_EXPECTED_VERSION}"),
+            "launched": launched,
+            "connected": connected,
+            "device_info_complete": device_info_complete,
+            "transfer_started": transfer_started,
+            "completed": completed,
+            "duration_millis": if launched { duration_millis } else { 0 },
+        });
+        let mut encoded = serde_json::to_vec_pretty(&metrics)?;
+        encoded.push(b'\n');
+        write_private_new_bytes(&metrics_path, &encoded)?;
+        if !launched {
+            bail!("phase35_stage_capture=failed reason=spawn_failure");
+        }
+        if !success {
+            bail!("phase35_stage_capture=failed reason=child_failure");
+        }
+        Ok(())
+    }
+}
+
+impl LocalFlashEnvironment {
     fn nvs_generator_python(&self) -> Result<Utf8PathBuf> {
         if let Ok(path) = env::var("ESP_IDF_NVS_PYTHON") {
             if !path.is_empty() {
@@ -702,6 +909,8 @@ impl LocalFlashEnvironment {
 fn main() -> Result<()> {
     let cli = parse_cli(env::args())?;
     let environment = LocalFlashEnvironment::detect()?;
+    emit_line("espflash_version", ESPFLASH_EXPECTED_VERSION)?;
+    emit_line("espflash_executable_sha256", &environment.espflash_sha256)?;
 
     match cli.command {
         CliCommand::Flash(command) => {
@@ -715,6 +924,9 @@ fn main() -> Result<()> {
         }
         CliCommand::FinalizeEvidence(command) => {
             run_finalize_evidence(&command, &environment)?;
+        }
+        CliCommand::Phase35Probe(command) => {
+            run_phase35_probe(&command, &environment)?;
         }
     }
 
@@ -778,6 +990,10 @@ where
             "capture-timeout-seconds" | "capture_timeout_seconds" => {
                 push_flag_value(&mut normalized, "--capture-timeout-seconds", value)
             }
+            "stage-root" | "stage_root" => push_flag_value(&mut normalized, "--stage-root", value),
+            "timeout-seconds" | "timeout_seconds" => {
+                push_flag_value(&mut normalized, "--timeout-seconds", value)
+            }
             "redact-evidence" | "redact_evidence" => {
                 if parse_bool_alias(value) {
                     normalized.push("--redact-evidence".to_owned());
@@ -819,8 +1035,12 @@ fn run_flash(command: &FlashCommand, environment: &impl FlashEnvironment) -> Res
         environment.execute(&execution_command).map_err(|_| {
             anyhow::anyhow!("flash_execution=failed reason=admitted_image_child_failed")
         })?;
+        let port = command_port(&execution_command)
+            .context("phase35_stage_readiness=blocked reason=port_unavailable")?;
+        environment.phase35_stage_readiness_gate("after-factory", &port)?;
         if let Some(nvs_seed) = &outcome.nvs_seed {
             environment.execute(&nvs_seed.command)?;
+            environment.phase35_stage_readiness_gate("after-nvs", &port)?;
         }
     }
 
@@ -1071,6 +1291,70 @@ fn run_finalize_evidence(
     emit_line("dual_evidence", "finalized")
 }
 
+fn run_phase35_probe(
+    command: &Phase35ProbeCommand,
+    environment: &LocalFlashEnvironment,
+) -> Result<()> {
+    ensure_ultra_205(command.board)?;
+    if command.timeout_seconds == 0 || command.timeout_seconds > 420 {
+        bail!("phase35_probe=blocked reason=invalid_timeout");
+    }
+
+    let stage_root = environment.workspace_path(&command.stage_root);
+    environment
+        .approve_private_evidence_root(&stage_root)
+        .map_err(|_| anyhow::anyhow!("phase35_probe=blocked reason=root_admission_failed"))?;
+    fs::create_dir_all(stage_root.as_std_path())
+        .context("failed to create private Phase 35 probe root")?;
+    set_private_directory_mode(&stage_root)?;
+
+    let log_path = stage_root.join("probe.private.log");
+    let metrics_path = stage_root.join("probe.metrics.json");
+    if log_path.exists() || metrics_path.exists() {
+        bail!("phase35_probe=blocked reason=destination_exists");
+    }
+
+    let command_spec = phase35_probe_command(&environment.espflash_bin, &command.port);
+    let started = Instant::now();
+    let capture = evidence::capture_command(
+        &command_spec,
+        &environment.espflash_bin,
+        &log_path,
+        command.timeout_seconds,
+        EvidenceRedactionMode::DeveloperRaw,
+        true,
+    )?;
+    let duration_millis = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+    let launched = !matches!(capture.status, CaptureProcessStatus::SpawnFailed);
+    let success = matches!(capture.status, CaptureProcessStatus::ExitedSuccess);
+    let log = fs::read_to_string(log_path.as_std_path())
+        .context("failed to read sanitized Phase 35 probe log")?;
+    let checksum_observed = phase35_probe_checksum_observed(&log);
+    let connected = launched && (success || flash_log_connected(&log));
+    let device_info_complete = connected && (success || flash_log_device_info_complete(&log));
+    let transfer_started = device_info_complete && checksum_observed;
+    let completed = transfer_started && success;
+    let metrics = serde_json::json!({
+        "schema_version": PHASE35_FLASH_SCHEMA,
+        "stage": "probe",
+        "tool_version_valid": environment.espflash_version == format!("espflash {ESPFLASH_EXPECTED_VERSION}"),
+        "launched": launched,
+        "connected": connected,
+        "device_info_complete": device_info_complete,
+        "transfer_started": transfer_started,
+        "completed": completed,
+        "duration_millis": if launched { duration_millis } else { 0 },
+    });
+    let mut encoded = serde_json::to_vec_pretty(&metrics)?;
+    encoded.push(b'\n');
+    write_private_new_bytes(&metrics_path, &encoded)?;
+
+    if !completed {
+        bail!("phase35_probe=failed reason=child_boundary");
+    }
+    emit_line("phase35_probe", "ready")
+}
+
 fn prepare_flash(
     command: &FlashCommand,
     environment: &impl FlashEnvironment,
@@ -1138,6 +1422,12 @@ fn flash_command_for_admitted_image(
                 "esp32s3",
                 "--port",
                 port,
+                "--non-interactive",
+                "--before",
+                "usb-reset",
+                "--after",
+                "hard-reset",
+                "--skip-update-check",
                 "0x0",
                 execution_path.as_str(),
             ],
@@ -1196,6 +1486,11 @@ fn nvs_seed_command_for_image(port: &str, nvs_image: &Utf8Path) -> CommandSpec {
             "--port",
             port,
             "--non-interactive",
+            "--before",
+            "usb-reset",
+            "--after",
+            "hard-reset",
+            "--skip-update-check",
             NVS_PARTITION_OFFSET,
             nvs_image.as_str(),
         ],
@@ -1679,9 +1974,9 @@ fn monitor_capture_outcome(
             CaptureStatus::TimedOutAfterTrustedOutput
         }
         CaptureProcessStatus::TimedOut => CaptureStatus::TimedOutWithoutTrustedOutput,
-        CaptureProcessStatus::ExitedSuccess | CaptureProcessStatus::ExitedFailure(_) => {
-            CaptureStatus::Failed
-        }
+        CaptureProcessStatus::SpawnFailed
+        | CaptureProcessStatus::ExitedSuccess
+        | CaptureProcessStatus::ExitedFailure(_) => CaptureStatus::Failed,
     };
     let conclusion = if trusted_output
         && matches!(
@@ -2605,6 +2900,167 @@ fn detect_workspace_dir() -> Result<Utf8PathBuf> {
     command_output_to_string(output, "git rev-parse --show-toplevel").map(Utf8PathBuf::from)
 }
 
+fn resolve_espflash_executable() -> Result<Utf8PathBuf> {
+    let requested = env::var("ESPFLASH_BIN").unwrap_or_else(|_| "espflash".to_owned());
+    let requested_path = Utf8Path::new(&requested);
+    let candidate = if requested_path.components().count() > 1 || requested_path.is_absolute() {
+        requested_path.to_owned()
+    } else {
+        env::split_paths(&env::var_os("PATH").unwrap_or_default())
+            .map(|directory| directory.join(&requested))
+            .find(|path| path.is_file())
+            .and_then(|path| Utf8PathBuf::from_path_buf(path).ok())
+            .context("espflash executable not found")?
+    };
+    let canonical = fs::canonicalize(candidate.as_std_path())
+        .context("failed to canonicalize espflash executable")?;
+    let canonical = Utf8PathBuf::from_path_buf(canonical)
+        .map_err(|_| anyhow::anyhow!("espflash executable path is not UTF-8"))?;
+    let metadata = fs::metadata(canonical.as_std_path())?;
+    if !metadata.is_file() {
+        bail!("espflash executable is not a regular file");
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if metadata.permissions().mode() & 0o111 == 0 {
+            bail!("espflash executable is not executable");
+        }
+    }
+    Ok(canonical)
+}
+
+fn phase35_stage_for_command(command_spec: &CommandSpec) -> Option<&'static str> {
+    if command_spec.args.first().map(String::as_str) != Some("write-bin") {
+        return None;
+    }
+    if command_spec.args.iter().any(|argument| argument == "0x0") {
+        return Some("factory");
+    }
+    if command_spec
+        .args
+        .iter()
+        .any(|argument| argument == NVS_PARTITION_OFFSET)
+    {
+        return Some("nvs");
+    }
+    None
+}
+
+fn flash_log_connected(log: &str) -> bool {
+    ["Connected to device", "Chip type:", "Chip:"]
+        .iter()
+        .any(|marker| log.contains(marker))
+}
+
+fn flash_log_device_info_complete(log: &str) -> bool {
+    ["Flash size:", "Crystal frequency:", "MAC address:"]
+        .iter()
+        .any(|marker| log.contains(marker))
+}
+
+fn flash_log_transfer_started(log: &str) -> bool {
+    [
+        "Writing at",
+        "Writing to",
+        "Erasing",
+        "Reading at",
+        "checksum-md5",
+    ]
+    .iter()
+    .any(|marker| log.contains(marker))
+}
+
+fn phase35_probe_checksum_observed(log: &str) -> bool {
+    log.lines().any(|line| {
+        let maybe_checksum = line.trim().strip_prefix("0x");
+        matches!(
+            maybe_checksum,
+            Some(checksum)
+                if checksum.len() == 32
+                    && checksum.bytes().all(|byte| byte.is_ascii_hexdigit())
+        )
+    })
+}
+
+fn phase35_probe_command(espflash_bin: &Utf8Path, port: &str) -> CommandSpec {
+    CommandSpec::new(
+        espflash_bin.as_str(),
+        [
+            "checksum-md5",
+            "--chip",
+            "esp32s3",
+            "--port",
+            port,
+            "--non-interactive",
+            "--before",
+            "usb-reset",
+            "--after",
+            "hard-reset",
+            "--skip-update-check",
+            "0x0",
+            "4096",
+        ],
+    )
+}
+
+fn is_lower_hex_digest(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn validate_phase35_readiness_output(output: &str) -> Result<()> {
+    let mut keys = BTreeSet::new();
+    let mut category_ready = false;
+    let mut digest_count = 0;
+    for line in output.lines() {
+        let Some((key, value)) = line.split_once('=') else {
+            bail!("phase35_stage_readiness=failed reason=output_invalid");
+        };
+        if !keys.insert(key) {
+            bail!("phase35_stage_readiness=failed reason=output_invalid");
+        }
+        match key {
+            "category" if value == "ready" => category_ready = true,
+            "combined_identity" | "physical_identity" | "enumeration_identity"
+                if is_lower_hex_digest(value) =>
+            {
+                digest_count += 1;
+            }
+            _ => bail!("phase35_stage_readiness=failed reason=output_invalid"),
+        }
+    }
+    if keys.len() != 4 || !category_ready || digest_count != 3 {
+        bail!("phase35_stage_readiness=failed reason=output_invalid");
+    }
+    Ok(())
+}
+
+fn set_private_directory_mode(path: &Utf8Path) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path.as_std_path(), fs::Permissions::from_mode(0o700))?;
+    }
+    Ok(())
+}
+
+fn write_private_new_bytes(path: &Utf8Path, bytes: &[u8]) -> Result<()> {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options.open(path.as_std_path())?;
+    file.write_all(bytes)?;
+    file.sync_all()?;
+    Ok(())
+}
+
 fn git_output<const N: usize>(workspace_dir: &Utf8Path, args: [&str; N]) -> Option<String> {
     let output = Command::new("git")
         .current_dir(workspace_dir.as_std_path())
@@ -2634,6 +3090,172 @@ mod tests {
     const REFERENCE_COMMIT: &str = "abcdef0123456789abcdef0123456789abcdef01";
     const BUILD_LABEL: &str = "0123456789ab-dev";
     const APP_ELF_SHA256: &str = "ca16ef5bd57d7e4b2f2f016ffb9236c426e68f16072bc1c5a53ef0e515f1d063";
+
+    #[test]
+    fn phase35_probe_parses_bounded_read_contract() {
+        // Arrange
+        let args = [
+            "bitaxe-flash",
+            "phase35-probe",
+            "board=205",
+            "port=/dev/cu.usbmodem101",
+            "stage-root=scratch/probe",
+            "timeout-seconds=30",
+        ];
+
+        // Act
+        let cli = parse_cli(args).expect("probe cli");
+
+        // Assert
+        let CliCommand::Phase35Probe(command) = cli.command else {
+            panic!("expected Phase 35 probe command");
+        };
+        assert_eq!(command.board, BoardId::Ultra205);
+        assert_eq!(command.port, "/dev/cu.usbmodem101");
+        assert_eq!(command.stage_root, Utf8PathBuf::from("scratch/probe"));
+        assert_eq!(command.timeout_seconds, 30);
+    }
+
+    #[test]
+    fn phase35_probe_checksum_requires_one_complete_md5_line() {
+        // Arrange
+        let valid = "Connecting...\n0x0123456789abcdef0123456789abcdef\n";
+        let truncated = "0x0123456789abcdef\n";
+        let embedded = "checksum=0x0123456789abcdef0123456789abcdef\n";
+
+        // Act and Assert
+        assert!(phase35_probe_checksum_observed(valid));
+        assert!(!phase35_probe_checksum_observed(truncated));
+        assert!(!phase35_probe_checksum_observed(embedded));
+    }
+
+    #[test]
+    fn phase35_probe_command_is_bounded_read_only_and_reset_explicit() {
+        // Arrange
+        let executable = Utf8Path::new("/opt/espflash");
+
+        // Act
+        let command = phase35_probe_command(executable, "/dev/private-device");
+
+        // Assert
+        assert_eq!(command.program, "/opt/espflash");
+        assert_eq!(
+            command.args,
+            vec![
+                "checksum-md5",
+                "--chip",
+                "esp32s3",
+                "--port",
+                "/dev/private-device",
+                "--non-interactive",
+                "--before",
+                "usb-reset",
+                "--after",
+                "hard-reset",
+                "--skip-update-check",
+                "0x0",
+                "4096",
+            ]
+        );
+        assert!(!command.args.iter().any(|argument| {
+            matches!(argument.as_str(), "write-bin" | "flash" | "erase-flash")
+        }));
+    }
+
+    #[test]
+    fn phase35_readiness_output_rejects_missing_duplicate_or_raw_fields() {
+        // Arrange
+        let digest = "a".repeat(64);
+        let valid = format!(
+            "category=ready\ncombined_identity={digest}\nphysical_identity={digest}\nenumeration_identity={digest}\n"
+        );
+        let missing =
+            format!("category=ready\ncombined_identity={digest}\nphysical_identity={digest}\n");
+        let raw = format!(
+            "category=ready\ncombined_identity={digest}\nphysical_identity={digest}\nenumeration_identity={digest}\nport=/dev/private\n"
+        );
+
+        // Act and Assert
+        assert!(validate_phase35_readiness_output(&valid).is_ok());
+        assert!(validate_phase35_readiness_output(&missing).is_err());
+        assert!(validate_phase35_readiness_output(&raw).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn phase35_probe_real_process_uses_private_sanitized_no_clobber_artifacts() {
+        use std::os::unix::fs::PermissionsExt;
+
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let workspace =
+            Utf8PathBuf::from_path_buf(fs::canonicalize(dir.path()).expect("canonical tempdir"))
+                .expect("UTF-8 tempdir");
+        let git_status = Command::new("git")
+            .current_dir(workspace.as_std_path())
+            .args(["init", "--quiet"])
+            .status()
+            .expect("git init");
+        assert!(git_status.success());
+        fs::write(workspace.join(".gitignore").as_std_path(), "scratch/\n").expect("gitignore");
+        let bin_dir = workspace.join("bin");
+        fs::create_dir_all(bin_dir.as_std_path()).expect("bin dir");
+        let espflash = bin_dir.join("espflash");
+        fs::write(
+            espflash.as_std_path(),
+            "#!/usr/bin/env sh\nprintf '%s\\n' \"$@\" >\"$(dirname \"$0\")/args.log\"\nprintf 'password=probe-secret\\n' >&2\nprintf 'Connecting...\\n0x0123456789abcdef0123456789abcdef\\n'\n",
+        )
+        .expect("fake espflash");
+        fs::set_permissions(espflash.as_std_path(), fs::Permissions::from_mode(0o700))
+            .expect("fake espflash mode");
+        let environment = LocalFlashEnvironment {
+            workspace_dir: workspace.clone(),
+            espflash_bin: espflash.clone(),
+            espflash_version: "espflash 4.5.0".to_owned(),
+            espflash_sha256: sha256_bytes(b"fake espflash"),
+        };
+        let command = Phase35ProbeCommand {
+            board: BoardId::Ultra205,
+            port: "/dev/private-device".to_owned(),
+            stage_root: Utf8PathBuf::from("scratch/probe"),
+            timeout_seconds: 30,
+        };
+
+        // Act
+        run_phase35_probe(&command, &environment).expect("Phase 35 probe");
+
+        // Assert
+        let stage_root = workspace.join("scratch/probe");
+        let private_log = stage_root.join("probe.private.log");
+        let metrics = stage_root.join("probe.metrics.json");
+        let captured = fs::read_to_string(private_log.as_std_path()).expect("private log");
+        assert!(captured.contains("password=[redacted]"));
+        assert!(!captured.contains("probe-secret"));
+        assert!(captured.contains("0x0123456789abcdef0123456789abcdef"));
+        assert_eq!(
+            fs::metadata(private_log.as_std_path())
+                .expect("private metadata")
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+        assert_eq!(
+            fs::metadata(metrics.as_std_path())
+                .expect("metrics metadata")
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+        let args = fs::read_to_string(bin_dir.join("args.log").as_std_path()).expect("args");
+        assert_eq!(
+            args,
+            "checksum-md5\n--chip\nesp32s3\n--port\n/dev/private-device\n--non-interactive\n--before\nusb-reset\n--after\nhard-reset\n--skip-update-check\n0x0\n4096\n"
+        );
+        let second = run_phase35_probe(&command, &environment).expect_err("no clobber");
+        assert!(format!("{second:#}").contains("destination_exists"));
+    }
 
     #[test]
     fn parses_key_value_aliases_for_flash() {
@@ -2971,6 +3593,12 @@ mod tests {
                         "esp32s3",
                         "--port",
                         "/dev/cu.usbmodem101",
+                        "--non-interactive",
+                        "--before",
+                        "usb-reset",
+                        "--after",
+                        "hard-reset",
+                        "--skip-update-check",
                         "0x0",
                         executed_flash_path,
                     ],
@@ -2984,10 +3612,22 @@ mod tests {
                         "--port",
                         "/dev/cu.usbmodem101",
                         "--non-interactive",
+                        "--before",
+                        "usb-reset",
+                        "--after",
+                        "hard-reset",
+                        "--skip-update-check",
                         NVS_PARTITION_OFFSET,
                         nvs_seed.image.as_str(),
                     ],
                 ),
+            ]
+        );
+        assert_eq!(
+            environment.phase35_stage_gates(),
+            vec![
+                ("after-factory".to_owned(), "/dev/cu.usbmodem101".to_owned()),
+                ("after-nvs".to_owned(), "/dev/cu.usbmodem101".to_owned()),
             ]
         );
     }
@@ -3057,6 +3697,12 @@ mod tests {
                 "esp32s3",
                 "--port",
                 "/dev/cu.usbmodem101",
+                "--non-interactive",
+                "--before",
+                "usb-reset",
+                "--after",
+                "hard-reset",
+                "--skip-update-check",
                 "0x0",
                 outcome.flash_image.as_str(),
             ]
@@ -3169,6 +3815,12 @@ mod tests {
                 "esp32s3",
                 "--port",
                 "/dev/cu.usbmodem101",
+                "--non-interactive",
+                "--before",
+                "usb-reset",
+                "--after",
+                "hard-reset",
+                "--skip-update-check",
                 "0x0",
                 outcome.flash_image.as_str(),
             ]
@@ -5219,6 +5871,7 @@ mod tests {
         observed_flash: RefCell<Vec<ObservedFlash>>,
         private_root_admitted: bool,
         private_root_admission_calls: Cell<usize>,
+        phase35_stage_gates: RefCell<Vec<(String, String)>>,
     }
 
     impl Default for FakeFlashEnvironment {
@@ -5255,6 +5908,7 @@ mod tests {
                 observed_flash: RefCell::new(Vec::new()),
                 private_root_admitted: true,
                 private_root_admission_calls: Cell::new(0),
+                phase35_stage_gates: RefCell::new(Vec::new()),
             }
         }
 
@@ -5328,6 +5982,10 @@ mod tests {
 
         fn observed_flashes(&self) -> std::cell::Ref<'_, Vec<ObservedFlash>> {
             self.observed_flash.borrow()
+        }
+
+        fn phase35_stage_gates(&self) -> Vec<(String, String)> {
+            self.phase35_stage_gates.borrow().clone()
         }
     }
 
@@ -5457,6 +6115,13 @@ mod tests {
             if self.execute_failure {
                 bail!("sentinel child failure");
             }
+            Ok(())
+        }
+
+        fn phase35_stage_readiness_gate(&self, stage: &str, port: &str) -> Result<()> {
+            self.phase35_stage_gates
+                .borrow_mut()
+                .push((stage.to_owned(), port.to_owned()));
             Ok(())
         }
 

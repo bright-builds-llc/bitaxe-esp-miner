@@ -57,6 +57,14 @@ create_espflash_stub() {
 
 	write_executable "$path" 'scenario="${DETECT_ULTRA205_TEST_SCENARIO:?}"
 printf "%s\n" "$*" >>"${DETECT_ULTRA205_COMMAND_LOG:?}"
+if [[ "${1:-}" == "--version" ]]; then
+	if [[ "$scenario" == "version_mismatch" ]]; then
+		printf "espflash 4.0.1\n"
+	else
+		printf "espflash 4.5.0\n"
+	fi
+  exit 0
+fi
 if [[ "${1:-}" == "list-ports" && "${2:-}" == "--name-only" ]]; then
   case "$scenario" in
     list_failure)
@@ -117,7 +125,6 @@ run_detector() {
 		DETECT_ULTRA205_TEST_SCENARIO="$scenario" \
 		DETECT_ULTRA205_COMMAND_LOG="${tmp_root}/commands-${scenario}.log" \
 		ESPFLASH_BIN="$espflash_stub" \
-		SERIAL_SESSION_TOOL_VERSION=test \
 		SERIAL_SESSION_TRACE_ROOT="${tmp_root}/traces-${scenario}" \
 		"$BASH" "$detector_script"
 }
@@ -132,13 +139,12 @@ test_explicit_port_skips_listing_and_keeps_reset_contract() {
 		DETECT_ULTRA205_TEST_SCENARIO=success \
 		DETECT_ULTRA205_COMMAND_LOG="$command_log" \
 		ESPFLASH_BIN="$espflash_stub" \
-		SERIAL_SESSION_TOOL_VERSION=test \
 		SERIAL_SESSION_TRACE_ROOT="${tmp_root}/traces-explicit" \
 		"$BASH" "$detector_script" --port /dev/cu.explicit205; then
 		fail "explicit detector mode failed"
 	fi
 
-	[[ "$(wc -l <"$command_log" | tr -d ' ')" == 1 ]] || fail "explicit mode invoked more than board-info"
+	[[ "$(wc -l <"$command_log" | tr -d ' ')" == 2 ]] || fail "explicit mode invoked unexpected espflash commands"
 	! grep -Fq 'list-ports' "$command_log" || fail "explicit mode listed ports"
 	assert_contains "$(cat "$command_log")" "board-info --chip esp32s3 --port /dev/cu.explicit205 --non-interactive --before usb-reset --after hard-reset"
 	assert_contains "$(cat "$output_file")" "port=/dev/cu.explicit205"
@@ -191,8 +197,8 @@ test_single_port_success_prints_port() {
 
 	local output
 	output="$(cat "$output_file")"
-	assert_contains "$output" "board-info"
-	assert_contains "$output" "--before usb-reset --after hard-reset"
+	assert_contains "$output" "board_info_command=protected-operational"
+	assert_contains "$output" "reset_contract=usb-reset/hard-reset"
 	assert_contains "$output" "Chip type: esp32s3"
 	assert_contains "$output" "port=/dev/cu.usbmodem101"
 }
@@ -221,6 +227,18 @@ test_open_failure_is_classified() {
 	assert_contains "$(cat "$output_file")" "failure_category=open_failure"
 }
 
+test_version_mismatch_stops_before_detection_effects() {
+	local output_file="${tmp_root}/version-mismatch.out"
+
+	if run_detector version_mismatch "$output_file"; then
+		fail "detector accepted mismatched espflash"
+	fi
+
+	assert_contains "$(cat "$output_file")" "failure_category=espflash_version_mismatch"
+	[[ "$(wc -l <"${tmp_root}/commands-version_mismatch.log" | tr -d ' ')" == 1 ]] ||
+		fail "version mismatch reached list-ports or board-info"
+}
+
 if [[ ! -f "$detector_script" ]]; then
 	fail "detector script missing: ${detector_script}"
 fi
@@ -231,6 +249,7 @@ test_multiple_ports_fail_with_candidates
 test_single_port_success_prints_port
 test_board_info_failure_blocks_detection
 test_open_failure_is_classified
+test_version_mismatch_stops_before_detection_effects
 test_explicit_port_skips_listing_and_keeps_reset_contract
 
 printf 'detect ultra205 tests passed\n'

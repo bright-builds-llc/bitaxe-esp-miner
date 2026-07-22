@@ -52,6 +52,7 @@ mod phase33_source_guard;
 #[cfg(test)]
 mod phase34_source_guard;
 mod phase35_evidence;
+mod phase35_flash;
 mod phase35_http;
 mod phase35_http_probe;
 mod phase35_promotion;
@@ -80,6 +81,7 @@ enum CliCommand {
     CompleteOperatorEvidence(CompleteOperatorEvidenceArgs),
     ConsolidatePhase28Evidence(ConsolidatePhase28EvidenceArgs),
     Phase33Classify(Phase33ClassifyArgs),
+    ClassifyPhase35Flash(ClassifyPhase35FlashArgs),
     ClassifyPhase35Http(ClassifyPhase35HttpArgs),
     ProbePhase35Http(ProbePhase35HttpArgs),
     ValidatePhase35Evidence(ValidatePhase35EvidenceArgs),
@@ -124,6 +126,18 @@ struct ClassifyPhase35HttpArgs {
 
     #[arg(long, value_parser = parse_utf8_path)]
     hostname_output: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct ClassifyPhase35FlashArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    metrics_input: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    private_log_input: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    projection_output: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -692,6 +706,9 @@ fn main() -> Result<()> {
             run_consolidate_phase28_evidence_command(args, &environment)?
         }
         CliCommand::Phase33Classify(args) => run_phase33_classify_command(args, &environment)?,
+        CliCommand::ClassifyPhase35Flash(args) => {
+            run_classify_phase35_flash_command(args, &environment)?
+        }
         CliCommand::ClassifyPhase35Http(args) => {
             run_classify_phase35_http_command(args, &environment)?
         }
@@ -708,6 +725,52 @@ fn main() -> Result<()> {
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_classify_phase35_flash_command(
+    args: ClassifyPhase35FlashArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    use phase35_flash::{classify_phase35_flash, FlashBoundary};
+
+    let metrics_input = environment.workspace_path(&args.metrics_input);
+    let private_log_input = environment.workspace_path(&args.private_log_input);
+    let projection_output = environment.workspace_path(&args.projection_output);
+    let metrics_metadata = validate_private_input(&metrics_input)?;
+    let log_metadata = validate_private_input(&private_log_input)?;
+    if (metrics_metadata.dev(), metrics_metadata.ino()) == (log_metadata.dev(), log_metadata.ino())
+    {
+        bail!("Phase 35 flash boundary input aliases another input");
+    }
+    let identities = [
+        canonical_private_path(&metrics_input)?,
+        canonical_private_path(&private_log_input)?,
+        validate_private_output(&projection_output)?,
+    ];
+    for left in 0..identities.len() {
+        for right in (left + 1)..identities.len() {
+            if identities[left] == identities[right] {
+                bail!("Phase 35 flash boundary paths must be distinct");
+            }
+        }
+    }
+
+    let metrics = fs::read(metrics_input.as_std_path())
+        .context("failed to read private Phase 35 flash metrics")?;
+    let private_log = fs::read(private_log_input.as_std_path())
+        .context("failed to read private Phase 35 flash child log")?;
+    let projection = classify_phase35_flash(&metrics, &private_log)
+        .map_err(|_| anyhow::anyhow!("category=flash_boundary_invalid"))?;
+    let terminal_boundary = projection.terminal_boundary;
+    let mut projection_bytes =
+        serde_json::to_vec_pretty(&projection).context("failed to encode flash projection")?;
+    projection_bytes.push(b'\n');
+    write_private_new(&projection_output, &projection_bytes)?;
+
+    if terminal_boundary != FlashBoundary::Ready {
+        bail!("category={}", terminal_boundary.as_str());
+    }
+    Ok("category=ready".to_owned())
 }
 
 fn run_probe_phase35_http_command(

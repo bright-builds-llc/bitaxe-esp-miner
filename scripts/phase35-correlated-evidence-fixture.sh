@@ -193,6 +193,19 @@ physical_identity_after)
 		printf '%s\n' "$identity_digest"
 	fi
 	;;
+stage_readiness)
+	stage="${1:?stage is required}"
+	record "stage_readiness_${stage}"
+	if [[ "$scenario" == "probe_identity_drift" && "$stage" == "after_probe" ]]; then
+		printf '%s\n' "$other_identity_digest"
+	else
+		printf '%s\n' "$identity_digest"
+	fi
+	;;
+flash_probe)
+	record flash_probe
+	[[ "$scenario" != "probe_failure" ]]
+	;;
 credential_path)
 	record credential_path
 	if [[ -n "$expected_credential_path" ]]; then

@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_source_dir="${BASH_SOURCE[0]%/*}"
+[[ "$script_source_dir" != "${BASH_SOURCE[0]}" ]] || script_source_dir="."
+script_dir="$(cd "$script_source_dir" && pwd)"
+# shellcheck source=scripts/espflash-tool.sh
+source "${script_dir}/espflash-tool.sh"
+
 dry_run="false"
 
 usage() {
@@ -99,10 +105,11 @@ else
 	printf 'ok: ESP Rust toolchain and export script already present\n'
 fi
 
-if ! command -v espflash >/dev/null 2>&1; then
-	run_step cargo install espflash --locked
+espflash_bin=""
+if espflash_bin="$(espflash_resolve_bin)" && espflash_version "$espflash_bin" >/dev/null; then
+	printf 'ok: espflash %s found\n' "$ESPFLASH_EXPECTED_VERSION"
 else
-	printf 'ok: espflash found\n'
+	run_step cargo install espflash --version "$ESPFLASH_EXPECTED_VERSION" --locked
 fi
 
 printf 'next: source "%s" or open a new shell, then run `just doctor`.\n' "$esp_export"

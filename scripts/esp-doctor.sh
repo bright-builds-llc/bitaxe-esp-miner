@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_source_dir="${BASH_SOURCE[0]%/*}"
+[[ "$script_source_dir" != "${BASH_SOURCE[0]}" ]] || script_source_dir="."
+script_dir="$(cd "$script_source_dir" && pwd)"
+# shellcheck source=scripts/espflash-tool.sh
+source "${script_dir}/espflash-tool.sh"
+
 readonly EXPECTED_TARGET="xtensa-esp32s3-espidf"
 readonly EXPECTED_MCU="esp32s3"
 readonly EXPECTED_IDF_VERSION="tag:v5.5.4"
@@ -50,7 +56,8 @@ if [[ -d "${HOME}/.cargo/bin" ]]; then
 	export PATH
 fi
 
-readonly workspace_dir="$(detect_workspace_dir)"
+workspace_dir="$(detect_workspace_dir)"
+readonly workspace_dir
 readonly cargo_config="${workspace_dir}/.cargo/config.toml"
 readonly firmware_manifest="${workspace_dir}/firmware/bitaxe/Cargo.toml"
 readonly esp_export="${HOME}/export-esp.sh"
@@ -102,6 +109,28 @@ check_tool() {
 	fi
 
 	pass "$tool found"
+}
+
+check_espflash() {
+	local executable
+	executable="$(espflash_resolve_bin)" || {
+		fail "espflash ${ESPFLASH_EXPECTED_VERSION}" "Run: cargo install espflash --version ${ESPFLASH_EXPECTED_VERSION} --locked"
+		return
+	}
+	local version
+	version="$("$executable" --version 2>/dev/null)" || version="unavailable"
+	version="${version%%$'\n'*}"
+	if [[ "$version" != "espflash ${ESPFLASH_EXPECTED_VERSION}" ]]; then
+		fail "espflash ${ESPFLASH_EXPECTED_VERSION} (found ${version})" "Run: cargo install espflash --version ${ESPFLASH_EXPECTED_VERSION} --locked"
+		return
+	fi
+	local digest
+	digest="$(espflash_executable_digest "$executable")" || {
+		fail "espflash executable digest" "Run: cargo install espflash --version ${ESPFLASH_EXPECTED_VERSION} --locked"
+		return
+	}
+	pass "espflash_version=${ESPFLASH_EXPECTED_VERSION}"
+	pass "espflash_executable_sha256=${digest}"
 }
 
 file_contains() {
@@ -215,7 +244,7 @@ check_tool rustup "Install Rust with rustup from https://rustup.rs"
 check_esp_toolchain
 check_esp_export
 check_tool ldproxy "Run: just bootstrap-esp"
-check_tool espflash "Run: just bootstrap-esp"
+check_espflash
 check_tool python3 "Install Python 3 with your system package manager"
 check_tool bazel "Install Bazelisk/Bazel so the repo's bazel command is available"
 

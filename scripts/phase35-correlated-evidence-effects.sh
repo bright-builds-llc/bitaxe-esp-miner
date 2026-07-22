@@ -57,6 +57,19 @@ run_detector_gate() {
 		failure_category="physical_identity_invalid"
 		return 1
 	}
+	if [[ -n "$fixture_command" ]]; then
+		stage_identity_digest="$(fixture stage_readiness detector)" || {
+			failure_category="detector_stage_unstable"
+			return 1
+		}
+	else
+		local enumeration_identity
+		enumeration_identity="$(serial_session_usb_enumeration_identity "$port")" || {
+			failure_category="enumeration_identity_unavailable"
+			return 1
+		}
+		stage_identity_digest="$(printf '%s\n%s\n' "$physical_identity_digest" "$enumeration_identity" | serial_session_hash_text)"
+	fi
 
 	jq -cn \
 		--arg board_category 205 \
@@ -84,6 +97,31 @@ run_detector_gate() {
 		>"$local_root/artifacts/target-lock.json"
 	chmod 600 "$local_root/artifacts/target-lock.json"
 	target_lock_digest="$(sha256_file "$local_root/artifacts/target-lock.json")"
+}
+
+run_stage_readiness_gate() {
+	local stage="$1"
+	if [[ -n "$fixture_command" ]]; then
+		local observed
+		observed="$(fixture stage_readiness "$stage")" || {
+			failure_category="${stage}_readiness_unavailable"
+			return 1
+		}
+		[[ "$observed" == "$stage_identity_digest" ]] || {
+			failure_category="${stage}_identity_changed"
+			return 1
+		}
+		return
+	fi
+	if ! serial_session_readiness_gate "phase35-${stage}" "$port"; then
+		failure_category="${stage}_${SERIAL_SESSION_READINESS_CATEGORY:-readiness_failed}"
+		return 1
+	fi
+	[[ "$SERIAL_SESSION_READY_PHYSICAL_IDENTITY" == "$physical_identity_digest" ]] || {
+		failure_category="${stage}_physical_identity_changed"
+		return 1
+	}
+	stage_identity_digest="$SERIAL_SESSION_READY_IDENTITY"
 }
 
 validate_credential_path_after_detector() {
@@ -151,6 +189,165 @@ production_classify_boot() {
 	return 1
 }
 
+classify_flash_stage() {
+	local stage="$1"
+	local metrics="$2"
+	local private_log="$3"
+	local projection="$local_root/artifacts/flash-${stage}-boundary.json"
+	local classifier_stderr="$local_root/raw/flash-${stage}-classifier.stderr"
+	local classifier_status=0
+	set +e
+	"${workspace_dir}/bazel-bin/tools/parity/report" classify-phase35-flash \
+		--metrics-input "$metrics" \
+		--private-log-input "$private_log" \
+		--projection-output "$projection" \
+		>"$local_root/raw/flash-${stage}-classifier.stdout" 2>"$classifier_stderr"
+	classifier_status=$?
+	set -e
+	chmod 600 "$local_root/raw/flash-${stage}-classifier.stdout" "$classifier_stderr"
+	[[ -f "$projection" && ! -L "$projection" ]] || {
+		failure_category="flash_boundary_invalid"
+		return 1
+	}
+	chmod 600 "$projection"
+	jq -e \
+		--arg schema phase35-flash-boundary-v1 \
+		--arg stage "$stage" \
+		'((keys | sort) == (["completed","connected","device_info_complete","duration_millis","launched","schema_version","stage","terminal_boundary","tool_version_valid","transfer_started"] | sort)) and .schema_version == $schema and .stage == $stage and (.terminal_boundary | type == "string" and test("^(version_mismatch|spawn_failure|pre_connect_failure|device_info_failure|post_info_pre_transfer_failed|transfer_failure|post_transfer_failure|ready)$"))' \
+		"$projection" >/dev/null || {
+		failure_category="flash_boundary_invalid"
+		return 1
+	}
+	flash_boundary_schema="$(jq -r '.schema_version' "$projection")"
+	flash_stage="$(jq -r '.stage' "$projection")"
+	flash_boundary="$(jq -r '.terminal_boundary' "$projection")"
+	if [[ "$flash_boundary" == ready ]]; then
+		((classifier_status == 0)) || {
+			failure_category="flash_boundary_invalid"
+			return 1
+		}
+		return 0
+	fi
+	((classifier_status != 0)) || {
+		failure_category="flash_boundary_invalid"
+		return 1
+	}
+	failure_category="$flash_boundary"
+	return 1
+}
+
+classify_available_flash_stages() {
+	local stage
+	local classified_count=0
+	for stage in factory nvs monitor; do
+		local metrics="$local_root/raw/flash/private-stages/${stage}.metrics.json"
+		local private_log="$local_root/raw/flash/private-stages/${stage}.private.log"
+		if [[ ! -e "$metrics" && ! -e "$private_log" ]]; then
+			continue
+		fi
+		[[ -f "$metrics" && ! -L "$metrics" && -f "$private_log" && ! -L "$private_log" ]] || {
+			failure_category="flash_boundary_invalid"
+			return 1
+		}
+		((classified_count += 1))
+		classify_flash_stage "$stage" "$metrics" "$private_log" || return 1
+	done
+	((classified_count > 0))
+}
+
+run_checksum_probe() {
+	if ! run_stage_readiness_gate before_probe; then
+		return 1
+	fi
+	if [[ -n "$fixture_command" && "$fixture_direct_flash" != true ]]; then
+		fixture flash_probe "$port" >/dev/null || {
+			failure_category="flash_probe_failed"
+			return 1
+		}
+		flash_boundary_schema="phase35-flash-boundary-v1"
+		flash_stage="probe"
+		flash_boundary="ready"
+		run_stage_readiness_gate after_probe
+		return
+	fi
+
+	local flash_dir="$local_root/raw/flash"
+	local stage_root="$flash_dir/private-stages"
+	mkdir -p "$flash_dir" "$stage_root"
+	chmod 700 "$flash_dir" "$stage_root"
+	if [[ -z "$fixture_command" ]]; then
+		local selected_espflash=""
+		local selected_version=""
+		local selected_digest=""
+		local resolver_status=0
+		set +e
+		selected_espflash="$(espflash_resolve_bin)"
+		resolver_status=$?
+		set -e
+		if ((resolver_status == 0)) && [[ -n "$selected_espflash" ]]; then
+			local version_status=0
+			local digest_status=0
+			set +e
+			selected_version="$(espflash_version "$selected_espflash")"
+			version_status=$?
+			selected_digest="$(espflash_executable_digest "$selected_espflash")"
+			digest_status=$?
+			set -e
+			if ((version_status != 0 || digest_status != 0)); then
+				selected_version=""
+				selected_digest=""
+			fi
+		fi
+		if [[ -z "$selected_version" || ! "$selected_digest" =~ ^[0-9a-f]{64}$ ]]; then
+			printf 'phase35_espflash_version_contract_failed\n' >"$stage_root/probe.private.log"
+			jq -cn \
+				'{schema_version:"phase35-flash-boundary-v1",stage:"probe",tool_version_valid:false,launched:false,connected:false,device_info_complete:false,transfer_started:false,completed:false,duration_millis:0}' \
+				>"$stage_root/probe.metrics.json"
+			chmod 600 "$stage_root/probe.private.log" "$stage_root/probe.metrics.json"
+			classify_flash_stage probe \
+				"$stage_root/probe.metrics.json" \
+				"$stage_root/probe.private.log"
+			return
+		fi
+		jq -cn \
+			--arg version "$ESPFLASH_EXPECTED_VERSION" \
+			--arg executable_sha256 "$selected_digest" \
+			'{version:$version,executable_sha256:$executable_sha256}' \
+			>"$local_root/artifacts/espflash-provenance.json"
+		chmod 600 "$local_root/artifacts/espflash-provenance.json"
+	fi
+	local flash_executable
+	flash_executable="$(resolve_flash_executable)" || {
+		failure_category="flash_executable_unavailable"
+		return 1
+	}
+	local probe_status=0
+	set +e
+	"$flash_executable" phase35-probe \
+		--board 205 \
+		--port "$port" \
+		--stage-root "$stage_root" \
+		--timeout-seconds 30 \
+		>"$local_root/raw/flash-probe-command.log" 2>&1
+	probe_status=$?
+	set -e
+	chmod 600 "$local_root/raw/flash-probe-command.log"
+	local metrics="$stage_root/probe.metrics.json"
+	local private_log="$stage_root/probe.private.log"
+	[[ -f "$metrics" && ! -L "$metrics" && -f "$private_log" && ! -L "$private_log" ]] || {
+		failure_category="flash_boundary_invalid"
+		return 1
+	}
+	if ! classify_flash_stage probe "$metrics" "$private_log"; then
+		return 1
+	fi
+	((probe_status == 0)) || {
+		failure_category="flash_boundary_invalid"
+		return 1
+	}
+	run_stage_readiness_gate after_probe
+}
+
 run_flash_boot_a() {
 	local output="$local_root/raw/boot-a-setup.json"
 	if [[ -n "$fixture_command" && "$fixture_direct_flash" != true ]]; then
@@ -188,11 +385,23 @@ run_flash_boot_a() {
 	if [[ -n "$wifi_credentials" ]]; then
 		args+=(--wifi-credentials "$wifi_credentials")
 	fi
-	if ! "$flash_executable" "${args[@]}" >"$local_root/raw/flash-command.log" 2>&1; then
-		chmod 600 "$local_root/raw/flash-command.log"
+	local flash_status=0
+	set +e
+	PHASE35_FLASH_STAGE_ROOT="$flash_dir/private-stages" \
+		PHASE35_STAGE_READINESS_BIN="${workspace_dir}/scripts/phase35-stage-readiness.sh" \
+		PHASE35_EXPECTED_PHYSICAL_IDENTITY="$physical_identity_digest" \
+		"$flash_executable" "${args[@]}" >"$local_root/raw/flash-command.log" 2>&1
+	flash_status=$?
+	set -e
+	chmod 600 "$local_root/raw/flash-command.log"
+	if ! classify_available_flash_stages; then
+		[[ -n "$failure_category" ]] || failure_category="flash_or_boot_a_failed"
 		return 1
 	fi
-	chmod 600 "$local_root/raw/flash-command.log"
+	((flash_status == 0)) || {
+		failure_category="flash_or_boot_a_failed"
+		return 1
+	}
 	local classifier_input="$flash_dir/flash-monitor.classifier-input.log"
 	local private_record="$flash_dir/flash-command-evidence.private.json"
 	local admitted_log="$flash_dir/flash-monitor.log"
@@ -614,6 +823,9 @@ seal_non_promotion() {
 	write_private "$local_root/non-promotion.seal" \
 		"status=non_promotion" \
 		"category=${category}" \
+		"boundary_schema=${flash_boundary_schema:-none}" \
+		"flash_stage=${flash_stage:-none}" \
+		"flash_boundary=${flash_boundary:-none}" \
 		"restoration_secondary_category=${restoration_secondary_category:-none}" \
 		"cleanup_secondary_category=${cleanup_secondary_category:-none}" \
 		"root_reusable=false"
