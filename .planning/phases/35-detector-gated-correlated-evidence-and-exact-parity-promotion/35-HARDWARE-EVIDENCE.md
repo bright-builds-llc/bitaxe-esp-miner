@@ -1662,3 +1662,48 @@ clean software gate, atomic commits, and exact-current-HEAD preflight. The same
 retained-chunk signature recurring after this repair selects
 `stop_repeated_boundary`. Task 3, admission, checklist promotion, and
 `35-04-SUMMARY.md` remain blocked until `complete`.
+
+## Attempt 24 Checkpoint and Probe Checksum Diagnosis
+
+Attempt 24 executed once after doctor and exact-current-HEAD preflight passed.
+The protected parent, nonexistent supervisor child, sibling wrapper log, and
+resulting sealed child met the required `0700`/`0600` ownership contract.
+
+| Field | Redacted value |
+| --- | --- |
+| Attempt ordinal | `24` |
+| Source commit | `dec8b8a6bef8f504ec83a7eebe03b69a08be5064` |
+| Doctor | `passed` |
+| Exact-head preflight | `passed` |
+| Exact-head equality | `true` |
+| Supervisor result | `non_promotion` |
+| Primary category | `flash_boundary_invalid` |
+| Probe connected | `true` |
+| Probe device information complete | `true` |
+| Protected checksum candidate count | `1` |
+| Credential access | `false` |
+| Factory/NVS write started | `false` |
+| Mutation started | `false` |
+| Restoration secondary | `none` |
+| Cleanup secondary | `none` |
+| Root reusable | `false` |
+| Progress decision | `continue_after_verified_fix` |
+
+The protected output shape and installed espflash 4.5.0 source prove the child
+printed one valid leading-zero-elided checksum: espflash converts MD5 to `u128`
+and uses unpadded lowercase hexadecimal formatting. The fixed-width parser
+therefore marked the probe incomplete. The non-ready Rust projection then used
+serde's default `failure` spelling while the shell requires the canonical
+`failed` category, collapsing the typed boundary into
+`flash_boundary_invalid`.
+
+The repair accepts exactly one official lowercase `0x`-prefixed checksum with
+1 through 32 hexadecimal digits and rejects malformed, uppercase, embedded,
+overlong, or multiple candidates. It also explicitly serializes
+`post_info_pre_transfer_failed`. Offline classification of Attempt 24's
+immutable inputs now emits that canonical typed boundary without altering the
+sealed root. Attempt 24 remains immutable, non-promotable, non-reusable, and
+ineligible for splicing. Fresh Attempt 25 is allowed only after the complete
+clean software gate, atomic checkpoint commit, and exact-current-HEAD
+preflight. Task 3, admission, checklist promotion, and `35-04-SUMMARY.md`
+remain blocked until `complete`.

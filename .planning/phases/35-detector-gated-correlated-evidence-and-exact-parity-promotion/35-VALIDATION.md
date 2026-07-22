@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempts 19–23 remain sealed. Attempt 23 validated the private-classifier handoff, then exposed stale WebSocket output corrupting the retained HTTP chunk stream before mutation. Attempt 24 requires the regression-backed HTTPD-context serialization repair, complete clean gate, atomic commits, a fresh root, and exact-head preflight. Recurrence of the same retained-chunk signature stops the loop. Task 2 and Phase 35 remain incomplete until eligible evidence is admitted. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempts 19–24 remain sealed. Attempt 24 stopped at the read-only probe before credentials or writes because the adapter rejected espflash's valid unpadded checksum and the classifier used a noncanonical boundary spelling. Attempt 25 requires the regression-backed checksum/parser repair, complete clean gate, atomic checkpoint commit, a fresh root, and exact-head preflight. Task 2 and Phase 35 remain incomplete until eligible evidence is admitted. |
 
 ## Validation Sign-Off
 
