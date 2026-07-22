@@ -21,6 +21,7 @@ pub(crate) enum FlashBoundary {
     SpawnFailure,
     PreConnectFailure,
     DeviceInfoFailure,
+    #[serde(rename = "post_info_pre_transfer_failed")]
     PostInfoPreTransferFailure,
     TransferFailure,
     PostTransferFailure,
@@ -250,6 +251,28 @@ mod tests {
         assert!(!rendered.contains(canary));
         assert!(!rendered.contains("/dev/"));
         assert!(!rendered.contains("café"));
+    }
+
+    #[test]
+    fn projection_serializes_the_canonical_post_info_boundary() {
+        // Arrange
+        let projection = classify_phase35_flash(
+            &metrics(serde_json::json!({
+                "transfer_started": false,
+                "completed": false
+            })),
+            b"private child output\n",
+        )
+        .expect("classification");
+
+        // Act
+        let rendered = serde_json::to_value(projection).expect("projection");
+
+        // Assert
+        assert_eq!(
+            rendered["terminal_boundary"],
+            "post_info_pre_transfer_failed"
+        );
     }
 
     #[test]

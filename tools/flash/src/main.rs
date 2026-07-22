@@ -3005,15 +3005,19 @@ fn flash_log_transfer_started(log: &str) -> bool {
 }
 
 fn phase35_probe_checksum_observed(log: &str) -> bool {
-    log.lines().any(|line| {
-        let maybe_checksum = line.trim().strip_prefix("0x");
-        matches!(
-            maybe_checksum,
-            Some(checksum)
-                if checksum.len() == 32
-                    && checksum.bytes().all(|byte| byte.is_ascii_hexdigit())
-        )
-    })
+    log.lines()
+        .filter(|line| {
+            let Some(checksum) = line.trim().strip_prefix("0x") else {
+                return false;
+            };
+            !checksum.is_empty()
+                && checksum.len() <= 32
+                && checksum
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        })
+        .count()
+        == 1
 }
 
 fn phase35_probe_command(espflash_bin: &Utf8Path, port: &str) -> CommandSpec {
@@ -3150,16 +3154,31 @@ mod tests {
     }
 
     #[test]
-    fn phase35_probe_checksum_requires_one_complete_md5_line() {
+    fn phase35_probe_checksum_accepts_espflash_variable_width_hex() {
         // Arrange
-        let valid = "Connecting...\n0x0123456789abcdef0123456789abcdef\n";
-        let truncated = "0x0123456789abcdef\n";
-        let embedded = "checksum=0x0123456789abcdef0123456789abcdef\n";
+        let full_width = "Connecting...\n0x0123456789abcdef0123456789abcdef\n";
+        let leading_zero_elided = "0x123456789abcdef0123456789abcdef\n";
+        let shortest = "0x0\n";
 
         // Act and Assert
-        assert!(phase35_probe_checksum_observed(valid));
-        assert!(!phase35_probe_checksum_observed(truncated));
+        assert!(phase35_probe_checksum_observed(full_width));
+        assert!(phase35_probe_checksum_observed(leading_zero_elided));
+        assert!(phase35_probe_checksum_observed(shortest));
+    }
+
+    #[test]
+    fn phase35_probe_checksum_rejects_ambiguous_or_malformed_lines() {
+        // Arrange
+        let overlong = "0x00123456789abcdef0123456789abcdef\n";
+        let embedded = "checksum=0x0123456789abcdef0123456789abcdef\n";
+        let uppercase = "0x0123456789ABCDEF0123456789ABCDEF\n";
+        let multiple = "0x0123456789abcdef0123456789abcdef\n0x1\n";
+
+        // Act and Assert
+        assert!(!phase35_probe_checksum_observed(overlong));
         assert!(!phase35_probe_checksum_observed(embedded));
+        assert!(!phase35_probe_checksum_observed(uppercase));
+        assert!(!phase35_probe_checksum_observed(multiple));
     }
 
     #[test]
@@ -3236,7 +3255,7 @@ mod tests {
         let espflash = bin_dir.join("espflash");
         fs::write(
             espflash.as_std_path(),
-            "#!/usr/bin/env sh\nprintf '%s\\n' \"$@\" >\"$(dirname \"$0\")/args.log\"\nprintf 'password=probe-secret\\n' >&2\nprintf 'Connecting...\\n0x0123456789abcdef0123456789abcdef\\n'\n",
+            "#!/usr/bin/env sh\nprintf '%s\\n' \"$@\" >\"$(dirname \"$0\")/args.log\"\nprintf 'password=probe-secret\\n' >&2\nprintf 'Connecting...\\n0x123456789abcdef0123456789abcdef\\n'\n",
         )
         .expect("fake espflash");
         fs::set_permissions(espflash.as_std_path(), fs::Permissions::from_mode(0o700))
@@ -3264,7 +3283,7 @@ mod tests {
         let captured = fs::read_to_string(private_log.as_std_path()).expect("private log");
         assert!(captured.contains("password=[redacted]"));
         assert!(!captured.contains("probe-secret"));
-        assert!(captured.contains("0x0123456789abcdef0123456789abcdef"));
+        assert!(captured.contains("0x123456789abcdef0123456789abcdef"));
         assert_eq!(
             fs::metadata(private_log.as_std_path())
                 .expect("private metadata")
