@@ -1458,3 +1458,41 @@ supervisor child, mode-0600 sibling output, and one invocation. If the same
 `flash_or_boot_a_failed` plus `target_connection_failed` signature recurs after
 that remediation, policy selects `stop_hardware_blocker`. Task 3, admission,
 checklist promotion, and `35-04-SUMMARY.md` remain blocked.
+
+## Attempt 20 Checkpoint and Hardware-Blocker Stop
+
+The user confirmed completion of the exact USB and barrel-power remediation
+required after attempt 19. Attempt 20 then ran the full Phase 35 command exactly
+once from clean exact source
+`b06bf416cf65283c53aa0f69c15ed216a9858eaa` after a fresh exact-head
+preflight passed. The internal detector again admitted one board-205 target.
+The flash process then reproduced the same target-connection failure before Boot
+A capture or mutation. Cleanup passed, and the root is sealed non-promotable
+and non-reusable.
+
+| Field | Recorded value |
+| --- | --- |
+| Attempt ordinal | `20` |
+| Invocation count for root | `1` |
+| Source commit | `b06bf416cf65283c53aa0f69c15ed216a9858eaa` |
+| Manual remediation confirmed | `true` |
+| Exact-head preflight | `passed` |
+| Detector admission | `passed` |
+| Supervisor result | `non_promotion` |
+| Coarse category | `flash_or_boot_a_failed` |
+| Authoritative discriminator | `target_connection_failed` |
+| Same as pre-remediation signature | `true` |
+| Boot A capture started | `false` |
+| Mutation started | `false` |
+| Restoration | `not_needed` |
+| Cleanup secondary | `none` |
+| Root reusable | `false` |
+| Progress decision | `stop_hardware_blocker` |
+
+The same authoritative signature recurred after its one applicable remediation.
+The progress-gated policy therefore prohibits attempt 21 and any unchanged
+retry. Direct UART, pins, probes, and other stronger electrical interfaces
+remain outside current authority. Attempts 1 through 20 remain immutable,
+non-promotable, non-reusable, and ineligible for evidence splicing. Task 2,
+Task 3, Phase 35 admission, checklist promotion, and `35-04-SUMMARY.md` remain
+incomplete and blocked.

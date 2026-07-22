@@ -1,16 +1,16 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Phase 35 attempt 19 passes detector admission, then the flash process cannot establish its device connection before Boot A capture."
 created: 2026-07-22T01:05:14Z
-updated: 2026-07-22T01:05:14Z
+updated: 2026-07-22T03:10:42Z
 ---
 
 ## Current Focus
 
-hypothesis: The admitted target became unavailable at the flash transport boundary after detector board-info completed; no repository defect has yet been shown to distinguish the physical USB/power state further.
-test: Perform one exact non-invasive USB and barrel-power reset, wait for the device to re-enumerate, then use fresh attempt 20 and a fresh root under the existing internal detector gate.
-expecting: Objective detector admission followed by a successful flash connection proves the environmental boundary changed. Recurrence of the same connection signature after remediation stops the loop as a hardware blocker.
-next_action: Wait for user confirmation that the USB and barrel-power reset is complete, then rerun the full exact-head preflight before attempt 20.
+hypothesis: Confirmed hardware blocker - the admitted target remains unavailable at the flash transport boundary after the completed USB and barrel-power remediation.
+test: Complete. After user-confirmed remediation, fresh attempt 20 passed exact-head preflight and detector admission, then reproduced the same closed target-connection signature before Boot A capture.
+expecting: Met the stop condition: recurrence of the same authoritative signature after the one applicable remediation selects `stop_hardware_blocker`.
+next_action: Preserve attempts 19 and 20 as sealed non-promotion and do not issue attempt 21. Phase 35 remains incomplete until a separately authorized plan establishes a materially different permitted diagnostic or the external hardware state changes independently.
 
 ## Symptoms
 
@@ -43,10 +43,14 @@ started: 2026-07-22T01:01:00Z
   checked: Repository hardware-attempt policy and Phase 35 standing authority.
   found: `continue_after_manual_remediation` requires one authorized non-invasive action and user confirmation; recurrence after that remediation selects `stop_hardware_blocker`.
   implication: Software work cannot manufacture the required environmental transition, so the workflow must wait for confirmation.
+- timestamp: 2026-07-22T03:10:42Z
+  checked: Attempt-20 exact-head preflight, private seal, chronology, artifact inventory, and closed error classifier after the user-confirmed USB and barrel-power remediation.
+  found: Detector admission again passed, the flash boundary again produced `flash_or_boot_a_failed` plus `target_connection_failed`, Boot A never began, and cleanup completed with no secondary failure.
+  implication: The same authoritative signature recurred after its one applicable remediation, satisfying the repository's `stop_hardware_blocker` condition.
 
 ## Resolution
 
-root_cause: The current evidence proves loss of target connectivity between successful detector board-info and flash connection, but cannot safely discriminate the physical USB/power cause further without the permitted manual remediation.
-fix: Pending one exact USB and barrel-power reset by the user; no code change or unchanged command retry is justified.
-verification: Attempt 19 used one fresh root and one invocation at exact committed source, preserved the earliest category, performed cleanup, and sealed non-promotion. Attempt 20 remains prohibited until remediation confirmation and a fresh exact-head preflight.
+root_cause: The target repeatedly loses or refuses flash connectivity after successful detector board-info. The same signature survived the permitted USB and barrel-power remediation, and no remaining authorized non-invasive diagnostic can discriminate the physical cause.
+fix: No repository fix is justified by the evidence. Policy terminates the loop as `stop_hardware_blocker`; stronger electrical interfaces and unchanged retries remain prohibited.
+verification: Attempts 19 and 20 each used one fresh root and one invocation at an exact committed source, preserved the earliest category, performed cleanup, and sealed non-promotion. Attempt 20 reproduced the same authoritative signature after the confirmed remediation, so attempt 21 is prohibited.
 files_changed: []

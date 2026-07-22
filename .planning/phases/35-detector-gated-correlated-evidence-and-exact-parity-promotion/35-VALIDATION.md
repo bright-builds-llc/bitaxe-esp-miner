@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 19 invoked the command once at exact source `6a88300f84d0db1907455974372fe0468f4957e3` after both gates passed. The internal detector admitted the target, then flash connection failed before Boot A capture or mutation; cleanup passed. Policy selects one confirmed USB and barrel-power remediation before fresh attempt 20 and stops as a hardware blocker if the same redacted connection signature recurs. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | After the user-confirmed USB and barrel-power remediation, attempt 20 invoked the command once at exact source `b06bf416cf65283c53aa0f69c15ed216a9858eaa` after both gates passed. Detector admission succeeded, then the same target-connection signature recurred before Boot A capture or mutation; cleanup passed. Policy selects `stop_hardware_blocker`, prohibits attempt 21, and leaves Task 2 and Phase 35 incomplete. |
 
 ## Validation Sign-Off
 
