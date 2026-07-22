@@ -1565,3 +1565,52 @@ root. If `connection_failure` recurs at the detector before the probe, policy
 selects `stop_hardware_blocker`. Attempts 1 through 21 remain immutable,
 non-promotable, non-reusable, and ineligible for evidence splicing. Task 3,
 admission, checklist promotion, and `35-04-SUMMARY.md` remain blocked.
+
+## Attempt 22 Checkpoint and Late-Monitor Trust Diagnosis
+
+After the user confirmed the exact non-invasive USB and barrel-power
+remediation, Attempt 22 executed once after another exact-current-HEAD
+preflight. The protected parent, nonexistent supervisor child, sibling wrapper
+log, and resulting sealed child met the required `0700`/`0600` ownership
+contract.
+
+| Field | Redacted value |
+| --- | --- |
+| Attempt ordinal | `22` |
+| Source commit | `55a8f31ac9be6a2c056cd04f8cc226b923782b22` |
+| espflash version | `4.5.0` |
+| Exact-head preflight | `passed` |
+| Exact-head equality | `true` |
+| Supervisor result | `non_promotion` |
+| Primary category | `flash_or_boot_a_failed` |
+| Typed flash stage | `monitor` |
+| Typed flash boundary | `ready` |
+| Checksum probe | `ready` |
+| Factory stage | `ready` |
+| NVS stage | `ready` |
+| Monitor stage | `ready` |
+| Capture status | `timed_out_without_trusted_output` |
+| Offline Phase 33 baseline classification | `passed` |
+| Offline classifier category | `none` |
+| Mutation started | `false` |
+| Restoration secondary | `none` |
+| Cleanup secondary | `none` |
+| Root reusable | `false` |
+| Progress decision | `continue_after_verified_fix` |
+
+The remediation advanced the target through every detector and flash/reset
+boundary, so Attempt 21's pre-probe connection category did not recur. The
+private monitor capture omitted early one-shot legacy boot markers but retained
+the later replayed identity and origin evidence. The built Phase 33 classifier
+accepted that immutable private input offline. No raw device, network,
+credential, process, or local-path value is recorded here.
+
+The software repair makes this ordering explicit: only a dual-mode timeout may
+return `timed_out_pending_private_classification`; default evidence mode and
+spawn/child failures remain terminal. No admitted derivative exists until the
+supervisor verifies the private digest, the authoritative classifier passes,
+and the software-only finalizer runs. Attempt 22 remains immutable,
+non-promotable, non-reusable, and ineligible for splicing. Fresh Attempt 23 is
+allowed only after the complete clean software gate, atomic commits, and
+exact-current-HEAD preflight. Task 3, admission, checklist promotion, and
+`35-04-SUMMARY.md` remain blocked until `complete`.

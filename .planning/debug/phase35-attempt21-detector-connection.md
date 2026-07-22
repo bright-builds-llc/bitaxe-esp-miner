@@ -1,16 +1,16 @@
 ---
-status: investigating
+status: resolved
 trigger: "Attempt 21 stopped at detector connection_failure before the Phase 35 checksum probe, credential access, or writes. Diagnose whether this is transient device state or espflash 4.5.0 USB-JTAG-Serial reset compatibility without issuing an unchanged retry."
 created: 2026-07-22T04:47:59Z
-updated: 2026-07-22T04:47:59Z
+updated: 2026-07-22T14:05:06Z
 ---
 
 ## Current Focus
 
-hypothesis: The 4.5.0 Windows-oriented reset-order change may be incompatible with this macOS native USB-JTAG-Serial boundary, but one clean USB/barrel-power remediation is required to distinguish a persistent tool/device contract failure from transient target state.
+hypothesis: The pre-probe connection failure was a recoverable target-enumeration state rather than a persistent espflash 4.5.0 incompatibility.
 test: After user-confirmed full non-invasive power/USB remediation, rerun exact-head preflight and one fresh Attempt 22. Do not issue a separate diagnostic; the sole detector and in-invocation checksum probe remain the discriminating boundaries.
 expecting: A detector pass followed by a typed probe result disproves a persistent detector reset incompatibility. The same pre-probe `connection_failure` confirms the boundary and stops as `stop_hardware_blocker`.
-next_action: Wait for the user's remediation confirmation.
+next_action: Resolved by Attempt 22 advancing through detector, probe, factory, NVS, and monitor with every typed flash stage `ready`.
 
 ## Symptoms
 
@@ -39,7 +39,8 @@ started: Attempt 21 at exact source `e007c06a5350b197a7f2a1af1bb6a41472be651d` a
 
 ## Resolution
 
-root_cause:
-fix:
-verification:
-files_changed: []
+root_cause: A recoverable target-enumeration state remained after Attempt 21; the available evidence does not justify a more specific physical cause.
+fix: The user completed the one policy-authorized USB and barrel-power remediation.
+verification: Attempt 22 passed exact-head preflight, detector admission, the read-only checksum probe, factory write, NVS write, and monitor flash boundary without recurring `connection_failure`.
+files_changed:
+  - .planning/debug/phase35-attempt21-detector-connection.md

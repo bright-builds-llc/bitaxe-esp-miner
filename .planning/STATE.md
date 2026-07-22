@@ -2,10 +2,10 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: blocked
-stopped_at: Phase 35 Plan 04 Task 2 awaiting exact non-invasive remediation confirmation after attempt 21
-last_updated: "2026-07-22T04:47:59Z"
-last_activity: "2026-07-21"
+status: in_progress
+stopped_at: Phase 35 Plan 04 Task 2 verifying the Attempt 22 late-monitor trust repair before Attempt 23
+last_updated: "2026-07-22T14:05:06Z"
+last_activity: "2026-07-22"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -16,23 +16,23 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-21 - Attempt 21 stopped before the checksum probe at a distinct detector connection boundary
+Last activity: 2026-07-22 - Attempt 22 reached every typed flash stage and exposed a premature legacy monitor trust gate
 
 ## Current Position
 
-Phase: 35 (Detector-Gated Correlated Evidence and Exact Parity Promotion) — BLOCKED
+Phase: 35 (Detector-Gated Correlated Evidence and Exact Parity Promotion) — IN PROGRESS
 Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 is blocked for one exact non-invasive remediation after
-  Attempt 21 reached a distinct detector `connection_failure` before the typed
-  checksum probe, credential access, or writes. Attempts 1 through 21 remain
-  sealed non-promotable and non-reusable.
-- **Next step:** Wait for confirmation that USB and barrel power were
-  disconnected, then barrel power and USB were reconnected and allowed to
-  re-enumerate. Rerun exact-current-HEAD preflight and use fresh Attempt 22.
-  Recurrence selects `stop_hardware_blocker`. Task 3 and
+- **Status:** Task 2 remains incomplete. Attempt 22 advanced through detector,
+  checksum probe, factory, NVS, and monitor with every typed flash stage
+  `ready`, then stopped before Boot A classification or mutation at a premature
+  legacy trust gate. Attempts 1 through 22 remain sealed non-promotable and
+  non-reusable.
+- **Next step:** Finish full verification and atomic commits for the
+  regression-backed dual timeout handoff, rerun exact-current-HEAD preflight,
+  and use fresh Attempt 23 under `continue_after_verified_fix`. Task 3 and
   `35-04-SUMMARY.md` remain blocked until `complete`.
 
 ## Project Reference
@@ -523,17 +523,18 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 20 are sealed,
-  non-promotable, and non-reusable. The same authoritative target-connection
-  signature recurred after its one applicable remediation, so policy selects
-  `stop_hardware_blocker` and prohibits attempt 21.
-  Task 3 and `35-04-SUMMARY.md` remain prohibited until `complete`.
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 22 are sealed,
+  non-promotable, and non-reusable. Attempt 22's new late-monitor trust boundary
+  requires the verified dual timeout handoff, full clean gate, atomic commits,
+  and exact-head preflight before fresh Attempt 23. Task 3 and
+  `35-04-SUMMARY.md` remain prohibited until `complete`.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 stopped at repeated target connection boundary
-- **Resume:** Only from a separately authorized materially different permitted
-  diagnostic or an independently changed external hardware state. Do not retry
-  the current command unchanged.
+- **Stopped at:** Phase 35 Plan 04 Task 2 verifying the Attempt 22 late-monitor trust repair
+- **Resume:** Complete the clean software gate and atomic commits, run
+  exact-current-HEAD preflight, then execute fresh Attempt 23 under the
+  progress-gated `continue_after_verified_fix` decision. Do not reuse the
+  Attempt 22 root or repeat its unchanged committed command.
   Task 3, evidence admission, checklist promotion, and
   `35-04-SUMMARY.md` remain blocked until `complete`.
