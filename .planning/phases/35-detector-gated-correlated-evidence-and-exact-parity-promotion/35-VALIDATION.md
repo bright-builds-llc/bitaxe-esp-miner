@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 16 proved connection and complete request transmission before a response timeout. Exact ELF analysis isolated inadequate margin in the 8 KiB HTTP server task; the targeted 16 KiB correction and source regression pass affected tests and canonical firmware build. Standing progress-gated authority permits attempt 17 only after the complete clean exact-current-HEAD gate and preflight; unchanged retry remains prohibited. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempt 17 invoked the command once at exact source `98463e8a735233b4e283b6535d3c9f375a984523` after both gates passed. It validates the 16 KiB HTTP task repair with a complete ready response, then seals non-promotion at the new pre-mutation category `pre_patch_mismatch`. A later ordinal requires deterministic diagnosis and a verified fix or confirmed permitted remediation; unchanged retry remains prohibited. |
 
 ## Validation Sign-Off
 

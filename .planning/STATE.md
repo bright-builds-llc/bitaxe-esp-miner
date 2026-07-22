@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 Plan 04 Task 2 gating repaired attempt 17
-last_updated: "2026-07-21T23:47:16Z"
+stopped_at: Phase 35 Plan 04 Task 2 diagnosing attempt 17 pre-patch mismatch
+last_updated: "2026-07-22T00:03:21Z"
 last_activity: "2026-07-21"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-21 - Raised the HTTP server task to 16 KiB after exact ELF diagnosis and authorized exact-head-gated attempt 17
+Last activity: 2026-07-21 - Attempt 17 validated the HTTP stack repair and exposed a pre-patch capture mismatch
 
 ## Current Position
 
@@ -25,11 +25,11 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 is active. Attempts 1 through 16 remain sealed
-  non-promotable and non-reusable. The attempt-16 response timeout is fixed by
-  an explicit 16 KiB HTTP server task and regression guard.
-- **Next step:** Complete the clean exact-current-HEAD gate and preflight, then
-  invoke fresh attempt 17 exactly once. Task 3 and `35-04-SUMMARY.md` remain
+- **Status:** Task 2 is active. Attempts 1 through 17 remain sealed
+  non-promotable and non-reusable. Attempt 17 validated the HTTP stack repair,
+  then stopped before mutation with `pre_patch_mismatch`.
+- **Next step:** Deterministically reproduce and fix the capture-coherence
+  mismatch or record a defined blocker. Task 3 and `35-04-SUMMARY.md` remain
   blocked until `complete`.
 
 ## Project Reference
@@ -520,14 +520,14 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 16 are sealed,
-  non-promotable, and non-reusable. Attempt 17 is authorized only after the
-  complete clean exact-current-HEAD gate and preflight. Task 3 and
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 17 are sealed,
+  non-promotable, and non-reusable. Attempt 17 exposed the newly actionable
+  `pre_patch_mismatch`; unchanged retry is prohibited. Task 3 and
   `35-04-SUMMARY.md` remain prohibited until `complete`.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 gating repaired attempt 17
-- **Resume:** Complete the clean exact-current-HEAD gate and preflight, then
-  invoke fresh attempt 17 exactly once. Task 3, evidence admission, checklist
-  promotion, and `35-04-SUMMARY.md` remain blocked until `complete`.
+- **Stopped at:** Phase 35 Plan 04 Task 2 diagnosing attempt 17 pre-patch mismatch
+- **Resume:** Deterministically reproduce and fix the capture-coherence mismatch
+  or record a defined blocker. Task 3, evidence admission, checklist promotion,
+  and `35-04-SUMMARY.md` remain blocked until `complete`.

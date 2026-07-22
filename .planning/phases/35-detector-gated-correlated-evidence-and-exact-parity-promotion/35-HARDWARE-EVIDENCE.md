@@ -1272,3 +1272,42 @@ complete clean exact-current-HEAD software gate and preflight pass. It must use
 a fresh protected parent, nonexistent supervisor child, mode-0600 sibling
 output, and exactly one full command invocation. An unchanged retry or reuse of
 attempt 16 remains prohibited.
+
+## Attempt 17 Checkpoint
+
+Attempt 17 ran the full Phase 35 command exactly once from clean exact source
+`98463e8a735233b4e283b6535d3c9f375a984523` after the complete software gate
+and exact-head preflight passed. The 16 KiB HTTP task repair succeeded at the
+hardware boundary: the schema-v2 original-settings read connected, completed
+request transmission, and received status, headers, and body in 396
+milliseconds. The supervisor then stopped before PATCH or mutation with the new
+category `pre_patch_mismatch`.
+
+| Field | Recorded value |
+| --- | --- |
+| Attempt ordinal | `17` |
+| Invocation count for root | `1` |
+| Source commit | `98463e8a735233b4e283b6535d3c9f375a984523` |
+| Software gate | `passed` |
+| Exact-head preflight | `passed` |
+| Supervisor result | `non_promotion` |
+| HTTP terminal category | `ready` |
+| Transport outcome | `complete` |
+| Request transmission complete | `true` |
+| Response status received | `true` |
+| Response headers received | `true` |
+| Response body received | `true` |
+| HTTP total duration milliseconds | `396` |
+| Primary category | `pre_patch_mismatch` |
+| Mutation started | `false` |
+| Restoration secondary | `none` |
+| Cleanup secondary | `none` |
+| Root reusable | `false` |
+| Progress decision | `diagnose_new_boundary` |
+
+The outer zsh-only status summary used a reserved read-only variable after the
+repo command returned. That reporting error did not invoke the command again or
+change the supervisor's authoritative seal. The attempt-17 root remains sealed
+non-promotable and non-reusable. The new pre-mutation mismatch authorizes
+software diagnosis, but not an unchanged attempt 18. Task 3, admission,
+checklist promotion, and `35-04-SUMMARY.md` remain blocked.
