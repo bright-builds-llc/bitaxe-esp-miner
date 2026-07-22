@@ -583,6 +583,27 @@ test_runfiles_entrypoint_resolves_sibling_helpers() {
 	assert_count 0 credential_path "$calls"
 }
 
+test_built_supervisor_runfiles_include_passive_monitor_closure() {
+	# Arrange
+	local help_stdout="${test_root}/phase13-help.stdout"
+	local help_stderr="${test_root}/phase13-help.stderr"
+
+	# Act
+	set +e
+	bash "${script_dir}/phase13-monitor-capture.sh" --help \
+		>"$help_stdout" 2>"$help_stderr"
+	local help_status=$?
+	set -e
+
+	# Assert
+	[[ "$help_status" == 0 ]] ||
+		fail_test "built supervisor runfiles do not load the passive monitor closure"
+	[[ -f "${script_dir}/process-group.sh" ]] ||
+		fail_test "built supervisor runfiles omit process-group.sh"
+	[[ -f "${script_dir}/serial-session-trace.sh" ]] ||
+		fail_test "built supervisor runfiles omit serial-session-trace.sh"
+}
+
 test_runfiles_resolves_repo_root_credential_only_after_detector() {
 	# Arrange: a detector failure must not touch the opaque credential path.
 	prepare_case runfiles_detector_failure
@@ -1440,6 +1461,7 @@ test_websocket_background_writes_are_serialized_in_httpd_context
 test_runfiles_rejects_existing_child_before_admission_or_effects
 test_runfiles_preserves_caller_owned_parent_and_sibling_outputs
 test_runfiles_entrypoint_resolves_sibling_helpers
+test_built_supervisor_runfiles_include_passive_monitor_closure
 test_runfiles_resolves_repo_root_credential_only_after_detector
 test_runfiles_invokes_probe_then_flash_without_nested_build_tools
 test_probe_failure_stops_before_credentials_or_writes

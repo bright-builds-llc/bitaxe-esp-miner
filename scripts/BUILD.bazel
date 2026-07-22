@@ -271,6 +271,7 @@ sh_binary(
         "phase35-http-boundary-read.sh",
         "phase35-correlated-evidence-root.sh",
         "phase35-stage-readiness.sh",
+        "process-group.sh",
         "serial-session-trace.sh",
         "verify-reference-clean.sh",
         "//tools/flash:flash",
@@ -803,6 +804,7 @@ sh_test(
     name = "phase35_correlated_evidence_test",
     srcs = ["phase35-correlated-evidence-test.sh"],
     data = [
+        ":phase35_correlated_evidence",
         "//:Justfile",
         "//firmware/bitaxe:sdkconfig.defaults",
         "//firmware/bitaxe:phase35_websocket_sources",
