@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: in_progress
-stopped_at: Phase 35 Plan 04 Task 2 verifying the Attempt 24 probe checksum repair before Attempt 25
-last_updated: "2026-07-22T15:10:01Z"
+stopped_at: Phase 35 Plan 04 Task 2 verifying the Attempt 25 passive-monitor runfiles repair before Attempt 26
+last_updated: "2026-07-22T15:35:23Z"
 last_activity: "2026-07-22"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-22 - Attempt 24 exposed fixed-width checksum parsing and flash-boundary spelling mismatches at the read-only probe
+Last activity: 2026-07-22 - Attempt 25 exposed a missing passive-monitor process-group helper in the built supervisor runfiles
 
 ## Current Position
 
@@ -25,14 +25,15 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 remains incomplete. Attempt 24 stopped at the read-only
-  checksum probe before credential access or writes because a valid unpadded
-  espflash digest was rejected and the resulting typed boundary used a
-  noncanonical spelling. Attempts 1 through 24 remain sealed non-promotable and
-  non-reusable.
-- **Next step:** Finish full verification and atomic commits for the
-  checksum-shape and boundary-serialization repair, rerun exact-current-HEAD
-  preflight, and use fresh Attempt 25 under `continue_after_verified_fix`. Task 3 and
+- **Status:** Task 2 remains incomplete. Attempt 25 passed the read-only probe,
+  factory, NVS, monitor, private Boot A, PATCH, storage-confirmed readback, and
+  restoration boundaries. It stopped before the approved reboot request because
+  the built supervisor omitted the passive monitor's required
+  `process-group.sh` runfile. Attempts 1 through 25 remain sealed
+  non-promotable and non-reusable.
+- **Next step:** Finish full verification and the atomic checkpoint for the
+  passive-monitor runfiles repair, rerun exact-current-HEAD preflight, and use
+  fresh Attempt 26 under `continue_after_verified_fix`. Task 3 and
   `35-04-SUMMARY.md` remain blocked until `complete`.
 
 ## Project Reference
@@ -523,18 +524,18 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 24 are sealed,
-  non-promotable, and non-reusable. Attempt 24's probe-classification boundary
-  requires the verified checksum-shape and canonical-serialization repair, full
-  clean gate, atomic commits, and exact-head preflight before fresh Attempt 25. Task 3 and
-  `35-04-SUMMARY.md` remain prohibited until `complete`.
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 25 are sealed,
+  non-promotable, and non-reusable. Attempt 25's missing passive-monitor
+  process-group runfile requires the verified runfiles-closure repair, full clean
+  gate, atomic checkpoint, and exact-head preflight before fresh Attempt 26.
+  Task 3 and `35-04-SUMMARY.md` remain prohibited until `complete`.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 verifying the Attempt 24 probe checksum repair
-- **Resume:** Complete the clean software gate and atomic commits, run
-  exact-current-HEAD preflight, then execute fresh Attempt 25 under the
+- **Stopped at:** Phase 35 Plan 04 Task 2 verifying the Attempt 25 passive-monitor runfiles repair
+- **Resume:** Complete the clean software gate and atomic checkpoint, run
+  exact-current-HEAD preflight, then execute fresh Attempt 26 under the
   progress-gated `continue_after_verified_fix` decision. Do not reuse the
-  Attempt 24 root or repeat its unchanged committed command.
+  Attempt 25 root or repeat its unchanged committed command.
   Task 3, evidence admission, checklist promotion, and
   `35-04-SUMMARY.md` remain blocked until `complete`.

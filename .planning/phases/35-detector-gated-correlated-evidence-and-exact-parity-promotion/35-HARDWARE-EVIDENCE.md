@@ -1707,3 +1707,50 @@ ineligible for splicing. Fresh Attempt 25 is allowed only after the complete
 clean software gate, atomic checkpoint commit, and exact-current-HEAD
 preflight. Task 3, admission, checklist promotion, and `35-04-SUMMARY.md`
 remain blocked until `complete`.
+
+## Attempt 25 Checkpoint and Passive-Monitor Runfiles Diagnosis
+
+Attempt 25 executed once after doctor and exact-current-HEAD preflight passed.
+The protected parent, nonexistent supervisor child, sibling wrapper log, and
+resulting sealed child met the required `0700`/`0600` ownership contract.
+
+| Field | Redacted value |
+| --- | --- |
+| Attempt ordinal | `25` |
+| Source commit | `f3a4d350492f5cc1073c0f62bd1a20f8af4355e2` |
+| Doctor | `passed` |
+| Exact-head preflight | `passed` |
+| Exact-head equality | `true` |
+| Supervisor result | `non_promotion` |
+| Primary category | `approved_reboot_failed` |
+| Probe stage | `ready` |
+| Factory stage | `ready` |
+| NVS stage | `ready` |
+| Monitor stage | `ready` |
+| Original HTTP category | `ready` |
+| Immediate HTTP category | `ready` |
+| Mutation started | `true` |
+| Reboot request issued | `false` |
+| Restoration HTTP category | `ready` |
+| Restoration secondary | `none` |
+| Cleanup secondary | `cleanup_passive_monitor_failed` |
+| Root reusable | `false` |
+| Progress decision | `continue_after_verified_fix` |
+
+The run validates the Attempt 24 checksum repair and the Attempt 23 firmware
+repair through the private Boot A classifier and dual finalizer. PATCH and the
+storage-confirmed immediate readback then succeeded. Before issuing the
+approved reboot POST, the passive-monitor child exited while sourcing its
+helper closure: the built supervisor contained `phase13-monitor-capture.sh`
+and `serial-session-trace.sh` but omitted the required adjacent
+`process-group.sh`. The supervisor preserved `approved_reboot_failed`, restored
+the original setting successfully, recorded the already-exited monitor as a
+secondary cleanup outcome, and sealed the root.
+
+The repair adds the missing helper to the production Bazel runfiles and a
+built-target regression that loads the passive-monitor script from that
+runfiles closure. Attempt 25 remains immutable, non-promotable, non-reusable,
+and ineligible for splicing. Fresh Attempt 26 is allowed only after the complete
+clean software gate, atomic checkpoint commit, and exact-current-HEAD
+preflight. Task 3, admission, checklist promotion, and `35-04-SUMMARY.md`
+remain blocked until `complete`.
