@@ -1496,3 +1496,28 @@ remain outside current authority. Attempts 1 through 20 remain immutable,
 non-promotable, non-reusable, and ineligible for evidence splicing. Task 2,
 Task 3, Phase 35 admission, checklist promotion, and `35-04-SUMMARY.md` remain
 incomplete and blocked.
+
+## Attempts 19–20 Offline Boundary Classification and Attempt 21 Gate
+
+The sealed roots and their historical fields remain unchanged. Applying the
+new closed classifier to the already-recorded safe counters classifies both
+attempts at `stage=factory` with device information complete, transfer not
+started, and `terminal_boundary=post_info_pre_transfer_failed`. This is an
+offline interpretation of existing shareable facts, not new evidence and not a
+promotion claim.
+
+The earlier `stop_hardware_blocker` remains authoritative for an unchanged
+retry. The user separately authorized a materially different repair that pins
+espflash 4.5.0, supplies explicit native-USB reset controls, captures private
+typed stage evidence, and requires stable three-sample USB readiness around
+reset-capable stages. Fresh attempt 21 is gated on the complete clean software
+suite and exact-current-HEAD preflight. Its first hardware boundary is one
+read-only checksum of exactly 4 KiB at address `0x0` inside the same phase-owned
+invocation and root. Probe failure stops before credential access or writes;
+probe success permits the existing factory, NVS, and monitor sequence.
+
+Attempts 1 through 20 remain non-promotable, non-reusable, and ineligible for
+splicing. If attempt 21 reproduces
+`flash_or_boot_a_failed/factory/post_info_pre_transfer_failed`, policy selects
+`stop_repeated_boundary`. Task 3, admission, checklist promotion, and
+`35-04-SUMMARY.md` remain blocked until `complete`.

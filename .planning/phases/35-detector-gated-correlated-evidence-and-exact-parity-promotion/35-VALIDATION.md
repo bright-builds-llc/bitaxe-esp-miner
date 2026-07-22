@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | After the user-confirmed USB and barrel-power remediation, attempt 20 invoked the command once at exact source `b06bf416cf65283c53aa0f69c15ed216a9858eaa` after both gates passed. Detector admission succeeded, then the same target-connection signature recurred before Boot A capture or mutation; cleanup passed. Policy selects `stop_hardware_blocker`, prohibits attempt 21, and leaves Task 2 and Phase 35 incomplete. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempts 19–20 remain sealed and offline-classify as factory/post-info/pre-transfer failures. Attempt 21 is authorized only after the espflash 4.5.0 typed-boundary repair passes the full software gate and exact-head preflight. Its in-invocation read-only 4 KiB probe must be ready before credentials or writes; Task 2 and Phase 35 remain incomplete until eligible evidence is admitted. |
 
 ## Validation Sign-Off
 

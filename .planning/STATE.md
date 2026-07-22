@@ -2,9 +2,9 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: blocked
-stopped_at: Phase 35 Plan 04 Task 2 stopped at repeated target connection boundary
-last_updated: "2026-07-22T03:10:42Z"
+status: executing
+stopped_at: Phase 35 Plan 04 Task 2 software repair before authorized attempt 21
+last_updated: "2026-07-22T04:22:33Z"
 last_activity: "2026-07-21"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-21 - Attempt 20 repeated the target connection boundary after remediation and stopped as a hardware blocker
+Last activity: 2026-07-21 - Typed espflash 4.5.0 repair prepared for exact-head verification before authorized attempt 21
 
 ## Current Position
 
@@ -25,13 +25,13 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 is blocked. Attempts 1 through 20 remain sealed
-  non-promotable and non-reusable. Attempt 20 repeated the attempt-19 target
-  connection signature after the confirmed USB and barrel-power remediation.
-- **Next step:** Stop as `stop_hardware_blocker`; do not issue attempt 21. A
-  separately authorized materially different path or independently changed
-  external hardware state is required. Task 3 and
-  `35-04-SUMMARY.md` remain blocked until `complete`.
+- **Status:** Task 2 is executing through a separately authorized, materially
+  different espflash 4.5.0/reset/typed-boundary repair. Attempts 1 through 20
+  remain sealed non-promotable and non-reusable.
+- **Next step:** Complete the clean software gate and exact-current-HEAD
+  preflight, then run fresh attempt 21 once. Its read-only 4 KiB probe must be
+  `ready` before credentials or writes. Task 3 and `35-04-SUMMARY.md` remain
+  blocked until `complete`.
 
 ## Project Reference
 
