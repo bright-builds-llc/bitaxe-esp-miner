@@ -358,6 +358,8 @@ enum CaptureProcessStatus {
 enum CaptureStatus {
     Completed,
     TimedOutAfterTrustedOutput,
+    TimedOutPendingPrivateClassification,
+    TimedOutAfterPrivateClassification,
     TimedOutWithoutTrustedOutput,
     Failed,
     DryRun,
@@ -381,6 +383,11 @@ impl MonitorCaptureOutcome {
                 self.capture_status,
                 CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
             )
+    }
+
+    fn ready_for_private_classification(&self) -> bool {
+        !self.trusted_output
+            && self.capture_status == CaptureStatus::TimedOutPendingPrivateClassification
     }
 }
 
@@ -1167,6 +1174,7 @@ fn run_flash_monitor(
                 command.capture_timeout_seconds,
                 &environment.firmware_commit(),
                 &environment.reference_commit(),
+                dual_paths.is_some(),
             )
         };
         let maybe_private_sha256 = dual_paths
@@ -1199,6 +1207,11 @@ fn run_flash_monitor(
             error
         })?;
         if !command.common.dry_run && !capture_outcome.accepted() {
+            if command.common.evidence_mode == Some(EvidenceMode::Dual)
+                && capture_outcome.ready_for_private_classification()
+            {
+                return Ok(());
+            }
             if command.common.evidence_mode == Some(EvidenceMode::Dual) {
                 bail!("dual_evidence=failed reason=capture_not_accepted");
             }
@@ -1257,6 +1270,16 @@ fn run_finalize_evidence(
     {
         bail!("dual_evidence=failed reason=private_record_mismatch");
     }
+    let accepted_capture = record.trusted_output
+        && matches!(
+            record.capture_status,
+            CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
+        );
+    let deferred_capture = !record.trusted_output
+        && record.capture_status == CaptureStatus::TimedOutPendingPrivateClassification;
+    if !accepted_capture && !deferred_capture {
+        bail!("dual_evidence=failed reason=private_capture_not_classifiable");
+    }
 
     let finalize_result = (|| -> Result<()> {
         let digests =
@@ -1274,6 +1297,10 @@ fn run_finalize_evidence(
         record.private_monitor_log_sha256 = None;
         record.monitor_log_sha256 = Some(digests.admitted_sha256);
         record.commit_ready = true;
+        if deferred_capture {
+            record.capture_status = CaptureStatus::TimedOutAfterPrivateClassification;
+            record.conclusion = "passed - immutable private monitor input was classified before admitted evidence derivation".to_owned();
+        }
         let admitted_json = serde_json::to_string_pretty(&record)
             .context("failed to serialize admitted evidence")?;
         evidence::write_dual_admitted_text(&paths.admitted_record, &admitted_json)
@@ -1957,6 +1984,7 @@ fn monitor_capture_outcome(
     capture_timeout_seconds: u64,
     expected_firmware_commit: &str,
     expected_reference_commit: &str,
+    allow_private_classification: bool,
 ) -> MonitorCaptureOutcome {
     let observed_firmware_commit = monitor_log_marker_value(monitor_log, "firmware_commit=");
     let observed_reference_commit = monitor_log_marker_value(monitor_log, "reference_commit=");
@@ -1973,6 +2001,9 @@ fn monitor_capture_outcome(
         CaptureProcessStatus::TimedOut if trusted_output => {
             CaptureStatus::TimedOutAfterTrustedOutput
         }
+        CaptureProcessStatus::TimedOut if allow_private_classification => {
+            CaptureStatus::TimedOutPendingPrivateClassification
+        }
         CaptureProcessStatus::TimedOut => CaptureStatus::TimedOutWithoutTrustedOutput,
         CaptureProcessStatus::SpawnFailed
         | CaptureProcessStatus::ExitedSuccess
@@ -1984,6 +2015,8 @@ fn monitor_capture_outcome(
             CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
         ) {
         "passed - wrapper-owned serial boot evidence captured; HTTP/static/recovery/OTA/rollback parity not claimed".to_owned()
+    } else if capture_status == CaptureStatus::TimedOutPendingPrivateClassification {
+        "pending - immutable private monitor input requires authoritative classification".to_owned()
     } else if let Some(trust_failure) = maybe_trust_failure {
         format!("failed - evidence capture is not trusted: {trust_failure}")
     } else {
@@ -5185,6 +5218,103 @@ mod tests {
         let evidence_path = evidence_dir.join("flash-command-evidence.json");
         let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
         assert!(evidence.contains(r#""capture_status": "timed_out_without_trusted_output""#));
+    }
+
+    #[test]
+    fn dual_timeout_defers_late_attach_evidence_to_private_classifier() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let mut command = flash_monitor_fixture(&dir, evidence_dir.clone());
+        command.common.evidence_mode = Some(EvidenceMode::Dual);
+        let late_attach_log = [
+            "runtime_boot_identity session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa boot_ordinal=7 reset_reason=power_on uptime_ms=10000 redacted=true",
+            "runtime_origin session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa boot_ordinal=7 device_url=http://fixture-target redacted=true",
+            "runtime_boot_identity session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa boot_ordinal=7 reset_reason=power_on uptime_ms=20000 redacted=true",
+        ]
+        .join("\n");
+        let environment = FakeFlashEnvironment::default()
+            .with_capture_status(CaptureProcessStatus::TimedOut)
+            .with_log_contents(&late_attach_log);
+
+        // Act
+        run_flash_monitor(&command, &environment).expect("deferred dual capture");
+
+        // Assert
+        let private_path = evidence_dir.join("flash-monitor.classifier-input.log");
+        let private = fs::read_to_string(private_path.as_std_path()).expect("private log");
+        bitaxe_api::phase33_evidence::classify_phase33_baseline(&private)
+            .expect("authoritative classification");
+        assert!(!evidence_dir.join("flash-monitor.log").exists());
+        assert!(!evidence_dir.join("flash-command-evidence.json").exists());
+        let private_record = fs::read_to_string(
+            evidence_dir
+                .join("flash-command-evidence.private.json")
+                .as_std_path(),
+        )
+        .expect("private record");
+        let private_json: serde_json::Value =
+            serde_json::from_str(&private_record).expect("private JSON");
+        assert_eq!(
+            private_json["capture_status"],
+            "timed_out_pending_private_classification"
+        );
+        assert_eq!(private_json["trusted_output"], false);
+        assert_eq!(private_json["commit_ready"], false);
+
+        // Act
+        run_finalize_evidence(
+            &FinalizeEvidenceCommand {
+                evidence_dir: evidence_dir.clone(),
+                expected_private_sha256: sha256_bytes(private.as_bytes()),
+            },
+            &environment,
+        )
+        .expect("finalize classified evidence");
+
+        // Assert
+        let admitted_record = fs::read_to_string(
+            evidence_dir
+                .join("flash-command-evidence.json")
+                .as_std_path(),
+        )
+        .expect("admitted record");
+        let admitted_json: serde_json::Value =
+            serde_json::from_str(&admitted_record).expect("admitted JSON");
+        assert_eq!(
+            admitted_json["capture_status"],
+            "timed_out_after_private_classification"
+        );
+        assert_eq!(admitted_json["trusted_output"], false);
+        assert_eq!(admitted_json["commit_ready"], true);
+    }
+
+    #[test]
+    fn dual_mode_does_not_defer_untrusted_process_failure() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let mut command = flash_monitor_fixture(&dir, evidence_dir.clone());
+        command.common.evidence_mode = Some(EvidenceMode::Dual);
+        let environment = FakeFlashEnvironment::default()
+            .with_capture_status(CaptureProcessStatus::ExitedFailure(
+                "exit status 1".to_owned(),
+            ))
+            .with_log_contents(
+                "runtime_boot_identity session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa boot_ordinal=7 reset_reason=power_on uptime_ms=10000 redacted=true\n",
+            );
+
+        // Act
+        let result = run_flash_monitor(&command, &environment);
+
+        // Assert
+        let error = format!(
+            "{:#}",
+            result.expect_err("failed child must remain terminal")
+        );
+        assert!(error.contains("dual_evidence=failed reason=capture_not_accepted"));
+        assert!(!evidence_dir.join("flash-monitor.log").exists());
+        assert!(!evidence_dir.join("flash-command-evidence.json").exists());
     }
 
     #[test]
