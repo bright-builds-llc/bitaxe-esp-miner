@@ -1,8 +1,8 @@
 ---
-status: verifying
+status: resolved
 trigger: "Attempt 22 reached ready detector, probe, factory, NVS, and monitor boundaries but the flash wrapper rejected the private capture before the Phase 33 baseline classifier ran."
 created: 2026-07-22T14:05:06Z
-updated: 2026-07-22T14:05:06Z
+updated: 2026-07-22T14:43:45Z
 ---
 
 ## Current Focus
@@ -10,7 +10,7 @@ updated: 2026-07-22T14:05:06Z
 hypothesis: espflash 4.5.0's native-USB monitor reset and reopen delay can miss one-shot early boot markers even when the later replayed Phase 33 identity and origin evidence is complete, so the dual-evidence wrapper is applying its legacy trust gate before the authoritative private classifier.
 test: Classify the sealed Attempt 22 private monitor input offline, then reproduce the late-attach shape hermetically with a dual-mode timeout that lacks legacy one-shot markers but contains valid replayed Phase 33 identity and origin blocks.
 expecting: The authoritative Phase 33 classifier passes the immutable private input, ordinary evidence mode remains fail-closed, and dual mode defers only timeout captures to classification before finalization.
-next_action: Complete the full software gate, commit the verified repair and redacted checkpoint, then run exact-head preflight before fresh Attempt 23.
+next_action: Resolved by Attempt 23 advancing through the authoritative Phase 33 classifier and dual finalization into the next distinct pre-capture boundary.
 
 ## Symptoms
 
@@ -46,7 +46,7 @@ started: Attempt 22 at exact source `55a8f31ac9be6a2c056cd04f8cc226b923782b22` a
 
 root_cause: Dual evidence reused the legacy wrapper trust decision as a terminal exit condition even though Phase 35 intentionally delegates admission to the stronger Phase 33 classifier over an immutable private artifact. espflash's delayed native-USB monitor reopen made the ordering defect observable by missing one-shot early markers while replayed classifier evidence remained complete.
 fix: Add explicit pending and post-classification timeout states. Only dual-mode timeouts may return a private artifact for authoritative classification; ordinary mode and child failures remain terminal. Finalization accepts only legacy-trusted or explicitly pending captures and marks deferred evidence complete only after the caller's digest-bound classification gate.
-verification: Attempt 22 offline classification passed; focused Cargo and Bazel suites passed; full repository verification is pending before commit and Attempt 23.
+verification: The full repository gate, atomic commits, and exact-head preflight passed. Attempt 23 then proved the repaired handoff by completing private Phase 33 classification and dual finalization before reaching the later pre-capture boundary.
 files_changed:
   - tools/flash/src/main.rs
   - .planning/debug/phase35-attempt21-detector-connection.md

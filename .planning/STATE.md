@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: in_progress
-stopped_at: Phase 35 Plan 04 Task 2 verifying the Attempt 22 late-monitor trust repair before Attempt 23
-last_updated: "2026-07-22T14:05:06Z"
+stopped_at: Phase 35 Plan 04 Task 2 verifying the Attempt 23 retained-HTTP serialization repair before Attempt 24
+last_updated: "2026-07-22T14:57:33Z"
 last_activity: "2026-07-22"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-22 - Attempt 22 reached every typed flash stage and exposed a premature legacy monitor trust gate
+Last activity: 2026-07-22 - Attempt 23 validated the private-classifier handoff and exposed stale WebSocket writes corrupting retained HTTP
 
 ## Current Position
 
@@ -25,14 +25,14 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 remains incomplete. Attempt 22 advanced through detector,
-  checksum probe, factory, NVS, and monitor with every typed flash stage
-  `ready`, then stopped before Boot A classification or mutation at a premature
-  legacy trust gate. Attempts 1 through 22 remain sealed non-promotable and
+- **Status:** Task 2 remains incomplete. Attempt 23 validated the repaired dual
+  timeout handoff, private Boot A classifier, and finalizer, then stopped before
+  mutation when a stale server-side WebSocket write corrupted the retained HTTP
+  chunk stream. Attempts 1 through 23 remain sealed non-promotable and
   non-reusable.
 - **Next step:** Finish full verification and atomic commits for the
-  regression-backed dual timeout handoff, rerun exact-current-HEAD preflight,
-  and use fresh Attempt 23 under `continue_after_verified_fix`. Task 3 and
+  HTTPD-context WebSocket serialization repair, rerun exact-current-HEAD
+  preflight, and use fresh Attempt 24 under `continue_after_verified_fix`. Task 3 and
   `35-04-SUMMARY.md` remain blocked until `complete`.
 
 ## Project Reference
@@ -523,18 +523,18 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 22 are sealed,
-  non-promotable, and non-reusable. Attempt 22's new late-monitor trust boundary
-  requires the verified dual timeout handoff, full clean gate, atomic commits,
-  and exact-head preflight before fresh Attempt 23. Task 3 and
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 23 are sealed,
+  non-promotable, and non-reusable. Attempt 23's retained-HTTP corruption
+  boundary requires the verified HTTPD-context WebSocket send repair, full clean
+  gate, atomic commits, and exact-head preflight before fresh Attempt 24. Task 3 and
   `35-04-SUMMARY.md` remain prohibited until `complete`.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 verifying the Attempt 22 late-monitor trust repair
+- **Stopped at:** Phase 35 Plan 04 Task 2 verifying the Attempt 23 retained-HTTP serialization repair
 - **Resume:** Complete the clean software gate and atomic commits, run
-  exact-current-HEAD preflight, then execute fresh Attempt 23 under the
+  exact-current-HEAD preflight, then execute fresh Attempt 24 under the
   progress-gated `continue_after_verified_fix` decision. Do not reuse the
-  Attempt 22 root or repeat its unchanged committed command.
+  Attempt 23 root or repeat its unchanged committed command.
   Task 3, evidence admission, checklist promotion, and
   `35-04-SUMMARY.md` remain blocked until `complete`.

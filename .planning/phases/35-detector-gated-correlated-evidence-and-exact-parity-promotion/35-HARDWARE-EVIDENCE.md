@@ -1614,3 +1614,51 @@ non-promotable, non-reusable, and ineligible for splicing. Fresh Attempt 23 is
 allowed only after the complete clean software gate, atomic commits, and
 exact-current-HEAD preflight. Task 3, admission, checklist promotion, and
 `35-04-SUMMARY.md` remain blocked until `complete`.
+
+## Attempt 23 Checkpoint and Retained-HTTP Corruption Diagnosis
+
+Attempt 23 executed once after the complete software gate and
+exact-current-HEAD preflight. The protected parent, nonexistent supervisor
+child, sibling wrapper log, and resulting sealed child met the required
+`0700`/`0600` ownership contract.
+
+| Field | Redacted value |
+| --- | --- |
+| Attempt ordinal | `23` |
+| Source commit | `ead2347d32ed0dbb8be43c74a3fb3a85a32734a1` |
+| Exact-head preflight | `passed` |
+| Exact-head equality | `true` |
+| Supervisor result | `non_promotion` |
+| Primary category | `boot_a_pre_capture_failed` |
+| Typed flash stage | `monitor` |
+| Typed flash boundary | `ready` |
+| Private Phase 33 baseline classification | `passed` |
+| Private classifier category | `none` |
+| Pre-capture API schema | `valid` |
+| WebSocket observations | `1` |
+| WebSocket close status | `closed` |
+| Retained HTTP chunk framing | `invalid` |
+| Mutation started | `false` |
+| Restoration secondary | `none` |
+| Cleanup secondary | `none` |
+| Root reusable | `false` |
+| Progress decision | `continue_after_verified_fix` |
+
+Attempt 23 proves the Attempt 22 repair: the immutable private capture reached
+the authoritative Phase 33 classifier and dual finalizer. The next failure was
+a distinct retained-response boundary after a closed WebSocket exchange.
+Private inspection found an invalid chunk-length signature without exposing raw
+response, device, network, credential, process, or path values.
+
+Firmware cadence tasks previously called `httpd_ws_send_frame_async` outside
+the HTTPD work queue. A stale send could therefore target a numeric descriptor
+after ESP-IDF had reused it for the retained HTTP request. The targeted repair
+assigns every registration a generation lease with disconnect cleanup, copies
+each frame and lease into owned queued work, rechecks the exact current lease
+and WebSocket protocol state inside HTTPD context, and sends only after both
+checks pass. Attempt 23 remains immutable, non-promotable, non-reusable, and
+ineligible for splicing. Fresh Attempt 24 is allowed only after the complete
+clean software gate, atomic commits, and exact-current-HEAD preflight. The same
+retained-chunk signature recurring after this repair selects
+`stop_repeated_boundary`. Task 3, admission, checklist promotion, and
+`35-04-SUMMARY.md` remain blocked until `complete`.
