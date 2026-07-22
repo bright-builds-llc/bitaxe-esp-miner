@@ -204,9 +204,15 @@ fn epoch(spec: EpochFixtureSpec<'_>) -> EvidenceEpochInput {
         detector,
         target_lock_digest,
     } = spec;
-    let json = serde_json::json!({
+    let api_json = serde_json::json!({
         "bootSession": session,
         "operatorSnapshotRevision": revision,
+    })
+    .to_string();
+    let websocket_revision = revision + 1;
+    let websocket_json = serde_json::json!({
+        "bootSession": session,
+        "operatorSnapshotRevision": websocket_revision,
     })
     .to_string();
     EvidenceEpochInput {
@@ -215,13 +221,13 @@ fn epoch(spec: EpochFixtureSpec<'_>) -> EvidenceEpochInput {
         started_millis,
         ended_millis,
         system_info_document: format!(
-            "system_info_json: {json}\noperator_snapshot_boot_session: {session}\noperator_snapshot_revision: {revision}\n"
+            "system_info_json: {api_json}\noperator_snapshot_boot_session: {session}\noperator_snapshot_revision: {revision}\n"
         ),
         websocket_document: format!(
-            "live_websocket_json: {json}\noperator_snapshot_boot_session: {session}\noperator_snapshot_revision: {revision}\n"
+            "live_websocket_json: {websocket_json}\noperator_snapshot_boot_session: {session}\noperator_snapshot_revision: {websocket_revision}\n"
         ),
         retained_log_document: format!(
-            "operator_snapshot session={session} revision={revision} redacted=true\n"
+            "operator_snapshot session={session} revision={revision} redacted=true\noperator_snapshot session={session} revision={websocket_revision} redacted=true\n"
         ),
         storage_revision: revision,
         storage_value_digest: sha256_hex(b"synthetic persisted setting"),
@@ -384,6 +390,42 @@ fn phase35_evidence_rejects_mixed_boot_local_snapshot_session() {
 
     // Assert
     assert_eq!(error, Phase35EvidenceError::MixedSession);
+}
+
+#[test]
+fn phase35_evidence_rejects_websocket_without_later_revision() {
+    // Arrange
+    let mut fixture = EligibleFixture::new();
+    let api_revision = fixture.input.boot_a.storage_revision;
+    let later_revision = api_revision + 1;
+    fixture.input.boot_a.websocket_document = fixture
+        .input
+        .boot_a
+        .websocket_document
+        .replace(
+            &format!("operatorSnapshotRevision\":{later_revision}"),
+            &format!("operatorSnapshotRevision\":{api_revision}"),
+        )
+        .replace(
+            &format!("operator_snapshot_revision: {later_revision}"),
+            &format!("operator_snapshot_revision: {api_revision}"),
+        );
+    let path = fixture.input.inventory[9].path.clone();
+    fixture.artifacts.insert(
+        path,
+        InventoryArtifact::regular(fixture.input.boot_a.websocket_document.as_bytes()),
+    );
+    fixture.input.inventory[9].sha256 =
+        sha256_hex(fixture.input.boot_a.websocket_document.as_bytes());
+    fixture.reseal();
+
+    // Act
+    let error = fixture
+        .validate()
+        .expect_err("same-revision websocket must fail");
+
+    // Assert
+    assert_eq!(error, Phase35EvidenceError::ValueRevisionMismatch);
 }
 
 #[test]

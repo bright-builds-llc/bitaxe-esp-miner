@@ -85,6 +85,7 @@ primary_failure_category=""
 last_http_category=""
 restoration_secondary_category=""
 cleanup_secondary_category=""
+passive_monitor_pid=""
 event_sequence=0
 event_predecessor=""
 last_event_millis=0

@@ -73,10 +73,18 @@ if [[ "${PHASE35_TEST_STUB_DISPATCH:-false}" == true ]]; then
 			"${evidence_dir}/flash-command-evidence.json"
 		;;
 	report)
+		printf 'CALL\n' >>"${PHASE35_CLASSIFIER_CALLS:?}"
+		printf 'arg=%s\n' "$@" >>"${PHASE35_CLASSIFIER_CALLS:?}"
 		trace=""
+		mode=""
 		while (($#)); do
 			if [[ "$1" == "--trace" ]]; then
 				trace="$2"
+				shift 2
+				continue
+			fi
+			if [[ "$1" == "--mode" ]]; then
+				mode="$2"
 				shift 2
 				continue
 			fi
@@ -91,7 +99,9 @@ if [[ "${PHASE35_TEST_STUB_DISPATCH:-false}" == true ]]; then
 		case "${PHASE35_TEST_PARITY_OUTCOME:?}" in
 		passed)
 			private_origin_pattern="$(printf 'device_%s=%s%s' url http '://fixture-target')"
-			if [[ "${trace##*/}" == flash-monitor.classifier-input.log ]] &&
+			if [[ "$mode" == post-restart ]]; then
+				jq -cn '{status:"passed",category:"none",session:"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",boot_ordinal:8,device_url:"fixture-target"}'
+			elif [[ "${trace##*/}" == flash-monitor.classifier-input.log ]] &&
 				rg -Fq "$private_origin_pattern" "$trace"; then
 				jq -cn '{status:"passed",category:"none",session:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",boot_ordinal:7,device_url:"fixture-target"}'
 			else
@@ -187,6 +197,10 @@ path_metadata() {
 
 file_digest() {
 	shasum -a 256 "$1" | awk '{print $1}'
+}
+
+text_digest() {
+	printf '%s' "$1" | shasum -a 256 | awk '{print $1}'
 }
 
 test_main_task_stack_capacity() {
@@ -607,6 +621,305 @@ test_direct_flash_classifier_rejection_preserves_typed_category() {
 		fail_test "classifier rejection created an admitted log"
 }
 
+run_production_capture_case() {
+	local scenario="$1"
+	local capture_root="${test_root}/production-capture-${scenario}"
+	rm -rf "$capture_root"
+	mkdir -p "$capture_root/raw"
+	chmod 700 "$capture_root" "$capture_root/raw"
+	printf '%s\n' 1000 >"$capture_root/raw/monotonic-state"
+	chmod 600 "$capture_root/raw/monotonic-state"
+	jq -cn \
+		--arg session 0123456789abcdef0011223344556677 \
+		'{status:"passed",category:"none",session:$session,boot_ordinal:51}' \
+		>"$capture_root/raw/boot-a-setup.json"
+	chmod 600 "$capture_root/raw/boot-a-setup.json"
+
+	(
+		local fixture_command=""
+		local workspace_dir="$workspace"
+		local local_root="$capture_root"
+		local target_token=synthetic-origin
+		local failure_category=""
+		local capture_scenario="$scenario"
+
+		# shellcheck source=scripts/phase35-correlated-evidence-root.sh
+		source "${script_dir}/phase35-correlated-evidence-root.sh"
+		# shellcheck source=scripts/phase35-correlated-evidence-effects.sh
+		source "${script_dir}/phase35-correlated-evidence-effects.sh"
+
+		monotonic_millis() {
+			local state_file="$local_root/raw/monotonic-state"
+			local current
+			current="$(<"$state_file")"
+			printf '%s\n' "$((current + 100))" >"$state_file"
+			printf '%s\n' "$current"
+		}
+
+		curl() {
+			local output=""
+			local endpoint=""
+			local http1=false
+			local no_proxy=""
+			local proto=""
+			local connect_timeout=""
+			local max_time=""
+			local max_filesize=""
+			while (($#)); do
+				case "$1" in
+				--output)
+					output="$2"
+					shift 2
+					;;
+				--http1.1)
+					http1=true
+					shift
+					;;
+				--noproxy)
+					no_proxy="$2"
+					shift 2
+					;;
+				--proto)
+					proto="$2"
+					shift 2
+					;;
+				--connect-timeout)
+					connect_timeout="$2"
+					shift 2
+					;;
+				--max-time)
+					max_time="$2"
+					shift 2
+					;;
+				--max-filesize)
+					max_filesize="$2"
+					shift 2
+					;;
+				--silent | --show-error | --fail)
+					shift
+					;;
+				*)
+					endpoint="$1"
+					shift
+					;;
+				esac
+			done
+			[[ "$http1" == true && "$no_proxy" == '*' && "$proto" == '=http,https' ]] ||
+				return 92
+			[[ "$connect_timeout" == 5 && "$max_time" == 10 ]] || return 92
+			case "$endpoint" in
+			*/api/system/info)
+				[[ "$max_filesize" == 65536 ]] || return 92
+				if [[ "$capture_scenario" == missing_hostname ]]; then
+					jq -cn \
+						--arg bootSession 0123456789abcdef0011223344556677 \
+						'{bootSession:$bootSession,operatorSnapshotRevision:20}' >"$output"
+				else
+					jq -cn \
+						--arg bootSession 0123456789abcdef0011223344556677 \
+						'{bootSession:$bootSession,operatorSnapshotRevision:20,hostname:"synthetic-host"}' >"$output"
+				fi
+				;;
+			*/api/system/logs)
+				[[ "$max_filesize" == 524288 ]] || return 92
+				printf '%s\n' \
+					'operator_snapshot session=0123456789abcdef0011223344556677 revision=20 redacted=true' \
+					>"$output"
+				if [[ "$capture_scenario" != missing_websocket_marker ]]; then
+					printf '%s\n' \
+						'operator_snapshot session=0123456789abcdef0011223344556677 revision=21 redacted=true' \
+						>>"$output"
+				fi
+				;;
+			*) return 91 ;;
+			esac
+		}
+
+		node() {
+			local output=""
+			while (($#)); do
+				if [[ "$1" == --out ]]; then
+					output="$2"
+					shift 2
+					continue
+				fi
+				shift
+			done
+			local revision=21
+			[[ "$capture_scenario" != same_revision ]] || revision=20
+			jq -cn \
+				--arg session 0123456789abcdef0011223344556677 \
+				--argjson revision "$revision" \
+				'{event:"system_info",data:{bootSession:$session,operatorSnapshotRevision:$revision}}' |
+				sed 's/^/websocket_frame_1=/' >"$output"
+		}
+
+		capture_epoch boot-a-pre
+	)
+}
+
+test_production_capture_preserves_real_epoch_boundaries() {
+	# Arrange and Act
+	local snapshot
+	snapshot="$(run_production_capture_case success)" ||
+		fail_test "production capture fixture failed"
+
+	# Assert
+	[[ "$(jq -r '.boot_ordinal' "$snapshot")" == 51 ]] ||
+		fail_test "capture did not use the serial-classified boot ordinal"
+	[[ "$(jq -r '.storage_revision' "$snapshot")" == 20 ]] ||
+		fail_test "capture did not retain the API storage revision"
+	[[ "$(jq -r '.setting_digest' "$snapshot")" == "$(text_digest synthetic-host)" ]] ||
+		fail_test "capture did not hash the validated private setting"
+	assert_contains "$snapshot" 'operatorSnapshotRevision\\\":21'
+	assert_absent "$snapshot" 'live_websocket_json: .*event'
+	assert_line "${test_root}/production-capture-success/raw/boot-a-pre-retained.log" \
+		'operator_snapshot session=0123456789abcdef0011223344556677 revision=20 redacted=true'
+	assert_line "${test_root}/production-capture-success/raw/boot-a-pre-retained.log" \
+		'operator_snapshot session=0123456789abcdef0011223344556677 revision=21 redacted=true'
+	(("$(jq -r '.ended_millis' "$snapshot")" > "$(jq -r '.started_millis' "$snapshot")")) ||
+		fail_test "capture did not preserve a positive real interval"
+	local protected_file
+	for protected_file in \
+		"${test_root}/production-capture-success/raw/boot-a-pre-api.json" \
+		"${test_root}/production-capture-success/raw/boot-a-pre-api.stderr" \
+		"${test_root}/production-capture-success/raw/boot-a-pre-websocket.log" \
+		"${test_root}/production-capture-success/raw/boot-a-pre-websocket.stderr" \
+		"${test_root}/production-capture-success/raw/boot-a-pre-retained.log" \
+		"${test_root}/production-capture-success/raw/boot-a-pre-retained.stderr"; do
+		[[ "$(file_mode "$protected_file")" == 600 ]] ||
+			fail_test "production capture artifact is not mode 0600"
+	done
+}
+
+test_production_capture_rejects_incoherent_boundaries() {
+	local scenario
+	for scenario in same_revision missing_websocket_marker missing_hostname; do
+		# Arrange and Act
+		local output="${test_root}/${scenario}.stdout"
+		local error="${test_root}/${scenario}.stderr"
+		set +e
+		run_production_capture_case "$scenario" >"$output" 2>"$error"
+		local result_code=$?
+		set -e
+
+		# Assert
+		[[ "$result_code" != 0 ]] ||
+			fail_test "${scenario} production capture was accepted"
+		[[ ! -s "$output" && ! -s "$error" ]] ||
+			fail_test "${scenario} production failure exposed private diagnostics"
+		[[ ! -e "${test_root}/production-capture-${scenario}/raw/boot-a-pre.json" ]] ||
+			fail_test "${scenario} production failure created a usable snapshot"
+	done
+}
+
+test_production_reboot_classifies_only_post_loss_bytes() {
+	# Arrange
+	prepare_case production_reboot
+	prepare_direct_flash_stubs
+	local reboot_root="${case_dir}/reboot-root"
+	mkdir -p "$reboot_root/raw"
+	chmod 700 "$reboot_root" "$reboot_root/raw"
+	jq -cn \
+		--arg session aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+		'{status:"passed",category:"none",session:$session,boot_ordinal:7,device_url:"synthetic-origin"}' \
+		>"$reboot_root/raw/boot-a-setup.json"
+	chmod 600 "$reboot_root/raw/boot-a-setup.json"
+	local baseline_bytes
+	baseline_bytes="$(printf 'baseline-before-restart\n' | wc -c | tr -d ' ')"
+
+	# Act
+	(
+		export PHASE35_FIXTURE_STATE="$state_dir"
+		export PHASE35_CLASSIFIER_CALLS="$classifier_calls"
+		export PHASE35_TEST_PARITY_OUTCOME=passed
+		export PHASE35_TEST_PRIVATE_INPUT=valid
+		export PHASE35_TEST_STUB_DISPATCH=true
+		local fixture_command=""
+		local workspace_dir="$workspace"
+		local local_root="$reboot_root"
+		local target_token=synthetic-origin
+		local port=synthetic-port
+		local capture_timeout_seconds=360
+		local passive_monitor_pid=""
+		local failure_category=""
+		local -a PASSIVE_MONITOR_ARGS=(
+			--chip esp32s3
+			--before no-reset-no-sync
+			--after no-reset
+			--no-reset
+			--non-interactive
+		)
+
+		# shellcheck source=scripts/phase35-correlated-evidence-root.sh
+		source "${script_dir}/phase35-correlated-evidence-root.sh"
+		# shellcheck source=scripts/phase35-correlated-evidence-effects.sh
+		source "${script_dir}/phase35-correlated-evidence-effects.sh"
+
+		bash() {
+			local monitor_out=""
+			local raw_out=""
+			while (($#)); do
+				case "$1" in
+				--out)
+					monitor_out="$2"
+					shift 2
+					;;
+				--raw-out)
+					raw_out="$2"
+					shift 2
+					;;
+				*) shift ;;
+				esac
+			done
+			printf 'baseline-before-restart\n' >"$raw_out"
+			: >"$monitor_out"
+			printf 'ready\n' >"${PHASE13_MONITOR_ACTIVE_READY_FILE:?}"
+		}
+
+		curl() {
+			local output=""
+			local method=GET
+			while (($#)); do
+				case "$1" in
+				--output)
+					output="$2"
+					shift 2
+					;;
+				--request)
+					method="$2"
+					shift 2
+					;;
+				*) shift ;;
+				esac
+			done
+			if [[ "$method" == POST ]]; then
+				printf '{}\n' >"$output"
+				return 0
+			fi
+			return 7
+		}
+
+		start_passive_monitor_and_reboot
+		[[ "$target_token" == fixture-target ]]
+	)
+
+	# Assert
+	assert_line "$classifier_calls" 'arg=phase33-classify'
+	assert_line "$classifier_calls" 'arg=--mode'
+	assert_line "$classifier_calls" 'arg=post-restart'
+	assert_line "$classifier_calls" 'arg=--start-byte'
+	assert_line "$classifier_calls" "arg=${baseline_bytes}"
+	assert_line "$classifier_calls" 'arg=--expected-session'
+	assert_line "$classifier_calls" 'arg=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+	assert_line "$classifier_calls" 'arg=--expected-ordinal'
+	assert_line "$classifier_calls" 'arg=7'
+	[[ "$(file_mode "$reboot_root/raw/boot-b-setup.json")" == 600 ]] ||
+		fail_test "post-restart classification is not mode 0600"
+	[[ "$(file_mode "$reboot_root/raw/boot-b-setup.stderr")" == 600 ]] ||
+		fail_test "post-restart classifier diagnostics are not mode 0600"
+}
+
 test_just_entrypoint_builds_the_current_package_before_supervisor() {
 	# Arrange
 	local expected_recipe
@@ -904,6 +1217,9 @@ test_runfiles_invokes_direct_flash_once_without_nested_build_tools
 test_commit_redacted_copy_reproduces_attempt_11_origin_loss
 test_invalid_private_classifier_input_stops_before_mutation
 test_direct_flash_classifier_rejection_preserves_typed_category
+test_production_capture_preserves_real_epoch_boundaries
+test_production_capture_rejects_incoherent_boundaries
+test_production_reboot_classifies_only_post_loss_bytes
 test_just_entrypoint_builds_the_current_package_before_supervisor
 test_preflight_has_no_detector_or_effects
 test_detector_failures_stop_all_later_commands

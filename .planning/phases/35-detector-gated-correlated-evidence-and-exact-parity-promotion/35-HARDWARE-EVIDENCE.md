@@ -1311,3 +1311,43 @@ change the supervisor's authoritative seal. The attempt-17 root remains sealed
 non-promotable and non-reusable. The new pre-mutation mismatch authorizes
 software diagnosis, but not an unchanged attempt 18. Task 3, admission,
 checklist promotion, and `35-04-SUMMARY.md` remain blocked.
+
+## Attempt 17 Diagnostic Repair and Attempt 18 Authority
+
+Protected structural inspection proved that the failure was in the evidence
+adapter, not the ready HTTP response or the device setting. Fixture mode emitted
+a complete epoch, while production omitted the setting digest, expected a boot
+ordinal the API does not expose, stored the WebSocket envelope under an
+incorrect identity, fabricated a retained marker and interval, and treated the
+later WebSocket revision as a mismatch.
+
+The production adapter now binds boot identity to the serial classifier, hashes
+the validated private hostname, stores the actual API document and WebSocket
+data object, downloads the actual retained log, requires both exact retained
+markers, and records real monotonic bounds. The pure validator requires one
+session with a WebSocket revision strictly later than the API storage revision.
+The reboot adapter also proves service loss before its Boot B trace boundary and
+forwards the baseline identity to the post-restart classifier. All raw command
+errors and operational artifacts remain mode-0600 below the protected root.
+
+| Field | Recorded value |
+| --- | --- |
+| Repair completion | `2026-07-22T00:22:22Z` |
+| Hardware invoked during diagnosis or repair | `false` |
+| Device request issued during diagnosis or repair | `false` |
+| Credential access during diagnosis or repair | `false` |
+| Serial classifier owns boot ordinal | `true` |
+| Actual retained-log download required | `true` |
+| Same-session later WebSocket revision required | `true` |
+| Private setting represented only by digest | `true` |
+| Post-loss Boot B trace boundary required | `true` |
+| Hermetic production adapter regression | `passed` |
+| Full software gate | `passed` |
+| Progress decision | `continue_after_verified_fix` |
+| Next authorized attempt ordinal | `18` |
+
+Fresh attempt 18 is authorized only after the full clean exact-current-HEAD
+software gate and preflight pass. It must use a fresh protected parent,
+nonexistent supervisor child, mode-0600 sibling output, and exactly one full
+command invocation. Attempt 17 remains immutable, non-promotable,
+non-reusable, and ineligible for evidence splicing.

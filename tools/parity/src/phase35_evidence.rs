@@ -329,7 +329,8 @@ fn validate_epoch(
     let api_identity = parse_snapshot_identity(&epoch.system_info_document, "system_info_json")?;
     let websocket_identity =
         parse_snapshot_identity(&epoch.websocket_document, "live_websocket_json")?;
-    if api_identity != websocket_identity
+    if api_identity.0 != websocket_identity.0
+        || websocket_identity.1 <= api_identity.1
         || api_identity.1 != epoch.storage_revision
         || sha256_hex(api_identity.0.as_bytes()) != epoch.boot_session_digest
     {

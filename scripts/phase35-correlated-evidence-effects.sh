@@ -115,12 +115,17 @@ production_classify_boot() {
 	local mode="$1"
 	local trace="$2"
 	local output="$3"
+	shift 3
+	local classifier_stderr="${output%.json}.stderr"
 	if ! "${workspace_dir}/bazel-bin/tools/parity/report" phase33-classify \
 		--trace "$trace" \
-		--mode "$mode" >"$output"; then
+		--mode "$mode" \
+		"$@" >"$output" 2>"$classifier_stderr"; then
+		chmod 600 "$output" "$classifier_stderr"
 		failure_category="boot_classifier_failed"
 		return 1
 	fi
+	chmod 600 "$output" "$classifier_stderr"
 
 	local classification_status
 	classification_status="$(jq -er '.status' "$output")" || {
@@ -314,45 +319,101 @@ capture_epoch() {
 		return
 	fi
 
+	local boot_classification
+	case "$label" in
+	boot-a-pre | boot-a) boot_classification="$local_root/raw/boot-a-setup.json" ;;
+	boot-b) boot_classification="$local_root/raw/boot-b-setup.json" ;;
+	*) return 1 ;;
+	esac
+	local ordinal classified_session
+	ordinal="$(jq -er '.boot_ordinal | select(type == "number")' "$boot_classification" 2>/dev/null)" ||
+		return 1
+	classified_session="$(jq -er '.session | select(type == "string" and length > 0)' "$boot_classification" 2>/dev/null)" ||
+		return 1
+
 	local api_body="$local_root/raw/${label}-api.json"
+	local api_stderr="$local_root/raw/${label}-api.stderr"
 	local websocket_log="$local_root/raw/${label}-websocket.log"
+	local websocket_stderr="$local_root/raw/${label}-websocket.stderr"
 	local retained_log="$local_root/raw/${label}-retained.log"
-	curl --silent --show-error --fail --max-time 10 \
-		--output "$api_body" "${target_token}/api/system/info"
+	local retained_stderr="$local_root/raw/${label}-retained.stderr"
+	local started
+	started="$(monotonic_millis)" || return 1
+	curl --silent --show-error --fail --http1.1 --noproxy '*' --proto '=http,https' \
+		--connect-timeout 5 --max-time 10 --max-filesize 65536 \
+		--output "$api_body" "${target_token}/api/system/info" 2>"$api_stderr" || {
+		chmod 600 "$api_stderr"
+		[[ ! -e "$api_body" ]] || chmod 600 "$api_body"
+		return 1
+	}
 	node "${script_dir}/phase17-websocket-capture.mjs" \
 		--device-url "$target_token" \
 		--path /api/ws/live \
 		--out "$websocket_log" \
 		--duration-ms 10000 \
-		--max-frames 1
-	local websocket_json
-	websocket_json="$(sed -n 's/^websocket_frame_1=//p' "$websocket_log")"
-	[[ -n "$websocket_json" ]] || return 1
-	local session revision ordinal
-	session="$(jq -er '.bootSession' "$api_body")"
-	revision="$(jq -er '.operatorSnapshotRevision' "$api_body")"
-	ordinal="$(jq -er '.bootOrdinal' "$api_body")"
-	printf 'operator_snapshot session=%s revision=%s redacted=true\n' "$session" "$revision" >"$retained_log"
-	chmod 600 "$api_body" "$websocket_log" "$retained_log"
-	local started ended
-	started="$(monotonic_millis)"
-	ended="$((started + 1))"
+		--max-frames 1 2>"$websocket_stderr" || {
+		chmod 600 "$api_body" "$api_stderr" "$websocket_stderr"
+		[[ ! -e "$websocket_log" ]] || chmod 600 "$websocket_log"
+		return 1
+	}
+	curl --silent --show-error --fail --http1.1 --noproxy '*' --proto '=http,https' \
+		--connect-timeout 5 --max-time 10 --max-filesize 524288 \
+		--output "$retained_log" "${target_token}/api/system/logs" 2>"$retained_stderr" || {
+		chmod 600 "$api_body" "$api_stderr" "$websocket_log" "$websocket_stderr" \
+			"$retained_stderr"
+		[[ ! -e "$retained_log" ]] || chmod 600 "$retained_log"
+		return 1
+	}
+	chmod 600 "$api_body" "$api_stderr" "$websocket_log" "$websocket_stderr" \
+		"$retained_log" "$retained_stderr"
+
+	local websocket_frame websocket_payload
+	websocket_frame="$(sed -n 's/^websocket_frame_1=//p' "$websocket_log")"
+	[[ -n "$websocket_frame" ]] || return 1
+	websocket_payload="$(jq -cer '.data | select(type == "object")' <<<"$websocket_frame" 2>/dev/null)" ||
+		return 1
+	local session revision websocket_session websocket_revision private_host_value
+	session="$(jq -er '.bootSession | select(type == "string" and length > 0)' "$api_body" 2>/dev/null)" ||
+		return 1
+	revision="$(jq -er '.operatorSnapshotRevision | select(type == "number")' "$api_body" 2>/dev/null)" ||
+		return 1
+	private_host_value="$(jq -er '.hostname | select(type == "string" and length > 0)' "$api_body" 2>/dev/null)" ||
+		return 1
+	websocket_session="$(jq -er '.bootSession | select(type == "string" and length > 0)' <<<"$websocket_payload" 2>/dev/null)" ||
+		return 1
+	websocket_revision="$(jq -er '.operatorSnapshotRevision | select(type == "number")' <<<"$websocket_payload" 2>/dev/null)" ||
+		return 1
+	[[ "$session" == "$classified_session" && "$websocket_session" == "$session" ]] ||
+		return 1
+	((websocket_revision > revision)) || return 1
+	local api_marker websocket_marker
+	api_marker="operator_snapshot session=${session} revision=${revision} redacted=true"
+	websocket_marker="operator_snapshot session=${session} revision=${websocket_revision} redacted=true"
+	rg -Fqx -- "$api_marker" "$retained_log" >/dev/null 2>&1 || return 1
+	rg -Fqx -- "$websocket_marker" "$retained_log" >/dev/null 2>&1 || return 1
+	local ended
+	ended="$(monotonic_millis)" || return 1
+	((ended > started)) || return 1
 	jq -cn \
 		--argjson boot_ordinal "$ordinal" \
 		--arg session "$session" \
 		--argjson revision "$revision" \
+		--arg setting_digest "$(sha256_text "$private_host_value")" \
 		--arg reset_category "$([[ "$label" == boot-b ]] && printf software_cpu || printf setup)" \
 		--arg system_info_document "system_info_json: $(<"$api_body")
 operator_snapshot_boot_session: ${session}
 operator_snapshot_revision: ${revision}" \
-		--arg websocket_document "live_websocket_json: ${websocket_json}
-operator_snapshot_boot_session: ${session}
-operator_snapshot_revision: ${revision}" \
+		--arg websocket_document "live_websocket_json: ${websocket_payload}
+operator_snapshot_boot_session: ${websocket_session}
+operator_snapshot_revision: ${websocket_revision}" \
 		--arg retained_log_document "$(<"$retained_log")" \
 		--argjson started_millis "$started" \
 		--argjson ended_millis "$ended" \
-		'{boot_ordinal:$boot_ordinal,boot_session:$session,storage_revision:$revision,reset_category:$reset_category,system_info_document:$system_info_document,websocket_document:$websocket_document,retained_log_document:$retained_log_document,started_millis:$started_millis,ended_millis:$ended_millis}' \
-		>"$output"
+		'{boot_ordinal:$boot_ordinal,boot_session:$session,storage_revision:$revision,reset_category:$reset_category,setting_digest:$setting_digest,system_info_document:$system_info_document,websocket_document:$websocket_document,retained_log_document:$retained_log_document,started_millis:$started_millis,ended_millis:$ended_millis}' \
+		>"$output" || {
+		chmod 600 "$output"
+		return 1
+	}
 	chmod 600 "$output"
 	printf '%s\n' "$output"
 }
@@ -403,19 +464,64 @@ start_passive_monitor_and_reboot() {
 		--seconds "$capture_timeout_seconds" \
 		--reader espflash \
 		--no-reset &
-	readonly passive_pid=$!
+	passive_monitor_pid=$!
 	for _ in $(seq 1 80); do
 		[[ -s "$passive_ready" ]] && break
-		kill -0 "$passive_pid" >/dev/null 2>&1 || return 1
+		kill -0 "$passive_monitor_pid" >/dev/null 2>&1 || return 1
 		sleep 0.25
 	done
 	[[ -s "$passive_ready" ]] || return 1
+	local reboot_stderr="$local_root/raw/reboot.stderr"
 	curl --silent --show-error --fail --max-time 15 \
 		--request POST \
 		--output "$local_root/raw/reboot-response.json" \
-		"${target_token}/api/system/restart"
-	wait "$passive_pid"
-	chmod 600 "$passive_log" "$passive_raw" "$local_root/raw/reboot-response.json"
+		"${target_token}/api/system/restart" 2>"$reboot_stderr" || {
+		chmod 600 "$reboot_stderr"
+		[[ ! -e "$local_root/raw/reboot-response.json" ]] ||
+			chmod 600 "$local_root/raw/reboot-response.json"
+		return 1
+	}
+	chmod 600 "$local_root/raw/reboot-response.json" "$reboot_stderr"
+	local service_loss_stderr="$local_root/raw/service-loss-probe.stderr"
+	local service_lost=0
+	for _ in $(seq 1 80); do
+		if ! curl --silent --http1.1 --noproxy '*' --proto '=http,https' \
+			--connect-timeout 1 --max-time 1 --output /dev/null \
+			"${target_token}/api/system/info" 2>"$service_loss_stderr"; then
+			service_lost=1
+			break
+		fi
+		sleep 0.25
+	done
+	chmod 600 "$service_loss_stderr"
+	((service_lost == 1)) || return 1
+	local restart_offset
+	restart_offset="$(wc -c <"$passive_raw" | tr -d ' ')" || return 1
+	[[ "$restart_offset" =~ ^[0-9]+$ ]] || return 1
+	local passive_status=0
+	set +e
+	wait "$passive_monitor_pid"
+	passive_status=$?
+	set -e
+	passive_monitor_pid=""
+	((passive_status == 0)) || return 1
+	chmod 600 "$passive_log" "$passive_raw"
+	local baseline_session baseline_ordinal boot_b_setup
+	baseline_session="$(jq -er '.session | select(type == "string" and length > 0)' "$local_root/raw/boot-a-setup.json")" ||
+		return 1
+	baseline_ordinal="$(jq -er '.boot_ordinal | select(type == "number")' "$local_root/raw/boot-a-setup.json")" ||
+		return 1
+	boot_b_setup="$local_root/raw/boot-b-setup.json"
+	production_classify_boot post-restart "$passive_raw" "$boot_b_setup" \
+		--start-byte "$restart_offset" \
+		--expected-session "$baseline_session" \
+		--expected-ordinal "$baseline_ordinal" || {
+		chmod 600 "$boot_b_setup"
+		return 1
+	}
+	chmod 600 "$boot_b_setup"
+	target_token="$(jq -er '.device_url | select(type == "string" and length > 0)' "$boot_b_setup")" ||
+		return 1
 }
 
 verify_same_identity() {
@@ -465,6 +571,21 @@ cleanup_resources_once() {
 		return
 	fi
 	cleanup_attempted=1
+	if [[ -n "$passive_monitor_pid" ]]; then
+		local passive_cleanup_status=0
+		set +e
+		if kill -0 "$passive_monitor_pid" >/dev/null 2>&1; then
+			kill -TERM "$passive_monitor_pid" >/dev/null 2>&1
+		fi
+		wait "$passive_monitor_pid" >/dev/null 2>&1
+		passive_cleanup_status=$?
+		set -e
+		passive_monitor_pid=""
+		if ((passive_cleanup_status != 0 && passive_cleanup_status != 130 && passive_cleanup_status != 143)); then
+			cleanup_secondary_category="cleanup_passive_monitor_failed"
+			return 1
+		fi
+	fi
 	if [[ -n "$fixture_command" ]]; then
 		fixture cleanup || {
 			cleanup_secondary_category="cleanup_resource_failure"
