@@ -1521,3 +1521,47 @@ splicing. If attempt 21 reproduces
 `flash_or_boot_a_failed/factory/post_info_pre_transfer_failed`, policy selects
 `stop_repeated_boundary`. Task 3, admission, checklist promotion, and
 `35-04-SUMMARY.md` remain blocked until `complete`.
+
+## Attempt 21 Checkpoint and Pre-Probe Connection Stop
+
+Attempt 21 executed once after the complete software gate, the exact espflash
+4.5.0 doctor check, and exact-current-HEAD preflight. The protected parent,
+nonexistent supervisor child, sibling wrapper log, and resulting sealed child
+met the required `0700`/`0600` ownership contract.
+
+| Field | Redacted value |
+| --- | --- |
+| Attempt ordinal | `21` |
+| Source commit | `e007c06a5350b197a7f2a1af1bb6a41472be651d` |
+| espflash version | `4.5.0` |
+| Software gate | `passed` |
+| Exact-head preflight | `passed` |
+| Exact-head equality | `true` |
+| Supervisor result | `non_promotion` |
+| Primary category | `connection_failure` |
+| Typed flash stage | `none` |
+| Typed flash boundary | `none` |
+| Checksum probe started | `false` |
+| Credential access | `false` |
+| Factory/NVS write started | `false` |
+| Restoration secondary | `none` |
+| Cleanup secondary | `none` |
+| Root reusable | `false` |
+| Progress decision | `continue_after_manual_remediation` |
+
+The sole detector invocation reached its reset-capable board-info command and
+failed to connect before the new checksum probe. This differs from Attempts 19
+and 20, which completed device information in the factory stage. Review of the
+official espflash source history shows that 4.5.0 contains a reset-order change
+made for Windows compatibility, while its review explicitly notes the absence
+of USB-JTAG-Serial validation. That is a strong compatibility hypothesis, not a
+hardware conclusion.
+
+One exact non-invasive remediation is required before a discriminating fresh
+Attempt 22: disconnect USB and barrel power, reconnect barrel power, reconnect
+USB, allow the target to re-enumerate, and confirm completion. The agent must
+wait for confirmation, rerun exact-head preflight, and use a fresh protected
+root. If `connection_failure` recurs at the detector before the probe, policy
+selects `stop_hardware_blocker`. Attempts 1 through 21 remain immutable,
+non-promotable, non-reusable, and ineligible for evidence splicing. Task 3,
+admission, checklist promotion, and `35-04-SUMMARY.md` remain blocked.

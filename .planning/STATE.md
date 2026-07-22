@@ -2,9 +2,9 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: executing
-stopped_at: Phase 35 Plan 04 Task 2 software repair before authorized attempt 21
-last_updated: "2026-07-22T04:22:33Z"
+status: blocked
+stopped_at: Phase 35 Plan 04 Task 2 awaiting exact non-invasive remediation confirmation after attempt 21
+last_updated: "2026-07-22T04:47:59Z"
 last_activity: "2026-07-21"
 progress:
   total_phases: 5
@@ -16,22 +16,24 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-21 - Typed espflash 4.5.0 repair prepared for exact-head verification before authorized attempt 21
+Last activity: 2026-07-21 - Attempt 21 stopped before the checksum probe at a distinct detector connection boundary
 
 ## Current Position
 
-Phase: 35 (Detector-Gated Correlated Evidence and Exact Parity Promotion) — EXECUTING
+Phase: 35 (Detector-Gated Correlated Evidence and Exact Parity Promotion) — BLOCKED
 Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 is executing through a separately authorized, materially
-  different espflash 4.5.0/reset/typed-boundary repair. Attempts 1 through 20
-  remain sealed non-promotable and non-reusable.
-- **Next step:** Complete the clean software gate and exact-current-HEAD
-  preflight, then run fresh attempt 21 once. Its read-only 4 KiB probe must be
-  `ready` before credentials or writes. Task 3 and `35-04-SUMMARY.md` remain
-  blocked until `complete`.
+- **Status:** Task 2 is blocked for one exact non-invasive remediation after
+  Attempt 21 reached a distinct detector `connection_failure` before the typed
+  checksum probe, credential access, or writes. Attempts 1 through 21 remain
+  sealed non-promotable and non-reusable.
+- **Next step:** Wait for confirmation that USB and barrel power were
+  disconnected, then barrel power and USB were reconnected and allowed to
+  re-enumerate. Rerun exact-current-HEAD preflight and use fresh Attempt 22.
+  Recurrence selects `stop_hardware_blocker`. Task 3 and
+  `35-04-SUMMARY.md` remain blocked until `complete`.
 
 ## Project Reference
 
