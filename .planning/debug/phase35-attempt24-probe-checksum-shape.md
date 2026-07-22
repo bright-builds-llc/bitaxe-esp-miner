@@ -1,8 +1,8 @@
 ---
-status: verifying
+status: resolved
 trigger: "Attempt 24 stopped at the read-only checksum probe with flash_boundary_invalid before credential access or writes."
 created: 2026-07-22T15:10:01Z
-updated: 2026-07-22T15:10:01Z
+updated: 2026-07-22T15:58:27Z
 ---
 
 ## Current Focus
@@ -51,7 +51,7 @@ started: Attempt 24 at exact source `dec8b8a6bef8f504ec83a7eebe03b69a08be5064` a
 
 root_cause: The read-only probe assumed a fixed-width 32-digit MD5 line, but espflash 4.5.0 prints an unpadded hexadecimal `u128`; the valid leading-zero-elided result was therefore marked incomplete. The resulting non-ready projection used serde's default `failure` spelling while the shell contract requires `failed`, replacing the discriminating boundary with `flash_boundary_invalid`.
 fix: Accept exactly one official lowercase `0x`-prefixed checksum containing 1 through 32 hexadecimal digits, reject ambiguous or malformed candidates, and explicitly serialize the canonical `post_info_pre_transfer_failed` boundary.
-verification: Code commit `671011a7` passes focused real-process and classifier suites plus the mandatory Rust gate. The checkpoint commit and exact-head preflight remain pending before Attempt 25.
+verification: Code commit `671011a7` passes focused real-process and classifier suites plus the mandatory Rust gate. Attempts 25 and 26 subsequently classified the read-only probe as `ready`.
 files_changed:
 
 - tools/flash/src/main.rs

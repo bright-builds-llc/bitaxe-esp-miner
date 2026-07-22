@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: in_progress
-stopped_at: Phase 35 Plan 04 Task 2 verifying the Attempt 25 passive-monitor runfiles repair before Attempt 26
-last_updated: "2026-07-22T15:35:23Z"
+stopped_at: Phase 35 Plan 04 Task 2 stopped after Attempt 26 repeated approved_reboot_failed
+last_updated: "2026-07-22T15:58:27Z"
 last_activity: "2026-07-22"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-22 - Attempt 25 exposed a missing passive-monitor process-group helper in the built supervisor runfiles
+Last activity: 2026-07-22 - Attempt 26 proved the runfiles repair but repeated approved_reboot_failed with post_restart_identity_missing
 
 ## Current Position
 
@@ -25,16 +25,17 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 remains incomplete. Attempt 25 passed the read-only probe,
-  factory, NVS, monitor, private Boot A, PATCH, storage-confirmed readback, and
-  restoration boundaries. It stopped before the approved reboot request because
-  the built supervisor omitted the passive monitor's required
-  `process-group.sh` runfile. Attempts 1 through 25 remain sealed
+- **Status:** Task 2 remains incomplete. Attempt 26 proved the passive-monitor
+  runfiles repair, issued the approved reboot, observed service loss, and
+  completed restoration and cleanup, but its zero-byte post-restart serial
+  capture classified `post_restart_identity_missing`. The public primary
+  category repeated as `approved_reboot_failed` after its targeted fix, so
+  policy selects `stop_repeated_boundary`. Attempts 1 through 26 remain sealed
   non-promotable and non-reusable.
-- **Next step:** Finish full verification and the atomic checkpoint for the
-  passive-monitor runfiles repair, rerun exact-current-HEAD preflight, and use
-  fresh Attempt 26 under `continue_after_verified_fix`. Task 3 and
-  `35-04-SUMMARY.md` remain blocked until `complete`.
+- **Next step:** Do not run Attempt 27. Preserve the sealed root and checkpoint
+  the repeated-boundary stop. Task 3 and `35-04-SUMMARY.md` remain blocked until
+  a separately authorized plan changes the evidence contract or resolves the
+  stop condition without an unchanged hardware retry.
 
 ## Project Reference
 
@@ -524,18 +525,19 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 25 are sealed,
-  non-promotable, and non-reusable. Attempt 25's missing passive-monitor
-  process-group runfile requires the verified runfiles-closure repair, full clean
-  gate, atomic checkpoint, and exact-head preflight before fresh Attempt 26.
-  Task 3 and `35-04-SUMMARY.md` remain prohibited until `complete`.
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 26 are sealed,
+  non-promotable, and non-reusable. Attempt 26 repeated
+  `approved_reboot_failed` after its targeted runfiles fix, with private typed
+  Boot B category `post_restart_identity_missing`. Policy selects
+  `stop_repeated_boundary`; Attempt 27 is prohibited. Task 3 and
+  `35-04-SUMMARY.md` remain prohibited until `complete`.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 verifying the Attempt 25 passive-monitor runfiles repair
-- **Resume:** Complete the clean software gate and atomic checkpoint, run
-  exact-current-HEAD preflight, then execute fresh Attempt 26 under the
-  progress-gated `continue_after_verified_fix` decision. Do not reuse the
-  Attempt 25 root or repeat its unchanged committed command.
+- **Stopped at:** Phase 35 Plan 04 Task 2 after Attempt 26 selected `stop_repeated_boundary`
+- **Resume:** Do not execute Attempt 27. Preserve Attempt 26 as sealed,
+  non-promotable, non-reusable evidence. A future continuation requires a
+  separately authorized plan that changes the contract or resolves the stop
+  condition without an unchanged hardware retry.
   Task 3, evidence admission, checklist promotion, and
   `35-04-SUMMARY.md` remain blocked until `complete`.

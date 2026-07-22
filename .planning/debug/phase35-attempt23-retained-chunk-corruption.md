@@ -1,8 +1,8 @@
 ---
-status: verifying
+status: resolved
 trigger: "Attempt 23 passed private Boot A classification and dual finalization, then the retained-log HTTP read failed with invalid chunk framing before mutation."
 created: 2026-07-22T14:43:45Z
-updated: 2026-07-22T14:57:33Z
+updated: 2026-07-22T15:58:27Z
 ---
 
 ## Current Focus
@@ -47,7 +47,7 @@ started: Attempt 23 at exact source `ead2347d32ed0dbb8be43c74a3fb3a85a32734a1` a
 
 root_cause: Background cadence sends bypassed the HTTPD task's work queue. A queued frame could outlive its original WebSocket session, and `httpd_ws_send_frame_async` could then write its bytes to a later ordinary HTTP connection that reused the same descriptor, corrupting retained-response chunk framing.
 fix: Assign each registration a generation lease, bind it to ESP-IDF session-context cleanup, copy each background payload and lease into owned queued work, execute the only direct asynchronous WebSocket send inside the HTTPD task, verify the lease is still current, verify the descriptor is still a WebSocket, and unregister only an exact current lease.
-verification: The firmware image build, five deterministic lease tests, focused Phase 35 suites, parity suite, and mandatory Rust gate pass. Code commit `fafbeec9` contains the repair. The redacted checkpoint commit and exact-head preflight remain pending before Attempt 24.
+verification: The firmware image build, five deterministic lease tests, focused Phase 35 suites, parity suite, and mandatory Rust gate pass. Code commit `fafbeec9` contains the repair. Attempt 25 subsequently completed the private Boot A capture, HTTP reads, PATCH, and immediate readback without recurring retained-chunk corruption.
 files_changed:
 
 - firmware/bitaxe/src/http_api.rs

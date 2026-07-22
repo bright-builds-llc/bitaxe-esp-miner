@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempts 19–25 remain sealed. Attempt 25 passed every probe/flash/Boot A/PATCH/readback boundary but stopped before the reboot POST because the built supervisor omitted the passive monitor's `process-group.sh` runfile. Attempt 26 requires the regression-backed runfiles-closure repair, complete clean gate, atomic checkpoint commit, a fresh root, and exact-head preflight. Task 2 and Phase 35 remain incomplete until eligible evidence is admitted. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempts 19–26 remain sealed. Attempt 26 proved the passive-monitor runfiles repair, issued the approved reboot, and completed restoration/cleanup, but its zero-byte post-restart serial capture classified `post_restart_identity_missing`; the public primary category repeated as `approved_reboot_failed`. Policy selects `stop_repeated_boundary`, so Attempt 27 is prohibited. Task 2 and Phase 35 remain incomplete without eligible evidence. |
 
 ## Validation Sign-Off
 

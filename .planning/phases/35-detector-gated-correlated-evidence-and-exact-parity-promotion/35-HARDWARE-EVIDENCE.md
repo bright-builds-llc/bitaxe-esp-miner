@@ -1754,3 +1754,56 @@ and ineligible for splicing. Fresh Attempt 26 is allowed only after the complete
 clean software gate, atomic checkpoint commit, and exact-current-HEAD
 preflight. Task 3, admission, checklist promotion, and `35-04-SUMMARY.md`
 remain blocked until `complete`.
+
+## Attempt 26 Checkpoint and Repeated Reboot Boundary
+
+Attempt 26 executed once after doctor and exact-current-HEAD preflight passed.
+The protected parent, nonexistent supervisor child, sibling wrapper log, and
+resulting sealed child met the required `0700`/`0600` ownership contract.
+
+| Field | Redacted value |
+| --- | --- |
+| Attempt ordinal | `26` |
+| Source commit | `a4de3c3a480bb29075c1c17df5c7cb8fe9d69f7c` |
+| Doctor | `passed` |
+| Exact-head preflight | `passed` |
+| Exact-head equality | `true` |
+| Supervisor result | `non_promotion` |
+| Primary category | `approved_reboot_failed` |
+| Probe stage | `ready` |
+| Factory stage | `ready` |
+| NVS stage | `ready` |
+| Monitor stage | `ready` |
+| Original HTTP category | `ready` |
+| Immediate HTTP category | `ready` |
+| Mutation started | `true` |
+| Passive pre-readiness | `ready` |
+| Passive active owner | `verified` |
+| Reboot request issued | `true` |
+| Service loss observed | `true` |
+| Passive capture disposition | `timed_out_after_capture` |
+| Passive serial bytes | `0` |
+| Passive post-readiness | `ready` |
+| Boot B classifier category | `post_restart_identity_missing` |
+| Restoration HTTP category | `ready` |
+| Restoration secondary | `none` |
+| Cleanup secondary | `none` |
+| Root reusable | `false` |
+| Progress decision | `stop_repeated_boundary` |
+
+The run proves the Attempt 25 runfiles repair: the passive monitor loaded its
+complete helper closure, established exclusive serial ownership, issued the
+approved reboot POST, observed service loss, and recovered post-cleanup
+readiness. The complete bounded passive interval nevertheless captured zero
+serial bytes, leaving no post-restart identity marker for Boot B. The private
+classifier therefore recorded `post_restart_identity_missing` while the
+supervisor preserved its existing public primary category
+`approved_reboot_failed`.
+
+Restoration and cleanup completed without secondary failures. Because the same
+primary category recurred immediately after its targeted verified fix, the
+repository hardware policy selects `stop_repeated_boundary`. Attempt 26 remains
+immutable, non-promotable, non-reusable, and ineligible for splicing. Attempt
+27 is prohibited. Task 3, admission, checklist promotion, and
+`35-04-SUMMARY.md` remain blocked until eligible evidence exists under a
+separately authorized future plan.

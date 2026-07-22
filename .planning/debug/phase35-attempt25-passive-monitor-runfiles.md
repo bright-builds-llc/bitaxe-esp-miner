@@ -1,8 +1,8 @@
 ---
-status: verifying
+status: resolved
 trigger: "Attempt 25 stopped at approved_reboot_failed after every earlier probe, flash, Boot A, PATCH, and readback boundary passed."
 created: 2026-07-22T15:35:23Z
-updated: 2026-07-22T15:35:23Z
+updated: 2026-07-22T15:58:27Z
 ---
 
 ## Current Focus
@@ -51,7 +51,7 @@ started: Attempt 25 at exact source `f3a4d350492f5cc1073c0f62bd1a20f8af4355e2` a
 
 root_cause: The Phase 35 Bazel target treated `phase13-monitor-capture.sh` as a standalone data file even though it unconditionally sources `process-group.sh`; the missing sibling caused the child to exit before readiness and before the approved reboot POST.
 fix: Add `process-group.sh` to the production supervisor runfiles and verify the built target's passive-monitor closure loads successfully from Bazel runfiles.
-verification: Code commit `f1f01aa1` passes the built-runfiles check, Phase 35 supervisor/stage/promotion suites, hardware-attempt policy, Phase 30 non-promotion, reference/parity/redaction checks, scoped ShellCheck/shfmt, and the mandatory Rust gate. The checkpoint commit and exact-head preflight remain pending before Attempt 26.
+verification: Code commit `f1f01aa1` passes the built-runfiles check, Phase 35 supervisor/stage/promotion suites, hardware-attempt policy, Phase 30 non-promotion, reference/parity/redaction checks, scoped ShellCheck/shfmt, and the mandatory Rust gate. Attempt 26 subsequently loaded the helper closure, reached passive readiness and exclusive ownership, issued the reboot request, and completed post-cleanup readiness.
 files_changed:
 
 - scripts/BUILD.bazel
