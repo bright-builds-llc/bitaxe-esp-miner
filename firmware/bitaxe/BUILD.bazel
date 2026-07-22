@@ -109,6 +109,12 @@ filegroup(
     visibility = ["//tools/parity:__pkg__"],
 )
 
+filegroup(
+    name = "phase35_websocket_sources",
+    srcs = ["src/http_api.rs"],
+    visibility = ["//scripts:__pkg__"],
+)
+
 test_suite(
     name = "runtime_health_tests",
     tests = [

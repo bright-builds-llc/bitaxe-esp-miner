@@ -367,7 +367,7 @@ fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
     assert!(live_connect.contains("publish_projected_live_telemetry_payload"));
     assert!(live_connect.contains("websocket_api::live_connect_frame(current)"));
     assert!(live_connect.contains("send_websocket_text_frame(request, &body)"));
-    assert!(HTTP_API_SOURCE.contains("send_websocket_text_frame_async(server, session, body)"));
+    assert!(HTTP_API_SOURCE.contains("send_websocket_text_frame_async(server, lease, body)"));
     assert!(!RUNTIME_SNAPSHOT_SOURCE.contains("pub fn projected_system_info"));
     assert!(!RUNTIME_SNAPSHOT_SOURCE.contains("pub fn projected_live_telemetry_payload"));
 

@@ -239,6 +239,7 @@ readonly supervisor="${script_dir}/phase35-correlated-evidence.sh"
 readonly fixture="${script_dir}/phase35-correlated-evidence-fixture.sh"
 readonly justfile="${script_dir}/../Justfile"
 readonly sdkconfig_defaults="${script_dir}/../firmware/bitaxe/sdkconfig.defaults"
+readonly http_api_source="${script_dir}/../firmware/bitaxe/src/http_api.rs"
 readonly test_root="${TEST_TMPDIR:-$(mktemp -d)}/phase35"
 readonly workspace="${test_root}/workspace"
 readonly source_commit="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -330,6 +331,46 @@ test_main_task_stack_capacity() {
 	# Assert
 	[[ "$capacity_is_sufficient" == true ]] ||
 		fail_test "ESP main-task stack is below the Phase 35 runtime minimum"
+}
+
+test_websocket_background_writes_are_serialized_in_httpd_context() {
+	# Arrange
+	local queued_callback
+	queued_callback="$(
+		sed -n '/^unsafe extern "C" fn send_queued_websocket_frame/,/^}/p' \
+			"$http_api_source"
+	)"
+	[[ -n "$queued_callback" ]] || fail_test "missing queued WebSocket callback"
+
+	# Act
+	local lease_check_line protocol_check_line send_line
+	lease_check_line="$(
+		rg -n 'websocket_api::is_current' <<<"$queued_callback" | head -1 | cut -d: -f1
+	)"
+	protocol_check_line="$(
+		rg -n 'httpd_ws_get_fd_info' <<<"$queued_callback" | head -1 | cut -d: -f1
+	)"
+	send_line="$(
+		rg -n 'httpd_ws_send_frame_async' <<<"$queued_callback" | head -1 | cut -d: -f1
+	)"
+
+	# Assert
+	[[ "$(rg -c 'httpd_ws_send_frame_async' "$http_api_source")" == 1 ]] ||
+		fail_test "background WebSocket writes bypass the queued callback"
+	[[ "$(rg -c 'httpd_queue_work' "$http_api_source")" == 1 ]] ||
+		fail_test "WebSocket queue ownership is ambiguous"
+	rg -q 'websocket_api::is_current' <<<"$queued_callback" ||
+		fail_test "queued WebSocket callback does not recheck the connection lease"
+	rg -q 'HTTPD_WS_CLIENT_WEBSOCKET' <<<"$queued_callback" ||
+		fail_test "queued WebSocket callback does not recheck protocol state"
+	[[ -n "$lease_check_line" && -n "$protocol_check_line" && -n "$send_line" ]] ||
+		fail_test "queued WebSocket callback ordering markers are incomplete"
+	[[ "$lease_check_line" -lt "$protocol_check_line" && "$protocol_check_line" -lt "$send_line" ]] ||
+		fail_test "queued WebSocket callback sends before validating the reused descriptor"
+	rg -q 'free_websocket_session_context' "$http_api_source" ||
+		fail_test "WebSocket disconnect cleanup is not registered"
+	rg -q 'unregister_if_current' "$http_api_source" ||
+		fail_test "WebSocket cleanup can remove a replacement connection"
 }
 
 prepare_case() {
@@ -1395,6 +1436,7 @@ test_success_ordering_and_private_root() {
 }
 
 test_main_task_stack_capacity
+test_websocket_background_writes_are_serialized_in_httpd_context
 test_runfiles_rejects_existing_child_before_admission_or_effects
 test_runfiles_preserves_caller_owned_parent_and_sibling_outputs
 test_runfiles_entrypoint_resolves_sibling_helpers

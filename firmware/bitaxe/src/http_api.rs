@@ -1,6 +1,6 @@
 //! ESP-IDF HTTP shell for the Phase 05 AxeOS API route table.
 
-use std::ffi::{CStr, CString};
+use std::ffi::{c_void, CStr, CString};
 use std::net::Ipv4Addr;
 use std::ptr;
 use std::sync::OnceLock;
@@ -74,8 +74,15 @@ enum LiveCadenceIssueError {
 }
 
 struct WebSocketSendFailure {
-    session: i32,
+    lease: websocket_api::WebSocketClientLease,
     error: sys::esp_err_t,
+}
+
+struct QueuedWebSocketFrame {
+    server: sys::httpd_handle_t,
+    lease: websocket_api::WebSocketClientLease,
+    frame_type: sys::httpd_ws_type_t,
+    payload: Box<[u8]>,
 }
 
 /// Starts the HTTP route shell and intentionally leaks the server so ESP-IDF's
@@ -173,16 +180,17 @@ fn prune_stale_websocket_sessions(server: sys::httpd_handle_t) {
 }
 
 fn ping_websocket_route(server: sys::httpd_handle_t, route: WebSocketRouteKind) {
-    for session in websocket_api::client_sessions(route) {
-        let result = send_websocket_ping_frame_async(server, session);
+    for lease in websocket_api::client_leases(route) {
+        let result = send_websocket_ping_frame_async(server, lease);
         if result == sys::ESP_OK {
             continue;
         }
 
         log::warn!(
-            "axeos_websocket_ping=unregistering_stale route={route:?} session={session} error={result}"
+            "axeos_websocket_ping=unregistering_stale route={route:?} session={} error={result}",
+            lease.session()
         );
-        websocket_api::unregister_client(session);
+        websocket_api::unregister_if_current(lease);
     }
 }
 
@@ -192,13 +200,13 @@ fn broadcast_websocket_text_frame(
     body: &str,
 ) -> Vec<WebSocketSendFailure> {
     let mut failures = Vec::new();
-    for session in websocket_api::client_sessions(route) {
-        let result = send_websocket_text_frame_async(server, session, body);
+    for lease in websocket_api::client_leases(route) {
+        let result = send_websocket_text_frame_async(server, lease, body);
         if result == sys::ESP_OK {
             continue;
         }
         failures.push(WebSocketSendFailure {
-            session,
+            lease,
             error: result,
         });
     }
@@ -209,10 +217,10 @@ fn handle_websocket_send_failures(route: WebSocketRouteKind, failures: Vec<WebSo
     for failure in failures {
         log::warn!(
             "axeos_websocket_broadcast=unregistering_stale route={route:?} session={} error={}",
-            failure.session,
+            failure.lease.session(),
             failure.error
         );
-        websocket_api::unregister_client(failure.session);
+        websocket_api::unregister_if_current(failure.lease);
     }
 }
 
@@ -691,7 +699,11 @@ fn handle_websocket_upgrade(
             }
 
             match websocket_api::register_client(session, plan.route) {
-                websocket_api::WebSocketRegisterOutcome::Accepted { active_clients } => {
+                websocket_api::WebSocketRegisterOutcome::Accepted {
+                    active_clients,
+                    lease,
+                } => {
+                    install_websocket_session_context(request, lease);
                     log::info!(
                         "axeos_websocket_upgrade=accepted route={:?} active_clients={active_clients}",
                         plan.route
@@ -702,7 +714,7 @@ fn handle_websocket_upgrade(
                             "axeos_websocket_upgrade=connect_send_failed route={:?} session={session} error={result}",
                             plan.route
                         );
-                        websocket_api::unregister_client(session);
+                        websocket_api::unregister_if_current(lease);
                     }
 
                     result
@@ -811,14 +823,48 @@ fn handle_websocket_frame(request: *mut sys::httpd_req_t) -> sys::esp_err_t {
 }
 
 fn unregister_request_websocket_session(request: *mut sys::httpd_req_t, reason: &str) {
-    let session = unsafe { sys::httpd_req_to_sockfd(request) };
-    if session < 0 {
+    let maybe_lease = websocket_lease_from_request(request);
+    let Some(lease) = maybe_lease else {
         log::warn!("axeos_websocket_session=unregister_skipped reason={reason} session=missing");
         return;
+    };
+
+    websocket_api::unregister_if_current(lease);
+    log::info!(
+        "axeos_websocket_session=unregistered reason={reason} session={}",
+        lease.session()
+    );
+}
+
+fn install_websocket_session_context(
+    request: *mut sys::httpd_req_t,
+    lease: websocket_api::WebSocketClientLease,
+) {
+    let lease_ptr = Box::into_raw(Box::new(lease));
+    unsafe {
+        (*request).sess_ctx = lease_ptr.cast::<c_void>();
+        (*request).free_ctx = Some(free_websocket_session_context);
+        (*request).ignore_sess_ctx_changes = false;
+    }
+}
+
+fn websocket_lease_from_request(
+    request: *mut sys::httpd_req_t,
+) -> Option<websocket_api::WebSocketClientLease> {
+    let context = unsafe { (*request).sess_ctx };
+    if context.is_null() {
+        return None;
     }
 
-    websocket_api::unregister_client(session);
-    log::info!("axeos_websocket_session=unregistered reason={reason} session={session}");
+    Some(unsafe { *context.cast::<websocket_api::WebSocketClientLease>() })
+}
+
+unsafe extern "C" fn free_websocket_session_context(context: *mut c_void) {
+    if context.is_null() {
+        return;
+    }
+    let lease = unsafe { Box::from_raw(context.cast::<websocket_api::WebSocketClientLease>()) };
+    websocket_api::unregister_if_current(*lease);
 }
 
 fn send_websocket_connect_frames(
@@ -875,28 +921,86 @@ fn send_websocket_text_frame(request: *mut sys::httpd_req_t, body: &str) -> sys:
 
 fn send_websocket_text_frame_async(
     server: sys::httpd_handle_t,
-    session: i32,
+    lease: websocket_api::WebSocketClientLease,
     body: &str,
 ) -> sys::esp_err_t {
-    let mut frame = sys::httpd_ws_frame_t {
-        final_: true,
-        fragmented: false,
-        type_: sys::httpd_ws_type_t_HTTPD_WS_TYPE_TEXT,
-        payload: body.as_ptr() as *mut u8,
-        len: body.len(),
-    };
-    unsafe { sys::httpd_ws_send_frame_async(server, session, &mut frame) }
+    queue_websocket_frame(
+        server,
+        lease,
+        sys::httpd_ws_type_t_HTTPD_WS_TYPE_TEXT,
+        body.as_bytes(),
+    )
 }
 
-fn send_websocket_ping_frame_async(server: sys::httpd_handle_t, session: i32) -> sys::esp_err_t {
+fn send_websocket_ping_frame_async(
+    server: sys::httpd_handle_t,
+    lease: websocket_api::WebSocketClientLease,
+) -> sys::esp_err_t {
+    queue_websocket_frame(server, lease, sys::httpd_ws_type_t_HTTPD_WS_TYPE_PING, &[])
+}
+
+fn queue_websocket_frame(
+    server: sys::httpd_handle_t,
+    lease: websocket_api::WebSocketClientLease,
+    frame_type: sys::httpd_ws_type_t,
+    payload: &[u8],
+) -> sys::esp_err_t {
+    let queued = Box::new(QueuedWebSocketFrame {
+        server,
+        lease,
+        frame_type,
+        payload: payload.to_vec().into_boxed_slice(),
+    });
+    let queued_ptr = Box::into_raw(queued);
+    let result = unsafe {
+        sys::httpd_queue_work(
+            server,
+            Some(send_queued_websocket_frame),
+            queued_ptr.cast::<c_void>(),
+        )
+    };
+    if result != sys::ESP_OK {
+        drop(unsafe { Box::from_raw(queued_ptr) });
+    }
+    result
+}
+
+unsafe extern "C" fn send_queued_websocket_frame(argument: *mut c_void) {
+    if argument.is_null() {
+        return;
+    }
+    let mut queued = unsafe { Box::from_raw(argument.cast::<QueuedWebSocketFrame>()) };
+    if !websocket_api::is_current(queued.lease) {
+        return;
+    }
+
+    let session_is_websocket = unsafe {
+        sys::httpd_ws_get_fd_info(queued.server, queued.lease.session())
+            == sys::httpd_ws_client_info_t_HTTPD_WS_CLIENT_WEBSOCKET
+    };
+    if !session_is_websocket {
+        websocket_api::unregister_if_current(queued.lease);
+        return;
+    }
+
+    let payload = if queued.payload.is_empty() {
+        ptr::null_mut()
+    } else {
+        queued.payload.as_mut_ptr()
+    };
     let mut frame = sys::httpd_ws_frame_t {
         final_: true,
         fragmented: false,
-        type_: sys::httpd_ws_type_t_HTTPD_WS_TYPE_PING,
-        payload: ptr::null_mut(),
-        len: 0,
+        type_: queued.frame_type,
+        payload,
+        len: queued.payload.len(),
     };
-    unsafe { sys::httpd_ws_send_frame_async(server, session, &mut frame) }
+    let result = unsafe {
+        sys::httpd_ws_send_frame_async(queued.server, queued.lease.session(), &mut frame)
+    };
+    if result != sys::ESP_OK {
+        websocket_api::unregister_if_current(queued.lease);
+    }
 }
 
 fn origin_gate_from_raw(request: *mut sys::httpd_req_t) -> OriginGate {

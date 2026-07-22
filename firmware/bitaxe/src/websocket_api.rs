@@ -2,8 +2,8 @@
 
 use std::sync::{Mutex, OnceLock};
 
-pub use bitaxe_api::WebSocketRegisterOutcome;
 use bitaxe_api::{RetainedLogBuffer, WebSocketRouteKind, WebSocketState};
+pub use bitaxe_api::{WebSocketClientLease, WebSocketRegisterOutcome};
 use serde_json::Value;
 
 /// Upstream ESP HTTP server WebSocket client cap.
@@ -25,27 +25,39 @@ pub fn register_client(session: i32, route: WebSocketRouteKind) -> WebSocketRegi
     state.register_client(session, route)
 }
 
-/// Removes a client session from all WebSocket route state.
-pub fn unregister_client(session: i32) {
+/// Removes a client only when the exact connection generation still owns it.
+pub fn unregister_if_current(lease: WebSocketClientLease) -> bool {
     let state = WEBSOCKET_STATE.get_or_init(|| Mutex::new(WebSocketState::default()));
     let Ok(mut state) = state.lock() else {
         log::warn!("axeos_websocket_state=unavailable reason=mutex_poisoned");
-        return;
+        return false;
     };
 
-    state.unregister_client(session);
+    state.unregister_if_current(lease)
 }
 
-/// Returns a point-in-time list of active sessions for a WebSocket route.
+/// Reports whether an exact connection generation still owns its route.
 #[must_use]
-pub fn client_sessions(route: WebSocketRouteKind) -> Vec<i32> {
+pub fn is_current(lease: WebSocketClientLease) -> bool {
+    let state = WEBSOCKET_STATE.get_or_init(|| Mutex::new(WebSocketState::default()));
+    let Ok(state) = state.lock() else {
+        log::warn!("axeos_websocket_state=unavailable reason=mutex_poisoned");
+        return false;
+    };
+
+    state.is_current(lease)
+}
+
+/// Returns a point-in-time list of active connection leases for a route.
+#[must_use]
+pub fn client_leases(route: WebSocketRouteKind) -> Vec<WebSocketClientLease> {
     let state = WEBSOCKET_STATE.get_or_init(|| Mutex::new(WebSocketState::default()));
     let Ok(state) = state.lock() else {
         log::warn!("axeos_websocket_state=unavailable reason=mutex_poisoned");
         return Vec::new();
     };
 
-    state.client_sessions(route)
+    state.client_leases(route)
 }
 
 /// Plans the full live telemetry frame sent immediately after connection.

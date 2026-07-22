@@ -113,7 +113,9 @@ pub use v12_settings::{
     decide_v12_settings_body, decide_v12_settings_value, Hostname, V12SettingsChange,
     V12SettingsDecision, V12SettingsExclusionReason,
 };
-pub use websocket_state::{WebSocketRegisterOutcome, WebSocketState, MAX_WEBSOCKET_CLIENTS};
+pub use websocket_state::{
+    WebSocketClientLease, WebSocketRegisterOutcome, WebSocketState, MAX_WEBSOCKET_CLIENTS,
+};
 pub use wire::{retained_runtime_health_record, RuntimeHealthWire, SystemAsicWire, SystemInfoWire};
 
 #[cfg(test)]

@@ -805,6 +805,7 @@ sh_test(
     data = [
         "//:Justfile",
         "//firmware/bitaxe:sdkconfig.defaults",
+        "//firmware/bitaxe:phase35_websocket_sources",
         "espflash-tool.sh",
         "phase35-correlated-evidence-document.sh",
         "phase35-correlated-evidence-effects.sh",

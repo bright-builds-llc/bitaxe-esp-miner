@@ -1,6 +1,6 @@
 //! Pure WebSocket session state for AxeOS logs and live telemetry.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use serde_json::Value;
 
@@ -9,11 +9,36 @@ use crate::{LiveTelemetryPlanner, RawLogStreamPlanner, RetainedLogBuffer, WebSoc
 /// Upstream ESP HTTP server WebSocket client cap.
 pub const MAX_WEBSOCKET_CLIENTS: usize = 10;
 
+/// Connection-generation identity for one registered WebSocket session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WebSocketClientLease {
+    session: i32,
+    generation: u64,
+    route: WebSocketRouteKind,
+}
+
+impl WebSocketClientLease {
+    /// Returns the socket descriptor observed at registration.
+    #[must_use]
+    pub const fn session(self) -> i32 {
+        self.session
+    }
+
+    /// Returns the route that owns this lease.
+    #[must_use]
+    pub const fn route(self) -> WebSocketRouteKind {
+        self.route
+    }
+}
+
 /// Result of registering a WebSocket client.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WebSocketRegisterOutcome {
     /// Client was accepted and counted for its route.
-    Accepted { active_clients: usize },
+    Accepted {
+        active_clients: usize,
+        lease: WebSocketClientLease,
+    },
     /// Client was rejected before route registration.
     RejectedMaxClients { max_clients: usize },
 }
@@ -21,8 +46,9 @@ pub enum WebSocketRegisterOutcome {
 /// Route-local WebSocket session and stream planner state.
 #[derive(Debug, Default)]
 pub struct WebSocketState {
-    log_clients: BTreeSet<i32>,
-    live_clients: BTreeSet<i32>,
+    log_clients: BTreeMap<i32, u64>,
+    live_clients: BTreeMap<i32, u64>,
+    next_generation: u64,
     maybe_log_stream: Option<RawLogStreamPlanner>,
     live_telemetry: LiveTelemetryPlanner,
 }
@@ -41,14 +67,20 @@ impl WebSocketState {
             };
         }
 
-        let was_log_client = self.log_clients.remove(&session);
-        let was_live_client = self.live_clients.remove(&session);
+        let was_log_client = self.log_clients.remove(&session).is_some();
+        let was_live_client = self.live_clients.remove(&session).is_some();
+        let generation = self.next_lease_generation();
+        let lease = WebSocketClientLease {
+            session,
+            generation,
+            route,
+        };
         match route {
             WebSocketRouteKind::Logs => {
-                self.log_clients.insert(session);
+                self.log_clients.insert(session, generation);
             }
             WebSocketRouteKind::LiveTelemetry => {
-                self.live_clients.insert(session);
+                self.live_clients.insert(session, generation);
             }
         }
 
@@ -56,27 +88,43 @@ impl WebSocketState {
 
         WebSocketRegisterOutcome::Accepted {
             active_clients: self.active_route_client_count(route),
+            lease,
         }
     }
 
-    /// Removes a client session from all WebSocket route state.
-    pub fn unregister_client(&mut self, session: i32) {
-        self.log_clients.remove(&session);
-        self.live_clients.remove(&session);
+    /// Reports whether this exact connection generation still owns its route.
+    #[must_use]
+    pub fn is_current(&self, lease: WebSocketClientLease) -> bool {
+        self.clients_for_route(lease.route).get(&lease.session) == Some(&lease.generation)
+    }
+
+    /// Removes a client only when the exact connection generation still owns it.
+    pub fn unregister_if_current(&mut self, lease: WebSocketClientLease) -> bool {
+        if !self.is_current(lease) {
+            return false;
+        }
+
+        self.clients_for_route_mut(lease.route)
+            .remove(&lease.session);
         self.live_telemetry
             .set_active_client_count(self.live_clients.len());
         if self.log_clients.is_empty() {
             self.maybe_log_stream = None;
         }
+        true
     }
 
-    /// Returns a point-in-time list of active sessions for a WebSocket route.
+    /// Returns a point-in-time list of active connection leases for a route.
     #[must_use]
-    pub fn client_sessions(&self, route: WebSocketRouteKind) -> Vec<i32> {
-        match route {
-            WebSocketRouteKind::Logs => self.log_clients.iter().copied().collect(),
-            WebSocketRouteKind::LiveTelemetry => self.live_clients.iter().copied().collect(),
-        }
+    pub fn client_leases(&self, route: WebSocketRouteKind) -> Vec<WebSocketClientLease> {
+        self.clients_for_route(route)
+            .iter()
+            .map(|(&session, &generation)| WebSocketClientLease {
+                session,
+                generation,
+                route,
+            })
+            .collect()
     }
 
     /// Plans the full live telemetry frame sent immediately after connection.
@@ -130,7 +178,29 @@ impl WebSocketState {
     }
 
     fn contains_session(&self, session: i32) -> bool {
-        self.log_clients.contains(&session) || self.live_clients.contains(&session)
+        self.log_clients.contains_key(&session) || self.live_clients.contains_key(&session)
+    }
+
+    fn next_lease_generation(&mut self) -> u64 {
+        self.next_generation = self.next_generation.wrapping_add(1);
+        if self.next_generation == 0 {
+            self.next_generation = 1;
+        }
+        self.next_generation
+    }
+
+    fn clients_for_route(&self, route: WebSocketRouteKind) -> &BTreeMap<i32, u64> {
+        match route {
+            WebSocketRouteKind::Logs => &self.log_clients,
+            WebSocketRouteKind::LiveTelemetry => &self.live_clients,
+        }
+    }
+
+    fn clients_for_route_mut(&mut self, route: WebSocketRouteKind) -> &mut BTreeMap<i32, u64> {
+        match route {
+            WebSocketRouteKind::Logs => &mut self.log_clients,
+            WebSocketRouteKind::LiveTelemetry => &mut self.live_clients,
+        }
     }
 
     fn hibernate_routes_after_move(
@@ -175,18 +245,27 @@ mod tests {
         let chunks = state.raw_log_chunks(&buffer);
 
         // Assert
-        assert_eq!(
+        assert!(matches!(
             first_log_registration,
-            WebSocketRegisterOutcome::Accepted { active_clients: 1 }
-        );
-        assert_eq!(
+            WebSocketRegisterOutcome::Accepted {
+                active_clients: 1,
+                ..
+            }
+        ));
+        assert!(matches!(
             live_registration,
-            WebSocketRegisterOutcome::Accepted { active_clients: 1 }
-        );
-        assert_eq!(
+            WebSocketRegisterOutcome::Accepted {
+                active_clients: 1,
+                ..
+            }
+        ));
+        assert!(matches!(
             second_log_registration,
-            WebSocketRegisterOutcome::Accepted { active_clients: 1 }
-        );
+            WebSocketRegisterOutcome::Accepted {
+                active_clients: 1,
+                ..
+            }
+        ));
         assert!(chunks.is_empty());
     }
 
@@ -204,15 +283,88 @@ mod tests {
         let rejected = state.register_client(99, WebSocketRouteKind::Logs);
 
         // Assert
-        assert_eq!(
+        assert!(matches!(
             moved,
-            WebSocketRegisterOutcome::Accepted { active_clients: 1 }
-        );
+            WebSocketRegisterOutcome::Accepted {
+                active_clients: 1,
+                ..
+            }
+        ));
         assert_eq!(
             rejected,
             WebSocketRegisterOutcome::RejectedMaxClients {
                 max_clients: MAX_WEBSOCKET_CLIENTS
             }
         );
+    }
+
+    #[test]
+    fn old_lease_cannot_remove_same_route_replacement_on_reused_session() {
+        // Arrange
+        let mut state = WebSocketState::default();
+        let WebSocketRegisterOutcome::Accepted {
+            lease: old_lease, ..
+        } = state.register_client(7, WebSocketRouteKind::Logs)
+        else {
+            panic!("first registration should be accepted");
+        };
+        let WebSocketRegisterOutcome::Accepted {
+            lease: replacement, ..
+        } = state.register_client(7, WebSocketRouteKind::Logs)
+        else {
+            panic!("replacement registration should be accepted");
+        };
+
+        // Act
+        let removed = state.unregister_if_current(old_lease);
+
+        // Assert
+        assert!(!removed);
+        assert!(!state.is_current(old_lease));
+        assert!(state.is_current(replacement));
+    }
+
+    #[test]
+    fn old_lease_cannot_remove_different_route_replacement_on_reused_session() {
+        // Arrange
+        let mut state = WebSocketState::default();
+        let WebSocketRegisterOutcome::Accepted {
+            lease: old_lease, ..
+        } = state.register_client(8, WebSocketRouteKind::Logs)
+        else {
+            panic!("first registration should be accepted");
+        };
+        let WebSocketRegisterOutcome::Accepted {
+            lease: replacement, ..
+        } = state.register_client(8, WebSocketRouteKind::LiveTelemetry)
+        else {
+            panic!("replacement registration should be accepted");
+        };
+
+        // Act
+        let removed = state.unregister_if_current(old_lease);
+
+        // Assert
+        assert!(!removed);
+        assert!(!state.is_current(old_lease));
+        assert!(state.is_current(replacement));
+    }
+
+    #[test]
+    fn current_lease_unregisters_exact_connection_generation() {
+        // Arrange
+        let mut state = WebSocketState::default();
+        let WebSocketRegisterOutcome::Accepted { lease, .. } =
+            state.register_client(9, WebSocketRouteKind::Logs)
+        else {
+            panic!("registration should be accepted");
+        };
+
+        // Act
+        let removed = state.unregister_if_current(lease);
+
+        // Assert
+        assert!(removed);
+        assert!(!state.is_current(lease));
     }
 }
