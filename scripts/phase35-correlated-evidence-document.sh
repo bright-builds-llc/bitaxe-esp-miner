@@ -5,9 +5,9 @@
 write_epoch_artifacts() {
 	local epoch_name="$1"
 	local snapshot="$2"
-	jq -er '.system_info_document' "$snapshot" >"$local_root/artifacts/${epoch_name}-api.txt"
-	jq -er '.websocket_document' "$snapshot" >"$local_root/artifacts/${epoch_name}-websocket.txt"
-	jq -er '.retained_log_document' "$snapshot" >"$local_root/artifacts/${epoch_name}-retained-log.txt"
+	jq -jer '.system_info_document' "$snapshot" >"$local_root/artifacts/${epoch_name}-api.txt"
+	jq -jer '.websocket_document' "$snapshot" >"$local_root/artifacts/${epoch_name}-websocket.txt"
+	jq -jer '.retained_log_document' "$snapshot" >"$local_root/artifacts/${epoch_name}-retained-log.txt"
 	chmod 600 \
 		"$local_root/artifacts/${epoch_name}-api.txt" \
 		"$local_root/artifacts/${epoch_name}-websocket.txt" \

@@ -128,6 +128,18 @@ validate_event_chain() {
 	[[ "$sequence" == 9 ]]
 }
 
+validate_embedded_document_artifact() {
+	local evidence="$1"
+	local epoch="$2"
+	local field="$3"
+	local role="$4"
+	local root="${evidence%/*}"
+	local artifact_path
+	artifact_path="$(jq -er --arg role "$role" '.inventory[] | select(.role == $role) | .path' "$evidence")" ||
+		return 1
+	[[ "$(shasum -a 256 "$root/$artifact_path" | awk '{print $1}')" == "$(jq -jr --arg epoch "$epoch" --arg field "$field" '.[$epoch][$field]' "$evidence" | shasum -a 256 | awk '{print $1}')" ]]
+}
+
 validate_evidence() {
 	local evidence="$1"
 	[[ "$(jq -r '.schema_version' "$evidence")" == "phase35-evidence-v1" ]] || return 1
@@ -136,7 +148,13 @@ validate_evidence() {
 	[[ "$(jq -r '.detector_run.capability_digest' "$evidence")" == "$(jq -r '.boot_b.detector_capability_digest' "$evidence")" ]] || return 1
 	[[ "$(jq -r '.admission_facts.root_contract_digest' "$evidence")" == "$(jq -r '.boot_a.root_contract_digest' "$evidence")" ]] || return 1
 	[[ "$(jq -r '.admission_facts.target_lock_digest' "$evidence")" == "$(jq -r '.boot_b.target_lock_digest' "$evidence")" ]] || return 1
-	validate_event_chain "$evidence"
+	validate_event_chain "$evidence" || return 1
+	local epoch
+	for epoch in boot_a boot_b; do
+		validate_embedded_document_artifact "$evidence" "$epoch" system_info_document "${epoch}_api" || return 1
+		validate_embedded_document_artifact "$evidence" "$epoch" websocket_document "${epoch}_websocket" || return 1
+		validate_embedded_document_artifact "$evidence" "$epoch" retained_log_document "${epoch}_retained_log" || return 1
+	done
 }
 
 action="${1:?fixture action is required}"
