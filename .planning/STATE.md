@@ -3,9 +3,9 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: in_progress
-stopped_at: Phase 35 Plan 04 Task 2 implementing the device-session repair before Attempt 27
-last_updated: "2026-07-22T21:02:11Z"
-last_activity: "2026-07-22"
+stopped_at: Phase 35 Plan 04 Task 2 diagnosing Attempt 27 observer qualification
+last_updated: "2026-07-23T02:26:51Z"
+last_activity: "2026-07-23"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-22 - Attempt 26 was offline-classified as an unqualified runtime-observer boundary and the authorized device-session repair began
+Last activity: 2026-07-23 - Attempt 27 sealed before restart with observer_unqualified and exposed a deterministic nested-ioreg parser defect
 
 ## Current Position
 
@@ -25,18 +25,16 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 remains incomplete. Attempts 1 through 26 remain sealed,
-  non-promotable, and non-reusable. Offline diagnosis preserves Attempt 26's
-  recorded categories while identifying its fixed-path espflash passive monitor
-  as an unqualified runtime observer: repository evidence had already shown
-  that it could own the node while delivering zero application bytes. The
-  authorized repair introduces a distinct device-session capability with an
-  OS-native receive-only observer, bounded same-device reacquisition, and an
-  HTTP-derived hybrid reboot quorum.
-- **Next step:** Finish and commit the regression-backed device-session repair,
-  run the complete exact-current-HEAD gate and preflight, then run fresh Attempt
-  27 once. Task 3 and `35-04-SUMMARY.md` remain blocked until Task 2 admits
-  genuinely eligible evidence.
+- **Status:** Task 2 remains incomplete. Attempts 1 through 27 remain sealed,
+  non-promotable, and non-reusable. Attempt 27 validated the new supervisor and
+  stopped before restart because the Rust macOS identity parser dropped nested
+  ioreg properties that carry tree branch prefixes. A protected read-only
+  comparison proved the canonical shell parser still resolves the same callout
+  and detector-bound physical identity.
+- **Next step:** Commit the Attempt 27 checkpoint, add the sanitized nested-tree
+  regression and parser repair, run the complete exact-current-HEAD gate and
+  preflight, then run fresh Attempt 28. Task 3 and `35-04-SUMMARY.md` remain
+  blocked until Task 2 admits genuinely eligible evidence.
 
 ## Project Reference
 
@@ -526,19 +524,20 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 26 are sealed,
-  non-promotable, and non-reusable. The separately authorized device-session
-  repair changes the disproven runtime-observation backend and proof contract;
-  after its regressions, commits, complete software gate, and exact-head
-  preflight pass, fresh Attempt 27 is authorized. Task 3 and
-  `35-04-SUMMARY.md` remain prohibited until eligible evidence is admitted.
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 27 are sealed,
+  non-promotable, and non-reusable. Attempt 27 selected the new discriminating
+  category `observer_unqualified` before restart and exposed a deterministic
+  nested-ioreg parser defect. Fresh Attempt 28 is allowed only after its
+  regression-backed fix, commit, complete software gate, and exact-head
+  preflight. Task 3 and `35-04-SUMMARY.md` remain prohibited until eligible
+  evidence is admitted.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 during the authorized device-session repair
-- **Resume:** Preserve Attempt 26 as sealed, non-promotable, non-reusable
-  evidence. Complete the OS-native observer and HTTP hybrid-quorum regressions,
-  commit the repair, pass the complete software gate and exact-head preflight,
-  then execute Attempt 27 once in a fresh protected root. Task 3, evidence
-  admission, checklist promotion, and `35-04-SUMMARY.md` remain blocked until
-  eligible evidence exists.
+- **Stopped at:** Phase 35 Plan 04 Task 2 diagnosing Attempt 27 observer qualification
+- **Resume:** Preserve Attempt 27 as sealed, non-promotable, non-reusable
+  evidence. Fix and regression-test nested macOS ioreg property parsing, commit
+  the repair, pass the complete software gate and exact-head preflight, then
+  execute Attempt 28 once in a fresh protected root. Task 3, evidence admission,
+  checklist promotion, and `35-04-SUMMARY.md` remain blocked until eligible
+  evidence exists.

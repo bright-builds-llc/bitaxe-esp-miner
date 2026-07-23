@@ -1843,3 +1843,47 @@ device-session bound, and at least 420 seconds of caller budget. Attempts 1
 through 26 remain immutable, non-promotable, non-reusable, and ineligible for
 splicing. Task 3, promotion, and `35-04-SUMMARY.md` remain blocked until Attempt
 27 or a later qualifying attempt genuinely admits eligible evidence.
+
+## Attempt 27 Checkpoint and Nested-ioreg Parser Boundary
+
+Attempt 27 executed exactly once from clean source
+`120e09dd117faaaa3bfdc056ebe6ea640e9b99c7` after the complete software gate and
+exact-current-HEAD preflight passed. The protected parent, nonexistent
+supervisor child, mode-`0600` sibling wrapper, dual evidence, internal detector,
+360-second device-session bound, and caller margin met the approved contract.
+
+| Field | Redacted value |
+| --- | --- |
+| Attempt ordinal | `27` |
+| Source commit | `120e09dd117faaaa3bfdc056ebe6ea640e9b99c7` |
+| Exact-head preflight | `passed` |
+| Exact-head equality | `true` |
+| Supervisor result | `non_promotion` |
+| Primary category | `observer_unqualified` |
+| Flash boundary | `ready` |
+| Device-session schema | `esp-device-session-v1` |
+| Initial device samples | `33` |
+| Same physical device established | `false` |
+| Reader armed | `false` |
+| Pre-restart serial delivery | `false` |
+| Restart request attempts | `0` |
+| Device-session duration milliseconds | `10092` |
+| Restoration secondary | `none` |
+| Cleanup secondary | `none` |
+| Cleanup complete | `true` |
+| Root reusable | `false` |
+| Progress decision | `continue_after_verified_fix` |
+
+The fresh boundary occurred before receive-only open/read work and before the
+restart POST. A separately protected read-only comparison found exactly one
+admitted callout and proved that the canonical shell parser reproduces the
+detector-bound physical identity. The Rust parser nevertheless produced no
+candidate because it required a quoted property key to begin the trimmed line;
+real nested ioreg properties carry tree branch prefixes before that key.
+
+This is a newly actionable deterministic software defect, so the repository
+progress policy permits fresh Attempt 28 only after a sanitized nested-tree
+regression, verified parser fix, clean commit, complete software gate, and exact
+head preflight. Attempt 27 remains immutable, non-promotable, non-reusable, and
+ineligible for splicing. Task 3, promotion, and `35-04-SUMMARY.md` remain
+blocked.
