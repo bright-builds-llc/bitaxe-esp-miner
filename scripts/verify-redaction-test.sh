@@ -116,6 +116,27 @@ printf 'observed_address=%s\n' "$shareable_origin" >"${repo}/docs/shareable.md"
 git -C "$repo" add docs/shareable.md
 assert_fails_without_echo "$repo" "$shareable_origin" bash ./scripts/verify-redaction.sh
 
+repo="$(new_repo unchanged-legacy-operational)"
+legacy_origin="192.0.2.82"
+printf 'observed_address=%s\nstatus=pending\n' "$legacy_origin" >"${repo}/docs/shareable.md"
+git -C "$repo" add docs/shareable.md
+git -C "$repo" commit -qm legacy-shareable-baseline
+printf 'observed_address=%s\nstatus=complete\n' "$legacy_origin" >"${repo}/docs/shareable.md"
+git -C "$repo" add docs/shareable.md
+(cd "$repo" && bash ./scripts/verify-redaction.sh >/dev/null)
+
+repo="$(new_repo ci-unchanged-legacy-operational)"
+legacy_origin="192.0.2.83"
+printf 'observed_address=%s\nstatus=pending\n' "$legacy_origin" >"${repo}/docs/shareable.md"
+git -C "$repo" add docs/shareable.md
+git -C "$repo" commit -qm legacy-ci-baseline
+legacy_base="$(git -C "$repo" rev-parse HEAD)"
+printf 'observed_address=%s\nstatus=complete\n' "$legacy_origin" >"${repo}/docs/shareable.md"
+git -C "$repo" add docs/shareable.md
+git -C "$repo" commit -qm safe-ci-change
+legacy_head="$(git -C "$repo" rev-parse HEAD)"
+(cd "$repo" && bash ./scripts/verify-redaction.sh --base "$legacy_base" --head "$legacy_head" >/dev/null)
+
 repo="$(new_repo admitted)"
 admitted_origin="192.0.2.44"
 printf 'origin=%s\n' "$admitted_origin" >"${repo}/docs/parity/evidence/leak.md"

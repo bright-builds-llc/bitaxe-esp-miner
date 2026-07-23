@@ -228,6 +228,8 @@ fn phase35_publication_atomically_admits_one_complete_redacted_generation() {
     let admitted = snapshot(&workspace.join("destination"));
     assert!(admitted.contains("\"admitted\":true"));
     assert!(admitted.contains("\"decision\": \"promote\""));
+    assert!(!workspace.join("destination/checklist.md").exists());
+    assert!(admitted.contains("\"checklist_sha256\""));
     let projected = fs::read_to_string(workspace.join("checklist.md").as_std_path())
         .expect("published checklist should read");
     let after_rows = checklist_rows(&projected);

@@ -13,7 +13,6 @@ use crate::phase35_evidence::sha256_hex;
 
 const PROJECTION_FILE: &str = "projection.json";
 const MATRIX_FILE: &str = "decision-matrix.json";
-const CHECKLIST_FILE: &str = "checklist.md";
 const MANIFEST_FILE: &str = ".phase35-generation-manifest.json";
 const VERDICT_FILE: &str = "admitted.json";
 
@@ -187,7 +186,6 @@ fn stage_and_validate(
     for (name, contents) in [
         (PROJECTION_FILE, documents.projection_json.as_str()),
         (MATRIX_FILE, documents.matrix_json.as_str()),
-        (CHECKLIST_FILE, documents.projected_checklist.as_str()),
     ] {
         let path = staging.join(name);
         write_synced(&path, contents)?;

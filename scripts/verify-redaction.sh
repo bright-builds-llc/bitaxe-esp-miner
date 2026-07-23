@@ -320,6 +320,80 @@ scan_git_blob() {
 	fi
 }
 
+path_is_renamed() {
+	local target_path="$1"
+
+	if [[ -n "$base_ref" ]]; then
+		git diff --quiet --diff-filter=R "$destination_base_ref" "$head_ref" -- "$target_path" || return 0
+	else
+		git diff --cached --quiet --diff-filter=R -- "$target_path" || return 0
+	fi
+	return 1
+}
+
+scan_added_lines() {
+	local target_path="$1"
+	local check_operational="false"
+	local blob
+	local line
+	local line_number=0
+	local in_hunk="false"
+	local hunk_pattern='^@@ -[0-9]+(,[0-9]+)? \+([0-9]+)(,[0-9]+)? @@'
+
+	if is_shareable_sink "$target_path"; then
+		check_operational="true"
+	fi
+	if [[ -n "$base_ref" ]]; then
+		blob="${head_ref}:${target_path}"
+	else
+		blob=":${target_path}"
+	fi
+	if [[ "$(git cat-file -s "$blob")" -eq 0 ]]; then
+		return
+	fi
+	if ! git show "$blob" | LC_ALL=C grep -I '' >/dev/null; then
+		if [[ "$check_operational" == "true" ]]; then
+			report_violation OP-009 opaque-binary "$target_path" 0 false
+		fi
+		return
+	fi
+	if path_is_renamed "$target_path"; then
+		scan_git_blob "$target_path" "$blob"
+		return
+	fi
+
+	while IFS= read -r line || [[ -n "$line" ]]; do
+		if [[ "$line" =~ $hunk_pattern ]]; then
+			line_number="${BASH_REMATCH[2]}"
+			in_hunk="true"
+			continue
+		fi
+		if [[ "$in_hunk" != "true" ]]; then
+			continue
+		fi
+		case "$line" in
+		+*)
+			scan_line "$target_path" "$line_number" "${line:1}" "$check_operational" false
+			line_number=$((line_number + 1))
+			;;
+		-*) ;;
+		' '*)
+			line_number=$((line_number + 1))
+			;;
+		'\ No newline at end of file') ;;
+		*)
+			in_hunk="false"
+			;;
+		esac
+	done < <(
+		if [[ -n "$base_ref" ]]; then
+			git diff --no-ext-diff --no-color --unified=0 "$destination_base_ref" "$head_ref" -- "$target_path"
+		else
+			git diff --cached --no-ext-diff --no-color --unified=0 -- "$target_path"
+		fi
+	)
+}
+
 scan_changed_paths() {
 	local target_path
 
@@ -328,7 +402,7 @@ scan_changed_paths() {
 			[[ -n "$target_path" ]] || continue
 			changed_paths+=("$target_path")
 			if git cat-file -e "${head_ref}:${target_path}" 2>/dev/null; then
-				scan_git_blob "$target_path" "${head_ref}:${target_path}"
+				scan_added_lines "$target_path"
 			fi
 		done < <(git diff --name-only -z --diff-filter=ACMR "$destination_base_ref" "$head_ref" --)
 		return
@@ -338,7 +412,7 @@ scan_changed_paths() {
 		[[ -n "$target_path" ]] || continue
 		changed_paths+=("$target_path")
 		if git cat-file -e ":${target_path}" 2>/dev/null; then
-			scan_git_blob "$target_path" ":${target_path}"
+			scan_added_lines "$target_path"
 		fi
 	done < <(git diff --cached --name-only -z --diff-filter=ACMR --)
 }
