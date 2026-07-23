@@ -852,6 +852,26 @@ sh_test(
     tags = ["local"],
 )
 
+sh_test(
+    name = "phase36_evidence_test",
+    srcs = ["phase36-evidence-test.sh"],
+    args = [
+        "$(location //tools/parity:report)",
+        "$(location //tools/parity:fixtures/phase36/eligible.json)",
+        "$(location //tools/parity:src/phase36_evidence.rs)",
+        "$(location //tools/parity:src/phase36_evidence/contract.rs)",
+        "$(location //tools/parity:src/main.rs)",
+    ],
+    data = [
+        "//tools/parity:fixtures/phase36/eligible.json",
+        "//tools/parity:report",
+        "//tools/parity:src/main.rs",
+        "//tools/parity:src/phase36_evidence.rs",
+        "//tools/parity:src/phase36_evidence/contract.rs",
+    ],
+    env_inherit = ["PATH"],
+)
+
 sh_binary(
     name = "phase21_live_mining_package",
     srcs = ["phase21-live-mining-package.sh"],

@@ -694,6 +694,12 @@ impl LocalEnvironment {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    if let CliCommand::ClassifyPhase36Evidence(args) = &cli.command {
+        let output = run_classify_phase36_evidence_command(args)?;
+        let mut stdout = io::stdout().lock();
+        writeln!(stdout, "{output}")?;
+        return Ok(());
+    }
     let environment = LocalEnvironment::detect()?;
 
     let output = match cli.command {
@@ -727,8 +733,8 @@ fn main() -> Result<()> {
         CliCommand::AdmitPhase35Evidence(args) => {
             run_admit_phase35_evidence_command(args, &environment)?
         }
-        CliCommand::ClassifyPhase36Evidence(args) => {
-            run_classify_phase36_evidence_command(args, &environment)?
+        CliCommand::ClassifyPhase36Evidence(_) => {
+            bail!("Phase 36 classifier dispatch entered workspace-aware path")
         }
     };
 
@@ -738,12 +744,8 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_classify_phase36_evidence_command(
-    args: ClassifyPhase36EvidenceArgs,
-    environment: &LocalEnvironment,
-) -> Result<String> {
-    let protected_root = environment.workspace_path(&args.root);
-    let classification = phase36_evidence::load_and_classify_phase36_root(&protected_root)
+fn run_classify_phase36_evidence_command(args: &ClassifyPhase36EvidenceArgs) -> Result<String> {
+    let classification = phase36_evidence::load_and_classify_phase36_root(&args.root)
         .map_err(|error| anyhow::anyhow!("category={error}"))?;
     serde_json::to_string_pretty(&classification)
         .map_err(|_| anyhow::anyhow!("category=partial_public_output"))

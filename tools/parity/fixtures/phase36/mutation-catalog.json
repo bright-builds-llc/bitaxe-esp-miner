@@ -1,0 +1,86 @@
+[
+  {
+    "name": "unsupported_schema",
+    "expected": "unsupported_schema"
+  },
+  {
+    "name": "changed_phase35_root",
+    "expected": "phase35_root_reference_mismatch"
+  },
+  {
+    "name": "changed_phase35_generation",
+    "expected": "phase35_generation_reference_mismatch"
+  },
+  {
+    "name": "changed_evaluator_identity",
+    "expected": "evaluator_identity_mismatch"
+  },
+  {
+    "name": "missing_artifact_role",
+    "expected": "missing_artifact_role"
+  },
+  {
+    "name": "extra_artifact_role",
+    "expected": "extra_artifact_role"
+  },
+  {
+    "name": "duplicate_artifact_role",
+    "expected": "duplicate_artifact_role"
+  },
+  {
+    "name": "unsafe_artifact_path",
+    "expected": "unsafe_artifact_path"
+  },
+  {
+    "name": "mixed_evidence_source_commits",
+    "expected": "mixed_evidence_source_commits"
+  },
+  {
+    "name": "package_derived_runtime_observation",
+    "expected": "runtime_identity_observation_insufficient"
+  },
+  {
+    "name": "supervisor_authored_no_actuation",
+    "expected": "independent_effect_observation_insufficient"
+  },
+  {
+    "name": "incomplete_effect_interval",
+    "expected": "independent_effect_observation_insufficient"
+  },
+  {
+    "name": "contradictory_sensor_state",
+    "expected": "contradictory_sensor_state"
+  },
+  {
+    "name": "contradictory_runtime_health_state",
+    "expected": "contradictory_runtime_health_state"
+  },
+  {
+    "name": "missing_provenance_join",
+    "expected": "missing_provenance_join"
+  },
+  {
+    "name": "missing_snapshot_join",
+    "expected": "snapshot_substance_insufficient"
+  },
+  {
+    "name": "partial_public_output",
+    "expected": "partial_public_output"
+  },
+  {
+    "name": "protected_root_symlink",
+    "expected": "protected_root_symlink"
+  },
+  {
+    "name": "protected_input_symlink",
+    "expected": "protected_input_symlink"
+  },
+  {
+    "name": "protected_root_wrong_permissions",
+    "expected": "wrong_permissions"
+  },
+  {
+    "name": "protected_input_wrong_permissions",
+    "expected": "wrong_permissions"
+  }
+]

@@ -1,5 +1,15 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 
+exports_files(
+    [
+        "fixtures/phase36/eligible.json",
+        "src/main.rs",
+        "src/phase36_evidence.rs",
+        "src/phase36_evidence/contract.rs",
+    ],
+    visibility = ["//scripts:__pkg__"],
+)
+
 filegroup(
     name = "phase35_promotion_sources",
     srcs = [
@@ -56,6 +66,7 @@ rust_binary(
         "src/phase36_evidence.rs",
         "src/phase36_evidence/contract.rs",
         "src/phase36_evidence/tests.rs",
+        "src/phase36_evidence/tests/mutations.rs",
         "src/phase32_source_guard.rs",
         "src/phase33_source_guard.rs",
         "src/phase34_source_guard.rs",
@@ -105,5 +116,6 @@ rust_test(
 rust_test(
     name = "phase36_evidence_tests",
     crate = ":report",
+    compile_data = glob(["fixtures/phase36/*.json"]),
     visibility = ["//visibility:public"],
 )

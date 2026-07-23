@@ -549,3 +549,5 @@ fn phase36_contract_classification_preserves_immutable_phase35_bytes_and_digest(
     assert_eq!(before_digest, after_digest);
     fs::remove_dir_all(&parent).expect("temporary fixture should be removed");
 }
+
+mod mutations;
