@@ -61,7 +61,7 @@ pub(crate) enum SufficiencyResult {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
-pub(crate) enum ComponentInsufficiency {
+pub enum ComponentInsufficiency {
     #[serde(rename = "snapshot_substance_insufficient")]
     SnapshotSubstance,
     #[serde(rename = "runtime_health_insufficient")]

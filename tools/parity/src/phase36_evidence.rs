@@ -7,16 +7,22 @@ use camino::Utf8Path;
 use serde::Serialize;
 
 mod contract;
+pub mod substance;
 
 use crate::phase35_evidence::sha256_hex;
 
+pub use contract::ComponentInsufficiency;
 pub(crate) use contract::{
-    Attempt31Sufficiency, ComponentInsufficiency, EffectIntervalState, EffectObservationSource,
+    Attempt31Sufficiency, EffectIntervalState, EffectObservationSource,
     ImmutableArtifactAssessment, Phase36ArtifactRole, Phase36ClaimDigests, Phase36Classification,
     Phase36EvidenceEnvelope, Phase36EvidenceError, PowerSensorFacts, ProvenanceJoinFacts,
     RuntimeHealthCategory, RuntimeHealthFacts, RuntimeIdentityObservationSource, SensorReason,
     SensorTruthState, ShareablePhase36FactsV1, SufficiencyResult, PHASE36_CONTRACT_DIGEST,
     PHASE36_INPUT_DOCUMENT, PHASE36_SCHEMA, SHAREABLE_PHASE36_FACTS_SCHEMA,
+};
+pub use substance::{
+    validate_substantive_snapshot_documents, ObservationState, SubstantiveEvidenceAdmission,
+    SubstantiveSnapshotJoin, ValidatedRuntimeHealthSubstance, ValidatedSensorSubstance,
 };
 
 pub(crate) fn classify_phase36_envelope(

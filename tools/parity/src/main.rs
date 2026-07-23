@@ -56,7 +56,7 @@ mod phase35_flash;
 mod phase35_http;
 mod phase35_http_probe;
 mod phase35_promotion;
-mod phase36_evidence;
+pub mod phase36_evidence;
 mod release_evidence;
 mod release_gate;
 mod safety_allow;
