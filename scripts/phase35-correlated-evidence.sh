@@ -7,7 +7,7 @@ readonly PHASE35_LIFECYCLE_ID="35-2026-07-17T17-00-37"
 readonly PHASE35_SCHEMA="phase35-evidence-v1"
 readonly MIN_CAPTURE_TIMEOUT_SECONDS=360
 readonly MIN_CALLER_WALL_CLOCK_SECONDS=420
-readonly PASSIVE_MONITOR_ARGS=(
+readonly FIXTURE_REBOOT_CONTRACT_ARGS=(
 	--chip esp32s3
 	--before no-reset-no-sync
 	--after no-reset
@@ -64,6 +64,22 @@ resolve_flash_executable() {
 	return 1
 }
 
+resolve_device_session_executable() {
+	local candidate_path
+	for candidate_path in \
+		"${workspace_dir}/bazel-bin/tools/device-session/device-session" \
+		"${BASH_SOURCE[0]}.runfiles/_main/tools/device-session/device-session" \
+		"${RUNFILES_DIR:-}/_main/tools/device-session/device-session"; do
+		if [[ -x "$candidate_path" ]]; then
+			printf '%s\n' "$candidate_path"
+			return 0
+		fi
+	done
+
+	printf 'failure_category=device_session_executable_unavailable\n' >&2
+	return 1
+}
+
 run_id_digest=""
 root_contract_digest=""
 package_capability_digest=""
@@ -89,6 +105,8 @@ cleanup_secondary_category=""
 flash_boundary_schema=""
 flash_stage=""
 flash_boundary=""
+device_session_schema=""
+device_session_category=""
 passive_monitor_pid=""
 event_sequence=0
 event_predecessor=""
@@ -218,8 +236,10 @@ main() {
 	snapshot_setting_matches "$boot_a" "$mutated_setting" || fail "boot_a_value_mismatch"
 
 	record_checkpoint reboot_started "$(hash_fields phase35-reboot-request-v1 true)"
-	start_passive_monitor_and_reboot || fail "approved_reboot_failed"
-	verify_same_identity || fail "physical_identity_drift"
+	run_device_session_reboot || fail "${failure_category:-approved_reboot_failed}"
+	if [[ -n "$fixture_command" ]]; then
+		verify_same_identity || fail "physical_identity_drift"
+	fi
 
 	local boot_b
 	boot_b="$(capture_epoch boot-b)" || fail "boot_b_capture_failed"

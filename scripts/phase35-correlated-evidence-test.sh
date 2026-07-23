@@ -134,6 +134,76 @@ if [[ "${PHASE35_TEST_STUB_DISPATCH:-false}" == true ]]; then
 			"${evidence_dir}/flash-monitor.log" \
 			"${evidence_dir}/flash-command-evidence.json"
 		;;
+	device-session)
+		[[ "${1:-}" == reboot ]]
+		printf 'CALL\n' >>"${PHASE35_DEVICE_SESSION_CALLS:?}"
+		printf 'arg=%s\n' "$@" >>"${PHASE35_DEVICE_SESSION_CALLS:?}"
+		printf 'device_session_reboot\n' >>"${PHASE35_FIXTURE_STATE:?}/calls.log"
+		shift
+		private_root=""
+		request_input=""
+		projection_output=""
+		timeout_seconds=""
+		while (($#)); do
+			case "$1" in
+			--private-root)
+				private_root="$2"
+				shift 2
+				;;
+			--request-input)
+				request_input="$2"
+				shift 2
+				;;
+			--projection-output)
+				projection_output="$2"
+				shift 2
+				;;
+			--timeout-seconds)
+				timeout_seconds="$2"
+				shift 2
+				;;
+			*) exit 98 ;;
+			esac
+		done
+		[[ -d "$private_root" && ! -L "$private_root" ]]
+		[[ -f "$request_input" && ! -L "$request_input" ]]
+		[[ -n "$projection_output" && ! -e "$projection_output" ]]
+		[[ "$timeout_seconds" == 360 ]]
+		jq -e '
+			.schema_version == "esp-device-session-reboot-request-v1" and
+			.board_category == "205" and
+			(.admitted_port | type == "string" and length > 0) and
+			(.physical_identity_digest | test("^[0-9a-f]{64}$")) and
+			(.trusted_origin | type == "string" and length > 0) and
+			(.baseline.boot_session | type == "string" and length > 0) and
+			(.baseline.boot_ordinal | type == "number") and
+			(.expected_postcondition.hostname_sha256 | test("^[0-9a-f]{64}$"))
+		' "$request_input" >/dev/null
+		boot_ordinal="$(jq -er '.baseline.boot_ordinal + 1' "$request_input")"
+		printf '{"event":"pre_reboot_application_bytes","count":24}\n' \
+			>"${private_root}/events.private.jsonl"
+		: >"${private_root}/serial.private.bin"
+		printf '{"request_sent":true,"response_received":false}\n' \
+			>"${private_root}/http.private.jsonl"
+		jq -cn \
+			--arg trusted_origin "$(jq -er '.trusted_origin' "$request_input")" \
+			--arg source_commit "$(jq -er '.baseline.source_commit' "$request_input")" \
+			--arg reference_commit "$(jq -er '.baseline.reference_commit' "$request_input")" \
+			--arg app_elf_sha256 "$(jq -er '.baseline.app_elf_sha256' "$request_input")" \
+			--arg hostname_sha256 "$(jq -er '.expected_postcondition.hostname_sha256' "$request_input")" \
+			--argjson boot_ordinal "$boot_ordinal" \
+			'{schema_version:"esp-device-session-private-result-v1",terminal_category:"ready",request_outcome:"response_missing",maybe_secondary_cleanup_failure:false,boot_b:{boot_session:"cccccccccccccccccccccccccccccccc",boot_ordinal:$boot_ordinal,reset_reason_category:"software_cpu",trusted_origin:$trusted_origin,source_commit:$source_commit,reference_commit:$reference_commit,app_elf_sha256:$app_elf_sha256,hostname_sha256:$hostname_sha256}}' \
+			>"${private_root}/result.private.json"
+		jq -cn \
+			'{schema_version:"esp-device-session-v1",terminal_category:"ready",platform_category:"macos",board_category:"205",same_physical_device:true,stable_enumeration:true,reenumerated:false,reader_armed:true,pre_restart_serial_delivery:true,post_restart_serial_delivery:false,serial_delivery:"silent",request_outcome:"response_missing",request_attempt_count:1,service_loss_observed:false,trusted_origin_preserved:true,application_recovered:true,build_identity_matches:true,boot_session_changed:true,boot_ordinal_advanced_by_one:true,software_reset_observed:true,postcondition_matches:true,cleanup_complete:true,usb_disappearance_count:0,enumeration_change_count:0,serial_byte_count:64,http_observation_count:2,duration_millis:125}' \
+			>"$projection_output"
+		chmod 600 \
+			"${private_root}/events.private.jsonl" \
+			"${private_root}/serial.private.bin" \
+			"${private_root}/http.private.jsonl" \
+			"${private_root}/result.private.json" \
+			"$projection_output"
+		;;
 	report)
 		report_subcommand="${1:-}"
 		printf 'CALL\n' >>"${PHASE35_CLASSIFIER_CALLS:?}"
@@ -392,6 +462,7 @@ prepare_case() {
 	direct_flash_calls="${state_dir}/direct-flash-calls.log"
 	finalizer_calls="${state_dir}/finalizer-calls.log"
 	classifier_calls="${state_dir}/classifier-calls.log"
+	device_session_calls="${state_dir}/device-session-calls.log"
 	nested_tool_calls="${state_dir}/nested-tool-calls.log"
 	mkdir -p "$state_dir" "$manifest_dir"
 	printf 'fixture-setting-before\n' >"$state_dir/current-setting.txt"
@@ -460,6 +531,7 @@ run_isolated_supervisor() {
 			PHASE35_DIRECT_FLASH_CALLS="$direct_flash_calls" \
 			PHASE35_FINALIZER_CALLS="$finalizer_calls" \
 			PHASE35_CLASSIFIER_CALLS="$classifier_calls" \
+			PHASE35_DEVICE_SESSION_CALLS="$device_session_calls" \
 			PHASE35_NESTED_TOOL_CALLS="$nested_tool_calls" \
 			PHASE35_TEST_PRIVATE_INPUT="$stub_private_input" \
 			PHASE35_TEST_PARITY_OUTCOME="$stub_parity_outcome" \
@@ -481,11 +553,17 @@ run_isolated_supervisor() {
 prepare_direct_flash_stubs() {
 	local flash_bin="${workspace}/bazel-bin/tools/flash/flash"
 	local parity_bin="${workspace}/bazel-bin/tools/parity/report"
+	local device_session_bin="${workspace}/bazel-bin/tools/device-session/device-session"
 	local blocked_bin="${case_dir}/blocked-bin"
-	mkdir -p "$(dirname "$flash_bin")" "$(dirname "$parity_bin")" "$blocked_bin"
-	rm -f "$flash_bin" "$parity_bin"
+	mkdir -p \
+		"$(dirname "$flash_bin")" \
+		"$(dirname "$parity_bin")" \
+		"$(dirname "$device_session_bin")" \
+		"$blocked_bin"
+	rm -f "$flash_bin" "$parity_bin" "$device_session_bin"
 	ln -s "$test_entrypoint" "$flash_bin"
 	ln -s "$test_entrypoint" "$parity_bin"
+	ln -s "$test_entrypoint" "$device_session_bin"
 	ln -s "$test_entrypoint" "$blocked_bin/just"
 	ln -s "$test_entrypoint" "$blocked_bin/bazel"
 	supervisor_path="${blocked_bin}:${PATH}"
@@ -583,25 +661,31 @@ test_runfiles_entrypoint_resolves_sibling_helpers() {
 	assert_count 0 credential_path "$calls"
 }
 
-test_built_supervisor_runfiles_include_passive_monitor_closure() {
+test_built_supervisor_runfiles_select_device_session_runtime_observer() {
 	# Arrange
-	local help_stdout="${test_root}/phase13-help.stdout"
-	local help_stderr="${test_root}/phase13-help.stderr"
+	local supervisor_rule
+	supervisor_rule="$(sed -n \
+		'/name = "phase35_correlated_evidence"/,/^)/p' \
+		"${script_dir}/BUILD.bazel")"
+	local reboot_function
+	reboot_function="$(sed -n \
+		'/^run_device_session_reboot()/,/^}/p' \
+		"${script_dir}/phase35-correlated-evidence-effects.sh")"
 
 	# Act
-	set +e
-	bash "${script_dir}/phase13-monitor-capture.sh" --help \
-		>"$help_stdout" 2>"$help_stderr"
-	local help_status=$?
-	set -e
+	local selects_device_session=false
+	if [[ "$supervisor_rule" == *'//tools/device-session:device-session'* ]] &&
+		[[ "$reboot_function" == *'resolve_device_session_executable'* ]]; then
+		selects_device_session=true
+	fi
 
 	# Assert
-	[[ "$help_status" == 0 ]] ||
-		fail_test "built supervisor runfiles do not load the passive monitor closure"
-	[[ -f "${script_dir}/process-group.sh" ]] ||
-		fail_test "built supervisor runfiles omit process-group.sh"
-	[[ -f "${script_dir}/serial-session-trace.sh" ]] ||
-		fail_test "built supervisor runfiles omit serial-session-trace.sh"
+	[[ "$selects_device_session" == true ]] ||
+		fail_test "built supervisor runfiles omit the device-session runtime observer"
+	[[ "$supervisor_rule" != *phase13-monitor-capture.sh* ]] ||
+		fail_test "built supervisor still distributes the obsolete runtime observer"
+	[[ "$reboot_function" != *espflash* && "$reboot_function" != *phase13-monitor-capture* ]] ||
+		fail_test "runtime reboot observation still invokes an espflash monitor"
 }
 
 test_runfiles_resolves_repo_root_credential_only_after_detector() {
@@ -1061,111 +1145,85 @@ test_production_capture_rejects_incoherent_boundaries() {
 	done
 }
 
-test_production_reboot_classifies_only_post_loss_bytes() {
+test_production_reboot_uses_device_session_hybrid_quorum() {
 	# Arrange
 	prepare_case production_reboot
 	prepare_direct_flash_stubs
 	local reboot_root="${case_dir}/reboot-root"
-	mkdir -p "$reboot_root/raw"
-	chmod 700 "$reboot_root" "$reboot_root/raw"
+	mkdir -p "$reboot_root/raw" "$reboot_root/artifacts"
+	chmod 700 "$reboot_root" "$reboot_root/raw" "$reboot_root/artifacts"
 	jq -cn \
 		--arg session aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
 		'{status:"passed",category:"none",session:$session,boot_ordinal:7,device_url:"synthetic-origin"}' \
 		>"$reboot_root/raw/boot-a-setup.json"
 	chmod 600 "$reboot_root/raw/boot-a-setup.json"
-	local baseline_bytes
-	baseline_bytes="$(printf 'baseline-before-restart\n' | wc -c | tr -d ' ')"
+	local private_origin="http://127.0.0.1"
+	local private_hostname="phase35-private-hostname"
+	local physical_identity="dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 
 	# Act
 	(
 		export PHASE35_FIXTURE_STATE="$state_dir"
-		export PHASE35_CLASSIFIER_CALLS="$classifier_calls"
-		export PHASE35_TEST_PARITY_OUTCOME=passed
-		export PHASE35_TEST_PRIVATE_INPUT=valid
+		export PHASE35_DEVICE_SESSION_CALLS="$device_session_calls"
 		export PHASE35_TEST_STUB_DISPATCH=true
 		local fixture_command=""
 		local workspace_dir="$workspace"
 		local local_root="$reboot_root"
-		local target_token=synthetic-origin
+		local manifest="${manifest_dir}/manifest.json"
+		local target_token="$private_origin"
 		local port=synthetic-port
+		local physical_identity_digest="$physical_identity"
+		local mutated_setting="$private_hostname"
 		local capture_timeout_seconds=360
-		local passive_monitor_pid=""
 		local failure_category=""
-		local -a PASSIVE_MONITOR_ARGS=(
-			--chip esp32s3
-			--before no-reset-no-sync
-			--after no-reset
-			--no-reset
-			--non-interactive
-		)
 
 		# shellcheck source=scripts/phase35-correlated-evidence-root.sh
 		source "${script_dir}/phase35-correlated-evidence-root.sh"
 		# shellcheck source=scripts/phase35-correlated-evidence-effects.sh
 		source "${script_dir}/phase35-correlated-evidence-effects.sh"
-
-		bash() {
-			local monitor_out=""
-			local raw_out=""
-			while (($#)); do
-				case "$1" in
-				--out)
-					monitor_out="$2"
-					shift 2
-					;;
-				--raw-out)
-					raw_out="$2"
-					shift 2
-					;;
-				*) shift ;;
-				esac
-			done
-			printf 'baseline-before-restart\n' >"$raw_out"
-			: >"$monitor_out"
-			printf 'ready\n' >"${PHASE13_MONITOR_ACTIVE_READY_FILE:?}"
+		resolve_device_session_executable() {
+			printf '%s\n' "${workspace}/bazel-bin/tools/device-session/device-session"
 		}
 
-		curl() {
-			local output=""
-			local method=GET
-			while (($#)); do
-				case "$1" in
-				--output)
-					output="$2"
-					shift 2
-					;;
-				--request)
-					method="$2"
-					shift 2
-					;;
-				*) shift ;;
-				esac
-			done
-			if [[ "$method" == POST ]]; then
-				printf '{}\n' >"$output"
-				return 0
-			fi
-			return 7
-		}
-
-		start_passive_monitor_and_reboot
-		[[ "$target_token" == fixture-target ]]
+		run_device_session_reboot
+		[[ "$target_token" == "$private_origin" ]]
 	)
 
 	# Assert
-	assert_line "$classifier_calls" 'arg=phase33-classify'
-	assert_line "$classifier_calls" 'arg=--mode'
-	assert_line "$classifier_calls" 'arg=post-restart'
-	assert_line "$classifier_calls" 'arg=--start-byte'
-	assert_line "$classifier_calls" "arg=${baseline_bytes}"
-	assert_line "$classifier_calls" 'arg=--expected-session'
-	assert_line "$classifier_calls" 'arg=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-	assert_line "$classifier_calls" 'arg=--expected-ordinal'
-	assert_line "$classifier_calls" 'arg=7'
+	[[ "$(rg -c '^CALL$' "$device_session_calls")" == 1 ]] ||
+		fail_test "device-session reboot did not run exactly once"
+	assert_line "$device_session_calls" 'arg=reboot'
+	assert_line "$device_session_calls" 'arg=--timeout-seconds'
+	assert_line "$device_session_calls" 'arg=360'
+	[[ ! -e "$classifier_calls" ]] ||
+		fail_test "the obsolete serial-only reboot classifier still ran"
+	local request_input="$reboot_root/raw/device-session-request.json"
+	local session_root="$reboot_root/raw/device-session"
+	local projection="$reboot_root/raw/device-session-projection.json"
+	[[ "$(file_mode "$request_input")" == 600 ]] ||
+		fail_test "device-session request is not mode 0600"
+	[[ "$(file_mode "$session_root")" == 700 ]] ||
+		fail_test "device-session private root is not mode 0700"
+	[[ "$(file_mode "$session_root/result.private.json")" == 600 ]] ||
+		fail_test "device-session private result is not mode 0600"
+	[[ "$(file_mode "$projection")" == 600 ]] ||
+		fail_test "device-session projection is not mode 0600"
 	[[ "$(file_mode "$reboot_root/raw/boot-b-setup.json")" == 600 ]] ||
-		fail_test "post-restart classification is not mode 0600"
-	[[ "$(file_mode "$reboot_root/raw/boot-b-setup.stderr")" == 600 ]] ||
-		fail_test "post-restart classifier diagnostics are not mode 0600"
+		fail_test "Boot B hybrid classification is not mode 0600"
+	[[ "$(jq -r '.session' "$reboot_root/raw/boot-b-setup.json")" == cccccccccccccccccccccccccccccccc ]] ||
+		fail_test "Boot B session did not advance"
+	[[ "$(jq -r '.boot_ordinal' "$reboot_root/raw/boot-b-setup.json")" == 8 ]] ||
+		fail_test "Boot B ordinal is not the exact successor"
+	[[ "$(jq -r '.reset_reason' "$reboot_root/raw/boot-b-setup.json")" == software_cpu ]] ||
+		fail_test "Boot B reset category is not software_cpu"
+	assert_absent "$projection" "$private_origin|$private_hostname|$physical_identity|synthetic-port"
+	assert_absent "$reboot_root/raw/device-session.stdout" ".+"
+	assert_absent "$reboot_root/raw/device-session.stderr" ".+"
+	local reboot_function
+	reboot_function="$(sed -n '/^run_device_session_reboot()/,/^}/p' \
+		"${script_dir}/phase35-correlated-evidence-effects.sh")"
+	[[ "$reboot_function" != *espflash* && "$reboot_function" != *phase33-classify* ]] ||
+		fail_test "runtime reboot observation still depends on espflash or Phase 33 serial classification"
 }
 
 test_just_entrypoint_builds_the_current_package_before_supervisor() {
@@ -1461,7 +1519,7 @@ test_websocket_background_writes_are_serialized_in_httpd_context
 test_runfiles_rejects_existing_child_before_admission_or_effects
 test_runfiles_preserves_caller_owned_parent_and_sibling_outputs
 test_runfiles_entrypoint_resolves_sibling_helpers
-test_built_supervisor_runfiles_include_passive_monitor_closure
+test_built_supervisor_runfiles_select_device_session_runtime_observer
 test_runfiles_resolves_repo_root_credential_only_after_detector
 test_runfiles_invokes_probe_then_flash_without_nested_build_tools
 test_probe_failure_stops_before_credentials_or_writes
@@ -1472,7 +1530,7 @@ test_direct_flash_classifier_rejection_preserves_typed_category
 test_real_process_factory_post_info_failure_is_typed
 test_production_capture_preserves_real_epoch_boundaries
 test_production_capture_rejects_incoherent_boundaries
-test_production_reboot_classifies_only_post_loss_bytes
+test_production_reboot_uses_device_session_hybrid_quorum
 test_just_entrypoint_builds_the_current_package_before_supervisor
 test_preflight_has_no_detector_or_effects
 test_detector_failures_stop_all_later_commands

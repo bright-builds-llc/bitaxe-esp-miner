@@ -133,6 +133,16 @@ pub fn operator_snapshot_boot_session() -> BootSessionId {
     BootSessionId::from_words(boot_session().0)
 }
 
+/// Returns the reset-retained ordinal for the current boot.
+pub fn operator_snapshot_boot_ordinal() -> u64 {
+    boot_ordinal()
+}
+
+/// Returns the closed reset category for the current boot.
+pub fn operator_snapshot_reset_reason_category() -> ResetReasonCategory {
+    reset_reason()
+}
+
 fn boot_session() -> BootSessionNonce {
     *BOOT_SESSION.get_or_init(BootSessionNonce::from_hardware_rng)
 }

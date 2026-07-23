@@ -539,6 +539,11 @@ fn collect_platform_snapshot(
     mut platform: PlatformSnapshot,
     identity: &PlatformIdentity,
 ) -> PlatformSnapshot {
+    platform.boot_ordinal = crate::boot_evidence::operator_snapshot_boot_ordinal();
+    platform.reset_reason_category =
+        crate::boot_evidence::operator_snapshot_reset_reason_category()
+            .label()
+            .to_owned();
     platform.version = crate::build_label().to_owned();
     platform.semantic_version = crate::semantic_version().to_owned();
     platform.source_commit = crate::firmware_commit().to_owned();

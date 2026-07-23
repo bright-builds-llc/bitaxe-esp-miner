@@ -652,82 +652,95 @@ patch_setting() {
 	[[ "$code" == "200" && ! -s "$response" ]]
 }
 
-start_passive_monitor_and_reboot() {
-	{
-		printf 'required_contract='
-		printf '%q ' "${PASSIVE_MONITOR_ARGS[@]}"
-		printf '\n'
-	} >"$local_root/raw/passive-monitor-contract.txt"
-	chmod 600 "$local_root/raw/passive-monitor-contract.txt"
+run_device_session_reboot() {
 	if [[ -n "$fixture_command" ]]; then
-		fixture reboot "$target_token" "${PASSIVE_MONITOR_ARGS[@]}"
+		fixture reboot "$target_token" "${FIXTURE_REBOOT_CONTRACT_ARGS[@]}"
 		return
 	fi
-	local passive_log="$local_root/raw/passive-monitor.log"
-	local passive_raw="$local_root/raw/passive-monitor.raw"
-	local passive_ready="$local_root/raw/passive-monitor.ready"
-	PHASE13_MONITOR_ACTIVE_READY_FILE="$passive_ready" \
-		SERIAL_SESSION_TRACE_ROOT="$local_root/raw" \
-		bash "${script_dir}/phase13-monitor-capture.sh" \
-		--port "$port" \
-		--out "$passive_log" \
-		--raw-out "$passive_raw" \
-		--seconds "$capture_timeout_seconds" \
-		--reader espflash \
-		--no-reset &
-	passive_monitor_pid=$!
-	for _ in $(seq 1 80); do
-		[[ -s "$passive_ready" ]] && break
-		kill -0 "$passive_monitor_pid" >/dev/null 2>&1 || return 1
-		sleep 0.25
-	done
-	[[ -s "$passive_ready" ]] || return 1
-	local reboot_stderr="$local_root/raw/reboot.stderr"
-	curl --silent --show-error --fail --max-time 15 \
-		--request POST \
-		--output "$local_root/raw/reboot-response.json" \
-		"${target_token}/api/system/restart" 2>"$reboot_stderr" || {
-		chmod 600 "$reboot_stderr"
-		[[ ! -e "$local_root/raw/reboot-response.json" ]] ||
-			chmod 600 "$local_root/raw/reboot-response.json"
-		return 1
-	}
-	chmod 600 "$local_root/raw/reboot-response.json" "$reboot_stderr"
-	local service_loss_stderr="$local_root/raw/service-loss-probe.stderr"
-	local service_lost=0
-	for _ in $(seq 1 80); do
-		if ! curl --silent --http1.1 --noproxy '*' --proto '=http,https' \
-			--connect-timeout 1 --max-time 1 --output /dev/null \
-			"${target_token}/api/system/info" 2>"$service_loss_stderr"; then
-			service_lost=1
-			break
-		fi
-		sleep 0.25
-	done
-	chmod 600 "$service_loss_stderr"
-	((service_lost == 1)) || return 1
-	local restart_offset
-	restart_offset="$(wc -c <"$passive_raw" | tr -d ' ')" || return 1
-	[[ "$restart_offset" =~ ^[0-9]+$ ]] || return 1
-	local passive_status=0
-	set +e
-	wait "$passive_monitor_pid"
-	passive_status=$?
-	set -e
-	passive_monitor_pid=""
-	((passive_status == 0)) || return 1
-	chmod 600 "$passive_log" "$passive_raw"
-	local baseline_session baseline_ordinal boot_b_setup
+
+	local baseline_session baseline_ordinal
 	baseline_session="$(jq -er '.session | select(type == "string" and length > 0)' "$local_root/raw/boot-a-setup.json")" ||
 		return 1
 	baseline_ordinal="$(jq -er '.boot_ordinal | select(type == "number")' "$local_root/raw/boot-a-setup.json")" ||
 		return 1
-	boot_b_setup="$local_root/raw/boot-b-setup.json"
-	production_classify_boot post-restart "$passive_raw" "$boot_b_setup" \
-		--start-byte "$restart_offset" \
-		--expected-session "$baseline_session" \
-		--expected-ordinal "$baseline_ordinal" || {
+	local request_input="$local_root/raw/device-session-request.json"
+	local session_root="$local_root/raw/device-session"
+	local projection="$local_root/raw/device-session-projection.json"
+	local stdout_file="$local_root/raw/device-session.stdout"
+	local stderr_file="$local_root/raw/device-session.stderr"
+	local device_session_executable
+	device_session_executable="$(resolve_device_session_executable)" || {
+		failure_category="device_session_executable_unavailable"
+		return 1
+	}
+
+	jq -cn \
+		--arg schema_version esp-device-session-reboot-request-v1 \
+		--arg board_category 205 \
+		--arg admitted_port "$port" \
+		--arg physical_identity_digest "$physical_identity_digest" \
+		--arg trusted_origin "$target_token" \
+		--arg boot_session "$baseline_session" \
+		--argjson boot_ordinal "$baseline_ordinal" \
+		--arg source_commit "$(jq -er '.source_commit' "$manifest")" \
+		--arg reference_commit "$(jq -er '.reference_commit' "$manifest")" \
+		--arg app_elf_sha256 "$(jq -er '.app_elf_sha256' "$manifest")" \
+		--arg hostname_sha256 "$(sha256_text "$mutated_setting")" \
+		'{schema_version:$schema_version,board_category:$board_category,admitted_port:$admitted_port,physical_identity_digest:$physical_identity_digest,trusted_origin:$trusted_origin,baseline:{boot_session:$boot_session,boot_ordinal:$boot_ordinal,source_commit:$source_commit,reference_commit:$reference_commit,app_elf_sha256:$app_elf_sha256},expected_postcondition:{hostname_sha256:$hostname_sha256}}' \
+		>"$request_input" || return 1
+	chmod 600 "$request_input"
+	mkdir "$session_root" || return 1
+	chmod 700 "$session_root"
+	: >"$stdout_file"
+	: >"$stderr_file"
+	chmod 600 "$stdout_file" "$stderr_file"
+
+	local session_status=0
+	set +e
+	"$device_session_executable" reboot \
+		--private-root "$session_root" \
+		--request-input "$request_input" \
+		--projection-output "$projection" \
+		--timeout-seconds "$capture_timeout_seconds" \
+		>"$stdout_file" 2>"$stderr_file"
+	session_status=$?
+	set -e
+	[[ -f "$projection" && ! -L "$projection" ]] || {
+		failure_category="device_session_projection_invalid"
+		return 1
+	}
+	chmod 600 "$projection"
+	local terminal_category
+	terminal_category="$(jq -er 'select(.schema_version == "esp-device-session-v1" and (.terminal_category | type == "string" and test("^[a-z0-9_]+$"))) | .terminal_category' "$projection")" || {
+		failure_category="device_session_projection_invalid"
+		return 1
+	}
+	device_session_schema="esp-device-session-v1"
+	device_session_category="$terminal_category"
+	if ((session_status != 0)) || [[ "$terminal_category" != "ready" ]]; then
+		failure_category="$terminal_category"
+		return 1
+	fi
+
+	local private_result="$session_root/result.private.json"
+	[[ -f "$private_result" && ! -L "$private_result" ]] || {
+		failure_category="device_session_result_invalid"
+		return 1
+	}
+	chmod 600 "$private_result"
+	local boot_b_setup="$local_root/raw/boot-b-setup.json"
+	jq -e \
+		--arg expected_origin "$target_token" \
+		--arg baseline_session "$baseline_session" \
+		--argjson expected_ordinal "$((baseline_ordinal + 1))" \
+		--arg expected_source "$(jq -er '.source_commit' "$manifest")" \
+		--arg expected_reference "$(jq -er '.reference_commit' "$manifest")" \
+		--arg expected_app_elf "$(jq -er '.app_elf_sha256' "$manifest")" \
+		--arg expected_hostname_sha256 "$(sha256_text "$mutated_setting")" \
+		'if (.schema_version == "esp-device-session-private-result-v1") and (.terminal_category == "ready") and (.boot_b.trusted_origin == $expected_origin) and (.boot_b.boot_session | type == "string" and length > 0 and . != $baseline_session) and (.boot_b.boot_ordinal == $expected_ordinal) and (.boot_b.reset_reason_category == "software_cpu") and (.boot_b.source_commit == $expected_source) and (.boot_b.reference_commit == $expected_reference) and (.boot_b.app_elf_sha256 == $expected_app_elf) and (.boot_b.hostname_sha256 == $expected_hostname_sha256) then {status:"passed",category:"none",session:.boot_b.boot_session,boot_ordinal:.boot_b.boot_ordinal,device_url:.boot_b.trusted_origin,reset_reason:.boot_b.reset_reason_category} else empty end' \
+		"$private_result" >"$boot_b_setup" || {
 		chmod 600 "$boot_b_setup"
+		failure_category="device_session_result_invalid"
 		return 1
 	}
 	chmod 600 "$boot_b_setup"
@@ -826,6 +839,8 @@ seal_non_promotion() {
 		"boundary_schema=${flash_boundary_schema:-none}" \
 		"flash_stage=${flash_stage:-none}" \
 		"flash_boundary=${flash_boundary:-none}" \
+		"device_session_schema=${device_session_schema:-none}" \
+		"device_session_category=${device_session_category:-none}" \
 		"restoration_secondary_category=${restoration_secondary_category:-none}" \
 		"cleanup_secondary_category=${cleanup_secondary_category:-none}" \
 		"root_reusable=false"

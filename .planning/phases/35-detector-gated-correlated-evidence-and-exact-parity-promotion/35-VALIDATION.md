@@ -56,7 +56,7 @@ phase_lifecycle_id: 35-2026-07-17T17-00-37
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 | --- | --- | --- | --- |
-| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempts 19–26 remain sealed. Attempt 26 proved the passive-monitor runfiles repair, issued the approved reboot, and completed restoration/cleanup, but its zero-byte post-restart serial capture classified `post_restart_identity_missing`; the public primary category repeated as `approved_reboot_failed`. Policy selects `stop_repeated_boundary`, so Attempt 27 is prohibited. Task 2 and Phase 35 remain incomplete without eligible evidence. |
+| Exact-current-package Ultra 205 evidence root | CFG-12, EVD-10–EVD-15 | Requires the physically connected board and one approved normal reboot | Attempts 19–26 remain sealed. Attempt 26 proved the passive-monitor runfiles repair but offline diagnosis found the fixed-path espflash observer was not a qualified runtime receive capability. Attempt 27 is authorized only after the OS-native device-session regressions, complete software gate, commits, and exact-head preflight pass. Its authoritative reboot proof requires the same physical device, a changed HTTP boot session, exact `N → N+1` ordinal, `software_cpu`, exact build identity, and the persisted hostname; serial output, USB re-enumeration, and sampled service loss are corroborating only. Task 2 and Phase 35 remain incomplete without eligible evidence. |
 
 ## Validation Sign-Off
 

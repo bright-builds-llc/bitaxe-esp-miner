@@ -1,5 +1,7 @@
 {
   "bootSession": "00000000000000000000000000000000",
+  "bootOrdinal": 0,
+  "resetReasonCategory": "unavailable",
   "operatorSnapshotRevision": 1,
   "platformIdentity": {
     "espIdfVersion": {

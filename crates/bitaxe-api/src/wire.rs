@@ -42,6 +42,10 @@ pub fn require_wire_keys(
 pub struct SystemInfoWire {
     #[serde(rename = "bootSession")]
     pub boot_session: BootSessionId,
+    #[serde(rename = "bootOrdinal")]
+    pub boot_ordinal: u64,
+    #[serde(rename = "resetReasonCategory")]
+    pub reset_reason_category: String,
     #[serde(rename = "operatorSnapshotRevision")]
     pub operator_snapshot_revision: OperatorSnapshotRevision,
     #[serde(rename = "platformIdentity")]
@@ -205,6 +209,8 @@ impl SystemInfoWire {
 
         Self {
             boot_session: snapshot.operator_snapshot_identity.boot_session(),
+            boot_ordinal: platform.boot_ordinal,
+            reset_reason_category: platform.reset_reason_category.clone(),
             operator_snapshot_revision: snapshot.operator_snapshot_identity.revision(),
             platform_identity: snapshot.platform_identity.clone(),
             runtime_health: RuntimeHealthWire::from(&snapshot.runtime_health),
@@ -454,6 +460,11 @@ mod tests {
         assert_eq!(value.get("sourceDirty"), Some(&Value::Bool(false)));
         assert_eq!(value.get("releaseTag"), Some(&Value::Null));
         assert_eq!(value.get("bootSession"), Some(&json!("0".repeat(32))));
+        assert_eq!(value.get("bootOrdinal"), Some(&json!(0)));
+        assert_eq!(
+            value.get("resetReasonCategory"),
+            Some(&json!("unavailable"))
+        );
         assert_eq!(value.get("operatorSnapshotRevision"), Some(&json!(1)));
         assert_eq!(value["runtimeHealth"]["selfTestState"], "unavailable");
         assert_eq!(

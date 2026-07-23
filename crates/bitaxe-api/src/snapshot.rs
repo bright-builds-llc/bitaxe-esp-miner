@@ -108,6 +108,8 @@ impl AsicSnapshot {
 /// Platform facts collected by firmware adapters.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlatformSnapshot {
+    pub boot_ordinal: u64,
+    pub reset_reason_category: String,
     pub version: String,
     pub semantic_version: String,
     pub source_commit: String,
@@ -142,6 +144,8 @@ impl PlatformSnapshot {
     #[must_use]
     pub fn safe_ultra_205() -> Self {
         Self {
+            boot_ordinal: 0,
+            reset_reason_category: "unavailable".to_owned(),
             version: "000000000000-dev".to_owned(),
             semantic_version: "0.0.0-safe".to_owned(),
             source_commit: "0".repeat(40),

@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: in_progress
-stopped_at: Phase 35 Plan 04 Task 2 stopped after Attempt 26 repeated approved_reboot_failed
-last_updated: "2026-07-22T15:58:27Z"
+stopped_at: Phase 35 Plan 04 Task 2 implementing the device-session repair before Attempt 27
+last_updated: "2026-07-22T21:02:11Z"
 last_activity: "2026-07-22"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-22 - Attempt 26 proved the runfiles repair but repeated approved_reboot_failed with post_restart_identity_missing
+Last activity: 2026-07-22 - Attempt 26 was offline-classified as an unqualified runtime-observer boundary and the authorized device-session repair began
 
 ## Current Position
 
@@ -25,17 +25,18 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 remains incomplete. Attempt 26 proved the passive-monitor
-  runfiles repair, issued the approved reboot, observed service loss, and
-  completed restoration and cleanup, but its zero-byte post-restart serial
-  capture classified `post_restart_identity_missing`. The public primary
-  category repeated as `approved_reboot_failed` after its targeted fix, so
-  policy selects `stop_repeated_boundary`. Attempts 1 through 26 remain sealed
-  non-promotable and non-reusable.
-- **Next step:** Do not run Attempt 27. Preserve the sealed root and checkpoint
-  the repeated-boundary stop. Task 3 and `35-04-SUMMARY.md` remain blocked until
-  a separately authorized plan changes the evidence contract or resolves the
-  stop condition without an unchanged hardware retry.
+- **Status:** Task 2 remains incomplete. Attempts 1 through 26 remain sealed,
+  non-promotable, and non-reusable. Offline diagnosis preserves Attempt 26's
+  recorded categories while identifying its fixed-path espflash passive monitor
+  as an unqualified runtime observer: repository evidence had already shown
+  that it could own the node while delivering zero application bytes. The
+  authorized repair introduces a distinct device-session capability with an
+  OS-native receive-only observer, bounded same-device reacquisition, and an
+  HTTP-derived hybrid reboot quorum.
+- **Next step:** Finish and commit the regression-backed device-session repair,
+  run the complete exact-current-HEAD gate and preflight, then run fresh Attempt
+  27 once. Task 3 and `35-04-SUMMARY.md` remain blocked until Task 2 admits
+  genuinely eligible evidence.
 
 ## Project Reference
 
@@ -526,18 +527,18 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 ## Blockers
 
 - Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 26 are sealed,
-  non-promotable, and non-reusable. Attempt 26 repeated
-  `approved_reboot_failed` after its targeted runfiles fix, with private typed
-  Boot B category `post_restart_identity_missing`. Policy selects
-  `stop_repeated_boundary`; Attempt 27 is prohibited. Task 3 and
-  `35-04-SUMMARY.md` remain prohibited until `complete`.
+  non-promotable, and non-reusable. The separately authorized device-session
+  repair changes the disproven runtime-observation backend and proof contract;
+  after its regressions, commits, complete software gate, and exact-head
+  preflight pass, fresh Attempt 27 is authorized. Task 3 and
+  `35-04-SUMMARY.md` remain prohibited until eligible evidence is admitted.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 after Attempt 26 selected `stop_repeated_boundary`
-- **Resume:** Do not execute Attempt 27. Preserve Attempt 26 as sealed,
-  non-promotable, non-reusable evidence. A future continuation requires a
-  separately authorized plan that changes the contract or resolves the stop
-  condition without an unchanged hardware retry.
-  Task 3, evidence admission, checklist promotion, and
-  `35-04-SUMMARY.md` remain blocked until `complete`.
+- **Stopped at:** Phase 35 Plan 04 Task 2 during the authorized device-session repair
+- **Resume:** Preserve Attempt 26 as sealed, non-promotable, non-reusable
+  evidence. Complete the OS-native observer and HTTP hybrid-quorum regressions,
+  commit the repair, pass the complete software gate and exact-head preflight,
+  then execute Attempt 27 once in a fresh protected root. Task 3, evidence
+  admission, checklist promotion, and `35-04-SUMMARY.md` remain blocked until
+  eligible evidence exists.

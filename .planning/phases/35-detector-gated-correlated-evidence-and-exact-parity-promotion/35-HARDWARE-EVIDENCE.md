@@ -1803,7 +1803,43 @@ supervisor preserved its existing public primary category
 Restoration and cleanup completed without secondary failures. Because the same
 primary category recurred immediately after its targeted verified fix, the
 repository hardware policy selects `stop_repeated_boundary`. Attempt 26 remains
-immutable, non-promotable, non-reusable, and ineligible for splicing. Attempt
-27 is prohibited. Task 3, admission, checklist promotion, and
-`35-04-SUMMARY.md` remain blocked until eligible evidence exists under a
-separately authorized future plan.
+immutable, non-promotable, non-reusable, and ineligible for splicing. At that
+checkpoint, Attempt 27 was prohibited pending a separately authorized contract
+change. Task 3, admission, checklist promotion, and `35-04-SUMMARY.md` remain
+blocked until eligible evidence exists.
+
+## Attempt 26 Offline Device-Session Diagnosis and Attempt 27 Contract
+
+The separately authorized diagnosis does not modify Attempt 26's sealed root,
+recorded categories, or non-promotion disposition. It classifies the runtime
+observer itself as unqualified: the fixed-path espflash passive monitor proved
+attachment ownership but did not model USB disappearance, enumeration change,
+same-device reacquisition, or an independent HTTP postcondition. Existing
+repository hardware evidence had already distinguished that backend from an
+OS-native receive-only reader by observing application bytes only through the
+latter.
+
+The regression-backed repair is therefore a backend and evidence-contract
+change, not a category rename or an unchanged retry. It introduces a built
+device-session command with these required facts:
+
+| Boundary | Required fact |
+| --- | --- |
+| Pre-effect observer | OS-native receive-only application bytes are delivered before restart |
+| Application effect | Exactly one restart POST is fully transmitted; an ambiguous response is never resent |
+| Device continuity | A stable node or one unique reacquired node has the original physical identity |
+| Recovery target | Only the previously trusted origin is polled; discovery and scans remain prohibited |
+| Boot transition | HTTP reports a changed boot session and exact RTC ordinal `N → N+1` |
+| Reset attribution | HTTP reports the closed `software_cpu` category |
+| Build identity | Source, reference, and application ELF identity match the exact admitted package |
+| Postcondition | The persisted hostname digest matches the storage-confirmed mutation |
+| Corroboration | USB re-enumeration, sampled service loss, and post-reboot serial bytes are recorded but are not individually mandatory |
+
+Fresh Attempt 27 is authorized only after these regressions, the full software
+gate, atomic commits, and exact-current-HEAD preflight pass. It must use one
+fresh protected parent and nonexistent supervisor child, one full Phase 35
+invocation, one restart POST, dual private-first evidence, a 360-second
+device-session bound, and at least 420 seconds of caller budget. Attempts 1
+through 26 remain immutable, non-promotable, non-reusable, and ineligible for
+splicing. Task 3, promotion, and `35-04-SUMMARY.md` remain blocked until Attempt
+27 or a later qualifying attempt genuinely admits eligible evidence.
