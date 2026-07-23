@@ -1,0 +1,19 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "http_transport",
+    srcs = ["src/lib.rs"],
+    crate_name = "bitaxe_http_transport",
+    edition = "2021",
+    deps = [
+        "@crates//:anyhow",
+        "@crates//:rustls",
+        "@crates//:webpki-roots",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "tests",
+    crate = ":http_transport",
+)

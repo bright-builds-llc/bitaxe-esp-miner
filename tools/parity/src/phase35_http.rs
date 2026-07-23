@@ -156,33 +156,6 @@ pub(crate) struct RawHttpMetrics {
     pub(crate) tls_verification: TlsVerification,
 }
 
-impl RawHttpMetrics {
-    pub(crate) const fn empty(
-        scheme_category: SchemeCategory,
-        transport_outcome: TransportOutcome,
-        total_millis: u64,
-    ) -> Self {
-        Self {
-            scheme_category,
-            transport_outcome,
-            tcp_connect_millis: 0,
-            tls_handshake_millis: 0,
-            request_send_complete_millis: 0,
-            request_bytes: 0,
-            response_status: 0,
-            response_header_count: 0,
-            response_header_bytes: 0,
-            response_body_bytes: 0,
-            total_millis,
-            first_byte_millis: 0,
-            tls_verification: match scheme_category {
-                SchemeCategory::Http => TlsVerification::NotApplicable,
-                SchemeCategory::Https => TlsVerification::Failed,
-            },
-        }
-    }
-}
-
 impl HttpObservation {
     fn parse(metrics_json: &[u8], body: &[u8]) -> Result<Self, Phase35HttpDiagnosticError> {
         let raw: RawHttpMetrics = serde_json::from_slice(metrics_json)

@@ -1,0 +1,49 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+
+rust_library(
+    name = "device_session_lib",
+    srcs = [
+        "src/evidence.rs",
+        "src/fixture.rs",
+        "src/lib.rs",
+        "src/live.rs",
+        "src/macos.rs",
+        "src/macos_unsupported.rs",
+        "src/model.rs",
+        "src/model/tests.rs",
+        "src/platform.rs",
+    ],
+    crate_name = "bitaxe_device_session",
+    edition = "2021",
+    deps = [
+        "@crates//:anyhow",
+        "@crates//:camino",
+        "//tools/http-transport:http_transport",
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:sha2",
+        "@crates//:thiserror",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "device-session",
+    srcs = ["src/main.rs"],
+    crate_name = "bitaxe_device_session_cli",
+    edition = "2021",
+    deps = [
+        ":device_session_lib",
+        "@crates//:anyhow",
+        "@crates//:camino",
+        "@crates//:clap",
+        "@crates//:serde_json",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "tests",
+    crate = ":device_session_lib",
+    deps = ["@crates//:tempfile"],
+)

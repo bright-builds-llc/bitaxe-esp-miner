@@ -1,4 +1,4 @@
-use std::io::{self, Read, Write};
+use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
@@ -98,53 +98,6 @@ fn valid_response_is_ready_for_classification() {
 }
 
 #[test]
-fn short_write_failure_never_claims_send_completion() {
-    // Arrange
-    struct FailingWriter {
-        remaining: usize,
-    }
-    impl Write for FailingWriter {
-        fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
-            if self.remaining == 0 {
-                return Err(io::Error::new(io::ErrorKind::BrokenPipe, "synthetic"));
-            }
-            let written = self.remaining.min(buffer.len());
-            self.remaining -= written;
-            Ok(written)
-        }
-
-        fn flush(&mut self) -> io::Result<()> {
-            Ok(())
-        }
-    }
-    let mut writer = FailingWriter { remaining: 7 };
-
-    // Act
-    let observation = send_request(&mut writer, b"complete request");
-
-    // Assert
-    assert_eq!(observation.bytes_written, 7);
-    assert!(!observation.complete);
-}
-
-#[test]
-fn invalid_and_ambiguous_origins_fail_closed() {
-    // Arrange / Act / Assert
-    for url in [
-        "ftp://example.invalid",
-        "http://",
-        "http://user@example.invalid",
-        "http://example.invalid/path",
-        "http://::1",
-    ] {
-        assert!(matches!(
-            Origin::parse(url),
-            Err(Phase35HttpProbeError::InvalidOrigin)
-        ));
-    }
-}
-
-#[test]
 fn tls_handshake_failure_never_claims_request_completion() {
     // Arrange
     let listener = TcpListener::bind("127.0.0.1:0").expect("loopback bind failed");
@@ -173,15 +126,4 @@ fn tls_handshake_failure_never_claims_request_completion() {
     assert_eq!(result.metrics.request_send_complete_millis, 0);
     assert_eq!(result.metrics.request_bytes, 0);
     assert_eq!(result.metrics.tls_verification, TlsVerification::Failed);
-}
-
-#[test]
-fn chunked_body_decoder_requires_the_terminal_chunk() {
-    // Arrange
-    let complete = b"4\r\ntest\r\n0\r\n\r\n";
-    let incomplete = b"4\r\ntest\r\n";
-
-    // Act / Assert
-    assert_eq!(decode_chunked(complete), Some(b"test".to_vec()));
-    assert_eq!(decode_chunked(incomplete), None);
 }

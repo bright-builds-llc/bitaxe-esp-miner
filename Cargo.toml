@@ -10,6 +10,8 @@ members = [
     "crates/bitaxe-test-support",
     "firmware/bitaxe",
     "tools/flash",
+    "tools/device-session",
+    "tools/http-transport",
     "tools/parity",
     "tools/xtask",
 ]
@@ -22,6 +24,8 @@ default-members = [
     "crates/bitaxe-stratum",
     "crates/bitaxe-test-support",
     "tools/flash",
+    "tools/device-session",
+    "tools/http-transport",
     "tools/parity",
     "tools/xtask",
 ]

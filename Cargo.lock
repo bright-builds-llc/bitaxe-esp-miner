@@ -171,6 +171,21 @@ name = "bitaxe-core"
 version = "0.1.0"
 
 [[package]]
+name = "bitaxe-device-session"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitaxe-http-transport",
+ "camino",
+ "clap",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "bitaxe-firmware"
 version = "0.1.0"
 dependencies = [
@@ -209,20 +224,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitaxe-http-transport"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rustls",
+ "webpki-roots",
+]
+
+[[package]]
 name = "bitaxe-parity"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "bitaxe-api",
+ "bitaxe-http-transport",
  "camino",
  "clap",
  "libc",
- "rustls",
  "serde",
  "serde_json",
  "sha2",
  "thiserror 2.0.18",
- "webpki-roots",
 ]
 
 [[package]]

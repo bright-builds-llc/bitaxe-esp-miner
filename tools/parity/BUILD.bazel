@@ -77,16 +77,15 @@ rust_binary(
     edition = "2021",
     deps = [
         "//crates/bitaxe-api:bitaxe_api",
+        "//tools/http-transport:http_transport",
         "@crates//:anyhow",
         "@crates//:camino",
         "@crates//:clap",
         "@crates//:libc",
-        "@crates//:rustls",
         "@crates//:serde",
         "@crates//:serde_json",
         "@crates//:sha2",
         "@crates//:thiserror",
-        "@crates//:webpki-roots",
     ],
     visibility = ["//visibility:public"],
 )
