@@ -274,7 +274,7 @@ fn parse_ioreg(text: &str) -> Result<Vec<Candidate>> {
                 }
             }
         }
-        if key != "IOCalloutDevice" && key != "IODialinDevice" {
+        if key != "IOCalloutDevice" {
             continue;
         }
         let Some(port) = unquote(value) else {
@@ -398,5 +398,24 @@ mod tests {
         // Assert
         assert_eq!(candidates.len(), 1);
         assert_eq!(candidates[0].port, port);
+    }
+
+    #[test]
+    fn ioreg_parser_canonicalizes_paired_serial_aliases_to_callout() {
+        // Arrange
+        let callout = tempfile::NamedTempFile::new().expect("callout node must exist");
+        let callout = callout.path().to_string_lossy();
+        let dialin = tempfile::NamedTempFile::new().expect("dial-in node must exist");
+        let dialin = dialin.path().to_string_lossy();
+        let fixture = format!(
+            "+-o usb  <class IOUSBHostDevice>\n  | \"idVendor\" = 1234\n  | \"idProduct\" = 5678\n  | \"USB Serial Number\" = \"stable\"\n  | +-o serial  <class IOSerialBSDClient>\n  |   \"IOCalloutDevice\" = \"{callout}\"\n  |   \"IODialinDevice\" = \"{dialin}\"\n"
+        );
+
+        // Act
+        let candidates = parse_ioreg(&fixture).expect("paired aliases must parse");
+
+        // Assert
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].port, callout);
     }
 }
