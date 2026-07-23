@@ -57,6 +57,8 @@ mod phase35_http;
 mod phase35_http_probe;
 mod phase35_promotion;
 pub mod phase36_evidence;
+#[cfg(test)]
+mod phase36_promotion;
 mod release_evidence;
 mod release_gate;
 mod safety_allow;
