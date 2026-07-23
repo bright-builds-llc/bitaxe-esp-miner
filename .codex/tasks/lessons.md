@@ -130,3 +130,10 @@
 2. What went wrong: Repeating a hardware attempt without a verified fix or objectively changed boundary consumed a fresh ordinal but added no information and could reproduce the same failure indefinitely.
 3. Preventive rule: Permit another hardware attempt only after one targeted fix is verified across the real failing boundary or an authorized non-invasive remediation objectively proves that boundary changed; stop when the same redacted authoritative boundary signature recurs after its targeted verified fix. A repeated coarse category may return to diagnosis only when closed discriminator fields prove a distinct signature.
 4. Trigger signal to catch it earlier: A proposed continuation changes only the attempt number, evidence root, category label, timing, or hope of success while the code, inputs, physical state, and measured boundary signature remain unchanged.
+
+## lesson-consume-qualified-transport-capabilities | 2026-07-22 20:41
+
+1. Date: 2026-07-22
+2. What went wrong: A phase-local reboot workflow hard-coded `espflash` as its runtime observer even though earlier hardware evidence in the same repository had already shown that passive espflash delivered zero application bytes while the receive-only OS-native reader delivered valid heartbeats.
+3. Preventive rule: Model bootloader access, runtime observation, application control, and evidence proof as separate capabilities. Phase workflows must consume the repository's currently qualified backend for each capability instead of selecting a convenient tool locally.
+4. Trigger signal to catch it earlier: A phase names a concrete transport executable directly even though a repository qualification, capability contract, or prior hardware result selects a different backend for that boundary.

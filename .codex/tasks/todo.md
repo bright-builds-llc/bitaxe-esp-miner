@@ -194,3 +194,12 @@ Completion review: The repository-wide policy, staged/CI redaction guard, stream
 - [ ] Add focused regressions and route each admitted projection through `just verify-redaction`.
 
 Completion review: Pending. This follow-up excludes immutable historical evidence and does not authorize hardware, credential, network, device, mutation, admission, promotion, or push operations.
+
+## task-cross-platform-device-session-adapters | 2026-07-22 20:41 | Qualify Linux and Windows ESP device sessions
+
+- [ ] Implement Linux physical/enumeration identity, ownership, receive-only observation, and bounded re-acquisition behind the canonical device-session contract.
+- [ ] Implement the corresponding Windows adapter without weakening exclusive ownership, request-once, or private-artifact guarantees.
+- [ ] Add platform-native real-process tests and separately qualified hardware evidence before either adapter becomes production-supported.
+- [ ] Keep unsupported platforms fail-closed until their exact adapter and evidence gates pass.
+
+Completion review: Pending. macOS is the only production adapter in the current Phase 35 repair. This follow-up authorizes no hardware, credentials, network discovery, direct UART/pins, archived workflow, evidence promotion, commit, or push by itself.

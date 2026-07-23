@@ -333,6 +333,15 @@ Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and po
 - The dormant external-UART implementation remains receive-only and evidence-only by design. Its prior TP18/TP12/J5 fixture instructions are historical, not an active operational procedure, and must not be surfaced or executed without fresh explicit user authorization.
 - If an external observer is explicitly authorized in the future, its physical and enumeration identities must both remain unchanged across board power removal. For native USB restoration, require the same stable physical identity and a different enumeration identity; tty paths, inodes, dynamic device instances, and registry-entry IDs are never physical identity.
 
+### Deterministic ESP Device Sessions
+
+- Follow `docs/hardware/esp-device-session.md` whenever one workflow crosses bootloader, running-firmware, USB lifecycle, and HTTP application boundaries.
+- Use pinned espflash only for detector, bootloader, flash, checksum, and explicit post-flash reset stages. Use the receive-only OS-native adapter for authoritative runtime serial observation.
+- Request normal application effects over HTTP and prove them from typed postconditions. For reboot, require the same physical USB device, changed boot session, software-reset category, exact build identity, next boot ordinal, and requested persisted state.
+- Treat serial bytes, sampled service loss, node stability, and re-enumeration as independent observations. Do not assume that one file descriptor, device-node name, enumeration epoch, or sampled outage survives or proves a reset.
+- Reacquire only the already admitted physical device under a bounded phase-owned lifecycle. Never convert re-acquisition into mDNS, ARP, router-state, or network discovery.
+- Send a restart request once. If its response is ambiguous, observe the bounded postcondition; never issue an automatic second restart.
+
 ### Evidence Workflow: Hardware-First Default
 
 Agents executing phase evidence wrappers (`phase23-evidence`, `phase25-evidence`, `phase27-evidence`, and future `phase*-evidence` scripts with `blocked|hardware` modes) must:
