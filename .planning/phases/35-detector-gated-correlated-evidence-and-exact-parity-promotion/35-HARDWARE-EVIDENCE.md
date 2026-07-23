@@ -1887,3 +1887,49 @@ regression, verified parser fix, clean commit, complete software gate, and exact
 head preflight. Attempt 27 remains immutable, non-promotable, non-reusable, and
 ineligible for splicing. Task 3, promotion, and `35-04-SUMMARY.md` remain
 blocked.
+
+## Attempt 28 Checkpoint and macOS Serial-Alias Boundary
+
+Attempt 28 executed exactly once from clean source
+`7e9be48adcdb64a072f08b41dc4849b073c5ab15` after the complete software gate and
+exact-current-HEAD preflight passed. It preserved the fresh protected-root,
+internal-detector, dual-evidence, single-request, and bounded caller contract.
+
+| Field | Redacted value |
+| --- | --- |
+| Attempt ordinal | `28` |
+| Source commit | `7e9be48adcdb64a072f08b41dc4849b073c5ab15` |
+| Exact-head preflight | `passed` |
+| Supervisor result | `non_promotion` |
+| Primary category | `usb_identity_drift` |
+| Flash boundary | `ready` |
+| Initial same-device samples | `3` |
+| Reader armed | `true` |
+| Pre-restart serial delivery | `true` |
+| Restart request attempts | `1` |
+| Restart request fully transmitted | `true` |
+| Restart response received | `true` |
+| Post-restart serial delivery | `true` |
+| Recovery physical match | `multiple` |
+| HTTP Boot B observations | `0` |
+| Restoration secondary | `restoration_action_failed` |
+| Fresh protected original-setting confirmation | `true` |
+| Cleanup secondary | `none` |
+| Cleanup complete | `true` |
+| Root reusable | `false` |
+| Progress decision | `continue_after_verified_fix` |
+
+Attempt 28 proves the nested-property repair and advances the evidence boundary
+through receive-only qualification and exactly-once restart transmission. The
+recovery scan then treated the callout and dial-in aliases of one macOS serial
+service as two candidates sharing one physical identity. No Boot B HTTP fact
+was admitted. Although the immutable seal conservatively records a restoration
+action failure, a fresh separately protected typed GET classified ready and its
+private digest matched the original rather than the mutated setting, so no
+additional recovery mutation was required.
+
+Fresh Attempt 29 is permitted only after a sanitized paired-alias regression,
+canonical callout candidate fix, clean commit, complete software gate, and exact
+head preflight. Attempt 28 remains immutable, non-promotable, non-reusable, and
+ineligible for splicing. Task 3, promotion, and `35-04-SUMMARY.md` remain
+blocked.

@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: in_progress
-stopped_at: Phase 35 Plan 04 Task 2 diagnosing Attempt 27 observer qualification
-last_updated: "2026-07-23T02:26:51Z"
+stopped_at: Phase 35 Plan 04 Task 2 diagnosing Attempt 28 macOS serial aliases
+last_updated: "2026-07-23T02:48:42Z"
 last_activity: "2026-07-23"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-23 - Attempt 27 sealed before restart with observer_unqualified and exposed a deterministic nested-ioreg parser defect
+Last activity: 2026-07-23 - Attempt 28 passed observer qualification and exposed paired macOS callout/dial-in aliasing during recovery
 
 ## Current Position
 
@@ -25,15 +25,15 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 remains incomplete. Attempts 1 through 27 remain sealed,
-  non-promotable, and non-reusable. Attempt 27 validated the new supervisor and
-  stopped before restart because the Rust macOS identity parser dropped nested
-  ioreg properties that carry tree branch prefixes. A protected read-only
-  comparison proved the canonical shell parser still resolves the same callout
-  and detector-bound physical identity.
-- **Next step:** Commit the Attempt 27 checkpoint, add the sanitized nested-tree
-  regression and parser repair, run the complete exact-current-HEAD gate and
-  preflight, then run fresh Attempt 28. Task 3 and `35-04-SUMMARY.md` remain
+- **Status:** Task 2 remains incomplete. Attempts 1 through 28 remain sealed,
+  non-promotable, and non-reusable. Attempt 28 passed initial same-device and
+  receive-only qualification, sent exactly one restart request, and received
+  correlated serial bytes. Recovery then counted the callout and dial-in aliases
+  of one macOS serial service as two physical candidates. A fresh protected GET
+  confirms the original setting is already restored.
+- **Next step:** Commit the Attempt 28 checkpoint, add the paired-alias
+  regression and canonical callout fix, run the complete exact-current-HEAD gate
+  and preflight, then run fresh Attempt 29. Task 3 and `35-04-SUMMARY.md` remain
   blocked until Task 2 admits genuinely eligible evidence.
 
 ## Project Reference
@@ -524,20 +524,20 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 27 are sealed,
-  non-promotable, and non-reusable. Attempt 27 selected the new discriminating
-  category `observer_unqualified` before restart and exposed a deterministic
-  nested-ioreg parser defect. Fresh Attempt 28 is allowed only after its
-  regression-backed fix, commit, complete software gate, and exact-head
-  preflight. Task 3 and `35-04-SUMMARY.md` remain prohibited until eligible
-  evidence is admitted.
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 28 are sealed,
+  non-promotable, and non-reusable. Attempt 28 selected the new discriminating
+  category `usb_identity_drift` after restart because paired macOS callout and
+  dial-in aliases were counted separately. Fresh Attempt 29 is allowed only
+  after its regression-backed fix, commit, complete software gate, and
+  exact-head preflight. Task 3 and `35-04-SUMMARY.md` remain prohibited until
+  eligible evidence is admitted.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 diagnosing Attempt 27 observer qualification
-- **Resume:** Preserve Attempt 27 as sealed, non-promotable, non-reusable
-  evidence. Fix and regression-test nested macOS ioreg property parsing, commit
+- **Stopped at:** Phase 35 Plan 04 Task 2 diagnosing Attempt 28 macOS serial aliases
+- **Resume:** Preserve Attempt 28 as sealed, non-promotable, non-reusable
+  evidence. Fix and regression-test callout/dial-in candidate aliasing, commit
   the repair, pass the complete software gate and exact-head preflight, then
-  execute Attempt 28 once in a fresh protected root. Task 3, evidence admission,
+  execute Attempt 29 once in a fresh protected root. Task 3, evidence admission,
   checklist promotion, and `35-04-SUMMARY.md` remain blocked until eligible
   evidence exists.
