@@ -2,21 +2,21 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
-status: in_progress
-stopped_at: Phase 35 complete; milestone audit pending
-last_updated: "2026-07-23T04:22:38Z"
+status: executing
+stopped_at: Phase 35 complete; v1.2 milestone audit pending
+last_updated: "2026-07-23T16:10:32.519Z"
 last_activity: "2026-07-23"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 5
-  total_plans: 24
+  total_plans: 28
   completed_plans: 24
-  percent: 100
+  percent: 86
 ---
 
 # Project State
 
-Last activity: 2026-07-23 - Attempt 31 admitted the exact Phase 35 root and promoted only four passive board-205 rows
+Last activity: 2026-07-23
 
 ## Current Position
 
@@ -25,11 +25,12 @@ Plan: 4 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 4 of 4 completed
-- **Status:** Attempt 31 completed the exact-current-package detector, flash,
+- **Status:** Ready to execute
   coherent Boot A, hostname mutation/readback, exactly-once normal reboot,
   same-device Boot B, restoration, cleanup, inventory, validation, redaction,
   and atomic admission chain. Four dedicated passive board-205 rows are
   verified; all excluded and broad scopes remain explicit non-promotions.
+
 - **Next step:** Run the v1.2 milestone audit. Do not widen the admitted Phase
   35 evidence beyond its four passive board-205 claims.
 
@@ -247,6 +248,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Gate lever on `mask_reload_tx_observed` / `post_configure_runtime` after configure — not mask-value delta (D-05)
 - Wave 0 comparator: the child-7 ASIC mask-reload comparator extending the
   child-6 taxonomy
+
 - HARD BAN includes prior falsified knobs + `negotiated_version_mask_work_field_parity`
 - Plan 02 hook: `apply_negotiated_version_mask` in production.rs; flush from live_stratum_runtime after configure + production_ready
 - Plan 03: promote only if improved+correlate/submit; else evidence-named next_hypothesis (default placeholder `remaining_nonce_production_blocker_narrowing` if silent); no second speculative patch
@@ -377,12 +379,15 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Secrets never persist; operational identifiers may exist only in
   secret-sanitized mode-`0600` private artifacts beneath ignored mode-`0700`
   roots.
+
 - Dual flash capture creates only immutable private classifier input. A
   digest-bound software finalizer creates the separate admitted projection only
   after classification succeeds.
+
 - The repository redaction guard scans staged or CI destination content plus
   the complete admitted tree. Changed content never receives legacy exceptions;
   zero-base pushes compare against the trusted default-branch merge base.
+
 - At Quick 260720-jwt completion, attempts 1-11 were immutable and attempt 12
   was the next separately authorized fresh-root continuation. The later
   progress-gated decision below supersedes only that authorization procedure,
@@ -393,15 +398,19 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - `docs/hardware/hardware-attempt-policy.md` defines the closed progress
   decisions for every phase-gated repo-owned hardware workflow. There is no
   fixed attempt cap and no unchanged blind retry.
+
 - Every continuation owns a fresh ordinal, protected parent, nonexistent
   supervisor child, mode-0600 sibling logs, immutable root, exact current HEAD,
   and one full hardware-command invocation.
+
 - Attempts 1 through 12 remain sealed history. Attempt 13 is authorized after a
   fresh exact-current-HEAD software/preflight gate. Later ordinals require
   `continue_after_verified_fix` or `continue_after_manual_remediation`; a
   repeated post-fix typed boundary selects `stop_repeated_boundary`.
+
 - Direct UART/pins, archived Phase 28.1.1, evidence privacy, Phase 30
   non-promotion, and electrical-overstress restrictions remain unchanged.
+
 - Quick implementation commits `f481cf4a` and `fc5c2f8d` passed the software
   policy, regression, Rust, redaction, reference, parity, lifecycle, and inert
   preflight gates. This quick task did not execute attempt 13 or touch hardware.
@@ -412,10 +421,12 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
   `7fcad7090b94c04bee40a13552c857a3ac3ad2f1` with current-head equality and
   public package capability digest
   `2339efb0238f696abfffb4afcb9ffdb0452b65fe15fe02c3e7d8faee64b6be3d`.
+
 - The authorized attempt-12 command preserved the private-first ordering
   through successful Boot A classification and digest-bound flash projection,
   then failed closed at the original-settings HTTP diagnostic classifier with
   primary category `http_diagnostic_invalid` before PATCH or mutation.
+
 - The fresh root is sealed non-promotable and non-reusable. Cleanup completed
   with no restoration or cleanup secondary category and no remaining Phase 35
   process. No retry, admission, generation change, checklist promotion, Task 3,
@@ -426,12 +437,15 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Exact-head software gates and preflight passed at source
   `02f128db56b332e50e11f57935f29e22e3830f66`, with package capability digest
   `a999925e633af27ac8777dea8fab202caecdec4b3c6d0b86c109253d988826e2`.
+
 - The full hardware command ran exactly once. The sole detector, opaque input
   gate, dual private-first flash, and Boot A classification passed before the
   original-settings HTTP classifier failed with `http_diagnostic_invalid`.
+
 - PATCH and reboot did not start. Restoration was not needed, cleanup passed,
   and no secondary category replaced the primary failure. The fresh root is
   sealed non-promotable and non-reusable.
+
 - Because the same primary category recurred after its targeted verified fix,
   the canonical decision is `stop_repeated_boundary`. No attempt 14 or Phase 35
   promotion work is authorized by the current workflow.
@@ -441,10 +455,12 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - A deterministic sealed-input replay reproduced the generic invalid fallback
   without hardware or protected-data output, then proved two independent causes:
   uppercase curl scheme output and an exact 10,000 ms observed-duration ceiling.
+
 - Commit `53d8bcee` canonicalizes scheme case and distinguishes the 10-second
   request timeout from a bounded 11-second observation ceiling in shell and
   Rust. The unchanged sealed shape now classifies as
   `request_transmission_incomplete`; values above 11 seconds remain invalid.
+
 - The verified repair selects `continue_after_verified_fix` for fresh attempt
   14. The user's 2026-07-21 authority permits later fresh ordinals without a
   fixed cap only when each follows a distinct verified fix or confirmed
@@ -455,17 +471,21 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Exact-current-HEAD gates and preflight passed at source
   `8afbed3248fb00e02d1a09f726b48ec241b552da`, and the full hardware command ran
   exactly once from a fresh protected root.
+
 - Exact package, detector, opaque input, dual private-first flash, and Boot A
   classification passed. The original-settings boundary then classified
   `request_transmission_incomplete`: TCP connected, zero request bytes, no
   response status, headers, or body.
+
 - PATCH and reboot did not start. Restoration was not needed, cleanup passed,
   and no secondary failure replaced the primary category. The root is sealed
   non-promotable and non-reusable.
+
 - A deterministic fake-curl regression and isolated loopback observation proved
   curl exit 56 can follow a complete bodyless GET even when its raw request-byte
   counter remains zero. Commit `0dd2134e` preserves the counter, recognizes the
   closed receive-error category, and retains exit 55 as the send-failure guard.
+
 - Exact sealed-input replay advances from `request_transmission_incomplete` to
   `response_status_missing` with unchanged input digests. The verified fix
   selects `continue_after_verified_fix`; attempt 15 is authorized after the
@@ -476,12 +496,15 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - The exact-current-HEAD gate and preflight passed at source
   `1c4979f67c0b12daee356ae5df1c1c5468ba1013`, and the full command ran exactly
   once from a fresh protected root.
+
 - Attempt 15 repeated `request_transmission_incomplete`, but curl timed out after
   TCP connection at the configured deadline instead of returning attempt 14's
   receive-error category. The raw request-byte counter and all response facts
   remained zero.
+
 - PATCH and reboot did not start. Cleanup completed without a secondary
   failure, and the root is sealed non-promotable and non-reusable.
+
 - The historical attempt result selected `stop_repeated_boundary` under the
   then-coarse comparison; the sealed root and conclusion remain immutable.
 
@@ -490,10 +513,12 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Local peers proved the host curl request-size counter stayed zero after the
   complete bodyless GET, including on success. Attempt 15 therefore carried a
   response-timeout signature distinct from attempt 14's receive error.
+
 - Commit `d097bbbf` replaces curl with a schema-v2 Rust probe that records send
   completion only after the full write and transport flush. Real adapter,
   silent-response, valid-response, short-write, TLS-failure, runfiles, and
   correlated-supervisor regressions pass.
+
 - The hardware policy now compares a closed redacted authoritative boundary
   signature and rejects category renaming as an escape. The user's latest
   2026-07-21 post-fix authority selects `continue_after_verified_fix`; attempt

@@ -39,7 +39,10 @@ created: "2026-07-23"
 | 36-02-03 | 02 | 2 | EVD-14 | T36-03, T36-04 | Legacy effect proof is complete or typed insufficient | unit | `cargo test -p bitaxe-parity phase36_effects` | ❌ W0 | ⬜ pending |
 | 36-03-01 | 03 | 3 | EVD-15 | T36-05 | Claim decisions and checklist correction publish atomically | integration | `bazel test //tools/parity:phase36_promotion_tests` | ❌ W0 | ⬜ pending |
 | 36-03-02 | 03 | 3 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | T36-06 | Attempt 31 classification cannot trigger hardware | real-process | `bazel test //scripts:phase36_evidence_test` | ❌ W0 | ⬜ pending |
+| 36-03-03 | 03 | 3 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | T36-03, T36-06 | Attempt 31 yields exact decisions or aggregate typed insufficiency without hardware | real-process | `bazel test //scripts:phase36_evidence_test //tools/parity:phase36_promotion_tests` | ❌ W0 | ⬜ pending |
 | 36-04-01 | 04 | 4 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | all | Reconciliation occurs only after clean verification | repository | `just test && just parity && just verify-reference && just verify-redaction` | ✅ | ⬜ pending |
+| 36-04-02 | 04 | 4 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | all | Independent verifier produces a passed lifecycle-bound artifact before reconciliation | lifecycle | `node "$HOME/.codex/get-shit-done/bin/gsd-tools.cjs" verify lifecycle 36 --require-plans --require-verification --raw` | ❌ W0 | ⬜ pending |
+| 36-04-03 | 04 | 4 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | T36-05, T36-06 | Canonical planning truth changes only after independent passed verification | repository | `just parity && just verify-reference && just verify-redaction` | ✅ | ⬜ pending |
 
 ## Wave 0 Requirements
 
