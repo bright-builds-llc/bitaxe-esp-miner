@@ -3,6 +3,7 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 exports_files(
     [
         "fixtures/phase36/eligible.json",
+        "fixtures/phase36/runtime-identity-package.json",
         "fixtures/phase36/substance-eligible.json",
         "src/main.rs",
         "src/phase36_evidence.rs",
@@ -66,10 +67,13 @@ rust_binary(
         "src/phase35_promotion/types.rs",
         "src/phase36_evidence.rs",
         "src/phase36_evidence/contract.rs",
+        "src/phase36_evidence/runtime_identity.rs",
+        "src/phase36_evidence/runtime_identity/ledger.rs",
         "src/phase36_evidence/substance.rs",
         "src/phase36_evidence/substance/types.rs",
         "src/phase36_evidence/tests.rs",
         "src/phase36_evidence/tests/mutations.rs",
+        "src/phase36_evidence/tests/runtime_identity.rs",
         "src/phase36_evidence/tests/substance.rs",
         "src/phase32_source_guard.rs",
         "src/phase33_source_guard.rs",
@@ -95,6 +99,7 @@ rust_binary(
     edition = "2021",
     deps = [
         "//crates/bitaxe-api:bitaxe_api",
+        "//tools/device-session:device_session_lib",
         "//tools/http-transport:http_transport",
         "@crates//:anyhow",
         "@crates//:camino",

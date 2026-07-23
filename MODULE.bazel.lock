@@ -475,7 +475,7 @@
           "REPO_MAPPING:rules_rust+,bazel_tools bazel_tools",
           "REPO_MAPPING:rules_rust+,rules_cc rules_cc+",
           "REPO_MAPPING:rules_rust+,rules_rust rules_rust+",
-          "FILE:@@//Cargo.lock da05dc6ec290dd252962011603ec1286ac7cd5b7a186f276fed43aa6f4dea69b",
+          "FILE:@@//Cargo.lock 79d7731297f97f2e06fb46858c43fba8e3ec47e0aef1b025196dff7989b6fff0",
           "FILE:@@//Cargo.toml 0e9acf0ac561b2f4e2e7bce9a226274691ca1aa016145d2301eb28047656c425",
           "FILE:@@//crates/bitaxe-api/Cargo.toml 65fb4b485ef0feb2f1d986f77d47cc5f25d39c3d3d61322d34664d8e2561b6ef",
           "FILE:@@//crates/bitaxe-asic/Cargo.toml fe5bd66a4a2a2162d9204acc2d2222eddabf8392bbf98ad9efc52c38779b84ea",
@@ -488,7 +488,7 @@
           "FILE:@@//tools/flash/Cargo.toml 91b35d5c4bb0aced1e806af5051d6da0133a9d691b87fa3c7aca24a1a6ca5062",
           "FILE:@@//tools/device-session/Cargo.toml b305b05aefae780d61d18368070ed1fc0b5b360c1e90be52f73cf299abbb1bbd",
           "FILE:@@//tools/http-transport/Cargo.toml 68b52a3fdff69604bb5f7b0c5ade6182f481b42b259023f05428444aa7315c04",
-          "FILE:@@//tools/parity/Cargo.toml 6aec4d8a7aebdfc69a7c7842825f2e8506727cf7598937a53fd53f586b59b823",
+          "FILE:@@//tools/parity/Cargo.toml 8e116bfa90bb474decfc7156b707ecfce50b744fa96c6673f0ee36e40a827769",
           "FILE:@@//tools/xtask/Cargo.toml 6ffadba9e2f32d7f311dbad379a2f343c8fbc7352eda0dee9b0533bc1689f8fd"
         ],
         "generatedRepoSpecs": {

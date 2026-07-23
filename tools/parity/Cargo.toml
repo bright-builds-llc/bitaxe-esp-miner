@@ -7,6 +7,7 @@ license.workspace = true
 [dependencies]
 anyhow.workspace = true
 bitaxe-api = { path = "../../crates/bitaxe-api" }
+bitaxe-device-session = { path = "../device-session" }
 bitaxe-http-transport = { path = "../http-transport" }
 camino.workspace = true
 clap.workspace = true
