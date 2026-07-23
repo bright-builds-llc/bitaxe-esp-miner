@@ -28,7 +28,7 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 ### Truthful System Identity
 
 - [x] **SYS-01**: An Ultra 205 operator can inspect the running firmware's semantic version and embedded source commit without host-checkout substitution.
-- [x] **SYS-02**: An Ultra 205 operator can correlate the running firmware with its pinned reference commit and flashed package identity.
+- [ ] **SYS-02**: An Ultra 205 operator can correlate the running firmware with its pinned reference commit and flashed package identity.
 - [x] **SYS-03**: An Ultra 205 operator can inspect truthful ESP-IDF, AxeOS/static-asset, board `205`, BM1366, and running-partition identity.
 - [x] **SYS-04**: An Ultra 205 operator can inspect decoded reset reason, uptime, and heap-health facts from the running firmware.
 - [x] **SYS-05**: An Ultra 205 operator sees an explicit unavailable state for any identity or runtime fact the firmware cannot prove; live surfaces never substitute fixtures or synthetic placeholders.
@@ -43,11 +43,11 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 ### Correlated Hardware Evidence
 
 - [x] **EVD-10**: A v1.2 hardware run stops before target, credential, flash, reset, monitor, or evidence-promotion work unless `just detect-ultra205` finds exactly one board `205` candidate and board-info succeeds.
-- [x] **EVD-11**: A v1.2 evidence root binds one exact source commit, reference commit, package manifest and digest, board category, boot session, target-lock provenance, and bounded capture chronology.
-- [x] **EVD-12**: A v1.2 evidence root correlates read-only sensor acquisitions with system-info, live-WebSocket, and retained-log projections from the same operator-snapshot revisions.
+- [ ] **EVD-11**: A v1.2 evidence root binds one exact source commit, reference commit, package manifest and digest, independently observed runtime identity, board category, boot session, target-lock provenance, and bounded capture chronology.
+- [ ] **EVD-12**: A v1.2 evidence root validates and correlates substantive read-only sensor acquisitions with system-info, live-WebSocket, and retained-log projections from the same operator-snapshot revisions.
 - [x] **EVD-13**: A v1.2 evidence root correlates pre-PATCH, committed-and-reloaded, and post-reboot hostname observations without recording credentials, network identities, raw targets, or other secret values.
-- [x] **EVD-14**: A v1.2 evidence root passes complete inventory, redaction, lifecycle cleanup, no-actuation, reference-cleanliness, and current-head validation before atomic promotion.
-- [x] **EVD-15**: Phase 35 promotes only explicitly allowlisted operator-runtime parity rows supported by eligible evidence and records deterministic non-promotion for active control, self-test effects, watchdog intervention, mining, credentials, other boards, and every other excluded claim.
+- [ ] **EVD-14**: A v1.2 evidence root passes complete inventory, redaction, lifecycle cleanup, independently evidenced no-actuation, reference-cleanliness, and current-head validation before atomic promotion.
+- [ ] **EVD-15**: The v1.2 evidence workflow promotes only explicitly allowlisted operator-runtime parity rows supported by claim-specific eligible evidence and records deterministic non-promotion for active control, self-test effects, watchdog intervention, mining, credentials, other boards, and every other excluded claim.
 
 ## Future Requirements
 
@@ -80,51 +80,51 @@ Deferred to later milestones and excluded from the v1.2 roadmap.
 
 Explicitly excluded from v1.2 to prevent scope and evidence drift.
 
-| Feature | Reason |
-| --- | --- |
-| Active fan, voltage, reset, power sequencing, ASIC control, or fault injection | Safety-critical effects require a later milestone with recovery and hardware-regression evidence. |
-| Hardware self-test execution or watchdog intervention/load experiments | v1.2 exposes passive state only and cannot manufacture stronger health proof. |
-| BM1366 nonce/result/share diagnostics or any Phase 28.1.1 descendant | The archived lineage is terminal; re-entry requires genuinely new evidence and a separately approved milestone. |
-| CFG-07 runtime-only credential promotion | v1.2 uses only non-secret hostname persistence and does not access or prove Wi-Fi/pool credential handling. |
-| Direct UART, pins, pads, GPIO manipulation, probes, jumpers, or injected signals | Prohibited without fresh explicit authorization and outside the v1.2 observation path. |
-| OTA, rollback, interrupted update, recovery, or OTAWWW | Reserved for the update-and-recovery milestone. |
-| Non-205 boards or non-BM1366 ASIC families | Each device requires its own evidence after the Ultra 205 journey is credible. |
-| Runtime display/input parity, BAP, Stratum v2, telemetry history, scoreboard/share statistics, or AxeOS UI rewrite | None is needed to prove v1.2 operator-ready observation, configuration, identity, and passive health. |
-| Broad “production ready,” “active safety verified,” or “mining verified” language | v1.2 permits only row-specific claims supported by its exact evidence profile. |
+| Feature                                                                                                            | Reason                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Active fan, voltage, reset, power sequencing, ASIC control, or fault injection                                     | Safety-critical effects require a later milestone with recovery and hardware-regression evidence.               |
+| Hardware self-test execution or watchdog intervention/load experiments                                             | v1.2 exposes passive state only and cannot manufacture stronger health proof.                                   |
+| BM1366 nonce/result/share diagnostics or any Phase 28.1.1 descendant                                               | The archived lineage is terminal; re-entry requires genuinely new evidence and a separately approved milestone. |
+| CFG-07 runtime-only credential promotion                                                                           | v1.2 uses only non-secret hostname persistence and does not access or prove Wi-Fi/pool credential handling.     |
+| Direct UART, pins, pads, GPIO manipulation, probes, jumpers, or injected signals                                   | Prohibited without fresh explicit authorization and outside the v1.2 observation path.                          |
+| OTA, rollback, interrupted update, recovery, or OTAWWW                                                             | Reserved for the update-and-recovery milestone.                                                                 |
+| Non-205 boards or non-BM1366 ASIC families                                                                         | Each device requires its own evidence after the Ultra 205 journey is credible.                                  |
+| Runtime display/input parity, BAP, Stratum v2, telemetry history, scoreboard/share statistics, or AxeOS UI rewrite | None is needed to prove v1.2 operator-ready observation, configuration, identity, and passive health.           |
+| Broad “production ready,” “active safety verified,” or “mining verified” language                                  | v1.2 permits only row-specific claims supported by its exact evidence profile.                                  |
 
 ## Traceability
 
 Which phase covers each v1.2 requirement. Populated during roadmap creation.
 
-| Requirement | Phase | Status |
-| --- | --- | --- |
-| OBS-01 | Phase 31 | Complete |
-| OBS-02 | Phase 32 | Complete |
-| OBS-03 | Phase 32 | Complete |
-| OBS-04 | Phase 32 | Complete |
-| OBS-05 | Phase 32 | Complete |
-| OBS-06 | Phase 34 | Complete |
-| CFG-08 | Phase 31 | Complete |
-| CFG-09 | Phase 33 | Complete |
-| CFG-10 | Phase 33 | Complete |
-| CFG-11 | Phase 33 | Complete |
-| CFG-12 | Phase 35 | Complete |
-| CFG-13 | Phase 33 | Complete |
-| SYS-01 | Phase 34 | Complete |
-| SYS-02 | Phase 34 | Complete |
-| SYS-03 | Phase 34 | Complete |
-| SYS-04 | Phase 34 | Complete |
-| SYS-05 | Phase 34 | Complete |
-| HLT-01 | Phase 34 | Complete |
-| HLT-02 | Phase 34 | Complete |
-| HLT-03 | Phase 34 | Complete |
-| HLT-04 | Phase 34 | Complete |
-| EVD-10 | Phase 35 | Complete |
-| EVD-11 | Phase 35 | Complete |
-| EVD-12 | Phase 35 | Complete |
-| EVD-13 | Phase 35 | Complete |
-| EVD-14 | Phase 35 | Complete |
-| EVD-15 | Phase 35 | Complete |
+| Requirement | Phase    | Status   |
+| ----------- | -------- | -------- |
+| OBS-01      | Phase 31 | Complete |
+| OBS-02      | Phase 32 | Complete |
+| OBS-03      | Phase 32 | Complete |
+| OBS-04      | Phase 32 | Complete |
+| OBS-05      | Phase 32 | Complete |
+| OBS-06      | Phase 34 | Complete |
+| CFG-08      | Phase 31 | Complete |
+| CFG-09      | Phase 33 | Complete |
+| CFG-10      | Phase 33 | Complete |
+| CFG-11      | Phase 33 | Complete |
+| CFG-12      | Phase 35 | Complete |
+| CFG-13      | Phase 33 | Complete |
+| SYS-01      | Phase 34 | Complete |
+| SYS-02      | Phase 36 | Pending  |
+| SYS-03      | Phase 34 | Complete |
+| SYS-04      | Phase 34 | Complete |
+| SYS-05      | Phase 34 | Complete |
+| HLT-01      | Phase 34 | Complete |
+| HLT-02      | Phase 34 | Complete |
+| HLT-03      | Phase 34 | Complete |
+| HLT-04      | Phase 34 | Complete |
+| EVD-10      | Phase 35 | Complete |
+| EVD-11      | Phase 36 | Pending  |
+| EVD-12      | Phase 36 | Pending  |
+| EVD-13      | Phase 35 | Complete |
+| EVD-14      | Phase 36 | Pending  |
+| EVD-15      | Phase 36 | Pending  |
 
 **Coverage:**
 
@@ -134,4 +134,4 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 - Duplicate mappings: 0
 
 *Requirements defined: 2026-07-13*
-*Last updated: 2026-07-17 after Phase 34 passed fresh review and independent verification; OBS-06 and SYS-02 are complete*
+*Last updated: 2026-07-23 after the v1.2 milestone audit remapped five gap-closure requirements to Phase 36*

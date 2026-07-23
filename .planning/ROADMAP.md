@@ -4,13 +4,15 @@
 
 - [x] **v1.0 Ultra 205 Parity** — Phases 1–21, shipped 2026-07-04; [archive](./milestones/v1.0-ROADMAP.md).
 - [x] **v1.1 Ultra 205 Trusted Production Mining** — Phases 22–30, including inserted Phases 28.1 and 28.1.1–28.1.1.7, shipped 2026-07-13 with 18/21 requirements satisfied and three accepted unresolved gaps; [archive](./milestones/v1.1-ROADMAP.md).
-- 🚧 **v1.2 Ultra 205 Operator-Ready Runtime** — Phases 31–35 for truthful read-only telemetry, confirmed hostname persistence, runtime identity and passive health, and exact detector-gated evidence.
+- 🚧 **v1.2 Ultra 205 Operator-Ready Runtime** — Phases 31–36 for truthful read-only telemetry, confirmed hostname persistence, runtime identity and passive health, exact detector-gated evidence, and substantive evidence re-admission.
 
 ## Overview
 
 v1.2 makes one Ultra 205 observably configurable and trustworthy during normal operator use. The milestone builds a typed claim contract before hardware integration, establishes one firmware-owned read-only I2C0 lifecycle, confirms a narrow non-secret setting through NVS reload and reboot, composes device truth into one revisioned operator snapshot, and admits only exact claims supported by one detector-gated hardware evidence chain.
 
 The milestone is observation-only. It prohibits active fan, voltage, reset, power, fault-injection, ASIC-control, and self-test effects; mining and all Phase 28.1.1 lineage work; credential access or promotion; direct UART and pin manipulation; OTA and recovery work; other boards; and broad parity or production-readiness promotion. Phase 35 may promote only explicitly allowlisted operator-runtime rows supported by eligible v1.2 evidence.
+
+The 2026-07-23 milestone audit found that Phase 35 admission correlated snapshot identity without validating sensor or runtime-health substance, admitted package-derived rather than independently observed runtime identity, and accepted a self-attested no-actuation fact. Phase 36 closes those evidence-contract gaps and re-evaluates the affected promotions before v1.2 can complete.
 
 ## Phases
 
@@ -21,6 +23,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 - [x] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, and immediately visible storage truth, with a fail-closed classifier ready for later reboot qualification. (completed 2026-07-15 on the remapped software boundary; CFG-12 remains pending for Phase 35)
 - [x] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot. (completed 2026-07-17; 11/11 plans and 10/10 requirements passed)
 - [x] **Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion** — Prove the completed chain on one Ultra 205 and promote only specifically supported rows. (completed 2026-07-23; Attempt 31 admitted four dedicated passive board-205 rows)
+- [ ] **Phase 36: Substantive Evidence Admission and Exact Re-Promotion** — Validate the facts behind each admitted claim, bind independently observed runtime identity and no-actuation proof, and re-evaluate affected promotions.
 
 ## Phase Details
 
@@ -133,6 +136,28 @@ No additional Phase 33 hardware attempt is permitted.
 
 **Verification:** Passed 7/7 requirements at exact hardware source `a51fee794ea5d2d1a7b139d2795611625d6f357a`. Attempt 31 admitted one detector-gated two-epoch root after restoration and cleanup; only `V12-HOSTNAME-205`, `V12-PACKAGE-IDENTITY-205`, `V12-OPERATOR-SNAPSHOT-205`, and `V12-RUNTIME-HEALTH-205` promoted.
 
+**Milestone audit disposition:** Phase 35 remains complete as historical implementation and evidence work, but the v1.2 audit reopened SYS-02, EVD-11, EVD-12, EVD-14, and EVD-15. Phase 36 owns their gap closure and must not treat the four existing promotions as sufficient closure.
+
+### Phase 36: Substantive Evidence Admission and Exact Re-Promotion
+
+**Goal:** Every affected v1.2 promotion is supported by typed admission of the substantive sensor, runtime-health, runtime-identity, and no-actuation facts it claims, with fail-closed correction and exact re-evaluation of prior evidence.
+
+**Depends on:** Phase 35
+
+**Requirements:** SYS-02, EVD-11, EVD-12, EVD-14, EVD-15
+
+**Gap Closure:** Closes all requirement, integration, and flow gaps in `.planning/v1.2-MILESTONE-AUDIT.md`.
+
+**Success Criteria** (what must be TRUE):
+
+1. Evidence admission validates actual sensor truth, values, stamps, failure states, runtime-health state, checkpoint facts, and a typed join between sensor and operator-snapshot boot provenance rather than accepting snapshot identity alone.
+1. The admitted inventory contains a runtime-derived same-device identity observation that independently correlates the running firmware with the exact source, reference, ELF, and flashed package.
+1. No-actuation proof comes from an independent bounded effect ledger or equally strong closed observation; a supervisor-authored Boolean or digest alone cannot authenticate it.
+1. Promotion decisions require claim-specific admitted facts, atomically correct unsupported rows, and re-evaluate Attempt 31 without rewriting private evidence. A new exact-current-source hardware run occurs only if the repaired contract proves the immutable existing artifacts insufficient and a later Phase 36 plan authorizes it.
+1. Phase 34 Nyquist metadata, the project overview, requirement traceability, and the milestone audit are reconciled only after substantive closure passes fresh verification.
+
+**Plans:** 0/0 plans complete
+
 ## Dependency Order
 
 ```text
@@ -141,21 +166,23 @@ Phase 31 claim contract
   -> Phase 33 confirmed storage truth
   -> Phase 34 coherent operator snapshot
   -> Phase 35 correlated evidence and exact promotion
+  -> Phase 36 substantive admission and exact re-promotion
 ```
 
-The order is intentionally evidence-driven: typed claim boundaries precede I/O; the sole telemetry producer precedes settings and snapshot composition; final hardware admission follows the complete software contract. Narrow read-only hardware checks or the approved normal reboot may occur while planning the owning phase, but only Phase 35 may admit final v1.2 parity evidence.
+The order is intentionally evidence-driven: typed claim boundaries precede I/O; the sole telemetry producer precedes settings and snapshot composition; hardware capture follows the complete software contract; and substantive admission precedes final promotion. Narrow read-only hardware checks or the approved normal reboot may occur while planning the owning phase, but only the reviewed Phase 35/36 evidence path may admit final v1.2 parity evidence.
 
 ## Progress
 
-| Phase | Name | Requirements | Status |
-| --- | --- | ---: | --- |
-| 31 | Operator Claim and Telemetry Contract | 2 | Complete |
-| 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
-| 33 | Confirmed Settings Durability | 4 | Complete (8/8 software) |
-| 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Complete |
-| 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | Complete |
+| Phase | Name                                                          | Requirements | Status                                         |
+| ----- | ------------------------------------------------------------- | -----------: | ---------------------------------------------- |
+| 31    | Operator Claim and Telemetry Contract                         |            2 | Complete                                       |
+| 32    | Shared I2C and Read-Only Sensor Acquisition                   |            4 | Complete                                       |
+| 33    | Confirmed Settings Durability                                 |            4 | Complete (8/8 software)                        |
+| 34    | Provenance, Runtime Health, and Coherent Operator Snapshot    |           10 | Complete                                       |
+| 35    | Detector-Gated Correlated Evidence and Exact Parity Promotion |            7 | Complete; milestone audit reopened five claims |
+| 36    | Substantive Evidence Admission and Exact Re-Promotion         |            5 | Pending                                        |
 
-**Overall:** 5/5 phases complete; 27/27 requirements complete.
+**Overall:** 5/6 phases complete; 22/27 requirements satisfied; 5 gap-closure requirements pending.
 
 ## Coverage
 
@@ -165,3 +192,4 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 - Duplicate mappings: 0
 
 *Roadmap created: 2026-07-13*
+*Roadmap updated: 2026-07-23 after the v1.2 milestone audit created Phase 36*
