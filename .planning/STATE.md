@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: in_progress
-stopped_at: Phase 35 Plan 04 Task 2 diagnosing Attempt 28 macOS serial aliases
-last_updated: "2026-07-23T02:48:42Z"
+stopped_at: Phase 35 Plan 04 Task 2 diagnosing Attempt 29 inventory validation
+last_updated: "2026-07-23T03:25:14Z"
 last_activity: "2026-07-23"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-23 - Attempt 28 passed observer qualification and exposed paired macOS callout/dial-in aliasing during recovery
+Last activity: 2026-07-23 - Attempt 29 completed the hardware chain and exposed a byte-level evidence producer/validator mismatch
 
 ## Current Position
 
@@ -25,15 +25,13 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 remains incomplete. Attempts 1 through 28 remain sealed,
-  non-promotable, and non-reusable. Attempt 28 passed initial same-device and
-  receive-only qualification, sent exactly one restart request, and received
-  correlated serial bytes. Recovery then counted the callout and dial-in aliases
-  of one macOS serial service as two physical candidates. A fresh protected GET
-  confirms the original setting is already restored.
-- **Next step:** Commit the Attempt 28 checkpoint, add the paired-alias
-  regression and canonical callout fix, run the complete exact-current-HEAD gate
-  and preflight, then run fresh Attempt 29. Task 3 and `35-04-SUMMARY.md` remain
+- **Status:** Task 2 remains incomplete. Attempts 1 through 29 remain sealed,
+  non-promotable, and non-reusable. Attempt 29 completed the deterministic
+  device-session quorum, restoration, and cleanup, then the typed evidence
+  validator rejected the generated root with `inventory_mismatch`.
+- **Next step:** Commit the Attempt 29 checkpoint, verify the byte-exact epoch
+  artifact repair and regression, run the complete exact-current-HEAD gate and
+  preflight, then run fresh Attempt 30. Task 3 and `35-04-SUMMARY.md` remain
   blocked until Task 2 admits genuinely eligible evidence.
 
 ## Project Reference
@@ -524,20 +522,21 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 28 are sealed,
-  non-promotable, and non-reusable. Attempt 28 selected the new discriminating
-  category `usb_identity_drift` after restart because paired macOS callout and
-  dial-in aliases were counted separately. Fresh Attempt 29 is allowed only
-  after its regression-backed fix, commit, complete software gate, and
-  exact-head preflight. Task 3 and `35-04-SUMMARY.md` remain prohibited until
-  eligible evidence is admitted.
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 29 are sealed,
+  non-promotable, and non-reusable. Attempt 29 reached `ready` at the complete
+  device-session boundary, then selected `validator_rejected`; protected
+  offline diagnosis narrowed it to `inventory_mismatch` caused by newline-added
+  epoch artifact bytes. Fresh Attempt 30 is allowed only after the byte-exact
+  producer regression and fix, commit, complete software gate, and exact-head
+  preflight. Task 3 and `35-04-SUMMARY.md` remain prohibited until eligible
+  evidence is admitted.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 diagnosing Attempt 28 macOS serial aliases
-- **Resume:** Preserve Attempt 28 as sealed, non-promotable, non-reusable
-  evidence. Fix and regression-test callout/dial-in candidate aliasing, commit
-  the repair, pass the complete software gate and exact-head preflight, then
-  execute Attempt 29 once in a fresh protected root. Task 3, evidence admission,
-  checklist promotion, and `35-04-SUMMARY.md` remain blocked until eligible
-  evidence exists.
+- **Stopped at:** Phase 35 Plan 04 Task 2 diagnosing Attempt 29 inventory validation
+- **Resume:** Preserve Attempt 29 as sealed, non-promotable, non-reusable
+  evidence. Commit the checkpoint, finish the byte-exact epoch artifact
+  regression and repair, pass the complete software gate and exact-head
+  preflight, then execute Attempt 30 once in a fresh protected root. Task 3,
+  evidence admission, checklist promotion, and `35-04-SUMMARY.md` remain blocked
+  until eligible evidence exists.

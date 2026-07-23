@@ -1933,3 +1933,58 @@ canonical callout candidate fix, clean commit, complete software gate, and exact
 head preflight. Attempt 28 remains immutable, non-promotable, non-reusable, and
 ineligible for splicing. Task 3, promotion, and `35-04-SUMMARY.md` remain
 blocked.
+
+## Attempt 29 Checkpoint and Evidence-Inventory Boundary
+
+Attempt 29 executed exactly once from clean source
+`037e4de35d48fb3826eb6fd0ae4bc4f769eb9e80` after the complete software gate and
+exact-current-HEAD preflight passed. Package capability
+`4cc69e63b1b2217d2a5ba8630023ea47090b054e51fa4aa426d54829c7a541d1` and the
+fresh protected-root, internal-detector, dual-evidence, single-request, and
+bounded caller contract were preserved.
+
+| Field | Redacted value |
+| --- | --- |
+| Attempt ordinal | `29` |
+| Source commit | `037e4de35d48fb3826eb6fd0ae4bc4f769eb9e80` |
+| Exact-head preflight | `passed` |
+| Supervisor result | `non_promotion` |
+| Primary category | `validator_rejected` |
+| Offline validator category | `inventory_mismatch` |
+| Flash boundary | `ready` |
+| Device-session boundary | `ready` |
+| Same physical device | `true` |
+| Reader armed | `true` |
+| Pre-restart serial delivery | `true` |
+| Restart request attempts | `1` |
+| Restart request fully transmitted | `true` |
+| Restart response received | `true` |
+| Post-restart serial delivery | `true` |
+| Service loss observed | `true` |
+| Trusted origin preserved | `true` |
+| Exact build identity matched | `true` |
+| Boot session changed | `true` |
+| Boot ordinal advanced by one | `true` |
+| Software reset observed | `true` |
+| Persisted postcondition matched | `true` |
+| Restoration secondary | `none` |
+| Cleanup secondary | `none` |
+| Cleanup complete | `true` |
+| Root reusable | `false` |
+| Progress decision | `continue_after_verified_fix` |
+
+Attempt 29 proves the deterministic device-session architecture through the
+entire authorized hardware chain. Admission failed only after restoration and
+cleanup. A protected read-only replay preserved `inventory_mismatch`; staged
+typed checks then isolated the first semantic mismatch to `boot_a_api`. The
+producer decoded each embedded epoch document with `jq -r`, which appends a
+newline to the artifact file, while the Rust validator correctly hashes the
+exact embedded string bytes. The same producer path owns all six Boot A/B API,
+WebSocket, and retained-log artifacts.
+
+Fresh Attempt 30 is permitted only after a regression checks all six embedded
+documents against their artifact bytes, byte-exact emission replaces the
+newline-adding writer, the fix is committed, and the complete software gate and
+exact-head preflight pass. Attempt 29 remains immutable, non-promotable,
+non-reusable, and ineligible for splicing. Task 3, promotion, and
+`35-04-SUMMARY.md` remain blocked.
