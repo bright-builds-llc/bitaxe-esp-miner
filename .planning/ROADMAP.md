@@ -156,7 +156,7 @@ No additional Phase 33 hardware attempt is permitted.
 1. Promotion decisions require claim-specific admitted facts, atomically correct unsupported rows, and re-evaluate Attempt 31 without rewriting private evidence. A new exact-current-source hardware run occurs only if the repaired contract proves the immutable existing artifacts insufficient and a later Phase 36 plan authorizes it.
 1. Phase 34 Nyquist metadata, the project overview, requirement traceability, and the milestone audit are reconciled only after substantive closure passes fresh verification.
 
-**Plans:** 0/0 plans complete
+**Plans:** 1/4 plans executed
 
 ## Dependency Order
 
@@ -180,7 +180,7 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | 33    | Confirmed Settings Durability                                 |            4 | Complete (8/8 software)                        |
 | 34    | Provenance, Runtime Health, and Coherent Operator Snapshot    |           10 | Complete                                       |
 | 35    | Detector-Gated Correlated Evidence and Exact Parity Promotion |            7 | Complete; milestone audit reopened five claims |
-| 36    | Substantive Evidence Admission and Exact Re-Promotion         |            5 | Pending                                        |
+| 36    | 1/4 | In Progress|  |
 
 **Overall:** 5/6 phases complete; 22/27 requirements satisfied; 5 gap-closure requirements pending.
 

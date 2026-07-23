@@ -4,14 +4,14 @@ milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
 stopped_at: Phase 35 complete; v1.2 milestone audit pending
-last_updated: "2026-07-23T16:10:32.519Z"
+last_updated: "2026-07-23T16:50:15.012Z"
 last_activity: "2026-07-23"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 28
-  completed_plans: 24
-  percent: 86
+  completed_plans: 25
+  percent: 89
 ---
 
 # Project State
@@ -20,12 +20,12 @@ Last activity: 2026-07-23
 
 ## Current Position
 
-Phase: 35 (Detector-Gated Correlated Evidence and Exact Parity Promotion) — COMPLETE
-Plan: 4 of 4 completed
+Phase: 36 (substantive-evidence-admission-and-exact-re-promotion) — EXECUTING
+Plan: 1 of 4
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 4 of 4 completed
-- **Status:** Ready to execute
+- **Status:** Executing Phase 36
   coherent Boot A, hostname mutation/readback, exactly-once normal reboot,
   same-device Boot B, restoration, cleanup, inventory, validation, redaction,
   and atomic admission chain. Four dedicated passive board-205 rows are
