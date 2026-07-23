@@ -56,6 +56,7 @@ mod phase35_flash;
 mod phase35_http;
 mod phase35_http_probe;
 mod phase35_promotion;
+mod phase36_evidence;
 mod release_evidence;
 mod release_gate;
 mod safety_allow;
@@ -86,6 +87,7 @@ enum CliCommand {
     ProbePhase35Http(ProbePhase35HttpArgs),
     ValidatePhase35Evidence(ValidatePhase35EvidenceArgs),
     AdmitPhase35Evidence(AdmitPhase35EvidenceArgs),
+    ClassifyPhase36Evidence(ClassifyPhase36EvidenceArgs),
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -168,6 +170,12 @@ struct AdmitPhase35EvidenceArgs {
 
     #[arg(long, value_parser = parse_utf8_path)]
     staging: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct ClassifyPhase36EvidenceArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    root: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -719,12 +727,26 @@ fn main() -> Result<()> {
         CliCommand::AdmitPhase35Evidence(args) => {
             run_admit_phase35_evidence_command(args, &environment)?
         }
+        CliCommand::ClassifyPhase36Evidence(args) => {
+            run_classify_phase36_evidence_command(args, &environment)?
+        }
     };
 
     let mut stdout = io::stdout().lock();
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_classify_phase36_evidence_command(
+    args: ClassifyPhase36EvidenceArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    let protected_root = environment.workspace_path(&args.root);
+    let classification = phase36_evidence::load_and_classify_phase36_root(&protected_root)
+        .map_err(|error| anyhow::anyhow!("category={error}"))?;
+    serde_json::to_string_pretty(&classification)
+        .map_err(|_| anyhow::anyhow!("category=partial_public_output"))
 }
 
 fn run_classify_phase35_flash_command(

@@ -53,6 +53,9 @@ rust_binary(
         "src/phase35_promotion/evaluator.rs",
         "src/phase35_promotion/tests.rs",
         "src/phase35_promotion/types.rs",
+        "src/phase36_evidence.rs",
+        "src/phase36_evidence/contract.rs",
+        "src/phase36_evidence/tests.rs",
         "src/phase32_source_guard.rs",
         "src/phase33_source_guard.rs",
         "src/phase34_source_guard.rs",
@@ -97,4 +100,10 @@ rust_test(
         "//firmware/bitaxe:__pkg__",
         "//scripts:__pkg__",
     ],
+)
+
+rust_test(
+    name = "phase36_evidence_tests",
+    crate = ":report",
+    visibility = ["//visibility:public"],
 )
