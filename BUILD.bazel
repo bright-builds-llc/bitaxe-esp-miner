@@ -17,6 +17,10 @@ exports_files([
     "docs/parity/evidence/phase-29-evidence-workflow-automation-closure/summary.md",
     "docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md",
     "docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md",
+    "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/.phase35-generation-manifest.json",
+    "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/admitted.json",
+    "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/decision-matrix.json",
+    "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/projection.json",
 ])
 
 filegroup(

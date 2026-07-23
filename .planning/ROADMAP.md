@@ -20,7 +20,7 @@ The milestone is observation-only. It prohibits active fan, voltage, reset, powe
 - [x] **Phase 32: Shared I2C and Read-Only Sensor Acquisition** — Establish one bounded I2C0 owner for startup display handoff and read-only INA260/EMC2101 observations. (completed 2026-07-14)
 - [x] **Phase 33: Confirmed Settings Durability** — Make hostname PATCH success mean committed, reloaded, reconciled, and immediately visible storage truth, with a fail-closed classifier ready for later reboot qualification. (completed 2026-07-15 on the remapped software boundary; CFG-12 remains pending for Phase 35)
 - [x] **Phase 34: Provenance, Runtime Health, and Coherent Operator Snapshot** — Publish identity, runtime facts, passive health, settings, and telemetry from one boot session and revisioned snapshot. (completed 2026-07-17; 11/11 plans and 10/10 requirements passed)
-- [ ] **Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion** — Prove the completed chain on one Ultra 205 and promote only specifically supported rows.
+- [x] **Phase 35: Detector-Gated Correlated Evidence and Exact Parity Promotion** — Prove the completed chain on one Ultra 205 and promote only specifically supported rows. (completed 2026-07-23; Attempt 31 admitted four dedicated passive board-205 rows)
 
 ## Phase Details
 
@@ -129,7 +129,9 @@ No additional Phase 33 hardware attempt is permitted.
 1. Inventory, redaction, lifecycle cleanup, no-actuation, reference-cleanliness, and current-head validation all pass before atomic evidence admission.
 1. Only explicitly allowlisted operator-runtime parity rows supported by eligible evidence promote; active control, self-test effects, watchdog intervention, mining and Phase 28.1.1, credentials, direct UART/pins, OTA, other boards, and every other excluded or broad claim receive deterministic non-promotion.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
+
+**Verification:** Passed 7/7 requirements at exact hardware source `a51fee794ea5d2d1a7b139d2795611625d6f357a`. Attempt 31 admitted one detector-gated two-epoch root after restoration and cleanup; only `V12-HOSTNAME-205`, `V12-PACKAGE-IDENTITY-205`, `V12-OPERATOR-SNAPSHOT-205`, and `V12-RUNTIME-HEALTH-205` promoted.
 
 ## Dependency Order
 
@@ -151,9 +153,9 @@ The order is intentionally evidence-driven: typed claim boundaries precede I/O; 
 | 32 | Shared I2C and Read-Only Sensor Acquisition | 4 | Complete |
 | 33 | Confirmed Settings Durability | 4 | Complete (8/8 software) |
 | 34 | Provenance, Runtime Health, and Coherent Operator Snapshot | 10 | Complete |
-| 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | In Progress (3/4 plans) |
+| 35 | Detector-Gated Correlated Evidence and Exact Parity Promotion | 7 | Complete |
 
-**Overall:** 4/5 phases complete; 27/27 requirements complete.
+**Overall:** 5/5 phases complete; 27/27 requirements complete.
 
 ## Coverage
 

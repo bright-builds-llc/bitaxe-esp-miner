@@ -1,0 +1,216 @@
+{
+  "evidence_root_digest": "0401e7b485df2d1ccfc67e63845f98b6217816a184901bf0595d03af3219757d",
+  "checklist_fingerprint_before": "084881fb20c73c96dfd63c088c2af51c8578ddc480e8ea733304a51a753eb655",
+  "checklist_fingerprint_after": "fef11cb2ef13b72c92976311eb6aaba4d5c1eba48f2e005be02588e9d1c49fc6",
+  "scope_decisions": [
+    [
+      "passive_hostname_durability",
+      {
+        "decision": "promote",
+        "row_id": "V12-HOSTNAME-205",
+        "evidence_root_digest": "0401e7b485df2d1ccfc67e63845f98b6217816a184901bf0595d03af3219757d"
+      }
+    ],
+    [
+      "exact_source_reference_package_identity",
+      {
+        "decision": "promote",
+        "row_id": "V12-PACKAGE-IDENTITY-205",
+        "evidence_root_digest": "0401e7b485df2d1ccfc67e63845f98b6217816a184901bf0595d03af3219757d"
+      }
+    ],
+    [
+      "coherent_operator_snapshot",
+      {
+        "decision": "promote",
+        "row_id": "V12-OPERATOR-SNAPSHOT-205",
+        "evidence_root_digest": "0401e7b485df2d1ccfc67e63845f98b6217816a184901bf0595d03af3219757d"
+      }
+    ],
+    [
+      "passive_runtime_health_projection",
+      {
+        "decision": "promote",
+        "row_id": "V12-RUNTIME-HEALTH-205",
+        "evidence_root_digest": "0401e7b485df2d1ccfc67e63845f98b6217816a184901bf0595d03af3219757d"
+      }
+    ],
+    [
+      "active_control",
+      {
+        "decision": "do_not_promote",
+        "scope": "active_control",
+        "reason": "active_control_excluded"
+      }
+    ],
+    [
+      "self_test_effects",
+      {
+        "decision": "do_not_promote",
+        "scope": "self_test_effects",
+        "reason": "self_test_effects_excluded"
+      }
+    ],
+    [
+      "watchdog_intervention",
+      {
+        "decision": "do_not_promote",
+        "scope": "watchdog_intervention",
+        "reason": "watchdog_intervention_excluded"
+      }
+    ],
+    [
+      "mining_stratum_asic",
+      {
+        "decision": "do_not_promote",
+        "scope": "mining_stratum_asic",
+        "reason": "mining_stratum_asic_excluded"
+      }
+    ],
+    [
+      "archived_phase28_1_1",
+      {
+        "decision": "do_not_promote",
+        "scope": "archived_phase28_1_1",
+        "reason": "archived_phase28_1_1_excluded"
+      }
+    ],
+    [
+      "credentials",
+      {
+        "decision": "do_not_promote",
+        "scope": "credentials",
+        "reason": "credentials_excluded"
+      }
+    ],
+    [
+      "direct_uart_or_pins",
+      {
+        "decision": "do_not_promote",
+        "scope": "direct_uart_or_pins",
+        "reason": "direct_uart_or_pins_excluded"
+      }
+    ],
+    [
+      "ota_or_recovery",
+      {
+        "decision": "do_not_promote",
+        "scope": "ota_or_recovery",
+        "reason": "ota_or_recovery_excluded"
+      }
+    ],
+    [
+      "other_boards",
+      {
+        "decision": "do_not_promote",
+        "scope": "other_boards",
+        "reason": "other_boards_excluded"
+      }
+    ],
+    [
+      "lifecycle_test_only_proof",
+      {
+        "decision": "do_not_promote",
+        "scope": "lifecycle_test_only_proof",
+        "reason": "lifecycle_test_only_proof_excluded"
+      }
+    ],
+    [
+      "broader_or_unmapped_rows",
+      {
+        "decision": "do_not_promote",
+        "scope": "broader_or_unmapped_rows",
+        "reason": "broader_or_unmapped_row_excluded"
+      }
+    ]
+  ],
+  "preserved_row_fingerprints": {
+    "API-001": "fdedcbad060657a117311c873acdfcfbebb9f8c13542733c6638e221afec0620",
+    "API-002": "ee50e66cd16cefe943c4b8a3d1c5ab71cb1a6f74df3047920ee9734e6a340ca6",
+    "API-003": "06aa5f2b3bf2cf67f1e7b9f532b05dcaa04d7b036585535cf8c08f081fcc4dd1",
+    "API-004": "924b4c3aa9a289dcc431e120787e82aa74c77d71132fd4bc362cc9d84bfef6c6",
+    "API-005": "a9126584d4bdc906354dc8e89f695af1fca797a8dd209aaa39130dd363ae4146",
+    "API-006": "43784f202fa337ffd31d4d0391da8964ae1859f3e94aaaeaed3aef7dc658136e",
+    "API-007": "b682c8881b05ef81351b3072e6cf5817715b3b4b01e6eee19f92f306b8996eea",
+    "API-008": "2216bf306a3958f43f560314e67e791d38f90a3874cda0ed0915de90fed09686",
+    "ASIC-001": "1820899c63aa2a4ffb7a43ada4cb560c00f7dcd8e5c5ee2e4991cf6b4fe1a819",
+    "ASIC-002": "00f32efa08f6b8d56887138ac8de5ba276d0685f10ec27c10e03e632b15510c0",
+    "ASIC-003": "7a65524697fd97d5293ef2e3977c5e0becdc3b766b44c06debc5280741abb18b",
+    "ASIC-004": "16edc25b05ff88be6e038e58e088554d1c8796b6d0263fd39dabb71be6bb7e31",
+    "ASIC-005": "2d94f3dc902522b800b2d72d32cc97e19222cd568ae64abb1416e031fa7f486b",
+    "ASIC-006": "0a256f86665dd5454df9c66cf8134dada32cd3bc3467dbde7fd01210457f9cf4",
+    "ASIC-007": "8979ce236437a56051790f47867a9e0e7a5af390443c9cbc94bddc0598846ea1",
+    "ASIC-008": "a44c5657c381846190b312a2ae15e5717db03c65c85e5630c91e50bc3ebd5910",
+    "ASIC-009": "eb07fdfe01fa24126ea626478f9dd07d503b4558ac88685a06b92253973dc5ea",
+    "ASIC-010": "08d86700e254d70b9389b1d4f74effd8a6585a17c325516fc6439ed7133befed",
+    "ASIC-09": "58af316b675a022d6f9dd54537b95e49383404df7ed4f453b15e7b9c25c1744f",
+    "ASIC-10": "4198f97a2483856356cd889d230fc0a5fb49b841833a7065a93f7d20e06dd02e",
+    "ASIC-11": "c57a084ca44c99d2c54f4a931e4c44913c5084568d7aaa4401b1acc605f4d7d6",
+    "ASIC-12": "9c8eb22f35af36b6fe8ee90e78e4f924467a36ae2820399bb52be723e0e25555",
+    "BAP-001": "04446dbe77a25f73b0605e7d37283fdd5f9a491f672ab41330341f72cbdee6e0",
+    "BAP-002": "a0f58f762680f4b003e703678c460aa8af3740adf9257874e96cf4b0080a6356",
+    "CFG-001": "6a6f77546badf108db5563dec8f4ed9ab68c41e991bed76d1acca96961f9d90e",
+    "CFG-002": "e5c5b15031b3c740a1cadb9edbcfa726d2b3259ece672a94024d47bff0ccb4f7",
+    "CFG-003": "ced4271ce6baa8990833e4ac1a1a2ef81c2b24e91abe2307b5c915f26ab2117c",
+    "CFG-004": "f7788752d50030dfc589d13cd3747403a5b0a29bcb881f18ee1033e6a226e612",
+    "CFG-005": "18d1647fc245cc3560b159b9a0004711cccfe38d6c3c49cff74699914bb7e1c8",
+    "CFG-07": "19b5de7033d7ea118c25abe27cd137a6ca070de53b9c731ccc26404d76c66123",
+    "EVD-06": "60175e5f4ec4a5a96297d0e1adb51c46c2784e4cb829a992a2222233742d8e8b",
+    "EVD-07": "421d99f67b4cbee1e41477a8d9e7237c9c1e81ebef8187ddaae6af8dd69ca946",
+    "EVD-08": "d533eb46abb43c40206207ff6b28f25fc3ba9e157dfd28cc469434845570a84b",
+    "EVD-09": "0d73d640d235aa4e8457e75672153a1416e877270cfa86b2f1b9950387a96c4c",
+    "FS-001": "167784405554826935b396223e848e475f30d2eadf28a188d159d83a626b4c69",
+    "IO-001": "93da50b6913b0a17bd71d24466d04d52e60e2984e0a0a2686a5231e9644ee6aa",
+    "IO-002": "493a3c86b06297af4da080280148052394f9241168d5e3807c91cd59c8582388",
+    "LOG-001": "20bc9eacd05b2e34e5d719663253599c6ae61659961bfd6ca3a8c13cb1ac7977",
+    "OTA-001": "60e21436f81f9855e9d2ce6de8678d022943f4eec7441d9da40da9167e84657c",
+    "OTA-002": "8c652c3a68a5c08e058b8607ade2bb708a455f63b77c0ed4e9285c6b3678c379",
+    "PWR-001": "b2b615551f24de4eb2b187f7ac1aaf3befae6f73947d29fad805143c488d4058",
+    "PWR-002": "d79abe5bd919c43b3edb841f2bf106552c048703dd7982ede7f438ebd5dccf53",
+    "PWR-003": "d74abe8332b9ab136e5f75ba73bb147af9ba4615575bd83b78b8be4562077a8f",
+    "PWR-004": "a481fa0ed29ccec298d54677b24db72ff727447f2428134c53dd43b0bbca7d20",
+    "PWR-005": "111bd16e24c77c41e840635bbc3199573583d1738d7c5c79a7e394f350f0e4dc",
+    "PWR-006": "653a6af93a32aced8c4bbb3146b7a02ee5c6d6c21ec73f9ef4db39360da869ae",
+    "REL-001": "e4bd20fe0f32fc89dadc16c6d7f00c1b7054aa67ecbe37de30abb08497c71e4f",
+    "REL-002": "e81a9ca399960c3bee4a026ec1cc92e04d886ca8f0934e980aae06fa68518f23",
+    "REL-003": "9cd9e814fde8b1361b8d840b755dee2b955ecc2db012b1609f0771d035dd06a5",
+    "REL-09": "c787f0b31af6f7d7be4202d4bdfa141204f84a1642098bc077141abb8453920f",
+    "SAFE-10": "9d3b8f9b0f764ba877a52bae07b1b93411acf51191eadeb9811b5bd6d3959711",
+    "SAFE-11": "d9bba737c75e120f58d323596dcbc84f5e0de06d60131bec412247d068925006",
+    "SAFE-12": "34464e78e629c3f122940462d922d7bef038809140d80691e4e156c05baa7a13",
+    "SAFE-13": "a73b83933d28a16b717c874749fac15cf633f3b671e3f823674b69858d7930e7",
+    "SELF-001": "54bcd975ccf2787f7c5792c4827bf05b30b555c1620547ec4a7663682f7ecf85",
+    "STAT-001": "7cb7dcbe91600cb0a41d073f50b75e6cc928447dcd844f873250d56f1c62cc65",
+    "STAT-002": "9a78ec1652a85f586d83ff48ac39a0b4928695c0a1f9d6b1b8b697f6cc9afc4e",
+    "STAT-003": "3d41ed373ffadc94255471fdf366d54bf6a43467b3be7efa5b763db0fc484a1f",
+    "STAT-004": "833195e3765d3b5d1ce5219e3ab6dff159ab29c1ed66a4a175fcb91ce45a42ed",
+    "STR-001": "df6b2196ca12e0d443e14db0b04089386f927c4701c499465163dffc0ea17912",
+    "STR-002": "4e1a56c0be2c9b66a927df8755eb592100132d35fca7f14219c48214c553bd75",
+    "STR-003": "b3705629e5f924d652dcd1f1048af7fe1dcbb6fb62fa4e8659ed03e9204062fc",
+    "STR-004": "a2e61a0b3a491ec4c48935678234cdc1c0f8dc727aba9c9d7cfe6db5436124a2",
+    "STR-005": "7992bcc5ac6bd6aaddb25d74547ad1e6ad3baa9d326c3c5371d7f63930d76b52",
+    "STR-006": "9c43d833c19e1a7de64d3eb9d2b3a7b6c63de9bbd1ef0fbc4184c92032023c62",
+    "STR-007": "c88f55852c1eb191801ae8689e3bd25cb8859438c13a00db887197313bbb854f",
+    "STR-008": "20f284cc8134fddbb2d98e9c5372e91e77779612d65eb51e55fd0f0d8a39955f",
+    "STR-08": "3fb25d057e635716db2d007a85a4094d6b3415affa855c489bacc5ab31e68fc8",
+    "STR-09": "94ad5de2d9484c6d4eb3b0aa89bee9fe5fa7ea40caa5f27281a3c944247a0430",
+    "STR-10": "ee74f1518467530da95a76fcfb00b83e49a16b422df29d3458acee17c9c002d5",
+    "STR-11": "a2d3590edfb750de76a6141d075db3e2ce3a19aa3ef816f5d0ca75a60020e26b",
+    "SYS-001": "d570761bd3e62fe3af93a6daa392290b1f33c9aacdf4a90d2b4e7c10b7321af3",
+    "SYS-002": "c18e12209d9019ad988555bd7d9a0571dbdaf3a529239348d3b272cccd269e93",
+    "SYS-003": "fece41ba7802217c8a9e869d5d082fb721e05248b474c4622fa7d50f60c5ec52",
+    "SYS-004": "f4d983a76629a2d6e9617d0d9149b7fecbec076f37831f3d865d539237fdb5ea",
+    "SYS-005": "30a5f255cd8f79abe14181629cf91937f3dfdddcf158ac8962e2bc14a58d9e6b",
+    "THR-001": "b8bfdacdf717b6cc51cbf3c8c02eb0a4776e3561a1696512c11b005db3d13154",
+    "THR-002": "d3d34e22304e97ba528e320813775612b86a11ace3b1fa4bbe164f5d44042977",
+    "THR-003": "7e0cc2f145b79ea30a36fd2e94d00a0180c2f41b78803dfb6cd2dd894a99a7b4",
+    "UI-001": "175c7a4ca698de0c4e90fdc05585e21223fc8d49b5e884a1475bf603f85c7afd",
+    "UI-002": "7c6506f36491b31a87c9d2fc917d672a1b7cfecbd28ad12fec812c56805acc33",
+    "UI-003": "9e89b38a555572cae223850433d44d284797455c252fea08ac01b64c2b746ee0",
+    "WF-001": "1c4309dd8f496c4cb30df0c00c495f3d8ed77eb0fcb00f4be352a8ba0b7b798e",
+    "WF-002": "71564b00e56f05d7ff8ba5d46a54318644ace914984eef1a8ec740905a16e98c",
+    "WF-003": "097f76bea6871f87a84299e0f1d50e9f15abfdcff09608a30bbd4c3836f37fbe",
+    "WF-004": "bc044c978204ef1dc37df8443b6eb595ef8340fe53922a124979c6904ebdc3c0",
+    "WF-005": "58d1e7049faa3e8c5daefad02535422b209458c85a864a1067494967cf968a79"
+  }
+}

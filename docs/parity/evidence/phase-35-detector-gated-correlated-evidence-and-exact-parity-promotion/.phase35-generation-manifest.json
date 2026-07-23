@@ -1,0 +1,7 @@
+{
+  "checklist_sha256": "fef11cb2ef13b72c92976311eb6aaba4d5c1eba48f2e005be02588e9d1c49fc6",
+  "matrix_sha256": "cf53f575a05f2aa84235548511743759c4928086d4a34e65d316c3a1b63832fe",
+  "projection_sha256": "3e0eab6db782745eaa6bd250690ea21c65c39cd3a216acda17e9ef374d2e68b0",
+  "root_digest": "0401e7b485df2d1ccfc67e63845f98b6217816a184901bf0595d03af3219757d",
+  "schema": "phase35-generation-v1"
+}

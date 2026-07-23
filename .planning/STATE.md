@@ -3,37 +3,35 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: in_progress
-stopped_at: Phase 35 Plan 04 Task 2 preparing exact-head Attempt 31
-last_updated: "2026-07-23T04:02:55Z"
+stopped_at: Phase 35 complete; milestone audit pending
+last_updated: "2026-07-23T04:22:38Z"
 last_activity: "2026-07-23"
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 24
-  completed_plans: 23
-  percent: 96
+  completed_plans: 24
+  percent: 100
 ---
 
 # Project State
 
-Last activity: 2026-07-23 - Attempt 30 completed hardware but its redundant checklist publication failed the redaction gate
+Last activity: 2026-07-23 - Attempt 31 admitted the exact Phase 35 root and promoted only four passive board-205 rows
 
 ## Current Position
 
-Phase: 35 (Detector-Gated Correlated Evidence and Exact Parity Promotion) — IN PROGRESS
-Plan: 3 of 4 completed
+Phase: 35 (Detector-Gated Correlated Evidence and Exact Parity Promotion) — COMPLETE
+Plan: 4 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
-- **Plan:** 3 of 4 completed
-- **Status:** Task 2 remains incomplete. Attempts 1 through 30 are immutable,
-  non-promotable, and non-reusable. Attempt 30 completed the authoritative
-  hardware chain, restoration, cleanup, and typed root validation, but the
-  redaction gate rejected a redundant full-checklist copy in the candidate
-  admitted generation.
-- **Next step:** Commit this Attempt 30 checkpoint, run the complete
-  exact-current-HEAD gate and preflight for the narrow publication repair at
-  `d5224161`, then run fresh Attempt 31. Task 3 and `35-04-SUMMARY.md` remain
-  blocked until a commit-safe eligible generation is admitted.
+- **Plan:** 4 of 4 completed
+- **Status:** Attempt 31 completed the exact-current-package detector, flash,
+  coherent Boot A, hostname mutation/readback, exactly-once normal reboot,
+  same-device Boot B, restoration, cleanup, inventory, validation, redaction,
+  and atomic admission chain. Four dedicated passive board-205 rows are
+  verified; all excluded and broad scopes remain explicit non-promotions.
+- **Next step:** Run the v1.2 milestone audit. Do not widen the admitted Phase
+  35 evidence beyond its four passive board-205 claims.
 
 ## Project Reference
 
@@ -523,20 +521,13 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 30 are
-  immutable non-promotion history. Attempt 30 reached an eligible typed root,
-  but the commit guard rejected the candidate publication because it copied the
-  complete historical checklist into the admitted-evidence tree. The publisher
-  now emits only projection, matrix, verdict, and manifest while atomically
-  updating and fingerprinting the canonical checklist. Fresh Attempt 31 is
-  allowed only after this checkpoint, the complete software gate, and exact-head
-  preflight pass.
+- None for Phase 35. Attempts 1 through 30 remain immutable non-promotion
+  history; Attempt 31 is the sole admitted generation. Milestone completion is
+  an administrative follow-up and cannot broaden the admitted evidence.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 preparing exact-head Attempt 31
-- **Resume:** Preserve Attempt 30 and its rolled-back candidate publication as
-  immutable non-promotion history. Commit this checkpoint, pass the complete
-  software gate and exact-head preflight, then execute Attempt 31 once in a
-  fresh protected root. Task 3, evidence admission, checklist promotion, and
-  `35-04-SUMMARY.md` remain blocked until commit-safe eligible evidence exists.
+- **Stopped at:** Phase 35 complete; v1.2 milestone audit pending
+- **Resume:** Audit the v1.2 milestone against its requirements and admitted
+  evidence. Preserve the Phase 35 root digest, exact four-row allowlist, eleven
+  typed non-promotions, and immutable Attempts 1 through 30 history.

@@ -1412,6 +1412,70 @@ splicing because its source predates the repair. Fresh Attempt 31 is permitted
 only after this checkpoint, the complete software gate, and exact-current-HEAD
 preflight pass. Task 3, promotion, and `35-04-SUMMARY.md` remain blocked.
 
+## Attempt 31 Admitted Exact Evidence
+
+Attempt 31 executed exactly once from clean source
+`a51fee794ea5d2d1a7b139d2795611625d6f357a` after the ordered Rust gate,
+focused Phase 35 suites, reference, parity, lifecycle, redaction,
+hardware-policy, and exact-current-HEAD preflight passed. The private parent,
+nonexistent supervisor child, mode-`0600` sibling log, internal detector, dual
+evidence, 360-second device-session bound, and caller margin matched the
+approved contract.
+
+| Field | Redacted value |
+| --- | --- |
+| Attempt ordinal | `31` |
+| Source commit | `a51fee794ea5d2d1a7b139d2795611625d6f357a` |
+| Reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
+| Package capability digest | `b56ede0fff8b6785de15d8914bc880f6f082254d702a25cf8b3fb4f203a5444b` |
+| Evidence root digest | `0401e7b485df2d1ccfc67e63845f98b6217816a184901bf0595d03af3219757d` |
+| Lifecycle ID | `35-2026-07-17T17-00-37` |
+| Board category | `205` |
+| Exact-head preflight | `passed` |
+| Flash boundary | `ready` |
+| Device-session boundary | `ready` |
+| Same physical device | `true` |
+| Reader armed | `true` |
+| Pre/post restart serial delivery | `true` / `true` |
+| Restart request attempts | `1` |
+| Restart response received | `true` |
+| Trusted origin preserved | `true` |
+| Application recovered | `true` |
+| Exact build identity matched | `true` |
+| Boot session changed | `true` |
+| Boot ordinals | `1` / `2` |
+| Software reset observed | `true` |
+| Persisted postcondition matched | `true` |
+| Coherent snapshot counts | `3` / `3` |
+| Event count | `9` |
+| Inventory count | `14` |
+| Restoration verified | `true` |
+| Cleanup verified | `true` |
+| Admission status | `admitted` |
+| Progress decision | `complete` |
+
+The authoritative reboot used one fully transmitted, answered restart request.
+The OS-native receive-only observer remained correlated before and after the
+restart; the trusted HTTP origin proved the exact build, changed boot session,
+`N → N+1` ordinal, `software_cpu`, and persisted postcondition. The byte-exact
+inventory and typed root validator passed without relaxation.
+
+Atomic publication admitted only the redacted projection, decision matrix,
+verdict, and manifest while fingerprinting and atomically updating the canonical
+checklist. The only promoted rows are:
+
+- `V12-HOSTNAME-205`
+- `V12-PACKAGE-IDENTITY-205`
+- `V12-OPERATOR-SNAPSHOT-205`
+- `V12-RUNTIME-HEALTH-205`
+
+The decision matrix explicitly does not promote active control, self-test
+effects, watchdog intervention, mining/Stratum/ASIC, archived Phase 28.1.1,
+credentials, direct UART/pins, OTA/recovery, other boards, lifecycle-only proof,
+or broader/unmapped rows. All 87 preserved checklist row fingerprints remained
+unchanged. Attempts 1 through 30 remain immutable, non-promotable, non-reusable,
+and ineligible for splicing. Phase 35 requires no further hardware attempt.
+
 ## Attempt 18 Diagnostic Repair and Attempt 19 Authority
 
 Protected structural inspection isolated the failure to the handoff between a

@@ -1,0 +1,26 @@
+{
+  "schema": "phase35-evidence-v1",
+  "root_digest": "0401e7b485df2d1ccfc67e63845f98b6217816a184901bf0595d03af3219757d",
+  "package_capability_digest": "b56ede0fff8b6785de15d8914bc880f6f082254d702a25cf8b3fb4f203a5444b",
+  "detector_capability_digest": "e737519ca0bf8d086140717a088168d0dbfe94a6a3c8719334c16ed9468adcaa",
+  "run_digest": "44850fa63f3494be030df7dd9c9577c93d7e7cffdea23c9b43e3f2bb39a9b0c6",
+  "board_category": "205",
+  "event_count": 9,
+  "inventory_count": 14,
+  "boot_a": {
+    "session_digest": "1464f3bbb278fde9de6dc0765ed1d8780e9aae16732c23a02c2fb827d52fb67b",
+    "ordinal": 1,
+    "revision": 621,
+    "duration_millis": 1808,
+    "setting_digest": "78dda77a13e3d93ea1e2f1bc595aefdf8ff5c02a3133b212c662c956524dd572",
+    "coherent_snapshot_count": 3
+  },
+  "boot_b": {
+    "session_digest": "c3d5774c5b3eb8a06df7771ffdffd586a9a235c68087448db410a2e072f17919",
+    "ordinal": 2,
+    "revision": 4,
+    "duration_millis": 698,
+    "setting_digest": "78dda77a13e3d93ea1e2f1bc595aefdf8ff5c02a3133b212c662c956524dd572",
+    "coherent_snapshot_count": 3
+  }
+}
