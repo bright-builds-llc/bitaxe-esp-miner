@@ -329,7 +329,7 @@ fn parse_ioreg(text: &str) -> Result<Vec<Candidate>> {
 }
 
 fn parse_property(line: &str) -> Option<(&str, &str)> {
-    let trimmed = line.trim();
+    let trimmed = line.trim_start_matches([' ', '|']);
     let rest = trimmed.strip_prefix('"')?;
     let (key, value) = rest.split_once("\" = ")?;
     Some((key, value.trim()))
@@ -381,5 +381,22 @@ mod tests {
             candidates[0].physical_identity_digest,
             candidates[0].enumeration_token
         );
+    }
+
+    #[test]
+    fn ioreg_parser_accepts_branch_prefixed_nested_properties() {
+        // Arrange
+        let port = tempfile::NamedTempFile::new().expect("temporary node must exist");
+        let port = port.path().to_string_lossy();
+        let fixture = format!(
+            "+-o usb  <class IOUSBHostDevice>\n  | \"idVendor\" = 1234\n  | \"idProduct\" = 5678\n  | \"USB Serial Number\" = \"stable\"\n  | +-o interface  <class IOUSBHostInterface>\n  |   | \"idVendor\" = 1234\n  |   | \"idProduct\" = 5678\n  |   | +-o serial  <class IOSerialBSDClient>\n  |   |   \"IOCalloutDevice\" = \"{port}\"\n"
+        );
+
+        // Act
+        let candidates = parse_ioreg(&fixture).expect("nested fixture must parse");
+
+        // Assert
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].port, port);
     }
 }
