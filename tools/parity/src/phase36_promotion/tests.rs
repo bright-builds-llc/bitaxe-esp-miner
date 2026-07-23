@@ -108,7 +108,7 @@ fn independent_effect() -> ValidatedIndependentEffectInterval {
     }
 }
 
-fn prerequisites() -> Phase36ClaimPrerequisites {
+pub(crate) fn prerequisites() -> Phase36ClaimPrerequisites {
     let evidence = EligibleFixture::new()
         .validate()
         .expect("Phase 35 fixture must validate");
