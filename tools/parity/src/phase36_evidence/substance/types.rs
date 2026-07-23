@@ -44,6 +44,7 @@ pub struct ValidatedRuntimeHealthSubstance {
 pub struct SubstantiveSnapshotJoin {
     pub operator_boot_session_digest: String,
     pub operator_snapshot_revision: u64,
+    pub maybe_producer_boot_session: Option<u64>,
     pub maybe_power_stamp: Option<ObservationStamp>,
     pub maybe_temperature_stamp: Option<ObservationStamp>,
     pub maybe_tachometer_stamp: Option<ObservationStamp>,

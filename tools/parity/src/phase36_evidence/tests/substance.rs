@@ -313,6 +313,22 @@ fn phase36_substance_rejects_reused_unrelated_sensor_stamp() {
 }
 
 #[test]
+fn phase36_substance_rejects_mixed_producer_boot_sessions() {
+    // Arrange
+    let mut value = projection();
+    value["chipTempStatus"]["stamp"]["bootSession"] = serde_json::json!(8);
+
+    // Act
+    let result = classify(&value);
+
+    // Assert
+    assert_eq!(
+        result,
+        Err(SubstantiveEvidenceError::MixedSnapshotProvenance)
+    );
+}
+
+#[test]
 fn phase36_substance_rejects_compatibility_zero_claimed_fresh_without_stamp() {
     // Arrange
     let mut value = projection();

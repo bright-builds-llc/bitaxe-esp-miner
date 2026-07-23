@@ -146,6 +146,8 @@ fn validate_projection(
     let temperature_state = validate_observation_state(&raw.chip_temp_status, raw.temp == 0.0)?;
     let tachometer_state = validate_observation_state(&raw.fan_rpm_status, raw.fan_rpm == 0)?;
     reject_reused_unrelated_stamps(&power_state, &temperature_state, &tachometer_state)?;
+    let maybe_producer_boot_session =
+        shared_producer_boot_session(&power_state, &temperature_state, &tachometer_state)?;
 
     let power = ValidatedPowerObservation {
         maybe_current_milliamps: fresh_milli_value(&power_state, raw.current)?,
@@ -165,6 +167,7 @@ fn validate_projection(
     let join = SubstantiveSnapshotJoin {
         operator_boot_session_digest: sha256_hex(raw.boot_session.as_bytes()),
         operator_snapshot_revision: raw.operator_snapshot_revision,
+        maybe_producer_boot_session,
         maybe_power_stamp: power.state.maybe_stamp().cloned(),
         maybe_temperature_stamp: temperature.state.maybe_stamp().cloned(),
         maybe_tachometer_stamp: tachometer.state.maybe_stamp().cloned(),
@@ -318,6 +321,26 @@ fn reject_reused_unrelated_stamps(
         }
     }
     Ok(())
+}
+
+fn shared_producer_boot_session(
+    power: &ObservationState,
+    temperature: &ObservationState,
+    tachometer: &ObservationState,
+) -> Result<Option<u64>, SubstantiveEvidenceError> {
+    let mut sessions = [
+        power.maybe_stamp(),
+        temperature.maybe_stamp(),
+        tachometer.maybe_stamp(),
+    ]
+    .into_iter()
+    .flatten()
+    .map(|stamp| stamp.boot_session);
+    let maybe_session = sessions.next();
+    if sessions.any(|session| Some(session) != maybe_session) {
+        return Err(SubstantiveEvidenceError::MixedSnapshotProvenance);
+    }
+    Ok(maybe_session)
 }
 
 fn fresh_milli_value(
