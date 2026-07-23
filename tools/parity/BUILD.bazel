@@ -3,11 +3,13 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 exports_files(
     [
         "fixtures/phase36/eligible.json",
+        "fixtures/phase36/independent-effects-eligible.json",
         "fixtures/phase36/runtime-identity-package.json",
         "fixtures/phase36/substance-eligible.json",
         "src/main.rs",
         "src/phase36_evidence.rs",
         "src/phase36_evidence/contract.rs",
+        "src/phase36_evidence/effects.rs",
     ],
     visibility = ["//scripts:__pkg__"],
 )
@@ -67,11 +69,13 @@ rust_binary(
         "src/phase35_promotion/types.rs",
         "src/phase36_evidence.rs",
         "src/phase36_evidence/contract.rs",
+        "src/phase36_evidence/effects.rs",
         "src/phase36_evidence/runtime_identity.rs",
         "src/phase36_evidence/runtime_identity/ledger.rs",
         "src/phase36_evidence/substance.rs",
         "src/phase36_evidence/substance/types.rs",
         "src/phase36_evidence/tests.rs",
+        "src/phase36_evidence/tests/effects.rs",
         "src/phase36_evidence/tests/mutations.rs",
         "src/phase36_evidence/tests/runtime_identity.rs",
         "src/phase36_evidence/tests/substance.rs",

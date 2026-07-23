@@ -7,6 +7,7 @@ use camino::Utf8Path;
 use serde::Serialize;
 
 mod contract;
+pub mod effects;
 pub mod runtime_identity;
 pub mod substance;
 

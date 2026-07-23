@@ -6,13 +6,20 @@ readonly eligible_fixture="${2:?missing eligible Phase 36 fixture}"
 readonly phase36_module="${3:?missing Phase 36 module source}"
 readonly phase36_contract="${4:?missing Phase 36 contract source}"
 readonly parity_main="${5:?missing parity CLI source}"
+readonly effects_fixture="${6:?missing independent effects fixture}"
+readonly effects_module="${7:?missing independent effects module source}"
 readonly test_parent="$(mktemp -d "${TEST_TMPDIR:-/tmp}/phase36-evidence.XXXXXX")"
 readonly protected_root="${test_parent}/protected"
 readonly protected_input="${protected_root}/phase36.json"
 readonly protected_note="${protected_root}/opaque-note.txt"
+readonly protected_effects="${protected_root}/independent-effects.json"
 readonly public_output="${test_parent}/shareable.json"
 readonly stderr_output="${test_parent}/stderr.txt"
 readonly command_block="${test_parent}/command-source.txt"
+readonly effects_command_block="${test_parent}/effects-command-source.txt"
+readonly effects_output="${test_parent}/effects-shareable.json"
+readonly effects_stderr="${test_parent}/effects-stderr.txt"
+readonly insufficient_output="${test_parent}/effects-insufficient.txt"
 readonly protected_canary="opaque-phase36-protected-canary"
 
 cleanup() {
@@ -78,16 +85,51 @@ for sink in "$public_output" "$stderr_output"; do
 	assert_absent_literal "$sink" "$protected_note"
 done
 
+cp "$effects_fixture" "$protected_effects"
+chmod 600 "$protected_effects"
+if ! "$report_binary" classify-phase36-effects --root "$protected_root" \
+	>"$effects_output" 2>"$effects_stderr"; then
+	fail_test "independent effect classifier process failed"
+fi
+chmod 600 "$effects_output" "$effects_stderr"
+[[ ! -s "$effects_stderr" ]] ||
+	fail_test "successful independent effect classification wrote stderr"
+rg -Fq '"status": "validated"' "$effects_output" ||
+	fail_test "complete independent effect fixture was not admitted"
+rg -Fq '"effect_count": 8' "$effects_output" ||
+	fail_test "independent effect projection did not bind all allowed effects"
+assert_absent_literal "$effects_output" "$protected_root"
+assert_absent_literal "$effects_output" "$protected_canary"
+
+rm "$protected_effects"
+if ! "$report_binary" classify-phase36-effects --root "$protected_root" \
+	>"$insufficient_output" 2>"$effects_stderr"; then
+	fail_test "missing independent effect evidence did not classify"
+fi
+[[ "$(<"$insufficient_output")" == "category=independent_effect_observation_insufficient" ]] ||
+	fail_test "missing independent effect evidence did not emit the exact insufficiency category"
+[[ ! -s "$effects_stderr" ]] ||
+	fail_test "independent effect insufficiency wrote stderr"
+
 sed -n '/^fn run_classify_phase36_evidence_command(/,/^}/p' "$parity_main" \
 	>"$command_block"
 chmod 600 "$command_block"
 [[ -s "$command_block" ]] ||
 	fail_test "Phase 36 CLI command block was not found"
+sed -n '/^fn run_classify_phase36_effects_command(/,/^}/p' "$parity_main" \
+	>"$effects_command_block"
+chmod 600 "$effects_command_block"
+[[ -s "$effects_command_block" ]] ||
+	fail_test "Phase 36 effect CLI command block was not found"
 
 readonly effectful_pattern='detect[-_]?ultra205|credential|(^|[^[:alnum:]_])flash([^-[:alnum:]_]|$)|monitor|serial[-_](control|session)|curl[[:space:]].*((--request|-X)[[:space:]]*(PATCH|POST|PUT|DELETE)|--data)|phase28\.1\.1|hardware[-_ ]run'
 if rg -q -i "$effectful_pattern" \
-	"$phase36_module" "$phase36_contract" "$command_block"; then
+	"$phase36_module" "$phase36_contract" "$command_block" "$effects_command_block"; then
 	fail_test "Phase 36 read-only classifier contains an effectful invocation"
+fi
+readonly effect_invocation_pattern='std::process|ProcessCommand|Command::new|detect[-_]?ultra205|curl[[:space:]]|serial[-_](control|session)|flash[-_]monitor|run_detector|run_flash|run_monitor|credential_path'
+if rg -q -i "$effect_invocation_pattern" "$effects_module"; then
+	fail_test "Phase 36 independent effect classifier contains an effectful invocation API"
 fi
 
 printf 'phase36 evidence tests passed\n'

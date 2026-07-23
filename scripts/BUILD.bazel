@@ -861,6 +861,8 @@ sh_test(
         "$(location //tools/parity:src/phase36_evidence.rs)",
         "$(location //tools/parity:src/phase36_evidence/contract.rs)",
         "$(location //tools/parity:src/main.rs)",
+        "$(location //tools/parity:fixtures/phase36/independent-effects-eligible.json)",
+        "$(location //tools/parity:src/phase36_evidence/effects.rs)",
     ],
     data = [
         "//tools/parity:fixtures/phase36/eligible.json",
@@ -868,6 +870,8 @@ sh_test(
         "//tools/parity:src/main.rs",
         "//tools/parity:src/phase36_evidence.rs",
         "//tools/parity:src/phase36_evidence/contract.rs",
+        "//tools/parity:fixtures/phase36/independent-effects-eligible.json",
+        "//tools/parity:src/phase36_evidence/effects.rs",
     ],
     env_inherit = ["PATH"],
 )

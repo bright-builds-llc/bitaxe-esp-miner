@@ -550,6 +550,7 @@ fn phase36_contract_classification_preserves_immutable_phase35_bytes_and_digest(
     fs::remove_dir_all(&parent).expect("temporary fixture should be removed");
 }
 
+mod effects;
 mod mutations;
 mod runtime_identity;
 mod substance;

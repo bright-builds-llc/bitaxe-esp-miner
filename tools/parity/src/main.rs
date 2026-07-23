@@ -88,6 +88,7 @@ enum CliCommand {
     ValidatePhase35Evidence(ValidatePhase35EvidenceArgs),
     AdmitPhase35Evidence(AdmitPhase35EvidenceArgs),
     ClassifyPhase36Evidence(ClassifyPhase36EvidenceArgs),
+    ClassifyPhase36Effects(ClassifyPhase36EffectsArgs),
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -174,6 +175,12 @@ struct AdmitPhase35EvidenceArgs {
 
 #[derive(Debug, Parser)]
 struct ClassifyPhase36EvidenceArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    root: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct ClassifyPhase36EffectsArgs {
     #[arg(long, value_parser = parse_utf8_path)]
     root: Utf8PathBuf,
 }
@@ -694,11 +701,20 @@ impl LocalEnvironment {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    if let CliCommand::ClassifyPhase36Evidence(args) = &cli.command {
-        let output = run_classify_phase36_evidence_command(args)?;
-        let mut stdout = io::stdout().lock();
-        writeln!(stdout, "{output}")?;
-        return Ok(());
+    match &cli.command {
+        CliCommand::ClassifyPhase36Evidence(args) => {
+            let output = run_classify_phase36_evidence_command(args)?;
+            let mut stdout = io::stdout().lock();
+            writeln!(stdout, "{output}")?;
+            return Ok(());
+        }
+        CliCommand::ClassifyPhase36Effects(args) => {
+            let output = run_classify_phase36_effects_command(args)?;
+            let mut stdout = io::stdout().lock();
+            writeln!(stdout, "{output}")?;
+            return Ok(());
+        }
+        _ => {}
     }
     let environment = LocalEnvironment::detect()?;
 
@@ -736,6 +752,9 @@ fn main() -> Result<()> {
         CliCommand::ClassifyPhase36Evidence(_) => {
             bail!("Phase 36 classifier dispatch entered workspace-aware path")
         }
+        CliCommand::ClassifyPhase36Effects(_) => {
+            bail!("Phase 36 effect classifier dispatch entered workspace-aware path")
+        }
     };
 
     let mut stdout = io::stdout().lock();
@@ -749,6 +768,22 @@ fn run_classify_phase36_evidence_command(args: &ClassifyPhase36EvidenceArgs) -> 
         .map_err(|error| anyhow::anyhow!("category={error}"))?;
     serde_json::to_string_pretty(&classification)
         .map_err(|_| anyhow::anyhow!("category=partial_public_output"))
+}
+
+fn run_classify_phase36_effects_command(args: &ClassifyPhase36EffectsArgs) -> Result<String> {
+    use phase36_evidence::effects::IndependentEffectAdmission;
+
+    let admission = phase36_evidence::effects::classify_independent_effect_root(&args.root)
+        .map_err(|error| anyhow::anyhow!("category={error}"))?;
+    match admission {
+        IndependentEffectAdmission::Insufficient { .. } => {
+            Ok("category=independent_effect_observation_insufficient".to_owned())
+        }
+        validated @ IndependentEffectAdmission::Validated { .. } => {
+            serde_json::to_string_pretty(&validated)
+                .map_err(|_| anyhow::anyhow!("category=partial_public_output"))
+        }
+    }
 }
 
 fn run_classify_phase35_flash_command(
