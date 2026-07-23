@@ -1386,6 +1386,32 @@ Attempts 1 through 18 remain immutable, non-promotable, non-reusable, and
 ineligible for evidence splicing. Task 3, admission, checklist promotion, and
 `35-04-SUMMARY.md` remain blocked.
 
+## Attempt 30 Non-Promotion Checkpoint
+
+Attempt 30 executed once from the exact committed byte-exact-writer source. It
+passed detector admission, read-only flash probe, factory and NVS writes, Boot A
+classification, the hostname mutation and immediate readback, exactly one
+normal restart request, same-device Boot B qualification, restoration, cleanup,
+inventory, and typed root validation. The hybrid reboot quorum proved the exact
+build, changed boot session, `N → N+1` ordinal, `software_cpu`, and persisted
+postcondition.
+
+The pre-commit redaction guard rejected the candidate admitted generation. The
+atomic publisher had copied the complete historical parity checklist beneath
+the new admitted-evidence root, thereby duplicating legacy protected-operational
+values into a new shareable artifact. This was a publication-layer defect, not
+a hardware or classifier failure. No candidate evidence files or checklist
+promotion were committed.
+
+The repair at `d5224161` removes that redundant checklist copy while retaining
+the checklist's before/after fingerprints and atomic canonical update. It also
+aligns local and CI diff scanning with the documented added-line contract while
+preserving full scans for renamed files and the complete admitted-evidence tree.
+Attempt 30 is immutable, non-promotable, non-reusable, and ineligible for
+splicing because its source predates the repair. Fresh Attempt 31 is permitted
+only after this checkpoint, the complete software gate, and exact-current-HEAD
+preflight pass. Task 3, promotion, and `35-04-SUMMARY.md` remain blocked.
+
 ## Attempt 18 Diagnostic Repair and Attempt 19 Authority
 
 Protected structural inspection isolated the failure to the handoff between a

@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: in_progress
-stopped_at: Phase 35 Plan 04 Task 2 diagnosing Attempt 29 inventory validation
-last_updated: "2026-07-23T03:25:14Z"
+stopped_at: Phase 35 Plan 04 Task 2 preparing exact-head Attempt 31
+last_updated: "2026-07-23T04:02:55Z"
 last_activity: "2026-07-23"
 progress:
   total_phases: 5
@@ -16,7 +16,7 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-23 - Attempt 29 completed the hardware chain and exposed a byte-level evidence producer/validator mismatch
+Last activity: 2026-07-23 - Attempt 30 completed hardware but its redundant checklist publication failed the redaction gate
 
 ## Current Position
 
@@ -25,14 +25,15 @@ Plan: 3 of 4 completed
 
 - **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
 - **Plan:** 3 of 4 completed
-- **Status:** Task 2 remains incomplete. Attempts 1 through 29 remain sealed,
-  non-promotable, and non-reusable. Attempt 29 completed the deterministic
-  device-session quorum, restoration, and cleanup, then the typed evidence
-  validator rejected the generated root with `inventory_mismatch`.
-- **Next step:** Commit the Attempt 29 checkpoint, verify the byte-exact epoch
-  artifact repair and regression, run the complete exact-current-HEAD gate and
-  preflight, then run fresh Attempt 30. Task 3 and `35-04-SUMMARY.md` remain
-  blocked until Task 2 admits genuinely eligible evidence.
+- **Status:** Task 2 remains incomplete. Attempts 1 through 30 are immutable,
+  non-promotable, and non-reusable. Attempt 30 completed the authoritative
+  hardware chain, restoration, cleanup, and typed root validation, but the
+  redaction gate rejected a redundant full-checklist copy in the candidate
+  admitted generation.
+- **Next step:** Commit this Attempt 30 checkpoint, run the complete
+  exact-current-HEAD gate and preflight for the narrow publication repair at
+  `d5224161`, then run fresh Attempt 31. Task 3 and `35-04-SUMMARY.md` remain
+  blocked until a commit-safe eligible generation is admitted.
 
 ## Project Reference
 
@@ -522,21 +523,20 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 29 are sealed,
-  non-promotable, and non-reusable. Attempt 29 reached `ready` at the complete
-  device-session boundary, then selected `validator_rejected`; protected
-  offline diagnosis narrowed it to `inventory_mismatch` caused by newline-added
-  epoch artifact bytes. Fresh Attempt 30 is allowed only after the byte-exact
-  producer regression and fix, commit, complete software gate, and exact-head
-  preflight. Task 3 and `35-04-SUMMARY.md` remain prohibited until eligible
-  evidence is admitted.
+- Phase 35 Plan 04 Task 2 remains incomplete. Attempts 1 through 30 are
+  immutable non-promotion history. Attempt 30 reached an eligible typed root,
+  but the commit guard rejected the candidate publication because it copied the
+  complete historical checklist into the admitted-evidence tree. The publisher
+  now emits only projection, matrix, verdict, and manifest while atomically
+  updating and fingerprinting the canonical checklist. Fresh Attempt 31 is
+  allowed only after this checkpoint, the complete software gate, and exact-head
+  preflight pass.
 
 ## Session
 
-- **Stopped at:** Phase 35 Plan 04 Task 2 diagnosing Attempt 29 inventory validation
-- **Resume:** Preserve Attempt 29 as sealed, non-promotable, non-reusable
-  evidence. Commit the checkpoint, finish the byte-exact epoch artifact
-  regression and repair, pass the complete software gate and exact-head
-  preflight, then execute Attempt 30 once in a fresh protected root. Task 3,
-  evidence admission, checklist promotion, and `35-04-SUMMARY.md` remain blocked
-  until eligible evidence exists.
+- **Stopped at:** Phase 35 Plan 04 Task 2 preparing exact-head Attempt 31
+- **Resume:** Preserve Attempt 30 and its rolled-back candidate publication as
+  immutable non-promotion history. Commit this checkpoint, pass the complete
+  software gate and exact-head preflight, then execute Attempt 31 once in a
+  fresh protected root. Task 3, evidence admission, checklist promotion, and
+  `35-04-SUMMARY.md` remain blocked until commit-safe eligible evidence exists.
