@@ -13,7 +13,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
 use operator_evidence::{
     complete_operator_evidence, consolidate_phase28_evidence, load_operator_evidence_documents,
-    publish_phase35_generation, render_operator_evidence_report,
+    publish_phase35_generation, read_phase36_public_checklist, render_operator_evidence_report,
     validate_operator_evidence_documents_with_snapshot_coherence, OperatorEvidenceFilters,
     OperatorEvidenceProfile, Phase35GenerationDocuments, Phase35PublicationOptions, WorkflowStatus,
 };
@@ -39,6 +39,12 @@ const DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH: &str =
 const PHASE35_DESTINATION_ROOT: &str =
     "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion";
 const PHASE35_CHECKLIST_PATH: &str = "docs/parity/checklist.md";
+const PHASE36_DESTINATION_ROOT: &str =
+    "docs/parity/evidence/phase-36-substantive-evidence-admission-and-exact-re-promotion";
+const PHASE36_STAGING_ROOT: &str =
+    "docs/parity/evidence/.phase-36-substantive-evidence-admission-and-exact-re-promotion.staging";
+const PHASE35_MANIFEST_PATH: &str =
+    "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/.phase35-generation-manifest.json";
 
 mod api_compare;
 mod claim_ladder;
@@ -600,6 +606,16 @@ impl ReportEnvironment for LocalEnvironment {
     }
 
     fn read_checklist(&self, path: &Utf8Path) -> Result<String> {
+        if path == Utf8Path::new(PHASE35_CHECKLIST_PATH) {
+            return read_phase36_public_checklist(
+                &self.workspace_dir,
+                Utf8Path::new(PHASE36_STAGING_ROOT),
+                Utf8Path::new(PHASE36_DESTINATION_ROOT),
+                Utf8Path::new(PHASE35_CHECKLIST_PATH),
+                Utf8Path::new(PHASE35_MANIFEST_PATH),
+            )
+            .map_err(anyhow::Error::msg);
+        }
         let checklist_path = self.workspace_path(path);
         std::fs::read_to_string(checklist_path.as_std_path())
             .with_context(|| format!("failed to read checklist {checklist_path}"))
@@ -1141,9 +1157,14 @@ fn run_admit_phase35_evidence_command(
         evidence_sources: vec![Phase35EvidenceSource::ProtectedEvidenceRoot],
     };
 
-    let checklist_path = environment.workspace_path(Utf8Path::new(PHASE35_CHECKLIST_PATH));
-    let checklist_contents = std::fs::read_to_string(checklist_path.as_std_path())
-        .with_context(|| format!("failed to read Phase 35 checklist {checklist_path}"))?;
+    let checklist_contents = read_phase36_public_checklist(
+        &environment.workspace_dir,
+        Utf8Path::new(PHASE36_STAGING_ROOT),
+        Utf8Path::new(PHASE36_DESTINATION_ROOT),
+        Utf8Path::new(PHASE35_CHECKLIST_PATH),
+        Utf8Path::new(PHASE35_MANIFEST_PATH),
+    )
+    .map_err(anyhow::Error::msg)?;
     let checklist =
         ChecklistSnapshot::capture(checklist_contents, live).map_err(anyhow::Error::msg)?;
     let matrix = evaluate_phase35_promotion(&validated, &checklist).map_err(anyhow::Error::msg)?;

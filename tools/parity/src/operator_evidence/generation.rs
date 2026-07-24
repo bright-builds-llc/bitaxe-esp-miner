@@ -22,7 +22,8 @@ pub(crate) use phase35::{
 };
 use phase36::Phase36PublicationFailurePoint;
 pub(crate) use phase36::{
-    publish_phase36_generation, Phase36GenerationDocuments, Phase36PublicationOptions,
+    publish_phase36_generation, read_phase36_public_checklist, Phase36GenerationDocuments,
+    Phase36PublicationOptions,
 };
 use rendering::*;
 

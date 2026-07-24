@@ -4,8 +4,9 @@ use std::fs;
 use camino::{Utf8Path, Utf8PathBuf};
 
 use super::{
-    injected, validate_staged_generation, GenerationError, GenerationResult,
-    Phase36PublicationFailurePoint, Phase36PublicationOptions, PublicationPaths, OWNED_FILES,
+    injected, validate_legacy_generation, validate_staged_generation, GenerationError,
+    GenerationResult, Phase36PublicationFailurePoint, Phase36PublicationOptions, PublicationPaths,
+    CHECKLIST_SNAPSHOT_FILE, LEGACY_OWNED_FILES, OWNED_FILES,
 };
 use crate::operator_evidence::generation::filesystem::{
     atomic_exchange, io_error, sync_directory, write_synced,
@@ -37,6 +38,10 @@ pub(super) fn transactional_exchange(
         return injected(Phase36PublicationFailurePoint::BeforeGenerationExchange);
     }
     exchange_generation(&paths.destination, &paths.staging, &context)?;
+    #[cfg(test)]
+    if options.crash_after_authority_exchange {
+        unsafe { libc::_exit(86) }
+    }
     if options.maybe_failure == Some(Phase36PublicationFailurePoint::AfterGenerationExchange) {
         rollback_transaction(paths, &replacement, destination_existed, false)?;
         return injected(Phase36PublicationFailurePoint::AfterGenerationExchange);
@@ -75,6 +80,40 @@ pub(super) fn transactional_exchange(
     }
     remove_file_if_present(&replacement)?;
     sync_parents(paths)
+}
+
+pub(super) fn recover_derived_checklist(paths: &PublicationPaths) -> GenerationResult<()> {
+    if !paths.destination.exists() {
+        return Ok(());
+    }
+    if regular_file_inventory(&paths.destination)?
+        == LEGACY_OWNED_FILES
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<BTreeSet<_>>()
+    {
+        validate_legacy_generation(&paths.destination)?;
+        return Ok(());
+    }
+    validate_existing_destination(&paths.destination)?;
+    let authoritative = read_text(
+        &paths.destination.join(CHECKLIST_SNAPSHOT_FILE),
+        "Phase 36 authoritative checklist snapshot",
+    )?;
+    let current = read_text(&paths.checklist, "derived checklist")?;
+    if current != authoritative {
+        let replacement = checklist_replacement_path(&paths.checklist)?;
+        write_synced(&replacement, &authoritative)?;
+        atomic_exchange(&paths.checklist, &replacement)?;
+        remove_file_if_present(&replacement)?;
+        sync_directory(parent(&paths.checklist, "checklist")?)?;
+    }
+    if paths.staging.exists() {
+        validate_staged_generation(&paths.staging)?;
+        remove_directory_if_present(&paths.staging)?;
+        sync_directory(parent(&paths.destination, "destination root")?)?;
+    }
+    Ok(())
 }
 
 fn rollback_transaction(
@@ -129,7 +168,16 @@ pub(super) fn validate_existing_destination(destination: &Utf8Path) -> Generatio
     if !destination.exists() {
         return Ok(());
     }
-    if regular_file_inventory(destination)?
+    let inventory = regular_file_inventory(destination)?;
+    if inventory
+        == LEGACY_OWNED_FILES
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<BTreeSet<_>>()
+    {
+        return validate_legacy_generation(destination);
+    }
+    if inventory
         != OWNED_FILES
             .into_iter()
             .map(str::to_owned)

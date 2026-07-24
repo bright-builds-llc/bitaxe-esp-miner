@@ -21,6 +21,7 @@ exports_files([
     "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/admitted.json",
     "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/decision-matrix.json",
     "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/projection.json",
+    "docs/parity/evidence/phase-36-substantive-evidence-admission-and-exact-re-promotion/checklist.md",
     "docs/parity/evidence/phase-36-substantive-evidence-admission-and-exact-re-promotion/decision-matrix.json",
     "docs/parity/evidence/phase-36-substantive-evidence-admission-and-exact-re-promotion/manifest.json",
     "docs/parity/evidence/phase-36-substantive-evidence-admission-and-exact-re-promotion/typed-fact-projection.json",

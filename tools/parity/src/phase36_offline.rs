@@ -11,7 +11,8 @@ use serde::Serialize;
 use thiserror::Error;
 
 use crate::operator_evidence::{
-    publish_phase36_generation, Phase36GenerationDocuments, Phase36PublicationOptions,
+    publish_phase36_generation, read_phase36_public_checklist, Phase36GenerationDocuments,
+    Phase36PublicationOptions,
 };
 use crate::phase35_evidence::sha256_hex;
 use crate::phase36_evidence::effects::{
@@ -101,7 +102,15 @@ pub(crate) enum Phase36OfflineError {
 pub(crate) fn reevaluate_attempt31(
     request: &Phase36OfflineRequest,
 ) -> Result<Phase36OfflineOutcome, Phase36OfflineError> {
-    let public = PublicGeneration::load(&request.workspace_root)?;
+    let checklist = read_phase36_public_checklist(
+        &request.workspace_root,
+        Utf8Path::new(PHASE36_STAGING),
+        Utf8Path::new(PHASE36_ROOT),
+        Utf8Path::new(CHECKLIST),
+        Utf8Path::new(&format!("{PHASE35_ROOT}/.phase35-generation-manifest.json")),
+    )
+    .map_err(|_| Phase36OfflineError::PublicInputsInvalid)?;
+    let public = PublicGeneration::load(&request.workspace_root, checklist)?;
     let companions = CompanionSnapshot::load(
         request.maybe_protected_root.as_deref(),
         &request.companion_paths,
@@ -163,7 +172,7 @@ struct PublicGeneration {
 }
 
 impl PublicGeneration {
-    fn load(workspace: &Utf8Path) -> Result<Self, Phase36OfflineError> {
+    fn load(workspace: &Utf8Path, checklist: String) -> Result<Self, Phase36OfflineError> {
         let manifest = read_public(
             workspace,
             &format!("{PHASE35_ROOT}/.phase35-generation-manifest.json"),
@@ -171,7 +180,6 @@ impl PublicGeneration {
         let projection = read_public(workspace, &format!("{PHASE35_ROOT}/projection.json"))?;
         let matrix = read_public(workspace, &format!("{PHASE35_ROOT}/decision-matrix.json"))?;
         let verdict = read_public(workspace, &format!("{PHASE35_ROOT}/admitted.json"))?;
-        let checklist = read_public(workspace, CHECKLIST)?;
         let hostname = ValidatedHostnameDurabilityFacts::from_public_generation(
             &manifest,
             &projection,

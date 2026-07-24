@@ -28,6 +28,7 @@ readonly phase36_manifest="${phase36_generation}/manifest.json"
 readonly phase36_verdict="${phase36_generation}/verdict.json"
 readonly phase36_matrix="${phase36_generation}/decision-matrix.json"
 readonly phase36_projection="${phase36_generation}/typed-fact-projection.json"
+readonly phase36_checklist="${phase36_generation}/checklist.md"
 
 fail() {
 	printf 'phase35_promotion_contract_test_error: category=%s\n' "$1" >&2
@@ -48,7 +49,8 @@ for required_path in \
 	"$phase36_manifest" \
 	"$phase36_verdict" \
 	"$phase36_matrix" \
-	"$phase36_projection"; do
+	"$phase36_projection" \
+	"$phase36_checklist"; do
 	[[ -f "$required_path" ]] || fail artifact-inventory
 done
 
@@ -174,8 +176,12 @@ phase35_generation_digest="$(sha256_file "$phase35_manifest")"
 	fail successor-generation-link
 [[ "$(jq -er '.checklist_fingerprint_before' "$phase36_manifest")" == "$(jq -er '.checklist_sha256' "$phase35_manifest")" ]] ||
 	fail successor-checklist-link
-[[ "$(jq -er '.checklist_fingerprint_after' "$phase36_manifest")" == "$(sha256_file "$checklist_path")" ]] ||
+[[ "$(jq -er '.checklist_fingerprint_after' "$phase36_manifest")" == "$(sha256_file "$phase36_checklist")" ]] ||
 	fail successor-current-checklist-digest
+[[ "$(jq -er '.checklist_sha256' "$phase36_manifest")" == "$(sha256_file "$phase36_checklist")" ]] ||
+	fail successor-authoritative-checklist-digest
+cmp -s "$phase36_checklist" "$checklist_path" ||
+	fail successor-derived-checklist-drift
 [[ "$(sha256_file "$phase36_projection")" == "$(jq -er '.projection_sha256' "$phase36_manifest")" ]] ||
 	fail successor-projection-digest
 [[ "$(sha256_file "$phase36_matrix")" == "$(jq -er '.matrix_sha256' "$phase36_manifest")" ]] ||

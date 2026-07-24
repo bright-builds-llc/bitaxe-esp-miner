@@ -1,11 +1,12 @@
 use std::fs;
+use std::process::Command as ChildCommand;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use serde_json::Value;
 
 use super::super::phase36::{
-    publish_phase36_generation, Phase36GenerationDocuments, Phase36PublicationFailurePoint,
-    Phase36PublicationOptions,
+    publish_phase36_generation, read_phase36_public_checklist, Phase36GenerationDocuments,
+    Phase36PublicationFailurePoint, Phase36PublicationOptions,
 };
 use super::super::GenerationError;
 use super::support::{create_workspace, snapshot};
@@ -16,6 +17,9 @@ use crate::phase36_promotion::{
 };
 
 const CHECKLIST: &str = include_str!("../../../../../../docs/parity/checklist.md");
+const CRASH_HELPER_ROOT: &str = "BITAXE_PHASE36_CRASH_HELPER_ROOT";
+const CRASH_HELPER_TEST: &str =
+    "operator_evidence::generation::tests::phase36::phase36_authority_crash_process_helper";
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
@@ -44,6 +48,7 @@ fn phase36_publication_owns_exact_redacted_successor_inventory() {
             "typed-fact-projection.json",
             "decision-matrix.json",
             "verdict.json",
+            "checklist.md",
             "manifest.json",
         ]
         .into_iter()
@@ -71,6 +76,74 @@ fn phase36_publication_owns_exact_redacted_successor_inventory() {
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
+fn phase36_crash_after_authority_exchange_recovers_before_checklist_read() {
+    // Arrange
+    let fixture = PublicationFixture::new("crash-recovery");
+    fixture.publish(Phase36PublicationOptions::default());
+    let checklist_before = fs::read_to_string(fixture.workspace.join("checklist.md").as_std_path())
+        .expect("derived checklist must read");
+
+    // Act
+    let status = ChildCommand::new(std::env::current_exe().expect("test executable must resolve"))
+        .args(["--exact", CRASH_HELPER_TEST, "--nocapture"])
+        .env(CRASH_HELPER_ROOT, fixture.workspace.as_str())
+        .status()
+        .expect("crash helper must launch");
+
+    // Assert
+    assert_eq!(status.code(), Some(86));
+    let authoritative = fs::read_to_string(
+        fixture
+            .workspace
+            .join("destination/checklist.md")
+            .as_std_path(),
+    )
+    .expect("authoritative checklist must read");
+    assert_ne!(authoritative, checklist_before);
+    assert_eq!(
+        fs::read_to_string(fixture.workspace.join("checklist.md").as_std_path())
+            .expect("stale derived checklist must read"),
+        checklist_before
+    );
+    assert!(fixture.workspace.join("staging").exists());
+
+    let recovered = read_phase36_public_checklist(
+        &fixture.workspace,
+        Utf8Path::new("staging"),
+        Utf8Path::new("destination"),
+        Utf8Path::new("checklist.md"),
+        Utf8Path::new("phase35-manifest.json"),
+    )
+    .expect("authority-aware read must recover before accepting the derived checklist");
+    assert_eq!(recovered, authoritative);
+    assert!(!fixture.workspace.join("staging").exists());
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn phase36_authority_crash_process_helper() {
+    let Ok(root) = std::env::var(CRASH_HELPER_ROOT) else {
+        return;
+    };
+    let workspace = Utf8PathBuf::from(root);
+    let documents = documents_for_workspace(&workspace, true);
+    let _ = publish_phase36_generation(
+        &workspace,
+        Utf8Path::new("staging"),
+        Utf8Path::new("destination"),
+        Utf8Path::new("checklist.md"),
+        Utf8Path::new("phase35-manifest.json"),
+        &documents,
+        Phase36PublicationOptions {
+            maybe_failure: None,
+            crash_after_authority_exchange: true,
+        },
+    );
+    panic!("crash helper returned without terminating");
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
 fn phase36_every_injected_boundary_restores_both_outputs_byte_identically() {
     for failure_point in Phase36PublicationFailurePoint::ALL {
         // Arrange
@@ -91,6 +164,7 @@ fn phase36_every_injected_boundary_restores_both_outputs_byte_identically() {
             &fixture.documents_for_current_checklist(),
             Phase36PublicationOptions {
                 maybe_failure: Some(failure_point),
+                crash_after_authority_exchange: false,
             },
         )
         .expect_err("injected failure must fail");
@@ -108,6 +182,29 @@ fn phase36_every_injected_boundary_restores_both_outputs_byte_identically() {
         );
         assert!(!fixture.workspace.join("staging").exists());
     }
+}
+
+fn documents_for_workspace(
+    workspace: &Utf8Path,
+    remove_sensor_authority: bool,
+) -> Phase36GenerationDocuments {
+    let mut prerequisites = synthetic_phase36_prerequisites();
+    prerequisites.evaluator_digest = current_phase36_evaluator_digest();
+    let prior_manifest = fs::read_to_string(workspace.join("phase35-manifest.json").as_std_path())
+        .expect("prior manifest must read");
+    prerequisites.superseded_phase35_generation_digest = sha256_hex(prior_manifest.as_bytes());
+    if remove_sensor_authority {
+        prerequisites.maybe_sensors = None;
+        prerequisites.maybe_snapshot_join = None;
+        prerequisites.maybe_runtime_health = None;
+    }
+    let current = fs::read_to_string(workspace.join("checklist.md").as_std_path())
+        .expect("current checklist must read");
+    let checklist =
+        Phase36ChecklistSnapshot::capture(current).expect("current checklist must parse");
+    let matrix =
+        evaluate_phase36_promotion(&prerequisites, &checklist).expect("matrix must evaluate");
+    Phase36GenerationDocuments::new(prerequisites, matrix)
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]

@@ -17,19 +17,27 @@ use crate::phase36_promotion::{
 mod transaction;
 
 use transaction::{
-    create_private_staging, read_text, regular_file_inventory, remove_directory_if_present,
-    transactional_exchange, validate_existing_destination,
+    create_private_staging, read_text, recover_derived_checklist, regular_file_inventory,
+    remove_directory_if_present, transactional_exchange, validate_existing_destination,
 };
 
 const PROJECTION_FILE: &str = "typed-fact-projection.json";
 const MATRIX_FILE: &str = "decision-matrix.json";
 const VERDICT_FILE: &str = "verdict.json";
 const MANIFEST_FILE: &str = "manifest.json";
+const CHECKLIST_SNAPSHOT_FILE: &str = "checklist.md";
 const PROJECTION_SCHEMA: &str = "phase36-typed-fact-projection-v1";
 const VERDICT_SCHEMA: &str = "phase36-publication-verdict-v1";
 const MANIFEST_SCHEMA: &str = "phase36-generation-v1";
 const PRIOR_MANIFEST_SCHEMA: &str = "phase35-generation-v1";
-const OWNED_FILES: [&str; 4] = [PROJECTION_FILE, MATRIX_FILE, VERDICT_FILE, MANIFEST_FILE];
+const OWNED_FILES: [&str; 5] = [
+    PROJECTION_FILE,
+    MATRIX_FILE,
+    VERDICT_FILE,
+    CHECKLIST_SNAPSHOT_FILE,
+    MANIFEST_FILE,
+];
+const LEGACY_OWNED_FILES: [&str; 4] = [PROJECTION_FILE, MATRIX_FILE, VERDICT_FILE, MANIFEST_FILE];
 
 #[derive(Debug, Clone)]
 pub(crate) struct Phase36GenerationDocuments {
@@ -55,6 +63,7 @@ pub(crate) enum Phase36PublicationFailurePoint {
     AfterProjectionWrite,
     AfterMatrixWrite,
     AfterVerdictWrite,
+    AfterChecklistSnapshotWrite,
     AfterManifestWrite,
     BeforeValidation,
     AfterValidation,
@@ -70,11 +79,12 @@ pub(crate) enum Phase36PublicationFailurePoint {
 
 impl Phase36PublicationFailurePoint {
     #[cfg(test)]
-    pub(crate) const ALL: [Self; 14] = [
+    pub(crate) const ALL: [Self; 15] = [
         Self::BeforeStaging,
         Self::AfterProjectionWrite,
         Self::AfterMatrixWrite,
         Self::AfterVerdictWrite,
+        Self::AfterChecklistSnapshotWrite,
         Self::AfterManifestWrite,
         Self::BeforeValidation,
         Self::AfterValidation,
@@ -91,6 +101,8 @@ impl Phase36PublicationFailurePoint {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct Phase36PublicationOptions {
     pub(crate) maybe_failure: Option<Phase36PublicationFailurePoint>,
+    #[cfg(test)]
+    pub(crate) crash_after_authority_exchange: bool,
 }
 
 #[derive(Serialize)]
@@ -129,6 +141,7 @@ struct GenerationManifest<'a> {
     projection_sha256: String,
     matrix_sha256: String,
     verdict_sha256: String,
+    checklist_sha256: String,
 }
 
 pub(crate) fn publish_phase36_generation(
@@ -147,6 +160,7 @@ pub(crate) fn publish_phase36_generation(
         checklist_path,
         prior_manifest_path,
     )?;
+    recover_derived_checklist(&paths)?;
     if options.maybe_failure == Some(Phase36PublicationFailurePoint::BeforeStaging) {
         return injected(Phase36PublicationFailurePoint::BeforeStaging);
     }
@@ -259,6 +273,7 @@ fn render_and_validate(
         projection_sha256: sha256_hex(projection.as_bytes()),
         matrix_sha256: sha256_hex(matrix.as_bytes()),
         verdict_sha256: sha256_hex(verdict.as_bytes()),
+        checklist_sha256: sha256_hex(expected.projected_checklist.as_bytes()),
     })?;
     Ok(RenderedGeneration {
         projection,
@@ -379,6 +394,11 @@ fn stage_documents(
             Phase36PublicationFailurePoint::AfterVerdictWrite,
         ),
         (
+            CHECKLIST_SNAPSHOT_FILE,
+            rendered.projected_checklist.as_str(),
+            Phase36PublicationFailurePoint::AfterChecklistSnapshotWrite,
+        ),
+        (
             MANIFEST_FILE,
             rendered.manifest.as_str(),
             Phase36PublicationFailurePoint::AfterManifestWrite,
@@ -426,6 +446,7 @@ fn validate_staged_generation(staging: &Utf8Path) -> GenerationResult<()> {
         (PROJECTION_FILE, "projection_sha256"),
         (MATRIX_FILE, "matrix_sha256"),
         (VERDICT_FILE, "verdict_sha256"),
+        (CHECKLIST_SNAPSHOT_FILE, "checklist_sha256"),
     ] {
         let contents = read_text(&staging.join(file), file)?;
         if manifest.get(field).and_then(Value::as_str)
@@ -435,6 +456,46 @@ fn validate_staged_generation(staging: &Utf8Path) -> GenerationResult<()> {
         }
     }
     Ok(())
+}
+
+fn validate_legacy_generation(root: &Utf8Path) -> GenerationResult<()> {
+    let manifest: Value =
+        serde_json::from_str(&read_text(&root.join(MANIFEST_FILE), "Phase 36 manifest")?)
+            .map_err(|error| GenerationError::Validation(vec![error.to_string()]))?;
+    if manifest.get("schema_version").and_then(Value::as_str) != Some(MANIFEST_SCHEMA) {
+        return validation("legacy Phase 36 manifest schema is invalid");
+    }
+    for (file, field) in [
+        (PROJECTION_FILE, "projection_sha256"),
+        (MATRIX_FILE, "matrix_sha256"),
+        (VERDICT_FILE, "verdict_sha256"),
+    ] {
+        let contents = read_text(&root.join(file), file)?;
+        if manifest.get(field).and_then(Value::as_str)
+            != Some(sha256_hex(contents.as_bytes()).as_str())
+        {
+            return validation("legacy Phase 36 document fingerprint mismatch");
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn read_phase36_public_checklist(
+    workspace_root: &Utf8Path,
+    staging_root: &Utf8Path,
+    destination_root: &Utf8Path,
+    checklist_path: &Utf8Path,
+    prior_manifest_path: &Utf8Path,
+) -> GenerationResult<String> {
+    let paths = PublicationPaths::resolve(
+        workspace_root,
+        staging_root,
+        destination_root,
+        checklist_path,
+        prior_manifest_path,
+    )?;
+    recover_derived_checklist(&paths)?;
+    read_text(&paths.checklist, "derived checklist")
 }
 
 fn pretty_json(value: &impl Serialize) -> GenerationResult<String> {
