@@ -2,7 +2,7 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 
 exports_files(
     [
-        "fixtures/phase36/eligible.json",
+        "fixtures/phase36/envelope-only.json",
         "fixtures/phase36/independent-effects-eligible.json",
         "fixtures/phase36/runtime-identity-package.json",
         "fixtures/phase36/substance-eligible.json",
@@ -90,6 +90,7 @@ rust_binary(
         "src/phase36_evidence/substance.rs",
         "src/phase36_evidence/substance/types.rs",
         "src/phase36_evidence/tests.rs",
+        "src/phase36_evidence/tests/authority.rs",
         "src/phase36_evidence/tests/effects.rs",
         "src/phase36_evidence/tests/mutations.rs",
         "src/phase36_evidence/tests/runtime_identity.rs",
@@ -100,6 +101,7 @@ rust_binary(
         "src/phase36_promotion/evaluator.rs",
         "src/phase36_promotion/tests.rs",
         "src/phase36_promotion/types.rs",
+        "src/protected_input.rs",
         "src/phase32_source_guard.rs",
         "src/phase33_source_guard.rs",
         "src/phase34_source_guard.rs",

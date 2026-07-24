@@ -9,8 +9,8 @@ type InputMutation = fn(&mut Phase35EvidenceRootInput);
 type InputCase = (&'static str, InputMutation, Phase35EvidenceError);
 
 pub(crate) struct EligibleFixture {
-    input: Phase35EvidenceRootInput,
-    artifacts: BTreeMap<String, InventoryArtifact>,
+    pub(crate) input: Phase35EvidenceRootInput,
+    pub(crate) artifacts: BTreeMap<String, InventoryArtifact>,
 }
 
 impl EligibleFixture {
@@ -155,7 +155,7 @@ impl EligibleFixture {
         validate_phase35_evidence(&self.input, &self.artifacts)
     }
 
-    fn reseal(&mut self) {
+    pub(crate) fn reseal(&mut self) {
         for entry in &mut self.input.inventory {
             let artifact = self
                 .artifacts

@@ -65,6 +65,7 @@ mod phase35_promotion;
 pub mod phase36_evidence;
 mod phase36_offline;
 mod phase36_promotion;
+mod protected_input;
 mod release_evidence;
 mod release_gate;
 mod safety_allow;

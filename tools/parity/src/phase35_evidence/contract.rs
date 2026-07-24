@@ -144,12 +144,16 @@ pub(crate) enum ArtifactFileKind {
 }
 
 impl InventoryArtifact {
-    #[cfg(test)]
     pub(crate) fn regular(bytes: impl Into<Vec<u8>>) -> Self {
         Self {
             bytes: bytes.into(),
             file_kind: ArtifactFileKind::Regular,
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn bytes(&self) -> &[u8] {
+        &self.bytes
     }
 
     #[cfg(test)]

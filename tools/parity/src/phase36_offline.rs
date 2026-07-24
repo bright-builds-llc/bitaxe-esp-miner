@@ -1,10 +1,7 @@
 //! Explicit-input, read-only classification of immutable Attempt 31 companions.
 
 use std::collections::BTreeSet;
-use std::ffi::CString;
 use std::fs;
-use std::os::fd::{AsRawFd, FromRawFd};
-use std::os::unix::fs::{FileExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::Serialize;
@@ -29,6 +26,7 @@ use crate::phase36_promotion::{
     current_phase36_evaluator_digest, evaluate_phase36_promotion, Phase36ChecklistSnapshot,
     Phase36ClaimPrerequisites, ValidatedHostnameDurabilityFacts,
 };
+use crate::protected_input::{ProtectedFile, ProtectedRoot};
 use crate::ReevaluatePhase36Attempt31Args;
 
 const PHASE35_ROOT: &str =
@@ -270,21 +268,21 @@ fn classify_companions(
 
 #[derive(Default)]
 struct CompanionSnapshot {
-    _protected_root: Option<fs::File>,
-    api: Option<SnapshotFile>,
-    websocket: Option<SnapshotFile>,
-    retained: Option<SnapshotFile>,
-    exact_package: Option<SnapshotFile>,
-    request: Option<SnapshotFile>,
-    event_ledger: Option<SnapshotFile>,
-    private_result: Option<SnapshotFile>,
-    public_projection: Option<SnapshotFile>,
-    independent_effect: Option<SnapshotFile>,
+    _protected_root: Option<ProtectedRoot>,
+    api: Option<ProtectedFile>,
+    websocket: Option<ProtectedFile>,
+    retained: Option<ProtectedFile>,
+    exact_package: Option<ProtectedFile>,
+    request: Option<ProtectedFile>,
+    event_ledger: Option<ProtectedFile>,
+    private_result: Option<ProtectedFile>,
+    public_projection: Option<ProtectedFile>,
+    independent_effect: Option<ProtectedFile>,
 }
 
 impl CompanionSnapshot {
     fn load(maybe_root: Option<&Utf8Path>, paths: &CompanionPaths) -> Self {
-        let Some(root) = maybe_root.and_then(open_protected_root) else {
+        let Some(root) = maybe_root.and_then(|root| ProtectedRoot::open(root).ok()) else {
             return Self::default();
         };
         Self {
@@ -301,8 +299,8 @@ impl CompanionSnapshot {
         }
     }
 
-    fn text<'a>(&self, maybe_file: &'a Option<SnapshotFile>) -> Option<&'a str> {
-        maybe_file.as_ref().map(|file| file.contents.as_str())
+    fn text<'a>(&self, maybe_file: &'a Option<ProtectedFile>) -> Option<&'a str> {
+        maybe_file.as_ref().and_then(|file| file.text().ok())
     }
 
     fn verify_unchanged(&self) -> Result<(), Phase36OfflineError> {
@@ -320,151 +318,24 @@ impl CompanionSnapshot {
         .into_iter()
         .flatten()
         {
-            let identity = FileIdentity::capture(&file.file)
+            file.verify_unchanged()
                 .map_err(|_| Phase36OfflineError::ProtectedSnapshotChanged)?;
-            let bytes = read_descriptor(&file.file)
-                .map_err(|_| Phase36OfflineError::ProtectedSnapshotChanged)?;
-            if identity != file.identity || sha256_hex(&bytes) != file.digest {
-                return Err(Phase36OfflineError::ProtectedSnapshotChanged);
-            }
         }
         Ok(())
     }
 }
 
-struct SnapshotFile {
-    file: fs::File,
-    contents: String,
-    digest: String,
-    identity: FileIdentity,
-}
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-struct FileIdentity {
-    device: u64,
-    inode: u64,
-    owner: u32,
-    mode: u32,
-    length: u64,
-}
-
-impl FileIdentity {
-    fn capture(file: &fs::File) -> std::io::Result<Self> {
-        let metadata = file.metadata()?;
-        Ok(Self {
-            device: metadata.dev(),
-            inode: metadata.ino(),
-            owner: metadata.uid(),
-            mode: metadata.mode(),
-            length: metadata.len(),
-        })
-    }
-}
-
-fn open_protected_root(root: &Utf8Path) -> Option<fs::File> {
-    let directory = fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(libc::O_DIRECTORY | libc::O_CLOEXEC | libc::O_NOFOLLOW)
-        .open(root.as_std_path())
-        .ok()?;
-    protected_directory_is_valid(&directory).then_some(directory)
-}
-
-fn open_directory_at(parent: &fs::File, name: &str) -> Option<fs::File> {
-    let name = CString::new(name.as_bytes()).ok()?;
-    let descriptor = unsafe {
-        libc::openat(
-            parent.as_raw_fd(),
-            name.as_ptr(),
-            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC | libc::O_NOFOLLOW,
-        )
-    };
-    (descriptor >= 0).then(|| unsafe { fs::File::from_raw_fd(descriptor) })
-}
-
-fn protected_directory_is_valid(directory: &fs::File) -> bool {
-    directory.metadata().is_ok_and(|metadata| {
-        metadata.is_dir()
-            && metadata.uid() == unsafe { libc::geteuid() }
-            && metadata.permissions().mode() & 0o777 == 0o700
-    })
-}
-
-fn snapshot_optional(root: &fs::File, maybe_relative: Option<&Utf8Path>) -> Option<SnapshotFile> {
-    let relative = maybe_relative.filter(|path| safe_relative_path(path))?;
-    let mut components = relative.components().peekable();
-    let mut directory = root.try_clone().ok()?;
-    let file = loop {
-        let camino::Utf8Component::Normal(name) = components.next()? else {
-            return None;
-        };
-        if components.peek().is_some() {
-            directory = open_directory_at(&directory, name)?;
-            if !protected_directory_is_valid(&directory) {
-                return None;
-            }
-            continue;
-        }
-        let name = CString::new(name.as_bytes()).ok()?;
-        let descriptor = unsafe {
-            libc::openat(
-                directory.as_raw_fd(),
-                name.as_ptr(),
-                libc::O_RDONLY | libc::O_CLOEXEC | libc::O_NOFOLLOW,
-            )
-        };
-        if descriptor < 0 {
-            return None;
-        }
-        break unsafe { fs::File::from_raw_fd(descriptor) };
-    };
-    let identity_before = FileIdentity::capture(&file).ok()?;
-    let metadata = file.metadata().ok()?;
-    if !metadata.is_file()
-        || metadata.uid() != unsafe { libc::geteuid() }
-        || metadata.permissions().mode() & 0o777 != 0o600
-    {
-        return None;
-    }
-    let bytes = read_descriptor(&file).ok()?;
-    let identity = FileIdentity::capture(&file).ok()?;
-    if identity != identity_before || bytes.len() as u64 != identity.length {
-        return None;
-    }
-    let contents = String::from_utf8(bytes.clone()).ok()?;
-    Some(SnapshotFile {
-        file,
-        contents,
-        digest: sha256_hex(&bytes),
-        identity,
-    })
-}
-
-fn read_descriptor(file: &fs::File) -> std::io::Result<Vec<u8>> {
-    let length = file.metadata()?.len();
-    let mut bytes = vec![0; usize::try_from(length).map_err(|_| std::io::ErrorKind::FileTooLarge)?];
-    let mut offset = 0;
-    while offset < bytes.len() {
-        let read = file.read_at(&mut bytes[offset..], offset as u64)?;
-        if read == 0 {
-            return Err(std::io::ErrorKind::UnexpectedEof.into());
-        }
-        offset += read;
-    }
-    Ok(bytes)
-}
-
-fn safe_relative_path(path: &Utf8Path) -> bool {
-    !path.as_str().is_empty()
-        && !path.is_absolute()
-        && path
-            .components()
-            .all(|component| matches!(component, camino::Utf8Component::Normal(_)))
+fn snapshot_optional(
+    root: &ProtectedRoot,
+    maybe_relative: Option<&Utf8Path>,
+) -> Option<ProtectedFile> {
+    maybe_relative.and_then(|relative| root.open_file(relative).ok())
 }
 
 #[cfg(test)]
 mod tests {
     use std::os::unix::fs::symlink;
+    use std::os::unix::fs::PermissionsExt;
     use std::process::Command as ChildCommand;
     use std::time::{SystemTime, UNIX_EPOCH};
 

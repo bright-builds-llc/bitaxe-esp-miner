@@ -862,7 +862,7 @@ sh_test(
     srcs = ["phase36-evidence-test.sh"],
     args = [
         "$(location //tools/parity:report)",
-        "$(location //tools/parity:fixtures/phase36/eligible.json)",
+        "$(location //tools/parity:fixtures/phase36/envelope-only.json)",
         "$(location //tools/parity:src/phase36_evidence.rs)",
         "$(location //tools/parity:src/phase36_evidence/contract.rs)",
         "$(location //tools/parity:src/main.rs)",
@@ -876,7 +876,7 @@ sh_test(
         "$(location //:docs/parity/checklist.md)",
     ],
     data = [
-        "//tools/parity:fixtures/phase36/eligible.json",
+        "//tools/parity:fixtures/phase36/envelope-only.json",
         "//tools/parity:report",
         "//tools/parity:src/main.rs",
         "//tools/parity:src/phase36_evidence.rs",

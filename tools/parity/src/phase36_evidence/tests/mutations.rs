@@ -39,18 +39,6 @@ fn mutations() -> Vec<MutationCase> {
             mutate: |input| input.schema_version = "phase36-evidence-v2".to_owned(),
         },
         MutationCase {
-            name: "changed_phase35_root",
-            expected: ExpectedOutcome::Error(Phase36EvidenceError::Phase35RootReferenceMismatch),
-            mutate: |input| input.phase35_root_reference.root_digest = digest('8'),
-        },
-        MutationCase {
-            name: "changed_phase35_generation",
-            expected: ExpectedOutcome::Error(
-                Phase36EvidenceError::Phase35GenerationReferenceMismatch,
-            ),
-            mutate: |input| input.phase35_root_reference.phase35_generation_digest = digest('8'),
-        },
-        MutationCase {
             name: "changed_evaluator_identity",
             expected: ExpectedOutcome::Error(Phase36EvidenceError::EvaluatorIdentityMismatch),
             mutate: |input| {
@@ -172,11 +160,6 @@ fn mutations() -> Vec<MutationCase> {
                 reseal(input);
             },
         },
-        MutationCase {
-            name: "partial_public_output",
-            expected: ExpectedOutcome::Error(Phase36EvidenceError::PartialPublicOutput),
-            mutate: |input| input.shareable_facts.claim_digests.snapshot_substance = digest('8'),
-        },
     ]
 }
 
@@ -205,6 +188,23 @@ fn phase36_mutation_catalog_matches_executable_expectations() {
             expected: rendered_expected(case.expected),
         })
         .collect::<Vec<_>>();
+    expected.splice(
+        1..1,
+        [
+            CatalogCase {
+                name: "changed_phase35_root".to_owned(),
+                expected: Phase36EvidenceError::Phase35RootReferenceMismatch.to_string(),
+            },
+            CatalogCase {
+                name: "changed_phase35_generation".to_owned(),
+                expected: Phase36EvidenceError::Phase35GenerationReferenceMismatch.to_string(),
+            },
+            CatalogCase {
+                name: "partial_public_output".to_owned(),
+                expected: Phase36EvidenceError::PartialPublicOutput.to_string(),
+            },
+        ],
+    );
     expected.extend([
         CatalogCase {
             name: "protected_root_symlink".to_owned(),
@@ -257,20 +257,6 @@ fn phase36_mutation_table_classifies_every_typed_boundary_exactly() {
     }
 }
 
-#[test]
-fn phase36_checked_in_eligible_fixture_matches_the_typed_factory() {
-    // Arrange
-    let document = include_str!("../../../fixtures/phase36/eligible.json");
-
-    // Act
-    let parsed = serde_json::from_str::<Phase36EvidenceEnvelope>(document)
-        .expect("eligible fixture should parse");
-
-    // Assert
-    assert_eq!(parsed, envelope());
-    classify_phase36_envelope(&parsed).expect("eligible fixture should classify");
-}
-
 struct RootFixture {
     parent: Utf8PathBuf,
     root: Utf8PathBuf,
@@ -300,7 +286,7 @@ impl RootFixture {
         let input = self.root.join(PHASE36_INPUT_DOCUMENT);
         fs::write(
             &input,
-            include_bytes!("../../../fixtures/phase36/eligible.json"),
+            include_bytes!("../../../fixtures/phase36/envelope-only.json"),
         )
         .expect("input should be written");
         fs::set_permissions(&input, fs::Permissions::from_mode(0o600))
@@ -337,7 +323,7 @@ fn phase36_protected_root_and_input_symlinks_fail_closed() {
     let target = input_case.parent.join("target.json");
     fs::write(
         &target,
-        include_bytes!("../../../fixtures/phase36/eligible.json"),
+        include_bytes!("../../../fixtures/phase36/envelope-only.json"),
     )
     .expect("target should be written");
     fs::set_permissions(&target, fs::Permissions::from_mode(0o600))

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly report_binary="${1:?missing parity report binary}"
-readonly eligible_fixture="${2:?missing eligible Phase 36 fixture}"
+readonly envelope_only_fixture="${2:?missing envelope-only Phase 36 fixture}"
 readonly phase36_module="${3:?missing Phase 36 module source}"
 readonly phase36_contract="${4:?missing Phase 36 contract source}"
 readonly parity_main="${5:?missing parity CLI source}"
@@ -62,13 +62,13 @@ umask 077
 chmod 700 "$test_parent"
 mkdir "$protected_root"
 chmod 700 "$protected_root"
-cp "$eligible_fixture" "$protected_input"
+cp "$envelope_only_fixture" "$protected_input"
 printf '%s\n' "$protected_canary" >"$protected_note"
 chmod 600 "$protected_input" "$protected_note"
 
-if ! "$report_binary" classify-phase36-evidence --root "$protected_root" \
+if "$report_binary" classify-phase36-evidence --root "$protected_root" \
 	>"$public_output" 2>"$stderr_output"; then
-	fail_test "read-only classifier process failed"
+	fail_test "caller-authored envelope classified without artifact authority"
 fi
 chmod 600 "$public_output" "$stderr_output"
 
@@ -84,10 +84,10 @@ chmod 600 "$public_output" "$stderr_output"
 	fail_test "shareable output mode is not 0600"
 [[ "$(file_mode "$stderr_output")" == 600 ]] ||
 	fail_test "stderr capture mode is not 0600"
-[[ ! -s "$stderr_output" ]] ||
-	fail_test "successful classification wrote stderr"
-rg -Fq '"status": "immutable_artifacts_sufficient"' "$public_output" ||
-	fail_test "eligible fixture did not classify as sufficient"
+[[ ! -s "$public_output" ]] ||
+	fail_test "rejected envelope wrote shareable output"
+rg -Fq 'category=protected_input_missing' "$stderr_output" ||
+	fail_test "envelope-only input did not fail closed on its missing artifact"
 
 for sink in "$public_output" "$stderr_output"; do
 	assert_absent_literal "$sink" "$protected_canary"

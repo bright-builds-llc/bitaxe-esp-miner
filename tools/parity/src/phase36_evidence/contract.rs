@@ -3,8 +3,6 @@ use thiserror::Error;
 
 pub(crate) const PHASE36_SCHEMA: &str = "phase36-evidence-v1";
 pub(crate) const SHAREABLE_PHASE36_FACTS_SCHEMA: &str = "phase36-shareable-facts-v1";
-pub(crate) const PHASE36_CONTRACT_DIGEST: &str =
-    "3636363636363636363636363636363636363636363636363636363636363636";
 pub(crate) const PHASE36_INPUT_DOCUMENT: &str = "phase36.json";
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -18,7 +16,7 @@ pub(crate) struct Phase35RootReference {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Phase36EvaluationIdentity {
-    pub(crate) evaluator_commit: String,
+    pub(crate) evaluator_digest: String,
     pub(crate) successor_contract_digest: String,
 }
 
@@ -359,4 +357,10 @@ pub(crate) enum Phase36EvidenceError {
     ProtectedInputMissing,
     #[error("protected_input_symlink")]
     ProtectedInputSymlink,
+    #[error("protected_input_changed")]
+    ProtectedInputChanged,
+    #[error("immutable_artifact_digest_mismatch")]
+    ArtifactDigestMismatch,
+    #[error("immutable_artifact_invalid")]
+    ArtifactInvalid,
 }

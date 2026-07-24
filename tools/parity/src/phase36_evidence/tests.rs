@@ -1,9 +1,3 @@
-use std::fs;
-use std::os::unix::fs::PermissionsExt;
-use std::time::{SystemTime, UNIX_EPOCH};
-
-use camino::Utf8PathBuf;
-
 use super::contract::{
     CheckpointCategory, ImmutableArtifactReference, ImmutableArtifactStatus,
     IndependentEffectFacts, Phase35RootReference, Phase36EvaluationIdentity, RuntimeIdentityFacts,
@@ -117,8 +111,8 @@ fn envelope() -> Phase36EvidenceEnvelope {
             phase35_generation_digest: phase35_generation_digest.clone(),
         },
         evaluation_identity: Phase36EvaluationIdentity {
-            evaluator_commit: commit('b'),
-            successor_contract_digest: PHASE36_CONTRACT_DIGEST.to_owned(),
+            evaluator_digest: current_phase36_evidence_evaluator_digest(),
+            successor_contract_digest: current_phase36_evidence_contract_digest(),
         },
         immutable_artifacts: vec![
             artifact(
@@ -486,16 +480,16 @@ fn phase36_contract_classifies_each_incomplete_component_without_inference() {
 }
 
 #[test]
-fn phase36_contract_rejects_mutated_claim_digests_as_partial_public_output() {
+fn phase36_contract_rejects_malformed_claim_digests_as_partial_public_output() {
     // Arrange
     let mut inputs = [envelope(), envelope(), envelope(), envelope()];
-    inputs[0].shareable_facts.claim_digests.snapshot_substance = digest('8');
-    inputs[1].shareable_facts.claim_digests.runtime_health = digest('8');
-    inputs[2].shareable_facts.claim_digests.runtime_identity = digest('8');
+    inputs[0].shareable_facts.claim_digests.snapshot_substance = "8".repeat(63);
+    inputs[1].shareable_facts.claim_digests.runtime_health = "A".repeat(64);
+    inputs[2].shareable_facts.claim_digests.runtime_identity = String::new();
     inputs[3]
         .shareable_facts
         .claim_digests
-        .independent_no_actuation = digest('8');
+        .independent_no_actuation = "z".repeat(64);
 
     // Act and Assert
     for input in inputs {
@@ -506,50 +500,7 @@ fn phase36_contract_rejects_mutated_claim_digests_as_partial_public_output() {
     }
 }
 
-#[test]
-fn phase36_contract_classification_preserves_immutable_phase35_bytes_and_digest() {
-    // Arrange
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("clock should follow epoch")
-        .as_nanos();
-    let parent = Utf8PathBuf::from_path_buf(
-        std::env::temp_dir().join(format!("phase36-contract-{}-{nonce}", std::process::id())),
-    )
-    .expect("temporary path should be UTF-8");
-    let root = parent.join("protected");
-    fs::create_dir(&parent).expect("private parent should be created");
-    fs::set_permissions(&parent, fs::Permissions::from_mode(0o700))
-        .expect("private parent mode should be set");
-    fs::create_dir(&root).expect("protected root should be created");
-    fs::set_permissions(&root, fs::Permissions::from_mode(0o700))
-        .expect("protected root mode should be set");
-    let immutable_phase35 = root.join("phase35-root.bin");
-    let phase35_bytes = b"synthetic-immutable-phase35-root-v1\n";
-    fs::write(&immutable_phase35, phase35_bytes).expect("Phase 35 bytes should be written");
-    fs::set_permissions(&immutable_phase35, fs::Permissions::from_mode(0o600))
-        .expect("Phase 35 file mode should be set");
-    let input_path = root.join(PHASE36_INPUT_DOCUMENT);
-    let input = serde_json::to_vec_pretty(&envelope()).expect("envelope should encode");
-    fs::write(&input_path, input).expect("Phase 36 input should be written");
-    fs::set_permissions(&input_path, fs::Permissions::from_mode(0o600))
-        .expect("Phase 36 input mode should be set");
-    let before_bytes = fs::read(&immutable_phase35).expect("Phase 35 bytes should be readable");
-    let before_digest = crate::phase35_evidence::sha256_hex(&before_bytes);
-
-    // Act
-    let classification =
-        load_and_classify_phase36_root(&root).expect("read-only classification should pass");
-    let after_bytes = fs::read(&immutable_phase35).expect("Phase 35 bytes should remain readable");
-    let after_digest = crate::phase35_evidence::sha256_hex(&after_bytes);
-
-    // Assert
-    assert_eq!(classification.schema_version, PHASE36_SCHEMA);
-    assert_eq!(before_bytes, after_bytes);
-    assert_eq!(before_digest, after_digest);
-    fs::remove_dir_all(&parent).expect("temporary fixture should be removed");
-}
-
+mod authority;
 mod effects;
 mod mutations;
 pub(crate) mod runtime_identity;

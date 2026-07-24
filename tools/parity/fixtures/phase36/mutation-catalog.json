@@ -12,6 +12,10 @@
     "expected": "phase35_generation_reference_mismatch"
   },
   {
+    "name": "partial_public_output",
+    "expected": "partial_public_output"
+  },
+  {
     "name": "changed_evaluator_identity",
     "expected": "evaluator_identity_mismatch"
   },
@@ -62,10 +66,6 @@
   {
     "name": "missing_snapshot_join",
     "expected": "snapshot_substance_insufficient"
-  },
-  {
-    "name": "partial_public_output",
-    "expected": "partial_public_output"
   },
   {
     "name": "protected_root_symlink",

@@ -6,8 +6,8 @@
     "phase35_generation_digest": "2222222222222222222222222222222222222222222222222222222222222222"
   },
   "evaluation_identity": {
-    "evaluator_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "successor_contract_digest": "3636363636363636363636363636363636363636363636363636363636363636"
+    "evaluator_digest": "d7611d62632eb61995d1dabde69278430b5a786f55aaa05ee4cc9d67226aee69",
+    "successor_contract_digest": "f928727e640410d9d5befa0df2e4a724c3c18f97f80a24548934fec558751d5f"
   },
   "immutable_artifacts": [
     {

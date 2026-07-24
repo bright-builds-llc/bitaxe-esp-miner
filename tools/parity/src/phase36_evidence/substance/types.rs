@@ -165,6 +165,12 @@ pub enum SupervisorAvailability {
 #[serde(transparent)]
 pub struct CheckpointCategory(pub(super) String);
 
+impl CheckpointCategory {
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CheckpointHealth {
