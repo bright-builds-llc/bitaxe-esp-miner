@@ -1,14 +1,21 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::super::*;
 use crate::operator_evidence::ShareOutcome;
 
+static WORKSPACE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
 pub(super) fn create_workspace(name: &str) -> Utf8PathBuf {
-    let unique = SystemTime::now()
+    let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("clock should be valid")
         .as_nanos();
-    let root = std::env::temp_dir().join(format!("phase29-generation-{name}-{unique}"));
+    let process_id = std::process::id();
+    let sequence = WORKSPACE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+        "phase29-generation-{name}-{timestamp}-{process_id}-{sequence}"
+    ));
     fs::create_dir_all(&root).expect("workspace should be created");
     Utf8PathBuf::from_path_buf(root).expect("temp path should be UTF-8")
 }
