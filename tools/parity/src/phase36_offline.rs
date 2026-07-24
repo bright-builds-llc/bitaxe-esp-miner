@@ -13,12 +13,10 @@ use crate::operator_evidence::{
 };
 use crate::phase35_evidence::sha256_hex;
 use crate::phase36_evidence::effects::{
-    classify_independent_effect_document, IndependentEffectAdmission,
-    ValidatedIndependentEffectInterval,
+    classify_independent_effect_document, ValidatedIndependentEffectInterval,
 };
 use crate::phase36_evidence::runtime_identity::{
-    validate_observed_runtime_identity_documents, ObservedRuntimeIdentityAdmission,
-    ValidatedObservedRuntimeIdentity,
+    validate_observed_runtime_identity_documents, ValidatedObservedRuntimeIdentity,
 };
 use crate::phase36_evidence::{
     validate_substantive_snapshot_components, ComponentInsufficiency, SubstantiveSnapshotJoin,
@@ -219,39 +217,29 @@ impl ClassifiedFacts {
 }
 
 fn classify_companions(companions: &CompanionSnapshot) -> ClassifiedFacts {
-    let mut facts = ClassifiedFacts::default();
     if let (Some(api), Some(websocket), Some(retained)) = (
         companions.text(&companions.api),
         companions.text(&companions.websocket),
         companions.text(&companions.retained),
     ) {
-        if let Ok(evidence) = validate_substantive_snapshot_components(api, websocket, retained) {
-            facts.maybe_sensors = evidence.maybe_sensors;
-            facts.maybe_runtime_health = evidence.maybe_runtime_health;
-            if facts.maybe_sensors.is_some() || facts.maybe_runtime_health.is_some() {
-                facts.maybe_join = Some(evidence.join);
-            }
-        }
+        let _ = validate_substantive_snapshot_components(api, websocket, retained);
     }
     if let Some(package) = companions.text(&companions.exact_package) {
-        if let Ok(ObservedRuntimeIdentityAdmission::Validated { identity }) =
-            validate_observed_runtime_identity_documents(
-                package,
-                companions.text(&companions.request),
-                companions.text(&companions.event_ledger),
-                companions.text(&companions.private_result),
-                companions.text(&companions.public_projection),
-            )
-        {
-            facts.maybe_runtime_identity = Some(*identity);
-        }
+        let _ = validate_observed_runtime_identity_documents(
+            package,
+            companions.text(&companions.request),
+            companions.text(&companions.event_ledger),
+            companions.text(&companions.private_result),
+            companions.text(&companions.public_projection),
+        );
     }
-    if let Ok(IndependentEffectAdmission::Validated { interval }) =
-        classify_independent_effect_document(companions.text(&companions.independent_effect), None)
-    {
-        facts.maybe_independent_effect = Some(*interval);
-    }
-    facts
+    let _ =
+        classify_independent_effect_document(companions.text(&companions.independent_effect), None);
+
+    // The immutable Phase 35 generation does not anchor any of these companion
+    // roles or their digests. Caller-supplied documents cannot create evidence
+    // authority and therefore remain insufficient.
+    ClassifiedFacts::default()
 }
 
 #[derive(Default)]
@@ -381,28 +369,15 @@ mod tests {
     const EFFECTS: &str = include_str!("../fixtures/phase36/independent-effects-eligible.json");
 
     #[test]
-    fn phase36_offline_publishes_aggregate_for_each_missing_component() {
-        for (name, missing, expected) in [
-            (
-                "missing-sensor",
-                MissingComponent::Sensor,
-                ComponentInsufficiency::SnapshotSubstance,
-            ),
-            (
-                "missing-health",
-                MissingComponent::Health,
-                ComponentInsufficiency::RuntimeHealth,
-            ),
+    fn phase36_offline_unanchored_companion_sets_remain_fully_insufficient() {
+        for (name, missing) in [
+            ("missing-sensor", MissingComponent::Sensor),
+            ("missing-health", MissingComponent::Health),
             (
                 "missing-runtime-identity",
                 MissingComponent::RuntimeIdentity,
-                ComponentInsufficiency::RuntimeIdentityObservation,
             ),
-            (
-                "missing-effect",
-                MissingComponent::Effect,
-                ComponentInsufficiency::IndependentEffectObservation,
-            ),
+            ("missing-effect", MissingComponent::Effect),
         ] {
             // Arrange
             let fixture = OfflineFixture::new(name);
@@ -414,23 +389,39 @@ mod tests {
 
             // Assert
             assert_eq!(outcome.status, "immutable_artifacts_insufficient");
-            assert_eq!(outcome.component_insufficiencies, vec![expected]);
+            assert_eq!(
+                outcome.component_insufficiencies,
+                vec![
+                    ComponentInsufficiency::SnapshotSubstance,
+                    ComponentInsufficiency::RuntimeHealth,
+                    ComponentInsufficiency::RuntimeIdentityObservation,
+                    ComponentInsufficiency::IndependentEffectObservation,
+                ]
+            );
         }
     }
 
     #[test]
-    fn phase36_offline_sufficient_root_publishes_without_aggregate_insufficiency() {
+    fn phase36_offline_caller_authored_companions_cannot_create_authority() {
         // Arrange
-        let fixture = OfflineFixture::new("sufficient");
+        let fixture = OfflineFixture::new("unauthenticated-companions");
         let request = fixture.request(MissingComponent::None);
 
         // Act
-        let outcome = reevaluate_attempt31(&request).expect("eligible root should publish");
+        let outcome = reevaluate_attempt31(&request).expect("insufficient root should publish");
 
         // Assert
-        assert_eq!(outcome.status, "immutable_artifacts_sufficient");
-        assert!(outcome.component_insufficiencies.is_empty());
-        assert_eq!(outcome.supported_rows.len(), 4);
+        assert_eq!(outcome.status, "immutable_artifacts_insufficient");
+        assert_eq!(
+            outcome.component_insufficiencies,
+            vec![
+                ComponentInsufficiency::SnapshotSubstance,
+                ComponentInsufficiency::RuntimeHealth,
+                ComponentInsufficiency::RuntimeIdentityObservation,
+                ComponentInsufficiency::IndependentEffectObservation,
+            ]
+        );
+        assert_eq!(outcome.supported_rows, vec!["V12-HOSTNAME-205"]);
         for name in [
             "typed-fact-projection.json",
             "decision-matrix.json",
