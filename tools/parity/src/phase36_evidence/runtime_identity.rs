@@ -42,6 +42,7 @@ pub struct ValidatedObservedRuntimeIdentity {
 pub enum RuntimeIdentityObservationSource {
     DeviceSessionReplay,
     TerminalResultProjection,
+    ExactPackageFlashSession,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -84,6 +85,25 @@ struct ExactPackageDocument {
     factory_image_digest: String,
     firmware_elf_digest: String,
     package_digest: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HardwareObservationDocument {
+    schema_version: String,
+    board_category: String,
+    target: String,
+    asic: String,
+    detector_candidate_count: u8,
+    same_physical_device: bool,
+    physical_identity_digest: String,
+    boot_session: String,
+    boot_ordinal: u64,
+    reset_reason_category: String,
+    trusted_origin: String,
+    source_commit: String,
+    reference_commit: String,
+    app_elf_sha256: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -135,8 +155,29 @@ pub fn validate_observed_runtime_identity_documents(
     maybe_private_result_document: Option<&str>,
     maybe_public_projection_document: Option<&str>,
 ) -> Result<ObservedRuntimeIdentityAdmission, RuntimeIdentityEvidenceError> {
+    validate_observed_runtime_identity_documents_with_hardware(
+        exact_package_document,
+        maybe_request_document,
+        maybe_event_ledger_document,
+        maybe_private_result_document,
+        maybe_public_projection_document,
+        None,
+    )
+}
+
+pub fn validate_observed_runtime_identity_documents_with_hardware(
+    exact_package_document: &str,
+    maybe_request_document: Option<&str>,
+    maybe_event_ledger_document: Option<&str>,
+    maybe_private_result_document: Option<&str>,
+    maybe_public_projection_document: Option<&str>,
+    maybe_hardware_observation_document: Option<&str>,
+) -> Result<ObservedRuntimeIdentityAdmission, RuntimeIdentityEvidenceError> {
     let package = parse_json::<ExactPackageDocument>(exact_package_document)?;
     validate_package(&package)?;
+    if let Some(hardware_document) = maybe_hardware_observation_document {
+        return validate_hardware_observation(&package, hardware_document);
+    }
     let (Some(request_document), Some(private_document), Some(public_document)) = (
         maybe_request_document,
         maybe_private_result_document,
@@ -188,6 +229,70 @@ pub fn validate_observed_runtime_identity_documents(
             same_physical_device: true,
             boot_b_session_digest,
             boot_b_ordinal: boot_b.boot_ordinal,
+            source_commit_digest,
+            reference_commit_digest,
+            application_elf_digest,
+            exact_package,
+            claim_fact_digest,
+        }),
+    })
+}
+
+fn validate_hardware_observation(
+    package: &ExactPackageDocument,
+    document: &str,
+) -> Result<ObservedRuntimeIdentityAdmission, RuntimeIdentityEvidenceError> {
+    let observation = parse_json::<HardwareObservationDocument>(document)?;
+    if observation.schema_version != "phase36-hardware-runtime-observation-v1"
+        || observation.board_category != "205"
+        || observation.target != "xtensa-esp32s3-espidf"
+        || observation.asic != "BM1366"
+        || observation.detector_candidate_count != 1
+        || !observation.same_physical_device
+        || !is_lower_hex(&observation.physical_identity_digest, 64)
+        || !is_lower_hex(&observation.boot_session, 32)
+        || observation.boot_ordinal == 0
+        || !matches!(
+            observation.reset_reason_category.as_str(),
+            "power_on" | "software_cpu"
+        )
+        || !(observation.trusted_origin.starts_with("http://")
+            || observation.trusted_origin.starts_with("https://"))
+        || observation.source_commit != package.source_commit
+        || observation.reference_commit != package.reference_commit
+        || observation.app_elf_sha256 != package.firmware_elf_digest
+    {
+        return Err(RuntimeIdentityEvidenceError::BuildIdentityMismatch);
+    }
+    let exact_package = ExactPackageIdentityJoin {
+        manifest_digest: package.manifest_digest.clone(),
+        executable_image_digest: package.executable_image_digest.clone(),
+        factory_image_digest: package.factory_image_digest.clone(),
+        firmware_elf_digest: package.firmware_elf_digest.clone(),
+        package_digest: package.package_digest.clone(),
+    };
+    let source_commit_digest = sha256_hex(observation.source_commit.as_bytes());
+    let reference_commit_digest = sha256_hex(observation.reference_commit.as_bytes());
+    let application_elf_digest = observation.app_elf_sha256;
+    let boot_b_session_digest = sha256_hex(observation.boot_session.as_bytes());
+    let observation_source = RuntimeIdentityObservationSource::ExactPackageFlashSession;
+    let claim_fact_digest = digest_serializable(&(
+        observation_source,
+        true,
+        &boot_b_session_digest,
+        observation.boot_ordinal,
+        &source_commit_digest,
+        &reference_commit_digest,
+        &application_elf_digest,
+        &exact_package,
+        &observation.physical_identity_digest,
+    ))?;
+    Ok(ObservedRuntimeIdentityAdmission::Validated {
+        identity: Box::new(ValidatedObservedRuntimeIdentity {
+            observation_source,
+            same_physical_device: true,
+            boot_b_session_digest,
+            boot_b_ordinal: observation.boot_ordinal,
             source_commit_digest,
             reference_commit_digest,
             application_elf_digest,

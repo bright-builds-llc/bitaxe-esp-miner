@@ -509,12 +509,23 @@ fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
     const SESSION_REQUEST_VALIDATOR_DECLARATION: &str = "pub fn schema_is_valid(&self) -> bool {";
     const SESSION_STATE_VALIDATOR_DECLARATION: &str =
         "pub fn apply(&mut self, event: SessionEvent) {";
+    const HARDWARE_TRANSACTION_DECLARATION: &str =
+        "pub(super) fn run_phase36_hardware_transaction_with(";
     let expected_sources = [
         "phase36_evidence.rs",
         "phase36_evidence/substance.rs",
         "phase36_evidence/substance/types.rs",
         "phase36_evidence/runtime_identity.rs",
         "phase36_evidence/runtime_identity/ledger.rs",
+        "phase36_evidence/capture.rs",
+        "phase36_evidence/capture/filesystem.rs",
+        "phase36_evidence/capture/hardware.rs",
+        "phase36_broker/contract.rs",
+        "phase36_broker/ledger.rs",
+        "phase36_broker/hardware.rs",
+        "phase36_broker/hardware_process.rs",
+        "scripts/phase36-substantive-evidence.sh",
+        "scripts/phase36-hardware-effect.sh",
         "tools/device-session/src/model.rs",
         "phase36_evidence/effects.rs",
         "operator_snapshot_evidence.rs",
@@ -541,6 +552,11 @@ fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
         .find(|(path, _)| *path == "tools/device-session/src/model.rs")
         .map(|(_, source)| *source)
         .expect("device-session replay validator source should be inventoried");
+    let hardware_transaction_source = PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
+        .iter()
+        .find(|(path, _)| *path == "phase36_broker/hardware.rs")
+        .map(|(_, source)| *source)
+        .expect("hardware transaction source should be inventoried");
     let drift_identity = |target_path: &str, declaration: &str, replacement: &str| {
         let drifted_inventory =
             PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
@@ -569,6 +585,11 @@ fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
         SESSION_STATE_VALIDATOR_DECLARATION,
         "pub fn apply_drift(&mut self, event: SessionEvent) {",
     );
+    let hardware_transaction_drift = drift_identity(
+        "phase36_broker/hardware.rs",
+        HARDWARE_TRANSACTION_DECLARATION,
+        "pub(super) fn run_phase36_hardware_transaction_with_drift(",
+    );
     let path_drifted_inventory =
         PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
             .iter()
@@ -592,7 +613,13 @@ fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
     assert!(hostname_validator_source.contains(HOSTNAME_VALIDATOR_DECLARATION));
     assert!(session_validator_source.contains(SESSION_REQUEST_VALIDATOR_DECLARATION));
     assert!(session_validator_source.contains(SESSION_STATE_VALIDATOR_DECLARATION));
-    for (drifted_evaluator, drifted_contract) in [hostname_drift, session_state_drift, path_drift] {
+    assert!(hardware_transaction_source.contains(HARDWARE_TRANSACTION_DECLARATION));
+    for (drifted_evaluator, drifted_contract) in [
+        hostname_drift,
+        session_state_drift,
+        hardware_transaction_drift,
+        path_drift,
+    ] {
         assert_ne!(
             drifted_evaluator,
             current_phase36_evidence_evaluator_digest()

@@ -240,30 +240,54 @@ if PATH="$fake_bin:$PATH" \
 	private-parent="$hardware_parent" \
 	attempt-handle-file="$hardware_handle" \
 	candidate-output="$hardware_candidate" \
-	wifi-credentials="$credential_probe" >"$test_output" 2>"$test_stderr"; then
-	fail_test "detector failure unexpectedly completed hardware mode"
-fi
-[[ ! -s "$test_output" ]] || fail_test "detector failure wrote public stdout"
-rg -Fqx 'category=hardware_broker_failed' "$test_stderr" ||
-	fail_test "detector failure omitted the supervisor category"
+	wifi-credentials="$credential_probe" >"$test_output" 2>"$test_stderr"
+rg -Fqx 'category=sealed_non_promotion' "$test_output" ||
+	fail_test "detector failure omitted typed sealed non-promotion"
+[[ ! -s "$test_stderr" ]] || fail_test "detector failure wrote public stderr"
 [[ -f "$detector_log" ]] ||
 	fail_test "broker did not create detector invocation evidence"
 [[ "$(wc -l <"$detector_log" | tr -d ' ')" == 1 ]] ||
 	fail_test "broker did not invoke the detector exactly once"
 rg -Fqx 'detect-ultra205' "$detector_log" ||
 	fail_test "broker invoked a command other than just detect-ultra205"
-rg -Fq 'category=phase36_broker_detector_failed' "${hardware_handle}.stderr" ||
-	fail_test "broker did not preserve the detector failure category"
-if rg -Fq 'phase36_broker_wifi_credentials_invalid' "${hardware_handle}.stderr"; then
-	fail_test "broker accessed credential metadata after detector failure"
-fi
 [[ ! -e "$effect_log" ]] ||
 	fail_test "detector failure reached a later device-effect adapter"
 [[ ! -e "$hardware_candidate" ]] ||
 	fail_test "software-only hardware exercise created a candidate"
 readonly hardware_child_name="$(jq -er '.child_name' "$hardware_handle")"
-[[ ! -e "$hardware_parent/$hardware_child_name" ]] ||
-	fail_test "failed hardware broker exercise created its protected child"
+readonly hardware_child="$hardware_parent/$hardware_child_name"
+[[ -d "$hardware_child" && "$(file_mode "$hardware_child")" == 700 ]] ||
+	fail_test "failed hardware broker exercise omitted its protected child"
+for private_file in "$hardware_child/effect-ledger.jsonl" "$hardware_child/seal.json"; do
+	[[ -f "$private_file" && "$(file_mode "$private_file")" == 600 ]] ||
+		fail_test "failed hardware broker exercise omitted a mode-0600 transaction file"
+done
+jq -e '
+		.status == "sealed_non_promotion" and
+		.first_failure == "detector_failed" and
+		.secondary_failure == "recovery_failed"
+	' "$hardware_child/seal.json" >/dev/null ||
+	fail_test "failed hardware broker seal lost typed failure ordering"
+[[ "$(jq -s 'length' "$hardware_child/effect-ledger.jsonl")" == 16 ]] ||
+	fail_test "failed hardware broker ledger is incomplete"
+jq -s -e '
+		[.[].operation] |
+		(index("exact_package_admission") < index("board205_detector_probe")) and
+		(index("board205_detector_probe") < index("typed_recovery")) and
+		(index("typed_recovery") < index("cleanup"))
+	' "$hardware_child/effect-ledger.jsonl" >/dev/null ||
+	fail_test "failed hardware broker ledger lost operation ordering"
+
+expect_failure_category hardware_output_exists \
+	mode=hardware \
+	board=205 \
+	capture-timeout-seconds=360 \
+	private-parent="$hardware_parent" \
+	attempt-handle-file="$hardware_handle" \
+	candidate-output="$hardware_candidate" \
+	wifi-credentials="$credential_probe"
+[[ "$(wc -l <"$detector_log" | tr -d ' ')" == 1 ]] ||
+	fail_test "replay attempt invoked the detector"
 
 readonly direct_effect_pattern='espflash|flash-monitor|serial-session|device-session|curl[[:space:]]|phase17-websocket|phase35-correlated'
 if rg -q -i "$direct_effect_pattern" "$supervisor_source"; then

@@ -803,6 +803,42 @@ const PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY: &[(&str, &str)] = &[
         include_str!("phase36_evidence/runtime_identity/ledger.rs"),
     ),
     (
+        "phase36_evidence/capture.rs",
+        include_str!("phase36_evidence/capture.rs"),
+    ),
+    (
+        "phase36_evidence/capture/filesystem.rs",
+        include_str!("phase36_evidence/capture/filesystem.rs"),
+    ),
+    (
+        "phase36_evidence/capture/hardware.rs",
+        include_str!("phase36_evidence/capture/hardware.rs"),
+    ),
+    (
+        "phase36_broker/contract.rs",
+        include_str!("phase36_broker/contract.rs"),
+    ),
+    (
+        "phase36_broker/ledger.rs",
+        include_str!("phase36_broker/ledger.rs"),
+    ),
+    (
+        "phase36_broker/hardware.rs",
+        include_str!("phase36_broker/hardware.rs"),
+    ),
+    (
+        "phase36_broker/hardware_process.rs",
+        include_str!("phase36_broker/hardware_process.rs"),
+    ),
+    (
+        "scripts/phase36-substantive-evidence.sh",
+        include_str!("../../../scripts/phase36-substantive-evidence.sh"),
+    ),
+    (
+        "scripts/phase36-hardware-effect.sh",
+        include_str!("../../../scripts/phase36-hardware-effect.sh"),
+    ),
+    (
         "tools/device-session/src/model.rs",
         include_str!("../../device-session/src/model.rs"),
     ),

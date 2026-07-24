@@ -84,6 +84,7 @@ fn bundle() -> Phase36PrivateCaptureBundle {
             event_ledger_document: identity.ledger,
             private_result_document: identity.private_result,
             public_projection_document: identity.public_projection,
+            hardware_observation_document: None,
         },
         broker: broker_document(),
     }

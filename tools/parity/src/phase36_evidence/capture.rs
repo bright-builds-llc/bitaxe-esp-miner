@@ -1,6 +1,7 @@
 //! Exact private capture bundle and commit-redacted candidate derivation.
 
 mod filesystem;
+mod hardware;
 mod synthetic;
 
 use serde::{Deserialize, Serialize};
@@ -8,7 +9,7 @@ use thiserror::Error;
 
 use super::effects::ValidatedIndependentEffectInterval;
 use super::runtime_identity::{
-    validate_observed_runtime_identity_documents, ObservedRuntimeIdentityAdmission,
+    validate_observed_runtime_identity_documents_with_hardware, ObservedRuntimeIdentityAdmission,
     ValidatedObservedRuntimeIdentity,
 };
 use super::substance::{
@@ -22,9 +23,11 @@ pub const PHASE36_PRIVATE_CAPTURE_SCHEMA: &str = "phase36-private-capture-v1";
 pub const PHASE36_CAPTURE_CANDIDATE_SCHEMA: &str = "phase36-capture-candidate-v1";
 
 pub use filesystem::{
-    classify_candidate_files, inspect_candidate_file, write_candidate_from_private_file,
-    CandidateClassificationProjection, CandidateInspectionProjection,
+    classify_candidate_files, inspect_candidate_file, replace_broker_document,
+    write_candidate_from_private_file, CandidateClassificationProjection,
+    CandidateInspectionProjection,
 };
+pub use hardware::{assemble_hardware_capture, HardwareCaptureAssembly};
 pub use synthetic::write_synthetic_capture;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -53,6 +56,8 @@ pub struct RuntimeIdentityCaptureDocuments {
     pub event_ledger_document: String,
     pub private_result_document: String,
     pub public_projection_document: String,
+    #[serde(default)]
+    pub hardware_observation_document: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -143,12 +148,14 @@ pub fn classify_private_capture(
     };
 
     let identity_documents = &bundle.runtime_identity;
-    let runtime_identity = validate_observed_runtime_identity_documents(
+    let runtime_identity = validate_observed_runtime_identity_documents_with_hardware(
         &identity_documents.exact_package_document,
         Some(&identity_documents.request_document),
-        Some(&identity_documents.event_ledger_document),
+        (!identity_documents.event_ledger_document.is_empty())
+            .then_some(identity_documents.event_ledger_document.as_str()),
         Some(&identity_documents.private_result_document),
         Some(&identity_documents.public_projection_document),
+        identity_documents.hardware_observation_document.as_deref(),
     )
     .map_err(|_| Phase36CaptureError::RuntimeIdentityInvalid)?;
     let ObservedRuntimeIdentityAdmission::Validated { identity } = runtime_identity else {

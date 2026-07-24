@@ -186,6 +186,7 @@ fn synthetic_runtime_identity() -> Result<RuntimeIdentityCaptureDocuments, Captu
             .map_err(|_| CaptureFileError::OutputFailed)?,
         public_projection_document: serde_json::to_string(&state.projection())
             .map_err(|_| CaptureFileError::OutputFailed)?,
+        hardware_observation_document: None,
     })
 }
 

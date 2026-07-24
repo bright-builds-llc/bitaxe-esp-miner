@@ -99,6 +99,8 @@ enum CliCommand {
     AdmitPhase35Evidence(AdmitPhase35EvidenceArgs),
     ClassifyPhase36Evidence(ClassifyPhase36EvidenceArgs),
     ClassifyPhase36Effects(ClassifyPhase36EffectsArgs),
+    Phase36EvaluatorIdentity,
+    Phase36AssembleHardwareCapture(Phase36AssembleHardwareCaptureArgs),
     Phase36HardwareCapture(Phase36HardwareCaptureArgs),
     Phase36SyntheticCapture(Phase36SyntheticCaptureArgs),
     InspectPhase36Candidate(InspectPhase36CandidateArgs),
@@ -231,6 +233,24 @@ struct Phase36HardwareCaptureArgs {
 
     #[arg(long, value_parser = parse_utf8_path)]
     wifi_credentials: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct Phase36AssembleHardwareCaptureArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    attempt_child: Utf8PathBuf,
+    #[arg(long, value_parser = parse_utf8_path)]
+    manifest: Utf8PathBuf,
+    #[arg(long)]
+    manifest_digest: String,
+    #[arg(long)]
+    firmware_elf_digest: String,
+    #[arg(long)]
+    executable_image_digest: String,
+    #[arg(long)]
+    factory_image_digest: String,
+    #[arg(long)]
+    package_identity_digest: String,
 }
 
 #[derive(Debug, Parser)]
@@ -826,6 +846,31 @@ fn main() -> Result<()> {
             writeln!(stdout, "{output}")?;
             return Ok(());
         }
+        CliCommand::Phase36EvaluatorIdentity => {
+            let mut stdout = io::stdout().lock();
+            writeln!(
+                stdout,
+                "evaluator_identity_digest={}",
+                phase36_evidence::current_phase36_evidence_evaluator_digest()
+            )?;
+            return Ok(());
+        }
+        CliCommand::Phase36AssembleHardwareCapture(args) => {
+            let input = phase36_evidence::capture::HardwareCaptureAssembly {
+                attempt_child: &args.attempt_child,
+                manifest: &args.manifest,
+                manifest_digest: &args.manifest_digest,
+                firmware_elf_digest: &args.firmware_elf_digest,
+                executable_image_digest: &args.executable_image_digest,
+                factory_image_digest: &args.factory_image_digest,
+                package_identity_digest: &args.package_identity_digest,
+            };
+            phase36_evidence::capture::assemble_hardware_capture(&input)
+                .map_err(|error| anyhow::anyhow!("category={error}"))?;
+            let mut stdout = io::stdout().lock();
+            writeln!(stdout, "category=hardware_capture_assembled")?;
+            return Ok(());
+        }
         CliCommand::Phase36SyntheticCapture(args) => {
             let output = run_phase36_synthetic_capture_command(args)?;
             let mut stdout = io::stdout().lock();
@@ -896,6 +941,12 @@ fn main() -> Result<()> {
         }
         CliCommand::ClassifyPhase36Effects(_) => {
             bail!("Phase 36 effect classifier dispatch entered workspace-aware path")
+        }
+        CliCommand::Phase36EvaluatorIdentity => {
+            bail!("Phase 36 evaluator identity dispatch entered workspace-aware path")
+        }
+        CliCommand::Phase36AssembleHardwareCapture(_) => {
+            bail!("Phase 36 hardware assembler dispatch entered workspace-aware path")
         }
         CliCommand::Phase36SyntheticCapture(_) => {
             bail!("Phase 36 synthetic broker dispatch entered workspace-aware path")
@@ -968,13 +1019,26 @@ fn run_phase36_hardware_capture_command(args: &Phase36HardwareCaptureArgs) -> Re
         anyhow::bail!("category=phase36_broker_path_invalid");
     }
 
-    phase36_broker::run_phase36_hardware_pre_capture_gate(
+    let disposition = phase36_broker::run_phase36_hardware_transaction(
         args.board,
-        args.wifi_credentials.as_std_path(),
+        &args.private_parent,
+        &args.attempt_handle_file,
+        &args.candidate_output,
+        &args.wifi_credentials,
+        args.capture_timeout_seconds,
     )
     .map_err(|error| anyhow::anyhow!("category={error}"))?;
-
-    anyhow::bail!("category=phase36_broker_capture_not_started")
+    match disposition {
+        phase36_broker::Phase36HardwareDisposition::SealedEligible => {
+            Ok("category=sealed_eligible".to_owned())
+        }
+        phase36_broker::Phase36HardwareDisposition::SealedNonPromotion {
+            first_failure,
+            secondary_failure,
+        } => Ok(format!(
+            "category=sealed_non_promotion\nfirst_failure={first_failure:?}\nsecondary_failure={secondary_failure:?}"
+        )),
+    }
 }
 
 fn run_inspect_phase36_candidate_command(args: &InspectPhase36CandidateArgs) -> Result<String> {

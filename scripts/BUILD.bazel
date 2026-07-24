@@ -92,7 +92,21 @@ sh_binary(
 sh_binary(
     name = "phase36_substantive_evidence",
     srcs = ["phase36-substantive-evidence.sh"],
-    data = ["//tools/parity:report"],
+    data = [
+        ":phase36_hardware_effect",
+        "//tools/parity:report",
+    ],
+)
+
+sh_binary(
+    name = "phase36_hardware_effect",
+    srcs = ["phase36-hardware-effect.sh"],
+    data = [
+        "phase17-websocket-capture.mjs",
+        "phase35-http-boundary-read.sh",
+        "//tools/flash:flash",
+        "//tools/parity:report",
+    ],
 )
 
 sh_test(
@@ -113,6 +127,7 @@ sh_test(
         "//:Justfile",
         ":phase36_substantive_evidence",
         "phase36-substantive-evidence.sh",
+        ":phase36_hardware_effect",
         "//tools/parity:report",
         "//tools/parity:src/phase36_broker.rs",
         "//tools/parity:src/phase36_broker/hardware.rs",

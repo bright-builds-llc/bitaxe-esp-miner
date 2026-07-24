@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::{
-    candidate_digest_from_value, classify_private_capture, Phase36CaptureCandidate,
-    PHASE36_CAPTURE_CANDIDATE_SCHEMA,
+    candidate_digest_from_value, classify_private_capture, BrokerCaptureDocument,
+    Phase36CaptureCandidate, Phase36PrivateCaptureBundle, PHASE36_CAPTURE_CANDIDATE_SCHEMA,
 };
 use crate::phase35_evidence::sha256_hex;
 
@@ -97,6 +97,27 @@ pub fn write_candidate_from_private_file(
         return Err(CaptureFileError::PrivateInputChanged);
     }
     Ok(candidate)
+}
+
+pub fn replace_broker_document(
+    private_input: &Utf8Path,
+    broker: BrokerCaptureDocument,
+) -> Result<(), CaptureFileError> {
+    validate_private_file(private_input)?;
+    let bytes = fs::read(private_input).map_err(|_| CaptureFileError::PrivateInputInvalid)?;
+    let mut bundle = serde_json::from_slice::<Phase36PrivateCaptureBundle>(&bytes)
+        .map_err(|_| CaptureFileError::PrivateInputInvalid)?;
+    bundle.broker = broker;
+    let replacement =
+        serde_json::to_vec_pretty(&bundle).map_err(|_| CaptureFileError::OutputFailed)?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(private_input)
+        .map_err(|_| CaptureFileError::OutputFailed)?;
+    file.write_all(&replacement)
+        .and_then(|()| file.sync_all())
+        .map_err(|_| CaptureFileError::OutputFailed)
 }
 
 pub fn inspect_candidate_file(
