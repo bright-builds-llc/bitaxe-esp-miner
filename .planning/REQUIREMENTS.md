@@ -28,7 +28,7 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 ### Truthful System Identity
 
 - [x] **SYS-01**: An Ultra 205 operator can inspect the running firmware's semantic version and embedded source commit without host-checkout substitution.
-- [ ] **SYS-02**: An Ultra 205 operator can correlate the running firmware with its pinned reference commit and flashed package identity.
+- [x] **SYS-02**: An Ultra 205 operator can correlate the running firmware with its pinned reference commit and flashed package identity.
 - [x] **SYS-03**: An Ultra 205 operator can inspect truthful ESP-IDF, AxeOS/static-asset, board `205`, BM1366, and running-partition identity.
 - [x] **SYS-04**: An Ultra 205 operator can inspect decoded reset reason, uptime, and heap-health facts from the running firmware.
 - [x] **SYS-05**: An Ultra 205 operator sees an explicit unavailable state for any identity or runtime fact the firmware cannot prove; live surfaces never substitute fixtures or synthetic placeholders.
@@ -43,10 +43,10 @@ Requirements for Ultra 205 Operator-Ready Runtime. Each requirement maps to exac
 ### Correlated Hardware Evidence
 
 - [x] **EVD-10**: A v1.2 hardware run stops before target, credential, flash, reset, monitor, or evidence-promotion work unless `just detect-ultra205` finds exactly one board `205` candidate and board-info succeeds.
-- [ ] **EVD-11**: A v1.2 evidence root binds one exact source commit, reference commit, package manifest and digest, independently observed runtime identity, board category, boot session, target-lock provenance, and bounded capture chronology.
-- [ ] **EVD-12**: A v1.2 evidence root validates and correlates substantive read-only sensor acquisitions with system-info, live-WebSocket, and retained-log projections from the same operator-snapshot revisions.
+- [x] **EVD-11**: A v1.2 evidence root binds one exact source commit, reference commit, package manifest and digest, independently observed runtime identity, board category, boot session, target-lock provenance, and bounded capture chronology.
+- [x] **EVD-12**: A v1.2 evidence root validates and correlates substantive read-only sensor acquisitions with system-info, live-WebSocket, and retained-log projections from the same operator-snapshot revisions.
 - [x] **EVD-13**: A v1.2 evidence root correlates pre-PATCH, committed-and-reloaded, and post-reboot hostname observations without recording credentials, network identities, raw targets, or other secret values.
-- [ ] **EVD-14**: A v1.2 evidence root passes complete inventory, redaction, lifecycle cleanup, independently evidenced no-actuation, reference-cleanliness, and current-head validation before atomic promotion.
+- [x] **EVD-14**: A v1.2 evidence root passes complete inventory, redaction, lifecycle cleanup, independently evidenced no-actuation, reference-cleanliness, and current-head validation before atomic promotion.
 - [ ] **EVD-15**: The v1.2 evidence workflow promotes only explicitly allowlisted operator-runtime parity rows supported by claim-specific eligible evidence and records deterministic non-promotion for active control, self-test effects, watchdog intervention, mining, credentials, other boards, and every other excluded claim.
 
 ## Future Requirements
@@ -111,7 +111,7 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | CFG-12      | Phase 35 | Complete |
 | CFG-13      | Phase 33 | Complete |
 | SYS-01      | Phase 34 | Complete |
-| SYS-02      | Phase 36 | Pending  |
+| SYS-02      | Phase 36 | Complete |
 | SYS-03      | Phase 34 | Complete |
 | SYS-04      | Phase 34 | Complete |
 | SYS-05      | Phase 34 | Complete |
@@ -120,10 +120,10 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 | HLT-03      | Phase 34 | Complete |
 | HLT-04      | Phase 34 | Complete |
 | EVD-10      | Phase 35 | Complete |
-| EVD-11      | Phase 36 | Pending  |
-| EVD-12      | Phase 36 | Pending  |
+| EVD-11      | Phase 36 | Complete |
+| EVD-12      | Phase 36 | Complete |
 | EVD-13      | Phase 35 | Complete |
-| EVD-14      | Phase 36 | Pending  |
+| EVD-14      | Phase 36 | Complete |
 | EVD-15      | Phase 36 | Pending  |
 
 **Coverage:**
@@ -134,4 +134,4 @@ Which phase covers each v1.2 requirement. Populated during roadmap creation.
 - Duplicate mappings: 0
 
 *Requirements defined: 2026-07-13*
-*Last updated: 2026-07-23 after the v1.2 milestone audit remapped five gap-closure requirements to Phase 36*
+*Last updated: 2026-07-24 after Plan 36-05 completed SYS-02, EVD-11, EVD-12, and EVD-14*

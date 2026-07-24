@@ -3,28 +3,28 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 36 gap closure planned; next execute Plan 36-05
-last_updated: "2026-07-24T20:28:54.542Z"
+stopped_at: Completed 36-05-PLAN.md
+last_updated: "2026-07-24T21:18:31.136Z"
 last_activity: "2026-07-24"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 31
-  completed_plans: 27
-  percent: 87
+  completed_plans: 28
+  percent: 90
 ---
 
 # Project State
 
-Last activity: 2026-07-24 - Planned verified Phase 36 gap closure as Plans 05-07 followed by final Plan 04 reconciliation
+Last activity: 2026-07-24 - Completed Plan 36-05 software broker and substantive capture admission harness
 
 ## Current Position
 
 Phase: 36 (substantive-evidence-admission-and-exact-re-promotion) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 
 - **Phase:** 36 of 36 (substantive evidence admission and exact re-promotion)
-- **Plan:** 3 of 7
+- **Plan:** 4 of 7
 - **Status:** Ready to execute
 - **Checkpoint:** Code review and security audit passed at
   `f1cb6101f2c384acaffe0b8523097433ff0f04cc`; independent verification scored
@@ -378,6 +378,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 35 P01 | 37min | 2 tasks | 54 files |
 | Phase 35 P02 | 30min | 2 tasks | 8 files |
 | Phase 35 P03 | 25m | 2 tasks | 18 files |
+| Phase 36 P05 | 42min | 3 tasks | 20 files |
 
 ### Quick Tasks Completed
 
@@ -569,15 +570,14 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 - No planning blocker remains. The authoritative successor still lacks eligible
   sensor/snapshot/runtime-health, runtime-identity, and independent-effect
-  observations; Plans 05 through 07 must close or truthfully preserve those
-  gaps before Plan 04 may reconcile canonical status.
+  observations; Plans 06 and 07 must close or truthfully preserve those gaps
+  before Plan 04 may reconcile canonical status.
 
 ## Session
 
-- **Stopped at:** Phase 36 gap closure independently plan-checked; 3 of 7 plans
-  are complete and Plan 36-05 is next.
+- **Stopped at:** Completed 36-05-PLAN.md; 4 of 7 plans are complete and Plan
+  36-06 is next.
 
 - **Resume:** Run `/gsd-execute-phase 36 --gaps-only`. Preserve the exact
-  preserve/demote result, four blocked requirements, EVD-15 satisfied
-  distinction, and all canonical Plan 04 files until the Wave 8 independent
-  checkpoint passes.
+  preserve/demote result, remaining EVD-15 gap, and all canonical Plan 04 files
+  until the Wave 8 independent checkpoint passes.
