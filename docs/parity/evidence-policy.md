@@ -103,3 +103,16 @@ blob changed since its merge base with exceptions disabled, and still scan the
 complete tracked admitted baseline. Missing, malformed, or unrelated comparison
 revisions fail closed. Findings are non-echoing and capped without weakening the
 failure result.
+
+## Evaluator identity closure
+
+An evaluator identity must cover every materially reachable repository-owned
+validator, including transitive reducers and models. Its versioned inventory
+must bind each member unambiguously by repository-relative path and exact source
+bytes, and every listed source must be declared in each build and runfiles graph
+that constructs the identity.
+
+Regression tests must prove that material source drift, path drift, membership
+addition, removal, or replacement rotates the evaluator identity and every
+successor-contract identity derived from it. Caller-authored digests and
+incomplete convenient inventories have zero authority.

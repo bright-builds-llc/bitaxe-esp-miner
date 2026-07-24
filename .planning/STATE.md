@@ -3,36 +3,38 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 35 complete; v1.2 milestone audit pending
-last_updated: "2026-07-23T17:39:32.335Z"
-last_activity: "2026-07-23"
+stopped_at: Phase 36 Plan 04 blocked at independent gaps_found verification
+last_updated: "2026-07-24T18:20:00Z"
+last_activity: "2026-07-24"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 28
-  completed_plans: 26
-  percent: 93
+  completed_plans: 27
+  percent: 96
 ---
 
 # Project State
 
-Last activity: 2026-07-23
+Last activity: 2026-07-24 - Completed quick task 260724-ivz: Persist Phase 36 checkpoint artifacts, crash diagnosis, evidence policy, and durable lessons without canonical reconciliation
 
 ## Current Position
 
 Phase: 36 (substantive-evidence-admission-and-exact-re-promotion) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
-- **Phase:** 35 of 35 (detector gated correlated evidence and exact parity promotion)
-- **Plan:** 2 of 4
-- **Status:** Ready to execute
-  coherent Boot A, hostname mutation/readback, exactly-once normal reboot,
-  same-device Boot B, restoration, cleanup, inventory, validation, redaction,
-  and atomic admission chain. Four dedicated passive board-205 rows are
-  verified; all excluded and broad scopes remain explicit non-promotions.
+- **Phase:** 36 of 36 (substantive evidence admission and exact re-promotion)
+- **Plan:** 3 of 4
+- **Status:** Plan 04 blocked at the independent `gaps_found` checkpoint.
+- **Checkpoint:** Code review and security audit passed at
+  `f1cb6101f2c384acaffe0b8523097433ff0f04cc`; independent verification scored
+  9/13 must-haves and retained the phase in executing status.
+- **Requirements:** SYS-02, EVD-11, EVD-12, and EVD-14 remain blocked. EVD-15
+  is satisfied by the exact preserve/demote result and explicit non-claims.
 
-- **Next step:** Run the v1.2 milestone audit. Do not widen the admitted Phase
-  35 evidence beyond its four passive board-205 claims.
+- **Next step:** Separately plan Phase 36 gap closure. That plan is the only
+  continuation; do not perform Plan 04 canonical reconciliation before new
+  eligible evidence passes the existing gates.
 
 ## Project Reference
 
@@ -192,6 +194,18 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Credential-path validation occurs only after one board-205 detector capability, and raw values never enter shareable output.
 - Every post-mutation exit attempts restoration before cleanup and seals failed evidence roots as non-promotable and non-reusable.
 - The supervisor preserves child-command status explicitly because Bash conditional call stacks disable implicit `errexit`.
+
+## Decisions (Phase 36 Independent Verification)
+
+- Final code review and the OWASP ASVS Level 1 security audit passed at exact
+  commit `f1cb6101f2c384acaffe0b8523097433ff0f04cc`.
+- Independent verification returned `gaps_found` at 9/13 must-haves and 2/5
+  roadmap criteria because authoritative sensor/snapshot/runtime-health,
+  runtime-identity, and independent-effect facts are absent.
+- SYS-02, EVD-11, EVD-12, and EVD-14 remain blocked. EVD-15 is satisfied by the
+  exact hostname preservation, typed demotions, and preserved non-claims.
+- Plan 04 is blocked. A separately planned Phase 36 gap-closure effort is the
+  only continuation; canonical reconciliation remains untouched.
 
 ## Decisions (Phase 34 Plan 09)
 
@@ -363,6 +377,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 260724-ivz | Persist Phase 36 checkpoint artifacts, crash diagnosis, evidence policy, and durable lessons without canonical reconciliation | 2026-07-24 | this commit | Completed; Phase 36 remains blocked at `gaps_found` | [260724-ivz-persist-phase-36-checkpoint-artifacts-cr](./quick/260724-ivz-persist-phase-36-checkpoint-artifacts-cr/) |
 | 260712-0a9 | Always-on serial runtime heartbeat and Plan 13 fallback validation | 2026-07-12 | a38bb0f | Software verified; hardware transport blocked | [260712-0a9-implement-the-always-on-serial-only-runt](./quick/260712-0a9-implement-the-always-on-serial-only-runt/) |
 | 260712-pw5 | Persist direct-UART and pin-manipulation authorization rule | 2026-07-12 | this commit | Plan 14 hardware cancelled; non-invasive replanning required | [260712-pw5-persist-repo-rule-prohibiting-assumed-di](./quick/260712-pw5-persist-repo-rule-prohibiting-assumed-di/) |
 | 260713-p28 | Close Phase 28.1.1 without claiming unresolved parity | 2026-07-13 | this commit | Closed — Won't Do (unresolved); Phase 30 next | — |
@@ -546,13 +561,15 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- None for Phase 35. Attempts 1 through 30 remain immutable non-promotion
-  history; Attempt 31 is the sole admitted generation. Milestone completion is
-  an administrative follow-up and cannot broaden the admitted evidence.
+- Phase 36 Plan 04 is blocked by the independent `gaps_found` result. The
+  authoritative successor lacks eligible sensor/snapshot/runtime-health,
+  runtime-identity, and independent-effect observations. A separately planned
+  Phase 36 gap-closure effort is required before canonical reconciliation.
 
 ## Session
 
-- **Stopped at:** Phase 35 complete; v1.2 milestone audit pending
-- **Resume:** Audit the v1.2 milestone against its requirements and admitted
-  evidence. Preserve the Phase 35 root digest, exact four-row allowlist, eleven
-  typed non-promotions, and immutable Attempts 1 through 30 history.
+- **Stopped at:** Phase 36 Plan 04 blocked at independent `gaps_found`
+  verification; 3 of 4 plans are accounted for.
+- **Resume:** Separately plan Phase 36 gap closure. Preserve the exact
+  preserve/demote result, four blocked requirements, EVD-15 satisfied
+  distinction, and all canonical Plan 04 files.

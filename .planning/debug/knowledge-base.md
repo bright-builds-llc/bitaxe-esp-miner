@@ -33,3 +33,13 @@ Resolved debug sessions. Used by `gsd-debugger` to surface known-pattern hypothe
 - **Files changed:** scripts/phase35-http-boundary-read.sh, scripts/phase35-http-boundary-read-test.sh, tools/parity/src/main.rs, tools/parity/src/phase35_http.rs, tools/parity/src/phase35_http/tests.rs, tools/parity/src/phase35_http_probe.rs, tools/parity/src/phase35_http_probe/tests.rs
 
 ***
+
+## macos-rust-launch-and-cache-stalls — Separate policy assessment from ignored-cache enumeration
+
+- **Date:** 2026-07-24
+- **Error patterns:** unrelated Macroquad/Miniquad abort popups, `_dyld_start`, AppleSystemPolicy first launch, `target/debug/deps` enumeration stall
+- **Root cause:** The popups came from unrelated GUI binaries. Fresh Rust executables separately encountered macOS AMFI/AppleSystemPolicy assessment in an unhealthy long-running host session, while a later Rust gate blocked on unreadable enumeration of the pre-existing ignored Cargo cache.
+- **Fix:** Perform a full reboot, allow a bounded first-launch policy assessment, run complete Rust gates in clean isolated targets, recoverably quarantine the stalled ignored cache, and verify normal target recreation.
+- **Non-workaround:** No repository source, signing, xattr, provenance, AMFI, or security-policy change was justified.
+
+***

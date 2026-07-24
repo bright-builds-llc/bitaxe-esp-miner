@@ -137,3 +137,10 @@
 2. What went wrong: A phase-local reboot workflow hard-coded `espflash` as its runtime observer even though earlier hardware evidence in the same repository had already shown that passive espflash delivered zero application bytes while the receive-only OS-native reader delivered valid heartbeats.
 3. Preventive rule: Model bootloader access, runtime observation, application control, and evidence proof as separate capabilities. Phase workflows must consume the repository's currently qualified backend for each capability instead of selecting a convenient tool locally.
 4. Trigger signal to catch it earlier: A phase names a concrete transport executable directly even though a repository qualification, capability contract, or prior hardware result selects a different backend for that boundary.
+
+## lesson-evaluator-identity-binds-transitive-validators | 2026-07-24
+
+1. Date: 2026-07-24
+2. What went wrong: The Phase 36 evidence evaluator identity omitted a materially reachable runtime-identity state reducer, so validator behavior could drift without rotating the evaluator or successor-contract identities.
+3. Preventive rule: Bind every materially reachable repository-owned validator, including transitive reducers and models, through a versioned inventory of relative path and source bytes; declare every source in the build/runfiles graph and regression-test source, path, addition, removal, and replacement drift.
+4. Trigger signal to catch it earlier: An evaluator inventory lists entrypoint validators but omits a reducer or model they call, accepts caller-authored digests, or lacks a test that membership drift rotates every derived identity.
