@@ -188,10 +188,12 @@ synthetic)
 		"$candidate_digest" "$private_digest"
 	;;
 hardware)
+	# Cross-plan contract: the delegated broker owns exactly one `just detect-ultra205`.
 	[[ -z "$classification_output" ]] || fail invalid_argument
 	[[ "$capture_timeout_seconds" =~ ^[0-9]+$ ]] || fail capture_timeout_invalid
 	((capture_timeout_seconds >= 360)) || fail capture_timeout_invalid
 	[[ -n "$wifi_credentials" ]] || fail wifi_credentials_missing
+	wifi_credentials="$(absolute_path "$wifi_credentials")"
 	validate_handle
 	attempt_child="$(resolve_attempt_child)"
 	[[ ! -e "$attempt_child" && ! -e "$candidate_output" ]] ||

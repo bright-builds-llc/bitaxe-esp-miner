@@ -8,6 +8,7 @@ readonly justfile="${4:?missing Justfile}"
 readonly supervisor_source="${5:?missing supervisor source}"
 readonly broker_source="${6:?missing broker source}"
 readonly capture_source="${7:?missing capture source}"
+readonly hardware_broker_source="${8:?missing hardware broker source}"
 readonly agents_real="$(perl -MCwd=realpath -e 'print realpath($ARGV[0])' "$agents_file")"
 readonly workspace_root="$(dirname "$agents_real")"
 readonly phase_dir="${workspace_root}/.planning/phases/36-substantive-evidence-admission-and-exact-re-promotion"
@@ -26,8 +27,12 @@ readonly hardware_candidate="${workspace_root}/target/private-evidence/phase36-h
 readonly hardware_handle="${hardware_parent}/attempt.handle"
 readonly test_output="${TEST_TMPDIR:-/tmp}/phase36-process-${test_nonce}.out"
 readonly test_stderr="${TEST_TMPDIR:-/tmp}/phase36-process-${test_nonce}.err"
+readonly fake_bin="${TEST_TMPDIR:-/tmp}/phase36-fake-bin-${test_nonce}"
+readonly detector_log="${TEST_TMPDIR:-/tmp}/phase36-detector-${test_nonce}.log"
+readonly effect_log="${TEST_TMPDIR:-/tmp}/phase36-effect-${test_nonce}.log"
 readonly protected_canary="synthetic-protected-origin"
 readonly never_persist_canary="synthetic-never-persist-canary"
+readonly credential_probe="${TEST_TMPDIR:-/tmp}/synthetic-never-persist-canary-${test_nonce}.json"
 
 cleanup() {
 	[[ "$protected_parent" == "$workspace_root/target/private-evidence/phase36-process-"* ]] ||
@@ -36,7 +41,9 @@ cleanup() {
 		return
 	chmod -R u+rwX "$protected_parent" "$hardware_parent" 2>/dev/null || true
 	rm -rf "$protected_parent" "$hardware_parent"
-	rm -f "$candidate_output" "$hardware_candidate" "$test_output" "$test_stderr"
+	rm -rf "$fake_bin"
+	rm -f "$candidate_output" "$hardware_candidate" "$test_output" "$test_stderr" \
+		"$detector_log" "$effect_log"
 }
 trap cleanup EXIT
 
@@ -207,25 +214,70 @@ run_supervisor \
 	private-parent="$hardware_parent" \
 	attempt-handle-file="$hardware_handle" \
 	candidate-output="$hardware_candidate" >"$test_output" 2>"$test_stderr"
-expect_failure_category hardware_broker_failed \
+
+mkdir -p "$fake_bin"
+printf '%s\n' \
+	'#!/usr/bin/env bash' \
+	'set -euo pipefail' \
+	'printf "%s\n" "$*" >>"$PHASE36_TEST_DETECTOR_LOG"' \
+	'exit 9' >"$fake_bin/just"
+printf '%s\n' \
+	'#!/usr/bin/env bash' \
+	'set -euo pipefail' \
+	'printf "%s\n" "$0 $*" >>"$PHASE36_TEST_EFFECT_LOG"' >"$fake_bin/phase36-effect"
+chmod 700 "$fake_bin/just" "$fake_bin/phase36-effect"
+ln -s phase36-effect "$fake_bin/espflash"
+ln -s phase36-effect "$fake_bin/curl"
+ln -s phase36-effect "$fake_bin/flash-monitor"
+
+if PATH="$fake_bin:$PATH" \
+	PHASE36_TEST_DETECTOR_LOG="$detector_log" \
+	PHASE36_TEST_EFFECT_LOG="$effect_log" \
+	run_supervisor \
 	mode=hardware \
 	board=205 \
 	capture-timeout-seconds=360 \
 	private-parent="$hardware_parent" \
 	attempt-handle-file="$hardware_handle" \
 	candidate-output="$hardware_candidate" \
-	wifi-credentials="$never_persist_canary"
+	wifi-credentials="$credential_probe" >"$test_output" 2>"$test_stderr"; then
+	fail_test "detector failure unexpectedly completed hardware mode"
+fi
+[[ ! -s "$test_output" ]] || fail_test "detector failure wrote public stdout"
+rg -Fqx 'category=hardware_broker_failed' "$test_stderr" ||
+	fail_test "detector failure omitted the supervisor category"
+[[ -f "$detector_log" ]] ||
+	fail_test "broker did not create detector invocation evidence"
+[[ "$(wc -l <"$detector_log" | tr -d ' ')" == 1 ]] ||
+	fail_test "broker did not invoke the detector exactly once"
+rg -Fqx 'detect-ultra205' "$detector_log" ||
+	fail_test "broker invoked a command other than just detect-ultra205"
+rg -Fq 'category=phase36_broker_detector_failed' "${hardware_handle}.stderr" ||
+	fail_test "broker did not preserve the detector failure category"
+if rg -Fq 'phase36_broker_wifi_credentials_invalid' "${hardware_handle}.stderr"; then
+	fail_test "broker accessed credential metadata after detector failure"
+fi
+[[ ! -e "$effect_log" ]] ||
+	fail_test "detector failure reached a later device-effect adapter"
 [[ ! -e "$hardware_candidate" ]] ||
 	fail_test "software-only hardware exercise created a candidate"
 readonly hardware_child_name="$(jq -er '.child_name' "$hardware_handle")"
 [[ ! -e "$hardware_parent/$hardware_child_name" ]] ||
 	fail_test "failed hardware broker exercise created its protected child"
 
-readonly direct_effect_pattern='espflash|detect-ultra205|flash-monitor|serial-session|device-session|curl[[:space:]]|phase17-websocket|phase35-correlated'
+readonly direct_effect_pattern='espflash|flash-monitor|serial-session|device-session|curl[[:space:]]|phase17-websocket|phase35-correlated'
 if rg -q -i "$direct_effect_pattern" "$supervisor_source"; then
 	fail_test "supervisor directly owns an effect-capable adapter"
 fi
-readonly nested_runner_pattern='Command::new\\(\"(bazel|cargo|just)\"|std::process'
+[[ "$(rg -Fc 'just detect-ultra205' "$supervisor_source")" == 1 ]] ||
+	fail_test "supervisor does not expose exactly one broker-owned detector contract"
+rg -Fq 'const DETECTOR_PROGRAM: &str = "just";' "$hardware_broker_source" ||
+	fail_test "hardware broker does not own the detector program"
+rg -Fq 'const DETECTOR_ARGUMENT: &str = "detect-ultra205";' "$hardware_broker_source" ||
+	fail_test "hardware broker does not own the detector argument"
+rg -Fq 'Command::new(DETECTOR_PROGRAM)' "$hardware_broker_source" ||
+	fail_test "hardware broker does not invoke its detector adapter"
+readonly nested_runner_pattern='Command::new\("(bazel|cargo|just)"|std::process'
 if rg -q "$nested_runner_pattern" "$broker_source" "$capture_source"; then
 	fail_test "production broker/capture child invokes a nested build runner"
 fi
@@ -246,7 +298,7 @@ readonly incomplete_graph="$(
 		LC_ALL=C sort -n -k1,1 |
 		awk -F '\t' '{print $2 "@" $1}'
 )"
-readonly expected_graph=$'36-05@5\n36-06@6\n36-07@7\n36-04@8'
+readonly expected_graph=$'36-06@6\n36-07@7\n36-04@8'
 [[ "$incomplete_graph" == "$expected_graph" ]] ||
 	fail_test "incomplete Phase 36 graph is not the exact wave-ordered contract"
 for plan in "$plan_05" "$plan_06" "$plan_07" "$plan_04"; do

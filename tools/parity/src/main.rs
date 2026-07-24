@@ -99,6 +99,7 @@ enum CliCommand {
     AdmitPhase35Evidence(AdmitPhase35EvidenceArgs),
     ClassifyPhase36Evidence(ClassifyPhase36EvidenceArgs),
     ClassifyPhase36Effects(ClassifyPhase36EffectsArgs),
+    Phase36HardwareCapture(Phase36HardwareCaptureArgs),
     Phase36SyntheticCapture(Phase36SyntheticCaptureArgs),
     InspectPhase36Candidate(InspectPhase36CandidateArgs),
     ClassifyPhase36Candidate(ClassifyPhase36CandidateArgs),
@@ -209,6 +210,27 @@ struct Phase36SyntheticCaptureArgs {
 
     #[arg(long)]
     capability_digest: String,
+}
+
+#[derive(Debug, Parser)]
+struct Phase36HardwareCaptureArgs {
+    #[arg(long)]
+    board: u16,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    private_parent: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    attempt_handle_file: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    candidate_output: Utf8PathBuf,
+
+    #[arg(long)]
+    capture_timeout_seconds: u64,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    wifi_credentials: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -810,6 +832,12 @@ fn main() -> Result<()> {
             writeln!(stdout, "{output}")?;
             return Ok(());
         }
+        CliCommand::Phase36HardwareCapture(args) => {
+            let output = run_phase36_hardware_capture_command(args)?;
+            let mut stdout = io::stdout().lock();
+            writeln!(stdout, "{output}")?;
+            return Ok(());
+        }
         CliCommand::InspectPhase36Candidate(args) => {
             let output = run_inspect_phase36_candidate_command(args)?;
             let mut stdout = io::stdout().lock();
@@ -872,6 +900,9 @@ fn main() -> Result<()> {
         CliCommand::Phase36SyntheticCapture(_) => {
             bail!("Phase 36 synthetic broker dispatch entered workspace-aware path")
         }
+        CliCommand::Phase36HardwareCapture(_) => {
+            bail!("Phase 36 hardware broker dispatch entered workspace-aware path")
+        }
         CliCommand::InspectPhase36Candidate(_) => {
             bail!("Phase 36 candidate inspector dispatch entered workspace-aware path")
         }
@@ -923,6 +954,27 @@ fn run_phase36_synthetic_capture_command(args: &Phase36SyntheticCaptureArgs) -> 
         "category=synthetic_complete\ncandidate_digest={}\nprivate_capture_digest={}",
         candidate.candidate_digest, candidate.private_capture_digest
     ))
+}
+
+fn run_phase36_hardware_capture_command(args: &Phase36HardwareCaptureArgs) -> Result<String> {
+    if args.capture_timeout_seconds < 360 {
+        anyhow::bail!("category=phase36_broker_capture_timeout_invalid");
+    }
+    if !args.private_parent.is_absolute()
+        || !args.attempt_handle_file.is_absolute()
+        || !args.candidate_output.is_absolute()
+        || !args.wifi_credentials.is_absolute()
+    {
+        anyhow::bail!("category=phase36_broker_path_invalid");
+    }
+
+    phase36_broker::run_phase36_hardware_pre_capture_gate(
+        args.board,
+        args.wifi_credentials.as_std_path(),
+    )
+    .map_err(|error| anyhow::anyhow!("category={error}"))?;
+
+    anyhow::bail!("category=phase36_broker_capture_not_started")
 }
 
 fn run_inspect_phase36_candidate_command(args: &InspectPhase36CandidateArgs) -> Result<String> {

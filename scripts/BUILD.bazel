@@ -106,6 +106,7 @@ sh_test(
         "$(location :phase36-substantive-evidence.sh)",
         "$(location //tools/parity:src/phase36_broker.rs)",
         "$(location //tools/parity:src/phase36_evidence/capture.rs)",
+        "$(location //tools/parity:src/phase36_broker/hardware.rs)",
     ],
     data = [
         "//:AGENTS.md",
@@ -114,6 +115,7 @@ sh_test(
         "phase36-substantive-evidence.sh",
         "//tools/parity:report",
         "//tools/parity:src/phase36_broker.rs",
+        "//tools/parity:src/phase36_broker/hardware.rs",
         "//tools/parity:src/phase36_evidence/capture.rs",
     ],
     env_inherit = ["PATH"],
