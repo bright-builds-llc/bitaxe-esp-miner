@@ -88,6 +88,8 @@ pub(crate) struct Phase36OfflineOutcome {
 pub(crate) enum Phase36OfflineError {
     #[error("offline_public_inputs_invalid")]
     PublicInputsInvalid,
+    #[error("offline_companion_invalid")]
+    CompanionInvalid,
     #[error("offline_protected_snapshot_changed")]
     ProtectedSnapshotChanged,
     #[error("offline_publication_failed")]
@@ -102,7 +104,7 @@ pub(crate) fn reevaluate_attempt31(
         request.maybe_protected_root.as_deref(),
         &request.companion_paths,
     );
-    let facts = classify_companions(&companions);
+    let facts = classify_companions(&companions)?;
     companions.verify_unchanged()?;
     let component_insufficiencies = facts.component_insufficiencies();
     let prerequisites = Phase36ClaimPrerequisites {
@@ -216,30 +218,44 @@ impl ClassifiedFacts {
     }
 }
 
-fn classify_companions(companions: &CompanionSnapshot) -> ClassifiedFacts {
+fn classify_companions(
+    companions: &CompanionSnapshot,
+) -> Result<ClassifiedFacts, Phase36OfflineError> {
     if let (Some(api), Some(websocket), Some(retained)) = (
         companions.text(&companions.api),
         companions.text(&companions.websocket),
         companions.text(&companions.retained),
     ) {
-        let _ = validate_substantive_snapshot_components(api, websocket, retained);
+        validate_substantive_snapshot_components(api, websocket, retained)
+            .map_err(|_| Phase36OfflineError::CompanionInvalid)?;
     }
     if let Some(package) = companions.text(&companions.exact_package) {
-        let _ = validate_observed_runtime_identity_documents(
+        validate_observed_runtime_identity_documents(
             package,
             companions.text(&companions.request),
             companions.text(&companions.event_ledger),
             companions.text(&companions.private_result),
             companions.text(&companions.public_projection),
-        );
+        )
+        .map_err(|_| Phase36OfflineError::CompanionInvalid)?;
+    } else if [
+        &companions.request,
+        &companions.event_ledger,
+        &companions.private_result,
+        &companions.public_projection,
+    ]
+    .into_iter()
+    .any(Option::is_some)
+    {
+        return Err(Phase36OfflineError::CompanionInvalid);
     }
-    let _ =
-        classify_independent_effect_document(companions.text(&companions.independent_effect), None);
+    classify_independent_effect_document(companions.text(&companions.independent_effect), None)
+        .map_err(|_| Phase36OfflineError::CompanionInvalid)?;
 
     // The immutable Phase 35 generation does not anchor any of these companion
     // roles or their digests. Caller-supplied documents cannot create evidence
     // authority and therefore remain insufficient.
-    ClassifiedFacts::default()
+    Ok(ClassifiedFacts::default())
 }
 
 #[derive(Default)]
@@ -433,6 +449,38 @@ mod tests {
     }
 
     #[test]
+    fn phase36_offline_invalid_companions_leave_publication_unchanged() {
+        for (name, mutation) in [
+            ("malformed", InvalidCompanion::Malformed),
+            ("contradictory", InvalidCompanion::Contradictory),
+            ("prohibited", InvalidCompanion::Prohibited),
+            (
+                "public-private-disagreement",
+                InvalidCompanion::PublicPrivateDisagreement,
+            ),
+        ] {
+            // Arrange
+            let fixture = OfflineFixture::new(name);
+            let request = fixture.request(MissingComponent::None);
+            mutation.apply(&fixture);
+            let checklist_before = fs::read(fixture.workspace.join(CHECKLIST).as_std_path())
+                .expect("checklist must read");
+
+            // Act
+            let result = reevaluate_attempt31(&request);
+
+            // Assert
+            assert!(matches!(result, Err(Phase36OfflineError::CompanionInvalid)));
+            assert_eq!(
+                fs::read(fixture.workspace.join(CHECKLIST).as_std_path())
+                    .expect("checklist must read"),
+                checklist_before
+            );
+            assert!(!fixture.workspace.join(PHASE36_ROOT).exists());
+        }
+    }
+
+    #[test]
     fn phase36_offline_rejects_phase35_generation_without_hostname_promotion() {
         // Arrange
         let fixture = OfflineFixture::new("hostname-not-promoted");
@@ -483,6 +531,39 @@ mod tests {
         Health,
         RuntimeIdentity,
         Effect,
+    }
+
+    enum InvalidCompanion {
+        Malformed,
+        Contradictory,
+        Prohibited,
+        PublicPrivateDisagreement,
+    }
+
+    impl InvalidCompanion {
+        fn apply(self, fixture: &OfflineFixture) {
+            let (name, contents) = match self {
+                Self::Malformed => ("effects.json", "{".to_owned()),
+                Self::Contradictory => ("api.md", "not-an-operator-snapshot".to_owned()),
+                Self::Prohibited => (
+                    "effects.json",
+                    EFFECTS.replacen("\"package_probe\"", "\"active_control\"", 1),
+                ),
+                Self::PublicPrivateDisagreement => {
+                    let documents = runtime_identity::documents();
+                    let mut projection: Value = serde_json::from_str(&documents.public_projection)
+                        .expect("public projection must parse");
+                    projection["same_physical_device"] = Value::Bool(false);
+                    (
+                        "public-projection.json",
+                        serde_json::to_string(&projection)
+                            .expect("public projection must serialize"),
+                    )
+                }
+            };
+            fs::write(fixture.protected.join(name).as_std_path(), contents)
+                .expect("invalid companion must write");
+        }
     }
 
     struct OfflineFixture {
