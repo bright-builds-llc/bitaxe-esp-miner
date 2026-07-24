@@ -40,9 +40,28 @@ created: "2026-07-23"
 | 36-03-01 | 03 | 3 | EVD-15 | T36-05 | Claim decisions and checklist correction publish atomically | integration | `bazel test //tools/parity:phase36_promotion_tests` | ✅ | ✅ passed: 1/1 target (fresh 2026-07-24) |
 | 36-03-02 | 03 | 3 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | T36-06 | Attempt 31 classification cannot trigger hardware | real-process | `bazel test //scripts:phase36_evidence_test` | ✅ | ✅ passed: 1/1 target (fresh 2026-07-24) |
 | 36-03-03 | 03 | 3 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | T36-03, T36-06 | Attempt 31 yields exact decisions or aggregate typed insufficiency without hardware | real-process | `bazel test //scripts:phase36_evidence_test //tools/parity:phase36_promotion_tests` | ✅ | ✅ passed: 2/2 targets (fresh 2026-07-24) |
-| 36-04-01 | 04 | 4 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | all | Reconciliation occurs only after clean verification | repository | `just test && just parity && just verify-reference && just verify-redaction` | ✅ | ✅ passed: 73/73; no parity errors; reference clean; redaction passed (fresh 2026-07-24) |
+| 36-04-01 | 04 | 4 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | all | Reconciliation occurs only after clean verification | repository | `just test && just parity && just verify-reference && just verify-redaction` | ✅ | ✅ passed at `857e2a9529114134275fa8abe7960bacb5f4d379`: 73/73; no parity errors; reference clean; redaction passed (fresh 2026-07-24) |
 | 36-04-02 | 04 | 4 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | all | Independent verifier produces a passed lifecycle-bound artifact before reconciliation | lifecycle | `node "$HOME/.codex/get-shit-done/bin/gsd-tools.cjs" verify lifecycle 36 --require-plans --require-verification --raw` | ❌ W0 | ⬜ pending |
 | 36-04-03 | 04 | 4 | SYS-02, EVD-11, EVD-12, EVD-14, EVD-15 | T36-05, T36-06 | Canonical planning truth changes only after independent passed verification | repository | `just parity && just verify-reference && just verify-redaction` | ✅ | ⬜ pending |
+
+## Plan 04 Task 1 Fresh Verification Evidence
+
+Fresh verification on 2026-07-24 used source commit `857e2a9529114134275fa8abe7960bacb5f4d379`. No canonical planning-truth reconciliation was performed.
+
+| Gate | Observed result |
+| --- | --- |
+| Mandatory Rust sequence | `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo build --all-targets --all-features`, and `cargo test --all-features` passed in the required order with fresh isolated `CARGO_TARGET_DIR=/tmp/bitaxe-phase36-restart-gate.DFsQDV`; the parity crate ran 377 tests. |
+| Focused Phase 36 Cargo suites | `cargo test -p bitaxe-parity phase36 --all-features` passed 70/70; `phase36_substance` passed 14/14; `phase36_runtime_identity` passed 11/11; `phase36_effects` passed 12/12. |
+| Shell syntax | `bash -n scripts/phase36-evidence-test.sh scripts/phase35-promotion-contract-test.sh scripts/build-firmware.sh scripts/package-firmware.sh scripts/package-firmware-test.sh` passed. |
+| Uncached Phase 36 Bazel concurrency | `bazel test --nocache_test_results //tools/parity:phase36_evidence_tests //tools/parity:phase36_promotion_tests //scripts:phase36_evidence_test` passed 3/3. |
+| Firmware package regression | `bazel test --nocache_test_results //scripts:package_firmware_test` passed 1/1, and `bazel build //firmware/bitaxe:firmware_image` produced the ELF, OTA image, SPIFFS image, OTA data, factory image, and package manifest from declared ESP-IDF inputs. |
+| Canonical repository suite | `just test` passed 73/73. |
+| Parity, reference, and privacy | `just parity` reported `validation_errors: none`; `just verify-reference` reported clean reference `c1915b0a63bfabebdb95a515cedfee05146c1d50`; `just verify-redaction` passed. |
+| Lifecycle and diff hygiene | Lifecycle verification with `--require-plans --raw` printed `valid`; `git diff --check` passed. Lifecycle verification with `--require-verification --raw` printed `invalid` because the independent security and verification artifacts do not yet exist, so Task 36-04-02 remains pending. |
+| Phase 35 immutability | The Phase 35 generation aggregate remained `117501de868e6390511c862105be785f87e61c2954a6fec3a0cf8beec093b9bd`; its manifest, admitted document, matrix, and projection retained hashes `cb76a760…`, `2f0cb112…`, `cf53f575…`, and `3e0eab6d…`, and root digest `0401e7b4…` remained unchanged. |
+| Checklist and scope inspection | Compared with the pre-Phase 36 checklist, exactly the four V12 rows changed. No unrelated row, hardware path, credential input, target discovery path, direct UART/pin path, archived Phase 28.1.1 lineage, network surface, or unapproved effect broker was added. |
+
+Two Task 1 gate failures were fixed before the fresh run: commit `ff46c450` gives concurrent generation tests collision-resistant workspace identities, and commit `857e2a95` makes Bazel declare and pass the exact ESP-IDF packaging inputs instead of relying on a source-tree cache.
 
 ## Wave 0 Requirements
 
