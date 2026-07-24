@@ -57,7 +57,7 @@ mod phase35_http;
 mod phase35_http_probe;
 mod phase35_promotion;
 pub mod phase36_evidence;
-#[cfg(test)]
+mod phase36_offline;
 mod phase36_promotion;
 mod release_evidence;
 mod release_gate;
@@ -91,6 +91,7 @@ enum CliCommand {
     AdmitPhase35Evidence(AdmitPhase35EvidenceArgs),
     ClassifyPhase36Evidence(ClassifyPhase36EvidenceArgs),
     ClassifyPhase36Effects(ClassifyPhase36EffectsArgs),
+    ReevaluatePhase36Attempt31(ReevaluatePhase36Attempt31Args),
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -185,6 +186,42 @@ struct ClassifyPhase36EvidenceArgs {
 struct ClassifyPhase36EffectsArgs {
     #[arg(long, value_parser = parse_utf8_path)]
     root: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct ReevaluatePhase36Attempt31Args {
+    #[arg(long, default_value = ".", value_parser = parse_utf8_path)]
+    workspace_root: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    maybe_protected_root: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    maybe_api_document: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    maybe_websocket_document: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    maybe_retained_document: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    maybe_exact_package_document: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    maybe_request_document: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    maybe_event_ledger_document: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    maybe_private_result_document: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    maybe_public_projection_document: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    maybe_independent_effect_document: Option<Utf8PathBuf>,
 }
 
 #[derive(Debug, Parser)]
@@ -716,6 +753,12 @@ fn main() -> Result<()> {
             writeln!(stdout, "{output}")?;
             return Ok(());
         }
+        CliCommand::ReevaluatePhase36Attempt31(args) => {
+            let output = run_reevaluate_phase36_attempt31_command(args)?;
+            let mut stdout = io::stdout().lock();
+            writeln!(stdout, "{output}")?;
+            return Ok(());
+        }
         _ => {}
     }
     let environment = LocalEnvironment::detect()?;
@@ -757,6 +800,9 @@ fn main() -> Result<()> {
         CliCommand::ClassifyPhase36Effects(_) => {
             bail!("Phase 36 effect classifier dispatch entered workspace-aware path")
         }
+        CliCommand::ReevaluatePhase36Attempt31(_) => {
+            bail!("Phase 36 offline re-evaluation dispatch entered workspace-aware path")
+        }
     };
 
     let mut stdout = io::stdout().lock();
@@ -786,6 +832,16 @@ fn run_classify_phase36_effects_command(args: &ClassifyPhase36EffectsArgs) -> Re
                 .map_err(|_| anyhow::anyhow!("category=partial_public_output"))
         }
     }
+}
+
+fn run_reevaluate_phase36_attempt31_command(
+    args: &ReevaluatePhase36Attempt31Args,
+) -> Result<String> {
+    let request = phase36_offline::Phase36OfflineRequest::from_args(args);
+    let outcome = phase36_offline::reevaluate_attempt31(&request)
+        .map_err(|error| anyhow::anyhow!("category={error}"))?;
+    serde_json::to_string_pretty(&outcome)
+        .map_err(|_| anyhow::anyhow!("category=partial_public_output"))
 }
 
 fn run_classify_phase35_flash_command(

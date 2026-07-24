@@ -282,6 +282,9 @@ fn missing_reason(
             .then_some(Phase36DecisionReason::RuntimeHealthInsufficient),
         _ => unreachable!("excluded scopes are handled before prerequisites"),
     };
+    if matches!(scope, Phase36ClaimScope::PassiveHostnameDurability) {
+        return claim_specific;
+    }
     claim_specific.or_else(|| {
         prerequisites
             .maybe_independent_effect
@@ -324,7 +327,10 @@ fn admitted_digests(
         }
         _ => {}
     }
-    if let Some(effect) = prerequisites.maybe_independent_effect.as_ref() {
+    if !matches!(scope, Phase36ClaimScope::PassiveHostnameDurability) {
+        let Some(effect) = prerequisites.maybe_independent_effect.as_ref() else {
+            return digests;
+        };
         digests.push(effect.claim_fact_digest.as_str());
     }
     digests

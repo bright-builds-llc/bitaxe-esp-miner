@@ -9,7 +9,6 @@ use clap::ValueEnum;
 mod filesystem;
 mod ownership;
 mod phase35;
-#[cfg(test)]
 mod phase36;
 mod rendering;
 #[cfg(test)]
@@ -21,8 +20,10 @@ pub(crate) use phase35::{
     publish_phase35_generation, Phase35GenerationDocuments, Phase35PublicationFailurePoint,
     Phase35PublicationOptions,
 };
-#[cfg(test)]
 use phase36::Phase36PublicationFailurePoint;
+pub(crate) use phase36::{
+    publish_phase36_generation, Phase36GenerationDocuments, Phase36PublicationOptions,
+};
 use rendering::*;
 
 use super::{EvidenceDisposition, OperatorEvidenceProfile, OperatorEvidenceSlot};
@@ -63,7 +64,6 @@ pub(crate) enum GenerationError {
     Validation(Vec<String>),
     Injected(PromotionFailurePoint),
     Phase35Injected(Phase35PublicationFailurePoint),
-    #[cfg(test)]
     Phase36Injected(Phase36PublicationFailurePoint),
     RecoveryRequired {
         destination: Utf8PathBuf,
@@ -88,7 +88,6 @@ impl fmt::Display for GenerationError {
             Self::Phase35Injected(point) => {
                 write!(formatter, "injected Phase 35 publication failure at {point:?}")
             }
-            #[cfg(test)]
             Self::Phase36Injected(point) => {
                 write!(formatter, "injected Phase 36 publication failure at {point:?}")
             }

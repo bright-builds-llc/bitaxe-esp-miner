@@ -20,6 +20,14 @@ pub struct ValidatedSubstantiveEvidence {
     pub join: SubstantiveSnapshotJoin,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValidatedSubstantiveComponents {
+    pub maybe_sensors: Option<ValidatedSensorSubstance>,
+    pub maybe_runtime_health: Option<ValidatedRuntimeHealthSubstance>,
+    pub join: SubstantiveSnapshotJoin,
+    pub component_insufficiencies: Vec<ComponentInsufficiency>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ValidatedSensorSubstance {
     pub power: ValidatedPowerObservation,
@@ -199,18 +207,18 @@ pub enum SubstantiveEvidenceError {
 pub(super) struct RawProjection {
     pub(super) boot_session: String,
     pub(super) operator_snapshot_revision: u64,
-    pub(super) current: f64,
-    pub(super) voltage: f64,
-    pub(super) power: f64,
-    pub(super) temp: f64,
+    pub(super) current: Option<f64>,
+    pub(super) voltage: Option<f64>,
+    pub(super) power: Option<f64>,
+    pub(super) temp: Option<f64>,
     #[serde(rename = "fanrpm")]
-    pub(super) fan_rpm: u64,
-    pub(super) current_status: RawObservationTruth,
-    pub(super) voltage_status: RawObservationTruth,
-    pub(super) power_status: RawObservationTruth,
-    pub(super) chip_temp_status: RawObservationTruth,
-    pub(super) fan_rpm_status: RawObservationTruth,
-    pub(super) runtime_health: RawRuntimeHealth,
+    pub(super) fan_rpm: Option<u64>,
+    pub(super) current_status: Option<RawObservationTruth>,
+    pub(super) voltage_status: Option<RawObservationTruth>,
+    pub(super) power_status: Option<RawObservationTruth>,
+    pub(super) chip_temp_status: Option<RawObservationTruth>,
+    pub(super) fan_rpm_status: Option<RawObservationTruth>,
+    pub(super) runtime_health: Option<RawRuntimeHealth>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -266,7 +274,7 @@ pub(super) struct RawRuntimeHealth {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ValidatedProjection {
-    pub(super) sensors: ValidatedSensorSubstance,
-    pub(super) runtime_health: ValidatedRuntimeHealthSubstance,
+    pub(super) maybe_sensors: Option<ValidatedSensorSubstance>,
+    pub(super) maybe_runtime_health: Option<ValidatedRuntimeHealthSubstance>,
     pub(super) join: SubstantiveSnapshotJoin,
 }

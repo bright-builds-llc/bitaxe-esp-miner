@@ -8,6 +8,12 @@ readonly phase36_contract="${4:?missing Phase 36 contract source}"
 readonly parity_main="${5:?missing parity CLI source}"
 readonly effects_fixture="${6:?missing independent effects fixture}"
 readonly effects_module="${7:?missing independent effects module source}"
+readonly offline_module="${8:?missing offline command source}"
+readonly phase35_manifest="${9:?missing Phase 35 manifest}"
+readonly phase35_projection="${10:?missing Phase 35 projection}"
+readonly phase35_matrix="${11:?missing Phase 35 matrix}"
+readonly phase35_verdict="${12:?missing Phase 35 verdict}"
+readonly checklist_fixture="${13:?missing parity checklist}"
 readonly test_parent="$(mktemp -d "${TEST_TMPDIR:-/tmp}/phase36-evidence.XXXXXX")"
 readonly protected_root="${test_parent}/protected"
 readonly protected_input="${protected_root}/phase36.json"
@@ -20,6 +26,10 @@ readonly effects_command_block="${test_parent}/effects-command-source.txt"
 readonly effects_output="${test_parent}/effects-shareable.json"
 readonly effects_stderr="${test_parent}/effects-stderr.txt"
 readonly insufficient_output="${test_parent}/effects-insufficient.txt"
+readonly offline_workspace="${test_parent}/offline-workspace"
+readonly offline_output="${test_parent}/offline-output.json"
+readonly offline_stderr="${test_parent}/offline-stderr.txt"
+readonly offline_command_block="${test_parent}/offline-command-source.txt"
 readonly protected_canary="opaque-phase36-protected-canary"
 
 cleanup() {
@@ -111,6 +121,41 @@ fi
 [[ ! -s "$effects_stderr" ]] ||
 	fail_test "independent effect insufficiency wrote stderr"
 
+mkdir -p \
+	"$offline_workspace/docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion" \
+	"$offline_workspace/docs/parity"
+cp "$phase35_manifest" \
+	"$offline_workspace/docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/.phase35-generation-manifest.json"
+cp "$phase35_projection" \
+	"$offline_workspace/docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/projection.json"
+cp "$phase35_matrix" \
+	"$offline_workspace/docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/decision-matrix.json"
+cp "$phase35_verdict" \
+	"$offline_workspace/docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/admitted.json"
+cp "$checklist_fixture" "$offline_workspace/docs/parity/checklist.md"
+if ! "$report_binary" reevaluate-phase36-attempt31 --workspace-root "$offline_workspace" \
+	>"$offline_output" 2>"$offline_stderr"; then
+	fail_test "offline Attempt 31 insufficiency classification failed"
+fi
+[[ ! -s "$offline_stderr" ]] ||
+	fail_test "offline Attempt 31 insufficiency classification wrote stderr"
+rg -Fq '"status": "immutable_artifacts_insufficient"' "$offline_output" ||
+	fail_test "missing protected companions did not emit aggregate insufficiency"
+for category in \
+	snapshot_substance_insufficient \
+	runtime_health_insufficient \
+	runtime_identity_observation_insufficient \
+	independent_effect_observation_insufficient; do
+	rg -Fq "\"$category\"" "$offline_output" ||
+		fail_test "missing protected companions omitted $category"
+done
+for file in typed-fact-projection.json decision-matrix.json verdict.json manifest.json; do
+	[[ -f "$offline_workspace/docs/parity/evidence/phase-36-substantive-evidence-admission-and-exact-re-promotion/$file" ]] ||
+		fail_test "offline Attempt 31 classification omitted $file"
+done
+assert_absent_literal "$offline_output" "$offline_workspace"
+assert_absent_literal "$offline_output" "$protected_root"
+
 sed -n '/^fn run_classify_phase36_evidence_command(/,/^}/p' "$parity_main" \
 	>"$command_block"
 chmod 600 "$command_block"
@@ -121,15 +166,24 @@ sed -n '/^fn run_classify_phase36_effects_command(/,/^}/p' "$parity_main" \
 chmod 600 "$effects_command_block"
 [[ -s "$effects_command_block" ]] ||
 	fail_test "Phase 36 effect CLI command block was not found"
+sed -n '/^fn run_reevaluate_phase36_attempt31_command(/,/^}/p' "$parity_main" \
+	>"$offline_command_block"
+chmod 600 "$offline_command_block"
+[[ -s "$offline_command_block" ]] ||
+	fail_test "Phase 36 offline Attempt 31 command block was not found"
 
 readonly effectful_pattern='detect[-_]?ultra205|credential|(^|[^[:alnum:]_])flash([^-[:alnum:]_]|$)|monitor|serial[-_](control|session)|curl[[:space:]].*((--request|-X)[[:space:]]*(PATCH|POST|PUT|DELETE)|--data)|phase28\.1\.1|hardware[-_ ]run'
 if rg -q -i "$effectful_pattern" \
-	"$phase36_module" "$phase36_contract" "$command_block" "$effects_command_block"; then
+	"$phase36_module" "$phase36_contract" "$command_block" "$effects_command_block" \
+	"$offline_command_block" "$offline_module"; then
 	fail_test "Phase 36 read-only classifier contains an effectful invocation"
 fi
 readonly effect_invocation_pattern='std::process|ProcessCommand|Command::new|detect[-_]?ultra205|curl[[:space:]]|serial[-_](control|session)|flash[-_]monitor|run_detector|run_flash|run_monitor|credential_path'
-if rg -q -i "$effect_invocation_pattern" "$effects_module"; then
+if rg -q -i "$effect_invocation_pattern" "$effects_module" "$offline_module"; then
 	fail_test "Phase 36 independent effect classifier contains an effectful invocation API"
+fi
+if rg -q 'read_dir|WalkDir|glob::|ignore::Walk' "$offline_module"; then
+	fail_test "Phase 36 offline classifier contains filesystem discovery"
 fi
 
 printf 'phase36 evidence tests passed\n'

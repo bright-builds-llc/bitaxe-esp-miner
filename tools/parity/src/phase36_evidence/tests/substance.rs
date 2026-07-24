@@ -112,6 +112,52 @@ fn phase36_substance_identity_only_phase35_documents_are_typed_insufficient() {
 }
 
 #[test]
+fn phase36_substance_preserves_health_when_sensor_fields_are_missing() {
+    // Arrange
+    let mut value = projection();
+    value
+        .as_object_mut()
+        .expect("projection must be an object")
+        .remove("current");
+    let (api, websocket, retained) = documents(&value);
+
+    // Act
+    let components = validate_substantive_snapshot_components(&api, &websocket, &retained)
+        .expect("health-only component set should classify");
+
+    // Assert
+    assert_eq!(
+        components.component_insufficiencies,
+        vec![ComponentInsufficiency::SnapshotSubstance]
+    );
+    assert!(components.maybe_sensors.is_none());
+    assert!(components.maybe_runtime_health.is_some());
+}
+
+#[test]
+fn phase36_substance_preserves_sensors_when_health_fields_are_missing() {
+    // Arrange
+    let mut value = projection();
+    value
+        .as_object_mut()
+        .expect("projection must be an object")
+        .remove("runtimeHealth");
+    let (api, websocket, retained) = documents(&value);
+
+    // Act
+    let components = validate_substantive_snapshot_components(&api, &websocket, &retained)
+        .expect("sensor-only component set should classify");
+
+    // Assert
+    assert_eq!(
+        components.component_insufficiencies,
+        vec![ComponentInsufficiency::RuntimeHealth]
+    );
+    assert!(components.maybe_sensors.is_some());
+    assert!(components.maybe_runtime_health.is_none());
+}
+
+#[test]
 fn phase36_substance_each_sensor_and_health_field_is_bound_or_rejected() {
     // Arrange
     let original = projection();

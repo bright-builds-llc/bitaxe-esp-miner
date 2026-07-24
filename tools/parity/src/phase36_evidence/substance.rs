@@ -13,7 +13,7 @@ pub use types::{
     RuntimeLifecycleState, StaleReason, SubstantiveEvidenceAdmission, SubstantiveEvidenceError,
     SubstantiveSnapshotJoin, SupervisorAvailability, UnavailableReason,
     ValidatedRuntimeHealthSubstance, ValidatedScalarObservation, ValidatedSensorSubstance,
-    ValidatedSubstantiveEvidence, WatchdogAvailability,
+    ValidatedSubstantiveComponents, ValidatedSubstantiveEvidence, WatchdogAvailability,
 };
 use types::{
     RawObservationReason, RawObservationState, RawObservationTruth, RawProjection, RawReasonKind,
@@ -57,19 +57,79 @@ pub fn validate_substantive_snapshot_documents(
     }
 
     let retained_value = maybe_retained_value.ok_or(SubstantiveEvidenceError::ProjectionInvalid)?;
-    let api = validate_projection(parse_projection(api_value)?)?;
-    let websocket = validate_projection(parse_projection(websocket_value)?)?;
-    let retained = validate_projection(parse_projection(retained_value)?)?;
+    let api = validate_projection(parse_projection(api_value)?, true, true)?;
+    let websocket = validate_projection(parse_projection(websocket_value)?, true, true)?;
+    let retained = validate_projection(parse_projection(retained_value)?, true, true)?;
     if api != websocket || api != retained {
         return Err(SubstantiveEvidenceError::MixedSnapshotProvenance);
     }
 
     Ok(SubstantiveEvidenceAdmission::Validated {
         evidence: Box::new(ValidatedSubstantiveEvidence {
-            sensors: api.sensors,
-            runtime_health: api.runtime_health,
+            sensors: api
+                .maybe_sensors
+                .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?,
+            runtime_health: api
+                .maybe_runtime_health
+                .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?,
             join: api.join,
         }),
+    })
+}
+
+pub fn validate_substantive_snapshot_components(
+    api_document: &str,
+    websocket_document: &str,
+    retained_document: &str,
+) -> Result<ValidatedSubstantiveComponents, SubstantiveEvidenceError> {
+    if !validate_operator_snapshot_documents(api_document, websocket_document, retained_document)
+        .is_empty()
+    {
+        return Err(SubstantiveEvidenceError::OperatorSnapshotIdentityInvalid);
+    }
+
+    let api_value = parse_value(
+        extract_single_field(api_document, SYSTEM_INFO_JSON_FIELD)
+            .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?,
+    )?;
+    let websocket_value = parse_value(
+        extract_single_field(websocket_document, LIVE_WEBSOCKET_JSON_FIELD)
+            .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?,
+    )?;
+    let retained_value = parse_value(
+        extract_single_field(retained_document, RETAINED_SUBSTANCE_JSON_FIELD)
+            .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?,
+    )?;
+    let component_insufficiencies =
+        substantive_insufficiencies(&api_value, &websocket_value, Some(&retained_value));
+    let require_sensors =
+        !component_insufficiencies.contains(&ComponentInsufficiency::SnapshotSubstance);
+    let require_health =
+        !component_insufficiencies.contains(&ComponentInsufficiency::RuntimeHealth);
+    let api = validate_projection(
+        parse_projection(api_value)?,
+        require_sensors,
+        require_health,
+    )?;
+    let websocket = validate_projection(
+        parse_projection(websocket_value)?,
+        require_sensors,
+        require_health,
+    )?;
+    let retained = validate_projection(
+        parse_projection(retained_value)?,
+        require_sensors,
+        require_health,
+    )?;
+    if api != websocket || api != retained {
+        return Err(SubstantiveEvidenceError::MixedSnapshotProvenance);
+    }
+
+    Ok(ValidatedSubstantiveComponents {
+        maybe_sensors: api.maybe_sensors,
+        maybe_runtime_health: api.maybe_runtime_health,
+        join: api.join,
+        component_insufficiencies,
     })
 }
 
@@ -125,6 +185,8 @@ fn fields_present(maybe_value: Option<&serde_json::Value>, fields: &[&str]) -> b
 
 fn validate_projection(
     raw: RawProjection,
+    require_sensors: bool,
+    require_health: bool,
 ) -> Result<ValidatedProjection, SubstantiveEvidenceError> {
     if raw.boot_session.len() != 32
         || !raw
@@ -135,57 +197,109 @@ fn validate_projection(
     {
         return Err(SubstantiveEvidenceError::MixedSnapshotProvenance);
     }
-    if raw.current_status != raw.voltage_status || raw.current_status != raw.power_status {
-        return Err(SubstantiveEvidenceError::AtomicPowerObservationMismatch);
-    }
-
-    let power_state = validate_observation_state(
-        &raw.power_status,
-        raw.current == 0.0 && raw.voltage == 0.0 && raw.power == 0.0,
-    )?;
-    let temperature_state = validate_observation_state(&raw.chip_temp_status, raw.temp == 0.0)?;
-    let tachometer_state = validate_observation_state(&raw.fan_rpm_status, raw.fan_rpm == 0)?;
-    reject_reused_unrelated_stamps(&power_state, &temperature_state, &tachometer_state)?;
-    let maybe_producer_boot_session =
-        shared_producer_boot_session(&power_state, &temperature_state, &tachometer_state)?;
-
-    let power = ValidatedPowerObservation {
-        maybe_current_milliamps: fresh_milli_value(&power_state, raw.current)?,
-        maybe_bus_millivolts: fresh_milli_value(&power_state, raw.voltage)?,
-        maybe_power_milliwatts: fresh_milli_value(&power_state, raw.power)?,
-        state: power_state,
+    let maybe_sensor_values = if require_sensors {
+        let (Some(current), Some(voltage), Some(power), Some(temp), Some(fan_rpm)) =
+            (raw.current, raw.voltage, raw.power, raw.temp, raw.fan_rpm)
+        else {
+            return Err(SubstantiveEvidenceError::ProjectionInvalid);
+        };
+        let (
+            Some(current_status),
+            Some(voltage_status),
+            Some(power_status),
+            Some(chip_temp_status),
+            Some(fan_rpm_status),
+        ) = (
+            raw.current_status,
+            raw.voltage_status,
+            raw.power_status,
+            raw.chip_temp_status,
+            raw.fan_rpm_status,
+        )
+        else {
+            return Err(SubstantiveEvidenceError::ProjectionInvalid);
+        };
+        if current_status != voltage_status || current_status != power_status {
+            return Err(SubstantiveEvidenceError::AtomicPowerObservationMismatch);
+        }
+        let power_state = validate_observation_state(
+            &current_status,
+            current == 0.0 && voltage == 0.0 && power == 0.0,
+        )?;
+        let temperature_state = validate_observation_state(&chip_temp_status, temp == 0.0)?;
+        let tachometer_state = validate_observation_state(&fan_rpm_status, fan_rpm == 0)?;
+        reject_reused_unrelated_stamps(&power_state, &temperature_state, &tachometer_state)?;
+        let maybe_producer_boot_session =
+            shared_producer_boot_session(&power_state, &temperature_state, &tachometer_state)?;
+        let power = ValidatedPowerObservation {
+            maybe_current_milliamps: fresh_milli_value(&power_state, current)?,
+            maybe_bus_millivolts: fresh_milli_value(&power_state, voltage)?,
+            maybe_power_milliwatts: fresh_milli_value(&power_state, power)?,
+            state: power_state,
+        };
+        let temperature = ValidatedScalarObservation {
+            maybe_value_milliunits: fresh_milli_value(&temperature_state, temp)?,
+            state: temperature_state,
+        };
+        let tachometer = ValidatedScalarObservation {
+            maybe_value_milliunits: fresh_milli_value(&tachometer_state, fan_rpm as f64)?,
+            state: tachometer_state,
+        };
+        Some((power, temperature, tachometer, maybe_producer_boot_session))
+    } else {
+        None
     };
-    let temperature = ValidatedScalarObservation {
-        maybe_value_milliunits: fresh_milli_value(&temperature_state, raw.temp)?,
-        state: temperature_state,
+    let maybe_runtime_health = if require_health {
+        Some(validate_runtime_health(
+            raw.runtime_health
+                .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?,
+        )?)
+    } else {
+        None
     };
-    let tachometer = ValidatedScalarObservation {
-        maybe_value_milliunits: fresh_milli_value(&tachometer_state, raw.fan_rpm as f64)?,
-        state: tachometer_state,
-    };
-    let runtime_health = validate_runtime_health(raw.runtime_health)?;
+    let maybe_power_stamp = maybe_sensor_values
+        .as_ref()
+        .and_then(|(power, _, _, _)| power.state.maybe_stamp().cloned());
+    let maybe_temperature_stamp = maybe_sensor_values
+        .as_ref()
+        .and_then(|(_, temperature, _, _)| temperature.state.maybe_stamp().cloned());
+    let maybe_tachometer_stamp = maybe_sensor_values
+        .as_ref()
+        .and_then(|(_, _, tachometer, _)| tachometer.state.maybe_stamp().cloned());
     let join = SubstantiveSnapshotJoin {
         operator_boot_session_digest: sha256_hex(raw.boot_session.as_bytes()),
         operator_snapshot_revision: raw.operator_snapshot_revision,
-        maybe_producer_boot_session,
-        maybe_power_stamp: power.state.maybe_stamp().cloned(),
-        maybe_temperature_stamp: temperature.state.maybe_stamp().cloned(),
-        maybe_tachometer_stamp: tachometer.state.maybe_stamp().cloned(),
+        maybe_producer_boot_session: maybe_sensor_values
+            .as_ref()
+            .and_then(|(_, _, _, session)| *session),
+        maybe_power_stamp,
+        maybe_temperature_stamp,
+        maybe_tachometer_stamp,
     };
-    let sensor_digest = digest_serializable(&(&power, &temperature, &tachometer, &join))?;
-    let health_digest = digest_serializable(&(&runtime_health, &join))?;
+    let maybe_sensors = maybe_sensor_values
+        .map(|(power, temperature, tachometer, _)| {
+            let sensor_digest = digest_serializable(&(&power, &temperature, &tachometer, &join))?;
+            Ok(ValidatedSensorSubstance {
+                power,
+                temperature,
+                tachometer,
+                claim_fact_digest: sensor_digest,
+            })
+        })
+        .transpose()?;
+    let maybe_runtime_health = maybe_runtime_health
+        .map(|runtime_health| {
+            let health_digest = digest_serializable(&(&runtime_health, &join))?;
+            Ok(ValidatedRuntimeHealthSubstance {
+                claim_fact_digest: health_digest,
+                ..runtime_health
+            })
+        })
+        .transpose()?;
 
     Ok(ValidatedProjection {
-        sensors: ValidatedSensorSubstance {
-            power,
-            temperature,
-            tachometer,
-            claim_fact_digest: sensor_digest,
-        },
-        runtime_health: ValidatedRuntimeHealthSubstance {
-            claim_fact_digest: health_digest,
-            ..runtime_health
-        },
+        maybe_sensors,
+        maybe_runtime_health,
         join,
     })
 }

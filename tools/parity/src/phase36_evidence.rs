@@ -23,8 +23,9 @@ pub(crate) use contract::{
     PHASE36_INPUT_DOCUMENT, PHASE36_SCHEMA, SHAREABLE_PHASE36_FACTS_SCHEMA,
 };
 pub use substance::{
-    validate_substantive_snapshot_documents, ObservationState, SubstantiveEvidenceAdmission,
-    SubstantiveSnapshotJoin, ValidatedRuntimeHealthSubstance, ValidatedSensorSubstance,
+    validate_substantive_snapshot_components, validate_substantive_snapshot_documents,
+    ObservationState, SubstantiveEvidenceAdmission, SubstantiveSnapshotJoin,
+    ValidatedRuntimeHealthSubstance, ValidatedSensorSubstance,
 };
 
 pub(crate) fn classify_phase36_envelope(
@@ -372,4 +373,4 @@ fn is_lower_hex(value: &str, length: usize) -> bool {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

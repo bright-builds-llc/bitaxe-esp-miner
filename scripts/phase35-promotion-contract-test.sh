@@ -23,6 +23,11 @@ readonly phase35_manifest="${phase35_generation}/.phase35-generation-manifest.js
 readonly phase35_verdict="${phase35_generation}/admitted.json"
 readonly phase35_matrix="${phase35_generation}/decision-matrix.json"
 readonly phase35_projection="${phase35_generation}/projection.json"
+readonly phase36_generation="${workspace_root}/docs/parity/evidence/phase-36-substantive-evidence-admission-and-exact-re-promotion"
+readonly phase36_manifest="${phase36_generation}/manifest.json"
+readonly phase36_verdict="${phase36_generation}/verdict.json"
+readonly phase36_matrix="${phase36_generation}/decision-matrix.json"
+readonly phase36_projection="${phase36_generation}/typed-fact-projection.json"
 
 fail() {
 	printf 'phase35_promotion_contract_test_error: category=%s\n' "$1" >&2
@@ -39,7 +44,11 @@ for required_path in \
 	"$phase35_manifest" \
 	"$phase35_verdict" \
 	"$phase35_matrix" \
-	"$phase35_projection"; do
+	"$phase35_projection" \
+	"$phase36_manifest" \
+	"$phase36_verdict" \
+	"$phase36_matrix" \
+	"$phase36_projection"; do
 	[[ -f "$required_path" ]] || fail artifact-inventory
 done
 
@@ -104,11 +113,18 @@ readonly allowlisted_rows=(
 	V12-OPERATOR-SNAPSHOT-205
 	V12-RUNTIME-HEALTH-205
 )
-for row_id in "${allowlisted_rows[@]}"; do
+hostname_row="$(rg -m 1 -F '| V12-HOSTNAME-205 |' "$checklist_path")" ||
+	fail allowlisted-row-missing
+[[ "$hostname_row" == *"| verified | hardware-smoke |"* ]] ||
+	fail preserved-hostname-row
+for row_id in \
+	V12-PACKAGE-IDENTITY-205 \
+	V12-OPERATOR-SNAPSHOT-205 \
+	V12-RUNTIME-HEALTH-205; do
 	row="$(rg -m 1 -F "| ${row_id} |" "$checklist_path")" ||
 		fail allowlisted-row-missing
-	[[ "$row" == *"| verified | hardware-smoke |"* ]] ||
-		fail admitted-row-not-promoted
+	[[ "$row" == *"| implemented | workflow |"* ]] ||
+		fail successor-correction-missing
 done
 
 generation_files="$(
@@ -137,8 +153,6 @@ root_digest="$(jq -er '.root_digest | select(test("^[0-9a-f]{64}$"))' "$phase35_
 	fail projection-digest
 [[ "$(sha256_file "$phase35_matrix")" == "$(jq -er '.matrix_sha256' "$phase35_manifest")" ]] ||
 	fail matrix-digest
-[[ "$(sha256_file "$checklist_path")" == "$(jq -er '.checklist_sha256' "$phase35_manifest")" ]] ||
-	fail checklist-digest
 [[ "$(jq '[.scope_decisions[][1] | select(.decision == "promote")] | length' "$phase35_matrix")" -eq 4 ]] ||
 	fail promotion-count
 [[ "$(jq '[.scope_decisions[][1] | select(.decision == "do_not_promote")] | length' "$phase35_matrix")" -eq 11 ]] ||
@@ -149,6 +163,40 @@ for row_id in "${allowlisted_rows[@]}"; do
 	jq -e --arg row_id "$row_id" \
 		'.scope_decisions | any(.[1].decision == "promote" and .[1].row_id == $row_id)' \
 		"$phase35_matrix" >/dev/null || fail matrix-allowlist
+done
+
+phase35_generation_digest="$(sha256_file "$phase35_manifest")"
+[[ "$(jq -er '.schema_version' "$phase36_manifest")" == "phase36-generation-v1" ]] ||
+	fail successor-manifest-schema
+[[ "$(jq -er '.phase35_root_digest' "$phase36_manifest")" == "$root_digest" ]] ||
+	fail successor-root-digest
+[[ "$(jq -er '.superseded_phase35_generation_digest' "$phase36_manifest")" == "$phase35_generation_digest" ]] ||
+	fail successor-generation-link
+[[ "$(jq -er '.checklist_fingerprint_before' "$phase36_manifest")" == "$(jq -er '.checklist_sha256' "$phase35_manifest")" ]] ||
+	fail successor-checklist-link
+[[ "$(jq -er '.checklist_fingerprint_after' "$phase36_manifest")" == "$(sha256_file "$checklist_path")" ]] ||
+	fail successor-current-checklist-digest
+[[ "$(sha256_file "$phase36_projection")" == "$(jq -er '.projection_sha256' "$phase36_manifest")" ]] ||
+	fail successor-projection-digest
+[[ "$(sha256_file "$phase36_matrix")" == "$(jq -er '.matrix_sha256' "$phase36_manifest")" ]] ||
+	fail successor-matrix-digest
+[[ "$(sha256_file "$phase36_verdict")" == "$(jq -er '.verdict_sha256' "$phase36_manifest")" ]] ||
+	fail successor-verdict-digest
+jq -e \
+	'.supported_rows == ["V12-HOSTNAME-205"] and .complete_matrix == true' \
+	"$phase36_verdict" >/dev/null || fail successor-verdict
+jq -e \
+	'.scope_decisions | any(.decision == "preserve" and .row_id == "V12-HOSTNAME-205")' \
+	"$phase36_matrix" >/dev/null || fail successor-hostname-decision
+for correction in \
+	'V12-PACKAGE-IDENTITY-205:runtime_identity_observation_insufficient' \
+	'V12-OPERATOR-SNAPSHOT-205:snapshot_substance_insufficient' \
+	'V12-RUNTIME-HEALTH-205:runtime_health_insufficient'; do
+	row_id="${correction%%:*}"
+	reason="${correction#*:}"
+	jq -e --arg row_id "$row_id" --arg reason "$reason" \
+		'.scope_decisions | any(.decision == "demote" and .row_id == $row_id and .reason == $reason)' \
+		"$phase36_matrix" >/dev/null || fail successor-exact-correction
 done
 
 for preserved_row in STR-09 CFG-07 ASIC-11; do

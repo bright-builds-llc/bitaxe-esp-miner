@@ -1,0 +1,8 @@
+{
+  "schema_version": "phase36-publication-verdict-v1",
+  "authoritative_generation_digest": "ddb27f9bfead85052e076b89d6e82cf8ea92cedbbf6078ec2b74e6b38840d8c2",
+  "supported_rows": [
+    "V12-HOSTNAME-205"
+  ],
+  "complete_matrix": true
+}

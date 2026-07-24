@@ -143,11 +143,24 @@ fn decision_for(
         .expect("scope must have a decision")
 }
 
+fn checklist_with_affected_status(status: &str) -> String {
+    let rows = parse_checklist_rows(CHECKLIST).expect("checklist must parse");
+    PHASE36_AFFECTED_ROWS
+        .iter()
+        .fold(CHECKLIST.to_owned(), |contents, row_id| {
+            let row = &rows[*row_id];
+            let mut cells = row.cells.clone();
+            cells[4] = status.to_owned();
+            contents.replace(&row.raw_line, &format!("| {} |", cells.join(" | ")))
+        })
+}
+
 #[test]
 fn phase36_promotion_supports_zero_through_four_promotions() {
+    let verified_checklist = checklist_with_affected_status("verified");
     for promotion_count in 0..=4 {
         // Arrange
-        let mut contents = CHECKLIST.to_owned();
+        let mut contents = verified_checklist.clone();
         for row_id in PHASE36_AFFECTED_ROWS.iter().take(promotion_count) {
             let row = parse_checklist_rows(&contents).expect("checklist must parse")[*row_id]
                 .raw_line
@@ -188,7 +201,8 @@ fn phase36_promotion_each_claim_specific_absence_changes_only_its_row() {
             input.maybe_runtime_health = None
         }),
     ];
-    let baseline = evaluate_phase36_promotion(&prerequisites(), &checklist(CHECKLIST))
+    let verified_checklist = checklist_with_affected_status("verified");
+    let baseline = evaluate_phase36_promotion(&prerequisites(), &checklist(&verified_checklist))
         .expect("baseline must evaluate");
     let baseline_rows =
         parse_checklist_rows(&baseline.projected_checklist).expect("projection must parse");
@@ -198,7 +212,7 @@ fn phase36_promotion_each_claim_specific_absence_changes_only_its_row() {
         mutate(&mut input);
 
         // Act
-        let matrix = evaluate_phase36_promotion(&input, &checklist(CHECKLIST))
+        let matrix = evaluate_phase36_promotion(&input, &checklist(&verified_checklist))
             .expect("insufficiency must produce a correction");
         let rows =
             parse_checklist_rows(&matrix.projected_checklist).expect("projection must parse");
@@ -219,20 +233,28 @@ fn phase36_promotion_each_claim_specific_absence_changes_only_its_row() {
 }
 
 #[test]
-fn phase36_promotion_missing_independent_effect_demotes_every_passive_claim() {
+fn phase36_promotion_missing_independent_effect_preserves_phase35_hostname_claim() {
     // Arrange
     let mut input = prerequisites();
     input.maybe_independent_effect = None;
 
     // Act
-    let matrix = evaluate_phase36_promotion(&input, &checklist(CHECKLIST))
+    let verified_checklist = checklist_with_affected_status("verified");
+    let matrix = evaluate_phase36_promotion(&input, &checklist(&verified_checklist))
         .expect("shared insufficiency must produce exact corrections");
 
     // Assert
+    assert!(matches!(
+        decision_for(&matrix, Phase36ClaimScope::PassiveHostnameDurability),
+        Phase36ClaimDecision::Preserve { .. }
+    ));
     assert!(matrix
         .scope_decisions
         .iter()
-        .filter(|decision| decision.maybe_row_id().is_some())
+        .filter(|decision| {
+            decision.maybe_row_id().is_some()
+                && decision.scope() != Phase36ClaimScope::PassiveHostnameDurability
+        })
         .all(|decision| matches!(
             decision,
             Phase36ClaimDecision::Demote {

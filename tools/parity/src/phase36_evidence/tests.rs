@@ -552,5 +552,5 @@ fn phase36_contract_classification_preserves_immutable_phase35_bytes_and_digest(
 
 mod effects;
 mod mutations;
-mod runtime_identity;
+pub(crate) mod runtime_identity;
 mod substance;

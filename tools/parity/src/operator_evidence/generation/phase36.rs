@@ -64,6 +64,7 @@ pub(crate) enum Phase36PublicationFailurePoint {
     AfterGenerationExchange,
     BeforeChecklistExchange,
     AfterChecklistExchange,
+    #[allow(dead_code)] // Constructed only by rollback fault-injection tests.
     AfterParentSync,
 }
 

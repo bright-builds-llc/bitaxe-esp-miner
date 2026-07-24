@@ -3,7 +3,9 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::phase35_evidence::{sha256_hex, ValidatedPhase35Evidence};
+use crate::phase35_evidence::sha256_hex;
+#[cfg(test)]
+use crate::phase35_evidence::ValidatedPhase35Evidence;
 use crate::phase36_evidence::effects::ValidatedIndependentEffectInterval;
 use crate::phase36_evidence::runtime_identity::ValidatedObservedRuntimeIdentity;
 use crate::phase36_evidence::{
@@ -184,6 +186,7 @@ pub(crate) struct ValidatedHostnameDurabilityFacts {
 }
 
 impl ValidatedHostnameDurabilityFacts {
+    #[cfg(test)]
     pub(crate) fn from_phase35(
         evidence: &ValidatedPhase35Evidence,
     ) -> Result<Self, Phase36PromotionError> {
@@ -218,6 +221,76 @@ impl ValidatedHostnameDurabilityFacts {
         })
     }
 
+    pub(crate) fn from_public_generation(
+        manifest_document: &str,
+        projection_document: &str,
+        matrix_document: &str,
+        verdict_document: &str,
+    ) -> Result<Self, Phase36PromotionError> {
+        let manifest: serde_json::Value = serde_json::from_str(manifest_document)
+            .map_err(|_| Phase36PromotionError::InvalidPrerequisiteDigest)?;
+        let projection: serde_json::Value = serde_json::from_str(projection_document)
+            .map_err(|_| Phase36PromotionError::InvalidPrerequisiteDigest)?;
+        let matrix: serde_json::Value = serde_json::from_str(matrix_document)
+            .map_err(|_| Phase36PromotionError::InvalidPrerequisiteDigest)?;
+        let verdict: serde_json::Value = serde_json::from_str(verdict_document)
+            .map_err(|_| Phase36PromotionError::InvalidPrerequisiteDigest)?;
+        let phase35_root_digest = manifest
+            .get("root_digest")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(Phase36PromotionError::InvalidPrerequisiteDigest)?;
+        let projection_digest = manifest
+            .get("projection_sha256")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(Phase36PromotionError::InvalidPrerequisiteDigest)?;
+        let matrix_digest = manifest
+            .get("matrix_sha256")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(Phase36PromotionError::InvalidPrerequisiteDigest)?;
+        let projection_root = projection
+            .get("root_digest")
+            .and_then(serde_json::Value::as_str);
+        let matrix_root = matrix
+            .get("evidence_root_digest")
+            .and_then(serde_json::Value::as_str);
+        let verdict_root = verdict
+            .get("evidence_root_digest")
+            .and_then(serde_json::Value::as_str);
+        if manifest.get("schema").and_then(serde_json::Value::as_str)
+            != Some("phase35-generation-v1")
+            || projection.get("schema").and_then(serde_json::Value::as_str)
+                != Some("phase35-evidence-v1")
+            || verdict.get("admitted").and_then(serde_json::Value::as_bool) != Some(true)
+            || !is_lower_hex(phase35_root_digest, 64)
+            || projection_root != Some(phase35_root_digest)
+            || matrix_root != Some(phase35_root_digest)
+            || verdict_root != Some(phase35_root_digest)
+            || projection_digest != sha256_hex(projection_document.as_bytes())
+            || matrix_digest != sha256_hex(matrix_document.as_bytes())
+            || !matrix_preserves_hostname_claim(&matrix, phase35_root_digest)
+        {
+            return Err(Phase36PromotionError::InvalidPrerequisiteDigest);
+        }
+        let digest_input = (
+            "phase36-hostname-durability-facts-v1",
+            phase35_root_digest,
+            true,
+            true,
+            true,
+            true,
+            true,
+        );
+        Ok(Self {
+            phase35_root_digest: phase35_root_digest.to_owned(),
+            storage_confirmed: true,
+            reload_confirmed: true,
+            exactly_once_reboot_confirmed: true,
+            restoration_confirmed: true,
+            cleanup_confirmed: true,
+            claim_fact_digest: digest_serializable(&digest_input)?,
+        })
+    }
+
     pub(crate) const fn complete(&self) -> bool {
         self.storage_confirmed
             && self.reload_confirmed
@@ -225,6 +298,33 @@ impl ValidatedHostnameDurabilityFacts {
             && self.restoration_confirmed
             && self.cleanup_confirmed
     }
+}
+
+fn matrix_preserves_hostname_claim(matrix: &serde_json::Value, root_digest: &str) -> bool {
+    let Some(decisions) = matrix
+        .get("scope_decisions")
+        .and_then(serde_json::Value::as_array)
+    else {
+        return false;
+    };
+    let matching = decisions
+        .iter()
+        .filter(|entry| {
+            entry.get(0).and_then(serde_json::Value::as_str) == Some("passive_hostname_durability")
+        })
+        .collect::<Vec<_>>();
+    let [entry] = matching.as_slice() else {
+        return false;
+    };
+    let Some(decision) = entry.get(1) else {
+        return false;
+    };
+    decision.get("decision").and_then(serde_json::Value::as_str) == Some("promote")
+        && decision.get("row_id").and_then(serde_json::Value::as_str) == Some("V12-HOSTNAME-205")
+        && decision
+            .get("evidence_root_digest")
+            .and_then(serde_json::Value::as_str)
+            == Some(root_digest)
 }
 
 #[derive(Debug, Clone)]

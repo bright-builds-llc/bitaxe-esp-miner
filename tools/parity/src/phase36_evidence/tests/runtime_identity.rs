@@ -18,12 +18,12 @@ const PHYSICAL_IDENTITY: &str = "88888888888888888888888888888888888888888888888
 const HOSTNAME_DIGEST: &str = "9999999999999999999999999999999999999999999999999999999999999999";
 const PROTECTED_CANARY: &str = "phase36-runtime-identity-protected-canary";
 
-struct Documents {
-    package: String,
-    request: String,
-    ledger: String,
-    private_result: String,
-    public_projection: String,
+pub(crate) struct Documents {
+    pub(crate) package: String,
+    pub(crate) request: String,
+    pub(crate) ledger: String,
+    pub(crate) private_result: String,
+    pub(crate) public_projection: String,
 }
 
 impl Documents {
@@ -119,7 +119,7 @@ fn eligible_events(request: &SessionRequest) -> Vec<SessionEvent> {
     ]
 }
 
-fn documents() -> Documents {
+pub(crate) fn documents() -> Documents {
     let request = request();
     let events = eligible_events(&request);
     let mut state = SessionState::new(
