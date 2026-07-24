@@ -500,6 +500,60 @@ fn phase36_contract_rejects_malformed_claim_digests_as_partial_public_output() {
     }
 }
 
+#[test]
+fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
+    // Arrange
+    const HOSTNAME_VALIDATOR_DECLARATION: &str = "pub(crate) fn from_public_generation(";
+    let expected_sources = [
+        "phase36_evidence.rs",
+        "phase36_evidence/substance.rs",
+        "phase36_evidence/substance/types.rs",
+        "phase36_evidence/runtime_identity.rs",
+        "phase36_evidence/runtime_identity/ledger.rs",
+        "phase36_evidence/effects.rs",
+        "operator_snapshot_evidence.rs",
+        "crates/bitaxe-api/src/operator_snapshot.rs",
+        "phase35_evidence.rs",
+        "phase35_evidence/contract.rs",
+        "phase35_evidence/digests.rs",
+        "phase35_evidence/inventory.rs",
+        "phase35_evidence/projection.rs",
+        "phase36_promotion/types.rs",
+        "protected_input.rs",
+    ];
+    let inventory_sources = PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
+        .iter()
+        .map(|(path, _)| *path)
+        .collect::<Vec<_>>();
+    let drifted_sources =
+        PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
+            .iter()
+            .map(|(path, source)| {
+                if *path == "phase36_promotion/types.rs" {
+                    std::borrow::Cow::Owned(source.replacen(
+                        HOSTNAME_VALIDATOR_DECLARATION,
+                        "pub(crate) fn from_public_generation_drift(",
+                        1,
+                    ))
+                } else {
+                    std::borrow::Cow::Borrowed(*source)
+                }
+            });
+    let hostname_validator_source = PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
+        .iter()
+        .find(|(path, _)| *path == "phase36_promotion/types.rs")
+        .map(|(_, source)| *source)
+        .expect("hostname generation validator source should be inventoried");
+
+    // Act
+    let drifted_digest = phase36_evidence_evaluator_digest_from_sources(drifted_sources);
+
+    // Assert
+    assert_eq!(inventory_sources, expected_sources);
+    assert!(hostname_validator_source.contains(HOSTNAME_VALIDATOR_DECLARATION));
+    assert_ne!(drifted_digest, current_phase36_evidence_evaluator_digest());
+}
+
 mod authority;
 mod effects;
 mod mutations;

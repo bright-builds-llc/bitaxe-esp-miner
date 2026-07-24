@@ -6,8 +6,8 @@
     "phase35_generation_digest": "2222222222222222222222222222222222222222222222222222222222222222"
   },
   "evaluation_identity": {
-    "evaluator_digest": "d7611d62632eb61995d1dabde69278430b5a786f55aaa05ee4cc9d67226aee69",
-    "successor_contract_digest": "f928727e640410d9d5befa0df2e4a724c3c18f97f80a24548934fec558751d5f"
+    "evaluator_digest": "6fdc8162df17b96bd958b66518c3df4c6b9722cccbda30abcd048f1df988677e",
+    "successor_contract_digest": "ab321e6d024c79346971f25b8d35c5b62e5eb4a8ad1dba7b4fd58cf83e8d8620"
   },
   "immutable_artifacts": [
     {

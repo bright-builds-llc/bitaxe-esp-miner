@@ -783,25 +783,77 @@ fn is_lower_hex(value: &str, length: usize) -> bool {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
+const PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY: &[(&str, &str)] = &[
+    ("phase36_evidence.rs", include_str!("phase36_evidence.rs")),
+    (
+        "phase36_evidence/substance.rs",
+        include_str!("phase36_evidence/substance.rs"),
+    ),
+    (
+        "phase36_evidence/substance/types.rs",
+        include_str!("phase36_evidence/substance/types.rs"),
+    ),
+    (
+        "phase36_evidence/runtime_identity.rs",
+        include_str!("phase36_evidence/runtime_identity.rs"),
+    ),
+    (
+        "phase36_evidence/runtime_identity/ledger.rs",
+        include_str!("phase36_evidence/runtime_identity/ledger.rs"),
+    ),
+    (
+        "phase36_evidence/effects.rs",
+        include_str!("phase36_evidence/effects.rs"),
+    ),
+    (
+        "operator_snapshot_evidence.rs",
+        include_str!("operator_snapshot_evidence.rs"),
+    ),
+    (
+        "crates/bitaxe-api/src/operator_snapshot.rs",
+        include_str!("../../../crates/bitaxe-api/src/operator_snapshot.rs"),
+    ),
+    ("phase35_evidence.rs", include_str!("phase35_evidence.rs")),
+    (
+        "phase35_evidence/contract.rs",
+        include_str!("phase35_evidence/contract.rs"),
+    ),
+    (
+        "phase35_evidence/digests.rs",
+        include_str!("phase35_evidence/digests.rs"),
+    ),
+    (
+        "phase35_evidence/inventory.rs",
+        include_str!("phase35_evidence/inventory.rs"),
+    ),
+    (
+        "phase35_evidence/projection.rs",
+        include_str!("phase35_evidence/projection.rs"),
+    ),
+    (
+        "phase36_promotion/types.rs",
+        include_str!("phase36_promotion/types.rs"),
+    ),
+    ("protected_input.rs", include_str!("protected_input.rs")),
+];
+
+fn phase36_evidence_evaluator_digest_from_sources<I, S>(sources: I) -> String
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut digest_input = String::from("phase36-evidence-evaluator-v1\0");
+    for source in sources {
+        digest_input.push_str(source.as_ref());
+    }
+    sha256_hex(digest_input.as_bytes())
+}
+
 pub(crate) fn current_phase36_evidence_evaluator_digest() -> String {
-    sha256_hex(
-        [
-            "phase36-evidence-evaluator-v1\0",
-            include_str!("phase36_evidence.rs"),
-            include_str!("phase36_evidence/substance.rs"),
-            include_str!("phase36_evidence/substance/types.rs"),
-            include_str!("phase36_evidence/runtime_identity.rs"),
-            include_str!("phase36_evidence/runtime_identity/ledger.rs"),
-            include_str!("phase36_evidence/effects.rs"),
-            include_str!("phase35_evidence.rs"),
-            include_str!("phase35_evidence/contract.rs"),
-            include_str!("phase35_evidence/digests.rs"),
-            include_str!("phase35_evidence/inventory.rs"),
-            include_str!("phase35_evidence/projection.rs"),
-            include_str!("protected_input.rs"),
-        ]
-        .concat()
-        .as_bytes(),
+    phase36_evidence_evaluator_digest_from_sources(
+        PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
+            .iter()
+            .map(|(_, source)| *source),
     )
 }
 
