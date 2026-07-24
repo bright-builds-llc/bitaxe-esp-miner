@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 36-05-PLAN.md
-last_updated: "2026-07-24T21:29:57Z"
+stopped_at: Repaired and reverified 36-05-PLAN.md; ready for 36-06
+last_updated: "2026-07-24T22:19:19Z"
 last_activity: "2026-07-24"
 progress:
   total_phases: 6
@@ -16,15 +16,15 @@ progress:
 
 # Project State
 
-Last activity: 2026-07-24 - Completed Plan 36-05 software broker and substantive capture admission harness
+Last activity: 2026-07-24 - Repaired Plan 36-05 production hardware transaction and passed complete software preflight
 
 ## Current Position
 
 Phase: 36 (substantive-evidence-admission-and-exact-re-promotion) — EXECUTING
-Plan: 4 of 7
+Plan: 6 of 7
 
 - **Phase:** 36 of 36 (substantive evidence admission and exact re-promotion)
-- **Plan:** 4 of 7
+- **Plan:** 6 of 7
 - **Status:** Ready to execute
 - **Checkpoint:** Code review and security audit passed at
   `f1cb6101f2c384acaffe0b8523097433ff0f04cc`; independent verification scored
@@ -33,10 +33,10 @@ Plan: 4 of 7
 - **Requirements:** SYS-02, EVD-11, EVD-12, and EVD-14 remain blocked. EVD-15
   is satisfied by the exact preserve/demote result and explicit non-claims.
 
-- **Next step:** Execute the verified gap chain with
-  `/gsd-execute-phase 36 --gaps-only`: Plan 05 software gates, Plan 06's single
-  detector-gated attempt, Plan 07 offline admission, then Plan 04's sole
-  independent checkpoint and canonical reconciliation.
+- **Next step:** Execute Plan 06's single detector-gated attempt, then Plan 07
+  offline admission and Plan 04's sole independent checkpoint/canonical
+  reconciliation. Plan 05's exact-package broker, typed sealing, cleanup,
+  replay rejection, and production-path preflight are green at `b0f688f3`.
 
 ## Project Reference
 
