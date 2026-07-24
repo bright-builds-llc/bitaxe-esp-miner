@@ -4,7 +4,7 @@ milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
 stopped_at: Completed 36-05-PLAN.md
-last_updated: "2026-07-24T21:18:31.136Z"
+last_updated: "2026-07-24T21:29:57Z"
 last_activity: "2026-07-24"
 progress:
   total_phases: 6
@@ -378,7 +378,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 35 P01 | 37min | 2 tasks | 54 files |
 | Phase 35 P02 | 30min | 2 tasks | 8 files |
 | Phase 35 P03 | 25m | 2 tasks | 18 files |
-| Phase 36 P05 | 42min | 3 tasks | 20 files |
+| Phase 36 P05 | 55min | 3 tasks | 21 files |
 
 ### Quick Tasks Completed
 

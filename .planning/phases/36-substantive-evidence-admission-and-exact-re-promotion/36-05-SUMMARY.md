@@ -22,6 +22,7 @@ key-files:
   created:
     - tools/parity/src/phase36_broker.rs
     - tools/parity/src/phase36_broker/contract.rs
+    - tools/parity/src/phase36_broker/hardware.rs
     - tools/parity/src/phase36_broker/ipc.rs
     - tools/parity/src/phase36_broker/ledger.rs
     - tools/parity/src/phase36_evidence/capture.rs
@@ -37,6 +38,7 @@ key-decisions:
   - "Bind each private single-use capability to the exact attempt, evaluator, package, peer, protected root, and expiry before admitting any closed operation."
   - "Keep private capture bytes immutable and derive the commit-redacted candidate only after exact bundle, runtime-identity, package, and ledger joins pass."
   - "Expose hardware mode only as a broker-delegating path and leave all hardware execution to later Plan 36-06 preflight."
+  - "Keep the exact detector program and argument broker-owned; the supervisor carries only an opaque credential path and never receives detector output, port, DEVICE_URL, or an effect adapter."
 patterns-established:
   - "Effect ownership: the supervisor may pass an opaque capability but never receives effect adapters, device targets, or a writable ledger."
   - "Offline boundaries: inspect is read-only; classify writes only one explicit mode-0600 output without changing private or candidate bytes."
@@ -44,8 +46,8 @@ requirements-completed: [SYS-02, EVD-11, EVD-12, EVD-14]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 36-2026-07-23T15-20-53
-generated_at: 2026-07-24T21:16:56Z
-duration: 42min
+generated_at: 2026-07-24T21:29:57Z
+duration: 55min
 completed: 2026-07-24
 ---
 
@@ -55,11 +57,11 @@ completed: 2026-07-24
 
 ## Performance
 
-- **Duration:** 42 min
+- **Duration:** 55 min
 - **Started:** 2026-07-24T20:35:34Z
-- **Completed:** 2026-07-24T21:16:56Z
+- **Completed:** 2026-07-24T21:29:57Z
 - **Tasks:** 3
-- **Files modified:** 20
+- **Files modified:** 21
 
 ## Accomplishments
 
@@ -67,6 +69,7 @@ completed: 2026-07-24
 - Added an append-only, hash-chained, mode-0600 effect ledger that preserves the earliest failure and cleanup result and converts only sealed intervals into evidence admission.
 - Added exact private substantive capture and commit-redacted candidate derivation covering sensor truth, runtime health, runtime identity, package identity, broker ledger, and same boot/revision/device joins.
 - Added a five-mode supervisor and deployed Bazel test exercising preflight, synthetic, hardware fail-closed routing, inspection, and classification without detector, USB, serial, credentials, target discovery, device network, or hardware access.
+- Added the hardware broker's exact-once `just detect-ultra205` pre-capture gate, with detector output retained inside the broker and credential validation unreachable after detector failure.
 - Proved cross-process frame handling, permissions, descriptor isolation, immutable inputs, source/runfiles bypass restrictions, cleanup, and actual Phase 36 incomplete-plan ordering.
 
 ## Task Commits
@@ -77,10 +80,12 @@ Each task was committed atomically:
 2. **Task 2: Build exact substantive capture and admission harness** - `b3e001a0` (feat)
 3. **Task 3: Prove broker and harness OS boundaries** - `697d59e4` (test)
 4. **Plan-wide compatibility fix: Accept the rotated evaluator rejection boundary** - `f270aea1` (fix)
+5. **Cross-plan correctness fix: Wire the broker-owned detector gate** - `f9bfba39` (fix)
 
 ## Files Created/Modified
 
 - `tools/parity/src/phase36_broker.rs` and `tools/parity/src/phase36_broker/` - Closed capability, ledger, and IPC contracts with focused tests.
+- `tools/parity/src/phase36_broker/hardware.rs` - Exact-once detector adapter and detector-before-credential pre-capture gate.
 - `tools/parity/src/phase36_evidence/capture.rs` and `tools/parity/src/phase36_evidence/capture/` - Exact private bundle validation, synthetic generation, candidate derivation, and filesystem boundaries.
 - `tools/parity/src/main.rs` - Fresh-process synthetic capture and capture inspection/classification command wiring.
 - `scripts/phase36-substantive-evidence.sh` - Five-mode protected-root supervisor.
@@ -95,6 +100,7 @@ Each task was committed atomically:
 - The broker is the sole ledger writer and opens the ledger with append-only and close-on-exec semantics; children cannot inherit writable authority.
 - Private capture and public candidate are separate files with independent digests. Inspection cannot write, and classification cannot modify either source.
 - The software-only plan tested hardware mode only through its closed fail-before-effects behavior. It did not run detector, credentials, USB, serial, target discovery, flash, monitor, device network, or hardware.
+- The literal detector command is owned only by the Rust broker. Its captured output is discarded on failure and never crosses to supervisor stdout/stderr; credential metadata is examined only after detector success.
 
 ## Deviations from Plan
 
@@ -118,7 +124,16 @@ Each task was committed atomically:
 - **Verification:** `//scripts:phase36_evidence_test`, all 75 `just test` targets, and the full ordered Rust gate passed.
 - **Committed in:** `f270aea1`
 
-**Total deviations:** 2 auto-fixed (1 blocking issue, 1 compatibility bug)
+**3. [Rule 1 - Bug] Added the missing broker-owned detector invocation**
+
+- **Found during:** Wave 6 cross-plan key-link verification after Plan 36-05 completion
+- **Issue:** Hardware mode delegated to an absent broker command, so the required prior-wave link to exactly one `just detect-ultra205` invocation did not exist.
+- **Fix:** Added a broker-owned pre-capture gate that invokes the detector exactly once, captures its output privately, stops on failure before credential metadata or later effects, and validates the opaque credential file only after detector admission. The supervisor receives no detector output, port, DEVICE_URL, or effect adapter.
+- **Files modified:** `tools/parity/src/phase36_broker/hardware.rs`, `tools/parity/src/phase36_broker.rs`, `tools/parity/src/main.rs`, `tools/parity/BUILD.bazel`, `scripts/phase36-substantive-evidence.sh`, `scripts/phase36-substantive-evidence-test.sh`, `scripts/BUILD.bazel`
+- **Verification:** Three focused Rust ordering tests pass; the deployed fake-adapter test proves one detector invocation and zero credential/effect access after detector failure; all exact Phase 36 Bazel targets and the full Rust gate pass; the first Plan 36-06 key link verifies while its two Wave 6 output links remain absent.
+- **Committed in:** `f9bfba39`
+
+**Total deviations:** 3 auto-fixed (1 blocking issue, 2 compatibility/correctness bugs)
 
 **Impact on plan:** Both fixes preserve the intended fail-closed and append-only contracts without widening effect authority or claim scope.
 
@@ -135,6 +150,7 @@ None - this plan was fully software-only and required no external configuration.
 - Ordered Rust gate passed: `cargo fmt --all`, Clippy with warnings denied, all-target/all-feature build, and all-feature tests.
 - `just test` passed all 75 targets.
 - Exact targets passed fresh: `//tools/parity:phase36_broker_tests`, `//tools/parity:phase36_evidence_tests`, and `//scripts:phase36_substantive_evidence_test`.
+- Plan 36-06 key-link verification now passes the prior-wave supervisor-to-detector link; the two later Wave 6 artifact links remain correctly absent.
 - `just parity`, `just verify-redaction`, `just verify-reference`, and `git diff --check` passed.
 - Phase 35 remained byte-identical and retained root digest `0401e7b485df2d1ccfc67e63845f98b6217816a184901bf0595d03af3219757d`.
 - The paused Plan 36-04 tree remained identical to its start-of-plan baseline.
@@ -151,4 +167,4 @@ None. Hardware execution is deliberately outside this software-only plan; the su
 
 ## Self-Check: PASSED
 
-All key created files exist, and commits `9a5f35cf`, `b3e001a0`, `697d59e4`, and `f270aea1` are present in repository history.
+All key created files exist, and commits `9a5f35cf`, `b3e001a0`, `697d59e4`, `f270aea1`, and `f9bfba39` are present in repository history.
