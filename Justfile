@@ -63,8 +63,7 @@ phase35-evidence *args:
     bazel run //scripts:phase35_correlated_evidence -- {{ args }}
 
 phase36-substantive-evidence *args:
-    bazel build //tools/parity:report
-    ./scripts/phase36-substantive-evidence.sh {{ args }}
+    bazel run //scripts:phase36_substantive_evidence -- {{ args }}
 
 phase27-package:
     scripts/phase27-live-hardware-bridge-package.sh

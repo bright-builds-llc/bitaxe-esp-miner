@@ -95,6 +95,15 @@ resolve_report() {
 	return 1
 }
 
+first_category() {
+	awk '
+		match($0, /category=[a-z0-9_]+/) {
+			print substr($0, RSTART + 9, RLENGTH - 9)
+			exit
+		}
+	' "$1"
+}
+
 validate_parent() {
 	[[ -d "$private_parent" && ! -L "$private_parent" ]] || fail private_parent_invalid
 	[[ "$(file_mode "$private_parent")" == 700 ]] || fail private_parent_permissions_invalid
@@ -151,12 +160,12 @@ preflight)
 	source_commit="$(git -C "$workspace_dir" rev-parse HEAD)"
 	reference_commit="$(git -C "$workspace_dir/reference/esp-miner" rev-parse HEAD)"
 	[[ "$(jq -er '.schema_version' "$package_manifest")" == 3 &&
-		"$(jq -er '.source_commit' "$package_manifest")" == "$source_commit" &&
-		"$(jq -er '.reference_commit' "$package_manifest")" == "$reference_commit" &&
-		"$(jq -er '.image_metadata.board' "$package_manifest")" == 205 &&
-		"$(jq -er '.image_metadata.device_model' "$package_manifest")" == "Ultra 205" &&
-		"$(jq -er '.image_metadata.asic' "$package_manifest")" == BM1366 &&
-		"$(jq -er '.image_metadata.rust_target' "$package_manifest")" == xtensa-esp32s3-espidf ]] ||
+	"$(jq -er '.source_commit' "$package_manifest")" == "$source_commit" &&
+	"$(jq -er '.reference_commit' "$package_manifest")" == "$reference_commit" &&
+	"$(jq -er '.image_metadata.board' "$package_manifest")" == 205 &&
+	"$(jq -er '.image_metadata.device_model' "$package_manifest")" == "Ultra 205" &&
+	"$(jq -er '.image_metadata.asic' "$package_manifest")" == BM1366 &&
+	"$(jq -er '.image_metadata.rust_target' "$package_manifest")" == xtensa-esp32s3-espidf ]] ||
 		fail package_identity_invalid
 	resolve_artifact() {
 		local kind="$1"
@@ -281,8 +290,7 @@ hardware)
 		--capture-timeout-seconds "$capture_timeout_seconds" \
 		--wifi-credentials "$wifi_credentials" \
 		>"${attempt_handle_file}.stdout" 2>"${attempt_handle_file}.stderr"; then
-		broker_category="$(awk -F= '$1 == "category" && $2 ~ /^[a-z0-9_]+$/ {print $2; exit}' \
-			"${attempt_handle_file}.stderr")"
+		broker_category="$(first_category "${attempt_handle_file}.stderr")"
 		[[ -n "$broker_category" ]] || broker_category=phase36_hardware_broker_output_invalid
 		fail "$broker_category"
 	fi

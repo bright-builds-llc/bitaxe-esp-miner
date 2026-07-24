@@ -3,6 +3,7 @@ set -euo pipefail
 
 readonly supervisor="${1:?missing deployed supervisor}"
 readonly report_binary="${2:?missing deployed report binary}"
+readonly deployed_effect_adapter="$(dirname "$supervisor")/phase36_hardware_effect"
 readonly agents_file="${3:?missing workspace marker}"
 readonly justfile="${4:?missing Justfile}"
 readonly supervisor_source="${5:?missing supervisor source}"
@@ -76,7 +77,7 @@ expect_failure_category() {
 }
 
 umask 077
-[[ -x "$supervisor" && -x "$report_binary" ]] ||
+[[ -x "$supervisor" && -x "$report_binary" && -x "$deployed_effect_adapter" ]] ||
 	fail_test "deployed executables are unavailable"
 [[ -x "$gsd_tools" ]] || fail_test "GSD phase index tool is unavailable"
 
@@ -230,7 +231,7 @@ ln -s phase36-effect "$fake_bin/espflash"
 ln -s phase36-effect "$fake_bin/curl"
 ln -s phase36-effect "$fake_bin/flash-monitor"
 
-if PATH="$fake_bin:$PATH" \
+PATH="$fake_bin:$PATH" \
 	PHASE36_TEST_DETECTOR_LOG="$detector_log" \
 	PHASE36_TEST_EFFECT_LOG="$effect_log" \
 	run_supervisor \
@@ -307,8 +308,8 @@ if rg -q "$nested_runner_pattern" "$broker_source" "$capture_source"; then
 fi
 rg -Fq 'phase36-substantive-evidence *args:' "$justfile" ||
 	fail_test "Justfile omits Phase 36 command surface"
-rg -Fq './scripts/phase36-substantive-evidence.sh {{ args }}' "$justfile" ||
-	fail_test "Justfile does not forward exact mode arguments"
+rg -Fq 'bazel run //scripts:phase36_substantive_evidence -- {{ args }}' "$justfile" ||
+	fail_test "Justfile does not use the deployed supervisor runfiles"
 
 readonly graph_json="$("$gsd_tools" phase-plan-index 36)"
 readonly incomplete_graph="$(
