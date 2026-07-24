@@ -66,6 +66,7 @@ pub enum CaptureObservationSource {
 #[serde(deny_unknown_fields)]
 pub struct BrokerCaptureDocument {
     pub observation_source: CaptureObservationSource,
+    pub capability_digest: String,
     pub package_digest: String,
     pub same_physical_device_observed: bool,
     pub interval_start_millis: u64,
@@ -160,6 +161,9 @@ pub fn classify_private_capture(
     if bundle.broker.observation_source != CaptureObservationSource::IndependentBrokerLedger {
         return Err(Phase36CaptureError::EffectSourceInvalid);
     }
+    if !valid_digest(&bundle.broker.capability_digest) {
+        return Err(Phase36CaptureError::EffectSourceInvalid);
+    }
     if !bundle.broker.same_physical_device_observed || !identity.same_physical_device {
         return Err(Phase36CaptureError::SnapshotJoinMismatch);
     }
@@ -216,6 +220,13 @@ fn validate_broker_interval(
         return Err(Phase36CaptureError::EffectIntervalFailed);
     }
     Ok(ValidatedIndependentEffectInterval::from(&interval))
+}
+
+fn valid_digest(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 fn candidate_digest(candidate: &Phase36CaptureCandidate) -> Result<String, Phase36CaptureError> {

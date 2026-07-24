@@ -60,6 +60,7 @@ fn broker_document() -> BrokerCaptureDocument {
     }
     BrokerCaptureDocument {
         observation_source: CaptureObservationSource::IndependentBrokerLedger,
+        capability_digest: digest('c'),
         package_digest: digest('7'),
         same_physical_device_observed: true,
         interval_start_millis: 100,
@@ -166,7 +167,7 @@ fn phase36_capture_binds_every_bundle_and_broker_ledger_field() {
     // Arrange
     type Mutation = (&'static str, fn(&mut serde_json::Value));
     let original = serde_json::to_value(bundle()).expect("bundle should become JSON");
-    let mutations: [Mutation; 16] = [
+    let mutations: [Mutation; 17] = [
         ("schema", |value| {
             value["schema_version"] = serde_json::json!("phase36-private-capture-v0");
         }),
@@ -199,6 +200,9 @@ fn phase36_capture_binds_every_bundle_and_broker_ledger_field() {
         }),
         ("effect source", |value| {
             value["broker"]["observation_source"] = serde_json::json!("supervisor_attestation");
+        }),
+        ("capability", |value| {
+            value["broker"]["capability_digest"] = serde_json::json!("invalid");
         }),
         ("package join", |value| {
             value["broker"]["package_digest"] = serde_json::json!(digest('a'));
@@ -246,7 +250,8 @@ fn phase36_capture_keeps_private_and_candidate_bytes_stable_across_offline_class
     let private = root.join("private.json");
     let candidate = root.join("candidate.json");
     let classification = root.join("classification.json");
-    write_synthetic_capture(&private, &candidate).expect("synthetic capture should derive");
+    write_synthetic_capture(&private, &candidate, &digest('c'))
+        .expect("synthetic capture should derive");
     let private_before = fs::read(&private).expect("private input should be readable");
     let candidate_before = fs::read(&candidate).expect("candidate should be readable");
 

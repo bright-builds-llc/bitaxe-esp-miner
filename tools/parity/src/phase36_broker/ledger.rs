@@ -379,7 +379,7 @@ impl PrivateAppendOnlyLedger {
             .append(true)
             .create_new(true)
             .mode(0o600)
-            .custom_flags(libc::O_APPEND)
+            .custom_flags(libc::O_APPEND | libc::O_CLOEXEC)
             .open(path)
             .map_err(|_| Phase36LedgerError::Storage)?;
         let mode = file

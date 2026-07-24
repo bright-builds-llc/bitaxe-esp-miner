@@ -7,6 +7,7 @@ exports_files(
         "fixtures/phase36/runtime-identity-package.json",
         "fixtures/phase36/substance-eligible.json",
         "src/main.rs",
+        "src/phase36_broker.rs",
         "src/phase36_evidence.rs",
         "src/phase36_evidence/contract.rs",
         "src/phase36_evidence/capture.rs",
@@ -104,6 +105,7 @@ rust_binary(
         "src/phase36_evidence/tests/substance.rs",
         "src/phase36_broker.rs",
         "src/phase36_broker/contract.rs",
+        "src/phase36_broker/ipc.rs",
         "src/phase36_broker/ledger.rs",
         "src/phase36_broker/tests.rs",
         "src/phase36_offline.rs",
@@ -168,6 +170,7 @@ rust_test(
 rust_test(
     name = "phase36_broker_tests",
     crate = ":report",
+    compile_data = glob(["fixtures/phase36-broker/*.json"]),
     visibility = ["//visibility:public"],
 )
 

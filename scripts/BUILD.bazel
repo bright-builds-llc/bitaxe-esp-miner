@@ -95,6 +95,34 @@ sh_binary(
     data = ["//tools/parity:report"],
 )
 
+sh_test(
+    name = "phase36_substantive_evidence_test",
+    srcs = ["phase36-substantive-evidence-test.sh"],
+    args = [
+        "$(location :phase36_substantive_evidence)",
+        "$(location //tools/parity:report)",
+        "$(location //:AGENTS.md)",
+        "$(location //:Justfile)",
+        "$(location :phase36-substantive-evidence.sh)",
+        "$(location //tools/parity:src/phase36_broker.rs)",
+        "$(location //tools/parity:src/phase36_evidence/capture.rs)",
+    ],
+    data = [
+        "//:AGENTS.md",
+        "//:Justfile",
+        ":phase36_substantive_evidence",
+        "phase36-substantive-evidence.sh",
+        "//tools/parity:report",
+        "//tools/parity:src/phase36_broker.rs",
+        "//tools/parity:src/phase36_evidence/capture.rs",
+    ],
+    env_inherit = ["PATH"],
+    tags = [
+        "local",
+        "no-sandbox",
+    ],
+)
+
 sh_binary(
     name = "verify_reference_clean",
     srcs = ["verify-reference-clean.sh"],

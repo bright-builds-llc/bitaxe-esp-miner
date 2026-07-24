@@ -458,6 +458,99 @@ fn phase36_broker_private_ledger_is_mode_0600_and_append_only() {
     assert_eq!(metadata.permissions().mode() & 0o777, 0o600);
     assert_eq!(contents.lines().count(), 1);
     assert!(contents.ends_with('\n'));
+    assert!(include_str!("ledger.rs").contains("libc::O_CLOEXEC"));
 
     fs::remove_dir_all(root).expect("private test root should clean up");
+}
+
+#[test]
+fn phase36_broker_unix_frames_accept_coalesced_and_fragmented_delivery() {
+    use std::io::Write;
+    use std::os::unix::net::UnixStream;
+    use std::thread;
+
+    // Arrange
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("../../fixtures/phase36-broker/ipc-cases.json"))
+            .expect("IPC fixture should parse");
+    assert_eq!(fixture["schema_version"], "phase36-broker-ipc-cases-v1");
+    let (mut receiver_stream, mut sender_stream) =
+        UnixStream::pair().expect("Unix stream pair should create");
+    let (_, presentation) = capability_and_presentation();
+    let mut coalesced = Vec::new();
+    write_broker_frame(&mut coalesced, 1, &presentation).expect("first frame should encode");
+    write_broker_frame(&mut coalesced, 2, &presentation).expect("second frame should encode");
+    let midpoint = coalesced.len() / 3;
+    let writer = thread::spawn(move || {
+        sender_stream
+            .write_all(&coalesced[..midpoint])
+            .expect("fragment should write");
+        sender_stream
+            .write_all(&coalesced[midpoint..])
+            .expect("remaining coalesced frames should write");
+    });
+    let mut receiver = Phase36BrokerFrameReceiver::new();
+
+    // Act
+    let first = receiver
+        .read_next::<Phase36CapabilityPresentation>(&mut receiver_stream)
+        .expect("fragmented first frame should decode");
+    let second = receiver
+        .read_next::<Phase36CapabilityPresentation>(&mut receiver_stream)
+        .expect("coalesced second frame should decode");
+    writer.join().expect("writer should exit");
+
+    // Assert
+    assert_eq!(first, presentation);
+    assert_eq!(second, presentation);
+}
+
+#[test]
+fn phase36_broker_unix_frames_reject_short_oversized_duplicate_reordered_and_after_close() {
+    use std::io::{Cursor, Write};
+    use std::os::unix::net::UnixStream;
+
+    // Arrange
+    let (_, presentation) = capability_and_presentation();
+    let mut short = Cursor::new([0_u8, 0, 0, 8, b'{', b'}']);
+    let mut oversized = Cursor::new([0_u8, 1, 0, 1]);
+    let mut duplicate_bytes = Vec::new();
+    write_broker_frame(&mut duplicate_bytes, 1, &presentation)
+        .expect("first duplicate fixture should encode");
+    write_broker_frame(&mut duplicate_bytes, 1, &presentation)
+        .expect("second duplicate fixture should encode");
+    let mut duplicate = Cursor::new(duplicate_bytes);
+    let mut reordered_bytes = Vec::new();
+    write_broker_frame(&mut reordered_bytes, 2, &presentation)
+        .expect("reordered fixture should encode");
+    let mut reordered = Cursor::new(reordered_bytes);
+
+    // Act
+    let short_result =
+        Phase36BrokerFrameReceiver::new().read_next::<Phase36CapabilityPresentation>(&mut short);
+    let oversized_result = Phase36BrokerFrameReceiver::new()
+        .read_next::<Phase36CapabilityPresentation>(&mut oversized);
+    let mut duplicate_receiver = Phase36BrokerFrameReceiver::new();
+    duplicate_receiver
+        .read_next::<Phase36CapabilityPresentation>(&mut duplicate)
+        .expect("first duplicate fixture frame should decode");
+    let duplicate_result =
+        duplicate_receiver.read_next::<Phase36CapabilityPresentation>(&mut duplicate);
+    let reordered_result = Phase36BrokerFrameReceiver::new()
+        .read_next::<Phase36CapabilityPresentation>(&mut reordered);
+    let (mut closed_stream, mut peer) =
+        UnixStream::pair().expect("closed Unix stream pair should create");
+    peer.write_all(&[]).expect("empty write should succeed");
+    drop(peer);
+    let mut closed_receiver = Phase36BrokerFrameReceiver::new();
+    closed_receiver.close();
+    let after_close_result =
+        closed_receiver.read_next::<Phase36CapabilityPresentation>(&mut closed_stream);
+
+    // Assert
+    assert_eq!(short_result, Err(Phase36BrokerIpcError::Truncated));
+    assert_eq!(oversized_result, Err(Phase36BrokerIpcError::Oversized));
+    assert_eq!(duplicate_result, Err(Phase36BrokerIpcError::Duplicate));
+    assert_eq!(reordered_result, Err(Phase36BrokerIpcError::OutOfOrder));
+    assert_eq!(after_close_result, Err(Phase36BrokerIpcError::AfterClose));
 }

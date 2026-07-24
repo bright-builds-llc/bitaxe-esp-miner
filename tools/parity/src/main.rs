@@ -206,6 +206,9 @@ struct Phase36SyntheticCaptureArgs {
 
     #[arg(long, value_parser = parse_utf8_path)]
     candidate_output: Utf8PathBuf,
+
+    #[arg(long)]
+    capability_digest: String,
 }
 
 #[derive(Debug, Parser)]
@@ -913,6 +916,7 @@ fn run_phase36_synthetic_capture_command(args: &Phase36SyntheticCaptureArgs) -> 
     let candidate = phase36_evidence::capture::write_synthetic_capture(
         &args.private_output,
         &args.candidate_output,
+        &args.capability_digest,
     )
     .map_err(|error| anyhow::anyhow!("category={error}"))?;
     Ok(format!(

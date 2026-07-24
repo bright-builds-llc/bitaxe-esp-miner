@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-readonly workspace_dir="$(git -C "$script_dir/.." rev-parse --show-toplevel)"
+readonly workspace_dir="${BUILD_WORKSPACE_DIRECTORY:-$(git -C "$script_dir/.." rev-parse --show-toplevel)}"
 
 mode=""
 board=""
@@ -83,8 +83,8 @@ git -C "$workspace_dir" check-ignore -q -- "$relative_parent" ||
 resolve_report() {
 	local candidate
 	for candidate in \
-		"$workspace_dir/bazel-bin/tools/parity/report" \
-		"${RUNFILES_DIR:-}/_main/tools/parity/report"; do
+		"${RUNFILES_DIR:-}/_main/tools/parity/report" \
+		"$workspace_dir/bazel-bin/tools/parity/report"; do
 		if [[ -x "$candidate" ]]; then
 			printf '%s\n' "$candidate"
 			return
@@ -167,9 +167,11 @@ synthetic)
 	chmod 700 "$attempt_child"
 	report="$(resolve_report)" || fail broker_unavailable
 	private_capture="$attempt_child/private-capture.json"
+	capability_digest="$(handle_field capability_digest)"
 	if ! "$report" phase36-synthetic-capture \
 		--private-output "$private_capture" \
 		--candidate-output "$candidate_output" \
+		--capability-digest "$capability_digest" \
 		>"${attempt_handle_file}.stdout" 2>"${attempt_handle_file}.stderr"; then
 		fail synthetic_broker_failed
 	fi

@@ -28,14 +28,17 @@ const HOST_DIGEST: &str = "99999999999999999999999999999999999999999999999999999
 pub fn write_synthetic_capture(
     private_output: &Utf8Path,
     candidate_output: &Utf8Path,
+    capability_digest: &str,
 ) -> Result<Phase36CaptureCandidate, CaptureFileError> {
-    let bundle = synthetic_bundle()?;
+    let bundle = synthetic_bundle(capability_digest)?;
     let bytes = serde_json::to_vec_pretty(&bundle).map_err(|_| CaptureFileError::OutputFailed)?;
     write_new_private_file(private_output, &bytes)?;
     write_candidate_from_private_file(private_output, candidate_output)
 }
 
-fn synthetic_bundle() -> Result<Phase36PrivateCaptureBundle, CaptureFileError> {
+fn synthetic_bundle(
+    capability_digest: &str,
+) -> Result<Phase36PrivateCaptureBundle, CaptureFileError> {
     let projection = serde_json::json!({
         "bootSession": SESSION,
         "operatorSnapshotRevision": 15,
@@ -77,7 +80,7 @@ fn synthetic_bundle() -> Result<Phase36PrivateCaptureBundle, CaptureFileError> {
         board_category: "205".to_owned(),
         substantive,
         runtime_identity: synthetic_runtime_identity()?,
-        broker: synthetic_broker()?,
+        broker: synthetic_broker(capability_digest)?,
     })
 }
 
@@ -186,7 +189,7 @@ fn synthetic_runtime_identity() -> Result<RuntimeIdentityCaptureDocuments, Captu
     })
 }
 
-fn synthetic_broker() -> Result<BrokerCaptureDocument, CaptureFileError> {
+fn synthetic_broker(capability_digest: &str) -> Result<BrokerCaptureDocument, CaptureFileError> {
     let mut state =
         Phase36LedgerState::start(100).map_err(|_| CaptureFileError::ClassificationFailed)?;
     let mut records = Vec::new();
@@ -209,6 +212,7 @@ fn synthetic_broker() -> Result<BrokerCaptureDocument, CaptureFileError> {
     }
     Ok(BrokerCaptureDocument {
         observation_source: CaptureObservationSource::IndependentBrokerLedger,
+        capability_digest: capability_digest.to_owned(),
         package_digest: PACKAGE_DIGEST.to_owned(),
         same_physical_device_observed: true,
         interval_start_millis: 100,
