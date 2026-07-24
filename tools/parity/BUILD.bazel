@@ -122,6 +122,7 @@ rust_binary(
         "//firmware/bitaxe:phase33_settings_sources",
         "//firmware/bitaxe:phase34_identity_sources",
         "//scripts:package-firmware.sh",
+        "//tools/device-session:phase36_runtime_identity_sources",
         "//tools/flash:phase34_identity_admission_sources",
         "//tools/xtask:phase34_package_identity_sources",
     ],

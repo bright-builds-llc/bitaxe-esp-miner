@@ -504,12 +504,16 @@ fn phase36_contract_rejects_malformed_claim_digests_as_partial_public_output() {
 fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
     // Arrange
     const HOSTNAME_VALIDATOR_DECLARATION: &str = "pub(crate) fn from_public_generation(";
+    const SESSION_REQUEST_VALIDATOR_DECLARATION: &str = "pub fn schema_is_valid(&self) -> bool {";
+    const SESSION_STATE_VALIDATOR_DECLARATION: &str =
+        "pub fn apply(&mut self, event: SessionEvent) {";
     let expected_sources = [
         "phase36_evidence.rs",
         "phase36_evidence/substance.rs",
         "phase36_evidence/substance/types.rs",
         "phase36_evidence/runtime_identity.rs",
         "phase36_evidence/runtime_identity/ledger.rs",
+        "tools/device-session/src/model.rs",
         "phase36_evidence/effects.rs",
         "operator_snapshot_evidence.rs",
         "crates/bitaxe-api/src/operator_snapshot.rs",
@@ -525,33 +529,74 @@ fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
         .iter()
         .map(|(path, _)| *path)
         .collect::<Vec<_>>();
-    let drifted_sources =
-        PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
-            .iter()
-            .map(|(path, source)| {
-                if *path == "phase36_promotion/types.rs" {
-                    std::borrow::Cow::Owned(source.replacen(
-                        HOSTNAME_VALIDATOR_DECLARATION,
-                        "pub(crate) fn from_public_generation_drift(",
-                        1,
-                    ))
-                } else {
-                    std::borrow::Cow::Borrowed(*source)
-                }
-            });
     let hostname_validator_source = PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
         .iter()
         .find(|(path, _)| *path == "phase36_promotion/types.rs")
         .map(|(_, source)| *source)
         .expect("hostname generation validator source should be inventoried");
+    let session_validator_source = PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
+        .iter()
+        .find(|(path, _)| *path == "tools/device-session/src/model.rs")
+        .map(|(_, source)| *source)
+        .expect("device-session replay validator source should be inventoried");
+    let drift_identity = |target_path: &str, declaration: &str, replacement: &str| {
+        let drifted_inventory =
+            PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
+                .iter()
+                .map(|(path, source)| {
+                    let source = if *path == target_path {
+                        std::borrow::Cow::Owned(source.replacen(declaration, replacement, 1))
+                    } else {
+                        std::borrow::Cow::Borrowed(*source)
+                    };
+                    (*path, source)
+                });
+        let evaluator = phase36_evidence_evaluator_digest_from_inventory(drifted_inventory);
+        let contract = phase36_evidence_contract_digest_for_evaluator(&evaluator);
+        (evaluator, contract)
+    };
 
     // Act
-    let drifted_digest = phase36_evidence_evaluator_digest_from_sources(drifted_sources);
+    let hostname_drift = drift_identity(
+        "phase36_promotion/types.rs",
+        HOSTNAME_VALIDATOR_DECLARATION,
+        "pub(crate) fn from_public_generation_drift(",
+    );
+    let session_state_drift = drift_identity(
+        "tools/device-session/src/model.rs",
+        SESSION_STATE_VALIDATOR_DECLARATION,
+        "pub fn apply_drift(&mut self, event: SessionEvent) {",
+    );
+    let path_drifted_inventory =
+        PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
+            .iter()
+            .map(|(path, source)| {
+                let path = if *path == "tools/device-session/src/model.rs" {
+                    "tools/device-session/src/model-drift.rs"
+                } else {
+                    *path
+                };
+                (path, *source)
+            });
+    let path_drifted_evaluator =
+        phase36_evidence_evaluator_digest_from_inventory(path_drifted_inventory);
+    let path_drift = (
+        path_drifted_evaluator.clone(),
+        phase36_evidence_contract_digest_for_evaluator(&path_drifted_evaluator),
+    );
 
     // Assert
     assert_eq!(inventory_sources, expected_sources);
     assert!(hostname_validator_source.contains(HOSTNAME_VALIDATOR_DECLARATION));
-    assert_ne!(drifted_digest, current_phase36_evidence_evaluator_digest());
+    assert!(session_validator_source.contains(SESSION_REQUEST_VALIDATOR_DECLARATION));
+    assert!(session_validator_source.contains(SESSION_STATE_VALIDATOR_DECLARATION));
+    for (drifted_evaluator, drifted_contract) in [hostname_drift, session_state_drift, path_drift] {
+        assert_ne!(
+            drifted_evaluator,
+            current_phase36_evidence_evaluator_digest()
+        );
+        assert_ne!(drifted_contract, current_phase36_evidence_contract_digest());
+    }
 }
 
 mod authority;

@@ -1,5 +1,11 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 
+filegroup(
+    name = "phase36_runtime_identity_sources",
+    srcs = ["src/model.rs"],
+    visibility = ["//tools/parity:__pkg__"],
+)
+
 rust_library(
     name = "device_session_lib",
     srcs = [

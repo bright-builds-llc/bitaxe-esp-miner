@@ -802,6 +802,10 @@ const PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY: &[(&str, &str)] = &[
         include_str!("phase36_evidence/runtime_identity/ledger.rs"),
     ),
     (
+        "tools/device-session/src/model.rs",
+        include_str!("../../device-session/src/model.rs"),
+    ),
+    (
         "phase36_evidence/effects.rs",
         include_str!("phase36_evidence/effects.rs"),
     ),
@@ -837,36 +841,48 @@ const PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY: &[(&str, &str)] = &[
     ("protected_input.rs", include_str!("protected_input.rs")),
 ];
 
-fn phase36_evidence_evaluator_digest_from_sources<I, S>(sources: I) -> String
+fn phase36_evidence_evaluator_digest_from_inventory<I, P, S>(inventory: I) -> String
 where
-    I: IntoIterator<Item = S>,
+    I: IntoIterator<Item = (P, S)>,
+    P: AsRef<str>,
     S: AsRef<str>,
 {
-    let mut digest_input = String::from("phase36-evidence-evaluator-v1\0");
-    for source in sources {
-        digest_input.push_str(source.as_ref());
+    let mut digest_input = b"phase36-evidence-evaluator-v2\0".to_vec();
+    for (path, source) in inventory {
+        append_length_delimited(&mut digest_input, path.as_ref());
+        append_length_delimited(&mut digest_input, source.as_ref());
     }
-    sha256_hex(digest_input.as_bytes())
+    sha256_hex(&digest_input)
+}
+
+fn append_length_delimited(output: &mut Vec<u8>, value: &str) {
+    let length = u64::try_from(value.len()).expect("source inventory entry length fits u64");
+    output.extend_from_slice(&length.to_be_bytes());
+    output.extend_from_slice(value.as_bytes());
 }
 
 pub(crate) fn current_phase36_evidence_evaluator_digest() -> String {
-    phase36_evidence_evaluator_digest_from_sources(
+    phase36_evidence_evaluator_digest_from_inventory(
         PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
             .iter()
-            .map(|(_, source)| *source),
+            .map(|(path, source)| (*path, *source)),
     )
 }
 
-pub(crate) fn current_phase36_evidence_contract_digest() -> String {
+fn phase36_evidence_contract_digest_for_evaluator(evaluator_digest: &str) -> String {
     sha256_hex(
         [
             "phase36-evidence-contract-v1\0",
             include_str!("phase36_evidence/contract.rs"),
-            &current_phase36_evidence_evaluator_digest(),
+            evaluator_digest,
         ]
         .concat()
         .as_bytes(),
     )
+}
+
+pub(crate) fn current_phase36_evidence_contract_digest() -> String {
+    phase36_evidence_contract_digest_for_evaluator(&current_phase36_evidence_evaluator_digest())
 }
 
 fn map_protected_error(error: ProtectedInputError) -> Phase36EvidenceError {
