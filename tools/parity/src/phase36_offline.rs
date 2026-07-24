@@ -1,8 +1,10 @@
 //! Explicit-input, read-only classification of immutable Attempt 31 companions.
 
 use std::collections::BTreeSet;
+use std::ffi::CString;
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
+use std::os::fd::{AsRawFd, FromRawFd};
+use std::os::unix::fs::{FileExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::Serialize;
@@ -260,6 +262,7 @@ fn classify_companions(
 
 #[derive(Default)]
 struct CompanionSnapshot {
+    _protected_root: Option<fs::File>,
     api: Option<SnapshotFile>,
     websocket: Option<SnapshotFile>,
     retained: Option<SnapshotFile>,
@@ -273,19 +276,20 @@ struct CompanionSnapshot {
 
 impl CompanionSnapshot {
     fn load(maybe_root: Option<&Utf8Path>, paths: &CompanionPaths) -> Self {
-        let Some(root) = maybe_root.filter(|root| protected_root_is_valid(root)) else {
+        let Some(root) = maybe_root.and_then(open_protected_root) else {
             return Self::default();
         };
         Self {
-            api: snapshot_optional(root, paths.maybe_api.as_deref()),
-            websocket: snapshot_optional(root, paths.maybe_websocket.as_deref()),
-            retained: snapshot_optional(root, paths.maybe_retained.as_deref()),
-            exact_package: snapshot_optional(root, paths.maybe_exact_package.as_deref()),
-            request: snapshot_optional(root, paths.maybe_request.as_deref()),
-            event_ledger: snapshot_optional(root, paths.maybe_event_ledger.as_deref()),
-            private_result: snapshot_optional(root, paths.maybe_private_result.as_deref()),
-            public_projection: snapshot_optional(root, paths.maybe_public_projection.as_deref()),
-            independent_effect: snapshot_optional(root, paths.maybe_independent_effect.as_deref()),
+            api: snapshot_optional(&root, paths.maybe_api.as_deref()),
+            websocket: snapshot_optional(&root, paths.maybe_websocket.as_deref()),
+            retained: snapshot_optional(&root, paths.maybe_retained.as_deref()),
+            exact_package: snapshot_optional(&root, paths.maybe_exact_package.as_deref()),
+            request: snapshot_optional(&root, paths.maybe_request.as_deref()),
+            event_ledger: snapshot_optional(&root, paths.maybe_event_ledger.as_deref()),
+            private_result: snapshot_optional(&root, paths.maybe_private_result.as_deref()),
+            public_projection: snapshot_optional(&root, paths.maybe_public_projection.as_deref()),
+            independent_effect: snapshot_optional(&root, paths.maybe_independent_effect.as_deref()),
+            _protected_root: Some(root),
         }
     }
 
@@ -308,9 +312,11 @@ impl CompanionSnapshot {
         .into_iter()
         .flatten()
         {
-            let bytes = fs::read(file.path.as_std_path())
+            let identity = FileIdentity::capture(&file.file)
                 .map_err(|_| Phase36OfflineError::ProtectedSnapshotChanged)?;
-            if sha256_hex(&bytes) != file.digest {
+            let bytes = read_descriptor(&file.file)
+                .map_err(|_| Phase36OfflineError::ProtectedSnapshotChanged)?;
+            if identity != file.identity || sha256_hex(&bytes) != file.digest {
                 return Err(Phase36OfflineError::ProtectedSnapshotChanged);
             }
         }
@@ -319,36 +325,125 @@ impl CompanionSnapshot {
 }
 
 struct SnapshotFile {
-    path: Utf8PathBuf,
+    file: fs::File,
     contents: String,
     digest: String,
+    identity: FileIdentity,
 }
 
-fn protected_root_is_valid(root: &Utf8Path) -> bool {
-    fs::symlink_metadata(root.as_std_path()).is_ok_and(|metadata| {
-        !metadata.file_type().is_symlink()
-            && metadata.is_dir()
+#[derive(Clone, Copy, Eq, PartialEq)]
+struct FileIdentity {
+    device: u64,
+    inode: u64,
+    owner: u32,
+    mode: u32,
+    length: u64,
+}
+
+impl FileIdentity {
+    fn capture(file: &fs::File) -> std::io::Result<Self> {
+        let metadata = file.metadata()?;
+        Ok(Self {
+            device: metadata.dev(),
+            inode: metadata.ino(),
+            owner: metadata.uid(),
+            mode: metadata.mode(),
+            length: metadata.len(),
+        })
+    }
+}
+
+fn open_protected_root(root: &Utf8Path) -> Option<fs::File> {
+    let directory = fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_DIRECTORY | libc::O_CLOEXEC | libc::O_NOFOLLOW)
+        .open(root.as_std_path())
+        .ok()?;
+    protected_directory_is_valid(&directory).then_some(directory)
+}
+
+fn open_directory_at(parent: &fs::File, name: &str) -> Option<fs::File> {
+    let name = CString::new(name.as_bytes()).ok()?;
+    let descriptor = unsafe {
+        libc::openat(
+            parent.as_raw_fd(),
+            name.as_ptr(),
+            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC | libc::O_NOFOLLOW,
+        )
+    };
+    (descriptor >= 0).then(|| unsafe { fs::File::from_raw_fd(descriptor) })
+}
+
+fn protected_directory_is_valid(directory: &fs::File) -> bool {
+    directory.metadata().is_ok_and(|metadata| {
+        metadata.is_dir()
+            && metadata.uid() == unsafe { libc::geteuid() }
             && metadata.permissions().mode() & 0o777 == 0o700
     })
 }
 
-fn snapshot_optional(root: &Utf8Path, maybe_relative: Option<&Utf8Path>) -> Option<SnapshotFile> {
+fn snapshot_optional(root: &fs::File, maybe_relative: Option<&Utf8Path>) -> Option<SnapshotFile> {
     let relative = maybe_relative.filter(|path| safe_relative_path(path))?;
-    let path = root.join(relative);
-    let metadata = fs::symlink_metadata(path.as_std_path()).ok()?;
-    if metadata.file_type().is_symlink()
-        || !metadata.is_file()
+    let mut components = relative.components().peekable();
+    let mut directory = root.try_clone().ok()?;
+    let file = loop {
+        let camino::Utf8Component::Normal(name) = components.next()? else {
+            return None;
+        };
+        if components.peek().is_some() {
+            directory = open_directory_at(&directory, name)?;
+            if !protected_directory_is_valid(&directory) {
+                return None;
+            }
+            continue;
+        }
+        let name = CString::new(name.as_bytes()).ok()?;
+        let descriptor = unsafe {
+            libc::openat(
+                directory.as_raw_fd(),
+                name.as_ptr(),
+                libc::O_RDONLY | libc::O_CLOEXEC | libc::O_NOFOLLOW,
+            )
+        };
+        if descriptor < 0 {
+            return None;
+        }
+        break unsafe { fs::File::from_raw_fd(descriptor) };
+    };
+    let identity_before = FileIdentity::capture(&file).ok()?;
+    let metadata = file.metadata().ok()?;
+    if !metadata.is_file()
+        || metadata.uid() != unsafe { libc::geteuid() }
         || metadata.permissions().mode() & 0o777 != 0o600
     {
         return None;
     }
-    let bytes = fs::read(path.as_std_path()).ok()?;
+    let bytes = read_descriptor(&file).ok()?;
+    let identity = FileIdentity::capture(&file).ok()?;
+    if identity != identity_before || bytes.len() as u64 != identity.length {
+        return None;
+    }
     let contents = String::from_utf8(bytes.clone()).ok()?;
     Some(SnapshotFile {
-        path,
+        file,
         contents,
         digest: sha256_hex(&bytes),
+        identity,
     })
+}
+
+fn read_descriptor(file: &fs::File) -> std::io::Result<Vec<u8>> {
+    let length = file.metadata()?.len();
+    let mut bytes = vec![0; usize::try_from(length).map_err(|_| std::io::ErrorKind::FileTooLarge)?];
+    let mut offset = 0;
+    while offset < bytes.len() {
+        let read = file.read_at(&mut bytes[offset..], offset as u64)?;
+        if read == 0 {
+            return Err(std::io::ErrorKind::UnexpectedEof.into());
+        }
+        offset += read;
+    }
+    Ok(bytes)
 }
 
 fn safe_relative_path(path: &Utf8Path) -> bool {
@@ -361,6 +456,8 @@ fn safe_relative_path(path: &Utf8Path) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::os::unix::fs::symlink;
+    use std::process::Command as ChildCommand;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use serde_json::Value;
@@ -383,6 +480,9 @@ mod tests {
     const CHECKLIST_DOCUMENT: &str = include_str!("../../../docs/parity/checklist.md");
     const SUBSTANCE: &str = include_str!("../fixtures/phase36/substance-eligible.json");
     const EFFECTS: &str = include_str!("../fixtures/phase36/independent-effects-eligible.json");
+    const PROTECTED_HELPER_SCENARIO: &str = "BITAXE_PHASE36_PROTECTED_HELPER_SCENARIO";
+    const PROTECTED_HELPER_ROOT: &str = "BITAXE_PHASE36_PROTECTED_HELPER_ROOT";
+    const PROTECTED_HELPER_TEST: &str = "phase36_offline::tests::protected_snapshot_process_helper";
 
     #[test]
     fn phase36_offline_unanchored_companion_sets_remain_fully_insufficient() {
@@ -478,6 +578,107 @@ mod tests {
             );
             assert!(!fixture.workspace.join(PHASE36_ROOT).exists());
         }
+    }
+
+    #[test]
+    fn protected_snapshot_rejects_ancestor_symlink_escape() {
+        // Arrange
+        let fixture = OfflineFixture::new("ancestor-symlink");
+        let external = fixture.workspace.join("external");
+        fs::create_dir(&external).expect("external directory must be created");
+        fs::set_permissions(external.as_std_path(), fs::Permissions::from_mode(0o700))
+            .expect("external directory mode must be set");
+        let escaped = external.join("api.md");
+        fs::write(escaped.as_std_path(), "escaped").expect("escaped file must write");
+        fs::set_permissions(escaped.as_std_path(), fs::Permissions::from_mode(0o600))
+            .expect("escaped file mode must be set");
+        symlink(
+            external.as_std_path(),
+            fixture.protected.join("linked").as_std_path(),
+        )
+        .expect("ancestor symlink must be created");
+
+        // Act
+        let status = run_protected_snapshot_helper(&fixture, "ancestor-symlink");
+
+        // Assert
+        assert!(status.success());
+    }
+
+    #[test]
+    fn protected_snapshot_verifies_the_admitted_descriptor_after_path_swap() {
+        // Arrange
+        let fixture = OfflineFixture::new("path-swap");
+        // Act
+        let status = run_protected_snapshot_helper(&fixture, "path-swap");
+
+        // Assert
+        assert!(status.success());
+    }
+
+    #[test]
+    fn protected_snapshot_process_helper() {
+        let Ok(scenario) = std::env::var(PROTECTED_HELPER_SCENARIO) else {
+            return;
+        };
+        let root = Utf8PathBuf::from(
+            std::env::var(PROTECTED_HELPER_ROOT).expect("protected helper root must be supplied"),
+        );
+        let paths = CompanionPaths {
+            maybe_api: Some(
+                if scenario == "ancestor-symlink" {
+                    "linked/api.md"
+                } else {
+                    "api.md"
+                }
+                .into(),
+            ),
+            maybe_websocket: (scenario == "ancestor-symlink").then(|| "websocket.md".into()),
+            maybe_retained: None,
+            maybe_exact_package: None,
+            maybe_request: None,
+            maybe_event_ledger: None,
+            maybe_private_result: None,
+            maybe_public_projection: None,
+            maybe_independent_effect: None,
+        };
+        let snapshot = CompanionSnapshot::load(Some(&root), &paths);
+        if scenario == "ancestor-symlink" {
+            assert!(snapshot.api.is_none());
+            assert!(
+                snapshot.websocket.is_some(),
+                "direct companion must still be admitted"
+            );
+            return;
+        }
+
+        assert_eq!(scenario, "path-swap");
+        assert!(snapshot.api.is_some(), "api companion must be admitted");
+        let admitted_path = root.join("api.md");
+        fs::rename(
+            admitted_path.as_std_path(),
+            root.join("api-admitted.md").as_std_path(),
+        )
+        .expect("admitted file must be renamed");
+        fs::write(admitted_path.as_std_path(), "replacement").expect("replacement must write");
+        fs::set_permissions(
+            admitted_path.as_std_path(),
+            fs::Permissions::from_mode(0o600),
+        )
+        .expect("replacement mode must be set");
+        assert!(snapshot.verify_unchanged().is_ok());
+    }
+
+    fn run_protected_snapshot_helper(
+        fixture: &OfflineFixture,
+        scenario: &str,
+    ) -> std::process::ExitStatus {
+        ChildCommand::new(std::env::current_exe().expect("test executable path must resolve"))
+            .args(["--exact", PROTECTED_HELPER_TEST, "--nocapture"])
+            .env(PROTECTED_HELPER_SCENARIO, scenario)
+            .env(PROTECTED_HELPER_ROOT, fixture.protected.as_str())
+            .status()
+            .expect("protected snapshot helper must launch")
     }
 
     #[test]

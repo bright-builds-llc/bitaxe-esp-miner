@@ -30,6 +30,7 @@ readonly offline_workspace="${test_parent}/offline-workspace"
 readonly offline_output="${test_parent}/offline-output.json"
 readonly offline_stderr="${test_parent}/offline-stderr.txt"
 readonly offline_command_block="${test_parent}/offline-command-source.txt"
+readonly offline_production_module="${test_parent}/offline-production-source.txt"
 readonly protected_canary="opaque-phase36-protected-canary"
 
 cleanup() {
@@ -171,6 +172,10 @@ sed -n '/^fn run_reevaluate_phase36_attempt31_command(/,/^}/p' "$parity_main" \
 chmod 600 "$offline_command_block"
 [[ -s "$offline_command_block" ]] ||
 	fail_test "Phase 36 offline Attempt 31 command block was not found"
+sed '/^#\[cfg(test)\]/q' "$offline_module" >"$offline_production_module"
+chmod 600 "$offline_production_module"
+[[ -s "$offline_production_module" ]] ||
+	fail_test "Phase 36 offline production source was not found"
 
 readonly effectful_pattern='detect[-_]?ultra205|credential|(^|[^[:alnum:]_])flash([^-[:alnum:]_]|$)|monitor|serial[-_](control|session)|curl[[:space:]].*((--request|-X)[[:space:]]*(PATCH|POST|PUT|DELETE)|--data)|phase28\.1\.1|hardware[-_ ]run'
 if rg -q -i "$effectful_pattern" \
@@ -179,7 +184,7 @@ if rg -q -i "$effectful_pattern" \
 	fail_test "Phase 36 read-only classifier contains an effectful invocation"
 fi
 readonly effect_invocation_pattern='std::process|ProcessCommand|Command::new|detect[-_]?ultra205|curl[[:space:]]|serial[-_](control|session)|flash[-_]monitor|run_detector|run_flash|run_monitor|credential_path'
-if rg -q -i "$effect_invocation_pattern" "$effects_module" "$offline_module"; then
+if rg -q -i "$effect_invocation_pattern" "$effects_module" "$offline_production_module"; then
 	fail_test "Phase 36 independent effect classifier contains an effectful invocation API"
 fi
 if rg -q 'read_dir|WalkDir|glob::|ignore::Walk' "$offline_module"; then
