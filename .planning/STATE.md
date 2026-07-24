@@ -3,38 +3,40 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Phase 36 Plan 04 blocked at independent gaps_found verification
-last_updated: "2026-07-24T18:20:00Z"
+stopped_at: Phase 36 gap closure planned; next execute Plan 36-05
+last_updated: "2026-07-24T20:28:54.542Z"
 last_activity: "2026-07-24"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 28
+  total_plans: 31
   completed_plans: 27
-  percent: 96
+  percent: 87
 ---
 
 # Project State
 
-Last activity: 2026-07-24 - Completed quick task 260724-ivz: Persist Phase 36 checkpoint artifacts, crash diagnosis, evidence policy, and durable lessons without canonical reconciliation
+Last activity: 2026-07-24 - Planned verified Phase 36 gap closure as Plans 05-07 followed by final Plan 04 reconciliation
 
 ## Current Position
 
 Phase: 36 (substantive-evidence-admission-and-exact-re-promotion) — EXECUTING
-Plan: 3 of 4
+Plan: 3 of 7
 
 - **Phase:** 36 of 36 (substantive evidence admission and exact re-promotion)
-- **Plan:** 3 of 4
-- **Status:** Plan 04 blocked at the independent `gaps_found` checkpoint.
+- **Plan:** 3 of 7
+- **Status:** Ready to execute
 - **Checkpoint:** Code review and security audit passed at
   `f1cb6101f2c384acaffe0b8523097433ff0f04cc`; independent verification scored
   9/13 must-haves and retained the phase in executing status.
+
 - **Requirements:** SYS-02, EVD-11, EVD-12, and EVD-14 remain blocked. EVD-15
   is satisfied by the exact preserve/demote result and explicit non-claims.
 
-- **Next step:** Separately plan Phase 36 gap closure. That plan is the only
-  continuation; do not perform Plan 04 canonical reconciliation before new
-  eligible evidence passes the existing gates.
+- **Next step:** Execute the verified gap chain with
+  `/gsd-execute-phase 36 --gaps-only`: Plan 05 software gates, Plan 06's single
+  detector-gated attempt, Plan 07 offline admission, then Plan 04's sole
+  independent checkpoint and canonical reconciliation.
 
 ## Project Reference
 
@@ -199,13 +201,17 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 - Final code review and the OWASP ASVS Level 1 security audit passed at exact
   commit `f1cb6101f2c384acaffe0b8523097433ff0f04cc`.
+
 - Independent verification returned `gaps_found` at 9/13 must-haves and 2/5
   roadmap criteria because authoritative sensor/snapshot/runtime-health,
   runtime-identity, and independent-effect facts are absent.
+
 - SYS-02, EVD-11, EVD-12, and EVD-14 remain blocked. EVD-15 is satisfied by the
   exact hostname preservation, typed demotions, and preserved non-claims.
-- Plan 04 is blocked. A separately planned Phase 36 gap-closure effort is the
-  only continuation; canonical reconciliation remains untouched.
+
+- Plans 05 through 07 are the verified gap-closure path. Plan 04 is reordered
+  to Wave 8 and remains the sole independent checkpoint and canonical
+  reconciliation after Plan 07 completes.
 
 ## Decisions (Phase 34 Plan 09)
 
@@ -561,15 +567,17 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 ## Blockers
 
-- Phase 36 Plan 04 is blocked by the independent `gaps_found` result. The
-  authoritative successor lacks eligible sensor/snapshot/runtime-health,
-  runtime-identity, and independent-effect observations. A separately planned
-  Phase 36 gap-closure effort is required before canonical reconciliation.
+- No planning blocker remains. The authoritative successor still lacks eligible
+  sensor/snapshot/runtime-health, runtime-identity, and independent-effect
+  observations; Plans 05 through 07 must close or truthfully preserve those
+  gaps before Plan 04 may reconcile canonical status.
 
 ## Session
 
-- **Stopped at:** Phase 36 Plan 04 blocked at independent `gaps_found`
-  verification; 3 of 4 plans are accounted for.
-- **Resume:** Separately plan Phase 36 gap closure. Preserve the exact
+- **Stopped at:** Phase 36 gap closure independently plan-checked; 3 of 7 plans
+  are complete and Plan 36-05 is next.
+
+- **Resume:** Run `/gsd-execute-phase 36 --gaps-only`. Preserve the exact
   preserve/demote result, four blocked requirements, EVD-15 satisfied
-  distinction, and all canonical Plan 04 files.
+  distinction, and all canonical Plan 04 files until the Wave 8 independent
+  checkpoint passes.
