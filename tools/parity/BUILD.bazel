@@ -95,6 +95,10 @@ rust_binary(
         "src/phase36_evidence/tests/mutations.rs",
         "src/phase36_evidence/tests/runtime_identity.rs",
         "src/phase36_evidence/tests/substance.rs",
+        "src/phase36_broker.rs",
+        "src/phase36_broker/contract.rs",
+        "src/phase36_broker/ledger.rs",
+        "src/phase36_broker/tests.rs",
         "src/phase36_offline.rs",
         "src/phase36_promotion.rs",
         "src/phase36_promotion/checklist.rs",
@@ -152,6 +156,12 @@ rust_test(
         "//firmware/bitaxe:__pkg__",
         "//scripts:__pkg__",
     ],
+)
+
+rust_test(
+    name = "phase36_broker_tests",
+    crate = ":report",
+    visibility = ["//visibility:public"],
 )
 
 rust_test(

@@ -9,6 +9,7 @@ use thiserror::Error;
 
 use super::contract::ComponentInsufficiency;
 use crate::phase35_evidence::sha256_hex;
+use crate::phase36_broker::Phase36EffectInterval;
 
 const EFFECT_SCHEMA: &str = "phase36-independent-effects-v1";
 const EFFECT_DOCUMENT: &str = "independent-effects.json";
@@ -43,6 +44,28 @@ pub struct ValidatedIndependentEffectInterval {
     pub effect_count: u8,
     pub ledger_digest: String,
     pub claim_fact_digest: String,
+}
+
+impl From<&Phase36EffectInterval> for ValidatedIndependentEffectInterval {
+    fn from(interval: &Phase36EffectInterval) -> Self {
+        let observation_source = IndependentEffectObservationSource::IndependentLedger;
+        let claim_fact_digest = digest_serializable(&(
+            observation_source,
+            interval.start_millis(),
+            interval.end_millis(),
+            interval.ledger_digest(),
+        ))
+        .expect("closed broker interval uses serializable bounded fields");
+        Self {
+            observation_source,
+            start_millis: interval.start_millis(),
+            end_millis: interval.end_millis(),
+            duration_millis: interval.end_millis() - interval.start_millis(),
+            effect_count: interval.effect_count(),
+            ledger_digest: interval.ledger_digest().to_owned(),
+            claim_fact_digest,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
