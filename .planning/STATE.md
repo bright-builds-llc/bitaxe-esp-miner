@@ -3,29 +3,29 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Repaired and reverified 36-05-PLAN.md; ready for 36-06
-last_updated: "2026-07-24T22:19:19Z"
+stopped_at: Completed 36-06-PLAN.md with typed pre-effect blocker; 36-07 has no candidate
+last_updated: "2026-07-24T22:39:17.012Z"
 last_activity: "2026-07-24"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 31
-  completed_plans: 28
-  percent: 90
+  completed_plans: 29
+  percent: 94
 ---
 
 # Project State
 
-Last activity: 2026-07-24 - Repaired Plan 36-05 production hardware transaction and passed complete software preflight
+Last activity: 2026-07-24
 
 ## Current Position
 
 Phase: 36 (substantive-evidence-admission-and-exact-re-promotion) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 
 - **Phase:** 36 of 36 (substantive evidence admission and exact re-promotion)
-- **Plan:** 6 of 7
-- **Status:** Ready to execute
+- **Plan:** 7 of 7
+- **Status:** Blocked — no Plan 36-06 candidate exists
 - **Checkpoint:** Code review and security audit passed at
   `f1cb6101f2c384acaffe0b8523097433ff0f04cc`; independent verification scored
   9/13 must-haves and retained the phase in executing status.
@@ -33,10 +33,10 @@ Plan: 6 of 7
 - **Requirements:** SYS-02, EVD-11, EVD-12, and EVD-14 remain blocked. EVD-15
   is satisfied by the exact preserve/demote result and explicit non-claims.
 
-- **Next step:** Execute Plan 06's single detector-gated attempt, then Plan 07
-  offline admission and Plan 04's sole independent checkpoint/canonical
-  reconciliation. Plan 05's exact-package broker, typed sealing, cleanup,
-  replay rejection, and production-path preflight are green at `b0f688f3`.
+- **Next step:** Do not execute Plan 07 against absent input. Plan 06 consumed
+  its one hardware-mode command and stopped before detector at the closed
+  `effect_adapter_unavailable` boundary. A future attempt requires a new plan,
+  fresh exact-current package/preflight, and progress-gated authority.
 
 ## Project Reference
 
@@ -379,6 +379,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 35 P02 | 30min | 2 tasks | 8 files |
 | Phase 35 P03 | 25m | 2 tasks | 18 files |
 | Phase 36 P05 | 55min | 3 tasks | 21 files |
+| Phase 36 P06 | 14min | 2 tasks | 4 files |
 
 ### Quick Tasks Completed
 
@@ -566,18 +567,26 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - `next_hypothesis=version_rolling_negotiation`; `wire_parity_rx_loop_retained` + ASIC-256 retained
 - `phase30_promotion_input=pending`; checklist verified rows untouched
 
+## Decisions (Phase 36 Plan 06)
+
+- Treat `effect_adapter_unavailable` as the authoritative pre-effect blocker
+  and do not consume a second hardware command.
+- Publish no candidate or parity claim because detector, device, session, and
+  substantive facts were never observed.
+- Route any separately authorized future Phase 36 supervisor invocation
+  through the deployed Bazel target with complete runfiles.
+
 ## Blockers
 
-- No planning blocker remains. The authoritative successor still lacks eligible
-  sensor/snapshot/runtime-health, runtime-identity, and independent-effect
-  observations; Plans 06 and 07 must close or truthfully preserve those gaps
-  before Plan 04 may reconcile canonical status.
+- The authoritative successor still lacks eligible sensor/snapshot/runtime-health,
+  runtime-identity, and independent-effect observations.
+
+- Phase 36 Plan 06 closed at effect_adapter_unavailable before detector; no candidate exists for Plan 07 and no retry is authorized.
 
 ## Session
 
-- **Stopped at:** Completed 36-05-PLAN.md; 4 of 7 plans are complete and Plan
-  36-06 is next.
+- **Stopped at:** Completed 36-06-PLAN.md with typed pre-effect blocker; 36-07
+  has no candidate.
 
-- **Resume:** Run `/gsd-execute-phase 36 --gaps-only`. Preserve the exact
-  preserve/demote result, remaining EVD-15 gap, and all canonical Plan 04 files
-  until the Wave 8 independent checkpoint passes.
+- **Resume:** Do not run Plan 36-07 or Plan 36-04. A new progress-gated plan is
+  required before any further hardware attempt.
