@@ -7,6 +7,7 @@ use serde::Deserialize;
 #[cfg(test)]
 use serde::Serialize;
 
+pub mod capture;
 mod contract;
 pub mod effects;
 pub mod runtime_identity;

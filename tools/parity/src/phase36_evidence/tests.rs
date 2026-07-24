@@ -8,6 +8,8 @@ use super::contract::{
 type SufficiencyMutation = (ComponentInsufficiency, fn(&mut Phase36EvidenceEnvelope));
 use super::*;
 
+mod capture;
+
 fn digest(seed: char) -> String {
     std::iter::repeat_n(seed, 64).collect()
 }

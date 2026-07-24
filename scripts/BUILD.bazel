@@ -90,6 +90,12 @@ sh_binary(
 )
 
 sh_binary(
+    name = "phase36_substantive_evidence",
+    srcs = ["phase36-substantive-evidence.sh"],
+    data = ["//tools/parity:report"],
+)
+
+sh_binary(
     name = "verify_reference_clean",
     srcs = ["verify-reference-clean.sh"],
 )

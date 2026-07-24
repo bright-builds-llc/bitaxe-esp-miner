@@ -99,6 +99,9 @@ enum CliCommand {
     AdmitPhase35Evidence(AdmitPhase35EvidenceArgs),
     ClassifyPhase36Evidence(ClassifyPhase36EvidenceArgs),
     ClassifyPhase36Effects(ClassifyPhase36EffectsArgs),
+    Phase36SyntheticCapture(Phase36SyntheticCaptureArgs),
+    InspectPhase36Candidate(InspectPhase36CandidateArgs),
+    ClassifyPhase36Candidate(ClassifyPhase36CandidateArgs),
     ReevaluatePhase36Attempt31(ReevaluatePhase36Attempt31Args),
 }
 
@@ -194,6 +197,33 @@ struct ClassifyPhase36EvidenceArgs {
 struct ClassifyPhase36EffectsArgs {
     #[arg(long, value_parser = parse_utf8_path)]
     root: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct Phase36SyntheticCaptureArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    private_output: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    candidate_output: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct InspectPhase36CandidateArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    candidate_input: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
+struct ClassifyPhase36CandidateArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    private_input: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    candidate_input: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    classification_output: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -771,6 +801,24 @@ fn main() -> Result<()> {
             writeln!(stdout, "{output}")?;
             return Ok(());
         }
+        CliCommand::Phase36SyntheticCapture(args) => {
+            let output = run_phase36_synthetic_capture_command(args)?;
+            let mut stdout = io::stdout().lock();
+            writeln!(stdout, "{output}")?;
+            return Ok(());
+        }
+        CliCommand::InspectPhase36Candidate(args) => {
+            let output = run_inspect_phase36_candidate_command(args)?;
+            let mut stdout = io::stdout().lock();
+            writeln!(stdout, "{output}")?;
+            return Ok(());
+        }
+        CliCommand::ClassifyPhase36Candidate(args) => {
+            let output = run_classify_phase36_candidate_command(args)?;
+            let mut stdout = io::stdout().lock();
+            writeln!(stdout, "{output}")?;
+            return Ok(());
+        }
         CliCommand::ReevaluatePhase36Attempt31(args) => {
             let output = run_reevaluate_phase36_attempt31_command(args)?;
             let mut stdout = io::stdout().lock();
@@ -818,6 +866,15 @@ fn main() -> Result<()> {
         CliCommand::ClassifyPhase36Effects(_) => {
             bail!("Phase 36 effect classifier dispatch entered workspace-aware path")
         }
+        CliCommand::Phase36SyntheticCapture(_) => {
+            bail!("Phase 36 synthetic broker dispatch entered workspace-aware path")
+        }
+        CliCommand::InspectPhase36Candidate(_) => {
+            bail!("Phase 36 candidate inspector dispatch entered workspace-aware path")
+        }
+        CliCommand::ClassifyPhase36Candidate(_) => {
+            bail!("Phase 36 candidate classifier dispatch entered workspace-aware path")
+        }
         CliCommand::ReevaluatePhase36Attempt31(_) => {
             bail!("Phase 36 offline re-evaluation dispatch entered workspace-aware path")
         }
@@ -850,6 +907,38 @@ fn run_classify_phase36_effects_command(args: &ClassifyPhase36EffectsArgs) -> Re
                 .map_err(|_| anyhow::anyhow!("category=partial_public_output"))
         }
     }
+}
+
+fn run_phase36_synthetic_capture_command(args: &Phase36SyntheticCaptureArgs) -> Result<String> {
+    let candidate = phase36_evidence::capture::write_synthetic_capture(
+        &args.private_output,
+        &args.candidate_output,
+    )
+    .map_err(|error| anyhow::anyhow!("category={error}"))?;
+    Ok(format!(
+        "category=synthetic_complete\ncandidate_digest={}\nprivate_capture_digest={}",
+        candidate.candidate_digest, candidate.private_capture_digest
+    ))
+}
+
+fn run_inspect_phase36_candidate_command(args: &InspectPhase36CandidateArgs) -> Result<String> {
+    let projection = phase36_evidence::capture::inspect_candidate_file(&args.candidate_input)
+        .map_err(|error| anyhow::anyhow!("category={error}"))?;
+    serde_json::to_string_pretty(&projection)
+        .map_err(|_| anyhow::anyhow!("category=phase36_capture_encoding_failed"))
+}
+
+fn run_classify_phase36_candidate_command(args: &ClassifyPhase36CandidateArgs) -> Result<String> {
+    let projection = phase36_evidence::capture::classify_candidate_files(
+        &args.private_input,
+        &args.candidate_input,
+        &args.classification_output,
+    )
+    .map_err(|error| anyhow::anyhow!("category={error}"))?;
+    Ok(format!(
+        "category={}\ncandidate_digest={}\nprivate_capture_digest={}",
+        projection.category, projection.candidate_digest, projection.private_capture_digest
+    ))
 }
 
 fn run_reevaluate_phase36_attempt31_command(
