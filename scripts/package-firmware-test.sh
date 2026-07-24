@@ -162,13 +162,16 @@ test_package_script_uses_managed_esptool_images() {
 	if ! capture_command "$output_file" env \
 		HOME="${tmp_root}/home" \
 		IDF_PATH="$idf_path" \
-		ESP_IDF_BUILD_DIR="$generated_idf_build_dir" \
 		PACKAGE_FIRMWARE_TEST_LOG="$log_file" \
 		PATH="${bin_dir}:${PATH}" \
 		"$BASH" "$package_script" \
 		--reference-guard "$reference_guard" \
 		--firmware-elf "$firmware_elf" \
 		--build-provenance-stamp "$build_provenance_stamp" \
+		--esp-idf-sdkconfig "${generated_idf_build_dir}/sdkconfig" \
+		--bootloader-bin "${generated_idf_build_dir}/build/bootloader/bootloader.bin" \
+		--partition-table-bin "${generated_idf_build_dir}/build/partition_table/partition-table.bin" \
+		--otadata-initial-bin "${generated_idf_build_dir}/build/ota_data_initial.bin" \
 		--out-dir "$out_dir" \
 		--manifest "${out_dir}/bitaxe-ultra205-package.json"; then
 		printf 'Package output:\n%s\n' "$(cat "$output_file")" >&2
@@ -186,6 +189,7 @@ test_package_script_uses_managed_esptool_images() {
 	assert_contains "$output" "esptool.py --chip esp32s3 elf2image"
 	assert_contains "$output" "--elf-sha256-offset 0xb0"
 	assert_contains "$output" "--build-provenance-stamp"
+	assert_contains "$output" "otadata_source=${generated_idf_build_dir}/build/ota_data_initial.bin"
 	assert_contains "$output" "--app-descriptor-version 0123456789ab-dev"
 	assert_contains "$output" "--app-elf-sha256 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 	assert_contains "$output" "0x0"

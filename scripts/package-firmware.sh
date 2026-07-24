@@ -33,7 +33,7 @@ detect_workspace_dir() {
 }
 
 usage() {
-	printf 'usage: %s --firmware-elf <path> --build-provenance-stamp <path> --out-dir <path> [--manifest <path>] [--reference-guard <path>]\n' "$0" >&2
+	printf 'usage: %s --firmware-elf <path> --build-provenance-stamp <path> --out-dir <path> [--esp-idf-sdkconfig <path> --bootloader-bin <path> --partition-table-bin <path> --otadata-initial-bin <path>] [--manifest <path>] [--reference-guard <path>]\n' "$0" >&2
 }
 
 find_spiffsgen() {
@@ -157,6 +157,10 @@ firmware_elf=""
 build_provenance_stamp=""
 out_dir=""
 manifest=""
+esp_idf_sdkconfig=""
+bootloader_bin=""
+partition_table_bin=""
+otadata_initial_bin=""
 
 if [[ -z "${HOME:-}" ]]; then
 	HOME="$(cd ~ && pwd)"
@@ -200,6 +204,38 @@ while [[ "$#" -gt 0 ]]; do
 			exit 2
 		fi
 		out_dir="$2"
+		shift 2
+		;;
+	--esp-idf-sdkconfig)
+		if [[ "$#" -lt 2 ]]; then
+			usage
+			exit 2
+		fi
+		esp_idf_sdkconfig="$2"
+		shift 2
+		;;
+	--bootloader-bin)
+		if [[ "$#" -lt 2 ]]; then
+			usage
+			exit 2
+		fi
+		bootloader_bin="$2"
+		shift 2
+		;;
+	--partition-table-bin)
+		if [[ "$#" -lt 2 ]]; then
+			usage
+			exit 2
+		fi
+		partition_table_bin="$2"
+		shift 2
+		;;
+	--otadata-initial-bin)
+		if [[ "$#" -lt 2 ]]; then
+			usage
+			exit 2
+		fi
+		otadata_initial_bin="$2"
 		shift 2
 		;;
 	--manifest)
@@ -262,6 +298,22 @@ fi
 
 firmware_elf="$(absolute_existing_path "$firmware_elf")"
 build_provenance_stamp="$(absolute_existing_path "$build_provenance_stamp")"
+explicit_idf_input_count=0
+for explicit_input in "$esp_idf_sdkconfig" "$bootloader_bin" "$partition_table_bin" "$otadata_initial_bin"; do
+	if [[ -n "$explicit_input" ]]; then
+		explicit_idf_input_count=$((explicit_idf_input_count + 1))
+	fi
+done
+if [[ "$explicit_idf_input_count" -ne 0 && "$explicit_idf_input_count" -ne 4 ]]; then
+	printf 'error: explicit ESP-IDF inputs must provide sdkconfig, bootloader, partition table, and otadata together\n' >&2
+	exit 1
+fi
+if [[ "$explicit_idf_input_count" -eq 4 ]]; then
+	esp_idf_sdkconfig="$(absolute_existing_path "$esp_idf_sdkconfig")"
+	bootloader_bin="$(absolute_existing_path "$bootloader_bin")"
+	partition_table_bin="$(absolute_existing_path "$partition_table_bin")"
+	otadata_initial_bin="$(absolute_existing_path "$otadata_initial_bin")"
+fi
 mkdir -p "$out_dir"
 out_dir="$(absolute_existing_path "$out_dir")"
 manifest="$(absolute_path "$manifest")"
@@ -299,10 +351,24 @@ fi
 spiffsgen="$(find_spiffsgen)"
 esptool="$(find_esptool)"
 expected_build_label="$(read_stamp_field "$build_provenance_stamp" build_label)"
-generated_idf_build_dir="$(find_generated_idf_build_dir "$expected_build_label")"
-generated_bootloader="${generated_idf_build_dir}/build/bootloader/bootloader.bin"
-generated_partition_table="${generated_idf_build_dir}/build/partition_table/partition-table.bin"
-generated_otadata="${generated_idf_build_dir}/build/ota_data_initial.bin"
+if [[ "$explicit_idf_input_count" -eq 4 ]]; then
+	if ! grep -Fqx "CONFIG_APP_PROJECT_VER=\"${expected_build_label}\"" "$esp_idf_sdkconfig"; then
+		printf 'error: explicit ESP-IDF sdkconfig does not match build label %s\n' "$expected_build_label" >&2
+		exit 1
+	fi
+	if ! grep -Fqx 'CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64' "$esp_idf_sdkconfig"; then
+		printf 'error: explicit ESP-IDF sdkconfig does not enable full ELF SHA retrieval\n' >&2
+		exit 1
+	fi
+	generated_bootloader="$bootloader_bin"
+	generated_partition_table="$partition_table_bin"
+	generated_otadata="$otadata_initial_bin"
+else
+	generated_idf_build_dir="$(find_generated_idf_build_dir "$expected_build_label")"
+	generated_bootloader="${generated_idf_build_dir}/build/bootloader/bootloader.bin"
+	generated_partition_table="${generated_idf_build_dir}/build/partition_table/partition-table.bin"
+	generated_otadata="${generated_idf_build_dir}/build/ota_data_initial.bin"
+fi
 spiffs_cmd=(
 	python3
 	"$spiffsgen"

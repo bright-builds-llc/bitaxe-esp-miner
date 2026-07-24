@@ -166,7 +166,7 @@ rust_test(
 )
 
 genrule(
-    name = "firmware",
+    name = "firmware_build",
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by
     # //scripts:build_firmware.
     srcs = glob(["src/**/*.rs"]) + [
@@ -178,7 +178,13 @@ genrule(
         "partitions-ultra205.csv",
         "sdkconfig.defaults",
     ] + glob(["static/**"]),
-    outs = ["bitaxe-firmware.elf"],
+    outs = [
+        "bitaxe-firmware-bootloader.bin",
+        "bitaxe-firmware-otadata-initial.bin",
+        "bitaxe-firmware-partition-table.bin",
+        "bitaxe-firmware.elf",
+        "bitaxe-firmware.sdkconfig",
+    ],
     cmd = "$(location //scripts:build_firmware) $(@D) $(location :build_provenance_stamp) $(location :build_identity_sdkconfig_defaults)",
     local = True,
     tags = [
@@ -186,13 +192,22 @@ genrule(
         "no-sandbox",
     ],
     tools = ["//scripts:build_firmware"],
+)
+
+filegroup(
+    name = "firmware",
+    srcs = [":bitaxe-firmware.elf"],
     visibility = ["//visibility:public"],
 )
 
 genrule(
     name = "firmware_image",
     srcs = [
-        "//firmware/bitaxe:firmware",
+        ":bitaxe-firmware-bootloader.bin",
+        ":bitaxe-firmware-otadata-initial.bin",
+        ":bitaxe-firmware-partition-table.bin",
+        ":bitaxe-firmware.elf",
+        ":bitaxe-firmware.sdkconfig",
         ":build_provenance_stamp",
     ],
     outs = [
@@ -203,7 +218,7 @@ genrule(
         "bitaxe-ultra205-factory.bin",
         "bitaxe-ultra205-package.json",
     ],
-    cmd = "$(location //scripts:package_firmware) --reference-guard $(location //scripts:verify_reference_clean) --firmware-elf $(location //firmware/bitaxe:firmware) --build-provenance-stamp $(location :build_provenance_stamp) --out-dir $(@D) --manifest $(@D)/bitaxe-ultra205-package.json",
+    cmd = "$(location //scripts:package_firmware) --reference-guard $(location //scripts:verify_reference_clean) --firmware-elf $(location :bitaxe-firmware.elf) --build-provenance-stamp $(location :build_provenance_stamp) --esp-idf-sdkconfig $(location :bitaxe-firmware.sdkconfig) --bootloader-bin $(location :bitaxe-firmware-bootloader.bin) --partition-table-bin $(location :bitaxe-firmware-partition-table.bin) --otadata-initial-bin $(location :bitaxe-firmware-otadata-initial.bin) --out-dir $(@D) --manifest $(@D)/bitaxe-ultra205-package.json",
     local = True,
     tags = [
         "local",

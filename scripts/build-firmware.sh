@@ -5,6 +5,10 @@ readonly TARGET="xtensa-esp32s3-espidf"
 readonly MCU_NAME="esp32s3"
 readonly ESP_IDF_VERSION_PIN="tag:v5.5.4"
 readonly PACKAGE_NAME="bitaxe-firmware"
+readonly OUTPUT_SDKCONFIG_NAME="bitaxe-firmware.sdkconfig"
+readonly OUTPUT_BOOTLOADER_NAME="bitaxe-firmware-bootloader.bin"
+readonly OUTPUT_PARTITION_TABLE_NAME="bitaxe-firmware-partition-table.bin"
+readonly OUTPUT_OTADATA_NAME="bitaxe-firmware-otadata-initial.bin"
 
 usage() {
 	printf 'usage: %s <bazel-output-dir> <build-provenance-stamp> <identity-sdkconfig-defaults>\n' "$0" >&2
@@ -105,3 +109,51 @@ fi
 
 cp "$SOURCE_ELF" "$OUTPUT_ELF"
 printf '[build-firmware] copied_elf=%s\n' "$OUTPUT_ELF"
+
+expected_build_label=""
+expected_build_label_count=0
+while IFS='=' read -r key value; do
+	if [[ "$key" == "build_label" ]]; then
+		expected_build_label="$value"
+		expected_build_label_count=$((expected_build_label_count + 1))
+	fi
+done <"$BUILD_PROVENANCE_STAMP"
+if [[ "$expected_build_label_count" -ne 1 || -z "$expected_build_label" ]]; then
+	printf 'error: build provenance stamp must contain exactly one non-empty build_label field\n' >&2
+	exit 1
+fi
+
+shopt -s nullglob
+generated_idf_candidates=(target/${TARGET}/release/build/esp-idf-sys-*/out)
+shopt -u nullglob
+generated_idf_matches=()
+for candidate in "${generated_idf_candidates[@]}"; do
+	if [[ ! -f "${candidate}/sdkconfig" ]]; then
+		continue
+	fi
+	if ! grep -Fqx "CONFIG_APP_PROJECT_VER=\"${expected_build_label}\"" "${candidate}/sdkconfig"; then
+		continue
+	fi
+	if ! grep -Fqx 'CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64' "${candidate}/sdkconfig"; then
+		continue
+	fi
+	if [[ ! -f "${candidate}/build/bootloader/bootloader.bin" || ! -f "${candidate}/build/partition_table/partition-table.bin" || ! -f "${candidate}/build/ota_data_initial.bin" ]]; then
+		continue
+	fi
+	generated_idf_matches+=("$candidate")
+done
+if [[ "${#generated_idf_matches[@]}" -ne 1 ]]; then
+	printf 'error: expected exactly one generated ESP-IDF build for label %s, found %s\n' "$expected_build_label" "${#generated_idf_matches[@]}" >&2
+	exit 1
+fi
+
+readonly GENERATED_IDF_BUILD_DIR="${generated_idf_matches[0]}"
+cp "${GENERATED_IDF_BUILD_DIR}/sdkconfig" "${OUTPUT_DIR}/${OUTPUT_SDKCONFIG_NAME}"
+cp "${GENERATED_IDF_BUILD_DIR}/build/bootloader/bootloader.bin" "${OUTPUT_DIR}/${OUTPUT_BOOTLOADER_NAME}"
+cp "${GENERATED_IDF_BUILD_DIR}/build/partition_table/partition-table.bin" "${OUTPUT_DIR}/${OUTPUT_PARTITION_TABLE_NAME}"
+cp "${GENERATED_IDF_BUILD_DIR}/build/ota_data_initial.bin" "${OUTPUT_DIR}/${OUTPUT_OTADATA_NAME}"
+printf '[build-firmware] copied_idf_outputs=%s,%s,%s,%s\n' \
+	"${OUTPUT_SDKCONFIG_NAME}" \
+	"${OUTPUT_BOOTLOADER_NAME}" \
+	"${OUTPUT_PARTITION_TABLE_NAME}" \
+	"${OUTPUT_OTADATA_NAME}"
