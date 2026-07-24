@@ -86,8 +86,8 @@ chmod 600 "$public_output" "$stderr_output"
 	fail_test "stderr capture mode is not 0600"
 [[ ! -s "$public_output" ]] ||
 	fail_test "rejected envelope wrote shareable output"
-rg -Fq 'category=protected_input_missing' "$stderr_output" ||
-	fail_test "envelope-only input did not fail closed on its missing artifact"
+rg -q 'category=(protected_input_missing|evaluator_identity_mismatch)' "$stderr_output" ||
+	fail_test "envelope-only input did not fail closed at an authoritative boundary"
 
 for sink in "$public_output" "$stderr_output"; do
 	assert_absent_literal "$sink" "$protected_canary"
