@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Planned 36-08-PLAN.md as the progress-gated second attempt; 5 of 8 plans complete
-last_updated: "2026-07-25T02:29:48.069Z"
+stopped_at: Completed 36-08-PLAN.md with sealed_non_promotion; Plan 36-07 blocked
+last_updated: "2026-07-25T05:35:28.371Z"
 last_activity: "2026-07-25"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 32
-  completed_plans: 29
-  percent: 91
+  completed_plans: 30
+  percent: 94
 ---
 
 # Project State
@@ -21,11 +21,11 @@ Last activity: 2026-07-25
 ## Current Position
 
 Phase: 36 (substantive-evidence-admission-and-exact-re-promotion) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 
 - **Phase:** 36 of 36 (substantive evidence admission and exact re-promotion)
-- **Plan:** 5 of 8
-- **Status:** Ready to execute
+- **Plan:** 6 of 8
+- **Status:** Blocked after sealed non-promotion
 - **Checkpoint:** Code review and security audit passed at
   `f1cb6101f2c384acaffe0b8523097433ff0f04cc`; independent verification scored
   9/13 must-haves and retained the phase in executing status.
@@ -33,10 +33,9 @@ Plan: 5 of 8
 - **Requirements:** SYS-02, EVD-11, EVD-12, and EVD-14 remain blocked. EVD-15
   is satisfied by the exact preserve/demote result and explicit non-claims.
 
-- **Next step:** Execute gap-only Plan 36-08. It owns one fresh progress-gated
-  exact-current package/preflight and broker invocation after the deployed
-  effect-adapter runfiles repair; Plan 36-07 remains blocked unless that attempt
-  yields an eligible candidate.
+- **Next step:** Plan 36-07 remains blocked because Plan 36-08 produced no
+  eligible candidate. Plan 36-04 cannot perform its independent review and
+  canonical reconciliation until the exact predecessor handoff exists.
 
 ## Project Reference
 
@@ -380,6 +379,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 35 P03 | 25m | 2 tasks | 18 files |
 | Phase 36 P05 | 55min | 3 tasks | 21 files |
 | Phase 36 P06 | 14min | 2 tasks | 4 files |
+| Phase 36 P08 | 13min | 2 tasks | 2 files |
 
 ### Quick Tasks Completed
 
@@ -571,25 +571,36 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 
 - Treat `effect_adapter_unavailable` as the authoritative pre-effect blocker
   and do not consume a second hardware command.
+
 - Publish no candidate or parity claim because detector, device, session, and
   substantive facts were never observed.
+
 - Route any separately authorized future Phase 36 supervisor invocation
   through the deployed Bazel target with complete runfiles.
+
+## Decisions (Phase 36 Plan 08)
+
+- Seal the single bounded attempt as non-promotional after a typed flash
+  failure and failed bounded restoration; cleanup completed, no retry occurred,
+  and no candidate was created.
+
+- Keep Plan 36-07 blocked because Plan 36-08 produced no sealed-eligible
+  candidate.
 
 ## Blockers
 
 - The authoritative successor still lacks eligible sensor/snapshot/runtime-health,
   runtime-identity, and independent-effect observations.
 
-- Phase 36 Plan 06 closed at effect_adapter_unavailable before detector. Plan
-  36-08 now owns the separately planned, progress-gated second attempt; Plan
-  36-07 remains blocked unless it produces an eligible candidate.
+- Phase 36 Plan 08 sealed non-promotional after the single bounded hardware
+  attempt. Plan 36-07 remains blocked without an eligible candidate, and device
+  restoration remains unresolved after the bounded restoration attempt failed.
 
 ## Session
 
-- **Stopped at:** Planned 36-08-PLAN.md as the progress-gated second attempt;
-  5 of 8 Phase 36 plans are complete.
+- **Stopped at:** Completed 36-08-PLAN.md with sealed_non_promotion; Plan 36-07 blocked
+  6 of 8 Phase 36 plans are complete.
 
-- **Resume:** Run `/gsd-execute-phase 36 --gaps-only`; Plan 36-08 is next.
-  Do not run Plan 36-07 or Plan 36-04 unless the preceding plan completes its
-  exact handoff.
+- **Resume:** Phase 36 cannot advance through Plan 36-07 or Plan 36-04 because
+  Plan 36-08 created no eligible candidate. Do not retry hardware or substitute
+  an alternate recovery path without a separately authorized plan.

@@ -34,8 +34,8 @@ requirements-pending: [SYS-02, EVD-11, EVD-12, EVD-14, EVD-15]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 36-2026-07-23T15-20-53
-generated_at: 2026-07-25T05:32:14Z
-duration: 8min
+generated_at: 2026-07-25T05:36:54Z
+duration: 13min
 completed: 2026-07-25
 ---
 
@@ -45,9 +45,9 @@ completed: 2026-07-25
 
 ## Performance
 
-- **Duration:** 8 min
+- **Duration:** 13 min
 - **Started:** 2026-07-25T05:24:15Z
-- **Completed:** 2026-07-25T05:32:14Z
+- **Completed:** 2026-07-25T05:36:54Z
 - **Tasks:** 2
 - **Tracked files created or modified:** 2
 - **Hardware command invocations:** 1
@@ -66,7 +66,7 @@ completed: 2026-07-25
 ## Task Commits
 
 1. **Task 1: Commit the exact graph regression and freeze a clean-current-HEAD preflight** - `3e52aa90` (test)
-2. **Task 2: Invoke and seal exactly one broker-owned Ultra 205 attempt** - captured by the task outcome commit containing this summary
+2. **Task 2: Invoke and seal exactly one broker-owned Ultra 205 attempt** - `96825555` (docs)
 
 ## Files Created/Modified
 
@@ -91,6 +91,7 @@ None - plan executed exactly as written.
 
 - The first aggregate software-gate run encountered two local process startup races. Each named test passed on a fresh standalone no-cache run, and the complete exact aggregate gate then passed all 75 targets before package and preflight.
 - The single hardware attempt reached `flash_failed`; its predeclared same-image restoration then recorded `recovery_failed`. Cleanup completed and the attempt sealed non-promotional without retry.
+- Lifecycle metadata for all plans and summaries is valid; the phase-level lifecycle result is expectedly stale because the prior verification predates this gap-plan summary.
 
 ## Authentication Gates
 
@@ -109,6 +110,7 @@ None.
 - The seal is `sealed_non_promotion` with primary `flash_failed` and secondary `recovery_failed`.
 - The candidate is absent, so no private-to-public evidence derivation or promotion handoff occurred.
 - Reference cleanliness, redaction, and diff checks passed.
+- Lifecycle validation reports only the expected stale-verification reason; plan and summary metadata remain valid.
 
 ## Known Stubs
 
@@ -119,3 +121,11 @@ None. Candidate absence is the required fail-closed result for this typed non-pr
 - Plan 36-07 remains blocked and must not run without a sealed-eligible candidate.
 - Plan 36-04 remains the sole Wave 9 independent-review and canonical-reconciliation owner, but its dependency is not satisfied by this result.
 - This plan authorizes no hardware retry or alternate recovery.
+- Device restoration remains unresolved because the bounded restoration attempt failed.
+
+## Self-Check: PASSED
+
+- The summary exists and has exactly one opening and one closing YAML frontmatter delimiter.
+- Task commits `3e52aa90` and `96825555` exist in Git history.
+- The immutable seal records `sealed_non_promotion`, primary `flash_failed`, secondary `recovery_failed`, and completed cleanup.
+- No candidate exists, so Plan 36-07 remains blocked.
