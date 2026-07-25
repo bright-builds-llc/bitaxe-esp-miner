@@ -488,9 +488,9 @@ run_closed_effect_case() {
 		.recovery_disposition == $recovery' \
 		"$case_child/seal.json" >/dev/null ||
 		fail_test "${scenario} seal lost its closed failure/recovery disposition"
-	[[ "$(jq -s '[.[] | select(.operation == "typed_recovery" and .transition == "invoked")] | length' "$case_child/effect-ledger.jsonl")" == "$expected_recovery_calls" ]] ||
+	[[ "$(jq -s '[.[] | select(.operation == "typed_recovery" and .transition.status == "invoked")] | length' "$case_child/effect-ledger.jsonl")" == "$expected_recovery_calls" ]] ||
 		fail_test "${scenario} recorded an incorrect recovery invocation count"
-	[[ "$(jq -s '[.[] | select(.operation == "cleanup" and .transition == "invoked")] | length' "$case_child/effect-ledger.jsonl")" == 1 ]] ||
+	[[ "$(jq -s '[.[] | select(.operation == "cleanup" and .transition.status == "invoked")] | length' "$case_child/effect-ledger.jsonl")" == 1 ]] ||
 		fail_test "${scenario} did not invoke cleanup exactly once"
 	[[ ! -e "$case_candidate" ]] ||
 		fail_test "${scenario} created a candidate"
