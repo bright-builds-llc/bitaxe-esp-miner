@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Planned 36-09 and 36-10 recovery closure; 6 of 10 Phase 36 plans complete
-last_updated: "2026-07-25T18:58:04.998Z"
+stopped_at: Completed 36-09-PLAN.md
+last_updated: "2026-07-25T20:00:21.130Z"
 last_activity: "2026-07-25"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 34
-  completed_plans: 30
-  percent: 88
+  completed_plans: 31
+  percent: 91
 ---
 
 # Project State
@@ -21,10 +21,10 @@ Last activity: 2026-07-25
 ## Current Position
 
 Phase: 36 (substantive-evidence-admission-and-exact-re-promotion) — EXECUTING
-Plan: 6 of 10
+Plan: 7 of 10
 
 - **Phase:** 36 of 36 (substantive evidence admission and exact re-promotion)
-- **Plan:** 6 of 10
+- **Plan:** 7 of 10
 - **Status:** Ready to execute
 - **Checkpoint:** Code review and security audit passed at
   `f1cb6101f2c384acaffe0b8523097433ff0f04cc`; independent verification scored
@@ -33,10 +33,9 @@ Plan: 6 of 10
 - **Requirements:** SYS-02, EVD-11, EVD-12, and EVD-14 remain blocked. EVD-15
   is satisfied by the exact preserve/demote result and explicit non-claims.
 
-- **Next step:** Execute gap-only Plan 36-09 to harden recovery authority in
-  software. Plan 36-10 owns the separately authorized fresh broker attempt only
-  after that clean committed gate; Plan 36-07 remains offline and blocked
-  without an eligible Plan 36-10 candidate.
+- **Next step:** Execute gap-only Plan 36-10 from the clean Plan 36-09 software
+  gate. Plan 36-10 owns the separately authorized fresh broker attempt; Plan
+  36-07 remains offline and blocked without an eligible Plan 36-10 candidate.
 
 ## Project Reference
 
@@ -381,6 +380,7 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 | Phase 36 P05 | 55min | 3 tasks | 21 files |
 | Phase 36 P06 | 14min | 2 tasks | 4 files |
 | Phase 36 P08 | 13min | 2 tasks | 2 files |
+| Phase 36 P09 | 35min | 2 tasks | 11 files |
 
 ### Quick Tasks Completed
 
@@ -588,21 +588,30 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - Keep Plan 36-07 blocked because Plan 36-08 produced no sealed-eligible
   candidate.
 
+## Decisions (Phase 36 Plan 09)
+
+- A generic failure, process exit, stderr string, or caller assertion can never
+  construct recovery authority.
+
+- Only an identity-bound confirmed partial exact flash or a trusted completed
+  exact flash permits one same-image recovery.
+
+- Every pre-effect failure transitions directly to one cleanup while preserving
+  the earliest typed failure and a closed non-authority disposition.
+
 ## Blockers
 
 - The authoritative successor still lacks eligible sensor/snapshot/runtime-health,
   runtime-identity, and independent-effect observations.
 
 - Phase 36 Plan 08 remains sealed non-promotional and device restoration
-  remains unresolved. Plan 36-09 owns recovery-authority hardening, and Plan
+  remains unresolved. Plan 36-09 closed recovery authority in software. Plan
   36-10 owns the separately planned fresh attempt; Plan 36-07 remains blocked
   without its eligible candidate.
 
 ## Session
 
-- **Stopped at:** Planned 36-09 and 36-10 recovery closure; 6 of 10 Phase 36
-  plans are complete.
+- **Stopped at:** Completed 36-09-PLAN.md
 
-- **Resume:** Run `/gsd-execute-phase 36 --gaps-only`; Plan 36-09 is next.
-  Plan 36-10 must wait for its clean committed handoff, and Plans 36-07/36-04
-  must wait for their exact predecessors.
+- **Resume:** Run `/gsd-execute-phase 36 --gaps-only`; Plan 36-10 is next.
+  Plans 36-07 and 36-04 must wait for their exact predecessors.
