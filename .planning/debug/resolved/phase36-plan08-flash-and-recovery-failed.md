@@ -1,16 +1,16 @@
 ---
-status: awaiting_human_verify
+status: resolved
 trigger: "Phase 36 Plan 08 passed its exact-current software gate, package, and preflight, then its single authorized broker-owned Ultra 205 hardware command returned sealed_non_promotion with earliest failure flash_failed, secondary bounded restoration result recovery_failed, and cleanup complete. No candidate exists. Device restoration remains unresolved."
 created: "2026-07-25T17:38:16Z"
-updated: "2026-07-25T18:52:00Z"
+updated: "2026-07-25T18:55:00Z"
 ---
 
 ## Current Focus
 
-hypothesis: "Confirmed: an unsupported and conflicting flash evidence-option pair deterministically caused both broker failures before device access."
-test: "Software verification is complete. The original real-device workflow can be verified only in a separately authorized future hardware plan; this debug session must not rerun Plan 36-08."
-expecting: "A future authorized exact flash no longer fails at CLI validation, while all predeclared hardware safety, recovery, and evidence gates remain in force."
-next_action: "Await separately authorized human/hardware verification; do not rerun the sealed Plan 36-08 command."
+hypothesis: "Resolved for the repository-owned parser/argument-shape defect: an unsupported and conflicting flash evidence-option pair deterministically caused both broker failures before device access."
+test: "Targeted validation and exact staged-scope review passed. The staged diff contains only the session archive and knowledge-base update."
+expecting: "The atomic local finalization commit records the resolved session without altering source or pushing."
+next_action: "Commit the two finalization artifacts locally, verify the commit and clean worktree, and do not push."
 
 ## Symptoms
 
@@ -111,13 +111,36 @@ None yet.
   found: "The package built successfully; the focused process regression passed; all 75 Bazel tests passed; all three no-cache Phase 36 targets passed; parity reported no validation errors; reference and redaction gates passed; git diff --check passed."
   implication: "The software repair is verified across the real parser, deployed adapter boundary, package graph, adjacent Phase 36 contracts, full repository suite, and data-handling gates. Real-device restoration remains deliberately unverified without separate authorization."
 
+- timestamp: "2026-07-25T18:53:00Z"
+  checked: "Human-verification checkpoint response."
+  found: "The user approved the confirmed diagnosis and software fix only."
+  implication: "The repository-owned parser/argument-shape defect may be marked resolved and archived. The approval does not authorize or prove real-device restoration, another hardware attempt, Phase 36 promotion/completion, Plan 36-07 execution, recovery-scope repair, or any retry."
+
+- timestamp: "2026-07-25T18:54:00Z"
+  checked: "Resolved-session frontmatter and required non-claims, knowledge-base entry, YAML parsing, diff whitespace, worktree scope, and repository-owned redaction verification."
+  found: "The resolved session has exactly two standalone frontmatter delimiters; YAML parses with status resolved; the repair commit and every required residual fact are present; the knowledge-base entry is present; git diff --check passed; only finalization documentation differs; and just verify-redaction passed."
+  implication: "The archive is truthful, parser-safe, and ready for an exact docs-only staged-scope review and atomic local commit."
+
+- timestamp: "2026-07-25T18:55:00Z"
+  checked: "Exact staged finalization diff."
+  found: "Git recognizes one knowledge-base modification and one 82-percent-similar session rename into resolved; staged diff whitespace passes and no source file is staged."
+  implication: "The finalization scope is exact and may be committed atomically without source changes or a push."
+
 ## Resolution
 
 root_cause: "scripts/phase36-hardware-effect.sh passed --evidence-mode dual and --redact-evidence to the tools/flash flash subcommand for both exact-package-flash and typed-recovery. The real parser rejects dual outside flash-monitor and declares the two flags conflicting, so both operations exited before environment or device execution and the broker normalized those exits to flash_failed and recovery_failed."
 fix: "Removed the flash-monitor-only dual evidence option from Phase 36 exact flash and typed recovery while retaining redacted evidence. Added deployed-adapter OS-boundary and real flash-parser regressions for the corrected command shape. Updated the process test's stale public incomplete-plan expectation after Plan 36-08 completed."
-verification: "Offline software verification passed: shell syntax; ordered Rust fmt/clippy/build/test; exact-current package; focused parser and deployed process regressions; full 75-test Bazel suite; no-cache Phase 36 broker/evidence/process regressions; parity, reference, redaction, and diff checks. Real-device restoration requires a separately authorized future hardware plan."
+verification: "Offline software verification passed: shell syntax; ordered Rust fmt/clippy/build/test; exact-current package; focused parser and deployed process regressions; full 75-test Bazel suite; no-cache Phase 36 broker/evidence/process regressions; parity, reference, redaction, and diff checks. The user approved the software-only diagnosis and fix. Repair commit: df9cb90008bf47f94434545021a47e237e0c5739."
 files_changed:
   - scripts/phase36-hardware-effect.sh
   - scripts/phase36-substantive-evidence-test.sh
   - tools/flash/src/main.rs
-  - .planning/debug/phase36-plan08-flash-and-recovery-failed.md
+  - .planning/debug/resolved/phase36-plan08-flash-and-recovery-failed.md
+
+## Residual Risks and Non-Claims
+
+- Device restoration remains unresolved and unverified.
+- Recovery-scope behavior remains follow-up work: typed recovery can currently run after non-flash failures rather than only after a confirmed partial-flash boundary.
+- This debugging session performed no hardware, detector, USB/serial, credential, private-data, network, flash, monitor, reboot, restoration, or retry action.
+- This resolution does not promote or complete Phase 36, authorize Plan 36-07, create an eligible candidate, authorize a hardware retry, or claim device recovery.
+- No push was performed or authorized.

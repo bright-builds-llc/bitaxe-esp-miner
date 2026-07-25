@@ -43,3 +43,13 @@ Resolved debug sessions. Used by `gsd-debugger` to surface known-pattern hypothe
 - **Non-workaround:** No repository source, signing, xattr, provenance, AMFI, or security-policy change was justified.
 
 ***
+
+## phase36-plan08-flash-and-recovery-failed — Conflicting flash evidence options rejected before device access
+
+- **Date:** 2026-07-25
+- **Error patterns:** flash_failed, recovery_failed, sealed_non_promotion, exact flash, typed recovery, CLI validation
+- **Root cause:** `scripts/phase36-hardware-effect.sh` passed `--evidence-mode dual` and `--redact-evidence` to the `tools/flash flash` subcommand for both exact-package flash and typed recovery. The real parser rejects dual outside `flash-monitor` and declares the two flags conflicting, so both operations exited before environment or device execution and the broker normalized those exits to `flash_failed` and `recovery_failed`.
+- **Fix:** Removed the flash-monitor-only dual evidence option from Phase 36 exact flash and typed recovery while retaining redacted evidence. Added deployed-adapter OS-boundary and real flash-parser regressions for the corrected command shape. Updated the process test's stale public incomplete-plan expectation after Plan 36-08 completed.
+- **Files changed:** scripts/phase36-hardware-effect.sh, scripts/phase36-substantive-evidence-test.sh, tools/flash/src/main.rs, .planning/debug/resolved/phase36-plan08-flash-and-recovery-failed.md
+
+***
