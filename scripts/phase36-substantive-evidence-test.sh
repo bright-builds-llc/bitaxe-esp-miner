@@ -13,8 +13,7 @@ readonly hardware_broker_source="${8:?missing hardware broker source}"
 readonly agents_real="$(perl -MCwd=realpath -e 'print realpath($ARGV[0])' "$agents_file")"
 readonly workspace_root="$(dirname "$agents_real")"
 readonly phase_dir="${workspace_root}/.planning/phases/36-substantive-evidence-admission-and-exact-re-promotion"
-readonly plan_05="${phase_dir}/36-05-PLAN.md"
-readonly plan_06="${phase_dir}/36-06-PLAN.md"
+readonly plan_08="${phase_dir}/36-08-PLAN.md"
 readonly plan_07="${phase_dir}/36-07-PLAN.md"
 readonly plan_04="${phase_dir}/36-04-PLAN.md"
 readonly gsd_tools="/Users/peterryszkiewicz/.codex/get-shit-done/bin/gsd-tools.cjs"
@@ -323,10 +322,10 @@ readonly incomplete_graph="$(
 		LC_ALL=C sort -n -k1,1 |
 		awk -F '\t' '{print $2 "@" $1}'
 )"
-readonly expected_graph=$'36-06@6\n36-07@7\n36-04@8'
+readonly expected_graph=$'36-08@7\n36-07@8\n36-04@9'
 [[ "$incomplete_graph" == "$expected_graph" ]] ||
 	fail_test "incomplete Phase 36 graph is not the exact wave-ordered contract"
-for plan in "$plan_05" "$plan_06" "$plan_07" "$plan_04"; do
+for plan in "$plan_08" "$plan_07" "$plan_04"; do
 	awk '
 		NR == 1 && $0 == "---" { in_frontmatter = 1; next }
 		in_frontmatter && $0 == "---" { exit }
