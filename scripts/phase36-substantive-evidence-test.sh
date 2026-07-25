@@ -13,13 +13,6 @@ readonly hardware_broker_source="${8:?missing hardware broker source}"
 readonly deployed_flash="${9:?missing deployed flash binary}"
 readonly agents_real="$(perl -MCwd=realpath -e 'print realpath($ARGV[0])' "$agents_file")"
 readonly workspace_root="$(dirname "$agents_real")"
-readonly phase_dir="${workspace_root}/.planning/phases/36-substantive-evidence-admission-and-exact-re-promotion"
-readonly plan_09="${phase_dir}/36-09-PLAN.md"
-readonly plan_09_summary="${phase_dir}/36-09-SUMMARY.md"
-readonly plan_10="${phase_dir}/36-10-PLAN.md"
-readonly plan_07="${phase_dir}/36-07-PLAN.md"
-readonly plan_04="${phase_dir}/36-04-PLAN.md"
-readonly gsd_tools="/Users/peterryszkiewicz/.codex/get-shit-done/bin/gsd-tools.cjs"
 readonly test_nonce="${RANDOM}${RANDOM}"
 readonly protected_parent="${workspace_root}/target/private-evidence/phase36-process-${test_nonce}"
 readonly candidate_output="${workspace_root}/target/private-evidence/phase36-candidate-${test_nonce}.json"
@@ -99,7 +92,6 @@ expect_failure_category() {
 umask 077
 [[ -x "$supervisor" && -x "$report_binary" && -x "$deployed_effect_adapter" ]] ||
 	fail_test "deployed executables are unavailable"
-[[ -x "$gsd_tools" ]] || fail_test "GSD phase index tool is unavailable"
 
 expect_failure_category missing_mode \
 	board=205 \
@@ -539,54 +531,6 @@ rg -Fq 'phase36-substantive-evidence *args:' "$justfile" ||
 	fail_test "Justfile omits Phase 36 command surface"
 rg -Fq 'bazel run //scripts:phase36_substantive_evidence -- {{ args }}' "$justfile" ||
 	fail_test "Justfile does not use the deployed supervisor runfiles"
-
-readonly graph_json="$("$gsd_tools" phase-plan-index 36)"
-readonly incomplete_graph="$(
-	jq -r '
-		. as $root
-		| .plans[]
-		| select(.id as $id | ($root.incomplete | index($id)) != null)
-		| [.wave, .id]
-		| @tsv
-	' <<<"$graph_json" |
-		LC_ALL=C sort -n -k1,1 |
-		awk -F '\t' '{print $2 "@" $1}'
-)"
-if [[ -f "$plan_09_summary" ]]; then
-	readonly expected_graph=$'36-10@9\n36-07@10\n36-04@11'
-	readonly incomplete_plans=("$plan_10" "$plan_07" "$plan_04")
-else
-	readonly expected_graph=$'36-09@8\n36-10@9\n36-07@10\n36-04@11'
-	readonly incomplete_plans=("$plan_09" "$plan_10" "$plan_07" "$plan_04")
-fi
-[[ "$incomplete_graph" == "$expected_graph" ]] ||
-	fail_test "incomplete Phase 36 graph is not the exact wave-ordered contract"
-for plan in "${incomplete_plans[@]}"; do
-	awk '
-		NR == 1 && $0 == "---" { in_frontmatter = 1; next }
-		in_frontmatter && $0 == "---" { exit }
-		in_frontmatter && $0 == "gap_closure: true" { found = 1 }
-		END { exit(found ? 0 : 1) }
-	' "$plan" || fail_test "incomplete Phase 36 plan is not gap_closure"
-done
-
-require_frontmatter_dependency() {
-	local plan="$1"
-	local dependency="$2"
-	awk -v expected="  - \"${dependency}\"" '
-		NR == 1 && $0 == "---" { in_frontmatter = 1; next }
-		in_frontmatter && $0 == "---" { exit }
-		in_frontmatter && $0 == "depends_on:" { in_dependencies = 1; next }
-		in_dependencies && $0 !~ /^  / { in_dependencies = 0 }
-		in_dependencies && $0 == expected { found = 1 }
-		END { exit(found ? 0 : 1) }
-	' "$plan" ||
-		fail_test "Phase 36 plan omits required dependency ${dependency}"
-}
-
-require_frontmatter_dependency "$plan_10" "36-09"
-require_frontmatter_dependency "$plan_07" "36-10"
-require_frontmatter_dependency "$plan_04" "36-07"
 
 if command -v lsof >/dev/null 2>&1; then
 	[[ -z "$(lsof +D "$protected_parent" 2>/dev/null || true)" ]] ||

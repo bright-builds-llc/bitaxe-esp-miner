@@ -146,7 +146,7 @@ PHASE33_ALLOW_TEST_MODE=1 PHASE33_FAKE_STATE_ROOT="$unsafe_state" \
 	PHASE33_PASSIVE_MONITOR_COMMAND="${fake_bin}/monitor" \
 	bash "$wrapper" --mode simulate --scenario success --capture-seconds 1 \
 	--manifest "$manifest" --shareable-out "${tmp_root}/unsafe.md" \
-	--local-root ".planning/phases/33-confirmed-settings-durability" >"$unsafe_output" 2>&1
+	--local-root "docs/parity/evidence" >"$unsafe_output" 2>&1
 unsafe_status=$?
 set -e
 [[ "$unsafe_status" != "0" ]] || fail "tracked local root unexpectedly passed"

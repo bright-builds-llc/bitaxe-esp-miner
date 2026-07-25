@@ -304,6 +304,8 @@ if [[ "${PHASE35_TEST_STUB_DISPATCH:-false}" == true ]]; then
 fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly document_source="${script_dir}/phase35-correlated-evidence-document.sh"
+readonly active_plan_root=".planning/""phases/"
 readonly test_entrypoint="${script_dir}/phase35-correlated-evidence-test.sh"
 readonly supervisor="${script_dir}/phase35-correlated-evidence.sh"
 readonly fixture="${script_dir}/phase35-correlated-evidence-fixture.sh"
@@ -318,6 +320,11 @@ readonly minimum_main_task_stack_bytes=16384
 active_scenario=""
 
 mkdir -p "$workspace"
+
+if rg -q -F "$active_plan_root" "$document_source"; then
+	printf 'FAIL: Phase 35 evidence validation depends on active planning files\n' >&2
+	exit 1
+fi
 
 fail_test() {
 	printf 'FAIL: %s\n' "$1" >&2

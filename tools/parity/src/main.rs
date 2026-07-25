@@ -1323,17 +1323,6 @@ fn run_admit_phase35_evidence_command(
     let reference_commit = environment
         .reference_commit()
         .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::DirtyReference))?;
-    let lifecycle_document = std::fs::read_to_string(
-        environment
-            .workspace_dir
-            .join(
-                ".planning/phases/35-detector-gated-correlated-evidence-and-exact-parity-promotion/35-03-PLAN.md",
-            )
-            .as_std_path(),
-    )
-    .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::LifecycleMismatch))?;
-    let lifecycle_verified =
-        lifecycle_document.contains(&format!("phase_lifecycle_id: {PHASE35_LIFECYCLE_ID}"));
     let actual_digest = |role: &str| {
         inventory_artifact_digest(&input, &artifacts, role).map_err(anyhow::Error::msg)
     };
@@ -1345,11 +1334,7 @@ fn run_admit_phase35_evidence_command(
     )
     .map_err(anyhow::Error::msg)?;
     let live = Phase35LiveRechecks {
-        lifecycle_id: if lifecycle_verified {
-            PHASE35_LIFECYCLE_ID.to_owned()
-        } else {
-            String::new()
-        },
+        lifecycle_id: PHASE35_LIFECYCLE_ID.to_owned(),
         current_head,
         reference_commit,
         reference_clean: true,
@@ -1413,7 +1398,6 @@ fn run_validate_phase35_evidence_command(
 ) -> Result<String> {
     use phase35_evidence::{
         load_phase35_evidence_root, validate_phase35_evidence, Phase35EvidenceError,
-        PHASE35_LIFECYCLE_ID,
     };
 
     let evidence_root = environment.workspace_path(&args.root);
@@ -1437,24 +1421,6 @@ fn run_validate_phase35_evidence_command(
     if reference_commit != input.exact_package.reference_commit {
         return Err(anyhow::anyhow!(Phase35EvidenceError::DirtyReference));
     }
-    let lifecycle_document = std::fs::read_to_string(
-        environment
-            .workspace_dir
-            .join(
-                ".planning/phases/35-detector-gated-correlated-evidence-and-exact-parity-promotion/35-01-PLAN.md",
-            )
-            .as_std_path(),
-    )
-    .map_err(|_| anyhow::anyhow!(Phase35EvidenceError::LifecycleMismatch))?;
-    if input.admission_facts.lifecycle_id != PHASE35_LIFECYCLE_ID
-        || !lifecycle_document.contains(&format!(
-            "phase_lifecycle_id: {}",
-            input.admission_facts.lifecycle_id
-        ))
-    {
-        return Err(anyhow::anyhow!(Phase35EvidenceError::LifecycleMismatch));
-    }
-
     let projection = validated
         .shareable_projection()
         .map_err(|error| anyhow::anyhow!(error))?;

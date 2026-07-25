@@ -113,6 +113,21 @@ fn phase35_evidence_requires_every_admission_fact() {
 }
 
 #[test]
+fn phase35_lifecycle_validation_requires_no_planning_files() {
+    // Arrange
+    let fixture = EligibleFixture::new();
+
+    // Act
+    let result = fixture.validate();
+
+    // Assert
+    assert!(
+        result.is_ok(),
+        "the compiled lifecycle contract must validate without repository planning files"
+    );
+}
+
+#[test]
 fn phase35_evidence_rejects_incomplete_or_ambiguous_inventory() {
     let cases: [FixtureCase; 5] = [
         (

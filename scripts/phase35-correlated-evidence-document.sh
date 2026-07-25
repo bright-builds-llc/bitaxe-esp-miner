@@ -234,8 +234,10 @@ run_live_rechecks() {
 		failure_category="reference_recheck_failed"
 		return 1
 	}
-	rg -q "phase_lifecycle_id: ${PHASE35_LIFECYCLE_ID}" \
-		"$workspace_dir/.planning/phases/35-detector-gated-correlated-evidence-and-exact-parity-promotion/35-02-PLAN.md" || {
+	jq -e --arg lifecycle_id "$PHASE35_LIFECYCLE_ID" '
+		.admission_facts.lifecycle_id == $lifecycle_id and
+		.admission_facts.lifecycle_verified == true
+	' "$local_root/eligible.json" >/dev/null || {
 		failure_category="lifecycle_recheck_failed"
 		return 1
 	}
