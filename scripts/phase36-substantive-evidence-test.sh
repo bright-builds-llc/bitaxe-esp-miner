@@ -570,6 +570,24 @@ for plan in "${incomplete_plans[@]}"; do
 	' "$plan" || fail_test "incomplete Phase 36 plan is not gap_closure"
 done
 
+require_frontmatter_dependency() {
+	local plan="$1"
+	local dependency="$2"
+	awk -v expected="  - \"${dependency}\"" '
+		NR == 1 && $0 == "---" { in_frontmatter = 1; next }
+		in_frontmatter && $0 == "---" { exit }
+		in_frontmatter && $0 == "depends_on:" { in_dependencies = 1; next }
+		in_dependencies && $0 !~ /^  / { in_dependencies = 0 }
+		in_dependencies && $0 == expected { found = 1 }
+		END { exit(found ? 0 : 1) }
+	' "$plan" ||
+		fail_test "Phase 36 plan omits required dependency ${dependency}"
+}
+
+require_frontmatter_dependency "$plan_10" "36-09"
+require_frontmatter_dependency "$plan_07" "36-10"
+require_frontmatter_dependency "$plan_04" "36-07"
+
 if command -v lsof >/dev/null 2>&1; then
 	[[ -z "$(lsof +D "$protected_parent" 2>/dev/null || true)" ]] ||
 		fail_test "a process retains a descriptor below the sealed root"
