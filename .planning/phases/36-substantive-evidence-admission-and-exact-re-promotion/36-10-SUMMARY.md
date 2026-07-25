@@ -33,8 +33,8 @@ requirements-pending: [SYS-02, EVD-11, EVD-12, EVD-14, EVD-15]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 36-2026-07-23T15-20-53
-generated_at: 2026-07-25T20:23:40Z
-duration: 8min
+generated_at: 2026-07-25T20:27:06Z
+duration: 11min
 completed: 2026-07-25
 ---
 
@@ -44,9 +44,9 @@ completed: 2026-07-25
 
 ## Performance
 
-- **Duration:** 8 min
+- **Duration:** 11 min
 - **Started:** 2026-07-25T20:15:28Z
-- **Completed:** 2026-07-25T20:23:40Z
+- **Completed:** 2026-07-25T20:27:06Z
 - **Tasks:** 2
 - **Tracked files created or modified:** 2
 - **Hardware command invocations:** 1
@@ -64,7 +64,7 @@ completed: 2026-07-25
 ## Task Commits
 
 1. **Task 1: Commit the exact graph regression and complete one software preflight** - `15d14c82` (test)
-2. **Task 2: Run exactly one broker-owned Ultra 205 attempt and seal its typed outcome** - pending outcome commit
+2. **Task 2: Run exactly one broker-owned Ultra 205 attempt and seal its typed outcome** - `57bf1a0b` (docs)
 
 ## Files Created/Modified
 
@@ -102,6 +102,7 @@ The ignored private attempt remains outside Git and was not inspected. The plann
 - The sole hardware command returned `sealed_non_promotion` and created no candidate.
 - The public wrapper projected only the terminal disposition. Exact protected failure/recovery/cleanup accounting cannot be repeated in this shareable summary without violating the explicit private-root inspection prohibition.
 - Because no fresh shareable typed restoration observation exists, device restoration remains unresolved.
+- Phase lifecycle metadata for all ten plans and all eight summaries is valid. The phase-level lifecycle result is expectedly stale because the existing verification predates this gap-plan summary.
 
 ## Authentication Gates
 
@@ -127,6 +128,7 @@ None.
 - Software-only preflight returned `preflight_ready` at clean exact-current `HEAD`.
 - The sole hardware command returned `sealed_non_promotion`.
 - The public candidate path is absent and the worktree contains no private evidence.
+- `gsd-tools.cjs verify lifecycle 36 --require-plans` found valid plan and summary metadata and only the expected stale-verification reason.
 
 ## Known Stubs
 
@@ -139,6 +141,9 @@ None. Candidate absence is the required fail-closed result for a non-promotional
 - This plan authorizes no hardware retry, alternate recovery, or private-root inspection.
 - SYS-02, EVD-11, EVD-12, EVD-14, and EVD-15 remain unchanged.
 
-## Self-Check: PENDING
+## Self-Check: PASSED
 
-- Awaiting the Task 2 outcome commit and final tracking update.
+- This summary exists with exactly one opening and one closing YAML frontmatter delimiter.
+- Task commits `15d14c82` and `57bf1a0b` exist in Git history.
+- The public disposition is `sealed_non_promotion`, the candidate is absent, and no ignored private evidence is tracked.
+- The worktree was clean after the Task 2 outcome commit.
