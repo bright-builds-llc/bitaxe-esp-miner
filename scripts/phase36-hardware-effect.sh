@@ -21,10 +21,15 @@ capture_timeout_seconds=""
 wall_clock_timeout_seconds=""
 wifi_credentials=""
 trusted_origin=""
+result_path=""
 
 fail() {
 	printf 'category=%s\n' "$1" >&2
 	exit 2
+}
+
+file_mode() {
+	stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"
 }
 
 assign_once() {
@@ -57,6 +62,7 @@ for argument in "$@"; do
 	wall-clock-timeout-seconds) assign_once wall_clock_timeout_seconds "$value" ;;
 	wifi-credentials) assign_once wifi_credentials "$value" ;;
 	trusted-origin) assign_once trusted_origin "$value" ;;
+	result-path) assign_once result_path "$value" ;;
 	*) fail unknown_argument ;;
 	esac
 done
@@ -84,6 +90,8 @@ fi
 [[ "$capture_timeout_seconds" =~ ^[0-9]+$ ]] || fail capture_timeout_invalid
 ((capture_timeout_seconds >= 360)) || fail capture_timeout_invalid
 [[ "$wall_clock_timeout_seconds" == 420 ]] || fail wall_clock_timeout_invalid
+[[ "$result_path" == "$attempt_child/effect-result-${operation}.json" &&
+	! -e "$result_path" ]] || fail result_path_invalid
 
 resolve_runfile() {
 	local relative="$1"
@@ -107,6 +115,83 @@ readonly websocket_reader="$(resolve_runfile scripts/phase17-websocket-capture.m
 	fail websocket_reader_unavailable
 readonly report="$(resolve_runfile tools/parity/report)" || fail report_unavailable
 
+json_operation() {
+	printf '%s\n' "${operation//-/_}"
+}
+
+metric_is_true() {
+	local metrics="$1"
+	local expression="$2"
+	jq -er "
+		.schema_version == \"phase35-flash-boundary-v1\" and
+		.stage == \"factory\" and
+		${expression} == true
+	" "$metrics" >/dev/null 2>&1
+}
+
+write_effect_result() {
+	local status="$1"
+	local failure="${2:-}"
+	[[ ! -e "$result_path" ]] || fail result_path_exists
+	umask 077
+	jq -cn \
+		--arg operation "$(json_operation)" \
+		--arg status "$status" \
+		--arg failure "$failure" \
+		--arg package_identity_digest "$package_identity_digest" \
+		--arg factory_image_digest "$factory_image_digest" \
+		'{schema_version:"phase36-effect-result-v1",operation:$operation,status:$status,
+		failure:(if $failure == "" then null else $failure end),
+		package_identity_digest:$package_identity_digest,
+		factory_image_digest:$factory_image_digest}' >"$result_path"
+	chmod 600 "$result_path"
+}
+
+run_flash_operation() {
+	local stage_root="$attempt_child/${operation}-stage"
+	local child_status=0
+	[[ ! -e "$stage_root" ]] || fail flash_stage_exists
+	if PHASE35_FLASH_STAGE_ROOT="$stage_root" \
+		PHASE36_EFFECT_RESULT_PATH="$result_path" \
+		PHASE36_EFFECT_OPERATION="$(json_operation)" \
+		PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST="$package_identity_digest" \
+		PHASE36_EFFECT_FACTORY_IMAGE_DIGEST="$factory_image_digest" \
+		"$flash_tool" "${arguments[@]}"; then
+		:
+	else
+		child_status=$?
+	fi
+	if [[ -e "$result_path" ]]; then
+		[[ -f "$result_path" && ! -L "$result_path" &&
+			"$(file_mode "$result_path")" == 600 ]] || fail effect_result_invalid
+		return "$child_status"
+	fi
+
+	local metrics="$stage_root/factory.metrics.json"
+	local transfer_started=false
+	local completed=false
+	if [[ -f "$metrics" && ! -L "$metrics" ]]; then
+		if metric_is_true "$metrics" ".transfer_started"; then
+			transfer_started=true
+		fi
+		if metric_is_true "$metrics" ".completed"; then
+			completed=true
+		fi
+	fi
+	if ((child_status == 0)) && [[ "$completed" == true ]]; then
+		write_effect_result completed
+		return 0
+	fi
+	if [[ "$completed" == true ]]; then
+		write_effect_result failed_after_completed_device_effect flash_failed
+	elif [[ "$transfer_started" == true ]]; then
+		write_effect_result failed_confirmed_partial_device_effect flash_failed
+	else
+		write_effect_result failed_no_device_effect flash_failed
+	fi
+	return 2
+}
+
 case "$operation" in
 exact-package-flash | typed-recovery)
 	[[ -f "$manifest_path" && -f "$factory_image_path" ]] || fail package_input_missing
@@ -123,17 +208,20 @@ exact-package-flash | typed-recovery)
 		[[ -n "$wifi_credentials" ]] || fail wifi_credentials_missing
 		arguments+=(--wifi-credentials "$wifi_credentials")
 	fi
-	exec "$flash_tool" "${arguments[@]}"
+	run_flash_operation
 	;;
 passive-serial-observation)
 	monitor_dir="$attempt_child/passive-serial-observation"
-	"$flash_tool" monitor \
+	if ! "$flash_tool" monitor \
 		--board 205 \
 		--port "$port" \
 		--capture-timeout-seconds "$capture_timeout_seconds" \
 		--evidence-mode dual \
 		--redact-evidence \
-		--evidence-dir "$monitor_dir"
+		--evidence-dir "$monitor_dir"; then
+		write_effect_result failed_no_device_effect capture_failed
+		exit 2
+	fi
 	classifier_log="$monitor_dir/monitor.classifier-input.log"
 	if [[ ! -f "$classifier_log" ]]; then
 		classifier_log="$monitor_dir/flash-monitor.classifier-input.log"
@@ -148,37 +236,50 @@ passive-serial-observation)
 			LC_ALL=C sort -u
 	)
 	[[ "${#origins[@]}" == 1 ]] || fail trusted_origin_invalid
+	write_effect_result completed
 	printf 'trusted_origin=%s\n' "${origins[0]}"
 	;;
 read-only-system-info)
 	[[ "$trusted_origin" =~ ^https?://[^/?#]+/?$ ]] || fail trusted_origin_invalid
-	exec "$http_reader" \
+	if ! "$http_reader" \
 		label=immediate \
 		protected-root="$attempt_child" \
-		url="$trusted_origin"
+		url="$trusted_origin"; then
+		write_effect_result failed_no_device_effect capture_failed
+		exit 2
+	fi
+	write_effect_result completed
 	;;
 read-only-websocket)
 	[[ "$trusted_origin" =~ ^https?://[^/?#]+/?$ ]] || fail trusted_origin_invalid
-	exec node "$websocket_reader" \
+	if ! node "$websocket_reader" \
 		--device-url "$trusted_origin" \
 		--path /api/ws/live \
 		--out "$attempt_child/websocket.json" \
 		--duration-ms 5000 \
-		--max-frames 3
+		--max-frames 3; then
+		write_effect_result failed_no_device_effect capture_failed
+		exit 2
+	fi
+	write_effect_result completed
 	;;
 read-only-retained-facts)
 	[[ "$trusted_origin" =~ ^https?://[^/?#]+/?$ ]] || fail trusted_origin_invalid
-	exec "$report" phase36-assemble-hardware-capture \
+	if ! "$report" phase36-assemble-hardware-capture \
 		--attempt-child "$attempt_child" \
 		--manifest "$manifest_path" \
 		--manifest-digest "$manifest_digest" \
 		--firmware-elf-digest "$firmware_elf_digest" \
 		--executable-image-digest "$executable_image_digest" \
 		--factory-image-digest "$factory_image_digest" \
-		--package-identity-digest "$package_identity_digest"
+		--package-identity-digest "$package_identity_digest"; then
+		write_effect_result failed_no_device_effect capture_failed
+		exit 2
+	fi
+	write_effect_result completed
 	;;
 cleanup)
 	# All effect commands are synchronous; the broker verifies descriptor closure after return.
-	:
+	write_effect_result completed
 	;;
 esac

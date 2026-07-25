@@ -10,10 +10,13 @@ readonly supervisor_source="${5:?missing supervisor source}"
 readonly broker_source="${6:?missing broker source}"
 readonly capture_source="${7:?missing capture source}"
 readonly hardware_broker_source="${8:?missing hardware broker source}"
+readonly deployed_flash="${9:?missing deployed flash binary}"
 readonly agents_real="$(perl -MCwd=realpath -e 'print realpath($ARGV[0])' "$agents_file")"
 readonly workspace_root="$(dirname "$agents_real")"
 readonly phase_dir="${workspace_root}/.planning/phases/36-substantive-evidence-admission-and-exact-re-promotion"
-readonly plan_08="${phase_dir}/36-08-PLAN.md"
+readonly plan_09="${phase_dir}/36-09-PLAN.md"
+readonly plan_09_summary="${phase_dir}/36-09-SUMMARY.md"
+readonly plan_10="${phase_dir}/36-10-PLAN.md"
 readonly plan_07="${phase_dir}/36-07-PLAN.md"
 readonly plan_04="${phase_dir}/36-04-PLAN.md"
 readonly gsd_tools="/Users/peterryszkiewicz/.codex/get-shit-done/bin/gsd-tools.cjs"
@@ -35,9 +38,14 @@ readonly adapter_child="${TEST_TMPDIR:-/tmp}/phase36-adapter-child-${test_nonce}
 readonly adapter_manifest="${TEST_TMPDIR:-/tmp}/phase36-adapter-manifest-${test_nonce}.json"
 readonly adapter_factory="${TEST_TMPDIR:-/tmp}/phase36-adapter-factory-${test_nonce}.bin"
 readonly adapter_log="${TEST_TMPDIR:-/tmp}/phase36-adapter-${test_nonce}.log"
+readonly broker_runfiles="${TEST_TMPDIR:-/tmp}/phase36-broker-runfiles-${test_nonce}"
+readonly broker_flash_log="${TEST_TMPDIR:-/tmp}/phase36-broker-flash-${test_nonce}.log"
+readonly synthetic_credential="${TEST_TMPDIR:-/tmp}/phase36-synthetic-credential-${test_nonce}"
 readonly protected_canary="synthetic-protected-origin"
 readonly never_persist_canary="synthetic-never-persist-canary"
 readonly credential_probe="${TEST_TMPDIR:-/tmp}/synthetic-never-persist-canary-${test_nonce}.json"
+case_parents=()
+case_candidates=()
 
 cleanup() {
 	[[ "$protected_parent" == "$workspace_root/target/private-evidence/phase36-process-"* ]] ||
@@ -48,7 +56,15 @@ cleanup() {
 	rm -rf "$protected_parent" "$hardware_parent"
 	rm -rf "$fake_bin" "$adapter_runfiles" "$adapter_child"
 	rm -f "$candidate_output" "$hardware_candidate" "$test_output" "$test_stderr" \
-		"$detector_log" "$effect_log" "$adapter_manifest" "$adapter_factory" "$adapter_log"
+		"$detector_log" "$effect_log" "$adapter_manifest" "$adapter_factory" "$adapter_log" \
+		"$broker_flash_log" "$synthetic_credential"
+	rm -rf "$broker_runfiles"
+	local path
+	for path in "${case_parents[@]}" "${case_candidates[@]}"; do
+		[[ "$path" == "$workspace_root/target/private-evidence/phase36-"* ]] || continue
+		chmod -R u+rwX "$path" 2>/dev/null || true
+		rm -rf "$path"
+	done
 }
 trap cleanup EXIT
 
@@ -224,6 +240,8 @@ printf '%s\n' \
 	'#!/usr/bin/env bash' \
 	'set -euo pipefail' \
 	'printf "%s\n" "$*" >>"$PHASE36_TEST_EFFECT_LOG"' \
+	'jq -cn --arg operation "$PHASE36_EFFECT_OPERATION" --arg package "$PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST" --arg factory "$PHASE36_EFFECT_FACTORY_IMAGE_DIGEST" '"'"'{schema_version:"phase36-effect-result-v1",operation:$operation,status:"completed",failure:null,package_identity_digest:$package,factory_image_digest:$factory}'"'"' >"$PHASE36_EFFECT_RESULT_PATH"' \
+	'chmod 600 "$PHASE36_EFFECT_RESULT_PATH"' \
 	>"$adapter_runfiles/_main/tools/flash/flash"
 printf '%s\n' '#!/usr/bin/env bash' 'exit 0' \
 	>"$adapter_runfiles/_main/tools/parity/report"
@@ -258,6 +276,7 @@ if ! RUNFILES_DIR="$adapter_runfiles" \
 	PHASE36_TEST_EFFECT_LOG="$adapter_log" \
 	"$deployed_effect_adapter" \
 	operation=exact-package-flash \
+	result-path="$adapter_child/effect-result-exact-package-flash.json" \
 	"${adapter_common_args[@]}" \
 	wifi-credentials=opaque; then
 	fail_test "deployed exact flash adapter rejected the supported fake boundary"
@@ -267,6 +286,7 @@ if ! RUNFILES_DIR="$adapter_runfiles" \
 	PHASE36_TEST_EFFECT_LOG="$adapter_log" \
 	"$deployed_effect_adapter" \
 	operation=typed-recovery \
+	result-path="$adapter_child/effect-result-typed-recovery.json" \
 	"${adapter_common_args[@]}"; then
 	fail_test "deployed typed recovery adapter rejected the supported fake boundary"
 fi
@@ -347,16 +367,17 @@ done
 jq -e '
 		.status == "sealed_non_promotion" and
 		.first_failure == "detector_failed" and
-		.secondary_failure == "recovery_failed"
+		.secondary_failure == null and
+		.recovery_disposition == "not_authorized"
 	' "$hardware_child/seal.json" >/dev/null ||
 	fail_test "failed hardware broker seal lost typed failure ordering"
-[[ "$(jq -s 'length' "$hardware_child/effect-ledger.jsonl")" == 16 ]] ||
+[[ "$(jq -s 'length' "$hardware_child/effect-ledger.jsonl")" == 12 ]] ||
 	fail_test "failed hardware broker ledger is incomplete"
 jq -s -e '
 		[.[].operation] |
 		(index("exact_package_admission") < index("board205_detector_probe")) and
-		(index("board205_detector_probe") < index("typed_recovery")) and
-		(index("typed_recovery") < index("cleanup"))
+		(index("board205_detector_probe") < index("cleanup")) and
+		(index("typed_recovery") == null)
 	' "$hardware_child/effect-ledger.jsonl" >/dev/null ||
 	fail_test "failed hardware broker ledger lost operation ordering"
 
@@ -370,6 +391,130 @@ expect_failure_category hardware_output_exists \
 	wifi-credentials="$credential_probe"
 [[ "$(wc -l <"$detector_log" | tr -d ' ')" == 1 ]] ||
 	fail_test "replay attempt invoked the detector"
+
+printf '%s\n' \
+	'#!/usr/bin/env bash' \
+	'set -euo pipefail' \
+	'printf "%s\n" "$*" >>"$PHASE36_TEST_DETECTOR_LOG"' \
+	'printf "port=/dev/private-device\n"' >"$fake_bin/just"
+chmod 700 "$fake_bin/just"
+: >"$synthetic_credential"
+chmod 600 "$synthetic_credential"
+mkdir -p \
+	"$broker_runfiles/_main/tools/flash" \
+	"$broker_runfiles/_main/tools/parity" \
+	"$broker_runfiles/_main/scripts"
+ln -s "$report_binary" "$broker_runfiles/_main/tools/parity/report"
+ln -s "$deployed_effect_adapter" "$broker_runfiles/_main/scripts/phase36_hardware_effect"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 9' \
+	>"$broker_runfiles/_main/scripts/phase35_http_boundary_read"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 9' \
+	>"$broker_runfiles/_main/scripts/phase17-websocket-capture.mjs"
+printf '%s\n' \
+	'#!/usr/bin/env bash' \
+	'set -euo pipefail' \
+	'operation="${PHASE36_EFFECT_OPERATION:-monitor}"' \
+	'printf "%s %s %s\n" "$PHASE36_TEST_SCENARIO" "$operation" "$*" >>"$PHASE36_TEST_BROKER_FLASH_LOG"' \
+	'write_result() {' \
+	'  local status="$1" failure="${2:-}" package="$PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST"' \
+	'  if [[ "$PHASE36_TEST_SCENARIO" == mismatch ]]; then package="$(printf "c%.0s" {1..64})"; fi' \
+	'  jq -cn --arg operation "$PHASE36_EFFECT_OPERATION" --arg status "$status" --arg failure "$failure" --arg package "$package" --arg factory "$PHASE36_EFFECT_FACTORY_IMAGE_DIGEST" '"'"'{schema_version:"phase36-effect-result-v1",operation:$operation,status:$status,failure:(if $failure == "" then null else $failure end),package_identity_digest:$package,factory_image_digest:$factory}'"'"' >"$PHASE36_EFFECT_RESULT_PATH"' \
+	'  chmod 600 "$PHASE36_EFFECT_RESULT_PATH"' \
+	'}' \
+	'case "$PHASE36_TEST_SCENARIO:$operation" in' \
+	'parser:exact_package_flash)' \
+	'  exec "$PHASE36_TEST_REAL_FLASH" flash --board 205 --port /dev/private-device --manifest /tmp/package.json --image /tmp/factory.bin --evidence-mode dual --redact-evidence --evidence-dir /tmp/private-stage --wifi-credentials /tmp/wifi.json' \
+	'  ;;' \
+	'partial:exact_package_flash|mismatch:exact_package_flash)' \
+	'  write_result failed_confirmed_partial_device_effect flash_failed' \
+	'  exit 9' \
+	'  ;;' \
+	'partial:typed_recovery|completed_then_capture:exact_package_flash|completed_then_capture:typed_recovery)' \
+	'  write_result completed' \
+	'  ;;' \
+	'forged:exact_package_flash)' \
+	'  printf '"'"'{"status":"failed_confirmed_partial_device_effect"}\n'"'"'' \
+	'  ;;' \
+	'esac' >"$broker_runfiles/_main/tools/flash/flash"
+chmod 700 \
+	"$broker_runfiles/_main/tools/flash/flash" \
+	"$broker_runfiles/_main/scripts/phase35_http_boundary_read" \
+	"$broker_runfiles/_main/scripts/phase17-websocket-capture.mjs"
+
+run_closed_effect_case() {
+	local scenario="$1"
+	local expected_failure="$2"
+	local expected_recovery="$3"
+	local expected_recovery_calls="$4"
+	local case_parent="$workspace_root/target/private-evidence/phase36-${scenario}-${test_nonce}"
+	local case_candidate="$workspace_root/target/private-evidence/phase36-${scenario}-candidate-${test_nonce}.json"
+	local case_handle="$case_parent/attempt.handle"
+	case_parents+=("$case_parent")
+	case_candidates+=("$case_candidate")
+
+	run_supervisor \
+		mode=preflight \
+		board=205 \
+		capture-timeout-seconds=360 \
+		private-parent="$case_parent" \
+		attempt-handle-file="$case_handle" \
+		candidate-output="$case_candidate" >"$test_output" 2>"$test_stderr"
+	RUNFILES_DIR="$broker_runfiles" \
+		PATH="$fake_bin:$PATH" \
+		PHASE36_TEST_DETECTOR_LOG="$detector_log" \
+		PHASE36_TEST_BROKER_FLASH_LOG="$broker_flash_log" \
+		PHASE36_TEST_SCENARIO="$scenario" \
+		PHASE36_TEST_REAL_FLASH="$deployed_flash" \
+		run_supervisor \
+		mode=hardware \
+		board=205 \
+		capture-timeout-seconds=360 \
+		private-parent="$case_parent" \
+		attempt-handle-file="$case_handle" \
+		candidate-output="$case_candidate" \
+		wifi-credentials="$synthetic_credential" >"$test_output" 2>"$test_stderr"
+	rg -Fqx 'category=sealed_non_promotion' "$test_output" ||
+		fail_test "${scenario} did not seal non-promotional"
+	[[ ! -s "$test_stderr" ]] ||
+		fail_test "${scenario} wrote public stderr"
+	local case_child_name case_child
+	case_child_name="$(jq -er '.child_name' "$case_handle")"
+	case_child="$case_parent/$case_child_name"
+	jq -e \
+		--arg failure "$expected_failure" \
+		--arg recovery "$expected_recovery" \
+		'.status == "sealed_non_promotion" and
+		.first_failure == $failure and
+		.recovery_disposition == $recovery' \
+		"$case_child/seal.json" >/dev/null ||
+		fail_test "${scenario} seal lost its closed failure/recovery disposition"
+	[[ "$(jq -s '[.[] | select(.operation == "typed_recovery" and .transition == "invoked")] | length' "$case_child/effect-ledger.jsonl")" == "$expected_recovery_calls" ]] ||
+		fail_test "${scenario} recorded an incorrect recovery invocation count"
+	[[ "$(jq -s '[.[] | select(.operation == "cleanup" and .transition == "invoked")] | length' "$case_child/effect-ledger.jsonl")" == 1 ]] ||
+		fail_test "${scenario} did not invoke cleanup exactly once"
+	[[ ! -e "$case_candidate" ]] ||
+		fail_test "${scenario} created a candidate"
+	while IFS= read -r result_file; do
+		[[ "$(file_mode "$result_file")" == 600 ]] ||
+			fail_test "${scenario} effect result is not mode 0600"
+	done < <(find "$case_child" -name 'effect-result-*.json' -type f -print)
+}
+
+run_closed_effect_case parser parser_failed not_authorized 0
+run_closed_effect_case partial flash_failed attempted_succeeded 1
+run_closed_effect_case completed_then_capture capture_failed attempted_succeeded 1
+run_closed_effect_case forged flash_failed not_authorized 0
+run_closed_effect_case mismatch invocation_construction_failed not_authorized 0
+[[ "$(rg -c '^partial typed_recovery ' "$broker_flash_log")" == 1 ]] ||
+	fail_test "confirmed partial flash did not use exactly one same-image recovery"
+[[ "$(rg -c '^completed_then_capture typed_recovery ' "$broker_flash_log")" == 1 ]] ||
+	fail_test "completed flash did not use exactly one same-image recovery"
+[[ "$(rg -c '^parser typed_recovery ' "$broker_flash_log" || true)" == 0 ]] ||
+	fail_test "real parser rejection reached recovery"
+[[ "$(rg -c '^forged typed_recovery ' "$broker_flash_log" || true)" == 0 ]] ||
+	fail_test "forged stdout reached recovery"
+[[ "$(rg -c '^mismatch typed_recovery ' "$broker_flash_log" || true)" == 0 ]] ||
+	fail_test "mismatched closed result reached recovery"
 
 readonly direct_effect_pattern='espflash|flash-monitor|serial-session|device-session|curl[[:space:]]|phase17-websocket|phase35-correlated'
 if rg -q -i "$direct_effect_pattern" "$supervisor_source"; then
@@ -404,10 +549,16 @@ readonly incomplete_graph="$(
 		LC_ALL=C sort -n -k1,1 |
 		awk -F '\t' '{print $2 "@" $1}'
 )"
-readonly expected_graph=$'36-07@8\n36-04@9'
+if [[ -f "$plan_09_summary" ]]; then
+	readonly expected_graph=$'36-10@9\n36-07@10\n36-04@11'
+	readonly incomplete_plans=("$plan_10" "$plan_07" "$plan_04")
+else
+	readonly expected_graph=$'36-09@8\n36-10@9\n36-07@10\n36-04@11'
+	readonly incomplete_plans=("$plan_09" "$plan_10" "$plan_07" "$plan_04")
+fi
 [[ "$incomplete_graph" == "$expected_graph" ]] ||
 	fail_test "incomplete Phase 36 graph is not the exact wave-ordered contract"
-for plan in "$plan_08" "$plan_07" "$plan_04"; do
+for plan in "${incomplete_plans[@]}"; do
 	awk '
 		NR == 1 && $0 == "---" { in_frontmatter = 1; next }
 		in_frontmatter && $0 == "---" { exit }

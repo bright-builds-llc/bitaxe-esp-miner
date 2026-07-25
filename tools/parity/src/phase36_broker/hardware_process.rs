@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use super::contract::Phase36RecoveryIdentity;
 use super::hardware::{
     run_detector_process, run_phase36_hardware_transaction_with, Phase36HardwareDisposition,
-    Phase36HardwareTransactionBoundary, Phase36HardwareTransactionError,
+    Phase36HardwareTransactionBoundary, Phase36HardwareTransactionError, Phase36OperationResult,
 };
 use super::{
     Phase36AllowedOperation, Phase36BrokerFailure, Phase36LedgerRecord, Phase36RecoveryDisposition,
@@ -71,6 +71,26 @@ struct AttemptSeal<'a> {
     package_identity_digest: &'a str,
     candidate_digest: Option<&'a str>,
     private_capture_digest: Option<&'a str>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+enum Phase36EffectStatus {
+    Completed,
+    FailedNoDeviceEffect,
+    FailedConfirmedPartialDeviceEffect,
+    FailedAfterCompletedDeviceEffect,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Phase36EffectResult {
+    schema_version: String,
+    operation: Phase36AllowedOperation,
+    status: Phase36EffectStatus,
+    failure: Option<Phase36BrokerFailure>,
+    package_identity_digest: String,
+    factory_image_digest: String,
 }
 
 struct ProcessTransactionBoundary {
@@ -243,19 +263,20 @@ impl ProcessTransactionBoundary {
         Ok(())
     }
 
-    fn run_effect(
+    fn run_effect_classified(
         &mut self,
         operation: Phase36AllowedOperation,
-    ) -> Result<(), Phase36HardwareTransactionError> {
+    ) -> Result<Phase36OperationResult, Phase36HardwareTransactionError> {
         let port = match (operation, self.maybe_port.as_deref()) {
             (Phase36AllowedOperation::Cleanup, None) => "unavailable",
             (_, Some(port)) => port,
             _ => {
-                return Err(Phase36HardwareTransactionError::EffectFailed(
-                    failure_for_operation(operation),
-                ))
+                return Ok(classify_missing_effect_result(operation));
             }
         };
+        let result_path = self
+            .attempt_child
+            .join(format!("effect-result-{}.json", operation_name(operation)));
         let mut command = Command::new("perl");
         command
             .arg("-e")
@@ -303,6 +324,7 @@ impl ProcessTransactionBoundary {
             .arg(format!(
                 "wall-clock-timeout-seconds={MIN_WALL_CLOCK_TIMEOUT_SECONDS}"
             ))
+            .arg(format!("result-path={result_path}"))
             .stdin(Stdio::null())
             .stderr(Stdio::null());
         if operation == Phase36AllowedOperation::ExactPackageFlash {
@@ -319,15 +341,22 @@ impl ProcessTransactionBoundary {
             )?;
             command.arg(format!("trusted-origin={origin}"));
         }
-        let output = command.output().map_err(|_| {
-            Phase36HardwareTransactionError::EffectFailed(failure_for_operation(operation))
-        })?;
-        if !output.status.success() {
-            return Err(Phase36HardwareTransactionError::EffectFailed(
-                failure_for_operation(operation),
-            ));
-        }
-        if operation == Phase36AllowedOperation::PassiveSerialObservation {
+        let Ok(output) = command.output() else {
+            return Ok(classify_missing_effect_result(operation));
+        };
+        let Some(result) = read_effect_result(&result_path) else {
+            return Ok(classify_missing_effect_result(operation));
+        };
+        let classified = classify_effect_result(
+            result,
+            operation,
+            output.status.success(),
+            &self.handle.package_identity_digest,
+            &self.handle.factory_image_digest,
+        );
+        if operation == Phase36AllowedOperation::PassiveSerialObservation
+            && matches!(classified, Phase36OperationResult::Completed { .. })
+        {
             let stdout = String::from_utf8(output.stdout).map_err(|_| {
                 Phase36HardwareTransactionError::EffectFailed(Phase36BrokerFailure::CaptureFailed)
             })?;
@@ -337,13 +366,14 @@ impl ProcessTransactionBoundary {
                 .filter(|origin| valid_origin(origin))
                 .collect::<Vec<_>>();
             if origins.len() != 1 {
-                return Err(Phase36HardwareTransactionError::EffectFailed(
-                    Phase36BrokerFailure::CaptureFailed,
-                ));
+                return Ok(Phase36OperationResult::Failed {
+                    failure: Phase36BrokerFailure::CaptureFailed,
+                    maybe_partial_device_effect: None,
+                });
             }
             self.maybe_origin = Some(origins[0].to_owned());
         }
-        Ok(())
+        Ok(classified)
     }
 
     fn write_seal(
@@ -442,7 +472,12 @@ impl Phase36HardwareTransactionBoundary for ProcessTransactionBoundary {
         match operation {
             Phase36AllowedOperation::ExactPackageAdmission => self.validate_exact_package(),
             Phase36AllowedOperation::Board205DetectorProbe => self.run_detector(),
-            _ => self.run_effect(operation),
+            _ => match self.run_effect_classified(operation)? {
+                Phase36OperationResult::Completed { .. } => Ok(()),
+                Phase36OperationResult::Failed { failure, .. } => {
+                    Err(Phase36HardwareTransactionError::EffectFailed(failure))
+                }
+            },
         }
     }
 
@@ -454,6 +489,31 @@ impl Phase36HardwareTransactionBoundary for ProcessTransactionBoundary {
             self.handle.factory_image_digest.clone(),
         )
         .map_err(|_| Phase36HardwareTransactionError::InvalidRecoveryAuthority)
+    }
+
+    fn execute_classified(
+        &mut self,
+        operation: Phase36AllowedOperation,
+    ) -> Result<Phase36OperationResult, Phase36HardwareTransactionError> {
+        match operation {
+            Phase36AllowedOperation::ExactPackageAdmission
+            | Phase36AllowedOperation::Board205DetectorProbe => {
+                let result = self.execute(operation);
+                match result {
+                    Ok(()) => Ok(Phase36OperationResult::Completed {
+                        maybe_completed_device_effect: None,
+                    }),
+                    Err(Phase36HardwareTransactionError::EffectFailed(failure)) => {
+                        Ok(Phase36OperationResult::Failed {
+                            failure,
+                            maybe_partial_device_effect: None,
+                        })
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+            _ => self.run_effect_classified(operation),
+        }
     }
 
     fn seal(
@@ -574,6 +634,92 @@ fn failure_for_operation(operation: Phase36AllowedOperation) -> Phase36BrokerFai
     }
 }
 
+fn read_effect_result(path: &Utf8Path) -> Option<Phase36EffectResult> {
+    let metadata = fs::symlink_metadata(path).ok()?;
+    if metadata.file_type().is_symlink()
+        || !metadata.is_file()
+        || metadata.permissions().mode() & 0o777 != 0o600
+    {
+        return None;
+    }
+    let bytes = fs::read(path).ok()?;
+    serde_json::from_slice(&bytes).ok()
+}
+
+fn classify_missing_effect_result(operation: Phase36AllowedOperation) -> Phase36OperationResult {
+    let failure = if operation == Phase36AllowedOperation::ExactPackageFlash {
+        Phase36BrokerFailure::InvocationConstructionFailed
+    } else {
+        failure_for_operation(operation)
+    };
+    Phase36OperationResult::Failed {
+        failure,
+        maybe_partial_device_effect: None,
+    }
+}
+
+fn classify_effect_result(
+    result: Phase36EffectResult,
+    operation: Phase36AllowedOperation,
+    process_succeeded: bool,
+    package_identity_digest: &str,
+    factory_image_digest: &str,
+) -> Phase36OperationResult {
+    let identity_matches = result.package_identity_digest == package_identity_digest
+        && result.factory_image_digest == factory_image_digest
+        && valid_digest(&result.package_identity_digest)
+        && valid_digest(&result.factory_image_digest);
+    if result.schema_version != "phase36-effect-result-v1"
+        || result.operation != operation
+        || !identity_matches
+    {
+        return classify_missing_effect_result(operation);
+    }
+
+    match (result.status, result.failure, process_succeeded) {
+        (Phase36EffectStatus::Completed, None, true) => {
+            let maybe_completed_device_effect =
+                if operation == Phase36AllowedOperation::ExactPackageFlash {
+                    Phase36RecoveryIdentity::new(
+                        result.package_identity_digest,
+                        result.factory_image_digest,
+                    )
+                    .ok()
+                } else {
+                    None
+                };
+            Phase36OperationResult::Completed {
+                maybe_completed_device_effect,
+            }
+        }
+        (Phase36EffectStatus::FailedNoDeviceEffect, Some(failure), false)
+            if failure.valid_for(operation) =>
+        {
+            Phase36OperationResult::Failed {
+                failure,
+                maybe_partial_device_effect: None,
+            }
+        }
+        (
+            Phase36EffectStatus::FailedConfirmedPartialDeviceEffect
+            | Phase36EffectStatus::FailedAfterCompletedDeviceEffect,
+            Some(Phase36BrokerFailure::FlashFailed),
+            false,
+        ) if operation == Phase36AllowedOperation::ExactPackageFlash => {
+            let maybe_partial_device_effect = Phase36RecoveryIdentity::new(
+                result.package_identity_digest,
+                result.factory_image_digest,
+            )
+            .ok();
+            Phase36OperationResult::Failed {
+                failure: Phase36BrokerFailure::FlashFailed,
+                maybe_partial_device_effect,
+            }
+        }
+        _ => classify_missing_effect_result(operation),
+    }
+}
+
 fn valid_child_name(value: &str) -> bool {
     value.len() == 24
         && value.starts_with("attempt-")
@@ -665,4 +811,108 @@ fn sha256_file(path: &Utf8Path) -> Result<String, Phase36HardwareTransactionErro
         Phase36HardwareTransactionError::EffectFailed(Phase36BrokerFailure::AdmissionFailed)
     })?;
     Ok(sha256_hex(bytes))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn effect_result(
+        status: Phase36EffectStatus,
+        failure: Option<Phase36BrokerFailure>,
+        package_digest: &str,
+        factory_digest: &str,
+    ) -> Phase36EffectResult {
+        Phase36EffectResult {
+            schema_version: "phase36-effect-result-v1".to_owned(),
+            operation: Phase36AllowedOperation::ExactPackageFlash,
+            status,
+            failure,
+            package_identity_digest: package_digest.to_owned(),
+            factory_image_digest: factory_digest.to_owned(),
+        }
+    }
+
+    #[test]
+    fn closed_partial_flash_result_carries_same_image_recovery_authority() {
+        // Arrange
+        let package_digest = "a".repeat(64);
+        let factory_digest = "b".repeat(64);
+        let result = effect_result(
+            Phase36EffectStatus::FailedConfirmedPartialDeviceEffect,
+            Some(Phase36BrokerFailure::FlashFailed),
+            &package_digest,
+            &factory_digest,
+        );
+
+        // Act
+        let classified = classify_effect_result(
+            result,
+            Phase36AllowedOperation::ExactPackageFlash,
+            false,
+            &package_digest,
+            &factory_digest,
+        );
+
+        // Assert
+        assert_eq!(
+            classified,
+            Phase36OperationResult::Failed {
+                failure: Phase36BrokerFailure::FlashFailed,
+                maybe_partial_device_effect: Some(
+                    Phase36RecoveryIdentity::new(package_digest, factory_digest)
+                        .expect("fixture identity"),
+                ),
+            }
+        );
+    }
+
+    #[test]
+    fn mismatched_closed_effect_identity_fails_before_recovery_authority() {
+        // Arrange
+        let package_digest = "a".repeat(64);
+        let factory_digest = "b".repeat(64);
+        let result = effect_result(
+            Phase36EffectStatus::FailedConfirmedPartialDeviceEffect,
+            Some(Phase36BrokerFailure::FlashFailed),
+            &"c".repeat(64),
+            &factory_digest,
+        );
+
+        // Act
+        let classified = classify_effect_result(
+            result,
+            Phase36AllowedOperation::ExactPackageFlash,
+            false,
+            &package_digest,
+            &factory_digest,
+        );
+
+        // Assert
+        assert_eq!(
+            classified,
+            Phase36OperationResult::Failed {
+                failure: Phase36BrokerFailure::InvocationConstructionFailed,
+                maybe_partial_device_effect: None,
+            }
+        );
+    }
+
+    #[test]
+    fn successful_exit_without_closed_result_never_claims_device_effect() {
+        // Arrange
+        let operation = Phase36AllowedOperation::ExactPackageFlash;
+
+        // Act
+        let classified = classify_missing_effect_result(operation);
+
+        // Assert
+        assert_eq!(
+            classified,
+            Phase36OperationResult::Failed {
+                failure: Phase36BrokerFailure::InvocationConstructionFailed,
+                maybe_partial_device_effect: None,
+            }
+        );
+    }
 }

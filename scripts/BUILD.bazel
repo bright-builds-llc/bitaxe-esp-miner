@@ -121,6 +121,7 @@ sh_test(
         "$(location //tools/parity:src/phase36_broker.rs)",
         "$(location //tools/parity:src/phase36_evidence/capture.rs)",
         "$(location //tools/parity:src/phase36_broker/hardware.rs)",
+        "$(location //tools/flash:flash)",
     ],
     data = [
         "//:AGENTS.md",
@@ -132,6 +133,7 @@ sh_test(
         "//tools/parity:src/phase36_broker.rs",
         "//tools/parity:src/phase36_broker/hardware.rs",
         "//tools/parity:src/phase36_evidence/capture.rs",
+        "//tools/flash:flash",
     ],
     env_inherit = ["PATH"],
     tags = [

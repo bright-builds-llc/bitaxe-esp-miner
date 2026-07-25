@@ -3,6 +3,8 @@ use std::env;
 use std::fmt;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 use std::str::FromStr;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -38,6 +40,7 @@ const UNAVAILABLE: &str = "Unavailable";
 const PROTECTED_OPERATIONAL: &str = "protected-operational";
 const ESPFLASH_EXPECTED_VERSION: &str = "4.5.0";
 const PHASE35_FLASH_SCHEMA: &str = "phase35-flash-boundary-v1";
+const PHASE36_EFFECT_SCHEMA: &str = "phase36-effect-result-v1";
 
 #[derive(Debug, Parser)]
 #[command(name = "bitaxe-flash")]
@@ -141,6 +144,16 @@ struct Phase35ProbeCommand {
 
     #[arg(long = "timeout-seconds", default_value_t = 30)]
     timeout_seconds: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct Phase36PreEffectResult<'a> {
+    schema_version: &'static str,
+    operation: &'a str,
+    status: &'static str,
+    failure: &'static str,
+    package_identity_digest: &'a str,
+    factory_image_digest: &'a str,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -914,8 +927,22 @@ impl LocalFlashEnvironment {
 }
 
 fn main() -> Result<()> {
-    let cli = parse_cli(env::args())?;
-    let environment = LocalFlashEnvironment::detect()?;
+    let cli = match parse_cli(env::args()) {
+        Ok(cli) => cli,
+        Err(error) => {
+            maybe_write_phase36_pre_effect_result("parser_failed")
+                .context("phase36_effect_result=failed reason=parser_result_write_failed")?;
+            return Err(error);
+        }
+    };
+    let environment = match LocalFlashEnvironment::detect() {
+        Ok(environment) => environment,
+        Err(error) => {
+            maybe_write_phase36_pre_effect_result("invocation_construction_failed")
+                .context("phase36_effect_result=failed reason=invocation_result_write_failed")?;
+            return Err(error);
+        }
+    };
     emit_line("espflash_version", ESPFLASH_EXPECTED_VERSION)?;
     emit_line("espflash_executable_sha256", &environment.espflash_sha256)?;
 
@@ -938,6 +965,69 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn maybe_write_phase36_pre_effect_result(failure: &'static str) -> Result<()> {
+    let maybe_path = env::var_os("PHASE36_EFFECT_RESULT_PATH");
+    let maybe_operation = env::var_os("PHASE36_EFFECT_OPERATION");
+    let maybe_package_digest = env::var_os("PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST");
+    let maybe_factory_digest = env::var_os("PHASE36_EFFECT_FACTORY_IMAGE_DIGEST");
+    if maybe_path.is_none()
+        && maybe_operation.is_none()
+        && maybe_package_digest.is_none()
+        && maybe_factory_digest.is_none()
+    {
+        return Ok(());
+    }
+    let (Some(path), Some(operation), Some(package_digest), Some(factory_digest)) = (
+        maybe_path,
+        maybe_operation,
+        maybe_package_digest,
+        maybe_factory_digest,
+    ) else {
+        bail!("phase36_effect_result=failed reason=incomplete_contract");
+    };
+    let path = Utf8PathBuf::from_path_buf(path.into())
+        .map_err(|_| anyhow::anyhow!("phase36_effect_result=failed reason=path_invalid"))?;
+    let operation = operation
+        .into_string()
+        .map_err(|_| anyhow::anyhow!("phase36_effect_result=failed reason=operation_invalid"))?;
+    let package_digest = package_digest
+        .into_string()
+        .map_err(|_| anyhow::anyhow!("phase36_effect_result=failed reason=identity_invalid"))?;
+    let factory_digest = factory_digest
+        .into_string()
+        .map_err(|_| anyhow::anyhow!("phase36_effect_result=failed reason=identity_invalid"))?;
+    if !path.is_absolute()
+        || !matches!(operation.as_str(), "exact_package_flash" | "typed_recovery")
+        || !is_lower_hex_digest(&package_digest)
+        || !is_lower_hex_digest(&factory_digest)
+    {
+        bail!("phase36_effect_result=failed reason=contract_invalid");
+    }
+    let Some(parent) = path.parent() else {
+        bail!("phase36_effect_result=failed reason=path_invalid");
+    };
+    let metadata = fs::symlink_metadata(parent.as_std_path())
+        .context("phase36_effect_result=failed reason=parent_invalid")?;
+    #[cfg(unix)]
+    if metadata.file_type().is_symlink()
+        || !metadata.is_dir()
+        || metadata.permissions().mode() & 0o777 != 0o700
+    {
+        bail!("phase36_effect_result=failed reason=parent_invalid");
+    }
+    let result = Phase36PreEffectResult {
+        schema_version: PHASE36_EFFECT_SCHEMA,
+        operation: &operation,
+        status: "failed_no_device_effect",
+        failure,
+        package_identity_digest: &package_digest,
+        factory_image_digest: &factory_digest,
+    };
+    let mut bytes = serde_json::to_vec(&result)?;
+    bytes.push(b'\n');
+    write_private_new_bytes(&path, &bytes)
 }
 
 fn parse_cli<I, S>(args: I) -> Result<Cli>
@@ -3377,6 +3467,37 @@ mod tests {
             command.wifi_credentials.as_deref(),
             Some(Utf8Path::new("/tmp/wifi.json"))
         );
+    }
+
+    #[test]
+    fn phase36_retired_dual_plus_redaction_shape_fails_in_real_parser() {
+        // Arrange
+        let args = [
+            "bitaxe-flash",
+            "flash",
+            "--board",
+            "205",
+            "--port",
+            "/dev/private-device",
+            "--manifest",
+            "/tmp/package.json",
+            "--image",
+            "/tmp/factory.bin",
+            "--evidence-mode",
+            "dual",
+            "--redact-evidence",
+            "--evidence-dir",
+            "/tmp/private-stage",
+            "--wifi-credentials",
+            "/tmp/wifi.json",
+        ];
+
+        // Act
+        let result = parse_cli(args);
+
+        // Assert
+        let error = result.expect_err("retired Phase 36 argument shape must fail");
+        assert!(format!("{error:#}").contains("cannot be used with"));
     }
 
     #[test]
