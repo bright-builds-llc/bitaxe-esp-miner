@@ -3,29 +3,29 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 36-06-PLAN.md with typed pre-effect blocker; 36-07 has no candidate
-last_updated: "2026-07-24T22:39:17.012Z"
-last_activity: "2026-07-24"
+stopped_at: Planned 36-08-PLAN.md as the progress-gated second attempt; 5 of 8 plans complete
+last_updated: "2026-07-25T02:29:48.069Z"
+last_activity: "2026-07-25"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 31
+  total_plans: 32
   completed_plans: 29
-  percent: 94
+  percent: 91
 ---
 
 # Project State
 
-Last activity: 2026-07-24
+Last activity: 2026-07-25
 
 ## Current Position
 
 Phase: 36 (substantive-evidence-admission-and-exact-re-promotion) — EXECUTING
-Plan: 7 of 7
+Plan: 5 of 8
 
 - **Phase:** 36 of 36 (substantive evidence admission and exact re-promotion)
-- **Plan:** 7 of 7
-- **Status:** Blocked — no Plan 36-06 candidate exists
+- **Plan:** 5 of 8
+- **Status:** Ready to execute
 - **Checkpoint:** Code review and security audit passed at
   `f1cb6101f2c384acaffe0b8523097433ff0f04cc`; independent verification scored
   9/13 must-haves and retained the phase in executing status.
@@ -33,10 +33,10 @@ Plan: 7 of 7
 - **Requirements:** SYS-02, EVD-11, EVD-12, and EVD-14 remain blocked. EVD-15
   is satisfied by the exact preserve/demote result and explicit non-claims.
 
-- **Next step:** Do not execute Plan 07 against absent input. Plan 06 consumed
-  its one hardware-mode command and stopped before detector at the closed
-  `effect_adapter_unavailable` boundary. A future attempt requires a new plan,
-  fresh exact-current package/preflight, and progress-gated authority.
+- **Next step:** Execute gap-only Plan 36-08. It owns one fresh progress-gated
+  exact-current package/preflight and broker invocation after the deployed
+  effect-adapter runfiles repair; Plan 36-07 remains blocked unless that attempt
+  yields an eligible candidate.
 
 ## Project Reference
 
@@ -581,12 +581,15 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - The authoritative successor still lacks eligible sensor/snapshot/runtime-health,
   runtime-identity, and independent-effect observations.
 
-- Phase 36 Plan 06 closed at effect_adapter_unavailable before detector; no candidate exists for Plan 07 and no retry is authorized.
+- Phase 36 Plan 06 closed at effect_adapter_unavailable before detector. Plan
+  36-08 now owns the separately planned, progress-gated second attempt; Plan
+  36-07 remains blocked unless it produces an eligible candidate.
 
 ## Session
 
-- **Stopped at:** Completed 36-06-PLAN.md with typed pre-effect blocker; 36-07
-  has no candidate.
+- **Stopped at:** Planned 36-08-PLAN.md as the progress-gated second attempt;
+  5 of 8 Phase 36 plans are complete.
 
-- **Resume:** Do not run Plan 36-07 or Plan 36-04. A new progress-gated plan is
-  required before any further hardware attempt.
+- **Resume:** Run `/gsd-execute-phase 36 --gaps-only`; Plan 36-08 is next.
+  Do not run Plan 36-07 or Plan 36-04 unless the preceding plan completes its
+  exact handoff.
