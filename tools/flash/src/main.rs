@@ -3340,6 +3340,46 @@ mod tests {
     }
 
     #[test]
+    fn phase36_flash_argument_shape_uses_supported_redacted_evidence() {
+        // Arrange
+        let args = [
+            "bitaxe-flash",
+            "flash",
+            "--board",
+            "205",
+            "--port",
+            "/dev/private-device",
+            "--manifest",
+            "/tmp/package.json",
+            "--image",
+            "/tmp/factory.bin",
+            "--redact-evidence",
+            "--evidence-dir",
+            "/tmp/private-stage",
+            "--wifi-credentials",
+            "/tmp/wifi.json",
+        ];
+
+        // Act
+        let cli = parse_cli(args).expect("Phase 36 flash arguments should parse");
+
+        // Assert
+        let CliCommand::Flash(command) = cli.command else {
+            panic!("expected flash command");
+        };
+        assert!(command.common.redact_evidence);
+        assert_eq!(command.common.evidence_mode, None);
+        assert_eq!(
+            command.common.evidence_dir.as_deref(),
+            Some(Utf8Path::new("/tmp/private-stage"))
+        );
+        assert_eq!(
+            command.wifi_credentials.as_deref(),
+            Some(Utf8Path::new("/tmp/wifi.json"))
+        );
+    }
+
+    #[test]
     fn flash_monitor_parses_capture_timeout_alias() {
         // Arrange
         let hyphenated_args = [

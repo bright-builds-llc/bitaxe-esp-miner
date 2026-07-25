@@ -30,6 +30,11 @@ readonly test_stderr="${TEST_TMPDIR:-/tmp}/phase36-process-${test_nonce}.err"
 readonly fake_bin="${TEST_TMPDIR:-/tmp}/phase36-fake-bin-${test_nonce}"
 readonly detector_log="${TEST_TMPDIR:-/tmp}/phase36-detector-${test_nonce}.log"
 readonly effect_log="${TEST_TMPDIR:-/tmp}/phase36-effect-${test_nonce}.log"
+readonly adapter_runfiles="${TEST_TMPDIR:-/tmp}/phase36-adapter-runfiles-${test_nonce}"
+readonly adapter_child="${TEST_TMPDIR:-/tmp}/phase36-adapter-child-${test_nonce}"
+readonly adapter_manifest="${TEST_TMPDIR:-/tmp}/phase36-adapter-manifest-${test_nonce}.json"
+readonly adapter_factory="${TEST_TMPDIR:-/tmp}/phase36-adapter-factory-${test_nonce}.bin"
+readonly adapter_log="${TEST_TMPDIR:-/tmp}/phase36-adapter-${test_nonce}.log"
 readonly protected_canary="synthetic-protected-origin"
 readonly never_persist_canary="synthetic-never-persist-canary"
 readonly credential_probe="${TEST_TMPDIR:-/tmp}/synthetic-never-persist-canary-${test_nonce}.json"
@@ -41,9 +46,9 @@ cleanup() {
 		return
 	chmod -R u+rwX "$protected_parent" "$hardware_parent" 2>/dev/null || true
 	rm -rf "$protected_parent" "$hardware_parent"
-	rm -rf "$fake_bin"
+	rm -rf "$fake_bin" "$adapter_runfiles" "$adapter_child"
 	rm -f "$candidate_output" "$hardware_candidate" "$test_output" "$test_stderr" \
-		"$detector_log" "$effect_log"
+		"$detector_log" "$effect_log" "$adapter_manifest" "$adapter_factory" "$adapter_log"
 }
 trap cleanup EXIT
 
@@ -207,6 +212,83 @@ for public_sink in "$candidate_output" "$test_output" "$test_stderr"; do
 	fi
 done
 
+mkdir -p \
+	"$adapter_runfiles/_main/tools/flash" \
+	"$adapter_runfiles/_main/tools/parity" \
+	"$adapter_runfiles/_main/scripts" \
+	"$adapter_child"
+chmod 700 "$adapter_runfiles" "$adapter_child"
+printf '{}\n' >"$adapter_manifest"
+printf 'factory\n' >"$adapter_factory"
+printf '%s\n' \
+	'#!/usr/bin/env bash' \
+	'set -euo pipefail' \
+	'printf "%s\n" "$*" >>"$PHASE36_TEST_EFFECT_LOG"' \
+	>"$adapter_runfiles/_main/tools/flash/flash"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 0' \
+	>"$adapter_runfiles/_main/tools/parity/report"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 0' \
+	>"$adapter_runfiles/_main/scripts/phase35_http_boundary_read"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 0' \
+	>"$adapter_runfiles/_main/scripts/phase17-websocket-capture.mjs"
+chmod 700 \
+	"$adapter_runfiles/_main/tools/flash/flash" \
+	"$adapter_runfiles/_main/tools/parity/report" \
+	"$adapter_runfiles/_main/scripts/phase35_http_boundary_read" \
+	"$adapter_runfiles/_main/scripts/phase17-websocket-capture.mjs"
+readonly adapter_digest="$(printf 'a%.0s' {1..64})"
+readonly adapter_common_args=(
+	board=205
+	port=/dev/private-device
+	attempt-child="$adapter_child"
+	package-identity-digest="$adapter_digest"
+	manifest-path="$adapter_manifest"
+	manifest-digest="$adapter_digest"
+	firmware-elf-path="$adapter_factory"
+	firmware-elf-digest="$adapter_digest"
+	executable-image-path="$adapter_factory"
+	executable-image-digest="$adapter_digest"
+	factory-image-path="$adapter_factory"
+	factory-image-digest="$adapter_digest"
+	capture-timeout-seconds=360
+	wall-clock-timeout-seconds=420
+)
+if ! RUNFILES_DIR="$adapter_runfiles" \
+	BUILD_WORKSPACE_DIRECTORY="$workspace_root" \
+	PHASE36_TEST_EFFECT_LOG="$adapter_log" \
+	"$deployed_effect_adapter" \
+	operation=exact-package-flash \
+	"${adapter_common_args[@]}" \
+	wifi-credentials=opaque; then
+	fail_test "deployed exact flash adapter rejected the supported fake boundary"
+fi
+if ! RUNFILES_DIR="$adapter_runfiles" \
+	BUILD_WORKSPACE_DIRECTORY="$workspace_root" \
+	PHASE36_TEST_EFFECT_LOG="$adapter_log" \
+	"$deployed_effect_adapter" \
+	operation=typed-recovery \
+	"${adapter_common_args[@]}"; then
+	fail_test "deployed typed recovery adapter rejected the supported fake boundary"
+fi
+[[ "$(wc -l <"$adapter_log" | tr -d ' ')" == 2 ]] ||
+	fail_test "deployed adapter did not invoke exactly two fake flash boundaries"
+readonly exact_flash_arguments="$(sed -n '1p' "$adapter_log")"
+readonly recovery_arguments="$(sed -n '2p' "$adapter_log")"
+for rendered_arguments in "$exact_flash_arguments" "$recovery_arguments"; do
+	rg -Fq -- '--redact-evidence' <<<"$rendered_arguments" ||
+		fail_test "deployed adapter omitted redacted evidence"
+	rg -Fq -- '--evidence-dir' <<<"$rendered_arguments" ||
+		fail_test "deployed adapter omitted its evidence directory"
+	if rg -Fq -- '--evidence-mode' <<<"$rendered_arguments"; then
+		fail_test "deployed adapter passed flash-monitor-only evidence mode to flash"
+	fi
+done
+rg -Fq -- '--wifi-credentials' <<<"$exact_flash_arguments" ||
+	fail_test "exact flash omitted the opaque credential input"
+if rg -Fq -- '--wifi-credentials' <<<"$recovery_arguments"; then
+	fail_test "typed recovery received a credential input"
+fi
+
 run_supervisor \
 	mode=preflight \
 	board=205 \
@@ -322,7 +404,7 @@ readonly incomplete_graph="$(
 		LC_ALL=C sort -n -k1,1 |
 		awk -F '\t' '{print $2 "@" $1}'
 )"
-readonly expected_graph=$'36-08@7\n36-07@8\n36-04@9'
+readonly expected_graph=$'36-07@8\n36-04@9'
 [[ "$incomplete_graph" == "$expected_graph" ]] ||
 	fail_test "incomplete Phase 36 graph is not the exact wave-ordered contract"
 for plan in "$plan_08" "$plan_07" "$plan_04"; do

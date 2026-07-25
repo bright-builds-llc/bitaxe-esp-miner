@@ -116,7 +116,6 @@ exact-package-flash | typed-recovery)
 		--port "$port"
 		--manifest "$manifest_path"
 		--image "$factory_image_path"
-		--evidence-mode dual
 		--redact-evidence
 		--evidence-dir "$attempt_child/${operation}"
 	)
