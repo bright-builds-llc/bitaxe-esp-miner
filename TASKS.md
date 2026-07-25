@@ -18,16 +18,20 @@ new work.
   reference submodule recursively.
 - [x] Add a contract regression for the workflow and submodule declaration.
 - [x] Run required Rust, focused Bazel, redaction, and full repository checks.
-- [ ] Commit, push, and verify the replacement GitHub Actions run.
+- [x] Commit, push, and verify the replacement GitHub Actions run.
 
 Verification: Rust format, clippy, build, and tests passed. The workflow
 contract and redaction tests passed without Bazel cache, all 74 tests that do
 not require a clean source tree passed, and parity, reference-cleanliness,
-redaction, shell formatting, ShellCheck, and diff checks passed.
+redaction, shell formatting, ShellCheck, and diff checks passed. GitHub Actions
+run `30179451307` passed on the real Ubuntu runner after recursively checking
+out the pinned reference submodule.
 
-Completion review: Pending. The failure occurred before the redaction
+Completion review: Complete. The failure occurred before the redaction
 validator because Bazel workspace status could not read reference Git metadata
-in the CI checkout.
+in the CI checkout. Recursive submodule checkout restored that prerequisite,
+the contract regression prevents silent removal, and the unchanged redaction
+validator passed in CI.
 
 ## Backlog
 
