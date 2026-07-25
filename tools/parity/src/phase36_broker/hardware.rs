@@ -5,9 +5,10 @@ use std::process::{Command, Output, Stdio};
 
 use thiserror::Error;
 
+use super::contract::Phase36RecoveryIdentity;
 use super::{
     Phase36AllowedOperation, Phase36BrokerFailure, Phase36LedgerError, Phase36LedgerRecord,
-    Phase36LedgerState, Phase36LedgerTransition,
+    Phase36LedgerState, Phase36LedgerTransition, Phase36RecoveryDisposition,
 };
 
 const DETECTOR_PROGRAM: &str = "just";
@@ -100,6 +101,7 @@ pub enum Phase36HardwareDisposition {
     SealedNonPromotion {
         first_failure: Phase36BrokerFailure,
         secondary_failure: Option<Phase36BrokerFailure>,
+        recovery_disposition: Phase36RecoveryDisposition,
     },
 }
 
@@ -111,8 +113,21 @@ pub enum Phase36HardwareTransactionError {
     Ledger(#[from] Phase36LedgerError),
     #[error("phase36_hardware_private_attempt_failed")]
     PrivateAttempt,
+    #[error("phase36_hardware_recovery_authority_invalid")]
+    InvalidRecoveryAuthority,
     #[error("phase36_hardware_seal_failed")]
     Seal,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum Phase36OperationResult {
+    Completed {
+        maybe_completed_device_effect: Option<Phase36RecoveryIdentity>,
+    },
+    Failed {
+        failure: Phase36BrokerFailure,
+        maybe_partial_device_effect: Option<Phase36RecoveryIdentity>,
+    },
 }
 
 pub(super) trait Phase36HardwareTransactionBoundary {
@@ -125,6 +140,39 @@ pub(super) trait Phase36HardwareTransactionBoundary {
         &mut self,
         operation: Phase36AllowedOperation,
     ) -> Result<(), Phase36HardwareTransactionError>;
+    fn recovery_identity(&self)
+        -> Result<Phase36RecoveryIdentity, Phase36HardwareTransactionError>;
+    fn execute_classified(
+        &mut self,
+        operation: Phase36AllowedOperation,
+    ) -> Result<Phase36OperationResult, Phase36HardwareTransactionError> {
+        let result = self.execute(operation);
+        match result {
+            Ok(()) => {
+                let maybe_completed_device_effect =
+                    if operation == Phase36AllowedOperation::ExactPackageFlash {
+                        Some(self.recovery_identity()?)
+                    } else {
+                        None
+                    };
+                Ok(Phase36OperationResult::Completed {
+                    maybe_completed_device_effect,
+                })
+            }
+            Err(Phase36HardwareTransactionError::EffectFailed(failure)) => {
+                let failure = if failure.valid_for(operation) {
+                    failure
+                } else {
+                    failure_for_operation(operation)
+                };
+                Ok(Phase36OperationResult::Failed {
+                    failure,
+                    maybe_partial_device_effect: None,
+                })
+            }
+            Err(error) => Err(error),
+        }
+    }
     fn seal(
         &mut self,
         disposition: Phase36HardwareDisposition,
@@ -169,7 +217,13 @@ fn execute_operation(
     state: &mut Phase36LedgerState,
     operation: Phase36AllowedOperation,
     monotonic_millis: &mut u64,
-) -> Result<Option<Phase36BrokerFailure>, Phase36HardwareTransactionError> {
+) -> Result<
+    (
+        Option<Phase36BrokerFailure>,
+        Option<Phase36RecoveryIdentity>,
+    ),
+    Phase36HardwareTransactionError,
+> {
     append_transition(
         boundary,
         state,
@@ -184,8 +238,10 @@ fn execute_operation(
         Phase36LedgerTransition::Invoked,
         monotonic_millis,
     )?;
-    let maybe_failure = match boundary.execute(operation) {
-        Ok(()) => {
+    let (maybe_failure, maybe_device_effect) = match boundary.execute_classified(operation)? {
+        Phase36OperationResult::Completed {
+            maybe_completed_device_effect,
+        } => {
             append_transition(
                 boundary,
                 state,
@@ -193,26 +249,30 @@ fn execute_operation(
                 Phase36LedgerTransition::Completed,
                 monotonic_millis,
             )?;
-            None
+            (None, maybe_completed_device_effect)
         }
-        Err(Phase36HardwareTransactionError::EffectFailed(failure)) => {
-            let normalized_failure = if failure.valid_for(operation) {
-                failure
-            } else {
-                failure_for_operation(operation)
-            };
+        Phase36OperationResult::Failed {
+            failure,
+            maybe_partial_device_effect,
+        } => {
+            if maybe_partial_device_effect.is_some() {
+                append_transition(
+                    boundary,
+                    state,
+                    operation,
+                    Phase36LedgerTransition::ConfirmedPartialDeviceEffect,
+                    monotonic_millis,
+                )?;
+            }
             append_transition(
                 boundary,
                 state,
                 operation,
-                Phase36LedgerTransition::Failed {
-                    category: normalized_failure,
-                },
+                Phase36LedgerTransition::Failed { category: failure },
                 monotonic_millis,
             )?;
-            Some(normalized_failure)
+            (Some(failure), maybe_partial_device_effect)
         }
-        Err(error) => return Err(error),
     };
     append_transition(
         boundary,
@@ -221,7 +281,7 @@ fn execute_operation(
         Phase36LedgerTransition::Closed,
         monotonic_millis,
     )?;
-    Ok(maybe_failure)
+    Ok((maybe_failure, maybe_device_effect))
 }
 
 pub(super) fn run_phase36_hardware_transaction_with(
@@ -233,10 +293,16 @@ pub(super) fn run_phase36_hardware_transaction_with(
     let mut monotonic_millis = interval_start_millis;
     let mut first_failure = None;
     let mut secondary_failure = None;
+    let mut maybe_recovery_identity = None;
+    let mut cleanup_attempted = false;
 
     for operation in Phase36AllowedOperation::SUCCESS_ORDER {
-        let maybe_failure =
+        cleanup_attempted |= operation == Phase36AllowedOperation::Cleanup;
+        let (maybe_failure, maybe_device_effect) =
             execute_operation(boundary, &mut state, operation, &mut monotonic_millis)?;
+        if maybe_device_effect.is_some() {
+            maybe_recovery_identity = maybe_device_effect;
+        }
         if let Some(failure) = maybe_failure {
             first_failure = Some(failure);
             break;
@@ -244,22 +310,39 @@ pub(super) fn run_phase36_hardware_transaction_with(
     }
 
     if first_failure.is_some() {
-        if let Some(failure) = execute_operation(
-            boundary,
-            &mut state,
-            Phase36AllowedOperation::TypedRecovery,
-            &mut monotonic_millis,
-        )? {
-            secondary_failure = Some(failure);
+        if state.recovery_required() {
+            let recovery_matches = match boundary.recovery_identity() {
+                Ok(current) => maybe_recovery_identity
+                    .as_ref()
+                    .is_some_and(|authorized| *authorized == current),
+                Err(Phase36HardwareTransactionError::InvalidRecoveryAuthority) => false,
+                Err(error) => return Err(error),
+            };
+            if recovery_matches {
+                let (maybe_failure, _) = execute_operation(
+                    boundary,
+                    &mut state,
+                    Phase36AllowedOperation::TypedRecovery,
+                    &mut monotonic_millis,
+                )?;
+                if let Some(failure) = maybe_failure {
+                    secondary_failure = Some(failure);
+                }
+            } else {
+                state.reject_recovery_authority()?;
+            }
         }
-        if let Some(failure) = execute_operation(
-            boundary,
-            &mut state,
-            Phase36AllowedOperation::Cleanup,
-            &mut monotonic_millis,
-        )? {
-            if secondary_failure.is_none() {
-                secondary_failure = Some(failure);
+        if !cleanup_attempted {
+            let (maybe_failure, _) = execute_operation(
+                boundary,
+                &mut state,
+                Phase36AllowedOperation::Cleanup,
+                &mut monotonic_millis,
+            )?;
+            if let Some(failure) = maybe_failure {
+                if secondary_failure.is_none() {
+                    secondary_failure = Some(failure);
+                }
             }
         }
     }
@@ -272,6 +355,7 @@ pub(super) fn run_phase36_hardware_transaction_with(
         Some(failure) => Phase36HardwareDisposition::SealedNonPromotion {
             first_failure: failure,
             secondary_failure: secondary_failure.or(interval.secondary_failure()),
+            recovery_disposition: interval.recovery_disposition(),
         },
     };
     boundary.seal(disposition)?;
@@ -282,6 +366,12 @@ pub(super) fn run_phase36_hardware_transaction_with(
 mod tests {
     use super::*;
     use crate::phase36_broker::Phase36AllowedOperation;
+
+    fn recovery_identity(seed: char) -> Phase36RecoveryIdentity {
+        let digest = std::iter::repeat_n(seed, 64).collect::<String>();
+        Phase36RecoveryIdentity::new(digest.clone(), digest)
+            .expect("fixture recovery identity should be valid")
+    }
 
     #[derive(Default)]
     struct FakeHardwareBoundary {
@@ -368,6 +458,11 @@ mod tests {
         events: Vec<&'static str>,
         detector_calls: usize,
         fail_operation: Option<Phase36AllowedOperation>,
+        secondary_fail_operation: Option<Phase36AllowedOperation>,
+        fail_category: Option<Phase36BrokerFailure>,
+        confirmed_partial_flash: bool,
+        mismatch_recovery_identity: bool,
+        recovery_calls: usize,
     }
 
     impl Phase36HardwareTransactionBoundary for FakeTransactionBoundary {
@@ -391,12 +486,62 @@ mod tests {
                 self.detector_calls += 1;
             }
             self.events.push(operation.event_name());
+            if operation == Phase36AllowedOperation::TypedRecovery {
+                self.recovery_calls += 1;
+            }
             if self.fail_operation == Some(operation) {
+                return Err(Phase36HardwareTransactionError::EffectFailed(
+                    self.fail_category
+                        .unwrap_or_else(|| failure_for_operation(operation)),
+                ));
+            }
+            if self.secondary_fail_operation == Some(operation) {
                 return Err(Phase36HardwareTransactionError::EffectFailed(
                     failure_for_operation(operation),
                 ));
             }
             Ok(())
+        }
+
+        fn recovery_identity(
+            &self,
+        ) -> Result<Phase36RecoveryIdentity, Phase36HardwareTransactionError> {
+            Ok(if self.mismatch_recovery_identity {
+                recovery_identity('b')
+            } else {
+                recovery_identity('a')
+            })
+        }
+
+        fn execute_classified(
+            &mut self,
+            operation: Phase36AllowedOperation,
+        ) -> Result<Phase36OperationResult, Phase36HardwareTransactionError> {
+            let result = self.execute(operation);
+            match result {
+                Ok(()) => Ok(Phase36OperationResult::Completed {
+                    maybe_completed_device_effect: if operation
+                        == Phase36AllowedOperation::ExactPackageFlash
+                    {
+                        Some(recovery_identity('a'))
+                    } else {
+                        None
+                    },
+                }),
+                Err(Phase36HardwareTransactionError::EffectFailed(failure)) => {
+                    Ok(Phase36OperationResult::Failed {
+                        failure,
+                        maybe_partial_device_effect: if self.confirmed_partial_flash
+                            && operation == Phase36AllowedOperation::ExactPackageFlash
+                        {
+                            Some(recovery_identity('a'))
+                        } else {
+                            None
+                        },
+                    })
+                }
+                Err(error) => Err(error),
+            }
         }
 
         fn seal(
@@ -456,10 +601,126 @@ mod tests {
     }
 
     #[test]
-    fn transaction_preserves_earliest_failure_then_recovers_cleans_and_seals_non_promotion() {
+    fn completed_flash_authorizes_one_recovery_for_each_later_capture_failure() {
+        // Arrange
+        let cases = [
+            Phase36AllowedOperation::PassiveSerialObservation,
+            Phase36AllowedOperation::ReadOnlySystemInfo,
+            Phase36AllowedOperation::ReadOnlyWebSocket,
+            Phase36AllowedOperation::ReadOnlyRetainedFacts,
+        ];
+
+        // Act and Assert
+        for operation in cases {
+            let mut boundary = FakeTransactionBoundary {
+                fail_operation: Some(operation),
+                ..FakeTransactionBoundary::default()
+            };
+            let result = run_phase36_hardware_transaction_with(&mut boundary, 1_000);
+
+            assert_eq!(
+                result,
+                Ok(Phase36HardwareDisposition::SealedNonPromotion {
+                    first_failure: Phase36BrokerFailure::CaptureFailed,
+                    secondary_failure: None,
+                    recovery_disposition: Phase36RecoveryDisposition::AttemptedSucceeded,
+                })
+            );
+            assert_eq!(boundary.detector_calls, 1);
+            assert_eq!(boundary.recovery_calls, 1);
+            assert_eq!(
+                boundary
+                    .events
+                    .iter()
+                    .filter(|event| **event == "cleanup")
+                    .count(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn transaction_never_recovers_after_pre_effect_failure() {
+        // Arrange
+        let cases = [
+            (
+                Phase36AllowedOperation::ExactPackageAdmission,
+                Phase36BrokerFailure::AdmissionFailed,
+                Phase36RecoveryDisposition::NotAuthorized,
+            ),
+            (
+                Phase36AllowedOperation::ExactPackageAdmission,
+                Phase36BrokerFailure::CapabilityFailed,
+                Phase36RecoveryDisposition::NotAuthorized,
+            ),
+            (
+                Phase36AllowedOperation::ExactPackageAdmission,
+                Phase36BrokerFailure::AuthenticationFailed,
+                Phase36RecoveryDisposition::NotAuthorized,
+            ),
+            (
+                Phase36AllowedOperation::Board205DetectorProbe,
+                Phase36BrokerFailure::DetectorFailed,
+                Phase36RecoveryDisposition::NotAuthorized,
+            ),
+            (
+                Phase36AllowedOperation::ExactPackageFlash,
+                Phase36BrokerFailure::InvocationConstructionFailed,
+                Phase36RecoveryDisposition::NotAuthorized,
+            ),
+            (
+                Phase36AllowedOperation::ExactPackageFlash,
+                Phase36BrokerFailure::ParserFailed,
+                Phase36RecoveryDisposition::NotAuthorized,
+            ),
+            (
+                Phase36AllowedOperation::ExactPackageFlash,
+                Phase36BrokerFailure::FlashFailed,
+                Phase36RecoveryDisposition::NotAuthorized,
+            ),
+            (
+                Phase36AllowedOperation::Cleanup,
+                Phase36BrokerFailure::CleanupFailed,
+                Phase36RecoveryDisposition::NotRequired,
+            ),
+        ];
+
+        // Act and Assert
+        for (operation, failure, recovery_disposition) in cases {
+            let mut boundary = FakeTransactionBoundary {
+                fail_operation: Some(operation),
+                fail_category: Some(failure),
+                ..FakeTransactionBoundary::default()
+            };
+            let result = run_phase36_hardware_transaction_with(&mut boundary, 1_000);
+
+            assert_eq!(
+                result,
+                Ok(Phase36HardwareDisposition::SealedNonPromotion {
+                    first_failure: failure,
+                    secondary_failure: None,
+                    recovery_disposition,
+                })
+            );
+            assert_eq!(boundary.recovery_calls, 0);
+            assert!(!boundary.events.contains(&"typed_recovery"));
+            assert_eq!(
+                boundary
+                    .events
+                    .iter()
+                    .filter(|event| **event == "cleanup")
+                    .count(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn confirmed_partial_flash_recovers_once_with_same_identity() {
         // Arrange
         let mut boundary = FakeTransactionBoundary {
-            fail_operation: Some(Phase36AllowedOperation::ReadOnlyWebSocket),
+            fail_operation: Some(Phase36AllowedOperation::ExactPackageFlash),
+            confirmed_partial_flash: true,
             ..FakeTransactionBoundary::default()
         };
 
@@ -470,25 +731,78 @@ mod tests {
         assert_eq!(
             result,
             Ok(Phase36HardwareDisposition::SealedNonPromotion {
-                first_failure: Phase36BrokerFailure::CaptureFailed,
+                first_failure: Phase36BrokerFailure::FlashFailed,
                 secondary_failure: None,
+                recovery_disposition: Phase36RecoveryDisposition::AttemptedSucceeded,
             })
         );
-        assert_eq!(boundary.detector_calls, 1);
+        assert_eq!(boundary.recovery_calls, 1);
+    }
+
+    #[test]
+    fn mismatched_recovery_identity_fails_closed_before_recovery_invocation() {
+        // Arrange
+        let mut boundary = FakeTransactionBoundary {
+            fail_operation: Some(Phase36AllowedOperation::ExactPackageFlash),
+            confirmed_partial_flash: true,
+            mismatch_recovery_identity: true,
+            ..FakeTransactionBoundary::default()
+        };
+
+        // Act
+        let result = run_phase36_hardware_transaction_with(&mut boundary, 1_000);
+
+        // Assert
         assert_eq!(
-            boundary.events,
-            [
-                "prepare_private_attempt",
-                "exact_package_admission",
-                "board_205_detector_probe",
-                "exact_package_flash",
-                "passive_serial_observation",
-                "read_only_system_info",
-                "read_only_web_socket",
-                "typed_recovery",
-                "cleanup",
-                "sealed_non_promotion",
-            ]
+            result,
+            Ok(Phase36HardwareDisposition::SealedNonPromotion {
+                first_failure: Phase36BrokerFailure::FlashFailed,
+                secondary_failure: None,
+                recovery_disposition: Phase36RecoveryDisposition::NotAuthorized,
+            })
+        );
+        assert_eq!(boundary.recovery_calls, 0);
+        assert!(!boundary.events.contains(&"typed_recovery"));
+        assert_eq!(
+            boundary
+                .events
+                .iter()
+                .filter(|event| **event == "cleanup")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn recovery_failure_remains_secondary_to_confirmed_partial_flash_failure() {
+        // Arrange
+        let mut boundary = FakeTransactionBoundary {
+            fail_operation: Some(Phase36AllowedOperation::ExactPackageFlash),
+            secondary_fail_operation: Some(Phase36AllowedOperation::TypedRecovery),
+            confirmed_partial_flash: true,
+            ..FakeTransactionBoundary::default()
+        };
+
+        // Act
+        let result = run_phase36_hardware_transaction_with(&mut boundary, 1_000);
+
+        // Assert
+        assert_eq!(
+            result,
+            Ok(Phase36HardwareDisposition::SealedNonPromotion {
+                first_failure: Phase36BrokerFailure::FlashFailed,
+                secondary_failure: Some(Phase36BrokerFailure::RecoveryFailed),
+                recovery_disposition: Phase36RecoveryDisposition::AttemptedFailed,
+            })
+        );
+        assert_eq!(boundary.recovery_calls, 1);
+        assert_eq!(
+            boundary
+                .events
+                .iter()
+                .filter(|event| **event == "cleanup")
+                .count(),
+            1
         );
     }
 }

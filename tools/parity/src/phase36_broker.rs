@@ -9,7 +9,7 @@ mod ledger;
 pub use contract::{
     Phase36AllowedOperation, Phase36BrokerCapability, Phase36BrokerFailure, Phase36CapabilityError,
     Phase36CapabilityGuard, Phase36CapabilityPresentation, Phase36CapabilityScope,
-    Phase36ValidatedCapability,
+    Phase36RecoveryDisposition, Phase36ValidatedCapability,
 };
 pub use hardware::{
     run_phase36_hardware_pre_capture_gate, Phase36HardwareDisposition, Phase36HardwareGateError,

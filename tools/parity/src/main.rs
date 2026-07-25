@@ -1035,8 +1035,9 @@ fn run_phase36_hardware_capture_command(args: &Phase36HardwareCaptureArgs) -> Re
         phase36_broker::Phase36HardwareDisposition::SealedNonPromotion {
             first_failure,
             secondary_failure,
+            recovery_disposition,
         } => Ok(format!(
-            "category=sealed_non_promotion\nfirst_failure={first_failure:?}\nsecondary_failure={secondary_failure:?}"
+            "category=sealed_non_promotion\nfirst_failure={first_failure:?}\nsecondary_failure={secondary_failure:?}\nrecovery_disposition={recovery_disposition:?}"
         )),
     }
 }

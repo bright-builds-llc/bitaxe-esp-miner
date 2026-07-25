@@ -27,13 +27,27 @@ impl Phase36AllowedOperation {
         Self::ReadOnlyRetainedFacts,
         Self::Cleanup,
     ];
+
+    pub(crate) const fn is_read_only_capture(self) -> bool {
+        matches!(
+            self,
+            Self::PassiveSerialObservation
+                | Self::ReadOnlySystemInfo
+                | Self::ReadOnlyWebSocket
+                | Self::ReadOnlyRetainedFacts
+        )
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Phase36BrokerFailure {
     AdmissionFailed,
+    CapabilityFailed,
+    AuthenticationFailed,
     DetectorFailed,
+    InvocationConstructionFailed,
+    ParserFailed,
     FlashFailed,
     CaptureFailed,
     RecoveryFailed,
@@ -48,8 +62,14 @@ impl Phase36BrokerFailure {
                 Self::AdmissionFailed,
                 Phase36AllowedOperation::ExactPackageAdmission
             ) | (
+                Self::CapabilityFailed | Self::AuthenticationFailed,
+                Phase36AllowedOperation::ExactPackageAdmission
+            ) | (
                 Self::DetectorFailed,
                 Phase36AllowedOperation::Board205DetectorProbe
+            ) | (
+                Self::InvocationConstructionFailed | Self::ParserFailed,
+                Phase36AllowedOperation::ExactPackageFlash
             ) | (
                 Self::FlashFailed,
                 Phase36AllowedOperation::ExactPackageFlash
@@ -62,6 +82,37 @@ impl Phase36BrokerFailure {
             ) | (Self::RecoveryFailed, Phase36AllowedOperation::TypedRecovery)
                 | (Self::CleanupFailed, Phase36AllowedOperation::Cleanup)
         )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Phase36RecoveryDisposition {
+    NotAuthorized,
+    NotRequired,
+    AttemptedSucceeded,
+    AttemptedFailed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Phase36RecoveryIdentity {
+    package_identity_digest: String,
+    factory_image_digest: String,
+}
+
+impl Phase36RecoveryIdentity {
+    pub(super) fn new(
+        package_identity_digest: String,
+        factory_image_digest: String,
+    ) -> Result<Self, Phase36CapabilityError> {
+        if !valid_digest(&package_identity_digest) || !valid_digest(&factory_image_digest) {
+            return Err(Phase36CapabilityError::InvalidDigest);
+        }
+        Ok(Self {
+            package_identity_digest,
+            factory_image_digest,
+        })
     }
 }
 

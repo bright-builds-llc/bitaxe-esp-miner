@@ -6,7 +6,9 @@ use camino::Utf8Path;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use super::contract::{sha256_hex, Phase36AllowedOperation, Phase36BrokerFailure};
+use super::contract::{
+    sha256_hex, Phase36AllowedOperation, Phase36BrokerFailure, Phase36RecoveryDisposition,
+};
 
 const ZERO_DIGEST: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 const MAX_INTERVAL_MILLIS: u64 = 3_600_000;
@@ -16,6 +18,7 @@ const MAX_INTERVAL_MILLIS: u64 = 3_600_000;
 pub enum Phase36LedgerTransition {
     Authorized,
     Invoked,
+    ConfirmedPartialDeviceEffect,
     Completed,
     Failed { category: Phase36BrokerFailure },
     Closed,
@@ -75,9 +78,12 @@ impl Phase36LedgerRecord {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum OperationStage {
     Authorized,
-    Invoked,
+    Invoked {
+        partial_device_effect_confirmed: bool,
+    },
     Terminal {
         maybe_failure: Option<Phase36BrokerFailure>,
+        partial_device_effect_confirmed: bool,
     },
 }
 
@@ -107,6 +113,8 @@ pub struct Phase36LedgerState {
     success_index: usize,
     flow: Flow,
     effect_count: u8,
+    completed_device_effect: bool,
+    recovery_disposition: Phase36RecoveryDisposition,
     first_failure: Option<Phase36BrokerFailure>,
     secondary_failure: Option<Phase36BrokerFailure>,
 }
@@ -126,6 +134,8 @@ impl Phase36LedgerState {
             success_index: 0,
             flow: Flow::Normal,
             effect_count: 0,
+            completed_device_effect: false,
+            recovery_disposition: Phase36RecoveryDisposition::NotRequired,
             first_failure: None,
             secondary_failure: None,
         })
@@ -181,6 +191,7 @@ impl Phase36LedgerState {
             interval_end_millis,
             &self.previous_digest,
             self.effect_count,
+            self.recovery_disposition,
             self.first_failure,
             self.secondary_failure,
         ))
@@ -190,6 +201,7 @@ impl Phase36LedgerState {
             end_millis: interval_end_millis,
             effect_count: self.effect_count,
             ledger_digest: sha256_hex(&seal_bytes),
+            recovery_disposition: self.recovery_disposition,
             first_failure: self.first_failure,
             secondary_failure: self.secondary_failure,
         })
@@ -217,13 +229,23 @@ impl Phase36LedgerState {
         }
         match (active.stage, transition) {
             (OperationStage::Authorized, Phase36LedgerTransition::Invoked)
-            | (OperationStage::Invoked, Phase36LedgerTransition::Completed)
             | (OperationStage::Terminal { .. }, Phase36LedgerTransition::Closed) => Ok(()),
-            (OperationStage::Invoked, Phase36LedgerTransition::Failed { category })
-                if category.valid_for(operation) =>
-            {
-                Ok(())
-            }
+            (
+                OperationStage::Invoked {
+                    partial_device_effect_confirmed: false,
+                },
+                Phase36LedgerTransition::ConfirmedPartialDeviceEffect,
+            ) if operation == Phase36AllowedOperation::ExactPackageFlash => Ok(()),
+            (
+                OperationStage::Invoked { .. },
+                Phase36LedgerTransition::Completed | Phase36LedgerTransition::Failed { .. },
+            ) => match transition {
+                Phase36LedgerTransition::Failed { category } if category.valid_for(operation) => {
+                    Ok(())
+                }
+                Phase36LedgerTransition::Completed => Ok(()),
+                _ => Err(Phase36LedgerError::OutOfOrder),
+            },
             _ => Err(Phase36LedgerError::OutOfOrder),
         }
     }
@@ -255,17 +277,41 @@ impl Phase36LedgerState {
                 self.next_effect_id += 1;
             }
             Phase36LedgerTransition::Invoked => {
-                self.active_mut()?.stage = OperationStage::Invoked;
+                self.active_mut()?.stage = OperationStage::Invoked {
+                    partial_device_effect_confirmed: false,
+                };
+            }
+            Phase36LedgerTransition::ConfirmedPartialDeviceEffect => {
+                self.active_mut()?.stage = OperationStage::Invoked {
+                    partial_device_effect_confirmed: true,
+                };
             }
             Phase36LedgerTransition::Completed => {
+                let partial_device_effect_confirmed = match self.active_mut()?.stage {
+                    OperationStage::Invoked {
+                        partial_device_effect_confirmed,
+                    } => partial_device_effect_confirmed,
+                    _ => return Err(Phase36LedgerError::OutOfOrder),
+                };
+                if self.active_mut()?.operation == Phase36AllowedOperation::ExactPackageFlash {
+                    self.completed_device_effect = true;
+                }
                 self.active_mut()?.stage = OperationStage::Terminal {
                     maybe_failure: None,
+                    partial_device_effect_confirmed,
                 };
             }
             Phase36LedgerTransition::Failed { category } => {
                 self.record_failure(category);
+                let partial_device_effect_confirmed = match self.active_mut()?.stage {
+                    OperationStage::Invoked {
+                        partial_device_effect_confirmed,
+                    } => partial_device_effect_confirmed,
+                    _ => return Err(Phase36LedgerError::OutOfOrder),
+                };
                 self.active_mut()?.stage = OperationStage::Terminal {
                     maybe_failure: Some(category),
+                    partial_device_effect_confirmed,
                 };
             }
             Phase36LedgerTransition::Closed => self.close_active()?,
@@ -279,7 +325,11 @@ impl Phase36LedgerState {
 
     fn close_active(&mut self) -> Result<(), Phase36LedgerError> {
         let active = self.active.take().ok_or(Phase36LedgerError::OutOfOrder)?;
-        let OperationStage::Terminal { maybe_failure } = active.stage else {
+        let OperationStage::Terminal {
+            maybe_failure,
+            partial_device_effect_confirmed,
+        } = active.stage
+        else {
             return Err(Phase36LedgerError::Unclosed);
         };
         if active.operation == Phase36AllowedOperation::Cleanup {
@@ -287,14 +337,25 @@ impl Phase36LedgerState {
             return Ok(());
         }
         if maybe_failure.is_some() {
-            self.flow = if active.operation == Phase36AllowedOperation::TypedRecovery {
-                Flow::CleanupRequired
+            if active.operation == Phase36AllowedOperation::TypedRecovery {
+                self.recovery_disposition = Phase36RecoveryDisposition::AttemptedFailed;
+                self.flow = Flow::CleanupRequired;
+                return Ok(());
+            }
+            let recovery_authorized = (active.operation
+                == Phase36AllowedOperation::ExactPackageFlash
+                && partial_device_effect_confirmed)
+                || (self.completed_device_effect && active.operation.is_read_only_capture());
+            if recovery_authorized {
+                self.flow = Flow::RecoveryRequired;
             } else {
-                Flow::RecoveryRequired
-            };
+                self.recovery_disposition = Phase36RecoveryDisposition::NotAuthorized;
+                self.flow = Flow::CleanupRequired;
+            }
             return Ok(());
         }
         if active.operation == Phase36AllowedOperation::TypedRecovery {
+            self.recovery_disposition = Phase36RecoveryDisposition::AttemptedSucceeded;
             self.flow = Flow::CleanupRequired;
             return Ok(());
         }
@@ -311,6 +372,19 @@ impl Phase36LedgerState {
             self.secondary_failure = Some(failure);
         }
     }
+
+    pub(super) const fn recovery_required(&self) -> bool {
+        matches!(self.flow, Flow::RecoveryRequired)
+    }
+
+    pub(super) fn reject_recovery_authority(&mut self) -> Result<(), Phase36LedgerError> {
+        if self.active.is_some() || self.flow != Flow::RecoveryRequired {
+            return Err(Phase36LedgerError::OutOfOrder);
+        }
+        self.recovery_disposition = Phase36RecoveryDisposition::NotAuthorized;
+        self.flow = Flow::CleanupRequired;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -319,6 +393,7 @@ pub struct Phase36EffectInterval {
     end_millis: u64,
     effect_count: u8,
     ledger_digest: String,
+    recovery_disposition: Phase36RecoveryDisposition,
     first_failure: Option<Phase36BrokerFailure>,
     secondary_failure: Option<Phase36BrokerFailure>,
 }
@@ -342,6 +417,11 @@ impl Phase36EffectInterval {
     #[must_use]
     pub fn ledger_digest(&self) -> &str {
         &self.ledger_digest
+    }
+
+    #[must_use]
+    pub const fn recovery_disposition(&self) -> Phase36RecoveryDisposition {
+        self.recovery_disposition
     }
 
     #[must_use]

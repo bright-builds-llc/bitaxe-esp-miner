@@ -380,11 +380,13 @@ fn phase36_broker_ledger_preserves_earliest_failure_through_cleanup() {
             }
             apply_successful_operation(&mut state, operation, &mut timestamp);
         }
-        apply_successful_operation(
-            &mut state,
-            Phase36AllowedOperation::TypedRecovery,
-            &mut timestamp,
-        );
+        if state.recovery_required() {
+            apply_successful_operation(
+                &mut state,
+                Phase36AllowedOperation::TypedRecovery,
+                &mut timestamp,
+            );
+        }
         for transition in [
             Phase36LedgerTransition::Authorized,
             Phase36LedgerTransition::Invoked,
@@ -412,6 +414,53 @@ fn phase36_broker_ledger_preserves_earliest_failure_through_cleanup() {
             Some(Phase36BrokerFailure::CleanupFailed)
         );
     }
+}
+
+#[test]
+fn phase36_broker_ledger_rejects_recovery_after_no_effect_failure() {
+    // Arrange
+    let mut state = Phase36LedgerState::start(1_000).expect("fixture interval should start");
+    let mut timestamp = 1_000;
+    for transition in [
+        Phase36LedgerTransition::Authorized,
+        Phase36LedgerTransition::Invoked,
+        Phase36LedgerTransition::Failed {
+            category: Phase36BrokerFailure::AdmissionFailed,
+        },
+        Phase36LedgerTransition::Closed,
+    ] {
+        timestamp += 1;
+        let record = Phase36LedgerRecord::next(
+            &state,
+            Phase36AllowedOperation::ExactPackageAdmission,
+            transition,
+            timestamp,
+        )
+        .expect("failed admission record should construct");
+        state
+            .apply(&record)
+            .expect("failed admission record should apply");
+    }
+
+    // Act
+    let result = Phase36LedgerRecord::next(
+        &state,
+        Phase36AllowedOperation::TypedRecovery,
+        Phase36LedgerTransition::Authorized,
+        timestamp + 1,
+    );
+
+    apply_successful_operation(&mut state, Phase36AllowedOperation::Cleanup, &mut timestamp);
+    let interval = state
+        .seal(timestamp + 1)
+        .expect("no-effect failure should seal after cleanup");
+
+    // Assert
+    assert_eq!(result, Err(Phase36LedgerError::OutOfOrder));
+    assert_eq!(
+        interval.recovery_disposition(),
+        Phase36RecoveryDisposition::NotAuthorized
+    );
 }
 
 #[test]

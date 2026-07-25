@@ -8,12 +8,14 @@ use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+use super::contract::Phase36RecoveryIdentity;
 use super::hardware::{
     run_detector_process, run_phase36_hardware_transaction_with, Phase36HardwareDisposition,
     Phase36HardwareTransactionBoundary, Phase36HardwareTransactionError,
 };
 use super::{
-    Phase36AllowedOperation, Phase36BrokerFailure, Phase36LedgerRecord, PrivateAppendOnlyLedger,
+    Phase36AllowedOperation, Phase36BrokerFailure, Phase36LedgerRecord, Phase36RecoveryDisposition,
+    PrivateAppendOnlyLedger,
 };
 use crate::phase36_evidence::capture::{
     replace_broker_document, write_candidate_from_private_file, BrokerCaptureDocument,
@@ -64,6 +66,7 @@ struct AttemptSeal<'a> {
     status: &'a str,
     first_failure: Option<Phase36BrokerFailure>,
     secondary_failure: Option<Phase36BrokerFailure>,
+    recovery_disposition: Phase36RecoveryDisposition,
     capability_digest: &'a str,
     package_identity_digest: &'a str,
     candidate_digest: Option<&'a str>,
@@ -348,15 +351,22 @@ impl ProcessTransactionBoundary {
         disposition: Phase36HardwareDisposition,
     ) -> Result<(), Phase36HardwareTransactionError> {
         self.interval_end_millis = current_millis()?.max(self.interval_start_millis + 1);
-        let (status, first_failure, secondary_failure) = match disposition {
-            Phase36HardwareDisposition::SealedEligible => ("sealed_eligible", None, None),
+        let (status, first_failure, secondary_failure, recovery_disposition) = match disposition {
+            Phase36HardwareDisposition::SealedEligible => (
+                "sealed_eligible",
+                None,
+                None,
+                Phase36RecoveryDisposition::NotRequired,
+            ),
             Phase36HardwareDisposition::SealedNonPromotion {
                 first_failure,
                 secondary_failure,
+                recovery_disposition,
             } => (
                 "sealed_non_promotion",
                 Some(first_failure),
                 secondary_failure,
+                recovery_disposition,
             ),
         };
         let mut maybe_candidate_digest = None;
@@ -385,6 +395,7 @@ impl ProcessTransactionBoundary {
             status,
             first_failure,
             secondary_failure,
+            recovery_disposition,
             capability_digest: &self.handle.capability_digest,
             package_identity_digest: &self.handle.package_identity_digest,
             candidate_digest: maybe_candidate_digest.as_deref(),
@@ -433,6 +444,16 @@ impl Phase36HardwareTransactionBoundary for ProcessTransactionBoundary {
             Phase36AllowedOperation::Board205DetectorProbe => self.run_detector(),
             _ => self.run_effect(operation),
         }
+    }
+
+    fn recovery_identity(
+        &self,
+    ) -> Result<Phase36RecoveryIdentity, Phase36HardwareTransactionError> {
+        Phase36RecoveryIdentity::new(
+            self.handle.package_identity_digest.clone(),
+            self.handle.factory_image_digest.clone(),
+        )
+        .map_err(|_| Phase36HardwareTransactionError::InvalidRecoveryAuthority)
     }
 
     fn seal(
