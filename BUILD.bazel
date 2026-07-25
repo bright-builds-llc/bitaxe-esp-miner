@@ -6,6 +6,8 @@ package(default_visibility = ["//visibility:public"])
 exports_files([
     ".git/HEAD",
     ".git/logs/HEAD",
+    ".github/workflows/evidence-redaction.yml",
+    ".gitmodules",
     ".planning/milestones/v1.1-REQUIREMENTS.md",
     ".planning/milestones/v1.1-phases/28.1.1-bm1366-nonce-production-wire-parity/28.1.1-VERIFICATION.md",
     ".planning/milestones/v1.1-phases/28.1-live-mining-blocker-fix-h4-w13-orchestration-parity-discrimi/28.1-VALIDATION.md",

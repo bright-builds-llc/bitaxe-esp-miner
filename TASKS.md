@@ -10,7 +10,24 @@ new work.
 
 ## Active
 
-No task is currently in progress.
+### task-ci-reference-submodule-checkout | 2026-07-25 18:23 | Repair evidence-redaction CI checkout
+
+- [x] Reproduce the failed GitHub Actions boundary and identify the earliest
+  typed failure.
+- [x] Configure the evidence-redaction workflow to check out the pinned
+  reference submodule recursively.
+- [x] Add a contract regression for the workflow and submodule declaration.
+- [x] Run required Rust, focused Bazel, redaction, and full repository checks.
+- [ ] Commit, push, and verify the replacement GitHub Actions run.
+
+Verification: Rust format, clippy, build, and tests passed. The workflow
+contract and redaction tests passed without Bazel cache, all 74 tests that do
+not require a clean source tree passed, and parity, reference-cleanliness,
+redaction, shell formatting, ShellCheck, and diff checks passed.
+
+Completion review: Pending. The failure occurred before the redaction
+validator because Bazel workspace status could not read reference Git metadata
+in the CI checkout.
 
 ## Backlog
 

@@ -831,6 +831,17 @@ sh_test(
 )
 
 sh_test(
+    name = "evidence_redaction_workflow_contract_test",
+    srcs = ["evidence-redaction-workflow-contract-test.sh"],
+    data = [
+        "//:.github/workflows/evidence-redaction.yml",
+        "//:.gitmodules",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
+sh_test(
     name = "phase33_confirmed_settings_durability_test",
     srcs = ["phase33-confirmed-settings-durability-test.sh"],
     data = [
