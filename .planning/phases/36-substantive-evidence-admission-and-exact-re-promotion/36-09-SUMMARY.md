@@ -72,6 +72,7 @@ completed: 2026-07-25
 
 1. **Task 1: Make confirmed device effect the sole recovery authority** - `50771a20` (fix)
 2. **Task 2: Prove the real parser and deployed process boundary cannot recover before device effect** - `716b1b1e` (fix)
+3. **Task 2 verification correction: Assert the tagged ledger transition schema** - `802403ec` (fix)
 
 ## Files Created/Modified
 
@@ -105,6 +106,14 @@ completed: 2026-07-25
 - **Fix:** Bound the exact graph to the presence of the Plan 36-09 summary, requiring Waves 8-11 before completion and Waves 9-11 afterward while checking every incomplete plan’s gap-closure marker.
 - **Files modified:** `scripts/phase36-substantive-evidence-test.sh`
 - **Commit:** `716b1b1e`
+
+**2. [Rule 1 - Bug] Corrected deployed ledger transition assertions**
+
+- **Found during:** Task 2 final no-cache deployed verification
+- **Issue:** The shell regression compared the tagged transition object to a bare `"invoked"` string, falsely reporting that parser cleanup had not run.
+- **Fix:** Count recovery and cleanup invocations through `.transition.status`, matching the serialized typed ledger schema.
+- **Files modified:** `scripts/phase36-substantive-evidence-test.sh`
+- **Commit:** `802403ec`
 
 ## Issues Encountered
 
@@ -148,6 +157,6 @@ None. Synthetic process doubles are deliberate test boundaries and do not substi
 ## Self-Check: PASSED
 
 - This summary exists with exactly one opening and one closing YAML frontmatter delimiter.
-- Task commits `50771a20` and `716b1b1e` exist in Git history.
+- Task commits `50771a20`, `716b1b1e`, and `802403ec` exist in Git history.
 - All listed source and test files exist.
 - No hardware, detector, credential, private-evidence, network, or device command ran.
