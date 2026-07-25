@@ -5,7 +5,7 @@ source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-phase_dir=".planning/phases/28.1.1.1-bm1366-upstream-golden-comparator-and-nonce-production-gap-r"
+phase_dir=".planning/milestones/v1.1-phases/28.1.1.1-bm1366-upstream-golden-comparator-and-nonce-production-gap-r"
 port=""
 wifi_credentials=""
 duration_seconds="360"

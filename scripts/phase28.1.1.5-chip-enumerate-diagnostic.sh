@@ -9,7 +9,7 @@ source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-phase_dir=".planning/phases/28.1.1.5-bm1366-match-upstream-chip-enumerate-before-init-nonce-produ"
+phase_dir=".planning/milestones/v1.1-phases/28.1.1.5-bm1366-match-upstream-chip-enumerate-before-init-nonce-produ"
 source_work_root="scratch/phase28.1.1.1-source-work"
 # Forced single A/B (D-12 / RESEARCH PRIMARY): count_asic_chips_rx_loop_parity.
 # Not counted_chip_address_interval / enumerate_to_mining_ready_gap unless Wave 0 rename.

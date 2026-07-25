@@ -12,6 +12,7 @@ fi
 readonly workspace_root
 readonly policy_file="${workspace_root}/docs/hardware/hardware-attempt-policy.md"
 readonly agents_file="${workspace_root}/AGENTS.md"
+readonly tasks_file="${workspace_root}/TASKS.md"
 
 fail() {
 	printf 'hardware_attempt_policy_contract_test_error: category=%s\n' "$1" >&2
@@ -89,6 +90,7 @@ require_agents_guidance_literal() {
 
 require_file "$policy_file"
 require_file "$agents_file"
+require_file "$tasks_file"
 
 while IFS= read -r outcome; do
 	[[ "$(count_literal "$policy_file" "$outcome")" -eq 1 ]] || fail outcome-vocabulary
@@ -111,7 +113,12 @@ require_policy_literal 'category plus the minimum shareable discriminator fields
 require_policy_literal 'A repeated coarse category with a newly' boundary-signature
 require_policy_literal 'renamed category or discriminator that describes unchanged conditions is not a' boundary-signature
 require_policy_literal 'raw identifiers, secrets, paths,' boundary-signature
-require_policy_literal "The active phase's genuine hardware success and evidence criteria are all satisfied." genuine-completion
+require_policy_literal "The active task's genuine hardware success and evidence criteria are all satisfied." genuine-completion
+require_literal "$tasks_file" '## Effectful Hardware Task Gate' task-gate
+require_literal "$tasks_file" 'the exact permitted repo-owned command and objective' task-gate
+require_literal "$tasks_file" 'recovery, restoration, and cleanup procedures' task-gate
+require_literal "$tasks_file" 'retry bounds, including the unchanged-boundary stop rule' task-gate
+require_literal "$tasks_file" 'accepted terminal categories and stop conditions' task-gate
 
 while IFS= read -r invariant; do
 	require_policy_literal "$invariant" fresh-attempt-invariant
@@ -142,7 +149,7 @@ objective evidence that the failed boundary changed
 PROGRESS
 
 while IFS= read -r command_requirement; do
-	require_policy_literal "$command_requirement" phase-command-ownership
+	require_policy_literal "$command_requirement" task-command-ownership
 done <<'COMMAND_REQUIREMENTS'
 detector admission and target identity
 exact allowed effects and prohibited effects
@@ -165,7 +172,7 @@ CLOSED_BOUNDARIES
 while IFS= read -r fault_requirement; do
 	require_policy_literal "$fault_requirement" fault-testing
 done <<'FAULT_REQUIREMENTS'
-both the active plan and the
+both the active task contract
 repo-owned command encode repo- and vendor-safe limits
 automatic abort
 recovery, and required evidence

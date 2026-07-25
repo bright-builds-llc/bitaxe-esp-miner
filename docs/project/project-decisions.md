@@ -1,6 +1,10 @@
 # Project Decisions
 
-This index summarizes accepted decisions for the GSD New Project handoff. ADRs remain the source of rationale.
+> Historical bootstrap index. ADRs remain authoritative, but GSD workflow
+> guidance in this file is archived. Current work is tracked only in
+> `TASKS.md`.
+
+This index summarizes accepted decisions from the original project handoff.
 
 | ID | Decision | Outcome |
 | --- | --- | --- |
@@ -29,7 +33,8 @@ This index summarizes accepted decisions for the GSD New Project handoff. ADRs r
 - Gamma 601 BM1370 remains in scope but deferred until after Ultra 205 evidence-backed parity.
 - Other upstream-supported boards stay in scope, but they are not verified until evidence exists.
 - The upstream submodule is an input and audit target, not a workspace for project changes.
-- GSD should create requirements and roadmap phases from the parity surfaces in `docs/parity/checklist.md`.
+- Historical planning derived requirements and roadmap phases from the parity
+  surfaces in `docs/parity/checklist.md`; future work uses `TASKS.md`.
 - Firmware release artifacts need provenance and license review before they are published.
 
 ## ADR Links

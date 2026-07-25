@@ -1,6 +1,10 @@
 # GSD New Project Brief: Bitaxe Rust Firmware
 
-Pass this document to GSD New Project as the idea document:
+> Archived bootstrap artifact. This file records the repository's original GSD
+> handoff and must not be used as a current command source. Use `TASKS.md` for
+> current work and `AGENTS.md` for current repository instructions.
+
+The historical bootstrap command was:
 
 ```bash
 $gsd-new-project --auto @docs/project/gsd-new-project-brief.md
@@ -226,9 +230,10 @@ See `PROVENANCE.md`.
 - Claiming all board configs are hardware-verified before evidence exists.
 - Treating a feature as verified without recorded evidence.
 
-## GSD Configuration Recommendations
+## Archived GSD Configuration Recommendations
 
-When `$gsd-new-project --auto` asks configuration questions, use these defaults unless there is a reason to override:
+These were the defaults used during the original bootstrap. Do not apply them
+to current repository work:
 
 - Granularity: Coarse.
 - Execution: Parallel.

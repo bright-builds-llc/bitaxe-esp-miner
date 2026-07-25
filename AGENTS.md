@@ -33,8 +33,6 @@ Use this routing map when deciding what to load next:
 
 <!-- bright-builds-rules-managed:end -->
 
-<!-- GSD:project-start source:PROJECT.md -->
-
 ## Project
 
 **Bitaxe Rust Firmware**
@@ -55,10 +53,6 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 - **Architecture**: Prefer functional core and imperative shell - pure logic belongs in testable crates, while ESP-IDF, FreeRTOS, Wi-Fi, NVS, SPIFFS, OTA, serial, GPIO, I2C, ADC, power, display, and task orchestration stay in firmware adapters.
 - **Licensing**: Keep original work MIT-first where legally possible, but mark intentionally ported GPL-covered source expression as GPL-3.0-compatible and review distributed firmware artifacts before release.
 - **Safety**: Hardware-control surfaces such as voltage, fan, thermal, power, and ASIC initialization require hardware evidence before verified parity.
-
-<!-- GSD:project-end -->
-
-<!-- GSD:stack-start source:research/STACK.md -->
 
 ## Technology Stack
 
@@ -151,7 +145,7 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 
 ### Primary Sources
 
-- Local project decisions: `.planning/PROJECT.md`, `docs/project/gsd-new-project-brief.md`, `docs/project/seed-layout.md`, `PROVENANCE.md`.
+- Local project decisions: `TASKS.md`, `docs/project/project-decisions.md`, `docs/project/seed-layout.md`, `PROVENANCE.md`, and archived milestone context under `.planning/milestones/`.
 - Bright Builds local rules: `AGENTS.md`, `AGENTS.bright-builds.md`, `standards/core/architecture.md`, `standards/core/verification.md`, `standards/core/testing.md`, `standards/languages/rust.md`.
 - ESP-IDF versions and support policy: https://docs.espressif.com/projects/esp-idf/en/stable/esp32/versions.html
 - ESP-IDF releases: https://github.com/espressif/esp-idf/releases
@@ -215,47 +209,27 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 | Test strategy | MEDIUM-HIGH | Pure/fixture/hardware layering is strongly aligned with local Bright Builds rules and parity policy; exact HIL harness can be refined after first boot. |
 | Ultra 205 target triple | MEDIUM | Project docs point to Ultra 205 BM1366; the current safe-state firmware target is `xtensa-esp32s3-espidf`. |
 
-<!-- GSD:stack-end -->
-
-<!-- GSD:conventions-start source:CONVENTIONS.md -->
-
 ## Conventions
 
 Conventions not yet established. Will populate as patterns emerge during development.
-
-<!-- GSD:conventions-end -->
-
-<!-- GSD:architecture-start source:ARCHITECTURE.md -->
 
 ## Architecture
 
 Architecture not yet mapped. Follow existing patterns found in the codebase.
 
-<!-- GSD:architecture-end -->
+## Task Workflow
 
-<!-- GSD:skills-start source:skills/ -->
-
-## Project Skills
-
-No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skills/`, `.cursor/skills/`, or `.github/skills/` with a `SKILL.md` index file.
-
-<!-- GSD:skills-end -->
-
-<!-- GSD:workflow-start source:GSD defaults -->
-
-## GSD Workflow Enforcement
-
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
-
-Use these entry points:
-
-- `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd-debug` for investigation and bug fixing
-- `/gsd-execute-phase` for planned phase work
-
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
-
-<!-- GSD:workflow-end -->
+- `TASKS.md` is the sole active work tracker. Start ordinary scoped work from
+  an existing task block or add one stable timestamped block before beginning
+  non-trivial repository changes.
+- Update only the active task's block. Record checkable implementation and
+  verification items, then add a concise completion review and residual risks.
+- GSD is sunset for this repository. Do not run GSD commands or create active
+  GSD plans, phases, state, quick tasks, or debug sessions.
+- `.planning/` is archive-only. Its historical commands, paths, status fields,
+  and instructions are context rather than execution authority.
+- `.codex/tasks/lessons.md` and `.codex/tasks/lesson-audits.md` remain the
+  active durable-learning inputs; they are not task trackers.
 
 ## Repo-Local Guidance
 
@@ -274,12 +248,12 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 - Prefer ESP-IDF and esp-rs tooling when it satisfies firmware build, package, flash, monitor, partition, image-generation, OTA, SPIFFS, NVS, FreeRTOS, and logging needs. Use `esp-idf-sys`/`embuild`, `espup`, `ldproxy`, and `espflash` before custom CMake, PlatformIO, or manually managed ESP-IDF installs.
 - Treat `.embuild/` as local, gitignored, generated ESP-IDF/esp-rs tool state. Do not commit or hand-edit it, but repo automation may use managed tools from `.embuild/espressif`, including `spiffsgen.py`, `gen_esp32part.py`, and `esptool.py`, when the pinned ESP-IDF workflow has generated them.
 - Prefer `espflash` where it suffices for flashing, monitoring, and ELF/app image generation. When `espflash` cannot cover an ESP-supported workflow such as arbitrary address/data-partition image merging, use managed `.embuild` ESP-IDF tools such as `esptool.py merge_bin` before adding custom binary manipulation.
-- If ESP-IDF/esp-rs tooling is insufficient for a concrete workflow, document the reason in repo-local guidance, an ADR, or the relevant phase artifact before adding an alternate tool path.
+- If ESP-IDF/esp-rs tooling is insufficient for a concrete workflow, document the reason in repo-local guidance, an ADR, or the relevant `TASKS.md` task before adding an alternate tool path.
 - Use `just doctor` for read-only contributor dependency checks and `just bootstrap-esp` for the explicit opt-in ESP tooling installer. `just doctor` intentionally calls a script directly because it must diagnose missing Bazel or ESP prerequisites before Bazel can run.
 
 ### Autonomous Ultra 205 Hardware Verification
 
-- The user grants standing permission for agents to autonomously interact with a connected Bitaxe Ultra 205 over USB for current phase verification.
+- The user grants standing permission for agents to autonomously interact with a connected Bitaxe Ultra 205 over USB for current task verification.
 - Before autonomous hardware use, run `just detect-ultra205`. Treat detection as successful only when it finds exactly one likely ESP USB serial port and `espflash board-info --chip esp32s3 --port <port> --non-interactive` succeeds.
 - If detection succeeds, use the printed `port=<path>` with repo commands such as `just flash-monitor board=205 port=<path> evidence-dir=<path>` and record the detector output in evidence.
 - If detection succeeds and the ignored local file `wifi-credentials.json` exists, agents may pass `wifi-credentials=wifi-credentials.json` to repo-owned `just flash` or `just flash-monitor` commands for developer bring-up. Do not read, print, summarize, or commit the credential file contents.
@@ -288,15 +262,15 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 - Local developer hardware evidence may keep USB-observed SSIDs, IP addresses, MAC addresses, and `device_url` values to make bring-up and UAT practical. Evidence intended for commit or sharing must be produced with `redact-evidence=true` or otherwise redacted before promotion.
 - When a repo-owned test or verification command needs `DEVICE_URL`, agents may derive it from fresh monitor output only when the same current verification session has already passed `just detect-ultra205`, the monitor output came from the corresponding repo-owned `just flash-monitor` or `just monitor` run, exactly one origin-only `http://...` or `https://...` candidate is present, and the value is used only as a local runtime input. Do not infer `DEVICE_URL` from mDNS, ARP, router state, scans, stale logs, or unrelated prior evidence. Do not use the value when zero, multiple, redacted, malformed, or stale candidates are found. Never commit raw `DEVICE_URL`, IPs, endpoints, MACs, Wi-Fi values, pool credentials, workers, passwords, tokens, or NVS secret values in evidence.
 - Stop and ask or record hardware evidence pending when there are zero likely ports, multiple likely ports, `board-info` fails, the target is not board `205`, or required recovery/evidence instructions are missing.
-- Phase-gated destructive or fault-injection verification is allowed only when the active phase plan documents the recovery path and required evidence. Do not run ad hoc erase, rollback, interrupted-update, voltage/fan/mining stress, or raw write commands outside documented phase-gated procedures.
+- Task-gated destructive or fault-injection verification is allowed only when an active `TASKS.md` block records the exact command, evidence policy, recovery path, retry bounds, and accepted stop conditions. Do not run ad hoc erase, rollback, interrupted-update, voltage/fan/mining stress, or raw write commands outside that contract.
 - Every hardware run must record board `205`, selected port, source commit, reference commit, package manifest/artifacts when applicable, exact commands, `board-info` output, captured logs, observed behavior, and conclusion. Do not commit secrets, pool credentials, Wi-Fi credentials, private endpoints, or NVS secret values in evidence.
 
 ### Direct UART And Pin-Manipulation Authorization
 
-- Default all hardware work to the device's provided barrel-power and USB connectors under the existing detector, phase, safety, and evidence gates. Standing USB permission does not authorize any other electrical interface.
+- Default all hardware work to the device's provided barrel-power and USB connectors under the existing detector, task, safety, and evidence gates. Standing USB permission does not authorize any other electrical interface.
 - Do not assume, recommend, request, instruct, or perform direct external UART attachment or physical electrical manipulation of pins, pads, headers, GPIO, test points, solder joints, probes, jumpers, or injected signals.
 - A direct UART or pin-manipulation path may be considered only when the user explicitly requests that specific path, or when a permanent blocker has been documented after non-invasive USB, firmware, host-tool, and software-observability paths are exhausted. Either case still requires fresh explicit user authorization before giving physical connection instructions or touching hardware.
-- The existing external-UART reader, commands, lifecycle, tests, and documentation are dormant software. Preserve them for history and possible future authorization, but do not invoke, surface, resume, or treat them as the next GSD action without satisfying the authorization rule above.
+- The existing external-UART reader, commands, lifecycle, tests, and documentation are dormant software. Preserve them for history and possible future authorization, but do not invoke, surface, resume, or treat them as the next task action without satisfying the authorization rule above.
 
 ### Archived Phase 28.1.1 Terminal Closure
 
@@ -304,16 +278,16 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 - Do not discuss, plan, execute, verify, resume, diagnose, or run hardware/capture work for that lineage. This prohibition includes direct UART and any pin, pad, header, GPIO, test-point, probe, jumper, solder, or injected-signal path.
 - Phase 30 is the only allowed continuation. It must use a conservative no-promotion disposition unless explicitly supplied new eligible evidence independently satisfies the existing evidence gates.
 - The lineage's `gaps_found` verifications, pending STR-09/CFG-07/ASIC-11 requirements, and exact non-claims are authoritative. Administrative closure is not verification.
-- GSD versions/configurations that do not resolve active-milestone archives may report W006 for these eight phases. Treat such warnings as an expected archive exception; do not silence them by recreating active directories or marking verification passed.
-- The currently installed GSD has a split archive lookup contract: canonical `find-phase 28.1.1*` returns `found: false`, and `init phase-op 28.1.1*` reports `phase_found: true` with `phase_dir: null`, because those command paths ignore milestone archives. `verify lifecycle` does resolve `.planning/milestones/v1.1-phases/` and must pass for all eight archived lifecycle IDs. This is an expected installed-GSD exception, not permission to patch global GSD core, recreate active directories, promote verification, or run explicit lineage operations; Phase 30 remains the sole continuation.
+- Do not recreate active planning directories, change archived verification to
+  `passed`, or use planning-tool lookup behavior to reopen this lineage.
 
 ### Flash And Monitor Timeouts
 
 Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and post-flash runtime evidence routinely exceed short monitor defaults. Agents and repo-owned wrappers must budget accordingly:
 
-1. **Minimum capture timeout:** use at least **6 minutes (360 seconds)** for `just flash`, `just flash-monitor`, `just monitor`, and equivalent `bazel run //tools/flash` invocations when flashing or reflashing real hardware, unless a phase plan or deterministic test fixture documents a shorter bound explicitly.
+1. **Minimum capture timeout:** use at least **6 minutes (360 seconds)** for `just flash`, `just flash-monitor`, `just monitor`, and equivalent `bazel run //tools/flash` invocations when flashing or reflashing real hardware, unless the active task contract or a deterministic test fixture documents a shorter bound explicitly.
 2. **Explicit override required:** `tools/flash` defaults to a 25-second monitor capture, which is insufficient for hardware evidence. Always pass `capture-timeout-seconds=360` (or higher) on `flash-monitor` / `monitor` commands for Ultra 205 bring-up and evidence capture.
-3. **Phase evidence wrappers:** when `--duration-seconds` governs post-flash monitor capture (`phase25-evidence`, `phase27-evidence`, and similar), use **≥ 360** for hardware mode unless the phase plan documents a shorter deterministic test bound.
+3. **Evidence wrappers:** when `--duration-seconds` governs post-flash monitor capture (`phase25-evidence`, `phase27-evidence`, and similar), use **≥ 360** for hardware mode unless the active task contract documents a shorter deterministic test bound.
 4. **Agent/shell wall clock:** command and tool timeouts must exceed the flash plus monitor budget; prefer **≥ 420 seconds** wall clock when using a 360-second capture timeout.
 5. **Do not treat early exit as failure** until the full timeout elapses unless the repo-owned flash tool reports a hard error (flash/write failure, missing trusted boot markers after complete capture, and similar).
 
@@ -339,45 +313,31 @@ Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and po
 - Use pinned espflash only for detector, bootloader, flash, checksum, and explicit post-flash reset stages. Use the receive-only OS-native adapter for authoritative runtime serial observation.
 - Request normal application effects over HTTP and prove them from typed postconditions. For reboot, require the same physical USB device, changed boot session, software-reset category, exact build identity, next boot ordinal, and requested persisted state.
 - Treat serial bytes, sampled service loss, node stability, and re-enumeration as independent observations. Do not assume that one file descriptor, device-node name, enumeration epoch, or sampled outage survives or proves a reset.
-- Reacquire only the already admitted physical device under a bounded phase-owned lifecycle. Never convert re-acquisition into mDNS, ARP, router-state, or network discovery.
+- Reacquire only the already admitted physical device under a bounded task-owned lifecycle. Never convert re-acquisition into mDNS, ARP, router-state, or network discovery.
 - Send a restart request once. If its response is ambiguous, observe the bounded postcondition; never issue an automatic second restart.
 
 ### Evidence Workflow: Hardware-First Default
 
-Agents executing phase evidence wrappers (`phase23-evidence`, `phase25-evidence`, `phase27-evidence`, and future `phase*-evidence` scripts with `blocked|hardware` modes) must:
+Agents executing evidence wrappers (`phase23-evidence`, `phase25-evidence`, `phase27-evidence`, and similar scripts with `blocked|hardware` modes) must:
 
-1. **Always attempt hardware path first** when the phase scope includes detector-gated Ultra 205 evidence:
+1. **Always attempt hardware path first** when an active hardware task includes detector-gated Ultra 205 evidence:
    - Run `just detect-ultra205` before any flash/monitor/evidence work.
    - If detection passes **and** required local credential files exist, run `--mode hardware` (not `--mode blocked`).
 2. **Use blocked mode only as fallback** when:
    - Detection fails (zero/ambiguous ports, board-info failure),
    - Required credentials are absent,
    - User explicitly requests CI-safe/static workflow proof, or
-   - Phase plan explicitly requires blocked mode for deterministic Bazel tests only.
+   - The active task contract explicitly requires blocked mode for deterministic Bazel tests only.
 3. **Never skip detection** and jump to blocked mode when a board may be connected (standing permission in Autonomous Ultra 205 section applies).
-4. **Build phase-correct firmware** before flash when compile-time evidence mode gates exist (Phase 21/25/27 pattern); default `just build` is fail-closed. Use `scripts/phase27-live-hardware-bridge-package.sh` or equivalent `action_env` for Phase 27 enablement.
+4. **Build task-correct firmware** before flash when compile-time evidence mode gates exist (the historical Phase 21/25/27 pattern); default `just build` is fail-closed. Use the task-named repo-owned package command or explicit `action_env` required by that workflow.
 5. **Promotion:** hardware artifacts intended for commit must pass redaction review (`redact-evidence=true` or equivalent) before updating `docs/parity/evidence/`.
-
-### Agent-Performed Simple UAT
-
-- When starting or resuming `$gsd-verify-work`, agents may complete simple UAT checkpoints without waiting for the user only when the expected behavior is objectively verifiable from repo artifacts or non-destructive commands.
-- Treat simple objective UAT as static inspection, committed evidence review, redaction checks, lifecycle checks, parity/reference checks, Bazel/Cargo/Just checks, and other deterministic repo-local verification.
-- For auto-passed UAT checkpoints, record `result: pass`, `verified_by: agent`, and an `evidence:` line citing exact commands, artifact paths, or concise observations.
-- Stop at the first checkpoint that needs human judgment, subjective product review, secret access, external accounts, raw unredacted endpoint review, destructive or fault-injection flows, unsafe hardware action, missing prerequisites, ambiguous interpretation, or unstated target discovery. Leave that checkpoint pending or blocked and report what user input or prerequisite is needed.
-- This rule does not expand Autonomous Ultra 205 permissions. Hardware UAT still must follow the detector gate, evidence requirements, redaction rules, and phase-gated destructive/fault-injection limits above.
-
-### Frontmatter-Parsed Markdown
-
-- In GSD artifacts and other Markdown files parsed with YAML frontmatter, use standalone `---` only for the opening and closing frontmatter delimiters at the top of the file.
-- Do not use standalone `---` as a body separator after frontmatter; the GSD parser scans all such blocks and may treat the last pair as frontmatter, breaking lifecycle validation. Use headings or `***` for body breaks instead.
-- Markdown table separator rows such as `| --- | --- |` are valid and are not affected by this rule.
 
 ### Protected Evidence Root Ownership
 
 - A caller of a protected evidence workflow must create one mode-0700 protected parent and prove the intended supervisor-owned child does not exist immediately before launch.
 - The caller must create wrapper stdout and stderr as separate mode-0600 sibling files under the protected parent. Never redirect wrapper output into the intended child or otherwise pre-create that child.
 - The supervisor must reject any existing requested child before package admission, detector discovery, credential access, or effects.
-- Phase 35 may not make another hardware attempt at the same ambiguous HTTP boundary until a separate scoped plan implements and software-verifies redacted pre-mutation instrumentation that distinguishes the unresolved boundaries. This guardrail does not authorize that instrumentation or any hardware action.
+- The archived Phase 35 workflow may not make another hardware attempt at the same ambiguous HTTP boundary until a separate active task implements and software-verifies redacted pre-mutation instrumentation that distinguishes the unresolved boundaries. This guardrail does not authorize that instrumentation or any hardware action.
 
 ### Repository-Wide Evidence Privacy
 
@@ -391,4 +351,4 @@ Agents executing phase evidence wrappers (`phase23-evidence`, `phase25-evidence`
 - Follow `docs/hardware/hardware-attempt-policy.md` for every current or future hardware attempt. The closed outcomes are `continue_after_verified_fix`, `continue_after_manual_remediation`, `complete`, `stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`, and `stop_impossible_contract`.
 - There is no fixed attempt cap and no unchanged blind retry. Continuation requires verified repository progress or authorized non-invasive remediation with objective boundary-change proof; one recurrence of the same redacted authoritative boundary signature after its targeted verified fix selects the repeated-boundary stop, while a newly discriminating signature requires its own regression-backed fix.
 - Every continuation uses a fresh ordinal, exact-current-HEAD package/preflight, a mode-0700 parent, a nonexistent supervisor-owned child, distinct mode-0600 sibling logs, an immutable root, earliest-failure precedence, and one repo-owned command invocation.
-- Detection, effects, safety, recovery, evidence, tests, direct-UART/pin authority, archived Phase 28.1.1 closure, Phase 30 non-promotion, and evidence privacy remain phase-gated and unchanged.
+- Detection, effects, safety, recovery, evidence, tests, direct-UART/pin authority, archived Phase 28.1.1 closure, Phase 30 non-promotion, and evidence privacy remain task-gated and unchanged.

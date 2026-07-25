@@ -8,7 +8,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 port="/dev/cu.usbmodem1101"
-evidence_dir=".planning/phases/28.1.1-bm1366-nonce-production-wire-parity/hardware-runs/wire-parity-run-04"
+evidence_dir=".planning/milestones/v1.1-phases/28.1.1-bm1366-nonce-production-wire-parity/hardware-runs/wire-parity-run-04"
 capture_timeout="360"
 wifi_credentials="wifi-credentials.json"
 pool_credentials="pool-credentials.json"

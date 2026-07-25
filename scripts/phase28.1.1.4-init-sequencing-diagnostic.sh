@@ -7,7 +7,7 @@ source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-phase_dir=".planning/phases/28.1.1.4-bm1366-asic-init-content-sequencing-nonce-production-diagnos"
+phase_dir=".planning/milestones/v1.1-phases/28.1.1.4-bm1366-asic-init-content-sequencing-nonce-production-diagnos"
 source_work_root="scratch/phase28.1.1.1-source-work"
 # Forced single A/B (D-10 / D-12): ticket-mask ASIC family difficulty 256.
 # Not post_max_baud_delay_2000, not match_upstream_register_read_poll,

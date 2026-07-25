@@ -2,6 +2,7 @@
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+active_phase_root="$repo_root/.planning/""phases"
 expected="Phase 28.1.1 and descendants are closed — Won't Do (unresolved); Phase 30 is the only allowed continuation."
 scripts=(
 	phase28.1.1-accepted-state-diagnostic.sh
@@ -39,8 +40,8 @@ for command_name in bazel cargo curl espflash git node perl python3 reset; do
 done
 
 active_before=""
-if [[ -d $repo_root/.planning/phases ]]; then
-	active_before=$(find "$repo_root/.planning/phases" -maxdepth 1 -type d -name '28.1.1*' -print | sort)
+if [[ -d $active_phase_root ]]; then
+	active_before=$(find "$active_phase_root" -maxdepth 1 -type d -name '28.1.1*' -print | sort)
 fi
 
 assert_closed() {
@@ -78,8 +79,8 @@ assert_closed "just diagnose-ultra205-late-attach" "$just_bin" --justfile "$repo
 assert_closed "just diagnose-ultra205-uart-capture" "$just_bin" --justfile "$repo_root/Justfile" --working-directory "$repo_root" diagnose-ultra205-uart-capture --help
 
 active_after=""
-if [[ -d $repo_root/.planning/phases ]]; then
-	active_after=$(find "$repo_root/.planning/phases" -maxdepth 1 -type d -name '28.1.1*' -print | sort)
+if [[ -d $active_phase_root ]]; then
+	active_after=$(find "$active_phase_root" -maxdepth 1 -type d -name '28.1.1*' -print | sort)
 fi
 if [[ $active_after != "$active_before" ]]; then
 	printf 'active Phase 28.1.1 directory state changed\n' >&2

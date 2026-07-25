@@ -1,3 +1,9 @@
+# Legacy Task History
+
+Archived on 2026-07-25. This file preserves the former task ledger and is not
+an active work tracker. The two still-valid open work groups were curated into
+the repository-root `TASKS.md`; unchecked boxes here do not authorize work.
+
 ## task-plan12-contract-repair | 2026-07-11 01:00 | Repair exact-head attempt authority
 
 - [x] Extend the closed state authority for exact Plan 13 checkpoints, effect results, and lifecycle ownership.

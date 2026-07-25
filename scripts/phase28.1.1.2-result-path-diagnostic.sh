@@ -5,7 +5,7 @@ source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-phase_dir=".planning/phases/28.1.1.2-bm1366-result-path-and-asic-side-effect-nonce-production-dia"
+phase_dir=".planning/milestones/v1.1-phases/28.1.1.2-bm1366-result-path-and-asic-side-effect-nonce-production-dia"
 source_work_root="scratch/phase28.1.1.1-source-work"
 # Forced first A/B (D-07 / RESEARCH): not post_max_baud_delay_2000, not job-byte patches.
 forced_ab_label="match_upstream_register_read_poll"

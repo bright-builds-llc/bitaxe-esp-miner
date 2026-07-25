@@ -3,7 +3,7 @@
 //! Reference breadcrumbs:
 //! - `reference/esp-miner/main/http_server/http_server.c`
 //! - `reference/esp-miner/main/screen.c`
-//! - `.planning/phases/05-axeos-api-logs-and-telemetry/05-UI-SPEC.md`
+//! - `.planning/milestones/v1.0-phases/05-axeos-api-logs-and-telemetry/05-UI-SPEC.md`
 
 use bitaxe_stratum::v1::state::{MiningActivityStatus, MiningRuntimeState, WorkSubmissionGate};
 use serde_json::{json, Value};

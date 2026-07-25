@@ -5,7 +5,7 @@ source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-phase_dir=".planning/phases/28.1.1.3-bm1366-result-rx-acquisition-model-nonce-production-diagnosi"
+phase_dir=".planning/milestones/v1.1-phases/28.1.1.3-bm1366-result-rx-acquisition-model-nonce-production-diagnosi"
 source_work_root="scratch/phase28.1.1.1-source-work"
 # Forced first A/B (D-09 / RESEARCH): upstream-like long-block receive via RESULT_WORK_TIMEOUT_MS.
 # Not match_upstream_register_read_poll, not post_max_baud_delay_2000.

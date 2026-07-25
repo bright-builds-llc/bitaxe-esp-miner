@@ -10,7 +10,7 @@ source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-phase_dir=".planning/phases/28.1.1.7-bm1366-pool-negotiated-asic-mask-reload-nonce-production-dia"
+phase_dir=".planning/milestones/v1.1-phases/28.1.1.7-bm1366-pool-negotiated-asic-mask-reload-nonce-production-dia"
 source_work_root="scratch/phase28.1.1.1-source-work"
 # Forced single A/B (D-12 / RESEARCH PRIMARY): pool_negotiated_mask_asic_reload.
 forced_ab_label="pool_negotiated_mask_asic_reload"

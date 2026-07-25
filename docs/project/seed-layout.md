@@ -1,6 +1,12 @@
 # Seed Monorepo Layout
 
-This is the expected initial shape for the Rust firmware monorepo. GSD may refine names during planning, but changes should preserve the ownership boundaries.
+> Historical bootstrap artifact. The layout remains useful context, but its
+> planning guidance is archived. Use `TASKS.md` and the current tree for future
+> work.
+
+This was the expected initial shape for the Rust firmware monorepo. Changes
+should continue to preserve the ownership boundaries where they remain
+applicable.
 
 ```text
 /

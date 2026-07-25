@@ -823,6 +823,7 @@ sh_test(
     srcs = ["hardware-attempt-policy-contract-test.sh"],
     data = [
         "//:AGENTS.md",
+        "//:TASKS.md",
         "//:docs/hardware/hardware-attempt-policy.md",
     ],
     env_inherit = ["PATH"],

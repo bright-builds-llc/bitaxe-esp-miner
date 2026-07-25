@@ -9,7 +9,7 @@ source "${BASH_SOURCE[0]%/*}/phase28.1.1-terminal-closure-guard.sh"
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-phase_dir=".planning/phases/28.1.1.6-bm1366-version-rolling-negotiation-nonce-production-diagnosi"
+phase_dir=".planning/milestones/v1.1-phases/28.1.1.6-bm1366-version-rolling-negotiation-nonce-production-diagnosi"
 source_work_root="scratch/phase28.1.1.1-source-work"
 # Forced single A/B (D-11 / RESEARCH PRIMARY): negotiated_version_mask_work_field_parity.
 forced_ab_label="negotiated_version_mask_work_field_parity"

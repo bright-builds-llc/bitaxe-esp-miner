@@ -1,8 +1,8 @@
 # Progress-Gated Hardware Attempt Policy
 
 This policy governs every current and future repository hardware attempt. An
-active phase plan and a repo-owned command must narrow these rules for the
-specific device and objective; neither may weaken them.
+active `TASKS.md` hardware task and a repo-owned command must narrow these
+rules for the specific device and objective; neither may weaken them.
 
 ## Closed outcomes
 
@@ -13,21 +13,21 @@ continuation decision:
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `continue_after_verified_fix`       | A diagnosed repository defect received one targeted fix, the real failing boundary has a regression, every required software gate passes, and a fresh preflight binds the new exact HEAD and package identity. |
 | `continue_after_manual_remediation` | An authorized non-invasive remediation has objective evidence that the failed boundary changed.                                                                                                                |
-| `complete`                          | The active phase's genuine hardware success and evidence criteria are all satisfied.                                                                                                                           |
+| `complete`                          | The active task's genuine hardware success and evidence criteria are all satisfied.                                                                                                                            |
 | `stop_repeated_boundary`            | The same authoritative boundary signature recurred once after its targeted fix was verified at the real boundary.                                                                                             |
 | `stop_hardware_blocker`             | An unresolved hardware or physical-environment boundary prevents truthful progress.                                                                                                                            |
-| `stop_authority_boundary`           | The next action exceeds the user's, repository's, or active phase's authority.                                                                                                                                 |
+| `stop_authority_boundary`           | The next action exceeds the user's, repository's, or active task's authority.                                                                                                                                  |
 | `stop_impossible_contract`          | The required evidence contract cannot be satisfied without contradiction or weakened truth.                                                                                                                    |
 
 There is no fixed numeric attempt cap. There is also no unchanged blind retry:
 an attempt may continue only after verified repository progress or an authorized
 manual remediation with objective proof that the failed boundary changed. A
 repeated post-fix boundary signature stops immediately. Completion is reserved for
-real phase success; unresolved hardware, authority, and impossible-contract
+real task success; unresolved hardware, authority, and impossible-contract
 outcomes must remain explicit instead of being relabeled or weakened.
 
 An authoritative boundary signature is a closed, redacted tuple declared by
-the active phase and produced by its typed diagnostic. It includes the terminal
+the active task and produced by its typed diagnostic. It includes the terminal
 category plus the minimum shareable discriminator fields needed to distinguish
 where that category arose. It never includes raw identifiers, secrets, paths,
 unbounded values, or free-form errors. A repeated coarse category with a newly
@@ -40,7 +40,7 @@ new signature and cannot evade the repeated-boundary stop.
 
 Every continuation is a new attempt and must satisfy all of these invariants:
 
-- Use a fresh ordinal and run the full phase-gated repo-owned hardware
+- Use a fresh ordinal and run the full task-gated repo-owned hardware
   command exactly once.
 - Pass all required software gates and a preflight against exact current `HEAD`.
   Freeze and revalidate the exact package identity before detector, credential,
@@ -67,14 +67,15 @@ Tests at a mocked or in-process substitute do not replace a required
 operating-system, runfiles, transport, or device boundary.
 
 A manual-remediation continuation is limited to an action already authorized by
-the active plan and repository guidance. It must be non-invasive and must yield
+the active task contract and repository guidance. It must be non-invasive and must yield
 objective evidence that the failed boundary changed. Repeating an instruction,
 waiting without a measured transition, or retrying the same inputs is not
 progress.
 
-## Phase and command ownership
+## Task and command ownership
 
-The active phase plan and the invoked repo-owned command must both encode:
+The active `TASKS.md` hardware task and the invoked repo-owned command must both
+encode:
 
 - detector admission and target identity;
 - the exact allowed effects and prohibited effects;
@@ -83,8 +84,8 @@ The active phase plan and the invoked repo-owned command must both encode:
 - private capture, redaction, evidence admission, and non-promotion rules; and
 - deterministic software regressions plus required hardware verification.
 
-Agent-selected fault testing is allowed only when both the active plan and the
-repo-owned command encode repo- and vendor-safe limits, automatic abort,
+Agent-selected fault testing is allowed only when both the active task contract
+and the repo-owned command encode repo- and vendor-safe limits, automatic abort,
 recovery, and required evidence. Electrical overstress is prohibited.
 
 ## Unchanged authority and evidence boundaries

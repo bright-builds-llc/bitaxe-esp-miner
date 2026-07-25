@@ -2,7 +2,7 @@
 //!
 //! Reference breadcrumbs:
 //! - `reference/esp-miner/main/http_server/http_server.c`
-//! - `.planning/phases/07-ota-filesystem-and-release-packaging/07-CONTEXT.md`
+//! - `.planning/milestones/v1.0-phases/07-ota-filesystem-and-release-packaging/07-CONTEXT.md`
 
 use crate::route_shell::{
     plan_http_access, unsupported_update_response, HttpAccessDecision, PublicHttpResponse,

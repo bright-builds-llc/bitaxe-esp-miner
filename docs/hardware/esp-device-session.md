@@ -10,7 +10,7 @@ policies.
 
 | Responsibility                       | Required backend                                             | Prohibited substitution                                 |
 | ------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------- |
-| Detect and bind the target           | Phase-owned detector plus pinned espflash                    | Stale node names or unrelated prior evidence            |
+| Detect and bind the target           | Task-gated repo-owned detector plus pinned espflash          | Stale node names or unrelated prior evidence            |
 | Probe or write flash                 | `espflash 4.5.0` with the phase's explicit reset flags       | Application HTTP or ad hoc raw writes                   |
 | Observe running firmware             | Receive-only OS-native reader                                | `espflash monitor` as an authoritative runtime observer |
 | Request a normal application restart | Existing HTTP restart route                                  | DTR/RTS, bootloader reset, or a repeated POST           |
