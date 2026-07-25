@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Ultra 205 Operator-Ready Runtime
 status: executing
-stopped_at: Completed 36-08-PLAN.md with sealed_non_promotion; Plan 36-07 blocked
-last_updated: "2026-07-25T05:35:28.371Z"
+stopped_at: Planned 36-09 and 36-10 recovery closure; 6 of 10 Phase 36 plans complete
+last_updated: "2026-07-25T18:58:04.998Z"
 last_activity: "2026-07-25"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 32
+  total_plans: 34
   completed_plans: 30
-  percent: 94
+  percent: 88
 ---
 
 # Project State
@@ -21,11 +21,11 @@ Last activity: 2026-07-25
 ## Current Position
 
 Phase: 36 (substantive-evidence-admission-and-exact-re-promotion) — EXECUTING
-Plan: 6 of 8
+Plan: 6 of 10
 
 - **Phase:** 36 of 36 (substantive evidence admission and exact re-promotion)
-- **Plan:** 6 of 8
-- **Status:** Blocked after sealed non-promotion
+- **Plan:** 6 of 10
+- **Status:** Ready to execute
 - **Checkpoint:** Code review and security audit passed at
   `f1cb6101f2c384acaffe0b8523097433ff0f04cc`; independent verification scored
   9/13 must-haves and retained the phase in executing status.
@@ -33,9 +33,10 @@ Plan: 6 of 8
 - **Requirements:** SYS-02, EVD-11, EVD-12, and EVD-14 remain blocked. EVD-15
   is satisfied by the exact preserve/demote result and explicit non-claims.
 
-- **Next step:** Plan 36-07 remains blocked because Plan 36-08 produced no
-  eligible candidate. Plan 36-04 cannot perform its independent review and
-  canonical reconciliation until the exact predecessor handoff exists.
+- **Next step:** Execute gap-only Plan 36-09 to harden recovery authority in
+  software. Plan 36-10 owns the separately authorized fresh broker attempt only
+  after that clean committed gate; Plan 36-07 remains offline and blocked
+  without an eligible Plan 36-10 candidate.
 
 ## Project Reference
 
@@ -592,15 +593,16 @@ See `.planning/PROJECT.md` (updated 2026-07-14). Core value remains observable d
 - The authoritative successor still lacks eligible sensor/snapshot/runtime-health,
   runtime-identity, and independent-effect observations.
 
-- Phase 36 Plan 08 sealed non-promotional after the single bounded hardware
-  attempt. Plan 36-07 remains blocked without an eligible candidate, and device
-  restoration remains unresolved after the bounded restoration attempt failed.
+- Phase 36 Plan 08 remains sealed non-promotional and device restoration
+  remains unresolved. Plan 36-09 owns recovery-authority hardening, and Plan
+  36-10 owns the separately planned fresh attempt; Plan 36-07 remains blocked
+  without its eligible candidate.
 
 ## Session
 
-- **Stopped at:** Completed 36-08-PLAN.md with sealed_non_promotion; Plan 36-07 blocked
-  6 of 8 Phase 36 plans are complete.
+- **Stopped at:** Planned 36-09 and 36-10 recovery closure; 6 of 10 Phase 36
+  plans are complete.
 
-- **Resume:** Phase 36 cannot advance through Plan 36-07 or Plan 36-04 because
-  Plan 36-08 created no eligible candidate. Do not retry hardware or substitute
-  an alternate recovery path without a separately authorized plan.
+- **Resume:** Run `/gsd-execute-phase 36 --gaps-only`; Plan 36-09 is next.
+  Plan 36-10 must wait for its clean committed handoff, and Plans 36-07/36-04
+  must wait for their exact predecessors.
