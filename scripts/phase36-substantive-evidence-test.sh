@@ -509,12 +509,15 @@ run_closed_effect_case mismatch invocation_construction_failed not_authorized 0
 	fail_test "confirmed partial flash did not use exactly one same-image recovery"
 [[ "$(rg -c '^completed_then_capture typed_recovery ' "$broker_flash_log")" == 1 ]] ||
 	fail_test "completed flash did not use exactly one same-image recovery"
-[[ "$(rg -c '^parser typed_recovery ' "$broker_flash_log" || true)" == 0 ]] ||
+if rg -q '^parser typed_recovery ' "$broker_flash_log"; then
 	fail_test "real parser rejection reached recovery"
-[[ "$(rg -c '^forged typed_recovery ' "$broker_flash_log" || true)" == 0 ]] ||
+fi
+if rg -q '^forged typed_recovery ' "$broker_flash_log"; then
 	fail_test "forged stdout reached recovery"
-[[ "$(rg -c '^mismatch typed_recovery ' "$broker_flash_log" || true)" == 0 ]] ||
+fi
+if rg -q '^mismatch typed_recovery ' "$broker_flash_log"; then
 	fail_test "mismatched closed result reached recovery"
+fi
 
 readonly direct_effect_pattern='espflash|flash-monitor|serial-session|device-session|curl[[:space:]]|phase17-websocket|phase35-correlated'
 if rg -q -i "$direct_effect_pattern" "$supervisor_source"; then
