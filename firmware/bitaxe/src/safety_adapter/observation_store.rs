@@ -26,6 +26,9 @@ pub(crate) fn replace_observations_from_producer(observations: TelemetryObservat
     };
 
     store.replace(observations);
+    let _ = crate::production_mining_session::notify(
+        bitaxe_stratum::v1::production_session::ProductionSessionWakeup::ObservationsChanged,
+    );
 }
 
 #[cfg(test)]

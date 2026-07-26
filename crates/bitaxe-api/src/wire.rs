@@ -74,6 +74,10 @@ pub struct SystemInfoWire {
     pub fan_rpm_status: ObservationTruthWire,
     #[serde(rename = "miningPaused")]
     pub mining_paused: bool,
+    #[serde(rename = "miningActivity")]
+    pub mining_activity: String,
+    #[serde(rename = "startMiningOnBoot")]
+    pub start_mining_on_boot: bool,
     #[serde(rename = "apEnabled")]
     pub ap_enabled: u8,
     #[serde(rename = "autofanspeed")]
@@ -225,6 +229,8 @@ impl SystemInfoWire {
             fan2_rpm: safe_telemetry.fan2_rpm,
             fan_rpm_status: safe_telemetry.fan_rpm_status,
             mining_paused: mining_state.mining_paused,
+            mining_activity: mining_state.mining_activity,
+            start_mining_on_boot: snapshot.project_settings.start_mining_on_boot,
             ap_enabled: numeric_bool(platform.ap_enabled),
             auto_fan_speed: numeric_bool(config.auto_fan_speed),
             show_new_block: snapshot.block_found.show_new_block,
@@ -447,7 +453,9 @@ mod tests {
         assert!(value.get("hashRate_1m").is_some());
         assert!(value.get("fanspeed").is_some());
         assert!(value.get("fanrpm").is_some());
-        assert_eq!(value.get("miningPaused"), Some(&Value::Bool(true)));
+        assert_eq!(value.get("miningPaused"), Some(&Value::Bool(false)));
+        assert_eq!(value.get("startMiningOnBoot"), Some(&Value::Bool(true)));
+        assert_eq!(value.get("miningActivity"), Some(&json!("safe_blocked")));
         assert_eq!(value.get("apEnabled"), Some(&json!(0)));
         assert_eq!(value.get("autofanspeed"), Some(&json!(1)));
         assert_eq!(value.get("showNewBlock"), Some(&Value::Bool(false)));
@@ -762,7 +770,8 @@ mod tests {
         // Assert
         assert!(value["apEnabled"].is_number());
         assert!(value["autofanspeed"].is_number());
-        assert_eq!(value["miningPaused"], Value::Bool(true));
+        assert_eq!(value["miningPaused"], Value::Bool(false));
+        assert_eq!(value["startMiningOnBoot"], Value::Bool(true));
         assert_eq!(value["showNewBlock"], Value::Bool(false));
     }
 

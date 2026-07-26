@@ -9,6 +9,7 @@ pub enum PoolLifecycleStatus {
     Active,
     Reconnecting,
     FallbackActive,
+    RecoveryPaused,
     Error,
 }
 
@@ -23,6 +24,12 @@ pub enum MiningActivityStatus {
     Paused,
     Active,
     SafeBlocked,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MiningOperatorIntent {
+    Run,
+    Paused,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -71,6 +78,7 @@ pub struct MiningRuntimeState {
     pub fallback_active: bool,
     pub work_submission: WorkSubmissionGate,
     pub hashrate_inputs: HashrateInputs,
+    pub operator_intent: MiningOperatorIntent,
     pub mining_activity: MiningActivityStatus,
     pub maybe_blocked_reason: Option<&'static str>,
 }
@@ -84,7 +92,8 @@ impl Default for MiningRuntimeState {
             fallback_active: false,
             work_submission: WorkSubmissionGate::Blocked,
             hashrate_inputs: HashrateInputs::default(),
-            mining_activity: MiningActivityStatus::Paused,
+            operator_intent: MiningOperatorIntent::Run,
+            mining_activity: MiningActivityStatus::SafeBlocked,
             maybe_blocked_reason: None,
         }
     }
@@ -129,6 +138,10 @@ impl MiningRuntimeState {
 
     pub fn set_mining_activity(&mut self, activity: MiningActivityStatus) {
         self.mining_activity = activity;
+    }
+
+    pub fn set_operator_intent(&mut self, intent: MiningOperatorIntent) {
+        self.operator_intent = intent;
     }
 
     pub fn block_work_submission(&mut self, reason: &'static str) {

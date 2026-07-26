@@ -38,10 +38,11 @@ pub use build_identity::{
     BUILD_PROVENANCE_SCHEMA_VERSION, FULL_COMMIT_BYTES, SHORT_COMMIT_BYTES,
 };
 pub use commands::{
-    apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
-    block_found_dismiss_plan, identify_plan, pause_mining_plan, restart_plan, resume_mining_plan,
-    BlockFoundDismissEffect, BlockFoundNotificationState, CommandEffect, CommandPlan, IdentifyMode,
-    IdentifyModeEffect, IdentifyModeState, MiningActivityEffect, IDENTIFY_DURATION_MS,
+    apply_block_found_dismiss_effect, apply_identify_mode_effect,
+    apply_mining_operator_intent_effect, block_found_dismiss_plan, identify_plan,
+    pause_mining_plan, restart_plan, resume_mining_plan, BlockFoundDismissEffect,
+    BlockFoundNotificationState, CommandEffect, CommandPlan, IdentifyMode, IdentifyModeEffect,
+    IdentifyModeState, MiningOperatorIntentEffect, IDENTIFY_DURATION_MS,
 };
 pub use deferred_effect::{
     spawn_deferred_effect_worker, DeferredEffectLease, DeferredEffectQueue,
@@ -94,8 +95,8 @@ pub use settings::{
     SettingsPersistenceSuccess, SettingsPersistenceTransaction, SettingsPublicResponse,
 };
 pub use snapshot::{
-    ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, SafeTelemetrySnapshot,
-    SafetyTelemetryReport, SafetyTelemetryStatus,
+    ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, ProjectSettingsSnapshot,
+    SafeTelemetrySnapshot, SafetyTelemetryReport, SafetyTelemetryStatus,
 };
 pub use static_plan::{
     resolve_static_request, FilesystemAvailability, RecoveryFallback, RecoverySource,
@@ -152,6 +153,7 @@ mod tests {
         // Assert
         assert_eq!(wire.asic_model, "BM1366");
         assert_eq!(wire.frequency, 485.0);
-        assert!(wire.mining_paused);
+        assert!(!wire.mining_paused);
+        assert!(wire.start_mining_on_boot);
     }
 }

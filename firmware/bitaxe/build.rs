@@ -7,7 +7,6 @@ fn main() {
     assert_console_contract();
     println!("cargo:rerun-if-env-changed=BITAXE_BUILD_PROVENANCE_STAMP");
     println!("cargo:rerun-if-env-changed=BITAXE_BUILD_TIMESTAMP_UTC_FILE");
-    println!("cargo:rerun-if-env-changed=BITAXE_MINING_EVIDENCE_MODE");
     println!("cargo:rerun-if-env-changed=BITAXE_HARDWARE_EVIDENCE_ACK");
     println!("cargo:rerun-if-env-changed=BITAXE_WORK_RESULT_INVESTIGATION");
     println!("cargo:rerun-if-env-changed=BITAXE_CHIP_DETECT_INVESTIGATION");

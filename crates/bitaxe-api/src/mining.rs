@@ -6,7 +6,8 @@
 //! - `reference/esp-miner/main/http_server/system_api_json.c`
 
 use bitaxe_stratum::v1::state::{
-    MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus, WorkSubmissionGate,
+    MiningActivityStatus, MiningOperatorIntent, MiningRuntimeState, PoolLifecycleStatus,
+    WorkSubmissionGate,
 };
 use serde::{Deserialize, Serialize};
 
@@ -89,7 +90,7 @@ pub fn mining_state_from_runtime(state: &MiningRuntimeState) -> MiningStateWire 
         response_time: 0.0,
         response_share_batch: 0,
         process_time: 0.0,
-        mining_paused: !matches!(state.mining_activity, MiningActivityStatus::Active),
+        mining_paused: matches!(state.operator_intent, MiningOperatorIntent::Paused),
         mining_activity: mining_activity_label(state.mining_activity).to_owned(),
         work_submission: work_submission_label(state.work_submission).to_owned(),
         blocked_reason: blocked_reason(state).to_owned(),
@@ -126,6 +127,7 @@ fn lifecycle_label(status: PoolLifecycleStatus) -> &'static str {
         PoolLifecycleStatus::Active => "active",
         PoolLifecycleStatus::Reconnecting => "reconnecting",
         PoolLifecycleStatus::FallbackActive => "fallback_active",
+        PoolLifecycleStatus::RecoveryPaused => "recovery_paused",
         PoolLifecycleStatus::Error => "error",
     }
 }
@@ -175,7 +177,7 @@ mod tests {
         assert_eq!(response.mining_activity, "safe_blocked");
         assert_eq!(response.work_submission, "blocked");
         assert_eq!(response.blocked_reason, HARDWARE_EVIDENCE_ACK_MISSING);
-        assert!(response.mining_paused);
+        assert!(!response.mining_paused);
     }
 
     #[test]
@@ -191,6 +193,6 @@ mod tests {
         assert_eq!(response.mining_activity, "safe_blocked");
         assert_eq!(response.work_submission, "blocked");
         assert_eq!(response.blocked_reason, "voltage_observation_stale");
-        assert!(response.mining_paused);
+        assert!(!response.mining_paused);
     }
 }

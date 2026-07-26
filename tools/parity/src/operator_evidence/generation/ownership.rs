@@ -1,13 +1,10 @@
-use std::collections::BTreeSet;
 use std::fs::{self, File, OpenOptions};
 use std::io;
 
 use camino::{Utf8Path, Utf8PathBuf};
 
 use super::filesystem::io_error;
-use super::rendering::render_manifest;
-use super::{GenerationError, GenerationResult, MANIFEST_FILE, SUMMARY_FILE};
-use crate::operator_evidence::OperatorEvidenceSlot;
+use super::{GenerationError, GenerationResult};
 
 #[cfg(unix)]
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
@@ -70,24 +67,10 @@ pub(super) struct PromotionContext {
     parent_identity: PathIdentity,
     lock: PromotionLock,
     destination_identity: Option<PathIdentity>,
-    validate_inventory: bool,
 }
 
 impl PromotionContext {
-    pub(super) fn acquire(destination: &Utf8Path) -> GenerationResult<Self> {
-        Self::acquire_inner(destination, true)
-    }
-
     pub(super) fn acquire_unvalidated(destination: &Utf8Path) -> GenerationResult<Self> {
-        Self::acquire_inner(destination, false)
-    }
-
-    #[cfg(test)]
-    pub(super) fn acquire_for_test(destination: &Utf8Path) -> GenerationResult<Self> {
-        Self::acquire_inner(destination, false)
-    }
-
-    fn acquire_inner(destination: &Utf8Path, validate_inventory: bool) -> GenerationResult<Self> {
         let parent = destination.parent().ok_or_else(|| {
             GenerationError::InvalidInput("evidence destination has no parent".to_owned())
         })?;
@@ -122,13 +105,8 @@ impl PromotionContext {
             parent_identity,
             lock,
             destination_identity,
-            validate_inventory,
         };
         context.revalidate_lock_and_parent()?;
-        if destination_identity.is_some() && validate_inventory {
-            validate_managed_inventory(destination)?;
-            context.revalidate_destination(destination)?;
-        }
         Ok(context)
     }
 
@@ -143,10 +121,6 @@ impl PromotionContext {
     ) -> GenerationResult<PathIdentity> {
         self.revalidate_lock_and_parent()?;
         self.revalidate_destination(destination)?;
-        if self.destination_identity.is_some() && self.validate_inventory {
-            validate_managed_inventory(destination)?;
-            self.revalidate_destination(destination)?;
-        }
         PathIdentity::capture_directory(staging, "staging destination")
     }
 
@@ -175,27 +149,7 @@ impl PromotionContext {
             )
         })?;
         revalidate_identity(staging, previous_identity, "retained previous generation")?;
-        if self.validate_inventory {
-            validate_managed_inventory(staging)?;
-            revalidate_identity(staging, previous_identity, "retained previous generation")?;
-        }
         Ok(())
-    }
-
-    pub(super) fn validate_restored(
-        &self,
-        destination: &Utf8Path,
-        staging: &Utf8Path,
-        staging_identity: PathIdentity,
-    ) -> GenerationResult<()> {
-        self.revalidate_lock_and_parent()?;
-        let previous_identity = self.destination_identity.ok_or_else(|| {
-            GenerationError::InvalidInput(
-                "existing destination identity is missing during rollback".to_owned(),
-            )
-        })?;
-        revalidate_identity(destination, previous_identity, "restored destination")?;
-        revalidate_identity(staging, staging_identity, "retained replacement generation")
     }
 
     fn revalidate_lock_and_parent(&self) -> GenerationResult<()> {
@@ -219,7 +173,7 @@ struct PromotionLock {
 
 impl PromotionLock {
     fn acquire(parent: &Utf8Path, destination_name: &str) -> GenerationResult<Self> {
-        let path = parent.join(format!(".{destination_name}.phase28.lock"));
+        let path = parent.join(format!(".{destination_name}.promotion.lock"));
         let mut options = OpenOptions::new();
         options.create_new(true).write(true);
         #[cfg(unix)]
@@ -256,62 +210,6 @@ impl Drop for PromotionLock {
             }
         }
     }
-}
-
-fn validate_managed_inventory(destination: &Utf8Path) -> GenerationResult<()> {
-    let allowed = OperatorEvidenceSlot::ALL
-        .into_iter()
-        .map(|slot| slot.file_name().to_owned())
-        .chain([SUMMARY_FILE.to_owned(), MANIFEST_FILE.to_owned()])
-        .collect::<BTreeSet<_>>();
-    let mut actual = BTreeSet::new();
-    for entry in fs::read_dir(destination.as_std_path()).map_err(|error| {
-        io_error(
-            format!("failed to inspect destination {destination}"),
-            error,
-        )
-    })? {
-        let entry =
-            entry.map_err(|error| io_error("failed to inspect destination entry", error))?;
-        let name = entry.file_name();
-        let name = name.to_str().ok_or_else(|| {
-            GenerationError::InvalidInput("destination contains a non-UTF-8 entry name".to_owned())
-        })?;
-        if !allowed.contains(name) {
-            return Err(GenerationError::InvalidInput(format!(
-                "existing destination contains unknown entry {name:?}"
-            )));
-        }
-        let metadata = fs::symlink_metadata(entry.path())
-            .map_err(|error| io_error("failed to inspect destination entry type", error))?;
-        if metadata.file_type().is_symlink() || !metadata.file_type().is_file() {
-            return Err(GenerationError::InvalidInput(format!(
-                "existing destination entry {name:?} must be a non-symlink regular file"
-            )));
-        }
-        actual.insert(name.to_owned());
-    }
-    if actual != allowed {
-        return Err(GenerationError::InvalidInput(
-            "existing destination inventory does not match the generator-owned manifest schema"
-                .to_owned(),
-        ));
-    }
-
-    let manifest_path = destination.join(MANIFEST_FILE);
-    let manifest = fs::read_to_string(manifest_path.as_std_path()).map_err(|error| {
-        io_error(
-            format!("failed to read generator-owned manifest {manifest_path}"),
-            error,
-        )
-    })?;
-    if manifest != render_manifest() {
-        return Err(GenerationError::InvalidInput(
-            "existing destination manifest content does not match the exact generator schema"
-                .to_owned(),
-        ));
-    }
-    Ok(())
 }
 
 fn revalidate_identity(

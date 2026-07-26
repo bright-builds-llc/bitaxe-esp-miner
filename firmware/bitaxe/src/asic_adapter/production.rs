@@ -1,4 +1,4 @@
-//! Production BM1366 UART executor for Phase 27 live hardware bridge.
+//! Production BM1366 UART executor retained for the qualified session adapter.
 //!
 //! Executes typed `Bm1366ProductionCommand` only; diagnostic work stays unreachable.
 
@@ -137,7 +137,7 @@ fn production_state() -> &'static Mutex<ProductionAsicState> {
     PRODUCTION_HANDLE.get_or_init(|| Mutex::new(ProductionAsicState::new()))
 }
 
-/// Retain UART and reset after boot gate for Phase 27 production bridge access.
+/// Retain UART and reset after the boot gate for qualified production access.
 pub fn store_production_peripherals(
     uart_driver: uart::AsicUart<'_>,
     reset_driver: reset::AsicReset<'_>,

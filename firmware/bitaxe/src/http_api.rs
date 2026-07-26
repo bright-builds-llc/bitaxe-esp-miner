@@ -31,10 +31,10 @@ use serde::Serialize;
 use crate::filesystem::FilesystemStatus;
 use crate::ota_update::{FirmwareOtaApplyResult, FirmwareOtaStatus};
 use crate::runtime_snapshot::{
-    apply_block_found_dismiss_command, apply_identify_mode_command, apply_mining_activity_command,
-    block_found_notification_state, collect_api_snapshot, identify_mode, mining_runtime_state,
-    projected_scoreboard, projected_statistics, publish_projected_live_telemetry_payload,
-    publish_projected_system_info,
+    apply_block_found_dismiss_command, apply_identify_mode_command,
+    apply_mining_operator_intent_command, block_found_notification_state, collect_api_snapshot,
+    identify_mode, projected_scoreboard, projected_statistics,
+    publish_projected_live_telemetry_payload, publish_projected_system_info,
 };
 use crate::{log_buffer, network_stack, settings_adapter, static_files, websocket_api};
 
@@ -332,6 +332,29 @@ fn handle_settings_patch<'request, 'connection>(
         };
         let hostname = match decision {
             V12SettingsDecision::Authorized(V12SettingsChange::Hostname(hostname)) => hostname,
+            V12SettingsDecision::Authorized(V12SettingsChange::StartMiningOnBoot(preference)) => {
+                settings_patch_retained(
+                    "axeos_settings_patch=authorized category=start_mining_on_boot",
+                );
+                if settings_adapter::persist_start_mining_on_boot(preference).is_err() {
+                    settings_patch_warn_retained(
+                        "axeos_settings_patch=persistence_failed category=start_mining_on_boot",
+                    );
+                    return send_text_error(
+                        request,
+                        400,
+                        SettingsPatchPublicError::WrongApiInput.body(),
+                    );
+                }
+                let _ = crate::production_mining_session::notify(
+                    bitaxe_stratum::v1::production_session::ProductionSessionWakeup::SettingsChanged,
+                );
+                send_settings_response(request, SettingsPublicResponse::EmptySuccess)?;
+                settings_patch_retained(
+                    "axeos_settings_patch=persistence_confirmed category=start_mining_on_boot",
+                );
+                return Ok(());
+            }
             V12SettingsDecision::CompatibilityOnly {
                 reason,
                 field_count,
@@ -375,6 +398,9 @@ fn handle_settings_patch<'request, 'connection>(
             }
         };
         settings_patch_retained("axeos_settings_patch=persistence_confirmed category=hostname");
+        let _ = crate::production_mining_session::notify(
+            bitaxe_stratum::v1::production_session::ProductionSessionWakeup::SettingsChanged,
+        );
         let maybe_effect_lease =
             success.maybe_acquire_best_effort_effect_lease(prepare_settings_effects);
         if maybe_effect_lease.is_none() {
@@ -452,8 +478,7 @@ fn handle_pause<'request, 'connection>(
 fn handle_resume<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
-    let mining = mining_runtime_state();
-    handle_command(request, resume_mining_plan(&mining))
+    handle_command(request, resume_mining_plan())
 }
 
 fn handle_restart<'request, 'connection>(
@@ -1307,11 +1332,14 @@ fn apply_command_effect(
     maybe_deferred_effect: Option<DeferredEffectLease>,
 ) -> anyhow::Result<()> {
     match effect {
-        CommandEffect::MiningActivity(effect) => {
-            apply_mining_activity_command(effect);
+        CommandEffect::MiningOperatorIntent(effect) => {
+            apply_mining_operator_intent_command(effect);
+            let _ = crate::production_mining_session::notify(
+                bitaxe_stratum::v1::production_session::ProductionSessionWakeup::OperatorIntentChanged,
+            );
             log::info!(
-                "axeos_command_effect=mining_activity next_activity={:?}",
-                effect.next_activity
+                "axeos_command_effect=mining_operator_intent next_intent={:?}",
+                effect.next_intent
             );
         }
         CommandEffect::RestartAfterResponse => {

@@ -283,52 +283,13 @@ sh_binary(
 )
 
 sh_binary(
-    name = "phase21_live_mining_evidence",
-    srcs = ["phase21-live-mining-evidence.sh"],
-    data = [
-        "phase17-websocket-capture.mjs",
-        "phase21-pool-input-bridge.sh",
-        "phase21-pool-credentials-json.mjs",
-    ],
-)
-
-sh_binary(
-    name = "phase21_pool_input_bridge",
-    srcs = ["phase21-pool-input-bridge.sh"],
-    data = [
-        "phase21-pool-credentials-json.mjs",
-    ],
-)
-
-sh_binary(
     name = "phase23_redacted_operator_evidence",
     srcs = ["phase23-redacted-operator-evidence.sh"],
     data = [
         "phase17-live-http-api-smoke.sh",
         "phase17-websocket-capture.mjs",
-        "phase21-live-mining-evidence.sh",
-        "phase21-pool-credentials-json.mjs",
-        "phase21-pool-input-bridge.sh",
         "//tools/parity:report",
     ],
-)
-
-sh_binary(
-    name = "phase25_live_stratum_evidence",
-    srcs = ["phase25-live-stratum-evidence.sh"],
-    data = ["//tools/parity:report"],
-)
-
-sh_binary(
-    name = "phase27_live_hardware_bridge_evidence",
-    srcs = ["phase27-live-hardware-bridge-evidence.sh"],
-    data = ["//tools/parity:report"],
-)
-
-sh_binary(
-    name = "phase28_evidence",
-    srcs = ["phase28-evidence.sh"],
-    data = ["//tools/parity:report"],
 )
 
 sh_binary(
@@ -339,6 +300,12 @@ sh_binary(
         "process-group.sh",
         "serial-session-trace.sh",
     ],
+    tags = ["local"],
+)
+
+sh_binary(
+    name = "verify_production_session_source",
+    srcs = ["verify-production-session-source.sh"],
     tags = ["local"],
 )
 
@@ -717,48 +684,11 @@ sh_test(
 )
 
 sh_test(
-    name = "phase21_live_mining_evidence_test",
-    srcs = ["phase21-live-mining-evidence-test.sh"],
-    data = [
-        "phase17-websocket-capture.mjs",
-        "phase21-live-mining-evidence.sh",
-        "phase21-pool-input-bridge.sh",
-        "phase21-pool-credentials-json.mjs",
-    ],
-    env_inherit = [
-        "HOME",
-        "NODE_BIN",
-        "NVM_DIR",
-        "PATH",
-    ],
-    tags = ["local"],
-)
-
-sh_test(
-    name = "phase21_pool_input_bridge_test",
-    srcs = ["phase21-pool-input-bridge-test.sh"],
-    data = [
-        "phase21-pool-credentials-json.mjs",
-        "phase21-pool-input-bridge.sh",
-    ],
-    env_inherit = [
-        "HOME",
-        "NODE_BIN",
-        "NVM_DIR",
-        "PATH",
-    ],
-    tags = ["local"],
-)
-
-sh_test(
     name = "phase23_redacted_operator_evidence_test",
     srcs = ["phase23-redacted-operator-evidence-test.sh"],
     data = [
         "phase17-live-http-api-smoke.sh",
         "phase17-websocket-capture.mjs",
-        "phase21-live-mining-evidence.sh",
-        "phase21-pool-credentials-json.mjs",
-        "phase21-pool-input-bridge.sh",
         "phase23-redacted-operator-evidence.sh",
         "//tools/parity:report",
     ],
@@ -766,53 +696,6 @@ sh_test(
         "HOME",
         "NODE_BIN",
         "NVM_DIR",
-        "PATH",
-    ],
-    tags = ["local"],
-)
-
-sh_test(
-    name = "phase25_live_stratum_evidence_test",
-    srcs = ["phase25-live-stratum-evidence-test.sh"],
-    data = [
-        "phase25-live-stratum-evidence.sh",
-        "//tools/parity:report",
-    ],
-    env_inherit = [
-        "HOME",
-        "NODE_BIN",
-        "NVM_DIR",
-        "PATH",
-    ],
-    tags = ["local"],
-)
-
-sh_test(
-    name = "phase27_live_hardware_bridge_evidence_test",
-    srcs = ["phase27-live-hardware-bridge-evidence-test.sh"],
-    data = [
-        "phase27-live-hardware-bridge-evidence.sh",
-        "//tools/parity:report",
-    ],
-    env_inherit = [
-        "HOME",
-        "NODE_BIN",
-        "NVM_DIR",
-        "PATH",
-    ],
-    tags = ["local"],
-)
-
-sh_test(
-    name = "phase28_evidence_test",
-    srcs = ["phase28-evidence-test.sh"],
-    data = [
-        "phase27-live-hardware-bridge-evidence.sh",
-        "phase28-evidence.sh",
-        "//tools/parity:report",
-    ],
-    env_inherit = [
-        "HOME",
         "PATH",
     ],
     tags = ["local"],
@@ -988,23 +871,6 @@ sh_test(
     env_inherit = ["PATH"],
 )
 
-sh_binary(
-    name = "phase21_live_mining_package",
-    srcs = ["phase21-live-mining-package.sh"],
-    data = [
-        "package-firmware.sh",
-        "verify-reference-clean.sh",
-    ],
-    tags = ["local"],
-)
-
-sh_test(
-    name = "phase21_live_mining_package_test",
-    srcs = ["phase21-live-mining-package-test.sh"],
-    data = ["phase21-live-mining-package.sh"],
-    tags = ["local"],
-)
-
 sh_test(
     name = "verify_reference_clean_test",
     srcs = ["verify-reference-clean-test.sh"],
@@ -1071,16 +937,6 @@ sh_test(
         "HOME",
         "PATH",
     ],
-    tags = ["local"],
-)
-
-sh_test(
-    name = "phase28_1_1_boot_evidence_replay_ownership_test",
-    srcs = ["phase28.1.1-boot-evidence-replay-ownership-test.sh"],
-    data = [
-        "//firmware/bitaxe:phase28_boot_replay_sources",
-    ],
-    env_inherit = ["PATH"],
     tags = ["local"],
 )
 

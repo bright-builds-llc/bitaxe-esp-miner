@@ -311,7 +311,10 @@ mod tests {
 
         // Assert
         assert_eq!(cadence["event"], "update");
-        assert_eq!(cadence["data"]["miningPaused"], Value::Bool(true));
+        assert_eq!(
+            cadence["data"]["miningActivity"],
+            Value::String("safe_blocked".into())
+        );
         assert_eq!(
             cadence["data"]["poolConnectionInfo"],
             Value::String("disconnected".into())
@@ -473,7 +476,7 @@ mod tests {
         });
         let _stopped = projection.fold(RuntimeTelemetryEvent::SafeStopped {
             sequence: RuntimeTelemetrySequence::new(2),
-            reason: "phase25_safe_stop",
+            reason: "production_session_safe_stop",
         });
         projection
     }

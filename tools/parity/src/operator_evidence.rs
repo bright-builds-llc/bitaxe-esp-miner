@@ -6,8 +6,6 @@ use std::str::FromStr;
 mod generation;
 mod inventory;
 mod profile;
-#[cfg(test)]
-mod tests;
 
 use crate::operator_snapshot_evidence::validate_operator_snapshot_documents;
 use inventory::{
@@ -16,10 +14,9 @@ use inventory::{
 };
 
 pub(crate) use generation::{
-    complete_operator_evidence, consolidate_phase28_evidence, publish_phase35_generation,
-    publish_phase36_generation, read_phase36_public_checklist, Phase35GenerationDocuments,
-    Phase35PublicationOptions, Phase36GenerationDocuments, Phase36PublicationOptions,
-    WorkflowStatus,
+    publish_phase35_generation, publish_phase36_generation, read_phase36_public_checklist,
+    Phase35GenerationDocuments, Phase35PublicationOptions, Phase36GenerationDocuments,
+    Phase36PublicationOptions,
 };
 pub(crate) use profile::{
     EvidenceDisposition, OperatorEvidenceProfile, OperatorEvidenceSlot, ShareOutcome,
@@ -89,66 +86,6 @@ impl FromStr for RedactionStatus {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum SafeStopStatus {
-    Passed,
-    Complete,
-    Blocked,
-}
-
-impl FromStr for SafeStopStatus {
-    type Err = String;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value {
-            "passed" => Ok(Self::Passed),
-            "complete" => Ok(Self::Complete),
-            "blocked" => Ok(Self::Blocked),
-            _ => Err(format!("unknown safe-stop status {value:?}")),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum AsicBridgeStatus {
-    Blocked,
-    Initialized,
-    WorkDispatched,
-    ResultCorrelated,
-}
-
-impl FromStr for AsicBridgeStatus {
-    type Err = String;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value {
-            "blocked" => Ok(Self::Blocked),
-            "initialized" => Ok(Self::Initialized),
-            "work_dispatched" => Ok(Self::WorkDispatched),
-            "result_correlated" => Ok(Self::ResultCorrelated),
-            _ => Err(format!("unknown ASIC bridge status {value:?}")),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum AsicCorrelationStatus {
-    Passed,
-    Blocked,
-}
-
-impl FromStr for AsicCorrelationStatus {
-    type Err = String;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value {
-            "passed" => Ok(Self::Passed),
-            "blocked" => Ok(Self::Blocked),
-            _ => Err(format!("unknown ASIC correlation status {value:?}")),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct OperatorEvidenceDocuments {
     pub(crate) evidence_root: Utf8PathBuf,
@@ -211,6 +148,7 @@ pub(crate) fn load_operator_evidence_documents(
     })
 }
 
+#[cfg(test)]
 pub(crate) fn validate_operator_evidence_documents(
     profile: OperatorEvidenceProfile,
     documents: &OperatorEvidenceDocuments,
@@ -338,15 +276,6 @@ fn validate_slot_metadata(
             contents,
             maybe_slot_status,
         );
-
-        if profile == OperatorEvidenceProfile::Phase28 {
-            for field in ["source_phase27_root", "consolidation_status"] {
-                if let Err(error) = parse_single_field(contents, field) {
-                    validation_errors
-                        .push(format!("{slot_file} Phase 28 consolidation field {error}"));
-                }
-            }
-        }
     }
 }
 
@@ -533,12 +462,8 @@ fn validate_share_outcome_slot(
         return;
     };
 
-    let outcome_required = matches!(
-        profile,
-        OperatorEvidenceProfile::Phase27 | OperatorEvidenceProfile::Phase28
-    );
     let outcome_present = field_occurrence_count(contents, "share_outcome") > 0;
-    if outcome_required || outcome_present {
+    if outcome_present {
         match parse_single_field(contents, "share_outcome").and_then(ShareOutcome::from_str) {
             Ok(outcome) => {
                 validate_share_outcome_support(validation_errors, profile, outcome, contents)
@@ -556,7 +481,7 @@ fn validate_share_outcome_slot(
     }
 
     for required in [
-        "Phase 25",
+        "Production Mining Session",
         "accepted/rejected share outcomes remain non-claims",
     ] {
         if !contents.contains(required) {
@@ -577,122 +502,12 @@ fn validate_share_outcome_support(
     validation_errors: &mut Vec<String>,
     profile: OperatorEvidenceProfile,
     outcome: ShareOutcome,
-    contents: &str,
+    _contents: &str,
 ) {
-    if !profile.descriptor().supports_share_outcome(outcome) {
-        validation_errors.push(format!(
-            "share-outcome.md outcome {} is not supported by {profile}",
-            outcome.as_str()
-        ));
-        return;
-    }
-
-    match outcome {
-        ShareOutcome::Accepted | ShareOutcome::Rejected => {
-            let support_is_valid = if profile == OperatorEvidenceProfile::Phase28 {
-                let correlation: Option<AsicCorrelationStatus> = parse_typed_slot_field(
-                    validation_errors,
-                    "share-outcome.md",
-                    contents,
-                    "asic_correlation_status",
-                );
-                let safe_stop: Option<SafeStopStatus> = parse_typed_slot_field(
-                    validation_errors,
-                    "share-outcome.md",
-                    contents,
-                    "safe_stop_status",
-                );
-                correlation == Some(AsicCorrelationStatus::Passed)
-                    && safe_stop == Some(SafeStopStatus::Passed)
-            } else {
-                let asic_bridge: Option<AsicBridgeStatus> = parse_typed_slot_field(
-                    validation_errors,
-                    "share-outcome.md",
-                    contents,
-                    "asic_bridge_status",
-                );
-                let safe_stop: Option<SafeStopStatus> = parse_typed_slot_field(
-                    validation_errors,
-                    "share-outcome.md",
-                    contents,
-                    "safe_stop_status",
-                );
-                asic_bridge == Some(AsicBridgeStatus::ResultCorrelated)
-                    && safe_stop == Some(SafeStopStatus::Complete)
-            };
-            if !support_is_valid {
-                let required = if profile == OperatorEvidenceProfile::Phase28 {
-                    "asic_correlation_status: passed and safe_stop_status: passed"
-                } else {
-                    "asic_bridge_status: result_correlated and safe_stop_status: complete"
-                };
-                validation_errors.push(format!(
-                    "share-outcome.md {} requires {required}",
-                    outcome.as_str()
-                ));
-            }
-        }
-        ShareOutcome::LiveSubmitResponseObserved => {
-            let safe_stop: Option<SafeStopStatus> = parse_typed_slot_field(
-                validation_errors,
-                "share-outcome.md",
-                contents,
-                "safe_stop_status",
-            );
-            if safe_stop != Some(SafeStopStatus::Complete) {
-                validation_errors.push(
-                    "share-outcome.md live_submit_response_observed requires safe_stop_status: complete"
-                        .to_owned(),
-                );
-            }
-        }
-        ShareOutcome::BlockedSafePrerequisite => {
-            let safe_stop: Option<SafeStopStatus> = parse_typed_slot_field(
-                validation_errors,
-                "share-outcome.md",
-                contents,
-                "safe_stop_status",
-            );
-            let supported = match profile {
-                OperatorEvidenceProfile::Phase25 => matches!(
-                    safe_stop,
-                    Some(SafeStopStatus::Complete | SafeStopStatus::Blocked)
-                ),
-                OperatorEvidenceProfile::Phase27 => {
-                    let asic_bridge: Option<AsicBridgeStatus> = parse_typed_slot_field(
-                        validation_errors,
-                        "share-outcome.md",
-                        contents,
-                        "asic_bridge_status",
-                    );
-                    asic_bridge.is_some()
-                        && matches!(
-                            safe_stop,
-                            Some(SafeStopStatus::Complete | SafeStopStatus::Blocked)
-                        )
-                }
-                OperatorEvidenceProfile::Phase28 => {
-                    let asic_bridge: Option<AsicBridgeStatus> = parse_typed_slot_field(
-                        validation_errors,
-                        "share-outcome.md",
-                        contents,
-                        "asic_bridge_status",
-                    );
-                    asic_bridge == Some(AsicBridgeStatus::Blocked)
-                        && matches!(
-                            safe_stop,
-                            Some(SafeStopStatus::Passed | SafeStopStatus::Blocked)
-                        )
-                }
-                OperatorEvidenceProfile::Phase23 => false,
-            };
-            if !supported {
-                validation_errors.push(format!(
-                    "share-outcome.md blocked_safe_prerequisite lacks {profile} support categories"
-                ));
-            }
-        }
-    }
+    validation_errors.push(format!(
+        "share-outcome.md outcome {} is not supported by {profile}",
+        outcome.as_str()
+    ));
 }
 
 fn validate_conclusion(
@@ -703,16 +518,6 @@ fn validate_conclusion(
     let Some(contents) = documents.slots.get("conclusion.md") else {
         return;
     };
-
-    if profile == OperatorEvidenceProfile::Phase28 {
-        if !contents.contains("phase28_consolidation_claim: hardware_evidence_consolidation") {
-            validation_errors.push(
-                "conclusion.md must contain phase28_consolidation_claim: hardware_evidence_consolidation"
-                    .to_owned(),
-            );
-        }
-        return;
-    }
 
     if profile == OperatorEvidenceProfile::Phase23
         && !contents.contains("phase23_workflow_claim: redacted_operator_evidence_workflow")

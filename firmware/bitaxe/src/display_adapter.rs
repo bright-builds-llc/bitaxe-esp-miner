@@ -27,7 +27,6 @@ pub const DISPLAY_I2C_SPEED_HZ: u32 = 400_000;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuntimeDisplayMode {
     AlternatingDebug,
-    Deferred,
     Unavailable,
 }
 
@@ -35,7 +34,6 @@ impl RuntimeDisplayMode {
     const fn as_str(self) -> &'static str {
         match self {
             Self::AlternatingDebug => "alternating_debug",
-            Self::Deferred => "deferred",
             Self::Unavailable => "unavailable",
         }
     }

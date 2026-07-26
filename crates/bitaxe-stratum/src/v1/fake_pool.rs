@@ -513,17 +513,18 @@ mod tests {
     }
 
     #[test]
-    fn fake_pool_phase25_live_runtime_sequences_subscribe_authorize_difficulty_and_notify() {
+    fn fake_pool_production_session_live_runtime_sequences_subscribe_authorize_difficulty_and_notify(
+    ) {
         // Arrange
         let transcript = FakePoolTranscript {
-            events: phase25_ready_events(false),
+            events: production_session_ready_events(false),
         };
         let mut runtime = live_runtime();
 
         // Act
         let report = transcript
             .run_live_runtime(&mut runtime)
-            .expect("phase25 live runtime transcript should run");
+            .expect("production_session live runtime transcript should run");
 
         // Assert
         assert_eq!(report.state.lifecycle, PoolLifecycleStatus::Active);
@@ -536,9 +537,9 @@ mod tests {
     }
 
     #[test]
-    fn fake_pool_phase25_classifies_accepted_and_rejected_only_in_deterministic_scope() {
+    fn fake_pool_production_session_classifies_accepted_and_rejected_only_in_deterministic_scope() {
         // Arrange
-        let mut events = phase25_ready_events(false);
+        let mut events = production_session_ready_events(false);
         events.push(FakePoolEvent::ClassifySubmitResponse(success_response(7)));
         events.push(FakePoolEvent::ClassifySubmitResponse(
             rejected_submit_response(7, "low difficulty"),
@@ -549,7 +550,7 @@ mod tests {
         // Act
         let report = transcript
             .run_live_runtime(&mut runtime)
-            .expect("phase25 classification transcript should run");
+            .expect("production_session classification transcript should run");
 
         // Assert
         assert_eq!(
@@ -564,9 +565,9 @@ mod tests {
     }
 
     #[test]
-    fn fake_pool_phase25_clean_jobs_and_reconnect_block_stale_submit_classification() {
+    fn fake_pool_production_session_clean_jobs_and_reconnect_block_stale_submit_classification() {
         // Arrange
-        let mut events = phase25_ready_events(false);
+        let mut events = production_session_ready_events(false);
         events.push(FakePoolEvent::ClassifySubmitResponse(success_response(7)));
         events.push(FakePoolEvent::SendServer(StratumV1ServerMessage::Notify(
             notify_with_clean_jobs(true),
@@ -583,7 +584,7 @@ mod tests {
         // Act
         let report = transcript
             .run_live_runtime(&mut runtime)
-            .expect("phase25 clean-jobs transcript should run");
+            .expect("production_session clean-jobs transcript should run");
 
         // Assert
         assert_eq!(report.generation, 2);
@@ -598,7 +599,7 @@ mod tests {
     }
 
     #[test]
-    fn fake_pool_phase25_fail_closed_paths_are_redaction_safe_non_accepted_outcomes() {
+    fn fake_pool_production_session_fail_closed_paths_are_redaction_safe_non_accepted_outcomes() {
         // Arrange
         let transcript = FakePoolTranscript {
             events: vec![
@@ -617,7 +618,7 @@ mod tests {
         // Act
         let report = transcript
             .run_live_runtime(&mut runtime)
-            .expect("phase25 fail-closed transcript should run");
+            .expect("production_session fail-closed transcript should run");
         let rendered = format!("{:?}", transcript.events);
 
         // Assert
@@ -666,7 +667,7 @@ mod tests {
         vec![configure(), subscribe(), authorize(), submit_share(4)]
     }
 
-    fn phase25_ready_events(clean_jobs: bool) -> Vec<FakePoolEvent> {
+    fn production_session_ready_events(clean_jobs: bool) -> Vec<FakePoolEvent> {
         vec![
             FakePoolEvent::ExpectClient(configure()),
             FakePoolEvent::SendServer(StratumV1ServerMessage::Response(configure_response(1))),

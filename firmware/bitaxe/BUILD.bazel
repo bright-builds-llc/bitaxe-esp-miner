@@ -55,47 +55,6 @@ filegroup(
 )
 
 filegroup(
-    name = "phase28_boot_replay_sources",
-    srcs = [
-        "src/boot_evidence.rs",
-        "src/live_stratum_runtime.rs",
-        "src/log_buffer.rs",
-        "src/main.rs",
-        "src/runtime_uptime.rs",
-    ],
-    visibility = ["//scripts:__pkg__"],
-)
-
-filegroup(
-    name = "phase32_i2c_sources",
-    srcs = [
-        "src/display_adapter.rs",
-        "src/main.rs",
-        "src/operator_sensor_runtime.rs",
-        "src/runtime_snapshot.rs",
-        "src/safety_adapter/emc2101.rs",
-        "src/safety_adapter/i2c_bus.rs",
-        "src/safety_adapter/ina260.rs",
-        "src/safety_adapter/observation_store.rs",
-    ],
-    visibility = ["//tools/parity:__pkg__"],
-)
-
-filegroup(
-    name = "phase33_settings_sources",
-    srcs = [
-        "src/boot_evidence.rs",
-        "src/http_api.rs",
-        "src/main.rs",
-        "src/rtc_boot_ordinal.rs",
-        "src/runtime_snapshot.rs",
-        "src/settings_adapter.rs",
-        "src/wifi_adapter.rs",
-    ],
-    visibility = ["//tools/parity:__pkg__"],
-)
-
-filegroup(
     name = "phase34_identity_sources",
     srcs = [
         "//crates/bitaxe-api:phase34_identity_sources",

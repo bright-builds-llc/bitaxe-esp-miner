@@ -28,6 +28,7 @@ pub struct ApiSnapshot {
     /// Passive runtime-health facts captured with this operator snapshot.
     pub runtime_health: RuntimeHealthSnapshot,
     pub config: ConfigSnapshot,
+    pub project_settings: ProjectSettingsSnapshot,
     pub catalog: BoardCatalogEntry,
     pub mining: MiningRuntimeState,
     pub block_found: BlockFoundNotificationState,
@@ -47,6 +48,7 @@ impl ApiSnapshot {
             platform_identity: PlatformIdentity::fixture_only(),
             runtime_health: RuntimeHealthSnapshot::fixture_unavailable(),
             config: ConfigSnapshot::ultra_205(),
+            project_settings: ProjectSettingsSnapshot::default(),
             catalog: ultra_205_catalog_entry(),
             mining: MiningRuntimeState::default(),
             block_found: BlockFoundNotificationState {
@@ -56,6 +58,20 @@ impl ApiSnapshot {
             asic: AsicSnapshot::chip_detect_only(),
             platform: PlatformSnapshot::safe_ultra_205(),
             safe_telemetry: SafeTelemetrySnapshot::unavailable("safety_telemetry_unavailable"),
+        }
+    }
+}
+
+/// Project-owned settings that intentionally do not extend the upstream schema.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProjectSettingsSnapshot {
+    pub start_mining_on_boot: bool,
+}
+
+impl Default for ProjectSettingsSnapshot {
+    fn default() -> Self {
+        Self {
+            start_mining_on_boot: true,
         }
     }
 }

@@ -4,10 +4,11 @@ use std::sync::{Mutex, OnceLock};
 
 use crate::log_buffer::RetainedPairStorageError;
 use bitaxe_api::{
-    apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
-    project_api_views, project_system_info, scoreboard_response, statistics_response, ApiSnapshot,
-    BlockFoundDismissEffect, BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect,
-    IdentifyModeState, MiningActivityEffect, OperatorSnapshotIdentity, OperatorSnapshotLockHealth,
+    apply_block_found_dismiss_effect, apply_identify_mode_effect,
+    apply_mining_operator_intent_effect, project_api_views, project_system_info,
+    scoreboard_response, statistics_response, ApiSnapshot, BlockFoundDismissEffect,
+    BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect, IdentifyModeState,
+    MiningOperatorIntentEffect, OperatorSnapshotIdentity, OperatorSnapshotLockHealth,
     OperatorSnapshotPublishError, OperatorSnapshotPublisher, PlatformFact, PlatformIdentity,
     PlatformSnapshot, ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire,
     StatisticsWire, SystemInfoWire,
@@ -15,14 +16,8 @@ use bitaxe_api::{
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
 use bitaxe_stratum::v1::{
-    messages::PoolDifficulty,
-    production_work::PoolSessionGeneration,
-    state::{HashrateInputs, MiningRuntimeState, PoolLifecycleStatus, ShareDifficulty},
-    submit_response::SubmitClassification,
-    telemetry_projection::{
-        ProjectionShareOutcome, RuntimeProjectionSampleSource, RuntimeTelemetryEvent,
-        RuntimeTelemetryProjection, RuntimeTelemetrySequence,
-    },
+    production_session::ProductionSessionProjection, production_work::PoolSessionGeneration,
+    state::MiningRuntimeState, telemetry_projection::RuntimeTelemetryProjection,
 };
 static COMMAND_VISIBLE_STATE: OnceLock<Mutex<CommandVisibleState>> = OnceLock::new();
 static OPERATOR_SNAPSHOT_PUBLISHER: OnceLock<OperatorSnapshotPublisher> = OnceLock::new();
@@ -45,6 +40,7 @@ struct SettingsProjection {
     maybe_voltage: Option<u16>,
     maybe_auto_fan_speed: Option<bool>,
     maybe_manual_fan_speed: Option<u16>,
+    start_mining_on_boot: bool,
 }
 
 struct CompletedOperatorSnapshot<T> {
@@ -57,7 +53,6 @@ struct CompletedOperatorSnapshot<T> {
 struct CommandVisibleState {
     mining: MiningRuntimeState,
     runtime_projection: RuntimeTelemetryProjection,
-    next_runtime_sequence: u64,
     identify: IdentifyModeState,
     block_found: BlockFoundNotificationState,
 }
@@ -67,7 +62,6 @@ impl Default for CommandVisibleState {
         Self {
             mining: MiningRuntimeState::default(),
             runtime_projection: RuntimeTelemetryProjection::new(PoolSessionGeneration::initial()),
-            next_runtime_sequence: 1,
             identify: IdentifyModeState::inactive(),
             block_found: BlockFoundNotificationState {
                 block_found: 0,
@@ -110,6 +104,19 @@ fn complete_operator_snapshot(
 /// Returns the current command-visible mining state.
 pub fn mining_runtime_state() -> MiningRuntimeState {
     command_visible_state().mining
+}
+
+/// Applies the persisted boot preference to this boot's initial intent.
+pub fn apply_boot_mining_preference(start_mining_on_boot: bool) {
+    use bitaxe_stratum::v1::state::MiningOperatorIntent;
+
+    mutate_command_visible_state(|state| {
+        state.mining.set_operator_intent(if start_mining_on_boot {
+            MiningOperatorIntent::Run
+        } else {
+            MiningOperatorIntent::Paused
+        });
+    });
 }
 
 /// Collects projection-backed API views and drains at most one pending sample marker.
@@ -161,84 +168,28 @@ pub fn publish_projected_live_telemetry_payload<T, E>(
     )
 }
 
-/// Folds a lifecycle event into the shared runtime telemetry projection.
-pub fn publish_runtime_lifecycle(lifecycle: PoolLifecycleStatus) -> ProjectionShareOutcome {
-    publish_runtime_telemetry_event(|sequence, _generation| {
-        RuntimeTelemetryEvent::LifecycleChanged {
-            sequence,
-            lifecycle,
+/// Publishes the sole owner's final derived lifecycle projection.
+pub fn publish_production_session_projection(projection: ProductionSessionProjection) {
+    mutate_command_visible_state(|state| {
+        state.mining.set_lifecycle(projection.pool_lifecycle);
+        state.mining.set_mining_activity(projection.mining_activity);
+        state.mining.set_fallback_active(matches!(
+            projection.maybe_active_pool,
+            Some(bitaxe_stratum::v1::production_session::ProductionPool::Fallback)
+        ));
+        if projection.mining_activity == bitaxe_stratum::v1::state::MiningActivityStatus::Active {
+            state.mining.allow_work_submission();
+        } else {
+            let reason = projection
+                .maybe_blocker
+                .map_or("production_session_not_active", |blocker| blocker.label());
+            state.mining.block_work_submission(reason);
+            state.mining.set_mining_activity(projection.mining_activity);
         }
-    })
-}
-
-/// Folds a pool-difficulty observation into the shared runtime projection.
-pub fn publish_runtime_pool_difficulty(difficulty: PoolDifficulty) -> ProjectionShareOutcome {
-    publish_runtime_telemetry_event(|sequence, _generation| {
-        RuntimeTelemetryEvent::PoolDifficultyObserved {
-            sequence,
-            difficulty,
-        }
-    })
-}
-
-/// Folds hashrate inputs into the shared runtime projection.
-pub fn publish_runtime_hashrate_inputs(inputs: HashrateInputs) -> ProjectionShareOutcome {
-    publish_runtime_telemetry_event(|sequence, _generation| {
-        RuntimeTelemetryEvent::HashrateObserved { sequence, inputs }
-    })
-}
-
-/// Folds work-submission readiness into the shared runtime projection.
-pub fn publish_runtime_work_submission_ready() -> ProjectionShareOutcome {
-    publish_runtime_telemetry_event(|sequence, _generation| {
-        RuntimeTelemetryEvent::WorkSubmissionReady { sequence }
-    })
-}
-
-/// Folds a redaction-safe blocked-prerequisite label into the runtime projection.
-pub fn publish_runtime_blocked(reason: &'static str) -> ProjectionShareOutcome {
-    publish_runtime_telemetry_event(|sequence, _generation| RuntimeTelemetryEvent::Blocked {
-        sequence,
-        reason,
-    })
-}
-
-/// Folds a producer-bound statistics sample marker into the runtime projection.
-pub fn publish_runtime_bounded_sample_marker(
-    source: RuntimeProjectionSampleSource,
-) -> ProjectionShareOutcome {
-    let timestamp_ms = crate::runtime_uptime::millis();
-    publish_runtime_telemetry_event(|sequence, _generation| {
-        RuntimeTelemetryEvent::BoundedSampleReady {
-            sequence,
-            timestamp_ms,
-            source,
-        }
-    })
-}
-
-/// Folds a submit-response classification into the shared runtime projection.
-pub fn publish_runtime_submit_classification(
-    generation: PoolSessionGeneration,
-    classification: SubmitClassification,
-    maybe_share_difficulty: Option<ShareDifficulty>,
-) -> ProjectionShareOutcome {
-    publish_runtime_telemetry_event(|sequence, _current_generation| {
-        RuntimeTelemetryEvent::SubmitClassified {
-            sequence,
-            generation,
-            classification,
-            maybe_share_difficulty,
-        }
-    })
-}
-
-/// Folds safe-stop postconditions before HTTP or WebSocket serialization.
-pub fn publish_runtime_safe_stopped(reason: &'static str) -> ProjectionShareOutcome {
-    publish_runtime_telemetry_event(|sequence, _generation| RuntimeTelemetryEvent::SafeStopped {
-        sequence,
-        reason,
-    })
+        state
+            .runtime_projection
+            .replace_session_state(state.mining.clone());
+    });
 }
 
 /// Returns the current identify mode used to plan the next identify command.
@@ -253,15 +204,10 @@ pub fn block_found_notification_state() -> BlockFoundNotificationState {
     command_visible_state().block_found
 }
 
-/// Applies an API-visible mining command effect.
-pub fn apply_mining_activity_command(effect: MiningActivityEffect) {
-    mutate_command_visible_state(|state| apply_mining_activity_effect(&mut state.mining, effect));
-}
-
-/// Replaces API-visible mining state after Phase 21 controlled evidence runs.
-pub fn replace_mining_runtime_state_for_evidence(mining: MiningRuntimeState) {
+/// Applies current-boot operator intent without deriving mining state.
+pub fn apply_mining_operator_intent_command(effect: MiningOperatorIntentEffect) {
     mutate_command_visible_state(|state| {
-        state.mining = mining;
+        apply_mining_operator_intent_effect(&mut state.mining, effect);
     });
 }
 
@@ -298,20 +244,6 @@ fn mutate_command_visible_state(mutate: impl FnOnce(&mut CommandVisibleState)) {
     };
 
     mutate(&mut state);
-}
-
-fn publish_runtime_telemetry_event(
-    build_event: impl FnOnce(RuntimeTelemetrySequence, PoolSessionGeneration) -> RuntimeTelemetryEvent,
-) -> ProjectionShareOutcome {
-    mutate_command_visible_state_with_result(ProjectionShareOutcome::NoCounterChange, |state| {
-        let sequence = state.next_runtime_sequence();
-        let generation = state.runtime_projection.current_generation();
-        let outcome = state
-            .runtime_projection
-            .fold(build_event(sequence, generation));
-        state.mining = state.runtime_projection.state().clone();
-        outcome
-    })
 }
 
 fn collect_projected_api_views_with_sample_policy(
@@ -464,12 +396,6 @@ fn mutate_command_visible_state_with_result<T>(
 }
 
 impl CommandVisibleState {
-    fn next_runtime_sequence(&mut self) -> RuntimeTelemetrySequence {
-        let sequence = RuntimeTelemetrySequence::new(self.next_runtime_sequence);
-        self.next_runtime_sequence = self.next_runtime_sequence.saturating_add(1);
-        sequence
-    }
-
     fn drain_pending_runtime_sample_marker(&mut self) -> Option<RuntimeProjectionSampleMarker> {
         self.runtime_projection.drain_pending_sample_marker()
     }
@@ -499,10 +425,15 @@ fn collect_settings_projection() -> SettingsProjection {
             Some(LoadedValue::U16(manual_fan_speed)) => Some(*manual_fan_speed),
             _ => None,
         },
+        start_mining_on_boot: match loaded.loaded_value("mineonboot") {
+            Some(LoadedValue::Bool(value)) => *value,
+            _ => true,
+        },
     }
 }
 
 fn apply_settings_snapshot(snapshot: &mut ApiSnapshot, settings: SettingsProjection) {
+    snapshot.project_settings.start_mining_on_boot = settings.start_mining_on_boot;
     if let Some(hostname) = settings.maybe_hostname {
         snapshot.platform.hostname = hostname;
     }
@@ -591,172 +522,6 @@ pub(crate) fn reset_command_visible_state_for_test() {
 }
 
 #[cfg(test)]
-fn drain_pending_runtime_sample_marker_for_test() -> Option<RuntimeProjectionSampleMarker> {
-    mutate_command_visible_state_with_result(None, |state| {
-        state.drain_pending_runtime_sample_marker()
-    })
-}
-
-#[cfg(test)]
 mod tests {
-    use bitaxe_stratum::v1::{
-        messages::PoolDifficulty,
-        production_work::PoolSessionGeneration,
-        state::{HashrateInputs, MiningActivityStatus, PoolLifecycleStatus, WorkSubmissionGate},
-        submit_response::SubmitClassification,
-        telemetry_projection::RuntimeProjectionSampleSource,
-    };
-
     use super::*;
-
-    #[test]
-    fn runtime_projection_lifecycle_and_hashrate_events_update_visible_state() {
-        // Arrange
-        reset_command_visible_state_for_test();
-        let inputs = HashrateInputs {
-            hashes_done: 8_192,
-            elapsed_ms: 2_048,
-            rolling_hashrate_hs: 4_096.0,
-        };
-
-        // Act
-        publish_runtime_lifecycle(PoolLifecycleStatus::Active);
-        publish_runtime_hashrate_inputs(inputs);
-        publish_runtime_pool_difficulty(PoolDifficulty { difficulty: 16.0 });
-
-        // Assert
-        let mining = mining_runtime_state();
-        assert_eq!(mining.lifecycle, PoolLifecycleStatus::Active);
-        assert_eq!(mining.hashrate_inputs, inputs);
-        assert_eq!(
-            mining.maybe_pool_difficulty,
-            Some(PoolDifficulty { difficulty: 16.0 })
-        );
-        assert_eq!(mining.counters.accepted, 0);
-        assert_eq!(mining.counters.rejected, 0);
-    }
-
-    #[test]
-    fn runtime_projection_sample_markers_drain_once_per_producer_boundary() {
-        // Arrange
-        reset_command_visible_state_for_test();
-
-        // Act
-        publish_runtime_bounded_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
-        let maybe_first_marker = drain_pending_runtime_sample_marker_for_test();
-        let maybe_second_marker = drain_pending_runtime_sample_marker_for_test();
-
-        // Assert
-        let first_marker = maybe_first_marker.expect("runtime boundary should emit sample marker");
-        assert_eq!(
-            first_marker.source,
-            RuntimeProjectionSampleSource::RuntimeEvent
-        );
-        assert!(maybe_second_marker.is_none());
-    }
-
-    #[test]
-    fn runtime_projection_submit_classification_gates_counters_by_generation() {
-        // Arrange
-        reset_command_visible_state_for_test();
-        let current_generation = PoolSessionGeneration::initial();
-        let stale_generation = current_generation.next();
-
-        // Act
-        publish_runtime_submit_classification(
-            stale_generation,
-            SubmitClassification::Accepted,
-            None,
-        );
-        publish_runtime_submit_classification(
-            current_generation,
-            SubmitClassification::Blocked {
-                reason: "submit_intent_missing",
-            },
-            None,
-        );
-
-        // Assert
-        let mining = mining_runtime_state();
-        assert_eq!(mining.counters.accepted, 0);
-        assert_eq!(mining.counters.rejected, 0);
-    }
-
-    #[test]
-    fn runtime_projection_safe_stop_resets_active_mining_before_snapshot_collection() {
-        // Arrange
-        reset_command_visible_state_for_test();
-        publish_runtime_work_submission_ready();
-
-        // Act
-        publish_runtime_blocked("phase25_safe_stop");
-        publish_runtime_safe_stopped("phase25_safe_stop");
-        let snapshot = collect_api_snapshot();
-
-        // Assert
-        assert_eq!(snapshot.mining.lifecycle, PoolLifecycleStatus::Disconnected);
-        assert_eq!(
-            snapshot.mining.mining_activity,
-            MiningActivityStatus::SafeBlocked
-        );
-        assert_eq!(snapshot.mining.work_submission, WorkSubmissionGate::Blocked);
-        assert_eq!(
-            snapshot.mining.maybe_blocked_reason,
-            Some("phase25_safe_stop")
-        );
-    }
-
-    #[test]
-    fn projected_route_helpers_use_projection_state_and_drain_samples_once() {
-        // Arrange
-        reset_command_visible_state_for_test();
-        let inputs = HashrateInputs {
-            hashes_done: 4_000,
-            elapsed_ms: 2_000,
-            rolling_hashrate_hs: 2_000.0,
-        };
-        publish_runtime_hashrate_inputs(inputs);
-        publish_runtime_lifecycle(PoolLifecycleStatus::Active);
-        publish_runtime_bounded_sample_marker(RuntimeProjectionSampleSource::RuntimeEvent);
-
-        // Act
-        let system_info = publish_projected_system_info(50_000, |system_info| {
-            Ok::<SystemInfoWire, core::convert::Infallible>(system_info)
-        })
-        .expect("system info publication must succeed");
-        let first_statistics = projected_statistics(50_000);
-        let second_statistics = projected_statistics(50_500);
-        let scoreboard = projected_scoreboard(50_000);
-
-        // Assert
-        assert_eq!(system_info.hash_rate, 2.0);
-        assert_eq!(system_info.pool_connection_info, "active");
-        assert_eq!(first_statistics.statistics.len(), 1);
-        assert!(second_statistics.statistics.is_empty());
-        assert!(scoreboard.is_empty());
-    }
-
-    #[test]
-    fn projected_live_telemetry_payload_reflects_safe_stop_state() {
-        // Arrange
-        reset_command_visible_state_for_test();
-        publish_runtime_work_submission_ready();
-
-        // Act
-        publish_runtime_blocked("phase25_safe_stop");
-        publish_runtime_safe_stopped("phase25_safe_stop");
-        let payload = publish_projected_live_telemetry_payload(60_000, |payload| {
-            Ok::<serde_json::Value, core::convert::Infallible>(payload)
-        })
-        .expect("live telemetry publication must succeed");
-        let rendered = payload.to_string();
-
-        // Assert
-        assert_eq!(payload["miningPaused"], serde_json::Value::Bool(true));
-        assert_eq!(
-            payload["poolConnectionInfo"],
-            serde_json::Value::String("disconnected".to_owned())
-        );
-        assert!(!rendered.contains(":\"active\""));
-    }
 }

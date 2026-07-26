@@ -46,17 +46,13 @@ parity:
 verify-redaction *args:
     bazel run //scripts:verify_redaction -- {{ args }}
 
+verify-production-session:
+    bazel test //crates/bitaxe-stratum:tests //crates/bitaxe-api:tests //crates/bitaxe-config:tests
+    bazel run //scripts:verify_production_session_source
+    bazel build //firmware/bitaxe:firmware
+
 phase23-evidence *args:
     bazel run //scripts:phase23_redacted_operator_evidence -- {{ args }}
-
-phase25-evidence *args:
-    bazel run //scripts:phase25_live_stratum_evidence -- {{ args }}
-
-phase27-evidence *args:
-    bazel run //scripts:phase27_live_hardware_bridge_evidence -- {{ args }}
-
-phase28-evidence *args:
-    bazel run //scripts:phase28_evidence -- {{ args }}
 
 phase33-settings-durability *args:
     ./scripts/phase33-confirmed-settings-durability.sh {{ args }}
@@ -67,6 +63,3 @@ phase35-evidence *args:
 
 phase36-substantive-evidence *args:
     bazel run //scripts:phase36_substantive_evidence -- {{ args }}
-
-phase27-package:
-    scripts/phase27-live-hardware-bridge-package.sh

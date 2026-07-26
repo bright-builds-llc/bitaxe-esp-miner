@@ -22,9 +22,9 @@ pub use confirmed_snapshot::{
 pub use defaults::{ultra_205_defaults, Ultra205Defaults};
 pub use nvs::{
     all_settings_schema, compatibility_writes_for_active, load_setting_value, migration_decisions,
-    migration_rules, LoadedValue, MigrationDecision, MigrationRule, NvsErase, NvsKeyName,
-    NvsSchemaError, NvsWrite, RestFieldName, SettingDefault, SettingSchema, StoredType,
-    StoredValue, NVS_KEY_NAME_MAX_BYTES, NVS_NAMESPACE,
+    migration_rules, project_settings_schema, LoadedValue, MigrationDecision, MigrationRule,
+    NvsErase, NvsKeyName, NvsSchemaError, NvsWrite, RestFieldName, SettingDefault, SettingSchema,
+    StoredType, StoredValue, NVS_KEY_NAME_MAX_BYTES, NVS_NAMESPACE,
 };
 pub use persistence::{
     apply_patch_to_snapshot, confirm_hostname_snapshot, load_snapshot, reload_snapshot,

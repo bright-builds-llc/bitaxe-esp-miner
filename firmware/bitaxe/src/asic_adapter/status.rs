@@ -18,10 +18,6 @@ pub fn publish_default_fail_closed_status() {
     log::info!("{}", default_fail_closed_status_log());
 }
 
-pub fn publish_mining_loop_blocked_status(reason: &'static str) {
-    log::info!("mining_loop_status=blocked reason={reason} work_submission=disabled");
-}
-
 pub fn publish_production_asic_status(status: ProductionAsicStatus) {
     log::info!("{}", production_asic_status_log_line(status));
 }

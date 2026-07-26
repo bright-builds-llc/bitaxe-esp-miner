@@ -351,38 +351,19 @@ private endpoints, or NVS secret values. Raw developer artifacts containing
 local SSIDs, IP addresses, MAC addresses, or `device_url` values must be
 redacted before commit or release citation.
 
-For Phase 21 live mining verification, keep owner pool input in a local,
-untracked JSON file by copying the checked-in example:
+The ordinary firmware starts one Production Mining Session owner. It rereads
+operator, network, settings, and safety state at least once per second, but it
+remains actuation-unqualified. Consequently the release firmware does not read
+pool secrets, open a pool connection, dispatch ASIC work, or actuate mining
+hardware. Software verification uses deterministic fakes:
 
 ```bash
-cp pool-credentials.json.example pool-credentials.json
+just verify-production-session
 ```
 
-Edit `pool-credentials.json` so `poolUser` is your BTC-address-derived worker,
-such as `<owner-btc-address>.bitaxe`. The sample uses the upstream Ultra 205
-default pool endpoint shape:
-
-```json
-{
-  "poolURL": "public-pool.io",
-  "poolPort": 3333,
-  "poolUser": "<owner-btc-address>.bitaxe",
-  "poolPassword": "x"
-}
-```
-
-Pass the file only to repo-owned local live mining verification commands:
-
-```bash
-scripts/phase21-live-mining-evidence.sh ... --pool-credentials pool-credentials.json
-```
-
-Do not commit real `pool-credentials*.json` or `pool-credentials*.env` files,
-paste their contents into chat, or copy raw pool values into evidence.
-Commit-ready evidence should use category labels such as
-`pool_config: local-owner-supplied` and must redact or omit raw pool URLs,
-ports, users, workers, addresses, passwords, endpoints, tokens, and NVS secret
-values.
+The project-owned `startMiningOnBoot` setting defaults to `true` and controls
+the next boot's initial operator intent. Pause and resume affect only the
+current boot. Neither setting qualifies real mining effects.
 
 ## Phase 23 Redacted Operator Evidence Workflow
 
@@ -418,95 +399,14 @@ copied into evidence, or exposed. Committed summaries use category labels only:
 `pool_config: local-owner-supplied`, `wifi_config: local-owner-supplied`,
 `raw_pool_values_committed: no`, and `raw_artifacts_committed: no`.
 
-Phase 23 proves the redacted evidence workflow, required evidence-root slots,
-runtime-only credential labels, target-source blockers, and the
-`operator-evidence` parity validator. It does not verify Phase 24 BM1366
-production work, Phase 25 live Stratum socket success, accepted/rejected
-shares, or Phase 26 telemetry closure.
+Phase 23 is retained as historical evidence tooling. It does not qualify the
+Production Mining Session, live Stratum socket behavior, ASIC actuation, or
+accepted/rejected shares.
 
 Use the factory image path from
 `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` when recovery requires
 a full USB flash baseline. Record the exact port, package manifest, source
 commit, reference commit, and observed flash result.
-
-## Phase 25 Live Stratum Evidence
-
-Phase 25 uses the hardware-first detector gate, runtime-only local credential
-paths, commit-ready redaction, and a hardware capture duration of at least 360
-seconds. After `just detect-ultra205` passes for exactly one Ultra 205, the
-operator command shape is:
-
-```bash
-just phase25-evidence --evidence-root <phase25-root> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --mode hardware --pool-credentials pool-credentials.json --wifi-credentials wifi-credentials.json --duration-seconds 360 --device-url <current-session-origin>
-```
-
-The wrapper completes the canonical eleven-slot evidence root, applies the
-applicable mining policy check, and finishes with strict
-`operator-evidence --profile phase25 --evidence-root <phase25-root> --require-redaction-passed`
-validation exactly once. A post-setup blocked result or detector failure still
-writes and validates a complete blocked root, preserves the exact non-claim,
-and returns nonzero. Use blocked mode only for the documented static fallback;
-it is not a successful hardware result.
-
-## Phase 27 Live Hardware ASIC And Stratum Bridge
-
-Phase 27 evidence requires Phase 27 enablement firmware before flash. Build and
-package with:
-
-```bash
-scripts/phase27-live-hardware-bridge-package.sh
-```
-
-Or equivalent Bazel `action_env` for
-`BITAXE_MINING_EVIDENCE_MODE=phase27-live-hardware-asic-stratum-bridge` and
-`BITAXE_HARDWARE_EVIDENCE_ACK=ultra205-phase27-live-hardware-bridge-safe-stop`.
-
-Agents must attempt hardware mode first when detection and credentials are
-available. See `AGENTS.md` → Evidence Workflow: Hardware-First Default. For
-flash and monitor capture, use at least `capture-timeout-seconds=360` or
-`--duration-seconds 360`; see `AGENTS.md` → Flash And Monitor Timeouts.
-
-```bash
-just detect-ultra205
-just phase27-evidence \
-  --evidence-root docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge \
-  --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json \
-  --mode hardware \
-  --port "<detected-port>" \
-  --pool-credentials pool-credentials.json \
-  --wifi-credentials wifi-credentials.json \
-  --duration-seconds 360 \
-  --redact-evidence=true
-```
-
-Use `--mode blocked` only as the CI/no-hardware fallback when detection fails or
-credentials are absent.
-
-The Phase 27 wrapper completes the canonical eleven-slot evidence root, runs
-the applicable mining policy check, and finishes with strict
-`operator-evidence --profile phase27 --evidence-root <phase27-root> --require-redaction-passed`
-validation exactly once. A post-setup blocked result or detector failure still
-writes and validates a complete blocked root, preserves the exact non-claim,
-and returns nonzero.
-
-## Phase 28 Evidence Consolidation
-
-Consolidate a committed Phase 27 root into a dedicated Phase 28 destination
-with this exact repo-owned command shape:
-
-```bash
-just phase28-evidence --phase27-root <committed-phase27-root> --evidence-root <dedicated-phase28-root>
-```
-
-The two roots must be distinct and non-nested. The command reads only committed
-allowlisted category fields, renders relative cross-links, and preserves the
-exact `accepted`, `rejected`, or `blocked_safe_prerequisite` outcome and its
-supporting proof or non-claims. Identical reruns are deterministic. The
-consolidation command runs the same strict Phase 28 operator validation with
-required redaction inside staging before atomic promotion; no second
-post-promotion validator is needed. If generation or validation fails, the prior
-destination remains byte-identical. Equal, nested, contradictory, incomplete,
-or operator-owned destinations fail closed.
 
 ## Monitor
 

@@ -632,6 +632,43 @@ Completion review:
   green, closing the final LCD timing observation without changing the parity
   claim.
 
+### task-production-mining-session | 2026-07-26 | Build the production mining owner and retire obsolete phase runtimes
+
+- [x] Record the GSD-era removal rule, Production Mining Session definition,
+      and sole-ownership ADR.
+- [x] Add the pure production-session lifecycle, recovery policy, typed
+      interfaces, and deterministic tests to `bitaxe-stratum`.
+- [x] Add the thin ESP owner, lazy pool settings seam, operator-intent
+      projection, boot preference, and category-only notifications.
+- [x] Remove the obsolete Phase 21, Phase 25, Phase 27, and dependent Phase 28
+      executable paths without compatibility aliases.
+- [x] Add focused source-contract and production-session verification wiring.
+- [x] Run Rust format, Clippy, build, and tests in the required order, followed
+      by focused verification, repository tests, packaging, parity,
+      reference-integrity, redaction, source scans, and diff review.
+
+Verification policy:
+
+- Software fakes may prove protocol, lifecycle, recovery, and projection
+  behavior. They do not promote hardware or parity evidence.
+- Do not flash hardware, connect to a real pool, mine, or actuate hardware for
+  this task. The ordinary ESP implementation remains actuation-unqualified and
+  fail-closed before pool-secret access or external effects.
+
+Completion review: Complete. The pure session and fail-closed ESP owner now own
+operator intent, readiness, recovery, lifecycle projection, and ordered safe
+stop. The focused verifier, ESP32-S3 firmware build, host format/Clippy/build/
+tests, package, parity, reference-integrity, redaction, source scan, and diff
+checks pass. The repository-wide Bazel suite passes 72 of 73 tests;
+the remaining Phase 36 publication test intentionally reports
+`source_tree_not_clean` until this implementation is committed. Its evidence
+guard was preserved rather than weakened.
+
+Residual risks: Real networking and ASIC actuation remain fail-closed and
+outside this task. Hardware qualification, live pool recovery, and successful
+share submission still require separately authorized evidence before any parity
+promotion.
+
 ## Backlog
 
 ### task-private-first-remaining-evidence-pipelines | 2026-07-20 | Migrate remaining evidence workflows

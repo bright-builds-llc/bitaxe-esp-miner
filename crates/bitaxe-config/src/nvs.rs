@@ -10,6 +10,8 @@ use thiserror::Error;
 
 /// Upstream ESP-Miner NVS namespace for settings.
 pub const NVS_NAMESPACE: &str = "main";
+const PROJECT_SETTINGS_PROVENANCE: &str =
+    "docs/adr/0016-production-mining-session.md project-owned boot preference";
 
 /// ESP-IDF NVS key names are limited to 15 bytes, excluding the terminator.
 pub const NVS_KEY_NAME_MAX_BYTES: usize = 15;
@@ -1314,6 +1316,21 @@ pub fn all_settings_schema() -> Vec<SettingSchema> {
             provenance: MIGRATION_PROVENANCE,
         },
     ]
+}
+
+/// Returns project-owned settings kept separate from the upstream-exact schema.
+#[must_use]
+pub fn project_settings_schema() -> Vec<SettingSchema> {
+    vec![SettingSchema {
+        key: key("mineonboot"),
+        stored_type: StoredType::BoolAsU16,
+        default_value: Some(SettingDefault::Bool(true)),
+        rest_name: Some(rest("startMiningOnBoot")),
+        min: Some(0),
+        max: Some(1),
+        array_size: None,
+        provenance: PROJECT_SETTINGS_PROVENANCE,
+    }]
 }
 
 #[cfg(test)]

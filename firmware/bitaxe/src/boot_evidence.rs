@@ -70,14 +70,12 @@ impl BootSessionNonce {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum BootEvidenceState {
     Booted,
-    ListenerArmed,
 }
 
 impl BootEvidenceState {
     const fn label(self) -> &'static str {
         match self {
             Self::Booted => "booted",
-            Self::ListenerArmed => "listener_armed",
         }
     }
 }
@@ -160,21 +158,6 @@ pub fn record_booted() {
         return;
     }
     record(boot_session(), BootEvidenceState::Booted);
-}
-
-/// Latches listener readiness and conditionally records dedicated Plan 13 proof.
-pub fn record_listener_armed() {
-    let model = heartbeat_model();
-    let Ok(mut model) = model.lock() else {
-        log::warn!("runtime_heartbeat=unavailable reason=mutex_poisoned");
-        return;
-    };
-    model.arm_listener();
-    drop(model);
-
-    if asic_adapter::accepted_state_snapshot_enabled() {
-        record(boot_session(), BootEvidenceState::ListenerArmed);
-    }
 }
 
 /// Returns the typed operator-snapshot session backed by the existing hardware-RNG nonce.
@@ -409,12 +392,12 @@ mod tests {
         let nonce = BootSessionNonce([0, 1, u32::MAX, 0x1234_abcd]);
 
         // Act
-        let marker = evidence_marker(nonce, BootEvidenceState::ListenerArmed);
+        let marker = evidence_marker(nonce, BootEvidenceState::Booted);
 
         // Assert
         assert_eq!(
             marker,
-            "plan13_boot_evidence session=0000000000000001ffffffff1234abcd state=listener_armed redacted=true"
+            "plan13_boot_evidence session=0000000000000001ffffffff1234abcd state=booted redacted=true"
         );
     }
 }

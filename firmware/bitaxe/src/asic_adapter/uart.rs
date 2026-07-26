@@ -166,6 +166,7 @@ impl<'d> AsicUart<'d> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn read_accumulate(&mut self, len: usize, timeout_ms: u32) -> Result<Vec<u8>> {
         self.read_exact(len, timeout_ms)
     }
@@ -278,8 +279,7 @@ impl<'d> AsicUart<'d> {
 }
 
 fn uart_trace_enabled() -> bool {
-    crate::mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge()
-        || option_env!("BITAXE_ASIC_UART_TRACE") == Some("1")
+    option_env!("BITAXE_ASIC_UART_TRACE") == Some("1")
 }
 
 fn hex_bytes(bytes: &[u8]) -> String {

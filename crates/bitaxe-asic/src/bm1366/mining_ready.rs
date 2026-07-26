@@ -307,7 +307,7 @@ pub struct MiningReadyInitOptions {
 
 impl MiningReadyInitOptions {
     #[must_use]
-    pub const fn phase27_default() -> Self {
+    pub const fn production_default() -> Self {
         Self {
             skip_max_baud: false,
             skip_asic_max_baud: false,
@@ -393,7 +393,7 @@ mod tests {
     #[ignore = "local fixture generation helper"]
     fn dump_dynamic_init_frames_for_fixture_capture() {
         let config = MiningReadyConfig::ultra_205_single_chip(1);
-        let commands = mining_ready_commands(config, MiningReadyInitOptions::phase27_default())
+        let commands = mining_ready_commands(config, MiningReadyInitOptions::production_default())
             .expect("commands should build");
         let frames: Vec<Vec<u8>> = commands.iter().copied().map(frame_bytes).collect();
         for (index, frame) in frames.iter().enumerate() {
@@ -405,7 +405,7 @@ mod tests {
     fn mining_ready_dynamic_init_frames_match_upstream_computed_values() {
         let config = MiningReadyConfig::ultra_205_single_chip(1);
         assert_eq!(config.difficulty, 256.0);
-        let commands = mining_ready_commands(config, MiningReadyInitOptions::phase27_default())
+        let commands = mining_ready_commands(config, MiningReadyInitOptions::production_default())
             .expect("commands should build");
         let frames: Vec<Vec<u8>> = commands.iter().copied().map(frame_bytes).collect();
 
@@ -440,7 +440,7 @@ mod tests {
     #[test]
     fn mining_ready_init_frames_match_upstream_fixtures() {
         let config = MiningReadyConfig::ultra_205_single_chip(1);
-        let commands = mining_ready_commands(config, MiningReadyInitOptions::phase27_default())
+        let commands = mining_ready_commands(config, MiningReadyInitOptions::production_default())
             .expect("commands should build");
 
         let frames: Vec<Vec<u8>> = commands.iter().copied().map(frame_bytes).collect();
@@ -475,7 +475,7 @@ mod tests {
 
     #[test]
     fn max_baud_prelude_orders_reg28_wait_host_clear() {
-        let actions = max_baud_prelude_actions(MiningReadyInitOptions::phase27_default())
+        let actions = max_baud_prelude_actions(MiningReadyInitOptions::production_default())
             .expect("prelude should encode");
 
         assert!(matches!(
@@ -493,7 +493,7 @@ mod tests {
     fn max_baud_prelude_can_insert_post_host_delay() {
         let actions = max_baud_prelude_actions(MiningReadyInitOptions {
             post_max_baud_delay_ms: 2_000,
-            ..MiningReadyInitOptions::phase27_default()
+            ..MiningReadyInitOptions::production_default()
         })
         .expect("prelude should encode");
 
@@ -534,7 +534,7 @@ mod tests {
     #[test]
     fn hash_counting_number_uses_actual_pll_frequency_for_nonce_space_frame() {
         let config = MiningReadyConfig::ultra_205_single_chip(1);
-        let commands = mining_ready_commands(config, MiningReadyInitOptions::phase27_default())
+        let commands = mining_ready_commands(config, MiningReadyInitOptions::production_default())
             .expect("commands should build");
         let plan = frequency_plan_for_mhz(config.frequency_mhz);
         let expected_hcn = hash_counting_number(

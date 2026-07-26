@@ -25,8 +25,12 @@ A project-owned audit artifact that tracks observable device-user parity against
 _Avoid_: Task list, release checklist, TODO list
 
 **First Hardware Target**:
-The Bitaxe Gamma 601 with BM1370 ASIC used for earliest USB flashing, smoke tests, and hardware acceptance. Other upstream-supported boards remain in parity scope, and Bitaxe 205 is an available secondary device, but 601 is the preferred bring-up device.
+The Bitaxe Ultra 205 with BM1366 ASIC used for earliest USB flashing, smoke tests, and hardware acceptance. Other upstream-supported boards remain in parity scope and require their own verification evidence.
 _Avoid_: Default board, only supported board
+
+**Production Mining Session**:
+The boot-lifetime owner of mining intent and the lifecycle from readiness through pool work, recovery, and safe stop. It remains blocked until safety, ASIC, and actuation qualifications are all present.
+_Avoid_: Live mining mode, evidence runtime, Stratum task
 
 **Reference Breadcrumb**:
 A concise pointer from Rust-owned code or docs to the reference implementation path, function, or parity checklist anchor that explains the behavior being matched. Breadcrumbs are required at module and behavior boundaries, not as line-by-line translation notes.

@@ -84,6 +84,8 @@ impl fmt::Debug for Hostname {
 pub enum V12SettingsChange {
     /// A validated hostname replacement.
     Hostname(Hostname),
+    /// Project-owned preference for the next boot's initial operator intent.
+    StartMiningOnBoot(bool),
 }
 
 /// Category-only reason that a compatibility input has no v1.2 authority.
@@ -129,6 +131,19 @@ pub fn decide_v12_settings_body(body: &str) -> Result<V12SettingsDecision, Setti
 pub fn decide_v12_settings_value(
     value: &Value,
 ) -> Result<V12SettingsDecision, SettingsPatchFailure> {
+    if let Some(object) = value.as_object() {
+        if object.len() == 1 {
+            if let Some(raw_preference) = object.get("startMiningOnBoot") {
+                let Some(preference) = raw_preference.as_bool() else {
+                    return Err(wrong_input(Vec::new()));
+                };
+                return Ok(V12SettingsDecision::Authorized(
+                    V12SettingsChange::StartMiningOnBoot(preference),
+                ));
+            }
+        }
+    }
+
     plan_settings_patch_value(value)?;
 
     let Some(object) = value.as_object() else {
@@ -237,6 +252,21 @@ mod tests {
         };
         assert_eq!(hostname.as_str(), "axe-205");
         assert_eq!(format!("{hostname:?}"), "Hostname([redacted])");
+    }
+
+    #[test]
+    fn settings_v12_authorizes_exact_boot_preference() {
+        // Arrange
+        let body = json!({"startMiningOnBoot": false});
+
+        // Act
+        let decision = decide_v12_settings_value(&body).expect("boot preference must classify");
+
+        // Assert
+        assert_eq!(
+            decision,
+            V12SettingsDecision::Authorized(V12SettingsChange::StartMiningOnBoot(false))
+        );
     }
 
     #[test]

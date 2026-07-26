@@ -2,182 +2,10 @@ use std::ffi::CString;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::Component;
-use std::sync::atomic::Ordering;
 
 use camino::{Utf8Path, Utf8PathBuf};
 
-use super::ownership::{PathIdentity, PromotionContext};
-use super::{
-    ConsolidationOptions, GenerationError, GenerationResult, PromotionFailurePoint,
-    STAGING_SEQUENCE,
-};
-
-pub(super) trait PromotionFilesystem {
-    fn rename(&mut self, source: &Utf8Path, destination: &Utf8Path) -> GenerationResult<()>;
-    fn exchange(&mut self, left: &Utf8Path, right: &Utf8Path) -> GenerationResult<()>;
-    fn sync_directory(&mut self, path: &Utf8Path) -> GenerationResult<()>;
-    fn remove_directory(&mut self, path: &Utf8Path) -> GenerationResult<()>;
-}
-
-struct SystemPromotionFilesystem;
-
-impl PromotionFilesystem for SystemPromotionFilesystem {
-    fn rename(&mut self, source: &Utf8Path, destination: &Utf8Path) -> GenerationResult<()> {
-        fs::rename(source.as_std_path(), destination.as_std_path())
-            .map_err(|error| io_error(format!("failed to promote staging root {source}"), error))
-    }
-
-    fn exchange(&mut self, left: &Utf8Path, right: &Utf8Path) -> GenerationResult<()> {
-        atomic_exchange(left, right)
-    }
-
-    fn sync_directory(&mut self, path: &Utf8Path) -> GenerationResult<()> {
-        sync_directory(path)
-    }
-
-    fn remove_directory(&mut self, path: &Utf8Path) -> GenerationResult<()> {
-        fs::remove_dir_all(path.as_std_path())
-            .map_err(|error| io_error(format!("failed to remove generation {path}"), error))
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum RollbackState {
-    PreviousGenerationRestored,
-}
-
-pub(super) fn promote_staging(
-    destination: &Utf8Path,
-    staging: &Utf8Path,
-    options: ConsolidationOptions,
-    context: &PromotionContext,
-) -> GenerationResult<()> {
-    promote_staging_with_filesystem(
-        destination,
-        staging,
-        options,
-        &mut SystemPromotionFilesystem,
-        context,
-    )
-}
-
-pub(super) fn promote_staging_with_filesystem(
-    destination: &Utf8Path,
-    staging: &Utf8Path,
-    options: ConsolidationOptions,
-    filesystem: &mut impl PromotionFilesystem,
-    context: &PromotionContext,
-) -> GenerationResult<()> {
-    let parent = destination.parent().ok_or_else(|| {
-        GenerationError::InvalidInput("evidence destination has no parent".to_owned())
-    })?;
-    let staging_identity = context.validate_before_exchange(destination, staging)?;
-    if context.destination_identity().is_none() {
-        filesystem.rename(staging, destination)?;
-        context.validate_initial_promotion(destination, staging, staging_identity)?;
-        return filesystem.sync_directory(parent);
-    }
-
-    filesystem.exchange(staging, destination)?;
-    context.validate_swapped(destination, staging, staging_identity)?;
-    let maybe_promotion_error =
-        if options.maybe_failure == Some(PromotionFailurePoint::AfterExchange) {
-            Some(GenerationError::Injected(
-                PromotionFailurePoint::AfterExchange,
-            ))
-        } else {
-            filesystem.sync_directory(parent).err()
-        };
-    if let Some(promotion_error) = maybe_promotion_error {
-        let promotion_detail = promotion_error.to_string();
-        rollback_exchange(
-            destination,
-            staging,
-            parent,
-            filesystem,
-            context,
-            staging_identity,
-            &promotion_detail,
-        )?;
-        return Err(promotion_error);
-    }
-
-    if options.maybe_failure == Some(PromotionFailurePoint::DuringOldGenerationCleanup) {
-        return Err(GenerationError::RecoveryRequired {
-            destination: destination.to_owned(),
-            retained_old_generation: staging.to_owned(),
-            detail: "old-generation cleanup was not attempted after injected failure".to_owned(),
-        });
-    }
-    context.validate_swapped(destination, staging, staging_identity)?;
-    filesystem
-        .remove_directory(staging)
-        .map_err(|error| GenerationError::RecoveryRequired {
-            destination: destination.to_owned(),
-            retained_old_generation: staging.to_owned(),
-            detail: format!(
-                "promotion is durable but old-generation cleanup failed; retained path is explicit: {error}"
-            ),
-        })?;
-    filesystem
-        .sync_directory(parent)
-        .map_err(|error| GenerationError::DurabilityUncertain {
-            destination: destination.to_owned(),
-            detail: format!(
-                "promotion completed and the old generation is absent from the namespace, but cleanup durability is uncertain: {error}"
-            ),
-        })
-}
-
-pub(super) fn rollback_exchange(
-    destination: &Utf8Path,
-    staging: &Utf8Path,
-    parent: &Utf8Path,
-    filesystem: &mut impl PromotionFilesystem,
-    context: &PromotionContext,
-    staging_identity: PathIdentity,
-    promotion_failure: &str,
-) -> GenerationResult<RollbackState> {
-    context.validate_swapped(destination, staging, staging_identity)?;
-    filesystem.exchange(destination, staging).map_err(|error| {
-        GenerationError::RecoveryRequired {
-            destination: destination.to_owned(),
-            retained_old_generation: staging.to_owned(),
-            detail: format!(
-                "promotion failed ({promotion_failure}); rollback exchange failed; both complete generations retained: {error}"
-            ),
-        }
-    })?;
-    context.validate_restored(destination, staging, staging_identity)?;
-    filesystem.sync_directory(parent).map_err(|error| {
-        GenerationError::RecoveryRequired {
-            destination: destination.to_owned(),
-            retained_old_generation: staging.to_owned(),
-            detail: format!(
-                "promotion failed ({promotion_failure}); previous generation is restored in the namespace but rollback durability is uncertain; both complete generations retained: {error}"
-            ),
-        }
-    })?;
-    context.validate_restored(destination, staging, staging_identity)?;
-    filesystem.remove_directory(staging).map_err(|error| {
-        GenerationError::RecoveryRequired {
-            destination: destination.to_owned(),
-            retained_old_generation: staging.to_owned(),
-            detail: format!(
-                "promotion failed ({promotion_failure}); rollback is durable but replacement cleanup failed: {error}"
-            ),
-        }
-    })?;
-    filesystem.sync_directory(parent).map_err(|error| {
-        GenerationError::DurabilityUncertain {
-            destination: destination.to_owned(),
-            detail: format!(
-                "promotion failed ({promotion_failure}); previous generation is restored and the replacement is absent from the namespace, but cleanup durability is uncertain: {error}"
-            ),
-        }
-    })?;
-    Ok(RollbackState::PreviousGenerationRestored)
-}
+use super::{GenerationError, GenerationResult};
 
 pub(super) fn atomic_exchange(left: &Utf8Path, right: &Utf8Path) -> GenerationResult<()> {
     #[cfg(target_os = "linux")]
@@ -243,44 +71,6 @@ pub(super) fn c_path(path: &Utf8Path) -> GenerationResult<CString> {
     })
 }
 
-pub(super) fn create_staging_directory(destination: &Utf8Path) -> GenerationResult<Utf8PathBuf> {
-    let parent = destination.parent().ok_or_else(|| {
-        GenerationError::InvalidInput("evidence destination has no parent".to_owned())
-    })?;
-    fs::create_dir_all(parent.as_std_path()).map_err(|source| {
-        io_error(
-            format!("failed to create destination parent {parent}"),
-            source,
-        )
-    })?;
-    let name = destination.file_name().ok_or_else(|| {
-        GenerationError::InvalidInput("evidence destination has no file name".to_owned())
-    })?;
-    for _ in 0..32 {
-        let sequence = STAGING_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-        let staging = parent.join(format!(".{name}.staging-{}-{sequence}", std::process::id()));
-        let mut builder = fs::DirBuilder::new();
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::DirBuilderExt;
-            builder.mode(0o700);
-        }
-        match builder.create(staging.as_std_path()) {
-            Ok(()) => return Ok(staging),
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
-            Err(source) => {
-                return Err(io_error(
-                    format!("failed to create staging root {staging}"),
-                    source,
-                ));
-            }
-        }
-    }
-    Err(GenerationError::InvalidInput(
-        "could not allocate a unique staging directory".to_owned(),
-    ))
-}
-
 pub(super) fn normalize_repo_relative(
     path: &Utf8Path,
     label: &str,
@@ -313,18 +103,6 @@ pub(super) fn normalize_repo_relative(
         )));
     }
     Ok(normalized)
-}
-
-pub(super) fn reject_related_roots(
-    source: &Utf8Path,
-    destination: &Utf8Path,
-) -> GenerationResult<()> {
-    if source == destination || source.starts_with(destination) || destination.starts_with(source) {
-        return Err(GenerationError::InvalidInput(
-            "phase27 and phase28 roots must be distinct and non-nested".to_owned(),
-        ));
-    }
-    Ok(())
 }
 
 pub(super) fn reject_symlink_managed_path(
@@ -371,53 +149,6 @@ pub(super) fn write_synced(path: &Utf8Path, contents: &str) -> GenerationResult<
         .map_err(|source| io_error(format!("failed to write generated file {path}"), source))?;
     file.sync_all()
         .map_err(|source| io_error(format!("failed to sync generated file {path}"), source))
-}
-
-pub(super) fn replace_synced(path: &Utf8Path, contents: &str) -> GenerationResult<()> {
-    let parent = path.parent().ok_or_else(|| {
-        GenerationError::InvalidInput("generated file has no parent directory".to_owned())
-    })?;
-    let name = path.file_name().ok_or_else(|| {
-        GenerationError::InvalidInput("generated file has no file name".to_owned())
-    })?;
-
-    for _ in 0..32 {
-        let sequence = STAGING_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-        let temporary = parent.join(format!(
-            ".{name}.replacement-{}-{sequence}",
-            std::process::id()
-        ));
-        let mut file = match OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(temporary.as_std_path())
-        {
-            Ok(file) => file,
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
-            Err(source) => {
-                return Err(io_error(
-                    format!("failed to create replacement file {temporary}"),
-                    source,
-                ));
-            }
-        };
-        let replacement_result = file
-            .write_all(contents.as_bytes())
-            .and_then(|()| file.sync_all())
-            .and_then(|()| fs::rename(temporary.as_std_path(), path.as_std_path()));
-        if let Err(source) = replacement_result {
-            let _ = fs::remove_file(temporary.as_std_path());
-            return Err(io_error(
-                format!("failed to replace generated file {path}"),
-                source,
-            ));
-        }
-        return Ok(());
-    }
-
-    Err(GenerationError::InvalidInput(
-        "could not allocate a unique replacement file".to_owned(),
-    ))
 }
 
 pub(super) fn sync_directory(path: &Utf8Path) -> GenerationResult<()> {

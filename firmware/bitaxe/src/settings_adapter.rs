@@ -8,8 +8,9 @@ use bitaxe_api::{
 };
 use bitaxe_config::nvs::StoredValueKind;
 use bitaxe_config::{
-    all_settings_schema, confirm_hostname_snapshot, ConfirmedHostnameSnapshot,
-    ConfirmedSnapshotCell, ConfirmedSnapshotReadHealth, NvsSnapshot, StoredValue, NVS_NAMESPACE,
+    all_settings_schema, confirm_hostname_snapshot, project_settings_schema,
+    ConfirmedHostnameSnapshot, ConfirmedSnapshotCell, ConfirmedSnapshotReadHealth, NvsSnapshot,
+    StoredValue, NVS_NAMESPACE,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDataType, NvsDefault};
@@ -124,6 +125,62 @@ pub fn current_settings_snapshot() -> NvsSnapshot {
     read.into_snapshot()
 }
 
+/// Returns the project-owned next-boot mining preference, defaulting to true.
+#[must_use]
+pub fn start_mining_on_boot() -> bool {
+    let loaded = bitaxe_config::reload_snapshot(&current_settings_snapshot());
+    match loaded.loaded_value("mineonboot") {
+        Some(bitaxe_config::LoadedValue::Bool(value)) => *value,
+        _ => true,
+    }
+}
+
+/// Persists and confirms the project-owned next-boot mining preference.
+pub fn persist_start_mining_on_boot(value: bool) -> Result<(), SettingsAdapterFailure> {
+    let _transaction_guard = SETTINGS_TRANSACTION_LOCK
+        .lock()
+        .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
+    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+    let nvs = EspNvs::new(partition, NVS_NAMESPACE, true).map_err(settings_failure)?;
+    nvs.set_u16("mineonboot", u16::from(value))
+        .map_err(settings_failure)?;
+    let result = unsafe { sys::nvs_commit(nvs.handle()) };
+    esp_result("nvs_commit", result)?;
+    refresh_current_settings_snapshot_best_effort(&nvs);
+    if start_mining_on_boot() != value {
+        return Err(SettingsAdapterFailure::failed(
+            "boot mining preference confirmation mismatch",
+        ));
+    }
+    Ok(())
+}
+
+/// Reads only the non-secret protocol selectors needed by the protocol gate.
+///
+/// Missing selectors use the project default of Stratum V1. Pool endpoints,
+/// users, passwords, certificates, and ports are not opened by this gate.
+#[must_use]
+pub fn configured_protocol_is_v1() -> bool {
+    let partition = match EspDefaultNvsPartition::take() {
+        Ok(partition) => partition,
+        Err(error) => {
+            log::warn!("production_protocol_gate=blocked reason=nvs_partition error={error}");
+            return false;
+        }
+    };
+    let nvs = match EspNvs::new(partition, NVS_NAMESPACE, false) {
+        Ok(nvs) => nvs,
+        Err(error) => {
+            log::warn!("production_protocol_gate=blocked reason=nvs_open error={error}");
+            return false;
+        }
+    };
+
+    ["stratumprot", "fbstratumprot"]
+        .into_iter()
+        .all(|key| read_optional_protocol(&nvs, key).is_some_and(|protocol| protocol == "SV1"))
+}
+
 fn current_snapshot_cell() -> &'static ConfirmedSnapshotCell {
     CURRENT_SETTINGS_SNAPSHOT.get_or_init(|| ConfirmedSnapshotCell::new(NvsSnapshot::new()))
 }
@@ -137,7 +194,10 @@ fn refresh_current_settings_snapshot_best_effort(nvs: &EspNvs<NvsDefault>) {
 
 fn read_current_settings_snapshot_best_effort(nvs: &EspNvs<NvsDefault>) -> NvsSnapshot {
     let mut values = Vec::new();
-    for schema in all_settings_schema() {
+    for schema in general_settings_schema()
+        .into_iter()
+        .filter(|schema| !is_pool_configuration_key(schema.key.as_str()))
+    {
         let key = schema.key.as_str();
         let maybe_stored_type = match nvs.find_key(key) {
             Ok(maybe_stored_type) => maybe_stored_type,
@@ -168,7 +228,10 @@ fn read_current_settings_snapshot_strict(
     nvs: &EspNvs<NvsDefault>,
 ) -> Result<NvsSnapshot, SettingsAdapterFailure> {
     let mut values = Vec::new();
-    for schema in all_settings_schema() {
+    for schema in general_settings_schema()
+        .into_iter()
+        .filter(|schema| !is_pool_configuration_key(schema.key.as_str()))
+    {
         let key = schema.key.as_str();
         let maybe_stored_type = nvs.find_key(key).map_err(settings_failure)?;
         let Some(stored_type) = maybe_stored_type else {
@@ -183,6 +246,47 @@ fn read_current_settings_snapshot_strict(
     }
 
     Ok(NvsSnapshot::from_values(values))
+}
+
+fn read_optional_protocol(nvs: &EspNvs<NvsDefault>, key: &str) -> Option<String> {
+    let maybe_len = match nvs.str_len(key) {
+        Ok(maybe_len) => maybe_len,
+        Err(error) => {
+            log::warn!(
+                "production_protocol_gate=blocked reason=protocol_length key={key} error={error}"
+            );
+            return None;
+        }
+    };
+    let Some(len) = maybe_len else {
+        return Some("SV1".to_owned());
+    };
+    let mut buffer = vec![0; len];
+    match nvs.get_str(key, &mut buffer) {
+        Ok(Some(protocol)) => Some(protocol.to_owned()),
+        Ok(None) => Some("SV1".to_owned()),
+        Err(error) => {
+            log::warn!(
+                "production_protocol_gate=blocked reason=protocol_read key={key} error={error}"
+            );
+            None
+        }
+    }
+}
+
+fn is_pool_configuration_key(key: &str) -> bool {
+    key.starts_with("stratum")
+        || key.starts_with("fbstratum")
+        || key.starts_with("sv2")
+        || key.starts_with("fbsv2")
+        || key == "usefbstartum"
+}
+
+fn general_settings_schema() -> Vec<bitaxe_config::SettingSchema> {
+    all_settings_schema()
+        .into_iter()
+        .chain(project_settings_schema())
+        .collect()
 }
 
 fn read_stored_value_best_effort(

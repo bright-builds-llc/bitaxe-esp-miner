@@ -5,7 +5,7 @@
 //! - `reference/esp-miner/main/screen.c`
 //! - `.planning/milestones/v1.0-phases/05-axeos-api-logs-and-telemetry/05-UI-SPEC.md`
 
-use bitaxe_stratum::v1::state::{MiningActivityStatus, MiningRuntimeState, WorkSubmissionGate};
+use bitaxe_stratum::v1::state::{MiningOperatorIntent, MiningRuntimeState};
 use serde_json::{json, Value};
 
 /// Upstream identify-mode duration from the AxeOS command route.
@@ -23,8 +23,8 @@ pub struct CommandPlan {
 /// Non-OTA firmware effect planned by a command route.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CommandEffect {
-    /// Update only the API-visible mining activity state.
-    MiningActivity(MiningActivityEffect),
+    /// Update only operator intent; the mining session derives activity.
+    MiningOperatorIntent(MiningOperatorIntentEffect),
     /// Schedule restart only after the response is sent.
     RestartAfterResponse,
     /// Toggle display identify mode.
@@ -33,11 +33,11 @@ pub enum CommandEffect {
     BlockFoundDismiss(BlockFoundDismissEffect),
 }
 
-/// Mining activity update that cannot carry a work-submission gate mutation.
+/// Operator-intent update that cannot carry a derived-state mutation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MiningActivityEffect {
-    /// Next API-visible mining activity.
-    pub next_activity: MiningActivityStatus,
+pub struct MiningOperatorIntentEffect {
+    /// Next current-boot operator intent.
+    pub next_intent: MiningOperatorIntent,
 }
 
 /// Current identify-mode state at the command boundary.
@@ -109,23 +109,20 @@ pub struct BlockFoundDismissEffect {
 pub fn pause_mining_plan() -> CommandPlan {
     CommandPlan {
         response: message_response("Mining paused"),
-        effect: CommandEffect::MiningActivity(MiningActivityEffect {
-            next_activity: MiningActivityStatus::Paused,
+        effect: CommandEffect::MiningOperatorIntent(MiningOperatorIntentEffect {
+            next_intent: MiningOperatorIntent::Paused,
         }),
     }
 }
 
-/// Plans `POST /api/system/resume` without changing the work-submission gate.
+/// Plans `POST /api/system/resume` without deriving mining activity.
 #[must_use]
-pub fn resume_mining_plan(state: &MiningRuntimeState) -> CommandPlan {
-    let next_activity = match state.work_submission {
-        WorkSubmissionGate::Ready => MiningActivityStatus::Active,
-        WorkSubmissionGate::Blocked => MiningActivityStatus::SafeBlocked,
-    };
-
+pub fn resume_mining_plan() -> CommandPlan {
     CommandPlan {
         response: message_response("Mining resumed"),
-        effect: CommandEffect::MiningActivity(MiningActivityEffect { next_activity }),
+        effect: CommandEffect::MiningOperatorIntent(MiningOperatorIntentEffect {
+            next_intent: MiningOperatorIntent::Run,
+        }),
     }
 }
 
@@ -173,9 +170,12 @@ pub fn block_found_dismiss_plan(state: BlockFoundNotificationState) -> CommandPl
     }
 }
 
-/// Applies a pure mining-activity command effect without touching work submission.
-pub fn apply_mining_activity_effect(state: &mut MiningRuntimeState, effect: MiningActivityEffect) {
-    state.set_mining_activity(effect.next_activity);
+/// Applies operator intent without touching session-derived state.
+pub fn apply_mining_operator_intent_effect(
+    state: &mut MiningRuntimeState,
+    effect: MiningOperatorIntentEffect,
+) {
+    state.set_operator_intent(effect.next_intent);
 }
 
 /// Applies a pure identify-mode effect against a monotonic timestamp.
@@ -204,15 +204,17 @@ fn message_response(message: &'static str) -> Value {
 
 #[cfg(test)]
 mod tests {
-    use bitaxe_stratum::v1::state::{MiningActivityStatus, MiningRuntimeState, WorkSubmissionGate};
+    use bitaxe_stratum::v1::state::{
+        MiningActivityStatus, MiningOperatorIntent, MiningRuntimeState, WorkSubmissionGate,
+    };
     use serde::Deserialize;
     use serde_json::Value;
 
     use crate::commands::{
-        apply_block_found_dismiss_effect, apply_identify_mode_effect, apply_mining_activity_effect,
-        block_found_dismiss_plan, identify_plan, pause_mining_plan, restart_plan,
-        resume_mining_plan, BlockFoundNotificationState, CommandEffect, IdentifyMode,
-        IdentifyModeEffect, IdentifyModeState, IDENTIFY_DURATION_MS,
+        apply_block_found_dismiss_effect, apply_identify_mode_effect,
+        apply_mining_operator_intent_effect, block_found_dismiss_plan, identify_plan,
+        pause_mining_plan, restart_plan, resume_mining_plan, BlockFoundNotificationState,
+        CommandEffect, IdentifyMode, IdentifyModeEffect, IdentifyModeState, IDENTIFY_DURATION_MS,
     };
 
     #[derive(Debug, Deserialize)]
@@ -231,7 +233,7 @@ mod tests {
     }
 
     #[test]
-    fn pause_plan_returns_message_and_visible_paused_state_without_work_ready() {
+    fn pause_plan_returns_message_and_changes_only_operator_intent() {
         // Arrange
         let fixtures = fixtures();
         let mut state = MiningRuntimeState {
@@ -241,18 +243,19 @@ mod tests {
 
         // Act
         let plan = pause_mining_plan();
-        if let CommandEffect::MiningActivity(effect) = plan.effect {
-            apply_mining_activity_effect(&mut state, effect);
+        if let CommandEffect::MiningOperatorIntent(effect) = plan.effect {
+            apply_mining_operator_intent_effect(&mut state, effect);
         }
 
         // Assert
         assert_eq!(plan.response, fixtures.pause);
-        assert_eq!(state.mining_activity, MiningActivityStatus::Paused);
+        assert_eq!(state.operator_intent, MiningOperatorIntent::Paused);
+        assert_eq!(state.mining_activity, MiningActivityStatus::SafeBlocked);
         assert_eq!(state.work_submission, WorkSubmissionGate::Blocked);
     }
 
     #[test]
-    fn resume_plan_returns_message_and_preserves_existing_gate_status() {
+    fn resume_plan_returns_message_and_changes_only_operator_intent() {
         // Arrange
         let fixtures = fixtures();
         let mut state = MiningRuntimeState {
@@ -262,14 +265,15 @@ mod tests {
         };
 
         // Act
-        let plan = resume_mining_plan(&state);
-        if let CommandEffect::MiningActivity(effect) = plan.effect {
-            apply_mining_activity_effect(&mut state, effect);
+        let plan = resume_mining_plan();
+        if let CommandEffect::MiningOperatorIntent(effect) = plan.effect {
+            apply_mining_operator_intent_effect(&mut state, effect);
         }
 
         // Assert
         assert_eq!(plan.response, fixtures.resume);
-        assert_eq!(state.mining_activity, MiningActivityStatus::SafeBlocked);
+        assert_eq!(state.operator_intent, MiningOperatorIntent::Run);
+        assert_eq!(state.mining_activity, MiningActivityStatus::Paused);
         assert_eq!(state.work_submission, WorkSubmissionGate::Blocked);
     }
 
@@ -385,7 +389,7 @@ mod tests {
     }
 
     #[test]
-    fn pause_effect_only_changes_visible_activity_for_active_mining_state() {
+    fn pause_effect_preserves_session_derived_active_state() {
         // Arrange
         let mut state = MiningRuntimeState {
             mining_activity: MiningActivityStatus::Active,
@@ -395,18 +399,19 @@ mod tests {
 
         // Act
         let plan = pause_mining_plan();
-        let CommandEffect::MiningActivity(effect) = plan.effect else {
+        let CommandEffect::MiningOperatorIntent(effect) = plan.effect else {
             panic!("pause should plan a mining activity effect");
         };
-        apply_mining_activity_effect(&mut state, effect);
+        apply_mining_operator_intent_effect(&mut state, effect);
 
         // Assert
-        assert_eq!(state.mining_activity, MiningActivityStatus::Paused);
+        assert_eq!(state.operator_intent, MiningOperatorIntent::Paused);
+        assert_eq!(state.mining_activity, MiningActivityStatus::Active);
         assert_eq!(state.work_submission, WorkSubmissionGate::Ready);
     }
 
     #[test]
-    fn pause_effect_only_changes_visible_activity_for_safe_blocked_state() {
+    fn pause_effect_preserves_session_derived_safe_blocked_state() {
         // Arrange
         let mut state = MiningRuntimeState {
             mining_activity: MiningActivityStatus::SafeBlocked,
@@ -416,18 +421,19 @@ mod tests {
 
         // Act
         let plan = pause_mining_plan();
-        let CommandEffect::MiningActivity(effect) = plan.effect else {
+        let CommandEffect::MiningOperatorIntent(effect) = plan.effect else {
             panic!("pause should plan a mining activity effect");
         };
-        apply_mining_activity_effect(&mut state, effect);
+        apply_mining_operator_intent_effect(&mut state, effect);
 
         // Assert
-        assert_eq!(state.mining_activity, MiningActivityStatus::Paused);
+        assert_eq!(state.operator_intent, MiningOperatorIntent::Paused);
+        assert_eq!(state.mining_activity, MiningActivityStatus::SafeBlocked);
         assert_eq!(state.work_submission, WorkSubmissionGate::Blocked);
     }
 
     #[test]
-    fn resume_effect_restores_active_only_when_prior_gate_was_ready() {
+    fn resume_effect_preserves_session_derived_paused_state_with_ready_gate() {
         // Arrange
         let mut state = MiningRuntimeState {
             mining_activity: MiningActivityStatus::Paused,
@@ -436,19 +442,20 @@ mod tests {
         };
 
         // Act
-        let plan = resume_mining_plan(&state);
-        let CommandEffect::MiningActivity(effect) = plan.effect else {
+        let plan = resume_mining_plan();
+        let CommandEffect::MiningOperatorIntent(effect) = plan.effect else {
             panic!("resume should plan a mining activity effect");
         };
-        apply_mining_activity_effect(&mut state, effect);
+        apply_mining_operator_intent_effect(&mut state, effect);
 
         // Assert
-        assert_eq!(state.mining_activity, MiningActivityStatus::Active);
+        assert_eq!(state.operator_intent, MiningOperatorIntent::Run);
+        assert_eq!(state.mining_activity, MiningActivityStatus::Paused);
         assert_eq!(state.work_submission, WorkSubmissionGate::Ready);
     }
 
     #[test]
-    fn resume_effect_restores_safe_blocked_when_prior_gate_was_blocked() {
+    fn resume_effect_preserves_session_derived_paused_state_with_blocked_gate() {
         // Arrange
         let mut state = MiningRuntimeState {
             mining_activity: MiningActivityStatus::Paused,
@@ -457,14 +464,15 @@ mod tests {
         };
 
         // Act
-        let plan = resume_mining_plan(&state);
-        let CommandEffect::MiningActivity(effect) = plan.effect else {
+        let plan = resume_mining_plan();
+        let CommandEffect::MiningOperatorIntent(effect) = plan.effect else {
             panic!("resume should plan a mining activity effect");
         };
-        apply_mining_activity_effect(&mut state, effect);
+        apply_mining_operator_intent_effect(&mut state, effect);
 
         // Assert
-        assert_eq!(state.mining_activity, MiningActivityStatus::SafeBlocked);
+        assert_eq!(state.operator_intent, MiningOperatorIntent::Run);
+        assert_eq!(state.mining_activity, MiningActivityStatus::Paused);
         assert_eq!(state.work_submission, WorkSubmissionGate::Blocked);
     }
 

@@ -231,6 +231,23 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 - `.codex/tasks/lessons.md` and `.codex/tasks/lesson-audits.md` remain the
   active durable-learning inputs; they are not task trackers.
 
+### GSD-Era Legacy Removal
+
+- GSD is sunset for this repository, and its former implementation surfaces
+  have no backward-compatibility guarantee.
+- Agents have standing permission to delete obsolete GSD-era runtime code,
+  scripts, commands, adapters, tests, validators, build targets, aliases, and
+  compatibility shims when they no longer support the current architecture or
+  make development less efficient.
+- Remove obsolete callers, documentation references, and build wiring in the
+  same change rather than leaving deprecated aliases.
+- Preserve `.planning/` archives and formal historical evidence documents
+  unless a separate explicit task authorizes their removal.
+- Existing safety, authorization, evidence-integrity, and terminal-archive
+  rules take precedence over this removal authority.
+- Before considering a removal complete, scan for surviving active references
+  and run the affected build, test, and verification commands.
+
 ## Repo-Local Guidance
 
 ### Deterministic Active-Lesson Loading and Audits
@@ -287,7 +304,7 @@ Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and po
 
 1. **Minimum capture timeout:** use at least **6 minutes (360 seconds)** for `just flash`, `just flash-monitor`, `just monitor`, and equivalent `bazel run //tools/flash` invocations when flashing or reflashing real hardware, unless the active task contract or a deterministic test fixture documents a shorter bound explicitly.
 2. **Explicit override required:** `tools/flash` defaults to a 25-second monitor capture, which is insufficient for hardware evidence. Always pass `capture-timeout-seconds=360` (or higher) on `flash-monitor` / `monitor` commands for Ultra 205 bring-up and evidence capture.
-3. **Evidence wrappers:** when `--duration-seconds` governs post-flash monitor capture (`phase25-evidence`, `phase27-evidence`, and similar), use **≥ 360** for hardware mode unless the active task contract documents a shorter deterministic test bound.
+3. **Evidence wrappers:** when `--duration-seconds` governs post-flash monitor capture, use **≥ 360** for hardware mode unless the active task contract documents a shorter deterministic test bound.
 4. **Agent/shell wall clock:** command and tool timeouts must exceed the flash plus monitor budget; prefer **≥ 420 seconds** wall clock when using a 360-second capture timeout.
 5. **Do not treat early exit as failure** until the full timeout elapses unless the repo-owned flash tool reports a hard error (flash/write failure, missing trusted boot markers after complete capture, and similar).
 
@@ -318,7 +335,7 @@ Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and po
 
 ### Evidence Workflow: Hardware-First Default
 
-Agents executing evidence wrappers (`phase23-evidence`, `phase25-evidence`, `phase27-evidence`, and similar scripts with `blocked|hardware` modes) must:
+Agents executing current evidence wrappers with `blocked|hardware` modes must:
 
 1. **Always attempt hardware path first** when an active hardware task includes detector-gated Ultra 205 evidence:
    - Run `just detect-ultra205` before any flash/monitor/evidence work.
@@ -329,7 +346,7 @@ Agents executing evidence wrappers (`phase23-evidence`, `phase25-evidence`, `pha
    - User explicitly requests CI-safe/static workflow proof, or
    - The active task contract explicitly requires blocked mode for deterministic Bazel tests only.
 3. **Never skip detection** and jump to blocked mode when a board may be connected (standing permission in Autonomous Ultra 205 section applies).
-4. **Build task-correct firmware** before flash when compile-time evidence mode gates exist (the historical Phase 21/25/27 pattern); default `just build` is fail-closed. Use the task-named repo-owned package command or explicit `action_env` required by that workflow.
+4. **Build task-correct firmware** before flash; default `just build` is fail-closed. Use the task-named repo-owned package command and only the explicit build inputs required by that workflow.
 5. **Promotion:** hardware artifacts intended for commit must pass redaction review (`redact-evidence=true` or equivalent) before updating `docs/parity/evidence/`.
 
 ### Protected Evidence Root Ownership

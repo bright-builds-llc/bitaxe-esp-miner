@@ -75,7 +75,9 @@
       "code": "producer_unavailable"
     }
   },
-  "miningPaused": true,
+  "miningPaused": false,
+  "miningActivity": "safe_blocked",
+  "startMiningOnBoot": true,
   "apEnabled": 0,
   "autofanspeed": 1,
   "showNewBlock": false,

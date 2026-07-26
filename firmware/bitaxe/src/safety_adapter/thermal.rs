@@ -20,11 +20,3 @@ pub fn thermal_observation_from_raw(
 pub fn unavailable_thermal_observation() -> ThermalObservation {
     ThermalObservation::from_reading(None)
 }
-
-pub fn suppress_fan_write(percent: u8, reason: &'static str) {
-    if super::phase27_bring_up::phase27_bring_up_complete() {
-        log::info!("safety_fan_effect=armed percent={percent}");
-        return;
-    }
-    log::warn!("safety_fan_effect=suppressed percent={percent} reason={reason}");
-}

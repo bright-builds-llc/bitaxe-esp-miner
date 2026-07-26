@@ -174,8 +174,8 @@ write_common_slots() {
 	write_slot "log" "blocked" "Committed logs must be redacted lifecycle/status markers only." "The log slot is blocked until redacted logs exist."
 	write_slot "api" "blocked" "API capture is blocked unless the workflow has a current valid target. stale DEVICE_URL, mDNS, ARP, router state, network scan, and unrelated evidence are invalid." "The API slot records target blockers without using stale target discovery."
 	write_slot "websocket" "blocked" "WebSocket capture is blocked unless the workflow has a current valid target. stale DEVICE_URL, mDNS, ARP, router state, network scan, and unrelated evidence are invalid." "The WebSocket slot records target blockers without using stale target discovery."
-	write_slot "share-outcome" "pending" "No accepted or rejected share is claimed by Phase 23. Owner: Phase 25. accepted/rejected share outcomes remain non-claims." "The share-outcome slot is present without implying share proof."
-	write_slot "safe-stop" "pending" "Runtime safe-stop proof under live production mining belongs to Phase 25." "The safe-stop slot is present without implying runtime stop proof." "pending-phase25-runtime-proof"
+	write_slot "share-outcome" "pending" "No accepted or rejected share is claimed by Phase 23. Owner: Production Mining Session. accepted/rejected share outcomes remain non-claims." "The share-outcome slot is present without implying share proof."
+	write_slot "safe-stop" "pending" "Runtime safe-stop proof under live production mining belongs to the Production Mining Session." "The safe-stop slot is present without implying runtime stop proof." "pending-production-session-runtime-proof"
 	write_redaction_review
 	write_conclusion
 }

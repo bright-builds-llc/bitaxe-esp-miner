@@ -35,7 +35,7 @@ pub enum StepKind {
     EvidenceCapture,
 }
 
-pub const PHASE25_LIVE_RUNTIME_STEP_KINDS: &[StepKind] = &[
+pub const PRODUCTION_SESSION_STEP_KINDS: &[StepKind] = &[
     StepKind::Socket,
     StepKind::Asic,
     StepKind::Api,
@@ -164,9 +164,9 @@ mod tests {
     }
 
     #[test]
-    fn phase25_live_runtime_step_kinds_use_existing_watchdog_thresholds() {
+    fn production_session_step_kinds_use_existing_watchdog_thresholds() {
         // Arrange
-        let kinds = PHASE25_LIVE_RUNTIME_STEP_KINDS;
+        let kinds = PRODUCTION_SESSION_STEP_KINDS;
 
         // Act / Assert
         for kind in kinds {

@@ -12,10 +12,10 @@ use bitaxe_api::phase33_evidence::{
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
 use operator_evidence::{
-    complete_operator_evidence, consolidate_phase28_evidence, load_operator_evidence_documents,
-    publish_phase35_generation, read_phase36_public_checklist, render_operator_evidence_report,
-    validate_operator_evidence_documents_with_snapshot_coherence, OperatorEvidenceFilters,
-    OperatorEvidenceProfile, Phase35GenerationDocuments, Phase35PublicationOptions, WorkflowStatus,
+    load_operator_evidence_documents, publish_phase35_generation, read_phase36_public_checklist,
+    render_operator_evidence_report, validate_operator_evidence_documents_with_snapshot_coherence,
+    OperatorEvidenceFilters, OperatorEvidenceProfile, Phase35GenerationDocuments,
+    Phase35PublicationOptions,
 };
 use release_evidence::{
     parse_flash_evidence_json, parse_release_evidence_manifest_json,
@@ -52,10 +52,6 @@ mod mining_allow;
 mod operator_evidence;
 mod operator_snapshot_evidence;
 #[cfg(test)]
-mod phase32_source_guard;
-#[cfg(test)]
-mod phase33_source_guard;
-#[cfg(test)]
 mod phase34_source_guard;
 mod phase35_evidence;
 mod phase35_flash;
@@ -89,8 +85,6 @@ enum CliCommand {
     SafetyAllow(SafetyAllowArgs),
     MiningAllow(MiningAllowArgs),
     OperatorEvidence(OperatorEvidenceArgs),
-    CompleteOperatorEvidence(CompleteOperatorEvidenceArgs),
-    ConsolidatePhase28Evidence(ConsolidatePhase28EvidenceArgs),
     Phase33Classify(Phase33ClassifyArgs),
     ClassifyPhase35Flash(ClassifyPhase35FlashArgs),
     ClassifyPhase35Http(ClassifyPhase35HttpArgs),
@@ -404,43 +398,6 @@ struct OperatorEvidenceArgs {
 
     #[arg(long = "require-operator-snapshot-coherence")]
     require_operator_snapshot_coherence: bool,
-}
-
-#[derive(Debug, Parser)]
-struct CompleteOperatorEvidenceArgs {
-    #[arg(long, value_enum)]
-    profile: CompletionProfile,
-
-    #[arg(long = "evidence-root", value_parser = parse_utf8_path)]
-    evidence_root: Utf8PathBuf,
-
-    #[arg(long = "workflow-status", value_enum)]
-    workflow_status: WorkflowStatus,
-}
-
-#[derive(Debug, Parser)]
-struct ConsolidatePhase28EvidenceArgs {
-    #[arg(long = "phase27-root", value_parser = parse_utf8_path)]
-    phase27_root: Utf8PathBuf,
-
-    #[arg(long = "evidence-root", value_parser = parse_utf8_path)]
-    evidence_root: Utf8PathBuf,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
-#[value(rename_all = "lower")]
-enum CompletionProfile {
-    Phase25,
-    Phase27,
-}
-
-impl From<CompletionProfile> for OperatorEvidenceProfile {
-    fn from(profile: CompletionProfile) -> Self {
-        match profile {
-            CompletionProfile::Phase25 => Self::Phase25,
-            CompletionProfile::Phase27 => Self::Phase27,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -916,12 +873,6 @@ fn main() -> Result<()> {
         CliCommand::SafetyAllow(args) => run_safety_allow_command(args, &environment)?,
         CliCommand::MiningAllow(args) => run_mining_allow_command(args, &environment)?,
         CliCommand::OperatorEvidence(args) => run_operator_evidence_command(args, &environment)?,
-        CliCommand::CompleteOperatorEvidence(args) => {
-            run_complete_operator_evidence_command(args, &environment)?
-        }
-        CliCommand::ConsolidatePhase28Evidence(args) => {
-            run_consolidate_phase28_evidence_command(args, &environment)?
-        }
         CliCommand::Phase33Classify(args) => run_phase33_classify_command(args, &environment)?,
         CliCommand::ClassifyPhase35Flash(args) => {
             run_classify_phase35_flash_command(args, &environment)?
@@ -1494,34 +1445,6 @@ fn run_phase33_classify_command(
         },
     };
     serde_json::to_string(&output).context("failed to encode Phase 33 classification")
-}
-
-fn run_complete_operator_evidence_command(
-    args: CompleteOperatorEvidenceArgs,
-    environment: &LocalEnvironment,
-) -> Result<String> {
-    let created = complete_operator_evidence(
-        &environment.workspace_dir,
-        args.profile.into(),
-        &args.evidence_root,
-        args.workflow_status,
-    )?;
-    Ok(format!(
-        "operator_evidence_completion_status: passed\ncreated_slots: {}",
-        created.len()
-    ))
-}
-
-fn run_consolidate_phase28_evidence_command(
-    args: ConsolidatePhase28EvidenceArgs,
-    environment: &LocalEnvironment,
-) -> Result<String> {
-    consolidate_phase28_evidence(
-        &environment.workspace_dir,
-        &args.phase27_root,
-        &args.evidence_root,
-    )?;
-    Ok("phase28_consolidation_status: passed".to_owned())
 }
 
 fn run_release_evidence_command(

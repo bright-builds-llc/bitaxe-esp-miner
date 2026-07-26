@@ -110,6 +110,12 @@ pub struct RuntimeTelemetryProjection {
 }
 
 impl RuntimeTelemetryProjection {
+    /// Replaces the derived mining state published by the sole production
+    /// session owner.
+    pub fn replace_session_state(&mut self, state: MiningRuntimeState) {
+        self.state = state;
+    }
+
     #[must_use]
     pub fn new(generation: PoolSessionGeneration) -> Self {
         Self {
@@ -276,7 +282,7 @@ mod tests {
         // Act
         let outcome = projection.fold(RuntimeTelemetryEvent::Blocked {
             sequence: RuntimeTelemetrySequence::new(3),
-            reason: "phase25_safe_stop",
+            reason: "production_session_safe_stop",
         });
 
         // Assert
@@ -291,7 +297,7 @@ mod tests {
         );
         assert_eq!(
             projection.state().maybe_blocked_reason,
-            Some("phase25_safe_stop")
+            Some("production_session_safe_stop")
         );
     }
 
@@ -341,7 +347,7 @@ mod tests {
         // Arrange
         let event = RuntimeTelemetryEvent::Blocked {
             sequence: RuntimeTelemetrySequence::new(5),
-            reason: "phase25_safe_stop",
+            reason: "production_session_safe_stop",
         };
         let projection = RuntimeTelemetryProjection::new(PoolSessionGeneration::initial());
         let redaction_denylist = [
@@ -364,7 +370,7 @@ mod tests {
         let rendered_projection = format!("{projection:?}");
 
         // Assert
-        assert!(rendered_event.contains("phase25_safe_stop"));
+        assert!(rendered_event.contains("production_session_safe_stop"));
         for denied in redaction_denylist {
             assert!(!rendered_event.contains(denied));
             assert!(!rendered_projection.contains(denied));
@@ -495,7 +501,7 @@ mod tests {
         // Act
         let safe_stop = projection.fold(RuntimeTelemetryEvent::SafeStopped {
             sequence: RuntimeTelemetrySequence::new(18),
-            reason: "phase25_safe_stop",
+            reason: "production_session_safe_stop",
         });
         let lower_sequence = projection.fold(RuntimeTelemetryEvent::SubmitClassified {
             sequence: RuntimeTelemetrySequence::new(17),

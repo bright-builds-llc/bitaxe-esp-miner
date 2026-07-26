@@ -54,52 +54,6 @@ impl<'d> BitaxeI2cBus<'d> {
             driver: self.driver,
         }
     }
-
-    pub(super) fn active_for_phase27(
-        &mut self,
-        _token: &super::phase27_bring_up::Phase27ActiveI2cToken,
-    ) -> ActiveI2cBus<'_, 'd> {
-        ActiveI2cBus { bus: self }
-    }
-
-    /// Generic read retained only for the explicitly gated Phase 27 path.
-    pub(super) fn read_register(
-        &mut self,
-        device_addr: u8,
-        register: u8,
-        output: &mut [u8],
-    ) -> Result<()> {
-        self.driver
-            .write_read(
-                device_addr,
-                &[register],
-                output,
-                transaction_timeout_ticks(),
-            )
-            .with_context(|| {
-                format!("i2c read register 0x{register:02x} device 0x{device_addr:02x}")
-            })
-    }
-}
-
-pub(super) struct ActiveI2cBus<'bus, 'd> {
-    bus: &'bus mut BitaxeI2cBus<'d>,
-}
-
-impl ActiveI2cBus<'_, '_> {
-    pub(super) fn write_register(
-        &mut self,
-        device_addr: u8,
-        register: u8,
-        value: u8,
-    ) -> Result<()> {
-        self.bus
-            .driver
-            .write(device_addr, &[register, value], transaction_timeout_ticks())
-            .with_context(|| {
-                format!("i2c write register 0x{register:02x} device 0x{device_addr:02x}")
-            })
-    }
 }
 
 fn transaction_timeout_ticks() -> esp_idf_sys::TickType_t {

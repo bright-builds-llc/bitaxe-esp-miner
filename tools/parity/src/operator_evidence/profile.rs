@@ -7,48 +7,34 @@ use clap::ValueEnum;
 #[value(rename_all = "lower")]
 pub(crate) enum OperatorEvidenceProfile {
     Phase23,
-    Phase25,
-    Phase27,
-    Phase28,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum OperatorEvidenceRootEntry {
     Slot(OperatorEvidenceSlot),
-    Summary,
     EvidenceContract,
-    MiningAllow,
-    LiveCaptureRuntime,
-    Phase28Manifest,
 }
 
 impl OperatorEvidenceRootEntry {
     pub(crate) const fn name(self) -> &'static str {
         match self {
             Self::Slot(slot) => slot.file_name(),
-            Self::Summary => "summary.md",
             Self::EvidenceContract => "evidence-contract.md",
-            Self::MiningAllow => "mining-allow.json",
-            Self::LiveCaptureRuntime => "live-capture-runtime",
-            Self::Phase28Manifest => ".phase28-evidence-manifest",
         }
     }
 
     pub(crate) const fn is_directory(self) -> bool {
-        matches!(self, Self::LiveCaptureRuntime)
+        false
     }
 }
 
 impl OperatorEvidenceProfile {
     #[cfg(test)]
-    pub(crate) const ALL: [Self; 4] = [Self::Phase23, Self::Phase25, Self::Phase27, Self::Phase28];
+    pub(crate) const ALL: [Self; 1] = [Self::Phase23];
 
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
             Self::Phase23 => "phase23",
-            Self::Phase25 => "phase25",
-            Self::Phase27 => "phase27",
-            Self::Phase28 => "phase28",
         }
     }
 
@@ -69,9 +55,6 @@ impl FromStr for OperatorEvidenceProfile {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             "phase23" => Ok(Self::Phase23),
-            "phase25" => Ok(Self::Phase25),
-            "phase27" => Ok(Self::Phase27),
-            "phase28" => Ok(Self::Phase28),
             _ => Err(format!("unknown operator evidence profile {value:?}")),
         }
     }
@@ -226,65 +209,25 @@ impl OperatorEvidenceProfileDescriptor {
             OperatorEvidenceProfile::Phase23 => {
                 entries.push(OperatorEvidenceRootEntry::EvidenceContract);
             }
-            OperatorEvidenceProfile::Phase25 | OperatorEvidenceProfile::Phase27 => {
-                entries.extend([
-                    OperatorEvidenceRootEntry::Summary,
-                    OperatorEvidenceRootEntry::MiningAllow,
-                    OperatorEvidenceRootEntry::LiveCaptureRuntime,
-                ]);
-            }
-            OperatorEvidenceProfile::Phase28 => {
-                entries.extend([
-                    OperatorEvidenceRootEntry::Summary,
-                    OperatorEvidenceRootEntry::EvidenceContract,
-                    OperatorEvidenceRootEntry::Phase28Manifest,
-                ]);
-            }
         }
         entries
     }
 
     pub(crate) const fn allows_disposition(
         self,
-        slot: OperatorEvidenceSlot,
+        _slot: OperatorEvidenceSlot,
         disposition: EvidenceDisposition,
     ) -> bool {
         match self.profile {
             OperatorEvidenceProfile::Phase23 => {
                 !matches!(disposition, EvidenceDisposition::CrossLinked)
             }
-            OperatorEvidenceProfile::Phase25 => {
-                !matches!(disposition, EvidenceDisposition::CrossLinked)
-            }
-            OperatorEvidenceProfile::Phase27 => {
-                !matches!(disposition, EvidenceDisposition::CrossLinked)
-            }
-            OperatorEvidenceProfile::Phase28 => {
-                let _ = slot;
-                !matches!(disposition, EvidenceDisposition::Observed)
-            }
         }
     }
 
-    pub(crate) const fn requires_observation(self, slot: OperatorEvidenceSlot) -> bool {
+    pub(crate) const fn requires_observation(self, _slot: OperatorEvidenceSlot) -> bool {
         match self.profile {
             OperatorEvidenceProfile::Phase23 => false,
-            OperatorEvidenceProfile::Phase25 => matches!(
-                slot,
-                OperatorEvidenceSlot::Package
-                    | OperatorEvidenceSlot::Detector
-                    | OperatorEvidenceSlot::BoardInfo
-                    | OperatorEvidenceSlot::Command
-                    | OperatorEvidenceSlot::Log
-                    | OperatorEvidenceSlot::SafeStop
-            ),
-            OperatorEvidenceProfile::Phase27 => matches!(
-                slot,
-                OperatorEvidenceSlot::Detector
-                    | OperatorEvidenceSlot::BoardInfo
-                    | OperatorEvidenceSlot::Command
-            ),
-            OperatorEvidenceProfile::Phase28 => false,
         }
     }
 
@@ -298,18 +241,5 @@ impl OperatorEvidenceProfileDescriptor {
                 | EvidenceDisposition::Blocked
                 | EvidenceDisposition::Deferred
         )
-    }
-
-    pub(crate) const fn supports_share_outcome(self, outcome: ShareOutcome) -> bool {
-        match self.profile {
-            OperatorEvidenceProfile::Phase23 => false,
-            OperatorEvidenceProfile::Phase25 => matches!(
-                outcome,
-                ShareOutcome::LiveSubmitResponseObserved | ShareOutcome::BlockedSafePrerequisite
-            ),
-            OperatorEvidenceProfile::Phase27 | OperatorEvidenceProfile::Phase28 => {
-                !matches!(outcome, ShareOutcome::LiveSubmitResponseObserved)
-            }
-        }
     }
 }
