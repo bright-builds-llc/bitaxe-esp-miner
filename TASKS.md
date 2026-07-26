@@ -146,6 +146,28 @@ Hardware attempt 002 contract:
   installed after success; after failure, perform only the existing bounded
   supervisor cleanup and read-only holder/accessibility audit.
 
+Hardware attempt 002 review: Incomplete; stopped without rerun at the first
+failed boundary as required. The five detect -> flash cycles and the first
+four complete receive-only-monitor -> flash cycles passed. The fifth
+receive-only monitor also completed with a final standalone
+`usb_session: ready`, proving the Attempt 001 framing defect fixed across all
+five routine monitor captures. Its immediate reflash, operation boundary 20
+(`cycle-10-flash`), stopped with earliest typed category
+`recovery_not_observed`. Nineteen of the required forty operation logs ended
+ready, so the twenty-cycle qualification did not complete.
+
+Attempt 002 identity: board `205`; selected port `/dev/cu.usbmodem1101`;
+source commit `1997c3145d2da7d115ed47f678a4b36d3622ec71`; reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`; package manifest
+`bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`; protected logs
+`scratch/flash-durability/attempt-002`. The exact contract commands above were
+used from cycle 1 without USB or power unplugging. The post-failure read-only
+audit found zero repository-owned flash/reader processes, zero serial holders,
+and an accessible transport. The protected root is mode 0700, all regular
+files are mode 0600, and no symlinks exist. Detailed logs remain local,
+ignored, immutable, and unpromoted. Do not rerun this unchanged boundary;
+investigate the unobserved post-flash recovery under a new task-gated attempt.
+
 ### task-ci-reference-submodule-checkout | 2026-07-25 18:23 | Repair evidence-redaction CI checkout
 
 - [x] Reproduce the failed GitHub Actions boundary and identify the earliest
