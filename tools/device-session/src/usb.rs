@@ -2,6 +2,7 @@
 
 mod lease;
 mod process;
+mod recovery;
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -16,10 +17,12 @@ use serde::{Deserialize, Serialize};
 use crate::macos::{MacOsDeviceAdapter, ReceiveOnlyReader, UsbDeviceSnapshot};
 use lease::DeviceLease;
 use process::{run_owned_process, OwnedProcessRequest};
+use recovery::{
+    RecoveryPhase, RecoverySample, RecoverySummary, RecoveryTracker, POST_FLASH_RECOVERY_TIMEOUT,
+    STANDARD_RECOVERY_TIMEOUT,
+};
 
-const REQUIRED_STABLE_SAMPLES: u8 = 3;
 const SAMPLE_INTERVAL: Duration = Duration::from_millis(150);
-const REACQUIRE_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_MONITOR_BYTES: usize = 16 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -207,6 +210,7 @@ pub struct UsbSession {
     earliest_failure: Option<UsbTerminalCategory>,
     trace_root: PathBuf,
     child_sequence: u32,
+    recovery_sequence: u32,
 }
 
 impl UsbSession {
@@ -257,6 +261,7 @@ impl UsbSession {
             earliest_failure: None,
             trace_root,
             child_sequence: 0,
+            recovery_sequence: 0,
         })
     }
 
@@ -300,7 +305,8 @@ impl UsbSession {
                 })?;
             if process_result.success {
                 self.transition(UsbLifecycleEvent::FlashComplete)?;
-                if let Err(error) = self.reacquire(REACQUIRE_TIMEOUT) {
+                let (phase, timeout) = successful_command_recovery_policy(args);
+                if let Err(error) = self.reacquire(phase, timeout) {
                     self.fail_once(error.category);
                     return Err(error);
                 }
@@ -316,7 +322,9 @@ impl UsbSession {
                 ));
             }
             first_boundary = Some(category);
-            let maybe_snapshot = self.reacquire(REACQUIRE_TIMEOUT).ok();
+            let maybe_snapshot = self
+                .reacquire(RecoveryPhase::RetryAdmission, STANDARD_RECOVERY_TIMEOUT)
+                .ok();
             let context = RetryContext {
                 category,
                 cleanup_complete: true,
@@ -410,7 +418,8 @@ impl UsbSession {
                 });
             }
             if maybe_reader.is_none() {
-                let snapshot = self.reacquire(REACQUIRE_TIMEOUT)?;
+                let snapshot =
+                    self.reacquire(RecoveryPhase::MonitorAdmission, STANDARD_RECOVERY_TIMEOUT)?;
                 reenumerated |= snapshot.enumeration_token != self.initial_enumeration_token;
                 maybe_reader =
                     Some(ReceiveOnlyReader::open(&snapshot.port).map_err(|error| {
@@ -447,7 +456,7 @@ impl UsbSession {
 
     pub fn finish(mut self) -> Result<ReflashReady, UsbSessionError> {
         self.transition(UsbLifecycleEvent::BeginCleanup)?;
-        let snapshot = self.reacquire(REACQUIRE_TIMEOUT)?;
+        let snapshot = self.reacquire(RecoveryPhase::FinalCleanup, STANDARD_RECOVERY_TIMEOUT)?;
         self.transition(UsbLifecycleEvent::CleanupComplete)?;
         self.lease.record_state(self.state, self.earliest_failure)?;
         self.lease.mark_complete();
@@ -471,59 +480,118 @@ impl UsbSession {
         let _result = self.lease.record_state(self.state, self.earliest_failure);
     }
 
-    fn reacquire(&mut self, timeout: Duration) -> Result<UsbDeviceSnapshot, UsbSessionError> {
+    fn reacquire(
+        &mut self,
+        phase: RecoveryPhase,
+        timeout: Duration,
+    ) -> Result<UsbDeviceSnapshot, UsbSessionError> {
         let deadline = Instant::now() + timeout;
-        let mut stable_samples = 0_u8;
-        let mut maybe_previous: Option<UsbDeviceSnapshot> = None;
+        let mut tracker = RecoveryTracker::new(phase, timeout);
 
         while Instant::now() < deadline {
             let maybe_snapshot =
-                MacOsDeviceAdapter::physical_snapshot(&self.physical_identity_digest)
-                    .map_err(|error| session_error(UsbTerminalCategory::IdentityDrift, error))?;
-            if let Some(snapshot) = maybe_snapshot {
-                if snapshot.physical_identity_digest != self.physical_identity_digest {
-                    return Err(session_error(
-                        UsbTerminalCategory::IdentityDrift,
-                        "the observed USB transport belongs to a different physical device",
-                    ));
-                }
-                if snapshot.holder_count > 0 {
-                    return Err(session_error(
-                        UsbTerminalCategory::ForeignHolder,
-                        "a foreign process acquired the serial transport",
-                    ));
-                }
-                if snapshot.accessible {
-                    let same_sample = maybe_previous.as_ref().is_some_and(|previous| {
-                        previous.port == snapshot.port
-                            && previous.enumeration_token == snapshot.enumeration_token
-                    });
-                    stable_samples = if same_sample {
-                        stable_samples.saturating_add(1)
-                    } else {
-                        1
-                    };
-                    maybe_previous = Some(snapshot.clone());
-                    if stable_samples >= REQUIRED_STABLE_SAMPLES {
-                        self.current_port = snapshot.port.clone();
-                        self.current_enumeration_token = snapshot.enumeration_token.clone();
-                        return Ok(snapshot);
+                match MacOsDeviceAdapter::physical_snapshot(&self.physical_identity_digest) {
+                    Ok(maybe_snapshot) => maybe_snapshot,
+                    Err(_) => {
+                        return Err(self.recovery_error_with_summary(
+                            &tracker,
+                            UsbTerminalCategory::IdentityDrift,
+                            "the USB identity sampler failed",
+                        ));
                     }
-                } else {
-                    stable_samples = 0;
-                    maybe_previous = None;
+                };
+            if let Some(snapshot) = maybe_snapshot {
+                let same_device =
+                    snapshot.physical_identity_digest == self.physical_identity_digest;
+                let sample = RecoverySample {
+                    same_device,
+                    accessible: snapshot.accessible,
+                    holder_free: snapshot.holder_count == 0,
+                    enumeration_changed: snapshot.enumeration_token
+                        != self.current_enumeration_token,
+                    maybe_stability_key: same_device
+                        .then(|| format!("{}\n{}", snapshot.port, snapshot.enumeration_token)),
+                };
+                let ready = tracker.observe(sample);
+                if let Err(error) =
+                    validate_recovery_snapshot(&snapshot, &self.physical_identity_digest)
+                {
+                    return Err(self.recovery_error_with_summary(
+                        &tracker,
+                        error.category,
+                        &error.detail,
+                    ));
+                }
+                if ready {
+                    self.write_recovery_summary(&tracker.summary())?;
+                    self.current_port = snapshot.port.clone();
+                    self.current_enumeration_token = snapshot.enumeration_token.clone();
+                    return Ok(snapshot);
                 }
             } else {
-                stable_samples = 0;
-                maybe_previous = None;
+                tracker.observe(RecoverySample::absent());
             }
             thread::sleep(SAMPLE_INTERVAL);
         }
+        let summary = tracker.summary();
+        let signature = summary.safe_signature();
+        let trace_recorded = self.write_recovery_summary(&summary).is_ok();
         Err(session_error(
             UsbTerminalCategory::RecoveryNotObserved,
-            "the admitted physical device did not become stably holder-free",
+            format!("{signature},trace_recorded={trace_recorded}"),
         ))
     }
+
+    fn write_recovery_summary(&mut self, summary: &RecoverySummary) -> Result<(), UsbSessionError> {
+        self.recovery_sequence = self.recovery_sequence.saturating_add(1);
+        let trace_path = self
+            .trace_root
+            .join(format!("recovery-{:04}.json", self.recovery_sequence));
+        let mut bytes = serde_json::to_vec(summary)
+            .map_err(|error| session_error(UsbTerminalCategory::CleanupFailed, error))?;
+        bytes.push(b'\n');
+        write_private_trace(&trace_path, &bytes)
+    }
+
+    fn recovery_error_with_summary(
+        &mut self,
+        tracker: &RecoveryTracker,
+        category: UsbTerminalCategory,
+        detail: &str,
+    ) -> UsbSessionError {
+        let trace_recorded = self.write_recovery_summary(&tracker.summary()).is_ok();
+        session_error(
+            category,
+            format!("{detail} trace_recorded={trace_recorded}"),
+        )
+    }
+}
+
+fn successful_command_recovery_policy(args: &[String]) -> (RecoveryPhase, Duration) {
+    if args.first().map(String::as_str) == Some("write-bin") {
+        (RecoveryPhase::PostFlash, POST_FLASH_RECOVERY_TIMEOUT)
+    } else {
+        (RecoveryPhase::PostProbe, STANDARD_RECOVERY_TIMEOUT)
+    }
+}
+
+fn validate_recovery_snapshot(
+    snapshot: &UsbDeviceSnapshot,
+    expected_physical_identity: &str,
+) -> Result<(), UsbSessionError> {
+    if snapshot.physical_identity_digest != expected_physical_identity {
+        return Err(session_error(
+            UsbTerminalCategory::IdentityDrift,
+            "the observed USB transport belongs to a different physical device",
+        ));
+    }
+    if snapshot.holder_count > 0 {
+        return Err(session_error(
+            UsbTerminalCategory::ForeignHolder,
+            "a foreign process acquired the serial transport",
+        ));
+    }
+    Ok(())
 }
 
 fn classify_espflash_failure(output: &SupervisedOutput) -> UsbTerminalCategory {

@@ -26,6 +26,11 @@ new work.
   Bazel, repository, redaction, and reference checks.
 - [ ] Run the task-gated 20-cycle connected Ultra 205 durability soak only
   after the software gates pass.
+- [x] Replace the split post-flash recovery observation with one continuous
+  60-second bound backed by a pure reducer and bounded private diagnostics.
+- [x] Verify the Attempt 002 delayed-recovery regression, the focused
+  supervisor surface, and all required repository gates.
+- [ ] Run Attempt 003 exactly once from cycle 1 and record its typed result.
 
 Hardware contract:
 
@@ -167,6 +172,54 @@ and an accessible transport. The protected root is mode 0700, all regular
 files are mode 0600, and no symlinks exist. Detailed logs remain local,
 ignored, immutable, and unpromoted. Do not rerun this unchanged boundary;
 investigate the unobserved post-flash recovery under a new task-gated attempt.
+
+Attempt 003 diagnosis and hardware contract:
+
+- Diagnosis: Attempt 002's factory-image `espflash` child completed
+  successfully, the first 30-second post-flash recovery observation expired,
+  and the NVS child was not launched. The independent cleanup observation then
+  admitted the same accessible, holder-free device. The targeted repository
+  defect is therefore the split 30 + 30-second recovery classification, not a
+  flash write or verification failure.
+- Permitted commands:
+  1. `just detect-ultra205`
+  2. `just verify-flash-durability board=205 cycles=20 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json protected-root=scratch/flash-durability/attempt-003`
+- Preconditions: a virtual-time regression proves that recovery after second
+  30 but before second 60 is rejected by the old policy and accepted by the
+  new policy; bounded recovery diagnostics and their redaction contracts pass;
+  all required software gates pass; the fix and this contract are committed;
+  the exact clean-`HEAD` package is rebuilt and admitted; detection returns
+  exactly `/dev/cu.usbmodem1101`; the ignored credential input exists without
+  being read or printed; and the protected root does not exist.
+- Recovery policy: every successful factory or NVS `espflash` child is invoked
+  once and receives one continuous 60-second same-device recovery observation.
+  Initial admission, monitor re-acquisition, and final cleanup retain their
+  existing 30-second bounds and three stable 150 ms samples. A successful
+  flash is never repeated solely because recovery is delayed.
+- Evidence: only Attempt 003 may write
+  `scratch/flash-durability/attempt-003`. Its root must be mode 0700 and regular
+  files mode 0600. Public diagnostics contain only the closed category plus
+  bounded recovery phase, deadline, booleans, stable-sample count,
+  enumeration-change observation, and final state. Attempts 001 and 002 remain
+  immutable, ignored, and unpromoted.
+- Objective and effects: restart all four five-cycle sequences from cycle 1
+  using one immutable package and the same physical board 205. The original
+  Hardware contract's objective, allowed and prohibited effects, package/NVS
+  semantics, one state-changing retry bound, and closed failure vocabulary
+  remain unchanged. Each flash/monitor operation receives 360 seconds and its
+  caller receives at least 480 seconds.
+- Recovery and stop rule: stop on the first failed boundary, retain the
+  earliest authoritative signature, perform only bounded supervisor cleanup
+  and a read-only holder/accessibility audit, and do not rerun. Recurrence of
+  the post-flash 60-second `recovery_not_observed` signature selects
+  `stop_repeated_boundary`; a distinct signature returns to diagnosis without
+  authorizing another attempt.
+- Acceptance: all 20 cycles and 40 operation logs end with a final standalone
+  `usb_session: ready`; the same physical device and exact package are used;
+  zero repository-owned processes/descriptors and zero serial holders remain;
+  protected modes are correct; and no USB or power unplugging occurs. On
+  success, record completion, commit, and push all local commits. On failure,
+  record and commit locally, keep detailed logs private, and do not push.
 
 ### task-ci-reference-submodule-checkout | 2026-07-25 18:23 | Repair evidence-redaction CI checkout
 

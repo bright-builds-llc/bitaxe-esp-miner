@@ -965,6 +965,13 @@ fn main() -> Result<()> {
         CliCommand::Phase35Probe(command) => run_phase35_probe(&command, &environment),
     };
     let cleanup_result = environment.finish_usb_session();
+    combine_operation_and_cleanup(operation_result, cleanup_result)
+}
+
+fn combine_operation_and_cleanup(
+    operation_result: Result<()>,
+    cleanup_result: Result<()>,
+) -> Result<()> {
     match (operation_result, cleanup_result) {
         (Ok(()), Ok(())) => Ok(()),
         (Ok(()), Err(cleanup_error)) => Err(cleanup_error),
@@ -4921,6 +4928,42 @@ mod tests {
                 b"usb_session: ready\n".to_vec()
             ]
             .concat()
+        );
+    }
+
+    #[test]
+    fn cleanup_success_cannot_replace_an_operation_failure() {
+        // Arrange
+        let operation_result = Err(anyhow::anyhow!("primary operation failure"));
+        let cleanup_result = Ok(());
+
+        // Act
+        let error = combine_operation_and_cleanup(operation_result, cleanup_result)
+            .expect_err("operation failure must remain terminal");
+
+        // Assert
+        assert_eq!(error.to_string(), "primary operation failure");
+    }
+
+    #[test]
+    fn cleanup_failure_is_secondary_to_an_operation_failure() {
+        // Arrange
+        let operation_result = Err(anyhow::anyhow!("primary operation failure"));
+        let cleanup_result = Err(anyhow::anyhow!("cleanup failure"));
+
+        // Act
+        let error = combine_operation_and_cleanup(operation_result, cleanup_result)
+            .expect_err("operation failure must remain terminal");
+
+        // Assert
+        assert_eq!(error.to_string(), "cleanup_failure=secondary");
+        assert_eq!(
+            error
+                .chain()
+                .nth(1)
+                .map(std::string::ToString::to_string)
+                .as_deref(),
+            Some("primary operation failure")
         );
     }
 

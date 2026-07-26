@@ -128,6 +128,17 @@ operation and admitted image remain unchanged. Identity drift, absence,
 foreign ownership, admission failure, a write/verify failure, or recurrence
 stops immediately.
 
+After a successful factory or NVS write, the supervisor observes one continuous
+60-second same-device recovery window before classifying
+`recovery_not_observed`; it never repeats the successful write merely because
+recovery is delayed. Initial admission, monitor re-acquisition, prerequisite
+probes, retry admission, and final cleanup retain 30-second recovery bounds.
+Each recovery writes a protected bounded summary containing only its phase,
+deadline, booleans, maximum stable-sample count, enumeration-change
+observation, and final state. A public recovery failure may expose only that
+closed signature, never device paths, USB identity material, process data, or
+credentials.
+
 The task-gated durability acceptance command is:
 
 ```text

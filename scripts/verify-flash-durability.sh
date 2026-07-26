@@ -119,7 +119,16 @@ run_private() {
 		if ! category="$(rg -o 'concurrent_repo_session|foreign_holder|transport_absent|identity_drift|bootloader_connect_failed|flash_failed_before_transfer|flash_failed_after_transfer|monitor_failed|cleanup_failed|recovery_not_observed|repeated_boundary' "$log" | sed -n '1p')"; then
 			category=""
 		fi
-		printf 'failure_category=%s cycle=%s\n' "${category:-cleanup_failed}" "$label" >&2
+		if [[ "$category" == recovery_not_observed ]]; then
+			local signature
+			if ! signature="$(durability_log_recovery_signature "$log")"; then
+				signature="unavailable"
+			fi
+			printf 'failure_category=%s failure_signature=%s cycle=%s\n' \
+				"$category" "$signature" "$label" >&2
+		else
+			printf 'failure_category=%s cycle=%s\n' "${category:-cleanup_failed}" "$label" >&2
+		fi
 		return 1
 	fi
 	chmod 600 "$log"
