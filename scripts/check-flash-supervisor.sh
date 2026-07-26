@@ -32,10 +32,18 @@ grep -Fq '"bitaxe-receive-only"' "$flash_main" || {
 	printf 'runtime monitoring is not routed through the receive-only adapter\n' >&2
 	exit 1
 }
+grep -Fq 'write_receive_only_console(&bytes)?' "$flash_main" || {
+	printf 'receive-only output bypasses the framing helper\n' >&2
+	exit 1
+}
 
 production_source="$(awk '/^#\\[cfg\\(test\\)\\]/{exit} {print}' "$flash_main")"
 if grep -Fq 'Command::new(self.espflash_bin.as_std_path())' <<<"$production_source"; then
 	printf 'production code launches an unsupervised espflash child\n' >&2
+	exit 1
+fi
+if grep -Fq '.write_all(&bytes)' <<<"$production_source"; then
+	printf 'production code writes receive-only bytes without framing\n' >&2
 	exit 1
 fi
 if grep -Fq 'CommandSpec::new("espflash", ["monitor"' <<<"$production_source"; then

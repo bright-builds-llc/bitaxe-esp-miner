@@ -89,10 +89,62 @@ building the exact-`HEAD` firmware package, the remaining
 reference cleanliness, shell formatting, ShellCheck, and diff checks passed.
 
 Completion review: Software implementation and clean-commit package
-qualification complete; connected qualification is pending. The protected
-attempt root remains unused, the required ignored credential input is present
-without being read, and no device effect was performed. The task-gated
-20-cycle soak remains the next hardware acceptance action.
+qualification complete; connected qualification is pending.
+
+Hardware attempt 001 review: Stopped at the first reported boundary as
+required. All five detect -> flash cycles completed, producing ten
+`usb_session: ready` boundaries without unplugging USB or power. Cycle 6's
+receive-only monitor completed supervisor cleanup, left zero repository-owned
+flash processes and zero serial holders, and ended its protected mode-0600 log
+with one `usb_session: ready` marker. The harness nevertheless reported
+`cleanup_failed` because serial bytes did not end in a newline and the marker
+was therefore not a standalone anchored line. The protected root remained
+mode 0700. This is a software acceptance-harness false negative, not evidence
+of a device cleanup failure; the 20-cycle qualification remains incomplete.
+Do not rerun the unchanged boundary. Fix output framing, create a new exact
+clean-`HEAD` package, and add a separately gated attempt before resuming.
+
+Attempt 001 identity: board `205`; selected port `/dev/cu.usbmodem1101`;
+source commit `c68ea40bfa933d2eb028c4bc618a969f49484def`; reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`; package manifest
+`bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`; protected logs
+`scratch/flash-durability/attempt-001`. Exact commands were
+`just detect-ultra205` followed by the permitted
+`just verify-flash-durability board=205 cycles=20
+port=/dev/cu.usbmodem1101
+manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+wifi-credentials=wifi-credentials.json
+protected-root=scratch/flash-durability/attempt-001`. The detector and all
+completed boundaries returned the closed `ready` category; detailed
+`board-info`, flash, and serial output remains protected and uncommitted.
+
+Hardware attempt 002 contract:
+
+- Permitted commands:
+  1. `just detect-ultra205`
+  2. `just verify-flash-durability board=205 cycles=20 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json protected-root=scratch/flash-durability/attempt-002`
+- Preconditions: the receive-only output-framing regression and terminal-log
+  contract tests pass; all software gates above pass; the fix and this contract
+  are committed; the exact clean-`HEAD` package is rebuilt and admitted;
+  detection returns exactly `/dev/cu.usbmodem1101`; the ignored credential
+  input is present without being read or printed; and the protected root does
+  not exist.
+- Objective and effects: restart all four five-cycle sequences from cycle 1
+  using one immutable package and the same physical board 205. The objective,
+  allowed/prohibited effects, 360/420-second timeouts, one state-changing retry
+  bound, cleanup/restoration procedure, closed failure vocabulary, and terminal
+  stop categories are exactly those in the Hardware contract above.
+- Evidence: only Attempt 002 may write
+  `scratch/flash-durability/attempt-002`. Its root must be mode 0700 and regular
+  files mode 0600. Attempt 001 remains immutable, ignored, and unpromoted.
+  Success requires 20 completed cycles and 40 operation logs whose final
+  logical line is exactly `usb_session: ready`, plus zero repository-owned
+  processes/descriptors and zero serial holders without unplugging USB or
+  power.
+- Recovery: stop on the first failed boundary and preserve its earliest typed
+  category. Do not rerun an unchanged failed boundary. Leave the exact package
+  installed after success; after failure, perform only the existing bounded
+  supervisor cleanup and read-only holder/accessibility audit.
 
 ### task-ci-reference-submodule-checkout | 2026-07-25 18:23 | Repair evidence-redaction CI checkout
 

@@ -5,6 +5,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 workspace_dir="$(cd "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/process-group.sh
 source "${script_dir}/process-group.sh"
+# shellcheck source=scripts/flash-durability-log-contract.sh
+source "${script_dir}/flash-durability-log-contract.sh"
 umask 077
 
 board="205"
@@ -121,7 +123,7 @@ run_private() {
 		return 1
 	fi
 	chmod 600 "$log"
-	grep -q '^usb_session: ready$' "$log" || {
+	durability_log_has_terminal_ready "$log" || {
 		printf 'failure_category=cleanup_failed cycle=%s\n' "$label" >&2
 		return 1
 	}
@@ -160,7 +162,7 @@ run_interrupted_flash_monitor() {
 		return 1
 	fi
 	chmod 600 "$log"
-	grep -q '^usb_session: ready$' "$log" || {
+	durability_log_has_terminal_ready "$log" || {
 		printf 'failure_category=cleanup_failed cycle=%s\n' "$label" >&2
 		return 1
 	}

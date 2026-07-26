@@ -1184,9 +1184,7 @@ fn run_monitor(command: &MonitorCommand, environment: &impl FlashEnvironment) ->
             command_port(&command_spec).context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::Monitor, &port)?;
         let bytes = environment.receive_only(&command_spec, command.capture_timeout_seconds)?;
-        io::stdout()
-            .write_all(&bytes)
-            .context("failed to write receive-only monitor output")?;
+        write_receive_only_console(&bytes)?;
     }
 
     Ok(())
@@ -1367,9 +1365,7 @@ fn run_flash_monitor(
             .context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::FlashMonitor, &port)?;
         let bytes = environment.receive_only(&monitor_command, command.capture_timeout_seconds)?;
-        io::stdout()
-            .write_all(&bytes)
-            .context("failed to write receive-only monitor output")?;
+        write_receive_only_console(&bytes)?;
     }
 
     Ok(())
@@ -2347,9 +2343,32 @@ fn emit_command(label: &str, command: &CommandSpec) -> Result<()> {
     emit_line(label, &command.display())
 }
 
+fn write_receive_only_console(bytes: &[u8]) -> Result<()> {
+    let mut stdout = io::stdout().lock();
+    write_receive_only_console_to(&mut stdout, bytes)
+}
+
+fn write_receive_only_console_to(writer: &mut impl Write, bytes: &[u8]) -> Result<()> {
+    writer
+        .write_all(bytes)
+        .context("failed to write receive-only monitor output")?;
+    if !bytes.is_empty() && !bytes.ends_with(b"\n") {
+        writer
+            .write_all(b"\n")
+            .context("failed to frame receive-only monitor output")?;
+    }
+    writer
+        .flush()
+        .context("failed to flush receive-only monitor output")
+}
+
 fn emit_line(label: &str, value: &str) -> Result<()> {
     let mut stdout = io::stdout().lock();
-    writeln!(stdout, "{label}: {value}").context("failed to write command output")
+    emit_line_to(&mut stdout, label, value)
+}
+
+fn emit_line_to(writer: &mut impl Write, label: &str, value: &str) -> Result<()> {
+    writeln!(writer, "{label}: {value}").context("failed to write command output")
 }
 
 fn write_evidence_if_requested(
@@ -4830,6 +4849,79 @@ mod tests {
         );
         assert_eq!(command.program, "bitaxe-receive-only");
         assert!(!command.display().contains("reset"));
+    }
+
+    #[test]
+    fn receive_only_console_frames_unterminated_serial_bytes() {
+        // Arrange
+        let mut output = Vec::new();
+
+        // Act
+        write_receive_only_console_to(&mut output, b"serial").expect("serial output");
+        emit_line_to(&mut output, "usb_session", "ready").expect("ready marker");
+
+        // Assert
+        assert_eq!(output, b"serial\nusb_session: ready\n");
+    }
+
+    #[test]
+    fn receive_only_console_preserves_existing_newline() {
+        // Arrange
+        let mut output = Vec::new();
+
+        // Act
+        write_receive_only_console_to(&mut output, b"serial\n").expect("serial output");
+        emit_line_to(&mut output, "usb_session", "ready").expect("ready marker");
+
+        // Assert
+        assert_eq!(output, b"serial\nusb_session: ready\n");
+    }
+
+    #[test]
+    fn receive_only_console_completes_trailing_carriage_return() {
+        // Arrange
+        let mut output = Vec::new();
+
+        // Act
+        write_receive_only_console_to(&mut output, b"serial\r").expect("serial output");
+        emit_line_to(&mut output, "usb_session", "ready").expect("ready marker");
+
+        // Assert
+        assert_eq!(output, b"serial\r\nusb_session: ready\n");
+    }
+
+    #[test]
+    fn receive_only_console_keeps_empty_capture_at_line_start() {
+        // Arrange
+        let mut output = Vec::new();
+
+        // Act
+        write_receive_only_console_to(&mut output, b"").expect("empty serial output");
+        emit_line_to(&mut output, "usb_session", "ready").expect("ready marker");
+
+        // Assert
+        assert_eq!(output, b"usb_session: ready\n");
+    }
+
+    #[test]
+    fn receive_only_console_frames_arbitrary_binary_bytes() {
+        // Arrange
+        let mut output = Vec::new();
+
+        // Act
+        write_receive_only_console_to(&mut output, &[0x00, 0xff, b'x'])
+            .expect("binary serial output");
+        emit_line_to(&mut output, "usb_session", "ready").expect("ready marker");
+
+        // Assert
+        assert_eq!(
+            output,
+            [
+                vec![0x00, 0xff, b'x', b'\n'],
+                b"usb_session: ready\n".to_vec()
+            ]
+            .concat()
+        );
     }
 
     #[test]
