@@ -427,11 +427,11 @@ Completion review: Pending.
 - [x] Preserve the four-line layout, one-second display cadence, 500 ms sensor
   cadence, sole I2C ownership, redraw-on-change behavior, and fail-once display
   disablement.
-- [ ] Run focused renderer/core tests, mandatory Rust checks, full Bazel tests,
+- [x] Run focused renderer/core tests, mandatory Rust checks, full Bazel tests,
   packaging, reference-cleanliness, and diff checks.
-- [ ] Build an exact clean-`HEAD` package and run one detector-gated
+- [x] Build an exact clean-`HEAD` package and run one detector-gated
   flash/monitor with private redacted evidence.
-- [ ] Record visual verification or leave it explicitly pending without
+- [x] Record visual verification or leave it explicitly pending without
   weakening the independent serial-evidence trust policy.
 
 Hardware contract:
@@ -486,10 +486,32 @@ Verification:
   build, and all-feature Cargo tests pass in the required order.
 - The first dirty-tree `just test` run passed 78 of 79 targets. The sole
   `//scripts:phase36_substantive_evidence_test` failure was traced to its
-  intentional `source_tree_not_clean` preflight; the clean-`HEAD` rerun remains
-  pending after this implementation commit.
+  intentional clean-source/exact-package preflight. After rebuilding the
+  canonical package for the implementation commit, `just test` passed all 79
+  tests, including the Phase 36 substantive evidence test.
+- `just package`, `just verify-reference`, `just parity`, and `git diff
+  --check` pass. The admitted manifest identified clean source commit
+  `70ebf803d5a939496eb1780a9167459dc7a2bcfc`, reference commit
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50`, board 205, and no dirty source.
+- `just detect-ultra205` admitted exactly one Ultra 205 at the contracted port.
+  The single permitted flash/monitor command wrote the admitted factory image,
+  reacquired the same USB device, captured for 360 seconds, released the
+  session holder, and ended with `usb_session: ready`.
+- Private redacted evidence is retained only under ignored
+  `scratch/lcd-ghosting-uptime-window/attempt-001`. The wrapper classified the
+  serial evidence `timed_out_without_trusted_output` because the late-attached
+  capture omitted trusted boot markers. It was not retried or promoted.
+- Diagnostic-only late runtime output contained 176 increasing uptime samples
+  from 2,011 through 350,341 ms and no runtime display-disable marker. This
+  does not replace the missing trusted boot evidence and is not hardware proof
+  of the LCD pixels.
 
-Completion review: Pending.
+Completion review: The functional schedule and the SSD1306 full-frame
+clear/draw/flush regression are complete, and the exact implementation package
+was written to the connected board. Visual confirmation of a clean transition,
+the three-second minute-boundary build window, and unchanged surrounding rows
+remains operator UAT pending. The independent late-monitor boot-marker issue
+remains unchanged and out of scope; no marker validation was weakened.
 
 ## Backlog
 
