@@ -67,5 +67,20 @@ See the esptool [advanced reset options](https://docs.espressif.com/projects/esp
   not authorize mDNS, ARP, router inspection, or network scanning.
 - Protected operational material remains private under the repository evidence
   policy, while committed projections contain only typed shareable facts.
+- A completed flash write, USB cleanup, original boot-transcript capture, and
+  runtime application verification are separate outcomes. Failure to observe a
+  startup-only marker does not retroactively turn a verified write into a
+  failed flash.
+- The original startup-marker validator remains the sole `boot_transcript`
+  trust path. A late receive-only attachment may instead trust the versioned
+  `runtime_boot_attestation` path after two same-session, same-ordinal samples
+  agree on immutable ready-state facts, increase strictly in uptime, and match
+  the admitted manifest's full source commit, reference commit, and app ELF
+  digest.
+- Runtime attestation proves the exact package currently running in ready safe
+  state. It never claims historical delivery of the original boot transcript.
+- If neither monitor trust path succeeds, the command remains nonzero but
+  reports the completed flash independently and does not recommend an
+  automatic reflash.
 - Direct UART and electrical interfaces remain outside this decision and retain
   their separate authorization requirement.

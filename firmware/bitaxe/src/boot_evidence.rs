@@ -13,7 +13,7 @@ use bitaxe_api::boot_identity::{
 use bitaxe_api::logs::{
     RuntimeHeartbeatModel, ACCEPTED_STATE_REPLAY_INTERVAL_MS, ACCEPTED_STATE_REPLAY_WINDOW_MS,
 };
-use bitaxe_api::BootSessionId;
+use bitaxe_api::{BootSessionId, RuntimeBootAttestation};
 use esp_idf_svc::sys;
 
 use crate::{asic_adapter, log_buffer, rtc_boot_ordinal, runtime_uptime};
@@ -23,6 +23,7 @@ static HEARTBEAT_MODEL: OnceLock<Mutex<RuntimeHeartbeatModel>> = OnceLock::new()
 static BOOT_ORDINAL: OnceLock<u64> = OnceLock::new();
 static RESET_REASON: OnceLock<ResetReasonCategory> = OnceLock::new();
 static CONNECTED_ORIGIN: OnceLock<Mutex<Option<ConnectedOriginReplay>>> = OnceLock::new();
+static RUNTIME_ATTESTATION: OnceLock<Mutex<Option<RuntimeAttestationReplay>>> = OnceLock::new();
 const OBSERVER_THREAD_STACK_BYTES: usize = 8 * 1024;
 const OBSERVER_THREAD_NAME: &str = "runtime-observer";
 
@@ -34,6 +35,20 @@ struct ConnectedOriginReplay {
     device_url: String,
     next_deadline_ms: u64,
     ends_at_ms: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RuntimeAttestationIdentity {
+    firmware_commit: String,
+    reference_commit: String,
+    app_elf_sha256: String,
+    esp_idf_version: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RuntimeAttestationReplay {
+    identity: RuntimeAttestationIdentity,
+    next_deadline_ms: u64,
 }
 
 impl BootSessionNonce {
@@ -75,6 +90,7 @@ pub fn initialize_observer() {
     let ordinal = *BOOT_ORDINAL.get_or_init(|| transition.record.ordinal);
     HEARTBEAT_MODEL.get_or_init(|| Mutex::new(RuntimeHeartbeatModel::new(nonce.0)));
     CONNECTED_ORIGIN.get_or_init(|| Mutex::new(None));
+    RUNTIME_ATTESTATION.get_or_init(|| Mutex::new(None));
 
     emit_boot_identity(nonce, ordinal, reset_reason, runtime_uptime::millis());
 
@@ -85,6 +101,39 @@ pub fn initialize_observer() {
     if let Err(error) = result {
         log::warn!("runtime_observer=unavailable reason=thread_spawn_failed error={error}");
     }
+}
+
+/// Begins replaying exact-package ready-state proof for late monitor attachment.
+pub fn publish_runtime_boot_attestation(
+    firmware_commit: &str,
+    reference_commit: &str,
+    app_elf_sha256: &str,
+    esp_idf_version: &str,
+) {
+    let identity = RuntimeAttestationIdentity {
+        firmware_commit: firmware_commit.to_owned(),
+        reference_commit: reference_commit.to_owned(),
+        app_elf_sha256: app_elf_sha256.to_owned(),
+        esp_idf_version: esp_idf_version.to_owned(),
+    };
+    if let Err(error) = runtime_attestation(&identity, runtime_uptime::millis()) {
+        log::warn!("runtime_boot_attestation=unavailable reason=invalid_identity error={error}");
+        return;
+    }
+
+    let now_ms = runtime_uptime::millis();
+    let replay = RuntimeAttestationReplay {
+        identity: identity.clone(),
+        next_deadline_ms: now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS),
+    };
+    let cell = RUNTIME_ATTESTATION.get_or_init(|| Mutex::new(None));
+    let Ok(mut maybe_replay) = cell.lock() else {
+        log::warn!("runtime_boot_attestation=unavailable reason=mutex_poisoned");
+        return;
+    };
+    *maybe_replay = Some(replay);
+    drop(maybe_replay);
+    emit_runtime_attestation(&identity, now_ms);
 }
 
 /// Publishes the connected HTTP origin into the bounded boot-evidence replay.
@@ -173,6 +222,7 @@ fn observe_boot_lifetime() {
             identity_deadline_ms = now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS);
         }
         emit_due_runtime_origin(now_ms);
+        emit_due_runtime_attestation(now_ms);
 
         if maybe_replay_deadline_ms
             .is_some_and(|deadline_ms| now_ms >= deadline_ms && now_ms < replay_ends_at_ms)
@@ -196,7 +246,8 @@ fn observe_boot_lifetime() {
                 replay_ms.min(next_heartbeat_ms)
             })
             .min(identity_deadline_ms)
-            .min(next_origin_deadline());
+            .min(next_origin_deadline())
+            .min(next_attestation_deadline());
         let sleep_ms = next_wake_ms.saturating_sub(runtime_uptime::millis());
         if sleep_ms > 0 {
             thread::sleep(Duration::from_millis(sleep_ms));
@@ -204,6 +255,60 @@ fn observe_boot_lifetime() {
             thread::yield_now();
         }
     }
+}
+
+fn runtime_attestation(
+    identity: &RuntimeAttestationIdentity,
+    uptime_ms: u64,
+) -> Result<RuntimeBootAttestation, bitaxe_api::RuntimeBootAttestationError> {
+    RuntimeBootAttestation::new(
+        &boot_session().as_hex(),
+        boot_ordinal(),
+        reset_reason(),
+        uptime_ms,
+        &identity.firmware_commit,
+        &identity.reference_commit,
+        &identity.app_elf_sha256,
+        &identity.esp_idf_version,
+    )
+}
+
+fn emit_runtime_attestation(identity: &RuntimeAttestationIdentity, uptime_ms: u64) {
+    match runtime_attestation(identity, uptime_ms) {
+        Ok(attestation) => log::info!("{}", attestation.marker()),
+        Err(error) => {
+            log::warn!(
+                "runtime_boot_attestation=unavailable reason=invalid_identity error={error}"
+            );
+        }
+    }
+}
+
+fn emit_due_runtime_attestation(now_ms: u64) {
+    let cell = RUNTIME_ATTESTATION.get_or_init(|| Mutex::new(None));
+    let Ok(mut maybe_replay) = cell.lock() else {
+        return;
+    };
+    let Some(replay) = maybe_replay.as_mut() else {
+        return;
+    };
+    if now_ms < replay.next_deadline_ms {
+        return;
+    }
+    let identity = replay.identity.clone();
+    replay.next_deadline_ms = now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS);
+    drop(maybe_replay);
+    emit_runtime_attestation(&identity, now_ms);
+}
+
+fn next_attestation_deadline() -> u64 {
+    let cell = RUNTIME_ATTESTATION.get_or_init(|| Mutex::new(None));
+    let Ok(maybe_replay) = cell.lock() else {
+        return u64::MAX;
+    };
+    maybe_replay
+        .as_ref()
+        .map_or(u64::MAX, |replay| replay.next_deadline_ms)
 }
 
 fn boot_ordinal() -> u64 {

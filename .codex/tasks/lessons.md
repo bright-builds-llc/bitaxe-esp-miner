@@ -144,3 +144,9 @@
 2. What went wrong: The Phase 36 evidence evaluator identity omitted a materially reachable runtime-identity state reducer, so validator behavior could drift without rotating the evaluator or successor-contract identities.
 3. Preventive rule: Bind every materially reachable repository-owned validator, including transitive reducers and models, through a versioned inventory of relative path and source bytes; declare every source in the build/runfiles graph and regression-test source, path, addition, removal, and replacement drift.
 4. Trigger signal to catch it earlier: An evaluator inventory lists entrypoint validators but omits a reducer or model they call, accepts caller-authored digests, or lacks a test that membership drift rotates every derived identity.
+## lesson-separate-flash-effect-from-monitor-proof | 2026-07-26 10:35
+
+1. Date: 2026-07-26
+2. What went wrong: An admitted factory write completed and the device ran normally, but the native reader attached after startup-only markers had passed, so the wrapper described missing monitor proof as a failed flash.
+3. Preventive rule: Record flash effect completion, USB cleanup, original boot-transcript capture, and replayable exact-package runtime verification as separate outcomes. Runtime replay may establish only its own trust basis, and missing monitor proof must never recommend an unchanged automatic reflash.
+4. Trigger signal: A post-flash log begins at nonzero uptime, contains healthy repeated same-session runtime output, and lacks startup-only markers even though the write and same-device cleanup completed.

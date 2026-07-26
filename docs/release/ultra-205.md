@@ -808,3 +808,22 @@ Do not combine raw `espflash`, terminal programs, browsers using Web Serial, or
 legacy capture scripts with an active repository session. Historical commands
 elsewhere in this guide document earlier evidence and are not the current
 development workflow.
+
+`just flash-monitor` reports the write and monitor proof independently:
+
+- `flash_status=completed` means the admitted image write completed; it does
+  not by itself claim application readiness.
+- `boot_transcript_status=trusted` means the receive-only reader captured and
+  validated the original startup transcript.
+- `runtime_attestation_status=trusted` means at least two replayed samples from
+  one boot session and ordinal had strictly increasing uptime, identical
+  ready-state facts, and exact source, reference, and app ELF identity matches
+  to the admitted package.
+- `trust_basis` is `boot_transcript`, `runtime_attestation`, or `none`.
+
+The runtime attestation is emitted after OTA validation, SPIFFS mounting, and
+HTTP route-shell readiness, then replayed every ten seconds. It proves the exact
+ready package currently running, not that startup-only serial lines were
+captured. If both monitor paths are untrusted, `flash-monitor` exits nonzero
+while retaining `flash_status=completed`. Diagnose with `just monitor`; do not
+automatically reflash an unchanged package.

@@ -510,8 +510,100 @@ Completion review: The functional schedule and the SSD1306 full-frame
 clear/draw/flush regression are complete, and the exact implementation package
 was written to the connected board. Visual confirmation of a clean transition,
 the three-second minute-boundary build window, and unchanged surrounding rows
-remains operator UAT pending. The independent late-monitor boot-marker issue
-remains unchanged and out of scope; no marker validation was weakened.
+passed operator UAT on 2026-07-26. The independent late-monitor boot-marker
+issue remained unchanged and out of scope; no marker validation was weakened.
+
+### task-eight-second-build-window-runtime-attestation | 2026-07-26 10:35 | Extend LCD build window and distinguish post-flash proof
+
+- [x] Show build time during uptime milliseconds `0..=7_999` of every
+  60-second cycle and uptime for the remaining 52 seconds.
+- [x] Add a versioned, redaction-safe runtime boot attestation in the pure API
+  model and replay it from the boot-lifetime firmware owner after startup
+  readiness.
+- [x] Accept either the unchanged original boot transcript or two consistent,
+  monotonic exact-package runtime attestations without conflating the two trust
+  bases.
+- [x] Record flash effect, boot transcript, runtime attestation, and overall
+  trust as separate additive evidence fields. An untrusted monitor remains
+  nonzero but must state that flashing completed and must not recommend an
+  automatic reflash.
+- [x] Preserve the native receive-only reader, hard-reset lifecycle, private
+  evidence policy, full framebuffer redraw, display/I2C cadences, and archived
+  Phase 28.1.1 closure.
+- [x] Update ADR/runbook guidance and append the durable separated-outcome
+  lesson.
+- [ ] Run regression-first focused tests, mandatory Rust checks, full Bazel
+  tests, packaging, reference/parity/redaction verification, and diff checks.
+- [ ] Build an exact clean-`HEAD` package and run one detector-gated
+  flash/monitor with private redacted evidence.
+- [ ] Record hardware trust basis and operator LCD UAT, or leave either
+  explicitly pending without weakening the evidence contract.
+
+Hardware contract:
+
+- Permitted commands:
+  1. `just detect-ultra205`
+  2. `just package`
+  3. `just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json evidence-dir=scratch/lcd-eight-second-attestation/attempt-001 capture-timeout-seconds=360 redact-evidence=true`
+- Objective: write the exact admitted package, verify either original
+  boot-transcript trust or the distinct runtime-attestation trust basis, and
+  observe the eight-second LCD build window without disturbing other rows.
+- Evidence: detailed USB, command, and serial material remains ignored
+  `ProtectedOperational` under `scratch/device-sessions` and
+  `scratch/lcd-eight-second-attestation`. Committed notes contain only typed
+  categories, safe provenance, counts, and bounded durations.
+- Preconditions: use only the provided USB and barrel-power connections; the
+  package must match a clean current `HEAD`; detector admission must find
+  exactly one board 205; no credential file is read or supplied.
+- Allowed effects: repository-supervised USB reset/hard-reset, exact admitted
+  factory-image write, same-device re-acquisition, receive-only observation,
+  and cleanup of supervisor-proven repository child process groups.
+- Prohibited effects: erase-flash, arbitrary raw writes, NVS seeding,
+  credentials, network discovery, watchdog reset, voltage/fan/mining stress,
+  foreign-process termination, direct UART, pins, pads, headers, GPIO, probes,
+  jumpers, soldering, injected signals, archived diagnostic invocation, and
+  evidence promotion.
+- Recovery/restoration: every device session must release serial descriptors,
+  reap its owned process group, and prove the same device accessible and
+  holder-free. A hard failure stops without an unchanged retry.
+- Retry bound: one detector-gated flash/monitor attempt is allowed only after
+  the software fix passes all host verification. Another attempt requires a
+  regression-backed software fix or authorized non-invasive remediation that
+  objectively changes the failed boundary.
+- Accepted terminal outcomes: `complete`, `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary`, or
+  `stop_impossible_contract`, preserving the earliest typed failure.
+- Timeouts: flash/monitor capture is at least 360 seconds with an invoking wall
+  clock above 420 seconds. Ordinary silence is not failure before the bound; a
+  hard transport error may stop earlier.
+- Trust policy: an original boot transcript and a replayed runtime attestation
+  remain distinct. Runtime trust requires at least two same-session,
+  same-ordinal attestations with identical static facts, increasing uptime,
+  and exact source, reference, and app-ELF identity matches.
+
+Verification:
+
+- Regression-first proof recorded the intended pre-fix failures: row three
+  switched to uptime at 7,999 ms, the late-attached repeated exact-package log
+  was rejected for missing startup markers, and untrusted-monitor output did
+  not separate completed flashing from monitor failure.
+- Focused API/core/renderer/flash tests pass, including malformed, stale
+  package, wrong reference/digest, mixed session/ordinal, non-monotonic,
+  single-sample, incomplete-readiness, full-framebuffer, both-trust-path, and
+  terminal-write-failure cases.
+- `cargo fmt --all`, Clippy with all targets/features and denied warnings,
+  all-target/all-feature build, and all-feature tests pass in the mandatory
+  order.
+- The full Bazel graph excluding only
+  `//scripts:phase36_substantive_evidence_test` passes, including the ESP32-S3
+  release firmware compile and package graph. That one process test was
+  diagnosed as intentionally clean-HEAD-only (`source_tree_not_clean`) and is
+  pending the required implementation commit.
+- `just verify-reference`, `just parity`, and `just verify-redaction` pass.
+- Exact clean-HEAD packaging, the clean-HEAD Phase 36 gate, detector admission,
+  and the single hardware attempt remain pending.
+
+Completion review: Pending.
 
 ## Backlog
 

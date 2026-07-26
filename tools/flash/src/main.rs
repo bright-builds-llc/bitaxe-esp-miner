@@ -11,7 +11,10 @@ use std::str::FromStr;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
-use bitaxe_api::BuildProvenance;
+use bitaxe_api::{
+    classify_runtime_boot_attestations, BuildProvenance, ExpectedRuntimeAttestationIdentity,
+    RuntimeAttestationStatus,
+};
 use bitaxe_config::{
     apply_settings_patch, ConfigValidationError, NvsWrite, RawSettingValue, SettingsPatch,
     SettingsUpdateDecision, NVS_NAMESPACE,
@@ -266,6 +269,7 @@ impl CommandSpec {
 struct FlashOutcome {
     manifest: Option<Utf8PathBuf>,
     flash_image: Utf8PathBuf,
+    runtime_identity: Option<ExpectedRuntimeAttestationIdentity>,
     command: CommandSpec,
     nvs_seed: Option<NvsSeedOutcome>,
 }
@@ -280,6 +284,7 @@ struct AdmittedFactoryImage {
     manifest: Utf8PathBuf,
     display_path: Utf8PathBuf,
     bytes: Vec<u8>,
+    runtime_identity: ExpectedRuntimeAttestationIdentity,
 }
 
 enum AdmittedFlashImage {
@@ -306,6 +311,13 @@ impl AdmittedFlashImage {
         match self {
             Self::DeveloperDryRun { .. } => None,
             Self::Factory(factory) => Some(&factory.bytes),
+        }
+    }
+
+    fn maybe_runtime_identity(&self) -> Option<&ExpectedRuntimeAttestationIdentity> {
+        match self {
+            Self::DeveloperDryRun { .. } => None,
+            Self::Factory(factory) => Some(&factory.runtime_identity),
         }
     }
 }
@@ -401,6 +413,10 @@ struct MonitorCaptureOutcome {
     trusted_output: bool,
     observed_firmware_commit: String,
     observed_reference_commit: String,
+    monitor_evidence_status: String,
+    boot_transcript_status: String,
+    runtime_attestation_status: String,
+    trust_basis: String,
     conclusion: String,
 }
 
@@ -1308,6 +1324,7 @@ fn run_flash_monitor(
                 command.capture_timeout_seconds,
                 &environment.firmware_commit(),
                 &environment.reference_commit(),
+                flash_outcome.runtime_identity.as_ref(),
                 dual_paths.is_some(),
             )
         };
@@ -1358,7 +1375,12 @@ fn run_flash_monitor(
             bail!(
                 "{}\n{}",
                 capture_outcome.conclusion,
-                evidence_capture_failure_guidance(&port, user_evidence_dir)
+                evidence_capture_failure_guidance(
+                    &port,
+                    user_evidence_dir,
+                    &capture_outcome.boot_transcript_status,
+                    &capture_outcome.runtime_attestation_status,
+                )
             );
         }
         return Ok(());
@@ -1564,6 +1586,7 @@ fn prepare_flash(
         outcome: FlashOutcome {
             manifest: admitted_image.maybe_manifest().map(Utf8Path::to_owned),
             flash_image: admitted_image.display_path().to_owned(),
+            runtime_identity: admitted_image.maybe_runtime_identity().cloned(),
             command: display_command,
             nvs_seed,
         },
@@ -1890,6 +1913,11 @@ fn validate_identity_admission(
         manifest: manifest_path.to_owned(),
         display_path: factory_path,
         bytes: factory_bytes,
+        runtime_identity: ExpectedRuntimeAttestationIdentity {
+            firmware_commit: manifest.source_commit.clone(),
+            reference_commit: manifest.reference_commit.clone(),
+            app_elf_sha256: manifest.app_elf_sha256.clone(),
+        },
     })
 }
 
@@ -2127,6 +2155,7 @@ fn monitor_capture_outcome(
     capture_timeout_seconds: u64,
     expected_firmware_commit: &str,
     expected_reference_commit: &str,
+    maybe_runtime_identity: Option<&ExpectedRuntimeAttestationIdentity>,
     allow_private_classification: bool,
 ) -> MonitorCaptureOutcome {
     let observed_firmware_commit = monitor_log_marker_value(monitor_log, "firmware_commit=");
@@ -2138,7 +2167,25 @@ fn monitor_capture_outcome(
         &observed_reference_commit,
         expected_reference_commit,
     );
-    let trusted_output = maybe_trust_failure.is_none();
+    let boot_transcript_status = if maybe_trust_failure.is_none() {
+        "trusted"
+    } else if !monitor_log_has_trusted_boot_markers(monitor_log) {
+        "missing"
+    } else {
+        "untrusted"
+    };
+    let runtime_attestation_status = maybe_runtime_identity
+        .map_or(RuntimeAttestationStatus::Missing, |identity| {
+            classify_runtime_boot_attestations(monitor_log, identity)
+        });
+    let trust_basis = if maybe_trust_failure.is_none() {
+        "boot_transcript"
+    } else if runtime_attestation_status == RuntimeAttestationStatus::Trusted {
+        "runtime_attestation"
+    } else {
+        "none"
+    };
+    let trusted_output = trust_basis != "none";
     let capture_status = match process_status {
         CaptureProcessStatus::ExitedSuccess if trusted_output => CaptureStatus::Completed,
         CaptureProcessStatus::TimedOut if trusted_output => {
@@ -2157,13 +2204,28 @@ fn monitor_capture_outcome(
             capture_status,
             CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
         ) {
-        "passed - wrapper-owned serial boot evidence captured; HTTP/static/recovery/OTA/rollback parity not claimed".to_owned()
+        match trust_basis {
+            "boot_transcript" => "passed - original boot transcript captured and trusted; HTTP/static/recovery/OTA/rollback parity not claimed".to_owned(),
+            "runtime_attestation" => "passed - exact-package runtime attestation trusted; original boot transcript was not captured".to_owned(),
+            _ => unreachable!("trusted output has a closed trust basis"),
+        }
     } else if capture_status == CaptureStatus::TimedOutPendingPrivateClassification {
         "pending - immutable private monitor input requires authoritative classification".to_owned()
     } else if let Some(trust_failure) = maybe_trust_failure {
         format!("failed - evidence capture is not trusted: {trust_failure}")
     } else {
         "failed - evidence capture is not trusted".to_owned()
+    };
+    let monitor_evidence_status = if trusted_output
+        && matches!(
+            capture_status,
+            CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
+        ) {
+        "trusted"
+    } else if capture_status == CaptureStatus::TimedOutPendingPrivateClassification {
+        "pending_private_classification"
+    } else {
+        "untrusted"
     };
 
     MonitorCaptureOutcome {
@@ -2173,6 +2235,10 @@ fn monitor_capture_outcome(
         trusted_output,
         observed_firmware_commit,
         observed_reference_commit,
+        monitor_evidence_status: monitor_evidence_status.to_owned(),
+        boot_transcript_status: boot_transcript_status.to_owned(),
+        runtime_attestation_status: runtime_attestation_status.label().to_owned(),
+        trust_basis: trust_basis.to_owned(),
         conclusion,
     }
 }
@@ -2234,6 +2300,10 @@ fn dry_run_monitor_capture_outcome(capture_timeout_seconds: u64) -> MonitorCaptu
         trusted_output: false,
         observed_firmware_commit: UNAVAILABLE.to_owned(),
         observed_reference_commit: UNAVAILABLE.to_owned(),
+        monitor_evidence_status: "not_captured".to_owned(),
+        boot_transcript_status: "not_captured".to_owned(),
+        runtime_attestation_status: "not_captured".to_owned(),
+        trust_basis: "none".to_owned(),
         conclusion: "not run - dry-run did not capture hardware evidence".to_owned(),
     }
 }
@@ -2246,17 +2316,30 @@ fn no_monitor_capture_outcome() -> MonitorCaptureOutcome {
         trusted_output: false,
         observed_firmware_commit: UNAVAILABLE.to_owned(),
         observed_reference_commit: UNAVAILABLE.to_owned(),
+        monitor_evidence_status: "not_requested".to_owned(),
+        boot_transcript_status: "not_requested".to_owned(),
+        runtime_attestation_status: "not_requested".to_owned(),
+        trust_basis: "none".to_owned(),
         conclusion: "not run - no monitor capture requested".to_owned(),
     }
 }
 
-fn evidence_capture_failure_guidance(port: &str, evidence_dir: &Utf8Path) -> String {
+fn evidence_capture_failure_guidance(
+    port: &str,
+    evidence_dir: &Utf8Path,
+    boot_transcript_status: &str,
+    runtime_attestation_status: &str,
+) -> String {
     [
         "evidence capture failed and is not trusted".to_owned(),
-        "rerun: just detect-ultra205".to_owned(),
-        format!("rerun: just flash-monitor board=205 port={port} evidence-dir={evidence_dir}"),
+        "flash_status=completed".to_owned(),
+        "monitor_evidence_status=untrusted".to_owned(),
+        format!("boot_transcript_status={boot_transcript_status}"),
+        format!("runtime_attestation_status={runtime_attestation_status}"),
+        "next: just detect-ultra205".to_owned(),
         format!("diagnostic only: just monitor port={port}"),
-        "use the wrapper noninteractive evidence path before treating serial logs as proof"
+        format!("evidence_dir={evidence_dir}"),
+        "do not reflash automatically; use a verified state-changing fix before another flash attempt"
             .to_owned(),
     ]
     .join("\n")
@@ -2512,6 +2595,15 @@ fn write_evidence_record(
         capture_mode: input.capture_outcome.capture_mode.clone(),
         capture_status: input.capture_outcome.capture_status,
         capture_timeout_seconds: input.capture_outcome.capture_timeout_seconds,
+        flash_status: if common.dry_run {
+            "dry_run".to_owned()
+        } else {
+            "completed".to_owned()
+        },
+        monitor_evidence_status: input.capture_outcome.monitor_evidence_status.clone(),
+        boot_transcript_status: input.capture_outcome.boot_transcript_status.clone(),
+        runtime_attestation_status: input.capture_outcome.runtime_attestation_status.clone(),
+        trust_basis: input.capture_outcome.trust_basis.clone(),
         trusted_output: input.capture_outcome.trusted_output,
         observed_firmware_commit: input.capture_outcome.observed_firmware_commit.clone(),
         observed_reference_commit: input.capture_outcome.observed_reference_commit.clone(),
@@ -3032,10 +3124,28 @@ struct EvidenceRecord {
     capture_mode: String,
     capture_status: CaptureStatus,
     capture_timeout_seconds: u64,
+    #[serde(default = "unavailable_evidence_status")]
+    flash_status: String,
+    #[serde(default = "unavailable_evidence_status")]
+    monitor_evidence_status: String,
+    #[serde(default = "unavailable_evidence_status")]
+    boot_transcript_status: String,
+    #[serde(default = "unavailable_evidence_status")]
+    runtime_attestation_status: String,
+    #[serde(default = "no_trust_basis")]
+    trust_basis: String,
     trusted_output: bool,
     observed_firmware_commit: String,
     observed_reference_commit: String,
     conclusion: String,
+}
+
+fn unavailable_evidence_status() -> String {
+    UNAVAILABLE.to_owned()
+}
+
+fn no_trust_basis() -> String {
+    "none".to_owned()
 }
 
 fn unix_timestamp() -> String {
@@ -5129,6 +5239,11 @@ mod tests {
             "capture_mode",
             "capture_status",
             "capture_timeout_seconds",
+            "flash_status",
+            "monitor_evidence_status",
+            "boot_transcript_status",
+            "runtime_attestation_status",
+            "trust_basis",
             "trusted_output",
             "observed_firmware_commit",
             "observed_reference_commit",
@@ -5139,6 +5254,11 @@ mod tests {
         assert_eq!(json["capture_mode"], "noninteractive");
         assert_eq!(json["capture_status"], "completed");
         assert_eq!(json["capture_timeout_seconds"], 360);
+        assert_eq!(json["flash_status"], "completed");
+        assert_eq!(json["monitor_evidence_status"], "trusted");
+        assert_eq!(json["boot_transcript_status"], "trusted");
+        assert_eq!(json["runtime_attestation_status"], "missing");
+        assert_eq!(json["trust_basis"], "boot_transcript");
         assert_eq!(json["trusted_output"], true);
         assert_eq!(json["observed_firmware_commit"], "0123456789ab");
         assert_eq!(json["observed_reference_commit"], "abcdef012345");
@@ -5539,9 +5659,37 @@ mod tests {
         // Assert
         let error = format!("{result:#?}");
         assert!(error.contains("evidence capture failed and is not trusted"));
+        assert!(error.contains("flash_status=completed"));
+        assert!(error.contains("monitor_evidence_status=untrusted"));
+        assert!(!error.contains("rerun: just flash-monitor"));
         let evidence_path = evidence_dir.join("flash-command-evidence.json");
         let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
         assert!(evidence.contains(r#""capture_status": "timed_out_without_trusted_output""#));
+    }
+
+    #[test]
+    fn late_attached_exact_runtime_attestation_is_accepted_without_boot_transcript() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
+        let late_attach_log = runtime_attestation_log();
+        let environment = FakeFlashEnvironment::default()
+            .with_capture_status(CaptureProcessStatus::TimedOut)
+            .with_log_contents(&late_attach_log);
+
+        // Act
+        run_flash_monitor(&command, &environment).expect("runtime attestation should be trusted");
+
+        // Assert
+        let evidence_path = evidence_dir.join("flash-command-evidence.json");
+        let evidence = fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
+        let json: serde_json::Value = serde_json::from_str(&evidence).expect("evidence JSON");
+        assert_eq!(json["flash_status"], "completed");
+        assert_eq!(json["boot_transcript_status"], "missing");
+        assert_eq!(json["runtime_attestation_status"], "trusted");
+        assert_eq!(json["trust_basis"], "runtime_attestation");
+        assert_eq!(json["trusted_output"], true);
     }
 
     #[test]
@@ -5727,13 +5875,34 @@ mod tests {
         // Assert
         let error = format!("{result:#?}");
         assert!(error.contains("just detect-ultra205"));
-        assert!(error.contains(&format!(
-            "just flash-monitor board=205 port=/dev/cu.usbmodem101 evidence-dir={evidence_dir}"
-        )));
         assert!(error.contains("just monitor port=/dev/cu.usbmodem101"));
-        assert!(error.contains("wrapper noninteractive evidence path"));
+        assert!(error.contains(&format!("evidence_dir={evidence_dir}")));
+        assert!(error.contains("do not reflash automatically"));
+        assert!(!error.contains("rerun: just flash-monitor"));
         let raw_timeout_command = ["timeout", "25", "espflash"].join(" ");
         assert!(!error.contains(&raw_timeout_command));
+    }
+
+    #[test]
+    fn write_failure_is_terminal_before_monitor_or_completed_flash_evidence() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let command = flash_monitor_fixture(&dir, evidence_dir.clone());
+        let environment = FakeFlashEnvironment::default().with_execute_failure();
+
+        // Act
+        let result = run_flash_monitor(&command, &environment);
+
+        // Assert
+        let error = format!(
+            "{:#}",
+            result.expect_err("write failure must remain terminal")
+        );
+        assert!(error.contains("sentinel child failure"));
+        assert!(!error.contains("flash_status=completed"));
+        assert!(environment.captured_commands().is_empty());
+        assert!(!evidence_dir.join("flash-command-evidence.json").exists());
     }
 
     #[test]
@@ -5826,6 +5995,25 @@ mod tests {
             "esp_idf_version=v5.5.4",
         ]
         .join("\n")
+    }
+
+    fn runtime_attestation_log() -> String {
+        [10_000_u64, 20_000]
+            .into_iter()
+            .map(|uptime_ms| {
+                format!(
+                    "runtime_boot_attestation schema_version=1 \
+                     session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa boot_ordinal=7 \
+                     reset_reason=other uptime_ms={uptime_ms} board=205 asic=BM1366 \
+                     mining=disabled work_submission=disabled hardware_control=disabled \
+                     firmware_commit={SOURCE_COMMIT} reference_commit={REFERENCE_COMMIT} \
+                     app_elf_sha256={APP_ELF_SHA256} esp_idf_version=v5.5.4 \
+                     ota_boot_validation=complete spiffs_mount=available \
+                     api_route_shell=started redacted=true"
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn flash_monitor_fixture(dir: &TempDir, evidence_dir: Utf8PathBuf) -> FlashMonitorCommand {

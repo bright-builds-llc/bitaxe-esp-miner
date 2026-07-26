@@ -18,6 +18,7 @@ pub mod operator_snapshot_publication;
 pub mod phase33_evidence;
 pub mod platform_identity;
 pub mod route_shell;
+pub mod runtime_boot_attestation;
 pub mod runtime_projection;
 pub mod scoreboard;
 pub mod settings;
@@ -76,6 +77,11 @@ pub use route_shell::{
     SettingsPatchBodyDecision, WebSocketClientRegistrationPlan, WebSocketRouteKind,
     WebSocketUpgradeDecision, MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY,
     UNKNOWN_API_ROUTE_BODY,
+};
+pub use runtime_boot_attestation::{
+    classify_runtime_boot_attestations, ExpectedRuntimeAttestationIdentity,
+    RuntimeAttestationStatus, RuntimeBootAttestation, RuntimeBootAttestationError,
+    RUNTIME_BOOT_ATTESTATION_MARKER, RUNTIME_BOOT_ATTESTATION_SCHEMA_VERSION,
 };
 pub use runtime_projection::{project_api_views, project_system_info, ProjectedApiViews};
 pub use scoreboard::{scoreboard_response, ScoreboardEntry, ScoreboardEntryWire};

@@ -82,7 +82,7 @@ pub const STARTUP_DEBUG_MAX_LINES: usize =
 /// Duration of one row-three build-time and uptime cycle.
 pub const STARTUP_DEBUG_CYCLE_MS: u64 = 60_000;
 /// Duration of the build-time window at the start of each row-three cycle.
-pub const STARTUP_DEBUG_BUILD_WINDOW_MS: u64 = 3_000;
+pub const STARTUP_DEBUG_BUILD_WINDOW_MS: u64 = 8_000;
 const STARTUP_DEBUG_MAX_UPTIME_DAYS: u64 = 9_999;
 /// Safe boot/log state for Phase 1.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -413,7 +413,7 @@ mod tests {
     }
 
     #[test]
-    fn startup_debug_text_shows_build_time_for_first_three_seconds_of_each_minute() {
+    fn startup_debug_text_shows_build_time_for_first_eight_seconds_of_each_minute() {
         // Arrange
         let text = StartupDebugText::new(
             BoardTarget::Ultra205,
@@ -424,12 +424,12 @@ mod tests {
 
         // Act / Assert
         assert_eq!(text.frame_at(0).lines()[2], "Built 2026-07-26 19:32Z");
-        assert_eq!(text.frame_at(2_999).lines()[2], "Built 2026-07-26 19:32Z");
-        assert_eq!(text.frame_at(3_000).lines()[2], "Uptime 0:00:03");
+        assert_eq!(text.frame_at(7_999).lines()[2], "Built 2026-07-26 19:32Z");
+        assert_eq!(text.frame_at(8_000).lines()[2], "Uptime 0:00:08");
         assert_eq!(text.frame_at(59_999).lines()[2], "Uptime 0:00:59");
         assert_eq!(text.frame_at(60_000).lines()[2], "Built 2026-07-26 19:32Z");
-        assert_eq!(text.frame_at(62_999).lines()[2], "Built 2026-07-26 19:32Z");
-        assert_eq!(text.frame_at(63_000).lines()[2], "Uptime 0:01:03");
+        assert_eq!(text.frame_at(67_999).lines()[2], "Built 2026-07-26 19:32Z");
+        assert_eq!(text.frame_at(68_000).lines()[2], "Uptime 0:01:08");
     }
 
     #[test]

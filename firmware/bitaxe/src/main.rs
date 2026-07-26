@@ -153,9 +153,13 @@ fn main() -> anyhow::Result<()> {
         }
     };
     let startup_diagnostics_passed = startup_diagnostics.is_ok();
-    if let Err(error) = boot_validation::validate_boot(startup_diagnostics_passed) {
-        log::warn!("ota_boot_validation=error error={error:#}");
-    }
+    let boot_validation_ready = match boot_validation::validate_boot(startup_diagnostics_passed) {
+        Ok(()) => true,
+        Err(error) => {
+            log::warn!("ota_boot_validation=error error={error:#}");
+            false
+        }
+    };
     startup_diagnostics?;
     controlled_mining_runtime::maybe_start_after_asic_gate();
     safety_adapter::start_safety_supervisor();
@@ -175,9 +179,13 @@ fn main() -> anyhow::Result<()> {
         live_stratum_runtime::maybe_start_after_network_setup(network_ready);
     }
     let filesystem_status = filesystem::mount_www_spiffs();
-    if let Err(error) = http_api::start_http_api(filesystem_status) {
-        log::warn!("axeos_api_route_shell=unavailable error={error:#}");
-    }
+    let route_shell_ready = match http_api::start_http_api(filesystem_status) {
+        Ok(()) => true,
+        Err(error) => {
+            log::warn!("axeos_api_route_shell=unavailable error={error:#}");
+            false
+        }
+    };
     if mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge() {
         live_stratum_runtime::schedule_phase27_bridge_after_http_ready(network_ready);
     }
@@ -201,8 +209,35 @@ fn main() -> anyhow::Result<()> {
         platform_snapshot.platform.idf_version
     ));
     info_retained(&format!("rust_target={RUST_TARGET}"));
+    let spiffs_ready = matches!(
+        filesystem_status,
+        filesystem::FilesystemStatus::Available { .. }
+    );
+    if boot_validation_ready && spiffs_ready && route_shell_ready {
+        boot_evidence::publish_runtime_boot_attestation(
+            firmware_commit(),
+            reference_commit(),
+            &app_elf_sha256(),
+            &platform_snapshot.platform.idf_version,
+        );
+    } else {
+        log::warn!(
+            "runtime_boot_attestation=deferred reason=readiness_incomplete ota_boot_validation={} spiffs_mount={} api_route_shell={}",
+            readiness_label(boot_validation_ready),
+            readiness_label(spiffs_ready),
+            readiness_label(route_shell_ready),
+        );
+    }
 
     Ok(())
+}
+
+const fn readiness_label(ready: bool) -> &'static str {
+    if ready {
+        "complete"
+    } else {
+        "incomplete"
+    }
 }
 
 fn firmware_commit() -> &'static str {

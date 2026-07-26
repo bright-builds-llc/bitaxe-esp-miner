@@ -160,7 +160,7 @@ mod tests {
             Some("abcdef123456-dev"),
             "2026-07-26T19:32:45Z",
         );
-        let frame = text.frame_at(3_000);
+        let frame = text.frame_at(8_000);
 
         // Act
         render_debug_text(i2c, &frame, false).expect("runtime frame should render");
