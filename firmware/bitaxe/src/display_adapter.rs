@@ -88,6 +88,7 @@ where
             .set_addr_mode(AddrMode::Horizontal)
             .map_err(|error| anyhow::anyhow!("restore SSD1306 address mode: {error:?}"))?;
     }
+    display.clear_buffer();
 
     let text_style = MonoTextStyleBuilder::new()
         .font(&FONT_5X7)
@@ -104,4 +105,76 @@ where
         .flush()
         .map_err(|error| anyhow::anyhow!("flush debug display text: {error:?}"))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use core::cell::RefCell;
+    use core::convert::Infallible;
+    use std::rc::Rc;
+
+    use bitaxe_core::{AsicTarget, BoardTarget, StartupDebugText};
+    use embedded_hal::i2c::{ErrorType, I2c, Operation};
+
+    use super::render_debug_text;
+
+    const DISPLAY_FRAMEBUFFER_BYTES: usize = 128 * 32 / 8;
+    const ROW_THREE_SUFFIX_START: usize = 2 * 128 + 100;
+    const ROW_THREE_SUFFIX_END: usize = 3 * 128;
+
+    #[derive(Clone)]
+    struct CapturingI2c {
+        writes: Rc<RefCell<Vec<Vec<u8>>>>,
+    }
+
+    impl ErrorType for CapturingI2c {
+        type Error = Infallible;
+    }
+
+    impl I2c for CapturingI2c {
+        fn transaction(
+            &mut self,
+            _address: u8,
+            operations: &mut [Operation<'_>],
+        ) -> Result<(), Self::Error> {
+            for operation in operations {
+                match operation {
+                    Operation::Read(bytes) => bytes.fill(0),
+                    Operation::Write(bytes) => self.writes.borrow_mut().push(bytes.to_vec()),
+                }
+            }
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn runtime_uptime_frame_transfers_cleared_full_framebuffer() {
+        // Arrange
+        let writes = Rc::new(RefCell::new(Vec::new()));
+        let i2c = CapturingI2c {
+            writes: Rc::clone(&writes),
+        };
+        let text = StartupDebugText::new(
+            BoardTarget::Ultra205,
+            AsicTarget::Bm1366,
+            Some("abcdef123456-dev"),
+            "2026-07-26T19:32:45Z",
+        );
+        let frame = text.frame_at(3_000);
+
+        // Act
+        render_debug_text(i2c, &frame, false).expect("runtime frame should render");
+        let framebuffer = writes
+            .borrow()
+            .iter()
+            .filter(|write| write.first() == Some(&0x40))
+            .flat_map(|write| write[1..].iter().copied())
+            .collect::<Vec<_>>();
+
+        // Assert
+        assert_eq!(framebuffer.len(), DISPLAY_FRAMEBUFFER_BYTES);
+        assert!(framebuffer[ROW_THREE_SUFFIX_START..ROW_THREE_SUFFIX_END]
+            .iter()
+            .all(|byte| *byte == 0));
+    }
 }

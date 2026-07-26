@@ -417,6 +417,80 @@ Exact-package flash/monitor verification is pending.
 
 Completion review: Pending.
 
+### task-lcd-ghosting-uptime-window | 2026-07-26 | Clear row-three remnants and favor uptime
+
+- [x] Add a capturing fake-I2C regression proving a runtime uptime frame
+  transfers the complete 512-byte SSD1306 framebuffer with cleared suffix
+  pixels.
+- [x] Show build time for the first 3 seconds of each 60-second monotonic
+  uptime cycle and uptime for the remaining 57 seconds.
+- [x] Preserve the four-line layout, one-second display cadence, 500 ms sensor
+  cadence, sole I2C ownership, redraw-on-change behavior, and fail-once display
+  disablement.
+- [ ] Run focused renderer/core tests, mandatory Rust checks, full Bazel tests,
+  packaging, reference-cleanliness, and diff checks.
+- [ ] Build an exact clean-`HEAD` package and run one detector-gated
+  flash/monitor with private redacted evidence.
+- [ ] Record visual verification or leave it explicitly pending without
+  weakening the independent serial-evidence trust policy.
+
+Hardware contract:
+
+- Permitted commands:
+  1. `just detect-ultra205`
+  2. `just package`
+  3. `just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json evidence-dir=scratch/lcd-ghosting-uptime-window/attempt-001 capture-timeout-seconds=360 redact-evidence=true`
+- Objective: write the exact admitted package and observe the runtime long
+  enough to verify the three-second build-time window and clean transition to
+  increasing uptime without disturbing the other rows.
+- Evidence: detailed USB, command, and serial material remains ignored
+  `ProtectedOperational` under `scratch/device-sessions` and
+  `scratch/lcd-ghosting-uptime-window`. Committed notes contain only closed
+  categories, bounded counts/durations, and safe build provenance.
+- Preconditions: use only the provided USB and barrel-power connections; the
+  package must match a clean current `HEAD`; detector admission must find
+  exactly one board 205; no credential file is read or supplied.
+- Allowed effects: repository-supervised USB reset/hard-reset, exact admitted
+  factory-image write, same-device re-acquisition, receive-only observation,
+  and cleanup of supervisor-proven repository child process groups.
+- Prohibited effects: erase-flash, arbitrary raw writes, NVS seeding,
+  credentials, network discovery, watchdog reset, voltage/fan/mining stress,
+  foreign-process termination, direct UART, pins, pads, headers, GPIO, probes,
+  jumpers, soldering, injected signals, and evidence promotion.
+- Recovery/restoration: every device session must release serial descriptors,
+  reap its owned process group, and prove the same device accessible and
+  holder-free. A hard failure stops without an unchanged retry.
+- Retry bound: one detector-gated flash/monitor attempt is allowed after the
+  software fix passes all host verification. Another attempt requires a
+  regression-backed software fix or an authorized non-invasive remediation
+  that objectively changes the failed boundary.
+- Accepted terminal outcomes: `complete`, `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary`, or
+  `stop_impossible_contract`, preserving the earliest closed category.
+- Timeouts: the flash/monitor capture is at least 360 seconds with an invoking
+  wall clock above 420 seconds. Ordinary silence is not failure before the
+  bound; a hard transport error may stop earlier.
+- Serial evidence policy: the known late-attach missing-boot-marker result is
+  independent of LCD visual behavior. Do not weaken marker validation or
+  reinterpret late runtime output as original boot-marker capture.
+
+Verification:
+
+- Regression-first focused tests failed before the implementation at the
+  intended boundaries: row three still showed build time at 3,000 ms, and the
+  shorter uptime frame transmitted only 456 of 512 framebuffer bytes.
+- `bazel test //crates/bitaxe-core:tests //firmware/bitaxe:display_adapter_tests`
+  passes after the fix, including schedule boundaries through 63,000 ms and
+  cleared row-three suffix pixels in a complete framebuffer transfer.
+- `cargo fmt --all`, Clippy with warnings denied, all-target/all-feature Cargo
+  build, and all-feature Cargo tests pass in the required order.
+- The first dirty-tree `just test` run passed 78 of 79 targets. The sole
+  `//scripts:phase36_substantive_evidence_test` failure was traced to its
+  intentional `source_tree_not_clean` preflight; the clean-`HEAD` rerun remains
+  pending after this implementation commit.
+
+Completion review: Pending.
+
 ## Backlog
 
 ### task-private-first-remaining-evidence-pipelines | 2026-07-20 | Migrate remaining evidence workflows

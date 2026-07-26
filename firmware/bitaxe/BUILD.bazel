@@ -156,6 +156,25 @@ rust_test(
 )
 
 rust_test(
+    name = "display_adapter_tests",
+    srcs = [
+        "src/display_adapter.rs",
+        "src/display_adapter_host_test.rs",
+    ],
+    crate_name = "display_adapter_tests",
+    crate_root = "src/display_adapter_host_test.rs",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-core:bitaxe_core",
+        "@crates//:anyhow",
+        "@crates//:embedded-graphics",
+        "@crates//:embedded-hal",
+        "@crates//:log",
+        "@crates//:ssd1306",
+    ],
+)
+
+rust_test(
     name = "retained_pair_production_tests",
     srcs = [
         "src/log_buffer.rs",

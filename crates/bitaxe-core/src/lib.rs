@@ -79,8 +79,10 @@ pub const STARTUP_DEBUG_MAX_LINE_CHARS: usize =
 /// Maximum startup debug lines that fit on the display.
 pub const STARTUP_DEBUG_MAX_LINES: usize =
     STARTUP_DEBUG_SCREEN_HEIGHT_PX / STARTUP_DEBUG_LINE_STRIDE_PX;
-/// Duration for each alternating third-line value.
-pub const STARTUP_DEBUG_ALTERNATION_MS: u64 = 5_000;
+/// Duration of one row-three build-time and uptime cycle.
+pub const STARTUP_DEBUG_CYCLE_MS: u64 = 60_000;
+/// Duration of the build-time window at the start of each row-three cycle.
+pub const STARTUP_DEBUG_BUILD_WINDOW_MS: u64 = 3_000;
 const STARTUP_DEBUG_MAX_UPTIME_DAYS: u64 = 9_999;
 /// Safe boot/log state for Phase 1.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -150,7 +152,8 @@ impl StartupDebugText {
     /// Produces the frame for the supplied monotonic boot uptime.
     #[must_use]
     pub fn frame_at(&self, uptime_ms: u64) -> StartupDebugFrame {
-        let alternating_line = if (uptime_ms / STARTUP_DEBUG_ALTERNATION_MS).is_multiple_of(2) {
+        let cycle_elapsed_ms = uptime_ms % STARTUP_DEBUG_CYCLE_MS;
+        let alternating_line = if cycle_elapsed_ms < STARTUP_DEBUG_BUILD_WINDOW_MS {
             self.build_time_line.clone()
         } else {
             startup_debug_uptime_line(uptime_ms)
@@ -173,7 +176,7 @@ impl StartupDebugText {
                 .frame_at(
                     STARTUP_DEBUG_MAX_UPTIME_DAYS
                         .saturating_mul(24 * 60 * 60 * 1_000)
-                        .saturating_add(STARTUP_DEBUG_ALTERNATION_MS),
+                        .saturating_add(STARTUP_DEBUG_BUILD_WINDOW_MS),
                 )
                 .fits_ultra_205_display()
     }
@@ -261,8 +264,7 @@ mod tests {
     use super::{
         startup_debug_uptime_line, AsicTarget, AsicWorkSubmissionState, BoardTarget,
         HardwareControlState, MiningState, Phase1SafeState, StartupDebugText,
-        STARTUP_DEBUG_ALTERNATION_MS, STARTUP_DEBUG_LINE_COUNT, STARTUP_DEBUG_MAX_LINES,
-        STARTUP_DEBUG_MAX_LINE_CHARS,
+        STARTUP_DEBUG_LINE_COUNT, STARTUP_DEBUG_MAX_LINES, STARTUP_DEBUG_MAX_LINE_CHARS,
     };
 
     const BUILD_TIMESTAMP: &str = "2026-07-26T19:32:45Z";
@@ -411,7 +413,7 @@ mod tests {
     }
 
     #[test]
-    fn startup_debug_text_alternates_row_three_every_five_seconds() {
+    fn startup_debug_text_shows_build_time_for_first_three_seconds_of_each_minute() {
         // Arrange
         let text = StartupDebugText::new(
             BoardTarget::Ultra205,
@@ -422,16 +424,12 @@ mod tests {
 
         // Act / Assert
         assert_eq!(text.frame_at(0).lines()[2], "Built 2026-07-26 19:32Z");
-        assert_eq!(
-            text.frame_at(STARTUP_DEBUG_ALTERNATION_MS - 1).lines()[2],
-            "Built 2026-07-26 19:32Z"
-        );
-        assert_eq!(
-            text.frame_at(STARTUP_DEBUG_ALTERNATION_MS).lines()[2],
-            "Uptime 0:00:05"
-        );
-        assert_eq!(text.frame_at(9_999).lines()[2], "Uptime 0:00:09");
-        assert_eq!(text.frame_at(10_000).lines()[2], "Built 2026-07-26 19:32Z");
+        assert_eq!(text.frame_at(2_999).lines()[2], "Built 2026-07-26 19:32Z");
+        assert_eq!(text.frame_at(3_000).lines()[2], "Uptime 0:00:03");
+        assert_eq!(text.frame_at(59_999).lines()[2], "Uptime 0:00:59");
+        assert_eq!(text.frame_at(60_000).lines()[2], "Built 2026-07-26 19:32Z");
+        assert_eq!(text.frame_at(62_999).lines()[2], "Built 2026-07-26 19:32Z");
+        assert_eq!(text.frame_at(63_000).lines()[2], "Uptime 0:01:03");
     }
 
     #[test]
