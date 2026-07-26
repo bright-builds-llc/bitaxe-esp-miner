@@ -627,10 +627,10 @@ Completion review:
 - The real late-attach hardware boundary passed through runtime-attestation
   trust against the exact clean package while correctly retaining
   `boot_transcript_status=missing`.
-- Residual risk: operator visual confirmation of the approximately eight-second
-  build-time LCD window and unchanged surrounding rows is pending. Software
-  boundary tests and the prior three-second clean-transition UAT remain green;
-  no parity claim depends on the pending visual observation.
+- Operator UAT on 2026-07-26 confirmed that the build timestamp remains visible
+  for eight seconds. The prior clean-transition and unchanged-row UAT remains
+  green, closing the final LCD timing observation without changing the parity
+  claim.
 
 ## Backlog
 
