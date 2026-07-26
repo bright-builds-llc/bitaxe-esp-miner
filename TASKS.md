@@ -22,8 +22,9 @@ new work.
   cache-contract regressions.
 - [ ] Update runtime display markers and the parity checklist without promoting
   full display/input parity.
-- [ ] Run the required Rust, Bazel, package, reference, and diff verification.
-- [ ] Run one detector-gated connected Ultra 205 display smoke when admitted.
+- [x] Run the required Rust, Bazel, package, reference, and diff verification.
+- [x] Attempt one detector-gated connected Ultra 205 display smoke and stop
+  without flashing when detector admission fails.
 
 Hardware contract:
 
@@ -70,17 +71,27 @@ Verification: `cargo fmt --all`,
 `cargo build --all-targets --all-features`, and
 `cargo test --all-features` passed in order. Focused Rust and Bazel tests,
 the ESP32-S3 firmware cross-build, `just package`, `just verify-reference`,
-ShellCheck, shell-format checks, and diff checks passed. `just test` passed
-77 of 78 targets; the remaining
-`//scripts:phase36_substantive_evidence_test` correctly rejected the modified
-source tree because its preflight requires a clean exact-`HEAD` package.
+ShellCheck, shell-format checks, and diff checks passed. After commit
+`4701f51d7872`, the exact clean-`HEAD` package was materialized and all 78
+`just test` targets passed, including the clean-source Phase 36 preflight.
 The active parity checklist remains byte-identical to its authenticated
 Phase 36 mirror; changing its notes directly would rewrite historical
 evidence, so a later formal evidence generation must carry that documentation
 update.
 
-Completion review: Pending. Full upstream display carousel/input parity remains
-out of scope and below verified.
+Completion review: The firmware implementation and software verification are
+complete. Visual display verification remains pending because detector
+admission failed before any flash. Full upstream display carousel/input parity
+remains out of scope and below verified.
+
+Hardware attempt 001 review: `just detect-ultra205` found one candidate at
+`/dev/cu.usbmodem1101` and completed supervised cleanup with
+`usb_session: ready`, but the required ESP32-S3 board-info probe returned
+`bootloader_connect_failed`. The attempt selected the accepted
+`stop_hardware_blocker` outcome with no unchanged retry and performed no flash.
+Source commit `4701f51d78722f5399bb1ed2b1a24d18a0e8c798`, reference
+commit `c1915b0a63bfabebdb95a515cedfee05146c1d50`, and exact package manifest
+`bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` were in scope.
 
 ### task-durable-ultra205-device-sessions | 2026-07-25 | Make USB flash cycles self-cleaning
 
