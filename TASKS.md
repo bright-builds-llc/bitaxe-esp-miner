@@ -532,11 +532,11 @@ issue remained unchanged and out of scope; no marker validation was weakened.
   Phase 28.1.1 closure.
 - [x] Update ADR/runbook guidance and append the durable separated-outcome
   lesson.
-- [ ] Run regression-first focused tests, mandatory Rust checks, full Bazel
+- [x] Run regression-first focused tests, mandatory Rust checks, full Bazel
   tests, packaging, reference/parity/redaction verification, and diff checks.
-- [ ] Build an exact clean-`HEAD` package and run one detector-gated
+- [x] Build an exact clean-`HEAD` package and run one detector-gated
   flash/monitor with private redacted evidence.
-- [ ] Record hardware trust basis and operator LCD UAT, or leave either
+- [x] Record hardware trust basis and operator LCD UAT, or leave either
   explicitly pending without weakening the evidence contract.
 
 Hardware contract:
@@ -594,16 +594,43 @@ Verification:
 - `cargo fmt --all`, Clippy with all targets/features and denied warnings,
   all-target/all-feature build, and all-feature tests pass in the mandatory
   order.
-- The full Bazel graph excluding only
-  `//scripts:phase36_substantive_evidence_test` passes, including the ESP32-S3
-  release firmware compile and package graph. That one process test was
-  diagnosed as intentionally clean-HEAD-only (`source_tree_not_clean`) and is
-  pending the required implementation commit.
+- The full 79-target `just test` graph passes from clean implementation commit
+  `5b7f755d8417c1ab2ceeb75d529c96efaf6d28f3`, including the ESP32-S3 release
+  firmware compile, package graph, and the clean-HEAD-only Phase 36 process
+  gate. The gate first rejected the intentionally dirty worktree, then rejected
+  the stale dirty-build manifest until `just package` refreshed it; it passed
+  once both source and package identities were clean and exact.
 - `just verify-reference`, `just parity`, and `just verify-redaction` pass.
-- Exact clean-HEAD packaging, the clean-HEAD Phase 36 gate, detector admission,
-  and the single hardware attempt remain pending.
+- `just package` produced a schema-v3 manifest with
+  `source_dirty=false` and exact source commit `5b7f755d8417c1ab2ceeb75d529c96efaf6d28f3`.
+- `just detect-ultra205` admitted exactly one board 205. The single authorized
+  360-second flash/monitor attempt completed with
+  `flash_status=completed`, `monitor_evidence_status=trusted`,
+  `boot_transcript_status=missing`,
+  `runtime_attestation_status=trusted`,
+  `trust_basis=runtime_attestation`, and
+  `capture_status=timed_out_after_trusted_output`. The redacted capture
+  contained 35 attestations from one session and one ordinal, matched the exact
+  source/reference/app-ELF package identity, ended with `usb_session: ready`,
+  and performed no retry.
 
-Completion review: Pending.
+Completion review:
+
+- Row three now shows build time for uptime milliseconds `0..=7_999` of every
+  minute and uptime for the remaining 52 seconds while preserving complete
+  framebuffer clearing and the existing display/I2C cadence.
+- Firmware emits the versioned ready-state attestation immediately after OTA,
+  SPIFFS, and route-shell readiness and every ten seconds thereafter. The flash
+  tool keeps original boot transcript and replay attestation as separate trust
+  bases and no longer describes missing monitor evidence as a failed write or
+  recommends an automatic reflash.
+- The real late-attach hardware boundary passed through runtime-attestation
+  trust against the exact clean package while correctly retaining
+  `boot_transcript_status=missing`.
+- Residual risk: operator visual confirmation of the approximately eight-second
+  build-time LCD window and unchanged surrounding rows is pending. Software
+  boundary tests and the prior three-second clean-transition UAT remain green;
+  no parity claim depends on the pending visual observation.
 
 ## Backlog
 
