@@ -24,13 +24,13 @@ new work.
   runfiles, redaction, and entrypoint contract regressions.
 - [x] Update active hardware/session guidance and run all required Rust,
   Bazel, repository, redaction, and reference checks.
-- [ ] Run the task-gated 20-cycle connected Ultra 205 durability soak only
+- [x] Run the task-gated 20-cycle connected Ultra 205 durability soak only
   after the software gates pass.
 - [x] Replace the split post-flash recovery observation with one continuous
   60-second bound backed by a pure reducer and bounded private diagnostics.
 - [x] Verify the Attempt 002 delayed-recovery regression, the focused
   supervisor surface, and all required repository gates.
-- [ ] Run Attempt 003 exactly once from cycle 1 and record its typed result.
+- [x] Run Attempt 003 exactly once from cycle 1 and record its typed result.
 
 Hardware contract:
 
@@ -93,8 +93,10 @@ building the exact-`HEAD` firmware package, the remaining
 `//scripts:phase36_substantive_evidence_test` passed. Redaction verification,
 reference cleanliness, shell formatting, ShellCheck, and diff checks passed.
 
-Completion review: Software implementation and clean-commit package
-qualification complete; connected qualification is pending.
+Completion review: Software implementation, clean-commit package
+qualification, and the connected 20-cycle durability qualification are
+complete. The supported repository flash and receive-only monitor workflows
+finished all admitted permutations without USB or power intervention.
 
 Hardware attempt 001 review: Stopped at the first reported boundary as
 required. All five detect -> flash cycles completed, producing ten
@@ -220,6 +222,24 @@ Attempt 003 diagnosis and hardware contract:
   protected modes are correct; and no USB or power unplugging occurs. On
   success, record completion, commit, and push all local commits. On failure,
   record and commit locally, keep detailed logs private, and do not push.
+
+Hardware attempt 003 review: Complete. The exact permitted commands were run
+once from cycle 1 against board `205` on `/dev/cu.usbmodem1101`, using source
+commit `06885ab4449a9efb7f27b47a2aae0224a7bd14c3`, reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`, and the exact admitted manifest at
+`bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`. The harness returned
+`durability_result=ready cycles=20`. All four five-cycle sequences completed:
+detect -> flash, receive-only monitor -> flash, flash-monitor -> immediate
+reflash, and SIGINT after reader admission -> cleanup -> immediate reflash.
+All 40 operation logs ended with a final standalone `usb_session: ready`.
+
+The post-run read-only audit found the same package provenance, an accessible
+transport, zero repository-owned processes, zero serial holders, 40 operation
+logs, and 40 terminal readiness records. The protected root
+`scratch/flash-durability/attempt-003` is ignored and mode 0700; all 41 regular
+files are mode 0600; no symlinks exist. The same supervisor-bound physical
+device remained admitted throughout, and no USB or barrel-power unplugging was
+needed. Detailed evidence remains private, ignored, and unpromoted.
 
 ### task-ci-reference-submodule-checkout | 2026-07-25 18:23 | Repair evidence-redaction CI checkout
 
