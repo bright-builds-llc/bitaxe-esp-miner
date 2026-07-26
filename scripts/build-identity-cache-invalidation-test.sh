@@ -17,7 +17,9 @@ assert_contains() {
 	grep -Fq "$pattern" "$file" || fail "${file} missing ${pattern}"
 }
 
-assert_contains "$rule_file" 'inputs = [ctx.info_file] + ctx.files.srcs'
+assert_contains "$rule_file" 'inputs = [ctx.info_file, ctx.version_file] + ctx.files.srcs'
+assert_contains "$rule_file" 'args.add("--volatile-status-file", ctx.version_file)'
+assert_contains "$rule_file" 'build_timestamp_utc = depset([build_timestamp_utc])'
 assert_contains "$rule_file" 'executable = ctx.executable._materializer'
 assert_contains "$firmware_build" 'name = "build_provenance_inputs"'
 assert_contains "$firmware_build" '"//crates/bitaxe-api:bitaxe_api"'
@@ -27,5 +29,8 @@ assert_contains "$firmware_build" '"//crates/bitaxe-core:bitaxe_core"'
 assert_contains "$firmware_build" '"//crates/bitaxe-safety:bitaxe_safety"'
 assert_contains "$firmware_build" '"//crates/bitaxe-stratum:bitaxe_stratum"'
 assert_contains "$firmware_build" '"//:firmware_root_build_inputs"'
+assert_contains "$firmware_build" 'name = "build_timestamp_utc"'
+# shellcheck disable=SC2016 # Bazel location syntax is intentionally literal.
+assert_contains "$firmware_build" '$(location :build_timestamp_utc)'
 
 printf 'build identity cache invalidation source guard passed\n'

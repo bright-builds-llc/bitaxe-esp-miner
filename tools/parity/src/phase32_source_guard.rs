@@ -104,24 +104,28 @@ fn phase32_sensor_source_guard_normal_readers_are_typed_and_read_only() {
 }
 
 #[test]
-fn phase32_runtime_source_guard_moves_one_post_display_owner_into_one_producer() {
+fn phase32_runtime_source_guard_moves_one_i2c_owner_into_one_producer() {
     // Arrange
     let display = MAIN_SOURCE
         .find("render_startup_debug_text")
         .expect("normal startup display call");
     let producer = MAIN_SOURCE
-        .find("operator_sensor_runtime::start(bus.into_read_only())")
-        .expect("normal sensor producer handoff");
+        .find("bus.into_runtime()")
+        .expect("normal runtime I2C producer handoff");
 
     // Act / Assert
     assert_eq!(MAIN_SOURCE.matches("BitaxeI2cBus::new").count(), 1);
     assert!(display < producer);
     assert!(MAIN_SOURCE.contains("match display_adapter::render_startup_debug_text"));
-    assert!(I2C_BUS_SOURCE.contains("struct ReadOnlySensorOwner"));
-    assert!(OPERATOR_RUNTIME_SOURCE.contains("ReadOnlySensorOwner<'static>"));
+    assert!(I2C_BUS_SOURCE.contains("struct RuntimeI2cOwner"));
+    assert!(I2C_BUS_SOURCE.contains("fn restrict_display_address"));
+    assert!(I2C_BUS_SOURCE.contains("const SSD1306_I2C_ADDRESS: u8 = 0x3c"));
+    assert!(OPERATOR_RUNTIME_SOURCE.contains("RuntimeI2cOwner<'static>"));
     assert!(!OPERATOR_RUNTIME_SOURCE.contains("BitaxeI2cBus"));
     assert!(!OPERATOR_RUNTIME_SOURCE.contains("startup_display"));
     assert!(OPERATOR_RUNTIME_SOURCE.contains("SENSOR_SWEEP_CADENCE_MS: u64 = 500"));
+    assert!(OPERATOR_RUNTIME_SOURCE.contains("DISPLAY_REFRESH_CADENCE_MS: u64 = 1_000"));
+    assert!(OPERATOR_RUNTIME_SOURCE.contains("render_runtime_debug_text"));
     assert!(OPERATOR_RUNTIME_SOURCE.contains("thread::Builder::new()"));
 }
 

@@ -50,11 +50,17 @@ struct MaterializeBuildProvenanceArgs {
     #[arg(long = "status-file", value_parser = parse_utf8_path)]
     status_file: Utf8PathBuf,
 
+    #[arg(long = "volatile-status-file", value_parser = parse_utf8_path)]
+    volatile_status_file: Utf8PathBuf,
+
     #[arg(long = "stamp-out", value_parser = parse_utf8_path)]
     stamp_out: Utf8PathBuf,
 
     #[arg(long = "sdkconfig-defaults-out", value_parser = parse_utf8_path)]
     sdkconfig_defaults_out: Utf8PathBuf,
+
+    #[arg(long = "build-timestamp-out", value_parser = parse_utf8_path)]
+    build_timestamp_out: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -279,8 +285,16 @@ fn main() -> Result<()> {
 fn materialize_build_provenance(args: &MaterializeBuildProvenanceArgs) -> Result<()> {
     let status = fs::read_to_string(args.status_file.as_std_path())
         .with_context(|| format!("failed to read workspace status {}", args.status_file))?;
+    let volatile_status = fs::read_to_string(args.volatile_status_file.as_std_path())
+        .with_context(|| {
+            format!(
+                "failed to read volatile workspace status {}",
+                args.volatile_status_file
+            )
+        })?;
     let provenance = BuildProvenance::parse_workspace_status(&status)
         .context("invalid Bitaxe build provenance")?;
+    let build_timestamp_utc = build_timestamp_utc(&volatile_status)?;
 
     write_parented_file(&args.stamp_out, &provenance.render_stamp())?;
     write_parented_file(
@@ -289,7 +303,88 @@ fn materialize_build_provenance(args: &MaterializeBuildProvenanceArgs) -> Result
             "CONFIG_APP_PROJECT_VER_FROM_CONFIG=y\nCONFIG_APP_PROJECT_VER=\"{}\"\nCONFIG_APP_RETRIEVE_LEN_ELF_SHA=64\n",
             provenance.build_identity().build_label()
         ),
+    )?;
+    write_parented_file(
+        &args.build_timestamp_out,
+        &format!("{build_timestamp_utc}\n"),
     )
+}
+
+fn build_timestamp_utc(volatile_status: &str) -> Result<String> {
+    let mut maybe_formatted_date = None;
+    for line in volatile_status.lines() {
+        let Some((key, value)) = line.split_once(' ') else {
+            continue;
+        };
+        if key != "FORMATTED_DATE" {
+            continue;
+        }
+        if maybe_formatted_date.replace(value).is_some() {
+            bail!("volatile workspace status contains duplicate FORMATTED_DATE");
+        }
+    }
+
+    let Some(formatted_date) = maybe_formatted_date else {
+        bail!("volatile workspace status is missing FORMATTED_DATE");
+    };
+    let fields: Vec<_> = formatted_date.split_ascii_whitespace().collect();
+    let [year, month_name, day, hour, minute, second, _weekday] = fields.as_slice() else {
+        bail!("FORMATTED_DATE must contain year month day hour minute second weekday");
+    };
+    let year = parse_timestamp_field("year", year, 1970, 9999)?;
+    let month = month_number(month_name)?;
+    let day = parse_timestamp_field("day", day, 1, days_in_month(year, month))?;
+    let hour = parse_timestamp_field("hour", hour, 0, 23)?;
+    let minute = parse_timestamp_field("minute", minute, 0, 59)?;
+    let second = parse_timestamp_field("second", second, 0, 59)?;
+
+    Ok(format!(
+        "{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z"
+    ))
+}
+
+fn parse_timestamp_field(name: &str, value: &str, minimum: u32, maximum: u32) -> Result<u32> {
+    if value.is_empty() || !value.bytes().all(|byte| byte.is_ascii_digit()) {
+        bail!("FORMATTED_DATE {name} must be numeric");
+    }
+    let parsed = value
+        .parse::<u32>()
+        .with_context(|| format!("FORMATTED_DATE {name} is out of range"))?;
+    if !(minimum..=maximum).contains(&parsed) {
+        bail!("FORMATTED_DATE {name} is out of range");
+    }
+    Ok(parsed)
+}
+
+fn month_number(name: &str) -> Result<u32> {
+    match name {
+        "Jan" => Ok(1),
+        "Feb" => Ok(2),
+        "Mar" => Ok(3),
+        "Apr" => Ok(4),
+        "May" => Ok(5),
+        "Jun" => Ok(6),
+        "Jul" => Ok(7),
+        "Aug" => Ok(8),
+        "Sep" => Ok(9),
+        "Oct" => Ok(10),
+        "Nov" => Ok(11),
+        "Dec" => Ok(12),
+        _ => bail!("FORMATTED_DATE month is invalid"),
+    }
+}
+
+const fn days_in_month(year: u32, month: u32) -> u32 {
+    match month {
+        2 if is_leap_year(year) => 29,
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    }
+}
+
+const fn is_leap_year(year: u32) -> bool {
+    year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400))
 }
 
 fn write_parented_file(path: &Utf8PathBuf, contents: &str) -> Result<()> {
@@ -520,13 +615,21 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let status_file = temp_path(&dir, "stable-status.txt");
+        let volatile_status_file = temp_path(&dir, "volatile-status.txt");
         let stamp_out = temp_path(&dir, "build-provenance.stamp");
         let sdkconfig_defaults_out = temp_path(&dir, "build-identity.defaults");
+        let build_timestamp_out = temp_path(&dir, "build-timestamp-utc.txt");
         write_fixture(&status_file, BUILD_STATUS.as_bytes());
+        write_fixture(
+            &volatile_status_file,
+            b"BUILD_TIMESTAMP 1785057566\nFORMATTED_DATE 2026 Jul 26 06 39 26 Sun\n",
+        );
         let args = MaterializeBuildProvenanceArgs {
             status_file,
+            volatile_status_file,
             stamp_out: stamp_out.clone(),
             sdkconfig_defaults_out: sdkconfig_defaults_out.clone(),
+            build_timestamp_out: build_timestamp_out.clone(),
         };
 
         // Act
@@ -548,6 +651,36 @@ mod tests {
             fs::read_to_string(sdkconfig_defaults_out).expect("read defaults"),
             "CONFIG_APP_PROJECT_VER_FROM_CONFIG=y\nCONFIG_APP_PROJECT_VER=\"0123456789ab-dirty-dev\"\nCONFIG_APP_RETRIEVE_LEN_ELF_SHA=64\n"
         );
+        assert_eq!(
+            fs::read_to_string(build_timestamp_out).expect("read build timestamp"),
+            "2026-07-26T06:39:26Z\n"
+        );
+    }
+
+    #[test]
+    fn build_timestamp_rejects_missing_duplicate_and_malformed_formatted_dates() {
+        // Arrange
+        let missing = "BUILD_TIMESTAMP 1785057566\n";
+        let duplicate =
+            "FORMATTED_DATE 2026 Jul 26 06 39 26 Sun\nFORMATTED_DATE 2026 Jul 26 06 39 27 Sun\n";
+        let malformed = "FORMATTED_DATE 2025 Feb 29 06 39 26 Sat\n";
+
+        // Act / Assert
+        assert!(build_timestamp_utc(missing).is_err());
+        assert!(build_timestamp_utc(duplicate).is_err());
+        assert!(build_timestamp_utc(malformed).is_err());
+    }
+
+    #[test]
+    fn build_timestamp_accepts_a_leap_day() {
+        // Arrange
+        let volatile_status = "FORMATTED_DATE 2024 Feb 29 23 59 58 Thu\n";
+
+        // Act
+        let timestamp = build_timestamp_utc(volatile_status).expect("valid leap-day timestamp");
+
+        // Assert
+        assert_eq!(timestamp, "2024-02-29T23:59:58Z");
     }
 
     #[test]

@@ -79,6 +79,9 @@ pub const STARTUP_DEBUG_MAX_LINE_CHARS: usize =
 /// Maximum startup debug lines that fit on the display.
 pub const STARTUP_DEBUG_MAX_LINES: usize =
     STARTUP_DEBUG_SCREEN_HEIGHT_PX / STARTUP_DEBUG_LINE_STRIDE_PX;
+/// Duration for each alternating third-line value.
+pub const STARTUP_DEBUG_ALTERNATION_MS: u64 = 5_000;
+const STARTUP_DEBUG_MAX_UPTIME_DAYS: u64 = 9_999;
 /// Safe boot/log state for Phase 1.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Phase1SafeState {
@@ -111,41 +114,73 @@ impl Phase1SafeState {
     pub const fn log_line(&self) -> &'static str {
         PHASE1_SAFE_STATE_LOG_LINE
     }
-
-    /// Returns the safe-state startup debug screen line.
-    #[must_use]
-    pub const fn startup_debug_line(&self) -> &'static str {
-        "SAFE no mining"
-    }
 }
 
-/// Four-line startup debug text for the Ultra 205 OLED.
+/// Static content used to produce four-line Ultra 205 OLED frames.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StartupDebugText {
+    identity_line: String,
+    build_time_line: String,
+    firmware_line: String,
+}
+
+/// One complete four-line frame for the Ultra 205 OLED.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StartupDebugFrame {
     lines: [String; STARTUP_DEBUG_LINE_COUNT],
 }
 
 impl StartupDebugText {
-    /// Builds startup debug lines for the current firmware boot target.
+    /// Builds startup debug content for the current firmware boot target.
     #[must_use]
     pub fn new(
         board: BoardTarget,
         asic: AsicTarget,
-        safe_state: Phase1SafeState,
         maybe_build_label: Option<&str>,
+        build_timestamp_utc: &str,
     ) -> Self {
         let build_label = startup_debug_build_label(maybe_build_label);
-        let lines = [
-            "Bitaxe Rust".to_owned(),
-            format!("{} {}", board.display_name(), asic.display_name()),
-            safe_state.startup_debug_line().to_owned(),
-            format!("fw {build_label}"),
-        ];
-
-        Self { lines }
+        Self {
+            identity_line: format!("{} {}", board.display_name(), asic.display_name()),
+            build_time_line: startup_debug_build_time_line(build_timestamp_utc),
+            firmware_line: format!("fw {build_label}"),
+        }
     }
 
-    /// Returns the startup debug lines in render order.
+    /// Produces the frame for the supplied monotonic boot uptime.
+    #[must_use]
+    pub fn frame_at(&self, uptime_ms: u64) -> StartupDebugFrame {
+        let alternating_line = if (uptime_ms / STARTUP_DEBUG_ALTERNATION_MS).is_multiple_of(2) {
+            self.build_time_line.clone()
+        } else {
+            startup_debug_uptime_line(uptime_ms)
+        };
+        StartupDebugFrame {
+            lines: [
+                "Bitaxe Rust".to_owned(),
+                self.identity_line.clone(),
+                alternating_line,
+                self.firmware_line.clone(),
+            ],
+        }
+    }
+
+    /// Returns whether representative alternating frames fit the display.
+    #[must_use]
+    pub fn fits_ultra_205_display(&self) -> bool {
+        self.frame_at(0).fits_ultra_205_display()
+            && self
+                .frame_at(
+                    STARTUP_DEBUG_MAX_UPTIME_DAYS
+                        .saturating_mul(24 * 60 * 60 * 1_000)
+                        .saturating_add(STARTUP_DEBUG_ALTERNATION_MS),
+                )
+                .fits_ultra_205_display()
+    }
+}
+
+impl StartupDebugFrame {
+    /// Returns this frame's lines in render order.
     #[must_use]
     pub fn lines(&self) -> [&str; STARTUP_DEBUG_LINE_COUNT] {
         [
@@ -156,7 +191,7 @@ impl StartupDebugText {
         ]
     }
 
-    /// Returns whether the current line set fits the selected display geometry.
+    /// Returns whether this frame fits the selected display geometry.
     #[must_use]
     pub fn fits_ultra_205_display(&self) -> bool {
         self.lines.len() <= STARTUP_DEBUG_MAX_LINES
@@ -179,13 +214,58 @@ fn startup_debug_build_label(maybe_build_label: Option<&str>) -> String {
     build_label.to_owned()
 }
 
+fn startup_debug_build_time_line(build_timestamp_utc: &str) -> String {
+    if !is_build_timestamp_utc(build_timestamp_utc) {
+        return "Built Unavailable".to_owned();
+    }
+    format!(
+        "Built {} {}Z",
+        &build_timestamp_utc[..10],
+        &build_timestamp_utc[11..16]
+    )
+}
+
+fn is_build_timestamp_utc(timestamp: &str) -> bool {
+    let bytes = timestamp.as_bytes();
+    bytes.len() == 20
+        && bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes[10] == b'T'
+        && bytes[13] == b':'
+        && bytes[16] == b':'
+        && bytes[19] == b'Z'
+        && bytes.iter().enumerate().all(|(index, byte)| {
+            matches!(index, 4 | 7 | 10 | 13 | 16 | 19) || byte.is_ascii_digit()
+        })
+}
+
+fn startup_debug_uptime_line(uptime_ms: u64) -> String {
+    let uptime_seconds = uptime_ms / 1_000;
+    let days = uptime_seconds / (24 * 60 * 60);
+    if days > STARTUP_DEBUG_MAX_UPTIME_DAYS {
+        return format!("Uptime {STARTUP_DEBUG_MAX_UPTIME_DAYS}d+");
+    }
+
+    let day_seconds = uptime_seconds % (24 * 60 * 60);
+    let hours = day_seconds / (60 * 60);
+    let minutes = (day_seconds % (60 * 60)) / 60;
+    let seconds = day_seconds % 60;
+    if days > 0 {
+        return format!("Uptime {days}d{hours:02}:{minutes:02}:{seconds:02}");
+    }
+    format!("Uptime {hours}:{minutes:02}:{seconds:02}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        AsicTarget, AsicWorkSubmissionState, BoardTarget, HardwareControlState, MiningState,
-        Phase1SafeState, StartupDebugText, STARTUP_DEBUG_LINE_COUNT, STARTUP_DEBUG_MAX_LINES,
+        startup_debug_uptime_line, AsicTarget, AsicWorkSubmissionState, BoardTarget,
+        HardwareControlState, MiningState, Phase1SafeState, StartupDebugText,
+        STARTUP_DEBUG_ALTERNATION_MS, STARTUP_DEBUG_LINE_COUNT, STARTUP_DEBUG_MAX_LINES,
         STARTUP_DEBUG_MAX_LINE_CHARS,
     };
+
+    const BUILD_TIMESTAMP: &str = "2026-07-26T19:32:45Z";
 
     #[test]
     fn ultra_205_display_name_matches_user_visible_board_name() {
@@ -266,25 +346,25 @@ mod tests {
     }
 
     #[test]
-    fn startup_debug_text_renders_exact_identity_state_and_build_label_lines() {
+    fn startup_debug_text_renders_build_time_first() {
         // Arrange
-        let safe_state = Phase1SafeState::default();
-
-        // Act
         let text = StartupDebugText::new(
             BoardTarget::Ultra205,
             AsicTarget::Bm1366,
-            safe_state,
             Some("abcdef123456"),
+            BUILD_TIMESTAMP,
         );
+
+        // Act
+        let frame = text.frame_at(0);
 
         // Assert
         assert_eq!(
-            text.lines(),
+            frame.lines(),
             [
                 "Bitaxe Rust",
                 "Ultra 205 BM1366",
-                "SAFE no mining",
+                "Built 2026-07-26 19:32Z",
                 "fw abcdef123456",
             ]
         );
@@ -293,20 +373,21 @@ mod tests {
     #[test]
     fn startup_debug_text_uses_unavailable_when_commit_is_absent() {
         // Arrange
-        let safe_state = Phase1SafeState::default();
-
         // Act
-        let text =
-            StartupDebugText::new(BoardTarget::Ultra205, AsicTarget::Bm1366, safe_state, None);
+        let text = StartupDebugText::new(
+            BoardTarget::Ultra205,
+            AsicTarget::Bm1366,
+            None,
+            BUILD_TIMESTAMP,
+        );
 
         // Assert
-        assert_eq!(text.lines()[3], "fw Unavailable");
+        assert_eq!(text.frame_at(0).lines()[3], "fw Unavailable");
     }
 
     #[test]
     fn startup_debug_text_preserves_canonical_build_label_suffixes() {
         // Arrange
-        let safe_state = Phase1SafeState::default();
         let labels = [
             "abcdef123456",
             "abcdef123456-dirty",
@@ -319,37 +400,77 @@ mod tests {
             let text = StartupDebugText::new(
                 BoardTarget::Ultra205,
                 AsicTarget::Bm1366,
-                safe_state,
                 Some(label),
+                BUILD_TIMESTAMP,
             );
 
             // Assert
-            assert_eq!(text.lines()[3], format!("fw {label}"));
+            assert_eq!(text.frame_at(0).lines()[3], format!("fw {label}"));
             assert!(text.fits_ultra_205_display());
         }
     }
 
     #[test]
-    fn startup_debug_text_fits_ultra_205_display_geometry() {
+    fn startup_debug_text_alternates_row_three_every_five_seconds() {
         // Arrange
-        let safe_state = Phase1SafeState::default();
         let text = StartupDebugText::new(
             BoardTarget::Ultra205,
             AsicTarget::Bm1366,
-            safe_state,
             Some("abcdef123456-dirty-dev"),
+            BUILD_TIMESTAMP,
         );
 
-        // Act
-        let lines = text.lines();
+        // Act / Assert
+        assert_eq!(text.frame_at(0).lines()[2], "Built 2026-07-26 19:32Z");
+        assert_eq!(
+            text.frame_at(STARTUP_DEBUG_ALTERNATION_MS - 1).lines()[2],
+            "Built 2026-07-26 19:32Z"
+        );
+        assert_eq!(
+            text.frame_at(STARTUP_DEBUG_ALTERNATION_MS).lines()[2],
+            "Uptime 0:00:05"
+        );
+        assert_eq!(text.frame_at(9_999).lines()[2], "Uptime 0:00:09");
+        assert_eq!(text.frame_at(10_000).lines()[2], "Built 2026-07-26 19:32Z");
+    }
 
-        // Assert
-        assert_eq!(lines.len(), STARTUP_DEBUG_LINE_COUNT);
-        assert!(lines.len() <= STARTUP_DEBUG_MAX_LINES);
-        for line in lines {
-            assert!(line.chars().count() <= STARTUP_DEBUG_MAX_LINE_CHARS);
+    #[test]
+    fn startup_debug_text_formats_uptime_boundaries() {
+        // Act / Assert
+        assert_eq!(startup_debug_uptime_line(0), "Uptime 0:00:00");
+        assert_eq!(startup_debug_uptime_line(3_600_000), "Uptime 1:00:00");
+        assert_eq!(startup_debug_uptime_line(86_400_000), "Uptime 1d00:00:00");
+        assert_eq!(startup_debug_uptime_line(172_800_000), "Uptime 2d00:00:00");
+        assert_eq!(startup_debug_uptime_line(864_000_000_000), "Uptime 9999d+");
+    }
+
+    #[test]
+    fn startup_debug_text_fits_ultra_205_display_geometry() {
+        // Arrange
+        let text = StartupDebugText::new(
+            BoardTarget::Ultra205,
+            AsicTarget::Bm1366,
+            Some("abcdef123456-dirty-dev"),
+            BUILD_TIMESTAMP,
+        );
+        let frames = [text.frame_at(0), text.frame_at(86_405_000)];
+
+        for frame in frames {
+            // Act
+            let lines = frame.lines();
+
+            // Assert
+            assert_eq!(lines.len(), STARTUP_DEBUG_LINE_COUNT);
+            assert!(lines.len() <= STARTUP_DEBUG_MAX_LINES);
+            for line in lines {
+                assert!(line.chars().count() <= STARTUP_DEBUG_MAX_LINE_CHARS);
+            }
+            assert!(frame.fits_ultra_205_display());
         }
         assert!(text.fits_ultra_205_display());
-        assert_eq!(lines[3].chars().count(), STARTUP_DEBUG_MAX_LINE_CHARS);
+        assert_eq!(
+            text.frame_at(0).lines()[3].chars().count(),
+            STARTUP_DEBUG_MAX_LINE_CHARS
+        );
     }
 }

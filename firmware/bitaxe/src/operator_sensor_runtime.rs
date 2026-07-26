@@ -4,6 +4,7 @@ use std::{thread, time::Duration};
 
 use anyhow::{Context, Result};
 use bitaxe_api::{project_observation, TelemetryObservations};
+use bitaxe_core::StartupDebugText;
 use bitaxe_safety::{
     observation::{BootSessionId, MonotonicMillis, UnavailableReason},
     sensor_acquisition::{
@@ -12,63 +13,113 @@ use bitaxe_safety::{
 };
 use esp_idf_svc::sys;
 
-use crate::safety_adapter::{self, ReadOnlySensorOwner};
+use crate::safety_adapter::{self, RuntimeI2cOwner};
 
 pub const SENSOR_SWEEP_CADENCE_MS: u64 = 500;
+pub const DISPLAY_REFRESH_CADENCE_MS: u64 = 1_000;
 const SENSOR_STALE_AFTER_MS: u64 = 1_000;
 const BOARD_POWER_TARGET_WATTS: f64 = 12.0;
 const PRODUCER_THREAD_NAME: &str = "operator-sensors";
 const PRODUCER_THREAD_STACK_BYTES: usize = 8 * 1024;
 
-pub fn start(owner: ReadOnlySensorOwner<'static>) -> Result<()> {
+pub fn start(
+    owner: RuntimeI2cOwner<'static>,
+    maybe_display_text: Option<StartupDebugText>,
+) -> Result<()> {
     thread::Builder::new()
         .name(PRODUCER_THREAD_NAME.to_owned())
         .stack_size(PRODUCER_THREAD_STACK_BYTES)
-        .spawn(move || run(owner))
+        .spawn(move || run(owner, maybe_display_text))
         .context("spawn operator sensor producer")?;
-    log::info!("operator_sensor_runtime=started cadence_ms={SENSOR_SWEEP_CADENCE_MS}");
+    log::info!(
+        "operator_sensor_runtime=started cadence_ms={SENSOR_SWEEP_CADENCE_MS} display_refresh_ms={DISPLAY_REFRESH_CADENCE_MS}"
+    );
     Ok(())
 }
 
-fn run(mut owner: ReadOnlySensorOwner<'static>) -> ! {
+fn run(mut owner: RuntimeI2cOwner<'static>, mut maybe_display_text: Option<StartupDebugText>) -> ! {
     let boot_session = new_boot_session_id();
     let mut state = ProducerSensorState::default();
     let mut sequences = ProducerSequences::default();
     let mut next_deadline_ms = crate::runtime_uptime::millis();
+    let mut next_display_deadline_ms = next_deadline_ms.saturating_add(DISPLAY_REFRESH_CADENCE_MS);
+    let mut maybe_last_display_line = maybe_display_text
+        .as_ref()
+        .map(|text| text.frame_at(0).lines()[2].to_owned());
 
     loop {
-        sleep_until(next_deadline_ms);
+        sleep_until(next_deadline_ms.min(next_display_deadline_ms));
+        let now_ms = crate::runtime_uptime::millis();
 
-        let power = safety_adapter::read_power_acquisition(&mut owner);
-        let temperature_celsius = safety_adapter::read_temperature_acquisition(&mut owner);
-        let tachometer_rpm = safety_adapter::read_tachometer_acquisition(&mut owner);
-        let acquired_at = MonotonicMillis::new(crate::runtime_uptime::millis());
-        let outcomes = SensorSweepOutcomes {
-            power,
-            temperature_celsius,
-            tachometer_rpm,
-        };
+        if now_ms >= next_deadline_ms {
+            let power = safety_adapter::read_power_acquisition(&mut owner);
+            let temperature_celsius = safety_adapter::read_temperature_acquisition(&mut owner);
+            let tachometer_rpm = safety_adapter::read_tachometer_acquisition(&mut owner);
+            let acquired_at = MonotonicMillis::new(crate::runtime_uptime::millis());
+            let outcomes = SensorSweepOutcomes {
+                power,
+                temperature_celsius,
+                tachometer_rpm,
+            };
 
-        match reduce_sensor_sweep(
-            state,
-            sequences,
-            outcomes,
-            boot_session,
-            acquired_at,
-            BOARD_POWER_TARGET_WATTS,
-        ) {
-            Ok((next_state, next_sequences)) => {
-                state = next_state.mark_stale_at(acquired_at, SENSOR_STALE_AFTER_MS);
-                sequences = next_sequences;
+            match reduce_sensor_sweep(
+                state,
+                sequences,
+                outcomes,
+                boot_session,
+                acquired_at,
+                BOARD_POWER_TARGET_WATTS,
+            ) {
+                Ok((next_state, next_sequences)) => {
+                    state = next_state.mark_stale_at(acquired_at, SENSOR_STALE_AFTER_MS);
+                    sequences = next_sequences;
+                }
+                Err(_) => {
+                    log::warn!("operator_sensor_runtime=fault category=sequence_overflow");
+                }
             }
-            Err(_) => {
-                log::warn!("operator_sensor_runtime=fault category=sequence_overflow");
-            }
+
+            safety_adapter::replace_observations_from_producer(project_observations(state));
+            next_deadline_ms = next_future_deadline(next_deadline_ms);
         }
 
-        safety_adapter::replace_observations_from_producer(project_observations(state));
-        next_deadline_ms = next_future_deadline(next_deadline_ms);
+        if now_ms >= next_display_deadline_ms {
+            refresh_display(
+                &mut owner,
+                &mut maybe_display_text,
+                &mut maybe_last_display_line,
+                now_ms,
+            );
+            next_display_deadline_ms = now_ms.saturating_add(DISPLAY_REFRESH_CADENCE_MS);
+        }
     }
+}
+
+fn refresh_display(
+    owner: &mut RuntimeI2cOwner<'_>,
+    maybe_display_text: &mut Option<StartupDebugText>,
+    maybe_last_display_line: &mut Option<String>,
+    uptime_ms: u64,
+) {
+    let Some(display_text) = maybe_display_text.as_ref() else {
+        return;
+    };
+    let frame = display_text.frame_at(uptime_ms);
+    let alternating_line = frame.lines()[2];
+    if maybe_last_display_line.as_deref() == Some(alternating_line) {
+        return;
+    }
+
+    if let Err(error) = crate::display_adapter::render_runtime_debug_text(owner, &frame) {
+        log::warn!("display_status=runtime_refresh_disabled reason=render_failed error={error:#}");
+        crate::display_adapter::publish_runtime_display_input_boundary(
+            crate::display_adapter::RuntimeDisplayMode::Unavailable,
+        );
+        *maybe_display_text = None;
+        *maybe_last_display_line = None;
+        return;
+    }
+    *maybe_last_display_line = Some(alternating_line.to_owned());
 }
 
 fn project_observations(state: ProducerSensorState) -> TelemetryObservations {

@@ -58,8 +58,8 @@ fn main() -> anyhow::Result<()> {
     let startup_debug_text = StartupDebugText::new(
         BoardTarget::Ultra205,
         AsicTarget::Bm1366,
-        safe_state,
         Some(build_label()),
+        build_timestamp_utc(),
     );
     let is_phase27_bridge =
         mining_evidence_mode::MiningEvidenceMode::current().is_phase27_live_hardware_bridge();
@@ -67,7 +67,6 @@ fn main() -> anyhow::Result<()> {
         Ok(peripherals) => {
             let modem = peripherals.modem;
             let pins = peripherals.pins;
-            display_adapter::publish_runtime_display_input_boundary();
             let boot_peripherals = asic_adapter::AsicBootPeripherals {
                 uart: peripherals.uart1,
                 reset: pins.gpio1,
@@ -75,6 +74,9 @@ fn main() -> anyhow::Result<()> {
                 rx: pins.gpio18,
             };
             let startup_diagnostics = if is_phase27_bridge {
+                display_adapter::publish_runtime_display_input_boundary(
+                    display_adapter::RuntimeDisplayMode::Deferred,
+                );
                 log::warn!("display_status=deferred reason=phase27_safety_i2c0_in_use");
                 asic_adapter::run_phase27_boot_gate_with_safety(
                     boot_peripherals,
@@ -89,28 +91,49 @@ fn main() -> anyhow::Result<()> {
                 match safety_adapter::BitaxeI2cBus::new(peripherals.i2c0, pins.gpio47, pins.gpio48)
                 {
                     Ok(mut bus) => {
-                        match display_adapter::render_startup_debug_text(
+                        let startup_frame = startup_debug_text.frame_at(runtime_uptime::millis());
+                        let maybe_runtime_display = match display_adapter::render_startup_debug_text(
                             &mut bus,
-                            &startup_debug_text,
+                            &startup_frame,
                         ) {
                             Ok(()) => {
                                 log::info!("operator_sensor_display=rendered");
+                                Some(startup_debug_text.clone())
                             }
                             Err(error) => {
                                 log::warn!(
                                     "display_status=unavailable reason=startup_text_render_failed error={error:#}"
                                 );
+                                None
                             }
-                        }
-                        if let Err(error) = operator_sensor_runtime::start(bus.into_read_only()) {
+                        };
+                        let runtime_display_enabled = maybe_runtime_display.is_some();
+                        if let Err(error) = operator_sensor_runtime::start(
+                            bus.into_runtime(),
+                            maybe_runtime_display,
+                        ) {
                             log::warn!(
                                 "operator_sensor_runtime=unavailable reason=thread_spawn_failed error={error:#}"
+                            );
+                            display_adapter::publish_runtime_display_input_boundary(
+                                display_adapter::RuntimeDisplayMode::Unavailable,
+                            );
+                        } else {
+                            display_adapter::publish_runtime_display_input_boundary(
+                                if runtime_display_enabled {
+                                    display_adapter::RuntimeDisplayMode::AlternatingDebug
+                                } else {
+                                    display_adapter::RuntimeDisplayMode::Unavailable
+                                },
                             );
                         }
                     }
                     Err(error) => {
                         log::warn!(
                             "display_status=unavailable reason=i2c0_init_failed error={error:#}"
+                        );
+                        display_adapter::publish_runtime_display_input_boundary(
+                            display_adapter::RuntimeDisplayMode::Unavailable,
                         );
                     }
                 }
@@ -120,7 +143,9 @@ fn main() -> anyhow::Result<()> {
         }
         Err(error) => {
             log::warn!("display_status=unavailable reason=peripherals_unavailable error={error}");
-            display_adapter::publish_runtime_display_input_boundary();
+            display_adapter::publish_runtime_display_input_boundary(
+                display_adapter::RuntimeDisplayMode::Unavailable,
+            );
             (
                 asic_adapter::run_boot_gate_without_peripherals("peripherals_unavailable"),
                 None,
@@ -196,6 +221,10 @@ fn build_channel() -> &'static str {
     env!("BITAXE_BUILD_CHANNEL")
 }
 
+fn build_timestamp_utc() -> &'static str {
+    env!("BITAXE_BUILD_TIMESTAMP_UTC")
+}
+
 fn source_dirty() -> bool {
     env!("BITAXE_SOURCE_DIRTY") == "true"
 }
@@ -228,6 +257,10 @@ fn retain_build_identity() {
     info_retained(&format!("firmware_commit={}", firmware_commit()));
     info_retained(&format!("reference_commit={}", reference_commit()));
     info_retained(&format!("app_elf_sha256={}", app_elf_sha256()));
+    info_retained(&format!(
+        "firmware_build_timestamp_utc={}",
+        build_timestamp_utc()
+    ));
     info_retained(env!("BITAXE_RUNTIME_BUILD_IDENTITY"));
 }
 

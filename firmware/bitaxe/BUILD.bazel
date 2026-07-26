@@ -49,6 +49,12 @@ filegroup(
 )
 
 filegroup(
+    name = "build_timestamp_utc",
+    srcs = [":_build_provenance"],
+    output_group = "build_timestamp_utc",
+)
+
+filegroup(
     name = "phase28_boot_replay_sources",
     srcs = [
         "src/boot_evidence.rs",
@@ -173,6 +179,7 @@ genrule(
         ":build_identity_sdkconfig_defaults",
         ":build_provenance_inputs",
         ":build_provenance_stamp",
+        ":build_timestamp_utc",
         "Cargo.toml",
         "build.rs",
         "partitions-ultra205.csv",
@@ -185,7 +192,7 @@ genrule(
         "bitaxe-firmware.elf",
         "bitaxe-firmware.sdkconfig",
     ],
-    cmd = "$(location //scripts:build_firmware) $(@D) $(location :build_provenance_stamp) $(location :build_identity_sdkconfig_defaults)",
+    cmd = "$(location //scripts:build_firmware) $(@D) $(location :build_provenance_stamp) $(location :build_identity_sdkconfig_defaults) $(location :build_timestamp_utc)",
     local = True,
     tags = [
         "local",

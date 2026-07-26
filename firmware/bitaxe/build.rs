@@ -6,6 +6,7 @@ fn main() {
     embuild::espidf::sysenv::output();
     assert_console_contract();
     println!("cargo:rerun-if-env-changed=BITAXE_BUILD_PROVENANCE_STAMP");
+    println!("cargo:rerun-if-env-changed=BITAXE_BUILD_TIMESTAMP_UTC_FILE");
     println!("cargo:rerun-if-env-changed=BITAXE_MINING_EVIDENCE_MODE");
     println!("cargo:rerun-if-env-changed=BITAXE_HARDWARE_EVIDENCE_ACK");
     println!("cargo:rerun-if-env-changed=BITAXE_WORK_RESULT_INVESTIGATION");
@@ -44,6 +45,10 @@ fn main() {
         "cargo:rustc-env=BITAXE_RUNTIME_BUILD_IDENTITY={}",
         provenance.runtime_identity_record()
     );
+    println!(
+        "cargo:rustc-env=BITAXE_BUILD_TIMESTAMP_UTC={}",
+        required_build_timestamp_utc()
+    );
 }
 
 fn assert_console_contract() {
@@ -75,4 +80,61 @@ fn required_build_provenance() -> BuildProvenance {
     BuildProvenance::parse_stamp(&stamp).unwrap_or_else(|error| {
         panic!("invalid canonical build provenance; run `just build`: {error}")
     })
+}
+
+fn required_build_timestamp_utc() -> String {
+    let timestamp_path = env::var("BITAXE_BUILD_TIMESTAMP_UTC_FILE").unwrap_or_else(|_| {
+        panic!("canonical firmware build requires build timestamp; run `just build`")
+    });
+    println!("cargo:rerun-if-changed={timestamp_path}");
+    let timestamp = fs::read_to_string(&timestamp_path)
+        .unwrap_or_else(|error| panic!("failed to read build timestamp {timestamp_path}: {error}"));
+    let timestamp = timestamp.trim();
+    if !is_valid_build_timestamp_utc(timestamp) {
+        panic!("invalid canonical UTC build timestamp; run `just build`");
+    }
+    timestamp.to_owned()
+}
+
+fn is_valid_build_timestamp_utc(timestamp: &str) -> bool {
+    let bytes = timestamp.as_bytes();
+    bytes.len() == 20
+        && matches!(
+            bytes,
+            [
+                b'0'..=b'9',
+                b'0'..=b'9',
+                b'0'..=b'9',
+                b'0'..=b'9',
+                b'-',
+                b'0'..=b'9',
+                b'0'..=b'9',
+                b'-',
+                b'0'..=b'9',
+                b'0'..=b'9',
+                b'T',
+                b'0'..=b'9',
+                b'0'..=b'9',
+                b':',
+                b'0'..=b'9',
+                b'0'..=b'9',
+                b':',
+                b'0'..=b'9',
+                b'0'..=b'9',
+                b'Z'
+            ]
+        )
+        && timestamp[5..7]
+            .parse::<u8>()
+            .is_ok_and(|month| (1..=12).contains(&month))
+        && timestamp[8..10]
+            .parse::<u8>()
+            .is_ok_and(|day| (1..=31).contains(&day))
+        && timestamp[11..13].parse::<u8>().is_ok_and(|hour| hour <= 23)
+        && timestamp[14..16]
+            .parse::<u8>()
+            .is_ok_and(|minute| minute <= 59)
+        && timestamp[17..19]
+            .parse::<u8>()
+            .is_ok_and(|second| second <= 59)
 }

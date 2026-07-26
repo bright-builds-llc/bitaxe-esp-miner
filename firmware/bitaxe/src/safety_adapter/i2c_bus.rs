@@ -3,7 +3,9 @@
 //! Reference: `reference/esp-miner/main/i2c_bitaxe.c`
 
 use anyhow::{Context, Result};
-use embedded_hal::i2c::{ErrorType, I2c as EmbeddedHalI2c, Operation};
+use embedded_hal::i2c::{
+    Error as EmbeddedHalI2cError, ErrorKind, ErrorType, I2c as EmbeddedHalI2c, Operation,
+};
 use esp_idf_svc::hal::{
     delay::TickType,
     gpio::{InputPin, OutputPin},
@@ -18,6 +20,7 @@ pub const I2C_TRANSACTION_TIMEOUT_MS: u64 = 50;
 
 const INA260_I2C_ADDRESS: u8 = 0x40;
 const EMC2101_I2C_ADDRESS: u8 = 0x4c;
+const SSD1306_I2C_ADDRESS: u8 = 0x3c;
 
 pub(crate) struct BitaxeI2cBus<'d> {
     driver: I2cDriver<'d>,
@@ -40,12 +43,14 @@ impl<'d> BitaxeI2cBus<'d> {
         Ok(Self { driver })
     }
 
-    pub(crate) fn startup_display(&mut self) -> StartupDisplayBus<'_, 'd> {
-        StartupDisplayBus { bus: self }
+    pub(crate) fn startup_display(&mut self) -> DisplayBus<'_, 'd> {
+        DisplayBus {
+            driver: &mut self.driver,
+        }
     }
 
-    pub(crate) fn into_read_only(self) -> ReadOnlySensorOwner<'d> {
-        ReadOnlySensorOwner {
+    pub(crate) fn into_runtime(self) -> RuntimeI2cOwner<'d> {
+        RuntimeI2cOwner {
             driver: self.driver,
         }
     }
@@ -101,16 +106,44 @@ fn transaction_timeout_ticks() -> esp_idf_sys::TickType_t {
     TickType::new_millis(I2C_TRANSACTION_TIMEOUT_MS).ticks()
 }
 
-pub(crate) struct StartupDisplayBus<'bus, 'd> {
-    bus: &'bus mut BitaxeI2cBus<'d>,
+pub(crate) struct DisplayBus<'bus, 'd> {
+    driver: &'bus mut I2cDriver<'d>,
 }
 
-/// Post-display owner whose type exposes only closed sensor-read capabilities.
-pub(crate) struct ReadOnlySensorOwner<'d> {
+#[derive(Debug)]
+pub(crate) enum DisplayI2cError {
+    Driver(I2cError),
+    RestrictedAddress,
+}
+
+impl EmbeddedHalI2cError for DisplayI2cError {
+    fn kind(&self) -> ErrorKind {
+        match self {
+            Self::Driver(error) => error.kind(),
+            Self::RestrictedAddress => ErrorKind::Other,
+        }
+    }
+}
+
+fn restrict_display_address(address: u8) -> Result<(), DisplayI2cError> {
+    if address != SSD1306_I2C_ADDRESS {
+        return Err(DisplayI2cError::RestrictedAddress);
+    }
+    Ok(())
+}
+
+/// Runtime owner exposing only display writes and closed sensor reads.
+pub(crate) struct RuntimeI2cOwner<'d> {
     driver: I2cDriver<'d>,
 }
 
-impl<'d> ReadOnlySensorOwner<'d> {
+impl<'d> RuntimeI2cOwner<'d> {
+    pub(crate) fn display(&mut self) -> DisplayBus<'_, 'd> {
+        DisplayBus {
+            driver: &mut self.driver,
+        }
+    }
+
     pub(crate) fn sensors(&mut self) -> ReadOnlySensorBus<'_, 'd> {
         ReadOnlySensorBus {
             driver: &mut self.driver,
@@ -118,23 +151,23 @@ impl<'d> ReadOnlySensorOwner<'d> {
     }
 }
 
-impl ErrorType for StartupDisplayBus<'_, '_> {
-    type Error = I2cError;
+impl ErrorType for DisplayBus<'_, '_> {
+    type Error = DisplayI2cError;
 }
 
-impl EmbeddedHalI2c for StartupDisplayBus<'_, '_> {
+impl EmbeddedHalI2c for DisplayBus<'_, '_> {
     fn read(&mut self, address: u8, output: &mut [u8]) -> Result<(), Self::Error> {
-        self.bus
-            .driver
+        restrict_display_address(address)?;
+        self.driver
             .read(address, output, transaction_timeout_ticks())
-            .map_err(I2cError::from)
+            .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
     }
 
     fn write(&mut self, address: u8, input: &[u8]) -> Result<(), Self::Error> {
-        self.bus
-            .driver
+        restrict_display_address(address)?;
+        self.driver
             .write(address, input, transaction_timeout_ticks())
-            .map_err(I2cError::from)
+            .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
     }
 
     fn write_read(
@@ -143,10 +176,10 @@ impl EmbeddedHalI2c for StartupDisplayBus<'_, '_> {
         input: &[u8],
         output: &mut [u8],
     ) -> Result<(), Self::Error> {
-        self.bus
-            .driver
+        restrict_display_address(address)?;
+        self.driver
             .write_read(address, input, output, transaction_timeout_ticks())
-            .map_err(I2cError::from)
+            .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
     }
 
     fn transaction(
@@ -154,10 +187,10 @@ impl EmbeddedHalI2c for StartupDisplayBus<'_, '_> {
         address: u8,
         operations: &mut [Operation<'_>],
     ) -> Result<(), Self::Error> {
-        self.bus
-            .driver
+        restrict_display_address(address)?;
+        self.driver
             .transaction(address, operations, transaction_timeout_ticks())
-            .map_err(I2cError::from)
+            .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
     }
 }
 

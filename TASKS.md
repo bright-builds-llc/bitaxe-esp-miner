@@ -10,6 +10,78 @@ new work.
 
 ## Active
 
+### task-lcd-build-time-uptime | 2026-07-26 01:18 | Alternate LCD build time and uptime
+
+- [x] Embed the canonical firmware build UTC timestamp from Bazel volatile
+  workspace status.
+- [x] Replace the static third LCD row with build time and uptime alternating
+  every five seconds while preserving the other rows and display geometry.
+- [x] Keep runtime LCD refresh and read-only sensor acquisition under one
+  bounded I2C owner, with display failures isolated from sensor operation.
+- [x] Add focused build-provenance, display-model, geometry, scheduling, and
+  cache-contract regressions.
+- [ ] Update runtime display markers and the parity checklist without promoting
+  full display/input parity.
+- [ ] Run the required Rust, Bazel, package, reference, and diff verification.
+- [ ] Run one detector-gated connected Ultra 205 display smoke when admitted.
+
+Hardware contract:
+
+- Permitted commands:
+  1. `just detect-ultra205`
+  2. `just flash-monitor board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json evidence-dir=scratch/lcd-build-time-uptime/attempt-001 capture-timeout-seconds=360 redact-evidence=true`
+- Objective: verify the exact packaged firmware keeps the existing four-line
+  128x32 layout while row three starts with the logged UTC build time, changes
+  to increasing uptime after five seconds, and continues alternating.
+- Evidence: `scratch/lcd-build-time-uptime/attempt-001` is ignored,
+  non-promoted local evidence. The supervisor owns its evidence child under a
+  mode-0700 parent; detailed serial, USB, process, and command material remains
+  mode-0600 `ProtectedOperational`. Console and completion review use only
+  closed categories, bounded counts/durations, and safe build provenance.
+- Preconditions: all software gates pass; `just package` produces an exact
+  current-HEAD manifest; detector admission finds exactly one board 205; no
+  credential file is read or supplied.
+- Allowed effects: write and verify the exact admitted factory image, perform
+  the existing repo-owned reset/re-enumeration sequence, receive-only runtime
+  observation, same-device re-acquisition, and cleanup of supervisor-proven
+  repository child process groups.
+- Prohibited effects: erase-flash, arbitrary raw writes, NVS seeding,
+  credentials, network discovery, watchdog reset, voltage/fan/mining stress,
+  foreign-process termination, direct UART, pins, pads, headers, GPIO, probes,
+  jumpers, soldering, injected signals, and evidence promotion.
+- Recovery/restoration: the device-session supervisor must terminate and reap
+  owned process groups, release serial descriptors, and prove the admitted
+  physical device accessible and holder-free. Success leaves the exact
+  admitted package installed; identity drift, absence, a foreign holder, or
+  unproved cleanup stops without physical intervention.
+- Retry bound: no unchanged retry. A new ordinal is allowed only after a
+  targeted regression-backed fix or an authorized non-invasive remediation
+  objectively changes the failed boundary; one recurrence of the same
+  authoritative signature selects `stop_repeated_boundary`.
+- Accepted terminal outcomes: `complete`, `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary`, or
+  `stop_impossible_contract`. Existing closed flash/session categories provide
+  the authoritative boundary signature, with the earliest failure preserved.
+- Timeouts: capture is at least 360 seconds and the invoking wall clock exceeds
+  420 seconds. Ordinary silence is not failure before the full bound.
+
+Verification: `cargo fmt --all`,
+`cargo clippy --all-targets --all-features -- -D warnings`,
+`cargo build --all-targets --all-features`, and
+`cargo test --all-features` passed in order. Focused Rust and Bazel tests,
+the ESP32-S3 firmware cross-build, `just package`, `just verify-reference`,
+ShellCheck, shell-format checks, and diff checks passed. `just test` passed
+77 of 78 targets; the remaining
+`//scripts:phase36_substantive_evidence_test` correctly rejected the modified
+source tree because its preflight requires a clean exact-`HEAD` package.
+The active parity checklist remains byte-identical to its authenticated
+Phase 36 mirror; changing its notes directly would rewrite historical
+evidence, so a later formal evidence generation must carry that documentation
+update.
+
+Completion review: Pending. Full upstream display carousel/input parity remains
+out of scope and below verified.
+
 ### task-durable-ultra205-device-sessions | 2026-07-25 | Make USB flash cycles self-cleaning
 
 - [x] Implement one typed macOS device-session supervisor for detector,

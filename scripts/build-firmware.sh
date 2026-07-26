@@ -11,10 +11,10 @@ readonly OUTPUT_PARTITION_TABLE_NAME="bitaxe-firmware-partition-table.bin"
 readonly OUTPUT_OTADATA_NAME="bitaxe-firmware-otadata-initial.bin"
 
 usage() {
-	printf 'usage: %s <bazel-output-dir> <build-provenance-stamp> <identity-sdkconfig-defaults>\n' "$0" >&2
+	printf 'usage: %s <bazel-output-dir> <build-provenance-stamp> <identity-sdkconfig-defaults> <build-timestamp-utc>\n' "$0" >&2
 }
 
-if [[ "$#" -ne 3 ]]; then
+if [[ "$#" -ne 4 ]]; then
 	usage
 	exit 2
 fi
@@ -26,6 +26,8 @@ BUILD_PROVENANCE_STAMP="$(cd "$(dirname "$2")" && pwd -P)/$(basename "$2")"
 readonly BUILD_PROVENANCE_STAMP
 IDENTITY_SDKCONFIG_DEFAULTS="$(cd "$(dirname "$3")" && pwd -P)/$(basename "$3")"
 readonly IDENTITY_SDKCONFIG_DEFAULTS
+BUILD_TIMESTAMP_UTC="$(cd "$(dirname "$4")" && pwd -P)/$(basename "$4")"
+readonly BUILD_TIMESTAMP_UTC
 if [[ -z "${HOME:-}" ]]; then
 	HOME="$(cd ~ && pwd)"
 	export HOME
@@ -53,6 +55,10 @@ printf '[build-firmware] output_dir=%s\n' "$OUTPUT_DIR"
 	printf 'error: identity sdkconfig defaults not found: %s\n' "$IDENTITY_SDKCONFIG_DEFAULTS" >&2
 	exit 1
 }
+[[ -f "$BUILD_TIMESTAMP_UTC" ]] || {
+	printf 'error: build timestamp not found: %s\n' "$BUILD_TIMESTAMP_UTC" >&2
+	exit 1
+}
 
 readonly OUTPUT_SDKCONFIG="${OUTPUT_DIR}/sdkconfig"
 readonly OUTPUT_SDKCONFIG_DEFAULTS="${OUTPUT_DIR}/sdkconfig.defaults"
@@ -63,6 +69,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 	printf '%s\n' "$line" >>"$OUTPUT_SDKCONFIG_DEFAULTS"
 done <"$IDENTITY_SDKCONFIG_DEFAULTS"
 export BITAXE_BUILD_PROVENANCE_STAMP="$BUILD_PROVENANCE_STAMP"
+export BITAXE_BUILD_TIMESTAMP_UTC_FILE="$BUILD_TIMESTAMP_UTC"
 
 # shellcheck source=/dev/null
 source "$ESP_EXPORT"
