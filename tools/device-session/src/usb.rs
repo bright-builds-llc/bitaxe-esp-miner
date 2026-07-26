@@ -338,10 +338,7 @@ impl UsbSession {
             };
             if !retry_is_eligible(context) {
                 self.fail_once(category);
-                return Err(session_error(
-                    category,
-                    "the supervised espflash command failed without an eligible state-changing retry",
-                ));
+                return Err(session_error(category, ineligible_retry_detail(context)));
             }
             self.state = UsbLifecycleState::Reenumerating;
             self.lease.record_state(self.state, self.earliest_failure)?;
@@ -606,6 +603,20 @@ fn classify_espflash_failure(output: &SupervisedOutput) -> UsbTerminalCategory {
     } else {
         UsbTerminalCategory::FlashFailedBeforeTransfer
     }
+}
+
+fn ineligible_retry_detail(context: RetryContext) -> &'static str {
+    if context.category == UsbTerminalCategory::BootloaderConnectFailed
+        && context.cleanup_complete
+        && !context.enumeration_changed
+        && context.same_physical_device
+    {
+        return "the supervised espflash command could not synchronize with the bootloader and \
+                USB enumeration did not change; disconnect USB and normal device power, wait 10 \
+                seconds, reconnect normal power, then USB, and rerun detection; do not use pins, \
+                headers, or test points";
+    }
+    "the supervised espflash command failed without an eligible state-changing retry"
 }
 
 fn session_error(category: UsbTerminalCategory, detail: impl std::fmt::Display) -> UsbSessionError {

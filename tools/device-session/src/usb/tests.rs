@@ -76,6 +76,29 @@ fn retry_rejects_hardware_write_failure() {
 }
 
 #[test]
+fn bootloader_failure_without_changed_enumeration_recommends_connector_power_cycle() {
+    // Arrange
+    let context = RetryContext {
+        category: UsbTerminalCategory::BootloaderConnectFailed,
+        cleanup_complete: true,
+        enumeration_changed: false,
+        same_physical_device: true,
+        immutable_operation: true,
+        repeated_boundary: false,
+        attempts: 1,
+    };
+
+    // Act
+    let detail = ineligible_retry_detail(context);
+
+    // Assert
+    assert!(detail.contains("disconnect USB and normal device power"));
+    assert!(detail.contains("wait 10 seconds"));
+    assert!(detail.contains("reconnect normal power, then USB"));
+    assert!(detail.contains("do not use pins, headers, or test points"));
+}
+
+#[test]
 fn recovery_snapshot_rejects_identity_drift() {
     // Arrange
     let snapshot = UsbDeviceSnapshot {

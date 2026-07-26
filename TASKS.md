@@ -347,6 +347,76 @@ in the CI checkout. Recursive submodule checkout restored that prerequisite,
 the contract regression prevents silent removal, and the unchanged redaction
 validator passed in CI.
 
+### task-reflash-transport-recovery | 2026-07-26 | Diagnose and restore Ultra 205 reflashing
+
+- [x] Establish a deterministic red-capable reproduction for the current
+  `bootloader_connect_failed` detector boundary.
+- [x] Inspect the protected device-session evidence and minimize the failure to
+  one transport/reset/ownership boundary.
+- [x] Rank and test three or more falsifiable hypotheses one variable at a
+  time.
+- [x] Add a regression before any software fix, then verify the original
+  connected-device reproduction.
+- [ ] Rebuild an exact clean-`HEAD` package and run one detector-gated
+  flash/monitor only after detector admission succeeds.
+- [ ] Record the root cause, verification evidence, and residual recovery risk.
+
+Hardware contract:
+
+- Permitted commands:
+  1. `just detect-ultra205`
+  2. `lsof /dev/cu.usbmodem1101`
+  3. `ioreg -p IOUSB -l -w 0`
+  4. `just package`
+  5. `just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json evidence-dir=scratch/reflash-transport-recovery/attempt-001 capture-timeout-seconds=360 redact-evidence=true`
+- Objective: restore the repository-owned bootloader connection and prove one
+  exact-package reflash followed by receive-only runtime observation.
+- Evidence: detailed USB, process, command, and serial material remains ignored
+  `ProtectedOperational` under `scratch/device-sessions` and
+  `scratch/reflash-transport-recovery`. Committed notes contain only closed
+  categories, bounded counts/durations, and safe build provenance.
+- Preconditions: use only the provided USB and barrel-power connections; the
+  exact package must match a clean current `HEAD`; detector admission must find
+  exactly one board 205; no credential file is read or supplied.
+- Allowed effects: repository-supervised USB reset/hard-reset, read-only OS USB
+  and holder inspection, exact admitted factory-image write, same-device
+  re-acquisition, receive-only observation, and cleanup of supervisor-proven
+  repository child process groups.
+- Prohibited effects: erase-flash, arbitrary raw writes, NVS seeding,
+  credentials, network discovery, watchdog reset, voltage/fan/mining stress,
+  foreign-process termination, direct UART, pins, pads, headers, GPIO, probes,
+  jumpers, soldering, injected signals, and evidence promotion.
+- Recovery/restoration: every device session must release serial descriptors,
+  reap its owned process group, and prove the same device accessible and
+  holder-free. A failure stops without physical intervention.
+- Retry bound: the existing detector failure is attempt zero. One detector
+  retry is allowed only after a regression-backed software fix or an
+  authorized non-invasive remediation objectively changes the boundary. No
+  unchanged retry is allowed; recurrence selects `stop_repeated_boundary`.
+- Accepted terminal outcomes: `complete`, `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary`, or
+  `stop_impossible_contract`, preserving the earliest closed category.
+- Timeouts: any flash/monitor capture is at least 360 seconds with an invoking
+  wall clock above 420 seconds. Ordinary silence is not failure before the
+  bound; a hard transport error may stop earlier.
+
+Diagnosis checkpoint: the failing detector session found one accessible,
+holder-free ESP32-S3 USB Serial/JTAG transport, but `espflash board-info`
+could not synchronize with its bootloader and supervised recovery observed no
+enumeration change. The same tool and repository code had connected
+successfully in preceding sessions, and the pending LCD firmware had never
+been flashed. Alternative `espflash` default-reset selection resolves to the
+same USB Serial/JTAG reset strategy for this device. A connector-only power
+cycle changed the hardware boundary, after which the single permitted detector
+retry passed immediately. The device-session error now gives that bounded
+recovery procedure only for the same-device, holder-free, unchanged-enumeration
+bootloader failure.
+
+Verification: The focused Cargo regression and Bazel device-session tests pass.
+Exact-package flash/monitor verification is pending.
+
+Completion review: Pending.
+
 ## Backlog
 
 ### task-private-first-remaining-evidence-pipelines | 2026-07-20 | Migrate remaining evidence workflows
