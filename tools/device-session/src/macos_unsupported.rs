@@ -2,6 +2,15 @@ use anyhow::{bail, Result};
 
 use crate::SessionEvent;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct UsbDeviceSnapshot {
+    pub(crate) port: String,
+    pub(crate) physical_identity_digest: String,
+    pub(crate) enumeration_token: String,
+    pub(crate) accessible: bool,
+    pub(crate) holder_count: u16,
+}
+
 pub(crate) struct DeviceObservation {
     pub(crate) event: SessionEvent,
     pub(crate) maybe_port: Option<String>,
@@ -26,6 +35,20 @@ impl ReceiveOnlyReader {
 pub(crate) struct MacOsDeviceAdapter;
 
 impl MacOsDeviceAdapter {
+    pub(crate) fn candidate_ports() -> Result<Vec<String>> {
+        bail!("macOS identity adapter is unsupported on this platform")
+    }
+
+    pub(crate) fn exact_snapshot(_port: &str) -> Result<Option<UsbDeviceSnapshot>> {
+        bail!("macOS identity adapter is unsupported on this platform")
+    }
+
+    pub(crate) fn physical_snapshot(
+        _expected_physical_identity: &str,
+    ) -> Result<Option<UsbDeviceSnapshot>> {
+        bail!("macOS identity adapter is unsupported on this platform")
+    }
+
     pub(crate) fn initial_sample(
         _admitted_port: &str,
         _expected_physical_identity: &str,

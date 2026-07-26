@@ -94,3 +94,46 @@ safe public provenance.
 
 The initial production adapter supports macOS. Linux and Windows fail closed as
 `observer_unqualified` until separately implemented and qualified.
+
+## Flash And Reflash Session
+
+The supported `just detect-ultra205`, `just flash`, `just monitor`, and
+`just flash-monitor` entrypoints share one macOS USB supervisor. Package
+construction and immutable image admission complete before device ownership is
+taken. The supervisor then binds the physical-device digest, takes a host-wide
+advisory lease, and retains it across flash, valid same-device re-enumeration,
+receive-only observation, and cleanup.
+
+Every device-affecting `espflash` child runs in an isolated process group. A
+timeout, error, `SIGINT`, or `SIGTERM` causes bounded group termination,
+escalation, reaping, and holder verification. A private crash journal permits
+stale cleanup only when the owner start time, child process group, executable
+path, and executable digest still prove repository ownership. Unknown
+applications, browsers, and unmanaged `espflash` processes are never
+terminated.
+
+Routine monitoring is the macOS receive-only reader, not `espflash monitor`.
+Success is returned only after three stable samples show the admitted physical
+device is accessible and holder-free. No postcondition probe reconnects to the
+bootloader. Public outcomes use the closed flash vocabulary:
+`ready`, `concurrent_repo_session`, `foreign_holder`, `transport_absent`,
+`identity_drift`, `bootloader_connect_failed`,
+`flash_failed_before_transfer`, `flash_failed_after_transfer`,
+`monitor_failed`, `cleanup_failed`, `recovery_not_observed`, and
+`repeated_boundary`.
+
+One retry is possible only for a software/transport-recoverable boundary after
+cleanup and an objective enumeration change of the same physical device. The
+operation and admitted image remain unchanged. Identity drift, absence,
+foreign ownership, admission failure, a write/verify failure, or recurrence
+stops immediately.
+
+The task-gated durability acceptance command is:
+
+```text
+just verify-flash-durability board=205 cycles=20 port=<detector-port> manifest=<package-manifest> wifi-credentials=wifi-credentials.json protected-root=scratch/flash-durability/<attempt>
+```
+
+It runs the four five-cycle sequences defined in `TASKS.md`, stops at the first
+failed boundary, and stores private mode-`0600` logs beneath a new ignored
+mode-`0700` root.

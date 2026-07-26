@@ -10,6 +10,90 @@ new work.
 
 ## Active
 
+### task-durable-ultra205-device-sessions | 2026-07-25 | Make USB flash cycles self-cleaning
+
+- [x] Implement one typed macOS device-session supervisor for detector,
+  bootloader, flash, receive-only monitor, re-enumeration, and cleanup stages.
+- [x] Add host-wide same-device locking, private crash journals, isolated child
+  process groups, bounded signal/timeout cleanup, and earliest-failure
+  preservation.
+- [x] Route `just detect-ultra205`, `just flash`, `just monitor`, and
+  `just flash-monitor` through the supervisor without breaking their existing
+  arguments.
+- [x] Add `just verify-flash-durability` plus pure, fresh-process, CLI,
+  runfiles, redaction, and entrypoint contract regressions.
+- [x] Update active hardware/session guidance and run all required Rust,
+  Bazel, repository, redaction, and reference checks.
+- [ ] Run the task-gated 20-cycle connected Ultra 205 durability soak only
+  after the software gates pass.
+
+Hardware contract:
+
+- Permitted commands:
+  1. `just detect-ultra205`
+  2. `just verify-flash-durability board=205 cycles=20 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json protected-root=scratch/flash-durability/attempt-001`
+- Objective: prove twenty consecutive detector/flash/receive-only-monitor/
+  cleanup/immediate-reflash permutations finish with the admitted physical
+  Ultra 205 stably enumerated, accessible, and holder-free without unplugging
+  USB or barrel power.
+- Evidence: the supervisor exclusively creates
+  `scratch/flash-durability/attempt-001` beneath a mode-0700 ignored parent.
+  Detailed device, process, command, and serial material is
+  `ProtectedOperational` in mode-0600 files. Console and completion review use
+  only closed categories, booleans, counts, bounded durations, and safe source
+  or package provenance. Nothing from this run is promoted or committed.
+- Preconditions: exact current `HEAD` package and manifest pass admission;
+  `just detect-ultra205` admits exactly one board 205; the ignored local
+  `wifi-credentials.json` exists and is passed without reading or printing its
+  contents; all software verification gates pass.
+- Allowed effects: exact admitted factory-image writes, existing optional NVS
+  seed writes, `usb-reset`/`hard-reset`, receive-only native USB observation,
+  same-physical-device re-acquisition, and termination of only
+  supervisor-proven repository-owned child process groups.
+- Prohibited effects: erase-flash, arbitrary raw writes, watchdog-reset,
+  voltage/fan/mining stress, network discovery, foreign-process termination,
+  direct UART, pins, pads, headers, GPIO, probes, jumpers, soldering, injected
+  signals, and evidence promotion.
+- Recovery/restoration: after every stage, terminate and reap owned process
+  groups, release serial descriptors, and require three stable same-device,
+  accessible, holder-free samples. The final successful cycle leaves the exact
+  admitted package and local Wi-Fi seed installed. A genuinely absent
+  transport, identity drift, foreign holder, or unproved cleanup stops without
+  physical intervention.
+- Retry bound: one automatic retry is allowed only for a typed
+  software-transport failure after cleanup proves the same physical device
+  changed state while the operation and immutable package remain unchanged.
+  The same authoritative signature recurring after that remediation selects
+  `stop_repeated_boundary`; no other retry is allowed.
+- Accepted terminal outcomes: `complete`, `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary`, or
+  `stop_impossible_contract`. The harness stops on the first non-ready cycle
+  and preserves its earliest typed category, including
+  `concurrent_repo_session`, `foreign_holder`, `transport_absent`,
+  `identity_drift`, `bootloader_connect_failed`,
+  `flash_failed_before_transfer`, `flash_failed_after_transfer`,
+  `monitor_failed`, `cleanup_failed`, `recovery_not_observed`, or
+  `repeated_boundary`.
+- Timeouts: individual flash/monitor operations receive at least 360 seconds
+  and their invoking process receives at least 420 seconds. Early hard errors
+  may stop immediately; ordinary silence is not failure before the bound.
+
+Verification: `cargo fmt --all`,
+`cargo clippy --all-targets --all-features -- -D warnings`,
+`cargo build --all-targets --all-features`, and
+`cargo test --all-features` passed in order. Focused uncached Bazel tests for
+the device-session, flash CLI, and entrypoint contract passed. All 76 Bazel
+tests that can run against a modified source tree passed. After committing and
+building the exact-`HEAD` firmware package, the remaining
+`//scripts:phase36_substantive_evidence_test` passed. Redaction verification,
+reference cleanliness, shell formatting, ShellCheck, and diff checks passed.
+
+Completion review: Software implementation and clean-commit package
+qualification complete; connected qualification is pending. The protected
+attempt root remains unused, the required ignored credential input is present
+without being read, and no device effect was performed. The task-gated
+20-cycle soak remains the next hardware acceptance action.
+
 ### task-ci-reference-submodule-checkout | 2026-07-25 18:23 | Repair evidence-redaction CI checkout
 
 - [x] Reproduce the failed GitHub Actions boundary and identify the earliest

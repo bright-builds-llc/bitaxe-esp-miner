@@ -19,6 +19,15 @@ struct Candidate {
     enumeration_token: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct UsbDeviceSnapshot {
+    pub(crate) port: String,
+    pub(crate) physical_identity_digest: String,
+    pub(crate) enumeration_token: String,
+    pub(crate) accessible: bool,
+    pub(crate) holder_count: u16,
+}
+
 #[derive(Debug, Default)]
 struct NodeFields {
     usb_node: bool,
@@ -75,6 +84,43 @@ impl ReceiveOnlyReader {
 pub(crate) struct MacOsDeviceAdapter;
 
 impl MacOsDeviceAdapter {
+    pub(crate) fn candidate_ports() -> Result<Vec<String>> {
+        scan_candidates().map(|candidates| {
+            candidates
+                .into_iter()
+                .map(|candidate| candidate.port)
+                .collect()
+        })
+    }
+
+    pub(crate) fn exact_snapshot(port: &str) -> Result<Option<UsbDeviceSnapshot>> {
+        let candidates = scan_candidates()?;
+        let matches = candidates
+            .into_iter()
+            .filter(|candidate| candidate.port == port)
+            .collect::<Vec<_>>();
+        match matches.as_slice() {
+            [] => Ok(None),
+            [candidate] => Ok(Some(snapshot(candidate)?)),
+            _ => bail!("multiple USB candidates matched the selected device node"),
+        }
+    }
+
+    pub(crate) fn physical_snapshot(
+        expected_physical_identity: &str,
+    ) -> Result<Option<UsbDeviceSnapshot>> {
+        let candidates = scan_candidates()?;
+        let matches = candidates
+            .into_iter()
+            .filter(|candidate| candidate.physical_identity_digest == expected_physical_identity)
+            .collect::<Vec<_>>();
+        match matches.as_slice() {
+            [] => Ok(None),
+            [candidate] => Ok(Some(snapshot(candidate)?)),
+            _ => bail!("multiple USB candidates matched the admitted physical device"),
+        }
+    }
+
     pub(crate) fn initial_sample(
         admitted_port: &str,
         expected_physical_identity: &str,
@@ -145,6 +191,16 @@ impl MacOsDeviceAdapter {
             .count();
         Ok(u16::try_from(count).unwrap_or(u16::MAX))
     }
+}
+
+fn snapshot(candidate: &Candidate) -> Result<UsbDeviceSnapshot> {
+    Ok(UsbDeviceSnapshot {
+        port: candidate.port.clone(),
+        physical_identity_digest: candidate.physical_identity_digest.clone(),
+        enumeration_token: candidate.enumeration_token.clone(),
+        accessible: receive_only_accessible(&candidate.port),
+        holder_count: MacOsDeviceAdapter::holder_count(&candidate.port)?,
+    })
 }
 
 fn sample_from_candidates(

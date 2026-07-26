@@ -8,6 +8,7 @@ license.workspace = true
 anyhow.workspace = true
 bitaxe-api = { path = "../../crates/bitaxe-api" }
 bitaxe-config = { path = "../../crates/bitaxe-config" }
+bitaxe-device-session = { path = "../device-session" }
 camino.workspace = true
 clap.workspace = true
 esp-idf-part = "0.6.0"

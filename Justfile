@@ -4,8 +4,8 @@ doctor:
 bootstrap-esp *args:
     ./scripts/bootstrap-esp.sh {{ args }}
 
-detect-ultra205:
-    ./scripts/detect-ultra205.sh
+detect-ultra205 *args:
+    bazel run //tools/flash:flash -- detect {{ args }}
 
 diagnose-ultra205-session *args:
     ./scripts/diagnose-ultra205-session.sh {{ args }}
@@ -33,6 +33,9 @@ monitor *args:
 
 flash-monitor *args:
     bazel run //tools/flash:flash -- flash-monitor {{ args }}
+
+verify-flash-durability *args:
+    ./scripts/verify-flash-durability.sh {{ args }}
 
 verify-reference:
     bazel run //scripts:verify_reference_clean

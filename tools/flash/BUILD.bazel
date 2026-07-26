@@ -11,6 +11,12 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+filegroup(
+    name = "flash_supervisor_contract_source",
+    srcs = ["src/main.rs"],
+    visibility = ["//scripts:__pkg__"],
+)
+
 rust_binary(
     name = "flash",
     srcs = [
@@ -24,6 +30,7 @@ rust_binary(
     deps = [
         "//crates/bitaxe-api:bitaxe_api",
         "//crates/bitaxe-config:bitaxe_config",
+        "//tools/device-session:device_session_lib",
         "@crates//:anyhow",
         "@crates//:camino",
         "@crates//:clap",

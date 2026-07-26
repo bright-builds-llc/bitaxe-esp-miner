@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::env;
 use std::fmt;
@@ -7,7 +8,7 @@ use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 use std::str::FromStr;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
 use bitaxe_api::BuildProvenance;
@@ -15,6 +16,7 @@ use bitaxe_config::{
     apply_settings_patch, ConfigValidationError, NvsWrite, RawSettingValue, SettingsPatch,
     SettingsUpdateDecision, NVS_NAMESPACE,
 };
+use bitaxe_device_session::{discover_usb_ports, UsbOperation, UsbSession};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
@@ -29,7 +31,7 @@ const PACKAGE_BUILD_TARGET: &str = "//firmware/bitaxe:firmware_image";
 const PACKAGE_MANIFEST_RELATIVE_PATH: &str = "firmware/bitaxe/bitaxe-ultra205-package.json";
 const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
 const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
-const DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS: u64 = 25;
+const DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS: u64 = 360;
 const MIN_COMMIT_PREFIX_LEN: usize = 12;
 const NVS_PARTITION_OFFSET: &str = "0x9000";
 const NVS_PARTITION_SIZE: &str = "0x6000";
@@ -52,6 +54,7 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum CliCommand {
+    Detect(DetectCommand),
     Flash(FlashCommand),
     Monitor(MonitorCommand),
     #[command(name = "flash-monitor")]
@@ -60,6 +63,15 @@ enum CliCommand {
     FinalizeEvidence(FinalizeEvidenceCommand),
     #[command(name = "phase35-probe")]
     Phase35Probe(Phase35ProbeCommand),
+}
+
+#[derive(Debug, Parser, Clone)]
+struct DetectCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    board: BoardId,
+
+    #[arg(long)]
+    port: Option<String>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -102,6 +114,9 @@ struct FlashCommand {
 struct MonitorCommand {
     #[command(flatten)]
     common: CommonArgs,
+
+    #[arg(long = "capture-timeout-seconds", default_value_t = DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS)]
+    capture_timeout_seconds: u64,
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -473,7 +488,10 @@ trait FlashEnvironment {
         bin_path: &Utf8Path,
         size: &str,
     ) -> Result<()>;
+    fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
+    fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>>;
+    fn finish_usb_session(&self) -> Result<()>;
     fn phase35_stage_readiness_gate(&self, _stage: &str, _port: &str) -> Result<()> {
         Ok(())
     }
@@ -490,25 +508,18 @@ trait FlashEnvironment {
     fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()>;
 }
 
-#[derive(Debug)]
 struct LocalFlashEnvironment {
     workspace_dir: Utf8PathBuf,
     espflash_bin: Utf8PathBuf,
     espflash_version: String,
     espflash_sha256: String,
+    usb_session: RefCell<Option<UsbSession>>,
 }
 
 impl LocalFlashEnvironment {
     fn detect() -> Result<Self> {
         let espflash_bin = resolve_espflash_executable()?;
-        let output = Command::new(espflash_bin.as_std_path())
-            .arg("--version")
-            .output()
-            .context("failed to query espflash version")?;
-        let espflash_version = command_output_to_string(output, "espflash --version")?;
-        if espflash_version != format!("espflash {ESPFLASH_EXPECTED_VERSION}") {
-            bail!("espflash_version_mismatch expected={ESPFLASH_EXPECTED_VERSION}");
-        }
+        let espflash_version = format!("espflash {ESPFLASH_EXPECTED_VERSION}");
         let espflash_sha256 = sha256_bytes(
             &fs::read(espflash_bin.as_std_path())
                 .context("failed to digest espflash executable")?,
@@ -518,6 +529,7 @@ impl LocalFlashEnvironment {
             espflash_bin,
             espflash_version,
             espflash_sha256,
+            usb_session: RefCell::new(None),
         })
     }
 }
@@ -604,16 +616,17 @@ impl FlashEnvironment for LocalFlashEnvironment {
         redaction_mode: EvidenceRedactionMode,
         create_new: bool,
     ) -> Result<CaptureProcessResult> {
-        let mut resolved_command = command_spec.clone();
-        resolved_command.program = self.espflash_bin.to_string();
-        let result = evidence::capture_command(
-            &resolved_command,
-            &self.espflash_bin,
-            log_path,
-            timeout_seconds,
-            redaction_mode,
-            create_new,
-        )?;
+        let bytes = self.receive_only(command_spec, timeout_seconds)?;
+        let raw = String::from_utf8_lossy(&bytes);
+        let sanitized = sanitize_evidence_text(&raw, redaction_mode);
+        if create_new {
+            evidence::write_dual_private_text(log_path, &sanitized)?;
+        } else {
+            self.write_evidence(log_path, &sanitized)?;
+        }
+        let result = CaptureProcessResult {
+            status: CaptureProcessStatus::TimedOut,
+        };
         if let Ok(stage_root) = env::var("PHASE35_FLASH_STAGE_ROOT") {
             if !stage_root.is_empty() {
                 let private_log = fs::read(log_path.as_std_path())?;
@@ -692,11 +705,9 @@ impl FlashEnvironment for LocalFlashEnvironment {
     }
 
     fn list_ports(&self) -> Result<String> {
-        let output = Command::new(self.espflash_bin.as_std_path())
-            .arg("list-ports")
-            .output()
-            .context("failed to run espflash list-ports")?;
-        command_output_to_string(output, "espflash list-ports")
+        discover_usb_ports()
+            .map(|ports| ports.join("\n"))
+            .map_err(|error| anyhow::anyhow!("{error}"))
     }
 
     fn write_file(&self, path: &Utf8Path, contents: &str) -> Result<()> {
@@ -734,36 +745,96 @@ impl FlashEnvironment for LocalFlashEnvironment {
         Ok(())
     }
 
+    fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()> {
+        if self.usb_session.borrow().is_some() {
+            return Ok(());
+        }
+        let trace_root = self
+            .workspace_dir
+            .join("scratch/device-sessions")
+            .join(format!(
+                "{}-{}",
+                std::process::id(),
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos()
+            ));
+        let mut session = UsbSession::acquire(operation, port, trace_root.as_std_path())
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
+        let version_validation = session
+            .run_espflash_probe(
+                self.espflash_bin.as_std_path(),
+                &["--version".to_owned()],
+                Duration::from_secs(10),
+            )
+            .map_err(|error| anyhow::anyhow!("{error}"))
+            .and_then(|output| {
+                let observed = String::from_utf8(output.stdout)
+                    .context("supervised espflash version output was not valid UTF-8")?;
+                if observed.trim() != self.espflash_version {
+                    bail!("espflash_version_mismatch expected={ESPFLASH_EXPECTED_VERSION}");
+                }
+                Ok(())
+            });
+        if let Err(primary_error) = version_validation {
+            return match session.finish() {
+                Ok(_) => Err(primary_error),
+                Err(_) => Err(primary_error.context("cleanup_failure=secondary")),
+            };
+        }
+        *self.usb_session.borrow_mut() = Some(session);
+        Ok(())
+    }
+
     fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
         if command_spec.program != "espflash" {
             bail!("unsupported command program: {}", command_spec.program);
         }
 
-        if let Some(stage) = phase35_stage_for_command(command_spec) {
-            if let Ok(stage_root) = env::var("PHASE35_FLASH_STAGE_ROOT") {
-                if !stage_root.is_empty() {
-                    return self.execute_phase35_stage(
-                        command_spec,
-                        stage,
-                        Utf8Path::new(&stage_root),
-                    );
-                }
-            }
-        }
-
-        let mut command = Command::new(self.espflash_bin.as_std_path());
-        for arg in &command_spec.args {
-            command.arg(arg);
-        }
-
-        let status = command
-            .status()
-            .with_context(|| format!("failed to run {}", command_spec.display()))?;
-        if !status.success() {
-            bail!("{} failed with {status}", command_spec.display());
-        }
-
+        let mut session_slot = self.usb_session.borrow_mut();
+        let Some(session) = session_slot.as_mut() else {
+            bail!("cleanup_failed: USB effect attempted without a repository session");
+        };
+        let args = command_with_port(command_spec, session.port())?;
+        session
+            .run_espflash(
+                self.espflash_bin.as_std_path(),
+                &args,
+                Duration::from_secs(360),
+            )
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
         Ok(())
+    }
+
+    fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>> {
+        if command_spec.program != "bitaxe-receive-only" {
+            bail!("unsupported receive-only command program");
+        }
+        let mut session_slot = self.usb_session.borrow_mut();
+        let Some(session) = session_slot.as_mut() else {
+            bail!("cleanup_failed: monitor attempted without a repository session");
+        };
+        emit_line("usb_reader", "admitted")?;
+        let output = session
+            .observe_receive_only(Duration::from_secs(timeout_seconds))
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
+        Ok(output.bytes)
+    }
+
+    fn finish_usb_session(&self) -> Result<()> {
+        let maybe_session = self.usb_session.borrow_mut().take();
+        let Some(session) = maybe_session else {
+            return Ok(());
+        };
+        let operation = session.operation();
+        let ready = session
+            .finish()
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
+        if operation == UsbOperation::Detect {
+            emit_line("port", &ready.port)?;
+        }
+        emit_line("usb_session", "ready")
     }
 
     fn phase35_stage_readiness_gate(&self, stage: &str, port: &str) -> Result<()> {
@@ -847,67 +918,6 @@ impl FlashEnvironment for LocalFlashEnvironment {
 }
 
 impl LocalFlashEnvironment {
-    fn execute_phase35_stage(
-        &self,
-        command_spec: &CommandSpec,
-        stage: &str,
-        stage_root: &Utf8Path,
-    ) -> Result<()> {
-        fs::create_dir_all(stage_root.as_std_path())
-            .context("failed to create private Phase 35 stage root")?;
-        set_private_directory_mode(stage_root)?;
-        let log_path = stage_root.join(format!("{stage}.private.log"));
-        let metrics_path = stage_root.join(format!("{stage}.metrics.json"));
-        if log_path.exists() || metrics_path.exists() {
-            bail!("phase35_stage_capture=blocked reason=destination_exists");
-        }
-
-        let mut resolved_command = command_spec.clone();
-        resolved_command.program = self.espflash_bin.to_string();
-        let started = Instant::now();
-        let capture = evidence::capture_command(
-            &resolved_command,
-            &self.espflash_bin,
-            &log_path,
-            360,
-            EvidenceRedactionMode::DeveloperRaw,
-            true,
-        )?;
-        let duration_millis = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-        let launched = !matches!(capture.status, CaptureProcessStatus::SpawnFailed);
-        let success = matches!(capture.status, CaptureProcessStatus::ExitedSuccess);
-        let log = fs::read_to_string(log_path.as_std_path())
-            .context("failed to read sanitized Phase 35 stage log")?;
-        let connected = launched && flash_log_connected(&log);
-        let device_info_complete = connected && flash_log_device_info_complete(&log);
-        let transfer_started =
-            device_info_complete && (success || flash_log_transfer_started(&log));
-        let completed = transfer_started && success;
-        let metrics = serde_json::json!({
-            "schema_version": PHASE35_FLASH_SCHEMA,
-            "stage": stage,
-            "tool_version_valid": self.espflash_version == format!("espflash {ESPFLASH_EXPECTED_VERSION}"),
-            "launched": launched,
-            "connected": connected,
-            "device_info_complete": device_info_complete,
-            "transfer_started": transfer_started,
-            "completed": completed,
-            "duration_millis": if launched { duration_millis } else { 0 },
-        });
-        let mut encoded = serde_json::to_vec_pretty(&metrics)?;
-        encoded.push(b'\n');
-        write_private_new_bytes(&metrics_path, &encoded)?;
-        if !launched {
-            bail!("phase35_stage_capture=failed reason=spawn_failure");
-        }
-        if !success {
-            bail!("phase35_stage_capture=failed reason=child_failure");
-        }
-        Ok(())
-    }
-}
-
-impl LocalFlashEnvironment {
     fn nvs_generator_python(&self) -> Result<Utf8PathBuf> {
         if let Ok(path) = env::var("ESP_IDF_NVS_PYTHON") {
             if !path.is_empty() {
@@ -946,25 +956,23 @@ fn main() -> Result<()> {
     emit_line("espflash_version", ESPFLASH_EXPECTED_VERSION)?;
     emit_line("espflash_executable_sha256", &environment.espflash_sha256)?;
 
-    match cli.command {
-        CliCommand::Flash(command) => {
-            run_flash(&command, &environment)?;
-        }
-        CliCommand::Monitor(command) => {
-            run_monitor(&command, &environment)?;
-        }
-        CliCommand::FlashMonitor(command) => {
-            run_flash_monitor(&command, &environment)?;
-        }
-        CliCommand::FinalizeEvidence(command) => {
-            run_finalize_evidence(&command, &environment)?;
-        }
-        CliCommand::Phase35Probe(command) => {
-            run_phase35_probe(&command, &environment)?;
+    let operation_result = match cli.command {
+        CliCommand::Detect(command) => run_detect(&command, &environment),
+        CliCommand::Flash(command) => run_flash(&command, &environment).map(|_| ()),
+        CliCommand::Monitor(command) => run_monitor(&command, &environment),
+        CliCommand::FlashMonitor(command) => run_flash_monitor(&command, &environment),
+        CliCommand::FinalizeEvidence(command) => run_finalize_evidence(&command, &environment),
+        CliCommand::Phase35Probe(command) => run_phase35_probe(&command, &environment),
+    };
+    let cleanup_result = environment.finish_usb_session();
+    match (operation_result, cleanup_result) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Ok(()), Err(cleanup_error)) => Err(cleanup_error),
+        (Err(operation_error), Ok(())) => Err(operation_error),
+        (Err(operation_error), Err(_cleanup_error)) => {
+            Err(operation_error.context("cleanup_failure=secondary"))
         }
     }
-
-    Ok(())
 }
 
 fn maybe_write_phase36_pre_effect_result(failure: &'static str) -> Result<()> {
@@ -1049,6 +1057,29 @@ where
     Ok(cli)
 }
 
+fn run_detect(command: &DetectCommand, environment: &impl FlashEnvironment) -> Result<()> {
+    ensure_ultra_205(command.board)?;
+    let port = resolve_port(command.port.as_deref(), environment)?;
+    environment.begin_usb_session(UsbOperation::Detect, &port)?;
+    let command_spec = CommandSpec::new(
+        "espflash",
+        [
+            "board-info",
+            "--chip",
+            "esp32s3",
+            "--port",
+            port.as_str(),
+            "--non-interactive",
+            "--before",
+            "usb-reset",
+            "--after",
+            "hard-reset",
+        ],
+    );
+    environment.execute(&command_spec)?;
+    Ok(())
+}
+
 fn normalize_args<I, S>(args: I) -> Vec<String>
 where
     I: IntoIterator<Item = S>,
@@ -1129,11 +1160,10 @@ fn run_flash(command: &FlashCommand, environment: &impl FlashEnvironment) -> Res
     )?;
 
     if !command.common.dry_run {
-        environment.execute(&execution_command).map_err(|_| {
-            anyhow::anyhow!("flash_execution=failed reason=admitted_image_child_failed")
-        })?;
         let port = command_port(&execution_command)
-            .context("phase35_stage_readiness=blocked reason=port_unavailable")?;
+            .context("usb_session=blocked reason=port_unavailable")?;
+        environment.begin_usb_session(UsbOperation::Flash, &port)?;
+        environment.execute(&execution_command)?;
         environment.phase35_stage_readiness_gate("after-factory", &port)?;
         if let Some(nvs_seed) = &outcome.nvs_seed {
             environment.execute(&nvs_seed.command)?;
@@ -1150,7 +1180,13 @@ fn run_monitor(command: &MonitorCommand, environment: &impl FlashEnvironment) ->
     emit_command("monitor_command", &command_spec)?;
 
     if !command.common.dry_run {
-        environment.execute(&command_spec)?;
+        let port =
+            command_port(&command_spec).context("usb_session=blocked reason=port_unavailable")?;
+        environment.begin_usb_session(UsbOperation::Monitor, &port)?;
+        let bytes = environment.receive_only(&command_spec, command.capture_timeout_seconds)?;
+        io::stdout()
+            .write_all(&bytes)
+            .context("failed to write receive-only monitor output")?;
     }
 
     Ok(())
@@ -1217,7 +1253,7 @@ fn run_flash_monitor(
             .unwrap_or(log_path.as_path());
         let capture_outcome = if command.common.dry_run {
             let dry_run_text =
-                "dry-run: espflash monitor was not executed; no hardware log captured\n";
+                "dry-run: receive-only monitor was not executed; no hardware log captured\n";
             if let Some(paths) = &dual_paths {
                 evidence::write_dual_private_text(&paths.private_log, dry_run_text).map_err(
                     |_| anyhow::anyhow!("dual_evidence=failed reason=private_capture_failed"),
@@ -1227,6 +1263,9 @@ fn run_flash_monitor(
             }
             dry_run_monitor_capture_outcome(command.capture_timeout_seconds)
         } else {
+            let port = command_port(&monitor_command)
+                .context("usb_session=blocked reason=port_unavailable")?;
+            environment.begin_usb_session(UsbOperation::FlashMonitor, &port)?;
             let capture_result = environment
                 .execute_capturing(
                     &monitor_command,
@@ -1324,7 +1363,13 @@ fn run_flash_monitor(
     emit_command("monitor_command", &monitor_command)?;
 
     if !command.common.dry_run {
-        environment.execute(&monitor_command)?;
+        let port = command_port(&monitor_command)
+            .context("usb_session=blocked reason=port_unavailable")?;
+        environment.begin_usb_session(UsbOperation::FlashMonitor, &port)?;
+        let bytes = environment.receive_only(&monitor_command, command.capture_timeout_seconds)?;
+        io::stdout()
+            .write_all(&bytes)
+            .context("failed to write receive-only monitor output")?;
     }
 
     Ok(())
@@ -2012,8 +2057,8 @@ fn prepare_monitor_command(
     ensure_ultra_205(common.board)?;
     let port = resolve_port(common.port.as_deref(), environment)?;
     Ok(CommandSpec::new(
-        "espflash",
-        ["monitor", "--port", port.as_str()],
+        "bitaxe-receive-only",
+        ["observe", "--port", port.as_str()],
     ))
 }
 
@@ -2024,16 +2069,21 @@ fn prepare_evidence_monitor_command(
     ensure_ultra_205(common.board)?;
     let port = resolve_port(common.port.as_deref(), environment)?;
     Ok(CommandSpec::new(
-        "espflash",
-        [
-            "monitor",
-            "--chip",
-            "esp32s3",
-            "--port",
-            port.as_str(),
-            "--non-interactive",
-        ],
+        "bitaxe-receive-only",
+        ["observe", "--port", port.as_str()],
     ))
+}
+
+fn command_with_port(command_spec: &CommandSpec, port: &str) -> Result<Vec<String>> {
+    let mut args = command_spec.args.clone();
+    let Some(port_index) = args.iter().position(|argument| argument == "--port") else {
+        bail!("supervised command is missing --port");
+    };
+    let Some(value) = args.get_mut(port_index.saturating_add(1)) else {
+        bail!("supervised command has an incomplete --port argument");
+    };
+    *value = port.to_owned();
+    Ok(args)
 }
 
 fn monitor_log_has_trusted_boot_markers(log: &str) -> bool {
@@ -3053,23 +3103,6 @@ fn resolve_espflash_executable() -> Result<Utf8PathBuf> {
     Ok(canonical)
 }
 
-fn phase35_stage_for_command(command_spec: &CommandSpec) -> Option<&'static str> {
-    if command_spec.args.first().map(String::as_str) != Some("write-bin") {
-        return None;
-    }
-    if command_spec.args.iter().any(|argument| argument == "0x0") {
-        return Some("factory");
-    }
-    if command_spec
-        .args
-        .iter()
-        .any(|argument| argument == NVS_PARTITION_OFFSET)
-    {
-        return Some("nvs");
-    }
-    None
-}
-
 fn flash_log_connected(log: &str) -> bool {
     ["Connected to device", "Chip type:", "Chip:"]
         .iter()
@@ -3080,18 +3113,6 @@ fn flash_log_device_info_complete(log: &str) -> bool {
     ["Flash size:", "Crystal frequency:", "MAC address:"]
         .iter()
         .any(|marker| log.contains(marker))
-}
-
-fn flash_log_transfer_started(log: &str) -> bool {
-    [
-        "Writing at",
-        "Writing to",
-        "Erasing",
-        "Reading at",
-        "checksum-md5",
-    ]
-    .iter()
-    .any(|marker| log.contains(marker))
 }
 
 fn phase35_probe_checksum_observed(log: &str) -> bool {
@@ -3355,6 +3376,7 @@ mod tests {
             espflash_bin: espflash.clone(),
             espflash_version: "espflash 4.5.0".to_owned(),
             espflash_sha256: sha256_bytes(b"fake espflash"),
+            usb_session: RefCell::new(None),
         };
         let command = Phase35ProbeCommand {
             board: BoardId::Ultra205,
@@ -4607,8 +4629,7 @@ mod tests {
 
         // Assert
         let error = format!("{error:#}");
-        assert!(error.contains("flash_execution=failed reason=admitted_image_child_failed"));
-        assert!(!error.contains("sentinel child failure"));
+        assert!(error.contains("sentinel child failure"));
         let observed = environment.observed_flashes();
         assert_eq!(observed.len(), 1);
         assert!(!error.contains(observed[0].path.as_str()));
@@ -4776,7 +4797,7 @@ mod tests {
     }
 
     #[test]
-    fn evidence_monitor_command_uses_noninteractive_esp32s3_flags() {
+    fn evidence_monitor_command_is_receive_only() {
         // Arrange
         let common = common_args();
         let environment = FakeFlashEnvironment::default();
@@ -4785,22 +4806,16 @@ mod tests {
         let command = prepare_evidence_monitor_command(&common, &environment).expect("command");
 
         // Assert
-        assert_eq!(command.program, "espflash");
+        assert_eq!(command.program, "bitaxe-receive-only");
         assert_eq!(
             command.args,
-            vec![
-                "monitor",
-                "--chip",
-                "esp32s3",
-                "--port",
-                "/dev/cu.usbmodem101",
-                "--non-interactive",
-            ]
+            vec!["observe", "--port", "/dev/cu.usbmodem101"]
         );
+        assert!(!command.display().contains("espflash monitor"));
     }
 
     #[test]
-    fn interactive_monitor_command_remains_interactive() {
+    fn routine_monitor_command_is_receive_only() {
         // Arrange
         let common = common_args();
         let environment = FakeFlashEnvironment::default();
@@ -4811,9 +4826,10 @@ mod tests {
         // Assert
         assert_eq!(
             command.args,
-            vec!["monitor", "--port", "/dev/cu.usbmodem101"]
+            vec!["observe", "--port", "/dev/cu.usbmodem101"]
         );
-        assert!(!command.args.iter().any(|arg| arg == "--non-interactive"));
+        assert_eq!(command.program, "bitaxe-receive-only");
+        assert!(!command.display().contains("reset"));
     }
 
     #[test]
@@ -4936,7 +4952,7 @@ mod tests {
     }
 
     #[test]
-    fn flash_monitor_evidence_uses_noninteractive_capture_command() {
+    fn flash_monitor_evidence_uses_receive_only_capture_command() {
         // Arrange
         let dir = tempdir().expect("tempdir");
         let evidence_dir = dir_path(&dir).join("evidence");
@@ -4950,15 +4966,8 @@ mod tests {
         assert_eq!(
             environment.captured_commands(),
             vec![CommandSpec::new(
-                "espflash",
-                [
-                    "monitor",
-                    "--chip",
-                    "esp32s3",
-                    "--port",
-                    "/dev/cu.usbmodem101",
-                    "--non-interactive",
-                ],
+                "bitaxe-receive-only",
+                ["observe", "--port", "/dev/cu.usbmodem101"],
             )]
         );
     }
@@ -4994,7 +5003,7 @@ mod tests {
         }
         assert_eq!(json["capture_mode"], "noninteractive");
         assert_eq!(json["capture_status"], "completed");
-        assert_eq!(json["capture_timeout_seconds"], 25);
+        assert_eq!(json["capture_timeout_seconds"], 360);
         assert_eq!(json["trusted_output"], true);
         assert_eq!(json["observed_firmware_commit"], "0123456789ab");
         assert_eq!(json["observed_reference_commit"], "abcdef012345");
@@ -5615,6 +5624,47 @@ mod tests {
 
         // Assert
         assert_eq!(result.expect("board"), BoardId::Ultra205);
+    }
+
+    #[test]
+    fn detect_preserves_explicit_port_alias() {
+        // Arrange
+        let args = [
+            "bitaxe-flash",
+            "detect",
+            "board=205",
+            "port=/dev/cu.usbmodem101",
+        ];
+
+        // Act
+        let cli = parse_cli(args).expect("detect command");
+
+        // Assert
+        let CliCommand::Detect(command) = cli.command else {
+            panic!("expected detect command");
+        };
+        assert_eq!(command.board, BoardId::Ultra205);
+        assert_eq!(command.port.as_deref(), Some("/dev/cu.usbmodem101"));
+    }
+
+    #[test]
+    fn monitor_defaults_to_hardware_safe_capture_budget() {
+        // Arrange
+        let args = [
+            "bitaxe-flash",
+            "monitor",
+            "board=205",
+            "port=/dev/cu.usbmodem101",
+        ];
+
+        // Act
+        let cli = parse_cli(args).expect("monitor command");
+
+        // Assert
+        let CliCommand::Monitor(command) = cli.command else {
+            panic!("expected monitor command");
+        };
+        assert_eq!(command.capture_timeout_seconds, 360);
     }
 
     fn common_args() -> CommonArgs {
@@ -6386,6 +6436,10 @@ mod tests {
             Ok(())
         }
 
+        fn begin_usb_session(&self, _operation: UsbOperation, _port: &str) -> Result<()> {
+            Ok(())
+        }
+
         fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
             self.executed_commands
                 .borrow_mut()
@@ -6425,6 +6479,24 @@ mod tests {
             if self.execute_failure {
                 bail!("sentinel child failure");
             }
+            Ok(())
+        }
+
+        fn receive_only(
+            &self,
+            command_spec: &CommandSpec,
+            _timeout_seconds: u64,
+        ) -> Result<Vec<u8>> {
+            self.executed_commands
+                .borrow_mut()
+                .push(command_spec.clone());
+            if self.execute_failure {
+                bail!("sentinel receive-only failure");
+            }
+            Ok(self.log_contents.as_bytes().to_vec())
+        }
+
+        fn finish_usb_session(&self) -> Result<()> {
             Ok(())
         }
 

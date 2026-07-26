@@ -10,6 +10,7 @@ mod macos;
 mod macos;
 mod model;
 mod platform;
+mod usb;
 
 pub use evidence::{validate_private_input, SessionArtifacts};
 pub use fixture::{run_fixture_session, FixtureTranscript, FIXTURE_SCHEMA};
@@ -21,3 +22,8 @@ pub use model::{
     PRIVATE_RESULT_SCHEMA, PUBLIC_PROJECTION_SCHEMA, REQUEST_SCHEMA,
 };
 pub use platform::current_platform;
+pub use usb::{
+    discover_usb_ports, reduce_lifecycle, retry_is_eligible, MonitorOutput, ReflashReady,
+    RetryContext, SupervisedOutput, UsbLifecycleEvent, UsbLifecycleState, UsbOperation, UsbSession,
+    UsbSessionError, UsbTerminalCategory,
+};

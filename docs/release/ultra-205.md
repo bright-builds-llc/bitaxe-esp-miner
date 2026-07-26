@@ -783,3 +783,28 @@ Use `docs/parity/evidence/phase-07-ota-filesystem-release.md` for the Phase 7
 rollup and
 `docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke.md` for the manual
 Ultra 205 OTA/recovery smoke capture.
+
+## Current Durable USB Workflow
+
+Use only the repository entrypoints for ordinary Ultra 205 USB work:
+
+```text
+just detect-ultra205
+just flash board=205 port=<port>
+just monitor port=<port> capture-timeout-seconds=360
+just flash-monitor board=205 port=<port> capture-timeout-seconds=360
+```
+
+These commands share the physical-device lease and process supervisor described
+in `docs/hardware/esp-device-session.md`. `just monitor` is receive-only and
+does not synchronize, reset, write serial data, or issue interactive control
+commands. A command is complete only when it prints `usb_session: ready`.
+`foreign_holder` requires the operator to close the owning application;
+automation does not terminate unproven processes. `transport_absent` means the
+host has no software control channel and is not claimed as automatically
+recoverable.
+
+Do not combine raw `espflash`, terminal programs, browsers using Web Serial, or
+legacy capture scripts with an active repository session. Historical commands
+elsewhere in this guide document earlier evidence and are not the current
+development workflow.

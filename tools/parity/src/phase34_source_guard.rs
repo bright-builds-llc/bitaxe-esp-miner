@@ -426,8 +426,15 @@ fn phase34_package_and_hardware_admission_source_guard() {
         .expect("the admitted bytes must be snapshotted before external effects");
     assert!(image_resolution < snapshot_creation && snapshot_creation < port_resolution);
     assert!(flash_execution.contains("_execution_snapshot"));
+    assert!(flash_execution.contains("environment.begin_usb_session"));
     assert!(flash_execution.contains("environment.execute(&execution_command)"));
-    assert!(flash_execution.contains("admitted_image_child_failed"));
+    let session_admission = flash_execution
+        .find("environment.begin_usb_session")
+        .expect("device session must begin before the effect");
+    let child_execution = flash_execution
+        .find("environment.execute(&execution_command)")
+        .expect("admitted image must execute");
+    assert!(session_admission < child_execution);
     for marker in [
         "NamedTempFile",
         "write_all",
