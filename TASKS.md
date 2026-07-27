@@ -773,10 +773,10 @@ Deterministic share outcomes do not promote parity or release readiness.
 - [x] Confirm the repository is clean at refactor commit
       `e33eec2b4fff4161d5bf0f8c55ec3d02e426b8a1`.
 - [x] Run `just detect-ultra205` and admit exactly one ESP32-S3 Ultra 205.
-- [ ] Build the exact clean-HEAD package and retain its manifest identity.
-- [ ] Flash the admitted factory image and capture at least 360 seconds of
+- [x] Build the exact clean-HEAD package and retain its manifest identity.
+- [x] Flash the admitted factory image and capture at least 360 seconds of
       receive-only runtime output.
-- [ ] Review the redacted evidence for boot, runtime, and cleanup results
+- [x] Review the redacted evidence for boot, runtime, and cleanup results
       without promoting parity or making new hardware claims.
 
 Hardware contract:
@@ -823,10 +823,22 @@ Hardware contract:
   allowance exceeds 420 seconds. Ordinary silence is not failure before the
   full bound.
 
-Verification: In progress.
+Verification: `just detect-ultra205`, the ordered Cargo format, Clippy,
+all-target build, and all-feature test sequence, `just verify-reference`,
+`just package`, and the exact authorized `just flash-monitor` command passed.
+The evidence files are mode 0600 under a mode-0700 ignored local directory.
 
-Completion review: Pending. No credentials, network discovery, direct UART,
-pin manipulation, stress operation, or parity promotion is authorized.
+Completion review: Complete. The exact clean package for source commit
+`3318a9e06d4177afb9f4bd97f32b487eb28e85f0` and reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50` was flashed to the single detected
+board 205. The 360-second receive-only capture ended
+`timed_out_after_trusted_output` with `flash_status: completed`,
+`runtime_attestation_status: trusted`, exact observed commit agreement, and
+`usb_session: ready`. The original boot transcript was not captured, so the
+trusted repeated runtime attestation is the bounded success basis. The
+redacted log contained no panic, abort, or Guru Meditation markers. No retry,
+credentials, network discovery, direct UART, pin manipulation, stress
+operation, or parity promotion occurred.
 
 ## Backlog
 
