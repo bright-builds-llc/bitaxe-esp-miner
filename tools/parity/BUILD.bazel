@@ -55,6 +55,7 @@ rust_binary(
     srcs = [
         "src/api_compare.rs",
         "src/api_compare/openapi.rs",
+        "src/api_compare/openapi/tests.rs",
         "src/api_compare/static_routes.rs",
         "src/api_compare/tests.rs",
         "src/checklist_revision.rs",
@@ -132,6 +133,10 @@ rust_binary(
         "src/phase36_broker/hardware/tests.rs",
         "src/phase36_broker/hardware_process.rs",
         "src/phase36_broker/hardware_process/effect_result.rs",
+        "src/phase36_broker/hardware_process/effect_result/tests.rs",
+        "src/phase36_broker/hardware_process/effect_result/tests/classification.rs",
+        "src/phase36_broker/hardware_process/effect_result/tests/filesystem.rs",
+        "src/phase36_broker/hardware_process/effect_result/tests/mapping.rs",
         "src/phase36_broker/hardware_process/process_boundary.rs",
         "src/phase36_broker/ipc.rs",
         "src/phase36_broker/ledger.rs",

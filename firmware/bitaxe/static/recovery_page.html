@@ -123,7 +123,16 @@
         <h2 id="provenance-title">Firmware provenance</h2>
         <dl>
           <div><dt>Version</dt><dd id="provenance-version">Unavailable</dd></div>
-          <div><dt>Source commit</dt><dd id="provenance-commit">Unavailable</dd></div>
+          <div>
+            <dt>Source commit</dt>
+            <dd>
+              <a
+                id="provenance-commit"
+                target="_blank"
+                rel="noopener noreferrer"
+              >Unavailable</a>
+            </dd>
+          </div>
           <div><dt>Built</dt><dd id="provenance-built">Unavailable</dd></div>
         </dl>
         <a
@@ -154,9 +163,19 @@
       const restartButton = document.getElementById("restart");
       const statusMsg = document.getElementById("status");
       const responseMsg = document.getElementById("response");
+      const commitUrl =
+        "https://github.com/bright-builds-llc/bitaxe-esp-miner/commit/";
 
       async function hydrateProvenance() {
         try {
+          document.getElementById("provenance-version").textContent =
+            "Unavailable";
+          const commit = document.getElementById("provenance-commit");
+          commit.textContent = "Unavailable";
+          commit.removeAttribute("href");
+          document.getElementById("provenance-built").textContent =
+            "Unavailable";
+
           const result = await fetch("/api/system/info", {
             headers: { Accept: "application/json" },
           });
@@ -181,10 +200,10 @@
 
           document.getElementById("provenance-version").textContent =
             payload.semanticVersion;
-          document.getElementById("provenance-commit").textContent =
-            `${payload.sourceCommit.slice(0, 12)}${
-              payload.sourceDirty ? " (dirty)" : ""
-            }`;
+          commit.textContent = `${payload.sourceCommit.slice(0, 12)}${
+            payload.sourceDirty ? " (dirty)" : ""
+          }`;
+          commit.setAttribute("href", `${commitUrl}${payload.sourceCommit}`);
           document.getElementById("provenance-built").textContent =
             payload.buildTimestampUtc;
         } catch {

@@ -902,6 +902,70 @@ redacted log contained no panic, abort, or Guru Meditation markers. No retry,
 credentials, network discovery, direct UART, pin manipulation, stress
 operation, or parity promotion occurred.
 
+### task-fix-provenance-link-and-pure-core-coverage | 2026-07-27 16:30 | Fix provenance link and pure-core coverage
+
+- [x] Link the visible fallback and recovery source commit to the exact public
+      GitHub commit after validating the full hash.
+- [x] Preserve explicit `Unavailable` behavior and safe external-link
+      attributes for missing, malformed, or unavailable provenance.
+- [x] Add focused Stratum runtime, parser, and client-message unit coverage for
+      every branch identified by the Bright Builds audit.
+- [x] Add focused OpenAPI comparison and Phase 36 effect-result unit coverage
+      for every branch identified by the Bright Builds audit.
+- [x] Prove at least 95% line coverage in each of the four audited low-coverage
+      modules and execute the uncovered `Pong` and `SendVersion` branches.
+- [x] Run the full ordered verification sequence and confirm historical
+      evidence, parity statuses, schemas, and public interfaces remain
+      unchanged.
+
+Verification policy:
+
+- This task is software-only. Do not detect, flash, monitor, read credentials,
+  discover devices or network targets, generate evidence, or promote parity
+  claims.
+- Preserve public Rust APIs, firmware endpoints, JSON schemas, CLI arguments,
+  evidence policy, redaction behavior, and hardware safety gates.
+- A source-derived Phase 36 evaluator digest rotation is expected because its
+  inventoried implementation file contains the expanded unit suite. Do not
+  regenerate, rewrite, or promote historical evidence or checklist revisions.
+- The scoped acceptance threshold is at least 95% line coverage for
+  `live_runtime.rs`, `messages/server.rs`, `api_compare/openapi.rs`, and
+  `hardware_process/effect_result.rs`; no permanent global coverage gate is
+  introduced.
+
+Verification:
+
+- The static provenance Bazel test passed for clean, dirty, malformed,
+  unavailable, and throwing fallback and embedded-recovery inputs.
+- `cargo +stable llvm-cov` measured `live_runtime.rs`,
+  `messages/server.rs`, and `messages/client.rs` at 100% line coverage,
+  `api_compare/openapi.rs` at 100%, and
+  `hardware_process/effect_result.rs` at 98.84%.
+- The Stratum crate passed 178 tests, including separate `Pong` and
+  `SendVersion` cases. The focused OpenAPI and effect-result suites each passed
+  12 tests.
+- The ordered `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features` sequence passed.
+- `bun scripts/bright-builds-check.ts all` reported zero findings with exactly
+  eight existing exceptions. `just test` passed all 72 Bazel tests,
+  `just parity` reported `validation_errors: none`, `just verify-reference`
+  reported the pinned reference clean, and `just verify-redaction` passed.
+- The source-derived Phase 36 evaluator identity rotated to
+  `fb45f3578257cb37a4a73572a7ea0643a93e11dae8762966bb71a6b036cb296c`;
+  evaluator inventory and drift tests passed, and no historical evidence,
+  checklist revision, or parity status changed.
+
+Completion review: Complete. Both user-visible provenance surfaces now link a
+validated short commit label to the exact public GitHub commit and fail closed
+to an href-less `Unavailable` state. Focused pure-core suites close every
+audited coverage gap without changing production interfaces or behavior.
+
+Residual risks: Coverage is host-side software evidence only. No firmware
+hardware path, credentials, device, network target, or parity evidence was
+used, and no hardware or parity claim changed.
+
 ## Backlog
 
 ### task-private-first-remaining-evidence-pipelines | 2026-07-20 | Migrate remaining evidence workflows

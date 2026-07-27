@@ -533,3 +533,6 @@ impl LiveStratumRuntime {
         Bm1366JobId::new(self.next_asic_job_id)
     }
 }
+
+#[cfg(test)]
+mod tests;

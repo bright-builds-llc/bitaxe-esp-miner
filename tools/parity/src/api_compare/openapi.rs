@@ -105,3 +105,6 @@ fn openapi_referenced_schemas(openapi_block: &str) -> Vec<String> {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests;

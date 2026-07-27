@@ -2,10 +2,12 @@
   "use strict";
 
   const COMMIT_PATTERN = /^[0-9a-f]{12,40}$/i;
+  const COMMIT_URL =
+    "https://github.com/bright-builds-llc/bitaxe-esp-miner/commit/";
   const TIMESTAMP_PATTERN =
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 
-  function validatedProvenance(payload) {
+  function maybeValidatedProvenance(payload) {
     if (
       !payload ||
       typeof payload.semanticVersion !== "string" ||
@@ -21,11 +23,21 @@
 
     return {
       version: payload.semanticVersion,
-      commit: `${payload.sourceCommit.slice(0, 12)}${
+      commitLabel: `${payload.sourceCommit.slice(0, 12)}${
         payload.sourceDirty ? " (dirty)" : ""
       }`,
+      commitUrl: `${COMMIT_URL}${payload.sourceCommit}`,
       built: payload.buildTimestampUtc,
     };
+  }
+
+  function reset(documentRef) {
+    documentRef.getElementById("provenance-version").textContent =
+      "Unavailable";
+    const commit = documentRef.getElementById("provenance-commit");
+    commit.textContent = "Unavailable";
+    commit.removeAttribute("href");
+    documentRef.getElementById("provenance-built").textContent = "Unavailable";
   }
 
   async function hydrate(options) {
@@ -36,23 +48,25 @@
     }
 
     try {
+      reset(documentRef);
       const response = await fetchRef("/api/system/info", {
         headers: { Accept: "application/json" },
       });
       if (!response.ok) {
         return false;
       }
-      const provenance = validatedProvenance(await response.json());
-      if (!provenance) {
+      const maybeProvenance = maybeValidatedProvenance(await response.json());
+      if (!maybeProvenance) {
         return false;
       }
 
       documentRef.getElementById("provenance-version").textContent =
-        provenance.version;
-      documentRef.getElementById("provenance-commit").textContent =
-        provenance.commit;
+        maybeProvenance.version;
+      const commit = documentRef.getElementById("provenance-commit");
+      commit.textContent = maybeProvenance.commitLabel;
+      commit.setAttribute("href", maybeProvenance.commitUrl);
       documentRef.getElementById("provenance-built").textContent =
-        provenance.built;
+        maybeProvenance.built;
       return true;
     } catch {
       return false;
