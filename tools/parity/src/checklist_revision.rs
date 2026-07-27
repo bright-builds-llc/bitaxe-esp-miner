@@ -9,10 +9,15 @@ use serde::{Deserialize, Serialize};
 use crate::operator_evidence::read_phase36_authoritative_snapshot;
 use crate::phase35_evidence::sha256_hex;
 
-pub(crate) const CURRENT_REVISION_ID: &str = "2026-07-26-source-pointer-refresh";
+pub(crate) const CURRENT_REVISION_ID: &str = "2026-07-27-module-ownership-refactor";
 pub(crate) const CURRENT_REVISION_SPEC: &str =
-    "docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json";
+    "docs/parity/checklist-revisions/2026-07-27-module-ownership-refactor.json";
 pub(crate) const CURRENT_REVISION_ROOT: &str =
+    "docs/parity/evidence/checklist-revisions/2026-07-27-module-ownership-refactor";
+const PREVIOUS_REVISION_ID: &str = "2026-07-26-source-pointer-refresh";
+const PREVIOUS_REVISION_SPEC: &str =
+    "docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json";
+const PREVIOUS_REVISION_ROOT: &str =
     "docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh";
 const ACTIVE_CHECKLIST: &str = "docs/parity/checklist.md";
 const PHASE36_ROOT: &str =
@@ -77,8 +82,7 @@ pub(crate) fn publish_current_revision(
     let spec_document = read(&spec_path, "checklist revision specification")?;
     let spec = parse_spec(&spec_document)?;
     require_current_revision(&spec)?;
-    let predecessor = read_phase36_authoritative_snapshot(workspace, Utf8Path::new(PHASE36_ROOT))
-        .map_err(|error| error.to_string())?;
+    let predecessor = read_predecessor_authority(workspace)?;
     let predecessor_sha256 = sha256_hex(predecessor.as_bytes());
     if predecessor_sha256 != spec.predecessor_sha256 {
         return Err("checklist revision predecessor digest mismatch".to_owned());
@@ -93,7 +97,7 @@ pub(crate) fn publish_current_revision(
     let manifest = RevisionManifest {
         schema_version: MANIFEST_SCHEMA.to_owned(),
         revision_id: spec.revision_id.clone(),
-        predecessor_path: format!("{PHASE36_ROOT}/{SNAPSHOT_FILE}"),
+        predecessor_path: format!("{PREVIOUS_REVISION_ROOT}/{SNAPSHOT_FILE}"),
         predecessor_sha256,
         change_spec_path: CURRENT_REVISION_SPEC.to_owned(),
         change_spec_sha256: sha256_hex(spec_document.as_bytes()),
@@ -118,12 +122,11 @@ pub(crate) fn publish_current_revision(
 }
 
 pub(crate) fn read_authoritative_checklist(workspace: &Utf8Path) -> Result<String, String> {
-    let predecessor = read_phase36_authoritative_snapshot(workspace, Utf8Path::new(PHASE36_ROOT))
-        .map_err(|error| error.to_string())?;
+    let predecessor = read_predecessor_authority(workspace)?;
     let spec_path = workspace.join(CURRENT_REVISION_SPEC);
     let spec_document = read(&spec_path, "checklist revision specification")?;
     let spec = parse_spec(&spec_document)?;
-    require_current_revision(&spec)?;
+    require_revision(&spec, CURRENT_REVISION_ID)?;
     let predecessor_sha256 = sha256_hex(predecessor.as_bytes());
     if predecessor_sha256 != spec.predecessor_sha256 {
         return Err("checklist revision predecessor digest mismatch".to_owned());
@@ -141,7 +144,15 @@ pub(crate) fn read_authoritative_checklist(workspace: &Utf8Path) -> Result<Strin
     )?;
     let manifest: RevisionManifest = serde_json::from_str(&manifest_document)
         .map_err(|error| format!("invalid checklist revision manifest: {error}"))?;
-    validate_manifest(&manifest, &spec, &spec_document, &predecessor, &snapshot)?;
+    validate_manifest(
+        &manifest,
+        &spec,
+        &spec_document,
+        &predecessor,
+        &snapshot,
+        &format!("{PREVIOUS_REVISION_ROOT}/{SNAPSHOT_FILE}"),
+        CURRENT_REVISION_SPEC,
+    )?;
     if snapshot != expected {
         return Err(
             "checklist revision snapshot does not match its change specification".to_owned(),
@@ -182,10 +193,73 @@ fn parse_spec(document: &str) -> Result<RevisionSpec, String> {
 }
 
 fn require_current_revision(spec: &RevisionSpec) -> Result<(), String> {
-    if spec.revision_id != CURRENT_REVISION_ID {
+    require_revision(spec, CURRENT_REVISION_ID)
+}
+
+fn require_revision(spec: &RevisionSpec, expected_revision_id: &str) -> Result<(), String> {
+    if spec.revision_id != expected_revision_id {
         return Err("checklist revision ID does not match the configured authority".to_owned());
     }
     Ok(())
+}
+
+fn read_predecessor_authority(workspace: &Utf8Path) -> Result<String, String> {
+    let phase36 = read_phase36_authoritative_snapshot(workspace, Utf8Path::new(PHASE36_ROOT))
+        .map_err(|error| error.to_string())?;
+    read_revision_authority(
+        workspace,
+        PREVIOUS_REVISION_ID,
+        PREVIOUS_REVISION_SPEC,
+        PREVIOUS_REVISION_ROOT,
+        &format!("{PHASE36_ROOT}/{SNAPSHOT_FILE}"),
+        &phase36,
+    )
+}
+
+fn read_revision_authority(
+    workspace: &Utf8Path,
+    revision_id: &str,
+    spec_path: &str,
+    revision_root: &str,
+    predecessor_path: &str,
+    predecessor: &str,
+) -> Result<String, String> {
+    let spec_document = read(
+        &workspace.join(spec_path),
+        "predecessor checklist revision specification",
+    )?;
+    let spec = parse_spec(&spec_document)?;
+    require_revision(&spec, revision_id)?;
+    if sha256_hex(predecessor.as_bytes()) != spec.predecessor_sha256 {
+        return Err("checklist revision predecessor digest mismatch".to_owned());
+    }
+    let expected = apply_spec(predecessor, &spec)?;
+    let revision_root = workspace.join(revision_root);
+    let snapshot = read(
+        &revision_root.join(SNAPSHOT_FILE),
+        "predecessor checklist revision snapshot",
+    )?;
+    let manifest_document = read(
+        &revision_root.join(MANIFEST_FILE),
+        "predecessor checklist revision manifest",
+    )?;
+    let manifest: RevisionManifest = serde_json::from_str(&manifest_document)
+        .map_err(|error| format!("invalid checklist revision manifest: {error}"))?;
+    validate_manifest(
+        &manifest,
+        &spec,
+        &spec_document,
+        predecessor,
+        &snapshot,
+        predecessor_path,
+        spec_path,
+    )?;
+    if snapshot != expected {
+        return Err(
+            "checklist revision snapshot does not match its change specification".to_owned(),
+        );
+    }
+    Ok(snapshot)
 }
 
 fn apply_spec(predecessor: &str, spec: &RevisionSpec) -> Result<String, String> {
@@ -296,6 +370,8 @@ fn validate_manifest(
     spec_document: &str,
     predecessor: &str,
     snapshot: &str,
+    predecessor_path: &str,
+    change_spec_path: &str,
 ) -> Result<(), String> {
     let expected_rows = spec
         .changes
@@ -304,9 +380,9 @@ fn validate_manifest(
         .collect::<Vec<_>>();
     if manifest.schema_version != MANIFEST_SCHEMA
         || manifest.revision_id != spec.revision_id
-        || manifest.predecessor_path != format!("{PHASE36_ROOT}/{SNAPSHOT_FILE}")
+        || manifest.predecessor_path != predecessor_path
         || manifest.predecessor_sha256 != sha256_hex(predecessor.as_bytes())
-        || manifest.change_spec_path != CURRENT_REVISION_SPEC
+        || manifest.change_spec_path != change_spec_path
         || manifest.change_spec_sha256 != sha256_hex(spec_document.as_bytes())
         || manifest.affected_rows != expected_rows
         || manifest.checklist_sha256 != sha256_hex(snapshot.as_bytes())
@@ -452,7 +528,7 @@ mod tests {
         let manifest = RevisionManifest {
             schema_version: MANIFEST_SCHEMA.to_owned(),
             revision_id: CURRENT_REVISION_ID.to_owned(),
-            predecessor_path: format!("{PHASE36_ROOT}/{SNAPSHOT_FILE}"),
+            predecessor_path: format!("{PREVIOUS_REVISION_ROOT}/{SNAPSHOT_FILE}"),
             predecessor_sha256: sha256_hex(CHECKLIST.as_bytes()),
             change_spec_path: CURRENT_REVISION_SPEC.to_owned(),
             change_spec_sha256: sha256_hex(spec_document.as_bytes()),
@@ -461,8 +537,16 @@ mod tests {
         };
 
         // Act
-        let error = validate_manifest(&manifest, &spec, &spec_document, CHECKLIST, &snapshot)
-            .expect_err("digest drift must fail");
+        let error = validate_manifest(
+            &manifest,
+            &spec,
+            &spec_document,
+            CHECKLIST,
+            &snapshot,
+            &format!("{PREVIOUS_REVISION_ROOT}/{SNAPSHOT_FILE}"),
+            CURRENT_REVISION_SPEC,
+        )
+        .expect_err("digest drift must fail");
 
         // Assert
         assert!(error.contains("binding mismatch"));

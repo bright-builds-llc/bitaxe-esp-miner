@@ -66,6 +66,8 @@ filegroup(
         "build.rs",
         "src/boot_evidence.rs",
         "src/http_api.rs",
+        "src/http_api/handlers.rs",
+        "src/http_api/websocket.rs",
         "src/log_buffer.rs",
         "src/main.rs",
         "src/operator_snapshot_retention.rs",
@@ -80,7 +82,7 @@ filegroup(
 
 filegroup(
     name = "phase35_websocket_sources",
-    srcs = ["src/http_api.rs"],
+    srcs = ["src/http_api/websocket.rs"],
     visibility = ["//scripts:__pkg__"],
 )
 
@@ -157,7 +159,13 @@ genrule(
     name = "firmware_build",
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by
     # //scripts:build_firmware.
-    srcs = glob(["src/**/*.rs"]) + [
+    srcs = glob(
+        ["src/**/*.rs"],
+        exclude = [
+            "src/http_api.rs",
+            "src/http_api/*.rs",
+        ],
+    ) + [
         ":build_identity_sdkconfig_defaults",
         ":build_provenance_inputs",
         ":build_provenance_stamp",
@@ -166,6 +174,14 @@ genrule(
         "build.rs",
         "partitions-ultra205.csv",
         "sdkconfig.defaults",
+        "src/http_api.rs",
+        "src/http_api/access.rs",
+        "src/http_api/deferred_effects.rs",
+        "src/http_api/handlers.rs",
+        "src/http_api/response.rs",
+        "src/http_api/settings.rs",
+        "src/http_api/updates.rs",
+        "src/http_api/websocket.rs",
     ] + glob(["static/**"]),
     outs = [
         "bitaxe-firmware-bootloader.bin",

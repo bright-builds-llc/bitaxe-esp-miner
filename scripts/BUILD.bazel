@@ -36,11 +36,15 @@ sh_test(
     srcs = ["check-flash-supervisor.sh"],
     args = [
         "$(location //:Justfile)",
-        "$(location //tools/flash:flash_supervisor_contract_source)",
+        "$(location //tools/flash:flash_supervisor_environment_source)",
+        "$(location //tools/flash:flash_supervisor_monitor_source)",
+        "$(location //tools/flash:flash_supervisor_commands_source)",
     ],
     data = [
         "//:Justfile",
-        "//tools/flash:flash_supervisor_contract_source",
+        "//tools/flash:flash_supervisor_commands_source",
+        "//tools/flash:flash_supervisor_environment_source",
+        "//tools/flash:flash_supervisor_monitor_source",
     ],
 )
 
@@ -804,8 +808,11 @@ sh_test(
     data = [
         "//:docs/parity/checklist.md",
         "//:docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json",
+        "//:docs/parity/checklist-revisions/2026-07-27-module-ownership-refactor.json",
         "//:docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh/checklist.md",
         "//:docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh/manifest.json",
+        "//:docs/parity/evidence/checklist-revisions/2026-07-27-module-ownership-refactor/checklist.md",
+        "//:docs/parity/evidence/checklist-revisions/2026-07-27-module-ownership-refactor/manifest.json",
         "//:docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md",
         "//:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/.phase35-generation-manifest.json",
         "//:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/admitted.json",
@@ -831,7 +838,7 @@ sh_test(
         "$(location //tools/parity:fixtures/phase36/envelope-only.json)",
         "$(location //tools/parity:src/phase36_evidence.rs)",
         "$(location //tools/parity:src/phase36_evidence/contract.rs)",
-        "$(location //tools/parity:src/main.rs)",
+        "$(location //tools/parity:src/commands.rs)",
         "$(location //tools/parity:fixtures/phase36/independent-effects-eligible.json)",
         "$(location //tools/parity:src/phase36_evidence/effects.rs)",
         "$(location //tools/parity:src/phase36_offline.rs)",
@@ -844,7 +851,7 @@ sh_test(
     data = [
         "//tools/parity:fixtures/phase36/envelope-only.json",
         "//tools/parity:report",
-        "//tools/parity:src/main.rs",
+        "//tools/parity:src/commands.rs",
         "//tools/parity:src/phase36_evidence.rs",
         "//tools/parity:src/phase36_evidence/contract.rs",
         "//tools/parity:fixtures/phase36/independent-effects-eligible.json",

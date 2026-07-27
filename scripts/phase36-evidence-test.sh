@@ -5,7 +5,7 @@ readonly report_binary="${1:?missing parity report binary}"
 readonly envelope_only_fixture="${2:?missing envelope-only Phase 36 fixture}"
 readonly phase36_module="${3:?missing Phase 36 module source}"
 readonly phase36_contract="${4:?missing Phase 36 contract source}"
-readonly parity_main="${5:?missing parity CLI source}"
+readonly parity_commands="${5:?missing parity command adapter source}"
 readonly effects_fixture="${6:?missing independent effects fixture}"
 readonly effects_module="${7:?missing independent effects module source}"
 readonly offline_module="${8:?missing offline command source}"
@@ -157,17 +157,17 @@ done
 assert_absent_literal "$offline_output" "$offline_workspace"
 assert_absent_literal "$offline_output" "$protected_root"
 
-sed -n '/^fn run_classify_phase36_evidence_command(/,/^}/p' "$parity_main" \
+sed -n '/^pub(crate) fn run_classify_phase36_evidence_command(/,/^}/p' "$parity_commands" \
 	>"$command_block"
 chmod 600 "$command_block"
 [[ -s "$command_block" ]] ||
 	fail_test "Phase 36 CLI command block was not found"
-sed -n '/^fn run_classify_phase36_effects_command(/,/^}/p' "$parity_main" \
+sed -n '/^pub(crate) fn run_classify_phase36_effects_command(/,/^}/p' "$parity_commands" \
 	>"$effects_command_block"
 chmod 600 "$effects_command_block"
 [[ -s "$effects_command_block" ]] ||
 	fail_test "Phase 36 effect CLI command block was not found"
-sed -n '/^fn run_reevaluate_phase36_attempt31_command(/,/^}/p' "$parity_main" \
+sed -n '/^pub(crate) fn run_reevaluate_phase36_attempt31_command(/,/^}/p' "$parity_commands" \
 	>"$offline_command_block"
 chmod 600 "$offline_command_block"
 [[ -s "$offline_command_block" ]] ||

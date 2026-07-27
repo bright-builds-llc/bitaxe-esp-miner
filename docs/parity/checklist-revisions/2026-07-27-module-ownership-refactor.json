@@ -1,0 +1,37 @@
+{
+  "schema_version": "parity-checklist-documentation-revision-v1",
+  "revision_id": "2026-07-27-module-ownership-refactor",
+  "predecessor_sha256": "1f8eb1423c404c9084e113c7a5689e2884d3c9377d84a4aa9c48e831d57af95b",
+  "changes": [
+    {
+      "row_id": "CFG-004",
+      "before_rust_owned_target": "`crates/bitaxe-config/src/nvs.rs`, `crates/bitaxe-config/src/persistence.rs`",
+      "after_rust_owned_target": "`crates/bitaxe-config/src/nvs.rs`, `crates/bitaxe-config/src/nvs/schema.rs`, `crates/bitaxe-config/src/nvs/loading.rs`, `crates/bitaxe-config/src/nvs/migration.rs`, `crates/bitaxe-config/src/persistence.rs`",
+      "after_notes": null
+    },
+    {
+      "row_id": "OTA-001",
+      "before_rust_owned_target": "`crates/bitaxe-api/src/update_plan.rs`, `firmware/bitaxe/src/ota_update.rs`, `firmware/bitaxe/src/http_api.rs`",
+      "after_rust_owned_target": "`crates/bitaxe-api/src/update_plan.rs`, `firmware/bitaxe/src/ota_update.rs`, `firmware/bitaxe/src/http_api/updates.rs`",
+      "after_notes": null
+    },
+    {
+      "row_id": "OTA-002",
+      "before_rust_owned_target": "`crates/bitaxe-api/src/update_plan.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/http_api.rs`, `docs/release/ultra-205.md`",
+      "after_rust_owned_target": "`crates/bitaxe-api/src/update_plan.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/http_api/updates.rs`, `docs/release/ultra-205.md`",
+      "after_notes": null
+    },
+    {
+      "row_id": "REL-003",
+      "before_rust_owned_target": "`MODULE.bazel`, `firmware/bitaxe/BUILD.bazel`, `tools/xtask/src/package_manifest.rs`, `tools/flash/src/main.rs`, `tools/parity`, `docs/release/ultra-205.md`",
+      "after_rust_owned_target": "`MODULE.bazel`, `firmware/bitaxe/BUILD.bazel`, `tools/xtask/src/package_manifest.rs`, `tools/flash/src/commands/flash.rs`, `tools/flash/src/package.rs`, `tools/parity`, `docs/release/ultra-205.md`",
+      "after_notes": null
+    },
+    {
+      "row_id": "EVD-08",
+      "before_rust_owned_target": "`docs/parity/evidence/phase-26-telemetry-and-parity-closure/summary.md`, `tools/parity/src/main.rs`",
+      "after_rust_owned_target": "`docs/parity/evidence/phase-26-telemetry-and-parity-closure/summary.md`, `tools/parity/src/report/validation/phase26.rs`",
+      "after_notes": null
+    }
+  ]
+}

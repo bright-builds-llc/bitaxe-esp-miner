@@ -3,27 +3,69 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 filegroup(
     name = "phase34_identity_admission_sources",
     srcs = [
+        "src/commands/flash.rs",
         "src/esp32s3_image.rs",
         "src/evidence.rs",
-        "src/main.rs",
+        "src/model.rs",
+        "src/package.rs",
         "src/package_admission.rs",
+        "src/tests/admission_layout.rs",
+        "src/tests/fake_environment.rs",
     ],
     visibility = ["//visibility:public"],
 )
 
 filegroup(
-    name = "flash_supervisor_contract_source",
-    srcs = ["src/main.rs"],
+    name = "flash_supervisor_environment_source",
+    srcs = ["src/environment.rs"],
+    visibility = ["//scripts:__pkg__"],
+)
+
+filegroup(
+    name = "flash_supervisor_monitor_source",
+    srcs = ["src/monitor.rs"],
+    visibility = ["//scripts:__pkg__"],
+)
+
+filegroup(
+    name = "flash_supervisor_commands_source",
+    srcs = ["src/commands/flash.rs"],
     visibility = ["//scripts:__pkg__"],
 )
 
 rust_binary(
     name = "flash",
     srcs = [
+        "src/cli.rs",
+        "src/commands.rs",
+        "src/commands/finalize.rs",
+        "src/commands/flash.rs",
+        "src/commands/phase35_probe.rs",
+        "src/environment.rs",
         "src/esp32s3_image.rs",
         "src/evidence.rs",
+        "src/evidence_record.rs",
         "src/main.rs",
+        "src/model.rs",
+        "src/monitor.rs",
+        "src/output.rs",
+        "src/package.rs",
         "src/package_admission.rs",
+        "src/redaction.rs",
+        "src/support.rs",
+        "src/tests.rs",
+        "src/tests/admission.rs",
+        "src/tests/admission_layout.rs",
+        "src/tests/capture.rs",
+        "src/tests/cli.rs",
+        "src/tests/evidence.rs",
+        "src/tests/fake_environment.rs",
+        "src/tests/fixtures.rs",
+        "src/tests/monitor.rs",
+        "src/tests/phase35.rs",
+        "src/tests/redaction.rs",
+        "src/tests/workflow.rs",
+        "src/wifi.rs",
     ],
     crate_name = "bitaxe_flash",
     edition = "2021",

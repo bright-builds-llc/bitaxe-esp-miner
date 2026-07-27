@@ -833,3 +833,40 @@ boundaries in `AGENTS.md`.
   contract under the gate above.
 - Administrative closure, software verification, or task completion alone is
   never hardware or parity evidence.
+
+### task-refactor-oversized-active-modules | 2026-07-27 12:00 | Refactor audit item 4
+
+- [x] Split the flash CLI into responsibility-aligned modules while preserving
+      its command, evidence, supervision, and redaction contracts.
+- [x] Split the parity CLI into command, environment, checklist, rendering, and
+      validation modules without changing report or promotion behavior.
+- [x] Split the NVS model into typed schema, migration, loading, and test
+      modules while preserving its public exports and exact schema order.
+- [x] Split the firmware HTTP adapter into route, access, response, deferred
+      effect, and WebSocket modules without changing its public route behavior.
+- [x] Update Bazel ownership and source guards without weakening their
+      supervision, ordering, or evidence assertions.
+- [x] Publish a documentation-only hash-bound checklist successor for CFG-004,
+      OTA-001, OTA-002, REL-003, and EVD-08 without changing status or evidence.
+- [x] Verify focused suites, the required Rust sequence, firmware packaging,
+      production-session, repository tests, parity, reference integrity,
+      redaction, source sizes, historical evidence digests, and the final diff.
+
+Verification policy:
+
+- This is structure-only software work. Do not detect, flash, monitor, discover,
+  read credentials, exercise hardware, or promote parity.
+- Treat roughly 628 file lines and 161 function lines as refactor triggers, not
+  hard caps. Record any deliberate exception in this block.
+
+Completion review: The four entrypoints are now 106, 222, 24, and 142 lines,
+and every newly extracted module is below 628 lines. The extracted production
+functions are below 161 lines. Focused Bazel contracts, all 72 repository test
+targets, the required Cargo format/Clippy/build/test sequence, firmware package,
+production-session verification, parity, reference integrity, and redaction
+all pass. The new five-row checklist authority is chained to the prior
+17-row documentation revision; Phase 36 artifact digests remain unchanged.
+
+Residual risks: Smaller pre-existing outliers outside the four-module scope
+remain candidates for later bounded refactors. No hardware was exercised, and
+no hardware or parity classification was promoted.

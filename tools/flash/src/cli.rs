@@ -1,0 +1,190 @@
+use crate::*;
+
+#[derive(Debug, Parser)]
+#[command(name = "bitaxe-flash")]
+#[command(about = "Safe Bitaxe Ultra 205 flash and monitor workflow.")]
+pub(crate) struct Cli {
+    #[command(subcommand)]
+    pub(crate) command: CliCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum CliCommand {
+    Detect(DetectCommand),
+    Flash(FlashCommand),
+    Monitor(MonitorCommand),
+    #[command(name = "flash-monitor")]
+    FlashMonitor(FlashMonitorCommand),
+    #[command(name = "finalize-evidence")]
+    FinalizeEvidence(FinalizeEvidenceCommand),
+    #[command(name = "phase35-probe")]
+    Phase35Probe(Phase35ProbeCommand),
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct DetectCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+
+    #[arg(long)]
+    pub(crate) port: Option<String>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub(crate) struct CommonArgs {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+
+    #[arg(long)]
+    pub(crate) port: Option<String>,
+
+    #[arg(long)]
+    pub(crate) dry_run: bool,
+
+    #[arg(long = "redact-evidence")]
+    pub(crate) redact_evidence: bool,
+
+    #[arg(long = "evidence-mode", value_enum, conflicts_with = "redact_evidence")]
+    pub(crate) evidence_mode: Option<EvidenceMode>,
+
+    #[arg(long = "evidence-dir", value_parser = parse_utf8_path)]
+    pub(crate) evidence_dir: Option<Utf8PathBuf>,
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct FlashCommand {
+    #[command(flatten)]
+    pub(crate) common: CommonArgs,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) image: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) manifest: Option<Utf8PathBuf>,
+
+    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
+    pub(crate) wifi_credentials: Option<Utf8PathBuf>,
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct MonitorCommand {
+    #[command(flatten)]
+    pub(crate) common: CommonArgs,
+
+    #[arg(long = "capture-timeout-seconds", default_value_t = DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS)]
+    pub(crate) capture_timeout_seconds: u64,
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct FlashMonitorCommand {
+    #[command(flatten)]
+    pub(crate) common: CommonArgs,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) image: Option<Utf8PathBuf>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) manifest: Option<Utf8PathBuf>,
+
+    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
+    pub(crate) wifi_credentials: Option<Utf8PathBuf>,
+
+    #[arg(long = "capture-timeout-seconds", default_value_t = DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS)]
+    pub(crate) capture_timeout_seconds: u64,
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct FinalizeEvidenceCommand {
+    #[arg(long = "evidence-dir", value_parser = parse_utf8_path)]
+    pub(crate) evidence_dir: Utf8PathBuf,
+
+    #[arg(long = "expected-private-sha256", value_parser = parse_sha256)]
+    pub(crate) expected_private_sha256: String,
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct Phase35ProbeCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+
+    #[arg(long)]
+    pub(crate) port: String,
+
+    #[arg(long = "stage-root", value_parser = parse_utf8_path)]
+    pub(crate) stage_root: Utf8PathBuf,
+
+    #[arg(long = "timeout-seconds", default_value_t = 30)]
+    pub(crate) timeout_seconds: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct Phase36PreEffectResult<'a> {
+    pub(crate) schema_version: &'static str,
+    pub(crate) operation: &'a str,
+    pub(crate) status: &'static str,
+    pub(crate) failure: &'static str,
+    pub(crate) package_identity_digest: &'a str,
+    pub(crate) factory_image_digest: &'a str,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum BoardId {
+    Ultra205,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum EvidenceRedactionMode {
+    DeveloperRaw,
+    CommitRedacted,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub(crate) enum EvidenceMode {
+    Dual,
+}
+
+impl EvidenceRedactionMode {
+    pub(crate) fn from_common(common: &CommonArgs) -> Self {
+        if common.redact_evidence {
+            return Self::CommitRedacted;
+        }
+
+        Self::DeveloperRaw
+    }
+
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::DeveloperRaw => "developer-raw",
+            Self::CommitRedacted => "commit-redacted",
+        }
+    }
+
+    pub(crate) fn commit_ready(self) -> bool {
+        matches!(self, Self::CommitRedacted)
+    }
+}
+
+impl FromStr for BoardId {
+    type Err = String;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        match value {
+            "205" => Ok(Self::Ultra205),
+            "601" => Err(
+                "board 601 is deferred after the Ultra 205 pivot; Phase 1 supports board=205 only"
+                    .to_owned(),
+            ),
+            other => Err(format!(
+                "unsupported board {other}; Phase 1 supports board=205 only"
+            )),
+        }
+    }
+}
+
+impl fmt::Display for BoardId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Ultra205 => formatter.write_str("205"),
+        }
+    }
+}

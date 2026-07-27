@@ -2,7 +2,9 @@ const BUILD_SCRIPT_SOURCE: &str = include_str!("../../../firmware/bitaxe/build.r
 const MAIN_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/main.rs");
 const RUNTIME_SNAPSHOT_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_snapshot.rs");
-const HTTP_API_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/http_api.rs");
+const HTTP_HANDLER_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/http_api/handlers.rs");
+const HTTP_WEBSOCKET_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/http_api/websocket.rs");
 const SNAPSHOT_PUBLICATION_SOURCE: &str =
     include_str!("../../../crates/bitaxe-api/src/operator_snapshot_publication.rs");
 const SNAPSHOT_EVIDENCE_SOURCE: &str = include_str!("operator_snapshot_evidence.rs");
@@ -23,7 +25,12 @@ const BUILD_IDENTITY_SOURCE: &str =
     include_str!("../../../crates/bitaxe-api/src/build_identity.rs");
 const XTASK_SOURCE: &str = include_str!("../../xtask/src/main.rs");
 const PACKAGE_MANIFEST_SOURCE: &str = include_str!("../../xtask/src/package_manifest.rs");
-const FLASH_SOURCE: &str = include_str!("../../flash/src/main.rs");
+const FLASH_EXECUTION_SOURCE: &str = include_str!("../../flash/src/commands/flash.rs");
+const FLASH_MODEL_SOURCE: &str = include_str!("../../flash/src/model.rs");
+const FLASH_PACKAGE_SOURCE: &str = include_str!("../../flash/src/package.rs");
+const FLASH_ADMISSION_TEST_SOURCE: &str = include_str!("../../flash/src/tests/admission_layout.rs");
+const FLASH_FAKE_ENVIRONMENT_SOURCE: &str =
+    include_str!("../../flash/src/tests/fake_environment.rs");
 const FLASH_ESP32S3_IMAGE_SOURCE: &str = include_str!("../../flash/src/esp32s3_image.rs");
 const FLASH_PACKAGE_ADMISSION_SOURCE: &str = include_str!("../../flash/src/package_admission.rs");
 const PACKAGE_SCRIPT_SOURCE: &str = include_str!("../../../scripts/package-firmware.sh");
@@ -310,17 +317,17 @@ fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
         "fn collect_operator_snapshot_candidate",
     );
     let system_info = source_between(
-        HTTP_API_SOURCE,
+        HTTP_HANDLER_SOURCE,
         "fn handle_system_info",
-        "fn handle_settings_patch",
+        "fn handle_logs_download",
     );
     let live_cadence = source_between(
-        HTTP_API_SOURCE,
+        HTTP_WEBSOCKET_SOURCE,
         "fn broadcast_live_telemetry_cadence",
         "fn broadcast_raw_log_chunks",
     );
     let live_connect = source_between(
-        HTTP_API_SOURCE,
+        HTTP_WEBSOCKET_SOURCE,
         "fn send_websocket_connect_frames",
         "fn send_websocket_text_frame(",
     );
@@ -367,7 +374,7 @@ fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
     assert!(live_connect.contains("publish_projected_live_telemetry_payload"));
     assert!(live_connect.contains("websocket_api::live_connect_frame(current)"));
     assert!(live_connect.contains("send_websocket_text_frame(request, &body)"));
-    assert!(HTTP_API_SOURCE.contains("send_websocket_text_frame_async(server, lease, body)"));
+    assert!(HTTP_WEBSOCKET_SOURCE.contains("send_websocket_text_frame_async(server, lease, body)"));
     assert!(!RUNTIME_SNAPSHOT_SOURCE.contains("pub fn projected_system_info"));
     assert!(!RUNTIME_SNAPSHOT_SOURCE.contains("pub fn projected_live_telemetry_payload"));
 
@@ -382,20 +389,20 @@ fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
 fn phase34_package_and_hardware_admission_source_guard() {
     // Arrange
     let flash_preparation = source_between(
-        FLASH_SOURCE,
+        FLASH_PACKAGE_SOURCE,
         "fn prepare_flash",
         "fn flash_command_for_admitted_image",
     );
-    let flash_execution = source_between(FLASH_SOURCE, "fn run_flash", "fn run_monitor");
+    let flash_execution = source_between(FLASH_EXECUTION_SOURCE, "fn run_flash", "fn run_monitor");
     let snapshot_materialization = source_between(
-        FLASH_SOURCE,
+        FLASH_MODEL_SOURCE,
         "impl AdmittedExecutionSnapshot",
-        "#[derive(Debug)]\nstruct NvsSeedOutcome",
+        "pub(crate) struct NvsSeedOutcome",
     );
     let admitted_command_builder = source_between(
-        FLASH_SOURCE,
+        FLASH_PACKAGE_SOURCE,
         "fn flash_command_for_admitted_image",
-        "fn prepare_wifi_nvs_seed",
+        "fn resolve_flash_image",
     );
     let manifest_builder = source_between(
         PACKAGE_MANIFEST_SOURCE,
@@ -455,12 +462,19 @@ fn phase34_package_and_hardware_admission_source_guard() {
         "struct AdmittedFactoryImage",
         "enum AdmittedFlashImage",
         "struct AdmittedExecutionSnapshot",
-        "explicit_image_not_admitted_factory",
         "<admitted-factory-snapshot>",
+    ] {
+        assert!(
+            FLASH_MODEL_SOURCE.contains(marker) || FLASH_PACKAGE_SOURCE.contains(marker),
+            "missing exact admitted-image marker {marker}"
+        );
+    }
+    for marker in [
+        "explicit_image_not_admitted_factory",
         "read_validated_artifact",
     ] {
         assert!(
-            FLASH_SOURCE.contains(marker),
+            FLASH_PACKAGE_SOURCE.contains(marker),
             "missing exact admitted-image marker {marker}"
         );
     }
@@ -471,7 +485,9 @@ fn phase34_package_and_hardware_admission_source_guard() {
         "environment.read_bytes(&factory_path)",
     ] {
         assert!(
-            !FLASH_SOURCE.contains(forbidden),
+            !FLASH_PACKAGE_SOURCE.contains(forbidden)
+                && !FLASH_EXECUTION_SOURCE.contains(forbidden)
+                && !FLASH_MODEL_SOURCE.contains(forbidden),
             "forbidden admission bypass remains: {forbidden}"
         );
     }
@@ -481,7 +497,7 @@ fn phase34_package_and_hardware_admission_source_guard() {
         "package_workspace_identity_mismatch",
     ] {
         assert!(
-            FLASH_SOURCE.contains(marker),
+            FLASH_PACKAGE_SOURCE.contains(marker),
             "missing admission gate {marker}"
         );
     }
@@ -557,7 +573,7 @@ fn phase34_package_and_hardware_admission_source_guard() {
         "fn validate_descriptor(\n    image: &[u8],\n    layout: &ValidatedSegmentLayout,"
     ));
     let identity_admission = source_between(
-        FLASH_SOURCE,
+        FLASH_PACKAGE_SOURCE,
         "fn validate_identity_admission",
         "fn require_artifact",
     );
@@ -582,6 +598,13 @@ fn phase34_package_and_hardware_admission_source_guard() {
         "identity_admission_rejects_all_layout_classes_in_parsed_dry_run_before_effects",
         "identity_admission_rejects_all_layout_classes_in_parsed_non_dry_run_before_effects",
         "assert_parsed_layout_rejected_before_effects",
+    ] {
+        assert!(
+            FLASH_ADMISSION_TEST_SOURCE.contains(marker),
+            "missing parsed pre-effect layout marker {marker}"
+        );
+    }
+    for marker in [
         "list_ports_calls",
         "read_string_paths",
         "generated_nvs_partitions",
@@ -591,12 +614,12 @@ fn phase34_package_and_hardware_admission_source_guard() {
         "observed_flashes",
     ] {
         assert!(
-            FLASH_SOURCE.contains(marker),
+            FLASH_FAKE_ENVIRONMENT_SOURCE.contains(marker),
             "missing parsed pre-effect layout marker {marker}"
         );
     }
-    assert!(!FLASH_SOURCE.contains("contains_bytes(&ota_bytes"));
-    assert!(!FLASH_SOURCE.contains("contains_bytes(&factory_bytes"));
+    assert!(!FLASH_PACKAGE_SOURCE.contains("contains_bytes(&ota_bytes"));
+    assert!(!FLASH_PACKAGE_SOURCE.contains("contains_bytes(&factory_bytes"));
     assert!(PACKAGE_SCRIPT_SOURCE.contains("esptool\" image_info --version 2"));
     assert!(PACKAGE_SCRIPT_SOURCE.contains("--elf-sha256-offset"));
     assert!(PACKAGE_SCRIPT_SOURCE.contains("generated_partition_table"));

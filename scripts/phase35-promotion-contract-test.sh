@@ -29,8 +29,12 @@ readonly phase36_verdict="${phase36_generation}/verdict.json"
 readonly phase36_matrix="${phase36_generation}/decision-matrix.json"
 readonly phase36_projection="${phase36_generation}/typed-fact-projection.json"
 readonly phase36_checklist="${phase36_generation}/checklist.md"
-readonly checklist_revision_spec="${workspace_root}/docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json"
-readonly checklist_revision_root="${workspace_root}/docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh"
+readonly predecessor_revision_spec="${workspace_root}/docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json"
+readonly predecessor_revision_root="${workspace_root}/docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh"
+readonly predecessor_revision_manifest="${predecessor_revision_root}/manifest.json"
+readonly predecessor_revision_snapshot="${predecessor_revision_root}/checklist.md"
+readonly checklist_revision_spec="${workspace_root}/docs/parity/checklist-revisions/2026-07-27-module-ownership-refactor.json"
+readonly checklist_revision_root="${workspace_root}/docs/parity/evidence/checklist-revisions/2026-07-27-module-ownership-refactor"
 readonly checklist_revision_manifest="${checklist_revision_root}/manifest.json"
 readonly checklist_revision_snapshot="${checklist_revision_root}/checklist.md"
 
@@ -55,6 +59,9 @@ for required_path in \
 	"$phase36_matrix" \
 	"$phase36_projection" \
 	"$phase36_checklist" \
+	"$predecessor_revision_spec" \
+	"$predecessor_revision_manifest" \
+	"$predecessor_revision_snapshot" \
 	"$checklist_revision_spec" \
 	"$checklist_revision_manifest" \
 	"$checklist_revision_snapshot"; do
@@ -210,22 +217,52 @@ for correction in \
 	"$phase36_matrix" >/dev/null || fail successor-exact-correction
 done
 
+[[ "$(jq -er '.schema_version' "$predecessor_revision_spec")" == "parity-checklist-documentation-revision-v1" ]] ||
+	fail predecessor-documentation-revision-spec-schema
+[[ "$(jq -er '.schema_version' "$predecessor_revision_manifest")" == "parity-checklist-documentation-manifest-v1" ]] ||
+	fail predecessor-documentation-revision-manifest-schema
+[[ "$(jq -er '.revision_id' "$predecessor_revision_manifest")" == "$(jq -er '.revision_id' "$predecessor_revision_spec")" ]] ||
+	fail predecessor-documentation-revision-id
+[[ "$(jq -er '.predecessor_sha256' "$predecessor_revision_manifest")" == "$(sha256_file "$phase36_checklist")" ]] ||
+	fail predecessor-documentation-revision-predecessor
+[[ "$(jq -er '.predecessor_sha256' "$predecessor_revision_spec")" == "$(sha256_file "$phase36_checklist")" ]] ||
+	fail predecessor-documentation-revision-spec-predecessor
+[[ "$(jq -er '.change_spec_sha256' "$predecessor_revision_manifest")" == "$(sha256_file "$predecessor_revision_spec")" ]] ||
+	fail predecessor-documentation-revision-spec-digest
+[[ "$(jq -er '.checklist_sha256' "$predecessor_revision_manifest")" == "$(sha256_file "$predecessor_revision_snapshot")" ]] ||
+	fail predecessor-documentation-revision-checklist-digest
+[[ "$(jq -er '.affected_rows | length' "$predecessor_revision_manifest")" -eq 17 ]] ||
+	fail predecessor-documentation-revision-row-count
+
 [[ "$(jq -er '.schema_version' "$checklist_revision_spec")" == "parity-checklist-documentation-revision-v1" ]] ||
 	fail documentation-revision-spec-schema
 [[ "$(jq -er '.schema_version' "$checklist_revision_manifest")" == "parity-checklist-documentation-manifest-v1" ]] ||
 	fail documentation-revision-manifest-schema
 [[ "$(jq -er '.revision_id' "$checklist_revision_manifest")" == "$(jq -er '.revision_id' "$checklist_revision_spec")" ]] ||
 	fail documentation-revision-id
-[[ "$(jq -er '.predecessor_sha256' "$checklist_revision_manifest")" == "$(sha256_file "$phase36_checklist")" ]] ||
+[[ "$(jq -er '.predecessor_sha256' "$checklist_revision_manifest")" == "$(sha256_file "$predecessor_revision_snapshot")" ]] ||
 	fail documentation-revision-predecessor
-[[ "$(jq -er '.predecessor_sha256' "$checklist_revision_spec")" == "$(sha256_file "$phase36_checklist")" ]] ||
+[[ "$(jq -er '.predecessor_sha256' "$checklist_revision_spec")" == "$(sha256_file "$predecessor_revision_snapshot")" ]] ||
 	fail documentation-revision-spec-predecessor
 [[ "$(jq -er '.change_spec_sha256' "$checklist_revision_manifest")" == "$(sha256_file "$checklist_revision_spec")" ]] ||
 	fail documentation-revision-spec-digest
 [[ "$(jq -er '.checklist_sha256' "$checklist_revision_manifest")" == "$(sha256_file "$checklist_revision_snapshot")" ]] ||
 	fail documentation-revision-checklist-digest
-[[ "$(jq -er '.affected_rows | length' "$checklist_revision_manifest")" -eq 17 ]] ||
+[[ "$(jq -er '.affected_rows | length' "$checklist_revision_manifest")" -eq 5 ]] ||
 	fail documentation-revision-row-count
+jq -e \
+	'.affected_rows == ["CFG-004", "OTA-001", "OTA-002", "REL-003", "EVD-08"]' \
+	"$checklist_revision_manifest" >/dev/null ||
+	fail documentation-revision-row-set
+for target in \
+	'crates/bitaxe-config/src/nvs/schema.rs' \
+	'firmware/bitaxe/src/http_api/updates.rs' \
+	'tools/flash/src/commands/flash.rs' \
+	'tools/flash/src/package.rs' \
+	'tools/parity/src/report/validation/phase26.rs'; do
+	rg -q -F "$target" "$checklist_revision_snapshot" ||
+		fail documentation-revision-target
+done
 cmp -s "$checklist_revision_snapshot" "$checklist_path" ||
 	fail documentation-revision-root-drift
 

@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-[[ $# -eq 2 ]] || {
-	printf 'usage: %s JUSTFILE FLASH_MAIN\n' "$0" >&2
+[[ $# -eq 4 ]] || {
+	printf 'usage: %s JUSTFILE FLASH_ENVIRONMENT FLASH_MONITOR FLASH_COMMANDS\n' "$0" >&2
 	exit 2
 }
 
 justfile="$1"
-flash_main="$2"
+flash_environment="$2"
+flash_monitor="$3"
+flash_commands="$4"
 
 for contract in \
 	'bazel run //tools/flash:flash -- detect' \
@@ -20,33 +22,32 @@ for contract in \
 	}
 done
 
-grep -Fq '.run_espflash(' "$flash_main" || {
+grep -Fq '.run_espflash(' "$flash_environment" || {
 	printf 'espflash effects are not routed through UsbSession\n' >&2
 	exit 1
 }
-grep -Fq '.run_espflash_probe(' "$flash_main" || {
+grep -Fq '.run_espflash_probe(' "$flash_environment" || {
 	printf 'espflash prerequisite probes are not routed through UsbSession\n' >&2
 	exit 1
 }
-grep -Fq '"bitaxe-receive-only"' "$flash_main" || {
+grep -Fq '"bitaxe-receive-only"' "$flash_monitor" || {
 	printf 'runtime monitoring is not routed through the receive-only adapter\n' >&2
 	exit 1
 }
-grep -Fq 'write_receive_only_console(&bytes)?' "$flash_main" || {
+grep -Fq 'write_receive_only_console(&bytes)?' "$flash_commands" || {
 	printf 'receive-only output bypasses the framing helper\n' >&2
 	exit 1
 }
 
-production_source="$(awk '/^#\\[cfg\\(test\\)\\]/{exit} {print}' "$flash_main")"
-if grep -Fq 'Command::new(self.espflash_bin.as_std_path())' <<<"$production_source"; then
+if grep -Fq 'Command::new(self.espflash_bin.as_std_path())' "$flash_environment"; then
 	printf 'production code launches an unsupervised espflash child\n' >&2
 	exit 1
 fi
-if grep -Fq '.write_all(&bytes)' <<<"$production_source"; then
+if grep -Fq '.write_all(&bytes)' "$flash_commands"; then
 	printf 'production code writes receive-only bytes without framing\n' >&2
 	exit 1
 fi
-if grep -Fq 'CommandSpec::new("espflash", ["monitor"' <<<"$production_source"; then
+if grep -Fq 'CommandSpec::new("espflash", ["monitor"' "$flash_monitor"; then
 	printf 'production monitor command renders reset-capable espflash monitor\n' >&2
 	exit 1
 fi

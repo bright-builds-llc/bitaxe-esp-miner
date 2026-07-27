@@ -7,6 +7,10 @@ main="$repo_root/firmware/bitaxe/src/main.rs"
 runtime_uptime="$repo_root/firmware/bitaxe/src/runtime_uptime.rs"
 live_runtime="$repo_root/firmware/bitaxe/src/live_stratum_runtime.rs"
 log_buffer="$repo_root/firmware/bitaxe/src/log_buffer.rs"
+http_api_sources=(
+	"$repo_root/firmware/bitaxe/src/http_api.rs"
+	"$repo_root"/firmware/bitaxe/src/http_api/*.rs
+)
 
 # Arrange: the Plan 13 replay implementation must be present in the firmware shell.
 [[ -f "$boot_evidence" ]]
@@ -26,7 +30,9 @@ rg -q 'log::info!\("\{marker\}"\)' "$boot_evidence"
 rg -q 'initialize_observer\(\);' "$main"
 [[ "$(rg -c '\.spawn\(' "$boot_evidence")" == "1" ]]
 rg -q 'esp_timer_get_time' "$runtime_uptime"
-if rg -q 'esp_timer_get_time' "$repo_root/firmware/bitaxe/src/runtime_snapshot.rs" "$repo_root/firmware/bitaxe/src/http_api.rs"; then
+if rg -q 'esp_timer_get_time' \
+	"$repo_root/firmware/bitaxe/src/runtime_snapshot.rs" \
+	"${http_api_sources[@]}"; then
 	printf 'phase28_boot_replay_test_error=duplicate_uptime_authority\n' >&2
 	exit 1
 fi
