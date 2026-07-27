@@ -768,6 +768,66 @@ Residual risks: Real pool secrets, TCP/TLS, socket writes, ASIC effects, device
 flashing, mining, and hardware evidence remain unqualified and untested.
 Deterministic share outcomes do not promote parity or release readiness.
 
+### task-item4-refactor-hardware-smoke | 2026-07-27 10:48 | Flash and observe the refactored firmware
+
+- [x] Confirm the repository is clean at refactor commit
+      `e33eec2b4fff4161d5bf0f8c55ec3d02e426b8a1`.
+- [x] Run `just detect-ultra205` and admit exactly one ESP32-S3 Ultra 205.
+- [ ] Build the exact clean-HEAD package and retain its manifest identity.
+- [ ] Flash the admitted factory image and capture at least 360 seconds of
+      receive-only runtime output.
+- [ ] Review the redacted evidence for boot, runtime, and cleanup results
+      without promoting parity or making new hardware claims.
+
+Hardware contract:
+
+- Permitted commands:
+  1. `just detect-ultra205`
+  2. `just package`
+  3. `just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json evidence-dir=scratch/item4-refactor-hardware-smoke/attempt-001 capture-timeout-seconds=360 redact-evidence=true`
+- Objective: prove the exact packaged firmware after the flash, parity, NVS,
+  and HTTP module extractions can be admitted, written to the detected Ultra
+  205, boot, remain observable for the bounded capture, and restore the USB
+  session cleanly. This is a regression smoke, not parity promotion.
+- Evidence: `scratch/item4-refactor-hardware-smoke/attempt-001` is ignored,
+  local, non-promoted evidence. The supervisor owns its mode-0700 private
+  parent; serial, USB, command, and process artifacts remain mode-0600
+  `ProtectedOperational`. Only redacted output and closed result categories may
+  be summarized.
+- Preconditions: the read-only detector must admit exactly one board 205;
+  `just package` must produce an exact clean-HEAD manifest; reference integrity
+  must remain clean; no Wi-Fi or pool credential file may be read or supplied.
+  The successful 2026-07-27 detector run is new diagnostic information relative
+  to the earlier `bootloader_connect_failed` boundary.
+- Allowed effects: write and verify only the exact admitted factory image,
+  perform the repo-owned reset and re-enumeration sequence, observe serial
+  output receive-only, reacquire the same physical device, and clean up only
+  supervisor-proven repository child process groups.
+- Prohibited effects: erase-flash, arbitrary raw writes, NVS seeding,
+  credentials, network discovery, OTA, recovery upload, mining, voltage/fan or
+  thermal stress, foreign-process termination, direct UART, pins, pads,
+  headers, GPIO, probes, jumpers, soldering, or injected signals.
+- Recovery/restoration: the device-session supervisor must terminate and reap
+  owned process groups, release serial descriptors, and prove the admitted
+  device accessible and holder-free. Success leaves the admitted package
+  installed. Identity drift, absence, a foreign holder, or unproved cleanup
+  stops without physical intervention.
+- Retry bound: no unchanged retry. A new attempt ordinal is allowed only after
+  a regression-backed software fix or an authorized non-invasive remediation
+  objectively changes the failed boundary. Recurrence of the same signature
+  selects `stop_repeated_boundary`.
+- Accepted terminal outcomes: `complete`, `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary`, or
+  `stop_impossible_contract`. The earliest authoritative failure is preserved.
+- Timeouts: monitor capture is at least 360 seconds and the invoking wall-clock
+  allowance exceeds 420 seconds. Ordinary silence is not failure before the
+  full bound.
+
+Verification: In progress.
+
+Completion review: Pending. No credentials, network discovery, direct UART,
+pin manipulation, stress operation, or parity promotion is authorized.
+
 ## Backlog
 
 ### task-private-first-remaining-evidence-pipelines | 2026-07-20 | Migrate remaining evidence workflows
