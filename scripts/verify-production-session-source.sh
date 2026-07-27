@@ -95,7 +95,12 @@ if [[ -n "$ordinary_forbidden_matches" ]]; then
 	exit 1
 fi
 
-readonly engine_source="crates/bitaxe-stratum/src/v1/production_session.rs"
+readonly engine_sources=(
+	"crates/bitaxe-stratum/src/v1/production_session.rs"
+	"crates/bitaxe-stratum/src/v1/production_session/orchestration.rs"
+	"crates/bitaxe-stratum/src/v1/production_session/runtime.rs"
+	"crates/bitaxe-stratum/src/v1/production_session/types.rs"
+)
 readonly engine_contracts=(
 	"pub enum ProductionSessionEvent"
 	"pub enum ProductionSessionEffect"
@@ -108,9 +113,9 @@ readonly engine_contracts=(
 
 for engine_contract in "${engine_contracts[@]}"; do
 	if command -v rg >/dev/null 2>&1; then
-		contract_present="$(rg -F "$engine_contract" "$engine_source" || true)"
+		contract_present="$(rg -F "$engine_contract" "${engine_sources[@]}" || true)"
 	else
-		contract_present="$(grep -F -- "$engine_contract" "$engine_source" || true)"
+		contract_present="$(grep -F -- "$engine_contract" "${engine_sources[@]}" || true)"
 	fi
 	if [[ -z "$contract_present" ]]; then
 		printf 'production session source contract failed: engine contract missing: %s\n' "$engine_contract" >&2

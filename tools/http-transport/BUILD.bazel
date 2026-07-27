@@ -2,7 +2,10 @@ load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 rust_library(
     name = "http_transport",
-    srcs = ["src/lib.rs"],
+    srcs = [
+        "src/lib.rs",
+        "src/tests.rs",
+    ],
     crate_name = "bitaxe_http_transport",
     edition = "2021",
     deps = [

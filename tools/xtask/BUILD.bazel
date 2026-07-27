@@ -14,6 +14,8 @@ rust_binary(
     srcs = [
         "src/main.rs",
         "src/package_manifest.rs",
+        "src/package_manifest/tests.rs",
+        "src/tests.rs",
         "src/partition_contract.rs",
     ],
     crate_name = "xtask",

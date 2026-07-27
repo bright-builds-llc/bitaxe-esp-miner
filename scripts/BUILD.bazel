@@ -197,6 +197,11 @@ sh_binary(
 sh_binary(
     name = "phase17_live_http_api_smoke",
     srcs = ["phase17-live-http-api-smoke.sh"],
+    data = [
+        "phase17-live-http-api-json.py",
+        "phase17-live-http-api-probe.sh",
+        "phase17-live-http-api-target.sh",
+    ],
 )
 
 sh_binary(
@@ -207,6 +212,12 @@ sh_binary(
 sh_binary(
     name = "phase19_recovery_otawww_evidence",
     srcs = ["phase19-recovery-otawww-evidence.sh"],
+    data = [
+        "phase19-recovery-otawww-json.py",
+        "phase19-recovery-otawww-probe.sh",
+        "phase19-recovery-otawww-target.sh",
+        "phase16-recovery-regression.sh",
+    ],
 )
 
 sh_binary(
@@ -275,7 +286,10 @@ sh_binary(
     name = "phase23_redacted_operator_evidence",
     srcs = ["phase23-redacted-operator-evidence.sh"],
     data = [
+        "phase17-live-http-api-json.py",
+        "phase17-live-http-api-probe.sh",
         "phase17-live-http-api-smoke.sh",
+        "phase17-live-http-api-target.sh",
         "phase17-websocket-capture.mjs",
         "//tools/parity:report",
     ],
@@ -304,8 +318,11 @@ sh_binary(
     data = [
         "espflash-tool.sh",
         "phase17-websocket-capture.mjs",
+        "phase35-correlated-evidence-admission.sh",
         "phase35-correlated-evidence-document.sh",
         "phase35-correlated-evidence-effects.sh",
+        "phase35-correlated-evidence-finalization.sh",
+        "phase35-correlated-evidence-runtime.sh",
         "phase35-http-boundary-read.sh",
         "phase35-correlated-evidence-root.sh",
         "phase35-stage-readiness.sh",
@@ -516,7 +533,13 @@ sh_test(
     name = "phase17_live_http_api_smoke_test",
     srcs = ["phase17-live-http-api-smoke-test.sh"],
     data = [
+        "phase17-live-http-api-json.py",
+        "phase17-live-http-api-probe.sh",
         "phase17-live-http-api-smoke.sh",
+        "phase17-live-http-api-smoke-test-fake-curl.sh",
+        "phase17-live-http-api-smoke-test-http.sh",
+        "phase17-live-http-api-smoke-test-websocket.sh",
+        "phase17-live-http-api-target.sh",
         "phase17-websocket-capture.mjs",
     ],
     env_inherit = [
@@ -559,6 +582,9 @@ sh_test(
     name = "phase19_recovery_otawww_evidence_test",
     srcs = ["phase19-recovery-otawww-evidence-test.sh"],
     data = [
+        "phase19-recovery-otawww-json.py",
+        "phase19-recovery-otawww-probe.sh",
+        "phase19-recovery-otawww-target.sh",
         "phase19-recovery-otawww-evidence.sh",
         "phase16-recovery-regression.sh",
         "phase16-http-static-smoke.sh",
@@ -676,7 +702,10 @@ sh_test(
     name = "phase23_redacted_operator_evidence_test",
     srcs = ["phase23-redacted-operator-evidence-test.sh"],
     data = [
+        "phase17-live-http-api-json.py",
+        "phase17-live-http-api-probe.sh",
         "phase17-live-http-api-smoke.sh",
+        "phase17-live-http-api-target.sh",
         "phase17-websocket-capture.mjs",
         "phase23-redacted-operator-evidence.sh",
         "//tools/parity:report",
@@ -776,12 +805,20 @@ sh_test(
         "//firmware/bitaxe:sdkconfig.defaults",
         "//firmware/bitaxe:phase35_websocket_sources",
         "espflash-tool.sh",
+        "phase35-correlated-evidence-admission.sh",
         "phase35-correlated-evidence-document.sh",
         "phase35-correlated-evidence-effects.sh",
+        "phase35-correlated-evidence-finalization.sh",
         "phase35-correlated-evidence-fixture.sh",
         "phase35-http-boundary-read.sh",
         "phase35-correlated-evidence-root.sh",
+        "phase35-correlated-evidence-runtime.sh",
         "phase35-correlated-evidence.sh",
+        "phase35-correlated-evidence-test-lifecycle.sh",
+        "phase35-correlated-evidence-test-runfiles.sh",
+        "phase35-correlated-evidence-test-runtime.sh",
+        "phase35-correlated-evidence-test-stub.sh",
+        "phase35-correlated-evidence-test-support.sh",
         "phase35-stage-readiness.sh",
         "serial-session-trace.sh",
         "//tools/flash:flash",
@@ -847,6 +884,9 @@ sh_test(
         "$(location //:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/decision-matrix.json)",
         "$(location //:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/admitted.json)",
         "$(location //:docs/parity/checklist.md)",
+        "$(location //tools/parity:src/phase36_evidence/classification.rs)",
+        "$(location //tools/parity:src/phase36_evidence/authority.rs)",
+        "$(location //tools/parity:src/phase36_evidence/facts.rs)",
     ],
     data = [
         "//tools/parity:fixtures/phase36/envelope-only.json",
@@ -862,6 +902,9 @@ sh_test(
         "//:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/decision-matrix.json",
         "//:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/admitted.json",
         "//:docs/parity/checklist.md",
+        "//tools/parity:src/phase36_evidence/classification.rs",
+        "//tools/parity:src/phase36_evidence/authority.rs",
+        "//tools/parity:src/phase36_evidence/facts.rs",
     ],
     env_inherit = ["PATH"],
 )

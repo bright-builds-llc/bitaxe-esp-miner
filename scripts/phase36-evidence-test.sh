@@ -14,7 +14,11 @@ readonly phase35_projection="${10:?missing Phase 35 projection}"
 readonly phase35_matrix="${11:?missing Phase 35 matrix}"
 readonly phase35_verdict="${12:?missing Phase 35 verdict}"
 readonly checklist_fixture="${13:?missing parity checklist}"
-readonly test_parent="$(mktemp -d "${TEST_TMPDIR:-/tmp}/phase36-evidence.XXXXXX")"
+readonly classification_module="${14:?missing Phase 36 classification source}"
+readonly authority_module="${15:?missing Phase 36 authority source}"
+readonly facts_module="${16:?missing Phase 36 facts source}"
+test_parent="$(mktemp -d "${TEST_TMPDIR:-/tmp}/phase36-evidence.XXXXXX")"
+readonly test_parent
 readonly protected_root="${test_parent}/protected"
 readonly protected_input="${protected_root}/phase36.json"
 readonly protected_note="${protected_root}/opaque-note.txt"
@@ -180,7 +184,8 @@ chmod 600 "$offline_production_module"
 readonly effectful_pattern='detect[-_]?ultra205|credential|(^|[^[:alnum:]_])flash([^-[:alnum:]_]|$)|monitor|serial[-_](control|session)|curl[[:space:]].*((--request|-X)[[:space:]]*(PATCH|POST|PUT|DELETE)|--data)|phase28\.1\.1|hardware[-_ ]run'
 if rg -q -i "$effectful_pattern" \
 	"$phase36_module" "$phase36_contract" "$command_block" "$effects_command_block" \
-	"$offline_command_block" "$offline_module"; then
+	"$offline_command_block" "$offline_module" "$classification_module" \
+	"$authority_module" "$facts_module"; then
 	fail_test "Phase 36 read-only classifier contains an effectful invocation"
 fi
 readonly effect_invocation_pattern='std::process|ProcessCommand|Command::new|detect[-_]?ultra205|curl[[:space:]]|serial[-_](control|session)|flash[-_]monitor|run_detector|run_flash|run_monitor|credential_path'

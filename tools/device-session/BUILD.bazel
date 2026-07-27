@@ -2,7 +2,10 @@ load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 
 filegroup(
     name = "phase36_runtime_identity_sources",
-    srcs = ["src/model.rs"],
+    srcs = [
+        "src/model.rs",
+        "src/model/state.rs",
+    ],
     visibility = ["//tools/parity:__pkg__"],
 )
 
@@ -16,10 +19,13 @@ rust_library(
         "src/macos.rs",
         "src/macos_unsupported.rs",
         "src/model.rs",
+        "src/model/state.rs",
         "src/model/tests.rs",
         "src/platform.rs",
         "src/usb.rs",
         "src/usb/lease.rs",
+        "src/usb/lifecycle.rs",
+        "src/usb/policy.rs",
         "src/usb/process.rs",
         "src/usb/recovery.rs",
         "src/usb/tests.rs",

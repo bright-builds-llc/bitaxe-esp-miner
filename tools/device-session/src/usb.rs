@@ -17,199 +17,25 @@ use serde::{Deserialize, Serialize};
 use crate::macos::{MacOsDeviceAdapter, ReceiveOnlyReader, UsbDeviceSnapshot};
 use lease::DeviceLease;
 use process::{run_owned_process, OwnedProcessRequest};
+#[cfg(test)]
+use recovery::POST_FLASH_RECOVERY_TIMEOUT;
 use recovery::{
-    RecoveryPhase, RecoverySample, RecoverySummary, RecoveryTracker, POST_FLASH_RECOVERY_TIMEOUT,
-    STANDARD_RECOVERY_TIMEOUT,
+    RecoveryPhase, RecoverySample, RecoverySummary, RecoveryTracker, STANDARD_RECOVERY_TIMEOUT,
 };
 
 const SAMPLE_INTERVAL: Duration = Duration::from_millis(150);
 const MAX_MONITOR_BYTES: usize = 16 * 1024 * 1024;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum UsbOperation {
-    Detect,
-    Flash,
-    Monitor,
-    FlashMonitor,
-    VerifyDurability,
-}
+mod lifecycle;
+mod policy;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum UsbLifecycleState {
-    Prepared,
-    Admitted,
-    Flashing,
-    Reenumerating,
-    Observing,
-    CleaningUp,
-    ReflashReady,
-    Failed,
-}
+pub use lifecycle::*;
+pub use policy::{retry_is_eligible, RetryContext};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UsbLifecycleEvent {
-    Admit,
-    BeginFlash,
-    FlashComplete,
-    BeginObservation,
-    ObservationComplete,
-    BeginCleanup,
-    CleanupComplete,
-    Fail,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum UsbTerminalCategory {
-    Ready,
-    ConcurrentRepoSession,
-    ForeignHolder,
-    TransportAbsent,
-    IdentityDrift,
-    BootloaderConnectFailed,
-    FlashFailedBeforeTransfer,
-    FlashFailedAfterTransfer,
-    MonitorFailed,
-    CleanupFailed,
-    RecoveryNotObserved,
-    RepeatedBoundary,
-}
-
-impl UsbTerminalCategory {
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Ready => "ready",
-            Self::ConcurrentRepoSession => "concurrent_repo_session",
-            Self::ForeignHolder => "foreign_holder",
-            Self::TransportAbsent => "transport_absent",
-            Self::IdentityDrift => "identity_drift",
-            Self::BootloaderConnectFailed => "bootloader_connect_failed",
-            Self::FlashFailedBeforeTransfer => "flash_failed_before_transfer",
-            Self::FlashFailedAfterTransfer => "flash_failed_after_transfer",
-            Self::MonitorFailed => "monitor_failed",
-            Self::CleanupFailed => "cleanup_failed",
-            Self::RecoveryNotObserved => "recovery_not_observed",
-            Self::RepeatedBoundary => "repeated_boundary",
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UsbSessionError {
-    pub category: UsbTerminalCategory,
-    pub detail: String,
-}
-
-impl std::fmt::Display for UsbSessionError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "{}: {}", self.category.as_str(), self.detail)
-    }
-}
-
-impl std::error::Error for UsbSessionError {}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SupervisedOutput {
-    pub termination: SupervisedTermination,
-    pub stdout: Vec<u8>,
-    pub stderr: Vec<u8>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SupervisedTermination {
-    ExitedSuccess,
-    ExitedFailure,
-    TimedOut,
-    Interrupted { signal: i32 },
-}
-
-impl SupervisedOutput {
-    #[must_use]
-    pub const fn succeeded(&self) -> bool {
-        matches!(self.termination, SupervisedTermination::ExitedSuccess)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MonitorOutput {
-    pub bytes: Vec<u8>,
-    pub interrupted_by: Option<i32>,
-    pub reenumerated: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReflashReady {
-    pub port: String,
-    pub reenumerated: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RetryContext {
-    pub category: UsbTerminalCategory,
-    pub cleanup_complete: bool,
-    pub enumeration_changed: bool,
-    pub same_physical_device: bool,
-    pub immutable_operation: bool,
-    pub repeated_boundary: bool,
-    pub attempts: u8,
-}
-
-#[must_use]
-pub const fn retry_is_eligible(context: RetryContext) -> bool {
-    matches!(
-        context.category,
-        UsbTerminalCategory::BootloaderConnectFailed
-            | UsbTerminalCategory::MonitorFailed
-            | UsbTerminalCategory::RecoveryNotObserved
-    ) && context.cleanup_complete
-        && context.enumeration_changed
-        && context.same_physical_device
-        && context.immutable_operation
-        && !context.repeated_boundary
-        && context.attempts == 1
-}
-
-pub fn discover_usb_ports() -> Result<Vec<String>, UsbSessionError> {
-    if !cfg!(target_os = "macos") {
-        return Err(session_error(
-            UsbTerminalCategory::TransportAbsent,
-            "native USB discovery is qualified only on macOS",
-        ));
-    }
-    MacOsDeviceAdapter::candidate_ports()
-        .map_err(|error| session_error(UsbTerminalCategory::TransportAbsent, error))
-}
-
-pub fn reduce_lifecycle(
-    state: UsbLifecycleState,
-    event: UsbLifecycleEvent,
-) -> Result<UsbLifecycleState, UsbSessionError> {
-    use UsbLifecycleEvent as Event;
-    use UsbLifecycleState as State;
-
-    let maybe_next = match (state, event) {
-        (State::Prepared, Event::Admit) => Some(State::Admitted),
-        (State::Admitted | State::Reenumerating, Event::BeginFlash) => Some(State::Flashing),
-        (State::Flashing, Event::FlashComplete) => Some(State::Reenumerating),
-        (State::Admitted | State::Reenumerating, Event::BeginObservation) => Some(State::Observing),
-        (State::Observing, Event::ObservationComplete) => Some(State::Admitted),
-        (
-            State::Admitted | State::Reenumerating | State::Observing | State::Failed,
-            Event::BeginCleanup,
-        ) => Some(State::CleaningUp),
-        (State::CleaningUp, Event::CleanupComplete) => Some(State::ReflashReady),
-        (State::ReflashReady, Event::BeginFlash) => Some(State::Flashing),
-        (_, Event::Fail) => Some(State::Failed),
-        _ => None,
-    };
-    maybe_next.ok_or_else(|| UsbSessionError {
-        category: UsbTerminalCategory::CleanupFailed,
-        detail: format!("illegal lifecycle transition: {state:?} + {event:?}"),
-    })
-}
+use policy::{
+    classify_espflash_failure, ineligible_retry_detail, successful_command_recovery_policy,
+    validate_recovery_snapshot,
+};
 
 pub struct UsbSession {
     operation: UsbOperation,
@@ -574,64 +400,6 @@ impl UsbSession {
             format!("{detail} trace_recorded={trace_recorded}"),
         )
     }
-}
-
-fn successful_command_recovery_policy(args: &[String]) -> (RecoveryPhase, Duration) {
-    if args.first().map(String::as_str) == Some("write-bin") {
-        (RecoveryPhase::PostFlash, POST_FLASH_RECOVERY_TIMEOUT)
-    } else {
-        (RecoveryPhase::PostProbe, STANDARD_RECOVERY_TIMEOUT)
-    }
-}
-
-fn validate_recovery_snapshot(
-    snapshot: &UsbDeviceSnapshot,
-    expected_physical_identity: &str,
-) -> Result<(), UsbSessionError> {
-    if snapshot.physical_identity_digest != expected_physical_identity {
-        return Err(session_error(
-            UsbTerminalCategory::IdentityDrift,
-            "the observed USB transport belongs to a different physical device",
-        ));
-    }
-    if snapshot.holder_count > 0 {
-        return Err(session_error(
-            UsbTerminalCategory::ForeignHolder,
-            "a foreign process acquired the serial transport",
-        ));
-    }
-    Ok(())
-}
-
-fn classify_espflash_failure(output: &SupervisedOutput) -> UsbTerminalCategory {
-    if matches!(
-        output.termination,
-        SupervisedTermination::TimedOut | SupervisedTermination::Interrupted { .. }
-    ) {
-        return UsbTerminalCategory::BootloaderConnectFailed;
-    }
-    let stderr = String::from_utf8_lossy(&output.stderr).to_ascii_lowercase();
-    if stderr.contains("write") || stderr.contains("verify") || stderr.contains("checksum") {
-        UsbTerminalCategory::FlashFailedAfterTransfer
-    } else if stderr.contains("connect") || stderr.contains("serial") || stderr.contains("port") {
-        UsbTerminalCategory::BootloaderConnectFailed
-    } else {
-        UsbTerminalCategory::FlashFailedBeforeTransfer
-    }
-}
-
-fn ineligible_retry_detail(context: RetryContext) -> &'static str {
-    if context.category == UsbTerminalCategory::BootloaderConnectFailed
-        && context.cleanup_complete
-        && !context.enumeration_changed
-        && context.same_physical_device
-    {
-        return "the supervised espflash command could not synchronize with the bootloader and \
-                USB enumeration did not change; disconnect USB and normal device power, wait 10 \
-                seconds, reconnect normal power, then USB, and rerun detection; do not use pins, \
-                headers, or test points";
-    }
-    "the supervised espflash command failed without an eligible state-changing retry"
 }
 
 fn session_error(category: UsbTerminalCategory, detail: impl std::fmt::Display) -> UsbSessionError {

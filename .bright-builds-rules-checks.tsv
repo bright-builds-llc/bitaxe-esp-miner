@@ -1,0 +1,9 @@
+# Generated or locally protected files; all active repository-owned source remains subject to the limit.
+file-lengths	docs/release/cargo-about.html	Generated cargo-about dependency-license report; edit about.hbs/about.toml or Cargo.lock and regenerate instead of hand-splitting.
+file-lengths	scripts/phase28.1.1-accepted-state-diagnostic.sh	Terminal archived and locally protected by AGENTS.md; active refactoring is prohibited.
+file-lengths	scripts/phase28.1.1-exact-head-hardware-attempt.sh	Terminal archived and locally protected by AGENTS.md; active refactoring is prohibited.
+file-lengths	scripts/phase28.1.1-hardware-attempt-state-test.mjs	Terminal archived and locally protected by AGENTS.md; active refactoring is prohibited.
+file-lengths	scripts/phase28.1.1-hardware-attempt-state.mjs	Terminal archived and locally protected by AGENTS.md; active refactoring is prohibited.
+file-lengths	scripts/phase28.1.1.4-init-sequencing-compare.mjs	Terminal archived and locally protected by AGENTS.md; active refactoring is prohibited.
+file-lengths	scripts/phase28.1.1.5-chip-enumerate-compare.mjs	Terminal archived and locally protected by AGENTS.md; active refactoring is prohibited.
+file-lengths	scripts/phase28.1.1.7-asic-mask-reload-compare.mjs	Terminal archived and locally protected by AGENTS.md; active refactoring is prohibited.

@@ -10,6 +10,68 @@ new work.
 
 ## Active
 
+### task-eliminate-oversized-file-debt | 2026-07-27 14:08 | Eliminate oversized-file debt
+
+- [x] Add exactly eight file-length exceptions for one generated Cargo license
+      report and seven terminal-archive-protected files.
+- [x] Refactor all oversized active core crates and firmware adapter files while
+      preserving public Rust interfaces and firmware behavior.
+- [x] Refactor all oversized parity modules while preserving evaluator,
+      promotion, evidence-integrity, and caller-visible contracts.
+- [x] Refactor all oversized host tools and Phase 17, 19, and 35 shell
+      automation while preserving CLI arguments, schemas, redaction, runfiles,
+      and failure categories.
+- [x] Update Bazel source sets, source guards, and exact evaluator inventories
+      for every extracted production child.
+- [x] Run focused suites and the full required verification sequence, confirm
+      zero findings with exactly eight exceptions, and review the final diff.
+
+Verification policy:
+
+- This task is software-only. Do not detect, flash, monitor, read credentials,
+  discover network targets, create evidence, or promote parity claims.
+- Preserve public Rust interfaces, CLI arguments, output schemas, evidence
+  paths, redaction policy, hardware safety gates, and source-tree/Bazel-runfiles
+  behavior.
+- Preserve historical evidence byte-for-byte. Source-derived Phase 36
+  evaluator and successor-contract digest rotation from explicit new source
+  membership is expected, but no historical artifact may be regenerated or
+  rewritten.
+- Add no exception for active repository-owned code and make no
+  `standards-overrides.md` change.
+
+Verification:
+
+- The ordered `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features` sequence passed.
+- Both extracted Python helpers passed `python3 -m py_compile`.
+- `bun scripts/bright-builds-check.ts all` scanned 542 tracked files and
+  reported zero findings with exactly eight justified exceptions.
+- `just test` passed all 72 Bazel tests, including the ESP32-S3 firmware build
+  and package graph. `just parity` reported `validation_errors: none`.
+- `just verify-reference` reported the pinned reference clean at
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50`, and
+  `just verify-redaction` passed.
+- The current Phase 36 evaluator identity is
+  `bef761f5f6580b462c131a9f381b61a9933a6775b0987b6af6788e0d05f9b294`;
+  exact-membership and drift tests passed after adding the extracted owned
+  evaluator sources. Historical evidence files remained byte-unchanged.
+- `git diff --check`, staged source membership, Bazel data/runfiles, and the
+  final source inventory were reviewed.
+
+Completion review: All 42 active repository-owned oversized files were split
+behind stable Rust facades or stable shell entrypoints. No active owned source
+is excepted, all tracked files satisfy the 628-line hard maximum, and the eight
+exceptions are limited to one generated license report and seven locally
+immutable terminal-archive files.
+
+Residual risks: The change is intentionally structural and was verified through
+host, cross-compiled firmware, runfiles, parity, reference, and redaction gates,
+but no hardware, credentials, live network target, or runtime evidence was
+used. Existing hardware and parity claims remain unchanged.
+
 ### task-audit-integrity-state-provenance | 2026-07-26 21:24 | Repair audit items 1-3
 
 - [x] Publish a hash-bound documentation-only successor to the authenticated
