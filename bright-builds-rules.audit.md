@@ -10,15 +10,17 @@ This audit trail is managed upstream by `bright-builds-rules`. If the managed au
 
 - Source repository: `https://github.com/bright-builds-llc/bright-builds-rules`
 - Version pin: `main`
-- Exact commit: `0391812ecb752eeddcbb4f42b75417c38e065e00`
+- Exact commit: `85588ad75ba23d917a58ecf0a9b911922cc5ffab`
 - Canonical entrypoint: `https://github.com/bright-builds-llc/bright-builds-rules/blob/main/standards/index.md`
 - Managed sidecar path: `AGENTS.bright-builds.md`
 - AGENTS integration mode: `append-only managed block`
 - Audit manifest path: `bright-builds-rules.audit.md`
 - Auto-update: `enabled`
 - Auto-update reason: `trusted repo owner bright-builds-llc`
+- Checks CI: `enabled`
+- Checks CI reason: `GitHub-backed repository`
 - Last operation: `update`
-- Last updated (UTC): `2026-07-20T15:52:45Z`
+- Last updated (UTC): `2026-07-27T16:22:29Z`
 
 ## Managed files
 
@@ -40,10 +42,13 @@ This audit trail is managed upstream by `bright-builds-rules`. If the managed au
 - `README.md (managed badges block)`
 - `scripts/bright-builds-auto-update.sh`
 - `.github/workflows/bright-builds-auto-update.yml`
+- `scripts/bright-builds-check.ts`
+- `.github/workflows/bright-builds-checks.yml`
 
 ## Why this exists
 
 - It provides a visible paper trail for install, update, and uninstall operations.
-- The installer manages a bounded block inside `AGENTS.md`, a bounded README badge block when applicable, local standards files under `standards/`, and marked whole-file managed surfaces such as the sidecar, audit trail, contribution guide, PR template, and optional auto-update files.
+- The installer manages a bounded block inside `AGENTS.md`, a bounded README badge block when applicable, local standards files under `standards/`, and marked whole-file managed surfaces such as the sidecar, audit trail, contribution guide, PR template, starter checker, conditional checks workflow, and optional auto-update files.
 - `standards-overrides.md` remains repo-local and is preserved during update and uninstall.
+- `.bright-builds-rules-checks.tsv` is an optional user-owned exact-path exception file and is never created, modified, managed, or removed by the installer.
 - It helps humans and tools debug which standards revision a repository is pinned to.
