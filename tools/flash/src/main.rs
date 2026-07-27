@@ -405,34 +405,204 @@ enum CaptureStatus {
     DryRun,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum TrustedCaptureCompletion {
+    Completed,
+    TimedOut,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum MonitorTrustBasis {
+    BootTranscript,
+    RuntimeAttestation,
+}
+
+impl MonitorTrustBasis {
+    const fn label(self) -> &'static str {
+        match self {
+            Self::BootTranscript => "boot_transcript",
+            Self::RuntimeAttestation => "runtime_attestation",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum MonitorCaptureState {
+    NotRequested,
+    DryRun,
+    Trusted {
+        completion: TrustedCaptureCompletion,
+        basis: MonitorTrustBasis,
+    },
+    PendingPrivateClassification,
+    AdmittedPrivateClassification,
+    Untrusted {
+        timed_out: bool,
+        conclusion: String,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum BootTranscriptStatus {
+    Trusted,
+    Missing,
+    Untrusted,
+    NotCaptured,
+    NotRequested,
+}
+
+impl BootTranscriptStatus {
+    const fn label(self) -> &'static str {
+        match self {
+            Self::Trusted => "trusted",
+            Self::Missing => "missing",
+            Self::Untrusted => "untrusted",
+            Self::NotCaptured => "not_captured",
+            Self::NotRequested => "not_requested",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum RuntimeAttestationEvidenceStatus {
+    Observed(RuntimeAttestationStatus),
+    NotCaptured,
+    NotRequested,
+}
+
+impl RuntimeAttestationEvidenceStatus {
+    const fn label(self) -> &'static str {
+        match self {
+            Self::Observed(status) => status.label(),
+            Self::NotCaptured => "not_captured",
+            Self::NotRequested => "not_requested",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 struct MonitorCaptureOutcome {
-    capture_mode: String,
-    capture_status: CaptureStatus,
+    state: MonitorCaptureState,
     capture_timeout_seconds: u64,
-    trusted_output: bool,
     observed_firmware_commit: String,
     observed_reference_commit: String,
-    monitor_evidence_status: String,
-    boot_transcript_status: String,
-    runtime_attestation_status: String,
-    trust_basis: String,
-    conclusion: String,
+    boot_transcript_status: BootTranscriptStatus,
+    runtime_attestation_status: RuntimeAttestationEvidenceStatus,
 }
 
 impl MonitorCaptureOutcome {
     fn accepted(&self) -> bool {
-        self.trusted_output
-            && matches!(
-                self.capture_status,
-                CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
-            )
+        matches!(self.state, MonitorCaptureState::Trusted { .. })
     }
 
     fn ready_for_private_classification(&self) -> bool {
-        !self.trusted_output
-            && self.capture_status == CaptureStatus::TimedOutPendingPrivateClassification
+        self.state == MonitorCaptureState::PendingPrivateClassification
     }
+
+    fn projection(&self) -> MonitorCaptureProjection<'_> {
+        self.state.projection()
+    }
+}
+
+impl MonitorCaptureState {
+    fn projection(&self) -> MonitorCaptureProjection<'_> {
+        let (
+            capture_mode,
+            capture_status,
+            monitor_evidence_status,
+            maybe_trust_basis,
+            trusted_output,
+            conclusion,
+        ) = match self {
+            MonitorCaptureState::NotRequested => (
+                "not_applicable",
+                CaptureStatus::DryRun,
+                "not_requested",
+                None,
+                false,
+                "not run - no monitor capture requested",
+            ),
+            MonitorCaptureState::DryRun => (
+                "dry_run",
+                CaptureStatus::DryRun,
+                "not_captured",
+                None,
+                false,
+                "not run - dry-run did not capture hardware evidence",
+            ),
+            MonitorCaptureState::Trusted {
+                completion,
+                basis,
+            } => {
+                let capture_status = match completion {
+                    TrustedCaptureCompletion::Completed => CaptureStatus::Completed,
+                    TrustedCaptureCompletion::TimedOut => {
+                        CaptureStatus::TimedOutAfterTrustedOutput
+                    }
+                };
+                let conclusion = match basis {
+                    MonitorTrustBasis::BootTranscript => "passed - original boot transcript captured and trusted; HTTP/static/recovery/OTA/rollback parity not claimed",
+                    MonitorTrustBasis::RuntimeAttestation => "passed - exact-package runtime attestation trusted; original boot transcript was not captured",
+                };
+                (
+                    "noninteractive",
+                    capture_status,
+                    "trusted",
+                    Some(*basis),
+                    true,
+                    conclusion,
+                )
+            }
+            MonitorCaptureState::PendingPrivateClassification => (
+                "noninteractive",
+                CaptureStatus::TimedOutPendingPrivateClassification,
+                "pending_private_classification",
+                None,
+                false,
+                "pending - immutable private monitor input requires authoritative classification",
+            ),
+            MonitorCaptureState::AdmittedPrivateClassification => (
+                "noninteractive",
+                CaptureStatus::TimedOutAfterPrivateClassification,
+                "pending_private_classification",
+                None,
+                false,
+                "passed - immutable private monitor input was classified before admitted evidence derivation",
+            ),
+            MonitorCaptureState::Untrusted {
+                timed_out,
+                conclusion,
+            } => (
+                "noninteractive",
+                if *timed_out {
+                    CaptureStatus::TimedOutWithoutTrustedOutput
+                } else {
+                    CaptureStatus::Failed
+                },
+                "untrusted",
+                None,
+                false,
+                conclusion.as_str(),
+            ),
+        };
+        MonitorCaptureProjection {
+            capture_mode,
+            capture_status,
+            monitor_evidence_status,
+            trust_basis: maybe_trust_basis.map_or("none", MonitorTrustBasis::label),
+            trusted_output,
+            conclusion,
+        }
+    }
+}
+
+struct MonitorCaptureProjection<'a> {
+    capture_mode: &'static str,
+    capture_status: CaptureStatus,
+    monitor_evidence_status: &'static str,
+    trust_basis: &'static str,
+    trusted_output: bool,
+    conclusion: &'a str,
 }
 
 struct EvidenceRecordInput<'a> {
@@ -1372,14 +1542,15 @@ fn run_flash_monitor(
                 .evidence_dir
                 .as_deref()
                 .unwrap_or(evidence_dir.as_path());
+            let projection = capture_outcome.projection();
             bail!(
                 "{}\n{}",
-                capture_outcome.conclusion,
+                projection.conclusion,
                 evidence_capture_failure_guidance(
                     &port,
                     user_evidence_dir,
-                    &capture_outcome.boot_transcript_status,
-                    &capture_outcome.runtime_attestation_status,
+                    capture_outcome.boot_transcript_status.label(),
+                    capture_outcome.runtime_attestation_status.label(),
                 )
             );
         }
@@ -1430,14 +1601,10 @@ fn run_finalize_evidence(
     {
         bail!("dual_evidence=failed reason=private_record_mismatch");
     }
-    let accepted_capture = record.trusted_output
-        && matches!(
-            record.capture_status,
-            CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
-        );
-    let deferred_capture = !record.trusted_output
-        && record.capture_status == CaptureStatus::TimedOutPendingPrivateClassification;
-    if !accepted_capture && !deferred_capture {
+    let capture_state = validate_evidence_record_capture_state(&record)
+        .map_err(|_| anyhow::anyhow!("dual_evidence=failed reason=private_record_invalid_state"))?;
+    let deferred_capture = capture_state == MonitorCaptureState::PendingPrivateClassification;
+    if !matches!(capture_state, MonitorCaptureState::Trusted { .. }) && !deferred_capture {
         bail!("dual_evidence=failed reason=private_capture_not_classifiable");
     }
 
@@ -1458,8 +1625,10 @@ fn run_finalize_evidence(
         record.monitor_log_sha256 = Some(digests.admitted_sha256);
         record.commit_ready = true;
         if deferred_capture {
-            record.capture_status = CaptureStatus::TimedOutAfterPrivateClassification;
-            record.conclusion = "passed - immutable private monitor input was classified before admitted evidence derivation".to_owned();
+            apply_monitor_capture_state(
+                &mut record,
+                &MonitorCaptureState::AdmittedPrivateClassification,
+            );
         }
         let admitted_json = serde_json::to_string_pretty(&record)
             .context("failed to serialize admitted evidence")?;
@@ -2168,78 +2337,71 @@ fn monitor_capture_outcome(
         expected_reference_commit,
     );
     let boot_transcript_status = if maybe_trust_failure.is_none() {
-        "trusted"
+        BootTranscriptStatus::Trusted
     } else if !monitor_log_has_trusted_boot_markers(monitor_log) {
-        "missing"
+        BootTranscriptStatus::Missing
     } else {
-        "untrusted"
+        BootTranscriptStatus::Untrusted
     };
     let runtime_attestation_status = maybe_runtime_identity
         .map_or(RuntimeAttestationStatus::Missing, |identity| {
             classify_runtime_boot_attestations(monitor_log, identity)
         });
-    let trust_basis = if maybe_trust_failure.is_none() {
-        "boot_transcript"
+    let maybe_trust_basis = if maybe_trust_failure.is_none() {
+        Some(MonitorTrustBasis::BootTranscript)
     } else if runtime_attestation_status == RuntimeAttestationStatus::Trusted {
-        "runtime_attestation"
+        Some(MonitorTrustBasis::RuntimeAttestation)
     } else {
-        "none"
+        None
     };
-    let trusted_output = trust_basis != "none";
-    let capture_status = match process_status {
-        CaptureProcessStatus::ExitedSuccess if trusted_output => CaptureStatus::Completed,
-        CaptureProcessStatus::TimedOut if trusted_output => {
-            CaptureStatus::TimedOutAfterTrustedOutput
+    let state = match (process_status, maybe_trust_basis) {
+        (CaptureProcessStatus::ExitedSuccess, Some(basis)) => MonitorCaptureState::Trusted {
+            completion: TrustedCaptureCompletion::Completed,
+            basis,
+        },
+        (CaptureProcessStatus::TimedOut, Some(basis)) => MonitorCaptureState::Trusted {
+            completion: TrustedCaptureCompletion::TimedOut,
+            basis,
+        },
+        (CaptureProcessStatus::TimedOut, None) if allow_private_classification => {
+            MonitorCaptureState::PendingPrivateClassification
         }
-        CaptureProcessStatus::TimedOut if allow_private_classification => {
-            CaptureStatus::TimedOutPendingPrivateClassification
+        (CaptureProcessStatus::TimedOut, None) => MonitorCaptureState::Untrusted {
+            timed_out: true,
+            conclusion: maybe_trust_failure.map_or_else(
+                || "failed - evidence capture is not trusted".to_owned(),
+                |failure| format!("failed - evidence capture is not trusted: {failure}"),
+            ),
+        },
+        (
+            CaptureProcessStatus::SpawnFailed
+            | CaptureProcessStatus::ExitedSuccess
+            | CaptureProcessStatus::ExitedFailure(_),
+            None,
+        ) => MonitorCaptureState::Untrusted {
+            timed_out: false,
+            conclusion: maybe_trust_failure.map_or_else(
+                || "failed - evidence capture is not trusted".to_owned(),
+                |failure| format!("failed - evidence capture is not trusted: {failure}"),
+            ),
+        },
+        (CaptureProcessStatus::SpawnFailed | CaptureProcessStatus::ExitedFailure(_), Some(_)) => {
+            MonitorCaptureState::Untrusted {
+                timed_out: false,
+                conclusion: "failed - monitor process did not complete successfully".to_owned(),
+            }
         }
-        CaptureProcessStatus::TimedOut => CaptureStatus::TimedOutWithoutTrustedOutput,
-        CaptureProcessStatus::SpawnFailed
-        | CaptureProcessStatus::ExitedSuccess
-        | CaptureProcessStatus::ExitedFailure(_) => CaptureStatus::Failed,
-    };
-    let conclusion = if trusted_output
-        && matches!(
-            capture_status,
-            CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
-        ) {
-        match trust_basis {
-            "boot_transcript" => "passed - original boot transcript captured and trusted; HTTP/static/recovery/OTA/rollback parity not claimed".to_owned(),
-            "runtime_attestation" => "passed - exact-package runtime attestation trusted; original boot transcript was not captured".to_owned(),
-            _ => unreachable!("trusted output has a closed trust basis"),
-        }
-    } else if capture_status == CaptureStatus::TimedOutPendingPrivateClassification {
-        "pending - immutable private monitor input requires authoritative classification".to_owned()
-    } else if let Some(trust_failure) = maybe_trust_failure {
-        format!("failed - evidence capture is not trusted: {trust_failure}")
-    } else {
-        "failed - evidence capture is not trusted".to_owned()
-    };
-    let monitor_evidence_status = if trusted_output
-        && matches!(
-            capture_status,
-            CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput
-        ) {
-        "trusted"
-    } else if capture_status == CaptureStatus::TimedOutPendingPrivateClassification {
-        "pending_private_classification"
-    } else {
-        "untrusted"
     };
 
     MonitorCaptureOutcome {
-        capture_mode: "noninteractive".to_owned(),
-        capture_status,
+        state,
         capture_timeout_seconds,
-        trusted_output,
         observed_firmware_commit,
         observed_reference_commit,
-        monitor_evidence_status: monitor_evidence_status.to_owned(),
-        boot_transcript_status: boot_transcript_status.to_owned(),
-        runtime_attestation_status: runtime_attestation_status.label().to_owned(),
-        trust_basis: trust_basis.to_owned(),
-        conclusion,
+        boot_transcript_status,
+        runtime_attestation_status: RuntimeAttestationEvidenceStatus::Observed(
+            runtime_attestation_status,
+        ),
     }
 }
 
@@ -2294,33 +2456,23 @@ fn commit_marker_matches_expected(observed: &str, expected: &str) -> bool {
 
 fn dry_run_monitor_capture_outcome(capture_timeout_seconds: u64) -> MonitorCaptureOutcome {
     MonitorCaptureOutcome {
-        capture_mode: "dry_run".to_owned(),
-        capture_status: CaptureStatus::DryRun,
+        state: MonitorCaptureState::DryRun,
         capture_timeout_seconds,
-        trusted_output: false,
         observed_firmware_commit: UNAVAILABLE.to_owned(),
         observed_reference_commit: UNAVAILABLE.to_owned(),
-        monitor_evidence_status: "not_captured".to_owned(),
-        boot_transcript_status: "not_captured".to_owned(),
-        runtime_attestation_status: "not_captured".to_owned(),
-        trust_basis: "none".to_owned(),
-        conclusion: "not run - dry-run did not capture hardware evidence".to_owned(),
+        boot_transcript_status: BootTranscriptStatus::NotCaptured,
+        runtime_attestation_status: RuntimeAttestationEvidenceStatus::NotCaptured,
     }
 }
 
 fn no_monitor_capture_outcome() -> MonitorCaptureOutcome {
     MonitorCaptureOutcome {
-        capture_mode: "not_applicable".to_owned(),
-        capture_status: CaptureStatus::DryRun,
+        state: MonitorCaptureState::NotRequested,
         capture_timeout_seconds: 0,
-        trusted_output: false,
         observed_firmware_commit: UNAVAILABLE.to_owned(),
         observed_reference_commit: UNAVAILABLE.to_owned(),
-        monitor_evidence_status: "not_requested".to_owned(),
-        boot_transcript_status: "not_requested".to_owned(),
-        runtime_attestation_status: "not_requested".to_owned(),
-        trust_basis: "none".to_owned(),
-        conclusion: "not run - no monitor capture requested".to_owned(),
+        boot_transcript_status: BootTranscriptStatus::NotRequested,
+        runtime_attestation_status: RuntimeAttestationEvidenceStatus::NotRequested,
     }
 }
 
@@ -2537,6 +2689,7 @@ fn write_evidence_record(
 ) -> Result<()> {
     let redaction_mode = EvidenceRedactionMode::from_common(common);
     let dual_mode = common.evidence_mode == Some(EvidenceMode::Dual);
+    let capture_projection = input.capture_outcome.projection();
     let record = EvidenceRecord {
         command: input.command.to_owned(),
         command_kind: input.command_kind.to_owned(),
@@ -2592,22 +2745,30 @@ fn write_evidence_record(
         private_monitor_log_path: input.private_log_path.map(|path| path.as_str().to_owned()),
         private_monitor_log_sha256: input.private_log_sha256.map(str::to_owned),
         monitor_log_sha256: input.admitted_log_sha256.map(str::to_owned),
-        capture_mode: input.capture_outcome.capture_mode.clone(),
-        capture_status: input.capture_outcome.capture_status,
+        capture_mode: capture_projection.capture_mode.to_owned(),
+        capture_status: capture_projection.capture_status,
         capture_timeout_seconds: input.capture_outcome.capture_timeout_seconds,
         flash_status: if common.dry_run {
             "dry_run".to_owned()
         } else {
             "completed".to_owned()
         },
-        monitor_evidence_status: input.capture_outcome.monitor_evidence_status.clone(),
-        boot_transcript_status: input.capture_outcome.boot_transcript_status.clone(),
-        runtime_attestation_status: input.capture_outcome.runtime_attestation_status.clone(),
-        trust_basis: input.capture_outcome.trust_basis.clone(),
-        trusted_output: input.capture_outcome.trusted_output,
+        monitor_evidence_status: capture_projection.monitor_evidence_status.to_owned(),
+        boot_transcript_status: input
+            .capture_outcome
+            .boot_transcript_status
+            .label()
+            .to_owned(),
+        runtime_attestation_status: input
+            .capture_outcome
+            .runtime_attestation_status
+            .label()
+            .to_owned(),
+        trust_basis: capture_projection.trust_basis.to_owned(),
+        trusted_output: capture_projection.trusted_output,
         observed_firmware_commit: input.capture_outcome.observed_firmware_commit.clone(),
         observed_reference_commit: input.capture_outcome.observed_reference_commit.clone(),
-        conclusion: input.capture_outcome.conclusion.clone(),
+        conclusion: capture_projection.conclusion.to_owned(),
     };
     if dual_mode {
         let paths = evidence::DualEvidencePaths {
@@ -3148,6 +3309,130 @@ fn no_trust_basis() -> String {
     "none".to_owned()
 }
 
+fn validate_evidence_record_capture_state(record: &EvidenceRecord) -> Result<MonitorCaptureState> {
+    let boot_status = parse_boot_transcript_status(&record.boot_transcript_status)?;
+    let runtime_status =
+        parse_runtime_attestation_evidence_status(&record.runtime_attestation_status)?;
+    let state = match record.capture_status {
+        CaptureStatus::Completed | CaptureStatus::TimedOutAfterTrustedOutput => {
+            let basis = match record.trust_basis.as_str() {
+                "boot_transcript" => MonitorTrustBasis::BootTranscript,
+                "runtime_attestation" => MonitorTrustBasis::RuntimeAttestation,
+                _ => bail!("trusted capture requires a recognized trust basis"),
+            };
+            let completion = if record.capture_status == CaptureStatus::Completed {
+                TrustedCaptureCompletion::Completed
+            } else {
+                TrustedCaptureCompletion::TimedOut
+            };
+            MonitorCaptureState::Trusted { completion, basis }
+        }
+        CaptureStatus::TimedOutPendingPrivateClassification => {
+            MonitorCaptureState::PendingPrivateClassification
+        }
+        CaptureStatus::TimedOutAfterPrivateClassification => {
+            MonitorCaptureState::AdmittedPrivateClassification
+        }
+        CaptureStatus::TimedOutWithoutTrustedOutput => MonitorCaptureState::Untrusted {
+            timed_out: true,
+            conclusion: record.conclusion.clone(),
+        },
+        CaptureStatus::Failed => MonitorCaptureState::Untrusted {
+            timed_out: false,
+            conclusion: record.conclusion.clone(),
+        },
+        CaptureStatus::DryRun => match record.capture_mode.as_str() {
+            "dry_run" => MonitorCaptureState::DryRun,
+            "not_applicable" => MonitorCaptureState::NotRequested,
+            _ => bail!("dry-run capture has an invalid capture mode"),
+        },
+    };
+
+    let projection = state.projection();
+    if record.capture_mode != projection.capture_mode
+        || record.capture_status != projection.capture_status
+        || record.monitor_evidence_status != projection.monitor_evidence_status
+        || record.trust_basis != projection.trust_basis
+        || record.trusted_output != projection.trusted_output
+        || record.conclusion != projection.conclusion
+    {
+        bail!("capture wire fields contradict the typed capture state");
+    }
+
+    match state {
+        MonitorCaptureState::NotRequested
+            if boot_status != BootTranscriptStatus::NotRequested
+                || runtime_status != RuntimeAttestationEvidenceStatus::NotRequested =>
+        {
+            bail!("not-requested capture contains captured evidence state");
+        }
+        MonitorCaptureState::DryRun
+            if boot_status != BootTranscriptStatus::NotCaptured
+                || runtime_status != RuntimeAttestationEvidenceStatus::NotCaptured =>
+        {
+            bail!("dry-run capture contains captured evidence state");
+        }
+        MonitorCaptureState::Trusted {
+            basis: MonitorTrustBasis::BootTranscript,
+            ..
+        } if boot_status != BootTranscriptStatus::Trusted => {
+            bail!("boot-transcript trust basis lacks a trusted transcript");
+        }
+        MonitorCaptureState::Trusted {
+            basis: MonitorTrustBasis::RuntimeAttestation,
+            ..
+        } if runtime_status
+            != RuntimeAttestationEvidenceStatus::Observed(RuntimeAttestationStatus::Trusted) =>
+        {
+            bail!("runtime-attestation trust basis lacks trusted attestation");
+        }
+        _ => {}
+    }
+
+    Ok(state)
+}
+
+fn apply_monitor_capture_state(record: &mut EvidenceRecord, state: &MonitorCaptureState) {
+    let projection = state.projection();
+    record.capture_mode = projection.capture_mode.to_owned();
+    record.capture_status = projection.capture_status;
+    record.monitor_evidence_status = projection.monitor_evidence_status.to_owned();
+    record.trust_basis = projection.trust_basis.to_owned();
+    record.trusted_output = projection.trusted_output;
+    record.conclusion = projection.conclusion.to_owned();
+}
+
+fn parse_boot_transcript_status(value: &str) -> Result<BootTranscriptStatus> {
+    match value {
+        "trusted" => Ok(BootTranscriptStatus::Trusted),
+        "missing" => Ok(BootTranscriptStatus::Missing),
+        "untrusted" => Ok(BootTranscriptStatus::Untrusted),
+        "not_captured" => Ok(BootTranscriptStatus::NotCaptured),
+        "not_requested" => Ok(BootTranscriptStatus::NotRequested),
+        _ => bail!("unknown boot transcript status"),
+    }
+}
+
+fn parse_runtime_attestation_evidence_status(
+    value: &str,
+) -> Result<RuntimeAttestationEvidenceStatus> {
+    let status = match value {
+        "trusted" => RuntimeAttestationStatus::Trusted,
+        "missing" => RuntimeAttestationStatus::Missing,
+        "malformed" => RuntimeAttestationStatus::Malformed,
+        "insufficient_samples" => RuntimeAttestationStatus::InsufficientSamples,
+        "mixed_session_or_ordinal" => RuntimeAttestationStatus::MixedSessionOrOrdinal,
+        "static_fields_mismatch" => RuntimeAttestationStatus::StaticFieldsMismatch,
+        "non_monotonic_uptime" => RuntimeAttestationStatus::NonMonotonicUptime,
+        "package_identity_mismatch" => RuntimeAttestationStatus::PackageIdentityMismatch,
+        "incomplete_readiness" => RuntimeAttestationStatus::IncompleteReadiness,
+        "not_captured" => return Ok(RuntimeAttestationEvidenceStatus::NotCaptured),
+        "not_requested" => return Ok(RuntimeAttestationEvidenceStatus::NotRequested),
+        _ => bail!("unknown runtime attestation status"),
+    };
+    Ok(RuntimeAttestationEvidenceStatus::Observed(status))
+}
+
 fn unix_timestamp() -> String {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -3502,7 +3787,7 @@ mod tests {
         let espflash = bin_dir.join("espflash");
         fs::write(
             espflash.as_std_path(),
-            "#!/usr/bin/env sh\nprintf '%s\\n' \"$@\" >\"$(dirname \"$0\")/args.log\"\nprintf 'password=probe-secret\\n' >&2\nprintf 'Connecting...\\n0x123456789abcdef0123456789abcdef\\n'\n",
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" >\"$(dirname \"$0\")/args.log\"\nprintf 'password=probe-secret\\n' >&2\nprintf 'Connecting...\\n0x123456789abcdef0123456789abcdef\\n'\n",
         )
         .expect("fake espflash");
         fs::set_permissions(espflash.as_std_path(), fs::Permissions::from_mode(0o700))
@@ -3518,7 +3803,7 @@ mod tests {
             board: BoardId::Ultra205,
             port: "/dev/private-device".to_owned(),
             stage_root: Utf8PathBuf::from("scratch/probe"),
-            timeout_seconds: 30,
+            timeout_seconds: 180,
         };
 
         // Act
@@ -3780,6 +4065,118 @@ mod tests {
             Utf8PathBuf::from("scratch/private-evidence")
         );
         assert_eq!(command.expected_private_sha256, digest);
+    }
+
+    #[test]
+    fn monitor_capture_states_project_to_the_legacy_wire_contract() {
+        // Arrange
+        let cases = [
+            (
+                MonitorCaptureState::NotRequested,
+                (
+                    "not_applicable",
+                    CaptureStatus::DryRun,
+                    "not_requested",
+                    false,
+                ),
+            ),
+            (
+                MonitorCaptureState::DryRun,
+                ("dry_run", CaptureStatus::DryRun, "not_captured", false),
+            ),
+            (
+                MonitorCaptureState::Trusted {
+                    completion: TrustedCaptureCompletion::Completed,
+                    basis: MonitorTrustBasis::BootTranscript,
+                },
+                ("noninteractive", CaptureStatus::Completed, "trusted", true),
+            ),
+            (
+                MonitorCaptureState::Trusted {
+                    completion: TrustedCaptureCompletion::Completed,
+                    basis: MonitorTrustBasis::RuntimeAttestation,
+                },
+                ("noninteractive", CaptureStatus::Completed, "trusted", true),
+            ),
+            (
+                MonitorCaptureState::Trusted {
+                    completion: TrustedCaptureCompletion::TimedOut,
+                    basis: MonitorTrustBasis::BootTranscript,
+                },
+                (
+                    "noninteractive",
+                    CaptureStatus::TimedOutAfterTrustedOutput,
+                    "trusted",
+                    true,
+                ),
+            ),
+            (
+                MonitorCaptureState::Trusted {
+                    completion: TrustedCaptureCompletion::TimedOut,
+                    basis: MonitorTrustBasis::RuntimeAttestation,
+                },
+                (
+                    "noninteractive",
+                    CaptureStatus::TimedOutAfterTrustedOutput,
+                    "trusted",
+                    true,
+                ),
+            ),
+            (
+                MonitorCaptureState::PendingPrivateClassification,
+                (
+                    "noninteractive",
+                    CaptureStatus::TimedOutPendingPrivateClassification,
+                    "pending_private_classification",
+                    false,
+                ),
+            ),
+            (
+                MonitorCaptureState::AdmittedPrivateClassification,
+                (
+                    "noninteractive",
+                    CaptureStatus::TimedOutAfterPrivateClassification,
+                    "pending_private_classification",
+                    false,
+                ),
+            ),
+            (
+                MonitorCaptureState::Untrusted {
+                    timed_out: true,
+                    conclusion: "timeout".to_owned(),
+                },
+                (
+                    "noninteractive",
+                    CaptureStatus::TimedOutWithoutTrustedOutput,
+                    "untrusted",
+                    false,
+                ),
+            ),
+            (
+                MonitorCaptureState::Untrusted {
+                    timed_out: false,
+                    conclusion: "failure".to_owned(),
+                },
+                ("noninteractive", CaptureStatus::Failed, "untrusted", false),
+            ),
+        ];
+
+        for (state, expected) in cases {
+            // Act
+            let projection = state.projection();
+
+            // Assert
+            assert_eq!(
+                (
+                    projection.capture_mode,
+                    projection.capture_status,
+                    projection.monitor_evidence_status,
+                    projection.trusted_output,
+                ),
+                expected,
+                "{state:?}"
+            );
+        }
     }
 
     #[test]
@@ -5785,6 +6182,50 @@ mod tests {
             result.expect_err("failed child must remain terminal")
         );
         assert!(error.contains("dual_evidence=failed reason=capture_not_accepted"));
+        assert!(!evidence_dir.join("flash-monitor.log").exists());
+        assert!(!evidence_dir.join("flash-command-evidence.json").exists());
+    }
+
+    #[test]
+    fn finalize_evidence_rejects_contradictory_legacy_capture_fields() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let evidence_dir = dir_path(&dir).join("evidence");
+        let mut command = flash_monitor_fixture(&dir, evidence_dir.clone());
+        command.common.evidence_mode = Some(EvidenceMode::Dual);
+        let environment = FakeFlashEnvironment::default()
+            .with_capture_status(CaptureProcessStatus::TimedOut)
+            .with_log_contents("late private capture without trusted markers\n");
+        run_flash_monitor(&command, &environment).expect("stage private evidence");
+        let private_log = evidence_dir.join("flash-monitor.classifier-input.log");
+        let private_record = evidence_dir.join("flash-command-evidence.private.json");
+        let mut json: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(private_record.as_std_path()).expect("private record"),
+        )
+        .expect("private JSON");
+        json["trusted_output"] = serde_json::Value::Bool(true);
+        fs::write(
+            private_record.as_std_path(),
+            serde_json::to_vec_pretty(&json).expect("encode mutated private record"),
+        )
+        .expect("mutate private record");
+
+        // Act
+        let result = run_finalize_evidence(
+            &FinalizeEvidenceCommand {
+                evidence_dir: evidence_dir.clone(),
+                expected_private_sha256: evidence::private_log_sha256(&private_log)
+                    .expect("private digest"),
+            },
+            &environment,
+        );
+
+        // Assert
+        let error = format!(
+            "{:#}",
+            result.expect_err("contradictory capture fields must fail")
+        );
+        assert!(error.contains("private_record_invalid_state"));
         assert!(!evidence_dir.join("flash-monitor.log").exists());
         assert!(!evidence_dir.join("flash-command-evidence.json").exists());
     }

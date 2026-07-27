@@ -14,9 +14,9 @@ use inventory::{
 };
 
 pub(crate) use generation::{
-    publish_phase35_generation, publish_phase36_generation, read_phase36_public_checklist,
-    Phase35GenerationDocuments, Phase35PublicationOptions, Phase36GenerationDocuments,
-    Phase36PublicationOptions,
+    publish_phase35_generation, publish_phase36_generation, read_phase36_authoritative_snapshot,
+    read_phase36_public_checklist, Phase35GenerationDocuments, Phase35PublicationOptions,
+    Phase36GenerationDocuments, Phase36PublicationOptions,
 };
 pub(crate) use profile::{
     EvidenceDisposition, OperatorEvidenceProfile, OperatorEvidenceSlot, ShareOutcome,

@@ -157,6 +157,24 @@ sh_test(
     tags = ["local"],
 )
 
+sh_test(
+    name = "static_provenance_test",
+    srcs = ["static-provenance-test.mjs"],
+    args = [
+        "$(location //firmware/bitaxe:static/www/assets/provenance.js)",
+        "$(location //firmware/bitaxe:static/www/index.html)",
+        "$(location //firmware/bitaxe:static/recovery_page.html)",
+        "$(location //firmware/bitaxe:static/www/assets/release.json)",
+    ],
+    data = [
+        "//firmware/bitaxe:static/www/assets/provenance.js",
+        "//firmware/bitaxe:static/www/index.html",
+        "//firmware/bitaxe:static/recovery_page.html",
+        "//firmware/bitaxe:static/www/assets/release.json",
+    ],
+    env_inherit = ["PATH"],
+)
+
 sh_binary(
     name = "phase13_firmware_ota_smoke",
     srcs = ["phase13-firmware-ota-smoke.sh"],
@@ -785,6 +803,9 @@ sh_test(
     srcs = ["phase35-promotion-contract-test.sh"],
     data = [
         "//:docs/parity/checklist.md",
+        "//:docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json",
+        "//:docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh/checklist.md",
+        "//:docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh/manifest.json",
         "//:docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md",
         "//:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/.phase35-generation-manifest.json",
         "//:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/admitted.json",

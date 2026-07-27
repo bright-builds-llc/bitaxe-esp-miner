@@ -176,6 +176,22 @@ pub(crate) fn publish_phase36_generation(
     transactional_exchange(&paths, &rendered.projected_checklist, options)
 }
 
+pub(crate) fn read_phase36_authoritative_snapshot(
+    workspace_root: &Utf8Path,
+    destination_root: &Utf8Path,
+) -> GenerationResult<String> {
+    let destination = workspace_root.join(normalize_repo_relative(
+        destination_root,
+        "Phase 36 destination root",
+    )?);
+    reject_symlink_managed_path(workspace_root, &destination)?;
+    validate_existing_destination(&destination)?;
+    read_text(
+        &destination.join(CHECKLIST_SNAPSHOT_FILE),
+        "Phase 36 authoritative checklist snapshot",
+    )
+}
+
 struct PublicationPaths {
     staging: Utf8PathBuf,
     destination: Utf8PathBuf,

@@ -203,7 +203,7 @@ mod tests {
         );
         assert_eq!(
             value["axeOsStaticAsset"],
-            json!({"state": "available", "value": "bitaxe-rust-phase-07-static-compatibility"})
+            json!({"state": "available", "value": "bitaxe-rust-fallback-ui"})
         );
         assert_eq!(
             value["board"],
@@ -330,9 +330,7 @@ mod tests {
     fn all_available_identity() -> PlatformIdentity {
         PlatformIdentity {
             esp_idf_version: PlatformFact::available("v5.5.4".to_owned()),
-            axe_os_static_asset: PlatformFact::available(
-                "bitaxe-rust-phase-07-static-compatibility".to_owned(),
-            ),
+            axe_os_static_asset: PlatformFact::available("bitaxe-rust-fallback-ui".to_owned()),
             board: PlatformFact::available(PlatformBoard::Ultra205),
             asic: PlatformFact::available(PlatformAsic::Bm1366),
             running_partition: PlatformFact::available("factory".to_owned()),

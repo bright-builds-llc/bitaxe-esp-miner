@@ -47,6 +47,8 @@ const PHASE35_MANIFEST_PATH: &str =
     "docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/.phase35-generation-manifest.json";
 
 mod api_compare;
+mod checklist_revision;
+mod checklist_targets;
 mod claim_ladder;
 mod mining_allow;
 mod operator_evidence;
@@ -79,6 +81,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum CliCommand {
     Report(ReportArgs),
+    ReviseChecklistDocumentation(ReviseChecklistDocumentationArgs),
     ApiCompare(ApiCompareArgs),
     ReleaseGate(ReleaseGateArgs),
     ReleaseEvidence(ReleaseEvidenceArgs),
@@ -314,6 +317,16 @@ struct ReportArgs {
 }
 
 #[derive(Debug, Parser)]
+struct ReviseChecklistDocumentationArgs {
+    #[arg(
+        long,
+        default_value = checklist_revision::CURRENT_REVISION_SPEC,
+        value_parser = parse_utf8_path
+    )]
+    change_spec: Utf8PathBuf,
+}
+
+#[derive(Debug, Parser)]
 struct ApiCompareArgs {
     #[arg(long, default_value = DEFAULT_OPENAPI_PATH, value_parser = parse_utf8_path)]
     openapi: Utf8PathBuf,
@@ -463,6 +476,8 @@ struct ChecklistRow {
     surface: String,
     reference_breadcrumb: String,
     rust_owned_target: String,
+    #[serde(skip)]
+    rust_owned_target_markdown: String,
     status: String,
     evidence: String,
     notes: String,
@@ -596,6 +611,9 @@ trait ReportEnvironment {
     fn read_checklist(&self, path: &Utf8Path) -> Result<String>;
     fn read_phase30_promotion_artifact(&self, path: &Utf8Path) -> Result<String>;
     fn reference_commit(&self) -> Result<String>;
+    fn validate_checklist_targets(&self, _rows: &[ChecklistRow]) -> Vec<ValidationError> {
+        Vec::new()
+    }
 }
 
 #[derive(Debug)]
@@ -641,14 +659,8 @@ impl ReportEnvironment for LocalEnvironment {
 
     fn read_checklist(&self, path: &Utf8Path) -> Result<String> {
         if path == Utf8Path::new(PHASE35_CHECKLIST_PATH) {
-            return read_phase36_public_checklist(
-                &self.workspace_dir,
-                Utf8Path::new(PHASE36_STAGING_ROOT),
-                Utf8Path::new(PHASE36_DESTINATION_ROOT),
-                Utf8Path::new(PHASE35_CHECKLIST_PATH),
-                Utf8Path::new(PHASE35_MANIFEST_PATH),
-            )
-            .map_err(anyhow::Error::msg);
+            return checklist_revision::read_authoritative_checklist(&self.workspace_dir)
+                .map_err(anyhow::Error::msg);
         }
         let checklist_path = self.workspace_path(path);
         std::fs::read_to_string(checklist_path.as_std_path())
@@ -683,6 +695,22 @@ impl ReportEnvironment for LocalEnvironment {
         }
 
         Ok(trimmed.to_owned())
+    }
+
+    fn validate_checklist_targets(&self, rows: &[ChecklistRow]) -> Vec<ValidationError> {
+        rows.iter()
+            .flat_map(|row| {
+                checklist_targets::validate_targets(
+                    &self.workspace_dir,
+                    &row.rust_owned_target_markdown,
+                )
+                .into_iter()
+                .map(|message| ValidationError {
+                    id: row.id.clone(),
+                    message: format!("invalid Rust-owned target: {message}"),
+                })
+            })
+            .collect()
     }
 }
 
@@ -867,6 +895,9 @@ fn main() -> Result<()> {
             let request = ReportRequest::from(args);
             run_report(&request, &environment)?
         }
+        CliCommand::ReviseChecklistDocumentation(args) => {
+            run_revise_checklist_documentation_command(&args, &environment)?
+        }
         CliCommand::ApiCompare(args) => run_api_compare_command(args, &environment)?,
         CliCommand::ReleaseGate(args) => run_release_gate_command(args, &environment)?,
         CliCommand::ReleaseEvidence(args) => run_release_evidence_command(args, &environment)?,
@@ -920,6 +951,19 @@ fn main() -> Result<()> {
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_revise_checklist_documentation_command(
+    args: &ReviseChecklistDocumentationArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    let outcome =
+        checklist_revision::publish_current_revision(&environment.workspace_dir, &args.change_spec)
+            .map_err(anyhow::Error::msg)?;
+    Ok(format!(
+        "checklist_revision={} affected_rows={} checklist_sha256={}",
+        outcome.revision_id, outcome.affected_rows, outcome.checklist_sha256
+    ))
 }
 
 fn run_classify_phase36_evidence_command(args: &ClassifyPhase36EvidenceArgs) -> Result<String> {
@@ -1677,11 +1721,15 @@ fn run_report(
     let rows = parse_checklist(&checklist)?;
     let phase30_artifact = load_phase30_promotion_artifact(&rows, environment);
     let reference_commit = environment.reference_commit()?;
-    let report = ParityReport::new_with_phase30_artifact(reference_commit, rows, &phase30_artifact);
+    let mut report =
+        ParityReport::new_with_phase30_artifact(reference_commit, rows, &phase30_artifact);
+    report
+        .validation_errors
+        .extend(environment.validate_checklist_targets(&report.rows));
 
     if environment_request.fail_on_invalid_verified && !report.validation_errors.is_empty() {
         bail!(
-            "invalid verified parity claims:\n{}",
+            "invalid parity checklist:\n{}",
             format_validation_errors(&report.validation_errors)
         );
     }
@@ -1728,11 +1776,15 @@ fn parse_checklist(checklist: &str) -> Result<Vec<ChecklistRow>> {
             continue;
         }
 
-        let cells: Vec<String> = trimmed
+        let raw_cells: Vec<String> = trimmed
             .trim_matches('|')
             .split('|')
-            .map(clean_markdown_cell)
+            .map(|cell| cell.trim().to_owned())
             .collect();
+        let cells = raw_cells
+            .iter()
+            .map(|cell| clean_markdown_cell(cell))
+            .collect::<Vec<_>>();
 
         if is_header_or_separator(&cells) {
             continue;
@@ -1751,6 +1803,7 @@ fn parse_checklist(checklist: &str) -> Result<Vec<ChecklistRow>> {
             surface: cells[1].clone(),
             reference_breadcrumb: cells[2].clone(),
             rust_owned_target: cells[3].clone(),
+            rust_owned_target_markdown: raw_cells[3].clone(),
             status: cells[4].clone(),
             evidence: cells[5].clone(),
             notes: cells[6].clone(),
@@ -3485,6 +3538,7 @@ mod tests {
             surface: "Phase 30 exact promotion claim".to_owned(),
             reference_breadcrumb: "reference/esp-miner/main/system.c".to_owned(),
             rust_owned_target: "tools/parity/src/main.rs".to_owned(),
+            rust_owned_target_markdown: "`tools/parity/src/main.rs`".to_owned(),
             status: "verified".to_owned(),
             evidence: "workflow,hardware-smoke,hardware-regression".to_owned(),
             notes: format!(

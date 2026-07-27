@@ -113,12 +113,24 @@ impl std::error::Error for UsbSessionError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SupervisedOutput {
-    pub success: bool,
-    pub exit_code: Option<i32>,
+    pub termination: SupervisedTermination,
     pub stdout: Vec<u8>,
     pub stderr: Vec<u8>,
-    pub timed_out: bool,
-    pub interrupted_by: Option<i32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SupervisedTermination {
+    ExitedSuccess,
+    ExitedFailure,
+    TimedOut,
+    Interrupted { signal: i32 },
+}
+
+impl SupervisedOutput {
+    #[must_use]
+    pub const fn succeeded(&self) -> bool {
+        matches!(self.termination, SupervisedTermination::ExitedSuccess)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -303,7 +315,7 @@ impl UsbSession {
                 run_owned_process(request, &mut self.lease).inspect_err(|error| {
                     self.fail_once(error.category);
                 })?;
-            if process_result.success {
+            if process_result.succeeded() {
                 self.transition(UsbLifecycleEvent::FlashComplete)?;
                 let (phase, timeout) = successful_command_recovery_policy(args);
                 if let Err(error) = self.reacquire(phase, timeout) {
@@ -367,7 +379,7 @@ impl UsbSession {
         let output = run_owned_process(request, &mut self.lease).inspect_err(|error| {
             self.fail_once(error.category);
         })?;
-        if output.success {
+        if output.succeeded() {
             return Ok(output);
         }
         let category = UsbTerminalCategory::FlashFailedBeforeTransfer;
@@ -592,7 +604,10 @@ fn validate_recovery_snapshot(
 }
 
 fn classify_espflash_failure(output: &SupervisedOutput) -> UsbTerminalCategory {
-    if output.timed_out || output.interrupted_by.is_some() {
+    if matches!(
+        output.termination,
+        SupervisedTermination::TimedOut | SupervisedTermination::Interrupted { .. }
+    ) {
         return UsbTerminalCategory::BootloaderConnectFailed;
     }
     let stderr = String::from_utf8_lossy(&output.stderr).to_ascii_lowercase();

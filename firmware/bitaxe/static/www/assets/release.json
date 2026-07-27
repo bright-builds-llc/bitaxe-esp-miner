@@ -1,8 +1,10 @@
 {
-  "name": "bitaxe-rust-phase-07-static-compatibility",
+  "schema": "bitaxe-rust-static-release-v1",
+  "name": "bitaxe-rust-fallback-ui",
   "board": "Ultra 205",
   "asset_scope": "AxeOS compatibility fallback and recovery source",
   "provenance": "Rust-owned static asset; not copied from upstream ESP-Miner.",
+  "source_url": "https://github.com/bright-builds-llc/bitaxe-esp-miner",
   "ota_www_route": "/api/system/OTAWWW",
   "recovery_route": "/recovery"
 }

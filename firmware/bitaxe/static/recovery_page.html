@@ -62,6 +62,46 @@
         color: #000000;
       }
 
+      a {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        color: #00ff00;
+      }
+
+      .provenance {
+        margin-top: 24px;
+        border-top: 1px solid #00ff00;
+        padding-top: 20px;
+      }
+
+      .provenance h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+        font-weight: 500;
+      }
+
+      .provenance dl {
+        display: grid;
+        gap: 8px;
+        margin: 0 0 12px;
+      }
+
+      .provenance dl div {
+        display: grid;
+        grid-template-columns: minmax(112px, 1fr) 2fr;
+        gap: 12px;
+      }
+
+      .provenance dt,
+      .provenance dd {
+        overflow-wrap: anywhere;
+      }
+
+      .provenance dd {
+        margin: 0;
+      }
+
       .response {
         display: grid;
         gap: 8px;
@@ -78,6 +118,20 @@
         After clicking upload, please wait 60 seconds<br>
         DO NOT restart the device until response is received
       </p>
+
+      <section class="provenance" aria-labelledby="provenance-title">
+        <h2 id="provenance-title">Firmware provenance</h2>
+        <dl>
+          <div><dt>Version</dt><dd id="provenance-version">Unavailable</dd></div>
+          <div><dt>Source commit</dt><dd id="provenance-commit">Unavailable</dd></div>
+          <div><dt>Built</dt><dd id="provenance-built">Unavailable</dd></div>
+        </dl>
+        <a
+          href="https://github.com/bright-builds-llc/bitaxe-esp-miner"
+          target="_blank"
+          rel="noopener noreferrer"
+        >View source</a>
+      </section>
 
       <form id="upload-form">
         <label for="wwwfile">www.bin</label>
@@ -100,6 +154,45 @@
       const restartButton = document.getElementById("restart");
       const statusMsg = document.getElementById("status");
       const responseMsg = document.getElementById("response");
+
+      async function hydrateProvenance() {
+        try {
+          const result = await fetch("/api/system/info", {
+            headers: { Accept: "application/json" },
+          });
+          if (!result.ok) {
+            return;
+          }
+          const payload = await result.json();
+          if (
+            !payload ||
+            typeof payload.semanticVersion !== "string" ||
+            payload.semanticVersion.trim() === "" ||
+            typeof payload.sourceCommit !== "string" ||
+            !/^[0-9a-f]{12,40}$/i.test(payload.sourceCommit) ||
+            typeof payload.buildTimestampUtc !== "string" ||
+            !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(
+              payload.buildTimestampUtc,
+            ) ||
+            typeof payload.sourceDirty !== "boolean"
+          ) {
+            return;
+          }
+
+          document.getElementById("provenance-version").textContent =
+            payload.semanticVersion;
+          document.getElementById("provenance-commit").textContent =
+            `${payload.sourceCommit.slice(0, 12)}${
+              payload.sourceDirty ? " (dirty)" : ""
+            }`;
+          document.getElementById("provenance-built").textContent =
+            payload.buildTimestampUtc;
+        } catch {
+          // Keep the explicit Unavailable defaults.
+        }
+      }
+
+      void hydrateProvenance();
 
       uploadForm.addEventListener("submit", (event) => {
         event.preventDefault();

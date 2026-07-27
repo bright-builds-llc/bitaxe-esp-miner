@@ -5,6 +5,10 @@ exports_files([
     "BUILD.bazel",
     "partitions-ultra205.csv",
     "sdkconfig.defaults",
+    "static/recovery_page.html",
+    "static/www/index.html",
+    "static/www/assets/provenance.js",
+    "static/www/assets/release.json",
 ])
 
 filegroup(

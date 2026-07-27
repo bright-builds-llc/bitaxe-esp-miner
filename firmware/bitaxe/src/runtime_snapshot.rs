@@ -466,6 +466,7 @@ fn collect_platform_snapshot(
     platform.source_commit = crate::firmware_commit().to_owned();
     platform.reference_commit = crate::reference_commit().to_owned();
     platform.app_elf_sha256 = crate::app_elf_sha256();
+    platform.build_timestamp_utc = crate::build_timestamp_utc().to_owned();
     platform.build_channel = crate::build_channel().to_owned();
     platform.source_dirty = crate::source_dirty();
     platform.maybe_release_tag = crate::maybe_release_tag().map(str::to_owned);

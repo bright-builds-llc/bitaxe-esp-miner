@@ -164,6 +164,8 @@ pub struct SystemInfoWire {
     pub reference_commit: String,
     #[serde(rename = "appElfSha256")]
     pub app_elf_sha256: String,
+    #[serde(rename = "buildTimestampUtc")]
+    pub build_timestamp_utc: String,
     #[serde(rename = "buildChannel")]
     pub build_channel: String,
     #[serde(rename = "sourceDirty")]
@@ -274,6 +276,7 @@ impl SystemInfoWire {
             source_commit: platform.source_commit.clone(),
             reference_commit: platform.reference_commit.clone(),
             app_elf_sha256: platform.app_elf_sha256.clone(),
+            build_timestamp_utc: platform.build_timestamp_utc.clone(),
             build_channel: platform.build_channel.clone(),
             source_dirty: platform.source_dirty,
             maybe_release_tag: platform.maybe_release_tag.clone(),
@@ -464,6 +467,7 @@ mod tests {
         assert_eq!(value.get("sourceCommit"), Some(&json!("0".repeat(40))));
         assert_eq!(value.get("referenceCommit"), Some(&json!("0".repeat(40))));
         assert_eq!(value.get("appElfSha256"), Some(&json!("0".repeat(64))));
+        assert_eq!(value.get("buildTimestampUtc"), Some(&json!("Unavailable")));
         assert_eq!(value.get("buildChannel"), Some(&json!("dev")));
         assert_eq!(value.get("sourceDirty"), Some(&Value::Bool(false)));
         assert_eq!(value.get("releaseTag"), Some(&Value::Null));

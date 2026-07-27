@@ -1,0 +1,28 @@
+{
+  "schema_version": "parity-checklist-documentation-manifest-v1",
+  "revision_id": "2026-07-26-source-pointer-refresh",
+  "predecessor_path": "docs/parity/evidence/phase-36-substantive-evidence-admission-and-exact-re-promotion/checklist.md",
+  "predecessor_sha256": "dd38e01ad40b07833fcffa9eb8c5f251d93feaf6f6a12c766881096c3245b497",
+  "change_spec_path": "docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json",
+  "change_spec_sha256": "764c2f0cbbdecf7a9e7a4582611117aa255672da860b9271f44523d3f1cd5213",
+  "affected_rows": [
+    "STR-001",
+    "STR-003",
+    "STR-006",
+    "STR-007",
+    "PWR-003",
+    "PWR-005",
+    "PWR-006",
+    "IO-001",
+    "STAT-004",
+    "SAFE-10",
+    "ASIC-09",
+    "ASIC-10",
+    "ASIC-11",
+    "STR-08",
+    "STR-11",
+    "SAFE-12",
+    "SAFE-13"
+  ],
+  "checklist_sha256": "1f8eb1423c404c9084e113c7a5689e2884d3c9377d84a4aa9c48e831d57af95b"
+}

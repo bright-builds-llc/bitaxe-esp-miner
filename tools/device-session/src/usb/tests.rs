@@ -167,6 +167,51 @@ fn successful_probe_keeps_the_standard_recovery_policy() {
 }
 
 #[test]
+fn every_supervised_termination_has_one_success_and_failure_classification() {
+    // Arrange
+    let cases = [
+        (
+            SupervisedTermination::ExitedSuccess,
+            true,
+            UsbTerminalCategory::FlashFailedBeforeTransfer,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
+            false,
+            UsbTerminalCategory::FlashFailedBeforeTransfer,
+        ),
+        (
+            SupervisedTermination::TimedOut,
+            false,
+            UsbTerminalCategory::BootloaderConnectFailed,
+        ),
+        (
+            SupervisedTermination::Interrupted {
+                signal: libc::SIGTERM,
+            },
+            false,
+            UsbTerminalCategory::BootloaderConnectFailed,
+        ),
+    ];
+
+    for (termination, succeeded, category) in cases {
+        let output = SupervisedOutput {
+            termination,
+            stdout: Vec::new(),
+            stderr: Vec::new(),
+        };
+
+        // Act
+        let observed_success = output.succeeded();
+        let observed_category = classify_espflash_failure(&output);
+
+        // Assert
+        assert_eq!(observed_success, succeeded, "{termination:?}");
+        assert_eq!(observed_category, category, "{termination:?}");
+    }
+}
+
+#[test]
 fn protected_recovery_summary_is_mode_0600_and_excludes_stability_key() {
     // Arrange
     let directory = tempdir().expect("temporary directory");

@@ -29,6 +29,10 @@ readonly phase36_verdict="${phase36_generation}/verdict.json"
 readonly phase36_matrix="${phase36_generation}/decision-matrix.json"
 readonly phase36_projection="${phase36_generation}/typed-fact-projection.json"
 readonly phase36_checklist="${phase36_generation}/checklist.md"
+readonly checklist_revision_spec="${workspace_root}/docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json"
+readonly checklist_revision_root="${workspace_root}/docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh"
+readonly checklist_revision_manifest="${checklist_revision_root}/manifest.json"
+readonly checklist_revision_snapshot="${checklist_revision_root}/checklist.md"
 
 fail() {
 	printf 'phase35_promotion_contract_test_error: category=%s\n' "$1" >&2
@@ -50,7 +54,10 @@ for required_path in \
 	"$phase36_verdict" \
 	"$phase36_matrix" \
 	"$phase36_projection" \
-	"$phase36_checklist"; do
+	"$phase36_checklist" \
+	"$checklist_revision_spec" \
+	"$checklist_revision_manifest" \
+	"$checklist_revision_snapshot"; do
 	[[ -f "$required_path" ]] || fail artifact-inventory
 done
 
@@ -180,8 +187,6 @@ phase35_generation_digest="$(sha256_file "$phase35_manifest")"
 	fail successor-current-checklist-digest
 [[ "$(jq -er '.checklist_sha256' "$phase36_manifest")" == "$(sha256_file "$phase36_checklist")" ]] ||
 	fail successor-authoritative-checklist-digest
-cmp -s "$phase36_checklist" "$checklist_path" ||
-	fail successor-derived-checklist-drift
 [[ "$(sha256_file "$phase36_projection")" == "$(jq -er '.projection_sha256' "$phase36_manifest")" ]] ||
 	fail successor-projection-digest
 [[ "$(sha256_file "$phase36_matrix")" == "$(jq -er '.matrix_sha256' "$phase36_manifest")" ]] ||
@@ -202,8 +207,27 @@ for correction in \
 	reason="${correction#*:}"
 	jq -e --arg row_id "$row_id" --arg reason "$reason" \
 		'.scope_decisions | any(.decision == "demote" and .row_id == $row_id and .reason == $reason)' \
-		"$phase36_matrix" >/dev/null || fail successor-exact-correction
+	"$phase36_matrix" >/dev/null || fail successor-exact-correction
 done
+
+[[ "$(jq -er '.schema_version' "$checklist_revision_spec")" == "parity-checklist-documentation-revision-v1" ]] ||
+	fail documentation-revision-spec-schema
+[[ "$(jq -er '.schema_version' "$checklist_revision_manifest")" == "parity-checklist-documentation-manifest-v1" ]] ||
+	fail documentation-revision-manifest-schema
+[[ "$(jq -er '.revision_id' "$checklist_revision_manifest")" == "$(jq -er '.revision_id' "$checklist_revision_spec")" ]] ||
+	fail documentation-revision-id
+[[ "$(jq -er '.predecessor_sha256' "$checklist_revision_manifest")" == "$(sha256_file "$phase36_checklist")" ]] ||
+	fail documentation-revision-predecessor
+[[ "$(jq -er '.predecessor_sha256' "$checklist_revision_spec")" == "$(sha256_file "$phase36_checklist")" ]] ||
+	fail documentation-revision-spec-predecessor
+[[ "$(jq -er '.change_spec_sha256' "$checklist_revision_manifest")" == "$(sha256_file "$checklist_revision_spec")" ]] ||
+	fail documentation-revision-spec-digest
+[[ "$(jq -er '.checklist_sha256' "$checklist_revision_manifest")" == "$(sha256_file "$checklist_revision_snapshot")" ]] ||
+	fail documentation-revision-checklist-digest
+[[ "$(jq -er '.affected_rows | length' "$checklist_revision_manifest")" -eq 17 ]] ||
+	fail documentation-revision-row-count
+cmp -s "$checklist_revision_snapshot" "$checklist_path" ||
+	fail documentation-revision-root-drift
 
 for preserved_row in STR-09 CFG-07 ASIC-11; do
 	row="$(rg -m 1 -F "| ${preserved_row} |" "$checklist_path")" ||

@@ -12,7 +12,9 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use super::lease::{process_start, DeviceLease};
-use super::{session_error, SupervisedOutput, UsbSessionError, UsbTerminalCategory};
+use super::{
+    session_error, SupervisedOutput, SupervisedTermination, UsbSessionError, UsbTerminalCategory,
+};
 
 static PENDING_SIGNAL: AtomicI32 = AtomicI32::new(0);
 static SIGNAL_HANDLER_LOCK: Mutex<()> = Mutex::new(());
@@ -157,13 +159,19 @@ pub(super) fn run_owned_process(
             format!("espflash stderr capture failed: {error}"),
         )
     })?;
+    let termination = if timed_out {
+        SupervisedTermination::TimedOut
+    } else if let Some(signal) = interrupted_by {
+        SupervisedTermination::Interrupted { signal }
+    } else if status.success() {
+        SupervisedTermination::ExitedSuccess
+    } else {
+        SupervisedTermination::ExitedFailure
+    };
     Ok(SupervisedOutput {
-        success: status.success() && !timed_out && interrupted_by.is_none(),
-        exit_code: status.code(),
+        termination,
         stdout,
         stderr,
-        timed_out,
-        interrupted_by,
     })
 }
 
@@ -433,7 +441,7 @@ mod tests {
         .expect("supervised process");
 
         // Assert
-        assert!(output.success);
+        assert_eq!(output.termination, SupervisedTermination::ExitedSuccess);
         assert_eq!(output.stdout, b"supervised-output");
         let mode = fs::metadata(trace_root.join("child-0001.stdout"))
             .expect("stdout metadata")
@@ -476,7 +484,7 @@ mod tests {
         .expect("bounded timeout");
 
         // Assert
-        assert!(output.timed_out);
+        assert_eq!(output.termination, SupervisedTermination::TimedOut);
         let descendant_pid = fs::read_to_string(descendant_path)
             .expect("descendant pid")
             .parse::<i32>()
@@ -524,7 +532,7 @@ mod tests {
         .expect("supervised successful parent");
 
         // Assert
-        assert!(output.success);
+        assert_eq!(output.termination, SupervisedTermination::ExitedSuccess);
         let descendant_pid = fs::read_to_string(descendant_path)
             .expect("descendant pid")
             .parse::<i32>()

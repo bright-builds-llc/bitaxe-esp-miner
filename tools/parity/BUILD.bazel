@@ -48,6 +48,8 @@ rust_binary(
     name = "report",
     srcs = [
         "src/api_compare.rs",
+        "src/checklist_revision.rs",
+        "src/checklist_targets.rs",
         "src/claim_ladder.rs",
         "src/main.rs",
         "src/mining_allow.rs",
@@ -124,6 +126,9 @@ rust_binary(
     ],
     compile_data = glob(["fixtures/**"]) + [
         "//:docs/parity/checklist.md",
+        "//:docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json",
+        "//:docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh/checklist.md",
+        "//:docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh/manifest.json",
         "//:docs/parity/evidence/phase-22-claim-ladder-and-safety-preconditions/claim-ladder.md",
         "//:docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md",
         "//:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/.phase35-generation-manifest.json",

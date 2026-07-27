@@ -10,6 +10,57 @@ new work.
 
 ## Active
 
+### task-audit-integrity-state-provenance | 2026-07-26 21:24 | Repair audit items 1-3
+
+- [x] Publish a hash-bound documentation-only successor to the authenticated
+      Phase 36 checklist without changing historical evidence, statuses, or
+      evidence classifications.
+- [x] Validate every Rust-owned checklist target against the current workspace
+      and refresh the 17 stale implementation-pointer rows.
+- [x] Replace contradictory USB-process and monitor-capture state bags with
+      closed typed states while preserving the existing flat evidence JSON.
+- [x] Expose semantic version, short source commit, build timestamp, and the
+      public source link in the fallback and recovery interfaces.
+- [x] Add focused checklist, state-transition, API, and UI regressions.
+- [x] Run the required Rust checks in order, focused Bazel tests, full
+      repository tests, packaging, parity, reference, redaction, source scans,
+      and final diff review.
+
+Verification policy:
+
+- Preserve
+  `docs/parity/evidence/phase-36-substantive-evidence-admission-and-exact-re-promotion/`
+  byte-for-byte.
+- Do not change checklist status or evidence columns and do not promote any
+  hardware, mining, OTA, recovery, or release claim.
+- Do not detect, flash, monitor, access credentials, discover a network target,
+  or otherwise interact with hardware.
+
+Verification:
+
+- The documentation successor
+  `2026-07-26-source-pointer-refresh` binds the unchanged Phase 36 checklist
+  digest `dd38e01ad40b07833fcffa9eb8c5f251d93feaf6f6a12c766881096c3245b497`
+  and publishes checklist digest
+  `1f8eb1423c404c9084e113c7a5689e2884d3c9377d84a4aa9c48e831d57af95b`.
+- The ordered `cargo fmt --all`, Clippy, all-target build, and all-feature test
+  sequence passed.
+- Focused parity, flash, device-session, API, static-provenance, and packaging
+  Bazel tests passed; the final `just test` passed all 72 repository tests.
+- `just verify-production-session`, `just package`, `just parity`,
+  `just verify-reference`, `just verify-redaction`, missing-target scans, and
+  `git diff --check` passed.
+- All five authenticated Phase 36 artifact digests remained byte-identical.
+
+Completion review: Audit items 1-3 are repaired without parity promotion or
+evidence-schema changes. The active checklist is now a validated, hash-bound
+documentation successor; process and capture decisions are typed; and both
+fallback interfaces expose safe firmware provenance.
+
+Residual risks: No hardware, credentials, live network, OTA, recovery upload,
+or mining behavior was exercised. Existing hardware and parity non-claims
+remain unchanged.
+
 ### task-lcd-build-time-uptime | 2026-07-26 01:18 | Alternate LCD build time and uptime
 
 - [x] Embed the canonical firmware build UTC timestamp from Bazel volatile
