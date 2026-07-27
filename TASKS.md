@@ -669,6 +669,54 @@ outside this task. Hardware qualification, live pool recovery, and successful
 share submission still require separately authorized evidence before any parity
 promotion.
 
+### task-software-complete-production-mining-engine | 2026-07-26 | Deepen the Production Mining Session
+
+- [x] Replace the recursive lifecycle-action shell with one event/effect
+      Production Mining Session that owns recovery, V1 protocol state, framing,
+      work correlation, submit classification, and ordered safe stop.
+- [x] Add deterministic pool, clock, ASIC, settings, and projection adapters
+      that prove the complete admitted software lifecycle.
+- [x] Keep the ordinary ESP adapter actuation-unqualified and fail closed
+      before pool-secret, network, socket-write, or ASIC effects.
+- [x] Remove the superseded mining-loop and direct fake/live-runtime paths,
+      including active build, test, marker, and documentation wiring.
+- [x] Update the ownership ADR, Production Mining Session context, focused
+      verifier, and current implementation pointers without promoting parity.
+- [x] Run the required Rust checks in order, focused production-session
+      verification, repository tests, packaging, parity, reference-integrity,
+      redaction, source scans, and diff review.
+- [x] Retire the legacy Phase 36 substantive-evidence test and build wiring,
+      then rerun the repository test suite before publication.
+
+Verification policy:
+
+- Deterministic accepted and rejected shares are software evidence only.
+- Do not read real pool credentials, connect to a pool, flash hardware, mine,
+  actuate hardware, or promote parity during this task.
+
+Completion review: Complete. The Production Mining Session now owns one
+iterative event/effect lifecycle across admission, recovery, V1 framing and
+negotiation, centrally allocated generations, work/nonce/submit correlation,
+telemetry snapshots, fallback probing, and ordered safe stop. The deterministic
+adapter proves accepted and rejected software outcomes; the ordinary ESP
+adapter remains actuation-unqualified and the focused source contract proves
+that it contains no pool-secret, TCP/socket-write, or ASIC-effect path.
+
+Verification passed for the ordered Cargo format, Clippy, all-target build, and
+all-feature test sequence; `just verify-production-session`; `just package`;
+`just parity`; `just verify-reference`; `just verify-redaction`; active-source
+scans; `git diff --check`; and final diff review. `just test` passed 71 of 72
+targets before the obsolete Phase 36 substantive-evidence process test and its
+Bazel wiring were retired; the final repository run passed all 71 remaining
+tests. The production Phase 36 implementation, authenticated parity checklist,
+historical evidence, and `.planning/` archives were preserved. The focused
+source contract now guards against restoring the retired test or active build
+references, and current software verification is recorded separately.
+
+Residual risks: Real pool secrets, TCP/TLS, socket writes, ASIC effects, device
+flashing, mining, and hardware evidence remain unqualified and untested.
+Deterministic share outcomes do not promote parity or release readiness.
+
 ## Backlog
 
 ### task-private-first-remaining-evidence-pipelines | 2026-07-20 | Migrate remaining evidence workflows

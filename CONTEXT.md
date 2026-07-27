@@ -29,7 +29,11 @@ The Bitaxe Ultra 205 with BM1366 ASIC used for earliest USB flashing, smoke test
 _Avoid_: Default board, only supported board
 
 **Production Mining Session**:
-The boot-lifetime owner of mining intent and the lifecycle from readiness through pool work, recovery, and safe stop. It remains blocked until safety, ASIC, and actuation qualifications are all present.
+The boot-lifetime mining engine and sole owner of admission, pool recovery,
+Stratum V1 progression, bounded framing, work dispatch, nonce correlation,
+submit classification, derived mining state, and safe stop. Deterministic
+adapters prove its software behavior; the ordinary ESP adapter remains blocked
+until safety, ASIC, and explicit actuation qualifications are all present.
 _Avoid_: Live mining mode, evidence runtime, Stratum task
 
 **Reference Breadcrumb**:

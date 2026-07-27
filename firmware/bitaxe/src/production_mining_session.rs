@@ -1,12 +1,13 @@
-//! Thin ESP owner for the production mining session.
+//! Thin ESP owner and fail-closed adapter for the Production Mining Session.
 
+use std::collections::VecDeque;
 use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use bitaxe_stratum::v1::production_session::{
-    ProductionMiningSession, ProductionPoolAvailability, ProductionReadiness,
-    ProductionSessionAction, ProductionSessionNotificationOutcome, ProductionSessionWakeup,
+    ProductionMiningSession, ProductionReadiness, ProductionSessionEffect, ProductionSessionEvent,
+    ProductionSessionNotificationOutcome, ProductionSessionWakeup,
 };
 
 const OWNER_STACK_BYTES: usize = 16 * 1024;
@@ -63,49 +64,38 @@ fn run_owner(receiver: Receiver<ProductionSessionWakeup>) {
             maybe_wakeup,
             Some(ProductionSessionWakeup::ShutdownRequested)
         );
-        let readiness = adapter.read_authoritative_readiness();
         let now_ms = u64::try_from(started_at.elapsed().as_millis()).unwrap_or(u64::MAX);
-        let actions = session.on_wakeup(maybe_wakeup, readiness, now_ms);
-        apply_actions(&mut session, &mut adapter, actions, now_ms);
+        let event = ProductionSessionEvent::Wake {
+            wakeup: maybe_wakeup,
+            readiness: adapter.read_authoritative_readiness(),
+            now_ms,
+        };
+        drive_session(&mut session, &mut adapter, event);
         if shutdown_requested {
             return;
         }
     }
 }
 
-fn apply_actions(
+fn drive_session(
     session: &mut ProductionMiningSession,
     adapter: &mut OrdinaryEspProductionSessionAdapter,
-    actions: Vec<ProductionSessionAction>,
-    now_ms: u64,
+    initial_event: ProductionSessionEvent,
 ) {
-    for action in actions {
-        match action {
-            ProductionSessionAction::ReadPoolConfiguration => {
-                let maybe_availability = adapter.read_pool_configuration();
-                let availability = maybe_availability.unwrap_or(ProductionPoolAvailability {
-                    primary_configured: false,
-                    fallback_configured: false,
-                    prefer_fallback: false,
-                });
-                let follow_up = session.on_pool_configuration(availability);
-                apply_actions(session, adapter, follow_up, now_ms);
-            }
-            ProductionSessionAction::ConnectPool(pool) => {
+    let mut events = VecDeque::from([initial_event]);
+    while let Some(event) = events.pop_front() {
+        let effects = match session.handle(event) {
+            Ok(effects) => effects,
+            Err(error) => {
                 log::error!(
-                    "production_mining_session=fail_closed reason=ordinary_adapter_unqualified action=connect pool={pool:?}"
+                    "production_mining_session=fail_closed reason=engine_error error={error}"
                 );
-                let follow_up = session.on_connection_result(pool, false, now_ms);
-                apply_actions(session, adapter, follow_up, now_ms);
+                return;
             }
-            ProductionSessionAction::BlockSubmissions => adapter.block_submissions(),
-            ProductionSessionAction::InvalidateWorkAndSubmissions => {
-                adapter.invalidate_work_and_submissions();
-            }
-            ProductionSessionAction::StopAsicInteraction => adapter.stop_asic_interaction(),
-            ProductionSessionAction::ClosePoolConnection => adapter.close_pool_connection(),
-            ProductionSessionAction::Publish(projection) => {
-                crate::runtime_snapshot::publish_production_session_projection(projection);
+        };
+        for effect in effects {
+            if let Some(feedback) = adapter.execute(effect) {
+                events.push_back(feedback);
             }
         }
     }
@@ -117,28 +107,70 @@ impl OrdinaryEspProductionSessionAdapter {
     fn read_authoritative_readiness(&mut self) -> ProductionReadiness {
         let mining = crate::runtime_snapshot::mining_runtime_state();
         let wifi = crate::wifi_adapter::current_wifi_snapshot();
+        let observations = crate::safety_adapter::observation_snapshot();
+        let safety_prerequisites_fresh = observations.power_watts.is_fresh()
+            && observations.bus_voltage_volts.is_fresh()
+            && observations.current_amps.is_fresh()
+            && observations.chip_temp_celsius.is_fresh()
+            && observations.vr_temp_celsius.is_fresh()
+            && observations.fan_rpm.is_fresh();
         ProductionReadiness {
             operator_intent: mining.operator_intent,
             network_ready: wifi.wifi_status == "connected",
             stratum_v1_supported: crate::settings_adapter::configured_protocol_is_v1(),
-            safety_prerequisites_fresh: false,
-            production_asic_ready: false,
+            safety_prerequisites_fresh,
+            production_asic_ready: crate::asic_adapter::production::production_ready(),
             actuation_qualified: false,
         }
     }
 
-    fn read_pool_configuration(&mut self) -> Option<ProductionPoolAvailability> {
-        log::error!(
-            "production_mining_session=fail_closed reason=pool_configuration_requested_by_unqualified_adapter"
-        );
-        None
+    fn execute(&mut self, effect: ProductionSessionEffect) -> Option<ProductionSessionEvent> {
+        match effect {
+            ProductionSessionEffect::Publish(snapshot) => {
+                crate::runtime_snapshot::publish_production_session_snapshot(snapshot);
+                None
+            }
+            ProductionSessionEffect::BlockSubmissions
+            | ProductionSessionEffect::InvalidateWorkAndSubmissions
+            | ProductionSessionEffect::StopAsicInteraction
+            | ProductionSessionEffect::ClosePoolConnection(_) => None,
+            ProductionSessionEffect::ReadPoolConfiguration => {
+                log::error!(
+                    "production_mining_session=fail_closed reason=ordinary_adapter_unqualified action=pool_configuration"
+                );
+                Some(ProductionSessionEvent::PoolConfigurationLoaded(None))
+            }
+            ProductionSessionEffect::ConnectPool(pool) => {
+                log::error!(
+                    "production_mining_session=fail_closed reason=ordinary_adapter_unqualified action=connect pool={pool:?}"
+                );
+                Some(ProductionSessionEvent::TransportConnectFailed {
+                    pool,
+                    now_ms: crate::runtime_uptime::millis(),
+                })
+            }
+            ProductionSessionEffect::WritePoolLine { pool, .. } => {
+                Self::reject_effect(Some(pool), "pool_write")
+            }
+            ProductionSessionEffect::ApplyVersionMask(_) => {
+                Self::reject_effect(None, "version_mask")
+            }
+            ProductionSessionEffect::DispatchAsic(_) => Self::reject_effect(None, "asic_dispatch"),
+            ProductionSessionEffect::PollAsic { .. } => Self::reject_effect(None, "asic_poll"),
+        }
     }
 
-    fn block_submissions(&mut self) {}
-
-    fn invalidate_work_and_submissions(&mut self) {}
-
-    fn stop_asic_interaction(&mut self) {}
-
-    fn close_pool_connection(&mut self) {}
+    fn reject_effect(
+        maybe_pool: Option<bitaxe_stratum::v1::production_session::ProductionPool>,
+        action: &'static str,
+    ) -> Option<ProductionSessionEvent> {
+        log::error!(
+            "production_mining_session=fail_closed reason=ordinary_adapter_unqualified action={action}"
+        );
+        Some(ProductionSessionEvent::EffectFailed {
+            maybe_pool,
+            reason: "ordinary_adapter_unqualified",
+            now_ms: crate::runtime_uptime::millis(),
+        })
+    }
 }

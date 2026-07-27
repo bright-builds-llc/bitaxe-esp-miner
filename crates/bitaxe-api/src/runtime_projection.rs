@@ -259,7 +259,7 @@ mod tests {
         // Arrange
         let states = [
             blocked_projection("blocked_safe_prerequisite"),
-            blocked_projection("fake_pool_only"),
+            blocked_projection("deterministic_session_only"),
             stale_generation_projection(),
             stopped_projection(),
             RuntimeTelemetryProjection::new(PoolSessionGeneration::initial()),

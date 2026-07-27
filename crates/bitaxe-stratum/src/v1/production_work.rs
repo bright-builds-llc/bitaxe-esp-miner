@@ -35,7 +35,7 @@ impl PoolSessionGeneration {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub struct ProductionTargetContext {
+pub(crate) struct ProductionTargetContext {
     pub compact_nbits: u32,
     pub maybe_pool_difficulty: Option<PoolDifficulty>,
 }
@@ -50,7 +50,7 @@ impl fmt::Debug for ProductionTargetContext {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct ProductionWorkRecord {
+pub(crate) struct ProductionWorkRecord {
     pub generation: PoolSessionGeneration,
     pub stratum_job_id: String,
     pub asic_job_id: Bm1366JobId,
@@ -96,7 +96,7 @@ impl fmt::Debug for ProductionWorkRecord {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct ProductionDispatch {
+pub(crate) struct ProductionDispatch {
     pub generation: PoolSessionGeneration,
     pub work_payload: ProductionWorkPayload,
     pub work: MiningWork,
@@ -131,7 +131,7 @@ impl fmt::Debug for ProductionNonceObservation {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct SubmitIntent {
+pub(crate) struct SubmitIntent {
     pub generation: PoolSessionGeneration,
     pub asic_job_id: Bm1366JobId,
     submission: ShareSubmission,
@@ -156,7 +156,7 @@ impl fmt::Debug for SubmitIntent {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum CorrelationOutcome {
+pub(crate) enum CorrelationOutcome {
     SubmitIntent(SubmitIntent),
     Blocked { reason: ProductionAsicBlocker },
 }
@@ -177,7 +177,7 @@ impl fmt::Debug for CorrelationOutcome {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct ProductionWorkRegistry {
+pub(crate) struct ProductionWorkRegistry {
     generation: PoolSessionGeneration,
     queue: BoundedWorkQueue<MiningWork, STRATUM_WORK_QUEUE_CAPACITY>,
     valid_jobs: Bm1366ValidJobIds,
@@ -199,8 +199,12 @@ impl fmt::Debug for ProductionWorkRegistry {
 impl ProductionWorkRegistry {
     #[must_use]
     pub fn new() -> Self {
+        Self::new_with_generation(PoolSessionGeneration::initial())
+    }
+
+    pub(crate) fn new_with_generation(generation: PoolSessionGeneration) -> Self {
         Self {
-            generation: PoolSessionGeneration::initial(),
+            generation,
             queue: BoundedWorkQueue::new(),
             valid_jobs: Bm1366ValidJobIds::empty(),
             active_work: HashMap::new(),
@@ -210,6 +214,10 @@ impl ProductionWorkRegistry {
     #[must_use]
     pub const fn generation(&self) -> PoolSessionGeneration {
         self.generation
+    }
+
+    pub(crate) fn rebase_generation(&mut self, generation: PoolSessionGeneration) {
+        self.generation = generation;
     }
 
     pub fn enqueue_pool_work(&mut self, work: MiningWork) -> Result<(), StratumV1Error> {
@@ -239,6 +247,7 @@ impl ProductionWorkRegistry {
     }
 
     #[must_use]
+    #[cfg(test)]
     pub fn maybe_active_work(&self, job_id: Bm1366JobId) -> Option<&ProductionWorkRecord> {
         let maybe_record = self.active_work.get(&job_id.lookup_key());
         let record = maybe_record?;
@@ -303,6 +312,7 @@ impl ProductionWorkRegistry {
     }
 
     #[must_use]
+    #[cfg(test)]
     pub const fn valid_jobs(&self) -> &Bm1366ValidJobIds {
         &self.valid_jobs
     }

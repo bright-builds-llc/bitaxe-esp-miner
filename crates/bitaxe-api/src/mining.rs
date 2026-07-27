@@ -2,7 +2,7 @@
 //!
 //! Reference breadcrumbs:
 //! - `crates/bitaxe-stratum/src/v1/state.rs`
-//! - `crates/bitaxe-stratum/src/v1/mining_loop.rs`
+//! - `crates/bitaxe-stratum/src/v1/production_session.rs`
 //! - `reference/esp-miner/main/http_server/system_api_json.c`
 
 use bitaxe_stratum::v1::state::{
@@ -159,7 +159,6 @@ fn blocked_reason(state: &MiningRuntimeState) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use bitaxe_stratum::v1::mining_loop::HARDWARE_EVIDENCE_ACK_MISSING;
     use bitaxe_stratum::v1::state::MiningRuntimeState;
 
     use crate::mining::mining_state_from_runtime;
@@ -167,6 +166,7 @@ mod tests {
     #[test]
     fn mining_state_keeps_hardware_evidence_block_visible_and_not_active() {
         // Arrange
+        const HARDWARE_EVIDENCE_ACK_MISSING: &str = "hardware_evidence_ack_missing";
         let mut state = MiningRuntimeState::default();
         state.block_work_submission(HARDWARE_EVIDENCE_ACK_MISSING);
 

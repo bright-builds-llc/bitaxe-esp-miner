@@ -7,14 +7,14 @@
 
 pub mod bridge_orchestration;
 pub mod coinbase;
-pub mod fake_pool;
-pub mod live_runtime;
+mod line_framer;
+mod live_runtime;
 pub mod messages;
 pub mod mining;
-pub mod mining_loop;
 pub mod production_session;
 pub mod production_work;
 pub mod queue;
+mod recovery_policy;
 pub mod state;
 pub mod submit_response;
 pub mod telemetry_projection;

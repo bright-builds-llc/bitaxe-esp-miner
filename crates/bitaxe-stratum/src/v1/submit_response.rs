@@ -10,41 +10,56 @@ use std::fmt;
 
 use crate::jsonrpc::StratumRequestId;
 use crate::v1::messages::StratumResponse;
-use crate::v1::production_work::{PoolSessionGeneration, SubmitIntent};
+#[cfg(test)]
+use crate::v1::production_work::PoolSessionGeneration;
+use crate::v1::production_work::SubmitIntent;
 
 #[derive(Clone, PartialEq)]
-pub enum SubmitResponseObservation {
+pub(crate) enum SubmitResponseObservation {
     Response(StratumResponse),
-    FakePoolOnlyResponse(StratumResponse),
+    #[cfg(test)]
     StaleGeneration {
         observed_generation: PoolSessionGeneration,
         response: StratumResponse,
     },
+    #[cfg(test)]
     Timeout,
+    #[cfg(test)]
     Reconnect,
+    #[cfg(test)]
     Malformed,
+    #[cfg(test)]
     Blocked {
         reason: &'static str,
     },
+    #[cfg(test)]
     SocketStopped,
 }
 
 impl fmt::Debug for SubmitResponseObservation {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Response(_) | Self::FakePoolOnlyResponse(_) | Self::StaleGeneration { .. } => {
-                formatter
-                    .debug_struct("SubmitResponseObservation")
-                    .field("pool_response", &"redacted")
-                    .finish()
-            }
+            Self::Response(_) => formatter
+                .debug_struct("SubmitResponseObservation")
+                .field("pool_response", &"redacted")
+                .finish(),
+            #[cfg(test)]
+            Self::StaleGeneration { .. } => formatter
+                .debug_struct("SubmitResponseObservation")
+                .field("pool_response", &"redacted")
+                .finish(),
+            #[cfg(test)]
             Self::Timeout => formatter.write_str("SubmitResponseObservation::Timeout"),
+            #[cfg(test)]
             Self::Reconnect => formatter.write_str("SubmitResponseObservation::Reconnect"),
+            #[cfg(test)]
             Self::Malformed => formatter.write_str("SubmitResponseObservation::Malformed"),
+            #[cfg(test)]
             Self::Blocked { reason } => formatter
                 .debug_struct("SubmitResponseObservation::Blocked")
                 .field("reason", reason)
                 .finish(),
+            #[cfg(test)]
             Self::SocketStopped => formatter.write_str("SubmitResponseObservation::SocketStopped"),
         }
     }
@@ -95,8 +110,8 @@ impl SubmitClassification {
 }
 
 #[must_use]
-pub fn classify_submit_response(
-    intent: &SubmitIntent,
+pub(crate) fn classify_submit_response(
+    _intent: &SubmitIntent,
     request_id: StratumRequestId,
     observation: SubmitResponseObservation,
 ) -> SubmitClassification {
@@ -104,12 +119,12 @@ pub fn classify_submit_response(
         SubmitResponseObservation::Response(response) => {
             classify_typed_response(request_id, response)
         }
-        SubmitResponseObservation::FakePoolOnlyResponse(_) => SubmitClassification::NoObservedShare,
+        #[cfg(test)]
         SubmitResponseObservation::StaleGeneration {
             observed_generation,
             response,
         } => {
-            if observed_generation != intent.generation {
+            if observed_generation != _intent.generation {
                 return SubmitClassification::Blocked {
                     reason: "stale_generation",
                 };
@@ -117,16 +132,22 @@ pub fn classify_submit_response(
 
             classify_typed_response(request_id, response)
         }
+        #[cfg(test)]
         SubmitResponseObservation::Timeout => SubmitClassification::Timeout,
+        #[cfg(test)]
         SubmitResponseObservation::Reconnect => SubmitClassification::Reconnect,
+        #[cfg(test)]
         SubmitResponseObservation::Malformed => SubmitClassification::Malformed,
+        #[cfg(test)]
         SubmitResponseObservation::Blocked { reason } => SubmitClassification::Blocked { reason },
+        #[cfg(test)]
         SubmitResponseObservation::SocketStopped => SubmitClassification::Stopped,
     }
 }
 
 #[must_use]
-pub fn classify_maybe_submit_response(
+#[cfg(test)]
+pub(crate) fn classify_maybe_submit_response(
     maybe_intent: Option<&SubmitIntent>,
     request_id: StratumRequestId,
     observation: SubmitResponseObservation,
@@ -222,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn submit_response_classifier_never_accepts_mismatched_absent_fake_or_stale_inputs() {
+    fn submit_response_classifier_never_accepts_mismatched_absent_or_stale_inputs() {
         // Arrange
         let intent = submit_intent();
         let request_id = StratumRequestId::new(7);
@@ -243,11 +264,6 @@ mod tests {
             request_id,
             SubmitResponseObservation::Response(success_response(7)),
         );
-        let fake_only = classify_submit_response(
-            &intent,
-            request_id,
-            SubmitResponseObservation::FakePoolOnlyResponse(success_response(7)),
-        );
         let stale_generation = classify_submit_response(
             &intent,
             request_id,
@@ -266,7 +282,6 @@ mod tests {
                 reason: "submit_intent_missing"
             }
         );
-        assert_eq!(fake_only, SubmitClassification::NoObservedShare);
         assert_eq!(
             stale_generation,
             SubmitClassification::Blocked {

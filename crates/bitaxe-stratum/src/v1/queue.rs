@@ -187,7 +187,7 @@ mod work_queue_tests {
     }
 
     #[test]
-    fn mining_loop_clean_jobs_clears_queue_and_valid_job_tracking() {
+    fn production_session_clean_jobs_clears_queue_and_valid_job_tracking() {
         // Arrange
         let mut queue = MiningWorkQueue::new();
         let stale_job_id = Bm1366JobId::new(0x28);

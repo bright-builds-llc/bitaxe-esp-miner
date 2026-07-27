@@ -23,6 +23,8 @@ This index summarizes accepted decisions from the original project handoff.
 | ADR-0013 | Use MIT-first original code with GPL guardrails. | Accepted |
 | ADR-0014 | Pivot first parity target to Bitaxe Ultra 205 BM1366. | Accepted |
 | ADR-0015 | Separate bootloader, runtime observation, and application control transports. | Accepted |
+| ADR-0016 | Make the Production Mining Session the sole mining owner. | Accepted |
+| ADR-0017 | Deepen the Production Mining Session into the software-complete mining engine. | Accepted |
 | PLAN-0001 | First milestone is project foundation plus Gamma 601 bring-up path. | Superseded by ADR-0014 |
 | PLAN-0002 | First milestone is project foundation plus Ultra 205 safe-state boot/flash path. | Verified for safe-state boot/flash on 2026-06-26 |
 
@@ -54,3 +56,5 @@ This index summarizes accepted decisions from the original project handoff.
 - [ADR-0013](../adr/0013-mit-first-with-gpl-guardrails.md)
 - [ADR-0014](../adr/0014-pivot-to-ultra-205-bm1366-first-parity.md)
 - [ADR-0015](../adr/0015-separate-bootloader-runtime-and-control-transports.md)
+- [ADR-0016](../adr/0016-production-mining-session.md)
+- [ADR-0017](../adr/0017-software-complete-production-mining-engine.md)

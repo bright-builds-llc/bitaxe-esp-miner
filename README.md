@@ -49,3 +49,12 @@ directory is generated, gitignored, and owned by the pinned ESP-IDF/esp-rs
 workflow. Do not commit files from it, but expect repo scripts to use managed
 tools from it when normal `PATH` commands are unavailable, including
 `spiffsgen.py`, `gen_esp32part.py`, and `esptool.py`.
+
+## Mining qualification
+
+The current firmware is not qualified for production mining. The Production
+Mining Session has deterministic software coverage for Stratum V1, recovery,
+work correlation, and accepted/rejected submit handling, but the ordinary ESP
+adapter remains fail-closed before pool credentials, connections, socket
+writes, or ASIC effects. Deterministic-session outcomes are not hardware
+evidence or a release-readiness claim.

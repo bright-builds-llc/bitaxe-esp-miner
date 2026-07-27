@@ -20,9 +20,11 @@ use crate::v1::messages::{
 };
 use crate::v1::mining::MiningWorkBuilder;
 use crate::v1::production_work::{
-    CorrelationOutcome, ProductionNonceObservation, ProductionWorkRegistry, SubmitIntent,
+    CorrelationOutcome, PoolSessionGeneration, ProductionNonceObservation, ProductionWorkRegistry,
+    SubmitIntent,
 };
 use crate::v1::state::{MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus};
+use crate::v1::submit_response::{RedactedSubmitRejectReason, SubmitClassification};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct LivePoolCredentials {
@@ -58,7 +60,7 @@ impl fmt::Debug for LiveRuntimeConfig {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum LiveRuntimeAction {
+pub(crate) enum LiveRuntimeAction {
     SendClientMessage(StratumV1ClientMessage),
     SendSubmitShare {
         intent: SubmitIntent,
@@ -87,60 +89,29 @@ impl fmt::Debug for LiveRuntimeAction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LiveRuntimeEvent {
+pub(crate) enum LiveRuntimeEvent {
     Started,
     Subscribed,
     Authorized,
     WorkQueued,
     WorkInvalidated,
-    SafeStopped,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BridgeObservationOutcome {
+pub(crate) enum RuntimeRequestKind {
+    Configure,
+    Subscribe,
+    Authorize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BridgeObservationOutcome {
     SubmitQueued,
     Blocked { reason: ProductionAsicBlocker },
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct SafeStopReason {
-    label: &'static str,
-}
-
-impl SafeStopReason {
-    #[must_use]
-    pub const fn new(label: &'static str) -> Self {
-        Self { label }
-    }
-
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        self.label
-    }
-}
-
-impl fmt::Debug for SafeStopReason {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("SafeStopReason")
-            .field("label", &self.label)
-            .finish()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SafeStopPostconditions {
-    pub reason: SafeStopReason,
-    pub socket_stopped: bool,
-    pub active_work_invalidated: bool,
-    pub mining_disabled: bool,
-    pub hardware_control_disabled: bool,
-    pub work_submission_blocked: bool,
-    pub post_stop_snapshot_required: bool,
-}
-
 #[derive(Clone, PartialEq)]
-pub struct LiveStratumRuntime {
+pub(crate) struct LiveStratumRuntime {
     config: LiveRuntimeConfig,
     state: MiningRuntimeState,
     production_registry: ProductionWorkRegistry,
@@ -150,13 +121,12 @@ pub struct LiveStratumRuntime {
     /// Once-shot pending ASIC `SetVersionMask` reload after configure /
     /// `mining.set_version_mask` (upstream `new_stratum_version_rolling_msg`).
     /// Cleared by [`Self::take_pending_version_mask_reload`]. Not value-delta
-    /// gated — fake-pool mask may equal init default `0x1fffe000`.
+    /// gated — deterministic pool input may equal init default `0x1fffe000`.
     pending_version_mask_reload: bool,
     maybe_current_notify: Option<MiningNotify>,
     extranonce2_counter: u64,
     next_request_id: u64,
     next_asic_job_id: u8,
-    stopped: bool,
 }
 
 impl fmt::Debug for LiveStratumRuntime {
@@ -171,18 +141,19 @@ impl fmt::Debug for LiveStratumRuntime {
             .field("version_mask", &self.maybe_version_mask)
             .field("next_request_id", &self.next_request_id)
             .field("next_asic_job_id", &self.next_asic_job_id)
-            .field("stopped", &self.stopped)
             .finish()
     }
 }
 
 impl LiveStratumRuntime {
-    #[must_use]
-    pub fn new(config: LiveRuntimeConfig) -> Self {
+    pub(crate) fn new_with_generation(
+        config: LiveRuntimeConfig,
+        generation: PoolSessionGeneration,
+    ) -> Self {
         Self {
             config,
             state: MiningRuntimeState::default(),
-            production_registry: ProductionWorkRegistry::new(),
+            production_registry: ProductionWorkRegistry::new_with_generation(generation),
             outbound_actions: Vec::new(),
             maybe_extranonce: None,
             maybe_version_mask: None,
@@ -191,7 +162,6 @@ impl LiveStratumRuntime {
             extranonce2_counter: 0,
             next_request_id: 1,
             next_asic_job_id: 0,
-            stopped: false,
         }
     }
 
@@ -202,11 +172,6 @@ impl LiveStratumRuntime {
 
     /// Negotiated version-rolling mask stored from configure / set_version_mask.
     /// Counts-only evidence: presence is enough for `mask_applied_to_work` markers.
-    #[must_use]
-    pub const fn maybe_version_mask(&self) -> Option<VersionMask> {
-        self.maybe_version_mask
-    }
-
     /// Take the once-shot pending ASIC version-mask reload, if any.
     ///
     /// Returns the stored mask when configure / `set_version_mask` raised the
@@ -235,8 +200,8 @@ impl LiveStratumRuntime {
         &mut self.production_registry
     }
 
-    pub fn activate_fallback(&mut self) {
-        self.state.set_fallback_active(true);
+    pub(crate) fn rebase_generation(&mut self, generation: PoolSessionGeneration) {
+        self.production_registry.rebase_generation(generation);
     }
 
     pub fn block_work_submission(&mut self, reason: &'static str) {
@@ -244,10 +209,6 @@ impl LiveStratumRuntime {
     }
 
     pub fn start(&mut self) -> LiveRuntimeEvent {
-        if self.stopped {
-            return LiveRuntimeEvent::SafeStopped;
-        }
-
         self.state.set_lifecycle(PoolLifecycleStatus::Connecting);
         let configure_id = self.next_request_id();
         self.outbound_actions
@@ -273,10 +234,6 @@ impl LiveStratumRuntime {
         &mut self,
         message: StratumV1ServerMessage,
     ) -> Result<Option<LiveRuntimeEvent>, StratumV1Error> {
-        if self.stopped {
-            return Ok(None);
-        }
-
         match message {
             StratumV1ServerMessage::Response(response) => self.apply_response(response),
             StratumV1ServerMessage::SetDifficulty(difficulty) => {
@@ -300,6 +257,83 @@ impl LiveStratumRuntime {
             StratumV1ServerMessage::ClientShowMessage(_)
             | StratumV1ServerMessage::ClientGetVersion
             | StratumV1ServerMessage::Ping { .. } => Ok(None),
+        }
+    }
+
+    pub(crate) fn apply_matched_response(
+        &mut self,
+        kind: RuntimeRequestKind,
+        response: StratumResponse,
+    ) -> Result<Option<LiveRuntimeEvent>, StratumV1Error> {
+        match kind {
+            RuntimeRequestKind::Configure => {
+                if !response.success {
+                    self.invalidate_for_authorization_reset();
+                    self.state.set_lifecycle(PoolLifecycleStatus::Error);
+                    return Ok(Some(LiveRuntimeEvent::WorkInvalidated));
+                }
+                if let Some(mask) = response.maybe_version_mask {
+                    self.store_version_mask_and_raise_reload(mask);
+                }
+                Ok(None)
+            }
+            RuntimeRequestKind::Subscribe => {
+                if !response.success {
+                    self.invalidate_for_authorization_reset();
+                    self.state.set_lifecycle(PoolLifecycleStatus::Error);
+                    return Ok(Some(LiveRuntimeEvent::WorkInvalidated));
+                }
+                let Some(extranonce) = response.maybe_extranonce else {
+                    return Err(StratumV1Error::MissingField("subscribe_extranonce"));
+                };
+                self.maybe_extranonce = Some(extranonce);
+                self.state.set_lifecycle(PoolLifecycleStatus::Subscribed);
+                let id = self.next_request_id();
+                self.outbound_actions
+                    .push(LiveRuntimeAction::SendClientMessage(
+                        StratumV1ClientMessage::authorize(
+                            id,
+                            &self.config.credentials.username,
+                            &self.config.credentials.password,
+                        ),
+                    ));
+                Ok(Some(LiveRuntimeEvent::Subscribed))
+            }
+            RuntimeRequestKind::Authorize => {
+                if !response.success {
+                    self.invalidate_for_authorization_reset();
+                    self.state.set_lifecycle(PoolLifecycleStatus::Error);
+                    return Ok(Some(LiveRuntimeEvent::WorkInvalidated));
+                }
+                self.state.set_lifecycle(PoolLifecycleStatus::Authorized);
+                Ok(Some(LiveRuntimeEvent::Authorized))
+            }
+        }
+    }
+
+    pub(crate) fn record_submit_classification(&mut self, classification: SubmitClassification) {
+        match classification {
+            SubmitClassification::Accepted => {
+                let difficulty = self
+                    .state
+                    .maybe_pool_difficulty
+                    .map(|difficulty| crate::v1::state::ShareDifficulty::new(difficulty.difficulty))
+                    .unwrap_or_else(|| crate::v1::state::ShareDifficulty::new(0.0));
+                self.state.record_accepted_share(difficulty);
+            }
+            SubmitClassification::Rejected { reason } => {
+                let reason = match reason {
+                    RedactedSubmitRejectReason::PoolRejectedShare => "pool_rejected_share",
+                    RedactedSubmitRejectReason::Unknown => "unknown_rejected_share",
+                };
+                self.state.record_rejected_share(reason);
+            }
+            SubmitClassification::Timeout
+            | SubmitClassification::Reconnect
+            | SubmitClassification::Malformed
+            | SubmitClassification::NoObservedShare
+            | SubmitClassification::Blocked { .. }
+            | SubmitClassification::Stopped => {}
         }
     }
 
@@ -368,24 +402,6 @@ impl LiveStratumRuntime {
         work.clean_jobs = false;
         self.production_registry.enqueue_pool_work(work)?;
         Ok(self.extranonce2_counter)
-    }
-
-    pub fn safe_stop(&mut self, reason: &'static str) -> SafeStopPostconditions {
-        self.stopped = true;
-        self.outbound_actions.clear();
-        self.invalidate_for_session_replacement();
-        self.state.set_lifecycle(PoolLifecycleStatus::Disconnected);
-        self.state
-            .set_mining_activity(MiningActivityStatus::SafeBlocked);
-        SafeStopPostconditions {
-            reason: SafeStopReason::new(reason),
-            socket_stopped: true,
-            active_work_invalidated: true,
-            mining_disabled: true,
-            hardware_control_disabled: true,
-            work_submission_blocked: true,
-            post_stop_snapshot_required: true,
-        }
     }
 
     #[must_use]
@@ -515,502 +531,5 @@ impl LiveStratumRuntime {
         // Upstream `BM1366_send_work` pre-increments before assign (`bm1366.c:313-314`).
         self.next_asic_job_id = self.next_asic_job_id.wrapping_add(8) % 128;
         Bm1366JobId::new(self.next_asic_job_id)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::v1::messages::{
-        ExtranonceAssignment, MiningNotify, PoolDifficulty, StratumResponse,
-        StratumV1ClientMessage, StratumV1ServerMessage,
-    };
-    use crate::v1::state::{MiningActivityStatus, PoolLifecycleStatus, WorkSubmissionGate};
-
-    #[test]
-    fn live_runtime_start_queues_subscribe_and_redacts_sensitive_debug() {
-        // Arrange
-        let mut runtime = LiveStratumRuntime::new(config());
-
-        // Act
-        let event = runtime.start();
-        let actions = runtime.drain_actions();
-        let rendered = format!("{runtime:?}");
-
-        // Assert
-        assert_eq!(event, LiveRuntimeEvent::Started);
-        assert_eq!(runtime.state().lifecycle, PoolLifecycleStatus::Connecting);
-        assert!(matches!(
-            actions.as_slice(),
-            [
-                LiveRuntimeAction::SendClientMessage(StratumV1ClientMessage::ConfigureVersionRolling {
-                    id: configure_id,
-                    mask,
-                }),
-                LiveRuntimeAction::SendClientMessage(StratumV1ClientMessage::Subscribe {
-                    id: subscribe_id,
-                    user_agent,
-                }),
-            ] if configure_id.raw() == 1
-                && *mask == 0xffff_ffff
-                && subscribe_id.raw() == 2
-                && user_agent == "bitaxe/ultra/205"
-        ));
-        assert!(!rendered.contains("synthetic-user"));
-        assert!(!rendered.contains("synthetic-secret"));
-        assert!(!rendered.contains("4de05269"));
-        assert!(!rendered.contains("00000000"));
-        assert!(!rendered.contains("12345678"));
-    }
-
-    #[test]
-    fn live_runtime_subscribe_authorize_and_difficulty_progress_lifecycle() {
-        // Arrange
-        let mut runtime = started_runtime();
-
-        // Act
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Response(subscribe_response(2)))
-            .expect("subscribe response should be accepted");
-        let authorize_actions = runtime.drain_actions();
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Response(success_response(3)))
-            .expect("authorize response should be accepted");
-        runtime
-            .apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
-                difficulty: 42.0,
-            }))
-            .expect("difficulty should be accepted");
-
-        // Assert
-        assert!(matches!(
-            authorize_actions.as_slice(),
-            [LiveRuntimeAction::SendClientMessage(StratumV1ClientMessage::Authorize {
-                id,
-                username,
-                password,
-            })] if id.raw() == 3 && username == "synthetic-user" && password == "synthetic-secret"
-        ));
-        assert_eq!(runtime.state().lifecycle, PoolLifecycleStatus::Authorized);
-        assert_eq!(
-            runtime.state().maybe_pool_difficulty,
-            Some(PoolDifficulty { difficulty: 42.0 })
-        );
-    }
-
-    #[test]
-    fn live_runtime_first_pool_job_id_matches_upstream_pre_increment_stride() {
-        // Arrange
-        let mut runtime = authorized_runtime();
-
-        // Act
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
-            .expect("notify should build production work");
-
-        // Assert — upstream `BM1366_send_work` assigns id after `(id + 8) % 128` (`bm1366.c:313-314`).
-        assert!(runtime
-            .production_registry()
-            .valid_jobs()
-            .contains(Bm1366JobId::new(8)));
-        assert!(!runtime
-            .production_registry()
-            .valid_jobs()
-            .contains(Bm1366JobId::new(0)));
-    }
-
-    #[test]
-    fn configure_mask_store_raises_pending_version_mask_reload_even_when_mask_equals_init_default()
-    {
-        // Arrange — fake-pool / init default mask (D-05: no value-delta gate).
-        let mut runtime = started_runtime();
-        let init_default_mask = VersionMask { mask: 0x1fff_e000 };
-
-        // Act
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Response(StratumResponse {
-                maybe_id: Some(StratumRequestId::new(1)),
-                success: true,
-                maybe_error: None,
-                maybe_extranonce: None,
-                maybe_version_mask: Some(init_default_mask),
-            }))
-            .expect("configure response should store mask");
-        let taken = runtime.take_pending_version_mask_reload();
-        let taken_again = runtime.take_pending_version_mask_reload();
-
-        // Assert
-        assert_eq!(runtime.maybe_version_mask(), Some(init_default_mask));
-        assert_eq!(taken, Some(init_default_mask));
-        assert_eq!(taken_again, None);
-    }
-
-    #[test]
-    fn set_version_mask_raises_pending_version_mask_reload() {
-        // Arrange
-        let mut runtime = authorized_runtime();
-        let mask = VersionMask { mask: 0x1fff_e000 };
-
-        // Act
-        runtime
-            .apply_server_message(StratumV1ServerMessage::SetVersionMask(mask))
-            .expect("set_version_mask should store mask");
-
-        // Assert
-        assert_eq!(runtime.take_pending_version_mask_reload(), Some(mask));
-        assert_eq!(runtime.take_pending_version_mask_reload(), None);
-    }
-
-    #[test]
-    fn live_runtime_notify_queues_production_work_and_allows_submission() {
-        // Arrange
-        let mut runtime = authorized_runtime();
-
-        // Act
-        let maybe_event = runtime
-            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
-            .expect("notify should build production work");
-
-        // Assert
-        assert_eq!(maybe_event, Some(LiveRuntimeEvent::WorkQueued));
-        assert_eq!(runtime.state().lifecycle, PoolLifecycleStatus::Active);
-        assert_eq!(runtime.state().work_submission, WorkSubmissionGate::Ready);
-        assert_eq!(
-            runtime.state().mining_activity,
-            MiningActivityStatus::Active
-        );
-        assert!(runtime
-            .production_registry()
-            .valid_jobs()
-            .contains(Bm1366JobId::new(8)));
-    }
-
-    #[test]
-    fn live_runtime_invalidation_paths_advance_generation_and_block_stale_submission() {
-        // Arrange
-        let mut runtime = authorized_runtime();
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
-            .expect("notify should build production work");
-
-        // Act
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Notify(notify(true)))
-            .expect("clean jobs notify should replace production work");
-        let after_clean_jobs = runtime.production_registry().generation().raw();
-        let clean_jobs_contains_current = runtime
-            .production_registry()
-            .valid_jobs()
-            .contains(Bm1366JobId::new(16));
-        let clean_jobs_contains_stale = runtime
-            .production_registry()
-            .valid_jobs()
-            .contains(Bm1366JobId::new(8));
-        runtime
-            .apply_server_message(StratumV1ServerMessage::ClientReconnect)
-            .expect("reconnect should invalidate production work");
-        let after_reconnect = runtime.production_registry().generation().raw();
-        runtime.invalidate_for_authorization_reset();
-        let after_authorization_reset = runtime.production_registry().generation().raw();
-        runtime.invalidate_for_session_replacement();
-        let after_session_replacement = runtime.production_registry().generation().raw();
-
-        // Assert
-        assert_eq!(after_clean_jobs, 1);
-        assert_eq!(after_reconnect, 2);
-        assert_eq!(after_authorization_reset, 3);
-        assert_eq!(after_session_replacement, 4);
-        assert_eq!(runtime.state().work_submission, WorkSubmissionGate::Blocked);
-        assert!(clean_jobs_contains_current);
-        assert!(!clean_jobs_contains_stale);
-        assert!(!runtime
-            .production_registry()
-            .valid_jobs()
-            .contains(Bm1366JobId::new(8)));
-    }
-
-    #[test]
-    fn live_runtime_safe_stop_sets_postconditions_and_freezes_later_messages() {
-        // Arrange
-        let mut runtime = authorized_runtime();
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
-            .expect("notify should build production work");
-
-        // Act
-        let postconditions = runtime.safe_stop("operator_cancelled");
-        let lifecycle_after_stop = runtime.state().lifecycle;
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
-            .expect("post-stop message should be ignored");
-
-        // Assert
-        assert_eq!(postconditions.reason.as_str(), "operator_cancelled");
-        assert!(postconditions.socket_stopped);
-        assert!(postconditions.active_work_invalidated);
-        assert!(postconditions.mining_disabled);
-        assert!(postconditions.hardware_control_disabled);
-        assert!(postconditions.work_submission_blocked);
-        assert!(postconditions.post_stop_snapshot_required);
-        assert_eq!(runtime.state().lifecycle, lifecycle_after_stop);
-        assert_eq!(runtime.state().work_submission, WorkSubmissionGate::Blocked);
-        assert!(!runtime
-            .production_registry()
-            .valid_jobs()
-            .contains(Bm1366JobId::new(8)));
-    }
-
-    fn started_runtime() -> LiveStratumRuntime {
-        let mut runtime = LiveStratumRuntime::new(config());
-        runtime.start();
-        let _actions = runtime.drain_actions();
-        runtime
-    }
-
-    fn authorized_runtime() -> LiveStratumRuntime {
-        let mut runtime = started_runtime();
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Response(subscribe_response(2)))
-            .expect("subscribe response should be accepted");
-        let _actions = runtime.drain_actions();
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Response(success_response(3)))
-            .expect("authorize response should be accepted");
-        runtime
-            .apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
-                difficulty: 42.0,
-            }))
-            .expect("difficulty should be accepted");
-        runtime
-    }
-
-    fn config() -> LiveRuntimeConfig {
-        LiveRuntimeConfig {
-            model: "ultra".to_owned(),
-            version: "205".to_owned(),
-            credentials: LivePoolCredentials {
-                username: "synthetic-user".to_owned(),
-                password: "synthetic-secret".to_owned(),
-            },
-        }
-    }
-
-    fn subscribe_response(id: u64) -> StratumResponse {
-        StratumResponse {
-            maybe_id: Some(StratumRequestId::new(id)),
-            success: true,
-            maybe_error: None,
-            maybe_extranonce: Some(ExtranonceAssignment {
-                extranonce1: "4de05269".to_owned(),
-                extranonce2_len: 4,
-            }),
-            maybe_version_mask: None,
-        }
-    }
-
-    fn success_response(id: u64) -> StratumResponse {
-        StratumResponse {
-            maybe_id: Some(StratumRequestId::new(id)),
-            success: true,
-            maybe_error: None,
-            maybe_extranonce: None,
-            maybe_version_mask: None,
-        }
-    }
-
-    fn notify(clean_jobs: bool) -> MiningNotify {
-        MiningNotify {
-            job_id: "job".to_owned(),
-            prev_block_hash: "00".repeat(32),
-            coinbase_1: "0200000001".to_owned(),
-            coinbase_2: "ffffffff".to_owned(),
-            merkle_branches: Vec::new(),
-            version: 0x2000_0004,
-            nbits: 0x1705_ae3a,
-            ntime: 0x6470_25b5,
-            clean_jobs,
-        }
-    }
-
-    #[test]
-    fn apply_bridge_observation_queues_submit_share_for_correlated_nonce() {
-        // Arrange
-        use crate::v1::production_work::ProductionNonceObservation;
-        use bitaxe_asic::bm1366::result::Bm1366NonceResult;
-
-        let mut runtime = authorized_runtime();
-        let notify = notify(false);
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Notify(notify.clone()))
-            .expect("notify should enqueue work");
-        let dispatch = runtime
-            .production_registry_mut()
-            .dispatch_next()
-            .expect("dispatch should succeed");
-        let observation = ProductionNonceObservation {
-            observed_generation: dispatch.generation,
-            result: Bm1366NonceResult {
-                job_id: dispatch.work.asic_job_id,
-                nonce: 0x1234_5678,
-                asic_index: 0,
-                core_id: 0,
-                small_core_id: 0,
-                version_bits: 0,
-            },
-        };
-
-        // Act
-        let outcome = runtime
-            .apply_bridge_observation(observation)
-            .expect("observation should apply");
-        let actions = runtime.drain_actions();
-
-        // Assert
-        assert_eq!(outcome, BridgeObservationOutcome::SubmitQueued);
-        assert_eq!(actions.len(), 1);
-        assert!(matches!(
-            actions[0],
-            LiveRuntimeAction::SendSubmitShare { .. }
-        ));
-        let rendered = format!("{runtime:?}");
-        assert!(!rendered.contains("synthetic-secret"));
-    }
-
-    #[test]
-    fn apply_bridge_observation_blocked_does_not_queue_submit() {
-        // Arrange
-        use crate::v1::production_work::ProductionNonceObservation;
-        use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
-
-        let mut runtime = authorized_runtime();
-        let observation = ProductionNonceObservation {
-            observed_generation: runtime.production_registry().generation().next(),
-            result: Bm1366NonceResult {
-                job_id: Bm1366JobId::new(0x20),
-                nonce: 1,
-                asic_index: 0,
-                core_id: 0,
-                small_core_id: 0,
-                version_bits: 0,
-            },
-        };
-
-        // Act
-        let outcome = runtime
-            .apply_bridge_observation(observation)
-            .expect("blocked observation should return outcome");
-        let actions = runtime.drain_actions();
-
-        // Assert
-        assert!(matches!(outcome, BridgeObservationOutcome::Blocked { .. }));
-        assert!(actions.is_empty());
-    }
-
-    #[test]
-    fn regenerate_work_uses_fresh_extranonce2_counter_sequence() {
-        // Arrange
-        let mut runtime = authorized_runtime();
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
-            .expect("notify should enqueue work");
-        let first = runtime
-            .production_registry_mut()
-            .dispatch_next()
-            .expect("first dispatch should succeed");
-
-        // Act
-        let first_counter = runtime
-            .regenerate_work()
-            .expect("first regeneration should enqueue");
-        let second = runtime
-            .production_registry_mut()
-            .dispatch_next()
-            .expect("second dispatch should succeed");
-        let second_counter = runtime
-            .regenerate_work()
-            .expect("second regeneration should enqueue");
-        let third = runtime
-            .production_registry_mut()
-            .dispatch_next()
-            .expect("third dispatch should succeed");
-
-        // Assert: counter sequence 0,1,2 rendered with the fixture-tested
-        // little-endian extranonce2 encoding (upstream mining.c parity).
-        assert_eq!(first.work.extranonce2, "00000000");
-        assert_eq!(first_counter, 1);
-        assert_eq!(second.work.extranonce2, "01000000");
-        assert_eq!(second_counter, 2);
-        assert_eq!(third.work.extranonce2, "02000000");
-    }
-
-    #[test]
-    fn regenerate_work_without_held_notify_is_a_no_op() {
-        // Arrange
-        let mut runtime = authorized_runtime();
-
-        // Act
-        let result = runtime.regenerate_work();
-
-        // Assert: regeneration never fabricates work.
-        assert!(result.is_err());
-        assert!(matches!(
-            runtime.production_registry_mut().dispatch_next(),
-            Err(StratumV1Error::QueueEmpty)
-        ));
-    }
-
-    fn assert_invalidation_clears_regeneration_context(invalidate: fn(&mut LiveStratumRuntime)) {
-        // Arrange: held notify with an advanced extranonce2 counter.
-        let mut runtime = authorized_runtime();
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
-            .expect("notify should enqueue work");
-        let advanced_counter = runtime
-            .regenerate_work()
-            .expect("regeneration should enqueue");
-        assert_eq!(advanced_counter, 1);
-
-        // Act
-        invalidate(&mut runtime);
-        let regenerate_after_invalidation = runtime.regenerate_work();
-        runtime
-            .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
-            .expect("fresh notify should enqueue work");
-        let fresh = runtime
-            .production_registry_mut()
-            .dispatch_next()
-            .expect("fresh dispatch should succeed");
-
-        // Assert: no-op until a fresh notify; fresh work restarts at extranonce2=0.
-        assert!(regenerate_after_invalidation.is_err());
-        assert_eq!(fresh.work.extranonce2, "00000000");
-    }
-
-    #[test]
-    fn clean_jobs_invalidation_clears_regeneration_context() {
-        assert_invalidation_clears_regeneration_context(
-            LiveStratumRuntime::invalidate_for_clean_jobs,
-        );
-    }
-
-    #[test]
-    fn reconnect_invalidation_clears_regeneration_context() {
-        assert_invalidation_clears_regeneration_context(
-            LiveStratumRuntime::invalidate_for_reconnect,
-        );
-    }
-
-    #[test]
-    fn authorization_reset_invalidation_clears_regeneration_context() {
-        assert_invalidation_clears_regeneration_context(
-            LiveStratumRuntime::invalidate_for_authorization_reset,
-        );
-    }
-
-    #[test]
-    fn session_replacement_invalidation_clears_regeneration_context() {
-        assert_invalidation_clears_regeneration_context(
-            LiveStratumRuntime::invalidate_for_session_replacement,
-        );
     }
 }

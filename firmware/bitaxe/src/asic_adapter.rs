@@ -27,7 +27,7 @@ use esp_idf_svc::hal::{
     uart::Uart,
 };
 #[allow(dead_code)]
-mod production;
+pub(crate) mod production;
 mod reset;
 #[allow(dead_code)]
 mod status;

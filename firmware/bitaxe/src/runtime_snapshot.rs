@@ -16,7 +16,7 @@ use bitaxe_api::{
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
 use bitaxe_stratum::v1::{
-    production_session::ProductionSessionProjection, production_work::PoolSessionGeneration,
+    production_session::ProductionSessionSnapshot, production_work::PoolSessionGeneration,
     state::MiningRuntimeState, telemetry_projection::RuntimeTelemetryProjection,
 };
 static COMMAND_VISIBLE_STATE: OnceLock<Mutex<CommandVisibleState>> = OnceLock::new();
@@ -168,24 +168,10 @@ pub fn publish_projected_live_telemetry_payload<T, E>(
     )
 }
 
-/// Publishes the sole owner's final derived lifecycle projection.
-pub fn publish_production_session_projection(projection: ProductionSessionProjection) {
+/// Publishes the sole owner's immutable mining-session snapshot.
+pub fn publish_production_session_snapshot(snapshot: ProductionSessionSnapshot) {
     mutate_command_visible_state(|state| {
-        state.mining.set_lifecycle(projection.pool_lifecycle);
-        state.mining.set_mining_activity(projection.mining_activity);
-        state.mining.set_fallback_active(matches!(
-            projection.maybe_active_pool,
-            Some(bitaxe_stratum::v1::production_session::ProductionPool::Fallback)
-        ));
-        if projection.mining_activity == bitaxe_stratum::v1::state::MiningActivityStatus::Active {
-            state.mining.allow_work_submission();
-        } else {
-            let reason = projection
-                .maybe_blocker
-                .map_or("production_session_not_active", |blocker| blocker.label());
-            state.mining.block_work_submission(reason);
-            state.mining.set_mining_activity(projection.mining_activity);
-        }
+        state.mining = snapshot.mining;
         state
             .runtime_projection
             .replace_session_state(state.mining.clone());
