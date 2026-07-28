@@ -23,7 +23,7 @@ fn runtime() -> LiveStratumRuntime {
 fn runtime_with_extranonce() -> LiveStratumRuntime {
     let mut runtime = runtime();
     runtime
-        .apply_server_message(StratumV1ServerMessage::SetExtranonce(extranonce()))
+        .maybe_apply_server_message(StratumV1ServerMessage::SetExtranonce(extranonce()))
         .expect("extranonce assignment should apply");
     runtime
 }

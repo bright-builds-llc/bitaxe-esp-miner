@@ -315,7 +315,7 @@ impl RetainedLogBuffer {
             return Vec::new();
         }
 
-        if let Some(newline_idx) = self.first_newline_offset(req_pos, to_read) {
+        if let Some(newline_idx) = self.maybe_first_newline_offset(req_pos, to_read) {
             to_read = newline_idx + 1;
         }
 
@@ -338,7 +338,7 @@ impl RetainedLogBuffer {
         req_pos
     }
 
-    fn first_newline_offset(&self, req_pos: u64, to_read: usize) -> Option<usize> {
+    fn maybe_first_newline_offset(&self, req_pos: u64, to_read: usize) -> Option<usize> {
         (0..to_read).find(|offset| self.byte_at(req_pos + *offset as u64) == b'\n')
     }
 

@@ -425,12 +425,12 @@ impl Phase36EffectInterval {
     }
 
     #[must_use]
-    pub const fn first_failure(&self) -> Option<Phase36BrokerFailure> {
+    pub const fn maybe_first_failure(&self) -> Option<Phase36BrokerFailure> {
         self.first_failure
     }
 
     #[must_use]
-    pub const fn secondary_failure(&self) -> Option<Phase36BrokerFailure> {
+    pub const fn maybe_secondary_failure(&self) -> Option<Phase36BrokerFailure> {
         self.secondary_failure
     }
 

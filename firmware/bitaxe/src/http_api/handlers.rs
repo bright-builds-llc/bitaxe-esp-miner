@@ -96,7 +96,7 @@ pub(super) fn handle_command<'request, 'connection>(
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
         let effect = plan.effect;
-        let maybe_deferred_effect = prepare_deferred_command_effect(&effect)?;
+        let maybe_deferred_effect = maybe_prepare_deferred_command_effect(&effect)?;
         send_json(request, &plan.response)?;
         apply_command_effect(effect, maybe_deferred_effect)?;
         Ok(())

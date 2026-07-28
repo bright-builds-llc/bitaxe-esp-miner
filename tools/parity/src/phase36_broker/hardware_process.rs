@@ -26,7 +26,8 @@ mod effect_result;
 mod process_boundary;
 
 use effect_result::{
-    classify_effect_result, classify_missing_effect_result, operation_name, read_effect_result,
+    classify_effect_result, classify_missing_effect_result, maybe_read_effect_result,
+    operation_name,
 };
 use process_boundary::ProcessTransactionBoundary;
 

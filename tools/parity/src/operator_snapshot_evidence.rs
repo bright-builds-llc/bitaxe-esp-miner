@@ -84,13 +84,13 @@ pub(crate) fn validate_operator_snapshot_documents(
     retained_log_document: &str,
 ) -> Vec<String> {
     let mut validation_errors = Vec::new();
-    let maybe_api_json = parse_single_document_field(
+    let maybe_api_json = maybe_parse_single_document_field(
         &mut validation_errors,
         "api.md",
         api_document,
         SYSTEM_INFO_JSON_FIELD,
     );
-    let maybe_websocket_json = parse_single_document_field(
+    let maybe_websocket_json = maybe_parse_single_document_field(
         &mut validation_errors,
         "websocket.md",
         websocket_document,
@@ -133,7 +133,7 @@ fn validate_operator_snapshot_evidence(
         .iter()
         .enumerate()
         .filter_map(|projection| {
-            parse_json_identity(
+            maybe_parse_json_identity(
                 projection.1.label,
                 projection.1.json,
                 &mut validation_errors,
@@ -168,7 +168,7 @@ fn validate_operator_snapshot_evidence(
     }
 }
 
-fn parse_json_identity(
+fn maybe_parse_json_identity(
     label: &str,
     json: &str,
     validation_errors: &mut Vec<String>,
@@ -188,10 +188,10 @@ fn parse_json_identity(
         ));
         return None;
     };
-    parse_identity_values(label, &session_value, &revision_value, validation_errors)
+    maybe_parse_identity_values(label, &session_value, &revision_value, validation_errors)
 }
 
-fn parse_identity_values(
+fn maybe_parse_identity_values(
     label: &str,
     session_value: &serde_json::Value,
     revision_value: &serde_json::Value,
@@ -252,7 +252,7 @@ fn parse_retained_identities(
         if !line.starts_with("operator_snapshot ") {
             continue;
         }
-        let Some((session_text, revision_text)) = parse_retained_marker_fields(line) else {
+        let Some((session_text, revision_text)) = maybe_parse_retained_marker_fields(line) else {
             validation_errors.push(
                 "operator_snapshot_malformed_marker: retained log marker is not exact".to_owned(),
             );
@@ -269,7 +269,7 @@ fn parse_retained_identities(
                 continue;
             }
         };
-        let Some(identity) = parse_identity_values(
+        let Some(identity) = maybe_parse_identity_values(
             "retained log",
             &session_value,
             &revision_value,
@@ -289,7 +289,7 @@ fn parse_retained_identities(
     identities
 }
 
-fn parse_retained_marker_fields(line: &str) -> Option<(&str, &str)> {
+fn maybe_parse_retained_marker_fields(line: &str) -> Option<(&str, &str)> {
     let rest = line.strip_prefix("operator_snapshot session=")?;
     let (session, rest) = rest.split_once(" revision=")?;
     let revision = rest.strip_suffix(" redacted=true")?;
@@ -365,10 +365,18 @@ fn validate_redacted_projection(
     document: &str,
     identity: OperatorSnapshotIdentity,
 ) {
-    let maybe_session =
-        parse_single_document_field(validation_errors, label, document, PROJECTED_SESSION_FIELD);
-    let maybe_revision =
-        parse_single_document_field(validation_errors, label, document, PROJECTED_REVISION_FIELD);
+    let maybe_session = maybe_parse_single_document_field(
+        validation_errors,
+        label,
+        document,
+        PROJECTED_SESSION_FIELD,
+    );
+    let maybe_revision = maybe_parse_single_document_field(
+        validation_errors,
+        label,
+        document,
+        PROJECTED_REVISION_FIELD,
+    );
     let (Some(session), Some(revision)) = (maybe_session, maybe_revision) else {
         return;
     };
@@ -383,7 +391,7 @@ fn validate_redacted_projection(
         }
     };
     let Some(projected_identity) =
-        parse_identity_values(label, &session_value, &revision_value, validation_errors)
+        maybe_parse_identity_values(label, &session_value, &revision_value, validation_errors)
     else {
         return;
     };
@@ -402,7 +410,7 @@ fn redacted_document_projection(identity: OperatorSnapshotIdentity) -> String {
     )
 }
 
-fn parse_single_document_field<'a>(
+fn maybe_parse_single_document_field<'a>(
     validation_errors: &mut Vec<String>,
     label: &str,
     document: &'a str,

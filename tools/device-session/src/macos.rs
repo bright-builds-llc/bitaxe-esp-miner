@@ -93,7 +93,7 @@ impl MacOsDeviceAdapter {
         })
     }
 
-    pub(crate) fn exact_snapshot(port: &str) -> Result<Option<UsbDeviceSnapshot>> {
+    pub(crate) fn maybe_exact_snapshot(port: &str) -> Result<Option<UsbDeviceSnapshot>> {
         let candidates = scan_candidates()?;
         let matches = candidates
             .into_iter()
@@ -106,7 +106,7 @@ impl MacOsDeviceAdapter {
         }
     }
 
-    pub(crate) fn physical_snapshot(
+    pub(crate) fn maybe_physical_snapshot(
         expected_physical_identity: &str,
     ) -> Result<Option<UsbDeviceSnapshot>> {
         let candidates = scan_candidates()?;
@@ -316,7 +316,7 @@ fn parse_ioreg(text: &str) -> Result<Vec<Candidate>> {
         let Some(indent) = current_indent else {
             continue;
         };
-        let Some((key, value)) = parse_property(line) else {
+        let Some((key, value)) = maybe_parse_property(line) else {
             continue;
         };
         if let Some(node) = nodes.get_mut(&indent) {
@@ -333,7 +333,7 @@ fn parse_ioreg(text: &str) -> Result<Vec<Candidate>> {
         if key != "IOCalloutDevice" {
             continue;
         }
-        let Some(port) = unquote(value) else {
+        let Some(port) = maybe_unquote(value) else {
             continue;
         };
         let mut vendor = None;
@@ -384,14 +384,14 @@ fn parse_ioreg(text: &str) -> Result<Vec<Candidate>> {
     Ok(candidates)
 }
 
-fn parse_property(line: &str) -> Option<(&str, &str)> {
+fn maybe_parse_property(line: &str) -> Option<(&str, &str)> {
     let trimmed = line.trim_start_matches([' ', '|']);
     let rest = trimmed.strip_prefix('"')?;
     let (key, value) = rest.split_once("\" = ")?;
     Some((key, value.trim()))
 }
 
-fn unquote(value: &str) -> Option<String> {
+fn maybe_unquote(value: &str) -> Option<String> {
     value
         .strip_prefix('"')?
         .strip_suffix('"')

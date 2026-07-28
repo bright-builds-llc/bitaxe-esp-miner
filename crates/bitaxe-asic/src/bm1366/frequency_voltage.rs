@@ -114,7 +114,7 @@ impl Bm1366VoltagePlan {
     }
 
     #[must_use]
-    pub const fn command(self) -> Option<Bm1366Command> {
+    pub const fn maybe_command(self) -> Option<Bm1366Command> {
         None
     }
 
@@ -311,7 +311,7 @@ mod tests {
             .expect("1200 mV should be valid for Ultra 205 BM1366");
 
         // Act
-        let maybe_command = voltage.command();
+        let maybe_command = voltage.maybe_command();
 
         // Assert
         assert_eq!(voltage.millivolts(), 1200);

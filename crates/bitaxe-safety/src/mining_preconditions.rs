@@ -33,7 +33,7 @@ pub struct BoundedObservationEvidence {
 
 impl BoundedObservationEvidence {
     #[must_use]
-    pub const fn blocker_reason(self) -> Option<&'static str> {
+    pub const fn maybe_blocker_reason(self) -> Option<&'static str> {
         if self.source.is_empty() || self.evidence_id.is_empty() || self.reason.is_empty() {
             return Some(BOUNDED_OBSERVATION_UNDOCUMENTED);
         }
@@ -65,7 +65,7 @@ impl ProductionMiningPrerequisite {
 
     #[must_use]
     pub fn from_power_observation(observation: PowerObservation) -> Self {
-        let Some(reason) = observation.reason() else {
+        let Some(reason) = observation.maybe_reason() else {
             return Self::Fresh;
         };
 
@@ -74,18 +74,18 @@ impl ProductionMiningPrerequisite {
 
     #[must_use]
     pub fn from_thermal_observation(observation: ThermalObservation) -> Self {
-        let Some(reason) = observation.reason() else {
+        let Some(reason) = observation.maybe_reason() else {
             return Self::Fresh;
         };
 
         Self::Blocked { reason }
     }
 
-    const fn blocker_reason(self) -> Option<&'static str> {
+    const fn maybe_blocker_reason(self) -> Option<&'static str> {
         match self {
             Self::Fresh => None,
             Self::Blocked { reason } => Some(reason),
-            Self::Bounded(evidence) => evidence.blocker_reason(),
+            Self::Bounded(evidence) => evidence.maybe_blocker_reason(),
         }
     }
 }
@@ -109,7 +109,7 @@ impl ProductionMiningPreconditions {
             self.voltage,
             self.safety,
         ] {
-            let Some(reason) = prerequisite.blocker_reason() else {
+            let Some(reason) = prerequisite.maybe_blocker_reason() else {
                 continue;
             };
 

@@ -177,7 +177,7 @@ impl ThermalObservation {
     }
 
     #[must_use]
-    pub const fn reason(self) -> Option<&'static str> {
+    pub const fn maybe_reason(self) -> Option<&'static str> {
         self.temperature.maybe_reason()
     }
 
@@ -210,7 +210,7 @@ impl ThermalObservation {
 
     #[must_use]
     pub fn safety_plan(self) -> SafetyEffectPlan {
-        let Some(reason) = self.reason() else {
+        let Some(reason) = self.maybe_reason() else {
             return SafetyEffectPlan::observe_only(
                 SafetyStatus::Normal,
                 SafetyCriticalEvidence::implemented_not_verified("unit"),
@@ -240,7 +240,7 @@ pub struct ThermalEvidenceToken {
 
 impl ThermalEvidenceToken {
     #[must_use]
-    pub const fn from_observation(
+    pub const fn maybe_from_observation(
         observation: ThermalObservation,
         evidence: SafetyCriticalEvidence,
     ) -> Option<Self> {
@@ -349,7 +349,7 @@ pub struct FanControlDecision {
 
 impl FanControlDecision {
     pub fn from_inputs(inputs: FanControlInputs) -> Result<Self, ConfigValidationError> {
-        if inputs.observation.reason().is_some() {
+        if inputs.observation.maybe_reason().is_some() {
             let plan = inputs.observation.safety_plan();
             return Ok(Self {
                 duty_percent: 0,
@@ -419,7 +419,7 @@ pub struct OverheatDecision {
 impl OverheatDecision {
     #[must_use]
     pub fn from_inputs(inputs: OverheatInputs) -> Self {
-        if inputs.observation.reason().is_some() {
+        if inputs.observation.maybe_reason().is_some() {
             return Self {
                 state: OverheatState::SafeBlocked,
                 plan: inputs.observation.safety_plan(),

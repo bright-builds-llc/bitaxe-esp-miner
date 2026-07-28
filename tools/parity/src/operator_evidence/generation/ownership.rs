@@ -110,7 +110,7 @@ impl PromotionContext {
         Ok(context)
     }
 
-    pub(super) const fn destination_identity(&self) -> Option<PathIdentity> {
+    pub(super) const fn maybe_destination_identity(&self) -> Option<PathIdentity> {
         self.destination_identity
     }
 

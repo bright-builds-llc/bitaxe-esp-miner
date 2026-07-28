@@ -186,7 +186,7 @@ fn phase36_broker_ledger_seals_complete_passive_interval() {
     // Assert
     let interval = interval.expect("complete interval should seal");
     assert_eq!(interval.effect_count(), 8);
-    assert_eq!(interval.first_failure(), None);
+    assert_eq!(interval.maybe_first_failure(), None);
 }
 
 #[test]
@@ -408,9 +408,9 @@ fn phase36_broker_ledger_preserves_earliest_failure_through_cleanup() {
         let interval = state
             .seal(timestamp + 1)
             .expect("failed but complete interval should seal");
-        assert_eq!(interval.first_failure(), Some(primary_failure));
+        assert_eq!(interval.maybe_first_failure(), Some(primary_failure));
         assert_eq!(
-            interval.secondary_failure(),
+            interval.maybe_secondary_failure(),
             Some(Phase36BrokerFailure::CleanupFailed)
         );
     }

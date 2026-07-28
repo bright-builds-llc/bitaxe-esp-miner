@@ -129,7 +129,7 @@ pub fn current_settings_snapshot() -> NvsSnapshot {
 #[must_use]
 pub fn start_mining_on_boot() -> bool {
     let loaded = bitaxe_config::reload_snapshot(&current_settings_snapshot());
-    match loaded.loaded_value("mineonboot") {
+    match loaded.maybe_loaded_value("mineonboot") {
         Some(bitaxe_config::LoadedValue::Bool(value)) => *value,
         _ => true,
     }
@@ -178,7 +178,7 @@ pub fn configured_protocol_is_v1() -> bool {
 
     ["stratumprot", "fbstratumprot"]
         .into_iter()
-        .all(|key| read_optional_protocol(&nvs, key).is_some_and(|protocol| protocol == "SV1"))
+        .all(|key| maybe_read_protocol(&nvs, key).is_some_and(|protocol| protocol == "SV1"))
 }
 
 fn current_snapshot_cell() -> &'static ConfirmedSnapshotCell {
@@ -211,7 +211,7 @@ fn read_current_settings_snapshot_best_effort(nvs: &EspNvs<NvsDefault>) -> NvsSn
         let Some(stored_type) = maybe_stored_type else {
             continue;
         };
-        let Some(value) = read_stored_value_best_effort(nvs, key, stored_type) else {
+        let Some(value) = maybe_read_stored_value_best_effort(nvs, key, stored_type) else {
             continue;
         };
 
@@ -248,7 +248,7 @@ fn read_current_settings_snapshot_strict(
     Ok(NvsSnapshot::from_values(values))
 }
 
-fn read_optional_protocol(nvs: &EspNvs<NvsDefault>, key: &str) -> Option<String> {
+fn maybe_read_protocol(nvs: &EspNvs<NvsDefault>, key: &str) -> Option<String> {
     let maybe_len = match nvs.str_len(key) {
         Ok(maybe_len) => maybe_len,
         Err(error) => {
@@ -289,7 +289,7 @@ fn general_settings_schema() -> Vec<bitaxe_config::SettingSchema> {
         .collect()
 }
 
-fn read_stored_value_best_effort(
+fn maybe_read_stored_value_best_effort(
     nvs: &EspNvs<NvsDefault>,
     key: &str,
     stored_type: NvsDataType,

@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) fn openapi_has_path_method(openapi_yaml: &str, path: &str, method: &str) -> bool {
-    let Some(path_block) = openapi_path_block(openapi_yaml, path) else {
+    let Some(path_block) = maybe_openapi_path_block(openapi_yaml, path) else {
         return false;
     };
     let method_marker = format!("{}:", method.to_ascii_lowercase());
@@ -16,11 +16,11 @@ pub(super) fn openapi_route_schema_has_property(
     schema_route: &SchemaRouteAssertion,
     property: &str,
 ) -> bool {
-    if let Some(schema_block) = openapi_schema_block(openapi_yaml, &schema_route.schema) {
+    if let Some(schema_block) = maybe_openapi_schema_block(openapi_yaml, &schema_route.schema) {
         return openapi_block_has_property(schema_block, property);
     }
 
-    let Some(path_block) = openapi_path_block(openapi_yaml, &schema_route.path) else {
+    let Some(path_block) = maybe_openapi_path_block(openapi_yaml, &schema_route.path) else {
         return false;
     };
 
@@ -29,20 +29,20 @@ pub(super) fn openapi_route_schema_has_property(
     }
 
     openapi_referenced_schemas(path_block).iter().any(|schema| {
-        openapi_schema_block(openapi_yaml, schema)
+        maybe_openapi_schema_block(openapi_yaml, schema)
             .is_some_and(|schema_block| openapi_block_has_property(schema_block, property))
     })
 }
 
-fn openapi_path_block<'a>(openapi_yaml: &'a str, path: &str) -> Option<&'a str> {
-    yaml_named_block(openapi_yaml, 2, &format!("{path}:"))
+fn maybe_openapi_path_block<'a>(openapi_yaml: &'a str, path: &str) -> Option<&'a str> {
+    maybe_yaml_named_block(openapi_yaml, 2, &format!("{path}:"))
 }
 
-fn openapi_schema_block<'a>(openapi_yaml: &'a str, schema: &str) -> Option<&'a str> {
-    yaml_named_block(openapi_yaml, 4, &format!("{schema}:"))
+fn maybe_openapi_schema_block<'a>(openapi_yaml: &'a str, schema: &str) -> Option<&'a str> {
+    maybe_yaml_named_block(openapi_yaml, 4, &format!("{schema}:"))
 }
 
-fn yaml_named_block<'a>(document: &'a str, indent: usize, name: &str) -> Option<&'a str> {
+fn maybe_yaml_named_block<'a>(document: &'a str, indent: usize, name: &str) -> Option<&'a str> {
     let marker = format!("{}{name}", " ".repeat(indent));
     let mut offset = 0;
     let mut maybe_content_start = None;

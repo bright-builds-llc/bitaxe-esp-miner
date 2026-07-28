@@ -68,7 +68,7 @@ impl ProductionPoolSet {
         }
     }
 
-    pub(super) fn configuration(
+    pub(super) fn maybe_configuration(
         &self,
         pool: ProductionPool,
     ) -> Option<&ProductionPoolConfiguration> {

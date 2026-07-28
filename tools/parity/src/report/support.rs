@@ -52,7 +52,7 @@ pub(crate) fn parse_utf8_path(value: &str) -> std::result::Result<Utf8PathBuf, S
     Ok(Utf8PathBuf::from(value))
 }
 
-pub(crate) fn read_optional_text(path: &Utf8Path) -> Result<Option<String>> {
+pub(crate) fn maybe_read_text(path: &Utf8Path) -> Result<Option<String>> {
     match std::fs::read_to_string(path.as_std_path()) {
         Ok(contents) => Ok(Some(contents)),
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),

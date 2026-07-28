@@ -18,7 +18,7 @@ pub(crate) fn validate_phase30_promotion_row(
         });
     }
 
-    if let Some(forbidden_category) = phase30_forbidden_category(row) {
+    if let Some(forbidden_category) = maybe_phase30_forbidden_category(row) {
         errors.push(ValidationError {
             id: row.id.clone(),
             message: format!("Phase 30 admission forbids no-proof category {forbidden_category}"),
@@ -65,7 +65,7 @@ pub(crate) fn is_phase30_promotion_row(row: &ChecklistRow) -> bool {
     matches!(row.id.as_str(), "STR-09" | "CFG-07" | "ASIC-11")
 }
 
-pub(crate) fn phase30_forbidden_category(row: &ChecklistRow) -> Option<&'static str> {
+pub(crate) fn maybe_phase30_forbidden_category(row: &ChecklistRow) -> Option<&'static str> {
     let haystack = row_haystack(row);
 
     [
@@ -121,7 +121,7 @@ pub(crate) fn has_phase30_exact_promotion_proof(
 
     is_phase30_promotion_row(row)
         && row_haystack(row).contains(DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH)
-        && phase30_forbidden_category(row).is_none()
+        && maybe_phase30_forbidden_category(row).is_none()
         && artifact.has_exact_field("phase30_disposition", "promoted")
         && phase30_missing_artifact_row_fields(row, artifact).is_empty()
 }

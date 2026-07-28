@@ -12,7 +12,7 @@ fn notify_without_extranonce_blocks_work() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
         .expect("notify should be handled safely");
 
     // Assert
@@ -31,7 +31,7 @@ fn notify_queues_active_pool_work() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
         .expect("notify should queue work");
 
     // Assert
@@ -58,7 +58,7 @@ fn clean_jobs_notify_invalidates_old_generation_before_queueing() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::Notify(notify(true)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(true)))
         .expect("clean notify should queue work");
 
     // Assert
@@ -79,19 +79,19 @@ fn notify_applies_pool_difficulty_and_version_mask_to_work() {
     // Arrange
     let mut runtime = runtime_with_extranonce();
     runtime
-        .apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
+        .maybe_apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
             difficulty: 8.0,
         }))
         .expect("difficulty should apply");
     runtime
-        .apply_server_message(StratumV1ServerMessage::SetVersionMask(VersionMask {
+        .maybe_apply_server_message(StratumV1ServerMessage::SetVersionMask(VersionMask {
             mask: 0x1fff_e000,
         }))
         .expect("version mask should apply");
 
     // Act
     runtime
-        .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
         .expect("notify should queue work");
     let dispatch = runtime
         .production_registry_mut()
@@ -117,7 +117,7 @@ fn malformed_notify_propagates_work_builder_error() {
     malformed.prev_block_hash = "not-hex".to_owned();
 
     // Act
-    let result = runtime.apply_server_message(StratumV1ServerMessage::Notify(malformed));
+    let result = runtime.maybe_apply_server_message(StratumV1ServerMessage::Notify(malformed));
 
     // Assert
     assert!(matches!(
@@ -159,17 +159,17 @@ fn regenerate_increments_extranonce_and_preserves_pool_context() {
     // Arrange
     let mut runtime = runtime_with_extranonce();
     runtime
-        .apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
+        .maybe_apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
             difficulty: 8.0,
         }))
         .expect("difficulty should apply");
     runtime
-        .apply_server_message(StratumV1ServerMessage::SetVersionMask(VersionMask {
+        .maybe_apply_server_message(StratumV1ServerMessage::SetVersionMask(VersionMask {
             mask: 0x1fff_e000,
         }))
         .expect("version mask should apply");
     runtime
-        .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
         .expect("notify should queue work");
     let _initial = runtime
         .production_registry_mut()
@@ -202,7 +202,7 @@ fn session_replacement_clears_regeneration_context() {
     // Arrange
     let mut runtime = runtime_with_extranonce();
     runtime
-        .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
         .expect("notify should queue work");
 
     // Act
@@ -224,7 +224,7 @@ fn authorization_reset_clears_regeneration_context() {
     // Arrange
     let mut runtime = runtime_with_extranonce();
     runtime
-        .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
         .expect("notify should queue work");
 
     // Act
@@ -246,7 +246,7 @@ fn clean_jobs_invalidation_clears_regeneration_context() {
     // Arrange
     let mut runtime = runtime_with_extranonce();
     runtime
-        .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
         .expect("notify should queue work");
 
     // Act
@@ -292,7 +292,7 @@ fn correlated_bridge_observation_queues_submit_action() {
     // Arrange
     let mut runtime = runtime_with_extranonce();
     runtime
-        .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
         .expect("notify should queue work");
     let dispatch = runtime
         .production_registry_mut()
@@ -332,7 +332,7 @@ fn submit_action_debug_redacts_share_context() {
     // Arrange
     let mut runtime = runtime_with_extranonce();
     runtime
-        .apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
         .expect("notify should queue work");
     let dispatch = runtime
         .production_registry_mut()

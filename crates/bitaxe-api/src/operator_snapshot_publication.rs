@@ -113,7 +113,7 @@ impl OperatorSnapshotPublisher {
         OperatorSnapshotPublication<T>,
         OperatorSnapshotPublishError<RetentionError, IssueError>,
     > {
-        let Some(_depth_guard) = PublicationDepthGuard::enter() else {
+        let Some(_depth_guard) = PublicationDepthGuard::maybe_enter() else {
             return Err(OperatorSnapshotPublishError::Reentrant);
         };
         let candidate = collect();
@@ -158,7 +158,7 @@ impl OperatorSnapshotPublisher {
 struct PublicationDepthGuard;
 
 impl PublicationDepthGuard {
-    fn enter() -> Option<Self> {
+    fn maybe_enter() -> Option<Self> {
         PUBLICATION_DEPTH.with(|depth| {
             if depth.get() != 0 {
                 return None;

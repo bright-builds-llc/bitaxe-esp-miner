@@ -158,7 +158,8 @@ pub fn classify_accepted_state(
     rust: &[AcceptedStateSnapshot],
 ) -> AcceptedStateClassification {
     if let Some(first_missing_stage) = AcceptedStateStage::ALL.into_iter().find(|stage| {
-        snapshot_for_stage(upstream, *stage).is_none() || snapshot_for_stage(rust, *stage).is_none()
+        maybe_snapshot_for_stage(upstream, *stage).is_none()
+            || maybe_snapshot_for_stage(rust, *stage).is_none()
     }) {
         return AcceptedStateClassification {
             accepted_state_status: AcceptedStateStatus::Unavailable,
@@ -177,8 +178,8 @@ pub fn classify_accepted_state(
     let mut saw_other_mismatch = false;
 
     for stage in AcceptedStateStage::ALL {
-        let maybe_upstream = snapshot_for_stage(upstream, stage);
-        let maybe_rust = snapshot_for_stage(rust, stage);
+        let maybe_upstream = maybe_snapshot_for_stage(upstream, stage);
+        let maybe_rust = maybe_snapshot_for_stage(rust, stage);
 
         let (Some(upstream_snapshot), Some(rust_snapshot)) = (maybe_upstream, maybe_rust) else {
             saw_missing_observation = true;
@@ -230,7 +231,7 @@ pub fn classify_accepted_state(
     }
 }
 
-fn snapshot_for_stage(
+fn maybe_snapshot_for_stage(
     snapshots: &[AcceptedStateSnapshot],
     stage: AcceptedStateStage,
 ) -> Option<AcceptedStateSnapshot> {

@@ -63,7 +63,7 @@ impl UsbSession {
                 "the durable USB supervisor is qualified only on macOS",
             ));
         }
-        let snapshot = MacOsDeviceAdapter::exact_snapshot(port)
+        let snapshot = MacOsDeviceAdapter::maybe_exact_snapshot(port)
             .map_err(|error| session_error(UsbTerminalCategory::TransportAbsent, error))?
             .ok_or_else(|| {
                 session_error(
@@ -243,7 +243,7 @@ impl UsbSession {
         let mut reenumerated = false;
 
         while Instant::now() < deadline {
-            if let Some(signal) = process::pending_signal() {
+            if let Some(signal) = process::maybe_pending_signal() {
                 write_private_trace(&trace_path, &bytes)?;
                 self.transition(UsbLifecycleEvent::ObservationComplete)?;
                 return Ok(MonitorOutput {
@@ -325,7 +325,7 @@ impl UsbSession {
 
         while Instant::now() < deadline {
             let maybe_snapshot =
-                match MacOsDeviceAdapter::physical_snapshot(&self.physical_identity_digest) {
+                match MacOsDeviceAdapter::maybe_physical_snapshot(&self.physical_identity_digest) {
                     Ok(maybe_snapshot) => maybe_snapshot,
                     Err(_) => {
                         return Err(self.recovery_error_with_summary(

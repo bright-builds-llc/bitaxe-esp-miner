@@ -305,7 +305,7 @@ mod tests {
 
         // Act
         let cadence = websocket
-            .live_cadence_frame(stopped_views.telemetry_payload)
+            .maybe_live_cadence_frame(stopped_views.telemetry_payload)
             .expect("safe stop should produce a cadence diff");
         let rendered = cadence.to_string();
 

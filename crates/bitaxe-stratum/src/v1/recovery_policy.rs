@@ -83,7 +83,7 @@ pub struct ProductionReadiness {
 }
 
 impl ProductionReadiness {
-    pub const fn blocker(self) -> Option<ProductionSessionBlocker> {
+    pub const fn maybe_blocker(self) -> Option<ProductionSessionBlocker> {
         if matches!(self.operator_intent, MiningOperatorIntent::Paused) {
             return Some(ProductionSessionBlocker::OperatorPaused);
         }
@@ -114,7 +114,7 @@ pub struct ProductionPoolAvailability {
 }
 
 impl ProductionPoolAvailability {
-    const fn preferred(self) -> Option<ProductionPool> {
+    const fn maybe_preferred(self) -> Option<ProductionPool> {
         if self.prefer_fallback && self.fallback_configured {
             return Some(ProductionPool::Fallback);
         }
@@ -127,7 +127,7 @@ impl ProductionPoolAvailability {
         None
     }
 
-    const fn alternate(self, pool: ProductionPool) -> Option<ProductionPool> {
+    const fn maybe_alternate(self, pool: ProductionPool) -> Option<ProductionPool> {
         match pool {
             ProductionPool::Primary if self.fallback_configured => Some(ProductionPool::Fallback),
             ProductionPool::Fallback if self.primary_configured => Some(ProductionPool::Primary),
@@ -262,7 +262,7 @@ impl RecoveryPolicy {
             self.reset_pool_policy();
         }
 
-        if let Some(blocker) = readiness.blocker() {
+        if let Some(blocker) = readiness.maybe_blocker() {
             return self.safe_stop(ProductionSessionPhase::WaitingForReadiness, Some(blocker));
         }
 
@@ -283,7 +283,7 @@ impl RecoveryPolicy {
 
         if self.phase == ProductionSessionPhase::WaitingForReadiness {
             self.attempts = [0; 2];
-            let Some(pool) = pool_availability.preferred() else {
+            let Some(pool) = pool_availability.maybe_preferred() else {
                 return self.safe_stop(
                     ProductionSessionPhase::WaitingForReadiness,
                     Some(ProductionSessionBlocker::PoolConfigurationUnavailable),
@@ -316,9 +316,9 @@ impl RecoveryPolicy {
         {
             let pool = if self.phase == ProductionSessionPhase::RecoveryPaused {
                 self.attempts = [0; 2];
-                pool_availability.preferred()
+                pool_availability.maybe_preferred()
             } else {
-                self.connecting_pool()
+                self.maybe_connecting_pool()
             };
             if let Some(pool) = pool {
                 return self.connect(pool);
@@ -336,7 +336,7 @@ impl RecoveryPolicy {
     ) -> Vec<RecoveryAction> {
         self.maybe_pool_availability = Some(availability);
         self.attempts = [0; 2];
-        let Some(pool) = availability.preferred() else {
+        let Some(pool) = availability.maybe_preferred() else {
             return self.safe_stop(
                 ProductionSessionPhase::WaitingForReadiness,
                 Some(ProductionSessionBlocker::PoolConfigurationUnavailable),
@@ -404,7 +404,7 @@ impl RecoveryPolicy {
         let Some(availability) = self.maybe_pool_availability else {
             return self.enter_recovery_pause(now_ms);
         };
-        if let Some(alternate) = availability.alternate(pool) {
+        if let Some(alternate) = availability.maybe_alternate(pool) {
             if availability.configured(alternate)
                 && self.attempts[pool_index(alternate)] < CONNECTION_ATTEMPTS_PER_POOL
             {
@@ -419,7 +419,7 @@ impl RecoveryPolicy {
     pub fn on_connection_lost(&mut self, now_ms: u64) -> Vec<RecoveryAction> {
         let pool = self
             .maybe_active_pool
-            .or_else(|| self.connecting_pool())
+            .or_else(|| self.maybe_connecting_pool())
             .unwrap_or(ProductionPool::Primary);
         let actions = self.safe_stop(connecting_phase(pool), None);
         self.phase = connecting_phase(pool);
@@ -507,7 +507,7 @@ impl RecoveryPolicy {
         self.fallback_automatic = false;
     }
 
-    fn connecting_pool(&self) -> Option<ProductionPool> {
+    fn maybe_connecting_pool(&self) -> Option<ProductionPool> {
         match self.phase {
             ProductionSessionPhase::ConnectingPrimary => Some(ProductionPool::Primary),
             ProductionSessionPhase::ConnectingFallback => Some(ProductionPool::Fallback),

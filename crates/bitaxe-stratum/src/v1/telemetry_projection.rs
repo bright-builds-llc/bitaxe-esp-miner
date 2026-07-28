@@ -218,7 +218,7 @@ impl RuntimeTelemetryProjection {
         }
     }
 
-    pub fn drain_pending_sample_marker(&mut self) -> Option<RuntimeProjectionSampleMarker> {
+    pub fn maybe_drain_pending_sample_marker(&mut self) -> Option<RuntimeProjectionSampleMarker> {
         self.maybe_pending_sample_marker.take()
     }
 }
@@ -312,8 +312,8 @@ mod tests {
             timestamp_ms: 12_345,
             source: RuntimeProjectionSampleSource::RuntimeEvent,
         });
-        let maybe_marker = projection.drain_pending_sample_marker();
-        let maybe_second_marker = projection.drain_pending_sample_marker();
+        let maybe_marker = projection.maybe_drain_pending_sample_marker();
+        let maybe_second_marker = projection.maybe_drain_pending_sample_marker();
 
         // Assert
         assert_eq!(outcome, ProjectionShareOutcome::NoCounterChange);
@@ -334,8 +334,8 @@ mod tests {
         let mut projection = RuntimeTelemetryProjection::new(PoolSessionGeneration::initial());
 
         // Act
-        let first_read = projection.drain_pending_sample_marker();
-        let second_read = projection.drain_pending_sample_marker();
+        let first_read = projection.maybe_drain_pending_sample_marker();
+        let second_read = projection.maybe_drain_pending_sample_marker();
 
         // Assert
         assert_eq!(first_read, None);
@@ -554,7 +554,7 @@ mod tests {
             classification: SubmitClassification::Accepted,
             maybe_share_difficulty: None,
         });
-        let maybe_marker = projection.drain_pending_sample_marker();
+        let maybe_marker = projection.maybe_drain_pending_sample_marker();
 
         // Assert
         assert_eq!(outcome, ProjectionShareOutcome::Accepted);

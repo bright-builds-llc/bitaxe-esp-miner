@@ -220,8 +220,8 @@ fn validate_broker_interval(
     let interval = state
         .seal(broker.interval_end_millis)
         .map_err(|_| Phase36CaptureError::EffectLedgerInvalid)?;
-    if interval.first_failure().is_some()
-        || interval.secondary_failure().is_some()
+    if interval.maybe_first_failure().is_some()
+        || interval.maybe_secondary_failure().is_some()
         || interval.effect_count() != 8
     {
         return Err(Phase36CaptureError::EffectIntervalFailed);

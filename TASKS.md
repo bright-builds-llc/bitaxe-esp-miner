@@ -10,6 +10,80 @@ new work.
 
 ## Active
 
+### task-normalize-optional-function-names | 2026-07-27 20:06 | Normalize audit item 3 optional function names
+
+- [x] Inventory every active repository-owned Rust function whose successful
+      result may be absent, including multiline and `Result<Option<_>>`
+      signatures.
+- [x] Rename each candidate with a leading `maybe_` and update all in-repo
+      callers without compatibility aliases.
+- [x] Preserve externally required trait names, definite aggregate returns,
+      wire formats, evidence schemas, and historical artifacts.
+- [x] Verify the final exception inventory, expected Phase 36 evaluator
+      identity rotation, and complete software test surface.
+
+Verification policy:
+
+- This task is a source-level naming refactor only. Do not change runtime
+  behavior, schemas, CLI/protocol vocabulary, parity statuses, evidence,
+  reference contents, or evaluator inventory membership.
+- The pre-change Phase 36 evaluator identity is
+  `fb45f3578257cb37a4a73572a7ea0643a93e11dae8762966bb71a6b036cb296c`.
+  Source-bound identity rotation is expected when inventoried Rust sources are
+  renamed; do not hard-code or promote the replacement identity.
+- Do not detect, flash, monitor, read credentials, discover network targets,
+  generate evidence, or otherwise interact with hardware.
+
+Verification:
+
+- The refreshed inventory accounts for 112 renamed function definitions under
+  103 distinct prior spellings. The approved 105-candidate estimate was
+  conservative: semantic expansion covered repeated cfg/test definitions and
+  additional multiline `Result<Option<_>>` signatures, while the final scan
+  also found and renamed `json_string_value_bounds`.
+- The only direct absence-returning definition without `maybe_` is the
+  externally imposed `std::error::Error::source`. Definite aggregate helpers
+  `runtime_projection_for_api_views`, `validate_load_address`,
+  `release_evidence_validation_paths`, and `execute_operation` retained their
+  names; `project_observation` likewise returns a definite observation despite
+  accepting an optional projection callback.
+- Focused tests passed for every changed host package, including all 381
+  `bitaxe-parity` tests and the active Phase 34 source guards.
+  `cargo check --all-targets --all-features` also passed. Directly selecting
+  `bitaxe-firmware` for a macOS-host test is unsupported by `esp-idf-sys`; the
+  canonical `just test` path instead compiled the ESP32-S3 firmware target
+  successfully.
+- The required ordered Rust sequence passed: `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features`.
+- `bun scripts/bright-builds-check.ts all` passed with 556 files scanned,
+  eight existing exceptions, and zero findings; `just test` passed all 72
+  tests.
+- `just parity` reported `validation_errors: none`; `just verify-reference`
+  confirmed pinned commit `c1915b0a63bfabebdb95a515cedfee05146c1d50` is
+  clean; `just verify-redaction` and `git diff --check` passed.
+- The Phase 36 evaluator identity rotated from
+  `fb45f3578257cb37a4a73572a7ea0643a93e11dae8762966bb71a6b036cb296c`
+  to
+  `7fd0ad4fba61f712e19ed3652c14be40395e5d3be8059bafd289e5f911197c21`;
+  its inventory-binding test passed and no membership was changed or digest
+  hard-coded.
+- Final scope review found no changes to the checklist, committed evidence,
+  planning archives, or reference tree. Rust schema and behavior tests passed
+  unchanged, and no hardware, credentials, network discovery, evidence
+  generation, or parity promotion occurred.
+
+Completion review:
+
+- Completed the direct source-level rename across the active Rust workspace
+  and updated all typed callers plus active source-string guards without
+  compatibility aliases.
+- Residual risk is limited to supported external Rust callers outside this
+  repository, for which no publishing or compatibility contract was found.
+  This wave intentionally did not expand into an unrelated repository-wide
+  rename of untouched optional locals, parameters, or fields.
+
 ### task-split-phase34-package-admission-guard | 2026-07-27 19:21 | Split audit item 2 source guard
 
 - [x] Split the Phase 34 package and hardware admission source guard into

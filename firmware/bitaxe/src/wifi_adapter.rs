@@ -127,7 +127,7 @@ pub fn current_wifi_snapshot() -> WifiRuntimeSnapshot {
 fn maybe_wifi_credentials() -> Option<WifiCredentials> {
     let settings = settings_adapter::current_settings_snapshot();
     let loaded = reload_snapshot(&settings);
-    let Some(LoadedValue::Str(ssid)) = loaded.loaded_value("wifissid") else {
+    let Some(LoadedValue::Str(ssid)) = loaded.maybe_loaded_value("wifissid") else {
         return None;
     };
 
@@ -135,11 +135,11 @@ fn maybe_wifi_credentials() -> Option<WifiCredentials> {
         return None;
     }
 
-    let password = match loaded.loaded_value("wifipass") {
+    let password = match loaded.maybe_loaded_value("wifipass") {
         Some(LoadedValue::Str(password)) => password.clone(),
         _ => String::new(),
     };
-    let hostname = match loaded.loaded_value("hostname") {
+    let hostname = match loaded.maybe_loaded_value("hostname") {
         Some(LoadedValue::Str(hostname)) => hostname.clone(),
         _ => "bitaxe".to_owned(),
     };

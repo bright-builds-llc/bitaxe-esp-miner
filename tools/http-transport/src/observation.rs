@@ -416,7 +416,7 @@ impl HttpResponse {
         &self.body
     }
 
-    pub(crate) fn new(
+    pub(crate) fn maybe_new(
         status: u16,
         header_count: u64,
         headers: Vec<u8>,

@@ -48,7 +48,7 @@ fn failure_for_operation(operation: Phase36AllowedOperation) -> Phase36BrokerFai
     }
 }
 
-pub(super) fn read_effect_result(path: &Utf8Path) -> Option<Phase36EffectResult> {
+pub(super) fn maybe_read_effect_result(path: &Utf8Path) -> Option<Phase36EffectResult> {
     let metadata = fs::symlink_metadata(path).ok()?;
     if metadata.file_type().is_symlink()
         || !metadata.is_file()

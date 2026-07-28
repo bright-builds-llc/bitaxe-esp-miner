@@ -15,7 +15,7 @@ pub(crate) fn run_flash(
     )?;
 
     if !command.common.dry_run {
-        let port = command_port(&execution_command)
+        let port = maybe_command_port(&execution_command)
             .context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::Flash, &port)?;
         environment.execute(&execution_command)?;
@@ -38,8 +38,8 @@ pub(crate) fn run_monitor(
     emit_command("monitor_command", &command_spec)?;
 
     if !command.common.dry_run {
-        let port =
-            command_port(&command_spec).context("usb_session=blocked reason=port_unavailable")?;
+        let port = maybe_command_port(&command_spec)
+            .context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::Monitor, &port)?;
         let bytes = environment.receive_only(&command_spec, command.capture_timeout_seconds)?;
         write_receive_only_console(&bytes)?;
@@ -52,7 +52,7 @@ pub(crate) fn run_flash_monitor(
     command: &FlashMonitorCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
-    let resolved_dir = resolved_evidence_dir(&command.common, environment);
+    let resolved_dir = maybe_resolved_evidence_dir(&command.common, environment);
     if command.common.evidence_mode.is_some() && resolved_dir.is_none() {
         bail!("--evidence-mode dual requires --evidence-dir");
     }
@@ -107,7 +107,7 @@ fn run_receive_only_flash_monitor(
     emit_command("monitor_command", &monitor_command)?;
 
     if !command.common.dry_run {
-        let port = command_port(&monitor_command)
+        let port = maybe_command_port(&monitor_command)
             .context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::FlashMonitor, &port)?;
         let bytes = environment.receive_only(&monitor_command, command.capture_timeout_seconds)?;
@@ -153,7 +153,7 @@ fn run_evidence_flash_monitor(
         }
         dry_run_monitor_capture_outcome(command.capture_timeout_seconds)
     } else {
-        let port = command_port(&monitor_command)
+        let port = maybe_command_port(&monitor_command)
             .context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::FlashMonitor, &port)?;
         let capture_result = environment
@@ -246,7 +246,7 @@ fn validate_evidence_capture(
     if command.common.evidence_mode == Some(EvidenceMode::Dual) {
         bail!("dual_evidence=failed reason=capture_not_accepted");
     }
-    let port = command_port(monitor_command).unwrap_or_else(|| UNAVAILABLE.to_owned());
+    let port = maybe_command_port(monitor_command).unwrap_or_else(|| UNAVAILABLE.to_owned());
     let user_evidence_dir = command
         .common
         .evidence_dir

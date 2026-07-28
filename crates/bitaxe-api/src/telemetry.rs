@@ -21,7 +21,7 @@ pub fn live_telemetry_update_envelope(data: Value) -> Value {
 
 /// Returns a structured diff between the previous and current telemetry payloads.
 #[must_use]
-pub fn live_telemetry_diff(maybe_old: Option<&Value>, new: &Value) -> Option<Value> {
+pub fn maybe_live_telemetry_diff(maybe_old: Option<&Value>, new: &Value) -> Option<Value> {
     let Some(old) = maybe_old else {
         return Some(new.clone());
     };
@@ -32,7 +32,7 @@ pub fn live_telemetry_diff(maybe_old: Option<&Value>, new: &Value) -> Option<Val
 
     match (old, new) {
         (Value::Object(old_object), Value::Object(new_object)) => {
-            object_diff(old_object, new_object).map(Value::Object)
+            maybe_object_diff(old_object, new_object).map(Value::Object)
         }
         _ => Some(new.clone()),
     }
@@ -67,7 +67,7 @@ impl LiveTelemetryPlanner {
 
     /// Plans a cadence update, returning no frame for unchanged state or no clients.
     #[must_use]
-    pub fn cadence_frame(&mut self, current: Value) -> Option<Value> {
+    pub fn maybe_cadence_frame(&mut self, current: Value) -> Option<Value> {
         if self.active_clients == 0 {
             self.maybe_baseline = None;
             return None;
@@ -78,13 +78,13 @@ impl LiveTelemetryPlanner {
             return None;
         };
 
-        let maybe_diff = live_telemetry_diff(Some(baseline), &current);
+        let maybe_diff = maybe_live_telemetry_diff(Some(baseline), &current);
         self.maybe_baseline = Some(current);
         maybe_diff.map(live_telemetry_update_envelope)
     }
 }
 
-fn object_diff(
+fn maybe_object_diff(
     old_object: &Map<String, Value>,
     new_object: &Map<String, Value>,
 ) -> Option<Map<String, Value>> {
@@ -101,7 +101,7 @@ fn object_diff(
         }
 
         if let (Value::Object(old_nested), Value::Object(new_nested)) = (old_value, new_value) {
-            if let Some(sub_diff) = object_diff(old_nested, new_nested) {
+            if let Some(sub_diff) = maybe_object_diff(old_nested, new_nested) {
                 diff.insert(key.clone(), Value::Object(sub_diff));
             }
             continue;
@@ -123,7 +123,7 @@ mod tests {
     use serde_json::{json, Value};
 
     use crate::telemetry::{
-        live_telemetry_diff, live_telemetry_update_envelope, LiveTelemetryPlanner,
+        live_telemetry_update_envelope, maybe_live_telemetry_diff, LiveTelemetryPlanner,
         LIVE_TELEMETRY_CADENCE_MS,
     };
 
@@ -167,7 +167,7 @@ mod tests {
         planner.seed_cadence_baseline(fixture.full_state.clone());
 
         // Act
-        let frame = planner.cadence_frame(fixture.full_state);
+        let frame = planner.maybe_cadence_frame(fixture.full_state);
 
         // Assert
         assert_eq!(frame, None);
@@ -182,7 +182,7 @@ mod tests {
         planner.seed_cadence_baseline(fixture.full_state);
 
         // Act
-        let frame = planner.cadence_frame(fixture.changed_state);
+        let frame = planner.maybe_cadence_frame(fixture.changed_state);
 
         // Assert
         assert_eq!(frame, Some(fixture.expected_diff_frame));
@@ -196,7 +196,7 @@ mod tests {
         planner.set_active_client_count(1);
         planner.seed_cadence_baseline(fixture.full_state.clone());
         planner.set_active_client_count(0);
-        let idle_frame = planner.cadence_frame(fixture.changed_state);
+        let idle_frame = planner.maybe_cadence_frame(fixture.changed_state);
         planner.set_active_client_count(1);
 
         // Act
@@ -219,7 +219,7 @@ mod tests {
         let connect_frame = planner.connect_frame(changed_state.clone());
 
         // Act
-        let cadence_frame = planner.cadence_frame(changed_state);
+        let cadence_frame = planner.maybe_cadence_frame(changed_state);
 
         // Assert
         assert_eq!(connect_frame, expected_connect_frame);
@@ -267,7 +267,7 @@ mod tests {
         let fixture = fixture();
 
         // Act
-        let diff = live_telemetry_diff(Some(&old), &new);
+        let diff = maybe_live_telemetry_diff(Some(&old), &new);
 
         // Assert
         assert_eq!(diff, Some(fixture.expected_nested_diff));
@@ -292,7 +292,7 @@ mod tests {
         });
 
         // Act
-        let diff = live_telemetry_diff(Some(&old), &new);
+        let diff = maybe_live_telemetry_diff(Some(&old), &new);
 
         // Assert
         assert_eq!(

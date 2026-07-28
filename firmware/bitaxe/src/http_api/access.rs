@@ -23,7 +23,7 @@ pub(super) fn access_input<'request, 'connection>(
 }
 
 pub(super) fn access_input_from_raw(request: *mut sys::httpd_req_t) -> RouteAccessInput {
-    let request_ip = peer_ipv4(request).unwrap_or(Ipv4Addr::UNSPECIFIED);
+    let request_ip = maybe_peer_ipv4(request).unwrap_or(Ipv4Addr::UNSPECIFIED);
 
     RouteAccessInput {
         ap_mode_enabled: ap_mode_enabled(),
@@ -42,7 +42,7 @@ pub(super) fn ap_mode_enabled() -> bool {
         )
 }
 
-pub(super) fn peer_ipv4(request: *mut sys::httpd_req_t) -> Option<Ipv4Addr> {
+pub(super) fn maybe_peer_ipv4(request: *mut sys::httpd_req_t) -> Option<Ipv4Addr> {
     unsafe {
         let sockfd = sys::httpd_req_to_sockfd(request);
         if sockfd == -1 {

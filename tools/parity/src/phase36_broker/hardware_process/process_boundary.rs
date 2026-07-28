@@ -251,7 +251,7 @@ impl ProcessTransactionBoundary {
         let Ok(output) = command.output() else {
             return Ok(classify_missing_effect_result(operation));
         };
-        let Some(result) = read_effect_result(&result_path) else {
+        let Some(result) = maybe_read_effect_result(&result_path) else {
             return Ok(classify_missing_effect_result(operation));
         };
         let classified = classify_effect_result(

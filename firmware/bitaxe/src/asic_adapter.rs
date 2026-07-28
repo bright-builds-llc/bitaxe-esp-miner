@@ -336,7 +336,7 @@ fn count_asic_chips_rx_loop(
     }
 
     loop {
-        match uart.try_read_exact(BM1366_RESULT_FRAME_LEN, idle_timeout_ms) {
+        match uart.maybe_try_read_exact(BM1366_RESULT_FRAME_LEN, idle_timeout_ms) {
             Ok(None) => {
                 // Idle / received==0 — exit drain loop.
                 if uart_trace_enabled() {

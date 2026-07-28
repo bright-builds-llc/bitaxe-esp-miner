@@ -68,7 +68,7 @@ impl SettingsPatch {
         self.values.insert(rest_name.into(), value);
     }
 
-    fn get(&self, rest_name: &str) -> Option<&RawSettingValue> {
+    fn maybe_get(&self, rest_name: &str) -> Option<&RawSettingValue> {
         self.values.get(rest_name)
     }
 }
@@ -97,7 +97,7 @@ pub fn apply_settings_patch(patch: &SettingsPatch) -> SettingsUpdateDecision {
             continue;
         };
 
-        let Some(raw_value) = patch.get(rest_name.as_str()) else {
+        let Some(raw_value) = patch.maybe_get(rest_name.as_str()) else {
             continue;
         };
 

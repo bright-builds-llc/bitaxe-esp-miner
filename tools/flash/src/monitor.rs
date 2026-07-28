@@ -105,7 +105,7 @@ pub(crate) fn monitor_capture_outcome(
 ) -> MonitorCaptureOutcome {
     let observed_firmware_commit = monitor_log_marker_value(monitor_log, "firmware_commit=");
     let observed_reference_commit = monitor_log_marker_value(monitor_log, "reference_commit=");
-    let maybe_trust_failure = monitor_trust_failure(
+    let maybe_trust_failure = maybe_monitor_trust_failure(
         monitor_log,
         &observed_firmware_commit,
         expected_firmware_commit,
@@ -190,7 +190,7 @@ pub(crate) fn monitor_log_marker_value(log: &str, marker: &str) -> String {
         .unwrap_or_else(|| UNAVAILABLE.to_owned())
 }
 
-pub(crate) fn monitor_trust_failure(
+pub(crate) fn maybe_monitor_trust_failure(
     monitor_log: &str,
     observed_firmware_commit: &str,
     expected_firmware_commit: &str,

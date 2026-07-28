@@ -159,7 +159,7 @@ impl PersistenceDecision {
 
     /// Returns a loaded value by exact NVS key name when present.
     #[must_use]
-    pub fn loaded_value(&self, key: &str) -> Option<&LoadedValue> {
+    pub fn maybe_loaded_value(&self, key: &str) -> Option<&LoadedValue> {
         self.values.get(key)
     }
 
@@ -309,31 +309,31 @@ mod tests {
 
         // Assert
         assert_eq!(
-            decision.loaded_value("hostname"),
+            decision.maybe_loaded_value("hostname"),
             Some(&LoadedValue::Str("bitaxe".to_owned()))
         );
         assert_eq!(
-            decision.loaded_value("asicfrequency_f"),
+            decision.maybe_loaded_value("asicfrequency_f"),
             Some(&LoadedValue::Float(485.0))
         );
         assert_eq!(
-            decision.loaded_value("asicvoltage"),
+            decision.maybe_loaded_value("asicvoltage"),
             Some(&LoadedValue::U16(1200))
         );
         assert_eq!(
-            decision.loaded_value("autofanspeed"),
+            decision.maybe_loaded_value("autofanspeed"),
             Some(&LoadedValue::Bool(true))
         );
         assert_eq!(
-            decision.loaded_value("manualfanspeed"),
+            decision.maybe_loaded_value("manualfanspeed"),
             Some(&LoadedValue::U16(100))
         );
         assert_eq!(
-            decision.loaded_value("selftest"),
+            decision.maybe_loaded_value("selftest"),
             Some(&LoadedValue::Bool(true))
         );
         assert_eq!(
-            decision.loaded_value("overheat_mode"),
+            decision.maybe_loaded_value("overheat_mode"),
             Some(&LoadedValue::Bool(false))
         );
     }
@@ -348,11 +348,11 @@ mod tests {
 
         // Assert
         assert_eq!(
-            decision.loaded_value("asicfrequency_f"),
+            decision.maybe_loaded_value("asicfrequency_f"),
             Some(&LoadedValue::Float(485.0))
         );
         assert_eq!(
-            decision.loaded_value("manualfanspeed"),
+            decision.maybe_loaded_value("manualfanspeed"),
             Some(&LoadedValue::U16(100))
         );
         assert!(decision.writes().is_empty());
@@ -384,11 +384,11 @@ mod tests {
             ]
         );
         assert_eq!(
-            reloaded.loaded_value("manualfanspeed"),
+            reloaded.maybe_loaded_value("manualfanspeed"),
             Some(&LoadedValue::U16(42))
         );
         assert_eq!(
-            reloaded.loaded_value("asicfrequency_f"),
+            reloaded.maybe_loaded_value("asicfrequency_f"),
             Some(&LoadedValue::Float(485.0))
         );
         assert_eq!(
@@ -443,7 +443,7 @@ mod tests {
         // Assert
         assert_eq!(rejected.snapshot(), &snapshot);
         assert_eq!(
-            rejected.loaded_value("asicfrequency_f"),
+            rejected.maybe_loaded_value("asicfrequency_f"),
             Some(&LoadedValue::Float(486.0))
         );
         assert!(matches!(
@@ -476,11 +476,11 @@ mod tests {
             [NvsWrite::string("asicfrequency_f", "485")]
         );
         assert_eq!(
-            migrated.loaded_value("asicfrequency_f"),
+            migrated.maybe_loaded_value("asicfrequency_f"),
             Some(&LoadedValue::Float(485.0))
         );
         assert_eq!(
-            corrupt_loaded.loaded_value("asicfrequency_f"),
+            corrupt_loaded.maybe_loaded_value("asicfrequency_f"),
             Some(&LoadedValue::Float(485.0))
         );
         assert!(corrupt_loaded.writes().is_empty());
@@ -505,11 +505,11 @@ mod tests {
 
         // Assert
         assert_eq!(
-            reloaded.loaded_value("hostname"),
+            reloaded.maybe_loaded_value("hostname"),
             Some(&LoadedValue::Str("axe-205".to_owned()))
         );
         assert_eq!(
-            reloaded.loaded_value("manualfanspeed"),
+            reloaded.maybe_loaded_value("manualfanspeed"),
             Some(&LoadedValue::U16(55))
         );
     }

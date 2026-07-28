@@ -39,7 +39,7 @@ pub(super) fn live_telemetry_cadence_loop(server_addr: usize) {
 pub(super) fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
     let result =
         publish_projected_live_telemetry_payload(crate::runtime_uptime::millis(), |current| {
-            let Some(frame) = websocket_api::live_cadence_frame(current) else {
+            let Some(frame) = websocket_api::maybe_live_cadence_frame(current) else {
                 return Ok(Vec::new());
             };
             let body =
@@ -312,7 +312,7 @@ pub(super) fn handle_websocket_frame(request: *mut sys::httpd_req_t) -> sys::esp
 }
 
 pub(super) fn unregister_request_websocket_session(request: *mut sys::httpd_req_t, reason: &str) {
-    let maybe_lease = websocket_lease_from_request(request);
+    let maybe_lease = maybe_websocket_lease_from_request(request);
     let Some(lease) = maybe_lease else {
         log::warn!("axeos_websocket_session=unregister_skipped reason={reason} session=missing");
         return;
@@ -337,7 +337,7 @@ pub(super) fn install_websocket_session_context(
     }
 }
 
-pub(super) fn websocket_lease_from_request(
+pub(super) fn maybe_websocket_lease_from_request(
     request: *mut sys::httpd_req_t,
 ) -> Option<websocket_api::WebSocketClientLease> {
     let context = unsafe { (*request).sess_ctx };
@@ -378,7 +378,7 @@ pub(super) fn send_websocket_connect_frames(
             match publish_projected_live_telemetry_payload(
                 crate::runtime_uptime::millis(),
                 |current| {
-                    let Some(frame) = websocket_api::live_connect_frame(current) else {
+                    let Some(frame) = websocket_api::maybe_live_connect_frame(current) else {
                         return Err(sys::ESP_FAIL);
                     };
                     let body = serde_json::to_string(&frame).map_err(|_| sys::ESP_FAIL)?;

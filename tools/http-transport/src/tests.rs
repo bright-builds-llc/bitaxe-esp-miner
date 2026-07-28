@@ -50,10 +50,10 @@ fn invalid_origins_fail_closed() {
 #[test]
 fn chunked_body_requires_terminal_chunk() {
     assert_eq!(
-        decode_chunked(b"4\r\ntest\r\n0\r\n\r\n"),
+        maybe_decode_chunked(b"4\r\ntest\r\n0\r\n\r\n"),
         Some(b"test".to_vec())
     );
-    assert_eq!(decode_chunked(b"4\r\ntest\r\n"), None);
+    assert_eq!(maybe_decode_chunked(b"4\r\ntest\r\n"), None);
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn response_failure_can_retain_a_validated_http_response() {
     // Arrange
     let transport = EstablishedTransport::tls(nonzero_u64(2), nonzero_u64(3));
     let request = CompletedRequest::new(nonzero_u64(17), nonzero_u64(6));
-    let http_response = HttpResponse::new(
+    let http_response = HttpResponse::maybe_new(
         503,
         1,
         b"HTTP/1.1 503 Service Unavailable\r\n\r\n".to_vec(),
@@ -148,7 +148,8 @@ fn invalid_http_status_cannot_construct_a_response() {
     let invalid_statuses = [0, 99, 600, u16::MAX];
 
     // Act
-    let responses = invalid_statuses.map(|status| HttpResponse::new(status, 0, vec![], vec![]));
+    let responses =
+        invalid_statuses.map(|status| HttpResponse::maybe_new(status, 0, vec![], vec![]));
 
     // Assert
     assert!(responses

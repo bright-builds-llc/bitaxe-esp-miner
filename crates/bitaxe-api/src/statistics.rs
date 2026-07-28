@@ -234,7 +234,7 @@ fn selected_columns(maybe_columns: Option<&str>) -> Vec<StatisticsColumn> {
     };
 
     let mut selected = Vec::new();
-    for column in columns.split(',').filter_map(column_from_label) {
+    for column in columns.split(',').filter_map(maybe_column_from_label) {
         if !selected.contains(&column) {
             selected.push(column);
         }
@@ -247,7 +247,7 @@ fn selected_columns(maybe_columns: Option<&str>) -> Vec<StatisticsColumn> {
     selected
 }
 
-fn column_from_label(label: &str) -> Option<StatisticsColumn> {
+fn maybe_column_from_label(label: &str) -> Option<StatisticsColumn> {
     ALL_COLUMNS
         .iter()
         .copied()

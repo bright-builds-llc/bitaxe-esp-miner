@@ -71,7 +71,7 @@ impl RuntimeHeartbeatModel {
     }
 
     /// Emits at most one due sample and schedules from the observed time.
-    pub fn take_due(&mut self, observed_uptime_ms: u64) -> Option<RuntimeHeartbeatSample> {
+    pub fn maybe_take_due(&mut self, observed_uptime_ms: u64) -> Option<RuntimeHeartbeatSample> {
         if observed_uptime_ms < self.next_deadline_ms {
             return None;
         }

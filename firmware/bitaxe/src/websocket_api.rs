@@ -62,7 +62,7 @@ pub fn client_leases(route: WebSocketRouteKind) -> Vec<WebSocketClientLease> {
 
 /// Plans the full live telemetry frame sent immediately after connection.
 #[must_use]
-pub fn live_connect_frame(current: Value) -> Option<Value> {
+pub fn maybe_live_connect_frame(current: Value) -> Option<Value> {
     let state = WEBSOCKET_STATE.get_or_init(|| Mutex::new(WebSocketState::default()));
     let Ok(mut state) = state.lock() else {
         log::warn!("axeos_websocket_state=unavailable reason=mutex_poisoned");
@@ -74,14 +74,14 @@ pub fn live_connect_frame(current: Value) -> Option<Value> {
 
 /// Plans a cadence live telemetry frame for connected clients.
 #[must_use]
-pub fn live_cadence_frame(current: Value) -> Option<Value> {
+pub fn maybe_live_cadence_frame(current: Value) -> Option<Value> {
     let state = WEBSOCKET_STATE.get_or_init(|| Mutex::new(WebSocketState::default()));
     let Ok(mut state) = state.lock() else {
         log::warn!("axeos_websocket_state=unavailable reason=mutex_poisoned");
         return None;
     };
 
-    state.live_cadence_frame(current)
+    state.maybe_live_cadence_frame(current)
 }
 
 /// Updates raw retained-log stream state after a `/api/ws` client connects.

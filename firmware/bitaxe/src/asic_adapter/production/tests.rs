@@ -16,7 +16,7 @@ struct FakeProductionBackend {
 }
 
 impl FakeProductionBackend {
-    fn execute(
+    fn maybe_execute(
         &self,
         command: Bm1366ProductionCommand,
         _valid_jobs: &Bm1366ValidJobIds,
@@ -48,7 +48,7 @@ fn send_production_work_increments_dispatch_counter() {
     let command = Bm1366ProductionCommand::SendProductionWork(payload);
 
     // Act
-    let _ = backend.execute(command, &Bm1366ValidJobIds::single(job_id));
+    let _ = backend.maybe_execute(command, &Bm1366ValidJobIds::single(job_id));
 
     // Assert
     assert_eq!(send_count.get(), 1);
@@ -74,7 +74,7 @@ fn read_production_result_uses_bounded_read_path() {
 
     // Act
     let result = backend
-        .execute(
+        .maybe_execute(
             Bm1366ProductionCommand::ReadProductionResult,
             &Bm1366ValidJobIds::single(job_id),
         )

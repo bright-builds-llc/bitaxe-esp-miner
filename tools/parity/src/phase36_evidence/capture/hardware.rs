@@ -243,10 +243,10 @@ fn unique_token(
         .filter(|line| line.contains(record_prefix))
         .filter(|line| {
             maybe_join.is_none_or(|(expected, join_token)| {
-                token_value(line, join_token) == Some(expected)
+                maybe_token_value(line, join_token) == Some(expected)
             })
         })
-        .filter_map(|line| token_value(line, token))
+        .filter_map(|line| maybe_token_value(line, token))
         .collect::<Vec<_>>();
     unique_value(values)
 }
@@ -262,7 +262,7 @@ fn unique_u64_token(
         .map_err(|_| CaptureFileError::PrivateInputInvalid)
 }
 
-fn token_value<'a>(line: &'a str, token: &str) -> Option<&'a str> {
+fn maybe_token_value<'a>(line: &'a str, token: &str) -> Option<&'a str> {
     let prefix = format!("{token}=");
     line.split_whitespace()
         .find_map(|word| word.strip_prefix(&prefix))

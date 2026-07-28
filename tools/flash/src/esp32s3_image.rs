@@ -174,7 +174,7 @@ pub(crate) fn validate(
     validate_header(header)?;
 
     let segment_count = usize::from(header[1]);
-    let entry_address = read_u32(header, 4).ok_or(ImageValidationError::HeaderTruncated)?;
+    let entry_address = maybe_read_u32(header, 4).ok_or(ImageValidationError::HeaderTruncated)?;
     let mut segments = Vec::with_capacity(segment_count);
     let mut cursor = IMAGE_HEADER_LEN;
     let mut checksum = CHECKSUM_SEED;
@@ -186,10 +186,10 @@ pub(crate) fn validate(
         let segment_header = image
             .get(cursor..header_end)
             .ok_or(ImageValidationError::SegmentHeaderTruncated)?;
-        let load_address =
-            read_u32(segment_header, 0).ok_or(ImageValidationError::SegmentHeaderTruncated)?;
-        let data_len =
-            read_u32(segment_header, 4).ok_or(ImageValidationError::SegmentHeaderTruncated)?;
+        let load_address = maybe_read_u32(segment_header, 0)
+            .ok_or(ImageValidationError::SegmentHeaderTruncated)?;
+        let data_len = maybe_read_u32(segment_header, 4)
+            .ok_or(ImageValidationError::SegmentHeaderTruncated)?;
         if data_len % 4 != 0 || data_len >= MAX_SEGMENT_LEN {
             return Err(ImageValidationError::SegmentLengthInvalid);
         }
@@ -329,14 +329,14 @@ fn validate_header(header: &[u8]) -> Result<(), ImageValidationError> {
         || header[8] != SPI_WP_PIN_DEFAULT
         || header[9..12].iter().any(|byte| *byte != 0)
         || header[14] != 0
-        || read_u16(header, 15) != Some(0)
-        || read_u16(header, 17) != Some(MAX_CHIP_REV_FULL)
+        || maybe_read_u16(header, 15) != Some(0)
+        || maybe_read_u16(header, 17) != Some(MAX_CHIP_REV_FULL)
         || header[19..23].iter().any(|byte| *byte != 0)
         || header[23] != 1
     {
         return Err(ImageValidationError::HeaderPolicyUnsupported);
     }
-    if read_u16(header, 12) != Some(ESP32_S3_CHIP_ID) {
+    if maybe_read_u16(header, 12) != Some(ESP32_S3_CHIP_ID) {
         return Err(ImageValidationError::ChipIdMismatch);
     }
 
@@ -349,7 +349,7 @@ fn validate_load_address(
     payload_offset: usize,
 ) -> Result<(u32, Option<MemoryFamily>), ImageValidationError> {
     if data_len == 0 {
-        let maybe_memory_family = mapped_memory_family(load_address);
+        let maybe_memory_family = maybe_mapped_memory_family(load_address);
         if maybe_memory_family.is_some() {
             validate_mapped_congruence(load_address, payload_offset)?;
         }
@@ -359,7 +359,7 @@ fn validate_load_address(
     let end_address = load_address
         .checked_add(data_len)
         .ok_or(ImageValidationError::SegmentRangeOverflow)?;
-    let memory_family = memory_family_for_range(load_address, end_address)
+    let memory_family = maybe_memory_family_for_range(load_address, end_address)
         .ok_or(ImageValidationError::SegmentLoadAddressUnsupported)?;
     if matches!(memory_family, MemoryFamily::Drom | MemoryFamily::Irom) {
         validate_mapped_congruence(load_address, payload_offset)?;
@@ -368,7 +368,7 @@ fn validate_load_address(
     Ok((end_address, Some(memory_family)))
 }
 
-fn memory_family_for_range(start: u32, end: u32) -> Option<MemoryFamily> {
+fn maybe_memory_family_for_range(start: u32, end: u32) -> Option<MemoryFamily> {
     for (range, family) in [
         (DROM, MemoryFamily::Drom),
         (DRAM, MemoryFamily::Dram),
@@ -385,7 +385,7 @@ fn memory_family_for_range(start: u32, end: u32) -> Option<MemoryFamily> {
     None
 }
 
-fn mapped_memory_family(load_address: u32) -> Option<MemoryFamily> {
+fn maybe_mapped_memory_family(load_address: u32) -> Option<MemoryFamily> {
     if DROM.contains(&load_address) {
         return Some(MemoryFamily::Drom);
     }
@@ -453,7 +453,7 @@ fn validate_descriptor(
     let descriptor = image
         .get(first_payload.payload.start..descriptor_end)
         .ok_or(ImageValidationError::DescriptorTruncated)?;
-    if read_u32(descriptor, 0) != Some(ESP_APP_DESCRIPTOR_MAGIC) {
+    if maybe_read_u32(descriptor, 0) != Some(ESP_APP_DESCRIPTOR_MAGIC) {
         return Err(ImageValidationError::DescriptorMagicInvalid);
     }
     let version_bytes = descriptor
@@ -548,12 +548,12 @@ fn validate_trailer(
     Ok(())
 }
 
-fn read_u16(bytes: &[u8], offset: usize) -> Option<u16> {
+fn maybe_read_u16(bytes: &[u8], offset: usize) -> Option<u16> {
     let value = bytes.get(offset..offset.checked_add(2)?)?;
     Some(u16::from_le_bytes([value[0], value[1]]))
 }
 
-fn read_u32(bytes: &[u8], offset: usize) -> Option<u32> {
+fn maybe_read_u32(bytes: &[u8], offset: usize) -> Option<u32> {
     let value = bytes.get(offset..offset.checked_add(4)?)?;
     Some(u32::from_le_bytes([value[0], value[1], value[2], value[3]]))
 }

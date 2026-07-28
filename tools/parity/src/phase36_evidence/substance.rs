@@ -38,12 +38,12 @@ pub fn validate_substantive_snapshot_documents(
         return Err(SubstantiveEvidenceError::OperatorSnapshotIdentityInvalid);
     }
 
-    let api_json = extract_single_field(api_document, SYSTEM_INFO_JSON_FIELD)
+    let api_json = maybe_extract_single_field(api_document, SYSTEM_INFO_JSON_FIELD)
         .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?;
-    let websocket_json = extract_single_field(websocket_document, LIVE_WEBSOCKET_JSON_FIELD)
+    let websocket_json = maybe_extract_single_field(websocket_document, LIVE_WEBSOCKET_JSON_FIELD)
         .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?;
     let maybe_retained_json =
-        extract_single_field(retained_document, RETAINED_SUBSTANCE_JSON_FIELD);
+        maybe_extract_single_field(retained_document, RETAINED_SUBSTANCE_JSON_FIELD);
 
     let api_value = parse_value(api_json)?;
     let websocket_value = parse_value(websocket_json)?;
@@ -89,15 +89,15 @@ pub fn validate_substantive_snapshot_components(
     }
 
     let api_value = parse_value(
-        extract_single_field(api_document, SYSTEM_INFO_JSON_FIELD)
+        maybe_extract_single_field(api_document, SYSTEM_INFO_JSON_FIELD)
             .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?,
     )?;
     let websocket_value = parse_value(
-        extract_single_field(websocket_document, LIVE_WEBSOCKET_JSON_FIELD)
+        maybe_extract_single_field(websocket_document, LIVE_WEBSOCKET_JSON_FIELD)
             .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?,
     )?;
     let retained_value = parse_value(
-        extract_single_field(retained_document, RETAINED_SUBSTANCE_JSON_FIELD)
+        maybe_extract_single_field(retained_document, RETAINED_SUBSTANCE_JSON_FIELD)
             .ok_or(SubstantiveEvidenceError::ProjectionInvalid)?,
     )?;
     let component_insufficiencies =
@@ -229,20 +229,23 @@ fn validate_projection(
         let temperature_state = validate_observation_state(&chip_temp_status, temp == 0.0)?;
         let tachometer_state = validate_observation_state(&fan_rpm_status, fan_rpm == 0)?;
         reject_reused_unrelated_stamps(&power_state, &temperature_state, &tachometer_state)?;
-        let maybe_producer_boot_session =
-            shared_producer_boot_session(&power_state, &temperature_state, &tachometer_state)?;
+        let maybe_producer_boot_session = maybe_shared_producer_boot_session(
+            &power_state,
+            &temperature_state,
+            &tachometer_state,
+        )?;
         let power = ValidatedPowerObservation {
-            maybe_current_milliamps: fresh_milli_value(&power_state, current)?,
-            maybe_bus_millivolts: fresh_milli_value(&power_state, voltage)?,
-            maybe_power_milliwatts: fresh_milli_value(&power_state, power)?,
+            maybe_current_milliamps: maybe_fresh_milli_value(&power_state, current)?,
+            maybe_bus_millivolts: maybe_fresh_milli_value(&power_state, voltage)?,
+            maybe_power_milliwatts: maybe_fresh_milli_value(&power_state, power)?,
             state: power_state,
         };
         let temperature = ValidatedScalarObservation {
-            maybe_value_milliunits: fresh_milli_value(&temperature_state, temp)?,
+            maybe_value_milliunits: maybe_fresh_milli_value(&temperature_state, temp)?,
             state: temperature_state,
         };
         let tachometer = ValidatedScalarObservation {
-            maybe_value_milliunits: fresh_milli_value(&tachometer_state, fan_rpm as f64)?,
+            maybe_value_milliunits: maybe_fresh_milli_value(&tachometer_state, fan_rpm as f64)?,
             state: tachometer_state,
         };
         Some((power, temperature, tachometer, maybe_producer_boot_session))
@@ -437,7 +440,7 @@ fn reject_reused_unrelated_stamps(
     Ok(())
 }
 
-fn shared_producer_boot_session(
+fn maybe_shared_producer_boot_session(
     power: &ObservationState,
     temperature: &ObservationState,
     tachometer: &ObservationState,
@@ -457,7 +460,7 @@ fn shared_producer_boot_session(
     Ok(maybe_session)
 }
 
-fn fresh_milli_value(
+fn maybe_fresh_milli_value(
     state: &ObservationState,
     value: f64,
 ) -> Result<Option<i64>, SubstantiveEvidenceError> {
@@ -590,7 +593,7 @@ fn validate_checkpoint_fields(
     }
 }
 
-fn extract_single_field<'a>(document: &'a str, field: &str) -> Option<&'a str> {
+fn maybe_extract_single_field<'a>(document: &'a str, field: &str) -> Option<&'a str> {
     let prefix = format!("{field}:");
     let mut values = document
         .lines()

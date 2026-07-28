@@ -171,7 +171,7 @@ impl<'d> AsicUart<'d> {
         self.read_exact(len, timeout_ms)
     }
 
-    pub fn try_read_exact(&mut self, len: usize, timeout_ms: u32) -> Result<Option<Vec<u8>>> {
+    pub fn maybe_try_read_exact(&mut self, len: usize, timeout_ms: u32) -> Result<Option<Vec<u8>>> {
         match self.read_accumulate_inner(len, timeout_ms)? {
             ReadAccumulateOutcome::Complete(frame) => Ok(Some(frame)),
             ReadAccumulateOutcome::Idle => Ok(None),

@@ -152,17 +152,18 @@ pub fn project_observation<T, U: Copy>(
     missing_reason: UnavailableReason,
 ) -> Observation<U> {
     match observation {
-        Observation::Fresh { sample } => project_sample(sample, project).map_or_else(
+        Observation::Fresh { sample } => maybe_project_sample(sample, project).map_or_else(
             || Observation::unavailable(missing_reason),
             |sample| Observation::Fresh { sample },
         ),
-        Observation::Stale { last_good, reason } => project_sample(last_good, project).map_or_else(
-            || Observation::unavailable(missing_reason),
-            |last_good| Observation::Stale {
-                last_good,
-                reason: *reason,
-            },
-        ),
+        Observation::Stale { last_good, reason } => maybe_project_sample(last_good, project)
+            .map_or_else(
+                || Observation::unavailable(missing_reason),
+                |last_good| Observation::Stale {
+                    last_good,
+                    reason: *reason,
+                },
+            ),
         Observation::Unavailable { reason } => Observation::unavailable(*reason),
         Observation::Fault {
             reason,
@@ -171,12 +172,12 @@ pub fn project_observation<T, U: Copy>(
             reason: *reason,
             maybe_last_good: maybe_last_good
                 .as_ref()
-                .and_then(|sample| project_sample(sample, project)),
+                .and_then(|sample| maybe_project_sample(sample, project)),
         },
     }
 }
 
-fn project_sample<T, U>(
+fn maybe_project_sample<T, U>(
     sample: &StampedSample<T>,
     project: impl Fn(&T) -> Option<U>,
 ) -> Option<StampedSample<U>> {

@@ -97,7 +97,7 @@ fn set_difficulty_updates_runtime_state() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::SetDifficulty(difficulty))
+        .maybe_apply_server_message(StratumV1ServerMessage::SetDifficulty(difficulty))
         .expect("difficulty should apply");
 
     // Assert
@@ -112,7 +112,7 @@ fn set_extranonce_enables_later_work_without_emitting_event() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::SetExtranonce(extranonce()))
+        .maybe_apply_server_message(StratumV1ServerMessage::SetExtranonce(extranonce()))
         .expect("extranonce should apply");
 
     // Assert
@@ -126,12 +126,12 @@ fn version_mask_reload_is_consumed_once() {
     let mut runtime = runtime();
     let mask = VersionMask { mask: 0x1fff_e000 };
     runtime
-        .apply_server_message(StratumV1ServerMessage::SetVersionMask(mask))
+        .maybe_apply_server_message(StratumV1ServerMessage::SetVersionMask(mask))
         .expect("version mask should apply");
 
     // Act
-    let first = runtime.take_pending_version_mask_reload();
-    let second = runtime.take_pending_version_mask_reload();
+    let first = runtime.maybe_take_pending_version_mask_reload();
+    let second = runtime.maybe_take_pending_version_mask_reload();
 
     // Assert
     assert_eq!(first, Some(mask));
@@ -154,7 +154,7 @@ fn informational_server_messages_are_state_neutral() {
         let mut runtime = runtime();
         let before = runtime.state().clone();
         let event = runtime
-            .apply_server_message(message)
+            .maybe_apply_server_message(message)
             .expect("informational message should apply");
         assert_eq!(event, None);
         assert_eq!(runtime.state(), &before);
@@ -169,7 +169,7 @@ fn reconnect_invalidates_work_and_enters_reconnecting_state() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::ClientReconnect)
+        .maybe_apply_server_message(StratumV1ServerMessage::ClientReconnect)
         .expect("reconnect should apply");
 
     // Assert
@@ -191,7 +191,7 @@ fn direct_subscribe_response_queues_authorization() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::Response(subscribe))
+        .maybe_apply_server_message(StratumV1ServerMessage::Response(subscribe))
         .expect("subscribe response should apply");
     let actions = runtime.drain_actions();
 
@@ -219,13 +219,13 @@ fn direct_configure_response_stores_version_mask() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::Response(configure))
+        .maybe_apply_server_message(StratumV1ServerMessage::Response(configure))
         .expect("configure response should apply");
 
     // Assert
     assert_eq!(event, None);
     assert_eq!(
-        runtime.take_pending_version_mask_reload(),
+        runtime.maybe_take_pending_version_mask_reload(),
         Some(VersionMask { mask: 0x1fff_e000 })
     );
 }
@@ -239,7 +239,7 @@ fn direct_authorize_response_enters_authorized_state() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::Response(authorize))
+        .maybe_apply_server_message(StratumV1ServerMessage::Response(authorize))
         .expect("authorize response should apply");
 
     // Assert
@@ -254,7 +254,7 @@ fn direct_rejected_response_invalidates_authorization() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::Response(response(false)))
+        .maybe_apply_server_message(StratumV1ServerMessage::Response(response(false)))
         .expect("rejected response should apply");
 
     // Assert
@@ -275,7 +275,7 @@ fn unrelated_success_response_is_state_neutral() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::Response(unrelated))
+        .maybe_apply_server_message(StratumV1ServerMessage::Response(unrelated))
         .expect("unrelated response should apply");
 
     // Assert
@@ -292,13 +292,13 @@ fn matched_configure_success_raises_mask_reload() {
 
     // Act
     let event = runtime
-        .apply_matched_response(RuntimeRequestKind::Configure, configure)
+        .maybe_apply_matched_response(RuntimeRequestKind::Configure, configure)
         .expect("configure response should apply");
 
     // Assert
     assert_eq!(event, None);
     assert_eq!(
-        runtime.take_pending_version_mask_reload(),
+        runtime.maybe_take_pending_version_mask_reload(),
         Some(VersionMask { mask: 0x1fff_e000 })
     );
 }
@@ -310,7 +310,7 @@ fn matched_configure_rejection_fails_closed() {
 
     // Act
     let event = runtime
-        .apply_matched_response(RuntimeRequestKind::Configure, response(false))
+        .maybe_apply_matched_response(RuntimeRequestKind::Configure, response(false))
         .expect("configure rejection should apply");
 
     // Assert
@@ -327,7 +327,7 @@ fn matched_subscribe_success_queues_authorization() {
 
     // Act
     let event = runtime
-        .apply_matched_response(RuntimeRequestKind::Subscribe, subscribe)
+        .maybe_apply_matched_response(RuntimeRequestKind::Subscribe, subscribe)
         .expect("subscribe response should apply");
 
     // Assert
@@ -347,7 +347,8 @@ fn matched_subscribe_requires_extranonce_assignment() {
     let mut runtime = runtime();
 
     // Act
-    let result = runtime.apply_matched_response(RuntimeRequestKind::Subscribe, response(true));
+    let result =
+        runtime.maybe_apply_matched_response(RuntimeRequestKind::Subscribe, response(true));
 
     // Assert
     assert_eq!(
@@ -363,7 +364,7 @@ fn matched_subscribe_rejection_fails_closed() {
 
     // Act
     let event = runtime
-        .apply_matched_response(RuntimeRequestKind::Subscribe, response(false))
+        .maybe_apply_matched_response(RuntimeRequestKind::Subscribe, response(false))
         .expect("subscribe rejection should apply");
 
     // Assert
@@ -378,7 +379,7 @@ fn matched_authorize_success_enters_authorized_state() {
 
     // Act
     let event = runtime
-        .apply_matched_response(RuntimeRequestKind::Authorize, response(true))
+        .maybe_apply_matched_response(RuntimeRequestKind::Authorize, response(true))
         .expect("authorize response should apply");
 
     // Assert
@@ -393,7 +394,7 @@ fn matched_authorize_rejection_fails_closed() {
 
     // Act
     let event = runtime
-        .apply_matched_response(RuntimeRequestKind::Authorize, response(false))
+        .maybe_apply_matched_response(RuntimeRequestKind::Authorize, response(false))
         .expect("authorize rejection should apply");
 
     // Assert
@@ -443,7 +444,7 @@ fn response_error_shape_does_not_affect_runtime_rejection_policy() {
 
     // Act
     let event = runtime
-        .apply_server_message(StratumV1ServerMessage::Response(rejected))
+        .maybe_apply_server_message(StratumV1ServerMessage::Response(rejected))
         .expect("rejection should apply");
 
     // Assert

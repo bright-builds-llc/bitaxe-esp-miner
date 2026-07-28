@@ -354,7 +354,7 @@ pub(super) fn run_phase36_hardware_transaction_with(
         None => Phase36HardwareDisposition::SealedEligible,
         Some(failure) => Phase36HardwareDisposition::SealedNonPromotion {
             first_failure: failure,
-            secondary_failure: secondary_failure.or(interval.secondary_failure()),
+            secondary_failure: secondary_failure.or(interval.maybe_secondary_failure()),
             recovery_disposition: interval.recovery_disposition(),
         },
     };

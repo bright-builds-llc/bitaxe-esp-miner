@@ -64,7 +64,7 @@ impl Phase36ClaimScope {
         Self::BroaderOrUnmappedRows,
     ];
 
-    pub(crate) const fn row_id(self) -> Option<&'static str> {
+    pub(crate) const fn maybe_row_id(self) -> Option<&'static str> {
         match self {
             Self::PassiveHostnameDurability => Some(PHASE36_HOSTNAME_ROW),
             Self::ExactSourceReferencePackageIdentity => Some(PHASE36_IDENTITY_ROW),

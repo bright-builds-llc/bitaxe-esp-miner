@@ -135,7 +135,10 @@ fn transition_supervisor_step(
 
     SupervisorStepOutcome {
         maybe_log,
-        maybe_checkpoint_failure: record_supervisor_checkpoint(checkpoints, observed_at_millis),
+        maybe_checkpoint_failure: maybe_record_supervisor_checkpoint(
+            checkpoints,
+            observed_at_millis,
+        ),
     }
 }
 
@@ -151,7 +154,7 @@ pub fn supervisor_checkpoint_history() -> SupervisorCheckpointHistory {
     checkpoints.history.clone()
 }
 
-fn record_supervisor_checkpoint(
+fn maybe_record_supervisor_checkpoint(
     checkpoints: &mut SupervisorCheckpointState,
     observed_at_millis: u64,
 ) -> Option<CheckpointRecordFailure> {

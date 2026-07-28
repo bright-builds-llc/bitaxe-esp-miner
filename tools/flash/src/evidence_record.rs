@@ -6,7 +6,7 @@ pub(crate) fn write_evidence_if_requested(
     command_kind: &str,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
-    let Some(evidence_dir) = resolved_evidence_dir(common, environment) else {
+    let Some(evidence_dir) = maybe_resolved_evidence_dir(common, environment) else {
         return Ok(());
     };
 
@@ -81,7 +81,7 @@ pub(crate) fn write_evidence_record(
         command: input.command.to_owned(),
         command_kind: input.command_kind.to_owned(),
         board: common.board.to_string(),
-        port: command_port(&outcome.command).unwrap_or_else(|| UNAVAILABLE.to_owned()),
+        port: maybe_command_port(&outcome.command).unwrap_or_else(|| UNAVAILABLE.to_owned()),
         firmware_commit: environment.firmware_commit(),
         reference_commit: environment.reference_commit(),
         manifest_path: outcome
@@ -189,7 +189,7 @@ pub(crate) fn flash_workflow_command(outcome: &FlashOutcome) -> String {
     format!("{flash}\nnvs_seed: {}", nvs_seed.command.display())
 }
 
-pub(crate) fn resolved_evidence_dir(
+pub(crate) fn maybe_resolved_evidence_dir(
     common: &CommonArgs,
     environment: &impl FlashEnvironment,
 ) -> Option<Utf8PathBuf> {
@@ -199,7 +199,7 @@ pub(crate) fn resolved_evidence_dir(
         .map(|path| environment.workspace_path(path))
 }
 
-pub(crate) fn command_port(command: &CommandSpec) -> Option<String> {
+pub(crate) fn maybe_command_port(command: &CommandSpec) -> Option<String> {
     command
         .args
         .windows(2)

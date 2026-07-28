@@ -200,7 +200,7 @@ pub(crate) fn write_private_new_bytes(path: &Utf8Path, bytes: &[u8]) -> Result<(
     Ok(())
 }
 
-pub(crate) fn git_output<const N: usize>(
+pub(crate) fn maybe_git_output<const N: usize>(
     workspace_dir: &Utf8Path,
     args: [&str; N],
 ) -> Option<String> {

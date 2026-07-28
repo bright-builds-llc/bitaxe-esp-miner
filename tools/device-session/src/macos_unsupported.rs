@@ -39,11 +39,11 @@ impl MacOsDeviceAdapter {
         bail!("macOS identity adapter is unsupported on this platform")
     }
 
-    pub(crate) fn exact_snapshot(_port: &str) -> Result<Option<UsbDeviceSnapshot>> {
+    pub(crate) fn maybe_exact_snapshot(_port: &str) -> Result<Option<UsbDeviceSnapshot>> {
         bail!("macOS identity adapter is unsupported on this platform")
     }
 
-    pub(crate) fn physical_snapshot(
+    pub(crate) fn maybe_physical_snapshot(
         _expected_physical_identity: &str,
     ) -> Result<Option<UsbDeviceSnapshot>> {
         bail!("macOS identity adapter is unsupported on this platform")

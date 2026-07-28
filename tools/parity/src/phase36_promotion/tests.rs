@@ -224,7 +224,10 @@ fn phase36_promotion_each_claim_specific_absence_changes_only_its_row() {
             .collect::<Vec<_>>();
 
         // Assert
-        assert_eq!(changed, [scope.row_id().expect("affected scope has row")]);
+        assert_eq!(
+            changed,
+            [scope.maybe_row_id().expect("affected scope has row")]
+        );
         assert!(matches!(
             decision_for(&matrix, scope),
             Phase36ClaimDecision::Demote { .. }

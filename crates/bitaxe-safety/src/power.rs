@@ -190,7 +190,7 @@ impl PowerObservation {
     }
 
     #[must_use]
-    pub const fn reason(self) -> Option<&'static str> {
+    pub const fn maybe_reason(self) -> Option<&'static str> {
         self.truth.maybe_reason()
     }
 
@@ -310,7 +310,7 @@ pub struct PowerEvidenceToken {
 
 impl PowerEvidenceToken {
     #[must_use]
-    pub const fn from_observation(observation: PowerObservation) -> Option<Self> {
+    pub const fn maybe_from_observation(observation: PowerObservation) -> Option<Self> {
         if !observation.is_fresh_safe() {
             return None;
         }
@@ -332,13 +332,13 @@ pub struct PowerSafetyDecision {
 impl PowerSafetyDecision {
     #[must_use]
     pub fn from_observation(observation: PowerObservation) -> Self {
-        let Some(reason) = observation.reason() else {
+        let Some(reason) = observation.maybe_reason() else {
             return Self {
                 plan: SafetyEffectPlan::observe_only(
                     SafetyStatus::Normal,
                     SafetyCriticalEvidence::implemented_not_verified("unit"),
                 ),
-                maybe_evidence: PowerEvidenceToken::from_observation(observation),
+                maybe_evidence: PowerEvidenceToken::maybe_from_observation(observation),
             };
         };
 
@@ -404,7 +404,11 @@ impl VoltageControllerInputs {
         }
 
         if !self.observation.is_fresh_safe() {
-            return suppress_voltage(self.observation.reason().unwrap_or("power_reading_invalid"));
+            return suppress_voltage(
+                self.observation
+                    .maybe_reason()
+                    .unwrap_or("power_reading_invalid"),
+            );
         }
 
         if !self.evidence.is_hardware_verified()

@@ -102,7 +102,7 @@ fn init_plan_missing_board_scope_fails_closed_with_hold_reset_low() {
         }
     );
     assert_eq!(
-        decision.fail_closed_action(),
+        decision.maybe_fail_closed_action(),
         Some(FailClosedAction::HoldResetLow)
     );
     assert!(decision
@@ -138,7 +138,7 @@ fn init_plan_full_init_without_power_thermal_or_safety_fails_before_effectful_st
         .stages()
         .contains(&Bm1366InitStage::InitializedNoMining));
     assert_eq!(
-        decision.fail_closed_action(),
+        decision.maybe_fail_closed_action(),
         Some(FailClosedAction::HoldResetLow)
     );
 }
@@ -164,7 +164,7 @@ fn init_plan_missing_safety_evidence_uses_distinct_fail_closed_reason() {
         }
     );
     assert_eq!(
-        decision.fail_closed_action(),
+        decision.maybe_fail_closed_action(),
         Some(FailClosedAction::HoldResetLow)
     );
 }

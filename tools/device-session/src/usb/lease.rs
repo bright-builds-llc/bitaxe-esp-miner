@@ -70,7 +70,7 @@ impl DeviceLease {
             session_nonce: nonce(owner_pid),
             physical_identity_digest: physical_identity_digest.to_owned(),
             owner_pid,
-            owner_start: process_start(owner_pid).unwrap_or_else(|| "current".to_owned()),
+            owner_start: maybe_process_start(owner_pid).unwrap_or_else(|| "current".to_owned()),
             operation,
             state: UsbLifecycleState::Prepared,
             earliest_failure: None,
@@ -234,7 +234,7 @@ fn write_journal(file: &File, journal: &CrashJournal) -> Result<(), UsbSessionEr
         .map_err(|error| session_error(UsbTerminalCategory::CleanupFailed, error))
 }
 
-pub(super) fn process_start(pid: u32) -> Option<String> {
+pub(super) fn maybe_process_start(pid: u32) -> Option<String> {
     let output = Command::new("/bin/ps")
         .args(["-o", "lstart=", "-p", &pid.to_string()])
         .output()
@@ -246,7 +246,7 @@ pub(super) fn process_start(pid: u32) -> Option<String> {
 }
 
 fn process_matches(pid: u32, expected_start: &str) -> bool {
-    process_start(pid).is_some_and(|observed| observed == expected_start)
+    maybe_process_start(pid).is_some_and(|observed| observed == expected_start)
 }
 
 fn nonce(pid: u32) -> String {

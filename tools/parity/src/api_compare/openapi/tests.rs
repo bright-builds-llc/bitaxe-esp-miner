@@ -139,7 +139,7 @@ fn yaml_named_block_retains_blank_lines_and_the_final_unterminated_line() {
     let document = "root:\n  target:\n\n    child:\n      value:";
 
     // Act
-    let block = yaml_named_block(document, 2, "target:");
+    let block = maybe_yaml_named_block(document, 2, "target:");
 
     // Assert
     assert_eq!(block, Some("\n    child:\n      value:"));
@@ -151,7 +151,7 @@ fn yaml_named_block_requires_the_exact_name_and_indent() {
     let document = "root:\n   target:\n    child:\n";
 
     // Act
-    let block = yaml_named_block(document, 2, "target:");
+    let block = maybe_yaml_named_block(document, 2, "target:");
 
     // Assert
     assert_eq!(block, None);

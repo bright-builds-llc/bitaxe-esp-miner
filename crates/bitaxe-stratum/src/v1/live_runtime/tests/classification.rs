@@ -24,7 +24,7 @@ fn accepted_share_uses_current_pool_difficulty() {
     // Arrange
     let mut runtime = runtime();
     runtime
-        .apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
+        .maybe_apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
             difficulty: 64.0,
         }))
         .expect("difficulty should apply");

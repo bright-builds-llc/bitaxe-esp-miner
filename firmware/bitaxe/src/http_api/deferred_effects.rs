@@ -107,7 +107,7 @@ pub(super) fn apply_hostname_effect(hostname: &str) {
     log::warn!("axeos_settings_effect=hostname_skipped reason=netif_unavailable");
 }
 
-pub(super) fn prepare_deferred_command_effect(
+pub(super) fn maybe_prepare_deferred_command_effect(
     effect: &CommandEffect,
 ) -> anyhow::Result<Option<DeferredEffectLease>> {
     match effect {

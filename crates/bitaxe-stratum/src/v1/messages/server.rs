@@ -68,7 +68,7 @@ pub fn parse_server_message(input: &str) -> Result<StratumV1ServerMessage, Strat
         return Err(StratumV1Error::InvalidJson);
     };
 
-    let maybe_id = parse_request_id(root.get("id"))?;
+    let maybe_id = maybe_parse_request_id(root.get("id"))?;
     let maybe_method = root.get("method");
     let Some(method_value) = maybe_method else {
         return parse_response(&value, maybe_id);
@@ -113,7 +113,7 @@ pub fn parse_server_message(input: &str) -> Result<StratumV1ServerMessage, Strat
     }
 }
 
-fn parse_request_id(
+fn maybe_parse_request_id(
     maybe_value: Option<&Value>,
 ) -> Result<Option<StratumRequestId>, StratumV1Error> {
     let Some(value) = maybe_value else {
@@ -136,7 +136,7 @@ fn parse_response(
     root: &Value,
     maybe_id: Option<StratumRequestId>,
 ) -> Result<StratumV1ServerMessage, StratumV1Error> {
-    let maybe_error = parse_response_error(root)?;
+    let maybe_error = maybe_parse_response_error(root)?;
     if let Some(error) = maybe_error {
         return Ok(StratumV1ServerMessage::Response(StratumResponse {
             maybe_id,
@@ -154,7 +154,7 @@ fn parse_response(
         Value::Bool(success) => Ok(StratumV1ServerMessage::Response(StratumResponse {
             maybe_id,
             success: *success,
-            maybe_error: response_error_for_false_result(root, *success),
+            maybe_error: maybe_response_error_for_false_result(root, *success),
             maybe_extranonce: None,
             maybe_version_mask: None,
         })),
@@ -176,7 +176,10 @@ fn parse_response(
     }
 }
 
-fn response_error_for_false_result(root: &Value, success: bool) -> Option<StratumResponseError> {
+fn maybe_response_error_for_false_result(
+    root: &Value,
+    success: bool,
+) -> Option<StratumResponseError> {
     if success {
         return None;
     }
@@ -192,7 +195,9 @@ fn response_error_for_false_result(root: &Value, success: bool) -> Option<Stratu
     })
 }
 
-fn parse_response_error(root: &Value) -> Result<Option<StratumResponseError>, StratumV1Error> {
+fn maybe_parse_response_error(
+    root: &Value,
+) -> Result<Option<StratumResponseError>, StratumV1Error> {
     let Some(error) = root.get("error") else {
         return Ok(None);
     };

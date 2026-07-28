@@ -286,7 +286,8 @@ pub(super) fn collect_boot_accepted_state_snapshot(
     }
 
     for _ in ACCEPTED_STATE_READ_REGISTERS {
-        let Ok(Some(frame)) = uart.try_read_exact(BM1366_RESULT_FRAME_LEN, RESPONSE_TIMEOUT_MS)
+        let Ok(Some(frame)) =
+            uart.maybe_try_read_exact(BM1366_RESULT_FRAME_LEN, RESPONSE_TIMEOUT_MS)
         else {
             continue;
         };
@@ -339,7 +340,7 @@ impl ProductionAsicExecutor {
         Self
     }
 
-    pub fn execute(
+    pub fn maybe_execute(
         &mut self,
         command: Bm1366ProductionCommand,
         valid_jobs: &Bm1366ValidJobIds,
@@ -411,7 +412,7 @@ fn try_read_production_result_on_state(
         .maybe_uart
         .as_mut()
         .ok_or(ProductionAsicBlocker::UartFailed)?;
-    let maybe_frame = match uart.try_read_exact(BM1366_RESULT_FRAME_LEN, poll_timeout_ms) {
+    let maybe_frame = match uart.maybe_try_read_exact(BM1366_RESULT_FRAME_LEN, poll_timeout_ms) {
         Ok(maybe_frame) => maybe_frame,
         Err(_) => return Ok(ProductionReadOutcome::Pending),
     };

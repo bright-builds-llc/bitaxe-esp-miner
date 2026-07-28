@@ -230,20 +230,20 @@ fn classify_companions(
     companions: &CompanionSnapshot,
 ) -> Result<ClassifiedFacts, Phase36OfflineError> {
     if let (Some(api), Some(websocket), Some(retained)) = (
-        companions.text(&companions.api),
-        companions.text(&companions.websocket),
-        companions.text(&companions.retained),
+        companions.maybe_text(&companions.api),
+        companions.maybe_text(&companions.websocket),
+        companions.maybe_text(&companions.retained),
     ) {
         validate_substantive_snapshot_components(api, websocket, retained)
             .map_err(|_| Phase36OfflineError::CompanionInvalid)?;
     }
-    if let Some(package) = companions.text(&companions.exact_package) {
+    if let Some(package) = companions.maybe_text(&companions.exact_package) {
         validate_observed_runtime_identity_documents(
             package,
-            companions.text(&companions.request),
-            companions.text(&companions.event_ledger),
-            companions.text(&companions.private_result),
-            companions.text(&companions.public_projection),
+            companions.maybe_text(&companions.request),
+            companions.maybe_text(&companions.event_ledger),
+            companions.maybe_text(&companions.private_result),
+            companions.maybe_text(&companions.public_projection),
         )
         .map_err(|_| Phase36OfflineError::CompanionInvalid)?;
     } else if [
@@ -257,8 +257,11 @@ fn classify_companions(
     {
         return Err(Phase36OfflineError::CompanionInvalid);
     }
-    classify_independent_effect_document(companions.text(&companions.independent_effect), None)
-        .map_err(|_| Phase36OfflineError::CompanionInvalid)?;
+    classify_independent_effect_document(
+        companions.maybe_text(&companions.independent_effect),
+        None,
+    )
+    .map_err(|_| Phase36OfflineError::CompanionInvalid)?;
 
     // The immutable Phase 35 generation does not anchor any of these companion
     // roles or their digests. Caller-supplied documents cannot create evidence
@@ -286,20 +289,20 @@ impl CompanionSnapshot {
             return Self::default();
         };
         Self {
-            api: snapshot_optional(&root, paths.maybe_api.as_deref()),
-            websocket: snapshot_optional(&root, paths.maybe_websocket.as_deref()),
-            retained: snapshot_optional(&root, paths.maybe_retained.as_deref()),
-            exact_package: snapshot_optional(&root, paths.maybe_exact_package.as_deref()),
-            request: snapshot_optional(&root, paths.maybe_request.as_deref()),
-            event_ledger: snapshot_optional(&root, paths.maybe_event_ledger.as_deref()),
-            private_result: snapshot_optional(&root, paths.maybe_private_result.as_deref()),
-            public_projection: snapshot_optional(&root, paths.maybe_public_projection.as_deref()),
-            independent_effect: snapshot_optional(&root, paths.maybe_independent_effect.as_deref()),
+            api: maybe_snapshot_(&root, paths.maybe_api.as_deref()),
+            websocket: maybe_snapshot_(&root, paths.maybe_websocket.as_deref()),
+            retained: maybe_snapshot_(&root, paths.maybe_retained.as_deref()),
+            exact_package: maybe_snapshot_(&root, paths.maybe_exact_package.as_deref()),
+            request: maybe_snapshot_(&root, paths.maybe_request.as_deref()),
+            event_ledger: maybe_snapshot_(&root, paths.maybe_event_ledger.as_deref()),
+            private_result: maybe_snapshot_(&root, paths.maybe_private_result.as_deref()),
+            public_projection: maybe_snapshot_(&root, paths.maybe_public_projection.as_deref()),
+            independent_effect: maybe_snapshot_(&root, paths.maybe_independent_effect.as_deref()),
             _protected_root: Some(root),
         }
     }
 
-    fn text<'a>(&self, maybe_file: &'a Option<ProtectedFile>) -> Option<&'a str> {
+    fn maybe_text<'a>(&self, maybe_file: &'a Option<ProtectedFile>) -> Option<&'a str> {
         maybe_file.as_ref().and_then(|file| file.text().ok())
     }
 
@@ -325,7 +328,7 @@ impl CompanionSnapshot {
     }
 }
 
-fn snapshot_optional(
+fn maybe_snapshot_(
     root: &ProtectedRoot,
     maybe_relative: Option<&Utf8Path>,
 ) -> Option<ProtectedFile> {

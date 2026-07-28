@@ -161,7 +161,7 @@ fn runtime_heartbeat_renders_exact_redacted_marker() {
 
     // Act
     let sample = model
-        .take_due(1_000)
+        .maybe_take_due(1_000)
         .expect("first heartbeat should be due");
 
     // Assert
@@ -177,8 +177,8 @@ fn runtime_heartbeat_is_first_due_at_one_second() {
     let mut model = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
 
     // Act
-    let before = model.take_due(999);
-    let due = model.take_due(1_000);
+    let before = model.maybe_take_due(999);
+    let due = model.maybe_take_due(1_000);
 
     // Assert
     assert!(before.is_none());
@@ -194,15 +194,15 @@ fn runtime_heartbeat_labels_cadence_at_two_minute_boundary() {
 
     // Act
     let before_marker = before
-        .take_due(119_999)
+        .maybe_take_due(119_999)
         .expect("sample should be due")
         .marker();
     let boundary_marker = boundary
-        .take_due(120_000)
+        .maybe_take_due(120_000)
         .expect("sample should be due")
         .marker();
     let after_marker = after
-        .take_due(120_001)
+        .maybe_take_due(120_001)
         .expect("sample should be due")
         .marker();
 
@@ -218,7 +218,7 @@ fn runtime_heartbeat_boundary_schedules_steady_deadline() {
     let mut model = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
 
     // Act
-    let sample = model.take_due(120_000);
+    let sample = model.maybe_take_due(120_000);
 
     // Assert
     assert!(sample.is_some());
@@ -232,9 +232,9 @@ fn runtime_heartbeat_delayed_wakeup_coalesces_missed_ticks() {
 
     // Act
     let delayed = model
-        .take_due(75_432)
+        .maybe_take_due(75_432)
         .expect("delayed sample should be due");
-    let duplicate = model.take_due(75_432);
+    let duplicate = model.maybe_take_due(75_432);
 
     // Assert
     assert!(delayed.marker().contains("sequence=0 uptime_ms=75432"));
@@ -248,8 +248,12 @@ fn runtime_heartbeat_sequence_increments_once_per_due_sample() {
     let mut model = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
 
     // Act
-    let first = model.take_due(1_000).expect("first sample should be due");
-    let second = model.take_due(2_000).expect("second sample should be due");
+    let first = model
+        .maybe_take_due(1_000)
+        .expect("first sample should be due");
+    let second = model
+        .maybe_take_due(2_000)
+        .expect("second sample should be due");
 
     // Assert
     assert!(first.marker().contains("sequence=0"));
@@ -260,12 +264,16 @@ fn runtime_heartbeat_sequence_increments_once_per_due_sample() {
 fn runtime_heartbeat_listener_state_only_latches_true() {
     // Arrange
     let mut model = RuntimeHeartbeatModel::new(HEARTBEAT_SESSION);
-    let before = model.take_due(1_000).expect("first sample should be due");
+    let before = model
+        .maybe_take_due(1_000)
+        .expect("first sample should be due");
 
     // Act
     model.arm_listener();
     model.arm_listener();
-    let after = model.take_due(2_000).expect("second sample should be due");
+    let after = model
+        .maybe_take_due(2_000)
+        .expect("second sample should be due");
 
     // Assert
     assert!(before.marker().contains("listener_armed=false"));

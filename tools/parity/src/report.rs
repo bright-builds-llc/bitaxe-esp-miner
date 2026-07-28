@@ -65,12 +65,12 @@ pub(crate) struct Phase30PromotionArtifact {
 }
 
 impl Phase30PromotionArtifact {
-    pub(crate) fn field(&self, key: &str) -> Option<&str> {
+    pub(crate) fn maybe_field(&self, key: &str) -> Option<&str> {
         self.fields.get(key).map(String::as_str)
     }
 
     pub(crate) fn has_exact_field(&self, key: &str, value: &str) -> bool {
-        self.field(key) == Some(value)
+        self.maybe_field(key) == Some(value)
     }
 }
 
@@ -127,7 +127,7 @@ pub(crate) fn validate_phase30_artifact_closed_fields(
     require_phase30_field_value(artifact, "credentials_accessed", &["false", "true"])?;
     require_phase30_field_value(artifact, "raw_artifacts_committed", &["no"])?;
 
-    match artifact.field("phase30_disposition") {
+    match artifact.maybe_field("phase30_disposition") {
         Some("no_promotion_no_eligible_evidence") => {
             require_phase30_field_value(artifact, "new_evidence_input", &["none"])?;
             require_phase30_field_value(artifact, "eligible_share_outcome", &["none"])?;
@@ -163,7 +163,7 @@ pub(crate) fn require_phase30_field_value(
     key: &str,
     allowed_values: &[&str],
 ) -> std::result::Result<(), String> {
-    let Some(value) = artifact.field(key) else {
+    let Some(value) = artifact.maybe_field(key) else {
         return Err(format!("missing structured Phase 30 field {key}"));
     };
     if allowed_values.contains(&value) {

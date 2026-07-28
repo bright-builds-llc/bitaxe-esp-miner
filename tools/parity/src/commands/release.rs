@@ -161,9 +161,9 @@ pub(crate) fn run_release_gate_command(
         .with_context(|| format!("failed to read license inventory {license_inventory_path}"))?;
     let provenance_markdown = std::fs::read_to_string(provenance_path.as_std_path())
         .with_context(|| format!("failed to read provenance manifest {provenance_path}"))?;
-    let maybe_cargo_about_html = read_optional_text(&cargo_about_path)?;
+    let maybe_cargo_about_html = maybe_read_text(&cargo_about_path)?;
     let maybe_manifest_json = if let Some(manifest_path) = &maybe_manifest_path {
-        read_optional_text(manifest_path)?
+        maybe_read_text(manifest_path)?
     } else {
         None
     };

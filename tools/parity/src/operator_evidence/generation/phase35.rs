@@ -89,7 +89,7 @@ pub(crate) fn publish_phase35_generation(
     write_synced(&checklist_replacement, &documents.projected_checklist)?;
     set_private_file_mode(&checklist_replacement)?;
     let context = PromotionContext::acquire_unvalidated(&destination)?;
-    let destination_existed = context.destination_identity().is_some();
+    let destination_existed = context.maybe_destination_identity().is_some();
     exchange_generation(&destination, &staging, &context)?;
 
     if options.maybe_failure == Some(Phase35PublicationFailurePoint::DuringExchange) {
@@ -223,7 +223,7 @@ fn exchange_generation(
     context: &PromotionContext,
 ) -> GenerationResult<()> {
     let staging_identity = context.validate_before_exchange(destination, staging)?;
-    if context.destination_identity().is_some() {
+    if context.maybe_destination_identity().is_some() {
         atomic_exchange(staging, destination)?;
         context.validate_swapped(destination, staging, staging_identity)
     } else {

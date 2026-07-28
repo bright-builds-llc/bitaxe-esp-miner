@@ -484,7 +484,7 @@ fn reseal(image: &mut Vec<u8>) {
     for _ in 0..usize::from(image[1]) {
         let payload_start = cursor + SEGMENT_HEADER_LEN;
         let payload_len =
-            usize::try_from(read_u32(image, cursor + 4).expect("fixture segment length"))
+            usize::try_from(maybe_read_u32(image, cursor + 4).expect("fixture segment length"))
                 .expect("fixture payload length");
         let payload_end = payload_start + payload_len;
         checksum = image[payload_start..payload_end]

@@ -338,7 +338,7 @@ fn runtime_projection_for_api_views(
         ),
         |state| {
             let maybe_sample_marker = if drain_sample_marker {
-                state.drain_pending_runtime_sample_marker()
+                state.maybe_drain_pending_runtime_sample_marker()
             } else {
                 None
             };
@@ -382,8 +382,10 @@ fn mutate_command_visible_state_with_result<T>(
 }
 
 impl CommandVisibleState {
-    fn drain_pending_runtime_sample_marker(&mut self) -> Option<RuntimeProjectionSampleMarker> {
-        self.runtime_projection.drain_pending_sample_marker()
+    fn maybe_drain_pending_runtime_sample_marker(
+        &mut self,
+    ) -> Option<RuntimeProjectionSampleMarker> {
+        self.runtime_projection.maybe_drain_pending_sample_marker()
     }
 }
 
@@ -391,27 +393,27 @@ fn collect_settings_projection() -> SettingsProjection {
     let confirmed_settings = crate::settings_adapter::current_settings_snapshot();
     let loaded = reload_snapshot(&confirmed_settings);
     SettingsProjection {
-        maybe_hostname: match loaded.loaded_value("hostname") {
+        maybe_hostname: match loaded.maybe_loaded_value("hostname") {
             Some(LoadedValue::Str(hostname)) => Some(hostname.clone()),
             _ => None,
         },
-        maybe_frequency: match loaded.loaded_value("asicfrequency_f") {
+        maybe_frequency: match loaded.maybe_loaded_value("asicfrequency_f") {
             Some(LoadedValue::Float(frequency)) => Some(f64::from(*frequency)),
             _ => None,
         },
-        maybe_voltage: match loaded.loaded_value("asicvoltage") {
+        maybe_voltage: match loaded.maybe_loaded_value("asicvoltage") {
             Some(LoadedValue::U16(voltage)) => Some(*voltage),
             _ => None,
         },
-        maybe_auto_fan_speed: match loaded.loaded_value("autofanspeed") {
+        maybe_auto_fan_speed: match loaded.maybe_loaded_value("autofanspeed") {
             Some(LoadedValue::Bool(auto_fan_speed)) => Some(*auto_fan_speed),
             _ => None,
         },
-        maybe_manual_fan_speed: match loaded.loaded_value("manualfanspeed") {
+        maybe_manual_fan_speed: match loaded.maybe_loaded_value("manualfanspeed") {
             Some(LoadedValue::U16(manual_fan_speed)) => Some(*manual_fan_speed),
             _ => None,
         },
-        start_mining_on_boot: match loaded.loaded_value("mineonboot") {
+        start_mining_on_boot: match loaded.maybe_loaded_value("mineonboot") {
             Some(LoadedValue::Bool(value)) => *value,
             _ => true,
         },

@@ -94,7 +94,7 @@ fn drive_session(
             }
         };
         for effect in effects {
-            if let Some(feedback) = adapter.execute(effect) {
+            if let Some(feedback) = adapter.maybe_execute(effect) {
                 events.push_back(feedback);
             }
         }
@@ -124,7 +124,7 @@ impl OrdinaryEspProductionSessionAdapter {
         }
     }
 
-    fn execute(&mut self, effect: ProductionSessionEffect) -> Option<ProductionSessionEvent> {
+    fn maybe_execute(&mut self, effect: ProductionSessionEffect) -> Option<ProductionSessionEvent> {
         match effect {
             ProductionSessionEffect::Publish(snapshot) => {
                 crate::runtime_snapshot::publish_production_session_snapshot(snapshot);
@@ -150,17 +150,21 @@ impl OrdinaryEspProductionSessionAdapter {
                 })
             }
             ProductionSessionEffect::WritePoolLine { pool, .. } => {
-                Self::reject_effect(Some(pool), "pool_write")
+                Self::maybe_reject_effect(Some(pool), "pool_write")
             }
             ProductionSessionEffect::ApplyVersionMask(_) => {
-                Self::reject_effect(None, "version_mask")
+                Self::maybe_reject_effect(None, "version_mask")
             }
-            ProductionSessionEffect::DispatchAsic(_) => Self::reject_effect(None, "asic_dispatch"),
-            ProductionSessionEffect::PollAsic { .. } => Self::reject_effect(None, "asic_poll"),
+            ProductionSessionEffect::DispatchAsic(_) => {
+                Self::maybe_reject_effect(None, "asic_dispatch")
+            }
+            ProductionSessionEffect::PollAsic { .. } => {
+                Self::maybe_reject_effect(None, "asic_poll")
+            }
         }
     }
 
-    fn reject_effect(
+    fn maybe_reject_effect(
         maybe_pool: Option<bitaxe_stratum::v1::production_session::ProductionPool>,
         action: &'static str,
     ) -> Option<ProductionSessionEvent> {

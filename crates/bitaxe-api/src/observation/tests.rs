@@ -210,7 +210,7 @@ fn projection_repeated_consumer_reads_leave_store_and_stamps_unchanged() {
     let mut websocket = LiveTelemetryPlanner::default();
     websocket.set_active_client_count(1);
     websocket.seed_cadence_baseline(first_payload.clone());
-    let websocket_read = websocket.cadence_frame(first_payload);
+    let websocket_read = websocket.maybe_cadence_frame(first_payload);
 
     let mut second_snapshot = ApiSnapshot::safe_ultra_205();
     second_snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&store.read());

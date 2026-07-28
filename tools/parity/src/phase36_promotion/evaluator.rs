@@ -200,7 +200,7 @@ fn decision_for_scope(
     prerequisites: &Phase36ClaimPrerequisites,
     checklist: &Phase36ChecklistSnapshot,
 ) -> Result<Phase36ClaimDecision, Phase36PromotionError> {
-    let Some(row_id) = scope.row_id() else {
+    let Some(row_id) = scope.maybe_row_id() else {
         let reason = exclusion_reason(scope);
         return Ok(Phase36ClaimDecision::DoNotPromote {
             scope,
@@ -212,7 +212,7 @@ fn decision_for_scope(
     let row = checklist.rows.get(row_id).ok_or_else(|| {
         Phase36PromotionError::Checklist(format!("missing affected row {row_id}"))
     })?;
-    let maybe_reason = missing_reason(scope, prerequisites);
+    let maybe_reason = maybe_missing_reason(scope, prerequisites);
     let admitted_digests = admitted_digests(scope, prerequisites);
     let reason_for_digest =
         maybe_reason.unwrap_or(Phase36DecisionReason::BroaderOrUnmappedRowExcluded);
@@ -244,7 +244,7 @@ fn decision_for_scope(
     }
 }
 
-fn missing_reason(
+fn maybe_missing_reason(
     scope: Phase36ClaimScope,
     prerequisites: &Phase36ClaimPrerequisites,
 ) -> Option<Phase36DecisionReason> {

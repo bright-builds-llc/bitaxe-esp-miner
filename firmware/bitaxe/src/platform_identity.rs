@@ -42,7 +42,7 @@ pub fn collect() -> PlatformIdentity {
 }
 
 fn esp_idf_version() -> PlatformFact<String> {
-    let maybe_version = c_string(unsafe { sys::esp_get_idf_version() });
+    let maybe_version = maybe_c_string(unsafe { sys::esp_get_idf_version() });
     maybe_version.map_or_else(
         || PlatformFact::unavailable(PlatformUnavailableReason::EspIdfUnavailable),
         PlatformFact::available,
@@ -64,7 +64,8 @@ fn axe_os_static_asset() -> PlatformFact<String> {
 
 fn running_partition() -> PlatformFact<String> {
     let maybe_partition = unsafe { sys::esp_ota_get_running_partition().as_ref() };
-    let maybe_label = maybe_partition.and_then(|partition| c_string(partition.label.as_ptr()));
+    let maybe_label =
+        maybe_partition.and_then(|partition| maybe_c_string(partition.label.as_ptr()));
     maybe_label.map_or_else(
         || PlatformFact::unavailable(PlatformUnavailableReason::RunningPartitionUnavailable),
         PlatformFact::available,
@@ -97,7 +98,7 @@ fn nonzero_heap_fact(bytes: usize) -> PlatformFact<u64> {
         )
 }
 
-fn c_string(value: *const core::ffi::c_char) -> Option<String> {
+fn maybe_c_string(value: *const core::ffi::c_char) -> Option<String> {
     if value.is_null() {
         return None;
     }

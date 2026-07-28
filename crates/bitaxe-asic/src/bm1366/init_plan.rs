@@ -440,7 +440,7 @@ impl Bm1366InitDecision {
     }
 
     #[must_use]
-    pub const fn fail_closed_action(&self) -> Option<FailClosedAction> {
+    pub const fn maybe_fail_closed_action(&self) -> Option<FailClosedAction> {
         self.maybe_fail_closed_action
     }
 

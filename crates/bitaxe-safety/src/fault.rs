@@ -85,7 +85,7 @@ impl FaultDecision {
     }
 
     #[must_use]
-    pub fn from_fan_feedback(
+    pub fn maybe_from_fan_feedback(
         target_duty_percent: u8,
         rpm: u16,
         consecutive_zero_rpm_samples: u8,
@@ -113,9 +113,9 @@ mod tests {
     #[test]
     fn safety_fault_zero_rpm_and_fan_set_failure_publish_visible_faults() {
         // Arrange / Act
-        let zero_rpm = FaultDecision::from_fan_feedback(30, 0, 3, true)
+        let zero_rpm = FaultDecision::maybe_from_fan_feedback(30, 0, 3, true)
             .expect("zero RPM should become a fault");
-        let set_failed = FaultDecision::from_fan_feedback(100, 0, 1, false)
+        let set_failed = FaultDecision::maybe_from_fan_feedback(100, 0, 1, false)
             .expect("fan set failure should become a fault");
 
         // Assert

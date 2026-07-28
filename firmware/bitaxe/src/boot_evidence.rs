@@ -357,7 +357,7 @@ fn emit_due_heartbeat(now_ms: u64) {
         log::warn!("runtime_heartbeat=unavailable reason=mutex_poisoned");
         return;
     };
-    let maybe_sample = model.take_due(now_ms);
+    let maybe_sample = model.maybe_take_due(now_ms);
     drop(model);
 
     if let Some(sample) = maybe_sample {

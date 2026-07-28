@@ -32,7 +32,7 @@ pub(super) fn transactional_exchange(
             return Err(error);
         }
     };
-    let destination_existed = context.destination_identity().is_some();
+    let destination_existed = context.maybe_destination_identity().is_some();
     if options.maybe_failure == Some(Phase36PublicationFailurePoint::BeforeGenerationExchange) {
         cleanup_rejected(paths, &replacement)?;
         return injected(Phase36PublicationFailurePoint::BeforeGenerationExchange);
@@ -141,7 +141,7 @@ fn exchange_generation(
     context: &PromotionContext,
 ) -> GenerationResult<()> {
     let staging_identity = context.validate_before_exchange(destination, staging)?;
-    if context.destination_identity().is_some() {
+    if context.maybe_destination_identity().is_some() {
         atomic_exchange(staging, destination)?;
         context.validate_swapped(destination, staging, staging_identity)
     } else {

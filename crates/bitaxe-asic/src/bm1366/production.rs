@@ -136,7 +136,7 @@ impl ProductionAsicStatus {
     }
 
     #[must_use]
-    pub const fn reason(self) -> Option<ProductionAsicBlocker> {
+    pub const fn maybe_reason(self) -> Option<ProductionAsicBlocker> {
         match self {
             Self::FailClosed { reason } => Some(reason),
             Self::InitializedForProduction | Self::WorkDispatched | Self::ResultCorrelated => None,
@@ -289,7 +289,7 @@ mod tests {
 
         // Act
         let label = status.as_str();
-        let maybe_reason = status.reason();
+        let maybe_reason = status.maybe_reason();
 
         // Assert
         assert_eq!(label, "production_fail_closed");

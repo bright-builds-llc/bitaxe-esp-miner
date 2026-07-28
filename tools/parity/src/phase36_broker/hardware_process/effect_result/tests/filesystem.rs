@@ -17,7 +17,7 @@ fn admitted_result_file_requires_regular_mode_0600_known_json() {
     fixture.write(&document, 0o600);
 
     // Act
-    let result = read_effect_result(&fixture.path);
+    let result = maybe_read_effect_result(&fixture.path);
 
     // Assert
     let result = result.expect("valid closed result file");
@@ -52,10 +52,10 @@ fn result_file_admission_fails_closed_for_missing_wrong_mode_and_invalid_json() 
 
     // Act
     let results = [
-        read_effect_result(&missing.path),
-        read_effect_result(&wrong_mode.path),
-        read_effect_result(&malformed.path),
-        read_effect_result(&unknown_field.path),
+        maybe_read_effect_result(&missing.path),
+        maybe_read_effect_result(&wrong_mode.path),
+        maybe_read_effect_result(&malformed.path),
+        maybe_read_effect_result(&unknown_field.path),
     ];
 
     // Assert
@@ -77,8 +77,8 @@ fn result_file_admission_rejects_directories_and_symlinks() {
     symlink(&target, &symlink_fixture.path).expect("result symlink");
 
     // Act
-    let directory_result = read_effect_result(&directory.path);
-    let symlink_result = read_effect_result(&symlink_fixture.path);
+    let directory_result = maybe_read_effect_result(&directory.path);
+    let symlink_result = maybe_read_effect_result(&symlink_fixture.path);
 
     // Assert
     assert!(directory_result.is_none());

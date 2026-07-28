@@ -113,7 +113,7 @@ pub fn run_live_session(
     let http = StrictHttpClient::new(&request.trusted_origin)?;
     let baseline_http = http.get_system_info(deadline)?;
     record_http(&mut state, &mut artifacts, "baseline", &baseline_http)?;
-    let baseline_confirmed = successful_http_response(&baseline_http)
+    let baseline_confirmed = maybe_successful_http_response(&baseline_http)
         .is_some_and(|response| baseline_matches(&request, response.body()));
     if !baseline_confirmed {
         apply_event(&mut state, &mut artifacts, SessionEvent::BaselineMismatch)?;
@@ -222,9 +222,11 @@ pub fn run_live_session(
         if Instant::now() >= next_http_poll {
             let polled = http.get_system_info(deadline)?;
             record_http(&mut state, &mut artifacts, "recovery", &polled)?;
-            match successful_http_response(&polled) {
+            match maybe_successful_http_response(&polled) {
                 Some(response) => {
-                    if let Some(boot_b) = parse_boot_b(&request.trusted_origin, response.body()) {
+                    if let Some(boot_b) =
+                        maybe_parse_boot_b(&request.trusted_origin, response.body())
+                    {
                         apply_event(
                             &mut state,
                             &mut artifacts,
@@ -333,7 +335,7 @@ fn request_evidence_fields(progress: RequestProgress) -> (u64, bool) {
     (progress.bytes_written(), progress.is_complete())
 }
 
-fn successful_http_response(observation: &ExchangeObservation) -> Option<&HttpResponse> {
+fn maybe_successful_http_response(observation: &ExchangeObservation) -> Option<&HttpResponse> {
     observation
         .maybe_http_response()
         .filter(|response| is_success_status(response.status()))
@@ -344,7 +346,7 @@ fn is_success_status(status: u16) -> bool {
 }
 
 fn baseline_matches(request: &SessionRequest, body: &[u8]) -> bool {
-    let Some(observed) = parse_boot_b(&request.trusted_origin, body) else {
+    let Some(observed) = maybe_parse_boot_b(&request.trusted_origin, body) else {
         return false;
     };
     observed.boot_session == request.baseline.boot_session
@@ -355,21 +357,21 @@ fn baseline_matches(request: &SessionRequest, body: &[u8]) -> bool {
         && observed.hostname_sha256 == request.expected_postcondition.hostname_sha256
 }
 
-fn parse_boot_b(trusted_origin: &str, body: &[u8]) -> Option<PrivateBootB> {
+fn maybe_parse_boot_b(trusted_origin: &str, body: &[u8]) -> Option<PrivateBootB> {
     let value: Value = serde_json::from_slice(body).ok()?;
     Some(PrivateBootB {
-        boot_session: required_string(&value, "bootSession")?,
+        boot_session: maybe_required_string(&value, "bootSession")?,
         boot_ordinal: value.get("bootOrdinal")?.as_u64()?,
-        reset_reason_category: required_string(&value, "resetReasonCategory")?,
+        reset_reason_category: maybe_required_string(&value, "resetReasonCategory")?,
         trusted_origin: trusted_origin.to_owned(),
-        source_commit: required_string(&value, "sourceCommit")?,
-        reference_commit: required_string(&value, "referenceCommit")?,
-        app_elf_sha256: required_string(&value, "appElfSha256")?,
-        hostname_sha256: sha256(required_string(&value, "hostname")?.as_bytes()),
+        source_commit: maybe_required_string(&value, "sourceCommit")?,
+        reference_commit: maybe_required_string(&value, "referenceCommit")?,
+        app_elf_sha256: maybe_required_string(&value, "appElfSha256")?,
+        hostname_sha256: sha256(maybe_required_string(&value, "hostname")?.as_bytes()),
     })
 }
 
-fn required_string(value: &Value, field: &str) -> Option<String> {
+fn maybe_required_string(value: &Value, field: &str) -> Option<String> {
     value
         .get(field)?
         .as_str()
@@ -467,7 +469,7 @@ mod tests {
         });
 
         // Act
-        let boot_b = parse_boot_b(
+        let boot_b = maybe_parse_boot_b(
             "http://private-device",
             serde_json::to_string(&body)
                 .expect("body must serialize")
@@ -549,7 +551,7 @@ mod tests {
         assert_eq!(private["response_received"], false);
         assert_eq!(private["response_status"], 0);
         assert_eq!(private["response_body_bytes"], serde_json::json!([]));
-        assert!(successful_http_response(&observation).is_none());
+        assert!(maybe_successful_http_response(&observation).is_none());
     }
 
     #[test]
@@ -562,8 +564,8 @@ mod tests {
         );
 
         // Act
-        let maybe_accepted = successful_http_response(&accepted);
-        let maybe_rejected = successful_http_response(&rejected);
+        let maybe_accepted = maybe_successful_http_response(&accepted);
+        let maybe_rejected = maybe_successful_http_response(&rejected);
 
         // Assert
         assert_eq!(maybe_accepted.map(HttpResponse::status), Some(204));

@@ -429,12 +429,12 @@ impl FlashEnvironment for LocalFlashEnvironment {
     }
 
     fn firmware_commit(&self) -> String {
-        git_output(&self.workspace_dir, ["rev-parse", "HEAD"])
+        maybe_git_output(&self.workspace_dir, ["rev-parse", "HEAD"])
             .unwrap_or_else(|| UNAVAILABLE.to_owned())
     }
 
     fn reference_commit(&self) -> String {
-        git_output(
+        maybe_git_output(
             &self.workspace_dir,
             ["-C", "reference/esp-miner", "rev-parse", "HEAD"],
         )

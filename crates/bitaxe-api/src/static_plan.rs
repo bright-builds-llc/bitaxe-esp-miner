@@ -152,16 +152,16 @@ pub fn resolve_static_request(
     if catalog.contains(&maybe_gzip_path) {
         return StaticRouteDecision::ServeStatic(ServeStatic {
             path: maybe_gzip_path,
-            cache_control: cache_control_for(static_path.directory_request),
+            cache_control: maybe_cache_control_for(static_path.directory_request),
             content_encoding: Some(GZIP_CONTENT_ENCODING),
         });
     }
 
     if catalog.contains(&static_path.path) {
-        let content_encoding = content_encoding_for(&static_path.path);
+        let content_encoding = maybe_content_encoding_for(&static_path.path);
         return StaticRouteDecision::ServeStatic(ServeStatic {
             path: static_path.path,
-            cache_control: cache_control_for(static_path.directory_request),
+            cache_control: maybe_cache_control_for(static_path.directory_request),
             content_encoding,
         });
     }
@@ -203,7 +203,7 @@ fn is_unsafe_path(path: &str) -> bool {
     path.contains("..") || path.contains('\\') || path.contains('\0') || path.contains("://")
 }
 
-const fn cache_control_for(directory_request: bool) -> Option<&'static str> {
+const fn maybe_cache_control_for(directory_request: bool) -> Option<&'static str> {
     if directory_request {
         return None;
     }
@@ -211,7 +211,7 @@ const fn cache_control_for(directory_request: bool) -> Option<&'static str> {
     Some(STATIC_CACHE_CONTROL)
 }
 
-fn content_encoding_for(path: &str) -> Option<&'static str> {
+fn maybe_content_encoding_for(path: &str) -> Option<&'static str> {
     if path.ends_with(".gz") {
         return Some(GZIP_CONTENT_ENCODING);
     }

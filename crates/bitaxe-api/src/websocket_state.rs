@@ -140,10 +140,10 @@ impl WebSocketState {
 
     /// Plans a cadence live telemetry frame for connected clients.
     #[must_use]
-    pub fn live_cadence_frame(&mut self, current: Value) -> Option<Value> {
+    pub fn maybe_live_cadence_frame(&mut self, current: Value) -> Option<Value> {
         let live_clients = self.live_clients.len();
         self.live_telemetry.set_active_client_count(live_clients);
-        self.live_telemetry.cadence_frame(current)
+        self.live_telemetry.maybe_cadence_frame(current)
     }
 
     /// Updates raw retained-log stream state after a `/api/ws` client connects.

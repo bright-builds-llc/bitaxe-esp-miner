@@ -246,7 +246,7 @@ fn validate_slot_metadata(
         };
 
         let maybe_slot_status =
-            parse_typed_slot_field(validation_errors, slot_file, contents, "slot_status");
+            maybe_parse_typed_slot_field(validation_errors, slot_file, contents, "slot_status");
         validate_literal_slot_field(
             validation_errors,
             slot_file,
@@ -262,8 +262,12 @@ fn validate_slot_metadata(
             "no",
         );
         validate_literal_slot_field(validation_errors, slot_file, contents, "board", "205");
-        let _: Option<RedactionStatus> =
-            parse_typed_slot_field(validation_errors, slot_file, contents, "redaction_status");
+        let _: Option<RedactionStatus> = maybe_parse_typed_slot_field(
+            validation_errors,
+            slot_file,
+            contents,
+            "redaction_status",
+        );
         if !contents.contains("exact_non_claims") {
             validation_errors.push(format!("{slot_file} must contain exact_non_claims"));
         }
@@ -355,7 +359,7 @@ fn validate_disposition(
     }
 }
 
-fn parse_typed_slot_field<T>(
+fn maybe_parse_typed_slot_field<T>(
     validation_errors: &mut Vec<String>,
     slot_file: &str,
     contents: &str,

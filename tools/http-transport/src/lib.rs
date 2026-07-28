@@ -123,7 +123,7 @@ impl StrictHttpClient {
             bail!("strict HTTP request is invalid");
         }
         let started = Instant::now();
-        let Some(socket) = connect(&self.origin, started, deadline, connect_timeout) else {
+        let Some(socket) = maybe_connect(&self.origin, started, deadline, connect_timeout) else {
             return Ok(ExchangeObservation::tcp_connection_failed(
                 self.origin.scheme,
                 elapsed_millis(started),
@@ -174,7 +174,7 @@ impl StrictHttpClient {
             }
         };
         let response = read_response(&mut transport, started, deadline);
-        let parsed = HttpResponse::parse(&response.wire);
+        let parsed = HttpResponse::maybe_parse(&response.wire);
         Ok(ExchangeObservation::response_read(
             established,
             completed_request,
@@ -184,7 +184,7 @@ impl StrictHttpClient {
     }
 }
 
-fn connect(
+fn maybe_connect(
     origin: &Origin,
     started: Instant,
     deadline: Instant,
@@ -358,15 +358,15 @@ fn read_response(
 }
 
 fn clamp_response_to_limits(response: &mut Vec<u8>) {
-    let maximum = header_end(response)
+    let maximum = maybe_header_end(response)
         .map(|end| end.min(MAX_HEADER_BYTES).saturating_add(MAX_BODY_BYTES))
         .unwrap_or(MAX_HEADER_BYTES);
     response.truncate(maximum);
 }
 
 impl HttpResponse {
-    fn parse(response: &[u8]) -> Option<Self> {
-        let end = header_end(response)?;
+    fn maybe_parse(response: &[u8]) -> Option<Self> {
+        let end = maybe_header_end(response)?;
         let header_text = std::str::from_utf8(&response[..end]).ok()?;
         let mut lines = header_text.split("\r\n");
         let mut status_parts = lines.next()?.split_ascii_whitespace();
@@ -381,17 +381,17 @@ impl HttpResponse {
             .filter(|line| !line.is_empty() && line.split_once(':').is_some())
             .count();
         if header_count == 0 {
-            return Self::new(status, 0, Vec::new(), Vec::new());
+            return Self::maybe_new(status, 0, Vec::new(), Vec::new());
         }
         let raw_body = &response[end..];
         let body = if is_chunked(header_text) {
-            decode_chunked(raw_body).unwrap_or_else(|| raw_body.to_vec())
-        } else if let Some(length) = content_length(header_text) {
+            maybe_decode_chunked(raw_body).unwrap_or_else(|| raw_body.to_vec())
+        } else if let Some(length) = maybe_content_length(header_text) {
             raw_body[..raw_body.len().min(length)].to_vec()
         } else {
             raw_body.to_vec()
         };
-        Self::new(
+        Self::maybe_new(
             status,
             u64::try_from(header_count).ok()?,
             response[..end].to_vec(),
@@ -400,7 +400,7 @@ impl HttpResponse {
     }
 }
 
-fn header_end(response: &[u8]) -> Option<usize> {
+fn maybe_header_end(response: &[u8]) -> Option<usize> {
     response
         .windows(4)
         .position(|window| window == b"\r\n\r\n")
@@ -408,25 +408,25 @@ fn header_end(response: &[u8]) -> Option<usize> {
 }
 
 fn response_exceeds_limit(response: &[u8]) -> bool {
-    header_end(response).map_or(response.len() > MAX_HEADER_BYTES, |end| {
+    maybe_header_end(response).map_or(response.len() > MAX_HEADER_BYTES, |end| {
         end > MAX_HEADER_BYTES || response.len().saturating_sub(end) > MAX_BODY_BYTES
     })
 }
 
 fn response_is_complete(response: &[u8]) -> bool {
-    let Some(end) = header_end(response) else {
+    let Some(end) = maybe_header_end(response) else {
         return false;
     };
     let Ok(headers) = std::str::from_utf8(&response[..end]) else {
         return false;
     };
-    if let Some(length) = content_length(headers) {
+    if let Some(length) = maybe_content_length(headers) {
         return response.len().saturating_sub(end) >= length;
     }
-    is_chunked(headers) && decode_chunked(&response[end..]).is_some()
+    is_chunked(headers) && maybe_decode_chunked(&response[end..]).is_some()
 }
 
-fn content_length(headers: &str) -> Option<usize> {
+fn maybe_content_length(headers: &str) -> Option<usize> {
     headers.split("\r\n").find_map(|line| {
         let (name, value) = line.split_once(':')?;
         name.eq_ignore_ascii_case("content-length")
@@ -447,7 +447,7 @@ fn is_chunked(headers: &str) -> bool {
     })
 }
 
-fn decode_chunked(mut body: &[u8]) -> Option<Vec<u8>> {
+fn maybe_decode_chunked(mut body: &[u8]) -> Option<Vec<u8>> {
     let mut decoded = Vec::new();
     loop {
         let line_end = body.windows(2).position(|window| window == b"\r\n")?;

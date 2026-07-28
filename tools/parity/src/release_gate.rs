@@ -130,7 +130,7 @@ fn validate_required_sections(
     required_sections: &[&str],
 ) {
     for required_section in required_sections {
-        if find_section(sections, required_section).is_some() {
+        if maybe_find_section(sections, required_section).is_some() {
             continue;
         }
 
@@ -160,7 +160,7 @@ fn validate_cargo_about_report(
         }
     }
 
-    let Some(cargo_section) = find_section(license_sections, "Cargo crates") else {
+    let Some(cargo_section) = maybe_find_section(license_sections, "Cargo crates") else {
         return;
     };
 
@@ -209,7 +209,7 @@ fn parse_h2_sections(markdown: &str) -> Vec<MarkdownSection> {
     let mut body = String::new();
 
     for (line_index, line) in markdown.lines().enumerate() {
-        if let Some(next_name) = h2_heading(line) {
+        if let Some(next_name) = maybe_h2_heading(line) {
             push_section(
                 &mut sections,
                 maybe_name.take(),
@@ -254,7 +254,7 @@ fn push_section(
     });
 }
 
-fn h2_heading(line: &str) -> Option<String> {
+fn maybe_h2_heading(line: &str) -> Option<String> {
     let trimmed = line.trim();
     let heading = trimmed.strip_prefix("## ")?;
     if heading.starts_with('#') {
@@ -269,7 +269,7 @@ fn h2_heading(line: &str) -> Option<String> {
     Some(name.to_owned())
 }
 
-fn find_section<'a>(
+fn maybe_find_section<'a>(
     sections: &'a [MarkdownSection],
     required_section: &str,
 ) -> Option<&'a MarkdownSection> {

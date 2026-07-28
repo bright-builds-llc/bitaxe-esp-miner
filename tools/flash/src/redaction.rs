@@ -224,7 +224,8 @@ pub(crate) fn redact_json_string_field(text: &str, field: &str) -> String {
         let field_end = field_start + pattern.len();
         output.push_str(&text[index..field_start]);
 
-        let Some((value_open, value_close)) = json_string_value_bounds(text, field_end) else {
+        let Some((value_open, value_close)) = maybe_json_string_value_bounds(text, field_end)
+        else {
             output.push_str(&text[field_start..field_end]);
             index = field_end;
             continue;
@@ -239,7 +240,10 @@ pub(crate) fn redact_json_string_field(text: &str, field: &str) -> String {
     output
 }
 
-pub(crate) fn json_string_value_bounds(text: &str, after_field: usize) -> Option<(usize, usize)> {
+pub(crate) fn maybe_json_string_value_bounds(
+    text: &str,
+    after_field: usize,
+) -> Option<(usize, usize)> {
     let bytes = text.as_bytes();
     let mut cursor = after_field;
     while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {

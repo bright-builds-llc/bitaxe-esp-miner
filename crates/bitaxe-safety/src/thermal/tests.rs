@@ -89,11 +89,12 @@ fn safety_thermal_evidence_token_requires_fresh_safe_observation() {
     let evidence = SafetyCriticalEvidence::implemented_not_verified("unit");
 
     // Act / Assert
-    assert!(ThermalEvidenceToken::from_observation(fresh, evidence).is_some());
-    assert!(ThermalEvidenceToken::from_observation(overheat, evidence).is_none());
-    assert!(ThermalEvidenceToken::from_observation(invalid, evidence).is_none());
+    assert!(ThermalEvidenceToken::maybe_from_observation(fresh, evidence).is_some());
+    assert!(ThermalEvidenceToken::maybe_from_observation(overheat, evidence).is_none());
+    assert!(ThermalEvidenceToken::maybe_from_observation(invalid, evidence).is_none());
     assert!(
-        ThermalEvidenceToken::from_observation(fresh, SafetyCriticalEvidence::Missing).is_none()
+        ThermalEvidenceToken::maybe_from_observation(fresh, SafetyCriticalEvidence::Missing)
+            .is_none()
     );
 }
 

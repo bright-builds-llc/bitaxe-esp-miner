@@ -177,7 +177,7 @@ impl LiveStratumRuntime {
     /// Returns the stored mask when configure / `set_version_mask` raised the
     /// pending bit. Clears the bit so firmware flushes at most once per store
     /// (upstream `new_stratum_version_rolling_msg` clear after TX).
-    pub fn take_pending_version_mask_reload(&mut self) -> Option<VersionMask> {
+    pub fn maybe_take_pending_version_mask_reload(&mut self) -> Option<VersionMask> {
         if !self.pending_version_mask_reload {
             return None;
         }
@@ -230,12 +230,12 @@ impl LiveStratumRuntime {
         LiveRuntimeEvent::Started
     }
 
-    pub fn apply_server_message(
+    pub fn maybe_apply_server_message(
         &mut self,
         message: StratumV1ServerMessage,
     ) -> Result<Option<LiveRuntimeEvent>, StratumV1Error> {
         match message {
-            StratumV1ServerMessage::Response(response) => self.apply_response(response),
+            StratumV1ServerMessage::Response(response) => self.maybe_apply_response(response),
             StratumV1ServerMessage::SetDifficulty(difficulty) => {
                 self.state.set_pool_difficulty(difficulty);
                 Ok(None)
@@ -248,7 +248,7 @@ impl LiveStratumRuntime {
                 self.store_version_mask_and_raise_reload(mask);
                 Ok(None)
             }
-            StratumV1ServerMessage::Notify(notify) => self.apply_notify(notify),
+            StratumV1ServerMessage::Notify(notify) => self.maybe_apply_notify(notify),
             StratumV1ServerMessage::ClientReconnect => {
                 self.invalidate_for_reconnect();
                 self.state.set_lifecycle(PoolLifecycleStatus::Reconnecting);
@@ -260,7 +260,7 @@ impl LiveStratumRuntime {
         }
     }
 
-    pub(crate) fn apply_matched_response(
+    pub(crate) fn maybe_apply_matched_response(
         &mut self,
         kind: RuntimeRequestKind,
         response: StratumResponse,
@@ -444,7 +444,7 @@ impl LiveStratumRuntime {
         Ok(())
     }
 
-    fn apply_response(
+    fn maybe_apply_response(
         &mut self,
         response: StratumResponse,
     ) -> Result<Option<LiveRuntimeEvent>, StratumV1Error> {
@@ -482,7 +482,7 @@ impl LiveStratumRuntime {
         Ok(None)
     }
 
-    fn apply_notify(
+    fn maybe_apply_notify(
         &mut self,
         notify: crate::v1::messages::MiningNotify,
     ) -> Result<Option<LiveRuntimeEvent>, StratumV1Error> {

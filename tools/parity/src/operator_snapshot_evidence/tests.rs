@@ -382,8 +382,8 @@ fn operator_snapshot_publication_reverse_completion_preserves_direct_chronology(
     let retained_identities = retained
         .iter()
         .map(|(marker, _health)| {
-            let (session, revision) =
-                parse_retained_marker_fields(marker).expect("retained marker must remain exact");
+            let (session, revision) = maybe_parse_retained_marker_fields(marker)
+                .expect("retained marker must remain exact");
             (
                 session.to_owned(),
                 revision

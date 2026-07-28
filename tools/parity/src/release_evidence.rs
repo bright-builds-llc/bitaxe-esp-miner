@@ -255,7 +255,7 @@ fn validate_post_source_evidence_commits(
 }
 
 fn is_allowed_post_source_evidence_path(path: &Utf8Path) -> bool {
-    let Some(normalized_path) = normalize_path(path) else {
+    let Some(normalized_path) = maybe_normalize_path(path) else {
         return false;
     };
 
@@ -398,10 +398,10 @@ fn validate_evidence_path(
 }
 
 fn path_is_under_root(evidence_path: &Utf8Path, evidence_root: &Utf8Path) -> bool {
-    let Some(normalized_path) = normalize_path(evidence_path) else {
+    let Some(normalized_path) = maybe_normalize_path(evidence_path) else {
         return false;
     };
-    let Some(normalized_root) = normalize_path(evidence_root) else {
+    let Some(normalized_root) = maybe_normalize_path(evidence_root) else {
         return false;
     };
 
@@ -411,7 +411,7 @@ fn path_is_under_root(evidence_path: &Utf8Path, evidence_root: &Utf8Path) -> boo
             .is_some_and(|suffix| suffix.starts_with('/'))
 }
 
-fn normalize_path(path: &Utf8Path) -> Option<String> {
+fn maybe_normalize_path(path: &Utf8Path) -> Option<String> {
     let raw = path.as_str().replace('\\', "/");
     let is_absolute = raw.starts_with('/');
     let mut parts = Vec::new();

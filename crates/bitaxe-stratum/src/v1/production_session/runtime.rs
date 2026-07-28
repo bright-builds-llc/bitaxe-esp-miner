@@ -92,7 +92,7 @@ impl ProductionMiningSession {
     pub fn snapshot(&self) -> ProductionSessionSnapshot {
         let projection = self.recovery.projection();
         let mut mining = self
-            .runtime_for_projection(projection.maybe_active_pool)
+            .maybe_runtime_for_projection(projection.maybe_active_pool)
             .map(|session| session.runtime.state().clone())
             .unwrap_or_default();
         mining.set_operator_intent(self.last_readiness.operator_intent);
@@ -126,7 +126,7 @@ impl ProductionMiningSession {
                 if projection.maybe_active_pool.is_none() =>
             {
                 if self
-                    .runtime_for_projection(projection.maybe_active_pool)
+                    .maybe_runtime_for_projection(projection.maybe_active_pool)
                     .is_none()
                 {
                     mining.set_lifecycle(PoolLifecycleStatus::Connecting);
@@ -200,7 +200,7 @@ impl ProductionMiningSession {
                 now_ms,
             } => {
                 if let Some(active_pool) = self.recovery.projection().maybe_active_pool {
-                    if let Some(pool_runtime) = self.pool_runtime_mut(active_pool) {
+                    if let Some(pool_runtime) = self.maybe_pool_runtime_mut(active_pool) {
                         let _outcome =
                             pool_runtime.runtime.apply_bridge_observation(observation)?;
                     }
@@ -250,7 +250,7 @@ impl ProductionMiningSession {
 
     pub(super) fn rebase_runtime_generation(&mut self, pool: ProductionPool) {
         let generation = self.allocate_generation();
-        if let Some(runtime) = self.pool_runtime_mut(pool) {
+        if let Some(runtime) = self.maybe_pool_runtime_mut(pool) {
             runtime.runtime.rebase_generation(generation);
         }
     }
@@ -260,14 +260,14 @@ impl ProductionMiningSession {
         maybe_active_pool: Option<ProductionPool>,
     ) -> PoolSessionGeneration {
         maybe_active_pool
-            .and_then(|pool| self.pool_runtime(pool))
+            .and_then(|pool| self.maybe_pool_runtime(pool))
             .map_or(self.generation_cursor, |runtime| {
                 runtime.runtime.production_registry().generation()
             })
     }
 
     pub(super) fn clear_pending_submits(&mut self, pool: ProductionPool) {
-        let Some(runtime) = self.pool_runtime_mut(pool) else {
+        let Some(runtime) = self.maybe_pool_runtime_mut(pool) else {
             return;
         };
         runtime.submits.clear();
@@ -276,21 +276,27 @@ impl ProductionMiningSession {
             .retain(|_, kind| *kind != PendingRequestKind::Submit);
     }
 
-    fn runtime_for_projection(&self, maybe_pool: Option<ProductionPool>) -> Option<&PoolRuntime> {
+    fn maybe_runtime_for_projection(
+        &self,
+        maybe_pool: Option<ProductionPool>,
+    ) -> Option<&PoolRuntime> {
         maybe_pool
-            .and_then(|pool| self.pool_runtime(pool))
+            .and_then(|pool| self.maybe_pool_runtime(pool))
             .or(self.primary.as_ref())
             .or(self.fallback.as_ref())
     }
 
-    pub(super) fn pool_runtime(&self, pool: ProductionPool) -> Option<&PoolRuntime> {
+    pub(super) fn maybe_pool_runtime(&self, pool: ProductionPool) -> Option<&PoolRuntime> {
         match pool {
             ProductionPool::Primary => self.primary.as_ref(),
             ProductionPool::Fallback => self.fallback.as_ref(),
         }
     }
 
-    pub(super) fn pool_runtime_mut(&mut self, pool: ProductionPool) -> Option<&mut PoolRuntime> {
+    pub(super) fn maybe_pool_runtime_mut(
+        &mut self,
+        pool: ProductionPool,
+    ) -> Option<&mut PoolRuntime> {
         match pool {
             ProductionPool::Primary => self.primary.as_mut(),
             ProductionPool::Fallback => self.fallback.as_mut(),
@@ -304,7 +310,7 @@ impl ProductionMiningSession {
         }
     }
 
-    pub(super) fn take_pool_runtime(&mut self, pool: ProductionPool) -> Option<PoolRuntime> {
+    pub(super) fn maybe_take_pool_runtime(&mut self, pool: ProductionPool) -> Option<PoolRuntime> {
         match pool {
             ProductionPool::Primary => self.primary.take(),
             ProductionPool::Fallback => self.fallback.take(),
@@ -312,7 +318,7 @@ impl ProductionMiningSession {
     }
 }
 
-pub(super) fn runtime_request_kind(
+pub(super) fn maybe_runtime_request_kind(
     message: &StratumV1ClientMessage,
 ) -> Option<(StratumRequestId, RuntimeRequestKind)> {
     match message {

@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use super::lease::{process_start, DeviceLease};
+use super::lease::{maybe_process_start, DeviceLease};
 use super::{
     session_error, SupervisedOutput, SupervisedTermination, UsbSessionError, UsbTerminalCategory,
 };
@@ -45,7 +45,7 @@ impl OwnedChildIdentity {
     }
 
     pub(super) fn identity_matches(&self) -> bool {
-        if process_start(self.pid).as_deref() != Some(self.process_start.as_str()) {
+        if maybe_process_start(self.pid).as_deref() != Some(self.process_start.as_str()) {
             return false;
         }
         let group = unsafe { libc::getpgid(self.pid.cast_signed()) };
@@ -54,7 +54,7 @@ impl OwnedChildIdentity {
         }
         let expected_path = fs::canonicalize(&self.executable_path).ok();
         let observed_path =
-            process_executable(self.pid).and_then(|path| fs::canonicalize(path).ok());
+            maybe_process_executable(self.pid).and_then(|path| fs::canonicalize(path).ok());
         if observed_path != expected_path {
             return false;
         }
@@ -129,7 +129,7 @@ pub(super) fn run_owned_process(
         })? {
             break status;
         }
-        let signal = pending_signal();
+        let signal = maybe_pending_signal();
         if signal.is_some() || Instant::now() >= deadline {
             timed_out = signal.is_none();
             interrupted_by = signal;
@@ -248,7 +248,7 @@ fn process_group_has_live_members(group: i32) -> bool {
     })
 }
 
-pub(super) fn pending_signal() -> Option<i32> {
+pub(super) fn maybe_pending_signal() -> Option<i32> {
     match PENDING_SIGNAL.load(Ordering::SeqCst) {
         0 => None,
         signal => Some(signal),
@@ -314,7 +314,7 @@ fn executable_digest(path: &Path) -> Result<String, UsbSessionError> {
 fn wait_for_process_start(pid: u32) -> Result<String, UsbSessionError> {
     let deadline = Instant::now() + Duration::from_secs(1);
     while Instant::now() < deadline {
-        if let Some(start) = process_start(pid) {
+        if let Some(start) = maybe_process_start(pid) {
             return Ok(start);
         }
         thread::sleep(Duration::from_millis(10));
@@ -325,7 +325,7 @@ fn wait_for_process_start(pid: u32) -> Result<String, UsbSessionError> {
     ))
 }
 
-fn process_executable(pid: u32) -> Option<PathBuf> {
+fn maybe_process_executable(pid: u32) -> Option<PathBuf> {
     let output = Command::new("/bin/ps")
         .args(["-o", "comm=", "-p", &pid.to_string()])
         .output()
@@ -574,7 +574,7 @@ mod tests {
 
         // Assert
         assert_eq!(result, 0);
-        assert_eq!(pending_signal(), Some(libc::SIGINT));
+        assert_eq!(maybe_pending_signal(), Some(libc::SIGINT));
     }
 
     #[test]
@@ -587,6 +587,6 @@ mod tests {
 
         // Assert
         assert_eq!(result, 0);
-        assert_eq!(pending_signal(), Some(libc::SIGTERM));
+        assert_eq!(maybe_pending_signal(), Some(libc::SIGTERM));
     }
 }
