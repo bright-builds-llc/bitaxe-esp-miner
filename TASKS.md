@@ -1273,3 +1273,132 @@ hardware. Firmware startup behavior is supported by compilation, source guards,
 and repository tests rather than new hardware evidence. The eight existing
 documented file-length exceptions remain unchanged; this task added none and
 did not modify historical evidence or parity status.
+
+## Architecture Conformance Backlog
+
+### task-repair-production-session-source-contract | 2026-07-27 21:44 | Repair the production-session architecture guard
+
+- [ ] Replace the stale `adapter.execute(effect)` source assertion with the
+      current `adapter.maybe_execute(effect)` contract.
+- [ ] Preserve the exactly-two-adapters assertion and every existing
+      ordinary-adapter forbidden-I/O check.
+- [ ] Add or update focused regressions so the guard fails when the current
+      event/effect interpreter seam, adapter count, or forbidden-I/O boundary
+      drifts.
+- [ ] Run the source guard, focused core tests, `just
+      verify-production-session`, and the canonical firmware build.
+
+Dependencies: None. Complete this task before relying on the production-session
+source contract as verification for later architecture work.
+
+Verification: Pending.
+
+Completion review: Pending. This is software-only source-contract repair. It
+does not authorize hardware detection, flashing, monitoring, credentials,
+network discovery, evidence generation or promotion, parity-status changes,
+commit, or push operations.
+
+### task-remove-core-clock-ownership | 2026-07-27 21:44 | Make production-session timing deterministic
+
+- [ ] Replace `Instant` ownership in `BridgeOrchestrator` and
+      `ProductionMiningSession` with caller-supplied monotonic milliseconds.
+- [ ] Keep `ProductionSessionEvent::now_ms` as the sole production-session time
+      input and remove all real-clock reads from the reusable Stratum core.
+- [ ] Preserve dispatch-before-poll priority, regeneration cadence, timeout
+      telemetry, invalidation, and fail-closed session behavior.
+- [ ] Add deterministic tests for dispatch priority, pre-threshold and
+      at-threshold regeneration, timeout behavior, clock regression, and
+      saturating timestamp arithmetic.
+- [ ] Run focused Stratum and API tests, the repaired production-session source
+      contract, and the relevant complete software verification surface.
+
+Dependencies: Complete the production-session architecture-guard repair first.
+
+Verification: Pending.
+
+Completion review: Pending. This is a software-only functional-core refactor.
+It does not authorize hardware detection, flashing, monitoring, credentials,
+network discovery, evidence generation or promotion, parity-status changes,
+commit, or push operations.
+
+### task-relocate-reusable-crate-concurrency-shells | 2026-07-27 21:44 | Move concurrency ownership into firmware adapters
+
+- [ ] Keep pure snapshot, sequence, effect, transition, and error models in
+      reusable crates while moving process-lifetime synchronization ownership
+      into firmware adapters.
+- [ ] Move the `Mutex`-owned confirmed-settings cell into the firmware settings
+      adapter without changing storage-confirmation or poison-handling behavior.
+- [ ] Move operator-snapshot publication locking into the firmware runtime
+      adapter while preserving completion order, retention-before-issuance,
+      reentrancy rejection, and earliest-failure classification.
+- [ ] Move deferred-effect channels, leases, worker lifecycle, and
+      response-before-effect coordination into the firmware HTTP shell without
+      compatibility aliases.
+- [ ] Move concurrency-focused tests to host-testable shell targets, update
+      affected source guards, and record expected source-derived evaluator
+      identity rotation without hard-coding or promoting the new identity.
+- [ ] Run focused config, API, firmware-shell, and parity tests plus the
+      repository's complete required software verification sequence.
+
+Dependencies: Complete the production-session architecture-guard repair first.
+Coordinate source-guard updates with the host-tool core/shell separation task
+if both touch parity architecture assertions.
+
+Verification: Pending.
+
+Completion review: Pending. This task changes ownership, not externally
+observable behavior. It does not authorize hardware detection, flashing,
+monitoring, credentials, network discovery, evidence generation or promotion,
+parity-status changes, commit, or push operations.
+
+### task-centralize-ipv4-access-classification | 2026-07-27 21:44 | Move peer-address policy into the pure API core
+
+- [ ] Move peer-address byte-order normalization and RFC1918 classification
+      from the ESP-IDF HTTP adapter into `bitaxe-api::route_shell`.
+- [ ] Expose one typed peer-address normalization function for the firmware
+      adapter and remove the duplicated firmware classifier.
+- [ ] Keep raw socket access, ESP-IDF calls, logging, and request handling in
+      the firmware shell.
+- [ ] Add pure unit tests for network-order private addresses, host-order
+      fallback, unspecified addresses, public addresses, and all three RFC1918
+      ranges.
+- [ ] Run focused API route-shell tests, firmware compilation, access source
+      guards, and the relevant complete software verification surface.
+
+Dependencies: None.
+
+Verification: Pending.
+
+Completion review: Pending. This is a software-only policy-location refactor.
+It does not authorize hardware detection, flashing, monitoring, credentials,
+network discovery, evidence generation or promotion, parity-status changes,
+commit, or push operations.
+
+### task-separate-host-tool-cores-and-shells | 2026-07-27 21:44 | Separate deterministic host-tool logic from effects
+
+- [ ] Inventory active production host-tool modules that combine deterministic
+      decisions with filesystem, process, network, clock, or terminal effects
+      and record the exact bounded candidate set in this task block before
+      editing.
+- [ ] Start with the known flash-model temporary-file materialization and Phase
+      36 classification/filesystem loading mix, keeping pure models and
+      classifiers independent from effectful adapters.
+- [ ] Preserve every existing CLI, schema, evidence, permission, redaction,
+      terminal-category, package-admission, and evaluator-identity contract.
+- [ ] Keep already-separated device-session model/live modules separated and
+      add focused source or dependency guards that prevent the identified
+      effect imports from returning to pure modules.
+- [ ] Run focused flash, parity, device-session, HTTP-transport, and xtask tests
+      as applicable, followed by the repository's complete required software
+      verification sequence.
+
+Dependencies: Coordinate source-guard and evaluator-inventory edits with the
+reusable-crate concurrency-shell relocation task; neither task may weaken the
+other's assertions.
+
+Verification: Pending.
+
+Completion review: Pending. This is software-only host-tool architecture work.
+It does not authorize hardware detection, flashing, monitoring, credentials,
+network discovery, evidence generation or promotion, parity-status changes,
+commit, or push operations.
