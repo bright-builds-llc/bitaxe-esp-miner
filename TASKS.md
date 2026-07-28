@@ -10,6 +10,52 @@ new work.
 
 ## Active
 
+### task-type-http-exchange-observation | 2026-07-27 19:03 | Make HTTP exchange states unrepresentable
+
+- [x] Replace the mutable flat HTTP exchange observation with closed typed
+      transport, request, and response states.
+- [x] Migrate the Phase 35 and device-session consumers without changing their
+      evidence schemas, field meanings, or failure categories.
+- [x] Add focused state-invariant and consumer-projection regression tests.
+- [x] Update Bazel source ownership and run the complete required software
+      verification sequence.
+
+Verification policy:
+
+- This task is software-only. Do not detect, flash, monitor, read credentials,
+  discover network targets, create evidence, or promote parity claims.
+- Preserve historical evidence, the reference tree, Phase 35/36 schemas,
+  statuses, non-claims, and evaluator identities byte-for-byte.
+
+Verification:
+
+- The ordered `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features` sequence passed.
+- Focused HTTP transport, device-session, and parity tests passed with 7, 50,
+  and 372 tests respectively, including exact flat projection, malformed
+  response, partial response, request completion, and TLS failure coverage.
+- `bun scripts/bright-builds-check.ts all` scanned 555 files with zero findings
+  and the existing eight justified exceptions. `just test` passed all 72 Bazel
+  tests.
+- `just parity` reported `validation_errors: none`; `just verify-reference`
+  reported the pinned reference clean at
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50`; `just verify-redaction` passed;
+  and `git diff --check` passed.
+- The final path audit confirmed no changes under historical evidence,
+  `.planning/`, the parity checklist, or the reference tree, and no Phase 36
+  evaluator source-inventory membership change.
+
+Completion review: HTTP exchange construction now terminates in one closed
+typed state with nonzero successful-stage facts and private parsed-response
+construction. Phase 35 and device-session retain their exact existing flat
+schemas through boundary-only projections.
+
+Residual risks: This was software-only verification with loopback HTTP peers.
+No hardware, credentials, live device target, evidence promotion, schema
+revision, or evaluator identity change was used or claimed.
+
 ### task-eliminate-oversized-file-debt | 2026-07-27 14:08 | Eliminate oversized-file debt
 
 - [x] Add exactly eight file-length exceptions for one generated Cargo license

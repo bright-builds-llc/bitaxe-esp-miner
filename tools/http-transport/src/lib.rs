@@ -2,6 +2,7 @@
 
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
+use std::num::NonZeroU64;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -9,35 +10,18 @@ use anyhow::{bail, Result};
 use rustls::pki_types::ServerName;
 use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 
+mod observation;
+
+pub use observation::{
+    CompletedRequest, EstablishedTransport, ExchangeObservation, ExchangeState, HttpResponse,
+    RequestProgress, ResponseRead, ResponseReadOutcome, Scheme, TlsVerification, TransportOutcome,
+};
+
 pub const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 pub const DEFAULT_TOTAL_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_HEADER_BYTES: usize = 65_536;
 const MAX_BODY_BYTES: usize = 65_536;
 const READ_CHUNK_BYTES: usize = 8_192;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Scheme {
-    Http,
-    Https,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TransportOutcome {
-    Complete,
-    TcpConnectionFailure,
-    TlsHandshakeFailure,
-    RequestSendFailure,
-    ResponseTimeout,
-    ReceiveFailed,
-    ResponseOverLimit,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TlsVerification {
-    NotApplicable,
-    Failed,
-    Verified,
-}
 
 #[derive(Debug, Clone)]
 struct Origin {
@@ -49,25 +33,6 @@ struct Origin {
 
 pub struct StrictHttpClient {
     origin: Origin,
-}
-
-#[derive(Debug)]
-pub struct ExchangeObservation {
-    pub scheme: Scheme,
-    pub transport_outcome: TransportOutcome,
-    pub tcp_connect_millis: u64,
-    pub tls_handshake_millis: u64,
-    pub request_send_complete_millis: u64,
-    pub request_bytes_written: u64,
-    pub request_write_complete: bool,
-    pub response_received: bool,
-    pub response_status: u16,
-    pub response_header_count: u64,
-    pub headers: Vec<u8>,
-    pub body: Vec<u8>,
-    pub total_millis: u64,
-    pub first_byte_millis: u64,
-    pub tls_verification: TlsVerification,
 }
 
 enum Transport {
@@ -158,76 +123,64 @@ impl StrictHttpClient {
             bail!("strict HTTP request is invalid");
         }
         let started = Instant::now();
-        let mut observation = ExchangeObservation::empty(self.origin.scheme);
         let Some(socket) = connect(&self.origin, started, deadline, connect_timeout) else {
-            observation.transport_outcome = TransportOutcome::TcpConnectionFailure;
-            observation.total_millis = elapsed_millis(started);
-            return Ok(observation);
+            return Ok(ExchangeObservation::tcp_connection_failed(
+                self.origin.scheme,
+                elapsed_millis(started),
+            ));
         };
-        observation.tcp_connect_millis = elapsed_millis(started);
+        let tcp_connect_millis = nonzero_elapsed_millis(started);
         let remaining = remaining(deadline);
         if remaining.is_zero() {
-            observation.transport_outcome = TransportOutcome::RequestSendFailure;
-            observation.total_millis = elapsed_millis(started);
-            return Ok(observation);
+            return Ok(match self.origin.scheme {
+                Scheme::Http => ExchangeObservation::request_send_failed(
+                    EstablishedTransport::plain(tcp_connect_millis),
+                    0,
+                    elapsed_millis(started),
+                ),
+                Scheme::Https => ExchangeObservation::tls_handshake_failed(
+                    tcp_connect_millis,
+                    elapsed_millis(started),
+                ),
+            });
         }
         socket.set_read_timeout(Some(remaining))?;
         socket.set_write_timeout(Some(remaining))?;
 
-        let Some(mut transport) =
-            build_transport(&self.origin, socket, started, deadline, &mut observation)?
-        else {
-            observation.total_millis = elapsed_millis(started);
-            return Ok(observation);
-        };
+        let (mut transport, established) =
+            match build_transport(&self.origin, socket, started, deadline, tcp_connect_millis)? {
+                TransportBuildOutcome::Established {
+                    transport,
+                    established,
+                } => (transport, established),
+                TransportBuildOutcome::TlsHandshakeFailed => {
+                    return Ok(ExchangeObservation::tls_handshake_failed(
+                        tcp_connect_millis,
+                        elapsed_millis(started),
+                    ));
+                }
+            };
         let request = request_bytes(method, path, &self.origin.authority);
-        let send = send_request(&mut transport, &request);
-        observation.request_bytes_written = send.bytes_written;
-        observation.request_write_complete = send.complete;
-        if !send.complete {
-            observation.transport_outcome = TransportOutcome::RequestSendFailure;
-            observation.total_millis = elapsed_millis(started);
-            return Ok(observation);
-        }
-        observation.request_send_complete_millis = elapsed_millis(started).max(1);
-
+        let completed_request = match send_request(&mut transport, &request) {
+            RequestSendOutcome::Complete { bytes_written } => {
+                CompletedRequest::new(bytes_written, nonzero_elapsed_millis(started))
+            }
+            RequestSendOutcome::Incomplete { bytes_written } => {
+                return Ok(ExchangeObservation::request_send_failed(
+                    established,
+                    bytes_written,
+                    elapsed_millis(started),
+                ));
+            }
+        };
         let response = read_response(&mut transport, started, deadline);
-        observation.transport_outcome = response.outcome;
-        observation.first_byte_millis = response.first_byte_millis;
-        if let Some(parsed) = ParsedResponse::parse(&response.wire) {
-            observation.response_received = true;
-            observation.response_status = parsed.status;
-            observation.response_header_count = parsed.header_count;
-            observation.headers = parsed.headers;
-            observation.body = parsed.body;
-        }
-        observation.total_millis = elapsed_millis(started);
-        Ok(observation)
-    }
-}
-
-impl ExchangeObservation {
-    fn empty(scheme: Scheme) -> Self {
-        Self {
-            scheme,
-            transport_outcome: TransportOutcome::Complete,
-            tcp_connect_millis: 0,
-            tls_handshake_millis: 0,
-            request_send_complete_millis: 0,
-            request_bytes_written: 0,
-            request_write_complete: false,
-            response_received: false,
-            response_status: 0,
-            response_header_count: 0,
-            headers: Vec::new(),
-            body: Vec::new(),
-            total_millis: 0,
-            first_byte_millis: 0,
-            tls_verification: match scheme {
-                Scheme::Http => TlsVerification::NotApplicable,
-                Scheme::Https => TlsVerification::Failed,
-            },
-        }
+        let parsed = HttpResponse::parse(&response.wire);
+        Ok(ExchangeObservation::response_read(
+            established,
+            completed_request,
+            ResponseRead::new(response.outcome, response.maybe_first_byte_millis, parsed),
+            elapsed_millis(started),
+        ))
     }
 }
 
@@ -254,15 +207,26 @@ fn connect(
     None
 }
 
+enum TransportBuildOutcome {
+    Established {
+        transport: Transport,
+        established: EstablishedTransport,
+    },
+    TlsHandshakeFailed,
+}
+
 fn build_transport(
     origin: &Origin,
     mut socket: TcpStream,
     started: Instant,
     deadline: Instant,
-    observation: &mut ExchangeObservation,
-) -> Result<Option<Transport>> {
+    tcp_connect_millis: NonZeroU64,
+) -> Result<TransportBuildOutcome> {
     if origin.scheme == Scheme::Http {
-        return Ok(Some(Transport::Plain(socket)));
+        return Ok(TransportBuildOutcome::Established {
+            transport: Transport::Plain(socket),
+            established: EstablishedTransport::plain(tcp_connect_millis),
+        });
     }
     let roots = RootCertStore::from_iter(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
     let config = ClientConfig::builder()
@@ -270,38 +234,29 @@ fn build_transport(
         .with_no_client_auth();
     let server_name = match ServerName::try_from(origin.host.clone()) {
         Ok(server_name) => server_name,
-        Err(_) => {
-            observation.transport_outcome = TransportOutcome::TlsHandshakeFailure;
-            return Ok(None);
-        }
+        Err(_) => return Ok(TransportBuildOutcome::TlsHandshakeFailed),
     };
     let mut connection = match ClientConnection::new(Arc::new(config), server_name) {
         Ok(connection) => connection,
-        Err(_) => {
-            observation.transport_outcome = TransportOutcome::TlsHandshakeFailure;
-            return Ok(None);
-        }
+        Err(_) => return Ok(TransportBuildOutcome::TlsHandshakeFailed),
     };
     while connection.is_handshaking() {
         let budget = remaining(deadline);
         if budget.is_zero() {
-            observation.transport_outcome = TransportOutcome::TlsHandshakeFailure;
-            return Ok(None);
+            return Ok(TransportBuildOutcome::TlsHandshakeFailed);
         }
         socket.set_read_timeout(Some(budget))?;
         socket.set_write_timeout(Some(budget))?;
         if connection.complete_io(&mut socket).is_err() {
-            observation.transport_outcome = TransportOutcome::TlsHandshakeFailure;
-            return Ok(None);
+            return Ok(TransportBuildOutcome::TlsHandshakeFailed);
         }
     }
-    observation.tls_handshake_millis = elapsed_millis(started)
-        .saturating_sub(observation.tcp_connect_millis)
-        .max(1);
-    observation.tls_verification = TlsVerification::Verified;
-    Ok(Some(Transport::Tls(Box::new(StreamOwned::new(
-        connection, socket,
-    )))))
+    let tls_handshake_millis =
+        nonzero_u64(elapsed_millis(started).saturating_sub(tcp_connect_millis.get()));
+    Ok(TransportBuildOutcome::Established {
+        transport: Transport::Tls(Box::new(StreamOwned::new(connection, socket))),
+        established: EstablishedTransport::tls(tcp_connect_millis, tls_handshake_millis),
+    })
 }
 
 fn request_bytes(method: &str, path: &str, authority: &str) -> Vec<u8> {
@@ -312,33 +267,35 @@ fn request_bytes(method: &str, path: &str, authority: &str) -> Vec<u8> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct SendObservation {
-    bytes_written: u64,
-    complete: bool,
+enum RequestSendOutcome {
+    Complete { bytes_written: NonZeroU64 },
+    Incomplete { bytes_written: u64 },
 }
 
-fn send_request(writer: &mut impl Write, request: &[u8]) -> SendObservation {
+fn send_request(writer: &mut impl Write, request: &[u8]) -> RequestSendOutcome {
     let mut offset = 0;
     while offset < request.len() {
         match writer.write(&request[offset..]) {
             Ok(0) | Err(_) => {
-                return SendObservation {
+                return RequestSendOutcome::Incomplete {
                     bytes_written: u64::try_from(offset).unwrap_or(u64::MAX),
-                    complete: false,
                 };
             }
             Ok(written) => offset = offset.saturating_add(written),
         }
     }
-    SendObservation {
-        bytes_written: u64::try_from(offset).unwrap_or(u64::MAX),
-        complete: writer.flush().is_ok(),
+    let bytes_written = nonzero_u64(u64::try_from(offset).unwrap_or(u64::MAX));
+    if writer.flush().is_err() {
+        return RequestSendOutcome::Incomplete {
+            bytes_written: bytes_written.get(),
+        };
     }
+    RequestSendOutcome::Complete { bytes_written }
 }
 
 struct ResponseObservation {
-    outcome: TransportOutcome,
-    first_byte_millis: u64,
+    outcome: ResponseReadOutcome,
+    maybe_first_byte_millis: Option<NonZeroU64>,
     wire: Vec<u8>,
 }
 
@@ -348,28 +305,28 @@ fn read_response(
     deadline: Instant,
 ) -> ResponseObservation {
     let mut wire = Vec::new();
-    let mut first_byte_millis = 0;
-    let mut outcome = TransportOutcome::Complete;
+    let mut maybe_first_byte_millis = None;
+    let mut outcome = ResponseReadOutcome::Complete;
     loop {
         let budget = remaining(deadline);
         if budget.is_zero() {
-            outcome = TransportOutcome::ResponseTimeout;
+            outcome = ResponseReadOutcome::Timeout;
             break;
         }
         if stream.set_read_timeout(budget).is_err() {
-            outcome = TransportOutcome::ReceiveFailed;
+            outcome = ResponseReadOutcome::ReceiveFailed;
             break;
         }
         let mut buffer = [0_u8; READ_CHUNK_BYTES];
         match stream.read(&mut buffer) {
             Ok(0) => break,
             Ok(read_bytes) => {
-                if first_byte_millis == 0 {
-                    first_byte_millis = elapsed_millis(started).max(1);
+                if maybe_first_byte_millis.is_none() {
+                    maybe_first_byte_millis = Some(nonzero_elapsed_millis(started));
                 }
                 wire.extend_from_slice(&buffer[..read_bytes]);
                 if response_exceeds_limit(&wire) {
-                    outcome = TransportOutcome::ResponseOverLimit;
+                    outcome = ResponseReadOutcome::OverLimit;
                     clamp_response_to_limits(&mut wire);
                     break;
                 }
@@ -384,18 +341,18 @@ fn read_response(
                     io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
                 ) =>
             {
-                outcome = TransportOutcome::ResponseTimeout;
+                outcome = ResponseReadOutcome::Timeout;
                 break;
             }
             Err(_) => {
-                outcome = TransportOutcome::ReceiveFailed;
+                outcome = ResponseReadOutcome::ReceiveFailed;
                 break;
             }
         }
     }
     ResponseObservation {
         outcome,
-        first_byte_millis,
+        maybe_first_byte_millis,
         wire,
     }
 }
@@ -407,14 +364,7 @@ fn clamp_response_to_limits(response: &mut Vec<u8>) {
     response.truncate(maximum);
 }
 
-struct ParsedResponse {
-    status: u16,
-    header_count: u64,
-    headers: Vec<u8>,
-    body: Vec<u8>,
-}
-
-impl ParsedResponse {
+impl HttpResponse {
     fn parse(response: &[u8]) -> Option<Self> {
         let end = header_end(response)?;
         let header_text = std::str::from_utf8(&response[..end]).ok()?;
@@ -431,12 +381,7 @@ impl ParsedResponse {
             .filter(|line| !line.is_empty() && line.split_once(':').is_some())
             .count();
         if header_count == 0 {
-            return Some(Self {
-                status,
-                header_count: 0,
-                headers: Vec::new(),
-                body: Vec::new(),
-            });
+            return Self::new(status, 0, Vec::new(), Vec::new());
         }
         let raw_body = &response[end..];
         let body = if is_chunked(header_text) {
@@ -446,12 +391,12 @@ impl ParsedResponse {
         } else {
             raw_body.to_vec()
         };
-        Some(Self {
+        Self::new(
             status,
-            header_count: u64::try_from(header_count).ok()?,
-            headers: response[..end].to_vec(),
+            u64::try_from(header_count).ok()?,
+            response[..end].to_vec(),
             body,
-        })
+        )
     }
 }
 
@@ -535,6 +480,14 @@ fn elapsed_millis(started: Instant) -> u64 {
     u64::try_from(elapsed.as_millis())
         .unwrap_or(u64::MAX)
         .max(1)
+}
+
+fn nonzero_elapsed_millis(started: Instant) -> NonZeroU64 {
+    nonzero_u64(elapsed_millis(started))
+}
+
+fn nonzero_u64(value: u64) -> NonZeroU64 {
+    NonZeroU64::new(value).unwrap_or(NonZeroU64::MIN)
 }
 
 impl Origin {

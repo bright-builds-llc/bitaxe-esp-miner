@@ -4,6 +4,7 @@ rust_library(
     name = "http_transport",
     srcs = [
         "src/lib.rs",
+        "src/observation.rs",
         "src/tests.rs",
     ],
     crate_name = "bitaxe_http_transport",
