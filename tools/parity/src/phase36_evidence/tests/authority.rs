@@ -26,250 +26,31 @@ pub(crate) struct CompleteAuthorityFixture {
 
 impl CompleteAuthorityFixture {
     pub(crate) fn new(name: &str) -> Self {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock should follow epoch")
-            .as_nanos();
-        let parent = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
-            "phase36-authority-{name}-{}-{nonce}",
-            std::process::id()
-        )))
-        .expect("temporary path should be UTF-8");
-        let root = parent.join("protected");
-        private_directory(&parent);
-        private_directory(&root);
-        private_directory(&root.join("immutable"));
-        let phase35_directory = root.join("immutable/phase35");
-        let artifacts_directory = phase35_directory.join("artifacts");
-        private_directory(&phase35_directory);
-        private_directory(&artifacts_directory);
-        let generation_directory = root.join("immutable/generation");
-        private_directory(&generation_directory);
-        let phase36_directory = root.join("immutable/phase36");
-        private_directory(&phase36_directory);
-
-        let (api, websocket, retained) = substantive_documents();
-        let snapshot_artifact = serde_json::to_vec_pretty(&serde_json::json!({
-            "schema_version": "phase36-snapshot-substance-artifact-v1",
-            "api_document": api,
-            "websocket_document": websocket,
-            "retained_document": retained,
-        }))
-        .expect("snapshot artifact should serialize");
-        let health_artifact = serde_json::to_vec_pretty(&serde_json::json!({
-            "schema_version": "phase36-runtime-health-artifact-v1",
-            "api_document": api,
-            "websocket_document": websocket,
-            "retained_document": retained,
-        }))
-        .expect("health artifact should serialize");
-        let runtime_documents = runtime_identity::documents();
-        let runtime_artifact = serde_json::to_vec_pretty(&serde_json::json!({
-            "schema_version": "phase36-runtime-identity-artifact-v1",
-            "exact_package_document": runtime_documents.package,
-            "request_document": runtime_documents.request,
-            "event_ledger_document": runtime_documents.ledger,
-            "private_result_document": runtime_documents.private_result,
-            "public_projection_document": runtime_documents.public_projection,
-        }))
-        .expect("runtime artifact should serialize");
+        let layout = FixtureLayout::create(name);
+        let phase36 = Phase36FixtureArtifacts::write(&layout);
+        let phase35 = Phase35FixtureArtifacts::write(&layout);
+        let envelope = build_envelope(&phase35, &phase36);
         private_file(
-            &phase36_directory.join("snapshot-substance.json"),
-            &snapshot_artifact,
-        );
-        private_file(
-            &phase36_directory.join("runtime-health.json"),
-            &health_artifact,
-        );
-        private_file(
-            &phase36_directory.join("runtime-identity.json"),
-            &runtime_artifact,
-        );
-        private_file(
-            &phase36_directory.join("independent-effects.json"),
-            EFFECTS.as_bytes(),
-        );
-
-        let mut phase35 = Phase35Fixture::new();
-        phase35.input.exact_package.source_commit = "1".repeat(40);
-        phase35.input.exact_package.capability_digest =
-            exact_package_capability_digest(&phase35.input.exact_package);
-        for epoch in [&mut phase35.input.boot_a, &mut phase35.input.boot_b] {
-            epoch.package_capability_digest = phase35.input.exact_package.capability_digest.clone();
-        }
-        phase35.reseal();
-        let validated = phase35
-            .validate()
-            .expect("complete Phase 35 root validates");
-        let phase35_root_digest = validated.root_digest().to_owned();
-        let phase35_root_bytes =
-            serde_json::to_vec_pretty(&phase35.input).expect("Phase 35 root should serialize");
-        let phase35_root_path = phase35_directory.join("eligible.json");
-        private_file(&phase35_root_path, &phase35_root_bytes);
-        for entry in &phase35.input.inventory {
-            let artifact = phase35
-                .artifacts
-                .get(&entry.path)
-                .expect("every inventory artifact exists");
-            private_file(&phase35_directory.join(&entry.path), artifact.bytes());
-        }
-
-        let projection = serde_json::to_vec_pretty(
-            &validated
-                .shareable_projection()
-                .expect("Phase 35 projection should validate"),
-        )
-        .expect("projection should serialize");
-        let matrix = serde_json::to_vec_pretty(&serde_json::json!({
-            "evidence_root_digest": phase35_root_digest,
-            "scope_decisions": [[
-                "passive_hostname_durability",
-                {
-                    "decision": "promote",
-                    "row_id": "V12-HOSTNAME-205",
-                    "evidence_root_digest": phase35_root_digest
-                }
-            ]]
-        }))
-        .expect("matrix should serialize");
-        let verdict = serde_json::to_vec_pretty(&serde_json::json!({
-            "admitted": true,
-            "evidence_root_digest": phase35_root_digest
-        }))
-        .expect("verdict should serialize");
-        let checklist = b"# Synthetic Phase 35 checklist\n".to_vec();
-        let manifest = serde_json::to_vec_pretty(&serde_json::json!({
-            "schema": "phase35-generation-v1",
-            "root_digest": phase35_root_digest,
-            "checklist_sha256": sha256_hex(&checklist),
-            "matrix_sha256": sha256_hex(&matrix),
-            "projection_sha256": sha256_hex(&projection),
-        }))
-        .expect("manifest should serialize");
-        for (name, bytes) in [
-            ("projection.json", projection.as_slice()),
-            ("decision-matrix.json", matrix.as_slice()),
-            ("admitted.json", verdict.as_slice()),
-            ("checklist.md", checklist.as_slice()),
-            (".phase35-generation-manifest.json", manifest.as_slice()),
-        ] {
-            private_file(&generation_directory.join(name), bytes);
-        }
-        let generation_digest = sha256_hex(&manifest);
-
-        let components = validate_substantive_snapshot_components(&api, &websocket, &retained)
-            .expect("substantive documents should validate");
-        let sensors = components
-            .maybe_sensors
-            .expect("synthetic snapshot contains sensors");
-        let health = components
-            .maybe_runtime_health
-            .expect("synthetic snapshot contains runtime health");
-        let runtime_admission = validate_observed_runtime_identity_documents(
-            &runtime_documents.package,
-            Some(&runtime_documents.request),
-            Some(&runtime_documents.ledger),
-            Some(&runtime_documents.private_result),
-            Some(&runtime_documents.public_projection),
-        )
-        .expect("runtime identity should validate");
-        let ObservedRuntimeIdentityAdmission::Validated { identity } = runtime_admission else {
-            panic!("runtime identity should be complete");
-        };
-        let effect_admission = classify_independent_effect_document(Some(EFFECTS), None)
-            .expect("effect interval should validate");
-        let IndependentEffectAdmission::Validated { interval } = effect_admission else {
-            panic!("effect interval should be complete");
-        };
-
-        let mut facts = shareable_facts();
-        facts.provenance_join.boot_session_digest =
-            components.join.operator_boot_session_digest.clone();
-        facts.claim_digests = Phase36ClaimDigests {
-            snapshot_substance: sensors.claim_fact_digest,
-            runtime_health: health.claim_fact_digest,
-            runtime_identity: identity.claim_fact_digest,
-            independent_no_actuation: interval.claim_fact_digest,
-        };
-        let source_commit = phase35.input.exact_package.source_commit.clone();
-        let role_reference = |role: Phase36ArtifactRole, name: &str, bytes: &[u8]| {
-            contract::ImmutableArtifactReference {
-                role,
-                relative_path: format!("immutable/phase36/{name}"),
-                sha256: sha256_hex(bytes),
-                evidence_source_commit: source_commit.clone(),
-            }
-        };
-        let envelope = Phase36EvidenceEnvelope {
-            schema_version: PHASE36_SCHEMA.to_owned(),
-            phase35_root_reference: contract::Phase35RootReference {
-                root_digest: phase35_root_digest.clone(),
-                evidence_source_commit: source_commit.clone(),
-                phase35_generation_digest: generation_digest.clone(),
-            },
-            evaluation_identity: contract::Phase36EvaluationIdentity {
-                evaluator_digest: current_phase36_evidence_evaluator_digest(),
-                successor_contract_digest: current_phase36_evidence_contract_digest(),
-            },
-            immutable_artifacts: vec![
-                contract::ImmutableArtifactReference {
-                    role: Phase36ArtifactRole::Phase35Root,
-                    relative_path: "immutable/phase35/eligible.json".to_owned(),
-                    sha256: sha256_hex(&phase35_root_bytes),
-                    evidence_source_commit: source_commit.clone(),
-                },
-                contract::ImmutableArtifactReference {
-                    role: Phase36ArtifactRole::Phase35Generation,
-                    relative_path: "immutable/generation/.phase35-generation-manifest.json"
-                        .to_owned(),
-                    sha256: generation_digest.clone(),
-                    evidence_source_commit: source_commit.clone(),
-                },
-                role_reference(
-                    Phase36ArtifactRole::SnapshotSubstance,
-                    "snapshot-substance.json",
-                    &snapshot_artifact,
-                ),
-                role_reference(
-                    Phase36ArtifactRole::RuntimeHealth,
-                    "runtime-health.json",
-                    &health_artifact,
-                ),
-                role_reference(
-                    Phase36ArtifactRole::RuntimeIdentityObservation,
-                    "runtime-identity.json",
-                    &runtime_artifact,
-                ),
-                role_reference(
-                    Phase36ArtifactRole::IndependentEffectObservation,
-                    "independent-effects.json",
-                    EFFECTS.as_bytes(),
-                ),
-            ],
-            attempt31_sufficiency: sufficient_results(),
-            shareable_facts: facts,
-        };
-        private_file(
-            &root.join(PHASE36_INPUT_DOCUMENT),
+            &layout.root.join(PHASE36_INPUT_DOCUMENT),
             &serde_json::to_vec_pretty(&envelope).expect("envelope should serialize"),
         );
         let authority = Phase36Authority::synthetic(
-            phase35_root_digest,
-            generation_digest,
+            phase35.root_digest,
+            phase35.generation_digest,
             [
-                sha256_hex(&snapshot_artifact),
-                sha256_hex(&health_artifact),
-                sha256_hex(&runtime_artifact),
+                sha256_hex(&phase36.snapshot),
+                sha256_hex(&phase36.health),
+                sha256_hex(&phase36.runtime),
                 sha256_hex(EFFECTS.as_bytes()),
             ],
         );
         Self {
-            parent,
-            root,
+            parent: layout.parent,
+            root: layout.root,
             authority,
             envelope,
-            phase35_root_path,
-            phase35_root_bytes,
+            phase35_root_path: phase35.root_path,
+            phase35_root_bytes: phase35.root_bytes,
         }
     }
 
@@ -293,6 +74,300 @@ impl CompleteAuthorityFixture {
 impl Drop for CompleteAuthorityFixture {
     fn drop(&mut self) {
         fs::remove_dir_all(&self.parent).expect("fixture should be removed");
+    }
+}
+
+struct FixtureLayout {
+    parent: Utf8PathBuf,
+    root: Utf8PathBuf,
+    phase35: Utf8PathBuf,
+    generation: Utf8PathBuf,
+    phase36: Utf8PathBuf,
+}
+
+impl FixtureLayout {
+    fn create(name: &str) -> Self {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should follow epoch")
+            .as_nanos();
+        let parent = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "phase36-authority-{name}-{}-{nonce}",
+            std::process::id()
+        )))
+        .expect("temporary path should be UTF-8");
+        let root = parent.join("protected");
+        let phase35 = root.join("immutable/phase35");
+        let generation = root.join("immutable/generation");
+        let phase36 = root.join("immutable/phase36");
+        for directory in [
+            &parent,
+            &root,
+            &root.join("immutable"),
+            &phase35,
+            &phase35.join("artifacts"),
+            &generation,
+            &phase36,
+        ] {
+            private_directory(directory);
+        }
+        Self {
+            parent,
+            root,
+            phase35,
+            generation,
+            phase36,
+        }
+    }
+}
+
+struct Phase36FixtureArtifacts {
+    api: String,
+    websocket: String,
+    retained: String,
+    runtime_documents: runtime_identity::Documents,
+    snapshot: Vec<u8>,
+    health: Vec<u8>,
+    runtime: Vec<u8>,
+}
+
+impl Phase36FixtureArtifacts {
+    fn write(layout: &FixtureLayout) -> Self {
+        let (api, websocket, retained) = substantive_documents();
+        let snapshot = serde_json::to_vec_pretty(&serde_json::json!({
+            "schema_version": "phase36-snapshot-substance-artifact-v1",
+            "api_document": api,
+            "websocket_document": websocket,
+            "retained_document": retained,
+        }))
+        .expect("snapshot artifact should serialize");
+        let health = serde_json::to_vec_pretty(&serde_json::json!({
+            "schema_version": "phase36-runtime-health-artifact-v1",
+            "api_document": api,
+            "websocket_document": websocket,
+            "retained_document": retained,
+        }))
+        .expect("health artifact should serialize");
+        let runtime_documents = runtime_identity::documents();
+        let runtime = serde_json::to_vec_pretty(&serde_json::json!({
+            "schema_version": "phase36-runtime-identity-artifact-v1",
+            "exact_package_document": runtime_documents.package,
+            "request_document": runtime_documents.request,
+            "event_ledger_document": runtime_documents.ledger,
+            "private_result_document": runtime_documents.private_result,
+            "public_projection_document": runtime_documents.public_projection,
+        }))
+        .expect("runtime artifact should serialize");
+        for (name, bytes) in [
+            ("snapshot-substance.json", snapshot.as_slice()),
+            ("runtime-health.json", health.as_slice()),
+            ("runtime-identity.json", runtime.as_slice()),
+            ("independent-effects.json", EFFECTS.as_bytes()),
+        ] {
+            private_file(&layout.phase36.join(name), bytes);
+        }
+        Self {
+            api,
+            websocket,
+            retained,
+            runtime_documents,
+            snapshot,
+            health,
+            runtime,
+        }
+    }
+}
+
+struct Phase35FixtureArtifacts {
+    root_path: Utf8PathBuf,
+    root_bytes: Vec<u8>,
+    root_digest: String,
+    generation_digest: String,
+    source_commit: String,
+}
+
+impl Phase35FixtureArtifacts {
+    fn write(layout: &FixtureLayout) -> Self {
+        let mut fixture = Phase35Fixture::new();
+        fixture.input.exact_package.source_commit = "1".repeat(40);
+        fixture.input.exact_package.capability_digest =
+            exact_package_capability_digest(&fixture.input.exact_package);
+        for epoch in [&mut fixture.input.boot_a, &mut fixture.input.boot_b] {
+            epoch.package_capability_digest = fixture.input.exact_package.capability_digest.clone();
+        }
+        fixture.reseal();
+        let validated = fixture
+            .validate()
+            .expect("complete Phase 35 root validates");
+        let root_digest = validated.root_digest().to_owned();
+        let root_bytes =
+            serde_json::to_vec_pretty(&fixture.input).expect("Phase 35 root should serialize");
+        let root_path = layout.phase35.join("eligible.json");
+        private_file(&root_path, &root_bytes);
+        for entry in &fixture.input.inventory {
+            let artifact = fixture
+                .artifacts
+                .get(&entry.path)
+                .expect("every inventory artifact exists");
+            private_file(&layout.phase35.join(&entry.path), artifact.bytes());
+        }
+        let generation_digest = write_phase35_generation(layout, &validated, &root_digest);
+        Self {
+            root_path,
+            root_bytes,
+            root_digest,
+            generation_digest,
+            source_commit: fixture.input.exact_package.source_commit.clone(),
+        }
+    }
+}
+
+fn write_phase35_generation(
+    layout: &FixtureLayout,
+    validated: &crate::phase35_evidence::ValidatedPhase35Evidence,
+    root_digest: &str,
+) -> String {
+    let projection = serde_json::to_vec_pretty(
+        &validated
+            .shareable_projection()
+            .expect("Phase 35 projection should validate"),
+    )
+    .expect("projection should serialize");
+    let matrix = serde_json::to_vec_pretty(&serde_json::json!({
+        "evidence_root_digest": root_digest,
+        "scope_decisions": [[
+            "passive_hostname_durability",
+            {
+                "decision": "promote",
+                "row_id": "V12-HOSTNAME-205",
+                "evidence_root_digest": root_digest
+            }
+        ]]
+    }))
+    .expect("matrix should serialize");
+    let verdict = serde_json::to_vec_pretty(&serde_json::json!({
+        "admitted": true,
+        "evidence_root_digest": root_digest
+    }))
+    .expect("verdict should serialize");
+    let checklist = b"# Synthetic Phase 35 checklist\n".to_vec();
+    let manifest = serde_json::to_vec_pretty(&serde_json::json!({
+        "schema": "phase35-generation-v1",
+        "root_digest": root_digest,
+        "checklist_sha256": sha256_hex(&checklist),
+        "matrix_sha256": sha256_hex(&matrix),
+        "projection_sha256": sha256_hex(&projection),
+    }))
+    .expect("manifest should serialize");
+    for (name, bytes) in [
+        ("projection.json", projection.as_slice()),
+        ("decision-matrix.json", matrix.as_slice()),
+        ("admitted.json", verdict.as_slice()),
+        ("checklist.md", checklist.as_slice()),
+        (".phase35-generation-manifest.json", manifest.as_slice()),
+    ] {
+        private_file(&layout.generation.join(name), bytes);
+    }
+    sha256_hex(&manifest)
+}
+
+fn build_envelope(
+    phase35: &Phase35FixtureArtifacts,
+    phase36: &Phase36FixtureArtifacts,
+) -> Phase36EvidenceEnvelope {
+    let components = validate_substantive_snapshot_components(
+        &phase36.api,
+        &phase36.websocket,
+        &phase36.retained,
+    )
+    .expect("substantive documents should validate");
+    let sensors = components
+        .maybe_sensors
+        .expect("synthetic snapshot contains sensors");
+    let health = components
+        .maybe_runtime_health
+        .expect("synthetic snapshot contains runtime health");
+    let documents = &phase36.runtime_documents;
+    let runtime_admission = validate_observed_runtime_identity_documents(
+        &documents.package,
+        Some(&documents.request),
+        Some(&documents.ledger),
+        Some(&documents.private_result),
+        Some(&documents.public_projection),
+    )
+    .expect("runtime identity should validate");
+    let ObservedRuntimeIdentityAdmission::Validated { identity } = runtime_admission else {
+        panic!("runtime identity should be complete");
+    };
+    let effect_admission = classify_independent_effect_document(Some(EFFECTS), None)
+        .expect("effect interval should validate");
+    let IndependentEffectAdmission::Validated { interval } = effect_admission else {
+        panic!("effect interval should be complete");
+    };
+    let mut facts = shareable_facts();
+    facts.provenance_join.boot_session_digest =
+        components.join.operator_boot_session_digest.clone();
+    facts.claim_digests = Phase36ClaimDigests {
+        snapshot_substance: sensors.claim_fact_digest,
+        runtime_health: health.claim_fact_digest,
+        runtime_identity: identity.claim_fact_digest,
+        independent_no_actuation: interval.claim_fact_digest,
+    };
+    let role_reference = |role: Phase36ArtifactRole, name: &str, bytes: &[u8]| {
+        contract::ImmutableArtifactReference {
+            role,
+            relative_path: format!("immutable/phase36/{name}"),
+            sha256: sha256_hex(bytes),
+            evidence_source_commit: phase35.source_commit.clone(),
+        }
+    };
+    Phase36EvidenceEnvelope {
+        schema_version: PHASE36_SCHEMA.to_owned(),
+        phase35_root_reference: contract::Phase35RootReference {
+            root_digest: phase35.root_digest.clone(),
+            evidence_source_commit: phase35.source_commit.clone(),
+            phase35_generation_digest: phase35.generation_digest.clone(),
+        },
+        evaluation_identity: contract::Phase36EvaluationIdentity {
+            evaluator_digest: current_phase36_evidence_evaluator_digest(),
+            successor_contract_digest: current_phase36_evidence_contract_digest(),
+        },
+        immutable_artifacts: vec![
+            contract::ImmutableArtifactReference {
+                role: Phase36ArtifactRole::Phase35Root,
+                relative_path: "immutable/phase35/eligible.json".to_owned(),
+                sha256: sha256_hex(&phase35.root_bytes),
+                evidence_source_commit: phase35.source_commit.clone(),
+            },
+            contract::ImmutableArtifactReference {
+                role: Phase36ArtifactRole::Phase35Generation,
+                relative_path: "immutable/generation/.phase35-generation-manifest.json".to_owned(),
+                sha256: phase35.generation_digest.clone(),
+                evidence_source_commit: phase35.source_commit.clone(),
+            },
+            role_reference(
+                Phase36ArtifactRole::SnapshotSubstance,
+                "snapshot-substance.json",
+                &phase36.snapshot,
+            ),
+            role_reference(
+                Phase36ArtifactRole::RuntimeHealth,
+                "runtime-health.json",
+                &phase36.health,
+            ),
+            role_reference(
+                Phase36ArtifactRole::RuntimeIdentityObservation,
+                "runtime-identity.json",
+                &phase36.runtime,
+            ),
+            role_reference(
+                Phase36ArtifactRole::IndependentEffectObservation,
+                "independent-effects.json",
+                EFFECTS.as_bytes(),
+            ),
+        ],
+        attempt31_sufficiency: sufficient_results(),
+        shareable_facts: facts,
     }
 }
 

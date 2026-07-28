@@ -282,8 +282,14 @@ fn built_cli_applies_fixture_through_private_and_public_evidence_boundaries() {
     );
 }
 
-#[test]
-fn built_cli_preserves_typed_reboot_boundaries_without_private_terminal_leakage() {
+struct RebootBoundaryCase {
+    name: &'static str,
+    events: Vec<SessionEvent>,
+    expected_category: &'static str,
+    maybe_serial_delivery: Option<&'static str>,
+}
+
+fn reboot_boundary_cases() -> Vec<RebootBoundaryCase> {
     let mut stable_silent = request_complete_events();
     stable_silent.extend(stable_events(
         DevicePhase::Recovery,
@@ -371,90 +377,123 @@ fn built_cli_preserves_typed_reboot_boundaries_without_private_terminal_leakage(
         SessionEvent::CleanupComplete,
     ]);
 
-    let cases = [
-        ("stable-silent", stable_silent, "ready", Some("silent")),
-        (
-            "reader-reacquired",
-            reader_reacquired,
-            "ready",
-            Some("reacquired"),
-        ),
-        (
-            "partial-request",
-            partial_request,
-            "restart_attribution_ambiguous",
-            None,
-        ),
-        ("identity-drift", identity_drift, "usb_identity_drift", None),
-        (
-            "holder-conflict",
-            holder_conflict,
-            "observer_unqualified",
-            None,
-        ),
-        (
-            "service-timeout",
-            service_timeout,
-            "service_recovery_timeout",
-            None,
-        ),
-    ];
+    vec![
+        RebootBoundaryCase {
+            name: "stable-silent",
+            events: stable_silent,
+            expected_category: "ready",
+            maybe_serial_delivery: Some("silent"),
+        },
+        RebootBoundaryCase {
+            name: "reader-reacquired",
+            events: reader_reacquired,
+            expected_category: "ready",
+            maybe_serial_delivery: Some("reacquired"),
+        },
+        RebootBoundaryCase {
+            name: "partial-request",
+            events: partial_request,
+            expected_category: "restart_attribution_ambiguous",
+            maybe_serial_delivery: None,
+        },
+        RebootBoundaryCase {
+            name: "identity-drift",
+            events: identity_drift,
+            expected_category: "usb_identity_drift",
+            maybe_serial_delivery: None,
+        },
+        RebootBoundaryCase {
+            name: "holder-conflict",
+            events: holder_conflict,
+            expected_category: "observer_unqualified",
+            maybe_serial_delivery: None,
+        },
+        RebootBoundaryCase {
+            name: "service-timeout",
+            events: service_timeout,
+            expected_category: "service_recovery_timeout",
+            maybe_serial_delivery: None,
+        },
+    ]
+}
 
-    for (name, events, expected_category, maybe_serial_delivery) in cases {
-        // Arrange
-        let temporary = tempfile::tempdir().expect("temporary directory must be available");
-        let temporary =
-            Utf8Path::from_path(temporary.path()).expect("temporary path must be UTF-8");
-        let request_path = temporary.join(format!("{name}-request.json"));
-        let fixture_path = temporary.join(format!("{name}-fixture.json"));
-        let private_root = temporary.join(format!("{name}-private"));
-        let projection_path = temporary.join(format!("{name}-projection.json"));
-        write_private_json(&request_path, &request());
-        write_private_json(
-            &fixture_path,
-            &FixtureTranscript {
-                schema_version: FIXTURE_SCHEMA.to_owned(),
-                events,
-            },
+fn assert_reboot_boundary_case(case: RebootBoundaryCase) {
+    // Arrange
+    let temporary = tempfile::tempdir().expect("temporary directory must be available");
+    let temporary = Utf8Path::from_path(temporary.path()).expect("temporary path must be UTF-8");
+    let request_path = temporary.join(format!("{}-request.json", case.name));
+    let fixture_path = temporary.join(format!("{}-fixture.json", case.name));
+    let private_root = temporary.join(format!("{}-private", case.name));
+    let projection_path = temporary.join(format!("{}-projection.json", case.name));
+    write_private_json(&request_path, &request());
+    write_private_json(
+        &fixture_path,
+        &FixtureTranscript {
+            schema_version: FIXTURE_SCHEMA.to_owned(),
+            events: case.events,
+        },
+    );
+    fs::create_dir(private_root.as_std_path()).expect("private root must be created");
+    #[cfg(unix)]
+    fs::set_permissions(
+        private_root.as_std_path(),
+        fs::Permissions::from_mode(0o700),
+    )
+    .expect("private root mode must be set");
+
+    // Act
+    let output = Command::new(env!("CARGO_BIN_EXE_device-session"))
+        .args([
+            "reboot",
+            "--private-root",
+            private_root.as_str(),
+            "--request-input",
+            request_path.as_str(),
+            "--projection-output",
+            projection_path.as_str(),
+            "--fixture-input",
+            fixture_path.as_str(),
+        ])
+        .output()
+        .expect("device-session CLI must launch");
+
+    // Assert
+    assert_eq!(
+        output.status.success(),
+        case.expected_category == "ready",
+        "case={}",
+        case.name
+    );
+    assert!(output.stdout.is_empty(), "case={}", case.name);
+    let stderr = String::from_utf8(output.stderr).expect("stderr must remain UTF-8");
+    assert!(!stderr.contains("private-"), "case={}", case.name);
+    assert!(!stderr.contains("http://"), "case={}", case.name);
+    let projection_text =
+        fs::read_to_string(projection_path.as_std_path()).expect("projection must be readable");
+    assert!(!projection_text.contains("private-"), "case={}", case.name);
+    let projection: serde_json::Value =
+        serde_json::from_str(&projection_text).expect("projection must be JSON");
+    assert_eq!(
+        projection["terminal_category"], case.expected_category,
+        "case={}",
+        case.name
+    );
+    if let Some(serial_delivery) = case.maybe_serial_delivery {
+        assert_eq!(
+            projection["serial_delivery"], serial_delivery,
+            "case={}",
+            case.name
         );
-        fs::create_dir(private_root.as_std_path()).expect("private root must be created");
-        #[cfg(unix)]
-        fs::set_permissions(
-            private_root.as_std_path(),
-            fs::Permissions::from_mode(0o700),
-        )
-        .expect("private root mode must be set");
+    }
+}
 
-        // Act
-        let output = Command::new(env!("CARGO_BIN_EXE_device-session"))
-            .args([
-                "reboot",
-                "--private-root",
-                private_root.as_str(),
-                "--request-input",
-                request_path.as_str(),
-                "--projection-output",
-                projection_path.as_str(),
-                "--fixture-input",
-                fixture_path.as_str(),
-            ])
-            .output()
-            .expect("device-session CLI must launch");
+#[test]
+fn built_cli_preserves_typed_reboot_boundaries_without_private_terminal_leakage() {
+    // Arrange
+    let cases = reboot_boundary_cases();
 
-        // Assert
-        assert_eq!(output.status.success(), expected_category == "ready");
-        assert!(output.stdout.is_empty());
-        let stderr = String::from_utf8(output.stderr).expect("stderr must remain UTF-8");
-        assert!(!stderr.contains("private-"));
-        assert!(!stderr.contains("http://"));
-        let projection_text =
-            fs::read_to_string(projection_path.as_std_path()).expect("projection must be readable");
-        assert!(!projection_text.contains("private-"));
-        let projection: serde_json::Value =
-            serde_json::from_str(&projection_text).expect("projection must be JSON");
-        assert_eq!(projection["terminal_category"], expected_category);
-        if let Some(serial_delivery) = maybe_serial_delivery {
-            assert_eq!(projection["serial_delivery"], serial_delivery);
-        }
+    // Act / Assert
+    for case in cases {
+        assert_reboot_boundary_case(case);
     }
 }

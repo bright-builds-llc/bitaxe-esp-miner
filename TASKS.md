@@ -1235,3 +1235,41 @@ all pass. The new five-row checklist authority is chained to the prior
 Residual risks: Smaller pre-existing outliers outside the four-module scope
 remain candidates for later bounded refactors. No hardware was exercised, and
 no hardware or parity classification was promoted.
+
+### task-close-bright-builds-audit-item-1 | 2026-07-27 20:58 | Refactor oversized active functions
+
+- [x] Refactor all five active Rust functions above the roughly 161-line
+      code-shape trigger without changing public interfaces or behavior.
+- [x] Preserve device-session event ordering, request-once semantics, terminal
+      classification, timing, cleanup, artifacts, and redaction.
+- [x] Preserve firmware startup ordering, build identity, readiness, and Phase
+      34 source authority while extracting private startup orchestration.
+- [x] Preserve Phase 36 authenticated fixture bytes, digests, roles,
+      permissions, validation order, and cleanup.
+- [x] Preserve the CLI reboot-boundary matrix and operator snapshot chronology
+      regression, including the existing source-guard markers.
+- [x] Run focused suites, the required Rust sequence, firmware build,
+      repository tests, parity, reference integrity, redaction, function/file
+      length checks, and final diff review.
+
+Verification policy:
+
+- This is structure-only software work. Do not detect, flash, monitor, discover,
+  read credentials, exercise hardware, modify historical evidence, or promote
+  parity.
+- Keep each affected function at or below 161 lines and each touched or new
+  source file below 628 lines.
+
+Completion review: The five audited functions are now 26, 3, 28, 9, and 10
+lines. A lexical repository scan covered 366 active Rust files and 4,392
+functions with zero functions above 161 lines; every touched or new source file
+is below 628 lines. Device-session's 50 focused tests, parity's 381 focused
+tests, the ESP32-S3 firmware build, the required Cargo format/Clippy/build/test
+sequence, all 72 Bazel test targets, Bright Builds checks, parity validation,
+reference integrity, redaction, and final diff checks pass.
+
+Residual risks: This structure-only change intentionally did not exercise
+hardware. Firmware startup behavior is supported by compilation, source guards,
+and repository tests rather than new hardware evidence. The eight existing
+documented file-length exceptions remain unchanged; this task added none and
+did not modify historical evidence or parity status.

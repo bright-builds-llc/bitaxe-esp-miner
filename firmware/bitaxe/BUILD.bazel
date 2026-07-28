@@ -75,6 +75,7 @@ filegroup(
         "src/runtime_health_adapter.rs",
         "src/runtime_snapshot.rs",
         "src/safety_adapter/watchdog.rs",
+        "src/startup.rs",
         "src/websocket_api.rs",
     ],
     visibility = ["//tools/parity:__pkg__"],

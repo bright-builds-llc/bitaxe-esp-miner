@@ -277,109 +277,166 @@ fn issue_live_websocket_frame(
 #[test]
 fn operator_snapshot_publication_reverse_completion_preserves_direct_chronology() {
     // Arrange
-    let publisher = Arc::new(OperatorSnapshotPublisher::new());
-    let retained = Arc::new(Mutex::new(Vec::<(String, String)>::new()));
-    let issued = Arc::new(Mutex::new(Vec::<IssuedPayload>::new()));
-    let completed = Arc::new(Mutex::new(Vec::<NamedCandidate>::new()));
-    let (capture1_entered_tx, capture1_entered_rx) = mpsc::channel();
-    let (release_capture1_tx, release_capture1_rx) = mpsc::channel();
-    let session = SESSION
-        .parse::<BootSessionId>()
-        .expect("test boot session must be valid");
-    let capture1_publisher = Arc::clone(&publisher);
-    let capture1_retained = Arc::clone(&retained);
-    let capture1_issued = Arc::clone(&issued);
-    let capture1_completed = Arc::clone(&completed);
+    let harness = PublicationRaceHarness::new();
 
     // Act
-    let capture1 = thread::spawn(move || {
-        capture1_publisher.publish(
-            session,
-            || {
-                capture1_entered_tx
-                    .send(())
-                    .expect("capture 1 collection entry must be observable");
-                release_capture1_rx
-                    .recv()
-                    .expect("capture 1 release must arrive");
-                NamedCandidate::HttpSystemInfoCapture1
-            },
-            |candidate, identity| {
-                capture1_completed
-                    .lock()
-                    .expect("completion history must be available")
-                    .push(candidate);
-                complete_evidence_publication(candidate, identity)
-            },
-            |publication| {
-                capture1_retained
-                    .lock()
-                    .expect("retained history must be available")
-                    .push((
-                        publication.retained_marker.clone(),
-                        publication.retained_runtime_health.clone(),
-                    ));
-                Ok::<(), &'static str>(())
-            },
-            |publication| issue_http_response(&capture1_issued, publication),
-        )
-    });
-    capture1_entered_rx
-        .recv()
-        .expect("capture 1 must enter collection");
-
-    let capture2_publisher = Arc::clone(&publisher);
-    let capture2_retained = Arc::clone(&retained);
-    let capture2_issued = Arc::clone(&issued);
-    let capture2_completed = Arc::clone(&completed);
-    let capture2 = thread::spawn(move || {
-        capture2_publisher.publish(
-            session,
-            || NamedCandidate::LiveWebSocketCapture2,
-            |candidate, identity| {
-                capture2_completed
-                    .lock()
-                    .expect("completion history must be available")
-                    .push(candidate);
-                complete_evidence_publication(candidate, identity)
-            },
-            |publication| {
-                capture2_retained
-                    .lock()
-                    .expect("retained history must be available")
-                    .push((
-                        publication.retained_marker.clone(),
-                        publication.retained_runtime_health.clone(),
-                    ));
-                Ok::<(), &'static str>(())
-            },
-            |publication| issue_live_websocket_frame(&capture2_issued, publication),
-        )
-    });
-    capture2
-        .join()
-        .expect("capture 2 thread must not panic")
-        .expect("capture 2 publication must succeed");
-    release_capture1_tx
-        .send(())
-        .expect("capture 1 collection must be releasable");
-    capture1
-        .join()
-        .expect("capture 1 thread must not panic")
-        .expect("capture 1 publication must succeed");
+    let outcome = harness.run_reverse_completion();
 
     // Assert
-    assert_eq!(
-        *completed
+    assert_reverse_completion_chronology(&outcome);
+}
+
+struct PublicationRaceHarness {
+    publisher: Arc<OperatorSnapshotPublisher>,
+    retained: Arc<Mutex<Vec<(String, String)>>>,
+    issued: Arc<Mutex<Vec<IssuedPayload>>>,
+    completed: Arc<Mutex<Vec<NamedCandidate>>>,
+    session: BootSessionId,
+}
+
+impl PublicationRaceHarness {
+    fn new() -> Self {
+        Self {
+            publisher: Arc::new(OperatorSnapshotPublisher::new()),
+            retained: Arc::new(Mutex::new(Vec::new())),
+            issued: Arc::new(Mutex::new(Vec::new())),
+            completed: Arc::new(Mutex::new(Vec::new())),
+            session: SESSION
+                .parse::<BootSessionId>()
+                .expect("test boot session must be valid"),
+        }
+    }
+
+    fn run_reverse_completion(self) -> PublicationRaceOutcome {
+        let (capture1_entered_tx, capture1_entered_rx) = mpsc::channel();
+        let (release_capture1_tx, release_capture1_rx) = mpsc::channel();
+        let capture1 = self.spawn_capture1(capture1_entered_tx, release_capture1_rx);
+        capture1_entered_rx
+            .recv()
+            .expect("capture 1 must enter collection");
+        let capture2 = self.spawn_capture2();
+        capture2.join().expect("capture 2 thread must not panic");
+        release_capture1_tx
+            .send(())
+            .expect("capture 1 collection must be releasable");
+        capture1.join().expect("capture 1 thread must not panic");
+        let completed = self
+            .completed
             .lock()
-            .expect("completion history must be available"),
+            .expect("completion history must be available")
+            .clone();
+        let retained = self
+            .retained
+            .lock()
+            .expect("retained history must be available")
+            .clone();
+        let issued = self
+            .issued
+            .lock()
+            .expect("issued history must be available")
+            .clone();
+        PublicationRaceOutcome {
+            completed,
+            retained,
+            issued,
+        }
+    }
+
+    fn spawn_capture1(
+        &self,
+        entered: mpsc::Sender<()>,
+        release: mpsc::Receiver<()>,
+    ) -> thread::JoinHandle<()> {
+        let publisher = Arc::clone(&self.publisher);
+        let retained = Arc::clone(&self.retained);
+        let issued = Arc::clone(&self.issued);
+        let completed = Arc::clone(&self.completed);
+        let session = self.session;
+        thread::spawn(move || {
+            publisher
+                .publish(
+                    session,
+                    || {
+                        entered
+                            .send(())
+                            .expect("capture 1 collection entry must be observable");
+                        release.recv().expect("capture 1 release must arrive");
+                        NamedCandidate::HttpSystemInfoCapture1
+                    },
+                    |candidate, identity| {
+                        completed
+                            .lock()
+                            .expect("completion history must be available")
+                            .push(candidate);
+                        complete_evidence_publication(candidate, identity)
+                    },
+                    |publication| {
+                        retained
+                            .lock()
+                            .expect("retained history must be available")
+                            .push((
+                                publication.retained_marker.clone(),
+                                publication.retained_runtime_health.clone(),
+                            ));
+                        Ok::<(), &'static str>(())
+                    },
+                    |publication| issue_http_response(&issued, publication),
+                )
+                .expect("capture 1 publication must succeed");
+        })
+    }
+
+    fn spawn_capture2(&self) -> thread::JoinHandle<()> {
+        let publisher = Arc::clone(&self.publisher);
+        let retained = Arc::clone(&self.retained);
+        let issued = Arc::clone(&self.issued);
+        let completed = Arc::clone(&self.completed);
+        let session = self.session;
+        thread::spawn(move || {
+            publisher
+                .publish(
+                    session,
+                    || NamedCandidate::LiveWebSocketCapture2,
+                    |candidate, identity| {
+                        completed
+                            .lock()
+                            .expect("completion history must be available")
+                            .push(candidate);
+                        complete_evidence_publication(candidate, identity)
+                    },
+                    |publication| {
+                        retained
+                            .lock()
+                            .expect("retained history must be available")
+                            .push((
+                                publication.retained_marker.clone(),
+                                publication.retained_runtime_health.clone(),
+                            ));
+                        Ok::<(), &'static str>(())
+                    },
+                    |publication| issue_live_websocket_frame(&issued, publication),
+                )
+                .expect("capture 2 publication must succeed");
+        })
+    }
+}
+
+struct PublicationRaceOutcome {
+    completed: Vec<NamedCandidate>,
+    retained: Vec<(String, String)>,
+    issued: Vec<IssuedPayload>,
+}
+
+fn assert_reverse_completion_chronology(outcome: &PublicationRaceOutcome) {
+    assert_eq!(
+        outcome.completed,
         [
             NamedCandidate::LiveWebSocketCapture2,
             NamedCandidate::HttpSystemInfoCapture1,
         ]
     );
-    let retained = retained.lock().expect("retained history must be available");
-    let retained_identities = retained
+    let retained_identities = outcome
+        .retained
         .iter()
         .map(|(marker, _health)| {
             let (session, revision) = maybe_parse_retained_marker_fields(marker)
@@ -399,16 +456,18 @@ fn operator_snapshot_publication_reverse_completion_preserves_direct_chronology(
             .collect::<Vec<_>>(),
         [1, 2]
     );
-    for ((session, revision), (_, runtime_health)) in retained_identities.iter().zip(&*retained) {
+    for ((session, revision), (_, runtime_health)) in
+        retained_identities.iter().zip(&outcome.retained)
+    {
         assert!(runtime_health.contains(&format!("boot_session={session}")));
         assert!(runtime_health.contains(&format!("operator_snapshot_revision={revision}")));
         assert!(runtime_health.contains("checkpoint_health=healthy"));
     }
 
-    let issued = issued.lock().expect("issued history must be available");
-    assert!(matches!(issued[0], IssuedPayload::LiveWebSocket(_)));
-    assert!(matches!(issued[1], IssuedPayload::Http(_)));
-    let issued_json = issued
+    assert!(matches!(outcome.issued[0], IssuedPayload::LiveWebSocket(_)));
+    assert!(matches!(outcome.issued[1], IssuedPayload::Http(_)));
+    let issued_json = outcome
+        .issued
         .iter()
         .map(|payload| match payload {
             IssuedPayload::Http(bytes) | IssuedPayload::LiveWebSocket(bytes) => {
@@ -426,7 +485,8 @@ fn operator_snapshot_publication_reverse_completion_preserves_direct_chronology(
         })
         .collect::<Vec<_>>();
     assert_eq!(issued_revisions, [1, 2]);
-    let retained_log = retained
+    let retained_log = outcome
+        .retained
         .iter()
         .flat_map(|(marker, health)| [marker.as_str(), health.as_str()])
         .collect::<Vec<_>>()

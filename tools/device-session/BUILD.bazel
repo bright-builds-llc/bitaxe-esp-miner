@@ -16,6 +16,7 @@ rust_library(
         "src/fixture.rs",
         "src/lib.rs",
         "src/live.rs",
+        "src/live/session.rs",
         "src/macos.rs",
         "src/macos_unsupported.rs",
         "src/model.rs",
