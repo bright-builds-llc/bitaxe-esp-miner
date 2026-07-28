@@ -197,11 +197,6 @@ impl OperatorSnapshotSequence {
         Self { last_revision: 0 }
     }
 
-    #[cfg(test)]
-    pub(crate) const fn with_last_revision_for_test(last_revision: u64) -> Self {
-        Self { last_revision }
-    }
-
     /// Reserves the next unique identity or fails rather than wrapping.
     pub fn next_identity(
         &mut self,
@@ -265,9 +260,6 @@ fn decode_lower_hex(byte: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
-    use std::thread;
-
     use super::*;
 
     const SESSION: &str = "0123456789abcdef0011223344556677";
@@ -352,37 +344,6 @@ mod tests {
         // Assert
         assert_eq!(result, Err(OperatorSnapshotSequenceError::Exhausted));
         assert_eq!(sequence.last_revision, u64::MAX);
-    }
-
-    #[test]
-    fn shared_sequence_assigns_unique_revisions_to_concurrent_callers() {
-        // Arrange
-        let session = BootSessionId::from_words([1, 2, 3, 4]);
-        let sequence = Arc::new(Mutex::new(OperatorSnapshotSequence::new()));
-        let callers = (0..8)
-            .map(|_| {
-                let sequence = Arc::clone(&sequence);
-                thread::spawn(move || {
-                    sequence
-                        .lock()
-                        .expect("sequence fixture mutex should remain healthy")
-                        .next_identity(session)
-                        .expect("fixture sequence should not exhaust")
-                        .revision()
-                        .get()
-                })
-            })
-            .collect::<Vec<_>>();
-
-        // Act
-        let mut revisions = callers
-            .into_iter()
-            .map(|caller| caller.join().expect("fixture caller should finish"))
-            .collect::<Vec<_>>();
-        revisions.sort_unstable();
-
-        // Assert
-        assert_eq!(revisions, (1..=8).collect::<Vec<_>>());
     }
 
     #[test]

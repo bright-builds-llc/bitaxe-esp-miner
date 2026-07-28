@@ -4,6 +4,7 @@ filegroup(
     name = "phase34_identity_sources",
     srcs = [
         "src/build_identity.rs",
+        "src/deferred_effect.rs",
         "src/logs.rs",
         "src/logs/heartbeat.rs",
         "src/logs/retention.rs",

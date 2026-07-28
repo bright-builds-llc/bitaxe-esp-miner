@@ -44,10 +44,7 @@ pub use commands::{
     BlockFoundNotificationState, CommandEffect, CommandPlan, IdentifyMode, IdentifyModeEffect,
     IdentifyModeState, MiningOperatorIntentEffect, IDENTIFY_DURATION_MS,
 };
-pub use deferred_effect::{
-    spawn_deferred_effect_worker, DeferredEffectLease, DeferredEffectQueue,
-    DeferredEffectQueueUnavailable,
-};
+pub use deferred_effect::DeferredEffectQueueUnavailable;
 pub use logs::{
     log_download_headers, LogDownloadHeaders, RawLogStreamPlanner, RetainedLogBuffer,
     DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
@@ -64,7 +61,6 @@ pub use operator_snapshot::{
 };
 pub use operator_snapshot_publication::{
     OperatorSnapshotLockHealth, OperatorSnapshotPublication, OperatorSnapshotPublishError,
-    OperatorSnapshotPublisher,
 };
 pub use platform_identity::{
     PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity, PlatformResetReason,

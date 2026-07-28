@@ -66,15 +66,18 @@ filegroup(
         "build.rs",
         "src/boot_evidence.rs",
         "src/http_api.rs",
+        "src/http_api/deferred_effect_queue.rs",
         "src/http_api/handlers.rs",
         "src/http_api/websocket.rs",
         "src/log_buffer.rs",
         "src/main.rs",
         "src/operator_snapshot_retention.rs",
+        "src/operator_snapshot_publication.rs",
         "src/platform_identity.rs",
         "src/runtime_health_adapter.rs",
         "src/runtime_snapshot.rs",
         "src/safety_adapter/watchdog.rs",
+        "src/settings_snapshot_store.rs",
         "src/startup.rs",
         "src/websocket_api.rs",
     ],
@@ -105,8 +108,38 @@ test_suite(
     name = "operator_snapshot_publication_tests",
     tests = [
         "//crates/bitaxe-api:tests",
+        ":operator_snapshot_publication_shell_tests",
+        ":retained_pair_production_tests",
         "//tools/parity:tests",
     ],
+)
+
+rust_test(
+    name = "operator_snapshot_publication_shell_tests",
+    srcs = ["src/operator_snapshot_publication.rs"],
+    crate_name = "operator_snapshot_publication_shell_tests",
+    edition = "2021",
+    deps = ["//crates/bitaxe-api:bitaxe_api"],
+)
+
+rust_test(
+    name = "settings_snapshot_store_tests",
+    srcs = ["src/settings_snapshot_store.rs"],
+    crate_name = "settings_snapshot_store_tests",
+    edition = "2021",
+    deps = ["//crates/bitaxe-config:bitaxe_config"],
+)
+
+rust_test(
+    name = "deferred_effect_queue_tests",
+    srcs = [
+        "src/deferred_effect_queue_host_test.rs",
+        "src/http_api/deferred_effect_queue.rs",
+    ],
+    crate_name = "deferred_effect_queue_tests",
+    crate_root = "src/deferred_effect_queue_host_test.rs",
+    edition = "2021",
+    deps = ["//crates/bitaxe-api:bitaxe_api"],
 )
 
 rust_test(
@@ -144,6 +177,7 @@ rust_test(
     name = "retained_pair_production_tests",
     srcs = [
         "src/log_buffer.rs",
+        "src/operator_snapshot_publication.rs",
         "src/operator_snapshot_retention.rs",
         "src/operator_snapshot_retention_production_tests.rs",
     ],
@@ -177,6 +211,7 @@ genrule(
         "sdkconfig.defaults",
         "src/http_api.rs",
         "src/http_api/access.rs",
+        "src/http_api/deferred_effect_queue.rs",
         "src/http_api/deferred_effects.rs",
         "src/http_api/handlers.rs",
         "src/http_api/response.rs",

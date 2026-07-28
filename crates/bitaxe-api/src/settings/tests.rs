@@ -14,10 +14,7 @@ use super::{
     SettingsPersistenceFailureDisposition, SettingsPersistencePlan, SettingsPersistenceStep,
     SettingsPersistenceTransaction, SettingsPublicResponse,
 };
-use crate::{
-    decide_v12_settings_value, spawn_deferred_effect_worker, Hostname, V12SettingsChange,
-    V12SettingsDecision,
-};
+use crate::{decide_v12_settings_value, Hostname, V12SettingsChange, V12SettingsDecision};
 
 #[derive(Debug, Deserialize)]
 struct Fixture {
@@ -440,21 +437,11 @@ fn unavailable_best_effort_worker_preserves_confirmed_api_success_and_storage_tr
     let shared = Rc::new(RefCell::new(SharedAdapterState::new("bitaxe")));
     let plan = persistence_plan("axe-205");
     let mut adapter = RecordingAdapter::new("writer-1", Rc::clone(&shared));
-    let queue = spawn_deferred_effect_worker(
-        1,
-        |worker| {
-            drop(worker);
-            Ok::<(), ()>(())
-        },
-        |_effects: Vec<SettingsPersistenceEffect>| {},
-    )
-    .expect("fake spawn should return a disconnected queue");
-
     // Act
     let success = execute_settings_persistence_plan(&plan, &mut adapter)
         .expect("durable confirmation should remain authoritative");
     let maybe_effect_lease =
-        success.maybe_acquire_best_effort_effect_lease(|effects| queue.acquire(effects));
+        success.maybe_acquire_best_effort_effect_lease(|_effects| Err::<(), ()>(()));
 
     // Assert
     assert_eq!(

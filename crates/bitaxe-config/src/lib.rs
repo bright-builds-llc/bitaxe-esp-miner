@@ -16,8 +16,7 @@ pub use catalog::{
     VerificationScope,
 };
 pub use confirmed_snapshot::{
-    ConfirmedSnapshotCell, ConfirmedSnapshotPublicationFailure, ConfirmedSnapshotRead,
-    ConfirmedSnapshotReadHealth,
+    ConfirmedSnapshotPublicationFailure, ConfirmedSnapshotRead, ConfirmedSnapshotReadHealth,
 };
 pub use defaults::{ultra_205_defaults, Ultra205Defaults};
 pub use nvs::{

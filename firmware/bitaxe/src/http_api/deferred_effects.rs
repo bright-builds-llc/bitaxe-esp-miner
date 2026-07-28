@@ -1,3 +1,6 @@
+use super::deferred_effect_queue::{
+    spawn_deferred_effect_worker, DeferredEffectLease, DeferredEffectQueue,
+};
 use super::*;
 
 static DEFERRED_EFFECT_QUEUE: OnceLock<DeferredEffectQueue<DeferredFirmwareEffect>> =

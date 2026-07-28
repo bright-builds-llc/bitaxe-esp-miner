@@ -1493,33 +1493,66 @@ Completion review:
 
 ### task-relocate-reusable-crate-concurrency-shells | 2026-07-27 21:44 | Move concurrency ownership into firmware adapters
 
-- [ ] Keep pure snapshot, sequence, effect, transition, and error models in
+- [x] Keep pure snapshot, sequence, effect, transition, and error models in
       reusable crates while moving process-lifetime synchronization ownership
       into firmware adapters.
-- [ ] Move the `Mutex`-owned confirmed-settings cell into the firmware settings
+- [x] Move the `Mutex`-owned confirmed-settings cell into the firmware settings
       adapter without changing storage-confirmation or poison-handling behavior.
-- [ ] Move operator-snapshot publication locking into the firmware runtime
+- [x] Move operator-snapshot publication locking into the firmware runtime
       adapter while preserving completion order, retention-before-issuance,
       reentrancy rejection, and earliest-failure classification.
-- [ ] Move deferred-effect channels, leases, worker lifecycle, and
+- [x] Move deferred-effect channels, leases, worker lifecycle, and
       response-before-effect coordination into the firmware HTTP shell without
       compatibility aliases.
-- [ ] Move concurrency-focused tests to host-testable shell targets, update
+- [x] Move concurrency-focused tests to host-testable shell targets, update
       affected source guards, and record expected source-derived evaluator
       identity rotation without hard-coding or promoting the new identity.
-- [ ] Run focused config, API, firmware-shell, and parity tests plus the
+- [x] Run focused config, API, firmware-shell, and parity tests plus the
       repository's complete required software verification sequence.
 
 Dependencies: Complete the production-session architecture-guard repair first.
 Coordinate source-guard updates with the host-tool core/shell separation task
 if both touch parity architecture assertions.
 
-Verification: Pending.
+Verification:
 
-Completion review: Pending. This task changes ownership, not externally
-observable behavior. It does not authorize hardware detection, flashing,
-monitoring, credentials, network discovery, evidence generation or promotion,
-parity-status changes, commit, or push operations.
+- `cargo fmt --all`
+- `cargo clippy --all-targets --all-features -- -D warnings`
+- `cargo build --all-targets --all-features`
+- `cargo test --all-features`
+- `bazel test //firmware/bitaxe:settings_snapshot_store_tests
+  //firmware/bitaxe:deferred_effect_queue_tests
+  //firmware/bitaxe:operator_snapshot_publication_shell_tests
+  //firmware/bitaxe:retained_pair_production_tests
+  //crates/bitaxe-config:tests //crates/bitaxe-api:tests
+  //tools/parity:tests`
+- `just verify-production-session`
+- `bun scripts/bright-builds-check.ts all`
+- `just test` (76 Bazel tests passed, including firmware image packaging)
+- `just parity` (`validation_errors: none`)
+- `just verify-reference`
+- `just verify-redaction`
+
+Completion review:
+
+- Reusable API and config crates now retain pure snapshot, sequence, effect,
+  transition, read-health, and failure models. Confirmed-settings storage,
+  ordered operator-snapshot publication, and deferred-effect worker ownership
+  live in firmware adapters with dedicated host-testable shell targets.
+- Existing poison recovery, completion ordering, retention-before-issuance,
+  revision consumption, reentrancy rejection, earliest-failure
+  classification, and response-before-effect behavior remain covered.
+- Phase 34 source guards now fail if the reusable models reacquire
+  synchronization or if the firmware shells lose their required ownership
+  primitives. Because evaluator identity is source-derived, this source move
+  is expected to rotate it; no identity was hard-coded and no evidence or
+  parity status was generated or promoted.
+- Residual risk is limited to device-runtime scheduling differences: the
+  ESP32-S3 release firmware compiled and packaged, but this software-only task
+  did not detect, flash, monitor, or otherwise interact with hardware,
+  credentials, live networking, or mining actuation. The explicit
+  `work-top-task` invocation supplies commit and push authorization for this
+  task only.
 
 ### task-centralize-ipv4-access-classification | 2026-07-27 21:44 | Move peer-address policy into the pure API core
 

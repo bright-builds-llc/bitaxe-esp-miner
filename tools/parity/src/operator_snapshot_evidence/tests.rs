@@ -1,7 +1,10 @@
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
-use bitaxe_api::OperatorSnapshotPublisher;
+#[path = "../../../../firmware/bitaxe/src/operator_snapshot_publication.rs"]
+mod operator_snapshot_publication_shell;
+
+use operator_snapshot_publication_shell::OperatorSnapshotPublisher;
 
 use super::*;
 
@@ -10,7 +13,7 @@ const OTHER_SESSION: &str = "fedcba9876543210ffeeddccbbaa9988";
 const API_IDENTITY_SOURCE: &str =
     include_str!("../../../../crates/bitaxe-api/src/operator_snapshot.rs");
 const PUBLICATION_SOURCE: &str =
-    include_str!("../../../../crates/bitaxe-api/src/operator_snapshot_publication.rs");
+    include_str!("../../../../firmware/bitaxe/src/operator_snapshot_publication.rs");
 const BOOT_EVIDENCE_SOURCE: &str = include_str!("../../../../firmware/bitaxe/src/boot_evidence.rs");
 const RUNTIME_SNAPSHOT_SOURCE: &str =
     include_str!("../../../../firmware/bitaxe/src/runtime_snapshot.rs");

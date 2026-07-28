@@ -3,15 +3,15 @@
 use std::sync::{Mutex, OnceLock};
 
 use crate::log_buffer::RetainedPairStorageError;
+use crate::operator_snapshot_publication::OperatorSnapshotPublisher;
 use bitaxe_api::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect,
     apply_mining_operator_intent_effect, project_api_views, project_system_info,
     scoreboard_response, statistics_response, ApiSnapshot, BlockFoundDismissEffect,
     BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect, IdentifyModeState,
     MiningOperatorIntentEffect, OperatorSnapshotIdentity, OperatorSnapshotLockHealth,
-    OperatorSnapshotPublishError, OperatorSnapshotPublisher, PlatformFact, PlatformIdentity,
-    PlatformSnapshot, ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire,
-    StatisticsWire, SystemInfoWire,
+    OperatorSnapshotPublishError, PlatformFact, PlatformIdentity, PlatformSnapshot,
+    ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsWire, SystemInfoWire,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;

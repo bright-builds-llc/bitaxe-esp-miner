@@ -8,7 +8,19 @@ const HTTP_HANDLER_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/htt
 const HTTP_WEBSOCKET_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/http_api/websocket.rs");
 const SNAPSHOT_PUBLICATION_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/operator_snapshot_publication.rs");
+const OPERATOR_SNAPSHOT_MODEL_SOURCE: &str =
+    include_str!("../../../crates/bitaxe-api/src/operator_snapshot.rs");
+const SNAPSHOT_PUBLICATION_MODEL_SOURCE: &str =
     include_str!("../../../crates/bitaxe-api/src/operator_snapshot_publication.rs");
+const CONFIRMED_SNAPSHOT_MODEL_SOURCE: &str =
+    include_str!("../../../crates/bitaxe-config/src/confirmed_snapshot.rs");
+const SETTINGS_SNAPSHOT_STORE_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/settings_snapshot_store.rs");
+const DEFERRED_EFFECT_MODEL_SOURCE: &str =
+    include_str!("../../../crates/bitaxe-api/src/deferred_effect.rs");
+const DEFERRED_EFFECT_QUEUE_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/http_api/deferred_effect_queue.rs");
 const SNAPSHOT_EVIDENCE_TEST_SOURCE: &str = include_str!("operator_snapshot_evidence/tests.rs");
 const SNAPSHOT_RETENTION_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/operator_snapshot_retention.rs");
@@ -389,6 +401,50 @@ fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
     assert!(adversarial_regression.contains("IssuedPayload::LiveWebSocket"));
     assert!(adversarial_regression.contains("assert_eq!(issued_revisions, [1, 2])"));
     assert!(!adversarial_regression.contains(".sort"));
+}
+
+#[test]
+fn reusable_crates_keep_models_while_firmware_owns_concurrency() {
+    // Arrange
+    let reusable_sources = [
+        OPERATOR_SNAPSHOT_MODEL_SOURCE,
+        SNAPSHOT_PUBLICATION_MODEL_SOURCE,
+        CONFIRMED_SNAPSHOT_MODEL_SOURCE,
+        DEFERRED_EFFECT_MODEL_SOURCE,
+    ];
+    // Act / Assert
+    for source in reusable_sources {
+        for forbidden in [
+            "std::sync",
+            "Mutex",
+            "mpsc",
+            "thread_local!",
+            "thread::spawn",
+        ] {
+            assert!(
+                !source.contains(forbidden),
+                "reusable model source retained concurrency token {forbidden}"
+            );
+        }
+    }
+    for required in [
+        "OperatorSnapshotPublishError",
+        "ConfirmedSnapshotPublicationFailure",
+        "DeferredEffectQueueUnavailable",
+    ] {
+        assert!(
+            reusable_sources
+                .iter()
+                .any(|source| source.contains(required)),
+            "reusable model source is missing {required}"
+        );
+    }
+    assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("Mutex<OperatorSnapshotSequence>"));
+    assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("thread_local!"));
+    assert!(SETTINGS_SNAPSHOT_STORE_SOURCE.contains("Mutex<NvsSnapshot>"));
+    assert!(DEFERRED_EFFECT_QUEUE_SOURCE.contains("mpsc::sync_channel"));
+    assert!(DEFERRED_EFFECT_QUEUE_SOURCE.contains("release_after_response"));
+    assert!(SETTINGS_SNAPSHOT_STORE_SOURCE.contains("PoisonRecovered"));
 }
 
 fn source_between<'a>(source: &'a str, start: &str, end: &str) -> &'a str {

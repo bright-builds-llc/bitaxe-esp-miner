@@ -9,14 +9,15 @@ use bitaxe_api::{
 use bitaxe_config::nvs::StoredValueKind;
 use bitaxe_config::{
     all_settings_schema, confirm_hostname_snapshot, project_settings_schema,
-    ConfirmedHostnameSnapshot, ConfirmedSnapshotCell, ConfirmedSnapshotReadHealth, NvsSnapshot,
-    StoredValue, NVS_NAMESPACE,
+    ConfirmedHostnameSnapshot, ConfirmedSnapshotReadHealth, NvsSnapshot, StoredValue,
+    NVS_NAMESPACE,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDataType, NvsDefault};
 use esp_idf_svc::sys;
 
-static CURRENT_SETTINGS_SNAPSHOT: OnceLock<ConfirmedSnapshotCell> = OnceLock::new();
+static CURRENT_SETTINGS_SNAPSHOT: OnceLock<crate::settings_snapshot_store::ConfirmedSnapshotStore> =
+    OnceLock::new();
 static SETTINGS_TRANSACTION_LOCK: Mutex<()> = Mutex::new(());
 
 /// Firmware coordinator that opens writable NVS only after exact authority.
@@ -181,8 +182,10 @@ pub fn configured_protocol_is_v1() -> bool {
         .all(|key| maybe_read_protocol(&nvs, key).is_some_and(|protocol| protocol == "SV1"))
 }
 
-fn current_snapshot_cell() -> &'static ConfirmedSnapshotCell {
-    CURRENT_SETTINGS_SNAPSHOT.get_or_init(|| ConfirmedSnapshotCell::new(NvsSnapshot::new()))
+fn current_snapshot_cell() -> &'static crate::settings_snapshot_store::ConfirmedSnapshotStore {
+    CURRENT_SETTINGS_SNAPSHOT.get_or_init(|| {
+        crate::settings_snapshot_store::ConfirmedSnapshotStore::new(NvsSnapshot::new())
+    })
 }
 
 fn refresh_current_settings_snapshot_best_effort(nvs: &EspNvs<NvsDefault>) {

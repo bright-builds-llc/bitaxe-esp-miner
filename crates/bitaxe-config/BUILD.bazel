@@ -1,5 +1,11 @@
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
+filegroup(
+    name = "architecture_model_sources",
+    srcs = ["src/confirmed_snapshot.rs"],
+    visibility = ["//tools/parity:__pkg__"],
+)
+
 rust_library(
     name = "bitaxe_config",
     srcs = [

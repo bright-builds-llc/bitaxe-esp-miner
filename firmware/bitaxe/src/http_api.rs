@@ -11,15 +11,13 @@ use bitaxe_api::{
     execute_settings_persistence_plan, identify_plan, log_download_headers,
     origin_gate_from_header, pause_mining_plan, phase07_route_report, plan_http_access,
     plan_settings_patch_body_size, plan_update_request, plan_websocket_upgrade, restart_plan,
-    resume_mining_plan, spawn_deferred_effect_worker, unknown_api_route_response,
-    unsupported_update_response, CommandEffect, CommandPlan, DeferredEffectLease,
-    DeferredEffectQueue, HttpAccessDecision, IdentifyModeEffect, OperatorSnapshotPublishError,
-    OriginGate, PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision,
-    SettingsPatchFailureReason, SettingsPatchPublicError, SettingsPersistenceEffect,
-    SettingsPersistenceFailure, SettingsPersistencePlan, SettingsPublicResponse,
-    UpdateRequestDecision, UpdateRequestInput, UpdateRouteKind, V12SettingsChange,
-    V12SettingsDecision, V12SettingsExclusionReason, WebSocketRouteKind, WebSocketUpgradeDecision,
-    LIVE_TELEMETRY_CADENCE_MS,
+    resume_mining_plan, unknown_api_route_response, unsupported_update_response, CommandEffect,
+    CommandPlan, HttpAccessDecision, IdentifyModeEffect, OperatorSnapshotPublishError, OriginGate,
+    PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchFailureReason,
+    SettingsPatchPublicError, SettingsPersistenceEffect, SettingsPersistenceFailure,
+    SettingsPersistencePlan, SettingsPublicResponse, UpdateRequestDecision, UpdateRequestInput,
+    UpdateRouteKind, V12SettingsChange, V12SettingsDecision, V12SettingsExclusionReason,
+    WebSocketRouteKind, WebSocketUpgradeDecision, LIVE_TELEMETRY_CADENCE_MS,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
@@ -39,6 +37,7 @@ use crate::runtime_snapshot::{
 use crate::{log_buffer, network_stack, settings_adapter, static_files, websocket_api};
 
 mod access;
+mod deferred_effect_queue;
 mod deferred_effects;
 mod handlers;
 mod response;

@@ -2,14 +2,17 @@
 mod log_buffer;
 #[path = "operator_snapshot_retention.rs"]
 mod operator_snapshot_retention;
+#[path = "operator_snapshot_publication.rs"]
+mod operator_snapshot_publication;
 
 use std::cell::Cell;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use bitaxe_api::{
     BootSessionId, OperatorSnapshotIdentity, OperatorSnapshotLockHealth,
-    OperatorSnapshotPublishError, OperatorSnapshotPublisher, RetainedLogBuffer,
+    OperatorSnapshotPublishError, RetainedLogBuffer,
 };
+use operator_snapshot_publication::OperatorSnapshotPublisher;
 
 const MARKER: &str = "operator_snapshot session=opaque revision=1 redacted=true";
 const RUNTIME_HEALTH: &str = "runtime_health status=healthy redacted=true";
