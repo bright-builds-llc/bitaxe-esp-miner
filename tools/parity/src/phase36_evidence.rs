@@ -13,19 +13,20 @@ mod classification;
 mod contract;
 pub mod effects;
 mod facts;
+mod loading;
 pub mod runtime_identity;
 pub mod substance;
 
 use authority::{authenticate_artifact_graph, Phase36Authority};
-pub(crate) use classification::load_and_classify_phase36_root;
 #[cfg(test)]
-use classification::{
-    classify_phase36_envelope, computed_claim_digests, load_and_classify_with_authority,
-};
+use classification::{classify_phase36_envelope, computed_claim_digests};
 use facts::{
     derive_sufficiency, validate_health_projection, validate_sensor_projection,
     validate_shareable_facts,
 };
+pub(crate) use loading::load_and_classify_phase36_root;
+#[cfg(test)]
+use loading::load_and_classify_with_authority;
 
 use crate::phase35_evidence::{
     sha256_hex, validate_phase35_evidence, InventoryArtifact, Phase35EvidenceRootInput,
@@ -90,6 +91,10 @@ const PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY: &[(&str, &str)] = &[
     (
         "phase36_evidence/classification.rs",
         include_str!("phase36_evidence/classification.rs"),
+    ),
+    (
+        "phase36_evidence/loading.rs",
+        include_str!("phase36_evidence/loading.rs"),
     ),
     (
         "phase36_evidence/authority.rs",

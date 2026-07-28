@@ -95,9 +95,9 @@ fn phase34_package_admission_snapshot_is_private_and_durable() {
 
     // Act
     let snapshot_materialization = source_between(
-        FLASH_MODEL_SOURCE,
+        FLASH_EXECUTION_SNAPSHOT_SOURCE,
         "impl AdmittedExecutionSnapshot",
-        "pub(crate) struct NvsSeedOutcome",
+        "pub(crate) fn path",
     );
 
     // Assert
@@ -105,6 +105,28 @@ fn phase34_package_admission_snapshot_is_private_and_durable() {
         snapshot_materialization,
         &required_snapshot_markers,
         "immutable snapshot",
+    );
+}
+
+#[test]
+fn phase34_flash_model_stays_independent_of_effectful_resource_owners() {
+    // Arrange
+    let prohibited_effect_tokens = [
+        "tempfile",
+        "NamedTempFile",
+        "TempDir",
+        "std::fs",
+        "std::process",
+        "std::net",
+        "std::time",
+        "std::io",
+    ];
+
+    // Act / Assert
+    assert_excludes_all(
+        &[FLASH_MODEL_SOURCE],
+        &prohibited_effect_tokens,
+        "pure flash model effect imports",
     );
 }
 
@@ -139,7 +161,11 @@ fn phase34_package_admission_flash_command_requires_typed_images() {
         "fn flash_command_for_admitted_image",
         "fn resolve_flash_image",
     );
-    let admitted_image_sources = [FLASH_MODEL_SOURCE, FLASH_PACKAGE_SOURCE];
+    let admitted_image_sources = [
+        FLASH_MODEL_SOURCE,
+        FLASH_EXECUTION_SNAPSHOT_SOURCE,
+        FLASH_PACKAGE_SOURCE,
+    ];
     let bypass_sources = [
         FLASH_PACKAGE_SOURCE,
         FLASH_EXECUTION_SOURCE,

@@ -1,5 +1,20 @@
 use crate::*;
 
+#[derive(Debug)]
+pub(crate) struct FlashOutcome {
+    pub(crate) manifest: Option<Utf8PathBuf>,
+    pub(crate) flash_image: Utf8PathBuf,
+    pub(crate) runtime_identity: Option<ExpectedRuntimeAttestationIdentity>,
+    pub(crate) command: CommandSpec,
+    pub(crate) nvs_seed: Option<NvsSeedOutcome>,
+}
+
+pub(crate) struct PreparedFlash {
+    pub(crate) outcome: FlashOutcome,
+    pub(crate) execution_command: CommandSpec,
+    pub(crate) _execution_snapshot: Option<AdmittedExecutionSnapshot>,
+}
+
 pub(crate) fn prepare_flash(
     command: &FlashCommand,
     environment: &impl FlashEnvironment,

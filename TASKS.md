@@ -1623,19 +1623,19 @@ Completion review:
 
 ### task-separate-host-tool-cores-and-shells | 2026-07-27 21:44 | Separate deterministic host-tool logic from effects
 
-- [ ] Inventory active production host-tool modules that combine deterministic
+- [x] Inventory active production host-tool modules that combine deterministic
       decisions with filesystem, process, network, clock, or terminal effects
       and record the exact bounded candidate set in this task block before
       editing.
-- [ ] Start with the known flash-model temporary-file materialization and Phase
+- [x] Start with the known flash-model temporary-file materialization and Phase
       36 classification/filesystem loading mix, keeping pure models and
       classifiers independent from effectful adapters.
-- [ ] Preserve every existing CLI, schema, evidence, permission, redaction,
+- [x] Preserve every existing CLI, schema, evidence, permission, redaction,
       terminal-category, package-admission, and evaluator-identity contract.
-- [ ] Keep already-separated device-session model/live modules separated and
+- [x] Keep already-separated device-session model/live modules separated and
       add focused source or dependency guards that prevent the identified
       effect imports from returning to pure modules.
-- [ ] Run focused flash, parity, device-session, HTTP-transport, and xtask tests
+- [x] Run focused flash, parity, device-session, HTTP-transport, and xtask tests
       as applicable, followed by the repository's complete required software
       verification sequence.
 
@@ -1643,9 +1643,72 @@ Dependencies: Coordinate source-guard and evaluator-inventory edits with the
 reusable-crate concurrency-shell relocation task; neither task may weaken the
 other's assertions.
 
-Verification: Pending.
+Working inventory (2026-07-28):
 
-Completion review: Pending. This is software-only host-tool architecture work.
-It does not authorize hardware detection, flashing, monitoring, credentials,
-network discovery, evidence generation or promotion, parity-status changes,
-commit, or push operations.
+- The bounded audit covered active production Rust modules below
+  `tools/{flash,parity,device-session,http-transport,xtask}/src`. Modules
+  explicitly named or structured as `main`, `commands`, `environment`,
+  `filesystem`, `live`, `hardware`, transport, evidence, or package adapters
+  remain imperative shells; their deterministic collaborators are already
+  separated or their remaining decisions are adapter-local.
+- Exact candidate 1 is `tools/flash/src/model.rs`: it mixes reusable command,
+  image, and capture models with `NamedTempFile` materialization and
+  `TempDir` ownership. Move those resource owners to the existing flash shell
+  boundaries while keeping the pure model free of filesystem and `tempfile`
+  dependencies.
+- Exact candidate 2 is
+  `tools/parity/src/phase36_evidence/classification.rs`: it mixes the pure
+  envelope classifier with protected-root opening, immutable artifact
+  authentication, and unchanged-file verification. Move loading and
+  authentication orchestration to a dedicated adapter while keeping the
+  classifier source-bound in the evaluator inventory.
+- `tools/device-session/src/model.rs` and `model/state.rs` remain the qualified
+  pure replay/state core; `live.rs` and its platform modules remain the
+  effectful adapters. This task will add guards for the two identified
+  candidates without changing that existing split.
+
+Verification:
+
+- All 167 focused flash tests passed. All 11 focused Phase 34 package-admission
+  source guards passed, including private durable snapshot ownership and the
+  new pure-model effect exclusion. The focused Phase 36 evaluator inventory
+  guard passed with the pure classifier and loading adapter independently
+  checked.
+- `bazel test //tools/flash:tests //tools/parity:tests` passed. The required
+  ordered `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features` sequence passed, covering device-session,
+  HTTP-transport, and xtask as well as the changed packages.
+- `bun scripts/bright-builds-check.ts all` scanned 567 tracked files and
+  reported zero findings with the eight existing justified exceptions.
+  `just test` passed all 76 Bazel test targets, including the ESP32-S3 firmware
+  build and package graph.
+- `just parity` reported `validation_errors: none`; one aggregate invocation
+  encountered transient host resource pressure after the test graph completed,
+  and the isolated retry passed without repository changes.
+  `just verify-reference` confirmed pinned commit
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50` clean, and
+  `just verify-redaction` passed.
+- The source-derived Phase 36 evaluator identity is
+  `5f933db0fadcc959f3a39fc9608d8c9e3a84c3c4c6adb073f25d135e16cae865`.
+  Exact inventory membership plus classifier and loading-source drift tests
+  passed; no identity was hard-coded and no historical evidence or parity
+  status changed. `git diff --check` passed.
+
+Completion review:
+
+- `tools/flash/src/model.rs` now contains reusable data models only. Private
+  execution-snapshot ownership, prepared-package resource ownership, and NVS
+  temporary-directory ownership live in the corresponding flash shell modules.
+- Phase 36 envelope classification is independent of protected filesystem
+  access. A dedicated loading adapter owns protected-root admission, immutable
+  artifact authentication, and unchanged-file verification, and remains bound
+  into the evaluator identity and Bazel runfiles graph.
+- Existing CLI, schema, permission, redaction, terminal-category,
+  package-admission, evidence, and device-session model/live contracts remain
+  unchanged. Residual risk is limited to runtime scheduling not exercised by
+  this software-only refactor; no hardware, credentials, network discovery,
+  evidence generation or promotion, parity-status change, or historical
+  artifact rewrite occurred. The current explicit `work-top-task` invocation
+  supplies commit and push authorization for this task only.

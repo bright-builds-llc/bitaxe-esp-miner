@@ -1,5 +1,12 @@
 use crate::*;
 
+#[derive(Debug)]
+pub(crate) struct NvsSeedOutcome {
+    pub(crate) image: Utf8PathBuf,
+    pub(crate) command: CommandSpec,
+    pub(crate) _temp_dir: tempfile::TempDir,
+}
+
 pub(crate) fn prepare_wifi_nvs_seed(
     port: &str,
     credentials_path: &Utf8Path,

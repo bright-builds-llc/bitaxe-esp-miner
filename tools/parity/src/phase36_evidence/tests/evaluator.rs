@@ -4,6 +4,7 @@ use super::*;
 fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
     // Arrange
     const CLASSIFICATION_DECLARATION: &str = "pub(crate) fn classify_phase36_envelope(";
+    const LOADING_DECLARATION: &str = "pub(crate) fn load_and_classify_phase36_root(";
     const HOSTNAME_VALIDATOR_DECLARATION: &str = "pub(crate) fn from_public_generation(";
     const SESSION_REQUEST_VALIDATOR_DECLARATION: &str = "pub fn schema_is_valid(&self) -> bool {";
     const SESSION_STATE_VALIDATOR_DECLARATION: &str =
@@ -13,6 +14,7 @@ fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
     let expected_sources = [
         "phase36_evidence.rs",
         "phase36_evidence/classification.rs",
+        "phase36_evidence/loading.rs",
         "phase36_evidence/authority.rs",
         "phase36_evidence/facts.rs",
         "phase36_evidence/substance.rs",
@@ -57,6 +59,11 @@ fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
         .find(|(path, _)| *path == "phase36_evidence/classification.rs")
         .map(|(_, source)| *source)
         .expect("Phase 36 classification source should be inventoried");
+    let loading_source = PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
+        .iter()
+        .find(|(path, _)| *path == "phase36_evidence/loading.rs")
+        .map(|(_, source)| *source)
+        .expect("Phase 36 loading adapter source should be inventoried");
     let session_validator_source = PHASE36_EVIDENCE_EVALUATOR_SOURCE_INVENTORY
         .iter()
         .find(|(path, _)| *path == "tools/device-session/src/model.rs")
@@ -100,6 +107,11 @@ fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
         CLASSIFICATION_DECLARATION,
         "pub(crate) fn classify_phase36_envelope_drift(",
     );
+    let loading_drift = drift_identity(
+        "phase36_evidence/loading.rs",
+        LOADING_DECLARATION,
+        "pub(crate) fn load_and_classify_phase36_root_drift(",
+    );
     let session_state_drift = drift_identity(
         "tools/device-session/src/model/state.rs",
         SESSION_STATE_VALIDATOR_DECLARATION,
@@ -131,12 +143,38 @@ fn phase36_evaluator_inventory_binds_every_material_owned_validator() {
     // Assert
     assert_eq!(inventory_sources, expected_sources);
     assert!(classification_source.contains(CLASSIFICATION_DECLARATION));
+    for prohibited in [
+        "ProtectedRoot",
+        "ProtectedFile",
+        "open_file(",
+        "authenticate_artifact_graph",
+        "verify_unchanged",
+    ] {
+        assert!(
+            !classification_source.contains(prohibited),
+            "pure Phase 36 classifier contains effectful loading token {prohibited}"
+        );
+    }
+    for required in [
+        LOADING_DECLARATION,
+        "ProtectedRoot::open",
+        "open_file(",
+        "authenticate_artifact_graph",
+        "verify_unchanged",
+        "classify_phase36_envelope",
+    ] {
+        assert!(
+            loading_source.contains(required),
+            "Phase 36 loading adapter is missing {required}"
+        );
+    }
     assert!(hostname_validator_source.contains(HOSTNAME_VALIDATOR_DECLARATION));
     assert!(session_validator_source.contains(SESSION_REQUEST_VALIDATOR_DECLARATION));
     assert!(session_state_validator_source.contains(SESSION_STATE_VALIDATOR_DECLARATION));
     assert!(hardware_transaction_source.contains(HARDWARE_TRANSACTION_DECLARATION));
     for (drifted_evaluator, drifted_contract) in [
         classification_drift,
+        loading_drift,
         hostname_drift,
         session_state_drift,
         hardware_transaction_drift,

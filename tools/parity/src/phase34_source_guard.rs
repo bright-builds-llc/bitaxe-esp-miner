@@ -44,6 +44,7 @@ const BUILD_IDENTITY_SOURCE: &str =
 const XTASK_SOURCE: &str = include_str!("../../xtask/src/main.rs");
 const PACKAGE_MANIFEST_SOURCE: &str = include_str!("../../xtask/src/package_manifest.rs");
 const FLASH_EXECUTION_SOURCE: &str = include_str!("../../flash/src/commands/flash.rs");
+const FLASH_EXECUTION_SNAPSHOT_SOURCE: &str = include_str!("../../flash/src/execution_snapshot.rs");
 const FLASH_MODEL_SOURCE: &str = include_str!("../../flash/src/model.rs");
 const FLASH_PACKAGE_SOURCE: &str = include_str!("../../flash/src/package.rs");
 const FLASH_PACKAGE_ADMISSION_TEST_SOURCE: &str =
