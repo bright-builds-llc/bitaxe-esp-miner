@@ -47,7 +47,7 @@ verify-redaction *args:
     bazel run //scripts:verify_redaction -- {{ args }}
 
 verify-production-session:
-    bazel test //crates/bitaxe-stratum:tests //crates/bitaxe-api:tests //crates/bitaxe-config:tests
+    bazel test //crates/bitaxe-stratum:tests //crates/bitaxe-api:tests //crates/bitaxe-config:tests //scripts:verify_production_session_source_test
     bazel run //scripts:verify_production_session_source
     bazel build //firmware/bitaxe:firmware
 

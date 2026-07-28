@@ -316,6 +316,21 @@ sh_binary(
     tags = ["local"],
 )
 
+sh_test(
+    name = "verify_production_session_source_test",
+    srcs = ["verify-production-session-source-test.sh"],
+    args = [
+        "$(location :verify-production-session-source.sh)",
+        "$(location testdata/production-session-source-contract/owner.rs)",
+        "$(location testdata/production-session-source-contract/deterministic.rs)",
+    ],
+    data = [
+        "testdata/production-session-source-contract/deterministic.rs",
+        "testdata/production-session-source-contract/owner.rs",
+        "verify-production-session-source.sh",
+    ],
+)
+
 sh_binary(
     name = "phase35_correlated_evidence",
     srcs = ["phase35-correlated-evidence.sh"],

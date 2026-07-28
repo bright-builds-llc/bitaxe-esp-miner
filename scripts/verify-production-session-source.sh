@@ -1,6 +1,89 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+verify_adapter_contract() {
+	local adapter_owner_source="$1"
+	local adapter_test_source="$2"
+	local owner_contract
+	local contract_present
+	local ordinary_forbidden_matches
+	local adapter_count
+	local -r ordinary_forbidden_pattern='TcpStream|std::net|write_all|read_pool_settings|apply_negotiated_version_mask|execute_production_command|try_read_production_result'
+	local -a owner_contracts=(
+		"const OWNER_STACK_BYTES: usize = 16 * 1024;"
+		"const NOTIFICATION_CAPACITY: usize = 8;"
+		"const AUTHORITATIVE_REREAD_INTERVAL: Duration = Duration::from_secs(1);"
+		"sender.try_send(wakeup)"
+		"ProductionSessionNotificationOutcome::Coalesced"
+		"receiver.recv_timeout(AUTHORITATIVE_REREAD_INTERVAL)"
+		"ProductionSessionEvent::Wake"
+		"drive_session(&mut session, &mut adapter, event)"
+		"adapter.maybe_execute(effect)"
+		"actuation_qualified: false"
+	)
+
+	for owner_contract in "${owner_contracts[@]}"; do
+		if command -v rg >/dev/null 2>&1; then
+			contract_present="$(rg -F "$owner_contract" "$adapter_owner_source" || true)"
+		else
+			contract_present="$(grep -F -- "$owner_contract" "$adapter_owner_source" || true)"
+		fi
+		if [[ -z "$contract_present" ]]; then
+			printf 'production session source contract failed: owner contract missing: %s\n' "$owner_contract" >&2
+			return 1
+		fi
+	done
+
+	if command -v rg >/dev/null 2>&1; then
+		ordinary_forbidden_matches="$(rg -n "$ordinary_forbidden_pattern" "$adapter_owner_source" || true)"
+	else
+		ordinary_forbidden_matches="$(grep -n -E -- "$ordinary_forbidden_pattern" "$adapter_owner_source" || true)"
+	fi
+	if [[ -n "$ordinary_forbidden_matches" ]]; then
+		printf '%s\n' "$ordinary_forbidden_matches"
+		printf 'production session source contract failed: ordinary adapter contains external effect path\n' >&2
+		return 1
+	fi
+
+	if command -v rg >/dev/null 2>&1; then
+		adapter_count="$(
+			{
+				rg -F 'struct OrdinaryEspProductionSessionAdapter' "$adapter_owner_source" || true
+				rg -F 'struct DeterministicProductionSessionAdapter' \
+					"$adapter_test_source" || true
+			} | wc -l | tr -d ' '
+		)"
+	else
+		adapter_count="$(
+			{
+				grep -F -- 'struct OrdinaryEspProductionSessionAdapter' "$adapter_owner_source" || true
+				grep -F -- 'struct DeterministicProductionSessionAdapter' \
+					"$adapter_test_source" || true
+			} | wc -l | tr -d ' '
+		)"
+	fi
+	if [[ "$adapter_count" != "2" ]]; then
+		printf 'production session source contract failed: expected exactly two adapters, found %s\n' "$adapter_count" >&2
+		return 1
+	fi
+}
+
+if [[ "${1:-}" == "--verify-adapter-contract" ]]; then
+	if [[ "$#" != "3" ]]; then
+		printf 'usage: %s --verify-adapter-contract OWNER_SOURCE DETERMINISTIC_ADAPTER_SOURCE\n' "$0" >&2
+		exit 2
+	fi
+
+	verify_adapter_contract "$2" "$3"
+	printf 'production_session_adapter_contract=passed\n'
+	exit 0
+fi
+
+if [[ "$#" != "0" ]]; then
+	printf 'usage: %s [--verify-adapter-contract OWNER_SOURCE DETERMINISTIC_ADAPTER_SOURCE]\n' "$0" >&2
+	exit 2
+fi
+
 readonly repo_root="${BUILD_WORKSPACE_DIRECTORY:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$repo_root"
 
@@ -58,42 +141,8 @@ for retired_file in "${retired_files[@]}"; do
 done
 
 readonly owner_source="firmware/bitaxe/src/production_mining_session.rs"
-readonly owner_contracts=(
-	"const OWNER_STACK_BYTES: usize = 16 * 1024;"
-	"const NOTIFICATION_CAPACITY: usize = 8;"
-	"const AUTHORITATIVE_REREAD_INTERVAL: Duration = Duration::from_secs(1);"
-	"sender.try_send(wakeup)"
-	"ProductionSessionNotificationOutcome::Coalesced"
-	"receiver.recv_timeout(AUTHORITATIVE_REREAD_INTERVAL)"
-	"ProductionSessionEvent::Wake"
-	"drive_session(&mut session, &mut adapter, event)"
-	"adapter.execute(effect)"
-	"actuation_qualified: false"
-)
-
-for owner_contract in "${owner_contracts[@]}"; do
-	if command -v rg >/dev/null 2>&1; then
-		contract_present="$(rg -F "$owner_contract" "$owner_source" || true)"
-	else
-		contract_present="$(grep -F -- "$owner_contract" "$owner_source" || true)"
-	fi
-	if [[ -z "$contract_present" ]]; then
-		printf 'production session source contract failed: owner contract missing: %s\n' "$owner_contract" >&2
-		exit 1
-	fi
-done
-
-readonly ordinary_forbidden_pattern='TcpStream|std::net|write_all|read_pool_settings|apply_negotiated_version_mask|execute_production_command|try_read_production_result'
-if command -v rg >/dev/null 2>&1; then
-	ordinary_forbidden_matches="$(rg -n "$ordinary_forbidden_pattern" "$owner_source" || true)"
-else
-	ordinary_forbidden_matches="$(grep -n -E -- "$ordinary_forbidden_pattern" "$owner_source" || true)"
-fi
-if [[ -n "$ordinary_forbidden_matches" ]]; then
-	printf '%s\n' "$ordinary_forbidden_matches"
-	printf 'production session source contract failed: ordinary adapter contains external effect path\n' >&2
-	exit 1
-fi
+readonly deterministic_adapter_source="crates/bitaxe-stratum/src/v1/production_session/tests.rs"
+verify_adapter_contract "$owner_source" "$deterministic_adapter_source"
 
 readonly engine_sources=(
 	"crates/bitaxe-stratum/src/v1/production_session.rs"
@@ -141,19 +190,6 @@ fi
 if [[ -n "$forbidden_active_matches" ]]; then
 	printf '%s\n' "$forbidden_active_matches"
 	printf 'production session source contract failed: superseded active surface remains\n' >&2
-	exit 1
-fi
-
-readonly adapter_count="$(
-	{
-		rg -F 'struct OrdinaryEspProductionSessionAdapter' \
-			"firmware/bitaxe/src/production_mining_session.rs"
-		rg -F 'struct DeterministicProductionSessionAdapter' \
-			"crates/bitaxe-stratum/src/v1/production_session/tests.rs"
-	} | wc -l | tr -d ' '
-)"
-if [[ "$adapter_count" != "2" ]]; then
-	printf 'production session source contract failed: expected exactly two adapters, found %s\n' "$adapter_count" >&2
 	exit 1
 fi
 

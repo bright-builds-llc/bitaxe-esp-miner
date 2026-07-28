@@ -1383,25 +1383,54 @@ did not modify historical evidence or parity status.
 
 ### task-repair-production-session-source-contract | 2026-07-27 21:44 | Repair the production-session architecture guard
 
-- [ ] Replace the stale `adapter.execute(effect)` source assertion with the
+- [x] Replace the stale `adapter.execute(effect)` source assertion with the
       current `adapter.maybe_execute(effect)` contract.
-- [ ] Preserve the exactly-two-adapters assertion and every existing
+- [x] Preserve the exactly-two-adapters assertion and every existing
       ordinary-adapter forbidden-I/O check.
-- [ ] Add or update focused regressions so the guard fails when the current
+- [x] Add or update focused regressions so the guard fails when the current
       event/effect interpreter seam, adapter count, or forbidden-I/O boundary
       drifts.
-- [ ] Run the source guard, focused core tests, `just
+- [x] Run the source guard, focused core tests, `just
       verify-production-session`, and the canonical firmware build.
 
 Dependencies: None. Complete this task before relying on the production-session
 source contract as verification for later architecture work.
 
-Verification: Pending.
+Verification:
 
-Completion review: Pending. This is software-only source-contract repair. It
-does not authorize hardware detection, flashing, monitoring, credentials,
-network discovery, evidence generation or promotion, parity-status changes,
-commit, or push operations.
+- The pre-change `just verify-production-session` failure was reproduced after
+  its three focused core targets passed:
+  `owner contract missing: adapter.execute(effect)`.
+- The new focused Bazel shell test passes the current contract and proves
+  failures for a missing `adapter.maybe_execute(effect)` seam, a third adapter,
+  and forbidden `std::net::TcpStream` ownership. It also passed in Bazel's
+  `rg`-free sandbox through the production guard's `grep` fallback.
+- `shfmt -d`, ShellCheck, the source guard, and
+  `just verify-production-session` passed. The latter ran the focused guard
+  regression, all three production-session core targets, and the canonical
+  ESP32-S3 firmware build.
+- The required ordered Rust sequence passed: `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features`.
+- `bun scripts/bright-builds-check.ts all` scanned 558 files with eight
+  existing exceptions and zero findings; `just test` passed all 73 Bazel test
+  targets, including the new focused guard regression.
+- `just parity` reported `validation_errors: none`; `just verify-reference`
+  confirmed pinned commit `c1915b0a63bfabebdb95a515cedfee05146c1d50`
+  clean; `just verify-redaction` and `git diff --check` passed.
+
+Completion review:
+
+- Repaired the architecture source guard at the renamed production adapter
+  boundary and kept the interpreter seam, exact adapter inventory, and
+  ordinary-adapter I/O prohibition under one production/tested check.
+- Residual risk is limited to the source guard's intentional textual contract;
+  typed production-session behavior remains covered by the existing core
+  tests. No runtime behavior, hardware, credentials, network discovery,
+  evidence, parity status, reference contents, or evaluator inventory changed.
+  The current explicit `work-top-task` invocation supplies commit and push
+  authorization for this task only.
 
 ### task-remove-core-clock-ownership | 2026-07-27 21:44 | Make production-session timing deterministic
 
