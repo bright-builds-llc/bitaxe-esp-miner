@@ -235,4 +235,32 @@ printf 'status_class=completed count=2 duration_seconds=10\n' >"${repo}/safe.txt
 git -C "$repo" add safe.txt
 (cd "$repo" && bash ./scripts/verify-redaction.sh >/dev/null)
 
+repo="$(new_repo explicit-projection)"
+mkdir "${repo}/candidate"
+printf 'status_class=completed count=2 duration_seconds=10\n' >"${repo}/candidate/summary.md"
+(cd "$repo" && bash ./scripts/verify-redaction.sh --projection candidate >/dev/null)
+
+projection_origin="http://192.0.2.44"
+printf 'origin=%s\n' "$projection_origin" >"${repo}/candidate/unsafe.md"
+assert_fails_without_echo "$repo" "$projection_origin" \
+	bash ./scripts/verify-redaction.sh --projection candidate
+
+rm "${repo}/candidate/unsafe.md"
+ln -s summary.md "${repo}/candidate/linked.md"
+set +e
+symlink_output="$(cd "$repo" && bash ./scripts/verify-redaction.sh \
+	--projection candidate 2>&1)"
+symlink_status=$?
+set -e
+[[ "$symlink_status" -eq 1 ]]
+[[ "$symlink_output" == *"rule=CONFIG category=projection-artifact"* ]]
+
+set +e
+outside_output="$(cd "$repo" && bash ./scripts/verify-redaction.sh \
+	--projection "$tmp_root" 2>&1)"
+outside_status=$?
+set -e
+[[ "$outside_status" -eq 1 ]]
+[[ "$outside_output" == *"rule=CONFIG category=projection-path"* ]]
+
 printf 'verify_redaction_test: passed\n'

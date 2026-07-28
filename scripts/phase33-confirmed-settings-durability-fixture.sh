@@ -276,6 +276,12 @@ run_checkpoint() {
 	esac
 }
 
+run_redaction() {
+	[[ "${1:-}" == "--projection" && -n "${2:-}" && $# -eq 2 ]] || exit 2
+	[[ "$scenario" != "redaction_failure" && "$scenario" != "sensitive_output" ]] || exit 1
+	printf 'verify_redaction: passed\n'
+}
+
 case "$role" in
 just) run_just "$@" ;;
 classifier) run_classifier "$@" ;;
@@ -283,5 +289,6 @@ identity) run_identity "$@" ;;
 curl) run_curl "$@" ;;
 monitor) run_monitor "$@" ;;
 checkpoint) run_checkpoint "$@" ;;
+redaction) run_redaction "$@" ;;
 *) exit 2 ;;
 esac

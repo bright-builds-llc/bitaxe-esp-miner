@@ -291,6 +291,8 @@ sh_binary(
         "phase17-live-http-api-smoke.sh",
         "phase17-live-http-api-target.sh",
         "phase17-websocket-capture.mjs",
+        "redaction-exceptions.tsv",
+        "verify-redaction.sh",
         "//tools/parity:report",
     ],
 )
@@ -301,7 +303,9 @@ sh_binary(
     data = [
         "phase13-monitor-capture.sh",
         "process-group.sh",
+        "redaction-exceptions.tsv",
         "serial-session-trace.sh",
+        "verify-redaction.sh",
     ],
     tags = ["local"],
 )

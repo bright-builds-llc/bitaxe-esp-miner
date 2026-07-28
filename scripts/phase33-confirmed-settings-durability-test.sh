@@ -15,7 +15,7 @@ fail() {
 
 fake_bin="${tmp_root}/fake-bin"
 mkdir -p "$fake_bin"
-for command in just curl classifier identity monitor checkpoint; do
+for command in just curl classifier identity monitor checkpoint redaction; do
 	ln -s "$fixture" "${fake_bin}/${command}"
 done
 
@@ -47,6 +47,7 @@ run_scenario() {
 		PHASE33_IDENTITY_COMMAND="${fake_bin}/identity" \
 		PHASE33_PASSIVE_MONITOR_COMMAND="${fake_bin}/monitor" \
 		PHASE33_CHECKPOINT_COMMAND="${fake_bin}/checkpoint" \
+		PHASE33_REDACTION_COMMAND="${fake_bin}/redaction" \
 		PHASE33_POLL_INTERVAL_SECONDS=0.001 \
 		bash "$wrapper" --mode simulate --scenario "$scenario" \
 		--capture-seconds 1 --manifest "$maybe_manifest" \
@@ -82,6 +83,7 @@ assert_call_count 1 '^just flash-monitor '
 assert_call_count 1 '^curl PATCH proof$'
 assert_call_count 1 '^curl POST restart$'
 assert_call_count 1 '^curl PATCH restore$'
+assert_call_count 1 '^redaction --projection '
 
 failure_cases='detector_ambiguous detector_ambiguous
 board_info_failure board_info_failure
@@ -104,7 +106,8 @@ holder_leak serial_holder_cleanup_failed
 process_leak monitor_process_cleanup_failed
 timeout proof_timeout
 restore_failure restoration_failed
-sensitive_output sensitive_output_detected'
+sensitive_output redaction_validation_failed
+redaction_failure redaction_validation_failed'
 
 while read -r scenario expected_category; do
 	run_scenario "$scenario"
@@ -117,6 +120,11 @@ while read -r scenario expected_category; do
 		;;
 	sensitive_output)
 		grep -Fq 'curl PATCH restore' "${scenario_state}/calls.log" || fail "sensitive-output restoration PATCH missing"
+		assert_call_count 1 '^redaction --projection '
+		;;
+	redaction_failure)
+		grep -Fq 'curl PATCH restore' "${scenario_state}/calls.log" || fail "redaction-failure restoration PATCH missing"
+		assert_call_count 1 '^redaction --projection '
 		;;
 	esac
 done <<<"$failure_cases"
@@ -144,6 +152,7 @@ PHASE33_ALLOW_TEST_MODE=1 PHASE33_FAKE_STATE_ROOT="$unsafe_state" \
 	PHASE33_JUST_COMMAND="${fake_bin}/just" PHASE33_CURL_COMMAND="${fake_bin}/curl" \
 	PHASE33_CLASSIFIER="${fake_bin}/classifier" PHASE33_IDENTITY_COMMAND="${fake_bin}/identity" \
 	PHASE33_PASSIVE_MONITOR_COMMAND="${fake_bin}/monitor" \
+	PHASE33_REDACTION_COMMAND="${fake_bin}/redaction" \
 	bash "$wrapper" --mode simulate --scenario success --capture-seconds 1 \
 	--manifest "$manifest" --shareable-out "${tmp_root}/unsafe.md" \
 	--local-root "docs/parity/evidence" >"$unsafe_output" 2>&1
@@ -169,6 +178,7 @@ set +e
 		PHASE33_JUST_COMMAND="${fake_bin}/just" PHASE33_CURL_COMMAND="${fake_bin}/curl" \
 		PHASE33_CLASSIFIER="${fake_bin}/classifier" PHASE33_IDENTITY_COMMAND="${fake_bin}/identity" \
 		PHASE33_PASSIVE_MONITOR_COMMAND="${fake_bin}/monitor" \
+		PHASE33_REDACTION_COMMAND="${fake_bin}/redaction" \
 		bash "$wrapper" --mode simulate --scenario success --capture-seconds 1 \
 		--manifest "$manifest" --shareable-out "${tmp_root}/tracked-ignored.md" \
 		--local-root raw

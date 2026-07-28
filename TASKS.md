@@ -1175,19 +1175,86 @@ used, and no hardware or parity claim changed.
 
 ### task-private-first-remaining-evidence-pipelines | 2026-07-20 | Migrate remaining evidence workflows
 
-- [ ] Inventory active evidence-producing workflows outside the archived
-  Phase 35 workflow against `docs/parity/evidence-policy.md`.
-- [ ] Migrate any active workflow that still performs in-place or post-write
+- [x] Inventory active evidence-producing workflows outside the archived
+      Phase 35 workflow against `docs/parity/evidence-policy.md`.
+- [x] Migrate any active workflow that still performs in-place or post-write
   sanitization to private-first capture with a distinct shareable projection.
-- [ ] Add focused regressions and route every admitted projection through
+- [x] Add focused regressions and route every admitted projection through
   `just verify-redaction`.
-- [ ] Run the repository verification required for every changed language and
-  workflow surface.
+- [x] Run the repository verification required for every changed language and
+      workflow surface.
 
-Verification: Pending.
+Working plan and bounded inventory (2026-07-27):
 
-Completion review: Pending. This task does not authorize hardware, credentials,
-network access, device mutation, evidence promotion, or push operations.
+- Audit scope is the current human command surface in `justfile`: the
+  flash/monitor/finalization family, the private-only flash-durability and
+  device-session diagnostics, Phase 23 operator evidence, Phase 33 settings
+  durability, and Phase 36 candidate capture/classification. Phase 35 is
+  explicitly excluded by this task; archived `.planning/` workflows and
+  non-routed legacy phase binaries are historical rather than active command
+  surfaces.
+- The flash family already sanitizes independent child streams before their
+  first write and uses digest-bound distinct finalization when a private
+  classifier is required. Flash durability and device-session diagnostics
+  retain only mode-`0600` `ProtectedOperational` files below ignored
+  mode-`0700` roots. Phase 36 already separates private capture, candidate,
+  seal, and classification artifacts. No active workflow performs in-place or
+  post-write sanitization.
+- Phase 23 and Phase 33 already derive distinct shareable projections without
+  copying private artifacts, but they do not route an untracked or unstaged
+  candidate projection through the canonical repository redaction adapter.
+  Add a fail-closed explicit-projection mode to `just verify-redaction`, route
+  those two generators through it, and add fresh-process regressions for safe
+  acceptance, non-echoing rejection, and exactly-once generator validation.
+- Verify the focused shell targets, shell formatting and ShellCheck, the
+  managed Bright Builds checks, the complete repository suite, parity,
+  reference integrity, redaction, and the final scoped diff.
+
+Verification:
+
+- Direct fresh-process tests passed for `verify-redaction`, Phase 23 operator
+  evidence, and Phase 33 settings durability. They cover safe untracked
+  projection acceptance, non-echoing sensitive-value rejection, symlink and
+  outside-workspace rejection, exactly-once generator validation, and
+  fail-closed generator outcomes.
+- Focused Bazel tests passed for
+  `//scripts:verify_redaction_test`,
+  `//scripts:phase23_redacted_operator_evidence_test`, and
+  `//scripts:phase33_confirmed_settings_durability_test`.
+- `shfmt -d` and ShellCheck passed for every changed shell file.
+- The required ordered Rust sequence passed: `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features`.
+- `bun scripts/bright-builds-check.ts all` scanned 558 files with the eight
+  existing justified exceptions and zero findings. `just test` passed all 72
+  Bazel tests, including the ESP32-S3 firmware compile and package graph.
+- `just parity` reported `validation_errors: none`; `just verify-reference`
+  confirmed pinned commit `c1915b0a63bfabebdb95a515cedfee05146c1d50`
+  clean; `just verify-redaction` and `git diff --check` passed.
+
+Completion review:
+
+- The canonical redaction adapter can now validate one or more explicit
+  untracked or unstaged projection files/directories without echoing matched
+  content, following symlinks, or accepting paths outside the workspace.
+- Phase 23 and Phase 33 invoke that adapter exactly once after their typed
+  projection is complete and before reporting success. Phase 33's duplicate
+  ad hoc post-write regex was removed so the canonical policy is the sole
+  projection admission check.
+- The bounded active-workflow audit found no in-place/post-write sanitizer to
+  migrate: existing private classifiers already consume immutable
+  secret-sanitized inputs before distinct projection, while private-only
+  diagnostics remain protected and unadmitted.
+- Residual risk: non-routed legacy phase binaries remain historical surfaces
+  outside the active `justfile` command inventory. Any future reactivation must
+  first pass the same private-first audit. No hardware, credentials, network
+  discovery, evidence generation or promotion, historical artifact rewrite,
+  or parity-status change occurred.
+
+The task's original backlog scope did not itself authorize push operations; the
+current explicit `work-top-task` invocation supplied that authorization. All
+other original prohibitions remained in force.
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 

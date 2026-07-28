@@ -4,7 +4,8 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 readonly wrapper="${PHASE23_EVIDENCE_SCRIPT:-${script_dir}/phase23-redacted-operator-evidence.sh}"
-readonly repo_root="$(cd "${script_dir}/.." && pwd)"
+repo_root="$(cd "${script_dir}/.." && pwd)"
+readonly repo_root
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/phase23-redacted-operator-evidence-test.XXXXXX")"
 readonly tmp_root
@@ -55,12 +56,40 @@ SH
 	chmod +x "$path"
 }
 
+write_fake_redaction() {
+	local path="$1"
+
+	cat >"$path" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ "${1:-}" == "--projection" && -n "${2:-}" && $# -eq 2 ]]
+printf 'projection=%s\n' "$2" >>"${PHASE23_FAKE_REDACTION_TRACE:?}"
+if [[ "${PHASE23_REDACTION_MUST_FAIL:-0}" == "1" ]]; then
+	exit 1
+fi
+printf 'verify_redaction: passed\n'
+SH
+	chmod +x "$path"
+}
+
 assert_operator_trace() {
 	local trace_path="$1"
 
 	assert_contains "$trace_path" "command=operator-evidence profile=phase23"
 	if [[ "$(wc -l <"$trace_path" | tr -d ' ')" -ne 1 ]]; then
 		printf 'Phase 23 operator validation must run exactly once\n' >&2
+		exit 1
+	fi
+}
+
+assert_redaction_trace() {
+	local trace_path="$1"
+	local evidence_root="$2"
+
+	assert_contains "$trace_path" "projection=${evidence_root}"
+	if [[ "$(wc -l <"$trace_path" | tr -d ' ')" -ne 1 ]]; then
+		printf 'Phase 23 redaction validation must run exactly once\n' >&2
 		exit 1
 	fi
 }
@@ -111,12 +140,17 @@ find_real_parity() {
 
 run_blocked_mode_test() {
 	local fake_parity="${tmp_root}/fake-parity.sh"
+	local fake_redaction="${tmp_root}/fake-redaction.sh"
 	local evidence_root="${tmp_root}/blocked-root"
 	local trace_path="${tmp_root}/blocked.trace"
+	local redaction_trace="${tmp_root}/blocked-redaction.trace"
 	write_fake_parity "$fake_parity"
+	write_fake_redaction "$fake_redaction"
 
 	PHASE23_PARITY_COMMAND="$fake_parity" \
-	PHASE23_FAKE_PARITY_TRACE="$trace_path" \
+		PHASE23_FAKE_PARITY_TRACE="$trace_path" \
+		PHASE23_REDACTION_COMMAND="$fake_redaction" \
+		PHASE23_FAKE_REDACTION_TRACE="$redaction_trace" \
 		"$wrapper" \
 		--evidence-root "$evidence_root" \
 		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
@@ -143,21 +177,27 @@ run_blocked_mode_test() {
 		assert_not_contains "$slot" "192.0.2.55"
 	done
 	assert_operator_trace "$trace_path"
+	assert_redaction_trace "$redaction_trace" "$evidence_root"
 }
 
 run_detector_failure_test() {
 	local fake_parity="${tmp_root}/fake-parity-detector.sh"
 	local fake_detector="${tmp_root}/fake-detect-ultra205.sh"
+	local fake_redaction="${tmp_root}/fake-redaction-detector.sh"
 	local evidence_root="${tmp_root}/detector-root"
 	local trace_path="${tmp_root}/detector.trace"
+	local redaction_trace="${tmp_root}/detector-redaction.trace"
 	write_fake_parity "$fake_parity"
 	write_failing_detector "$fake_detector"
+	write_fake_redaction "$fake_redaction"
 
 	set +e
 	PHASE23_PARITY_COMMAND="$fake_parity" \
-	PHASE23_FAKE_PARITY_TRACE="$trace_path" \
-	PHASE23_DETECT_COMMAND="$fake_detector" \
-	PHASE23_DETECT_MUST_FAIL=1 \
+		PHASE23_FAKE_PARITY_TRACE="$trace_path" \
+		PHASE23_DETECT_COMMAND="$fake_detector" \
+		PHASE23_DETECT_MUST_FAIL=1 \
+		PHASE23_REDACTION_COMMAND="$fake_redaction" \
+		PHASE23_FAKE_REDACTION_TRACE="$redaction_trace" \
 		"$wrapper" \
 		--evidence-root "$evidence_root" \
 		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
@@ -176,14 +216,20 @@ run_detector_failure_test() {
 	assert_contains "${evidence_root}/detector.md" "just detect-ultra205"
 	assert_contains "${evidence_root}/board-info.md" "Board-info blocked"
 	assert_operator_trace "$trace_path"
+	[[ ! -e "$redaction_trace" ]]
 }
 
 run_real_parity_integration_test() {
 	local real_parity
 	real_parity="$(find_real_parity)"
+	local fake_redaction="${tmp_root}/fake-redaction-real.sh"
 	local evidence_root="${tmp_root}/real-parity-root"
+	local redaction_trace="${tmp_root}/real-redaction.trace"
+	write_fake_redaction "$fake_redaction"
 
 	PHASE23_PARITY_COMMAND="$real_parity" \
+		PHASE23_REDACTION_COMMAND="$fake_redaction" \
+		PHASE23_FAKE_REDACTION_TRACE="$redaction_trace" \
 		"$wrapper" \
 		--evidence-root "$evidence_root" \
 		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
@@ -191,10 +237,41 @@ run_real_parity_integration_test() {
 
 	assert_contains "${tmp_root}/real-parity.stdout" "operator_evidence_status: passed"
 	assert_all_slots_exist "$evidence_root"
+	assert_redaction_trace "$redaction_trace" "$evidence_root"
+}
+
+run_redaction_failure_test() {
+	local fake_parity="${tmp_root}/fake-parity-redaction.sh"
+	local fake_redaction="${tmp_root}/fake-redaction-failure.sh"
+	local evidence_root="${tmp_root}/redaction-failure-root"
+	local parity_trace="${tmp_root}/redaction-failure-parity.trace"
+	local redaction_trace="${tmp_root}/redaction-failure.trace"
+	write_fake_parity "$fake_parity"
+	write_fake_redaction "$fake_redaction"
+
+	set +e
+	PHASE23_PARITY_COMMAND="$fake_parity" \
+		PHASE23_FAKE_PARITY_TRACE="$parity_trace" \
+		PHASE23_REDACTION_COMMAND="$fake_redaction" \
+		PHASE23_FAKE_REDACTION_TRACE="$redaction_trace" \
+		PHASE23_REDACTION_MUST_FAIL=1 \
+		"$wrapper" \
+		--evidence-root "$evidence_root" \
+		--manifest "${tmp_root}/bitaxe-ultra205-package.json" \
+		--mode blocked >"${tmp_root}/redaction-failure.stdout" \
+		2>"${tmp_root}/redaction-failure.stderr"
+	local status=$?
+	set -e
+
+	[[ "$status" -ne 0 ]]
+	assert_contains "${tmp_root}/redaction-failure.stderr" \
+		"phase23_redaction_status=blocked redacted=true"
+	assert_redaction_trace "$redaction_trace" "$evidence_root"
 }
 
 run_blocked_mode_test
 run_detector_failure_test
 run_real_parity_integration_test
+run_redaction_failure_test
 
 printf 'phase23_redacted_operator_evidence_test=passed\n'

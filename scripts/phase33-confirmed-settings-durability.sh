@@ -28,6 +28,7 @@ curl_command="${PHASE33_CURL_COMMAND:-curl}"
 identity_command="${PHASE33_IDENTITY_COMMAND:-}"
 passive_monitor_command="${PHASE33_PASSIVE_MONITOR_COMMAND:-${script_dir}/phase13-monitor-capture.sh}"
 checkpoint_command="${PHASE33_CHECKPOINT_COMMAND:-}"
+redaction_command="${PHASE33_REDACTION_COMMAND:-${script_dir}/verify-redaction.sh}"
 poll_interval_seconds="${PHASE33_POLL_INTERVAL_SECONDS:-0.25}"
 
 usage() {
@@ -550,8 +551,8 @@ EOF
 chmod 644 "$shareable_out"
 
 run_checkpoint before_shareable_validation "$shareable_out"
-if rg -n -i 'https?://|([0-9]{1,3}\.){3}[0-9]{1,3}|([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}|/dev/|ssid|password|credential|worker|pool[_ -]?(url|user|password)|device_url|nvs[_ -]?secret|api[_ -]?(token|key)' "$shareable_out"; then
-	printf 'failure_category=sensitive_output_detected\n' >&2
+if ! "$redaction_command" --projection "$shareable_out"; then
+	printf 'failure_category=redaction_validation_failed\n' >&2
 	exit 1
 fi
 printf '[phase33] proof passed; redacted evidence written to %s\n' "$shareable_out"

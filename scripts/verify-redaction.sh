@@ -2,12 +2,13 @@
 set -euo pipefail
 
 usage() {
-	printf 'usage: verify-redaction [--base COMMIT --head COMMIT] [--new-branch-base COMMIT]\n' >&2
+	printf 'usage: verify-redaction [--base COMMIT --head COMMIT] [--new-branch-base COMMIT] [--projection PATH]...\n' >&2
 }
 
 base_ref=""
 head_ref=""
 new_branch_base_ref=""
+projection_paths=""
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -21,6 +22,14 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--new-branch-base)
 		new_branch_base_ref="${2:-}"
+		shift 2
+		;;
+	--projection)
+		[[ -n "${2:-}" && "${2:-}" != *$'\n'* ]] || {
+			printf 'redaction_violation: rule=CONFIG category=projection-path path=scripts/verify-redaction.sh line=0\n' >&2
+			exit 2
+		}
+		projection_paths+="${2}"$'\n'
 		shift 2
 		;;
 	-h | --help)
@@ -452,9 +461,80 @@ scan_admitted_root() {
 	done < <(git ls-files -z -- "$tracked_root")
 }
 
+scan_projection_file() {
+	local artifact="$1"
+	local target_path="${artifact#"${workspace_root}/"}"
+
+	if [[ -L "$artifact" || ! -f "$artifact" ]]; then
+		report_violation CONFIG projection-artifact "$target_path" 0 false
+		return
+	fi
+	if [[ ! -s "$artifact" ]]; then
+		return
+	fi
+	if LC_ALL=C grep -Iq '' "$artifact"; then
+		scan_stream "$target_path" true false <"$artifact"
+	else
+		report_violation OP-009 opaque-binary "$target_path" 0 false
+	fi
+}
+
+scan_projection_directory() {
+	local directory="$1"
+	local artifact
+
+	if [[ ! -r "$directory" || ! -x "$directory" ]]; then
+		report_violation CONFIG projection-artifact \
+			"${directory#"${workspace_root}/"}" 0 false
+		return
+	fi
+	shopt -s dotglob nullglob
+	for artifact in "$directory"/*; do
+		if [[ -d "$artifact" && ! -L "$artifact" ]]; then
+			scan_projection_directory "$artifact"
+			continue
+		fi
+		scan_projection_file "$artifact"
+	done
+}
+
+scan_projection() {
+	local requested_path="$1"
+	local absolute_path
+	local canonical_path
+
+	case "$requested_path" in
+	/*) absolute_path="$requested_path" ;;
+	*) absolute_path="${workspace_root}/${requested_path}" ;;
+	esac
+	if [[ "$absolute_path" == *"/../"* || "$absolute_path" == */.. ||
+		! -e "$absolute_path" || -L "$absolute_path" ]]; then
+		report_violation CONFIG projection-path scripts/verify-redaction.sh 0 false
+		return
+	fi
+	canonical_path="$(realpath "$absolute_path")"
+	if [[ "$canonical_path" != "$workspace_root/"* ]]; then
+		report_violation CONFIG projection-path scripts/verify-redaction.sh 0 false
+		return
+	fi
+	if [[ -f "$canonical_path" ]]; then
+		scan_projection_file "$canonical_path"
+		return
+	fi
+	if [[ ! -d "$canonical_path" ]]; then
+		report_violation CONFIG projection-path scripts/verify-redaction.sh 0 false
+		return
+	fi
+	scan_projection_directory "$canonical_path"
+}
+
 scan_changed_paths
 scan_admitted_root "$admitted_root"
 scan_admitted_root "$secondary_admitted_root"
+while IFS= read -r projection_path; do
+	[[ -n "$projection_path" ]] || continue
+	scan_projection "$projection_path"
+done <<<"$projection_paths"
 
 if [[ "$violations" -ne 0 ]]; then
 	if [[ "$violations" -gt "$reported_violations" ]]; then

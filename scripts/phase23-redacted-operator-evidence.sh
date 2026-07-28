@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly script_dir
+
 usage() {
 	printf 'usage: %s --evidence-root PATH --manifest PATH --mode blocked|hardware [--pool-credentials PATH] [--wifi-credentials PATH] [--duration-seconds N] [--flash-evidence-json PATH] [--device-url ORIGIN]\n' "$(basename "$0")" >&2
 }
@@ -92,6 +95,7 @@ readonly source_commit="${PHASE23_SOURCE_COMMIT:-$(git rev-parse HEAD 2>/dev/nul
 readonly reference_commit="${PHASE23_REFERENCE_COMMIT:-$(git -C reference/esp-miner rev-parse HEAD 2>/dev/null || printf 'unknown-reference')}"
 readonly detector_command="${PHASE23_DETECT_COMMAND:-just detect-ultra205}"
 readonly parity_command="${PHASE23_PARITY_COMMAND:-bazel run //tools/parity:report --}"
+readonly redaction_command="${PHASE23_REDACTION_COMMAND:-${script_dir}/verify-redaction.sh}"
 
 mkdir -p "$evidence_root"
 
@@ -308,6 +312,11 @@ operator_status=$?
 set -e
 
 if [[ "$workflow_status" -ne 0 || "$operator_status" -ne 0 ]]; then
+	exit 1
+fi
+
+if ! "$redaction_command" --projection "$evidence_root"; then
+	printf 'phase23_redaction_status=blocked redacted=true\n' >&2
 	exit 1
 fi
 
