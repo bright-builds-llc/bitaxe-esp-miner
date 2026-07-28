@@ -1434,26 +1434,62 @@ Completion review:
 
 ### task-remove-core-clock-ownership | 2026-07-27 21:44 | Make production-session timing deterministic
 
-- [ ] Replace `Instant` ownership in `BridgeOrchestrator` and
+- [x] Replace `Instant` ownership in `BridgeOrchestrator` and
       `ProductionMiningSession` with caller-supplied monotonic milliseconds.
-- [ ] Keep `ProductionSessionEvent::now_ms` as the sole production-session time
+- [x] Keep `ProductionSessionEvent::now_ms` as the sole production-session time
       input and remove all real-clock reads from the reusable Stratum core.
-- [ ] Preserve dispatch-before-poll priority, regeneration cadence, timeout
+- [x] Preserve dispatch-before-poll priority, regeneration cadence, timeout
       telemetry, invalidation, and fail-closed session behavior.
-- [ ] Add deterministic tests for dispatch priority, pre-threshold and
+- [x] Add deterministic tests for dispatch priority, pre-threshold and
       at-threshold regeneration, timeout behavior, clock regression, and
       saturating timestamp arithmetic.
-- [ ] Run focused Stratum and API tests, the repaired production-session source
+- [x] Run focused Stratum and API tests, the repaired production-session source
       contract, and the relevant complete software verification surface.
 
 Dependencies: Complete the production-session architecture-guard repair first.
 
-Verification: Pending.
+Verification:
 
-Completion review: Pending. This is a software-only functional-core refactor.
-It does not authorize hardware detection, flashing, monitoring, credentials,
-network discovery, evidence generation or promotion, parity-status changes,
-commit, or push operations.
+- The pre-change inventory found `Instant` ownership in
+  `BridgeOrchestrator::maybe_last_dispatch_at`,
+  `ProductionMiningSession::bridge_epoch`, and the epoch-plus-duration
+  conversion in `drive_bridge`. The reusable engine now stores and compares
+  only caller-supplied `u64` millisecond values with `saturating_sub`.
+- `cargo test -p bitaxe-stratum --all-features` passed all 182 tests. Focused
+  regressions preserve dispatch-before-poll priority, pre-threshold polling,
+  at-threshold regeneration, non-terminal timeout cadence, regressed-clock
+  behavior, and exact `u64::MAX` regeneration without overflow.
+- The production-session source guard now rejects `Instant` or `SystemTime`
+  ownership in the reusable engine. Its direct regression, `shfmt -d`,
+  ShellCheck, and the complete source contract passed.
+- The required ordered Rust sequence passed: `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features`.
+- Focused Bazel Stratum, API, and source-guard tests passed.
+  `just verify-production-session` passed its Stratum, API, config, and guard
+  targets plus the canonical ESP32-S3 firmware build.
+- `bun scripts/bright-builds-check.ts all` scanned 561 files with the eight
+  existing justified exceptions and zero findings. `just test` passed all 73
+  Bazel test targets, including firmware compilation and packaging.
+- `just parity` reported `validation_errors: none`; `just verify-reference`
+  confirmed pinned commit `c1915b0a63bfabebdb95a515cedfee05146c1d50`
+  clean; `just verify-redaction` and `git diff --check` passed.
+- Final scope review found no changes to hardware/evidence artifacts, the
+  parity checklist, planning archives, reference contents, schemas, or parity
+  status.
+
+Completion review:
+
+- The Production Mining Session and bridge now share one deterministic
+  caller-supplied monotonic-millisecond domain. Clock regression saturates
+  elapsed time to zero, while maximum timestamps preserve exact cadence
+  without epoch arithmetic or overflow.
+- Residual risk is limited to the firmware shell supplying monotonic event
+  timestamps; this software-only task compiled that shell but did not exercise
+  hardware, credentials, live networking, or mining actuation. The current
+  explicit `work-top-task` invocation supplies commit and push authorization
+  for this task only.
 
 ### task-relocate-reusable-crate-concurrency-shells | 2026-07-27 21:44 | Move concurrency ownership into firmware adapters
 

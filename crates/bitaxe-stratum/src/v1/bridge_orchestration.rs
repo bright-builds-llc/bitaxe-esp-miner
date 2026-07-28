@@ -10,8 +10,6 @@
 //! decisions live here so the J2c dispatch-starvation regression stays
 //! encoded as executable host tests.
 
-use std::time::Instant;
-
 /// Upper bound for a single result poll slice in milliseconds.
 ///
 /// UART RX bytes buffer in the driver ring between slices, so short
@@ -44,18 +42,18 @@ pub enum BridgeStep {
 pub struct BridgeOrchestrator {
     pending_dispatch: bool,
     listener_armed: bool,
-    maybe_last_dispatch_at: Option<Instant>,
-    job_interval_ms: u32,
+    maybe_last_dispatch_ms: Option<u64>,
+    job_interval_ms: u64,
     timeout_streak: u64,
 }
 
 impl BridgeOrchestrator {
     #[must_use]
-    pub fn new(job_interval_ms: u32) -> Self {
+    pub fn new(job_interval_ms: u64) -> Self {
         Self {
             pending_dispatch: false,
             listener_armed: false,
-            maybe_last_dispatch_at: None,
+            maybe_last_dispatch_ms: None,
             job_interval_ms,
             timeout_streak: 0,
         }
@@ -71,10 +69,10 @@ impl BridgeOrchestrator {
         self.listener_armed = true;
     }
 
-    /// Queued work was dispatched to the chip at `now`.
-    pub fn note_dispatched(&mut self, now: Instant) {
+    /// Queued work was dispatched to the chip at caller-supplied `now_ms`.
+    pub fn note_dispatched(&mut self, now_ms: u64) {
         self.pending_dispatch = false;
-        self.maybe_last_dispatch_at = Some(now);
+        self.maybe_last_dispatch_ms = Some(now_ms);
     }
 
     /// A result poll slice elapsed without data; returns the streak count.
@@ -96,11 +94,11 @@ impl BridgeOrchestrator {
     /// The listener stays armed — session churn must not stop polling.
     pub fn invalidate_session(&mut self) {
         self.pending_dispatch = false;
-        self.maybe_last_dispatch_at = None;
+        self.maybe_last_dispatch_ms = None;
         self.timeout_streak = 0;
     }
 
-    /// Decide the next bridge step at `now`.
+    /// Decide the next bridge step at caller-supplied `now_ms`.
     ///
     /// Priority: Dispatch > Regenerate > Poll > Idle. Dispatch is checked
     /// before any poll state — this ordering is the J2c fix.
@@ -108,17 +106,17 @@ impl BridgeOrchestrator {
     /// Regeneration cadence mirrors upstream's timed dequeue
     /// (`reference/esp-miner/main/tasks/create_jobs_task.c:60,84-86,183-187`).
     #[must_use]
-    pub fn next_step(&self, now: Instant) -> BridgeStep {
+    pub fn next_step(&self, now_ms: u64) -> BridgeStep {
         if self.pending_dispatch {
             return BridgeStep::Dispatch;
         }
 
-        let Some(last_dispatch_at) = self.maybe_last_dispatch_at else {
+        let Some(last_dispatch_ms) = self.maybe_last_dispatch_ms else {
             return BridgeStep::Idle;
         };
 
-        let elapsed_ms = now.saturating_duration_since(last_dispatch_at).as_millis();
-        if elapsed_ms >= u128::from(self.job_interval_ms) {
+        let elapsed_ms = now_ms.saturating_sub(last_dispatch_ms);
+        if elapsed_ms >= self.job_interval_ms {
             return BridgeStep::Regenerate;
         }
 
@@ -147,9 +145,8 @@ pub fn timeout_streak_marker(count: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
 
-    const JOB_INTERVAL_MS: u32 = 2000;
+    const JOB_INTERVAL_MS: u64 = 2_000;
 
     fn armed_orchestrator() -> BridgeOrchestrator {
         let mut orchestrator = BridgeOrchestrator::new(JOB_INTERVAL_MS);
@@ -161,12 +158,11 @@ mod tests {
     fn dispatch_beats_poll_when_work_queued_and_listener_armed() {
         // Arrange: the literal J2c regression — listener armed AND work queued.
         let mut orchestrator = armed_orchestrator();
-        let t0 = Instant::now();
-        orchestrator.note_dispatched(t0);
+        orchestrator.note_dispatched(0);
         orchestrator.note_work_queued();
 
         // Act
-        let step = orchestrator.next_step(t0 + Duration::from_millis(50));
+        let step = orchestrator.next_step(50);
 
         // Assert
         assert_eq!(step, BridgeStep::Dispatch);
@@ -176,13 +172,12 @@ mod tests {
     fn cadence_polls_before_interval_and_regenerates_at_interval() {
         // Arrange
         let mut orchestrator = armed_orchestrator();
-        let t0 = Instant::now();
         orchestrator.note_work_queued();
-        orchestrator.note_dispatched(t0);
+        orchestrator.note_dispatched(0);
 
         // Act
-        let step_before_interval = orchestrator.next_step(t0 + Duration::from_millis(1999));
-        let step_at_interval = orchestrator.next_step(t0 + Duration::from_millis(2000));
+        let step_before_interval = orchestrator.next_step(1_999);
+        let step_at_interval = orchestrator.next_step(2_000);
 
         // Assert
         assert!(matches!(step_before_interval, BridgeStep::Poll { .. }));
@@ -193,14 +188,13 @@ mod tests {
     fn poll_timeout_increments_streak_and_cadence_continues() {
         // Arrange
         let mut orchestrator = armed_orchestrator();
-        let t0 = Instant::now();
-        orchestrator.note_dispatched(t0);
+        orchestrator.note_dispatched(0);
 
         // Act
         let first_streak = orchestrator.note_poll_timeout();
         let second_streak = orchestrator.note_poll_timeout();
-        let step_after_timeouts = orchestrator.next_step(t0 + Duration::from_millis(100));
-        let step_at_interval = orchestrator.next_step(t0 + Duration::from_millis(2000));
+        let step_after_timeouts = orchestrator.next_step(100);
+        let step_at_interval = orchestrator.next_step(2_000);
 
         // Assert: streak counts up and no fatal variant exists in BridgeStep.
         assert_eq!(first_streak, 1);
@@ -213,12 +207,11 @@ mod tests {
     fn invalidation_clears_redispatch_timer() {
         // Arrange
         let mut orchestrator = armed_orchestrator();
-        let t0 = Instant::now();
-        orchestrator.note_dispatched(t0);
+        orchestrator.note_dispatched(0);
 
         // Act
         orchestrator.invalidate_session();
-        let step_long_after = orchestrator.next_step(t0 + Duration::from_secs(10));
+        let step_long_after = orchestrator.next_step(10_000);
 
         // Assert: no regeneration from a cleared timer; idle until new work.
         assert_ne!(step_long_after, BridgeStep::Regenerate);
@@ -230,21 +223,16 @@ mod tests {
         // Arrange: cadence elapsed, but the runtime cannot regenerate work
         // (lost regeneration context) — the shell invalidates the session.
         let mut orchestrator = armed_orchestrator();
-        let t0 = Instant::now();
-        orchestrator.note_dispatched(t0);
-        assert_eq!(
-            orchestrator.next_step(t0 + Duration::from_millis(2000)),
-            BridgeStep::Regenerate
-        );
+        orchestrator.note_dispatched(0);
+        assert_eq!(orchestrator.next_step(2_000), BridgeStep::Regenerate);
 
         // Act: invalidate on regeneration failure, then fresh pool work arrives.
         orchestrator.invalidate_session();
-        let step_while_starved = orchestrator.next_step(t0 + Duration::from_secs(60));
+        let step_while_starved = orchestrator.next_step(60_000);
         orchestrator.note_work_queued();
-        let step_on_fresh_work = orchestrator.next_step(t0 + Duration::from_secs(61));
-        orchestrator.note_dispatched(t0 + Duration::from_secs(61));
-        let step_after_redispatch =
-            orchestrator.next_step(t0 + Duration::from_secs(61) + Duration::from_millis(50));
+        let step_on_fresh_work = orchestrator.next_step(61_000);
+        orchestrator.note_dispatched(61_000);
+        let step_after_redispatch = orchestrator.next_step(61_050);
 
         // Assert: no Regenerate spin; the pump idles, dispatches, then polls again.
         assert_eq!(step_while_starved, BridgeStep::Idle);
@@ -256,13 +244,12 @@ mod tests {
     fn result_received_keeps_mining_with_no_terminal_state() {
         // Arrange
         let mut orchestrator = armed_orchestrator();
-        let t0 = Instant::now();
-        orchestrator.note_dispatched(t0);
+        orchestrator.note_dispatched(0);
 
         // Act: a correlated result (share classified) must not stop the cadence.
         orchestrator.note_result_received();
-        let step_soon_after = orchestrator.next_step(t0 + Duration::from_millis(50));
-        let step_at_interval = orchestrator.next_step(t0 + Duration::from_millis(2000));
+        let step_soon_after = orchestrator.next_step(50);
+        let step_at_interval = orchestrator.next_step(2_000);
 
         // Assert
         assert!(matches!(step_soon_after, BridgeStep::Poll { .. }));
@@ -273,11 +260,10 @@ mod tests {
     fn poll_slices_never_exceed_bound() {
         // Arrange
         let mut orchestrator = armed_orchestrator();
-        let t0 = Instant::now();
-        orchestrator.note_dispatched(t0);
+        orchestrator.note_dispatched(0);
 
         // Act
-        let step = orchestrator.next_step(t0 + Duration::from_millis(500));
+        let step = orchestrator.next_step(500);
 
         // Assert
         let BridgeStep::Poll { slice_ms } = step else {
@@ -285,6 +271,44 @@ mod tests {
         };
         assert!(slice_ms <= MAX_POLL_SLICE_MS);
         assert!(slice_ms <= 100);
+    }
+
+    #[test]
+    fn regressed_clock_saturates_elapsed_time_to_zero() {
+        // Arrange
+        let mut orchestrator = armed_orchestrator();
+        orchestrator.note_dispatched(5_000);
+
+        // Act
+        let step = orchestrator.next_step(4_000);
+
+        // Assert
+        assert_eq!(
+            step,
+            BridgeStep::Poll {
+                slice_ms: MAX_POLL_SLICE_MS
+            }
+        );
+    }
+
+    #[test]
+    fn maximum_timestamp_preserves_exact_regeneration_cadence() {
+        // Arrange
+        let mut orchestrator = armed_orchestrator();
+        orchestrator.note_dispatched(u64::MAX - JOB_INTERVAL_MS);
+
+        // Act
+        let step_before_interval = orchestrator.next_step(u64::MAX - 1);
+        let step_at_interval = orchestrator.next_step(u64::MAX);
+
+        // Assert
+        assert_eq!(
+            step_before_interval,
+            BridgeStep::Poll {
+                slice_ms: MAX_POLL_SLICE_MS
+            }
+        );
+        assert_eq!(step_at_interval, BridgeStep::Regenerate);
     }
 
     #[test]

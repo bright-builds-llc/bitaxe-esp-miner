@@ -39,6 +39,20 @@ assert_guard_fails_with() {
 	fi
 }
 
+assert_clock_guard_fails() {
+	local source="$1"
+	local output
+
+	if output="$("$guard_script" --verify-engine-clock-contract "$source" 2>&1)"; then
+		fail "real-clock engine source unexpectedly passed"
+	fi
+
+	if [[ "$output" != *"reusable engine owns a real clock"* ]]; then
+		printf 'Actual output:\n%s\n' "$output" >&2
+		fail "real-clock failure category was not preserved"
+	fi
+}
+
 copy_canonical_sources() {
 	local case_name="$1"
 	local case_root="${temp_root}/${case_name}"
@@ -108,9 +122,34 @@ test_forbidden_io_drift_fails() {
 		"${case_root}/deterministic.rs"
 }
 
+test_engine_clock_contract_passes_for_caller_supplied_time() {
+	# Arrange
+	local source="${temp_root}/caller-supplied-clock.rs"
+	printf 'fn next_step(now_ms: u64) -> u64 { now_ms.saturating_sub(1) }\n' >"$source"
+
+	# Act
+	local output
+	output="$("$guard_script" --verify-engine-clock-contract "$source")"
+
+	# Assert
+	[[ "$output" == "production_session_engine_clock_contract=passed" ]] ||
+		fail "caller-supplied engine clock contract did not pass"
+}
+
+test_engine_clock_contract_rejects_real_clock_ownership() {
+	# Arrange
+	local source="${temp_root}/real-clock.rs"
+	printf 'fn now() { let _now = std::time::Instant::now(); }\n' >"$source"
+
+	# Act and Assert
+	assert_clock_guard_fails "$source"
+}
+
 test_current_adapter_contract_passes
 test_interpreter_seam_drift_fails
 test_adapter_count_drift_fails
 test_forbidden_io_drift_fails
+test_engine_clock_contract_passes_for_caller_supplied_time
+test_engine_clock_contract_rejects_real_clock_ownership
 
 printf 'production_session_source_guard_tests=passed\n'

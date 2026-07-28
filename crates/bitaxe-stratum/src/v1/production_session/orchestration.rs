@@ -1,5 +1,3 @@
-use std::time::{Duration, Instant};
-
 use bitaxe_asic::bm1366::{command::VersionMask, production::Bm1366ProductionCommand};
 
 use crate::v1::bridge_orchestration::BridgeStep;
@@ -382,9 +380,8 @@ impl ProductionMiningSession {
             )));
         }
 
-        let now = self.bridge_epoch + Duration::from_millis(now_ms);
-        match self.bridge.next_step(now) {
-            BridgeStep::Dispatch => self.dispatch_next(pool, now, effects)?,
+        match self.bridge.next_step(now_ms) {
+            BridgeStep::Dispatch => self.dispatch_next(pool, now_ms, effects)?,
             BridgeStep::Regenerate => {
                 let regenerated = self
                     .maybe_pool_runtime_mut(pool)
@@ -392,7 +389,7 @@ impl ProductionMiningSession {
                     .transpose();
                 if matches!(regenerated, Ok(Some(_))) {
                     self.bridge.note_work_queued();
-                    self.dispatch_next(pool, now, effects)?;
+                    self.dispatch_next(pool, now_ms, effects)?;
                 } else if regenerated.is_err() {
                     self.bridge.invalidate_session();
                 }
@@ -408,7 +405,7 @@ impl ProductionMiningSession {
     fn dispatch_next(
         &mut self,
         pool: ProductionPool,
-        now: Instant,
+        now_ms: u64,
         effects: &mut Vec<ProductionSessionEffect>,
     ) -> Result<(), StratumV1Error> {
         let maybe_dispatch = self
@@ -420,7 +417,7 @@ impl ProductionMiningSession {
                 effects.push(ProductionSessionEffect::DispatchAsic(
                     Bm1366ProductionCommand::SendProductionWork(dispatch.work_payload),
                 ));
-                self.bridge.note_dispatched(now);
+                self.bridge.note_dispatched(now_ms);
             }
             Ok(None) | Err(StratumV1Error::QueueEmpty) => {}
             Err(error) => return Err(error),

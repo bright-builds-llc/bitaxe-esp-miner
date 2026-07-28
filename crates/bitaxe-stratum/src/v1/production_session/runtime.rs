@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::time::Instant;
 
 use crate::jsonrpc::StratumRequestId;
 use crate::v1::bridge_orchestration::BridgeOrchestrator;
@@ -53,7 +52,6 @@ pub struct ProductionMiningSession {
     pub(super) primary: Option<PoolRuntime>,
     pub(super) fallback: Option<PoolRuntime>,
     pub(super) bridge: BridgeOrchestrator,
-    pub(super) bridge_epoch: Instant,
     pub(super) generation_cursor: PoolSessionGeneration,
     pub(super) last_readiness: ProductionReadiness,
     pub(super) maybe_last_snapshot: Option<ProductionSessionSnapshot>,
@@ -74,7 +72,6 @@ impl ProductionMiningSession {
             primary: None,
             fallback: None,
             bridge: BridgeOrchestrator::new(2_000),
-            bridge_epoch: Instant::now(),
             generation_cursor: PoolSessionGeneration::initial(),
             last_readiness: ProductionReadiness {
                 operator_intent: crate::v1::state::MiningOperatorIntent::Run,

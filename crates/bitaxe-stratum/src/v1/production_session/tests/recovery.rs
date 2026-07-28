@@ -214,6 +214,43 @@ fn cadence_regenerates_work_and_poll_timeout_is_non_terminal() {
 }
 
 #[test]
+fn regressed_event_clock_keeps_polling_without_early_regeneration() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    establish_active(&mut adapter);
+    let initial_dispatches = adapter.asic_commands.len();
+    adapter.effects.clear();
+
+    // Act
+    adapter.drive(wake(ready(), 2));
+
+    // Assert
+    assert_eq!(adapter.asic_commands.len(), initial_dispatches);
+    assert!(adapter
+        .effects
+        .iter()
+        .any(|effect| matches!(effect, ProductionSessionEffect::PollAsic { .. })));
+}
+
+#[test]
+fn maximum_event_timestamp_regenerates_without_overflow() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    establish_active(&mut adapter);
+    let initial_dispatches = adapter.asic_commands.len();
+
+    // Act
+    adapter.drive(ProductionSessionEvent::AsicPollTimedOut { now_ms: u64::MAX });
+
+    // Assert
+    assert!(adapter.asic_commands.len() > initial_dispatches);
+    assert_eq!(
+        adapter.session.snapshot().phase,
+        ProductionSessionPhase::RunningPrimary
+    );
+}
+
+#[test]
 fn pause_settings_change_and_shutdown_reread_authoritative_state() {
     // Arrange
     let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));

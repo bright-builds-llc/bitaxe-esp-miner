@@ -68,6 +68,22 @@ verify_adapter_contract() {
 	fi
 }
 
+verify_engine_clock_contract() {
+	local clock_matches
+	local -r forbidden_clock_pattern='(^|[^[:alnum:]_])(Instant|SystemTime)([^[:alnum:]_]|$)'
+
+	if command -v rg >/dev/null 2>&1; then
+		clock_matches="$(rg -n "$forbidden_clock_pattern" "$@" || true)"
+	else
+		clock_matches="$(grep -n -E -- "$forbidden_clock_pattern" "$@" || true)"
+	fi
+	if [[ -n "$clock_matches" ]]; then
+		printf '%s\n' "$clock_matches"
+		printf 'production session source contract failed: reusable engine owns a real clock\n' >&2
+		return 1
+	fi
+}
+
 if [[ "${1:-}" == "--verify-adapter-contract" ]]; then
 	if [[ "$#" != "3" ]]; then
 		printf 'usage: %s --verify-adapter-contract OWNER_SOURCE DETERMINISTIC_ADAPTER_SOURCE\n' "$0" >&2
@@ -79,8 +95,19 @@ if [[ "${1:-}" == "--verify-adapter-contract" ]]; then
 	exit 0
 fi
 
+if [[ "${1:-}" == "--verify-engine-clock-contract" ]]; then
+	if [[ "$#" -lt "2" ]]; then
+		printf 'usage: %s --verify-engine-clock-contract ENGINE_SOURCE...\n' "$0" >&2
+		exit 2
+	fi
+
+	verify_engine_clock_contract "${@:2}"
+	printf 'production_session_engine_clock_contract=passed\n'
+	exit 0
+fi
+
 if [[ "$#" != "0" ]]; then
-	printf 'usage: %s [--verify-adapter-contract OWNER_SOURCE DETERMINISTIC_ADAPTER_SOURCE]\n' "$0" >&2
+	printf 'usage: %s [--verify-adapter-contract OWNER_SOURCE DETERMINISTIC_ADAPTER_SOURCE | --verify-engine-clock-contract ENGINE_SOURCE...]\n' "$0" >&2
 	exit 2
 fi
 
@@ -145,6 +172,7 @@ readonly deterministic_adapter_source="crates/bitaxe-stratum/src/v1/production_s
 verify_adapter_contract "$owner_source" "$deterministic_adapter_source"
 
 readonly engine_sources=(
+	"crates/bitaxe-stratum/src/v1/bridge_orchestration.rs"
 	"crates/bitaxe-stratum/src/v1/production_session.rs"
 	"crates/bitaxe-stratum/src/v1/production_session/orchestration.rs"
 	"crates/bitaxe-stratum/src/v1/production_session/runtime.rs"
@@ -171,6 +199,8 @@ for engine_contract in "${engine_contracts[@]}"; do
 		exit 1
 	fi
 done
+
+verify_engine_clock_contract "${engine_sources[@]}"
 
 readonly forbidden_active_pattern='pub mod (fake_pool|live_runtime|mining_loop)|ProductionSessionAction|mining_loop_status|FakePoolTranscript|run_live_runtime|phase36_substantive_evidence_test'
 readonly forbidden_active_paths=(
