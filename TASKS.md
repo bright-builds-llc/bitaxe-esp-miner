@@ -637,9 +637,9 @@ validator passed in CI.
   time.
 - [x] Add a regression before any software fix, then verify the original
   connected-device reproduction.
-- [ ] Rebuild an exact clean-`HEAD` package and run one detector-gated
+- [x] Rebuild an exact clean-`HEAD` package and run one detector-gated
   flash/monitor only after detector admission succeeds.
-- [ ] Record the root cause, verification evidence, and residual recovery risk.
+- [x] Record the root cause, verification evidence, and residual recovery risk.
 
 Hardware contract:
 
@@ -692,10 +692,48 @@ retry passed immediately. The device-session error now gives that bounded
 recovery procedure only for the same-device, holder-free, unchanged-enumeration
 bootloader failure.
 
-Verification: The focused Cargo regression and Bazel device-session tests pass.
-Exact-package flash/monitor verification is pending.
+Verification: The focused Cargo regression and Bazel device-session tests
+passed with the recovery guidance at commit
+`697d77e027057f2ff0101e8edeb2360ad615e870`. That commit's exact-package
+flash completed, but its 360-second receive-only capture correctly remained
+untrusted because it contained no usable runtime proof. The targeted
+runtime-attestation fix at `5b7f755d8417c1ab2ceeb75d529c96efaf6d28f3`
+subsequently qualified that late-attach boundary. The later refactor smoke then
+admitted one board 205, built and flashed the exact clean-`HEAD` package for
+`3318a9e06d4177afb9f4bd97f32b487eb28e85f0`, observed trusted repeated runtime
+attestations for the exact source, reference, and app identity during the full
+360-second receive-only capture, and ended with `usb_session: ready` without a
+retry. Those existing authoritative records satisfy this task's pending
+detector-gated exact-package reflash objective; no unchanged hardware attempt
+was run for this administrative closure.
 
-Completion review: Pending.
+For this closure update, the mandatory `cargo fmt --all`, Clippy with all
+targets/features and denied warnings, all-target/all-feature build, and
+all-feature test sequence passed. The full Bazel graph passed all 72 tests and
+rebuilt the ESP32-S3 release firmware image. The managed Bright Builds checks,
+reference-cleanliness, parity, redaction, and diff checks passed with no
+findings or validation errors. The whole-file `mdformat --check TASKS.md`
+failure is unchanged from `HEAD`; the new completion prose passes the
+repository-compatible formatter in isolation, and no unrelated tracker
+formatting was rewritten.
+
+Completion review: Complete. The diagnosed root-cause boundary was retained
+USB/bootloader reset state on an accessible, holder-free, same-device
+transport after the expected reset produced no enumeration change. A
+connector-only power cycle objectively changed that boundary and the single
+permitted detector retry passed. The repository now reports that bounded
+non-invasive recovery only for the matching closed failure signature and never
+retries the write without an eligible state change. The later exact-package
+hardware smoke proves bootloader access, factory-image write, receive-only
+runtime observation, and clean session restoration after the recovery.
+
+Residual risks: Host evidence does not distinguish the precise controller,
+firmware, cable, or silicon mechanism that retained the failed reset state, so
+the root cause remains bounded to the observed USB/bootloader transport
+category. A recurrence still requires fresh objective boundary-change evidence
+and must stop on the same post-remediation signature. Hardware proof is bound
+to the cited exact package; later source changes require their own task-gated
+hardware evidence before making new current-`HEAD` hardware claims.
 
 ### task-lcd-ghosting-uptime-window | 2026-07-26 | Clear row-three remnants and favor uptime
 
