@@ -10,6 +10,53 @@ new work.
 
 ## Active
 
+### task-split-phase34-package-admission-guard | 2026-07-27 19:21 | Split audit item 2 source guard
+
+- [x] Split the Phase 34 package and hardware admission source guard into
+      focused one-concern unit tests.
+- [x] Preserve every required marker, prohibited marker, and ordering
+      relationship from the original source guard.
+- [x] Keep explicit Arrange, Act, and Assert sections with small shared
+      assertion helpers.
+- [x] Run focused parity tests and the complete required software verification
+      sequence.
+
+Verification policy:
+
+- This task is a test-structure-only Bright Builds audit remediation. Do not
+  change production APIs, behavior, evidence schemas, checklist rows, parity
+  status, historical evidence, reference contents, or evaluator inventories.
+- Do not detect, flash, monitor, read credentials, discover network targets,
+  generate evidence, or otherwise interact with hardware.
+
+Verification:
+
+- `cargo test -p bitaxe-parity phase34_package --all-features` passed all 10
+  focused guards; an assertion-literal inventory comparison retained every
+  policy marker and ordering relationship from the original test.
+- `bazel test //tools/parity:tests` passed.
+- The required ordered Rust sequence passed: `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features`.
+- `bun scripts/bright-builds-check.ts all` passed with 556 files scanned,
+  eight existing exceptions, and zero findings; `just test` passed all 72
+  tests.
+- `just parity` reported `validation_errors: none`; `just verify-reference`
+  confirmed pinned commit `c1915b0a63bfabebdb95a515cedfee05146c1d50` is
+  clean; `just verify-redaction` and `git diff --check` passed.
+- Final scope review found changes only in this task block and the Phase 34
+  source guard. The checklist, evidence, planning archives, reference tree,
+  and Phase 36 evaluator inventory are unchanged.
+
+Completion review:
+
+- Replaced the 245-line multi-concern test with 10 focused Arrange/Act/Assert
+  tests and four small marker helpers without weakening source-guard policy or
+  changing production behavior.
+- Residual risk: these remain software-only source guards. No hardware or
+  evidence verification was performed or authorized.
+
 ### task-type-http-exchange-observation | 2026-07-27 19:03 | Make HTTP exchange states unrepresentable
 
 - [x] Replace the mutable flat HTTP exchange observation with closed typed
