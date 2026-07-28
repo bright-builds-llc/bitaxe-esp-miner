@@ -37,6 +37,10 @@ readonly checklist_revision_spec="${workspace_root}/docs/parity/checklist-revisi
 readonly checklist_revision_root="${workspace_root}/docs/parity/evidence/checklist-revisions/2026-07-27-module-ownership-refactor"
 readonly checklist_revision_manifest="${checklist_revision_root}/manifest.json"
 readonly checklist_revision_snapshot="${checklist_revision_root}/checklist.md"
+readonly current_revision_spec="${workspace_root}/docs/parity/checklist-revisions/2026-07-28-runtime-display-documentation.json"
+readonly current_revision_root="${workspace_root}/docs/parity/evidence/checklist-revisions/2026-07-28-runtime-display-documentation"
+readonly current_revision_manifest="${current_revision_root}/manifest.json"
+readonly current_revision_snapshot="${current_revision_root}/checklist.md"
 
 fail() {
 	printf 'phase35_promotion_contract_test_error: category=%s\n' "$1" >&2
@@ -64,7 +68,10 @@ for required_path in \
 	"$predecessor_revision_snapshot" \
 	"$checklist_revision_spec" \
 	"$checklist_revision_manifest" \
-	"$checklist_revision_snapshot"; do
+	"$checklist_revision_snapshot" \
+	"$current_revision_spec" \
+	"$current_revision_manifest" \
+	"$current_revision_snapshot"; do
 	[[ -f "$required_path" ]] || fail artifact-inventory
 done
 
@@ -214,7 +221,7 @@ for correction in \
 	reason="${correction#*:}"
 	jq -e --arg row_id "$row_id" --arg reason "$reason" \
 		'.scope_decisions | any(.decision == "demote" and .row_id == $row_id and .reason == $reason)' \
-	"$phase36_matrix" >/dev/null || fail successor-exact-correction
+		"$phase36_matrix" >/dev/null || fail successor-exact-correction
 done
 
 [[ "$(jq -er '.schema_version' "$predecessor_revision_spec")" == "parity-checklist-documentation-revision-v1" ]] ||
@@ -263,7 +270,40 @@ for target in \
 	rg -q -F "$target" "$checklist_revision_snapshot" ||
 		fail documentation-revision-target
 done
-cmp -s "$checklist_revision_snapshot" "$checklist_path" ||
+
+[[ "$(jq -er '.schema_version' "$current_revision_spec")" == "parity-checklist-documentation-revision-v1" ]] ||
+	fail current-documentation-revision-spec-schema
+[[ "$(jq -er '.schema_version' "$current_revision_manifest")" == "parity-checklist-documentation-manifest-v1" ]] ||
+	fail current-documentation-revision-manifest-schema
+[[ "$(jq -er '.revision_id' "$current_revision_manifest")" == "$(jq -er '.revision_id' "$current_revision_spec")" ]] ||
+	fail current-documentation-revision-id
+[[ "$(jq -er '.predecessor_sha256' "$current_revision_manifest")" == "$(sha256_file "$checklist_revision_snapshot")" ]] ||
+	fail current-documentation-revision-predecessor
+[[ "$(jq -er '.predecessor_sha256' "$current_revision_spec")" == "$(sha256_file "$checklist_revision_snapshot")" ]] ||
+	fail current-documentation-revision-spec-predecessor
+[[ "$(jq -er '.change_spec_sha256' "$current_revision_manifest")" == "$(sha256_file "$current_revision_spec")" ]] ||
+	fail current-documentation-revision-spec-digest
+[[ "$(jq -er '.checklist_sha256' "$current_revision_manifest")" == "$(sha256_file "$current_revision_snapshot")" ]] ||
+	fail current-documentation-revision-checklist-digest
+jq -e \
+	'.affected_rows == ["IO-001", "UI-001", "UI-002", "UI-003"]' \
+	"$current_revision_manifest" >/dev/null ||
+	fail current-documentation-revision-row-set
+for marker in \
+	'display_input_status=runtime_gap reason=full_parity_pending display_runtime=alternating_debug input_runtime=unavailable' \
+	"uptime milliseconds \`0..=7_999\`" \
+	'complete 512-byte SSD1306 framebuffer' \
+	'does not promote the full upstream display carousel'; do
+	rg -q -F "$marker" "$current_revision_snapshot" ||
+		fail current-documentation-revision-marker
+done
+for row_id in IO-001 UI-001 UI-002 UI-003; do
+	row="$(rg -m 1 -F "| ${row_id} |" "$current_revision_snapshot")" ||
+		fail current-documentation-revision-row-missing
+	[[ "$row" == *"| in-progress |"* ]] ||
+		fail current-documentation-revision-status-promoted
+done
+cmp -s "$current_revision_snapshot" "$checklist_path" ||
 	fail documentation-revision-root-drift
 
 for preserved_row in STR-09 CFG-07 ASIC-11; do

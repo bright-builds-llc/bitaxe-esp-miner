@@ -9,16 +9,11 @@ use serde::{Deserialize, Serialize};
 use crate::operator_evidence::read_phase36_authoritative_snapshot;
 use crate::phase35_evidence::sha256_hex;
 
-pub(crate) const CURRENT_REVISION_ID: &str = "2026-07-27-module-ownership-refactor";
+pub(crate) const CURRENT_REVISION_ID: &str = "2026-07-28-runtime-display-documentation";
 pub(crate) const CURRENT_REVISION_SPEC: &str =
-    "docs/parity/checklist-revisions/2026-07-27-module-ownership-refactor.json";
+    "docs/parity/checklist-revisions/2026-07-28-runtime-display-documentation.json";
 pub(crate) const CURRENT_REVISION_ROOT: &str =
-    "docs/parity/evidence/checklist-revisions/2026-07-27-module-ownership-refactor";
-const PREVIOUS_REVISION_ID: &str = "2026-07-26-source-pointer-refresh";
-const PREVIOUS_REVISION_SPEC: &str =
-    "docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json";
-const PREVIOUS_REVISION_ROOT: &str =
-    "docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh";
+    "docs/parity/evidence/checklist-revisions/2026-07-28-runtime-display-documentation";
 const ACTIVE_CHECKLIST: &str = "docs/parity/checklist.md";
 const PHASE36_ROOT: &str =
     "docs/parity/evidence/phase-36-substantive-evidence-admission-and-exact-re-promotion";
@@ -26,6 +21,29 @@ const SNAPSHOT_FILE: &str = "checklist.md";
 const MANIFEST_FILE: &str = "manifest.json";
 const SPEC_SCHEMA: &str = "parity-checklist-documentation-revision-v1";
 const MANIFEST_SCHEMA: &str = "parity-checklist-documentation-manifest-v1";
+
+#[derive(Debug, Clone, Copy)]
+struct RevisionAuthority {
+    revision_id: &'static str,
+    spec_path: &'static str,
+    revision_root: &'static str,
+}
+
+const PREDECESSOR_REVISIONS: [RevisionAuthority; 2] = [
+    RevisionAuthority {
+        revision_id: "2026-07-26-source-pointer-refresh",
+        spec_path: "docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json",
+        revision_root: "docs/parity/evidence/checklist-revisions/2026-07-26-source-pointer-refresh",
+    },
+    RevisionAuthority {
+        revision_id: "2026-07-27-module-ownership-refactor",
+        spec_path: "docs/parity/checklist-revisions/2026-07-27-module-ownership-refactor.json",
+        revision_root:
+            "docs/parity/evidence/checklist-revisions/2026-07-27-module-ownership-refactor",
+    },
+];
+const CURRENT_PREDECESSOR_ROOT: &str =
+    PREDECESSOR_REVISIONS[PREDECESSOR_REVISIONS.len() - 1].revision_root;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -97,7 +115,7 @@ pub(crate) fn publish_current_revision(
     let manifest = RevisionManifest {
         schema_version: MANIFEST_SCHEMA.to_owned(),
         revision_id: spec.revision_id.clone(),
-        predecessor_path: format!("{PREVIOUS_REVISION_ROOT}/{SNAPSHOT_FILE}"),
+        predecessor_path: format!("{CURRENT_PREDECESSOR_ROOT}/{SNAPSHOT_FILE}"),
         predecessor_sha256,
         change_spec_path: CURRENT_REVISION_SPEC.to_owned(),
         change_spec_sha256: sha256_hex(spec_document.as_bytes()),
@@ -150,7 +168,7 @@ pub(crate) fn read_authoritative_checklist(workspace: &Utf8Path) -> Result<Strin
         &spec_document,
         &predecessor,
         &snapshot,
-        &format!("{PREVIOUS_REVISION_ROOT}/{SNAPSHOT_FILE}"),
+        &format!("{CURRENT_PREDECESSOR_ROOT}/{SNAPSHOT_FILE}"),
         CURRENT_REVISION_SPEC,
     )?;
     if snapshot != expected {
@@ -204,16 +222,22 @@ fn require_revision(spec: &RevisionSpec, expected_revision_id: &str) -> Result<(
 }
 
 fn read_predecessor_authority(workspace: &Utf8Path) -> Result<String, String> {
-    let phase36 = read_phase36_authoritative_snapshot(workspace, Utf8Path::new(PHASE36_ROOT))
-        .map_err(|error| error.to_string())?;
-    read_revision_authority(
-        workspace,
-        PREVIOUS_REVISION_ID,
-        PREVIOUS_REVISION_SPEC,
-        PREVIOUS_REVISION_ROOT,
-        &format!("{PHASE36_ROOT}/{SNAPSHOT_FILE}"),
-        &phase36,
-    )
+    let mut predecessor =
+        read_phase36_authoritative_snapshot(workspace, Utf8Path::new(PHASE36_ROOT))
+            .map_err(|error| error.to_string())?;
+    let mut predecessor_path = format!("{PHASE36_ROOT}/{SNAPSHOT_FILE}");
+    for authority in PREDECESSOR_REVISIONS {
+        predecessor = read_revision_authority(
+            workspace,
+            authority.revision_id,
+            authority.spec_path,
+            authority.revision_root,
+            &predecessor_path,
+            &predecessor,
+        )?;
+        predecessor_path = format!("{}/{SNAPSHOT_FILE}", authority.revision_root);
+    }
+    Ok(predecessor)
 }
 
 fn read_revision_authority(
@@ -528,7 +552,7 @@ mod tests {
         let manifest = RevisionManifest {
             schema_version: MANIFEST_SCHEMA.to_owned(),
             revision_id: CURRENT_REVISION_ID.to_owned(),
-            predecessor_path: format!("{PREVIOUS_REVISION_ROOT}/{SNAPSHOT_FILE}"),
+            predecessor_path: format!("{CURRENT_PREDECESSOR_ROOT}/{SNAPSHOT_FILE}"),
             predecessor_sha256: sha256_hex(CHECKLIST.as_bytes()),
             change_spec_path: CURRENT_REVISION_SPEC.to_owned(),
             change_spec_sha256: sha256_hex(spec_document.as_bytes()),
@@ -543,7 +567,7 @@ mod tests {
             &spec_document,
             CHECKLIST,
             &snapshot,
-            &format!("{PREVIOUS_REVISION_ROOT}/{SNAPSHOT_FILE}"),
+            &format!("{CURRENT_PREDECESSOR_ROOT}/{SNAPSHOT_FILE}"),
             CURRENT_REVISION_SPEC,
         )
         .expect_err("digest drift must fail");

@@ -1,0 +1,31 @@
+{
+  "schema_version": "parity-checklist-documentation-revision-v1",
+  "revision_id": "2026-07-28-runtime-display-documentation",
+  "predecessor_sha256": "1cf352e1a661c99e67aa5e2027b91c97b48b89843e597f150f7ae5179c70cea5",
+  "changes": [
+    {
+      "row_id": "IO-001",
+      "before_rust_owned_target": "`firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/safety_adapter/ina260.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `firmware/bitaxe/src/safety_adapter/thermal.rs`",
+      "after_rust_owned_target": "`firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/safety_adapter/ina260.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `firmware/bitaxe/src/safety_adapter/thermal.rs`",
+      "after_notes": "Firmware now keeps runtime SSD1306 refresh and read-only INA260 and EMC2101 acquisition under one bounded I2C0 owner. Full-frame regressions and 2026-07-26 operator LCD UAT cover the alternating debug surface, while [Phase 14 display/input evidence](evidence/phase-14-safety-hardware-evidence-completion/display-input.md) and Phase 20 evidence remain the admitted startup-only hardware breadcrumbs. This documentation-only revision preserves `in-progress` and `unit,workflow,hardware-smoke`; DS4432U writes and full shared-I2C runtime parity remain below verified."
+    },
+    {
+      "row_id": "UI-001",
+      "before_rust_owned_target": "`firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/safety_adapter/watchdog.rs`",
+      "after_rust_owned_target": "`crates/bitaxe-core/src/lib.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`",
+      "after_notes": "Runtime firmware now renders the four-line Ultra 205 debug display, with row three showing canonical build UTC during uptime milliseconds `0..=7_999` of each minute and monotonic uptime otherwise. Exact-package runtime attestation and operator LCD UAT were recorded on 2026-07-26, while Phase 14 and Phase 20 remain the admitted startup-only evidence. This documentation-only revision does not promote the full upstream display carousel, screen routes, or input parity."
+    },
+    {
+      "row_id": "UI-002",
+      "before_rust_owned_target": "`firmware/bitaxe/src/display_adapter.rs`, `crates/bitaxe-api`",
+      "after_rust_owned_target": "`crates/bitaxe-core/src/lib.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`",
+      "after_notes": "The runtime display owner refreshes once per second, redraws on change, clears and transmits the complete 512-byte SSD1306 framebuffer, and isolates display failure from the 500 ms sensor cadence. Focused regressions and 2026-07-26 operator LCD UAT cover this bounded debug flow only; the upstream LVGL screen and task carousel remain below verified."
+    },
+    {
+      "row_id": "UI-003",
+      "before_rust_owned_target": "`firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/main.rs`",
+      "after_rust_owned_target": "`firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/startup.rs`",
+      "after_notes": "The current runtime marker is `display_input_status=runtime_gap reason=full_parity_pending display_runtime=alternating_debug input_runtime=unavailable`. It reports the implemented bounded debug display separately from unavailable input; physical input and full runtime route behavior remain below verified and still require hardware regression before any promotion."
+    }
+  ]
+}

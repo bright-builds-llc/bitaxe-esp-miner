@@ -300,7 +300,7 @@ remain unchanged.
   bounded I2C owner, with display failures isolated from sensor operation.
 - [x] Add focused build-provenance, display-model, geometry, scheduling, and
   cache-contract regressions.
-- [ ] Update runtime display markers and the parity checklist without promoting
+- [x] Update runtime display markers and the parity checklist without promoting
   full display/input parity.
 - [x] Run the required Rust, Bazel, package, reference, and diff verification.
 - [x] Attempt one detector-gated connected Ultra 205 display smoke and stop
@@ -372,6 +372,29 @@ Hardware attempt 001 review: `just detect-ultra205` found one candidate at
 Source commit `4701f51d78722f5399bb1ed2b1a24d18a0e8c798`, reference
 commit `c1915b0a63bfabebdb95a515cedfee05146c1d50`, and exact package manifest
 `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` were in scope.
+
+Documentation closure review (2026-07-28): Later task-gated work objectively
+changed the original bootloader boundary, proved exact-package runtime
+attestation, and recorded operator LCD UAT for the current eight-second build
+window. The hash-bound documentation-only successor
+`2026-07-28-runtime-display-documentation` updates IO-001 and UI-001 through
+UI-003 with the current runtime marker, display cadence, full-frame transfer,
+and bounded I2C ownership while preserving every status and evidence column.
+The authenticated Phase 36 generation and both predecessor revisions remain
+byte-identical. The ordered Rust format, Clippy, all-target build, and
+all-feature test sequence passed; focused parity and revision-contract Bazel
+tests, the full `just test` graph, `just package`, `just parity`,
+`just verify-reference`, `just verify-redaction`, Bright Builds checks,
+ShellCheck, shell formatting, JSON parsing, and diff checks passed. No new
+hardware attempt, credential access, network discovery, evidence promotion, or
+historical artifact rewrite occurred. Whole-file `mdformat --check` remains
+non-green for `TASKS.md` and the generated checklist exactly as it does at
+`HEAD`; this task did not rewrite either append-only ledger for unrelated
+formatting.
+
+Residual risk: This closure documents the bounded Ultra 205 debug display only.
+Full upstream display carousel, LVGL screen/task flow, physical input, active
+DS4432U writes, and complete shared-I2C parity remain below verified.
 
 ### task-durable-ultra205-device-sessions | 2026-07-25 | Make USB flash cycles self-cleaning
 

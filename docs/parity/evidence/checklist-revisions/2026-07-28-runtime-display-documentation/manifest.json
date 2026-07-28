@@ -1,0 +1,15 @@
+{
+  "schema_version": "parity-checklist-documentation-manifest-v1",
+  "revision_id": "2026-07-28-runtime-display-documentation",
+  "predecessor_path": "docs/parity/evidence/checklist-revisions/2026-07-27-module-ownership-refactor/checklist.md",
+  "predecessor_sha256": "1cf352e1a661c99e67aa5e2027b91c97b48b89843e597f150f7ae5179c70cea5",
+  "change_spec_path": "docs/parity/checklist-revisions/2026-07-28-runtime-display-documentation.json",
+  "change_spec_sha256": "32e3c60af634dbf4c81c541f4f6b5a9d8f6c5f29195747ac04ed605ee70227c7",
+  "affected_rows": [
+    "IO-001",
+    "UI-001",
+    "UI-002",
+    "UI-003"
+  ],
+  "checklist_sha256": "5b131df38808bb61c40e61b79cb78d4cf6f2c0f4a28977d08f7fb099bc347c40"
+}
