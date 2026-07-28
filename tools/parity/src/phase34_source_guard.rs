@@ -5,8 +5,12 @@ const MAIN_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/main.rs");
 const RUNTIME_SNAPSHOT_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_snapshot.rs");
 const HTTP_HANDLER_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/http_api/handlers.rs");
+const HTTP_ACCESS_ADAPTER_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/http_api/access.rs");
 const HTTP_WEBSOCKET_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/http_api/websocket.rs");
+const HTTP_ACCESS_POLICY_SOURCE: &str =
+    include_str!("../../../crates/bitaxe-api/src/route_shell.rs");
 const SNAPSHOT_PUBLICATION_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/operator_snapshot_publication.rs");
 const OPERATOR_SNAPSHOT_MODEL_SOURCE: &str =
@@ -193,6 +197,54 @@ fn phase34_source_guard_rejects_platform_substitution_and_effects() {
         assert!(
             !PLATFORM_IDENTITY_SOURCE.contains(request_time_mutation),
             "platform adapter contains request-time mutation token {request_time_mutation}"
+        );
+    }
+}
+
+#[test]
+fn http_access_policy_stays_in_pure_route_shell() {
+    // Arrange
+    let required_policy_markers = [
+        "pub fn normalize_peer_ipv4",
+        "enum PeerIpv4Normalization",
+        "fn is_rfc1918_ipv4",
+        "PeerIpv4Normalization::HostOrderFallback",
+    ];
+    let required_adapter_markers = [
+        "sys::lwip_getpeername",
+        "normalize_peer_ipv4(raw_addr)",
+        "PeerIpv4Normalization::HostOrderFallback",
+        "axeos_access_gate_peer_ip_byte_order=host_order",
+    ];
+
+    // Act / Assert
+    for marker in required_policy_markers {
+        assert!(
+            HTTP_ACCESS_POLICY_SOURCE.contains(marker),
+            "pure HTTP access policy is missing {marker}"
+        );
+    }
+    for forbidden in ["esp_idf_svc", "sys::", "log::", "unsafe"] {
+        assert!(
+            !HTTP_ACCESS_POLICY_SOURCE.contains(forbidden),
+            "pure HTTP access policy contains effect token {forbidden}"
+        );
+    }
+    for marker in required_adapter_markers {
+        assert!(
+            HTTP_ACCESS_ADAPTER_SOURCE.contains(marker),
+            "HTTP access adapter is missing {marker}"
+        );
+    }
+    for forbidden in [
+        "fn peer_ipv4_from_s_addr",
+        "fn is_rfc1918_ipv4",
+        "u32::from_be",
+        "(16..=31)",
+    ] {
+        assert!(
+            !HTTP_ACCESS_ADAPTER_SOURCE.contains(forbidden),
+            "HTTP access adapter retained policy token {forbidden}"
         );
     }
 }

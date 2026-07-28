@@ -67,30 +67,20 @@ pub(super) fn maybe_peer_ipv4(request: *mut sys::httpd_req_t) -> Option<Ipv4Addr
             return None;
         }
 
-        Some(peer_ipv4_from_s_addr(addr.sin_addr.s_addr))
+        let raw_addr = addr.sin_addr.s_addr;
+        let normalization = normalize_peer_ipv4(raw_addr);
+        if let PeerIpv4Normalization::HostOrderFallback {
+            address,
+            network_order_address,
+        } = normalization
+        {
+            log::warn!(
+                "axeos_access_gate_peer_ip_byte_order=host_order raw=0x{raw_addr:08x} network_order_ip={network_order_address} host_order_ip={address}"
+            );
+        }
+
+        Some(normalization.address())
     }
-}
-
-pub(super) fn peer_ipv4_from_s_addr(raw_addr: u32) -> Ipv4Addr {
-    let network_order_ip = Ipv4Addr::from(u32::from_be(raw_addr));
-    if is_rfc1918_ipv4(network_order_ip) {
-        return network_order_ip;
-    }
-
-    let host_order_ip = Ipv4Addr::from(raw_addr);
-    if is_rfc1918_ipv4(host_order_ip) {
-        log::warn!(
-            "axeos_access_gate_peer_ip_byte_order=host_order raw=0x{raw_addr:08x} network_order_ip={network_order_ip} host_order_ip={host_order_ip}"
-        );
-        return host_order_ip;
-    }
-
-    network_order_ip
-}
-
-pub(super) fn is_rfc1918_ipv4(ip: Ipv4Addr) -> bool {
-    let [first, second, _, _] = ip.octets();
-    first == 10 || (first == 172 && (16..=31).contains(&second)) || (first == 192 && second == 168)
 }
 
 pub(super) fn origin_gate_from_raw(request: *mut sys::httpd_req_t) -> OriginGate {

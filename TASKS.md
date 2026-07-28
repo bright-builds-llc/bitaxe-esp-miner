@@ -1556,26 +1556,70 @@ Completion review:
 
 ### task-centralize-ipv4-access-classification | 2026-07-27 21:44 | Move peer-address policy into the pure API core
 
-- [ ] Move peer-address byte-order normalization and RFC1918 classification
+- [x] Move peer-address byte-order normalization and RFC1918 classification
       from the ESP-IDF HTTP adapter into `bitaxe-api::route_shell`.
-- [ ] Expose one typed peer-address normalization function for the firmware
+- [x] Expose one typed peer-address normalization function for the firmware
       adapter and remove the duplicated firmware classifier.
-- [ ] Keep raw socket access, ESP-IDF calls, logging, and request handling in
+- [x] Keep raw socket access, ESP-IDF calls, logging, and request handling in
       the firmware shell.
-- [ ] Add pure unit tests for network-order private addresses, host-order
+- [x] Add pure unit tests for network-order private addresses, host-order
       fallback, unspecified addresses, public addresses, and all three RFC1918
       ranges.
-- [ ] Run focused API route-shell tests, firmware compilation, access source
+- [x] Run focused API route-shell tests, firmware compilation, access source
       guards, and the relevant complete software verification surface.
 
 Dependencies: None.
 
-Verification: Pending.
+Working plan (2026-07-27):
 
-Completion review: Pending. This is a software-only policy-location refactor.
-It does not authorize hardware detection, flashing, monitoring, credentials,
-network discovery, evidence generation or promotion, parity-status changes,
-commit, or push operations.
+- Move raw peer-address normalization and RFC1918 classification into the pure
+  route shell behind one typed result that preserves fallback provenance.
+- Keep socket acquisition and fallback logging in the ESP-IDF adapter, then
+  remove its private normalization and classification helpers.
+- Add focused pure normalization tests and strengthen the active access source
+  guard before running the required focused and complete software gates.
+
+Verification:
+
+- All 214 focused `bitaxe-api` tests passed, including network-order private,
+  host-order fallback, unspecified, public, and RFC1918 boundary cases. The
+  focused parity architecture guard passed, and the focused Bazel API/parity
+  targets passed.
+- The required ordered Rust sequence passed using a clean isolated Cargo
+  target: `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features`.
+- `just build` compiled the ESP32-S3 release firmware against ESP-IDF `v5.5.4`.
+  The complete isolated `bazel test //...` graph passed all 76 tests and
+  rebuilt the firmware image and package.
+- `bun scripts/bright-builds-check.ts all` scanned 565 files with the eight
+  existing justified exceptions and zero findings. `just parity` reported
+  `validation_errors: none`; `just verify-reference` confirmed pinned commit
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50` clean; and
+  `just verify-redaction` passed.
+- `git diff --check`, source-ownership scans, the final ten-file scoped diff,
+  and touched-file sizes passed review. A pre-existing ignored macOS Cargo
+  cache stalled the first focused Cargo run and the first full Bazel workspace
+  load; it was recoverably quarantined outside the workspace before both
+  surfaces passed against clean isolated build state.
+
+Completion review:
+
+- Peer IPv4 normalization and RFC1918 classification now live in the pure API
+  route shell behind `PeerIpv4Normalization`, which preserves whether the
+  selected address came from the ordinary network-order path or the bounded
+  host-order fallback.
+- The firmware adapter owns only ESP-IDF socket access, unavailable-peer
+  handling, fallback diagnostics, and request assembly. A focused source guard
+  rejects policy or byte-order logic returning to that effectful shell.
+- Residual risk is limited to the existing host-order compatibility fallback:
+  the supported ESP32-S3 and host verification targets are little-endian, and
+  no new runtime hardware evidence was required or claimed. No hardware,
+  credentials, network discovery, evidence, parity status, historical
+  artifact, schema, or reference content changed. The current explicit
+  `work-top-task` invocation supplies commit and push authorization for this
+  task only.
 
 ### task-separate-host-tool-cores-and-shells | 2026-07-27 21:44 | Separate deterministic host-tool logic from effects
 

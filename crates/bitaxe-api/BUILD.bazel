@@ -1,6 +1,12 @@
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 filegroup(
+    name = "http_access_policy_sources",
+    srcs = ["src/route_shell.rs"],
+    visibility = ["//firmware/bitaxe:__pkg__"],
+)
+
+filegroup(
     name = "phase34_identity_sources",
     srcs = [
         "src/build_identity.rs",

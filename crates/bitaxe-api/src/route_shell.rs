@@ -179,6 +179,31 @@ pub enum OriginGate {
     Invalid,
 }
 
+/// Result of normalizing the raw ESP-IDF peer IPv4 value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PeerIpv4Normalization {
+    /// The raw value decoded as a network-order address.
+    NetworkOrder(Ipv4Addr),
+    /// The network-order candidate was public while the host-order candidate
+    /// was RFC1918, so the private host-order candidate was selected.
+    HostOrderFallback {
+        /// Selected RFC1918 peer address.
+        address: Ipv4Addr,
+        /// Rejected public network-order candidate retained for diagnostics.
+        network_order_address: Ipv4Addr,
+    },
+}
+
+impl PeerIpv4Normalization {
+    /// Returns the normalized peer IPv4 address.
+    #[must_use]
+    pub const fn address(self) -> Ipv4Addr {
+        match self {
+            Self::NetworkOrder(address) | Self::HostOrderFallback { address, .. } => address,
+        }
+    }
+}
+
 /// HTTP access decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HttpAccessDecision {
@@ -336,6 +361,29 @@ pub fn origin_gate_from_header(origin: &str) -> OriginGate {
     OriginGate::Parsed(origin_ip)
 }
 
+/// Normalizes an ESP-IDF `sockaddr_in.sin_addr.s_addr` value.
+///
+/// ESP-IDF supplies network-order bytes, but supported bindings have exposed
+/// both network- and host-order integer interpretations. Prefer the
+/// network-order candidate unless only the host-order candidate is RFC1918.
+#[must_use]
+pub fn normalize_peer_ipv4(raw_addr: u32) -> PeerIpv4Normalization {
+    let network_order_address = Ipv4Addr::from(u32::from_be(raw_addr));
+    if is_rfc1918_ipv4(network_order_address) {
+        return PeerIpv4Normalization::NetworkOrder(network_order_address);
+    }
+
+    let host_order_address = Ipv4Addr::from(raw_addr);
+    if is_rfc1918_ipv4(host_order_address) {
+        return PeerIpv4Normalization::HostOrderFallback {
+            address: host_order_address,
+            network_order_address,
+        };
+    }
+
+    PeerIpv4Normalization::NetworkOrder(network_order_address)
+}
+
 fn is_access_allowed(input: RouteAccessInput) -> bool {
     if input.ap_mode_enabled {
         return true;
@@ -347,7 +395,7 @@ fn is_access_allowed(input: RouteAccessInput) -> bool {
         return is_origin_allowed(input.origin);
     }
 
-    if !is_private_ipv4(input.request_ip) {
+    if !is_rfc1918_ipv4(input.request_ip) {
         return false;
     }
 
@@ -357,12 +405,12 @@ fn is_access_allowed(input: RouteAccessInput) -> bool {
 fn is_origin_allowed(origin: OriginGate) -> bool {
     match origin {
         OriginGate::Missing => true,
-        OriginGate::Parsed(origin_ip) => is_private_ipv4(origin_ip),
+        OriginGate::Parsed(origin_ip) => is_rfc1918_ipv4(origin_ip),
         OriginGate::Invalid => false,
     }
 }
 
-fn is_private_ipv4(ip: Ipv4Addr) -> bool {
+fn is_rfc1918_ipv4(ip: Ipv4Addr) -> bool {
     let [first, second, _, _] = ip.octets();
 
     first == 10 || (first == 172 && (16..=31).contains(&second)) || (first == 192 && second == 168)

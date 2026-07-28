@@ -1,9 +1,10 @@
 use std::net::Ipv4Addr;
 
 use super::{
-    maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes, phase07_route_report,
-    phase07_routes, plan_http_access, plan_settings_patch_body_size, plan_websocket_upgrade,
-    unknown_api_route_response, HttpAccessDecision, OriginGate, RouteAccessInput, RouteKind,
+    is_rfc1918_ipv4, maybe_origin_ip_from_header, normalize_peer_ipv4, origin_gate_from_header,
+    phase05_routes, phase07_route_report, phase07_routes, plan_http_access,
+    plan_settings_patch_body_size, plan_websocket_upgrade, unknown_api_route_response,
+    HttpAccessDecision, OriginGate, PeerIpv4Normalization, RouteAccessInput, RouteKind,
     RouteMethod, SettingsPatchBodyDecision, WebSocketRouteKind, WebSocketUpgradeDecision,
     MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
 };
@@ -22,6 +23,105 @@ fn private_client_input(origin: OriginGate) -> RouteAccessInput {
         request_ip: Ipv4Addr::new(192, 168, 1, 25),
         origin,
     }
+}
+
+fn network_order_raw(address: Ipv4Addr) -> u32 {
+    u32::from(address).to_be()
+}
+
+#[test]
+fn peer_ipv4_normalization_decodes_network_order_private_address() {
+    // Arrange
+    let address = Ipv4Addr::new(192, 168, 1, 25);
+
+    // Act
+    let normalized = normalize_peer_ipv4(network_order_raw(address));
+
+    // Assert
+    assert_eq!(normalized, PeerIpv4Normalization::NetworkOrder(address));
+    assert_eq!(normalized.address(), address);
+}
+
+#[test]
+fn peer_ipv4_normalization_falls_back_to_host_order_private_address() {
+    // Arrange
+    let address = Ipv4Addr::new(192, 168, 1, 25);
+    let raw_addr = u32::from(address);
+    let network_order_address = Ipv4Addr::from(u32::from_be(raw_addr));
+
+    // Act
+    let normalized = normalize_peer_ipv4(raw_addr);
+
+    // Assert
+    assert_eq!(
+        normalized,
+        PeerIpv4Normalization::HostOrderFallback {
+            address,
+            network_order_address,
+        }
+    );
+    assert_eq!(normalized.address(), address);
+}
+
+#[test]
+fn peer_ipv4_normalization_preserves_unspecified_address() {
+    // Arrange
+    let raw_addr = network_order_raw(Ipv4Addr::UNSPECIFIED);
+
+    // Act
+    let normalized = normalize_peer_ipv4(raw_addr);
+
+    // Assert
+    assert_eq!(
+        normalized,
+        PeerIpv4Normalization::NetworkOrder(Ipv4Addr::UNSPECIFIED)
+    );
+}
+
+#[test]
+fn peer_ipv4_normalization_preserves_network_order_public_address() {
+    // Arrange
+    let address = Ipv4Addr::new(8, 8, 8, 8);
+
+    // Act
+    let normalized = normalize_peer_ipv4(network_order_raw(address));
+
+    // Assert
+    assert_eq!(normalized, PeerIpv4Normalization::NetworkOrder(address));
+}
+
+#[test]
+fn rfc1918_classifier_accepts_all_three_private_ranges() {
+    // Arrange
+    let private_addresses = [
+        Ipv4Addr::new(10, 0, 0, 1),
+        Ipv4Addr::new(172, 16, 0, 1),
+        Ipv4Addr::new(172, 31, 255, 254),
+        Ipv4Addr::new(192, 168, 1, 1),
+    ];
+
+    // Act
+    let classifications = private_addresses.map(is_rfc1918_ipv4);
+
+    // Assert
+    assert_eq!(classifications, [true, true, true, true]);
+}
+
+#[test]
+fn rfc1918_classifier_rejects_public_and_adjacent_addresses() {
+    // Arrange
+    let non_private_addresses = [
+        Ipv4Addr::new(8, 8, 8, 8),
+        Ipv4Addr::new(172, 15, 255, 255),
+        Ipv4Addr::new(172, 32, 0, 0),
+        Ipv4Addr::new(192, 167, 255, 255),
+    ];
+
+    // Act
+    let classifications = non_private_addresses.map(is_rfc1918_ipv4);
+
+    // Assert
+    assert_eq!(classifications, [false, false, false, false]);
 }
 
 #[test]

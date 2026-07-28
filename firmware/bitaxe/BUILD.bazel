@@ -90,6 +90,15 @@ filegroup(
     visibility = ["//scripts:__pkg__"],
 )
 
+filegroup(
+    name = "http_access_architecture_sources",
+    srcs = [
+        "//crates/bitaxe-api:http_access_policy_sources",
+        "src/http_api/access.rs",
+    ],
+    visibility = ["//tools/parity:__pkg__"],
+)
+
 test_suite(
     name = "runtime_health_tests",
     tests = [

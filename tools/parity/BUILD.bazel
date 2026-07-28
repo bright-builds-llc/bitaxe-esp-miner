@@ -189,6 +189,7 @@ rust_binary(
         "//:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/decision-matrix.json",
         "//:docs/parity/evidence/phase-35-detector-gated-correlated-evidence-and-exact-parity-promotion/projection.json",
         "//crates/bitaxe-config:architecture_model_sources",
+        "//firmware/bitaxe:http_access_architecture_sources",
         "//firmware/bitaxe:phase34_identity_sources",
         "//scripts:package-firmware.sh",
         "//scripts:phase36-hardware-effect.sh",

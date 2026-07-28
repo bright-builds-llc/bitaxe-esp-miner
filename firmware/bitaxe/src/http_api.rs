@@ -8,16 +8,17 @@ use std::time::Duration;
 
 use bitaxe_api::{
     asic_settings_from_snapshot, block_found_dismiss_plan, decide_v12_settings_body,
-    execute_settings_persistence_plan, identify_plan, log_download_headers,
+    execute_settings_persistence_plan, identify_plan, log_download_headers, normalize_peer_ipv4,
     origin_gate_from_header, pause_mining_plan, phase07_route_report, plan_http_access,
     plan_settings_patch_body_size, plan_update_request, plan_websocket_upgrade, restart_plan,
     resume_mining_plan, unknown_api_route_response, unsupported_update_response, CommandEffect,
     CommandPlan, HttpAccessDecision, IdentifyModeEffect, OperatorSnapshotPublishError, OriginGate,
-    PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchFailureReason,
-    SettingsPatchPublicError, SettingsPersistenceEffect, SettingsPersistenceFailure,
-    SettingsPersistencePlan, SettingsPublicResponse, UpdateRequestDecision, UpdateRequestInput,
-    UpdateRouteKind, V12SettingsChange, V12SettingsDecision, V12SettingsExclusionReason,
-    WebSocketRouteKind, WebSocketUpgradeDecision, LIVE_TELEMETRY_CADENCE_MS,
+    PeerIpv4Normalization, PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision,
+    SettingsPatchFailureReason, SettingsPatchPublicError, SettingsPersistenceEffect,
+    SettingsPersistenceFailure, SettingsPersistencePlan, SettingsPublicResponse,
+    UpdateRequestDecision, UpdateRequestInput, UpdateRouteKind, V12SettingsChange,
+    V12SettingsDecision, V12SettingsExclusionReason, WebSocketRouteKind, WebSocketUpgradeDecision,
+    LIVE_TELEMETRY_CADENCE_MS,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
