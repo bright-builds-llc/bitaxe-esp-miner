@@ -53,12 +53,16 @@ fn run(mut owner: RuntimeI2cOwner<'static>, mut maybe_display_text: Option<Start
 
         if now_ms >= next_deadline_ms {
             let power = safety_adapter::read_power_acquisition(&mut owner);
-            let temperature_celsius = safety_adapter::read_temperature_acquisition(&mut owner);
+            let asic_temperature_celsius =
+                safety_adapter::read_asic_temperature_acquisition(&mut owner);
+            let vr_temperature_celsius =
+                safety_adapter::read_vr_temperature_acquisition(&mut owner);
             let tachometer_rpm = safety_adapter::read_tachometer_acquisition(&mut owner);
             let acquired_at = MonotonicMillis::new(crate::runtime_uptime::millis());
             let outcomes = SensorSweepOutcomes {
                 power,
-                temperature_celsius,
+                asic_temperature_celsius,
+                vr_temperature_celsius,
                 tachometer_rpm,
             };
 
@@ -125,6 +129,7 @@ fn refresh_display(
 fn project_observations(state: ProducerSensorState) -> TelemetryObservations {
     let power = state.power().truth();
     let temperature = state.thermal().temperature_truth();
+    let vr_temperature = state.vr_temperature();
     let tachometer = state.thermal().tachometer_truth();
 
     TelemetryObservations {
@@ -148,7 +153,9 @@ fn project_observations(state: ProducerSensorState) -> TelemetryObservations {
             |reading| Some(reading.chip_temp_celsius),
             UnavailableReason::ThermalReadingUnavailable,
         ),
-        vr_temp_celsius: bitaxe_safety::observation::Observation::unavailable(
+        vr_temp_celsius: project_observation(
+            vr_temperature,
+            |reading| Some(*reading),
             UnavailableReason::ThermalReadingUnavailable,
         ),
         fan_rpm: project_observation(

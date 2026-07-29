@@ -28,6 +28,125 @@ fn fresh_u16(value: u16) -> Observation<u16> {
     .0
 }
 
+fn safe_mining_observations() -> TelemetryObservations {
+    TelemetryObservations {
+        power_watts: fresh(15.0),
+        bus_voltage_volts: fresh(5.5),
+        current_amps: fresh(3.0),
+        chip_temp_celsius: fresh(74.0),
+        vr_temp_celsius: fresh(45.0),
+        fan_rpm: fresh_u16(0),
+    }
+}
+
+#[test]
+fn mining_safety_requires_all_six_fresh_observations() {
+    // Arrange
+    let safe = safe_mining_observations();
+    let stale_vr = safe
+        .vr_temp_celsius
+        .mark_stale(StaleReason::ThermalSampleStale)
+        .expect("fresh VR temperature can become stale");
+    let faulted_fan = safe.fan_rpm.record_fault(FaultReason::ReadFailed);
+    let cases = [
+        TelemetryObservations {
+            power_watts: Observation::unavailable(UnavailableReason::PowerSampleUnavailable),
+            ..safe
+        },
+        TelemetryObservations {
+            bus_voltage_volts: Observation::unavailable(UnavailableReason::PowerSampleUnavailable),
+            ..safe
+        },
+        TelemetryObservations {
+            current_amps: Observation::unavailable(UnavailableReason::PowerSampleUnavailable),
+            ..safe
+        },
+        TelemetryObservations {
+            chip_temp_celsius: Observation::unavailable(
+                UnavailableReason::ThermalReadingUnavailable,
+            ),
+            ..safe
+        },
+        TelemetryObservations {
+            vr_temp_celsius: stale_vr,
+            ..safe
+        },
+        TelemetryObservations {
+            fan_rpm: faulted_fan,
+            ..safe
+        },
+    ];
+
+    // Act / Assert
+    assert!(safe.is_ultra_205_mining_safe_at(MonotonicMillis::new(1_250)));
+    assert!(
+        cases
+            .into_iter()
+            .all(|observations| !observations
+                .is_ultra_205_mining_safe_at(MonotonicMillis::new(1_250)))
+    );
+}
+
+#[test]
+fn mining_safety_enforces_voltage_power_temperature_and_numeric_limits() {
+    // Arrange
+    let safe = safe_mining_observations();
+    let lower_voltage_boundary = TelemetryObservations {
+        bus_voltage_volts: fresh(4.5),
+        ..safe
+    };
+    let unsafe_cases = [
+        TelemetryObservations {
+            bus_voltage_volts: fresh(4.499),
+            ..safe
+        },
+        TelemetryObservations {
+            bus_voltage_volts: fresh(5.501),
+            ..safe
+        },
+        TelemetryObservations {
+            power_watts: fresh(15.001),
+            ..safe
+        },
+        TelemetryObservations {
+            chip_temp_celsius: fresh(75.0),
+            ..safe
+        },
+        TelemetryObservations {
+            current_amps: fresh(f64::NAN),
+            ..safe
+        },
+        TelemetryObservations {
+            vr_temp_celsius: fresh(151.0),
+            ..safe
+        },
+    ];
+
+    // Act / Assert
+    assert!(safe.is_ultra_205_mining_safe_at(MonotonicMillis::new(1_250)));
+    assert!(lower_voltage_boundary.is_ultra_205_mining_safe_at(MonotonicMillis::new(1_250)));
+    assert!(
+        unsafe_cases
+            .into_iter()
+            .all(|observations| !observations
+                .is_ultra_205_mining_safe_at(MonotonicMillis::new(1_250)))
+    );
+}
+
+#[test]
+fn mining_safety_rejects_fresh_state_after_the_one_second_sample_window() {
+    // Arrange
+    let observations = safe_mining_observations();
+
+    // Act
+    let at_boundary = observations.is_ultra_205_mining_safe_at(MonotonicMillis::new(1_250));
+    let beyond_boundary = observations.is_ultra_205_mining_safe_at(MonotonicMillis::new(1_251));
+
+    // Assert
+    assert!(at_boundary);
+    assert!(!beyond_boundary);
+}
+
 #[test]
 fn safety_telemetry_truth_serializes_exact_state_and_stamp_names() {
     // Arrange
@@ -209,8 +328,9 @@ fn projection_repeated_consumer_reads_leave_store_and_stamps_unchanged() {
     .expect("truth projection should serialize");
     let mut websocket = LiveTelemetryPlanner::default();
     websocket.set_active_client_count(1);
+    let websocket_connect = websocket.connect_frame(first_payload.clone());
     websocket.seed_cadence_baseline(first_payload.clone());
-    let websocket_read = websocket.maybe_cadence_frame(first_payload);
+    let websocket_read = websocket.maybe_cadence_frame(first_payload.clone());
 
     let mut second_snapshot = ApiSnapshot::safe_ultra_205();
     second_snapshot.safe_telemetry = SafeTelemetrySnapshot::from_observations(&store.read());
@@ -234,6 +354,13 @@ fn projection_repeated_consumer_reads_leave_store_and_stamps_unchanged() {
     assert_eq!(first_system, second_system);
     assert_eq!(first_statistics, second_statistics);
     assert_eq!(first_projection_bytes, second_projection_bytes);
+    assert_eq!(first_payload["vrTemp"], json!(42.0));
+    assert_eq!(first_payload["vrTempStatus"]["state"], json!("fresh"));
+    assert_eq!(websocket_connect["data"]["vrTemp"], json!(42.0));
+    assert_eq!(
+        websocket_connect["data"]["vrTempStatus"]["state"],
+        json!("fresh")
+    );
     assert!(websocket_read.is_none());
 }
 
@@ -339,13 +466,15 @@ fn phase32_consumer_failure_isolation_covers_each_sensor_source() {
     #[derive(Clone, Copy)]
     enum FailedSource {
         Power,
-        Temperature,
+        AsicTemperature,
+        VrTemperature,
         Tachometer,
     }
 
     for failed_source in [
         FailedSource::Power,
-        FailedSource::Temperature,
+        FailedSource::AsicTemperature,
+        FailedSource::VrTemperature,
         FailedSource::Tachometer,
     ] {
         let power_watts = if matches!(failed_source, FailedSource::Power) {
@@ -363,10 +492,15 @@ fn phase32_consumer_failure_isolation_covers_each_sensor_source() {
         } else {
             fresh(2.0)
         };
-        let chip_temp_celsius = if matches!(failed_source, FailedSource::Temperature) {
+        let chip_temp_celsius = if matches!(failed_source, FailedSource::AsicTemperature) {
             fresh(55.0).record_fault(FaultReason::ReadFailed)
         } else {
             fresh(55.0)
+        };
+        let vr_temp_celsius = if matches!(failed_source, FailedSource::VrTemperature) {
+            fresh(45.0).record_fault(FaultReason::ReadFailed)
+        } else {
+            fresh(45.0)
         };
         let fan_rpm = if matches!(failed_source, FailedSource::Tachometer) {
             fresh_u16(3_200).record_fault(FaultReason::ReadFailed)
@@ -378,7 +512,7 @@ fn phase32_consumer_failure_isolation_covers_each_sensor_source() {
             bus_voltage_volts,
             current_amps,
             chip_temp_celsius,
-            vr_temp_celsius: Observation::unavailable(UnavailableReason::ThermalReadingUnavailable),
+            vr_temp_celsius,
             fan_rpm,
         };
         let store = ObservationStore::new(observations);
@@ -401,8 +535,15 @@ fn phase32_consumer_failure_isolation_covers_each_sensor_source() {
                 assert_eq!(wire.chip_temp_status.state, ObservationStateWire::Fresh);
                 assert_eq!(wire.fan_rpm_status.state, ObservationStateWire::Fresh);
             }
-            FailedSource::Temperature => {
+            FailedSource::AsicTemperature => {
                 assert_eq!(wire.chip_temp_status.state, ObservationStateWire::Fault);
+                assert_eq!(wire.vr_temp_status.state, ObservationStateWire::Fresh);
+                assert_eq!(wire.power_status.state, ObservationStateWire::Fresh);
+                assert_eq!(wire.fan_rpm_status.state, ObservationStateWire::Fresh);
+            }
+            FailedSource::VrTemperature => {
+                assert_eq!(wire.vr_temp_status.state, ObservationStateWire::Fault);
+                assert_eq!(wire.chip_temp_status.state, ObservationStateWire::Fresh);
                 assert_eq!(wire.power_status.state, ObservationStateWire::Fresh);
                 assert_eq!(wire.fan_rpm_status.state, ObservationStateWire::Fresh);
             }

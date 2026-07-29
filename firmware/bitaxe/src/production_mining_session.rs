@@ -5,6 +5,7 @@ use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
+use bitaxe_safety::observation::MonotonicMillis;
 use bitaxe_stratum::v1::production_session::{
     ProductionMiningSession, ProductionReadiness, ProductionSessionEffect, ProductionSessionEvent,
     ProductionSessionNotificationOutcome, ProductionSessionWakeup,
@@ -108,12 +109,7 @@ impl OrdinaryEspProductionSessionAdapter {
         let mining = crate::runtime_snapshot::mining_runtime_state();
         let wifi = crate::wifi_adapter::current_wifi_snapshot();
         let observations = crate::safety_adapter::observation_snapshot();
-        let safety_prerequisites_fresh = observations.power_watts.is_fresh()
-            && observations.bus_voltage_volts.is_fresh()
-            && observations.current_amps.is_fresh()
-            && observations.chip_temp_celsius.is_fresh()
-            && observations.vr_temp_celsius.is_fresh()
-            && observations.fan_rpm.is_fresh();
+        let safety_prerequisites_fresh = observations.is_ultra_205_mining_safe_at(now());
         ProductionReadiness {
             operator_intent: mining.operator_intent,
             network_ready: wifi.wifi_status == "connected",
@@ -135,7 +131,7 @@ impl OrdinaryEspProductionSessionAdapter {
             | ProductionSessionEffect::StopAsicInteraction
             | ProductionSessionEffect::ClosePoolConnection(_) => None,
             ProductionSessionEffect::PrepareHardware { .. } => {
-                Self::maybe_reject_effect(None, "hardware_prepare")
+                Self::maybe_reject_safety_gated_effect(None, "hardware_prepare")
             }
             ProductionSessionEffect::ReadPoolConfiguration => {
                 log::error!(
@@ -159,7 +155,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 Self::maybe_reject_effect(None, "version_mask")
             }
             ProductionSessionEffect::DispatchAsic { .. } => {
-                Self::maybe_reject_effect(None, "asic_dispatch")
+                Self::maybe_reject_safety_gated_effect(None, "asic_dispatch")
             }
             ProductionSessionEffect::PollAsic { .. } => {
                 Self::maybe_reject_effect(None, "asic_poll")
@@ -168,6 +164,24 @@ impl OrdinaryEspProductionSessionAdapter {
                 Self::maybe_reject_effect(None, "hardware_safe_stop")
             }
         }
+    }
+
+    fn maybe_reject_safety_gated_effect(
+        maybe_pool: Option<bitaxe_stratum::v1::production_session::ProductionPool>,
+        action: &'static str,
+    ) -> Option<ProductionSessionEvent> {
+        if crate::safety_adapter::observation_snapshot().is_ultra_205_mining_safe_at(now()) {
+            return Self::maybe_reject_effect(maybe_pool, action);
+        }
+
+        log::error!(
+            "production_mining_session=fail_closed reason=safety_observations_not_ready action={action}"
+        );
+        Some(ProductionSessionEvent::EffectFailed {
+            maybe_pool,
+            reason: "safety_observations_not_ready",
+            now_ms: crate::runtime_uptime::millis(),
+        })
     }
 
     fn maybe_reject_effect(
@@ -183,4 +197,8 @@ impl OrdinaryEspProductionSessionAdapter {
             now_ms: crate::runtime_uptime::millis(),
         })
     }
+}
+
+fn now() -> MonotonicMillis {
+    MonotonicMillis::new(crate::runtime_uptime::millis())
 }

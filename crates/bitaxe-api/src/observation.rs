@@ -1,9 +1,15 @@
 //! Read-only API projection of producer-owned observation truth.
 
 use bitaxe_safety::observation::{
-    FaultReason, Observation, StaleReason, StampedSample, UnavailableReason,
+    FaultReason, MonotonicMillis, Observation, StaleReason, StampedSample, UnavailableReason,
+};
+use bitaxe_safety::{
+    power::{INPUT_VOLTAGE_MARGIN_RATIO, INPUT_VOLTAGE_NOMINAL_VOLTS, POWER_SAMPLE_STALE_AFTER_MS},
+    thermal::{ASIC_THROTTLE_TEMP_C, MAX_PLAUSIBLE_TEMP_C, MIN_PLAUSIBLE_TEMP_C},
 };
 use serde::{Deserialize, Serialize};
+
+const ULTRA_205_MAX_INPUT_POWER_WATTS: f64 = 15.0;
 
 /// Stable public state labels for one observed fact.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -114,6 +120,42 @@ impl TelemetryObservations {
     pub const fn unavailable_from_unstamped_legacy_source() -> Self {
         Self::unavailable(UnavailableReason::ProducerUnavailable)
     }
+
+    /// Requires complete fresh, validated Ultra 205 safety truth before mining effects.
+    #[must_use]
+    pub fn is_ultra_205_mining_safe_at(&self, now: MonotonicMillis) -> bool {
+        let Some(power_watts) = maybe_current_value(&self.power_watts, now) else {
+            return false;
+        };
+        let Some(bus_voltage_volts) = maybe_current_value(&self.bus_voltage_volts, now) else {
+            return false;
+        };
+        let Some(current_amps) = maybe_current_value(&self.current_amps, now) else {
+            return false;
+        };
+        let Some(chip_temp_celsius) = maybe_current_value(&self.chip_temp_celsius, now) else {
+            return false;
+        };
+        let Some(vr_temp_celsius) = maybe_current_value(&self.vr_temp_celsius, now) else {
+            return false;
+        };
+        if maybe_current_value(&self.fan_rpm, now).is_none() {
+            return false;
+        }
+
+        let min_input_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 - INPUT_VOLTAGE_MARGIN_RATIO);
+        let max_input_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 + INPUT_VOLTAGE_MARGIN_RATIO);
+        power_watts.is_finite()
+            && (0.0..=ULTRA_205_MAX_INPUT_POWER_WATTS).contains(&power_watts)
+            && bus_voltage_volts.is_finite()
+            && (min_input_voltage..=max_input_voltage).contains(&bus_voltage_volts)
+            && current_amps.is_finite()
+            && current_amps >= 0.0
+            && chip_temp_celsius.is_finite()
+            && (MIN_PLAUSIBLE_TEMP_C..ASIC_THROTTLE_TEMP_C).contains(&chip_temp_celsius)
+            && vr_temp_celsius.is_finite()
+            && (MIN_PLAUSIBLE_TEMP_C..=MAX_PLAUSIBLE_TEMP_C).contains(&vr_temp_celsius)
+    }
 }
 
 impl Default for TelemetryObservations {
@@ -190,6 +232,18 @@ fn maybe_project_sample<T, U>(
             sample.acquired_at(),
         )
     })
+}
+
+fn maybe_current_value<T: Copy>(observation: &Observation<T>, now: MonotonicMillis) -> Option<T> {
+    let Observation::Fresh { sample } = observation else {
+        return None;
+    };
+    if now.get().saturating_sub(sample.acquired_at().get()) > u64::from(POWER_SAMPLE_STALE_AFTER_MS)
+    {
+        return None;
+    }
+
+    Some(*sample.value())
 }
 
 #[cfg(test)]

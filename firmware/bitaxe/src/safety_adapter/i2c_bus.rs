@@ -13,6 +13,8 @@ use esp_idf_svc::hal::{
     units::FromValueType,
 };
 
+use super::emc2101::{Emc2101ReadRegister, Emc2101RegisterReader};
+
 pub const I2C_SDA_GPIO: i32 = 47;
 pub const I2C_SCL_GPIO: i32 = 48;
 pub const I2C_SPEED_KHZ: u32 = 400;
@@ -98,7 +100,7 @@ impl<'d> RuntimeI2cOwner<'d> {
         }
     }
 
-    pub(crate) fn sensors(&mut self) -> ReadOnlySensorBus<'_, 'd> {
+    pub(super) fn sensors(&mut self) -> ReadOnlySensorBus<'_, 'd> {
         ReadOnlySensorBus {
             driver: &mut self.driver,
         }
@@ -165,25 +167,6 @@ impl Ina260ReadRegister {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Emc2101ReadRegister {
-    ExternalTemperatureMsb,
-    ExternalTemperatureLsb,
-    TachometerLsb,
-    TachometerMsb,
-}
-
-impl Emc2101ReadRegister {
-    const fn address(self) -> u8 {
-        match self {
-            Self::ExternalTemperatureMsb => 0x01,
-            Self::ExternalTemperatureLsb => 0x10,
-            Self::TachometerLsb => 0x46,
-            Self::TachometerMsb => 0x47,
-        }
-    }
-}
-
 pub(crate) struct ReadOnlySensorBus<'bus, 'd> {
     driver: &'bus mut I2cDriver<'d>,
 }
@@ -197,14 +180,6 @@ impl ReadOnlySensorBus<'_, '_> {
         self.read_register(INA260_I2C_ADDRESS, register.address(), output)
     }
 
-    pub(crate) fn read_emc2101(
-        &mut self,
-        register: Emc2101ReadRegister,
-        output: &mut [u8; 1],
-    ) -> Result<()> {
-        self.read_register(EMC2101_I2C_ADDRESS, register.address(), output)
-    }
-
     fn read_register(&mut self, device_addr: u8, register: u8, output: &mut [u8]) -> Result<()> {
         self.driver
             .write_read(
@@ -216,5 +191,17 @@ impl ReadOnlySensorBus<'_, '_> {
             .with_context(|| {
                 format!("i2c read register 0x{register:02x} device 0x{device_addr:02x}")
             })
+    }
+}
+
+impl Emc2101RegisterReader for ReadOnlySensorBus<'_, '_> {
+    type Error = anyhow::Error;
+
+    fn read_emc2101(
+        &mut self,
+        register: Emc2101ReadRegister,
+        output: &mut [u8; 1],
+    ) -> Result<(), Self::Error> {
+        self.read_register(EMC2101_I2C_ADDRESS, register.address(), output)
     }
 }

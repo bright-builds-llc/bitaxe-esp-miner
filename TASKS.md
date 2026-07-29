@@ -26,34 +26,6 @@ new work.
 
 ## Active
 
-### task-ultra205-safety-observation-completeness | 2026-07-28 | Complete fail-closed Ultra 205 sensor truth
-
-- [ ] Read EMC2101 internal temperature as the Ultra 205 VR-temperature
-      observation while preserving external ASIC temperature and tachometer
-      acquisition under the sole shared-I2C owner.
-- [ ] Require fresh INA260 voltage, current, and power; ASIC temperature; VR
-      temperature; and fan RPM before hardware preparation or work dispatch.
-- [ ] Preserve the existing fail-closed limits: 4.5-5.5 V input, 15 W maximum,
-      ASIC temperature below 75 C, one-second freshness, and explicit
-      unavailable, stale, invalid, and read-failed states.
-- [ ] Project the new VR-temperature truth through runtime, HTTP, and WebSocket
-      views without fabricating unavailable samples or weakening source
-      ownership.
-- [ ] Add acquisition, decoding, staleness, projection, failure-retention, and
-      source-ownership tests.
-
-Dependencies: None.
-
-Verification: Pending. Run the required ordered Rust checks, focused safety and
-firmware-shell tests, `just verify-production-session`, `just test`,
-`just package`, Bright Builds checks, parity, reference-integrity, and
-redaction verification, source scans, `git diff --check`, and final diff
-review.
-
-Completion review: Pending. This task is implementation-only and performs no
-fan or voltage write, ASIC action, credential read, network connection,
-hardware run, or evidence promotion.
-
 ### task-ultra205-mining-actuation-adapter | 2026-07-28 | Implement the qualified Ultra 205 mining adapter
 
 - [ ] Add a typed command channel to the sole shared-I2C owner for EMC2101 fan

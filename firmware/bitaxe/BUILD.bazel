@@ -183,6 +183,28 @@ rust_test(
 )
 
 rust_test(
+    name = "emc2101_acquisition_tests",
+    srcs = ["src/safety_adapter/emc2101.rs"],
+    crate_name = "emc2101_acquisition_tests",
+    edition = "2021",
+    deps = ["//crates/bitaxe-safety:bitaxe_safety"],
+)
+
+rust_test(
+    name = "sensor_source_ownership_tests",
+    srcs = [
+        "src/operator_sensor_runtime.rs",
+        "src/production_mining_session.rs",
+        "src/safety_adapter.rs",
+        "src/safety_adapter/i2c_bus.rs",
+        "src/sensor_source_ownership_test.rs",
+    ],
+    crate_name = "sensor_source_ownership_tests",
+    crate_root = "src/sensor_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "retained_pair_production_tests",
     srcs = [
         "src/log_buffer.rs",

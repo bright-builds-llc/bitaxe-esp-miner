@@ -42,7 +42,8 @@ pub enum AcquisitionOutcome<T> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProducerSequences {
     pub power: ObservationSequence,
-    pub temperature: ObservationSequence,
+    pub asic_temperature: ObservationSequence,
+    pub vr_temperature: ObservationSequence,
     pub tachometer: ObservationSequence,
 }
 
@@ -50,7 +51,8 @@ impl Default for ProducerSequences {
     fn default() -> Self {
         Self {
             power: ObservationSequence::ZERO,
-            temperature: ObservationSequence::ZERO,
+            asic_temperature: ObservationSequence::ZERO,
+            vr_temperature: ObservationSequence::ZERO,
             tachometer: ObservationSequence::ZERO,
         }
     }
@@ -59,7 +61,8 @@ impl Default for ProducerSequences {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SensorSweepOutcomes {
     pub power: AcquisitionOutcome<Ina260RawSample>,
-    pub temperature_celsius: AcquisitionOutcome<f64>,
+    pub asic_temperature_celsius: AcquisitionOutcome<f64>,
+    pub vr_temperature_celsius: AcquisitionOutcome<f64>,
     pub tachometer_rpm: AcquisitionOutcome<u16>,
 }
 
@@ -67,6 +70,7 @@ pub struct SensorSweepOutcomes {
 pub struct ProducerSensorState {
     power: PowerObservation,
     thermal: ThermalObservation,
+    vr_temperature: Observation<f64>,
 }
 
 impl Default for ProducerSensorState {
@@ -77,6 +81,7 @@ impl Default for ProducerSensorState {
                 Observation::unavailable(UnavailableReason::NotYetObserved),
                 Observation::unavailable(UnavailableReason::NotYetObserved),
             ),
+            vr_temperature: Observation::unavailable(UnavailableReason::NotYetObserved),
         }
     }
 }
@@ -90,6 +95,11 @@ impl ProducerSensorState {
     #[must_use]
     pub const fn thermal(&self) -> &ThermalObservation {
         &self.thermal
+    }
+
+    #[must_use]
+    pub const fn vr_temperature(&self) -> &Observation<f64> {
+        &self.vr_temperature
     }
 
     /// Applies producer-owned elapsed-time processing without reading a clock.
@@ -114,10 +124,17 @@ impl ProducerSensorState {
             stale_after_ms,
             StaleReason::ProducerCadenceExpired,
         );
+        let vr_temperature = mark_observation_stale_if_expired(
+            &self.vr_temperature,
+            now,
+            stale_after_ms,
+            StaleReason::ProducerCadenceExpired,
+        );
 
         Self {
             power,
             thermal: ThermalObservation::from_facts(temperature, tachometer),
+            vr_temperature,
         }
     }
 }
@@ -146,6 +163,15 @@ pub fn decode_emc2101_external_temperature(bytes: [u8; 2]) -> Result<f64, Sensor
 
     let signed = sign_extend_11_bit(raw);
     let temperature = f64::from(signed) / 8.0;
+    if !(MIN_PLAUSIBLE_TEMP_C..=MAX_PLAUSIBLE_TEMP_C).contains(&temperature) {
+        return Err(SensorValidationError::TemperatureOutOfRange);
+    }
+
+    Ok(temperature)
+}
+
+pub fn decode_emc2101_internal_temperature(byte: u8) -> Result<f64, SensorValidationError> {
+    let temperature = f64::from(byte as i8);
     if !(MIN_PLAUSIBLE_TEMP_C..=MAX_PLAUSIBLE_TEMP_C).contains(&temperature) {
         return Err(SensorValidationError::TemperatureOutOfRange);
     }
@@ -183,10 +209,17 @@ pub fn reduce_sensor_sweep(
         acquired_at,
         board_power_target_watts,
     )?;
-    let (temperature, temperature_sequence) = reduce_temperature(
+    let (temperature, asic_temperature_sequence) = reduce_temperature(
         prior.thermal.temperature_truth(),
-        sequences.temperature,
-        outcomes.temperature_celsius,
+        sequences.asic_temperature,
+        outcomes.asic_temperature_celsius,
+        boot_session,
+        acquired_at,
+    )?;
+    let (vr_temperature, vr_temperature_sequence) = reduce_vr_temperature(
+        &prior.vr_temperature,
+        sequences.vr_temperature,
+        outcomes.vr_temperature_celsius,
         boot_session,
         acquired_at,
     )?;
@@ -202,10 +235,12 @@ pub fn reduce_sensor_sweep(
         ProducerSensorState {
             power,
             thermal: ThermalObservation::from_facts(temperature, tachometer),
+            vr_temperature,
         },
         ProducerSequences {
             power: power_sequence,
-            temperature: temperature_sequence,
+            asic_temperature: asic_temperature_sequence,
+            vr_temperature: vr_temperature_sequence,
             tachometer: tachometer_sequence,
         },
     ))
@@ -290,6 +325,30 @@ fn reduce_tachometer(
     }
 }
 
+fn reduce_vr_temperature(
+    prior: &Observation<f64>,
+    prior_sequence: ObservationSequence,
+    outcome: AcquisitionOutcome<f64>,
+    boot_session: BootSessionId,
+    acquired_at: MonotonicMillis,
+) -> Result<(Observation<f64>, ObservationSequence), SequenceOverflow> {
+    match outcome {
+        AcquisitionOutcome::Success(temperature_celsius) => Observation::record_success(
+            temperature_celsius,
+            boot_session,
+            prior_sequence,
+            acquired_at,
+        ),
+        AcquisitionOutcome::ReadFailed => {
+            Ok((prior.record_fault(FaultReason::ReadFailed), prior_sequence))
+        }
+        AcquisitionOutcome::InvalidSample => Ok((
+            prior.record_fault(FaultReason::ThermalReadingInvalid),
+            prior_sequence,
+        )),
+    }
+}
+
 fn sign_extend_11_bit(raw: u16) -> i16 {
     if raw & 0x0400 == 0 {
         return raw as i16;
@@ -324,6 +383,9 @@ fn mark_observation_stale_if_expired<T: Clone>(
 }
 
 #[cfg(test)]
+mod completeness_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -342,21 +404,10 @@ mod tests {
     fn successful_outcomes() -> SensorSweepOutcomes {
         SensorSweepOutcomes {
             power: AcquisitionOutcome::Success(valid_power()),
-            temperature_celsius: AcquisitionOutcome::Success(60.0),
+            asic_temperature_celsius: AcquisitionOutcome::Success(60.0),
+            vr_temperature_celsius: AcquisitionOutcome::Success(45.0),
             tachometer_rpm: AcquisitionOutcome::Success(3_000),
         }
-    }
-
-    #[test]
-    fn sensor_acquisition_ina260_current_is_signed() {
-        // Arrange
-        let negative_one_raw = [0xff, 0xff];
-
-        // Act
-        let sample = decode_ina260(negative_one_raw, [0x0f, 0xa0], [0x00, 0x01]);
-
-        // Assert
-        assert_eq!(sample.current_amps, -0.00125);
     }
 
     #[test]
@@ -426,10 +477,12 @@ mod tests {
 
         // Assert
         assert_eq!(sequences.power, ObservationSequence::new(1));
-        assert_eq!(sequences.temperature, ObservationSequence::new(1));
+        assert_eq!(sequences.asic_temperature, ObservationSequence::new(1));
+        assert_eq!(sequences.vr_temperature, ObservationSequence::new(1));
         assert_eq!(sequences.tachometer, ObservationSequence::new(1));
         assert!(state.power().truth().is_fresh());
         assert!(state.thermal().temperature_truth().is_fresh());
+        assert!(state.vr_temperature().is_fresh());
         assert!(state.thermal().tachometer_truth().is_fresh());
     }
 
@@ -481,7 +534,8 @@ mod tests {
         // Arrange
         let outcomes = SensorSweepOutcomes {
             power: AcquisitionOutcome::Success(valid_power()),
-            temperature_celsius: AcquisitionOutcome::ReadFailed,
+            asic_temperature_celsius: AcquisitionOutcome::ReadFailed,
+            vr_temperature_celsius: AcquisitionOutcome::Success(45.0),
             tachometer_rpm: AcquisitionOutcome::Success(3_000),
         };
 
@@ -499,7 +553,8 @@ mod tests {
         // Assert
         assert_eq!(state.thermal().temperature_truth().state_label(), "fault");
         assert!(state.thermal().tachometer_truth().is_fresh());
-        assert_eq!(sequences.temperature, ObservationSequence::ZERO);
+        assert_eq!(sequences.asic_temperature, ObservationSequence::ZERO);
+        assert_eq!(sequences.vr_temperature, ObservationSequence::new(1));
         assert_eq!(sequences.tachometer, ObservationSequence::new(1));
     }
 
@@ -508,7 +563,8 @@ mod tests {
         // Arrange
         let outcomes = SensorSweepOutcomes {
             power: AcquisitionOutcome::Success(valid_power()),
-            temperature_celsius: AcquisitionOutcome::Success(60.0),
+            asic_temperature_celsius: AcquisitionOutcome::Success(60.0),
+            vr_temperature_celsius: AcquisitionOutcome::Success(45.0),
             tachometer_rpm: AcquisitionOutcome::InvalidSample,
         };
 
@@ -526,7 +582,8 @@ mod tests {
         // Assert
         assert!(state.thermal().temperature_truth().is_fresh());
         assert_eq!(state.thermal().tachometer_truth().state_label(), "fault");
-        assert_eq!(sequences.temperature, ObservationSequence::new(1));
+        assert_eq!(sequences.asic_temperature, ObservationSequence::new(1));
+        assert_eq!(sequences.vr_temperature, ObservationSequence::new(1));
         assert_eq!(sequences.tachometer, ObservationSequence::ZERO);
     }
 
@@ -551,73 +608,7 @@ mod tests {
         assert!(retained.power().truth().is_fresh());
         assert_eq!(stale.power().truth().state_label(), "stale");
         assert_eq!(stale.thermal().temperature_truth().state_label(), "stale");
+        assert_eq!(stale.vr_temperature().state_label(), "stale");
         assert_eq!(stale.thermal().tachometer_truth().state_label(), "stale");
-    }
-
-    #[test]
-    fn sensor_acquisition_sustained_failures_age_all_retained_facts_to_stale() {
-        // Arrange
-        let (fresh, sequences) = reduce_sensor_sweep(
-            ProducerSensorState::default(),
-            ProducerSequences::default(),
-            successful_outcomes(),
-            SESSION,
-            ACQUIRED_AT,
-            12.0,
-        )
-        .expect("fixture sequences should advance");
-        let expected_power = fresh.power().truth().maybe_last_good().cloned();
-        let expected_temperature = fresh
-            .thermal()
-            .temperature_truth()
-            .maybe_last_good()
-            .cloned();
-        let expected_tachometer = fresh
-            .thermal()
-            .tachometer_truth()
-            .maybe_last_good()
-            .cloned();
-        let failed_outcomes = SensorSweepOutcomes {
-            power: AcquisitionOutcome::ReadFailed,
-            temperature_celsius: AcquisitionOutcome::ReadFailed,
-            tachometer_rpm: AcquisitionOutcome::ReadFailed,
-        };
-
-        // Act
-        let (faulted, next_sequences) = reduce_sensor_sweep(
-            fresh,
-            sequences,
-            failed_outcomes,
-            SESSION,
-            MonotonicMillis::new(750),
-            12.0,
-        )
-        .expect("failed attempts preserve sequences");
-        let retained = faulted.mark_stale_at(MonotonicMillis::new(1_250), 1_000);
-        let stale = faulted.mark_stale_at(MonotonicMillis::new(1_251), 1_000);
-
-        // Assert
-        assert_eq!(next_sequences, sequences);
-        assert_eq!(retained.power().truth().state_label(), "fault");
-        assert_eq!(
-            retained.thermal().temperature_truth().state_label(),
-            "fault"
-        );
-        assert_eq!(retained.thermal().tachometer_truth().state_label(), "fault");
-        assert_eq!(stale.power().truth().state_label(), "stale");
-        assert_eq!(
-            stale.power().truth().maybe_last_good(),
-            expected_power.as_ref()
-        );
-        assert_eq!(stale.thermal().temperature_truth().state_label(), "stale");
-        assert_eq!(
-            stale.thermal().temperature_truth().maybe_last_good(),
-            expected_temperature.as_ref()
-        );
-        assert_eq!(stale.thermal().tachometer_truth().state_label(), "stale");
-        assert_eq!(
-            stale.thermal().tachometer_truth().maybe_last_good(),
-            expected_tachometer.as_ref()
-        );
     }
 }

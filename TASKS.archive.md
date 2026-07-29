@@ -1852,3 +1852,65 @@ Completion review:
   owned by dependency-gated follow-up tasks. No pool credentials, network
   connection, hardware actuation, flash, evidence promotion, parity change,
   direct UART, or pin manipulation occurred.
+
+### task-ultra205-safety-observation-completeness | 2026-07-28 | Complete fail-closed Ultra 205 sensor truth
+
+- [x] Read EMC2101 internal temperature as the Ultra 205 VR-temperature
+      observation while preserving external ASIC temperature and tachometer
+      acquisition under the sole shared-I2C owner.
+- [x] Require fresh INA260 voltage, current, and power; ASIC temperature; VR
+      temperature; and fan RPM before hardware preparation or work dispatch.
+- [x] Preserve the existing fail-closed limits: 4.5-5.5 V input, 15 W maximum,
+      ASIC temperature below 75 C, one-second freshness, and explicit
+      unavailable, stale, invalid, and read-failed states.
+- [x] Project the new VR-temperature truth through runtime, HTTP, and WebSocket
+      views without fabricating unavailable samples or weakening source
+      ownership.
+- [x] Add acquisition, decoding, staleness, projection, failure-retention, and
+      source-ownership tests.
+
+Dependencies: None.
+
+Verification:
+
+- The required ordered `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features` checks passed. The full test rerun completed
+  cleanly after a transient macOS policy-service startup delay.
+- Focused Cargo tests passed 217 API and 62 safety tests. Focused Bazel tests
+  passed for the API, safety core, EMC2101 adapter acquisition, and sensor
+  source-ownership targets.
+- `just verify-production-session` passed its focused tests, source guard, and
+  ESP32-S3 build. `just test` passed all 78 Bazel test targets, and
+  `just package` produced the complete Ultra 205 firmware-image artifact set.
+- `bun scripts/bright-builds-check.ts all` scanned 568 tracked files and
+  reported zero findings with eight existing justified exceptions.
+  `just parity` reported `validation_errors: none`; `just verify-reference`
+  confirmed pinned reference commit
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50` clean; and
+  `just verify-redaction` passed.
+- Source scans confirmed that the sole operator sensor producer makes each
+  acquisition call exactly once, raw sensor-bus capability stays inside the
+  safety facade, and the diff adds no actuation, socket, or credential path.
+  `git diff --check` and final diff review passed.
+
+Completion review:
+
+- The sole shared-I2C owner now acquires EMC2101 register `0x00` as an
+  independently stamped VR-temperature fact while preserving separate external
+  ASIC-temperature and tachometer truth. Read, decode, and retention failures
+  remain source-local and fail closed.
+- Mining readiness, hardware preparation, and ASIC dispatch now require all
+  six observations to be fresh at the current monotonic time. The gate
+  preserves 4.5-5.5 V, 15 W maximum, ASIC temperature below 75 C, finite
+  numeric values, and an exact one-second sample-age boundary.
+- Runtime, HTTP, and WebSocket projections carry the VR fact and its
+  unavailable, stale, fault, or fresh state without advancing producer
+  metadata. The simplification pass retained one pure readiness predicate and
+  one ordinary firmware adapter recheck rather than duplicating policy.
+- Residual risk is intentionally deferred hardware validation: this task
+  performed no fan or voltage write, ASIC action, credential read, network
+  connection, device run, evidence promotion, direct UART, or pin
+  manipulation. The ordinary adapter remains actuation-unqualified until the
+  dependency-gated mining adapter task completes.
