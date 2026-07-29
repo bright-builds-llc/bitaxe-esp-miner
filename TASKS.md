@@ -28,6 +28,8 @@ new work.
 
 ### task-ultra205-mining-observation-baseline | 2026-07-28 | Re-establish a known-safe mining observation baseline
 
+Status: Blocked — `stop_repeated_boundary`.
+
 - [ ] Build and admit the exact current-HEAD package after its software
       dependencies complete.
 - [ ] Detect exactly one Ultra 205 and run the observation campaign for 360
@@ -85,16 +87,25 @@ Hardware contract:
   `stop_hardware_blocker`, `stop_authority_boundary`, or
   `stop_impossible_contract`. Preserve the earliest typed failure.
 
-Verification: In progress. The initial detector run preserved
-`recovery_not_observed` at final cleanup: the same device was accessible and
-holder-free, but the 30-second window admitted only two of three required
-stable samples. Land and verify a targeted 60-second final-cleanup regression
-fix before the one permitted post-fix attempt. Then run all software gates plus
-the exact permitted hardware commands, private-artifact permission checks,
-redaction verification, sealed result validation, and final diff review.
+Verification: Blocked at the one permitted post-fix attempt. All software,
+package, parity, reference, redaction, and clean exact-HEAD gates passed at
+`a6cc0a20`. The initial detector run preserved `recovery_not_observed` at final
+cleanup: the same device was accessible and holder-free, but the 30-second
+window admitted only two of three required stable samples. The targeted
+60-second final-cleanup fix and its slow-sampler regression test passed and
+were committed before the second detector run. That detector admitted exactly
+one device and completed cleanup. The 360-second campaign then sealed
+`marker_invalid` with zero accepted markers, runtime identity not trusted,
+package admission true, and USB cleanup ready. Private attempt evidence
+permissions and the result seal passed.
 
-Completion review: Pending. Completion proves only the stated observe-only
-baseline and does not verify hardware actuation or mining.
+Completion review: Terminal blocker; do not archive or claim this baseline
+complete. No pool credential was supplied and the sealed result makes no
+mining, share, soak, or parity-promotion claim. The serial stop path rejects the
+entire observation as soon as any non-UTF-8 boot byte appears, before it can
+frame campaign markers. Resume requires a regression-backed byte-safe marker
+framing fix plus explicit authorization for a new hardware ordinal because the
+current retry contract is exhausted.
 
 ### task-ultra205-live-pool-share | 2026-07-28 | Prove one real BM1366 pool submission
 
