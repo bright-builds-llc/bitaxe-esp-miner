@@ -225,6 +225,20 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   non-trivial repository changes.
 - Update only the active task's block. Record checkable implementation and
   verification items, then add a concise completion review and residual risks.
+- `TASKS.archive.md` is append-only historical evidence, not a tracker or
+  automatic-selection source. Do not load it during ordinary task discovery,
+  ranking, or queue classification; use targeted stable-ID lookup only when
+  exact historical context is required.
+- After the selected task is verified and its completion or closure review is
+  recorded, append its full native record to `TASKS.archive.md` and remove it
+  from `TASKS.md` in the same commit. Apply this to completed, explicitly
+  cancelled, and superseded tasks. Do not opportunistically archive unrelated
+  records, and do not archive blocked, deferred, terminal-blocker, future, or
+  otherwise unresolved tasks.
+- Keep stable task IDs unique across both files. Archived records are immutable
+  and never selectable, even by exact ID. Follow-up work requires a new active
+  task ID that references the archived task. If a record boundary or archive
+  shape is ambiguous, stop before commit instead of risking history loss.
 - Task blocks under `## Future — Explicit Only` remain incomplete but are
   excluded from ordinary and repeated automatic task selection. Only a current
   request naming the exact stable task ID makes that future task a candidate;

@@ -145,6 +145,9 @@ The task-gated durability acceptance command is:
 just verify-flash-durability board=205 cycles=20 port=<detector-port> manifest=<package-manifest> wifi-credentials=wifi-credentials.json protected-root=scratch/flash-durability/<attempt>
 ```
 
-It runs the four five-cycle sequences defined in `TASKS.md`, stops at the first
-failed boundary, and stores private mode-`0600` logs beneath a new ignored
-mode-`0700` root.
+It runs the four five-cycle sequences historically recorded by
+[`task-durable-ultra205-device-sessions`](../../TASKS.archive.md#task-durable-ultra205-device-sessions--2026-07-25--make-usb-flash-cycles-self-cleaning),
+stops at the first failed boundary, and stores private mode-`0600` logs beneath
+a new ignored mode-`0700` root. That archived record is context only and does
+not authorize a rerun; a fresh active hardware task must satisfy the current
+task gate first.
