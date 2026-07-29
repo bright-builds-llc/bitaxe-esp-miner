@@ -1,7 +1,13 @@
 use std::fmt;
 
-use bitaxe_asic::bm1366::{command::VersionMask, production::Bm1366ProductionCommand};
+use bitaxe_asic::bm1366::{
+    command::VersionMask, production::Bm1366ProductionCommand, result::Bm1366ValidJobIds,
+};
 
+use super::campaign::{
+    HardwarePreparationFailure, MiningCampaignLeaseId, MiningCampaignState, MiningHardwareProfile,
+    MiningHardwareState,
+};
 use crate::v1::live_runtime::LiveRuntimeConfig;
 use crate::v1::production_work::{PoolSessionGeneration, ProductionNonceObservation};
 use crate::v1::recovery_policy::{
@@ -85,6 +91,8 @@ pub struct ProductionSessionSnapshot {
     pub maybe_blocker: Option<ProductionSessionBlocker>,
     pub maybe_active_pool: Option<ProductionPool>,
     pub generation: PoolSessionGeneration,
+    pub hardware_state: MiningHardwareState,
+    pub campaign_state: MiningCampaignState,
     pub mining: MiningRuntimeState,
 }
 
@@ -118,6 +126,19 @@ pub enum ProductionSessionEvent {
         now_ms: u64,
     },
     AsicPollTimedOut {
+        now_ms: u64,
+    },
+    HardwarePrepared {
+        lease_id: MiningCampaignLeaseId,
+        now_ms: u64,
+    },
+    HardwarePreparationFailed {
+        lease_id: MiningCampaignLeaseId,
+        failure: HardwarePreparationFailure,
+        now_ms: u64,
+    },
+    HardwareSafeStopConfirmed {
+        lease_id: MiningCampaignLeaseId,
         now_ms: u64,
     },
     EffectFailed {
@@ -158,6 +179,13 @@ impl fmt::Debug for ProductionSessionEvent {
                 Self::TransportClosed { .. } => "ProductionSessionEvent::TransportClosed",
                 Self::AsicResult { .. } => "ProductionSessionEvent::AsicResult(redacted)",
                 Self::AsicPollTimedOut { .. } => "ProductionSessionEvent::AsicPollTimedOut",
+                Self::HardwarePrepared { .. } => "ProductionSessionEvent::HardwarePrepared",
+                Self::HardwarePreparationFailed { .. } => {
+                    "ProductionSessionEvent::HardwarePreparationFailed"
+                }
+                Self::HardwareSafeStopConfirmed { .. } => {
+                    "ProductionSessionEvent::HardwareSafeStopConfirmed"
+                }
                 Self::EffectFailed { .. } => "ProductionSessionEvent::EffectFailed",
                 Self::PoolConfigurationLoaded(_) | Self::TransportBytes { .. } => unreachable!(),
             }),
@@ -167,16 +195,34 @@ impl fmt::Debug for ProductionSessionEvent {
 
 #[derive(Clone, PartialEq)]
 pub enum ProductionSessionEffect {
+    PrepareHardware {
+        lease_id: MiningCampaignLeaseId,
+        profile: MiningHardwareProfile,
+    },
     ReadPoolConfiguration,
     ConnectPool(ProductionPool),
-    WritePoolLine { pool: ProductionPool, line: String },
+    WritePoolLine {
+        pool: ProductionPool,
+        line: String,
+    },
     ApplyVersionMask(VersionMask),
-    DispatchAsic(Bm1366ProductionCommand),
-    PollAsic { slice_ms: u32 },
+    DispatchAsic {
+        generation: PoolSessionGeneration,
+        valid_jobs: Bm1366ValidJobIds,
+        command: Bm1366ProductionCommand,
+    },
+    PollAsic {
+        generation: PoolSessionGeneration,
+        valid_jobs: Bm1366ValidJobIds,
+        slice_ms: u32,
+    },
     BlockSubmissions,
     InvalidateWorkAndSubmissions,
     StopAsicInteraction,
     ClosePoolConnection(ProductionPool),
+    SafeStopHardware {
+        lease_id: MiningCampaignLeaseId,
+    },
     Publish(ProductionSessionSnapshot),
 }
 
@@ -188,10 +234,15 @@ impl fmt::Debug for ProductionSessionEffect {
                 .field("pool", pool)
                 .field("line", &"redacted")
                 .finish(),
-            Self::DispatchAsic(_) => {
+            Self::DispatchAsic { .. } => {
                 formatter.write_str("ProductionSessionEffect::DispatchAsic(redacted)")
             }
             other => match other {
+                Self::PrepareHardware { lease_id, .. } => formatter
+                    .debug_struct("ProductionSessionEffect::PrepareHardware")
+                    .field("lease_id", lease_id)
+                    .field("profile", &"validated_redacted")
+                    .finish(),
                 Self::ReadPoolConfiguration => {
                     formatter.write_str("ProductionSessionEffect::ReadPoolConfiguration")
                 }
@@ -202,8 +253,14 @@ impl fmt::Debug for ProductionSessionEffect {
                 Self::ApplyVersionMask(_) => {
                     formatter.write_str("ProductionSessionEffect::ApplyVersionMask(redacted)")
                 }
-                Self::PollAsic { slice_ms } => formatter
+                Self::PollAsic {
+                    generation,
+                    slice_ms,
+                    ..
+                } => formatter
                     .debug_struct("ProductionSessionEffect::PollAsic")
+                    .field("generation", generation)
+                    .field("valid_jobs", &"redacted")
                     .field("slice_ms", slice_ms)
                     .finish(),
                 Self::BlockSubmissions => {
@@ -219,11 +276,15 @@ impl fmt::Debug for ProductionSessionEffect {
                     .debug_tuple("ProductionSessionEffect::ClosePoolConnection")
                     .field(pool)
                     .finish(),
+                Self::SafeStopHardware { lease_id } => formatter
+                    .debug_struct("ProductionSessionEffect::SafeStopHardware")
+                    .field("lease_id", lease_id)
+                    .finish(),
                 Self::Publish(snapshot) => formatter
                     .debug_tuple("ProductionSessionEffect::Publish")
                     .field(snapshot)
                     .finish(),
-                Self::WritePoolLine { .. } | Self::DispatchAsic(_) => unreachable!(),
+                Self::WritePoolLine { .. } | Self::DispatchAsic { .. } => unreachable!(),
             },
         }
     }

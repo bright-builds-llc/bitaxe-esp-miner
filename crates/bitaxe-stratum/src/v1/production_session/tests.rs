@@ -40,6 +40,12 @@ impl DeterministicProductionSessionAdapter {
                 .expect("deterministic event should be handled");
             for effect in effects {
                 match &effect {
+                    ProductionSessionEffect::PrepareHardware { lease_id, .. } => {
+                        events.push_back(ProductionSessionEvent::HardwarePrepared {
+                            lease_id: *lease_id,
+                            now_ms: 0,
+                        });
+                    }
                     ProductionSessionEffect::ReadPoolConfiguration => {
                         self.pool_reads += 1;
                         events.push_back(ProductionSessionEvent::PoolConfigurationLoaded(
@@ -50,7 +56,7 @@ impl DeterministicProductionSessionAdapter {
                     ProductionSessionEffect::WritePoolLine { pool, line } => {
                         self.writes.push((*pool, line.clone()));
                     }
-                    ProductionSessionEffect::DispatchAsic(command) => {
+                    ProductionSessionEffect::DispatchAsic { command, .. } => {
                         self.asic_commands.push(*command);
                     }
                     ProductionSessionEffect::Publish(snapshot) => {
@@ -62,6 +68,12 @@ impl DeterministicProductionSessionAdapter {
                     | ProductionSessionEffect::InvalidateWorkAndSubmissions
                     | ProductionSessionEffect::StopAsicInteraction
                     | ProductionSessionEffect::ClosePoolConnection(_) => {}
+                    ProductionSessionEffect::SafeStopHardware { lease_id } => {
+                        events.push_back(ProductionSessionEvent::HardwareSafeStopConfirmed {
+                            lease_id: *lease_id,
+                            now_ms: 0,
+                        });
+                    }
                 }
                 self.effects.push(effect);
             }
@@ -87,9 +99,34 @@ fn ready() -> ProductionReadiness {
         network_ready: true,
         stratum_v1_supported: true,
         safety_prerequisites_fresh: true,
-        production_asic_ready: true,
+        maybe_campaign_lease: Some(active_duration_lease(1, 600_000)),
         actuation_qualified: true,
     }
+}
+
+fn profile() -> MiningHardwareProfile {
+    MiningHardwareProfile::ultra_205_bm1366(400, 1_100, 100).expect("test profile should be valid")
+}
+
+fn active_duration_lease(id: u64, duration_ms: u64) -> MiningCampaignLease {
+    MiningCampaignLease::new(
+        MiningCampaignLeaseId::new(id).expect("test lease id should be valid"),
+        profile(),
+        MiningCampaignStopCondition::ActiveDuration {
+            duration: MiningCampaignDuration::new(duration_ms)
+                .expect("test duration should be valid"),
+        },
+    )
+}
+
+fn first_submit_lease(id: u64, timeout_ms: u64) -> MiningCampaignLease {
+    MiningCampaignLease::new(
+        MiningCampaignLeaseId::new(id).expect("test lease id should be valid"),
+        profile(),
+        MiningCampaignStopCondition::FirstSubmitResponse {
+            timeout: MiningCampaignDuration::new(timeout_ms).expect("test timeout should be valid"),
+        },
+    )
 }
 
 fn pools(prefer_fallback: bool) -> ProductionPoolSet {

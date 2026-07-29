@@ -312,7 +312,6 @@ impl ProductionWorkRegistry {
     }
 
     #[must_use]
-    #[cfg(test)]
     pub const fn valid_jobs(&self) -> &Bm1366ValidJobIds {
         &self.valid_jobs
     }

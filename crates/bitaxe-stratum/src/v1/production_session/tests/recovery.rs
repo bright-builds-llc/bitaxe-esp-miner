@@ -21,7 +21,7 @@ fn explicit_fallback_preference_does_not_schedule_primary_probe() {
 }
 
 #[test]
-fn retry_budgets_exhaust_primary_then_fallback_and_recovery_probe() {
+fn retry_budgets_exhaust_primary_then_fallback_and_consume_lease() {
     // Arrange
     let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
     adapter.drive(wake(ready(), 0));
@@ -48,19 +48,23 @@ fn retry_budgets_exhaust_primary_then_fallback_and_recovery_probe() {
             adapter.drive(wake(ready(), now_ms + CONNECTION_RETRY_DELAY_MS));
         }
     }
-    let paused_at = 30_000;
     let before = adapter.connections.len();
-    adapter.drive(wake(ready(), paused_at + RECOVERY_PROBE_DELAY_MS - 1));
-    let before_due = adapter.connections.len();
-    adapter.drive(wake(ready(), paused_at + RECOVERY_PROBE_DELAY_MS));
+    adapter.drive(wake(ready(), 30_000 + RECOVERY_PROBE_DELAY_MS));
 
     // Assert
     assert_eq!(
         adapter.session.snapshot().phase,
-        ProductionSessionPhase::ConnectingPrimary
+        ProductionSessionPhase::WaitingForReadiness
     );
-    assert_eq!(before, before_due);
-    assert_eq!(adapter.connections.last(), Some(&ProductionPool::Primary));
+    assert_eq!(
+        adapter.session.snapshot().maybe_blocker,
+        Some(ProductionSessionBlocker::CampaignLeaseConsumed)
+    );
+    assert_eq!(adapter.connections.len(), before);
+    assert_eq!(
+        adapter.session.snapshot().campaign_state,
+        MiningCampaignState::Consumed
+    );
 }
 
 #[test]
@@ -283,7 +287,7 @@ fn pause_settings_change_and_shutdown_reread_authoritative_state() {
         paused_snapshot.mining.mining_activity,
         MiningActivityStatus::Paused
     );
-    assert!(adapter.pool_reads >= 2);
+    assert_eq!(adapter.pool_reads, 1);
     assert_eq!(
         adapter.session.snapshot().phase,
         ProductionSessionPhase::Shutdown
@@ -325,6 +329,7 @@ fn safe_stop_effect_order_and_final_snapshot_are_idempotent() {
                     | ProductionSessionEffect::InvalidateWorkAndSubmissions
                     | ProductionSessionEffect::StopAsicInteraction
                     | ProductionSessionEffect::ClosePoolConnection(_)
+                    | ProductionSessionEffect::SafeStopHardware { .. }
                     | ProductionSessionEffect::Publish(_)
             )
         })
@@ -344,6 +349,10 @@ fn safe_stop_effect_order_and_final_snapshot_are_idempotent() {
     assert!(matches!(
         ordered[3],
         ProductionSessionEffect::ClosePoolConnection(_)
+    ));
+    assert!(matches!(
+        ordered[4],
+        ProductionSessionEffect::SafeStopHardware { .. }
     ));
     assert!(matches!(
         ordered.last(),

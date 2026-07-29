@@ -26,42 +26,6 @@ new work.
 
 ## Active
 
-### task-production-mining-hardware-lifecycle | 2026-07-28 | Deepen the production mining hardware lifecycle
-
-- [ ] Add typed hardware preparation, readiness, safe-stop, and bounded
-      campaign-lease states to the single deep Production Mining Session
-      interface.
-- [ ] Replace externally supplied `production_asic_ready` truth with
-      session-owned hardware state; keep the ordinary ESP and deterministic
-      adapters as the two adapters at this seam.
-- [ ] Add validated `MiningHardwareProfile` and one-shot
-      `MiningCampaignLease` types, including `FirstSubmitResponse` and
-      `ActiveDuration` stop conditions.
-- [ ] Gate pool-secret reads on operator intent, network readiness, Stratum V1,
-      fresh safety observations, a valid campaign lease, qualified actuation,
-      and successful hardware preparation.
-- [ ] Extend `ProductionSessionEvent` and `ProductionSessionEffect` with
-      prepare, prepared/failed, safe-stop, and stop-confirmation behavior, and
-      carry pool generation plus valid-job context through ASIC effects.
-- [ ] Enforce and test safe-stop order: block submissions, invalidate work and
-      generations, stop ASIC interaction, close transports, perform hardware
-      safe-stop, then publish the terminal snapshot.
-- [ ] Update ADR-0016 and ADR-0017 without restoring any retired phase runtime
-      or introducing another mining owner.
-
-Dependencies: None.
-
-Verification: Pending. Run the required ordered Rust format, Clippy,
-all-target/all-feature build, and all-feature test sequence; focused
-production-session tests; `just verify-production-session`; `just test`;
-`just package`; Bright Builds checks; parity, reference-integrity, and
-redaction verification; source scans; `git diff --check`; and final diff
-review.
-
-Completion review: Pending. This software-only task does not authorize pool
-credentials, network connections, hardware actuation, flashing, parity
-promotion, direct UART, or pin manipulation.
-
 ### task-ultra205-safety-observation-completeness | 2026-07-28 | Complete fail-closed Ultra 205 sensor truth
 
 - [ ] Read EMC2101 internal temperature as the Ultra 205 VR-temperature

@@ -21,7 +21,7 @@ fn every_readiness_blocker_prevents_secret_network_and_asic_effects() {
             ..ready()
         },
         ProductionReadiness {
-            production_asic_ready: false,
+            maybe_campaign_lease: None,
             ..ready()
         },
         ProductionReadiness {
@@ -221,4 +221,244 @@ fn malformed_invalid_utf8_and_oversized_input_recover_without_acceptance() {
             ProductionSessionEffect::ClosePoolConnection(ProductionPool::Primary)
         )));
     }
+}
+
+#[test]
+fn pool_configuration_is_read_only_after_hardware_preparation_succeeds() {
+    // Arrange
+    let mut session = ProductionMiningSession::new();
+
+    // Act
+    let effects = session
+        .handle(wake(ready(), 0))
+        .expect("readiness should request preparation");
+    let prepared_effects = session
+        .handle(ProductionSessionEvent::HardwarePrepared {
+            lease_id: active_duration_lease(1, 600_000).id(),
+            now_ms: 1,
+        })
+        .expect("preparation confirmation should advance the lifecycle");
+
+    // Assert
+    assert!(matches!(
+        effects.as_slice(),
+        [
+            ProductionSessionEffect::PrepareHardware { .. },
+            ProductionSessionEffect::Publish(_)
+        ]
+    ));
+    assert!(!effects
+        .iter()
+        .any(|effect| matches!(effect, ProductionSessionEffect::ReadPoolConfiguration)));
+    assert!(prepared_effects
+        .iter()
+        .any(|effect| matches!(effect, ProductionSessionEffect::ReadPoolConfiguration)));
+}
+
+#[test]
+fn preparation_failure_rolls_back_before_terminal_publication() {
+    // Arrange
+    let mut session = ProductionMiningSession::new();
+    let lease_id = active_duration_lease(1, 600_000).id();
+    let _preparing = session
+        .handle(wake(ready(), 0))
+        .expect("readiness should request preparation");
+
+    // Act
+    let failed = session
+        .handle(ProductionSessionEvent::HardwarePreparationFailed {
+            lease_id,
+            failure: HardwarePreparationFailure::DeviceFault,
+            now_ms: 1,
+        })
+        .expect("preparation failure should enter safe stop");
+    let confirmed = session
+        .handle(ProductionSessionEvent::HardwareSafeStopConfirmed {
+            lease_id,
+            now_ms: 2,
+        })
+        .expect("safe-stop confirmation should publish terminal state");
+
+    // Assert
+    assert!(matches!(
+        failed.as_slice(),
+        [
+            ProductionSessionEffect::BlockSubmissions,
+            ProductionSessionEffect::InvalidateWorkAndSubmissions,
+            ProductionSessionEffect::StopAsicInteraction,
+            ProductionSessionEffect::SafeStopHardware { .. }
+        ]
+    ));
+    assert!(!failed
+        .iter()
+        .any(|effect| matches!(effect, ProductionSessionEffect::Publish(_))));
+    assert!(matches!(
+        confirmed.as_slice(),
+        [ProductionSessionEffect::Publish(snapshot)]
+            if snapshot.hardware_state == MiningHardwareState::Stopped
+                && snapshot.campaign_state == MiningCampaignState::Consumed
+    ));
+}
+
+#[test]
+fn unavailable_pool_configuration_safe_stops_prepared_hardware() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(None);
+
+    // Act
+    adapter.drive(wake(ready(), 0));
+
+    // Assert
+    assert_eq!(adapter.pool_reads, 1);
+    assert_eq!(
+        adapter.session.snapshot().maybe_blocker,
+        Some(ProductionSessionBlocker::PoolConfigurationUnavailable)
+    );
+    assert_eq!(
+        adapter.session.snapshot().hardware_state,
+        MiningHardwareState::Stopped
+    );
+    assert_eq!(
+        adapter.session.snapshot().campaign_state,
+        MiningCampaignState::Consumed
+    );
+}
+
+#[test]
+fn first_submit_response_consumes_lease_and_safe_stops() {
+    // Arrange
+    let mut readiness = ready();
+    readiness.maybe_campaign_lease = Some(first_submit_lease(7, 600_000));
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    adapter.drive(wake(readiness, 0));
+    adapter.connect(ProductionPool::Primary, 1);
+    authorize_pool(&mut adapter, ProductionPool::Primary, 2);
+    adapter.bytes(
+        ProductionPool::Primary,
+        concat!(
+            "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[42]}\n",
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"job\",",
+            "\"0000000000000000000000000000000000000000000000000000000000000000\",",
+            "\"ffffffff\",\"ffffffff\",[],\"20000004\",\"1705ae3a\",",
+            "\"647025b5\",true]}\n"
+        ),
+        3,
+    );
+    let observation = dispatched_observation(&adapter);
+    adapter.drive(ProductionSessionEvent::AsicResult {
+        observation,
+        now_ms: 4,
+    });
+    adapter.effects.clear();
+
+    // Act
+    adapter.bytes(
+        ProductionPool::Primary,
+        b"{\"id\":4,\"result\":false,\"error\":[21,\"raw reject\",null]}\n",
+        5,
+    );
+
+    // Assert
+    assert_eq!(
+        adapter.session.snapshot().campaign_state,
+        MiningCampaignState::Consumed
+    );
+    assert_eq!(
+        adapter.session.snapshot().hardware_state,
+        MiningHardwareState::Stopped
+    );
+    assert_eq!(adapter.session.snapshot().mining.counters.rejected, 1);
+    assert!(adapter
+        .effects
+        .iter()
+        .any(|effect| matches!(effect, ProductionSessionEffect::SafeStopHardware { .. })));
+}
+
+#[test]
+fn active_duration_counts_from_authorized_mining() {
+    // Arrange
+    let mut readiness = ready();
+    readiness.maybe_campaign_lease = Some(active_duration_lease(9, 10));
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    adapter.drive(wake(readiness, 0));
+    adapter.drive(wake(readiness, 100));
+    assert_eq!(
+        adapter.session.snapshot().campaign_state,
+        MiningCampaignState::Armed
+    );
+    adapter.connect(ProductionPool::Primary, 101);
+    authorize_pool(&mut adapter, ProductionPool::Primary, 102);
+
+    // Act
+    adapter.drive(wake(readiness, 111));
+    let before_expiry = adapter.session.snapshot().campaign_state;
+    adapter.drive(wake(readiness, 112));
+
+    // Assert
+    assert_eq!(before_expiry, MiningCampaignState::Active);
+    assert_eq!(
+        adapter.session.snapshot().campaign_state,
+        MiningCampaignState::Consumed
+    );
+}
+
+#[test]
+fn asic_effects_bind_generation_and_valid_job_context() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+
+    // Act
+    establish_active(&mut adapter);
+    adapter.drive(wake(ready(), 4));
+
+    // Assert
+    let maybe_dispatch = adapter.effects.iter().find_map(|effect| {
+        let ProductionSessionEffect::DispatchAsic {
+            generation,
+            valid_jobs,
+            command,
+        } = effect
+        else {
+            return None;
+        };
+        Some((*generation, valid_jobs, command))
+    });
+    let Some((generation, valid_jobs, Bm1366ProductionCommand::SendProductionWork(payload))) =
+        maybe_dispatch
+    else {
+        panic!("expected a correlated ASIC dispatch");
+    };
+    assert_eq!(generation, adapter.session.snapshot().generation);
+    assert!(valid_jobs.contains(payload.job_id()));
+    assert!(adapter.effects.iter().any(|effect| {
+        matches!(
+            effect,
+            ProductionSessionEffect::PollAsic {
+                generation: poll_generation,
+                ..
+            } if *poll_generation == generation
+        )
+    }));
+}
+
+#[test]
+fn profile_and_campaign_bounds_reject_invalid_values() {
+    // Arrange / Act
+    let invalid_frequency = MiningHardwareProfile::ultra_205_bm1366(401, 1_100, 100);
+    let zero_id = MiningCampaignLeaseId::new(0);
+    let zero_duration = MiningCampaignDuration::new(0);
+    let overlong_duration =
+        MiningCampaignDuration::new(MAX_MINING_CAMPAIGN_DURATION_MS.saturating_add(1));
+
+    // Assert
+    assert!(invalid_frequency.is_err());
+    assert_eq!(zero_id, Err(MiningCampaignLeaseError::ZeroLeaseId));
+    assert!(matches!(
+        zero_duration,
+        Err(MiningCampaignLeaseError::InvalidDuration { duration_ms: 0 })
+    ));
+    assert!(matches!(
+        overlong_duration,
+        Err(MiningCampaignLeaseError::InvalidDuration { .. })
+    ));
 }

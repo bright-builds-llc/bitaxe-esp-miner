@@ -1,5 +1,9 @@
 use std::collections::HashMap;
 
+use super::campaign::{
+    MiningCampaignLease, MiningCampaignLeaseId, MiningCampaignState, MiningCampaignStopCondition,
+    MiningHardwareState,
+};
 use crate::jsonrpc::StratumRequestId;
 use crate::v1::bridge_orchestration::BridgeOrchestrator;
 use crate::v1::line_framer::StratumLineFramer;
@@ -8,7 +12,7 @@ use crate::v1::messages::StratumV1ClientMessage;
 use crate::v1::production_work::{PoolSessionGeneration, SubmitIntent};
 use crate::v1::recovery_policy::{
     ProductionPool, ProductionPoolAvailability, ProductionReadiness, ProductionSessionBlocker,
-    ProductionSessionPhase, RecoveryPolicy,
+    ProductionSessionPhase, ProductionSessionWakeup, RecoveryAction, RecoveryPolicy,
 };
 use crate::v1::state::{MiningActivityStatus, PoolLifecycleStatus};
 use crate::StratumV1Error;
@@ -54,6 +58,14 @@ pub struct ProductionMiningSession {
     pub(super) bridge: BridgeOrchestrator,
     pub(super) generation_cursor: PoolSessionGeneration,
     pub(super) last_readiness: ProductionReadiness,
+    pub(super) hardware_state: MiningHardwareState,
+    pub(super) campaign_state: MiningCampaignState,
+    pub(super) maybe_lease: Option<MiningCampaignLease>,
+    pub(super) maybe_consumed_lease_id: Option<MiningCampaignLeaseId>,
+    pub(super) maybe_prepared_at_ms: Option<u64>,
+    pub(super) maybe_active_since_ms: Option<u64>,
+    pub(super) terminal_publication_pending: bool,
+    pub(super) maybe_retained_mining: Option<crate::v1::state::MiningRuntimeState>,
     pub(super) maybe_last_snapshot: Option<ProductionSessionSnapshot>,
 }
 
@@ -78,9 +90,17 @@ impl ProductionMiningSession {
                 network_ready: false,
                 stratum_v1_supported: false,
                 safety_prerequisites_fresh: false,
-                production_asic_ready: false,
+                maybe_campaign_lease: None,
                 actuation_qualified: false,
             },
+            hardware_state: MiningHardwareState::Unprepared,
+            campaign_state: MiningCampaignState::Unavailable,
+            maybe_lease: None,
+            maybe_consumed_lease_id: None,
+            maybe_prepared_at_ms: None,
+            maybe_active_since_ms: None,
+            terminal_publication_pending: false,
+            maybe_retained_mining: None,
             maybe_last_snapshot: None,
         }
     }
@@ -91,6 +111,7 @@ impl ProductionMiningSession {
         let mut mining = self
             .maybe_runtime_for_projection(projection.maybe_active_pool)
             .map(|session| session.runtime.state().clone())
+            .or_else(|| self.maybe_retained_mining.clone())
             .unwrap_or_default();
         mining.set_operator_intent(self.last_readiness.operator_intent);
         mining.set_fallback_active(matches!(
@@ -139,6 +160,8 @@ impl ProductionMiningSession {
             maybe_blocker: projection.maybe_blocker,
             maybe_active_pool: projection.maybe_active_pool,
             generation: self.snapshot_generation(projection.maybe_active_pool),
+            hardware_state: self.hardware_state,
+            campaign_state: self.campaign_state,
             mining,
         }
     }
@@ -154,12 +177,13 @@ impl ProductionMiningSession {
                 readiness,
                 now_ms,
             } => {
-                self.last_readiness = readiness;
-                let recovery_actions = self.recovery.on_wakeup(wakeup, readiness, now_ms);
-                self.apply_recovery_actions(recovery_actions, &mut effects)?;
-                self.drive_bridge(now_ms, &mut effects)?;
+                self.handle_wakeup(wakeup, readiness, now_ms, &mut effects)?;
             }
             ProductionSessionEvent::PoolConfigurationLoaded(maybe_pool_set) => {
+                if self.hardware_state != MiningHardwareState::Ready {
+                    self.publish_if_changed(&mut effects);
+                    return Ok(effects);
+                }
                 let maybe_pool_set = maybe_pool_set.map(|pool_set| *pool_set);
                 let availability = maybe_pool_set.as_ref().map_or(
                     ProductionPoolAvailability {
@@ -187,6 +211,7 @@ impl ProductionMiningSession {
                 now_ms,
             } => {
                 self.apply_transport_bytes(pool, &bytes, now_ms, &mut effects)?;
+                self.note_campaign_active(now_ms);
                 self.drive_bridge(now_ms, &mut effects)?;
             }
             ProductionSessionEvent::TransportClosed { pool, now_ms } => {
@@ -210,6 +235,30 @@ impl ProductionMiningSession {
                 let _streak = self.bridge.note_poll_timeout();
                 self.drive_bridge(now_ms, &mut effects)?;
             }
+            ProductionSessionEvent::HardwarePrepared { lease_id, now_ms } => {
+                self.handle_hardware_prepared(lease_id, now_ms, &mut effects)?;
+            }
+            ProductionSessionEvent::HardwarePreparationFailed {
+                lease_id,
+                failure: _,
+                now_ms: _,
+            } => {
+                if self.maybe_lease.map(MiningCampaignLease::id) == Some(lease_id)
+                    && self.hardware_state == MiningHardwareState::Preparing
+                {
+                    self.begin_terminal_safe_stop(
+                        Some(ProductionSessionBlocker::ProductionAsicUnavailable),
+                        false,
+                        &mut effects,
+                    )?;
+                }
+            }
+            ProductionSessionEvent::HardwareSafeStopConfirmed {
+                lease_id,
+                now_ms: _,
+            } => {
+                self.confirm_hardware_safe_stop(lease_id);
+            }
             ProductionSessionEvent::EffectFailed {
                 maybe_pool,
                 reason: _,
@@ -218,13 +267,22 @@ impl ProductionMiningSession {
                 if let Some(pool) = maybe_pool {
                     self.handle_transport_failure(pool, now_ms, &mut effects)?;
                 } else {
-                    let mut readiness = self.last_readiness;
-                    readiness.production_asic_ready = false;
-                    self.last_readiness = readiness;
-                    let actions = self.recovery.on_wakeup(None, readiness, now_ms);
-                    self.apply_recovery_actions(actions, &mut effects)?;
+                    self.begin_terminal_safe_stop(
+                        Some(ProductionSessionBlocker::ProductionAsicUnavailable),
+                        false,
+                        &mut effects,
+                    )?;
                 }
             }
+        }
+        if matches!(
+            self.recovery.projection().maybe_blocker,
+            Some(
+                ProductionSessionBlocker::PoolConfigurationUnavailable
+                    | ProductionSessionBlocker::PoolsExhausted
+            )
+        ) {
+            self.begin_hardware_safe_stop_if_needed(&mut effects)?;
         }
         self.publish_if_changed(&mut effects);
         Ok(effects)
@@ -233,11 +291,245 @@ impl ProductionMiningSession {
 
 impl ProductionMiningSession {
     fn publish_if_changed(&mut self, effects: &mut Vec<ProductionSessionEffect>) {
+        if self.terminal_publication_pending {
+            return;
+        }
         let snapshot = self.snapshot();
         if self.maybe_last_snapshot.as_ref() != Some(&snapshot) {
             self.maybe_last_snapshot = Some(snapshot.clone());
             effects.push(ProductionSessionEffect::Publish(snapshot));
         }
+    }
+
+    fn handle_wakeup(
+        &mut self,
+        wakeup: Option<ProductionSessionWakeup>,
+        readiness: ProductionReadiness,
+        now_ms: u64,
+        effects: &mut Vec<ProductionSessionEffect>,
+    ) -> Result<(), StratumV1Error> {
+        self.last_readiness = readiness;
+        if self.campaign_expired(now_ms) {
+            return self.begin_terminal_safe_stop(
+                Some(ProductionSessionBlocker::CampaignLeaseConsumed),
+                false,
+                effects,
+            );
+        }
+        if matches!(wakeup, Some(ProductionSessionWakeup::ShutdownRequested)) {
+            return self.begin_terminal_safe_stop(None, true, effects);
+        }
+        if matches!(wakeup, Some(ProductionSessionWakeup::SettingsChanged))
+            && matches!(
+                self.hardware_state,
+                MiningHardwareState::Preparing | MiningHardwareState::Ready
+            )
+        {
+            return self.begin_terminal_safe_stop(
+                Some(ProductionSessionBlocker::CampaignLeaseConsumed),
+                false,
+                effects,
+            );
+        }
+        if readiness.maybe_blocker().is_some() {
+            let actions = self.recovery.on_wakeup(wakeup, readiness, now_ms);
+            self.apply_recovery_actions(actions, effects)?;
+            self.begin_hardware_safe_stop_if_needed(effects)?;
+            return Ok(());
+        }
+
+        let Some(lease) = readiness.maybe_campaign_lease else {
+            return Ok(());
+        };
+        if self
+            .maybe_consumed_lease_id
+            .is_some_and(|consumed| lease.id().raw() <= consumed.raw())
+        {
+            return self.begin_terminal_safe_stop(
+                Some(ProductionSessionBlocker::CampaignLeaseConsumed),
+                false,
+                effects,
+            );
+        }
+        if let Some(active_lease) = self.maybe_lease {
+            if active_lease.id() != lease.id() {
+                return self.begin_terminal_safe_stop(
+                    Some(ProductionSessionBlocker::CampaignLeaseConsumed),
+                    false,
+                    effects,
+                );
+            }
+        }
+
+        match self.hardware_state {
+            MiningHardwareState::Unprepared | MiningHardwareState::Stopped => {
+                self.maybe_lease = Some(lease);
+                self.hardware_state = MiningHardwareState::Preparing;
+                self.campaign_state = MiningCampaignState::Preparing;
+                self.maybe_prepared_at_ms = None;
+                self.maybe_active_since_ms = None;
+                self.maybe_retained_mining = None;
+                effects.push(ProductionSessionEffect::PrepareHardware {
+                    lease_id: lease.id(),
+                    profile: lease.profile(),
+                });
+            }
+            MiningHardwareState::Ready => {
+                let actions = self.recovery.on_wakeup(wakeup, readiness, now_ms);
+                self.apply_recovery_actions(actions, effects)?;
+                self.note_campaign_active(now_ms);
+                self.drive_bridge(now_ms, effects)?;
+            }
+            MiningHardwareState::Preparing | MiningHardwareState::SafeStopping => {}
+        }
+        Ok(())
+    }
+
+    fn handle_hardware_prepared(
+        &mut self,
+        lease_id: MiningCampaignLeaseId,
+        now_ms: u64,
+        effects: &mut Vec<ProductionSessionEffect>,
+    ) -> Result<(), StratumV1Error> {
+        if self.maybe_lease.map(MiningCampaignLease::id) != Some(lease_id)
+            || self.hardware_state != MiningHardwareState::Preparing
+        {
+            return Ok(());
+        }
+        self.hardware_state = MiningHardwareState::Ready;
+        self.campaign_state = MiningCampaignState::Armed;
+        self.maybe_prepared_at_ms = Some(now_ms);
+        let actions = self.recovery.on_wakeup(None, self.last_readiness, now_ms);
+        self.apply_recovery_actions(actions, effects)?;
+        self.note_campaign_active(now_ms);
+        self.drive_bridge(now_ms, effects)
+    }
+
+    pub(super) fn begin_terminal_safe_stop(
+        &mut self,
+        maybe_blocker: Option<ProductionSessionBlocker>,
+        shutdown_requested: bool,
+        effects: &mut Vec<ProductionSessionEffect>,
+    ) -> Result<(), StratumV1Error> {
+        let actions = if shutdown_requested {
+            self.recovery.on_wakeup(
+                Some(ProductionSessionWakeup::ShutdownRequested),
+                self.last_readiness,
+                0,
+            )
+        } else if let Some(blocker) = maybe_blocker {
+            self.recovery.on_session_blocker(blocker)
+        } else {
+            Vec::new()
+        };
+        self.apply_recovery_actions(actions, effects)?;
+        self.begin_hardware_safe_stop_if_needed(effects)
+    }
+
+    fn begin_hardware_safe_stop_if_needed(
+        &mut self,
+        effects: &mut Vec<ProductionSessionEffect>,
+    ) -> Result<(), StratumV1Error> {
+        if !matches!(
+            self.hardware_state,
+            MiningHardwareState::Preparing | MiningHardwareState::Ready
+        ) {
+            return Ok(());
+        }
+
+        for action in [
+            RecoveryAction::BlockSubmissions,
+            RecoveryAction::InvalidateWorkAndSubmissions,
+            RecoveryAction::StopAsicInteraction,
+        ] {
+            let already_ordered = match action {
+                RecoveryAction::BlockSubmissions => effects
+                    .iter()
+                    .any(|effect| matches!(effect, ProductionSessionEffect::BlockSubmissions)),
+                RecoveryAction::InvalidateWorkAndSubmissions => effects.iter().any(|effect| {
+                    matches!(
+                        effect,
+                        ProductionSessionEffect::InvalidateWorkAndSubmissions
+                    )
+                }),
+                RecoveryAction::StopAsicInteraction => effects
+                    .iter()
+                    .any(|effect| matches!(effect, ProductionSessionEffect::StopAsicInteraction)),
+                _ => false,
+            };
+            if !already_ordered {
+                self.apply_recovery_actions(vec![action], effects)?;
+            }
+        }
+
+        let Some(lease_id) = self.maybe_lease.map(MiningCampaignLease::id) else {
+            return Ok(());
+        };
+        self.hardware_state = MiningHardwareState::SafeStopping;
+        self.campaign_state = MiningCampaignState::SafeStopping;
+        self.terminal_publication_pending = true;
+        effects.push(ProductionSessionEffect::SafeStopHardware { lease_id });
+        Ok(())
+    }
+
+    fn confirm_hardware_safe_stop(&mut self, lease_id: MiningCampaignLeaseId) {
+        if self.hardware_state != MiningHardwareState::SafeStopping
+            || self.maybe_lease.map(MiningCampaignLease::id) != Some(lease_id)
+        {
+            return;
+        }
+        self.hardware_state = MiningHardwareState::Stopped;
+        self.campaign_state = MiningCampaignState::Consumed;
+        self.maybe_consumed_lease_id = Some(lease_id);
+        self.maybe_lease = None;
+        self.maybe_prepared_at_ms = None;
+        self.maybe_active_since_ms = None;
+        self.terminal_publication_pending = false;
+    }
+
+    fn note_campaign_active(&mut self, now_ms: u64) {
+        if matches!(
+            self.recovery.projection().phase,
+            ProductionSessionPhase::RunningPrimary | ProductionSessionPhase::RunningFallback
+        ) && self.hardware_state == MiningHardwareState::Ready
+        {
+            self.campaign_state = MiningCampaignState::Active;
+            self.maybe_active_since_ms.get_or_insert(now_ms);
+        }
+    }
+
+    fn campaign_expired(&self, now_ms: u64) -> bool {
+        let Some(lease) = self.maybe_lease else {
+            return false;
+        };
+        match lease.stop_condition() {
+            MiningCampaignStopCondition::FirstSubmitResponse { timeout } => self
+                .maybe_prepared_at_ms
+                .is_some_and(|started| now_ms.saturating_sub(started) >= timeout.milliseconds()),
+            MiningCampaignStopCondition::ActiveDuration { duration } => self
+                .maybe_active_since_ms
+                .is_some_and(|started| now_ms.saturating_sub(started) >= duration.milliseconds()),
+        }
+    }
+
+    pub(super) fn stop_after_first_submit_response(
+        &mut self,
+        effects: &mut Vec<ProductionSessionEffect>,
+    ) -> Result<(), StratumV1Error> {
+        let stop_after_response = self.maybe_lease.is_some_and(|lease| {
+            matches!(
+                lease.stop_condition(),
+                MiningCampaignStopCondition::FirstSubmitResponse { .. }
+            )
+        });
+        if !stop_after_response {
+            return Ok(());
+        }
+        self.begin_terminal_safe_stop(
+            Some(ProductionSessionBlocker::CampaignLeaseConsumed),
+            false,
+            effects,
+        )
     }
 
     pub(super) fn allocate_generation(&mut self) -> PoolSessionGeneration {

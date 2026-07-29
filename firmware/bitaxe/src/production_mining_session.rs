@@ -119,7 +119,7 @@ impl OrdinaryEspProductionSessionAdapter {
             network_ready: wifi.wifi_status == "connected",
             stratum_v1_supported: crate::settings_adapter::configured_protocol_is_v1(),
             safety_prerequisites_fresh,
-            production_asic_ready: crate::asic_adapter::production::production_ready(),
+            maybe_campaign_lease: None,
             actuation_qualified: false,
         }
     }
@@ -134,6 +134,9 @@ impl OrdinaryEspProductionSessionAdapter {
             | ProductionSessionEffect::InvalidateWorkAndSubmissions
             | ProductionSessionEffect::StopAsicInteraction
             | ProductionSessionEffect::ClosePoolConnection(_) => None,
+            ProductionSessionEffect::PrepareHardware { .. } => {
+                Self::maybe_reject_effect(None, "hardware_prepare")
+            }
             ProductionSessionEffect::ReadPoolConfiguration => {
                 log::error!(
                     "production_mining_session=fail_closed reason=ordinary_adapter_unqualified action=pool_configuration"
@@ -155,11 +158,14 @@ impl OrdinaryEspProductionSessionAdapter {
             ProductionSessionEffect::ApplyVersionMask(_) => {
                 Self::maybe_reject_effect(None, "version_mask")
             }
-            ProductionSessionEffect::DispatchAsic(_) => {
+            ProductionSessionEffect::DispatchAsic { .. } => {
                 Self::maybe_reject_effect(None, "asic_dispatch")
             }
             ProductionSessionEffect::PollAsic { .. } => {
                 Self::maybe_reject_effect(None, "asic_poll")
+            }
+            ProductionSessionEffect::SafeStopHardware { .. } => {
+                Self::maybe_reject_effect(None, "hardware_safe_stop")
             }
         }
     }

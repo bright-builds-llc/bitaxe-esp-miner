@@ -3,6 +3,7 @@
 //! The deep Production Mining Session owns this policy and translates its
 //! decisions into the session event/effect interface.
 
+use crate::v1::production_session::campaign::MiningCampaignLease;
 use crate::v1::state::{MiningActivityStatus, MiningOperatorIntent, PoolLifecycleStatus};
 
 pub const CONNECTION_ATTEMPTS_PER_POOL: u8 = 3;
@@ -29,6 +30,8 @@ pub enum ProductionSessionBlocker {
     NetworkUnavailable,
     StratumV1Unsupported,
     SafetyPrerequisitesStale,
+    CampaignLeaseUnavailable,
+    CampaignLeaseConsumed,
     ProductionAsicUnavailable,
     ActuationUnqualified,
     PoolConfigurationUnavailable,
@@ -42,6 +45,8 @@ impl ProductionSessionBlocker {
             Self::NetworkUnavailable => "network_unavailable",
             Self::StratumV1Unsupported => "stratum_v1_unsupported",
             Self::SafetyPrerequisitesStale => "safety_prerequisites_stale",
+            Self::CampaignLeaseUnavailable => "campaign_lease_unavailable",
+            Self::CampaignLeaseConsumed => "campaign_lease_consumed",
             Self::ProductionAsicUnavailable => "production_asic_unavailable",
             Self::ActuationUnqualified => "actuation_unqualified",
             Self::PoolConfigurationUnavailable => "pool_configuration_unavailable",
@@ -78,7 +83,7 @@ pub struct ProductionReadiness {
     pub network_ready: bool,
     pub stratum_v1_supported: bool,
     pub safety_prerequisites_fresh: bool,
-    pub production_asic_ready: bool,
+    pub maybe_campaign_lease: Option<MiningCampaignLease>,
     pub actuation_qualified: bool,
 }
 
@@ -96,8 +101,8 @@ impl ProductionReadiness {
         if !self.safety_prerequisites_fresh {
             return Some(ProductionSessionBlocker::SafetyPrerequisitesStale);
         }
-        if !self.production_asic_ready {
-            return Some(ProductionSessionBlocker::ProductionAsicUnavailable);
+        if self.maybe_campaign_lease.is_none() {
+            return Some(ProductionSessionBlocker::CampaignLeaseUnavailable);
         }
         if !self.actuation_qualified {
             return Some(ProductionSessionBlocker::ActuationUnqualified);
@@ -343,6 +348,10 @@ impl RecoveryPolicy {
             );
         };
         self.connect(pool)
+    }
+
+    pub fn on_session_blocker(&mut self, blocker: ProductionSessionBlocker) -> Vec<RecoveryAction> {
+        self.safe_stop(ProductionSessionPhase::WaitingForReadiness, Some(blocker))
     }
 
     pub fn on_connection_result(

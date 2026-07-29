@@ -20,7 +20,8 @@ protocol or work behavior without proving the admitted production lifecycle.
 The Production Mining Session is one deep module with a typed event/effect
 interface. It privately composes recovery, bounded line framing, request
 correlation, the V1 runtime, the production-work registry, submit
-classification, bridge cadence, and immutable session snapshots.
+classification, bridge cadence, one-shot campaign leases, session-owned
+hardware lifecycle state, and immutable session snapshots.
 
 The interface has exactly two adapters:
 
@@ -28,9 +29,16 @@ The interface has exactly two adapters:
 - the ordinary ESP firmware adapter.
 
 The ordinary adapter may read authoritative, non-secret readiness facts, but it
-always reports actuation as unqualified. It performs no pool-secret read,
-connection, socket write, or ASIC effect. Deterministic accepted and rejected
-shares remain software evidence only.
+supplies no campaign lease and always reports actuation as unqualified. It
+performs no pool-secret read, connection, socket write, ASIC effect, or
+hardware preparation. Deterministic accepted and rejected shares remain
+software evidence only.
+
+Hardware readiness is not an externally asserted Boolean. The session requests
+a validated profile through `PrepareHardware`, accepts only the matching typed
+preparation result, and withholds pool configuration until that succeeds. ASIC
+dispatch and poll effects carry the pool generation and valid-job set used to
+parse and correlate their results.
 
 The mining-loop and direct fake/live-runtime interfaces have no compatibility
 guarantee. Reusable logic is retained behind the Production Mining Session
@@ -43,7 +51,9 @@ interface; obsolete callers, tests, markers, and build wiring are removed.
   blocked until valid work is dispatched.
 - Request identifiers and generations gate submit results; stale, duplicate,
   malformed, mismatched, and post-stop results cannot become accepted shares.
-- Safe stop has one idempotent effect order before final publication.
+- Safe stop blocks submissions, invalidates generations, stops ASIC
+  interaction, closes transports, requests hardware safe-stop, and withholds
+  the terminal publication until the matching stop confirmation.
 - Explicit fallback preference and automatic fallback restoration are distinct
   policies.
 - Real networking, pool credentials, ASIC actuation, hardware evidence, and

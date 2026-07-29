@@ -153,6 +153,14 @@ impl ProductionMiningSession {
                 if let Some(runtime) = self.maybe_pool_runtime_mut(pool) {
                     runtime.runtime.record_submit_classification(classification);
                 }
+                if matches!(
+                    classification,
+                    crate::v1::submit_response::SubmitClassification::Accepted
+                        | crate::v1::submit_response::SubmitClassification::Rejected { .. }
+                ) {
+                    self.stop_after_first_submit_response(effects)?;
+                    return Ok(());
+                }
             }
             PendingRequestKind::Runtime(kind) => {
                 let maybe_event = {
@@ -259,6 +267,12 @@ impl ProductionMiningSession {
         actions: Vec<RecoveryAction>,
         effects: &mut Vec<ProductionSessionEffect>,
     ) -> Result<(), StratumV1Error> {
+        if actions
+            .iter()
+            .any(|action| matches!(action, RecoveryAction::StopAsicInteraction))
+        {
+            self.maybe_retained_mining = Some(self.snapshot().mining);
+        }
         for action in actions {
             match action {
                 RecoveryAction::ReadPoolConfiguration => {
@@ -395,7 +409,17 @@ impl ProductionMiningSession {
                 }
             }
             BridgeStep::Poll { slice_ms } => {
-                effects.push(ProductionSessionEffect::PollAsic { slice_ms });
+                let maybe_context = self.maybe_pool_runtime(pool).map(|runtime| {
+                    let registry = runtime.runtime.production_registry();
+                    (registry.generation(), registry.valid_jobs().clone())
+                });
+                if let Some((generation, valid_jobs)) = maybe_context {
+                    effects.push(ProductionSessionEffect::PollAsic {
+                        generation,
+                        valid_jobs,
+                        slice_ms,
+                    });
+                }
             }
             BridgeStep::Idle => {}
         }
@@ -414,9 +438,15 @@ impl ProductionMiningSession {
             .transpose();
         match maybe_dispatch {
             Ok(Some(dispatch)) => {
-                effects.push(ProductionSessionEffect::DispatchAsic(
-                    Bm1366ProductionCommand::SendProductionWork(dispatch.work_payload),
-                ));
+                let valid_jobs = self
+                    .maybe_pool_runtime(pool)
+                    .map(|runtime| runtime.runtime.production_registry().valid_jobs().clone())
+                    .unwrap_or_default();
+                effects.push(ProductionSessionEffect::DispatchAsic {
+                    generation: dispatch.generation,
+                    valid_jobs,
+                    command: Bm1366ProductionCommand::SendProductionWork(dispatch.work_payload),
+                });
                 self.bridge.note_dispatched(now_ms);
             }
             Ok(None) | Err(StratumV1Error::QueueEmpty) => {}

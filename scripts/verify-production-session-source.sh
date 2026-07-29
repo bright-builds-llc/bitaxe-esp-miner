@@ -8,7 +8,7 @@ verify_adapter_contract() {
 	local contract_present
 	local ordinary_forbidden_matches
 	local adapter_count
-	local -r ordinary_forbidden_pattern='TcpStream|std::net|write_all|read_pool_settings|apply_negotiated_version_mask|execute_production_command|try_read_production_result'
+	local -r ordinary_forbidden_pattern='TcpStream|std::net|write_all|read_pool_settings|production_ready|apply_negotiated_version_mask|execute_production_command|try_read_production_result'
 	local -a owner_contracts=(
 		"const OWNER_STACK_BYTES: usize = 16 * 1024;"
 		"const NOTIFICATION_CAPACITY: usize = 8;"
@@ -19,6 +19,7 @@ verify_adapter_contract() {
 		"ProductionSessionEvent::Wake"
 		"drive_session(&mut session, &mut adapter, event)"
 		"adapter.maybe_execute(effect)"
+		"maybe_campaign_lease: None"
 		"actuation_qualified: false"
 	)
 
@@ -174,14 +175,24 @@ verify_adapter_contract "$owner_source" "$deterministic_adapter_source"
 readonly engine_sources=(
 	"crates/bitaxe-stratum/src/v1/bridge_orchestration.rs"
 	"crates/bitaxe-stratum/src/v1/production_session.rs"
+	"crates/bitaxe-stratum/src/v1/production_session/campaign.rs"
 	"crates/bitaxe-stratum/src/v1/production_session/orchestration.rs"
 	"crates/bitaxe-stratum/src/v1/production_session/runtime.rs"
 	"crates/bitaxe-stratum/src/v1/production_session/types.rs"
+	"crates/bitaxe-stratum/src/v1/recovery_policy.rs"
 )
 readonly engine_contracts=(
 	"pub enum ProductionSessionEvent"
 	"pub enum ProductionSessionEffect"
 	"pub struct ProductionSessionSnapshot"
+	"pub struct MiningHardwareProfile"
+	"pub struct MiningCampaignLease"
+	"FirstSubmitResponse"
+	"ActiveDuration"
+	"HardwarePrepared"
+	"HardwareSafeStopConfirmed"
+	"PrepareHardware"
+	"SafeStopHardware"
 	"StratumLineFramer"
 	"LiveStratumRuntime"
 	"BridgeOrchestrator"
@@ -202,7 +213,7 @@ done
 
 verify_engine_clock_contract "${engine_sources[@]}"
 
-readonly forbidden_active_pattern='pub mod (fake_pool|live_runtime|mining_loop)|ProductionSessionAction|mining_loop_status|FakePoolTranscript|run_live_runtime|phase36_substantive_evidence_test'
+readonly forbidden_active_pattern='pub mod (fake_pool|live_runtime|mining_loop)|ProductionSessionAction|production_asic_ready|mining_loop_status|FakePoolTranscript|run_live_runtime|phase36_substantive_evidence_test'
 readonly forbidden_active_paths=(
 	"crates/bitaxe-api/src"
 	"crates/bitaxe-stratum/src"

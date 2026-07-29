@@ -25,6 +25,7 @@ rust_library(
         "src/v1/messages/tests/server/failures.rs",
         "src/v1/messages/tests/server/success.rs",
         "src/v1/production_session.rs",
+        "src/v1/production_session/campaign.rs",
         "src/v1/production_session/orchestration.rs",
         "src/v1/production_session/runtime.rs",
         "src/v1/production_session/tests.rs",

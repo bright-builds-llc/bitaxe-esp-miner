@@ -1778,3 +1778,77 @@ targeted stable-ID lookup to avoid context cost. The global skill remains
 outside repository Git and must be distributed separately. No hardware,
 credentials, network discovery, evidence generation or promotion, direct UART
 or pin work, or future cross-platform adapter work was performed.
+
+### task-production-mining-hardware-lifecycle | 2026-07-28 | Deepen the production mining hardware lifecycle
+
+- [x] Add typed hardware preparation, readiness, safe-stop, and bounded
+      campaign-lease states to the single deep Production Mining Session
+      interface.
+- [x] Replace externally supplied `production_asic_ready` truth with
+      session-owned hardware state; keep the ordinary ESP and deterministic
+      adapters as the two adapters at this seam.
+- [x] Add validated `MiningHardwareProfile` and one-shot
+      `MiningCampaignLease` types, including `FirstSubmitResponse` and
+      `ActiveDuration` stop conditions.
+- [x] Gate pool-secret reads on operator intent, network readiness, Stratum V1,
+      fresh safety observations, a valid campaign lease, qualified actuation,
+      and successful hardware preparation.
+- [x] Extend `ProductionSessionEvent` and `ProductionSessionEffect` with
+      prepare, prepared/failed, safe-stop, and stop-confirmation behavior, and
+      carry pool generation plus valid-job context through ASIC effects.
+- [x] Enforce and test safe-stop order: block submissions, invalidate work and
+      generations, stop ASIC interaction, close transports, perform hardware
+      safe-stop, then publish the terminal snapshot.
+- [x] Update ADR-0016 and ADR-0017 without restoring any retired phase runtime
+      or introducing another mining owner.
+
+Dependencies: None.
+
+Verification:
+
+- The required ordered `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features` sequence passed on the final source.
+- All 25 focused Production Mining Session tests passed. They cover every
+  readiness gate, hardware preparation success and failure, lazy
+  pool-configuration access, profile and lease validation, active-duration
+  timing, first accepted/rejected response stop, generation/job context, and
+  terminal publication only after hardware stop confirmation.
+- `just verify-production-session` passed its focused Bazel tests, source
+  guards, and ESP32-S3 firmware build. `just test` passed all 76 Bazel test
+  targets, and `just package` produced the complete Ultra 205 firmware-image
+  artifact set.
+- `bun scripts/bright-builds-check.ts all` scanned 567 tracked files and
+  reported zero findings with the eight existing justified exceptions.
+  `just parity` reported `validation_errors: none`; one aggregate invocation
+  encountered transient host resource pressure after report generation, and
+  the isolated read-only retry passed without repository changes.
+- `just verify-reference` confirmed pinned reference commit
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50` clean.
+  `just verify-redaction`, the production-session source scans, and
+  `git diff --check` passed. Final diff review found no retired runtime, new
+  mining owner, credential, network, hardware, evidence, or parity-promotion
+  path.
+
+Completion review:
+
+- The single Production Mining Session now owns typed preparing, ready,
+  safe-stopping, stopped, armed, active, and consumed campaign state. A
+  validated monotonic lease cannot be reused, `FirstSubmitResponse` is bounded
+  from preparation, and `ActiveDuration` begins only after authorization makes
+  mining active.
+- Pool configuration remains lazy until every external readiness gate and the
+  matching hardware-prepared event succeed. ASIC dispatch and poll effects
+  carry the active pool generation and valid-job set.
+- Terminal stop retains the correlated accepted/rejected counters, blocks and
+  invalidates submissions, stops ASIC interaction, closes owned transports,
+  requests hardware safe-stop, and withholds terminal publication until the
+  matching confirmation. Partial preparation and unavailable/exhausted pools
+  take the same fail-closed path.
+- The ordinary ESP adapter still has no actuation authority or campaign lease;
+  the deterministic adapter remains the only other adapter. Residual risk is
+  the intentionally unimplemented qualified hardware and live-I/O adapters
+  owned by dependency-gated follow-up tasks. No pool credentials, network
+  connection, hardware actuation, flash, evidence promotion, parity change,
+  direct UART, or pin manipulation occurred.
