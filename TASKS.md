@@ -101,11 +101,13 @@ permissions and the result seal passed.
 
 Completion review: Terminal blocker; do not archive or claim this baseline
 complete. No pool credential was supplied and the sealed result makes no
-mining, share, soak, or parity-promotion claim. The serial stop path rejects the
-entire observation as soon as any non-UTF-8 boot byte appears, before it can
-frame campaign markers. Resume requires a regression-backed byte-safe marker
-framing fix plus explicit authorization for a new hardware ordinal because the
-current retry contract is exhausted.
+mining, share, soak, or parity-promotion claim. The serial stop/parser path
+returned `marker_invalid` before accepting any marker. Because the transcript
+is intentionally ephemeral, the sealed result cannot distinguish a non-UTF-8
+boot byte outside a marker from a malformed marker line. Resume requires
+regression-backed byte-safe marker framing for both cases plus explicit
+authorization for a new hardware ordinal because the current retry contract is
+exhausted.
 
 ### task-ultra205-live-pool-share | 2026-07-28 | Prove one real BM1366 pool submission
 
