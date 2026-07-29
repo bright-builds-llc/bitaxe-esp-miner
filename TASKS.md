@@ -28,7 +28,7 @@ new work.
 
 ### task-ultra205-mining-observation-baseline | 2026-07-28 | Re-establish a known-safe mining observation baseline
 
-Status: Active — authorized byte-safe parser diagnosis and `attempt-002`.
+Status: Blocked — `attempt-002` consumed; no retry authorized.
 
 - [x] Reproduce the zero-marker `marker_invalid` boundary with non-UTF-8
       non-candidate bytes surrounding valid runtime attestations and campaign
@@ -41,10 +41,10 @@ Status: Active — authorized byte-safe parser diagnosis and `attempt-002`.
       events, aggregate counts, and no raw serial or candidate content.
 - [x] Pass every required software, package, parity, reference, and redaction
       gate for the parser and diagnostics change before committing it.
-- [ ] Build and admit the exact current-HEAD package after its software
+- [x] Build and admit the exact current-HEAD package after its software
       dependencies complete.
-- [ ] Detect exactly one Ultra 205 and run the observation campaign for 360
-      seconds.
+- [x] Detect exactly one Ultra 205 and run the single authorized observation
+      attempt.
 - [ ] Prove exact source/package runtime attestation, all six safety
       observations fresh, `mineonboot=false`, no campaign lease, no pool-secret
       read, and no fan, voltage, or ASIC actuation.
@@ -127,17 +127,31 @@ one device and completed cleanup. The 360-second campaign then sealed
 package admission true, and USB cleanup ready. Private attempt evidence
 permissions and the result seal passed.
 
-Completion review: Prior terminal blocker reopened only by explicit user
-authorization for the byte-safe parser fix and one new observation ordinal. Do
-not archive or claim this baseline complete until `attempt-002` passes. No pool
-credential was supplied to `attempt-001`, and its sealed result makes no
-mining, share, soak, or parity-promotion claim. The serial stop/parser path
-returned `marker_invalid` before accepting any marker. Because the transcript
-is intentionally ephemeral, the sealed result cannot distinguish a non-UTF-8
-boot byte outside a marker from a malformed marker line. Resume requires
-regression-backed byte-safe marker framing for both cases plus explicit
-authorization for a new hardware ordinal because the current retry contract is
-exhausted.
+`attempt-002` admitted the clean exact-HEAD package at `44a85c4d` and exactly
+one Ultra 205, then stopped on the first accepted observation marker before the
+360-second window completed. The sealed v2 result records
+`mineonboot_enabled`, package admission true, runtime attestation missing, one
+accepted marker, `mineonboot=true`, safety stale with five of six fresh
+observations, no pool read, no actuation, and USB cleanup ready. The sealed
+serial diagnostic records clean framing, no invalid bytes or malformed
+candidates, and `serial_outcome_detail=clean`. This disproves a repeated parser
+failure for the new attempt, does not identify the exact historical byte-level
+trigger, and selects the no-retry stop required by the authorized contract.
+The host stop predicate also needed a follow-up regression-backed correction
+so observation contract failures retain the full diagnostic window; that
+software correction does not authorize another hardware ordinal.
+
+Completion review: Blocked after consuming the one explicitly authorized
+`attempt-002`; do not retry, archive, or claim this baseline complete. No pool
+credential was supplied to either observation attempt, and their sealed
+results make no mining, share, soak, or parity-promotion claim. The
+`attempt-001` serial stop/parser path returned `marker_invalid` before accepting
+any marker. Because that transcript is intentionally ephemeral, its sealed
+result cannot distinguish a non-UTF-8 boot byte outside a marker from a
+malformed marker line. The parser ambiguity is now fixed and the new typed
+evidence isolates `attempt-002` at an independent device-state boundary.
+Resuming hardware requires explicit authorization for a new ordinal because
+the current retry contract is exhausted.
 
 ### task-ultra205-live-pool-share | 2026-07-28 | Prove one real BM1366 pool submission
 

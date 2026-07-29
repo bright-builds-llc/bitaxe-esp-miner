@@ -436,11 +436,11 @@ impl CampaignSerialAnalyzer {
     }
 
     fn should_stop(&self) -> bool {
-        if self.maybe_failure.is_some() {
-            return true;
-        }
         if self.admission.stage == MiningCampaignStage::Observation {
             return false;
+        }
+        if self.maybe_failure.is_some() {
+            return true;
         }
         assess_campaign_markers(&self.markers, self.admission).is_ok()
             || self

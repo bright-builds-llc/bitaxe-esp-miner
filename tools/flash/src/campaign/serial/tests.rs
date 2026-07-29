@@ -211,6 +211,30 @@ fn earliest_contract_failure_precedes_later_marker_parse_failure() {
 }
 
 #[test]
+fn observation_contract_failure_does_not_shorten_capture_window() {
+    // Arrange
+    let mut marker = observation_marker(CAMPAIGN_MARKER_SCHEMA);
+    let paused = b"\"mineonboot\":false";
+    let index = find_bytes(&marker, paused).expect("mineonboot field");
+    marker.splice(
+        index..index + paused.len(),
+        b"\"mineonboot\":true".iter().copied(),
+    );
+    let mut analyzer = CampaignSerialAnalyzer::new(observation_admission());
+
+    // Act
+    let should_stop = analyzer.observe_snapshot(&marker);
+    let capture = analyzer.finish();
+
+    // Assert
+    assert!(!should_stop);
+    assert_eq!(
+        capture.maybe_failure,
+        Some(CampaignTerminalCategory::MineOnBootEnabled)
+    );
+}
+
+#[test]
 fn invalid_runtime_attestation_encoding_is_independent_of_valid_marker() {
     // Arrange
     let mut bytes = bitaxe_api::RUNTIME_BOOT_ATTESTATION_MARKER
