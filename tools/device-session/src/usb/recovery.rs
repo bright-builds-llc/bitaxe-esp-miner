@@ -5,6 +5,7 @@ use serde::Serialize;
 pub(super) const REQUIRED_STABLE_SAMPLES: u8 = 3;
 pub(super) const STANDARD_RECOVERY_TIMEOUT: Duration = Duration::from_secs(30);
 pub(super) const POST_FLASH_RECOVERY_TIMEOUT: Duration = Duration::from_secs(60);
+pub(super) const FINAL_CLEANUP_RECOVERY_TIMEOUT: Duration = POST_FLASH_RECOVERY_TIMEOUT;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -249,6 +250,43 @@ mod tests {
         // Assert
         assert!(!old_policy.0);
         assert!(production_policy.0);
+    }
+
+    #[test]
+    fn slow_sampler_requires_the_extended_final_cleanup_window() {
+        // Arrange
+        let samples = vec![
+            (
+                Duration::from_secs(12),
+                RecoverySample::accessible("epoch-a", false),
+            ),
+            (
+                Duration::from_secs(24),
+                RecoverySample::accessible("epoch-a", false),
+            ),
+            (
+                Duration::from_secs(36),
+                RecoverySample::accessible("epoch-a", false),
+            ),
+        ];
+
+        // Act
+        let standard_policy = reduce_virtual_timeline(
+            RecoveryPhase::FinalCleanup,
+            STANDARD_RECOVERY_TIMEOUT,
+            samples.clone(),
+        );
+        let final_cleanup_policy = reduce_virtual_timeline(
+            RecoveryPhase::FinalCleanup,
+            FINAL_CLEANUP_RECOVERY_TIMEOUT,
+            samples,
+        );
+
+        // Assert
+        assert!(!standard_policy.0);
+        assert_eq!(standard_policy.1.stable_samples_max, 2);
+        assert!(final_cleanup_policy.0);
+        assert_eq!(final_cleanup_policy.1.stable_samples_max, 3);
     }
 
     #[test]

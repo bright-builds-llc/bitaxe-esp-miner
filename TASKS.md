@@ -85,9 +85,13 @@ Hardware contract:
   `stop_hardware_blocker`, `stop_authority_boundary`, or
   `stop_impossible_contract`. Preserve the earliest typed failure.
 
-Verification: Pending. Run all software gates plus the exact permitted hardware
-commands, private-artifact permission checks, redaction verification, sealed
-result validation, and final diff review.
+Verification: In progress. The initial detector run preserved
+`recovery_not_observed` at final cleanup: the same device was accessible and
+holder-free, but the 30-second window admitted only two of three required
+stable samples. Land and verify a targeted 60-second final-cleanup regression
+fix before the one permitted post-fix attempt. Then run all software gates plus
+the exact permitted hardware commands, private-artifact permission checks,
+redaction verification, sealed result validation, and final diff review.
 
 Completion review: Pending. Completion proves only the stated observe-only
 baseline and does not verify hardware actuation or mining.

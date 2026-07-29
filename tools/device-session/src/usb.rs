@@ -20,7 +20,8 @@ use process::{run_owned_process, OwnedProcessRequest};
 #[cfg(test)]
 use recovery::POST_FLASH_RECOVERY_TIMEOUT;
 use recovery::{
-    RecoveryPhase, RecoverySample, RecoverySummary, RecoveryTracker, STANDARD_RECOVERY_TIMEOUT,
+    RecoveryPhase, RecoverySample, RecoverySummary, RecoveryTracker,
+    FINAL_CLEANUP_RECOVERY_TIMEOUT, STANDARD_RECOVERY_TIMEOUT,
 };
 
 const SAMPLE_INTERVAL: Duration = Duration::from_millis(150);
@@ -314,7 +315,8 @@ impl UsbSession {
 
     pub fn finish(mut self) -> Result<ReflashReady, UsbSessionError> {
         self.transition(UsbLifecycleEvent::BeginCleanup)?;
-        let snapshot = self.reacquire(RecoveryPhase::FinalCleanup, STANDARD_RECOVERY_TIMEOUT)?;
+        let snapshot =
+            self.reacquire(RecoveryPhase::FinalCleanup, FINAL_CLEANUP_RECOVERY_TIMEOUT)?;
         self.transition(UsbLifecycleEvent::CleanupComplete)?;
         self.lease.record_state(self.state, self.earliest_failure)?;
         self.lease.mark_complete();
