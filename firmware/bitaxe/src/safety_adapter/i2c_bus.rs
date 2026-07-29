@@ -13,7 +13,12 @@ use esp_idf_svc::hal::{
     units::FromValueType,
 };
 
-use super::emc2101::{Emc2101ReadRegister, Emc2101RegisterReader};
+use super::{
+    ds4432u::{Ds4432uRegisterWriter, Ds4432uWriteRegister},
+    emc2101::{
+        Emc2101ReadRegister, Emc2101RegisterReader, Emc2101RegisterWriter, Emc2101WriteRegister,
+    },
+};
 
 pub const I2C_SDA_GPIO: i32 = 47;
 pub const I2C_SCL_GPIO: i32 = 48;
@@ -22,6 +27,7 @@ pub const I2C_TRANSACTION_TIMEOUT_MS: u64 = 50;
 
 const INA260_I2C_ADDRESS: u8 = 0x40;
 const EMC2101_I2C_ADDRESS: u8 = 0x4c;
+const DS4432U_I2C_ADDRESS: u8 = 0x48;
 const SSD1306_I2C_ADDRESS: u8 = 0x3c;
 
 pub(crate) struct BitaxeI2cBus<'d> {
@@ -102,6 +108,12 @@ impl<'d> RuntimeI2cOwner<'d> {
 
     pub(super) fn sensors(&mut self) -> ReadOnlySensorBus<'_, 'd> {
         ReadOnlySensorBus {
+            driver: &mut self.driver,
+        }
+    }
+
+    pub(super) fn actuators(&mut self) -> ActuationBus<'_, 'd> {
+        ActuationBus {
             driver: &mut self.driver,
         }
     }
@@ -203,5 +215,43 @@ impl Emc2101RegisterReader for ReadOnlySensorBus<'_, '_> {
         output: &mut [u8; 1],
     ) -> Result<(), Self::Error> {
         self.read_register(EMC2101_I2C_ADDRESS, register.address(), output)
+    }
+}
+
+pub(super) struct ActuationBus<'bus, 'd> {
+    driver: &'bus mut I2cDriver<'d>,
+}
+
+impl ActuationBus<'_, '_> {
+    fn write_register(&mut self, device_addr: u8, register: u8, value: u8) -> Result<()> {
+        self.driver
+            .write(device_addr, &[register, value], transaction_timeout_ticks())
+            .with_context(|| {
+                format!("i2c write register 0x{register:02x} device 0x{device_addr:02x}")
+            })
+    }
+}
+
+impl Emc2101RegisterWriter for ActuationBus<'_, '_> {
+    type Error = anyhow::Error;
+
+    fn write_emc2101(
+        &mut self,
+        register: Emc2101WriteRegister,
+        value: u8,
+    ) -> Result<(), Self::Error> {
+        self.write_register(EMC2101_I2C_ADDRESS, register.address(), value)
+    }
+}
+
+impl Ds4432uRegisterWriter for ActuationBus<'_, '_> {
+    type Error = anyhow::Error;
+
+    fn write_ds4432u(
+        &mut self,
+        register: Ds4432uWriteRegister,
+        value: u8,
+    ) -> Result<(), Self::Error> {
+        self.write_register(DS4432U_I2C_ADDRESS, register.address(), value)
     }
 }

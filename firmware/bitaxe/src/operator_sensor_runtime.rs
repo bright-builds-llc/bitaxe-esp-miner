@@ -13,7 +13,9 @@ use bitaxe_safety::{
 };
 use esp_idf_svc::sys;
 
-use crate::safety_adapter::{self, RuntimeI2cOwner};
+use crate::safety_adapter::{
+    self, RuntimeI2cOwner, SafetyActuationOwnerInbox, SafetyActuationOwnerWait,
+};
 
 pub const SENSOR_SWEEP_CADENCE_MS: u64 = 500;
 pub const DISPLAY_REFRESH_CADENCE_MS: u64 = 1_000;
@@ -26,18 +28,26 @@ pub fn start(
     owner: RuntimeI2cOwner<'static>,
     maybe_display_text: Option<StartupDebugText>,
 ) -> Result<()> {
+    let (actuation_registration, actuation_inbox) =
+        safety_adapter::prepare_safety_actuation_owner();
     thread::Builder::new()
         .name(PRODUCER_THREAD_NAME.to_owned())
         .stack_size(PRODUCER_THREAD_STACK_BYTES)
-        .spawn(move || run(owner, maybe_display_text))
+        .spawn(move || run(owner, maybe_display_text, actuation_inbox))
         .context("spawn operator sensor producer")?;
+    safety_adapter::publish_safety_actuation_owner(actuation_registration)
+        .context("publish operator sensor actuation owner")?;
     log::info!(
         "operator_sensor_runtime=started cadence_ms={SENSOR_SWEEP_CADENCE_MS} display_refresh_ms={DISPLAY_REFRESH_CADENCE_MS}"
     );
     Ok(())
 }
 
-fn run(mut owner: RuntimeI2cOwner<'static>, mut maybe_display_text: Option<StartupDebugText>) -> ! {
+fn run(
+    mut owner: RuntimeI2cOwner<'static>,
+    mut maybe_display_text: Option<StartupDebugText>,
+    actuation_inbox: SafetyActuationOwnerInbox,
+) -> ! {
     let boot_session = new_boot_session_id();
     let mut state = ProducerSensorState::default();
     let mut sequences = ProducerSequences::default();
@@ -48,7 +58,6 @@ fn run(mut owner: RuntimeI2cOwner<'static>, mut maybe_display_text: Option<Start
         .map(|text| text.frame_at(0).lines()[2].to_owned());
 
     loop {
-        sleep_until(next_deadline_ms.min(next_display_deadline_ms));
         let now_ms = crate::runtime_uptime::millis();
 
         if now_ms >= next_deadline_ms {
@@ -95,6 +104,14 @@ fn run(mut owner: RuntimeI2cOwner<'static>, mut maybe_display_text: Option<Start
                 now_ms,
             );
             next_display_deadline_ms = now_ms.saturating_add(DISPLAY_REFRESH_CADENCE_MS);
+        }
+
+        let next_owner_deadline_ms = next_deadline_ms.min(next_display_deadline_ms);
+        let wait = duration_until(next_owner_deadline_ms);
+        if safety_adapter::service_next_safety_actuation_request(&mut owner, &actuation_inbox, wait)
+            == SafetyActuationOwnerWait::Disconnected
+        {
+            sleep_until(next_owner_deadline_ms);
         }
     }
 }
@@ -182,12 +199,11 @@ fn next_future_deadline(previous_deadline_ms: u64) -> u64 {
 }
 
 fn sleep_until(deadline_ms: u64) {
-    let now_ms = crate::runtime_uptime::millis();
-    if deadline_ms <= now_ms {
-        return;
-    }
+    thread::sleep(duration_until(deadline_ms));
+}
 
-    thread::sleep(Duration::from_millis(deadline_ms - now_ms));
+fn duration_until(deadline_ms: u64) -> Duration {
+    Duration::from_millis(deadline_ms.saturating_sub(crate::runtime_uptime::millis()))
 }
 
 fn new_boot_session_id() -> BootSessionId {

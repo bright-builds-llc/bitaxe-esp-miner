@@ -6,6 +6,36 @@ pub const ASIC_ENABLE_GPIO: i32 = 10;
 pub const RESET_PULSE_LOW_MS: u32 = 100;
 pub const RESET_PULSE_HIGH_MS: u32 = 100;
 
+/// Active-low Ultra 205 ASIC power-enable owner.
+pub struct AsicEnable<'d> {
+    enable: PinDriver<'d, Output>,
+}
+
+impl<'d> AsicEnable<'d> {
+    pub fn new<PIN>(enable_pin: PIN) -> Result<Self>
+    where
+        PIN: OutputPin + 'd,
+    {
+        debug_assert_eq!(ASIC_ENABLE_GPIO, 10);
+
+        let mut enable = PinDriver::output(enable_pin)?;
+        enable.set_high()?;
+        Ok(Self { enable })
+    }
+
+    pub fn enable(&mut self) -> Result<()> {
+        self.enable.set_low()?;
+        log::info!("asic_enable_status=active gpio={ASIC_ENABLE_GPIO}");
+        Ok(())
+    }
+
+    pub fn disable(&mut self) -> Result<()> {
+        self.enable.set_high()?;
+        log::info!("asic_enable_status=inactive gpio={ASIC_ENABLE_GPIO}");
+        Ok(())
+    }
+}
+
 pub struct AsicReset<'d> {
     reset: PinDriver<'d, Output>,
 }

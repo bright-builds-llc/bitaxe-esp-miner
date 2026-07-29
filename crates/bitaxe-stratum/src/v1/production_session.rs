@@ -19,8 +19,8 @@ pub use crate::v1::recovery_policy::{
 pub use campaign::{
     HardwarePreparationFailure, MiningCampaignDuration, MiningCampaignLease,
     MiningCampaignLeaseError, MiningCampaignLeaseId, MiningCampaignState,
-    MiningCampaignStopCondition, MiningHardwareProfile, MiningHardwareState,
-    MAX_MINING_CAMPAIGN_DURATION_MS,
+    MiningCampaignStopCondition, MiningHardwareProfile, MiningHardwareProfilePreset,
+    MiningHardwareState, MAX_MINING_CAMPAIGN_DURATION_MS,
 };
 pub use runtime::ProductionMiningSession;
 pub use types::{

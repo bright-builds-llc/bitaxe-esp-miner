@@ -51,7 +51,7 @@ pub fn notify(wakeup: ProductionSessionWakeup) -> ProductionSessionNotificationO
 fn run_owner(receiver: Receiver<ProductionSessionWakeup>) {
     let started_at = Instant::now();
     let mut session = ProductionMiningSession::new();
-    let mut adapter = OrdinaryEspProductionSessionAdapter;
+    let mut adapter = OrdinaryEspProductionSessionAdapter::new();
 
     loop {
         let maybe_wakeup = match receiver.recv_timeout(AUTHORITATIVE_REREAD_INTERVAL) {
@@ -102,9 +102,18 @@ fn drive_session(
     }
 }
 
-struct OrdinaryEspProductionSessionAdapter;
+struct OrdinaryEspProductionSessionAdapter {
+    mining_actuation: crate::mining_actuation_adapter::Ultra205MiningActuationAdapter,
+}
 
 impl OrdinaryEspProductionSessionAdapter {
+    fn new() -> Self {
+        Self {
+            mining_actuation: crate::mining_actuation_adapter::Ultra205MiningActuationAdapter::new(
+            ),
+        }
+    }
+
     fn read_authoritative_readiness(&mut self) -> ProductionReadiness {
         let mining = crate::runtime_snapshot::mining_runtime_state();
         let wifi = crate::wifi_adapter::current_wifi_snapshot();
@@ -130,8 +139,35 @@ impl OrdinaryEspProductionSessionAdapter {
             | ProductionSessionEffect::InvalidateWorkAndSubmissions
             | ProductionSessionEffect::StopAsicInteraction
             | ProductionSessionEffect::ClosePoolConnection(_) => None,
-            ProductionSessionEffect::PrepareHardware { .. } => {
-                Self::maybe_reject_safety_gated_effect(None, "hardware_prepare")
+            ProductionSessionEffect::PrepareHardware { lease_id, profile } => {
+                match self.mining_actuation.prepare(profile) {
+                    Ok(()) => Some(ProductionSessionEvent::HardwarePrepared {
+                        lease_id,
+                        now_ms: crate::runtime_uptime::millis(),
+                    }),
+                    Err(failure) => {
+                        let original = failure.original();
+                        let original_category = original.source().category();
+                        if let Some(rollback) = failure.maybe_safe_shutdown_failure() {
+                            log::error!(
+                                "production_mining_session=fail_closed action=hardware_prepare original_step={:?} original_category={original_category} rollback_step={:?} rollback_category={}",
+                                original.step(),
+                                rollback.step(),
+                                rollback.source().category(),
+                            );
+                        } else {
+                            log::error!(
+                                "production_mining_session=fail_closed action=hardware_prepare original_step={:?} original_category={original_category}",
+                                original.step(),
+                            );
+                        }
+                        Some(ProductionSessionEvent::HardwarePreparationFailed {
+                            lease_id,
+                            failure: original.source().hardware_preparation_failure(),
+                            now_ms: crate::runtime_uptime::millis(),
+                        })
+                    }
+                }
             }
             ProductionSessionEffect::ReadPoolConfiguration => {
                 log::error!(
@@ -160,8 +196,25 @@ impl OrdinaryEspProductionSessionAdapter {
             ProductionSessionEffect::PollAsic { .. } => {
                 Self::maybe_reject_effect(None, "asic_poll")
             }
-            ProductionSessionEffect::SafeStopHardware { .. } => {
-                Self::maybe_reject_effect(None, "hardware_safe_stop")
+            ProductionSessionEffect::SafeStopHardware { lease_id } => {
+                match self.mining_actuation.safe_stop() {
+                    Ok(()) => Some(ProductionSessionEvent::HardwareSafeStopConfirmed {
+                        lease_id,
+                        now_ms: crate::runtime_uptime::millis(),
+                    }),
+                    Err(failure) => {
+                        log::error!(
+                            "production_mining_session=fail_closed action=hardware_safe_stop failed_step={:?} category={}",
+                            failure.step(),
+                            failure.source().category(),
+                        );
+                        Some(ProductionSessionEvent::EffectFailed {
+                            maybe_pool: None,
+                            reason: "hardware_safe_stop_failed",
+                            now_ms: crate::runtime_uptime::millis(),
+                        })
+                    }
+                }
             }
         }
     }

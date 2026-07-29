@@ -26,6 +26,9 @@ pub fn actual_frequency_mhz(plan: FrequencyPlan) -> f32 {
 }
 
 const FREQ_MULT_MHZ: u16 = 25;
+const QUARTERS_PER_MHZ: u32 = 4;
+const TRANSITION_FREQUENCY_MIN_QUARTER_MHZ: u32 = 50 * QUARTERS_PER_MHZ;
+const TRANSITION_FREQUENCY_MAX_QUARTER_MHZ: u32 = 575 * QUARTERS_PER_MHZ;
 const BM1366_FB_DIVIDER_MIN: u16 = 144;
 const BM1366_FB_DIVIDER_MAX: u16 = 235;
 
@@ -52,9 +55,18 @@ pub struct Bm1366FrequencyPlan {
 impl Bm1366FrequencyPlan {
     pub fn ultra_205_bm1366(value: i64) -> Result<Self, ConfigValidationError> {
         let frequency = AsicFrequencyMhz::ultra_205_bm1366(value)?;
+        let maybe_command_plan =
+            frequency_plan_for_quarter_mhz(u32::from(frequency.mhz()) * QUARTERS_PER_MHZ);
+        let Some(command_plan) = maybe_command_plan else {
+            return Err(ConfigValidationError::InvalidEnum {
+                field: "frequency",
+                value: value.to_string(),
+            });
+        };
+
         Ok(Self {
             frequency,
-            command_plan: frequency_plan(frequency.mhz()),
+            command_plan,
             hardware_effect_evidence: HardwareEffectEvidence::MissingHardwareEvidence,
             parity_status: ParityEffectStatus::ImplementedNotVerified,
         })
@@ -129,8 +141,24 @@ impl Bm1366VoltagePlan {
     }
 }
 
-fn frequency_plan(target_mhz: u16) -> FrequencyPlan {
-    let pll = pll_parameters(target_mhz);
+/// Plans an internal BM1366 PLL transition frequency in quarter-MHz units.
+///
+/// Unlike [`Bm1366FrequencyPlan::ultra_205_bm1366`], this planner does not
+/// validate against the user-selectable catalog. It is intentionally limited
+/// to the safe BM1366 transition envelope so 6.25 MHz ramp steps and the
+/// upstream 50 MHz shutdown frequency cannot fall back to a catalog profile.
+pub(crate) fn transition_frequency_plan(frequency_quarter_mhz: u32) -> Option<FrequencyPlan> {
+    if !(TRANSITION_FREQUENCY_MIN_QUARTER_MHZ..=TRANSITION_FREQUENCY_MAX_QUARTER_MHZ)
+        .contains(&frequency_quarter_mhz)
+    {
+        return None;
+    }
+
+    frequency_plan_for_quarter_mhz(frequency_quarter_mhz)
+}
+
+fn frequency_plan_for_quarter_mhz(target_quarter_mhz: u32) -> Option<FrequencyPlan> {
+    let pll = pll_parameters(target_quarter_mhz)?;
     let vdo_scale = if u16::from(pll.fb_divider) * FREQ_MULT_MHZ / u16::from(pll.refdiv) >= 2400 {
         0x50
     } else {
@@ -138,25 +166,16 @@ fn frequency_plan(target_mhz: u16) -> FrequencyPlan {
     };
     let postdiv = (((pll.postdiv1 - 1) & 0x0f) << 4) | ((pll.postdiv2 - 1) & 0x0f);
 
-    FrequencyPlan {
+    Some(FrequencyPlan {
         vdo_scale,
         fb_divider: pll.fb_divider,
         refdiv: pll.refdiv,
         postdiv,
-    }
+    })
 }
 
-fn pll_parameters(target_mhz: u16) -> PllParameters {
-    let mut best = PllSearchCandidate {
-        fb_divider: 0,
-        refdiv: 0,
-        postdiv1: 0,
-        postdiv2: 0,
-        diff_numerator: u32::MAX,
-        divider: 1,
-        vco_mhz: u16::MAX,
-        postdiv_product: u16::MAX,
-    };
+fn pll_parameters(target_quarter_mhz: u32) -> Option<PllParameters> {
+    let mut maybe_best: Option<PllSearchCandidate> = None;
 
     for refdiv in (1..=2).rev() {
         for postdiv1 in (1..=7).rev() {
@@ -166,7 +185,10 @@ fn pll_parameters(target_mhz: u16) -> PllParameters {
                 }
 
                 let divider = refdiv * postdiv1 * postdiv2;
-                let fb_divider = rounded_div(u32::from(target_mhz) * u32::from(divider));
+                let fb_divider = rounded_div(
+                    target_quarter_mhz * u32::from(divider),
+                    QUARTERS_PER_MHZ * 25,
+                );
                 if !(BM1366_FB_DIVIDER_MIN..=BM1366_FB_DIVIDER_MAX).contains(&fb_divider) {
                     continue;
                 }
@@ -176,34 +198,35 @@ fn pll_parameters(target_mhz: u16) -> PllParameters {
                     refdiv: refdiv as u8,
                     postdiv1: postdiv1 as u8,
                     postdiv2: postdiv2 as u8,
-                    diff_numerator: actual_diff_numerator(target_mhz, fb_divider, divider),
+                    diff_numerator: actual_diff_numerator(target_quarter_mhz, fb_divider, divider),
                     divider,
                     vco_mhz: FREQ_MULT_MHZ * fb_divider / refdiv,
                     postdiv_product: postdiv1 * postdiv2,
                 };
 
-                if candidate.is_better_than(best) {
-                    best = candidate;
+                if maybe_best.is_none_or(|best| candidate.is_better_than(best)) {
+                    maybe_best = Some(candidate);
                 }
             }
         }
     }
 
-    PllParameters {
+    let best = maybe_best?;
+    Some(PllParameters {
         fb_divider: best.fb_divider,
         refdiv: best.refdiv,
         postdiv1: best.postdiv1,
         postdiv2: best.postdiv2,
-    }
+    })
 }
 
-const fn rounded_div(numerator: u32) -> u16 {
-    ((numerator + (FREQ_MULT_MHZ as u32 / 2)) / FREQ_MULT_MHZ as u32) as u16
+const fn rounded_div(numerator: u32, denominator: u32) -> u16 {
+    ((numerator + (denominator / 2)) / denominator) as u16
 }
 
-const fn actual_diff_numerator(target_mhz: u16, fb_divider: u16, divider: u16) -> u32 {
-    let actual_scaled = FREQ_MULT_MHZ as i32 * fb_divider as i32;
-    let target_scaled = target_mhz as i32 * divider as i32;
+const fn actual_diff_numerator(target_quarter_mhz: u32, fb_divider: u16, divider: u16) -> u32 {
+    let actual_scaled = QUARTERS_PER_MHZ as i32 * FREQ_MULT_MHZ as i32 * fb_divider as i32;
+    let target_scaled = target_quarter_mhz as i32 * divider as i32;
     actual_scaled.abs_diff(target_scaled)
 }
 

@@ -120,6 +120,7 @@ static PRODUCTION_HANDLE: OnceLock<Mutex<ProductionAsicState>> = OnceLock::new()
 struct ProductionAsicState {
     maybe_uart: Option<uart::AsicUart<'static>>,
     maybe_reset: Option<reset::AsicReset<'static>>,
+    maybe_enable: Option<reset::AsicEnable<'static>>,
     production_ready: bool,
 }
 
@@ -128,6 +129,7 @@ impl ProductionAsicState {
         Self {
             maybe_uart: None,
             maybe_reset: None,
+            maybe_enable: None,
             production_ready: false,
         }
     }
@@ -141,11 +143,13 @@ fn production_state() -> &'static Mutex<ProductionAsicState> {
 pub fn store_production_peripherals(
     uart_driver: uart::AsicUart<'_>,
     reset_driver: reset::AsicReset<'_>,
+    enable_driver: reset::AsicEnable<'_>,
     production_ready: bool,
 ) {
     // SAFETY: ESP-IDF singleton peripherals live for the firmware process lifetime.
     let uart_static: uart::AsicUart<'static> = unsafe { std::mem::transmute(uart_driver) };
     let reset_static: reset::AsicReset<'static> = unsafe { std::mem::transmute(reset_driver) };
+    let enable_static: reset::AsicEnable<'static> = unsafe { std::mem::transmute(enable_driver) };
 
     let Ok(mut state) = production_state().lock() else {
         log::warn!("asic_production_status=fail_closed reason=production_handle_lock_failed mining=disabled work_submission=disabled");
@@ -153,6 +157,7 @@ pub fn store_production_peripherals(
     };
     state.maybe_uart = Some(uart_static);
     state.maybe_reset = Some(reset_static);
+    state.maybe_enable = Some(enable_static);
     state.production_ready = production_ready;
     if production_ready {
         status::publish_production_asic_status(ProductionAsicStatus::InitializedForProduction);
@@ -161,18 +166,89 @@ pub fn store_production_peripherals(
 
 #[must_use]
 pub fn production_handle_available() -> bool {
-    production_state()
-        .lock()
-        .ok()
-        .is_some_and(|state| state.maybe_uart.is_some())
+    production_state().lock().ok().is_some_and(|state| {
+        state.maybe_uart.is_some() && state.maybe_reset.is_some() && state.maybe_enable.is_some()
+    })
 }
 
 #[must_use]
 pub fn production_ready() -> bool {
-    production_state()
-        .lock()
-        .ok()
-        .is_some_and(|state| state.production_ready && state.maybe_uart.is_some())
+    production_state().lock().ok().is_some_and(|state| {
+        state.production_ready
+            && state.maybe_uart.is_some()
+            && state.maybe_reset.is_some()
+            && state.maybe_enable.is_some()
+    })
+}
+
+/// Stops new production UART work before any safe-shutdown command is sent.
+pub fn block_production_dispatch() -> Result<(), ProductionAsicBlocker> {
+    let Ok(mut state) = production_state().lock() else {
+        return Err(ProductionAsicBlocker::UartFailed);
+    };
+    state.production_ready = false;
+    Ok(())
+}
+
+/// Applies the active-low Ultra 205 ASIC-enable line through its retained owner.
+pub fn set_asic_power_enabled(enabled: bool) -> Result<(), ProductionAsicBlocker> {
+    let Ok(mut state) = production_state().lock() else {
+        return Err(ProductionAsicBlocker::UartFailed);
+    };
+    if !enabled {
+        state.production_ready = false;
+    }
+    let enable = state
+        .maybe_enable
+        .as_mut()
+        .ok_or(ProductionAsicBlocker::AsicInitFailed)?;
+    if enabled {
+        enable
+            .enable()
+            .map_err(|_| ProductionAsicBlocker::AsicInitFailed)
+    } else {
+        enable
+            .disable()
+            .map_err(|_| ProductionAsicBlocker::AsicInitFailed)
+    }
+}
+
+/// Executes reset and exact chip-count proof without admitting production work.
+pub fn execute_chip_detection_actions(
+    actions: &[Bm1366AdapterAction],
+) -> Result<(), ProductionAsicBlocker> {
+    let Ok(mut state) = production_state().lock() else {
+        return Err(ProductionAsicBlocker::UartFailed);
+    };
+    state.production_ready = false;
+    execute_adapter_actions_on_state(actions, &mut state)
+}
+
+/// Executes mining-ready initialization and admits UART work only after every
+/// typed action succeeds.
+pub fn execute_mining_ready_actions(
+    actions: &[Bm1366AdapterAction],
+) -> Result<(), ProductionAsicBlocker> {
+    let Ok(mut state) = production_state().lock() else {
+        return Err(ProductionAsicBlocker::UartFailed);
+    };
+    state.production_ready = false;
+    execute_adapter_actions_on_state(actions, &mut state)?;
+    state.production_ready = true;
+    status::publish_production_asic_status(ProductionAsicStatus::InitializedForProduction);
+    Ok(())
+}
+
+/// Executes the typed frequency-down, nonce-reset, and reset-low plan while
+/// production dispatch remains blocked.
+pub fn execute_safe_shutdown_actions(
+    actions: &[Bm1366AdapterAction],
+) -> Result<(), ProductionAsicBlocker> {
+    let Ok(mut state) = production_state().lock() else {
+        return Err(ProductionAsicBlocker::UartFailed);
+    };
+    state.production_ready = false;
+    execute_adapter_actions_on_state(actions, &mut state)
 }
 
 /// Upstream hashrate-monitor REGISTER_MAP addresses (valid entries only).
@@ -469,6 +545,30 @@ fn execute_adapter_action_on_state(
         }
         _ => Ok(()),
     }
+}
+
+fn execute_adapter_actions_on_state(
+    actions: &[Bm1366AdapterAction],
+    state: &mut ProductionAsicState,
+) -> Result<(), ProductionAsicBlocker> {
+    let uart = state
+        .maybe_uart
+        .as_mut()
+        .ok_or(ProductionAsicBlocker::UartFailed)?;
+    let reset = state
+        .maybe_reset
+        .as_mut()
+        .ok_or(ProductionAsicBlocker::ResetFailed)?;
+
+    for action in actions {
+        match super::interpret_action(action, uart, reset)
+            .map_err(|_| ProductionAsicBlocker::AsicInitFailed)?
+        {
+            super::ActionOutcome::Continue => {}
+            super::ActionOutcome::Stop => return Err(ProductionAsicBlocker::AsicInitFailed),
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -38,6 +38,45 @@ pub(crate) trait Emc2101RegisterReader {
     ) -> Result<(), Self::Error>;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Emc2101WriteRegister {
+    FanConfiguration,
+    FanSetting,
+}
+
+impl Emc2101WriteRegister {
+    pub(crate) const fn address(self) -> u8 {
+        match self {
+            Self::FanConfiguration => 0x4a,
+            Self::FanSetting => 0x4c,
+        }
+    }
+}
+
+pub(crate) trait Emc2101RegisterWriter {
+    type Error;
+
+    fn write_emc2101(
+        &mut self,
+        register: Emc2101WriteRegister,
+        value: u8,
+    ) -> Result<(), Self::Error>;
+}
+
+pub(crate) fn write_fan_duty_percent<Bus>(bus: &mut Bus, percent: u8) -> Result<(), Bus::Error>
+where
+    Bus: Emc2101RegisterWriter,
+{
+    debug_assert!(percent <= 100);
+
+    bus.write_emc2101(Emc2101WriteRegister::FanConfiguration, 0x23)?;
+    bus.write_emc2101(Emc2101WriteRegister::FanSetting, fan_duty_code(percent))
+}
+
+const fn fan_duty_code(percent: u8) -> u8 {
+    ((63_u16 * percent as u16) / 100) as u8
+}
+
 pub(crate) fn read_external_temperature_acquisition(
     bus: &mut impl Emc2101RegisterReader,
 ) -> AcquisitionOutcome<f64> {
@@ -129,6 +168,24 @@ mod tests {
         }
     }
 
+    #[derive(Debug, Default)]
+    struct FakeWriter {
+        writes: Vec<(Emc2101WriteRegister, u8)>,
+    }
+
+    impl Emc2101RegisterWriter for FakeWriter {
+        type Error = ();
+
+        fn write_emc2101(
+            &mut self,
+            register: Emc2101WriteRegister,
+            value: u8,
+        ) -> Result<(), Self::Error> {
+            self.writes.push((register, value));
+            Ok(())
+        }
+    }
+
     #[test]
     fn internal_temperature_acquisition_reads_the_vr_temperature_register() {
         // Arrange
@@ -203,5 +260,37 @@ mod tests {
         // Assert
         assert_eq!(outcome, AcquisitionOutcome::Success(3_000));
         assert!(reader.reads.is_empty());
+    }
+
+    #[test]
+    fn fan_duty_writes_direct_mode_before_full_duty() {
+        // Arrange
+        let mut writer = FakeWriter::default();
+
+        // Act
+        let result = write_fan_duty_percent(&mut writer, 100);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+        assert_eq!(
+            writer.writes,
+            [
+                (Emc2101WriteRegister::FanConfiguration, 0x23),
+                (Emc2101WriteRegister::FanSetting, 0x3f),
+            ]
+        );
+        assert_eq!(Emc2101WriteRegister::FanConfiguration.address(), 0x4a);
+        assert_eq!(Emc2101WriteRegister::FanSetting.address(), 0x4c);
+    }
+
+    #[test]
+    fn fan_duty_uses_upstream_floor_conversion() {
+        // Arrange
+        let cases = [(0, 0x00), (30, 0x12), (50, 0x1f), (99, 0x3e)];
+
+        // Act / Assert
+        for (percent, expected_code) in cases {
+            assert_eq!(fan_duty_code(percent), expected_code);
+        }
     }
 }

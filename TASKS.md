@@ -26,43 +26,6 @@ new work.
 
 ## Active
 
-### task-ultra205-mining-actuation-adapter | 2026-07-28 | Implement the qualified Ultra 205 mining adapter
-
-- [ ] Add a typed command channel to the sole shared-I2C owner for EMC2101 fan
-      and DS4432U voltage effects without exposing internal I2C seams through
-      the Production Mining Session interface.
-- [ ] Retain Ultra 205 GPIO10 ASIC-enable, reset, and UART ownership in the
-      ordinary ESP adapter; keep every non-205 target fail-closed.
-- [ ] Define validated `conservative` (400 MHz, 1100 mV, 100% fan) and
-      `upstream-default` (485 MHz, 1200 mV, 100% fan) profiles.
-- [ ] Implement preparation ordering: fresh observations, 100% fan and RPM
-      proof, voltage, stabilization, ASIC enable/reset, exactly-one-chip
-      detection, upstream-aligned mining-ready initialization with frequency
-      ramp, and production UART retention.
-- [ ] Implement a distinct safe-shutdown plan: stop dispatch, frequency-down
-      and nonce reset, hold reset low, core voltage off, ASIC enable off, and
-      fan 100% until a fresh temperature is at or below 45 C before reducing
-      to the paused 30% duty.
-- [ ] Roll every partial-preparation failure through the same safe-stop
-      implementation while preserving the earliest typed failure.
-- [ ] Add golden frame/order tests, shared-I2C command tests, failure-injection
-      rollback tests, and source guards proving raw device primitives remain
-      inside firmware adapters.
-
-Dependencies: Complete
-`task-production-mining-hardware-lifecycle` and
-`task-ultra205-safety-observation-completeness`.
-
-Verification: Pending. Run the required ordered Rust checks, focused ASIC,
-safety, and firmware-adapter tests, `just verify-production-session`,
-`just test`, `just package`, Bright Builds checks, parity,
-reference-integrity, and redaction verification, source scans,
-`git diff --check`, and final diff review.
-
-Completion review: Pending. Software verification may establish
-`implemented`, never hardware-verified actuation. This task itself authorizes
-no hardware run.
-
 ### task-production-mining-live-io | 2026-07-28 | Qualify live Stratum and bounded campaign I/O
 
 - [ ] Change the firmware owner inbox to accept category wakeups and typed

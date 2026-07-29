@@ -5,6 +5,34 @@ use thiserror::Error;
 
 pub const MAX_MINING_CAMPAIGN_DURATION_MS: u64 = 600_000;
 
+/// Closed Ultra 205 BM1366 profiles admitted by production mining campaigns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MiningHardwareProfilePreset {
+    Conservative,
+    UpstreamDefault,
+}
+
+impl MiningHardwareProfilePreset {
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Conservative => "conservative",
+            Self::UpstreamDefault => "upstream-default",
+        }
+    }
+
+    #[must_use]
+    pub fn profile(self) -> MiningHardwareProfile {
+        let (frequency_mhz, core_voltage_mv, fan_duty_percent) = match self {
+            Self::Conservative => (400, 1_100, 100),
+            Self::UpstreamDefault => (485, 1_200, 100),
+        };
+
+        MiningHardwareProfile::ultra_205_bm1366(frequency_mhz, core_voltage_mv, fan_duty_percent)
+            .expect("closed Ultra 205 production profiles must remain catalog-valid")
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MiningHardwareProfile {
     frequency: AsicFrequencyMhz,
@@ -38,6 +66,19 @@ impl MiningHardwareProfile {
     #[must_use]
     pub const fn fan_duty(self) -> FanDutyPercent {
         self.fan_duty
+    }
+
+    /// Returns whether this profile is one of the two closed production pairs.
+    #[must_use]
+    pub const fn is_closed_ultra_205_production_profile(self) -> bool {
+        matches!(
+            (
+                self.frequency.mhz(),
+                self.core_voltage.millivolts(),
+                self.fan_duty.percent(),
+            ),
+            (400, 1_100, 100) | (485, 1_200, 100)
+        )
     }
 }
 
@@ -152,4 +193,54 @@ pub enum HardwarePreparationFailure {
     Rejected,
     TimedOut,
     DeviceFault,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MiningHardwareProfile, MiningHardwareProfilePreset};
+
+    #[test]
+    fn conservative_profile_is_the_validated_low_power_ultra_205_profile() {
+        // Arrange
+        let preset = MiningHardwareProfilePreset::Conservative;
+
+        // Act
+        let profile = preset.profile();
+
+        // Assert
+        assert_eq!(preset.label(), "conservative");
+        assert_eq!(profile.frequency().mhz(), 400);
+        assert_eq!(profile.core_voltage().millivolts(), 1_100);
+        assert_eq!(profile.fan_duty().percent(), 100);
+        assert!(profile.is_closed_ultra_205_production_profile());
+    }
+
+    #[test]
+    fn upstream_default_profile_matches_the_ultra_205_catalog_defaults() {
+        // Arrange
+        let preset = MiningHardwareProfilePreset::UpstreamDefault;
+
+        // Act
+        let profile = preset.profile();
+
+        // Assert
+        assert_eq!(preset.label(), "upstream-default");
+        assert_eq!(profile.frequency().mhz(), 485);
+        assert_eq!(profile.core_voltage().millivolts(), 1_200);
+        assert_eq!(profile.fan_duty().percent(), 100);
+        assert!(profile.is_closed_ultra_205_production_profile());
+    }
+
+    #[test]
+    fn individually_valid_but_mismatched_profile_values_are_not_closed() {
+        // Arrange
+        let profile = MiningHardwareProfile::ultra_205_bm1366(400, 1_200, 100)
+            .expect("catalog-valid values should construct a general hardware profile");
+
+        // Act
+        let closed = profile.is_closed_ultra_205_production_profile();
+
+        // Assert
+        assert!(!closed);
+    }
 }

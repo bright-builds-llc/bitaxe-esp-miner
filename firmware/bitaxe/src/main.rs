@@ -7,6 +7,8 @@ mod display_adapter;
 mod filesystem;
 mod http_api;
 mod log_buffer;
+mod mining_actuation;
+mod mining_actuation_adapter;
 mod network_stack;
 mod operator_sensor_runtime;
 mod operator_snapshot_publication;

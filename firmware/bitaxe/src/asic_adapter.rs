@@ -37,41 +37,100 @@ mod work_result_investigation;
 
 pub use work_result_investigation::accepted_state_snapshot_enabled;
 
-pub struct AsicBootPeripherals<UART, RESET, TX, RX> {
+pub struct AsicBootPeripherals<UART, RESET, ENABLE, TX, RX> {
     pub uart: UART,
     pub reset: RESET,
+    pub enable: ENABLE,
     pub tx: TX,
     pub rx: RX,
 }
 
-pub fn run_boot_gate_with_peripherals<UART, RESET, TX, RX>(
-    peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
+pub fn run_boot_gate_with_peripherals<UART, RESET, ENABLE, TX, RX>(
+    peripherals: AsicBootPeripherals<UART, RESET, ENABLE, TX, RX>,
 ) -> Result<()>
 where
     UART: Uart + 'static,
     RESET: OutputPin + 'static,
+    ENABLE: OutputPin + 'static,
     TX: OutputPin + 'static,
     RX: InputPin + 'static,
 {
     match adapter_mode_from_firmware_compile_env() {
-        AsicAdapterMode::FailClosed => {
-            status::publish_default_fail_closed_status();
-            Ok(())
-        }
+        AsicAdapterMode::FailClosed => retain_safe_production_peripherals(peripherals),
         AsicAdapterMode::ChipDetectOnly => run_chip_detect_only(peripherals),
         AsicAdapterMode::WorkResultDiagnostic => run_work_result_uart_bootstrap(peripherals),
     }
 }
 
-fn run_work_result_uart_bootstrap<UART, RESET, TX, RX>(
-    peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
+fn retain_safe_production_peripherals<UART, RESET, ENABLE, TX, RX>(
+    peripherals: AsicBootPeripherals<UART, RESET, ENABLE, TX, RX>,
 ) -> Result<()>
 where
     UART: Uart + 'static,
     RESET: OutputPin + 'static,
+    ENABLE: OutputPin + 'static,
     TX: OutputPin + 'static,
     RX: InputPin + 'static,
 {
+    status::publish_default_fail_closed_status();
+    let mut enable = match reset::AsicEnable::new(peripherals.enable)
+        .context("initialize ASIC enable GPIO adapter")
+    {
+        Ok(enable) => enable,
+        Err(error) => {
+            log::warn!(
+                "asic_production_status=fail_closed reason=enable_unavailable error={error:#}"
+            );
+            return Ok(());
+        }
+    };
+    if let Err(error) = enable.disable() {
+        log::warn!(
+            "asic_production_status=fail_closed reason=enable_disable_failed error={error:#}"
+        );
+        return Ok(());
+    }
+    let mut reset = match reset::AsicReset::new(peripherals.reset)
+        .context("initialize ASIC reset GPIO adapter")
+    {
+        Ok(reset) => reset,
+        Err(error) => {
+            log::warn!(
+                "asic_production_status=fail_closed reason=reset_unavailable error={error:#}"
+            );
+            return Ok(());
+        }
+    };
+    if let Err(error) = reset.hold_reset_low() {
+        log::warn!("asic_production_status=fail_closed reason=reset_hold_failed error={error:#}");
+        return Ok(());
+    }
+    let uart = match uart::AsicUart::new(peripherals.uart, peripherals.tx, peripherals.rx)
+        .context("initialize retained BM1366 UART1 adapter")
+    {
+        Ok(uart) => uart,
+        Err(error) => {
+            log::warn!(
+                "asic_production_status=fail_closed reason=uart_unavailable error={error:#}"
+            );
+            return Ok(());
+        }
+    };
+    production::store_production_peripherals(uart, reset, enable, false);
+    Ok(())
+}
+
+fn run_work_result_uart_bootstrap<UART, RESET, ENABLE, TX, RX>(
+    peripherals: AsicBootPeripherals<UART, RESET, ENABLE, TX, RX>,
+) -> Result<()>
+where
+    UART: Uart + 'static,
+    RESET: OutputPin + 'static,
+    ENABLE: OutputPin + 'static,
+    TX: OutputPin + 'static,
+    RX: InputPin + 'static,
+{
+    let _enable = peripherals.enable;
     let reset = match reset::AsicReset::new(peripherals.reset)
         .context("initialize ASIC reset GPIO adapter")
     {
@@ -116,15 +175,17 @@ fn adapter_mode_from_firmware_compile_env() -> AsicAdapterMode {
     )
 }
 
-fn run_chip_detect_only<UART, RESET, TX, RX>(
-    peripherals: AsicBootPeripherals<UART, RESET, TX, RX>,
+fn run_chip_detect_only<UART, RESET, ENABLE, TX, RX>(
+    peripherals: AsicBootPeripherals<UART, RESET, ENABLE, TX, RX>,
 ) -> Result<()>
 where
     UART: Uart + 'static,
     RESET: OutputPin + 'static,
+    ENABLE: OutputPin + 'static,
     TX: OutputPin + 'static,
     RX: InputPin + 'static,
 {
+    let _enable = peripherals.enable;
     let preflight = Bm1366Preflight::chip_detect(
         BoardPreflightEvidence::active_ultra_205(),
         ConfigPreflightEvidence::ultra_205_defaults(),

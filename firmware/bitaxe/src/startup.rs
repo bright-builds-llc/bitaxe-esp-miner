@@ -70,6 +70,7 @@ fn initialize_hardware(
     let boot_peripherals = asic_adapter::AsicBootPeripherals {
         uart: peripherals.uart1,
         reset: pins.gpio1,
+        enable: pins.gpio10,
         tx: pins.gpio17,
         rx: pins.gpio18,
     };

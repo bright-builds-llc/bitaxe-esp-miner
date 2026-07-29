@@ -5,13 +5,13 @@
 //! - `reference/esp-miner/components/asic/asic_common.c:get_difficulty_mask`
 //! - parity checklist rows `ASIC-006` and `ASIC-008`
 
-use bitaxe_config::{ultra_205_catalog_entry, ultra_205_defaults};
+use bitaxe_config::{ultra_205_catalog_entry, ConfigValidationError};
 
 use super::{
     command::{
         Bm1366AdapterAction, Bm1366Command, FrequencyPlan, NonceSpacePlan, RegisterWrite, MAX_BAUD,
     },
-    frequency_voltage::{actual_frequency_mhz, Bm1366FrequencyPlan},
+    frequency_voltage::{actual_frequency_mhz, transition_frequency_plan, Bm1366FrequencyPlan},
     init_plan::{Bm1366InitDecision, Bm1366InitPlan, Bm1366Preflight, FailClosedAction},
     observation::{AsicInitStatus, ChipAddress},
 };
@@ -19,33 +19,77 @@ use super::{
 const NONCE_SPACE: f64 = 4_294_967_296.0;
 const FREQ_MULT_MHZ: f64 = 25.0;
 const INIT_COMMAND_ENCODING_FAILED: &str = "mining_ready_command_encoding_failed";
+const MINING_READY_FREQUENCY_INVALID: &str = "mining_ready_frequency_invalid";
+const FREQUENCY_TRANSITION_INVALID: &str = "frequency_transition_invalid";
+
+/// Closed Ultra 205 BM1366 production frequencies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Bm1366MiningProfile {
+    /// Lower-power first mining profile at 400 MHz.
+    Conservative,
+    /// Upstream Ultra BM1366 default at 485 MHz.
+    UpstreamDefault,
+}
+
+impl Bm1366MiningProfile {
+    /// Returns the profile target frequency.
+    #[must_use]
+    pub const fn frequency_mhz(self) -> u16 {
+        match self {
+            Self::Conservative => 400,
+            Self::UpstreamDefault => 485,
+        }
+    }
+
+    /// Revalidates the profile target against the Ultra 205 BM1366 catalog.
+    pub fn frequency_plan(self) -> Result<Bm1366FrequencyPlan, ConfigValidationError> {
+        Bm1366FrequencyPlan::ultra_205_bm1366(i64::from(self.frequency_mhz()))
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MiningReadyConfig {
     pub chip_count: u8,
     pub asic_count: u16,
     pub core_count: u16,
-    pub frequency_mhz: f32,
     pub difficulty: f64,
     pub nonce_percent: f64,
+    profile: Bm1366MiningProfile,
 }
 
 impl MiningReadyConfig {
     #[must_use]
     pub fn ultra_205_single_chip(chip_count: u8) -> Self {
+        Self::ultra_205_profile(chip_count, Bm1366MiningProfile::UpstreamDefault)
+    }
+
+    /// Builds a mining-ready config for one of the closed production profiles.
+    #[must_use]
+    pub fn ultra_205_profile(chip_count: u8, profile: Bm1366MiningProfile) -> Self {
         let catalog = ultra_205_catalog_entry();
-        let defaults = ultra_205_defaults();
         Self {
             chip_count,
             asic_count: u16::from(catalog.asic_count()),
             core_count: catalog.asic().core_count(),
-            frequency_mhz: defaults.asic_frequency_mhz() as f32,
             // Ticket mask follows ASIC family difficulty (upstream BM1366_init /
             // device_config.h ASIC_BM1366.difficulty=256). Pool stratumdiff remains
             // a Stratum/share concern and must not drive reg 0x14.
             difficulty: f64::from(catalog.asic().difficulty()),
             nonce_percent: 1.0,
+            profile,
         }
+    }
+
+    /// Returns the selected production profile.
+    #[must_use]
+    pub const fn profile(self) -> Bm1366MiningProfile {
+        self.profile
+    }
+
+    /// Returns the selected profile frequency.
+    #[must_use]
+    pub const fn frequency_mhz(self) -> u16 {
+        self.profile.frequency_mhz()
     }
 
     #[must_use]
@@ -128,7 +172,11 @@ pub fn mining_ready_commands(
     config: MiningReadyConfig,
     options: MiningReadyInitOptions,
 ) -> Result<Vec<Bm1366Command>, &'static str> {
-    let final_frequency_plan = frequency_plan_for_mhz(config.frequency_mhz);
+    let final_frequency_plan = config
+        .profile()
+        .frequency_plan()
+        .map_err(|_| MINING_READY_FREQUENCY_INVALID)?
+        .command_plan();
     let difficulty_mask = difficulty_mask_value(config.difficulty);
     let address_interval = config.address_interval();
 
@@ -192,7 +240,7 @@ pub fn mining_ready_commands(
     }
 
     if options.use_frequency_ramp {
-        commands.extend(frequency_ramp_commands(config.frequency_mhz)?);
+        commands.extend(mining_ready_frequency_ramp_commands(config.profile())?);
     } else {
         commands.push(Bm1366Command::SetFrequency(final_frequency_plan));
     }
@@ -214,41 +262,124 @@ pub fn mining_ready_commands(
     Ok(commands)
 }
 
-const FREQ_RAMP_START_MHZ: f32 = 50.0;
-const FREQ_RAMP_STEP_MHZ: f32 = 6.25;
+const QUARTERS_PER_MHZ: u32 = 4;
+const FREQ_RAMP_START_QUARTER_MHZ: u32 = 50 * QUARTERS_PER_MHZ;
+const FREQ_RAMP_STEP_QUARTER_MHZ: u32 = 25;
 const FREQ_RAMP_DELAY_MS: u32 = 100;
 
-fn frequency_ramp_commands(target_mhz: f32) -> Result<Vec<Bm1366Command>, &'static str> {
-    let mut commands = Vec::new();
-    let mut current_mhz = FREQ_RAMP_START_MHZ;
+/// Plans the upstream-aligned 50-MHz-to-profile frequency ramp.
+pub fn mining_ready_frequency_ramp_commands(
+    profile: Bm1366MiningProfile,
+) -> Result<Vec<Bm1366Command>, &'static str> {
+    frequency_transition_commands(
+        FREQ_RAMP_START_QUARTER_MHZ,
+        u32::from(profile.frequency_mhz()) * QUARTERS_PER_MHZ,
+    )
+}
 
-    if (target_mhz - current_mhz).abs() < FREQ_RAMP_STEP_MHZ {
-        commands.push(Bm1366Command::SetFrequency(frequency_plan_for_mhz(
-            target_mhz,
-        )));
+fn frequency_transition_commands(
+    start_quarter_mhz: u32,
+    target_quarter_mhz: u32,
+) -> Result<Vec<Bm1366Command>, &'static str> {
+    let mut commands = Vec::new();
+
+    if start_quarter_mhz == target_quarter_mhz {
         return Ok(commands);
     }
 
-    let sign = if target_mhz > current_mhz { 1.0 } else { -1.0 };
-    let mut current_step = (current_mhz / FREQ_RAMP_STEP_MHZ).floor() as i32;
-    let target_step = (target_mhz / FREQ_RAMP_STEP_MHZ).floor() as i32;
+    let frequency_distance = start_quarter_mhz.abs_diff(target_quarter_mhz);
+    if frequency_distance < FREQ_RAMP_STEP_QUARTER_MHZ {
+        commands.push(Bm1366Command::SetFrequency(transition_plan(
+            target_quarter_mhz,
+        )?));
+        return Ok(commands);
+    }
 
-    while (sign > 0.0 && current_step < target_step) || (sign < 0.0 && current_step > target_step) {
-        current_step += sign as i32;
-        current_mhz = current_step as f32 * FREQ_RAMP_STEP_MHZ;
-        commands.push(Bm1366Command::SetFrequency(frequency_plan_for_mhz(
-            current_mhz,
-        )));
+    let increasing = target_quarter_mhz > start_quarter_mhz;
+    let mut current_step = transition_step(start_quarter_mhz, increasing);
+    let target_step = transition_step(target_quarter_mhz, increasing);
+
+    while (increasing && current_step < target_step) || (!increasing && current_step > target_step)
+    {
+        if increasing {
+            current_step += 1;
+        } else {
+            current_step -= 1;
+        }
+
+        let current_quarter_mhz = current_step * FREQ_RAMP_STEP_QUARTER_MHZ;
+        commands.push(Bm1366Command::SetFrequency(transition_plan(
+            current_quarter_mhz,
+        )?));
         commands.push(Bm1366Command::DelayMs(FREQ_RAMP_DELAY_MS));
     }
 
-    if (current_mhz - target_mhz).abs() > f32::EPSILON {
-        commands.push(Bm1366Command::SetFrequency(frequency_plan_for_mhz(
-            target_mhz,
-        )));
+    let current_quarter_mhz = current_step * FREQ_RAMP_STEP_QUARTER_MHZ;
+    if current_quarter_mhz != target_quarter_mhz {
+        commands.push(Bm1366Command::SetFrequency(transition_plan(
+            target_quarter_mhz,
+        )?));
     }
 
     Ok(commands)
+}
+
+const fn transition_step(frequency_quarter_mhz: u32, increasing: bool) -> u32 {
+    if increasing {
+        frequency_quarter_mhz / FREQ_RAMP_STEP_QUARTER_MHZ
+    } else {
+        frequency_quarter_mhz.div_ceil(FREQ_RAMP_STEP_QUARTER_MHZ)
+    }
+}
+
+fn transition_plan(frequency_quarter_mhz: u32) -> Result<FrequencyPlan, &'static str> {
+    transition_frequency_plan(frequency_quarter_mhz).ok_or(FREQUENCY_TRANSITION_INVALID)
+}
+
+/// Plans the upstream-aligned profile-to-50-MHz ASIC shutdown commands.
+///
+/// The final nonce-space value is calculated from the actual 50 MHz PLL
+/// output. GPIO reset remains an adapter action and is not included here.
+pub fn safe_shutdown_commands(
+    config: MiningReadyConfig,
+) -> Result<Vec<Bm1366Command>, &'static str> {
+    let profile_frequency_quarter_mhz =
+        u32::from(config.profile().frequency_mhz()) * QUARTERS_PER_MHZ;
+    let shutdown_frequency_plan = transition_plan(FREQ_RAMP_START_QUARTER_MHZ)?;
+    let mut commands =
+        frequency_transition_commands(profile_frequency_quarter_mhz, FREQ_RAMP_START_QUARTER_MHZ)?;
+
+    let hash_counting = hash_counting_number(
+        config.nonce_percent,
+        actual_frequency_mhz(shutdown_frequency_plan),
+        config.asic_count,
+        config.core_count,
+    );
+    commands.push(Bm1366Command::SetNonceSpace(NonceSpacePlan {
+        hash_counting_number: hash_counting,
+    }));
+    Ok(commands)
+}
+
+/// Encodes the ASIC shutdown commands and waits for UART transmission.
+///
+/// This action slice deliberately omits reset GPIO control so coordinators can
+/// execute frequency/nonce and reset-low as distinct shutdown steps.
+pub fn safe_shutdown_command_actions(
+    config: MiningReadyConfig,
+) -> Result<Vec<Bm1366AdapterAction>, &'static str> {
+    let mut actions = encode_commands(&safe_shutdown_commands(config)?)?;
+    actions.push(Bm1366AdapterAction::WAIT_TX_DONE);
+    Ok(actions)
+}
+
+/// Returns the complete ordered ASIC shutdown plan ending in reset-low.
+pub fn safe_shutdown_actions(
+    config: MiningReadyConfig,
+) -> Result<Vec<Bm1366AdapterAction>, &'static str> {
+    let mut actions = safe_shutdown_command_actions(config)?;
+    actions.push(Bm1366AdapterAction::HOLD_RESET_LOW);
+    Ok(actions)
 }
 
 pub fn max_baud_prelude_actions(
@@ -271,17 +402,6 @@ pub fn max_baud_prelude_actions(
         )])?);
     }
     Ok(actions)
-}
-
-fn frequency_plan_for_mhz(frequency_mhz: f32) -> FrequencyPlan {
-    Bm1366FrequencyPlan::ultra_205_bm1366(frequency_mhz as i64)
-        .map(|plan| plan.command_plan())
-        .unwrap_or_else(|_| {
-            // Fallback for test-only invalid paths; Ultra 205 catalog uses 485 MHz.
-            Bm1366FrequencyPlan::ultra_205_bm1366(485)
-                .expect("485 MHz should encode")
-                .command_plan()
-        })
 }
 
 pub fn encode_commands(
@@ -315,12 +435,36 @@ impl MiningReadyInitOptions {
             post_max_baud_delay_ms: 0,
         }
     }
+
+    /// Enables the upstream-aligned 50-MHz-to-profile production ramp.
+    #[must_use]
+    pub const fn production_with_frequency_ramp() -> Self {
+        Self {
+            use_frequency_ramp: true,
+            ..Self::production_default()
+        }
+    }
 }
 
 impl Bm1366InitPlan {
     pub fn mining_ready_init(
         preflight: Bm1366Preflight,
         chip_count: u8,
+        options: MiningReadyInitOptions,
+    ) -> Bm1366InitDecision {
+        Self::mining_ready_init_for_profile(
+            preflight,
+            chip_count,
+            Bm1366MiningProfile::UpstreamDefault,
+            options,
+        )
+    }
+
+    /// Plans mining-ready initialization for the selected production profile.
+    pub fn mining_ready_init_for_profile(
+        preflight: Bm1366Preflight,
+        chip_count: u8,
+        profile: Bm1366MiningProfile,
         options: MiningReadyInitOptions,
     ) -> Bm1366InitDecision {
         if let Err(reason) = preflight.validate_board_and_config() {
@@ -334,7 +478,7 @@ impl Bm1366InitPlan {
             );
         }
 
-        let config = MiningReadyConfig::ultra_205_single_chip(chip_count);
+        let config = MiningReadyConfig::ultra_205_profile(chip_count, profile);
         let commands = match mining_ready_commands(config, options) {
             Ok(commands) => commands,
             Err(reason) => {
@@ -371,241 +515,4 @@ pub fn ultra_205_result_address_interval() -> u16 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::super::command::Bm1366Command;
-    use super::super::upstream_init_frames::{
-        CHAIN_INACTIVE_FRAME, DIFFICULTY_1000_FRAME, DIFFICULTY_256_FRAME, FREQUENCY_485_FRAME,
-        INIT135_FRAME, INIT136_FRAME, INIT138_FRAME, INIT139_FRAME, INIT171_FRAME, INIT4_FRAME,
-        INIT5_FRAME, INIT795_FRAME, NONCE_SPACE_485_FRAME, PER_CHIP_18_FRAME,
-        PER_CHIP_3C_FIRST_FRAME, PER_CHIP_3C_SECOND_FRAME, PER_CHIP_3C_THIRD_FRAME,
-        PER_CHIP_A8_FRAME, REG28_MAX_BAUD_FRAME,
-    };
-    use super::*;
-
-    fn frame_bytes(command: Bm1366Command) -> Vec<u8> {
-        command
-            .frame_bytes()
-            .expect("command should encode")
-            .into_vec()
-    }
-
-    #[test]
-    #[ignore = "local fixture generation helper"]
-    fn dump_dynamic_init_frames_for_fixture_capture() {
-        let config = MiningReadyConfig::ultra_205_single_chip(1);
-        let commands = mining_ready_commands(config, MiningReadyInitOptions::production_default())
-            .expect("commands should build");
-        let frames: Vec<Vec<u8>> = commands.iter().copied().map(frame_bytes).collect();
-        for (index, frame) in frames.iter().enumerate() {
-            eprintln!("frames[{index}] = {frame:?}");
-        }
-    }
-
-    #[test]
-    fn mining_ready_dynamic_init_frames_match_upstream_computed_values() {
-        let config = MiningReadyConfig::ultra_205_single_chip(1);
-        assert_eq!(config.difficulty, 256.0);
-        let commands = mining_ready_commands(config, MiningReadyInitOptions::production_default())
-            .expect("commands should build");
-        let frames: Vec<Vec<u8>> = commands.iter().copied().map(frame_bytes).collect();
-
-        assert_eq!(frames[6], DIFFICULTY_256_FRAME);
-        assert_eq!(frames[15], FREQUENCY_485_FRAME);
-        assert_eq!(frames[16], NONCE_SPACE_485_FRAME);
-    }
-
-    #[test]
-    fn difficulty_mask_for_256_matches_upstream_asic_family_rule() {
-        let mask = difficulty_mask_value(256.0);
-        // mask = (1<<8)-1 = 255 = 0x000000FF, reversed per byte
-        assert_eq!(mask[0], reverse_bits(0x00));
-        assert_eq!(mask[1], reverse_bits(0x00));
-        assert_eq!(mask[2], reverse_bits(0x00));
-        assert_eq!(mask[3], reverse_bits(0xFF));
-        assert_eq!(
-            frame_bytes(Bm1366Command::SetDifficultyMask(mask)),
-            DIFFICULTY_256_FRAME
-        );
-    }
-
-    #[test]
-    fn difficulty_1000_frame_still_matches_pool_mask_math() {
-        let mask = difficulty_mask_value(1000.0);
-        assert_eq!(
-            frame_bytes(Bm1366Command::SetDifficultyMask(mask)),
-            DIFFICULTY_1000_FRAME
-        );
-    }
-
-    #[test]
-    fn mining_ready_init_frames_match_upstream_fixtures() {
-        let config = MiningReadyConfig::ultra_205_single_chip(1);
-        let commands = mining_ready_commands(config, MiningReadyInitOptions::production_default())
-            .expect("commands should build");
-
-        let frames: Vec<Vec<u8>> = commands.iter().copied().map(frame_bytes).collect();
-
-        assert_eq!(frames[0], INIT4_FRAME);
-        assert_eq!(frames[1], INIT5_FRAME);
-        assert_eq!(frames[2], CHAIN_INACTIVE_FRAME);
-        // frames[3] = set chip address 0
-        assert_eq!(frames[4], INIT135_FRAME);
-        assert_eq!(frames[5], INIT136_FRAME);
-        // frames[6] = difficulty mask (dynamic) — asserted in dynamic_init_frames test
-        assert_eq!(frames[7], INIT138_FRAME);
-        assert_eq!(frames[8], INIT139_FRAME);
-        assert_eq!(frames[9], INIT171_FRAME);
-        assert_eq!(frames[10], PER_CHIP_A8_FRAME);
-        assert_eq!(frames[11], PER_CHIP_18_FRAME);
-        assert_eq!(frames[12], PER_CHIP_3C_FIRST_FRAME);
-        assert_eq!(frames[13], PER_CHIP_3C_SECOND_FRAME);
-        assert_eq!(frames[14], PER_CHIP_3C_THIRD_FRAME);
-        // frames[15] = frequency (PLL-derived) — asserted in dynamic_init_frames test
-        // frames[16] = nonce space (computed) — asserted in dynamic_init_frames test
-        assert_eq!(frames[17], INIT795_FRAME);
-    }
-
-    #[test]
-    fn set_asic_max_baud_matches_upstream_reg28_fixture() {
-        assert_eq!(
-            frame_bytes(Bm1366Command::SetAsicMaxBaud),
-            REG28_MAX_BAUD_FRAME
-        );
-    }
-
-    #[test]
-    fn max_baud_prelude_orders_reg28_wait_host_clear() {
-        let actions = max_baud_prelude_actions(MiningReadyInitOptions::production_default())
-            .expect("prelude should encode");
-
-        assert!(matches!(
-            actions.first(),
-            Some(Bm1366AdapterAction::WriteFrame(_))
-        ));
-        assert!(actions.contains(&Bm1366AdapterAction::WAIT_TX_DONE));
-        assert!(actions
-            .iter()
-            .any(|action| matches!(action, Bm1366AdapterAction::UseMaxBaud { baud: 1_000_000 })));
-        assert!(actions.contains(&Bm1366AdapterAction::ClearRx));
-    }
-
-    #[test]
-    fn max_baud_prelude_can_insert_post_host_delay() {
-        let actions = max_baud_prelude_actions(MiningReadyInitOptions {
-            post_max_baud_delay_ms: 2_000,
-            ..MiningReadyInitOptions::production_default()
-        })
-        .expect("prelude should encode");
-
-        assert!(actions.contains(&Bm1366AdapterAction::ClearRx));
-        assert!(actions
-            .iter()
-            .any(|command| matches!(command, Bm1366AdapterAction::DelayMs(2_000))));
-    }
-
-    #[test]
-    fn frequency_ramp_emits_multiple_steps_with_delays() {
-        let ramp = frequency_ramp_commands(485.0).expect("ramp should build");
-        assert!(ramp.len() > 2);
-        assert!(ramp
-            .iter()
-            .any(|command| matches!(command, Bm1366Command::DelayMs(100))));
-    }
-
-    #[test]
-    fn ultra_205_address_interval_is_256() {
-        assert_eq!(ultra_205_result_address_interval(), 256);
-        assert_eq!(
-            MiningReadyConfig::ultra_205_single_chip(1).address_interval(),
-            256
-        );
-    }
-
-    #[test]
-    fn difficulty_mask_for_1000_matches_upstream_power_of_two_rule() {
-        let mask = difficulty_mask_value(1000.0);
-        // mask = (1<<9)-1 = 511 = 0x000001FF, reversed per byte
-        assert_eq!(mask[0], reverse_bits(0x00));
-        assert_eq!(mask[1], reverse_bits(0x00));
-        assert_eq!(mask[2], reverse_bits(0x01));
-        assert_eq!(mask[3], reverse_bits(0xFF));
-    }
-
-    #[test]
-    fn hash_counting_number_uses_actual_pll_frequency_for_nonce_space_frame() {
-        let config = MiningReadyConfig::ultra_205_single_chip(1);
-        let commands = mining_ready_commands(config, MiningReadyInitOptions::production_default())
-            .expect("commands should build");
-        let plan = frequency_plan_for_mhz(config.frequency_mhz);
-        let expected_hcn = hash_counting_number(
-            config.nonce_percent,
-            actual_frequency_mhz(plan),
-            config.asic_count,
-            config.core_count,
-        );
-        let nonce_space = commands
-            .iter()
-            .find_map(|command| match command {
-                Bm1366Command::SetNonceSpace(plan) => Some(plan.hash_counting_number),
-                _ => None,
-            })
-            .expect("nonce space command should exist");
-        assert_eq!(nonce_space, expected_hcn);
-        assert_eq!(expected_hcn, 0x000d_3224);
-    }
-
-    #[test]
-    fn hash_counting_number_uses_next_power_of_two_cores() {
-        let hcn = hash_counting_number(1.0, 485.0, 1, 112);
-        assert!(hcn > 0);
-        assert!(hcn < u32::MAX);
-    }
-
-    #[test]
-    fn bm1366_job_interval_single_chip_is_2000_ms() {
-        // Arrange
-        let asic_count = 1_u32;
-
-        // Act
-        let interval_ms = bm1366_job_interval_ms(asic_count);
-
-        // Assert
-        assert_eq!(interval_ms, 2000);
-    }
-
-    #[test]
-    fn bm1366_job_interval_two_chips_is_1000_ms() {
-        // Arrange
-        let asic_count = 2_u32;
-
-        // Act
-        let interval_ms = bm1366_job_interval_ms(asic_count);
-
-        // Assert
-        assert_eq!(interval_ms, 1000);
-    }
-
-    #[test]
-    fn bm1366_job_interval_five_chips_rounds_up_to_eight_divisor() {
-        // Arrange
-        let asic_count = 5_u32;
-
-        // Act
-        let interval_ms = bm1366_job_interval_ms(asic_count);
-
-        // Assert
-        assert_eq!(interval_ms, 250);
-    }
-
-    #[test]
-    fn bm1366_job_interval_zero_chips_guards_as_single_chip() {
-        // Arrange
-        let asic_count = 0_u32;
-
-        // Act
-        let interval_ms = bm1366_job_interval_ms(asic_count);
-
-        // Assert
-        assert_eq!(interval_ms, 2000);
-    }
-}
+mod tests;

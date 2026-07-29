@@ -191,11 +191,36 @@ rust_test(
 )
 
 rust_test(
+    name = "ds4432u_actuation_tests",
+    srcs = ["src/safety_adapter/ds4432u.rs"],
+    crate_name = "ds4432u_actuation_tests",
+    edition = "2021",
+)
+
+rust_test(
+    name = "mining_actuation_tests",
+    srcs = [
+        "src/mining_actuation.rs",
+        "src/mining_actuation_host_test.rs",
+    ],
+    crate_name = "mining_actuation_tests",
+    crate_root = "src/mining_actuation_host_test.rs",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-config:bitaxe_config",
+        "//crates/bitaxe-stratum:bitaxe_stratum",
+    ],
+)
+
+rust_test(
     name = "sensor_source_ownership_tests",
     srcs = [
+        "src/mining_actuation_adapter.rs",
         "src/operator_sensor_runtime.rs",
         "src/production_mining_session.rs",
         "src/safety_adapter.rs",
+        "src/safety_adapter/ds4432u.rs",
+        "src/safety_adapter/emc2101.rs",
         "src/safety_adapter/i2c_bus.rs",
         "src/sensor_source_ownership_test.rs",
     ],

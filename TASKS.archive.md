@@ -1914,3 +1914,73 @@ Completion review:
   connection, device run, evidence promotion, direct UART, or pin
   manipulation. The ordinary adapter remains actuation-unqualified until the
   dependency-gated mining adapter task completes.
+
+### task-ultra205-mining-actuation-adapter | 2026-07-28 | Implement the qualified Ultra 205 mining adapter
+
+- [x] Add a typed command channel to the sole shared-I2C owner for EMC2101 fan
+      and DS4432U voltage effects without exposing internal I2C seams through
+      the Production Mining Session interface.
+- [x] Retain Ultra 205 GPIO10 ASIC-enable, reset, and UART ownership in the
+      ordinary ESP adapter; keep every non-205 target fail-closed.
+- [x] Define validated `conservative` (400 MHz, 1100 mV, 100% fan) and
+      `upstream-default` (485 MHz, 1200 mV, 100% fan) profiles.
+- [x] Implement preparation ordering: fresh observations, 100% fan and RPM
+      proof, voltage, stabilization, ASIC enable/reset, exactly-one-chip
+      detection, upstream-aligned mining-ready initialization with frequency
+      ramp, and production UART retention.
+- [x] Implement a distinct safe-shutdown plan: stop dispatch, frequency-down
+      and nonce reset, hold reset low, core voltage off, ASIC enable off, and
+      fan 100% until a fresh temperature is at or below 45 C before reducing
+      to the paused 30% duty.
+- [x] Roll every partial-preparation failure through the same safe-stop
+      implementation while preserving the earliest typed failure.
+- [x] Add golden frame/order tests, shared-I2C command tests, failure-injection
+      rollback tests, and source guards proving raw device primitives remain
+      inside firmware adapters.
+
+Dependencies: Complete
+`task-production-mining-hardware-lifecycle` and
+`task-ultra205-safety-observation-completeness`.
+
+Verification:
+
+- The required ordered `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features` checks passed.
+- Focused Bazel tests passed for the ASIC, Stratum, EMC2101 acquisition,
+  DS4432U actuation, sensor source-ownership, and mining-actuation targets.
+- `just verify-production-session` passed its focused tests, source guard, and
+  ESP32-S3 release build. `just test` passed all 80 Bazel test targets, and
+  `just package` produced the complete Ultra 205 firmware-image artifact set.
+- `bun scripts/bright-builds-check.ts all` reported zero findings.
+  `just parity` reported `validation_errors: none`; `just verify-reference`
+  confirmed pinned reference commit
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50` clean; and staged redaction
+  verification passed.
+- Source scans confirmed that raw shared-I2C primitives stay inside the
+  firmware safety adapter, production admission remains
+  `actuation_qualified: false` with no campaign lease, and no hardware command
+  ran. `git diff --check` and final staged-diff review passed.
+
+Completion review:
+
+- The ordinary Ultra 205 adapter now owns a bounded typed fan/voltage command
+  channel, active-low GPIO10 ASIC enable, reset, and retained UART. Non-205
+  targets and unavailable peripherals remain fail closed without publishing a
+  production actuation handle.
+- Closed conservative and upstream-default profiles drive an exact ordered
+  preparation plan with fresh safety and post-command RPM proof, voltage
+  stabilization, one-chip detection, and a quarter-MHz mining-ready ramp.
+- Every partial-preparation failure invokes the same idempotent safe-stop
+  sequence. Safe-stop attempts every cleanup action, preserves the earliest
+  typed failure, and requires fresh cooling proof at or below 45 C before
+  reducing the fan from 100% to the paused 30% duty.
+- The simplification pass retained policy and ordering in a pure actuation
+  core while keeping ESP-IDF I2C, GPIO, timing, and UART effects in the
+  firmware adapter.
+- This establishes software status only. No hardware actuation, credential
+  read, network connection, flash, evidence promotion, direct UART, or pin
+  manipulation occurred. Production admission remains disabled until the
+  dependency-gated live-I/O task supplies and validates the campaign lease;
+  hardware verification remains residual risk.
