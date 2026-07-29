@@ -14,6 +14,7 @@ struct FakeFlashEnvironment {
     generated_nvs_partitions: RefCell<Vec<(Utf8PathBuf, Utf8PathBuf, String)>>,
     capture_status: CaptureProcessStatus,
     log_contents: String,
+    maybe_campaign_bytes: Option<Vec<u8>>,
     current_provenance: BuildProvenance,
     source_replacement: Option<(Utf8PathBuf, Vec<u8>)>,
     execute_failure: bool,
@@ -49,6 +50,7 @@ impl FakeFlashEnvironment {
             generated_nvs_partitions: RefCell::new(Vec::new()),
             capture_status: CaptureProcessStatus::ExitedSuccess,
             log_contents: trusted_monitor_log(),
+            maybe_campaign_bytes: None,
             current_provenance: BuildProvenance::new(
                 "0.1.0",
                 SOURCE_COMMIT,
@@ -94,6 +96,11 @@ impl FakeFlashEnvironment {
 
     fn with_log_contents(mut self, log_contents: &str) -> Self {
         self.log_contents = log_contents.to_owned();
+        self
+    }
+
+    fn with_campaign_bytes(mut self, campaign_bytes: Vec<u8>) -> Self {
+        self.maybe_campaign_bytes = Some(campaign_bytes);
         self
     }
 
@@ -327,14 +334,18 @@ impl FlashEnvironment for FakeFlashEnvironment {
         &self,
         admission: CampaignAdmission,
         timeout_seconds: u64,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<CampaignSerialCapture> {
         self.campaign_observations
             .borrow_mut()
             .push((admission.stage, timeout_seconds));
         if self.execute_failure {
             bail!("sentinel campaign observation failure");
         }
-        Ok(self.log_contents.as_bytes().to_vec())
+        let bytes = self
+            .maybe_campaign_bytes
+            .clone()
+            .unwrap_or_else(|| self.log_contents.as_bytes().to_vec());
+        Ok(analyze_campaign_serial_bytes(&bytes, admission))
     }
 
     fn finish_usb_session(&self) -> Result<()> {

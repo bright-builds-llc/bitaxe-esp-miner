@@ -32,7 +32,7 @@ pub(crate) trait FlashEnvironment {
         &self,
         admission: CampaignAdmission,
         timeout_seconds: u64,
-    ) -> Result<Vec<u8>>;
+    ) -> Result<CampaignSerialCapture>;
     fn finish_usb_session(&self) -> Result<()>;
     fn phase35_stage_readiness_gate(&self, _stage: &str, _port: &str) -> Result<()> {
         Ok(())
@@ -377,17 +377,18 @@ impl FlashEnvironment for LocalFlashEnvironment {
         &self,
         admission: CampaignAdmission,
         timeout_seconds: u64,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<CampaignSerialCapture> {
         let mut session_slot = self.usb_session.borrow_mut();
         let Some(session) = session_slot.as_mut() else {
             bail!("cleanup_failed: campaign observation attempted without a repository session");
         };
-        let output = session
+        let mut analyzer = CampaignSerialAnalyzer::new(admission);
+        session
             .observe_receive_only_ephemeral_until(Duration::from_secs(timeout_seconds), |bytes| {
-                campaign_serial_should_stop(bytes, admission)
+                analyzer.observe_snapshot(bytes)
             })
             .map_err(|error| anyhow::anyhow!("{error}"))?;
-        Ok(output.bytes)
+        Ok(analyzer.finish())
     }
 
     fn finish_usb_session(&self) -> Result<()> {

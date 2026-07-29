@@ -28,8 +28,19 @@ new work.
 
 ### task-ultra205-mining-observation-baseline | 2026-07-28 | Re-establish a known-safe mining observation baseline
 
-Status: Blocked — `stop_repeated_boundary`.
+Status: Active — authorized byte-safe parser diagnosis and `attempt-002`.
 
+- [x] Reproduce the zero-marker `marker_invalid` boundary with non-UTF-8
+      non-candidate bytes surrounding valid runtime attestations and campaign
+      markers.
+- [x] Replace whole-stream UTF-8 conversion with incremental LF framing,
+      candidate-only decoding, independent runtime-attestation assessment, and
+      earliest-failure preservation.
+- [x] Add sealed `mining-campaign-result-v2` and private
+      `mining-campaign-serial-diagnostics-v1` evidence with bounded typed
+      events, aggregate counts, and no raw serial or candidate content.
+- [x] Pass every required software, package, parity, reference, and redaction
+      gate for the parser and diagnostics change before committing it.
 - [ ] Build and admit the exact current-HEAD package after its software
       dependencies complete.
 - [ ] Detect exactly one Ultra 205 and run the observation campaign for 360
@@ -49,15 +60,24 @@ Hardware contract:
 - Permitted commands:
   1. `just detect-ultra205`
   2. `just package`
-  3. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-001 duration-seconds=360 redact-evidence=true`
+  3. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-002 duration-seconds=360 redact-evidence=true`
 - Objective: establish a fresh current-architecture, exact-package,
   observe-only baseline on the single detected board 205 without reopening or
   retrying the terminal Phase 36 lineage.
-- Evidence: the ignored
-  `scratch/ultra205-mining-observation-baseline/attempt-001` root is private,
-  non-promoted `ProtectedOperational` evidence. Its parent is mode 0700 and
-  artifacts are mode 0600. Only redacted closed categories, bounded counts,
-  durations, and safe build provenance may be summarized.
+- Evidence: preserve the sealed ignored `attempt-001` root unchanged. The new
+  ignored `scratch/ultra205-mining-observation-baseline/attempt-002` root is
+  private, non-promoted `ProtectedOperational` evidence. Its parent is mode
+  0700 and artifacts are mode 0600. Only redacted closed categories, bounded
+  counts, durations, and safe build provenance may be summarized. The new
+  typed diagnostic trace must never contain raw serial bytes, candidate
+  payloads, excerpts, identifiers, credentials, endpoints, or secret-derived
+  hashes.
+- Diagnostic contract: `campaign-diagnostics.private.json` is mode 0600 and
+  records only aggregate byte, line, candidate, accepted-marker, encoding,
+  JSON, schema, and trailing-partial counts plus the first and last 32 typed
+  events. `campaign-result.json` uses `mining-campaign-result-v2`, binds the
+  diagnostic artifact digest, keeps `marker_invalid` compatible, records one
+  closed `serial_outcome_detail`, and records runtime attestation independently.
 - Preconditions: all dependency and software gates pass; the source tree and
   reference are clean; `just package` freezes an exact current-HEAD manifest;
   the detector admits exactly one ESP32-S3 board 205; the local Wi-Fi
@@ -79,16 +99,24 @@ Hardware contract:
   lease, and prove the admitted device accessible and holder-free. Success
   leaves the exact admitted package installed. Identity drift, device absence,
   a foreign holder, or unproved cleanup stops without physical intervention.
-- Retry bound: no unchanged retry. A fresh ordinal is allowed only after a
-  targeted regression-backed fix or authorized non-invasive remediation
-  objectively changes the authoritative boundary. One post-fix recurrence
-  selects `stop_repeated_boundary`.
+- Retry bound: the user authorized exactly one new observation ordinal after a
+  deterministic regression-backed byte-safe parser fix is committed and
+  pushed. `attempt-002` is that ordinal. Any failure stops without another
+  retry. If observation completes, the user also authorized the existing
+  conservative live-share task to run once under its own contract.
 - Accepted terminal outcomes: `complete`, `stop_repeated_boundary`,
   `stop_hardware_blocker`, `stop_authority_boundary`, or
   `stop_impossible_contract`. Preserve the earliest typed failure.
 
-Verification: Blocked at the one permitted post-fix attempt. All software,
-package, parity, reference, redaction, and clean exact-HEAD gates passed at
+Verification: In progress under the newly authorized parser diagnosis and
+`attempt-002` contract. The deterministic pre-fix regression sealed
+`marker_invalid` with zero markers when otherwise valid observation input was
+surrounded by non-UTF-8 noise. The byte-safe implementation passes the focused
+194-test `bitaxe-flash` suite, the ordered Rust format/Clippy/build/test gates,
+`just verify-production-session`, all 82 Bazel tests, `just package`, Bright
+Builds checks, parity with no validation errors, reference cleanliness, and
+redaction verification. All prior software, package, parity, reference,
+redaction, and clean exact-HEAD gates passed at
 `a6cc0a20`. The initial detector run preserved `recovery_not_observed` at final
 cleanup: the same device was accessible and holder-free, but the 30-second
 window admitted only two of three required stable samples. The targeted
@@ -99,8 +127,10 @@ one device and completed cleanup. The 360-second campaign then sealed
 package admission true, and USB cleanup ready. Private attempt evidence
 permissions and the result seal passed.
 
-Completion review: Terminal blocker; do not archive or claim this baseline
-complete. No pool credential was supplied and the sealed result makes no
+Completion review: Prior terminal blocker reopened only by explicit user
+authorization for the byte-safe parser fix and one new observation ordinal. Do
+not archive or claim this baseline complete until `attempt-002` passes. No pool
+credential was supplied to `attempt-001`, and its sealed result makes no
 mining, share, soak, or parity-promotion claim. The serial stop/parser path
 returned `marker_invalid` before accepting any marker. Because the transcript
 is intentionally ephemeral, the sealed result cannot distinguish a non-UTF-8

@@ -75,52 +75,6 @@ pub(super) struct CampaignStatusMarker {
     pub(super) safe_stop: SafeStopMarker,
 }
 
-pub(crate) fn campaign_serial_should_stop(bytes: &[u8], admission: CampaignAdmission) -> bool {
-    let Ok(text) = std::str::from_utf8(bytes) else {
-        return true;
-    };
-    let Ok(markers) = parse_campaign_markers(text, true) else {
-        return true;
-    };
-    if first_campaign_marker_failure(&markers, admission).is_some() {
-        return true;
-    }
-    if admission.stage == MiningCampaignStage::Observation {
-        return false;
-    }
-    assess_campaign_markers(&markers, admission).is_ok()
-        || markers
-            .last()
-            .is_some_and(|marker| marker.campaign_state == CampaignStateMarker::Consumed)
-}
-
-pub(super) fn parse_campaign_markers(
-    text: &str,
-    complete_lines_only: bool,
-) -> std::result::Result<Vec<CampaignStatusMarker>, CampaignFailure> {
-    let ends_with_newline = text.ends_with('\n');
-    let line_count = text.lines().count();
-    let mut markers = Vec::new();
-    for (index, line) in text.lines().enumerate() {
-        if complete_lines_only && !ends_with_newline && index + 1 == line_count {
-            continue;
-        }
-        let Some(prefix_index) = line.find(CAMPAIGN_MARKER_PREFIX) else {
-            continue;
-        };
-        let json = &line[prefix_index + CAMPAIGN_MARKER_PREFIX.len()..];
-        let marker: CampaignStatusMarker = serde_json::from_str(json)
-            .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::MarkerInvalid))?;
-        if marker.schema != CAMPAIGN_MARKER_SCHEMA {
-            return Err(CampaignFailure::new(
-                CampaignTerminalCategory::MarkerInvalid,
-            ));
-        }
-        markers.push(marker);
-    }
-    Ok(markers)
-}
-
 pub(super) fn assess_campaign_markers(
     markers: &[CampaignStatusMarker],
     admission: CampaignAdmission,
@@ -146,7 +100,7 @@ pub(super) fn assess_campaign_markers(
     }
 }
 
-fn first_campaign_marker_failure(
+pub(super) fn first_campaign_marker_failure(
     markers: &[CampaignStatusMarker],
     admission: CampaignAdmission,
 ) -> Option<CampaignTerminalCategory> {

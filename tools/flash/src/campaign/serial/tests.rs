@@ -1,0 +1,234 @@
+use super::*;
+
+fn observation_admission() -> CampaignAdmission {
+    CampaignAdmission {
+        stage: MiningCampaignStage::Observation,
+        maybe_profile: None,
+        duration_seconds: 360,
+        maybe_lease_id: None,
+    }
+}
+
+fn observation_marker(schema: &str) -> Vec<u8> {
+    let marker = serde_json::json!({
+        "schema": schema,
+        "stage": "observation",
+        "lease_id": null,
+        "campaign_state": "unavailable",
+        "profile": "none",
+        "active_ms": 0,
+        "submit_outcome": "none",
+        "safety": "fresh",
+        "fresh_observation_count": 6,
+        "pool_config": "not_read",
+        "actuation": "none",
+        "mineonboot": false,
+        "safe_stop": "not_required",
+    });
+    format!("{CAMPAIGN_MARKER_PREFIX}{marker}\n").into_bytes()
+}
+
+#[test]
+fn growing_snapshots_preserve_split_prefix_and_json() {
+    // Arrange
+    let bytes = observation_marker(CAMPAIGN_MARKER_SCHEMA);
+    let prefix_split = CAMPAIGN_MARKER_PREFIX.len().saturating_sub(3);
+    let json_split = CAMPAIGN_MARKER_PREFIX.len().saturating_add(12);
+    let mut analyzer = CampaignSerialAnalyzer::new(observation_admission());
+
+    // Act
+    let prefix_stop = analyzer.observe_snapshot(&bytes[..prefix_split]);
+    let json_stop = analyzer.observe_snapshot(&bytes[..json_split]);
+    let complete_stop = analyzer.observe_snapshot(&bytes);
+    let capture = analyzer.finish();
+
+    // Assert
+    assert!(!prefix_stop);
+    assert!(!json_stop);
+    assert!(!complete_stop);
+    assert_eq!(capture.markers.len(), 1);
+    assert_eq!(capture.outcome_detail, CampaignSerialOutcomeDetail::Clean);
+    assert_eq!(capture.diagnostics.marker_candidate_count, 1);
+    assert_eq!(capture.diagnostics.accepted_marker_count, 1);
+}
+
+#[test]
+fn invalid_utf8_inside_marker_payload_is_typed() {
+    // Arrange
+    let mut bytes = CAMPAIGN_MARKER_PREFIX.as_bytes().to_vec();
+    bytes.extend_from_slice(&[0xff, b'\n']);
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+
+    // Assert
+    assert_eq!(
+        capture.outcome_detail,
+        CampaignSerialOutcomeDetail::MarkerPayloadInvalidUtf8
+    );
+    assert_eq!(
+        capture.maybe_failure,
+        Some(CampaignTerminalCategory::MarkerInvalid)
+    );
+    assert_eq!(capture.diagnostics.marker_invalid_encoding_count, 1);
+}
+
+#[test]
+fn malformed_marker_json_is_typed() {
+    // Arrange
+    let bytes = format!("{CAMPAIGN_MARKER_PREFIX}{{]\n").into_bytes();
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+
+    // Assert
+    assert_eq!(
+        capture.outcome_detail,
+        CampaignSerialOutcomeDetail::MarkerJsonInvalid
+    );
+    assert_eq!(capture.diagnostics.marker_invalid_json_count, 1);
+}
+
+#[test]
+fn wrong_marker_schema_is_typed() {
+    // Arrange
+    let bytes = observation_marker("mining-campaign-status-v0");
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+
+    // Assert
+    assert_eq!(
+        capture.outcome_detail,
+        CampaignSerialOutcomeDetail::MarkerSchemaInvalid
+    );
+    assert_eq!(capture.diagnostics.marker_invalid_schema_count, 1);
+}
+
+#[test]
+fn trailing_partial_marker_is_typed() {
+    // Arrange
+    let bytes = format!("{CAMPAIGN_MARKER_PREFIX}{{\"schema\":").into_bytes();
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+
+    // Assert
+    assert_eq!(
+        capture.outcome_detail,
+        CampaignSerialOutcomeDetail::MarkerTruncated
+    );
+    assert_eq!(capture.diagnostics.trailing_partial_count, 1);
+    assert_eq!(capture.diagnostics.marker_truncated_count, 1);
+    assert_eq!(
+        capture.maybe_failure,
+        Some(CampaignTerminalCategory::MarkerInvalid)
+    );
+}
+
+#[test]
+fn no_candidate_is_distinct_from_invalid_candidate() {
+    // Arrange
+    let bytes = b"ordinary boot output\n";
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(bytes, observation_admission());
+
+    // Assert
+    assert_eq!(
+        capture.outcome_detail,
+        CampaignSerialOutcomeDetail::MarkerMissing
+    );
+    assert_eq!(capture.diagnostics.marker_candidate_count, 0);
+    assert_eq!(capture.maybe_failure, None);
+}
+
+#[test]
+fn non_utf8_noise_around_markers_is_ignored_and_counted() {
+    // Arrange
+    let marker = observation_marker(CAMPAIGN_MARKER_SCHEMA);
+    let mut bytes = vec![0xff, 0xfe];
+    bytes.extend_from_slice(&marker);
+    bytes.extend_from_slice(&[0xf8, b'\n']);
+    bytes.extend_from_slice(&marker);
+    bytes.extend_from_slice(&[0x80, 0x81, b'\n']);
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+
+    // Assert
+    assert_eq!(capture.markers.len(), 2);
+    assert_eq!(capture.outcome_detail, CampaignSerialOutcomeDetail::Clean);
+    assert_eq!(capture.diagnostics.non_utf8_line_count, 3);
+    assert_eq!(capture.diagnostics.ignored_invalid_byte_count, 5);
+    assert_eq!(capture.diagnostics.line_count, 4);
+}
+
+#[test]
+fn typed_trace_retains_first_and_last_events() {
+    // Arrange
+    let bytes = [0xff, b'\n'].repeat(70);
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+    let events = &capture.diagnostics.events;
+
+    // Assert
+    assert_eq!(capture.diagnostics.event_count, 70);
+    assert!(capture.diagnostics.events_truncated);
+    assert_eq!(events.len(), 64);
+    assert_eq!(events.first().map(|event| event.sequence), Some(1));
+    assert_eq!(events.get(31).map(|event| event.sequence), Some(32));
+    assert_eq!(events.get(32).map(|event| event.sequence), Some(39));
+    assert_eq!(events.last().map(|event| event.sequence), Some(70));
+}
+
+#[test]
+fn earliest_contract_failure_precedes_later_marker_parse_failure() {
+    // Arrange
+    let mut wrong_stage = observation_marker(CAMPAIGN_MARKER_SCHEMA);
+    let stage = b"\"stage\":\"observation\"";
+    let index = find_bytes(&wrong_stage, stage).expect("stage field");
+    wrong_stage.splice(
+        index..index + stage.len(),
+        b"\"stage\":\"live-share\"".iter().copied(),
+    );
+    let mut bytes = wrong_stage;
+    bytes.extend_from_slice(format!("{CAMPAIGN_MARKER_PREFIX}{{]\n").as_bytes());
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+
+    // Assert
+    assert_eq!(
+        capture.maybe_failure,
+        Some(CampaignTerminalCategory::StageMismatch)
+    );
+    assert_eq!(
+        capture.outcome_detail,
+        CampaignSerialOutcomeDetail::MarkerJsonInvalid
+    );
+}
+
+#[test]
+fn invalid_runtime_attestation_encoding_is_independent_of_valid_marker() {
+    // Arrange
+    let mut bytes = bitaxe_api::RUNTIME_BOOT_ATTESTATION_MARKER
+        .as_bytes()
+        .to_vec();
+    bytes.extend_from_slice(&[0xff, b'\n']);
+    bytes.extend_from_slice(&observation_marker(CAMPAIGN_MARKER_SCHEMA));
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+
+    // Assert
+    assert_eq!(capture.markers.len(), 1);
+    assert_eq!(capture.outcome_detail, CampaignSerialOutcomeDetail::Clean);
+    assert_eq!(
+        capture
+            .diagnostics
+            .runtime_attestation_invalid_encoding_count,
+        1
+    );
+}

@@ -45,6 +45,8 @@ rust_binary(
         "src/campaign/admission.rs",
         "src/campaign/evidence.rs",
         "src/campaign/markers.rs",
+        "src/campaign/serial.rs",
+        "src/campaign/serial/tests.rs",
         "src/commands.rs",
         "src/commands/finalize.rs",
         "src/commands/flash.rs",

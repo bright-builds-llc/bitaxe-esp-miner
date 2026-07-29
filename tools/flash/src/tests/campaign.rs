@@ -157,6 +157,16 @@ fn read_campaign_result(command: &MiningCampaignCommand) -> serde_json::Value {
         .expect("campaign result JSON")
 }
 
+fn read_campaign_diagnostics(command: &MiningCampaignCommand) -> serde_json::Value {
+    let diagnostics = command
+        .evidence_dir
+        .join("campaign-diagnostics.private.json");
+    serde_json::from_str(
+        &std::fs::read_to_string(diagnostics.as_std_path()).expect("campaign diagnostics"),
+    )
+    .expect("campaign diagnostics JSON")
+}
+
 #[test]
 fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evidence() {
     // Arrange
@@ -194,12 +204,109 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
         assert!(!csv.contains(forbidden), "unexpected key {forbidden}");
     }
     let result = read_campaign_result(&command);
+    assert_eq!(result["schema"], "mining-campaign-result-v2");
     assert_eq!(result["status"], "accepted");
     assert_eq!(result["terminal_category"], "observation_complete");
     assert_eq!(result["runtime_identity"], "trusted");
+    assert_eq!(result["runtime_attestation_status"], "trusted");
+    assert_eq!(result["serial_outcome_detail"], "clean");
     assert_eq!(result["usb_cleanup"], "ready");
     assert_eq!(result["parity_promotion"], false);
     assert_private_campaign_artifacts(&command.evidence_dir);
+}
+
+#[test]
+fn non_utf8_boot_noise_does_not_invalidate_valid_observation_markers() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(&dir, MiningCampaignStage::Observation, None);
+    let mut campaign_bytes = vec![0xff, 0xfe, b'\n'];
+    campaign_bytes.extend_from_slice(campaign_log(&[observation_marker("fresh")]).as_bytes());
+    let environment = FakeFlashEnvironment::default().with_campaign_bytes(campaign_bytes);
+
+    // Act
+    run_mining_campaign(&command, &environment)
+        .expect("non-marker binary boot noise must not invalidate the campaign");
+
+    // Assert
+    let result = read_campaign_result(&command);
+    assert_eq!(result["status"], "accepted");
+    assert_eq!(result["terminal_category"], "observation_complete");
+    assert_eq!(result["marker_count"], 1);
+    assert_eq!(result["serial_outcome_detail"], "clean");
+    let diagnostics = read_campaign_diagnostics(&command);
+    assert_eq!(
+        diagnostics["schema"],
+        "mining-campaign-serial-diagnostics-v1"
+    );
+    assert_eq!(diagnostics["non_utf8_line_count"], 1);
+    assert_eq!(diagnostics["accepted_marker_count"], 1);
+}
+
+#[test]
+fn malformed_marker_preserves_independent_runtime_attestation_status() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(&dir, MiningCampaignStage::Observation, None);
+    let campaign_bytes = format!(
+        "{}\nmining_campaign_status={{]\n",
+        runtime_attestation_log()
+    )
+    .into_bytes();
+    let environment = FakeFlashEnvironment::default().with_campaign_bytes(campaign_bytes);
+
+    // Act
+    let error =
+        run_mining_campaign(&command, &environment).expect_err("malformed marker must fail closed");
+
+    // Assert
+    assert!(format!("{error:#}").contains("category=marker_invalid"));
+    let result = read_campaign_result(&command);
+    assert_eq!(result["terminal_category"], "marker_invalid");
+    assert_eq!(result["serial_outcome_detail"], "marker_json_invalid");
+    assert_eq!(result["runtime_attestation_status"], "trusted");
+    assert_eq!(result["runtime_identity"], "trusted");
+    assert_eq!(result["marker_count"], 0);
+}
+
+#[test]
+fn absent_campaign_marker_remains_marker_missing() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(&dir, MiningCampaignStage::Observation, None);
+    let environment = FakeFlashEnvironment::default().with_log_contents(&runtime_attestation_log());
+
+    // Act
+    let error =
+        run_mining_campaign(&command, &environment).expect_err("missing marker must fail closed");
+
+    // Assert
+    assert!(format!("{error:#}").contains("category=marker_missing"));
+    let result = read_campaign_result(&command);
+    assert_eq!(result["terminal_category"], "marker_missing");
+    assert_eq!(result["serial_outcome_detail"], "marker_missing");
+    assert_eq!(result["runtime_attestation_status"], "trusted");
+}
+
+#[test]
+fn valid_marker_preserves_independent_runtime_attestation_failure() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(&dir, MiningCampaignStage::Observation, None);
+    let campaign_bytes = format!("{}\n", observation_marker("fresh")).into_bytes();
+    let environment = FakeFlashEnvironment::default().with_campaign_bytes(campaign_bytes);
+
+    // Act
+    let error = run_mining_campaign(&command, &environment)
+        .expect_err("missing runtime attestation must fail independently");
+
+    // Assert
+    assert!(format!("{error:#}").contains("category=runtime_identity_untrusted"));
+    let result = read_campaign_result(&command);
+    assert_eq!(result["terminal_category"], "runtime_identity_untrusted");
+    assert_eq!(result["serial_outcome_detail"], "clean");
+    assert_eq!(result["runtime_attestation_status"], "missing");
+    assert_eq!(result["marker_count"], 1);
 }
 
 #[test]
@@ -392,6 +499,7 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
 
     // Assert
     for name in [
+        "campaign-diagnostics.private.json",
         "campaign-observations.private.json",
         "campaign-result.json",
         "campaign-result.sha256",
@@ -415,6 +523,18 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
             .as_std_path(),
     )
     .expect("result bytes");
+    let diagnostic_bytes = std::fs::read(
+        command
+            .evidence_dir
+            .join("campaign-diagnostics.private.json")
+            .as_std_path(),
+    )
+    .expect("diagnostic bytes");
+    let result = read_campaign_result(&command);
+    assert_eq!(
+        result["diagnostics_sha256"],
+        sha256_bytes(&diagnostic_bytes)
+    );
     let seal = std::fs::read_to_string(
         command
             .evidence_dir
@@ -458,6 +578,7 @@ fn assert_private_campaign_artifacts(root: &Utf8Path) {
             0o700
         );
         for name in [
+            "campaign-diagnostics.private.json",
             "campaign-observations.private.json",
             "campaign-result.json",
             "campaign-result.sha256",

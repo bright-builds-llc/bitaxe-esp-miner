@@ -3,14 +3,16 @@ use crate::*;
 mod admission;
 mod evidence;
 mod markers;
+mod serial;
 
 use admission::{admit_campaign, prepare_campaign_nvs_seed};
 use evidence::{finish_campaign_attempt, preflight_campaign_evidence};
-use markers::{assess_campaign_markers, parse_campaign_markers, CampaignStatusMarker};
+use markers::{assess_campaign_markers, CampaignStatusMarker};
+use serial::{CampaignSerialDiagnostics, CampaignSerialOutcomeDetail};
 
 const CAMPAIGN_MARKER_PREFIX: &str = "mining_campaign_status=";
 const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v1";
-const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v1";
+const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v2";
 const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v1";
 const OBSERVATION_DURATION_SECONDS: u64 = 360;
 const MINING_DURATION_SECONDS: u64 = 600;
@@ -112,15 +114,33 @@ pub(crate) struct CampaignAdmission {
     pub(crate) maybe_lease_id: Option<u64>,
 }
 
-#[derive(Default)]
 struct CampaignAttempt {
     package_admitted: bool,
     runtime_identity_trusted: bool,
+    maybe_runtime_attestation_status: Option<RuntimeAttestationStatus>,
     usb_cleanup_complete: bool,
     markers: Vec<CampaignStatusMarker>,
+    serial_diagnostics: CampaignSerialDiagnostics,
+    serial_outcome_detail: CampaignSerialOutcomeDetail,
 }
 
-pub(crate) use markers::campaign_serial_should_stop;
+impl Default for CampaignAttempt {
+    fn default() -> Self {
+        Self {
+            package_admitted: false,
+            runtime_identity_trusted: false,
+            maybe_runtime_attestation_status: None,
+            usb_cleanup_complete: false,
+            markers: Vec::new(),
+            serial_diagnostics: CampaignSerialDiagnostics::not_observed(),
+            serial_outcome_detail: CampaignSerialOutcomeDetail::Clean,
+        }
+    }
+}
+
+#[cfg(test)]
+pub(crate) use serial::{analyze_campaign_serial_bytes, campaign_serial_should_stop};
+pub(crate) use serial::{CampaignSerialAnalyzer, CampaignSerialCapture};
 
 pub(crate) fn run_mining_campaign(
     command: &MiningCampaignCommand,
@@ -196,23 +216,23 @@ fn execute_campaign(
         .execute(&nvs_seed.command)
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::NvsSeedFailed))?;
 
-    let serial_bytes = environment
+    let capture = environment
         .receive_campaign_until(admission, admission.duration_seconds)
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::ObservationFailed))?;
-    let serial_text = std::str::from_utf8(&serial_bytes)
-        .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::MarkerInvalid))?;
-    attempt.markers = parse_campaign_markers(serial_text, false)?;
-    let terminal = assess_campaign_markers(&attempt.markers, admission)?;
-
+    attempt.maybe_runtime_attestation_status = prepared
+        .outcome
+        .runtime_identity
+        .as_ref()
+        .map(|identity| capture.runtime_attestation_status(identity));
     attempt.runtime_identity_trusted =
-        prepared
-            .outcome
-            .runtime_identity
-            .as_ref()
-            .is_some_and(|identity| {
-                classify_runtime_boot_attestations(serial_text, identity)
-                    == RuntimeAttestationStatus::Trusted
-            });
+        attempt.maybe_runtime_attestation_status == Some(RuntimeAttestationStatus::Trusted);
+    attempt.serial_diagnostics = capture.diagnostics;
+    attempt.serial_outcome_detail = capture.outcome_detail;
+    attempt.markers = capture.markers;
+    if let Some(category) = capture.maybe_failure {
+        return Err(CampaignFailure::new(category));
+    }
+    let terminal = assess_campaign_markers(&attempt.markers, admission)?;
     if !attempt.runtime_identity_trusted {
         return Err(CampaignFailure::new(
             CampaignTerminalCategory::RuntimeIdentityUntrusted,

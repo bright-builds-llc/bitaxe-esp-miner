@@ -19,6 +19,8 @@ struct CampaignResultEvidence<'a> {
     terminal_category: &'static str,
     package_admitted: bool,
     runtime_identity: &'static str,
+    runtime_attestation_status: &'static str,
+    serial_outcome_detail: &'static str,
     pool_config: &'static str,
     marker_count: usize,
     submit_outcome: &'static str,
@@ -29,12 +31,14 @@ struct CampaignResultEvidence<'a> {
     safe_stop: &'static str,
     usb_cleanup: &'static str,
     observations_sha256: &'a str,
+    diagnostics_sha256: &'a str,
     redacted: bool,
     parity_promotion: bool,
 }
 
 #[derive(Clone)]
 pub(super) struct CampaignEvidencePaths {
+    diagnostics: Utf8PathBuf,
     observations: Utf8PathBuf,
     result: Utf8PathBuf,
     seal: Utf8PathBuf,
@@ -62,11 +66,17 @@ pub(super) fn preflight_campaign_evidence(root: &Utf8Path) -> Result<CampaignEvi
         bail!("campaign evidence root is not private");
     }
     let paths = CampaignEvidencePaths {
+        diagnostics: root.join("campaign-diagnostics.private.json"),
         observations: root.join("campaign-observations.private.json"),
         result: root.join("campaign-result.json"),
         seal: root.join("campaign-result.sha256"),
     };
-    for path in [&paths.observations, &paths.result, &paths.seal] {
+    for path in [
+        &paths.diagnostics,
+        &paths.observations,
+        &paths.result,
+        &paths.seal,
+    ] {
         if path.parent() != Some(root) || fs::symlink_metadata(path.as_std_path()).is_ok() {
             bail!("campaign evidence destination invalid");
         }
@@ -86,6 +96,12 @@ pub(super) fn finish_campaign_attempt(
         Err(failure) => failure.category,
     };
     let seal_result = (|| -> Result<()> {
+        let mut diagnostic_bytes = serde_json::to_vec_pretty(&attempt.serial_diagnostics)?;
+        diagnostic_bytes.push(b'\n');
+        write_private_new_bytes(&paths.diagnostics, &diagnostic_bytes)
+            .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::EvidenceSealFailed))?;
+        let diagnostics_sha256 = sha256_bytes(&diagnostic_bytes);
+
         let observations = CampaignObservationEvidence {
             schema: CAMPAIGN_OBSERVATIONS_SCHEMA,
             stage: command.stage.as_str(),
@@ -114,6 +130,10 @@ pub(super) fn finish_campaign_attempt(
             } else {
                 "not_trusted"
             },
+            runtime_attestation_status: attempt
+                .maybe_runtime_attestation_status
+                .map_or("not_observed", RuntimeAttestationStatus::label),
+            serial_outcome_detail: attempt.serial_outcome_detail.as_str(),
             pool_config: maybe_terminal.map_or("not_observed", |marker| match marker.pool_config {
                 PoolConfigMarker::NotRead => "not_read",
                 PoolConfigMarker::LocalOwnerSupplied => "local_owner_supplied",
@@ -143,6 +163,7 @@ pub(super) fn finish_campaign_attempt(
                 "not_proven"
             },
             observations_sha256: &observations_sha256,
+            diagnostics_sha256: &diagnostics_sha256,
             redacted: true,
             parity_promotion: false,
         };
