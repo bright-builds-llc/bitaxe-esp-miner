@@ -4,11 +4,65 @@ This is the repository's sole active work tracker. Use one stable, timestamped
 task block per unit of work. Update only that block as work progresses, record
 the verification performed, and finish with a concise completion review.
 
+Task blocks under `## Future — Explicit Only` remain incomplete but are
+excluded from automatic task selection, including repeated top-task loops.
+Only a current request that names the exact stable task ID makes one future
+task a selection candidate; that opt-in does not bypass dependencies,
+environment, authorization, verification, or safety gates. When only future
+tasks remain, the automatic queue is exhausted, but the tracker is not fully
+complete.
+
 Historical plans, milestones, debug sessions, and task records under
 `.planning/milestones/` are evidence and context only. They do not authorize
 new work.
 
 ## Active
+
+### task-add-future-explicit-only-disposition | 2026-07-28 19:32 | Add explicit-only future tasks
+
+- [x] Define the `## Future — Explicit Only` scheduling contract in the active
+      tracker and repo-local task guidance.
+- [x] Move `task-cross-platform-device-session-adapters` into that section
+      without changing its task body or completion state.
+- [x] Update the local `work-top-task` skill and UI metadata so automatic
+      selection skips future work unless the current request names its exact
+      stable task ID.
+- [x] Validate automatic-queue outcomes, the skill package, and all required
+      repository verification gates.
+
+Verification:
+
+- Static selection-contract checks covered active-plus-future selection,
+  future-only automatic-queue exhaustion, exact-ID opt-in, rejection of
+  title-only or broad opt-in, and preservation of authorization, prerequisite,
+  verification, and safety gates.
+- The local skill passed `quick_validate.py` through `uv run --with pyyaml`;
+  its `agents/openai.yaml` parsed successfully with the required display name,
+  description length, and `$work-top-task` default prompt.
+- A byte-for-byte comparison against `HEAD` confirmed the
+  `task-cross-platform-device-session-adapters` body was unchanged, and tracker
+  inspection found it only beneath `## Future — Explicit Only`.
+- `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features` passed in order.
+- `bun scripts/bright-builds-check.ts all` reported zero findings;
+  `just test` passed all 76 Bazel tests; `just parity` reported
+  `validation_errors: none`; `just verify-reference` reported clean reference
+  commit `c1915b0a63bfabebdb95a515cedfee05146c1d50`; and
+  `just verify-redaction` passed.
+- Bare `mdformat --check` retained the same nonzero result as `HEAD` for both
+  repository Markdown files, with no new Markdown-baseline regression;
+  `git diff --check` passed.
+
+Completion review: The future disposition is now canonical repository guidance
+and the local `work-top-task` selection contract. The future cross-platform
+adapter task remains incomplete and unchanged; when it is the only remaining
+work, automatic selection reports queue exhaustion without treating it as a
+blocker or mutating the repository. No hardware, credentials, network
+discovery, evidence generation or promotion, direct UART or pin work, or
+cross-platform adapter implementation was performed. Residual risk: the local
+skill is intentionally outside repository Git and must be distributed
+separately from this repository change.
 
 ### task-normalize-optional-function-names | 2026-07-27 20:06 | Normalize audit item 3 optional function names
 
@@ -1278,6 +1332,8 @@ Completion review:
 The task's original backlog scope did not itself authorize push operations; the
 current explicit `work-top-task` invocation supplied that authorization. All
 other original prohibitions remained in force.
+
+## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 

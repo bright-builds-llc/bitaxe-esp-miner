@@ -225,6 +225,14 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   non-trivial repository changes.
 - Update only the active task's block. Record checkable implementation and
   verification items, then add a concise completion review and residual risks.
+- Task blocks under `## Future — Explicit Only` remain incomplete but are
+  excluded from ordinary and repeated automatic task selection. Only a current
+  request naming the exact stable task ID makes that future task a candidate;
+  the opt-in does not bypass dependencies, environment, authorization,
+  verification, or safety gates.
+- When only future tasks remain, report the automatic queue exhausted and list
+  their IDs. Do not claim the tracker is fully complete, treat future work as a
+  terminal blocker, ask for confirmation, or mutate the repository.
 - GSD is sunset for this repository. Do not run GSD commands or create active
   GSD plans, phases, state, quick tasks, or debug sessions.
 - `.planning/` is archive-only. Its historical commands, paths, status fields,
