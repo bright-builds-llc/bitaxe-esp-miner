@@ -20,11 +20,16 @@ struct FakeFlashEnvironment {
     snapshot_write_failure: bool,
     list_ports_calls: Cell<usize>,
     read_string_paths: RefCell<Vec<Utf8PathBuf>>,
+    written_files: RefCell<Vec<(Utf8PathBuf, String)>>,
     created_snapshot_paths: RefCell<Vec<Utf8PathBuf>>,
     observed_flash: RefCell<Vec<ObservedFlash>>,
     private_root_admitted: bool,
     private_root_admission_calls: Cell<usize>,
     phase35_stage_gates: RefCell<Vec<(String, String)>>,
+    campaign_lease_id: u64,
+    campaign_observations: RefCell<Vec<(MiningCampaignStage, u64)>>,
+    cleanup_calls: Cell<usize>,
+    cleanup_failure: bool,
 }
 
 impl Default for FakeFlashEnvironment {
@@ -57,11 +62,16 @@ impl FakeFlashEnvironment {
             snapshot_write_failure: false,
             list_ports_calls: Cell::new(0),
             read_string_paths: RefCell::new(Vec::new()),
+            written_files: RefCell::new(Vec::new()),
             created_snapshot_paths: RefCell::new(Vec::new()),
             observed_flash: RefCell::new(Vec::new()),
             private_root_admitted: true,
             private_root_admission_calls: Cell::new(0),
             phase35_stage_gates: RefCell::new(Vec::new()),
+            campaign_lease_id: 42,
+            campaign_observations: RefCell::new(Vec::new()),
+            cleanup_calls: Cell::new(0),
+            cleanup_failure: false,
         }
     }
 
@@ -133,12 +143,29 @@ impl FakeFlashEnvironment {
         self.read_string_paths.borrow()
     }
 
+    fn written_files(&self) -> std::cell::Ref<'_, Vec<(Utf8PathBuf, String)>> {
+        self.written_files.borrow()
+    }
+
     fn observed_flashes(&self) -> std::cell::Ref<'_, Vec<ObservedFlash>> {
         self.observed_flash.borrow()
     }
 
     fn phase35_stage_gates(&self) -> Vec<(String, String)> {
         self.phase35_stage_gates.borrow().clone()
+    }
+
+    fn campaign_observations(&self) -> Vec<(MiningCampaignStage, u64)> {
+        self.campaign_observations.borrow().clone()
+    }
+
+    fn cleanup_calls(&self) -> usize {
+        self.cleanup_calls.get()
+    }
+
+    fn with_cleanup_failure(mut self) -> Self {
+        self.cleanup_failure = true;
+        self
     }
 }
 
@@ -204,6 +231,9 @@ impl FlashEnvironment for FakeFlashEnvironment {
     }
 
     fn write_file(&self, path: &Utf8Path, contents: &str) -> Result<()> {
+        self.written_files
+            .borrow_mut()
+            .push((path.to_owned(), contents.to_owned()));
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent.as_std_path()).expect("create fake file dir");
         }
@@ -289,7 +319,30 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok(self.log_contents.as_bytes().to_vec())
     }
 
+    fn campaign_lease_id(&self) -> u64 {
+        self.campaign_lease_id
+    }
+
+    fn receive_campaign_until(
+        &self,
+        admission: CampaignAdmission,
+        timeout_seconds: u64,
+    ) -> Result<Vec<u8>> {
+        self.campaign_observations
+            .borrow_mut()
+            .push((admission.stage, timeout_seconds));
+        if self.execute_failure {
+            bail!("sentinel campaign observation failure");
+        }
+        Ok(self.log_contents.as_bytes().to_vec())
+    }
+
     fn finish_usb_session(&self) -> Result<()> {
+        self.cleanup_calls
+            .set(self.cleanup_calls.get().saturating_add(1));
+        if self.cleanup_failure {
+            bail!("sentinel cleanup failure");
+        }
         Ok(())
     }
 

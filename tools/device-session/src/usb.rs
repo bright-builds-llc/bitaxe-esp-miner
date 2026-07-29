@@ -220,7 +220,21 @@ impl UsbSession {
         &mut self,
         duration: Duration,
     ) -> Result<MonitorOutput, UsbSessionError> {
-        let result = self.observe_receive_only_inner(duration);
+        let result = self.observe_receive_only_inner(duration, true, |_| false);
+        if let Err(error) = &result {
+            self.fail_once(error.category);
+        }
+        result
+    }
+
+    /// Observes receive-only serial data until a caller-defined terminal marker
+    /// appears without persisting the potentially sensitive serial transcript.
+    pub fn observe_receive_only_ephemeral_until(
+        &mut self,
+        duration: Duration,
+        stop: impl FnMut(&[u8]) -> bool,
+    ) -> Result<MonitorOutput, UsbSessionError> {
+        let result = self.observe_receive_only_inner(duration, false, stop);
         if let Err(error) = &result {
             self.fail_once(error.category);
         }
@@ -230,6 +244,8 @@ impl UsbSession {
     fn observe_receive_only_inner(
         &mut self,
         duration: Duration,
+        persist_trace: bool,
+        mut stop: impl FnMut(&[u8]) -> bool,
     ) -> Result<MonitorOutput, UsbSessionError> {
         let _signal_supervisor = process::SignalSupervisor::acquire()?;
         self.transition(UsbLifecycleEvent::BeginObservation)?;
@@ -244,7 +260,9 @@ impl UsbSession {
 
         while Instant::now() < deadline {
             if let Some(signal) = process::maybe_pending_signal() {
-                write_private_trace(&trace_path, &bytes)?;
+                if persist_trace {
+                    write_private_trace(&trace_path, &bytes)?;
+                }
                 self.transition(UsbLifecycleEvent::ObservationComplete)?;
                 return Ok(MonitorOutput {
                     bytes,
@@ -271,6 +289,9 @@ impl UsbSession {
                 Ok(chunk) => {
                     let remaining = MAX_MONITOR_BYTES.saturating_sub(bytes.len());
                     bytes.extend_from_slice(&chunk[..chunk.len().min(remaining)]);
+                    if stop(&bytes) {
+                        break;
+                    }
                 }
                 Err(_) => {
                     maybe_reader = None;
@@ -280,7 +301,9 @@ impl UsbSession {
             thread::sleep(Duration::from_millis(25));
         }
         drop(maybe_reader);
-        write_private_trace(&trace_path, &bytes)?;
+        if persist_trace {
+            write_private_trace(&trace_path, &bytes)?;
+        }
         self.transition(UsbLifecycleEvent::ObservationComplete)?;
         Ok(MonitorOutput {
             bytes,

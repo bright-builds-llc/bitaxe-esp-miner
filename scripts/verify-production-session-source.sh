@@ -6,21 +6,20 @@ verify_adapter_contract() {
 	local adapter_test_source="$2"
 	local owner_contract
 	local contract_present
-	local ordinary_forbidden_matches
 	local adapter_count
-	local -r ordinary_forbidden_pattern='TcpStream|std::net|write_all|read_pool_settings|production_ready|apply_negotiated_version_mask|execute_production_command|try_read_production_result'
 	local -a owner_contracts=(
+		"mod asic_worker;"
+		"mod transport;"
 		"const OWNER_STACK_BYTES: usize = 16 * 1024;"
-		"const NOTIFICATION_CAPACITY: usize = 8;"
+		"const NOTIFICATION_CAPACITY: usize = 16;"
 		"const AUTHORITATIVE_REREAD_INTERVAL: Duration = Duration::from_secs(1);"
-		"sender.try_send(wakeup)"
+		"enum OwnerInboxMessage"
+		"sender.try_send(OwnerInboxMessage::Wake(wakeup))"
 		"ProductionSessionNotificationOutcome::Coalesced"
 		"receiver.recv_timeout(AUTHORITATIVE_REREAD_INTERVAL)"
-		"ProductionSessionEvent::Wake"
-		"drive_session(&mut session, &mut adapter, event)"
-		"adapter.maybe_execute(effect)"
-		"maybe_campaign_lease: None"
-		"actuation_qualified: false"
+		"adapter.event_from_inbox(message, now_ms)"
+		"drive_session(&mut session, &mut adapter, event, now_ms)"
+		"adapter.maybe_execute(effect, now_ms)"
 	)
 
 	for owner_contract in "${owner_contracts[@]}"; do
@@ -35,16 +34,18 @@ verify_adapter_contract() {
 		fi
 	done
 
-	if command -v rg >/dev/null 2>&1; then
-		ordinary_forbidden_matches="$(rg -n "$ordinary_forbidden_pattern" "$adapter_owner_source" || true)"
-	else
-		ordinary_forbidden_matches="$(grep -n -E -- "$ordinary_forbidden_pattern" "$adapter_owner_source" || true)"
-	fi
-	if [[ -n "$ordinary_forbidden_matches" ]]; then
-		printf '%s\n' "$ordinary_forbidden_matches"
-		printf 'production session source contract failed: ordinary adapter contains external effect path\n' >&2
-		return 1
-	fi
+	verify_source_excludes \
+		"$adapter_owner_source" \
+		'TcpStream|TcpListener|std::net|write_all' \
+		"production owner contains raw socket I/O"
+	verify_source_excludes \
+		"$adapter_owner_source" \
+		'EspNvs|EspDefaultNvsPartition|pool(URL|Port|User|Password)|pool_(url|port|user|password)' \
+		"production owner contains raw pool secrets or NVS access"
+	verify_source_excludes \
+		"$adapter_owner_source" \
+		'ProductionAsicExecutor|I2cDriver|EspI2c|PinDriver|apply_negotiated_version_mask|execute_production_command|try_read_production_result' \
+		"production owner contains raw device primitives"
 
 	if command -v rg >/dev/null 2>&1; then
 		adapter_count="$(
@@ -69,20 +70,40 @@ verify_adapter_contract() {
 	fi
 }
 
-verify_engine_clock_contract() {
-	local clock_matches
-	local -r forbidden_clock_pattern='(^|[^[:alnum:]_])(Instant|SystemTime)([^[:alnum:]_]|$)'
+verify_source_excludes() {
+	local source="$1"
+	local forbidden_pattern="$2"
+	local failure_message="$3"
+	local forbidden_matches
 
 	if command -v rg >/dev/null 2>&1; then
-		clock_matches="$(rg -n "$forbidden_clock_pattern" "$@" || true)"
+		forbidden_matches="$(rg -n "$forbidden_pattern" "$source" || true)"
 	else
-		clock_matches="$(grep -n -E -- "$forbidden_clock_pattern" "$@" || true)"
+		forbidden_matches="$(grep -n -E -- "$forbidden_pattern" "$source" || true)"
 	fi
-	if [[ -n "$clock_matches" ]]; then
-		printf '%s\n' "$clock_matches"
-		printf 'production session source contract failed: reusable engine owns a real clock\n' >&2
+	if [[ -n "$forbidden_matches" ]]; then
+		printf '%s\n' "$forbidden_matches"
+		printf 'production session source contract failed: %s\n' "$failure_message" >&2
 		return 1
 	fi
+}
+
+verify_deep_engine_contract() {
+	local source
+	for source in "$@"; do
+		verify_source_excludes \
+			"$source" \
+			'(^|[^[:alnum:]_])(Instant|SystemTime)([^[:alnum:]_]|$)' \
+			"reusable engine owns a real clock"
+		verify_source_excludes \
+			"$source" \
+			'TcpStream|TcpListener|std::net|EspNvs|EspDefaultNvsPartition|pool(URL|Port|User|Password)|pool_(url|port|user|password)' \
+			"reusable engine owns raw transport or secret I/O"
+		verify_source_excludes \
+			"$source" \
+			'ProductionAsicExecutor|I2cDriver|EspI2c|PinDriver' \
+			"reusable engine owns device primitives"
+	done
 }
 
 if [[ "${1:-}" == "--verify-adapter-contract" ]]; then
@@ -102,13 +123,24 @@ if [[ "${1:-}" == "--verify-engine-clock-contract" ]]; then
 		exit 2
 	fi
 
-	verify_engine_clock_contract "${@:2}"
+	verify_deep_engine_contract "${@:2}"
 	printf 'production_session_engine_clock_contract=passed\n'
 	exit 0
 fi
 
+if [[ "${1:-}" == "--verify-deep-engine-contract" ]]; then
+	if [[ "$#" -lt "2" ]]; then
+		printf 'usage: %s --verify-deep-engine-contract ENGINE_SOURCE...\n' "$0" >&2
+		exit 2
+	fi
+
+	verify_deep_engine_contract "${@:2}"
+	printf 'production_session_deep_engine_contract=passed\n'
+	exit 0
+fi
+
 if [[ "$#" != "0" ]]; then
-	printf 'usage: %s [--verify-adapter-contract OWNER_SOURCE DETERMINISTIC_ADAPTER_SOURCE | --verify-engine-clock-contract ENGINE_SOURCE...]\n' "$0" >&2
+	printf 'usage: %s [--verify-adapter-contract OWNER_SOURCE DETERMINISTIC_ADAPTER_SOURCE | --verify-deep-engine-contract ENGINE_SOURCE...]\n' "$0" >&2
 	exit 2
 fi
 
@@ -178,6 +210,7 @@ readonly engine_sources=(
 	"crates/bitaxe-stratum/src/v1/production_session/campaign.rs"
 	"crates/bitaxe-stratum/src/v1/production_session/orchestration.rs"
 	"crates/bitaxe-stratum/src/v1/production_session/runtime.rs"
+	"crates/bitaxe-stratum/src/v1/production_session/runtime/transport.rs"
 	"crates/bitaxe-stratum/src/v1/production_session/types.rs"
 	"crates/bitaxe-stratum/src/v1/recovery_policy.rs"
 )
@@ -211,7 +244,7 @@ for engine_contract in "${engine_contracts[@]}"; do
 	fi
 done
 
-verify_engine_clock_contract "${engine_sources[@]}"
+verify_deep_engine_contract "${engine_sources[@]}"
 
 readonly forbidden_active_pattern='pub mod (fake_pool|live_runtime|mining_loop)|ProductionSessionAction|production_asic_ready|mining_loop_status|FakePoolTranscript|run_live_runtime|phase36_substantive_evidence_test'
 readonly forbidden_active_paths=(

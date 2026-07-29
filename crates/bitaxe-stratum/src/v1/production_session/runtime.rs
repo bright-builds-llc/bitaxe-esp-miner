@@ -1,15 +1,11 @@
-use std::collections::HashMap;
+mod transport;
 
 use super::campaign::{
     MiningCampaignLease, MiningCampaignLeaseId, MiningCampaignState, MiningCampaignStopCondition,
     MiningHardwareState,
 };
-use crate::jsonrpc::StratumRequestId;
 use crate::v1::bridge_orchestration::BridgeOrchestrator;
-use crate::v1::line_framer::StratumLineFramer;
-use crate::v1::live_runtime::{LiveStratumRuntime, RuntimeRequestKind};
-use crate::v1::messages::StratumV1ClientMessage;
-use crate::v1::production_work::{PoolSessionGeneration, SubmitIntent};
+use crate::v1::production_work::PoolSessionGeneration;
 use crate::v1::recovery_policy::{
     ProductionPool, ProductionPoolAvailability, ProductionReadiness, ProductionSessionBlocker,
     ProductionSessionPhase, ProductionSessionWakeup, RecoveryAction, RecoveryPolicy,
@@ -19,36 +15,12 @@ use crate::StratumV1Error;
 
 use super::types::{
     ProductionPoolSet, ProductionSessionEffect, ProductionSessionEvent, ProductionSessionSnapshot,
+    ProductionTransportEpoch, ProductionTransportFailure,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum PendingRequestKind {
-    Runtime(RuntimeRequestKind),
-    Submit,
-}
-
-#[derive(Clone)]
-pub(super) struct PendingSubmit {
-    pub(super) intent: SubmitIntent,
-}
-
-pub(super) struct PoolRuntime {
-    pub(super) runtime: LiveStratumRuntime,
-    pub(super) framer: StratumLineFramer,
-    pub(super) requests: HashMap<StratumRequestId, PendingRequestKind>,
-    pub(super) submits: HashMap<StratumRequestId, PendingSubmit>,
-}
-
-impl PoolRuntime {
-    pub(super) fn new(runtime: LiveStratumRuntime) -> Self {
-        Self {
-            runtime,
-            framer: StratumLineFramer::default(),
-            requests: HashMap::new(),
-            submits: HashMap::new(),
-        }
-    }
-}
+pub(super) use transport::{
+    maybe_runtime_request_kind, PendingRequestKind, PendingSubmit, PoolRuntime,
+};
 
 pub struct ProductionMiningSession {
     pub(super) recovery: RecoveryPolicy,
@@ -57,6 +29,9 @@ pub struct ProductionMiningSession {
     pub(super) fallback: Option<PoolRuntime>,
     pub(super) bridge: BridgeOrchestrator,
     pub(super) generation_cursor: PoolSessionGeneration,
+    pub(super) transport_epoch_cursor: ProductionTransportEpoch,
+    pub(super) maybe_primary_transport_epoch: Option<ProductionTransportEpoch>,
+    pub(super) maybe_fallback_transport_epoch: Option<ProductionTransportEpoch>,
     pub(super) last_readiness: ProductionReadiness,
     pub(super) hardware_state: MiningHardwareState,
     pub(super) campaign_state: MiningCampaignState,
@@ -85,6 +60,9 @@ impl ProductionMiningSession {
             fallback: None,
             bridge: BridgeOrchestrator::new(2_000),
             generation_cursor: PoolSessionGeneration::initial(),
+            transport_epoch_cursor: ProductionTransportEpoch::initial(),
+            maybe_primary_transport_epoch: None,
+            maybe_fallback_transport_epoch: None,
             last_readiness: ProductionReadiness {
                 operator_intent: crate::v1::state::MiningOperatorIntent::Run,
                 network_ready: false,
@@ -197,24 +175,59 @@ impl ProductionMiningSession {
                 let recovery_actions = self.recovery.on_pool_configuration(availability);
                 self.apply_recovery_actions(recovery_actions, &mut effects)?;
             }
-            ProductionSessionEvent::TransportConnected { pool, now_ms } => {
-                self.start_pool_runtime(pool, &mut effects)?;
+            ProductionSessionEvent::TransportConnected {
+                pool,
+                transport_epoch,
+                now_ms,
+            } => {
+                if self.maybe_pending_transport_epoch(pool) != Some(transport_epoch) {
+                    return Ok(effects);
+                }
+                self.start_pool_runtime(pool, transport_epoch, &mut effects)?;
                 self.drive_bridge(now_ms, &mut effects)?;
             }
-            ProductionSessionEvent::TransportConnectFailed { pool, now_ms } => {
-                let actions = self.recovery.on_connection_result(pool, false, now_ms);
-                self.apply_recovery_actions(actions, &mut effects)?;
-            }
+            ProductionSessionEvent::TransportFailed {
+                pool,
+                transport_epoch,
+                failure,
+                now_ms,
+            } => match failure {
+                ProductionTransportFailure::Connect => {
+                    if self.maybe_pending_transport_epoch(pool) != Some(transport_epoch) {
+                        return Ok(effects);
+                    }
+                    self.take_pending_transport_epoch(pool);
+                    let actions = self.recovery.on_connection_result(pool, false, now_ms);
+                    self.apply_recovery_actions(actions, &mut effects)?;
+                }
+                ProductionTransportFailure::Read | ProductionTransportFailure::Write => {
+                    if !self.transport_epoch_is_active(pool, transport_epoch) {
+                        return Ok(effects);
+                    }
+                    self.handle_transport_failure(pool, now_ms, &mut effects)?;
+                }
+            },
             ProductionSessionEvent::TransportBytes {
                 pool,
+                transport_epoch,
                 bytes,
                 now_ms,
             } => {
-                self.apply_transport_bytes(pool, &bytes, now_ms, &mut effects)?;
+                if !self.transport_epoch_is_active(pool, transport_epoch) {
+                    return Ok(effects);
+                }
+                self.apply_transport_bytes(pool, transport_epoch, &bytes, now_ms, &mut effects)?;
                 self.note_campaign_active(now_ms);
                 self.drive_bridge(now_ms, &mut effects)?;
             }
-            ProductionSessionEvent::TransportClosed { pool, now_ms } => {
+            ProductionSessionEvent::TransportClosed {
+                pool,
+                transport_epoch,
+                now_ms,
+            } => {
+                if !self.transport_epoch_is_active(pool, transport_epoch) {
+                    return Ok(effects);
+                }
                 self.handle_transport_failure(pool, now_ms, &mut effects)?;
             }
             ProductionSessionEvent::AsicResult {
@@ -222,6 +235,10 @@ impl ProductionMiningSession {
                 now_ms,
             } => {
                 if let Some(active_pool) = self.recovery.projection().maybe_active_pool {
+                    if self.current_generation(active_pool) != Some(observation.observed_generation)
+                    {
+                        return Ok(effects);
+                    }
                     if let Some(pool_runtime) = self.maybe_pool_runtime_mut(active_pool) {
                         let _outcome =
                             pool_runtime.runtime.apply_bridge_observation(observation)?;
@@ -231,9 +248,32 @@ impl ProductionMiningSession {
                     self.drive_bridge(now_ms, &mut effects)?;
                 }
             }
-            ProductionSessionEvent::AsicPollTimedOut { now_ms } => {
+            ProductionSessionEvent::AsicPollTimedOut { generation, now_ms } => {
+                let maybe_active_pool = self.recovery.projection().maybe_active_pool;
+                if maybe_active_pool.and_then(|pool| self.current_generation(pool))
+                    != Some(generation)
+                {
+                    return Ok(effects);
+                }
                 let _streak = self.bridge.note_poll_timeout();
                 self.drive_bridge(now_ms, &mut effects)?;
+            }
+            ProductionSessionEvent::AsicInteractionFailed {
+                generation,
+                failure: _,
+                now_ms: _,
+            } => {
+                let maybe_active_pool = self.recovery.projection().maybe_active_pool;
+                if maybe_active_pool.and_then(|pool| self.current_generation(pool))
+                    != Some(generation)
+                {
+                    return Ok(effects);
+                }
+                self.begin_terminal_safe_stop(
+                    Some(ProductionSessionBlocker::ProductionAsicUnavailable),
+                    false,
+                    &mut effects,
+                )?;
             }
             ProductionSessionEvent::HardwarePrepared { lease_id, now_ms } => {
                 self.handle_hardware_prepared(lease_id, now_ms, &mut effects)?;
@@ -535,91 +575,5 @@ impl ProductionMiningSession {
     pub(super) fn allocate_generation(&mut self) -> PoolSessionGeneration {
         self.generation_cursor = self.generation_cursor.next();
         self.generation_cursor
-    }
-
-    pub(super) fn rebase_runtime_generation(&mut self, pool: ProductionPool) {
-        let generation = self.allocate_generation();
-        if let Some(runtime) = self.maybe_pool_runtime_mut(pool) {
-            runtime.runtime.rebase_generation(generation);
-        }
-    }
-
-    fn snapshot_generation(
-        &self,
-        maybe_active_pool: Option<ProductionPool>,
-    ) -> PoolSessionGeneration {
-        maybe_active_pool
-            .and_then(|pool| self.maybe_pool_runtime(pool))
-            .map_or(self.generation_cursor, |runtime| {
-                runtime.runtime.production_registry().generation()
-            })
-    }
-
-    pub(super) fn clear_pending_submits(&mut self, pool: ProductionPool) {
-        let Some(runtime) = self.maybe_pool_runtime_mut(pool) else {
-            return;
-        };
-        runtime.submits.clear();
-        runtime
-            .requests
-            .retain(|_, kind| *kind != PendingRequestKind::Submit);
-    }
-
-    fn maybe_runtime_for_projection(
-        &self,
-        maybe_pool: Option<ProductionPool>,
-    ) -> Option<&PoolRuntime> {
-        maybe_pool
-            .and_then(|pool| self.maybe_pool_runtime(pool))
-            .or(self.primary.as_ref())
-            .or(self.fallback.as_ref())
-    }
-
-    pub(super) fn maybe_pool_runtime(&self, pool: ProductionPool) -> Option<&PoolRuntime> {
-        match pool {
-            ProductionPool::Primary => self.primary.as_ref(),
-            ProductionPool::Fallback => self.fallback.as_ref(),
-        }
-    }
-
-    pub(super) fn maybe_pool_runtime_mut(
-        &mut self,
-        pool: ProductionPool,
-    ) -> Option<&mut PoolRuntime> {
-        match pool {
-            ProductionPool::Primary => self.primary.as_mut(),
-            ProductionPool::Fallback => self.fallback.as_mut(),
-        }
-    }
-
-    pub(super) fn set_pool_runtime(&mut self, pool: ProductionPool, runtime: Option<PoolRuntime>) {
-        match pool {
-            ProductionPool::Primary => self.primary = runtime,
-            ProductionPool::Fallback => self.fallback = runtime,
-        }
-    }
-
-    pub(super) fn maybe_take_pool_runtime(&mut self, pool: ProductionPool) -> Option<PoolRuntime> {
-        match pool {
-            ProductionPool::Primary => self.primary.take(),
-            ProductionPool::Fallback => self.fallback.take(),
-        }
-    }
-}
-
-pub(super) fn maybe_runtime_request_kind(
-    message: &StratumV1ClientMessage,
-) -> Option<(StratumRequestId, RuntimeRequestKind)> {
-    match message {
-        StratumV1ClientMessage::ConfigureVersionRolling { id, .. } => {
-            Some((*id, RuntimeRequestKind::Configure))
-        }
-        StratumV1ClientMessage::Subscribe { id, .. } => Some((*id, RuntimeRequestKind::Subscribe)),
-        StratumV1ClientMessage::Authorize { id, .. } => Some((*id, RuntimeRequestKind::Authorize)),
-        StratumV1ClientMessage::SuggestDifficulty { .. }
-        | StratumV1ClientMessage::ExtranonceSubscribe { .. }
-        | StratumV1ClientMessage::Pong { .. }
-        | StratumV1ClientMessage::SendVersion { .. }
-        | StratumV1ClientMessage::SubmitShare { .. } => None,
     }
 }

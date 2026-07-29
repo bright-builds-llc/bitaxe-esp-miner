@@ -186,6 +186,15 @@ pub(crate) fn set_private_directory_mode(path: &Utf8Path) -> Result<()> {
     Ok(())
 }
 
+pub(crate) fn set_private_file_mode(path: &Utf8Path) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path.as_std_path(), fs::Permissions::from_mode(0o600))?;
+    }
+    Ok(())
+}
+
 pub(crate) fn write_private_new_bytes(path: &Utf8Path, bytes: &[u8]) -> Result<()> {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);

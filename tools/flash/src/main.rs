@@ -25,6 +25,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+mod campaign;
 mod cli;
 mod commands;
 mod environment;
@@ -44,6 +45,7 @@ mod wifi;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use campaign::*;
 pub(crate) use cli::*;
 pub(crate) use commands::*;
 pub(crate) use environment::*;
@@ -101,6 +103,7 @@ fn main() -> Result<()> {
         CliCommand::Monitor(command) => run_monitor(&command, &environment),
         CliCommand::FlashMonitor(command) => run_flash_monitor(&command, &environment),
         CliCommand::FinalizeEvidence(command) => run_finalize_evidence(&command, &environment),
+        CliCommand::MiningCampaign(command) => run_mining_campaign(&command, &environment),
         CliCommand::Phase35Probe(command) => run_phase35_probe(&command, &environment),
     };
     let cleanup_result = environment.finish_usb_session();

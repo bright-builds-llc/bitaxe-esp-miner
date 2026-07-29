@@ -12,13 +12,18 @@ use super::runtime::{
     ProductionMiningSession,
 };
 use super::types::ProductionSessionEffect;
+use super::types::ProductionTransportEpoch;
 
 impl ProductionMiningSession {
     pub(super) fn start_pool_runtime(
         &mut self,
         pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
         effects: &mut Vec<ProductionSessionEffect>,
     ) -> Result<(), StratumV1Error> {
+        if self.take_pending_transport_epoch(pool) != Some(transport_epoch) {
+            return Ok(());
+        }
         let maybe_config = self
             .maybe_pool_set
             .as_ref()
@@ -29,10 +34,10 @@ impl ProductionMiningSession {
         };
 
         let generation = self.allocate_generation();
-        let mut pool_runtime = PoolRuntime::new(LiveStratumRuntime::new_with_generation(
-            config.runtime,
-            generation,
-        ));
+        let mut pool_runtime = PoolRuntime::new(
+            transport_epoch,
+            LiveStratumRuntime::new_with_generation(config.runtime, generation),
+        );
         let _started = pool_runtime.runtime.start();
         self.set_pool_runtime(pool, Some(pool_runtime));
         self.drain_runtime_actions(pool, effects)
@@ -41,6 +46,7 @@ impl ProductionMiningSession {
     pub(super) fn apply_transport_bytes(
         &mut self,
         pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
         bytes: &[u8],
         now_ms: u64,
         effects: &mut Vec<ProductionSessionEffect>,
@@ -49,6 +55,9 @@ impl ProductionMiningSession {
             let Some(pool_runtime) = self.maybe_pool_runtime_mut(pool) else {
                 return Ok(());
             };
+            if pool_runtime.transport_epoch != transport_epoch {
+                return Ok(());
+            }
             match pool_runtime.framer.push(bytes) {
                 Ok(lines) => lines,
                 Err(_) => {
@@ -207,10 +216,11 @@ impl ProductionMiningSession {
         }
         effects.push(ProductionSessionEffect::InvalidateWorkAndSubmissions);
         effects.push(ProductionSessionEffect::StopAsicInteraction);
-        if self.fallback.take().is_some() {
-            effects.push(ProductionSessionEffect::ClosePoolConnection(
-                ProductionPool::Fallback,
-            ));
+        if let Some(fallback) = self.fallback.take() {
+            effects.push(ProductionSessionEffect::ClosePoolConnection {
+                pool: ProductionPool::Fallback,
+                transport_epoch: fallback.transport_epoch,
+            });
         }
         self.bridge.invalidate_session();
     }
@@ -228,11 +238,15 @@ impl ProductionMiningSession {
         }
         if maybe_active_pool.is_some() {
             if let Some(mut runtime) = self.maybe_take_pool_runtime(pool) {
+                let transport_epoch = runtime.transport_epoch;
                 runtime.runtime.invalidate_for_session_replacement();
                 runtime.requests.clear();
                 runtime.submits.clear();
                 runtime.framer.clear();
-                effects.push(ProductionSessionEffect::ClosePoolConnection(pool));
+                effects.push(ProductionSessionEffect::ClosePoolConnection {
+                    pool,
+                    transport_epoch,
+                });
             }
         } else {
             self.invalidate_pool_runtime(pool, effects);
@@ -249,6 +263,7 @@ impl ProductionMiningSession {
         let Some(mut runtime) = self.maybe_take_pool_runtime(pool) else {
             return;
         };
+        let transport_epoch = runtime.transport_epoch;
         let replacement_generation = self.allocate_generation();
         runtime.runtime.invalidate_for_session_replacement();
         runtime.runtime.rebase_generation(replacement_generation);
@@ -259,7 +274,10 @@ impl ProductionMiningSession {
         effects.push(ProductionSessionEffect::BlockSubmissions);
         effects.push(ProductionSessionEffect::InvalidateWorkAndSubmissions);
         effects.push(ProductionSessionEffect::StopAsicInteraction);
-        effects.push(ProductionSessionEffect::ClosePoolConnection(pool));
+        effects.push(ProductionSessionEffect::ClosePoolConnection {
+            pool,
+            transport_epoch,
+        });
     }
 
     pub(super) fn apply_recovery_actions(
@@ -279,7 +297,27 @@ impl ProductionMiningSession {
                     effects.push(ProductionSessionEffect::ReadPoolConfiguration);
                 }
                 RecoveryAction::ConnectPool(pool) => {
-                    effects.push(ProductionSessionEffect::ConnectPool(pool));
+                    let maybe_endpoint = self
+                        .maybe_pool_set
+                        .as_ref()
+                        .and_then(|set| set.maybe_configuration(pool))
+                        .map(|configuration| configuration.endpoint.clone());
+                    let Some(endpoint) = maybe_endpoint else {
+                        continue;
+                    };
+                    if let Some(previous_epoch) = self.take_pending_transport_epoch(pool) {
+                        effects.push(ProductionSessionEffect::ClosePoolConnection {
+                            pool,
+                            transport_epoch: previous_epoch,
+                        });
+                    }
+                    let transport_epoch = self.allocate_transport_epoch();
+                    self.set_pending_transport_epoch(pool, transport_epoch);
+                    effects.push(ProductionSessionEffect::ConnectPool {
+                        pool,
+                        transport_epoch,
+                        endpoint,
+                    });
                 }
                 RecoveryAction::BlockSubmissions => {
                     for runtime in [&mut self.primary, &mut self.fallback]
@@ -313,15 +351,33 @@ impl ProductionMiningSession {
                     effects.push(ProductionSessionEffect::StopAsicInteraction);
                 }
                 RecoveryAction::ClosePoolConnection => {
-                    if self.primary.take().is_some() {
-                        effects.push(ProductionSessionEffect::ClosePoolConnection(
-                            ProductionPool::Primary,
-                        ));
+                    if let Some(runtime) = self.primary.take() {
+                        effects.push(ProductionSessionEffect::ClosePoolConnection {
+                            pool: ProductionPool::Primary,
+                            transport_epoch: runtime.transport_epoch,
+                        });
                     }
-                    if self.fallback.take().is_some() {
-                        effects.push(ProductionSessionEffect::ClosePoolConnection(
-                            ProductionPool::Fallback,
-                        ));
+                    if let Some(transport_epoch) =
+                        self.take_pending_transport_epoch(ProductionPool::Primary)
+                    {
+                        effects.push(ProductionSessionEffect::ClosePoolConnection {
+                            pool: ProductionPool::Primary,
+                            transport_epoch,
+                        });
+                    }
+                    if let Some(runtime) = self.fallback.take() {
+                        effects.push(ProductionSessionEffect::ClosePoolConnection {
+                            pool: ProductionPool::Fallback,
+                            transport_epoch: runtime.transport_epoch,
+                        });
+                    }
+                    if let Some(transport_epoch) =
+                        self.take_pending_transport_epoch(ProductionPool::Fallback)
+                    {
+                        effects.push(ProductionSessionEffect::ClosePoolConnection {
+                            pool: ProductionPool::Fallback,
+                            transport_epoch,
+                        });
                     }
                 }
                 RecoveryAction::Publish(_) => {}
@@ -349,10 +405,16 @@ impl ProductionMiningSession {
                                 .insert(request_id, PendingRequestKind::Runtime(kind));
                         }
                     }
-                    effects.push(ProductionSessionEffect::WritePoolLine {
-                        pool,
-                        line: message.to_json_line()?,
-                    });
+                    if let Some(transport_epoch) = self
+                        .maybe_pool_runtime(pool)
+                        .map(|runtime| runtime.transport_epoch)
+                    {
+                        effects.push(ProductionSessionEffect::WritePoolLine {
+                            pool,
+                            transport_epoch,
+                            line: message.to_json_line()?,
+                        });
+                    }
                 }
                 LiveRuntimeAction::SendSubmitShare {
                     intent,
@@ -365,10 +427,16 @@ impl ProductionMiningSession {
                             .insert(request_id, PendingRequestKind::Submit);
                         runtime.submits.insert(request_id, PendingSubmit { intent });
                     }
-                    effects.push(ProductionSessionEffect::WritePoolLine {
-                        pool,
-                        line: message.to_json_line()?,
-                    });
+                    if let Some(transport_epoch) = self
+                        .maybe_pool_runtime(pool)
+                        .map(|runtime| runtime.transport_epoch)
+                    {
+                        effects.push(ProductionSessionEffect::WritePoolLine {
+                            pool,
+                            transport_epoch,
+                            line: message.to_json_line()?,
+                        });
+                    }
                 }
             }
         }
@@ -389,9 +457,12 @@ impl ProductionMiningSession {
             .maybe_pool_runtime_mut(pool)
             .and_then(|runtime| runtime.runtime.maybe_take_pending_version_mask_reload())
         {
-            effects.push(ProductionSessionEffect::ApplyVersionMask(VersionMask::new(
-                mask.mask,
-            )));
+            if let Some(generation) = self.current_generation(pool) {
+                effects.push(ProductionSessionEffect::ApplyVersionMask {
+                    generation,
+                    mask: VersionMask::new(mask.mask),
+                });
+            }
         }
 
         match self.bridge.next_step(now_ms) {

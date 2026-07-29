@@ -7,6 +7,7 @@ pub enum UsbOperation {
     Flash,
     Monitor,
     FlashMonitor,
+    MiningCampaign,
     VerifyDurability,
 }
 

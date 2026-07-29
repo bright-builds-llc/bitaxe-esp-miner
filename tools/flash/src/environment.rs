@@ -27,6 +27,12 @@ pub(crate) trait FlashEnvironment {
     fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
     fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>>;
+    fn campaign_lease_id(&self) -> u64;
+    fn receive_campaign_until(
+        &self,
+        admission: CampaignAdmission,
+        timeout_seconds: u64,
+    ) -> Result<Vec<u8>>;
     fn finish_usb_session(&self) -> Result<()>;
     fn phase35_stage_readiness_gate(&self, _stage: &str, _port: &str) -> Result<()> {
         Ok(())
@@ -354,6 +360,32 @@ impl FlashEnvironment for LocalFlashEnvironment {
         emit_line("usb_reader", "admitted")?;
         let output = session
             .observe_receive_only(Duration::from_secs(timeout_seconds))
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
+        Ok(output.bytes)
+    }
+
+    fn campaign_lease_id(&self) -> u64 {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let folded = (timestamp as u64) ^ ((timestamp >> 64) as u64);
+        (folded ^ u64::from(std::process::id())).max(1)
+    }
+
+    fn receive_campaign_until(
+        &self,
+        admission: CampaignAdmission,
+        timeout_seconds: u64,
+    ) -> Result<Vec<u8>> {
+        let mut session_slot = self.usb_session.borrow_mut();
+        let Some(session) = session_slot.as_mut() else {
+            bail!("cleanup_failed: campaign observation attempted without a repository session");
+        };
+        let output = session
+            .observe_receive_only_ephemeral_until(Duration::from_secs(timeout_seconds), |bytes| {
+                campaign_serial_should_stop(bytes, admission)
+            })
             .map_err(|error| anyhow::anyhow!("{error}"))?;
         Ok(output.bytes)
     }

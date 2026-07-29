@@ -5,6 +5,12 @@ const EMC2101_SOURCE: &str = include_str!("safety_adapter/emc2101.rs");
 const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
 const MINING_ACTUATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter.rs");
 const PRODUCTION_SESSION_SOURCE: &str = include_str!("production_mining_session.rs");
+const PRODUCTION_TRANSPORT_SOURCE: &str =
+    include_str!("production_mining_session/transport.rs");
+const PRODUCTION_ASIC_WORKER_SOURCE: &str =
+    include_str!("production_mining_session/asic_worker.rs");
+const SETTINGS_ADAPTER_SOURCE: &str = include_str!("settings_adapter.rs");
+const SETTINGS_PRODUCTION_SOURCE: &str = include_str!("settings_adapter/production.rs");
 
 #[test]
 fn operator_sensor_runtime_is_the_single_normal_acquisition_caller() {
@@ -117,6 +123,42 @@ fn vr_truth_is_projected_and_used_by_the_closed_mining_safety_verdict() {
         .contains("vr_temp_celsius: bitaxe_safety::observation::Observation::unavailable("));
     assert!(PRODUCTION_SESSION_SOURCE.contains("observations.is_ultra_205_mining_safe_at(now())"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("self.mining_actuation.prepare(profile)"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("safety_prerequisites_fresh"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("actuation_qualified"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("ProductionSessionEffect::DispatchAsic"));
+}
+
+#[test]
+fn production_owner_uses_typed_workers_without_owning_raw_io() {
+    // Arrange
+    let owner_forbidden = ["TcpStream", "write_all", "EspNvs", "stratumurl", "stratumpass"];
+
+    // Act / Assert
+    for primitive in owner_forbidden {
+        assert!(!PRODUCTION_SESSION_SOURCE.contains(primitive));
+    }
+    assert!(PRODUCTION_TRANSPORT_SOURCE.contains("TcpStream"));
+    assert!(PRODUCTION_TRANSPORT_SOURCE.contains("PoolTransportEvent"));
+    assert!(PRODUCTION_ASIC_WORKER_SOURCE.contains("ProductionAsicExecutor"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("OwnerInboxMessage::Transport"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("OwnerInboxMessage::Asic"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("self.transports.request_close"));
+}
+
+#[test]
+fn pool_secrets_are_owned_only_by_the_lazy_settings_reader() {
+    // Arrange
+    let secret_keys = ["stratumurl", "stratumuser", "stratumpass"];
+
+    // Act / Assert
+    for key in secret_keys {
+        assert!(SETTINGS_PRODUCTION_SOURCE.contains(key));
+        assert!(!PRODUCTION_SESSION_SOURCE.contains(key));
+        assert!(!PRODUCTION_TRANSPORT_SOURCE.contains(key));
+        assert!(!PRODUCTION_ASIC_WORKER_SOURCE.contains(key));
+    }
+    assert!(SETTINGS_ADAPTER_SOURCE.contains("mod production;"));
+    assert!(SETTINGS_PRODUCTION_SOURCE.contains("read_production_pool_set"));
     assert!(PRODUCTION_SESSION_SOURCE
-        .contains("Self::maybe_reject_safety_gated_effect(None, \"asic_dispatch\")"));
+        .contains("ProductionSessionEffect::ReadPoolConfiguration"));
 }

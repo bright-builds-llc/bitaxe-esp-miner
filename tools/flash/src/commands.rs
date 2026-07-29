@@ -153,8 +153,13 @@ where
             "port" => push_flag_value(&mut normalized, "--port", value),
             "image" => push_flag_value(&mut normalized, "--image", value),
             "manifest" => push_flag_value(&mut normalized, "--manifest", value),
+            "stage" => push_flag_value(&mut normalized, "--stage", value),
+            "profile" => push_flag_value(&mut normalized, "--profile", value),
             "wifi-credentials" | "wifi_credentials" => {
                 push_flag_value(&mut normalized, "--wifi-credentials", value)
+            }
+            "pool-credentials" | "pool_credentials" => {
+                push_flag_value(&mut normalized, "--pool-credentials", value)
             }
             "evidence-dir" | "evidence_dir" => {
                 push_flag_value(&mut normalized, "--evidence-dir", value)
@@ -167,6 +172,9 @@ where
             }
             "capture-timeout-seconds" | "capture_timeout_seconds" => {
                 push_flag_value(&mut normalized, "--capture-timeout-seconds", value)
+            }
+            "duration-seconds" | "duration_seconds" => {
+                push_flag_value(&mut normalized, "--duration-seconds", value)
             }
             "stage-root" | "stage_root" => push_flag_value(&mut normalized, "--stage-root", value),
             "timeout-seconds" | "timeout_seconds" => {

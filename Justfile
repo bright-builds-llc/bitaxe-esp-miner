@@ -34,6 +34,9 @@ monitor *args:
 flash-monitor *args:
     bazel run //tools/flash:flash -- flash-monitor {{ args }}
 
+mining-campaign *args:
+    bazel run //tools/flash:flash -- mining-campaign {{ args }}
+
 verify-flash-durability *args:
     ./scripts/verify-flash-durability.sh {{ args }}
 

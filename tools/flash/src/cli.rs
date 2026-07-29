@@ -17,6 +17,8 @@ pub(crate) enum CliCommand {
     FlashMonitor(FlashMonitorCommand),
     #[command(name = "finalize-evidence")]
     FinalizeEvidence(FinalizeEvidenceCommand),
+    #[command(name = "mining-campaign")]
+    MiningCampaign(MiningCampaignCommand),
     #[command(name = "phase35-probe")]
     Phase35Probe(Phase35ProbeCommand),
 }
@@ -103,6 +105,39 @@ pub(crate) struct FinalizeEvidenceCommand {
 }
 
 #[derive(Debug, Parser, Clone)]
+pub(crate) struct MiningCampaignCommand {
+    #[arg(long, value_enum)]
+    pub(crate) stage: MiningCampaignStage,
+
+    #[arg(long, value_enum)]
+    pub(crate) profile: Option<MiningCampaignProfile>,
+
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+
+    #[arg(long)]
+    pub(crate) port: Option<String>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) manifest: Option<Utf8PathBuf>,
+
+    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
+    pub(crate) wifi_credentials: Utf8PathBuf,
+
+    #[arg(long = "pool-credentials", value_parser = parse_utf8_path)]
+    pub(crate) pool_credentials: Option<Utf8PathBuf>,
+
+    #[arg(long = "evidence-dir", value_parser = parse_utf8_path)]
+    pub(crate) evidence_dir: Utf8PathBuf,
+
+    #[arg(long = "duration-seconds")]
+    pub(crate) duration_seconds: u64,
+
+    #[arg(long = "redact-evidence")]
+    pub(crate) redact_evidence: bool,
+}
+
+#[derive(Debug, Parser, Clone)]
 pub(crate) struct Phase35ProbeCommand {
     #[arg(long, default_value = "205", value_parser = parse_board)]
     pub(crate) board: BoardId,
@@ -141,6 +176,40 @@ pub(crate) enum EvidenceRedactionMode {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 pub(crate) enum EvidenceMode {
     Dual,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum MiningCampaignStage {
+    Observation,
+    LiveShare,
+    Soak,
+}
+
+impl MiningCampaignStage {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Observation => "observation",
+            Self::LiveShare => "live-share",
+            Self::Soak => "soak",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum MiningCampaignProfile {
+    Conservative,
+    UpstreamDefault,
+}
+
+impl MiningCampaignProfile {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Conservative => "conservative",
+            Self::UpstreamDefault => "upstream-default",
+        }
+    }
 }
 
 impl EvidenceRedactionMode {

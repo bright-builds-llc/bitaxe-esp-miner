@@ -11,6 +11,8 @@ struct DeterministicProductionSessionAdapter {
     pools: Option<ProductionPoolSet>,
     pool_reads: usize,
     connections: Vec<ProductionPool>,
+    maybe_primary_transport_epoch: Option<ProductionTransportEpoch>,
+    maybe_fallback_transport_epoch: Option<ProductionTransportEpoch>,
     writes: Vec<(ProductionPool, String)>,
     asic_commands: Vec<Bm1366ProductionCommand>,
     effects: Vec<ProductionSessionEffect>,
@@ -24,6 +26,8 @@ impl DeterministicProductionSessionAdapter {
             pools,
             pool_reads: 0,
             connections: Vec::new(),
+            maybe_primary_transport_epoch: None,
+            maybe_fallback_transport_epoch: None,
             writes: Vec::new(),
             asic_commands: Vec::new(),
             effects: Vec::new(),
@@ -52,8 +56,22 @@ impl DeterministicProductionSessionAdapter {
                             self.pools.clone().map(Box::new),
                         ));
                     }
-                    ProductionSessionEffect::ConnectPool(pool) => self.connections.push(*pool),
-                    ProductionSessionEffect::WritePoolLine { pool, line } => {
+                    ProductionSessionEffect::ConnectPool {
+                        pool,
+                        transport_epoch,
+                        ..
+                    } => {
+                        self.connections.push(*pool);
+                        match pool {
+                            ProductionPool::Primary => {
+                                self.maybe_primary_transport_epoch = Some(*transport_epoch);
+                            }
+                            ProductionPool::Fallback => {
+                                self.maybe_fallback_transport_epoch = Some(*transport_epoch);
+                            }
+                        }
+                    }
+                    ProductionSessionEffect::WritePoolLine { pool, line, .. } => {
                         self.writes.push((*pool, line.clone()));
                     }
                     ProductionSessionEffect::DispatchAsic { command, .. } => {
@@ -62,12 +80,12 @@ impl DeterministicProductionSessionAdapter {
                     ProductionSessionEffect::Publish(snapshot) => {
                         self.snapshots.push(snapshot.clone());
                     }
-                    ProductionSessionEffect::ApplyVersionMask(_)
+                    ProductionSessionEffect::ApplyVersionMask { .. }
                     | ProductionSessionEffect::PollAsic { .. }
                     | ProductionSessionEffect::BlockSubmissions
                     | ProductionSessionEffect::InvalidateWorkAndSubmissions
                     | ProductionSessionEffect::StopAsicInteraction
-                    | ProductionSessionEffect::ClosePoolConnection(_) => {}
+                    | ProductionSessionEffect::ClosePoolConnection { .. } => {}
                     ProductionSessionEffect::SafeStopHardware { lease_id } => {
                         events.push_back(ProductionSessionEvent::HardwareSafeStopConfirmed {
                             lease_id: *lease_id,
@@ -81,15 +99,40 @@ impl DeterministicProductionSessionAdapter {
     }
 
     fn connect(&mut self, pool: ProductionPool, now_ms: u64) {
-        self.drive(ProductionSessionEvent::TransportConnected { pool, now_ms });
+        let transport_epoch = self.latest_transport_epoch(pool);
+        self.drive(ProductionSessionEvent::TransportConnected {
+            pool,
+            transport_epoch,
+            now_ms,
+        });
+    }
+
+    fn fail_connect(&mut self, pool: ProductionPool, now_ms: u64) {
+        let transport_epoch = self.latest_transport_epoch(pool);
+        self.drive(ProductionSessionEvent::TransportFailed {
+            pool,
+            transport_epoch,
+            failure: ProductionTransportFailure::Connect,
+            now_ms,
+        });
     }
 
     fn bytes(&mut self, pool: ProductionPool, bytes: impl AsRef<[u8]>, now_ms: u64) {
+        let transport_epoch = self.latest_transport_epoch(pool);
         self.drive(ProductionSessionEvent::TransportBytes {
             pool,
+            transport_epoch,
             bytes: bytes.as_ref().to_vec(),
             now_ms,
         });
+    }
+
+    fn latest_transport_epoch(&self, pool: ProductionPool) -> ProductionTransportEpoch {
+        match pool {
+            ProductionPool::Primary => self.maybe_primary_transport_epoch,
+            ProductionPool::Fallback => self.maybe_fallback_transport_epoch,
+        }
+        .expect("pool should have a requested transport epoch")
     }
 }
 
@@ -163,7 +206,14 @@ fn wake(readiness: ProductionReadiness, now_ms: u64) -> ProductionSessionEvent {
 }
 
 fn establish_active(adapter: &mut DeterministicProductionSessionAdapter) {
-    adapter.drive(wake(ready(), 0));
+    establish_active_with_readiness(adapter, ready());
+}
+
+fn establish_active_with_readiness(
+    adapter: &mut DeterministicProductionSessionAdapter,
+    readiness: ProductionReadiness,
+) {
+    adapter.drive(wake(readiness, 0));
     adapter.connect(ProductionPool::Primary, 1);
     authorize_pool(adapter, ProductionPool::Primary, 2);
     adapter.bytes(
@@ -183,10 +233,7 @@ fn establish_automatic_fallback(adapter: &mut DeterministicProductionSessionAdap
     adapter.drive(wake(ready(), 0));
     for attempt in 0..CONNECTION_ATTEMPTS_PER_POOL {
         let now_ms = u64::from(attempt) * CONNECTION_RETRY_DELAY_MS;
-        adapter.drive(ProductionSessionEvent::TransportConnectFailed {
-            pool: ProductionPool::Primary,
-            now_ms,
-        });
+        adapter.fail_connect(ProductionPool::Primary, now_ms);
         if attempt + 1 < CONNECTION_ATTEMPTS_PER_POOL {
             adapter.drive(wake(ready(), now_ms + CONNECTION_RETRY_DELAY_MS));
         }

@@ -24,8 +24,9 @@ pub use campaign::{
 };
 pub use runtime::ProductionMiningSession;
 pub use types::{
-    ProductionPoolConfiguration, ProductionPoolEndpoint, ProductionPoolSet,
+    ProductionAsicFailure, ProductionPoolConfiguration, ProductionPoolEndpoint, ProductionPoolSet,
     ProductionSessionEffect, ProductionSessionEvent, ProductionSessionSnapshot,
+    ProductionTransportEpoch, ProductionTransportFailure,
 };
 
 #[cfg(test)]

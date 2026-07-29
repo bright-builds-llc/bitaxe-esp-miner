@@ -1984,3 +1984,88 @@ Completion review:
   manipulation occurred. Production admission remains disabled until the
   dependency-gated live-I/O task supplies and validates the campaign lease;
   hardware verification remains residual risk.
+
+### task-production-mining-live-io | 2026-07-28 | Qualify live Stratum and bounded campaign I/O
+
+- [x] Change the firmware owner inbox to accept category wakeups and typed
+      transport/ASIC events while leaving all lifecycle policy inside the
+      Production Mining Session.
+- [x] Implement bounded per-pool TCP workers behind the existing
+      primary/fallback interface so the mining owner never blocks on socket
+      connect, read, or write.
+- [x] Add a dedicated lazy NVS pool reader with redacted debug behavior and no
+      secret-bearing logs, reads, or projections before the session requests
+      pool configuration.
+- [x] Carry pool generation and valid job IDs through ASIC dispatch and poll
+      effects so invalidated or stale results cannot produce a submission.
+- [x] Replace the source guard's hard-coded `actuation_qualified: false`
+      assertion with guards proving raw sockets, secrets, clocks, and device
+      primitives remain outside the deep session owner.
+- [x] Add the repo-owned `just mining-campaign` command with typed
+      `observation`, `live-share`, and `soak` stages by extending existing
+      package admission, device-session supervision, NVS injection, redaction,
+      and evidence sealing.
+- [x] Make the command persist `mineonboot=false` before activation and install
+      a one-shot device-local lease: `live-share` stops after the first
+      accepted/rejected submit response or 600 seconds, and `soak` stops after
+      600 active seconds.
+- [x] Add real-process loopback transport tests, deterministic accepted and
+      rejected session tests, partial-frame and recovery tests, credential/NVS
+      redaction tests, lease-timeout tests, and reboot-remains-paused tests.
+
+Dependencies: Complete
+`task-production-mining-hardware-lifecycle` and
+`task-ultra205-mining-actuation-adapter`.
+
+Verification:
+
+- The required ordered `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and
+  `cargo test --all-features` checks passed after the final source change.
+- Focused Bazel tests passed for the production Stratum core, real-process TCP
+  transport, campaign status, firmware source ownership, flash campaign
+  supervisor, device-session lifecycle, and production-session source guard.
+- `just verify-production-session` passed its focused tests, deep ownership
+  guard, and ESP32-S3 release build. `just test` passed all 82 Bazel test
+  targets, and `just package` produced the complete Ultra 205 image and package
+  artifact set.
+- `bun scripts/bright-builds-check.ts all` reported zero findings.
+  `just parity` reported `validation_errors: none`; `just verify-reference`
+  confirmed pinned reference commit
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50` clean; and staged
+  `just verify-redaction` passed.
+- Secret-pattern and ignored-result scans found no new credential values or
+  swallowed failures in the production paths. `git diff --check` and the
+  final staged-diff review passed.
+
+Completion review:
+
+- The production owner now receives category wakeups plus typed, generation-
+  and epoch-stamped transport/ASIC feedback. Independent bounded primary and
+  fallback TCP workers perform connect/read/write work without blocking the
+  owner, and a non-lossy close signal remains effective when a worker queue is
+  saturated.
+- Pool credentials stay behind a dedicated lazy NVS reader and redacted
+  boundary types. Stale transport epochs, ASIC generations, job IDs, timeout
+  feedback, and nonce results are rejected before they can mutate the current
+  session or submit a share.
+- `just mining-campaign` admits only board 205 with exact stage/profile/duration
+  combinations, creates one private evidence attempt beneath a pre-admitted
+  parent, seeds one combined private NVS image with `mineonboot=false`, consumes
+  a one-shot live lease before actuation, preserves the earliest typed failure,
+  and seals only closed redacted evidence categories.
+- Observation never reads pool credentials or actuates hardware and runs the
+  full 360-second bound on success. Live-share terminates on one correlated
+  accepted/rejected response or 600 seconds, soak requires 600 active seconds,
+  and both require confirmed safe-stop before terminal success. A consumed
+  lease returns operator intent to paused and cannot replay after reboot.
+- The simplification pass kept lifecycle policy, deadlines, generations, and
+  share classification in the pure Production Mining Session; raw TCP, NVS,
+  clocks, ESP device primitives, and campaign evidence effects remain in thin
+  boundary modules.
+- This completion is software evidence only. No owner-supplied pool or Wi-Fi
+  credential file was read, no external pool connection or hardware command
+  ran, and no parity claim was promoted. The only socket activity was the
+  isolated host loopback test. Detector-gated Ultra 205 observation, live-share,
+  and soak evidence remain the residual hardware validation.

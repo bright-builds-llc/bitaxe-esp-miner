@@ -31,6 +31,69 @@ fn parses_key_value_aliases_for_flash() {
 }
 
 #[test]
+fn parses_closed_mining_campaign_aliases() {
+    // Arrange
+    let args = [
+        "bitaxe-flash",
+        "mining-campaign",
+        "stage=live-share",
+        "profile=conservative",
+        "board=205",
+        "port=/dev/cu.usbmodem101",
+        "manifest=/tmp/package.json",
+        "wifi-credentials=/tmp/wifi.json",
+        "pool_credentials=/tmp/pool.json",
+        "evidence_dir=/tmp/attempt-001",
+        "duration_seconds=600",
+        "redact_evidence=true",
+    ];
+
+    // Act
+    let cli = parse_cli(args).expect("campaign cli");
+
+    // Assert
+    let CliCommand::MiningCampaign(command) = cli.command else {
+        panic!("expected mining-campaign command");
+    };
+    assert_eq!(command.stage, MiningCampaignStage::LiveShare);
+    assert_eq!(command.profile, Some(MiningCampaignProfile::Conservative));
+    assert_eq!(command.duration_seconds, 600);
+    assert_eq!(
+        command.pool_credentials.as_deref(),
+        Some(Utf8Path::new("/tmp/pool.json"))
+    );
+    assert!(command.redact_evidence);
+}
+
+#[test]
+fn mining_campaign_parser_rejects_open_stage_or_profile_values() {
+    // Arrange
+    let args = [
+        "bitaxe-flash",
+        "mining-campaign",
+        "--stage",
+        "unbounded",
+        "--profile",
+        "overclocked",
+        "--wifi-credentials",
+        "/tmp/wifi.json",
+        "--evidence-dir",
+        "/tmp/attempt-001",
+        "--duration-seconds",
+        "600",
+        "--redact-evidence",
+    ];
+
+    // Act
+    let error = parse_cli(args).expect_err("open campaign values must be rejected");
+
+    // Assert
+    let rendered = format!("{error:#}");
+    assert!(rendered.contains("invalid value"));
+    assert!(!rendered.contains("overclocked"));
+}
+
+#[test]
 fn phase36_flash_argument_shape_uses_supported_redacted_evidence() {
     // Arrange
     let args = [

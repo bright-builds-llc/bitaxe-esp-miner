@@ -20,6 +20,12 @@ static CURRENT_SETTINGS_SNAPSHOT: OnceLock<crate::settings_snapshot_store::Confi
     OnceLock::new();
 static SETTINGS_TRANSACTION_LOCK: Mutex<()> = Mutex::new(());
 
+mod production;
+
+pub(crate) use production::{
+    load_production_campaign_admission, read_production_pool_set, MiningCampaignStage,
+};
+
 /// Firmware coordinator that opens writable NVS only after exact authority.
 pub struct FirmwareSettingsAdapter {
     partition: EspDefaultNvsPartition,

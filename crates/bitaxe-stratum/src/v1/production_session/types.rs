@@ -85,6 +85,43 @@ impl ProductionPoolSet {
     }
 }
 
+/// Opaque identity for one pool transport worker lifetime.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProductionTransportEpoch(u64);
+
+impl ProductionTransportEpoch {
+    #[must_use]
+    pub const fn initial() -> Self {
+        Self(0)
+    }
+
+    #[must_use]
+    pub const fn next(self) -> Self {
+        Self(self.0 + 1)
+    }
+
+    #[must_use]
+    pub const fn raw(self) -> u64 {
+        self.0
+    }
+}
+
+/// Closed transport-worker failure categories safe to cross into the core.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProductionTransportFailure {
+    Connect,
+    Read,
+    Write,
+}
+
+/// Closed ASIC-worker failure categories safe to cross into the core.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProductionAsicFailure {
+    VersionMask,
+    Dispatch,
+    Poll,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProductionSessionSnapshot {
     pub phase: ProductionSessionPhase,
@@ -106,19 +143,24 @@ pub enum ProductionSessionEvent {
     PoolConfigurationLoaded(Option<Box<ProductionPoolSet>>),
     TransportConnected {
         pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
         now_ms: u64,
     },
-    TransportConnectFailed {
+    TransportFailed {
         pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
+        failure: ProductionTransportFailure,
         now_ms: u64,
     },
     TransportBytes {
         pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
         bytes: Vec<u8>,
         now_ms: u64,
     },
     TransportClosed {
         pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
         now_ms: u64,
     },
     AsicResult {
@@ -126,6 +168,12 @@ pub enum ProductionSessionEvent {
         now_ms: u64,
     },
     AsicPollTimedOut {
+        generation: PoolSessionGeneration,
+        now_ms: u64,
+    },
+    AsicInteractionFailed {
+        generation: PoolSessionGeneration,
+        failure: ProductionAsicFailure,
         now_ms: u64,
     },
     HardwarePrepared {
@@ -153,11 +201,13 @@ impl fmt::Debug for ProductionSessionEvent {
         match self {
             Self::TransportBytes {
                 pool,
+                transport_epoch,
                 bytes,
                 now_ms,
             } => formatter
                 .debug_struct("ProductionSessionEvent::TransportBytes")
                 .field("pool", pool)
+                .field("transport_epoch", transport_epoch)
                 .field("byte_count", &bytes.len())
                 .field("now_ms", now_ms)
                 .finish(),
@@ -173,12 +223,13 @@ impl fmt::Debug for ProductionSessionEvent {
             other => formatter.write_str(match other {
                 Self::Wake { .. } => "ProductionSessionEvent::Wake",
                 Self::TransportConnected { .. } => "ProductionSessionEvent::TransportConnected",
-                Self::TransportConnectFailed { .. } => {
-                    "ProductionSessionEvent::TransportConnectFailed"
-                }
+                Self::TransportFailed { .. } => "ProductionSessionEvent::TransportFailed",
                 Self::TransportClosed { .. } => "ProductionSessionEvent::TransportClosed",
                 Self::AsicResult { .. } => "ProductionSessionEvent::AsicResult(redacted)",
                 Self::AsicPollTimedOut { .. } => "ProductionSessionEvent::AsicPollTimedOut",
+                Self::AsicInteractionFailed { .. } => {
+                    "ProductionSessionEvent::AsicInteractionFailed"
+                }
                 Self::HardwarePrepared { .. } => "ProductionSessionEvent::HardwarePrepared",
                 Self::HardwarePreparationFailed { .. } => {
                     "ProductionSessionEvent::HardwarePreparationFailed"
@@ -200,12 +251,20 @@ pub enum ProductionSessionEffect {
         profile: MiningHardwareProfile,
     },
     ReadPoolConfiguration,
-    ConnectPool(ProductionPool),
+    ConnectPool {
+        pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
+        endpoint: ProductionPoolEndpoint,
+    },
     WritePoolLine {
         pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
         line: String,
     },
-    ApplyVersionMask(VersionMask),
+    ApplyVersionMask {
+        generation: PoolSessionGeneration,
+        mask: VersionMask,
+    },
     DispatchAsic {
         generation: PoolSessionGeneration,
         valid_jobs: Bm1366ValidJobIds,
@@ -219,7 +278,10 @@ pub enum ProductionSessionEffect {
     BlockSubmissions,
     InvalidateWorkAndSubmissions,
     StopAsicInteraction,
-    ClosePoolConnection(ProductionPool),
+    ClosePoolConnection {
+        pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
+    },
     SafeStopHardware {
         lease_id: MiningCampaignLeaseId,
     },
@@ -229,9 +291,14 @@ pub enum ProductionSessionEffect {
 impl fmt::Debug for ProductionSessionEffect {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::WritePoolLine { pool, .. } => formatter
+            Self::WritePoolLine {
+                pool,
+                transport_epoch,
+                ..
+            } => formatter
                 .debug_struct("ProductionSessionEffect::WritePoolLine")
                 .field("pool", pool)
+                .field("transport_epoch", transport_epoch)
                 .field("line", &"redacted")
                 .finish(),
             Self::DispatchAsic { .. } => {
@@ -246,13 +313,21 @@ impl fmt::Debug for ProductionSessionEffect {
                 Self::ReadPoolConfiguration => {
                     formatter.write_str("ProductionSessionEffect::ReadPoolConfiguration")
                 }
-                Self::ConnectPool(pool) => formatter
-                    .debug_tuple("ProductionSessionEffect::ConnectPool")
-                    .field(pool)
+                Self::ConnectPool {
+                    pool,
+                    transport_epoch,
+                    ..
+                } => formatter
+                    .debug_struct("ProductionSessionEffect::ConnectPool")
+                    .field("pool", pool)
+                    .field("transport_epoch", transport_epoch)
+                    .field("endpoint", &"redacted")
                     .finish(),
-                Self::ApplyVersionMask(_) => {
-                    formatter.write_str("ProductionSessionEffect::ApplyVersionMask(redacted)")
-                }
+                Self::ApplyVersionMask { generation, .. } => formatter
+                    .debug_struct("ProductionSessionEffect::ApplyVersionMask")
+                    .field("generation", generation)
+                    .field("mask", &"redacted")
+                    .finish(),
                 Self::PollAsic {
                     generation,
                     slice_ms,
@@ -272,9 +347,13 @@ impl fmt::Debug for ProductionSessionEffect {
                 Self::StopAsicInteraction => {
                     formatter.write_str("ProductionSessionEffect::StopAsicInteraction")
                 }
-                Self::ClosePoolConnection(pool) => formatter
-                    .debug_tuple("ProductionSessionEffect::ClosePoolConnection")
-                    .field(pool)
+                Self::ClosePoolConnection {
+                    pool,
+                    transport_epoch,
+                } => formatter
+                    .debug_struct("ProductionSessionEffect::ClosePoolConnection")
+                    .field("pool", pool)
+                    .field("transport_epoch", transport_epoch)
                     .finish(),
                 Self::SafeStopHardware { lease_id } => formatter
                     .debug_struct("ProductionSessionEffect::SafeStopHardware")

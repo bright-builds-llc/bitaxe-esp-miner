@@ -12,6 +12,7 @@ include!("tests/fake_environment.rs");
 
 mod admission;
 mod admission_layout;
+mod campaign;
 mod capture;
 mod cli;
 #[path = "tests/evidence.rs"]

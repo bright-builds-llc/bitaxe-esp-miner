@@ -41,6 +41,10 @@ rust_binary(
     name = "flash",
     srcs = [
         "src/cli.rs",
+        "src/campaign.rs",
+        "src/campaign/admission.rs",
+        "src/campaign/evidence.rs",
+        "src/campaign/markers.rs",
         "src/commands.rs",
         "src/commands/finalize.rs",
         "src/commands/flash.rs",
@@ -66,6 +70,7 @@ rust_binary(
         "src/tests/admission.rs",
         "src/tests/admission_layout.rs",
         "src/tests/capture.rs",
+        "src/tests/campaign.rs",
         "src/tests/cli.rs",
         "src/tests/evidence.rs",
         "src/tests/fake_environment.rs",

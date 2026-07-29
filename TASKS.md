@@ -26,48 +26,6 @@ new work.
 
 ## Active
 
-### task-production-mining-live-io | 2026-07-28 | Qualify live Stratum and bounded campaign I/O
-
-- [ ] Change the firmware owner inbox to accept category wakeups and typed
-      transport/ASIC events while leaving all lifecycle policy inside the
-      Production Mining Session.
-- [ ] Implement bounded per-pool TCP workers behind the existing
-      primary/fallback interface so the mining owner never blocks on socket
-      connect, read, or write.
-- [ ] Add a dedicated lazy NVS pool reader with redacted debug behavior and no
-      secret-bearing logs, reads, or projections before the session requests
-      pool configuration.
-- [ ] Carry pool generation and valid job IDs through ASIC dispatch and poll
-      effects so invalidated or stale results cannot produce a submission.
-- [ ] Replace the source guard's hard-coded `actuation_qualified: false`
-      assertion with guards proving raw sockets, secrets, clocks, and device
-      primitives remain outside the deep session owner.
-- [ ] Add the repo-owned `just mining-campaign` command with typed
-      `observation`, `live-share`, and `soak` stages by extending existing
-      package admission, device-session supervision, NVS injection, redaction,
-      and evidence sealing.
-- [ ] Make the command persist `mineonboot=false` before activation and install
-      a one-shot device-local lease: `live-share` stops after the first
-      accepted/rejected submit response or 600 seconds, and `soak` stops after
-      600 active seconds.
-- [ ] Add real-process loopback transport tests, deterministic accepted and
-      rejected session tests, partial-frame and recovery tests, credential/NVS
-      redaction tests, lease-timeout tests, and reboot-remains-paused tests.
-
-Dependencies: Complete
-`task-production-mining-hardware-lifecycle` and
-`task-ultra205-mining-actuation-adapter`.
-
-Verification: Pending. Run the required ordered Rust checks, focused
-production-session and real-process transport tests,
-`just verify-production-session`, `just test`, `just package`, Bright Builds
-checks, parity, reference-integrity, and redaction verification, source scans,
-`git diff --check`, and final diff review.
-
-Completion review: Pending. Host loopback tests are software evidence only.
-This task does not connect to an owner-supplied pool, use hardware, or promote
-parity.
-
 ### task-ultra205-mining-observation-baseline | 2026-07-28 | Re-establish a known-safe mining observation baseline
 
 - [ ] Build and admit the exact current-HEAD package after its software

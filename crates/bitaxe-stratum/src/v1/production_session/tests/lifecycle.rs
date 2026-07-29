@@ -42,6 +42,30 @@ fn every_readiness_blocker_prevents_secret_network_and_asic_effects() {
 }
 
 #[test]
+fn transport_effect_debug_redacts_endpoint_credentials_and_lines() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    adapter.drive(wake(ready(), 0));
+    adapter.connect(ProductionPool::Primary, 1);
+
+    // Act
+    authorize_pool(&mut adapter, ProductionPool::Primary, 2);
+    let rendered = format!("{:?}", adapter.effects);
+
+    // Assert
+    for secret in [
+        "primary.invalid",
+        "synthetic-user",
+        "synthetic-secret",
+        "mining.authorize",
+    ] {
+        assert!(!rendered.contains(secret));
+    }
+    assert!(rendered.contains("transport_epoch"));
+    assert!(rendered.contains("redacted"));
+}
+
+#[test]
 fn admitted_lifecycle_frames_protocol_dispatches_and_accepts_share() {
     // Arrange
     let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
@@ -218,7 +242,10 @@ fn malformed_invalid_utf8_and_oversized_input_recover_without_acceptance() {
         assert_eq!(adapter.session.snapshot().mining.counters.accepted, 0);
         assert!(adapter.effects.iter().any(|effect| matches!(
             effect,
-            ProductionSessionEffect::ClosePoolConnection(ProductionPool::Primary)
+            ProductionSessionEffect::ClosePoolConnection {
+                pool: ProductionPool::Primary,
+                ..
+            }
         )));
     }
 }
@@ -372,6 +399,93 @@ fn first_submit_response_consumes_lease_and_safe_stops() {
         .effects
         .iter()
         .any(|effect| matches!(effect, ProductionSessionEffect::SafeStopHardware { .. })));
+}
+
+#[test]
+fn accepted_first_submit_response_consumes_lease_and_safe_stops() {
+    // Arrange
+    let mut readiness = ready();
+    readiness.maybe_campaign_lease = Some(first_submit_lease(8, 600_000));
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    establish_active_with_readiness(&mut adapter, readiness);
+    let observation = dispatched_observation(&adapter);
+    adapter.drive(ProductionSessionEvent::AsicResult {
+        observation,
+        now_ms: 4,
+    });
+    adapter.effects.clear();
+
+    // Act
+    adapter.bytes(
+        ProductionPool::Primary,
+        b"{\"id\":4,\"result\":true,\"error\":null}\n",
+        5,
+    );
+
+    // Assert
+    assert_eq!(
+        adapter.session.snapshot().campaign_state,
+        MiningCampaignState::Consumed
+    );
+    assert_eq!(
+        adapter.session.snapshot().hardware_state,
+        MiningHardwareState::Stopped
+    );
+    assert_eq!(adapter.session.snapshot().mining.counters.accepted, 1);
+    assert!(adapter
+        .effects
+        .iter()
+        .any(|effect| matches!(effect, ProductionSessionEffect::SafeStopHardware { .. })));
+}
+
+#[test]
+fn first_submit_timeout_expires_at_the_exact_prepared_deadline() {
+    // Arrange
+    let mut readiness = ready();
+    readiness.maybe_campaign_lease = Some(first_submit_lease(9, 10));
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    adapter.drive(wake(readiness, 0));
+
+    // Act
+    adapter.drive(wake(readiness, 9));
+    let before_deadline = adapter.session.snapshot().campaign_state;
+    adapter.drive(wake(readiness, 10));
+
+    // Assert
+    assert_eq!(before_deadline, MiningCampaignState::Armed);
+    assert_eq!(
+        adapter.session.snapshot().campaign_state,
+        MiningCampaignState::Consumed
+    );
+    assert_eq!(
+        adapter.session.snapshot().hardware_state,
+        MiningHardwareState::Stopped
+    );
+}
+
+#[test]
+fn consumed_lease_cannot_rearm_but_a_higher_lease_can() {
+    // Arrange
+    let mut readiness = ready();
+    readiness.maybe_campaign_lease = Some(first_submit_lease(10, 1));
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    adapter.drive(wake(readiness, 0));
+    adapter.drive(wake(readiness, 1));
+    adapter.effects.clear();
+
+    // Act
+    adapter.drive(wake(readiness, 2));
+    let effects_after_replay = adapter.effects.len();
+    readiness.maybe_campaign_lease = Some(first_submit_lease(11, 10));
+    adapter.drive(wake(readiness, 3));
+
+    // Assert
+    assert_eq!(effects_after_replay, 0);
+    assert!(adapter.effects.iter().any(|effect| matches!(
+        effect,
+        ProductionSessionEffect::PrepareHardware { lease_id, .. }
+            if lease_id.raw() == 11
+    )));
 }
 
 #[test]

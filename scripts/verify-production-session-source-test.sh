@@ -39,17 +39,18 @@ assert_guard_fails_with() {
 	fi
 }
 
-assert_clock_guard_fails() {
-	local source="$1"
+assert_engine_guard_fails_with() {
+	local expected_message="$1"
+	local source="$2"
 	local output
 
-	if output="$("$guard_script" --verify-engine-clock-contract "$source" 2>&1)"; then
-		fail "real-clock engine source unexpectedly passed"
+	if output="$("$guard_script" --verify-deep-engine-contract "$source" 2>&1)"; then
+		fail "mutated deep engine source unexpectedly passed"
 	fi
 
-	if [[ "$output" != *"reusable engine owns a real clock"* ]]; then
+	if [[ "$output" != *"$expected_message"* ]]; then
 		printf 'Actual output:\n%s\n' "$output" >&2
-		fail "real-clock failure category was not preserved"
+		fail "deep engine boundary failure category was not preserved"
 	fi
 }
 
@@ -86,12 +87,12 @@ test_interpreter_seam_drift_fails() {
 	# Arrange
 	local case_root
 	case_root="$(copy_canonical_sources interpreter-seam)"
-	sed 's/adapter\.maybe_execute(effect)/adapter.execute(effect)/' \
+	sed 's/adapter\.maybe_execute(effect, now_ms)/adapter.execute(effect, now_ms)/' \
 		"${case_root}/owner.rs" >"${case_root}/mutated-owner.rs"
 
 	# Act and Assert
 	assert_guard_fails_with \
-		"owner contract missing: adapter.maybe_execute(effect)" \
+		"owner contract missing: adapter.maybe_execute(effect, now_ms)" \
 		"${case_root}/mutated-owner.rs" \
 		"${case_root}/deterministic.rs"
 }
@@ -109,7 +110,7 @@ test_adapter_count_drift_fails() {
 		"${case_root}/deterministic.rs"
 }
 
-test_forbidden_io_drift_fails() {
+test_raw_socket_drift_fails() {
 	# Arrange
 	local case_root
 	case_root="$(copy_canonical_sources forbidden-io)"
@@ -117,7 +118,33 @@ test_forbidden_io_drift_fails() {
 
 	# Act and Assert
 	assert_guard_fails_with \
-		"ordinary adapter contains external effect path" \
+		"production owner contains raw socket I/O" \
+		"${case_root}/owner.rs" \
+		"${case_root}/deterministic.rs"
+}
+
+test_raw_secret_drift_fails() {
+	# Arrange
+	local case_root
+	case_root="$(copy_canonical_sources forbidden-secret)"
+	printf '\nstruct EspNvs { poolPassword: String }\n' >>"${case_root}/owner.rs"
+
+	# Act and Assert
+	assert_guard_fails_with \
+		"production owner contains raw pool secrets or NVS access" \
+		"${case_root}/owner.rs" \
+		"${case_root}/deterministic.rs"
+}
+
+test_raw_device_primitive_drift_fails() {
+	# Arrange
+	local case_root
+	case_root="$(copy_canonical_sources forbidden-device)"
+	printf '\nstruct ProductionAsicExecutor;\n' >>"${case_root}/owner.rs"
+
+	# Act and Assert
+	assert_guard_fails_with \
+		"production owner contains raw device primitives" \
 		"${case_root}/owner.rs" \
 		"${case_root}/deterministic.rs"
 }
@@ -129,10 +156,10 @@ test_engine_clock_contract_passes_for_caller_supplied_time() {
 
 	# Act
 	local output
-	output="$("$guard_script" --verify-engine-clock-contract "$source")"
+	output="$("$guard_script" --verify-deep-engine-contract "$source")"
 
 	# Assert
-	[[ "$output" == "production_session_engine_clock_contract=passed" ]] ||
+	[[ "$output" == "production_session_deep_engine_contract=passed" ]] ||
 		fail "caller-supplied engine clock contract did not pass"
 }
 
@@ -142,14 +169,36 @@ test_engine_clock_contract_rejects_real_clock_ownership() {
 	printf 'fn now() { let _now = std::time::Instant::now(); }\n' >"$source"
 
 	# Act and Assert
-	assert_clock_guard_fails "$source"
+	assert_engine_guard_fails_with "reusable engine owns a real clock" "$source"
+}
+
+test_engine_contract_rejects_raw_transport_or_secrets() {
+	# Arrange
+	local source="${temp_root}/raw-transport.rs"
+	printf 'use std::net::TcpStream;\nstruct EspNvs;\n' >"$source"
+
+	# Act and Assert
+	assert_engine_guard_fails_with "reusable engine owns raw transport or secret I/O" "$source"
+}
+
+test_engine_contract_rejects_device_primitives() {
+	# Arrange
+	local source="${temp_root}/device-primitive.rs"
+	printf 'struct ProductionAsicExecutor;\n' >"$source"
+
+	# Act and Assert
+	assert_engine_guard_fails_with "reusable engine owns device primitives" "$source"
 }
 
 test_current_adapter_contract_passes
 test_interpreter_seam_drift_fails
 test_adapter_count_drift_fails
-test_forbidden_io_drift_fails
+test_raw_socket_drift_fails
+test_raw_secret_drift_fails
+test_raw_device_primitive_drift_fails
 test_engine_clock_contract_passes_for_caller_supplied_time
 test_engine_clock_contract_rejects_real_clock_ownership
+test_engine_contract_rejects_raw_transport_or_secrets
+test_engine_contract_rejects_device_primitives
 
 printf 'production_session_source_guard_tests=passed\n'

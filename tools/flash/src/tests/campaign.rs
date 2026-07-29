@@ -1,0 +1,475 @@
+use super::*;
+
+fn campaign_command(
+    dir: &TempDir,
+    stage: MiningCampaignStage,
+    profile: Option<MiningCampaignProfile>,
+) -> MiningCampaignCommand {
+    let root = dir_path(dir);
+    set_private_directory_mode(&root).expect("private test parent");
+    let wifi_credentials = write_wifi_credentials(dir, "CampaignNet", "wifi-private");
+    let pool_credentials =
+        (stage != MiningCampaignStage::Observation).then(|| write_pool_credentials(dir));
+    MiningCampaignCommand {
+        stage,
+        profile,
+        board: BoardId::Ultra205,
+        port: Some("/dev/cu.usbmodem101".to_owned()),
+        manifest: Some(write_manifest_v3(dir, DEFAULT_ELF_NAME)),
+        wifi_credentials,
+        pool_credentials,
+        evidence_dir: root.join("attempt-001"),
+        duration_seconds: match stage {
+            MiningCampaignStage::Observation => 360,
+            MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => 600,
+        },
+        redact_evidence: true,
+    }
+}
+
+fn write_pool_credentials(dir: &TempDir) -> Utf8PathBuf {
+    let path = dir_path(dir).join("pool.json");
+    std::fs::write(
+        path.as_std_path(),
+        serde_json::json!({
+            "poolURL": "pool.private.test",
+            "poolPort": 3333,
+            "poolUser": "owner.worker",
+            "poolPassword": "pool-private",
+        })
+        .to_string(),
+    )
+    .expect("write pool credentials");
+    path
+}
+
+struct CampaignMarkerFixture<'a> {
+    stage: &'a str,
+    lease_id: serde_json::Value,
+    state: &'a str,
+    profile: &'a str,
+    active_ms: u64,
+    submit_outcome: &'a str,
+    safety: &'a str,
+    pool_config: &'a str,
+    actuation: &'a str,
+    safe_stop: &'a str,
+}
+
+fn campaign_marker(fixture: CampaignMarkerFixture<'_>) -> String {
+    format!(
+        "mining_campaign_status={}",
+        serde_json::json!({
+            "schema": "mining-campaign-status-v1",
+            "stage": fixture.stage,
+            "lease_id": fixture.lease_id,
+            "campaign_state": fixture.state,
+            "profile": fixture.profile,
+            "active_ms": fixture.active_ms,
+            "submit_outcome": fixture.submit_outcome,
+            "safety": fixture.safety,
+            "fresh_observation_count": 6,
+            "pool_config": fixture.pool_config,
+            "actuation": fixture.actuation,
+            "mineonboot": false,
+            "safe_stop": fixture.safe_stop,
+        })
+    )
+}
+
+fn campaign_log(markers: &[String]) -> String {
+    format!(
+        "{}\n{}\nraw poolURL=https://pool.private.test poolUser=owner.worker poolPassword=pool-private\n",
+        runtime_attestation_log(),
+        markers.join("\n")
+    )
+}
+
+fn observation_marker(safety: &str) -> String {
+    campaign_marker(CampaignMarkerFixture {
+        stage: "observation",
+        lease_id: serde_json::Value::Null,
+        state: "unavailable",
+        profile: "none",
+        active_ms: 0,
+        submit_outcome: "none",
+        safety,
+        pool_config: "not_read",
+        actuation: "none",
+        safe_stop: "not_required",
+    })
+}
+
+#[test]
+fn valid_observation_marker_does_not_end_the_required_timeout_early() {
+    // Arrange
+    let marker = format!("{}\n", observation_marker("fresh"));
+    let admission = CampaignAdmission {
+        stage: MiningCampaignStage::Observation,
+        maybe_profile: None,
+        duration_seconds: 360,
+        maybe_lease_id: None,
+    };
+
+    // Act
+    let should_stop = campaign_serial_should_stop(marker.as_bytes(), admission);
+
+    // Assert
+    assert!(!should_stop);
+}
+
+#[test]
+fn live_share_terminal_marker_requests_early_stop_after_safe_shutdown() {
+    // Arrange
+    let marker = format!("{}\n", live_terminal("accepted"));
+    let admission = CampaignAdmission {
+        stage: MiningCampaignStage::LiveShare,
+        maybe_profile: Some(MiningCampaignProfile::Conservative),
+        duration_seconds: 600,
+        maybe_lease_id: Some(42),
+    };
+
+    // Act
+    let should_stop = campaign_serial_should_stop(marker.as_bytes(), admission);
+
+    // Assert
+    assert!(should_stop);
+}
+
+fn live_terminal(submit_outcome: &str) -> String {
+    campaign_marker(CampaignMarkerFixture {
+        stage: "live-share",
+        lease_id: serde_json::Value::Null,
+        state: "consumed",
+        profile: "conservative",
+        active_ms: 2_000,
+        submit_outcome,
+        safety: "fresh",
+        pool_config: "local_owner_supplied",
+        actuation: "safe_stopped",
+        safe_stop: "confirmed",
+    })
+}
+
+fn read_campaign_result(command: &MiningCampaignCommand) -> serde_json::Value {
+    let result = command.evidence_dir.join("campaign-result.json");
+    serde_json::from_str(&std::fs::read_to_string(result.as_std_path()).expect("campaign result"))
+        .expect("campaign result JSON")
+}
+
+#[test]
+fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evidence() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(&dir, MiningCampaignStage::Observation, None);
+    let environment = FakeFlashEnvironment::default()
+        .with_log_contents(&campaign_log(&[observation_marker("fresh")]));
+
+    // Act
+    run_mining_campaign(&command, &environment).expect("observation campaign");
+
+    // Assert
+    assert_eq!(
+        environment.campaign_observations(),
+        vec![(MiningCampaignStage::Observation, 360)]
+    );
+    assert_eq!(environment.cleanup_calls(), 1);
+    assert_eq!(environment.executed_commands().len(), 3);
+    let csv = environment
+        .written_files()
+        .iter()
+        .find(|(path, _)| path.file_name() == Some("campaign-nvs.csv"))
+        .map(|(_, contents)| contents.clone())
+        .expect("campaign CSV");
+    assert!(csv.contains("mineonboot,data,u16,0"));
+    assert!(csv.contains("campstage,data,string,observation"));
+    for forbidden in [
+        "camplease",
+        "campprofile",
+        "campdurms",
+        "stratumurl",
+        "stratumuser",
+        "stratumpass",
+    ] {
+        assert!(!csv.contains(forbidden), "unexpected key {forbidden}");
+    }
+    let result = read_campaign_result(&command);
+    assert_eq!(result["status"], "accepted");
+    assert_eq!(result["terminal_category"], "observation_complete");
+    assert_eq!(result["runtime_identity"], "trusted");
+    assert_eq!(result["usb_cleanup"], "ready");
+    assert_eq!(result["parity_promotion"], false);
+    assert_private_campaign_artifacts(&command.evidence_dir);
+}
+
+#[test]
+fn observation_rejects_pool_input_before_package_or_credential_reads() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let mut command = campaign_command(&dir, MiningCampaignStage::Observation, None);
+    command.pool_credentials = Some(write_pool_credentials(&dir));
+    let environment = FakeFlashEnvironment::default();
+
+    // Act
+    let error = run_mining_campaign(&command, &environment)
+        .expect_err("observation pool input must fail closed");
+
+    // Assert
+    assert!(format!("{error:#}").contains("category=admission_failed"));
+    assert!(environment.read_string_paths().is_empty());
+    assert!(environment.executed_commands().is_empty());
+    assert_eq!(
+        read_campaign_result(&command)["terminal_category"],
+        "admission_failed"
+    );
+}
+
+#[test]
+fn existing_attempt_child_is_rejected_before_reads_or_device_effects() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(&dir, MiningCampaignStage::Observation, None);
+    std::fs::create_dir(command.evidence_dir.as_std_path()).expect("preexisting attempt");
+    let environment = FakeFlashEnvironment::default();
+
+    // Act
+    let error =
+        run_mining_campaign(&command, &environment).expect_err("existing attempt must fail closed");
+
+    // Assert
+    assert!(format!("{error:#}").contains("category=admission_failed"));
+    assert!(environment.read_string_paths().is_empty());
+    assert!(environment.executed_commands().is_empty());
+    assert!(std::fs::read_dir(command.evidence_dir.as_std_path())
+        .expect("attempt directory")
+        .next()
+        .is_none());
+}
+
+#[test]
+fn live_share_accepts_repeated_markers_and_cleared_terminal_lease() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(
+        &dir,
+        MiningCampaignStage::LiveShare,
+        Some(MiningCampaignProfile::Conservative),
+    );
+    let active = campaign_marker(CampaignMarkerFixture {
+        stage: "live-share",
+        lease_id: serde_json::json!(42),
+        state: "active",
+        profile: "conservative",
+        active_ms: 1_000,
+        submit_outcome: "none",
+        safety: "fresh",
+        pool_config: "local_owner_supplied",
+        actuation: "qualified",
+        safe_stop: "pending",
+    });
+    let environment = FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[
+        active.clone(),
+        active,
+        live_terminal("accepted"),
+    ]));
+
+    // Act
+    run_mining_campaign(&command, &environment).expect("live-share campaign");
+
+    // Assert
+    let result = read_campaign_result(&command);
+    assert_eq!(result["terminal_category"], "submit_response_observed");
+    assert_eq!(result["submit_outcome"], "accepted");
+    assert_eq!(result["marker_count"], 3);
+    assert_eq!(result["safe_stop"], "confirmed");
+    let csv = environment
+        .written_files()
+        .iter()
+        .find(|(path, _)| path.file_name() == Some("campaign-nvs.csv"))
+        .map(|(_, contents)| contents.clone())
+        .expect("campaign CSV");
+    for expected in [
+        "mineonboot,data,u16,0",
+        "campstage,data,string,live-share",
+        "campprofile,data,string,conservative",
+        "camplease,data,u64,42",
+        "campdurms,data,u64,600000",
+        "stratumprot,data,string,SV1",
+        "stratumtls,data,u16,0",
+    ] {
+        assert!(csv.contains(expected), "missing row {expected}");
+    }
+}
+
+#[test]
+fn live_share_records_rejected_submit_as_a_completed_campaign() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(
+        &dir,
+        MiningCampaignStage::LiveShare,
+        Some(MiningCampaignProfile::Conservative),
+    );
+    let environment = FakeFlashEnvironment::default()
+        .with_log_contents(&campaign_log(&[live_terminal("rejected")]));
+
+    // Act
+    run_mining_campaign(&command, &environment).expect("rejected submit is terminal evidence");
+
+    // Assert
+    let result = read_campaign_result(&command);
+    assert_eq!(result["terminal_category"], "submit_response_observed");
+    assert_eq!(result["submit_outcome"], "rejected");
+}
+
+#[test]
+fn soak_requires_full_active_duration() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(
+        &dir,
+        MiningCampaignStage::Soak,
+        Some(MiningCampaignProfile::UpstreamDefault),
+    );
+    let short = campaign_marker(CampaignMarkerFixture {
+        stage: "soak",
+        lease_id: serde_json::Value::Null,
+        state: "consumed",
+        profile: "upstream-default",
+        active_ms: 599_999,
+        submit_outcome: "accepted",
+        safety: "fresh",
+        pool_config: "local_owner_supplied",
+        actuation: "safe_stopped",
+        safe_stop: "confirmed",
+    });
+    let environment = FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[short]));
+
+    // Act
+    let error =
+        run_mining_campaign(&command, &environment).expect_err("short soak must fail closed");
+
+    // Assert
+    assert!(format!("{error:#}").contains("category=soak_duration_short"));
+    assert_eq!(
+        read_campaign_result(&command)["terminal_category"],
+        "soak_duration_short"
+    );
+}
+
+#[test]
+fn earliest_safety_failure_survives_a_later_valid_terminal_marker() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(&dir, MiningCampaignStage::Observation, None);
+    let environment = FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[
+        observation_marker("stale"),
+        observation_marker("fresh"),
+    ]));
+
+    // Act
+    let error = run_mining_campaign(&command, &environment)
+        .expect_err("earliest safety failure must remain terminal");
+
+    // Assert
+    assert!(format!("{error:#}").contains("category=safety_stale"));
+    assert_eq!(
+        read_campaign_result(&command)["terminal_category"],
+        "safety_stale"
+    );
+}
+
+#[test]
+fn campaign_evidence_never_projects_raw_serial_or_credentials() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(&dir, MiningCampaignStage::Observation, None);
+    let environment = FakeFlashEnvironment::default()
+        .with_log_contents(&campaign_log(&[observation_marker("fresh")]));
+
+    // Act
+    run_mining_campaign(&command, &environment).expect("observation campaign");
+
+    // Assert
+    for name in [
+        "campaign-observations.private.json",
+        "campaign-result.json",
+        "campaign-result.sha256",
+    ] {
+        let contents = std::fs::read_to_string(command.evidence_dir.join(name).as_std_path())
+            .expect("evidence");
+        for forbidden in [
+            "pool.private.test",
+            "owner.worker",
+            "pool-private",
+            "wifi-private",
+            "/dev/cu",
+        ] {
+            assert!(!contents.contains(forbidden), "{name} leaked {forbidden}");
+        }
+    }
+    let result_bytes = std::fs::read(
+        command
+            .evidence_dir
+            .join("campaign-result.json")
+            .as_std_path(),
+    )
+    .expect("result bytes");
+    let seal = std::fs::read_to_string(
+        command
+            .evidence_dir
+            .join("campaign-result.sha256")
+            .as_std_path(),
+    )
+    .expect("seal");
+    assert_eq!(seal.trim(), sha256_bytes(&result_bytes));
+}
+
+#[test]
+fn cleanup_failure_replaces_success_but_not_an_earlier_campaign_failure() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(&dir, MiningCampaignStage::Observation, None);
+    let environment = FakeFlashEnvironment::default()
+        .with_log_contents(&campaign_log(&[observation_marker("stale")]))
+        .with_cleanup_failure();
+
+    // Act
+    let error = run_mining_campaign(&command, &environment)
+        .expect_err("campaign and cleanup failure must fail");
+
+    // Assert
+    assert!(format!("{error:#}").contains("category=safety_stale"));
+    let result = read_campaign_result(&command);
+    assert_eq!(result["terminal_category"], "safety_stale");
+    assert_eq!(result["usb_cleanup"], "not_proven");
+}
+
+fn assert_private_campaign_artifacts(root: &Utf8Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            std::fs::metadata(root.as_std_path())
+                .expect("evidence root")
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
+        for name in [
+            "campaign-observations.private.json",
+            "campaign-result.json",
+            "campaign-result.sha256",
+        ] {
+            assert_eq!(
+                std::fs::metadata(root.join(name).as_std_path())
+                    .expect("evidence file")
+                    .permissions()
+                    .mode()
+                    & 0o777,
+                0o600
+            );
+        }
+    }
+}
