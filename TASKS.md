@@ -28,7 +28,8 @@ new work.
 
 ### task-ultra205-mining-observation-baseline | 2026-07-28 | Re-establish a known-safe mining observation baseline
 
-Status: Blocked — `attempt-002` consumed; no retry authorized.
+Status: In progress — `attempt-003` authorized after a verified state-boundary
+fix.
 
 - [x] Reproduce the zero-marker `marker_invalid` boundary with non-UTF-8
       non-candidate bytes surrounding valid runtime attestations and campaign
@@ -39,6 +40,9 @@ Status: Blocked — `attempt-002` consumed; no retry authorized.
 - [x] Add sealed `mining-campaign-result-v2` and private
       `mining-campaign-serial-diagnostics-v1` evidence with bounded typed
       events, aggregate counts, and no raw serial or candidate content.
+- [x] Reproduce the `attempt-002` false-to-true boot-preference loss at the
+      pure reload boundary and make persistence load both upstream and
+      project-owned settings schemas.
 - [x] Pass every required software, package, parity, reference, and redaction
       gate for the parser and diagnostics change before committing it.
 - [x] Build and admit the exact current-HEAD package after its software
@@ -61,6 +65,7 @@ Hardware contract:
   1. `just detect-ultra205`
   2. `just package`
   3. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-002 duration-seconds=360 redact-evidence=true`
+  4. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-003 duration-seconds=360 redact-evidence=true`
 - Objective: establish a fresh current-architecture, exact-package,
   observe-only baseline on the single detected board 205 without reopening or
   retrying the terminal Phase 36 lineage.
@@ -99,11 +104,17 @@ Hardware contract:
   lease, and prove the admitted device accessible and holder-free. Success
   leaves the exact admitted package installed. Identity drift, device absence,
   a foreign holder, or unproved cleanup stops without physical intervention.
-- Retry bound: the user authorized exactly one new observation ordinal after a
-  deterministic regression-backed byte-safe parser fix is committed and
-  pushed. `attempt-002` is that ordinal. Any failure stops without another
-  retry. If observation completes, the user also authorized the existing
-  conservative live-share task to run once under its own contract.
+- Retry bound: the user authorized sequential hardware retries after changes
+  until the task completes. `attempt-003` is authorized only after a
+  deterministic regression proves and a clean committed/pushed fix repairs the
+  `mineonboot=false` state boundary exposed by `attempt-002`. Never run an
+  unchanged retry. After any later failure, diagnose its closed boundary,
+  verify one targeted fix or objective non-invasive boundary change, and amend
+  this contract with the exact next ordinal and command before hardware use.
+  A recurrence of the same authoritative boundary signature after its targeted
+  verified fix selects `stop_repeated_boundary`. Observation completion also
+  authorizes the existing conservative live-share task under its own
+  change-gated retry contract.
 - Accepted terminal outcomes: `complete`, `stop_repeated_boundary`,
   `stop_hardware_blocker`, `stop_authority_boundary`, or
   `stop_impossible_contract`. Preserve the earliest typed failure.
@@ -141,17 +152,32 @@ The host stop predicate also needed a follow-up regression-backed correction
 so observation contract failures retain the full diagnostic window; that
 software correction does not authorize another hardware ordinal.
 
-Completion review: Blocked after consuming the one explicitly authorized
-`attempt-002`; do not retry, archive, or claim this baseline complete. No pool
-credential was supplied to either observation attempt, and their sealed
-results make no mining, share, soak, or parity-promotion claim. The
+For `attempt-003`, the exact host regression
+`cargo test -p bitaxe-config persistence_reload_preserves_project_boot_preference`
+failed before the fix because stored `mineonboot=0` reloaded as no typed value,
+which made firmware callers use their fail-safe `true` fallback. The same test
+passes after `load_values` chains the deliberately separate project-owned
+schema, and all 48 `bitaxe-config` plus all 195 focused `bitaxe-flash` tests
+pass. The ordered Rust format, warnings-denied Clippy, all-target build, and
+all-feature test gates pass; `just verify-production-session`, all 82 Bazel
+tests, `just package`, Bright Builds checks, parity validation with no errors,
+reference cleanliness, and redaction verification also pass. Clean-HEAD
+commit, push, rebuild, and hardware verification remain pending.
+
+Completion review: Reopened by explicit user authorization for change-gated
+hardware retries until completion. Do not run `attempt-003` until the
+`mineonboot` state-boundary fix is regression-backed, fully verified, committed,
+pushed, and rebuilt from clean exact HEAD. No pool credential was supplied to
+either observation attempt, and their sealed results make no mining, share,
+soak, or parity-promotion claim. The
 `attempt-001` serial stop/parser path returned `marker_invalid` before accepting
 any marker. Because that transcript is intentionally ephemeral, its sealed
 result cannot distinguish a non-UTF-8 boot byte outside a marker from a
 malformed marker line. The parser ambiguity is now fixed and the new typed
 evidence isolates `attempt-002` at an independent device-state boundary.
-Resuming hardware requires explicit authorization for a new ordinal because
-the current retry contract is exhausted.
+The new authorization does not permit unchanged retries, direct UART or pin
+work, raw serial persistence, evidence promotion, or any expansion of the
+existing observation effects.
 
 ### task-ultra205-live-pool-share | 2026-07-28 | Prove one real BM1366 pool submission
 
@@ -222,10 +248,13 @@ Hardware contract:
   predeclared exact-baseline reflash is allowed only after same-device
   re-admission; otherwise stop.
 - Retry bound: one fresh attempt only. No timeout, no-share, rejected-share,
-  transport, ASIC, or safety result authorizes an unchanged retry. A later
-  ordinal requires a targeted regression-backed fix or authorized
-  non-invasive remediation with objective boundary-change proof; one post-fix
-  recurrence selects `stop_repeated_boundary`.
+  transport, ASIC, or safety result authorizes an unchanged retry. The user
+  authorized sequential retries after changes until this task completes. A
+  later ordinal requires a targeted regression-backed fix or authorized
+  non-invasive remediation with objective boundary-change proof plus a task
+  amendment naming its exact command and evidence root; one post-fix recurrence
+  of the same authoritative boundary signature selects
+  `stop_repeated_boundary`.
 - Accepted terminal outcomes: `complete` only when every success and safe-stop
   criterion passes; otherwise `stop_repeated_boundary`,
   `stop_hardware_blocker`, `stop_authority_boundary`, or

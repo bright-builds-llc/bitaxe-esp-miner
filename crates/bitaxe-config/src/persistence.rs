@@ -16,8 +16,8 @@ use thiserror::Error;
 use crate::nvs::StoredValueKind;
 use crate::{
     all_settings_schema, apply_settings_patch, load_setting_value, migration_decisions,
-    ConfigValidationError, Hostname, LoadedValue, MigrationDecision, NvsErase, NvsWrite,
-    SettingsPatch, SettingsUpdateDecision, StoredValue,
+    project_settings_schema, ConfigValidationError, Hostname, LoadedValue, MigrationDecision,
+    NvsErase, NvsWrite, SettingsPatch, SettingsUpdateDecision, StoredValue,
 };
 
 /// Independently loaded snapshot whose stored hostname is present, string-typed, and valid.
@@ -261,7 +261,10 @@ fn apply_migrations(snapshot: &mut NvsSnapshot) -> (Vec<NvsWrite>, Vec<NvsErase>
 fn load_values(snapshot: &NvsSnapshot) -> BTreeMap<String, LoadedValue> {
     let mut values = BTreeMap::new();
 
-    for schema in all_settings_schema() {
+    for schema in all_settings_schema()
+        .into_iter()
+        .chain(project_settings_schema())
+    {
         let key = schema.key.as_str().to_owned();
         let loaded = load_setting_value(&schema, snapshot.maybe_stored_value(&key));
         values.insert(key, loaded);
@@ -334,6 +337,21 @@ mod tests {
         );
         assert_eq!(
             decision.maybe_loaded_value("overheat_mode"),
+            Some(&LoadedValue::Bool(false))
+        );
+    }
+
+    #[test]
+    fn persistence_reload_preserves_project_boot_preference() {
+        // Arrange
+        let snapshot = NvsSnapshot::from_values([StoredValue::u16("mineonboot", 0)]);
+
+        // Act
+        let decision = reload_snapshot(&snapshot);
+
+        // Assert
+        assert_eq!(
+            decision.maybe_loaded_value("mineonboot"),
             Some(&LoadedValue::Bool(false))
         );
     }
