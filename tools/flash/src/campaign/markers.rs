@@ -58,6 +58,118 @@ pub(super) enum SafeStopMarker {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum CampaignFailurePhaseMarker {
+    None,
+    HardwarePreparation,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum CampaignFailureStepMarker {
+    None,
+    RequireFreshSafetyObservations,
+    #[serde(rename = "set_fan_duty_to_100_percent")]
+    SetFanDutyTo100Percent,
+    RequireFreshNonzeroFanRpm,
+    SetCoreVoltage,
+    #[serde(rename = "wait_for_core_voltage_stabilization_500_ms")]
+    WaitForCoreVoltageStabilization500Ms,
+    EnableAsic,
+    ResetAndDetectExactlyOneChip,
+    InitializeMiningReadyWithFrequencyRamp,
+    RetainProductionUart,
+    StopDispatch,
+    ReduceFrequencyAndResetNonce,
+    HoldResetLow,
+    DisableCoreVoltage,
+    DisableAsic,
+    #[serde(rename = "wait_for_fresh_temperature_at_or_below_45_c")]
+    WaitForFreshTemperatureAtOrBelow45C,
+    #[serde(rename = "set_fan_duty_to_30_percent")]
+    SetFanDutyTo30Percent,
+}
+
+impl CampaignFailureStepMarker {
+    fn is_preparation(self) -> bool {
+        matches!(
+            self,
+            Self::RequireFreshSafetyObservations
+                | Self::SetFanDutyTo100Percent
+                | Self::RequireFreshNonzeroFanRpm
+                | Self::SetCoreVoltage
+                | Self::WaitForCoreVoltageStabilization500Ms
+                | Self::EnableAsic
+                | Self::ResetAndDetectExactlyOneChip
+                | Self::InitializeMiningReadyWithFrequencyRamp
+                | Self::RetainProductionUart
+        )
+    }
+
+    fn is_safe_shutdown(self) -> bool {
+        matches!(
+            self,
+            Self::StopDispatch
+                | Self::ReduceFrequencyAndResetNonce
+                | Self::HoldResetLow
+                | Self::DisableCoreVoltage
+                | Self::DisableAsic
+                | Self::SetFanDutyTo100Percent
+                | Self::WaitForFreshTemperatureAtOrBelow45C
+                | Self::SetFanDutyTo30Percent
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum CampaignFailureDetailMarker {
+    None,
+    SafetyObservationsUnavailable,
+    SafetyOwnerUnavailable,
+    SafetyQueueFull,
+    SafetyReplyTimedOut,
+    SafetyHardwareWriteFailed,
+    FanRpmProofTimedOut,
+    UnsupportedProfile,
+    AsicActuationFailed,
+    AsicPlanInvalid,
+    CoolingProofTimedOut,
+    CoolingProofRequired,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct CampaignFailureMarker {
+    pub(super) phase: CampaignFailurePhaseMarker,
+    pub(super) step: CampaignFailureStepMarker,
+    pub(super) detail: CampaignFailureDetailMarker,
+    pub(super) rollback_step: CampaignFailureStepMarker,
+    pub(super) rollback_detail: CampaignFailureDetailMarker,
+}
+
+impl CampaignFailureMarker {
+    pub(super) fn is_valid(self) -> bool {
+        match self.phase {
+            CampaignFailurePhaseMarker::None => {
+                self.step == CampaignFailureStepMarker::None
+                    && self.detail == CampaignFailureDetailMarker::None
+                    && self.rollback_step == CampaignFailureStepMarker::None
+                    && self.rollback_detail == CampaignFailureDetailMarker::None
+            }
+            CampaignFailurePhaseMarker::HardwarePreparation => {
+                self.step.is_preparation()
+                    && self.detail != CampaignFailureDetailMarker::None
+                    && ((self.rollback_step == CampaignFailureStepMarker::None
+                        && self.rollback_detail == CampaignFailureDetailMarker::None)
+                        || (self.rollback_step.is_safe_shutdown()
+                            && self.rollback_detail != CampaignFailureDetailMarker::None))
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct ObservationFreshnessMarker {
     pub(super) power_watts: bool,
@@ -133,6 +245,7 @@ pub(super) struct CampaignStatusMarker {
     pub(super) actuation: ActuationMarker,
     pub(super) mineonboot: bool,
     pub(super) safe_stop: SafeStopMarker,
+    pub(super) failure: CampaignFailureMarker,
 }
 
 pub(super) fn assess_campaign_markers(
@@ -184,6 +297,9 @@ pub(super) fn campaign_marker_failure(
     }
     if marker.safety == SafetyMarker::Stale {
         return Some(CampaignTerminalCategory::SafetyStale);
+    }
+    if marker.failure.phase == CampaignFailurePhaseMarker::HardwarePreparation {
+        return Some(CampaignTerminalCategory::HardwarePreparationFailed);
     }
     match admission.stage {
         MiningCampaignStage::Observation => {

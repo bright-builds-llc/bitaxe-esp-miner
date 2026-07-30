@@ -1,5 +1,6 @@
 use super::*;
 
+mod failure_diagnostics;
 mod stop_predicate;
 
 fn campaign_command(
@@ -59,11 +60,27 @@ struct CampaignMarkerFixture<'a> {
 }
 
 fn campaign_marker(fixture: CampaignMarkerFixture<'_>) -> String {
+    campaign_marker_with_failure(
+        fixture,
+        serde_json::json!({
+            "phase": "none",
+            "step": "none",
+            "detail": "none",
+            "rollback_step": "none",
+            "rollback_detail": "none",
+        }),
+    )
+}
+
+fn campaign_marker_with_failure(
+    fixture: CampaignMarkerFixture<'_>,
+    failure: serde_json::Value,
+) -> String {
     let safety_fresh = fixture.safety == "fresh";
     format!(
         "mining_campaign_status={}",
         serde_json::json!({
-            "schema": "mining-campaign-status-v3",
+            "schema": "mining-campaign-status-v4",
             "stage": fixture.stage,
             "lease_id": fixture.lease_id,
             "campaign_state": fixture.state,
@@ -92,6 +109,7 @@ fn campaign_marker(fixture: CampaignMarkerFixture<'_>) -> String {
             "actuation": fixture.actuation,
             "mineonboot": false,
             "safe_stop": fixture.safe_stop,
+            "failure": failure,
         })
     )
 }

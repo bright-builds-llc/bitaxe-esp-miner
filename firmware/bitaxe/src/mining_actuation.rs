@@ -33,6 +33,27 @@ pub enum PreparationStep {
     RetainProductionUart,
 }
 
+impl PreparationStep {
+    /// Returns the closed redaction-safe evidence label for this boundary.
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::RequireFreshSafetyObservations => "require_fresh_safety_observations",
+            Self::SetFanDutyTo100Percent => "set_fan_duty_to_100_percent",
+            Self::RequireFreshNonzeroFanRpm => "require_fresh_nonzero_fan_rpm",
+            Self::SetCoreVoltage(_) => "set_core_voltage",
+            Self::WaitForCoreVoltageStabilization500Ms => {
+                "wait_for_core_voltage_stabilization_500_ms"
+            }
+            Self::EnableAsic => "enable_asic",
+            Self::ResetAndDetectExactlyOneChip => "reset_and_detect_exactly_one_chip",
+            Self::InitializeMiningReadyWithFrequencyRamp(_) => {
+                "initialize_mining_ready_with_frequency_ramp"
+            }
+            Self::RetainProductionUart => "retain_production_uart",
+        }
+    }
+}
+
 /// Ordered effects that establish the paused, fail-closed hardware state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SafeShutdownStep {
@@ -52,6 +73,24 @@ pub enum SafeShutdownStep {
     WaitForFreshTemperatureAtOrBelow45C,
     /// Set the paused-state fan duty after the temperature proof.
     SetFanDutyTo30Percent,
+}
+
+impl SafeShutdownStep {
+    /// Returns the closed redaction-safe evidence label for this boundary.
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::StopDispatch => "stop_dispatch",
+            Self::ReduceFrequencyAndResetNonce => "reduce_frequency_and_reset_nonce",
+            Self::HoldResetLow => "hold_reset_low",
+            Self::DisableCoreVoltage => "disable_core_voltage",
+            Self::DisableAsic => "disable_asic",
+            Self::SetFanDutyTo100Percent => "set_fan_duty_to_100_percent",
+            Self::WaitForFreshTemperatureAtOrBelow45C => {
+                "wait_for_fresh_temperature_at_or_below_45_c"
+            }
+            Self::SetFanDutyTo30Percent => "set_fan_duty_to_30_percent",
+        }
+    }
 }
 
 /// Imperative hardware boundary used by the pure ordered orchestration.

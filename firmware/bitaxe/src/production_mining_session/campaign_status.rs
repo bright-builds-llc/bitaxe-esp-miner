@@ -30,6 +30,25 @@ pub(super) enum CampaignSafeStopStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub(super) struct CampaignFailureDiagnostic {
+    phase: &'static str,
+    step: &'static str,
+    detail: &'static str,
+    rollback_step: &'static str,
+    rollback_detail: &'static str,
+}
+
+impl CampaignFailureDiagnostic {
+    const NONE: Self = Self {
+        phase: "none",
+        step: "none",
+        detail: "none",
+        rollback_step: "none",
+        rollback_detail: "none",
+    };
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub(super) struct CampaignObservationFreshness {
     pub(super) power_watts: bool,
     pub(super) bus_voltage_volts: bool,
@@ -98,6 +117,7 @@ pub(super) struct CampaignStatusTracker {
     pool_config: PoolConfigurationStatus,
     actuation: CampaignActuationStatus,
     safe_stop: CampaignSafeStopStatus,
+    failure: CampaignFailureDiagnostic,
 }
 
 impl CampaignStatusTracker {
@@ -120,6 +140,7 @@ impl CampaignStatusTracker {
                 CampaignActuationStatus::None
             },
             safe_stop: CampaignSafeStopStatus::NotRequired,
+            failure: CampaignFailureDiagnostic::NONE,
         }
     }
 
@@ -156,6 +177,25 @@ impl CampaignStatusTracker {
         self.safe_stop = CampaignSafeStopStatus::Pending;
     }
 
+    pub(super) fn note_failure(
+        &mut self,
+        phase: &'static str,
+        step: &'static str,
+        detail: &'static str,
+        rollback_step: &'static str,
+        rollback_detail: &'static str,
+    ) {
+        if self.failure == CampaignFailureDiagnostic::NONE {
+            self.failure = CampaignFailureDiagnostic {
+                phase,
+                step,
+                detail,
+                rollback_step,
+                rollback_detail,
+            };
+        }
+    }
+
     pub(super) fn note_snapshot(&mut self, snapshot: &ProductionSessionSnapshot, now_ms: u64) {
         if snapshot.campaign_state == MiningCampaignState::Active {
             let active_since = *self.maybe_active_since_ms.get_or_insert(now_ms);
@@ -187,7 +227,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v3",
+            schema: "mining-campaign-status-v4",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -221,6 +261,7 @@ impl CampaignStatusTracker {
                 CampaignSafeStopStatus::Pending => "pending",
                 CampaignSafeStopStatus::Confirmed => "confirmed",
             },
+            failure: self.failure,
         };
         serde_json::to_string(&projection)
             .expect("closed campaign status projection must always serialize")
@@ -244,6 +285,7 @@ struct CampaignStatusProjection {
     actuation: &'static str,
     mineonboot: bool,
     safe_stop: &'static str,
+    failure: CampaignFailureDiagnostic,
 }
 
 const fn campaign_state_label(state: MiningCampaignState) -> &'static str {
@@ -298,7 +340,7 @@ mod tests {
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v3");
+        assert_eq!(value["schema"], "mining-campaign-status-v4");
         assert_eq!(value["stage"], "observation");
         assert!(value["lease_id"].is_null());
         assert_eq!(value["campaign_state"], "unavailable");
@@ -331,6 +373,67 @@ mod tests {
             })
         );
         assert_eq!(value["safe_stop"], "not_required");
+        assert_eq!(
+            value["failure"],
+            serde_json::json!({
+                "phase": "none",
+                "step": "none",
+                "detail": "none",
+                "rollback_step": "none",
+                "rollback_detail": "none",
+            })
+        );
+    }
+
+    #[test]
+    fn earliest_typed_campaign_failure_survives_later_cleanup_failure() {
+        // Arrange
+        let profile = MiningHardwareProfilePreset::Conservative;
+        let lease = MiningCampaignLease::new(
+            MiningCampaignLeaseId::new(8).expect("lease id"),
+            profile.profile(),
+            MiningCampaignStopCondition::FirstSubmitResponse {
+                timeout: MiningCampaignDuration::new(600_000).expect("duration"),
+            },
+        );
+        let mut tracker =
+            CampaignStatusTracker::new(MiningCampaignStage::LiveShare, Some(lease), Some(profile));
+
+        // Act
+        tracker.note_failure(
+            "hardware_preparation",
+            "reset_and_detect_exactly_one_chip",
+            "asic_actuation_failed",
+            "wait_for_fresh_temperature_at_or_below_45_c",
+            "cooling_proof_timed_out",
+        );
+        tracker.note_failure(
+            "hardware_safe_stop",
+            "disable_core_voltage",
+            "safety_hardware_write_failed",
+            "none",
+            "none",
+        );
+        let marker = tracker.marker(
+            &snapshot(MiningCampaignState::Consumed),
+            1_000,
+            true,
+            CampaignObservationFreshness::all_ultra205_supported_fresh(),
+            false,
+        );
+        let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
+
+        // Assert
+        assert_eq!(
+            value["failure"],
+            serde_json::json!({
+                "phase": "hardware_preparation",
+                "step": "reset_and_detect_exactly_one_chip",
+                "detail": "asic_actuation_failed",
+                "rollback_step": "wait_for_fresh_temperature_at_or_below_45_c",
+                "rollback_detail": "cooling_proof_timed_out",
+            })
+        );
     }
 
     #[test]

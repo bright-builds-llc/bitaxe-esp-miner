@@ -1,6 +1,7 @@
 use super::markers::{
-    campaign_marker_failure, ObservationFreshnessMarker, ObservationRequirementsMarker,
-    PoolConfigMarker, SafeStopMarker, SafetyMarker, SubmitOutcomeMarker,
+    campaign_marker_failure, CampaignFailureMarker, ObservationFreshnessMarker,
+    ObservationRequirementsMarker, PoolConfigMarker, SafeStopMarker, SafetyMarker,
+    SubmitOutcomeMarker,
 };
 use super::*;
 
@@ -33,6 +34,7 @@ struct CampaignResultEvidence<'a> {
     observation_freshness: Option<&'a ObservationFreshnessMarker>,
     observation_requirements: Option<&'a ObservationRequirementsMarker>,
     failure_observation_freshness: Option<&'a ObservationFreshnessMarker>,
+    campaign_failure: Option<&'a CampaignFailureMarker>,
     mineonboot: Option<bool>,
     safe_stop: &'static str,
     usb_cleanup: &'static str,
@@ -166,6 +168,7 @@ pub(super) fn finish_campaign_attempt(
             observation_requirements: maybe_terminal.map(|marker| &marker.observation_requirements),
             failure_observation_freshness: maybe_failure_marker
                 .map(|marker| &marker.observation_freshness),
+            campaign_failure: maybe_terminal.map(|marker| &marker.failure),
             mineonboot: maybe_terminal.map(|marker| marker.mineonboot),
             safe_stop: maybe_terminal.map_or("not_observed", |marker| match marker.safe_stop {
                 SafeStopMarker::NotRequired => "not_required",

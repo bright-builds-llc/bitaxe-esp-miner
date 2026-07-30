@@ -40,6 +40,13 @@ fn observation_marker(schema: &str) -> Vec<u8> {
         "actuation": "none",
         "mineonboot": false,
         "safe_stop": "not_required",
+        "failure": {
+            "phase": "none",
+            "step": "none",
+            "detail": "none",
+            "rollback_step": "none",
+            "rollback_detail": "none",
+        },
     });
     format!("{CAMPAIGN_MARKER_PREFIX}{marker}\n").into_bytes()
 }

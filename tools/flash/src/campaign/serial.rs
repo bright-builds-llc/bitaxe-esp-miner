@@ -386,6 +386,7 @@ impl CampaignSerialAnalyzer {
         if marker.schema != CAMPAIGN_MARKER_SCHEMA
             || marker.fresh_observation_count != marker.observation_freshness.fresh_count()
             || marker.observation_requirements != ObservationRequirementsMarker::ULTRA_205
+            || !marker.failure.is_valid()
         {
             self.diagnostics.marker_invalid_schema_count = self
                 .diagnostics

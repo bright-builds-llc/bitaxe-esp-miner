@@ -316,6 +316,20 @@ impl OrdinaryEspProductionSessionAdapter {
                     Err(failure) => {
                         let original = failure.original();
                         let original_category = original.source().category();
+                        let (rollback_step, rollback_detail) = failure
+                            .maybe_safe_shutdown_failure()
+                            .map_or(("none", "none"), |rollback| {
+                                (rollback.step().label(), rollback.source().category())
+                            });
+                        if let Some(status) = self.maybe_campaign_status.as_mut() {
+                            status.note_failure(
+                                "hardware_preparation",
+                                original.step().label(),
+                                original_category,
+                                rollback_step,
+                                rollback_detail,
+                            );
+                        }
                         if let Some(rollback) = failure.maybe_safe_shutdown_failure() {
                             log::error!(
                                 "production_mining_session=fail_closed action=hardware_prepare original_step={:?} original_category={original_category} rollback_step={:?} rollback_category={}",

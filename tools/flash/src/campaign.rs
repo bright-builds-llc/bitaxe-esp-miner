@@ -11,7 +11,7 @@ use markers::{assess_campaign_markers, CampaignStatusMarker};
 use serial::{CampaignSerialDiagnostics, CampaignSerialOutcomeDetail};
 
 const CAMPAIGN_MARKER_PREFIX: &str = "mining_campaign_status=";
-const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v3";
+const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v4";
 const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v2";
 const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v1";
 const OBSERVATION_DURATION_SECONDS: u64 = 360;
@@ -40,6 +40,7 @@ pub(crate) enum CampaignTerminalCategory {
     PoolReadDuringObservation,
     ActuationDuringObservation,
     ObservationContractIncomplete,
+    HardwarePreparationFailed,
     PoolConfigurationMissing,
     SubmitResponseMissing,
     SoakDurationShort,
@@ -72,6 +73,7 @@ impl CampaignTerminalCategory {
             Self::PoolReadDuringObservation => "pool_read_during_observation",
             Self::ActuationDuringObservation => "actuation_during_observation",
             Self::ObservationContractIncomplete => "observation_contract_incomplete",
+            Self::HardwarePreparationFailed => "hardware_preparation_failed",
             Self::PoolConfigurationMissing => "pool_configuration_missing",
             Self::SubmitResponseMissing => "submit_response_missing",
             Self::SoakDurationShort => "soak_duration_short",

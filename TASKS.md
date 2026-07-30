@@ -28,6 +28,12 @@ new work.
 
 ### task-ultra205-live-pool-share | 2026-07-28 | Prove one real BM1366 pool submission
 
+Status: In progress — `attempt-001` proved an untyped hardware-preparation
+failure that the host incorrectly sealed as `pool_configuration_missing`;
+`attempt-002` is authorized only after the earliest typed preparation failure
+is regression-backed, fully verified, committed, pushed, and rebuilt from
+clean exact HEAD.
+
 - [ ] Freeze and admit the exact current-HEAD package, single detected board
       205, ignored local Wi-Fi credentials, and exactly one ignored local pool
       credential file.
@@ -55,6 +61,7 @@ Hardware contract:
   1. `just detect-ultra205`
   2. `just package`
   3. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-001 duration-seconds=600 redact-evidence=true`
+  4. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-002 duration-seconds=600 redact-evidence=true`
 - Objective: obtain one real BM1366 nonce correlated to owner-pool work and
   one accepted or rejected Stratum V1 submit response under the conservative
   profile, then prove safe stop.
@@ -101,16 +108,30 @@ Hardware contract:
   non-invasive remediation with objective boundary-change proof plus a task
   amendment naming its exact command and evidence root; one post-fix recurrence
   of the same authoritative boundary signature selects
-  `stop_repeated_boundary`.
+  `stop_repeated_boundary`. `attempt-002` changes the authoritative evidence
+  boundary: the firmware marker and sealed result must preserve the earliest
+  closed hardware-preparation phase, step, adapter category, and any secondary
+  rollback failure so the misleading `pool_configuration_missing` precedence
+  cannot recur. Do not infer or change hardware behavior until that typed
+  result identifies the failed boundary.
 - Accepted terminal outcomes: `complete` only when every success and safe-stop
   criterion passes; otherwise `stop_repeated_boundary`,
   `stop_hardware_blocker`, `stop_authority_boundary`, or
   `stop_impossible_contract`.
 
-Verification: Pending. Run all required software gates, the exact permitted
-hardware commands, private-artifact permission checks, redaction and secret
-denylist verification, lease/safe-stop validation, sealed result validation,
-and final diff review.
+Verification: `attempt-001` used exact clean-HEAD commit `0e84acc5`, one
+detected Ultra 205, and exactly one ignored owner pool input. It stopped before
+active mining and sealed package/runtime identity trusted, clean serial
+framing, five supported observations fresh, `mineonboot=false`, zero active
+milliseconds, no submit response, confirmed safe-stop, USB cleanup ready, and
+no parity promotion. Its seven markers remain `pool_config=not_read`, move
+directly from the pre-session projection to consumed safe-stop, and prove an
+earlier preparation failure. Because marker v3 carries no typed preparation
+failure, the host incorrectly selected `pool_configuration_missing`. Run the
+new red diagnostic-precedence regression, all required software gates, the
+exact permitted hardware commands, private-artifact permission checks,
+redaction and secret denylist verification, lease/safe-stop validation, sealed
+result validation, and final diff review.
 
 Completion review: Pending. An accepted or rejected response proves the
 end-to-end submitted-share path, not profitability, unbounded stability,
