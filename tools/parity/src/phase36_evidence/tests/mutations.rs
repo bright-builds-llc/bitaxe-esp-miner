@@ -1,11 +1,14 @@
 use std::fs;
 use std::os::unix::fs::{symlink, PermissionsExt};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use camino::Utf8PathBuf;
 use serde::Deserialize;
 
 use super::*;
+
+static NEXT_ROOT_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -264,13 +267,15 @@ struct RootFixture {
 
 impl RootFixture {
     fn create() -> Self {
+        let fixture_id = NEXT_ROOT_FIXTURE_ID.fetch_add(1, Ordering::Relaxed);
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("clock should follow epoch")
             .as_nanos();
-        let parent = Utf8PathBuf::from_path_buf(
-            std::env::temp_dir().join(format!("phase36-mutation-{}-{nonce}", std::process::id())),
-        )
+        let parent = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "phase36-mutation-{}-{nonce}-{fixture_id}",
+            std::process::id()
+        )))
         .expect("temporary path should be UTF-8");
         let root = parent.join("protected");
         fs::create_dir(&parent).expect("parent should be created");
