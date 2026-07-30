@@ -1,4 +1,7 @@
-use super::markers::{PoolConfigMarker, SafeStopMarker, SafetyMarker, SubmitOutcomeMarker};
+use super::markers::{
+    campaign_marker_failure, ObservationFreshnessMarker, PoolConfigMarker, SafeStopMarker,
+    SafetyMarker, SubmitOutcomeMarker,
+};
 use super::*;
 
 #[derive(Serialize)]
@@ -27,6 +30,8 @@ struct CampaignResultEvidence<'a> {
     active_ms: u64,
     safety: &'static str,
     fresh_observation_count: u8,
+    observation_freshness: Option<&'a ObservationFreshnessMarker>,
+    failure_observation_freshness: Option<&'a ObservationFreshnessMarker>,
     mineonboot: Option<bool>,
     safe_stop: &'static str,
     usb_cleanup: &'static str,
@@ -114,6 +119,11 @@ pub(super) fn finish_campaign_attempt(
         let observations_sha256 = sha256_bytes(&observation_bytes);
 
         let maybe_terminal = attempt.markers.last();
+        let maybe_failure_marker = maybe_admission.and_then(|admission| {
+            attempt.markers.iter().find(|marker| {
+                campaign_marker_failure(marker, admission) == Some(terminal_category)
+            })
+        });
         let evidence = CampaignResultEvidence {
             schema: CAMPAIGN_RESULT_SCHEMA,
             evidence_class: PROTECTED_OPERATIONAL,
@@ -151,6 +161,9 @@ pub(super) fn finish_campaign_attempt(
             }),
             fresh_observation_count: maybe_terminal
                 .map_or(0, |marker| marker.fresh_observation_count),
+            observation_freshness: maybe_terminal.map(|marker| &marker.observation_freshness),
+            failure_observation_freshness: maybe_failure_marker
+                .map(|marker| &marker.observation_freshness),
             mineonboot: maybe_terminal.map(|marker| marker.mineonboot),
             safe_stop: maybe_terminal.map_or("not_observed", |marker| match marker.safe_stop {
                 SafeStopMarker::NotRequired => "not_required",

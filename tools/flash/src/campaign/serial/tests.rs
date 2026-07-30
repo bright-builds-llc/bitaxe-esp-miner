@@ -20,6 +20,14 @@ fn observation_marker(schema: &str) -> Vec<u8> {
         "submit_outcome": "none",
         "safety": "fresh",
         "fresh_observation_count": 6,
+        "observation_freshness": {
+            "power_watts": true,
+            "bus_voltage_volts": true,
+            "current_amps": true,
+            "chip_temp_celsius": true,
+            "vr_temp_celsius": true,
+            "fan_rpm": true,
+        },
         "pool_config": "not_read",
         "actuation": "none",
         "mineonboot": false,
@@ -103,6 +111,29 @@ fn wrong_marker_schema_is_typed() {
         CampaignSerialOutcomeDetail::MarkerSchemaInvalid
     );
     assert_eq!(capture.diagnostics.marker_invalid_schema_count, 1);
+}
+
+#[test]
+fn contradictory_freshness_count_is_typed_as_schema_invalid() {
+    // Arrange
+    let mut marker = observation_marker(CAMPAIGN_MARKER_SCHEMA);
+    let count = b"\"fresh_observation_count\":6";
+    let index = find_bytes(&marker, count).expect("fresh observation count");
+    marker.splice(
+        index..index + count.len(),
+        b"\"fresh_observation_count\":5".iter().copied(),
+    );
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&marker, observation_admission());
+
+    // Assert
+    assert_eq!(
+        capture.outcome_detail,
+        CampaignSerialOutcomeDetail::MarkerSchemaInvalid
+    );
+    assert_eq!(capture.diagnostics.marker_invalid_schema_count, 1);
+    assert!(capture.markers.is_empty());
 }
 
 #[test]

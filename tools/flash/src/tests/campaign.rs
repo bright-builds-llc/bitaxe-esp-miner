@@ -57,10 +57,11 @@ struct CampaignMarkerFixture<'a> {
 }
 
 fn campaign_marker(fixture: CampaignMarkerFixture<'_>) -> String {
+    let safety_fresh = fixture.safety == "fresh";
     format!(
         "mining_campaign_status={}",
         serde_json::json!({
-            "schema": "mining-campaign-status-v1",
+            "schema": "mining-campaign-status-v2",
             "stage": fixture.stage,
             "lease_id": fixture.lease_id,
             "campaign_state": fixture.state,
@@ -68,7 +69,15 @@ fn campaign_marker(fixture: CampaignMarkerFixture<'_>) -> String {
             "active_ms": fixture.active_ms,
             "submit_outcome": fixture.submit_outcome,
             "safety": fixture.safety,
-            "fresh_observation_count": 6,
+            "fresh_observation_count": if safety_fresh { 6 } else { 5 },
+            "observation_freshness": {
+                "power_watts": true,
+                "bus_voltage_volts": true,
+                "current_amps": true,
+                "chip_temp_celsius": safety_fresh,
+                "vr_temp_celsius": true,
+                "fan_rpm": true,
+            },
             "pool_config": fixture.pool_config,
             "actuation": fixture.actuation,
             "mineonboot": false,
@@ -210,6 +219,18 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
     assert_eq!(result["runtime_identity"], "trusted");
     assert_eq!(result["runtime_attestation_status"], "trusted");
     assert_eq!(result["serial_outcome_detail"], "clean");
+    assert_eq!(
+        result["observation_freshness"],
+        serde_json::json!({
+            "power_watts": true,
+            "bus_voltage_volts": true,
+            "current_amps": true,
+            "chip_temp_celsius": true,
+            "vr_temp_celsius": true,
+            "fan_rpm": true,
+        })
+    );
+    assert!(result["failure_observation_freshness"].is_null());
     assert_eq!(result["usb_cleanup"], "ready");
     assert_eq!(result["parity_promotion"], false);
     assert_private_campaign_artifacts(&command.evidence_dir);
@@ -389,6 +410,7 @@ fn live_share_accepts_repeated_markers_and_cleared_terminal_lease() {
     assert_eq!(result["submit_outcome"], "accepted");
     assert_eq!(result["marker_count"], 3);
     assert_eq!(result["safe_stop"], "confirmed");
+    assert_eq!(result["observation_freshness"]["fan_rpm"], true);
     let csv = environment
         .written_files()
         .iter()
@@ -480,10 +502,14 @@ fn earliest_safety_failure_survives_a_later_valid_terminal_marker() {
 
     // Assert
     assert!(format!("{error:#}").contains("category=safety_stale"));
+    let result = read_campaign_result(&command);
+    assert_eq!(result["terminal_category"], "safety_stale");
     assert_eq!(
-        read_campaign_result(&command)["terminal_category"],
-        "safety_stale"
+        result["failure_observation_freshness"]["chip_temp_celsius"],
+        false
     );
+    assert_eq!(result["observation_freshness"]["chip_temp_celsius"], true);
+    assert_eq!(result["fresh_observation_count"], 6);
 }
 
 #[test]

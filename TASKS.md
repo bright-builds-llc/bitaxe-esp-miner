@@ -28,8 +28,8 @@ new work.
 
 ### task-ultra205-mining-observation-baseline | 2026-07-28 | Re-establish a known-safe mining observation baseline
 
-Status: In progress — `attempt-003` authorized after a verified state-boundary
-fix.
+Status: In progress — `attempt-003` sealed a distinct five-of-six safety
+boundary; `attempt-004` is authorized after the per-source diagnostic change.
 
 - [x] Reproduce the zero-marker `marker_invalid` boundary with non-UTF-8
       non-candidate bytes surrounding valid runtime attestations and campaign
@@ -43,6 +43,9 @@ fix.
 - [x] Reproduce the `attempt-002` false-to-true boot-preference loss at the
       pure reload boundary and make persistence load both upstream and
       project-owned settings schemas.
+- [x] Add a closed per-source freshness projection so a five-of-six safety
+      result names the unavailable observation without sensor values or raw
+      serial.
 - [x] Pass every required software, package, parity, reference, and redaction
       gate for the parser and diagnostics change before committing it.
 - [x] Build and admit the exact current-HEAD package after its software
@@ -66,6 +69,7 @@ Hardware contract:
   2. `just package`
   3. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-002 duration-seconds=360 redact-evidence=true`
   4. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-003 duration-seconds=360 redact-evidence=true`
+  5. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-004 duration-seconds=360 redact-evidence=true`
 - Objective: establish a fresh current-architecture, exact-package,
   observe-only baseline on the single detected board 205 without reopening or
   retrying the terminal Phase 36 lineage.
@@ -108,7 +112,9 @@ Hardware contract:
   until the task completes. `attempt-003` is authorized only after a
   deterministic regression proves and a clean committed/pushed fix repairs the
   `mineonboot=false` state boundary exposed by `attempt-002`. Never run an
-  unchanged retry. After any later failure, diagnose its closed boundary,
+  unchanged retry. `attempt-004` is authorized only after the v2 per-source
+  freshness diagnostic is regression-backed, fully verified, committed,
+  pushed, and rebuilt from clean exact HEAD. After any later failure, diagnose its closed boundary,
   verify one targeted fix or objective non-invasive boundary change, and amend
   this contract with the exact next ordinal and command before hardware use.
   A recurrence of the same authoritative boundary signature after its targeted
@@ -162,14 +168,31 @@ pass. The ordered Rust format, warnings-denied Clippy, all-target build, and
 all-feature test gates pass; `just verify-production-session`, all 82 Bazel
 tests, `just package`, Bright Builds checks, parity validation with no errors,
 reference cleanliness, and redaction verification also pass. Clean-HEAD
-commit, push, rebuild, and hardware verification remain pending.
+commit `5cd7ff02`, push, exact-HEAD rebuild, and `attempt-003` hardware
+verification also pass.
+
+`attempt-003` used the clean exact-HEAD package at `5cd7ff02` and completed the
+full 360-second window. Its sealed result and bound diagnostics pass mode,
+digest, and result-seal checks. They record exact-package runtime identity
+trusted, `mineonboot=false`, 719 accepted markers, clean serial framing, no pool
+read, no actuation, safe-stop not required, and USB cleanup ready. The distinct
+terminal boundary is `safety_stale`: every marker reports exactly five of six
+fresh observations. The aggregate marker does not identify the missing source,
+so the firmware/host marker contract is being advanced to
+`mining-campaign-status-v2` with six closed Boolean freshness fields and a
+count-consistency check. The firmware marker test failed red against v1, then
+passed with the v2 projection. All 196 focused `bitaxe-flash` tests, the
+ordered Rust format, warnings-denied Clippy, all-target build, all-feature
+tests, production-session verification, all 82 Bazel tests, packaging, Bright
+Builds checks, parity validation with no errors, reference cleanliness, and
+redaction verification pass for the v2 diagnostic change.
 
 Completion review: Reopened by explicit user authorization for change-gated
-hardware retries until completion. Do not run `attempt-003` until the
-`mineonboot` state-boundary fix is regression-backed, fully verified, committed,
-pushed, and rebuilt from clean exact HEAD. No pool credential was supplied to
-either observation attempt, and their sealed results make no mining, share,
-soak, or parity-promotion claim. The
+hardware retries until completion. Do not run `attempt-004` until the v2
+freshness diagnostic is fully verified, committed, pushed, and rebuilt from
+clean exact HEAD. No pool credential was supplied to any observation attempt,
+and their sealed results make no mining, share, soak, or parity-promotion
+claim. The
 `attempt-001` serial stop/parser path returned `marker_invalid` before accepting
 any marker. Because that transcript is intentionally ephemeral, its sealed
 result cannot distinguish a non-UTF-8 boot byte outside a marker from a

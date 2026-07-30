@@ -29,6 +29,44 @@ pub(super) enum CampaignSafeStopStatus {
     Confirmed,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub(super) struct CampaignObservationFreshness {
+    pub(super) power_watts: bool,
+    pub(super) bus_voltage_volts: bool,
+    pub(super) current_amps: bool,
+    pub(super) chip_temp_celsius: bool,
+    pub(super) vr_temp_celsius: bool,
+    pub(super) fan_rpm: bool,
+}
+
+impl CampaignObservationFreshness {
+    #[cfg(test)]
+    pub(super) const fn all_fresh() -> Self {
+        Self {
+            power_watts: true,
+            bus_voltage_volts: true,
+            current_amps: true,
+            chip_temp_celsius: true,
+            vr_temp_celsius: true,
+            fan_rpm: true,
+        }
+    }
+
+    fn fresh_count(self) -> u8 {
+        [
+            self.power_watts,
+            self.bus_voltage_volts,
+            self.current_amps,
+            self.chip_temp_celsius,
+            self.vr_temp_celsius,
+            self.fan_rpm,
+        ]
+        .into_iter()
+        .filter(|fresh| *fresh)
+        .count() as u8
+    }
+}
+
 pub(super) struct CampaignStatusTracker {
     stage: MiningCampaignStage,
     retained_maybe_lease: Option<MiningCampaignLease>,
@@ -119,7 +157,7 @@ impl CampaignStatusTracker {
         snapshot: &ProductionSessionSnapshot,
         now_ms: u64,
         safety_fresh: bool,
-        fresh_observation_count: u8,
+        observation_freshness: CampaignObservationFreshness,
         mineonboot: bool,
     ) -> String {
         let active_ms = self
@@ -128,7 +166,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v1",
+            schema: "mining-campaign-status-v2",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -144,7 +182,8 @@ impl CampaignStatusTracker {
                 "none"
             },
             safety: if safety_fresh { "fresh" } else { "stale" },
-            fresh_observation_count,
+            fresh_observation_count: observation_freshness.fresh_count(),
+            observation_freshness,
             pool_config: match self.pool_config {
                 PoolConfigurationStatus::NotRead => "not_read",
                 PoolConfigurationStatus::LocalOwnerSupplied => "local_owner_supplied",
@@ -177,6 +216,7 @@ struct CampaignStatusProjection {
     submit_outcome: &'static str,
     safety: &'static str,
     fresh_observation_count: u8,
+    observation_freshness: CampaignObservationFreshness,
     pool_config: &'static str,
     actuation: &'static str,
     mineonboot: bool,
@@ -229,13 +269,13 @@ mod tests {
             &snapshot(MiningCampaignState::Unavailable),
             360_000,
             true,
-            6,
+            CampaignObservationFreshness::all_fresh(),
             false,
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v1");
+        assert_eq!(value["schema"], "mining-campaign-status-v2");
         assert_eq!(value["stage"], "observation");
         assert!(value["lease_id"].is_null());
         assert_eq!(value["campaign_state"], "unavailable");
@@ -245,6 +285,17 @@ mod tests {
         assert_eq!(value["mineonboot"], false);
         assert_eq!(value["safety"], "fresh");
         assert_eq!(value["fresh_observation_count"], 6);
+        assert_eq!(
+            value["observation_freshness"],
+            serde_json::json!({
+                "power_watts": true,
+                "bus_voltage_volts": true,
+                "current_amps": true,
+                "chip_temp_celsius": true,
+                "vr_temp_celsius": true,
+                "fan_rpm": true,
+            })
+        );
         assert_eq!(value["safe_stop"], "not_required");
     }
 
@@ -274,7 +325,13 @@ mod tests {
         // Act
         tracker.note_safe_stop_pending();
         tracker.note_snapshot(&active, 1_100);
-        let marker = tracker.marker(&active, 1_100, true, 6, false);
+        let marker = tracker.marker(
+            &active,
+            1_100,
+            true,
+            CampaignObservationFreshness::all_fresh(),
+            false,
+        );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert

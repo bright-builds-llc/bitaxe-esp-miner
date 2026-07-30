@@ -19,7 +19,7 @@ use bitaxe_stratum::v1::production_session::{
 use bitaxe_stratum::v1::production_work::ProductionNonceObservation;
 
 use self::asic_worker::{AsicWorker, AsicWorkerCommand, AsicWorkerEvent};
-use self::campaign_status::CampaignStatusTracker;
+use self::campaign_status::{CampaignObservationFreshness, CampaignStatusTracker};
 use self::transport::{PoolTransportCommand, PoolTransportEvent, PoolTransportWorkers};
 
 const OWNER_STACK_BYTES: usize = 16 * 1024;
@@ -489,22 +489,19 @@ impl OrdinaryEspProductionSessionAdapter {
         let observations = crate::safety_adapter::observation_snapshot();
         let now = MonotonicMillis::new(now_ms);
         let safety_fresh = observations.is_ultra_205_mining_safe_at(now);
-        let fresh_observation_count = [
-            is_current(&observations.power_watts, now),
-            is_current(&observations.bus_voltage_volts, now),
-            is_current(&observations.current_amps, now),
-            is_current(&observations.chip_temp_celsius, now),
-            is_current(&observations.vr_temp_celsius, now),
-            is_current(&observations.fan_rpm, now),
-        ]
-        .into_iter()
-        .filter(|fresh| *fresh)
-        .count() as u8;
+        let observation_freshness = CampaignObservationFreshness {
+            power_watts: is_current(&observations.power_watts, now),
+            bus_voltage_volts: is_current(&observations.bus_voltage_volts, now),
+            current_amps: is_current(&observations.current_amps, now),
+            chip_temp_celsius: is_current(&observations.chip_temp_celsius, now),
+            vr_temp_celsius: is_current(&observations.vr_temp_celsius, now),
+            fan_rpm: is_current(&observations.fan_rpm, now),
+        };
         let marker = status.marker(
             snapshot,
             now_ms,
             safety_fresh,
-            fresh_observation_count,
+            observation_freshness,
             crate::settings_adapter::start_mining_on_boot(),
         );
         crate::info_retained(&format!("mining_campaign_status={marker}"));

@@ -57,6 +57,33 @@ pub(super) enum SafeStopMarker {
     Confirmed,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ObservationFreshnessMarker {
+    pub(super) power_watts: bool,
+    pub(super) bus_voltage_volts: bool,
+    pub(super) current_amps: bool,
+    pub(super) chip_temp_celsius: bool,
+    pub(super) vr_temp_celsius: bool,
+    pub(super) fan_rpm: bool,
+}
+
+impl ObservationFreshnessMarker {
+    pub(super) fn fresh_count(self) -> u8 {
+        [
+            self.power_watts,
+            self.bus_voltage_volts,
+            self.current_amps,
+            self.chip_temp_celsius,
+            self.vr_temp_celsius,
+            self.fan_rpm,
+        ]
+        .into_iter()
+        .filter(|fresh| *fresh)
+        .count() as u8
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct CampaignStatusMarker {
@@ -69,6 +96,7 @@ pub(super) struct CampaignStatusMarker {
     pub(super) submit_outcome: SubmitOutcomeMarker,
     pub(super) safety: SafetyMarker,
     pub(super) fresh_observation_count: u8,
+    pub(super) observation_freshness: ObservationFreshnessMarker,
     pub(super) pool_config: PoolConfigMarker,
     pub(super) actuation: ActuationMarker,
     pub(super) mineonboot: bool,
@@ -104,54 +132,61 @@ pub(super) fn first_campaign_marker_failure(
     markers: &[CampaignStatusMarker],
     admission: CampaignAdmission,
 ) -> Option<CampaignTerminalCategory> {
-    for marker in markers {
-        if marker.stage != admission.stage {
-            return Some(CampaignTerminalCategory::StageMismatch);
-        }
-        if marker.mineonboot {
-            return Some(CampaignTerminalCategory::MineOnBootEnabled);
-        }
-        if marker.safety == SafetyMarker::Stale {
-            return Some(CampaignTerminalCategory::SafetyStale);
-        }
-        match admission.stage {
-            MiningCampaignStage::Observation => {
-                if marker.lease_id.is_some() {
-                    return Some(CampaignTerminalCategory::LeaseMismatch);
-                }
-                if marker.profile != CampaignProfileMarker::None {
-                    return Some(CampaignTerminalCategory::ProfileMismatch);
-                }
-                if marker.pool_config != PoolConfigMarker::NotRead {
-                    return Some(CampaignTerminalCategory::PoolReadDuringObservation);
-                }
-                if marker.actuation != ActuationMarker::None {
-                    return Some(CampaignTerminalCategory::ActuationDuringObservation);
-                }
+    markers
+        .iter()
+        .find_map(|marker| campaign_marker_failure(marker, admission))
+}
+
+pub(super) fn campaign_marker_failure(
+    marker: &CampaignStatusMarker,
+    admission: CampaignAdmission,
+) -> Option<CampaignTerminalCategory> {
+    if marker.stage != admission.stage {
+        return Some(CampaignTerminalCategory::StageMismatch);
+    }
+    if marker.mineonboot {
+        return Some(CampaignTerminalCategory::MineOnBootEnabled);
+    }
+    if marker.safety == SafetyMarker::Stale {
+        return Some(CampaignTerminalCategory::SafetyStale);
+    }
+    match admission.stage {
+        MiningCampaignStage::Observation => {
+            if marker.lease_id.is_some() {
+                return Some(CampaignTerminalCategory::LeaseMismatch);
             }
-            MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => {
-                let terminal_consumed = marker.campaign_state == CampaignStateMarker::Consumed
-                    && marker.actuation == ActuationMarker::SafeStopped
-                    && marker.safe_stop == SafeStopMarker::Confirmed;
-                if marker.lease_id != admission.maybe_lease_id
-                    && !(terminal_consumed && marker.lease_id.is_none())
-                {
-                    return Some(CampaignTerminalCategory::LeaseMismatch);
-                }
-                if marker.profile != expected_profile_marker(admission) {
-                    return Some(CampaignTerminalCategory::ProfileMismatch);
-                }
-                if marker.campaign_state == CampaignStateMarker::Consumed {
-                    let terminal_result = match admission.stage {
-                        MiningCampaignStage::LiveShare => assess_live_share_terminal(marker),
-                        MiningCampaignStage::Soak => {
-                            assess_soak_terminal(marker, admission.duration_seconds)
-                        }
-                        MiningCampaignStage::Observation => unreachable!("mining stage"),
-                    };
-                    if let Err(failure) = terminal_result {
-                        return Some(failure.category);
+            if marker.profile != CampaignProfileMarker::None {
+                return Some(CampaignTerminalCategory::ProfileMismatch);
+            }
+            if marker.pool_config != PoolConfigMarker::NotRead {
+                return Some(CampaignTerminalCategory::PoolReadDuringObservation);
+            }
+            if marker.actuation != ActuationMarker::None {
+                return Some(CampaignTerminalCategory::ActuationDuringObservation);
+            }
+        }
+        MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => {
+            let terminal_consumed = marker.campaign_state == CampaignStateMarker::Consumed
+                && marker.actuation == ActuationMarker::SafeStopped
+                && marker.safe_stop == SafeStopMarker::Confirmed;
+            if marker.lease_id != admission.maybe_lease_id
+                && !(terminal_consumed && marker.lease_id.is_none())
+            {
+                return Some(CampaignTerminalCategory::LeaseMismatch);
+            }
+            if marker.profile != expected_profile_marker(admission) {
+                return Some(CampaignTerminalCategory::ProfileMismatch);
+            }
+            if marker.campaign_state == CampaignStateMarker::Consumed {
+                let terminal_result = match admission.stage {
+                    MiningCampaignStage::LiveShare => assess_live_share_terminal(marker),
+                    MiningCampaignStage::Soak => {
+                        assess_soak_terminal(marker, admission.duration_seconds)
                     }
+                    MiningCampaignStage::Observation => unreachable!("mining stage"),
+                };
+                if let Err(failure) = terminal_result {
+                    return Some(failure.category);
                 }
             }
         }

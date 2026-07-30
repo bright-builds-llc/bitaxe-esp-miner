@@ -383,7 +383,9 @@ impl CampaignSerialAnalyzer {
                 return;
             }
         };
-        if marker.schema != CAMPAIGN_MARKER_SCHEMA {
+        if marker.schema != CAMPAIGN_MARKER_SCHEMA
+            || marker.fresh_observation_count != marker.observation_freshness.fresh_count()
+        {
             self.diagnostics.marker_invalid_schema_count = self
                 .diagnostics
                 .marker_invalid_schema_count
