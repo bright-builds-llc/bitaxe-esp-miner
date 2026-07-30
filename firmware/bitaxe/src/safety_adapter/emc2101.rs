@@ -2,15 +2,18 @@
 //!
 //! Reference: `reference/esp-miner/main/thermal/EMC2101.c`
 
+#[cfg(test)]
+use bitaxe_safety::sensor_acquisition::decode_emc2101_external_temperature;
 use bitaxe_safety::sensor_acquisition::{
-    decode_emc2101_external_temperature, decode_emc2101_internal_temperature,
-    decode_emc2101_tachometer, AcquisitionOutcome,
+    decode_emc2101_internal_temperature, decode_emc2101_tachometer, AcquisitionOutcome,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Emc2101ReadRegister {
     InternalTemperature,
+    #[cfg(test)]
     ExternalTemperatureMsb,
+    #[cfg(test)]
     ExternalTemperatureLsb,
     TachometerLsb,
     TachometerMsb,
@@ -20,7 +23,9 @@ impl Emc2101ReadRegister {
     pub(crate) const fn address(self) -> u8 {
         match self {
             Self::InternalTemperature => 0x00,
+            #[cfg(test)]
             Self::ExternalTemperatureMsb => 0x01,
+            #[cfg(test)]
             Self::ExternalTemperatureLsb => 0x10,
             Self::TachometerLsb => 0x46,
             Self::TachometerMsb => 0x47,
@@ -77,6 +82,7 @@ const fn fan_duty_code(percent: u8) -> u8 {
     ((63_u16 * percent as u16) / 100) as u8
 }
 
+#[cfg(test)]
 pub(crate) fn read_external_temperature_acquisition(
     bus: &mut impl Emc2101RegisterReader,
 ) -> AcquisitionOutcome<f64> {
@@ -114,6 +120,12 @@ pub(crate) fn read_internal_temperature_acquisition(
         Ok(temperature) => AcquisitionOutcome::Success(temperature),
         Err(_) => AcquisitionOutcome::InvalidSample,
     }
+}
+
+pub(crate) fn read_ultra205_asic_temperature_acquisition(
+    bus: &mut impl Emc2101RegisterReader,
+) -> AcquisitionOutcome<f64> {
+    read_internal_temperature_acquisition(bus)
 }
 
 pub(crate) fn read_tachometer_acquisition(
@@ -187,14 +199,14 @@ mod tests {
     }
 
     #[test]
-    fn internal_temperature_acquisition_reads_the_vr_temperature_register() {
+    fn ultra205_asic_temperature_acquisition_reads_the_internal_register() {
         // Arrange
         let mut reader = FakeReader {
             reads: VecDeque::from([(Emc2101ReadRegister::InternalTemperature, Ok(45))]),
         };
 
         // Act
-        let outcome = read_internal_temperature_acquisition(&mut reader);
+        let outcome = read_ultra205_asic_temperature_acquisition(&mut reader);
 
         // Assert
         assert_eq!(outcome, AcquisitionOutcome::Success(45.0));

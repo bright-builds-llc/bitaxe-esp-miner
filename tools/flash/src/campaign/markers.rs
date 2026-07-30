@@ -84,6 +84,37 @@ impl ObservationFreshnessMarker {
     }
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ObservationRequirementsMarker {
+    pub(super) power_watts: bool,
+    pub(super) bus_voltage_volts: bool,
+    pub(super) current_amps: bool,
+    pub(super) chip_temp_celsius: bool,
+    pub(super) vr_temp_celsius: bool,
+    pub(super) fan_rpm: bool,
+}
+
+impl ObservationRequirementsMarker {
+    pub(super) const ULTRA_205: Self = Self {
+        power_watts: true,
+        bus_voltage_volts: true,
+        current_amps: true,
+        chip_temp_celsius: true,
+        vr_temp_celsius: false,
+        fan_rpm: true,
+    };
+
+    fn is_satisfied_by(self, freshness: ObservationFreshnessMarker) -> bool {
+        (!self.power_watts || freshness.power_watts)
+            && (!self.bus_voltage_volts || freshness.bus_voltage_volts)
+            && (!self.current_amps || freshness.current_amps)
+            && (!self.chip_temp_celsius || freshness.chip_temp_celsius)
+            && (!self.vr_temp_celsius || freshness.vr_temp_celsius)
+            && (!self.fan_rpm || freshness.fan_rpm)
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct CampaignStatusMarker {
@@ -97,6 +128,7 @@ pub(super) struct CampaignStatusMarker {
     pub(super) safety: SafetyMarker,
     pub(super) fresh_observation_count: u8,
     pub(super) observation_freshness: ObservationFreshnessMarker,
+    pub(super) observation_requirements: ObservationRequirementsMarker,
     pub(super) pool_config: PoolConfigMarker,
     pub(super) actuation: ActuationMarker,
     pub(super) mineonboot: bool,
@@ -116,7 +148,10 @@ pub(super) fn assess_campaign_markers(
         return Err(CampaignFailure::new(category));
     }
     let terminal = markers.last().expect("nonempty campaign marker set");
-    if terminal.fresh_observation_count < 6 {
+    if !terminal
+        .observation_requirements
+        .is_satisfied_by(terminal.observation_freshness)
+    {
         return Err(CampaignFailure::new(
             CampaignTerminalCategory::ObservationContractIncomplete,
         ));

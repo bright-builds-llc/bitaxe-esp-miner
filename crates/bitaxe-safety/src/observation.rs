@@ -171,6 +171,7 @@ impl StaleReason {
 pub enum UnavailableReason {
     NotYetObserved,
     ProducerUnavailable,
+    UnsupportedOnBoard,
     PowerSampleUnavailable,
     ThermalReadingUnavailable,
     TachometerUnavailable,
@@ -182,6 +183,7 @@ impl UnavailableReason {
         match self {
             Self::NotYetObserved => "not_yet_observed",
             Self::ProducerUnavailable => "producer_unavailable",
+            Self::UnsupportedOnBoard => "unsupported_on_board",
             Self::PowerSampleUnavailable => "power_sample_unavailable",
             Self::ThermalReadingUnavailable => "thermal_reading_unavailable",
             Self::TachometerUnavailable => "tachometer_unavailable",

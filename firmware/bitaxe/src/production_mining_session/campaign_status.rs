@@ -41,13 +41,13 @@ pub(super) struct CampaignObservationFreshness {
 
 impl CampaignObservationFreshness {
     #[cfg(test)]
-    pub(super) const fn all_fresh() -> Self {
+    pub(super) const fn all_ultra205_supported_fresh() -> Self {
         Self {
             power_watts: true,
             bus_voltage_volts: true,
             current_amps: true,
             chip_temp_celsius: true,
-            vr_temp_celsius: true,
+            vr_temp_celsius: false,
             fan_rpm: true,
         }
     }
@@ -65,6 +65,27 @@ impl CampaignObservationFreshness {
         .filter(|fresh| *fresh)
         .count() as u8
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub(super) struct CampaignObservationRequirements {
+    pub(super) power_watts: bool,
+    pub(super) bus_voltage_volts: bool,
+    pub(super) current_amps: bool,
+    pub(super) chip_temp_celsius: bool,
+    pub(super) vr_temp_celsius: bool,
+    pub(super) fan_rpm: bool,
+}
+
+impl CampaignObservationRequirements {
+    const ULTRA_205: Self = Self {
+        power_watts: true,
+        bus_voltage_volts: true,
+        current_amps: true,
+        chip_temp_celsius: true,
+        vr_temp_celsius: false,
+        fan_rpm: true,
+    };
 }
 
 pub(super) struct CampaignStatusTracker {
@@ -166,7 +187,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v2",
+            schema: "mining-campaign-status-v3",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -184,6 +205,7 @@ impl CampaignStatusTracker {
             safety: if safety_fresh { "fresh" } else { "stale" },
             fresh_observation_count: observation_freshness.fresh_count(),
             observation_freshness,
+            observation_requirements: CampaignObservationRequirements::ULTRA_205,
             pool_config: match self.pool_config {
                 PoolConfigurationStatus::NotRead => "not_read",
                 PoolConfigurationStatus::LocalOwnerSupplied => "local_owner_supplied",
@@ -217,6 +239,7 @@ struct CampaignStatusProjection {
     safety: &'static str,
     fresh_observation_count: u8,
     observation_freshness: CampaignObservationFreshness,
+    observation_requirements: CampaignObservationRequirements,
     pool_config: &'static str,
     actuation: &'static str,
     mineonboot: bool,
@@ -269,13 +292,13 @@ mod tests {
             &snapshot(MiningCampaignState::Unavailable),
             360_000,
             true,
-            CampaignObservationFreshness::all_fresh(),
+            CampaignObservationFreshness::all_ultra205_supported_fresh(),
             false,
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v2");
+        assert_eq!(value["schema"], "mining-campaign-status-v3");
         assert_eq!(value["stage"], "observation");
         assert!(value["lease_id"].is_null());
         assert_eq!(value["campaign_state"], "unavailable");
@@ -284,7 +307,7 @@ mod tests {
         assert_eq!(value["actuation"], "none");
         assert_eq!(value["mineonboot"], false);
         assert_eq!(value["safety"], "fresh");
-        assert_eq!(value["fresh_observation_count"], 6);
+        assert_eq!(value["fresh_observation_count"], 5);
         assert_eq!(
             value["observation_freshness"],
             serde_json::json!({
@@ -292,7 +315,18 @@ mod tests {
                 "bus_voltage_volts": true,
                 "current_amps": true,
                 "chip_temp_celsius": true,
-                "vr_temp_celsius": true,
+                "vr_temp_celsius": false,
+                "fan_rpm": true,
+            })
+        );
+        assert_eq!(
+            value["observation_requirements"],
+            serde_json::json!({
+                "power_watts": true,
+                "bus_voltage_volts": true,
+                "current_amps": true,
+                "chip_temp_celsius": true,
+                "vr_temp_celsius": false,
                 "fan_rpm": true,
             })
         );
@@ -329,7 +363,7 @@ mod tests {
             &active,
             1_100,
             true,
-            CampaignObservationFreshness::all_fresh(),
+            CampaignObservationFreshness::all_ultra205_supported_fresh(),
             false,
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");

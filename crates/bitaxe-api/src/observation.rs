@@ -5,7 +5,7 @@ use bitaxe_safety::observation::{
 };
 use bitaxe_safety::{
     power::{INPUT_VOLTAGE_MARGIN_RATIO, INPUT_VOLTAGE_NOMINAL_VOLTS, POWER_SAMPLE_STALE_AFTER_MS},
-    thermal::{ASIC_THROTTLE_TEMP_C, MAX_PLAUSIBLE_TEMP_C, MIN_PLAUSIBLE_TEMP_C},
+    thermal::{ASIC_THROTTLE_TEMP_C, MIN_PLAUSIBLE_TEMP_C},
 };
 use serde::{Deserialize, Serialize};
 
@@ -121,7 +121,7 @@ impl TelemetryObservations {
         Self::unavailable(UnavailableReason::ProducerUnavailable)
     }
 
-    /// Requires complete fresh, validated Ultra 205 safety truth before mining effects.
+    /// Requires every supported fresh, validated Ultra 205 safety fact before mining effects.
     #[must_use]
     pub fn is_ultra_205_mining_safe_at(&self, now: MonotonicMillis) -> bool {
         let Some(power_watts) = maybe_current_value(&self.power_watts, now) else {
@@ -134,9 +134,6 @@ impl TelemetryObservations {
             return false;
         };
         let Some(chip_temp_celsius) = maybe_current_value(&self.chip_temp_celsius, now) else {
-            return false;
-        };
-        let Some(vr_temp_celsius) = maybe_current_value(&self.vr_temp_celsius, now) else {
             return false;
         };
         if maybe_current_value(&self.fan_rpm, now).is_none() {
@@ -153,8 +150,6 @@ impl TelemetryObservations {
             && current_amps >= 0.0
             && chip_temp_celsius.is_finite()
             && (MIN_PLAUSIBLE_TEMP_C..ASIC_THROTTLE_TEMP_C).contains(&chip_temp_celsius)
-            && vr_temp_celsius.is_finite()
-            && (MIN_PLAUSIBLE_TEMP_C..=MAX_PLAUSIBLE_TEMP_C).contains(&vr_temp_celsius)
     }
 }
 

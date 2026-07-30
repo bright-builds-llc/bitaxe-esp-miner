@@ -1,5 +1,7 @@
 use super::*;
 
+mod stop_predicate;
+
 fn campaign_command(
     dir: &TempDir,
     stage: MiningCampaignStage,
@@ -61,7 +63,7 @@ fn campaign_marker(fixture: CampaignMarkerFixture<'_>) -> String {
     format!(
         "mining_campaign_status={}",
         serde_json::json!({
-            "schema": "mining-campaign-status-v2",
+            "schema": "mining-campaign-status-v3",
             "stage": fixture.stage,
             "lease_id": fixture.lease_id,
             "campaign_state": fixture.state,
@@ -69,13 +71,21 @@ fn campaign_marker(fixture: CampaignMarkerFixture<'_>) -> String {
             "active_ms": fixture.active_ms,
             "submit_outcome": fixture.submit_outcome,
             "safety": fixture.safety,
-            "fresh_observation_count": if safety_fresh { 6 } else { 5 },
+            "fresh_observation_count": if safety_fresh { 5 } else { 4 },
             "observation_freshness": {
                 "power_watts": true,
                 "bus_voltage_volts": true,
                 "current_amps": true,
                 "chip_temp_celsius": safety_fresh,
-                "vr_temp_celsius": true,
+                "vr_temp_celsius": false,
+                "fan_rpm": true,
+            },
+            "observation_requirements": {
+                "power_watts": true,
+                "bus_voltage_volts": true,
+                "current_amps": true,
+                "chip_temp_celsius": true,
+                "vr_temp_celsius": false,
                 "fan_rpm": true,
             },
             "pool_config": fixture.pool_config,
@@ -107,42 +117,6 @@ fn observation_marker(safety: &str) -> String {
         actuation: "none",
         safe_stop: "not_required",
     })
-}
-
-#[test]
-fn valid_observation_marker_does_not_end_the_required_timeout_early() {
-    // Arrange
-    let marker = format!("{}\n", observation_marker("fresh"));
-    let admission = CampaignAdmission {
-        stage: MiningCampaignStage::Observation,
-        maybe_profile: None,
-        duration_seconds: 360,
-        maybe_lease_id: None,
-    };
-
-    // Act
-    let should_stop = campaign_serial_should_stop(marker.as_bytes(), admission);
-
-    // Assert
-    assert!(!should_stop);
-}
-
-#[test]
-fn live_share_terminal_marker_requests_early_stop_after_safe_shutdown() {
-    // Arrange
-    let marker = format!("{}\n", live_terminal("accepted"));
-    let admission = CampaignAdmission {
-        stage: MiningCampaignStage::LiveShare,
-        maybe_profile: Some(MiningCampaignProfile::Conservative),
-        duration_seconds: 600,
-        maybe_lease_id: Some(42),
-    };
-
-    // Act
-    let should_stop = campaign_serial_should_stop(marker.as_bytes(), admission);
-
-    // Assert
-    assert!(should_stop);
 }
 
 fn live_terminal(submit_outcome: &str) -> String {
@@ -226,7 +200,18 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
             "bus_voltage_volts": true,
             "current_amps": true,
             "chip_temp_celsius": true,
-            "vr_temp_celsius": true,
+            "vr_temp_celsius": false,
+            "fan_rpm": true,
+        })
+    );
+    assert_eq!(
+        result["observation_requirements"],
+        serde_json::json!({
+            "power_watts": true,
+            "bus_voltage_volts": true,
+            "current_amps": true,
+            "chip_temp_celsius": true,
+            "vr_temp_celsius": false,
             "fan_rpm": true,
         })
     );
@@ -509,7 +494,7 @@ fn earliest_safety_failure_survives_a_later_valid_terminal_marker() {
         false
     );
     assert_eq!(result["observation_freshness"]["chip_temp_celsius"], true);
-    assert_eq!(result["fresh_observation_count"], 6);
+    assert_eq!(result["fresh_observation_count"], 5);
 }
 
 #[test]

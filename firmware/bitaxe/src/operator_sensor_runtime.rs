@@ -8,7 +8,8 @@ use bitaxe_core::StartupDebugText;
 use bitaxe_safety::{
     observation::{BootSessionId, MonotonicMillis, UnavailableReason},
     sensor_acquisition::{
-        reduce_sensor_sweep, ProducerSensorState, ProducerSequences, SensorSweepOutcomes,
+        reduce_sensor_sweep, AcquisitionOutcome, ProducerSensorState, ProducerSequences,
+        SensorSweepOutcomes,
     },
 };
 use esp_idf_svc::sys;
@@ -65,7 +66,7 @@ fn run(
             let asic_temperature_celsius =
                 safety_adapter::read_asic_temperature_acquisition(&mut owner);
             let vr_temperature_celsius =
-                safety_adapter::read_vr_temperature_acquisition(&mut owner);
+                AcquisitionOutcome::Unavailable(UnavailableReason::UnsupportedOnBoard);
             let tachometer_rpm = safety_adapter::read_tachometer_acquisition(&mut owner);
             let acquired_at = MonotonicMillis::new(crate::runtime_uptime::millis());
             let outcomes = SensorSweepOutcomes {

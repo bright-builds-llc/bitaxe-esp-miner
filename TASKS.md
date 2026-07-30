@@ -28,8 +28,8 @@ new work.
 
 ### task-ultra205-mining-observation-baseline | 2026-07-28 | Re-establish a known-safe mining observation baseline
 
-Status: In progress — `attempt-003` sealed a distinct five-of-six safety
-boundary; `attempt-004` is authorized after the per-source diagnostic change.
+Status: In progress — `attempt-004` proved an incorrect Ultra 205 temperature
+capability mapping; `attempt-005` is authorized after the verified correction.
 
 - [x] Reproduce the zero-marker `marker_invalid` boundary with non-UTF-8
       non-candidate bytes surrounding valid runtime attestations and campaign
@@ -46,15 +46,19 @@ boundary; `attempt-004` is authorized after the per-source diagnostic change.
 - [x] Add a closed per-source freshness projection so a five-of-six safety
       result names the unavailable observation without sensor values or raw
       serial.
+- [x] Prove from sealed hardware evidence and the pinned board-205 reference
+      that EMC2101 internal temperature is the supported ASIC-temperature
+      source and the DS4432U path has no VR-temperature sensor.
 - [x] Pass every required software, package, parity, reference, and redaction
       gate for the parser and diagnostics change before committing it.
 - [x] Build and admit the exact current-HEAD package after its software
       dependencies complete.
 - [x] Detect exactly one Ultra 205 and run the single authorized observation
       attempt.
-- [ ] Prove exact source/package runtime attestation, all six safety
-      observations fresh, `mineonboot=false`, no campaign lease, no pool-secret
-      read, and no fan, voltage, or ASIC actuation.
+- [ ] Prove exact source/package runtime attestation, all five supported
+      Ultra 205 safety observations fresh, VR temperature explicitly
+      unsupported, `mineonboot=false`, no campaign lease, no pool-secret read,
+      and no fan, voltage, or ASIC actuation.
 - [ ] Seal the private result with one accepted terminal outcome and preserve
       exact non-claims for mining, shares, soak, and parity promotion.
 
@@ -70,6 +74,7 @@ Hardware contract:
   3. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-002 duration-seconds=360 redact-evidence=true`
   4. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-003 duration-seconds=360 redact-evidence=true`
   5. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-004 duration-seconds=360 redact-evidence=true`
+  6. `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-mining-observation-baseline/attempt-005 duration-seconds=360 redact-evidence=true`
 - Objective: establish a fresh current-architecture, exact-package,
   observe-only baseline on the single detected board 205 without reopening or
   retrying the terminal Phase 36 lineage.
@@ -114,7 +119,10 @@ Hardware contract:
   `mineonboot=false` state boundary exposed by `attempt-002`. Never run an
   unchanged retry. `attempt-004` is authorized only after the v2 per-source
   freshness diagnostic is regression-backed, fully verified, committed,
-  pushed, and rebuilt from clean exact HEAD. After any later failure, diagnose its closed boundary,
+  pushed, and rebuilt from clean exact HEAD. `attempt-005` is authorized only
+  after the board-205 temperature source and capability correction is
+  regression-backed, fully verified, committed, pushed, and rebuilt from clean
+  exact HEAD. After any later failure, diagnose its closed boundary,
   verify one targeted fix or objective non-invasive boundary change, and amend
   this contract with the exact next ordinal and command before hardware use.
   A recurrence of the same authoritative boundary signature after its targeted
@@ -187,10 +195,38 @@ tests, production-session verification, all 82 Bazel tests, packaging, Bright
 Builds checks, parity validation with no errors, reference cleanliness, and
 redaction verification pass for the v2 diagnostic change.
 
+`attempt-004` used clean exact-HEAD commit `2d6a8e73` and completed the full
+360-second window. Its sealed result and bound diagnostics pass mode, digest,
+and result-seal checks. All 719 accepted markers agree that only
+`chip_temp_celsius` is stale while power, bus voltage, current, VR temperature,
+and fan tach are fresh. Package identity and runtime attestation are trusted,
+`mineonboot=false`, serial framing is clean, no pool was read, no actuation
+occurred, and USB cleanup is ready. Comparison with pinned board-205 reference
+configuration and thermal/power selection proves the Rust mapping was
+backwards: Ultra 205 sets `emc_internal_temp=true`, so EMC2101 internal
+temperature is ASIC temperature, while its DS4432U power path exposes no
+VR-temperature source. The pre-fix readiness regression rejects an otherwise
+safe Ultra 205 when VR temperature is explicitly unavailable, and the pre-fix
+adapter regression fails because the board-specific internal-temperature
+acquisition does not exist. Both regressions pass after mapping ASIC
+temperature to EMC2101 internal, representing the unsupported VR source
+without a fabricated stamp, requiring the other five independent facts, and
+binding that exact requirement set in `mining-campaign-status-v3`. The host
+rejects a contradictory requirement set or freshness count.
+
+All 63 `bitaxe-safety`, 217 `bitaxe-api`, and 197 `bitaxe-flash` tests pass.
+The ordered Rust format, warnings-denied Clippy, all-target build, all-feature
+tests, production-session verification, all 82 Bazel tests, packaging, Bright
+Builds checks, parity validation with no errors, reference cleanliness,
+redaction verification, and diff checks also pass. A parity mutation test
+exposed a same-process temporary-path collision at nanosecond clock
+resolution; its atomic fixture suffix regression passes 20 consecutive runs
+and the full parity suite passes afterward.
+
 Completion review: Reopened by explicit user authorization for change-gated
-hardware retries until completion. Do not run `attempt-004` until the v2
-freshness diagnostic is fully verified, committed, pushed, and rebuilt from
-clean exact HEAD. No pool credential was supplied to any observation attempt,
+hardware retries until completion. Do not run `attempt-005` until the
+board-capability correction is fully verified, committed, pushed, and rebuilt
+from clean exact HEAD. No pool credential was supplied to any observation attempt,
 and their sealed results make no mining, share, soak, or parity-promotion
 claim. The
 `attempt-001` serial stop/parser path returned `marker_invalid` before accepting

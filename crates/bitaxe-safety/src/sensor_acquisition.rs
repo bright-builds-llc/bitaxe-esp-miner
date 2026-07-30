@@ -35,6 +35,7 @@ pub enum SensorValidationError {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AcquisitionOutcome<T> {
     Success(T),
+    Unavailable(UnavailableReason),
     ReadFailed,
     InvalidSample,
 }
@@ -262,6 +263,9 @@ fn reduce_power(
             prior_sequence,
             acquired_at,
         ),
+        AcquisitionOutcome::Unavailable(reason) => {
+            Ok((PowerObservation::unavailable(reason), prior_sequence))
+        }
         AcquisitionOutcome::ReadFailed => Ok((
             prior.record_fault(FaultReason::Ina260ReadFailed),
             prior_sequence,
@@ -291,6 +295,9 @@ fn reduce_temperature(
             prior_sequence,
             acquired_at,
         ),
+        AcquisitionOutcome::Unavailable(reason) => {
+            Ok((Observation::unavailable(reason), prior_sequence))
+        }
         AcquisitionOutcome::ReadFailed => {
             Ok((prior.record_fault(FaultReason::ReadFailed), prior_sequence))
         }
@@ -315,6 +322,9 @@ fn reduce_tachometer(
             prior_sequence,
             acquired_at,
         ),
+        AcquisitionOutcome::Unavailable(reason) => {
+            Ok((Observation::unavailable(reason), prior_sequence))
+        }
         AcquisitionOutcome::ReadFailed => {
             Ok((prior.record_fault(FaultReason::ReadFailed), prior_sequence))
         }
@@ -339,6 +349,9 @@ fn reduce_vr_temperature(
             prior_sequence,
             acquired_at,
         ),
+        AcquisitionOutcome::Unavailable(reason) => {
+            Ok((Observation::unavailable(reason), prior_sequence))
+        }
         AcquisitionOutcome::ReadFailed => {
             Ok((prior.record_fault(FaultReason::ReadFailed), prior_sequence))
         }

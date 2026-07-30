@@ -305,19 +305,18 @@ impl SafeTelemetrySnapshot {
     /// Projects stored observation truth separately from numeric compatibility values.
     #[must_use]
     pub fn from_observations(observations: &TelemetryObservations) -> Self {
-        let all_fresh = observations.power_watts.is_fresh()
+        let supported_facts_fresh = observations.power_watts.is_fresh()
             && observations.bus_voltage_volts.is_fresh()
             && observations.current_amps.is_fresh()
             && observations.chip_temp_celsius.is_fresh()
-            && observations.vr_temp_celsius.is_fresh()
             && observations.fan_rpm.is_fresh();
 
         Self {
-            status: if all_fresh {
+            status: if supported_facts_fresh {
                 SafetyTelemetryStatus::Fresh
             } else {
                 SafetyTelemetryStatus::Unavailable {
-                    reason: "observation_truth_not_all_fresh",
+                    reason: "supported_observation_truth_not_all_fresh",
                 }
             },
             evidence: SafetyCriticalEvidence::Missing,

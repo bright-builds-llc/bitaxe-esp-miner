@@ -18,7 +18,6 @@ fn operator_sensor_runtime_is_the_single_normal_acquisition_caller() {
     let required_calls = [
         "safety_adapter::read_power_acquisition(&mut owner)",
         "safety_adapter::read_asic_temperature_acquisition(&mut owner)",
-        "safety_adapter::read_vr_temperature_acquisition(&mut owner)",
         "safety_adapter::read_tachometer_acquisition(&mut owner)",
     ];
 
@@ -38,7 +37,7 @@ fn operator_sensor_runtime_is_the_single_normal_acquisition_caller() {
 #[test]
 fn raw_sensor_bus_capability_is_private_to_the_safety_facade() {
     // Arrange
-    let expected_facade_reads = 4;
+    let expected_facade_reads = 3;
 
     // Act / Assert
     assert_eq!(
@@ -116,11 +115,12 @@ fn only_high_level_actuation_requests_cross_into_the_mining_collaborator() {
 }
 
 #[test]
-fn vr_truth_is_projected_and_used_by_the_closed_mining_safety_verdict() {
+fn unsupported_ultra205_vr_truth_is_projected_but_not_required_for_mining() {
     // Arrange / Act / Assert
+    assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains(
+        "AcquisitionOutcome::Unavailable(UnavailableReason::UnsupportedOnBoard)"
+    ));
     assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains("vr_temp_celsius: project_observation("));
-    assert!(!OPERATOR_SENSOR_RUNTIME_SOURCE
-        .contains("vr_temp_celsius: bitaxe_safety::observation::Observation::unavailable("));
     assert!(PRODUCTION_SESSION_SOURCE.contains("observations.is_ultra_205_mining_safe_at(now())"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("self.mining_actuation.prepare(profile)"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("safety_prerequisites_fresh"));

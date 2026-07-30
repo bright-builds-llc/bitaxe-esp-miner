@@ -394,6 +394,7 @@ fn parse_unavailable_reason(
     match reason.code.as_str() {
         "not_yet_observed" => Ok(UnavailableReason::NotYetObserved),
         "producer_unavailable" => Ok(UnavailableReason::ProducerUnavailable),
+        "unsupported_on_board" => Ok(UnavailableReason::UnsupportedOnBoard),
         "power_sample_unavailable" => Ok(UnavailableReason::PowerSampleUnavailable),
         "thermal_reading_unavailable" => Ok(UnavailableReason::ThermalReadingUnavailable),
         "tachometer_unavailable" => Ok(UnavailableReason::TachometerUnavailable),

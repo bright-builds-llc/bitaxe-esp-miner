@@ -3,7 +3,8 @@ use serde_json::json;
 
 use super::*;
 use crate::{
-    ApiSnapshot, LiveTelemetryPlanner, SafeTelemetrySnapshot, StatisticsSample, SystemInfoWire,
+    ApiSnapshot, LiveTelemetryPlanner, SafeTelemetrySnapshot, SafetyTelemetryStatus,
+    StatisticsSample, SystemInfoWire,
 };
 
 fn fresh(value: f64) -> Observation<f64> {
@@ -40,13 +41,12 @@ fn safe_mining_observations() -> TelemetryObservations {
 }
 
 #[test]
-fn mining_safety_requires_all_six_fresh_observations() {
+fn mining_safety_requires_every_supported_ultra205_observation() {
     // Arrange
-    let safe = safe_mining_observations();
-    let stale_vr = safe
-        .vr_temp_celsius
-        .mark_stale(StaleReason::ThermalSampleStale)
-        .expect("fresh VR temperature can become stale");
+    let safe = TelemetryObservations {
+        vr_temp_celsius: Observation::unavailable(UnavailableReason::ThermalReadingUnavailable),
+        ..safe_mining_observations()
+    };
     let faulted_fan = safe.fan_rpm.record_fault(FaultReason::ReadFailed);
     let cases = [
         TelemetryObservations {
@@ -68,10 +68,6 @@ fn mining_safety_requires_all_six_fresh_observations() {
             ..safe
         },
         TelemetryObservations {
-            vr_temp_celsius: stale_vr,
-            ..safe
-        },
-        TelemetryObservations {
             fan_rpm: faulted_fan,
             ..safe
         },
@@ -79,6 +75,10 @@ fn mining_safety_requires_all_six_fresh_observations() {
 
     // Act / Assert
     assert!(safe.is_ultra_205_mining_safe_at(MonotonicMillis::new(1_250)));
+    assert_eq!(
+        SafeTelemetrySnapshot::from_observations(&safe).status,
+        SafetyTelemetryStatus::Fresh
+    );
     assert!(
         cases
             .into_iter()
@@ -114,10 +114,6 @@ fn mining_safety_enforces_voltage_power_temperature_and_numeric_limits() {
         },
         TelemetryObservations {
             current_amps: fresh(f64::NAN),
-            ..safe
-        },
-        TelemetryObservations {
-            vr_temp_celsius: fresh(151.0),
             ..safe
         },
     ];

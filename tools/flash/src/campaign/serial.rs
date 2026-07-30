@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use super::markers::{
     assess_campaign_markers, first_campaign_marker_failure, CampaignStateMarker,
-    CampaignStatusMarker,
+    CampaignStatusMarker, ObservationRequirementsMarker,
 };
 use super::*;
 
@@ -385,6 +385,7 @@ impl CampaignSerialAnalyzer {
         };
         if marker.schema != CAMPAIGN_MARKER_SCHEMA
             || marker.fresh_observation_count != marker.observation_freshness.fresh_count()
+            || marker.observation_requirements != ObservationRequirementsMarker::ULTRA_205
         {
             self.diagnostics.marker_invalid_schema_count = self
                 .diagnostics

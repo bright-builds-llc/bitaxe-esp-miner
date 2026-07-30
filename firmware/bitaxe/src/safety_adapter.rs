@@ -217,13 +217,7 @@ pub(crate) fn read_power_acquisition(
 pub(crate) fn read_asic_temperature_acquisition(
     owner: &mut RuntimeI2cOwner<'_>,
 ) -> AcquisitionOutcome<f64> {
-    emc2101::read_external_temperature_acquisition(&mut owner.sensors())
-}
-
-pub(crate) fn read_vr_temperature_acquisition(
-    owner: &mut RuntimeI2cOwner<'_>,
-) -> AcquisitionOutcome<f64> {
-    emc2101::read_internal_temperature_acquisition(&mut owner.sensors())
+    emc2101::read_ultra205_asic_temperature_acquisition(&mut owner.sensors())
 }
 
 pub(crate) fn read_tachometer_acquisition(

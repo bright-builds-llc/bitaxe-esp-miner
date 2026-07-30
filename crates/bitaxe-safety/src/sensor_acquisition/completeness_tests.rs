@@ -105,6 +105,38 @@ fn vr_failure_preserves_asic_temperature_and_last_good_vr_sample() {
 }
 
 #[test]
+fn unsupported_ultra205_vr_source_remains_unavailable_without_a_stamp() {
+    // Arrange
+    let outcomes = SensorSweepOutcomes {
+        vr_temperature_celsius: AcquisitionOutcome::Unavailable(
+            UnavailableReason::UnsupportedOnBoard,
+        ),
+        ..successful_outcomes()
+    };
+
+    // Act
+    let (state, sequences) = reduce_sensor_sweep(
+        ProducerSensorState::default(),
+        ProducerSequences::default(),
+        outcomes,
+        SESSION,
+        ACQUIRED_AT,
+        12.0,
+    )
+    .expect("supported fixture sequences should advance");
+
+    // Assert
+    assert!(state.thermal().temperature_truth().is_fresh());
+    assert_eq!(state.vr_temperature().state_label(), "unavailable");
+    assert_eq!(
+        state.vr_temperature().maybe_reason(),
+        Some("unsupported_on_board")
+    );
+    assert!(state.vr_temperature().maybe_last_good().is_none());
+    assert_eq!(sequences.vr_temperature, ObservationSequence::ZERO);
+}
+
+#[test]
 fn sustained_failures_age_all_retained_facts_to_stale() {
     // Arrange
     let (fresh, sequences) = reduce_sensor_sweep(

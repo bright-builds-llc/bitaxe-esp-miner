@@ -124,6 +124,7 @@ pub enum StaleReason {
 pub enum UnavailableReason {
     NotYetObserved,
     ProducerUnavailable,
+    UnsupportedOnBoard,
     PowerSampleUnavailable,
     ThermalReadingUnavailable,
     TachometerUnavailable,

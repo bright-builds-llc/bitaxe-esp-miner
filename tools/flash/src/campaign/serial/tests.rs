@@ -19,13 +19,21 @@ fn observation_marker(schema: &str) -> Vec<u8> {
         "active_ms": 0,
         "submit_outcome": "none",
         "safety": "fresh",
-        "fresh_observation_count": 6,
+        "fresh_observation_count": 5,
         "observation_freshness": {
             "power_watts": true,
             "bus_voltage_volts": true,
             "current_amps": true,
             "chip_temp_celsius": true,
-            "vr_temp_celsius": true,
+            "vr_temp_celsius": false,
+            "fan_rpm": true,
+        },
+        "observation_requirements": {
+            "power_watts": true,
+            "bus_voltage_volts": true,
+            "current_amps": true,
+            "chip_temp_celsius": true,
+            "vr_temp_celsius": false,
             "fan_rpm": true,
         },
         "pool_config": "not_read",
@@ -117,11 +125,35 @@ fn wrong_marker_schema_is_typed() {
 fn contradictory_freshness_count_is_typed_as_schema_invalid() {
     // Arrange
     let mut marker = observation_marker(CAMPAIGN_MARKER_SCHEMA);
-    let count = b"\"fresh_observation_count\":6";
+    let count = b"\"fresh_observation_count\":5";
     let index = find_bytes(&marker, count).expect("fresh observation count");
     marker.splice(
         index..index + count.len(),
-        b"\"fresh_observation_count\":5".iter().copied(),
+        b"\"fresh_observation_count\":4".iter().copied(),
+    );
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&marker, observation_admission());
+
+    // Assert
+    assert_eq!(
+        capture.outcome_detail,
+        CampaignSerialOutcomeDetail::MarkerSchemaInvalid
+    );
+    assert_eq!(capture.diagnostics.marker_invalid_schema_count, 1);
+    assert!(capture.markers.is_empty());
+}
+
+#[test]
+fn contradictory_ultra205_observation_requirements_are_schema_invalid() {
+    // Arrange
+    let mut marker = observation_marker(CAMPAIGN_MARKER_SCHEMA);
+    let requirements = b"\"observation_requirements\":{\"bus_voltage_volts\":true,\"chip_temp_celsius\":true,\"current_amps\":true,\"fan_rpm\":true,\"power_watts\":true,\"vr_temp_celsius\":false}";
+    let index = find_bytes(&marker, requirements).expect("observation requirements");
+    let contradiction = b"\"observation_requirements\":{\"bus_voltage_volts\":true,\"chip_temp_celsius\":true,\"current_amps\":true,\"fan_rpm\":true,\"power_watts\":true,\"vr_temp_celsius\":true}";
+    marker.splice(
+        index..index + requirements.len(),
+        contradiction.iter().copied(),
     );
 
     // Act
