@@ -121,9 +121,11 @@ release readiness, or checklist promotion.
 - [x] Land and verify the two regression fixes exposed by `attempt-001`:
       incremental typed runtime-attestation classification and in-flight
       transition lineage across same-block clean generation refreshes.
+- [ ] Run exactly one newly authorized post-fix `attempt-002` from the clean,
+      pushed tracker-amendment HEAD; never run `attempt-003` under this task.
 - [ ] Seal one full-duration hardware attempt with continuous fresh safety,
       trusted identity, safe stop, lease cleanup, `mineonboot=false`, and USB
-      cleanup; allow one conditional attempt only under the retry gate below.
+      cleanup using the newly authorized post-fix ordinal below.
 
 Dependencies: Complete archived `task-ultra205-accepted-pool-share` with its
 accepted clean-HEAD owner-pool share and confirmed safe stop.
@@ -134,8 +136,9 @@ Hardware contract:
   1. `just package`
   2. `just detect-ultra205`
   3. `just mining-campaign stage=job-transition profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-job-transition-soak/attempt-001 duration-seconds=1800 redact-evidence=true`
-  4. Conditionally, after the retry gate succeeds, the same command once with
-     `evidence-dir=scratch/ultra205-job-transition-soak/attempt-002`.
+  4. After the 2026-07-31 post-fix authorization, the same command once with
+     `evidence-dir=scratch/ultra205-job-transition-soak/attempt-002`; this is
+     the final attempt authorized by this task.
 - Objective: prove at least one in-session Bitcoin previous-block transition
   from a clean pool notify through old-generation invalidation, replacement
   BM1366 dispatch, and a correlated replacement-generation nonce while mining
@@ -183,14 +186,16 @@ Hardware contract:
   persist `mineonboot=false`; retain pool settings; and release USB/process
   resources. If safe stop cannot be confirmed, one exact baseline reflash is
   allowed only after same-device re-admission; otherwise stop.
-- Retry bound: `attempt-001` is the only ordinary attempt. If and only if it
-  completes the full duration with every non-transition criterion accepted and
-  seals `job_transition_not_observed`, read the public Blockstream mainnet tip
-  height after closure, wait until a later read is strictly greater, retain
-  only `public_tip_advanced=true`, rebuild the same clean-HEAD package,
-  re-detect the board, and run `attempt-002` once. No other first-attempt
-  outcome authorizes a retry. Stop inconclusive after a second no-transition
-  result; never run `attempt-003`.
+- Retry bound: `attempt-001` sealed `job_transition_evidence_incomplete` and
+  did not open its original conditional retry gate. The user subsequently
+  authorized exactly one post-fix `attempt-002` after the two boundary defects
+  were reproduced, fixed, and fully software-verified in pushed commit
+  `5d530464`. Rebuild from the clean pushed tracker-amendment HEAD, re-detect
+  exactly one board, and run that ordinal once. Any safety, identity, parser,
+  protocol, generation, dispatch, correlation, rejection, transport, evidence,
+  lease, safe-stop, or cleanup failure stops without retry. If no transition is
+  observed, stop inconclusive without a public-tip wait. Never run
+  `attempt-003` under this task.
 - Accepted terminal outcomes: `complete` only for full-duration
   `job_transition_complete` plus every identity, safety, transition, rejection,
   safe-stop, seal, mode, and cleanup requirement. The only non-failure
@@ -215,8 +220,8 @@ refresh. Both red regressions pass after the fixes, as do the exact Rust
 sequence, focused API/Stratum/campaign suites, production-session verification,
 all 82 Bazel test targets, package build, Bright Builds checks, parity,
 reference cleanliness, redaction, artifact mode/seal/digest checks, and the
-private evidence denylist. A later separately authorized hardware attempt
-remains pending.
+private evidence denylist. The newly authorized, no-retry post-fix
+`attempt-002` remains pending.
 
 Completion review: Pending. This task proves one bounded conservative
 new-block transition only. It does not prove profitability, upstream-default
