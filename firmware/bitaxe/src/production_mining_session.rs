@@ -501,15 +501,15 @@ impl OrdinaryEspProductionSessionAdapter {
             return;
         };
         let observations = crate::safety_adapter::observation_snapshot();
-        let now = MonotonicMillis::new(now_ms);
-        let safety_fresh = observations.is_ultra_205_mining_safe_at(now);
+        let safety_now = now();
+        let safety_fresh = observations.is_ultra_205_mining_safe_at(safety_now);
         let observation_freshness = CampaignObservationFreshness {
-            power_watts: is_current(&observations.power_watts, now),
-            bus_voltage_volts: is_current(&observations.bus_voltage_volts, now),
-            current_amps: is_current(&observations.current_amps, now),
-            chip_temp_celsius: is_current(&observations.chip_temp_celsius, now),
-            vr_temp_celsius: is_current(&observations.vr_temp_celsius, now),
-            fan_rpm: is_current(&observations.fan_rpm, now),
+            power_watts: is_current(&observations.power_watts, safety_now),
+            bus_voltage_volts: is_current(&observations.bus_voltage_volts, safety_now),
+            current_amps: is_current(&observations.current_amps, safety_now),
+            chip_temp_celsius: is_current(&observations.chip_temp_celsius, safety_now),
+            vr_temp_celsius: is_current(&observations.vr_temp_celsius, safety_now),
+            fan_rpm: is_current(&observations.fan_rpm, safety_now),
         };
         let marker = status.marker(
             snapshot,

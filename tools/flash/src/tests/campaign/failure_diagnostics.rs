@@ -17,6 +17,7 @@ fn hardware_preparation_failure_precedes_missing_pool_configuration() {
             profile: "conservative",
             active_ms: 0,
             submit_outcome: "none",
+            terminal_reason: "production_asic_unavailable",
             safety: "fresh",
             pool_config: "not_read",
             actuation: "safe_stopped",

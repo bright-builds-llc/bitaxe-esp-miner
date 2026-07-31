@@ -29,6 +29,40 @@ pub(super) enum SubmitOutcomeMarker {
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
+pub(super) enum CampaignTerminalReasonMarker {
+    None,
+    OperatorPaused,
+    NetworkUnavailable,
+    StratumV1Unsupported,
+    SafetyPrerequisitesStale,
+    CampaignLeaseUnavailable,
+    CampaignLeaseConsumed,
+    ProductionAsicUnavailable,
+    ActuationUnqualified,
+    PoolConfigurationUnavailable,
+    PoolsExhausted,
+}
+
+impl CampaignTerminalReasonMarker {
+    pub(super) const fn label(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::OperatorPaused => "operator_paused",
+            Self::NetworkUnavailable => "network_unavailable",
+            Self::StratumV1Unsupported => "stratum_v1_unsupported",
+            Self::SafetyPrerequisitesStale => "safety_prerequisites_stale",
+            Self::CampaignLeaseUnavailable => "campaign_lease_unavailable",
+            Self::CampaignLeaseConsumed => "campaign_lease_consumed",
+            Self::ProductionAsicUnavailable => "production_asic_unavailable",
+            Self::ActuationUnqualified => "actuation_unqualified",
+            Self::PoolConfigurationUnavailable => "pool_configuration_unavailable",
+            Self::PoolsExhausted => "pools_exhausted",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub(super) enum SafetyMarker {
     Fresh,
     Stale,
@@ -240,6 +274,7 @@ pub(super) struct CampaignStatusMarker {
     pub(super) qualified_candidate_count: u64,
     pub(super) below_pool_target_count: u64,
     pub(super) duplicate_candidate_count: u64,
+    pub(super) terminal_reason: CampaignTerminalReasonMarker,
     pub(super) safety: SafetyMarker,
     pub(super) fresh_observation_count: u8,
     pub(super) observation_freshness: ObservationFreshnessMarker,

@@ -31,6 +31,7 @@ struct CampaignResultEvidence<'a> {
     qualified_candidate_count: u64,
     below_pool_target_count: u64,
     duplicate_candidate_count: u64,
+    terminal_reason: &'static str,
     active_ms: u64,
     safety: &'static str,
     fresh_observation_count: u8,
@@ -166,6 +167,8 @@ pub(super) fn finish_campaign_attempt(
                 .map_or(0, |marker| marker.below_pool_target_count),
             duplicate_candidate_count: maybe_terminal
                 .map_or(0, |marker| marker.duplicate_candidate_count),
+            terminal_reason: maybe_terminal
+                .map_or("not_observed", |marker| marker.terminal_reason.label()),
             active_ms: maybe_terminal.map_or(0, |marker| marker.active_ms),
             safety: maybe_terminal.map_or("not_observed", |marker| match marker.safety {
                 SafetyMarker::Fresh => "fresh",

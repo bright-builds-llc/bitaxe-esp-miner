@@ -11,7 +11,7 @@ use markers::{assess_campaign_markers, CampaignStatusMarker};
 use serial::{CampaignSerialDiagnostics, CampaignSerialOutcomeDetail};
 
 const CAMPAIGN_MARKER_PREFIX: &str = "mining_campaign_status=";
-const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v5";
+const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v6";
 const CAMPAIGN_PREPARATION_PREFIX: &str = "mining_campaign_preparation=";
 const CAMPAIGN_PREPARATION_SCHEMA: &str = "mining-campaign-preparation-v1";
 const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v2";

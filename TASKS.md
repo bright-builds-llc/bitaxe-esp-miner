@@ -29,8 +29,9 @@ new work.
 ### task-ultra205-accepted-pool-share | 2026-07-31 | Obtain one accepted owner-pool share
 
 Status: In progress — the deterministic diagnosis and software fix are
-verified; commit/push and the one clean-HEAD conservative hardware campaign
-remain.
+verified. `attempt-001` then proved local below-target filtering but ended on
+an unclassified early safe stop; typed terminal-cause instrumentation and one
+diagnostic `attempt-002` remain.
 
 - [x] Reproduce the rejected-share path deterministically from a known BM1366
       nonce, reconstructed header, and pool difficulty.
@@ -53,6 +54,9 @@ Hardware contract:
   1. `just detect-ultra205`
   2. `just package`
   3. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-accepted-pool-share/attempt-001 duration-seconds=600 redact-evidence=true`
+  4. After the diagnostic change is committed/pushed and rebuilt from exact
+     clean HEAD, the same command once with
+     `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-002`.
 - Objective: obtain one pool-accepted Stratum V1 share derived from current
   owner-pool work and a correlated BM1366 nonce, then prove safe stop.
 - Evidence: the ignored
@@ -93,11 +97,13 @@ Hardware contract:
   process resources. If device-local stop cannot be confirmed, one exact
   baseline reflash is allowed only after same-device re-admission; otherwise
   stop.
-- Retry bound: one post-fix attempt only and no unchanged retry. A later
-  ordinal requires a new deterministic failing regression plus a verified
-  boundary-changing fix or an authorized non-invasive remediation with
-  objective change proof. One post-fix recurrence of the same authoritative
-  signature selects `stop_repeated_boundary`.
+- Retry bound: `attempt-001` is sealed and immutable; it may not be repeated.
+  The owner-authorized non-invasive remediation adds a closed terminal reason
+  and aligns status freshness with the authoritative runtime clock, providing
+  objective change proof for exactly one `attempt-002`. Any further ordinal
+  requires a new deterministic failing regression plus a verified
+  boundary-changing fix. A recurrence of the same authoritative signature
+  selects `stop_repeated_boundary`.
 - Accepted terminal outcome: `complete` only for `submit_response_observed`
   with `submit_outcome=accepted`, trusted exact-package identity, clean serial
   diagnostics, fresh supported safety, `mineonboot=false`, confirmed safe
@@ -115,7 +121,16 @@ candidates from one job eligible and ignores exact duplicates. `cargo fmt
 tests, focused ASIC/Stratum/flash tests, production-session verification,
 `just test`, `just package`, Bright Builds checks, parity, reference
 cleanliness, redaction, and diff checks pass. Hardware evidence remains
-pending.
+pending. Clean commit `db1974ac` `attempt-001` admitted the exact package and
+one board, preserved trusted runtime identity and clean serial framing, and
+sealed fresh supported observations, `mineonboot=false`, confirmed safe stop,
+and ready USB cleanup. It correctly counted one below-pool-target ASIC
+candidate and submitted none, but consumed after `5,835` active milliseconds
+with `submit_response_missing`. Because v5 did not retain the session blocker
+and status freshness used a different clock origin than the authoritative
+safety gate, the exact early-stop cause remains unclassified. Ephemeral raw
+detector and console logs were deleted after extracting these closed facts;
+the sealed private attempt remains ignored and non-promoted.
 
 Completion review: Pending. An accepted share proves this bounded conservative
 owner-pool path only; it does not prove profitability, default-profile safety,

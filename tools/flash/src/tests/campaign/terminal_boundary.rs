@@ -16,6 +16,7 @@ fn live_share_accepts_repeated_markers_and_cleared_terminal_lease() {
         profile: "conservative",
         active_ms: 1_000,
         submit_outcome: "none",
+        terminal_reason: "none",
         safety: "fresh",
         pool_config: "local_owner_supplied",
         actuation: "qualified",
@@ -34,6 +35,7 @@ fn live_share_accepts_repeated_markers_and_cleared_terminal_lease() {
     let result = read_campaign_result(&command);
     assert_eq!(result["terminal_category"], "submit_response_observed");
     assert_eq!(result["submit_outcome"], "accepted");
+    assert_eq!(result["terminal_reason"], "campaign_lease_consumed");
     for (field, expected) in [
         ("qualified_candidate_count", 1),
         ("below_pool_target_count", 0),

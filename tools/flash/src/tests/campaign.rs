@@ -54,6 +54,7 @@ struct CampaignMarkerFixture<'a> {
     profile: &'a str,
     active_ms: u64,
     submit_outcome: &'a str,
+    terminal_reason: &'a str,
     safety: &'a str,
     pool_config: &'a str,
     actuation: &'a str,
@@ -81,7 +82,7 @@ fn campaign_marker_with_failure(
     format!(
         "mining_campaign_status={}",
         serde_json::json!({
-            "schema": "mining-campaign-status-v5",
+            "schema": "mining-campaign-status-v6",
             "stage": fixture.stage,
             "lease_id": fixture.lease_id,
             "campaign_state": fixture.state,
@@ -91,6 +92,7 @@ fn campaign_marker_with_failure(
             "qualified_candidate_count": if fixture.submit_outcome == "none" { 0 } else { 1 },
             "below_pool_target_count": 0,
             "duplicate_candidate_count": 0,
+            "terminal_reason": fixture.terminal_reason,
             "safety": fixture.safety,
             "fresh_observation_count": if safety_fresh { 5 } else { 4 },
             "observation_freshness": {
@@ -134,6 +136,7 @@ fn observation_marker(safety: &str) -> String {
         profile: "none",
         active_ms: 0,
         submit_outcome: "none",
+        terminal_reason: "none",
         safety,
         pool_config: "not_read",
         actuation: "none",
@@ -149,6 +152,7 @@ fn live_terminal(submit_outcome: &str) -> String {
         profile: "conservative",
         active_ms: 2_000,
         submit_outcome,
+        terminal_reason: "campaign_lease_consumed",
         safety: "fresh",
         pool_config: "local_owner_supplied",
         actuation: "safe_stopped",
@@ -418,6 +422,7 @@ fn soak_requires_full_active_duration() {
         profile: "upstream-default",
         active_ms: 599_999,
         submit_outcome: "accepted",
+        terminal_reason: "campaign_lease_consumed",
         safety: "fresh",
         pool_config: "local_owner_supplied",
         actuation: "safe_stopped",

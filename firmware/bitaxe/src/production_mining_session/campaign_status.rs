@@ -227,7 +227,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v5",
+            schema: "mining-campaign-status-v6",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -245,6 +245,9 @@ impl CampaignStatusTracker {
             qualified_candidate_count: snapshot.mining.counters.qualified_candidates,
             below_pool_target_count: snapshot.mining.counters.below_pool_target,
             duplicate_candidate_count: snapshot.mining.counters.duplicate_candidates,
+            terminal_reason: snapshot
+                .maybe_blocker
+                .map_or("none", |blocker| blocker.label()),
             safety: if safety_fresh { "fresh" } else { "stale" },
             fresh_observation_count: observation_freshness.fresh_count(),
             observation_freshness,
@@ -283,6 +286,7 @@ struct CampaignStatusProjection {
     qualified_candidate_count: u64,
     below_pool_target_count: u64,
     duplicate_candidate_count: u64,
+    terminal_reason: &'static str,
     safety: &'static str,
     fresh_observation_count: u8,
     observation_freshness: CampaignObservationFreshness,
@@ -309,8 +313,8 @@ const fn campaign_state_label(state: MiningCampaignState) -> &'static str {
 mod tests {
     use bitaxe_stratum::v1::production_session::{
         MiningCampaignDuration, MiningCampaignLeaseId, MiningCampaignStopCondition,
-        MiningHardwareProfilePreset, MiningHardwareState, ProductionSessionPhase,
-        ProductionSessionSnapshot,
+        MiningHardwareProfilePreset, MiningHardwareState, ProductionSessionBlocker,
+        ProductionSessionPhase, ProductionSessionSnapshot,
     };
     use bitaxe_stratum::v1::production_work::PoolSessionGeneration;
     use bitaxe_stratum::v1::state::{MiningRuntimeState, ShareCounters};
@@ -346,7 +350,7 @@ mod tests {
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v5");
+        assert_eq!(value["schema"], "mining-campaign-status-v6");
         assert_eq!(value["stage"], "observation");
         assert!(value["lease_id"].is_null());
         assert_eq!(value["campaign_state"], "unavailable");
@@ -467,6 +471,7 @@ mod tests {
             ..ShareCounters::default()
         };
         active.campaign_state = MiningCampaignState::Consumed;
+        active.maybe_blocker = Some(ProductionSessionBlocker::CampaignLeaseConsumed);
 
         // Act
         tracker.note_safe_stop_pending();
@@ -488,6 +493,7 @@ mod tests {
         assert_eq!(value["qualified_candidate_count"], 1);
         assert_eq!(value["below_pool_target_count"], 7);
         assert_eq!(value["duplicate_candidate_count"], 2);
+        assert_eq!(value["terminal_reason"], "campaign_lease_consumed");
         assert_eq!(value["pool_config"], "local_owner_supplied");
         assert_eq!(value["actuation"], "safe_stopped");
         assert_eq!(value["safe_stop"], "confirmed");

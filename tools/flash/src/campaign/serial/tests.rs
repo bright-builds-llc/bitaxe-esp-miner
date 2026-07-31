@@ -21,6 +21,7 @@ fn observation_marker(schema: &str) -> Vec<u8> {
         "qualified_candidate_count": 0,
         "below_pool_target_count": 0,
         "duplicate_candidate_count": 0,
+        "terminal_reason": "none",
         "safety": "fresh",
         "fresh_observation_count": 5,
         "observation_freshness": {
