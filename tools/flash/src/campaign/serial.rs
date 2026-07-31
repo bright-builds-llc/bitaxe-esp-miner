@@ -6,6 +6,14 @@ use super::markers::{
 };
 use super::*;
 
+mod preparation;
+
+#[cfg(test)]
+use super::markers::CampaignFailureStepMarker;
+#[cfg(test)]
+use preparation::CampaignPreparationOutcome;
+use preparation::CampaignPreparationProgress;
+
 const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v1";
 const TRACE_EDGE_CAPACITY: usize = 32;
 const MAX_RECORDED_LINE_LENGTH: usize = 4_096;
@@ -51,6 +59,10 @@ enum CampaignSerialEventKind {
     MarkerTruncated,
     RuntimeAttestationCandidate,
     RuntimeAttestationInvalidUtf8,
+    PreparationEventAccepted,
+    PreparationPayloadInvalidUtf8,
+    PreparationJsonInvalid,
+    PreparationSchemaInvalid,
     PostTerminalBytesIgnored,
 }
 
@@ -80,6 +92,12 @@ pub(super) struct CampaignSerialDiagnostics {
     marker_truncated_count: u64,
     runtime_attestation_candidate_count: u64,
     runtime_attestation_invalid_encoding_count: u64,
+    preparation_candidate_count: u64,
+    accepted_preparation_event_count: u64,
+    preparation_invalid_encoding_count: u64,
+    preparation_invalid_json_count: u64,
+    preparation_invalid_schema_count: u64,
+    latest_preparation_event: Option<CampaignPreparationProgress>,
     trailing_partial_count: u64,
     post_terminal_ignored_byte_count: u64,
     event_count: u64,
@@ -106,6 +124,12 @@ impl CampaignSerialDiagnostics {
             marker_truncated_count: 0,
             runtime_attestation_candidate_count: 0,
             runtime_attestation_invalid_encoding_count: 0,
+            preparation_candidate_count: 0,
+            accepted_preparation_event_count: 0,
+            preparation_invalid_encoding_count: 0,
+            preparation_invalid_json_count: 0,
+            preparation_invalid_schema_count: 0,
+            latest_preparation_event: None,
             trailing_partial_count: 0,
             post_terminal_ignored_byte_count: 0,
             event_count: 0,
@@ -310,12 +334,11 @@ impl CampaignSerialAnalyzer {
         let marker_index = find_bytes(line, CAMPAIGN_MARKER_PREFIX.as_bytes());
         let attestation_index =
             find_bytes(line, bitaxe_api::RUNTIME_BOOT_ATTESTATION_MARKER.as_bytes());
-        let candidate_index = match (marker_index, attestation_index) {
-            (Some(marker), Some(attestation)) => Some(marker.min(attestation)),
-            (Some(marker), None) => Some(marker),
-            (None, Some(attestation)) => Some(attestation),
-            (None, None) => None,
-        };
+        let preparation_index = find_bytes(line, CAMPAIGN_PREPARATION_PREFIX.as_bytes());
+        let candidate_index = [marker_index, attestation_index, preparation_index]
+            .into_iter()
+            .flatten()
+            .min();
         if std::str::from_utf8(line).is_err() {
             self.diagnostics.non_utf8_line_count =
                 self.diagnostics.non_utf8_line_count.saturating_add(1);
@@ -333,6 +356,13 @@ impl CampaignSerialAnalyzer {
         if let Some(index) = attestation_index {
             self.process_runtime_attestation(
                 &line[index..],
+                byte_offset.saturating_add(index),
+                line.len().saturating_sub(index),
+            );
+        }
+        if let Some(index) = preparation_index {
+            self.process_preparation_progress(
+                &line[index + CAMPAIGN_PREPARATION_PREFIX.len()..],
                 byte_offset.saturating_add(index),
                 line.len().saturating_sub(index),
             );

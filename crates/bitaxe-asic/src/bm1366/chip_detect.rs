@@ -24,6 +24,17 @@ pub const UART_ADAPTER_UNAVAILABLE: &str = "uart_adapter_unavailable";
 
 /// Idle-timeout used by upstream `count_asic_chips` / `SERIAL_rx` (ms).
 pub const COUNT_ASIC_CHIPS_IDLE_TIMEOUT_MS: u32 = 1_000;
+/// Wall-clock ceiling for one chip-detect drain, including continuous traffic.
+pub const COUNT_ASIC_CHIPS_TOTAL_TIMEOUT_MS: u32 = 5_000;
+/// Secondary ceiling that bounds continuously available frames independent of time.
+pub const COUNT_ASIC_CHIPS_MAX_FRAMES: u32 = 64;
+
+/// Returns whether a chip-detect drain must stop before reading another frame.
+#[must_use]
+pub const fn chip_detect_drain_budget_exhausted(elapsed_ms: u64, frames_seen: u32) -> bool {
+    elapsed_ms >= COUNT_ASIC_CHIPS_TOTAL_TIMEOUT_MS as u64
+        || frames_seen >= COUNT_ASIC_CHIPS_MAX_FRAMES
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bm1366AdapterIoFault {
@@ -198,11 +209,13 @@ pub fn fail_closed_actions(reason: &'static str) -> Vec<Bm1366AdapterAction> {
 #[cfg(test)]
 mod tests {
     use super::{
-        adapter_io_failure_actions, adapter_setup_failure_actions, chip_detect_response_actions,
+        adapter_io_failure_actions, adapter_setup_failure_actions,
+        chip_detect_drain_budget_exhausted, chip_detect_response_actions,
         classify_chip_id_count_frame, count_asic_chips_drain_until_idle, fail_closed_actions,
         finalize_counted_chip_detect, Bm1366AdapterIoFault, Bm1366AdapterSetupFault,
         ChipIdCountFrameDisposition, CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID,
-        RESET_ADAPTER_UNAVAILABLE, UART_ADAPTER_UNAVAILABLE,
+        COUNT_ASIC_CHIPS_MAX_FRAMES, COUNT_ASIC_CHIPS_TOTAL_TIMEOUT_MS, RESET_ADAPTER_UNAVAILABLE,
+        UART_ADAPTER_UNAVAILABLE,
     };
     use crate::bm1366::{
         command::Bm1366AdapterAction, crc::crc5, observation::AsicInitStatus, BM1366_CHIP_ID,
@@ -357,6 +370,28 @@ mod tests {
         assert_eq!(disposition, Ok(ChipIdCountFrameDisposition::Accept));
         assert_eq!(counted, Ok(1));
         assert_eq!(finalized, Ok(1));
+    }
+
+    #[test]
+    fn continuous_chip_detect_traffic_exhausts_a_hard_budget() {
+        // Arrange
+        let before_deadline_ms = u64::from(COUNT_ASIC_CHIPS_TOTAL_TIMEOUT_MS) - 1;
+        let before_frame_limit = COUNT_ASIC_CHIPS_MAX_FRAMES - 1;
+
+        // Act
+        let below_both_limits =
+            chip_detect_drain_budget_exhausted(before_deadline_ms, before_frame_limit);
+        let at_time_limit = chip_detect_drain_budget_exhausted(
+            u64::from(COUNT_ASIC_CHIPS_TOTAL_TIMEOUT_MS),
+            before_frame_limit,
+        );
+        let at_frame_limit =
+            chip_detect_drain_budget_exhausted(before_deadline_ms, COUNT_ASIC_CHIPS_MAX_FRAMES);
+
+        // Assert
+        assert!(!below_both_limits);
+        assert!(at_time_limit);
+        assert!(at_frame_limit);
     }
 
     #[test]

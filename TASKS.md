@@ -28,12 +28,14 @@ new work.
 
 ### task-ultra205-live-pool-share | 2026-07-28 | Prove one real BM1366 pool submission
 
-Status: In progress — `attempt-003` proved active mining, owner-pool use, a
-real rejected submit response, trusted exact-package identity, fresh safety,
-and confirmed safe stop after the EMC2101 tach-input fix. The host nevertheless
-sealed `marker_invalid/marker_truncated` because it validated a partial marker
-that began after the already accepted live terminal marker. `attempt-004` is
-authorized only after the terminal-boundary regression and fix are fully
+Status: In progress — `attempt-003` proved the complete live-share path, and
+`attempt-004` proved the terminal-boundary host fix but then stopped publishing
+campaign markers as the live lease entered synchronous hardware preparation.
+Periodic exact-package runtime attestations continued for the full capture, so
+the firmware remained alive. The preparation audit found one unbounded path:
+BM1366 chip detection drained continuous UART frames until an idle gap with no
+wall-clock or frame ceiling. `attempt-005` is authorized only after that path
+is bounded, typed preparation progress is sealed, and the change is fully
 verified, committed, pushed, and rebuilt from clean exact HEAD.
 
 - [ ] Freeze and admit the exact current-HEAD package, single detected board
@@ -66,6 +68,7 @@ Hardware contract:
   4. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-002 duration-seconds=600 redact-evidence=true`
   5. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-003 duration-seconds=600 redact-evidence=true`
   6. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-004 duration-seconds=600 redact-evidence=true`
+  7. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-005 duration-seconds=600 redact-evidence=true`
 - Objective: obtain one real BM1366 nonce correlated to owner-pool work and
   one accepted or rejected Stratum V1 submit response under the conservative
   profile, then prove safe stop.
@@ -122,7 +125,14 @@ Hardware contract:
   after one complete validated live terminal marker, already-buffered suffix
   bytes are outside the campaign and are counted without being parsed as a new
   marker. Malformed or truncated candidates before that boundary and every
-  observation-campaign trailing candidate remain fail-closed.
+  observation-campaign trailing candidate remain fail-closed. `attempt-005`
+  changes the firmware preparation boundary: chip-detect draining now has both
+  a five-second wall-clock ceiling and a 64-frame ceiling, and every closed
+  preparation step emits privacy-safe `started`, `completed`, or `failed`
+  progress sealed into the private diagnostic artifact. The historical
+  byte-level trigger remains uncertain because raw serial was intentionally
+  ephemeral; the new bounds eliminate the identified non-return class without
+  overstating that uncertainty.
 - Accepted terminal outcomes: `complete` only when every success and safe-stop
   criterion passes; otherwise `stop_repeated_boundary`,
   `stop_hardware_blocker`, `stop_authority_boundary`, or
@@ -167,6 +177,18 @@ terminal marker; the old finish path classified that post-terminal suffix as
 `marker_truncated` and incorrectly selected `marker_invalid`. The new red
 regression reproduces this exact ordering and proves the host accepts the
 terminal result while counting, not parsing, post-terminal bytes.
+`attempt-004` used exact clean-HEAD commit `c5596a8a`, one detected Ultra 205,
+and exactly one ignored owner pool input. It retained seven valid live-share
+markers, all with the admitted lease, conservative profile, fresh supported
+observations, `mineonboot=false`, zero active milliseconds, no pool read, no
+submit response, and no campaign failure. Marker publication then stopped
+while periodic trusted runtime attestations continued through the 600-second
+capture. The result sealed clean serial framing, trusted identity, USB cleanup
+ready, and `pool_configuration_missing`. Because the last marker preceded
+preparation, that terminal category is a downstream symptom rather than the
+authoritative root boundary. The red chip-detect budget regression failed
+before the new ceiling existed, and the typed preparation-progress regression
+failed before those events were recognized and retained.
 
 Completion review: Pending. An accepted or rejected response proves the
 end-to-end submitted-share path, not profitability, unbounded stability,

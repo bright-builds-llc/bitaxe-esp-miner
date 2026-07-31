@@ -9,8 +9,9 @@ use anyhow::{Context, Result};
 use bitaxe_asic::bm1366::{
     adapter_gate::AsicAdapterMode,
     chip_detect::{
-        self, Bm1366AdapterIoFault, Bm1366AdapterSetupFault, ChipIdCountFrameDisposition,
-        CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID, COUNT_ASIC_CHIPS_IDLE_TIMEOUT_MS,
+        self, chip_detect_drain_budget_exhausted, Bm1366AdapterIoFault, Bm1366AdapterSetupFault,
+        ChipIdCountFrameDisposition, CHIP_DETECT_ADAPTER_ERROR, CHIP_DETECT_RESPONSE_INVALID,
+        COUNT_ASIC_CHIPS_IDLE_TIMEOUT_MS, COUNT_ASIC_CHIPS_TOTAL_TIMEOUT_MS,
         RESET_ADAPTER_UNAVAILABLE, UART_ADAPTER_UNAVAILABLE,
     },
     command::Bm1366AdapterAction,
@@ -389,6 +390,8 @@ fn count_asic_chips_rx_loop(
         timeout_ms
     };
     let mut counted_chips = 0_u8;
+    let mut frames_seen = 0_u32;
+    let started = std::time::Instant::now();
 
     if uart_trace_enabled() {
         log::info!(
@@ -397,7 +400,22 @@ fn count_asic_chips_rx_loop(
     }
 
     loop {
-        match uart.maybe_try_read_exact(BM1366_RESULT_FRAME_LEN, idle_timeout_ms) {
+        let elapsed_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+        if chip_detect_drain_budget_exhausted(elapsed_ms, frames_seen) {
+            log::warn!(
+                "asic_status=fail_closed reason={CHIP_DETECT_RESPONSE_INVALID} category=drain_budget_exhausted frames_seen={frames_seen} elapsed_ms={elapsed_ms}"
+            );
+            best_effort_hold_reset_low(reset, CHIP_DETECT_RESPONSE_INVALID);
+            status::publish_status(AsicInitStatus::FailClosed {
+                reason: CHIP_DETECT_RESPONSE_INVALID,
+            });
+            return Ok(ActionOutcome::Stop);
+        }
+        let remaining_total_ms =
+            u64::from(COUNT_ASIC_CHIPS_TOTAL_TIMEOUT_MS).saturating_sub(elapsed_ms);
+        let read_timeout_ms =
+            idle_timeout_ms.min(u32::try_from(remaining_total_ms).unwrap_or(u32::MAX).max(1));
+        match uart.maybe_try_read_exact(BM1366_RESULT_FRAME_LEN, read_timeout_ms) {
             Ok(None) => {
                 // Idle / received==0 — exit drain loop.
                 if uart_trace_enabled() {
@@ -407,33 +425,36 @@ fn count_asic_chips_rx_loop(
                 }
                 break;
             }
-            Ok(Some(response)) => match chip_detect::classify_chip_id_count_frame(&response) {
-                Ok(ChipIdCountFrameDisposition::Accept) => {
-                    counted_chips = counted_chips.saturating_add(1);
-                    if uart_trace_enabled() {
-                        log::info!(
+            Ok(Some(response)) => {
+                frames_seen = frames_seen.saturating_add(1);
+                match chip_detect::classify_chip_id_count_frame(&response) {
+                    Ok(ChipIdCountFrameDisposition::Accept) => {
+                        counted_chips = counted_chips.saturating_add(1);
+                        if uart_trace_enabled() {
+                            log::info!(
                                 "asic_uart_trace=count_asic_chips_rx_loop accept counted={counted_chips}"
                             );
+                        }
                     }
-                }
-                Ok(ChipIdCountFrameDisposition::SoftRetry) => {
-                    if uart_trace_enabled() {
-                        log::info!(
+                    Ok(ChipIdCountFrameDisposition::SoftRetry) => {
+                        if uart_trace_enabled() {
+                            log::info!(
                                 "asic_uart_trace=count_asic_chips_rx_loop soft_retry counted={counted_chips}"
                             );
+                        }
                     }
-                }
-                Err(fault) => {
-                    log::warn!(
+                    Err(fault) => {
+                        log::warn!(
                             "asic_status=fail_closed reason={CHIP_DETECT_RESPONSE_INVALID} error={fault}"
                         );
-                    best_effort_hold_reset_low(reset, CHIP_DETECT_RESPONSE_INVALID);
-                    status::publish_status(AsicInitStatus::FailClosed {
-                        reason: CHIP_DETECT_RESPONSE_INVALID,
-                    });
-                    return Ok(ActionOutcome::Stop);
+                        best_effort_hold_reset_low(reset, CHIP_DETECT_RESPONSE_INVALID);
+                        status::publish_status(AsicInitStatus::FailClosed {
+                            reason: CHIP_DETECT_RESPONSE_INVALID,
+                        });
+                        return Ok(ActionOutcome::Stop);
+                    }
                 }
-            },
+            }
             Err(error) => {
                 // Empty-buffer UART timeout is idle (upstream SERIAL_rx==0). Partial
                 // frames / other UART errors remain fail-closed.

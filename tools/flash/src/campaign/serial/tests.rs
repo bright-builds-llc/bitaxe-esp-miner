@@ -51,6 +51,15 @@ fn observation_marker(schema: &str) -> Vec<u8> {
     format!("{CAMPAIGN_MARKER_PREFIX}{marker}\n").into_bytes()
 }
 
+fn preparation_progress_line(step: &str, outcome: &str) -> Vec<u8> {
+    let progress = serde_json::json!({
+        "schema": CAMPAIGN_PREPARATION_SCHEMA,
+        "step": step,
+        "outcome": outcome,
+    });
+    format!("{CAMPAIGN_PREPARATION_PREFIX}{progress}\n").into_bytes()
+}
+
 #[test]
 fn growing_snapshots_preserve_split_prefix_and_json() {
     // Arrange
@@ -325,4 +334,49 @@ fn invalid_runtime_attestation_encoding_is_independent_of_valid_marker() {
             .runtime_attestation_invalid_encoding_count,
         1
     );
+}
+
+#[test]
+fn preparation_progress_preserves_the_latest_closed_boundary() {
+    // Arrange
+    let mut bytes = preparation_progress_line("reset_and_detect_exactly_one_chip", "started");
+    bytes.extend_from_slice(&preparation_progress_line(
+        "reset_and_detect_exactly_one_chip",
+        "completed",
+    ));
+    bytes.extend_from_slice(&observation_marker(CAMPAIGN_MARKER_SCHEMA));
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+
+    // Assert
+    assert_eq!(capture.diagnostics.preparation_candidate_count, 2);
+    assert_eq!(capture.diagnostics.accepted_preparation_event_count, 2);
+    assert_eq!(
+        capture.diagnostics.latest_preparation_event,
+        Some(CampaignPreparationProgress {
+            schema: CAMPAIGN_PREPARATION_SCHEMA.to_owned(),
+            step: CampaignFailureStepMarker::ResetAndDetectExactlyOneChip,
+            outcome: CampaignPreparationOutcome::Completed,
+        })
+    );
+}
+
+#[test]
+fn malformed_preparation_progress_fails_closed_without_replacing_marker_detail() {
+    // Arrange
+    let mut bytes = format!("{CAMPAIGN_PREPARATION_PREFIX}{{]\n").into_bytes();
+    bytes.extend_from_slice(&observation_marker(CAMPAIGN_MARKER_SCHEMA));
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+
+    // Assert
+    assert_eq!(
+        capture.maybe_failure,
+        Some(CampaignTerminalCategory::ObservationFailed)
+    );
+    assert_eq!(capture.outcome_detail, CampaignSerialOutcomeDetail::Clean);
+    assert_eq!(capture.diagnostics.preparation_invalid_json_count, 1);
+    assert_eq!(capture.diagnostics.accepted_marker_count, 1);
 }

@@ -91,7 +91,7 @@ pub(super) enum CampaignFailureStepMarker {
 }
 
 impl CampaignFailureStepMarker {
-    fn is_preparation(self) -> bool {
+    pub(super) fn is_preparation(self) -> bool {
         matches!(
             self,
             Self::RequireFreshSafetyObservations

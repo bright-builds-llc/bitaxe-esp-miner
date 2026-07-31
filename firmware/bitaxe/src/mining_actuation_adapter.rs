@@ -275,7 +275,8 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
     type Error = MiningActuationAdapterError;
 
     fn execute_preparation_step(&mut self, step: PreparationStep) -> Result<(), Self::Error> {
-        match step {
+        log_preparation_progress(step, "started");
+        let result = (|| match step {
             PreparationStep::RequireFreshSafetyObservations => {
                 if !self.requested_profile_is_closed() {
                     return Err(MiningActuationAdapterError::UnsupportedProfile);
@@ -346,7 +347,16 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                     ))
                 }
             }
-        }
+        })();
+        log_preparation_progress(
+            step,
+            if result.is_ok() {
+                "completed"
+            } else {
+                "failed"
+            },
+        );
+        result
     }
 
     fn execute_safe_shutdown_step(&mut self, step: SafeShutdownStep) -> Result<(), Self::Error> {
@@ -394,4 +404,11 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
             }
         }
     }
+}
+
+fn log_preparation_progress(step: PreparationStep, outcome: &'static str) {
+    log::info!(
+        "mining_campaign_preparation={{\"schema\":\"mining-campaign-preparation-v1\",\"step\":\"{}\",\"outcome\":\"{outcome}\"}}",
+        step.label()
+    );
 }

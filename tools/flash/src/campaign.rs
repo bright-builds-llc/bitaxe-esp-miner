@@ -12,6 +12,8 @@ use serial::{CampaignSerialDiagnostics, CampaignSerialOutcomeDetail};
 
 const CAMPAIGN_MARKER_PREFIX: &str = "mining_campaign_status=";
 const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v4";
+const CAMPAIGN_PREPARATION_PREFIX: &str = "mining_campaign_preparation=";
+const CAMPAIGN_PREPARATION_SCHEMA: &str = "mining-campaign-preparation-v1";
 const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v2";
 const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v1";
 const OBSERVATION_DURATION_SECONDS: u64 = 360;
