@@ -3,7 +3,7 @@ use bitaxe_asic::bm1366::{command::VersionMask, production::Bm1366ProductionComm
 use crate::v1::bridge_orchestration::BridgeStep;
 use crate::v1::live_runtime::{LiveRuntimeAction, LiveRuntimeEvent, LiveStratumRuntime};
 use crate::v1::messages::{parse_server_message, StratumResponse, StratumV1ServerMessage};
-use crate::v1::recovery_policy::{ProductionPool, RecoveryAction};
+use crate::v1::recovery_policy::{ProductionPool, ProductionSessionBlocker, RecoveryAction};
 use crate::v1::submit_response::{classify_submit_response, SubmitResponseObservation};
 use crate::StratumV1Error;
 
@@ -108,9 +108,30 @@ impl ProductionMiningSession {
             self.clear_pending_submits(pool);
         }
         match maybe_event {
-            Some(LiveRuntimeEvent::WorkQueued) => self.bridge.note_work_queued(),
+            Some(LiveRuntimeEvent::WorkQueued {
+                clean_jobs,
+                previous_block_changed,
+            }) => {
+                self.bridge.note_work_queued();
+                if let Some(generation) = self.current_generation(pool) {
+                    self.job_transition.note_notify(
+                        clean_jobs,
+                        previous_block_changed,
+                        generation_before != generation_after,
+                        generation,
+                    );
+                }
+            }
             Some(LiveRuntimeEvent::WorkInvalidated) => {
                 self.handle_transport_failure(pool, now_ms, effects)?;
+                return Ok(());
+            }
+            Some(LiveRuntimeEvent::JobTransitionProtocolInconsistent) => {
+                self.begin_terminal_safe_stop(
+                    Some(ProductionSessionBlocker::JobTransitionProtocolInconsistent),
+                    false,
+                    effects,
+                )?;
                 return Ok(());
             }
             Some(
@@ -233,6 +254,7 @@ impl ProductionMiningSession {
     ) -> Result<(), StratumV1Error> {
         let maybe_active_pool = self.recovery.projection().maybe_active_pool;
         if maybe_active_pool == Some(pool) {
+            self.job_transition.note_reconnect();
             let actions = self.recovery.on_connection_lost(now_ms);
             return self.apply_recovery_actions(actions, effects);
         }
@@ -510,6 +532,7 @@ impl ProductionMiningSession {
             .transpose();
         match maybe_dispatch {
             Ok(Some(dispatch)) => {
+                self.job_transition.note_dispatch(dispatch.generation);
                 let valid_jobs = self
                     .maybe_pool_runtime(pool)
                     .map(|runtime| runtime.runtime.production_registry().valid_jobs().clone())

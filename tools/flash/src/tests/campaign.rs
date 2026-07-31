@@ -1,8 +1,11 @@
 use super::*;
 
 mod failure_diagnostics;
+mod job_transition;
 mod stop_predicate;
 mod terminal_boundary;
+
+const CAMPAIGN_MARKER_PREFIX: &str = "mining_campaign_status=";
 
 fn campaign_command(
     dir: &TempDir,
@@ -26,6 +29,7 @@ fn campaign_command(
         duration_seconds: match stage {
             MiningCampaignStage::Observation => 360,
             MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => 600,
+            MiningCampaignStage::JobTransition => 1_800,
         },
         redact_evidence: true,
     }
@@ -82,7 +86,7 @@ fn campaign_marker_with_failure(
     format!(
         "mining_campaign_status={}",
         serde_json::json!({
-            "schema": "mining-campaign-status-v6",
+            "schema": "mining-campaign-status-v7",
             "stage": fixture.stage,
             "lease_id": fixture.lease_id,
             "campaign_state": fixture.state,
@@ -92,6 +96,21 @@ fn campaign_marker_with_failure(
             "qualified_candidate_count": if fixture.submit_outcome == "none" { 0 } else { 1 },
             "below_pool_target_count": 0,
             "duplicate_candidate_count": 0,
+            "accepted_share_count": if fixture.submit_outcome == "accepted" { 1 } else { 0 },
+            "rejected_share_count": if fixture.submit_outcome == "rejected" { 1 } else { 0 },
+            "job_transition": {
+                "pool_notify_count": 0,
+                "clean_jobs_notify_count": 0,
+                "previous_block_change_count": 0,
+                "new_block_generation_count": 0,
+                "replacement_dispatch_count": 0,
+                "post_transition_correlated_result_count": 0,
+                "completed_transition_count": 0,
+                "stale_generation_result_discard_count": 0,
+                "stale_generation_submit_count": 0,
+                "reconnect_count": 0,
+                "latest_state": "not_observed",
+            },
             "terminal_reason": fixture.terminal_reason,
             "safety": fixture.safety,
             "fresh_observation_count": if safety_fresh { 5 } else { 4 },
@@ -176,6 +195,16 @@ fn read_campaign_diagnostics(command: &MiningCampaignCommand) -> serde_json::Val
     .expect("campaign diagnostics JSON")
 }
 
+fn read_campaign_observations(command: &MiningCampaignCommand) -> serde_json::Value {
+    let observations = command
+        .evidence_dir
+        .join("campaign-observations.private.json");
+    serde_json::from_str(
+        &std::fs::read_to_string(observations.as_std_path()).expect("campaign observations"),
+    )
+    .expect("campaign observations JSON")
+}
+
 #[test]
 fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evidence() {
     // Arrange
@@ -213,7 +242,7 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
         assert!(!csv.contains(forbidden), "unexpected key {forbidden}");
     }
     let result = read_campaign_result(&command);
-    assert_eq!(result["schema"], "mining-campaign-result-v2");
+    assert_eq!(result["schema"], "mining-campaign-result-v3");
     assert_eq!(result["status"], "accepted");
     assert_eq!(result["terminal_category"], "observation_complete");
     assert_eq!(result["runtime_identity"], "trusted");
@@ -244,6 +273,11 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
     assert!(result["failure_observation_freshness"].is_null());
     assert_eq!(result["usb_cleanup"], "ready");
     assert_eq!(result["parity_promotion"], false);
+    let observations = read_campaign_observations(&command);
+    assert_eq!(observations["schema"], "mining-campaign-observations-v2");
+    assert_eq!(observations["marker_count"], 1);
+    assert!(observations.get("markers").is_none());
+    assert!(observations["terminal_marker"].is_object());
     assert_private_campaign_artifacts(&command.evidence_dir);
 }
 

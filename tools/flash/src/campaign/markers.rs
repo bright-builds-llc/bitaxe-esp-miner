@@ -1,5 +1,7 @@
 use super::*;
 
+const JOB_TRANSITION_MAXIMUM_MARKER_GAP_MS: u64 = 5_000;
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum CampaignStateMarker {
@@ -46,6 +48,7 @@ pub(super) enum CampaignTerminalReasonMarker {
     ActuationUnqualified,
     PoolConfigurationUnavailable,
     PoolsExhausted,
+    JobTransitionProtocolInconsistent,
 }
 
 impl CampaignTerminalReasonMarker {
@@ -69,6 +72,7 @@ impl CampaignTerminalReasonMarker {
             Self::ActuationUnqualified => "actuation_unqualified",
             Self::PoolConfigurationUnavailable => "pool_configuration_unavailable",
             Self::PoolsExhausted => "pools_exhausted",
+            Self::JobTransitionProtocolInconsistent => "job_transition_protocol_inconsistent",
         }
     }
 }
@@ -286,6 +290,9 @@ pub(super) struct CampaignStatusMarker {
     pub(super) qualified_candidate_count: u64,
     pub(super) below_pool_target_count: u64,
     pub(super) duplicate_candidate_count: u64,
+    pub(super) accepted_share_count: u64,
+    pub(super) rejected_share_count: u64,
+    pub(super) job_transition: JobTransitionMarker,
     pub(super) terminal_reason: CampaignTerminalReasonMarker,
     pub(super) safety: SafetyMarker,
     pub(super) fresh_observation_count: u8,
@@ -298,41 +305,109 @@ pub(super) struct CampaignStatusMarker {
     pub(super) failure: CampaignFailureMarker,
 }
 
-pub(super) fn assess_campaign_markers(
-    markers: &[CampaignStatusMarker],
-    admission: CampaignAdmission,
-) -> std::result::Result<CampaignTerminalCategory, CampaignFailure> {
-    if markers.is_empty() {
-        return Err(CampaignFailure::new(
-            CampaignTerminalCategory::MarkerMissing,
-        ));
+#[derive(Clone, Debug, Default, Serialize)]
+pub(super) struct CampaignMarkerAggregate {
+    pub(super) marker_count: u64,
+    pub(super) maximum_active_marker_gap_ms: u64,
+    pub(super) terminal: Option<CampaignStatusMarker>,
+    #[serde(skip)]
+    pub(super) maybe_failure_category: Option<CampaignTerminalCategory>,
+    #[serde(skip)]
+    pub(super) failure_observation_freshness: Option<ObservationFreshnessMarker>,
+    #[serde(skip)]
+    maybe_previous_active_ms: Option<u64>,
+}
+
+impl CampaignMarkerAggregate {
+    pub(super) fn observe(
+        &mut self,
+        marker: CampaignStatusMarker,
+        admission: CampaignAdmission,
+    ) -> Option<CampaignTerminalCategory> {
+        self.marker_count = self.marker_count.saturating_add(1);
+        if matches!(
+            marker.campaign_state,
+            CampaignStateMarker::Active | CampaignStateMarker::SafeStopping
+        ) {
+            if let Some(previous) = self.maybe_previous_active_ms {
+                self.maximum_active_marker_gap_ms = self
+                    .maximum_active_marker_gap_ms
+                    .max(marker.active_ms.saturating_sub(previous));
+            }
+            self.maybe_previous_active_ms = Some(marker.active_ms);
+        }
+        let maybe_failure = campaign_marker_failure(&marker, admission);
+        if let Some(category) = maybe_failure {
+            if self.maybe_failure_category.is_none() {
+                self.maybe_failure_category = Some(category);
+                self.failure_observation_freshness = Some(marker.observation_freshness);
+            }
+        }
+        self.terminal = Some(marker);
+        maybe_failure
     }
-    if let Some(category) = first_campaign_marker_failure(markers, admission) {
-        return Err(CampaignFailure::new(category));
-    }
-    let terminal = markers.last().expect("nonempty campaign marker set");
-    if !terminal
-        .observation_requirements
-        .is_satisfied_by(terminal.observation_freshness)
-    {
-        return Err(CampaignFailure::new(
-            CampaignTerminalCategory::ObservationContractIncomplete,
-        ));
-    }
-    match admission.stage {
-        MiningCampaignStage::Observation => assess_observation_terminal(terminal),
-        MiningCampaignStage::LiveShare => assess_live_share_terminal(terminal),
-        MiningCampaignStage::Soak => assess_soak_terminal(terminal, admission.duration_seconds),
+
+    pub(super) fn assess(
+        &self,
+        admission: CampaignAdmission,
+    ) -> std::result::Result<CampaignTerminalCategory, CampaignFailure> {
+        let Some(terminal) = self.terminal.as_ref() else {
+            return Err(CampaignFailure::new(
+                CampaignTerminalCategory::MarkerMissing,
+            ));
+        };
+        if let Some(category) = self.maybe_failure_category {
+            return Err(CampaignFailure::new(category));
+        }
+        if !terminal
+            .observation_requirements
+            .is_satisfied_by(terminal.observation_freshness)
+        {
+            return Err(CampaignFailure::new(
+                CampaignTerminalCategory::ObservationContractIncomplete,
+            ));
+        }
+        if admission.stage == MiningCampaignStage::JobTransition
+            && self.maximum_active_marker_gap_ms > JOB_TRANSITION_MAXIMUM_MARKER_GAP_MS
+        {
+            return Err(CampaignFailure::new(
+                CampaignTerminalCategory::MarkerContinuityFailed,
+            ));
+        }
+        match admission.stage {
+            MiningCampaignStage::Observation => assess_observation_terminal(terminal),
+            MiningCampaignStage::LiveShare => assess_live_share_terminal(terminal),
+            MiningCampaignStage::Soak => assess_soak_terminal(terminal, admission.duration_seconds),
+            MiningCampaignStage::JobTransition => {
+                assess_job_transition_terminal(terminal, admission.duration_seconds)
+            }
+        }
     }
 }
 
-pub(super) fn first_campaign_marker_failure(
-    markers: &[CampaignStatusMarker],
-    admission: CampaignAdmission,
-) -> Option<CampaignTerminalCategory> {
-    markers
-        .iter()
-        .find_map(|marker| campaign_marker_failure(marker, admission))
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum JobTransitionStateMarker {
+    NotObserved,
+    ReplacementQueued,
+    ReplacementDispatched,
+    ReplacementResultCorrelated,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct JobTransitionMarker {
+    pub(super) pool_notify_count: u64,
+    pub(super) clean_jobs_notify_count: u64,
+    pub(super) previous_block_change_count: u64,
+    pub(super) new_block_generation_count: u64,
+    pub(super) replacement_dispatch_count: u64,
+    pub(super) post_transition_correlated_result_count: u64,
+    pub(super) completed_transition_count: u64,
+    pub(super) stale_generation_result_discard_count: u64,
+    pub(super) stale_generation_submit_count: u64,
+    pub(super) reconnect_count: u64,
+    pub(super) latest_state: JobTransitionStateMarker,
 }
 
 pub(super) fn campaign_marker_failure(
@@ -366,7 +441,9 @@ pub(super) fn campaign_marker_failure(
                 return Some(CampaignTerminalCategory::ActuationDuringObservation);
             }
         }
-        MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => {
+        MiningCampaignStage::LiveShare
+        | MiningCampaignStage::Soak
+        | MiningCampaignStage::JobTransition => {
             let terminal_consumed = marker.campaign_state == CampaignStateMarker::Consumed
                 && marker.actuation == ActuationMarker::SafeStopped
                 && marker.safe_stop == SafeStopMarker::Confirmed;
@@ -384,6 +461,9 @@ pub(super) fn campaign_marker_failure(
                     MiningCampaignStage::Soak => {
                         assess_soak_terminal(marker, admission.duration_seconds)
                     }
+                    MiningCampaignStage::JobTransition => {
+                        assess_job_transition_terminal(marker, admission.duration_seconds)
+                    }
                     MiningCampaignStage::Observation => unreachable!("mining stage"),
                 };
                 if let Err(failure) = terminal_result {
@@ -393,6 +473,73 @@ pub(super) fn campaign_marker_failure(
         }
     }
     None
+}
+
+fn assess_job_transition_terminal(
+    marker: &CampaignStatusMarker,
+    duration_seconds: u64,
+) -> std::result::Result<CampaignTerminalCategory, CampaignFailure> {
+    assess_mining_terminal(marker)?;
+    if marker.active_ms < duration_seconds.saturating_mul(1_000) {
+        return Err(CampaignFailure::new(
+            CampaignTerminalCategory::SoakDurationShort,
+        ));
+    }
+    if marker.terminal_reason == CampaignTerminalReasonMarker::JobTransitionProtocolInconsistent {
+        return Err(CampaignFailure::new(
+            CampaignTerminalCategory::JobTransitionProtocolInconsistent,
+        ));
+    }
+    if marker.rejected_share_count > 0 {
+        return Err(CampaignFailure::new(
+            CampaignTerminalCategory::RejectedShareObserved,
+        ));
+    }
+    if marker.job_transition.stale_generation_submit_count > 0 {
+        return Err(CampaignFailure::new(
+            CampaignTerminalCategory::StaleGenerationSubmissionObserved,
+        ));
+    }
+    if marker.job_transition.reconnect_count > 0 {
+        return Err(CampaignFailure::new(
+            CampaignTerminalCategory::ReconnectObserved,
+        ));
+    }
+    let transition = marker.job_transition;
+    if transition.previous_block_change_count == 0 {
+        if transition.new_block_generation_count == 0
+            && transition.replacement_dispatch_count == 0
+            && transition.post_transition_correlated_result_count == 0
+            && transition.completed_transition_count == 0
+            && transition.latest_state == JobTransitionStateMarker::NotObserved
+        {
+            return Ok(CampaignTerminalCategory::JobTransitionNotObserved);
+        }
+        return Err(CampaignFailure::new(
+            CampaignTerminalCategory::JobTransitionEvidenceIncomplete,
+        ));
+    }
+    if transition.clean_jobs_notify_count < transition.previous_block_change_count
+        || transition.new_block_generation_count != transition.previous_block_change_count
+        || transition.completed_transition_count > transition.new_block_generation_count
+        || transition.completed_transition_count > transition.replacement_dispatch_count
+        || transition.completed_transition_count
+            > transition.post_transition_correlated_result_count
+    {
+        return Err(CampaignFailure::new(
+            CampaignTerminalCategory::JobTransitionEvidenceIncomplete,
+        ));
+    }
+    if transition.new_block_generation_count == 0
+        || transition.replacement_dispatch_count == 0
+        || transition.post_transition_correlated_result_count == 0
+        || transition.completed_transition_count == 0
+    {
+        return Err(CampaignFailure::new(
+            CampaignTerminalCategory::JobTransitionEvidenceIncomplete,
+        ));
+    }
+    Ok(CampaignTerminalCategory::JobTransitionComplete)
 }
 
 fn expected_profile_marker(admission: CampaignAdmission) -> CampaignProfileMarker {

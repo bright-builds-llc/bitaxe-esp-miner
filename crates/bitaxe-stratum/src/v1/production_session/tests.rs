@@ -282,5 +282,6 @@ fn dispatched_observation(
     }
 }
 
+mod job_transition;
 mod lifecycle;
 mod recovery;

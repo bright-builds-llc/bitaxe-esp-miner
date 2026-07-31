@@ -221,21 +221,21 @@ impl UsbSession {
         &mut self,
         duration: Duration,
     ) -> Result<MonitorOutput, UsbSessionError> {
-        let result = self.observe_receive_only_inner(duration, true, |_| false);
+        let result = self.observe_receive_only_inner(duration, true, false, |_| false);
         if let Err(error) = &result {
             self.fail_once(error.category);
         }
         result
     }
 
-    /// Observes receive-only serial data until a caller-defined terminal marker
-    /// appears without persisting the potentially sensitive serial transcript.
-    pub fn observe_receive_only_ephemeral_until(
+    /// Feeds receive-only serial chunks directly to a bounded analyzer without
+    /// retaining or persisting the cumulative serial transcript.
+    pub fn observe_receive_only_ephemeral_chunks_until(
         &mut self,
         duration: Duration,
         stop: impl FnMut(&[u8]) -> bool,
     ) -> Result<MonitorOutput, UsbSessionError> {
-        let result = self.observe_receive_only_inner(duration, false, stop);
+        let result = self.observe_receive_only_inner(duration, false, true, stop);
         if let Err(error) = &result {
             self.fail_once(error.category);
         }
@@ -246,6 +246,7 @@ impl UsbSession {
         &mut self,
         duration: Duration,
         persist_trace: bool,
+        feed_chunks: bool,
         mut stop: impl FnMut(&[u8]) -> bool,
     ) -> Result<MonitorOutput, UsbSessionError> {
         let _signal_supervisor = process::SignalSupervisor::acquire()?;
@@ -288,9 +289,14 @@ impl UsbSession {
             };
             match reader.read_available() {
                 Ok(chunk) => {
-                    let remaining = MAX_MONITOR_BYTES.saturating_sub(bytes.len());
-                    bytes.extend_from_slice(&chunk[..chunk.len().min(remaining)]);
-                    if stop(&bytes) {
+                    let should_stop = if feed_chunks {
+                        stop(&chunk)
+                    } else {
+                        let remaining = MAX_MONITOR_BYTES.saturating_sub(bytes.len());
+                        bytes.extend_from_slice(&chunk[..chunk.len().min(remaining)]);
+                        stop(&bytes)
+                    };
+                    if should_stop {
                         break;
                     }
                 }

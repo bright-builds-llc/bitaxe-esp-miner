@@ -5,6 +5,7 @@
 //! classification, bridge cadence, and ordered safe stop.
 
 pub(super) mod campaign;
+mod job_transition;
 mod orchestration;
 mod runtime;
 mod types;
@@ -22,6 +23,7 @@ pub use campaign::{
     MiningCampaignStopCondition, MiningHardwareProfile, MiningHardwareProfilePreset,
     MiningHardwareState, MAX_MINING_CAMPAIGN_DURATION_MS,
 };
+pub use job_transition::{JobTransitionEvidence, JobTransitionState};
 pub use runtime::ProductionMiningSession;
 pub use types::{
     ProductionAsicFailure, ProductionPoolConfiguration, ProductionPoolEndpoint, ProductionPoolSet,

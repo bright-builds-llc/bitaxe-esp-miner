@@ -93,8 +93,12 @@ pub(crate) enum LiveRuntimeEvent {
     Started,
     Subscribed,
     Authorized,
-    WorkQueued,
+    WorkQueued {
+        clean_jobs: bool,
+        previous_block_changed: bool,
+    },
     WorkInvalidated,
+    JobTransitionProtocolInconsistent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -498,6 +502,16 @@ impl LiveStratumRuntime {
         notify: crate::v1::messages::MiningNotify,
     ) -> Result<Option<LiveRuntimeEvent>, StratumV1Error> {
         let clean_jobs = notify.clean_jobs;
+        let previous_block_changed = self
+            .maybe_current_notify
+            .as_ref()
+            .is_some_and(|current| current.prev_block_hash != notify.prev_block_hash);
+        if previous_block_changed && !clean_jobs {
+            self.invalidate_for_clean_jobs();
+            self.state
+                .block_work_submission("new_block_without_clean_jobs");
+            return Ok(Some(LiveRuntimeEvent::JobTransitionProtocolInconsistent));
+        }
         if clean_jobs {
             self.invalidate_for_clean_jobs();
         }
@@ -529,7 +543,10 @@ impl LiveStratumRuntime {
         self.state.allow_work_submission();
         self.state.set_lifecycle(PoolLifecycleStatus::Active);
         self.state.set_mining_activity(MiningActivityStatus::Active);
-        Ok(Some(LiveRuntimeEvent::WorkQueued))
+        Ok(Some(LiveRuntimeEvent::WorkQueued {
+            clean_jobs,
+            previous_block_changed,
+        }))
     }
 
     fn next_request_id(&mut self) -> StratumRequestId {

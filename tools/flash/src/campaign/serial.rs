@@ -1,20 +1,20 @@
 use std::collections::VecDeque;
 
 use super::markers::{
-    assess_campaign_markers, first_campaign_marker_failure, CampaignStateMarker,
-    CampaignStatusMarker, ObservationRequirementsMarker,
+    CampaignMarkerAggregate, CampaignStateMarker, CampaignStatusMarker,
+    ObservationRequirementsMarker,
 };
 use super::*;
-
+mod framing;
 mod preparation;
-
 use super::markers::CampaignFailureStepMarker;
-use preparation::CampaignPreparationOutcome;
-use preparation::CampaignPreparationProgress;
-
+use framing::{count_invalid_utf8_bytes, find_bytes};
+use preparation::{CampaignPreparationOutcome, CampaignPreparationProgress};
 const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v1";
 const TRACE_EDGE_CAPACITY: usize = 32;
 const MAX_RECORDED_LINE_LENGTH: usize = 4_096;
+const MAX_PENDING_LINE_BYTES: usize = 65_536;
+const MAX_RUNTIME_ATTESTATION_BYTES: usize = 16_384;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -139,6 +139,8 @@ impl CampaignSerialDiagnostics {
 
 #[derive(Debug)]
 pub(crate) struct CampaignSerialCapture {
+    pub(super) aggregate: CampaignMarkerAggregate,
+    #[cfg(test)]
     pub(super) markers: Vec<CampaignStatusMarker>,
     pub(super) diagnostics: CampaignSerialDiagnostics,
     pub(super) outcome_detail: CampaignSerialOutcomeDetail,
@@ -195,9 +197,12 @@ impl BoundedEventTrace {
 
 pub(crate) struct CampaignSerialAnalyzer {
     admission: CampaignAdmission,
+    #[cfg(test)]
     observed_bytes: usize,
     processed_bytes: usize,
     pending_line: Vec<u8>,
+    aggregate: CampaignMarkerAggregate,
+    #[cfg(test)]
     markers: Vec<CampaignStatusMarker>,
     runtime_attestation_text: String,
     diagnostics: CampaignSerialDiagnostics,
@@ -211,9 +216,12 @@ impl CampaignSerialAnalyzer {
     pub(crate) fn new(admission: CampaignAdmission) -> Self {
         Self {
             admission,
+            #[cfg(test)]
             observed_bytes: 0,
             processed_bytes: 0,
             pending_line: Vec::new(),
+            aggregate: CampaignMarkerAggregate::default(),
+            #[cfg(test)]
             markers: Vec::new(),
             runtime_attestation_text: String::new(),
             diagnostics: CampaignSerialDiagnostics {
@@ -227,27 +235,45 @@ impl CampaignSerialAnalyzer {
         }
     }
 
+    pub(crate) fn observe_chunk(&mut self, bytes: &[u8]) -> bool {
+        self.diagnostics.total_bytes = self
+            .diagnostics
+            .total_bytes
+            .saturating_add(u64::try_from(bytes.len()).unwrap_or(u64::MAX));
+        if self.terminal_boundary_reached {
+            self.record_post_terminal_bytes(self.processed_bytes, bytes.len());
+            self.processed_bytes = self.processed_bytes.saturating_add(bytes.len());
+            return true;
+        }
+        for (index, chunk) in bytes.chunks(MAX_PENDING_LINE_BYTES).enumerate() {
+            self.pending_line.extend_from_slice(chunk);
+            self.process_complete_lines();
+            self.bound_pending_line();
+            if self.terminal_boundary_reached {
+                let consumed = index
+                    .saturating_add(1)
+                    .saturating_mul(MAX_PENDING_LINE_BYTES)
+                    .min(bytes.len());
+                let remaining = bytes.len().saturating_sub(consumed);
+                self.record_post_terminal_bytes(self.processed_bytes, remaining);
+                self.processed_bytes = self.processed_bytes.saturating_add(remaining);
+                break;
+            }
+        }
+        self.refresh_contract_failure();
+        self.should_stop()
+    }
+
+    #[cfg(test)]
     pub(crate) fn observe_snapshot(&mut self, bytes: &[u8]) -> bool {
         if bytes.len() < self.observed_bytes {
             self.maybe_failure
                 .get_or_insert(CampaignTerminalCategory::ObservationFailed);
             return true;
         }
-        if self.terminal_boundary_reached {
-            let ignored_offset = self.observed_bytes;
-            let ignored_length = bytes.len().saturating_sub(self.observed_bytes);
-            self.observed_bytes = bytes.len();
-            self.diagnostics.total_bytes = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
-            self.record_post_terminal_bytes(ignored_offset, ignored_length);
-            return true;
-        }
         let delta = &bytes[self.observed_bytes..];
         self.observed_bytes = bytes.len();
-        self.diagnostics.total_bytes = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
-        self.pending_line.extend_from_slice(delta);
-        self.process_complete_lines();
-        self.refresh_contract_failure();
-        self.should_stop()
+        self.observe_chunk(delta)
     }
 
     pub(crate) fn finish(mut self) -> CampaignSerialCapture {
@@ -260,7 +286,7 @@ impl CampaignSerialAnalyzer {
         }
         self.refresh_contract_failure();
         self.refresh_incomplete_preparation_failure();
-        if self.markers.is_empty()
+        if self.aggregate.marker_count == 0
             && self.maybe_failure.is_none()
             && self.outcome_detail == CampaignSerialOutcomeDetail::Clean
         {
@@ -271,12 +297,32 @@ impl CampaignSerialAnalyzer {
         self.diagnostics.events_truncated = events_truncated;
         self.diagnostics.events = events;
         CampaignSerialCapture {
+            aggregate: self.aggregate,
+            #[cfg(test)]
             markers: self.markers,
             diagnostics: self.diagnostics,
             outcome_detail: self.outcome_detail,
             maybe_failure: self.maybe_failure,
             runtime_attestation_text: self.runtime_attestation_text,
         }
+    }
+
+    fn bound_pending_line(&mut self) {
+        if self.pending_line.len() <= MAX_PENDING_LINE_BYTES {
+            return;
+        }
+        let retained = self.pending_line.split_off(
+            self.pending_line
+                .len()
+                .saturating_sub(MAX_PENDING_LINE_BYTES),
+        );
+        let discarded = std::mem::replace(&mut self.pending_line, retained);
+        let discarded_length = discarded.len();
+        self.diagnostics.ignored_invalid_byte_count = self
+            .diagnostics
+            .ignored_invalid_byte_count
+            .saturating_add(count_invalid_utf8_bytes(&discarded));
+        self.processed_bytes = self.processed_bytes.saturating_add(discarded_length);
     }
 
     fn process_complete_lines(&mut self) {
@@ -296,6 +342,7 @@ impl CampaignSerialAnalyzer {
                 let ignored_offset = self.processed_bytes;
                 let ignored_length = self.pending_line.len();
                 self.record_post_terminal_bytes(ignored_offset, ignored_length);
+                self.processed_bytes = self.processed_bytes.saturating_add(ignored_length);
                 self.pending_line.clear();
                 break;
             }
@@ -305,10 +352,11 @@ impl CampaignSerialAnalyzer {
     fn accepted_live_terminal_boundary(&self) -> bool {
         self.admission.stage != MiningCampaignStage::Observation
             && self.maybe_failure.is_none()
-            && (assess_campaign_markers(&self.markers, self.admission).is_ok()
+            && (self.aggregate.assess(self.admission).is_ok()
                 || self
-                    .markers
-                    .last()
+                    .aggregate
+                    .terminal
+                    .as_ref()
                     .is_some_and(|marker| marker.campaign_state == CampaignStateMarker::Consumed))
     }
 
@@ -398,8 +446,17 @@ impl CampaignSerialAnalyzer {
             );
             return;
         };
-        self.runtime_attestation_text.push_str(text);
-        self.runtime_attestation_text.push('\n');
+        let remaining =
+            MAX_RUNTIME_ATTESTATION_BYTES.saturating_sub(self.runtime_attestation_text.len());
+        if remaining > 0 {
+            let mut retained_length = text.len().min(remaining.saturating_sub(1));
+            while !text.is_char_boundary(retained_length) {
+                retained_length = retained_length.saturating_sub(1);
+            }
+            self.runtime_attestation_text
+                .push_str(&text[..retained_length]);
+            self.runtime_attestation_text.push('\n');
+        }
         self.trace.push(
             u64::try_from(byte_offset).unwrap_or(u64::MAX),
             line_length,
@@ -475,10 +532,14 @@ impl CampaignSerialAnalyzer {
             );
             return;
         }
-        self.markers.push(marker);
+        #[cfg(test)]
+        self.markers.push(marker.clone());
+        let maybe_failure = self.aggregate.observe(marker, self.admission);
         self.diagnostics.accepted_marker_count =
             self.diagnostics.accepted_marker_count.saturating_add(1);
-        self.refresh_contract_failure();
+        if let Some(category) = maybe_failure {
+            self.maybe_failure.get_or_insert(category);
+        }
         self.trace.push(
             u64::try_from(byte_offset).unwrap_or(u64::MAX),
             line_length,
@@ -509,9 +570,7 @@ impl CampaignSerialAnalyzer {
         if self.maybe_failure.is_some() {
             return;
         }
-        if let Some(category) = first_campaign_marker_failure(&self.markers, self.admission) {
-            self.maybe_failure = Some(category);
-        }
+        self.maybe_failure = self.aggregate.maybe_failure_category;
     }
 
     fn refresh_incomplete_preparation_failure(&mut self) {
@@ -537,10 +596,11 @@ impl CampaignSerialAnalyzer {
         if self.maybe_failure.is_some() {
             return true;
         }
-        assess_campaign_markers(&self.markers, self.admission).is_ok()
+        self.aggregate.assess(self.admission).is_ok()
             || self
-                .markers
-                .last()
+                .aggregate
+                .terminal
+                .as_ref()
                 .is_some_and(|marker| marker.campaign_state == CampaignStateMarker::Consumed)
     }
 }
@@ -551,37 +611,13 @@ pub(crate) fn analyze_campaign_serial_bytes(
     admission: CampaignAdmission,
 ) -> CampaignSerialCapture {
     let mut analyzer = CampaignSerialAnalyzer::new(admission);
-    analyzer.observe_snapshot(bytes);
+    analyzer.observe_chunk(bytes);
     analyzer.finish()
 }
-
 #[cfg(test)]
 pub(crate) fn campaign_serial_should_stop(bytes: &[u8], admission: CampaignAdmission) -> bool {
     let mut analyzer = CampaignSerialAnalyzer::new(admission);
-    analyzer.observe_snapshot(bytes)
-}
-
-fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    if needle.is_empty() {
-        return Some(0);
-    }
-    haystack
-        .windows(needle.len())
-        .position(|window| window == needle)
-}
-
-fn count_invalid_utf8_bytes(bytes: &[u8]) -> u64 {
-    let mut remainder = bytes;
-    let mut count = 0_u64;
-    while let Err(error) = std::str::from_utf8(remainder) {
-        let invalid_start = error.valid_up_to();
-        let invalid_length = error
-            .error_len()
-            .unwrap_or_else(|| remainder.len().saturating_sub(invalid_start).max(1));
-        count = count.saturating_add(u64::try_from(invalid_length).unwrap_or(u64::MAX));
-        remainder = &remainder[invalid_start.saturating_add(invalid_length)..];
-    }
-    count
+    analyzer.observe_chunk(bytes)
 }
 
 #[cfg(test)]

@@ -18,6 +18,33 @@ fn live_share_admission() -> CampaignAdmission {
     }
 }
 
+fn job_transition_admission() -> CampaignAdmission {
+    CampaignAdmission {
+        stage: MiningCampaignStage::JobTransition,
+        maybe_profile: Some(MiningCampaignProfile::Conservative),
+        duration_seconds: 1_800,
+        maybe_lease_id: Some(7),
+    }
+}
+
+fn active_job_transition_marker(active_ms: u64) -> Vec<u8> {
+    let marker = observation_marker(CAMPAIGN_MARKER_SCHEMA);
+    let payload = marker
+        .strip_prefix(CAMPAIGN_MARKER_PREFIX.as_bytes())
+        .expect("fixture marker prefix");
+    let mut value: serde_json::Value =
+        serde_json::from_slice(payload).expect("fixture marker JSON");
+    value["stage"] = serde_json::json!("job-transition");
+    value["lease_id"] = serde_json::json!(7);
+    value["campaign_state"] = serde_json::json!("active");
+    value["profile"] = serde_json::json!("conservative");
+    value["active_ms"] = serde_json::json!(active_ms);
+    value["pool_config"] = serde_json::json!("local_owner_supplied");
+    value["actuation"] = serde_json::json!("qualified");
+    value["safe_stop"] = serde_json::json!("pending");
+    format!("{CAMPAIGN_MARKER_PREFIX}{value}\n").into_bytes()
+}
+
 fn live_share_preparing_marker() -> Vec<u8> {
     let marker = serde_json::json!({
         "schema": CAMPAIGN_MARKER_SCHEMA,
@@ -30,6 +57,21 @@ fn live_share_preparing_marker() -> Vec<u8> {
         "qualified_candidate_count": 0,
         "below_pool_target_count": 0,
         "duplicate_candidate_count": 0,
+        "accepted_share_count": 0,
+        "rejected_share_count": 0,
+        "job_transition": {
+            "pool_notify_count": 0,
+            "clean_jobs_notify_count": 0,
+            "previous_block_change_count": 0,
+            "new_block_generation_count": 0,
+            "replacement_dispatch_count": 0,
+            "post_transition_correlated_result_count": 0,
+            "completed_transition_count": 0,
+            "stale_generation_result_discard_count": 0,
+            "stale_generation_submit_count": 0,
+            "reconnect_count": 0,
+            "latest_state": "not_observed",
+        },
         "terminal_reason": "network_unavailable",
         "safety": "fresh",
         "fresh_observation_count": 5,
@@ -76,6 +118,21 @@ fn observation_marker(schema: &str) -> Vec<u8> {
         "qualified_candidate_count": 0,
         "below_pool_target_count": 0,
         "duplicate_candidate_count": 0,
+        "accepted_share_count": 0,
+        "rejected_share_count": 0,
+        "job_transition": {
+            "pool_notify_count": 0,
+            "clean_jobs_notify_count": 0,
+            "previous_block_change_count": 0,
+            "new_block_generation_count": 0,
+            "replacement_dispatch_count": 0,
+            "post_transition_correlated_result_count": 0,
+            "completed_transition_count": 0,
+            "stale_generation_result_discard_count": 0,
+            "stale_generation_submit_count": 0,
+            "reconnect_count": 0,
+            "latest_state": "not_observed",
+        },
         "terminal_reason": "none",
         "safety": "fresh",
         "fresh_observation_count": 5,
@@ -141,6 +198,27 @@ fn growing_snapshots_preserve_split_prefix_and_json() {
     assert_eq!(capture.outcome_detail, CampaignSerialOutcomeDetail::Clean);
     assert_eq!(capture.diagnostics.marker_candidate_count, 1);
     assert_eq!(capture.diagnostics.accepted_marker_count, 1);
+}
+
+#[test]
+fn production_chunks_preserve_split_prefix_and_json() {
+    // Arrange
+    let bytes = observation_marker(CAMPAIGN_MARKER_SCHEMA);
+    let prefix_split = CAMPAIGN_MARKER_PREFIX.len().saturating_sub(3);
+    let json_split = CAMPAIGN_MARKER_PREFIX.len().saturating_add(12);
+    let mut analyzer = CampaignSerialAnalyzer::new(observation_admission());
+
+    // Act
+    let first_stop = analyzer.observe_chunk(&bytes[..prefix_split]);
+    let second_stop = analyzer.observe_chunk(&bytes[prefix_split..json_split]);
+    let final_stop = analyzer.observe_chunk(&bytes[json_split..]);
+    let capture = analyzer.finish();
+
+    // Assert
+    assert!(!first_stop);
+    assert!(!second_stop);
+    assert!(!final_stop);
+    assert_eq!(capture.aggregate.marker_count, 1);
 }
 
 #[test]
@@ -474,4 +552,50 @@ fn malformed_preparation_progress_fails_closed_without_replacing_marker_detail()
     assert_eq!(capture.outcome_detail, CampaignSerialOutcomeDetail::Clean);
     assert_eq!(capture.diagnostics.preparation_invalid_json_count, 1);
     assert_eq!(capture.diagnostics.accepted_marker_count, 1);
+}
+
+#[test]
+fn chunk_stream_larger_than_sixteen_mib_reaches_terminal_marker_with_bounded_artifacts() {
+    // Arrange
+    let mut analyzer = CampaignSerialAnalyzer::new(observation_admission());
+    let chunk = vec![b'x'; 64 * 1_024];
+
+    // Act
+    for _ in 0..257 {
+        assert!(!analyzer.observe_chunk(&chunk));
+        assert!(!analyzer.observe_chunk(b"\n"));
+    }
+    analyzer.observe_chunk(&observation_marker(CAMPAIGN_MARKER_SCHEMA));
+    let capture = analyzer.finish();
+    let aggregate_bytes = serde_json::to_vec(&capture.aggregate).expect("aggregate JSON");
+    let diagnostic_bytes = serde_json::to_vec(&capture.diagnostics).expect("diagnostic JSON");
+
+    // Assert
+    assert!(capture.diagnostics.total_bytes > 16 * 1_024 * 1_024);
+    assert_eq!(capture.aggregate.marker_count, 1);
+    assert!(capture.aggregate.terminal.is_some());
+    assert!(aggregate_bytes.len() < 64 * 1_024);
+    assert!(diagnostic_bytes.len() < 64 * 1_024);
+}
+
+#[test]
+fn job_transition_rejects_active_marker_gap_over_five_seconds() {
+    // Arrange
+    let admission = job_transition_admission();
+    let mut analyzer = CampaignSerialAnalyzer::new(admission);
+
+    // Act
+    analyzer.observe_chunk(&active_job_transition_marker(1_000));
+    analyzer.observe_chunk(&active_job_transition_marker(6_001));
+    let capture = analyzer.finish();
+    let result = capture.aggregate.assess(admission);
+
+    // Assert
+    assert_eq!(capture.aggregate.maximum_active_marker_gap_ms, 5_001);
+    assert_eq!(
+        result
+            .expect_err("overlong active marker gap must fail")
+            .category,
+        CampaignTerminalCategory::MarkerContinuityFailed
+    );
 }

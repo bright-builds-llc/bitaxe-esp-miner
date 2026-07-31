@@ -1,7 +1,7 @@
 //! Redacted retained status projection for repo-owned mining campaigns.
 
 use bitaxe_stratum::v1::production_session::{
-    MiningCampaignLease, MiningCampaignState, MiningHardwareProfilePreset,
+    JobTransitionEvidence, MiningCampaignLease, MiningCampaignState, MiningHardwareProfilePreset,
     ProductionSessionSnapshot,
 };
 use bitaxe_stratum::v1::state::MiningOperatorIntent;
@@ -227,7 +227,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v6",
+            schema: "mining-campaign-status-v7",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -245,6 +245,9 @@ impl CampaignStatusTracker {
             qualified_candidate_count: snapshot.mining.counters.qualified_candidates,
             below_pool_target_count: snapshot.mining.counters.below_pool_target,
             duplicate_candidate_count: snapshot.mining.counters.duplicate_candidates,
+            accepted_share_count: snapshot.mining.counters.accepted,
+            rejected_share_count: snapshot.mining.counters.rejected,
+            job_transition: CampaignJobTransitionProjection::from(snapshot.job_transition),
             terminal_reason: snapshot
                 .maybe_blocker
                 .map_or("none", |blocker| blocker.label()),
@@ -286,6 +289,9 @@ struct CampaignStatusProjection {
     qualified_candidate_count: u64,
     below_pool_target_count: u64,
     duplicate_candidate_count: u64,
+    accepted_share_count: u64,
+    rejected_share_count: u64,
+    job_transition: CampaignJobTransitionProjection,
     terminal_reason: &'static str,
     safety: &'static str,
     fresh_observation_count: u8,
@@ -296,6 +302,39 @@ struct CampaignStatusProjection {
     mineonboot: bool,
     safe_stop: &'static str,
     failure: CampaignFailureDiagnostic,
+}
+
+#[derive(Serialize)]
+struct CampaignJobTransitionProjection {
+    pool_notify_count: u64,
+    clean_jobs_notify_count: u64,
+    previous_block_change_count: u64,
+    new_block_generation_count: u64,
+    replacement_dispatch_count: u64,
+    post_transition_correlated_result_count: u64,
+    completed_transition_count: u64,
+    stale_generation_result_discard_count: u64,
+    stale_generation_submit_count: u64,
+    reconnect_count: u64,
+    latest_state: &'static str,
+}
+
+impl From<JobTransitionEvidence> for CampaignJobTransitionProjection {
+    fn from(evidence: JobTransitionEvidence) -> Self {
+        Self {
+            pool_notify_count: evidence.pool_notify_count,
+            clean_jobs_notify_count: evidence.clean_jobs_notify_count,
+            previous_block_change_count: evidence.previous_block_change_count,
+            new_block_generation_count: evidence.new_block_generation_count,
+            replacement_dispatch_count: evidence.replacement_dispatch_count,
+            post_transition_correlated_result_count: evidence.replacement_result_count,
+            completed_transition_count: evidence.completed_transition_count,
+            stale_generation_result_discard_count: evidence.stale_generation_result_discard_count,
+            stale_generation_submit_count: evidence.stale_generation_submit_count,
+            reconnect_count: evidence.reconnect_count,
+            latest_state: evidence.latest_state.label(),
+        }
+    }
 }
 
 const fn campaign_state_label(state: MiningCampaignState) -> &'static str {
@@ -330,6 +369,7 @@ mod tests {
             generation: PoolSessionGeneration::initial(),
             hardware_state: MiningHardwareState::Unprepared,
             campaign_state,
+            job_transition: JobTransitionEvidence::default(),
             mining: MiningRuntimeState::default(),
         }
     }
@@ -350,7 +390,7 @@ mod tests {
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v6");
+        assert_eq!(value["schema"], "mining-campaign-status-v7");
         assert_eq!(value["stage"], "observation");
         assert!(value["lease_id"].is_null());
         assert_eq!(value["campaign_state"], "unavailable");

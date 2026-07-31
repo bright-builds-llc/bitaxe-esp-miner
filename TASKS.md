@@ -106,6 +106,104 @@ Completion review: Pending. This bounded soak does not authorize or verify
 automatic fan control, unbounded mining, complete statistics/hashrate parity,
 release readiness, or checklist promotion.
 
+### task-ultra205-job-transition-soak | 2026-07-31 | Prove a 30-minute new-block transition
+
+- [x] Add a closed `job-transition` campaign at the conservative Ultra 205
+      profile with an exact 1,800-active-second lease and 1,980-second host
+      observation budget.
+- [x] Replace cumulative campaign serial capture with bounded chunk-fed
+      analysis and aggregate observations that cannot retain raw serial.
+- [x] Prove a changed previous-block notify invalidates old work, advances the
+      generation, dispatches replacement work, and correlates a replacement
+      result without submitting stale work.
+- [ ] Seal one full-duration hardware attempt with continuous fresh safety,
+      trusted identity, safe stop, lease cleanup, `mineonboot=false`, and USB
+      cleanup; allow one conditional attempt only under the retry gate below.
+
+Dependencies: Complete archived `task-ultra205-accepted-pool-share` with its
+accepted clean-HEAD owner-pool share and confirmed safe stop.
+
+Hardware contract:
+
+- Permitted repo-owned commands:
+  1. `just package`
+  2. `just detect-ultra205`
+  3. `just mining-campaign stage=job-transition profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-job-transition-soak/attempt-001 duration-seconds=1800 redact-evidence=true`
+  4. Conditionally, after the retry gate succeeds, the same command once with
+     `evidence-dir=scratch/ultra205-job-transition-soak/attempt-002`.
+- Objective: prove at least one in-session Bitcoin previous-block transition
+  from a clean pool notify through old-generation invalidation, replacement
+  BM1366 dispatch, and a correlated replacement-generation nonce while mining
+  for the full 1,800 active seconds.
+- Evidence: each ignored attempt root is mode 0700 with mode-0600
+  `ProtectedOperational` artifacts. Persist only closed states, counts,
+  bounded durations, safe provenance, and digests. Never persist raw serial,
+  block hashes, job IDs, pool messages, submit payloads, targets, difficulty,
+  credentials, endpoints, workers, owner addresses, device identifiers,
+  network values, tokens, NVS secrets, or secret-derived hashes. Evidence is
+  private, redacted, sealed, and never automatically promoted.
+- Preconditions: deterministic regressions fail before and pass after the
+  implementation; all required software gates pass; changes are committed and
+  pushed; the exact package is rebuilt from clean HEAD; exactly one board 205
+  is admitted; and ignored Wi-Fi plus exactly one ignored pool input exist
+  without their contents being printed or retained.
+- Allowed effects: private NVS injection of Wi-Fi and owner pool settings,
+  persistence of `mineonboot=false`, one conservative 400 MHz / 1100 mV /
+  100% fan campaign lease, exact package flash, repo-owned USB reset and
+  re-enumeration, BM1366 initialization/work/result traffic, Stratum V1 pool
+  traffic and locally qualified submissions, bounded public Bitcoin-tip reads
+  for the conditional retry gate, and device-local safe stop.
+- Safety and stop limits: all five supported Ultra 205 safety observations
+  must remain fresh; input must remain 4.5-5.5 V; power must not exceed 15 W;
+  ASIC temperature must remain below 75 C; fan RPM must remain fresh and
+  nonzero after the 100% command. Any safety, watchdog, transport, parser,
+  protocol-consistency, generation, dispatch, correlation, actuation, lease,
+  evidence, or cleanup fault blocks submissions and begins safe stop.
+- New-block acceptance: require at least one `clean_jobs=true` notify with a
+  changed previous-block value, matching new-block generation invalidation,
+  replacement dispatch, and a correlated result under that replacement
+  generation. Require no active-marker gap greater than 5,000 ms, zero rejected
+  shares, and zero stale-generation submissions. An accepted share is optional;
+  a valid below-target replacement nonce satisfies result correlation.
+- Prohibited effects: mining beyond 1,800 active seconds, upstream-default
+  actuation, TLS, Stratum V2, automatic fan mode, non-205 hardware,
+  erase-flash, arbitrary raw writes, OTA, recovery upload, local network
+  discovery, foreign-process termination, raw secret output, raw serial
+  persistence, parity promotion, direct UART, pins, pads, headers, GPIO,
+  probes, jumpers, soldering, injected signals, stress, or fault injection.
+- Recovery/restoration: preserve the earliest typed failure; block and
+  invalidate submissions; close owned pool transports; frequency-down and
+  reset the ASIC; set core voltage and ASIC enable off; keep fan at 100% until
+  fresh temperature is at or below 45 C, then set 30%; clear the lease;
+  persist `mineonboot=false`; retain pool settings; and release USB/process
+  resources. If safe stop cannot be confirmed, one exact baseline reflash is
+  allowed only after same-device re-admission; otherwise stop.
+- Retry bound: `attempt-001` is the only ordinary attempt. If and only if it
+  completes the full duration with every non-transition criterion accepted and
+  seals `job_transition_not_observed`, read the public Blockstream mainnet tip
+  height after closure, wait until a later read is strictly greater, retain
+  only `public_tip_advanced=true`, rebuild the same clean-HEAD package,
+  re-detect the board, and run `attempt-002` once. No other first-attempt
+  outcome authorizes a retry. Stop inconclusive after a second no-transition
+  result; never run `attempt-003`.
+- Accepted terminal outcomes: `complete` only for full-duration
+  `job_transition_complete` plus every identity, safety, transition, rejection,
+  safe-stop, seal, mode, and cleanup requirement. The only non-failure
+  conditional outcome is `job_transition_not_observed`; every other category
+  stops without retry and returns to diagnosis.
+
+Verification: Software gates passed on 2026-07-31: the exact Rust pre-commit
+sequence, focused Stratum/campaign/device-session regressions,
+`just verify-production-session`, `just test`, `just package`, Bright Builds
+checks, parity, reference cleanliness, and redaction. Final clean-HEAD package,
+hardware evidence, permission/digest/denylist review, and completion review
+remain pending.
+
+Completion review: Pending. This task proves one bounded conservative
+new-block transition only. It does not prove profitability, upstream-default
+stability, unbounded mining, automatic fan control, release readiness, or
+parity promotion.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

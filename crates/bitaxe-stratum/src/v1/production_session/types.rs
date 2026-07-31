@@ -8,6 +8,7 @@ use super::campaign::{
     HardwarePreparationFailure, MiningCampaignLeaseId, MiningCampaignState, MiningHardwareProfile,
     MiningHardwareState,
 };
+use super::job_transition::JobTransitionEvidence;
 use crate::v1::live_runtime::LiveRuntimeConfig;
 use crate::v1::production_work::{PoolSessionGeneration, ProductionNonceObservation};
 use crate::v1::recovery_policy::{
@@ -132,6 +133,7 @@ pub struct ProductionSessionSnapshot {
     pub generation: PoolSessionGeneration,
     pub hardware_state: MiningHardwareState,
     pub campaign_state: MiningCampaignState,
+    pub job_transition: JobTransitionEvidence,
     pub mining: MiningRuntimeState,
 }
 

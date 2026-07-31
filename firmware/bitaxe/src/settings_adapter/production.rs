@@ -15,6 +15,9 @@ use esp_idf_svc::sys;
 use super::SETTINGS_TRANSACTION_LOCK;
 
 const MAX_POOL_STRING_BYTES: usize = 4_000;
+const LIVE_SHARE_DURATION_MS: u64 = 600_000;
+const DEFAULT_SOAK_DURATION_MS: u64 = 600_000;
+const JOB_TRANSITION_DURATION_MS: u64 = 1_800_000;
 const CAMPAIGN_KEYS: [&str; 4] = ["campstage", "campprofile", "camplease", "campdurms"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +25,7 @@ pub(crate) enum MiningCampaignStage {
     Observation,
     LiveShare,
     Soak,
+    JobTransition,
 }
 
 impl MiningCampaignStage {
@@ -31,6 +35,7 @@ impl MiningCampaignStage {
             Self::Observation => "observation",
             Self::LiveShare => "live-share",
             Self::Soak => "soak",
+            Self::JobTransition => "job-transition",
         }
     }
 }
@@ -95,6 +100,9 @@ pub(crate) fn load_production_campaign_admission(
         .ok_or_else(|| ProductionSettingsReadError::new("campaign_lease"))?;
     let duration_ms = read_optional_u64(&nvs, "campdurms")?
         .ok_or_else(|| ProductionSettingsReadError::new("campaign_duration"))?;
+    if !campaign_contract_valid(stage, profile, duration_ms) {
+        return Err(ProductionSettingsReadError::new("campaign_contract"));
+    }
     let lease_id = MiningCampaignLeaseId::new(lease_id)
         .map_err(|_| ProductionSettingsReadError::new("campaign_lease"))?;
     let duration = MiningCampaignDuration::new(duration_ms)
@@ -104,6 +112,9 @@ pub(crate) fn load_production_campaign_admission(
             MiningCampaignStopCondition::FirstSubmitResponse { timeout: duration }
         }
         MiningCampaignStage::Soak => MiningCampaignStopCondition::ActiveDuration { duration },
+        MiningCampaignStage::JobTransition => {
+            MiningCampaignStopCondition::ActiveDuration { duration }
+        }
         MiningCampaignStage::Observation => unreachable!(),
     };
     drop(nvs);
@@ -120,6 +131,28 @@ pub(crate) fn load_production_campaign_admission(
             stop_condition,
         )),
     }))
+}
+
+const fn campaign_contract_valid(
+    stage: MiningCampaignStage,
+    profile: MiningHardwareProfilePreset,
+    duration_ms: u64,
+) -> bool {
+    match stage {
+        MiningCampaignStage::Observation => false,
+        MiningCampaignStage::LiveShare => {
+            matches!(profile, MiningHardwareProfilePreset::Conservative)
+                && duration_ms == LIVE_SHARE_DURATION_MS
+        }
+        MiningCampaignStage::Soak => {
+            matches!(profile, MiningHardwareProfilePreset::UpstreamDefault)
+                && duration_ms == DEFAULT_SOAK_DURATION_MS
+        }
+        MiningCampaignStage::JobTransition => {
+            matches!(profile, MiningHardwareProfilePreset::Conservative)
+                && duration_ms == JOB_TRANSITION_DURATION_MS
+        }
+    }
 }
 
 /// Lazily reads pool secrets only in response to the session's typed effect.
@@ -197,6 +230,7 @@ fn parse_campaign_stage(stage: &str) -> Option<MiningCampaignStage> {
         "observation" => Some(MiningCampaignStage::Observation),
         "live-share" => Some(MiningCampaignStage::LiveShare),
         "soak" => Some(MiningCampaignStage::Soak),
+        "job-transition" => Some(MiningCampaignStage::JobTransition),
         _ => None,
     }
 }
@@ -258,4 +292,37 @@ fn erase_campaign_keys(nvs: &EspNvs<NvsDefault>) -> Result<(), ProductionSetting
         return Err(ProductionSettingsReadError::new("campaign_commit"));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn job_transition_requires_conservative_profile_and_exact_duration() {
+        // Arrange
+        let stage = MiningCampaignStage::JobTransition;
+
+        // Act
+        let exact = campaign_contract_valid(
+            stage,
+            MiningHardwareProfilePreset::Conservative,
+            JOB_TRANSITION_DURATION_MS,
+        );
+        let short = campaign_contract_valid(
+            stage,
+            MiningHardwareProfilePreset::Conservative,
+            JOB_TRANSITION_DURATION_MS - 1,
+        );
+        let wrong_profile = campaign_contract_valid(
+            stage,
+            MiningHardwareProfilePreset::UpstreamDefault,
+            JOB_TRANSITION_DURATION_MS,
+        );
+
+        // Assert
+        assert!(exact);
+        assert!(!short);
+        assert!(!wrong_profile);
+    }
 }

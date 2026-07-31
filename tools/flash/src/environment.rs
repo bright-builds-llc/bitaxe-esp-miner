@@ -384,9 +384,10 @@ impl FlashEnvironment for LocalFlashEnvironment {
         };
         let mut analyzer = CampaignSerialAnalyzer::new(admission);
         session
-            .observe_receive_only_ephemeral_until(Duration::from_secs(timeout_seconds), |bytes| {
-                analyzer.observe_snapshot(bytes)
-            })
+            .observe_receive_only_ephemeral_chunks_until(
+                Duration::from_secs(timeout_seconds),
+                |chunk| analyzer.observe_chunk(chunk),
+            )
             .map_err(|error| anyhow::anyhow!("{error}"))?;
         Ok(analyzer.finish())
     }

@@ -7,17 +7,18 @@ mod serial;
 
 use admission::{admit_campaign, prepare_campaign_nvs_seed};
 use evidence::{finish_campaign_attempt, preflight_campaign_evidence};
-use markers::{assess_campaign_markers, CampaignStatusMarker};
+use markers::CampaignMarkerAggregate;
 use serial::{CampaignSerialDiagnostics, CampaignSerialOutcomeDetail};
 
 const CAMPAIGN_MARKER_PREFIX: &str = "mining_campaign_status=";
-const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v6";
+const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v7";
 const CAMPAIGN_PREPARATION_PREFIX: &str = "mining_campaign_preparation=";
 const CAMPAIGN_PREPARATION_SCHEMA: &str = "mining-campaign-preparation-v1";
-const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v2";
-const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v1";
+const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v3";
+const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v2";
 const OBSERVATION_DURATION_SECONDS: u64 = 360;
 const MINING_DURATION_SECONDS: u64 = 600;
+const JOB_TRANSITION_DURATION_SECONDS: u64 = 1_800;
 const MINING_TERMINAL_GRACE_SECONDS: u64 = 180;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -26,6 +27,8 @@ pub(crate) enum CampaignTerminalCategory {
     ObservationComplete,
     SubmitResponseObserved,
     SoakDurationComplete,
+    JobTransitionComplete,
+    JobTransitionNotObserved,
     AdmissionFailed,
     PackageAdmissionFailed,
     DeviceAdmissionFailed,
@@ -47,6 +50,12 @@ pub(crate) enum CampaignTerminalCategory {
     PoolConfigurationMissing,
     SubmitResponseMissing,
     SoakDurationShort,
+    JobTransitionProtocolInconsistent,
+    JobTransitionEvidenceIncomplete,
+    RejectedShareObserved,
+    StaleGenerationSubmissionObserved,
+    ReconnectObserved,
+    MarkerContinuityFailed,
     SafeStopUnconfirmed,
     RuntimeIdentityUntrusted,
     UsbCleanupFailed,
@@ -59,6 +68,8 @@ impl CampaignTerminalCategory {
             Self::ObservationComplete => "observation_complete",
             Self::SubmitResponseObserved => "submit_response_observed",
             Self::SoakDurationComplete => "soak_duration_complete",
+            Self::JobTransitionComplete => "job_transition_complete",
+            Self::JobTransitionNotObserved => "job_transition_not_observed",
             Self::AdmissionFailed => "admission_failed",
             Self::PackageAdmissionFailed => "package_admission_failed",
             Self::DeviceAdmissionFailed => "device_admission_failed",
@@ -80,6 +91,12 @@ impl CampaignTerminalCategory {
             Self::PoolConfigurationMissing => "pool_configuration_missing",
             Self::SubmitResponseMissing => "submit_response_missing",
             Self::SoakDurationShort => "soak_duration_short",
+            Self::JobTransitionProtocolInconsistent => "job_transition_protocol_inconsistent",
+            Self::JobTransitionEvidenceIncomplete => "job_transition_evidence_incomplete",
+            Self::RejectedShareObserved => "rejected_share_observed",
+            Self::StaleGenerationSubmissionObserved => "stale_generation_submission_observed",
+            Self::ReconnectObserved => "reconnect_observed",
+            Self::MarkerContinuityFailed => "marker_continuity_failed",
             Self::SafeStopUnconfirmed => "safe_stop_unconfirmed",
             Self::RuntimeIdentityUntrusted => "runtime_identity_untrusted",
             Self::UsbCleanupFailed => "usb_cleanup_failed",
@@ -124,7 +141,7 @@ struct CampaignAttempt {
     runtime_identity_trusted: bool,
     maybe_runtime_attestation_status: Option<RuntimeAttestationStatus>,
     usb_cleanup_complete: bool,
-    markers: Vec<CampaignStatusMarker>,
+    marker_aggregate: CampaignMarkerAggregate,
     serial_diagnostics: CampaignSerialDiagnostics,
     serial_outcome_detail: CampaignSerialOutcomeDetail,
 }
@@ -136,7 +153,7 @@ impl Default for CampaignAttempt {
             runtime_identity_trusted: false,
             maybe_runtime_attestation_status: None,
             usb_cleanup_complete: false,
-            markers: Vec::new(),
+            marker_aggregate: CampaignMarkerAggregate::default(),
             serial_diagnostics: CampaignSerialDiagnostics::not_observed(),
             serial_outcome_detail: CampaignSerialOutcomeDetail::Clean,
         }
@@ -233,11 +250,11 @@ fn execute_campaign(
         attempt.maybe_runtime_attestation_status == Some(RuntimeAttestationStatus::Trusted);
     attempt.serial_diagnostics = capture.diagnostics;
     attempt.serial_outcome_detail = capture.outcome_detail;
-    attempt.markers = capture.markers;
+    attempt.marker_aggregate = capture.aggregate;
     if let Some(category) = capture.maybe_failure {
         return Err(CampaignFailure::new(category));
     }
-    let terminal = assess_campaign_markers(&attempt.markers, admission)?;
+    let terminal = attempt.marker_aggregate.assess(admission)?;
     if !attempt.runtime_identity_trusted {
         return Err(CampaignFailure::new(
             CampaignTerminalCategory::RuntimeIdentityUntrusted,
@@ -249,7 +266,9 @@ fn execute_campaign(
 fn campaign_capture_timeout_seconds(admission: CampaignAdmission) -> u64 {
     match admission.stage {
         MiningCampaignStage::Observation => admission.duration_seconds,
-        MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => admission
+        MiningCampaignStage::LiveShare
+        | MiningCampaignStage::Soak
+        | MiningCampaignStage::JobTransition => admission
             .duration_seconds
             .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
     }

@@ -3,7 +3,7 @@
 use bitaxe_config::{AsicFrequencyMhz, ConfigValidationError, CoreVoltageMv, FanDutyPercent};
 use thiserror::Error;
 
-pub const MAX_MINING_CAMPAIGN_DURATION_MS: u64 = 600_000;
+pub const MAX_MINING_CAMPAIGN_DURATION_MS: u64 = 1_800_000;
 
 /// Closed Ultra 205 BM1366 profiles admitted by production mining campaigns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -197,7 +197,10 @@ pub enum HardwarePreparationFailure {
 
 #[cfg(test)]
 mod tests {
-    use super::{MiningHardwareProfile, MiningHardwareProfilePreset};
+    use super::{
+        MiningCampaignDuration, MiningCampaignLeaseError, MiningHardwareProfile,
+        MiningHardwareProfilePreset,
+    };
 
     #[test]
     fn conservative_profile_is_the_validated_low_power_ultra_205_profile() {
@@ -242,5 +245,29 @@ mod tests {
 
         // Assert
         assert!(!closed);
+    }
+
+    #[test]
+    fn thirty_minute_duration_is_the_closed_lease_ceiling() {
+        // Arrange
+        let exact_duration_ms = 1_800_000;
+
+        // Act
+        let exact = MiningCampaignDuration::new(exact_duration_ms);
+        let over = MiningCampaignDuration::new(exact_duration_ms + 1);
+
+        // Assert
+        assert_eq!(
+            exact
+                .expect("thirty-minute lease should be admitted")
+                .milliseconds(),
+            exact_duration_ms
+        );
+        assert_eq!(
+            over,
+            Err(MiningCampaignLeaseError::InvalidDuration {
+                duration_ms: exact_duration_ms + 1,
+            })
+        );
     }
 }

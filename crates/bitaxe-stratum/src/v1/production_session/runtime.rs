@@ -4,6 +4,7 @@ use super::campaign::{
     MiningCampaignLease, MiningCampaignLeaseId, MiningCampaignState, MiningCampaignStopCondition,
     MiningHardwareState,
 };
+use super::job_transition::JobTransitionTracker;
 use crate::v1::bridge_orchestration::BridgeOrchestrator;
 use crate::v1::production_work::PoolSessionGeneration;
 use crate::v1::recovery_policy::{
@@ -39,6 +40,7 @@ pub struct ProductionMiningSession {
     pub(super) maybe_consumed_lease_id: Option<MiningCampaignLeaseId>,
     pub(super) maybe_prepared_at_ms: Option<u64>,
     pub(super) maybe_active_since_ms: Option<u64>,
+    pub(super) job_transition: JobTransitionTracker,
     pub(super) terminal_publication_pending: bool,
     pub(super) maybe_retained_mining: Option<crate::v1::state::MiningRuntimeState>,
     pub(super) maybe_last_snapshot: Option<ProductionSessionSnapshot>,
@@ -77,6 +79,7 @@ impl ProductionMiningSession {
             maybe_consumed_lease_id: None,
             maybe_prepared_at_ms: None,
             maybe_active_since_ms: None,
+            job_transition: JobTransitionTracker::default(),
             terminal_publication_pending: false,
             maybe_retained_mining: None,
             maybe_last_snapshot: None,
@@ -140,6 +143,7 @@ impl ProductionMiningSession {
             generation: self.snapshot_generation(projection.maybe_active_pool),
             hardware_state: self.hardware_state,
             campaign_state: self.campaign_state,
+            job_transition: self.job_transition.evidence(),
             mining,
         }
     }
@@ -237,11 +241,23 @@ impl ProductionMiningSession {
                 if let Some(active_pool) = self.recovery.projection().maybe_active_pool {
                     if self.current_generation(active_pool) != Some(observation.observed_generation)
                     {
+                        self.job_transition.note_stale_generation_result();
                         return Ok(effects);
                     }
-                    if let Some(pool_runtime) = self.maybe_pool_runtime_mut(active_pool) {
-                        let _outcome =
-                            pool_runtime.runtime.apply_bridge_observation(observation)?;
+                    let maybe_outcome = self
+                        .maybe_pool_runtime_mut(active_pool)
+                        .map(|pool_runtime| {
+                            pool_runtime.runtime.apply_bridge_observation(observation)
+                        })
+                        .transpose()?;
+                    if maybe_outcome.is_some_and(|outcome| {
+                        !matches!(
+                            outcome,
+                            crate::v1::live_runtime::BridgeObservationOutcome::Blocked { .. }
+                        )
+                    }) {
+                        self.job_transition
+                            .note_correlated_result(observation.observed_generation);
                     }
                     self.drain_runtime_actions(active_pool, &mut effects)?;
                     self.bridge.note_result_received();
@@ -424,6 +440,7 @@ impl ProductionMiningSession {
                 self.campaign_state = MiningCampaignState::Preparing;
                 self.maybe_prepared_at_ms = None;
                 self.maybe_active_since_ms = None;
+                self.job_transition = JobTransitionTracker::default();
                 self.maybe_retained_mining = None;
                 effects.push(ProductionSessionEffect::PrepareHardware {
                     lease_id: lease.id(),

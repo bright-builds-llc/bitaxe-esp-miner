@@ -184,6 +184,7 @@ pub(crate) enum MiningCampaignStage {
     Observation,
     LiveShare,
     Soak,
+    JobTransition,
 }
 
 impl MiningCampaignStage {
@@ -192,6 +193,7 @@ impl MiningCampaignStage {
             Self::Observation => "observation",
             Self::LiveShare => "live-share",
             Self::Soak => "soak",
+            Self::JobTransition => "job-transition",
         }
     }
 }

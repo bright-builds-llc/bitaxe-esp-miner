@@ -35,7 +35,13 @@ fn notify_queues_active_pool_work() {
         .expect("notify should queue work");
 
     // Assert
-    assert_eq!(event, Some(LiveRuntimeEvent::WorkQueued));
+    assert_eq!(
+        event,
+        Some(LiveRuntimeEvent::WorkQueued {
+            clean_jobs: false,
+            previous_block_changed: false,
+        })
+    );
     assert_eq!(runtime.state().lifecycle, PoolLifecycleStatus::Active);
     assert_eq!(
         runtime.state().mining_activity,
@@ -62,7 +68,13 @@ fn clean_jobs_notify_invalidates_old_generation_before_queueing() {
         .expect("clean notify should queue work");
 
     // Assert
-    assert_eq!(event, Some(LiveRuntimeEvent::WorkQueued));
+    assert_eq!(
+        event,
+        Some(LiveRuntimeEvent::WorkQueued {
+            clean_jobs: true,
+            previous_block_changed: false,
+        })
+    );
     assert_eq!(
         runtime.production_registry().generation(),
         old_generation.next()
@@ -72,6 +84,58 @@ fn clean_jobs_notify_invalidates_old_generation_before_queueing() {
         .dispatch_next()
         .expect("fresh work should dispatch");
     assert!(!dispatch.work.clean_jobs);
+}
+
+#[test]
+fn clean_changed_block_notify_reports_new_block_transition() {
+    // Arrange
+    let mut runtime = runtime_with_extranonce();
+    runtime
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .expect("initial notify should queue work");
+    let mut changed = notify(true);
+    changed.prev_block_hash = "11".repeat(32);
+
+    // Act
+    let event = runtime
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(changed))
+        .expect("clean changed-block notify should queue replacement work");
+
+    // Assert
+    assert_eq!(
+        event,
+        Some(LiveRuntimeEvent::WorkQueued {
+            clean_jobs: true,
+            previous_block_changed: true,
+        })
+    );
+}
+
+#[test]
+fn changed_block_without_clean_jobs_fails_closed() {
+    // Arrange
+    let mut runtime = runtime_with_extranonce();
+    runtime
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .expect("initial notify should queue work");
+    let mut inconsistent = notify(false);
+    inconsistent.prev_block_hash = "22".repeat(32);
+
+    // Act
+    let event = runtime
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(inconsistent))
+        .expect("inconsistent notify should be classified without raw data");
+
+    // Assert
+    assert_eq!(
+        event,
+        Some(LiveRuntimeEvent::JobTransitionProtocolInconsistent)
+    );
+    assert_eq!(runtime.state().work_submission, WorkSubmissionGate::Blocked);
+    assert_eq!(
+        runtime.state().maybe_blocked_reason,
+        Some("new_block_without_clean_jobs")
+    );
 }
 
 #[test]

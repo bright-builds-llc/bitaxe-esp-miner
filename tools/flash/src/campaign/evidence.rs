@@ -1,5 +1,5 @@
 use super::markers::{
-    campaign_marker_failure, CampaignFailureMarker, ObservationFreshnessMarker,
+    CampaignFailureMarker, JobTransitionMarker, ObservationFreshnessMarker,
     ObservationRequirementsMarker, PoolConfigMarker, SafeStopMarker, SafetyMarker,
     SubmitOutcomeMarker,
 };
@@ -9,7 +9,9 @@ use super::*;
 struct CampaignObservationEvidence<'a> {
     schema: &'static str,
     stage: &'static str,
-    markers: &'a [CampaignStatusMarker],
+    marker_count: u64,
+    maximum_active_marker_gap_ms: u64,
+    terminal_marker: Option<&'a super::markers::CampaignStatusMarker>,
 }
 
 #[derive(Serialize)]
@@ -26,11 +28,15 @@ struct CampaignResultEvidence<'a> {
     runtime_attestation_status: &'static str,
     serial_outcome_detail: &'static str,
     pool_config: &'static str,
-    marker_count: usize,
+    marker_count: u64,
     submit_outcome: &'static str,
     qualified_candidate_count: u64,
     below_pool_target_count: u64,
     duplicate_candidate_count: u64,
+    accepted_share_count: u64,
+    rejected_share_count: u64,
+    job_transition: Option<&'a JobTransitionMarker>,
+    maximum_active_marker_gap_ms: u64,
     terminal_reason: &'static str,
     active_ms: u64,
     safety: &'static str,
@@ -117,7 +123,9 @@ pub(super) fn finish_campaign_attempt(
         let observations = CampaignObservationEvidence {
             schema: CAMPAIGN_OBSERVATIONS_SCHEMA,
             stage: command.stage.as_str(),
-            markers: &attempt.markers,
+            marker_count: attempt.marker_aggregate.marker_count,
+            maximum_active_marker_gap_ms: attempt.marker_aggregate.maximum_active_marker_gap_ms,
+            terminal_marker: attempt.marker_aggregate.terminal.as_ref(),
         };
         let mut observation_bytes = serde_json::to_vec_pretty(&observations)?;
         observation_bytes.push(b'\n');
@@ -125,12 +133,7 @@ pub(super) fn finish_campaign_attempt(
             .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::EvidenceSealFailed))?;
         let observations_sha256 = sha256_bytes(&observation_bytes);
 
-        let maybe_terminal = attempt.markers.last();
-        let maybe_failure_marker = maybe_admission.and_then(|admission| {
-            attempt.markers.iter().find(|marker| {
-                campaign_marker_failure(marker, admission) == Some(terminal_category)
-            })
-        });
+        let maybe_terminal = attempt.marker_aggregate.terminal.as_ref();
         let evidence = CampaignResultEvidence {
             schema: CAMPAIGN_RESULT_SCHEMA,
             evidence_class: PROTECTED_OPERATIONAL,
@@ -139,7 +142,11 @@ pub(super) fn finish_campaign_attempt(
                 .and_then(|admission| admission.maybe_profile)
                 .map_or("none", MiningCampaignProfile::as_str),
             duration_seconds: command.duration_seconds,
-            status: if result.is_ok() { "accepted" } else { "failed" },
+            status: match &result {
+                Ok(CampaignTerminalCategory::JobTransitionNotObserved) => "inconclusive",
+                Ok(_) => "accepted",
+                Err(_) => "failed",
+            },
             terminal_category: terminal_category.as_str(),
             package_admitted: attempt.package_admitted,
             runtime_identity: if attempt.runtime_identity_trusted {
@@ -155,7 +162,7 @@ pub(super) fn finish_campaign_attempt(
                 PoolConfigMarker::NotRead => "not_read",
                 PoolConfigMarker::LocalOwnerSupplied => "local_owner_supplied",
             }),
-            marker_count: attempt.markers.len(),
+            marker_count: attempt.marker_aggregate.marker_count,
             submit_outcome: maybe_terminal.map_or("none", |marker| match marker.submit_outcome {
                 SubmitOutcomeMarker::None => "none",
                 SubmitOutcomeMarker::Accepted => "accepted",
@@ -167,6 +174,10 @@ pub(super) fn finish_campaign_attempt(
                 .map_or(0, |marker| marker.below_pool_target_count),
             duplicate_candidate_count: maybe_terminal
                 .map_or(0, |marker| marker.duplicate_candidate_count),
+            accepted_share_count: maybe_terminal.map_or(0, |marker| marker.accepted_share_count),
+            rejected_share_count: maybe_terminal.map_or(0, |marker| marker.rejected_share_count),
+            job_transition: maybe_terminal.map(|marker| &marker.job_transition),
+            maximum_active_marker_gap_ms: attempt.marker_aggregate.maximum_active_marker_gap_ms,
             terminal_reason: maybe_terminal
                 .map_or("not_observed", |marker| marker.terminal_reason.label()),
             active_ms: maybe_terminal.map_or(0, |marker| marker.active_ms),
@@ -178,8 +189,10 @@ pub(super) fn finish_campaign_attempt(
                 .map_or(0, |marker| marker.fresh_observation_count),
             observation_freshness: maybe_terminal.map(|marker| &marker.observation_freshness),
             observation_requirements: maybe_terminal.map(|marker| &marker.observation_requirements),
-            failure_observation_freshness: maybe_failure_marker
-                .map(|marker| &marker.observation_freshness),
+            failure_observation_freshness: attempt
+                .marker_aggregate
+                .failure_observation_freshness
+                .as_ref(),
             campaign_failure: maybe_terminal.map(|marker| &marker.failure),
             mineonboot: maybe_terminal.map(|marker| marker.mineonboot),
             safe_stop: maybe_terminal.map_or("not_observed", |marker| match marker.safe_stop {
