@@ -14,8 +14,8 @@ use crate::v1::state::{MiningActivityStatus, PoolLifecycleStatus};
 use crate::StratumV1Error;
 
 use super::types::{
-    ProductionPoolSet, ProductionSessionEffect, ProductionSessionEvent, ProductionSessionSnapshot,
-    ProductionTransportEpoch, ProductionTransportFailure,
+    ProductionAsicFailure, ProductionPoolSet, ProductionSessionEffect, ProductionSessionEvent,
+    ProductionSessionSnapshot, ProductionTransportEpoch, ProductionTransportFailure,
 };
 
 pub(super) use transport::{
@@ -260,7 +260,7 @@ impl ProductionMiningSession {
             }
             ProductionSessionEvent::AsicInteractionFailed {
                 generation,
-                failure: _,
+                failure,
                 now_ms: _,
             } => {
                 let maybe_active_pool = self.recovery.projection().maybe_active_pool;
@@ -270,7 +270,17 @@ impl ProductionMiningSession {
                     return Ok(effects);
                 }
                 self.begin_terminal_safe_stop(
-                    Some(ProductionSessionBlocker::ProductionAsicUnavailable),
+                    Some(match failure {
+                        ProductionAsicFailure::VersionMask => {
+                            ProductionSessionBlocker::ProductionAsicVersionMaskUnavailable
+                        }
+                        ProductionAsicFailure::Dispatch => {
+                            ProductionSessionBlocker::ProductionAsicDispatchUnavailable
+                        }
+                        ProductionAsicFailure::Poll => {
+                            ProductionSessionBlocker::ProductionAsicPollUnavailable
+                        }
+                    }),
                     false,
                     &mut effects,
                 )?;

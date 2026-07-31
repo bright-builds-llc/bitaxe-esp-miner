@@ -290,33 +290,52 @@ fn stale_asic_timeout_and_failure_do_not_mutate_the_current_generation() {
 }
 
 #[test]
-fn current_generation_asic_failure_enters_terminal_safe_stop() {
-    // Arrange
-    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
-    establish_active(&mut adapter);
-    let generation = adapter.session.snapshot().generation;
-    adapter.effects.clear();
+fn current_generation_asic_failures_preserve_subtype_during_terminal_safe_stop() {
+    for (failure, expected_blocker) in [
+        (
+            ProductionAsicFailure::VersionMask,
+            ProductionSessionBlocker::ProductionAsicVersionMaskUnavailable,
+        ),
+        (
+            ProductionAsicFailure::Dispatch,
+            ProductionSessionBlocker::ProductionAsicDispatchUnavailable,
+        ),
+        (
+            ProductionAsicFailure::Poll,
+            ProductionSessionBlocker::ProductionAsicPollUnavailable,
+        ),
+    ] {
+        // Arrange
+        let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+        establish_active(&mut adapter);
+        let generation = adapter.session.snapshot().generation;
+        adapter.effects.clear();
 
-    // Act
-    adapter.drive(ProductionSessionEvent::AsicInteractionFailed {
-        generation,
-        failure: ProductionAsicFailure::Dispatch,
-        now_ms: 4,
-    });
+        // Act
+        adapter.drive(ProductionSessionEvent::AsicInteractionFailed {
+            generation,
+            failure,
+            now_ms: 4,
+        });
 
-    // Assert
-    assert_eq!(
-        adapter.session.snapshot().hardware_state,
-        MiningHardwareState::Stopped
-    );
-    assert_eq!(
-        adapter.session.snapshot().campaign_state,
-        MiningCampaignState::Consumed
-    );
-    assert!(adapter
-        .effects
-        .iter()
-        .any(|effect| matches!(effect, ProductionSessionEffect::SafeStopHardware { .. })));
+        // Assert
+        assert_eq!(
+            adapter.session.snapshot().hardware_state,
+            MiningHardwareState::Stopped
+        );
+        assert_eq!(
+            adapter.session.snapshot().campaign_state,
+            MiningCampaignState::Consumed
+        );
+        assert_eq!(
+            adapter.session.snapshot().maybe_blocker,
+            Some(expected_blocker)
+        );
+        assert!(adapter
+            .effects
+            .iter()
+            .any(|effect| matches!(effect, ProductionSessionEffect::SafeStopHardware { .. })));
+    }
 }
 
 #[test]

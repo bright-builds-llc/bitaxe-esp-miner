@@ -19,8 +19,9 @@ use bitaxe_asic::bm1366::{
         ERROR_COUNT_REGISTER, TOTAL_COUNT_REGISTER,
     },
     result::{
-        parse_bm1366_result_frame, Bm1366NonceResult, Bm1366ParsedResult, Bm1366RegisterRead,
-        Bm1366ValidJobIds, BM1366_RESULT_FRAME_LEN,
+        classify_bm1366_production_result, parse_bm1366_result_frame, Bm1366NonceResult,
+        Bm1366ParsedResult, Bm1366ProductionResult, Bm1366RegisterRead, Bm1366ValidJobIds,
+        BM1366_RESULT_FRAME_LEN,
     },
 };
 
@@ -30,6 +31,7 @@ use super::{reset, status, uart};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProductionReadOutcome {
     Pending,
+    MalformedDiscarded,
     JobNonce(Bm1366NonceResult),
     RegisterReadProof(Bm1366RegisterRead),
 }
@@ -452,7 +454,9 @@ impl ProductionAsicExecutor {
                     valid_jobs,
                     uart::RESULT_WORK_TIMEOUT_MS,
                 )? {
-                    ProductionReadOutcome::Pending => Ok(None),
+                    ProductionReadOutcome::Pending | ProductionReadOutcome::MalformedDiscarded => {
+                        Ok(None)
+                    }
                     ProductionReadOutcome::JobNonce(result) => Ok(Some(result)),
                     ProductionReadOutcome::RegisterReadProof(_) => Ok(None),
                 }
@@ -496,13 +500,19 @@ fn try_read_production_result_on_state(
         return Ok(ProductionReadOutcome::Pending);
     };
 
-    match parse_bm1366_result_frame(&frame, valid_jobs, ultra_205_result_address_interval()) {
-        Ok(Bm1366ParsedResult::JobNonce(result)) => Ok(ProductionReadOutcome::JobNonce(result)),
-        Ok(Bm1366ParsedResult::RegisterRead(read)) => {
+    match classify_bm1366_production_result(&frame, valid_jobs, ultra_205_result_address_interval())
+    {
+        Bm1366ProductionResult::JobNonce(result) => Ok(ProductionReadOutcome::JobNonce(result)),
+        Bm1366ProductionResult::RegisterRead(read) => {
             log::info!("asic_production_trace=register_read_parsed");
             Ok(ProductionReadOutcome::RegisterReadProof(read))
         }
-        Err(_) => Err(ProductionAsicBlocker::ResultMalformed),
+        Bm1366ProductionResult::MalformedDiscarded => {
+            uart.clear_rx()
+                .map_err(|_| ProductionAsicBlocker::UartFailed)?;
+            log::warn!("asic_production_trace=result_frame_discarded reason=malformed");
+            Ok(ProductionReadOutcome::MalformedDiscarded)
+        }
     }
 }
 

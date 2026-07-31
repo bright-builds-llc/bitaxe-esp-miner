@@ -38,6 +38,9 @@ pub(super) enum CampaignTerminalReasonMarker {
     CampaignLeaseUnavailable,
     CampaignLeaseConsumed,
     ProductionAsicUnavailable,
+    ProductionAsicVersionMaskUnavailable,
+    ProductionAsicDispatchUnavailable,
+    ProductionAsicPollUnavailable,
     ActuationUnqualified,
     PoolConfigurationUnavailable,
     PoolsExhausted,
@@ -54,6 +57,11 @@ impl CampaignTerminalReasonMarker {
             Self::CampaignLeaseUnavailable => "campaign_lease_unavailable",
             Self::CampaignLeaseConsumed => "campaign_lease_consumed",
             Self::ProductionAsicUnavailable => "production_asic_unavailable",
+            Self::ProductionAsicVersionMaskUnavailable => {
+                "production_asic_version_mask_unavailable"
+            }
+            Self::ProductionAsicDispatchUnavailable => "production_asic_dispatch_unavailable",
+            Self::ProductionAsicPollUnavailable => "production_asic_poll_unavailable",
             Self::ActuationUnqualified => "actuation_unqualified",
             Self::PoolConfigurationUnavailable => "pool_configuration_unavailable",
             Self::PoolsExhausted => "pools_exhausted",

@@ -83,6 +83,14 @@ pub enum Bm1366ParsedResult {
     RegisterRead(Bm1366RegisterRead),
 }
 
+/// Continuous production-loop disposition for one complete UART frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Bm1366ProductionResult {
+    JobNonce(Bm1366NonceResult),
+    RegisterRead(Bm1366RegisterRead),
+    MalformedDiscarded,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Bm1366NonceResult {
     pub job_id: Bm1366JobId,
@@ -114,6 +122,20 @@ pub fn parse_bm1366_result_frame(
     }
 
     parse_register_read(frame, address_interval)
+}
+
+/// Classifies strict parser failures as a soft discard for the continuous
+/// production loop, matching upstream's retry-on-null result behavior.
+pub fn classify_bm1366_production_result(
+    bytes: &[u8],
+    valid_jobs: &Bm1366ValidJobIds,
+    address_interval: u16,
+) -> Bm1366ProductionResult {
+    match parse_bm1366_result_frame(bytes, valid_jobs, address_interval) {
+        Ok(Bm1366ParsedResult::JobNonce(result)) => Bm1366ProductionResult::JobNonce(result),
+        Ok(Bm1366ParsedResult::RegisterRead(read)) => Bm1366ProductionResult::RegisterRead(read),
+        Err(_) => Bm1366ProductionResult::MalformedDiscarded,
+    }
 }
 
 fn validate_result_frame(frame: ResultFrameBytes) -> Result<(), Bm1366ProtocolFault> {
@@ -218,7 +240,8 @@ mod tests {
     };
 
     use super::{
-        parse_bm1366_result_frame, Bm1366ParsedResult, Bm1366ValidJobIds, BM1366_RECEIVE_PREAMBLE,
+        classify_bm1366_production_result, parse_bm1366_result_frame, Bm1366ParsedResult,
+        Bm1366ProductionResult, Bm1366ValidJobIds, BM1366_RECEIVE_PREAMBLE,
         BM1366_RESULT_FRAME_LEN,
     };
 
@@ -320,6 +343,19 @@ mod tests {
             panic!("expected job nonce");
         };
         assert_eq!(result.nonce, submit_nonce);
+    }
+
+    #[test]
+    fn bm1366_production_result_soft_discards_malformed_frame() {
+        // Arrange
+        let malformed = [0_u8; BM1366_RESULT_FRAME_LEN];
+
+        // Act
+        let outcome =
+            classify_bm1366_production_result(&malformed, &Bm1366ValidJobIds::empty(), 256);
+
+        // Assert
+        assert_eq!(outcome, Bm1366ProductionResult::MalformedDiscarded);
     }
 
     #[test]

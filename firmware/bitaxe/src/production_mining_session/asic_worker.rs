@@ -148,6 +148,7 @@ impl AsicWorker {
                             }
                             Ok(
                                 ProductionReadOutcome::Pending
+                                | ProductionReadOutcome::MalformedDiscarded
                                 | ProductionReadOutcome::RegisterReadProof(_),
                             ) => emit(AsicWorkerEvent::PollTimedOut { generation }),
                             Err(_) => emit(AsicWorkerEvent::Failed {

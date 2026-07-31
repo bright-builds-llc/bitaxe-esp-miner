@@ -30,8 +30,9 @@ new work.
 
 Status: In progress — the deterministic diagnosis and software fix are
 verified. `attempt-001` then proved local below-target filtering but ended on
-an unclassified early safe stop; typed terminal-cause instrumentation and one
-diagnostic `attempt-002` remain.
+an unclassified early safe stop. `attempt-002` classified the stop as an ASIC
+bridge failure; an upstream-aligned malformed-frame soft-discard fix and one
+post-fix `attempt-003` remain.
 
 - [x] Reproduce the rejected-share path deterministically from a known BM1366
       nonce, reconstructed header, and pool difficulty.
@@ -57,6 +58,9 @@ Hardware contract:
   4. After the diagnostic change is committed/pushed and rebuilt from exact
      clean HEAD, the same command once with
      `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-002`.
+  5. After the ASIC result-loop fix is committed/pushed and rebuilt from exact
+     clean HEAD, the same command once with
+     `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-003`.
 - Objective: obtain one pool-accepted Stratum V1 share derived from current
   owner-pool work and a correlated BM1366 nonce, then prove safe stop.
 - Evidence: the ignored
@@ -98,12 +102,16 @@ Hardware contract:
   baseline reflash is allowed only after same-device re-admission; otherwise
   stop.
 - Retry bound: `attempt-001` is sealed and immutable; it may not be repeated.
-  The owner-authorized non-invasive remediation adds a closed terminal reason
-  and aligns status freshness with the authoritative runtime clock, providing
-  objective change proof for exactly one `attempt-002`. Any further ordinal
-  requires a new deterministic failing regression plus a verified
-  boundary-changing fix. A recurrence of the same authoritative signature
-  selects `stop_repeated_boundary`.
+  The owner-authorized non-invasive remediation added a closed terminal reason
+  and aligned status freshness with the authoritative runtime clock, providing
+  objective change proof for `attempt-002`. That attempt selected a new ASIC
+  failure boundary. The pinned upstream result loop treats invalid receives as
+  a dropped iteration and continues, while the Rust poll path terminalized a
+  complete malformed frame. A deterministic soft-discard regression plus that
+  boundary-changing fix authorizes exactly one `attempt-003`. Any later
+  ordinal requires another new deterministic regression and verified boundary
+  change. A recurrence of the same refined authoritative signature selects
+  `stop_repeated_boundary`.
 - Accepted terminal outcome: `complete` only for `submit_response_observed`
   with `submit_outcome=accepted`, trusted exact-package identity, clean serial
   diagnostics, fresh supported safety, `mineonboot=false`, confirmed safe
@@ -131,6 +139,16 @@ and status freshness used a different clock origin than the authoritative
 safety gate, the exact early-stop cause remains unclassified. Ephemeral raw
 detector and console logs were deleted after extracting these closed facts;
 the sealed private attempt remains ignored and non-promoted.
+Clean commit `04de47c9` `attempt-002` reproduced one below-pool-target
+candidate and no submit, then sealed `terminal_reason=production_asic_unavailable`
+after `5,644` active milliseconds with the same trusted identity, clean serial
+framing, fresh supported observations, safe stop, and cleanup guarantees. This
+rules out the host parser, pool response, and safety gate as the immediate
+stop. The result-loop fix now soft-discards malformed complete frames like the
+pinned upstream loop and adds closed version-mask/dispatch/poll terminal
+subtypes for any remaining ASIC failure. Ephemeral attempt-002 detector and
+console logs were deleted; sealed private evidence remains ignored and
+non-promoted.
 
 Completion review: Pending. An accepted share proves this bounded conservative
 owner-pool path only; it does not prove profitability, default-profile safety,
