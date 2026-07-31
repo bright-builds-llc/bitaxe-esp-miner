@@ -45,6 +45,7 @@ pub(crate) trait Emc2101RegisterReader {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Emc2101WriteRegister {
+    Configuration,
     FanConfiguration,
     FanSetting,
 }
@@ -52,6 +53,7 @@ pub(crate) enum Emc2101WriteRegister {
 impl Emc2101WriteRegister {
     pub(crate) const fn address(self) -> u8 {
         match self {
+            Self::Configuration => 0x03,
             Self::FanConfiguration => 0x4a,
             Self::FanSetting => 0x4c,
         }
@@ -74,6 +76,7 @@ where
 {
     debug_assert!(percent <= 100);
 
+    bus.write_emc2101(Emc2101WriteRegister::Configuration, 0x04)?;
     bus.write_emc2101(Emc2101WriteRegister::FanConfiguration, 0x23)?;
     bus.write_emc2101(Emc2101WriteRegister::FanSetting, fan_duty_code(percent))
 }
@@ -275,7 +278,7 @@ mod tests {
     }
 
     #[test]
-    fn fan_duty_writes_direct_mode_before_full_duty() {
+    fn fan_duty_enables_tach_input_before_direct_mode_and_full_duty() {
         // Arrange
         let mut writer = FakeWriter::default();
 
@@ -287,10 +290,12 @@ mod tests {
         assert_eq!(
             writer.writes,
             [
+                (Emc2101WriteRegister::Configuration, 0x04),
                 (Emc2101WriteRegister::FanConfiguration, 0x23),
                 (Emc2101WriteRegister::FanSetting, 0x3f),
             ]
         );
+        assert_eq!(Emc2101WriteRegister::Configuration.address(), 0x03);
         assert_eq!(Emc2101WriteRegister::FanConfiguration.address(), 0x4a);
         assert_eq!(Emc2101WriteRegister::FanSetting.address(), 0x4c);
     }

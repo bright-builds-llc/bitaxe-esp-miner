@@ -28,11 +28,12 @@ new work.
 
 ### task-ultra205-live-pool-share | 2026-07-28 | Prove one real BM1366 pool submission
 
-Status: In progress — `attempt-001` proved an untyped hardware-preparation
-failure that the host incorrectly sealed as `pool_configuration_missing`;
-`attempt-002` is authorized only after the earliest typed preparation failure
-is regression-backed, fully verified, committed, pushed, and rebuilt from
-clean exact HEAD.
+Status: In progress — `attempt-002` preserved the earliest failure as
+`hardware_preparation/require_fresh_nonzero_fan_rpm/fan_rpm_proof_timed_out`.
+The pinned reference enables the EMC2101 tach input at register `0x03` before
+fan control, while the Rust adapter omitted that write. `attempt-003` is
+authorized only after the missing initialization is regression-backed, fully
+verified, committed, pushed, and rebuilt from clean exact HEAD.
 
 - [ ] Freeze and admit the exact current-HEAD package, single detected board
       205, ignored local Wi-Fi credentials, and exactly one ignored local pool
@@ -62,10 +63,11 @@ Hardware contract:
   2. `just package`
   3. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-001 duration-seconds=600 redact-evidence=true`
   4. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-002 duration-seconds=600 redact-evidence=true`
+  5. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-003 duration-seconds=600 redact-evidence=true`
 - Objective: obtain one real BM1366 nonce correlated to owner-pool work and
   one accepted or rejected Stratum V1 submit response under the conservative
   profile, then prove safe stop.
-- Evidence: the ignored `scratch/ultra205-live-pool-share/attempt-001`
+- Evidence: each ignored `scratch/ultra205-live-pool-share/attempt-<ordinal>`
   root is private, non-promoted `ProtectedOperational` evidence with mode-0700
   parent and mode-0600 artifacts. Committed or summarized output may record
   `pool_config: local-owner-supplied`, closed result categories, bounded
@@ -112,8 +114,9 @@ Hardware contract:
   boundary: the firmware marker and sealed result must preserve the earliest
   closed hardware-preparation phase, step, adapter category, and any secondary
   rollback failure so the misleading `pool_configuration_missing` precedence
-  cannot recur. Do not infer or change hardware behavior until that typed
-  result identifies the failed boundary.
+  cannot recur. `attempt-003` changes the hardware boundary by restoring the
+  pinned EMC2101 tach-input initialization before direct fan mode and duty. It
+  is not an unchanged retry.
 - Accepted terminal outcomes: `complete` only when every success and safe-stop
   criterion passes; otherwise `stop_repeated_boundary`,
   `stop_hardware_blocker`, `stop_authority_boundary`, or
@@ -131,7 +134,15 @@ failure, the host incorrectly selected `pool_configuration_missing`. Run the
 new red diagnostic-precedence regression, all required software gates, the
 exact permitted hardware commands, private-artifact permission checks,
 redaction and secret denylist verification, lease/safe-stop validation, sealed
-result validation, and final diff review.
+result validation, and final diff review. `attempt-002` used exact clean-HEAD
+commit `28d89759`, one detected Ultra 205, and exactly one ignored owner pool
+input. It sealed `hardware_preparation` at
+`require_fresh_nonzero_fan_rpm` with `fan_rpm_proof_timed_out`, one valid
+marker, clean serial framing, five supported observations fresh,
+`mineonboot=false`, zero active milliseconds, no pool read or submit, confirmed
+safe-stop, and USB cleanup ready. The focused EMC2101 regression failed before
+the fix because no configuration-register write existed, then passed after the
+adapter wrote `0x03=0x04` before fan mode and duty.
 
 Completion review: Pending. An accepted or rejected response proves the
 end-to-end submitted-share path, not profitability, unbounded stability,
