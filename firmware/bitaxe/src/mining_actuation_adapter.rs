@@ -25,7 +25,8 @@ use crate::mining_actuation::{
     CORE_VOLTAGE_STABILIZATION_MS,
 };
 use crate::safety_adapter::{
-    FanDutyPercent, SafetyActuationCommand, SafetyActuationRequestOutcome, Ultra205CoreVoltage,
+    FanDutyPercent, PendingSafetyActuation, SafetyActuationCommand, SafetyActuationPollOutcome,
+    SafetyActuationQueueOutcome, SafetyActuationRequestOutcome, Ultra205CoreVoltage,
 };
 
 const FAN_PROOF_TIMEOUT_MS: u64 = 3_000;
@@ -96,6 +97,7 @@ pub struct Ultra205MiningActuationAdapter {
     maybe_requested_profile: Option<MiningHardwareProfile>,
     maybe_fan_command_baseline: Option<ObservationStamp>,
     maybe_fan_command_started_at_ms: Option<u64>,
+    maybe_pending_fan_actuation: Option<PendingSafetyActuation>,
     maybe_cooling_started_at_ms: Option<u64>,
     maybe_asic_profile: Option<Bm1366MiningProfile>,
     cooling_fan_full_applied: bool,
@@ -109,6 +111,7 @@ impl Ultra205MiningActuationAdapter {
             maybe_requested_profile: None,
             maybe_fan_command_baseline: None,
             maybe_fan_command_started_at_ms: None,
+            maybe_pending_fan_actuation: None,
             maybe_cooling_started_at_ms: None,
             maybe_asic_profile: None,
             cooling_fan_full_applied: false,
@@ -158,16 +161,52 @@ impl Ultra205MiningActuationAdapter {
                     acquired_at_ms: sample.acquired_at().get(),
                 });
         self.maybe_fan_command_started_at_ms = Some(crate::runtime_uptime::millis());
-        Self::request_safety(SafetyActuationCommand::SetFanDuty(FanDutyPercent::FULL))
+        match crate::safety_adapter::queue_safety_actuation(SafetyActuationCommand::SetFanDuty(
+            FanDutyPercent::FULL,
+        )) {
+            SafetyActuationQueueOutcome::Queued(pending) => {
+                self.maybe_pending_fan_actuation = Some(pending);
+                Ok(())
+            }
+            SafetyActuationQueueOutcome::QueueFull => {
+                Err(MiningActuationAdapterError::SafetyQueueFull)
+            }
+            SafetyActuationQueueOutcome::OwnerUnavailable => {
+                Err(MiningActuationAdapterError::SafetyOwnerUnavailable)
+            }
+        }
     }
 
-    fn wait_for_post_command_fan_proof(&self) -> Result<(), MiningActuationAdapterError> {
+    fn wait_for_post_command_fan_proof(&mut self) -> Result<(), MiningActuationAdapterError> {
         let deadline_ms = crate::runtime_uptime::millis().saturating_add(FAN_PROOF_TIMEOUT_MS);
+        let mut actuation_applied = false;
         loop {
+            if !actuation_applied {
+                let Some(pending) = self.maybe_pending_fan_actuation.as_ref() else {
+                    return Err(MiningActuationAdapterError::SafetyOwnerUnavailable);
+                };
+                match pending.poll() {
+                    SafetyActuationPollOutcome::Pending => {}
+                    SafetyActuationPollOutcome::Applied => {
+                        actuation_applied = true;
+                        self.maybe_pending_fan_actuation = None;
+                    }
+                    SafetyActuationPollOutcome::OwnerUnavailable => {
+                        self.maybe_pending_fan_actuation = None;
+                        return Err(MiningActuationAdapterError::SafetyOwnerUnavailable);
+                    }
+                    SafetyActuationPollOutcome::HardwareWriteFailed => {
+                        self.maybe_pending_fan_actuation = None;
+                        return Err(MiningActuationAdapterError::SafetyHardwareWriteFailed);
+                    }
+                }
+            }
             let observations = crate::safety_adapter::observation_snapshot();
             let maybe_sample = observations.fan_rpm.maybe_last_good();
-            if observations
-                .is_ultra_205_mining_safe_at(MonotonicMillis::new(crate::runtime_uptime::millis()))
+            if actuation_applied
+                && observations.is_ultra_205_mining_safe_at(MonotonicMillis::new(
+                    crate::runtime_uptime::millis(),
+                ))
                 && observations.fan_rpm.is_fresh()
                 && maybe_sample.is_some_and(|sample| {
                     *sample.value() > 0
@@ -181,6 +220,10 @@ impl Ultra205MiningActuationAdapter {
                 return Ok(());
             }
             if crate::runtime_uptime::millis() >= deadline_ms {
+                if !actuation_applied {
+                    self.maybe_pending_fan_actuation = None;
+                    return Err(MiningActuationAdapterError::SafetyReplyTimedOut);
+                }
                 return Err(MiningActuationAdapterError::FanRpmProofTimedOut);
             }
             thread::sleep(Duration::from_millis(FAN_PROOF_POLL_MS));

@@ -33,8 +33,10 @@ verified. `attempt-001` then proved local below-target filtering but ended on
 an unclassified early safe stop. `attempt-002` classified the stop as an ASIC
 bridge failure. `attempt-003` crossed that boundary and isolated the remaining
 failure to the poll side; code review found an untracked in-flight poll path
-capable of filling the worker queue, requiring an invariant fix and post-fix
-`attempt-004`.
+capable of filling the worker queue. `attempt-004` crossed that boundary and
+isolated a silent synchronous hardware-preparation stall after the fan-full
+step started, requiring a bounded request/observation fix and post-fix
+`attempt-005`.
 
 - [x] Reproduce the rejected-share path deterministically from a known BM1366
       nonce, reconstructed header, and pool difficulty.
@@ -66,6 +68,10 @@ Hardware contract:
   6. After the poll in-flight invariant and queue diagnostics are
      committed/pushed and rebuilt from exact clean HEAD, the same command once
      with `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-004`.
+  7. After the fan preparation path is proven non-blocking, incomplete
+     preparation is classified by the host, and the fix is committed/pushed
+     and rebuilt from exact clean HEAD, the same command once with
+     `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-005`.
 - Objective: obtain one pool-accepted Stratum V1 share derived from current
   owner-pool work and a correlated BM1366 nonce, then prove safe stop.
 - Evidence: the ignored
@@ -120,9 +126,14 @@ Hardware contract:
   was in flight, allowing bounded worker-queue backpressure to surface as the
   same terminal poll category. A deterministic one-poll-in-flight regression,
   the invariant fix, and distinct queue-full/worker-disconnected categories
-  authorize exactly one `attempt-004`. Any later ordinal requires another new
-  deterministic regression and verified boundary change. A recurrence of the
-  same refined authoritative signature selects `stop_repeated_boundary`.
+  authorize exactly one `attempt-004`. That attempt emitted the typed
+  `set_fan_duty_to_100_percent` started boundary but neither completion nor
+  failure while runtime attestations remained live for the full capture. A
+  deterministic deferred-reply fan-enqueue regression, non-blocking observation
+  access, and host classification of incomplete preparation authorize exactly
+  one `attempt-005`. Any later ordinal requires another new deterministic
+  regression and verified boundary change. A recurrence of the same refined
+  authoritative signature selects `stop_repeated_boundary`.
 - Accepted terminal outcome: `complete` only for `submit_response_observed`
   with `submit_outcome=accepted`, trusted exact-package identity, clean serial
   diagnostics, fresh supported safety, `mineonboot=false`, confirmed safe
@@ -170,6 +181,18 @@ for this attempt. The shell/core review then identified untracked concurrent
 poll requests as a concrete worker-queue backpressure path. Ephemeral detector
 and console logs were deleted after extracting only these closed facts; the
 sealed private attempt remains ignored and non-promoted.
+Clean commit `a80060fe` `attempt-004` retained trusted identity, clean serial
+framing, fresh supported observations, `mineonboot=false`, ready USB cleanup,
+and valid private artifact modes and seals. It never reached active mining or
+read the local pool input. Three typed preparation events ended at
+`step=set_fan_duty_to_100_percent,outcome=started`; no completion or failure
+followed even though runtime attestations continued through the full bounded
+capture. This disproves the poll invariant as the immediate attempt-004
+boundary and isolates a synchronous fan-preparation stall. The host's
+`pool_configuration_missing` result and retained `network_unavailable` marker
+were pre-preparation state, not evidence of a new network failure. Ephemeral
+detector and console logs were deleted after extracting only these closed
+facts; the sealed private attempt remains ignored and non-promoted.
 
 Completion review: Pending. An accepted share proves this bounded conservative
 owner-pool path only; it does not prove profitability, default-profile safety,

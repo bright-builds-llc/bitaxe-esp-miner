@@ -5,6 +5,7 @@ mod emc2101;
 mod i2c_bus;
 mod ina260;
 mod observation_store;
+mod request_queue;
 mod thermal;
 mod watchdog;
 
@@ -16,7 +17,7 @@ pub(crate) use watchdog::supervisor_checkpoint_history;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::{self, Receiver, SyncSender, TrySendError},
+        mpsc::{self, Receiver, SyncSender, TryRecvError},
         OnceLock,
     },
     time::Duration,
@@ -24,6 +25,8 @@ use std::{
 
 use anyhow::{anyhow, Result};
 use bitaxe_safety::{power::Ina260RawSample, sensor_acquisition::AcquisitionOutcome};
+
+use request_queue::{enqueue, ActuationEnvelope, EnqueueOutcome};
 
 const ACTUATION_REQUEST_CAPACITY: usize = 4;
 const ACTUATION_REPLY_CAPACITY: usize = 1;
@@ -73,16 +76,47 @@ pub(crate) enum SafetyActuationRequestOutcome {
     HardwareWriteFailed,
 }
 
+pub(crate) enum SafetyActuationQueueOutcome {
+    Queued(PendingSafetyActuation),
+    QueueFull,
+    OwnerUnavailable,
+}
+
+pub(crate) struct PendingSafetyActuation {
+    reply_receiver: Receiver<SafetyActuationReply>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SafetyActuationPollOutcome {
+    Pending,
+    Applied,
+    OwnerUnavailable,
+    HardwareWriteFailed,
+}
+
+impl PendingSafetyActuation {
+    pub(crate) fn poll(&self) -> SafetyActuationPollOutcome {
+        match self.reply_receiver.try_recv() {
+            Ok(SafetyActuationReply::Applied) => SafetyActuationPollOutcome::Applied,
+            Ok(SafetyActuationReply::HardwareWriteFailed) => {
+                SafetyActuationPollOutcome::HardwareWriteFailed
+            }
+            Err(TryRecvError::Empty) => SafetyActuationPollOutcome::Pending,
+            Err(TryRecvError::Disconnected) => {
+                ACTUATION_OWNER_AVAILABLE.store(false, Ordering::Release);
+                SafetyActuationPollOutcome::OwnerUnavailable
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SafetyActuationReply {
     Applied,
     HardwareWriteFailed,
 }
 
-struct SafetyActuationEnvelope {
-    command: SafetyActuationCommand,
-    reply_sender: SyncSender<SafetyActuationReply>,
-}
+type SafetyActuationEnvelope = ActuationEnvelope<SafetyActuationCommand, SafetyActuationReply>;
 
 pub(crate) struct SafetyActuationOwnerRegistration {
     request_sender: SyncSender<SafetyActuationEnvelope>,
@@ -138,15 +172,10 @@ pub(crate) fn request_safety_actuation(
         return SafetyActuationRequestOutcome::OwnerUnavailable;
     };
     let (reply_sender, reply_receiver) = mpsc::sync_channel(ACTUATION_REPLY_CAPACITY);
-    let envelope = SafetyActuationEnvelope {
-        command,
-        reply_sender,
-    };
-
-    match request_sender.try_send(envelope) {
-        Ok(()) => {}
-        Err(TrySendError::Full(_)) => return SafetyActuationRequestOutcome::QueueFull,
-        Err(TrySendError::Disconnected(_)) => {
+    match enqueue(request_sender, command, reply_sender) {
+        EnqueueOutcome::Queued => {}
+        EnqueueOutcome::Full => return SafetyActuationRequestOutcome::QueueFull,
+        EnqueueOutcome::Disconnected => {
             ACTUATION_OWNER_AVAILABLE.store(false, Ordering::Release);
             return SafetyActuationRequestOutcome::OwnerUnavailable;
         }
@@ -165,6 +194,30 @@ pub(crate) fn request_safety_actuation(
     }
 }
 
+/// Queues an effect whose result is proven by a subsequent fresh observation.
+pub(crate) fn queue_safety_actuation(
+    command: SafetyActuationCommand,
+) -> SafetyActuationQueueOutcome {
+    if !safety_actuation_available() {
+        return SafetyActuationQueueOutcome::OwnerUnavailable;
+    }
+    let Some(request_sender) = ACTUATION_REQUEST_SENDER.get() else {
+        return SafetyActuationQueueOutcome::OwnerUnavailable;
+    };
+
+    let (reply_sender, reply_receiver) = mpsc::sync_channel(ACTUATION_REPLY_CAPACITY);
+    match enqueue(request_sender, command, reply_sender) {
+        EnqueueOutcome::Queued => {
+            SafetyActuationQueueOutcome::Queued(PendingSafetyActuation { reply_receiver })
+        }
+        EnqueueOutcome::Full => SafetyActuationQueueOutcome::QueueFull,
+        EnqueueOutcome::Disconnected => {
+            ACTUATION_OWNER_AVAILABLE.store(false, Ordering::Release);
+            SafetyActuationQueueOutcome::OwnerUnavailable
+        }
+    }
+}
+
 pub(crate) fn service_next_safety_actuation_request(
     owner: &mut RuntimeI2cOwner<'_>,
     inbox: &SafetyActuationOwnerInbox,
@@ -179,11 +232,12 @@ pub(crate) fn service_next_safety_actuation_request(
         }
     };
 
-    let reply = apply_safety_actuation(owner, envelope.command);
+    let (command, reply_sender) = envelope.into_parts();
+    let reply = apply_safety_actuation(owner, command);
     if reply == SafetyActuationReply::HardwareWriteFailed {
         log::warn!("safety_actuation=fault category=hardware_write_failed");
     }
-    if envelope.reply_sender.try_send(reply).is_err() {
+    if reply_sender.try_send(reply).is_err() {
         log::warn!("safety_actuation=fault category=reply_receiver_unavailable");
     }
     SafetyActuationOwnerWait::Serviced

@@ -9,6 +9,61 @@ fn observation_admission() -> CampaignAdmission {
     }
 }
 
+fn live_share_admission() -> CampaignAdmission {
+    CampaignAdmission {
+        stage: MiningCampaignStage::LiveShare,
+        maybe_profile: Some(MiningCampaignProfile::Conservative),
+        duration_seconds: 600,
+        maybe_lease_id: Some(7),
+    }
+}
+
+fn live_share_preparing_marker() -> Vec<u8> {
+    let marker = serde_json::json!({
+        "schema": CAMPAIGN_MARKER_SCHEMA,
+        "stage": "live-share",
+        "lease_id": 7,
+        "campaign_state": "preparing",
+        "profile": "conservative",
+        "active_ms": 0,
+        "submit_outcome": "none",
+        "qualified_candidate_count": 0,
+        "below_pool_target_count": 0,
+        "duplicate_candidate_count": 0,
+        "terminal_reason": "network_unavailable",
+        "safety": "fresh",
+        "fresh_observation_count": 5,
+        "observation_freshness": {
+            "power_watts": true,
+            "bus_voltage_volts": true,
+            "current_amps": true,
+            "chip_temp_celsius": true,
+            "vr_temp_celsius": false,
+            "fan_rpm": true,
+        },
+        "observation_requirements": {
+            "power_watts": true,
+            "bus_voltage_volts": true,
+            "current_amps": true,
+            "chip_temp_celsius": true,
+            "vr_temp_celsius": false,
+            "fan_rpm": true,
+        },
+        "pool_config": "not_read",
+        "actuation": "none",
+        "mineonboot": false,
+        "safe_stop": "not_required",
+        "failure": {
+            "phase": "none",
+            "step": "none",
+            "detail": "none",
+            "rollback_step": "none",
+            "rollback_detail": "none",
+        },
+    });
+    format!("{CAMPAIGN_MARKER_PREFIX}{marker}\n").into_bytes()
+}
+
 fn observation_marker(schema: &str) -> Vec<u8> {
     let marker = serde_json::json!({
         "schema": schema,
@@ -364,6 +419,42 @@ fn preparation_progress_preserves_the_latest_closed_boundary() {
             outcome: CampaignPreparationOutcome::Completed,
         })
     );
+}
+
+#[test]
+fn incomplete_live_preparation_overrides_stale_preparation_marker_state() {
+    // Arrange
+    let mut bytes = live_share_preparing_marker();
+    bytes.extend_from_slice(&preparation_progress_line(
+        "set_fan_duty_to_100_percent",
+        "started",
+    ));
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, live_share_admission());
+
+    // Assert
+    assert_eq!(
+        capture.maybe_failure,
+        Some(CampaignTerminalCategory::HardwarePreparationFailed)
+    );
+    assert_eq!(capture.diagnostics.accepted_preparation_event_count, 1);
+}
+
+#[test]
+fn completed_live_preparation_does_not_synthesize_a_failure() {
+    // Arrange
+    let mut bytes = live_share_preparing_marker();
+    bytes.extend_from_slice(&preparation_progress_line(
+        "retain_production_uart",
+        "completed",
+    ));
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, live_share_admission());
+
+    // Assert
+    assert_eq!(capture.maybe_failure, None);
 }
 
 #[test]

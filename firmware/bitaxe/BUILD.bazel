@@ -257,6 +257,8 @@ rust_test(
         "src/safety_adapter/ds4432u.rs",
         "src/safety_adapter/emc2101.rs",
         "src/safety_adapter/i2c_bus.rs",
+        "src/safety_adapter/observation_store.rs",
+        "src/safety_adapter/request_queue.rs",
         "src/sensor_source_ownership_test.rs",
     ],
     crate_name = "sensor_source_ownership_tests",

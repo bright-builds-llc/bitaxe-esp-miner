@@ -1,5 +1,9 @@
+#[path = "safety_adapter/request_queue.rs"]
+mod safety_request_queue;
+
 const OPERATOR_SENSOR_RUNTIME_SOURCE: &str = include_str!("operator_sensor_runtime.rs");
 const SAFETY_ADAPTER_SOURCE: &str = include_str!("safety_adapter.rs");
+const OBSERVATION_STORE_SOURCE: &str = include_str!("safety_adapter/observation_store.rs");
 const I2C_BUS_SOURCE: &str = include_str!("safety_adapter/i2c_bus.rs");
 const EMC2101_SOURCE: &str = include_str!("safety_adapter/emc2101.rs");
 const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
@@ -109,9 +113,37 @@ fn raw_actuator_primitives_remain_inside_the_safety_adapter() {
 fn only_high_level_actuation_requests_cross_into_the_mining_collaborator() {
     // Arrange / Act / Assert
     assert!(SAFETY_ADAPTER_SOURCE.contains("pub(crate) fn request_safety_actuation("));
+    assert!(SAFETY_ADAPTER_SOURCE.contains("pub(crate) fn queue_safety_actuation("));
     assert!(SAFETY_ADAPTER_SOURCE.contains("pub(crate) fn safety_actuation_available()"));
     assert!(!PRODUCTION_SESSION_SOURCE.contains("RuntimeI2cOwner"));
     assert!(!PRODUCTION_SESSION_SOURCE.contains("SafetyActuationOwnerInbox"));
+}
+
+#[test]
+fn fan_preparation_never_waits_for_an_actuation_reply() {
+    // Arrange
+    let start = MINING_ACTUATION_ADAPTER_SOURCE
+        .find("fn set_fan_full")
+        .expect("fan preparation function");
+    let end = MINING_ACTUATION_ADAPTER_SOURCE[start..]
+        .find("fn wait_for_post_command_fan_proof")
+        .map(|offset| start + offset)
+        .expect("fan proof function");
+    let set_fan_full = &MINING_ACTUATION_ADAPTER_SOURCE[start..end];
+    let snapshot_start = OBSERVATION_STORE_SOURCE
+        .find("pub(crate) fn observation_snapshot")
+        .expect("observation snapshot function");
+    let snapshot_end = OBSERVATION_STORE_SOURCE[snapshot_start..]
+        .find("pub(crate) fn replace_observations_from_producer")
+        .map(|offset| snapshot_start + offset)
+        .expect("observation producer function");
+    let observation_snapshot = &OBSERVATION_STORE_SOURCE[snapshot_start..snapshot_end];
+
+    // Act / Assert
+    assert!(set_fan_full.contains("queue_safety_actuation"));
+    assert!(!set_fan_full.contains("request_safety("));
+    assert!(observation_snapshot.contains("store().try_lock()"));
+    assert!(!observation_snapshot.contains("store().lock()"));
 }
 
 #[test]

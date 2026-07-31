@@ -8,9 +8,7 @@ use super::*;
 
 mod preparation;
 
-#[cfg(test)]
 use super::markers::CampaignFailureStepMarker;
-#[cfg(test)]
 use preparation::CampaignPreparationOutcome;
 use preparation::CampaignPreparationProgress;
 
@@ -261,6 +259,7 @@ impl CampaignSerialAnalyzer {
             self.processed_bytes = self.processed_bytes.saturating_add(line.len());
         }
         self.refresh_contract_failure();
+        self.refresh_incomplete_preparation_failure();
         if self.markers.is_empty()
             && self.maybe_failure.is_none()
             && self.outcome_detail == CampaignSerialOutcomeDetail::Clean
@@ -512,6 +511,22 @@ impl CampaignSerialAnalyzer {
         }
         if let Some(category) = first_campaign_marker_failure(&self.markers, self.admission) {
             self.maybe_failure = Some(category);
+        }
+    }
+
+    fn refresh_incomplete_preparation_failure(&mut self) {
+        if self.admission.stage == MiningCampaignStage::Observation || self.maybe_failure.is_some()
+        {
+            return;
+        }
+        let Some(progress) = self.diagnostics.latest_preparation_event.as_ref() else {
+            return;
+        };
+        let preparation_completed = progress.step
+            == CampaignFailureStepMarker::RetainProductionUart
+            && progress.outcome == CampaignPreparationOutcome::Completed;
+        if !preparation_completed {
+            self.maybe_failure = Some(CampaignTerminalCategory::HardwarePreparationFailed);
         }
     }
 

@@ -1,6 +1,6 @@
 //! Stored observation boundary for request-side firmware consumers.
 
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Mutex, OnceLock, TryLockError};
 
 use bitaxe_api::{ObservationStore, TelemetryObservations};
 
@@ -11,12 +11,17 @@ fn store() -> &'static Mutex<ObservationStore> {
 }
 
 pub(crate) fn observation_snapshot() -> TelemetryObservations {
-    let Ok(store) = store().lock() else {
-        log::warn!("observation_store=unavailable category=mutex_poisoned");
-        return TelemetryObservations::default();
-    };
-
-    store.read()
+    match store().try_lock() {
+        Ok(store) => store.read(),
+        Err(TryLockError::WouldBlock) => {
+            log::warn!("observation_store=unavailable category=mutex_busy");
+            TelemetryObservations::default()
+        }
+        Err(TryLockError::Poisoned(_)) => {
+            log::warn!("observation_store=unavailable category=mutex_poisoned");
+            TelemetryObservations::default()
+        }
+    }
 }
 
 pub(crate) fn replace_observations_from_producer(observations: TelemetryObservations) {
