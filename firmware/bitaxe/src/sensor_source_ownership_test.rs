@@ -130,20 +130,29 @@ fn fan_preparation_never_waits_for_an_actuation_reply() {
         .map(|offset| start + offset)
         .expect("fan proof function");
     let set_fan_full = &MINING_ACTUATION_ADAPTER_SOURCE[start..end];
-    let snapshot_start = OBSERVATION_STORE_SOURCE
-        .find("pub(crate) fn observation_snapshot")
-        .expect("observation snapshot function");
-    let snapshot_end = OBSERVATION_STORE_SOURCE[snapshot_start..]
-        .find("pub(crate) fn replace_observations_from_producer")
-        .map(|offset| snapshot_start + offset)
-        .expect("observation producer function");
-    let observation_snapshot = &OBSERVATION_STORE_SOURCE[snapshot_start..snapshot_end];
-
     // Act / Assert
     assert!(set_fan_full.contains("queue_safety_actuation"));
     assert!(!set_fan_full.contains("request_safety("));
-    assert!(observation_snapshot.contains("store().try_lock()"));
-    assert!(!observation_snapshot.contains("store().lock()"));
+}
+
+#[test]
+fn observation_publication_releases_storage_before_owner_wakeup() {
+    // Arrange
+    let producer_start = OBSERVATION_STORE_SOURCE
+        .find("pub(crate) fn replace_observations_from_producer")
+        .expect("observation producer function");
+    let producer = &OBSERVATION_STORE_SOURCE[producer_start..];
+
+    // Act
+    let replace = producer.find("store.replace(observations);").expect("replace");
+    let release = producer.find("drop(store);").expect("release");
+    let wakeup = producer
+        .find("production_mining_session::notify")
+        .expect("owner wakeup");
+
+    // Assert
+    assert!(replace < release);
+    assert!(release < wakeup);
 }
 
 #[test]

@@ -35,8 +35,10 @@ bridge failure. `attempt-003` crossed that boundary and isolated the remaining
 failure to the poll side; code review found an untracked in-flight poll path
 capable of filling the worker queue. `attempt-004` crossed that boundary and
 isolated a silent synchronous hardware-preparation stall after the fan-full
-step started, requiring a bounded request/observation fix and post-fix
-`attempt-005`.
+step started. `attempt-005` crossed that boundary, sustained mining, and then
+isolated a false-stale observation race caused by waking the owner before
+releasing the observation store, requiring an ordering fix and post-fix
+`attempt-006`.
 
 - [x] Reproduce the rejected-share path deterministically from a known BM1366
       nonce, reconstructed header, and pool difficulty.
@@ -72,6 +74,10 @@ Hardware contract:
      preparation is classified by the host, and the fix is committed/pushed
      and rebuilt from exact clean HEAD, the same command once with
      `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-005`.
+  8. After observation publication is proven to release storage before waking
+     the mining owner, the false-stale read is removed, and the fix is
+     committed/pushed and rebuilt from exact clean HEAD, the same command once
+     with `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-006`.
 - Objective: obtain one pool-accepted Stratum V1 share derived from current
   owner-pool work and a correlated BM1366 nonce, then prove safe stop.
 - Evidence: the ignored
@@ -132,7 +138,12 @@ Hardware contract:
   deterministic deferred-reply fan-enqueue regression, non-blocking observation
   access, and host classification of incomplete preparation authorize exactly
   one `attempt-005`. Any later ordinal requires another new deterministic
-  regression and verified boundary change. A recurrence of the same refined
+  regression and verified boundary change. `attempt-005` completed every
+  preparation boundary and sustained active mining, but the newly introduced
+  non-blocking observation read could synthesize stale truth when the producer
+  woke the owner while still holding the observation mutex. A deterministic
+  release-before-wakeup regression and removal of that false-stale path
+  authorize exactly one `attempt-006`. A recurrence of the same refined
   authoritative signature selects `stop_repeated_boundary`.
 - Accepted terminal outcome: `complete` only for `submit_response_observed`
   with `submit_outcome=accepted`, trusted exact-package identity, clean serial
@@ -193,6 +204,20 @@ boundary and isolates a synchronous fan-preparation stall. The host's
 were pre-preparation state, not evidence of a new network failure. Ephemeral
 detector and console logs were deleted after extracting only these closed
 facts; the sealed private attempt remains ignored and non-promoted.
+Clean commit `ec23da41` `attempt-005` crossed the preparation and ASIC failure
+boundaries: all nine preparation steps completed, active mining continued for
+`439,041` milliseconds, and 60 valid candidates were classified below the
+active pool target with zero duplicates, qualified candidates, or submissions.
+The attempt then safe-stopped on `terminal_reason=safety_prerequisites_stale`
+with trusted identity, clean serial framing, local owner pool input admitted,
+fresh supported terminal observations, `mineonboot=false`, confirmed safe
+stop, ready USB cleanup, and valid private artifact modes and seals. The
+producer called the owner wakeup while still holding the observation-store
+mutex, and the new non-blocking reader converted that transient contention
+into an empty stale snapshot. This identifies a deterministic false-stale race
+rather than a physical safety observation failure. The sealed private attempt
+remains ignored and non-promoted; no raw serial or credential material was
+retained.
 
 Completion review: Pending. An accepted share proves this bounded conservative
 owner-pool path only; it does not prove profitability, default-profile safety,
