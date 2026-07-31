@@ -42,6 +42,7 @@ pub enum BridgeStep {
 pub struct BridgeOrchestrator {
     pending_dispatch: bool,
     listener_armed: bool,
+    poll_in_flight: bool,
     maybe_last_dispatch_ms: Option<u64>,
     job_interval_ms: u64,
     timeout_streak: u64,
@@ -53,6 +54,7 @@ impl BridgeOrchestrator {
         Self {
             pending_dispatch: false,
             listener_armed: false,
+            poll_in_flight: false,
             maybe_last_dispatch_ms: None,
             job_interval_ms,
             timeout_streak: 0,
@@ -69,6 +71,11 @@ impl BridgeOrchestrator {
         self.listener_armed = true;
     }
 
+    /// Records that the shell accepted one bounded result-poll request.
+    pub fn note_poll_requested(&mut self) {
+        self.poll_in_flight = true;
+    }
+
     /// Queued work was dispatched to the chip at caller-supplied `now_ms`.
     pub fn note_dispatched(&mut self, now_ms: u64) {
         self.pending_dispatch = false;
@@ -80,12 +87,14 @@ impl BridgeOrchestrator {
     /// Timeouts are telemetry, never fatal
     /// (`reference/esp-miner/main/tasks/asic_result_task.c:24-36`).
     pub fn note_poll_timeout(&mut self) -> u64 {
+        self.poll_in_flight = false;
         self.timeout_streak += 1;
         self.timeout_streak
     }
 
     /// A result was read and correlated; the cadence continues.
     pub fn note_result_received(&mut self) {
+        self.poll_in_flight = false;
         self.timeout_streak = 0;
     }
 
@@ -94,6 +103,7 @@ impl BridgeOrchestrator {
     /// The listener stays armed — session churn must not stop polling.
     pub fn invalidate_session(&mut self) {
         self.pending_dispatch = false;
+        self.poll_in_flight = false;
         self.maybe_last_dispatch_ms = None;
         self.timeout_streak = 0;
     }
@@ -120,7 +130,7 @@ impl BridgeOrchestrator {
             return BridgeStep::Regenerate;
         }
 
-        if self.listener_armed {
+        if self.listener_armed && !self.poll_in_flight {
             return BridgeStep::Poll {
                 slice_ms: MAX_POLL_SLICE_MS,
             };
@@ -189,6 +199,7 @@ mod tests {
         // Arrange
         let mut orchestrator = armed_orchestrator();
         orchestrator.note_dispatched(0);
+        orchestrator.note_poll_requested();
 
         // Act
         let first_streak = orchestrator.note_poll_timeout();
@@ -201,6 +212,27 @@ mod tests {
         assert_eq!(second_streak, 2);
         assert!(matches!(step_after_timeouts, BridgeStep::Poll { .. }));
         assert_eq!(step_at_interval, BridgeStep::Regenerate);
+    }
+
+    #[test]
+    fn unrelated_wakeup_cannot_queue_a_second_poll_while_one_is_in_flight() {
+        // Arrange
+        let mut orchestrator = armed_orchestrator();
+        orchestrator.note_dispatched(0);
+        assert!(matches!(
+            orchestrator.next_step(50),
+            BridgeStep::Poll { .. }
+        ));
+
+        // Act
+        orchestrator.note_poll_requested();
+        let step_during_poll = orchestrator.next_step(51);
+        orchestrator.note_poll_timeout();
+        let step_after_completion = orchestrator.next_step(52);
+
+        // Assert
+        assert_eq!(step_during_poll, BridgeStep::Idle);
+        assert!(matches!(step_after_completion, BridgeStep::Poll { .. }));
     }
 
     #[test]
@@ -245,6 +277,7 @@ mod tests {
         // Arrange
         let mut orchestrator = armed_orchestrator();
         orchestrator.note_dispatched(0);
+        orchestrator.note_poll_requested();
 
         // Act: a correlated result (share classified) must not stop the cadence.
         orchestrator.note_result_received();

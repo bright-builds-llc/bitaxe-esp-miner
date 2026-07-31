@@ -485,6 +485,7 @@ impl ProductionMiningSession {
                     (registry.generation(), registry.valid_jobs().clone())
                 });
                 if let Some((generation, valid_jobs)) = maybe_context {
+                    self.bridge.note_poll_requested();
                     effects.push(ProductionSessionEffect::PollAsic {
                         generation,
                         valid_jobs,

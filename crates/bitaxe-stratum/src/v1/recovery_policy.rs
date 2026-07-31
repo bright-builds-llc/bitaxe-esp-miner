@@ -36,6 +36,8 @@ pub enum ProductionSessionBlocker {
     ProductionAsicVersionMaskUnavailable,
     ProductionAsicDispatchUnavailable,
     ProductionAsicPollUnavailable,
+    ProductionAsicQueueFull,
+    ProductionAsicWorkerUnavailable,
     ActuationUnqualified,
     PoolConfigurationUnavailable,
     PoolsExhausted,
@@ -56,6 +58,8 @@ impl ProductionSessionBlocker {
             }
             Self::ProductionAsicDispatchUnavailable => "production_asic_dispatch_unavailable",
             Self::ProductionAsicPollUnavailable => "production_asic_poll_unavailable",
+            Self::ProductionAsicQueueFull => "production_asic_queue_full",
+            Self::ProductionAsicWorkerUnavailable => "production_asic_worker_unavailable",
             Self::ActuationUnqualified => "actuation_unqualified",
             Self::PoolConfigurationUnavailable => "pool_configuration_unavailable",
             Self::PoolsExhausted => "pools_exhausted",

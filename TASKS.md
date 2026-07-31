@@ -31,8 +31,10 @@ new work.
 Status: In progress — the deterministic diagnosis and software fix are
 verified. `attempt-001` then proved local below-target filtering but ended on
 an unclassified early safe stop. `attempt-002` classified the stop as an ASIC
-bridge failure; an upstream-aligned malformed-frame soft-discard fix and one
-post-fix `attempt-003` remain.
+bridge failure. `attempt-003` crossed that boundary and isolated the remaining
+failure to the poll side; code review found an untracked in-flight poll path
+capable of filling the worker queue, requiring an invariant fix and post-fix
+`attempt-004`.
 
 - [x] Reproduce the rejected-share path deterministically from a known BM1366
       nonce, reconstructed header, and pool difficulty.
@@ -61,6 +63,9 @@ Hardware contract:
   5. After the ASIC result-loop fix is committed/pushed and rebuilt from exact
      clean HEAD, the same command once with
      `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-003`.
+  6. After the poll in-flight invariant and queue diagnostics are
+     committed/pushed and rebuilt from exact clean HEAD, the same command once
+     with `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-004`.
 - Objective: obtain one pool-accepted Stratum V1 share derived from current
   owner-pool work and a correlated BM1366 nonce, then prove safe stop.
 - Evidence: the ignored
@@ -108,10 +113,16 @@ Hardware contract:
   failure boundary. The pinned upstream result loop treats invalid receives as
   a dropped iteration and continues, while the Rust poll path terminalized a
   complete malformed frame. A deterministic soft-discard regression plus that
-  boundary-changing fix authorizes exactly one `attempt-003`. Any later
-  ordinal requires another new deterministic regression and verified boundary
-  change. A recurrence of the same refined authoritative signature selects
-  `stop_repeated_boundary`.
+  boundary-changing fix authorized `attempt-003`. That attempt produced the
+  new refined signature `production_asic_poll_unavailable`; four valid
+  candidates preceded it and the closed malformed-discard count remained
+  zero. The owner could enqueue another poll on unrelated wakeups while one
+  was in flight, allowing bounded worker-queue backpressure to surface as the
+  same terminal poll category. A deterministic one-poll-in-flight regression,
+  the invariant fix, and distinct queue-full/worker-disconnected categories
+  authorize exactly one `attempt-004`. Any later ordinal requires another new
+  deterministic regression and verified boundary change. A recurrence of the
+  same refined authoritative signature selects `stop_repeated_boundary`.
 - Accepted terminal outcome: `complete` only for `submit_response_observed`
   with `submit_outcome=accepted`, trusted exact-package identity, clean serial
   diagnostics, fresh supported safety, `mineonboot=false`, confirmed safe
@@ -149,6 +160,16 @@ pinned upstream loop and adds closed version-mask/dispatch/poll terminal
 subtypes for any remaining ASIC failure. Ephemeral attempt-002 detector and
 console logs were deleted; sealed private evidence remains ignored and
 non-promoted.
+Clean commit `7d871de8` `attempt-003` retained trusted identity, clean serial
+framing, fresh supported observations, `mineonboot=false`, confirmed safe
+stop, and ready USB cleanup. It classified four below-pool-target candidates,
+zero qualified candidates, and no submit before
+`terminal_reason=production_asic_poll_unavailable` after `5,765` active
+milliseconds. No malformed-frame discard occurred, disproving that trigger
+for this attempt. The shell/core review then identified untracked concurrent
+poll requests as a concrete worker-queue backpressure path. Ephemeral detector
+and console logs were deleted after extracting only these closed facts; the
+sealed private attempt remains ignored and non-promoted.
 
 Completion review: Pending. An accepted share proves this bounded conservative
 owner-pool path only; it does not prove profitability, default-profile safety,

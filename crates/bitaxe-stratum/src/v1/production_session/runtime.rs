@@ -280,6 +280,12 @@ impl ProductionMiningSession {
                         ProductionAsicFailure::Poll => {
                             ProductionSessionBlocker::ProductionAsicPollUnavailable
                         }
+                        ProductionAsicFailure::QueueFull => {
+                            ProductionSessionBlocker::ProductionAsicQueueFull
+                        }
+                        ProductionAsicFailure::WorkerDisconnected => {
+                            ProductionSessionBlocker::ProductionAsicWorkerUnavailable
+                        }
                     }),
                     false,
                     &mut effects,

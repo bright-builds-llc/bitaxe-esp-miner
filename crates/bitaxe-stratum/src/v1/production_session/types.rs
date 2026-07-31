@@ -120,6 +120,8 @@ pub enum ProductionAsicFailure {
     VersionMask,
     Dispatch,
     Poll,
+    QueueFull,
+    WorkerDisconnected,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -304,6 +304,14 @@ fn current_generation_asic_failures_preserve_subtype_during_terminal_safe_stop()
             ProductionAsicFailure::Poll,
             ProductionSessionBlocker::ProductionAsicPollUnavailable,
         ),
+        (
+            ProductionAsicFailure::QueueFull,
+            ProductionSessionBlocker::ProductionAsicQueueFull,
+        ),
+        (
+            ProductionAsicFailure::WorkerDisconnected,
+            ProductionSessionBlocker::ProductionAsicWorkerUnavailable,
+        ),
     ] {
         // Arrange
         let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));

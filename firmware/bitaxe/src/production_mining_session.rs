@@ -468,24 +468,23 @@ impl OrdinaryEspProductionSessionAdapter {
         command: AsicWorkerCommand,
         now_ms: u64,
     ) -> Option<ProductionSessionEvent> {
-        let (generation, failure) = match &command {
-            AsicWorkerCommand::ApplyVersionMask { generation, .. } => {
-                (*generation, ProductionAsicFailure::VersionMask)
-            }
-            AsicWorkerCommand::Dispatch { generation, .. } => {
-                (*generation, ProductionAsicFailure::Dispatch)
-            }
-            AsicWorkerCommand::Poll { generation, .. } => {
-                (*generation, ProductionAsicFailure::Poll)
-            }
+        let generation = match &command {
+            AsicWorkerCommand::ApplyVersionMask { generation, .. }
+            | AsicWorkerCommand::Dispatch { generation, .. }
+            | AsicWorkerCommand::Poll { generation, .. } => *generation,
             AsicWorkerCommand::Shutdown => return None,
         };
         match self.asic.try_send(command) {
             Ok(()) => None,
-            Err(TrySendError::Full(_) | TrySendError::Disconnected(_)) => {
+            Err(TrySendError::Full(_)) => Some(ProductionSessionEvent::AsicInteractionFailed {
+                generation,
+                failure: ProductionAsicFailure::QueueFull,
+                now_ms,
+            }),
+            Err(TrySendError::Disconnected(_)) => {
                 Some(ProductionSessionEvent::AsicInteractionFailed {
                     generation,
-                    failure,
+                    failure: ProductionAsicFailure::WorkerDisconnected,
                     now_ms,
                 })
             }
