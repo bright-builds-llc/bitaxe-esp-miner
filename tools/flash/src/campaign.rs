@@ -18,6 +18,7 @@ const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v2";
 const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v1";
 const OBSERVATION_DURATION_SECONDS: u64 = 360;
 const MINING_DURATION_SECONDS: u64 = 600;
+const MINING_TERMINAL_GRACE_SECONDS: u64 = 180;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -221,7 +222,7 @@ fn execute_campaign(
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::NvsSeedFailed))?;
 
     let capture = environment
-        .receive_campaign_until(admission, admission.duration_seconds)
+        .receive_campaign_until(admission, campaign_capture_timeout_seconds(admission))
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::ObservationFailed))?;
     attempt.maybe_runtime_attestation_status = prepared
         .outcome
@@ -243,6 +244,15 @@ fn execute_campaign(
         ));
     }
     Ok(terminal)
+}
+
+fn campaign_capture_timeout_seconds(admission: CampaignAdmission) -> u64 {
+    match admission.stage {
+        MiningCampaignStage::Observation => admission.duration_seconds,
+        MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => admission
+            .duration_seconds
+            .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
+    }
 }
 
 fn campaign_board_info_command(port: &str) -> CommandSpec {

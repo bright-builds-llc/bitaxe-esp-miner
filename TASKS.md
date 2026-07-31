@@ -38,7 +38,9 @@ isolated a silent synchronous hardware-preparation stall after the fan-full
 step started. `attempt-005` crossed that boundary, sustained mining, and then
 isolated a false-stale observation race caused by waking the owner before
 releasing the observation store, requiring an ordering fix and post-fix
-`attempt-006`.
+`attempt-006`. That attempt sustained mining until the host's wall-clock
+capture cut a periodic marker before the device's active-time lease expired,
+requiring bounded terminal-capture grace and post-fix `attempt-007`.
 
 - [x] Reproduce the rejected-share path deterministically from a known BM1366
       nonce, reconstructed header, and pool difficulty.
@@ -78,6 +80,11 @@ Hardware contract:
      the mining owner, the false-stale read is removed, and the fix is
      committed/pushed and rebuilt from exact clean HEAD, the same command once
      with `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-006`.
+  9. After the host capture budget is proven to include preparation and
+     safe-stop grace without extending the 600-second device mining lease, the
+     fix is committed/pushed and rebuilt from exact clean HEAD, the same
+     command once with
+     `evidence-dir=scratch/ultra205-accepted-pool-share/attempt-007`.
 - Objective: obtain one pool-accepted Stratum V1 share derived from current
   owner-pool work and a correlated BM1366 nonce, then prove safe stop.
 - Evidence: the ignored
@@ -143,8 +150,13 @@ Hardware contract:
   non-blocking observation read could synthesize stale truth when the producer
   woke the owner while still holding the observation mutex. A deterministic
   release-before-wakeup regression and removal of that false-stale path
-  authorize exactly one `attempt-006`. A recurrence of the same refined
-  authoritative signature selects `stop_repeated_boundary`.
+  authorize exactly one `attempt-006`. That attempt reached 584 seconds active
+  before the 600-second host wall-clock capture ended inside a periodic marker;
+  preparation time made the host deadline earlier than the device's
+  active-time lease deadline. A deterministic 780-second host-capture/600-second
+  device-lease regression and bounded 180-second terminal grace authorize
+  exactly one `attempt-007`. A recurrence of the same refined authoritative
+  signature selects `stop_repeated_boundary`.
 - Accepted terminal outcome: `complete` only for `submit_response_observed`
   with `submit_outcome=accepted`, trusted exact-package identity, clean serial
   diagnostics, fresh supported safety, `mineonboot=false`, confirmed safe
@@ -218,6 +230,19 @@ into an empty stale snapshot. This identifies a deterministic false-stale race
 rather than a physical safety observation failure. The sealed private attempt
 remains ignored and non-promoted; no raw serial or credential material was
 retained.
+Clean commit `196a9846` `attempt-006` completed all preparation boundaries and
+mined for `584,185` active milliseconds with trusted identity, clean complete
+serial lines before the final partial, fresh supported observations,
+`mineonboot=false`, and ready USB cleanup. It classified 91 valid candidates
+below the active pool target, with zero duplicates, qualified candidates, or
+submissions. The 600-second host wall-clock capture then ended inside one
+otherwise valid periodic marker, producing
+`serial_outcome_detail=marker_truncated` before the device's separately counted
+600-second active lease could terminate and publish safe-stop proof. This is a
+host observation-budget bug, not malformed firmware output or a share
+rejection. The device lease remains capped at 600 active seconds; only the host
+capture receives bounded terminal grace. The sealed private attempt remains
+ignored and non-promoted; no raw serial or credential material was retained.
 
 Completion review: Pending. An accepted share proves this bounded conservative
 owner-pool path only; it does not prove profitability, default-profile safety,

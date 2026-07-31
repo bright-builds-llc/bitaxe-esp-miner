@@ -404,6 +404,10 @@ fn live_share_records_rejected_submit_as_a_completed_campaign() {
     let result = read_campaign_result(&command);
     assert_eq!(result["terminal_category"], "submit_response_observed");
     assert_eq!(result["submit_outcome"], "rejected");
+    assert_eq!(
+        environment.campaign_observations(),
+        vec![(MiningCampaignStage::LiveShare, 780)]
+    );
 }
 
 #[test]
