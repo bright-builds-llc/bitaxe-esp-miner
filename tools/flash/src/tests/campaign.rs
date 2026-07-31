@@ -2,6 +2,7 @@ use super::*;
 
 mod failure_diagnostics;
 mod stop_predicate;
+mod terminal_boundary;
 
 fn campaign_command(
     dir: &TempDir,

@@ -28,17 +28,13 @@ new work.
 
 ### task-ultra205-live-pool-share | 2026-07-28 | Prove one real BM1366 pool submission
 
-Status: In progress — `attempt-002` preserved the earliest failure as
-`hardware_preparation/require_fresh_nonzero_fan_rpm/fan_rpm_proof_timed_out`.
-The pinned reference enables the EMC2101 tach input at register `0x03` before
-fan control, while the Rust adapter omitted that write. `attempt-003` is
-authorized only after the missing initialization is regression-backed, fully
-verified, committed, pushed, and rebuilt from clean exact HEAD. Its first
-preflight detector invocation did not create the attempt: post-probe recovery
-reached only one stable sample, then the same owned session's final cleanup
-proved three stable samples with the same accessible holder-free device. That
-objective non-invasive boundary change authorizes exactly one re-detection
-with `just detect-ultra205` before the still-unused `attempt-003`.
+Status: In progress — `attempt-003` proved active mining, owner-pool use, a
+real rejected submit response, trusted exact-package identity, fresh safety,
+and confirmed safe stop after the EMC2101 tach-input fix. The host nevertheless
+sealed `marker_invalid/marker_truncated` because it validated a partial marker
+that began after the already accepted live terminal marker. `attempt-004` is
+authorized only after the terminal-boundary regression and fix are fully
+verified, committed, pushed, and rebuilt from clean exact HEAD.
 
 - [ ] Freeze and admit the exact current-HEAD package, single detected board
       205, ignored local Wi-Fi credentials, and exactly one ignored local pool
@@ -69,6 +65,7 @@ Hardware contract:
   3. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-001 duration-seconds=600 redact-evidence=true`
   4. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-002 duration-seconds=600 redact-evidence=true`
   5. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-003 duration-seconds=600 redact-evidence=true`
+  6. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-live-pool-share/attempt-004 duration-seconds=600 redact-evidence=true`
 - Objective: obtain one real BM1366 nonce correlated to owner-pool work and
   one accepted or rejected Stratum V1 submit response under the conservative
   profile, then prove safe stop.
@@ -121,11 +118,11 @@ Hardware contract:
   rollback failure so the misleading `pool_configuration_missing` precedence
   cannot recur. `attempt-003` changes the hardware boundary by restoring the
   pinned EMC2101 tach-input initialization before direct fan mode and duty. It
-  is not an unchanged retry. The one pre-attempt re-detection authorization is
-  bound to private root
-  `scratch/ultra205-live-pool-share/preflight-attempt-003`; it does not
-  authorize another mining attempt or another detector retry if re-detection
-  fails.
+  is not an unchanged retry. `attempt-004` changes the host evidence boundary:
+  after one complete validated live terminal marker, already-buffered suffix
+  bytes are outside the campaign and are counted without being parsed as a new
+  marker. Malformed or truncated candidates before that boundary and every
+  observation-campaign trailing candidate remain fail-closed.
 - Accepted terminal outcomes: `complete` only when every success and safe-stop
   criterion passes; otherwise `stop_repeated_boundary`,
   `stop_hardware_blocker`, `stop_authority_boundary`, or
@@ -159,6 +156,17 @@ proved `stable_samples_max=3`, same device seen, accessible, holder-free, and
 no identity drift or enumeration change. The ignored preflight root is
 mode-0700 and retains the mode-0600 protected console record; no mining ordinal
 was consumed.
+The authorized re-detection then passed, and `attempt-003` used exact
+clean-HEAD commit `47edbc90`, one detected Ultra 205, and exactly one ignored
+owner pool input. It recorded 2,189 active milliseconds, owner pool
+configuration loaded, a real rejected submit response, trusted runtime
+attestation and package identity, five supported observations fresh,
+`mineonboot=false`, confirmed safe stop, and USB cleanup ready. Fifty-three
+markers were accepted. A 101-byte candidate began only after the complete
+terminal marker; the old finish path classified that post-terminal suffix as
+`marker_truncated` and incorrectly selected `marker_invalid`. The new red
+regression reproduces this exact ordering and proves the host accepts the
+terminal result while counting, not parsing, post-terminal bytes.
 
 Completion review: Pending. An accepted or rejected response proves the
 end-to-end submitted-share path, not profitability, unbounded stability,

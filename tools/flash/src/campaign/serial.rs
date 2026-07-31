@@ -51,6 +51,7 @@ enum CampaignSerialEventKind {
     MarkerTruncated,
     RuntimeAttestationCandidate,
     RuntimeAttestationInvalidUtf8,
+    PostTerminalBytesIgnored,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -80,6 +81,7 @@ pub(super) struct CampaignSerialDiagnostics {
     runtime_attestation_candidate_count: u64,
     runtime_attestation_invalid_encoding_count: u64,
     trailing_partial_count: u64,
+    post_terminal_ignored_byte_count: u64,
     event_count: u64,
     events_truncated: bool,
     events: Vec<CampaignSerialEvent>,
@@ -105,6 +107,7 @@ impl CampaignSerialDiagnostics {
             runtime_attestation_candidate_count: 0,
             runtime_attestation_invalid_encoding_count: 0,
             trailing_partial_count: 0,
+            post_terminal_ignored_byte_count: 0,
             event_count: 0,
             events_truncated: false,
             events: Vec::new(),
@@ -178,6 +181,7 @@ pub(crate) struct CampaignSerialAnalyzer {
     diagnostics: CampaignSerialDiagnostics,
     outcome_detail: CampaignSerialOutcomeDetail,
     maybe_failure: Option<CampaignTerminalCategory>,
+    terminal_boundary_reached: bool,
     trace: BoundedEventTrace,
 }
 
@@ -196,6 +200,7 @@ impl CampaignSerialAnalyzer {
             },
             outcome_detail: CampaignSerialOutcomeDetail::Clean,
             maybe_failure: None,
+            terminal_boundary_reached: false,
             trace: BoundedEventTrace::default(),
         }
     }
@@ -204,6 +209,14 @@ impl CampaignSerialAnalyzer {
         if bytes.len() < self.observed_bytes {
             self.maybe_failure
                 .get_or_insert(CampaignTerminalCategory::ObservationFailed);
+            return true;
+        }
+        if self.terminal_boundary_reached {
+            let ignored_offset = self.observed_bytes;
+            let ignored_length = bytes.len().saturating_sub(self.observed_bytes);
+            self.observed_bytes = bytes.len();
+            self.diagnostics.total_bytes = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
+            self.record_post_terminal_bytes(ignored_offset, ignored_length);
             return true;
         }
         let delta = &bytes[self.observed_bytes..];
@@ -255,7 +268,40 @@ impl CampaignSerialAnalyzer {
             self.diagnostics.complete_line_count =
                 self.diagnostics.complete_line_count.saturating_add(1);
             self.process_line(&line, byte_offset, false);
+            if self.accepted_live_terminal_boundary() {
+                self.terminal_boundary_reached = true;
+                let ignored_offset = self.processed_bytes;
+                let ignored_length = self.pending_line.len();
+                self.record_post_terminal_bytes(ignored_offset, ignored_length);
+                self.pending_line.clear();
+                break;
+            }
         }
+    }
+
+    fn accepted_live_terminal_boundary(&self) -> bool {
+        self.admission.stage != MiningCampaignStage::Observation
+            && self.maybe_failure.is_none()
+            && (assess_campaign_markers(&self.markers, self.admission).is_ok()
+                || self
+                    .markers
+                    .last()
+                    .is_some_and(|marker| marker.campaign_state == CampaignStateMarker::Consumed))
+    }
+
+    fn record_post_terminal_bytes(&mut self, byte_offset: usize, byte_count: usize) {
+        if byte_count == 0 {
+            return;
+        }
+        self.diagnostics.post_terminal_ignored_byte_count = self
+            .diagnostics
+            .post_terminal_ignored_byte_count
+            .saturating_add(u64::try_from(byte_count).unwrap_or(u64::MAX));
+        self.trace.push(
+            u64::try_from(byte_offset).unwrap_or(u64::MAX),
+            byte_count,
+            CampaignSerialEventKind::PostTerminalBytesIgnored,
+        );
     }
 
     fn process_line(&mut self, line: &[u8], byte_offset: usize, trailing: bool) {
