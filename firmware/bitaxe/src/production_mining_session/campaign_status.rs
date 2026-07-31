@@ -227,7 +227,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v4",
+            schema: "mining-campaign-status-v5",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -242,6 +242,9 @@ impl CampaignStatusTracker {
             } else {
                 "none"
             },
+            qualified_candidate_count: snapshot.mining.counters.qualified_candidates,
+            below_pool_target_count: snapshot.mining.counters.below_pool_target,
+            duplicate_candidate_count: snapshot.mining.counters.duplicate_candidates,
             safety: if safety_fresh { "fresh" } else { "stale" },
             fresh_observation_count: observation_freshness.fresh_count(),
             observation_freshness,
@@ -277,6 +280,9 @@ struct CampaignStatusProjection {
     profile: &'static str,
     active_ms: u64,
     submit_outcome: &'static str,
+    qualified_candidate_count: u64,
+    below_pool_target_count: u64,
+    duplicate_candidate_count: u64,
     safety: &'static str,
     fresh_observation_count: u8,
     observation_freshness: CampaignObservationFreshness,
@@ -340,7 +346,7 @@ mod tests {
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v4");
+        assert_eq!(value["schema"], "mining-campaign-status-v5");
         assert_eq!(value["stage"], "observation");
         assert!(value["lease_id"].is_null());
         assert_eq!(value["campaign_state"], "unavailable");
@@ -455,6 +461,9 @@ mod tests {
         active.mining.counters = ShareCounters {
             accepted: 1,
             rejected: 0,
+            qualified_candidates: 1,
+            below_pool_target: 7,
+            duplicate_candidates: 2,
             ..ShareCounters::default()
         };
         active.campaign_state = MiningCampaignState::Consumed;
@@ -476,6 +485,9 @@ mod tests {
         assert_eq!(value["profile"], "conservative");
         assert_eq!(value["campaign_state"], "consumed");
         assert_eq!(value["submit_outcome"], "accepted");
+        assert_eq!(value["qualified_candidate_count"], 1);
+        assert_eq!(value["below_pool_target_count"], 7);
+        assert_eq!(value["duplicate_candidate_count"], 2);
         assert_eq!(value["pool_config"], "local_owner_supplied");
         assert_eq!(value["actuation"], "safe_stopped");
         assert_eq!(value["safe_stop"], "confirmed");

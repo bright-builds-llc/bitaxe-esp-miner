@@ -66,6 +66,9 @@ impl ShareDifficulty {
 pub struct ShareCounters {
     pub accepted: u64,
     pub rejected: u64,
+    pub qualified_candidates: u64,
+    pub below_pool_target: u64,
+    pub duplicate_candidates: u64,
     pub rejected_reasons: Vec<String>,
     pub maybe_best_difficulty: Option<ShareDifficulty>,
 }
@@ -100,6 +103,18 @@ impl Default for MiningRuntimeState {
 }
 
 impl MiningRuntimeState {
+    pub fn record_qualified_candidate(&mut self) {
+        self.counters.qualified_candidates = self.counters.qualified_candidates.saturating_add(1);
+    }
+
+    pub fn record_below_pool_target(&mut self) {
+        self.counters.below_pool_target = self.counters.below_pool_target.saturating_add(1);
+    }
+
+    pub fn record_duplicate_candidate(&mut self) {
+        self.counters.duplicate_candidates = self.counters.duplicate_candidates.saturating_add(1);
+    }
+
     pub fn record_accepted_share(&mut self, difficulty: ShareDifficulty) {
         self.counters.accepted += 1;
         let should_update_best = self

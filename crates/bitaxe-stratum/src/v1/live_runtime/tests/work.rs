@@ -328,6 +328,45 @@ fn correlated_bridge_observation_queues_submit_action() {
 }
 
 #[test]
+fn below_target_candidate_is_counted_without_blocking_or_submitting() {
+    // Arrange
+    let mut runtime = runtime_with_extranonce();
+    runtime
+        .maybe_apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
+            difficulty: f64::MAX,
+        }))
+        .expect("high fixture difficulty should apply");
+    runtime
+        .maybe_apply_server_message(StratumV1ServerMessage::Notify(notify(false)))
+        .expect("notify should queue work");
+    let dispatch = runtime
+        .production_registry_mut()
+        .dispatch_next()
+        .expect("work should dispatch");
+    let observation = ProductionNonceObservation {
+        observed_generation: dispatch.generation,
+        result: nonce_result(dispatch.work.asic_job_id),
+    };
+
+    // Act
+    let outcome = runtime
+        .apply_bridge_observation(observation)
+        .expect("candidate should classify");
+
+    // Assert
+    assert_eq!(
+        outcome,
+        BridgeObservationOutcome::Ignored {
+            reason: NonSubmitReason::BelowPoolTarget
+        }
+    );
+    assert_eq!(runtime.state().counters.below_pool_target, 1);
+    assert_eq!(runtime.state().counters.qualified_candidates, 0);
+    assert!(runtime.drain_actions().is_empty());
+    assert!(runtime.state().maybe_blocked_reason.is_none());
+}
+
+#[test]
 fn submit_action_debug_redacts_share_context() {
     // Arrange
     let mut runtime = runtime_with_extranonce();

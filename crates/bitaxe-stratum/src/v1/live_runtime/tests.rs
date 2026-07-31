@@ -1,6 +1,7 @@
 use bitaxe_asic::bm1366::result::Bm1366NonceResult;
 
 use super::*;
+use crate::v1::messages::PoolDifficulty;
 
 mod classification;
 mod lifecycle;
@@ -25,6 +26,11 @@ fn runtime_with_extranonce() -> LiveStratumRuntime {
     runtime
         .maybe_apply_server_message(StratumV1ServerMessage::SetExtranonce(extranonce()))
         .expect("extranonce assignment should apply");
+    runtime
+        .maybe_apply_server_message(StratumV1ServerMessage::SetDifficulty(PoolDifficulty {
+            difficulty: 1.0e-30,
+        }))
+        .expect("qualifying fixture difficulty should apply");
     runtime
 }
 

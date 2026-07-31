@@ -161,12 +161,15 @@ impl ShareSubmission {
             });
         }
 
+        let base_version = u32::from_le_bytes(work.fields.version);
+        let rolled_version = base_version | result.version_bits;
+
         Ok(Self {
             job_id: work.stratum_job_id.clone(),
             extranonce2: work.extranonce2.clone(),
             ntime: work.ntime,
             nonce: result.nonce,
-            version_bits: result.version_bits,
+            version_bits: rolled_version ^ base_version,
         })
     }
 
@@ -427,6 +430,36 @@ mod mining_job_tests {
         assert!(!rendered.contains("00000000"));
         assert!(!rendered.contains("12345678"));
         assert!(!rendered.contains("00002000"));
+    }
+
+    #[test]
+    fn share_submission_reports_only_bits_rolled_beyond_base_version() {
+        // Arrange
+        let mut work = MiningWorkBuilder::new(
+            sample_notify(),
+            ExtranonceAssignment {
+                extranonce1: "4de05269".to_owned(),
+                extranonce2_len: 4,
+            },
+        )
+        .build(Bm1366JobId::new(0x28))
+        .expect("mining work should build");
+        work.fields.version = 0x2000_2004_u32.to_le_bytes();
+        let result = Bm1366NonceResult {
+            job_id: Bm1366JobId::new(0x28),
+            nonce: 0x1234_5678,
+            asic_index: 0,
+            core_id: 1,
+            small_core_id: 0,
+            version_bits: 0x0000_2000,
+        };
+
+        // Act
+        let submission = ShareSubmission::from_nonce_result(&work, result)
+            .expect("nonce should match active work");
+
+        // Assert
+        assert_eq!(submission.version_bits, 0);
     }
 
     fn sample_notify() -> MiningNotify {

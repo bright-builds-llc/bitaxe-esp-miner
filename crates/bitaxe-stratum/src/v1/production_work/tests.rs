@@ -1,11 +1,15 @@
 use bitaxe_asic::bm1366::{
-    production::ProductionAsicBlocker, result::Bm1366NonceResult, work::Bm1366JobId,
+    production::ProductionAsicBlocker,
+    result::Bm1366NonceResult,
+    work::{Bm1366JobId, Bm1366WorkFields},
 };
 
 use super::*;
 use crate::error::StratumV1Error;
 use crate::v1::messages::{ExtranonceAssignment, MiningNotify, PoolDifficulty};
 use crate::v1::mining::{MiningWork, MiningWorkBuilder};
+
+mod share_qualification;
 
 #[test]
 fn production_work_enqueue_registers_valid_job_for_current_generation() {
@@ -52,7 +56,7 @@ fn production_work_dispatch_preserves_pool_context_and_payload() {
         Some(PoolDifficulty { difficulty: 1.25 })
     );
     assert!(active.dispatched);
-    assert!(!active.result_seen);
+    assert_eq!(active.observed_candidate_count, 0);
 }
 
 #[test]
@@ -331,9 +335,40 @@ fn production_correlation_rejects_duplicate_result() {
     // Assert
     assert_eq!(
         outcome,
-        CorrelationOutcome::Blocked {
-            reason: ProductionAsicBlocker::DuplicateResult
+        CorrelationOutcome::Ignored {
+            reason: NonSubmitReason::DuplicateCandidate
         }
+    );
+}
+
+#[test]
+fn production_correlation_allows_multiple_distinct_candidates_for_one_job() {
+    // Arrange
+    let job_id = Bm1366JobId::new(0x98);
+    let mut registry = registry_with_dispatched_work(job_id);
+    let first = ProductionNonceObservation {
+        observed_generation: registry.generation(),
+        result: sample_nonce_result(job_id),
+    };
+    let mut second = first;
+    second.result.nonce = second.result.nonce.wrapping_add(1);
+
+    // Act
+    let first_outcome = registry.correlate_nonce_result(first);
+    let second_outcome = registry.correlate_nonce_result(second);
+
+    // Assert
+    assert!(matches!(first_outcome, CorrelationOutcome::SubmitIntent(_)));
+    assert!(matches!(
+        second_outcome,
+        CorrelationOutcome::SubmitIntent(_)
+    ));
+    assert_eq!(
+        registry
+            .maybe_active_work(job_id)
+            .expect("active work should remain")
+            .observed_candidate_count,
+        2
     );
 }
 
@@ -442,8 +477,12 @@ fn seventeen_dispatch_stride_wraparound_replaces_first_job_record() {
         let job_id = Bm1366JobId::new(job_id_raw);
         job_id_raw = job_id_raw.wrapping_add(8) % 128;
         let stratum_job = format!("wraparound-job-{round}");
+        let mut work = sample_work(job_id, &stratum_job, false);
+        work.maybe_pool_difficulty = Some(PoolDifficulty {
+            difficulty: 1.0e-30,
+        });
         registry
-            .enqueue_pool_work(sample_work(job_id, &stratum_job, false))
+            .enqueue_pool_work(work)
             .expect("wraparound work should enqueue");
         let dispatch = registry
             .dispatch_next()
@@ -471,8 +510,12 @@ fn seventeen_dispatch_stride_wraparound_replaces_first_job_record() {
 
 fn registry_with_dispatched_work(job_id: Bm1366JobId) -> ProductionWorkRegistry {
     let mut registry = ProductionWorkRegistry::new();
+    let mut work = sample_work(job_id, "correlated-job", false);
+    work.maybe_pool_difficulty = Some(PoolDifficulty {
+        difficulty: 1.0e-30,
+    });
     registry
-        .enqueue_pool_work(sample_work(job_id, "correlated-job", false))
+        .enqueue_pool_work(work)
         .expect("pool work should enqueue");
     let _dispatch = registry.dispatch_next().expect("work should dispatch");
     registry

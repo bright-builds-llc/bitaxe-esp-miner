@@ -26,6 +26,101 @@ new work.
 
 ## Active
 
+### task-ultra205-accepted-pool-share | 2026-07-31 | Obtain one accepted owner-pool share
+
+Status: In progress — the deterministic diagnosis and software fix are
+verified; commit/push and the one clean-HEAD conservative hardware campaign
+remain.
+
+- [x] Reproduce the rejected-share path deterministically from a known BM1366
+      nonce, reconstructed header, and pool difficulty.
+- [x] Prove the rejection cause against the read-only reference behavior and
+      preserve only closed privacy-safe diagnostics.
+- [x] Fix the production correlation/submission boundary so only a share that
+      satisfies the active pool target can be submitted.
+- [ ] Verify the exact clean-HEAD package, detect exactly one Ultra 205, and
+      run one bounded conservative accepted-share attempt.
+- [ ] Seal an accepted share, fresh safety, trusted identity, confirmed safe
+      stop, lease cleanup, `mineonboot=false`, and USB cleanup without parity
+      promotion or secret retention.
+
+Dependencies: Complete archived task `task-ultra205-live-pool-share` and its
+accepted `submit_response_observed` proof at clean commit `9861f4c4`.
+
+Hardware contract:
+
+- Permitted commands:
+  1. `just detect-ultra205`
+  2. `just package`
+  3. `just mining-campaign stage=live-share profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-accepted-pool-share/attempt-001 duration-seconds=600 redact-evidence=true`
+- Objective: obtain one pool-accepted Stratum V1 share derived from current
+  owner-pool work and a correlated BM1366 nonce, then prove safe stop.
+- Evidence: the ignored
+  `scratch/ultra205-accepted-pool-share/attempt-001` root is private,
+  non-promoted `ProtectedOperational` evidence with mode-0700 parent and
+  mode-0600 artifacts. Persist only closed categories, bounded counts and
+  durations, safe provenance, and digests. Never persist or summarize raw
+  serial, pool responses, submit payloads, targets, difficulty values,
+  endpoints, ports, users, workers, owner addresses, passwords, Wi-Fi values,
+  device paths, IPs, MACs, tokens, NVS secrets, or secret-derived hashes.
+- Preconditions: the deterministic regression fails before and passes after
+  the fix; all required software gates pass; the fix is committed and pushed;
+  the package is rebuilt from clean exact HEAD; exactly one board 205 is
+  admitted; and exactly one ignored local pool input plus ignored Wi-Fi input
+  exists without being read into output or evidence.
+- Allowed effects: private NVS injection of Wi-Fi and owner pool settings,
+  persistence of `mineonboot=false`, one conservative campaign lease, exact
+  package flash, repo-owned USB reset/re-enumeration, fan 100%, DS4432U 1100
+  mV, ASIC enable/reset, BM1366 initialization and work/result traffic,
+  Stratum V1 TCP connection and qualified-share submission, fresh-session
+  HTTP/WebSocket observation, and bounded device-local safe stop.
+- Safety and stop limits: observations must remain fresh; input must remain
+  4.5-5.5 V; power must not exceed 15 W; ASIC temperature must remain below
+  75 C; fan RPM must remain fresh and nonzero after the qualified 100% command.
+  Any sensor, watchdog, actuation, validity, generation, lease, transport, or
+  evidence fault blocks submission and begins safe stop immediately.
+- Prohibited effects: submission of locally known below-target work, TLS,
+  Stratum V2, automatic fan mode, mining beyond 600 seconds, non-205 hardware,
+  erase-flash, arbitrary raw writes, OTA, recovery upload, network discovery,
+  foreign-process termination, raw secret output, parity promotion, direct
+  UART, pins, pads, headers, GPIO, probes, jumpers, soldering, injected
+  signals, voltage/fan stress, or fault injection.
+- Recovery/restoration: preserve the earliest typed failure; block and
+  invalidate submissions; close owned pool transports; frequency-down and
+  reset the ASIC; set core voltage off and ASIC enable off; keep fan at 100%
+  until fresh temperature is at or below 45 C, then set 30%; clear the lease;
+  persist `mineonboot=false`; retain pool settings; and release owned USB and
+  process resources. If device-local stop cannot be confirmed, one exact
+  baseline reflash is allowed only after same-device re-admission; otherwise
+  stop.
+- Retry bound: one post-fix attempt only and no unchanged retry. A later
+  ordinal requires a new deterministic failing regression plus a verified
+  boundary-changing fix or an authorized non-invasive remediation with
+  objective change proof. One post-fix recurrence of the same authoritative
+  signature selects `stop_repeated_boundary`.
+- Accepted terminal outcome: `complete` only for `submit_response_observed`
+  with `submit_outcome=accepted`, trusted exact-package identity, clean serial
+  diagnostics, fresh supported safety, `mineonboot=false`, confirmed safe
+  stop, lease removal, USB cleanup ready, valid artifact seals and modes, and
+  no parity promotion. A rejected response or any other failure stops without
+  retry and returns to diagnosis under the retry-bound rule.
+
+Verification: The pre-fix regression reproduced submission of a known
+below-pool-target reference nonce, and the BM1366 parser regression reproduced
+the nonce byte swap. The pinned upstream vectors prove the corrected header
+reconstruction and difficulty calculation, while the production wire-frame
+test proves the submit nonce is preserved. The fix also keeps distinct
+candidates from one job eligible and ignores exact duplicates. `cargo fmt
+--all`, warnings-as-errors Clippy, all-target/all-feature build, all-feature
+tests, focused ASIC/Stratum/flash tests, production-session verification,
+`just test`, `just package`, Bright Builds checks, parity, reference
+cleanliness, redaction, and diff checks pass. Hardware evidence remains
+pending.
+
+Completion review: Pending. An accepted share proves this bounded conservative
+owner-pool path only; it does not prove profitability, default-profile safety,
+unbounded stability, release readiness, or parity promotion.
+
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
 - [ ] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan

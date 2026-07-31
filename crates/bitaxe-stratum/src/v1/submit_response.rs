@@ -371,7 +371,9 @@ mod tests {
                 extranonce2_len: 4,
             },
         )
-        .with_pool_difficulty(PoolDifficulty { difficulty: 1.25 })
+        .with_pool_difficulty(PoolDifficulty {
+            difficulty: 1.0e-30,
+        })
         .build(job_id)
         .expect("sample work should build")
     }

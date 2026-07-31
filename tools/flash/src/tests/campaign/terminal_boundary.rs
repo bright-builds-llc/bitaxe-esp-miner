@@ -1,6 +1,69 @@
 use super::*;
 
 #[test]
+fn live_share_accepts_repeated_markers_and_cleared_terminal_lease() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(
+        &dir,
+        MiningCampaignStage::LiveShare,
+        Some(MiningCampaignProfile::Conservative),
+    );
+    let active = campaign_marker(CampaignMarkerFixture {
+        stage: "live-share",
+        lease_id: serde_json::json!(42),
+        state: "active",
+        profile: "conservative",
+        active_ms: 1_000,
+        submit_outcome: "none",
+        safety: "fresh",
+        pool_config: "local_owner_supplied",
+        actuation: "qualified",
+        safe_stop: "pending",
+    });
+    let environment = FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[
+        active.clone(),
+        active,
+        live_terminal("accepted"),
+    ]));
+
+    // Act
+    run_mining_campaign(&command, &environment).expect("live-share campaign");
+
+    // Assert
+    let result = read_campaign_result(&command);
+    assert_eq!(result["terminal_category"], "submit_response_observed");
+    assert_eq!(result["submit_outcome"], "accepted");
+    for (field, expected) in [
+        ("qualified_candidate_count", 1),
+        ("below_pool_target_count", 0),
+        ("duplicate_candidate_count", 0),
+    ] {
+        assert_eq!(result[field], expected);
+    }
+    assert_eq!(result["marker_count"], 3);
+    assert_eq!(result["safe_stop"], "confirmed");
+    assert_eq!(result["observation_freshness"]["fan_rpm"], true);
+    let csv = environment
+        .written_files()
+        .iter()
+        .find(|(path, _)| path.file_name() == Some("campaign-nvs.csv"))
+        .map(|(_, contents)| contents.clone())
+        .expect("campaign CSV");
+    for expected in [
+        "mineonboot,data,u16,0",
+        "campstage,data,string,live-share",
+        "campprofile,data,string,conservative",
+        "camplease,data,u64,42",
+        "campdurms,data,u64,600000",
+        "stratumprot,data,string,SV1",
+        "stratumtls,data,u16,0",
+    ] {
+        assert!(csv.contains(expected), "missing row {expected}");
+    }
+}
+
+#[test]
 fn live_terminal_boundary_ignores_a_partial_following_marker() {
     // Arrange
     let dir = tempdir().expect("tempdir");

@@ -20,8 +20,8 @@ use crate::v1::messages::{
 };
 use crate::v1::mining::MiningWorkBuilder;
 use crate::v1::production_work::{
-    CorrelationOutcome, PoolSessionGeneration, ProductionNonceObservation, ProductionWorkRegistry,
-    SubmitIntent,
+    CorrelationOutcome, NonSubmitReason, PoolSessionGeneration, ProductionNonceObservation,
+    ProductionWorkRegistry, SubmitIntent,
 };
 use crate::v1::state::{MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus};
 use crate::v1::submit_response::{RedactedSubmitRejectReason, SubmitClassification};
@@ -107,6 +107,7 @@ pub(crate) enum RuntimeRequestKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum BridgeObservationOutcome {
     SubmitQueued,
+    Ignored { reason: NonSubmitReason },
     Blocked { reason: ProductionAsicBlocker },
 }
 
@@ -418,7 +419,17 @@ impl LiveStratumRuntime {
             CorrelationOutcome::SubmitIntent(intent) => {
                 let request_id = self.next_request_id();
                 self.queue_submit_share(intent, request_id)?;
+                self.state.record_qualified_candidate();
                 Ok(BridgeObservationOutcome::SubmitQueued)
+            }
+            CorrelationOutcome::Ignored { reason } => {
+                match reason {
+                    NonSubmitReason::BelowPoolTarget => self.state.record_below_pool_target(),
+                    NonSubmitReason::DuplicateCandidate => {
+                        self.state.record_duplicate_candidate();
+                    }
+                }
+                Ok(BridgeObservationOutcome::Ignored { reason })
             }
             CorrelationOutcome::Blocked { reason } => {
                 self.block_work_submission(reason.as_str());

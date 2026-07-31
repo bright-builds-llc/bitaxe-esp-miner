@@ -219,7 +219,7 @@ fn establish_active_with_readiness(
     adapter.bytes(
         ProductionPool::Primary,
         concat!(
-            "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[42]}\n",
+            "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[1e-30]}\n",
             "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"job\",",
             "\"0000000000000000000000000000000000000000000000000000000000000000\",",
             "\"ffffffff\",\"ffffffff\",[],\"20000004\",\"1705ae3a\",",

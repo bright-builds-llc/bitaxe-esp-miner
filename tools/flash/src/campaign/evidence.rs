@@ -28,6 +28,9 @@ struct CampaignResultEvidence<'a> {
     pool_config: &'static str,
     marker_count: usize,
     submit_outcome: &'static str,
+    qualified_candidate_count: u64,
+    below_pool_target_count: u64,
+    duplicate_candidate_count: u64,
     active_ms: u64,
     safety: &'static str,
     fresh_observation_count: u8,
@@ -157,6 +160,12 @@ pub(super) fn finish_campaign_attempt(
                 SubmitOutcomeMarker::Accepted => "accepted",
                 SubmitOutcomeMarker::Rejected => "rejected",
             }),
+            qualified_candidate_count: maybe_terminal
+                .map_or(0, |marker| marker.qualified_candidate_count),
+            below_pool_target_count: maybe_terminal
+                .map_or(0, |marker| marker.below_pool_target_count),
+            duplicate_candidate_count: maybe_terminal
+                .map_or(0, |marker| marker.duplicate_candidate_count),
             active_ms: maybe_terminal.map_or(0, |marker| marker.active_ms),
             safety: maybe_terminal.map_or("not_observed", |marker| match marker.safety {
                 SafetyMarker::Fresh => "fresh",

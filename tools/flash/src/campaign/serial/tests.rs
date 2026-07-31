@@ -18,6 +18,9 @@ fn observation_marker(schema: &str) -> Vec<u8> {
         "profile": "none",
         "active_ms": 0,
         "submit_outcome": "none",
+        "qualified_candidate_count": 0,
+        "below_pool_target_count": 0,
+        "duplicate_candidate_count": 0,
         "safety": "fresh",
         "fresh_observation_count": 5,
         "observation_freshness": {

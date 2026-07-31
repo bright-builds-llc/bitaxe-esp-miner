@@ -15,6 +15,7 @@ pub mod production_session;
 pub mod production_work;
 pub mod queue;
 mod recovery_policy;
+mod share_validation;
 pub mod state;
 pub mod submit_response;
 pub mod telemetry_projection;

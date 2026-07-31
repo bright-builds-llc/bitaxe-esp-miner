@@ -121,7 +121,7 @@ fn work_received_before_authorization_remains_safe_blocked() {
     adapter.bytes(
         ProductionPool::Primary,
         concat!(
-            "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[42]}\n",
+            "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[1e-30]}\n",
             "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"early-job\",",
             "\"0000000000000000000000000000000000000000000000000000000000000000\",",
             "\"ffffffff\",\"ffffffff\",[],\"20000004\",\"1705ae3a\",",
@@ -363,7 +363,7 @@ fn first_submit_response_consumes_lease_and_safe_stops() {
     adapter.bytes(
         ProductionPool::Primary,
         concat!(
-            "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[42]}\n",
+            "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[1e-30]}\n",
             "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"job\",",
             "\"0000000000000000000000000000000000000000000000000000000000000000\",",
             "\"ffffffff\",\"ffffffff\",[],\"20000004\",\"1705ae3a\",",

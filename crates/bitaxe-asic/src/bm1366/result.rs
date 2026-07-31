@@ -140,7 +140,9 @@ fn parse_job_result(
     address_interval: u16,
 ) -> Result<Bm1366ParsedResult, Bm1366ProtocolFault> {
     let bytes = frame.bytes();
-    let nonce_be = u32::from_be_bytes([bytes[2], bytes[3], bytes[4], bytes[5]]);
+    let nonce_bytes = [bytes[2], bytes[3], bytes[4], bytes[5]];
+    let nonce_be = u32::from_be_bytes(nonce_bytes);
+    let submit_nonce = u32::from_le_bytes(nonce_bytes);
     let id = bytes[7];
     let raw_lookup_key = id & 0xf8;
 
@@ -170,7 +172,7 @@ fn parse_job_result(
 
     Ok(Bm1366ParsedResult::JobNonce(Bm1366NonceResult {
         job_id,
-        nonce: nonce_be,
+        nonce: submit_nonce,
         asic_index,
         core_id,
         small_core_id,
@@ -295,6 +297,29 @@ mod tests {
         };
         assert_eq!(result.job_id.raw(), 0x28);
         assert_eq!(result.small_core_id, 7);
+    }
+
+    #[test]
+    fn bm1366_result_preserves_submit_nonce_byte_order() {
+        // Arrange
+        let submit_nonce = 0x276e_8947_u32;
+        let mut body = [0; 8];
+        body[0..4].copy_from_slice(&submit_nonce.to_le_bytes());
+        body[4] = 0x01;
+        body[5] = 0x28;
+        body[6..8].copy_from_slice(&0_u16.to_be_bytes());
+        let frame = result_frame(body, true);
+        let valid_jobs = Bm1366ValidJobIds::single(Bm1366JobId::new(0x28));
+
+        // Act
+        let parsed = parse_bm1366_result_frame(&frame, &valid_jobs, 16)
+            .expect("reference nonce frame should parse");
+
+        // Assert
+        let Bm1366ParsedResult::JobNonce(result) = parsed else {
+            panic!("expected job nonce");
+        };
+        assert_eq!(result.nonce, submit_nonce);
     }
 
     #[test]

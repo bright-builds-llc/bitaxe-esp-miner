@@ -1,6 +1,6 @@
 //! Production BM1366 work registry for pool-derived Stratum v1 work.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
 use bitaxe_asic::bm1366::{
@@ -13,6 +13,9 @@ use crate::error::StratumV1Error;
 use crate::v1::messages::PoolDifficulty;
 use crate::v1::mining::{MiningWork, ShareSubmission};
 use crate::v1::queue::{BoundedWorkQueue, STRATUM_WORK_QUEUE_CAPACITY};
+use crate::v1::share_validation::nonce_meets_pool_target;
+
+const SEEN_SHARE_CANDIDATE_CAPACITY: usize = 64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PoolSessionGeneration(u64);
@@ -59,7 +62,8 @@ pub(crate) struct ProductionWorkRecord {
     pub target_context: ProductionTargetContext,
     pub work: MiningWork,
     pub dispatched: bool,
-    pub result_seen: bool,
+    pub observed_candidate_count: u64,
+    seen_candidates: VecDeque<ShareCandidateKey>,
 }
 
 impl ProductionWorkRecord {
@@ -76,7 +80,8 @@ impl ProductionWorkRecord {
             },
             work,
             dispatched,
-            result_seen: false,
+            observed_candidate_count: 0,
+            seen_candidates: VecDeque::with_capacity(SEEN_SHARE_CANDIDATE_CAPACITY),
         }
     }
 }
@@ -90,7 +95,7 @@ impl fmt::Debug for ProductionWorkRecord {
             .field("target_context", &"redacted")
             .field("work_payload", &"redacted")
             .field("dispatched", &self.dispatched)
-            .field("result_seen", &self.result_seen)
+            .field("observed_candidate_count", &self.observed_candidate_count)
             .finish()
     }
 }
@@ -158,7 +163,29 @@ impl fmt::Debug for SubmitIntent {
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) enum CorrelationOutcome {
     SubmitIntent(SubmitIntent),
+    Ignored { reason: NonSubmitReason },
     Blocked { reason: ProductionAsicBlocker },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum NonSubmitReason {
+    BelowPoolTarget,
+    DuplicateCandidate,
+}
+
+impl NonSubmitReason {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::BelowPoolTarget => "below_pool_target",
+            Self::DuplicateCandidate => "duplicate_share_candidate",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+struct ShareCandidateKey {
+    nonce: u32,
+    version_bits: u32,
 }
 
 impl fmt::Debug for CorrelationOutcome {
@@ -167,6 +194,10 @@ impl fmt::Debug for CorrelationOutcome {
             Self::SubmitIntent(intent) => formatter
                 .debug_tuple("CorrelationOutcome::SubmitIntent")
                 .field(intent)
+                .finish(),
+            Self::Ignored { reason } => formatter
+                .debug_struct("CorrelationOutcome::Ignored")
+                .field("reason", &reason.as_str())
                 .finish(),
             Self::Blocked { reason } => formatter
                 .debug_struct("CorrelationOutcome::Blocked")
@@ -284,16 +315,39 @@ impl ProductionWorkRegistry {
             };
         }
 
-        if record.result_seen {
-            return CorrelationOutcome::Blocked {
-                reason: ProductionAsicBlocker::DuplicateResult,
-            };
-        }
-
         if !stored_work_context_matches_nonce_result(record, observation.result) {
             return CorrelationOutcome::Blocked {
                 reason: ProductionAsicBlocker::TargetMismatch,
             };
+        }
+
+        let candidate_key = ShareCandidateKey {
+            nonce: observation.result.nonce,
+            version_bits: observation.result.version_bits,
+        };
+        if record.seen_candidates.contains(&candidate_key) {
+            return CorrelationOutcome::Ignored {
+                reason: NonSubmitReason::DuplicateCandidate,
+            };
+        }
+        if record.seen_candidates.len() == SEEN_SHARE_CANDIDATE_CAPACITY {
+            let _oldest = record.seen_candidates.pop_front();
+        }
+        record.seen_candidates.push_back(candidate_key);
+        record.observed_candidate_count = record.observed_candidate_count.saturating_add(1);
+
+        match nonce_meets_pool_target(&record.work, observation.result) {
+            Ok(true) => {}
+            Ok(false) => {
+                return CorrelationOutcome::Ignored {
+                    reason: NonSubmitReason::BelowPoolTarget,
+                };
+            }
+            Err(_) => {
+                return CorrelationOutcome::Blocked {
+                    reason: ProductionAsicBlocker::TargetMismatch,
+                };
+            }
         }
 
         let Ok(submission) = ShareSubmission::from_nonce_result(&record.work, observation.result)
@@ -303,7 +357,6 @@ impl ProductionWorkRegistry {
             };
         };
 
-        record.result_seen = true;
         CorrelationOutcome::SubmitIntent(SubmitIntent {
             generation: self.generation,
             asic_job_id: record.asic_job_id,
@@ -344,8 +397,8 @@ fn stored_work_context_matches_nonce_result(
     record: &ProductionWorkRecord,
     result: Bm1366NonceResult,
 ) -> bool {
-    // This guards stored work-context drift before submit-intent creation. It is
-    // deliberately not a nonce-vs-target proof or share-hash validation.
+    // Guard stored work-context drift before the separate reconstructed-header
+    // share-target proof runs.
     let work_compact_nbits = u32::from_le_bytes(record.work.fields.nbits);
     record.target_context.compact_nbits == work_compact_nbits
         && result.job_id.lookup_key() == record.asic_job_id.lookup_key()

@@ -76,10 +76,8 @@ pub enum ProductionAsicBlocker {
     JobUncorrelated,
     DuplicateResult,
     WrongSession,
-    /// Stored work target context drifted before submit-intent preparation.
-    ///
-    /// This is a fail-closed context guard, not proof that a nonce satisfies a
-    /// pool target. Full nonce-vs-target validation remains outside Phase 24.
+    /// Stored work target context is absent, invalid, or drifted before the
+    /// reconstructed-header pool-target proof.
     TargetMismatch,
 }
 
