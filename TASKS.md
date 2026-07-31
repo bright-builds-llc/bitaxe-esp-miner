@@ -121,9 +121,9 @@ release readiness, or checklist promotion.
 - [x] Land and verify the two regression fixes exposed by `attempt-001`:
       incremental typed runtime-attestation classification and in-flight
       transition lineage across same-block clean generation refreshes.
-- [ ] Run exactly one newly authorized post-fix `attempt-002` from the clean,
+- [x] Run exactly one newly authorized post-fix `attempt-002` from the clean,
       pushed tracker-amendment HEAD; never run `attempt-003` under this task.
-- [ ] Seal one full-duration hardware attempt with continuous fresh safety,
+- [x] Seal one full-duration hardware attempt with continuous fresh safety,
       trusted identity, safe stop, lease cleanup, `mineonboot=false`, and USB
       cleanup using the newly authorized post-fix ordinal below.
 
@@ -221,10 +221,29 @@ sequence, focused API/Stratum/campaign suites, production-session verification,
 all 82 Bazel test targets, package build, Bright Builds checks, parity,
 reference cleanliness, redaction, artifact mode/seal/digest checks, and the
 private evidence denylist. The newly authorized, no-retry post-fix
-`attempt-002` remains pending.
+`attempt-002` then ran from clean pushed commit `cea568dd` for 1,800,120 active
+ms and safely sealed `job_transition_evidence_incomplete`. It observed one
+changed-previous-block notify, one matching new-block generation, and 761
+replacement-work dispatches, but zero post-transition correlated results and
+therefore zero completed transitions. The run otherwise recorded 90
+below-pool-target results, zero rejected shares, zero stale-generation results
+or submissions, zero reconnects, a 532 ms maximum active-marker gap, trusted
+runtime identity and attestation, fresh required safety, `mineonboot=false`,
+confirmed safe stop, and USB cleanup ready. All four artifacts have the
+required owner-only modes, both private-artifact digests and the result seal
+verify, and the private evidence denylist passes. One trailing partial serial
+candidate was conservatively classified as `marker_truncated`; the accepted
+terminal marker and trusted attestation remained intact, so this was not the
+campaign failure. The authorized retry budget is exhausted and `attempt-003`
+is prohibited.
 
-Completion review: Pending. This task proves one bounded conservative
-new-block transition only. It does not prove profitability, upstream-default
+Completion review: Incomplete. Two bounded full-duration attempts safely
+reached lease expiry and proved changed-block detection, generation advance,
+and replacement dispatch, but neither proved a correlated result under the
+replacement generation. The remaining blocker is the post-transition ASIC
+result-correlation link; further hardware execution requires a new task and
+fresh authorization after additional deterministic diagnosis. This task does
+not prove new-block transition completion, profitability, upstream-default
 stability, unbounded mining, automatic fan control, release readiness, or
 parity promotion.
 
