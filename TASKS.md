@@ -33,7 +33,12 @@ Status: In progress — `attempt-002` preserved the earliest failure as
 The pinned reference enables the EMC2101 tach input at register `0x03` before
 fan control, while the Rust adapter omitted that write. `attempt-003` is
 authorized only after the missing initialization is regression-backed, fully
-verified, committed, pushed, and rebuilt from clean exact HEAD.
+verified, committed, pushed, and rebuilt from clean exact HEAD. Its first
+preflight detector invocation did not create the attempt: post-probe recovery
+reached only one stable sample, then the same owned session's final cleanup
+proved three stable samples with the same accessible holder-free device. That
+objective non-invasive boundary change authorizes exactly one re-detection
+with `just detect-ultra205` before the still-unused `attempt-003`.
 
 - [ ] Freeze and admit the exact current-HEAD package, single detected board
       205, ignored local Wi-Fi credentials, and exactly one ignored local pool
@@ -116,7 +121,11 @@ Hardware contract:
   rollback failure so the misleading `pool_configuration_missing` precedence
   cannot recur. `attempt-003` changes the hardware boundary by restoring the
   pinned EMC2101 tach-input initialization before direct fan mode and duty. It
-  is not an unchanged retry.
+  is not an unchanged retry. The one pre-attempt re-detection authorization is
+  bound to private root
+  `scratch/ultra205-live-pool-share/preflight-attempt-003`; it does not
+  authorize another mining attempt or another detector retry if re-detection
+  fails.
 - Accepted terminal outcomes: `complete` only when every success and safe-stop
   criterion passes; otherwise `stop_repeated_boundary`,
   `stop_hardware_blocker`, `stop_authority_boundary`, or
@@ -143,6 +152,13 @@ marker, clean serial framing, five supported observations fresh,
 safe-stop, and USB cleanup ready. The focused EMC2101 regression failed before
 the fix because no configuration-register write existed, then passed after the
 adapter wrote `0x03=0x04` before fan mode and duty.
+The first `attempt-003` preflight detector invocation stopped before campaign
+creation with `recovery_not_observed` at `post_probe`, with
+`stable_samples_max=1`. Its same-session mode-0600 final-cleanup trace then
+proved `stable_samples_max=3`, same device seen, accessible, holder-free, and
+no identity drift or enumeration change. The ignored preflight root is
+mode-0700 and retains the mode-0600 protected console record; no mining ordinal
+was consumed.
 
 Completion review: Pending. An accepted or rejected response proves the
 end-to-end submitted-share path, not profitability, unbounded stability,
