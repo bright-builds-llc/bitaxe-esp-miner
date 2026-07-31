@@ -14,7 +14,6 @@ const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v1";
 const TRACE_EDGE_CAPACITY: usize = 32;
 const MAX_RECORDED_LINE_LENGTH: usize = 4_096;
 const MAX_PENDING_LINE_BYTES: usize = 65_536;
-const MAX_RUNTIME_ATTESTATION_BYTES: usize = 16_384;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -145,7 +144,7 @@ pub(crate) struct CampaignSerialCapture {
     pub(super) diagnostics: CampaignSerialDiagnostics,
     pub(super) outcome_detail: CampaignSerialOutcomeDetail,
     pub(super) maybe_failure: Option<CampaignTerminalCategory>,
-    runtime_attestation_text: String,
+    runtime_attestations: RuntimeAttestationAccumulator,
 }
 
 impl CampaignSerialCapture {
@@ -156,7 +155,7 @@ impl CampaignSerialCapture {
         if self.diagnostics.runtime_attestation_invalid_encoding_count > 0 {
             return RuntimeAttestationStatus::Malformed;
         }
-        classify_runtime_boot_attestations(&self.runtime_attestation_text, expected)
+        self.runtime_attestations.status(expected)
     }
 }
 
@@ -204,7 +203,7 @@ pub(crate) struct CampaignSerialAnalyzer {
     aggregate: CampaignMarkerAggregate,
     #[cfg(test)]
     markers: Vec<CampaignStatusMarker>,
-    runtime_attestation_text: String,
+    runtime_attestations: RuntimeAttestationAccumulator,
     diagnostics: CampaignSerialDiagnostics,
     outcome_detail: CampaignSerialOutcomeDetail,
     maybe_failure: Option<CampaignTerminalCategory>,
@@ -223,7 +222,7 @@ impl CampaignSerialAnalyzer {
             aggregate: CampaignMarkerAggregate::default(),
             #[cfg(test)]
             markers: Vec::new(),
-            runtime_attestation_text: String::new(),
+            runtime_attestations: RuntimeAttestationAccumulator::default(),
             diagnostics: CampaignSerialDiagnostics {
                 observation_started: true,
                 ..CampaignSerialDiagnostics::not_observed()
@@ -303,7 +302,7 @@ impl CampaignSerialAnalyzer {
             diagnostics: self.diagnostics,
             outcome_detail: self.outcome_detail,
             maybe_failure: self.maybe_failure,
-            runtime_attestation_text: self.runtime_attestation_text,
+            runtime_attestations: self.runtime_attestations,
         }
     }
 
@@ -446,17 +445,7 @@ impl CampaignSerialAnalyzer {
             );
             return;
         };
-        let remaining =
-            MAX_RUNTIME_ATTESTATION_BYTES.saturating_sub(self.runtime_attestation_text.len());
-        if remaining > 0 {
-            let mut retained_length = text.len().min(remaining.saturating_sub(1));
-            while !text.is_char_boundary(retained_length) {
-                retained_length = retained_length.saturating_sub(1);
-            }
-            self.runtime_attestation_text
-                .push_str(&text[..retained_length]);
-            self.runtime_attestation_text.push('\n');
-        }
+        self.runtime_attestations.observe_line(text);
         self.trace.push(
             u64::try_from(byte_offset).unwrap_or(u64::MAX),
             line_length,

@@ -116,6 +116,11 @@ release readiness, or checklist promotion.
 - [x] Prove a changed previous-block notify invalidates old work, advances the
       generation, dispatches replacement work, and correlates a replacement
       result without submitting stale work.
+- [x] Run `attempt-001` once from clean pushed commit `e732ca4b`; preserve its
+      fail-closed result and do not open the conditional retry gate.
+- [x] Land and verify the two regression fixes exposed by `attempt-001`:
+      incremental typed runtime-attestation classification and in-flight
+      transition lineage across same-block clean generation refreshes.
 - [ ] Seal one full-duration hardware attempt with continuous fresh safety,
       trusted identity, safe stop, lease cleanup, `mineonboot=false`, and USB
       cleanup; allow one conditional attempt only under the retry gate below.
@@ -192,12 +197,26 @@ Hardware contract:
   conditional outcome is `job_transition_not_observed`; every other category
   stops without retry and returns to diagnosis.
 
-Verification: Software gates passed on 2026-07-31: the exact Rust pre-commit
-sequence, focused Stratum/campaign/device-session regressions,
+Verification: Software gates passed on 2026-07-31 before hardware: the exact
+Rust pre-commit sequence, focused Stratum/campaign/device-session regressions,
 `just verify-production-session`, `just test`, `just package`, Bright Builds
-checks, parity, reference cleanliness, and redaction. Final clean-HEAD package,
-hardware evidence, permission/digest/denylist review, and completion review
-remain pending.
+checks, parity, reference cleanliness, and redaction. `attempt-001` then ran
+for 1,800,133 active ms and sealed `job_transition_evidence_incomplete` with
+five previous-block changes, five matching generation advances, five
+replacement dispatches, zero credited post-transition results, zero rejected
+shares, zero stale-generation submissions, zero reconnects, a 519 ms maximum
+active-marker gap, fresh required safety, `mineonboot=false`, confirmed safe
+stop, and USB cleanup ready. Its private artifacts are mode 0600 under a mode
+0700 ignored root and their result-bound digests verify. The conditional retry
+gate did not open. Red regressions reproduced two host-accounting defects:
+partial retention of the final runtime attestation at the old text-byte cap,
+and loss of an in-flight transition lineage after a same-block clean generation
+refresh. Both red regressions pass after the fixes, as do the exact Rust
+sequence, focused API/Stratum/campaign suites, production-session verification,
+all 82 Bazel test targets, package build, Bright Builds checks, parity,
+reference cleanliness, redaction, artifact mode/seal/digest checks, and the
+private evidence denylist. A later separately authorized hardware attempt
+remains pending.
 
 Completion review: Pending. This task proves one bounded conservative
 new-block transition only. It does not prove profitability, upstream-default

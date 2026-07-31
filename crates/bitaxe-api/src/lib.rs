@@ -77,8 +77,9 @@ pub use route_shell::{
 };
 pub use runtime_boot_attestation::{
     classify_runtime_boot_attestations, ExpectedRuntimeAttestationIdentity,
-    RuntimeAttestationStatus, RuntimeBootAttestation, RuntimeBootAttestationError,
-    RUNTIME_BOOT_ATTESTATION_MARKER, RUNTIME_BOOT_ATTESTATION_SCHEMA_VERSION,
+    RuntimeAttestationAccumulator, RuntimeAttestationStatus, RuntimeBootAttestation,
+    RuntimeBootAttestationError, RUNTIME_BOOT_ATTESTATION_MARKER,
+    RUNTIME_BOOT_ATTESTATION_SCHEMA_VERSION,
 };
 pub use runtime_projection::{project_api_views, project_system_info, ProjectedApiViews};
 pub use scoreboard::{scoreboard_response, ScoreboardEntry, ScoreboardEntryWire};

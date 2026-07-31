@@ -49,6 +49,7 @@ rust_binary(
         "src/campaign/serial/framing.rs",
         "src/campaign/serial/preparation.rs",
         "src/campaign/serial/tests.rs",
+        "src/campaign/serial/tests/attestation.rs",
         "src/commands.rs",
         "src/commands/finalize.rs",
         "src/commands/flash.rs",

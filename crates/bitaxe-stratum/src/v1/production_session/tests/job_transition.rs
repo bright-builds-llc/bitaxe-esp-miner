@@ -48,6 +48,34 @@ fn clean_new_block_dispatches_and_correlates_replacement_generation() {
 }
 
 #[test]
+fn same_block_clean_refresh_keeps_replacement_result_in_transition_lineage() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    establish_active(&mut adapter);
+    adapter.bytes(ProductionPool::Primary, notify("new-block", "11", true), 4);
+
+    // Act
+    adapter.bytes(
+        ProductionPool::Primary,
+        notify("same-block-refresh", "11", true),
+        5,
+    );
+    let refreshed_observation = dispatched_observation(&adapter);
+    adapter.drive(ProductionSessionEvent::AsicResult {
+        observation: refreshed_observation,
+        now_ms: 6,
+    });
+
+    // Assert
+    let evidence = adapter.session.snapshot().job_transition;
+    assert_eq!(evidence.previous_block_change_count, 1);
+    assert_eq!(evidence.new_block_generation_count, 1);
+    assert_eq!(evidence.replacement_dispatch_count, 2);
+    assert_eq!(evidence.replacement_result_count, 1);
+    assert_eq!(evidence.completed_transition_count, 1);
+}
+
+#[test]
 fn changed_block_without_clean_jobs_begins_terminal_safe_stop() {
     // Arrange
     let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));

@@ -13,7 +13,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{bail, Context, Result};
 use bitaxe_api::{
     classify_runtime_boot_attestations, BuildProvenance, ExpectedRuntimeAttestationIdentity,
-    RuntimeAttestationStatus,
+    RuntimeAttestationAccumulator, RuntimeAttestationStatus,
 };
 use bitaxe_config::{
     apply_settings_patch, ConfigValidationError, NvsWrite, RawSettingValue, SettingsPatch,

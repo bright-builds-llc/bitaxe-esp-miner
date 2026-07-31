@@ -6,6 +6,9 @@ use thiserror::Error;
 
 use crate::boot_identity::ResetReasonCategory;
 
+mod accumulator;
+pub use accumulator::RuntimeAttestationAccumulator;
+
 /// Stable marker that begins every runtime boot attestation.
 pub const RUNTIME_BOOT_ATTESTATION_MARKER: &str = "runtime_boot_attestation";
 /// Current runtime boot attestation wire schema.
@@ -219,52 +222,14 @@ pub fn classify_runtime_boot_attestations(
     log: &str,
     expected: &ExpectedRuntimeAttestationIdentity,
 ) -> RuntimeAttestationStatus {
-    let candidate_lines = log
+    let mut accumulator = RuntimeAttestationAccumulator::default();
+    for line in log
         .lines()
-        .filter(|line| line.contains(RUNTIME_BOOT_ATTESTATION_MARKER));
-    let mut samples = Vec::new();
-    for line in candidate_lines {
-        match RuntimeBootAttestation::parse(line) {
-            Ok(sample) => samples.push(sample),
-            Err(RuntimeBootAttestationError::IncompleteReadiness) => {
-                return RuntimeAttestationStatus::IncompleteReadiness;
-            }
-            Err(_) => return RuntimeAttestationStatus::Malformed,
-        }
-    }
-    if samples.is_empty() {
-        return RuntimeAttestationStatus::Missing;
-    }
-    if samples.len() < 2 {
-        return RuntimeAttestationStatus::InsufficientSamples;
-    }
-
-    let first = &samples[0];
-    if samples
-        .iter()
-        .skip(1)
-        .any(|sample| !sample.same_session_and_ordinal(first))
+        .filter(|line| line.contains(RUNTIME_BOOT_ATTESTATION_MARKER))
     {
-        return RuntimeAttestationStatus::MixedSessionOrOrdinal;
+        accumulator.observe_line(line);
     }
-    if samples
-        .iter()
-        .skip(1)
-        .any(|sample| !sample.same_static_fields(first))
-    {
-        return RuntimeAttestationStatus::StaticFieldsMismatch;
-    }
-    if samples
-        .windows(2)
-        .any(|pair| pair[1].uptime_ms <= pair[0].uptime_ms)
-    {
-        return RuntimeAttestationStatus::NonMonotonicUptime;
-    }
-    if !first.matches_expected(expected) {
-        return RuntimeAttestationStatus::PackageIdentityMismatch;
-    }
-
-    RuntimeAttestationStatus::Trusted
+    accumulator.status(expected)
 }
 
 /// Parse and validation failures for one runtime attestation marker.

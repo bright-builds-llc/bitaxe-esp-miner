@@ -61,6 +61,13 @@ impl JobTransitionTracker {
                 self.evidence.clean_jobs_notify_count.saturating_add(1);
         }
         if !previous_block_changed {
+            if generation_advanced
+                && self.maybe_transition_generation.is_some()
+                && !self.current_transition_completed
+            {
+                self.maybe_transition_generation = Some(generation);
+                self.evidence.latest_state = JobTransitionState::ReplacementQueued;
+            }
             return;
         }
 
@@ -151,6 +158,33 @@ mod tests {
         assert_eq!(evidence.pool_notify_count, 1);
         assert_eq!(evidence.completed_transition_count, 0);
         assert_eq!(evidence.latest_state, JobTransitionState::NotObserved);
+    }
+
+    #[test]
+    fn same_block_generation_refresh_preserves_an_inflight_transition() {
+        // Arrange
+        let mut tracker = JobTransitionTracker::default();
+        let new_block_generation = PoolSessionGeneration::initial().next();
+        let refreshed_generation = new_block_generation.next();
+        tracker.note_notify(true, true, true, new_block_generation);
+        tracker.note_dispatch(new_block_generation);
+
+        // Act
+        tracker.note_notify(true, false, true, refreshed_generation);
+        tracker.note_dispatch(refreshed_generation);
+        tracker.note_correlated_result(refreshed_generation);
+
+        // Assert
+        let evidence = tracker.evidence();
+        assert_eq!(evidence.previous_block_change_count, 1);
+        assert_eq!(evidence.new_block_generation_count, 1);
+        assert_eq!(evidence.replacement_dispatch_count, 2);
+        assert_eq!(evidence.replacement_result_count, 1);
+        assert_eq!(evidence.completed_transition_count, 1);
+        assert_eq!(
+            evidence.latest_state,
+            JobTransitionState::ReplacementResultCorrelated
+        );
     }
 
     #[test]

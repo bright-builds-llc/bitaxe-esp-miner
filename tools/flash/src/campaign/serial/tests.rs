@@ -1,5 +1,8 @@
 use super::*;
 
+#[path = "tests/attestation.rs"]
+mod attestation;
+
 fn observation_admission() -> CampaignAdmission {
     CampaignAdmission {
         stage: MiningCampaignStage::Observation,
@@ -447,29 +450,6 @@ fn observation_contract_failure_does_not_shorten_capture_window() {
     assert_eq!(
         capture.maybe_failure,
         Some(CampaignTerminalCategory::MineOnBootEnabled)
-    );
-}
-
-#[test]
-fn invalid_runtime_attestation_encoding_is_independent_of_valid_marker() {
-    // Arrange
-    let mut bytes = bitaxe_api::RUNTIME_BOOT_ATTESTATION_MARKER
-        .as_bytes()
-        .to_vec();
-    bytes.extend_from_slice(&[0xff, b'\n']);
-    bytes.extend_from_slice(&observation_marker(CAMPAIGN_MARKER_SCHEMA));
-
-    // Act
-    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
-
-    // Assert
-    assert_eq!(capture.markers.len(), 1);
-    assert_eq!(capture.outcome_detail, CampaignSerialOutcomeDetail::Clean);
-    assert_eq!(
-        capture
-            .diagnostics
-            .runtime_attestation_invalid_encoding_count,
-        1
     );
 }
 
