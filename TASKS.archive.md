@@ -2992,3 +2992,63 @@ bounded conservative 30-minute session across two real block transitions; it
 does not prove profitability, upstream-default stability, unbounded mining,
 automatic fan control, release readiness, direct electrical access, or parity
 promotion.
+
+### task-campaign-websocket-connection-stability | 2026-08-01 | Stabilize campaign WebSocket observation
+
+- [x] Exercise the attempt-003 signature with one real loopback TCP connection
+      across 109 representative idle observation intervals and record that the
+      exact reconnect count did not reproduce on the pre-fix macOS path.
+- [x] Verify Tungstenite's transport contract that `WouldBlock` permits reuse
+      while `TimedOut` and other I/O errors are fatal.
+- [x] Implement a bounded, non-busy persistent read strategy that preserves the
+      existing 64-KiB message cap, plain-`ws://` restriction, omitted `Origin`
+      header, and privacy boundary.
+- [x] Prove idle connections remain open, genuine peer closes permit a fresh
+      connection with 1/2/4/5-second bounded backoff, and sockets, threads, and
+      related resources are released on terminal paths.
+- [x] Re-run the campaign transport, continuity, evidence, and redaction suites
+      without weakening window completeness or earliest-failure precedence.
+
+Dependencies: The software-only startup-state recovery recorded in
+`task-ultra205-default-profile-soak` was complete before this task began. This
+task's software prerequisite for drafting a future soak contract is complete.
+
+Authorization boundary: software and real loopback TCP tests only. No hardware,
+package flashing, Wi-Fi or pool credentials, device discovery, raw device
+origin, attempt-004, or other network target was used.
+
+Verification:
+
+- The red classifier regression failed because production treated both
+  `WouldBlock` and `TimedOut` as reusable, contrary to Tungstenite's connection
+  reuse contract. After the change, only `WouldBlock` is retried; `TimedOut`,
+  capacity, protocol, and other I/O errors are fatal.
+- A real loopback connection survived 109 bounded idle reads and then received
+  text without a second handshake. That scenario also passed before the fix on
+  this host, so it guards persistence but does not independently reproduce or
+  prove the exact attempt-003 reconnect cause.
+- Real TCP tests cover omitted `Origin`, nonblocking ping/pong flushing, the
+  exact 64-KiB admissible boundary, oversized-message rejection, peer close,
+  a fresh subsequent connection, and joined server threads. A deterministic
+  control-flush test forces one temporary `WouldBlock` before success, and
+  elapsed-time bounds cover the non-busy local observation deadline.
+- Deterministic observer tests prove delays of 1, 2, 4, then capped 5 seconds
+  and reset to 1 second after a successful connection. Idle
+  `WebSocketRead::Timeout` continues to leave the current socket installed.
+- Focused `bitaxe-http-transport` and campaign-network suites passed. In order,
+  `cargo fmt --all`, warnings-denied Clippy, the all-target/all-feature Cargo
+  build, all-feature Cargo tests, all 82 Bazel tests through `just test`, the
+  managed Bright Builds checks with zero findings, and
+  `just verify-redaction` passed.
+
+Completion review: Complete for the authorized software scope. The client now
+uses blocking handshake deadlines followed by a timeout-free nonblocking
+socket, retries only `WouldBlock` in 25-ms bounded sleeps, and returns a local
+timeout without discarding an idle connection. Control-frame flushes use the
+same bound, while genuine close or fatal error releases the socket and enters
+the explicit reconnect policy. The public `PlainWebSocket` API, campaign
+continuity contract, evidence schema, privacy limits, CLI, and dependencies are
+unchanged. Residual risk: attempt-003 retained only aggregate evidence, and the
+109-reconnect signature did not reproduce under loopback before the fix, so a
+future separately authorized soak must prove a maximum 5,000-ms WebSocket gap
+and no recurrence before the broader task can complete.

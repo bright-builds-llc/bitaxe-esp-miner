@@ -201,39 +201,65 @@ remains half-open at `[0, 30000)` and retains its full two-sample and sequence
 advancement contract; all identity, safety, watchdog, regression, terminal,
 and post-establishment mining-state failures remain fail-closed. This change
 does not alter or renew the consumed attempt-003 command, authorize attempt-004,
-or supply hardware evidence. Any future soak hardware contract is additionally
-blocked on `task-campaign-websocket-connection-stability`.
-
-### task-campaign-websocket-connection-stability | 2026-08-01 | Stabilize campaign WebSocket observation
-
-- [ ] Reproduce the attempt-003 signature of 109 reconnects with real loopback
-      TCP connections and representative idle intervals.
-- [ ] Verify Tungstenite's transport contract that `WouldBlock` permits reuse
-      while `TimedOut` and other I/O errors are generally fatal.
-- [ ] Implement a bounded, non-busy persistent read strategy that preserves the
-      existing 64-KiB message cap, plain-`ws://` restriction, omitted `Origin`
-      header, and privacy boundary.
-- [ ] Prove idle connections remain open, genuine peer closes reconnect with
-      1-5-second bounded backoff, and sockets, threads, and related resources
-      are released on every terminal path.
-- [ ] Re-run the campaign transport, continuity, evidence, and redaction suites
-      without weakening window completeness or earliest-failure precedence.
-
-Dependencies: Complete the software-only startup-state recovery recorded in
-`task-ultra205-default-profile-soak`. Completion of this task is a prerequisite
-for drafting or authorizing any future soak hardware contract.
-
-Authorization boundary: software and real loopback TCP tests only. This task
-does not authorize hardware use, package flashing, Wi-Fi or pool credentials,
-device discovery, raw device origins, attempt-004, or any other network target.
-
-Verification: Pending.
-
-Completion review: Pending. The implementation must resolve the 109-reconnect
-signature before a future hardware attempt can be considered; tracking this
-work does not itself renew or expand the consumed soak authorization.
+or supply hardware evidence. The software prerequisite
+`task-campaign-websocket-connection-stability` is now completed and archived;
+the future attempt-004 draft remains non-authorizing and explicit-only.
 
 ## Future — Explicit Only
+
+### task-ultra205-default-profile-soak-attempt-004 | 2026-08-01 | Review a bounded upstream-default soak retry
+
+- [ ] Reconfirm that the exact source HEAD is clean, pushed, and passes every
+      software gate before building the exact Ultra 205 package.
+- [ ] Admit exactly one board 205 through `just detect-ultra205`, then run at
+      most one upstream-default 600-active-second soak using the exact package
+      and the private `scratch/ultra205-default-profile-soak/attempt-004`
+      evidence destination.
+- [ ] Require all twenty half-open 30-second continuity windows, a maximum
+      WebSocket observation gap of 5,000 ms, valid sealed v2 continuity
+      evidence, and no recurrence of the 109-idle-reconnect signature.
+- [ ] Accept bounded same-origin WebSocket reconnects only when every active
+      window and every terminal condition remains fully evidenced.
+- [ ] Preserve the previous board, profile, credential, safety, recovery,
+      redaction, exact-package, single-attempt, and non-promotion boundaries.
+
+Dependencies: `task-campaign-websocket-connection-stability` is completed and
+archived. The active `task-ultra205-default-profile-soak` remains the parent
+acceptance contract and is not completed or archived by this draft.
+
+Draft command surface, not current authority:
+
+1. `just detect-ultra205`
+2. `just package`
+3. `just mining-campaign stage=soak profile=upstream-default board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-default-profile-soak/attempt-004 duration-seconds=600 redact-evidence=true`
+4. At most one in-process, same-origin recovery pause after the earliest network
+   or watchdog failure, under the existing campaign observer contract.
+
+Draft evidence and acceptance boundary: use a mode-0700 ignored private root
+with mode-0600 artifacts; expose no credentials, identifiers, origins, URLs,
+frames, bodies, or operational paths. Require trusted package/runtime identity,
+the 60-second monitor-admission policy with 3-of-3 stable samples, fresh safety
+and watchdog truth, advancing ASIC and supervisor activity, non-regressing
+counters and revisions, correlated nonce and accepted share evidence, retained
+pool configuration, consumed lease, `mineonboot=false`, final paused HTTP and
+WebSocket state, confirmed safe-stop, USB cleanup, valid seals and digests, and
+no parity promotion. The prior thermal, voltage, power, fan, identity,
+ownership, credential, discovery, recovery, retry, and prohibited-effect limits
+remain unchanged. Any incomplete window, observation gap above 5,000 ms,
+repeated idle-reconnect signature, or terminal-proof failure stops without
+retry.
+
+Authorization boundary: future draft only. Do not build a hardware package,
+detect or connect to a device, access credentials, discover a network target,
+or execute attempt-004 unless a later user request names this exact stable task
+ID and separately approves its hardware contract. Naming another task or asking
+for ordinary automatic work does not activate this draft.
+
+Verification: Pending future review and separately authorized hardware use.
+
+Completion review: Pending. This record is review-ready but intentionally
+non-authorizing; it does not modify the active soak result, renew attempt-003,
+or provide hardware evidence.
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 

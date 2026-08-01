@@ -18,6 +18,29 @@ const WEBSOCKET_IO_TIMEOUT: Duration = Duration::from_millis(250);
 const RECONNECT_BACKOFF_MIN: Duration = Duration::from_secs(1);
 const RECONNECT_BACKOFF_MAX: Duration = Duration::from_secs(5);
 
+#[derive(Debug, Clone, Copy)]
+struct ReconnectBackoff {
+    next_delay: Duration,
+}
+
+impl ReconnectBackoff {
+    fn new() -> Self {
+        Self {
+            next_delay: RECONNECT_BACKOFF_MIN,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.next_delay = RECONNECT_BACKOFF_MIN;
+    }
+
+    fn take_delay(&mut self) -> Duration {
+        let delay = self.next_delay;
+        self.next_delay = (self.next_delay * 2).min(RECONNECT_BACKOFF_MAX);
+        delay
+    }
+}
+
 pub(super) fn observe_network(
     target: TrustedNetworkTarget,
     shared: Arc<Mutex<SharedSerialState>>,
@@ -32,7 +55,7 @@ pub(super) fn observe_network(
     let mut websocket_projection = None;
     let mut websocket_connected_once = false;
     let mut next_websocket_attempt = started;
-    let mut reconnect_backoff = RECONNECT_BACKOFF_MIN;
+    let mut reconnect_backoff = ReconnectBackoff::new();
     let mut next_http_poll = started;
     let mut maybe_terminal_deadline = None;
 
@@ -70,13 +93,12 @@ pub(super) fn observe_network(
                             accumulator.websocket_reconnect_count.saturating_add(1);
                     }
                     websocket_connected_once = true;
-                    reconnect_backoff = RECONNECT_BACKOFF_MIN;
+                    reconnect_backoff.reset();
                     websocket_projection = None;
                     maybe_websocket = Some(socket);
                 }
                 Err(_) => {
-                    next_websocket_attempt = now + reconnect_backoff;
-                    reconnect_backoff = (reconnect_backoff * 2).min(RECONNECT_BACKOFF_MAX);
+                    next_websocket_attempt = now + reconnect_backoff.take_delay();
                 }
             }
         }
@@ -105,8 +127,7 @@ pub(super) fn observe_network(
                 Ok(WebSocketRead::Closed) | Err(_) => {
                     maybe_websocket = None;
                     websocket_projection = None;
-                    next_websocket_attempt = Instant::now() + reconnect_backoff;
-                    reconnect_backoff = (reconnect_backoff * 2).min(RECONNECT_BACKOFF_MAX);
+                    next_websocket_attempt = Instant::now() + reconnect_backoff.take_delay();
                 }
             }
         }
@@ -210,10 +231,48 @@ fn elapsed_millis(started: Instant) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use bitaxe_api::{ApiSnapshot, OperatorSnapshotRevision, SystemInfoWire};
     use serde_json::json;
 
-    use super::apply_live_frame;
+    use super::{apply_live_frame, ReconnectBackoff};
+
+    #[test]
+    fn reconnect_backoff_is_one_two_four_then_five_seconds() {
+        // Arrange
+        let mut backoff = ReconnectBackoff::new();
+
+        // Act
+        let delays = [(); 6].map(|()| backoff.take_delay());
+
+        // Assert
+        assert_eq!(
+            delays,
+            [
+                Duration::from_secs(1),
+                Duration::from_secs(2),
+                Duration::from_secs(4),
+                Duration::from_secs(5),
+                Duration::from_secs(5),
+                Duration::from_secs(5),
+            ]
+        );
+    }
+
+    #[test]
+    fn successful_connection_resets_reconnect_backoff() {
+        // Arrange
+        let mut backoff = ReconnectBackoff::new();
+        assert_eq!(backoff.take_delay(), Duration::from_secs(1));
+        assert_eq!(backoff.take_delay(), Duration::from_secs(2));
+
+        // Act
+        backoff.reset();
+
+        // Assert
+        assert_eq!(backoff.take_delay(), Duration::from_secs(1));
+    }
 
     #[test]
     fn full_connect_frame_and_nested_diff_reconstruct_one_coherent_snapshot() {
