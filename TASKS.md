@@ -28,7 +28,7 @@ new work.
 
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
-- [ ] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan
+- [x] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan
       only after the conservative live-share task completes.
 - [ ] Count 600 seconds from authorized active mining rather than boot or
       connection start.
@@ -97,14 +97,28 @@ Hardware contract:
   `stop_repeated_boundary`, `stop_hardware_blocker`,
   `stop_authority_boundary`, or `stop_impossible_contract`.
 
-Verification: Pending. Run all required software gates, the exact permitted
-hardware commands, private-artifact permission checks, redaction and secret
-denylist verification, active-duration/correlation checks, lease/safe-stop
-validation, sealed result validation, and final diff review.
+Verification: `stop_hardware_blocker` on attempt 001. `cargo fmt --all`, strict
+Clippy, the all-target/all-feature Cargo build and tests, all 82 Bazel test
+targets, the managed Bright Builds checks, `just package`, and detector
+admission passed against exact source commit `8e75d046`. The campaign admitted
+the package and completed both supervised writes, then failed before runtime
+observation. Its protected result sealed with a matching digest and recorded
+`observation_failed`, zero markers, `safe_stop=not_observed`, and successful USB
+cleanup. The authoritative monitor-admission recovery summary observed the same
+accessible, holder-free device but reached only 2 of 3 stable samples within
+the 30-second bound; final cleanup later reached 3 of 3 within 60 seconds. The
+one-shot campaign keys were consumed and erased before use, and the conservative
+720-second lease-plus-stop margin elapsed without another device effect, but
+elapsed time is not safe-stop evidence. No unchanged retry is authorized.
 
-Completion review: Pending. This bounded soak does not authorize or verify
-automatic fan control, unbounded mining, complete statistics/hashrate parity,
-release readiness, or checklist promotion.
+Completion review: Blocked and not archived. The active-duration, submit,
+telemetry-correlation, lease-expiry, and hardware safe-stop criteria remain
+unverified, and no evidence was promoted. Resume requires a targeted,
+regression-backed fix at the monitor-admission stability boundary or an
+authorized non-invasive remediation with objective boundary-change proof, plus
+a fresh ordinal. The task still does not authorize or verify automatic fan
+control, unbounded mining, complete statistics/hashrate parity, release
+readiness, or checklist promotion.
 
 ## Future — Explicit Only
 
