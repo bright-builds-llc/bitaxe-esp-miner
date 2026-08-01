@@ -30,7 +30,7 @@ new work.
 
 - [x] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan
       only after the conservative live-share task completes.
-- [ ] Count 600 seconds from authorized active mining rather than boot or
+- [x] Count 600 seconds from authorized active mining rather than boot or
       connection start.
 - [ ] Require uninterrupted fresh safety truth, watchdog responsiveness,
       active work renewal, at least one new correlated nonce and pool response,
@@ -38,7 +38,7 @@ new work.
 - [ ] Confirm the device-local lease expires, hardware safe-stop completes,
       the lease is cleared, `mineonboot=false` persists, pool settings remain,
       and the new firmware remains installed in paused state.
-- [ ] Seal one private, redacted soak result without automatic parity
+- [x] Seal one private, redacted soak result without automatic parity
       promotion.
 
 Dependencies: Complete `task-ultra205-live-pool-share` successfully.
@@ -119,14 +119,26 @@ one-shot campaign keys were consumed and erased before use, and the conservative
 720-second lease-plus-stop margin elapsed without another device effect, but
 elapsed time is not safe-stop evidence. No unchanged retry is authorized.
 
-Completion review: Blocked and not archived. The active-duration, submit,
-telemetry-correlation, lease-expiry, and hardware safe-stop criteria remain
-unverified, and no evidence was promoted. Attempt 002 is authorized only by the
-targeted continuation contract above. Even if it verifies the monitor-admission
-fix, the task remains active until HTTP, WebSocket, and explicit watchdog
-evidence satisfy the broader soak criteria. The task still does not authorize
-or verify automatic fan control, unbounded mining, complete statistics/hashrate
-parity, release readiness, or checklist promotion.
+Attempt-002 verification: `complete` for the targeted monitor-admission fix.
+All required software gates passed and the clean exact package from source
+commit `0e3f19d5` was pushed before hardware use. Fresh detector admission found
+exactly one Ultra 205. The protected monitor-admission recovery summary recorded
+a 60-second deadline and reached 3 of 3 same-device, accessible, holder-free
+stable samples. The sealed campaign result recorded `status=accepted`,
+`terminal_category=soak_duration_complete`, 600.501 active seconds, trusted
+package/runtime identity, 10 accepted and zero rejected shares, fresh safety,
+`mineonboot=false`, confirmed safe-stop, and USB cleanup ready. Its result seal,
+mode-0700 root, mode-0600 files and recovery summaries, redaction denylist, and
+non-promotion state all passed. No retry was run and no evidence was promoted.
+
+Completion review: Targeted fix hardware-verified; broader task remains active
+and is not archived. Attempt 002 proves the monitor-admission boundary, active
+duration, mining/share path, safety, safe-stop, evidence seal, and USB cleanup.
+The current campaign result does not contain the correlated HTTP, WebSocket, or
+explicit watchdog evidence required by the broader soak contract, so those
+criteria remain unverified. The task still does not authorize or verify
+automatic fan control, unbounded mining, complete statistics/hashrate parity,
+release readiness, or checklist promotion.
 
 ## Future — Explicit Only
 
