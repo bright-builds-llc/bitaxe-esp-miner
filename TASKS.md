@@ -206,11 +206,48 @@ or supply hardware evidence. The software prerequisite
 the separately approved attempt-004 child contract below is now active and
 retains the parent's bounded acceptance criteria.
 
+Attempt-004 verification: `stop_repeated_boundary`; no retry was run. The
+authorized exact package came from clean pushed source commit `760859ef`, all
+required software gates and both GitHub workflows passed, and the manifest
+recorded v3, six artifacts, matching source identity, and `source_dirty=false`.
+Two private detector preflights each admitted exactly one Ultra 205 and cleaned
+up successfully; the second was a bounded host-output diagnostic after the
+local checker initially expected `port=` instead of the repository's `port:`
+label. Only one mining campaign was launched. Its protected result sealed with
+a valid digest and matching observation, serial-diagnostic, mining-diagnostic,
+and v2 network-continuity digests. The mode-0700 attempt root contains six
+mode-0600 artifacts, and the closed artifact denylist found no credential,
+origin, URL, network-address, USB-path, or raw operational-path leakage. The
+private mode-0600 monitor-admission summary recorded a 60-second deadline,
+same-device/accessibility/holder-free truth, and 3-of-3 stable samples.
+
+Attempt-004 completed 600.052 active seconds with 2,729 accepted serial
+markers, a 341-ms maximum active-marker gap, fresh required safety truth, 24
+accepted and zero rejected shares, advancing ASIC work, one completed block
+transition, retained pool configuration, consumed lease, `mineonboot=false`,
+valid final HTTP and reconstructed WebSocket paused state, confirmed
+device-local safe-stop, and USB cleanup ready. The earliest typed campaign
+failure remained `marker_invalid` with detail `marker_json_invalid`: exactly
+one of 2,730 marker candidates contained invalid JSON. Independently, the
+post-fix WebSocket signature recurred with 116 reconnects and a 6,455-ms
+maximum WebSocket gap, exceeding the 5,000-ms contract; HTTP reached a
+20,872-ms maximum gap and watchdog continuity was invalid. Although all twenty
+windows received observations and work renewal remained valid, the v2 network
+artifact correctly remained failed and the in-process observer issued its one
+recovery pause request.
+
+Attempt-004 closure: the repeated idle-reconnect signature after its targeted
+software fix selects `stop_repeated_boundary` even though the preserved
+earliest campaign failure is the distinct malformed-marker boundary. The
+broader soak remains active and unverified. Attempt-004 authorization is
+consumed; attempt-005, unchanged retry, parity promotion, and any expanded
+hardware or diagnostic action are not authorized.
+
 ### task-ultra205-default-profile-soak-attempt-004 | 2026-08-01 | Run one bounded upstream-default soak retry
 
-- [ ] Reconfirm that the exact source HEAD is clean, pushed, and passes every
+- [x] Reconfirm that the exact source HEAD is clean, pushed, and passes every
       software gate before building the exact Ultra 205 package.
-- [ ] Admit exactly one board 205 through `just detect-ultra205`, then run at
+- [x] Admit exactly one board 205 through `just detect-ultra205`, then run at
       most one upstream-default 600-active-second soak using the exact package
       and the private `scratch/ultra205-default-profile-soak/attempt-004`
       evidence destination.
@@ -219,7 +256,7 @@ retains the parent's bounded acceptance criteria.
       evidence, and no recurrence of the 109-idle-reconnect signature.
 - [ ] Accept bounded same-origin WebSocket reconnects only when every active
       window and every terminal condition remains fully evidenced.
-- [ ] Preserve the previous board, profile, credential, safety, recovery,
+- [x] Preserve the previous board, profile, credential, safety, recovery,
       redaction, exact-package, single-attempt, and non-promotion boundaries.
 
 Dependencies: `task-campaign-websocket-connection-stability` is completed and
@@ -280,12 +317,23 @@ safe-stop, identity, cleanup, sealing, and privacy requirements pass. Otherwise
 record `stop_repeated_boundary`, `stop_hardware_blocker`,
 `stop_authority_boundary`, or `stop_impossible_contract` and stop without retry.
 
-Verification: Contract explicitly approved; software gates, exact clean pushed
-HEAD, package admission, device admission, and the one hardware attempt remain
-pending.
+Verification: `stop_repeated_boundary`. Exact clean pushed commit `760859ef`,
+all seven software gates, both GitHub workflows, manifest/package admission,
+two successful private detector preflights, and exactly one campaign invocation
+passed their respective boundaries. The sealed result proved the full active
+duration, fresh safety, work/share progress, terminal persistence, safe-stop,
+USB cleanup, modes, digests, redaction, and non-promotion. It failed closed on
+one invalid-JSON serial marker and independently recorded 116 WebSocket
+reconnects, a 6,455-ms WebSocket gap, a 20,872-ms HTTP gap, and invalid watchdog
+continuity. No retry was run.
 
-Completion review: Pending one terminal attempt-004 outcome. No hardware action
-has occurred under this contract yet.
+Completion review: Closed at `stop_repeated_boundary`. The targeted WebSocket
+fix did not eliminate the real-device idle-reconnect signature, and the
+5,000-ms continuity ceiling did not pass. The earliest `marker_invalid` failure
+is preserved rather than overwritten by the later network evidence. This task
+remains active and unarchived as a terminal blocker under the tracker rules;
+its authorization is consumed and it cannot be selected for another hardware
+run.
 
 ## Future — Explicit Only
 
