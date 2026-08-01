@@ -1,7 +1,7 @@
 use super::markers::{
-    CampaignFailureMarker, JobTransitionMarker, ObservationFreshnessMarker,
-    ObservationRequirementsMarker, PoolConfigMarker, SafeStopMarker, SafetyMarker,
-    SubmitOutcomeMarker,
+    AsicBridgeMarker, CampaignAsicEventTrace, CampaignFailureMarker, JobTransitionMarker,
+    ObservationFreshnessMarker, ObservationRequirementsMarker, PoolConfigMarker, SafeStopMarker,
+    SafetyMarker, SubmitOutcomeMarker,
 };
 use super::*;
 
@@ -36,6 +36,7 @@ struct CampaignResultEvidence<'a> {
     accepted_share_count: u64,
     rejected_share_count: u64,
     job_transition: Option<&'a JobTransitionMarker>,
+    asic_bridge: Option<&'a AsicBridgeMarker>,
     maximum_active_marker_gap_ms: u64,
     terminal_reason: &'static str,
     active_ms: u64,
@@ -50,6 +51,7 @@ struct CampaignResultEvidence<'a> {
     usb_cleanup: &'static str,
     observations_sha256: &'a str,
     diagnostics_sha256: &'a str,
+    mining_diagnostics_sha256: &'a str,
     redacted: bool,
     parity_promotion: bool,
 }
@@ -57,6 +59,7 @@ struct CampaignResultEvidence<'a> {
 #[derive(Clone)]
 pub(super) struct CampaignEvidencePaths {
     diagnostics: Utf8PathBuf,
+    mining_diagnostics: Utf8PathBuf,
     observations: Utf8PathBuf,
     result: Utf8PathBuf,
     seal: Utf8PathBuf,
@@ -85,12 +88,14 @@ pub(super) fn preflight_campaign_evidence(root: &Utf8Path) -> Result<CampaignEvi
     }
     let paths = CampaignEvidencePaths {
         diagnostics: root.join("campaign-diagnostics.private.json"),
+        mining_diagnostics: root.join("campaign-mining-diagnostics.private.json"),
         observations: root.join("campaign-observations.private.json"),
         result: root.join("campaign-result.json"),
         seal: root.join("campaign-result.sha256"),
     };
     for path in [
         &paths.diagnostics,
+        &paths.mining_diagnostics,
         &paths.observations,
         &paths.result,
         &paths.seal,
@@ -119,6 +124,21 @@ pub(super) fn finish_campaign_attempt(
         write_private_new_bytes(&paths.diagnostics, &diagnostic_bytes)
             .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::EvidenceSealFailed))?;
         let diagnostics_sha256 = sha256_bytes(&diagnostic_bytes);
+
+        let mining_diagnostics = CampaignMiningDiagnosticsEvidence {
+            schema: CAMPAIGN_MINING_DIAGNOSTICS_SCHEMA,
+            asic_bridge: attempt
+                .marker_aggregate
+                .terminal
+                .as_ref()
+                .map(|marker| &marker.asic_bridge),
+            event_trace: &attempt.marker_aggregate.asic_event_trace,
+        };
+        let mut mining_diagnostic_bytes = serde_json::to_vec_pretty(&mining_diagnostics)?;
+        mining_diagnostic_bytes.push(b'\n');
+        write_private_new_bytes(&paths.mining_diagnostics, &mining_diagnostic_bytes)
+            .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::EvidenceSealFailed))?;
+        let mining_diagnostics_sha256 = sha256_bytes(&mining_diagnostic_bytes);
 
         let observations = CampaignObservationEvidence {
             schema: CAMPAIGN_OBSERVATIONS_SCHEMA,
@@ -177,6 +197,7 @@ pub(super) fn finish_campaign_attempt(
             accepted_share_count: maybe_terminal.map_or(0, |marker| marker.accepted_share_count),
             rejected_share_count: maybe_terminal.map_or(0, |marker| marker.rejected_share_count),
             job_transition: maybe_terminal.map(|marker| &marker.job_transition),
+            asic_bridge: maybe_terminal.map(|marker| &marker.asic_bridge),
             maximum_active_marker_gap_ms: attempt.marker_aggregate.maximum_active_marker_gap_ms,
             terminal_reason: maybe_terminal
                 .map_or("not_observed", |marker| marker.terminal_reason.label()),
@@ -207,6 +228,7 @@ pub(super) fn finish_campaign_attempt(
             },
             observations_sha256: &observations_sha256,
             diagnostics_sha256: &diagnostics_sha256,
+            mining_diagnostics_sha256: &mining_diagnostics_sha256,
             redacted: true,
             parity_promotion: false,
         };
@@ -232,4 +254,11 @@ pub(super) fn finish_campaign_attempt(
     emit_line("mining_campaign_result", terminal_category.as_str())?;
     emit_line("campaign_evidence", PROTECTED_OPERATIONAL)?;
     result.map(|_| ()).map_err(anyhow::Error::new)
+}
+
+#[derive(Serialize)]
+struct CampaignMiningDiagnosticsEvidence<'a> {
+    schema: &'static str,
+    asic_bridge: Option<&'a AsicBridgeMarker>,
+    event_trace: &'a CampaignAsicEventTrace,
 }

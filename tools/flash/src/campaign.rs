@@ -11,11 +11,12 @@ use markers::CampaignMarkerAggregate;
 use serial::{CampaignSerialDiagnostics, CampaignSerialOutcomeDetail};
 
 const CAMPAIGN_MARKER_PREFIX: &str = "mining_campaign_status=";
-const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v7";
+const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v8";
 const CAMPAIGN_PREPARATION_PREFIX: &str = "mining_campaign_preparation=";
 const CAMPAIGN_PREPARATION_SCHEMA: &str = "mining-campaign-preparation-v1";
-const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v3";
-const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v2";
+const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v4";
+const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v3";
+const CAMPAIGN_MINING_DIAGNOSTICS_SCHEMA: &str = "mining-campaign-asic-diagnostics-v1";
 const OBSERVATION_DURATION_SECONDS: u64 = 360;
 const MINING_DURATION_SECONDS: u64 = 600;
 const JOB_TRANSITION_DURATION_SECONDS: u64 = 1_800;

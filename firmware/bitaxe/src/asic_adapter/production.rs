@@ -20,8 +20,8 @@ use bitaxe_asic::bm1366::{
     },
     result::{
         classify_bm1366_production_result, parse_bm1366_result_frame, Bm1366NonceResult,
-        Bm1366ParsedResult, Bm1366ProductionResult, Bm1366RegisterRead, Bm1366ValidJobIds,
-        BM1366_RESULT_FRAME_LEN,
+        Bm1366ParsedResult, Bm1366ProductionResult, Bm1366RegisterRead, Bm1366ResultDiscardReason,
+        Bm1366ValidJobIds, BM1366_RESULT_FRAME_LEN,
     },
 };
 
@@ -31,7 +31,7 @@ use super::{reset, status, uart};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProductionReadOutcome {
     Pending,
-    MalformedDiscarded,
+    Discarded(Bm1366ResultDiscardReason),
     JobNonce(Bm1366NonceResult),
     RegisterReadProof(Bm1366RegisterRead),
 }
@@ -454,7 +454,7 @@ impl ProductionAsicExecutor {
                     valid_jobs,
                     uart::RESULT_WORK_TIMEOUT_MS,
                 )? {
-                    ProductionReadOutcome::Pending | ProductionReadOutcome::MalformedDiscarded => {
+                    ProductionReadOutcome::Pending | ProductionReadOutcome::Discarded(_) => {
                         Ok(None)
                     }
                     ProductionReadOutcome::JobNonce(result) => Ok(Some(result)),
@@ -485,7 +485,6 @@ fn try_read_production_result_on_state(
     valid_jobs: &Bm1366ValidJobIds,
     poll_timeout_ms: u32,
 ) -> Result<ProductionReadOutcome, ProductionAsicBlocker> {
-    log::info!("asic_production_trace=result_read_attempt poll_timeout_ms={poll_timeout_ms}");
     // Flood-safe compact counters (no hex); emit every N polls for comparator D-06.
     uart::note_result_poll_and_maybe_emit_summary();
     let uart = state
@@ -507,11 +506,11 @@ fn try_read_production_result_on_state(
             log::info!("asic_production_trace=register_read_parsed");
             Ok(ProductionReadOutcome::RegisterReadProof(read))
         }
-        Bm1366ProductionResult::MalformedDiscarded => {
+        Bm1366ProductionResult::Discarded(reason) => {
             uart.clear_rx()
                 .map_err(|_| ProductionAsicBlocker::UartFailed)?;
-            log::warn!("asic_production_trace=result_frame_discarded reason=malformed");
-            Ok(ProductionReadOutcome::MalformedDiscarded)
+            log::warn!("asic_bridge=typed_discard outcome={}", reason.label());
+            Ok(ProductionReadOutcome::Discarded(reason))
         }
     }
 }

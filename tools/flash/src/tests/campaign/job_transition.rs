@@ -32,6 +32,19 @@ fn terminal_marker(completed: bool) -> String {
             "reconnect_count": 0,
             "latest_state": "replacement_result_correlated",
         });
+        value["asic_bridge"]["generation_invalidation_count"] = serde_json::json!(2);
+        value["asic_bridge"]["poll_request_count"] = serde_json::json!(10);
+        value["asic_bridge"]["idle_completion_count"] = serde_json::json!(8);
+        value["asic_bridge"]["nonce_completion_count"] = serde_json::json!(2);
+        value["asic_bridge"]["post_transition_poll_request_count"] = serde_json::json!(2);
+        value["asic_bridge"]["post_transition_completion_count"] = serde_json::json!(2);
+        value["asic_bridge"]["post_transition_nonce_emission_count"] = serde_json::json!(1);
+        value["asic_bridge"]["post_transition_correlation_count"] = serde_json::json!(1);
+        value["asic_bridge"]["changed_block_to_replacement_dispatch_ms"] = serde_json::json!(1);
+        value["asic_bridge"]["changed_block_to_first_poll_ms"] = serde_json::json!(2);
+        value["asic_bridge"]["changed_block_to_first_nonce_ms"] = serde_json::json!(3);
+        value["asic_bridge"]["changed_block_to_first_correlation_ms"] = serde_json::json!(4);
+        value["asic_bridge"]["final_poll_state"] = serde_json::json!("invalidated");
     }
     format!("{CAMPAIGN_MARKER_PREFIX}{value}")
 }
@@ -56,6 +69,25 @@ fn campaign_uses_exact_duration_and_accepts_complete_chain() {
     assert_eq!(result["terminal_category"], "job_transition_complete");
     assert_eq!(result["status"], "accepted");
     assert_eq!(result["job_transition"]["completed_transition_count"], 1);
+    assert_eq!(
+        result["asic_bridge"]["post_transition_poll_request_count"],
+        2
+    );
+    let diagnostics: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(
+            command
+                .evidence_dir
+                .join("campaign-mining-diagnostics.private.json")
+                .as_std_path(),
+        )
+        .expect("mining diagnostics"),
+    )
+    .expect("mining diagnostics JSON");
+    assert_eq!(diagnostics["schema"], "mining-campaign-asic-diagnostics-v1");
+    assert_eq!(
+        diagnostics["asic_bridge"]["post_transition_correlation_count"],
+        1
+    );
     assert_eq!(
         environment.campaign_observations(),
         vec![(MiningCampaignStage::JobTransition, 1_980)]

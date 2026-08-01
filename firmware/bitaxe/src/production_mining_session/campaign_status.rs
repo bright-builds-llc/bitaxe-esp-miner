@@ -1,8 +1,8 @@
 //! Redacted retained status projection for repo-owned mining campaigns.
 
 use bitaxe_stratum::v1::production_session::{
-    JobTransitionEvidence, MiningCampaignLease, MiningCampaignState, MiningHardwareProfilePreset,
-    ProductionSessionSnapshot,
+    AsicBridgeEvidence, JobTransitionEvidence, MiningCampaignLease, MiningCampaignState,
+    MiningHardwareProfilePreset, ProductionSessionSnapshot,
 };
 use bitaxe_stratum::v1::state::MiningOperatorIntent;
 use serde::Serialize;
@@ -118,6 +118,10 @@ pub(super) struct CampaignStatusTracker {
     actuation: CampaignActuationStatus,
     safe_stop: CampaignSafeStopStatus,
     failure: CampaignFailureDiagnostic,
+    logged_generation_invalidation_count: u64,
+    logged_stale_completion_count: u64,
+    poll_rearm_logged: bool,
+    nonce_correlation_logged: bool,
 }
 
 impl CampaignStatusTracker {
@@ -141,6 +145,10 @@ impl CampaignStatusTracker {
             },
             safe_stop: CampaignSafeStopStatus::NotRequired,
             failure: CampaignFailureDiagnostic::NONE,
+            logged_generation_invalidation_count: 0,
+            logged_stale_completion_count: 0,
+            poll_rearm_logged: false,
+            nonce_correlation_logged: false,
         }
     }
 
@@ -197,6 +205,7 @@ impl CampaignStatusTracker {
     }
 
     pub(super) fn note_snapshot(&mut self, snapshot: &ProductionSessionSnapshot, now_ms: u64) {
+        self.maybe_log_asic_evidence(snapshot.asic_bridge);
         if snapshot.campaign_state == MiningCampaignState::Active {
             let active_since = *self.maybe_active_since_ms.get_or_insert(now_ms);
             self.retained_active_ms = now_ms.saturating_sub(active_since);
@@ -210,6 +219,25 @@ impl CampaignStatusTracker {
             self.lease_authorizing = false;
             self.actuation = CampaignActuationStatus::SafeStopped;
             self.safe_stop = CampaignSafeStopStatus::Confirmed;
+        }
+    }
+
+    fn maybe_log_asic_evidence(&mut self, evidence: AsicBridgeEvidence) {
+        if evidence.generation_invalidation_count > self.logged_generation_invalidation_count {
+            self.logged_generation_invalidation_count = evidence.generation_invalidation_count;
+            log::info!("asic_bridge=generation_invalidated");
+        }
+        if !self.poll_rearm_logged && evidence.post_transition_poll_request_count > 0 {
+            self.poll_rearm_logged = true;
+            log::info!("asic_bridge=poll_rearmed");
+        }
+        if evidence.stale_completion_count > self.logged_stale_completion_count {
+            self.logged_stale_completion_count = evidence.stale_completion_count;
+            log::warn!("asic_bridge=stale_completion");
+        }
+        if !self.nonce_correlation_logged && evidence.post_transition_correlation_count > 0 {
+            self.nonce_correlation_logged = true;
+            log::info!("asic_bridge=nonce_correlated");
         }
     }
 
@@ -227,7 +255,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v7",
+            schema: "mining-campaign-status-v8",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -248,6 +276,7 @@ impl CampaignStatusTracker {
             accepted_share_count: snapshot.mining.counters.accepted,
             rejected_share_count: snapshot.mining.counters.rejected,
             job_transition: CampaignJobTransitionProjection::from(snapshot.job_transition),
+            asic_bridge: snapshot.asic_bridge,
             terminal_reason: snapshot
                 .maybe_blocker
                 .map_or("none", |blocker| blocker.label()),
@@ -292,6 +321,7 @@ struct CampaignStatusProjection {
     accepted_share_count: u64,
     rejected_share_count: u64,
     job_transition: CampaignJobTransitionProjection,
+    asic_bridge: AsicBridgeEvidence,
     terminal_reason: &'static str,
     safety: &'static str,
     fresh_observation_count: u8,
@@ -370,6 +400,7 @@ mod tests {
             hardware_state: MiningHardwareState::Unprepared,
             campaign_state,
             job_transition: JobTransitionEvidence::default(),
+            asic_bridge: AsicBridgeEvidence::default(),
             mining: MiningRuntimeState::default(),
         }
     }
@@ -390,7 +421,7 @@ mod tests {
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v7");
+        assert_eq!(value["schema"], "mining-campaign-status-v8");
         assert_eq!(value["stage"], "observation");
         assert!(value["lease_id"].is_null());
         assert_eq!(value["campaign_state"], "unavailable");

@@ -1,5 +1,7 @@
+mod asic;
 mod transport;
 
+use super::asic_diagnostics::AsicBridgeDiagnosticsTracker;
 use super::campaign::{
     MiningCampaignLease, MiningCampaignLeaseId, MiningCampaignState, MiningCampaignStopCondition,
     MiningHardwareState,
@@ -41,6 +43,7 @@ pub struct ProductionMiningSession {
     pub(super) maybe_prepared_at_ms: Option<u64>,
     pub(super) maybe_active_since_ms: Option<u64>,
     pub(super) job_transition: JobTransitionTracker,
+    pub(super) asic_diagnostics: AsicBridgeDiagnosticsTracker,
     pub(super) terminal_publication_pending: bool,
     pub(super) maybe_retained_mining: Option<crate::v1::state::MiningRuntimeState>,
     pub(super) maybe_last_snapshot: Option<ProductionSessionSnapshot>,
@@ -80,6 +83,7 @@ impl ProductionMiningSession {
             maybe_prepared_at_ms: None,
             maybe_active_since_ms: None,
             job_transition: JobTransitionTracker::default(),
+            asic_diagnostics: AsicBridgeDiagnosticsTracker::default(),
             terminal_publication_pending: false,
             maybe_retained_mining: None,
             maybe_last_snapshot: None,
@@ -144,6 +148,7 @@ impl ProductionMiningSession {
             hardware_state: self.hardware_state,
             campaign_state: self.campaign_state,
             job_transition: self.job_transition.evidence(),
+            asic_bridge: self.asic_diagnostics.evidence(),
             mining,
         }
     }
@@ -238,41 +243,22 @@ impl ProductionMiningSession {
                 observation,
                 now_ms,
             } => {
-                if let Some(active_pool) = self.recovery.projection().maybe_active_pool {
-                    if self.current_generation(active_pool) != Some(observation.observed_generation)
-                    {
-                        self.job_transition.note_stale_generation_result();
-                        return Ok(effects);
-                    }
-                    let maybe_outcome = self
-                        .maybe_pool_runtime_mut(active_pool)
-                        .map(|pool_runtime| {
-                            pool_runtime.runtime.apply_bridge_observation(observation)
-                        })
-                        .transpose()?;
-                    if maybe_outcome.is_some_and(|outcome| {
-                        !matches!(
-                            outcome,
-                            crate::v1::live_runtime::BridgeObservationOutcome::Blocked { .. }
-                        )
-                    }) {
-                        self.job_transition
-                            .note_correlated_result(observation.observed_generation);
-                    }
-                    self.drain_runtime_actions(active_pool, &mut effects)?;
-                    self.bridge.note_result_received();
-                    self.drive_bridge(now_ms, &mut effects)?;
-                }
+                self.handle_asic_result(observation, now_ms, &mut effects)?;
             }
             ProductionSessionEvent::AsicPollTimedOut { generation, now_ms } => {
-                let maybe_active_pool = self.recovery.projection().maybe_active_pool;
-                if maybe_active_pool.and_then(|pool| self.current_generation(pool))
-                    != Some(generation)
-                {
-                    return Ok(effects);
-                }
-                let _streak = self.bridge.note_poll_timeout();
-                self.drive_bridge(now_ms, &mut effects)?;
+                self.handle_asic_poll_completion(
+                    generation,
+                    super::asic_diagnostics::AsicPollCompletion::Idle,
+                    now_ms,
+                    &mut effects,
+                )?;
+            }
+            ProductionSessionEvent::AsicPollCompleted {
+                generation,
+                completion,
+                now_ms,
+            } => {
+                self.handle_asic_poll_completion(generation, completion, now_ms, &mut effects)?;
             }
             ProductionSessionEvent::AsicInteractionFailed {
                 generation,
@@ -369,7 +355,7 @@ impl ProductionMiningSession {
         let snapshot = self.snapshot();
         if self.maybe_last_snapshot.as_ref() != Some(&snapshot) {
             self.maybe_last_snapshot = Some(snapshot.clone());
-            effects.push(ProductionSessionEffect::Publish(snapshot));
+            effects.push(ProductionSessionEffect::Publish(Box::new(snapshot)));
         }
     }
 
@@ -441,6 +427,7 @@ impl ProductionMiningSession {
                 self.maybe_prepared_at_ms = None;
                 self.maybe_active_since_ms = None;
                 self.job_transition = JobTransitionTracker::default();
+                self.asic_diagnostics = AsicBridgeDiagnosticsTracker::default();
                 self.maybe_retained_mining = None;
                 effects.push(ProductionSessionEffect::PrepareHardware {
                     lease_id: lease.id(),

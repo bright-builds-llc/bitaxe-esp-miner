@@ -238,6 +238,7 @@ rust_test(
     edition = "2021",
     deps = [
         "//crates/bitaxe-stratum:bitaxe_stratum",
+        "@crates//:log",
         "@crates//:serde",
         "@crates//:serde_json",
     ],

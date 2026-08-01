@@ -242,6 +242,14 @@ impl OrdinaryEspProductionSessionAdapter {
                 AsicWorkerEvent::PollTimedOut { generation } => {
                     ProductionSessionEvent::AsicPollTimedOut { generation, now_ms }
                 }
+                AsicWorkerEvent::PollCompleted {
+                    generation,
+                    completion,
+                } => ProductionSessionEvent::AsicPollCompleted {
+                    generation,
+                    completion,
+                    now_ms,
+                },
                 AsicWorkerEvent::Failed {
                     generation,
                     failure,
@@ -295,7 +303,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_snapshot(&snapshot, now_ms);
                 }
-                crate::runtime_snapshot::publish_production_session_snapshot(snapshot);
+                crate::runtime_snapshot::publish_production_session_snapshot(*snapshot);
                 None
             }
             ProductionSessionEffect::BlockSubmissions

@@ -4,6 +4,7 @@ use bitaxe_asic::bm1366::{
     command::VersionMask, production::Bm1366ProductionCommand, result::Bm1366ValidJobIds,
 };
 
+use super::asic_diagnostics::{AsicBridgeEvidence, AsicPollCompletion};
 use super::campaign::{
     HardwarePreparationFailure, MiningCampaignLeaseId, MiningCampaignState, MiningHardwareProfile,
     MiningHardwareState,
@@ -134,6 +135,7 @@ pub struct ProductionSessionSnapshot {
     pub hardware_state: MiningHardwareState,
     pub campaign_state: MiningCampaignState,
     pub job_transition: JobTransitionEvidence,
+    pub asic_bridge: AsicBridgeEvidence,
     pub mining: MiningRuntimeState,
 }
 
@@ -173,6 +175,11 @@ pub enum ProductionSessionEvent {
     },
     AsicPollTimedOut {
         generation: PoolSessionGeneration,
+        now_ms: u64,
+    },
+    AsicPollCompleted {
+        generation: PoolSessionGeneration,
+        completion: AsicPollCompletion,
         now_ms: u64,
     },
     AsicInteractionFailed {
@@ -231,6 +238,7 @@ impl fmt::Debug for ProductionSessionEvent {
                 Self::TransportClosed { .. } => "ProductionSessionEvent::TransportClosed",
                 Self::AsicResult { .. } => "ProductionSessionEvent::AsicResult(redacted)",
                 Self::AsicPollTimedOut { .. } => "ProductionSessionEvent::AsicPollTimedOut",
+                Self::AsicPollCompleted { .. } => "ProductionSessionEvent::AsicPollCompleted",
                 Self::AsicInteractionFailed { .. } => {
                     "ProductionSessionEvent::AsicInteractionFailed"
                 }
@@ -289,7 +297,7 @@ pub enum ProductionSessionEffect {
     SafeStopHardware {
         lease_id: MiningCampaignLeaseId,
     },
-    Publish(ProductionSessionSnapshot),
+    Publish(Box<ProductionSessionSnapshot>),
 }
 
 impl fmt::Debug for ProductionSessionEffect {

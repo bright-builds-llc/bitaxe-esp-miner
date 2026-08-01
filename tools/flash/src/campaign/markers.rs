@@ -1,5 +1,8 @@
 use super::*;
 
+mod asic;
+pub(super) use asic::*;
+
 const JOB_TRANSITION_MAXIMUM_MARKER_GAP_MS: u64 = 5_000;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -293,6 +296,7 @@ pub(super) struct CampaignStatusMarker {
     pub(super) accepted_share_count: u64,
     pub(super) rejected_share_count: u64,
     pub(super) job_transition: JobTransitionMarker,
+    pub(super) asic_bridge: AsicBridgeMarker,
     pub(super) terminal_reason: CampaignTerminalReasonMarker,
     pub(super) safety: SafetyMarker,
     pub(super) fresh_observation_count: u8,
@@ -310,6 +314,7 @@ pub(super) struct CampaignMarkerAggregate {
     pub(super) marker_count: u64,
     pub(super) maximum_active_marker_gap_ms: u64,
     pub(super) terminal: Option<CampaignStatusMarker>,
+    pub(super) asic_event_trace: CampaignAsicEventTrace,
     #[serde(skip)]
     pub(super) maybe_failure_category: Option<CampaignTerminalCategory>,
     #[serde(skip)]
@@ -325,6 +330,8 @@ impl CampaignMarkerAggregate {
         admission: CampaignAdmission,
     ) -> Option<CampaignTerminalCategory> {
         self.marker_count = self.marker_count.saturating_add(1);
+        self.asic_event_trace
+            .observe(marker.asic_bridge.latest_event);
         if matches!(
             marker.campaign_state,
             CampaignStateMarker::Active | CampaignStateMarker::SafeStopping
@@ -534,6 +541,11 @@ fn assess_job_transition_terminal(
         || transition.replacement_dispatch_count == 0
         || transition.post_transition_correlated_result_count == 0
         || transition.completed_transition_count == 0
+        || marker.asic_bridge.post_transition_poll_request_count == 0
+        || marker.asic_bridge.post_transition_completion_count == 0
+        || marker.asic_bridge.post_transition_nonce_emission_count == 0
+        || marker.asic_bridge.post_transition_correlation_count == 0
+        || marker.asic_bridge.final_poll_state == AsicPollStateMarker::InFlight
     {
         return Err(CampaignFailure::new(
             CampaignTerminalCategory::JobTransitionEvidenceIncomplete,

@@ -88,7 +88,36 @@ pub enum Bm1366ParsedResult {
 pub enum Bm1366ProductionResult {
     JobNonce(Bm1366NonceResult),
     RegisterRead(Bm1366RegisterRead),
-    MalformedDiscarded,
+    Discarded(Bm1366ResultDiscardReason),
+}
+
+/// Privacy-safe parser failure categories for production result telemetry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Bm1366ResultDiscardReason {
+    InvalidLength,
+    InvalidPreamble,
+    InvalidCrc,
+    JobLookup,
+    Core,
+    AddressInterval,
+    RegisterResponse,
+    ParserInvariant,
+}
+
+impl Bm1366ResultDiscardReason {
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::InvalidLength => "invalid_length",
+            Self::InvalidPreamble => "invalid_preamble",
+            Self::InvalidCrc => "invalid_crc",
+            Self::JobLookup => "job_lookup",
+            Self::Core => "core",
+            Self::AddressInterval => "address_interval",
+            Self::RegisterResponse => "register_response",
+            Self::ParserInvariant => "parser_invariant",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,7 +163,24 @@ pub fn classify_bm1366_production_result(
     match parse_bm1366_result_frame(bytes, valid_jobs, address_interval) {
         Ok(Bm1366ParsedResult::JobNonce(result)) => Bm1366ProductionResult::JobNonce(result),
         Ok(Bm1366ParsedResult::RegisterRead(read)) => Bm1366ProductionResult::RegisterRead(read),
-        Err(_) => Bm1366ProductionResult::MalformedDiscarded,
+        Err(fault) => Bm1366ProductionResult::Discarded(discard_reason(fault)),
+    }
+}
+
+const fn discard_reason(fault: Bm1366ProtocolFault) -> Bm1366ResultDiscardReason {
+    match fault {
+        Bm1366ProtocolFault::InvalidLength { .. } => Bm1366ResultDiscardReason::InvalidLength,
+        Bm1366ProtocolFault::BadPreamble { .. } => Bm1366ResultDiscardReason::InvalidPreamble,
+        Bm1366ProtocolFault::BadCrc => Bm1366ResultDiscardReason::InvalidCrc,
+        Bm1366ProtocolFault::InvalidJobId { .. } => Bm1366ResultDiscardReason::JobLookup,
+        Bm1366ProtocolFault::InvalidCoreId { .. } => Bm1366ResultDiscardReason::Core,
+        Bm1366ProtocolFault::ChipCountMismatch { .. } => Bm1366ResultDiscardReason::AddressInterval,
+        Bm1366ProtocolFault::UnknownRegister { .. } => Bm1366ResultDiscardReason::RegisterResponse,
+        Bm1366ProtocolFault::PreflightMissing { .. }
+        | Bm1366ProtocolFault::Timeout { .. }
+        | Bm1366ProtocolFault::TranscriptWriteMismatch => {
+            Bm1366ResultDiscardReason::ParserInvariant
+        }
     }
 }
 
@@ -241,8 +287,8 @@ mod tests {
 
     use super::{
         classify_bm1366_production_result, parse_bm1366_result_frame, Bm1366ParsedResult,
-        Bm1366ProductionResult, Bm1366ValidJobIds, BM1366_RECEIVE_PREAMBLE,
-        BM1366_RESULT_FRAME_LEN,
+        Bm1366ProductionResult, Bm1366ResultDiscardReason, Bm1366ValidJobIds,
+        BM1366_RECEIVE_PREAMBLE, BM1366_RESULT_FRAME_LEN,
     };
 
     fn crc_residue_byte(body: [u8; 8], is_job_response: bool) -> u8 {
@@ -355,7 +401,46 @@ mod tests {
             classify_bm1366_production_result(&malformed, &Bm1366ValidJobIds::empty(), 256);
 
         // Assert
-        assert_eq!(outcome, Bm1366ProductionResult::MalformedDiscarded);
+        assert_eq!(
+            outcome,
+            Bm1366ProductionResult::Discarded(Bm1366ResultDiscardReason::InvalidPreamble)
+        );
+    }
+
+    #[test]
+    fn bm1366_production_result_reports_closed_discard_categories() {
+        // Arrange
+        let valid_jobs = Bm1366ValidJobIds::single(Bm1366JobId::new(0x28));
+        let valid_nonce = (2_u32 << 25) | (0x20_u32 << 17) | 0x1234;
+        let valid_job = result_frame(job_body(0x28, valid_nonce, 0x0003), true);
+        let invalid_core = result_frame(job_body(0x28, (112_u32 << 25) | 0x1234, 0x0003), true);
+        let unknown_job = result_frame(job_body(0x30, valid_nonce, 0x0003), true);
+        let unknown_register = result_frame(register_body(0xfe), false);
+        let mut bad_crc = valid_job;
+        bad_crc[10] ^= 0x01;
+
+        // Act
+        let outcomes = [
+            classify_bm1366_production_result(&valid_job[..10], &valid_jobs, 16),
+            classify_bm1366_production_result(&bad_crc, &valid_jobs, 16),
+            classify_bm1366_production_result(&unknown_job, &valid_jobs, 16),
+            classify_bm1366_production_result(&invalid_core, &valid_jobs, 16),
+            classify_bm1366_production_result(&valid_job, &valid_jobs, 0),
+            classify_bm1366_production_result(&unknown_register, &valid_jobs, 16),
+        ];
+
+        // Assert
+        assert_eq!(
+            outcomes,
+            [
+                Bm1366ProductionResult::Discarded(Bm1366ResultDiscardReason::InvalidLength),
+                Bm1366ProductionResult::Discarded(Bm1366ResultDiscardReason::InvalidCrc),
+                Bm1366ProductionResult::Discarded(Bm1366ResultDiscardReason::JobLookup),
+                Bm1366ProductionResult::Discarded(Bm1366ResultDiscardReason::Core),
+                Bm1366ProductionResult::Discarded(Bm1366ResultDiscardReason::AddressInterval),
+                Bm1366ProductionResult::Discarded(Bm1366ResultDiscardReason::RegisterResponse),
+            ]
+        );
     }
 
     #[test]

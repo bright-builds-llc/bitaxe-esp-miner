@@ -78,7 +78,7 @@ impl DeterministicProductionSessionAdapter {
                         self.asic_commands.push(*command);
                     }
                     ProductionSessionEffect::Publish(snapshot) => {
-                        self.snapshots.push(snapshot.clone());
+                        self.snapshots.push(snapshot.as_ref().clone());
                     }
                     ProductionSessionEffect::ApplyVersionMask { .. }
                     | ProductionSessionEffect::PollAsic { .. }

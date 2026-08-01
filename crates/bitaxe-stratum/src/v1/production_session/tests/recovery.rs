@@ -281,7 +281,11 @@ fn stale_asic_timeout_and_failure_do_not_mutate_the_current_generation() {
 
     // Assert
     assert_ne!(current_generation, stale_generation);
-    assert!(adapter.effects.is_empty());
+    assert!(matches!(
+        adapter.effects.as_slice(),
+        [ProductionSessionEffect::Publish(snapshot)]
+            if snapshot.asic_bridge.stale_completion_count == 1
+    ));
     assert_eq!(adapter.asic_commands.len(), dispatches_before);
     assert_eq!(
         adapter.session.snapshot().phase,

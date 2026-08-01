@@ -4,6 +4,7 @@
 //! recovery, Stratum V1 progression, framing, work correlation, submit
 //! classification, bridge cadence, and ordered safe stop.
 
+mod asic_diagnostics;
 pub(super) mod campaign;
 mod job_transition;
 mod orchestration;
@@ -16,6 +17,11 @@ pub use crate::v1::recovery_policy::{
     ProductionSessionNotificationOutcome, ProductionSessionPhase, ProductionSessionWakeup,
     CONNECTION_ATTEMPTS_PER_POOL, CONNECTION_RETRY_DELAY_MS, PRIMARY_INITIAL_PROBE_DELAY_MS,
     PRIMARY_RECURRING_PROBE_DELAY_MS, RECOVERY_PROBE_DELAY_MS,
+};
+pub use asic_diagnostics::{
+    AsicBlockedCorrelationEvidence, AsicBridgeEvidence, AsicDiagnosticEvent,
+    AsicDiagnosticEventKind, AsicDiagnosticOutcome, AsicDiscardEvidence, AsicGenerationRelation,
+    AsicPollCompletion, AsicPollState,
 };
 pub use campaign::{
     HardwarePreparationFailure, MiningCampaignDuration, MiningCampaignLease,

@@ -104,6 +104,24 @@ impl ProductionMiningSession {
             .maybe_pool_runtime(pool)
             .map(|runtime| runtime.runtime.production_registry().generation());
         if generation_before != generation_after {
+            // Upstream dispatches jobs and receives ASIC results in independent
+            // tasks. A clean-job generation advance therefore cannot leave an
+            // old result poll suppressing the replacement generation's poll.
+            self.bridge.invalidate_session();
+            if let Some(generation) = generation_after {
+                let previous_block_changed = matches!(
+                    maybe_event,
+                    Some(LiveRuntimeEvent::WorkQueued {
+                        previous_block_changed: true,
+                        ..
+                    })
+                );
+                self.asic_diagnostics.note_generation_invalidation(
+                    generation,
+                    now_ms,
+                    previous_block_changed,
+                );
+            }
             self.rebase_runtime_generation(pool);
             self.clear_pending_submits(pool);
         }
@@ -244,6 +262,7 @@ impl ProductionMiningSession {
             });
         }
         self.bridge.invalidate_session();
+        self.asic_diagnostics.note_session_invalidation();
     }
 
     pub(super) fn handle_transport_failure(
@@ -293,6 +312,7 @@ impl ProductionMiningSession {
         runtime.submits.clear();
         runtime.framer.clear();
         self.bridge.invalidate_session();
+        self.asic_diagnostics.note_session_invalidation();
         effects.push(ProductionSessionEffect::BlockSubmissions);
         effects.push(ProductionSessionEffect::InvalidateWorkAndSubmissions);
         effects.push(ProductionSessionEffect::StopAsicInteraction);
@@ -367,6 +387,7 @@ impl ProductionMiningSession {
                         }
                     }
                     self.bridge.invalidate_session();
+                    self.asic_diagnostics.note_session_invalidation();
                     effects.push(ProductionSessionEffect::InvalidateWorkAndSubmissions);
                 }
                 RecoveryAction::StopAsicInteraction => {
@@ -499,6 +520,7 @@ impl ProductionMiningSession {
                     self.dispatch_next(pool, now_ms, effects)?;
                 } else if regenerated.is_err() {
                     self.bridge.invalidate_session();
+                    self.asic_diagnostics.note_session_invalidation();
                 }
             }
             BridgeStep::Poll { slice_ms } => {
@@ -508,6 +530,8 @@ impl ProductionMiningSession {
                 });
                 if let Some((generation, valid_jobs)) = maybe_context {
                     self.bridge.note_poll_requested();
+                    self.asic_diagnostics
+                        .note_poll_requested(generation, now_ms);
                     effects.push(ProductionSessionEffect::PollAsic {
                         generation,
                         valid_jobs,
@@ -533,6 +557,8 @@ impl ProductionMiningSession {
         match maybe_dispatch {
             Ok(Some(dispatch)) => {
                 self.job_transition.note_dispatch(dispatch.generation);
+                self.asic_diagnostics
+                    .note_dispatch(dispatch.generation, now_ms);
                 let valid_jobs = self
                     .maybe_pool_runtime(pool)
                     .map(|runtime| runtime.runtime.production_registry().valid_jobs().clone())

@@ -1,5 +1,6 @@
 use super::*;
 
+mod evidence;
 mod failure_diagnostics;
 mod job_transition;
 mod stop_predicate;
@@ -86,7 +87,7 @@ fn campaign_marker_with_failure(
     format!(
         "mining_campaign_status={}",
         serde_json::json!({
-            "schema": "mining-campaign-status-v7",
+            "schema": "mining-campaign-status-v8",
             "stage": fixture.stage,
             "lease_id": fixture.lease_id,
             "campaign_state": fixture.state,
@@ -110,6 +111,42 @@ fn campaign_marker_with_failure(
                 "stale_generation_submit_count": 0,
                 "reconnect_count": 0,
                 "latest_state": "not_observed",
+            },
+            "asic_bridge": {
+                "poll_request_count": 0,
+                "idle_completion_count": 0,
+                "nonce_completion_count": 0,
+                "register_read_count": 0,
+                "discards": {
+                    "invalid_length": 0,
+                    "invalid_preamble": 0,
+                    "invalid_crc": 0,
+                    "job_lookup": 0,
+                    "core": 0,
+                    "address_interval": 0,
+                    "register_response": 0,
+                    "parser_invariant": 0,
+                },
+                "generation_invalidation_count": 0,
+                "stale_completion_count": 0,
+                "post_transition_poll_request_count": 0,
+                "post_transition_completion_count": 0,
+                "post_transition_nonce_emission_count": 0,
+                "post_transition_correlation_count": 0,
+                "blocked_correlation_count": 0,
+                "blocked_correlations": {
+                    "wrong_session": 0,
+                    "job_lookup": 0,
+                    "work_stale": 0,
+                    "target_mismatch": 0,
+                    "other": 0,
+                },
+                "changed_block_to_replacement_dispatch_ms": null,
+                "changed_block_to_first_poll_ms": null,
+                "changed_block_to_first_nonce_ms": null,
+                "changed_block_to_first_correlation_ms": null,
+                "final_poll_state": "idle",
+                "latest_event": null,
             },
             "terminal_reason": fixture.terminal_reason,
             "safety": fixture.safety,
@@ -242,7 +279,7 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
         assert!(!csv.contains(forbidden), "unexpected key {forbidden}");
     }
     let result = read_campaign_result(&command);
-    assert_eq!(result["schema"], "mining-campaign-result-v3");
+    assert_eq!(result["schema"], "mining-campaign-result-v4");
     assert_eq!(result["status"], "accepted");
     assert_eq!(result["terminal_category"], "observation_complete");
     assert_eq!(result["runtime_identity"], "trusted");
@@ -274,7 +311,7 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
     assert_eq!(result["usb_cleanup"], "ready");
     assert_eq!(result["parity_promotion"], false);
     let observations = read_campaign_observations(&command);
-    assert_eq!(observations["schema"], "mining-campaign-observations-v2");
+    assert_eq!(observations["schema"], "mining-campaign-observations-v3");
     assert_eq!(observations["marker_count"], 1);
     assert!(observations.get("markers").is_none());
     assert!(observations["terminal_marker"].is_object());
@@ -507,65 +544,6 @@ fn earliest_safety_failure_survives_a_later_valid_terminal_marker() {
 }
 
 #[test]
-fn campaign_evidence_never_projects_raw_serial_or_credentials() {
-    // Arrange
-    let dir = tempdir().expect("tempdir");
-    let command = campaign_command(&dir, MiningCampaignStage::Observation, None);
-    let environment = FakeFlashEnvironment::default()
-        .with_log_contents(&campaign_log(&[observation_marker("fresh")]));
-
-    // Act
-    run_mining_campaign(&command, &environment).expect("observation campaign");
-
-    // Assert
-    for name in [
-        "campaign-diagnostics.private.json",
-        "campaign-observations.private.json",
-        "campaign-result.json",
-        "campaign-result.sha256",
-    ] {
-        let contents = std::fs::read_to_string(command.evidence_dir.join(name).as_std_path())
-            .expect("evidence");
-        for forbidden in [
-            "pool.private.test",
-            "owner.worker",
-            "pool-private",
-            "wifi-private",
-            "/dev/cu",
-        ] {
-            assert!(!contents.contains(forbidden), "{name} leaked {forbidden}");
-        }
-    }
-    let result_bytes = std::fs::read(
-        command
-            .evidence_dir
-            .join("campaign-result.json")
-            .as_std_path(),
-    )
-    .expect("result bytes");
-    let diagnostic_bytes = std::fs::read(
-        command
-            .evidence_dir
-            .join("campaign-diagnostics.private.json")
-            .as_std_path(),
-    )
-    .expect("diagnostic bytes");
-    let result = read_campaign_result(&command);
-    assert_eq!(
-        result["diagnostics_sha256"],
-        sha256_bytes(&diagnostic_bytes)
-    );
-    let seal = std::fs::read_to_string(
-        command
-            .evidence_dir
-            .join("campaign-result.sha256")
-            .as_std_path(),
-    )
-    .expect("seal");
-    assert_eq!(seal.trim(), sha256_bytes(&result_bytes));
-}
-
-#[test]
 fn cleanup_failure_replaces_success_but_not_an_earlier_campaign_failure() {
     // Arrange
     let dir = tempdir().expect("tempdir");
@@ -599,6 +577,7 @@ fn assert_private_campaign_artifacts(root: &Utf8Path) {
         );
         for name in [
             "campaign-diagnostics.private.json",
+            "campaign-mining-diagnostics.private.json",
             "campaign-observations.private.json",
             "campaign-result.json",
             "campaign-result.sha256",

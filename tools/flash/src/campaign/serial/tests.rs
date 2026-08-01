@@ -1,5 +1,7 @@
 use super::*;
 
+#[path = "tests/asic_diagnostics.rs"]
+mod asic_diagnostics;
 #[path = "tests/attestation.rs"]
 mod attestation;
 
@@ -19,33 +21,6 @@ fn live_share_admission() -> CampaignAdmission {
         duration_seconds: 600,
         maybe_lease_id: Some(7),
     }
-}
-
-fn job_transition_admission() -> CampaignAdmission {
-    CampaignAdmission {
-        stage: MiningCampaignStage::JobTransition,
-        maybe_profile: Some(MiningCampaignProfile::Conservative),
-        duration_seconds: 1_800,
-        maybe_lease_id: Some(7),
-    }
-}
-
-fn active_job_transition_marker(active_ms: u64) -> Vec<u8> {
-    let marker = observation_marker(CAMPAIGN_MARKER_SCHEMA);
-    let payload = marker
-        .strip_prefix(CAMPAIGN_MARKER_PREFIX.as_bytes())
-        .expect("fixture marker prefix");
-    let mut value: serde_json::Value =
-        serde_json::from_slice(payload).expect("fixture marker JSON");
-    value["stage"] = serde_json::json!("job-transition");
-    value["lease_id"] = serde_json::json!(7);
-    value["campaign_state"] = serde_json::json!("active");
-    value["profile"] = serde_json::json!("conservative");
-    value["active_ms"] = serde_json::json!(active_ms);
-    value["pool_config"] = serde_json::json!("local_owner_supplied");
-    value["actuation"] = serde_json::json!("qualified");
-    value["safe_stop"] = serde_json::json!("pending");
-    format!("{CAMPAIGN_MARKER_PREFIX}{value}\n").into_bytes()
 }
 
 fn live_share_preparing_marker() -> Vec<u8> {
@@ -74,6 +49,42 @@ fn live_share_preparing_marker() -> Vec<u8> {
             "stale_generation_submit_count": 0,
             "reconnect_count": 0,
             "latest_state": "not_observed",
+        },
+        "asic_bridge": {
+            "poll_request_count": 0,
+            "idle_completion_count": 0,
+            "nonce_completion_count": 0,
+            "register_read_count": 0,
+            "discards": {
+                "invalid_length": 0,
+                "invalid_preamble": 0,
+                "invalid_crc": 0,
+                "job_lookup": 0,
+                "core": 0,
+                "address_interval": 0,
+                "register_response": 0,
+                "parser_invariant": 0,
+            },
+            "generation_invalidation_count": 0,
+            "stale_completion_count": 0,
+            "post_transition_poll_request_count": 0,
+            "post_transition_completion_count": 0,
+            "post_transition_nonce_emission_count": 0,
+            "post_transition_correlation_count": 0,
+            "blocked_correlation_count": 0,
+            "blocked_correlations": {
+                "wrong_session": 0,
+                "job_lookup": 0,
+                "work_stale": 0,
+                "target_mismatch": 0,
+                "other": 0,
+            },
+            "changed_block_to_replacement_dispatch_ms": null,
+            "changed_block_to_first_poll_ms": null,
+            "changed_block_to_first_nonce_ms": null,
+            "changed_block_to_first_correlation_ms": null,
+            "final_poll_state": "idle",
+            "latest_event": null,
         },
         "terminal_reason": "network_unavailable",
         "safety": "fresh",
@@ -135,6 +146,42 @@ fn observation_marker(schema: &str) -> Vec<u8> {
             "stale_generation_submit_count": 0,
             "reconnect_count": 0,
             "latest_state": "not_observed",
+        },
+        "asic_bridge": {
+            "poll_request_count": 0,
+            "idle_completion_count": 0,
+            "nonce_completion_count": 0,
+            "register_read_count": 0,
+            "discards": {
+                "invalid_length": 0,
+                "invalid_preamble": 0,
+                "invalid_crc": 0,
+                "job_lookup": 0,
+                "core": 0,
+                "address_interval": 0,
+                "register_response": 0,
+                "parser_invariant": 0,
+            },
+            "generation_invalidation_count": 0,
+            "stale_completion_count": 0,
+            "post_transition_poll_request_count": 0,
+            "post_transition_completion_count": 0,
+            "post_transition_nonce_emission_count": 0,
+            "post_transition_correlation_count": 0,
+            "blocked_correlation_count": 0,
+            "blocked_correlations": {
+                "wrong_session": 0,
+                "job_lookup": 0,
+                "work_stale": 0,
+                "target_mismatch": 0,
+                "other": 0,
+            },
+            "changed_block_to_replacement_dispatch_ms": null,
+            "changed_block_to_first_poll_ms": null,
+            "changed_block_to_first_nonce_ms": null,
+            "changed_block_to_first_correlation_ms": null,
+            "final_poll_state": "idle",
+            "latest_event": null,
         },
         "terminal_reason": "none",
         "safety": "fresh",
@@ -556,26 +603,4 @@ fn chunk_stream_larger_than_sixteen_mib_reaches_terminal_marker_with_bounded_art
     assert!(capture.aggregate.terminal.is_some());
     assert!(aggregate_bytes.len() < 64 * 1_024);
     assert!(diagnostic_bytes.len() < 64 * 1_024);
-}
-
-#[test]
-fn job_transition_rejects_active_marker_gap_over_five_seconds() {
-    // Arrange
-    let admission = job_transition_admission();
-    let mut analyzer = CampaignSerialAnalyzer::new(admission);
-
-    // Act
-    analyzer.observe_chunk(&active_job_transition_marker(1_000));
-    analyzer.observe_chunk(&active_job_transition_marker(6_001));
-    let capture = analyzer.finish();
-    let result = capture.aggregate.assess(admission);
-
-    // Assert
-    assert_eq!(capture.aggregate.maximum_active_marker_gap_ms, 5_001);
-    assert_eq!(
-        result
-            .expect_err("overlong active marker gap must fail")
-            .category,
-        CampaignTerminalCategory::MarkerContinuityFailed
-    );
 }

@@ -7,6 +7,7 @@ use bitaxe_asic::bm1366::{
     production::Bm1366ProductionCommand,
     result::{Bm1366NonceResult, Bm1366ValidJobIds},
 };
+use bitaxe_stratum::v1::production_session::AsicPollCompletion;
 use bitaxe_stratum::v1::production_session::{ProductionAsicFailure, ProductionSessionEffect};
 use bitaxe_stratum::v1::production_work::PoolSessionGeneration;
 
@@ -72,6 +73,10 @@ pub(super) enum AsicWorkerEvent {
     PollTimedOut {
         generation: PoolSessionGeneration,
     },
+    PollCompleted {
+        generation: PoolSessionGeneration,
+        completion: AsicPollCompletion,
+    },
     Failed {
         generation: PoolSessionGeneration,
         failure: ProductionAsicFailure,
@@ -89,6 +94,14 @@ impl core::fmt::Debug for AsicWorkerEvent {
             Self::PollTimedOut { generation } => formatter
                 .debug_struct("AsicWorkerEvent::PollTimedOut")
                 .field("generation", generation)
+                .finish(),
+            Self::PollCompleted {
+                generation,
+                completion,
+            } => formatter
+                .debug_struct("AsicWorkerEvent::PollCompleted")
+                .field("generation", generation)
+                .field("completion", completion)
                 .finish(),
             Self::Failed {
                 generation,
@@ -146,11 +159,21 @@ impl AsicWorker {
                             Ok(ProductionReadOutcome::JobNonce(result)) => {
                                 emit(AsicWorkerEvent::Result { generation, result });
                             }
-                            Ok(
-                                ProductionReadOutcome::Pending
-                                | ProductionReadOutcome::MalformedDiscarded
-                                | ProductionReadOutcome::RegisterReadProof(_),
-                            ) => emit(AsicWorkerEvent::PollTimedOut { generation }),
+                            Ok(ProductionReadOutcome::Pending) => {
+                                emit(AsicWorkerEvent::PollTimedOut { generation });
+                            }
+                            Ok(ProductionReadOutcome::Discarded(reason)) => {
+                                emit(AsicWorkerEvent::PollCompleted {
+                                    generation,
+                                    completion: AsicPollCompletion::Discarded(reason),
+                                });
+                            }
+                            Ok(ProductionReadOutcome::RegisterReadProof(_)) => {
+                                emit(AsicWorkerEvent::PollCompleted {
+                                    generation,
+                                    completion: AsicPollCompletion::RegisterRead,
+                                });
+                            }
                             Err(_) => emit(AsicWorkerEvent::Failed {
                                 generation,
                                 failure: ProductionAsicFailure::Poll,

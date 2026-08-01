@@ -106,79 +106,84 @@ Completion review: Pending. This bounded soak does not authorize or verify
 automatic fan control, unbounded mining, complete statistics/hashrate parity,
 release readiness, or checklist promotion.
 
-### task-ultra205-job-transition-soak | 2026-07-31 | Prove a 30-minute new-block transition
+### task-ultra205-job-transition-poll-liveness | 2026-07-31 | Restore post-transition ASIC polling
 
-- [x] Add a closed `job-transition` campaign at the conservative Ultra 205
-      profile with an exact 1,800-active-second lease and 1,980-second host
-      observation budget.
-- [x] Replace cumulative campaign serial capture with bounded chunk-fed
-      analysis and aggregate observations that cannot retain raw serial.
-- [x] Prove a changed previous-block notify invalidates old work, advances the
-      generation, dispatches replacement work, and correlates a replacement
-      result without submitting stale work.
-- [x] Run `attempt-001` once from clean pushed commit `e732ca4b`; preserve its
-      fail-closed result and do not open the conditional retry gate.
-- [x] Land and verify the two regression fixes exposed by `attempt-001`:
-      incremental typed runtime-attestation classification and in-flight
-      transition lineage across same-block clean generation refreshes.
-- [x] Run exactly one newly authorized post-fix `attempt-002` from the clean,
-      pushed tracker-amendment HEAD; never run `attempt-003` under this task.
-- [x] Seal one full-duration hardware attempt with continuous fresh safety,
-      trusted identity, safe stop, lease cleanup, `mineonboot=false`, and USB
-      cleanup using the newly authorized post-fix ordinal below.
+- [x] Capture a deterministic red Production Mining Session regression proving
+      that a stale old-generation poll completion suppresses replacement-
+      generation polling after a clean changed-block notify.
+- [x] Fix successful generation advances by invalidating only stale bridge
+      orchestration state before replacement work is queued, without disarming
+      the ASIC listener or allowing an old completion to mutate a newer poll.
+- [x] Add typed, privacy-safe ASIC bridge and BM1366 parser diagnostics,
+      version the campaign status/result/observation contracts, and seal a
+      bounded private mining-diagnostics artifact.
+- [x] Document behavioral parity with the pinned upstream independent job
+      dispatch and continuous ASIC result tasks without copying GPL expression.
+- [ ] Complete the required ordered software verification, commit and push the
+      verified fix, then rebuild the exact clean-HEAD package.
+- [ ] Run one authorized 1,800-active-second conservative real-pool attempt,
+      with one conditional no-transition retry only under the gate below.
 
-Dependencies: Complete archived `task-ultra205-accepted-pool-share` with its
-accepted clean-HEAD owner-pool share and confirmed safe stop.
+Dependencies: Supersedes archived `task-ultra205-job-transition-soak`, whose
+two safe full-duration attempts proved changed-block detection, generation
+advance, and replacement dispatch but exhausted their retry budget without a
+post-transition correlated result.
 
 Hardware contract:
 
 - Permitted repo-owned commands:
   1. `just package`
   2. `just detect-ultra205`
-  3. `just mining-campaign stage=job-transition profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-job-transition-soak/attempt-001 duration-seconds=1800 redact-evidence=true`
-  4. After the 2026-07-31 post-fix authorization, the same command once with
-     `evidence-dir=scratch/ultra205-job-transition-soak/attempt-002`; this is
-     the final attempt authorized by this task.
-- Objective: prove at least one in-session Bitcoin previous-block transition
-  from a clean pool notify through old-generation invalidation, replacement
-  BM1366 dispatch, and a correlated replacement-generation nonce while mining
-  for the full 1,800 active seconds.
+  3. `just mining-campaign stage=job-transition profile=conservative board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-job-transition-poll-liveness/attempt-001 duration-seconds=1800 redact-evidence=true`
+  4. Only if attempt-001 seals `job_transition_not_observed` and every other
+     gate passes: read the public Bitcoin tip height until it strictly advances,
+     persist only `public_tip_advanced=true`, rebuild the same clean-HEAD
+     package, re-detect the board, and run the same command once with
+     `evidence-dir=scratch/ultra205-job-transition-poll-liveness/attempt-002`.
+- Objective: prove at least one clean changed-block notify advances the work
+  generation, invalidates the old bridge poll state, dispatches replacement
+  BM1366 work, rearms and completes replacement-generation polling, and
+  decodes and correlates at least one replacement-generation nonce.
 - Evidence: each ignored attempt root is mode 0700 with mode-0600
-  `ProtectedOperational` artifacts. Persist only closed states, counts,
-  bounded durations, safe provenance, and digests. Never persist raw serial,
-  block hashes, job IDs, pool messages, submit payloads, targets, difficulty,
+  `ProtectedOperational` artifacts. Persist only closed states, monotonic
+  counts/durations, bounded typed traces, safe provenance, and digests. Never
+  persist raw serial or UART bytes, block hashes, job IDs, generations as raw
+  values, nonces, pool messages, submit payloads, targets, difficulty,
   credentials, endpoints, workers, owner addresses, device identifiers,
   network values, tokens, NVS secrets, or secret-derived hashes. Evidence is
   private, redacted, sealed, and never automatically promoted.
-- Preconditions: deterministic regressions fail before and pass after the
-  implementation; all required software gates pass; changes are committed and
-  pushed; the exact package is rebuilt from clean HEAD; exactly one board 205
-  is admitted; and ignored Wi-Fi plus exactly one ignored pool input exist
-  without their contents being printed or retained.
+- Preconditions: the red poll-starvation regression fails on the historical
+  implementation and passes after the fix; all required software gates pass;
+  changes are committed and pushed; the exact package is rebuilt from clean
+  HEAD; exactly one Ultra 205 is admitted; and ignored Wi-Fi plus exactly one
+  ignored pool input exist without their contents being printed or retained.
 - Allowed effects: private NVS injection of Wi-Fi and owner pool settings,
   persistence of `mineonboot=false`, one conservative 400 MHz / 1100 mV /
-  100% fan campaign lease, exact package flash, repo-owned USB reset and
-  re-enumeration, BM1366 initialization/work/result traffic, Stratum V1 pool
-  traffic and locally qualified submissions, bounded public Bitcoin-tip reads
-  for the conditional retry gate, and device-local safe stop.
+  100% fan campaign lease per admitted attempt, exact package flash,
+  repo-owned USB reset and re-enumeration, BM1366 initialization/work/result
+  traffic, Stratum V1 pool traffic and locally qualified submissions, the
+  bounded public tip-height retry gate, and device-local safe stop.
 - Safety and stop limits: all five supported Ultra 205 safety observations
   must remain fresh; input must remain 4.5-5.5 V; power must not exceed 15 W;
   ASIC temperature must remain below 75 C; fan RPM must remain fresh and
   nonzero after the 100% command. Any safety, watchdog, transport, parser,
   protocol-consistency, generation, dispatch, correlation, actuation, lease,
   evidence, or cleanup fault blocks submissions and begins safe stop.
-- New-block acceptance: require at least one `clean_jobs=true` notify with a
-  changed previous-block value, matching new-block generation invalidation,
-  replacement dispatch, and a correlated result under that replacement
-  generation. Require no active-marker gap greater than 5,000 ms, zero rejected
-  shares, and zero stale-generation submissions. An accepted share is optional;
-  a valid below-target replacement nonce satisfies result correlation.
-- Prohibited effects: mining beyond 1,800 active seconds, upstream-default
-  actuation, TLS, Stratum V2, automatic fan mode, non-205 hardware,
-  erase-flash, arbitrary raw writes, OTA, recovery upload, local network
-  discovery, foreign-process termination, raw secret output, raw serial
-  persistence, parity promotion, direct UART, pins, pads, headers, GPIO,
-  probes, jumpers, soldering, injected signals, stress, or fault injection.
+- Acceptance: require the full 1,800 active seconds, trusted exact-package
+  identity, no active-marker gap above 5,000 ms, at least one clean changed-
+  block notify and generation advance, replacement dispatch followed by a
+  post-transition poll request and completion, at least one decoded and
+  correlated replacement-generation nonce, zero rejected shares, stale
+  submissions, reconnects, or unresolved in-flight poll at safe stop,
+  `mineonboot=false`, confirmed safe stop, lease removal, sealed diagnostics,
+  and USB cleanup ready.
+- Prohibited effects: mining beyond the exact lease, upstream-default
+  actuation, TLS, Stratum V2, automatic fan mode, non-205 hardware, erase-
+  flash, arbitrary raw writes, OTA, recovery upload, network discovery,
+  foreign-process termination, raw secret output, raw serial persistence,
+  parity promotion, fresh upstream firmware flashing, direct UART, pins,
+  pads, headers, GPIO, probes, jumpers, soldering, injected signals, stress,
+  or fault injection.
 - Recovery/restoration: preserve the earliest typed failure; block and
   invalidate submissions; close owned pool transports; frequency-down and
   reset the ASIC; set core voltage and ASIC enable off; keep fan at 100% until
@@ -186,66 +191,35 @@ Hardware contract:
   persist `mineonboot=false`; retain pool settings; and release USB/process
   resources. If safe stop cannot be confirmed, one exact baseline reflash is
   allowed only after same-device re-admission; otherwise stop.
-- Retry bound: `attempt-001` sealed `job_transition_evidence_incomplete` and
-  did not open its original conditional retry gate. The user subsequently
-  authorized exactly one post-fix `attempt-002` after the two boundary defects
-  were reproduced, fixed, and fully software-verified in pushed commit
-  `5d530464`. Rebuild from the clean pushed tracker-amendment HEAD, re-detect
-  exactly one board, and run that ordinal once. Any safety, identity, parser,
-  protocol, generation, dispatch, correlation, rejection, transport, evidence,
-  lease, safe-stop, or cleanup failure stops without retry. If no transition is
-  observed, stop inconclusive without a public-tip wait. Never run
-  `attempt-003` under this task.
-- Accepted terminal outcomes: `complete` only for full-duration
-  `job_transition_complete` plus every identity, safety, transition, rejection,
-  safe-stop, seal, mode, and cleanup requirement. The only non-failure
-  conditional outcome is `job_transition_not_observed`; every other category
-  stops without retry and returns to diagnosis.
+- Retry bound: attempt-002 is permitted only when attempt-001 seals
+  `job_transition_not_observed` and every other gate passes, and only after a
+  public tip-height advance. Parser, correlation, safety, transport, evidence,
+  rejection, or `job_transition_evidence_incomplete` outcomes stop without
+  retry. A second clean no-transition attempt ends inconclusive. No further
+  ordinal is authorized.
+- Accepted terminal outcomes: `complete` only for the full acceptance
+  contract; `job_transition_not_observed` may open the single conditional
+  retry; otherwise classify with the typed diagnostics and stop.
 
-Verification: Software gates passed on 2026-07-31 before hardware: the exact
-Rust pre-commit sequence, focused Stratum/campaign/device-session regressions,
-`just verify-production-session`, `just test`, `just package`, Bright Builds
-checks, parity, reference cleanliness, and redaction. `attempt-001` then ran
-for 1,800,133 active ms and sealed `job_transition_evidence_incomplete` with
-five previous-block changes, five matching generation advances, five
-replacement dispatches, zero credited post-transition results, zero rejected
-shares, zero stale-generation submissions, zero reconnects, a 519 ms maximum
-active-marker gap, fresh required safety, `mineonboot=false`, confirmed safe
-stop, and USB cleanup ready. Its private artifacts are mode 0600 under a mode
-0700 ignored root and their result-bound digests verify. The conditional retry
-gate did not open. Red regressions reproduced two host-accounting defects:
-partial retention of the final runtime attestation at the old text-byte cap,
-and loss of an in-flight transition lineage after a same-block clean generation
-refresh. Both red regressions pass after the fixes, as do the exact Rust
-sequence, focused API/Stratum/campaign suites, production-session verification,
-all 82 Bazel test targets, package build, Bright Builds checks, parity,
-reference cleanliness, redaction, artifact mode/seal/digest checks, and the
-private evidence denylist. The newly authorized, no-retry post-fix
-`attempt-002` then ran from clean pushed commit `cea568dd` for 1,800,120 active
-ms and safely sealed `job_transition_evidence_incomplete`. It observed one
-changed-previous-block notify, one matching new-block generation, and 761
-replacement-work dispatches, but zero post-transition correlated results and
-therefore zero completed transitions. The run otherwise recorded 90
-below-pool-target results, zero rejected shares, zero stale-generation results
-or submissions, zero reconnects, a 532 ms maximum active-marker gap, trusted
-runtime identity and attestation, fresh required safety, `mineonboot=false`,
-confirmed safe stop, and USB cleanup ready. All four artifacts have the
-required owner-only modes, both private-artifact digests and the result seal
-verify, and the private evidence denylist passes. One trailing partial serial
-candidate was conservatively classified as `marker_truncated`; the accepted
-terminal marker and trusted attestation remained intact, so this was not the
-campaign failure. The authorized retry budget is exhausted and `attempt-003`
-is prohibited.
+Verification: The pre-fix regression failed at
+`stale_old_generation_poll_completion_rearms_replacement_generation_poll`
+because no replacement-generation `PollAsic` effect followed the stale
+old-generation completion. It passes after the bridge invalidation fix, as do
+the companion stale-nonce, same-block clean, repeated-clean, parser subtype,
+strict v8 marker, bounded first/last trace, v4/v3 evidence, private-artifact
+digest, permission, and privacy tests. The original nine job-transition
+regressions and all new liveness/diagnostic cases pass. The ordered Rust gates
+(`cargo fmt --all`, warnings-denied Clippy, all-target and all-feature build,
+and all-feature tests), focused ASIC/Stratum/flash suites,
+`just verify-production-session`, all 82 `just test` Bazel targets,
+`just package`, Bright Builds checks, parity, reference cleanliness, redaction,
+artifact mode/seal/digest tests, privacy denylisting, `git diff --check`, and
+final diff review all pass. Pending: commit/push this verified state, rebuild
+the exact clean-HEAD package, and execute the authorized hardware validation.
 
-Completion review: Incomplete. Two bounded full-duration attempts safely
-reached lease expiry and proved changed-block detection, generation advance,
-and replacement dispatch, but neither proved a correlated result under the
-replacement generation. The remaining blocker is the post-transition ASIC
-result-correlation link; further hardware execution requires a new task and
-fresh authorization after additional deterministic diagnosis. This task does
-not prove new-block transition completion, profitability, upstream-default
-stability, unbounded mining, automatic fan control, release readiness, or
-parity promotion.
+Completion review: Pending. This task does not authorize or verify
+profitability, upstream-default stability, unbounded mining, automatic fan
+control, release readiness, direct electrical access, or parity promotion.
 
 ## Future — Explicit Only
 
