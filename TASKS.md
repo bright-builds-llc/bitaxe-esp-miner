@@ -203,11 +203,10 @@ and post-establishment mining-state failures remain fail-closed. This change
 does not alter or renew the consumed attempt-003 command, authorize attempt-004,
 or supply hardware evidence. The software prerequisite
 `task-campaign-websocket-connection-stability` is now completed and archived;
-the future attempt-004 draft remains non-authorizing and explicit-only.
+the separately approved attempt-004 child contract below is now active and
+retains the parent's bounded acceptance criteria.
 
-## Future — Explicit Only
-
-### task-ultra205-default-profile-soak-attempt-004 | 2026-08-01 | Review a bounded upstream-default soak retry
+### task-ultra205-default-profile-soak-attempt-004 | 2026-08-01 | Run one bounded upstream-default soak retry
 
 - [ ] Reconfirm that the exact source HEAD is clean, pushed, and passes every
       software gate before building the exact Ultra 205 package.
@@ -225,17 +224,18 @@ the future attempt-004 draft remains non-authorizing and explicit-only.
 
 Dependencies: `task-campaign-websocket-connection-stability` is completed and
 archived. The active `task-ultra205-default-profile-soak` remains the parent
-acceptance contract and is not completed or archived by this draft.
+acceptance contract and is completed only if this attempt satisfies every
+continuity and terminal requirement.
 
-Draft command surface, not current authority:
+Hardware contract:
 
-1. `just detect-ultra205`
-2. `just package`
+1. `just package`
+2. `just detect-ultra205`
 3. `just mining-campaign stage=soak profile=upstream-default board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-default-profile-soak/attempt-004 duration-seconds=600 redact-evidence=true`
 4. At most one in-process, same-origin recovery pause after the earliest network
    or watchdog failure, under the existing campaign observer contract.
 
-Draft evidence and acceptance boundary: use a mode-0700 ignored private root
+Evidence and acceptance boundary: use a mode-0700 ignored private root
 with mode-0600 artifacts; expose no credentials, identifiers, origins, URLs,
 frames, bodies, or operational paths. Require trusted package/runtime identity,
 the 60-second monitor-admission policy with 3-of-3 stable samples, fresh safety
@@ -249,17 +249,45 @@ remain unchanged. Any incomplete window, observation gap above 5,000 ms,
 repeated idle-reconnect signature, or terminal-proof failure stops without
 retry.
 
-Authorization boundary: future draft only. Do not build a hardware package,
-detect or connect to a device, access credentials, discover a network target,
-or execute attempt-004 unless a later user request names this exact stable task
-ID and separately approves its hardware contract. Naming another task or asking
-for ordinary automatic work does not activate this draft.
+Safety and effects: only the parent contract's board-205 USB admission, exact
+package flash, private NVS credential injection, 600-active-second lease,
+upstream-default 485-MHz/1200-mV/100%-fan mining, Stratum V1 traffic,
+same-session HTTP/WebSocket observation, and bounded safe-stop are allowed.
+Fresh input voltage must remain 4.5-5.5 V, power at most 15 W, ASIC temperature
+below 75 C, and fan RPM fresh and nonzero. TLS, discovery, non-205 hardware,
+mining beyond the lease, automatic fan mode, erase-flash, raw writes, OTA,
+fault injection, parity promotion, foreign-process termination, direct UART,
+pins, pads, headers, GPIO, probes, jumpers, soldering, and injected signals
+remain prohibited.
 
-Verification: Pending future review and separately authorized hardware use.
+Recovery and retry: preserve the earliest typed failure; block submissions;
+close owned pool transports; frequency-down and reset the ASIC; turn core
+voltage and ASIC enable off; keep the fan at 100% until fresh temperature is at
+or below 45 C, then set 30%; clear the lease; persist `mineonboot=false`; retain
+pool settings; and release owned USB and process resources. If device-local
+stop cannot be confirmed, stop with `stop_hardware_blocker`; this child does not
+authorize an operator reflash command. Exactly one attempt-004 run is
+authorized. Do not retry an unchanged or repeated boundary.
 
-Completion review: Pending. This record is review-ready but intentionally
-non-authorizing; it does not modify the active soak result, renew attempt-003,
-or provide hardware evidence.
+Authorization boundary: the user explicitly named this stable task ID and
+approved this exact hardware contract on 2026-08-01. That authorization covers
+only the four command/effect surfaces above and expires when attempt-004 reaches
+one terminal outcome. It does not authorize any later ordinal or broader work.
+
+Accepted terminal outcomes: `complete` only when all twenty windows, the
+5,000-ms WebSocket gap limit, v2 continuity evidence, share, persistence,
+safe-stop, identity, cleanup, sealing, and privacy requirements pass. Otherwise
+record `stop_repeated_boundary`, `stop_hardware_blocker`,
+`stop_authority_boundary`, or `stop_impossible_contract` and stop without retry.
+
+Verification: Contract explicitly approved; software gates, exact clean pushed
+HEAD, package admission, device admission, and the one hardware attempt remain
+pending.
+
+Completion review: Pending one terminal attempt-004 outcome. No hardware action
+has occurred under this contract yet.
+
+## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 
