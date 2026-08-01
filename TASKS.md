@@ -35,7 +35,7 @@ new work.
 - [ ] Require uninterrupted fresh safety truth, watchdog responsiveness,
       active work renewal, at least one new correlated nonce and pool response,
       and correlated HTTP/WebSocket state throughout the soak.
-- [ ] Confirm the device-local lease expires, hardware safe-stop completes,
+- [x] Confirm the device-local lease expires, hardware safe-stop completes,
       the lease is cleared, `mineonboot=false` persists, pool settings remain,
       and the new firmware remains installed in paused state.
 - [x] Seal one private, redacted soak result without automatic parity
@@ -152,14 +152,36 @@ package/runtime identity, 10 accepted and zero rejected shares, fresh safety,
 mode-0700 root, mode-0600 files and recovery summaries, redaction denylist, and
 non-promotion state all passed. No retry was run and no evidence was promoted.
 
-Completion review: Targeted fix hardware-verified; broader task remains active
-and is not archived. Attempt 002 proves the monitor-admission boundary, active
-duration, mining/share path, safety, safe-stop, evidence seal, and USB cleanup.
-The current campaign result does not contain the correlated HTTP, WebSocket, or
-explicit watchdog evidence required by the broader soak contract, so those
-criteria remain unverified. The task still does not authorize or verify
-automatic fan control, unbounded mining, complete statistics/hashrate parity,
-release readiness, or checklist promotion.
+Attempt-003 verification: `stop_hardware_blocker` at the distinct closed
+`network_correlation_failed` boundary; no retry was run. All required software
+gates passed, source commit `da32b67d` was pushed to `main`, and the clean exact
+package was built before hardware use. Fresh detector admission found exactly
+one Ultra 205. Monitor admission used its 60-second deadline and reached 3 of 3
+same-device, accessible, holder-free stable samples. The sealed result proved
+trusted package/runtime identity, 600.081 active seconds, 21 qualified and
+accepted correlated shares with zero rejected shares, fresh safety, a maximum
+344-ms active-marker gap, consumed lease, `mineonboot=false`, retained pool
+configuration, final HTTP and reconstructed WebSocket paused-state evidence,
+confirmed device-local safe-stop, and USB cleanup ready. The in-process
+observer issued its single recovery pause request and preserved the earliest
+failure. Its continuity artifact recorded `active_state_valid=false`, zero
+credited active HTTP/WebSocket samples and zero complete windows; watchdog and
+work-renewal acceptance therefore also remained uncredited. Result/artifact
+digests, mode-0700 root, mode-0600 files, redaction, and non-promotion checks
+passed. This is a distinct observer-correlation boundary, not recurrence of
+the attempt-001 monitor-admission boundary.
+
+Completion review: Attempt 003 closes the previously missing terminal pool,
+HTTP/WebSocket paused-state, and persistence evidence, but the broader task
+remains active and is not archived because none of the twenty active continuity
+windows was credited after the first active-state correlation rejection.
+Continuous HTTP/WebSocket state, watchdog sequence advancement, and ASIC work
+renewal therefore remain unverified even though the serial mining/share and
+terminal paths succeeded. The exact-one-attempt authorization is consumed; a
+later attempt requires a new targeted regression-backed fix and fresh task
+contract. The task still does not authorize or verify automatic fan control,
+unbounded mining, complete statistics/hashrate parity, release readiness, or
+checklist promotion.
 
 ## Future — Explicit Only
 
