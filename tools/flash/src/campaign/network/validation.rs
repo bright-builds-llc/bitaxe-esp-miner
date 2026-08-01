@@ -8,10 +8,44 @@ pub(super) enum SampleValidationFailure {
     Safety,
 }
 
+pub(super) fn validate_active_prerequisites(
+    sample: &SystemInfoWire,
+    target: &TrustedNetworkTarget,
+) -> Result<(), SampleValidationFailure> {
+    validate_identity(sample, target)?;
+    if !safety_valid(sample) {
+        return Err(SampleValidationFailure::Safety);
+    }
+    Ok(())
+}
+
+pub(super) fn active_mining_state_valid(sample: &SystemInfoWire) -> bool {
+    !sample.mining_paused && sample.mining_activity == "active"
+}
+
 pub(super) fn validate_sample(
     sample: &SystemInfoWire,
     target: &TrustedNetworkTarget,
     terminal: bool,
+) -> Result<(), SampleValidationFailure> {
+    validate_identity(sample, target)?;
+    let state_valid = if terminal {
+        sample.mining_paused && sample.mining_activity == "paused" && !sample.start_mining_on_boot
+    } else {
+        active_mining_state_valid(sample)
+    };
+    if !state_valid {
+        return Err(SampleValidationFailure::MiningState);
+    }
+    if !safety_valid(sample) {
+        return Err(SampleValidationFailure::Safety);
+    }
+    Ok(())
+}
+
+fn validate_identity(
+    sample: &SystemInfoWire,
+    target: &TrustedNetworkTarget,
 ) -> Result<(), SampleValidationFailure> {
     if sample.boot_session.to_string() != target.boot_session
         || sample.boot_ordinal != target.boot_ordinal
@@ -21,17 +55,6 @@ pub(super) fn validate_sample(
         || sample.source_dirty
     {
         return Err(SampleValidationFailure::Identity);
-    }
-    let state_valid = if terminal {
-        sample.mining_paused && sample.mining_activity == "paused" && !sample.start_mining_on_boot
-    } else {
-        !sample.mining_paused && sample.mining_activity == "active"
-    };
-    if !state_valid {
-        return Err(SampleValidationFailure::MiningState);
-    }
-    if !safety_valid(sample) {
-        return Err(SampleValidationFailure::Safety);
     }
     Ok(())
 }

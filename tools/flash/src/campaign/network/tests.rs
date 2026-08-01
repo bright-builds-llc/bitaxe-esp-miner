@@ -13,6 +13,8 @@ use super::model::{
 };
 use super::serial::NetworkSerialTracker;
 
+mod startup;
+
 const SOURCE: &str = "1111111111111111111111111111111111111111";
 const REFERENCE: &str = "2222222222222222222222222222222222222222";
 const APP: &str = "3333333333333333333333333333333333333333333333333333333333333333";
@@ -66,6 +68,13 @@ fn active_sample(revision: u64, sequence: u64) -> SystemInfoWire {
     sample
 }
 
+fn terminal_sample(revision: u64, sequence: u64) -> SystemInfoWire {
+    let mut sample = active_sample(revision, sequence);
+    sample.mining_paused = true;
+    sample.mining_activity = "paused".to_owned();
+    sample
+}
+
 fn complete_serial() -> SharedSerialState {
     let mut serial = SharedSerialState {
         latest_active_ms: 600_000,
@@ -106,9 +115,7 @@ fn twenty_complete_windows_and_terminal_state_are_accepted() {
     // Arrange
     let mut accumulator = NetworkAccumulator::new(target());
     record_complete_windows(&mut accumulator);
-    let mut terminal = active_sample(100, 100);
-    terminal.mining_paused = true;
-    terminal.mining_activity = "paused".to_owned();
+    let terminal = terminal_sample(100, 100);
     accumulator.record_terminal_sample(NetworkTransport::Http, &terminal);
     accumulator.record_terminal_sample(NetworkTransport::WebSocket, &terminal);
 
@@ -257,6 +264,26 @@ fn snapshot_revision_regression_fails_correlation() {
 }
 
 #[test]
+fn share_counter_regression_fails_correlation() {
+    // Arrange
+    let mut accumulator = NetworkAccumulator::new(target());
+    let mut first = active_sample(1, 1);
+    first.shares_accepted = 2;
+    accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &first);
+    let mut regressed = active_sample(2, 2);
+    regressed.shares_accepted = 1;
+
+    // Act
+    accumulator.record_active_sample(NetworkTransport::Http, 2_000, 2_000, &regressed);
+
+    // Assert
+    assert_eq!(
+        accumulator.maybe_failure,
+        Some(CampaignTerminalCategory::NetworkCorrelationFailed)
+    );
+}
+
+#[test]
 fn equal_snapshot_revisions_remain_correlated() {
     // Arrange
     let mut accumulator = NetworkAccumulator::new(target());
@@ -292,9 +319,7 @@ fn terminal_pool_reread_must_confirm_persistence() {
     // Arrange
     let mut accumulator = NetworkAccumulator::new(target());
     record_complete_windows(&mut accumulator);
-    let mut terminal = active_sample(100, 100);
-    terminal.mining_paused = true;
-    terminal.mining_activity = "paused".to_owned();
+    let terminal = terminal_sample(100, 100);
     accumulator.record_terminal_sample(NetworkTransport::Http, &terminal);
     accumulator.record_terminal_sample(NetworkTransport::WebSocket, &terminal);
     let mut serial = complete_serial();
@@ -336,9 +361,7 @@ fn terminal_safe_stop_observations_remain_recorded_after_an_earlier_failure() {
     // Arrange
     let mut accumulator = NetworkAccumulator::new(target());
     accumulator.fail(CampaignTerminalCategory::HttpWindowIncomplete);
-    let mut terminal = active_sample(100, 100);
-    terminal.mining_paused = true;
-    terminal.mining_activity = "paused".to_owned();
+    let terminal = terminal_sample(100, 100);
 
     // Act
     accumulator.record_terminal_sample(NetworkTransport::Http, &terminal);
@@ -479,4 +502,9 @@ fn network_evidence_serialization_contains_only_closed_aggregates() {
     ] {
         assert!(!encoded.contains(prohibited));
     }
+    assert!(encoded.contains("mining-campaign-network-continuity-v2"));
+    assert!(encoded.contains("http_startup_transition_count"));
+    assert!(encoded.contains("websocket_startup_transition_count"));
+    assert!(encoded.contains("http_initial_active_observed"));
+    assert!(encoded.contains("websocket_initial_active_observed"));
 }

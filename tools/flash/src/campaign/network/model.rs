@@ -6,8 +6,8 @@ use serde::Serialize;
 
 use super::super::*;
 use super::validation::{
-    advances, regresses, update_gap, validate_sample, watchdog_valid, window_index,
-    SampleValidationFailure,
+    active_mining_state_valid, advances, regresses, update_gap, validate_active_prerequisites,
+    validate_sample, watchdog_valid, window_index, SampleValidationFailure,
 };
 
 pub(super) const REQUIRED_WINDOWS: usize = 20;
@@ -129,6 +129,10 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) websocket_frame_count: u64,
     pub(in crate::campaign) websocket_reconnect_count: u64,
     pub(in crate::campaign) recovery_pause_request_count: u64,
+    pub(in crate::campaign) http_startup_transition_count: u64,
+    pub(in crate::campaign) websocket_startup_transition_count: u64,
+    pub(in crate::campaign) http_initial_active_observed: bool,
+    pub(in crate::campaign) websocket_initial_active_observed: bool,
     pub(in crate::campaign) maximum_http_gap_ms: u64,
     pub(in crate::campaign) maximum_websocket_gap_ms: u64,
     pub(in crate::campaign) maximum_active_marker_gap_ms: u64,
@@ -169,7 +173,7 @@ impl CampaignNetworkEvidence {
 
     fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v1",
+            schema: "mining-campaign-network-continuity-v2",
             status,
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: 0,
@@ -177,6 +181,10 @@ impl CampaignNetworkEvidence {
             websocket_frame_count: 0,
             websocket_reconnect_count: 0,
             recovery_pause_request_count: 0,
+            http_startup_transition_count: 0,
+            websocket_startup_transition_count: 0,
+            http_initial_active_observed: false,
+            websocket_initial_active_observed: false,
             maximum_http_gap_ms: 0,
             maximum_websocket_gap_ms: 0,
             maximum_active_marker_gap_ms: 0,
@@ -195,7 +203,7 @@ impl CampaignNetworkEvidence {
     #[cfg(test)]
     pub(crate) fn fixture_complete() -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v1",
+            schema: "mining-campaign-network-continuity-v2",
             status: "accepted",
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: REQUIRED_WINDOWS,
@@ -203,6 +211,10 @@ impl CampaignNetworkEvidence {
             websocket_frame_count: 40,
             websocket_reconnect_count: 0,
             recovery_pause_request_count: 0,
+            http_startup_transition_count: 0,
+            websocket_startup_transition_count: 0,
+            http_initial_active_observed: true,
+            websocket_initial_active_observed: true,
             maximum_http_gap_ms: 5_000,
             maximum_websocket_gap_ms: 500,
             maximum_active_marker_gap_ms: 1_000,
@@ -241,6 +253,10 @@ pub(super) struct NetworkAccumulator {
     active_state_valid: bool,
     safety_valid: bool,
     watchdog_valid: bool,
+    http_startup_transition_count: u64,
+    websocket_startup_transition_count: u64,
+    http_initial_active_observed: bool,
+    websocket_initial_active_observed: bool,
     last_http_at_ms: Option<u64>,
     last_websocket_at_ms: Option<u64>,
     last_http_revision: Option<u64>,
@@ -267,6 +283,10 @@ impl NetworkAccumulator {
             active_state_valid: true,
             safety_valid: true,
             watchdog_valid: true,
+            http_startup_transition_count: 0,
+            websocket_startup_transition_count: 0,
+            http_initial_active_observed: false,
+            websocket_initial_active_observed: false,
             last_http_at_ms: None,
             last_websocket_at_ms: None,
             last_http_revision: None,
@@ -291,10 +311,20 @@ impl NetworkAccumulator {
             self.fail(CampaignTerminalCategory::WatchdogUnresponsive);
             return;
         }
-        if let Err(failure) = validate_sample(sample, &self.target, false) {
+        if let Err(failure) = validate_active_prerequisites(sample, &self.target) {
             self.record_validation_failure(failure, false);
             return;
         }
+        if !active_mining_state_valid(sample) {
+            if self.initial_active_observed(transport) {
+                self.active_state_valid = false;
+                self.fail(CampaignTerminalCategory::NetworkCorrelationFailed);
+            } else {
+                self.record_startup_transition(transport);
+            }
+            return;
+        }
+        self.establish_initial_active(transport);
         let index = window_index(active_ms);
         let revision = sample.operator_snapshot_revision.get();
         let shares = (sample.shares_accepted, sample.shares_rejected);
@@ -409,7 +439,7 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed;
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v1",
+            schema: "mining-campaign-network-continuity-v2",
             status: if accepted { "accepted" } else { "failed" },
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count,
@@ -417,11 +447,17 @@ impl NetworkAccumulator {
             websocket_frame_count: self.websocket_frame_count,
             websocket_reconnect_count: self.websocket_reconnect_count,
             recovery_pause_request_count: self.recovery_pause_request_count,
+            http_startup_transition_count: self.http_startup_transition_count,
+            websocket_startup_transition_count: self.websocket_startup_transition_count,
+            http_initial_active_observed: self.http_initial_active_observed,
+            websocket_initial_active_observed: self.websocket_initial_active_observed,
             maximum_http_gap_ms: self.maximum_http_gap_ms,
             maximum_websocket_gap_ms: self.maximum_websocket_gap_ms,
             maximum_active_marker_gap_ms: serial.maximum_active_marker_gap_ms,
             same_boot_and_package: self.same_boot_and_package,
-            active_state_valid: self.active_state_valid,
+            active_state_valid: self.active_state_valid
+                && self.http_initial_active_observed
+                && self.websocket_initial_active_observed,
             safety_valid: self.safety_valid,
             watchdog_valid: self.watchdog_valid,
             work_renewal_valid: self
@@ -459,6 +495,33 @@ impl NetworkAccumulator {
         } else {
             CampaignTerminalCategory::NetworkCorrelationFailed
         });
+    }
+
+    fn initial_active_observed(&self, transport: NetworkTransport) -> bool {
+        match transport {
+            NetworkTransport::Http => self.http_initial_active_observed,
+            NetworkTransport::WebSocket => self.websocket_initial_active_observed,
+        }
+    }
+
+    fn record_startup_transition(&mut self, transport: NetworkTransport) {
+        match transport {
+            NetworkTransport::Http => {
+                self.http_startup_transition_count =
+                    self.http_startup_transition_count.saturating_add(1);
+            }
+            NetworkTransport::WebSocket => {
+                self.websocket_startup_transition_count =
+                    self.websocket_startup_transition_count.saturating_add(1);
+            }
+        }
+    }
+
+    fn establish_initial_active(&mut self, transport: NetworkTransport) {
+        match transport {
+            NetworkTransport::Http => self.http_initial_active_observed = true,
+            NetworkTransport::WebSocket => self.websocket_initial_active_observed = true,
+        }
     }
 }
 

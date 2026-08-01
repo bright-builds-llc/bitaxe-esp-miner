@@ -52,6 +52,7 @@ rust_binary(
         "src/campaign/network/observer.rs",
         "src/campaign/network/serial.rs",
         "src/campaign/network/tests.rs",
+        "src/campaign/network/tests/startup.rs",
         "src/campaign/network/validation.rs",
         "src/campaign/serial.rs",
         "src/campaign/serial/framing.rs",

@@ -171,6 +171,17 @@ digests, mode-0700 root, mode-0600 files, redaction, and non-promotion checks
 passed. This is a distinct observer-correlation boundary, not recurrence of
 the attempt-001 monitor-admission boundary.
 
+Software-only startup recovery verification: `cargo fmt --all`, strict Clippy,
+the all-target/all-feature Cargo build and tests, all 82 Bazel test targets, the
+managed Bright Builds checks, and `just verify-redaction` passed. Deterministic
+regressions prove the production campaign becomes active before work submission
+changes public mining activity from `safe_blocked` to `active`; HTTP and
+WebSocket then establish independently, uncredited startup samples cannot alter
+counts, baselines, gaps, or pause behavior, and the exact 30,000-ms boundary
+still fails an incomplete window. The private v2 continuity artifact remains
+sealed, mode-0600, aggregate-only, and identifier/secret-free. No hardware,
+package, credential, discovery, or attempt-004 action was performed.
+
 Completion review: Attempt 003 closes the previously missing terminal pool,
 HTTP/WebSocket paused-state, and persistence evidence, but the broader task
 remains active and is not archived because none of the twenty active continuity
@@ -182,6 +193,45 @@ later attempt requires a new targeted regression-backed fix and fresh task
 contract. The task still does not authorize or verify automatic fan control,
 unbounded mining, complete statistics/hashrate parity, release readiness, or
 checklist promotion.
+
+Software-only continuation: the campaign observer now treats a valid-identity,
+safe, watchdog-fresh non-active sample as an uncredited startup transition until
+HTTP and WebSocket independently observe their first active sample. Window 0
+remains half-open at `[0, 30000)` and retains its full two-sample and sequence
+advancement contract; all identity, safety, watchdog, regression, terminal,
+and post-establishment mining-state failures remain fail-closed. This change
+does not alter or renew the consumed attempt-003 command, authorize attempt-004,
+or supply hardware evidence. Any future soak hardware contract is additionally
+blocked on `task-campaign-websocket-connection-stability`.
+
+### task-campaign-websocket-connection-stability | 2026-08-01 | Stabilize campaign WebSocket observation
+
+- [ ] Reproduce the attempt-003 signature of 109 reconnects with real loopback
+      TCP connections and representative idle intervals.
+- [ ] Verify Tungstenite's transport contract that `WouldBlock` permits reuse
+      while `TimedOut` and other I/O errors are generally fatal.
+- [ ] Implement a bounded, non-busy persistent read strategy that preserves the
+      existing 64-KiB message cap, plain-`ws://` restriction, omitted `Origin`
+      header, and privacy boundary.
+- [ ] Prove idle connections remain open, genuine peer closes reconnect with
+      1-5-second bounded backoff, and sockets, threads, and related resources
+      are released on every terminal path.
+- [ ] Re-run the campaign transport, continuity, evidence, and redaction suites
+      without weakening window completeness or earliest-failure precedence.
+
+Dependencies: Complete the software-only startup-state recovery recorded in
+`task-ultra205-default-profile-soak`. Completion of this task is a prerequisite
+for drafting or authorizing any future soak hardware contract.
+
+Authorization boundary: software and real loopback TCP tests only. This task
+does not authorize hardware use, package flashing, Wi-Fi or pool credentials,
+device discovery, raw device origins, attempt-004, or any other network target.
+
+Verification: Pending.
+
+Completion review: Pending. The implementation must resolve the 109-reconnect
+signature before a future hardware attempt can be considered; tracking this
+work does not itself renew or expand the consumed soak authorization.
 
 ## Future — Explicit Only
 

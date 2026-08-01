@@ -517,6 +517,42 @@ fn active_duration_counts_from_authorized_mining() {
 }
 
 #[test]
+fn campaign_becomes_active_before_work_submission_marks_mining_active() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    adapter.drive(wake(ready(), 0));
+    adapter.connect(ProductionPool::Primary, 1);
+
+    // Act
+    authorize_pool(&mut adapter, ProductionPool::Primary, 2);
+    let before_work = adapter.session.snapshot();
+    adapter.bytes(
+        ProductionPool::Primary,
+        concat!(
+            "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[1e-30]}\n",
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"job\",",
+            "\"0000000000000000000000000000000000000000000000000000000000000000\",",
+            "\"ffffffff\",\"ffffffff\",[],\"20000004\",\"1705ae3a\",",
+            "\"647025b5\",true]}\n"
+        ),
+        3,
+    );
+    let after_work = adapter.session.snapshot();
+
+    // Assert
+    assert_eq!(before_work.campaign_state, MiningCampaignState::Active);
+    assert_eq!(
+        before_work.mining.mining_activity,
+        MiningActivityStatus::SafeBlocked
+    );
+    assert_eq!(after_work.campaign_state, MiningCampaignState::Active);
+    assert_eq!(
+        after_work.mining.mining_activity,
+        MiningActivityStatus::Active
+    );
+}
+
+#[test]
 fn asic_effects_bind_generation_and_valid_job_context() {
     // Arrange
     let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
