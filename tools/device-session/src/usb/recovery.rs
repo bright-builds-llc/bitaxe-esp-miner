@@ -4,8 +4,7 @@ use serde::Serialize;
 
 pub(super) const REQUIRED_STABLE_SAMPLES: u8 = 3;
 pub(super) const STANDARD_RECOVERY_TIMEOUT: Duration = Duration::from_secs(30);
-pub(super) const POST_FLASH_RECOVERY_TIMEOUT: Duration = Duration::from_secs(60);
-pub(super) const FINAL_CLEANUP_RECOVERY_TIMEOUT: Duration = POST_FLASH_RECOVERY_TIMEOUT;
+pub(super) const EXTENDED_RECOVERY_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -18,6 +17,15 @@ pub(super) enum RecoveryPhase {
 }
 
 impl RecoveryPhase {
+    pub(super) const fn timeout(self) -> Duration {
+        match self {
+            Self::PostFlash | Self::MonitorAdmission | Self::FinalCleanup => {
+                EXTENDED_RECOVERY_TIMEOUT
+            }
+            Self::PostProbe | Self::RetryAdmission => STANDARD_RECOVERY_TIMEOUT,
+        }
+    }
+
     pub(super) const fn as_str(self) -> &'static str {
         match self {
             Self::PostFlash => "post_flash",
@@ -243,7 +251,7 @@ mod tests {
         );
         let production_policy = reduce_virtual_timeline(
             RecoveryPhase::PostFlash,
-            POST_FLASH_RECOVERY_TIMEOUT,
+            RecoveryPhase::PostFlash.timeout(),
             samples,
         );
 
@@ -278,7 +286,7 @@ mod tests {
         );
         let final_cleanup_policy = reduce_virtual_timeline(
             RecoveryPhase::FinalCleanup,
-            FINAL_CLEANUP_RECOVERY_TIMEOUT,
+            RecoveryPhase::FinalCleanup.timeout(),
             samples,
         );
 
@@ -290,10 +298,67 @@ mod tests {
     }
 
     #[test]
+    fn slow_sampler_requires_the_extended_monitor_admission_window() {
+        // Arrange
+        let samples = vec![
+            (
+                Duration::from_secs(12),
+                RecoverySample::accessible("epoch-a", false),
+            ),
+            (
+                Duration::from_secs(24),
+                RecoverySample::accessible("epoch-a", false),
+            ),
+            (
+                Duration::from_secs(36),
+                RecoverySample::accessible("epoch-a", false),
+            ),
+        ];
+
+        // Act
+        let standard_policy = reduce_virtual_timeline(
+            RecoveryPhase::MonitorAdmission,
+            STANDARD_RECOVERY_TIMEOUT,
+            samples.clone(),
+        );
+        let production_policy = reduce_virtual_timeline(
+            RecoveryPhase::MonitorAdmission,
+            RecoveryPhase::MonitorAdmission.timeout(),
+            samples,
+        );
+
+        // Assert
+        assert!(!standard_policy.0);
+        assert_eq!(standard_policy.1.stable_samples_max, 2);
+        assert!(production_policy.0);
+        assert_eq!(production_policy.1.stable_samples_max, 3);
+    }
+
+    #[test]
+    fn every_recovery_phase_has_the_intended_timeout() {
+        // Arrange
+        let cases = [
+            (RecoveryPhase::PostFlash, EXTENDED_RECOVERY_TIMEOUT),
+            (RecoveryPhase::PostProbe, STANDARD_RECOVERY_TIMEOUT),
+            (RecoveryPhase::RetryAdmission, STANDARD_RECOVERY_TIMEOUT),
+            (RecoveryPhase::MonitorAdmission, EXTENDED_RECOVERY_TIMEOUT),
+            (RecoveryPhase::FinalCleanup, EXTENDED_RECOVERY_TIMEOUT),
+        ];
+
+        for (phase, expected_timeout) in cases {
+            // Act
+            let timeout = phase.timeout();
+
+            // Assert
+            assert_eq!(timeout, expected_timeout, "{phase:?}");
+        }
+    }
+
+    #[test]
     fn immediate_recovery_requires_exactly_three_stable_samples() {
         // Arrange
         let mut tracker =
-            RecoveryTracker::new(RecoveryPhase::PostFlash, POST_FLASH_RECOVERY_TIMEOUT);
+            RecoveryTracker::new(RecoveryPhase::PostFlash, RecoveryPhase::PostFlash.timeout());
 
         // Act
         let first = tracker.observe(available_sample("epoch-a", false));
@@ -311,7 +376,7 @@ mod tests {
     fn absent_recovery_produces_a_bounded_summary() {
         // Arrange
         let mut tracker =
-            RecoveryTracker::new(RecoveryPhase::PostFlash, POST_FLASH_RECOVERY_TIMEOUT);
+            RecoveryTracker::new(RecoveryPhase::PostFlash, RecoveryPhase::PostFlash.timeout());
 
         // Act
         let ready = tracker.observe(RecoverySample::absent());
@@ -354,7 +419,7 @@ mod tests {
     fn changing_enumeration_never_accumulates_stable_samples() {
         // Arrange
         let mut tracker =
-            RecoveryTracker::new(RecoveryPhase::PostFlash, POST_FLASH_RECOVERY_TIMEOUT);
+            RecoveryTracker::new(RecoveryPhase::PostFlash, RecoveryPhase::PostFlash.timeout());
 
         // Act
         let observations = ["epoch-a", "epoch-b", "epoch-c"]
@@ -374,7 +439,7 @@ mod tests {
     fn safe_signature_contains_only_bounded_recovery_fields() {
         // Arrange
         let mut tracker =
-            RecoveryTracker::new(RecoveryPhase::PostFlash, POST_FLASH_RECOVERY_TIMEOUT);
+            RecoveryTracker::new(RecoveryPhase::PostFlash, RecoveryPhase::PostFlash.timeout());
         tracker.observe(available_sample("private-stability-key", true));
         let summary = tracker.summary();
 
@@ -405,7 +470,7 @@ mod tests {
                 available_sample("epoch-b", true),
             ),
             (
-                POST_FLASH_RECOVERY_TIMEOUT,
+                RecoveryPhase::PostFlash.timeout(),
                 available_sample("epoch-b", true),
             ),
         ];
@@ -413,7 +478,7 @@ mod tests {
         // Act
         let (ready, summary) = reduce_virtual_timeline(
             RecoveryPhase::PostFlash,
-            POST_FLASH_RECOVERY_TIMEOUT,
+            RecoveryPhase::PostFlash.timeout(),
             samples,
         );
 

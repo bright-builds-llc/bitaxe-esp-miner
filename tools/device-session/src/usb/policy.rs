@@ -1,8 +1,6 @@
-use std::time::Duration;
-
 use crate::macos::UsbDeviceSnapshot;
 
-use super::recovery::{RecoveryPhase, POST_FLASH_RECOVERY_TIMEOUT, STANDARD_RECOVERY_TIMEOUT};
+use super::recovery::RecoveryPhase;
 use super::{
     session_error, SupervisedOutput, SupervisedTermination, UsbSessionError, UsbTerminalCategory,
 };
@@ -33,11 +31,11 @@ pub const fn retry_is_eligible(context: RetryContext) -> bool {
         && context.attempts == 1
 }
 
-pub(super) fn successful_command_recovery_policy(args: &[String]) -> (RecoveryPhase, Duration) {
+pub(super) fn successful_command_recovery_policy(args: &[String]) -> RecoveryPhase {
     if args.first().map(String::as_str) == Some("write-bin") {
-        (RecoveryPhase::PostFlash, POST_FLASH_RECOVERY_TIMEOUT)
+        RecoveryPhase::PostFlash
     } else {
-        (RecoveryPhase::PostProbe, STANDARD_RECOVERY_TIMEOUT)
+        RecoveryPhase::PostProbe
     }
 }
 

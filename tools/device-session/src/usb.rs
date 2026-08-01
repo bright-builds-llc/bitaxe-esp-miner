@@ -17,12 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::macos::{MacOsDeviceAdapter, ReceiveOnlyReader, UsbDeviceSnapshot};
 use lease::DeviceLease;
 use process::{run_owned_process, OwnedProcessRequest};
-#[cfg(test)]
-use recovery::POST_FLASH_RECOVERY_TIMEOUT;
-use recovery::{
-    RecoveryPhase, RecoverySample, RecoverySummary, RecoveryTracker,
-    FINAL_CLEANUP_RECOVERY_TIMEOUT, STANDARD_RECOVERY_TIMEOUT,
-};
+use recovery::{RecoveryPhase, RecoverySample, RecoverySummary, RecoveryTracker};
 
 const SAMPLE_INTERVAL: Duration = Duration::from_millis(150);
 const MAX_MONITOR_BYTES: usize = 16 * 1024 * 1024;
@@ -144,8 +139,8 @@ impl UsbSession {
                 })?;
             if process_result.succeeded() {
                 self.transition(UsbLifecycleEvent::FlashComplete)?;
-                let (phase, timeout) = successful_command_recovery_policy(args);
-                if let Err(error) = self.reacquire(phase, timeout) {
+                let phase = successful_command_recovery_policy(args);
+                if let Err(error) = self.reacquire(phase) {
                     self.fail_once(error.category);
                     return Err(error);
                 }
@@ -161,9 +156,7 @@ impl UsbSession {
                 ));
             }
             first_boundary = Some(category);
-            let maybe_snapshot = self
-                .reacquire(RecoveryPhase::RetryAdmission, STANDARD_RECOVERY_TIMEOUT)
-                .ok();
+            let maybe_snapshot = self.reacquire(RecoveryPhase::RetryAdmission).ok();
             let context = RetryContext {
                 category,
                 cleanup_complete: true,
@@ -273,8 +266,7 @@ impl UsbSession {
                 });
             }
             if maybe_reader.is_none() {
-                let snapshot =
-                    self.reacquire(RecoveryPhase::MonitorAdmission, STANDARD_RECOVERY_TIMEOUT)?;
+                let snapshot = self.reacquire(RecoveryPhase::MonitorAdmission)?;
                 reenumerated |= snapshot.enumeration_token != self.initial_enumeration_token;
                 maybe_reader =
                     Some(ReceiveOnlyReader::open(&snapshot.port).map_err(|error| {
@@ -321,8 +313,7 @@ impl UsbSession {
 
     pub fn finish(mut self) -> Result<ReflashReady, UsbSessionError> {
         self.transition(UsbLifecycleEvent::BeginCleanup)?;
-        let snapshot =
-            self.reacquire(RecoveryPhase::FinalCleanup, FINAL_CLEANUP_RECOVERY_TIMEOUT)?;
+        let snapshot = self.reacquire(RecoveryPhase::FinalCleanup)?;
         self.transition(UsbLifecycleEvent::CleanupComplete)?;
         self.lease.record_state(self.state, self.earliest_failure)?;
         self.lease.mark_complete();
@@ -346,11 +337,8 @@ impl UsbSession {
         let _result = self.lease.record_state(self.state, self.earliest_failure);
     }
 
-    fn reacquire(
-        &mut self,
-        phase: RecoveryPhase,
-        timeout: Duration,
-    ) -> Result<UsbDeviceSnapshot, UsbSessionError> {
+    fn reacquire(&mut self, phase: RecoveryPhase) -> Result<UsbDeviceSnapshot, UsbSessionError> {
+        let timeout = phase.timeout();
         let deadline = Instant::now() + timeout;
         let mut tracker = RecoveryTracker::new(phase, timeout);
 

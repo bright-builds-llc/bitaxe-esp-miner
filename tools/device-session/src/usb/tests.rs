@@ -145,10 +145,7 @@ fn successful_write_uses_the_extended_recovery_policy() {
     let policy = successful_command_recovery_policy(&args);
 
     // Assert
-    assert_eq!(
-        policy,
-        (RecoveryPhase::PostFlash, POST_FLASH_RECOVERY_TIMEOUT)
-    );
+    assert_eq!(policy, RecoveryPhase::PostFlash);
 }
 
 #[test]
@@ -160,10 +157,7 @@ fn successful_probe_keeps_the_standard_recovery_policy() {
     let policy = successful_command_recovery_policy(&args);
 
     // Assert
-    assert_eq!(
-        policy,
-        (RecoveryPhase::PostProbe, STANDARD_RECOVERY_TIMEOUT)
-    );
+    assert_eq!(policy, RecoveryPhase::PostProbe);
 }
 
 #[test]
@@ -216,7 +210,8 @@ fn protected_recovery_summary_is_mode_0600_and_excludes_stability_key() {
     // Arrange
     let directory = tempdir().expect("temporary directory");
     let trace_path = directory.path().join("recovery.json");
-    let mut tracker = RecoveryTracker::new(RecoveryPhase::PostFlash, POST_FLASH_RECOVERY_TIMEOUT);
+    let mut tracker =
+        RecoveryTracker::new(RecoveryPhase::PostFlash, RecoveryPhase::PostFlash.timeout());
     tracker.observe(RecoverySample {
         same_device: true,
         accessible: true,

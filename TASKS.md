@@ -48,12 +48,12 @@ Hardware contract:
 - Permitted commands:
   1. `just detect-ultra205`
   2. `just package`
-  3. `just mining-campaign stage=soak profile=upstream-default board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-default-profile-soak/attempt-001 duration-seconds=600 redact-evidence=true`
+  3. `just mining-campaign stage=soak profile=upstream-default board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-default-profile-soak/attempt-002 duration-seconds=600 redact-evidence=true`
 - Objective: prove the exact package can mine for 600 active seconds at the
   Ultra 205 upstream-default profile with fresh safety, watchdog,
   work/result/share, HTTP, WebSocket, and final safe-stop evidence.
 - Evidence: the ignored
-  `scratch/ultra205-default-profile-soak/attempt-001` root is private,
+  `scratch/ultra205-default-profile-soak/attempt-002` root is private,
   non-promoted `ProtectedOperational` evidence with mode-0700 parent and
   mode-0600 artifacts. Only `pool_config: local-owner-supplied`, closed
   categories, bounded counts/durations, and safe provenance may be summarized;
@@ -92,6 +92,14 @@ Hardware contract:
   requires a targeted regression-backed fix or authorized non-invasive
   remediation with objective boundary-change proof; one post-fix recurrence
   selects `stop_repeated_boundary`.
+- Attempt-002 continuation: run the exact command above once, only after the
+  monitor-admission timeout policy and its 12/24/36-second regression pass all
+  required software gates on a clean pushed exact HEAD. The private recovery
+  summary must report `phase=monitor_admission`, `deadline_seconds=60`, and 3
+  stable samples before runtime evidence can be trusted. Recurrence of the
+  attempt-001 monitor boundary selects `stop_repeated_boundary` with no retry;
+  any distinct boundary stops this targeted effort and is recorded without
+  expanding authority.
 - Accepted terminal outcomes: `complete` only when the full active-duration,
   correlation, and safe-stop criteria pass; otherwise
   `stop_repeated_boundary`, `stop_hardware_blocker`,
@@ -113,12 +121,12 @@ elapsed time is not safe-stop evidence. No unchanged retry is authorized.
 
 Completion review: Blocked and not archived. The active-duration, submit,
 telemetry-correlation, lease-expiry, and hardware safe-stop criteria remain
-unverified, and no evidence was promoted. Resume requires a targeted,
-regression-backed fix at the monitor-admission stability boundary or an
-authorized non-invasive remediation with objective boundary-change proof, plus
-a fresh ordinal. The task still does not authorize or verify automatic fan
-control, unbounded mining, complete statistics/hashrate parity, release
-readiness, or checklist promotion.
+unverified, and no evidence was promoted. Attempt 002 is authorized only by the
+targeted continuation contract above. Even if it verifies the monitor-admission
+fix, the task remains active until HTTP, WebSocket, and explicit watchdog
+evidence satisfy the broader soak criteria. The task still does not authorize
+or verify automatic fan control, unbounded mining, complete statistics/hashrate
+parity, release readiness, or checklist promotion.
 
 ## Future — Explicit Only
 

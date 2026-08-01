@@ -131,8 +131,11 @@ stops immediately.
 After a successful factory or NVS write, the supervisor observes one continuous
 60-second same-device recovery window before classifying
 `recovery_not_observed`; it never repeats the successful write merely because
-recovery is delayed. Initial admission, monitor re-acquisition, prerequisite
-probes, retry admission, and final cleanup retain 30-second recovery bounds.
+recovery is delayed. Post-flash recovery, monitor admission, and final cleanup
+use 60-second bounds. Post-probe recovery and retry admission use 30-second
+bounds. The phase policy does not change the same-device identity,
+receive-accessibility, foreign-holder, or three-identical-sample admission
+requirements.
 Each recovery writes a protected bounded summary containing only its phase,
 deadline, booleans, maximum stable-sample count, enumeration-change
 observation, and final state. A public recovery failure may expose only that
