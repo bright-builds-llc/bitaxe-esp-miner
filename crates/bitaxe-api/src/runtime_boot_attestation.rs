@@ -153,9 +153,31 @@ impl RuntimeBootAttestation {
         &self.firmware_commit
     }
 
-    /// Full reference commit attested by this sample.
+    /// Opaque boot session carried by this attestation.
+    pub fn session(&self) -> &str {
+        &self.session
+    }
+
+    /// Monotonic persistent boot ordinal carried by this attestation.
+    #[must_use]
+    pub const fn boot_ordinal(&self) -> u64 {
+        self.boot_ordinal
+    }
+
+    /// Monotonic boot-relative uptime carried by this attestation.
+    #[must_use]
+    pub const fn uptime_ms(&self) -> u64 {
+        self.uptime_ms
+    }
+
+    /// Pinned reference commit carried by this attestation.
     pub fn reference_commit(&self) -> &str {
         &self.reference_commit
+    }
+
+    /// Application ELF identity carried by this attestation.
+    pub fn app_elf_sha256(&self) -> &str {
+        &self.app_elf_sha256
     }
 
     fn same_session_and_ordinal(&self, other: &Self) -> bool {

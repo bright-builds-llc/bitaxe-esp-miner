@@ -228,6 +228,8 @@ mod tests {
             PassiveSelfTestState::Unavailable,
             checkpoints.history.maybe_previous.as_ref(),
             Some(latest),
+            None,
+            None,
             latest.observed_at_millis() + u64::from(WATCHDOG_YIELD_INTERVAL_MS),
             500,
         );
@@ -235,6 +237,8 @@ mod tests {
             PassiveSelfTestState::Unavailable,
             None,
             Some(latest),
+            None,
+            None,
             latest.observed_at_millis() + 5_001,
             500,
         );

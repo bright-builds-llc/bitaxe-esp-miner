@@ -137,6 +137,8 @@ mod tests {
             PassiveSelfTestState::Idle,
             None,
             Some(&checkpoint),
+            None,
+            None,
             4_100,
             500,
         );

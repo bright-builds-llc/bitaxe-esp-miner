@@ -1,5 +1,8 @@
 use super::*;
 
+mod soak;
+use soak::assess_soak_terminal;
+
 mod asic;
 pub(super) use asic::*;
 
@@ -303,6 +306,7 @@ pub(super) struct CampaignStatusMarker {
     pub(super) observation_freshness: ObservationFreshnessMarker,
     pub(super) observation_requirements: ObservationRequirementsMarker,
     pub(super) pool_config: PoolConfigMarker,
+    pub(super) pool_config_persisted: bool,
     pub(super) actuation: ActuationMarker,
     pub(super) mineonboot: bool,
     pub(super) safe_stop: SafeStopMarker,
@@ -587,24 +591,6 @@ fn assess_live_share_terminal(
         ));
     }
     Ok(CampaignTerminalCategory::SubmitResponseObserved)
-}
-
-fn assess_soak_terminal(
-    marker: &CampaignStatusMarker,
-    duration_seconds: u64,
-) -> std::result::Result<CampaignTerminalCategory, CampaignFailure> {
-    assess_mining_terminal(marker)?;
-    if marker.submit_outcome == SubmitOutcomeMarker::None {
-        return Err(CampaignFailure::new(
-            CampaignTerminalCategory::SubmitResponseMissing,
-        ));
-    }
-    if marker.active_ms < duration_seconds.saturating_mul(1_000) {
-        return Err(CampaignFailure::new(
-            CampaignTerminalCategory::SoakDurationShort,
-        ));
-    }
-    Ok(CampaignTerminalCategory::SoakDurationComplete)
 }
 
 fn assess_mining_terminal(

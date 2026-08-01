@@ -234,6 +234,13 @@ impl CampaignSerialAnalyzer {
         }
     }
 
+    pub(crate) fn terminal_consumed(&self) -> bool {
+        self.aggregate
+            .terminal
+            .as_ref()
+            .is_some_and(|marker| marker.campaign_state == CampaignStateMarker::Consumed)
+    }
+
     pub(crate) fn observe_chunk(&mut self, bytes: &[u8]) -> bool {
         self.diagnostics.total_bytes = self
             .diagnostics

@@ -3,6 +3,7 @@
 mod asic_worker;
 mod campaign_status;
 mod transport;
+pub(crate) mod watchdog;
 
 use std::collections::VecDeque;
 use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
@@ -72,6 +73,8 @@ fn run_owner(
 ) {
     let started_at = Instant::now();
     let mut session = ProductionMiningSession::new();
+    let mut task_watchdog =
+        watchdog::ProductionTaskWatchdog::subscribe(crate::runtime_uptime::millis());
 
     loop {
         let maybe_message = match receiver.recv_timeout(AUTHORITATIVE_REREAD_INTERVAL) {
@@ -94,6 +97,7 @@ fn run_owner(
         };
         drive_session(&mut session, &mut adapter, event, now_ms);
         adapter.publish_campaign_status(&session.snapshot(), now_ms);
+        task_watchdog.feed(crate::runtime_uptime::millis());
         if shutdown_requested {
             return;
         }
@@ -130,6 +134,7 @@ struct OrdinaryEspProductionSessionAdapter {
     transports: PoolTransportWorkers,
     asic: AsicWorker,
     maybe_campaign_status: Option<CampaignStatusTracker>,
+    maybe_terminal_pool_persisted: Option<bool>,
 }
 
 impl OrdinaryEspProductionSessionAdapter {
@@ -169,6 +174,7 @@ impl OrdinaryEspProductionSessionAdapter {
             transports,
             asic,
             maybe_campaign_status,
+            maybe_terminal_pool_persisted: None,
         })
     }
 
@@ -500,10 +506,23 @@ impl OrdinaryEspProductionSessionAdapter {
     }
 
     fn publish_campaign_status(
-        &self,
+        &mut self,
         snapshot: &bitaxe_stratum::v1::production_session::ProductionSessionSnapshot,
         now_ms: u64,
     ) {
+        if self.maybe_campaign_status.is_none() {
+            return;
+        }
+        if snapshot.campaign_state
+            == bitaxe_stratum::v1::production_session::MiningCampaignState::Consumed
+            && self.maybe_terminal_pool_persisted.is_none()
+        {
+            self.maybe_terminal_pool_persisted = Some(matches!(
+                crate::settings_adapter::read_production_pool_set(),
+                Ok(Some(_))
+            ));
+        }
+        let pool_config_persisted = self.maybe_terminal_pool_persisted.unwrap_or(false);
         let Some(status) = self.maybe_campaign_status.as_ref() else {
             return;
         };
@@ -524,6 +543,7 @@ impl OrdinaryEspProductionSessionAdapter {
             safety_fresh,
             observation_freshness,
             crate::settings_adapter::start_mining_on_boot(),
+            pool_config_persisted,
         );
         crate::info_retained(&format!("mining_campaign_status={marker}"));
     }

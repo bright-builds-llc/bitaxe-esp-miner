@@ -3,6 +3,7 @@ use crate::*;
 mod admission;
 mod evidence;
 mod markers;
+pub(crate) mod network;
 mod serial;
 
 use admission::{admit_campaign, prepare_campaign_nvs_seed};
@@ -11,11 +12,11 @@ use markers::CampaignMarkerAggregate;
 use serial::{CampaignSerialDiagnostics, CampaignSerialOutcomeDetail};
 
 const CAMPAIGN_MARKER_PREFIX: &str = "mining_campaign_status=";
-const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v8";
+const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v9";
 const CAMPAIGN_PREPARATION_PREFIX: &str = "mining_campaign_preparation=";
 const CAMPAIGN_PREPARATION_SCHEMA: &str = "mining-campaign-preparation-v1";
-const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v4";
-const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v3";
+const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v5";
+const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v4";
 const CAMPAIGN_MINING_DIAGNOSTICS_SCHEMA: &str = "mining-campaign-asic-diagnostics-v1";
 const OBSERVATION_DURATION_SECONDS: u64 = 360;
 const MINING_DURATION_SECONDS: u64 = 600;
@@ -58,6 +59,14 @@ pub(crate) enum CampaignTerminalCategory {
     ReconnectObserved,
     MarkerContinuityFailed,
     SafeStopUnconfirmed,
+    NetworkTargetUnavailable,
+    HttpWindowIncomplete,
+    WebsocketWindowIncomplete,
+    NetworkCorrelationFailed,
+    WatchdogUnresponsive,
+    WorkRenewalMissing,
+    PoolPersistenceUnconfirmed,
+    TerminalStateUnconfirmed,
     RuntimeIdentityUntrusted,
     UsbCleanupFailed,
     EvidenceSealFailed,
@@ -99,6 +108,14 @@ impl CampaignTerminalCategory {
             Self::ReconnectObserved => "reconnect_observed",
             Self::MarkerContinuityFailed => "marker_continuity_failed",
             Self::SafeStopUnconfirmed => "safe_stop_unconfirmed",
+            Self::NetworkTargetUnavailable => "network_target_unavailable",
+            Self::HttpWindowIncomplete => "http_window_incomplete",
+            Self::WebsocketWindowIncomplete => "websocket_window_incomplete",
+            Self::NetworkCorrelationFailed => "network_correlation_failed",
+            Self::WatchdogUnresponsive => "watchdog_unresponsive",
+            Self::WorkRenewalMissing => "work_renewal_missing",
+            Self::PoolPersistenceUnconfirmed => "pool_persistence_unconfirmed",
+            Self::TerminalStateUnconfirmed => "terminal_state_unconfirmed",
             Self::RuntimeIdentityUntrusted => "runtime_identity_untrusted",
             Self::UsbCleanupFailed => "usb_cleanup_failed",
             Self::EvidenceSealFailed => "evidence_seal_failed",
@@ -145,6 +162,7 @@ struct CampaignAttempt {
     marker_aggregate: CampaignMarkerAggregate,
     serial_diagnostics: CampaignSerialDiagnostics,
     serial_outcome_detail: CampaignSerialOutcomeDetail,
+    network_evidence: network::CampaignNetworkEvidence,
 }
 
 impl Default for CampaignAttempt {
@@ -157,6 +175,7 @@ impl Default for CampaignAttempt {
             marker_aggregate: CampaignMarkerAggregate::default(),
             serial_diagnostics: CampaignSerialDiagnostics::not_observed(),
             serial_outcome_detail: CampaignSerialOutcomeDetail::Clean,
+            network_evidence: network::CampaignNetworkEvidence::not_required(),
         }
     }
 }
@@ -239,20 +258,29 @@ fn execute_campaign(
         .execute(&nvs_seed.command)
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::NvsSeedFailed))?;
 
+    let expected_runtime =
+        prepared.outcome.runtime_identity.clone().ok_or_else(|| {
+            CampaignFailure::new(CampaignTerminalCategory::PackageAdmissionFailed)
+        })?;
     let capture = environment
-        .receive_campaign_until(admission, campaign_capture_timeout_seconds(admission))
+        .receive_campaign_until(
+            admission,
+            expected_runtime.clone(),
+            campaign_capture_timeout_seconds(admission),
+        )
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::ObservationFailed))?;
-    attempt.maybe_runtime_attestation_status = prepared
-        .outcome
-        .runtime_identity
-        .as_ref()
-        .map(|identity| capture.runtime_attestation_status(identity));
+    attempt.maybe_runtime_attestation_status =
+        Some(capture.serial.runtime_attestation_status(&expected_runtime));
     attempt.runtime_identity_trusted =
         attempt.maybe_runtime_attestation_status == Some(RuntimeAttestationStatus::Trusted);
-    attempt.serial_diagnostics = capture.diagnostics;
-    attempt.serial_outcome_detail = capture.outcome_detail;
-    attempt.marker_aggregate = capture.aggregate;
-    if let Some(category) = capture.maybe_failure {
+    attempt.serial_diagnostics = capture.serial.diagnostics;
+    attempt.serial_outcome_detail = capture.serial.outcome_detail;
+    attempt.marker_aggregate = capture.serial.aggregate;
+    attempt.network_evidence = capture.network;
+    if let Some(category) = capture.serial.maybe_failure {
+        return Err(CampaignFailure::new(category));
+    }
+    if let Some(category) = attempt.network_evidence.maybe_failure {
         return Err(CampaignFailure::new(category));
     }
     let terminal = attempt.marker_aggregate.assess(admission)?;

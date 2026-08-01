@@ -87,7 +87,7 @@ fn campaign_marker_with_failure(
     format!(
         "mining_campaign_status={}",
         serde_json::json!({
-            "schema": "mining-campaign-status-v8",
+            "schema": "mining-campaign-status-v9",
             "stage": fixture.stage,
             "lease_id": fixture.lease_id,
             "campaign_state": fixture.state,
@@ -168,6 +168,8 @@ fn campaign_marker_with_failure(
                 "fan_rpm": true,
             },
             "pool_config": fixture.pool_config,
+            "pool_config_persisted": fixture.state == "consumed"
+                && fixture.pool_config == "local_owner_supplied",
             "actuation": fixture.actuation,
             "mineonboot": false,
             "safe_stop": fixture.safe_stop,
@@ -279,7 +281,7 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
         assert!(!csv.contains(forbidden), "unexpected key {forbidden}");
     }
     let result = read_campaign_result(&command);
-    assert_eq!(result["schema"], "mining-campaign-result-v4");
+    assert_eq!(result["schema"], "mining-campaign-result-v5");
     assert_eq!(result["status"], "accepted");
     assert_eq!(result["terminal_category"], "observation_complete");
     assert_eq!(result["runtime_identity"], "trusted");
@@ -311,7 +313,7 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
     assert_eq!(result["usb_cleanup"], "ready");
     assert_eq!(result["parity_promotion"], false);
     let observations = read_campaign_observations(&command);
-    assert_eq!(observations["schema"], "mining-campaign-observations-v3");
+    assert_eq!(observations["schema"], "mining-campaign-observations-v4");
     assert_eq!(observations["marker_count"], 1);
     assert!(observations.get("markers").is_none());
     assert!(observations["terminal_marker"].is_object());
@@ -578,6 +580,7 @@ fn assert_private_campaign_artifacts(root: &Utf8Path) {
         for name in [
             "campaign-diagnostics.private.json",
             "campaign-mining-diagnostics.private.json",
+            "campaign-network.private.json",
             "campaign-observations.private.json",
             "campaign-result.json",
             "campaign-result.sha256",

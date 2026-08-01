@@ -48,12 +48,15 @@ Hardware contract:
 - Permitted commands:
   1. `just detect-ultra205`
   2. `just package`
-  3. `just mining-campaign stage=soak profile=upstream-default board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-default-profile-soak/attempt-002 duration-seconds=600 redact-evidence=true`
+  3. `just mining-campaign stage=soak profile=upstream-default board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-default-profile-soak/attempt-003 duration-seconds=600 redact-evidence=true`
+  4. One recovery-only same-origin `POST /api/system/pause`, issued in-process
+     by the admitted campaign observer only after its first network or watchdog
+     failure. It is not an operator command or a general network-control grant.
 - Objective: prove the exact package can mine for 600 active seconds at the
   Ultra 205 upstream-default profile with fresh safety, watchdog,
   work/result/share, HTTP, WebSocket, and final safe-stop evidence.
 - Evidence: the ignored
-  `scratch/ultra205-default-profile-soak/attempt-002` root is private,
+  `scratch/ultra205-default-profile-soak/attempt-003` root is private,
   non-promoted `ProtectedOperational` evidence with mode-0700 parent and
   mode-0600 artifacts. Only `pool_config: local-owner-supplied`, closed
   categories, bounded counts/durations, and safe provenance may be summarized;
@@ -92,14 +95,32 @@ Hardware contract:
   requires a targeted regression-backed fix or authorized non-invasive
   remediation with objective boundary-change proof; one post-fix recurrence
   selects `stop_repeated_boundary`.
-- Attempt-002 continuation: run the exact command above once, only after the
-  monitor-admission timeout policy and its 12/24/36-second regression pass all
-  required software gates on a clean pushed exact HEAD. The private recovery
-  summary must report `phase=monitor_admission`, `deadline_seconds=60`, and 3
-  stable samples before runtime evidence can be trusted. Recurrence of the
-  attempt-001 monitor boundary selects `stop_repeated_boundary` with no retry;
-  any distinct boundary stops this targeted effort and is recorded without
-  expanding authority.
+- Attempt-003 continuation: run the exact command above once, only after the
+  watchdog, HTTP, WebSocket, continuity-window, terminal-persistence, and
+  recovery-pause regressions pass every required software gate on a clean,
+  pushed exact HEAD. The private recovery summary must still report
+  `phase=monitor_admission`, `deadline_seconds=60`, and 3 stable samples before
+  runtime evidence can be trusted.
+- Attempt-003 acceptance: divide the 600 device-reported active seconds into
+  twenty half-open 30-second windows. Every window must contain successful HTTP
+  and reconstructed WebSocket observations from the same boot and exact
+  package, active mining, fresh bounded safety truth, non-regressing counters
+  and snapshot revisions, healthy supervisor state, advancing task-watchdog
+  feed and supervisor-checkpoint sequences, and advancing ASIC poll activity.
+  Active serial markers may be no more than 5,000 ms apart, and the attempt
+  must contain at least one new correlated nonce plus accepted pool response.
+  Within ten seconds of the consumed marker, both HTTP and reconstructed
+  WebSocket state must prove the same boot/package is paused with
+  `mineonboot=false`, healthy watchdog participation, confirmed device-local
+  safe-stop, and a terminal NVS reread must prove a valid configured pool still
+  exists without exposing its values.
+- Attempt-003 failure handling: preserve the earliest closed failure category,
+  issue at most the one recovery-only pause request above when a trusted origin
+  exists, and continue observation until device-local safe-stop is confirmed or
+  terminal grace expires. Without a trusted origin, rely on lease expiry and
+  leave safe-stop unconfirmed unless serial proves it. Any failure ends this
+  targeted effort and is recorded without retry. No TLS, discovery, fault
+  injection, parity promotion, or expanded hardware authority is allowed.
 - Accepted terminal outcomes: `complete` only when the full active-duration,
   correlation, and safe-stop criteria pass; otherwise
   `stop_repeated_boundary`, `stop_hardware_blocker`,

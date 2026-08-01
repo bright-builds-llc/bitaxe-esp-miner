@@ -277,6 +277,10 @@ pub(super) struct RawRuntimeHealth {
     pub(super) task_watchdog_participation: String,
     #[serde(rename = "taskWatchdogReason")]
     pub(super) maybe_task_watchdog_reason: Option<String>,
+    #[serde(rename = "taskWatchdogFeedSequence")]
+    pub(super) maybe_task_watchdog_feed_sequence: Option<u64>,
+    #[serde(rename = "taskWatchdogFeedAgeMillis")]
+    pub(super) maybe_task_watchdog_feed_age_millis: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

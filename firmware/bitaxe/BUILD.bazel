@@ -74,6 +74,8 @@ filegroup(
         "src/operator_snapshot_retention.rs",
         "src/operator_snapshot_publication.rs",
         "src/platform_identity.rs",
+        "src/production_mining_session/watchdog.rs",
+        "src/task_watchdog_observation.rs",
         "src/runtime_health_adapter.rs",
         "src/runtime_snapshot.rs",
         "src/safety_adapter/watchdog.rs",

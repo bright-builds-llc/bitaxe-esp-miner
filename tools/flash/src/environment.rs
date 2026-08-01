@@ -31,8 +31,9 @@ pub(crate) trait FlashEnvironment {
     fn receive_campaign_until(
         &self,
         admission: CampaignAdmission,
+        expected_runtime: ExpectedRuntimeAttestationIdentity,
         timeout_seconds: u64,
-    ) -> Result<CampaignSerialCapture>;
+    ) -> Result<campaign::network::CampaignObservationCapture>;
     fn finish_usb_session(&self) -> Result<()>;
     fn phase35_stage_readiness_gate(&self, _stage: &str, _port: &str) -> Result<()> {
         Ok(())
@@ -376,20 +377,30 @@ impl FlashEnvironment for LocalFlashEnvironment {
     fn receive_campaign_until(
         &self,
         admission: CampaignAdmission,
+        expected_runtime: ExpectedRuntimeAttestationIdentity,
         timeout_seconds: u64,
-    ) -> Result<CampaignSerialCapture> {
+    ) -> Result<campaign::network::CampaignObservationCapture> {
         let mut session_slot = self.usb_session.borrow_mut();
         let Some(session) = session_slot.as_mut() else {
             bail!("cleanup_failed: campaign observation attempted without a repository session");
         };
         let mut analyzer = CampaignSerialAnalyzer::new(admission);
+        let mut network =
+            campaign::network::CampaignNetworkCoordinator::new(admission, expected_runtime);
         session
             .observe_receive_only_ephemeral_chunks_until(
                 Duration::from_secs(timeout_seconds),
-                |chunk| analyzer.observe_chunk(chunk),
+                |chunk| {
+                    analyzer.observe_chunk(chunk);
+                    network.observe_serial_chunk(chunk);
+                    analyzer.terminal_consumed()
+                },
             )
             .map_err(|error| anyhow::anyhow!("{error}"))?;
-        Ok(analyzer.finish())
+        Ok(campaign::network::CampaignObservationCapture {
+            serial: analyzer.finish(),
+            network: network.finish(),
+        })
     }
 
     fn finish_usb_session(&self) -> Result<()> {

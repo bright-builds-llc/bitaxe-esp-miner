@@ -52,6 +52,15 @@ struct CampaignResultEvidence<'a> {
     observations_sha256: &'a str,
     diagnostics_sha256: &'a str,
     mining_diagnostics_sha256: &'a str,
+    network_continuity_sha256: &'a str,
+    network_status: &'a str,
+    network_required_window_count: usize,
+    network_covered_window_count: usize,
+    watchdog_valid: bool,
+    work_renewal_valid: bool,
+    terminal_http_valid: bool,
+    terminal_websocket_valid: bool,
+    terminal_pool_persisted: bool,
     redacted: bool,
     parity_promotion: bool,
 }
@@ -60,6 +69,7 @@ struct CampaignResultEvidence<'a> {
 pub(super) struct CampaignEvidencePaths {
     diagnostics: Utf8PathBuf,
     mining_diagnostics: Utf8PathBuf,
+    network_continuity: Utf8PathBuf,
     observations: Utf8PathBuf,
     result: Utf8PathBuf,
     seal: Utf8PathBuf,
@@ -89,6 +99,7 @@ pub(super) fn preflight_campaign_evidence(root: &Utf8Path) -> Result<CampaignEvi
     let paths = CampaignEvidencePaths {
         diagnostics: root.join("campaign-diagnostics.private.json"),
         mining_diagnostics: root.join("campaign-mining-diagnostics.private.json"),
+        network_continuity: root.join("campaign-network.private.json"),
         observations: root.join("campaign-observations.private.json"),
         result: root.join("campaign-result.json"),
         seal: root.join("campaign-result.sha256"),
@@ -96,6 +107,7 @@ pub(super) fn preflight_campaign_evidence(root: &Utf8Path) -> Result<CampaignEvi
     for path in [
         &paths.diagnostics,
         &paths.mining_diagnostics,
+        &paths.network_continuity,
         &paths.observations,
         &paths.result,
         &paths.seal,
@@ -139,6 +151,12 @@ pub(super) fn finish_campaign_attempt(
         write_private_new_bytes(&paths.mining_diagnostics, &mining_diagnostic_bytes)
             .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::EvidenceSealFailed))?;
         let mining_diagnostics_sha256 = sha256_bytes(&mining_diagnostic_bytes);
+
+        let mut network_bytes = serde_json::to_vec_pretty(&attempt.network_evidence)?;
+        network_bytes.push(b'\n');
+        write_private_new_bytes(&paths.network_continuity, &network_bytes)
+            .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::EvidenceSealFailed))?;
+        let network_continuity_sha256 = sha256_bytes(&network_bytes);
 
         let observations = CampaignObservationEvidence {
             schema: CAMPAIGN_OBSERVATIONS_SCHEMA,
@@ -229,6 +247,15 @@ pub(super) fn finish_campaign_attempt(
             observations_sha256: &observations_sha256,
             diagnostics_sha256: &diagnostics_sha256,
             mining_diagnostics_sha256: &mining_diagnostics_sha256,
+            network_continuity_sha256: &network_continuity_sha256,
+            network_status: attempt.network_evidence.status,
+            network_required_window_count: attempt.network_evidence.required_window_count,
+            network_covered_window_count: attempt.network_evidence.covered_window_count,
+            watchdog_valid: attempt.network_evidence.watchdog_valid,
+            work_renewal_valid: attempt.network_evidence.work_renewal_valid,
+            terminal_http_valid: attempt.network_evidence.terminal_http_valid,
+            terminal_websocket_valid: attempt.network_evidence.terminal_websocket_valid,
+            terminal_pool_persisted: attempt.network_evidence.terminal_pool_persisted,
             redacted: true,
             parity_promotion: false,
         };

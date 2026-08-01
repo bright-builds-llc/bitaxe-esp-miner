@@ -11,11 +11,13 @@ use rustls::pki_types::ServerName;
 use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 
 mod observation;
+mod websocket;
 
 pub use observation::{
     CompletedRequest, EstablishedTransport, ExchangeObservation, ExchangeState, HttpResponse,
     RequestProgress, ResponseRead, ResponseReadOutcome, Scheme, TlsVerification, TransportOutcome,
 };
+pub use websocket::{PlainWebSocket, WebSocketRead};
 
 pub const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 pub const DEFAULT_TOTAL_TIMEOUT: Duration = Duration::from_secs(10);
@@ -89,6 +91,15 @@ impl StrictHttpClient {
         self.exchange_until(
             "POST",
             "/api/system/restart",
+            deadline,
+            DEFAULT_CONNECT_TIMEOUT,
+        )
+    }
+
+    pub fn post_pause_once(&self, deadline: Instant) -> Result<ExchangeObservation> {
+        self.exchange_until(
+            "POST",
+            "/api/system/pause",
             deadline,
             DEFAULT_CONNECT_TIMEOUT,
         )

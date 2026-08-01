@@ -7,4 +7,5 @@ license.workspace = true
 [dependencies]
 anyhow.workspace = true
 rustls.workspace = true
+tungstenite.workspace = true
 webpki-roots.workspace = true

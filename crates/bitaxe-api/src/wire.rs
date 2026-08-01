@@ -318,6 +318,10 @@ pub struct RuntimeHealthWire {
     pub task_watchdog_participation: String,
     #[serde(rename = "taskWatchdogReason")]
     pub maybe_task_watchdog_reason: Option<String>,
+    #[serde(rename = "taskWatchdogFeedSequence")]
+    pub maybe_task_watchdog_feed_sequence: Option<u64>,
+    #[serde(rename = "taskWatchdogFeedAgeMillis")]
+    pub maybe_task_watchdog_feed_age_millis: Option<u64>,
 }
 
 impl From<&RuntimeHealthSnapshot> for RuntimeHealthWire {
@@ -331,6 +335,8 @@ impl From<&RuntimeHealthSnapshot> for RuntimeHealthWire {
             checkpoint_health: snapshot.checkpoint_health().as_str().to_owned(),
             task_watchdog_participation: snapshot.task_watchdog_participation().as_str().to_owned(),
             maybe_task_watchdog_reason: snapshot.maybe_task_watchdog_reason().map(str::to_owned),
+            maybe_task_watchdog_feed_sequence: snapshot.maybe_task_watchdog_feed_sequence(),
+            maybe_task_watchdog_feed_age_millis: snapshot.maybe_task_watchdog_feed_age_millis(),
         }
     }
 }
@@ -350,9 +356,12 @@ pub fn retained_runtime_health_record(
     let task_watchdog_reason = snapshot
         .maybe_task_watchdog_reason()
         .unwrap_or("unavailable");
+    let task_watchdog_feed_sequence = optional_u64(snapshot.maybe_task_watchdog_feed_sequence());
+    let task_watchdog_feed_age_millis =
+        optional_u64(snapshot.maybe_task_watchdog_feed_age_millis());
 
     format!(
-        "runtime_health boot_session={boot_session} operator_snapshot_revision={} self_test={} supervisor={} checkpoint_category={checkpoint_category} checkpoint_sequence={checkpoint_sequence} checkpoint_age_millis={checkpoint_age_millis} checkpoint_health={} task_watchdog_participation={} task_watchdog_reason={task_watchdog_reason} redacted=true",
+        "runtime_health boot_session={boot_session} operator_snapshot_revision={} self_test={} supervisor={} checkpoint_category={checkpoint_category} checkpoint_sequence={checkpoint_sequence} checkpoint_age_millis={checkpoint_age_millis} checkpoint_health={} task_watchdog_participation={} task_watchdog_reason={task_watchdog_reason} task_watchdog_feed_sequence={task_watchdog_feed_sequence} task_watchdog_feed_age_millis={task_watchdog_feed_age_millis} redacted=true",
         operator_snapshot_revision.get(),
         snapshot.passive_self_test_state().as_str(),
         snapshot.supervisor_availability().as_str(),

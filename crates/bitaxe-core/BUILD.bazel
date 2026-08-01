@@ -5,6 +5,7 @@ filegroup(
     srcs = [
         "src/lib.rs",
         "src/runtime_health.rs",
+        "src/runtime_health/tests.rs",
     ],
     visibility = ["//firmware/bitaxe:__pkg__"],
 )
@@ -14,6 +15,7 @@ rust_library(
     srcs = [
         "src/lib.rs",
         "src/runtime_health.rs",
+        "src/runtime_health/tests.rs",
     ],
     crate_name = "bitaxe_core",
     edition = "2021",

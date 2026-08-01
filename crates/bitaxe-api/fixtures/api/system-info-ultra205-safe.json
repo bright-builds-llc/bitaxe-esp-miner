@@ -57,7 +57,9 @@
     "checkpointAgeMillis": null,
     "checkpointHealth": "unavailable",
     "taskWatchdogParticipation": "unavailable",
-    "taskWatchdogReason": "unproved"
+    "taskWatchdogReason": "unproved",
+    "taskWatchdogFeedSequence": null,
+    "taskWatchdogFeedAgeMillis": null
   },
   "ASICModel": "BM1366",
   "boardVersion": "205",

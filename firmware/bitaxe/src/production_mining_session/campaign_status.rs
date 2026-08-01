@@ -248,6 +248,7 @@ impl CampaignStatusTracker {
         safety_fresh: bool,
         observation_freshness: CampaignObservationFreshness,
         mineonboot: bool,
+        pool_config_persisted: bool,
     ) -> String {
         let active_ms = self
             .maybe_active_since_ms
@@ -255,7 +256,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v8",
+            schema: "mining-campaign-status-v9",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -288,6 +289,7 @@ impl CampaignStatusTracker {
                 PoolConfigurationStatus::NotRead => "not_read",
                 PoolConfigurationStatus::LocalOwnerSupplied => "local_owner_supplied",
             },
+            pool_config_persisted,
             actuation: match self.actuation {
                 CampaignActuationStatus::None => "none",
                 CampaignActuationStatus::Qualified => "qualified",
@@ -328,6 +330,7 @@ struct CampaignStatusProjection {
     observation_freshness: CampaignObservationFreshness,
     observation_requirements: CampaignObservationRequirements,
     pool_config: &'static str,
+    pool_config_persisted: bool,
     actuation: &'static str,
     mineonboot: bool,
     safe_stop: &'static str,
@@ -417,16 +420,18 @@ mod tests {
             true,
             CampaignObservationFreshness::all_ultra205_supported_fresh(),
             false,
+            false,
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v8");
+        assert_eq!(value["schema"], "mining-campaign-status-v9");
         assert_eq!(value["stage"], "observation");
         assert!(value["lease_id"].is_null());
         assert_eq!(value["campaign_state"], "unavailable");
         assert_eq!(value["profile"], "none");
         assert_eq!(value["pool_config"], "not_read");
+        assert_eq!(value["pool_config_persisted"], false);
         assert_eq!(value["actuation"], "none");
         assert_eq!(value["mineonboot"], false);
         assert_eq!(value["safety"], "fresh");
@@ -501,6 +506,7 @@ mod tests {
             true,
             CampaignObservationFreshness::all_ultra205_supported_fresh(),
             false,
+            true,
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
@@ -553,6 +559,7 @@ mod tests {
             true,
             CampaignObservationFreshness::all_ultra205_supported_fresh(),
             false,
+            true,
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
@@ -566,6 +573,7 @@ mod tests {
         assert_eq!(value["duplicate_candidate_count"], 2);
         assert_eq!(value["terminal_reason"], "campaign_lease_consumed");
         assert_eq!(value["pool_config"], "local_owner_supplied");
+        assert_eq!(value["pool_config_persisted"], true);
         assert_eq!(value["actuation"], "safe_stopped");
         assert_eq!(value["safe_stop"], "confirmed");
         assert_eq!(value["active_ms"], 1_000);

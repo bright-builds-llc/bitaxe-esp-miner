@@ -35,6 +35,8 @@ const RUNTIME_HEALTH_CORE_SOURCE: &str =
     include_str!("../../../crates/bitaxe-core/src/runtime_health.rs");
 const WATCHDOG_ADAPTER_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/safety_adapter/watchdog.rs");
+const PRODUCTION_TASK_WATCHDOG_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/production_mining_session/watchdog.rs");
 const PLATFORM_IDENTITY_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/platform_identity.rs");
 const CORE_SOURCE: &str = include_str!("../../../crates/bitaxe-core/src/lib.rs");
@@ -299,6 +301,8 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "checkpoint_health={}",
         "task_watchdog_participation={}",
         "task_watchdog_reason={task_watchdog_reason}",
+        "task_watchdog_feed_sequence={task_watchdog_feed_sequence}",
+        "task_watchdog_feed_age_millis={task_watchdog_feed_age_millis}",
         "redacted=true",
     ] {
         assert!(
@@ -316,6 +320,8 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "checkpointHealth",
         "taskWatchdogParticipation",
         "taskWatchdogReason",
+        "taskWatchdogFeedSequence",
+        "taskWatchdogFeedAgeMillis",
     ] {
         assert!(API_WIRE_SOURCE.contains(field), "missing API field {field}");
     }
@@ -375,6 +381,30 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         assert!(
             !WATCHDOG_ADAPTER_SOURCE.contains(forbidden),
             "supervisor checkpoint adapter contains prohibited effect {forbidden}"
+        );
+    }
+}
+
+#[test]
+fn production_task_watchdog_participates_without_global_reconfiguration() {
+    // Arrange
+    let required_calls = [
+        "esp_task_wdt_add(ptr::null_mut())",
+        "esp_task_wdt_reset()",
+        "esp_task_wdt_delete(ptr::null_mut())",
+    ];
+
+    // Act / Assert
+    for required in required_calls {
+        assert!(
+            PRODUCTION_TASK_WATCHDOG_SOURCE.contains(required),
+            "production task watchdog is missing {required}"
+        );
+    }
+    for prohibited in ["esp_task_wdt_init", "esp_task_wdt_reconfigure"] {
+        assert!(
+            !PRODUCTION_TASK_WATCHDOG_SOURCE.contains(prohibited),
+            "production task watchdog contains prohibited global operation {prohibited}"
         );
     }
 }

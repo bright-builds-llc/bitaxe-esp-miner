@@ -333,8 +333,9 @@ impl FlashEnvironment for FakeFlashEnvironment {
     fn receive_campaign_until(
         &self,
         admission: CampaignAdmission,
+        _expected_runtime: ExpectedRuntimeAttestationIdentity,
         timeout_seconds: u64,
-    ) -> Result<CampaignSerialCapture> {
+    ) -> Result<crate::network::CampaignObservationCapture> {
         self.campaign_observations
             .borrow_mut()
             .push((admission.stage, timeout_seconds));
@@ -345,7 +346,14 @@ impl FlashEnvironment for FakeFlashEnvironment {
             .maybe_campaign_bytes
             .clone()
             .unwrap_or_else(|| self.log_contents.as_bytes().to_vec());
-        Ok(analyze_campaign_serial_bytes(&bytes, admission))
+        Ok(crate::network::CampaignObservationCapture {
+            serial: analyze_campaign_serial_bytes(&bytes, admission),
+            network: if admission.stage == MiningCampaignStage::Soak {
+                crate::network::CampaignNetworkEvidence::fixture_complete()
+            } else {
+                crate::network::CampaignNetworkEvidence::not_required()
+            },
+        })
     }
 
     fn finish_usb_session(&self) -> Result<()> {

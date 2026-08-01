@@ -5,7 +5,7 @@ use bitaxe_safety::observation::{
 use serde_json::{json, Value};
 
 use bitaxe_core::runtime_health::{
-    CheckpointObservation, PassiveSelfTestState, RuntimeHealthSnapshot,
+    CheckpointObservation, PassiveSelfTestState, RuntimeHealthSnapshot, TaskWatchdogObservation,
 };
 
 use super::{require_wire_keys, retained_runtime_health_record};
@@ -87,6 +87,8 @@ fn runtime_health_serializes_exact_passive_values() {
         PassiveSelfTestState::Idle,
         None,
         Some(&latest),
+        None,
+        Some(TaskWatchdogObservation::fed(11, 1_050)),
         1_100,
         500,
     );
@@ -107,9 +109,11 @@ fn runtime_health_serializes_exact_passive_values() {
     assert_eq!(value["runtimeHealth"]["checkpointHealth"], "healthy");
     assert_eq!(
         value["runtimeHealth"]["taskWatchdogParticipation"],
-        "unavailable"
+        "participating"
     );
-    assert_eq!(value["runtimeHealth"]["taskWatchdogReason"], "unproved");
+    assert_eq!(value["runtimeHealth"]["taskWatchdogReason"], "feed_fresh");
+    assert_eq!(value["runtimeHealth"]["taskWatchdogFeedSequence"], 11);
+    assert_eq!(value["runtimeHealth"]["taskWatchdogFeedAgeMillis"], 50);
 }
 
 #[test]
@@ -121,6 +125,8 @@ fn retained_runtime_health_record_is_correlated_and_redacted() {
         PassiveSelfTestState::Idle,
         None,
         Some(&latest),
+        None,
+        Some(TaskWatchdogObservation::fed(11, 1_050)),
         1_100,
         500,
     );
@@ -133,7 +139,7 @@ fn retained_runtime_health_record_is_correlated_and_redacted() {
     // Assert
     assert_eq!(
         record,
-        "runtime_health boot_session=00000000000000000000000000000000 operator_snapshot_revision=1 self_test=idle supervisor=available checkpoint_category=telemetry checkpoint_sequence=9 checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=unavailable task_watchdog_reason=unproved redacted=true"
+        "runtime_health boot_session=00000000000000000000000000000000 operator_snapshot_revision=1 self_test=idle supervisor=available checkpoint_category=telemetry checkpoint_sequence=9 checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=participating task_watchdog_reason=feed_fresh task_watchdog_feed_sequence=11 task_watchdog_feed_age_millis=50 redacted=true"
     );
     for prohibited in [
         "credential",
