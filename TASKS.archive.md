@@ -3381,3 +3381,45 @@ Residual risk: address encoding and payout matching remain owned by unverified
 production mining, timing, and hardware remain explicit non-claims. The
 workflow's final push follows the finalization commit and is intentionally not
 represented as historical evidence inside this archived pre-push task record.
+
+### task-parity-stat-004-work-queue-verification | 2026-08-02 | Verify deterministic work-queue parity
+
+- [x] Add pinned executable golden cases for the exact `STAT-004` queue
+      data-structure contract.
+- [x] Cover capacity, FIFO wrap-around, full/empty boundary preservation, and
+      clear/drop ownership with focused Arrange/Act/Assert tests.
+- [x] Preserve task blocking/timing, live Stratum, ASIC, share, credential,
+      network, and hardware behavior as explicit non-claims.
+- [x] Run focused checks plus every mandatory Rust, Bright Builds, Bazel,
+      redaction, parity, and progress gate.
+- [x] Transition only `STAT-004` if its exact `unit,golden` evidence passes,
+      synchronize progress, and archive this task in the finalization commit.
+
+Plan: `docs/parity/work-plans/20260802T214207Z-STAT-004/PLAN.md`
+
+Authorization and safety: software-only and effect-free. No credentials,
+hardware, flashing, pool/network connections, destructive actions, direct
+UART, pin manipulation, or reference-tree edits were used.
+
+Verification: Ten focused queue tests, the Stratum Bazel target, fixture JSON
+parsing, reference cleanliness, formatting, strict Clippy, the
+all-target/all-feature Cargo build and tests, managed Bright Builds checks,
+redaction verification, all 82 Bazel tests, parity validation, and the 31-of-94
+pre-transition progress baseline passed. The terminal result binds
+implementation commit `8a89a7e50db2abeaba3f6cd5173c7536c0b72d9c`;
+transition receipt `20260802T214944Z-STAT-004` binds the predecessor/result
+checklist digests, plan/result hashes, pinned reference commit, exact Rust-owned
+targets, and `unit,golden` evidence. Progress sync reports 32/94 verified
+(34.0%). Final gates are run again after this archival and before the final
+commit.
+
+Completion review: Complete. The executable fixture and focused regressions
+prove capacity twelve, initial empty state, FIFO ordering across storage reuse,
+unchanged state at full and empty boundaries, and deterministic drop-on-clear.
+`STAT-004` alone transitioned from `implemented` to `verified`. Residual risk:
+condition-variable waits, timeout-clock behavior, thread/FreeRTOS wakeup
+ordering, and task scheduling remain owned by `SYS-005`; live Stratum, pool,
+credential, ASIC, share, mining, and hardware behavior remain explicit
+non-claims. The workflow's final push follows the finalization commit and is
+intentionally not represented as historical evidence inside this archived
+pre-push task record.

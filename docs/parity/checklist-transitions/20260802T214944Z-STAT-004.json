@@ -1,0 +1,18 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260802T214944Z-STAT-004",
+  "predecessor_sha256": "93a5229000c937de10583900c484b2e462552816c0ea43f81e40c9bef6d1ce99",
+  "result_sha256": "370de6b2cedc3dce71acfc5246ae236f065582f2ae61f06ecc8648f38dea063c",
+  "row_id": "STAT-004",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260802T214207Z-STAT-004/PLAN.md",
+  "plan_sha256": "72eeb36ac0da22c105a737ef490649e4822ede240e1e191c04b58b4bce2a6cb7",
+  "result_path": "docs/parity/work-plans/20260802T214207Z-STAT-004/RESULT.md",
+  "result_document_sha256": "5c26320172f09a468fcc27d5259e60e6d3a3240dc4223b591661990237c7eb07",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1/queue.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/queue.rs`, `crates/bitaxe-stratum/fixtures/v1/work-queue-cases.json`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit",
+  "after_evidence": "unit,golden"
+}
