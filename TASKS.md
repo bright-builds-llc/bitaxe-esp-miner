@@ -392,6 +392,52 @@ window. This terminal task remains active and unarchived under the tracker
 rules. Rollback, destructive/fault-injection recovery, selected-partition,
 OTAWWW, mining, and hardware-control behavior remain non-claims.
 
+### task-parity-ota-001-bounded-retry | 2026-08-02 | Retry OTA reboot evidence after timeout fix
+
+- [ ] Commit the fresh authorization and detector-only Phase A contract before
+      any hardware interaction.
+- [ ] Run exactly one `just detect-ultra205`; require one Ultra 205 and bind its
+      qualified port into a committed Phase B contract before flashing.
+- [ ] Build/package and wrapper flash-monitor the exact clean Phase B commit,
+      using the ignored local Wi-Fi credential input without reading it.
+- [ ] Admit exactly one same-session origin and run exactly one bounded
+      invalid-plus-valid OTA invocation with the fixed timeout and qualified
+      OS-native post-OTA reader.
+- [ ] Run the cleanup detector and only the contract's single conditional
+      recovery flash/check if cleanup fails.
+- [ ] Record a redacted terminal result, run repository gates, and transition
+      only `OTA-001` if every promotion criterion passes.
+
+Plan: `docs/parity/work-plans/20260802T223139Z-OTA-001-RETRY/PLAN.md`
+
+Authorization and safety: the user explicitly authorized one new hardware
+attempt on 2026-08-02. Phase A authorizes only the exact read-only detector
+command recorded in the plan. Flash, OTA, and recovery remain prohibited until
+the freshly selected port and exact Phase B commands are committed. After that
+commit, the attempt budget is exactly one invalid-plus-valid OTA invocation,
+with no OTA retry. No erase, rollback fault injection, interrupted update,
+OTAWWW, mining, pool access, voltage/fan/power actuation, direct UART, or pin
+manipulation is authorized.
+
+Evidence and privacy: raw USB, serial, network, HTTP, origin, IP/MAC, and Wi-Fi
+material must remain in the plan's ignored `target/` roots. The credential file
+may be passed only to the repo-owned flash wrapper and must not be read, printed,
+summarized, or committed. Committed output is limited to public source/reference
+identities, artifact digests, HTTP status/body categories, redacted marker
+categories, and conclusions.
+
+Recovery and stop policy: stop immediately on detector ambiguity/failure,
+wrong board, unqualified reader, package/manifest/identity mismatch, missing or
+ambiguous same-session origin, request failure, absent reboot identity,
+safe-state or boot-validation markers, privacy failure, or cleanup failure.
+If and only if cleanup detection fails after the single OTA invocation, one
+wrapper flash of the same admitted package plus one final detector check is
+allowed. No second OTA invocation is allowed.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
