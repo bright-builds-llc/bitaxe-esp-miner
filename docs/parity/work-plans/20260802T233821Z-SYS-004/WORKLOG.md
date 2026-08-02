@@ -62,3 +62,49 @@
 - Blocker or next safe action: Commit this worklog and task progress, capture
   that commit as `SOURCE_COMMIT`, then transition only `SYS-004` to
   `implemented` and synchronize parity progress.
+
+## 2026-08-02T23:46:34Z | guarded transition and progress synchronization
+
+- Source commit: `3df7672f427fc682d2661144d1da4ddfabfc3570`
+- Actions: Transitioned only `SYS-004` from `in-progress` to `implemented`
+  through the parity ledger, replaced the stale implementation note with the
+  exact evidence and non-claims, and immediately synchronized parity progress
+  from the committed evidence tree.
+- Verification: Transition
+  `20260802T234800Z-SYS-004` produced checklist digest
+  `2bf35e1dfebf70b807d89030526302f39585eab10f56be0f1727d2c00f6c586d`;
+  `sync-progress` appended a hash-chained record for source commit
+  `3df7672f427fc682d2661144d1da4ddfabfc3570`; progress remains 34 verified of
+  94 active rows (36.2%).
+- Evidence:
+  `docs/parity/checklist-transitions/20260802T234800Z-SYS-004.json`, the
+  `SYS-004` checklist row, and the final record in
+  `docs/parity/progress.jsonl`.
+- Outcome: The targeted evidence-accounting fix is applied without changing
+  any other parity row or overclaiming hardware verification.
+- Blocker or next safe action: Run the complete finalization gate, review the
+  exact diff, commit it, verify upstream synchronization, and push without
+  force. The separate live API/static-asset semantics gate remains open.
+
+## 2026-08-02T23:49:47Z | transition target-format correction
+
+- Source commit: `3df7672f427fc682d2661144d1da4ddfabfc3570`
+- Actions: The first final `just parity` run rejected the generated
+  Rust-owned-target cell because the transition argument lacked Markdown code
+  spans. Before any finalization commit, removed that invalid uncommitted
+  receipt and progress record, restored the exact predecessor row, regenerated
+  the same one-row transition with code-spanned paths, and synchronized
+  progress again from the unchanged evidence commit.
+- Verification: The failure was exactly `SYS-004: invalid Rust-owned target:
+  Rust-Owned Target must contain at least one code span`. The corrected
+  transition `20260802T234800Z-SYS-004` produced checklist digest
+  `2590ff82638157130b094949bfc9f921de145ac6bb9bd0a25376865831d94f52`;
+  `sync-progress` appended the replacement hash-chained record and again
+  reported 34/94 verified (36.2%).
+- Evidence: The corrected transition receipt, checklist row, and final progress
+  record all contain the same source commit, plan, and selected row; only the
+  malformed target formatting changed.
+- Outcome: The targeted integration defect is corrected without changing
+  status, evidence scope, notes, source binding, or any other row.
+- Blocker or next safe action: Re-run the complete finalization gate and commit
+  only after every validator accepts the corrected transition.

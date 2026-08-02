@@ -341,9 +341,9 @@ run.
       the current canonical Rust build/platform/API projection.
 - [x] Run focused build-identity, system-info wire, package-manifest, and
       runtime-attestation regressions plus every mandatory repository gate.
-- [ ] Commit the row evidence before transitioning only `SYS-004` from
+- [x] Commit the row evidence before transitioning only `SYS-004` from
       `in-progress` to `implemented`.
-- [ ] Synchronize parity progress and retain this task with the exact later
+- [x] Synchronize parity progress and retain this task with the exact later
       live-evidence gate required for `verified`.
 
 Plan: `docs/parity/work-plans/20260802T233821Z-SYS-004/PLAN.md`
@@ -359,9 +359,14 @@ static-route facts without validation errors; and the complete Rust, Bright
 Builds, Bazel, parity, progress, redaction, reference-integrity, and whitespace
 gates passed before the evidence commit.
 
-Completion review: Pending. This run may establish implementation completeness
-only. Exact-current-package live API version evidence and static-asset version
-semantics remain required before `SYS-004` can become `verified`.
+Completion review: The stale checklist state was caused by evidence-accounting
+drift, not a missing firmware path. The existing canonical version projection
+passed focused and repository-wide checks, its evidence was committed before
+the guarded one-row transition, and progress was hash-chain synchronized.
+`SYS-004` is now accurately `implemented`. Residual risk is explicit:
+exact-current-package live API version evidence and a decision on static-asset
+version semantics remain required before `verified`, so this task stays active
+and unarchived.
 
 ## Future — Explicit Only
 

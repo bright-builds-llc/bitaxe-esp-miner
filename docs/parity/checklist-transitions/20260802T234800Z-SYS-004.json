@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260802T234800Z-SYS-004",
+  "predecessor_sha256": "9ea51a004c504639f5d23fc30b1e75aa6a6465a784252aa51fd7bd7b9e3e8ba7",
+  "result_sha256": "2590ff82638157130b094949bfc9f921de145ac6bb9bd0a25376865831d94f52",
+  "row_id": "SYS-004",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260802T233821Z-SYS-004/PLAN.md",
+  "plan_sha256": "cc89c4b20878a342dab6facf3602d622211084303983648c4a4c712afddb74be",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`firmware/bitaxe`, `crates/bitaxe-core`, `crates/bitaxe-api`, `tools/parity`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/build_identity.rs`, `crates/bitaxe-api/src/wire.rs`, `firmware/bitaxe/build.rs`, `firmware/bitaxe/src/main.rs`, `firmware/bitaxe/src/platform_identity.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`, `tools/parity`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,workflow,api-compare,hardware-smoke",
+  "before_notes": "Firmware logs and parity reports include source/reference identifiers; API version surface remains later-phase work.",
+  "after_notes": "Canonical build provenance feeds firmware version plus semantic/source/reference/ELF/build fields; read-only platform identity supplies axeOSVersion and idfVersion; focused wire, identity, package, attestation, and API-compare checks pass. Historical Phase 17 and Phase 21 Ultra 205 system-info captures observe the upstream version trio with redaction. Status remains implemented, not verified: exact-current-package live API binding and static-asset version semantics remain open; boot identity alone is insufficient."
+}
