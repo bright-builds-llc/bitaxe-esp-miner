@@ -394,9 +394,9 @@ OTAWWW, mining, and hardware-control behavior remain non-claims.
 
 ### task-parity-ota-001-bounded-retry | 2026-08-02 | Retry OTA reboot evidence after timeout fix
 
-- [ ] Commit the fresh authorization and detector-only Phase A contract before
+- [x] Commit the fresh authorization and detector-only Phase A contract before
       any hardware interaction.
-- [ ] Run exactly one `just detect-ultra205`; require one Ultra 205 and bind its
+- [x] Run exactly one `just detect-ultra205`; require one Ultra 205 and bind its
       qualified port into a committed Phase B contract before flashing.
 - [ ] Build/package and wrapper flash-monitor the exact clean Phase B commit,
       using the ignored local Wi-Fi credential input without reading it.
