@@ -337,20 +337,24 @@ run.
 
 ### task-parity-str-004-coinbase-decoder-verification | 2026-08-02 | Verify deterministic coinbase decoding parity
 
-- [ ] Implement typed, bounds-checked coinbase transaction decoding for the
+- [x] Implement typed, bounds-checked coinbase transaction decoding for the
       deterministic `STR-004` surface.
-- [ ] Add pinned golden vectors and focused malformed/truncation coverage.
-- [ ] Preserve payout-address codecs, user-payout matching, live mining, share,
+- [x] Add pinned golden vectors and focused malformed/truncation coverage.
+- [x] Preserve payout-address codecs, user-payout matching, live mining, share,
       ASIC, networking, credential, and hardware behavior as explicit
       non-claims.
-- [ ] Run focused checks plus every mandatory Rust, Bright Builds, Bazel,
+- [x] Run focused checks plus every mandatory Rust, Bright Builds, Bazel,
       redaction, parity, and progress gate.
 - [ ] Transition only `STR-004` when its exact `unit,golden` evidence passes,
       synchronize progress, and archive this task in the finalization commit.
 
 Plan: `docs/parity/work-plans/20260802T201136Z-STR-004/PLAN.md`
 
-Verification: Pending.
+Verification: Eleven focused decoder tests, the Stratum Bazel target, fixture
+JSON parsing, reference cleanliness, formatting, strict Clippy, the
+all-target/all-feature Cargo build and tests, managed Bright Builds checks,
+redaction verification, the full Bazel test graph, parity validation, and the
+30-of-94 pre-transition progress baseline passed.
 
 Completion review: Pending.
 

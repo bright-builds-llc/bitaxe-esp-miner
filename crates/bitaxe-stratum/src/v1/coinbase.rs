@@ -1,9 +1,17 @@
 //! Coinbase, extranonce, and merkle helpers for Stratum v1 mining jobs.
 //!
 //! Reference breadcrumbs:
+//! - `reference/esp-miner/components/stratum/coinbase_decoder.c`
 //! - `reference/esp-miner/components/stratum/mining.c`
 //! - `reference/esp-miner/components/stratum/utils.c`
-//! - Parity checklist rows `STR-003` and `STR-006`
+//! - Parity checklist rows `STR-003`, `STR-004`, and `STR-006`
+
+mod decoder;
+
+pub use decoder::{
+    decode_coinbase_notification, decode_compact_size, CoinbaseOutput, CoinbaseScriptKind,
+    DecodedCoinbase, MAX_COINBASE_OUTPUTS,
+};
 
 use std::fmt::Write;
 
@@ -158,3 +166,6 @@ mod mining_job_tests {
         ));
     }
 }
+
+#[cfg(test)]
+mod decoder_tests;

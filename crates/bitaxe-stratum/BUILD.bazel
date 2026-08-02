@@ -9,6 +9,8 @@ rust_library(
         "src/v1.rs",
         "src/v1/bridge_orchestration.rs",
         "src/v1/coinbase.rs",
+        "src/v1/coinbase/decoder.rs",
+        "src/v1/coinbase/decoder_tests.rs",
         "src/v1/live_runtime.rs",
         "src/v1/live_runtime/tests.rs",
         "src/v1/live_runtime/tests/classification.rs",

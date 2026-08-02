@@ -1,0 +1,72 @@
+{
+  "metadata": {
+    "checklist_ids": ["STR-004"],
+    "source_files": [
+      "reference/esp-miner/components/stratum/coinbase_decoder.c",
+      "reference/esp-miner/components/stratum/include/coinbase_decoder.h",
+      "reference/esp-miner/components/stratum/test/test_coinbase_decoder.c",
+      "reference/esp-miner/components/stratum/utils.c"
+    ],
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "license_posture": "reference-derived fixture data; not GPL source expression",
+    "derivation": "independently constructed valid coinbase transaction split from pinned field and signal behavior"
+  },
+  "compact_size_cases": [
+    { "encoded": "42", "expected": 66, "expected_len": 1 },
+    { "encoded": "fd3412", "expected": 4660, "expected_len": 3 },
+    { "encoded": "fe78563412", "expected": 305419896, "expected_len": 5 },
+    { "encoded": "ff0102030405060708", "expected": 578437695752307201, "expected_len": 9 }
+  ],
+  "script_cases": [
+    {
+      "script_pubkey": "76a91489abcdef0123456789abcdef0123456789abcdef88ac",
+      "expected_kind": "p2pkh"
+    },
+    {
+      "script_pubkey": "a914123456789abcdef0123456789abcdef01234567887",
+      "expected_kind": "p2sh"
+    },
+    {
+      "script_pubkey": "0014aabbccddeeff00112233445566778899aabbccdd",
+      "expected_kind": "p2wpkh"
+    },
+    {
+      "script_pubkey": "00200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "expected_kind": "p2wsh"
+    },
+    {
+      "script_pubkey": "5120ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100",
+      "expected_kind": "p2tr"
+    },
+    { "script_pubkey": "6a03414243", "expected_kind": "op_return" },
+    { "script_pubkey": "51", "expected_kind": "unknown" }
+  ],
+  "notification": {
+    "coinbase_1": "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0f03a5020c2f42422f",
+    "coinbase_2": "746167feffffff0232000000000000001976a91400112233445566778899aabbccddeeff0011223388ac0000000000000000056a03414243a4020c00",
+    "extranonce1": "aabb",
+    "extranonce2_len": 2,
+    "version": 536870928,
+    "nbits": 385994235,
+    "expected": {
+      "network_difficulty": 155973032196071.9,
+      "block_height": 787109,
+      "scriptsig": "/BB/tag",
+      "total_value_satoshis": 50,
+      "bip54_signaling": true,
+      "bip110_signaling": true,
+      "outputs": [
+        {
+          "value_satoshis": 50,
+          "script_pubkey": "76a91400112233445566778899aabbccddeeff0011223388ac",
+          "script_kind": "p2pkh"
+        },
+        {
+          "value_satoshis": 0,
+          "script_pubkey": "6a03414243",
+          "script_kind": "op_return"
+        }
+      ]
+    }
+  }
+}
