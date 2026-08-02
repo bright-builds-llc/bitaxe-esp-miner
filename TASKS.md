@@ -345,6 +345,12 @@ run.
       `in-progress` to `implemented`.
 - [x] Synchronize parity progress and retain this task with the exact later
       live-evidence gate required for `verified`.
+- [ ] Correct `next-item` so a non-verified plan closes after its checklist
+      status advances beyond the plan's recorded initial status.
+- [ ] Prove an unchanged-status plan still resumes while the completed
+      `SYS-004` implementation plan yields the next candidate queue.
+- [ ] Run all mandatory repository gates, keep the checklist and progress
+      history unchanged, and push the audited continuation.
 
 Plan: `docs/parity/work-plans/20260802T233821Z-SYS-004/PLAN.md`
 
@@ -367,6 +373,15 @@ the guarded one-row transition, and progress was hash-chain synchronized.
 exact-current-package live API version evidence and a decision on static-asset
 version semantics remain required before `verified`, so this task stays active
 and unarchived.
+
+Continuation: The next `advance-parity` preflight incorrectly reopened this
+completed implementation plan because `next-item` treats every plan without a
+`RESULT.md` as open. `RESULT.md` is reserved for verified completion, so that
+rule deadlocks every intentionally conservative transition to `implemented`.
+This software-only continuation will make plan openness depend on whether the
+authoritative checklist status still equals the plan's recorded initial status.
+It does not alter `SYS-004` evidence, authorize hardware, or weaken the later
+verification gate.
 
 ## Future — Explicit Only
 

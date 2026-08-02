@@ -108,3 +108,31 @@
   status, evidence scope, notes, source binding, or any other row.
 - Blocker or next safe action: Re-run the complete finalization gate and commit
   only after every validator accepts the corrected transition.
+
+## 2026-08-02T23:54:52Z | completed-plan selector root cause
+
+- Source commit: `b88a8307c887a68e6e1615ad44f108d6a7aded47`
+- Actions: Began the next `advance-parity` invocation from a clean synchronized
+  `main`. `next-item` returned this plan as open and suppressed every candidate,
+  even though the plan's recorded initial status is `in-progress`, the guarded
+  transition already moved `SYS-004` to `implemented`, and the plan explicitly
+  reserves live verification for a later bounded task. Traced the result to
+  `find_open_plan`, which defines openness solely as `PLAN.md` present and
+  `RESULT.md` absent.
+- Verification: `git fetch origin`; zero divergence; clean worktree; pinned
+  reference `c1915b0a63bfabebdb95a515cedfee05146c1d50`; `bazel run
+  //tools/parity:report -- next-item --format json` returned only this
+  `maybe_open_plan`; source inspection confirmed `find_open_plan` never reads
+  the plan's initial status or the authoritative checklist row status.
+- Evidence: `docs/parity/work-plans/20260802T233821Z-SYS-004/PLAN.md` records
+  initial status `in-progress`; `docs/parity/checklist.md` records current status
+  `implemented`; `tools/parity/src/parity_work.rs:213-243` ignores that status
+  advance.
+- Outcome: The root cause is a selector state-model defect. Requiring
+  `RESULT.md` to close every plan conflicts with the skill contract that creates
+  results only for `verified` rows, so conservative `implemented` completion
+  deadlocks the queue.
+- Blocker or next safe action: Commit this continuation checkpoint, then make
+  open-plan detection compare the plan's initial status with the authoritative
+  current row. Preserve unchanged-status resumption and reject malformed or
+  missing row/status metadata. No hardware or checklist transition is needed.
