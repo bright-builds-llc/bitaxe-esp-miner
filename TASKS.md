@@ -337,9 +337,9 @@ run.
 
 ### task-parity-sys004-version-reporting | 2026-08-02 | Reconcile implemented version reporting
 
-- [ ] Audit the upstream firmware, AxeOS, and ESP-IDF version surface against
+- [x] Audit the upstream firmware, AxeOS, and ESP-IDF version surface against
       the current canonical Rust build/platform/API projection.
-- [ ] Run focused build-identity, system-info wire, package-manifest, and
+- [x] Run focused build-identity, system-info wire, package-manifest, and
       runtime-attestation regressions plus every mandatory repository gate.
 - [ ] Commit the row evidence before transitioning only `SYS-004` from
       `in-progress` to `implemented`.
@@ -352,7 +352,12 @@ Authorization boundary: software-only evidence reconciliation. No detector,
 hardware, credential, network, flash, monitor, HTTP, WebSocket, OTA, mining,
 safety-control, direct-UART, or pin action is authorized.
 
-Verification: Pending.
+Verification: The focused build-identity (8), system-info wire (1), package
+manifest (8), and runtime-attestation (11) tests passed; the focused Bazel
+targets passed; API compare checked 99 schema, 47 captured-response, and 36
+static-route facts without validation errors; and the complete Rust, Bright
+Builds, Bazel, parity, progress, redaction, reference-integrity, and whitespace
+gates passed before the evidence commit.
 
 Completion review: Pending. This run may establish implementation completeness
 only. Exact-current-package live API version evidence and static-asset version
