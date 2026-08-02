@@ -335,6 +335,30 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
+### task-parity-str-002-message-verification | 2026-08-02 | Verify Stratum v1 message parity
+
+- [x] Select `STR-002` as the first actionable deterministic parity candidate
+      and commit its immutable audit plan before implementation.
+- [ ] Make the pinned reference-derived protocol fixture executable as golden
+      coverage for every message family owned by `STR-002`.
+- [ ] Enforce the reference's 32-Merkle-branch parser boundary and add focused
+      behavior tests.
+- [ ] Run the focused and mandatory repository verification commands, record
+      the result, transition only `STR-002` when justified, and synchronize
+      deterministic progress.
+
+Plan: `docs/parity/work-plans/20260802T184857Z-STR-002/PLAN.md`.
+
+Scope and safety: software-only JSON-RPC parsing, serialization, fixtures, and
+tests. No network, credentials, hardware, flashing, mining, transport effects,
+direct UART, pin manipulation, or reference-tree edits are authorized.
+
+Verification: Pending.
+
+Completion review: Pending. Promotion is limited to `STR-002` message-shape
+behavior with `unit,golden` evidence; all live socket, timing, reconnect,
+share, ASIC, and production-mining claims remain separately owned.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
