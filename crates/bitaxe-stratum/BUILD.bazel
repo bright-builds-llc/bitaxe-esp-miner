@@ -16,6 +16,7 @@ rust_library(
         "src/v1/live_runtime/tests/work.rs",
         "src/v1/line_framer.rs",
         "src/v1/mining.rs",
+        "src/v1/mining/golden_tests.rs",
         "src/v1/messages.rs",
         "src/v1/messages/client.rs",
         "src/v1/messages/server.rs",

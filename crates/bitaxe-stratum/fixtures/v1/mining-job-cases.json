@@ -4,60 +4,60 @@
     "source_files": [
       "reference/esp-miner/components/stratum/mining.c",
       "reference/esp-miner/components/stratum/include/mining.h",
+      "reference/esp-miner/components/stratum/test/test_mining.c",
       "reference/esp-miner/components/stratum/utils.c",
-      "crates/bitaxe-asic/src/bm1366/work.rs",
-      "crates/bitaxe-asic/src/bm1366/result.rs"
+      "crates/bitaxe-asic/src/bm1366/work.rs"
     ],
     "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
     "license_posture": "reference-derived fixture data; not MIT source expression",
-    "derivation": "manual independent Rust implementation with upstream behavior breadcrumbs"
+    "derivation": "independently encoded Rust fixture vectors from pinned upstream test inputs and expected outputs"
   },
-  "cases": [
-    {
-      "name": "extranonce_2_generate",
-      "input": {
-        "value": 1,
-        "len": 4
-      },
-      "expected": {
-        "hex": "01000000"
-      }
-    },
-    {
-      "name": "coinbase_hash",
-      "input": {
-        "hex_parts": ["00", "01"]
-      },
-      "expected": {
-        "algorithm": "double_sha256"
-      }
-    },
-    {
-      "name": "merkle_root",
-      "input": {
-        "coinbase_hash": "synthetic double-sha256 coinbase hash",
-        "branches": ["1111111111111111111111111111111111111111111111111111111111111111"]
-      },
-      "expected": {
-        "algorithm": "iterative double_sha256(parent || branch)"
-      }
-    },
-    {
-      "name": "notify_to_bm1366_work_fields",
-      "input": {
-        "job_id": "job",
-        "extranonce1": "4de05269",
-        "extranonce2": "00000000",
-        "nbits": "1705ae3a",
-        "ntime": "647025b5",
-        "asic_job_id": 0
-      },
-      "expected": {
-        "starting_nonce": "00000000",
-        "nbits_little_endian": "3aae0517",
-        "ntime_little_endian": "b5257064",
-        "work_type": "Bm1366WorkFields"
-      }
+  "extranonce2_cases": [
+    { "value": 0, "length": 4, "expected_hex": "00000000" },
+    { "value": 1, "length": 4, "expected_hex": "01000000" },
+    { "value": 2, "length": 4, "expected_hex": "02000000" },
+    { "value": 4294967294, "length": 4, "expected_hex": "feffffff" },
+    { "value": 2147483647, "length": 6, "expected_hex": "ffffff7f0000" }
+  ],
+  "job_case": {
+    "job_id": "job-upstream-vector",
+    "prev_block_hash": "bf44fd3513dc7b837d60e5c628b572b448d204a8000007490000000000000000",
+    "coinbase_1": "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff20020862062f503253482f04b8864e5008e969579199999999072f736c7573682f0000000001",
+    "coinbase_2": "1976a914d23fcdf86f7e756a64a7a9688ef9903327048ed988ac00000000",
+    "extranonce1": "00f2052a",
+    "extranonce2_value": 1,
+    "extranonce2_length": 4,
+    "merkle_branches": [
+      "ae23055e00f0f697cc3640124812d96d4fe8bdfa03484c1c638ce5a1c0e9aa81",
+      "980fb87cb61021dd7afd314fcb0dabd096f3d56a7377f6f320684652e7410a21",
+      "a52e9868343c55ce405be8971ff340f562ae9ab6353f07140d01666180e19b52",
+      "7435bdfa004e603953b2ed39f118803934d9cf17b06d979ceb682f2251bafac2",
+      "2a91f061a22d27cb8f44eea79938fb241ebeb359891aa907f05ffde7ed44e52e",
+      "302401f80eb5e958155135e25200bb8ea181ad2d05e804a531c7314d86403cdc",
+      "318ecb6161eb9b4cfd802bd730e2d36c167ddf102e70aa7b4158e2870dd47392",
+      "1114332a9858e0cf84b2425bb1e59eaabf91dd102d114aa443d57fc1b3beb0c9",
+      "f43f38095c810613ed795a44d9fab02ff25269706f454885db9be05cdf9c06e1",
+      "3e2fc26b27fddc39668b59099cd9635761bb72ed92404204e12bdff08b16fb75",
+      "463c19427286342120039a83218fa87ce45448e246895abac11fff0036076758",
+      "03d287f655813e540ddb9c4e7aeb922478662b0f5d8e9d0cbd564b20146bab76"
+    ],
+    "version": "20000004",
+    "nbits": "1705dd01",
+    "ntime": "64658bd8",
+    "clean_jobs": true,
+    "asic_job_id": 40,
+    "pool_difficulty": 1000.0,
+    "version_mask": "00ffff00",
+    "expected": {
+      "extranonce2": "01000000",
+      "coinbase_hash": "5e3ed56048b29b7247b1f6eb1bfe762b0550adab59151904e9560871b2462edb",
+      "merkle_root": "adbcbc21e20388422198a55957aedfa0e61be0b8f2b87d7c08510bb9f099a893",
+      "starting_nonce": "00000000",
+      "nbits_little_endian": "01dd0517",
+      "ntime_little_endian": "d88b6564",
+      "merkle_root_words_reversed": "f099a89308510bb9f2b87d7ce61be0b857aedfa02198a559e2038842adbcbc21",
+      "prev_block_hash_words_reversed": "000000000000000049070000a804d248b472b528c6e5607d837bdc1335fd44bf",
+      "version_little_endian": "04000020"
     }
-  ]
+  }
 }

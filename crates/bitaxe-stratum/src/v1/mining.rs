@@ -247,6 +247,9 @@ fn reverse_endianness_per_word(mut input: [u8; 32]) -> [u8; 32] {
 }
 
 #[cfg(test)]
+mod golden_tests;
+
+#[cfg(test)]
 mod mining_job_tests {
     use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
 
