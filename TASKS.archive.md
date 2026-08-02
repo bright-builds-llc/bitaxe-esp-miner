@@ -3339,3 +3339,45 @@ other ASIC families, and hardware remain explicit non-claims owned by separate
 checklist rows. The workflow's final push follows the finalization commit and
 is intentionally not represented as historical evidence inside this archived
 pre-push task record.
+
+### task-parity-str-004-coinbase-decoder-verification | 2026-08-02 | Verify deterministic coinbase decoding parity
+
+- [x] Implement typed, bounds-checked coinbase transaction decoding for the
+      deterministic `STR-004` surface.
+- [x] Add pinned golden vectors and focused malformed/truncation coverage.
+- [x] Preserve payout-address codecs, user-payout matching, live mining, share,
+      ASIC, networking, credential, and hardware behavior as explicit
+      non-claims.
+- [x] Run focused checks plus every mandatory Rust, Bright Builds, Bazel,
+      redaction, parity, and progress gate.
+- [x] Transition only `STR-004` when its exact `unit,golden` evidence passes,
+      synchronize progress, and archive this task in the finalization commit.
+
+Plan: `docs/parity/work-plans/20260802T201136Z-STR-004/PLAN.md`
+
+Authorization and safety: software-only and effect-free. No credentials,
+hardware, flashing, pool/network connections, destructive actions, direct
+UART, pin manipulation, or reference-tree edits were used.
+
+Verification: Eleven focused decoder tests, the Stratum Bazel target, fixture
+JSON parsing, reference cleanliness, formatting, strict Clippy, the
+all-target/all-feature Cargo build and tests, managed Bright Builds checks,
+redaction verification, the full Bazel test graph, parity validation, and the
+30-of-94 pre-transition progress baseline passed. The terminal result binds
+implementation commit `b55228706d28f9b34d71a092656ef3ca6f3f649a`;
+transition receipt `20260802T202626Z-STR-004` binds the predecessor/result
+checklist digests, plan/result hashes, pinned reference commit, exact Rust-owned
+targets, and unchanged `unit,golden` evidence. Progress sync reports 31/94
+verified (33.0%). Final gates are run again after this archival and before the
+final commit.
+
+Completion review: Complete. The typed decoder now covers all CompactSize
+widths, BIP-34 height and printable pool-tag extraction, compact-target network
+difficulty, bounded output retention with complete totals, every reference
+script shape, and exact BIP-54/BIP-110 decisions, with malformed and truncated
+input rejected. `STR-004` alone transitioned from `implemented` to `verified`.
+Residual risk: address encoding and payout matching remain owned by unverified
+`STR-012`; live sockets, networking, TLS, credentials, ASIC dispatch, shares,
+production mining, timing, and hardware remain explicit non-claims. The
+workflow's final push follows the finalization commit and is intentionally not
+represented as historical evidence inside this archived pre-push task record.

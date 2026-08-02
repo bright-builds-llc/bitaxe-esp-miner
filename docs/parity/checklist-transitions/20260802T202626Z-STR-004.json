@@ -1,0 +1,18 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260802T202626Z-STR-004",
+  "predecessor_sha256": "2bec888c5d8ab6e9262cea75681d657845a00345dae80b07a9397c210dd76605",
+  "result_sha256": "93a5229000c937de10583900c484b2e462552816c0ea43f81e40c9bef6d1ce99",
+  "row_id": "STR-004",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260802T201136Z-STR-004/PLAN.md",
+  "plan_sha256": "117796291940d599b45654659031fdfd22e31ba76ae55c408f54fc70fca0609d",
+  "result_path": "docs/parity/work-plans/20260802T201136Z-STR-004/RESULT.md",
+  "result_document_sha256": "c7a4af9db0ef2b0d49759622adb935c45ef148580eb00dcde254760215bacfb2",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1/coinbase.rs`, `crates/bitaxe-stratum/fixtures/v1/mining-job-cases.json`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/coinbase.rs`, `crates/bitaxe-stratum/src/v1/coinbase/decoder.rs`, `crates/bitaxe-stratum/src/v1/coinbase/decoder_tests.rs`, `crates/bitaxe-stratum/fixtures/v1/coinbase-decoder-cases.json`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden",
+  "after_evidence": "unit,golden"
+}
