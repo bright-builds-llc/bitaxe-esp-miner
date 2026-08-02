@@ -337,13 +337,13 @@ run.
 
 ### task-parity-stat-004-work-queue-verification | 2026-08-02 | Verify deterministic work-queue parity
 
-- [ ] Add pinned executable golden cases for the exact `STAT-004` queue
+- [x] Add pinned executable golden cases for the exact `STAT-004` queue
       data-structure contract.
-- [ ] Cover capacity, FIFO wrap-around, full/empty boundary preservation, and
+- [x] Cover capacity, FIFO wrap-around, full/empty boundary preservation, and
       clear/drop ownership with focused Arrange/Act/Assert tests.
-- [ ] Preserve task blocking/timing, live Stratum, ASIC, share, credential,
+- [x] Preserve task blocking/timing, live Stratum, ASIC, share, credential,
       network, and hardware behavior as explicit non-claims.
-- [ ] Run focused checks plus every mandatory Rust, Bright Builds, Bazel,
+- [x] Run focused checks plus every mandatory Rust, Bright Builds, Bazel,
       redaction, parity, and progress gate.
 - [ ] Transition only `STAT-004` if its exact `unit,golden` evidence passes,
       synchronize progress, and archive this task in the finalization commit.
@@ -354,7 +354,11 @@ Authorization and safety: software-only and effect-free. No credentials,
 hardware, flashing, pool/network connections, destructive actions, direct
 UART, pin manipulation, or reference-tree edits are authorized or required.
 
-Verification: Pending.
+Verification: Ten focused queue tests, the Stratum Bazel target, fixture JSON
+parsing, reference cleanliness, formatting, strict Clippy, the
+all-target/all-feature Cargo build and tests, managed Bright Builds checks,
+redaction verification, all 82 Bazel tests, parity validation, and the 31-of-94
+pre-transition progress baseline passed.
 
 Completion review: Pending.
 

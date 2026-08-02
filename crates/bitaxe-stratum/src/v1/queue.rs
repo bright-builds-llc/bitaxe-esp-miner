@@ -132,12 +132,76 @@ impl Default for MiningWorkQueue {
 
 #[cfg(test)]
 mod work_queue_tests {
+    use std::cell::Cell;
+    use std::rc::Rc;
+
     use bitaxe_asic::bm1366::work::Bm1366JobId;
+    use serde::Deserialize;
 
     use super::*;
     use crate::error::StratumV1Error;
     use crate::v1::messages::{ExtranonceAssignment, MiningNotify};
     use crate::v1::mining::{MiningWork, MiningWorkBuilder};
+
+    #[derive(Debug, Deserialize)]
+    struct WorkQueueFixture {
+        metadata: FixtureMetadata,
+        capacity: usize,
+        fifo_wraparound: FifoWraparoundFixture,
+        full_boundary: FullBoundaryFixture,
+        empty_boundary: EmptyBoundaryFixture,
+        clear: ClearFixture,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct FixtureMetadata {
+        checklist_ids: Vec<String>,
+        source_files: Vec<String>,
+        reference_commit: String,
+        scheduler_non_claims: Vec<String>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct FifoWraparoundFixture {
+        initial_items: Vec<u8>,
+        dequeue_before_reuse: Vec<u8>,
+        items_after_reuse: Vec<u8>,
+        final_dequeue_order: Vec<u8>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct FullBoundaryFixture {
+        queued_items: Vec<u8>,
+        rejected_item: u8,
+        expected_error: String,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct EmptyBoundaryFixture {
+        expected_error: String,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ClearFixture {
+        queued_items: Vec<u8>,
+        expected_dropped_items: usize,
+    }
+
+    #[derive(Debug)]
+    struct DropTrackedItem {
+        dropped: Rc<Cell<usize>>,
+    }
+
+    impl Drop for DropTrackedItem {
+        fn drop(&mut self) {
+            self.dropped.set(self.dropped.get() + 1);
+        }
+    }
+
+    fn work_queue_fixture() -> WorkQueueFixture {
+        serde_json::from_str(include_str!("../../fixtures/v1/work-queue-cases.json"))
+            .expect("work queue fixture should parse")
+    }
 
     #[test]
     fn work_queue_default_is_empty_and_reports_capacity() {
@@ -168,6 +232,119 @@ mod work_queue_tests {
 
         // Assert
         assert_eq!(overflow, Err(StratumV1Error::QueueFull));
+    }
+
+    #[test]
+    fn work_queue_golden_fixture_binds_capacity_provenance_and_non_claims() {
+        // Arrange
+        let fixture = work_queue_fixture();
+
+        // Act
+        let queue = BoundedWorkQueue::<u8, STRATUM_WORK_QUEUE_CAPACITY>::new();
+
+        // Assert
+        assert_eq!(fixture.metadata.checklist_ids, ["STAT-004"]);
+        assert_eq!(fixture.capacity, STRATUM_WORK_QUEUE_CAPACITY);
+        assert_eq!(queue.capacity(), fixture.capacity);
+        assert_eq!(
+            fixture.metadata.reference_commit,
+            "c1915b0a63bfabebdb95a515cedfee05146c1d50"
+        );
+        assert_eq!(
+            fixture.metadata.source_files,
+            [
+                "reference/esp-miner/main/work_queue.c",
+                "reference/esp-miner/main/work_queue.h"
+            ]
+        );
+        assert_eq!(fixture.metadata.scheduler_non_claims.len(), 3);
+    }
+
+    #[test]
+    fn work_queue_golden_fixture_preserves_fifo_order_across_ring_reuse() {
+        // Arrange
+        let fixture = work_queue_fixture().fifo_wraparound;
+        let mut queue = BoundedWorkQueue::<u8, STRATUM_WORK_QUEUE_CAPACITY>::new();
+        for item in fixture.initial_items {
+            queue.enqueue(item).expect("initial item should enqueue");
+        }
+
+        // Act
+        let before_reuse = fixture
+            .dequeue_before_reuse
+            .iter()
+            .map(|_| queue.dequeue().expect("initial item should dequeue"))
+            .collect::<Vec<_>>();
+        for item in fixture.items_after_reuse {
+            queue.enqueue(item).expect("reused slot should accept item");
+        }
+        let after_reuse = (0..queue.len())
+            .map(|_| queue.dequeue().expect("remaining item should dequeue"))
+            .collect::<Vec<_>>();
+
+        // Assert
+        assert_eq!(before_reuse, fixture.dequeue_before_reuse);
+        assert_eq!(after_reuse, fixture.final_dequeue_order);
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn work_queue_golden_fixture_preserves_contents_when_full_boundary_rejects() {
+        // Arrange
+        let fixture = work_queue_fixture().full_boundary;
+        let mut queue = BoundedWorkQueue::<u8, STRATUM_WORK_QUEUE_CAPACITY>::new();
+        for item in &fixture.queued_items {
+            queue.enqueue(*item).expect("fixture item should enqueue");
+        }
+
+        // Act
+        let result = queue.enqueue(fixture.rejected_item);
+        let retained = (0..queue.len())
+            .map(|_| queue.dequeue().expect("retained item should dequeue"))
+            .collect::<Vec<_>>();
+
+        // Assert
+        assert_eq!(fixture.expected_error, "queue_full");
+        assert_eq!(result, Err(StratumV1Error::QueueFull));
+        assert_eq!(retained, fixture.queued_items);
+    }
+
+    #[test]
+    fn work_queue_golden_fixture_preserves_empty_state_on_empty_boundary() {
+        // Arrange
+        let fixture = work_queue_fixture().empty_boundary;
+        let mut queue = BoundedWorkQueue::<u8, STRATUM_WORK_QUEUE_CAPACITY>::new();
+
+        // Act
+        let result = queue.dequeue();
+
+        // Assert
+        assert_eq!(fixture.expected_error, "queue_empty");
+        assert_eq!(result, Err(StratumV1Error::QueueEmpty));
+        assert!(queue.is_empty());
+        assert_eq!(queue.len(), 0);
+    }
+
+    #[test]
+    fn work_queue_golden_fixture_clear_drops_every_queued_item() {
+        // Arrange
+        let fixture = work_queue_fixture().clear;
+        let dropped = Rc::new(Cell::new(0));
+        let mut queue = BoundedWorkQueue::<DropTrackedItem, STRATUM_WORK_QUEUE_CAPACITY>::new();
+        for _ in fixture.queued_items {
+            queue
+                .enqueue(DropTrackedItem {
+                    dropped: Rc::clone(&dropped),
+                })
+                .expect("drop-tracked item should enqueue");
+        }
+
+        // Act
+        queue.clear();
+
+        // Assert
+        assert_eq!(dropped.get(), fixture.expected_dropped_items);
+        assert!(queue.is_empty());
     }
 
     #[test]
