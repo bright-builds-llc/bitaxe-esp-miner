@@ -83,3 +83,25 @@
 - Blocker or next safe action: none within this authorization. The exact
   attempt is consumed, no retry is permitted, and the task remains active and
   unarchived as a terminal blocker.
+
+## 2026-08-02T22:28:34Z | timeout root cause fixed in software
+
+- Source commit: `99c3f1ca00b99f0f64509d8537989d6001b02385`
+- Actions: reproduced the valid-upload failure at the exact host deadline,
+  tested the ranked timeout, firmware-stall, restart-race, and monitor-reader
+  hypotheses, and changed only the OTA orchestration and its regression seam.
+- Verification: the former 30-second boundary failed deterministically on
+  three consecutive pre-fix runs with curl status 28, HTTP `000`, and zero
+  response bytes; increasing only the valid-upload deadline made the loop
+  green. A separate red/green test proved the prearmed capture now selects the
+  qualified OS-native reader. Both focused OTA tests and every mandatory
+  repository gate pass.
+- Evidence: the valid-upload timeout now defaults to a bounded 120 seconds,
+  post-upload observation defaults to 360 seconds, the prearmed capture spans
+  both budgets, and the helper explicitly requests the OS-native reader.
+- Outcome: the proven host-side timeout boundary and the secondary evidence
+  transport defect are fixed without another hardware interaction. `OTA-001`
+  remains `implemented` and progress remains unchanged.
+- Blocker or next safe action: device behavior after the former client deadline
+  remains unknowable from the consumed attempt. A separately authorized,
+  task-gated hardware attempt is still required for verified parity.

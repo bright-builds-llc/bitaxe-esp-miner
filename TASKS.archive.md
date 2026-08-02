@@ -3423,3 +3423,47 @@ credential, ASIC, share, mining, and hardware behavior remain explicit
 non-claims. The workflow's final push follows the finalization commit and is
 intentionally not represented as historical evidence inside this archived
 pre-push task record.
+
+### task-parity-ota-001-timeout-root-cause | 2026-08-02 | Diagnose and fix the OTA valid-upload timeout boundary
+
+- [x] Build a deterministic, fast reproduction of the exact valid-upload
+      timeout with HTTP `000`, zero response bytes, and curl status `28`.
+- [x] Test ranked falsifiable hypotheses against the protected attempt facts
+      without printing or committing operational values.
+- [x] Add a regression at the real Phase 13 orchestration seam and implement
+      the narrowest root-cause fix.
+- [x] Run focused OTA checks plus all repository-required Rust, Bright Builds,
+      Bazel, parity, progress, redaction, reference-cleanliness, and diff gates.
+
+Scope and authorization: this task was software-only. It inspected the existing
+ignored `target/advance-parity-ota001/` artifacts through redacted classifiers
+without printing, copying, committing, or summarizing raw device, network,
+serial, HTTP, Wi-Fi, or USB values. It did not renew the consumed OTA attempt or
+perform another flash, upload, reboot, rollback, recovery, OTAWWW, mining,
+hardware-control, direct-UART, or pin-manipulation action. `OTA-001` remains
+`implemented`; no checklist transition or progress sync was performed.
+
+Verification: The deterministic valid-upload reproducer failed at the former
+30-second boundary with curl status 28, HTTP `000`, and zero response bytes on
+three consecutive pre-fix runs. Moving only that deadline beyond the simulated
+minimum made the same loop pass. A separate red/green contract proved the
+prearmed capture now selects the qualified OS-native runtime reader. Shell
+syntax, both focused OTA Bazel tests, formatting, strict Clippy, all-target and
+all-feature Cargo build and tests, managed Bright Builds checks, all 82 Bazel
+tests, parity validation, the unchanged 32-of-94 progress report, redaction,
+reference cleanliness, and diff checks passed.
+
+Completion review: Complete. The proven immediate cause was the host helper's
+fixed 30-second valid-upload deadline: it exactly produced the observed curl
+status 28, HTTP `000`, and empty response, and the current image is about 28.5%
+larger than the earlier image that completed within that same budget. The
+secondary evidence defect was the helper's implicit `espflash` reader despite
+the repository's qualified OS-native runtime-reader requirement, so absent
+post-upload reboot markers could not establish firmware failure. The targeted
+fix gives valid uploads a bounded 120-second default, preserves the invalid
+request's 30-second bound, gives post-upload observation a 360-second default,
+keeps the prearmed capture alive for the sum of both budgets, and explicitly
+uses the OS-native reader. Residual risk: because the original hardware attempt
+was consumed and this task did not authorize another, device-side behavior
+beyond the former client deadline remains unobserved and real-hardware OTA
+confirmation is still required before `OTA-001` can transition.

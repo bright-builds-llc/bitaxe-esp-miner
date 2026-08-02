@@ -15,10 +15,11 @@ manifest="bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json"
 ota_image="bazel-bin/firmware/bitaxe/esp-miner.bin"
 port=""
 out_dir="docs/parity/evidence/phase-13-final-ultra-205-release-evidence/firmware-ota"
-monitor_seconds="45"
+monitor_seconds="360"
 curl_bin="${CURL_BIN:-curl}"
 monitor_capture_script="${PHASE13_MONITOR_CAPTURE_SCRIPT:-${script_dir}/phase13-monitor-capture.sh}"
 monitor_ready_timeout_seconds="${PHASE13_MONITOR_READY_TIMEOUT_SECONDS:-15}"
+valid_ota_request_timeout_seconds="${PHASE13_VALID_OTA_TIMEOUT_SECONDS:-120}"
 post_ota_monitor_pid=""
 post_ota_monitor_ready_file=""
 
@@ -92,6 +93,12 @@ if [[ ! "$monitor_ready_timeout_seconds" =~ ^[0-9]+$ || "$monitor_ready_timeout_
 	printf 'PHASE13_MONITOR_READY_TIMEOUT_SECONDS must be a positive integer\n' >&2
 	exit 2
 fi
+if [[ ! "$valid_ota_request_timeout_seconds" =~ ^[0-9]+$ || "$valid_ota_request_timeout_seconds" -lt 1 ]]; then
+	printf 'PHASE13_VALID_OTA_TIMEOUT_SECONDS must be a positive integer\n' >&2
+	exit 2
+fi
+monitor_capture_seconds=$((10#$monitor_seconds + 10#$valid_ota_request_timeout_seconds))
+readonly monitor_capture_seconds
 
 mkdir -p "$out_dir"
 readonly log_file="${out_dir}/firmware-ota-smoke.log"
@@ -301,10 +308,10 @@ start_post_ota_monitor() {
 	post_ota_monitor_ready_file="${out_dir}/.post-ota-monitor-ready"
 	rm -f "$post_ota_monitor_ready_file"
 	export PHASE13_MONITOR_ACTIVE_READY_FILE="$post_ota_monitor_ready_file"
-	log "post_ota_monitor_command: scripts/phase13-monitor-capture.sh --port ${port} --out ${post_ota_monitor_log} --seconds ${monitor_seconds} --no-reset"
+	log "post_ota_monitor_command: scripts/phase13-monitor-capture.sh --port ${port} --out ${post_ota_monitor_log} --seconds ${monitor_capture_seconds} --reader os-native --no-reset"
 
 	PHASE13_MONITOR_ACTIVE_READY_FILE="$post_ota_monitor_ready_file" \
-		"$BASH" "$monitor_capture_script" --port "$port" --out "$post_ota_monitor_log" --seconds "$monitor_seconds" --no-reset >>"$log_file" 2>&1 &
+		"$BASH" "$monitor_capture_script" --port "$port" --out "$post_ota_monitor_log" --seconds "$monitor_capture_seconds" --reader os-native --no-reset >>"$log_file" 2>&1 &
 	post_ota_monitor_pid=$!
 
 	local deadline=$((SECONDS + monitor_ready_timeout_seconds))
@@ -347,6 +354,7 @@ post_image() {
 	local id="$1"
 	local image_path="$2"
 	local route_label="$3"
+	local request_timeout_seconds="$4"
 	local header_file="${out_dir}/${id}.headers.txt"
 	local body_file="${out_dir}/${id}.body.txt"
 	local error_file="${out_dir}/${id}.curl-error.txt"
@@ -357,7 +365,7 @@ post_image() {
 	: >"$error_file"
 
 	set +e
-	last_http_status="$("$curl_bin" --silent --show-error --max-time 30 --dump-header "$header_file" --output "$body_file" --write-out "%{http_code}" --request POST --data-binary "@${image_path}" "$url" 2>"$error_file")"
+	last_http_status="$("$curl_bin" --silent --show-error --max-time "$request_timeout_seconds" --dump-header "$header_file" --output "$body_file" --write-out "%{http_code}" --request POST --data-binary "@${image_path}" "$url" 2>"$error_file")"
 	last_curl_status=$?
 	set -e
 	last_body_snippet="$(body_snippet "$body_file")"
@@ -408,7 +416,9 @@ log "phase13_firmware_ota_smoke"
 log "manifest: ${manifest}"
 log "ota_image: ${ota_image}"
 log "port: ${port:-not provided}"
-log "monitor_seconds: ${monitor_seconds}"
+log "post_ota_monitor_seconds: ${monitor_seconds}"
+log "valid_ota_request_timeout_seconds: ${valid_ota_request_timeout_seconds}"
+log "monitor_capture_seconds: ${monitor_capture_seconds}"
 log "manifest_source_commit: $(manifest_field source_commit)"
 log "manifest_reference_commit: $(manifest_field reference_commit)"
 
@@ -471,7 +481,7 @@ write_invalid_image "$invalid_image"
 invalid_sha256="$(sha256_file "$invalid_image")"
 log "invalid image artifact: ${invalid_image}"
 log "invalid image checksum: ${invalid_sha256}"
-post_image "invalid-firmware-ota" "$invalid_image" "invalid image rejection"
+post_image "invalid-firmware-ota" "$invalid_image" "invalid image rejection" 30
 invalid_body_file="${out_dir}/invalid-firmware-ota.body.txt"
 
 if [[ "$last_curl_status" -ne 0 ]]; then
@@ -496,7 +506,7 @@ if ! start_post_ota_monitor; then
 	exit 1
 fi
 
-post_image "valid-firmware-ota" "$ota_image" "valid OTA"
+post_image "valid-firmware-ota" "$ota_image" "valid OTA" "$valid_ota_request_timeout_seconds"
 
 if [[ "$last_curl_status" -ne 0 ]]; then
 	block_with_reason "valid OTA request failed"

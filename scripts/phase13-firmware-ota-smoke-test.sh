@@ -98,6 +98,7 @@ create_fake_curl() {
 body_file=""
 data_path=""
 url=""
+max_time=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -109,7 +110,11 @@ while [[ $# -gt 0 ]]; do
       body_file="$2"
       shift 2
       ;;
-    --request | --max-time | --write-out)
+    --max-time)
+      max_time="$2"
+      shift 2
+      ;;
+    --request | --write-out)
       shift 2
       ;;
     --data-binary)
@@ -164,6 +169,12 @@ case "$(basename "$data_path")" in
     if [[ -n "${PHASE13_TEST_EVENT_LOG:-}" ]]; then
       printf "valid_upload\n" >>"$PHASE13_TEST_EVENT_LOG"
     fi
+    minimum_timeout="${PHASE13_FAKE_MIN_VALID_TIMEOUT_SECONDS:-0}"
+    if [[ ! "$max_time" =~ ^[0-9]+$ || "$max_time" -lt "$minimum_timeout" ]]; then
+      printf "curl: (28) Operation timed out after configured deadline with 0 bytes received\n" >&2
+      printf "000"
+      exit 28
+    fi
     printf "Firmware update complete, rebooting now!" >"$body_file"
     if [[ -n "${PHASE13_TEST_VALID_UPLOAD_DONE_FILE:-}" ]]; then
       : >"$PHASE13_TEST_VALID_UPLOAD_DONE_FILE"
@@ -182,10 +193,20 @@ create_success_monitor() {
 	local path="$1"
 
 	write_executable "$path" 'out=""
+reader=""
+seconds=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --out)
       out="$2"
+      shift 2
+      ;;
+    --reader)
+      reader="$2"
+      shift 2
+      ;;
+    --seconds)
+      seconds="$2"
       shift 2
       ;;
     *)
@@ -196,6 +217,14 @@ done
 if [[ -z "$out" ]]; then
   printf "missing monitor out\n" >&2
   exit 2
+fi
+if [[ -n "${PHASE13_TEST_REQUIRED_MONITOR_READER:-}" && "$reader" != "$PHASE13_TEST_REQUIRED_MONITOR_READER" ]]; then
+  printf "monitor reader mismatch\n" >&2
+  exit 89
+fi
+if [[ -n "${PHASE13_TEST_REQUIRED_MONITOR_SECONDS:-}" && "$seconds" != "$PHASE13_TEST_REQUIRED_MONITOR_SECONDS" ]]; then
+  printf "monitor duration mismatch\n" >&2
+  exit 90
 fi
 if [[ -n "${PHASE13_MONITOR_ACTIVE_READY_FILE:-}" ]]; then
   printf "ready\n" >"$PHASE13_MONITOR_ACTIVE_READY_FILE"
@@ -333,6 +362,7 @@ test_monitor_start_failure_blocks_valid_upload_and_cleans_up() {
 
 	create_fake_curl "$curl_stub"
 	create_monitor_that_exits_before_ready "$monitor_stub"
+	: >"$event_log"
 
 	set +e
 	PHASE13_MONITOR_READY_TIMEOUT_SECONDS=1 PHASE13_TEST_EVENT_LOG="$event_log" \
@@ -355,6 +385,69 @@ test_monitor_start_failure_blocks_valid_upload_and_cleans_up() {
 	assert_not_contains "$event_log" "valid_upload"
 	if [[ -e "${out_dir}/.post-ota-monitor-ready" ]]; then
 		fail "monitor readiness file should be cleaned up"
+	fi
+}
+
+test_valid_upload_timeout_budget_exceeds_previous_fixed_boundary() {
+	local out_dir="${tmp_root}/valid-upload-timeout-budget"
+	local curl_stub="${tmp_root}/fake-curl-timeout-budget"
+	local monitor_stub="${tmp_root}/success-monitor-timeout-budget"
+	local upload_done="${tmp_root}/timeout-budget-upload-done"
+
+	create_fake_curl "$curl_stub"
+	create_success_monitor "$monitor_stub"
+
+	set +e
+	PHASE13_FAKE_MIN_VALID_TIMEOUT_SECONDS=31 \
+		PHASE13_TEST_REQUIRED_MONITOR_SECONDS=121 \
+		PHASE13_TEST_VALID_UPLOAD_DONE_FILE="$upload_done" \
+		CURL_BIN="$curl_stub" PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" "$BASH" "$smoke_script" \
+		--device-url "http://device.local" \
+		--manifest "${tmp_root}/manifest.json" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--monitor-seconds 1
+	local status=$?
+	set -e
+
+	local log_file="${out_dir}/firmware-ota-smoke.log"
+	if [[ "$status" -ne 0 ]]; then
+		assert_contains "$log_file" "valid OTA status: 000"
+		assert_contains "$log_file" "valid OTA curl_status: 28"
+		assert_contains "$log_file" "valid OTA body:"
+		assert_contains "$log_file" "firmware_ota_status: blocked - valid OTA request failed"
+		fail "valid upload still uses the previous fixed 30-second timeout boundary"
+	fi
+	assert_contains "$log_file" "valid OTA status: 200"
+	assert_contains "$log_file" "valid OTA curl_status: 0"
+	assert_contains "$log_file" "firmware_ota_status: passed"
+}
+
+test_post_ota_monitor_uses_qualified_runtime_reader() {
+	local out_dir="${tmp_root}/qualified-runtime-reader"
+	local curl_stub="${tmp_root}/fake-curl-qualified-reader"
+	local monitor_stub="${tmp_root}/success-monitor-qualified-reader"
+
+	create_fake_curl "$curl_stub"
+	create_success_monitor "$monitor_stub"
+
+	set +e
+	PHASE13_MONITOR_READY_TIMEOUT_SECONDS=1 PHASE13_TEST_REQUIRED_MONITOR_READER=os-native \
+		CURL_BIN="$curl_stub" PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" "$BASH" "$smoke_script" \
+		--device-url "http://device.local" \
+		--manifest "${tmp_root}/manifest.json" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--monitor-seconds 1
+	local status=$?
+	set -e
+
+	if [[ "$status" -ne 0 ]]; then
+		local log_file="${out_dir}/firmware-ota-smoke.log"
+		assert_contains "$log_file" "firmware_ota_status: blocked - post-OTA monitor failed before active ownership was ready"
+		fail "post-OTA capture did not select the qualified OS-native runtime reader"
 	fi
 }
 
@@ -428,5 +521,7 @@ test_fake_invalid_rejection_and_valid_success_records_evidence
 test_missing_post_ota_marker_blocks_passed_status
 test_invalid_rejection_blocks_without_validation_marker
 test_monitor_start_failure_blocks_valid_upload_and_cleans_up
+test_valid_upload_timeout_budget_exceeds_previous_fixed_boundary
+test_post_ota_monitor_uses_qualified_runtime_reader
 
 printf 'phase13_firmware_ota_smoke_test passed\n'
