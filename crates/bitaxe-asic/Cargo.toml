@@ -8,3 +8,7 @@ license.workspace = true
 bitaxe-config = { path = "../bitaxe-config" }
 bitaxe-safety = { path = "../bitaxe-safety" }
 thiserror.workspace = true
+
+[dev-dependencies]
+serde.workspace = true
+serde_json.workspace = true

@@ -7,6 +7,7 @@ rust_library(
         "src/bm1366/adapter_gate.rs",
         "src/bm1366/chip_detect.rs",
         "src/bm1366/crc.rs",
+        "src/bm1366/crc/tests.rs",
         "src/bm1366/command.rs",
         "src/bm1366/frequency_voltage.rs",
         "src/bm1366/init_plan.rs",
@@ -42,4 +43,8 @@ rust_library(
 rust_test(
     name = "tests",
     crate = ":bitaxe_asic",
+    deps = [
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
 )

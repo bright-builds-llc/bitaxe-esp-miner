@@ -109,20 +109,14 @@ mod tests {
             | bm1366::packet::GROUP_SINGLE
             | bm1366::packet::CMD_WRITE;
         let data = [0x01, 0x02, 0x03];
+        let expected = [0x55, 0xaa, 0x21, 0x07, 0x01, 0x02, 0x03, 0x83, 0xf5];
 
         // Act
         let frame =
             bm1366::packet::JobFrame::new(header, &data).expect("job frame should be valid");
-        let bytes = frame.bytes();
-        let expected_crc = bm1366::crc::crc16_false(&bytes[2..bytes.len() - 2]);
 
         // Assert
-        assert_eq!(bytes.len(), data.len() + 6);
-        assert_eq!(bytes[3], (data.len() + 4) as u8);
-        assert_eq!(
-            u16::from_be_bytes([bytes[bytes.len() - 2], bytes[bytes.len() - 1]]),
-            expected_crc
-        );
+        assert_eq!(frame.bytes(), expected);
     }
 
     #[test]

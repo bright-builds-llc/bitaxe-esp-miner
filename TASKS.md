@@ -337,11 +337,11 @@ run.
 
 ### task-parity-asic-006-crc-verification | 2026-08-02 | Verify the complete reference CRC contract
 
-- [ ] Persist and commit the immutable `ASIC-006` work plan before source edits.
-- [ ] Implement the missing zero-initialized CRC16 behavior without copying the
+- [x] Persist and commit the immutable `ASIC-006` work plan before source edits.
+- [x] Implement the missing zero-initialized CRC16 behavior without copying the
       upstream GPL lookup table into MIT-first Rust source.
-- [ ] Add deterministic reference vectors for all CRC variants, receive residue,
-      and BM1366 command/job frame placement.
+- [x] Add deterministic reference vectors for all CRC variants and BM1366 frame
+      placement, and retain receive-residue coverage at the parser boundary.
 - [ ] Produce the worklog and terminal result, transition only `ASIC-006` to
       `verified`, synchronize progress, archive this task, and push all commits.
 
@@ -350,7 +350,9 @@ Plan: `docs/parity/work-plans/20260802T181828Z-ASIC-006/PLAN.md`.
 Authorization: software-only. No hardware, flash, credentials, network
 discovery, direct UART, pins, safety actuation, or reference-tree edits.
 
-Verification: Pending.
+Verification: Focused Cargo/Bazel CRC tests and every repository gate passed on
+the implementation worktree. The immutable worklog records exact commands and
+results; final transition/history validation remains pending.
 
 Completion review: Pending.
 

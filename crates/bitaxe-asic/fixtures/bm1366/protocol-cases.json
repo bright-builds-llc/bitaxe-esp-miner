@@ -1,11 +1,23 @@
 {
   "checklist_ids": ["ASIC-001", "ASIC-006", "ASIC-008"],
   "source_file": "reference/esp-miner/components/asic/crc.c",
-  "source_behavior": "BM1366 command CRC5 over header, length, and payload bytes",
+  "source_behavior": "CRC5, zero-initialized CRC16-CCITT, and CRC16-FALSE behavior plus BM1366 frame placement",
   "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
   "license_posture": "Reference-derived fixture metadata and values; not MIT source expression.",
   "derivation": "Manually derived from pinned reference behavior and command-frame constants.",
   "cases": [
+    {
+      "id": "crc5-empty-initial",
+      "kind": "crc5",
+      "checklist_ids": ["ASIC-006"],
+      "source_file": "reference/esp-miner/components/asic/crc.c:crc5",
+      "source_behavior": "CRC5 returns its 0x1f initial value for empty input",
+      "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+      "license_posture": "Reference-derived fixture value; not MIT source expression.",
+      "derivation": "Evaluated from the pinned reference function's empty loop boundary.",
+      "input_hex": "",
+      "expected_crc_hex": "1f"
+    },
     {
       "id": "crc5-read-register-00",
       "kind": "crc5",
@@ -18,6 +30,67 @@
       "input_hex": "52 05 00 00",
       "expected_crc_hex": "0a",
       "frame_hex": "55 aa 52 05 00 00 0a"
+    },
+    {
+      "id": "crc16-empty-initial",
+      "kind": "crc16",
+      "checklist_ids": ["ASIC-006"],
+      "source_file": "reference/esp-miner/components/asic/crc.c:crc16",
+      "source_behavior": "Zero-initialized CRC16 returns zero for empty input",
+      "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+      "license_posture": "Reference-derived fixture value; not MIT source expression.",
+      "derivation": "Evaluated from the pinned reference function's empty loop boundary.",
+      "input_hex": "",
+      "expected_crc_hex": "0000"
+    },
+    {
+      "id": "crc16-ccitt-check",
+      "kind": "crc16",
+      "checklist_ids": ["ASIC-006"],
+      "source_file": "reference/esp-miner/components/asic/crc.c:crc16",
+      "source_behavior": "Zero-initialized CRC16-CCITT canonical check input",
+      "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+      "license_posture": "Canonical check vector; not upstream source expression.",
+      "derivation": "Evaluated with polynomial 0x1021, zero initialization, no reflection, and no final xor.",
+      "input_hex": "31 32 33 34 35 36 37 38 39",
+      "expected_crc_hex": "31c3"
+    },
+    {
+      "id": "crc16-false-empty-initial",
+      "kind": "crc16_false",
+      "checklist_ids": ["ASIC-006"],
+      "source_file": "reference/esp-miner/components/asic/crc.c:crc16_false",
+      "source_behavior": "CRC16-FALSE returns 0xffff for empty input",
+      "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+      "license_posture": "Reference-derived fixture value; not MIT source expression.",
+      "derivation": "Evaluated from the pinned reference function's empty loop boundary.",
+      "input_hex": "",
+      "expected_crc_hex": "ffff"
+    },
+    {
+      "id": "crc16-false-check",
+      "kind": "crc16_false",
+      "checklist_ids": ["ASIC-006"],
+      "source_file": "reference/esp-miner/components/asic/crc.c:crc16_false",
+      "source_behavior": "CRC16-FALSE canonical check input",
+      "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+      "license_posture": "Canonical check vector; not upstream source expression.",
+      "derivation": "Evaluated with polynomial 0x1021, 0xffff initialization, no reflection, and no final xor.",
+      "input_hex": "31 32 33 34 35 36 37 38 39",
+      "expected_crc_hex": "29b1"
+    },
+    {
+      "id": "crc16-false-bm1366-job-body",
+      "kind": "crc16_false",
+      "checklist_ids": ["ASIC-006"],
+      "source_file": "reference/esp-miner/components/asic/bm1366.c:_send_BM1366",
+      "source_behavior": "CRC16-FALSE covers BM1366 job header, length, and payload and is appended big-endian",
+      "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+      "license_posture": "Reference-derived fixture bytes; not MIT source expression.",
+      "derivation": "Evaluated over header 0x21, length 0x07, and payload 0x010203 using the pinned reference CRC16-FALSE parameters.",
+      "input_hex": "21 07 01 02 03",
+      "expected_crc_hex": "83f5",
+      "frame_hex": "55 aa 21 07 01 02 03 83 f5"
     },
     {
       "id": "command-frame-read-register-00",

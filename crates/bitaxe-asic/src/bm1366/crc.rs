@@ -5,6 +5,7 @@
 //! avoid copying the upstream lookup table into MIT source.
 
 const CRC5_INITIAL: u8 = 0x1f;
+const CRC16_INITIAL: u16 = 0;
 const CRC16_FALSE_INITIAL: u16 = 0xffff;
 const CRC16_POLYNOMIAL: u16 = 0x1021;
 
@@ -26,8 +27,18 @@ pub fn crc5(data: &[u8]) -> u8 {
     crc
 }
 
+/// Computes the zero-initialized CRC16-CCITT variant exposed by upstream.
+pub fn crc16(data: &[u8]) -> u16 {
+    crc16_ccitt(data, CRC16_INITIAL)
+}
+
+/// Computes CRC16-CCITT-FALSE for BM1366 job frames.
 pub fn crc16_false(data: &[u8]) -> u16 {
-    let mut crc = CRC16_FALSE_INITIAL;
+    crc16_ccitt(data, CRC16_FALSE_INITIAL)
+}
+
+fn crc16_ccitt(data: &[u8], initial: u16) -> u16 {
+    let mut crc = initial;
 
     for byte in data {
         crc ^= u16::from(*byte) << 8;
@@ -43,3 +54,6 @@ pub fn crc16_false(data: &[u8]) -> u16 {
 
     crc
 }
+
+#[cfg(test)]
+mod tests;
