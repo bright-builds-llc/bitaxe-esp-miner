@@ -335,6 +335,45 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
+### task-parity-ota-001-reboot-evidence | 2026-08-02 | Close firmware OTA reboot evidence
+
+- [ ] Fix the OTA smoke helper's post-response monitor-attachment race and add
+      deterministic monitor-order/cleanup regressions.
+- [ ] Pass focused checks plus every mandatory Rust, Bright Builds, Bazel,
+      redaction, parity, and progress gate.
+- [ ] Commit the software implementation before the hardware attempt, then
+      build/package/flash that exact clean commit.
+- [ ] Run the exact one-attempt hardware contract from
+      `docs/parity/work-plans/20260802T215555Z-OTA-001/PLAN.md` and retain raw
+      device/network/serial/HTTP evidence only under ignored
+      `target/advance-parity-ota001/`.
+- [ ] Transition only `OTA-001` if current package admission, invalid rejection,
+      valid upload, reboot identity, safe-state, boot validation, cleanup, and
+      privacy all pass; otherwise record the exact terminal stop category.
+
+Plan: `docs/parity/work-plans/20260802T215555Z-OTA-001/PLAN.md`
+
+Authorization and safety: the user explicitly authorized hardware interactions
+for this continuing goal. The only effectful commands permitted are the exact
+detector, package, flash-monitor, one OTA smoke invocation, cleanup detector,
+and conditional single recovery flash/check recorded in the plan. No erase,
+rollback fault injection, interrupted update, OTAWWW, mining, pool access,
+voltage/fan/power actuation, direct UART, or pin manipulation is authorized.
+The authorization expires when this one OTA attempt reaches a terminal outcome.
+
+Evidence and privacy: raw flash evidence, device URL, network values, IP/MAC
+values, serial logs, and HTTP artifacts stay in ignored
+`target/advance-parity-ota001/`. Committed evidence may contain only redacted
+category labels, public repo paths, source/reference commits, artifact digests,
+HTTP status/body markers, and conclusions. Recovery is limited to one current-
+package wrapper flash only if the cleanup detector fails; no second OTA attempt
+is allowed. Stop on any detector, target-lock, manifest, identity, marker,
+privacy, or cleanup failure using the plan's exact terminal categories.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
