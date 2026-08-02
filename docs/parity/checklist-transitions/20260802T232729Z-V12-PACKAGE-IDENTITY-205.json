@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260802T232729Z-V12-PACKAGE-IDENTITY-205",
+  "predecessor_sha256": "bb48a40e6c9e3051f06799d457d29a3baf9fa6978b0ae2b204759b775ee9bcc5",
+  "result_sha256": "9ea51a004c504639f5d23fc30b1e75aa6a6465a784252aa51fd7bd7b9e3e8ba7",
+  "row_id": "V12-PACKAGE-IDENTITY-205",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260802T231836Z-V12-PACKAGE-IDENTITY-205/PLAN.md",
+  "plan_sha256": "14837cb687999bf22c4ac0e4b14dbb5c54496c989b35071ef0ff5cea028f66fc",
+  "result_path": "docs/parity/work-plans/20260802T231836Z-V12-PACKAGE-IDENTITY-205/RESULT.md",
+  "result_document_sha256": "2860ed58c74919964174a7af917eb42e0e60df01cdc9cad10c8a47c2e16cd853",
+  "before_rust_owned_target": "`scripts/package-firmware.sh`, `tools/parity/src/phase35_evidence.rs`, `tools/parity/src/phase35_promotion.rs`",
+  "after_rust_owned_target": "`scripts/package-firmware.sh`, `crates/bitaxe-api/src/runtime_boot_attestation.rs`, `firmware/bitaxe/src/main.rs`, `firmware/bitaxe/src/boot_evidence.rs`, `tools/parity/src/phase35_evidence.rs`, `tools/parity/src/phase35_promotion.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "workflow",
+  "after_evidence": "workflow,hardware-smoke",
+  "before_notes": "Phase 36 correction `runtime_identity_observation_insufficient` from exact admitted-fact digest `f1a53c83ab306e0d331783fa49c6a784ca1172cc2f54df9e7db6878cb99c815e`; this row remains below verified and every non-claim is preserved.",
+  "after_notes": "Current-package evidence in [the row result](work-plans/20260802T231836Z-V12-PACKAGE-IDENTITY-205/RESULT.md) binds clean source commit `2541818aa23120dd85c711386efadb69a1415ad3`, pinned reference `c1915b0a63bfabebdb95a515cedfee05146c1d50`, manifest and OTA artifact digests, one detector-admitted Ultra 205, wrapper flash admission, and qualified passive post-reboot observation of the exact implementation and reference identities. Focused package-manifest and runtime-attestation regressions reject stale, mismatched, malformed, or mixed-session evidence. This closes the prior `runtime_identity_observation_insufficient` correction for this row only; hostname, operator-snapshot, runtime-health, partition, rollback, network, mining, safety-control, other-board, and release claims remain separate."
+}

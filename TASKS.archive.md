@@ -3619,3 +3619,52 @@ legacy receipts deserialize and validate unchanged. Empty, multiline,
 pipe-containing, mismatched, and one-sided notes fail closed. This allowed the
 `OTA-001` transition to replace its obsolete blocker note atomically rather than
 publishing a contradictory verified row. No other checklist row changed.
+
+### task-parity-v12-package-identity-205 | 2026-08-02 | Verify exact package and runtime identity on Ultra 205
+
+- [x] Confirm the immutable bounded OTA evidence binds one clean package source
+      commit, the pinned reference, the admitted package artifact, and exact
+      post-reboot runtime identities on board 205.
+- [x] Run focused package-manifest and runtime-attestation regressions plus all
+      mandatory repository gates.
+- [x] Commit a row-specific result before transitioning only
+      `V12-PACKAGE-IDENTITY-205` to `verified`.
+- [x] Correct the stale Phase 35 contract to validate its immutable Phase 36
+      successor snapshot rather than pinning the mutable current checklist.
+- [x] Synchronize parity progress, record the completion review, and archive
+      this task in the same finalization commit.
+
+Plan:
+`docs/parity/work-plans/20260802T231836Z-V12-PACKAGE-IDENTITY-205/PLAN.md`
+
+Authorization and evidence boundary: this task was evidence-only. It read only
+committed redacted result and receipt artifacts and ran software verification.
+It performed no detector, flash, reset, OTA, HTTP, serial, mining, network,
+credential, voltage, fan, power, direct-UART, or pin effect. Raw hardware
+evidence remained private under ignored roots and was not copied.
+
+Verification: Evidence/source commit
+`3bc773550fab128d4323779f48a86a311389e03d` passed 11 focused runtime boot
+attestation tests, 8 focused package-manifest tests, and the Bazel `bitaxe-api`
+and `xtask` suites. The immutable result binds clean package commit
+`2541818aa23120dd85c711386efadb69a1415ad3`, pinned reference
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`, package digests, one
+detector-admitted Ultra 205, wrapper flash admission, and qualified passive
+post-reboot observation of both exact runtime identities. The first final Bazel
+run passed 81 of 82 targets and exposed one stale test assumption: the Phase 35
+contract read the mutable current checklist while asserting the immutable Phase
+36 successor state. The targeted snapshot-path correction passes its focused
+Bazel regression. Transition receipt
+`20260802T232729Z-V12-PACKAGE-IDENTITY-205` binds the selected row and
+replacement notes; synchronized progress is 34 of 94 active rows verified
+(36.2%). This record is committed only after the complete ordered Rust, Bright
+Builds, Bazel, parity, progress, redaction, reference, and diff gates pass.
+
+Completion review: Complete. Only `V12-PACKAGE-IDENTITY-205` transitioned from
+`implemented` to `verified`, closing the stale
+`runtime_identity_observation_insufficient` correction with exact current-package
+hardware evidence. The historical contract now checks its digest-bound snapshot
+instead of freezing the mutable tracker. Hostname, operator-snapshot,
+runtime-health, partition, rollback, OTAWWW, network, mining, voltage/fan/power,
+other-board, and release claims remain explicit non-claims. No new hardware
+attempt was necessary.

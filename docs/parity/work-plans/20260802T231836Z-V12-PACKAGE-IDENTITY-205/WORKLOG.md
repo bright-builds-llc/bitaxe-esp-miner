@@ -33,3 +33,41 @@
   directly closed for `V12-PACKAGE-IDENTITY-205`.
 - Blocker or next safe action: commit this result as the immutable source
   checkpoint, then transition only the selected row and synchronize progress.
+
+## 2026-08-02T23:28:46Z | selected row transitioned and synchronized
+
+- Source commit: `3bc773550fab128d4323779f48a86a311389e03d`
+- Actions: used the committed row result as the immutable transition source,
+  transitioned only `V12-PACKAGE-IDENTITY-205` from `implemented` to
+  `verified`, and synchronized the generated progress surfaces.
+- Verification: transition receipt
+  `20260802T232729Z-V12-PACKAGE-IDENTITY-205` binds the plan, result,
+  predecessor/result checklist digests, reference commit, targets, status,
+  evidence, and replacement notes. Progress reports 34 of 94 active rows
+  verified (36.2%).
+- Evidence: `RESULT.md`, the transition receipt, `docs/parity/checklist.md`,
+  `docs/parity/progress.jsonl`, and `README.md`.
+- Outcome: the package-identity row is verified without broadening any
+  hostname, operator-snapshot, runtime-health, partition, rollback, network,
+  mining, safety-control, other-board, or release claim.
+- Blocker or next safe action: run the complete final gates, archive the task,
+  commit the bounded finalization, fetch, and push. No hardware action was
+  performed or required by this evidence-only promotion.
+
+## 2026-08-02T23:34:00Z | stale historical contract corrected
+
+- Source commit: `3bc773550fab128d4323779f48a86a311389e03d`
+- Actions: investigated the one failing Bazel target and changed only the
+  Phase 35 contract's successor-state lookups from the mutable current
+  checklist to the immutable, digest-bound Phase 36 checklist snapshot.
+- Verification: the initial full run passed 81 of 82 Bazel targets and failed
+  only `//scripts:phase35_promotion_contract_test` with
+  `successor-correction-missing`. The focused target passes after the bounded
+  two-line-path correction.
+- Evidence: the Bazel test log and
+  `scripts/phase35-promotion-contract-test.sh`.
+- Outcome: historical Phase 36 correction assertions no longer prohibit later
+  receipt-backed checklist transitions; the current checklist remains governed
+  by the transition chain and parity validator.
+- Blocker or next safe action: archive the completed task, rerun every required
+  final gate over the complete change, then commit, fetch, and push.

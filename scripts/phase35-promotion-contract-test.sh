@@ -142,7 +142,7 @@ readonly allowlisted_rows=(
 	V12-OPERATOR-SNAPSHOT-205
 	V12-RUNTIME-HEALTH-205
 )
-hostname_row="$(rg -m 1 -F '| V12-HOSTNAME-205 |' "$checklist_path")" ||
+hostname_row="$(rg -m 1 -F '| V12-HOSTNAME-205 |' "$phase36_checklist")" ||
 	fail allowlisted-row-missing
 [[ "$hostname_row" == *"| verified | hardware-smoke |"* ]] ||
 	fail preserved-hostname-row
@@ -150,7 +150,7 @@ for row_id in \
 	V12-PACKAGE-IDENTITY-205 \
 	V12-OPERATOR-SNAPSHOT-205 \
 	V12-RUNTIME-HEALTH-205; do
-	row="$(rg -m 1 -F "| ${row_id} |" "$checklist_path")" ||
+	row="$(rg -m 1 -F "| ${row_id} |" "$phase36_checklist")" ||
 		fail allowlisted-row-missing
 	[[ "$row" == *"| implemented | workflow |"* ]] ||
 		fail successor-correction-missing

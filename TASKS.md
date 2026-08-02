@@ -335,33 +335,6 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
-### task-parity-v12-package-identity-205 | 2026-08-02 | Verify exact package and runtime identity on Ultra 205
-
-- [x] Confirm the immutable bounded OTA evidence binds one clean package source
-      commit, the pinned reference, the admitted package artifact, and exact
-      post-reboot runtime identities on board 205.
-- [x] Run focused package-manifest and runtime-attestation regressions plus all
-      mandatory repository gates.
-- [ ] Commit a row-specific result before transitioning only
-      `V12-PACKAGE-IDENTITY-205` to `verified`.
-- [ ] Synchronize parity progress, record the completion review, and archive
-      this task in the same finalization commit.
-
-Plan:
-`docs/parity/work-plans/20260802T231836Z-V12-PACKAGE-IDENTITY-205/PLAN.md`
-
-Authorization and evidence boundary: this task is evidence-only. It may read
-committed redacted result and receipt artifacts and run software verification.
-It does not authorize detector, flash, reset, OTA, HTTP, serial, mining,
-network, credential, voltage, fan, power, direct-UART, or pin effects. Raw
-hardware evidence remains private under ignored roots and is not copied.
-
-Verification: Pending.
-
-Completion review: Pending. Promotion is limited to exact source, reference,
-package, and runtime identity on board 205; every other v1.2, OTA, partition,
-network, mining, safety, hardware-control, and release claim remains separate.
-
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
