@@ -21,6 +21,15 @@ pub enum WebSocketRead {
     Closed,
 }
 
+/// Closed failure category for a WebSocket read that cannot reuse its connection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WebSocketReadFailureKind {
+    Io,
+    Protocol,
+    Capacity,
+    Other,
+}
+
 /// Plain `ws://` connection over one strictly admitted HTTP origin.
 pub struct PlainWebSocket {
     socket: WebSocket<TcpStream>,
@@ -70,16 +79,16 @@ impl PlainWebSocket {
     }
 
     /// Reads one bounded message, handling control frames internally.
-    pub fn read(&mut self) -> Result<WebSocketRead> {
-        let deadline = Instant::now()
-            .checked_add(self.read_timeout)
-            .context("strict WebSocket read deadline overflowed")?;
+    pub fn read(&mut self) -> std::result::Result<WebSocketRead, WebSocketReadFailureKind> {
+        let Some(deadline) = Instant::now().checked_add(self.read_timeout) else {
+            return Err(WebSocketReadFailureKind::Other);
+        };
         loop {
             match self.socket.read() {
                 Ok(Message::Text(text)) => {
                     return Ok(WebSocketRead::Text(text.as_bytes().to_vec()));
                 }
-                Ok(Message::Binary(_)) => bail!("strict WebSocket received binary payload"),
+                Ok(Message::Binary(_)) => return Err(WebSocketReadFailureKind::Protocol),
                 Ok(Message::Close(_)) => return Ok(WebSocketRead::Closed),
                 Ok(Message::Ping(_) | Message::Pong(_) | Message::Frame(_)) => {
                     if !self.flush_until(deadline)? {
@@ -96,7 +105,7 @@ impl PlainWebSocket {
                 Err(Error::ConnectionClosed | Error::AlreadyClosed) => {
                     return Ok(WebSocketRead::Closed);
                 }
-                Err(error) => return Err(error.into()),
+                Err(error) => return Err(classify_websocket_failure(&error)),
             }
         }
     }
@@ -106,7 +115,10 @@ impl PlainWebSocket {
         let _result = self.socket.close(None);
     }
 
-    fn flush_until(&mut self, deadline: Instant) -> Result<bool> {
+    fn flush_until(
+        &mut self,
+        deadline: Instant,
+    ) -> std::result::Result<bool, WebSocketReadFailureKind> {
         Ok(retry_would_block_until(deadline, || self.socket.flush())?.is_some())
     }
 }
@@ -124,10 +136,19 @@ fn classify_io_error(error: &io::Error) -> IoErrorDisposition {
     }
 }
 
+fn classify_websocket_failure(error: &Error) -> WebSocketReadFailureKind {
+    match error {
+        Error::Io(_) => WebSocketReadFailureKind::Io,
+        Error::Protocol(_) | Error::Utf8(_) => WebSocketReadFailureKind::Protocol,
+        Error::Capacity(_) | Error::WriteBufferFull(_) => WebSocketReadFailureKind::Capacity,
+        _ => WebSocketReadFailureKind::Other,
+    }
+}
+
 fn retry_would_block_until<T>(
     deadline: Instant,
     mut operation: impl FnMut() -> std::result::Result<T, Error>,
-) -> Result<Option<T>> {
+) -> std::result::Result<Option<T>, WebSocketReadFailureKind> {
     loop {
         match operation() {
             Ok(value) => return Ok(Some(value)),
@@ -136,7 +157,7 @@ fn retry_would_block_until<T>(
                     return Ok(None);
                 }
             }
-            Err(error) => return Err(error.into()),
+            Err(error) => return Err(classify_websocket_failure(&error)),
         }
     }
 }
@@ -240,6 +261,34 @@ mod tests {
                 IoErrorDisposition::Retryable,
                 IoErrorDisposition::Fatal,
                 IoErrorDisposition::Fatal,
+            ]
+        );
+    }
+
+    #[test]
+    fn fatal_tungstenite_errors_map_to_closed_read_failure_categories() {
+        // Arrange
+        let io_error = Error::Io(io::Error::from(io::ErrorKind::ConnectionReset));
+        let protocol_error =
+            Error::Protocol(tungstenite::error::ProtocolError::ResetWithoutClosingHandshake);
+        let capacity_error = Error::Capacity(tungstenite::error::CapacityError::MessageTooLong {
+            size: 2,
+            max_size: 1,
+        });
+        let other_error = Error::AttackAttempt;
+
+        // Act
+        let categories = [io_error, protocol_error, capacity_error, other_error]
+            .map(|error| classify_websocket_failure(&error));
+
+        // Assert
+        assert_eq!(
+            categories,
+            [
+                WebSocketReadFailureKind::Io,
+                WebSocketReadFailureKind::Protocol,
+                WebSocketReadFailureKind::Capacity,
+                WebSocketReadFailureKind::Other,
             ]
         );
     }

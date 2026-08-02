@@ -5,11 +5,12 @@ use bitaxe_api::{
     ApiSnapshot, ExpectedRuntimeAttestationIdentity, ObservationStateWire,
     OperatorSnapshotRevision, RuntimeBootAttestation, SystemInfoWire,
 };
+use bitaxe_http_transport::WebSocketReadFailureKind;
 
 use super::super::CampaignTerminalCategory;
 use super::model::{
-    CampaignNetworkEvidence, NetworkAccumulator, NetworkTransport, SharedSerialState,
-    TrustedNetworkTarget, REQUIRED_WINDOWS, WINDOW_MILLIS,
+    NetworkAccumulator, NetworkTransport, SharedSerialState, TrustedNetworkTarget,
+    REQUIRED_WINDOWS, WINDOW_MILLIS,
 };
 use super::serial::NetworkSerialTracker;
 
@@ -484,7 +485,18 @@ fn changed_session_attestation_after_admission_fails_closed() {
 #[test]
 fn network_evidence_serialization_contains_only_closed_aggregates() {
     // Arrange
-    let evidence = CampaignNetworkEvidence::fixture_complete();
+    let mut accumulator = NetworkAccumulator::new(target());
+    accumulator.note_websocket_connect_failure();
+    accumulator.note_websocket_peer_close();
+    accumulator.note_websocket_failure(WebSocketReadFailureKind::Io);
+    accumulator.note_websocket_failure(WebSocketReadFailureKind::Protocol);
+    accumulator.note_websocket_failure(WebSocketReadFailureKind::Capacity);
+    accumulator.note_websocket_failure(WebSocketReadFailureKind::Other);
+    record_complete_windows(&mut accumulator);
+    let terminal = terminal_sample(100, 100);
+    accumulator.record_terminal_sample(NetworkTransport::Http, &terminal);
+    accumulator.record_terminal_sample(NetworkTransport::WebSocket, &terminal);
+    let evidence = accumulator.finish(&complete_serial());
 
     // Act
     let encoded = serde_json::to_string(&evidence).expect("evidence should serialize");
@@ -499,12 +511,21 @@ fn network_evidence_serialization_contains_only_closed_aggregates() {
         "windows",
         "sequence",
         "poll_request_count",
+        "ConnectionReset",
+        "ResetWithoutClosingHandshake",
+        "AttackAttempt",
     ] {
         assert!(!encoded.contains(prohibited));
     }
-    assert!(encoded.contains("mining-campaign-network-continuity-v2"));
+    assert!(encoded.contains("mining-campaign-network-continuity-v3"));
     assert!(encoded.contains("http_startup_transition_count"));
     assert!(encoded.contains("websocket_startup_transition_count"));
     assert!(encoded.contains("http_initial_active_observed"));
     assert!(encoded.contains("websocket_initial_active_observed"));
+    assert_eq!(evidence.websocket_connect_failure_count, 1);
+    assert_eq!(evidence.websocket_peer_close_count, 1);
+    assert_eq!(evidence.websocket_io_failure_count, 1);
+    assert_eq!(evidence.websocket_protocol_failure_count, 1);
+    assert_eq!(evidence.websocket_capacity_failure_count, 1);
+    assert_eq!(evidence.websocket_other_failure_count, 1);
 }

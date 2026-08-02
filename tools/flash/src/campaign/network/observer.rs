@@ -98,6 +98,7 @@ pub(super) fn observe_network(
                     maybe_websocket = Some(socket);
                 }
                 Err(_) => {
+                    accumulator.note_websocket_connect_failure();
                     next_websocket_attempt = now + reconnect_backoff.take_delay();
                 }
             }
@@ -124,7 +125,14 @@ pub(super) fn observe_network(
                     }
                 }
                 Ok(WebSocketRead::Timeout) => {}
-                Ok(WebSocketRead::Closed) | Err(_) => {
+                Ok(WebSocketRead::Closed) => {
+                    accumulator.note_websocket_peer_close();
+                    maybe_websocket = None;
+                    websocket_projection = None;
+                    next_websocket_attempt = Instant::now() + reconnect_backoff.take_delay();
+                }
+                Err(kind) => {
+                    accumulator.note_websocket_failure(kind);
                     maybe_websocket = None;
                     websocket_projection = None;
                     next_websocket_attempt = Instant::now() + reconnect_backoff.take_delay();

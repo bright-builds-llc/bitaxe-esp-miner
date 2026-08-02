@@ -3052,3 +3052,62 @@ unchanged. Residual risk: attempt-003 retained only aggregate evidence, and the
 109-reconnect signature did not reproduce under loopback before the fix, so a
 future separately authorized soak must prove a maximum 5,000-ms WebSocket gap
 and no recurrence before the broader task can complete.
+
+### task-fix-campaign-websocket-control-frames | 2026-08-01 | Fix campaign control frames and truncated markers
+
+- [x] Enable ESP-IDF WebSocket control-frame dispatch and fully consume bounded
+      Ping, Pong, and Close frames before returning to the HTTP server parser.
+- [x] Preserve plain `ws://`, omitted `Origin`, the 64-KiB data-message cap,
+      connection leases, queued-send ownership, and bounded reconnect policy.
+- [x] Add closed aggregate reconnect-cause counts without identifiers, URLs,
+      frame bodies, raw errors, or credentials.
+- [x] Classify newline-terminated EOF JSON as serial truncation and recover only
+      through the existing bounded accepted-marker continuity contract; keep
+      syntactically malformed JSON immediately terminal.
+- [x] Add red-first source-boundary, transport, continuity, evidence, sealing,
+      and privacy regressions, then run every required repository gate.
+
+Dependencies: Root-cause investigation of attempt-004 proved that firmware
+sent empty Ping frames every 500 ms while its ESP-IDF URI registration left
+control-frame dispatch disabled. The same investigation proved that the first
+campaign marker was transport-truncated rather than serializer-invalid.
+
+Authorization boundary: software and loopback tests only. No package build for
+hardware use, device detection, credentials, network target, firmware flash,
+hardware action, attempt-005, or parity promotion was used or authorized.
+
+Verification:
+
+- The firmware source-contract regression first failed because the WebSocket
+  URI did not request ESP-IDF control-frame dispatch. The fixed handler parses
+  and drains the remaining bounded frame bytes, answers Ping with Pong, handles
+  Pong and Close explicitly, and caps control payloads at the RFC limit of 125
+  bytes. The canonical ESP32-S3 release firmware compiled against pinned
+  ESP-IDF 5.5.4 with `just build`.
+- The serial regression first failed with `marker_invalid` when an 851-byte,
+  newline-terminated prefix preceded a complete valid marker. It now records
+  one aggregate truncation and accepts the later marker through the unchanged
+  continuity contract. Non-EOF malformed JSON remains immediately terminal,
+  and a stream with no complete accepted marker remains `marker_missing`.
+- Fatal host WebSocket reads now map to closed `io`, `protocol`, `capacity`, or
+  `other` categories. Connect failures and peer closes remain separate. The
+  private `mining-campaign-network-continuity-v3` artifact exposes only counts;
+  tests deny raw errors, identifiers, URLs, bodies, frames, and credentials.
+- Focused suites passed: 23 campaign-serial tests, 22 campaign-network tests,
+  and 9 real WebSocket transport tests. In order, `cargo fmt --all`,
+  warnings-denied Clippy, the all-target/all-feature Cargo build, all-feature
+  Cargo tests, all 82 Bazel tests through `just test`, the managed Bright Builds
+  checks with zero findings, and `just verify-redaction` passed. The complete
+  diff passed `git diff --check`.
+
+Completion review: Complete for the authorized software scope. The fault was
+at the ESP-IDF control-frame ownership boundary, not in Tungstenite's idle-read
+policy: with dispatch disabled, ESP-IDF consumed the first control-frame byte
+before the application handler attempted its own receive, which could leave the
+stream parser misaligned. Firmware now owns and drains every dispatched control
+frame coherently. A newline-terminated JSON EOF is treated as transport
+truncation rather than serializer corruption, but earns no continuity credit;
+only a later complete accepted marker can recover the observation. Residual
+risk: no hardware run was authorized, so the fixes are software-verified but
+not yet confirmed by a fresh soak. The existing broader soak task remains
+active and no attempt-005 or parity claim is authorized by this completion.

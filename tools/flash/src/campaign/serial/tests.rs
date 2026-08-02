@@ -311,6 +311,25 @@ fn malformed_marker_json_is_typed() {
 }
 
 #[test]
+fn newline_terminated_truncated_marker_recovers_through_next_valid_marker() {
+    // Arrange
+    let mut bytes = observation_marker(CAMPAIGN_MARKER_SCHEMA);
+    bytes.truncate(851);
+    bytes.push(b'\n');
+    bytes.extend_from_slice(&observation_marker(CAMPAIGN_MARKER_SCHEMA));
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
+
+    // Assert
+    assert_eq!(capture.maybe_failure, None);
+    assert_eq!(capture.outcome_detail, CampaignSerialOutcomeDetail::Clean);
+    assert_eq!(capture.diagnostics.marker_truncated_count, 1);
+    assert_eq!(capture.diagnostics.marker_invalid_json_count, 0);
+    assert_eq!(capture.diagnostics.accepted_marker_count, 1);
+}
+
+#[test]
 fn wrong_marker_schema_is_typed() {
     // Arrange
     let bytes = observation_marker("mining-campaign-status-v0");
@@ -374,7 +393,7 @@ fn contradictory_ultra205_observation_requirements_are_schema_invalid() {
 }
 
 #[test]
-fn trailing_partial_marker_is_typed() {
+fn trailing_partial_marker_is_counted_and_remains_missing() {
     // Arrange
     let bytes = format!("{CAMPAIGN_MARKER_PREFIX}{{\"schema\":").into_bytes();
 
@@ -384,14 +403,11 @@ fn trailing_partial_marker_is_typed() {
     // Assert
     assert_eq!(
         capture.outcome_detail,
-        CampaignSerialOutcomeDetail::MarkerTruncated
+        CampaignSerialOutcomeDetail::MarkerMissing
     );
     assert_eq!(capture.diagnostics.trailing_partial_count, 1);
     assert_eq!(capture.diagnostics.marker_truncated_count, 1);
-    assert_eq!(
-        capture.maybe_failure,
-        Some(CampaignTerminalCategory::MarkerInvalid)
-    );
+    assert_eq!(capture.maybe_failure, None);
 }
 
 #[test]

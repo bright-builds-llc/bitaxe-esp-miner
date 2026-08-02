@@ -23,7 +23,6 @@ pub(super) enum CampaignSerialOutcomeDetail {
     MarkerPayloadInvalidUtf8,
     MarkerJsonInvalid,
     MarkerSchemaInvalid,
-    MarkerTruncated,
 }
 
 impl CampaignSerialOutcomeDetail {
@@ -34,7 +33,6 @@ impl CampaignSerialOutcomeDetail {
             Self::MarkerPayloadInvalidUtf8 => "marker_payload_invalid_utf8",
             Self::MarkerJsonInvalid => "marker_json_invalid",
             Self::MarkerSchemaInvalid => "marker_schema_invalid",
-            Self::MarkerTruncated => "marker_truncated",
         }
     }
 }
@@ -488,14 +486,13 @@ impl CampaignSerialAnalyzer {
         };
         let marker = match serde_json::from_str::<CampaignStatusMarker>(json) {
             Ok(marker) => marker,
-            Err(error) if trailing && error.is_eof() => {
+            Err(error) if error.is_eof() => {
                 self.diagnostics.marker_truncated_count =
                     self.diagnostics.marker_truncated_count.saturating_add(1);
-                self.record_marker_failure(
-                    CampaignSerialOutcomeDetail::MarkerTruncated,
-                    CampaignSerialEventKind::MarkerTruncated,
-                    byte_offset,
+                self.trace.push(
+                    u64::try_from(byte_offset).unwrap_or(u64::MAX),
                     line_length,
+                    CampaignSerialEventKind::MarkerTruncated,
                 );
                 return;
             }

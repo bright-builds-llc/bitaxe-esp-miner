@@ -2,6 +2,7 @@ use std::array;
 use std::sync::{Arc, Mutex};
 
 use bitaxe_api::{ExpectedRuntimeAttestationIdentity, SystemInfoWire};
+use bitaxe_http_transport::WebSocketReadFailureKind;
 use serde::Serialize;
 
 use super::super::*;
@@ -128,6 +129,12 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) http_success_count: u64,
     pub(in crate::campaign) websocket_frame_count: u64,
     pub(in crate::campaign) websocket_reconnect_count: u64,
+    pub(in crate::campaign) websocket_connect_failure_count: u64,
+    pub(in crate::campaign) websocket_peer_close_count: u64,
+    pub(in crate::campaign) websocket_io_failure_count: u64,
+    pub(in crate::campaign) websocket_protocol_failure_count: u64,
+    pub(in crate::campaign) websocket_capacity_failure_count: u64,
+    pub(in crate::campaign) websocket_other_failure_count: u64,
     pub(in crate::campaign) recovery_pause_request_count: u64,
     pub(in crate::campaign) http_startup_transition_count: u64,
     pub(in crate::campaign) websocket_startup_transition_count: u64,
@@ -173,13 +180,19 @@ impl CampaignNetworkEvidence {
 
     fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v2",
+            schema: "mining-campaign-network-continuity-v3",
             status,
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: 0,
             http_success_count: 0,
             websocket_frame_count: 0,
             websocket_reconnect_count: 0,
+            websocket_connect_failure_count: 0,
+            websocket_peer_close_count: 0,
+            websocket_io_failure_count: 0,
+            websocket_protocol_failure_count: 0,
+            websocket_capacity_failure_count: 0,
+            websocket_other_failure_count: 0,
             recovery_pause_request_count: 0,
             http_startup_transition_count: 0,
             websocket_startup_transition_count: 0,
@@ -203,13 +216,19 @@ impl CampaignNetworkEvidence {
     #[cfg(test)]
     pub(crate) fn fixture_complete() -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v2",
+            schema: "mining-campaign-network-continuity-v3",
             status: "accepted",
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: REQUIRED_WINDOWS,
             http_success_count: 40,
             websocket_frame_count: 40,
             websocket_reconnect_count: 0,
+            websocket_connect_failure_count: 0,
+            websocket_peer_close_count: 0,
+            websocket_io_failure_count: 0,
+            websocket_protocol_failure_count: 0,
+            websocket_capacity_failure_count: 0,
+            websocket_other_failure_count: 0,
             recovery_pause_request_count: 0,
             http_startup_transition_count: 0,
             websocket_startup_transition_count: 0,
@@ -243,6 +262,12 @@ pub(super) struct NetworkAccumulator {
     pub(super) http_success_count: u64,
     pub(super) websocket_frame_count: u64,
     pub(super) websocket_reconnect_count: u64,
+    websocket_connect_failure_count: u64,
+    websocket_peer_close_count: u64,
+    websocket_io_failure_count: u64,
+    websocket_protocol_failure_count: u64,
+    websocket_capacity_failure_count: u64,
+    websocket_other_failure_count: u64,
     pub(super) recovery_pause_request_count: u64,
     pub(super) maximum_http_gap_ms: u64,
     pub(super) maximum_websocket_gap_ms: u64,
@@ -273,6 +298,12 @@ impl NetworkAccumulator {
             http_success_count: 0,
             websocket_frame_count: 0,
             websocket_reconnect_count: 0,
+            websocket_connect_failure_count: 0,
+            websocket_peer_close_count: 0,
+            websocket_io_failure_count: 0,
+            websocket_protocol_failure_count: 0,
+            websocket_capacity_failure_count: 0,
+            websocket_other_failure_count: 0,
             recovery_pause_request_count: 0,
             maximum_http_gap_ms: 0,
             maximum_websocket_gap_ms: 0,
@@ -439,13 +470,19 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed;
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v2",
+            schema: "mining-campaign-network-continuity-v3",
             status: if accepted { "accepted" } else { "failed" },
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count,
             http_success_count: self.http_success_count,
             websocket_frame_count: self.websocket_frame_count,
             websocket_reconnect_count: self.websocket_reconnect_count,
+            websocket_connect_failure_count: self.websocket_connect_failure_count,
+            websocket_peer_close_count: self.websocket_peer_close_count,
+            websocket_io_failure_count: self.websocket_io_failure_count,
+            websocket_protocol_failure_count: self.websocket_protocol_failure_count,
+            websocket_capacity_failure_count: self.websocket_capacity_failure_count,
+            websocket_other_failure_count: self.websocket_other_failure_count,
             recovery_pause_request_count: self.recovery_pause_request_count,
             http_startup_transition_count: self.http_startup_transition_count,
             websocket_startup_transition_count: self.websocket_startup_transition_count,
@@ -473,6 +510,35 @@ impl NetworkAccumulator {
 
     pub(super) fn fail(&mut self, category: CampaignTerminalCategory) {
         self.maybe_failure.get_or_insert(category);
+    }
+
+    pub(super) fn note_websocket_connect_failure(&mut self) {
+        self.websocket_connect_failure_count =
+            self.websocket_connect_failure_count.saturating_add(1);
+    }
+
+    pub(super) fn note_websocket_peer_close(&mut self) {
+        self.websocket_peer_close_count = self.websocket_peer_close_count.saturating_add(1);
+    }
+
+    pub(super) fn note_websocket_failure(&mut self, kind: WebSocketReadFailureKind) {
+        match kind {
+            WebSocketReadFailureKind::Io => {
+                self.websocket_io_failure_count = self.websocket_io_failure_count.saturating_add(1);
+            }
+            WebSocketReadFailureKind::Protocol => {
+                self.websocket_protocol_failure_count =
+                    self.websocket_protocol_failure_count.saturating_add(1);
+            }
+            WebSocketReadFailureKind::Capacity => {
+                self.websocket_capacity_failure_count =
+                    self.websocket_capacity_failure_count.saturating_add(1);
+            }
+            WebSocketReadFailureKind::Other => {
+                self.websocket_other_failure_count =
+                    self.websocket_other_failure_count.saturating_add(1);
+            }
+        }
     }
 
     pub(super) fn take_recovery_pause_request(&mut self) -> bool {

@@ -146,3 +146,28 @@ test_websocket_background_writes_are_serialized_in_httpd_context() {
 	rg -q 'unregister_if_current' "$http_api_source" ||
 		fail_test "WebSocket cleanup can remove a replacement connection"
 }
+
+test_websocket_routes_consume_control_frames() {
+	# Arrange
+	local route_registration frame_handler
+	route_registration="$(
+		sed -n '/let uri = sys::httpd_uri_t {/,/};/p' "$http_api_source"
+	)"
+	frame_handler="$(
+		sed -n '/pub(super) fn handle_websocket_frame/,/^}/p' "$http_api_source"
+	)"
+
+	# Act / Assert
+	rg -q 'handle_ws_control_frames: true' <<<"$route_registration" ||
+		fail_test "WebSocket routes do not dispatch control frames to the draining handler"
+	[[ "$(rg -c 'httpd_ws_recv_frame' <<<"$frame_handler")" -ge 2 ]] ||
+		fail_test "WebSocket control frames are not fully drained after header inspection"
+	rg -q 'MAX_WEBSOCKET_CONTROL_PAYLOAD_BYTES: usize = 125' "$http_api_source" ||
+		fail_test "WebSocket control-frame payloads are not bounded to the protocol maximum"
+	for frame_type in PING PONG CLOSE; do
+		rg -q "HTTPD_WS_TYPE_${frame_type}" <<<"$frame_handler" ||
+			fail_test "WebSocket handler does not explicitly consume ${frame_type} frames"
+	done
+	rg -q 'httpd_ws_send_frame' <<<"$frame_handler" ||
+		fail_test "WebSocket handler does not flush control-frame responses"
+}

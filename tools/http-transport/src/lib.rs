@@ -17,7 +17,7 @@ pub use observation::{
     CompletedRequest, EstablishedTransport, ExchangeObservation, ExchangeState, HttpResponse,
     RequestProgress, ResponseRead, ResponseReadOutcome, Scheme, TlsVerification, TransportOutcome,
 };
-pub use websocket::{PlainWebSocket, WebSocketRead};
+pub use websocket::{PlainWebSocket, WebSocketRead, WebSocketReadFailureKind};
 
 pub const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 pub const DEFAULT_TOTAL_TIMEOUT: Duration = Duration::from_secs(10);

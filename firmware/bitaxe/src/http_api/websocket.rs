@@ -1,5 +1,7 @@
 use super::*;
 
+const MAX_WEBSOCKET_CONTROL_PAYLOAD_BYTES: usize = 125;
+
 enum LiveCadenceIssueError {
     SerializeFrame,
 }
@@ -153,6 +155,7 @@ pub(super) fn register_websocket_handler(
         handler: Some(handler),
         user_ctx: ptr::null_mut(),
         is_websocket: true,
+        handle_ws_control_frames: true,
         ..Default::default()
     };
     let result = unsafe { sys::httpd_register_uri_handler(server.handle(), &uri) };
@@ -304,11 +307,43 @@ pub(super) fn handle_websocket_frame(request: *mut sys::httpd_req_t) -> sys::esp
         return result;
     }
 
-    if frame.type_ == sys::httpd_ws_type_t_HTTPD_WS_TYPE_CLOSE {
-        unregister_request_websocket_session(request, "close_frame");
+    let is_control_frame = matches!(
+        frame.type_,
+        sys::httpd_ws_type_t_HTTPD_WS_TYPE_PING
+            | sys::httpd_ws_type_t_HTTPD_WS_TYPE_PONG
+            | sys::httpd_ws_type_t_HTTPD_WS_TYPE_CLOSE
+    );
+    if !is_control_frame || frame.len > MAX_WEBSOCKET_CONTROL_PAYLOAD_BYTES {
+        unregister_request_websocket_session(request, "unsupported_frame");
+        return sys::ESP_ERR_NOT_SUPPORTED;
     }
 
-    sys::ESP_OK
+    let mut payload = [0_u8; MAX_WEBSOCKET_CONTROL_PAYLOAD_BYTES];
+    if frame.len > 0 {
+        frame.payload = payload.as_mut_ptr();
+        let result = unsafe {
+            sys::httpd_ws_recv_frame(request, &mut frame, MAX_WEBSOCKET_CONTROL_PAYLOAD_BYTES)
+        };
+        if result != sys::ESP_OK {
+            unregister_request_websocket_session(request, "payload_recv_error");
+            return result;
+        }
+    }
+
+    match frame.type_ {
+        sys::httpd_ws_type_t_HTTPD_WS_TYPE_PING => {
+            frame.type_ = sys::httpd_ws_type_t_HTTPD_WS_TYPE_PONG;
+            unsafe { sys::httpd_ws_send_frame(request, &mut frame) }
+        }
+        sys::httpd_ws_type_t_HTTPD_WS_TYPE_PONG => sys::ESP_OK,
+        sys::httpd_ws_type_t_HTTPD_WS_TYPE_CLOSE => {
+            unregister_request_websocket_session(request, "close_frame");
+            frame.len = 0;
+            frame.payload = ptr::null_mut();
+            unsafe { sys::httpd_ws_send_frame(request, &mut frame) }
+        }
+        _ => sys::ESP_ERR_NOT_SUPPORTED,
+    }
 }
 
 pub(super) fn unregister_request_websocket_session(request: *mut sys::httpd_req_t, reason: &str) {
