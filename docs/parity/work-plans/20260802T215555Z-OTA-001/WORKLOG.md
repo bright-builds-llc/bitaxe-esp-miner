@@ -105,3 +105,21 @@
 - Blocker or next safe action: device behavior after the former client deadline
   remains unknowable from the consumed attempt. A separately authorized,
   task-gated hardware attempt is still required for verified parity.
+
+## 2026-08-02T23:13:00Z | terminal result reconciled
+
+- Source commit: `2541818aa23120dd85c711386efadb69a1415ad3`
+- Actions: reconciled this original plan after its separately authorized bounded
+  retry verified the same parity row and supplied every evidence item that the
+  original attempt could not observe past the former timeout boundary.
+- Verification: the authoritative checklist records `OTA-001` as `verified`,
+  transition receipt `20260802T230503Z-OTA-001` binds the predecessor and
+  retry result, and the bounded retry result records current-package admission,
+  invalid rejection, HTTP success, reboot identity, safe state, boot
+  validation, cleanup, and privacy.
+- Evidence: `../20260802T223139Z-OTA-001-RETRY/RESULT.md` and
+  `../../checklist-transitions/20260802T230503Z-OTA-001.json`.
+- Outcome: this plan now has a terminal `RESULT.md`; its original failed
+  attempt remains unchanged while the row-level outcome is verified.
+- Blocker or next safe action: none for this plan; rerun the authoritative
+  selector and advance to the next eligible parity row.
