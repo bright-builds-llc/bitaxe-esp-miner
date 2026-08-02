@@ -58,3 +58,28 @@
   commit before hardware use.
 - Blocker or next safe action: review and commit the exact implementation diff,
   rebuild the package from that clean commit, then run the one-attempt contract.
+
+## 2026-08-02T22:23:00Z | hardware attempt stopped
+
+- Source commit: `afb73fba3b34f4b43250d503d574c92c258f9606`
+- Actions: built the exact clean package, passed the fresh detector, flashed
+  through the repo-owned wrapper with local Wi-Fi input, admitted exactly one
+  origin-only same-session device URL without printing it, and consumed the
+  one permitted invalid-plus-valid OTA invocation.
+- Verification: package/reference identity and OTA SHA-256 admission passed;
+  wrapper flash-monitor trust passed; invalid-image rejection returned HTTP
+  500; active monitor readiness preceded the valid upload. The valid request
+  then returned curl status 28 and HTTP 000 after 30 seconds with zero response
+  bytes. Firmware, reference, boot-validation, and safe-state reboot markers
+  were absent. The cleanup detector passed on board 205 at the approved port,
+  so the conditional recovery flash did not run. Ignored raw-evidence admission
+  passed and no secret or raw origin was committed.
+- Evidence: private artifacts under `target/advance-parity-ota001/`, exact
+  package digest
+  `0dab8e06f08f566a898c8f4b07f315a8a7e8e2d2fd961deb3ad9c2177bdaad7c`,
+  and this redacted checkpoint.
+- Outcome: `stop_hardware_blocker`; `OTA-001` remains `implemented` with no
+  checklist transition or progress sync.
+- Blocker or next safe action: none within this authorization. The exact
+  attempt is consumed, no retry is permitted, and the task remains active and
+  unarchived as a terminal blocker.
