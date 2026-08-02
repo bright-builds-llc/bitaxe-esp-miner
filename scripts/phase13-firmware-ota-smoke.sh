@@ -18,6 +18,9 @@ out_dir="docs/parity/evidence/phase-13-final-ultra-205-release-evidence/firmware
 monitor_seconds="45"
 curl_bin="${CURL_BIN:-curl}"
 monitor_capture_script="${PHASE13_MONITOR_CAPTURE_SCRIPT:-${script_dir}/phase13-monitor-capture.sh}"
+monitor_ready_timeout_seconds="${PHASE13_MONITOR_READY_TIMEOUT_SECONDS:-15}"
+post_ota_monitor_pid=""
+post_ota_monitor_ready_file=""
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -83,6 +86,10 @@ done
 
 if [[ ! "$monitor_seconds" =~ ^[0-9]+$ || "$monitor_seconds" -lt 1 ]]; then
 	printf 'monitor-seconds must be a positive integer\n' >&2
+	exit 2
+fi
+if [[ ! "$monitor_ready_timeout_seconds" =~ ^[0-9]+$ || "$monitor_ready_timeout_seconds" -lt 1 ]]; then
+	printf 'PHASE13_MONITOR_READY_TIMEOUT_SECONDS must be a positive integer\n' >&2
 	exit 2
 fi
 
@@ -243,6 +250,99 @@ block_with_reason() {
 	log "conclusion: blocked - ${reason}"
 }
 
+cleanup_post_ota_monitor() {
+	local pid="${post_ota_monitor_pid:-}"
+	local cleanup_status=0
+	if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+		local signal_status=0
+		local wait_status=0
+		set +e
+		kill -TERM "$pid" 2>/dev/null
+		signal_status=$?
+		wait "$pid" 2>/dev/null
+		wait_status=$?
+		set -e
+		local cleanup_complete=true
+		if kill -0 "$pid" 2>/dev/null; then
+			cleanup_status=1
+			cleanup_complete=false
+		fi
+		log "post_ota_monitor_cleanup: signal_status=${signal_status} wait_status=${wait_status} complete=${cleanup_complete}"
+	fi
+	post_ota_monitor_pid=""
+	if [[ -n "$post_ota_monitor_ready_file" ]]; then
+		rm -f "$post_ota_monitor_ready_file"
+	fi
+	unset PHASE13_MONITOR_ACTIVE_READY_FILE
+	return "$cleanup_status"
+}
+
+handle_exit() {
+	local status=$?
+	trap - EXIT INT TERM
+	if ! cleanup_post_ota_monitor; then
+		status=1
+	fi
+	exit "$status"
+}
+
+handle_signal() {
+	trap - EXIT INT TERM
+	if ! cleanup_post_ota_monitor; then
+		exit 1
+	fi
+	exit 130
+}
+
+trap handle_exit EXIT
+trap handle_signal INT TERM
+
+start_post_ota_monitor() {
+	post_ota_monitor_ready_file="${out_dir}/.post-ota-monitor-ready"
+	rm -f "$post_ota_monitor_ready_file"
+	export PHASE13_MONITOR_ACTIVE_READY_FILE="$post_ota_monitor_ready_file"
+	log "post_ota_monitor_command: scripts/phase13-monitor-capture.sh --port ${port} --out ${post_ota_monitor_log} --seconds ${monitor_seconds} --no-reset"
+
+	PHASE13_MONITOR_ACTIVE_READY_FILE="$post_ota_monitor_ready_file" \
+		"$BASH" "$monitor_capture_script" --port "$port" --out "$post_ota_monitor_log" --seconds "$monitor_seconds" --no-reset >>"$log_file" 2>&1 &
+	post_ota_monitor_pid=$!
+
+	local deadline=$((SECONDS + monitor_ready_timeout_seconds))
+	while [[ ! -s "$post_ota_monitor_ready_file" ]]; do
+		if ! kill -0 "$post_ota_monitor_pid" 2>/dev/null; then
+			local monitor_start_status=0
+			set +e
+			wait "$post_ota_monitor_pid" 2>/dev/null
+			monitor_start_status=$?
+			set -e
+			log "post_ota_monitor_status: exited_before_ready exit_status=${monitor_start_status}"
+			post_ota_monitor_pid=""
+			return 1
+		fi
+		if ((SECONDS >= deadline)); then
+			return 1
+		fi
+		sleep 0.1
+	done
+
+	log "post_ota_monitor_state: ready_before_valid_upload"
+}
+
+finish_post_ota_monitor() {
+	local status=0
+	set +e
+	wait "$post_ota_monitor_pid"
+	status=$?
+	set -e
+	post_ota_monitor_pid=""
+	rm -f "$post_ota_monitor_ready_file"
+	if [[ "$status" -ne 0 ]]; then
+		log "post_ota_monitor_status: failed exit_status=${status}"
+		return 1
+	fi
+	log "post_ota_monitor_status: complete"
+}
+
 post_image() {
 	local id="$1"
 	local image_path="$2"
@@ -391,6 +491,11 @@ log "invalid image rejection conclusion: captured - not rollback proof"
 log "invalid image rejection is not rollback proof"
 log ""
 
+if ! start_post_ota_monitor; then
+	block_with_reason "post-OTA monitor failed before active ownership was ready"
+	exit 1
+fi
+
 post_image "valid-firmware-ota" "$ota_image" "valid OTA"
 
 if [[ "$last_curl_status" -ne 0 ]]; then
@@ -404,9 +509,10 @@ fi
 
 log "valid OTA conclusion: accepted - reboot monitor required"
 log "selected_next_app_partition: unavailable - public route does not expose partition; boot-validation marker required"
-log "post_ota_monitor_command: scripts/phase13-monitor-capture.sh --port ${port} --out ${post_ota_monitor_log} --seconds ${monitor_seconds} --no-reset"
-
-"$BASH" "$monitor_capture_script" --port "$port" --out "$post_ota_monitor_log" --seconds "$monitor_seconds" --no-reset >>"$log_file" 2>&1
+if ! finish_post_ota_monitor; then
+	block_with_reason "post-OTA monitor capture failed"
+	exit 1
+fi
 
 if ! validate_post_ota_markers; then
 	block_with_reason "post-OTA monitor missing required identity or boot-validation markers"

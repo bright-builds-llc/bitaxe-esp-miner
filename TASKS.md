@@ -337,9 +337,9 @@ run.
 
 ### task-parity-ota-001-reboot-evidence | 2026-08-02 | Close firmware OTA reboot evidence
 
-- [ ] Fix the OTA smoke helper's post-response monitor-attachment race and add
+- [x] Fix the OTA smoke helper's post-response monitor-attachment race and add
       deterministic monitor-order/cleanup regressions.
-- [ ] Pass focused checks plus every mandatory Rust, Bright Builds, Bazel,
+- [x] Pass focused checks plus every mandatory Rust, Bright Builds, Bazel,
       redaction, parity, and progress gate.
 - [ ] Commit the software implementation before the hardware attempt, then
       build/package/flash that exact clean commit.

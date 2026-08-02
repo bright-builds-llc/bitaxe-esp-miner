@@ -157,7 +157,17 @@ case "$(basename "$data_path")" in
     esac
     ;;
   esp-miner.bin)
+    if [[ "${PHASE13_TEST_REQUIRE_MONITOR_READY:-0}" == "1" && ! -s "${PHASE13_MONITOR_ACTIVE_READY_FILE:-}" ]]; then
+      printf "valid upload started before monitor readiness\n" >&2
+      exit 88
+    fi
+    if [[ -n "${PHASE13_TEST_EVENT_LOG:-}" ]]; then
+      printf "valid_upload\n" >>"$PHASE13_TEST_EVENT_LOG"
+    fi
     printf "Firmware update complete, rebooting now!" >"$body_file"
+    if [[ -n "${PHASE13_TEST_VALID_UPLOAD_DONE_FILE:-}" ]]; then
+      : >"$PHASE13_TEST_VALID_UPLOAD_DONE_FILE"
+    fi
     printf "200"
     ;;
   *)
@@ -187,6 +197,19 @@ if [[ -z "$out" ]]; then
   printf "missing monitor out\n" >&2
   exit 2
 fi
+if [[ -n "${PHASE13_MONITOR_ACTIVE_READY_FILE:-}" ]]; then
+  printf "ready\n" >"$PHASE13_MONITOR_ACTIVE_READY_FILE"
+fi
+if [[ -n "${PHASE13_TEST_EVENT_LOG:-}" ]]; then
+  printf "monitor_ready\n" >>"$PHASE13_TEST_EVENT_LOG"
+fi
+if [[ -n "${PHASE13_TEST_VALID_UPLOAD_DONE_FILE:-}" ]]; then
+  for _ in {1..100}; do
+    [[ -f "$PHASE13_TEST_VALID_UPLOAD_DONE_FILE" ]] && break
+    sleep 0.01
+  done
+  [[ -f "$PHASE13_TEST_VALID_UPLOAD_DONE_FILE" ]] || exit 9
+fi
 printf "firmware_commit=190849539700\nreference_commit=c1915b0a63bf\nota_boot_validation=marked_valid\ncapture_status=completed\n" >"$out"
 '
 }
@@ -206,7 +229,24 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+if [[ -n "${PHASE13_MONITOR_ACTIVE_READY_FILE:-}" ]]; then
+  printf "ready\n" >"$PHASE13_MONITOR_ACTIVE_READY_FILE"
+fi
+if [[ -n "${PHASE13_TEST_VALID_UPLOAD_DONE_FILE:-}" ]]; then
+  for _ in {1..100}; do
+    [[ -f "$PHASE13_TEST_VALID_UPLOAD_DONE_FILE" ]] && break
+    sleep 0.01
+  done
+  [[ -f "$PHASE13_TEST_VALID_UPLOAD_DONE_FILE" ]] || exit 9
+fi
 printf "firmware_commit=190849539700\nreference_commit=c1915b0a63bf\ncapture_status=completed\n" >"$out"
+'
+}
+
+create_monitor_that_exits_before_ready() {
+	local path="$1"
+
+	write_executable "$path" 'exit 7
 '
 }
 
@@ -232,11 +272,15 @@ test_fake_invalid_rejection_and_valid_success_records_evidence() {
 	local out_dir="${tmp_root}/fake-success"
 	local curl_stub="${tmp_root}/fake-curl"
 	local monitor_stub="${tmp_root}/success-monitor"
+	local event_log="${tmp_root}/fake-success-events.log"
+	local upload_done="${tmp_root}/fake-success-upload-done"
 
 	create_fake_curl "$curl_stub"
 	create_success_monitor "$monitor_stub"
 
-	PHASE13_FAKE_CURL_STDERR_HOST=1 CURL_BIN="$curl_stub" PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" "$BASH" "$smoke_script" \
+	PHASE13_FAKE_CURL_STDERR_HOST=1 PHASE13_TEST_REQUIRE_MONITOR_READY=1 \
+		PHASE13_TEST_EVENT_LOG="$event_log" PHASE13_TEST_VALID_UPLOAD_DONE_FILE="$upload_done" \
+		CURL_BIN="$curl_stub" PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" "$BASH" "$smoke_script" \
 		--device-url "http://device.local" \
 		--manifest "${tmp_root}/manifest.json" \
 		--ota-image "${tmp_root}/esp-miner.bin" \
@@ -266,14 +310,52 @@ test_fake_invalid_rejection_and_valid_success_records_evidence() {
 	assert_contains "$log_file" "invalid image rejection conclusion: captured - not rollback proof"
 	assert_contains "$log_file" "invalid image rejection is not rollback proof"
 	assert_contains "$log_file" "valid OTA route: POST /api/system/OTA"
+	assert_contains "$log_file" "post_ota_monitor_state: ready_before_valid_upload"
+	if [[ "$(sed -n '1p' "$event_log")" != "monitor_ready" || "$(sed -n '2p' "$event_log")" != "valid_upload" ]]; then
+		fail "post-OTA monitor must become ready before the valid upload"
+	fi
 	assert_contains "$log_file" "valid OTA status: 200"
 	assert_contains "$log_file" "valid OTA body: Firmware update complete, rebooting now!"
 	assert_contains "$log_file" "post_ota_marker: firmware_commit= present"
 	assert_contains "$log_file" "post_ota_marker: reference_commit= present"
 	assert_contains "$log_file" "post_ota_marker: ota_boot_validation= present"
 	assert_contains "$log_file" "firmware_ota_status: passed"
+	assert_contains "$log_file" "post_ota_monitor_status: complete"
 	assert_contains "${out_dir}/post-ota-monitor.log" "ota_boot_validation=marked_valid"
 	assert_not_contains "$log_file" "http://device.local"
+}
+
+test_monitor_start_failure_blocks_valid_upload_and_cleans_up() {
+	local out_dir="${tmp_root}/monitor-start-failure"
+	local curl_stub="${tmp_root}/fake-curl-monitor-start-failure"
+	local monitor_stub="${tmp_root}/monitor-exits-before-ready"
+	local event_log="${tmp_root}/monitor-start-failure-events.log"
+
+	create_fake_curl "$curl_stub"
+	create_monitor_that_exits_before_ready "$monitor_stub"
+
+	set +e
+	PHASE13_MONITOR_READY_TIMEOUT_SECONDS=1 PHASE13_TEST_EVENT_LOG="$event_log" \
+		CURL_BIN="$curl_stub" PHASE13_MONITOR_CAPTURE_SCRIPT="$monitor_stub" "$BASH" "$smoke_script" \
+		--device-url "http://device.local" \
+		--manifest "${tmp_root}/manifest.json" \
+		--ota-image "${tmp_root}/esp-miner.bin" \
+		--port /dev/test \
+		--out-dir "$out_dir" \
+		--monitor-seconds 1
+	local status=$?
+	set -e
+
+	if [[ "$status" -eq 0 ]]; then
+		fail "monitor readiness failure should fail the helper"
+	fi
+
+	local log_file="${out_dir}/firmware-ota-smoke.log"
+	assert_contains "$log_file" "firmware_ota_status: blocked - post-OTA monitor failed before active ownership was ready"
+	assert_not_contains "$event_log" "valid_upload"
+	if [[ -e "${out_dir}/.post-ota-monitor-ready" ]]; then
+		fail "monitor readiness file should be cleaned up"
+	fi
 }
 
 test_missing_post_ota_marker_blocks_passed_status() {
@@ -345,5 +427,6 @@ test_missing_url_writes_blocker_without_curl
 test_fake_invalid_rejection_and_valid_success_records_evidence
 test_missing_post_ota_marker_blocks_passed_status
 test_invalid_rejection_blocks_without_validation_marker
+test_monitor_start_failure_blocks_valid_upload_and_cleans_up
 
 printf 'phase13_firmware_ota_smoke_test passed\n'

@@ -174,6 +174,9 @@ if [[ -z "$out" ]]; then
   printf "missing monitor out\n" >&2
   exit 2
 fi
+if [[ -n "${PHASE13_MONITOR_ACTIVE_READY_FILE:-}" ]]; then
+  printf "ready\n" >"$PHASE13_MONITOR_ACTIVE_READY_FILE"
+fi
 printf "firmware_commit=190849539700\nreference_commit=c1915b0a63bf\nota_boot_validation=marked_valid\ncapture_status=completed\n" >"$out"
 '
 }
@@ -193,6 +196,9 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+if [[ -n "${PHASE13_MONITOR_ACTIVE_READY_FILE:-}" ]]; then
+  printf "ready\n" >"$PHASE13_MONITOR_ACTIVE_READY_FILE"
+fi
 printf "firmware_commit=190849539700\nreference_commit=c1915b0a63bf\ncapture_status=completed\n" >"$out"
 '
 }
