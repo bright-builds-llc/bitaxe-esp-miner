@@ -335,6 +335,25 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
+### task-parity-str-004-coinbase-decoder-verification | 2026-08-02 | Verify deterministic coinbase decoding parity
+
+- [ ] Implement typed, bounds-checked coinbase transaction decoding for the
+      deterministic `STR-004` surface.
+- [ ] Add pinned golden vectors and focused malformed/truncation coverage.
+- [ ] Preserve payout-address codecs, user-payout matching, live mining, share,
+      ASIC, networking, credential, and hardware behavior as explicit
+      non-claims.
+- [ ] Run focused checks plus every mandatory Rust, Bright Builds, Bazel,
+      redaction, parity, and progress gate.
+- [ ] Transition only `STR-004` when its exact `unit,golden` evidence passes,
+      synchronize progress, and archive this task in the finalization commit.
+
+Plan: `docs/parity/work-plans/20260802T201136Z-STR-004/PLAN.md`
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
