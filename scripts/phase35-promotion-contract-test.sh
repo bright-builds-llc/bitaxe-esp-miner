@@ -41,6 +41,8 @@ readonly current_revision_spec="${workspace_root}/docs/parity/checklist-revision
 readonly current_revision_root="${workspace_root}/docs/parity/evidence/checklist-revisions/2026-07-28-runtime-display-documentation"
 readonly current_revision_manifest="${current_revision_root}/manifest.json"
 readonly current_revision_snapshot="${current_revision_root}/checklist.md"
+readonly comprehensive_revision_spec="${workspace_root}/docs/parity/checklist-revisions/2026-08-02-comprehensive-reference-inventory.json"
+readonly reference_surface_inventory="${workspace_root}/docs/parity/reference-surface-inventory.json"
 
 fail() {
 	printf 'phase35_promotion_contract_test_error: category=%s\n' "$1" >&2
@@ -71,7 +73,9 @@ for required_path in \
 	"$checklist_revision_snapshot" \
 	"$current_revision_spec" \
 	"$current_revision_manifest" \
-	"$current_revision_snapshot"; do
+	"$current_revision_snapshot" \
+	"$comprehensive_revision_spec" \
+	"$reference_surface_inventory"; do
 	[[ -f "$required_path" ]] || fail artifact-inventory
 done
 
@@ -303,8 +307,16 @@ for row_id in IO-001 UI-001 UI-002 UI-003; do
 	[[ "$row" == *"| in-progress |"* ]] ||
 		fail current-documentation-revision-status-promoted
 done
-cmp -s "$current_revision_snapshot" "$checklist_path" ||
-	fail documentation-revision-root-drift
+[[ "$(jq -er '.schema_version' "$comprehensive_revision_spec")" == "parity-checklist-comprehensive-revision-v1" ]] ||
+	fail comprehensive-revision-spec-schema
+[[ "$(jq -er '.revision_id' "$comprehensive_revision_spec")" == "2026-08-02-comprehensive-reference-inventory" ]] ||
+	fail comprehensive-revision-id
+[[ "$(jq -er '.predecessor_sha256' "$comprehensive_revision_spec")" == "$(sha256_file "$current_revision_snapshot")" ]] ||
+	fail comprehensive-revision-predecessor
+[[ "$(jq -er '.checklist_sha256' "$comprehensive_revision_spec")" == "$(sha256_file "$checklist_path")" ]] ||
+	fail comprehensive-revision-root-drift
+[[ "$(jq -er '.inventory_sha256' "$comprehensive_revision_spec")" == "$(sha256_file "$reference_surface_inventory")" ]] ||
+	fail comprehensive-revision-inventory-drift
 
 for preserved_row in STR-09 CFG-07 ASIC-11; do
 	row="$(rg -m 1 -F "| ${preserved_row} |" "$checklist_path")" ||

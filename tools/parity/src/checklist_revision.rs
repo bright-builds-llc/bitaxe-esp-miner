@@ -10,6 +10,7 @@ use crate::operator_evidence::read_phase36_authoritative_snapshot;
 use crate::phase35_evidence::sha256_hex;
 
 mod comprehensive;
+mod transitions;
 
 pub(crate) const CURRENT_REVISION_ID: &str = "2026-07-28-runtime-display-documentation";
 pub(crate) const CURRENT_REVISION_SPEC: &str =
@@ -139,6 +140,13 @@ pub(crate) fn publish_current_revision(
         affected_rows: spec.changes.len(),
         checklist_sha256,
     })
+}
+
+pub(crate) fn transition_current_item(
+    environment: &crate::LocalEnvironment,
+    args: &crate::TransitionItemArgs,
+) -> Result<String, String> {
+    transitions::transition_item(environment, args)
 }
 
 pub(crate) fn read_authoritative_checklist(workspace: &Utf8Path) -> Result<String, String> {

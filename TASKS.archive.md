@@ -3177,3 +3177,49 @@ currently pinned reference commit, not behavioral verification. Any future
 reference update must deliberately refresh the inventory and checklist, and
 all hardware-bound, non-205, Stratum v2, UI/BAP, OTA/recovery, and active safety
 gaps retain their conservative statuses until claim-specific evidence exists.
+
+### task-advance-parity-skill | 2026-08-02 | Add the audited advance-parity workflow
+
+- [x] Add an explicitly invoked repository skill that selects or resumes one
+      actionable parity row and persists its plan before implementation.
+- [x] Extend the parity CLI with deterministic candidate ranking, progress
+      calculation, one-row transitions, progress history, and README syncing.
+- [x] Generalize checklist revision validation without weakening existing
+      comprehensive-inventory or evidence guards.
+- [x] Add the JSONL baseline, README parity block, Bazel/just wiring, and
+      behavior-focused regression tests.
+- [x] Validate the skill, run every required Rust/Bazel/Bright Builds/parity
+      gate, review the final diff, archive this task, commit, and push.
+
+Verification:
+
+- The skill-creator validator passed for `.agents/skills/advance-parity`, and
+  the generated OpenAI metadata disables implicit invocation.
+- `cargo fmt --all`, warnings-denied Clippy, the all-target/all-feature build,
+  and the all-feature test suite passed. The build and test commands used a
+  fresh isolated target after the shared macOS Cargo cache stalled at link time.
+- `bun scripts/bright-builds-check.ts all` passed with zero findings, and
+  `just test` passed all 82 Bazel tests. The stale Phase 35 shell contract now
+  validates the hash-bound August 2 comprehensive checklist revision that was
+  already authoritative at the starting commit.
+- `just parity` passed with `validation_errors: none`; `just parity-progress
+  --format json` reported 27 verified of 94 active rows and 2,872 basis points,
+  rendered as 28.7%. Re-running progress synchronization deduplicated the
+  unchanged checklist digest.
+- Selection-only `next-item --format json` found no open plan and ranked
+  `CFG-001` first, followed by the remaining `implemented`, `in-progress`, and
+  `not-started` rows in checklist order. `git diff --check` passed.
+
+Completion review: Complete. The explicit-only `advance-parity` skill now
+requires a clean synchronized branch, commits an immutable plan before work,
+resumes unfinished attempts, respects task and hardware authorization gates,
+uses conservative status transitions, and pushes truthful verified or partial
+checkpoints. The existing Rust parser owns selection, progress arithmetic,
+one-row mutation, transition receipts, JSONL hash-chain validation, and README
+synchronization, avoiding a competing checklist parser. The initial history
+snapshot and README expose the unchanged 27/94 (28.7%) baseline; this task did
+not promote a parity row. Residual risk: the selection path and mutation logic
+are software-tested, but a real skill invocation has not yet exercised the
+first transition receipt or hardware-gated plan. Those paths deliberately fail
+closed and remain subject to the repository's existing evidence and recovery
+contracts.

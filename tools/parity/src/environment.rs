@@ -122,6 +122,22 @@ impl ReportEnvironment for LocalEnvironment {
             rows,
         )
     }
+
+    fn validate_progress_artifacts(
+        &self,
+        checklist: &str,
+        rows: &[ChecklistRow],
+    ) -> Vec<ValidationError> {
+        parity_work::validate_progress_artifacts(&self.workspace_dir, checklist, rows)
+            .err()
+            .map(|message| {
+                vec![ValidationError {
+                    id: "PARITY-PROGRESS".to_owned(),
+                    message,
+                }]
+            })
+            .unwrap_or_default()
+    }
 }
 
 impl LocalEnvironment {

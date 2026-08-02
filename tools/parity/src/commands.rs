@@ -21,6 +21,13 @@ pub(crate) fn run_revise_checklist_documentation_command(
     ))
 }
 
+pub(crate) fn run_transition_item_command(
+    args: &TransitionItemArgs,
+    environment: &LocalEnvironment,
+) -> Result<String> {
+    checklist_revision::transition_current_item(environment, args).map_err(anyhow::Error::msg)
+}
+
 pub(crate) fn run_classify_phase36_evidence_command(
     args: &ClassifyPhase36EvidenceArgs,
 ) -> Result<String> {

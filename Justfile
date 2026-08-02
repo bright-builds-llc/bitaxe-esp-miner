@@ -46,6 +46,9 @@ verify-reference:
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
 
+parity-progress *args:
+    bazel run //tools/parity:report -- progress {{ args }}
+
 verify-redaction *args:
     bazel run //scripts:verify_redaction -- {{ args }}
 

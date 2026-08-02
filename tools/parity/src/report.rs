@@ -191,6 +191,13 @@ pub(crate) trait ReportEnvironment {
     ) -> Vec<ValidationError> {
         Vec::new()
     }
+    fn validate_progress_artifacts(
+        &self,
+        _checklist: &str,
+        _rows: &[ChecklistRow],
+    ) -> Vec<ValidationError> {
+        Vec::new()
+    }
 }
 
 pub(crate) fn run_report(
@@ -215,6 +222,9 @@ pub(crate) fn run_report(
     report
         .validation_errors
         .extend(environment.validate_reference_inventory(&report.rows, &report.reference_commit));
+    report
+        .validation_errors
+        .extend(environment.validate_progress_artifacts(&checklist, &report.rows));
 
     if environment_request.fail_on_invalid_verified && !report.validation_errors.is_empty() {
         bail!(

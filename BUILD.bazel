@@ -43,6 +43,17 @@ exports_files([
 ])
 
 filegroup(
+    name = "parity_workflow_artifacts",
+    srcs = [
+        "README.md",
+        "docs/parity/progress.jsonl",
+    ] + glob([
+        "docs/parity/checklist-transitions/*",
+        "docs/parity/work-plans/**/*",
+    ], allow_empty = True),
+)
+
+filegroup(
     name = "firmware_root_build_inputs",
     srcs = [
         ".bazelrc",

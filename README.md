@@ -11,6 +11,16 @@
 
 <!-- bright-builds-rules-readme-badges:end -->
 
+<!-- parity-progress:begin -->
+
+## Parity progress
+
+**Parity: 27 of 94 active checklist items verified (28.7%).**
+
+See the [parity checklist](docs/parity/checklist.md) and [progress history](docs/parity/progress.jsonl).
+
+<!-- parity-progress:end -->
+
 ## Quickstart
 
 This repo treats ESP-IDF as a standard dependency through the pinned Rust

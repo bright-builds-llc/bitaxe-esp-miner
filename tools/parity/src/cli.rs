@@ -11,6 +11,10 @@ pub(crate) struct Cli {
 #[derive(Debug, Subcommand)]
 pub(crate) enum CliCommand {
     Report(ReportArgs),
+    NextItem(NextItemArgs),
+    Progress(ProgressArgs),
+    SyncProgress(SyncProgressArgs),
+    TransitionItem(TransitionItemArgs),
     ReviseChecklistDocumentation(ReviseChecklistDocumentationArgs),
     ApiCompare(ApiCompareArgs),
     ReleaseGate(ReleaseGateArgs),
@@ -33,6 +37,54 @@ pub(crate) enum CliCommand {
     InspectPhase36Candidate(InspectPhase36CandidateArgs),
     ClassifyPhase36Candidate(ClassifyPhase36CandidateArgs),
     ReevaluatePhase36Attempt31(ReevaluatePhase36Attempt31Args),
+}
+
+#[derive(Debug, Parser)]
+pub(crate) struct NextItemArgs {
+    #[arg(long, value_enum, default_value_t = ReportFormat::Text)]
+    pub(crate) format: ReportFormat,
+}
+
+#[derive(Debug, Parser)]
+pub(crate) struct ProgressArgs {
+    #[arg(long, value_enum, default_value_t = ReportFormat::Text)]
+    pub(crate) format: ReportFormat,
+}
+
+#[derive(Debug, Parser)]
+pub(crate) struct SyncProgressArgs {
+    #[arg(long)]
+    pub(crate) source_commit: String,
+
+    #[arg(long = "selected-row")]
+    pub(crate) maybe_selected_row: Option<String>,
+
+    #[arg(long = "plan", value_parser = parse_utf8_path)]
+    pub(crate) maybe_plan: Option<Utf8PathBuf>,
+}
+
+#[derive(Debug, Parser)]
+pub(crate) struct TransitionItemArgs {
+    #[arg(long)]
+    pub(crate) transition_id: String,
+
+    #[arg(long)]
+    pub(crate) row_id: String,
+
+    #[arg(long)]
+    pub(crate) to: String,
+
+    #[arg(long)]
+    pub(crate) evidence: String,
+
+    #[arg(long = "rust-owned-target")]
+    pub(crate) maybe_rust_owned_target: Option<String>,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) plan: Utf8PathBuf,
+
+    #[arg(long = "result", value_parser = parse_utf8_path)]
+    pub(crate) maybe_result: Option<Utf8PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

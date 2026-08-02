@@ -53,6 +53,7 @@ mod claim_ladder;
 mod mining_allow;
 mod operator_evidence;
 mod operator_snapshot_evidence;
+mod parity_work;
 #[cfg(test)]
 mod phase34_source_guard;
 mod phase35_evidence;
@@ -82,6 +83,7 @@ mod tests;
 pub(crate) use cli::*;
 pub(crate) use commands::*;
 pub(crate) use environment::*;
+pub(crate) use parity_work::*;
 pub(crate) use private_files::*;
 pub(crate) use report::*;
 
@@ -164,6 +166,10 @@ fn main() -> Result<()> {
             let request = ReportRequest::from(args);
             run_report(&request, &environment)?
         }
+        CliCommand::NextItem(args) => run_next_item_command(&args, &environment)?,
+        CliCommand::Progress(args) => run_progress_command(&args, &environment)?,
+        CliCommand::SyncProgress(args) => run_sync_progress_command(&args, &environment)?,
+        CliCommand::TransitionItem(args) => run_transition_item_command(&args, &environment)?,
         CliCommand::ReviseChecklistDocumentation(args) => {
             run_revise_checklist_documentation_command(&args, &environment)?
         }

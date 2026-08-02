@@ -32,6 +32,7 @@ pub(super) fn validate(
     predecessor: &str,
     active: &str,
 ) -> Result<(), String> {
+    let comprehensive = super::transitions::base_document(workspace, active)?;
     let spec_document = read(
         &workspace.join(REVISION_SPEC),
         "comprehensive checklist revision specification",
@@ -48,14 +49,14 @@ pub(super) fn validate(
         || spec.revision_id != REVISION_ID
         || spec.predecessor_path != expected_predecessor
         || spec.predecessor_sha256 != sha256_hex(predecessor.as_bytes())
-        || spec.checklist_sha256 != sha256_hex(active.as_bytes())
+        || spec.checklist_sha256 != sha256_hex(comprehensive.as_bytes())
         || spec.inventory_sha256 != sha256_hex(inventory.as_bytes())
     {
         return Err("comprehensive checklist revision binding mismatch".to_owned());
     }
 
     let before = parse_rows(predecessor)?;
-    let after = parse_rows(active)?;
+    let after = parse_rows(&comprehensive)?;
     let added = unique_declared_rows(&spec.added_rows, "added")?;
     let refined = unique_declared_rows(&spec.refined_rows, "refined")?;
     if !added.is_disjoint(&refined) {
@@ -90,7 +91,7 @@ pub(super) fn validate(
         return Err("comprehensive checklist refined row is absent from predecessor".to_owned());
     }
 
-    Ok(())
+    super::transitions::validate_chain(workspace, &comprehensive, active)
 }
 
 fn unique_declared_rows<'row>(
