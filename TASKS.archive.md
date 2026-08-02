@@ -3467,3 +3467,155 @@ uses the OS-native reader. Residual risk: because the original hardware attempt
 was consumed and this task did not authorize another, device-side behavior
 beyond the former client deadline remains unobserved and real-hardware OTA
 confirmation is still required before `OTA-001` can transition.
+
+### task-parity-ota-001-reboot-evidence | 2026-08-02 | Close firmware OTA reboot evidence
+
+- [x] Fix the OTA smoke helper's post-response monitor-attachment race and add
+      deterministic monitor-order/cleanup regressions.
+- [x] Pass focused checks plus every mandatory Rust, Bright Builds, Bazel,
+      redaction, parity, and progress gate.
+- [x] Commit the software implementation before the hardware attempt, then
+      build/package/flash that exact clean commit.
+- [x] Run the exact one-attempt hardware contract from
+      `docs/parity/work-plans/20260802T215555Z-OTA-001/PLAN.md` and retain raw
+      device/network/serial/HTTP evidence only under ignored
+      `target/advance-parity-ota001/`.
+- [x] Transition only `OTA-001` if current package admission, invalid rejection,
+      valid upload, reboot identity, safe-state, boot validation, cleanup, and
+      privacy all pass; otherwise record the exact terminal stop category.
+
+Plan: `docs/parity/work-plans/20260802T215555Z-OTA-001/PLAN.md`
+
+Authorization and safety: the user explicitly authorized hardware interactions
+for this continuing goal. The only effectful commands permitted are the exact
+detector, package, flash-monitor, one OTA smoke invocation, cleanup detector,
+and conditional single recovery flash/check recorded in the plan. No erase,
+rollback fault injection, interrupted update, OTAWWW, mining, pool access,
+voltage/fan/power actuation, direct UART, or pin manipulation is authorized.
+The authorization expires when this one OTA attempt reaches a terminal outcome.
+
+Evidence and privacy: raw flash evidence, device URL, network values, IP/MAC
+values, serial logs, and HTTP artifacts stay in ignored
+`target/advance-parity-ota001/`. Committed evidence may contain only redacted
+category labels, public repo paths, source/reference commits, artifact digests,
+HTTP status/body markers, and conclusions. Recovery is limited to one current-
+package wrapper flash only if the cleanup detector fails; no second OTA attempt
+is allowed. Stop on any detector, target-lock, manifest, identity, marker,
+privacy, or cleanup failure using the plan's exact terminal categories.
+
+Verification: `stop_hardware_blocker`. Implementation commit
+`afb73fba3b34f4b43250d503d574c92c258f9606` passed the complete software gate,
+packaged with the same source identity and pinned reference, and produced the
+manifest-admitted `esp-miner.bin` digest
+`0dab8e06f08f566a898c8f4b07f315a8a7e8e2d2fd961deb3ad9c2177bdaad7c`.
+The preflight detector and wrapper flash-monitor passed with trusted output.
+The one OTA invocation captured invalid-image HTTP 500 rejection and proved
+monitor readiness before the valid upload, but that upload ended with curl
+status 28 and HTTP 000 after 30 seconds with zero response bytes. Firmware,
+reference, boot-validation, and safe-state reboot markers were therefore absent.
+The cleanup detector passed on the same board/port; no recovery flash ran. Raw
+evidence remains ignored and the redacted evidence boundary passed.
+
+Completion review: Closed at `stop_hardware_blocker`. At that time, `OTA-001`
+remained `implemented`; no checklist transition or progress sync occurred. The
+exact one-attempt authorization was consumed, and no retry was permitted under
+this task. The helper closed the original monitor-attachment race, but the
+device/network session did not return a valid-upload response inside the fixed
+30-second HTTP window. Rollback, destructive/fault-injection recovery,
+selected-partition, OTAWWW, mining, and hardware-control behavior remained
+non-claims. This terminal record is archived only because the user later issued
+fresh authorization and `task-parity-ota-001-bounded-retry` independently
+resolved the blocker without altering this attempt's outcome.
+
+### task-parity-ota-001-bounded-retry | 2026-08-02 | Retry OTA reboot evidence after timeout fix
+
+- [x] Commit the fresh authorization and detector-only Phase A contract before
+      any hardware interaction.
+- [x] Run exactly one `just detect-ultra205`; require one Ultra 205 and bind its
+      qualified port into a committed Phase B contract before flashing.
+- [x] Build/package and wrapper flash-monitor the exact clean Phase B commit,
+      using the ignored local Wi-Fi credential input without reading it.
+- [x] Admit exactly one same-session origin and run exactly one bounded
+      invalid-plus-valid OTA invocation with the fixed timeout and qualified
+      OS-native post-OTA reader.
+- [x] Run the cleanup detector and only the contract's single conditional
+      recovery flash/check if cleanup fails.
+- [x] Record a redacted terminal result, run repository gates, and transition
+      only `OTA-001` if every promotion criterion passes.
+
+Plan: `docs/parity/work-plans/20260802T223139Z-OTA-001-RETRY/PLAN.md`
+
+Authorization and safety: the user explicitly authorized one new hardware
+attempt on 2026-08-02. Phase A authorized only the exact read-only detector
+command recorded in the plan. Flash, OTA, and recovery remained prohibited
+until the freshly selected port and exact Phase B commands were committed. The
+attempt budget was exactly one invalid-plus-valid OTA invocation, with no OTA
+retry. No erase, rollback fault injection, interrupted update, OTAWWW, mining,
+pool access, voltage/fan/power actuation, direct UART, or pin manipulation was
+authorized or performed.
+
+Evidence and privacy: raw USB, serial, network, HTTP, origin, IP/MAC, and Wi-Fi
+material remains in the plan's ignored `target/` roots. The credential file was
+passed only to the repo-owned flash wrapper and was not read, printed,
+summarized, or committed. Committed output is limited to public source/reference
+identities, artifact digests, HTTP status/body categories, redacted marker
+categories, and conclusions.
+
+Recovery and stop policy: the cleanup detector passed on the same qualified
+target, so the conditional recovery flash was prohibited and did not run. The
+single attempt budget is consumed; no second OTA invocation is permitted.
+
+Verification: Implementation/package commit
+`2541818aa23120dd85c711386efadb69a1415ad3` passed source/reference/digest
+admission. The attempt captured invalid HTTP 500 plus `Write Error`, valid HTTP
+200 plus `Firmware update complete, rebooting now!`, zero curl statuses, exact
+post-reboot identities, fail-closed safe state,
+`ota_boot_validation=complete`, `ota_boot_validation=marked_valid`, qualified
+OS-native passive capture, and successful cleanup. Focused OTA tests, formatting,
+strict Clippy, all-target/all-feature Cargo build and tests, managed Bright
+Builds checks, all 82 Bazel tests, parity validation, redaction, reference
+cleanliness, and diff checks passed. Transition receipt
+`20260802T230503Z-OTA-001` binds the plan, result, predecessor/result checklist
+digests, reference commit, targets, status, and evidence. Progress synchronization
+reports 33 of 94 active rows verified (35.1%).
+
+Completion review: Complete. `OTA-001` alone transitioned from `implemented` to
+`verified` for current-package firmware OTA observable behavior. The successful
+attempt consumed the fresh authorization and needed no recovery. Selected
+partition internals, rollback, destructive or interrupted-update recovery,
+OTAWWW, network longevity, mining, pool access, active voltage/fan/power
+behavior, other boards, direct UART, and pin manipulation remain explicit
+non-claims.
+
+### task-parity-transition-notes-projection | 2026-08-02 | Bind verified notes into transitions
+
+- [x] Reproduce the validator failure where a verified transition preserves
+      stale blocker notes.
+- [x] Extend transition receipts with an optional hash-bound before/after notes
+      projection while preserving every existing receipt.
+- [x] Add focused tests for note projection and legacy receipt compatibility.
+- [x] Roll back only the uncommitted failed OTA transition artifacts, rerun the
+      corrected `OTA-001` transition, and synchronize progress.
+- [x] Pass every mandatory Rust, Bright Builds, Bazel, parity, progress,
+      redaction, reference-cleanliness, and diff gate.
+
+Scope: software-only finalization repair. The hardware attempt was complete and
+its budget consumed; this task performed no detector, flash, monitor, HTTP, OTA,
+recovery, credential, network, direct-UART, or pin action.
+
+Verification: The original transition projection deterministically failed the
+verified-row blocker-note guard. Seven focused transition tests pass, including
+hash-bound note replacement, incomplete-binding rejection, and validation of
+the legacy receipt shape. Strict focused Clippy passes. The corrected receipt
+`20260802T230503Z-OTA-001` contains exact before/after notes, passes the required
+OTA evidence vocabulary, and preserves every prior receipt. Formatting, strict
+workspace Clippy, all-target/all-feature Cargo build and tests, managed Bright
+Builds checks, all 82 Bazel tests, parity validation, progress, redaction,
+reference cleanliness, and diff checks pass.
+
+Completion review: Complete. Transition receipts now optionally project notes
+in the same predecessor/result hash chain as target, status, and evidence while
+legacy receipts deserialize and validate unchanged. Empty, multiline,
+pipe-containing, mismatched, and one-sided notes fail closed. This allowed the
+`OTA-001` transition to replace its obsolete blocker note atomically rather than
+publishing a contradictory verified row. No other checklist row changed.

@@ -31,6 +31,10 @@ struct TransitionReceipt {
     after_status: String,
     before_evidence: String,
     after_evidence: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    before_notes: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    after_notes: Option<String>,
 }
 
 pub(super) fn base_document(workspace: &Utf8Path, active: &str) -> Result<String, String> {
@@ -139,6 +143,11 @@ pub(crate) fn transition_item(
         .maybe_rust_owned_target
         .clone()
         .unwrap_or_else(|| row.cells[3].clone());
+    let notes_binding = args
+        .maybe_notes
+        .as_deref()
+        .map(|notes| validate_notes(notes).map(|notes| (row.cells[6].clone(), notes)))
+        .transpose()?;
     let reference_commit = environment
         .reference_commit()
         .map_err(|error| error.to_string())?;
@@ -159,6 +168,8 @@ pub(crate) fn transition_item(
         after_status,
         before_evidence: row.cells[5].clone(),
         after_evidence: args.evidence.trim().to_owned(),
+        before_notes: notes_binding.as_ref().map(|(before, _)| before.clone()),
+        after_notes: notes_binding.map(|(_, after)| after),
     };
     let projected = apply_receipt(&current, &receipt)?;
     receipt.result_sha256 = sha256_hex(projected.as_bytes());
@@ -264,17 +275,40 @@ fn apply_receipt(predecessor: &str, receipt: &TransitionReceipt) -> Result<Strin
             receipt.row_id
         ));
     }
+    match (&receipt.before_notes, &receipt.after_notes) {
+        (Some(before), Some(_)) if row.cells[6] != *before => {
+            return Err(format!(
+                "parity transition notes before-state mismatch for {}",
+                receipt.row_id
+            ));
+        }
+        (Some(_), Some(_)) | (None, None) => {}
+        _ => return Err("parity transition notes binding is incomplete".to_owned()),
+    }
     let mut lines = predecessor.lines().map(str::to_owned).collect::<Vec<_>>();
     let mut cells = row.cells.clone();
     cells[3] = receipt.after_rust_owned_target.clone();
     cells[4] = receipt.after_status.clone();
     cells[5] = receipt.after_evidence.clone();
+    if let Some(after_notes) = &receipt.after_notes {
+        cells[6] = after_notes.clone();
+    }
     lines[row.line_index] = format!("| {} |", cells.join(" | "));
     let mut projected = lines.join("\n");
     if predecessor.ends_with('\n') {
         projected.push('\n');
     }
     Ok(projected)
+}
+
+fn validate_notes(notes: &str) -> Result<String, String> {
+    let notes = notes.trim();
+    if notes.is_empty() || notes.contains('|') || notes.contains('\n') || notes.contains('\r') {
+        return Err(
+            "transition notes must be nonempty single-line Markdown without pipes".to_owned(),
+        );
+    }
+    Ok(notes.to_owned())
 }
 
 fn normalize_status(status: &str) -> Result<String, String> {
@@ -364,6 +398,8 @@ mod tests {
             after_status: "verified".to_owned(),
             before_evidence: "pending".to_owned(),
             after_evidence: "unit".to_owned(),
+            before_notes: None,
+            after_notes: None,
         }
     }
 
@@ -410,6 +446,35 @@ mod tests {
         // Assert
         assert!(projected.contains("| verified | unit | Note. |"));
         assert!(projected.contains("| STR-001 | Socket | reference/source.c |"));
+    }
+
+    #[test]
+    fn receipt_projects_hash_bound_notes_when_requested() {
+        // Arrange
+        let mut receipt = receipt();
+        receipt.before_notes = Some("Note.".to_owned());
+        receipt.after_notes = Some("Verified evidence.".to_owned());
+
+        // Act
+        let projected = apply_receipt(CHECKLIST, &receipt).expect("transition should apply");
+
+        // Assert
+        assert!(projected.contains("| verified | unit | Verified evidence. |"));
+        assert!(!projected.contains("| verified | unit | Note. |"));
+    }
+
+    #[test]
+    fn receipt_rejects_incomplete_notes_binding() {
+        // Arrange
+        let mut receipt = receipt();
+        receipt.after_notes = Some("Verified evidence.".to_owned());
+
+        // Act
+        let error = apply_receipt(CHECKLIST, &receipt)
+            .expect_err("incomplete notes binding must fail closed");
+
+        // Assert
+        assert!(error.contains("notes binding is incomplete"));
     }
 
     #[test]

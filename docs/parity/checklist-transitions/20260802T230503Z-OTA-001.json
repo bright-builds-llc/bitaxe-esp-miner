@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260802T230503Z-OTA-001",
+  "predecessor_sha256": "370de6b2cedc3dce71acfc5246ae236f065582f2ae61f06ecc8648f38dea063c",
+  "result_sha256": "bb48a40e6c9e3051f06799d457d29a3baf9fa6978b0ae2b204759b775ee9bcc5",
+  "row_id": "OTA-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260802T223139Z-OTA-001-RETRY/PLAN.md",
+  "plan_sha256": "690dcbde4d8fe8a748fa8dccaec11b335c4246ebabe58466f32ab3dd4845fb4c",
+  "result_path": "docs/parity/work-plans/20260802T223139Z-OTA-001-RETRY/RESULT.md",
+  "result_document_sha256": "71ee58793219f7a5955a5ab80addeda70aa81e45dc2e8c272929e03d611ea73a",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/update_plan.rs`, `firmware/bitaxe/src/ota_update.rs`, `firmware/bitaxe/src/http_api/updates.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/update_plan.rs`, `firmware/bitaxe/src/ota_update.rs`, `firmware/bitaxe/src/http_api/updates.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,api-compare,hardware-smoke",
+  "after_evidence": "unit,workflow,api-compare,hardware-smoke",
+  "before_notes": "Firmware OTA planning and ESP-IDF streaming adapter are implemented for `/api/system/OTA` and `esp-miner.bin`. Phase 18 evidence in `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/summary.md` and `firmware-ota.md` records manifest `esp-miner.bin` SHA-256 `c7f4a62872d6662562f89ff8e93e881317d65b8f58003577acfd6a0a50eb6463`, invalid image rejection with HTTP 500 and `Write Error`, and valid OTA upload response HTTP 200 with `Firmware update complete, rebooting now!`. Valid OTA remains below verified because post-OTA `firmware_commit=`, `reference_commit=`, and boot-validation marker evidence was not captured; selected partition and rollback are not claimed.",
+  "after_notes": "Firmware OTA planning and the ESP-IDF streaming adapter implement `/api/system/OTA` and `esp-miner.bin`. Current-package evidence in [the bounded retry result](work-plans/20260802T223139Z-OTA-001-RETRY/RESULT.md) binds source commit `2541818aa23120dd85c711386efadb69a1415ad3` and the pinned reference; records invalid image rejection with HTTP 500 and `Write Error`, valid OTA with HTTP 200 and `Firmware update complete, rebooting now!`, qualified OS-native passive capture, exact reboot identities, fail-closed safe state, post-OTA boot-validation with `ota_boot_validation=complete` and `ota_boot_validation=marked_valid`, cleanup success, and redaction. Selected-partition internals, rollback, destructive or interrupted-update recovery, and OTAWWW remain outside this verified row scope."
+}

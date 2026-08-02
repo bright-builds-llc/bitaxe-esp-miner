@@ -80,6 +80,9 @@ pub(crate) struct TransitionItemArgs {
     #[arg(long = "rust-owned-target")]
     pub(crate) maybe_rust_owned_target: Option<String>,
 
+    #[arg(long = "notes")]
+    pub(crate) maybe_notes: Option<String>,
+
     #[arg(long, value_parser = parse_utf8_path)]
     pub(crate) plan: Utf8PathBuf,
 
