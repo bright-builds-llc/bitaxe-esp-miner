@@ -335,6 +335,29 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
+### task-parity-sys004-version-reporting | 2026-08-02 | Reconcile implemented version reporting
+
+- [ ] Audit the upstream firmware, AxeOS, and ESP-IDF version surface against
+      the current canonical Rust build/platform/API projection.
+- [ ] Run focused build-identity, system-info wire, package-manifest, and
+      runtime-attestation regressions plus every mandatory repository gate.
+- [ ] Commit the row evidence before transitioning only `SYS-004` from
+      `in-progress` to `implemented`.
+- [ ] Synchronize parity progress and retain this task with the exact later
+      live-evidence gate required for `verified`.
+
+Plan: `docs/parity/work-plans/20260802T233821Z-SYS-004/PLAN.md`
+
+Authorization boundary: software-only evidence reconciliation. No detector,
+hardware, credential, network, flash, monitor, HTTP, WebSocket, OTA, mining,
+safety-control, direct-UART, or pin action is authorized.
+
+Verification: Pending.
+
+Completion review: Pending. This run may establish implementation completeness
+only. Exact-current-package live API version evidence and static-asset version
+semantics remain required before `SYS-004` can become `verified`.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
