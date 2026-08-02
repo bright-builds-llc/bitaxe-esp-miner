@@ -1,0 +1,189 @@
+{
+  "schema_version": "bitaxe-reference-surface-inventory-v1",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "domains": [
+    {
+      "id": "foundation-release",
+      "category": "build, packaging, flashing, and release workflow",
+      "scope": "repository workflow and board-205 release path; other boards require separate evidence",
+      "provenance": "behavioral inventory only; reference source remains pinned, read-only, and GPL-covered",
+      "non_claim": "workflow coverage does not verify firmware behavior or non-205 packaging",
+      "checklist_rows": ["WF-001", "WF-002", "WF-003", "WF-004", "WF-005", "REL-001", "REL-002", "REL-003", "REL-09", "V12-PACKAGE-IDENTITY-205"],
+      "locators": [
+        {"path": "reference/esp-miner/CMakeLists.txt", "anchors": ["project(esp-miner)"]},
+        {"path": "reference/esp-miner/merge_bin.sh", "anchors": ["merge_bin"]},
+        {"path": "reference/esp-miner/flashing.md", "anchors": ["Flashing"]}
+      ]
+    },
+    {
+      "id": "boot-runtime",
+      "category": "boot order, system state, task lifecycle, and fail-closed runtime",
+      "scope": "observable runtime behavior; hardware claims remain board- and evidence-specific",
+      "provenance": "independent Rust implementation guided by reference behavior and existing admitted evidence",
+      "non_claim": "inventory and host tests do not verify active hardware control or production mining",
+      "checklist_rows": ["SYS-001", "SYS-002", "SYS-003", "SYS-004", "SYS-005", "SAFE-10", "SAFE-11", "SAFE-12", "SAFE-13", "V12-RUNTIME-HEALTH-205"],
+      "locators": [
+        {"path": "reference/esp-miner/main/main.c", "anchors": ["app_main", "SYSTEM_init_system"]},
+        {"path": "reference/esp-miner/main/system.c", "anchors": ["SYSTEM_init_system"]},
+        {"path": "reference/esp-miner/main/tasks/create_jobs_task.c", "anchors": ["create_jobs_task"]},
+        {"path": "reference/esp-miner/main/tasks/asic_result_task.c", "anchors": ["ASIC_result_task"]},
+        {"path": "reference/esp-miner/main/tasks/power_management_task.c", "anchors": ["POWER_MANAGEMENT_task"]}
+      ]
+    },
+    {
+      "id": "configuration-nvs",
+      "category": "board profiles, defaults, NVS schema, settings, and credential boundaries",
+      "scope": "Ultra 205 is primary; every non-205 profile stays separately scoped and unverified",
+      "provenance": "keys and defaults are behavioral facts; no reference expression is copied into Rust",
+      "non_claim": "catalog presence and fixtures do not prove non-205 device behavior or live credential use",
+      "checklist_rows": ["CFG-001", "CFG-002", "CFG-003", "CFG-004", "CFG-005", "CFG-006", "CFG-07", "V12-HOSTNAME-205"],
+      "locators": [
+        {"path": "reference/esp-miner/main/device_config.c", "anchors": ["device_config_init", "default_configs"]},
+        {"path": "reference/esp-miner/main/device_config.h", "anchors": ["DeviceConfig", "ASIC_BM1366"]},
+        {"path": "reference/esp-miner/main/nvs_config.c", "anchors": ["NVS_CONFIG_THEME_SCHEME", "nvs_config_get_string"]},
+        {"path": "reference/esp-miner/config-205.cvs", "anchors": ["devicemodel,data,string,ultra", "boardversion,data,string,205"]},
+        {"path": "reference/esp-miner/config-601.cvs", "anchors": ["devicemodel,data,string,gamma", "boardversion,data,string,601"]}
+      ]
+    },
+    {
+      "id": "networking-provisioning",
+      "category": "Wi-Fi station, reconnect, scan, IPv6, SoftAP, hostname, and captive DNS",
+      "scope": "device-user connectivity on all boards; current evidence is limited to board-205 station boot",
+      "provenance": "reference functions and routes identify observable contracts, not implementation structure",
+      "non_claim": "station connection evidence does not verify SoftAP, DNS, scanning, IPv6, or reconnect durability",
+      "checklist_rows": ["NET-001", "NET-002", "NET-003"],
+      "locators": [
+        {"path": "reference/esp-miner/components/connect/connect.c", "anchors": ["wifi_apply_hostname", "wifi_scan", "wifi_init_softap", "wifi_init_sta", "IP_EVENT_GOT_IP6"]},
+        {"path": "reference/esp-miner/components/dns_server/dns_server.c", "anchors": ["start_dns_server", "stop_dns_server"]},
+        {"path": "reference/esp-miner/main/http_server/openapi.yaml", "anchors": ["/api/system/wifi/scan"]}
+      ]
+    },
+    {
+      "id": "asic-hardware",
+      "category": "ASIC families, serial transport, packets, PLL, frequency, work, and result correlation",
+      "scope": "BM1366 on Ultra 205 is primary; BM1368, BM1370, and BM1397 remain separate gaps",
+      "provenance": "protocol facts are independently modeled; safety-critical effects require hardware evidence",
+      "non_claim": "implemented packet logic and diagnostics do not verify production ASIC actuation or mining",
+      "checklist_rows": ["ASIC-001", "ASIC-002", "ASIC-003", "ASIC-004", "ASIC-005", "ASIC-006", "ASIC-007", "ASIC-008", "ASIC-009", "ASIC-010", "ASIC-09", "ASIC-10", "ASIC-11", "ASIC-12"],
+      "locators": [
+        {"path": "reference/esp-miner/components/asic/asic.c", "anchors": ["ASIC_set_frequency"]},
+        {"path": "reference/esp-miner/components/asic/bm1366.c", "anchors": ["BM1366_init", "BM1366_send_work", "BM1366_process_work"]},
+        {"path": "reference/esp-miner/components/asic/pll.c", "anchors": ["pll_get_parameters"]},
+        {"path": "reference/esp-miner/components/asic/frequency_transition_bmXX.c", "anchors": ["do_frequency_transition"]},
+        {"path": "reference/esp-miner/components/asic/serial.c", "anchors": ["SERIAL_init"]},
+        {"path": "reference/esp-miner/components/asic/bm1368.c", "anchors": ["BM1368_init"]},
+        {"path": "reference/esp-miner/components/asic/bm1370.c", "anchors": ["BM1370_init"]},
+        {"path": "reference/esp-miner/components/asic/bm1397.c", "anchors": ["BM1397_init"]}
+      ]
+    },
+    {
+      "id": "stratum-mining",
+      "category": "Stratum v1/v2, coinbase and address codecs, jobs, sessions, submits, and share outcomes",
+      "scope": "v1 deterministic behavior is primary; v2 and live share outcomes retain explicit non-claims",
+      "provenance": "wire behavior and fixtures are independently modeled from reference observations",
+      "non_claim": "fake-pool outcomes and controlled no-share evidence do not prove accepted or rejected live shares",
+      "checklist_rows": ["STR-001", "STR-002", "STR-003", "STR-004", "STR-005", "STR-006", "STR-007", "STR-008", "STR-012", "STR-10", "STR-08", "STR-09", "STR-11"],
+      "locators": [
+        {"path": "reference/esp-miner/components/stratum/stratum_socket.c", "anchors": ["stratum_socket"]},
+        {"path": "reference/esp-miner/components/stratum/stratum_api.c", "anchors": ["mining.subscribe", "mining.authorize"]},
+        {"path": "reference/esp-miner/components/stratum/mining.c", "anchors": ["construct_bm_job"]},
+        {"path": "reference/esp-miner/components/stratum/base58.c", "anchors": ["b58check"]},
+        {"path": "reference/esp-miner/components/stratum/segwit_addr.c", "anchors": ["segwit_addr_decode"]},
+        {"path": "reference/esp-miner/components/stratum_v2/sv2_noise.c", "anchors": ["sv2_noise_handshake"]},
+        {"path": "reference/esp-miner/components/stratum_v2/sv2_protocol.c", "anchors": ["sv2_parse_frame_header"]},
+        {"path": "reference/esp-miner/main/tasks/protocol_coordinator.c", "anchors": ["protocol_coordinator_task"]}
+      ]
+    },
+    {
+      "id": "api-web-ui",
+      "category": "OpenAPI, HTTP commands, settings, theme, WebSocket, logs, static assets, and AxeOS workflows",
+      "scope": "route and schema contracts are cross-board; live behavior is limited to named evidence claims",
+      "provenance": "API shapes and routes are behavioral facts; the Angular source remains reference-only",
+      "non_claim": "route presence and static delivery do not verify full field behavior or browser workflows",
+      "checklist_rows": ["API-001", "API-002", "API-003", "API-004", "API-005", "API-006", "API-007", "API-008", "API-009", "API-010", "UI-004", "V12-OPERATOR-SNAPSHOT-205"],
+      "locators": [
+        {"path": "reference/esp-miner/main/http_server/openapi.yaml", "anchors": ["/api/system/info", "/api/system/pause", "/api/system/wifi/scan"]},
+        {"path": "reference/esp-miner/main/http_server/http_server.c", "anchors": ["POST_mining_pause", "POST_restart", "POST_identify", "POST_dismiss_block_found"]},
+        {"path": "reference/esp-miner/main/http_server/system_api_json.c", "anchors": ["system_api_get_full_json"]},
+        {"path": "reference/esp-miner/main/http_server/theme_api.c", "anchors": ["theme_get_handler", "theme_post_handler", "/api/theme"]},
+        {"path": "reference/esp-miner/main/http_server/websocket_api.c", "anchors": ["websocket_api_on_connect"]},
+        {"path": "reference/esp-miner/main/http_server/axe-os/src/app/app-routing.module.ts", "anchors": ["const routes: Routes"]},
+        {"path": "reference/esp-miner/main/http_server/axe-os/src/app/services/system.service.ts", "anchors": ["SystemApiService"]}
+      ]
+    },
+    {
+      "id": "power-thermal-io",
+      "category": "power telemetry and actuation, voltage, thermal, fan, I2C, and ADC",
+      "scope": "safety-critical hardware behavior is board-specific and requires exact named-board evidence",
+      "provenance": "pure safety decisions are independent; hardware driver behavior remains reference evidence",
+      "non_claim": "read-only telemetry, host tests, and blocked effects do not verify active voltage, fan, or fault behavior",
+      "checklist_rows": ["PWR-001", "PWR-002", "PWR-003", "PWR-004", "PWR-005", "PWR-006", "THR-001", "THR-002", "THR-003", "IO-001", "IO-002"],
+      "locators": [
+        {"path": "reference/esp-miner/main/power/power.c", "anchors": ["Power_get_output", "Power_get_input_voltage"]},
+        {"path": "reference/esp-miner/main/power/vcore.c", "anchors": ["VCORE_set_voltage"]},
+        {"path": "reference/esp-miner/main/thermal/thermal.c", "anchors": ["Thermal_init", "Thermal_set_fan_percent"]},
+        {"path": "reference/esp-miner/main/tasks/fan_controller_task.c", "anchors": ["FAN_CONTROLLER_task"]},
+        {"path": "reference/esp-miner/main/i2c_bitaxe.c", "anchors": ["i2c_bitaxe_init"]},
+        {"path": "reference/esp-miner/main/adc.c", "anchors": ["ADC_init"]}
+      ]
+    },
+    {
+      "id": "display-input-selftest-bap",
+      "category": "display, screen, input, self-test, and Bitaxe accessory protocol",
+      "scope": "runtime input, self-test, display effects, and BAP hardware are board/evidence specific",
+      "provenance": "behavioral inventory only; no GPL-covered UI or protocol expression is copied",
+      "non_claim": "debug display evidence does not verify full screen, input, self-test, or BAP parity",
+      "checklist_rows": ["UI-001", "UI-002", "UI-003", "SELF-001", "BAP-001", "BAP-002"],
+      "locators": [
+        {"path": "reference/esp-miner/main/display.c", "anchors": ["display_init"]},
+        {"path": "reference/esp-miner/main/screen.c", "anchors": ["screen_start"]},
+        {"path": "reference/esp-miner/main/input.c", "anchors": ["input_init"]},
+        {"path": "reference/esp-miner/main/self_test/self_test.c", "anchors": ["self_test_init", "self_test_task"]},
+        {"path": "reference/esp-miner/main/bap/bap.c", "anchors": ["BAP_init"]},
+        {"path": "reference/esp-miner/main/bap/bap_protocol.c", "anchors": ["BAP_calculate_checksum"]},
+        {"path": "reference/esp-miner/main/bap/bap_handlers.c", "anchors": ["BAP_handle_request"]}
+      ]
+    },
+    {
+      "id": "logging-statistics",
+      "category": "retained logging, hashrate, statistics history, scoreboard, and live telemetry",
+      "scope": "observable statistics and logs; production values require correlated runtime evidence",
+      "provenance": "response contracts and algorithms are independently modeled from reference behavior",
+      "non_claim": "zero fixtures and projection markers do not verify production statistics or populated scoreboards",
+      "checklist_rows": ["LOG-001", "STAT-001", "STAT-002", "STAT-003", "STAT-004"],
+      "locators": [
+        {"path": "reference/esp-miner/main/log_buffer.c", "anchors": ["log_buffer_init", "log_buffer_read_absolute"]},
+        {"path": "reference/esp-miner/main/tasks/hashrate_monitor_task.c", "anchors": ["hashrate_monitor_task"]},
+        {"path": "reference/esp-miner/main/tasks/statistics_task.c", "anchors": ["statistics_task"]},
+        {"path": "reference/esp-miner/main/tasks/scoreboard.c", "anchors": ["scoreboard_add"]},
+        {"path": "reference/esp-miner/main/http_server/websocket_api.c", "anchors": ["websocket_api_task"]}
+      ]
+    },
+    {
+      "id": "filesystem-ota-recovery",
+      "category": "filesystem, firmware OTA, web-assets OTA, and recovery",
+      "scope": "package and route presence are distinct from destructive update and recovery behavior",
+      "provenance": "observable update contracts are inventoried without executing destructive hardware effects",
+      "non_claim": "route availability does not verify image validation, rollback, recovery, or interrupted updates",
+      "checklist_rows": ["FS-001", "OTA-001", "OTA-002"],
+      "locators": [
+        {"path": "reference/esp-miner/main/filesystem.c", "anchors": ["filesystem_init"]},
+        {"path": "reference/esp-miner/main/http_server/http_server.c", "anchors": ["POST_OTA_update", "rest_recovery_handler", "/api/system/OTAWWW"]},
+        {"path": "reference/esp-miner/main/http_server/recovery_page.html", "anchors": ["Recovery"]}
+      ]
+    },
+    {
+      "id": "evidence-governance",
+      "category": "claim ladder, redaction, operator evidence, and exact promotion boundaries",
+      "scope": "repository governance derived from parity risks rather than an upstream firmware subsystem",
+      "provenance": "project-owned evidence controls; reference commit remains recorded in every qualifying claim",
+      "non_claim": "governance verification never promotes underlying device behavior by itself",
+      "checklist_rows": ["EVD-06", "EVD-07", "EVD-08", "EVD-09"],
+      "locators": [
+        {"path": "docs/parity/evidence/phase-22-claim-ladder-and-safety-preconditions/claim-ladder.md", "anchors": ["Claim Ladder"]},
+        {"path": "docs/parity/evidence/phase-23-redacted-operator-evidence-workflow/evidence-contract.md", "anchors": ["Evidence Contract"]},
+        {"path": "docs/parity/evidence/phase-26-telemetry-and-parity-closure/summary.md", "anchors": ["Phase 26"]}
+      ]
+    }
+  ]
+}

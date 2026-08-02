@@ -184,6 +184,13 @@ pub(crate) trait ReportEnvironment {
     fn validate_checklist_targets(&self, _rows: &[ChecklistRow]) -> Vec<ValidationError> {
         Vec::new()
     }
+    fn validate_reference_inventory(
+        &self,
+        _rows: &[ChecklistRow],
+        _reference_commit: &str,
+    ) -> Vec<ValidationError> {
+        Vec::new()
+    }
 }
 
 pub(crate) fn run_report(
@@ -205,6 +212,9 @@ pub(crate) fn run_report(
     report
         .validation_errors
         .extend(environment.validate_checklist_targets(&report.rows));
+    report
+        .validation_errors
+        .extend(environment.validate_reference_inventory(&report.rows, &report.reference_commit));
 
     if environment_request.fail_on_invalid_verified && !report.validation_errors.is_empty() {
         bail!(

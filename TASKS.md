@@ -335,49 +335,6 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
-### task-comprehensive-reference-parity-checklist | 2026-08-02 | Make the reference-derived parity checklist comprehensive
-
-- [ ] Audit the pinned, read-only `reference/esp-miner` tree and inventory every
-      device-user-observable behavior and firmware capability, including board
-      configuration, boot/runtime services, NVS and settings, ASIC families,
-      Stratum and mining, HTTP/OpenAPI/WebSocket/UI surfaces, networking,
-      logging and telemetry, power/thermal/fan control, display and input,
-      self-test, filesystem, OTA/recovery, packaging, flashing, and release
-      behavior.
-- [ ] Reconcile that inventory into the existing canonical
-      `docs/parity/checklist.md` instead of creating a competing checklist.
-      Give every independently verifiable surface a stable ID, exact reference
-      path plus symbol/route/key breadcrumb, Rust-owned implementation pointer
-      or explicit gap, board/ASIC scope, status, evidence type and pointer, and
-      precise non-claims.
-- [ ] Add a deterministic coverage artifact or parity-tool check that proves
-      every inventoried reference surface is represented by exactly one
-      checklist row or an explicit, reasoned deferral, and fails when a tracked
-      surface disappears, is duplicated, or lacks its required metadata.
-- [ ] Record the pinned reference commit and provenance boundaries without
-      modifying `reference/esp-miner` or copying GPL-covered source expression
-      into MIT-first Rust files. Preserve existing evidence-backed statuses;
-      do not promote a row from implementation or documentation alone.
-- [ ] Keep safety-critical and hardware-control rows below `verified` unless
-      their exact claims have the required named-board hardware evidence, and
-      keep non-205 behavior explicitly scoped until separately evidenced.
-
-Dependencies: None. Existing checklist rows, revision records, parity tooling,
-and evidence are inputs to reconcile, not completeness proof by themselves.
-
-Verification: Pending. At minimum run `just verify-reference`, focused parity
-tool tests for inventory/coverage failures, `just parity`, all repository-required
-Rust pre-commit checks, and `bun scripts/bright-builds-check.ts all`; review the
-final checklist diff for unsupported promotions, missing reference breadcrumbs,
-duplicate surface ownership, broken evidence links, and sensitive data.
-
-Completion review: Pending. Completion requires deterministic reference-to-row
-coverage, not merely adding prose or preserving the current checklist row count.
-This task authorizes read-only reference inspection and repository documentation,
-tooling, and test changes only. It does not authorize hardware effects, credential
-use, network discovery, parity promotion without qualifying evidence, direct UART,
-or pin manipulation.
-
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

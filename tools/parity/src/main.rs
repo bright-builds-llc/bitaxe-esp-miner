@@ -74,6 +74,7 @@ mod cli;
 mod commands;
 mod environment;
 mod private_files;
+mod reference_inventory;
 mod report;
 #[cfg(test)]
 mod tests;

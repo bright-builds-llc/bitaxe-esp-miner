@@ -3111,3 +3111,69 @@ only a later complete accepted marker can recover the observation. Residual
 risk: no hardware run was authorized, so the fixes are software-verified but
 not yet confirmed by a fresh soak. The existing broader soak task remains
 active and no attempt-005 or parity claim is authorized by this completion.
+
+### task-comprehensive-reference-parity-checklist | 2026-08-02 | Make the reference-derived parity checklist comprehensive
+
+- [x] Audit the pinned, read-only `reference/esp-miner` tree and inventory every
+      device-user-observable behavior and firmware capability, including board
+      configuration, boot/runtime services, NVS and settings, ASIC families,
+      Stratum and mining, HTTP/OpenAPI/WebSocket/UI surfaces, networking,
+      logging and telemetry, power/thermal/fan control, display and input,
+      self-test, filesystem, OTA/recovery, packaging, flashing, and release
+      behavior.
+- [x] Reconcile that inventory into the existing canonical
+      `docs/parity/checklist.md` instead of creating a competing checklist.
+      Give every independently verifiable surface a stable ID, exact reference
+      path plus symbol/route/key breadcrumb, Rust-owned implementation pointer
+      or explicit gap, board/ASIC scope, status, evidence type and pointer, and
+      precise non-claims.
+- [x] Add a deterministic coverage artifact or parity-tool check that proves
+      every inventoried reference surface is represented by exactly one
+      checklist row or an explicit, reasoned deferral, and fails when a tracked
+      surface disappears, is duplicated, or lacks its required metadata.
+- [x] Record the pinned reference commit and provenance boundaries without
+      modifying `reference/esp-miner` or copying GPL-covered source expression
+      into MIT-first Rust files. Preserve existing evidence-backed statuses;
+      do not promote a row from implementation or documentation alone.
+- [x] Keep safety-critical and hardware-control rows below `verified` unless
+      their exact claims have the required named-board hardware evidence, and
+      keep non-205 behavior explicitly scoped until separately evidenced.
+
+Dependencies: None. Existing checklist rows, revision records, parity tooling,
+and evidence were inputs to reconcile, not completeness proof by themselves.
+
+Verification:
+
+- `just verify-reference` passed and confirmed pinned reference commit
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50` remained clean.
+- `cargo test -p bitaxe-parity` passed all 398 parity tests, including six
+  focused inventory tests for valid, missing, duplicate, commit-drift,
+  missing-anchor, and missing-metadata cases. `bazel test
+  //tools/parity:tests` also passed.
+- `just parity` passed with 99 rows, 99 unique inventory mappings across 12
+  audited domains, and `validation_errors: none`. The comprehensive revision
+  guard proved no predecessor row was removed or changed status/evidence.
+- In required order, `cargo fmt --all`, warnings-denied Clippy, the
+  all-target/all-feature Cargo build, and all-feature Cargo tests passed.
+  `bun scripts/bright-builds-check.ts all` passed with zero findings after the
+  new revision authority was split below the file-length limit.
+- `just verify-redaction` and `git diff --check` passed. Final review found no
+  unsupported promotion, duplicate ownership, wildcard locator, missing exact
+  source anchor, broken new local link, reference-tree modification, or
+  sensitive value.
+
+Completion review: Complete. The canonical checklist now contains 99
+independently tracked surfaces, adding explicit conservative rows for the full
+board-profile matrix, station/SoftAP/DNS/scan/IPv6 networking, address codecs,
+HTTP command effects, theme persistence, and AxeOS operator workflows. The
+hash-bound companion inventory records exact source locators and anchors,
+scope, provenance, and non-claims, while `just parity` fails closed on missing
+or duplicate mappings, malformed metadata, reference drift, nonexistent paths,
+or missing anchors. Existing evidence-backed statuses and evidence types were
+preserved byte-for-byte by the comprehensive revision guard; no hardware,
+credentials, network discovery, direct UART, pin action, or reference edit was
+performed. Residual risk: inventory completeness is deterministic against the
+currently pinned reference commit, not behavioral verification. Any future
+reference update must deliberately refresh the inventory and checklist, and
+all hardware-bound, non-205, Stratum v2, UI/BAP, OTA/recovery, and active safety
+gaps retain their conservative statuses until claim-specific evidence exists.

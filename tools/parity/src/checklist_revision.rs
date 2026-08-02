@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use crate::operator_evidence::read_phase36_authoritative_snapshot;
 use crate::phase35_evidence::sha256_hex;
 
+mod comprehensive;
+
 pub(crate) const CURRENT_REVISION_ID: &str = "2026-07-28-runtime-display-documentation";
 pub(crate) const CURRENT_REVISION_SPEC: &str =
     "docs/parity/checklist-revisions/2026-07-28-runtime-display-documentation.json";
@@ -177,10 +179,11 @@ pub(crate) fn read_authoritative_checklist(workspace: &Utf8Path) -> Result<Strin
         );
     }
     let active = read(&workspace.join(ACTIVE_CHECKLIST), "active parity checklist")?;
-    validate_active_snapshot(&active, &snapshot)?;
-    Ok(snapshot)
+    comprehensive::validate(workspace, &snapshot, &active)?;
+    Ok(active)
 }
 
+#[cfg(test)]
 fn validate_active_snapshot(active: &str, snapshot: &str) -> Result<(), String> {
     if active != snapshot {
         return Err(

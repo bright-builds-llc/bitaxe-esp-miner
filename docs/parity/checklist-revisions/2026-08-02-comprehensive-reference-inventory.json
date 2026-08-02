@@ -1,0 +1,27 @@
+{
+  "schema_version": "parity-checklist-comprehensive-revision-v1",
+  "revision_id": "2026-08-02-comprehensive-reference-inventory",
+  "predecessor_path": "docs/parity/evidence/checklist-revisions/2026-07-28-runtime-display-documentation/checklist.md",
+  "predecessor_sha256": "5b131df38808bb61c40e61b79cb78d4cf6f2c0f4a28977d08f7fb099bc347c40",
+  "checklist_sha256": "c75455d90f5e4a5f6b770e94ef872a28ca4e35fa37bc857f47fe2fa99e479b20",
+  "inventory_path": "docs/parity/reference-surface-inventory.json",
+  "inventory_sha256": "ac040443ca0edaa3f74638f8fa169ffff6dec17e5ce7824365b73abb0369ee10",
+  "added_rows": [
+    "CFG-006",
+    "NET-001",
+    "NET-002",
+    "NET-003",
+    "STR-012",
+    "API-009",
+    "API-010",
+    "UI-004"
+  ],
+  "refined_rows": [
+    "SYS-005",
+    "CFG-003",
+    "ASIC-007",
+    "STR-005",
+    "BAP-001",
+    "BAP-002"
+  ]
+}

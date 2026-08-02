@@ -96,6 +96,32 @@ impl ReportEnvironment for LocalEnvironment {
             })
             .collect()
     }
+
+    fn validate_reference_inventory(
+        &self,
+        rows: &[ChecklistRow],
+        reference_commit: &str,
+    ) -> Vec<ValidationError> {
+        let path = self
+            .workspace_dir
+            .join(reference_inventory::DEFAULT_REFERENCE_INVENTORY_PATH);
+        let document = match std::fs::read_to_string(path.as_std_path()) {
+            Ok(document) => document,
+            Err(error) => {
+                return vec![ValidationError {
+                    id: "REFERENCE-INVENTORY".to_owned(),
+                    message: format!("failed to read reference inventory {path}: {error}"),
+                }];
+            }
+        };
+
+        reference_inventory::validate_inventory(
+            &self.workspace_dir,
+            &document,
+            reference_commit,
+            rows,
+        )
+    }
 }
 
 impl LocalEnvironment {
