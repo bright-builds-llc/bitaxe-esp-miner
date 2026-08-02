@@ -337,10 +337,10 @@ run.
 
 ### task-parity-v12-package-identity-205 | 2026-08-02 | Verify exact package and runtime identity on Ultra 205
 
-- [ ] Confirm the immutable bounded OTA evidence binds one clean package source
+- [x] Confirm the immutable bounded OTA evidence binds one clean package source
       commit, the pinned reference, the admitted package artifact, and exact
       post-reboot runtime identities on board 205.
-- [ ] Run focused package-manifest and runtime-attestation regressions plus all
+- [x] Run focused package-manifest and runtime-attestation regressions plus all
       mandatory repository gates.
 - [ ] Commit a row-specific result before transitioning only
       `V12-PACKAGE-IDENTITY-205` to `verified`.
