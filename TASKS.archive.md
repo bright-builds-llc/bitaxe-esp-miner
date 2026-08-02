@@ -3258,3 +3258,42 @@ serial behavior is claimed here; those hardware-bound behaviors remain under
 their separate conservative checklist rows. The workflow's final push follows
 the finalization commit and therefore is intentionally not represented as
 historical evidence inside this archived pre-push task record.
+
+### task-parity-str-002-message-verification | 2026-08-02 | Verify Stratum v1 message parity
+
+- [x] Select `STR-002` as the first actionable deterministic parity candidate
+      and commit its immutable audit plan before implementation.
+- [x] Make the pinned reference-derived protocol fixture executable as golden
+      coverage for every message family owned by `STR-002`.
+- [x] Enforce the reference's 32-Merkle-branch parser boundary and add focused
+      behavior tests.
+- [x] Run the focused and mandatory repository verification commands, record
+      the result, transition only `STR-002` when justified, and synchronize
+      deterministic progress.
+
+Plan: `docs/parity/work-plans/20260802T184857Z-STR-002/PLAN.md`.
+
+Scope and safety: software-only JSON-RPC parsing, serialization, fixtures, and
+tests. No network, credentials, hardware, flashing, mining, transport effects,
+direct UART, pin manipulation, or reference-tree edits were authorized or used.
+
+Verification: The focused 55-test Stratum message suite, Bazel Stratum tests,
+reference-clean guard, JSON validation, mandatory Rust format/lint/build/test
+sequence, managed Bright Builds checks, redaction check, all 82 Bazel tests,
+parity validation, progress validation, and diff checks passed. The terminal
+result binds implementation commit
+`f7b750843d9e6cf094713391b432b2224f895354`; the transition receipt binds the
+predecessor/result checklist digests and plan/result hashes. Progress sync
+reports 29/94 verified and 3,085 basis points, rendered as 30.9%. Final gates
+are run again after this archival and before the final commit.
+
+Completion review: Complete. All 23 pinned synthetic message shapes are
+executable through the owned Rust parser or serializer, and exact tests prove
+acceptance at 32 Merkle branches and rejection at 33. `STR-002` alone
+transitioned from `implemented` to `verified` with `unit,golden` evidence; the
+hash-chained progress history and README now report 29/94 active items verified
+(30.9%). Residual risk: live sockets, networking, TLS, credentials, pool timing,
+retry/reconnect lifecycle, ASIC behavior, share outcomes, mining, and hardware
+remain explicit non-claims owned by separate checklist rows. The workflow's
+final push follows the finalization commit and is intentionally not represented
+as historical evidence inside this archived pre-push task record.
