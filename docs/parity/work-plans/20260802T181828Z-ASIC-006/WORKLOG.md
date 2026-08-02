@@ -53,3 +53,43 @@
   unchanged until a source commit can be bound into the result and receipt.
 - Blocker or next safe action: Commit implementation evidence, capture the full
   commit as `SOURCE_COMMIT`, then perform the one-row transition.
+
+## 2026-08-02T18:41:29Z | transition integration guard repair
+
+- Source commit: `268a118b565579674695bba523b7c970c7db734a`
+- Actions: Transitioned only `ASIC-006`, synchronized progress, and ran the
+  final repository gate. The gate exposed a Phase 35 shell contract that still
+  compared the immutable comprehensive-revision digest directly to the live
+  checklist. Updated that historical contract to compare against the
+  transition ledger's immutable baseline and added the baseline to its Bazel
+  runfiles.
+- Verification: The first final `just test` run passed 81 of 82 tests and failed
+  only `//scripts:phase35_promotion_contract_test` with
+  `category=comprehensive-revision-root-drift`; every other test and firmware
+  build/package target passed.
+- Evidence: `docs/parity/checklist-transitions/baseline.md` preserves the exact
+  comprehensive revision; the transition receipt chains that baseline to the
+  selected-row result.
+- Outcome: The historical comprehensive inventory remains immutable while
+  ordinary one-row transitions can advance the live checklist through the
+  guarded append-only ledger.
+- Blocker or next safe action: Re-run the focused contract and every required
+  final gate before committing.
+
+## 2026-08-02T18:44:09Z | finalization verified
+
+- Source commit: `268a118b565579674695bba523b7c970c7db734a`
+- Actions: Re-ran the corrected Phase 35 contract, the complete Rust gate,
+  Bright Builds, the full Bazel graph, and both parity commands against the
+  transitioned and archived worktree.
+- Verification: `//scripts:phase35_promotion_contract_test` passed; the Cargo
+  format, warnings-denied Clippy, all-target build, and all-feature tests
+  passed; Bright Builds reported zero findings; `just test` passed 82 of 82;
+  `just parity` passed; `just parity-progress` reported 28/94 and 29.8%; and
+  `git diff --check` passed.
+- Evidence: The hash-bound transition receipt, progress record, README marker,
+  terminal result, and archived task record in this finalization tree.
+- Outcome: `ASIC-006` is verified and the first real `advance-parity`
+  transition completes without weakening historical revision validation.
+- Blocker or next safe action: Commit finalization, re-check upstream sync, and
+  push the current branch without force.

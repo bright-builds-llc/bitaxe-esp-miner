@@ -3223,3 +3223,38 @@ are software-tested, but a real skill invocation has not yet exercised the
 first transition receipt or hardware-gated plan. Those paths deliberately fail
 closed and remain subject to the repository's existing evidence and recovery
 contracts.
+
+### task-parity-asic-006-crc-verification | 2026-08-02 | Verify the complete reference CRC contract
+
+- [x] Persist and commit the immutable `ASIC-006` work plan before source edits.
+- [x] Implement the missing zero-initialized CRC16 behavior without copying the
+      upstream GPL lookup table into MIT-first Rust source.
+- [x] Add deterministic reference vectors for all CRC variants and BM1366 frame
+      placement, and retain receive-residue coverage at the parser boundary.
+- [x] Produce the worklog and terminal result, transition only `ASIC-006` to
+      `verified`, synchronize progress, archive this task, and prepare the
+      audited commits for the required final push.
+
+Plan: `docs/parity/work-plans/20260802T181828Z-ASIC-006/PLAN.md`.
+
+Authorization: software-only. No hardware, flash, credentials, network
+discovery, direct UART, pins, safety actuation, or reference-tree edits.
+
+Verification: Focused Cargo/Bazel CRC tests and every repository gate passed on
+the implementation worktree. The terminal result binds implementation commit
+`268a118b565579674695bba523b7c970c7db734a`; the transition receipt binds the
+predecessor/result checklist digests and plan/result hashes; progress sync
+reports 28/94 verified and 2,979 basis points, rendered as 29.8%. Final gates
+are run again after this archival and before the final commit.
+
+Completion review: Complete. All three CRC entry points in the pinned reference
+are implemented through a compact bitwise CCITT core, independently fixed
+boundary and canonical vectors cover the algorithm variants, exact BM1366
+frame bytes prove CRC16-FALSE coverage and byte order, and existing parser tests
+retain receive-side zero-residue enforcement. `ASIC-006` alone transitioned
+from `implemented` to `verified`; the hash-chained progress history and README
+now report 28/94 active items verified (29.8%). Residual risk: no live ASIC or
+serial behavior is claimed here; those hardware-bound behaviors remain under
+their separate conservative checklist rows. The workflow's final push follows
+the finalization commit and therefore is intentionally not represented as
+historical evidence inside this archived pre-push task record.

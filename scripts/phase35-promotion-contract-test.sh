@@ -42,6 +42,7 @@ readonly current_revision_root="${workspace_root}/docs/parity/evidence/checklist
 readonly current_revision_manifest="${current_revision_root}/manifest.json"
 readonly current_revision_snapshot="${current_revision_root}/checklist.md"
 readonly comprehensive_revision_spec="${workspace_root}/docs/parity/checklist-revisions/2026-08-02-comprehensive-reference-inventory.json"
+readonly transition_baseline="${workspace_root}/docs/parity/checklist-transitions/baseline.md"
 readonly reference_surface_inventory="${workspace_root}/docs/parity/reference-surface-inventory.json"
 
 fail() {
@@ -75,6 +76,7 @@ for required_path in \
 	"$current_revision_manifest" \
 	"$current_revision_snapshot" \
 	"$comprehensive_revision_spec" \
+	"$transition_baseline" \
 	"$reference_surface_inventory"; do
 	[[ -f "$required_path" ]] || fail artifact-inventory
 done
@@ -313,7 +315,7 @@ done
 	fail comprehensive-revision-id
 [[ "$(jq -er '.predecessor_sha256' "$comprehensive_revision_spec")" == "$(sha256_file "$current_revision_snapshot")" ]] ||
 	fail comprehensive-revision-predecessor
-[[ "$(jq -er '.checklist_sha256' "$comprehensive_revision_spec")" == "$(sha256_file "$checklist_path")" ]] ||
+[[ "$(jq -er '.checklist_sha256' "$comprehensive_revision_spec")" == "$(sha256_file "$transition_baseline")" ]] ||
 	fail comprehensive-revision-root-drift
 [[ "$(jq -er '.inventory_sha256' "$comprehensive_revision_spec")" == "$(sha256_file "$reference_surface_inventory")" ]] ||
 	fail comprehensive-revision-inventory-drift

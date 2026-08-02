@@ -1,0 +1,18 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260802T181828Z-ASIC-006",
+  "predecessor_sha256": "c75455d90f5e4a5f6b770e94ef872a28ca4e35fa37bc857f47fe2fa99e479b20",
+  "result_sha256": "b6fca0ed417e7cd212f5c715813bda4178f910027bd6f0a9f091826038322f4b",
+  "row_id": "ASIC-006",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260802T181828Z-ASIC-006/PLAN.md",
+  "plan_sha256": "14994fca00c07c947eb66e4313fa6ecb6ea86dd3ef68236bb3aeb5d8e7b17882",
+  "result_path": "docs/parity/work-plans/20260802T181828Z-ASIC-006/RESULT.md",
+  "result_document_sha256": "0ad39e9d6404dd3c0c8a1f1f9cf7cb17d2f5361697e5ccfe5cdc057ad4342438",
+  "before_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/crc.rs`, `crates/bitaxe-asic/src/bm1366/packet.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/crc.rs`, `crates/bitaxe-asic/src/bm1366/packet.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden",
+  "after_evidence": "unit,golden"
+}
