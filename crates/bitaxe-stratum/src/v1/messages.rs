@@ -3,7 +3,7 @@
 //! Reference breadcrumbs:
 //! - `reference/esp-miner/components/stratum/stratum_api.c`
 //! - `reference/esp-miner/components/stratum/include/stratum_api.h`
-//! - Parity checklist row `STR-001`
+//! - Parity checklist row `STR-002`
 
 mod client;
 mod server;

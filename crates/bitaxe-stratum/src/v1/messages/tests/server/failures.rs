@@ -226,6 +226,26 @@ fn notify_requires_string_merkle_branches() {
 }
 
 #[test]
+fn notify_rejects_more_than_the_reference_merkle_branch_limit() {
+    // Arrange
+    let branch = format!(r#""{}""#, "00".repeat(32));
+    let merkle = format!("[{}]", vec![branch; 33].join(","));
+    let input = valid_notify_with_merkle(&merkle);
+
+    // Act
+    let result = parse_server_message(&input);
+
+    // Assert
+    assert_eq!(
+        result,
+        Err(StratumV1Error::InvalidField {
+            field: "merkle_branches",
+            reason: "exceeds MAX_MERKLE_BRANCHES 32"
+        })
+    );
+}
+
+#[test]
 fn notify_hex_fields_require_strings() {
     // Arrange
     let input = concat!(

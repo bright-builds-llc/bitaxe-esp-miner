@@ -4,6 +4,7 @@ use crate::error::StratumV1Error;
 use crate::jsonrpc::StratumRequestId;
 
 pub const MAX_EXTRANONCE_2_LEN: u8 = 32;
+const MAX_MERKLE_BRANCHES: usize = 32;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StratumV1ServerMessage {
@@ -397,6 +398,12 @@ fn merkle_branches(maybe_value: Option<&Value>) -> Result<Vec<String>, StratumV1
             method: "mining.notify",
         });
     };
+    if branches.len() > MAX_MERKLE_BRANCHES {
+        return Err(StratumV1Error::InvalidField {
+            field: "merkle_branches",
+            reason: "exceeds MAX_MERKLE_BRANCHES 32",
+        });
+    }
 
     let mut parsed = Vec::with_capacity(branches.len());
     for branch in branches {

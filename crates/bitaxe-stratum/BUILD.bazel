@@ -21,6 +21,7 @@ rust_library(
         "src/v1/messages/server.rs",
         "src/v1/messages/tests.rs",
         "src/v1/messages/tests/client.rs",
+        "src/v1/messages/tests/golden.rs",
         "src/v1/messages/tests/server.rs",
         "src/v1/messages/tests/server/failures.rs",
         "src/v1/messages/tests/server/success.rs",

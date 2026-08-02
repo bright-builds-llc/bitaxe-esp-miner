@@ -30,6 +30,30 @@ fn notify_parses_upstream_self_test_shape() {
 }
 
 #[test]
+fn notify_accepts_the_reference_merkle_branch_limit() {
+    // Arrange
+    let branch = format!(r#""{}""#, "00".repeat(32));
+    let merkle = format!("[{}]", vec![branch; 32].join(","));
+    let input = format!(
+        concat!(
+            r#"{{"method":"mining.notify","params":["job","#,
+            r#""0000000000000000000000000000000000000000000000000000000000000000","#,
+            r#""aa","bb",{},"20000004","1705ae3a","647025b5",true]}}"#
+        ),
+        merkle
+    );
+
+    // Act
+    let message = parse_server_message(&input).expect("maximum Merkle branch count should parse");
+
+    // Assert
+    assert!(matches!(
+        message,
+        StratumV1ServerMessage::Notify(notify) if notify.merkle_branches.len() == 32
+    ));
+}
+
+#[test]
 fn set_difficulty_accepts_large_pool_value() {
     // Arrange
     let input = r#"{"id":null,"method":"mining.set_difficulty","params":[4294967295]}"#;

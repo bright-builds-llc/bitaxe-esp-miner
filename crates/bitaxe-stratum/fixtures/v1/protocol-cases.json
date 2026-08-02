@@ -1,10 +1,10 @@
 {
-  "checklist_ids": ["STR-001"],
+  "checklist_ids": ["STR-002"],
   "source_file": "reference/esp-miner/components/stratum/stratum_api.c",
-  "source_behavior": "Stratum v1 JSON-RPC client request and pool notification method shapes",
+  "source_behavior": "Complete deterministic Stratum v1 JSON-RPC client serialization and pool message parsing shapes",
   "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
   "license_posture": "reference-derived facts only; Rust implementation remains independently authored MIT-first code",
-  "derivation": "Method names, field categories, and representative synthetic values were derived from upstream Stratum behavior without copying GPL source expression.",
+  "derivation": "Method names, JSON field shapes, protocol limits, and synthetic values were derived from upstream behavior without copying GPL source expression.",
   "cases": [
     {
       "name": "client-subscribe",
@@ -24,26 +24,6 @@
         "id": 2,
         "method": "mining.authorize",
         "params": ["synthetic-user", "x"]
-      }
-    },
-    {
-      "name": "pool-notify",
-      "method": "mining.notify",
-      "direction": "pool-to-client",
-      "json": {
-        "id": null,
-        "method": "mining.notify",
-        "params": [
-          "0",
-          "010000000000000000000000000000000000000000000000000000000000000000000000",
-          "ffffffff",
-          "ffffffff",
-          [],
-          "20000004",
-          "1705ae3a",
-          "647025b5",
-          true
-        ]
       }
     },
     {
@@ -77,11 +57,31 @@
       }
     },
     {
+      "name": "client-pong",
+      "method": "pong",
+      "direction": "client-to-pool",
+      "json": {
+        "id": 6,
+        "method": "pong",
+        "params": []
+      }
+    },
+    {
+      "name": "client-version-response",
+      "method": "result",
+      "direction": "client-to-pool",
+      "json": {
+        "id": 7,
+        "result": "v0.0.0-synthetic",
+        "error": null
+      }
+    },
+    {
       "name": "client-submit",
       "method": "mining.submit",
       "direction": "client-to-pool",
       "json": {
-        "id": 6,
+        "id": 8,
         "method": "mining.submit",
         "params": [
           "synthetic-user",
@@ -89,7 +89,27 @@
           "00000000",
           "647025b5",
           "12345678",
-          "00000000"
+          "00002000"
+        ]
+      }
+    },
+    {
+      "name": "pool-notify",
+      "method": "mining.notify",
+      "direction": "pool-to-client",
+      "json": {
+        "id": null,
+        "method": "mining.notify",
+        "params": [
+          "0",
+          "010000000000000000000000000000000000000000000000000000000000000000000000",
+          "ffffffff",
+          "ffffffff",
+          [],
+          "20000004",
+          "1705ae3a",
+          "647025b5",
+          true
         ]
       }
     },
@@ -118,9 +138,49 @@
       "method": "mining.set_version_mask",
       "direction": "pool-to-client",
       "json": {
-        "id": 7,
+        "id": null,
         "method": "mining.set_version_mask",
         "params": ["1fffe000"]
+      }
+    },
+    {
+      "name": "pool-reconnect",
+      "method": "client.reconnect",
+      "direction": "pool-to-client",
+      "json": {
+        "id": null,
+        "method": "client.reconnect",
+        "params": []
+      }
+    },
+    {
+      "name": "pool-show-message",
+      "method": "client.show_message",
+      "direction": "pool-to-client",
+      "json": {
+        "id": null,
+        "method": "client.show_message",
+        "params": ["synthetic pool message"]
+      }
+    },
+    {
+      "name": "pool-get-version",
+      "method": "client.get_version",
+      "direction": "pool-to-client",
+      "json": {
+        "id": null,
+        "method": "client.get_version",
+        "params": []
+      }
+    },
+    {
+      "name": "pool-ping",
+      "method": "mining.ping",
+      "direction": "pool-to-client",
+      "json": {
+        "id": 9,
+        "method": "mining.ping",
+        "params": []
       }
     },
     {
@@ -128,8 +188,24 @@
       "method": "result",
       "direction": "pool-to-client",
       "json": {
-        "result": [[["mining.notify", "695482c0"]], "4de05269", 8],
         "id": 2,
+        "result": [[[
+          "mining.notify",
+          "695482c0"
+        ]], "4de05269", 8],
+        "error": null
+      }
+    },
+    {
+      "name": "pool-configure-result",
+      "method": "result",
+      "direction": "pool-to-client",
+      "json": {
+        "id": 3,
+        "result": {
+          "version-rolling": true,
+          "version-rolling.mask": "1fffe000"
+        },
         "error": null
       }
     },
@@ -138,19 +214,49 @@
       "method": "result",
       "direction": "pool-to-client",
       "json": {
-        "id": 8,
+        "id": 10,
         "result": true,
         "error": null
       }
     },
     {
-      "name": "pool-error-result",
+      "name": "pool-false-result",
+      "method": "result",
+      "direction": "pool-to-client",
+      "json": {
+        "id": 11,
+        "result": false,
+        "reject-reason": "stale share"
+      }
+    },
+    {
+      "name": "pool-error-result-string",
       "method": "error",
       "direction": "pool-to-client",
       "json": {
-        "id": 9,
+        "id": 12,
         "result": null,
-        "error": [21, "Job not found", ""]
+        "error": "authorization rejected"
+      }
+    },
+    {
+      "name": "pool-error-result-array",
+      "method": "error",
+      "direction": "pool-to-client",
+      "json": {
+        "id": 13,
+        "result": null,
+        "error": [21, "job not found", null]
+      }
+    },
+    {
+      "name": "pool-error-result-object",
+      "method": "error",
+      "direction": "pool-to-client",
+      "json": {
+        "id": 14,
+        "result": null,
+        "error": {"code": 22, "message": "duplicate share"}
       }
     }
   ]
