@@ -335,6 +335,29 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
+### task-parity-stat-004-work-queue-verification | 2026-08-02 | Verify deterministic work-queue parity
+
+- [ ] Add pinned executable golden cases for the exact `STAT-004` queue
+      data-structure contract.
+- [ ] Cover capacity, FIFO wrap-around, full/empty boundary preservation, and
+      clear/drop ownership with focused Arrange/Act/Assert tests.
+- [ ] Preserve task blocking/timing, live Stratum, ASIC, share, credential,
+      network, and hardware behavior as explicit non-claims.
+- [ ] Run focused checks plus every mandatory Rust, Bright Builds, Bazel,
+      redaction, parity, and progress gate.
+- [ ] Transition only `STAT-004` if its exact `unit,golden` evidence passes,
+      synchronize progress, and archive this task in the finalization commit.
+
+Plan: `docs/parity/work-plans/20260802T214207Z-STAT-004/PLAN.md`
+
+Authorization and safety: software-only and effect-free. No credentials,
+hardware, flashing, pool/network connections, destructive actions, direct
+UART, pin manipulation, or reference-tree edits are authorized or required.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
