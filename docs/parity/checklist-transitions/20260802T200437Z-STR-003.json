@@ -1,0 +1,18 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260802T200437Z-STR-003",
+  "predecessor_sha256": "3487efa08b32b10ccc46154b57c8d585d265d32b4dbe4715610e10eeadf90a71",
+  "result_sha256": "2bec888c5d8ab6e9262cea75681d657845a00345dae80b07a9397c210dd76605",
+  "row_id": "STR-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260802T195138Z-STR-003/PLAN.md",
+  "plan_sha256": "895ad0bb37c74c31c8e457ed219903c26e8d66329b261b2df6c2b36cb049a313",
+  "result_path": "docs/parity/work-plans/20260802T195138Z-STR-003/RESULT.md",
+  "result_document_sha256": "dfd9d91fa81ca4ce85cf335c109836bf4dda9f4788415e44bb876946a86899b8",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1/coinbase.rs`, `crates/bitaxe-stratum/src/v1/mining.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/coinbase.rs`, `crates/bitaxe-stratum/src/v1/mining.rs`, `crates/bitaxe-stratum/src/v1/mining/golden_tests.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/fixtures/v1/mining-job-cases.json`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden",
+  "after_evidence": "unit,golden"
+}

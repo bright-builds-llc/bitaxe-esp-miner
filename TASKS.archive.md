@@ -3297,3 +3297,45 @@ retry/reconnect lifecycle, ASIC behavior, share outcomes, mining, and hardware
 remain explicit non-claims owned by separate checklist rows. The workflow's
 final push follows the finalization commit and is intentionally not represented
 as historical evidence inside this archived pre-push task record.
+
+### task-parity-str-003-mining-job-verification | 2026-08-02 | Verify Stratum mining-job construction
+
+- [x] Select `STR-003` as the first actionable parity row and commit the audit
+      plan before implementation.
+- [x] Convert the pinned reference-derived mining-job fixture into executable
+      golden coverage for the full typed Ultra 205 construction boundary.
+- [x] Add behavior-focused construction and rejection coverage exposed by the
+      fixture audit.
+- [x] Run focused and mandatory verification, record evidence, and transition
+      only the checklist fields justified by the result.
+- [x] Synchronize deterministic parity progress, archive this task after the
+      row reaches `verified`, and prepare every audited commit for push.
+
+Plan: `docs/parity/work-plans/20260802T195138Z-STR-003/PLAN.md`.
+
+Authorization and safety: software-only and effect-free. No credentials,
+hardware, flashing, pool/network connections, destructive actions, direct
+UART, pin manipulation, or reference-tree edits were used.
+
+Verification: Five exact extranonce vectors and one complete pinned upstream
+mining-job vector execute through the Rust work builder. Focused Cargo and
+Bazel Stratum tests, reference cleanliness, JSON validation, the mandatory Rust
+format/lint/build/test sequence, managed Bright Builds checks, redaction, all
+82 Bazel tests, parity validation, progress validation, and diff checks passed.
+The terminal result binds implementation commit
+`242a51ebaa61a6451b11f1122ff159b26a274b5e`; the transition receipt binds the
+predecessor/result checklist digests and plan/result hashes. Progress sync
+reports 30/94 verified and 3,191 basis points, rendered as 31.9%. Final gates
+are run again after this archival and before the final commit.
+
+Completion review: Complete. Exact assertions now cover extranonce2 encoding,
+coinbase hashing, Merkle folding, every typed BM1366 work field, retained job
+identity and pool context, plus malformed-branch rejection. `STR-003` alone
+transitioned from `implemented` to `verified` with `unit,golden` evidence; the
+hash-chained progress history and README report 30/94 active items verified
+(31.9%). Residual risk: live sockets, networking, TLS, credentials, reconnect
+behavior, ASIC dispatch, nonce validation, share outcomes, production mining,
+other ASIC families, and hardware remain explicit non-claims owned by separate
+checklist rows. The workflow's final push follows the finalization commit and
+is intentionally not represented as historical evidence inside this archived
+pre-push task record.

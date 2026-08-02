@@ -335,30 +335,6 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
-### task-parity-str-003-mining-job-verification | 2026-08-02 | Verify Stratum mining-job construction
-
-- [x] Select `STR-003` as the first actionable parity row and commit the audit
-      plan before implementation.
-- [ ] Convert the pinned reference-derived mining-job fixture into executable
-      golden coverage for the full typed Ultra 205 construction boundary.
-- [ ] Add any behavior-focused construction or rejection coverage exposed by
-      the fixture audit.
-- [ ] Run focused and mandatory verification, record evidence, and transition
-      only the checklist fields justified by the result.
-- [ ] Synchronize deterministic parity progress, archive this task only if the
-      row reaches `verified`, and push every audited commit.
-
-Plan: `docs/parity/work-plans/20260802T195138Z-STR-003/PLAN.md`.
-
-Authorization and safety: software-only and effect-free. Do not access
-credentials, touch hardware, flash firmware, open pool/network connections,
-modify the pinned reference tree, perform destructive actions, or expand the
-row into live ASIC, share, or production-mining claims.
-
-Verification: Pending.
-
-Completion review: Pending.
-
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

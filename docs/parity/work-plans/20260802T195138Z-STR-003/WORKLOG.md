@@ -52,3 +52,42 @@
   checklist transition.
 - Blocker or next safe action: Review and commit the source diff, then create
   `RESULT.md` against that immutable source commit and transition only STR-003.
+
+## 2026-08-02T20:05:41Z | guarded transition and progress synchronization
+
+- Source commit: `242a51ebaa61a6451b11f1122ff159b26a274b5e`
+- Actions: Created the hash-bound terminal result, invoked transition ID
+  `20260802T200437Z-STR-003`, synchronized progress from the implementation
+  commit, and archived only the completed matching task record.
+- Verification: The transition command accepted only STR-003 from
+  `implemented` to `verified` with unchanged `unit,golden` evidence and an
+  expanded Rust-owned target containing the executable fixture and test.
+  Progress synchronization appended one record and reported 30 of 94 active
+  rows verified (31.9%).
+- Evidence: The receipt records checklist digest
+  `2bec888c5d8ab6e9262cea75681d657845a00345dae80b07a9397c210dd76605`,
+  the immutable plan digest, and the result-document digest. `RESULT.md` binds
+  the implementation and pinned reference commits.
+- Outcome: The one-row transition and derived progress artifacts are ready for
+  the mandatory post-transition repository gate.
+- Blocker or next safe action: Run the full final gate, review every
+  finalization artifact, commit, synchronize with upstream, and push without
+  force.
+
+## 2026-08-02T20:07:39Z | final repository gate passed
+
+- Source commit: `242a51ebaa61a6451b11f1122ff159b26a274b5e`
+- Actions: Ran the complete required post-transition gate against the final
+  checklist, receipt, progress history, README marker, result, and archived
+  task tree.
+- Verification: `cargo fmt --all`; `cargo clippy --all-targets --all-features
+  -- -D warnings`; `cargo build --all-targets --all-features`; `cargo test
+  --all-features`; `bun scripts/bright-builds-check.ts all`; `just test` (82
+  of 82 tests); `just parity` (`validation_errors: none`); and `just
+  parity-progress` (30/94, 31.9%) all passed. The Bazel graph also rebuilt and
+  packaged the ESP32-S3 firmware with pinned ESP-IDF v5.5.4.
+- Evidence: The terminal gate observed the transitioned checklist and complete
+  transition chain, not the pre-transition baseline.
+- Outcome: STR-003 is fully verified and the finalization tree is ready for
+  redaction/diff review, commit, upstream synchronization, and push.
+- Blocker or next safe action: None within row scope.
