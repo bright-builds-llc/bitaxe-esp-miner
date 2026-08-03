@@ -498,6 +498,53 @@ not authorized. `SYS-004` must remain `implemented` with exact-package live
 version evidence pending until a future explicitly authorized ordinal can
 exercise the corrected broker.
 
+Attempt-003 authorization: on 2026-08-03 the user explicitly authorized
+`SYS-004` attempt 003 after the clean pushed
+`f369dbde0cc689b6dc8cd4c76b9fd4fe45d5ad71` workspace-directory repair. The
+attempt may proceed only after this contract passes every mandatory gate and
+is committed and pushed. The exact permitted workflow is:
+
+1. `just package`
+2. `just detect-ultra205`
+3. `just phase36-substantive-evidence mode=preflight board=205 private-parent=scratch/sys004-version-reporting/attempt-003 attempt-handle-file=scratch/sys004-version-reporting/attempt-003/handle.json candidate-output=scratch/sys004-version-reporting/attempt-003/candidate.json capture-timeout-seconds=360 package-manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
+4. `just phase36-substantive-evidence mode=hardware board=205 private-parent=scratch/sys004-version-reporting/attempt-003 attempt-handle-file=scratch/sys004-version-reporting/attempt-003/handle.json candidate-output=scratch/sys004-version-reporting/attempt-003/candidate.json capture-timeout-seconds=360 wifi-credentials=wifi-credentials.json`
+5. `bazel run //tools/parity:report -- project-sys004-version-evidence --private-parent scratch/sys004-version-reporting/attempt-003 --attempt-handle-file scratch/sys004-version-reporting/attempt-003/handle.json --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --output docs/parity/evidence/sys004-version-reporting/version-projection.json`
+
+Attempt-003 evidence and privacy contract: the ignored private parent must be
+mode `0700`, all private artifacts must be mode `0600`, and the broker-owned
+child must not exist before launch. Wi-Fi contents, USB identity, device
+origin, IP/MAC/SSID, raw HTTP/WebSocket responses, and operational paths must
+never be printed, summarized, or committed. Only the typed version projection
+may enter `docs/parity/evidence/` after its private classifier and redaction
+checks pass.
+
+Attempt-003 effects and safety contract: exactly one detector-admitted Ultra
+205 may receive the exact clean package, private Wi-Fi NVS input, the
+broker-owned factory flash, qualified passive serial capture, and read-only
+same-origin HTTP/WebSocket observation. Mining, pool input, work submission,
+voltage, frequency, fan or other hardware control, OTA, OTAWWW, rollback,
+erase-flash, arbitrary raw writes, discovery, fault injection, manual reset,
+non-205 hardware, direct UART, and pin/pad/header/GPIO/probe/jumper/solder or
+injected-signal access remain prohibited. The capture bound is 360 seconds and
+the effect wall-clock bound is 420 seconds.
+
+Attempt-003 recovery and stop contract: preserve the earliest typed failure;
+permit only the broker's same-package typed recovery after a confirmed flash
+effect; always prove cleanup; and do not infer recovery from elapsed time. This
+is one fresh ordinal with no unchanged retry, alternate command, attempt 004,
+or broader authority. A recurrence of the corrected detector boundary selects
+`stop_repeated_boundary`. Accepted outcomes are `complete`,
+`stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`,
+or `stop_impossible_contract`.
+
+Attempt-003 promotion contract: `SYS-004` may reach `verified` only if the
+detector, exact source/reference/manifest/ELF joins, safe boot, complete HTTP
+response, identical same-boot WebSocket projection, manifest-equal `version`
+and `axeOSVersion`, manifest-equal provenance and ESP-IDF fields, private
+seals, commit-safe projection, cleanup, and every repository gate pass. Any
+missing or contradictory fact retains only `SYS-004` at `implemented`, with no
+progress append or `RESULT.md`.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

@@ -155,3 +155,25 @@
 - Residual risk: Live exact-package HTTP/WebSocket equality is still unproved.
   The sole blocker is the consumed retry contract; a future explicit attempt
   ordinal is required to cross that evidence boundary.
+
+## 2026-08-03T02:44:37Z | attempt-003 authorization
+
+- Source commit: `f369dbde0cc689b6dc8cd4c76b9fd4fe45d5ad71`.
+- Actions: Resumed the only open parity plan after the user explicitly
+  authorized `SYS-004` attempt 003, and recorded one exact corrected-broker
+  hardware contract in the active task.
+- Verification: The worktree is clean on synchronized `main`; the pinned
+  reference remains `c1915b0a63bfabebdb95a515cedfee05146c1d50`; and
+  `next-item --format json` resumes this plan with no alternate candidates.
+  The ordered Rust sequence, all 82 Bazel tests, Bright Builds with zero
+  findings, parity and unchanged 34/94 progress, redaction, reference
+  integrity, and diff checks all passed.
+- Evidence: The task records the five exact commands, private paths and modes,
+  safe no-mining effect boundary, typed recovery, cleanup, retry limit, closed
+  terminal outcomes, and exact promotion criteria.
+- Outcome: Attempt 003 is authorized and software-verified but not yet
+  admissible until this contract is cleanly committed and pushed. No detector,
+  credential, package, flash, serial, HTTP, WebSocket, or hardware action has
+  occurred in this continuation.
+- Blocker or next safe action: Commit and push this contract, then build the
+  clean exact package before the first detector.
