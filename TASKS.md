@@ -349,7 +349,7 @@ run.
       status advances beyond the plan's recorded initial status.
 - [x] Prove an unchanged-status plan still resumes while the completed
       `SYS-004` implementation plan yields the next candidate queue.
-- [ ] Run all mandatory repository gates, keep the checklist and progress
+- [x] Run all mandatory repository gates, keep the checklist and progress
       history unchanged, and push the audited continuation.
 
 Plan: `docs/parity/work-plans/20260802T233821Z-SYS-004/PLAN.md`
@@ -389,6 +389,16 @@ advance closure, and regression rejection. The Bazel parity test target passed.
 Running the newly built CLI against the real repository returned
 `maybe_open_plan: null` and restored the ordered candidate queue with `SYS-004`
 first at `implemented`; the checklist and progress history remain unchanged.
+
+Continuation completion review: Commit
+`2ba235e661a628a66be035f329e75d1de82da80f` contains the targeted selector fix.
+All Rust, Bazel, Bright Builds, parity, redaction, and reference-integrity gates
+passed. The ordinary macOS Cargo target again stalled while launching the newly
+linked parity test binary, so the complete Cargo suite was rerun successfully
+from the clean isolated target that had already crossed that host boundary.
+No checklist transition, progress-history append, `RESULT.md`, or hardware
+interaction occurred. Residual risk is limited to future plan metadata/schema
+evolution; missing, invalid, and regressed states fail closed.
 
 ## Future — Explicit Only
 

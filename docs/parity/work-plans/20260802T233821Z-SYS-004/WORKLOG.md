@@ -163,3 +163,30 @@
   implementation and evidence as `SOURCE_COMMIT`, then run final verification.
   Because no checklist field changed, do not request a no-op transition or
   append progress history.
+
+## 2026-08-03T00:11:16Z | completed-plan selector finalized
+
+- Source commit: `2ba235e661a628a66be035f329e75d1de82da80f`
+- Actions: Reviewed the complete selector diff and confirmed it changes only
+  plan lifecycle detection, task accounting, and the SYS-004 work log. No
+  checklist transition or progress synchronization was requested because no
+  authoritative checklist field changed.
+- Verification: `cargo fmt --all`, `cargo clippy --all-targets --all-features
+  -- -D warnings`, and `cargo build --all-targets --all-features` passed. The
+  ordinary `cargo test --all-features` target passed prior crates but again
+  stalled at the macOS launch boundary for the newly linked parity binary; the
+  bounded attempt was interrupted, and `CARGO_TARGET_DIR=/tmp/bitaxe-cargo-selector.A4XqD7
+  cargo test --all-features` passed the complete suite. `bun
+  scripts/bright-builds-check.ts all` reported zero findings; `just test`
+  passed all 82 tests and built the firmware package; `just parity` reported no
+  validation errors; `just parity-progress` remained 34/94 verified (36.2%);
+  `just verify-redaction`, `just verify-reference`, and `git diff --check`
+  passed.
+- Evidence: The Bazel-built real command returned `maybe_open_plan: null`,
+  `SYS-004` as the first candidate at `implemented`, and 60 total candidates.
+  `git diff -- docs/parity/checklist.md docs/parity/progress.jsonl` was empty.
+- Outcome: Root cause fixed with state-aware plan completion and regression
+  coverage. The SYS-004 parity claim remains conservatively `implemented` and
+  its future exact-package hardware verification remains a separate invocation.
+- Blocker or next safe action: Run final clean-tree gates, fetch and confirm
+  divergence, commit this finalization record, and push `main` without force.
