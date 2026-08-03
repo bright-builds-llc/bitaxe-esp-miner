@@ -95,6 +95,18 @@ pub struct VersionEvidence {
     pub mining_state: String,
     pub hardware_control_state: String,
     pub redaction_status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version_projection: Option<VersionProjectionEvidence>,
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+pub struct VersionProjectionEvidence {
+    pub api_build_label_matches_manifest: bool,
+    pub api_static_asset_version_matches_manifest: bool,
+    pub api_extended_provenance_matches_manifest: bool,
+    pub api_esp_idf_version_matches_manifest: bool,
+    pub websocket_same_boot_revision_observed: bool,
+    pub websocket_version_projection_matches_api: bool,
 }
 
 impl VersionEvidence {
@@ -127,6 +139,17 @@ impl VersionEvidence {
             || self.redaction_status != "passed"
         {
             return Err("version evidence safe-state or redaction marker is invalid");
+        }
+        if let Some(projection) = &self.version_projection {
+            if !projection.api_build_label_matches_manifest
+                || !projection.api_static_asset_version_matches_manifest
+                || !projection.api_extended_provenance_matches_manifest
+                || !projection.api_esp_idf_version_matches_manifest
+                || !projection.websocket_same_boot_revision_observed
+                || !projection.websocket_version_projection_matches_api
+            {
+                return Err("version evidence projection comparison is invalid");
+            }
         }
         Ok(())
     }
@@ -217,5 +240,68 @@ mod tests {
             .expect("evidence schemas should be an array")
             .iter()
             .all(|schema| !schema.as_str().unwrap_or_default().contains("phase")));
+    }
+
+    #[test]
+    fn version_evidence_accepts_legacy_base_projection() {
+        // Arrange
+        let evidence = valid_version_evidence(None);
+
+        // Act
+        let result = evidence.validate();
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn version_evidence_rejects_a_failed_live_projection_comparison() {
+        // Arrange
+        let mut projection = valid_version_projection();
+        projection.websocket_version_projection_matches_api = false;
+        let evidence = valid_version_evidence(Some(projection));
+
+        // Act
+        let result = evidence.validate();
+
+        // Assert
+        assert_eq!(
+            result,
+            Err("version evidence projection comparison is invalid")
+        );
+    }
+
+    fn valid_version_evidence(
+        version_projection: Option<VersionProjectionEvidence>,
+    ) -> VersionEvidence {
+        VersionEvidence {
+            schema_version: VERSION_EVIDENCE_SCHEMA.to_owned(),
+            board: 205,
+            source_commit: "a".repeat(40),
+            reference_commit: "b".repeat(40),
+            package_manifest_sha256: "c".repeat(64),
+            workflow: WorkflowIdentity {
+                schema_version: "bitaxe-workflow-identity-v1".to_owned(),
+                command: AutomationCommand::CaptureVersionEvidence,
+                request_sha256: "d".repeat(64),
+            },
+            boot_observed: true,
+            same_origin_api_observed: true,
+            mining_state: "disabled".to_owned(),
+            hardware_control_state: "disabled".to_owned(),
+            redaction_status: "passed".to_owned(),
+            version_projection,
+        }
+    }
+
+    fn valid_version_projection() -> VersionProjectionEvidence {
+        VersionProjectionEvidence {
+            api_build_label_matches_manifest: true,
+            api_static_asset_version_matches_manifest: true,
+            api_extended_provenance_matches_manifest: true,
+            api_esp_idf_version_matches_manifest: true,
+            websocket_same_boot_revision_observed: true,
+            websocket_version_projection_matches_api: true,
+        }
     }
 }

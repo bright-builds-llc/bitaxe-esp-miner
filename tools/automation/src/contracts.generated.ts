@@ -62,6 +62,16 @@ export type VersionEvidence = {
   mining_state: "disabled";
   hardware_control_state: "disabled";
   redaction_status: "passed";
+  version_projection?: VersionProjectionEvidence;
+};
+
+export type VersionProjectionEvidence = {
+  api_build_label_matches_manifest: true;
+  api_static_asset_version_matches_manifest: true;
+  api_extended_provenance_matches_manifest: true;
+  api_esp_idf_version_matches_manifest: true;
+  websocket_same_boot_revision_observed: true;
+  websocket_version_projection_matches_api: true;
 };
 
 const automationCommands = new Set<AutomationCommand>([

@@ -357,6 +357,14 @@ run.
       most one detector-gated Ultra 205 verification attempt.
 - [x] Verify or conservatively retain only `SYS-004`, synchronize progress only
       if its checklist fields change, and push the audited result.
+- [x] Extend the typed version-evidence workflow with exact-package HTTP and
+      identical same-boot/revision WebSocket comparisons while keeping raw
+      device responses private.
+- [ ] Run every mandatory software gate, commit and push the workflow extension,
+      then execute the detector-gated Attempt-006 contract exactly once.
+- [ ] Verify or conservatively retain only `SYS-004`, synchronize progress only
+      if its checklist fields change, archive this task only after verified
+      completion, and continue automatic parity selection.
 
 Plan: `docs/parity/work-plans/20260802T233821Z-SYS-004/PLAN.md`
 
@@ -871,6 +879,17 @@ same-origin HTTP, later same-boot/revision WebSocket, manifest-equal version and
 provenance fields, private modes, cleanup, semantic redaction, and every
 repository gate pass. Any missing or contradictory fact leaves `SYS-004` at
 `implemented` without `RESULT.md` or progress synchronization.
+
+Attempt-006 software checkpoint: the typed workflow now reads the complete
+package identity, captures one same-origin system-info response followed by one
+live WebSocket frame, requires identical boot session, revision, and version
+projection, and emits only six closed comparison booleans. Raw HTTP/WebSocket
+bodies remain mode-`0600` private artifacts. Focused Rust/TypeScript tests and
+the ordered Rust, Bright Builds, 28-test Bazel, parity, progress, redaction,
+reference-integrity, and diff gates pass. One combined-gate parity invocation
+hit a transient host `Resource temporarily unavailable` after all tests passed;
+the isolated unchanged parity command immediately passed with no validation
+errors.
 
 ## Future
 

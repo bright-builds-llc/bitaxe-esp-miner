@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { createFakeProcessPort } from "./process.js";
 import { captureVersionEvidence, hasPassiveSafeState } from "./version-evidence.js";
+import type { WebSocketClient, WebSocketFactory } from "./websocket.js";
 
 test("late-attached trusted runtime attestation proves the passive safe state", () => {
   // Arrange
@@ -26,10 +27,20 @@ test("version workflow uses one typed exact-package effect and emits only a reda
   const workspace = await mkdtemp(path.join(tmpdir(), "bitaxe-version-workflow-"));
   await mkdir(path.join(workspace, "package"));
   await mkdir(path.join(workspace, "scratch"));
-  await writeFile(path.join(workspace, "package", "manifest.json"), JSON.stringify({
+  const manifest = {
+    semantic_version: "0.1.0",
     source_commit: "a".repeat(40),
     reference_commit: "b".repeat(40),
-  }));
+    app_elf_sha256: "c".repeat(64),
+    build_identity: {
+      label: "aaaaaaaaaaaa-dev",
+      channel: "dev",
+      source_dirty: false,
+      release_tag: null,
+    },
+    image_metadata: { esp_idf_version: "v5.5.4" },
+  };
+  await writeFile(path.join(workspace, "package", "manifest.json"), JSON.stringify(manifest));
   await writeFile(path.join(workspace, "wifi.json"), "{}", { mode: 0o600 });
   const calls: string[][] = [];
   const fake = createFakeProcessPort(async (spec) => {
@@ -47,10 +58,40 @@ test("version workflow uses one typed exact-package effect and emits only a reda
     return { exitCode: 0, stdout: "", stderr: "", timedOut: false };
   });
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({ version: "test" }), {
+  const systemInfo = {
+    bootSession: "a".repeat(32),
+    operatorSnapshotRevision: 7,
+    version: manifest.build_identity.label,
+    semanticVersion: manifest.semantic_version,
+    sourceCommit: manifest.source_commit,
+    referenceCommit: manifest.reference_commit,
+    appElfSha256: manifest.app_elf_sha256,
+    buildTimestampUtc: "2026-08-03T22:00:00Z",
+    buildChannel: manifest.build_identity.channel,
+    sourceDirty: manifest.build_identity.source_dirty,
+    releaseTag: manifest.build_identity.release_tag,
+    axeOSVersion: manifest.build_identity.label,
+    idfVersion: manifest.image_metadata.esp_idf_version,
+  };
+  globalThis.fetch = async () => new Response(JSON.stringify(systemInfo), {
     status: 200,
     headers: { "content-type": "application/json" },
   });
+  const websocketFactory: WebSocketFactory = (target) => {
+    assert.equal(target, "ws://device.test/api/ws/live");
+    const listeners = new Map<string, (event: { readonly data: unknown }) => void>();
+    const client: WebSocketClient = {
+      addEventListener(type, listener, options): void {
+        assert.equal(options?.once ?? true, true);
+        listeners.set(type, listener);
+      },
+      close(): void {},
+    };
+    queueMicrotask(() => listeners.get("message")?.({
+      data: JSON.stringify({ event: "update", data: systemInfo }),
+    }));
+    return client;
+  };
 
   try {
     // Act
@@ -61,15 +102,18 @@ test("version workflow uses one typed exact-package effect and emits only a reda
       port: "/dev/cu.test",
       projection: "shareable/version.json",
       captureTimeoutSeconds: 45,
-    }, fake, "flash", "validator");
+    }, fake, "flash", "validator", websocketFactory);
 
     // Assert
     assert.equal(calls.filter((call) => call[0] === "flash-monitor").length, 1);
     assert.equal(evidence.schema_version, "bitaxe-version-evidence-v1");
+    assert.equal(evidence.version_projection?.websocket_version_projection_matches_api, true);
     const projection = await readFile(path.join(workspace, "shareable", "version.json"), "utf8");
     assert.equal(projection.includes("device.test"), false);
     assert.equal(projection.includes("/dev/cu.test"), false);
     assert.equal((await stat(path.join(workspace, "scratch", "attempt-001"))).mode & 0o777, 0o700);
+    assert.equal((await stat(path.join(workspace, "scratch", "attempt-001", "system-info.private.json"))).mode & 0o777, 0o600);
+    assert.equal((await stat(path.join(workspace, "scratch", "attempt-001", "live-websocket.private.json"))).mode & 0o777, 0o600);
   } finally {
     globalThis.fetch = originalFetch;
     await rm(workspace, { recursive: true });
