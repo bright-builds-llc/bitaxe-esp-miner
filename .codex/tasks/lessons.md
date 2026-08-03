@@ -150,3 +150,10 @@
 2. What went wrong: An admitted factory write completed and the device ran normally, but the native reader attached after startup-only markers had passed, so the wrapper described missing monitor proof as a failed flash.
 3. Preventive rule: Record flash effect completion, USB cleanup, original boot-transcript capture, and replayable exact-package runtime verification as separate outcomes. Runtime replay may establish only its own trust basis, and missing monitor proof must never recommend an unchanged automatic reflash.
 4. Trigger signal: A post-flash log begins at nonzero uptime, contains healthy repeated same-session runtime output, and lacks startup-only markers even though the write and same-device cleanup completed.
+
+## lesson-standing-task-authorization-avoids-confirmation-churn | 2026-08-03 17:37
+
+1. Date: 2026-08-03 17:37 CDT
+2. What went wrong: Repository workflows repeatedly required the user to authorize each fresh hardware-attempt ordinal even though the project already had standing authorization to execute its active tasks, creating artificial terminal blockers after every targeted fix.
+3. Preventive rule: Treat active repository tasks as standing-authorized for autonomous execution, including selecting fresh attempt ordinals after verified progress, when their exact command, safety, privacy, evidence, recovery, retry, and stop contracts are complete. Do not ask for per-attempt confirmation. Keep materially different direct-UART, pin-manipulation, and ad hoc destructive or fault-injection actions behind their specific safety gates.
+4. Trigger signal to catch it earlier: The next safe action is fully described by an active task and repo-owned command, but work is about to stop solely because the task text says a later ordinal needs fresh user authorization.

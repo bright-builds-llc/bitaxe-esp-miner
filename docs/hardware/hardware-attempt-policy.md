@@ -20,8 +20,8 @@ continuation decision:
 | `stop_impossible_contract`          | The required evidence contract cannot be satisfied without contradiction or weakened truth.                                                                                                                    |
 
 There is no fixed numeric attempt cap. There is also no unchanged blind retry:
-an attempt may continue only after verified repository progress or an authorized
-manual remediation with objective proof that the failed boundary changed. A
+an attempt may continue only after verified repository progress or a
+task-authorized manual remediation with objective proof that the failed boundary changed. A
 repeated post-fix boundary signature stops immediately. Completion is reserved for
 real task success; unresolved hardware, authority, and impossible-contract
 outcomes must remain explicit instead of being relabeled or weakened.
@@ -39,6 +39,10 @@ new signature and cannot evade the repeated-boundary stop.
 ## Fresh-attempt contract
 
 Every continuation is a new attempt and must satisfy all of these invariants:
+
+- Select the fresh ordinal under the repository's standing task authorization;
+  never pause for per-attempt or per-ordinal user confirmation. Record the
+  ordinal and its complete narrowed contract in the active task before effects.
 
 - Use a fresh ordinal and run the full task-gated repo-owned hardware
   command exactly once.
@@ -90,7 +94,9 @@ recovery, and required evidence. Electrical overstress is prohibited.
 
 ## Unchanged authority and evidence boundaries
 
-This policy does not expand hardware authority. Direct UART, pins, pads,
+Standing task authorization covers ordinary task selection, USB workflows, and
+fresh progress-backed attempt ordinals without repeated confirmation. It does
+not expand materially different physical authority. Direct UART, pins, pads,
 headers, GPIO, test points, probes, jumpers, soldering, or injected signals
 remain subject to the fresh explicit authorization rule in `AGENTS.md`.
 Archived Phase 28.1.1 and its descendants remain terminal unresolved history,

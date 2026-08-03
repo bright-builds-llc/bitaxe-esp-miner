@@ -239,14 +239,15 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   and never selectable, even by exact ID. Follow-up work requires a new active
   task ID that references the archived task. If a record boundary or archive
   shape is ambiguous, stop before commit instead of risking history loss.
-- Task blocks under `## Future — Explicit Only` remain incomplete but are
-  excluded from ordinary and repeated automatic task selection. Only a current
-  request naming the exact stable task ID makes that future task a candidate;
-  the opt-in does not bypass dependencies, environment, authorization,
-  verification, or safety gates.
-- When only future tasks remain, report the automatic queue exhausted and list
-  their IDs. Do not claim the tracker is fully complete, treat future work as a
-  terminal blocker, ask for confirmation, or mutate the repository.
+- Task blocks under `## Future` remain incomplete and are eligible for ordinary
+  automatic selection after higher-priority active work. Move the selected
+  block to `## Active` before implementation. Dependencies, environment,
+  verification, safety, and evidence gates still apply, but selecting a future
+  task never requires a fresh user request or confirmation.
+- When only future tasks remain, continue with the highest-priority actionable
+  task. Report queue exhaustion only when every remaining task is completed or
+  has a concrete dependency, environment, safety, evidence, or terminal
+  blocker.
 - GSD is sunset for this repository. Do not run GSD commands or create active
   GSD plans, phases, state, quick tasks, or debug sessions.
 - `.planning/` is archive-only. Its historical commands, paths, status fields,
@@ -293,7 +294,8 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 
 ### Autonomous Ultra 205 Hardware Verification
 
-- The user grants standing permission for agents to autonomously interact with a connected Bitaxe Ultra 205 over USB for current task verification.
+- The user grants standing permission for agents to autonomously execute every current and future repository task, including interacting with a connected Bitaxe Ultra 205 over USB and selecting fresh hardware-attempt ordinals after verified progress. Do not ask for per-task, per-attempt, per-ordinal, retry, or continuation confirmation.
+- Standing authorization becomes effect-eligible only after an active `TASKS.md` block and a repo-owned command define the exact objective, command, evidence and privacy policy, allowed and prohibited effects, recovery and cleanup, retry bounds, and accepted stop conditions. Agents may create or update that complete contract as ordinary task work, verify it, commit it, and push it before the effect; doing so does not require another user confirmation.
 - Before autonomous hardware use, run `just detect-ultra205`. Treat detection as successful only when it finds exactly one likely ESP USB serial port and `espflash board-info --chip esp32s3 --port <port> --non-interactive` succeeds.
 - If detection succeeds, use the printed port path with repo commands such as `just flash-monitor --board 205 --port <path> --evidence-dir <path>` and record the detector output in evidence.
 - If detection succeeds and the ignored local file `wifi-credentials.json` exists, agents may pass `--wifi-credentials wifi-credentials.json` to repo-owned `just flash` or `just flash-monitor` commands for developer bring-up. Do not read, print, summarize, or commit the credential file contents.
@@ -392,4 +394,5 @@ Agents executing current evidence wrappers with `blocked|hardware` modes must:
 - Follow `docs/hardware/hardware-attempt-policy.md` for every current or future hardware attempt. The closed outcomes are `continue_after_verified_fix`, `continue_after_manual_remediation`, `complete`, `stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`, and `stop_impossible_contract`.
 - There is no fixed attempt cap and no unchanged blind retry. Continuation requires verified repository progress or authorized non-invasive remediation with objective boundary-change proof; one recurrence of the same redacted authoritative boundary signature after its targeted verified fix selects the repeated-boundary stop, while a newly discriminating signature requires its own regression-backed fix.
 - Every continuation uses a fresh ordinal, exact-current-HEAD package/preflight, a mode-0700 parent, a nonexistent supervisor-owned child, distinct mode-0600 sibling logs, an immutable root, earliest-failure precedence, and one repo-owned command invocation.
+- Fresh ordinals and verified-fix continuations are covered by standing task authorization. Record the new ordinal and complete attempt contract in the active task, but never stop solely to request user confirmation.
 - Detection, effects, safety, recovery, evidence, tests, direct-UART/pin authority, archived Phase 28.1.1 closure, Phase 30 non-promotion, and evidence privacy remain task-gated and unchanged.

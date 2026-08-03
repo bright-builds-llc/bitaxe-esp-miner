@@ -22,8 +22,10 @@ Advance one parity row per invocation. Treat `verified` as complete,
    returned order and choose the first actionable row. Record concrete reasons
    for skipping dependency-blocked, unavailable, unauthorized, or unsafe rows.
 5. Hardware work is eligible only when every repo task gate, detector,
-   credential, evidence, recovery, retry, and authorization requirement is
-   already satisfied. Never infer broader authority.
+   credential, evidence, recovery, retry, and standing-authorization requirement
+   is satisfied. Active tasks and fresh progress-backed attempt ordinals do not
+   require per-attempt user confirmation. Never infer authority beyond the
+   active task contract.
 
 ## Persist the Plan
 

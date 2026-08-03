@@ -3847,3 +3847,46 @@ CLI. The ESP firmware override remains unchanged, deleted flags remain
 unsupported, and no hardware, evidence, parity status, or compatibility layer
 changed. Residual risk is limited to the GitHub-hosted runner continuing to
 provide its documented stable Rust installation.
+
+### task-standing-task-authorization | 2026-08-03 | Remove repeated task and attempt confirmation gates
+
+- [x] Record the user correction as a durable lesson and run the triggered
+      lesson-ledger audit.
+- [x] Give active and future repository tasks standing execution authorization,
+      including autonomous selection of fresh hardware-attempt ordinals after
+      verified progress.
+- [x] Keep detector, exact-command, safety, privacy, evidence, recovery, retry,
+      terminal-stop, direct-UART/pin, and destructive/fault-injection gates
+      intact.
+- [x] Make future tasks ordinary automatic queue candidates instead of
+      requiring an exact-ID user request.
+- [x] Verify, commit, push, and archive this governance task before the next
+      effectful hardware attempt.
+
+Plan: update only repo-owned guidance, the hardware-attempt policy, the local
+parity skill, tracker semantics, and the current SYS-004 continuation contract.
+Managed Bright Builds files remain unchanged. Then run the complete repository
+verification required for the changed policy surfaces, publish the checkpoint,
+and resume parity work without another authorization prompt.
+
+Authorization decision: the user's 2026-08-03 correction grants standing
+authorization to work every repository task. Ordinary task selection, future
+task promotion, USB interaction, and fresh progress-backed attempt ordinals no
+longer require per-task or per-attempt confirmation. Materially different
+direct-UART/pin manipulation and ad hoc destructive or fault-injection actions
+retain their specific safety gates.
+
+Verification: `cargo fmt --all`, warning-denied all-target/all-feature Clippy,
+the all-target/all-feature Cargo build, all-feature Cargo tests, all 28 Bazel
+tests, Bright Builds with zero findings, parity validation, progress
+consistency, semantic redaction, pinned-reference integrity, and diff checks
+passed in order. The lesson audit retained all 29 active lessons without unsafe
+consolidation or archival.
+
+Completion review: Complete. Active and future tasks now carry standing
+execution authorization, and progress-backed fresh hardware ordinals no longer
+manufacture user-confirmation blockers. The exact task contract remains the
+effect boundary; no unchanged blind retry, weakened evidence, direct-UART/pin
+permission, or ad hoc destructive/fault-injection authority was introduced.
+The open SYS-004 task now contains its complete standing-authorized Attempt-006
+contract. No hardware effect occurred during this governance change.

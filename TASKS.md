@@ -12,13 +12,11 @@ here. Stable task IDs must be unique across both files. Never restore or select
 an archived task; create a new active task with a new ID and an archived-task
 reference for follow-up work.
 
-Task blocks under `## Future — Explicit Only` remain incomplete but are
-excluded from automatic task selection, including repeated top-task loops.
-Only a current request that names the exact stable task ID makes one future
-task a selection candidate; that opt-in does not bypass dependencies,
-environment, authorization, verification, or safety gates. When only future
-tasks remain, the automatic queue is exhausted, but the tracker is not fully
-complete.
+Task blocks under `## Future` remain incomplete and become ordinary automatic
+selection candidates after higher-priority active work. Move the selected task
+to `## Active` before implementation. Dependencies, environment, verification,
+safety, and evidence gates still apply; no task or fresh progress-backed
+attempt ordinal requires repeated user confirmation.
 
 Historical plans, milestones, debug sessions, and task records under
 `.planning/milestones/` are evidence and context only. They do not authorize
@@ -824,10 +822,57 @@ filesystem regression reaches a valid non-promotion seal and returns
 all 80 Bazel tests, Bright Builds, parity validation, unchanged 34/94 progress,
 redaction, reference integrity, and diff checks pass. Attempt 005 remains sealed
 and untouched after its one projection call. `SYS-004` remains `implemented`;
-a fresh explicitly authorized ordinal and complete contract are required for
-live version promotion.
+a fresh progress-backed ordinal and complete task contract are required for
+live version promotion, but no separate user confirmation is required.
 
-## Future — Explicit Only
+Standing-authorization continuation: fresh progress-backed ordinals are now
+ordinary task execution, so Attempt 006 proceeds without a separate user
+confirmation. The Attempt-005 monitor and workspace defects have targeted
+real-process regressions, and the later typed automation cutover replaced the
+obsolete Phase 36 effect surface. Before hardware, extend the current typed
+`capture-version-evidence` workflow so one private exact-package session proves
+the manifest-equal `version`, installed `axeOSVersion`, `idfVersion`, extended
+provenance, and later same-boot WebSocket projection while emitting only a
+closed commit-safe result.
+
+Attempt-006 contract:
+
+1. `just package`
+2. `umask 077; mkdir -p scratch/sys004-version-reporting/attempt-006-detector && chmod 700 scratch/sys004-version-reporting/attempt-006-detector && just detect-ultra205 >scratch/sys004-version-reporting/attempt-006-detector/stdout 2>scratch/sys004-version-reporting/attempt-006-detector/stderr`
+3. `just capture-version-evidence --private-root scratch/sys004-version-reporting/attempt-006 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --port <detector-port> --projection docs/parity/evidence/sys004-version-reporting/version-projection.json --capture-timeout-seconds 360`
+4. Recovery only after command 3 confirms a flash effect and then fails:
+   `just flash --board 205 --port <detector-port> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json`
+
+Attempt-006 evidence and safety contract: both ignored attempt roots must be
+absent before use and created under `umask 077` with mode `0700`; every private
+artifact is mode `0600`. Raw credentials, USB/device identity, origin, network
+values, serial, API/WebSocket bodies, process data, and operational paths remain
+private. Only the typed redaction-passed projection may be committed. Exactly
+one detector-admitted Ultra 205 may receive the clean pushed exact package,
+private Wi-Fi NVS input, one factory flash, passive serial observation, and
+same-origin read-only HTTP/WebSocket observation. Mining, work submission,
+voltage, frequency, fan or other hardware control, pool input, OTA, rollback,
+erase, discovery, fault injection, direct UART, and pin/pad/header/GPIO/probe/
+jumper/solder or injected-signal work remain prohibited.
+
+Attempt-006 recovery and stop contract: preserve the earliest typed failure;
+allow at most the one same-package recovery above after a confirmed flash
+effect; prove process, serial, and USB cleanup; and never reuse or rewrite a
+sealed root. There is no unchanged retry. A new distinct diagnosed boundary
+may receive a targeted regression-backed fix and fresh standing-authorized
+ordinal; recurrence after its targeted fix selects `stop_repeated_boundary`.
+Accepted outcomes are `complete`, `stop_repeated_boundary`,
+`stop_hardware_blocker`, `stop_authority_boundary`, or
+`stop_impossible_contract`.
+
+Attempt-006 promotion contract: only `SYS-004` may reach `verified`, and only
+after exact source/reference/manifest/package identity, safe boot, complete
+same-origin HTTP, later same-boot/revision WebSocket, manifest-equal version and
+provenance fields, private modes, cleanup, semantic redaction, and every
+repository gate pass. Any missing or contradictory fact leaves `SYS-004` at
+`implemented` without `RESULT.md` or progress synchronization.
+
+## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 
@@ -838,13 +883,14 @@ live version promotion.
   exclusive ownership, request-once, or private-artifact guarantees.
 - [ ] Add platform-native real-process tests.
 - [ ] Keep unsupported platforms fail-closed until each exact adapter and its
-  separately authorized hardware evidence qualify.
+      task-gated hardware evidence qualify.
 
 Verification: Pending.
 
-Completion review: Pending. macOS remains the only production adapter. This
-task does not itself authorize hardware, credentials, network discovery, direct
-UART or pin work, evidence promotion, or push operations.
+Completion review: Pending. macOS remains the only production adapter. Standing
+task authorization permits ordinary implementation and task-gated evidence;
+credentials, network discovery, direct UART or pin work, and evidence promotion
+remain governed by their specific contracts.
 
 ## Effectful Hardware Task Gate
 
