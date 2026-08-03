@@ -626,6 +626,65 @@ isolated reruns and the complete rerun passed, and the protected archived
 source was not changed. `SYS-004` remains `implemented`, the checklist and
 progress history remain unchanged, and Attempt 004 remains unauthorized.
 
+Attempt-004 authorization: on 2026-08-03 the user explicitly authorized one
+new `SYS-004` ordinal with a complete task-scoped hardware contract. The clean
+pushed `3c471b28219df2554e2e5f1b575f8b5708c51d9d` source contains the
+manifest-only adapter repair and a fresh-process preflight-to-effect regression.
+Attempt 004 may proceed only after this contract passes every mandatory gate,
+is committed and pushed, and a fresh exact-current-HEAD package is built. The
+only permitted workflow is:
+
+1. `just package`
+2. `umask 077; mkdir -p scratch/sys004-version-reporting/attempt-004 && chmod 700 scratch/sys004-version-reporting/attempt-004 && just detect-ultra205 >scratch/sys004-version-reporting/attempt-004/standalone-detector.stdout 2>scratch/sys004-version-reporting/attempt-004/standalone-detector.stderr`
+3. `just phase36-substantive-evidence mode=preflight board=205 private-parent=scratch/sys004-version-reporting/attempt-004 attempt-handle-file=scratch/sys004-version-reporting/attempt-004/handle.json candidate-output=scratch/sys004-version-reporting/attempt-004/candidate.json capture-timeout-seconds=360 package-manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
+4. `just phase36-substantive-evidence mode=hardware board=205 private-parent=scratch/sys004-version-reporting/attempt-004 attempt-handle-file=scratch/sys004-version-reporting/attempt-004/handle.json candidate-output=scratch/sys004-version-reporting/attempt-004/candidate.json capture-timeout-seconds=360 wifi-credentials=wifi-credentials.json`
+5. `bazel run //tools/parity:report -- project-sys004-version-evidence --private-parent scratch/sys004-version-reporting/attempt-004 --attempt-handle-file scratch/sys004-version-reporting/attempt-004/handle.json --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --output docs/parity/evidence/sys004-version-reporting/version-projection.json`
+
+Attempt-004 evidence contract: the ignored private parent must be absent before
+the standalone detector; command 2 creates it mode `0700` under `umask 077` and
+captures the detector's distinct stdout and stderr as mode-`0600` regular
+private artifacts. Preflight may reuse only that validated parent. The
+broker-owned attempt child must be absent immediately before hardware launch.
+Handle stdout and stderr remain distinct protected siblings.
+Wi-Fi contents, USB identity or path, device origin, IP/MAC/SSID/hostname, raw
+serial, HTTP or WebSocket material, process data, unredacted commands, and
+operational paths must not reach inherited output, Git, or the typed projection.
+Only closed shareable facts and public provenance may be summarized. The root
+is sealed once and cannot be reused, rewritten, spliced, promoted directly, or
+treated as deleted by cleanup.
+
+Attempt-004 effects and safety contract: exactly one standalone-detector and
+broker-detector admitted Ultra 205 may receive the exact clean v3 package,
+private Wi-Fi NVS input, one broker-owned factory flash, qualified receive-only
+serial observation, and read-only same-origin HTTP/WebSocket observation. Boot
+must remain fail-closed with mining, ASIC work submission, and hardware control
+disabled. Capture is bounded to 360 seconds and each device effect to 420
+seconds. Pool input, mining, ASIC work, voltage, frequency, fan actuation,
+thermal or power control, OTA, OTAWWW, rollback, erase-flash, arbitrary raw
+writes, discovery, fault injection, manual reset, non-205 hardware, direct
+UART, and pins, pads, headers, GPIO, probes, jumpers, soldering, or injected
+signals remain prohibited.
+
+Attempt-004 recovery, retry, and stop contract: preserve the earliest typed
+failure through sealing; permit only broker-owned same-package typed recovery
+after a confirmed flash effect; always close owned processes, serial holders,
+and USB resources; and record cleanup separately without overwriting the first
+failure. Exactly one Attempt-004 hardware launch is authorized. No unchanged
+retry, alternate command, attempt 005, or broader diagnostic action is allowed.
+Recurrence of the repaired manifest/image boundary selects
+`stop_repeated_boundary`. Accepted outcomes are `complete`,
+`stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`,
+or `stop_impossible_contract`.
+
+Attempt-004 promotion contract: `SYS-004` may reach `verified` only when the
+detector, exact source/reference/manifest/ELF/package joins, safe boot, complete
+HTTP response, identical same-boot/revision WebSocket projection,
+manifest-equal `version` and `axeOSVersion`, manifest-equal extended provenance,
+manifest-equal ESP-IDF version, private modes and seals, commit-safe version
+projection, cleanup, redaction, and every repository gate pass. Any missing,
+contradictory, or unclassified fact leaves only `SYS-004` at `implemented`,
+with no progress append, `RESULT.md`, task archival, or evidence promotion.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

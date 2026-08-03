@@ -230,3 +230,31 @@
 - Terminal blocker: Attempt 003 is consumed and attempt 004 is not authorized.
   Exact-current-package live HTTP/WebSocket equality therefore remains pending
   until a future explicitly authorized ordinal exercises the repaired adapter.
+
+## 2026-08-03T14:34:43Z | attempt-004 authorization checkpoint
+
+- Source commit: `3c471b28219df2554e2e5f1b575f8b5708c51d9d`.
+- Actions: Resumed the sole open `SYS-004` plan after the user explicitly
+  authorized a fresh ordinal, confirmed the prior manifest-only repair through
+  its real-process regression record, and added one exact Attempt-004 task
+  contract without changing the immutable plan.
+- Verification: The worktree started clean on synchronized `main`; the pinned
+  reference is `c1915b0a63bfabebdb95a515cedfee05146c1d50`;
+  `next-item --format json` returned this open plan with no alternate
+  candidates; the ignored Wi-Fi credential input is non-empty without being
+  read; and the Attempt-004 protected root is absent. The ordered Rust format,
+  clippy, build, and test sequence passed; all 80 Bazel tests passed; Bright
+  Builds reported zero findings; parity validation reported none; progress
+  remained 34/94 (36.2%); and redaction, reference-integrity, plus diff checks
+  passed.
+- Evidence: The active task now records the five permitted commands, exact
+  private root, mode and sink rules including private standalone-detector
+  stdout/stderr capture, board and package identity, safe no-mining effect
+  scope, prohibited effects, typed recovery, cleanup, one-launch retry bound,
+  accepted terminal outcomes, and exact verification/promotion gates.
+- Outcome: Attempt 004 is authorized and its pre-effect software gates pass,
+  but remains inadmissible until this contract is committed and pushed. No
+  package, detector, credential, USB, flash, serial, HTTP, WebSocket, or device
+  action occurred at this checkpoint.
+- Blocker or next safe action: Commit and push this contract, then build the
+  clean exact package before the standalone detector.
