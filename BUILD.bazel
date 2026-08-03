@@ -1,3 +1,5 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+
 package(default_visibility = ["//visibility:public"])
 
 # Package manifests and firmware boot logs record git HEAD, so package-producing
@@ -66,4 +68,13 @@ filegroup(
         "MODULE.bazel.lock",
         "rust-toolchain.toml",
     ],
+)
+
+js_library(
+    name = "automation_ci_contract_inputs",
+    srcs = [
+        ".bazelrc",
+        ".github/workflows/evidence-redaction.yml",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
 )

@@ -827,6 +827,28 @@ and untouched after its one projection call. `SYS-004` remains `implemented`;
 a fresh explicitly authorized ordinal and complete contract are required for
 live version promotion.
 
+### task-evidence-redaction-ci-repair | 2026-08-03 | Restore semantic redaction CI
+
+- [x] Make the host-only Bazel workspace-status command select the stable Rust
+      toolchain explicitly instead of inheriting the firmware `esp` override.
+- [x] Update the GitHub workflow to invoke bare semantic
+      `just verify-redaction` without deleted revision flags or aliases.
+- [x] Add regression coverage for the deployed workflow/config contract and
+      continued rejection of the removed flags.
+- [ ] Reproduce both original boundaries, run every mandatory software gate,
+      and require both GitHub workflows to pass on the exact pushed commit.
+
+Verification: The missing-default-toolchain reproduction passes with
+`RUSTUP_TOOLCHAIN=bitaxe-intentionally-missing`, while the removed revision
+flags still fail with exit code 2. The focused automation test, ordered Cargo
+format/Clippy/all-target build/all-feature tests, `bazel build //...`, all 28
+Bazel tests, Bright Builds checks, parity validation, progress consistency,
+semantic redaction, reference integrity, actionlint, source scans, and diff
+checks pass locally. Exact pushed-commit GitHub acceptance remains pending.
+
+Completion review: Pending. This task changes no evidence, hardware behavior,
+parity status, firmware toolchain selection, or compatibility policy.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

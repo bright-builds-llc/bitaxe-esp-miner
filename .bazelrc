@@ -1,1 +1,1 @@
-build --workspace_status_command="cargo run --quiet -p xtask -- build-identity-status"
+build --workspace_status_command="cargo +stable run --quiet -p xtask -- build-identity-status"

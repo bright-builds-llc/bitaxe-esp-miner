@@ -1,4 +1,5 @@
 import "./contracts.test.js";
+import "./ci-contract.test.js";
 import "./http.test.js";
 import "./invocation.test.js";
 import "./process.test.js";

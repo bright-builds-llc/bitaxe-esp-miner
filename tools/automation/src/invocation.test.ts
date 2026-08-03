@@ -44,3 +44,19 @@ test("parser accepts a complete version evidence request", () => {
   // Assert
   assert.equal(invocation.command, "capture-version-evidence");
 });
+
+test("parser accepts bare semantic redaction and rejects removed revision flags", () => {
+  // Arrange
+  const legacyCases = [
+    ["verify-redaction", "--base", "base"],
+    ["verify-redaction", "--head", "head"],
+    ["verify-redaction", "--new-branch-base", "origin/main"],
+  ];
+
+  // Act
+  const invocation = parseInvocation(["verify-redaction"]);
+
+  // Assert
+  assert.equal(invocation.command, "verify-redaction");
+  for (const args of legacyCases) assert.throws(() => parseInvocation(args));
+});

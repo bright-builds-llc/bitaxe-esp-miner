@@ -117,6 +117,7 @@ js_test(
         ":automation_ts",
         ":automation_tests_ts",
         ":automation_sources",
+        "//:automation_ci_contract_inputs",
         "//scripts:repository_guard_sources",
         "//firmware/bitaxe:static_provenance_assets",
     ],
