@@ -351,10 +351,21 @@ run.
       `SYS-004` implementation plan yields the next candidate queue.
 - [x] Run all mandatory repository gates, keep the checklist and progress
       history unchanged, and push the audited continuation.
+- [ ] Generate the canonical build label as package-owned SPIFFS
+      `version.txt` and read that installed file for `axeOSVersion`.
+- [ ] Add a typed exact-package live version projection with focused
+      regression coverage and a closed commit-safe schema.
+- [ ] Commit and push the software fix, build the exact package, and perform at
+      most one detector-gated Ultra 205 verification attempt.
+- [ ] Verify or conservatively retain only `SYS-004`, synchronize progress only
+      if its checklist fields change, and push the audited result.
 
 Plan: `docs/parity/work-plans/20260802T233821Z-SYS-004/PLAN.md`
 
-Authorization boundary: software-only evidence reconciliation. No detector,
+Verification plan:
+`docs/parity/work-plans/20260803T001834Z-SYS-004/PLAN.md`
+
+Initial-plan authorization boundary: software-only evidence reconciliation. No detector,
 hardware, credential, network, flash, monitor, HTTP, WebSocket, OTA, mining,
 safety-control, direct-UART, or pin action is authorized.
 
@@ -399,6 +410,36 @@ from the clean isolated target that had already crossed that host boundary.
 No checklist transition, progress-history append, `RESULT.md`, or hardware
 interaction occurred. Residual risk is limited to future plan metadata/schema
 evolution; missing, invalid, and regressed states fail closed.
+
+Verification continuation: Source inspection resolved the static-semantics
+question as a concrete defect. Upstream reports the version stored in the
+flashed static filesystem and compares it with the application version. Rust
+currently reports the generic checked-in fallback UI name, and its SPIFFS
+package contains no `version.txt`. The new immutable verification plan permits
+the minimum package/runtime repair, a typed version-only evidence projection,
+and one exact-package Phase 36 broker attempt after the software source is
+clean, fully verified, committed, and pushed.
+
+Hardware contract: only the five exact commands and paths listed in the
+verification plan are permitted. They allow package creation, two detector
+admissions (one explicit and one broker-owned), one exact-package factory
+flash with local Wi-Fi NVS input, passive receive-only serial capture,
+read-only same-origin HTTP/WebSocket observation, typed same-package recovery
+if required, cleanup, and a redaction-safe version projection. The private
+root is `scratch/sys004-version-reporting/attempt-001`; it must be mode `0700`
+with mode-`0600` artifacts. The Wi-Fi file contents, USB identity, device
+origin, IP/MAC/SSID, raw response, and operational paths are never printed,
+summarized, or committed.
+
+Safety, recovery, and stop contract: board 205 only; 360-second capture and
+420-second effect wall-clock bounds; safe boot with mining, work submission,
+and hardware control disabled; no pool input or mining/control action; and no
+manual reset, erase, raw write, OTA, discovery, fault injection, direct UART,
+or pin access. The broker preserves the earliest typed failure, permits only
+its same-package typed recovery after a confirmed flash effect, and proves
+cleanup. One attempt only, with no unchanged retry. The accepted terminal
+outcomes are `complete`, `stop_repeated_boundary`, `stop_hardware_blocker`,
+`stop_authority_boundary`, or `stop_impossible_contract`.
 
 ## Future — Explicit Only
 
