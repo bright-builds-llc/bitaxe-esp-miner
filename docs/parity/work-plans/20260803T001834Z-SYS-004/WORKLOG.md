@@ -317,3 +317,28 @@
 - Blocker or next safe action: Commit and push this truthful correction. A
   future live version attempt requires a separately authorized fresh ordinal
   with a complete hardware contract; no current retry is authorized.
+
+## 2026-08-03T16:30:14Z | attempt-005 authorization checkpoint
+
+- Source commit: `d73d87064c44151b5b69ff6cac4b7066660b5f34`.
+- Actions: Resumed the sole open `SYS-004` plan after the user gave fresh
+  explicit authorization and added one complete Attempt-005 task contract
+  without changing the immutable plan. No package, detector, credential, USB,
+  flash, serial, HTTP, WebSocket, recovery, projection, or device action ran.
+- Verification: The worktree started clean on synchronized `main`;
+  `next-item --format json` returned this open plan with no alternate
+  candidates; the Attempt-005 protected root is absent and ignored; and the
+  ignored Wi-Fi input is non-empty without being read. The ordered Rust format,
+  clippy, build, and test sequence passed; all 80 Bazel tests passed; Bright
+  Builds reported zero findings; parity validation reported none; progress
+  remained 34/94 (36.2%); and redaction, reference-integrity, plus diff checks
+  passed.
+- Evidence: The task contract records the five exact commands, protected
+  parent and child ownership, mode and sink rules, exact board/package scope,
+  safe no-mining effect limits, prohibited actions, typed recovery and cleanup,
+  one-launch retry bound, accepted outcomes, and exact promotion gates.
+- Outcome: Attempt 005 is explicitly authorized and its pre-effect software
+  gates pass, but it remains inadmissible until this contract is committed and
+  pushed. No hardware or network effect occurred.
+- Blocker or next safe action: Commit and push the contract, then build the
+  exact clean package before command 2.
