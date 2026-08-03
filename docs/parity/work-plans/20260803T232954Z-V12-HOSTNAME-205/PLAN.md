@@ -33,6 +33,12 @@ attempt restoration exactly once before returning any failure. If the origin is
 lost, one same-device exact-package recovery flash is allowed; no unchanged
 workflow retry is allowed.
 
+Attempt 001 reached normal restart but the post-restart monitor was launched
+after USB re-enumeration and produced no artifact. Recovery restored and read
+back the private original hostname; no public projection was emitted. Attempt
+002 changes that boundary by pre-acquiring the passive monitor before the
+restart request. It is the only post-fix retry.
+
 ## Implementation
 
 - [x] Add conditional capture-mode invocation parsing and CLI dispatch without

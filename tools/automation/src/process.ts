@@ -11,15 +11,23 @@ export type ProcessOutcome = {
 
 export type ProcessPort = {
   readonly run: (spec: CommandSpec<unknown>) => Promise<ProcessOutcome>;
+  readonly start: (spec: CommandSpec<unknown>) => RunningProcess;
   readonly loadEspEnvironment: () => Promise<Readonly<Record<string, string>>>;
+};
+
+export type RunningProcess = {
+  readonly wait: () => Promise<ProcessOutcome>;
+  readonly terminate: () => void;
 };
 
 export function createFakeProcessPort(
   run: ProcessPort["run"],
   environment: Readonly<Record<string, string>> = {},
+  maybeStart?: ProcessPort["start"],
 ): ProcessPort {
   return {
     run,
+    start: maybeStart ?? ((spec) => ({ wait: () => run(spec), terminate: () => undefined })),
     async loadEspEnvironment() {
       return environment;
     },
@@ -45,7 +53,47 @@ export function allowedEnvironment(source: NodeJS.ProcessEnv | Readonly<Record<s
 }
 
 export function createLocalProcessPort(options: { readonly cwd: string; readonly timeoutMs: number }): ProcessPort {
+  const start: ProcessPort["start"] = (spec) => {
+    const child = spawn(spec.program, spec.args, {
+      cwd: options.cwd,
+      env: allowedEnvironment(spec.environment ?? process.env),
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
+    child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+    let timedOut = false;
+    let killTimeout: NodeJS.Timeout | undefined;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      killTimeout = setTimeout(() => child.kill("SIGKILL"), 5_000);
+    }, options.timeoutMs);
+    const outcome = new Promise<ProcessOutcome>((resolve, reject) => {
+      child.once("error", (error) => {
+        clearTimeout(timeout);
+        if (killTimeout !== undefined) clearTimeout(killTimeout);
+        reject(error);
+      });
+      child.once("close", (exitCode) => {
+        clearTimeout(timeout);
+        if (killTimeout !== undefined) clearTimeout(killTimeout);
+        resolve({
+          exitCode: exitCode ?? 1,
+          stdout: Buffer.concat(stdout).toString("utf8"),
+          stderr: Buffer.concat(stderr).toString("utf8"),
+          timedOut,
+        });
+      });
+    });
+    return {
+      wait: () => outcome,
+      terminate: () => child.kill("SIGTERM"),
+    };
+  };
   return {
+    start,
     loadEspEnvironment() {
       return new Promise((resolve, reject) => {
         const child = spawn(
@@ -73,40 +121,6 @@ export function createLocalProcessPort(options: { readonly cwd: string; readonly
         });
       });
     },
-    run(spec) {
-      return new Promise((resolve, reject) => {
-        const child = spawn(spec.program, spec.args, {
-          cwd: options.cwd,
-          env: allowedEnvironment(spec.environment ?? process.env),
-          stdio: ["ignore", "pipe", "pipe"],
-        });
-        const stdout: Buffer[] = [];
-        const stderr: Buffer[] = [];
-        child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
-        child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
-        let timedOut = false;
-        let killTimeout: NodeJS.Timeout | undefined;
-        const timeout = setTimeout(() => {
-          timedOut = true;
-          child.kill("SIGTERM");
-          killTimeout = setTimeout(() => child.kill("SIGKILL"), 5_000);
-        }, options.timeoutMs);
-        child.once("error", (error) => {
-          clearTimeout(timeout);
-          if (killTimeout !== undefined) clearTimeout(killTimeout);
-          reject(error);
-        });
-        child.once("close", (exitCode) => {
-          clearTimeout(timeout);
-          if (killTimeout !== undefined) clearTimeout(killTimeout);
-          resolve({
-            exitCode: exitCode ?? 1,
-            stdout: Buffer.concat(stdout).toString("utf8"),
-            stderr: Buffer.concat(stderr).toString("utf8"),
-            timedOut,
-          });
-        });
-      });
-    },
+    run: (spec) => start(spec).wait(),
   };
 }

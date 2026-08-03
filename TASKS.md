@@ -371,7 +371,15 @@ and fault injection are prohibited.
 Verification: The typed capture and invocation regressions pass both success
 and post-restart mismatch/restoration paths. The ordered Rust gates, Bright
 Builds checks, all 28 Bazel tests, parity/progress, redaction, reference, and
-diff checks pass. Hardware attempt pending a clean pushed implementation.
+diff checks pass. Attempt 001 passed package build and private detector
+admission, completed exact-package flash, safe initial capture, hostname PATCH,
+and normal restart, then failed closed because the monitor was launched after
+USB restart and produced no post-restart artifact. The public projection was
+withheld. Recovery PATCH and private readback confirmed the original hostname
+was restored; no recovery flash ran. Attempt 002 is permitted only after the
+regression-backed pre-acquired passive-monitor fix is clean and pushed. It uses
+the same command, privacy, effects, recovery, and stop contract with
+`attempt-002` paths and is the final retry for this task.
 
 ## Future
 

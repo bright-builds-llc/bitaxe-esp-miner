@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { flashCommand, flashMonitorCommand, internalCommandSpec, monitorCommand } from "./contracts.generated.js";
 import { fetchJsonFromSameOrigin, sendSameOriginRequest, uniqueRuntimeOrigin } from "./http.js";
-import type { ProcessPort } from "./process.js";
+import type { ProcessPort, RunningProcess } from "./process.js";
 import { hasPassiveSafeState } from "./version-evidence.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
@@ -75,7 +75,7 @@ export async function captureSettingsDurability(
   processPort: ProcessPort,
   flashProgram: string,
   classifierProgram: string,
-  waitAfterRestart: () => Promise<void> = () => new Promise((resolve) => setTimeout(resolve, 5_000)),
+  waitForMonitorReady: () => Promise<void> = () => new Promise((resolve) => setTimeout(resolve, 5_000)),
 ): Promise<unknown> {
   const privateRoot = assertWithinWorkspace(workspaceRoot, options.privateRoot);
   const manifestPath = assertWithinWorkspace(workspaceRoot, options.packageManifest);
@@ -115,22 +115,25 @@ export async function captureSettingsDurability(
   const testHostname = originalHostname === "bitaxe-parity-205" ? "bitaxe-parity-alt" : "bitaxe-parity-205";
   let hostnameChanged = false;
   let restorationComplete = false;
+  let maybePostMonitor: RunningProcess | undefined;
   try {
     await sendSameOriginRequest(origin, "/api/system", "PATCH", path.join(privateRoot, "patch.private.txt"), { hostname: testHostname });
     hostnameChanged = true;
     if (await hostname(origin, path.join(privateRoot, "immediate.private.json")) !== testHostname) {
       throw new Error("immediate hostname readback mismatch");
     }
-    await sendSameOriginRequest(origin, "/api/system/restart", "POST", path.join(privateRoot, "restart.private.txt"));
-    await waitAfterRestart();
     const postRoot = path.join(privateRoot, "post-restart");
     await mkdir(postRoot, { mode: 0o700 });
-    const postMonitor = await processPort.run(monitorCommand(flashProgram, {
+    maybePostMonitor = processPort.start(monitorCommand(flashProgram, {
       board: 205,
       port: options.port,
       evidenceDir: postRoot,
       captureTimeoutSeconds: options.captureTimeoutSeconds,
     }));
+    await waitForMonitorReady();
+    await sendSameOriginRequest(origin, "/api/system/restart", "POST", path.join(privateRoot, "restart.private.txt"));
+    const postMonitor = await maybePostMonitor.wait();
+    maybePostMonitor = undefined;
     if (postMonitor.exitCode !== 0) throw new Error("post-restart monitor failed");
     const postTrace = path.join(postRoot, "flash-monitor.log");
     const postDocument = await readFile(postTrace, "utf8");
@@ -147,6 +150,11 @@ export async function captureSettingsDurability(
     restorationComplete = true;
     hostnameChanged = false;
   } catch (error) {
+    if (maybePostMonitor !== undefined) {
+      maybePostMonitor.terminate();
+      await maybePostMonitor.wait();
+      maybePostMonitor = undefined;
+    }
     if (hostnameChanged) {
       try {
         await sendSameOriginRequest(origin, "/api/system", "PATCH", path.join(privateRoot, "recovery-restore.private.txt"), { hostname: originalHostname });
