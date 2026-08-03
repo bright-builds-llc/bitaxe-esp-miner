@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260803T232021Z-V12-PACKAGE-IDENTITY-205",
+  "predecessor_sha256": "cc60a03f22ee1ba90175505618f21fd291af9f57172a642f40a6f33445bb03ed",
+  "result_sha256": "8ced4aadfaaddc18f3b2a42817301003faafdf118f73326aa436b7636e029b7f",
+  "row_id": "V12-PACKAGE-IDENTITY-205",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260803T231848Z-V12-PACKAGE-IDENTITY-205/PLAN.md",
+  "plan_sha256": "bbca9a55f5a4aabd9a8c0cab33016f430c9fb7a2b21169fd28de4e811547d58e",
+  "result_path": "docs/parity/work-plans/20260803T231848Z-V12-PACKAGE-IDENTITY-205/RESULT.md",
+  "result_document_sha256": "c731e04d362528378c5d4bc1a108ffe1e4c374cbe4cf9ae09c9eec85016aff6d",
+  "before_rust_owned_target": "`tools/automation/src/package.ts`, `crates/bitaxe-api/src/runtime_boot_attestation.rs`, `firmware/bitaxe/src/main.rs`, `firmware/bitaxe/src/boot_evidence.rs`, `crates/bitaxe-automation-contracts/src/lib.rs`, `tools/automation/src/version-evidence.ts`",
+  "after_rust_owned_target": "`tools/automation/src/package.ts`, `crates/bitaxe-api/src/runtime_boot_attestation.rs`, `firmware/bitaxe/src/main.rs`, `firmware/bitaxe/src/boot_evidence.rs`, `crates/bitaxe-automation-contracts/src/lib.rs`, `tools/automation/src/version-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "workflow,hardware-smoke",
+  "after_evidence": "workflow,hardware-smoke",
+  "before_notes": "Software admission remains covered, but the typed migration rejects the legacy hardware schema. The exact-package typed hardware smoke must produce `bitaxe-version-evidence-v1` before this row can be verified again.",
+  "after_notes": "The [typed-evidence result](work-plans/20260803T231848Z-V12-PACKAGE-IDENTITY-205/RESULT.md) validates committed schema `bitaxe-version-evidence-v1` from exact clean package source `66cf184943d7f3a5aedfc99e692a9f500707de9e`, pinned reference `c1915b0a63bfabebdb95a515cedfee05146c1d50`, one package-manifest digest, and one detector-admitted Ultra 205. Safe boot, same-origin HTTP provenance, and later same-boot WebSocket provenance all match the manifest; typed, package-manifest, and runtime-attestation regressions passed. This closes only the typed exact-package identity gap; configuration, network, mining, safety-control, partition, recovery, other-board, and release claims remain separate."
+}

@@ -4515,3 +4515,46 @@ version, and extended provenance across HTTP and WebSocket on the Ultra 205.
 Raw device and credential material remains private. Broader snapshot, health,
 network, mining, safety-control, OTA/recovery, non-205, direct-UART, and pin
 claims remain separate tasks and were not promoted.
+
+### task-parity-v12-package-identity-typed-evidence | 2026-08-03 | Re-verify exact package identity from typed hardware evidence
+
+- [x] Confirm the committed `bitaxe-version-evidence-v1` projection binds one
+      clean package source commit, the pinned reference, the package manifest,
+      a safe Ultra 205 boot, and matching HTTP/WebSocket runtime provenance.
+- [x] Run focused typed-evidence, package-manifest, and runtime-attestation
+      regressions plus all mandatory repository gates.
+- [x] Record a new row-specific plan and result without copying private device,
+      network, serial, or credential material.
+- [x] Transition only `V12-PACKAGE-IDENTITY-205`, synchronize parity progress,
+      and archive this task in the same finalization commit.
+
+Plan:
+`docs/parity/work-plans/20260803T231848Z-V12-PACKAGE-IDENTITY-205/PLAN.md`
+
+Authorization and evidence boundary: standing repository-task authorization
+applied. This task was evidence-only: it read committed redacted projections
+and ran software verification. It performed no detector, flash, reset, monitor,
+HTTP, WebSocket, OTA, mining, network, credential, voltage, fan, power,
+direct-UART, or pin effect. Private attempt artifacts remained ignored and were
+not copied.
+
+Verification: The Rust typed-evidence validator accepted the committed
+`bitaxe-version-evidence-v1` projection. Eleven focused runtime boot-attestation
+tests, eight package-manifest tests, and the focused Bazel contract, API, and
+xtask suites passed. The ordered Rust format, warning-denied Clippy, all-target
+build, and all-feature test sequence passed; Bright Builds reported zero
+findings; all 28 Bazel tests passed. Parity validation, 33/94 progress
+consistency, semantic redaction, pinned-reference integrity, and diff checks
+passed. A first verbose parity invocation encountered host stdout backpressure
+(`os error 35`); an unchanged rerun captured the report to a temporary log and
+passed with `validation_errors: none`. Transition receipt
+`20260803T232021Z-V12-PACKAGE-IDENTITY-205` changed only the selected row from
+`implemented` to `verified` with `workflow,hardware-smoke` evidence.
+
+Completion review: Complete. The typed migration gap is closed by immutable
+exact-package evidence from source commit
+`66cf184943d7f3a5aedfc99e692a9f500707de9e`, the pinned reference, one package
+manifest, safe Ultra 205 boot, same-origin HTTP provenance, and matching later
+same-boot WebSocket provenance. Configuration, network longevity, mining,
+safety-control, partitions, recovery, other-board, direct-UART, pin, and release
+claims remain separate and were not promoted.
