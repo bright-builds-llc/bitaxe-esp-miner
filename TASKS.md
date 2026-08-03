@@ -345,9 +345,9 @@ run.
       `in-progress` to `implemented`.
 - [x] Synchronize parity progress and retain this task with the exact later
       live-evidence gate required for `verified`.
-- [ ] Correct `next-item` so a non-verified plan closes after its checklist
+- [x] Correct `next-item` so a non-verified plan closes after its checklist
       status advances beyond the plan's recorded initial status.
-- [ ] Prove an unchanged-status plan still resumes while the completed
+- [x] Prove an unchanged-status plan still resumes while the completed
       `SYS-004` implementation plan yields the next candidate queue.
 - [ ] Run all mandatory repository gates, keep the checklist and progress
       history unchanged, and push the audited continuation.
@@ -382,6 +382,13 @@ This software-only continuation will make plan openness depend on whether the
 authoritative checklist status still equals the plan's recorded initial status.
 It does not alter `SYS-004` evidence, authorize hardware, or weaken the later
 verification gate.
+
+Continuation verification: Focused isolated-target Cargo tests passed all seven
+`parity_work` cases, including unchanged-status resumption, non-verified status
+advance closure, and regression rejection. The Bazel parity test target passed.
+Running the newly built CLI against the real repository returned
+`maybe_open_plan: null` and restored the ordered candidate queue with `SYS-004`
+first at `implemented`; the checklist and progress history remain unchanged.
 
 ## Future — Explicit Only
 

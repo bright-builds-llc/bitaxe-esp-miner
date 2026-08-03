@@ -136,3 +136,30 @@
   open-plan detection compare the plan's initial status with the authoritative
   current row. Preserve unchanged-status resumption and reject malformed or
   missing row/status metadata. No hardware or checklist transition is needed.
+
+## 2026-08-03T00:05:29Z | state-aware open-plan implementation
+
+- Source commit: `7a1fc2026bc444e3e7b786782212609808a15f25`
+- Actions: Passed authoritative checklist rows into `find_open_plan`; parsed the
+  immutable plan's `Initial status`; resumed only when current and initial
+  statuses match; treated monotonic advancement or deferral as closed; and
+  failed loudly on missing rows, invalid statuses, or regressions. Added focused
+  tests for unchanged-status resumption, `in-progress` to `implemented` closure,
+  and regression rejection.
+- Verification: `cargo fmt --all`; isolated-target `cargo test -p
+  bitaxe-parity parity_work::tests --all-features` (7 passed); `bazel test
+  //tools/parity:tests --test_output=errors` (passed); isolated-target `cargo
+  run -p bitaxe-parity -- next-item --format json` against the real repository
+  returned `maybe_open_plan: null`, `SYS-004` as the first `implemented`
+  candidate, and the full remaining ordered queue.
+- Evidence: `tools/parity/src/parity_work.rs` now binds plan lifecycle to both
+  immutable plan metadata and authoritative checklist state. The live CLI
+  result proves the completed SYS-004 implementation plan no longer suppresses
+  candidate selection.
+- Outcome: The queue deadlock is removed without creating a `RESULT.md`,
+  changing a checklist field, appending parity progress, weakening conservative
+  status, or exercising hardware.
+- Blocker or next safe action: Run the complete required gate, commit the
+  implementation and evidence as `SOURCE_COMMIT`, then run final verification.
+  Because no checklist field changed, do not request a no-op transition or
+  append progress history.

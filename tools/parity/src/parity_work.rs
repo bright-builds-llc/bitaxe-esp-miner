@@ -115,7 +115,7 @@ pub(crate) fn run_next_item_command(
     environment: &LocalEnvironment,
 ) -> Result<String> {
     let (_, rows) = read_authoritative_rows(environment)?;
-    let maybe_open_plan = find_open_plan(&environment.workspace_dir)?;
+    let maybe_open_plan = find_open_plan(&environment.workspace_dir, &rows)?;
     let candidates = if maybe_open_plan.is_some() {
         Vec::new()
     } else {
@@ -210,7 +210,7 @@ fn render_next_item_text(report: &NextItemReport) -> String {
     output
 }
 
-fn find_open_plan(workspace: &Utf8Path) -> Result<Option<OpenPlan>> {
+fn find_open_plan(workspace: &Utf8Path, rows: &[ChecklistRow]) -> Result<Option<OpenPlan>> {
     let root = workspace.join(WORK_PLANS_ROOT);
     if !root.exists() {
         return Ok(None);
@@ -228,7 +228,16 @@ fn find_open_plan(workspace: &Utf8Path) -> Result<Option<OpenPlan>> {
         }
         let document = fs::read_to_string(path.join("PLAN.md").as_std_path())
             .with_context(|| format!("failed to read open parity plan {path}/PLAN.md"))?;
-        let row_id = parse_plan_row(&document)?;
+        let (row_id, initial_status) = parse_plan_metadata(&document)?;
+        let maybe_row = rows.iter().find(|row| row.id == row_id);
+        let Some(row) = maybe_row else {
+            bail!("open parity plan references missing row {row_id}");
+        };
+        let current_status = normalize(&row.status);
+        if current_status != initial_status {
+            require_plan_status_advance(&initial_status, &current_status, &row_id)?;
+            continue;
+        }
         let relative = path
             .strip_prefix(workspace)
             .context("open parity plan is outside the workspace")?;
@@ -243,8 +252,20 @@ fn find_open_plan(workspace: &Utf8Path) -> Result<Option<OpenPlan>> {
     Ok(open_plans.pop())
 }
 
-fn parse_plan_row(document: &str) -> Result<String> {
-    let prefix = "- Parity row: `";
+fn parse_plan_metadata(document: &str) -> Result<(String, String)> {
+    let row_id = parse_plan_metadata_value(document, "- Parity row: `", "parity-row")?;
+    let initial_status = normalize(&parse_plan_metadata_value(
+        document,
+        "- Initial status: `",
+        "initial-status",
+    )?);
+    if plan_status_rank(&initial_status).is_none() {
+        bail!("open parity plan has non-actionable initial status {initial_status}");
+    }
+    Ok((row_id, initial_status))
+}
+
+fn parse_plan_metadata_value(document: &str, prefix: &str, label: &str) -> Result<String> {
     for line in document.lines() {
         let trimmed = line.trim();
         if let Some(value) = trimmed
@@ -256,7 +277,33 @@ fn parse_plan_row(document: &str) -> Result<String> {
             }
         }
     }
-    bail!("open parity plan is missing parity-row metadata")
+    bail!("open parity plan is missing {label} metadata")
+}
+
+fn require_plan_status_advance(initial: &str, current: &str, row_id: &str) -> Result<()> {
+    if current == "deferred" {
+        return Ok(());
+    }
+    let initial_rank = plan_status_rank(initial)
+        .with_context(|| format!("open parity plan has invalid initial status {initial}"))?;
+    let current_rank = plan_status_rank(current)
+        .with_context(|| format!("parity row {row_id} has invalid current status {current}"))?;
+    if current_rank <= initial_rank {
+        bail!(
+            "parity row {row_id} status regressed from plan initial status {initial} to {current}"
+        );
+    }
+    Ok(())
+}
+
+fn plan_status_rank(status: &str) -> Option<u8> {
+    match status {
+        "not-started" => Some(0),
+        "in-progress" => Some(1),
+        "implemented" => Some(2),
+        "verified" => Some(3),
+        _ => None,
+    }
 }
 
 pub(crate) fn validate_audit_path(path: &Utf8Path, expected_file: &str) -> Result<()> {
@@ -368,18 +415,71 @@ mod tests {
         fs::create_dir_all(plan_root.as_std_path()).expect("plan root");
         fs::write(
             plan_root.join("PLAN.md").as_std_path(),
-            "# Plan\n\n- Parity row: `CFG-001`\n",
+            "# Plan\n\n- Parity row: `CFG-001`\n- Initial status: `in-progress`\n",
         )
         .expect("plan");
+        let rows = vec![row("CFG-001", "in-progress")];
 
         // Act
-        let open_plan = find_open_plan(&workspace)
+        let open_plan = find_open_plan(&workspace, &rows)
             .expect("open-plan scan")
             .expect("open plan");
 
         // Assert
         assert_eq!(open_plan.row_id, "CFG-001");
         assert_eq!(open_plan.plan_path, "docs/parity/work-plans/run/PLAN.md");
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
+    fn next_item_closes_non_verified_plan_after_status_advance() {
+        // Arrange
+        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "bitaxe-parity-completed-plan-{}",
+            std::process::id()
+        )))
+        .expect("temporary path must be UTF-8");
+        let _ = fs::remove_dir_all(workspace.as_std_path());
+        let plan_root = workspace.join("docs/parity/work-plans/run");
+        fs::create_dir_all(plan_root.as_std_path()).expect("plan root");
+        fs::write(
+            plan_root.join("PLAN.md").as_std_path(),
+            "# Plan\n\n- Parity row: `SYS-004`\n- Initial status: `in-progress`\n",
+        )
+        .expect("plan");
+        let rows = vec![row("SYS-004", "implemented")];
+
+        // Act
+        let maybe_open_plan = find_open_plan(&workspace, &rows).expect("open-plan scan");
+
+        // Assert
+        assert_eq!(maybe_open_plan, None);
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
+    fn next_item_rejects_row_status_regression_from_plan() {
+        // Arrange
+        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "bitaxe-parity-regressed-plan-{}",
+            std::process::id()
+        )))
+        .expect("temporary path must be UTF-8");
+        let _ = fs::remove_dir_all(workspace.as_std_path());
+        let plan_root = workspace.join("docs/parity/work-plans/run");
+        fs::create_dir_all(plan_root.as_std_path()).expect("plan root");
+        fs::write(
+            plan_root.join("PLAN.md").as_std_path(),
+            "# Plan\n\n- Parity row: `SYS-004`\n- Initial status: `implemented`\n",
+        )
+        .expect("plan");
+        let rows = vec![row("SYS-004", "in-progress")];
+
+        // Act
+        let error = find_open_plan(&workspace, &rows).expect_err("regression must fail closed");
+
+        // Assert
+        assert!(error.to_string().contains("status regressed"));
         fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
     }
 }
