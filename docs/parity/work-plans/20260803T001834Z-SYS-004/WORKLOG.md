@@ -207,3 +207,26 @@
   the manifest-only adapter boundary through a real fresh-process fake-flash
   regression, run every gate, commit and push the software fix, and stop. No
   attempt 004 or alternate hardware command is authorized.
+
+## 2026-08-03T03:08:00Z | targeted adapter repair
+
+- Source commit: implementation worktree based on
+  `9e4c88923a1836253ed5b8b2461ce212ec337cf1`.
+- Actions: Removed only the redundant explicit factory-image override from the
+  Phase 36 flash boundary and added a fresh-process fake-flash regression.
+- Verification: The regression proves the adapter forwards the admitted v3
+  manifest exactly once, omits `--image`, produces a completed typed effect
+  result at mode `0600`, and performs no device interaction. The ordered Rust
+  sequence passed. All 83 Bazel tests passed; Bright Builds reported zero
+  findings; parity validation reported none; progress remained 34/94 (36.2%);
+  and redaction, reference-integrity, plus diff checks passed.
+- Evidence: `scripts/phase36-hardware-effect.sh`, its Bazel target, and the
+  checked-in fake-flash boundary regression. The broker's canonical factory
+  path/digest validation remains intact, and `tools/flash` retains its strict
+  explicit-image lexical admission rule.
+- Outcome: The distinct attempt-003 pre-transfer defect has a targeted,
+  regression-backed fix. `SYS-004` remains conservatively `implemented`; no
+  checklist or progress artifact changed and no private evidence was promoted.
+- Terminal blocker: Attempt 003 is consumed and attempt 004 is not authorized.
+  Exact-current-package live HTTP/WebSocket equality therefore remains pending
+  until a future explicitly authorized ordinal exercises the repaired adapter.

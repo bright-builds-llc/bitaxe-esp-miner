@@ -200,7 +200,6 @@ exact-package-flash | typed-recovery)
 		--board 205
 		--port "$port"
 		--manifest "$manifest_path"
-		--image "$factory_image_path"
 		--redact-evidence
 		--evidence-dir "$attempt_child/${operation}"
 	)

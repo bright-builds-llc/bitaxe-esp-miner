@@ -143,6 +143,21 @@ sh_binary(
     ],
 )
 
+sh_test(
+    name = "phase36_hardware_effect_test",
+    srcs = ["phase36-hardware-effect-test.sh"],
+    args = [
+        "$(location phase36-hardware-effect.sh)",
+        "$(location phase36-hardware-effect-fake-flash.sh)",
+    ],
+    data = [
+        "phase36-hardware-effect-fake-flash.sh",
+        "phase36-hardware-effect.sh",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
 sh_binary(
     name = "verify_reference_clean",
     srcs = ["verify-reference-clean.sh"],

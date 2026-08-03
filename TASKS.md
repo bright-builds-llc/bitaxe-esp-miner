@@ -357,7 +357,7 @@ run.
       regression coverage and a closed commit-safe schema.
 - [x] Commit and push the software fix, build the exact package, and perform at
       most one detector-gated Ultra 205 verification attempt.
-- [ ] Verify or conservatively retain only `SYS-004`, synchronize progress only
+- [x] Verify or conservatively retain only `SYS-004`, synchronize progress only
       if its checklist fields change, and push the audited result.
 
 Plan: `docs/parity/work-plans/20260802T233821Z-SYS-004/PLAN.md`
@@ -568,6 +568,25 @@ selector, while the broker independently retains and verifies the canonical
 factory path and digest. A fresh-process fake-flash regression must prove the
 adapter forwards the manifest and omits the image override without any device
 effect. Attempt 004 remains unauthorized.
+
+Attempt-003 software repair: the Phase 36 hardware-effect adapter now forwards
+only the admitted v3 manifest to `tools/flash`; it no longer supplies the
+redundant canonical `--image` spelling that the manifest boundary intentionally
+rejects. The broker still verifies the canonical factory path, digest, package
+identity, and exact source/reference joins before this adapter runs. A real
+fresh-process fake-flash regression records the child argument vector and
+proves exactly one manifest selector, no image override, a completed typed
+effect result, and mode-`0600` output without touching hardware.
+
+Attempt-003 completion review: the root-cause fix is minimal and preserves the
+stricter flash-tool admission rule. The ordered Rust sequence, all 83 Bazel
+tests, Bright Builds with zero findings, parity validation, unchanged 34/94
+progress, redaction, reference integrity, and diff checks pass. `SYS-004`
+remains conservatively `implemented`; the checklist and progress history are
+unchanged, no `RESULT.md` exists, and this unresolved task remains active and
+unarchived. Exact-current-package live HTTP/WebSocket equality is still
+unproved. Attempt 003 is consumed and attempt 004 is not authorized, so the
+next admissible hardware action requires a future explicit ordinal.
 
 ## Future — Explicit Only
 
