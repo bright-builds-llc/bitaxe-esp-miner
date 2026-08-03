@@ -4558,3 +4558,40 @@ manifest, safe Ultra 205 boot, same-origin HTTP provenance, and matching later
 same-boot WebSocket provenance. Configuration, network longevity, mining,
 safety-control, partitions, recovery, other-board, direct-UART, pin, and release
 claims remain separate and were not promoted.
+
+### task-parity-rel09-typed-operator-evidence | 2026-08-03 | Re-verify the typed detector-gated operator workflow
+
+- [x] Project the completed SYS-004 exact-package run into the current release
+      operator-evidence schema using closed, redacted facts only.
+- [x] Validate the new root through the typed `capture-operator-evidence`
+      command and run focused plus mandatory repository gates.
+- [x] Record a row-specific result and transition only `REL-09` when the typed
+      root, redaction, and detector-gated provenance all pass.
+- [x] Synchronize progress and archive this task in the finalization commit.
+
+Plan:
+`docs/parity/work-plans/20260803T232442Z-REL-09/PLAN.md`
+
+Authorization and evidence boundary: standing repository-task authorization
+applied. This task reprojected immutable committed evidence and ran software
+validators only. It performed no new detector, flash, reset, monitor, HTTP,
+WebSocket, OTA, mining, network, credential, voltage, fan, power, direct-UART,
+or pin effect. It did not copy private attempt artifacts or raw runtime values.
+
+Verification: The current typed `capture-operator-evidence` consumer accepted
+the exact release inventory and returned a successful automation result. The
+focused automation and parity suites passed. The ordered Rust format,
+warning-denied Clippy, all-target build, and all-feature tests passed; Bright
+Builds reported zero findings; all 28 Bazel tests passed. Parity validation,
+34/94 progress consistency, semantic redaction, pinned-reference integrity,
+and diff checks passed. Transition receipt `20260803T232637Z-REL-09` changed
+only `REL-09` from `implemented` to `verified` with `workflow` evidence.
+
+Completion review: Complete. A fresh-schema release evidence root now binds the
+canonical typed detector-output path, one admitted Ultra 205, exact package,
+safe boot, same-origin API, later same-boot WebSocket observation, cleanup, and
+redaction from source commit
+`66cf184943d7f3a5aedfc99e692a9f500707de9e`. Share and production safe-stop
+slots remain deferred. Credentials during mining, settings durability,
+ASIC/Stratum, safety controls, recovery, other-board, direct-UART, pin, and
+release claims remain separate and were not promoted.

@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260803T232637Z-REL-09",
+  "predecessor_sha256": "8ced4aadfaaddc18f3b2a42817301003faafdf118f73326aa436b7636e029b7f",
+  "result_sha256": "475c93ece0e28e1edd3f2bef5bdf004bf82602d2181ce4ad7676402103e01c6d",
+  "row_id": "REL-09",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260803T232442Z-REL-09/PLAN.md",
+  "plan_sha256": "13e289665bc0204feea9a3bdd2d77be12d34e64b4e0cf2b6489952f3a12da29c",
+  "result_path": "docs/parity/work-plans/20260803T232442Z-REL-09/RESULT.md",
+  "result_document_sha256": "1de7f5593f1c0c157560b1ce1a91cad9d0710a0f3ee698017d35f27735b599f7",
+  "before_rust_owned_target": "`Justfile`, `tools/automation/src/cli.ts`, `tools/automation/src/contracts.generated.ts`",
+  "after_rust_owned_target": "`Justfile`, `tools/automation/src/cli.ts`, `tools/automation/src/contracts.generated.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "workflow",
+  "after_evidence": "workflow",
+  "before_notes": "The typed cutover removes the phase-numbered wrapper and admits canonical flags only. This row was downgraded because legacy evidence is not accepted by the new schemas; fresh detector-gated evidence is required.",
+  "after_notes": "The [typed operator-workflow result](work-plans/20260803T232442Z-REL-09/RESULT.md) records a current release-profile evidence root accepted by `capture-operator-evidence`. It binds exact package source `66cf184943d7f3a5aedfc99e692a9f500707de9e`, pinned reference `c1915b0a63bfabebdb95a515cedfee05146c1d50`, one detector-admitted Ultra 205, board-info admission, canonical detector-output parsing, safe boot, same-origin HTTP, later same-boot WebSocket observation, cleanup, and redaction. Share and production safe-stop slots are deferred; credentials during mining, settings durability, ASIC/Stratum, safety controls, recovery, other boards, and release readiness remain separate."
+}
