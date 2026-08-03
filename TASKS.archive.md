@@ -3819,3 +3819,31 @@ redaction false positive for the schema-owned boolean
 `same_origin_api_observed` is regression-tested. Residual risks are the explicit
 macOS-only production session, inert preserved Phase 28/UART history, and the
 three parity rows deliberately downgraded until fresh semantic evidence exists.
+
+### task-evidence-redaction-ci-repair | 2026-08-03 | Restore semantic redaction CI
+
+- [x] Make the host-only Bazel workspace-status command select the stable Rust
+      toolchain explicitly instead of inheriting the firmware `esp` override.
+- [x] Update the GitHub workflow to invoke bare semantic
+      `just verify-redaction` without deleted revision flags or aliases.
+- [x] Add regression coverage for the deployed workflow/config contract and
+      continued rejection of the removed flags.
+- [x] Reproduce both original boundaries, run every mandatory software gate,
+      and require both GitHub workflows to pass on the exact pushed commit.
+
+Verification: The missing-default-toolchain reproduction passes with
+`RUSTUP_TOOLCHAIN=bitaxe-intentionally-missing`, while the removed revision
+flags still fail with exit code 2. The focused automation test, ordered Cargo
+format/Clippy/all-target build/all-feature tests, `bazel build //...`, all 28
+Bazel tests, Bright Builds checks, parity validation, progress consistency,
+semantic redaction, reference integrity, actionlint, source scans, and diff
+checks pass locally. On exact pushed commit
+`8ab59a6f7228bf18a2c46536df8f889d307c98ef`, Bright Builds run `30858292767`
+and Evidence redaction run `30858292790` both completed successfully.
+
+Completion review: Complete. The software-only redaction job now selects the
+stable host Rust toolchain explicitly and invokes only the canonical semantic
+CLI. The ESP firmware override remains unchanged, deleted flags remain
+unsupported, and no hardware, evidence, parity status, or compatibility layer
+changed. Residual risk is limited to the GitHub-hosted runner continuing to
+provide its documented stable Rust installation.
