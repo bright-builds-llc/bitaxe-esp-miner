@@ -3668,3 +3668,35 @@ instead of freezing the mutable tracker. Hostname, operator-snapshot,
 runtime-health, partition, rollback, OTAWWW, network, mining, voltage/fan/power,
 other-board, and release claims remain explicit non-claims. No new hardware
 attempt was necessary.
+
+### task-remove-legacy-phase-checks | 2026-08-02 | Remove four deletion-ready phase checks
+
+- [x] Remove the isolated Phase 15 BM1366 diagnostic package binary/test and
+      the self-contained Phase 13 HTTP/recovery plus Phase 29 redaction
+      binary/test clusters.
+- [x] Remove every corresponding Bazel target and confirm no active caller or
+      build reference survives.
+- [x] Preserve active Phase 14/20 safety policy, Phase 15 mining-allow,
+      Phase 17/23/33/35/36 evidence, and Phase 28/30 safety guard surfaces.
+- [x] Run focused graph checks and the complete mandatory repository gates.
+
+Plan: Delete only the four `sh_test` targets, their four orphaned `sh_binary`
+targets, and the eight owned scripts proven to have no current caller. Keep
+historical parity evidence immutable and make no checklist status change.
+
+Verification: Exact-name scans found no surviving active source reference.
+The Bazel graph contains none of the eight removed targets and retains sampled
+Phase 14/20 safety, Phase 15 mining-allow, Phase 17/23/33/35/36 evidence, and
+Phase 28/30 guard targets. Query-visible individual test rules decreased from
+82 to 78. The ordered Rust format, warning-denied Clippy, all-target/all-feature
+build, and all-feature test sequence passed. Bright Builds reported zero
+findings; all 79 Bazel-reported test targets passed; parity validation reported
+no errors; progress remained 34/94 (36.2%); and redaction, reference integrity,
+plus diff checks passed.
+
+Completion review: Complete. Four obsolete phase checks, four orphaned binary
+targets, and eight owned scripts were removed together, deleting 2,352 lines
+without moving their complexity to another caller. Active safety, evidence,
+mining-allow, and preserved UART/no-promotion implementation remained intact.
+Historical parity evidence was not edited, no checklist or progress artifact
+changed, and no hardware interaction occurred.

@@ -200,11 +200,6 @@ sh_binary(
 )
 
 sh_binary(
-    name = "phase13_http_static_smoke",
-    srcs = ["phase13-http-static-smoke.sh"],
-)
-
-sh_binary(
     name = "phase16_http_static_smoke",
     srcs = ["phase16-http-static-smoke.sh"],
 )
@@ -252,11 +247,6 @@ sh_binary(
 )
 
 sh_binary(
-    name = "phase13_recovery_regression",
-    srcs = ["phase13-recovery-regression.sh"],
-)
-
-sh_binary(
     name = "phase16_recovery_regression",
     srcs = ["phase16-recovery-regression.sh"],
 )
@@ -284,11 +274,6 @@ sh_binary(
 sh_binary(
     name = "phase14_live_telemetry",
     srcs = ["phase14-live-telemetry.sh"],
-)
-
-sh_binary(
-    name = "phase15_bm1366_diagnostic_package",
-    srcs = ["phase15-bm1366-diagnostic-package.sh"],
 )
 
 sh_binary(
@@ -374,15 +359,6 @@ sh_binary(
     srcs = ["phase35-http-boundary-read.sh"],
     data = ["//tools/parity:report"],
     tags = ["local"],
-)
-
-sh_binary(
-    name = "phase29_doc_redaction_check",
-    srcs = ["phase29-doc-redaction-check.sh"],
-    data = [
-        "phase28.1.1-promoted-evidence-denylist.patterns",
-        "phase28.1.1-promoted-evidence-denylist.sh",
-    ],
 )
 
 sh_binary(
@@ -550,13 +526,6 @@ sh_test(
 )
 
 sh_test(
-    name = "phase13_http_static_smoke_test",
-    srcs = ["phase13-http-static-smoke-test.sh"],
-    data = ["phase13-http-static-smoke.sh"],
-    tags = ["local"],
-)
-
-sh_test(
     name = "phase16_http_static_smoke_test",
     srcs = ["phase16-http-static-smoke-test.sh"],
     data = ["phase16-http-static-smoke.sh"],
@@ -649,19 +618,6 @@ sh_test(
 )
 
 sh_test(
-    name = "phase13_recovery_regression_test",
-    srcs = ["phase13-recovery-regression-test.sh"],
-    data = [
-        "phase13-http-static-smoke.sh",
-        "phase13-monitor-capture.sh",
-        "phase13-recovery-regression.sh",
-        "process-group.sh",
-        "serial-session-trace.sh",
-    ],
-    tags = ["local"],
-)
-
-sh_test(
     name = "phase16_recovery_regression_test",
     srcs = ["phase16-recovery-regression-test.sh"],
     data = [
@@ -710,13 +666,6 @@ sh_test(
 )
 
 sh_test(
-    name = "phase15_bm1366_diagnostic_package_test",
-    srcs = ["phase15-bm1366-diagnostic-package-test.sh"],
-    data = ["phase15-bm1366-diagnostic-package.sh"],
-    tags = ["local"],
-)
-
-sh_test(
     name = "phase15_controlled_mining_test",
     srcs = ["phase15-controlled-mining-test.sh"],
     data = [
@@ -750,18 +699,6 @@ sh_test(
         "NVM_DIR",
         "PATH",
     ],
-    tags = ["local"],
-)
-
-sh_test(
-    name = "phase29_doc_redaction_check_test",
-    srcs = ["phase29-doc-redaction-check-test.sh"],
-    data = [
-        "phase28.1.1-promoted-evidence-denylist.patterns",
-        "phase28.1.1-promoted-evidence-denylist.sh",
-        "phase29-doc-redaction-check.sh",
-    ],
-    env_inherit = ["PATH"],
     tags = ["local"],
 )
 
