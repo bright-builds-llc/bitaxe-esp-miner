@@ -545,6 +545,30 @@ seals, commit-safe projection, cleanup, and every repository gate pass. Any
 missing or contradictory fact retains only `SYS-004` at `implemented`, with no
 progress append or `RESULT.md`.
 
+Attempt-003 outcome: `stop_hardware_blocker` at a new pre-transfer
+`flash_failed` boundary; no retry was run. Clean pushed source
+`3793e6dcad0a814a4d5ebd94f75e2dd29eb76362` produced the exact package and
+build label `3793e6dcad0a-dev`; standalone detection, exact-package preflight,
+and the broker-owned detector all passed. The flash result is
+`failed_no_device_effect`; cleanup completed; recovery was not authorized; and
+no serial, HTTP, WebSocket, private capture, or candidate exists. The typed
+projection rejected the absent private boundary. The mode-`0700` parent and all
+eight mode-`0600` artifacts pass the private-mode contract.
+
+Attempt-003 root cause: Phase 36 preflight deliberately resolves the factory
+artifact through `realpath`, while `tools/flash` deliberately requires an
+explicit image path to lexically equal the factory path resolved beside the
+manifest. The handle's canonical execroot path and the manifest's `bazel-bin`
+path identify the same file but are different strings, so the redundant
+`--image` override is rejected before transfer or evidence-directory creation.
+This exactly explains the detector-complete, no-stage, no-device-effect seal.
+The targeted fix removes only that redundant explicit image override from the
+Phase 36 adapter: the already admitted v3 manifest remains the sole flash-image
+selector, while the broker independently retains and verifies the canonical
+factory path and digest. A fresh-process fake-flash regression must prove the
+adapter forwards the manifest and omits the image override without any device
+effect. Attempt 004 remains unauthorized.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

@@ -177,3 +177,33 @@
   occurred in this continuation.
 - Blocker or next safe action: Commit and push this contract, then build the
   clean exact package before the first detector.
+
+## 2026-08-03T02:54:50Z | attempt-003 pre-transfer stop
+
+- Source commit: `3793e6dcad0a814a4d5ebd94f75e2dd29eb76362`.
+- Actions: Built the clean exact package, passed standalone detection and
+  preflight, consumed the authorized hardware command, ran the typed
+  projection, and inspected only allowlisted categorical private facts.
+- Verification: The broker completed exact-package admission and its internal
+  detector, then recorded `exact_package_flash=failed`,
+  `failed_no_device_effect`, cleanup complete, recovery not authorized, no
+  capture, and no candidate. The protected parent is mode `0700`; all eight
+  private files are mode `0600`. No raw local value was promoted.
+- Evidence: The sealed categorical ledger/result plus source-level path
+  comparison. The handle factory path and manifest-sibling factory path are
+  canonically identical but lexically different; manifest source/reference
+  identities match current HEAD and the pinned reference.
+- Outcome: `stop_hardware_blocker` at a distinct pre-transfer admission
+  boundary. The device was not changed and `SYS-004` remains `implemented`.
+- Root cause: The Phase 36 adapter redundantly passes the preflight-canonical
+  factory path as `--image`, but `tools/flash` intentionally accepts only the
+  manifest-sibling spelling. Bazel's `bazel-bin` symlink makes those spellings
+  differ even though they identify the same admitted bytes.
+- Repository verification: The mandatory ordered Rust sequence, all 82 Bazel
+  tests, Bright Builds with zero findings, parity validation with unchanged
+  34/94 progress, redaction, reference integrity, and diff checks passed for
+  this outcome and repair plan.
+- Blocker or next safe action: Remove only the redundant image override, prove
+  the manifest-only adapter boundary through a real fresh-process fake-flash
+  regression, run every gate, commit and push the software fix, and stop. No
+  attempt 004 or alternate hardware command is authorized.
