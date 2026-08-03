@@ -785,6 +785,48 @@ repository gate pass. Any missing, contradictory, or unclassified fact leaves
 only `SYS-004` at `implemented`, with no checklist transition, progress append,
 `RESULT.md`, task archival, or evidence promotion.
 
+Attempt-005 software-only correction: the single hardware launch is consumed
+and no retry or new ordinal is authorized. The exact package flash completed;
+the passive serial operation then failed with `capture_failed`; broker-owned
+same-package recovery and cleanup completed; and the attempt sealed as a
+non-promotion with no private capture, candidate, projection, or checklist
+claim. Source plus the absence of a monitor USB-session trace prove that the
+Phase 36 adapter invoked `tools/flash monitor` with `--evidence-mode dual`,
+which that CLI rejects before session admission. The contracted projector then
+resolved relative private paths before workspace detection and returned
+`sys004_private_boundary_invalid` rather than the authenticated seal's
+non-eligibility category. This continuation permits only the two targeted
+software corrections and fake/filesystem regression work below. It does not
+permit credentials, detector, USB, flash, serial, HTTP, WebSocket, recovery,
+sealed-root replay or mutation, projection retry, or any other hardware or
+network effect.
+
+- [x] Make the passive Phase 36 adapter privately capture the supported
+      receive-only `monitor` output without passing unsupported evidence flags,
+      and distinguish its private stdout and stderr boundaries.
+- [x] Add a fresh-process regression that rejects reintroduced monitor evidence
+      flags and proves exactly one protected classifier input plus a typed
+      completed result.
+- [x] Anchor SYS-004 projector inputs and output to the detected Bazel workspace
+      before private admission, with a relative-path non-promotion regression.
+- [x] Run every mandatory gate, preserve `SYS-004` as `implemented`, and push a
+      truthful correction checkpoint without touching Attempt 005 again.
+
+Attempt-005 correction outcome: the passive adapter now invokes the supported
+receive-only `monitor` surface without evidence-only flags, redirects its raw
+stdout and diagnostic stderr into separate mode-`0600` files under one
+mode-`0700` child, and derives the one trusted origin only from that protected
+classifier input. A fresh-process fake rejects every formerly unsupported flag
+and proves the typed completed result. The SYS-004 command now anchors all four
+relative paths to the detected Bazel workspace before private admission; its
+filesystem regression reaches a valid non-promotion seal and returns
+`sys004_attempt_not_eligible` without creating output. The ordered Rust checks,
+all 80 Bazel tests, Bright Builds, parity validation, unchanged 34/94 progress,
+redaction, reference integrity, and diff checks pass. Attempt 005 remains sealed
+and untouched after its one projection call. `SYS-004` remains `implemented`;
+a fresh explicitly authorized ordinal and complete contract are required for
+live version promotion.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

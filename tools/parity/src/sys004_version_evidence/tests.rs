@@ -94,6 +94,83 @@ fn sealed_non_promotion_is_classified_before_eligible_capture_is_required() {
     ));
 }
 
+#[test]
+fn workspace_relative_non_promotion_reaches_the_authenticated_seal() {
+    // Arrange
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("system time")
+        .as_nanos();
+    let root = std::env::temp_dir().join(format!(
+        "sys004-workspace-relative-{}-{nonce}",
+        std::process::id()
+    ));
+    let workspace = Utf8PathBuf::from_path_buf(root).expect("UTF-8 temp path");
+    let manifest = workspace.join("bazel-bin/firmware/bitaxe/package.json");
+    fs::create_dir_all(manifest.parent().expect("manifest parent")).expect("manifest parent");
+    fs::write(&manifest, b"{}\n").expect("manifest fixture");
+
+    let private_parent = workspace.join("scratch/attempt-005");
+    fs::create_dir_all(&private_parent).expect("private parent");
+    fs::set_permissions(&private_parent, fs::Permissions::from_mode(0o700))
+        .expect("private parent mode");
+    let child = private_parent.join("attempt-0123456789abcdef");
+    fs::create_dir(&child).expect("private child");
+    fs::set_permissions(&child, fs::Permissions::from_mode(0o700)).expect("private child mode");
+
+    let canonical_manifest = canonical_utf8(&manifest).expect("canonical manifest");
+    let handle = serde_json::json!({
+        "schema_version": "phase36-attempt-handle-v2",
+        "child_name": "attempt-0123456789abcdef",
+        "capability_digest": CAPABILITY,
+        "source_commit": SOURCE,
+        "reference_commit": REFERENCE,
+        "target": "xtensa-esp32s3-espidf",
+        "board": "205",
+        "asic": "BM1366",
+        "manifest_path": canonical_manifest.as_str(),
+        "manifest_digest": "7".repeat(64),
+        "firmware_elf_digest": ELF,
+        "package_identity_digest": PACKAGE
+    });
+    write_private_fixture(&private_parent.join("handle.json"), &handle);
+    let seal = serde_json::json!({
+        "schema_version": "phase36-attempt-seal-v2",
+        "status": "sealed_non_promotion",
+        "first_failure": "capture_failed",
+        "secondary_failure": null,
+        "capability_digest": CAPABILITY,
+        "package_identity_digest": PACKAGE,
+        "candidate_digest": null,
+        "private_capture_digest": null
+    });
+    write_private_fixture(&child.join("seal.json"), &seal);
+
+    // Act
+    let result = project_sys004_version_evidence_from_workspace(
+        &workspace,
+        Utf8Path::new("scratch/attempt-005"),
+        Utf8Path::new("scratch/attempt-005/handle.json"),
+        Utf8Path::new("bazel-bin/firmware/bitaxe/package.json"),
+        Utf8Path::new("docs/version-projection.json"),
+    );
+
+    // Assert
+    assert!(matches!(
+        result,
+        Err(Sys004VersionEvidenceError::AttemptNotEligible)
+    ));
+    assert!(!workspace.join("docs/version-projection.json").exists());
+    fs::remove_dir_all(workspace).expect("remove workspace fixture");
+}
+
+fn write_private_fixture(path: &Utf8Path, value: &serde_json::Value) {
+    let mut bytes = serde_json::to_vec(value).expect("private fixture serialization");
+    bytes.push(b'\n');
+    fs::write(path, bytes).expect("private fixture write");
+    fs::set_permissions(path, fs::Permissions::from_mode(0o600)).expect("private fixture mode");
+}
+
 fn reseal(seal_bytes: &[u8], private_bytes: &[u8]) -> Vec<u8> {
     let mut seal: serde_json::Value = serde_json::from_slice(seal_bytes).expect("seal fixture");
     seal["private_capture_digest"] = serde_json::json!(sha256_hex(private_bytes));

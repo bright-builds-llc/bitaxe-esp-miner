@@ -232,6 +232,28 @@ pub(crate) fn project_sys004_version_evidence(
     Ok(evidence)
 }
 
+pub(crate) fn project_sys004_version_evidence_from_workspace(
+    workspace_dir: &Utf8Path,
+    private_parent: &Utf8Path,
+    attempt_handle_file: &Utf8Path,
+    package_manifest: &Utf8Path,
+    output: &Utf8Path,
+) -> Result<Sys004VersionEvidence, Sys004VersionEvidenceError> {
+    project_sys004_version_evidence(
+        &workspace_path(workspace_dir, private_parent),
+        &workspace_path(workspace_dir, attempt_handle_file),
+        &workspace_path(workspace_dir, package_manifest),
+        &workspace_path(workspace_dir, output),
+    )
+}
+
+fn workspace_path(workspace_dir: &Utf8Path, path: &Utf8Path) -> Utf8PathBuf {
+    if path.is_absolute() {
+        return path.to_owned();
+    }
+    workspace_dir.join(path)
+}
+
 fn require_eligible_attempt_seal(
     seal: &AttemptSeal,
     handle: &AttemptHandle,

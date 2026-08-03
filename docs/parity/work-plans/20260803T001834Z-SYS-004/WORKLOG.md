@@ -342,3 +342,63 @@
   pushed. No hardware or network effect occurred.
 - Blocker or next safe action: Commit and push the contract, then build the
   exact clean package before command 2.
+
+## 2026-08-03T16:45:57Z | attempt-005 sealed non-promotion and root cause
+
+- Source commit: `66e0be28287ab6782ec84da83797113569ab619e`.
+- Actions: Built the exact clean package, captured the successful standalone
+  detector privately, passed preflight, consumed the single authorized
+  hardware launch, and invoked the contracted SYS-004 projector once. No retry,
+  alternate device command, sealed-root mutation, or projector replay occurred.
+- Verification: The exact-package factory flash completed. Passive serial then
+  recorded `failed_no_device_effect` / `capture_failed`; typed same-package
+  recovery completed; cleanup completed; and the attempt sealed
+  `sealed_non_promotion` with no secondary failure. All protected parent, child,
+  handle, seal, and typed-result modes pass. No candidate, private capture, or
+  version projection exists.
+- Evidence: Closed effect records identify `exact_package_flash=completed`,
+  `passive_serial_observation=capture_failed`, `typed_recovery=completed`, and
+  `cleanup=completed`. Source inspection proves the adapter passed
+  `--evidence-mode dual` to the `monitor` subcommand even though its CLI rejects
+  that combination before USB-session admission; the absence of a monitor
+  session trace corroborates the pre-session boundary. The projector returned
+  `sys004_private_boundary_invalid`; its early dispatch uses relative paths
+  before the workspace-aware environment is detected.
+- Outcome: Attempt 005 is consumed and not promotable. `SYS-004` remains
+  `implemented`; the checklist, progress history, `RESULT.md`, and committed
+  evidence remain unchanged. No live HTTP/WebSocket version equality is
+  claimed.
+- Blocker or next safe action: Correct only the supported private receive-only
+  capture boundary and workspace-relative projector dispatch, prove both
+  without hardware, run every gate, commit, and push. A future live attempt
+  requires a separate explicitly authorized ordinal and complete contract.
+
+## 2026-08-03T16:52:15Z | attempt-005 software correction checkpoint
+
+- Source commit: implementation worktree based on
+  `66e0be28287ab6782ec84da83797113569ab619e`.
+- Actions: Replaced the unsupported dual-evidence monitor invocation with one
+  supported receive-only monitor whose stdout and stderr are privately captured
+  at creation. Anchored every relative SYS-004 projector argument to the
+  detected Bazel workspace before private admission. Attempt 005 was not read
+  beyond closed categorical diagnosis, rerun, mutated, or projected again.
+- Verification: The real-process adapter regression rejects the three obsolete
+  evidence flags, proves one mode-`0600` classifier input plus a distinct
+  mode-`0600` diagnostic, extracts one test-only origin, and validates a typed
+  completed effect result. The relative-path filesystem regression reaches an
+  authenticated non-promotion seal and returns
+  `sys004_attempt_not_eligible` without output. The ordered Rust format, clippy,
+  build, and test sequence passed; all 80 Bazel tests passed; Bright Builds
+  reported zero findings; parity validation reported none; progress remained
+  34/94 (36.2%); and redaction, reference-integrity, plus diff checks passed.
+- Evidence: `scripts/phase36-hardware-effect.sh` and its fresh-process test own
+  the private passive boundary. `tools/parity/src/main.rs` and
+  `tools/parity/src/sys004_version_evidence.rs` own workspace path admission and
+  the non-promotion regression. No device, network, or shareable evidence was
+  produced by these software tests.
+- Outcome: Both reproduced Attempt-005 defects have minimal regression-backed
+  fixes. `SYS-004` remains conservatively `implemented`; no checklist,
+  progress-history, `RESULT.md`, or committed evidence changed.
+- Blocker or next safe action: Commit and push this truthful correction. A
+  future live version attempt requires a separately authorized fresh ordinal
+  with a complete hardware contract; no current retry is authorized.

@@ -174,21 +174,24 @@ exact-package-flash | typed-recovery)
 	;;
 passive-serial-observation)
 	monitor_dir="$attempt_child/passive-serial-observation"
+	[[ ! -e "$monitor_dir" ]] || fail passive_serial_root_exists
+	mkdir "$monitor_dir"
+	chmod 700 "$monitor_dir"
+	classifier_log="$monitor_dir/monitor.classifier-input.log"
+	diagnostic_log="$monitor_dir/monitor.stderr.log"
+	umask 077
 	if ! "$flash_tool" monitor \
 		--board 205 \
 		--port "$port" \
 		--capture-timeout-seconds "$capture_timeout_seconds" \
-		--evidence-mode dual \
-		--redact-evidence \
-		--evidence-dir "$monitor_dir"; then
+		>"$classifier_log" 2>"$diagnostic_log"; then
 		write_effect_result failed_no_device_effect capture_failed
 		exit 2
 	fi
-	classifier_log="$monitor_dir/monitor.classifier-input.log"
-	if [[ ! -f "$classifier_log" ]]; then
-		classifier_log="$monitor_dir/flash-monitor.classifier-input.log"
-	fi
-	[[ -f "$classifier_log" ]] || fail passive_serial_log_missing
+	[[ -f "$classifier_log" && ! -L "$classifier_log" &&
+		"$(file_mode "$classifier_log")" == 600 &&
+		-f "$diagnostic_log" && ! -L "$diagnostic_log" &&
+		"$(file_mode "$diagnostic_log")" == 600 ]] || fail passive_serial_log_invalid
 	origins=()
 	while IFS= read -r origin; do
 		origins+=("$origin")

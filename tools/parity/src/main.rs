@@ -159,7 +159,9 @@ fn main() -> Result<()> {
             return Ok(());
         }
         CliCommand::ProjectSys004VersionEvidence(args) => {
-            sys004_version_evidence::project_sys004_version_evidence(
+            let workspace_dir = detect_workspace_dir()?;
+            sys004_version_evidence::project_sys004_version_evidence_from_workspace(
+                &workspace_dir,
                 &args.private_parent,
                 &args.attempt_handle_file,
                 &args.package_manifest,

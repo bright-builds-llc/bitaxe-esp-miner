@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${1:-}" == monitor ]]; then
+	for argument in "$@"; do
+		case "$argument" in
+		--evidence-mode | --evidence-dir | --redact-evidence)
+			printf 'unsupported monitor evidence flag crossed the Phase 36 boundary\n' >&2
+			exit 2
+			;;
+		esac
+	done
+	printf '%s\n' "$@" >&2
+	printf 'device_url=http://192.0.2.1\n'
+	exit 0
+fi
+
 : "${PHASE36_EFFECT_RESULT_PATH:?}"
 : "${PHASE36_EFFECT_OPERATION:?}"
 : "${PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST:?}"
