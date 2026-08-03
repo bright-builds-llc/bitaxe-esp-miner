@@ -173,6 +173,8 @@ rust_binary(
         "src/report/validation/phase30.rs",
         "src/safety_allow.rs",
         "src/safety_allow/policy.rs",
+        "src/sys004_version_evidence.rs",
+        "src/sys004_version_evidence/tests.rs",
         "src/safety_allow/tests.rs",
         "src/tests.rs",
         "src/tests/base.rs",

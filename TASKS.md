@@ -351,9 +351,9 @@ run.
       `SYS-004` implementation plan yields the next candidate queue.
 - [x] Run all mandatory repository gates, keep the checklist and progress
       history unchanged, and push the audited continuation.
-- [ ] Generate the canonical build label as package-owned SPIFFS
+- [x] Generate the canonical build label as package-owned SPIFFS
       `version.txt` and read that installed file for `axeOSVersion`.
-- [ ] Add a typed exact-package live version projection with focused
+- [x] Add a typed exact-package live version projection with focused
       regression coverage and a closed commit-safe schema.
 - [ ] Commit and push the software fix, build the exact package, and perform at
       most one detector-gated Ultra 205 verification attempt.
@@ -440,6 +440,20 @@ its same-package typed recovery after a confirmed flash effect, and proves
 cleanup. One attempt only, with no unchanged retry. The accepted terminal
 outcomes are `complete`, `stop_repeated_boundary`, `stop_hardware_blocker`,
 `stop_authority_boundary`, or `stop_impossible_contract`.
+
+Implementation continuation: The package now copies the checked-in static
+tree into an ephemeral staging directory, writes the exact canonical build
+label to `version.txt`, and feeds only that staged tree to ESP-IDF
+`spiffsgen.py`. The firmware reads `/www/version.txt` after the existing SPIFFS
+mount and classifies absent, malformed, or noncanonical content as explicitly
+unavailable. The new `project-sys004-version-evidence` classifier requires the
+mode-`0600` Phase 36 handle, capture, and eligible seal; revalidates exact
+manifest, package, source, reference, ELF, capability, board, ASIC, and
+same-device joins; requires identical HTTP/WebSocket JSON; and emits only the
+closed commit-safe version/provenance projection. Focused API/parser,
+packager, source-boundary, projection, stale-version, and private-mode tests
+pass. The remaining unchecked work is the mandatory full gate, clean software
+commit/push, and single hardware attempt.
 
 ## Future — Explicit Only
 

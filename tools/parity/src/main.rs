@@ -69,6 +69,7 @@ mod protected_input;
 mod release_evidence;
 mod release_gate;
 mod safety_allow;
+mod sys004_version_evidence;
 mod v12_admission;
 
 mod cli;
@@ -157,6 +158,18 @@ fn main() -> Result<()> {
             writeln!(stdout, "{output}")?;
             return Ok(());
         }
+        CliCommand::ProjectSys004VersionEvidence(args) => {
+            sys004_version_evidence::project_sys004_version_evidence(
+                &args.private_parent,
+                &args.attempt_handle_file,
+                &args.package_manifest,
+                &args.output,
+            )
+            .map_err(|error| anyhow::anyhow!("category={error}"))?;
+            let mut stdout = io::stdout().lock();
+            writeln!(stdout, "category=sys004_version_evidence_projected")?;
+            return Ok(());
+        }
         _ => {}
     }
     let environment = LocalEnvironment::detect()?;
@@ -219,6 +232,9 @@ fn main() -> Result<()> {
         }
         CliCommand::ReevaluatePhase36Attempt31(_) => {
             bail!("Phase 36 offline re-evaluation dispatch entered workspace-aware path")
+        }
+        CliCommand::ProjectSys004VersionEvidence(_) => {
+            bail!("SYS-004 projection dispatch entered workspace-aware path")
         }
     };
 

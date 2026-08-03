@@ -37,6 +37,22 @@ pub(crate) enum CliCommand {
     InspectPhase36Candidate(InspectPhase36CandidateArgs),
     ClassifyPhase36Candidate(ClassifyPhase36CandidateArgs),
     ReevaluatePhase36Attempt31(ReevaluatePhase36Attempt31Args),
+    ProjectSys004VersionEvidence(ProjectSys004VersionEvidenceArgs),
+}
+
+#[derive(Debug, Parser)]
+pub(crate) struct ProjectSys004VersionEvidenceArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) private_parent: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) attempt_handle_file: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) package_manifest: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) output: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]

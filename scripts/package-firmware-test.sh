@@ -80,6 +80,8 @@ create_tool_stubs() {
   exit 0
 fi
 output="${@: -1}"
+source_dir="${@: -2:1}"
+cp "${source_dir}/version.txt" "${PACKAGE_FIRMWARE_TEST_VERSION_CAPTURE:?}"
 printf "www-image" >"$output"
 '
 	write_executable "${bin_dir}/espflash" 'printf "espflash %s\n" "$*" >>"${PACKAGE_FIRMWARE_TEST_LOG:?}"
@@ -142,6 +144,7 @@ test_package_script_uses_managed_esptool_images() {
 	local reference_guard="${tmp_root}/verify-reference-clean.sh"
 	local output_file="${tmp_root}/package.out"
 	local log_file="${tmp_root}/commands.log"
+	local version_capture="${tmp_root}/version.txt"
 
 	create_tool_stubs "$bin_dir"
 	create_reference_guard "$reference_guard"
@@ -163,6 +166,7 @@ test_package_script_uses_managed_esptool_images() {
 		HOME="${tmp_root}/home" \
 		IDF_PATH="$idf_path" \
 		PACKAGE_FIRMWARE_TEST_LOG="$log_file" \
+		PACKAGE_FIRMWARE_TEST_VERSION_CAPTURE="$version_capture" \
 		PATH="${bin_dir}:${PATH}" \
 		"$BASH" "$package_script" \
 		--reference-guard "$reference_guard" \
@@ -199,6 +203,10 @@ test_package_script_uses_managed_esptool_images() {
 	assert_contains "$output" "0xf10000"
 	assert_contains "$output" "bitaxe-ultra205-factory.bin"
 	assert_not_contains "$output" "overlay-factory-payloads"
+	printf '0123456789ab-dev\n' >"${tmp_root}/expected-version.txt"
+	if ! cmp -s "${tmp_root}/expected-version.txt" "$version_capture"; then
+		fail "packaged version.txt does not contain the exact build label"
+	fi
 }
 
 if [[ ! -f "$package_script" ]]; then

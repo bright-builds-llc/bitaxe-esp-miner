@@ -1,20 +1,15 @@
 //! Read-only ESP-IDF adapter for one coherent running-platform candidate.
 
 use std::ffi::CStr;
+use std::fs;
 
 use bitaxe_api::{
-    PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity, PlatformResetReason,
-    PlatformUnavailableReason,
+    parse_static_asset_version, PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity,
+    PlatformResetReason, PlatformUnavailableReason,
 };
 use esp_idf_svc::sys;
-use serde::Deserialize;
 
-const EMBEDDED_STATIC_ASSET_RELEASE: &str = include_str!("../static/www/assets/release.json");
-
-#[derive(Debug, Deserialize)]
-struct EmbeddedStaticAssetRelease {
-    name: String,
-}
+const STATIC_ASSET_VERSION_PATH: &str = "/www/version.txt";
 
 /// Captures each read-only running-platform fact once for one operator snapshot.
 pub fn collect() -> PlatformIdentity {
@@ -50,11 +45,9 @@ fn esp_idf_version() -> PlatformFact<String> {
 }
 
 fn axe_os_static_asset() -> PlatformFact<String> {
-    let maybe_name =
-        serde_json::from_str::<EmbeddedStaticAssetRelease>(EMBEDDED_STATIC_ASSET_RELEASE)
-            .ok()
-            .map(|release| release.name)
-            .filter(|name| !name.trim().is_empty());
+    let maybe_name = fs::read(STATIC_ASSET_VERSION_PATH)
+        .ok()
+        .and_then(|bytes| parse_static_asset_version(&bytes).ok());
 
     maybe_name.map_or_else(
         || PlatformFact::unavailable(PlatformUnavailableReason::StaticAssetUnavailable),

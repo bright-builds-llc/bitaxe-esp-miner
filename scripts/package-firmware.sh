@@ -351,6 +351,13 @@ fi
 spiffsgen="$(find_spiffsgen)"
 esptool="$(find_esptool)"
 expected_build_label="$(read_stamp_field "$build_provenance_stamp" build_label)"
+www_staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/bitaxe-www.XXXXXX")"
+cleanup_www_staging() {
+	rm -rf -- "$www_staging_dir"
+}
+trap cleanup_www_staging EXIT
+cp -R "$WWW_SOURCE_DIR/." "$www_staging_dir/"
+printf '%s\n' "$expected_build_label" >"${www_staging_dir}/version.txt"
 if [[ "$explicit_idf_input_count" -eq 4 ]]; then
 	if ! grep -Fqx "CONFIG_APP_PROJECT_VER=\"${expected_build_label}\"" "$esp_idf_sdkconfig"; then
 		printf 'error: explicit ESP-IDF sdkconfig does not match build label %s\n' "$expected_build_label" >&2
@@ -375,7 +382,7 @@ spiffs_cmd=(
 	--obj-name-len
 	"$WWW_SPIFFS_OBJ_NAME_LEN"
 	"$WWW_SPIFFS_SIZE"
-	"$WWW_SOURCE_DIR"
+	"$www_staging_dir"
 	"$www_image"
 )
 

@@ -63,8 +63,8 @@ pub use operator_snapshot_publication::{
     OperatorSnapshotLockHealth, OperatorSnapshotPublication, OperatorSnapshotPublishError,
 };
 pub use platform_identity::{
-    PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity, PlatformResetReason,
-    PlatformUnavailableReason,
+    parse_static_asset_version, PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity,
+    PlatformResetReason, PlatformUnavailableReason, StaticAssetVersionError,
 };
 pub use route_shell::{
     maybe_origin_ip_from_header, normalize_peer_ipv4, origin_gate_from_header, phase05_routes,

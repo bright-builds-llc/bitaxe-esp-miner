@@ -1,6 +1,57 @@
 //! Typed running-platform identity and runtime-health facts.
 
+use std::error::Error;
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
+
+use crate::BUILD_LABEL_MAX_BYTES;
+
+/// Parses the canonical build label stored in the packaged AxeOS `version.txt`.
+pub fn parse_static_asset_version(bytes: &[u8]) -> Result<String, StaticAssetVersionError> {
+    let bytes = bytes.strip_suffix(b"\n").unwrap_or(bytes);
+    if bytes.is_empty() {
+        return Err(StaticAssetVersionError::new(
+            "static asset version is empty",
+        ));
+    }
+    if bytes.len() > BUILD_LABEL_MAX_BYTES {
+        return Err(StaticAssetVersionError::new(
+            "static asset version exceeds build label limit",
+        ));
+    }
+    if !bytes
+        .iter()
+        .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || *byte == b'-')
+    {
+        return Err(StaticAssetVersionError::new(
+            "static asset version is not a canonical build label",
+        ));
+    }
+
+    String::from_utf8(bytes.to_vec())
+        .map_err(|_| StaticAssetVersionError::new("static asset version is not valid UTF-8"))
+}
+
+/// Validation error for the packaged static-asset version marker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StaticAssetVersionError {
+    message: &'static str,
+}
+
+impl StaticAssetVersionError {
+    const fn new(message: &'static str) -> Self {
+        Self { message }
+    }
+}
+
+impl fmt::Display for StaticAssetVersionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.message)
+    }
+}
+
+impl Error for StaticAssetVersionError {}
 
 /// One platform fact that is either proved by the running firmware or explicitly unavailable.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -187,6 +238,35 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+
+    #[test]
+    fn static_asset_version_accepts_packaged_build_label() {
+        // Arrange
+        let bytes = b"0123456789ab-dirty-dev\n";
+
+        // Act
+        let version = parse_static_asset_version(bytes).expect("version should be canonical");
+
+        // Assert
+        assert_eq!(version, "0123456789ab-dirty-dev");
+    }
+
+    #[test]
+    fn static_asset_version_rejects_noncanonical_content() {
+        // Arrange
+        let invalid_versions: [&[u8]; 5] = [
+            b"",
+            b"\n",
+            b"0123456789ab-dev\nextra",
+            b"0123456789AB-dev\n",
+            b"0123456789ab-dirty-dev-extra\n",
+        ];
+
+        // Act / Assert
+        for bytes in invalid_versions {
+            assert!(parse_static_asset_version(bytes).is_err());
+        }
+    }
 
     #[test]
     fn available_platform_facts_serialize_proved_values() {

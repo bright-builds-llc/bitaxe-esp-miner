@@ -138,9 +138,8 @@ fn phase34_source_guard_rejects_platform_substitution_and_effects() {
     );
 
     // Act / Assert
-    assert!(
-        PLATFORM_IDENTITY_SOURCE.contains("include_str!(\"../static/www/assets/release.json\")")
-    );
+    assert!(PLATFORM_IDENTITY_SOURCE.contains("/www/version.txt"));
+    assert!(PLATFORM_IDENTITY_SOURCE.contains("parse_static_asset_version"));
     assert!(PLATFORM_IDENTITY_SOURCE.contains("sys::esp_get_idf_version()"));
     assert!(PLATFORM_IDENTITY_SOURCE.contains("PlatformBoard::Ultra205"));
     assert!(PLATFORM_IDENTITY_SOURCE.contains("PlatformAsic::Bm1366"));
