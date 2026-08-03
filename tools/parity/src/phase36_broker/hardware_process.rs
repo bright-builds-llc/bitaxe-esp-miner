@@ -10,8 +10,9 @@ use sha2::{Digest, Sha256};
 
 use super::contract::Phase36RecoveryIdentity;
 use super::hardware::{
-    run_detector_process, run_phase36_hardware_transaction_with, Phase36HardwareDisposition,
-    Phase36HardwareTransactionBoundary, Phase36HardwareTransactionError, Phase36OperationResult,
+    parse_detector_port, run_detector_process, run_phase36_hardware_transaction_with,
+    Phase36HardwareDisposition, Phase36HardwareTransactionBoundary,
+    Phase36HardwareTransactionError, Phase36OperationResult,
 };
 use super::{
     Phase36AllowedOperation, Phase36BrokerFailure, Phase36LedgerRecord, Phase36RecoveryDisposition,

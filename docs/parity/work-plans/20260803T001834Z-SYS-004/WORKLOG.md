@@ -91,3 +91,22 @@
 - Blocker or next safe action: Commit the separate attempt-002 contract, then
   implement a pure exact-output parser with negative grammar regressions. No
   retry is allowed until the fix passes all gates and is cleanly pushed.
+
+## 2026-08-03T01:10:00Z | broker detector parser repair
+
+- Source commit: implementation worktree based on
+  `2e2f30a83a802bf7f11d65baa0b50b1972c0c84a`.
+- Actions: Added one pure detector stdout parser, reused it in both Phase 36
+  process gates, and removed the duplicated incorrect `port=` extraction.
+- Verification: Focused tests accept exactly one absolute or numbered COM
+  `port: ` line joined to exactly one `usb_session: ready` marker and reject
+  the obsolete spelling, missing readiness, duplicate/empty/relative ports,
+  incomplete COM ports, and invalid UTF-8. Focused Clippy passed with warnings
+  denied.
+- Evidence: `tools/parity/src/phase36_broker/hardware.rs`,
+  `tools/parity/src/phase36_broker/hardware/tests.rs`, and
+  `tools/parity/src/phase36_broker/hardware_process/process_boundary.rs`.
+- Outcome: The source-confirmed attempt-001 boundary has a minimal
+  regression-backed repair; no device interaction occurred during the fix.
+- Blocker or next safe action: Run every mandatory gate, commit and push the
+  corrected source, then build the clean attempt-002 package.

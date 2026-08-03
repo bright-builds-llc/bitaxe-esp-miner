@@ -132,20 +132,9 @@ impl ProcessTransactionBoundary {
                 Phase36BrokerFailure::DetectorFailed,
             ));
         }
-        let stdout = String::from_utf8(output.stdout).map_err(|_| {
-            Phase36HardwareTransactionError::EffectFailed(Phase36BrokerFailure::DetectorFailed)
-        })?;
-        let ports = stdout
-            .lines()
-            .filter_map(|line| line.strip_prefix("port="))
-            .filter(|port| !port.is_empty())
-            .collect::<Vec<_>>();
-        if ports.len() != 1 {
-            return Err(Phase36HardwareTransactionError::EffectFailed(
-                Phase36BrokerFailure::DetectorFailed,
-            ));
-        }
-        let port = ports[0].to_owned();
+        let port = parse_detector_port(&output.stdout).ok_or(
+            Phase36HardwareTransactionError::EffectFailed(Phase36BrokerFailure::DetectorFailed),
+        )?;
         let physical_identity_digest = sha256_hex(
             [
                 b"phase36-physical-device-v1\0".as_slice(),

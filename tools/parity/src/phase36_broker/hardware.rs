@@ -43,7 +43,7 @@ impl Phase36HardwareBoundary for ProcessHardwareBoundary {
     fn run_detector(&mut self) -> Result<(), Phase36HardwareGateError> {
         let output =
             run_detector_process().map_err(|_| Phase36HardwareGateError::DetectorFailed)?;
-        if !output.status.success() {
+        if !output.status.success() || parse_detector_port(&output.stdout).is_none() {
             return Err(Phase36HardwareGateError::DetectorFailed);
         }
         Ok(())
@@ -70,6 +70,37 @@ pub(super) fn run_detector_process() -> std::io::Result<Output> {
         .arg(DETECTOR_ARGUMENT)
         .stdin(Stdio::null())
         .output()
+}
+
+pub(super) fn parse_detector_port(stdout: &[u8]) -> Option<String> {
+    let stdout = std::str::from_utf8(stdout).ok()?;
+    if stdout
+        .lines()
+        .filter(|line| *line == "usb_session: ready")
+        .count()
+        != 1
+    {
+        return None;
+    }
+    let ports = stdout
+        .lines()
+        .filter_map(|line| line.strip_prefix("port: "))
+        .filter(|port| valid_detector_port(port))
+        .collect::<Vec<_>>();
+    let [port] = ports.as_slice() else {
+        return None;
+    };
+    Some((*port).to_owned())
+}
+
+fn valid_detector_port(port: &str) -> bool {
+    if port.is_empty() || port.bytes().any(|byte| byte.is_ascii_whitespace()) {
+        return false;
+    }
+    port.starts_with('/')
+        || port.strip_prefix("COM").is_some_and(|suffix| {
+            !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit())
+        })
 }
 
 pub fn run_phase36_hardware_pre_capture_gate(

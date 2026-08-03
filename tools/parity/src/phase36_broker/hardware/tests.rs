@@ -73,6 +73,37 @@ fn detector_success_precedes_single_credential_validation() {
 }
 
 #[test]
+fn detector_port_parser_accepts_the_canonical_flash_output() {
+    // Arrange
+    let output = b"espflash_version: 4.5.0\nport: /dev/cu.usbmodem1101\nusb_session: ready\n";
+
+    // Act
+    let port = parse_detector_port(output);
+
+    // Assert
+    assert_eq!(port.as_deref(), Some("/dev/cu.usbmodem1101"));
+}
+
+#[test]
+fn detector_port_parser_rejects_noncanonical_and_ambiguous_output() {
+    // Arrange
+    let invalid_outputs: [&[u8]; 7] = [
+        b"port=/dev/cu.usbmodem1101\nusb_session: ready\n",
+        b"port: /dev/one\nport: /dev/two\nusb_session: ready\n",
+        b"port: /dev/cu.usbmodem1101\n",
+        b"port: \nusb_session: ready\n",
+        b"port: relative-device\nusb_session: ready\n",
+        b"port: COM\nusb_session: ready\n",
+        b"port: /dev/cu.usbmodem1101\nusb_session: ready\n\xff",
+    ];
+
+    // Act / Assert
+    for output in invalid_outputs {
+        assert_eq!(parse_detector_port(output), None);
+    }
+}
+
+#[test]
 fn wrong_board_stops_before_detector_or_credential_access() {
     // Arrange
     let mut boundary = FakeHardwareBoundary::default();
