@@ -92,7 +92,7 @@
   implement a pure exact-output parser with negative grammar regressions. No
   retry is allowed until the fix passes all gates and is cleanly pushed.
 
-## 2026-08-03T01:10:00Z | broker detector parser repair
+## 2026-08-03T00:47:00Z | broker detector parser repair
 
 - Source commit: implementation worktree based on
   `2e2f30a83a802bf7f11d65baa0b50b1972c0c84a`.
@@ -110,3 +110,48 @@
   regression-backed repair; no device interaction occurred during the fix.
 - Blocker or next safe action: Run every mandatory gate, commit and push the
   corrected source, then build the clean attempt-002 package.
+
+## 2026-08-03T00:49:00Z | attempt-002 stop and final invocation fix
+
+- Source commit: `9f4d56700c42a318e1aef61ee99bffcaf06e4231`.
+- Actions: Built the clean package, passed standalone detection and preflight,
+  consumed the single authorized retry, ran the typed projection, and traced
+  the repeated pre-flash detector stop to nested process construction.
+- Verification: Attempt 002 again records exact-package admission complete,
+  detector failure, cleanup complete, no recovery authority, no secondary
+  failure, no flash, and no capture/candidate. The projection correctly
+  rejected the absent private capture. Focused tests prove the broker now sets
+  nested `just` to Bazel's workspace directory while retaining the exact
+  command and argument.
+- Evidence: Protected attempt-002 categorical ledger/seal plus
+  `tools/parity/src/phase36_broker/hardware.rs` and its focused tests. No raw
+  USB, Wi-Fi, or network data is committed.
+- Outcome: The root-cause chain now has two targeted fixes: canonical detector
+  output parsing and correct Bazel workspace process context. No device effect
+  occurred in either attempt. `SYS-004` remains conservatively `implemented`.
+- Terminal blocker: The task contract explicitly forbids a third ordinal, so
+  the corrected broker cannot produce exact-package live version evidence in
+  this invocation. Commit and push the final software fix, but do not retry,
+  transition the checklist, append progress, create `RESULT.md`, or archive
+  the unresolved task.
+
+## 2026-08-03T00:58:00Z | final software verification
+
+- Source commit: implementation worktree based on
+  `9f4d56700c42a318e1aef61ee99bffcaf06e4231`.
+- Actions: Completed the mandatory ordered Rust checks and every repository
+  verification gate after the workspace-directory repair.
+- Verification: `cargo fmt --all`, warning-denied all-target/all-feature
+  Clippy, all-target/all-feature Cargo build, and all-feature Cargo tests
+  passed in order. All 82 Bazel tests passed. Bright Builds reported zero
+  findings; parity validation reported no errors; progress remained 34 of 94
+  active rows verified (36.2%); and redaction, reference integrity, plus diff
+  checks passed.
+- Evidence: Focused command-construction regression and the complete local
+  gate outputs. No hardware command was rerun and no private observation was
+  promoted.
+- Outcome: The minimal process-context fix is ready to commit and push.
+  `SYS-004` remains `implemented`, and its task remains active and unarchived.
+- Residual risk: Live exact-package HTTP/WebSocket equality is still unproved.
+  The sole blocker is the consumed retry contract; a future explicit attempt
+  ordinal is required to cross that evidence boundary.

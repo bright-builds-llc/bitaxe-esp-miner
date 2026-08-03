@@ -104,6 +104,23 @@ fn detector_port_parser_rejects_noncanonical_and_ambiguous_output() {
 }
 
 #[test]
+fn detector_process_resolves_justfile_from_the_bazel_workspace() {
+    // Arrange
+    let workspace = OsStr::new("/qualified/workspace");
+
+    // Act
+    let command = detector_command(Some(workspace));
+
+    // Assert
+    assert_eq!(command.get_program(), OsStr::new("just"));
+    assert_eq!(
+        command.get_args().collect::<Vec<_>>(),
+        [OsStr::new("detect-ultra205")]
+    );
+    assert_eq!(command.get_current_dir(), Some(Path::new(workspace)));
+}
+
+#[test]
 fn wrong_board_stops_before_detector_or_credential_access() {
     // Arrange
     let mut boundary = FakeHardwareBoundary::default();

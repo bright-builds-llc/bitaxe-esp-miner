@@ -484,6 +484,20 @@ No unchanged attempt, alternate command, or later ordinal is authorized. A
 retry may proceed only after the parser regression, all gates, and clean push
 prove the objectively changed boundary.
 
+Attempt-002 outcome: clean source `9f4d56700c42a318e1aef61ee99bffcaf06e4231`
+was packaged; the standalone detector and exact-package preflight passed. The
+broker again stopped before credential access or flash with the same sealed
+categorical detector failure, then cleanup passed with no candidate or private
+capture. The first repair proved the stdout grammar but exposed the remaining
+invocation cause: the broker starts nested `just detect-ultra205` without
+setting its working directory to Bazel's `BUILD_WORKSPACE_DIRECTORY`, so the
+process cannot reliably resolve the repository Justfile from the runfiles
+working directory. The targeted follow-up sets only that command working
+directory and has a pure command-construction regression. A third attempt is
+not authorized. `SYS-004` must remain `implemented` with exact-package live
+version evidence pending until a future explicitly authorized ordinal can
+exercise the corrected broker.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

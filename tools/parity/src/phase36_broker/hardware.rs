@@ -1,3 +1,5 @@
+use std::env;
+use std::ffi::OsStr;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -66,10 +68,18 @@ impl Phase36HardwareBoundary for ProcessHardwareBoundary {
 }
 
 pub(super) fn run_detector_process() -> std::io::Result<Output> {
-    Command::new(DETECTOR_PROGRAM)
-        .arg(DETECTOR_ARGUMENT)
+    detector_command(env::var_os("BUILD_WORKSPACE_DIRECTORY").as_deref())
         .stdin(Stdio::null())
         .output()
+}
+
+fn detector_command(maybe_workspace: Option<&OsStr>) -> Command {
+    let mut command = Command::new(DETECTOR_PROGRAM);
+    command.arg(DETECTOR_ARGUMENT);
+    if let Some(workspace) = maybe_workspace.filter(|workspace| !workspace.is_empty()) {
+        command.current_dir(workspace);
+    }
+    command
 }
 
 pub(super) fn parse_detector_port(stdout: &[u8]) -> Option<String> {
