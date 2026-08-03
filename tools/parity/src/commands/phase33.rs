@@ -10,7 +10,7 @@ pub(crate) struct Phase33ClassificationOutput {
 }
 
 pub(crate) fn run_phase33_classify_command(
-    args: Phase33ClassifyArgs,
+    args: VerifySettingsDurabilityArgs,
     environment: &LocalEnvironment,
 ) -> Result<String> {
     let path = environment.workspace_path(&args.trace);

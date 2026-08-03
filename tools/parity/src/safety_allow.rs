@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use bitaxe_automation_contracts::WorkflowIdentity;
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
@@ -66,8 +67,8 @@ pub(crate) struct SafetyAllowManifest {
     pub(crate) surface: String,
     pub(crate) claim_tier: String,
     pub(crate) evidence_class: String,
-    pub(crate) allowed_command: String,
-    pub(crate) allowed_inputs: Value,
+    pub(crate) workflow: WorkflowIdentity,
+    pub(crate) constraints: Value,
     pub(crate) abort_conditions: Vec<String>,
     pub(crate) recovery_steps: Vec<String>,
     pub(crate) post_action_safe_state_markers: Vec<String>,
@@ -97,7 +98,8 @@ pub(crate) struct SafetyAllowDocuments {
 #[derive(Debug)]
 pub(crate) struct SafetyAllowFilters {
     pub(crate) maybe_surface: Option<String>,
-    pub(crate) maybe_allowed_command: Option<String>,
+    pub(crate) maybe_workflow: Option<String>,
+    pub(crate) maybe_request_sha256: Option<String>,
 }
 
 pub(crate) fn load_safety_allow_documents(

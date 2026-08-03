@@ -58,7 +58,6 @@ const FLASH_FAKE_ENVIRONMENT_SOURCE: &str =
     include_str!("../../flash/src/tests/fake_environment.rs");
 const FLASH_ESP32S3_IMAGE_SOURCE: &str = include_str!("../../flash/src/esp32s3_image.rs");
 const FLASH_PACKAGE_ADMISSION_SOURCE: &str = include_str!("../../flash/src/package_admission.rs");
-const PACKAGE_SCRIPT_SOURCE: &str = include_str!("../../../scripts/package-firmware.sh");
 
 #[test]
 fn phase34_identity_runtime_source_guard() {

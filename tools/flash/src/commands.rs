@@ -123,8 +123,8 @@ where
     I: IntoIterator<Item = S>,
     S: Into<String>,
 {
-    let normalized = normalize_args(args);
-    let cli = Cli::try_parse_from(normalized).map_err(anyhow::Error::new)?;
+    let canonical_args: Vec<String> = args.into_iter().map(Into::into).collect();
+    let cli = Cli::try_parse_from(canonical_args).map_err(anyhow::Error::new)?;
     match &cli.command {
         CliCommand::Flash(command) if command.common.evidence_mode.is_some() => {
             bail!("--evidence-mode dual is supported only by flash-monitor");
@@ -161,82 +161,6 @@ pub(crate) fn run_detect(
     );
     environment.execute(&command_spec)?;
     Ok(())
-}
-
-pub(crate) fn normalize_args<I, S>(args: I) -> Vec<String>
-where
-    I: IntoIterator<Item = S>,
-    S: Into<String>,
-{
-    let mut normalized = Vec::new();
-    for arg in args {
-        let arg = arg.into();
-        if arg.starts_with("--") {
-            normalized.push(arg);
-            continue;
-        }
-
-        let Some((key, value)) = arg.split_once('=') else {
-            normalized.push(arg);
-            continue;
-        };
-
-        match key {
-            "board" => push_flag_value(&mut normalized, "--board", value),
-            "port" => push_flag_value(&mut normalized, "--port", value),
-            "image" => push_flag_value(&mut normalized, "--image", value),
-            "manifest" => push_flag_value(&mut normalized, "--manifest", value),
-            "stage" => push_flag_value(&mut normalized, "--stage", value),
-            "profile" => push_flag_value(&mut normalized, "--profile", value),
-            "wifi-credentials" | "wifi_credentials" => {
-                push_flag_value(&mut normalized, "--wifi-credentials", value)
-            }
-            "pool-credentials" | "pool_credentials" => {
-                push_flag_value(&mut normalized, "--pool-credentials", value)
-            }
-            "evidence-dir" | "evidence_dir" => {
-                push_flag_value(&mut normalized, "--evidence-dir", value)
-            }
-            "evidence-mode" | "evidence_mode" => {
-                push_flag_value(&mut normalized, "--evidence-mode", value)
-            }
-            "expected-private-sha256" | "expected_private_sha256" => {
-                push_flag_value(&mut normalized, "--expected-private-sha256", value)
-            }
-            "capture-timeout-seconds" | "capture_timeout_seconds" => {
-                push_flag_value(&mut normalized, "--capture-timeout-seconds", value)
-            }
-            "duration-seconds" | "duration_seconds" => {
-                push_flag_value(&mut normalized, "--duration-seconds", value)
-            }
-            "stage-root" | "stage_root" => push_flag_value(&mut normalized, "--stage-root", value),
-            "timeout-seconds" | "timeout_seconds" => {
-                push_flag_value(&mut normalized, "--timeout-seconds", value)
-            }
-            "redact-evidence" | "redact_evidence" => {
-                if parse_bool_alias(value) {
-                    normalized.push("--redact-evidence".to_owned());
-                }
-            }
-            "dry-run" | "dry_run" => {
-                if parse_bool_alias(value) {
-                    normalized.push("--dry-run".to_owned());
-                }
-            }
-            _ => normalized.push(arg),
-        }
-    }
-
-    normalized
-}
-
-pub(crate) fn push_flag_value(args: &mut Vec<String>, flag: &str, value: &str) {
-    args.push(flag.to_owned());
-    args.push(value.to_owned());
-}
-
-pub(crate) fn parse_bool_alias(value: &str) -> bool {
-    matches!(value, "true" | "1" | "yes" | "on")
 }
 
 #[cfg(test)]

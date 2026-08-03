@@ -1,0 +1,10 @@
+import "./contracts.test.js";
+import "./http.test.js";
+import "./invocation.test.js";
+import "./process.test.js";
+import "./repository-guard.test.js";
+import "./redaction.test.js";
+import "./static-provenance.test.js";
+import "./workspace.test.js";
+import "./workflow.test.js";
+import "./version-evidence.test.js";

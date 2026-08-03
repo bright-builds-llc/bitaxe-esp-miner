@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260803T213602Z-STR-007",
+  "predecessor_sha256": "73bc1788aa493e4380fba82e57f5d2d5810f098eee7105bf73084af75dc1d4d0",
+  "result_sha256": "9aa8e6478c924d2fa2952854e55d7f50a584c21cc28cb068b8fe43097a891f28",
+  "row_id": "STR-007",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260803T213524Z-AUTOMATION-CUTOVER/PLAN.md",
+  "plan_sha256": "62e185790d2bcceaf48dc68dc58d9ef0d0567e1a4bcceeb2cd65e9b2011299c4",
+  "result_path": "docs/parity/work-plans/20260803T213524Z-AUTOMATION-CUTOVER/RESULT.md",
+  "result_document_sha256": "5d0312e9812d2a4cf1306af6a0b2663396ce780015a97cd1febb04e969eff0d2",
+  "migration_ledger_path": "docs/parity/automation-migration.json",
+  "migration_ledger_sha256": "c7981ec77d2ec2fdecdd98ebc5113f64d0a2c1a11b2009d0f10bbf2b1fa310ff",
+  "before_rust_owned_target": "`docs/parity/evidence/phase-04-stratum-v1-mining-loop.md`, `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence.md`, `docs/parity/production-session-software-verification.md`, `scripts/verify-production-session-source.sh`",
+  "after_rust_owned_target": "`docs/parity/evidence/phase-04-stratum-v1-mining-loop.md`, `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence.md`, `docs/parity/production-session-software-verification.md`, `tools/automation/src/cli.ts`, `tools/flash/src/campaign.rs`",
+  "before_status": "implemented",
+  "after_status": "implemented",
+  "before_evidence": "workflow,hardware-smoke,soak",
+  "after_evidence": "workflow,hardware-smoke,soak",
+  "before_notes": "Smoke and soak criteria are recorded without pool credentials or secret-bearing logs. Phase 21 final evidence in `evidence/phase-21-live-mining-and-soak-evidence/summary.md` records allow-manifest-validated live smoke and approved bounded controlled no-share soak with board `205`, port `/dev/cu.usbmodem1101`, firmware commit `b5502a630637`, reference commit `c1915b0a63bfabebdb95a515cedfee05146c1d50`, redaction passed, conclusion recorded, pool input bridge applied, runtime markers observed, watchdog checkpoints, and final safe-stop. Accepted/rejected share behavior and unbounded production mining remain below verified.",
+  "after_notes": "Smoke and soak criteria are recorded without pool credentials or secret-bearing logs. The typed production-session verification runs the Rust behavior suites directly. Accepted/rejected share behavior and unbounded production mining remain below verified."
+}

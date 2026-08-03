@@ -27,11 +27,10 @@ applicable.
     bitaxe-api/
     bitaxe-test-support/
   tools/
+    automation/
     flash/
     parity/
     xtask/
-  scripts/
-    verify-reference-clean.sh
   docs/
     project/
     parity/
@@ -72,10 +71,10 @@ Suggested Bazel target families:
 //crates/bitaxe-api:tests
 //tools/flash:flash
 //tools/parity:report
-//scripts:verify_reference_clean
+//tools/automation:verify_reference
 ```
 
-Early Bazel targets may call repo-owned scripts, Cargo commands, or ESP-IDF compatible commands when direct Bazel rules are immature. The important rule is that workflows are represented as Bazel targets so local and CI use the same graph.
+Bazel targets call the typed automation module, Rust tools, Cargo, or ESP-IDF-compatible commands. Local and CI use the same graph.
 
 ## Just Command Surface
 
@@ -83,10 +82,10 @@ Early Bazel targets may call repo-owned scripts, Cargo commands, or ESP-IDF comp
 just build
 just test
 just package
-just flash board=205
-just flash board=205 port=/dev/cu.usbmodem...
-just monitor port=/dev/cu.usbmodem...
-just flash-monitor board=205 port=/dev/cu.usbmodem...
+just flash --board 205
+just flash --board 205 --port /dev/cu.usbmodem...
+just monitor --port /dev/cu.usbmodem...
+just flash-monitor --board 205 --port /dev/cu.usbmodem...
 just verify-reference
 just parity
 ```
@@ -104,7 +103,7 @@ Command behavior:
 
 ## Reference Guard
 
-Add `scripts/verify-reference-clean.sh` with this behavior:
+Add `bitaxe-automation verify-reference` with this behavior:
 
 - Fail if `reference/esp-miner` is missing.
 - Fail if the submodule has local modifications.

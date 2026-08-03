@@ -51,10 +51,10 @@ is required input, but it does not satisfy release compliance by itself.
 
 | Input | Path or pin | License source | Release status |
 | --- | --- | --- | --- |
-| `espflash` | Backend for `just flash`, `just monitor`, `just flash-monitor`, and `scripts/package-firmware.sh` image generation | Tool project metadata and installed binary version output | Normal Phase 7 package and operator workflow tool. |
+| `espflash` | Backend for `just flash`, `just monitor`, `just flash-monitor`, and typed package/image generation | Tool project metadata and installed binary version output | Normal package and operator workflow tool. |
 | `cargo-espflash` | Developer diagnostic tool when used outside the canonical Bazel/Just flow | Tool project metadata and installed binary version output | Optional diagnostic input; not required for release packaging. |
-| `esptool.py` | Managed ESP-IDF merge backend for `scripts/package-firmware.sh` factory image data-partition assembly | ESP-IDF toolchain source from the pinned `.embuild/espressif` workflow or installed tool metadata | Required when `scripts/package-firmware.sh` assembles `bitaxe-ultra205-factory.bin`. |
-| `scripts/package-firmware.sh` | `scripts/package-firmware.sh` | Project MIT-first script plus invoked tool metadata | Prints package inputs and writes manifest evidence. |
+| `esptool.py` | Managed ESP-IDF merge backend for typed factory-image assembly | ESP-IDF toolchain source from the pinned `.embuild/espressif` workflow or installed tool metadata | Required when `bitaxe-automation package-firmware` assembles `bitaxe-ultra205-factory.bin`. |
+| `bitaxe-automation` | `tools/automation/` | Project MIT-first TypeScript plus Rust-owned generated contracts | Produces typed command specifications and package manifest evidence. |
 
 - Owner: release tooling.
 - Follow-up: release notes must include the exact flashing/package tool versions

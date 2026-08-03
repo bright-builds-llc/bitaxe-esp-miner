@@ -12,7 +12,7 @@ A developer can build the Rust firmware skeleton, package a flashable image, fla
 - Rust workspace initialized.
 - ESP-IDF Rust firmware app skeleton under `firmware/bitaxe`.
 - Read-only upstream submodule at `reference/esp-miner`.
-- `scripts/verify-reference-clean.sh`.
+- `bitaxe-automation verify-reference`.
 - `Justfile` with build, test, package, flash, monitor, flash-monitor, verify-reference, and parity commands.
 - Initial pure crate layout under `crates/`.
 - Seed parity checklist under `docs/parity/checklist.md`.
@@ -25,9 +25,9 @@ A developer can build the Rust firmware skeleton, package a flashable image, fla
 - `just build` builds the firmware skeleton through Bazel.
 - `just test` runs available pure crate/tool tests through Bazel.
 - `just package` produces a flashable image artifact.
-- `just flash board=205 port=<port>` flashes the connected Ultra 205 or fails with a clear actionable error.
-- `just monitor port=<port>` shows Rust firmware boot logs.
-- `just flash-monitor board=205 port=<port>` flashes and monitors in one workflow.
+- `just flash --board 205 --port <port>` flashes the connected Ultra 205 or fails with a clear actionable error.
+- `just monitor --port <port>` shows Rust firmware boot logs.
+- `just flash-monitor --board 205 --port <port>` flashes and monitors in one workflow.
 - The parity checklist includes seeded surfaces for upstream firmware behavior and records all first-milestone items as `not-started`, `in-progress`, `implemented`, or `verified`.
 - No files inside `reference/esp-miner` are modified by normal workflow commands.
 

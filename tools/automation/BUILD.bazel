@@ -1,0 +1,124 @@
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_test")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@npm__at_types_node__24.13.3__links//:defs.bzl", npm_link_types_node = "npm_link_imported_package")
+load("@npm__undici_types__7.18.0__links//:defs.bzl", npm_link_undici_types = "npm_link_imported_package")
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "automation_sources",
+    srcs = glob(["src/**/*.ts"]),
+)
+
+npm_link_types_node()
+npm_link_undici_types()
+
+genrule(
+    name = "contracts_verified",
+    srcs = ["src/contracts.generated.ts"],
+    outs = ["contracts-verified.stamp"],
+    cmd = "$(location //crates/bitaxe-automation-contracts:verify_typescript) $(location src/contracts.generated.ts) $@",
+    tools = ["//crates/bitaxe-automation-contracts:verify_typescript"],
+)
+
+ts_project(
+    name = "automation_ts",
+    data = [
+        ":contracts_verified",
+        "package.json",
+        "tsconfig.json",
+    ],
+    srcs = glob(["src/**/*.ts"], exclude = ["src/**/*.test.ts"]),
+    declaration = True,
+    out_dir = "dist",
+    root_dir = "src",
+    source_map = True,
+    transpiler = "tsc",
+    tsconfig = "tsconfig.json",
+    deps = [
+        ":node_modules/@types/node",
+        ":node_modules/undici-types",
+    ],
+)
+
+js_binary(
+    name = "bitaxe_automation",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        "//crates/bitaxe-automation-contracts:validate_version_evidence",
+        "//tools/flash:flash",
+        "//tools/parity:report",
+        "//tools/xtask:xtask",
+    ],
+    entry_point = "dist/cli.js",
+)
+
+[
+    js_binary(
+        name = target,
+        args = [command],
+        chdir = "../../../..",
+        data = [
+            ":automation_ts",
+            "//crates/bitaxe-automation-contracts:validate_version_evidence",
+            "//tools/flash:flash",
+            "//tools/parity:report",
+            "//tools/xtask:xtask",
+        ],
+        entry_point = "dist/cli.js",
+    )
+    for target, command in {
+        "doctor": "doctor",
+        "bootstrap_esp": "bootstrap-esp",
+        "build_firmware": "build-firmware",
+        "package_firmware": "package-firmware",
+        "verify_reference": "verify-reference",
+        "verify_redaction": "verify-redaction",
+        "verify_production_session": "verify-production-session",
+        "observe_serial": "observe-serial",
+        "verify_flash_durability": "verify-flash-durability",
+        "verify_firmware_ota": "verify-firmware-ota",
+        "verify_web_assets_ota": "verify-web-assets-ota",
+        "verify_recovery": "verify-recovery",
+        "verify_http_api": "verify-http-api",
+        "verify_hardware_surface": "verify-hardware-surface",
+        "verify_mining": "verify-mining",
+        "capture_operator_evidence": "capture-operator-evidence",
+        "verify_settings_durability": "verify-settings-durability",
+        "capture_correlated_runtime_evidence": "capture-correlated-runtime-evidence",
+        "capture_version_evidence": "capture-version-evidence",
+    }.items()
+]
+
+ts_project(
+    name = "automation_tests_ts",
+    data = [
+        "package.json",
+        "tsconfig.json",
+    ],
+    srcs = glob(["src/**/*.ts"]),
+    declaration = True,
+    out_dir = "test-dist",
+    root_dir = "src",
+    source_map = True,
+    transpiler = "tsc",
+    tsconfig = "tsconfig.test.json",
+    deps = [
+        ":node_modules/@types/node",
+        ":node_modules/undici-types",
+    ],
+)
+
+js_test(
+    name = "automation_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":automation_tests_ts",
+        ":automation_sources",
+        "//scripts:repository_guard_sources",
+        "//firmware/bitaxe:static_provenance_assets",
+    ],
+    entry_point = "test-dist/all.test.js",
+)

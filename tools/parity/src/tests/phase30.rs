@@ -192,7 +192,7 @@ fn phase30_committed_conservative_rows_remain_valid() {
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | STR-09 | Live submit response classification or blocker | `reference/esp-miner/main/system.c` | `crates/bitaxe-stratum` | implemented | unit,workflow | phase-30-live-share-outcome-and-verified-promotion/disposition.md phase30_disposition: no_promotion_no_eligible_evidence below verified. |
-| CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `scripts/phase23-redacted-operator-evidence.sh` | implemented | workflow | phase-30-live-share-outcome-and-verified-promotion/disposition.md phase30_disposition: no_promotion_no_eligible_evidence below verified. |
+| CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `tools/automation/src/cli.ts` | implemented | workflow | phase-30-live-share-outcome-and-verified-promotion/disposition.md phase30_disposition: no_promotion_no_eligible_evidence below verified. |
 | ASIC-11 | BM1366 result correlation before submit intent | `reference/esp-miner/components/asic/bm1366.c` | `crates/bitaxe-stratum` | implemented | unit,workflow | phase-30-live-share-outcome-and-verified-promotion/disposition.md phase30_disposition: no_promotion_no_eligible_evidence below verified. |
 "#;
     let rows = parse_checklist(checklist).expect("checklist should parse");

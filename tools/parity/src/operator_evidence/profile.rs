@@ -6,7 +6,7 @@ use clap::ValueEnum;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 #[value(rename_all = "lower")]
 pub(crate) enum OperatorEvidenceProfile {
-    Phase23,
+    Release,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -30,11 +30,11 @@ impl OperatorEvidenceRootEntry {
 
 impl OperatorEvidenceProfile {
     #[cfg(test)]
-    pub(crate) const ALL: [Self; 1] = [Self::Phase23];
+    pub(crate) const ALL: [Self; 1] = [Self::Release];
 
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
-            Self::Phase23 => "phase23",
+            Self::Release => "release",
         }
     }
 
@@ -54,7 +54,7 @@ impl FromStr for OperatorEvidenceProfile {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
-            "phase23" => Ok(Self::Phase23),
+            "release" => Ok(Self::Release),
             _ => Err(format!("unknown operator evidence profile {value:?}")),
         }
     }
@@ -206,7 +206,7 @@ impl OperatorEvidenceProfileDescriptor {
             .map(OperatorEvidenceRootEntry::Slot)
             .collect::<Vec<_>>();
         match self.profile {
-            OperatorEvidenceProfile::Phase23 => {
+            OperatorEvidenceProfile::Release => {
                 entries.push(OperatorEvidenceRootEntry::EvidenceContract);
             }
         }
@@ -219,7 +219,7 @@ impl OperatorEvidenceProfileDescriptor {
         disposition: EvidenceDisposition,
     ) -> bool {
         match self.profile {
-            OperatorEvidenceProfile::Phase23 => {
+            OperatorEvidenceProfile::Release => {
                 !matches!(disposition, EvidenceDisposition::CrossLinked)
             }
         }
@@ -227,7 +227,7 @@ impl OperatorEvidenceProfileDescriptor {
 
     pub(crate) const fn requires_observation(self, _slot: OperatorEvidenceSlot) -> bool {
         match self.profile {
-            OperatorEvidenceProfile::Phase23 => false,
+            OperatorEvidenceProfile::Release => false,
         }
     }
 

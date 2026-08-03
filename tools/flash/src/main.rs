@@ -70,7 +70,6 @@ const NVS_PARTITION_OFFSET: &str = "0x9000";
 const NVS_PARTITION_SIZE: &str = "0x6000";
 const NVS_GENERATOR_PYTHON_RELATIVE_PATH: &str =
     ".embuild/espressif/python_env/idf5.5_py3.9_env/bin/python";
-const BUILD_IDENTITY_STATUS_RELATIVE_PATH: &str = "scripts/build-identity-status.sh";
 const UNAVAILABLE: &str = "Unavailable";
 const PROTECTED_OPERATIONAL: &str = "protected-operational";
 const ESPFLASH_EXPECTED_VERSION: &str = "4.5.0";

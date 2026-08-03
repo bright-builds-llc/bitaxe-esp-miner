@@ -90,10 +90,10 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 | `just build` | `bazel build //firmware/bitaxe:firmware` | Build the canonical firmware target. |
 | `just test` | `bazel test //...` or a scoped test target group | Run pure crate, host tool, and script tests. Hardware tests stay explicit. |
 | `just package` | `bazel build //firmware/bitaxe:firmware_image` | Produce image artifacts and print paths. |
-| `just flash board=205 [port=...]` | `bazel run //tools/flash -- flash --board 205 ...` | Build/package first unless image override is provided; fail clearly on missing/ambiguous port. |
-| `just monitor [port=...]` | `bazel run //tools/flash -- monitor ...` | Open serial monitor without flashing. |
-| `just flash-monitor board=205 [port=...]` | `bazel run //tools/flash -- flash-monitor ...` | Flash then monitor, capture command/log evidence when requested. |
-| `just verify-reference` | `bazel run //scripts:verify_reference_clean` | Fail if `reference/esp-miner` is missing or locally modified. |
+| `just flash --board 205 [--port ...]` | `bazel run //tools/flash:flash -- flash --board 205 ...` | Build/package first unless image override is provided; fail clearly on missing/ambiguous port. |
+| `just monitor [--port ...]` | `bazel run //tools/flash:flash -- monitor ...` | Open serial monitor without flashing. |
+| `just flash-monitor --board 205 [--port ...]` | `bazel run //tools/flash:flash -- flash-monitor ...` | Flash then monitor, capture command/log evidence when requested. |
+| `just verify-reference` | `bazel run //tools/automation:verify_reference` | Fail if `reference/esp-miner` is missing or locally modified. |
 | `just parity` | `bazel run //tools/parity:report` | Summarize checklist status and missing evidence. |
 
 ### Host Tools And Parity Tooling
@@ -124,11 +124,11 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 
 ### USB Flashing
 
-- Map `board=205` to Ultra 205 defaults and target image.
+- Map `--board 205` to Ultra 205 defaults and target image.
 - Accept explicit `port`.
 - If `port` is omitted, call `espflash list-ports` and apply project heuristics.
 - On zero ports, fail with install/permission hints.
-- On multiple likely ports, fail with a chooser-style message and exact `port=` examples.
+- On multiple likely ports, fail with a chooser-style message and exact `--port <path>` examples.
 - Print the underlying `espflash` command before executing.
 - Write optional smoke logs into a parity evidence path when requested.
 
@@ -139,8 +139,8 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 | Pure unit tests | Bazel `rust_test` and/or Cargo tests for `crates/*` | Deterministic Arrange/Act/Assert tests for ASIC packet formats, config parsing, Stratum messages, API model serialization, and parity report logic. |
 | Golden/fixture tests | Checked-in JSON/CSV/binary fixtures; optional `insta` for host snapshots | Rust outputs match upstream-derived fixtures. Each fixture must record provenance. |
 | Firmware compile/package | Bazel firmware wrapper target | ESP32-S3 firmware builds and produces ELF/bin artifacts with ESP-IDF `v5.5.4`. |
-| USB smoke | `just flash-monitor board=205 port=...` | Captured log shows boot, app identity, ESP-IDF version, reset reason, and safe no-op/minimal hardware state. |
-| Hardware regression | Explicit `just hardware-smoke` or `just hil board=205 port=...` later | Repeatable tests for voltage, fan, thermal, ASIC init, and mining behavior. Required before safety-critical parity is `verified`. |
+| USB smoke | `just flash-monitor --board 205 --port ...` | Captured log shows boot, app identity, ESP-IDF version, reset reason, and safe no-op/minimal hardware state. |
+| Hardware regression | Explicit `just hardware-smoke` or `just hil --board 205 --port ...` later | Repeatable tests for voltage, fan, thermal, ASIC init, and mining behavior. Required before safety-critical parity is `verified`. |
 
 ## Version/Source Notes
 
@@ -192,7 +192,7 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 | Bazel/Cargo dual graph drifts | Medium | Make Cargo.lock authoritative; use `crate_universe`; add `just repin`/Bazel repin workflow later; CI checks generated lock consistency. | MEDIUM |
 | First build downloads large toolchains and IDF sources | Medium | Use `espup --targets esp32s3 --std`; cache Cargo, `.embuild`, Bazel repository cache in CI; add `just doctor`. | HIGH |
 | Firmware Bazel wrapper has non-hermetic edges | Medium | Keep wrapper narrow, declare outputs, print versions, and isolate mutable tool caches outside source paths. | MEDIUM |
-| USB serial behavior varies by OS and cable/chip bridge | Medium | Use `espflash list-ports`, clear `port=` errors, Linux `dialout` hint, WSL warning, and explicit port override. | HIGH |
+| USB serial behavior varies by OS and cable/chip bridge | Medium | Use `espflash list-ports`, clear `--port` errors, Linux `dialout` hint, WSL warning, and explicit port override. | HIGH |
 | Ultra 205 board details need confirmation from reference tree | Medium | Verify board-specific config, ASIC, sensor, and power paths before enabling hardware control. | MEDIUM |
 | Power/voltage/fan/ASIC bring-up can damage hardware if guessed | High | First milestone should boot/log only; require hardware evidence and safety guards before enabling control paths. | HIGH |
 | GPL provenance contaminates MIT-only files | High | Keep reference read-only, use breadcrumbs, isolate intentionally ported expression, perform release artifact review. | HIGH |
@@ -295,11 +295,11 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 
 - The user grants standing permission for agents to autonomously interact with a connected Bitaxe Ultra 205 over USB for current task verification.
 - Before autonomous hardware use, run `just detect-ultra205`. Treat detection as successful only when it finds exactly one likely ESP USB serial port and `espflash board-info --chip esp32s3 --port <port> --non-interactive` succeeds.
-- If detection succeeds, use the printed `port=<path>` with repo commands such as `just flash-monitor board=205 port=<path> evidence-dir=<path>` and record the detector output in evidence.
-- If detection succeeds and the ignored local file `wifi-credentials.json` exists, agents may pass `wifi-credentials=wifi-credentials.json` to repo-owned `just flash` or `just flash-monitor` commands for developer bring-up. Do not read, print, summarize, or commit the credential file contents.
+- If detection succeeds, use the printed port path with repo commands such as `just flash-monitor --board 205 --port <path> --evidence-dir <path>` and record the detector output in evidence.
+- If detection succeeds and the ignored local file `wifi-credentials.json` exists, agents may pass `--wifi-credentials wifi-credentials.json` to repo-owned `just flash` or `just flash-monitor` commands for developer bring-up. Do not read, print, summarize, or commit the credential file contents.
 - If detection succeeds and an ignored local `pool-credentials*.json` file exists, agents may pass it with `--pool-credentials <path>` only as local runtime input for repo-owned live mining test or verification commands. Use the committed `pool-credentials.json.example` file for shape only; the real local file may define `poolURL`, `poolPort`, `poolUser`, and `poolPassword`, with `poolUser` derived from the owner BTC address, for example `<owner-btc-address>.bitaxe`.
 - Treat pool owner addresses, worker strings, endpoints, ports, passwords, and credential file contents as sensitive local test inputs. Do not print, summarize, commit, copy into evidence, or expose the real file contents. Committed evidence may record category labels such as `pool_config: local-owner-supplied` only, never raw pool URLs, ports, users, workers, passwords, addresses, endpoints, tokens, or NVS secret values.
-- Local developer hardware evidence may keep USB-observed SSIDs, IP addresses, MAC addresses, and `device_url` values to make bring-up and UAT practical. Evidence intended for commit or sharing must be produced with `redact-evidence=true` or otherwise redacted before promotion.
+- Local developer hardware evidence may keep USB-observed SSIDs, IP addresses, MAC addresses, and `device_url` values to make bring-up and UAT practical. Evidence intended for commit or sharing must be produced with `--redact-evidence` or otherwise redacted before promotion.
 - When a repo-owned test or verification command needs `DEVICE_URL`, agents may derive it from fresh monitor output only when the same current verification session has already passed `just detect-ultra205`, the monitor output came from the corresponding repo-owned `just flash-monitor` or `just monitor` run, exactly one origin-only `http://...` or `https://...` candidate is present, and the value is used only as a local runtime input. Do not infer `DEVICE_URL` from mDNS, ARP, router state, scans, stale logs, or unrelated prior evidence. Do not use the value when zero, multiple, redacted, malformed, or stale candidates are found. Never commit raw `DEVICE_URL`, IPs, endpoints, MACs, Wi-Fi values, pool credentials, workers, passwords, tokens, or NVS secret values in evidence.
 - Stop and ask or record hardware evidence pending when there are zero likely ports, multiple likely ports, `board-info` fails, the target is not board `205`, or required recovery/evidence instructions are missing.
 - Task-gated destructive or fault-injection verification is allowed only when an active `TASKS.md` block records the exact command, evidence policy, recovery path, retry bounds, and accepted stop conditions. Do not run ad hoc erase, rollback, interrupted-update, voltage/fan/mining stress, or raw write commands outside that contract.
@@ -326,7 +326,7 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and post-flash runtime evidence routinely exceed short monitor defaults. Agents and repo-owned wrappers must budget accordingly:
 
 1. **Minimum capture timeout:** use at least **6 minutes (360 seconds)** for `just flash`, `just flash-monitor`, `just monitor`, and equivalent `bazel run //tools/flash` invocations when flashing or reflashing real hardware, unless the active task contract or a deterministic test fixture documents a shorter bound explicitly.
-2. **Explicit override required:** `tools/flash` defaults to a 25-second monitor capture, which is insufficient for hardware evidence. Always pass `capture-timeout-seconds=360` (or higher) on `flash-monitor` / `monitor` commands for Ultra 205 bring-up and evidence capture.
+2. **Explicit override required:** Always pass `--capture-timeout-seconds 360` (or higher) on general Ultra 205 bring-up/evidence commands. A task contract may authorize a shorter bounded passive smoke.
 3. **Evidence wrappers:** when `--duration-seconds` governs post-flash monitor capture, use **≥ 360** for hardware mode unless the active task contract documents a shorter deterministic test bound.
 4. **Agent/shell wall clock:** command and tool timeouts must exceed the flash plus monitor budget; prefer **≥ 420 seconds** wall clock when using a 360-second capture timeout.
 5. **Do not treat early exit as failure** until the full timeout elapses unless the repo-owned flash tool reports a hard error (flash/write failure, missing trusted boot markers after complete capture, and similar).
@@ -370,7 +370,7 @@ Agents executing current evidence wrappers with `blocked|hardware` modes must:
    - The active task contract explicitly requires blocked mode for deterministic Bazel tests only.
 3. **Never skip detection** and jump to blocked mode when a board may be connected (standing permission in Autonomous Ultra 205 section applies).
 4. **Build task-correct firmware** before flash; default `just build` is fail-closed. Use the task-named repo-owned package command and only the explicit build inputs required by that workflow.
-5. **Promotion:** hardware artifacts intended for commit must pass redaction review (`redact-evidence=true` or equivalent) before updating `docs/parity/evidence/`.
+5. **Promotion:** hardware artifacts intended for commit must pass redaction review (`--redact-evidence` or equivalent) before updating `docs/parity/evidence/`.
 
 ### Protected Evidence Root Ownership
 
@@ -384,7 +384,8 @@ Agents executing current evidence wrappers with `blocked|hardware` modes must:
 - Follow `docs/parity/evidence-policy.md`: `NeverPersistRaw` values never reach disk or terminal output; `ProtectedOperational` values remain only in mode-0600 files below ignored mode-0700 roots.
 - Private classifiers consume an immutable secret-sanitized artifact before a distinct commit-redacted projection is derived. Cleanup never implies artifact deletion.
 - Before committing evidence-related changes, run `just verify-redaction`. CI must call the same command with an explicit base and head.
-- Redaction exceptions require a reviewed exact path/category entry in `scripts/redaction-exceptions.tsv`; inline, CLI, wildcard, and environment bypasses are forbidden.
+- The active semantic redaction verifier has no exception mechanism. Inline,
+  CLI, wildcard, environment, and path-based bypasses are forbidden.
 
 ### Progress-Gated Hardware Attempts
 

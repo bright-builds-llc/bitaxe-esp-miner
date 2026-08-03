@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260803T213608Z-V12-PACKAGE-IDENTITY-205",
+  "predecessor_sha256": "c0c1bc7c64119eda130bd4d053fe68d6bcd58da117706eadc68e08549b6e492a",
+  "result_sha256": "e280e46ac24821b3808502ea3bedb8367590fc03003c4814c607a3d4d44243de",
+  "row_id": "V12-PACKAGE-IDENTITY-205",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260803T213524Z-AUTOMATION-CUTOVER/PLAN.md",
+  "plan_sha256": "62e185790d2bcceaf48dc68dc58d9ef0d0567e1a4bcceeb2cd65e9b2011299c4",
+  "result_path": "docs/parity/work-plans/20260803T213524Z-AUTOMATION-CUTOVER/RESULT.md",
+  "result_document_sha256": "5d0312e9812d2a4cf1306af6a0b2663396ce780015a97cd1febb04e969eff0d2",
+  "migration_ledger_path": "docs/parity/automation-migration.json",
+  "migration_ledger_sha256": "c7981ec77d2ec2fdecdd98ebc5113f64d0a2c1a11b2009d0f10bbf2b1fa310ff",
+  "before_rust_owned_target": "`tools/automation/src/package.ts`, `crates/bitaxe-api/src/runtime_boot_attestation.rs`, `firmware/bitaxe/src/main.rs`, `firmware/bitaxe/src/boot_evidence.rs`, `tools/parity/src/sys004_version_evidence.rs`",
+  "after_rust_owned_target": "`tools/automation/src/package.ts`, `crates/bitaxe-api/src/runtime_boot_attestation.rs`, `firmware/bitaxe/src/main.rs`, `firmware/bitaxe/src/boot_evidence.rs`, `crates/bitaxe-automation-contracts/src/lib.rs`, `tools/automation/src/version-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "implemented",
+  "before_evidence": "workflow,hardware-smoke",
+  "after_evidence": "workflow,hardware-smoke",
+  "before_notes": "Software admission remains covered, but the typed migration rejects the legacy hardware schema. The exact-package typed hardware smoke must produce `bitaxe-version-evidence-v1` before this row can be verified again.",
+  "after_notes": "Software admission remains covered, but the typed migration rejects the legacy hardware schema. The exact-package typed hardware smoke must produce `bitaxe-version-evidence-v1` before this row can be verified again."
+}

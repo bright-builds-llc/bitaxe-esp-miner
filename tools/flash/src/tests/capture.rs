@@ -351,13 +351,15 @@ fn accepts_ultra_205_board() {
 }
 
 #[test]
-fn detect_preserves_explicit_port_alias() {
+fn detect_preserves_explicit_canonical_port() {
     // Arrange
     let args = [
         "bitaxe-flash",
         "detect",
-        "board=205",
-        "port=/dev/cu.usbmodem101",
+        "--board",
+        "205",
+        "--port",
+        "/dev/cu.usbmodem101",
     ];
 
     // Act
@@ -377,8 +379,10 @@ fn monitor_defaults_to_hardware_safe_capture_budget() {
     let args = [
         "bitaxe-flash",
         "monitor",
-        "board=205",
-        "port=/dev/cu.usbmodem101",
+        "--board",
+        "205",
+        "--port",
+        "/dev/cu.usbmodem101",
     ];
 
     // Act

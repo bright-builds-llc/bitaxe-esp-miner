@@ -1,5 +1,5 @@
 {
-  "schema_version": "phase35-evidence-v1",
+  "schema_version": "bitaxe-correlated-runtime-evidence-v1",
   "exact_package": {
     "source_commit": "0123456789abcdef0123456789abcdef01234567",
     "reference_commit": "89abcdef0123456789abcdef0123456789abcdef",

@@ -6,7 +6,6 @@ use std::fs;
 use camino::Utf8Path;
 use serde::{Deserialize, Serialize};
 
-use crate::operator_evidence::read_phase36_authoritative_snapshot;
 use crate::phase35_evidence::sha256_hex;
 
 mod comprehensive;
@@ -233,9 +232,13 @@ fn require_revision(spec: &RevisionSpec, expected_revision_id: &str) -> Result<(
 }
 
 fn read_predecessor_authority(workspace: &Utf8Path) -> Result<String, String> {
-    let mut predecessor =
-        read_phase36_authoritative_snapshot(workspace, Utf8Path::new(PHASE36_ROOT))
-            .map_err(|error| error.to_string())?;
+    let phase36_snapshot = workspace.join(PHASE36_ROOT).join(SNAPSHOT_FILE);
+    let metadata = fs::symlink_metadata(phase36_snapshot.as_std_path())
+        .map_err(|error| format!("failed to inspect historical checklist snapshot: {error}"))?;
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return Err("historical checklist snapshot must be a non-aliased regular file".to_owned());
+    }
+    let mut predecessor = read(&phase36_snapshot, "historical checklist snapshot")?;
     let mut predecessor_path = format!("{PHASE36_ROOT}/{SNAPSHOT_FILE}");
     for authority in PREDECESSOR_REVISIONS {
         predecessor = read_revision_authority(

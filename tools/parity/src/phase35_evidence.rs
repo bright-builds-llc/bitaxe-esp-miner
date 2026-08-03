@@ -28,7 +28,7 @@ use inventory::validate_inventory;
 pub(crate) use projection::validate_projection_value;
 use projection::{raw_projection_canaries, validate_projection};
 
-pub(crate) const PHASE35_SCHEMA: &str = "phase35-evidence-v1";
+pub(crate) const PHASE35_SCHEMA: &str = bitaxe_automation_contracts::CORRELATED_EVIDENCE_SCHEMA;
 pub(crate) const PHASE35_LIFECYCLE_ID: &str = "35-2026-07-17T17-00-37";
 pub(crate) const EVIDENCE_DOCUMENT: &str = "eligible.json";
 

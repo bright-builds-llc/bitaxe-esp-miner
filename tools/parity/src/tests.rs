@@ -12,7 +12,7 @@ const CHECKLIST: &str = r#"
 
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| WF-001 | Read-only reference submodule | `reference/esp-miner` | `scripts/verify-reference-clean.sh` | implemented | pending | Guard exists. |
+| WF-001 | Read-only reference submodule | `reference/esp-miner` | `tools/xtask/src/main.rs` | implemented | pending | Guard exists. |
 "#;
 
 mod base;

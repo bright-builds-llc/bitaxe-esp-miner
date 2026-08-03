@@ -1,4 +1,3 @@
-use std::env;
 use std::fmt;
 use std::fs;
 use std::process::Command as ProcessCommand;
@@ -11,17 +10,18 @@ use clap::{Parser, Subcommand};
 
 mod package_manifest;
 mod partition_contract;
+mod workspace;
 
 use package_manifest::{
     build_manifest, read_manifest_v3, validate_default_flash_image, validate_package_manifest_v3,
     write_manifest,
 };
+use workspace::{build_identity_status, detect_workspace_dir, verify_reference};
 
 const EXPECTED_REFERENCE_COMMIT: &str = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const UNAVAILABLE: &str = "Unavailable";
 const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
 const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
-const DEFAULT_REFERENCE_GUARD: &str = "scripts/verify-reference-clean.sh";
 const ESP_IDF_VERSION: &str = "v5.5.4";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";
 const WWW_IMAGE_OFFSET: usize = 0x410000;
@@ -37,12 +37,16 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum CliCommand {
+    #[command(name = "build-identity-status")]
+    BuildIdentityStatus,
     #[command(name = "materialize-build-provenance")]
     MaterializeBuildProvenance(MaterializeBuildProvenanceArgs),
     #[command(name = "package-firmware")]
     PackageFirmware(Box<PackageArgs>),
     #[command(name = "validate-package")]
     ValidatePackage(ValidatePackageArgs),
+    #[command(name = "verify-reference")]
+    VerifyReference,
 }
 
 #[derive(Debug, Parser)]
@@ -214,36 +218,18 @@ trait PackageEnvironment {
 #[derive(Debug)]
 struct LocalPackageEnvironment {
     workspace_dir: Utf8PathBuf,
-    reference_guard: Utf8PathBuf,
 }
 
 impl LocalPackageEnvironment {
     fn detect() -> Result<Self> {
         let workspace_dir = detect_workspace_dir()?;
-        let reference_guard = workspace_dir.join(DEFAULT_REFERENCE_GUARD);
-
-        Ok(Self {
-            workspace_dir,
-            reference_guard,
-        })
+        Ok(Self { workspace_dir })
     }
 }
 
 impl PackageEnvironment for LocalPackageEnvironment {
     fn run_reference_guard(&self) -> Result<()> {
-        let output = ProcessCommand::new(self.reference_guard.as_std_path())
-            .env("BUILD_WORKSPACE_DIRECTORY", self.workspace_dir.as_str())
-            .output()
-            .with_context(|| format!("failed to run reference guard {}", self.reference_guard))?;
-
-        if output.status.success() {
-            return Ok(());
-        }
-
-        bail!(
-            "reference guard blocked package manifest generation: {}",
-            command_stderr_or_status(&output)
-        );
+        verify_reference(&self.workspace_dir).map(|_| ())
     }
 
     fn maybe_tool_version(&self, tool: &str) -> Option<String> {
@@ -266,6 +252,9 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        CliCommand::BuildIdentityStatus => {
+            print!("{}", build_identity_status(&detect_workspace_dir()?)?);
+        }
         CliCommand::MaterializeBuildProvenance(args) => {
             materialize_build_provenance(&args)?;
         }
@@ -276,6 +265,12 @@ fn main() -> Result<()> {
         }
         CliCommand::ValidatePackage(args) => {
             run_validate_package(&args)?;
+        }
+        CliCommand::VerifyReference => {
+            println!(
+                "reference clean: {}",
+                verify_reference(&detect_workspace_dir()?)?
+            );
         }
     }
 
@@ -557,46 +552,6 @@ fn parse_board(value: &str) -> std::result::Result<BoardId, String> {
 
 fn parse_utf8_path(value: &str) -> std::result::Result<Utf8PathBuf, String> {
     Ok(Utf8PathBuf::from(value))
-}
-
-fn detect_workspace_dir() -> Result<Utf8PathBuf> {
-    if let Ok(workspace_dir) = env::var("BUILD_WORKSPACE_DIRECTORY") {
-        if !workspace_dir.is_empty() {
-            return Ok(Utf8PathBuf::from(workspace_dir));
-        }
-    }
-
-    let output = ProcessCommand::new("git")
-        .arg("rev-parse")
-        .arg("--show-toplevel")
-        .output()
-        .context("failed to detect workspace directory with git rev-parse --show-toplevel")?;
-
-    if !output.status.success() {
-        bail!(
-            "failed to detect workspace directory: {}",
-            command_stderr_or_status(&output)
-        );
-    }
-
-    let workspace_dir = String::from_utf8(output.stdout)
-        .context("workspace directory output was not valid UTF-8")?;
-    let trimmed = workspace_dir.trim();
-    if trimmed.is_empty() {
-        bail!("workspace directory output was empty");
-    }
-
-    Ok(Utf8PathBuf::from(trimmed))
-}
-
-fn command_stderr_or_status(output: &std::process::Output) -> String {
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    let trimmed_stderr = stderr.trim();
-    if !trimmed_stderr.is_empty() {
-        return trimmed_stderr.to_owned();
-    }
-
-    format!("exit status {}", output.status)
 }
 
 #[cfg(test)]

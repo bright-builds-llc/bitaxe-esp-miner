@@ -22,19 +22,19 @@ filegroup(
 filegroup(
     name = "flash_supervisor_environment_source",
     srcs = ["src/environment.rs"],
-    visibility = ["//scripts:__pkg__"],
+    visibility = ["//visibility:private"],
 )
 
 filegroup(
     name = "flash_supervisor_monitor_source",
     srcs = ["src/monitor.rs"],
-    visibility = ["//scripts:__pkg__"],
+    visibility = ["//visibility:private"],
 )
 
 filegroup(
     name = "flash_supervisor_commands_source",
     srcs = ["src/commands/flash.rs"],
-    visibility = ["//scripts:__pkg__"],
+    visibility = ["//visibility:private"],
 )
 
 rust_binary(

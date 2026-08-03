@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use bitaxe_automation_contracts::{AutomationCommand, WorkflowIdentity};
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
@@ -33,22 +34,6 @@ const ALLOWED_CLAIM_TIERS: &[&str] = &[
     "unsupported-pending",
     "parity-redaction",
 ];
-const PROHIBITED_COMMAND_TOKENS: &[&str] = &[
-    "erase-flash",
-    "erase_flash",
-    "write-flash",
-    "write_flash",
-    "--erase-all",
-    "erase_region",
-    "raw-bm1366",
-    "voltage-control",
-    "fan-control",
-    "stratum",
-    "rollback",
-    "network-scan",
-    "network_scan",
-];
-
 #[derive(Debug, Deserialize)]
 pub(crate) struct MiningAllowManifest {
     pub(crate) board: String,
@@ -64,8 +49,8 @@ pub(crate) struct MiningAllowManifest {
     pub(crate) surface: String,
     pub(crate) claim_tier: String,
     pub(crate) evidence_class: String,
-    pub(crate) allowed_command: String,
-    pub(crate) allowed_inputs: Value,
+    pub(crate) workflow: WorkflowIdentity,
+    pub(crate) constraints: Value,
     pub(crate) abort_conditions: Vec<String>,
     pub(crate) recovery_steps: Vec<String>,
     pub(crate) post_action_safe_state_markers: Vec<String>,
@@ -97,7 +82,8 @@ pub(crate) struct MiningAllowDocuments {
 #[derive(Debug)]
 pub(crate) struct MiningAllowFilters {
     pub(crate) maybe_surface: Option<String>,
-    pub(crate) maybe_allowed_command: Option<String>,
+    pub(crate) maybe_workflow: Option<String>,
+    pub(crate) maybe_request_sha256: Option<String>,
 }
 
 pub(crate) fn load_mining_allow_documents(
@@ -193,7 +179,14 @@ fn validate_required_schema_fields(errors: &mut Vec<String>, manifest: &MiningAl
         ("surface", manifest.surface.as_str()),
         ("claim_tier", manifest.claim_tier.as_str()),
         ("evidence_class", manifest.evidence_class.as_str()),
-        ("allowed_command", manifest.allowed_command.as_str()),
+        (
+            "workflow.schema_version",
+            manifest.workflow.schema_version.as_str(),
+        ),
+        (
+            "workflow.request_sha256",
+            manifest.workflow.request_sha256.as_str(),
+        ),
         ("evidence_dir", manifest.evidence_dir.as_str()),
         ("redaction_reviewer", manifest.redaction_reviewer.as_str()),
     ];
@@ -204,8 +197,8 @@ fn validate_required_schema_fields(errors: &mut Vec<String>, manifest: &MiningAl
         }
     }
 
-    if !manifest.allowed_inputs.is_object() {
-        errors.push("allowed_inputs must be a JSON object".to_owned());
+    if !manifest.constraints.is_object() {
+        errors.push("constraints must be a JSON object".to_owned());
     }
 }
 
@@ -303,14 +296,10 @@ fn validate_surface_and_claim(errors: &mut Vec<String>, manifest: &MiningAllowMa
 }
 
 fn validate_required_procedure_scope(errors: &mut Vec<String>, manifest: &MiningAllowManifest) {
-    if manifest.allowed_command.trim().is_empty() {
-        errors.push("allowed_command must not be empty".to_owned());
-    } else {
-        validate_allowed_command_scope(errors, manifest);
-    }
+    validate_workflow_identity(errors, manifest);
 
-    if manifest.allowed_inputs.is_null() {
-        errors.push("allowed_inputs must not be null".to_owned());
+    if manifest.constraints.is_null() {
+        errors.push("constraints must not be null".to_owned());
     }
 
     if manifest.prerequisite_artifacts.is_empty() {
@@ -381,7 +370,7 @@ fn validate_live_pool_smoke_scope(errors: &mut Vec<String>, manifest: &MiningAll
     }
 
     let maybe_pool_config = manifest
-        .allowed_inputs
+        .constraints
         .get("pool_config")
         .and_then(Value::as_str);
     if !matches!(
@@ -389,27 +378,17 @@ fn validate_live_pool_smoke_scope(errors: &mut Vec<String>, manifest: &MiningAll
         Some("disposable-or-non-secret" | "local-owner-supplied")
     ) {
         errors.push(
-            "live-pool-smoke requires allowed_inputs.pool_config to equal disposable-or-non-secret or local-owner-supplied"
+            "live-pool-smoke requires constraints.pool_config to equal disposable-or-non-secret or local-owner-supplied"
                 .to_owned(),
         );
     }
 
     let maybe_device_url = manifest
-        .allowed_inputs
+        .constraints
         .get("device_url")
         .and_then(Value::as_str);
     if maybe_device_url != Some("explicit") {
-        errors.push(
-            "live-pool-smoke requires allowed_inputs.device_url to equal explicit".to_owned(),
-        );
-    }
-
-    if !manifest
-        .allowed_command
-        .split_whitespace()
-        .any(|token| token == "--device-url")
-    {
-        errors.push("live-pool-smoke requires allowed_command to include --device-url".to_owned());
+        errors.push("live-pool-smoke requires constraints.device_url to equal explicit".to_owned());
     }
 }
 
@@ -419,34 +398,19 @@ fn validate_bounded_soak_scope(errors: &mut Vec<String>, manifest: &MiningAllowM
     }
 
     let maybe_duration_seconds = manifest
-        .allowed_inputs
+        .constraints
         .get("duration_seconds")
         .and_then(Value::as_i64);
     let Some(duration_seconds) = maybe_duration_seconds else {
         errors.push(
-            "bounded-soak requires allowed_inputs.duration_seconds between 60 and 600".to_owned(),
+            "bounded-soak requires constraints.duration_seconds between 60 and 600".to_owned(),
         );
         return;
     };
 
     if !(60..=600).contains(&duration_seconds) {
         errors.push(
-            "bounded-soak requires allowed_inputs.duration_seconds between 60 and 600".to_owned(),
-        );
-    }
-
-    let expected_duration = duration_seconds.to_string();
-    if !option_equals(
-        &manifest
-            .allowed_command
-            .split_whitespace()
-            .collect::<Vec<_>>(),
-        "--duration-seconds",
-        &expected_duration,
-    ) {
-        errors.push(
-            "bounded-soak requires allowed_command --duration-seconds to match allowed_inputs"
-                .to_owned(),
+            "bounded-soak requires constraints.duration_seconds between 60 and 600".to_owned(),
         );
     }
 }
@@ -465,16 +429,27 @@ fn validate_filters(
         }
     }
 
-    let Some(expected_allowed_command) = &filters.maybe_allowed_command else {
-        errors.push("allowed command filter is required".to_owned());
+    let Some(expected_workflow) = &filters.maybe_workflow else {
+        errors.push("workflow filter is required".to_owned());
         return;
     };
 
-    if &manifest.allowed_command != expected_allowed_command {
+    let actual_workflow = serde_json::to_value(manifest.workflow.command)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_owned))
+        .unwrap_or_default();
+    if &actual_workflow != expected_workflow {
         errors.push(format!(
-            "allowed command filter mismatch: manifest `{}` != `{expected_allowed_command}`",
-            manifest.allowed_command
+            "workflow filter mismatch: manifest `{actual_workflow}` != `{expected_workflow}`"
         ));
+    }
+
+    let Some(expected_request_sha256) = &filters.maybe_request_sha256 else {
+        errors.push("request digest filter is required".to_owned());
+        return;
+    };
+    if &manifest.workflow.request_sha256 != expected_request_sha256 {
+        errors.push("request digest filter mismatch".to_owned());
     }
 }
 
@@ -489,72 +464,23 @@ fn allowed_claim_tiers_for_surface(surface: &str) -> &'static [&'static str] {
     }
 }
 
-fn validate_allowed_command_scope(errors: &mut Vec<String>, manifest: &MiningAllowManifest) {
-    let tokens: Vec<&str> = manifest.allowed_command.split_whitespace().collect();
-
-    for prohibited_token in PROHIBITED_COMMAND_TOKENS {
-        if tokens.iter().any(|token| token == prohibited_token) {
-            errors.push(format!(
-                "allowed_command contains prohibited token `{prohibited_token}`"
-            ));
-        }
+fn validate_workflow_identity(errors: &mut Vec<String>, manifest: &MiningAllowManifest) {
+    if manifest.workflow.schema_version != "bitaxe-workflow-identity-v1" {
+        errors.push("workflow schema must be bitaxe-workflow-identity-v1".to_owned());
     }
-
-    if is_expected_phase15_command(manifest, &tokens) {
-        return;
+    if manifest.workflow.command != AutomationCommand::VerifyMining {
+        errors.push("workflow command must be verify-mining".to_owned());
     }
-
-    errors.push(
-        "allowed_command must route through an approved mining evidence wrapper for its surface"
-            .to_owned(),
-    );
-}
-
-fn is_expected_phase15_command(manifest: &MiningAllowManifest, tokens: &[&str]) -> bool {
-    match manifest.surface.as_str() {
-        "bm1366-chip-detect" | "bm1366-work-result" => {
-            starts_with_tokens(
-                tokens,
-                &["bazel", "run", "//tools/flash:flash", "--", "flash-monitor"],
-            ) && option_equals(tokens, "--board", "205")
-                && option_equals(tokens, "--port", &manifest.port)
-                && has_option_with_value(tokens, "--manifest")
-                && has_option_with_value(tokens, "--evidence-dir")
-        }
-        "mining-smoke" | "bounded-soak" => {
-            starts_with_tokens(tokens, &["scripts/phase15-controlled-mining.sh"])
-                && option_equals(tokens, "--surface", &manifest.surface)
-                && has_option_with_value(tokens, "--manifest")
-                && has_option_with_value(tokens, "--out-dir")
-                && has_option_with_value(tokens, "--chip-detect-summary")
-                && has_option_with_value(tokens, "--work-result-summary")
-        }
-        "parity-redaction" => {
-            starts_with_tokens(tokens, &["rg", "-n", "-i"])
-                && tokens.iter().any(|token| {
-                    token.starts_with(
-                        "docs/parity/evidence/phase-15-bm1366-mining-evidence-completion",
-                    )
-                })
-        }
-        _ => false,
+    if manifest.workflow.request_sha256.len() != 64
+        || !manifest
+            .workflow
+            .request_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    {
+        errors
+            .push("workflow request_sha256 must be 64 lowercase hexadecimal characters".to_owned());
     }
-}
-
-fn starts_with_tokens(tokens: &[&str], expected_prefix: &[&str]) -> bool {
-    tokens.starts_with(expected_prefix)
-}
-
-fn option_equals(tokens: &[&str], option: &str, expected_value: &str) -> bool {
-    tokens
-        .windows(2)
-        .any(|window| window[0] == option && window[1] == expected_value)
-}
-
-fn has_option_with_value(tokens: &[&str], option: &str) -> bool {
-    tokens
-        .windows(2)
-        .any(|window| window[0] == option && !window[1].starts_with("--"))
 }
 
 fn expected_evidence_class(claim_tier: &str) -> &'static str {

@@ -80,29 +80,17 @@ proved.
 
 ## Repository redaction guard
 
-`just verify-redaction` is the single repository adapter. It applies
-`NeverPersistRaw` rules to every changed destination blob, applies
-`ProtectedOperational` rules only to committed shareable, documentation, and
-admission sinks, scans the complete tracked admitted evidence tree, and either:
+`just verify-redaction` is the single repository adapter. The typed verifier
+walks every active semantic evidence document, validates the closed schema set,
+and rejects operational paths, network origins, device identifiers, and secret
+field names. It never prints matched content. Findings contain only the path and
+redaction category, and local and CI invocations use the same Bazel target.
 
-- the staged snapshot, by default; or
-- the changed snapshot at an explicit `--base` and `--head`, in CI.
-
-The command never prints matched content. Findings contain only a stable rule
-ID, category, path, and line number. CI and local use share the same script.
-
-Reviewed exceptions live only in `scripts/redaction-exceptions.tsv`. Each entry
-has a stable ID, exact category, exact repository-relative path, non-empty
-reason, and optional ISO expiry date. Wildcards, inline suppressions, command
-line bypasses, and environment-variable bypasses are forbidden. Exceptions
-apply only to unchanged tracked files during the complete admitted
-baseline scan. Staged, changed, base/head, and new-branch destination blobs never
-receive an exception. An all-zero push base means a new branch: the scanner must
-resolve a trustworthy default-branch comparison commit, scan every destination
-blob changed since its merge base with exceptions disabled, and still scan the
-complete tracked admitted baseline. Missing, malformed, or unrelated comparison
-revisions fail closed. Findings are non-echoing and capped without weakening the
-failure result.
+The active verifier has no exceptions. Wildcards, inline suppressions,
+command-line bypasses, environment-variable bypasses, and path allowlists are
+forbidden. Historical evidence is immutable and outside the active semantic
+schema set; promotion into an active schema requires a newly derived redacted
+projection.
 
 ## Evaluator identity closure
 

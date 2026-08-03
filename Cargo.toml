@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/bitaxe-api",
+    "crates/bitaxe-automation-contracts",
     "crates/bitaxe-asic",
     "crates/bitaxe-config",
     "crates/bitaxe-core",
@@ -48,6 +49,7 @@ libc = "0.2"
 rustls = { version = "0.23.42", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
+schemars = { version = "1.2.2", features = ["derive"] }
 sha2 = "0.11.0"
 ssd1306 = "0.10.0"
 tempfile = "3.27.0"

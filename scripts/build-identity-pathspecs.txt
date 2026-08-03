@@ -15,10 +15,9 @@
 :(top)BUILD.bazel
 :(top)Justfile
 
-# Firmware build, package, and identity automation
+# Firmware build, package, identity, and typed automation
 :(top)scripts/BUILD.bazel
-:(top)scripts/build-firmware.sh
-:(top)scripts/package-firmware.sh
-:(top)scripts/build-identity-status.sh
 :(top)scripts/build-identity-pathspecs.txt
 :(top)scripts/build_identity.bzl
+:(top,glob)tools/automation/**
+:(top,glob)crates/bitaxe-automation-contracts/**

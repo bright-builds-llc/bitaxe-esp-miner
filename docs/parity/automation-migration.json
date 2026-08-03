@@ -1,0 +1,45 @@
+{
+  "schema_version": "bitaxe-automation-migration-v1",
+  "cutover": "typed-automation-deep-refactor",
+  "legacy_consumers_accepted": false,
+  "historical_evidence_rewritten": false,
+  "mappings": [
+    {
+      "legacy": "verify-reference-clean.sh",
+      "replacement": "bitaxe-automation verify-reference",
+      "equivalence": "proven",
+      "parity_rows": ["WF-001"]
+    },
+    {
+      "legacy": "build-firmware.sh and package-firmware.sh",
+      "replacement": "bitaxe-automation build-firmware and package-firmware",
+      "equivalence": "proven-software",
+      "parity_rows": ["REL-002", "V12-PACKAGE-IDENTITY-205"]
+    },
+    {
+      "legacy": "verify-production-session-source.sh",
+      "replacement": "bitaxe-automation verify-production-session",
+      "equivalence": "proven-software",
+      "parity_rows": ["STR-007"]
+    },
+    {
+      "legacy": "phase23-redacted-operator-evidence.sh",
+      "replacement": "bitaxe-automation capture-operator-evidence",
+      "equivalence": "pending-new-schema-evidence",
+      "parity_rows": ["REL-09", "CFG-07"]
+    },
+    {
+      "legacy": "phase33-confirmed-settings-durability.sh",
+      "replacement": "bitaxe-automation verify-settings-durability",
+      "equivalence": "pending-new-schema-evidence",
+      "parity_rows": ["V12-HOSTNAME-205"]
+    },
+    {
+      "legacy": "phase35-correlated-evidence.sh and phase36-substantive-evidence.sh",
+      "replacement": "bitaxe-automation capture-correlated-runtime-evidence and capture-version-evidence",
+      "equivalence": "pending-exact-package-hardware-smoke",
+      "parity_rows": ["V12-HOSTNAME-205", "V12-PACKAGE-IDENTITY-205"]
+    }
+  ],
+  "downgraded_rows": ["REL-09", "V12-HOSTNAME-205", "V12-PACKAGE-IDENTITY-205"]
+}

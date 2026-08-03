@@ -51,9 +51,11 @@ fn executable_admission_rejects_zero_load_address_in_parsed_dry_run_before_effec
     let cli = parse_cli([
         "bitaxe-flash".to_owned(),
         "flash".to_owned(),
-        "dry-run=true".to_owned(),
-        "port=/dev/null".to_owned(),
-        format!("manifest={manifest}"),
+        "--dry-run".to_owned(),
+        "--port".to_owned(),
+        "/dev/null".to_owned(),
+        "--manifest".to_owned(),
+        manifest.to_string(),
     ])
     .expect("parsed dry-run command");
     let CliCommand::Flash(command) = cli.command else {
@@ -83,8 +85,10 @@ fn executable_admission_rejects_mapped_mismatch_in_parsed_non_dry_run_before_eff
     let cli = parse_cli([
         "bitaxe-flash".to_owned(),
         "flash".to_owned(),
-        format!("manifest={manifest}"),
-        "wifi-credentials=/missing/credentials.json".to_owned(),
+        "--manifest".to_owned(),
+        manifest.to_string(),
+        "--wifi-credentials".to_owned(),
+        "/missing/credentials.json".to_owned(),
     ])
     .expect("parsed non-dry command");
     let CliCommand::Flash(command) = cli.command else {
@@ -149,9 +153,11 @@ fn firmware_elf_app_sha_rejects_changed_elf_in_parsed_dry_run_before_later_reads
     let cli = parse_cli([
         "bitaxe-flash".to_owned(),
         "flash".to_owned(),
-        "dry-run=true".to_owned(),
-        "port=/dev/null".to_owned(),
-        format!("manifest={manifest}"),
+        "--dry-run".to_owned(),
+        "--port".to_owned(),
+        "/dev/null".to_owned(),
+        "--manifest".to_owned(),
+        manifest.to_string(),
     ])
     .expect("parsed dry-run command");
     let CliCommand::Flash(command) = cli.command else {
@@ -184,8 +190,10 @@ fn firmware_elf_app_sha_rejects_changed_elf_in_parsed_non_dry_run_before_effects
     let cli = parse_cli([
         "bitaxe-flash".to_owned(),
         "flash".to_owned(),
-        format!("manifest={manifest}"),
-        "wifi-credentials=/missing/credentials.json".to_owned(),
+        "--manifest".to_owned(),
+        manifest.to_string(),
+        "--wifi-credentials".to_owned(),
+        "/missing/credentials.json".to_owned(),
     ])
     .expect("parsed non-dry command");
     let CliCommand::Flash(command) = cli.command else {

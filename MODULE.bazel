@@ -5,6 +5,44 @@ module(
 
 bazel_dep(name = "rules_rust", version = "0.70.0")
 bazel_dep(name = "rules_shell", version = "0.8.0")
+bazel_dep(name = "rules_nodejs", version = "6.7.5")
+bazel_dep(name = "aspect_rules_js", version = "3.2.3")
+bazel_dep(name = "aspect_rules_ts", version = "3.9.2")
+
+node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
+node.toolchain(node_version = "24.18.0")
+use_repo(node, "nodejs_toolchains")
+
+rules_ts = use_extension("@aspect_rules_ts//ts:extensions.bzl", "ext")
+rules_ts.deps(
+    ts_integrity = "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==",
+    ts_version = "6.0.3",
+)
+use_repo(rules_ts, "npm_typescript")
+
+npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm")
+npm.npm_import(
+    name = "npm__undici_types__7.18.0",
+    package = "undici-types",
+    root_package = "tools/automation",
+    version = "7.18.0",
+    integrity = "sha512-aLO7B+pYKuqcpapWdzhvzrjfm+qeiQNK3OILZAmlXJxgMfCsltOINMvNonA7nMMKiEjY1vAMA02O7u+eWym43w==",
+)
+npm.npm_import(
+    name = "npm__at_types_node__24.13.3",
+    package = "@types/node",
+    root_package = "tools/automation",
+    version = "24.13.3",
+    integrity = "sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q==",
+    deps = {"undici-types": "undici-types@7.18.0"},
+)
+use_repo(
+    npm,
+    "npm__at_types_node__24.13.3",
+    "npm__at_types_node__24.13.3__links",
+    "npm__undici_types__7.18.0",
+    "npm__undici_types__7.18.0__links",
+)
 
 crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
 crate.from_cargo(

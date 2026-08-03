@@ -3,32 +3,23 @@ use crate::*;
 #[derive(Debug)]
 pub(crate) struct LocalEnvironment {
     pub(crate) workspace_dir: Utf8PathBuf,
-    pub(crate) reference_guard_path: Utf8PathBuf,
 }
 
 impl LocalEnvironment {
     pub(crate) fn detect() -> Result<Self> {
         let workspace_dir = detect_workspace_dir()?;
-        let reference_guard_path = detect_reference_guard_path(&workspace_dir);
-
-        Ok(Self {
-            workspace_dir,
-            reference_guard_path,
-        })
+        Ok(Self { workspace_dir })
     }
 }
 
 impl ReportEnvironment for LocalEnvironment {
     fn run_reference_guard(&self) -> Result<()> {
-        let output = ProcessCommand::new("bash")
-            .arg(self.reference_guard_path.as_std_path())
-            .env("BUILD_WORKSPACE_DIRECTORY", self.workspace_dir.as_str())
+        let output = ProcessCommand::new("cargo")
+            .current_dir(self.workspace_dir.as_std_path())
+            .args(["run", "--quiet", "-p", "xtask", "--", "verify-reference"])
             .output()
             .with_context(|| {
-                format!(
-                    "failed to run reference guard {BAZEL_REFERENCE_GUARD_TARGET} at {}",
-                    self.reference_guard_path
-                )
+                format!("failed to run reference guard {BAZEL_REFERENCE_GUARD_TARGET}")
             })?;
 
         if output.status.success() {

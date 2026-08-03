@@ -88,7 +88,8 @@ pub(crate) fn run_mining_allow_command(
         mining_allow::load_mining_allow_documents(&environment.workspace_dir, &manifest_path)?;
     let filters = mining_allow::MiningAllowFilters {
         maybe_surface: args.maybe_surface,
-        maybe_allowed_command: args.maybe_allowed_command,
+        maybe_workflow: args.maybe_workflow,
+        maybe_request_sha256: args.maybe_request_sha256,
     };
     let report = mining_allow::validate_mining_allow_documents(&documents, &filters);
     let output = mining_allow::render_mining_allow_report(&documents.manifest, &report);
@@ -133,7 +134,8 @@ pub(crate) fn run_safety_allow_command(
         safety_allow::load_safety_allow_documents(&environment.workspace_dir, &manifest_path)?;
     let filters = safety_allow::SafetyAllowFilters {
         maybe_surface: args.maybe_surface,
-        maybe_allowed_command: args.maybe_allowed_command,
+        maybe_workflow: args.maybe_workflow,
+        maybe_request_sha256: args.maybe_request_sha256,
     };
     let report = safety_allow::validate_safety_allow_documents(&documents, &filters);
     let output = safety_allow::render_safety_allow_report(&documents.manifest, &report);

@@ -1,5 +1,6 @@
 load("//scripts:build_identity.bzl", "build_provenance")
 load("@rules_rust//rust:defs.bzl", "rust_test")
+load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary")
 
 exports_files([
     "BUILD.bazel",
@@ -11,6 +12,17 @@ exports_files([
     "static/www/assets/release.json",
 ])
 
+js_library(
+    name = "static_provenance_assets",
+    srcs = [
+        "static/recovery_page.html",
+        "static/www/index.html",
+        "static/www/assets/provenance.js",
+        "static/www/assets/release.json",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 filegroup(
     name = "build_provenance_inputs",
     srcs = [
@@ -21,7 +33,6 @@ filegroup(
         "//crates/bitaxe-core:bitaxe_core",
         "//crates/bitaxe-safety:bitaxe_safety",
         "//crates/bitaxe-stratum:bitaxe_stratum",
-        "//scripts:build_identity_status",
     ] + glob([
         "src/**/*.rs",
         "static/**",
@@ -89,7 +100,7 @@ filegroup(
 filegroup(
     name = "phase35_websocket_sources",
     srcs = ["src/http_api/websocket.rs"],
-    visibility = ["//scripts:__pkg__"],
+    visibility = ["//visibility:private"],
 )
 
 filegroup(
@@ -286,10 +297,12 @@ rust_test(
     ],
 )
 
-genrule(
+js_run_binary(
     name = "firmware_build",
+    copy_srcs_to_bin = False,
+    patch_node_fs = False,
     # Cargo dependency: bitaxe-safety is wired in Cargo.toml and compiled by
-    # //scripts:build_firmware.
+    # the typed automation build workflow.
     srcs = glob(
         ["src/**/*.rs"],
         exclude = [
@@ -322,13 +335,26 @@ genrule(
         "bitaxe-firmware.elf",
         "bitaxe-firmware.sdkconfig",
     ],
-    cmd = "$(location //scripts:build_firmware) $(@D) $(location :build_provenance_stamp) $(location :build_identity_sdkconfig_defaults) $(location :build_timestamp_utc)",
-    local = True,
+    args = [
+        "build-firmware",
+        "--output-dir",
+        "$(RULEDIR)",
+        "--build-provenance-stamp",
+        "$(location :build_provenance_stamp)",
+        "--identity-sdkconfig-defaults",
+        "$(location :build_identity_sdkconfig_defaults)",
+        "--build-timestamp-utc",
+        "$(location :build_timestamp_utc)",
+    ],
+    execution_requirements = {
+        "local": "1",
+        "no-sandbox": "1",
+    },
     tags = [
         "local",
         "no-sandbox",
     ],
-    tools = ["//scripts:build_firmware"],
+    tool = "//tools/automation:build_firmware",
 )
 
 filegroup(
@@ -337,8 +363,10 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-genrule(
+js_run_binary(
     name = "firmware_image",
+    copy_srcs_to_bin = False,
+    patch_node_fs = False,
     srcs = [
         ":bitaxe-firmware-bootloader.bin",
         ":bitaxe-firmware-otadata-initial.bin",
@@ -355,15 +383,33 @@ genrule(
         "bitaxe-ultra205-factory.bin",
         "bitaxe-ultra205-package.json",
     ],
-    cmd = "$(location //scripts:package_firmware) --reference-guard $(location //scripts:verify_reference_clean) --firmware-elf $(location :bitaxe-firmware.elf) --build-provenance-stamp $(location :build_provenance_stamp) --esp-idf-sdkconfig $(location :bitaxe-firmware.sdkconfig) --bootloader-bin $(location :bitaxe-firmware-bootloader.bin) --partition-table-bin $(location :bitaxe-firmware-partition-table.bin) --otadata-initial-bin $(location :bitaxe-firmware-otadata-initial.bin) --out-dir $(@D) --manifest $(@D)/bitaxe-ultra205-package.json",
-    local = True,
+    args = [
+        "package-firmware",
+        "--firmware-elf",
+        "$(location :bitaxe-firmware.elf)",
+        "--build-provenance-stamp",
+        "$(location :build_provenance_stamp)",
+        "--esp-idf-sdkconfig",
+        "$(location :bitaxe-firmware.sdkconfig)",
+        "--bootloader-bin",
+        "$(location :bitaxe-firmware-bootloader.bin)",
+        "--partition-table-bin",
+        "$(location :bitaxe-firmware-partition-table.bin)",
+        "--otadata-initial-bin",
+        "$(location :bitaxe-firmware-otadata-initial.bin)",
+        "--out-dir",
+        "$(RULEDIR)",
+        "--manifest",
+        "$(RULEDIR)/bitaxe-ultra205-package.json",
+    ],
+    execution_requirements = {
+        "local": "1",
+        "no-sandbox": "1",
+    },
     tags = [
         "local",
         "no-sandbox",
     ],
-    tools = [
-        "//scripts:package_firmware",
-        "//scripts:verify_reference_clean",
-    ],
+    tool = "//tools/automation:package_firmware",
     visibility = ["//visibility:public"],
 )

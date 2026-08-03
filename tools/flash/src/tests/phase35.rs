@@ -6,10 +6,14 @@ fn phase35_probe_parses_bounded_read_contract() {
     let args = [
         "bitaxe-flash",
         "phase35-probe",
-        "board=205",
-        "port=/dev/cu.usbmodem101",
-        "stage-root=scratch/probe",
-        "timeout-seconds=30",
+        "--board",
+        "205",
+        "--port",
+        "/dev/cu.usbmodem101",
+        "--stage-root",
+        "scratch/probe",
+        "--timeout-seconds",
+        "30",
     ];
 
     // Act
@@ -85,25 +89,6 @@ fn phase35_probe_command_is_bounded_read_only_and_reset_explicit() {
         .args
         .iter()
         .any(|argument| { matches!(argument.as_str(), "write-bin" | "flash" | "erase-flash") }));
-}
-
-#[test]
-fn phase35_readiness_output_rejects_missing_duplicate_or_raw_fields() {
-    // Arrange
-    let digest = "a".repeat(64);
-    let valid = format!(
-        "category=ready\ncombined_identity={digest}\nphysical_identity={digest}\nenumeration_identity={digest}\n"
-    );
-    let missing =
-        format!("category=ready\ncombined_identity={digest}\nphysical_identity={digest}\n");
-    let raw = format!(
-        "category=ready\ncombined_identity={digest}\nphysical_identity={digest}\nenumeration_identity={digest}\nport=/dev/private\n"
-    );
-
-    // Act and Assert
-    assert!(validate_phase35_readiness_output(&valid).is_ok());
-    assert!(validate_phase35_readiness_output(&missing).is_err());
-    assert!(validate_phase35_readiness_output(&raw).is_err());
 }
 
 #[cfg(unix)]

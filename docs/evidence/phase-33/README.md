@@ -1,6 +1,9 @@
 # Phase 33 Confirmed Settings Durability Evidence
 
-This directory accepts only the redacted summary emitted by `just phase33-settings-durability`. Complete detector, flash, HTTP, serial, identity, process, and holder traces remain under the gitignored `scratch/` root with directory mode `0700` and file mode `0600`.
+This directory preserves the historical Phase 33 summary. Active settings-durability
+classification is exposed as `just verify-settings-durability` and accepts only canonical
+flags. Complete detector, flash, HTTP, serial, identity, process, and holder traces remain
+under the gitignored `scratch/` root with directory mode `0700` and file mode `0600`.
 
 The proof is intentionally narrow:
 
@@ -12,19 +15,22 @@ The proof is intentionally narrow:
 
 The tracked summary contains only commit and trace digests, categories, counts, durations, booleans, and a non-promotional conclusion. It must not contain raw hostnames, origins, addresses, USB identities, device paths, process identifiers, SSIDs, credentials, endpoints, workers, secrets, or commands containing sensitive input.
 
-Run the software simulation first:
+Run the typed automation tests first:
 
 ```bash
-bash scripts/phase33-confirmed-settings-durability-test.sh
-bazel test //scripts:phase33_confirmed_settings_durability_test
+bazel test //tools/automation:automation_test
 ```
 
-After the ordered Rust, Bazel, build, package, and reference-clean gates pass, run the hardware proof with a wall-clock allowance greater than seven minutes:
+Classify protected trace segments with the semantic command:
 
 ```bash
-just phase33-settings-durability --capture-seconds 360 --wifi-credentials wifi-credentials.json
+just verify-settings-durability --trace scratch/settings/trace.log --mode baseline
+just verify-settings-durability --trace scratch/settings/trace.log --mode delivery --start-byte 1
+just verify-settings-durability --trace scratch/settings/trace.log --mode post-restart --start-byte 1 --expected-session session-1 --expected-ordinal 1
 ```
 
-The credential argument is a path-only local input. The wrapper never reads or prints its contents. Omit it when the device already has usable NVS Wi-Fi settings.
+The protected trace remains a local input and is never copied into committed evidence.
 
-A failed detector, package flash, origin, identity, restart, readback, cleanup, timeout, redaction, or restoration gate leaves CFG-12 pending and blocks Phase 33 completion. This evidence does not change parity status and does not perform Phase 35 admission.
+A failed detector, package flash, origin, identity, restart, readback, cleanup, timeout,
+redaction, or restoration gate leaves CFG-12 pending. Legacy Phase 33 evidence is not
+accepted by active consumers after the typed automation cutover.

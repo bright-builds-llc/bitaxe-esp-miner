@@ -1,14 +1,14 @@
 doctor:
-    ./scripts/esp-doctor.sh
+    bazel run //tools/automation:doctor
 
 bootstrap-esp *args:
-    ./scripts/bootstrap-esp.sh {{ args }}
+    bazel run //tools/automation:bootstrap_esp -- {{ args }}
 
 detect-ultra205 *args:
     bazel run //tools/flash:flash -- detect {{ args }}
 
-diagnose-ultra205-session *args:
-    ./scripts/diagnose-ultra205-session.sh {{ args }}
+observe-serial *args:
+    bazel run //tools/automation:observe_serial -- {{ args }}
 
 diagnose-ultra205-late-attach *args:
     bash scripts/phase28.1.1-terminal-closure-guard.sh
@@ -38,10 +38,10 @@ mining-campaign *args:
     bazel run //tools/flash:flash -- mining-campaign {{ args }}
 
 verify-flash-durability *args:
-    ./scripts/verify-flash-durability.sh {{ args }}
+    bazel run //tools/automation:verify_flash_durability -- {{ args }}
 
 verify-reference:
-    bazel run //scripts:verify_reference_clean
+    bazel run //tools/automation:verify_reference
 
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
@@ -50,22 +50,20 @@ parity-progress *args:
     bazel run //tools/parity:report -- progress {{ args }}
 
 verify-redaction *args:
-    bazel run //scripts:verify_redaction -- {{ args }}
+    bazel run //tools/automation:verify_redaction -- {{ args }}
 
 verify-production-session:
-    bazel test //crates/bitaxe-stratum:tests //crates/bitaxe-api:tests //crates/bitaxe-config:tests //scripts:verify_production_session_source_test
-    bazel run //scripts:verify_production_session_source
-    bazel build //firmware/bitaxe:firmware
+    bazel run //tools/automation:verify_production_session
 
-phase23-evidence *args:
-    bazel run //scripts:phase23_redacted_operator_evidence -- {{ args }}
+capture-operator-evidence *args:
+    bazel run //tools/automation:capture_operator_evidence -- {{ args }}
 
-phase33-settings-durability *args:
-    ./scripts/phase33-confirmed-settings-durability.sh {{ args }}
+verify-settings-durability *args:
+    bazel run //tools/automation:verify_settings_durability -- {{ args }}
 
-phase35-evidence *args:
+capture-correlated-runtime-evidence *args:
     bazel build //firmware/bitaxe:firmware_image
-    bazel run //scripts:phase35_correlated_evidence -- {{ args }}
+    bazel run //tools/automation:capture_correlated_runtime_evidence -- {{ args }}
 
-phase36-substantive-evidence *args:
-    bazel run //scripts:phase36_substantive_evidence -- {{ args }}
+capture-version-evidence *args:
+    bazel run //tools/automation:capture_version_evidence -- {{ args }}

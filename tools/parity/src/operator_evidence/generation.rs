@@ -6,18 +6,12 @@ use camino::Utf8PathBuf;
 mod filesystem;
 mod ownership;
 mod phase35;
-mod phase36;
 #[cfg(test)]
 mod tests;
 
 pub(crate) use phase35::{
     publish_phase35_generation, Phase35GenerationDocuments, Phase35PublicationFailurePoint,
     Phase35PublicationOptions,
-};
-use phase36::Phase36PublicationFailurePoint;
-pub(crate) use phase36::{
-    publish_phase36_generation, read_phase36_authoritative_snapshot, read_phase36_public_checklist,
-    Phase36GenerationDocuments, Phase36PublicationOptions,
 };
 #[derive(Debug)]
 pub(crate) enum GenerationError {
@@ -28,7 +22,6 @@ pub(crate) enum GenerationError {
     },
     Validation(Vec<String>),
     Phase35Injected(Phase35PublicationFailurePoint),
-    Phase36Injected(Phase36PublicationFailurePoint),
     RecoveryRequired {
         destination: Utf8PathBuf,
         retained_old_generation: Utf8PathBuf,
@@ -46,9 +39,6 @@ impl fmt::Display for GenerationError {
             }
             Self::Phase35Injected(point) => {
                 write!(formatter, "injected Phase 35 publication failure at {point:?}")
-            }
-            Self::Phase36Injected(point) => {
-                write!(formatter, "injected Phase 36 publication failure at {point:?}")
             }
             Self::RecoveryRequired {
                 destination,

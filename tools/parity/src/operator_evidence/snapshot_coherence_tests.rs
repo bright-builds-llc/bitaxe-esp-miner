@@ -36,13 +36,13 @@ fn operator_snapshot_coherence_is_enforced_only_when_requested() {
 
     // Act
     let coherent = validate_operator_evidence_documents_with_snapshot_coherence(
-        OperatorEvidenceProfile::Phase23,
+        OperatorEvidenceProfile::Release,
         &coherent_documents,
         &filters,
         true,
     );
     let missing_marker = validate_operator_evidence_documents_with_snapshot_coherence(
-        OperatorEvidenceProfile::Phase23,
+        OperatorEvidenceProfile::Release,
         &missing_marker_documents,
         &filters,
         true,

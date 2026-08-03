@@ -150,33 +150,6 @@ pub(crate) fn is_lower_hex_digest(value: &str) -> bool {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
-pub(crate) fn validate_phase35_readiness_output(output: &str) -> Result<()> {
-    let mut keys = BTreeSet::new();
-    let mut category_ready = false;
-    let mut digest_count = 0;
-    for line in output.lines() {
-        let Some((key, value)) = line.split_once('=') else {
-            bail!("phase35_stage_readiness=failed reason=output_invalid");
-        };
-        if !keys.insert(key) {
-            bail!("phase35_stage_readiness=failed reason=output_invalid");
-        }
-        match key {
-            "category" if value == "ready" => category_ready = true,
-            "combined_identity" | "physical_identity" | "enumeration_identity"
-                if is_lower_hex_digest(value) =>
-            {
-                digest_count += 1;
-            }
-            _ => bail!("phase35_stage_readiness=failed reason=output_invalid"),
-        }
-    }
-    if keys.len() != 4 || !category_ready || digest_count != 3 {
-        bail!("phase35_stage_readiness=failed reason=output_invalid");
-    }
-    Ok(())
-}
-
 pub(crate) fn set_private_directory_mode(path: &Utf8Path) -> Result<()> {
     #[cfg(unix)]
     {

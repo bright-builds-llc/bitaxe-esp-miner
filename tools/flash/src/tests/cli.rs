@@ -1,16 +1,19 @@
 use super::*;
 
 #[test]
-fn parses_key_value_aliases_for_flash() {
+fn parses_canonical_flags_for_flash() {
     // Arrange
     let args = [
         "bitaxe-flash",
         "flash",
-        "board=205",
-        "dry-run=true",
-        "redact-evidence=true",
-        "port=/dev/cu.usbmodem101",
-        "image=/tmp/bitaxe-ultra205.elf",
+        "--board",
+        "205",
+        "--dry-run",
+        "--redact-evidence",
+        "--port",
+        "/dev/cu.usbmodem101",
+        "--image",
+        "/tmp/bitaxe-ultra205.elf",
     ];
 
     // Act
@@ -31,21 +34,30 @@ fn parses_key_value_aliases_for_flash() {
 }
 
 #[test]
-fn parses_closed_mining_campaign_aliases() {
+fn parses_closed_mining_campaign_flags() {
     // Arrange
     let args = [
         "bitaxe-flash",
         "mining-campaign",
-        "stage=live-share",
-        "profile=conservative",
-        "board=205",
-        "port=/dev/cu.usbmodem101",
-        "manifest=/tmp/package.json",
-        "wifi-credentials=/tmp/wifi.json",
-        "pool_credentials=/tmp/pool.json",
-        "evidence_dir=/tmp/attempt-001",
-        "duration_seconds=600",
-        "redact_evidence=true",
+        "--stage",
+        "live-share",
+        "--profile",
+        "conservative",
+        "--board",
+        "205",
+        "--port",
+        "/dev/cu.usbmodem101",
+        "--manifest",
+        "/tmp/package.json",
+        "--wifi-credentials",
+        "/tmp/wifi.json",
+        "--pool-credentials",
+        "/tmp/pool.json",
+        "--evidence-dir",
+        "/tmp/attempt-001",
+        "--duration-seconds",
+        "600",
+        "--redact-evidence",
     ];
 
     // Act
@@ -165,102 +177,34 @@ fn phase36_retired_dual_plus_redaction_shape_fails_in_real_parser() {
 }
 
 #[test]
-fn flash_monitor_parses_capture_timeout_alias() {
+fn flash_monitor_parses_only_canonical_flags() {
     // Arrange
-    let hyphenated_args = [
+    let canonical = [
         "bitaxe-flash",
         "flash-monitor",
-        "port=/dev/cu.usbmodem101",
-        "capture-timeout-seconds=30",
+        "--port",
+        "/dev/cu.usbmodem101",
+        "--capture-timeout-seconds",
+        "30",
+        "--redact-evidence",
     ];
-    let underscored_args = [
+    let legacy = [
         "bitaxe-flash",
         "flash-monitor",
-        "port=/dev/cu.usbmodem101",
         "capture_timeout_seconds=30",
     ];
 
     // Act
-    let hyphenated_cli = parse_cli(hyphenated_args).expect("hyphenated cli");
-    let underscored_cli = parse_cli(underscored_args).expect("underscored cli");
+    let cli = parse_cli(canonical).expect("canonical cli");
+    let legacy_error = parse_cli(legacy).expect_err("legacy syntax must fail");
 
     // Assert
-    let CliCommand::FlashMonitor(hyphenated_command) = hyphenated_cli.command else {
+    let CliCommand::FlashMonitor(command) = cli.command else {
         panic!("expected flash-monitor command");
     };
-    let CliCommand::FlashMonitor(underscored_command) = underscored_cli.command else {
-        panic!("expected flash-monitor command");
-    };
-    assert_eq!(hyphenated_command.capture_timeout_seconds, 30);
-    assert_eq!(underscored_command.capture_timeout_seconds, 30);
-}
-
-#[test]
-fn flash_monitor_parses_redact_evidence_aliases() {
-    // Arrange
-    let hyphenated_args = [
-        "bitaxe-flash",
-        "flash-monitor",
-        "port=/dev/cu.usbmodem101",
-        "redact-evidence=true",
-    ];
-    let underscored_args = [
-        "bitaxe-flash",
-        "flash-monitor",
-        "port=/dev/cu.usbmodem101",
-        "redact_evidence=true",
-    ];
-
-    // Act
-    let hyphenated_cli = parse_cli(hyphenated_args).expect("hyphenated cli");
-    let underscored_cli = parse_cli(underscored_args).expect("underscored cli");
-
-    // Assert
-    let CliCommand::FlashMonitor(hyphenated_command) = hyphenated_cli.command else {
-        panic!("expected flash-monitor command");
-    };
-    let CliCommand::FlashMonitor(underscored_command) = underscored_cli.command else {
-        panic!("expected flash-monitor command");
-    };
-    assert!(hyphenated_command.common.redact_evidence);
-    assert!(underscored_command.common.redact_evidence);
-}
-
-#[test]
-fn flash_monitor_parses_dual_evidence_mode_aliases() {
-    // Arrange
-    let hyphenated_args = [
-        "bitaxe-flash",
-        "flash-monitor",
-        "evidence-dir=/tmp/evidence",
-        "evidence-mode=dual",
-    ];
-    let underscored_args = [
-        "bitaxe-flash",
-        "flash-monitor",
-        "evidence_dir=/tmp/evidence",
-        "evidence_mode=dual",
-    ];
-
-    // Act
-    let hyphenated_cli = parse_cli(hyphenated_args).expect("hyphenated cli");
-    let underscored_cli = parse_cli(underscored_args).expect("underscored cli");
-
-    // Assert
-    let CliCommand::FlashMonitor(hyphenated_command) = hyphenated_cli.command else {
-        panic!("expected flash-monitor command");
-    };
-    let CliCommand::FlashMonitor(underscored_command) = underscored_cli.command else {
-        panic!("expected flash-monitor command");
-    };
-    assert_eq!(
-        hyphenated_command.common.evidence_mode,
-        Some(EvidenceMode::Dual)
-    );
-    assert_eq!(
-        underscored_command.common.evidence_mode,
-        Some(EvidenceMode::Dual)
-    );
+    assert_eq!(command.capture_timeout_seconds, 30);
+    assert!(command.common.redact_evidence);
+    assert!(format!("{legacy_error:#}").contains("unexpected argument"));
 }
 
 #[test]
@@ -270,8 +214,10 @@ fn finalize_evidence_parses_software_only_inputs() {
     let args = [
         "bitaxe-flash".to_owned(),
         "finalize-evidence".to_owned(),
-        "evidence_dir=scratch/private-evidence".to_owned(),
-        format!("expected_private_sha256={digest}"),
+        "--evidence-dir".to_owned(),
+        "scratch/private-evidence".to_owned(),
+        "--expected-private-sha256".to_owned(),
+        digest.clone(),
     ];
 
     // Act
@@ -467,19 +413,23 @@ fn dual_console_value_never_exposes_operational_input() {
 }
 
 #[test]
-fn parses_wifi_credentials_aliases_for_flash_and_flash_monitor() {
+fn parses_canonical_wifi_credentials_for_flash_and_flash_monitor() {
     // Arrange
     let flash_args = [
         "bitaxe-flash",
         "flash",
-        "port=/dev/cu.usbmodem101",
-        "wifi-credentials=/tmp/wifi.json",
+        "--port",
+        "/dev/cu.usbmodem101",
+        "--wifi-credentials",
+        "/tmp/wifi.json",
     ];
     let flash_monitor_args = [
         "bitaxe-flash",
         "flash-monitor",
-        "port=/dev/cu.usbmodem101",
-        "wifi_credentials=/tmp/wifi.json",
+        "--port",
+        "/dev/cu.usbmodem101",
+        "--wifi-credentials",
+        "/tmp/wifi.json",
     ];
 
     // Act

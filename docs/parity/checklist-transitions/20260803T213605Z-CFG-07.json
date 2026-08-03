@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260803T213605Z-CFG-07",
+  "predecessor_sha256": "1b25bf090fa1bc03a8fc354fdb1b907825dae39408d61a0df1f61529fbed50e5",
+  "result_sha256": "0ea062c53d7958f3d5c49d798abafa861f023e7aacd2bb8e631825d50c1af3ad",
+  "row_id": "CFG-07",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260803T213524Z-AUTOMATION-CUTOVER/PLAN.md",
+  "plan_sha256": "62e185790d2bcceaf48dc68dc58d9ef0d0567e1a4bcceeb2cd65e9b2011299c4",
+  "result_path": "docs/parity/work-plans/20260803T213524Z-AUTOMATION-CUTOVER/RESULT.md",
+  "result_document_sha256": "5d0312e9812d2a4cf1306af6a0b2663396ce780015a97cd1febb04e969eff0d2",
+  "migration_ledger_path": "docs/parity/automation-migration.json",
+  "migration_ledger_sha256": "c7981ec77d2ec2fdecdd98ebc5113f64d0a2c1a11b2009d0f10bbf2b1fa310ff",
+  "before_rust_owned_target": "`scripts/phase23-redacted-operator-evidence.sh`, `docs/release/ultra-205.md`, `docs/parity/evidence/phase-23-redacted-operator-evidence-workflow/redaction-review.md`",
+  "after_rust_owned_target": "`tools/automation/src/cli.ts`, `tools/automation/src/process.ts`, `docs/release/ultra-205.md`",
+  "before_status": "implemented",
+  "after_status": "implemented",
+  "before_evidence": "workflow",
+  "after_evidence": "workflow",
+  "before_notes": "Phase 23 accepts local pool and Wi-Fi credential paths only as runtime inputs and commits category labels such as `pool_config: local-owner-supplied`, `wifi_config: local-owner-supplied`, `raw_pool_values_committed: no`, and `raw_artifacts_committed: no`; real credential contents remain local-only. Phase 28 consolidation cites [`docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md) and [`redaction-review.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/redaction-review.md) with category labels only. This row stays below `verified` because runtime credential handling is safety-critical and lacks hardware proof of live credential use during mining. This does not verify Phase 24 BM1366 production work, does not verify Phase 25 live Stratum socket success, does not verify accepted/rejected shares, and does not verify Phase 26 telemetry closure. Phase 30 records [`disposition.md`](evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md) with `phase30_disposition: no_promotion_no_eligible_evidence`; this row remains below verified.",
+  "after_notes": "Typed requests retain credential paths only as protected runtime inputs; machine-facing stdout is a single redacted result envelope. Fresh hardware proof of live credential use during mining is still required."
+}

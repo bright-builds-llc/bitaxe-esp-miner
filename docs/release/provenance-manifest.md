@@ -40,7 +40,7 @@ material with explicit review boundaries.
 | Static filesystem source tree | `firmware/bitaxe/static/www` | Source tree for future `www.bin` generation. |
 
 - Owner: static/SPIFFS packaging workflow.
-- Package generation: `scripts/package-firmware.sh` builds `www.bin` from the
+- Package generation: `bitaxe-automation package-firmware` builds `www.bin` from the
   static filesystem source tree with ESP-IDF `spiffsgen.py` at size `0x300000`;
   `assets/app.css.gz` is the representative gzip static smoke asset included in
   that source tree.

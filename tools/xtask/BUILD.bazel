@@ -5,6 +5,7 @@ filegroup(
     srcs = [
         "src/main.rs",
         "src/package_manifest.rs",
+        "src/workspace.rs",
     ],
     visibility = ["//visibility:public"],
 )
@@ -17,6 +18,7 @@ rust_binary(
         "src/package_manifest/tests.rs",
         "src/tests.rs",
         "src/partition_contract.rs",
+        "src/workspace.rs",
     ],
     crate_name = "xtask",
     edition = "2021",

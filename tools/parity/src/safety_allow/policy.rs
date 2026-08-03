@@ -1,4 +1,5 @@
 use super::*;
+use bitaxe_automation_contracts::AutomationCommand;
 
 pub(super) fn validate_detector_gate(errors: &mut Vec<String>, manifest: &SafetyAllowManifest) {
     if manifest.board != "205" {
@@ -88,14 +89,10 @@ pub(super) fn validate_required_procedure_scope(
     errors: &mut Vec<String>,
     manifest: &SafetyAllowManifest,
 ) {
-    if manifest.allowed_command.trim().is_empty() {
-        errors.push("allowed_command must not be empty".to_owned());
-    } else {
-        validate_allowed_command_scope(errors, manifest);
-    }
+    validate_workflow_identity(errors, manifest);
 
-    if manifest.allowed_inputs.is_null() {
-        errors.push("allowed_inputs must not be null".to_owned());
+    if manifest.constraints.is_null() {
+        errors.push("constraints must not be null".to_owned());
     }
 
     if manifest.evidence_dir.as_str().trim().is_empty() {
@@ -122,39 +119,34 @@ pub(super) fn validate_failure_paths_scope(
         return;
     }
 
+    require_string(errors, &manifest.constraints, "stimulus", "fault-stimulus");
     require_string(
         errors,
-        &manifest.allowed_inputs,
-        "stimulus",
-        "fault-stimulus",
-    );
-    require_string(
-        errors,
-        &manifest.allowed_inputs,
+        &manifest.constraints,
         "expected_fault",
         "fault-stimulus",
     );
     require_string(
         errors,
-        &manifest.allowed_inputs,
+        &manifest.constraints,
         "abort_condition",
         "fault-stimulus",
     );
     require_string(
         errors,
-        &manifest.allowed_inputs,
+        &manifest.constraints,
         "restore_path",
         "fault-stimulus",
     );
     require_string(
         errors,
-        &manifest.allowed_inputs,
+        &manifest.constraints,
         "projection_status",
         "fault-stimulus",
     );
     require_string(
         errors,
-        &manifest.allowed_inputs,
+        &manifest.constraints,
         "final_safe_state_marker",
         "fault-stimulus",
     );
@@ -170,7 +162,7 @@ pub(super) fn validate_live_api_websocket_scope(
 
     require_string_value(
         errors,
-        &manifest.allowed_inputs,
+        &manifest.constraints,
         "network_scan",
         "disabled",
         "live-api-websocket-telemetry",
@@ -179,13 +171,13 @@ pub(super) fn validate_live_api_websocket_scope(
     if manifest.claim_tier == "unsupported-pending" {
         require_string(
             errors,
-            &manifest.allowed_inputs,
+            &manifest.constraints,
             "device_url_source",
             "unsupported-pending live-api-websocket-telemetry",
         );
         require_string(
             errors,
-            &manifest.allowed_inputs,
+            &manifest.constraints,
             "reason",
             "unsupported-pending live-api-websocket-telemetry",
         );
@@ -197,7 +189,7 @@ pub(super) fn validate_live_api_websocket_scope(
     }
 
     let maybe_device_url_source = manifest
-        .allowed_inputs
+        .constraints
         .get("device_url_source")
         .and_then(Value::as_str)
         .map(str::trim);
@@ -207,38 +199,29 @@ pub(super) fn validate_live_api_websocket_scope(
     );
     if !has_explicit_target {
         errors.push(
-            "api-websocket-projection requires allowed_inputs.device_url_source to name explicit DEVICE_URL or trusted raw origin-only target lock"
+            "api-websocket-projection requires constraints.device_url_source to name explicit DEVICE_URL or trusted raw origin-only target lock"
                 .to_owned(),
         );
     }
 
     require_string(
         errors,
-        &manifest.allowed_inputs,
+        &manifest.constraints,
         "route_path",
         "api-websocket-projection",
     );
     require_positive_integer(
         errors,
-        &manifest.allowed_inputs,
+        &manifest.constraints,
         "duration_ms",
         "api-websocket-projection",
     );
     require_positive_integer(
         errors,
-        &manifest.allowed_inputs,
+        &manifest.constraints,
         "max_frames",
         "api-websocket-projection",
     );
-
-    if maybe_device_url_source == Some("explicit DEVICE_URL")
-        && !has_option(&manifest.allowed_command, "--device-url")
-    {
-        errors.push(
-            "api-websocket-projection with explicit DEVICE_URL requires allowed_command to include --device-url"
-                .to_owned(),
-        );
-    }
 }
 
 pub(super) fn validate_active_claim_scope(
@@ -304,12 +287,20 @@ pub(super) fn validate_filters(
         }
     }
 
-    if let Some(expected_allowed_command) = &filters.maybe_allowed_command {
-        if &manifest.allowed_command != expected_allowed_command {
+    if let Some(expected_workflow) = &filters.maybe_workflow {
+        let actual_workflow = serde_json::to_value(manifest.workflow.command)
+            .ok()
+            .and_then(|value| value.as_str().map(str::to_owned))
+            .unwrap_or_default();
+        if &actual_workflow != expected_workflow {
             errors.push(format!(
-                "allowed command filter mismatch: manifest `{}` != `{expected_allowed_command}`",
-                manifest.allowed_command
+                "workflow filter mismatch: manifest `{actual_workflow}` != `{expected_workflow}`"
             ));
+        }
+    }
+    if let Some(expected_request_sha256) = &filters.maybe_request_sha256 {
+        if &manifest.workflow.request_sha256 != expected_request_sha256 {
+            errors.push("request digest filter mismatch".to_owned());
         }
     }
 }
@@ -364,93 +355,37 @@ fn allowed_claim_tiers_for_surface(surface: &str) -> &'static [&'static str] {
     }
 }
 
-fn validate_allowed_command_scope(errors: &mut Vec<String>, manifest: &SafetyAllowManifest) {
-    let tokens: Vec<&str> = manifest.allowed_command.split_whitespace().collect();
-
-    if is_expected_safety_command(manifest, &tokens) {
-        return;
+fn validate_workflow_identity(errors: &mut Vec<String>, manifest: &SafetyAllowManifest) {
+    if manifest.workflow.schema_version != "bitaxe-workflow-identity-v1" {
+        errors.push("workflow schema must be bitaxe-workflow-identity-v1".to_owned());
     }
-
-    errors.push(
-        "allowed_command must route through an approved safety evidence wrapper for its surface"
-            .to_owned(),
-    );
-}
-
-fn is_expected_safety_command(manifest: &SafetyAllowManifest, tokens: &[&str]) -> bool {
-    match manifest.surface.as_str() {
-        "safe-baseline" => {
-            starts_with_tokens(
-                tokens,
-                &["bazel", "run", "//tools/flash:flash", "--", "flash-monitor"],
-            ) && option_equals(tokens, "--board", "205")
-                && option_equals(tokens, "--port", &manifest.port)
-                && has_option_with_value(tokens, "--manifest")
-                && has_option_with_value(tokens, "--evidence-dir")
-        }
-        "power-telemetry" | "voltage-control" => {
-            starts_with_tokens(tokens, &["scripts/phase14-power-voltage.sh"])
-                && option_equals(tokens, "--surface", &manifest.surface)
-                && has_option_with_value(tokens, "--manifest")
-                && has_option_with_value(tokens, "--out-dir")
-        }
-        "thermal-fan" => {
-            starts_with_tokens(tokens, &["scripts/phase14-thermal-fan.sh"])
-                && option_equals(tokens, "--surface", "thermal-fan")
-                && has_option_with_value(tokens, "--manifest")
-                && has_option_with_value(tokens, "--out-dir")
-        }
-        "self-test-watchdog-load" => {
-            starts_with_tokens(tokens, &["scripts/phase14-self-test-watchdog-load.sh"])
-                && has_option_with_value(tokens, "--manifest")
-                && has_option_with_value(tokens, "--out-dir")
-        }
-        "display-input" => {
-            starts_with_tokens(tokens, &["scripts/phase14-display-input.sh"])
-                && has_option_with_value(tokens, "--manifest")
-                && has_option_with_value(tokens, "--out-dir")
-        }
-        "failure-paths" => {
-            starts_with_tokens(tokens, &["scripts/phase20-failure-paths.sh"])
-                && has_option_with_value(tokens, "--manifest")
-                && has_option_with_value(tokens, "--out-dir")
-                && !tokens.contains(&"--stimulus")
-        }
-        "live-api-websocket-telemetry" => {
-            starts_with_tokens(tokens, &["scripts/phase14-live-telemetry.sh"])
-                && has_option_with_value(tokens, "--manifest")
-                && has_option_with_value(tokens, "--out-dir")
-        }
-        "parity-redaction" => starts_with_tokens(tokens, &["rg"]),
-        _ => false,
+    let expected = if manifest.surface == "parity-redaction" {
+        AutomationCommand::VerifyRedaction
+    } else if manifest.surface == "safe-baseline" {
+        AutomationCommand::CaptureVersionEvidence
+    } else {
+        AutomationCommand::VerifyHardwareSurface
+    };
+    if manifest.workflow.command != expected {
+        errors.push("workflow command does not match the admitted safety surface".to_owned());
     }
-}
-
-fn starts_with_tokens(tokens: &[&str], expected_prefix: &[&str]) -> bool {
-    tokens.starts_with(expected_prefix)
-}
-
-fn option_equals(tokens: &[&str], option: &str, expected_value: &str) -> bool {
-    tokens
-        .windows(2)
-        .any(|window| window[0] == option && window[1] == expected_value)
-}
-
-fn has_option_with_value(tokens: &[&str], option: &str) -> bool {
-    tokens
-        .windows(2)
-        .any(|window| window[0] == option && !window[1].starts_with("--"))
-}
-
-fn has_option(command: &str, option: &str) -> bool {
-    command.split_whitespace().any(|token| token == option)
+    if manifest.workflow.request_sha256.len() != 64
+        || !manifest
+            .workflow
+            .request_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    {
+        errors
+            .push("workflow request_sha256 must be 64 lowercase hexadecimal characters".to_owned());
+    }
 }
 
 fn require_string(errors: &mut Vec<String>, inputs: &Value, field: &str, claim: &str) {
     let maybe_value = inputs.get(field).and_then(Value::as_str).map(str::trim);
     match maybe_value {
         Some(value) if !value.is_empty() => {}
-        _ => errors.push(format!("{claim} requires allowed_inputs.{field}")),
+        _ => errors.push(format!("{claim} requires constraints.{field}")),
     }
 }
 
@@ -467,7 +402,7 @@ fn require_string_value(
     }
 
     errors.push(format!(
-        "{claim} requires allowed_inputs.{field} to equal {expected_value}"
+        "{claim} requires constraints.{field} to equal {expected_value}"
     ));
 }
 
@@ -475,14 +410,14 @@ fn require_positive_integer(errors: &mut Vec<String>, inputs: &Value, field: &st
     let maybe_value = inputs.get(field).and_then(Value::as_i64);
     let Some(value) = maybe_value else {
         errors.push(format!(
-            "{claim} requires allowed_inputs.{field} to be positive"
+            "{claim} requires constraints.{field} to be positive"
         ));
         return;
     };
 
     if value <= 0 {
         errors.push(format!(
-            "{claim} requires allowed_inputs.{field} to be positive"
+            "{claim} requires constraints.{field} to be positive"
         ));
     }
 }

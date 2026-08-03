@@ -44,7 +44,7 @@ fn phase28_verified_cfg07_rejects_verified_status() {
     let checklist = r#"
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `scripts/phase23-redacted-operator-evidence.sh` | verified | workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md redaction_status: passed exact_non_claims pool_config: local-owner-supplied. |
+| CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `tools/automation/src/cli.ts` | verified | workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md redaction_status: passed exact_non_claims pool_config: local-owner-supplied. |
 "#;
     let rows = parse_checklist(checklist).expect("checklist should parse");
 
@@ -117,7 +117,7 @@ fn phase28_guard_accepts_conservative_rows() {
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | STR-09 | Live submit response classification or blocker | `reference/esp-miner/main/system.c` | `crates/bitaxe-stratum` | implemented | unit,workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md phase-27-live-hardware-asic-and-stratum-bridge/share-outcome.md redaction-review.md redaction_status: passed exact_non_claims share_outcome: blocked_safe_prerequisite below verified. |
-| CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `scripts/phase23-redacted-operator-evidence.sh` | implemented | workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md redaction_status: passed exact_non_claims below verified category labels only. |
+| CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `tools/automation/src/cli.ts` | implemented | workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md redaction_status: passed exact_non_claims below verified category labels only. |
 | SAFE-10 | Production mining prerequisite readiness | `reference/esp-miner/main/tasks/protocol_coordinator.c` | `crates/bitaxe-safety` | implemented | unit,workflow | phase-28-hardware-evidence-and-checklist-promotion/summary.md phase-22-claim-ladder-and-safety-preconditions/safety-preconditions.md exact_non_claims below verified. |
 "#;
     let rows = parse_checklist(checklist).expect("checklist should parse");

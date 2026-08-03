@@ -22,37 +22,12 @@ pub(crate) enum CliCommand {
     SafetyAllow(SafetyAllowArgs),
     MiningAllow(MiningAllowArgs),
     OperatorEvidence(OperatorEvidenceArgs),
-    Phase33Classify(Phase33ClassifyArgs),
-    ClassifyPhase35Flash(ClassifyPhase35FlashArgs),
-    ClassifyPhase35Http(ClassifyPhase35HttpArgs),
-    ProbePhase35Http(ProbePhase35HttpArgs),
-    ValidatePhase35Evidence(ValidatePhase35EvidenceArgs),
-    AdmitPhase35Evidence(AdmitPhase35EvidenceArgs),
-    ClassifyPhase36Evidence(ClassifyPhase36EvidenceArgs),
-    ClassifyPhase36Effects(ClassifyPhase36EffectsArgs),
-    Phase36EvaluatorIdentity,
-    Phase36AssembleHardwareCapture(Phase36AssembleHardwareCaptureArgs),
-    Phase36HardwareCapture(Phase36HardwareCaptureArgs),
-    Phase36SyntheticCapture(Phase36SyntheticCaptureArgs),
-    InspectPhase36Candidate(InspectPhase36CandidateArgs),
-    ClassifyPhase36Candidate(ClassifyPhase36CandidateArgs),
-    ReevaluatePhase36Attempt31(ReevaluatePhase36Attempt31Args),
-    ProjectSys004VersionEvidence(ProjectSys004VersionEvidenceArgs),
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct ProjectSys004VersionEvidenceArgs {
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) private_parent: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) attempt_handle_file: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) package_manifest: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) output: Utf8PathBuf,
+    VerifySettingsDurability(VerifySettingsDurabilityArgs),
+    ClassifyCorrelatedFlash(ClassifyCorrelatedFlashArgs),
+    ClassifyCorrelatedHttp(ClassifyCorrelatedHttpArgs),
+    ProbeCorrelatedHttp(ProbeCorrelatedHttpArgs),
+    ValidateCorrelatedRuntimeEvidence(ValidateCorrelatedRuntimeEvidenceArgs),
+    AdmitCorrelatedRuntimeEvidence(AdmitCorrelatedRuntimeEvidenceArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -104,6 +79,9 @@ pub(crate) struct TransitionItemArgs {
 
     #[arg(long = "result", value_parser = parse_utf8_path)]
     pub(crate) maybe_result: Option<Utf8PathBuf>,
+
+    #[arg(long = "migration-ledger", value_parser = parse_utf8_path)]
+    pub(crate) maybe_migration_ledger: Option<Utf8PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -114,7 +92,7 @@ pub(crate) enum Phase33ClassifyMode {
 }
 
 #[derive(Debug, Parser)]
-pub(crate) struct Phase33ClassifyArgs {
+pub(crate) struct VerifySettingsDurabilityArgs {
     #[arg(long, value_parser = parse_utf8_path)]
     pub(crate) trace: Utf8PathBuf,
 
@@ -132,7 +110,7 @@ pub(crate) struct Phase33ClassifyArgs {
 }
 
 #[derive(Debug, Parser)]
-pub(crate) struct ClassifyPhase35HttpArgs {
+pub(crate) struct ClassifyCorrelatedHttpArgs {
     #[arg(long, value_parser = parse_utf8_path)]
     pub(crate) metrics_input: Utf8PathBuf,
 
@@ -147,7 +125,7 @@ pub(crate) struct ClassifyPhase35HttpArgs {
 }
 
 #[derive(Debug, Parser)]
-pub(crate) struct ClassifyPhase35FlashArgs {
+pub(crate) struct ClassifyCorrelatedFlashArgs {
     #[arg(long, value_parser = parse_utf8_path)]
     pub(crate) metrics_input: Utf8PathBuf,
 
@@ -159,7 +137,7 @@ pub(crate) struct ClassifyPhase35FlashArgs {
 }
 
 #[derive(Debug, Parser)]
-pub(crate) struct ProbePhase35HttpArgs {
+pub(crate) struct ProbeCorrelatedHttpArgs {
     #[arg(long)]
     pub(crate) url: String,
 
@@ -174,135 +152,18 @@ pub(crate) struct ProbePhase35HttpArgs {
 }
 
 #[derive(Debug, Parser)]
-pub(crate) struct ValidatePhase35EvidenceArgs {
+pub(crate) struct ValidateCorrelatedRuntimeEvidenceArgs {
     #[arg(long, value_parser = parse_utf8_path)]
     pub(crate) root: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
-pub(crate) struct AdmitPhase35EvidenceArgs {
+pub(crate) struct AdmitCorrelatedRuntimeEvidenceArgs {
     #[arg(long, value_parser = parse_utf8_path)]
     pub(crate) root: Utf8PathBuf,
 
     #[arg(long, value_parser = parse_utf8_path)]
     pub(crate) staging: Utf8PathBuf,
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct ClassifyPhase36EvidenceArgs {
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) root: Utf8PathBuf,
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct ClassifyPhase36EffectsArgs {
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) root: Utf8PathBuf,
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct Phase36SyntheticCaptureArgs {
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) private_output: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) candidate_output: Utf8PathBuf,
-
-    #[arg(long)]
-    pub(crate) capability_digest: String,
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct Phase36HardwareCaptureArgs {
-    #[arg(long)]
-    pub(crate) board: u16,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) private_parent: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) attempt_handle_file: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) candidate_output: Utf8PathBuf,
-
-    #[arg(long)]
-    pub(crate) capture_timeout_seconds: u64,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) wifi_credentials: Utf8PathBuf,
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct Phase36AssembleHardwareCaptureArgs {
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) attempt_child: Utf8PathBuf,
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) manifest: Utf8PathBuf,
-    #[arg(long)]
-    pub(crate) manifest_digest: String,
-    #[arg(long)]
-    pub(crate) firmware_elf_digest: String,
-    #[arg(long)]
-    pub(crate) executable_image_digest: String,
-    #[arg(long)]
-    pub(crate) factory_image_digest: String,
-    #[arg(long)]
-    pub(crate) package_identity_digest: String,
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct InspectPhase36CandidateArgs {
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) candidate_input: Utf8PathBuf,
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct ClassifyPhase36CandidateArgs {
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) private_input: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) candidate_input: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) classification_output: Utf8PathBuf,
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct ReevaluatePhase36Attempt31Args {
-    #[arg(long, default_value = ".", value_parser = parse_utf8_path)]
-    pub(crate) workspace_root: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) maybe_protected_root: Option<Utf8PathBuf>,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) maybe_api_document: Option<Utf8PathBuf>,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) maybe_websocket_document: Option<Utf8PathBuf>,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) maybe_retained_document: Option<Utf8PathBuf>,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) maybe_exact_package_document: Option<Utf8PathBuf>,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) maybe_request_document: Option<Utf8PathBuf>,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) maybe_event_ledger_document: Option<Utf8PathBuf>,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) maybe_private_result_document: Option<Utf8PathBuf>,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) maybe_public_projection_document: Option<Utf8PathBuf>,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) maybe_independent_effect_document: Option<Utf8PathBuf>,
 }
 
 #[derive(Debug, Parser)]
@@ -383,8 +244,11 @@ pub(crate) struct SafetyAllowArgs {
     #[arg(long = "surface")]
     pub(crate) maybe_surface: Option<String>,
 
-    #[arg(long = "allowed-command")]
-    pub(crate) maybe_allowed_command: Option<String>,
+    #[arg(long = "workflow")]
+    pub(crate) maybe_workflow: Option<String>,
+
+    #[arg(long = "request-sha256")]
+    pub(crate) maybe_request_sha256: Option<String>,
 }
 
 #[derive(Debug, Parser)]
@@ -395,8 +259,11 @@ pub(crate) struct MiningAllowArgs {
     #[arg(long = "surface")]
     pub(crate) maybe_surface: Option<String>,
 
-    #[arg(long = "allowed-command")]
-    pub(crate) maybe_allowed_command: Option<String>,
+    #[arg(long = "workflow")]
+    pub(crate) maybe_workflow: Option<String>,
+
+    #[arg(long = "request-sha256")]
+    pub(crate) maybe_request_sha256: Option<String>,
 }
 
 #[derive(Debug, Parser)]

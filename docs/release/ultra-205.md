@@ -1,729 +1,160 @@
-# Ultra 205 Release Operator Guide
+# Ultra 205 Release and Operator Guide
 
-This guide is the Phase 7 operator contract for Bitaxe Ultra 205 release
-candidates. It gives the commands, artifacts, evidence gates, and recovery
-paths a developer needs before using package, flash, OTA, recovery, rollback,
-or erase workflows on connected hardware.
+The active automation interface is `bitaxe-automation`, exposed through fixed
+Bazel targets and the recipes below. Flags always use `--kebab-case value`.
+Legacy `key=value`, underscore aliases, positional fallbacks, and phase-numbered
+commands are intentionally unsupported.
 
-Do not treat package generation or serial route registration as live HTTP,
-WebSocket, OTA, rollback, recovery, large erase, failed update, or interrupted
-update verification. Phase 16 records the prior release-evidence status in
-`docs/parity/evidence/phase-16-current-commit-release-evidence-completion.md`.
-Phase 17 records the current live HTTP/API/static/WebSocket evidence status in
-`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/summary.md`.
-Phase 18 records the current firmware OTA evidence status in
-`docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/summary.md`.
-Phase 19 records the current recovery-regression and OTAWWW closure status in
-`docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/summary.md`.
-Use those ledgers' blocker and pending language and keep affected parity rows
-below `verified`.
+## Prerequisites
 
-## Phase 19 Recovery Regression And OTAWWW Evidence Status
+Run the read-only dependency and reference checks:
 
-Phase 19 evidence is recorded in
-`docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/summary.md`,
-with package, serial boot, target-lock, recovery-regression, OTAWWW gap, and
-redaction artifacts under
-`docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/`.
-
-Current conclusion: package generation, manifest-backed release gate, Ultra
-205 detector evidence, wrapper-owned factory flash-monitor evidence, and final
-redaction review passed for board `205`, port `/dev/cu.usbmodem1101`, source
-commit `6842d7a6d3d4fc64d93900a9847c8a0b97edc16d`, and reference commit
-`c1915b0a63bfabebdb95a515cedfee05146c1d50`.
-
-The Phase 19 target lock remains blocked because no trusted raw origin-only
-target path was available. Network scanning stayed disabled, and no device URL
-was inferred from committed redacted serial evidence. Recovery-regression
-operations that require explicit destructive or fault-injection permission did
-not run.
-
-Supported Phase 19 claims are limited to:
-
-- package and release-gate identity from
-  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate.md`;
-- detector and wrapper-owned flash-monitor identity from
-  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot.md`;
-- blocked target provenance from
-  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/target-lock.json`;
-- recovery-regression pending status from
-  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/recovery-regression.md`;
-- explicit OTAWWW REL-03 gap documentation from
-  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/otawww.md`;
-- final redaction status from
-  `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/redaction-review.md`.
-
-Phase 19 does not claim valid firmware OTA verification, post-OTA reboot
-identity, selected next partition, post-OTA boot-validation, rollback,
-destructive rollback, failed-update recovery beyond previously recorded invalid
-image rejection, large erase, interrupted update, whole-`www` OTAWWW update
-behavior, production mining, pool behavior, active safety telemetry, or long
-soak behavior. Keep `OTA-001`, `OTA-002`, `REL-001`, `REL-002`, and `REL-003`
-below `verified` unless a later artifact records the specific missing behavior
-required by the parity checklist.
-
-The Phase 19 package/release-gate command sequence was:
-
-```bash
-just package
-bazel run //tools/parity:report -- release-gate --manifest docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json
+```sh
+just doctor
+just verify-reference
 ```
 
-The Phase 19 serial evidence command was:
+If ESP tooling is missing, install it explicitly:
 
-```bash
-just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/serial-boot capture-timeout-seconds=45 redact-evidence=true
+```sh
+just bootstrap-esp
 ```
 
-The Phase 19 recovery/OTAWWW helper recorded pending and blocked evidence only:
+The canonical target is Ultra 205 / ESP32-S3. Packaging uses the ESP-IDF tools
+managed by the pinned esp-rs build under `.embuild/`.
 
-```bash
-scripts/phase19-recovery-otawww-evidence.sh \
-  --manifest docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/package-release-gate/bitaxe-ultra205-package.json \
-  --factory-image bazel-bin/firmware/bitaxe/bitaxe-ultra205-factory.bin \
-  --ota-image bazel-bin/firmware/bitaxe/esp-miner.bin \
-  --port /dev/cu.usbmodem1101 \
-  --out-dir docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence \
-  --target-lock-out docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/target-lock.json
-```
+## Build and package
 
-## Phase 18 Firmware OTA And Rollback Evidence Status
-
-Phase 18 evidence is recorded in
-`docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/summary.md`,
-with package, serial boot, target-lock, firmware OTA, and redaction artifacts
-under `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/`.
-
-Current conclusion: package, manifest-backed release gate, Ultra 205 detector,
-wrapper-owned factory flash-monitor evidence, sanitized target lock, invalid
-image rejection, final redaction review, and a valid upload HTTP response were
-captured for board `205`, port `/dev/cu.usbmodem1101`, source commit
-`22d02f8e97928f1ec29360552179380b92582e6a`, and reference commit
-`c1915b0a63bfabebdb95a515cedfee05146c1d50`.
-
-The target was accepted from trusted local USB flash-monitor evidence and
-committed only as sanitized provenance in
-`docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/target-lock.json`.
-Network scanning remained disabled. The final redaction review records
-`redaction_status: passed` in
-`docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/redaction-review.md`.
-
-Supported Phase 18 claims are limited to:
-
-- package and release-gate identity from
-  `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/package-release-gate.md`;
-- detector and wrapper-owned flash-monitor identity from
-  `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/serial-boot.md`;
-- sanitized target provenance from
-  `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/target-lock.json`;
-- invalid image rejection for `POST /api/system/OTA` from
-  `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/firmware-ota.md`;
-- valid upload response only: HTTP 200 with `Firmware update complete, rebooting now!`;
-- final redaction status from
-  `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/redaction-review.md`.
-
-Phase 18 does not claim valid OTA verification, post-OTA reboot identity,
-selected next partition, post-OTA boot-validation, rollback, destructive
-rollback, failed-update recovery beyond invalid image rejection, large erase,
-interrupted update, OTAWWW whole-`www` update behavior, production mining, pool
-behavior, active safety telemetry, or long soak behavior. Keep `OTA-001`,
-`REL-001`, `REL-002`, and `REL-003` below `verified` unless a later artifact
-records the specific missing behavior required by the parity checklist.
-
-The Phase 18 package/release-gate command sequence was:
-
-```bash
-just package
-bazel run //tools/parity:report -- release-gate --manifest docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/package-release-gate/bitaxe-ultra205-package.json
-```
-
-The Phase 18 serial evidence command was:
-
-```bash
-just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/serial-boot capture-timeout-seconds=45 redact-evidence=true
-```
-
-The Phase 18 firmware OTA helper recorded invalid rejection, valid upload
-response, and blocked post-OTA marker evidence:
-
-```bash
-scripts/phase18-firmware-ota-evidence.sh --manifest docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/package-release-gate/bitaxe-ultra205-package.json --ota-image bazel-bin/firmware/bitaxe/esp-miner.bin --port /dev/cu.usbmodem1101 --out-dir docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence --target-lock-out docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/target-lock.json --monitor-seconds 45 --use-flash-log-device-url target/phase18-firmware-ota-and-rollback-evidence-dev-raw/flash-command-evidence.json
-```
-
-## Phase 17 Live HTTP API And Static Evidence Status
-
-Phase 17 evidence is recorded in
-`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/summary.md`,
-with package, serial, HTTP, WebSocket, and redaction artifacts under
-`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/`.
-
-Current conclusion: package, manifest-backed release gate, Ultra 205 detector,
-wrapper-owned factory flash-monitor evidence, sanitized target lock, live
-HTTP/static/API route evidence, bounded WebSocket frame evidence, and final
-redaction review passed for board `205`, port `/dev/cu.usbmodem1101`, source
-commit `9a2bf5850ea042731f6a7947cc7eb04dc4589e90`, and reference commit
-`c1915b0a63bfabebdb95a515cedfee05146c1d50`.
-
-The live target was accepted from trusted local USB flash-monitor evidence and
-committed only as sanitized provenance in
-`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/target-lock.json`.
-Network scanning remained disabled. The final redaction review records
-`redaction_status: passed` in
-`docs/parity/evidence/phase-17-live-http-api-and-static-evidence/redaction-review.md`.
-
-Supported Phase 17 claims are limited to:
-
-- package and release-gate identity from
-  `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/package-release-gate.md`;
-- detector and wrapper-owned flash-monitor identity from
-  `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot.md`;
-- live HTTP/static/API route evidence from
-  `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/http-static-api.md`;
-- bounded WebSocket frame evidence from
-  `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket.md`;
-- final redaction status from
-  `docs/parity/evidence/phase-17-live-http-api-and-static-evidence/redaction-review.md`.
-
-Phase 17 does not claim valid OTA upload, invalid OTA rejection, reboot,
-rollback, selected partition, boot validation, whole-`www` OTAWWW update
-behavior, production mining, pool behavior, active safety telemetry, or long
-soak behavior. Phase 17 supports live-evidence promotion for `FS-001`,
-`API-004`, `API-005`, `API-006`, `API-007`, and `API-008` only to the extent
-recorded in the cited artifacts. Keep `OTA-001`, `OTA-002`, and `REL-003`
-below `verified` unless a later artifact records the specific OTA, rollback,
-boot-validation, or whole-`www` behavior required by the parity checklist.
-
-The Phase 17 package/release-gate command sequence was:
-
-```bash
-just package
-bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
-```
-
-The Phase 17 serial evidence command was:
-
-```bash
-just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=docs/parity/evidence/phase-17-live-http-api-and-static-evidence/serial-boot capture-timeout-seconds=45 redact-evidence=true
-```
-
-The Phase 17 HTTP helper command recorded live route evidence and a sanitized
-target lock:
-
-```bash
-scripts/phase17-live-http-api-smoke.sh --use-flash-log-device-url --manifest docs/parity/evidence/phase-17-live-http-api-and-static-evidence/package-release-gate/bitaxe-ultra205-package.json --flash-evidence-json target/phase17-gap-current-dev-raw/flash-command-evidence.json --out-dir docs/parity/evidence/phase-17-live-http-api-and-static-evidence/http-static-api --target-lock-out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/target-lock.json
-```
-
-The Phase 17 WebSocket capture commands recorded bounded frame artifacts:
-
-```bash
-node scripts/phase17-websocket-capture.mjs --device-url-from-flash-evidence target/phase17-gap-current-dev-raw/flash-command-evidence.json --path /api/ws/live --out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws-live.txt --duration-ms 5000 --max-frames 3
-node scripts/phase17-websocket-capture.mjs --device-url-from-flash-evidence target/phase17-gap-current-dev-raw/flash-command-evidence.json --path /api/ws --out docs/parity/evidence/phase-17-live-http-api-and-static-evidence/websocket/api-ws.txt --duration-ms 5000 --max-frames 3
-```
-
-## Phase 16 Current-Commit Evidence Status
-
-Phase 16 current-commit release evidence is recorded in
-`docs/parity/evidence/phase-16-current-commit-release-evidence-completion.md`, with
-component evidence under
-`docs/parity/evidence/phase-16-current-commit-release-evidence-completion/`.
-
-Current conclusion: package, manifest-backed release gate, Ultra 205 detector,
-factory flash, and serial boot evidence passed for board `205`, port
-`/dev/cu.usbmodem1101`, source commit
-`8490118a7e7f6fc1a9ac2e4025d983b0f402c8ca`, and reference commit
-`c1915b0a63bfabebdb95a515cedfee05146c1d50`.
-
-Historical Phase 16 live network gate: no reachable just-flashed device URL was
-available for that earlier evidence set.
-
-Because no reachable just-flashed device URL was available, live HTTP, static,
-recovery, firmware OTA, invalid image rejection, rollback, failed update
-recovery, large erase, and interrupted-update checks remain blocked or pending.
-No network scan, upload, erase, rollback, or destructive recovery operation ran.
-
-Keep `FS-001`, `OTA-001`, `REL-001`, `REL-002`, and `REL-003` below
-`verified` until a later evidence record includes the required live observations.
-Keep the OTAWWW REL-03 gap and public response `Wrong API input` until
-whole-`www` hardware-regression and interrupted-update evidence exists.
-
-The Phase 16 package/release-gate command sequence was:
-
-```bash
-just package
-bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
-```
-
-The Phase 16 serial evidence command was:
-
-```bash
-just flash-monitor board=205 port=/dev/cu.usbmodem1101 manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json evidence-dir=docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot capture-timeout-seconds=35
-```
-
-The Phase 16 JSON source of truth is
-`docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-command-evidence.json`.
-The wrapper-owned serial log is
-`docs/parity/evidence/phase-16-current-commit-release-evidence-completion/serial-boot/flash-monitor.log`.
-
-## Historical Phase 13 Evidence Status
-
-Phase 13 release evidence is historical evidence for source commit
-`190849539700b8f9a7909fd2b6ebd84142557968`; see
-`docs/parity/evidence/phase-13-final-ultra-205-release-evidence.md`.
-
-## Build And Package
-
-Run the canonical command surface from the repository root:
-
-```bash
+```sh
 just build
 just package
 ```
 
-`just package` writes the Ultra 205 package manifest at:
+The package manifest is:
 
 ```text
 bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
 ```
 
-The package manifest must name the release artifacts directly:
+Treat that manifest as the authority for the exact ELF, executable image,
+factory image, source commit, reference commit, and artifact digests.
 
-- `bitaxe-ultra205.elf` - USB flashing default image for `tools/flash`.
-- `esp-miner.bin` - firmware OTA image for `/api/system/OTA`.
-- `www.bin` - static filesystem image built from the Rust-owned `www` tree.
-- `bitaxe-ultra205-factory.bin` - merged factory/recovery image.
-- `otadata-initial.bin` - OTA data initial image or erased-flash fallback.
+## Detect the board
 
-Record the package manifest path, source commit, reference commit, artifact
-SHA-256 values, ESP-IDF version, Rust target, and package command output before
-using the artifacts in release evidence.
+Before any hardware use:
 
-The historical Phase 13 package/release-gate command sequence was:
-
-```bash
-just package
-bazel run //tools/parity:report -- release-gate --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
-```
-
-## USB Flash
-
-Flash the Ultra 205 with an explicit serial port:
-
-```bash
-just flash board=205 port=<port>
-```
-
-Current Rust firmware does not start the upstream Bitaxe setup AP or captive
-portal. For Phase 17 live HTTP/WebSocket bring-up, seed router credentials at
-flash time by copying the checked-in example to a local, untracked JSON file:
-
-```bash
-cp wifi-credentials.json.example wifi-credentials.json
-```
-
-Edit `wifi-credentials.json` with your router credentials:
-
-```json
-{"ssid":"<router-ssid>","wifiPass":"<router-password>"}
-```
-
-Pass that file to `just flash` or `just flash-monitor`:
-
-```bash
-just flash-monitor board=205 port=<port> wifi-credentials=wifi-credentials.json evidence-dir=<path>
-```
-
-Developer USB evidence is raw by default: the persisted flash-monitor artifacts
-may keep SSID, IP address, MAC address, and `device_url` values so live
-HTTP/WebSocket UAT can use the just-flashed target. Hard secrets such as
-`wifiPass`, pool credentials, tokens, API keys, and NVS secret values remain
-redacted. For commit-ready or shareable artifacts, request full redaction:
-
-```bash
-just flash-monitor board=205 port=<port> wifi-credentials=wifi-credentials.json evidence-dir=<path> redact-evidence=true
-```
-
-The flash wrapper generates and writes a replacement NVS partition at `0x9000`
-using the upstream keys `wifissid` and `wifipass`. Missing non-Wi-Fi settings
-load firmware defaults. If credentials are absent or wrong, recover by USB
-reseeding with another `wifi-credentials=<local-wifi-json>` flash run. Do not
-commit the credential file, passwords, pool credentials, tokens, API keys,
-private endpoints, or NVS secret values. Raw developer artifacts containing
-local SSIDs, IP addresses, MAC addresses, or `device_url` values must be
-redacted before commit or release citation.
-
-The ordinary firmware starts one Production Mining Session owner. It rereads
-operator, network, settings, and safety state at least once per second, but it
-remains actuation-unqualified. Consequently the release firmware does not read
-pool secrets, open a pool connection, dispatch ASIC work, or actuate mining
-hardware. Software verification uses deterministic fakes:
-
-```bash
-just verify-production-session
-```
-
-The project-owned `startMiningOnBoot` setting defaults to `true` and controls
-the next boot's initial operator intent. Pause and resume affect only the
-current boot. Neither setting qualifies real mining effects.
-
-## Phase 23 Redacted Operator Evidence Workflow
-
-Phase 23 provides a repo-owned redacted operator evidence workflow for Ultra
-205 only. Hardware-capable runs must begin with the detector gate:
-
-```bash
+```sh
 just detect-ultra205
 ```
 
-If the detector finds zero ports, multiple ports, a non-205 target, or failed
-board-info, stop and keep hardware slots blocked. Do not infer targets from
-stale `DEVICE_URL`, mDNS, ARP, router state, network scans, or unrelated
-evidence.
+Proceed only when exactly one likely port is reported and ESP32-S3 board-info
+passes. Supply the returned path as `--port <path>`; do not infer a target from
+mDNS, ARP, network scans, or old logs.
 
-Agents must attempt hardware mode first when detection passes and local
-credential files exist. See `AGENTS.md` → Evidence Workflow: Hardware-First
-Default. Use blocked mode only as the CI/no-hardware fallback:
+## Flash and monitor
 
-```bash
-just phase23-evidence --evidence-root docs/parity/evidence/phase-23-redacted-operator-evidence-workflow --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --mode blocked
+Normal developer commands remain concise Rust-backed recipes:
+
+```sh
+just flash --board 205 --port <path> \
+  --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+
+just monitor --port <path> --capture-timeout-seconds 360
+
+just flash-monitor --board 205 --port <path> \
+  --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json \
+  --capture-timeout-seconds 360
 ```
 
-After `just detect-ultra205` passes exactly once for the current session,
-operators may run hardware mode with local runtime credential paths:
+For local Wi-Fi bring-up, the ignored credential file may be passed without
+reading or copying its contents:
 
-```bash
-just phase23-evidence --evidence-root docs/parity/evidence/phase-23-redacted-operator-evidence-workflow --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --mode hardware --pool-credentials pool-credentials.json --wifi-credentials wifi-credentials.json
+```sh
+just flash-monitor --board 205 --port <path> \
+  --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json \
+  --wifi-credentials wifi-credentials.json \
+  --capture-timeout-seconds 360
 ```
 
-Real credential contents must not be read, printed, summarized, committed,
-copied into evidence, or exposed. Committed summaries use category labels only:
-`pool_config: local-owner-supplied`, `wifi_config: local-owner-supplied`,
-`raw_pool_values_committed: no`, and `raw_artifacts_committed: no`.
+Never commit Wi-Fi or pool credentials, raw device URLs, IP/MAC addresses,
+SSIDs, USB paths, tokens, workers, or NVS secret values.
 
-Phase 23 is retained as historical evidence tooling. It does not qualify the
-Production Mining Session, live Stratum socket behavior, ASIC actuation, or
-accepted/rejected shares.
+## Semantic verification commands
 
-Use the factory image path from
-`bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json` when recovery requires
-a full USB flash baseline. Record the exact port, package manifest, source
-commit, reference commit, and observed flash result.
-
-## Monitor
-
-Monitor an already-flashed device with:
-
-```bash
-just monitor port=<port>
-```
-
-Logs should record firmware identity, board/ASIC target, reset reason, package
-or partition identity when available, SPIFFS status, OTA status, rollback boot
-validation status, and recovery-relevant errors.
-
-## Flash And Monitor Evidence Capture
-
-For the Phase 9 wrapper-owned USB flash and boot-log capture, run:
-
-```bash
-just flash-monitor board=205 port=<port> evidence-dir=docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening
-```
-
-The optional timeout override is:
-
-```bash
-just flash-monitor board=205 port=<port> evidence-dir=docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening capture-timeout-seconds=25
-```
-
-The JSON source of truth is
-`docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening/flash-command-evidence.json`.
-The wrapper-owned serial log is
-`docs/parity/evidence/phase-09-flash-monitor-evidence-wrapper-hardening/flash-monitor.log`.
-
-Passing capture statuses are `completed` and
-`timed_out_after_trusted_output`. Any other status means evidence capture failed and is not trusted.
-The JSON record must name the board, port, source commit,
-reference commit, package manifest path, flash image path, exact flash command,
-exact monitor command, monitor log path, capture mode, capture status, timeout,
-trusted-output flag, and conclusion.
-
-This serial evidence proves only the wrapper-owned flash-monitor boot-log path.
-It does not verify live HTTP, static, recovery, firmware OTA, invalid image
-rejection, rollback, failed update recovery, large erase, interrupted update, or
-OTAWWW behavior.
-
-For the historical Phase 13 release-evidence capture, the exact command was:
-
-```bash
-just flash-monitor board=205 port=/dev/cu.usbmodem1101 evidence-dir=docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot capture-timeout-seconds=25
-```
-
-The historical Phase 13 JSON source of truth is
-`docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot/flash-command-evidence.json`.
-The wrapper-owned serial log is
-`docs/parity/evidence/phase-13-final-ultra-205-release-evidence/serial-boot/flash-monitor.log`.
-
-### Flash-Monitor Recovery
-
-If evidence capture fails, use repo-owned recovery and diagnostic steps:
-
-```bash
-just detect-ultra205
-just flash-monitor board=205 port=<port> evidence-dir=<path>
-just monitor port=<port>
-```
-
-Use `just monitor port=<port>` as a diagnostic-only follow-up after the wrapper
-failure has been recorded. raw `espflash monitor` output must not be used as the trusted Phase 9 proof.
-
-## Firmware OTA
-
-Firmware OTA uses the AxeOS firmware update route:
-
-- Upload target: `/api/system/OTA`
-- Expected upload file name: `esp-miner.bin`
-- Success response: `Firmware update complete, rebooting now!`
-- Visible AxeOS surface: `Update Firmware`
-
-Before claiming firmware OTA verified, capture these facts on Ultra 205:
-
-1. Upload accepted for `esp-miner.bin`.
-1. Invalid image rejection or validation failure behavior.
-1. AP/APSTA rejection behavior.
-1. Progress/status labels and final public response.
-1. Selected next app partition.
-1. Reboot scheduling and post-reboot firmware identity.
-1. Rollback and boot-validation evidence.
-1. Recovery procedure if boot validation fails.
-
-The success response proves only that the upload path reached the reboot step.
-It does not prove rollback, boot validation, or return-to-operable-state parity
-without matching hardware logs.
-
-Phase 16 firmware OTA status is conservative:
-`firmware_ota_status: blocked`. The helper did not upload `esp-miner.bin`,
-did not run invalid image rejection, did not observe post-reboot identity, and
-did not observe boot-validation or rollback state because `DEVICE_URL` was
-missing.
-
-Phase 18 firmware OTA status remains conservative. It captured invalid image
-rejection with HTTP 500 and `Write Error`, and it captured a valid upload HTTP
-200 response with `Firmware update complete, rebooting now!`. It did not
-capture post-OTA `firmware_commit=`, `reference_commit=`, or
-`ota_boot_validation=` markers, so valid OTA, selected next partition,
-post-reboot identity, boot-validation, rollback, and recovery remain below
-verified.
-
-## AxeOS Static Update Gap
-
-The upstream AxeOS static update route is:
-
-- Upload target: `/api/system/OTAWWW`
-- Expected upload file name: `www.bin`
-- Visible AxeOS surface: `Update AxeOS`
-- Current public gap response: `Wrong API input`
-
-AxeOS update is not available in this release candidate. Use `just package` to
-create `www.bin` and flash the factory image, or use `/recovery` only after the
-documented evidence gate is complete.
-
-This is the OTAWWW REL-03 gap. Phase 16 did not observe the public `Wrong API input` response because `DEVICE_URL` was missing. Do not claim static update
-parity from `www.bin` package generation alone. REL-03 remains an explicit
-release gap until evidence proves whole-`www` partition write behavior, recovery
-access, and interrupted-update recovery on Ultra 205.
-
-## Static And Recovery Smoke
-
-Static filesystem smoke must cover:
-
-- `/` serving the packaged AxeOS-compatible static entry point.
-- Representative gzip smoke path `/assets/app.css.gz`.
-- Missing static asset redirect behavior.
-- API route coexistence for `/api/*`, `/api/ws`, `/api/ws/live`,
-  `/api/system/OTA`, and `/api/system/OTAWWW`.
-- `/recovery` availability when normal static assets are unavailable or
-  damaged.
-
-Static smoke is live firmware evidence only when the record names the connected
-Ultra 205 board, serial port, firmware commit, reference commit, package
-manifest path, and observed HTTP responses.
-
-Phase 16 static/recovery status is conservative: the historical static smoke
-was blocked because no reachable just-flashed device URL was available.
-No live `/`, `/assets/app.css.gz`, missing static redirect, `/recovery`, API
-coexistence, or WebSocket coexistence response was captured.
-
-## Recovery Page
-
-Use the recovery route when AxeOS static assets are missing, corrupt, not
-mounted, or intentionally being restored:
-
-- Route: `/recovery`
-- Upload file: `www.bin`
-- Recovery surface: `AxeOS Recovery`
-
-Recovery evidence must capture the `/recovery` page load, upload attempt,
-public response, response body, restart step, post-restart static route state,
-and whether the device returned to an operable state. Do not mark recovery
-verified until the hardware-smoke record contains these observations.
-
-## Large Erase
-
-Large Erase is destructive. Use it only when the device can be recovered
-through USB factory flashing with the current package manifest and a reachable
-`DEVICE_URL` for post-restore HTTP/static proof.
-
-Safe procedure:
-
-1. Record the board, port, source commit, reference commit, and package
-   manifest path.
-1. Confirm `bitaxe-ultra205-factory.bin` is present in
-   `bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`.
-1. Rerun `just detect-ultra205`, require exactly one `port=`, require it to
-   match the selected port, and run immediate `espflash board-info`.
-1. Record the exact erase command and tool version before running it.
-1. Flash the factory image with `just flash board=205 port=<port>`.
-1. Monitor with `just monitor port=<port>`.
-1. Record post-erase boot identity, `safe_state: mining=disabled`,
-   `spiffs_mount=available`, filesystem, recovery, and API reachability.
-1. Require post-restore HTTP/static smoke to pass.
-
-Do not describe Large Erase as verified unless that full sequence is captured
-in hardware evidence.
-
-Phase 16 large erase status is conservative:
-`large_erase_status: pending - allow flag not provided`. No erase, restore, or
-post-restore monitor command ran.
-
-## Failed Firmware Update
-
-For a failed firmware update, capture:
-
-- Request target `/api/system/OTA`.
-- File name and checksum for `esp-miner.bin`.
-- Whether the failure is invalid image rejection, upload interruption, write
-  error, validation failure, activation failure, or post-reboot validation.
-- Public response and internal update status.
-- Running partition after reboot or failed activation.
-- Rollback logs when a pending image is marked valid or invalid.
-- Recovery procedure used to return the Ultra 205 to an operable state.
-
-Do not treat a rejected upload as rollback proof. Rollback requires bootloader
-or boot-validation evidence from the actual post-update state.
-A failed-update capture must prove invalid-image rejection; a `200` response,
-curl failure, wrong-route response, or server error is blocked evidence.
-
-Phase 16 failed-update status is conservative:
-`failed_update_status: pending - allow flag not provided`. No invalid firmware
-upload was attempted through live HTTP.
-
-Phase 18 captured invalid image rejection through `/api/system/OTA`, but that
-record is failed-update rejection evidence only. It does not prove recovery,
-rollback, running partition after reboot, interrupted upload behavior, or
-return-to-operable-state parity.
-
-## Interrupted Static Update
-
-For interrupted static update evidence, capture:
-
-- Request target `/api/system/OTAWWW`.
-- File name and checksum for `www.bin`.
-- Point of interruption and observed device state.
-- Whether `/`, `/assets/app.css.gz`, missing static redirect behavior, and
-  `/recovery` remain reachable.
-- Recovery procedure that restores AxeOS or the factory image.
-- Final conclusion.
-
-Until the Phase 8 record exists, interrupted static update remains deferred and
-OTAWWW remains the REL-03 gap.
-For the historical Phase 13 interrupted firmware OTA helper, a completed `200` OTA response
-is blocked evidence and post-interruption HTTP/static smoke must pass before a
-captured conclusion is valid.
-
-Phase 16 interrupted-update status is conservative:
-`interrupted_update_status: pending - allow flag not provided`. No bounded
-upload interruption was attempted.
-
-## Rollback And Boot Validation
-
-Rollback evidence must distinguish:
-
-- Upload accepted.
-- Next app partition selected.
-- Device rebooted.
-- New app booted.
-- Boot validation marked the pending app valid.
-- Boot validation marked a bad pending app invalid and rebooted.
-- Rollback path observed or ruled out by captured logs.
-
-Successful `/api/system/OTA` response text is not enough to claim Rollback or
-boot-validation parity.
-
-Phase 16 rollback and boot-validation status remains:
-`blocked - Plan 16-04 OTA did not run`. Serial factory boot observed
-`ota_boot_validation=not_pending state=factory`, which is not rollback proof.
-
-Phase 18 rollback and boot-validation status remains below verified. The
-pre-OTA factory boot log observed `ota_boot_validation=not_pending state=factory`,
-but the post-OTA monitor captured no `firmware_commit=`, `reference_commit=`,
-or `ota_boot_validation=` marker after the valid upload response.
-
-## Evidence Required Before Verified Claims
-
-Before claiming verified release or update parity, evidence must exist for:
-
-- Package artifact generation and manifest checksums.
-- Live firmware OTA success and invalid-image rejection on Ultra 205.
-- Live static filesystem and `/recovery` smoke on Ultra 205.
-- Rollback and boot-validation behavior.
-- Failed firmware update recovery.
-- Interrupted static update behavior, or the explicit REL-03 gap.
-- License inventory and provenance review covering Cargo and non-Cargo inputs.
-
-Use `docs/parity/evidence/phase-07-ota-filesystem-release.md` for the Phase 7
-rollup and
-`docs/parity/evidence/phase-07-ultra-205-ota-hardware-smoke.md` for the manual
-Ultra 205 OTA/recovery smoke capture.
-
-## Current Durable USB Workflow
-
-Use only the repository entrypoints for ordinary Ultra 205 USB work:
+The typed interface provides these fixed commands:
 
 ```text
-just detect-ultra205
-just flash board=205 port=<port>
-just monitor port=<port> capture-timeout-seconds=360
-just flash-monitor board=205 port=<port> capture-timeout-seconds=360
+doctor                         bootstrap-esp
+build-firmware                 package-firmware
+verify-reference               verify-redaction
+verify-production-session      observe-serial
+verify-flash-durability        verify-firmware-ota
+verify-web-assets-ota          verify-recovery
+verify-http-api                verify-hardware-surface
+verify-mining                  capture-operator-evidence
+verify-settings-durability     capture-correlated-runtime-evidence
+capture-version-evidence
 ```
 
-These commands share the physical-device lease and process supervisor described
-in `docs/hardware/esp-device-session.md`. `just monitor` is receive-only and
-does not synchronize, reset, write serial data, or issue interactive control
-commands. A command is complete only when it prints `usb_session: ready`.
-`foreign_holder` requires the operator to close the owning application;
-automation does not terminate unproven processes. `transport_absent` means the
-host has no software control channel and is not claimed as automatically
-recoverable.
+OTA, recovery, hardware-control, and mining commands require a task-scoped
+typed request. A request records a Rust-owned workflow identity, SHA-256 digest,
+structured constraints, authorization, recovery path, retry bounds, and stop
+conditions. Missing or unimplemented effect authority exits with policy code 3.
 
-Do not combine raw `espflash`, terminal programs, browsers using Web Serial, or
-legacy capture scripts with an active repository session. Historical commands
-elsewhere in this guide document earlier evidence and are not the current
-development workflow.
+Safety and mining manifests bind a semantic workflow plus request digest, so
+unsupported flags cannot be introduced after admission. String-based command
+admission has been removed.
 
-`just flash-monitor` reports the write and monitor proof independently:
+## Read-only HTTP verification
 
-- `flash_status=completed` means the admitted image write completed; it does
-  not by itself claim application readiness.
-- `boot_transcript_status=trusted` means the receive-only reader captured and
-  validated the original startup transcript.
-- `runtime_attestation_status=trusted` means at least two replayed samples from
-  one boot session and ordinal had strictly increasing uptime, identical
-  ready-state facts, and exact source, reference, and app ELF identity matches
-  to the admitted package.
-- `trust_basis` is `boot_transcript`, `runtime_attestation`, or `none`.
+Use only an origin obtained from the same current detector/monitor session:
 
-The runtime attestation is emitted after OTA validation, SPIFFS mounting, and
-HTTP route-shell readiness, then replayed every ten seconds. It proves the exact
-ready package currently running, not that startup-only serial lines were
-captured. If both monitor paths are untrusted, `flash-monitor` exits nonzero
-while retaining `flash_status=completed`. Diagnose with `just monitor`; do not
-automatically reflash an unchanged package.
+```sh
+bazel run //tools/automation:verify_http_api -- \
+  --device-url <origin> \
+  --route /api/system/info \
+  --output scratch/system-info.private.json
+```
+
+The adapter rejects redirects, credentials in URLs, non-origin targets, and
+cross-origin routes. Raw responses are protected operational files.
+
+## Exact-package version evidence smoke
+
+This is the cutover acceptance workflow. It permits one exact-package flash,
+bounded passive boot observation, and one same-origin system-info read. It does
+not authorize mining, voltage/frequency/fan actuation, erase, OTA, fault
+injection, direct UART, or pin manipulation.
+
+The task contract must name an absent private root and a shareable projection:
+
+```sh
+just capture-version-evidence \
+  --private-root scratch/automation-refactor/attempt-001 \
+  --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json \
+  --wifi-credentials wifi-credentials.json \
+  --port <path> \
+  --projection docs/parity/evidence/automation-refactor/attempt-001/version-evidence.json \
+  --capture-timeout-seconds 45
+```
+
+The private root is created mode `0700`; private logs and API responses are mode
+`0600`. The only shareable output is a Rust-validated
+`bitaxe-version-evidence-v1` JSON projection containing digests and categorical
+facts, never raw operational identifiers.
+
+There is no automatic retry. After a confirmed effect, only bounded recovery
+with the same admitted package is permitted by an explicit task contract.
+
+## Redaction and release checks
+
+```sh
+just verify-redaction
+just verify-production-session
+just parity
+```
+
+`verify-redaction` scans active semantic evidence schemas. Historical evidence
+is immutable and is not rewritten by the automation cutover. The migration
+ledger at `docs/parity/automation-migration.json` records equivalence decisions
+and any rows downgraded when an old evidence schema was retired.

@@ -88,17 +88,6 @@ pub(crate) fn detect_workspace_dir() -> Result<Utf8PathBuf> {
     Ok(Utf8PathBuf::from(workspace_dir))
 }
 
-pub(crate) fn detect_reference_guard_path(workspace_dir: &Utf8Path) -> Utf8PathBuf {
-    let maybe_guard_path = env::var("BITAXE_REFERENCE_GUARD").ok();
-    if let Some(guard_path) = maybe_guard_path {
-        if !guard_path.trim().is_empty() {
-            return Utf8PathBuf::from(guard_path);
-        }
-    }
-
-    workspace_dir.join(DEFAULT_REFERENCE_GUARD_PATH)
-}
-
 pub(crate) fn command_stderr_or_status(output: &std::process::Output) -> String {
     let stderr = String::from_utf8_lossy(&output.stderr);
     let trimmed = stderr.trim();

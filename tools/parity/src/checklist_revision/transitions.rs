@@ -8,6 +8,10 @@ use super::{parse_rows, publish_active_checklist, read};
 use crate::phase35_evidence::sha256_hex;
 use crate::{parity_work, LocalEnvironment, ReportEnvironment, TransitionItemArgs};
 
+mod migration;
+
+use migration::{read_binding, require_policy, validate_receipt_binding};
+
 const TRANSITIONS_ROOT: &str = "docs/parity/checklist-transitions";
 const BASELINE_FILE: &str = "baseline.md";
 const SCHEMA: &str = "parity-checklist-transition-v1";
@@ -25,6 +29,10 @@ struct TransitionReceipt {
     plan_sha256: String,
     result_path: Option<String>,
     result_document_sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    migration_ledger_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    migration_ledger_sha256: Option<String>,
     before_rust_owned_target: String,
     after_rust_owned_target: String,
     before_status: String,
@@ -121,6 +129,10 @@ pub(crate) fn transition_item(
         }
         None => None,
     };
+    let migration_binding = read_binding(
+        &environment.workspace_dir,
+        args.maybe_migration_ledger.as_deref(),
+    )?;
 
     let current = super::read_authoritative_checklist(&environment.workspace_dir)?;
     let rows = parse_rows(&current)?;
@@ -129,7 +141,12 @@ pub(crate) fn transition_item(
         .ok_or_else(|| format!("parity row {} is missing", args.row_id))?;
     let before_status = normalize_status(&row.cells[4])?;
     let after_status = normalize_status(&args.to)?;
-    require_monotonic_transition(&before_status, &after_status)?;
+    require_policy(
+        &before_status,
+        &after_status,
+        &args.row_id,
+        migration_binding.as_ref().map(|binding| &binding.ledger),
+    )?;
     if after_status == "verified" {
         if args.evidence.trim().eq_ignore_ascii_case("pending") || args.evidence.trim().is_empty() {
             return Err("verified parity transitions require non-pending evidence".to_owned());
@@ -162,6 +179,10 @@ pub(crate) fn transition_item(
         plan_sha256: sha256_hex(plan_document.as_bytes()),
         result_path: result_binding.as_ref().map(|(path, _)| path.clone()),
         result_document_sha256: result_binding.map(|(_, digest)| digest),
+        migration_ledger_path: migration_binding
+            .as_ref()
+            .map(|binding| binding.path.clone()),
+        migration_ledger_sha256: migration_binding.map(|binding| binding.digest),
         before_rust_owned_target: row.cells[3].clone(),
         after_rust_owned_target: after_target,
         before_status,
@@ -240,9 +261,16 @@ fn validate_receipt(
         (None, None) => {}
         _ => return Err("parity transition result binding is incomplete".to_owned()),
     }
-    require_monotonic_transition(
+    let migration_ledger = validate_receipt_binding(
+        workspace,
+        receipt.migration_ledger_path.as_deref(),
+        receipt.migration_ledger_sha256.as_deref(),
+    )?;
+    require_policy(
         &normalize_status(&receipt.before_status)?,
         &normalize_status(&receipt.after_status)?,
+        &receipt.row_id,
+        migration_ledger.as_ref(),
     )?;
     if receipt.after_status == "verified"
         && (receipt.result_path.is_none()
@@ -322,27 +350,6 @@ fn normalize_status(status: &str) -> Result<String, String> {
     Err(format!("unknown parity status {status}"))
 }
 
-fn require_monotonic_transition(before: &str, after: &str) -> Result<(), String> {
-    if matches!(before, "verified" | "deferred") {
-        return Err(format!(
-            "automatic transitions out of {before} are forbidden"
-        ));
-    }
-    let rank = |status: &str| match status {
-        "not-started" => Some(0),
-        "in-progress" => Some(1),
-        "implemented" => Some(2),
-        "verified" => Some(3),
-        _ => None,
-    };
-    let before_rank = rank(before).ok_or_else(|| format!("status {before} is not actionable"))?;
-    let after_rank = rank(after).ok_or_else(|| format!("status {after} is not actionable"))?;
-    if after_rank <= before_rank {
-        return Err("parity transitions must move monotonically toward verified".to_owned());
-    }
-    Ok(())
-}
-
 fn validate_transition_id(value: &str) -> Result<(), String> {
     if value.is_empty()
         || !value
@@ -392,6 +399,8 @@ mod tests {
             plan_sha256: "b".repeat(64),
             result_path: Some("docs/parity/work-plans/run/RESULT.md".to_owned()),
             result_document_sha256: Some("c".repeat(64)),
+            migration_ledger_path: None,
+            migration_ledger_sha256: None,
             before_rust_owned_target: "crate/src/lib.rs".to_owned(),
             after_rust_owned_target: "crate/src/lib.rs".to_owned(),
             before_status: "implemented".to_owned(),
@@ -484,8 +493,8 @@ mod tests {
         let after = "in-progress";
 
         // Act
-        let error =
-            require_monotonic_transition(before, after).expect_err("regression must be rejected");
+        let error = require_policy(before, after, "STR-001", None)
+            .expect_err("regression must be rejected");
 
         // Assert
         assert!(error.contains("monotonically"));
@@ -498,7 +507,7 @@ mod tests {
         let after = "verified";
 
         // Act
-        let error = require_monotonic_transition(before, after)
+        let error = require_policy(before, after, "STR-001", None)
             .expect_err("verified source must be terminal");
 
         // Assert

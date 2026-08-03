@@ -1,7 +1,7 @@
 use crate::*;
 
 pub(crate) fn run_classify_phase35_flash_command(
-    args: ClassifyPhase35FlashArgs,
+    args: ClassifyCorrelatedFlashArgs,
     environment: &LocalEnvironment,
 ) -> Result<String> {
     use phase35_flash::{classify_phase35_flash, FlashBoundary};
@@ -47,7 +47,7 @@ pub(crate) fn run_classify_phase35_flash_command(
 }
 
 pub(crate) fn run_probe_phase35_http_command(
-    args: ProbePhase35HttpArgs,
+    args: ProbeCorrelatedHttpArgs,
     environment: &LocalEnvironment,
 ) -> Result<String> {
     use phase35_http_probe::probe_phase35_http;
@@ -81,7 +81,7 @@ pub(crate) fn run_probe_phase35_http_command(
 }
 
 pub(crate) fn run_classify_phase35_http_command(
-    args: ClassifyPhase35HttpArgs,
+    args: ClassifyCorrelatedHttpArgs,
     environment: &LocalEnvironment,
 ) -> Result<String> {
     use phase35_http::{classify_phase35_http, HttpTerminalCategory};
@@ -143,7 +143,7 @@ pub(crate) fn run_classify_phase35_http_command(
 }
 
 pub(crate) fn run_admit_phase35_evidence_command(
-    args: AdmitPhase35EvidenceArgs,
+    args: AdmitCorrelatedRuntimeEvidenceArgs,
     environment: &LocalEnvironment,
 ) -> Result<String> {
     use phase35_evidence::{
@@ -200,14 +200,13 @@ pub(crate) fn run_admit_phase35_evidence_command(
         evidence_sources: vec![Phase35EvidenceSource::ProtectedEvidenceRoot],
     };
 
-    let checklist_contents = read_phase36_public_checklist(
-        &environment.workspace_dir,
-        Utf8Path::new(PHASE36_STAGING_ROOT),
-        Utf8Path::new(PHASE36_DESTINATION_ROOT),
-        Utf8Path::new(PHASE35_CHECKLIST_PATH),
-        Utf8Path::new(PHASE35_MANIFEST_PATH),
+    let checklist_contents = std::fs::read_to_string(
+        environment
+            .workspace_dir
+            .join(PHASE35_CHECKLIST_PATH)
+            .as_std_path(),
     )
-    .map_err(anyhow::Error::msg)?;
+    .context("failed to read active parity checklist")?;
     let checklist =
         ChecklistSnapshot::capture(checklist_contents, live).map_err(anyhow::Error::msg)?;
     let matrix = evaluate_phase35_promotion(&validated, &checklist).map_err(anyhow::Error::msg)?;
@@ -239,7 +238,7 @@ pub(crate) fn run_admit_phase35_evidence_command(
 }
 
 pub(crate) fn run_validate_phase35_evidence_command(
-    args: ValidatePhase35EvidenceArgs,
+    args: ValidateCorrelatedRuntimeEvidenceArgs,
     environment: &LocalEnvironment,
 ) -> Result<String> {
     use phase35_evidence::{

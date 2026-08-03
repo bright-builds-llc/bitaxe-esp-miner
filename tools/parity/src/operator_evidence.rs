@@ -14,9 +14,7 @@ use inventory::{
 };
 
 pub(crate) use generation::{
-    publish_phase35_generation, publish_phase36_generation, read_phase36_authoritative_snapshot,
-    read_phase36_public_checklist, Phase35GenerationDocuments, Phase35PublicationOptions,
-    Phase36GenerationDocuments, Phase36PublicationOptions,
+    publish_phase35_generation, Phase35GenerationDocuments, Phase35PublicationOptions,
 };
 pub(crate) use profile::{
     EvidenceDisposition, OperatorEvidenceProfile, OperatorEvidenceSlot, ShareOutcome,
@@ -523,12 +521,11 @@ fn validate_conclusion(
         return;
     };
 
-    if profile == OperatorEvidenceProfile::Phase23
-        && !contents.contains("phase23_workflow_claim: redacted_operator_evidence_workflow")
+    if profile == OperatorEvidenceProfile::Release
+        && !contents.contains("workflow_claim: redacted_operator_evidence")
     {
         validation_errors.push(
-            "conclusion.md must contain phase23_workflow_claim: redacted_operator_evidence_workflow"
-                .to_owned(),
+            "conclusion.md must contain workflow_claim: redacted_operator_evidence".to_owned(),
         );
     }
 }

@@ -1,6 +1,7 @@
 bazel-*
 /scratch/
 target/
+/.bazel-firmware-target/
 .embuild/
 /.planning/phases/**/hardware-runs/
 /.planning/milestones/**/hardware-runs/

@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260803T213601Z-WF-001",
+  "predecessor_sha256": "2590ff82638157130b094949bfc9f921de145ac6bb9bd0a25376865831d94f52",
+  "result_sha256": "73bc1788aa493e4380fba82e57f5d2d5810f098eee7105bf73084af75dc1d4d0",
+  "row_id": "WF-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260803T213524Z-AUTOMATION-CUTOVER/PLAN.md",
+  "plan_sha256": "62e185790d2bcceaf48dc68dc58d9ef0d0567e1a4bcceeb2cd65e9b2011299c4",
+  "result_path": "docs/parity/work-plans/20260803T213524Z-AUTOMATION-CUTOVER/RESULT.md",
+  "result_document_sha256": "5d0312e9812d2a4cf1306af6a0b2663396ce780015a97cd1febb04e969eff0d2",
+  "migration_ledger_path": "docs/parity/automation-migration.json",
+  "migration_ledger_sha256": "c7981ec77d2ec2fdecdd98ebc5113f64d0a2c1a11b2009d0f10bbf2b1fa310ff",
+  "before_rust_owned_target": "`scripts/verify-reference-clean.sh`, `tools/parity`",
+  "after_rust_owned_target": "`tools/xtask/src/main.rs`, `tools/automation/src/cli.ts`, `tools/parity`",
+  "before_status": "verified",
+  "after_status": "verified",
+  "before_evidence": "workflow",
+  "after_evidence": "workflow",
+  "before_notes": "`just verify-reference` passed in Phase 01 Plan 09 and printed `reference clean: c1915b0a63bfabebdb95a515cedfee05146c1d50`; package and parity targets run the guard before trusted output.",
+  "after_notes": "The Rust-owned reference contract checks initialization, the pinned commit, parent submodule state, and cleanliness; package and parity targets run it before trusted output. The typed automation migration ledger records proven equivalence."
+}

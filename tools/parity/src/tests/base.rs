@@ -14,10 +14,7 @@ fn parses_markdown_checklist_rows() {
     assert_eq!(rows[0].status, "implemented");
     assert_eq!(rows[0].evidence, "pending");
     assert_eq!(rows[0].reference_breadcrumb, "reference/esp-miner");
-    assert_eq!(
-        rows[0].rust_owned_target,
-        "scripts/verify-reference-clean.sh"
-    );
+    assert_eq!(rows[0].rust_owned_target, "tools/xtask/src/main.rs");
 }
 
 #[test]
@@ -41,7 +38,6 @@ fn release_evidence_validation_paths_resolve_relative_inputs_under_workspace() {
     // Arrange
     let environment = LocalEnvironment {
         workspace_dir: Utf8PathBuf::from("/tmp/bitaxe-workspace"),
-        reference_guard_path: Utf8PathBuf::from("unused-reference-guard"),
     };
     let args = ReleaseEvidenceArgs {
         manifest: Utf8PathBuf::from("docs/evidence/package.json"),

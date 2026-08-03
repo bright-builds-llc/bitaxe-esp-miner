@@ -392,18 +392,18 @@ fn phase34_package_admission_layout_failures_stop_before_effects() {
 }
 
 #[test]
-fn phase34_package_admission_script_uses_managed_tools_and_provenance() {
+fn phase34_package_admission_uses_managed_tools_and_provenance() {
     // Arrange
     let required_script_markers = [
-        "esptool\" image_info --version 2",
+        "image_info",
         "--elf-sha256-offset",
-        "generated_partition_table",
+        "partitionTableBin",
         "--build-provenance-stamp",
     ];
-    let forbidden_script_markers = ["espflash\n\tsave-image"];
+    let forbidden_script_markers = ["save-image"];
 
     // Act
-    let package_script = PACKAGE_SCRIPT_SOURCE;
+    let package_script = include_str!("../../../automation/src/package.ts");
 
     // Assert
     assert_contains_all(

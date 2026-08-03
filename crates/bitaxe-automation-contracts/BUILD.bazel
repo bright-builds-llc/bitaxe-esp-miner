@@ -1,0 +1,51 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+
+package(default_visibility = ["//visibility:public"])
+
+rust_library(
+    name = "bitaxe_automation_contracts",
+    srcs = ["src/lib.rs"],
+    compile_data = ["typescript-contracts.ts"],
+    crate_name = "bitaxe_automation_contracts",
+    edition = "2021",
+    deps = [
+        "@crates//:schemars",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "verify_typescript",
+    srcs = ["src/bin/verify_typescript.rs"],
+    crate_name = "verify_typescript",
+    edition = "2021",
+    deps = [":bitaxe_automation_contracts"],
+)
+
+rust_binary(
+    name = "validate_version_evidence",
+    srcs = ["src/bin/validate_version_evidence.rs"],
+    crate_name = "validate_version_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "export_contracts",
+    srcs = ["src/bin/export_contracts.rs"],
+    crate_name = "export_contracts",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_test(
+    name = "tests",
+    crate = ":bitaxe_automation_contracts",
+)

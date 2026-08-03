@@ -240,9 +240,16 @@ impl FlashEnvironment for LocalFlashEnvironment {
     }
 
     fn current_provenance(&self) -> Result<BuildProvenance> {
-        let status_command = self.workspace_dir.join(BUILD_IDENTITY_STATUS_RELATIVE_PATH);
-        let output = Command::new(status_command.as_std_path())
+        let output = Command::new("cargo")
             .current_dir(self.workspace_dir.as_std_path())
+            .args([
+                "run",
+                "--quiet",
+                "-p",
+                "xtask",
+                "--",
+                "build-identity-status",
+            ])
             .output()
             .context("failed to run canonical build identity status command")?;
         let status = command_output_to_string(output, "build identity status command")?;
@@ -428,59 +435,14 @@ impl FlashEnvironment for LocalFlashEnvironment {
             .map_or(UsbDeviceEffectState::None, UsbSession::device_effect_state)
     }
 
-    fn phase35_stage_readiness_gate(&self, stage: &str, port: &str) -> Result<()> {
+    fn phase35_stage_readiness_gate(&self, _stage: &str, _port: &str) -> Result<()> {
         let Ok(stage_root) = env::var("PHASE35_FLASH_STAGE_ROOT") else {
             return Ok(());
         };
         if stage_root.is_empty() {
             return Ok(());
         }
-        if !matches!(stage, "after-factory" | "after-nvs") {
-            bail!("phase35_stage_readiness=blocked reason=invalid_stage");
-        }
-
-        let expected_gate = self
-            .workspace_dir
-            .join("scripts/phase35-stage-readiness.sh");
-        let expected_gate = fs::canonicalize(expected_gate.as_std_path())
-            .context("phase35_stage_readiness=blocked reason=gate_unavailable")?;
-        let requested_gate = env::var("PHASE35_STAGE_READINESS_BIN")
-            .context("phase35_stage_readiness=blocked reason=gate_unavailable")?;
-        let requested_gate = fs::canonicalize(&requested_gate)
-            .context("phase35_stage_readiness=blocked reason=gate_unavailable")?;
-        if requested_gate != expected_gate {
-            bail!("phase35_stage_readiness=blocked reason=untrusted_gate");
-        }
-        let expected_physical_identity = env::var("PHASE35_EXPECTED_PHYSICAL_IDENTITY")
-            .context("phase35_stage_readiness=blocked reason=identity_unavailable")?;
-        if !is_lower_hex_digest(&expected_physical_identity) {
-            bail!("phase35_stage_readiness=blocked reason=identity_invalid");
-        }
-        let trace_root = Utf8Path::new(&stage_root).join("readiness");
-        fs::create_dir_all(trace_root.as_std_path())
-            .context("phase35_stage_readiness=blocked reason=trace_root_invalid")?;
-        set_private_directory_mode(&trace_root)?;
-
-        let output = Command::new(expected_gate)
-            .args([
-                "--stage",
-                stage,
-                "--port",
-                port,
-                "--expected-physical-identity",
-                expected_physical_identity.as_str(),
-                "--trace-root",
-                trace_root.as_str(),
-            ])
-            .output()
-            .context("phase35_stage_readiness=failed reason=spawn_failure")?;
-        if !output.status.success() {
-            bail!("phase35_stage_readiness=failed reason=gate_rejected");
-        }
-        let stdout = std::str::from_utf8(&output.stdout)
-            .context("phase35_stage_readiness=failed reason=output_invalid")?;
-        validate_phase35_readiness_output(stdout)?;
-        Ok(())
+        bail!("phase35_stage_readiness=blocked reason=legacy_gate_removed stage_root={stage_root}")
     }
 
     fn firmware_commit(&self) -> String {
