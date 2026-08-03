@@ -891,6 +891,29 @@ hit a transient host `Resource temporarily unavailable` after all tests passed;
 the isolated unchanged parity command immediately passed with no validation
 errors.
 
+Attempt-006 outcome: `continue_after_verified_fix` with no device effect. The
+detector and package passed, but the capture command was rejected during typed
+argument parsing because the operator handoff searched for the legacy shell
+form `port=` while the current Rust detector emits `port: `. The private attempt
+root and public projection were never created, so no flash, credential read,
+serial, HTTP, WebSocket, or recovery action occurred. The immutable detector
+root remains private. The targeted fix moves this handoff into the typed
+automation command, requires a mode-`0600` detector output with exactly one
+canonical admitted port, and has a real-file regression that rejects the
+obsolete delimiter.
+
+Attempt-007 contract: standing authorization selects this fresh ordinal after
+the verified handoff fix. The objective, privacy, permitted/prohibited effects,
+recovery bounds, stop conditions, and promotion gate are identical to Attempt
+006, except the repo-owned capture command now resolves the protected detector
+result itself. The exact commands are:
+
+1. `just package`
+2. `umask 077; mkdir -p scratch/sys004-version-reporting/attempt-007-detector && chmod 700 scratch/sys004-version-reporting/attempt-007-detector && just detect-ultra205 >scratch/sys004-version-reporting/attempt-007-detector/stdout 2>scratch/sys004-version-reporting/attempt-007-detector/stderr`
+3. `just capture-version-evidence --private-root scratch/sys004-version-reporting/attempt-007 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/sys004-version-reporting/attempt-007-detector/stdout --projection docs/parity/evidence/sys004-version-reporting/version-projection.json --capture-timeout-seconds 360`
+4. Recovery only after command 3 confirms a flash effect and then fails:
+   `bash -c 'set -euo pipefail; attempt_port="$(sed -n "s/^port: //p" scratch/sys004-version-reporting/attempt-007-detector/stdout)"; [[ -n "$attempt_port" ]]; just flash --board 205 --port "$attempt_port" --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json'`
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

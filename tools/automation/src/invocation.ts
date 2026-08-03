@@ -89,7 +89,8 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),
     "--wifi-credentials": value({ required: true }),
-    "--port": value({ required: true }),
+    "--port": value(),
+    "--detector-output": value(),
     "--projection": value({ required: true }),
     "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
   },
@@ -145,6 +146,12 @@ export function parseInvocation(argv: readonly string[]): ParsedInvocation {
   }
   if (command === "verify-flash-durability" && values.has("--image") && !values.has("--manifest")) {
     throw new InvocationError("--image requires --manifest");
+  }
+  if (
+    command === "capture-version-evidence"
+    && values.has("--port") === values.has("--detector-output")
+  ) {
+    throw new InvocationError("capture-version-evidence requires exactly one of --port or --detector-output");
   }
   return { command, args, values };
 }

@@ -45,6 +45,26 @@ test("parser accepts a complete version evidence request", () => {
   assert.equal(invocation.command, "capture-version-evidence");
 });
 
+test("version evidence requires exactly one detector handoff", () => {
+  // Arrange
+  const common = [
+    "capture-version-evidence",
+    "--private-root", "scratch/attempt",
+    "--package-manifest", "bazel-bin/package.json",
+    "--wifi-credentials", "wifi-credentials.json",
+    "--projection", "scratch/version.json",
+    "--capture-timeout-seconds", "45",
+  ];
+
+  // Act
+  const detector = parseInvocation([...common, "--detector-output", "scratch/detector.stdout"]);
+
+  // Assert
+  assert.equal(detector.values.get("--detector-output"), "scratch/detector.stdout");
+  assert.throws(() => parseInvocation(common));
+  assert.throws(() => parseInvocation([...common, "--port", "/dev/cu.test", "--detector-output", "scratch/detector.stdout"]));
+});
+
 test("parser accepts bare semantic redaction and rejects removed revision flags", () => {
   // Arrange
   const legacyCases = [

@@ -12,6 +12,7 @@ import {
   type AutomationCommand,
   type AutomationResult,
 } from "./contracts.generated.js";
+import { portFromDetectorOutput } from "./detector.js";
 import { fetchJsonFromSameOrigin } from "./http.js";
 import {
   hasFlag,
@@ -248,11 +249,15 @@ async function main(): Promise<number> {
       const output = assertWithinWorkspace(root, optionValue(invocation, "--output"));
       await fetchJsonFromSameOrigin(origin, maybeOptionValue(invocation, "--route") ?? "/api/system/info", output);
     } else if (invocation.command === "capture-version-evidence") {
+      const maybeDetectorOutput = maybeOptionValue(invocation, "--detector-output");
+      const port = maybeDetectorOutput === undefined
+        ? optionValue(invocation, "--port")
+        : await portFromDetectorOutput(root, maybeDetectorOutput);
       publicValue = await captureVersionEvidence(root, {
         privateRoot: optionValue(invocation, "--private-root"),
         packageManifest: optionValue(invocation, "--package-manifest"),
         wifiCredentials: optionValue(invocation, "--wifi-credentials"),
-        port: optionValue(invocation, "--port"),
+        port,
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_version_evidence"));
