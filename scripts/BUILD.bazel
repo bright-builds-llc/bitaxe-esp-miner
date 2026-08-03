@@ -132,6 +132,25 @@ sh_binary(
     ],
 )
 
+sh_test(
+    name = "phase36_substantive_evidence_test",
+    srcs = ["phase36-substantive-evidence-test.sh"],
+    args = [
+        "$(location phase36-substantive-evidence.sh)",
+        "$(location phase36-substantive-evidence-fake-report.sh)",
+        "$(location phase36-hardware-effect.sh)",
+        "$(location phase36-hardware-effect-fake-flash.sh)",
+    ],
+    data = [
+        "phase36-hardware-effect-fake-flash.sh",
+        "phase36-hardware-effect.sh",
+        "phase36-substantive-evidence-fake-report.sh",
+        "phase36-substantive-evidence.sh",
+    ],
+    env_inherit = ["PATH"],
+    tags = ["local"],
+)
+
 sh_binary(
     name = "phase36_hardware_effect",
     srcs = ["phase36-hardware-effect.sh"],

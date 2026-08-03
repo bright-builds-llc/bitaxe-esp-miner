@@ -588,6 +588,44 @@ unarchived. Exact-current-package live HTTP/WebSocket equality is still
 unproved. Attempt 003 is consumed and attempt 004 is not authorized, so the
 next admissible hardware action requires a future explicit ordinal.
 
+Attempt-003 software-only hardening continuation: on 2026-08-02 the user asked
+for any further targeted fixes needed to get past the earlier Attempt-003
+problems. This continuation authorizes deterministic fake-process replay and
+software repair only. It does not authorize Attempt 004, USB detection,
+credential use, flash, monitor, HTTP/WebSocket device access, recovery, direct
+UART, pins, or any other hardware effect.
+
+- [x] Prove a fast red-capable real-process replay of the exact redundant-image
+      path-spelling failure and the current manifest-only green behavior.
+- [x] Exercise the complete preflight-to-effect process seam with fakes and
+      minimize any newly reproduced failure.
+- [x] Implement only a reproduced root-cause fix with regression coverage; do
+      not change hardware authority, promotion status, or evidence claims.
+- [x] Run every mandatory repository gate and record the conservative outcome.
+
+Attempt-003 hardening outcome: temporarily restoring the redundant
+`--image` argument made the real adapter process test fail with
+`redundant image override crossed the Phase 36 boundary`; restoring the
+manifest-only adapter made the same test pass. A new fresh-process regression
+now creates clean source and reference repositories, admits an exact v3
+package through real preflight, transfers its canonical artifact identities
+through the attempt handle and hardware wrapper, and invokes the real effect
+adapter behind fake broker and flash boundaries. It proves exactly one
+manifest selector, no image override, a completed typed result, a sealed
+non-promotion outcome, and mode-`0600` private outputs without USB, credentials,
+device access, or any other hardware effect.
+
+No further production defect reproduced: runfiles resolution, canonical path
+transfer, broker-side argument transfer, and private modes all passed. The
+targeted fix is therefore the missing end-to-end regression seam, not another
+runtime workaround. The ordered Rust format, clippy, build, and test sequence;
+all 80 Bazel tests; Bright Builds; parity validation; unchanged 34/94 progress;
+redaction; reference integrity; and diff checks pass. One first full-suite run
+observed an unrelated archived Phase 28 socket-startup `ECONNREFUSED`; three
+isolated reruns and the complete rerun passed, and the protected archived
+source was not changed. `SYS-004` remains `implemented`, the checklist and
+progress history remain unchanged, and Attempt 004 remains unauthorized.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
