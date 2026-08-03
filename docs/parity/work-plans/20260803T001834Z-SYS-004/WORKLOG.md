@@ -65,3 +65,29 @@
 - Outcome: The targeted software repair is ready for a clean source commit.
 - Blocker or next safe action: Review and commit the exact diff, push `main`,
   then build a fresh clean package before detector or hardware use.
+
+## 2026-08-03T01:02:00Z | attempt-001 detector stop
+
+- Source commit: `0a4475f232cc7d944e69c6425955994bbfc12a9e`.
+- Actions: Built the clean exact package, passed the standalone Ultra 205
+  detector, issued the Phase 36 preflight capability, consumed attempt 001,
+  and invoked the contracted SYS-004 projection.
+- Verification: Package label `0a4475f232cc-dev` matched the clean source. The
+  broker ledger reports exact-package admission complete, board-205 detector
+  `detector_failed`, cleanup complete, no secondary failure, recovery not
+  authorized, and no flash/candidate/private capture. The projection rejected
+  the absent capture at its private boundary. No credential content or raw USB
+  or network value was exposed or committed.
+- Evidence: Protected mode-`0700` attempt-001 root with mode-`0600` handle,
+  append-only ledger, and `phase36-attempt-seal-v2`; categorical facts only are
+  recorded here.
+- Outcome: `stop_hardware_blocker` does not apply because the independent
+  detector passed and the failure is a source-confirmed broker parser defect.
+  `SYS-004` remains `implemented`; no checklist or progress field changed.
+- Root cause: `tools/flash detect` canonically renders `port: <value>`, but
+  `ProcessTransactionBoundary::run_detector` searches only for `port=<value>`.
+  Existing tests mock the detector boundary and never exercise its stdout
+  grammar, allowing the mismatch to survive.
+- Blocker or next safe action: Commit the separate attempt-002 contract, then
+  implement a pure exact-output parser with negative grammar regressions. No
+  retry is allowed until the fix passes all gates and is cleanly pushed.

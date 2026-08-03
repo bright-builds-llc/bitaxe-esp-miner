@@ -355,7 +355,7 @@ run.
       `version.txt` and read that installed file for `axeOSVersion`.
 - [x] Add a typed exact-package live version projection with focused
       regression coverage and a closed commit-safe schema.
-- [ ] Commit and push the software fix, build the exact package, and perform at
+- [x] Commit and push the software fix, build the exact package, and perform at
       most one detector-gated Ultra 205 verification attempt.
 - [ ] Verify or conservatively retain only `SYS-004`, synchronize progress only
       if its checklist fields change, and push the audited result.
@@ -454,6 +454,35 @@ closed commit-safe version/provenance projection. Focused API/parser,
 packager, source-boundary, projection, stale-version, and private-mode tests
 pass. The remaining unchecked work is the mandatory full gate, clean software
 commit/push, and single hardware attempt.
+
+Attempt-001 outcome: clean source `0a4475f232cc7d944e69c6425955994bbfc12a9e`
+was packaged and the standalone detector passed. The broker admitted the exact
+package, but its internal board-205 detector failed before credential access or
+flash, then cleanup passed. The sealed categorical record reports
+`detector_failed`, `recovery_disposition: not_authorized`, no secondary
+failure, no candidate, and no private capture. Root cause is deterministic:
+the canonical `tools/flash detect` output uses `port: <value>`, while the
+broker accepts only the nonexistent `port=<value>` spelling. This is a host
+parser defect, not device evidence, and the attempt changed no device state.
+
+Attempt-002 authorization: add a pure detector-output parser that accepts
+exactly one canonical `port: ` line and rejects missing, duplicate, legacy
+`port=`, empty, and invalid UTF-8 inputs. Run all mandatory gates, commit and
+push the fix, and create a new clean exact package before the retry. Exactly
+one retry is permitted at
+`scratch/sys004-version-reporting/attempt-002` using the same 360-second
+capture, 420-second effect, safety, privacy, recovery, cleanup, and stop
+contract as attempt 001. The only permitted retry workflow is:
+
+1. `just package`
+2. `just detect-ultra205`
+3. `just phase36-substantive-evidence mode=preflight board=205 private-parent=scratch/sys004-version-reporting/attempt-002 attempt-handle-file=scratch/sys004-version-reporting/attempt-002/handle.json candidate-output=scratch/sys004-version-reporting/attempt-002/candidate.json capture-timeout-seconds=360 package-manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
+4. `just phase36-substantive-evidence mode=hardware board=205 private-parent=scratch/sys004-version-reporting/attempt-002 attempt-handle-file=scratch/sys004-version-reporting/attempt-002/handle.json candidate-output=scratch/sys004-version-reporting/attempt-002/candidate.json capture-timeout-seconds=360 wifi-credentials=wifi-credentials.json`
+5. `bazel run //tools/parity:report -- project-sys004-version-evidence --private-parent scratch/sys004-version-reporting/attempt-002 --attempt-handle-file scratch/sys004-version-reporting/attempt-002/handle.json --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --output docs/parity/evidence/sys004-version-reporting/version-projection.json`
+
+No unchanged attempt, alternate command, or later ordinal is authorized. A
+retry may proceed only after the parser regression, all gates, and clean push
+prove the objectively changed boundary.
 
 ## Future — Explicit Only
 
