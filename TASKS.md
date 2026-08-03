@@ -914,6 +914,29 @@ result itself. The exact commands are:
 4. Recovery only after command 3 confirms a flash effect and then fails:
    `bash -c 'set -euo pipefail; attempt_port="$(sed -n "s/^port: //p" scratch/sys004-version-reporting/attempt-007-detector/stdout)"; [[ -n "$attempt_port" ]]; just flash --board 205 --port "$attempt_port" --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json'`
 
+Attempt-007 outcome: `continue_after_verified_fix`. The exact-package flash,
+safe boot, HTTP response, WebSocket response, and cleanup completed, so the
+optional same-package recovery was unnecessary and was not run. All manifest
+comparisons passed: build label, installed static-asset version, semantic/source/
+reference/ELF/channel/dirty/release provenance, and ESP-IDF version. The
+WebSocket carried the same boot and identical version fields, but its operator
+snapshot revision was newer than the immediately preceding HTTP response. The
+host validator incorrectly required exact revision equality across sequential
+observations. Private roots remain mode `0700`, raw responses mode `0600`, and
+no public projection was emitted.
+
+Attempt-008 contract: standing authorization selects this fresh ordinal after
+the targeted revision-ordering fix. The validator must accept equal-or-later
+positive WebSocket revision for the same boot while still requiring identical
+version fields. The objective, privacy, effects, recovery, stop, and promotion
+contracts remain otherwise identical to Attempt 007. The exact commands are:
+
+1. `just package`
+2. `umask 077; mkdir -p scratch/sys004-version-reporting/attempt-008-detector && chmod 700 scratch/sys004-version-reporting/attempt-008-detector && just detect-ultra205 >scratch/sys004-version-reporting/attempt-008-detector/stdout 2>scratch/sys004-version-reporting/attempt-008-detector/stderr`
+3. `just capture-version-evidence --private-root scratch/sys004-version-reporting/attempt-008 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/sys004-version-reporting/attempt-008-detector/stdout --projection docs/parity/evidence/sys004-version-reporting/version-projection.json --capture-timeout-seconds 360`
+4. Recovery only after command 3 confirms a flash effect and then fails:
+   `bash -c 'set -euo pipefail; attempt_port="$(sed -n "s/^port: //p" scratch/sys004-version-reporting/attempt-008-detector/stdout)"; [[ -n "$attempt_port" ]]; just flash --board 205 --port "$attempt_port" --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json'`
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

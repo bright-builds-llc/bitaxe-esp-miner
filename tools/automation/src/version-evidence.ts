@@ -120,11 +120,17 @@ function versionProjection(manifest: PackageManifest, apiValue: unknown, websock
   );
   const apiEspIdfVersionMatchesManifest = requiredString(api, "idfVersion", "system info response")
     === manifest.image_metadata.esp_idf_version;
+  const apiRevision = api["operatorSnapshotRevision"];
+  const websocketRevision = websocket["operatorSnapshotRevision"];
   const websocketSameBootRevisionObserved = (
     requiredString(websocket, "bootSession", "live WebSocket data")
       === requiredString(api, "bootSession", "system info response")
-    && websocket["operatorSnapshotRevision"] === api["operatorSnapshotRevision"]
-    && typeof api["operatorSnapshotRevision"] === "number"
+    && typeof apiRevision === "number"
+    && Number.isSafeInteger(apiRevision)
+    && apiRevision > 0
+    && typeof websocketRevision === "number"
+    && Number.isSafeInteger(websocketRevision)
+    && websocketRevision >= apiRevision
   );
   const comparedFields = [
     "version",

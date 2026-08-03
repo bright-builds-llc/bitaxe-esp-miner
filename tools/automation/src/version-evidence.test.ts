@@ -88,7 +88,10 @@ test("version workflow uses one typed exact-package effect and emits only a reda
       close(): void {},
     };
     queueMicrotask(() => listeners.get("message")?.({
-      data: JSON.stringify({ event: "update", data: systemInfo }),
+      data: JSON.stringify({
+        event: "update",
+        data: { ...systemInfo, operatorSnapshotRevision: systemInfo.operatorSnapshotRevision + 1 },
+      }),
     }));
     return client;
   };
