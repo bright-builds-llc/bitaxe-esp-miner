@@ -80,3 +80,25 @@ test("parser accepts bare semantic redaction and rejects removed revision flags"
   assert.equal(invocation.command, "verify-redaction");
   for (const args of legacyCases) assert.throws(() => parseInvocation(args));
 });
+
+test("settings durability capture requires the complete capture surface", () => {
+  // Arrange
+  const complete = [
+    "verify-settings-durability", "--mode", "capture",
+    "--private-root", "scratch/settings",
+    "--package-manifest", "bazel-bin/package.json",
+    "--wifi-credentials", "wifi-credentials.json",
+    "--detector-output", "scratch/detector.stdout",
+    "--projection", "docs/evidence/settings.json",
+    "--capture-timeout-seconds", "360",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.values.get("--mode"), "capture");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--trace", "legacy.log"]));
+  assert.throws(() => parseInvocation(["verify-settings-durability", "--mode", "baseline"]));
+});

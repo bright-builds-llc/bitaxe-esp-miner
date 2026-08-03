@@ -75,11 +75,17 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--require-operator-snapshot-coherence": boolean(),
   },
   "verify-settings-durability": {
-    "--trace": value({ required: true }),
-    "--mode": value({ required: true, values: ["baseline", "delivery", "post-restart"] }),
+    "--trace": value(),
+    "--mode": value({ required: true, values: ["baseline", "delivery", "post-restart", "capture"] }),
     "--start-byte": value({ positiveInteger: true }),
     "--expected-session": value(),
     "--expected-ordinal": value({ positiveInteger: true }),
+    "--private-root": value(),
+    "--package-manifest": value(),
+    "--wifi-credentials": value(),
+    "--detector-output": value(),
+    "--projection": value(),
+    "--capture-timeout-seconds": value({ positiveInteger: true }),
   },
   "capture-correlated-runtime-evidence": {
     "--root": value({ required: true }),
@@ -152,6 +158,25 @@ export function parseInvocation(argv: readonly string[]): ParsedInvocation {
     && values.has("--port") === values.has("--detector-output")
   ) {
     throw new InvocationError("capture-version-evidence requires exactly one of --port or --detector-output");
+  }
+  if (command === "verify-settings-durability") {
+    const capture = values.get("--mode") === "capture";
+    const captureFlags = [
+      "--private-root", "--package-manifest", "--wifi-credentials", "--detector-output",
+      "--projection", "--capture-timeout-seconds",
+    ];
+    if (capture) {
+      for (const flag of captureFlags) {
+        if (!values.has(flag)) throw new InvocationError(`capture mode requires ${flag}`);
+      }
+      if (values.has("--trace") || values.has("--start-byte") || values.has("--expected-session") || values.has("--expected-ordinal")) {
+        throw new InvocationError("capture mode rejects trace-classification options");
+      }
+    } else if (!values.has("--trace")) {
+      throw new InvocationError("classification mode requires --trace");
+    } else if (captureFlags.some((flag) => values.has(flag))) {
+      throw new InvocationError("classification mode rejects capture options");
+    }
   }
   return { command, args, values };
 }

@@ -333,6 +333,46 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
+### task-parity-v12-hostname-typed-capture | 2026-08-03 | Capture fresh typed hostname durability evidence
+
+- [x] Extend `verify-settings-durability` with one semantic capture mode that
+      owns exact-package flash, hostname PATCH/readback, normal restart,
+      post-restart readback, and restoration of the original hostname.
+- [x] Add private-first artifact handling, a closed public projection, strict
+      detector-output admission, bounded recovery, and regression coverage.
+- [ ] Run one detector-gated Ultra 205 attempt and transition only
+      `V12-HOSTNAME-205` if persistence and restoration both pass.
+- [ ] Run all mandatory gates, synchronize progress, and archive the task.
+
+Plan:
+`docs/parity/work-plans/20260803T232954Z-V12-HOSTNAME-205/PLAN.md`
+
+Hardware contract: standing repository-task authorization selects one bounded
+attempt after implementation and all software gates pass on a clean pushed
+commit. Exact commands are `just package`; one private mode-`0700` detector
+capture running `just detect-ultra205`; then `just verify-settings-durability
+--mode capture --private-root scratch/v12-hostname-typed/attempt-001
+--package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+--wifi-credentials wifi-credentials.json --detector-output <private-detector>
+--projection docs/parity/evidence/v12-hostname-205/durability-projection.json
+--capture-timeout-seconds 360`. The typed workflow may flash the exact package,
+read the current hostname privately, PATCH one non-secret test hostname, issue
+one normal application restart, observe the next boot, prove persistence, PATCH
+the original hostname, and prove restoration. It may perform one recovery-only
+exact-package flash after a confirmed flash or hostname effect if restoration
+cannot otherwise complete. It must keep mining and hardware control disabled,
+must not read credential contents, and must never publish hostnames, origins,
+network identifiers, USB paths, or raw traces. Stop without retry on ambiguous
+detection, identity drift, unsafe state, PATCH/readback/restart mismatch,
+restoration failure, privacy failure, or repeated unchanged boundary. Direct
+UART, pins, mining, voltage/fan/power effects, OTA, erase, raw writes, discovery,
+and fault injection are prohibited.
+
+Verification: The typed capture and invocation regressions pass both success
+and post-restart mismatch/restoration paths. The ordered Rust gates, Bright
+Builds checks, all 28 Bazel tests, parity/progress, redaction, reference, and
+diff checks pass. Hardware attempt pending a clean pushed implementation.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

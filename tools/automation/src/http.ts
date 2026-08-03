@@ -26,6 +26,33 @@ export async function fetchJsonFromSameOrigin(
   return value;
 }
 
+export async function sendSameOriginRequest(
+  origin: URL,
+  route: string,
+  method: "PATCH" | "POST",
+  privateOutput: string,
+  maybeJsonBody?: unknown,
+): Promise<void> {
+  if (origin.username !== "" || origin.password !== "" || origin.pathname !== "/" || origin.search !== "" || origin.hash !== "") {
+    throw new Error("device origin must be origin-only");
+  }
+  if (!route.startsWith("/") || route.startsWith("//")) throw new Error("API route must be same-origin relative");
+  const target = new URL(route, origin);
+  if (target.origin !== origin.origin) throw new Error("API target escaped the admitted origin");
+  const response = await fetch(target, {
+    method,
+    redirect: "error",
+    signal: AbortSignal.timeout(15_000),
+    ...(maybeJsonBody === undefined ? {} : {
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(maybeJsonBody),
+    }),
+  });
+  const body = await response.text();
+  await writeFile(privateOutput, body, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  if (!response.ok) throw new Error(`same-origin API returned HTTP ${String(response.status)}`);
+}
+
 export function uniqueRuntimeOrigin(document: string): URL {
   const values = new Set<string>();
   for (const line of document.split(/\r?\n/u)) {
