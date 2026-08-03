@@ -9,6 +9,8 @@ const semanticSchemas = new Set([
   "bitaxe-automation-migration-v1",
 ]);
 
+const safeSemanticKeys = new Set(["same_origin_api_observed"]);
+
 const prohibitedKeys = /(?:password|secret|token|api[_-]?key|ssid|device[_-]?url|origin|mac|ip(?:v[46])?|pool(?:url|port|user|worker)|owner(?:address)?|btc(?:address)?|usb[_-]?(?:port|path)|serial[_-]?port)/iu;
 const localPath = /(?:\/Users\/[^\s"']+|\/home\/[^\s"']+|[A-Za-z]:\\[^\s"']+)/u;
 const networkAddress = /(?:\b(?:\d{1,3}\.){3}\d{1,3}\b|\b[0-9a-f]{2}(?::[0-9a-f]{2}){5}\b|https?:\/\/)/iu;
@@ -18,7 +20,9 @@ function inspectValue(value: unknown, keyPath: string): string[] {
   if (typeof value === "object" && value !== null) {
     const violations: string[] = [];
     for (const [key, child] of Object.entries(value)) {
-      if (prohibitedKeys.test(key)) violations.push(`${keyPath}.${key}: prohibited operational field`);
+      if (prohibitedKeys.test(key) && !safeSemanticKeys.has(key)) {
+        violations.push(`${keyPath}.${key}: prohibited operational field`);
+      }
       violations.push(...inspectValue(child, `${keyPath}.${key}`));
     }
     return violations;

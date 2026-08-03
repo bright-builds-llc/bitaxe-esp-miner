@@ -13,6 +13,7 @@ test("semantic evidence scanner accepts digests and rejects operational fields",
   await writeFile(path.join(root, "safe", "evidence.json"), JSON.stringify({
     schema_version: "bitaxe-version-evidence-v1",
     package_manifest_sha256: "0".repeat(64),
+    same_origin_api_observed: true,
   }));
 
   // Act / Assert

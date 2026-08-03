@@ -1,0 +1,17 @@
+{
+  "schema_version": "bitaxe-version-evidence-v1",
+  "board": 205,
+  "source_commit": "9d7a891d14cfa634fffc1aa50fb9ddd5f7d4da17",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "70407aac637475c47b318b7b296644bb0e5f731f0ee9531a6b3612957ee1f117",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-version-evidence",
+    "request_sha256": "4deae34a9ef972013f5f6e97c92420a5e3dacf041644d68a77019f9e1734d87e"
+  },
+  "boot_observed": true,
+  "same_origin_api_observed": true,
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "redaction_status": "passed"
+}
