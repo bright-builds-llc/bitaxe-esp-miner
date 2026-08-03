@@ -44,6 +44,21 @@ function matchingSession(document: string): boolean {
   return boot !== undefined && boot === origin;
 }
 
+export function hasPassiveSafeState(document: string): boolean {
+  return document.split(/\r?\n/u).some((line) => {
+    const bootSafeState = line.includes("safe_state:")
+      && line.includes("mining=disabled")
+      && line.includes("asic_work_submission=disabled")
+      && line.includes("hardware_control=disabled");
+    const trustedRuntimeAttestation = line.includes("runtime_boot_attestation ")
+      && line.includes("mining=disabled")
+      && line.includes("work_submission=disabled")
+      && line.includes("hardware_control=disabled")
+      && line.includes("redacted=true");
+    return bootSafeState || trustedRuntimeAttestation;
+  });
+}
+
 export async function captureVersionEvidence(
   workspaceRoot: string,
   options: VersionEvidenceOptions,
@@ -91,7 +106,7 @@ export async function captureVersionEvidence(
   const privateLogPath = path.join(privateRoot, "flash-monitor.classifier-input.log");
   const monitorDocument = await readFile(privateLogPath, "utf8");
   if (!matchingSession(monitorDocument)) throw new Error("boot and runtime-origin session identity do not match");
-  if (!monitorDocument.includes("safe_state: mining=disabled") || !monitorDocument.includes("hardware_control=disabled")) {
+  if (!hasPassiveSafeState(monitorDocument)) {
     throw new Error("passive boot capture lacks required safe-state markers");
   }
   const origin = uniqueRuntimeOrigin(monitorDocument);

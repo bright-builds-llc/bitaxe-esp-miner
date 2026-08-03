@@ -5,7 +5,21 @@ import path from "node:path";
 import test from "node:test";
 
 import { createFakeProcessPort } from "./process.js";
-import { captureVersionEvidence } from "./version-evidence.js";
+import { captureVersionEvidence, hasPassiveSafeState } from "./version-evidence.js";
+
+test("late-attached trusted runtime attestation proves the passive safe state", () => {
+  // Arrange
+  const trusted = "runtime_boot_attestation schema_version=1 mining=disabled work_submission=disabled hardware_control=disabled redacted=true";
+  const activeMining = "runtime_boot_attestation schema_version=1 mining=active work_submission=enabled hardware_control=enabled redacted=true";
+
+  // Act
+  const trustedResult = hasPassiveSafeState(trusted);
+  const activeResult = hasPassiveSafeState(activeMining);
+
+  // Assert
+  assert.equal(trustedResult, true);
+  assert.equal(activeResult, false);
+});
 
 test("version workflow uses one typed exact-package effect and emits only a redacted projection", async () => {
   // Arrange

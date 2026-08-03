@@ -94,7 +94,43 @@ Cargo build; full all-feature Cargo tests; `bazel build //...`; all 28 Bazel
 tests; Bright Builds; parity and progress consistency; semantic redaction;
 pinned-reference integrity; contract drift, negative compile, process-adapter,
 repository-guard, and forbidden-surface scans all pass. Hardware acceptance is
-pending the clean pushed commit.
+pending a fresh successful attempt.
+
+Attempt 001 closure: detector admission passed and the sole launch flashed the
+exact pushed package. Private evidence classified the flash and runtime
+attestation as trusted and observed the exact source/reference identities with
+mining, work submission, and hardware control disabled. The shareable
+projection was not produced because the TypeScript validator required the
+earlier boot-only `safe_state:` line even though the late-attached trusted
+runtime attestation carried the same closed safety facts. No recovery was
+needed, no retry occurred, and Attempt 001 is closed.
+
+Fresh Attempt 002 contract:
+
+- Preconditions: commit and push the targeted safe-state parser fix and its
+  regression test; rerun every ordered software gate; build that exact clean
+  package; require `scratch/automation-refactor/attempt-002` and
+  `docs/parity/evidence/automation-refactor/attempt-002/version-evidence.json`
+  to be absent; check the ignored Wi-Fi file with `test -s` only; and freshly
+  admit exactly one Ultra 205 with `just detect-ultra205`.
+- Private evidence: the existing mode-`0700`
+  `scratch/automation-refactor` parent receives a fresh mode-`0700`
+  `attempt-002` child and mode-`0600` artifacts. Protected values remain local.
+- Sole launch command: `just capture-version-evidence --private-root
+  scratch/automation-refactor/attempt-002 --package-manifest
+  bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials
+  wifi-credentials.json --port <detector-port> --projection
+  docs/parity/evidence/automation-refactor/attempt-002/version-evidence.json
+  --capture-timeout-seconds 120`.
+- Allowed effect and evidence: one exact-package safe flash, bounded passive
+  boot/runtime attestation, and same-session origin-only `/api/system/info`
+  observation. Mining, work submission, and hardware control remain disabled;
+  only the validated redacted `bitaxe-version-evidence-v1` projection may be
+  shared.
+- Recovery, bounds, stops, and forbidden actions are identical to Attempt 001:
+  zero relaunches, at most one same-package recovery after confirmed effect,
+  and immediate stop on any closed failure category. A failed Attempt 002
+  requires another targeted diagnosis and a new contract.
 
 Completion review: Pending.
 
