@@ -3890,3 +3890,628 @@ effect boundary; no unchanged blind retry, weakened evidence, direct-UART/pin
 permission, or ad hoc destructive/fault-injection authority was introduced.
 The open SYS-004 task now contains its complete standing-authorized Attempt-006
 contract. No hardware effect occurred during this governance change.
+
+### task-parity-sys004-version-reporting | 2026-08-02 | Reconcile implemented version reporting
+
+- [x] Audit the upstream firmware, AxeOS, and ESP-IDF version surface against
+      the current canonical Rust build/platform/API projection.
+- [x] Run focused build-identity, system-info wire, package-manifest, and
+      runtime-attestation regressions plus every mandatory repository gate.
+- [x] Commit the row evidence before transitioning only `SYS-004` from
+      `in-progress` to `implemented`.
+- [x] Synchronize parity progress and retain this task with the exact later
+      live-evidence gate required for `verified`.
+- [x] Correct `next-item` so a non-verified plan closes after its checklist
+      status advances beyond the plan's recorded initial status.
+- [x] Prove an unchanged-status plan still resumes while the completed
+      `SYS-004` implementation plan yields the next candidate queue.
+- [x] Run all mandatory repository gates, keep the checklist and progress
+      history unchanged, and push the audited continuation.
+- [x] Generate the canonical build label as package-owned SPIFFS
+      `version.txt` and read that installed file for `axeOSVersion`.
+- [x] Add a typed exact-package live version projection with focused
+      regression coverage and a closed commit-safe schema.
+- [x] Commit and push the software fix, build the exact package, and perform at
+      most one detector-gated Ultra 205 verification attempt.
+- [x] Verify or conservatively retain only `SYS-004`, synchronize progress only
+      if its checklist fields change, and push the audited result.
+- [x] Extend the typed version-evidence workflow with exact-package HTTP and
+      identical same-boot/revision WebSocket comparisons while keeping raw
+      device responses private.
+- [x] Run every mandatory software gate, commit and push the workflow extension,
+      then execute the detector-gated Attempt-006 contract exactly once.
+- [x] Verify or conservatively retain only `SYS-004`, synchronize progress only
+      if its checklist fields change, archive this task only after verified
+      completion, and continue automatic parity selection.
+
+Plan: `docs/parity/work-plans/20260802T233821Z-SYS-004/PLAN.md`
+
+Verification plan:
+`docs/parity/work-plans/20260803T001834Z-SYS-004/PLAN.md`
+
+Initial-plan authorization boundary: software-only evidence reconciliation. No detector,
+hardware, credential, network, flash, monitor, HTTP, WebSocket, OTA, mining,
+safety-control, direct-UART, or pin action is authorized.
+
+Verification: The focused build-identity (8), system-info wire (1), package
+manifest (8), and runtime-attestation (11) tests passed; the focused Bazel
+targets passed; API compare checked 99 schema, 47 captured-response, and 36
+static-route facts without validation errors; and the complete Rust, Bright
+Builds, Bazel, parity, progress, redaction, reference-integrity, and whitespace
+gates passed before the evidence commit.
+
+Completion review: The stale checklist state was caused by evidence-accounting
+drift, not a missing firmware path. The existing canonical version projection
+passed focused and repository-wide checks, its evidence was committed before
+the guarded one-row transition, and progress was hash-chain synchronized.
+`SYS-004` is now accurately `implemented`. Residual risk is explicit:
+exact-current-package live API version evidence and a decision on static-asset
+version semantics remain required before `verified`, so this task stays active
+and unarchived.
+
+Continuation: The next `advance-parity` preflight incorrectly reopened this
+completed implementation plan because `next-item` treats every plan without a
+`RESULT.md` as open. `RESULT.md` is reserved for verified completion, so that
+rule deadlocks every intentionally conservative transition to `implemented`.
+This software-only continuation will make plan openness depend on whether the
+authoritative checklist status still equals the plan's recorded initial status.
+It does not alter `SYS-004` evidence, authorize hardware, or weaken the later
+verification gate.
+
+Continuation verification: Focused isolated-target Cargo tests passed all seven
+`parity_work` cases, including unchanged-status resumption, non-verified status
+advance closure, and regression rejection. The Bazel parity test target passed.
+Running the newly built CLI against the real repository returned
+`maybe_open_plan: null` and restored the ordered candidate queue with `SYS-004`
+first at `implemented`; the checklist and progress history remain unchanged.
+
+Continuation completion review: Commit
+`2ba235e661a628a66be035f329e75d1de82da80f` contains the targeted selector fix.
+All Rust, Bazel, Bright Builds, parity, redaction, and reference-integrity gates
+passed. The ordinary macOS Cargo target again stalled while launching the newly
+linked parity test binary, so the complete Cargo suite was rerun successfully
+from the clean isolated target that had already crossed that host boundary.
+No checklist transition, progress-history append, `RESULT.md`, or hardware
+interaction occurred. Residual risk is limited to future plan metadata/schema
+evolution; missing, invalid, and regressed states fail closed.
+
+Verification continuation: Source inspection resolved the static-semantics
+question as a concrete defect. Upstream reports the version stored in the
+flashed static filesystem and compares it with the application version. Rust
+currently reports the generic checked-in fallback UI name, and its SPIFFS
+package contains no `version.txt`. The new immutable verification plan permits
+the minimum package/runtime repair, a typed version-only evidence projection,
+and one exact-package Phase 36 broker attempt after the software source is
+clean, fully verified, committed, and pushed.
+
+Hardware contract: only the five exact commands and paths listed in the
+verification plan are permitted. They allow package creation, two detector
+admissions (one explicit and one broker-owned), one exact-package factory
+flash with local Wi-Fi NVS input, passive receive-only serial capture,
+read-only same-origin HTTP/WebSocket observation, typed same-package recovery
+if required, cleanup, and a redaction-safe version projection. The private
+root is `scratch/sys004-version-reporting/attempt-001`; it must be mode `0700`
+with mode-`0600` artifacts. The Wi-Fi file contents, USB identity, device
+origin, IP/MAC/SSID, raw response, and operational paths are never printed,
+summarized, or committed.
+
+Safety, recovery, and stop contract: board 205 only; 360-second capture and
+420-second effect wall-clock bounds; safe boot with mining, work submission,
+and hardware control disabled; no pool input or mining/control action; and no
+manual reset, erase, raw write, OTA, discovery, fault injection, direct UART,
+or pin access. The broker preserves the earliest typed failure, permits only
+its same-package typed recovery after a confirmed flash effect, and proves
+cleanup. One attempt only, with no unchanged retry. The accepted terminal
+outcomes are `complete`, `stop_repeated_boundary`, `stop_hardware_blocker`,
+`stop_authority_boundary`, or `stop_impossible_contract`.
+
+Implementation continuation: The package now copies the checked-in static
+tree into an ephemeral staging directory, writes the exact canonical build
+label to `version.txt`, and feeds only that staged tree to ESP-IDF
+`spiffsgen.py`. The firmware reads `/www/version.txt` after the existing SPIFFS
+mount and classifies absent, malformed, or noncanonical content as explicitly
+unavailable. The new `project-sys004-version-evidence` classifier requires the
+mode-`0600` Phase 36 handle, capture, and eligible seal; revalidates exact
+manifest, package, source, reference, ELF, capability, board, ASIC, and
+same-device joins; requires identical HTTP/WebSocket JSON; and emits only the
+closed commit-safe version/provenance projection. Focused API/parser,
+packager, source-boundary, projection, stale-version, and private-mode tests
+pass. The remaining unchecked work is the mandatory full gate, clean software
+commit/push, and single hardware attempt.
+
+Attempt-001 outcome: clean source `0a4475f232cc7d944e69c6425955994bbfc12a9e`
+was packaged and the standalone detector passed. The broker admitted the exact
+package, but its internal board-205 detector failed before credential access or
+flash, then cleanup passed. The sealed categorical record reports
+`detector_failed`, `recovery_disposition: not_authorized`, no secondary
+failure, no candidate, and no private capture. Root cause is deterministic:
+the canonical `tools/flash detect` output uses `port: <value>`, while the
+broker accepts only the nonexistent `port=<value>` spelling. This is a host
+parser defect, not device evidence, and the attempt changed no device state.
+
+Attempt-002 authorization: add a pure detector-output parser that accepts
+exactly one canonical `port: ` line and rejects missing, duplicate, legacy
+`port=`, empty, and invalid UTF-8 inputs. Run all mandatory gates, commit and
+push the fix, and create a new clean exact package before the retry. Exactly
+one retry is permitted at
+`scratch/sys004-version-reporting/attempt-002` using the same 360-second
+capture, 420-second effect, safety, privacy, recovery, cleanup, and stop
+contract as attempt 001. The only permitted retry workflow is:
+
+1. `just package`
+2. `just detect-ultra205`
+3. `just phase36-substantive-evidence mode=preflight board=205 private-parent=scratch/sys004-version-reporting/attempt-002 attempt-handle-file=scratch/sys004-version-reporting/attempt-002/handle.json candidate-output=scratch/sys004-version-reporting/attempt-002/candidate.json capture-timeout-seconds=360 package-manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
+4. `just phase36-substantive-evidence mode=hardware board=205 private-parent=scratch/sys004-version-reporting/attempt-002 attempt-handle-file=scratch/sys004-version-reporting/attempt-002/handle.json candidate-output=scratch/sys004-version-reporting/attempt-002/candidate.json capture-timeout-seconds=360 wifi-credentials=wifi-credentials.json`
+5. `bazel run //tools/parity:report -- project-sys004-version-evidence --private-parent scratch/sys004-version-reporting/attempt-002 --attempt-handle-file scratch/sys004-version-reporting/attempt-002/handle.json --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --output docs/parity/evidence/sys004-version-reporting/version-projection.json`
+
+No unchanged attempt, alternate command, or later ordinal is authorized. A
+retry may proceed only after the parser regression, all gates, and clean push
+prove the objectively changed boundary.
+
+Attempt-002 outcome: clean source `9f4d56700c42a318e1aef61ee99bffcaf06e4231`
+was packaged; the standalone detector and exact-package preflight passed. The
+broker again stopped before credential access or flash with the same sealed
+categorical detector failure, then cleanup passed with no candidate or private
+capture. The first repair proved the stdout grammar but exposed the remaining
+invocation cause: the broker starts nested `just detect-ultra205` without
+setting its working directory to Bazel's `BUILD_WORKSPACE_DIRECTORY`, so the
+process cannot reliably resolve the repository Justfile from the runfiles
+working directory. The targeted follow-up sets only that command working
+directory and has a pure command-construction regression. A third attempt is
+not authorized. `SYS-004` must remain `implemented` with exact-package live
+version evidence pending until a future explicitly authorized ordinal can
+exercise the corrected broker.
+
+Attempt-003 authorization: on 2026-08-03 the user explicitly authorized
+`SYS-004` attempt 003 after the clean pushed
+`f369dbde0cc689b6dc8cd4c76b9fd4fe45d5ad71` workspace-directory repair. The
+attempt may proceed only after this contract passes every mandatory gate and
+is committed and pushed. The exact permitted workflow is:
+
+1. `just package`
+2. `just detect-ultra205`
+3. `just phase36-substantive-evidence mode=preflight board=205 private-parent=scratch/sys004-version-reporting/attempt-003 attempt-handle-file=scratch/sys004-version-reporting/attempt-003/handle.json candidate-output=scratch/sys004-version-reporting/attempt-003/candidate.json capture-timeout-seconds=360 package-manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
+4. `just phase36-substantive-evidence mode=hardware board=205 private-parent=scratch/sys004-version-reporting/attempt-003 attempt-handle-file=scratch/sys004-version-reporting/attempt-003/handle.json candidate-output=scratch/sys004-version-reporting/attempt-003/candidate.json capture-timeout-seconds=360 wifi-credentials=wifi-credentials.json`
+5. `bazel run //tools/parity:report -- project-sys004-version-evidence --private-parent scratch/sys004-version-reporting/attempt-003 --attempt-handle-file scratch/sys004-version-reporting/attempt-003/handle.json --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --output docs/parity/evidence/sys004-version-reporting/version-projection.json`
+
+Attempt-003 evidence and privacy contract: the ignored private parent must be
+mode `0700`, all private artifacts must be mode `0600`, and the broker-owned
+child must not exist before launch. Wi-Fi contents, USB identity, device
+origin, IP/MAC/SSID, raw HTTP/WebSocket responses, and operational paths must
+never be printed, summarized, or committed. Only the typed version projection
+may enter `docs/parity/evidence/` after its private classifier and redaction
+checks pass.
+
+Attempt-003 effects and safety contract: exactly one detector-admitted Ultra
+205 may receive the exact clean package, private Wi-Fi NVS input, the
+broker-owned factory flash, qualified passive serial capture, and read-only
+same-origin HTTP/WebSocket observation. Mining, pool input, work submission,
+voltage, frequency, fan or other hardware control, OTA, OTAWWW, rollback,
+erase-flash, arbitrary raw writes, discovery, fault injection, manual reset,
+non-205 hardware, direct UART, and pin/pad/header/GPIO/probe/jumper/solder or
+injected-signal access remain prohibited. The capture bound is 360 seconds and
+the effect wall-clock bound is 420 seconds.
+
+Attempt-003 recovery and stop contract: preserve the earliest typed failure;
+permit only the broker's same-package typed recovery after a confirmed flash
+effect; always prove cleanup; and do not infer recovery from elapsed time. This
+is one fresh ordinal with no unchanged retry, alternate command, attempt 004,
+or broader authority. A recurrence of the corrected detector boundary selects
+`stop_repeated_boundary`. Accepted outcomes are `complete`,
+`stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`,
+or `stop_impossible_contract`.
+
+Attempt-003 promotion contract: `SYS-004` may reach `verified` only if the
+detector, exact source/reference/manifest/ELF joins, safe boot, complete HTTP
+response, identical same-boot WebSocket projection, manifest-equal `version`
+and `axeOSVersion`, manifest-equal provenance and ESP-IDF fields, private
+seals, commit-safe projection, cleanup, and every repository gate pass. Any
+missing or contradictory fact retains only `SYS-004` at `implemented`, with no
+progress append or `RESULT.md`.
+
+Attempt-003 outcome: `stop_hardware_blocker` at a new pre-transfer
+`flash_failed` boundary; no retry was run. Clean pushed source
+`3793e6dcad0a814a4d5ebd94f75e2dd29eb76362` produced the exact package and
+build label `3793e6dcad0a-dev`; standalone detection, exact-package preflight,
+and the broker-owned detector all passed. The flash result is
+`failed_no_device_effect`; cleanup completed; recovery was not authorized; and
+no serial, HTTP, WebSocket, private capture, or candidate exists. The typed
+projection rejected the absent private boundary. The mode-`0700` parent and all
+eight mode-`0600` artifacts pass the private-mode contract.
+
+Attempt-003 root cause: Phase 36 preflight deliberately resolves the factory
+artifact through `realpath`, while `tools/flash` deliberately requires an
+explicit image path to lexically equal the factory path resolved beside the
+manifest. The handle's canonical execroot path and the manifest's `bazel-bin`
+path identify the same file but are different strings, so the redundant
+`--image` override is rejected before transfer or evidence-directory creation.
+This exactly explains the detector-complete, no-stage, no-device-effect seal.
+The targeted fix removes only that redundant explicit image override from the
+Phase 36 adapter: the already admitted v3 manifest remains the sole flash-image
+selector, while the broker independently retains and verifies the canonical
+factory path and digest. A fresh-process fake-flash regression must prove the
+adapter forwards the manifest and omits the image override without any device
+effect. Attempt 004 remains unauthorized.
+
+Attempt-003 software repair: the Phase 36 hardware-effect adapter now forwards
+only the admitted v3 manifest to `tools/flash`; it no longer supplies the
+redundant canonical `--image` spelling that the manifest boundary intentionally
+rejects. The broker still verifies the canonical factory path, digest, package
+identity, and exact source/reference joins before this adapter runs. A real
+fresh-process fake-flash regression records the child argument vector and
+proves exactly one manifest selector, no image override, a completed typed
+effect result, and mode-`0600` output without touching hardware.
+
+Attempt-003 completion review: the root-cause fix is minimal and preserves the
+stricter flash-tool admission rule. The ordered Rust sequence, all 83 Bazel
+tests, Bright Builds with zero findings, parity validation, unchanged 34/94
+progress, redaction, reference integrity, and diff checks pass. `SYS-004`
+remains conservatively `implemented`; the checklist and progress history are
+unchanged, no `RESULT.md` exists, and this unresolved task remains active and
+unarchived. Exact-current-package live HTTP/WebSocket equality is still
+unproved. Attempt 003 is consumed and attempt 004 is not authorized, so the
+next admissible hardware action requires a future explicit ordinal.
+
+Attempt-003 software-only hardening continuation: on 2026-08-02 the user asked
+for any further targeted fixes needed to get past the earlier Attempt-003
+problems. This continuation authorizes deterministic fake-process replay and
+software repair only. It does not authorize Attempt 004, USB detection,
+credential use, flash, monitor, HTTP/WebSocket device access, recovery, direct
+UART, pins, or any other hardware effect.
+
+- [x] Prove a fast red-capable real-process replay of the exact redundant-image
+      path-spelling failure and the current manifest-only green behavior.
+- [x] Exercise the complete preflight-to-effect process seam with fakes and
+      minimize any newly reproduced failure.
+- [x] Implement only a reproduced root-cause fix with regression coverage; do
+      not change hardware authority, promotion status, or evidence claims.
+- [x] Run every mandatory repository gate and record the conservative outcome.
+
+Attempt-003 hardening outcome: temporarily restoring the redundant
+`--image` argument made the real adapter process test fail with
+`redundant image override crossed the Phase 36 boundary`; restoring the
+manifest-only adapter made the same test pass. A new fresh-process regression
+now creates clean source and reference repositories, admits an exact v3
+package through real preflight, transfers its canonical artifact identities
+through the attempt handle and hardware wrapper, and invokes the real effect
+adapter behind fake broker and flash boundaries. It proves exactly one
+manifest selector, no image override, a completed typed result, a sealed
+non-promotion outcome, and mode-`0600` private outputs without USB, credentials,
+device access, or any other hardware effect.
+
+No further production defect reproduced: runfiles resolution, canonical path
+transfer, broker-side argument transfer, and private modes all passed. The
+targeted fix is therefore the missing end-to-end regression seam, not another
+runtime workaround. The ordered Rust format, clippy, build, and test sequence;
+all 80 Bazel tests; Bright Builds; parity validation; unchanged 34/94 progress;
+redaction; reference integrity; and diff checks pass. One first full-suite run
+observed an unrelated archived Phase 28 socket-startup `ECONNREFUSED`; three
+isolated reruns and the complete rerun passed, and the protected archived
+source was not changed. `SYS-004` remains `implemented`, the checklist and
+progress history remain unchanged, and Attempt 004 remains unauthorized.
+
+Attempt-004 authorization: on 2026-08-03 the user explicitly authorized one
+new `SYS-004` ordinal with a complete task-scoped hardware contract. The clean
+pushed `3c471b28219df2554e2e5f1b575f8b5708c51d9d` source contains the
+manifest-only adapter repair and a fresh-process preflight-to-effect regression.
+Attempt 004 may proceed only after this contract passes every mandatory gate,
+is committed and pushed, and a fresh exact-current-HEAD package is built. The
+only permitted workflow is:
+
+1. `just package`
+2. `umask 077; mkdir -p scratch/sys004-version-reporting/attempt-004 && chmod 700 scratch/sys004-version-reporting/attempt-004 && just detect-ultra205 >scratch/sys004-version-reporting/attempt-004/standalone-detector.stdout 2>scratch/sys004-version-reporting/attempt-004/standalone-detector.stderr`
+3. `just phase36-substantive-evidence mode=preflight board=205 private-parent=scratch/sys004-version-reporting/attempt-004 attempt-handle-file=scratch/sys004-version-reporting/attempt-004/handle.json candidate-output=scratch/sys004-version-reporting/attempt-004/candidate.json capture-timeout-seconds=360 package-manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
+4. `just phase36-substantive-evidence mode=hardware board=205 private-parent=scratch/sys004-version-reporting/attempt-004 attempt-handle-file=scratch/sys004-version-reporting/attempt-004/handle.json candidate-output=scratch/sys004-version-reporting/attempt-004/candidate.json capture-timeout-seconds=360 wifi-credentials=wifi-credentials.json`
+5. `bazel run //tools/parity:report -- project-sys004-version-evidence --private-parent scratch/sys004-version-reporting/attempt-004 --attempt-handle-file scratch/sys004-version-reporting/attempt-004/handle.json --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --output docs/parity/evidence/sys004-version-reporting/version-projection.json`
+
+Attempt-004 evidence contract: the ignored private parent must be absent before
+the standalone detector; command 2 creates it mode `0700` under `umask 077` and
+captures the detector's distinct stdout and stderr as mode-`0600` regular
+private artifacts. Preflight may reuse only that validated parent. The
+broker-owned attempt child must be absent immediately before hardware launch.
+Handle stdout and stderr remain distinct protected siblings.
+Wi-Fi contents, USB identity or path, device origin, IP/MAC/SSID/hostname, raw
+serial, HTTP or WebSocket material, process data, unredacted commands, and
+operational paths must not reach inherited output, Git, or the typed projection.
+Only closed shareable facts and public provenance may be summarized. The root
+is sealed once and cannot be reused, rewritten, spliced, promoted directly, or
+treated as deleted by cleanup.
+
+Attempt-004 effects and safety contract: exactly one standalone-detector and
+broker-detector admitted Ultra 205 may receive the exact clean v3 package,
+private Wi-Fi NVS input, one broker-owned factory flash, qualified receive-only
+serial observation, and read-only same-origin HTTP/WebSocket observation. Boot
+must remain fail-closed with mining, ASIC work submission, and hardware control
+disabled. Capture is bounded to 360 seconds and each device effect to 420
+seconds. Pool input, mining, ASIC work, voltage, frequency, fan actuation,
+thermal or power control, OTA, OTAWWW, rollback, erase-flash, arbitrary raw
+writes, discovery, fault injection, manual reset, non-205 hardware, direct
+UART, and pins, pads, headers, GPIO, probes, jumpers, soldering, or injected
+signals remain prohibited.
+
+Attempt-004 recovery, retry, and stop contract: preserve the earliest typed
+failure through sealing; permit only broker-owned same-package typed recovery
+after a confirmed flash effect; always close owned processes, serial holders,
+and USB resources; and record cleanup separately without overwriting the first
+failure. Exactly one Attempt-004 hardware launch is authorized. No unchanged
+retry, alternate command, attempt 005, or broader diagnostic action is allowed.
+Recurrence of the repaired manifest/image boundary selects
+`stop_repeated_boundary`. Accepted outcomes are `complete`,
+`stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`,
+or `stop_impossible_contract`.
+
+Attempt-004 promotion contract: `SYS-004` may reach `verified` only when the
+detector, exact source/reference/manifest/ELF/package joins, safe boot, complete
+HTTP response, identical same-boot/revision WebSocket projection,
+manifest-equal `version` and `axeOSVersion`, manifest-equal extended provenance,
+manifest-equal ESP-IDF version, private modes and seals, commit-safe version
+projection, cleanup, redaction, and every repository gate pass. Any missing,
+contradictory, or unclassified fact leaves only `SYS-004` at `implemented`,
+with no progress append, `RESULT.md`, task archival, or evidence promotion.
+
+Attempt-004 software-only correction: the one authorized hardware launch is
+consumed and no retry or new ordinal is authorized. Its closed seal records
+`flash_failed`, `sealed_non_promotion`, successful cleanup, and no promotable
+capture. The durable USB lifecycle's closed recovery fields prove that the
+factory transfer completed before a legacy Phase 35 readiness boundary failed;
+the wrapper nevertheless wrote `failed_no_device_effect`. The SYS-004
+projector then reported the legitimately absent non-promotion capture as
+`sys004_private_boundary_invalid` before reading the seal. This continuation
+permits only the targeted software correction and fake/process regression work
+below; it does not permit credentials, detector, USB, flash, serial, HTTP,
+WebSocket, recovery, evidence replay, or sealed-root mutation.
+
+- [x] Remove the Phase 36 effect adapter's obsolete dependence on Phase 35
+      stage metrics and readiness environment.
+- [x] Have the durable USB lifecycle expose a closed device-effect state and
+      make `tools/flash` write the one typed Phase 36 effect result after
+      operation plus cleanup complete.
+- [x] Regress completed, partial, no-effect, parser, and cleanup-failure
+      process boundaries without hardware.
+- [x] Make SYS-004 projection classify a sealed non-promotion attempt before
+      requiring eligible-only private capture artifacts.
+- [x] Run every mandatory gate, preserve `SYS-004` as `implemented`, and push
+      the truthful correction checkpoint without projecting Attempt 004.
+
+Attempt-004 correction outcome: Phase 36 now derives its typed flash result
+from the durable USB session's monotonic `none` / `confirmed_partial` /
+`completed` effect state after operation and cleanup, with no Phase 35 stage
+root, metrics, or readiness dependency. Fresh-process tests prove one manifest
+selector, no image override, no legacy stage environment, and a mode-`0600`
+typed result. Pure and broker tests preserve parser, no-effect, partial,
+completed, cleanup-failure, identity, and recovery boundaries. SYS-004
+projection now rejects a valid non-promotion seal as
+`sys004_attempt_not_eligible` before looking for eligible-only capture files.
+The ordered Rust checks, all 80 Bazel tests, Bright Builds, parity validation,
+unchanged 34/94 progress, redaction, reference integrity, and diff checks pass.
+`SYS-004` remains `implemented`; a new explicitly authorized ordinal with a
+fresh complete hardware contract is required for live version promotion.
+
+Attempt-005 authorization: on 2026-08-03 the user gave fresh explicit
+authorization for one new `SYS-004` ordinal. The clean pushed
+`d73d87064c44151b5b69ff6cac4b7066660b5f34` source contains the targeted
+Attempt-004 corrections: Phase 36 owns its typed flash-effect result through
+the durable USB lifecycle, and SYS-004 classifies a sealed non-promotion before
+requiring eligible-only capture. Attempt 005 may proceed only after this
+contract passes every mandatory gate, is committed and pushed, and a fresh
+exact-current-HEAD package is built. The only permitted workflow is:
+
+1. `just package`
+2. `umask 077; mkdir -p scratch/sys004-version-reporting/attempt-005 && chmod 700 scratch/sys004-version-reporting/attempt-005 && just detect-ultra205 >scratch/sys004-version-reporting/attempt-005/standalone-detector.stdout 2>scratch/sys004-version-reporting/attempt-005/standalone-detector.stderr`
+3. `just phase36-substantive-evidence mode=preflight board=205 private-parent=scratch/sys004-version-reporting/attempt-005 attempt-handle-file=scratch/sys004-version-reporting/attempt-005/handle.json candidate-output=scratch/sys004-version-reporting/attempt-005/candidate.json capture-timeout-seconds=360 package-manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
+4. `just phase36-substantive-evidence mode=hardware board=205 private-parent=scratch/sys004-version-reporting/attempt-005 attempt-handle-file=scratch/sys004-version-reporting/attempt-005/handle.json candidate-output=scratch/sys004-version-reporting/attempt-005/candidate.json capture-timeout-seconds=360 wifi-credentials=wifi-credentials.json`
+5. `bazel run //tools/parity:report -- project-sys004-version-evidence --private-parent scratch/sys004-version-reporting/attempt-005 --attempt-handle-file scratch/sys004-version-reporting/attempt-005/handle.json --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --output docs/parity/evidence/sys004-version-reporting/version-projection.json`
+
+Attempt-005 evidence and privacy contract: the ignored private parent must be
+absent before command 2. Command 2 creates it under `umask 077`, fixes it to
+mode `0700`, and captures detector stdout and stderr as distinct mode-`0600`
+regular private artifacts. Preflight may reuse only that validated parent. The
+broker-owned attempt child must be absent immediately before command 4, and
+the one opaque handle remains a mode-`0600` sibling outside that child. Wi-Fi
+contents, USB identity or path, device origin, IP/MAC/SSID/hostname, raw serial,
+HTTP or WebSocket material, process data, unredacted commands, and operational
+paths must not reach inherited output, Git, or the typed projection. Only
+closed shareable facts and public provenance may be summarized. The attempt
+root and child are sealed once and cannot be reused, rewritten, spliced,
+promoted directly, or treated as deleted by cleanup.
+
+Attempt-005 effects and safety contract: exactly one standalone-detector and
+broker-detector admitted Ultra 205 may receive the exact clean v3 package,
+private Wi-Fi NVS input, one broker-owned factory flash, qualified receive-only
+serial observation, and read-only same-origin HTTP/WebSocket observation. Boot
+must remain fail-closed with mining, ASIC work submission, and hardware control
+disabled. Capture is bounded to 360 seconds and each device effect to 420
+seconds. Pool input, mining, ASIC work, voltage, frequency, fan actuation,
+thermal or power control, OTA, OTAWWW, rollback, erase-flash, arbitrary raw
+writes, discovery, fault injection, manual reset, non-205 hardware, direct
+UART, and pins, pads, headers, GPIO, probes, jumpers, soldering, or injected
+signals remain prohibited.
+
+Attempt-005 recovery, retry, and stop contract: preserve the earliest typed
+failure through sealing; record any cleanup failure separately; and permit
+only broker-owned same-package typed recovery after a confirmed flash effect.
+All owned processes, serial holders, and USB resources must be closed, and
+recovery must be proved rather than inferred from elapsed time. Exactly one
+Attempt-005 hardware launch is authorized. There is no unchanged retry,
+alternate command, Attempt 006, sealed-root replay, or broader diagnostic
+authority. Recurrence of the corrected Phase 36 effect-result or SYS-004 seal
+classification boundary selects `stop_repeated_boundary`. Accepted outcomes
+are `complete`, `stop_repeated_boundary`, `stop_hardware_blocker`,
+`stop_authority_boundary`, or `stop_impossible_contract`.
+
+Attempt-005 promotion contract: `SYS-004` may reach `verified` only when the
+standalone and broker detectors, exact source/reference/manifest/ELF/package
+joins, safe boot, complete HTTP response, identical same-boot/revision
+WebSocket projection, manifest-equal `version` and `axeOSVersion`,
+manifest-equal extended provenance, manifest-equal ESP-IDF version, private
+modes and seals, commit-safe version projection, cleanup, redaction, and every
+repository gate pass. Any missing, contradictory, or unclassified fact leaves
+only `SYS-004` at `implemented`, with no checklist transition, progress append,
+`RESULT.md`, task archival, or evidence promotion.
+
+Attempt-005 software-only correction: the single hardware launch is consumed
+and no retry or new ordinal is authorized. The exact package flash completed;
+the passive serial operation then failed with `capture_failed`; broker-owned
+same-package recovery and cleanup completed; and the attempt sealed as a
+non-promotion with no private capture, candidate, projection, or checklist
+claim. Source plus the absence of a monitor USB-session trace prove that the
+Phase 36 adapter invoked `tools/flash monitor` with `--evidence-mode dual`,
+which that CLI rejects before session admission. The contracted projector then
+resolved relative private paths before workspace detection and returned
+`sys004_private_boundary_invalid` rather than the authenticated seal's
+non-eligibility category. This continuation permits only the two targeted
+software corrections and fake/filesystem regression work below. It does not
+permit credentials, detector, USB, flash, serial, HTTP, WebSocket, recovery,
+sealed-root replay or mutation, projection retry, or any other hardware or
+network effect.
+
+- [x] Make the passive Phase 36 adapter privately capture the supported
+      receive-only `monitor` output without passing unsupported evidence flags,
+      and distinguish its private stdout and stderr boundaries.
+- [x] Add a fresh-process regression that rejects reintroduced monitor evidence
+      flags and proves exactly one protected classifier input plus a typed
+      completed result.
+- [x] Anchor SYS-004 projector inputs and output to the detected Bazel workspace
+      before private admission, with a relative-path non-promotion regression.
+- [x] Run every mandatory gate, preserve `SYS-004` as `implemented`, and push a
+      truthful correction checkpoint without touching Attempt 005 again.
+
+Attempt-005 correction outcome: the passive adapter now invokes the supported
+receive-only `monitor` surface without evidence-only flags, redirects its raw
+stdout and diagnostic stderr into separate mode-`0600` files under one
+mode-`0700` child, and derives the one trusted origin only from that protected
+classifier input. A fresh-process fake rejects every formerly unsupported flag
+and proves the typed completed result. The SYS-004 command now anchors all four
+relative paths to the detected Bazel workspace before private admission; its
+filesystem regression reaches a valid non-promotion seal and returns
+`sys004_attempt_not_eligible` without creating output. The ordered Rust checks,
+all 80 Bazel tests, Bright Builds, parity validation, unchanged 34/94 progress,
+redaction, reference integrity, and diff checks pass. Attempt 005 remains sealed
+and untouched after its one projection call. `SYS-004` remains `implemented`;
+a fresh progress-backed ordinal and complete task contract are required for
+live version promotion, but no separate user confirmation is required.
+
+Standing-authorization continuation: fresh progress-backed ordinals are now
+ordinary task execution, so Attempt 006 proceeds without a separate user
+confirmation. The Attempt-005 monitor and workspace defects have targeted
+real-process regressions, and the later typed automation cutover replaced the
+obsolete Phase 36 effect surface. Before hardware, extend the current typed
+`capture-version-evidence` workflow so one private exact-package session proves
+the manifest-equal `version`, installed `axeOSVersion`, `idfVersion`, extended
+provenance, and later same-boot WebSocket projection while emitting only a
+closed commit-safe result.
+
+Attempt-006 contract:
+
+1. `just package`
+2. `umask 077; mkdir -p scratch/sys004-version-reporting/attempt-006-detector && chmod 700 scratch/sys004-version-reporting/attempt-006-detector && just detect-ultra205 >scratch/sys004-version-reporting/attempt-006-detector/stdout 2>scratch/sys004-version-reporting/attempt-006-detector/stderr`
+3. `just capture-version-evidence --private-root scratch/sys004-version-reporting/attempt-006 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --port <detector-port> --projection docs/parity/evidence/sys004-version-reporting/version-projection.json --capture-timeout-seconds 360`
+4. Recovery only after command 3 confirms a flash effect and then fails:
+   `just flash --board 205 --port <detector-port> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json`
+
+Attempt-006 evidence and safety contract: both ignored attempt roots must be
+absent before use and created under `umask 077` with mode `0700`; every private
+artifact is mode `0600`. Raw credentials, USB/device identity, origin, network
+values, serial, API/WebSocket bodies, process data, and operational paths remain
+private. Only the typed redaction-passed projection may be committed. Exactly
+one detector-admitted Ultra 205 may receive the clean pushed exact package,
+private Wi-Fi NVS input, one factory flash, passive serial observation, and
+same-origin read-only HTTP/WebSocket observation. Mining, work submission,
+voltage, frequency, fan or other hardware control, pool input, OTA, rollback,
+erase, discovery, fault injection, direct UART, and pin/pad/header/GPIO/probe/
+jumper/solder or injected-signal work remain prohibited.
+
+Attempt-006 recovery and stop contract: preserve the earliest typed failure;
+allow at most the one same-package recovery above after a confirmed flash
+effect; prove process, serial, and USB cleanup; and never reuse or rewrite a
+sealed root. There is no unchanged retry. A new distinct diagnosed boundary
+may receive a targeted regression-backed fix and fresh standing-authorized
+ordinal; recurrence after its targeted fix selects `stop_repeated_boundary`.
+Accepted outcomes are `complete`, `stop_repeated_boundary`,
+`stop_hardware_blocker`, `stop_authority_boundary`, or
+`stop_impossible_contract`.
+
+Attempt-006 promotion contract: only `SYS-004` may reach `verified`, and only
+after exact source/reference/manifest/package identity, safe boot, complete
+same-origin HTTP, later same-boot/revision WebSocket, manifest-equal version and
+provenance fields, private modes, cleanup, semantic redaction, and every
+repository gate pass. Any missing or contradictory fact leaves `SYS-004` at
+`implemented` without `RESULT.md` or progress synchronization.
+
+Attempt-006 software checkpoint: the typed workflow now reads the complete
+package identity, captures one same-origin system-info response followed by one
+live WebSocket frame, requires identical boot session, revision, and version
+projection, and emits only six closed comparison booleans. Raw HTTP/WebSocket
+bodies remain mode-`0600` private artifacts. Focused Rust/TypeScript tests and
+the ordered Rust, Bright Builds, 28-test Bazel, parity, progress, redaction,
+reference-integrity, and diff gates pass. One combined-gate parity invocation
+hit a transient host `Resource temporarily unavailable` after all tests passed;
+the isolated unchanged parity command immediately passed with no validation
+errors.
+
+Attempt-006 outcome: `continue_after_verified_fix` with no device effect. The
+detector and package passed, but the capture command was rejected during typed
+argument parsing because the operator handoff searched for the legacy shell
+form `port=` while the current Rust detector emits `port: `. The private attempt
+root and public projection were never created, so no flash, credential read,
+serial, HTTP, WebSocket, or recovery action occurred. The immutable detector
+root remains private. The targeted fix moves this handoff into the typed
+automation command, requires a mode-`0600` detector output with exactly one
+canonical admitted port, and has a real-file regression that rejects the
+obsolete delimiter.
+
+Attempt-007 contract: standing authorization selects this fresh ordinal after
+the verified handoff fix. The objective, privacy, permitted/prohibited effects,
+recovery bounds, stop conditions, and promotion gate are identical to Attempt
+006, except the repo-owned capture command now resolves the protected detector
+result itself. The exact commands are:
+
+1. `just package`
+2. `umask 077; mkdir -p scratch/sys004-version-reporting/attempt-007-detector && chmod 700 scratch/sys004-version-reporting/attempt-007-detector && just detect-ultra205 >scratch/sys004-version-reporting/attempt-007-detector/stdout 2>scratch/sys004-version-reporting/attempt-007-detector/stderr`
+3. `just capture-version-evidence --private-root scratch/sys004-version-reporting/attempt-007 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/sys004-version-reporting/attempt-007-detector/stdout --projection docs/parity/evidence/sys004-version-reporting/version-projection.json --capture-timeout-seconds 360`
+4. Recovery only after command 3 confirms a flash effect and then fails:
+   `bash -c 'set -euo pipefail; attempt_port="$(sed -n "s/^port: //p" scratch/sys004-version-reporting/attempt-007-detector/stdout)"; [[ -n "$attempt_port" ]]; just flash --board 205 --port "$attempt_port" --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json'`
+
+Attempt-007 outcome: `continue_after_verified_fix`. The exact-package flash,
+safe boot, HTTP response, WebSocket response, and cleanup completed, so the
+optional same-package recovery was unnecessary and was not run. All manifest
+comparisons passed: build label, installed static-asset version, semantic/source/
+reference/ELF/channel/dirty/release provenance, and ESP-IDF version. The
+WebSocket carried the same boot and identical version fields, but its operator
+snapshot revision was newer than the immediately preceding HTTP response. The
+host validator incorrectly required exact revision equality across sequential
+observations. Private roots remain mode `0700`, raw responses mode `0600`, and
+no public projection was emitted.
+
+Attempt-008 contract: standing authorization selects this fresh ordinal after
+the targeted revision-ordering fix. The validator must accept equal-or-later
+positive WebSocket revision for the same boot while still requiring identical
+version fields. The objective, privacy, effects, recovery, stop, and promotion
+contracts remain otherwise identical to Attempt 007. The exact commands are:
+
+1. `just package`
+2. `umask 077; mkdir -p scratch/sys004-version-reporting/attempt-008-detector && chmod 700 scratch/sys004-version-reporting/attempt-008-detector && just detect-ultra205 >scratch/sys004-version-reporting/attempt-008-detector/stdout 2>scratch/sys004-version-reporting/attempt-008-detector/stderr`
+3. `just capture-version-evidence --private-root scratch/sys004-version-reporting/attempt-008 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/sys004-version-reporting/attempt-008-detector/stdout --projection docs/parity/evidence/sys004-version-reporting/version-projection.json --capture-timeout-seconds 360`
+4. Recovery only after command 3 confirms a flash effect and then fails:
+   `bash -c 'set -euo pipefail; attempt_port="$(sed -n "s/^port: //p" scratch/sys004-version-reporting/attempt-008-detector/stdout)"; [[ -n "$attempt_port" ]]; just flash --board 205 --port "$attempt_port" --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json'`
+
+Attempt-008 outcome: `complete`. The clean pushed package commit
+`66cf184943d7f3a5aedfc99e692a9f500707de9e` passed detector admission, exact
+factory flash, safe boot, passive serial capture, same-origin HTTP, same-boot
+equal-or-later-revision WebSocket comparison, private-mode checks, cleanup, and
+the closed Rust evidence validator. All six public version comparisons are
+true. Recovery was unnecessary and did not run.
+
+Final verification: the ordered Rust format, warning-denied Clippy, all-target
+build, and all-feature tests passed; Bright Builds reported zero findings; all
+28 Bazel tests passed; parity validation, 32/94 progress consistency, semantic
+redaction, pinned-reference integrity, and diff checks passed. Transition
+receipt `20260803T231314Z-SYS-004` changed only `SYS-004` from `implemented` to
+`verified` with `unit,workflow,api-compare,hardware-smoke` evidence.
+
+Completion review: Complete. Exact-current-package hardware evidence now binds
+the canonical firmware version, installed AxeOS static-asset version, ESP-IDF
+version, and extended provenance across HTTP and WebSocket on the Ultra 205.
+Raw device and credential material remains private. Broader snapshot, health,
+network, mining, safety-control, OTA/recovery, non-205, direct-UART, and pin
+claims remain separate tasks and were not promoted.

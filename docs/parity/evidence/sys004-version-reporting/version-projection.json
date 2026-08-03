@@ -1,0 +1,25 @@
+{
+  "schema_version": "bitaxe-version-evidence-v1",
+  "board": 205,
+  "source_commit": "66cf184943d7f3a5aedfc99e692a9f500707de9e",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "b35a074fe47a843393ce612992d1305da8a780b19b3bed4457916a4d24e272c3",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-version-evidence",
+    "request_sha256": "f880e9122d866a661dff4e6c20e81a5933369d9fe38f46e784d25b7d60ca660d"
+  },
+  "boot_observed": true,
+  "same_origin_api_observed": true,
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "redaction_status": "passed",
+  "version_projection": {
+    "api_build_label_matches_manifest": true,
+    "api_static_asset_version_matches_manifest": true,
+    "api_extended_provenance_matches_manifest": true,
+    "api_esp_idf_version_matches_manifest": true,
+    "websocket_same_boot_revision_observed": true,
+    "websocket_version_projection_matches_api": true
+  }
+}

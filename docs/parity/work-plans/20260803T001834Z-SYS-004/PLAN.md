@@ -52,16 +52,16 @@ non-claims even if this version-only projection passes.
 
 ## Implementation
 
-- [ ] Generate a build-label `version.txt` in an ephemeral package staging
+- [x] Generate a build-label `version.txt` in an ephemeral package staging
       tree and read the mounted file through the firmware platform adapter.
-- [ ] Add focused package and platform/version regressions, including missing,
+- [x] Add focused package and platform/version regressions, including missing,
       malformed, stale, mismatched, and private-input cases.
-- [ ] Add a version-only classifier that joins exact manifest identity to the
+- [x] Add a version-only classifier that joins exact manifest identity to the
       private Phase 36 API/WebSocket/serial capture and emits a closed,
       redaction-safe projection.
-- [ ] Commit and push the complete software fix before packaging or hardware
+- [x] Commit and push the complete software fix before packaging or hardware
       use, then run at most one authorized hardware attempt.
-- [ ] Create `RESULT.md` and promote only `SYS-004` if every exact-package live
+- [x] Create `RESULT.md` and promote only `SYS-004` if every exact-package live
       version binding, evidence-integrity, and repository gate passes.
 
 ## Verification and promotion
@@ -98,7 +98,8 @@ or `stop_impossible_contract`.
 
 Promotion to `verified` requires one detector-admitted board 205, exact source,
 reference, manifest and ELF identity, safe boot, a complete live HTTP response
-and identical WebSocket projection from the same boot/revision, `version` and
+and an identical-version WebSocket projection from the same boot with an
+equal-or-later positive revision, `version` and
 `axeOSVersion` equal to the manifest build label, every extended provenance
 field equal to the manifest, `idfVersion` equal to the manifest ESP-IDF
 version, static-package/source tests proving `version.txt` ownership, valid

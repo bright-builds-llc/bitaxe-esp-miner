@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260803T231314Z-SYS-004",
+  "predecessor_sha256": "e280e46ac24821b3808502ea3bedb8367590fc03003c4814c607a3d4d44243de",
+  "result_sha256": "cc60a03f22ee1ba90175505618f21fd291af9f57172a642f40a6f33445bb03ed",
+  "row_id": "SYS-004",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260803T001834Z-SYS-004/PLAN.md",
+  "plan_sha256": "93470da3bc30079cba15939ad13a90371ec863ad9cc6200e45ba530f67487879",
+  "result_path": "docs/parity/work-plans/20260803T001834Z-SYS-004/RESULT.md",
+  "result_document_sha256": "805f4b8e0e1e2cfec99003438809d3b1aabd8a2ba5aa900fa63f165c7d659726",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/build_identity.rs`, `crates/bitaxe-api/src/wire.rs`, `firmware/bitaxe/build.rs`, `firmware/bitaxe/src/main.rs`, `firmware/bitaxe/src/platform_identity.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`, `tools/parity`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/build_identity.rs`, `crates/bitaxe-api/src/wire.rs`, `firmware/bitaxe/build.rs`, `firmware/bitaxe/src/main.rs`, `firmware/bitaxe/src/platform_identity.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`, `tools/automation/src/version-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,api-compare,hardware-smoke",
+  "after_evidence": "unit,workflow,api-compare,hardware-smoke",
+  "before_notes": "Canonical build provenance feeds firmware version plus semantic/source/reference/ELF/build fields; read-only platform identity supplies axeOSVersion and idfVersion; focused wire, identity, package, attestation, and API-compare checks pass. Historical Phase 17 and Phase 21 Ultra 205 system-info captures observe the upstream version trio with redaction. Status remains implemented, not verified: exact-current-package live API binding and static-asset version semantics remain open; boot identity alone is insufficient.",
+  "after_notes": "Exact-package Ultra 205 evidence binds the canonical build label, installed static-asset version, extended provenance, and ESP-IDF version across same-boot HTTP and equal-or-later-revision WebSocket projections; see docs/parity/work-plans/20260803T001834Z-SYS-004/RESULT.md."
+}
