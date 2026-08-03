@@ -41,6 +41,7 @@ pub struct UsbSession {
     initial_enumeration_token: String,
     current_enumeration_token: String,
     current_port: String,
+    device_effect_state: UsbDeviceEffectState,
     earliest_failure: Option<UsbTerminalCategory>,
     trace_root: PathBuf,
     child_sequence: u32,
@@ -92,6 +93,7 @@ impl UsbSession {
             initial_enumeration_token: snapshot.enumeration_token.clone(),
             current_enumeration_token: snapshot.enumeration_token,
             current_port: snapshot.port,
+            device_effect_state: UsbDeviceEffectState::None,
             earliest_failure: None,
             trace_root,
             child_sequence: 0,
@@ -112,6 +114,12 @@ impl UsbSession {
     #[must_use]
     pub fn operation(&self) -> UsbOperation {
         self.operation
+    }
+
+    #[must_use]
+    /// Returns the strongest device-write boundary observed by this session.
+    pub const fn device_effect_state(&self) -> UsbDeviceEffectState {
+        self.device_effect_state
     }
 
     pub fn run_espflash(
@@ -137,6 +145,8 @@ impl UsbSession {
                 run_owned_process(request, &mut self.lease).inspect_err(|error| {
                     self.fail_once(error.category);
                 })?;
+            self.device_effect_state =
+                advance_device_effect_state(self.device_effect_state, &process_result);
             if process_result.succeeded() {
                 self.transition(UsbLifecycleEvent::FlashComplete)?;
                 let phase = successful_command_recovery_policy(args);
@@ -419,6 +429,19 @@ impl UsbSession {
             format!("{detail} trace_recorded={trace_recorded}"),
         )
     }
+}
+
+fn advance_device_effect_state(
+    current: UsbDeviceEffectState,
+    output: &SupervisedOutput,
+) -> UsbDeviceEffectState {
+    if current == UsbDeviceEffectState::Completed || output.succeeded() {
+        return UsbDeviceEffectState::Completed;
+    }
+    if classify_espflash_failure(output) == UsbTerminalCategory::FlashFailedAfterTransfer {
+        return UsbDeviceEffectState::ConfirmedPartial;
+    }
+    current
 }
 
 fn session_error(category: UsbTerminalCategory, detail: impl std::fmt::Display) -> UsbSessionError {

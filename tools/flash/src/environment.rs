@@ -35,6 +35,9 @@ pub(crate) trait FlashEnvironment {
         timeout_seconds: u64,
     ) -> Result<campaign::network::CampaignObservationCapture>;
     fn finish_usb_session(&self) -> Result<()>;
+    fn device_effect_state(&self) -> UsbDeviceEffectState {
+        UsbDeviceEffectState::None
+    }
     fn phase35_stage_readiness_gate(&self, _stage: &str, _port: &str) -> Result<()> {
         Ok(())
     }
@@ -416,6 +419,13 @@ impl FlashEnvironment for LocalFlashEnvironment {
             emit_line("port", &ready.port)?;
         }
         emit_line("usb_session", "ready")
+    }
+
+    fn device_effect_state(&self) -> UsbDeviceEffectState {
+        self.usb_session
+            .borrow()
+            .as_ref()
+            .map_or(UsbDeviceEffectState::None, UsbSession::device_effect_state)
     }
 
     fn phase35_stage_readiness_gate(&self, stage: &str, port: &str) -> Result<()> {

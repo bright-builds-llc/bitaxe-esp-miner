@@ -69,6 +69,31 @@ fn private_input_requires_owner_only_regular_files() {
     fs::remove_file(path).expect("remove private fixture");
 }
 
+#[test]
+fn sealed_non_promotion_is_classified_before_eligible_capture_is_required() {
+    // Arrange
+    let (_, _, _, handle) = qualified_documents();
+    let seal = AttemptSeal {
+        schema_version: "phase36-attempt-seal-v2".to_owned(),
+        status: "sealed_non_promotion".to_owned(),
+        first_failure: Some(serde_json::json!("flash_failed")),
+        secondary_failure: None,
+        capability_digest: CAPABILITY.to_owned(),
+        package_identity_digest: PACKAGE.to_owned(),
+        candidate_digest: None,
+        private_capture_digest: None,
+    };
+
+    // Act
+    let result = require_eligible_attempt_seal(&seal, &handle);
+
+    // Assert
+    assert!(matches!(
+        result,
+        Err(Sys004VersionEvidenceError::AttemptNotEligible)
+    ));
+}
+
 fn reseal(seal_bytes: &[u8], private_bytes: &[u8]) -> Vec<u8> {
     let mut seal: serde_json::Value = serde_json::from_slice(seal_bytes).expect("seal fixture");
     seal["private_capture_digest"] = serde_json::json!(sha256_hex(private_bytes));

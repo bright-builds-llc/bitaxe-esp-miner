@@ -64,7 +64,7 @@ RUNFILES_DIR="$runfiles" \
 	result-path="$result"
 
 # Assert
-readonly flash_args="$attempt_child/exact-package-flash-stage/flash.args"
+readonly flash_args="$attempt_child/fake-flash/flash.args"
 [[ -f "$flash_args" ]] || {
 	printf 'missing fake-flash argument capture\n' >&2
 	exit 1

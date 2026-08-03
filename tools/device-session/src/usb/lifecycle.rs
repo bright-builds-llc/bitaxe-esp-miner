@@ -102,6 +102,18 @@ pub enum SupervisedTermination {
     Interrupted { signal: i32 },
 }
 
+/// Monotonic device-write evidence observed by the supervised USB session.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum UsbDeviceEffectState {
+    /// No transfer boundary was observed.
+    #[default]
+    None,
+    /// A transfer began but completion was not observed.
+    ConfirmedPartial,
+    /// The supervised flash command completed successfully.
+    Completed,
+}
+
 impl SupervisedOutput {
     #[must_use]
     pub const fn succeeded(&self) -> bool {

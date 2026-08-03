@@ -171,6 +171,8 @@ pub(crate) struct Sys004VersionEvidence {
 pub(crate) enum Sys004VersionEvidenceError {
     #[error("sys004_private_boundary_invalid")]
     PrivateBoundary,
+    #[error("sys004_attempt_not_eligible")]
+    AttemptNotEligible,
     #[error("sys004_document_invalid")]
     Document,
     #[error("sys004_package_identity_mismatch")]
@@ -213,17 +215,63 @@ pub(crate) fn project_sys004_version_evidence(
         fs::read(&canonical_manifest).map_err(|_| Sys004VersionEvidenceError::Document)?;
     let private_child = private_parent.join(&handle.child_name);
     validate_private_directory(&private_child)?;
-    let private_capture_path = private_child.join("private-capture.json");
     let seal_path = private_child.join("seal.json");
-    validate_private_file(&private_capture_path)?;
     validate_private_file(&seal_path)?;
+    let seal_bytes = fs::read(seal_path).map_err(|_| Sys004VersionEvidenceError::Document)?;
+    let seal = serde_json::from_slice::<AttemptSeal>(&seal_bytes)
+        .map_err(|_| Sys004VersionEvidenceError::Document)?;
+    require_eligible_attempt_seal(&seal, &handle)?;
+
+    let private_capture_path = private_child.join("private-capture.json");
+    validate_private_file(&private_capture_path)?;
     let private_bytes =
         fs::read(private_capture_path).map_err(|_| Sys004VersionEvidenceError::Document)?;
-    let seal_bytes = fs::read(seal_path).map_err(|_| Sys004VersionEvidenceError::Document)?;
 
     let evidence = classify_documents(&manifest_bytes, &private_bytes, &seal_bytes, &handle)?;
     write_projection(output, &evidence)?;
     Ok(evidence)
+}
+
+fn require_eligible_attempt_seal(
+    seal: &AttemptSeal,
+    handle: &AttemptHandle,
+) -> Result<(), Sys004VersionEvidenceError> {
+    if seal.schema_version != "phase36-attempt-seal-v2"
+        || seal.capability_digest != handle.capability_digest
+        || seal.package_identity_digest != handle.package_identity_digest
+    {
+        return Err(Sys004VersionEvidenceError::PackageIdentity);
+    }
+    if seal.status == "sealed_non_promotion"
+        && seal
+            .first_failure
+            .as_ref()
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(valid_broker_failure)
+        && seal
+            .secondary_failure
+            .as_ref()
+            .is_none_or(|value| value.as_str().is_some_and(valid_broker_failure))
+        && seal.candidate_digest.is_none()
+        && seal.private_capture_digest.is_none()
+    {
+        return Err(Sys004VersionEvidenceError::AttemptNotEligible);
+    }
+    if seal.status != "sealed_eligible"
+        || seal.first_failure.is_some()
+        || seal.secondary_failure.is_some()
+        || seal
+            .candidate_digest
+            .as_deref()
+            .is_none_or(|value| !valid_digest(value))
+        || seal
+            .private_capture_digest
+            .as_deref()
+            .is_none_or(|value| !valid_digest(value))
+    {
+        return Err(Sys004VersionEvidenceError::PackageIdentity);
+    }
+    Ok(())
 }
 
 fn classify_documents(
@@ -478,6 +526,22 @@ fn valid_commit(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn valid_broker_failure(value: &str) -> bool {
+    matches!(
+        value,
+        "admission_failed"
+            | "capability_failed"
+            | "authentication_failed"
+            | "detector_failed"
+            | "invocation_construction_failed"
+            | "parser_failed"
+            | "flash_failed"
+            | "capture_failed"
+            | "recovery_failed"
+            | "cleanup_failed"
+    )
 }
 
 fn valid_build_timestamp(value: &str) -> bool {

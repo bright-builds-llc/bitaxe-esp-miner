@@ -258,3 +258,62 @@
   action occurred at this checkpoint.
 - Blocker or next safe action: Commit and push this contract, then build the
   clean exact package before the standalone detector.
+
+## 2026-08-03T14:54:08Z | attempt-004 sealed non-promotion and root cause
+
+- Source commit: `8606c741117c8f76f3308e28ba6ef9940c63373e`.
+- Actions: Built the exact clean v3 Ultra 205 package, captured a successful
+  standalone detector privately, passed typed preflight, consumed the single
+  authorized broker hardware launch, and invoked the authorized SYS-004
+  projector once. No retry, alternate hardware command, or sealed-root rewrite
+  occurred.
+- Verification: The package source and reference joins passed. The detector,
+  handle, parent, child, seal, and cleanup modes passed. The seal records
+  `sealed_non_promotion` with earliest failure `flash_failed`, no secondary
+  failure, and successful cleanup. The exact-package effect record says
+  `failed_no_device_effect`, but closed USB lifecycle metadata records a
+  completed post-flash recovery before final cleanup. Source inspection proves
+  the Phase 36 adapter set `PHASE35_FLASH_STAGE_ROOT` without the two required
+  Phase 35 readiness inputs, so the post-transfer readiness call failed before
+  producing stage metrics and the wrapper misclassified the completed effect.
+- Evidence: Attempt 004 remains sealed in its ignored mode-`0700` root with
+  mode-`0600` private files. No private capture or candidate was created. The
+  projector therefore stopped at `sys004_private_boundary_invalid`; source
+  inspection shows it validates eligible-only `private-capture.json` before
+  reading the non-promotion seal.
+- Outcome: Attempt 004 is consumed and is not promotable. `SYS-004` remains
+  `implemented`; the checklist, progress history, `RESULT.md`, and committed
+  evidence remain unchanged. The factory package may have reached the device,
+  but no live HTTP/WebSocket version equality was observed or claimed.
+- Blocker or next safe action: Implement only the task-scoped software fixes:
+  replace the obsolete Phase 35 transfer oracle with the durable USB session's
+  typed device-effect state, and classify a non-promotion seal before requiring
+  eligible-only capture files. Prove both with fake/process regressions; do not
+  rerun hardware or project this sealed attempt.
+
+## 2026-08-03T15:08:09Z | attempt-004 software correction checkpoint
+
+- Source commit: `8606c741117c8f76f3308e28ba6ef9940c63373e`.
+- Actions: Removed the Phase 36 flash adapter's legacy Phase 35 stage-root and
+  metrics dependency. Added a monotonic durable USB device-effect state and
+  made `tools/flash` write the single identity-bound Phase 36 effect result
+  after operation plus cleanup. Reordered SYS-004 projection to authenticate
+  and classify the seal before requiring eligible-only capture artifacts.
+- Verification: Focused Rust suites passed 53 device-session, 243 flash, and
+  424 parity tests. The hardware-effect and full substantive-evidence
+  fresh-process regressions pass and reject any reintroduced Phase 35 stage
+  environment. The ordered Rust format, clippy, build, and test sequence; all
+  80 Bazel tests; Bright Builds; parity validation; unchanged 34/94 progress;
+  redaction; reference integrity; and diff checks pass.
+- Evidence: New unit coverage proves no-effect, confirmed-partial, completed,
+  and completed-plus-cleanup-failure mappings. Existing broker coverage proves
+  parser, invocation, identity, recovery, and contradictory-result failure
+  handling. The SYS-004 seal regression proves `sealed_non_promotion` maps to
+  `sys004_attempt_not_eligible` before private capture admission.
+- Outcome: The reproduced transfer-classification and projector-order defects
+  have targeted regression-backed fixes. Attempt 004 remains sealed and was
+  not replayed, mutated, or projected again. `SYS-004` remains `implemented`;
+  no checklist, progress history, `RESULT.md`, or shareable evidence changed.
+- Blocker or next safe action: Commit and push this truthful correction. A
+  future live version attempt requires a separately authorized fresh ordinal
+  with a complete hardware contract; no current retry is authorized.

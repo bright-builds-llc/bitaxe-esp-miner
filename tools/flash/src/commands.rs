@@ -23,6 +23,39 @@ pub(crate) fn combine_operation_and_cleanup(
 }
 
 pub(crate) fn maybe_write_phase36_pre_effect_result(failure: &'static str) -> Result<()> {
+    maybe_write_phase36_effect_result("failed_no_device_effect", Some(failure))
+}
+
+pub(crate) fn maybe_write_phase36_operation_result(
+    operation_succeeded: bool,
+    device_effect_state: UsbDeviceEffectState,
+) -> Result<()> {
+    let (status, failure) =
+        classify_phase36_operation_result(operation_succeeded, device_effect_state);
+    maybe_write_phase36_effect_result(status, failure)
+}
+
+fn classify_phase36_operation_result(
+    operation_succeeded: bool,
+    device_effect_state: UsbDeviceEffectState,
+) -> (&'static str, Option<&'static str>) {
+    match (operation_succeeded, device_effect_state) {
+        (true, UsbDeviceEffectState::Completed) => ("completed", None),
+        (false, UsbDeviceEffectState::Completed) => {
+            ("failed_after_completed_device_effect", Some("flash_failed"))
+        }
+        (_, UsbDeviceEffectState::ConfirmedPartial) => (
+            "failed_confirmed_partial_device_effect",
+            Some("flash_failed"),
+        ),
+        (_, UsbDeviceEffectState::None) => ("failed_no_device_effect", Some("flash_failed")),
+    }
+}
+
+fn maybe_write_phase36_effect_result(
+    status: &'static str,
+    failure: Option<&'static str>,
+) -> Result<()> {
     let maybe_path = env::var_os("PHASE36_EFFECT_RESULT_PATH");
     let maybe_operation = env::var_os("PHASE36_EFFECT_OPERATION");
     let maybe_package_digest = env::var_os("PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST");
@@ -72,10 +105,10 @@ pub(crate) fn maybe_write_phase36_pre_effect_result(failure: &'static str) -> Re
     {
         bail!("phase36_effect_result=failed reason=parent_invalid");
     }
-    let result = Phase36PreEffectResult {
+    let result = Phase36EffectResult {
         schema_version: PHASE36_EFFECT_SCHEMA,
         operation: &operation,
-        status: "failed_no_device_effect",
+        status,
         failure,
         package_identity_digest: &package_digest,
         factory_image_digest: &factory_digest,
@@ -204,4 +237,66 @@ pub(crate) fn push_flag_value(args: &mut Vec<String>, flag: &str, value: &str) {
 
 pub(crate) fn parse_bool_alias(value: &str) -> bool {
     matches!(value, "true" | "1" | "yes" | "on")
+}
+
+#[cfg(test)]
+mod phase36_result_tests {
+    use super::*;
+
+    #[test]
+    fn completed_device_effect_and_success_emit_completed() {
+        // Arrange
+        let state = UsbDeviceEffectState::Completed;
+
+        // Act
+        let result = classify_phase36_operation_result(true, state);
+
+        // Assert
+        assert_eq!(result, ("completed", None));
+    }
+
+    #[test]
+    fn completed_device_effect_and_failure_preserve_completed_effect() {
+        // Arrange
+        let state = UsbDeviceEffectState::Completed;
+
+        // Act
+        let result = classify_phase36_operation_result(false, state);
+
+        // Assert
+        assert_eq!(
+            result,
+            ("failed_after_completed_device_effect", Some("flash_failed"))
+        );
+    }
+
+    #[test]
+    fn confirmed_partial_device_effect_remains_partial() {
+        // Arrange
+        let state = UsbDeviceEffectState::ConfirmedPartial;
+
+        // Act
+        let result = classify_phase36_operation_result(false, state);
+
+        // Assert
+        assert_eq!(
+            result,
+            (
+                "failed_confirmed_partial_device_effect",
+                Some("flash_failed")
+            )
+        );
+    }
+
+    #[test]
+    fn absent_device_effect_remains_no_effect() {
+        // Arrange
+        let state = UsbDeviceEffectState::None;
+
+        // Act
+        let result = classify_phase36_operation_result(false, state);
+
+        // Assert
+        assert_eq!(result, ("failed_no_device_effect", Some("flash_failed")));
+    }
 }

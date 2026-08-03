@@ -19,7 +19,7 @@ use bitaxe_config::{
     apply_settings_patch, ConfigValidationError, NvsWrite, RawSettingValue, SettingsPatch,
     SettingsUpdateDecision, NVS_NAMESPACE,
 };
-use bitaxe_device_session::{discover_usb_ports, UsbOperation, UsbSession};
+use bitaxe_device_session::{discover_usb_ports, UsbDeviceEffectState, UsbOperation, UsbSession};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
@@ -106,6 +106,10 @@ fn main() -> Result<()> {
         CliCommand::MiningCampaign(command) => run_mining_campaign(&command, &environment),
         CliCommand::Phase35Probe(command) => run_phase35_probe(&command, &environment),
     };
+    let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();
-    combine_operation_and_cleanup(operation_result, cleanup_result)
+    let result = combine_operation_and_cleanup(operation_result, cleanup_result);
+    maybe_write_phase36_operation_result(result.is_ok(), device_effect_state)
+        .context("phase36_effect_result=failed reason=operation_result_write_failed")?;
+    result
 }

@@ -206,6 +206,38 @@ fn every_supervised_termination_has_one_success_and_failure_classification() {
 }
 
 #[test]
+fn successful_flash_records_completed_device_effect() {
+    // Arrange
+    let output = SupervisedOutput {
+        termination: SupervisedTermination::ExitedSuccess,
+        stdout: Vec::new(),
+        stderr: Vec::new(),
+    };
+
+    // Act
+    let state = advance_device_effect_state(UsbDeviceEffectState::None, &output);
+
+    // Assert
+    assert_eq!(state, UsbDeviceEffectState::Completed);
+}
+
+#[test]
+fn write_failure_records_confirmed_partial_device_effect() {
+    // Arrange
+    let output = SupervisedOutput {
+        termination: SupervisedTermination::ExitedFailure,
+        stdout: Vec::new(),
+        stderr: b"write failed".to_vec(),
+    };
+
+    // Act
+    let state = advance_device_effect_state(UsbDeviceEffectState::None, &output);
+
+    // Assert
+    assert_eq!(state, UsbDeviceEffectState::ConfirmedPartial);
+}
+
+#[test]
 fn protected_recovery_summary_is_mode_0600_and_excludes_stability_key() {
     // Arrange
     let directory = tempdir().expect("temporary directory");

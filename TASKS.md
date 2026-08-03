@@ -685,6 +685,44 @@ projection, cleanup, redaction, and every repository gate pass. Any missing,
 contradictory, or unclassified fact leaves only `SYS-004` at `implemented`,
 with no progress append, `RESULT.md`, task archival, or evidence promotion.
 
+Attempt-004 software-only correction: the one authorized hardware launch is
+consumed and no retry or new ordinal is authorized. Its closed seal records
+`flash_failed`, `sealed_non_promotion`, successful cleanup, and no promotable
+capture. The durable USB lifecycle's closed recovery fields prove that the
+factory transfer completed before a legacy Phase 35 readiness boundary failed;
+the wrapper nevertheless wrote `failed_no_device_effect`. The SYS-004
+projector then reported the legitimately absent non-promotion capture as
+`sys004_private_boundary_invalid` before reading the seal. This continuation
+permits only the targeted software correction and fake/process regression work
+below; it does not permit credentials, detector, USB, flash, serial, HTTP,
+WebSocket, recovery, evidence replay, or sealed-root mutation.
+
+- [x] Remove the Phase 36 effect adapter's obsolete dependence on Phase 35
+      stage metrics and readiness environment.
+- [x] Have the durable USB lifecycle expose a closed device-effect state and
+      make `tools/flash` write the one typed Phase 36 effect result after
+      operation plus cleanup complete.
+- [x] Regress completed, partial, no-effect, parser, and cleanup-failure
+      process boundaries without hardware.
+- [x] Make SYS-004 projection classify a sealed non-promotion attempt before
+      requiring eligible-only private capture artifacts.
+- [x] Run every mandatory gate, preserve `SYS-004` as `implemented`, and push
+      the truthful correction checkpoint without projecting Attempt 004.
+
+Attempt-004 correction outcome: Phase 36 now derives its typed flash result
+from the durable USB session's monotonic `none` / `confirmed_partial` /
+`completed` effect state after operation and cleanup, with no Phase 35 stage
+root, metrics, or readiness dependency. Fresh-process tests prove one manifest
+selector, no image override, no legacy stage environment, and a mode-`0600`
+typed result. Pure and broker tests preserve parser, no-effect, partial,
+completed, cleanup-failure, identity, and recovery boundaries. SYS-004
+projection now rejects a valid non-promotion seal as
+`sys004_attempt_not_eligible` before looking for eligible-only capture files.
+The ordered Rust checks, all 80 Bazel tests, Bright Builds, parity validation,
+unchanged 34/94 progress, redaction, reference integrity, and diff checks pass.
+`SYS-004` remains `implemented`; a new explicitly authorized ordinal with a
+fresh complete hardware contract is required for live version promotion.
+
 ## Future — Explicit Only
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

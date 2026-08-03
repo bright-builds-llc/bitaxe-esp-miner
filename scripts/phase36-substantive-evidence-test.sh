@@ -120,7 +120,7 @@ jq -e \
 
 readonly child_name="$(jq -er '.child_name' "$handle")"
 readonly attempt_child="$private_parent/$child_name"
-readonly flash_args="$attempt_child/exact-package-flash-stage/flash.args"
+readonly flash_args="$attempt_child/fake-flash/flash.args"
 awk -v expected="$manifest" '
 	$0 == "--manifest" { count += 1; getline; if ($0 == expected) matched += 1 }
 	END { exit !(count == 1 && matched == 1) }

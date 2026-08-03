@@ -153,11 +153,11 @@ pub(crate) struct Phase35ProbeCommand {
 }
 
 #[derive(Debug, Serialize)]
-pub(crate) struct Phase36PreEffectResult<'a> {
+pub(crate) struct Phase36EffectResult<'a> {
     pub(crate) schema_version: &'static str,
     pub(crate) operation: &'a str,
     pub(crate) status: &'static str,
-    pub(crate) failure: &'static str,
+    pub(crate) failure: Option<&'static str>,
     pub(crate) package_identity_digest: &'a str,
     pub(crate) factory_image_digest: &'a str,
 }

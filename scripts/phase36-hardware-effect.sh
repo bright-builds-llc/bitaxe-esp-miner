@@ -119,16 +119,6 @@ json_operation() {
 	printf '%s\n' "${operation//-/_}"
 }
 
-metric_is_true() {
-	local metrics="$1"
-	local expression="$2"
-	jq -er "
-		.schema_version == \"phase35-flash-boundary-v1\" and
-		.stage == \"factory\" and
-		${expression} == true
-	" "$metrics" >/dev/null 2>&1
-}
-
 write_effect_result() {
 	local status="$1"
 	local failure="${2:-}"
@@ -148,11 +138,8 @@ write_effect_result() {
 }
 
 run_flash_operation() {
-	local stage_root="$attempt_child/${operation}-stage"
 	local child_status=0
-	[[ ! -e "$stage_root" ]] || fail flash_stage_exists
-	if PHASE35_FLASH_STAGE_ROOT="$stage_root" \
-		PHASE36_EFFECT_RESULT_PATH="$result_path" \
+	if PHASE36_EFFECT_RESULT_PATH="$result_path" \
 		PHASE36_EFFECT_OPERATION="$(json_operation)" \
 		PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST="$package_identity_digest" \
 		PHASE36_EFFECT_FACTORY_IMAGE_DIGEST="$factory_image_digest" \
@@ -164,32 +151,8 @@ run_flash_operation() {
 	if [[ -e "$result_path" ]]; then
 		[[ -f "$result_path" && ! -L "$result_path" &&
 			"$(file_mode "$result_path")" == 600 ]] || fail effect_result_invalid
-		return "$child_status"
 	fi
-
-	local metrics="$stage_root/factory.metrics.json"
-	local transfer_started=false
-	local completed=false
-	if [[ -f "$metrics" && ! -L "$metrics" ]]; then
-		if metric_is_true "$metrics" ".transfer_started"; then
-			transfer_started=true
-		fi
-		if metric_is_true "$metrics" ".completed"; then
-			completed=true
-		fi
-	fi
-	if ((child_status == 0)) && [[ "$completed" == true ]]; then
-		write_effect_result completed
-		return 0
-	fi
-	if [[ "$completed" == true ]]; then
-		write_effect_result failed_after_completed_device_effect flash_failed
-	elif [[ "$transfer_started" == true ]]; then
-		write_effect_result failed_confirmed_partial_device_effect flash_failed
-	else
-		write_effect_result failed_no_device_effect flash_failed
-	fi
-	return 2
+	return "$child_status"
 }
 
 case "$operation" in
