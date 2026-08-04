@@ -1141,7 +1141,7 @@ exact admitted transaction.
       detector and conditional attempt-006 capture.
 - [x] Promote only `API-010` on complete typed evidence; otherwise preserve the
       earliest category, withhold evidence, keep `implemented`, and stop.
-- [ ] Create a linked attempt-007 remediation contract requiring one full
+- [x] Create a linked attempt-007 remediation contract requiring one full
       normal barrel/USB power cycle before any new detector or hardware action.
 
 Plan: `docs/parity/work-plans/20260804T222559Z-API-010/PLAN.md`. This immutable
@@ -1181,6 +1181,51 @@ contract and one reported normal-connector power cycle. This task claims no
 network discovery, mining, ASIC, hardware-control, display-input, OTA,
 partition, recovery, other-board, or release parity beyond the exact admitted
 transaction.
+
+### task-parity-api010-live-theme-durability-attempt-007 | 2026-08-04 | Retry after normal-power remediation
+
+- [ ] Preserve the pushed 16 KiB observer fix and attempt-006 record, then
+      commit and push the linked immutable attempt-007 plan.
+- [ ] After the user reports one full normal barrel/USB power cycle, build the
+      exact pushed package and run one fresh protected detector.
+- [ ] Run the single bounded capture only if board-info admission objectively
+      proves the detector boundary changed; otherwise record the terminal
+      outcome and stop.
+- [ ] Promote only `API-010` on complete typed evidence; otherwise preserve the
+      earliest category, withhold evidence, keep `implemented`, and stop.
+
+Plan: `docs/parity/work-plans/20260804T224128Z-API-010/PLAN.md`. This immutable
+plan continues the pushed attempt-006 outcome at `486d0718` without changing
+the already verified software fix.
+
+Progress basis: attempt-006 stopped as `bootloader_connect_failed` before
+flashing. Protected retry-admission and final-cleanup summaries each observed
+the same accessible holder-free physical device for three stable samples with
+unchanged enumeration, and cleanup completed. Repository policy maps exactly
+this boundary to disconnecting normal USB and barrel/DC power for ten seconds,
+then reconnecting normal power followed by USB. The occurrence requires a user
+report; only a successful fresh detector is objective proof of change.
+
+Manual occurrence checkpoint: disconnect both normal barrel/DC power and USB
+for at least ten seconds, then reconnect normal barrel power followed by USB.
+Do not infer or automate this occurrence, and do not run the detector until the
+user reports it completed. Standing task authorization already covers the
+task-gated commands; this is not a repeated permission request.
+
+Authorization, exact commands, private paths, recovery, retry bounds, stop
+conditions, and promotion criteria are defined in the linked plan. No hardware
+action is allowed before the reported occurrence.
+
+Verification: The focused observer ownership target and canonical firmware
+image pass. Formatting, strict Clippy, all-target/all-feature build, all Cargo
+tests, Bright Builds, all 35 Bazel tests, parity validation/progress, semantic
+redaction, and pinned-reference cleanliness also pass. The selector returns
+only the linked attempt-007 plan. No attempt-007 hardware action has occurred;
+the manual occurrence remains pending.
+
+Completion review: Pending. This task claims no network discovery, mining,
+ASIC, hardware-control, display-input, OTA, partition, recovery, other-board,
+or release parity beyond the exact admitted transaction.
 
 ## Future
 
