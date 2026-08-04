@@ -33,17 +33,20 @@ material with explicit review boundaries.
 
 | Release input | Source path | Provenance status |
 | --- | --- | --- |
-| Fallback web index | `firmware/bitaxe/static/www/index.html` | Rust-owned compatibility fallback, not copied from upstream ESP-Miner. |
-| Fallback stylesheet | `firmware/bitaxe/static/www/assets/app.css` | Rust-owned fallback styling. |
+| Operator web index | `firmware/bitaxe/static/www/index.html` | Rust-owned responsive operator shell, not copied from upstream ESP-Miner. |
+| Operator stylesheet | `firmware/bitaxe/static/www/assets/app.css` | Rust-owned dark-first responsive styling. |
 | Deterministic gzip stylesheet | `firmware/bitaxe/static/www/assets/app.css.gz` | Generated from `firmware/bitaxe/static/www/assets/app.css` using deterministic gzip settings. |
+| Operator UI core | `firmware/bitaxe/static/www/assets/ui-core.js` | Rust-owned pure route, settings, formatting, and theme decisions. |
+| Same-origin API client | `firmware/bitaxe/static/www/assets/api-client.js` | Rust-owned bounded API and WebSocket adapter. |
+| Operator DOM adapter | `firmware/bitaxe/static/www/assets/app.js` | Rust-owned navigation and workflow orchestration. |
 | Release metadata fixture | `firmware/bitaxe/static/www/assets/release.json` | Rust-owned static metadata fixture. |
 | Static filesystem source tree | `firmware/bitaxe/static/www` | Source tree for future `www.bin` generation. |
 
 - Owner: static/SPIFFS packaging workflow.
 - Package generation: `bitaxe-automation package-firmware` builds `www.bin` from the
   static filesystem source tree with ESP-IDF `spiffsgen.py` at size `0x300000`;
-  `assets/app.css.gz` is the representative gzip static smoke asset included in
-  that source tree.
+  `assets/app.css.gz` is deterministically regenerated from the operator
+  stylesheet and remains the representative gzip static smoke asset.
 - No upstream-generated static assets included in Phase 7 package source.
 - Follow-up: if a future release includes reference-built AxeOS assets, record
   the generated asset source path, upstream attribution, and GPL review decision

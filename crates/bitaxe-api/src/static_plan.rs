@@ -13,6 +13,17 @@ pub const CONTENT_ENCODING_HEADER: &str = "Content-Encoding";
 pub const GZIP_CONTENT_ENCODING: &str = "gzip";
 /// Upstream-compatible missing-file redirect body.
 pub const STATIC_REDIRECT_BODY: &str = "Redirect to the captive portal";
+const OPERATOR_UI_ROUTES: &[&str] = &[
+    "/",
+    "/ap",
+    "/system",
+    "/network",
+    "/pool",
+    "/settings",
+    "/logs",
+    "/update",
+    "/design",
+];
 
 /// Static route request data from the firmware adapter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -175,7 +186,7 @@ struct NormalizedStaticPath {
 }
 
 fn maybe_static_path(path: &str) -> Option<NormalizedStaticPath> {
-    if path == "/" {
+    if is_operator_ui_route(path) {
         return Some(NormalizedStaticPath {
             path: "/index.html".to_owned(),
             directory_request: true,
@@ -193,6 +204,15 @@ fn maybe_static_path(path: &str) -> Option<NormalizedStaticPath> {
         path: path.to_owned(),
         directory_request: false,
     })
+}
+
+fn is_operator_ui_route(path: &str) -> bool {
+    let normalized = if path.len() > 1 {
+        path.strip_suffix('/').unwrap_or(path)
+    } else {
+        path
+    };
+    OPERATOR_UI_ROUTES.contains(&normalized)
 }
 
 fn is_unsafe_path(path: &str) -> bool {
@@ -290,6 +310,35 @@ mod tests {
         assert_eq!(file.path, "/index.html");
         assert_eq!(file.cache_control, None);
         assert_eq!(file.content_encoding, None);
+    }
+
+    #[test]
+    fn known_operator_routes_resolve_to_index_for_direct_navigation() {
+        // Arrange
+        let routes = [
+            "/ap",
+            "/system",
+            "/network",
+            "/pool/",
+            "/settings",
+            "/logs",
+            "/update",
+            "/design",
+        ];
+        let catalog = catalog(&["/index.html"]);
+
+        for route in routes {
+            // Act
+            let decision = resolve_static_request(available_request(route), catalog);
+
+            // Assert
+            let StaticRouteDecision::ServeStatic(file) = decision else {
+                panic!("{route} should serve the operator index");
+            };
+            assert_eq!(file.path, "/index.html");
+            assert_eq!(file.cache_control, None);
+            assert_eq!(file.content_encoding, None);
+        }
     }
 
     #[test]

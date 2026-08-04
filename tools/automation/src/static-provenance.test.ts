@@ -10,7 +10,7 @@ function runfileRoot(): string {
     : path.join(maybeRunfiles, "_main");
 }
 
-test("static provenance assets preserve unavailable fallback and safe commit links", async () => {
+test("static provenance assets preserve unavailable states and safe commit links", async () => {
   // Arrange
   const root = runfileRoot();
   const assetRoot = path.join(root, "firmware/bitaxe/static");
@@ -26,10 +26,12 @@ test("static provenance assets preserve unavailable fallback and safe commit lin
 
   // Assert
   for (const page of [fallback, recovery]) {
-    assert.match(page, /Firmware provenance/u);
     assert.match(page, /id="provenance-version">Unavailable/u);
     assert.match(page, /target="_blank"/u);
     assert.match(page, /rel="noopener noreferrer"/u);
+  }
+  for (const page of [recovery]) {
+    assert.match(page, /Firmware provenance/u);
   }
   assert.match(script, /\/commit\//u);
   assert.match(script, /sourceDirty/u);

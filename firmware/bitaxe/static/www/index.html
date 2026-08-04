@@ -1,47 +1,197 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AxeOS unavailable</title>
+    <meta name="color-scheme" content="dark light">
+    <title>Bitaxe Control</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f7931a'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-size='22'%3E%E2%82%BF%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="/assets/app.css">
   </head>
   <body>
-    <!-- Rust-owned compatibility fallback, not copied from upstream ESP-Miner. -->
-    <main class="shell" aria-labelledby="page-title">
-      <section class="status">
-        <p class="eyebrow">Bitaxe Rust Firmware</p>
-        <h1 id="page-title">AxeOS unavailable</h1>
-        <p>Open /recovery and upload www.bin to restore the web interface.</p>
-        <section class="provenance" aria-labelledby="provenance-title">
-          <h2 id="provenance-title">Firmware provenance</h2>
-          <dl>
-            <div><dt>Version</dt><dd id="provenance-version">Unavailable</dd></div>
-            <div>
-              <dt>Source commit</dt>
-              <dd>
-                <a
-                  id="provenance-commit"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >Unavailable</a>
-              </dd>
-            </div>
-            <div><dt>Built</dt><dd id="provenance-built">Unavailable</dd></div>
-          </dl>
-          <a
-            class="source-link"
-            href="https://github.com/bright-builds-llc/bitaxe-esp-miner"
-            target="_blank"
-            rel="noopener noreferrer"
-          >View source</a>
-        </section>
-        <div class="actions" aria-label="Recovery actions">
-          <a href="/recovery">Open recovery</a>
-          <a href="/assets/release.json">Release metadata</a>
+    <!-- Independent Rust-project UI; no upstream generated assets are included. -->
+    <a class="skip-link" href="#workspace">Skip to content</a>
+    <div class="app-shell">
+      <header class="topbar">
+        <button id="menu-toggle" class="icon-button mobile-only" type="button" aria-controls="primary-nav" aria-expanded="false">
+          <span aria-hidden="true">☰</span><span class="sr-only">Toggle navigation</span>
+        </button>
+        <a class="brand" href="/" data-route>
+          <span class="brand-mark" aria-hidden="true">₿</span>
+          <span><strong>Bitaxe</strong><small>Rust Firmware</small></span>
+        </a>
+        <p id="connection-state" class="connection-state" role="status">Connecting</p>
+      </header>
+
+      <aside id="primary-nav" class="sidebar" aria-label="Primary navigation">
+        <nav>
+          <a href="/" data-route data-nav="dashboard"><span aria-hidden="true">⌁</span>Dashboard</a>
+          <a href="/network" data-route data-nav="network"><span aria-hidden="true">⌁</span>Network</a>
+          <a href="/pool" data-route data-nav="pool"><span aria-hidden="true">⌁</span>Pool</a>
+          <a href="/settings" data-route data-nav="settings"><span aria-hidden="true">⌁</span>Settings</a>
+          <a href="/logs" data-route data-nav="logs"><span aria-hidden="true">⌁</span>Logs</a>
+          <a href="/update" data-route data-nav="update"><span aria-hidden="true">⌁</span>Update</a>
+          <a href="/design" data-route data-nav="theme"><span aria-hidden="true">⌁</span>Theme</a>
+        </nav>
+        <div class="sidebar-note">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>Ultra 205 operator console</span>
         </div>
-      </section>
-    </main>
+      </aside>
+
+      <main id="workspace" class="workspace" tabindex="-1">
+        <section class="page" data-page="dashboard" aria-labelledby="dashboard-title">
+          <div class="page-heading">
+            <div><p class="eyebrow">Overview</p><h1 id="dashboard-title">Dashboard</h1></div>
+            <button class="button secondary" type="button" data-action="refresh-info">Refresh</button>
+          </div>
+          <div class="hero card">
+            <div><p class="eyebrow">Current state</p><h2 data-bind="miningActivity">Unavailable</h2></div>
+            <div class="hero-stat"><span>Hashrate</span><strong data-bind="hashRate">—</strong></div>
+            <div class="hero-stat"><span>Temperature</span><strong data-bind="temp">—</strong></div>
+            <div class="hero-stat"><span>Power</span><strong data-bind="power">—</strong></div>
+          </div>
+          <div class="metric-grid">
+            <article class="card metric"><span>Shares accepted</span><strong data-bind="sharesAccepted">—</strong></article>
+            <article class="card metric"><span>Shares rejected</span><strong data-bind="sharesRejected">—</strong></article>
+            <article class="card metric"><span>Fan</span><strong data-bind="fanrpm">—</strong></article>
+            <article class="card metric"><span>Uptime</span><strong data-bind="uptimeSeconds">—</strong></article>
+          </div>
+          <div class="content-grid">
+            <article class="card">
+              <h2>Device</h2>
+              <dl class="details">
+                <div><dt>Hostname</dt><dd data-bind="hostname">Unavailable</dd></div>
+                <div><dt>Board</dt><dd data-bind="boardVersion">Unavailable</dd></div>
+                <div><dt>ASIC</dt><dd data-bind="ASICModel">Unavailable</dd></div>
+                <div><dt>Firmware</dt><dd id="provenance-version">Unavailable</dd></div>
+                <div><dt>Source</dt><dd><a id="provenance-commit" target="_blank" rel="noopener noreferrer">Unavailable</a></dd></div>
+                <div><dt>Built</dt><dd id="provenance-built">Unavailable</dd></div>
+              </dl>
+            </article>
+            <article class="card">
+              <h2>Operator controls</h2>
+              <p class="muted">Commands require confirmation and report the device response without exposing configuration values.</p>
+              <div class="button-row">
+                <button class="button secondary" type="button" data-command="pause">Pause mining</button>
+                <button class="button secondary" type="button" data-command="resume">Resume mining</button>
+                <button class="button danger" type="button" data-command="restart">Restart device</button>
+              </div>
+              <p class="form-status" data-status="commands" role="status"></p>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" data-page="network" aria-labelledby="network-title" hidden>
+          <div class="page-heading"><div><p class="eyebrow">Connectivity</p><h1 id="network-title">Network</h1></div></div>
+          <div class="content-grid">
+            <form id="network-form" class="card form-card">
+              <h2>Wi-Fi configuration</h2>
+              <p class="muted">Only fields you enter are changed. The stored password is never loaded into this page.</p>
+              <label>Hostname<input name="hostname" maxlength="32" autocomplete="off" placeholder="bitaxe"></label>
+              <label>Wi-Fi name<input name="ssid" maxlength="32" autocomplete="off" placeholder="Network name"></label>
+              <label>Wi-Fi password<input name="wifiPass" type="password" maxlength="63" autocomplete="new-password" placeholder="Leave blank to keep stored password"></label>
+              <button class="button primary" type="submit">Save network settings</button>
+              <p class="form-status" data-status="network" role="status"></p>
+            </form>
+            <article class="card">
+              <h2>Connection status</h2>
+              <dl class="details">
+                <div><dt>Status</dt><dd data-bind="wifiStatus">Unavailable</dd></div>
+                <div><dt>Signal</dt><dd data-bind="wifiRSSI">—</dd></div>
+                <div><dt>IPv4</dt><dd data-bind="ipv4">Unavailable</dd></div>
+                <div><dt>IPv6</dt><dd data-bind="ipv6">Unavailable</dd></div>
+              </dl>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" data-page="pool" aria-labelledby="pool-title" hidden>
+          <div class="page-heading"><div><p class="eyebrow">Mining endpoint</p><h1 id="pool-title">Pool</h1></div></div>
+          <form id="pool-form" class="card form-card narrow">
+            <h2>Primary Stratum configuration</h2>
+            <p class="muted">Pool details are write-only here and are not saved by the browser.</p>
+            <label>Protocol<select name="stratumProtocol"><option value="SV1">Stratum V1</option></select></label>
+            <label>Pool host<input name="stratumURL" maxlength="3999" autocomplete="off" placeholder="pool.example"></label>
+            <label>Pool port<input name="stratumPort" type="number" min="1" max="65535" inputmode="numeric" placeholder="3333"></label>
+            <label>Worker<input name="stratumUser" maxlength="3999" autocomplete="off" placeholder="account.worker"></label>
+            <label>Pool password<input name="stratumPassword" type="password" maxlength="3999" autocomplete="new-password" placeholder="Leave blank to keep stored password"></label>
+            <button class="button primary" type="submit">Save pool settings</button>
+            <p class="form-status" data-status="pool" role="status"></p>
+          </form>
+        </section>
+
+        <section class="page" data-page="settings" aria-labelledby="settings-title" hidden>
+          <div class="page-heading"><div><p class="eyebrow">Preferences</p><h1 id="settings-title">Settings</h1></div></div>
+          <div class="content-grid">
+            <form id="settings-form" class="card form-card">
+              <h2>Telemetry history</h2>
+              <label>Sample frequency (seconds)<input name="statsFrequency" type="number" min="0" max="65535" inputmode="numeric" placeholder="30"></label>
+              <button class="button primary" type="submit">Save settings</button>
+              <p class="form-status" data-status="settings" role="status"></p>
+            </form>
+            <article class="card callout">
+              <h2>Hardware controls are protected</h2>
+              <p>Frequency, core voltage, fan, and power controls are intentionally absent until their live safety evidence is complete.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" data-page="logs" aria-labelledby="logs-title" hidden>
+          <div class="page-heading"><div><p class="eyebrow">Diagnostics</p><h1 id="logs-title">Logs</h1></div></div>
+          <article class="card logs-card">
+            <div class="logs-toolbar">
+              <label>Filter<input id="log-filter" type="search" autocomplete="off" placeholder="Filter visible lines"></label>
+              <div class="button-row">
+                <button class="button secondary" id="log-pause" type="button">Pause</button>
+                <button class="button secondary" id="log-download" type="button">Download</button>
+                <button class="button secondary" id="log-clear" type="button">Clear view</button>
+              </div>
+            </div>
+            <pre id="log-output" tabindex="0" aria-live="polite">Waiting for logs…</pre>
+            <p class="form-status" data-status="logs" role="status"></p>
+          </article>
+        </section>
+
+        <section class="page" data-page="update" aria-labelledby="update-title" hidden>
+          <div class="page-heading"><div><p class="eyebrow">Software</p><h1 id="update-title">Update</h1></div></div>
+          <div class="content-grid">
+            <form id="firmware-update-form" class="card form-card">
+              <h2>Firmware image</h2>
+              <p class="muted">Choose an exact <code>esp-miner.bin</code>. Upload starts only after a separate confirmation.</p>
+              <label>Firmware file<input id="firmware-file" name="firmware" type="file" accept=".bin,application/octet-stream"></label>
+              <button id="firmware-upload" class="button danger" type="submit" disabled>Upload firmware</button>
+              <p class="form-status" data-status="update" role="status"></p>
+            </form>
+            <article class="card callout warning">
+              <h2>AxeOS image update unavailable</h2>
+              <p>Whole-<code>www.bin</code> OTA remains fail-closed. Use a verified full package and recovery procedure instead.</p>
+              <a class="button secondary" href="/recovery">Open recovery</a>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" data-page="theme" aria-labelledby="theme-title" hidden>
+          <div class="page-heading"><div><p class="eyebrow">Appearance</p><h1 id="theme-title">Theme</h1></div></div>
+          <form id="theme-form" class="card form-card narrow">
+            <h2>Console appearance</h2>
+            <label>Color scheme<select name="colorScheme"><option value="dark">Dark</option><option value="light">Light</option></select></label>
+            <label>Accent color<input name="accentColor" type="color" value="#f7931a"></label>
+            <button class="button primary" type="submit">Save theme</button>
+            <p class="form-status" data-status="theme" role="status"></p>
+          </form>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>Independent Rust firmware UI</span>
+        <a href="https://github.com/bright-builds-llc/bitaxe-esp-miner" target="_blank" rel="noopener noreferrer">Source on GitHub</a>
+        <a href="https://openlinks.us/" target="_blank" rel="noopener noreferrer">By Peter Ryszkiewicz</a>
+      </footer>
+    </div>
+    <script src="/assets/ui-core.js"></script>
+    <script src="/assets/api-client.js"></script>
     <script src="/assets/provenance.js"></script>
+    <script src="/assets/app.js"></script>
   </body>
 </html>

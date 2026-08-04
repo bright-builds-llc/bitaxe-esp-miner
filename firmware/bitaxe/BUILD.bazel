@@ -8,8 +8,13 @@ exports_files([
     "sdkconfig.defaults",
     "static/recovery_page.html",
     "static/www/index.html",
+    "static/www/assets/api-client.js",
+    "static/www/assets/app.css",
+    "static/www/assets/app.css.gz",
+    "static/www/assets/app.js",
     "static/www/assets/provenance.js",
     "static/www/assets/release.json",
+    "static/www/assets/ui-core.js",
 ])
 
 js_library(
@@ -17,8 +22,13 @@ js_library(
     srcs = [
         "static/recovery_page.html",
         "static/www/index.html",
+        "static/www/assets/api-client.js",
+        "static/www/assets/app.css",
+        "static/www/assets/app.css.gz",
+        "static/www/assets/app.js",
         "static/www/assets/provenance.js",
         "static/www/assets/release.json",
+        "static/www/assets/ui-core.js",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )

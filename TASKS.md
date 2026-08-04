@@ -522,9 +522,9 @@ accessory interoperability remains below verified.
 
 ### task-parity-ui004-operator-workflows | 2026-08-04 | Implement scoped AxeOS operator workflows
 
-- [ ] Add independent responsive navigation plus dashboard, network, pool,
+- [x] Add independent responsive navigation plus dashboard, network, pool,
       settings, logs, update, and theme pages against existing API contracts.
-- [ ] Keep credentials write-only, require confirmation for restart/update, and
+- [x] Keep credentials write-only, require confirmation for restart/update, and
       preserve the fail-closed OTAWWW and hardware-control boundaries.
 - [ ] Add SPA route, pure UI, static-contract, and real-browser regressions;
       run every mandatory gate and transition only `UI-004` to `implemented`.
