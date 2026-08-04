@@ -56,3 +56,24 @@
   `unit,workflow` evidence. It is not ready for `verified`.
 - Blocker or next safe action: Commit implementation, write RESULT.md against
   its exact hash, transition and sync the checklist, rerun gates, and push.
+
+## 2026-08-04T19:18:00Z | implementation binding and transition checkpoint
+
+- Source commit: `3cc76504b44c36e502c24bc40fc9281cc173c78c`.
+- Actions: Committed the UI-001 implementation, added its commit-bound RESULT,
+  transitioned only UI-001 from `in-progress` to `implemented`, and appended
+  the typed progress record. The first generated candidate omitted required
+  Markdown code spans around Rust-owned targets; parity validation rejected it,
+  so the uncommitted candidate and progress entry were rolled back and
+  regenerated once with the same monotonic transition ID.
+- Verification: The transition receipt binds checklist predecessor
+  `69369ba8ba623e9c3a17855883257bb4a65cc416603ce1dd3c6e83ec781b2d3b`,
+  result digest `52c226b8470d0b8982a0e56cdc5d821dcba1655faae5d27382b131def521a288`,
+  the immutable plan, exact implementation commit, and pinned reference.
+- Evidence: `RESULT.md`, transition
+  `docs/parity/checklist-transitions/20260804T235500Z-UI-001.json`, and the
+  appended progress record.
+- Outcome: UI-001 is `implemented` with `unit,workflow`; no physical display,
+  input, mining, or hardware-control claim was promoted.
+- Blocker or next safe action: Rerun the complete metadata gates, commit and
+  push the transition checkpoint, then select the next deterministic row.
