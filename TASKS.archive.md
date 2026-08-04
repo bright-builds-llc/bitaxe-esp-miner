@@ -5043,3 +5043,59 @@ malformed-artifact failures preserve the primary category. The prior attempt's
 underlying child reason remains unrecoverable retroactively, `API-010` remains
 `implemented`, and a future hardware ordinal still requires a new complete
 task contract after this pushed fix.
+
+### task-parity-api010-live-theme-durability-attempt-007 | 2026-08-04 | Retry after normal-power remediation
+
+- [x] Preserve the pushed 16 KiB observer fix and attempt-006 record, then
+      commit and push the linked immutable attempt-007 plan.
+- [x] After the user reports one full normal barrel/USB power cycle, build the
+      exact pushed package and run one fresh protected detector.
+- [x] Run the single bounded capture only if board-info admission objectively
+      proves the detector boundary changed; otherwise record the terminal
+      outcome and stop.
+- [x] Promote only `API-010` on complete typed evidence; otherwise preserve the
+      earliest category, withhold evidence, keep `implemented`, and stop.
+
+Plan: `docs/parity/work-plans/20260804T224128Z-API-010/PLAN.md`. This immutable
+plan continues the pushed attempt-006 outcome at `486d0718` without changing
+the already verified software fix.
+
+Progress basis: attempt-006 stopped as `bootloader_connect_failed` before
+flashing. Protected retry-admission and final-cleanup summaries each observed
+the same accessible holder-free physical device for three stable samples with
+unchanged enumeration, and cleanup completed. Repository policy maps exactly
+this boundary to disconnecting normal USB and barrel/DC power for ten seconds,
+then reconnecting normal power followed by USB. The occurrence requires a user
+report; only a successful fresh detector is objective proof of change.
+
+Manual occurrence checkpoint: disconnect both normal barrel/DC power and USB
+for at least ten seconds, then reconnect normal barrel power followed by USB.
+Do not infer or automate this occurrence, and do not run the detector until the
+user reports it completed. Standing task authorization already covers the
+task-gated commands; this is not a repeated permission request.
+
+Authorization, exact commands, private paths, recovery, retry bounds, stop
+conditions, and promotion criteria are defined in the linked plan. No hardware
+action is allowed before the reported occurrence.
+
+Verification: The reported normal power cycle moved the bootloader boundary,
+the one detector passed, and the exact package flash completed. The bounded
+capture then closed `evidence_invalid`: terminal baseline classification was
+not admissible, with closed offline category `runtime_origin_missing`. Private
+trace reduction found 51 distinct panic-reset boot sessions and 52 stack
+overflows with no runtime-origin or Wi-Fi-state marker. Startup reaches the
+rendered operator display immediately before the overflow. Exact-package ELF
+disassembly shows the 8 KiB operator-sensor task enters with a 2 KiB frame and
+its startup screen collection reaches a 7,872-byte full API-snapshot frame.
+No theme mutation, restart, restoration, or recovery flash occurred; the
+public projection and `RESULT.md` remain absent and `API-010` remains
+`implemented`.
+
+Completion review: Attempt-007 is truthfully closed without retry, evidence,
+or promotion. The earlier observer-stack hypothesis targeted the wrong thread;
+the new bounded evidence identifies the screen path's full API-snapshot
+dependency as the reproducible stack-budget violation. A new immutable plan
+and regression-backed narrow screen projection are required before another
+hardware attempt. This task claims no network discovery, mining, ASIC,
+hardware-control, display-input, OTA, partition, recovery, other-board, or
+release parity beyond the exact admitted transaction.
