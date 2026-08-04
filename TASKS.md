@@ -575,6 +575,27 @@ Completion review: Implementation commit
 evidence. The task remains active because live BM1366 counter accuracy and
 hardware/API/UI behavior remain below verified.
 
+### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
+
+- [ ] Add the exact bounded 720-sample history, timestamp admission, configured
+      retention decision, zero-frequency clearing, and focused regressions.
+- [ ] Start one absolute-cadence firmware producer that records confirmed
+      runtime snapshots independently of HTTP request timing.
+- [ ] Return the complete owned history through the existing API projection,
+      prove sole ownership and request-time immutability, and run every gate.
+
+Plan: `docs/parity/work-plans/20260804T211000Z-STAT-002/PLAN.md`
+
+Authorization: local software, synthetic snapshots, and build work only. No
+hardware attempt, credentials, external service, mining campaign, pool
+connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART, or
+pins.
+
+Verification: Pending.
+
+Completion review: Pending. Live cadence, telemetry accuracy, long-duration
+retention, device API, and browser behavior remain below verified.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
