@@ -4717,3 +4717,67 @@ successful implementation and hardware result. The two failed attempts and
 their consumed authorization remain historical facts; they did not themselves
 prove hostname durability. The replacement task verified `V12-HOSTNAME-205`,
 so this record no longer represents an active terminal blocker.
+
+### task-parity-v12-operator-snapshot-typed-capture | 2026-08-04 | Capture substantive two-epoch operator snapshots
+
+- [x] Add a typed, private-first operator-snapshot capture that joins one HTTP
+      snapshot, one later same-boot WebSocket snapshot, and the exact retained
+      log marker in each of two boot epochs.
+- [x] Reuse the live device-session reboot transaction to prove one normal
+      restart on the same physical Ultra 205 with exact build identity and
+      boot ordinal `N+1`.
+- [x] Add closed projection validation, redaction checks, behavior-focused
+      unit tests, and a real-child-process regression at the orchestration
+      boundary.
+- [x] Run every mandatory software gate on a clean pushed implementation, then
+      execute exactly one detector-gated hardware capture.
+- [x] Transition only `V12-OPERATOR-SNAPSHOT-205` if both substantive epoch
+      joins, restart identity, cleanup, safe state, and redaction pass.
+
+Plan:
+`docs/parity/work-plans/20260804T122408Z-V12-OPERATOR-SNAPSHOT-205/PLAN.md`
+
+Hardware contract: after the implementation and all software gates pass on a
+clean pushed commit, standing task authorization permits `just package`; one
+private mode-`0700` detector capture running `just detect-ultra205`; and one
+`just capture-operator-snapshot-evidence --private-root
+scratch/v12-operator-snapshot/attempt-001 --package-manifest
+bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials
+wifi-credentials.json --detector-output <private-detector> --projection
+docs/parity/evidence/v12-operator-snapshot-205/snapshot-projection.json
+--capture-timeout-seconds 360`. The workflow may flash the exact package,
+observe private serial/API/WebSocket/retained-log documents, issue exactly one
+normal application restart, reacquire only the admitted physical USB device,
+and perform one recovery-only exact-package flash if the initial flash or
+restart effect occurred but safe exact-build recovery cannot otherwise be
+confirmed. It must leave settings unchanged, keep mining and hardware control
+disabled, and publish no origins, network or USB identifiers, hostnames,
+credentials, raw documents, or traces.
+
+Stop without retry on ambiguous detection, physical-identity drift, missing or
+contradictory epoch joins, unsafe state, restart mismatch, build mismatch,
+cleanup failure, privacy failure, or recovery failure. Direct UART, pins,
+mining, voltage/fan/power control, OTA, erase, arbitrary writes, discovery,
+fault injection, and any second restart are prohibited. Exactly one fresh
+attempt is authorized; a later ordinal requires verified new information under
+the repository hardware-attempt policy. Accepted terminal outcomes are
+`complete`, `stop_repeated_boundary`, `stop_hardware_blocker`,
+`stop_authority_boundary`, and `stop_impossible_contract`.
+
+Verification: Complete. Software gates passed on clean pushed implementation
+commit `409864d0`: `cargo fmt --all`, strict Clippy, all-target/all-feature
+Cargo build and tests, managed Bright Builds checks with zero findings, all 28
+Bazel test targets, parity with no validation errors, progress, semantic
+redaction, reference cleanliness, and diff checks. One private detector
+admitted exactly one Ultra 205. The single `attempt-001` capture passed both
+substantive epoch joins, the typed same-device restart, exact package recovery,
+ordinal `N+1`, safe state, cleanup, modes, Rust contract validation, and
+redaction. The committed projection and full result are recorded under the
+plan and evidence paths above.
+
+Completion review: Completed and promoted only
+`V12-OPERATOR-SNAPSHOT-205` from `implemented` to `verified` under transition
+`20260804T124921Z-V12-OPERATOR-SNAPSHOT-205`. No recovery flash or retry ran.
+Runtime health, settings, networking, mining, ASIC, safety-control, OTA,
+recovery, other-board, and release claims remain separate. The private
+hardware root remains ignored and contains no committed sensitive values.

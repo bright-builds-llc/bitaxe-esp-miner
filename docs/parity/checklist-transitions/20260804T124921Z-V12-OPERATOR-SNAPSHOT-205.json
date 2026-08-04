@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T124921Z-V12-OPERATOR-SNAPSHOT-205",
+  "predecessor_sha256": "8551d21294c9f387dfa70610af9190f11969611e5cbf5cf91738b67c077499ac",
+  "result_sha256": "ed9d596b387d50ecdc89188e1e414e2613d884f96d923966abc697d8bc4b0eaa",
+  "row_id": "V12-OPERATOR-SNAPSHOT-205",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T122408Z-V12-OPERATOR-SNAPSHOT-205/PLAN.md",
+  "plan_sha256": "8d9e2c65b4c4e3f2a222cf94544f492a0fe485ba9951c55510e50aec20796f49",
+  "result_path": "docs/parity/work-plans/20260804T122408Z-V12-OPERATOR-SNAPSHOT-205/RESULT.md",
+  "result_document_sha256": "5c88f1af07efcadef783baa8189278940ae8a5c0dee812fd60d50f9e083d8df1",
+  "before_rust_owned_target": "`tools/parity/src/operator_snapshot_evidence.rs`, `tools/parity/src/phase35_evidence.rs`, `tools/parity/src/phase35_promotion.rs`",
+  "after_rust_owned_target": "`tools/automation/src/operator-snapshot-evidence.ts`, `crates/bitaxe-automation-contracts/src/operator_snapshot_evidence.rs`, `tools/parity/src/operator_snapshot_evidence.rs`, `tools/device-session`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "workflow",
+  "after_evidence": "workflow,hardware-smoke",
+  "before_notes": "Phase 36 correction `snapshot_substance_insufficient` from exact admitted-fact digest `835ed53bf73a63f78bca9374c2439c05dd93c2f6426aef2fcd28e1bc61b45740`; this row remains below verified and every non-claim is preserved.",
+  "after_notes": "The typed result at docs/parity/work-plans/20260804T122408Z-V12-OPERATOR-SNAPSHOT-205/RESULT.md and closed projection at docs/parity/evidence/v12-operator-snapshot-205/snapshot-projection.json bind exact package 409864d0, one detector-admitted Ultra 205, substantive HTTP/WebSocket/retained-log joins in two boot epochs, the same physical device, one software restart, exact build recovery, boot ordinal N+1, disabled mining and hardware control, cleanup, and redaction. Runtime health, settings, networking, mining, safety-control, update, recovery, other-board, and release claims remain separate."
+}
