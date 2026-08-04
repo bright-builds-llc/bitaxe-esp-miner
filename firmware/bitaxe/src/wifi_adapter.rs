@@ -37,6 +37,7 @@ struct WifiOwner {
 pub struct WifiRuntimeSnapshot {
     pub wifi_status: String,
     pub ssid: String,
+    pub ap_ssid: String,
     pub ipv4: String,
     pub ipv6: String,
     pub mac_addr: String,
@@ -49,6 +50,7 @@ impl Default for WifiRuntimeSnapshot {
         Self {
             wifi_status: "disconnected".to_owned(),
             ssid: String::new(),
+            ap_ssid: String::new(),
             ipv4: "0.0.0.0".to_owned(),
             ipv6: String::new(),
             mac_addr: "00:00:00:00:00:00".to_owned(),
@@ -209,6 +211,7 @@ fn retain_provisioning(
     publish_wifi_state(WifiRuntimeSnapshot {
         wifi_status: reason.wifi_status().to_owned(),
         ssid: station_ssid,
+        ap_ssid: configuration_ap_ssid(ap_mac).as_str().to_owned(),
         ipv4: ap_ipv4.to_string(),
         ipv6: String::new(),
         mac_addr: format_mac_addr(ap_mac),
@@ -244,6 +247,7 @@ fn publish_connected_wifi(
     publish_wifi_state(WifiRuntimeSnapshot {
         wifi_status: "connected".to_owned(),
         ssid: station_ssid.to_owned(),
+        ap_ssid: String::new(),
         ipv4: ipv4.clone(),
         ipv6: String::new(),
         mac_addr,

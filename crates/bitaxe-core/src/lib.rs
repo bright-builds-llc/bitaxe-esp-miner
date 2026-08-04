@@ -3,6 +3,7 @@ pub mod display;
 pub mod hashrate;
 pub mod runtime_health;
 pub mod runtime_orchestration;
+pub mod screen;
 
 /// First Phase 1 board target for boot/log bring-up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

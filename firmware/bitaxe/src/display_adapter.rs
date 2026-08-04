@@ -11,6 +11,7 @@ use bitaxe_core::{
     display::{
         DisplayPowerCommand, DisplayPowerPolicy, DisplayRotation, Ultra205DisplayConfiguration,
     },
+    screen::ScreenFrame,
     StartupDebugFrame, STARTUP_DEBUG_LINE_COUNT, STARTUP_DEBUG_LINE_STRIDE_PX,
 };
 use embedded_graphics::{
@@ -31,14 +32,14 @@ pub const DISPLAY_I2C_SPEED_HZ: u32 = 400_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuntimeDisplayMode {
-    ConfiguredDebug,
+    ScreenFlow,
     Unavailable,
 }
 
 impl RuntimeDisplayMode {
     const fn as_str(self) -> &'static str {
         match self {
-            Self::ConfiguredDebug => "configured_debug",
+            Self::ScreenFlow => "screen_flow",
             Self::Unavailable => "unavailable",
         }
     }
@@ -46,7 +47,7 @@ impl RuntimeDisplayMode {
 
 pub fn publish_runtime_display_input_boundary(mode: RuntimeDisplayMode) {
     log::warn!(
-        "display_input_status=runtime_gap reason=full_parity_pending display_runtime={} input_runtime=unavailable",
+        "display_input_status=runtime_gap reason=input_parity_pending display_runtime={} input_runtime=unavailable",
         mode.as_str()
     );
 }
@@ -80,12 +81,17 @@ impl RuntimeDisplayOwner {
     }
 
     /// Updates the framebuffer without reinitializing or reconfiguring the panel.
-    pub fn render_runtime_debug_text(
+    pub fn render_runtime_screen(
         &mut self,
         owner: &mut RuntimeI2cOwner<'_>,
-        frame: &StartupDebugFrame,
+        frame: &ScreenFrame,
     ) -> Result<()> {
-        render_debug_text(owner.display(), frame, self.configuration, false)
+        render_lines(
+            owner.display(),
+            frame.private_lines(),
+            self.configuration,
+            false,
+        )
     }
 
     /// Applies only a changed on/off edge from the pure timeout policy.
@@ -121,7 +127,18 @@ where
 {
     debug_assert_eq!(frame.lines().len(), STARTUP_DEBUG_LINE_COUNT);
     debug_assert!(frame.fits_ultra_205_display());
+    render_lines(i2c, frame.lines(), configuration, initialize)
+}
 
+fn render_lines<I2C>(
+    i2c: I2C,
+    lines: [&str; STARTUP_DEBUG_LINE_COUNT],
+    configuration: Ultra205DisplayConfiguration,
+    initialize: bool,
+) -> Result<()>
+where
+    I2C: I2c,
+{
     let interface = I2CDisplayInterface::new_custom_address(i2c, DISPLAY_I2C_ADDRESS);
     let mut display = Ssd1306::new(
         interface,
@@ -148,7 +165,7 @@ where
         .font(&FONT_5X7)
         .text_color(BinaryColor::On)
         .build();
-    for (index, line) in frame.lines().into_iter().enumerate() {
+    for (index, line) in lines.into_iter().enumerate() {
         let y = (index * STARTUP_DEBUG_LINE_STRIDE_PX) as i32;
         Text::with_baseline(line, Point::new(0, y), text_style, Baseline::Top)
             .draw(&mut display)

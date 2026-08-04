@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use bitaxe_api::{project_observation, TelemetryObservations};
 use bitaxe_core::{
     runtime_orchestration::{PeriodicDeadline, OPERATOR_OBSERVATION_CADENCE_MS},
-    StartupDebugText,
+    screen::{ScreenFlow, ScreenFrame, SCREEN_UPDATE_MS},
 };
 use bitaxe_safety::{
     core_voltage_acquisition::CoreVoltageProducerState,
@@ -24,7 +24,7 @@ use crate::safety_adapter::{
 };
 
 pub const SENSOR_SWEEP_CADENCE_MS: u64 = OPERATOR_OBSERVATION_CADENCE_MS;
-pub const DISPLAY_REFRESH_CADENCE_MS: u64 = 1_000;
+pub const DISPLAY_REFRESH_CADENCE_MS: u64 = SCREEN_UPDATE_MS;
 const SENSOR_STALE_AFTER_MS: u64 = 1_000;
 const BOARD_POWER_TARGET_WATTS: f64 = 12.0;
 const PRODUCER_THREAD_NAME: &str = "operator-sensors";
@@ -33,7 +33,7 @@ const PRODUCER_THREAD_STACK_BYTES: usize = 8 * 1024;
 pub fn start(
     maybe_owner: Option<RuntimeI2cOwner<'static>>,
     maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
-    maybe_display: Option<(RuntimeDisplayOwner, StartupDebugText)>,
+    maybe_display: Option<RuntimeDisplayOwner>,
 ) -> Result<()> {
     let (maybe_actuation_registration, maybe_actuation_inbox) = if maybe_owner.is_some() {
         let (registration, inbox) = safety_adapter::prepare_safety_actuation_owner();
@@ -66,7 +66,7 @@ pub fn start(
 fn run(
     mut maybe_owner: Option<RuntimeI2cOwner<'static>>,
     mut maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
-    maybe_display: Option<(RuntimeDisplayOwner, StartupDebugText)>,
+    maybe_display: Option<RuntimeDisplayOwner>,
     maybe_actuation_inbox: Option<SafetyActuationOwnerInbox>,
 ) -> ! {
     let boot_session = new_boot_session_id();
@@ -76,10 +76,13 @@ fn run(
     let started_at_ms = crate::runtime_uptime::millis();
     let mut sensor_schedule = PeriodicDeadline::new(started_at_ms, SENSOR_SWEEP_CADENCE_MS)
         .expect("operator observation cadence is nonzero");
-    let mut maybe_display = maybe_display.map(|(owner, text)| RuntimeDisplay {
-        owner,
-        last_alternating_line: text.frame_at(0).lines()[2].to_owned(),
-        text,
+    let mut maybe_display = maybe_display.map(|owner| {
+        let snapshot = crate::runtime_snapshot::collect_screen_snapshot(started_at_ms);
+        RuntimeDisplay {
+            owner,
+            flow: ScreenFlow::new(started_at_ms, &snapshot),
+            maybe_last_frame: None,
+        }
     });
     let mut maybe_display_schedule = maybe_display.as_ref().map(|_| {
         let first_deadline_ms = started_at_ms
@@ -218,8 +221,8 @@ fn run(
 
 struct RuntimeDisplay {
     owner: RuntimeDisplayOwner,
-    text: StartupDebugText,
-    last_alternating_line: String,
+    flow: ScreenFlow,
+    maybe_last_frame: Option<ScreenFrame>,
 }
 
 fn service_display(
@@ -230,22 +233,31 @@ fn service_display(
     let Some(display) = maybe_display.as_mut() else {
         return;
     };
-    if let Err(error) = display.owner.service_power(owner, uptime_ms, false) {
+    let snapshot = crate::runtime_snapshot::collect_screen_snapshot(uptime_ms);
+    let decision = match display.flow.update(uptime_ms, &snapshot) {
+        Ok(decision) => decision,
+        Err(error) => {
+            let error = anyhow::Error::new(error);
+            disable_runtime_display(maybe_display, "screen_flow_failed", &error);
+            return;
+        }
+    };
+    if let Err(error) = display
+        .owner
+        .service_power(owner, uptime_ms, decision.priority_visible)
+    {
         disable_runtime_display(maybe_display, "power_command_failed", &error);
         return;
     }
-
-    let frame = display.text.frame_at(uptime_ms);
-    let alternating_line = frame.lines()[2];
-    if display.last_alternating_line == alternating_line {
+    if display.maybe_last_frame.as_ref() == Some(&decision.frame) {
         return;
     }
 
-    if let Err(error) = display.owner.render_runtime_debug_text(owner, &frame) {
+    if let Err(error) = display.owner.render_runtime_screen(owner, &decision.frame) {
         disable_runtime_display(maybe_display, "render_failed", &error);
         return;
     }
-    display.last_alternating_line = alternating_line.to_owned();
+    display.maybe_last_frame = Some(decision.frame);
 }
 
 fn disable_runtime_display(

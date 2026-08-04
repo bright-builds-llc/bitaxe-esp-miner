@@ -146,7 +146,6 @@ fn initialize_operator_runtime(
     };
     let runtime_display_enabled = maybe_runtime_display.is_some();
     let maybe_runtime_owner = maybe_bus.map(safety_adapter::BitaxeI2cBus::into_runtime);
-    let maybe_runtime_display = maybe_runtime_display.map(|owner| (owner, startup_debug_text));
     if let Err(error) = operator_sensor_runtime::start(
         maybe_runtime_owner,
         maybe_core_voltage_adc,
@@ -161,7 +160,7 @@ fn initialize_operator_runtime(
         return;
     }
     let mode = if runtime_display_enabled {
-        display_adapter::RuntimeDisplayMode::ConfiguredDebug
+        display_adapter::RuntimeDisplayMode::ScreenFlow
     } else {
         display_adapter::RuntimeDisplayMode::Unavailable
     };

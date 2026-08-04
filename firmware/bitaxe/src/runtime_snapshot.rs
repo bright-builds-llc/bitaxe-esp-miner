@@ -1,5 +1,9 @@
 //! Firmware collection boundary for pure AxeOS API response snapshots.
 
+mod screen;
+
+pub use screen::collect_screen_snapshot;
+
 use std::sync::{Mutex, OnceLock};
 
 use crate::log_buffer::RetainedPairStorageError;
@@ -57,6 +61,7 @@ struct CommandVisibleState {
     runtime_projection: RuntimeTelemetryProjection,
     identify: IdentifyModeState,
     block_found: BlockFoundNotificationState,
+    work_received: u64,
 }
 
 impl Default for CommandVisibleState {
@@ -69,6 +74,7 @@ impl Default for CommandVisibleState {
                 block_found: 0,
                 show_new_block: false,
             },
+            work_received: 0,
         }
     }
 }
@@ -195,6 +201,7 @@ pub fn publish_projected_live_telemetry_payload<T, E>(
 pub fn publish_production_session_snapshot(snapshot: ProductionSessionSnapshot) {
     mutate_command_visible_state(|state| {
         let hashrate = state.mining.hashrate_inputs.clone();
+        state.work_received = snapshot.job_transition.pool_notify_count;
         state.mining = snapshot.mining;
         state.mining.record_hashrate_inputs(hashrate);
         state

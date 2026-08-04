@@ -660,11 +660,11 @@ verified, so this implemented task remains active rather than archived.
 
 ### task-parity-ui002-screen-flow | 2026-08-04 | Implement bounded Ultra 205 screen flow
 
-- [ ] Add the pure priority, overlay, intro, carousel, notification, and
+- [x] Add the pure priority, overlay, intro, carousel, notification, and
       four-line frame contract with exact timing and privacy regressions.
-- [ ] Project existing firmware runtime facts without operator-publication,
+- [x] Project existing firmware runtime facts without operator-publication,
       statistics-drain, retained-log, mining-state, or credential side effects.
-- [ ] Retain one screen owner beside the display owner, use the absolute 500 ms
+- [x] Retain one screen owner beside the display owner, use the absolute 500 ms
       cadence, redraw only changed frames, and preserve sensor isolation.
 
 Plan: `docs/parity/work-plans/20260805T001000Z-UI-002/PLAN.md`
@@ -674,7 +674,11 @@ work only. No hardware attempt, credentials, external service, mining, pool
 connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART,
 pins, or physical button interaction.
 
-Verification: Pending.
+Verification: Twelve focused pure screen-flow tests, both firmware display
+adapter/source-ownership targets, and the real ESP-IDF firmware Bazel target
+pass. The ordered full Rust sequence, Bright Builds checks, all 34 Bazel test
+targets, parity validation/progress, redaction, reference cleanliness,
+immutable-plan, and diff checks also pass.
 
 Completion review: Pending. UI-003 physical input, live screen content,
 animation/bitmap parity, mining, and hardware-control behavior remain below

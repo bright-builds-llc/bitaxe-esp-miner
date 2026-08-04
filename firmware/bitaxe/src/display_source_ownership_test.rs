@@ -1,6 +1,8 @@
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
 const ADAPTER_SOURCE: &str = include_str!("display_adapter.rs");
 const RUNTIME_SOURCE: &str = include_str!("operator_sensor_runtime.rs");
+const SNAPSHOT_SOURCE: &str = include_str!("runtime_snapshot.rs");
+const SCREEN_SNAPSHOT_SOURCE: &str = include_str!("runtime_snapshot/screen.rs");
 
 #[test]
 fn confirmed_configuration_precedes_first_panel_initialization() {
@@ -37,7 +39,7 @@ fn one_retained_owner_carries_configuration_rendering_and_power() {
     assert_eq!(ADAPTER_SOURCE.matches(owner).count(), 1);
     assert!(source.contains("configuration: Ultra205DisplayConfiguration"));
     assert!(source.contains("power_policy: DisplayPowerPolicy"));
-    assert!(source.contains("pub fn render_runtime_debug_text"));
+    assert!(source.contains("pub fn render_runtime_screen"));
     assert!(source.contains("pub fn service_power"));
     assert_eq!(ADAPTER_SOURCE.matches(".init()").count(), 1);
 }
@@ -76,9 +78,54 @@ fn runtime_uses_absolute_cadence_and_edge_only_power_service() {
     // Act / Assert
     assert!(source.contains("PeriodicDeadline::new"));
     assert!(source.contains("schedule.advance_past"));
-    assert!(source.contains("display.owner.service_power(owner, uptime_ms, false)"));
-    assert!(source.contains("display.owner.render_runtime_debug_text(owner, &frame)"));
+    assert!(source.contains(".service_power(owner, uptime_ms, decision.priority_visible)"));
+    assert!(source.contains("display.owner.render_runtime_screen(owner, &decision.frame)"));
+    assert!(source.contains("display.maybe_last_frame.as_ref() == Some(&decision.frame)"));
     assert!(!source.contains("std::thread::Builder::new().name(\"display"));
+}
+
+#[test]
+fn screen_projection_is_read_only_and_keeps_private_values_out_of_logs() {
+    // Arrange
+    let function = "pub fn collect_screen_snapshot(";
+    let start = SCREEN_SNAPSHOT_SOURCE
+        .find(function)
+        .expect("private screen projection must exist");
+    let end = SCREEN_SNAPSHOT_SOURCE[start..]
+        .find("fn screen_pool_host(")
+        .map(|offset| start + offset)
+        .expect("screen projection boundary");
+    let source = &SCREEN_SNAPSHOT_SOURCE[start..end];
+
+    // Act / Assert
+    assert!(source.contains("let candidate = collect_operator_snapshot_candidate(false)"));
+    assert!(source.contains("let command_state = command_visible_state()"));
+    assert!(source.contains("let snapshot = complete_api_snapshot(candidate)"));
+    assert!(source.contains("screen_pool_host(snapshot.mining.fallback_active)"));
+    assert!(!source.contains("publish_operator_snapshot("));
+    assert!(!source.contains("maybe_drain_pending_runtime_sample_marker"));
+    assert!(!source.contains("retain_completed_operator_snapshot"));
+    assert!(!source.contains("log::"));
+}
+
+#[test]
+fn production_publication_supplies_work_received_without_private_payloads() {
+    // Arrange
+    let function = "pub fn publish_production_session_snapshot(";
+    let start = SNAPSHOT_SOURCE
+        .find(function)
+        .expect("production publication must exist");
+    let end = SNAPSHOT_SOURCE[start..]
+        .find("/// Publishes a monitor sample")
+        .map(|offset| start + offset)
+        .expect("production publication boundary");
+    let source = &SNAPSHOT_SOURCE[start..end];
+
+    // Act / Assert
+    assert!(source.contains("snapshot.job_transition.pool_notify_count"));
+    assert!(source.contains("state.work_received"));
+    assert!(!source.contains("pool_host"));
+    assert!(!source.contains("credentials"));
 }
 
 #[test]
