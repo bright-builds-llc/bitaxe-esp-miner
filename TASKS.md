@@ -658,6 +658,28 @@ UI-002 carousel content, UI-003 physical input, live panel
 orientation/inversion/timeout, and operator-visible behavior remain below
 verified, so this implemented task remains active rather than archived.
 
+### task-parity-ui002-screen-flow | 2026-08-04 | Implement bounded Ultra 205 screen flow
+
+- [ ] Add the pure priority, overlay, intro, carousel, notification, and
+      four-line frame contract with exact timing and privacy regressions.
+- [ ] Project existing firmware runtime facts without operator-publication,
+      statistics-drain, retained-log, mining-state, or credential side effects.
+- [ ] Retain one screen owner beside the display owner, use the absolute 500 ms
+      cadence, redraw only changed frames, and preserve sensor isolation.
+
+Plan: `docs/parity/work-plans/20260805T001000Z-UI-002/PLAN.md`
+
+Authorization: local software, synthetic screen/runtime fixtures, and build
+work only. No hardware attempt, credentials, external service, mining, pool
+connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART,
+pins, or physical button interaction.
+
+Verification: Pending.
+
+Completion review: Pending. UI-003 physical input, live screen content,
+animation/bitmap parity, mining, and hardware-control behavior remain below
+verified.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
