@@ -61,3 +61,25 @@
 - Blocker or next safe action: Diagnose the exact-package flash-monitor child
   boundary from a new software-only task. Do not run another hardware attempt
   until a verified fix or materially new evidence supports a fresh ordinal.
+
+## 2026-08-04T20:29:30Z | initial-child diagnostic root cause
+
+- Source commit: `29e81a3eb0e8696e9834c47fd56c55a6f9b5ad61`.
+- Actions: Traced the exact production command from theme orchestration through
+  `ProcessPort` into the Rust flash tool without reading the protected child
+  transcript or performing device I/O.
+- Verification: The child outcome retains stdout/stderr only in memory and the
+  theme shell discards both on nonzero exit. The Rust flash tool already owns a
+  mode-enforced `phase36-effect-result-v1` contract, but theme orchestration
+  neither supplies its environment nor reads it. The CLI failure envelope also
+  omits `ThemeDurabilityError.publicValue` while including the equivalent
+  settings, snapshot, and runtime-health facts.
+- Evidence: Source-level process, command-spec, effect-result, and CLI control
+  flow plus the prior safe `process_failed` envelope and empty attempt root.
+  The underlying child reason is not recoverable retroactively because no
+  durable typed discriminator was produced.
+- Outcome: The blocker is diagnostic incompleteness across two host boundaries,
+  not evidence for a device, firmware, route, or durability defect.
+- Blocker or next safe action: Commit and push the targeted software-only task,
+  then enable and validate the existing private effect contract, add closed
+  child-marker classification, and include the safe theme failure facts.
