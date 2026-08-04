@@ -27,3 +27,31 @@
   address capabilities or enabling new hardware effects.
 - Blocker or next safe action: Run mandatory repository-wide gates, commit the
   implementation, and transition only `IO-001` to `implemented`.
+
+## 2026-08-04T14:04:34Z | implementation commit and transition readiness
+
+- Source commit: `b15073c9d51698cd86eb6ee750271ba5dd1e8887`.
+- Actions: Committed the exact shared I2C retry policy and wrote the result
+  against the implementation commit.
+- Verification: The ordered Rust gate, Bright Builds checks, all 29 Bazel test
+  targets, parity/progress, redaction, reference cleanliness, and diff checks
+  passed before the implementation commit.
+- Evidence: Focused retry/ownership tests, real firmware build, and `RESULT.md`.
+- Outcome: `IO-001` is eligible for the planned transition to `implemented`;
+  historical hardware smoke does not verify the new retry behavior.
+- Blocker or next safe action: Apply the typed transition, synchronize progress,
+  run final metadata gates, commit, and push.
+
+## 2026-08-04T14:45:00Z | implemented transition
+
+- Source commit: `b15073c9d51698cd86eb6ee750271ba5dd1e8887`.
+- Actions: Removed one rejected receipt whose timestamp preceded the existing
+  ledger head, then applied typed transition `20260804T144500Z-IO-001` and
+  appended the hash-chained progress record.
+- Verification: The transition validator accepted the checklist mutation;
+  progress remains 38 verified of 94 active rows, 40.4 percent complete.
+- Evidence: Transition receipt, `RESULT.md`, and synchronized progress record.
+- Outcome: `IO-001` is `implemented` with `unit,workflow,hardware-smoke`
+  evidence; live retry and shared-bus behavior remain explicitly withheld.
+- Blocker or next safe action: Run final metadata gates, commit, push, then
+  resume deterministic parity selection.

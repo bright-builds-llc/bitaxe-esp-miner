@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T144500Z-IO-001",
+  "predecessor_sha256": "778dc8a650fd41940dd0fcb11a3ac17df2c4626a313f4511ed52c2e5a6a945a0",
+  "result_sha256": "47795d93c80b289ae5d6810e5511bc8f68f2cdc4d2795670491b1b63ed90fc40",
+  "row_id": "IO-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T135918Z-IO-001/PLAN.md",
+  "plan_sha256": "0669362b0e95dd38eb6ee883250ef449a9fdfa5368975ee36cebda91a5669765",
+  "result_path": "docs/parity/work-plans/20260804T135918Z-IO-001/RESULT.md",
+  "result_document_sha256": "42c63df612e61e05821b83f09cbd6be09bb916b11d45e2f6eff2ca8aa19b475b",
+  "before_rust_owned_target": "`firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/safety_adapter/ina260.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `firmware/bitaxe/src/safety_adapter/thermal.rs`",
+  "after_rust_owned_target": "`firmware/bitaxe/src/safety_adapter/i2c_retry.rs`, `firmware/bitaxe/src/safety_adapter/i2c_bus.rs`, `firmware/bitaxe/src/i2c_retry_host_test.rs`, `firmware/bitaxe/src/sensor_source_ownership_test.rs`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "unit,workflow,hardware-smoke",
+  "after_evidence": "unit,workflow,hardware-smoke",
+  "before_notes": "Firmware now keeps runtime SSD1306 refresh and read-only INA260 and EMC2101 acquisition under one bounded I2C0 owner. Full-frame regressions and 2026-07-26 operator LCD UAT cover the alternating debug surface, while [Phase 14 display/input evidence](evidence/phase-14-safety-hardware-evidence-completion/display-input.md) and Phase 20 evidence remain the admitted startup-only hardware breadcrumbs. This documentation-only revision preserves `in-progress` and `unit,workflow,hardware-smoke`; DS4432U writes and full shared-I2C runtime parity remain below verified.",
+  "after_notes": "The shared I2C owner now uses the pinned 500 ms timeout, three-attempt, 10 ms-delay policy across display, sensor, and actuation transfers with exact host tests and a real firmware build. Existing hardware-smoke breadcrumbs predate the retry change; live transient-fault, timeout, shared-bus load, and DS4432U behavior remain unverified."
+}

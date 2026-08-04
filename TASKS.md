@@ -387,11 +387,11 @@ No hardware, credentials, mining, controls, OTA, direct UART, or pins were used.
 
 ### task-parity-io001-i2c-retry-contract | 2026-08-04 | Match shared I2C transfer policy
 
-- [ ] Add an exact host-testable 500 ms, three-attempt, 10 ms-delay transfer
+- [x] Add an exact host-testable 500 ms, three-attempt, 10 ms-delay transfer
       policy matching the pinned reference.
-- [ ] Route every display, sensor, and actuation transfer through the single
+- [x] Route every display, sensor, and actuation transfer through the single
       retry owner without widening address or effect capabilities.
-- [ ] Extend bypass regressions, build the real firmware, run all mandatory
+- [x] Extend bypass regressions, build the real firmware, run all mandatory
       gates, and transition only `IO-001` to `implemented`.
 
 Plan: `docs/parity/work-plans/20260804T135918Z-IO-001/PLAN.md`
@@ -399,9 +399,16 @@ Plan: `docs/parity/work-plans/20260804T135918Z-IO-001/PLAN.md`
 Authorization: software-only I2C contract work. No hardware, credentials,
 network requests, mining, voltage/fan effects, OTA, direct UART, or pins.
 
-Verification: Pending.
+Verification: Four focused retry tests, source-ownership tests, and the real
+ESP-IDF firmware build passed. The mandatory ordered Rust sequence, Bright
+Builds checks, all 29 Bazel test targets, parity/progress, redaction, reference
+cleanliness, and diff checks passed on implementation commit `b15073c9`.
 
-Completion review: Pending.
+Completion review: The exact bounded transfer policy is implemented and
+`IO-001` is `implemented` with `unit,workflow,hardware-smoke` evidence. The task
+remains active and unarchived because the hardware breadcrumb predates the
+retry change; live transient-fault, timeout, and shared-bus behavior remain
+unverified. No hardware, credentials, mining, controls, OTA, UART, or pins ran.
 
 ## Future
 
