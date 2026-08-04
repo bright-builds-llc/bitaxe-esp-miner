@@ -4595,3 +4595,64 @@ redaction from source commit
 slots remain deferred. Credentials during mining, settings durability,
 ASIC/Stratum, safety controls, recovery, other-board, direct-UART, pin, and
 release claims remain separate and were not promoted.
+
+### task-parity-v12-hostname-device-session-retry | 2026-08-03 | Replace the broken hostname restart observer
+
+- [x] Add a private typed reboot intent and a live device-session adapter that
+      derives and binds the admitted Ultra 205 physical identity in-process.
+- [x] Replace the settings workflow's invented monitor artifact and fixed
+      readiness delay with the typed reboot transaction and closed projection.
+- [x] Add unit and real-process regressions for the confirmed missing-artifact
+      defect, typed failures, restoration, recovery, and privacy boundaries.
+- [x] Run all mandatory software gates, commit and push the clean fix, then run
+      exactly one detector-gated `attempt-003` hardware capture.
+- [x] Transition only `V12-HOSTNAME-205` if typed restart, persistence, cleanup,
+      restoration, and redaction all pass; otherwise record the terminal result.
+
+Plan:
+`docs/parity/work-plans/20260803T232954Z-V12-HOSTNAME-205/PLAN.md`
+
+Hardware contract: software diagnosis proved that `tools/flash monitor` returns
+serial bytes on stdout and intentionally creates no `flash-monitor.log`, while
+the settings workflow waited for that nonexistent file. After the typed
+device-session replacement passes all software gates on a clean pushed commit,
+standing task authorization permits exactly one new-information retry. Run
+`just package`; capture `just detect-ultra205` privately beneath mode-`0700`
+`scratch/v12-hostname-typed/attempt-003-detector`; then run
+`just verify-settings-durability --mode capture --private-root
+scratch/v12-hostname-typed/attempt-003 --package-manifest
+bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials
+wifi-credentials.json --detector-output
+scratch/v12-hostname-typed/attempt-003-detector/stdout --projection
+docs/parity/evidence/v12-hostname-205/durability-projection.json
+--capture-timeout-seconds 360`. The workflow may perform the exact package
+flash, one safe hostname PATCH, one typed normal application restart, private
+readback, restoration, and at most one recovery-only exact-package flash when
+restoration cannot otherwise complete. Stop without retry on any non-ready
+device-session category, identity drift, unsafe state, response or
+postcondition failure, restoration failure, privacy failure, or cleanup
+failure. Direct UART, pins, mining, voltage/fan/power effects, OTA, erase, raw
+writes, discovery, and fault injection remain prohibited.
+
+Verification: Implementation commit
+`cb0fe1f78ad8dd82ec815069739572053fa54c22` passed focused device-session and
+automation tests plus the complete Rust, Bright Builds, Bazel, parity,
+progress, redaction, reference-cleanliness, and diff gates before it was pushed.
+The first combined parity invocation encountered one transient host
+`Resource temporarily unavailable` error; isolated and final full-sequence
+reruns passed with no validation findings. The one detector-gated
+`attempt-003` then emitted a redacted v2 projection proving same-device
+admission, reader-before-request ordering, one normal restart, exact build
+recovery, changed boot session, ordinal `N+1`, persisted hostname digest,
+cleanup, and confirmed restoration. Transition receipt
+`20260804T043800Z-V12-HOSTNAME-205` changed only the selected row from
+`implemented` to `verified` with `workflow,hardware-smoke` evidence. Progress
+synchronized to 35 of 94 active rows verified (37.2%).
+
+Completion review: Complete. The host orchestration root cause is fixed by the
+typed device-session reboot transaction, and real Ultra 205 evidence now proves
+the exact hostname-durability claim. The original private hostname was restored
+and confirmed, no recovery flash ran, and the single attempt was consumed.
+Broader configuration, network longevity, mining, ASIC, safety-control, OTA,
+recovery, other-board, direct-UART, pin, and release claims remain separate and
+were not promoted.

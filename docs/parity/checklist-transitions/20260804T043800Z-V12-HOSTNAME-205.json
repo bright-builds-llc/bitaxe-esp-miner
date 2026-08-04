@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T043800Z-V12-HOSTNAME-205",
+  "predecessor_sha256": "475c93ece0e28e1edd3f2bef5bdf004bf82602d2181ce4ad7676402103e01c6d",
+  "result_sha256": "8551d21294c9f387dfa70610af9190f11969611e5cbf5cf91738b67c077499ac",
+  "row_id": "V12-HOSTNAME-205",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260803T232954Z-V12-HOSTNAME-205/PLAN.md",
+  "plan_sha256": "7632ea92067e9c01da941986d8228ba82a0b0acc4916a6a45737f12d12ef1182",
+  "result_path": "docs/parity/work-plans/20260803T232954Z-V12-HOSTNAME-205/RESULT.md",
+  "result_document_sha256": "4890f915fa294f34902c6ea17cc12f2eef58168d854799810c57f7760a41a06f",
+  "before_rust_owned_target": "`tools/automation/src/cli.ts`, `tools/parity/src/phase35_evidence.rs`, `tools/parity/src/phase35_promotion.rs`",
+  "after_rust_owned_target": "`tools/automation/src/settings-durability.ts`, `tools/device-session`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "hardware-smoke",
+  "after_evidence": "workflow,hardware-smoke",
+  "before_notes": "Downgraded by the typed automation migration because active consumers reject the legacy evidence schema. A fresh semantic settings-durability capture is required.",
+  "after_notes": "The typed attempt-003 result at [RESULT.md](work-plans/20260803T232954Z-V12-HOSTNAME-205/RESULT.md) and [v2 projection](evidence/v12-hostname-205/durability-projection.json) bind exact package cb0fe1f78ad8dd82ec815069739572053fa54c22, one detector-admitted Ultra 205, the same physical device, one software restart, exact build recovery, a changed boot session, ordinal N+1, persisted hostname digest, complete cleanup, confirmed restoration, and redaction. Broader configuration, networking, mining, ASIC, safety-control, update, recovery, other-board, and release claims remain separate."
+}

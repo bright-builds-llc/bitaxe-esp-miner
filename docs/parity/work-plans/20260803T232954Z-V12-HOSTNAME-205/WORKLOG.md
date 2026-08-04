@@ -84,3 +84,26 @@
   remains `implemented` and no final evidence exists yet.
 - Blocker or next safe action: commit and push the clean implementation, then
   run exactly one detector-gated `attempt-003` under the active task contract.
+
+## 2026-08-04T04:37:00Z | hardware attempt 003 passed
+
+- Source and package commit: `cb0fe1f78ad8dd82ec815069739572053fa54c22`.
+- Actions: built the exact pushed package, passed fresh private detector
+  admission for one Ultra 205, flashed and observed the safe boot, changed and
+  immediately read back the test hostname, ran one typed device-session normal
+  restart, and restored and confirmed the original private hostname.
+- Verification: the closed session reported `ready`, same physical device,
+  reader armed with pre-restart delivery, exactly one complete restart request,
+  exact build recovery, changed boot session, ordinal `N+1`, software reset,
+  expected hostname digest, correlated serial delivery, and complete cleanup.
+  The public v2 projection passed exact-field admission and redaction.
+- Evidence: committed projection
+  `docs/parity/evidence/v12-hostname-205/durability-projection.json` with SHA-256
+  `9325d9f02102e8d0fd4f8b0cb887fde4af924ae417e19bae5e0ac6c9bd3c29c5`;
+  protected operational evidence remains under
+  `scratch/v12-hostname-typed/attempt-003` and its detector sibling.
+- Outcome: `passed`; no recovery flash ran and the single authorized hardware
+  attempt is consumed.
+- Blocker or next safe action: bind `RESULT.md`, transition only
+  `V12-HOSTNAME-205` to `verified`, synchronize progress, and archive the
+  completed active task.
