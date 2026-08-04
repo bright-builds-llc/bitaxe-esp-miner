@@ -5,7 +5,7 @@ use esp_idf_svc::sys;
 use crate::{
     asic_adapter, boot_evidence, boot_validation, display_adapter, filesystem, http_api,
     operator_sensor_runtime, production_mining_session, runtime_snapshot, runtime_uptime,
-    safety_adapter, settings_adapter, wifi_adapter, BOOT_LOG_LINE, RUST_TARGET,
+    safety_adapter, settings_adapter, statistics_runtime, wifi_adapter, BOOT_LOG_LINE, RUST_TARGET,
     SAFE_STATE_LOG_LINE,
 };
 
@@ -168,6 +168,9 @@ fn start_runtime_services(
         log::warn!(
             "production_mining_session=unavailable reason=thread_spawn_failed error={error:#}"
         );
+    }
+    if let Err(error) = statistics_runtime::start() {
+        log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
     }
     let _network_ready = if let Some(modem) = maybe_modem {
         match wifi_adapter::start_wifi(modem) {

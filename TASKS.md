@@ -577,11 +577,11 @@ hardware/API/UI behavior remain below verified.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
-- [ ] Add the exact bounded 720-sample history, timestamp admission, configured
+- [x] Add the exact bounded 720-sample history, timestamp admission, configured
       retention decision, zero-frequency clearing, and focused regressions.
-- [ ] Start one absolute-cadence firmware producer that records confirmed
+- [x] Start one absolute-cadence firmware producer that records confirmed
       runtime snapshots independently of HTTP request timing.
-- [ ] Return the complete owned history through the existing API projection,
+- [x] Return the complete owned history through the existing API projection,
       prove sole ownership and request-time immutability, and run every gate.
 
 Plan: `docs/parity/work-plans/20260804T211000Z-STAT-002/PLAN.md`
@@ -591,10 +591,15 @@ hardware attempt, credentials, external service, mining campaign, pool
 connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART, or
 pins.
 
-Verification: Pending.
+Verification: The focused Cargo and Bazel tests, real firmware build, ordered
+Rust format/Clippy/build/test sequence, Bright Builds checks, all 32 Bazel test
+targets, parity validation/progress, redaction, reference cleanliness, and diff
+checks passed on the implementation tree.
 
-Completion review: Pending. Live cadence, telemetry accuracy, long-duration
-retention, device API, and browser behavior remain below verified.
+Completion review: Software implementation is complete and awaiting exact
+commit binding plus the typed `implemented` transition. Live cadence, telemetry
+accuracy, long-duration retention, device API, and browser behavior remain
+below verified.
 
 ## Future
 

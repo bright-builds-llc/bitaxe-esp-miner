@@ -134,6 +134,16 @@ pub fn start_mining_on_boot() -> bool {
     }
 }
 
+/// Returns the confirmed upstream statistics retention frequency in seconds.
+#[must_use]
+pub fn statistics_frequency_seconds() -> u16 {
+    let loaded = bitaxe_config::reload_snapshot(&current_settings_snapshot());
+    match loaded.maybe_loaded_value("statsFrequency") {
+        Some(bitaxe_config::LoadedValue::U16(value)) => *value,
+        _ => 0,
+    }
+}
+
 /// Persists and confirms the project-owned next-boot mining preference.
 pub fn persist_start_mining_on_boot(value: bool) -> Result<(), SettingsAdapterFailure> {
     let _transaction_guard = SETTINGS_TRANSACTION_LOCK

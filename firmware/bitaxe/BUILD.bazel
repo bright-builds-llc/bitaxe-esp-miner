@@ -327,6 +327,21 @@ rust_test(
 )
 
 rust_test(
+    name = "statistics_source_ownership_tests",
+    srcs = [
+        "src/http_api/handlers.rs",
+        "src/runtime_snapshot.rs",
+        "src/settings_adapter.rs",
+        "src/startup.rs",
+        "src/statistics_runtime.rs",
+        "src/statistics_source_ownership_test.rs",
+    ],
+    crate_name = "statistics_source_ownership_tests",
+    crate_root = "src/statistics_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "wifi_source_ownership_tests",
     srcs = [
         "src/http_api.rs",

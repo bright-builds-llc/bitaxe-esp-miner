@@ -11,6 +11,12 @@ use serde_json::{json, Value};
 use crate::mining::mining_state_from_runtime;
 use crate::ApiSnapshot;
 
+mod history;
+
+pub use history::{
+    StatisticsHistory, StatisticsHistoryError, StatisticsHistoryRecord, MAX_STATISTICS_SAMPLES,
+};
+
 const TIMESTAMP_LABEL: &str = "timestamp";
 
 const ALL_COLUMNS: [StatisticsColumn; 18] = [
@@ -105,7 +111,7 @@ impl StatisticsSample {
             hashrate_1m: mining.hash_rate_1m,
             hashrate_10m: mining.hash_rate_10m,
             hashrate_1h: mining.hash_rate_1h,
-            error_percentage: 0.0,
+            error_percentage: mining.error_percentage,
             asic_temp: safe_telemetry.chip_temp_celsius,
             asic_temp2: safe_telemetry.chip_temp2_celsius,
             vr_temp: safe_telemetry.vr_temp_celsius,
@@ -324,6 +330,7 @@ mod tests {
         // Arrange
         let mut snapshot = ApiSnapshot::safe_ultra_205();
         snapshot.platform.free_heap = 4_096;
+        snapshot.mining.hashrate_inputs.error_percentage = 2.5;
         snapshot.safe_telemetry =
             SafeTelemetrySnapshot::from_observations(&fresh_telemetry_observations());
 
@@ -332,6 +339,7 @@ mod tests {
 
         // Assert
         assert_eq!(sample.timestamp, 123);
+        assert_eq!(sample.error_percentage, 2.5);
         assert_eq!(sample.asic_temp, 56.0);
         assert_eq!(sample.vr_temp, 45.0);
         assert_eq!(sample.asic_voltage, 1_198);

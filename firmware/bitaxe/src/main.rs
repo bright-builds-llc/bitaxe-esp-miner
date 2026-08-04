@@ -25,6 +25,7 @@ mod settings_adapter;
 mod settings_snapshot_store;
 mod startup;
 mod static_files;
+mod statistics_runtime;
 mod task_watchdog_observation;
 mod websocket_api;
 mod wifi_adapter;

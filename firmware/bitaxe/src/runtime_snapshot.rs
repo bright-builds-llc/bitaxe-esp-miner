@@ -11,7 +11,8 @@ use bitaxe_api::{
     BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect, IdentifyModeState,
     MiningOperatorIntentEffect, OperatorSnapshotIdentity, OperatorSnapshotLockHealth,
     OperatorSnapshotPublishError, PlatformFact, PlatformIdentity, PlatformSnapshot,
-    ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsWire, SystemInfoWire,
+    ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsHistory,
+    StatisticsSample, StatisticsWire, SystemInfoWire,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
@@ -21,6 +22,7 @@ use bitaxe_stratum::v1::{
 };
 static COMMAND_VISIBLE_STATE: OnceLock<Mutex<CommandVisibleState>> = OnceLock::new();
 static OPERATOR_SNAPSHOT_PUBLISHER: OnceLock<OperatorSnapshotPublisher> = OnceLock::new();
+static STATISTICS_HISTORY: OnceLock<Mutex<StatisticsHistory>> = OnceLock::new();
 
 struct OperatorSnapshotCandidate {
     projection: RuntimeTelemetryProjection,
@@ -88,8 +90,13 @@ fn complete_operator_snapshot(
     candidate: OperatorSnapshotCandidate,
     operator_snapshot_identity: OperatorSnapshotIdentity,
 ) -> ApiSnapshot {
-    let mut snapshot = ApiSnapshot::safe_ultra_205();
+    let mut snapshot = complete_api_snapshot(candidate);
     snapshot.operator_snapshot_identity = operator_snapshot_identity;
+    snapshot
+}
+
+fn complete_api_snapshot(candidate: OperatorSnapshotCandidate) -> ApiSnapshot {
+    let mut snapshot = ApiSnapshot::safe_ultra_205();
     snapshot.mining = candidate.projection.state().clone();
     snapshot.block_found = candidate.block_found;
     snapshot.platform_identity = candidate.platform_identity;
@@ -138,8 +145,25 @@ pub fn publish_projected_system_info<T, E>(
 
 /// Returns projection-backed `/api/system/statistics` data.
 pub fn projected_statistics(timestamp_ms: u64) -> StatisticsWire {
-    let views = collect_projected_api_views(timestamp_ms, 0.0);
-    statistics_response(timestamp_ms, None, &views.statistics_samples)
+    statistics_response(timestamp_ms, None, &statistics_samples())
+}
+
+/// Records one producer-cadence statistics sample or clears disabled history.
+pub fn record_statistics_sample(timestamp_ms: u64, frequency_seconds: u16) {
+    if frequency_seconds == 0 {
+        mutate_statistics_history(|history| {
+            history.disable();
+        });
+        return;
+    }
+
+    let snapshot = complete_api_snapshot(collect_operator_snapshot_candidate(false));
+    let sample = StatisticsSample::from_snapshot(&snapshot, timestamp_ms, 0.0);
+    mutate_statistics_history(|history| {
+        if let Err(error) = history.record(sample, frequency_seconds) {
+            log::warn!("statistics_history=sample_rejected category={error:?}");
+        }
+    });
 }
 
 /// Returns projection-backed `/api/system/scoreboard` data.
@@ -232,6 +256,28 @@ fn command_visible_state() -> CommandVisibleState {
     };
 
     state.clone()
+}
+
+fn statistics_samples() -> Vec<StatisticsSample> {
+    let history = STATISTICS_HISTORY.get_or_init(|| Mutex::new(StatisticsHistory::new()));
+    match history.lock() {
+        Ok(history) => history.samples().to_vec(),
+        Err(poisoned) => {
+            log::warn!("statistics_history=degraded reason=mutex_poisoned_inner_retained");
+            poisoned.into_inner().samples().to_vec()
+        }
+    }
+}
+
+fn mutate_statistics_history(mutate: impl FnOnce(&mut StatisticsHistory)) {
+    let history = STATISTICS_HISTORY.get_or_init(|| Mutex::new(StatisticsHistory::new()));
+    match history.lock() {
+        Ok(mut history) => mutate(&mut history),
+        Err(poisoned) => {
+            log::warn!("statistics_history=degraded reason=mutex_poisoned_inner_retained");
+            mutate(&mut poisoned.into_inner());
+        }
+    }
 }
 
 fn mutate_command_visible_state(mutate: impl FnOnce(&mut CommandVisibleState)) {

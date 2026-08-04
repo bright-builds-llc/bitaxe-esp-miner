@@ -116,7 +116,8 @@ pub use static_plan::{
     STATIC_CACHE_CONTROL, STATIC_REDIRECT_BODY,
 };
 pub use statistics::{
-    empty_statistics_response, statistics_response, StatisticsSample, StatisticsWire,
+    empty_statistics_response, statistics_response, StatisticsHistory, StatisticsHistoryError,
+    StatisticsHistoryRecord, StatisticsSample, StatisticsWire, MAX_STATISTICS_SAMPLES,
 };
 pub use system::system_info_from_snapshot;
 pub use telemetry::{

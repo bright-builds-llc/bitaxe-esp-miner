@@ -66,6 +66,7 @@ rust_library(
         "src/snapshot.rs",
         "src/snapshot/tests.rs",
         "src/statistics.rs",
+        "src/statistics/history.rs",
         "src/static_plan.rs",
         "src/system.rs",
         "src/telemetry.rs",
