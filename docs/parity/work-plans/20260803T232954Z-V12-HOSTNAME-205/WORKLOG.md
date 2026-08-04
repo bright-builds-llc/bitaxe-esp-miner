@@ -38,3 +38,26 @@
 - Blocker or next safe action: none within this task contract. The final retry
   is consumed; a future attempt would require a new targeted diagnosis, a
   distinct regression-backed correction, and a new bounded task contract.
+
+## 2026-08-04T00:30:00Z | missing-artifact root cause reproduced
+
+- Source commit: `7aeffbca`
+- Actions: compared the settings workflow with the production monitor command,
+  reconstructed both private attempt timelines without exposing protected
+  values, and ran a fast synthetic call-site reproduction whose monitor returns
+  serial stdout without inventing an evidence file.
+- Verification: the reproduction deterministically reported
+  `exact_missing_artifact_failure=true`,
+  `production_shaped_monitor_writes_no_artifact=true`, and
+  `recovery_restored_original=true`. Source inspection confirms routine monitor
+  ignores `--evidence-dir`, while both hardware attempts reached recovery after
+  one complete capture window with empty post-restart directories.
+- Evidence: source contracts, protected artifact presence/timing metadata, and
+  the red-capable synthetic reproduction; no private content was printed or
+  promoted.
+- Outcome: host orchestration defect confirmed. The hardware attempts do not
+  prove a firmware hostname-persistence failure.
+- Blocker or next safe action: replace the duplicated monitor/restart sequence
+  with the repository's typed device-session reboot transaction, prove the real
+  process/file boundary, then use the one new-information attempt recorded in
+  `task-parity-v12-hostname-device-session-retry`.
