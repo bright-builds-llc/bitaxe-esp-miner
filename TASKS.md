@@ -779,13 +779,13 @@ evidence was emitted and no recovery was required. A separately task-gated
 
 ### task-parity-api010-live-theme-durability-retry | 2026-08-04 | Retry live theme durability after detector-mode remediation
 
-- [ ] Preserve the pushed implementation and immutable plan; create a fresh
+- [x] Preserve the pushed implementation and immutable plan; create a fresh
       detector transcript as mode `0600` before capture.
-- [ ] Run exactly one detector-gated `attempt-002` with the same bounded theme,
+- [x] Run exactly one detector-gated `attempt-002` with the same bounded theme,
       reboot, restoration, recovery, privacy, and safety contract.
-- [ ] Transition only `API-010` to `verified` if every acceptance fact passes;
-      otherwise record the earliest typed terminal category, withhold evidence,
-      and stop without another retry.
+- [x] Record the earliest typed terminal category, withhold evidence, keep
+      `API-010` at `implemented`, and stop without another retry when the
+      baseline trace contains multiple boot sessions.
 
 Plan: `docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md`
 
@@ -823,6 +823,48 @@ safe booleans. `attempt-002` is the sole authorized retry. Stop on any detector
 failure, launch failure, timeout, malformed evidence, non-ready device session,
 restoration uncertainty, cleanup failure, privacy failure, or safety invariant
 violation. No further retry is authorized.
+
+Verification: The complete ordered Rust sequence, Bright Builds, all 34 Bazel
+tests, parity/progress, redaction, reference cleanliness, immutable-plan, and
+diff checks passed before the retry contract was pushed as `8e95e5a6`. The
+fresh detector passed for exactly one Ultra 205 and its transcript was mode
+`0600`. A read-only classifier recheck reproduced the closed
+`baseline_multiple_sessions` category from the private initial trace. All
+private attempt directories are mode `0700`, all files are mode `0600`, and no
+public projection exists.
+
+Completion review: `attempt-002` used the exact pushed package and stopped with
+earliest category `evidence_invalid` because the initial production-shaped
+flash-monitor trace classified as `baseline_multiple_sessions`. The failure
+occurred before hostname/theme GET or POST, restart, or device mutation, so no
+recovery was required. No public evidence was emitted, `API-010` remains
+`implemented`, and no further hardware retry is authorized. The remaining gap
+is a host-side baseline-epoch admission defect, tracked separately below.
+
+### task-parity-api010-baseline-epoch-admission | 2026-08-04 | Close production multi-session baseline admission
+
+- [ ] Reproduce the production-shaped `baseline_multiple_sessions` failure at
+      the real flash-monitor/classifier orchestration seam without retaining or
+      exposing the private hardware trace.
+- [ ] Determine why the initial exact-package flash-monitor transcript contains
+      multiple boot epochs and design a closed selection/admission rule that
+      cannot accept stale, mixed-device, or ambiguous session evidence.
+- [ ] Implement the minimal root-cause fix with unit and real-child-process
+      coverage, including multiple-session, malformed, stale, and single-ready
+      epoch cases.
+- [ ] Run the complete mandatory verification sequence and review public output
+      for secrets before proposing any separately task-gated hardware attempt.
+
+Plan: pending. Continue from
+`docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md` without modifying that
+immutable file; create a new immutable follow-up plan before implementation.
+
+Authorization: read-only inspection of committed code and private local
+attempt structure plus synthetic software tests only. Do not read, print,
+summarize, commit, or copy the private serial trace. No flash, monitor, HTTP,
+theme mutation, restart, hardware retry, credentials, mining, controls, OTA,
+recovery, direct UART, pins, or physical electrical action is authorized by
+this task.
 
 Verification: Pending.
 

@@ -70,3 +70,25 @@
 - Blocker or next safe action: Use the new targeted retry task to pre-create a
   fresh detector transcript as mode `0600`, commit and push that contract, and
   run its sole bounded `attempt-002` without changing the implementation.
+
+## 2026-08-04 | attempt-002 closed baseline admission failure
+
+- Source commit: `8e95e5a63cb4aef969f13cf1054b0337228e6845`.
+- Reference commit: `c1915b0a63bfabebdb95a515cedfee05146c1d50`.
+- Actions: Rebuilt the exact package, created the detector transcript as mode
+  `0600`, admitted exactly one Ultra 205, and ran the sole authorized
+  `attempt-002`.
+- Verification: The transaction returned earliest category `evidence_invalid`
+  with the public reason `baseline classification is invalid`. A read-only
+  classifier recheck against the private trace reproduced the closed category
+  `baseline_multiple_sessions`. The private attempt root/directories are mode
+  `0700`, every private file is mode `0600`, and the public projection is
+  absent.
+- Evidence: Initial exact-package flash-monitor completed, but baseline
+  admission stopped before hostname/theme GET or POST, software restart, or
+  device mutation. No restoration or recovery action was required.
+- Outcome: No evidence was published and `API-010` remains `implemented`.
+  The single hardware retry is consumed; another retry is not authorized.
+- Blocker or next safe action: Investigate the production multi-session
+  baseline trace at the host-orchestration seam under the new software-only
+  follow-up task, create a new immutable plan, and do not touch hardware.
