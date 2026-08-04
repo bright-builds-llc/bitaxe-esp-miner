@@ -52,7 +52,10 @@ pub use logs::{
     log_download_headers, LogDownloadHeaders, RawLogStreamPlanner, RetainedLogBuffer,
     DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
 };
-pub use mining::{mining_state_from_runtime, MiningStateWire, SharesRejectedReasonWire};
+pub use mining::{
+    mining_state_from_runtime, AsicHashrateWire, HashrateMonitorWire, MiningStateWire,
+    SharesRejectedReasonWire,
+};
 pub use network::{
     project_ipv6_address, WifiNetworkWire, WifiScanAuthMode, WifiScanResponse,
     WifiScanResponseError, MAX_WIFI_SCAN_NETWORKS,

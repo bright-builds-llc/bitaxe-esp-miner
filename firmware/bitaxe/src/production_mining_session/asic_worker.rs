@@ -1,18 +1,20 @@
 //! Single bounded worker around the retained BM1366 production executor.
 
 use std::sync::mpsc::{self, SyncSender, TrySendError};
+use std::time::Instant;
 
 use bitaxe_asic::bm1366::{
     command::VersionMask,
     production::Bm1366ProductionCommand,
-    result::{Bm1366NonceResult, Bm1366ValidJobIds},
+    result::{Bm1366NonceResult, Bm1366RegisterRead, Bm1366ValidJobIds},
 };
 use bitaxe_stratum::v1::production_session::AsicPollCompletion;
 use bitaxe_stratum::v1::production_session::{ProductionAsicFailure, ProductionSessionEffect};
 use bitaxe_stratum::v1::production_work::PoolSessionGeneration;
 
 use crate::asic_adapter::production::{
-    apply_negotiated_version_mask, ProductionAsicExecutor, ProductionReadOutcome,
+    apply_negotiated_version_mask, request_hashrate_monitor_register_reads_tx,
+    ProductionAsicExecutor, ProductionReadOutcome,
 };
 
 const COMMAND_CAPACITY: usize = 8;
@@ -32,6 +34,9 @@ pub(super) enum AsicWorkerCommand {
         generation: PoolSessionGeneration,
         valid_jobs: Bm1366ValidJobIds,
         slice_ms: u32,
+    },
+    ReadHashrateRegisters {
+        generation: PoolSessionGeneration,
     },
     Shutdown,
 }
@@ -59,6 +64,10 @@ impl core::fmt::Debug for AsicWorkerCommand {
                 .field("valid_jobs", &"redacted")
                 .field("slice_ms", slice_ms)
                 .finish(),
+            Self::ReadHashrateRegisters { generation } => formatter
+                .debug_struct("AsicWorkerCommand::ReadHashrateRegisters")
+                .field("generation", generation)
+                .finish(),
             Self::Shutdown => formatter.write_str("AsicWorkerCommand::Shutdown"),
         }
     }
@@ -76,6 +85,11 @@ pub(super) enum AsicWorkerEvent {
     PollCompleted {
         generation: PoolSessionGeneration,
         completion: AsicPollCompletion,
+    },
+    RegisterRead {
+        generation: PoolSessionGeneration,
+        read: Bm1366RegisterRead,
+        observed_at_us: u64,
     },
     Failed {
         generation: PoolSessionGeneration,
@@ -103,6 +117,11 @@ impl core::fmt::Debug for AsicWorkerEvent {
                 .field("generation", generation)
                 .field("completion", completion)
                 .finish(),
+            Self::RegisterRead { generation, .. } => formatter
+                .debug_struct("AsicWorkerEvent::RegisterRead")
+                .field("generation", generation)
+                .field("read", &"redacted")
+                .finish(),
             Self::Failed {
                 generation,
                 failure,
@@ -126,6 +145,7 @@ impl AsicWorker {
             .name("production-asic".to_owned())
             .stack_size(WORKER_STACK_BYTES)
             .spawn(move || {
+                let started_at = Instant::now();
                 let mut executor = ProductionAsicExecutor::new();
                 while let Ok(command) = receiver.recv() {
                     match command {
@@ -168,10 +188,11 @@ impl AsicWorker {
                                     completion: AsicPollCompletion::Discarded(reason),
                                 });
                             }
-                            Ok(ProductionReadOutcome::RegisterReadProof(_)) => {
-                                emit(AsicWorkerEvent::PollCompleted {
+                            Ok(ProductionReadOutcome::RegisterReadProof(read)) => {
+                                emit(AsicWorkerEvent::RegisterRead {
                                     generation,
-                                    completion: AsicPollCompletion::RegisterRead,
+                                    read,
+                                    observed_at_us: elapsed_micros(started_at),
                                 });
                             }
                             Err(_) => emit(AsicWorkerEvent::Failed {
@@ -179,6 +200,11 @@ impl AsicWorker {
                                 failure: ProductionAsicFailure::Poll,
                             }),
                         },
+                        AsicWorkerCommand::ReadHashrateRegisters { .. } => {
+                            if !request_hashrate_monitor_register_reads_tx() {
+                                log::warn!("hashrate_monitor_read=unavailable");
+                            }
+                        }
                         AsicWorkerCommand::Shutdown => return,
                     }
                 }
@@ -221,6 +247,10 @@ impl AsicWorker {
             other => Err(other),
         }
     }
+}
+
+fn elapsed_micros(started_at: Instant) -> u64 {
+    u64::try_from(started_at.elapsed().as_micros()).unwrap_or(u64::MAX)
 }
 
 impl Drop for AsicWorker {

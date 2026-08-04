@@ -317,15 +317,16 @@ pub fn apply_negotiated_version_mask(mask: VersionMask) -> bool {
     uart.wait_tx_done(uart::WAIT_TX_DONE_TIMEOUT_MS).is_ok()
 }
 
-/// TX-only hashrate-monitor register-read burst (investigation A/B only).
+/// TX-only production hashrate-monitor register-read burst.
 ///
 /// Mirrors upstream `BM1366_read_registers`: one CMD_READ (`0x52`) frame per
 /// REGISTER_MAP entry. Frames are prebuilt, then sent back-to-back under the
 /// production UART lock (no sleep while holding the mutex — that panics on
 /// ESP-IDF). Does not wait for replies — continuous RX poll classifies
-/// register-read responses. Failures return `false` and never block mining.
+/// register-read responses. The production-ready guard prevents reads outside
+/// an admitted ASIC session. Failures return `false` and never block mining.
 #[must_use]
-pub fn probe_hashrate_monitor_register_reads_tx() -> bool {
+pub fn request_hashrate_monitor_register_reads_tx() -> bool {
     send_register_read_burst(HASHRATE_MONITOR_REGISTERS)
 }
 
@@ -395,6 +396,9 @@ fn send_register_read_burst(registers: &[u8]) -> bool {
     let Ok(mut state) = production_state().lock() else {
         return false;
     };
+    if !state.production_ready {
+        return false;
+    }
     let Some(uart) = state.maybe_uart.as_mut() else {
         return false;
     };

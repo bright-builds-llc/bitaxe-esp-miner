@@ -306,6 +306,27 @@ rust_test(
 )
 
 rust_test(
+    name = "hashrate_source_ownership_tests",
+    srcs = [
+        "src/asic_adapter/production.rs",
+        "src/hashrate_source_ownership_test.rs",
+        "src/production_mining_session.rs",
+        "src/production_mining_session/asic_worker.rs",
+        "src/production_mining_session/hashrate.rs",
+        "src/runtime_snapshot.rs",
+    ],
+    crate_name = "hashrate_source_ownership_tests",
+    crate_root = "src/hashrate_source_ownership_test.rs",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-asic:bitaxe_asic",
+        "//crates/bitaxe-core:bitaxe_core",
+        "//crates/bitaxe-stratum:bitaxe_stratum",
+        "@crates//:log",
+    ],
+)
+
+rust_test(
     name = "wifi_source_ownership_tests",
     srcs = [
         "src/http_api.rs",

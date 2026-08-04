@@ -18,6 +18,21 @@ pub struct SharesRejectedReasonWire {
     pub count: u64,
 }
 
+/// Per-ASIC hashrate diagnostics exposed by upstream system info.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AsicHashrateWire {
+    pub total: f64,
+    #[serde(rename = "errorCount")]
+    pub error_count: u32,
+    pub domains: Vec<f64>,
+}
+
+/// Aggregate hashrate-monitor diagnostic object.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HashrateMonitorWire {
+    pub asics: Vec<AsicHashrateWire>,
+}
+
 /// Mining state fields used by system info and future live telemetry mappers.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct MiningStateWire {
@@ -29,6 +44,10 @@ pub struct MiningStateWire {
     pub hash_rate_10m: f64,
     #[serde(rename = "hashRate_1h")]
     pub hash_rate_1h: f64,
+    #[serde(rename = "hashrateMonitor")]
+    pub hashrate_monitor: HashrateMonitorWire,
+    #[serde(rename = "errorPercentage")]
+    pub error_percentage: f64,
     #[serde(rename = "sharesAccepted")]
     pub shares_accepted: u64,
     #[serde(rename = "sharesRejected")]
@@ -64,7 +83,7 @@ pub struct MiningStateWire {
 /// Maps Phase 4 typed mining runtime data into API-visible mining fields.
 #[must_use]
 pub fn mining_state_from_runtime(state: &MiningRuntimeState) -> MiningStateWire {
-    let hash_rate_ghs = state.hashrate_inputs.rolling_hashrate_hs / 1_000_000_000.0;
+    let hashrate = &state.hashrate_inputs;
     let best_diff = state
         .counters
         .maybe_best_difficulty
@@ -72,10 +91,22 @@ pub fn mining_state_from_runtime(state: &MiningRuntimeState) -> MiningStateWire 
         .unwrap_or(0.0);
 
     MiningStateWire {
-        hash_rate: hash_rate_ghs,
-        hash_rate_1m: hash_rate_ghs,
-        hash_rate_10m: 0.0,
-        hash_rate_1h: 0.0,
+        hash_rate: hashrate.current_ghs,
+        hash_rate_1m: hashrate.one_minute_ghs,
+        hash_rate_10m: hashrate.ten_minute_ghs,
+        hash_rate_1h: hashrate.one_hour_ghs,
+        hashrate_monitor: HashrateMonitorWire {
+            asics: hashrate
+                .asics
+                .iter()
+                .map(|asic| AsicHashrateWire {
+                    total: asic.total_ghs,
+                    error_count: asic.error_count,
+                    domains: asic.domain_ghs.clone(),
+                })
+                .collect(),
+        },
+        error_percentage: hashrate.error_percentage,
         shares_accepted: state.counters.accepted,
         shares_rejected: state.counters.rejected,
         shares_rejected_reasons: rejected_reasons(&state.counters.rejected_reasons),

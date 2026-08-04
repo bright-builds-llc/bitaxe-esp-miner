@@ -67,6 +67,9 @@
   "hashRate_1m": 0.0,
   "hashRate_10m": 0.0,
   "hashRate_1h": 0.0,
+  "hashrateMonitor": {
+    "asics": []
+  },
   "fanspeed": 0,
   "fanrpm": 0,
   "fan2rpm": 0,

@@ -1,4 +1,5 @@
 pub mod bap;
+pub mod hashrate;
 pub mod runtime_health;
 pub mod runtime_orchestration;
 

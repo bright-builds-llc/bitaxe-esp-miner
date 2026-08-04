@@ -1,4 +1,5 @@
 use crate::v1::messages::PoolDifficulty;
+pub use bitaxe_core::hashrate::HashrateSnapshot as HashrateInputs;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PoolLifecycleStatus {
@@ -30,23 +31,6 @@ pub enum MiningActivityStatus {
 pub enum MiningOperatorIntent {
     Run,
     Paused,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct HashrateInputs {
-    pub hashes_done: u64,
-    pub elapsed_ms: u64,
-    pub rolling_hashrate_hs: f64,
-}
-
-impl Default for HashrateInputs {
-    fn default() -> Self {
-        Self {
-            hashes_done: 0,
-            elapsed_ms: 0,
-            rolling_hashrate_hs: 0.0,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -277,13 +261,16 @@ mod tests {
         // Arrange
         let mut state = MiningRuntimeState::default();
         let inputs = HashrateInputs {
-            hashes_done: 1_000,
-            elapsed_ms: 2_000,
-            rolling_hashrate_hs: 500.0,
+            current_ghs: 0.5,
+            one_minute_ghs: 0.4,
+            ten_minute_ghs: 0.3,
+            one_hour_ghs: 0.2,
+            error_percentage: 1.0,
+            asics: Vec::new(),
         };
 
         // Act
-        state.record_hashrate_inputs(inputs);
+        state.record_hashrate_inputs(inputs.clone());
         state.set_mining_activity(MiningActivityStatus::Active);
         let active = state.mining_activity;
         state.set_mining_activity(MiningActivityStatus::SafeBlocked);

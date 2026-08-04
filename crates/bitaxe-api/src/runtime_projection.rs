@@ -410,9 +410,12 @@ mod tests {
         let _hashrate = projection.fold(RuntimeTelemetryEvent::HashrateObserved {
             sequence: RuntimeTelemetrySequence::new(1),
             inputs: HashrateInputs {
-                hashes_done: 2_500_000_000_000,
-                elapsed_ms: 1_000,
-                rolling_hashrate_hs: 2_500_000_000_000.0,
+                current_ghs: 2_500.0,
+                one_minute_ghs: 2_400.0,
+                ten_minute_ghs: 2_300.0,
+                one_hour_ghs: 2_200.0,
+                error_percentage: 0.1,
+                asics: Vec::new(),
             },
         });
         let _difficulty = projection.fold(RuntimeTelemetryEvent::PoolDifficultyObserved {

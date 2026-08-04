@@ -256,15 +256,18 @@ mod tests {
         // Arrange
         let mut projection = RuntimeTelemetryProjection::new(PoolSessionGeneration::initial());
         let inputs = HashrateInputs {
-            hashes_done: 2_048,
-            elapsed_ms: 4_096,
-            rolling_hashrate_hs: 512.0,
+            current_ghs: 0.512,
+            one_minute_ghs: 0.5,
+            ten_minute_ghs: 0.4,
+            one_hour_ghs: 0.3,
+            error_percentage: 0.25,
+            asics: Vec::new(),
         };
 
         // Act
         let outcome = projection.fold(RuntimeTelemetryEvent::HashrateObserved {
             sequence: RuntimeTelemetrySequence::new(2),
-            inputs,
+            inputs: inputs.clone(),
         });
 
         // Assert

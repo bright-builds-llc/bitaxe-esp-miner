@@ -25,6 +25,8 @@ fn system_info_wire_serializes_upstream_field_names_and_encodings() {
     // Assert
     assert!(value.get("ASICModel").is_some());
     assert!(value.get("hashRate_1m").is_some());
+    assert_eq!(value["hashrateMonitor"]["asics"], json!([]));
+    assert_eq!(value["errorPercentage"], json!(0.0));
     assert!(value.get("fanspeed").is_some());
     assert!(value.get("fanrpm").is_some());
     assert_eq!(value.get("miningPaused"), Some(&Value::Bool(false)));
@@ -68,6 +70,8 @@ fn system_info_wire_serializes_upstream_field_names_and_encodings() {
         &[
             "ASICModel",
             "hashRate_1m",
+            "hashrateMonitor",
+            "errorPercentage",
             "fanspeed",
             "fanrpm",
             "miningPaused",

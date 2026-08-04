@@ -551,11 +551,11 @@ population, and responsive operator UAT remain below verified.
 
 ### task-parity-stat001-hashrate-monitor | 2026-08-04 | Implement the hashrate monitor
 
-- [ ] Add exact bounded counter conversion, reset behavior, error percentage,
+- [x] Add exact bounded counter conversion, reset behavior, error percentage,
       and hierarchical 1-minute, 10-minute, and 1-hour averages.
-- [ ] Carry parsed register values through the sole production owner and admit
+- [x] Carry parsed register values through the sole production owner and admit
       passive reads only while its ASIC session is already active.
-- [ ] Publish all hashrate windows through the existing runtime/API projection,
+- [x] Publish all hashrate windows through the existing runtime/API projection,
       add focused ownership regressions, and run every mandatory gate.
 
 Plan: `docs/parity/work-plans/20260804T200000Z-STAT-001/PLAN.md`
@@ -565,10 +565,13 @@ only. No hardware attempt, credentials, external service, mining campaign,
 pool connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART,
 or pins.
 
-Verification: Pending.
+Verification: The full Rust sequence, Bright Builds checks, all 31 Bazel tests,
+the real firmware build, parity validation/progress, redaction, reference
+cleanliness, and diff checks passed on the implementation tree.
 
-Completion review: Pending. Live BM1366 counter accuracy and hardware/API/UI
-behavior remain below verified.
+Completion review: Implementation is complete and awaiting its exact-commit
+typed transition. Live BM1366 counter accuracy and hardware/API/UI behavior
+remain below verified.
 
 ## Future
 

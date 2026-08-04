@@ -11,7 +11,7 @@ use thiserror::Error;
 
 use bitaxe_core::runtime_health::RuntimeHealthSnapshot;
 
-use crate::mining::{mining_state_from_runtime, SharesRejectedReasonWire};
+use crate::mining::{mining_state_from_runtime, HashrateMonitorWire, SharesRejectedReasonWire};
 use crate::{
     ApiSnapshot, BootSessionId, ObservationTruthWire, OperatorSnapshotRevision, PlatformIdentity,
 };
@@ -64,6 +64,8 @@ pub struct SystemInfoWire {
     pub hash_rate_10m: f64,
     #[serde(rename = "hashRate_1h")]
     pub hash_rate_1h: f64,
+    #[serde(rename = "hashrateMonitor")]
+    pub hashrate_monitor: HashrateMonitorWire,
     #[serde(rename = "fanspeed")]
     pub fan_speed: u16,
     #[serde(rename = "fanrpm")]
@@ -228,6 +230,7 @@ impl SystemInfoWire {
             hash_rate_1m: mining_state.hash_rate_1m,
             hash_rate_10m: mining_state.hash_rate_10m,
             hash_rate_1h: mining_state.hash_rate_1h,
+            hashrate_monitor: mining_state.hashrate_monitor,
             fan_speed: safe_telemetry.fan_speed_percent,
             fan_rpm: safe_telemetry.fan_rpm,
             fan2_rpm: safe_telemetry.fan2_rpm,
@@ -266,7 +269,7 @@ impl SystemInfoWire {
             response_time: mining_state.response_time,
             response_share_batch: mining_state.response_share_batch,
             process_time: mining_state.process_time,
-            error_percentage: 0.0,
+            error_percentage: mining_state.error_percentage,
             is_using_fallback_stratum: mining_state.is_using_fallback_stratum,
             max_power: snapshot.catalog.power_consumption_target(),
             nominal_voltage: 0,

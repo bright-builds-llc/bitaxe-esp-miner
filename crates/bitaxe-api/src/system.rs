@@ -14,6 +14,7 @@ pub fn system_info_from_snapshot(snapshot: &ApiSnapshot) -> SystemInfoWire {
 
 #[cfg(test)]
 mod tests {
+    use bitaxe_core::hashrate::AsicHashrateSnapshot;
     use bitaxe_stratum::v1::messages::PoolDifficulty;
     use bitaxe_stratum::v1::state::{HashrateInputs, MiningRuntimeState, ShareDifficulty};
 
@@ -33,9 +34,16 @@ mod tests {
         });
         mining.set_fallback_active(true);
         mining.record_hashrate_inputs(HashrateInputs {
-            hashes_done: 20_000_000_000,
-            elapsed_ms: 10_000,
-            rolling_hashrate_hs: 2_000_000_000.0,
+            current_ghs: 2.0,
+            one_minute_ghs: 1.9,
+            ten_minute_ghs: 1.8,
+            one_hour_ghs: 1.7,
+            error_percentage: 0.5,
+            asics: vec![AsicHashrateSnapshot {
+                total_ghs: 2.0,
+                error_count: 7,
+                domain_ghs: vec![0.5, 0.5, 0.5, 0.5],
+            }],
         });
         snapshot.mining = mining;
 
@@ -48,6 +56,16 @@ mod tests {
         assert_eq!(response.pool_difficulty, 1_638.4);
         assert_eq!(response.is_using_fallback_stratum, 1);
         assert_eq!(response.hash_rate, 2.0);
+        assert_eq!(response.hash_rate_1m, 1.9);
+        assert_eq!(response.hash_rate_10m, 1.8);
+        assert_eq!(response.hash_rate_1h, 1.7);
+        assert_eq!(response.error_percentage, 0.5);
+        assert_eq!(response.hashrate_monitor.asics[0].total, 2.0);
+        assert_eq!(response.hashrate_monitor.asics[0].error_count, 7);
+        assert_eq!(
+            response.hashrate_monitor.asics[0].domains,
+            vec![0.5, 0.5, 0.5, 0.5]
+        );
         assert_eq!(
             response.shares_rejected_reasons[0].message,
             "low difficulty"

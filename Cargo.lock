@@ -281,6 +281,7 @@ version = "0.1.0"
 dependencies = [
  "bitaxe-asic",
  "bitaxe-config",
+ "bitaxe-core",
  "bitaxe-safety",
  "serde",
  "serde_json",

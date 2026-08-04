@@ -171,7 +171,19 @@ pub fn publish_projected_live_telemetry_payload<T, E>(
 /// Publishes the sole owner's immutable mining-session snapshot.
 pub fn publish_production_session_snapshot(snapshot: ProductionSessionSnapshot) {
     mutate_command_visible_state(|state| {
+        let hashrate = state.mining.hashrate_inputs.clone();
         state.mining = snapshot.mining;
+        state.mining.record_hashrate_inputs(hashrate);
+        state
+            .runtime_projection
+            .replace_session_state(state.mining.clone());
+    });
+}
+
+/// Publishes a monitor sample without replacing the production-session state.
+pub fn publish_hashrate_snapshot(snapshot: bitaxe_core::hashrate::HashrateSnapshot) {
+    mutate_command_visible_state(|state| {
+        state.mining.record_hashrate_inputs(snapshot);
         state
             .runtime_projection
             .replace_session_state(state.mining.clone());

@@ -2,6 +2,7 @@
 
 mod asic_worker;
 mod campaign_status;
+mod hashrate;
 mod transport;
 pub(crate) mod watchdog;
 
@@ -14,14 +15,16 @@ use bitaxe_core::runtime_orchestration::{PeriodicDeadline, PRODUCTION_REREAD_CAD
 use bitaxe_safety::observation::{MonotonicMillis, Observation};
 use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
 use bitaxe_stratum::v1::production_session::{
-    ProductionAsicFailure, ProductionMiningSession, ProductionPool, ProductionReadiness,
-    ProductionSessionEffect, ProductionSessionEvent, ProductionSessionNotificationOutcome,
-    ProductionSessionWakeup, ProductionTransportFailure,
+    AsicPollCompletion, ProductionAsicFailure, ProductionMiningSession, ProductionPool,
+    ProductionReadiness, ProductionSessionEffect, ProductionSessionEvent,
+    ProductionSessionNotificationOutcome, ProductionSessionSnapshot, ProductionSessionWakeup,
+    ProductionTransportFailure,
 };
 use bitaxe_stratum::v1::production_work::ProductionNonceObservation;
 
 use self::asic_worker::{AsicWorker, AsicWorkerCommand, AsicWorkerEvent};
 use self::campaign_status::{CampaignObservationFreshness, CampaignStatusTracker};
+use self::hashrate::ProductionHashrateMonitor;
 use self::transport::{PoolTransportCommand, PoolTransportEvent, PoolTransportWorkers};
 
 const OWNER_STACK_BYTES: usize = 16 * 1024;
@@ -120,6 +123,7 @@ fn run_owner(
             }
         }
         adapter.publish_campaign_status(&session.snapshot(), now_ms);
+        adapter.service_hashrate_monitor(&session.snapshot(), now_ms);
         task_watchdog.feed(crate::runtime_uptime::millis());
         if shutdown_requested {
             return;
@@ -156,6 +160,7 @@ struct OrdinaryEspProductionSessionAdapter {
     mining_actuation: crate::mining_actuation_adapter::Ultra205MiningActuationAdapter,
     transports: PoolTransportWorkers,
     asic: AsicWorker,
+    hashrate: ProductionHashrateMonitor,
     maybe_campaign_status: Option<CampaignStatusTracker>,
     maybe_terminal_pool_persisted: Option<bool>,
 }
@@ -196,6 +201,7 @@ impl OrdinaryEspProductionSessionAdapter {
             ),
             transports,
             asic,
+            hashrate: ProductionHashrateMonitor::new(),
             maybe_campaign_status,
             maybe_terminal_pool_persisted: None,
         })
@@ -279,6 +285,18 @@ impl OrdinaryEspProductionSessionAdapter {
                     completion,
                     now_ms,
                 },
+                AsicWorkerEvent::RegisterRead {
+                    generation,
+                    read,
+                    observed_at_us,
+                } => {
+                    self.hashrate.observe(read, observed_at_us);
+                    ProductionSessionEvent::AsicPollCompleted {
+                        generation,
+                        completion: AsicPollCompletion::RegisterRead,
+                        now_ms,
+                    }
+                }
                 AsicWorkerEvent::Failed {
                     generation,
                     failure,
@@ -508,7 +526,8 @@ impl OrdinaryEspProductionSessionAdapter {
         let generation = match &command {
             AsicWorkerCommand::ApplyVersionMask { generation, .. }
             | AsicWorkerCommand::Dispatch { generation, .. }
-            | AsicWorkerCommand::Poll { generation, .. } => *generation,
+            | AsicWorkerCommand::Poll { generation, .. }
+            | AsicWorkerCommand::ReadHashrateRegisters { generation } => *generation,
             AsicWorkerCommand::Shutdown => return None,
         };
         match self.asic.try_send(command) {
@@ -569,6 +588,25 @@ impl OrdinaryEspProductionSessionAdapter {
             pool_config_persisted,
         );
         crate::info_retained(&format!("mining_campaign_status={marker}"));
+    }
+
+    fn service_hashrate_monitor(&mut self, snapshot: &ProductionSessionSnapshot, now_ms: u64) {
+        let Ok(maybe_tick) = self.hashrate.service_snapshot(snapshot, now_ms) else {
+            log::warn!("hashrate_monitor=unavailable category=schedule_overflow");
+            return;
+        };
+        let Some(tick) = maybe_tick else { return };
+        crate::runtime_snapshot::publish_hashrate_snapshot(tick.snapshot);
+        if tick.request_registers
+            && self
+                .asic
+                .try_send(AsicWorkerCommand::ReadHashrateRegisters {
+                    generation: snapshot.generation,
+                })
+                .is_err()
+        {
+            log::warn!("hashrate_monitor_read=skipped category=worker_unavailable");
+        }
     }
 }
 
