@@ -3,6 +3,7 @@
 mod ds4432u;
 mod emc2101;
 mod i2c_bus;
+mod i2c_retry;
 mod ina260;
 mod observation_store;
 mod request_queue;

@@ -5,6 +5,7 @@ const OPERATOR_SENSOR_RUNTIME_SOURCE: &str = include_str!("operator_sensor_runti
 const SAFETY_ADAPTER_SOURCE: &str = include_str!("safety_adapter.rs");
 const OBSERVATION_STORE_SOURCE: &str = include_str!("safety_adapter/observation_store.rs");
 const I2C_BUS_SOURCE: &str = include_str!("safety_adapter/i2c_bus.rs");
+const I2C_RETRY_SOURCE: &str = include_str!("safety_adapter/i2c_retry.rs");
 const EMC2101_SOURCE: &str = include_str!("safety_adapter/emc2101.rs");
 const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
 const MINING_ACTUATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter.rs");
@@ -51,6 +52,22 @@ fn raw_sensor_bus_capability_is_private_to_the_safety_facade() {
     assert!(I2C_BUS_SOURCE.contains("pub(super) fn sensors"));
     assert!(!OPERATOR_SENSOR_RUNTIME_SOURCE.contains("owner.sensors()"));
     assert!(!PRODUCTION_SESSION_SOURCE.contains("owner.sensors()"));
+}
+
+#[test]
+fn every_shared_i2c_transfer_uses_the_single_retry_contract() {
+    // Arrange
+    let expected_transfer_shapes = 6;
+
+    // Act / Assert
+    assert_eq!(
+        I2C_BUS_SOURCE.matches("retry_driver_transfer(||").count(),
+        expected_transfer_shapes
+    );
+    assert!(I2C_RETRY_SOURCE.contains("I2C_TRANSACTION_TIMEOUT_MS: u64 = 500"));
+    assert!(I2C_RETRY_SOURCE.contains("I2C_RETRY_COUNT: usize = 3"));
+    assert!(I2C_RETRY_SOURCE.contains("I2C_RETRY_DELAY_MS: u32 = 10"));
+    assert!(!I2C_BUS_SOURCE.contains("I2C_TRANSACTION_TIMEOUT_MS: u64 = 50"));
 }
 
 #[test]

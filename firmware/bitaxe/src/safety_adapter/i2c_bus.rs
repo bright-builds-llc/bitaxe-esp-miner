@@ -7,7 +7,7 @@ use embedded_hal::i2c::{
     Error as EmbeddedHalI2cError, ErrorKind, ErrorType, I2c as EmbeddedHalI2c, Operation,
 };
 use esp_idf_svc::hal::{
-    delay::TickType,
+    delay::{FreeRtos, TickType},
     gpio::{InputPin, OutputPin},
     i2c::{I2c, I2cConfig, I2cDriver, I2cError},
     units::FromValueType,
@@ -18,12 +18,12 @@ use super::{
     emc2101::{
         Emc2101ReadRegister, Emc2101RegisterReader, Emc2101RegisterWriter, Emc2101WriteRegister,
     },
+    i2c_retry::{retry_transfer, I2C_TRANSACTION_TIMEOUT_MS},
 };
 
 pub const I2C_SDA_GPIO: i32 = 47;
 pub const I2C_SCL_GPIO: i32 = 48;
 pub const I2C_SPEED_KHZ: u32 = 400;
-pub const I2C_TRANSACTION_TIMEOUT_MS: u64 = 50;
 
 const INA260_I2C_ADDRESS: u8 = 0x40;
 const EMC2101_I2C_ADDRESS: u8 = 0x4c;
@@ -45,7 +45,10 @@ impl<'d> BitaxeI2cBus<'d> {
         debug_assert_eq!(I2C_SCL_GPIO, 48);
         debug_assert_eq!(I2C_SPEED_KHZ, 400);
 
-        let config = I2cConfig::new().baudrate(I2C_SPEED_KHZ.kHz().into());
+        let config = I2cConfig::new()
+            .baudrate(I2C_SPEED_KHZ.kHz().into())
+            .sda_enable_pullup(true)
+            .scl_enable_pullup(true);
         let driver =
             I2cDriver::new(i2c, sda, scl, &config).context("initialize Ultra 205 I2C0 bus")?;
         Ok(Self { driver })
@@ -66,6 +69,10 @@ impl<'d> BitaxeI2cBus<'d> {
 
 fn transaction_timeout_ticks() -> esp_idf_sys::TickType_t {
     TickType::new_millis(I2C_TRANSACTION_TIMEOUT_MS).ticks()
+}
+
+fn retry_driver_transfer<T, E>(transfer: impl FnMut() -> Result<T, E>) -> Result<T, E> {
+    retry_transfer(transfer, FreeRtos::delay_ms)
 }
 
 pub(crate) struct DisplayBus<'bus, 'd> {
@@ -126,16 +133,20 @@ impl ErrorType for DisplayBus<'_, '_> {
 impl EmbeddedHalI2c for DisplayBus<'_, '_> {
     fn read(&mut self, address: u8, output: &mut [u8]) -> Result<(), Self::Error> {
         restrict_display_address(address)?;
-        self.driver
-            .read(address, output, transaction_timeout_ticks())
-            .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
+        retry_driver_transfer(|| {
+            self.driver
+                .read(address, output, transaction_timeout_ticks())
+        })
+        .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
     }
 
     fn write(&mut self, address: u8, input: &[u8]) -> Result<(), Self::Error> {
         restrict_display_address(address)?;
-        self.driver
-            .write(address, input, transaction_timeout_ticks())
-            .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
+        retry_driver_transfer(|| {
+            self.driver
+                .write(address, input, transaction_timeout_ticks())
+        })
+        .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
     }
 
     fn write_read(
@@ -145,9 +156,11 @@ impl EmbeddedHalI2c for DisplayBus<'_, '_> {
         output: &mut [u8],
     ) -> Result<(), Self::Error> {
         restrict_display_address(address)?;
-        self.driver
-            .write_read(address, input, output, transaction_timeout_ticks())
-            .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
+        retry_driver_transfer(|| {
+            self.driver
+                .write_read(address, input, output, transaction_timeout_ticks())
+        })
+        .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
     }
 
     fn transaction(
@@ -156,9 +169,11 @@ impl EmbeddedHalI2c for DisplayBus<'_, '_> {
         operations: &mut [Operation<'_>],
     ) -> Result<(), Self::Error> {
         restrict_display_address(address)?;
-        self.driver
-            .transaction(address, operations, transaction_timeout_ticks())
-            .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
+        retry_driver_transfer(|| {
+            self.driver
+                .transaction(address, operations, transaction_timeout_ticks())
+        })
+        .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
     }
 }
 
@@ -193,16 +208,15 @@ impl ReadOnlySensorBus<'_, '_> {
     }
 
     fn read_register(&mut self, device_addr: u8, register: u8, output: &mut [u8]) -> Result<()> {
-        self.driver
-            .write_read(
+        retry_driver_transfer(|| {
+            self.driver.write_read(
                 device_addr,
                 &[register],
                 output,
                 transaction_timeout_ticks(),
             )
-            .with_context(|| {
-                format!("i2c read register 0x{register:02x} device 0x{device_addr:02x}")
-            })
+        })
+        .with_context(|| format!("i2c read register 0x{register:02x} device 0x{device_addr:02x}"))
     }
 }
 
@@ -224,11 +238,11 @@ pub(super) struct ActuationBus<'bus, 'd> {
 
 impl ActuationBus<'_, '_> {
     fn write_register(&mut self, device_addr: u8, register: u8, value: u8) -> Result<()> {
-        self.driver
-            .write(device_addr, &[register, value], transaction_timeout_ticks())
-            .with_context(|| {
-                format!("i2c write register 0x{register:02x} device 0x{device_addr:02x}")
-            })
+        retry_driver_transfer(|| {
+            self.driver
+                .write(device_addr, &[register, value], transaction_timeout_ticks())
+        })
+        .with_context(|| format!("i2c write register 0x{register:02x} device 0x{device_addr:02x}"))
     }
 }
 

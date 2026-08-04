@@ -196,6 +196,17 @@ rust_test(
 )
 
 rust_test(
+    name = "i2c_retry_tests",
+    srcs = [
+        "src/i2c_retry_host_test.rs",
+        "src/safety_adapter/i2c_retry.rs",
+    ],
+    crate_name = "i2c_retry_tests",
+    crate_root = "src/i2c_retry_host_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "emc2101_acquisition_tests",
     srcs = ["src/safety_adapter/emc2101.rs"],
     crate_name = "emc2101_acquisition_tests",
@@ -271,6 +282,7 @@ rust_test(
         "src/safety_adapter/ds4432u.rs",
         "src/safety_adapter/emc2101.rs",
         "src/safety_adapter/i2c_bus.rs",
+        "src/safety_adapter/i2c_retry.rs",
         "src/safety_adapter/observation_store.rs",
         "src/safety_adapter/request_queue.rs",
         "src/sensor_source_ownership_test.rs",
