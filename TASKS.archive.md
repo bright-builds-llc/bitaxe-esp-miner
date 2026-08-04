@@ -4781,3 +4781,64 @@ Completion review: Completed and promoted only
 Runtime health, settings, networking, mining, ASIC, safety-control, OTA,
 recovery, other-board, and release claims remain separate. The private
 hardware root remains ignored and contains no committed sensitive values.
+
+### task-parity-v12-runtime-health-typed-capture | 2026-08-04 | Capture substantive passive runtime health
+
+- [x] Add a typed, private-first runtime-health capture joining exact-package
+      HTTP, later same-boot WebSocket, and retained-log projections.
+- [x] Prove available healthy supervisor checkpoints and fresh participating
+      task-watchdog feeds without invoking self-test, mining, or controls.
+- [x] Add closed evidence validation, failure/recovery precedence, redaction,
+      behavior tests, and a real-child-process regression.
+- [x] Run all mandatory gates on a clean pushed implementation, then execute
+      exactly one detector-gated passive hardware capture.
+- [x] Transition only `V12-RUNTIME-HEALTH-205` if the substantive live join,
+      exact package, safe state, cleanup, and privacy contract all pass.
+
+Plan:
+`docs/parity/work-plans/20260804T125402Z-V12-RUNTIME-HEALTH-205/PLAN.md`
+
+Hardware contract: after the implementation and all software gates pass on a
+clean pushed commit, standing task authorization permits `just package`; one
+private mode-`0700` detector capture running `just detect-ultra205`; and one
+`just capture-runtime-health-evidence --private-root
+scratch/v12-runtime-health/attempt-001 --package-manifest
+bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials
+wifi-credentials.json --detector-output <private-detector> --projection
+docs/parity/evidence/v12-runtime-health-205/runtime-health-projection.json
+--capture-timeout-seconds 360`. The workflow may flash the exact package and
+observe private serial/API/WebSocket/retained-log documents. It may perform one
+recovery-only exact-package flash if the initial flash effect occurred but
+safe exact-build recovery cannot otherwise be confirmed. It must leave
+settings unchanged, keep mining and hardware control disabled, and publish no
+origins, network or USB identifiers, hostnames, credentials, raw documents,
+traces, or unbounded timing values.
+
+Stop without retry on ambiguous detection, identity drift, missing or
+contradictory health joins, stale/unhealthy/unavailable supervisor or watchdog
+truth, unsafe state, build mismatch, cleanup failure, privacy failure, or
+recovery failure. Direct UART, pins, restart, self-test, mining,
+voltage/fan/power control, OTA, erase, arbitrary writes, discovery, and fault
+injection are prohibited. Exactly one fresh attempt is authorized; a later
+ordinal requires verified new information under the repository
+hardware-attempt policy. Accepted terminal outcomes are `complete`,
+`stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`,
+and `stop_impossible_contract`.
+
+Verification: Complete. The implementation and finalization gates passed
+`cargo fmt --all`, strict Clippy, all-target/all-feature Cargo build and tests,
+Bright Builds checks with zero findings, all 28 Bazel test targets, parity with
+no validation errors, progress, redaction, reference cleanliness, and diff
+checks. One private detector admitted exactly one Ultra 205. The sole
+`attempt-001` proved the exact package, same-boot HTTP and later WebSocket
+runtime health, both exact retained tuples, healthy supervisor checkpoints,
+fresh participating watchdog feeds, disabled mining and hardware control,
+cleanup, modes, Rust validation, and redaction. No recovery flash or retry ran.
+
+Completion review: Completed and promoted only `V12-RUNTIME-HEALTH-205` from
+`implemented` to `verified` under transition
+`20260804T131416Z-V12-RUNTIME-HEALTH-205`. The result closes only passive
+bounded runtime-health truth for one Ultra 205 attempt. Self-test execution,
+mining, controls, settings, networking, updates, recovery, other boards,
+release readiness, and unbounded runtime health remain separate. The private
+hardware roots remain ignored and contain no committed sensitive values.

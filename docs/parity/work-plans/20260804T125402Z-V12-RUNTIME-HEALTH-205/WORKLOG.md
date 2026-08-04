@@ -49,3 +49,22 @@
 - Blocker or next safe action: Re-run the mandatory gate after recording this
   checkpoint, commit and push the exact implementation, then run the one
   detector-gated `attempt-001` capture.
+
+## 2026-08-04 | detector-gated attempt-001 complete
+
+- Source commit: `56f4eb1ce50f81fe2a1dd80ac344e551b16771c9`.
+- Actions: Built the exact clean package, admitted exactly one Ultra 205 with
+  the private detector, and ran the sole authorized passive runtime-health
+  capture. No retry or recovery flash was used.
+- Evidence: The closed v1 projection joins same-boot HTTP revision 614 and
+  WebSocket revision 615 with both exact retained tuples. Checkpoint sequences
+  advanced from 3347 to 3348; watchdog feed sequence remained non-regressing at
+  734. Supervisor and watchdog facts were healthy and fresh, mining and hardware
+  control remained disabled, cleanup completed, and redaction passed.
+- Verification: Independent Rust validation, exact-source assertions, private
+  root/file mode checks, a sensitive-token scan, `just verify-redaction`, and
+  `git diff --check` passed.
+- Outcome: `complete`; the evidence satisfies the exact promotion contract for
+  `V12-RUNTIME-HEALTH-205`.
+- Blocker or next safe action: Create the bound result and transition receipt,
+  synchronize progress, archive this completed task, then run all final gates.

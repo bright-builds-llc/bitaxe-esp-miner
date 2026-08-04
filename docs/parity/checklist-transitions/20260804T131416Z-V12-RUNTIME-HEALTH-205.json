@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T131416Z-V12-RUNTIME-HEALTH-205",
+  "predecessor_sha256": "ed9d596b387d50ecdc89188e1e414e2613d884f96d923966abc697d8bc4b0eaa",
+  "result_sha256": "3c5aaa30f895fc529fe41a863caf2e8f83b8e7ef4cbfd38082d8caa2f0f84711",
+  "row_id": "V12-RUNTIME-HEALTH-205",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T125402Z-V12-RUNTIME-HEALTH-205/PLAN.md",
+  "plan_sha256": "5d92760c206e8c008bfd82ae439352be1f46c54aae90572991d23f178447a6c8",
+  "result_path": "docs/parity/work-plans/20260804T125402Z-V12-RUNTIME-HEALTH-205/RESULT.md",
+  "result_document_sha256": "e137ee7fe4856b8d316dc23423428196926c93644973da7737530bfab976c3bb",
+  "before_rust_owned_target": "`firmware/bitaxe/src/runtime_snapshot.rs`, `tools/parity/src/phase35_evidence.rs`, `tools/parity/src/phase35_promotion.rs`",
+  "after_rust_owned_target": "`tools/automation/src/runtime-health-evidence.ts`, `crates/bitaxe-automation-contracts/src/runtime_health_evidence.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "workflow",
+  "after_evidence": "workflow,hardware-smoke",
+  "before_notes": "Phase 36 correction `runtime_health_insufficient` from exact admitted-fact digest `d0b6cd66d953e2e4e4a2e3a53bdfa302cfcb1996387ecdb4b577f8d0f22a4e5b`; this row remains below verified and every non-claim is preserved.",
+  "after_notes": "The [typed result](work-plans/20260804T125402Z-V12-RUNTIME-HEALTH-205/RESULT.md) and [closed projection](evidence/v12-runtime-health-205/runtime-health-projection.json) bind exact package 56f4eb1c, one detector-admitted Ultra 205, same-boot HTTP and later WebSocket health, both exact retained tuples, healthy supervisor checkpoints, fresh participating watchdog feeds, disabled mining and hardware control, cleanup, and redaction. Self-test execution, mining, controls, settings, networking, updates, recovery, other boards, release readiness, and unbounded runtime health remain separate."
+}

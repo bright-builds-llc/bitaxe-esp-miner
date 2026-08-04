@@ -1,0 +1,42 @@
+{
+  "schema_version": "bitaxe-runtime-health-evidence-v1",
+  "board": 205,
+  "source_commit": "56f4eb1ce50f81fe2a1dd80ac344e551b16771c9",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "1bd8b8a4eb69dc89da82ee2392968a9cc7db42b0691c7fe5635f5142ad1e9f67",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-runtime-health-evidence",
+    "request_sha256": "816e2f30a065f981abf9c181196487dd7051238a2f366ff1aff19ebd3464be69"
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "same_origin_observed": true,
+  "runtime_health": {
+    "boot_session_sha256": "d28a7011b5ad7446420e37b046d5546c5d55cd36f62ec2e9c88b5b29e7a9b95d",
+    "http_revision": 614,
+    "websocket_revision": 615,
+    "same_boot_session": true,
+    "websocket_revision_not_earlier": true,
+    "self_test_state": "unavailable",
+    "supervisor_availability": "available",
+    "checkpoint_category": "telemetry",
+    "http_checkpoint_sequence": 3347,
+    "websocket_checkpoint_sequence": 3348,
+    "checkpoint_sequence_not_regressed": true,
+    "checkpoint_health": "healthy",
+    "checkpoint_age_bounded": true,
+    "task_watchdog_participation": "participating",
+    "task_watchdog_reason": "feed_fresh",
+    "http_task_watchdog_feed_sequence": 734,
+    "websocket_task_watchdog_feed_sequence": 734,
+    "task_watchdog_feed_sequence_not_regressed": true,
+    "task_watchdog_feed_age_bounded": true,
+    "retained_http_tuple_matches": true,
+    "retained_websocket_tuple_matches": true
+  },
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "redaction_status": "passed"
+}
