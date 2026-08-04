@@ -520,6 +520,26 @@ is `implemented` with `unit,golden` evidence under transition
 `BAP-001` continues to own the firmware UART and task lifecycle, and live
 accessory interoperability remains below verified.
 
+### task-parity-ui004-operator-workflows | 2026-08-04 | Implement scoped AxeOS operator workflows
+
+- [ ] Add independent responsive navigation plus dashboard, network, pool,
+      settings, logs, update, and theme pages against existing API contracts.
+- [ ] Keep credentials write-only, require confirmation for restart/update, and
+      preserve the fail-closed OTAWWW and hardware-control boundaries.
+- [ ] Add SPA route, pure UI, static-contract, and real-browser regressions;
+      run every mandatory gate and transition only `UI-004` to `implemented`.
+
+Plan: `docs/parity/work-plans/20260804T190000Z-UI-004/PLAN.md`
+
+Authorization: local static UI, synthetic same-origin API fixture, real local
+browser, and build work only. No device hardware attempt, real credentials,
+external service, mining, ASIC traffic, frequency/voltage/fan/power effect,
+firmware upload, OTAWWW, recovery, direct UART, or pins.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
