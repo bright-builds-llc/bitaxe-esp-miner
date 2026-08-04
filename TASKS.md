@@ -847,11 +847,12 @@ any live retry.
 
 ### task-parity-api010-live-theme-durability-attempt-003 | 2026-08-04 | Run post-fix live theme durability
 
-- [ ] Preserve the pushed terminal-epoch and selector fixes, freeze the exact
+- [x] Preserve the pushed terminal-epoch and selector fixes, freeze the exact
       planning-commit package, and privately admit exactly one Ultra 205.
-- [ ] Run exactly one bounded `attempt-003` theme GET/POST, reboot durability,
-      persistence, restoration, cleanup, and redaction transaction.
-- [ ] Promote only `API-010` on complete typed evidence; otherwise record the
+- [x] Run exactly one bounded `attempt-003`; the transaction stopped at the
+      initial exact-package flash-monitor child before baseline classification,
+      theme mutation, restart, persistence, or restoration.
+- [x] Promote only `API-010` on complete typed evidence; otherwise record the
       earliest terminal category, withhold evidence, and stop without retry.
 
 Plan: `docs/parity/work-plans/20260804T200849Z-API-010/PLAN.md`. This immutable
@@ -913,11 +914,27 @@ and redaction all pass. Otherwise record the closed public automation category
 and recovery booleans, withhold `RESULT.md` and evidence, keep `API-010` at
 `implemented`, and stop.
 
-Verification: Pending.
+Verification: The exact package binds source commit
+`f80b9b9656b9da20f36ee600f767ddd449a1684d` and reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`. The task-recorded detector and
+sole capture commands ran once. The capture returned public category
+`process_failed` with safe summary `exact-package flash-monitor failed`; the
+public projection is absent. The attempt and initial roots are mode `0700`,
+the wrapper streams are mode `0600`, and the empty attempt root contains no
+private captured files. Pre-attempt formatting, strict Clippy, build, Cargo
+tests, Bright Builds, `just test`, parity, progress, redaction, reference, and
+diff gates passed.
 
-Completion review: Pending. This task does not claim installed AxeOS browser
+Completion review: `attempt-003` is exhausted without promotion. The earliest
+failure is the distinct initial `process_failed` boundary, not the fixed
+`baseline_multiple_sessions` signature, so `stop_repeated_boundary` does not
+apply. No theme mutation, software restart, durability observation, restoration
+transaction, or public evidence occurred; any exact-package flash effect is
+unconfirmed because the child emitted no accepted capture. Keep `API-010` at
+`implemented` and diagnose the flash-monitor child boundary before proposing a
+fresh progress-backed ordinal. This task does not claim installed AxeOS browser
 behavior or any networking, mining, ASIC, hardware-control, OTA, recovery,
-other-board, or release parity beyond the exact admitted transaction.
+other-board, or release parity.
 
 ## Future
 
