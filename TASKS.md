@@ -333,6 +333,53 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
+### task-parity-v12-runtime-health-typed-capture | 2026-08-04 | Capture substantive passive runtime health
+
+- [ ] Add a typed, private-first runtime-health capture joining exact-package
+      HTTP, later same-boot WebSocket, and retained-log projections.
+- [ ] Prove available healthy supervisor checkpoints and fresh participating
+      task-watchdog feeds without invoking self-test, mining, or controls.
+- [ ] Add closed evidence validation, failure/recovery precedence, redaction,
+      behavior tests, and a real-child-process regression.
+- [ ] Run all mandatory gates on a clean pushed implementation, then execute
+      exactly one detector-gated passive hardware capture.
+- [ ] Transition only `V12-RUNTIME-HEALTH-205` if the substantive live join,
+      exact package, safe state, cleanup, and privacy contract all pass.
+
+Plan:
+`docs/parity/work-plans/20260804T125402Z-V12-RUNTIME-HEALTH-205/PLAN.md`
+
+Hardware contract: after the implementation and all software gates pass on a
+clean pushed commit, standing task authorization permits `just package`; one
+private mode-`0700` detector capture running `just detect-ultra205`; and one
+`just capture-runtime-health-evidence --private-root
+scratch/v12-runtime-health/attempt-001 --package-manifest
+bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials
+wifi-credentials.json --detector-output <private-detector> --projection
+docs/parity/evidence/v12-runtime-health-205/runtime-health-projection.json
+--capture-timeout-seconds 360`. The workflow may flash the exact package and
+observe private serial/API/WebSocket/retained-log documents. It may perform one
+recovery-only exact-package flash if the initial flash effect occurred but
+safe exact-build recovery cannot otherwise be confirmed. It must leave
+settings unchanged, keep mining and hardware control disabled, and publish no
+origins, network or USB identifiers, hostnames, credentials, raw documents,
+traces, or unbounded timing values.
+
+Stop without retry on ambiguous detection, identity drift, missing or
+contradictory health joins, stale/unhealthy/unavailable supervisor or watchdog
+truth, unsafe state, build mismatch, cleanup failure, privacy failure, or
+recovery failure. Direct UART, pins, restart, self-test, mining,
+voltage/fan/power control, OTA, erase, arbitrary writes, discovery, and fault
+injection are prohibited. Exactly one fresh attempt is authorized; a later
+ordinal requires verified new information under the repository
+hardware-attempt policy. Accepted terminal outcomes are `complete`,
+`stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`,
+and `stop_impossible_contract`.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
