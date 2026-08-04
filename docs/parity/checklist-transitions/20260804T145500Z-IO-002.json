@@ -1,0 +1,18 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T145500Z-IO-002",
+  "predecessor_sha256": "47795d93c80b289ae5d6810e5511bc8f68f2cdc4d2795670491b1b63ed90fc40",
+  "result_sha256": "582bd8946297bb80024a9f11c0f95271f70fdaff03abcfff37333b19aeef941e",
+  "row_id": "IO-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T140933Z-IO-002/PLAN.md",
+  "plan_sha256": "d9eedca342968954a6f969e2d8de08f9ebc5466d54fbd395c4fdc3f8b5a172f6",
+  "result_path": "docs/parity/work-plans/20260804T140933Z-IO-002/RESULT.md",
+  "result_document_sha256": "fa52303acc80fa7ee2ec410bf29af84de4c87bb7d12fe774469d7362cda67432",
+  "before_rust_owned_target": "`firmware/bitaxe`",
+  "after_rust_owned_target": "`crates/bitaxe-safety/src/core_voltage_acquisition.rs`, `firmware/bitaxe/src/safety_adapter/adc.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `crates/bitaxe-api`",
+  "before_status": "not-started",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,workflow"
+}

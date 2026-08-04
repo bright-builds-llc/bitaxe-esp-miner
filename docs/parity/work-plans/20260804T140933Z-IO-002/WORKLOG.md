@@ -31,3 +31,32 @@
   adding core voltage to mining authorization or enabling any effect.
 - Blocker or next safe action: Run mandatory repository-wide gates, record the
   implementation result, commit, and transition only `IO-002` to `implemented`.
+
+## 2026-08-04T14:55:00Z | implementation commit and transition readiness
+
+- Source commit: `4d7c8486526984ea9a44c60c9d8c65d7151da44d`.
+- Actions: Committed the calibrated ADC observation path and wrote the bounded
+  result against the immutable implementation commit.
+- Verification: Focused safety/API/source-ownership tests, the real ESP32-S3
+  release build, ordered Rust gate, Bright Builds, all 29 Bazel test targets,
+  parity/progress, redaction, reference cleanliness, and diff checks passed.
+- Evidence: `RESULT.md`, unit tests, source-ownership regression, and the
+  successfully produced firmware ELF.
+- Outcome: `IO-002` is eligible for transition to `implemented` with
+  `unit,workflow`; no live hardware evidence supports `verified`.
+- Blocker or next safe action: Apply the typed transition, synchronize
+  progress, run final metadata gates, commit, and push.
+
+## 2026-08-04T14:55:00Z | implemented transition
+
+- Source commit: `4d7c8486526984ea9a44c60c9d8c65d7151da44d`.
+- Actions: Applied typed transition `20260804T145500Z-IO-002` and appended the
+  hash-chained deterministic progress record.
+- Verification: The transition validator accepted the exact checklist change;
+  progress remains 38 verified of 94 active rows, 40.4 percent complete.
+- Evidence: Transition receipt, `RESULT.md`, implementation commit, and
+  synchronized progress record.
+- Outcome: `IO-002` is `implemented` with `unit,workflow`; live calibrated ADC
+  and API correlation evidence remains withheld.
+- Blocker or next safe action: Run final metadata gates, commit, push, then
+  resume deterministic parity selection.
