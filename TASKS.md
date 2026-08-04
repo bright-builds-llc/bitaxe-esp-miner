@@ -569,9 +569,11 @@ Verification: The full Rust sequence, Bright Builds checks, all 31 Bazel tests,
 the real firmware build, parity validation/progress, redaction, reference
 cleanliness, and diff checks passed on the implementation tree.
 
-Completion review: Implementation is complete and awaiting its exact-commit
-typed transition. Live BM1366 counter accuracy and hardware/API/UI behavior
-remain below verified.
+Completion review: Implementation commit
+`f5bacf322306593269b5a92d57545cb4de59391f` and typed transition
+`20260804T205500Z-STAT-001` establish `implemented` with `unit,workflow`
+evidence. The task remains active because live BM1366 counter accuracy and
+hardware/API/UI behavior remain below verified.
 
 ## Future
 

@@ -34,3 +34,20 @@
 - Blocker or next safe action: Commit this implementation, bind `RESULT.md` to
   that exact commit, then apply the typed checklist transition. Live BM1366
   register traffic and accuracy remain outside this software-only attempt.
+
+## 2026-08-04T20:55:00Z | checklist transition and progress sync
+
+- Source commit: `f5bacf322306593269b5a92d57545cb4de59391f`.
+- Actions: Bound `RESULT.md` to the exact implementation and pinned reference,
+  transitioned only `STAT-001` from `not-started` to `implemented`, and
+  synchronized deterministic progress.
+- Verification: Transition receipt `20260804T205500Z-STAT-001` binds the plan,
+  result, predecessor/result checklist digests, reference commit, evidence
+  class, notes, and exact Rust-owned targets. Progress remains 39 of 94 active
+  rows verified (41.5%) because this software-only row was not overpromoted.
+- Evidence: `RESULT.md`, the typed transition receipt, active checklist, and
+  appended progress record.
+- Outcome: STAT-001 is implemented with `unit,workflow` evidence.
+- Blocker or next safe action: Run the final full gate sequence, commit and push
+  the transition metadata, then resume deterministic parity selection. A future
+  task must supply detector-gated live accuracy evidence before verification.
