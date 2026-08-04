@@ -526,7 +526,7 @@ accessory interoperability remains below verified.
       settings, logs, update, and theme pages against existing API contracts.
 - [x] Keep credentials write-only, require confirmation for restart/update, and
       preserve the fail-closed OTAWWW and hardware-control boundaries.
-- [ ] Add SPA route, pure UI, static-contract, and real-browser regressions;
+- [x] Add SPA route, pure UI, static-contract, and real-browser regressions;
       run every mandatory gate and transition only `UI-004` to `implemented`.
 
 Plan: `docs/parity/work-plans/20260804T190000Z-UI-004/PLAN.md`
@@ -536,9 +536,18 @@ browser, and build work only. No device hardware attempt, real credentials,
 external service, mining, ASIC traffic, frequency/voltage/fan/power effect,
 firmware upload, OTAWWW, recovery, direct UART, or pins.
 
-Verification: Pending.
+Verification: Nine focused static-route tests, the complete `bitaxe-api` and
+automation targets, pure/static UI contracts, headed Playwright desktop/mobile
+workflows with a clean console, the ordered Rust sequence, Bright Builds, all
+30 Bazel tests and the ESP32-S3 artifact, parity/progress, redaction, reference
+cleanliness, deterministic gzip, sensitive-value, provenance, and diff checks
+pass against implementation commit `89564440`.
 
-Completion review: Pending.
+Completion review: The scoped operator interface is complete, and `UI-004` is
+`implemented` with `unit,workflow,static-route` evidence under transition
+`20260804T195000Z-UI-004`. This task remains active and unarchived because live
+embedded serving, real device mutation, upload/reboot, OTAWWW, scoreboard/swarm
+population, and responsive operator UAT remain below verified.
 
 ## Future
 

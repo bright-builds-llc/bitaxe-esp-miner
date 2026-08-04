@@ -40,3 +40,21 @@
   verification without device hardware or destructive effects.
 - Blocker or next safe action: Run the exact full repository gate, simplify and
   review the diff, then bind the implementation result and typed transition.
+
+## 2026-08-04T19:50:00Z | implementation committed and transitioned
+
+- Source commit: `89564440d56f174164666667200254baa2aa9d0e`.
+- Actions: Bound `RESULT.md` to the exact implementation and reference commits,
+  applied typed transition `20260804T195000Z-UI-004`, and synchronized the
+  progress ledger from the same source commit.
+- Verification: The transition tool accepted the conservative `implemented`
+  status, `unit,workflow,static-route` evidence, exact static/route/test
+  ownership, immutable plan, and commit-bound result. The progress ledger
+  remains at 39 of 94 active rows verified (41.5%).
+- Evidence: `RESULT.md`, the typed transition receipt, updated checklist, and
+  synchronized progress ledger.
+- Outcome: `UI-004` is implemented without a live embedded-device or firmware
+  upload claim. No real hardware, credential, endpoint, or network identifier
+  was used or published.
+- Blocker or next safe action: Re-run the required commit gates for the metadata
+  tree, publish it, and resume deterministic parity selection.
