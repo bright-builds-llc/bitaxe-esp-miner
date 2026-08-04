@@ -458,10 +458,12 @@ tests, the real ESP32-S3 firmware build, the ordered Rust gate, Bright Builds,
 all 30 Bazel test targets, parity/progress, redaction, reference cleanliness,
 and diff checks pass against the implementation tree.
 
-Completion review: Implementation complete; checklist transition and final
-metadata binding pending. Live SSID visibility, client association, DHCP,
-wildcard DNS, captive redirect, settings access, station handoff, and fallback
-behavior remain below verified and require separate detector-gated evidence.
+Completion review: The bounded configuration AP and captive-DNS implementation
+is complete, and `NET-002` is `implemented` with `unit,workflow` evidence under
+transition `20260804T163500Z-NET-002`. This task remains active and unarchived
+because live SSID visibility, client association, DHCP, wildcard DNS, captive
+redirect, settings access, station handoff, and fallback behavior remain below
+verified and require separate detector-gated evidence.
 
 ## Future
 

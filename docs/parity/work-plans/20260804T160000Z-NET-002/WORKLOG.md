@@ -57,3 +57,38 @@
 - Blocker or next safe action: Rerun the pre-commit sequence after this durable
   checkpoint, commit the implementation, create `RESULT.md`, and transition
   only `NET-002` if the committed source remains identical to the passed tree.
+
+## 2026-08-04T16:35:00Z | implementation committed
+
+- Source commit: `126cf24b7205f3bdac0a0a70fc022a422973c392`.
+- Actions: Committed the pure DNS contract, ESP-IDF configuration-network
+  state machine, UDP owner, tests, build wiring, and durable task checkpoints
+  without changing the parity checklist.
+- Verification: The committed source is the same implementation tree that
+  passed every focused, cross-compile, mandatory, parity, privacy, reference,
+  and diff gate recorded above.
+- Evidence: `RESULT.md` binds the exact implementation commit, reference,
+  acceptance tests, conclusion, and live-client non-claims.
+- Outcome: `NET-002` is eligible only for `implemented` with `unit,workflow`
+  evidence; no hardware or live network evidence exists.
+- Blocker or next safe action: Apply the typed transition, synchronize progress,
+  finalize the active task record, run final metadata gates, commit, and push.
+
+## 2026-08-04T16:35:00Z | implemented transition
+
+- Source commit: `126cf24b7205f3bdac0a0a70fc022a422973c392`.
+- Actions: Applied typed transition `20260804T163500Z-NET-002`, synchronized the
+  hash-chained progress record, and finalized the active task's bounded result.
+  The first uncommitted projection omitted Markdown code spans around the new
+  Rust-owned targets; `just parity` rejected it, so the generated receipt,
+  checklist projection, and progress append were transactionally rolled back
+  and republished through the same typed command with valid code spans.
+- Verification: The final transition receipt and full checklist validator
+  accepted the exact change with no validation errors; progress remains 39
+  verified of 94 active rows, 41.5 percent complete.
+- Evidence: Transition receipt, `RESULT.md`, exact implementation commit,
+  focused packet/ownership tests, and the real ESP32-S3 firmware build.
+- Outcome: `NET-002` is `implemented` with `unit,workflow`; no live provisioning
+  client, reconnect, credential, or hardware evidence was inferred.
+- Blocker or next safe action: Run final metadata gates, commit, push, then
+  resume deterministic parity selection.

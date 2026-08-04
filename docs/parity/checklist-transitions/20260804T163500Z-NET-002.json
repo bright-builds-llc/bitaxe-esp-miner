@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T163500Z-NET-002",
+  "predecessor_sha256": "4fc4167c3bd58407c4cbf8ec73a5b96c304302bfd2f115aead4a4adbf537200f",
+  "result_sha256": "9a714e84dc7f297dc4131075796e5a208c5e2badda6d5bb26f5d05b4b3facd6c",
+  "row_id": "NET-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T160000Z-NET-002/PLAN.md",
+  "plan_sha256": "228d749cdaa1f08e6df2bdae0b8ea5e773b4883024184c7d9eb6ed19dd871cd1",
+  "result_path": "docs/parity/work-plans/20260804T160000Z-NET-002/RESULT.md",
+  "result_document_sha256": "0849019aee7d2d05f6df4cd93b13480bcda7b3903cf341e46b9c81c5e1ef6bab",
+  "before_rust_owned_target": "`firmware/bitaxe/src/wifi_adapter.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/provisioning.rs`, `firmware/bitaxe/src/wifi_adapter.rs`, `firmware/bitaxe/src/wifi_adapter/captive_dns.rs`",
+  "before_status": "not-started",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,workflow",
+  "before_notes": "Upstream APSTA fallback and captive DNS are inventoried gaps. Station-mode boot evidence does not verify provisioning behavior.",
+  "after_notes": "Bounded AP-only and mixed-mode startup plus wildcard captive DNS are implemented; see docs/parity/work-plans/20260804T160000Z-NET-002/RESULT.md. Live provisioning-client and reconnect behavior remain pending."
+}
