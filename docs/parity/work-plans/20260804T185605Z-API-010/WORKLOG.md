@@ -86,7 +86,8 @@
   absent.
 - Evidence: Initial exact-package flash-monitor completed, but baseline
   admission stopped before hostname/theme GET or POST, software restart, or
-  device mutation. No restoration or recovery action was required.
+  settings mutation. The authorized exact-package flash was the sole device
+  effect; no restoration or recovery action was required.
 - Outcome: No evidence was published and `API-010` remains `implemented`.
   The single hardware retry is consumed; another retry is not authorized.
 - Blocker or next safe action: Investigate the production multi-session

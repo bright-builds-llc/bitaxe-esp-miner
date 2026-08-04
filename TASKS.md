@@ -836,8 +836,9 @@ public projection exists.
 Completion review: `attempt-002` used the exact pushed package and stopped with
 earliest category `evidence_invalid` because the initial production-shaped
 flash-monitor trace classified as `baseline_multiple_sessions`. The failure
-occurred before hostname/theme GET or POST, restart, or device mutation, so no
-recovery was required. No public evidence was emitted, `API-010` remains
+occurred before hostname/theme GET or POST, software restart, or settings
+mutation. The authorized exact-package flash was the sole device effect, and
+no recovery was required. No public evidence was emitted, `API-010` remains
 `implemented`, and no further hardware retry is authorized. The remaining gap
 is a host-side baseline-epoch admission defect, tracked separately below.
 
