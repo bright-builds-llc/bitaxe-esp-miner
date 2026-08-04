@@ -438,6 +438,25 @@ live ADC calibration accuracy, millivolt values, cadence, failure behavior, and
 API correlation remain below verified and need a separately task-gated detector
 capture. No hardware, credentials, mining, controls, OTA, UART, or pins ran.
 
+### task-parity-net002-provisioning-network | 2026-08-04 | Implement configuration AP and captive DNS
+
+- [ ] Add a pure bounded wildcard IN/A captive-DNS response contract matching
+      the pinned configuration-network behavior.
+- [ ] Configure the firmware AP-only/mixed-mode lifecycle and a single UDP/53
+      owner without exposing credentials or network identifiers.
+- [ ] Add focused and ownership regressions, build the real firmware, run all
+      mandatory gates, and transition only `NET-002` to `implemented`.
+
+Plan: `docs/parity/work-plans/20260804T160000Z-NET-002/PLAN.md`
+
+Authorization: local software and build work only. No hardware attempt,
+credentials, external network request, mining, voltage/fan/power effect, OTA,
+recovery, direct UART, or pins.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
