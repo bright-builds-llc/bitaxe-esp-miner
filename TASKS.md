@@ -717,6 +717,55 @@ categories. Physical button observation, exact LVGL event timing, self-test
 cancellation, live configuration-AP toggling, and all hardware behavior remain
 below verified, so this implemented task remains active rather than archived.
 
+### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
+
+- [ ] Add a typed private-first `/api/theme` capture that binds the exact
+      package, admitted Ultra 205, one normal software restart, and restored
+      original appearance settings.
+- [ ] Require live GET/POST/readback, same-device reboot identity, post-restart
+      persistence, exact restoration, cleanup, and a closed redacted public
+      projection before emitting evidence.
+- [ ] Add unit and real-child-process regressions, run every mandatory gate,
+      push the clean implementation, and execute at most one `attempt-001`.
+- [ ] Transition only `API-010` to `verified` if every acceptance fact passes;
+      otherwise record the first typed terminal category and stop without retry.
+
+Plan: `docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md`
+
+Authorization: standing task authorization permits exactly these effectful
+commands after the implementation is clean and pushed:
+
+1. `just package`
+2. `mkdir -p scratch/api010-theme-durability/detector-001 && just detect-ultra205 2>&1 | tee scratch/api010-theme-durability/detector-001/detector.stdout`
+3. `just verify-theme-durability --private-root scratch/api010-theme-durability/attempt-001 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api010-theme-durability/detector-001/detector.stdout --projection docs/parity/evidence/api010-theme-durability/theme-durability-projection.json --capture-timeout-seconds 360`
+
+The capture may POST one generated non-secret theme value, perform one normal
+software restart through the canonical device-session transaction, restore the
+exact original theme, and use an exact-package recovery flash only if normal
+restoration cannot be confirmed. It may not change Wi-Fi or pool credentials,
+mining, voltage, frequency, fan, thermal, power, ASIC, display-input, OTA, raw
+partitions, direct UART, pins, or other electrical state.
+
+Evidence and privacy: `scratch/api010-theme-durability/attempt-001` is an
+absent-before-use mode-`0700` private root whose files are mode `0600`; detector
+output remains private. The committed projection may contain only schema and
+cryptographic identities, bounded counts/categories, the closed device-session
+projection, and safe booleans. It must never contain origins, theme values,
+hostnames, ports, USB identities, network identifiers, credentials, raw HTTP,
+serial, or process traces.
+
+Recovery, retry, and stop: preserve the earliest typed failure; attempt normal
+POST restoration and exact readback first, then use the exact admitted package
+for one recovery flash if required. Recovery is secondary and public only as
+safe booleans. `attempt-001` is the sole authorized invocation. Stop on any
+detector failure, launch failure, timeout, malformed evidence, non-ready device
+session, restoration uncertainty, cleanup failure, privacy failure, or safety
+invariant violation. No unchanged retry is authorized.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
