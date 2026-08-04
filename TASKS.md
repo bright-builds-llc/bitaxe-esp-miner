@@ -1137,10 +1137,12 @@ exact admitted transaction.
       single-owner, cadence, identity, attestation, and safe-state behavior.
 - [x] Add a focused source-ownership regression and run the canonical firmware
       build plus the complete ordered repository gate.
-- [ ] Commit and push the clean software fix before one fresh protected
+- [x] Commit and push the clean software fix before one fresh protected
       detector and conditional attempt-006 capture.
-- [ ] Promote only `API-010` on complete typed evidence; otherwise preserve the
+- [x] Promote only `API-010` on complete typed evidence; otherwise preserve the
       earliest category, withhold evidence, keep `implemented`, and stop.
+- [ ] Create a linked attempt-007 remediation contract requiring one full
+      normal barrel/USB power cycle before any new detector or hardware action.
 
 Plan: `docs/parity/work-plans/20260804T222559Z-API-010/PLAN.md`. This immutable
 plan continues the pushed attempt-005 outcome at `dc2ea737` after protected
@@ -1167,11 +1169,18 @@ budget declaration, one stack-size use, one observer spawn, and unchanged
 10-second identity replay. The canonical ESP32-S3 firmware builds; formatting,
 strict Clippy, all-target/all-feature build, all Cargo tests, Bright Builds,
 all 35 Bazel tests, parity validation/progress, semantic redaction, and
-pinned-reference cleanliness pass. Live attempt-006 evidence remains pending.
+pinned-reference cleanliness pass. The exact attempt-006 package built, but
+the sole detector stopped as `bootloader_connect_failed`; same-device retry
+admission and final cleanup each had three stable accessible holder-free
+samples with unchanged enumeration. No flash or capture occurred.
 
-Completion review: Pending. This task claims no network discovery, mining,
-ASIC, hardware-control, display-input, OTA, partition, recovery, other-board,
-or release parity beyond the exact admitted transaction.
+Completion review: Attempt-006 is truthfully closed without retry, evidence,
+or promotion. The software fix remains pushed but untested on-device because
+the detector failed before flashing. A new attempt requires its own immutable
+contract and one reported normal-connector power cycle. This task claims no
+network discovery, mining, ASIC, hardware-control, display-input, OTA,
+partition, recovery, other-board, or release parity beyond the exact admitted
+transaction.
 
 ## Future
 

@@ -52,3 +52,24 @@
 - Blocker or next safe action: Commit and push the clean implementation, then
   run only the plan-recorded package, detector, and conditional attempt-006
   capture.
+
+## 2026-08-04T22:38:13Z | attempt-006 stopped at detector admission
+
+- Source commit: `160d877e2d742900b61b6e7f631be884c1e4c7f2`.
+- Actions: Built the exact pushed remediation package and consumed the one
+  protected attempt-006 detector. The detector failed, so no capture or second
+  hardware command ran.
+- Verification: Closed classification is `bootloader_connect_failed`. Both
+  retry admission and final cleanup observed the same accessible, holder-free
+  physical device with three stable samples and unchanged enumeration.
+  Cleanup completed. The attempt child and public projection remain absent.
+- Evidence: Closed categories, booleans, and bounded sample counts only. The
+  detector transcript, device, port, USB/process identity, and child output
+  remain private and untracked.
+- Outcome: Attempt-006 is consumed before flashing, so the 16 KiB remediation
+  did not reach the device and cannot yet confirm or disprove the software
+  hypothesis. Withhold `RESULT.md` and evidence; keep `API-010` at
+  `implemented`.
+- Blocker or next safe action: Do not retry. A separately planned attempt-007
+  must require the repository-prescribed full normal barrel/USB power cycle
+  before one fresh detector can prove this unchanged bootloader boundary moved.
