@@ -70,3 +70,6 @@ capture-version-evidence *args:
 
 capture-operator-snapshot-evidence *args:
     bazel run //tools/automation:capture_operator_snapshot_evidence -- {{ args }}
+
+capture-runtime-health-evidence *args:
+    bazel run //tools/automation:capture_runtime_health_evidence -- {{ args }}

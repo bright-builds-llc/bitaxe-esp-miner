@@ -7,6 +7,7 @@ rust_library(
     srcs = [
         "src/lib.rs",
         "src/operator_snapshot_evidence.rs",
+        "src/runtime_health_evidence.rs",
     ],
     compile_data = ["typescript-contracts.ts"],
     crate_name = "bitaxe_automation_contracts",
@@ -41,6 +42,17 @@ rust_binary(
     name = "validate_operator_snapshot_evidence",
     srcs = ["src/bin/validate_operator_snapshot_evidence.rs"],
     crate_name = "validate_operator_snapshot_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_runtime_health_evidence",
+    srcs = ["src/bin/validate_runtime_health_evidence.rs"],
+    crate_name = "validate_runtime_health_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

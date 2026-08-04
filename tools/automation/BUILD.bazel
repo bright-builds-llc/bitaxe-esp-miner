@@ -48,6 +48,7 @@ js_binary(
         ":automation_ts",
         "//crates/bitaxe-automation-contracts:validate_version_evidence",
         "//crates/bitaxe-automation-contracts:validate_operator_snapshot_evidence",
+        "//crates/bitaxe-automation-contracts:validate_runtime_health_evidence",
         "//tools/flash:flash",
         "//tools/device-session:device-session",
         "//tools/parity:report",
@@ -65,6 +66,7 @@ js_binary(
             ":automation_ts",
             "//crates/bitaxe-automation-contracts:validate_version_evidence",
             "//crates/bitaxe-automation-contracts:validate_operator_snapshot_evidence",
+            "//crates/bitaxe-automation-contracts:validate_runtime_health_evidence",
             "//tools/flash:flash",
             "//tools/device-session:device-session",
             "//tools/parity:report",
@@ -93,6 +95,7 @@ js_binary(
         "capture_correlated_runtime_evidence": "capture-correlated-runtime-evidence",
         "capture_version_evidence": "capture-version-evidence",
         "capture_operator_snapshot_evidence": "capture-operator-snapshot-evidence",
+        "capture_runtime_health_evidence": "capture-runtime-health-evidence",
     }.items()
 ]
 

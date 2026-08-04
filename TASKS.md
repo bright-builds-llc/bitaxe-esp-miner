@@ -335,11 +335,11 @@ run.
 
 ### task-parity-v12-runtime-health-typed-capture | 2026-08-04 | Capture substantive passive runtime health
 
-- [ ] Add a typed, private-first runtime-health capture joining exact-package
+- [x] Add a typed, private-first runtime-health capture joining exact-package
       HTTP, later same-boot WebSocket, and retained-log projections.
-- [ ] Prove available healthy supervisor checkpoints and fresh participating
+- [x] Prove available healthy supervisor checkpoints and fresh participating
       task-watchdog feeds without invoking self-test, mining, or controls.
-- [ ] Add closed evidence validation, failure/recovery precedence, redaction,
+- [x] Add closed evidence validation, failure/recovery precedence, redaction,
       behavior tests, and a real-child-process regression.
 - [ ] Run all mandatory gates on a clean pushed implementation, then execute
       exactly one detector-gated passive hardware capture.
@@ -376,7 +376,10 @@ hardware-attempt policy. Accepted terminal outcomes are `complete`,
 `stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`,
 and `stop_impossible_contract`.
 
-Verification: Pending.
+Verification: The implementation gate passed `cargo fmt --all`, strict Clippy,
+all-target/all-feature Cargo build and tests, Bright Builds checks, all 28 Bazel
+test targets, parity validation/progress, redaction, reference cleanliness, and
+diff checks. The single authorized hardware attempt remains pending.
 
 Completion review: Pending.
 

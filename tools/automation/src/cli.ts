@@ -26,6 +26,7 @@ import { packageFirmware } from "./package.js";
 import { captureOperatorSnapshotEvidence, OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
+import { captureRuntimeHealthEvidence, RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
 import { captureSettingsDurability, SettingsDurabilityError } from "./settings-durability.js";
 import { captureVersionEvidence } from "./version-evidence.js";
 import { executeCommandSpec } from "./workflow.js";
@@ -210,6 +211,7 @@ async function dispatchProcess(
     case "verify-http-api":
     case "capture-version-evidence":
     case "capture-operator-snapshot-evidence":
+    case "capture-runtime-health-evidence":
       throw new Error("specialized workflow reached generic dispatch");
   }
   if (spec.program.includes(path.sep)) await access(spec.program, constants.X_OK);
@@ -279,6 +281,16 @@ async function main(): Promise<number> {
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "tools/parity/report"), deviceSessionProgram(root),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_operator_snapshot_evidence"));
+    } else if (invocation.command === "capture-runtime-health-evidence") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureRuntimeHealthEvidence(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_runtime_health_evidence"));
     } else if (invocation.command === "verify-settings-durability" && optionValue(invocation, "--mode") === "capture") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsDurability(root, {
@@ -303,11 +315,12 @@ async function main(): Promise<number> {
     const invalid = error instanceof InvocationError;
     const settingsFailure = error instanceof SettingsDurabilityError;
     const snapshotFailure = error instanceof OperatorSnapshotEvidenceError;
+    const runtimeHealthFailure = error instanceof RuntimeHealthEvidenceError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || snapshotFailure
+        : settingsFailure || snapshotFailure || runtimeHealthFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";
@@ -321,7 +334,7 @@ async function main(): Promise<number> {
       invocation.command,
       status,
       category,
-      settingsFailure || snapshotFailure ? error.publicValue : undefined,
+      settingsFailure || snapshotFailure || runtimeHealthFailure ? error.publicValue : undefined,
     ))}\n`);
     return exitCode;
   }
