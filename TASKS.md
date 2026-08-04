@@ -385,6 +385,24 @@ evidence. The task remains active and unarchived because detector-gated live
 route/reboot durability and installed AxeOS browser behavior remain unverified.
 No hardware, credentials, mining, controls, OTA, direct UART, or pins were used.
 
+### task-parity-io001-i2c-retry-contract | 2026-08-04 | Match shared I2C transfer policy
+
+- [ ] Add an exact host-testable 500 ms, three-attempt, 10 ms-delay transfer
+      policy matching the pinned reference.
+- [ ] Route every display, sensor, and actuation transfer through the single
+      retry owner without widening address or effect capabilities.
+- [ ] Extend bypass regressions, build the real firmware, run all mandatory
+      gates, and transition only `IO-001` to `implemented`.
+
+Plan: `docs/parity/work-plans/20260804T135918Z-IO-001/PLAN.md`
+
+Authorization: software-only I2C contract work. No hardware, credentials,
+network requests, mining, voltage/fan effects, OTA, direct UART, or pins.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
