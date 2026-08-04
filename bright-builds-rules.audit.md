@@ -20,7 +20,7 @@ This audit trail is managed upstream by `bright-builds-rules`. If the managed au
 - Checks CI: `enabled`
 - Checks CI reason: `GitHub-backed repository`
 - Last operation: `update`
-- Last updated (UTC): `2026-07-28T16:06:00Z`
+- Last updated (UTC): `2026-08-04T16:14:22Z`
 
 ## Managed files
 
