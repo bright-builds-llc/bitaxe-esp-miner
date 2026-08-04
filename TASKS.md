@@ -333,31 +333,6 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
-### task-parity-str012-payout-address-codecs | 2026-08-04 | Implement payout address codecs
-
-- [x] Implement typed Base58Check and SegWit Bech32/Bech32m codecs without a
-      new dependency.
-- [x] Render and validate P2PKH, P2SH, P2WPKH, P2WSH, and P2TR scripts across
-      mainnet, testnet, and regtest.
-- [x] Add provenance-bound golden vectors and complete invalid-boundary tests.
-- [ ] Run focused and mandatory repository gates, then transition only
-      `STR-012` when the complete pure contract passes.
-
-Plan:
-`docs/parity/work-plans/20260804T131755Z-STR-012/PLAN.md`
-
-Authorization and privacy: this task is pure software work. It authorizes no
-hardware, pool, network, credential, settings, owner-address, mining, ASIC,
-firmware, OTA, direct-UART, or pin effects. Committed address fixtures must be
-public standard vectors, never local owner inputs.
-
-Verification: Focused strict Clippy, all 258 `bitaxe-stratum` Cargo tests, the
-Bazel crate target, mandatory Rust format/strict Clippy/build/tests, Bright
-Builds checks, all 28 Bazel tests, parity/progress, redaction, reference
-cleanliness, and diff checks pass. Final transition remains pending.
-
-Completion review: Pending.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

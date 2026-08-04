@@ -4842,3 +4842,35 @@ bounded runtime-health truth for one Ultra 205 attempt. Self-test execution,
 mining, controls, settings, networking, updates, recovery, other boards,
 release readiness, and unbounded runtime health remain separate. The private
 hardware roots remain ignored and contain no committed sensitive values.
+
+### task-parity-str012-payout-address-codecs | 2026-08-04 | Implement payout address codecs
+
+- [x] Implement typed Base58Check and SegWit Bech32/Bech32m codecs without a
+      new dependency.
+- [x] Render and validate P2PKH, P2SH, P2WPKH, P2WSH, and P2TR scripts across
+      mainnet, testnet, and regtest.
+- [x] Add provenance-bound golden vectors and complete invalid-boundary tests.
+- [x] Run focused and mandatory repository gates, then transition only
+      `STR-012` when the complete pure contract passes.
+
+Plan:
+`docs/parity/work-plans/20260804T131755Z-STR-012/PLAN.md`
+
+Authorization and privacy: this task is pure software work. It authorizes no
+hardware, pool, network, credential, settings, owner-address, mining, ASIC,
+firmware, OTA, direct-UART, or pin effects. Committed address fixtures must be
+public standard vectors, never local owner inputs.
+
+Verification: Complete. Focused strict Clippy, all 258 `bitaxe-stratum` Cargo
+tests, the Bazel crate target, mandatory Rust format/strict Clippy/build/tests,
+Bright Builds checks with zero findings, all 28 Bazel tests, parity with no
+validation errors, progress, redaction, reference cleanliness, and diff checks
+passed. Seven provenance-bound public vectors and six behavior tests cover all
+five standard scripts, three networks, future witness versions, and the closed
+invalid-input boundaries.
+
+Completion review: Completed and promoted only `STR-012` from `not-started` to
+`verified` under transition `20260804T132736Z-STR-012`. The implementation adds
+no dependency or effectful path. Local owner addresses, configured-address
+integration, live payouts, mining, ASIC work, Stratum V2 keys, and hardware
+remain separate.

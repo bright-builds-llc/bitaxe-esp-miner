@@ -48,3 +48,17 @@
 - Blocker or next safe action: Re-run the mandatory gate after this checkpoint,
   commit the implementation, then create and bind `RESULT.md` before the
   `STR-012` transition.
+
+## 2026-08-04 | implementation committed
+
+- Source commit: `1729e847fa6afb51788fc637642f4b67d5378d16`.
+- Actions: Committed the complete pure codec, golden fixture, behavior tests,
+  build wiring, and truthful active-task checkpoint without changing the
+  checklist.
+- Verification: The committed source is the same tree that passed the focused
+  and mandatory implementation gates recorded above.
+- Evidence: `RESULT.md` binds the implementation commit, fixture provenance,
+  exact commands, conclusion, and non-claims.
+- Outcome: Every `STR-012` promotion criterion is satisfied.
+- Blocker or next safe action: Transition only `STR-012`, synchronize progress,
+  archive the completed task, and run the final repository gate.

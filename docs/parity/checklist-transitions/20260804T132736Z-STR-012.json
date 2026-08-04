@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T132736Z-STR-012",
+  "predecessor_sha256": "3c5aaa30f895fc529fe41a863caf2e8f83b8e7ef4cbfd38082d8caa2f0f84711",
+  "result_sha256": "c36772bb9867529dce47738d388d264b3f71547690fcd80f3bac6b528224f963",
+  "row_id": "STR-012",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T131755Z-STR-012/PLAN.md",
+  "plan_sha256": "89aa3d0cd6666b7ab2907365780e420bf8615022abcb50b0a217b9b162e1d112",
+  "result_path": "docs/parity/work-plans/20260804T131755Z-STR-012/RESULT.md",
+  "result_document_sha256": "1a2492a2465c516f914d858b7f4925dfc6841f253b625b83c99fca6470518541",
+  "before_rust_owned_target": "`crates/bitaxe-stratum`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/payout_address.rs`, `crates/bitaxe-stratum/fixtures/payout-address-vectors.json`",
+  "before_status": "not-started",
+  "after_status": "verified",
+  "before_evidence": "pending",
+  "after_evidence": "unit,golden",
+  "before_notes": "Upstream address decoding and validation are inventoried separately from coinbase construction. No Rust codec parity, payout validation, or hardware claim exists.",
+  "after_notes": "The [typed result](work-plans/20260804T131755Z-STR-012/RESULT.md) binds pure canonical Base58Check and Bech32/Bech32m SegWit codecs, standard P2PKH, P2SH, P2WPKH, P2WSH, and P2TR script rendering, exact payout-script validation, seven provenance-bound public golden vectors across mainnet, testnet, and regtest, and fail-closed invalid-boundary tests. Local owner addresses, configured-address integration, live payouts, mining, ASIC work, Stratum V2 keys, and hardware remain separate."
+}
