@@ -498,7 +498,7 @@ detector-gated evidence.
       compatibility admission.
 - [x] Add duplicate suppression plus pure request, subscription, and setting
       decisions without UART, persistence, restart, or hardware effects.
-- [ ] Add synthetic golden regressions, run every mandatory gate, and transition
+- [x] Add synthetic golden regressions, run every mandatory gate, and transition
       only `BAP-002` to `implemented`.
 
 Plan: `docs/parity/work-plans/20260804T180000Z-BAP-002/PLAN.md`
@@ -514,10 +514,11 @@ diagnostic redaction. The ordered Rust sequence, Bright Builds, all 30 Bazel
 tests, parity/progress, redaction, reference cleanliness, sensitive-value
 review, file-size review, and diff checks also pass.
 
-Completion review: The pure implementation and full repository gate are clean;
-exact source commit binding, the typed checklist transition, and final metadata
-publication remain. `BAP-001` continues to own the firmware UART and task
-lifecycle, and live accessory interoperability remains below verified.
+Completion review: The pure protocol implementation is complete, and `BAP-002`
+is `implemented` with `unit,golden` evidence under transition
+`20260804T185000Z-BAP-002`. This task remains active and unarchived because
+`BAP-001` continues to own the firmware UART and task lifecycle, and live
+accessory interoperability remains below verified.
 
 ## Future
 

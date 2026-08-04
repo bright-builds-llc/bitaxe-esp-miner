@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T185000Z-BAP-002",
+  "predecessor_sha256": "e9de0451c0d31cda29a2b34ae41fcba7aa5b34762a9c273752db9e25fd0a8f07",
+  "result_sha256": "c96b45640e3b5223ac0f5268427f1ecd10404e9e6462d0acb2bc92f2cea794af",
+  "row_id": "BAP-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T180000Z-BAP-002/PLAN.md",
+  "plan_sha256": "6df869841b997878468df3c0a32ae1cdcb971bdfb48ff808aec574cb84ec89f9",
+  "result_path": "docs/parity/work-plans/20260804T180000Z-BAP-002/RESULT.md",
+  "result_document_sha256": "034a93405f3984b4ffbffb63d148facae10ad2f9e0528c1b43bd935fb14f94ae",
+  "before_rust_owned_target": "`crates/bitaxe-core`, `firmware/bitaxe`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/bap.rs`, `crates/bitaxe-core/src/bap/wire.rs`, `crates/bitaxe-core/src/bap/semantics.rs`",
+  "before_status": "not-started",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,golden",
+  "before_notes": "Framing, command semantics, error behavior, and live UART interoperability remain unimplemented and unverified.",
+  "after_notes": "Bounded BAP framing, checksum compatibility, duplicate admission, request projection, subscription decisions, setting validation, and closed errors are implemented in the pure core; firmware UART and live accessory interoperability remain pending. Result: docs/parity/work-plans/20260804T180000Z-BAP-002/RESULT.md."
+}

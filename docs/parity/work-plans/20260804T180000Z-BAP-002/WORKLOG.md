@@ -56,3 +56,20 @@
   was inferred.
 - Blocker or next safe action: Commit the implementation, bind `RESULT.md` to
   that exact commit, apply the typed `BAP-002` transition, and publish metadata.
+
+## 2026-08-04T18:50:00Z | implementation committed and transitioned
+
+- Source commit: `c88ae0470e41716f011be2162d0a084bd1ac02c4`.
+- Actions: Bound `RESULT.md` to the exact implementation and reference commits,
+  applied typed transition `20260804T185000Z-BAP-002`, and synchronized the
+  progress ledger from the same source commit.
+- Verification: The transition tool accepted the conservative `implemented`
+  status, `unit,golden` evidence, exact pure-core ownership targets, immutable
+  plan, and commit-bound result. The progress ledger remains at 39 of 94 active
+  rows verified (41.5%).
+- Evidence: `RESULT.md`, the typed transition receipt, updated checklist, and
+  synchronized progress ledger.
+- Outcome: `BAP-002` is implemented without a live accessory or firmware UART
+  claim. No hardware or sensitive runtime value was used or published.
+- Blocker or next safe action: Re-run the required commit gates for the metadata
+  tree, publish it, and resume deterministic parity selection.
