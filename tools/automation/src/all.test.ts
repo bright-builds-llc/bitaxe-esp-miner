@@ -2,6 +2,7 @@ import "./contracts.test.js";
 import "./ci-contract.test.js";
 import "./detector.test.js";
 import "./flash-child-diagnostics.test.js";
+import "./firmware-stack-budget.test.js";
 import "./http.test.js";
 import "./invocation.test.js";
 import "./operator-snapshot-evidence.test.js";

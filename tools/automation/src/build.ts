@@ -2,6 +2,7 @@ import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promi
 import path from "node:path";
 
 import { internalCommandSpec } from "./contracts.generated.js";
+import { verifyFirmwareStackBudget } from "./firmware-stack-budget.js";
 import type { ProcessPort } from "./process.js";
 
 export type BuildFirmwareRequest = {
@@ -59,6 +60,16 @@ export async function buildFirmware(
   if (cargo.exitCode !== 0) throw new Error("firmware Cargo build failed");
 
   const sourceElf = path.join(cargoTargetDir, target, "release", packageName);
+  const disassembly = await processPort.run(internalCommandSpec(
+    "xtensa-esp32s3-elf-objdump",
+    ["-d", "-C", sourceElf],
+    (value) => value,
+    espEnvironment,
+  ));
+  if (disassembly.timedOut || disassembly.exitCode !== 0) {
+    throw new Error("firmware stack disassembly failed");
+  }
+  verifyFirmwareStackBudget(disassembly.stdout);
   await copyFile(sourceElf, path.join(outputDir, `${packageName}.elf`));
   const buildLabel = await requiredStampField(provenanceStamp, "build_label");
   const generated = await findGeneratedIdfBuild(cargoTargetDir, buildLabel);

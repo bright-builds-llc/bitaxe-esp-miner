@@ -33,3 +33,28 @@
   without amendment.
 - Blocker or next safe action: Commit and push this checkpoint, then turn the
   existing screen source regression red before implementation.
+
+## 2026-08-04T23:25:36Z | bounded physical-screen stack path complete
+
+- Source commit: `2fbee117` plan checkpoint.
+- Actions: Replaced the physical screen's full API snapshot call path with a
+  narrow atomic command projection plus direct read-only health, safety,
+  Wi-Fi, catalog, build, and pool projections. Restored the unrelated boot
+  observer to its original 8 KiB stack and integrated a fail-closed demangled
+  ELF entry-frame audit into the canonical firmware build.
+- Verification: The focused screen ownership regression failed before the
+  implementation and passed afterward. The real packaged ELF reports 2,048
+  bytes for `operator_sensor_runtime::run`, 960 bytes for
+  `collect_screen_snapshot`, and 3,008 bytes combined against 3 KiB individual
+  and 4 KiB combined limits. Formatting, strict Clippy, all-target/all-feature
+  build and tests, Bright Builds, all 35 Bazel tests, canonical build/package,
+  parity validation/progress, redaction, pinned-reference cleanliness,
+  selector stability, immutable-plan, and diff checks passed.
+- Evidence: Public source, deterministic tests, canonical build outcomes, and
+  bounded stack-frame sizes only. No credential, device, network, or protected
+  hardware value was read or published.
+- Outcome: The root-cause fix is software-complete and ready for its clean
+  pushed exact-package checkpoint.
+- Blocker or next safe action: Commit and push this implementation, confirm a
+  clean synchronized tree, then run the single contracted detector and
+  conditional attempt-008 capture without retry.

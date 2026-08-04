@@ -1184,13 +1184,13 @@ transaction.
 
 ### task-parity-api010-live-theme-durability-attempt-008 | 2026-08-04 | Remove oversized screen snapshot path
 
-- [ ] Commit and push the linked immutable attempt-008 plan before source
+- [x] Commit and push the linked immutable attempt-008 plan before source
       changes.
-- [ ] Replace the full API-snapshot screen dependency with a narrow read-only
+- [x] Replace the full API-snapshot screen dependency with a narrow read-only
       projection and remove the disproven observer-stack workaround.
-- [ ] Add a red/green source regression and canonical ELF entry-frame audit,
+- [x] Add a red/green source regression and canonical ELF entry-frame audit,
       then run the complete software gate.
-- [ ] Commit and push the clean exact-package fix before hardware.
+- [x] Commit and push the clean exact-package fix before hardware.
 - [ ] Run exactly one protected detector and conditional attempt-008 capture;
       promote only `API-010` on complete typed evidence, otherwise withhold
       evidence, keep `implemented`, and stop.
@@ -1212,7 +1212,14 @@ task authorization covers one attempt-008 only after the software fix is
 clean, verified, committed, and pushed. No manual electrical action is
 required.
 
-Verification: Pending.
+Verification: The focused source ownership test failed before the projection
+change and passed afterward. The canonical build now audits the real demangled
+ELF and measures 2,048 bytes for the operator-sensor entry frame plus 960 bytes
+for the screen collector, 3,008 bytes combined. Formatting, strict Clippy,
+all-target/all-feature build and tests, Bright Builds, all 35 Bazel tests,
+canonical firmware build/package, parity validation/progress, redaction,
+reference cleanliness, selector stability, immutable-plan, and diff checks
+passed.
 
 Completion review: Pending. This task claims no network discovery, mining,
 ASIC, hardware-control, display-input, OTA, partition, recovery, other-board,

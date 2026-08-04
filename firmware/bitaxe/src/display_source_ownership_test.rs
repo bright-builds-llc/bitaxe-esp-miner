@@ -118,10 +118,16 @@ fn screen_projection_is_read_only_and_keeps_private_values_out_of_logs() {
     let source = &SCREEN_SNAPSHOT_SOURCE[start..end];
 
     // Act / Assert
-    assert!(source.contains("let candidate = collect_operator_snapshot_candidate(false)"));
-    assert!(source.contains("let command_state = command_visible_state()"));
-    assert!(source.contains("let snapshot = complete_api_snapshot(candidate)"));
-    assert!(source.contains("screen_pool_host(snapshot.mining.fallback_active)"));
+    assert!(source.contains("let command = screen_command_projection(now_ms)"));
+    assert!(source.contains("SafeTelemetrySnapshot::from_observations"));
+    assert!(source.contains("runtime_health_adapter::collect(now_ms)"));
+    assert!(source.contains("wifi_adapter::current_wifi_snapshot()"));
+    assert!(source.contains("ultra_205_catalog_entry()"));
+    assert!(source.contains("screen_pool_host(command.fallback_active)"));
+    assert!(!source.contains("collect_operator_snapshot_candidate"));
+    assert!(!source.contains("complete_api_snapshot"));
+    assert!(!source.contains("ApiSnapshot"));
+    assert!(!source.contains("RuntimeTelemetryProjection"));
     assert!(!source.contains("publish_operator_snapshot("));
     assert!(!source.contains("maybe_drain_pending_runtime_sample_marker"));
     assert!(!source.contains("retain_completed_operator_snapshot"));

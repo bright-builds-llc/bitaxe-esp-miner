@@ -24,7 +24,7 @@ static BOOT_ORDINAL: OnceLock<u64> = OnceLock::new();
 static RESET_REASON: OnceLock<ResetReasonCategory> = OnceLock::new();
 static CONNECTED_ORIGIN: OnceLock<Mutex<Option<ConnectedOriginReplay>>> = OnceLock::new();
 static RUNTIME_ATTESTATION: OnceLock<Mutex<Option<RuntimeAttestationReplay>>> = OnceLock::new();
-const OBSERVER_THREAD_STACK_BYTES: usize = 16 * 1024;
+const OBSERVER_THREAD_STACK_BYTES: usize = 8 * 1024;
 const OBSERVER_THREAD_NAME: &str = "runtime-observer";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

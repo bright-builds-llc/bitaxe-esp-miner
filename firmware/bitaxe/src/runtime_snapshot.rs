@@ -1,6 +1,7 @@
 //! Firmware collection boundary for pure AxeOS API response snapshots.
 
 mod screen;
+mod screen_projection;
 
 pub use screen::collect_screen_snapshot;
 
