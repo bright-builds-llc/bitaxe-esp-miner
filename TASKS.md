@@ -410,6 +410,27 @@ remains active and unarchived because the hardware breadcrumb predates the
 retry change; live transient-fault, timeout, and shared-bus behavior remain
 unverified. No hardware, credentials, mining, controls, OTA, UART, or pins ran.
 
+### task-parity-io002-adc-observation | 2026-08-04 | Implement calibrated ADC observation
+
+- [ ] Add a pure stamped core-voltage acquisition path with explicit unavailable,
+      stale, and fault truth.
+- [ ] Own ESP32-S3 ADC1 channel 1 on GPIO2 through the ESP-IDF oneshot curve-
+      calibrated adapter and the sole operator sensor producer.
+- [ ] Project only fresh values to `coreVoltageActual`, add focused regressions,
+      build firmware, run mandatory gates, and transition only `IO-002` to
+      `implemented`.
+
+Plan: `docs/parity/work-plans/20260804T140933Z-IO-002/PLAN.md`
+
+Authorization: read-only local software work. No hardware, credentials,
+network requests, mining, voltage/fan/power effects, OTA, direct UART, or pins.
+
+Verification: Pending.
+
+Completion review: Pending. Live ADC calibration accuracy, millivolt values,
+cadence, failure behavior, and API correlation remain below verified and need a
+separately task-gated detector capture.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
