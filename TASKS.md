@@ -340,9 +340,10 @@ run.
       post-restart readback, and restoration of the original hostname.
 - [x] Add private-first artifact handling, a closed public projection, strict
       detector-output admission, bounded recovery, and regression coverage.
-- [ ] Run one detector-gated Ultra 205 attempt and transition only
-      `V12-HOSTNAME-205` if persistence and restoration both pass.
-- [ ] Run all mandatory gates, synchronize progress, and archive the task.
+- [x] Run the bounded detector-gated Ultra 205 attempts and leave
+      `V12-HOSTNAME-205` implemented because persistence evidence did not pass.
+- [x] Run all mandatory gates and record the terminal blocker without a
+      checklist transition, progress synchronization, or task archival.
 
 Plan:
 `docs/parity/work-plans/20260803T232954Z-V12-HOSTNAME-205/PLAN.md`
@@ -376,10 +377,22 @@ admission, completed exact-package flash, safe initial capture, hostname PATCH,
 and normal restart, then failed closed because the monitor was launched after
 USB restart and produced no post-restart artifact. The public projection was
 withheld. Recovery PATCH and private readback confirmed the original hostname
-was restored; no recovery flash ran. Attempt 002 is permitted only after the
-regression-backed pre-acquired passive-monitor fix is clean and pushed. It uses
-the same command, privacy, effects, recovery, and stop contract with
-`attempt-002` paths and is the final retry for this task.
+was restored; no recovery flash ran. Attempt 002 used the regression-backed
+pre-acquired passive monitor from clean pushed source commit `ca3eeb1c`, passed
+fresh detector admission and the same exact-package flash, PATCH, immediate
+readback, and restart boundaries, then exhausted the post-restart capture
+without producing an artifact. It failed closed with `process_failed`; the
+public projection remained absent. A value-free private comparison proved the
+recovery readback matched the original hostname, and no recovery flash ran.
+
+Completion review: `stop_hardware_blocker`. The implementation and recovery
+contract are complete, but neither permitted hardware attempt produced the
+post-restart observation required to prove hostname durability. The second
+attempt tested the targeted pre-acquisition correction and reached the same
+missing-artifact boundary after the bounded monitor window. The final retry is
+consumed, the row remains `implemented`, progress is unchanged, and this task
+remains active and unarchived as a terminal blocker. No further hostname
+mutation or hardware retry is authorized by this task.
 
 ## Future
 
