@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T215500Z-STAT-002",
+  "predecessor_sha256": "193c69f3a52df8a7175e42b253c116de64e62224e57a3ce8c10b18be6da7a133",
+  "result_sha256": "a74504fb1ed7f387e946a3545613bd197a321af71348009db542089ee5eec751",
+  "row_id": "STAT-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T211000Z-STAT-002/PLAN.md",
+  "plan_sha256": "49183ceae700eb0352063bee3a810d897b77e150c98be5b80338fdd0d8878da8",
+  "result_path": "docs/parity/work-plans/20260804T211000Z-STAT-002/RESULT.md",
+  "result_document_sha256": "ac2695e70ee64edbd26d77b078a853d676673b10d8dcbbaadce6cb8a5ae4aeb8",
+  "before_rust_owned_target": "`crates/bitaxe-api`, `crates/bitaxe-safety`, `firmware/bitaxe/src/safety_adapter.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/statistics.rs`, `crates/bitaxe-api/src/statistics/history.rs`, `firmware/bitaxe/src/statistics_runtime.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`, `firmware/bitaxe/src/settings_adapter.rs`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "unit,api-compare",
+  "after_evidence": "unit,workflow,api-compare",
+  "before_notes": "Phase 05 implements compatible statistics response shape and Phase 6 projects explicit safety telemetry into statistics samples. Phase 17 live HTTP/WebSocket evidence proves route and frame transport surfaces, but it does not prove a live statistics producer history or mining/load-derived samples. Phase 20 final evidence in `evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md` and `evidence/phase-20-active-safety-hardware-telemetry-evidence/live-api-websocket-telemetry.md` keeps live safety telemetry/statistics correlation below verified because no explicit target was available. Phase 21 final evidence in `evidence/phase-21-live-mining-and-soak-evidence/summary.md` records controlled no-share runtime statistics correlation with zero share counters, zero hashrate inputs, active pool lifecycle, redacted API/WebSocket samples, and no accepted/rejected shares. Phase 26 evidence in `docs/parity/evidence/phase-26-telemetry-and-parity-closure/summary.md`, `statistics-scoreboard.md`, and `redaction-review.md` records `statistics_history_status: no_request_time_fabrication`, `statistics_sample_source: runtime_projection_marker_only`, `redaction_status: passed`, and exact_non_claims. Production statistics history remains below verified.",
+  "after_notes": "The commit-bound result at docs/parity/work-plans/20260804T211000Z-STAT-002/RESULT.md proves the bounded 720-sample history, exact reference eviction, confirmed-setting lookup, one-second sole producer, typed runtime projection, and request-time read-only ownership. Live cadence, hardware telemetry accuracy, long-duration retention, device API, browser UI, mining, safety controls, and release claims remain separate."
+}

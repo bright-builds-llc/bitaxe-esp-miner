@@ -40,3 +40,26 @@
 - Blocker or next safe action: Run the mandatory Rust sequence once more on this
   checkpoint, commit the implementation, then create and validate the typed
   transition metadata against that exact commit.
+
+## 2026-08-04T16:54:19Z | typed transition checkpoint
+
+- Source commit: `35f8bb676b91bdb702dd9026cb0379f5b12e45e6`.
+- Actions: Wrote the commit-bound RESULT, transitioned only STAT-002 from
+  `in-progress` to `implemented` with `unit,workflow,api-compare`, and appended
+  the hash-chained progress record.
+- Verification: Transition `20260804T215500Z-STAT-002` binds plan SHA-256
+  `49183ceae700eb0352063bee3a810d897b77e150c98be5b80338fdd0d8878da8`,
+  result-document SHA-256
+  `ac2695e70ee64edbd26d77b078a853d676673b10d8dcbbaadce6cb8a5ae4aeb8`,
+  and checklist SHA-256
+  `a74504fb1ed7f387e946a3545613bd197a321af71348009db542089ee5eec751`.
+- Correction: The final parity gate rejected the first uncommitted transition
+  output because its Rust-owned targets lacked required code-span formatting.
+  That generated output was discarded and the same typed transition was
+  regenerated with individually delimited targets; parity then reported no
+  validation errors.
+- Evidence: `RESULT.md`, the typed transition receipt, and the progress ledger.
+- Outcome: STAT-002 is implemented; the verified count remains 39 of 94 active
+  rows because no live-device evidence was claimed.
+- Blocker or next safe action: Run final metadata gates, commit and push the
+  transition, then resume deterministic selection.

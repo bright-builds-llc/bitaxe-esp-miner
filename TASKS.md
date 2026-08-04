@@ -596,10 +596,12 @@ Rust format/Clippy/build/test sequence, Bright Builds checks, all 32 Bazel test
 targets, parity validation/progress, redaction, reference cleanliness, and diff
 checks passed on the implementation tree.
 
-Completion review: Software implementation is complete and awaiting exact
-commit binding plus the typed `implemented` transition. Live cadence, telemetry
-accuracy, long-duration retention, device API, and browser behavior remain
-below verified.
+Completion review: Implementation commit
+`35f8bb676b91bdb702dd9026cb0379f5b12e45e6` and typed transition
+`20260804T215500Z-STAT-002` establish `implemented` with
+`unit,workflow,api-compare` evidence. The task remains active because live
+cadence, telemetry accuracy, long-duration retention, device API, and browser
+behavior remain below verified.
 
 ## Future
 
