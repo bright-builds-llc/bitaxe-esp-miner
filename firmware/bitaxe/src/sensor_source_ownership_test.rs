@@ -3,6 +3,7 @@ mod safety_request_queue;
 
 const OPERATOR_SENSOR_RUNTIME_SOURCE: &str = include_str!("operator_sensor_runtime.rs");
 const SAFETY_ADAPTER_SOURCE: &str = include_str!("safety_adapter.rs");
+const ADC_SOURCE: &str = include_str!("safety_adapter/adc.rs");
 const OBSERVATION_STORE_SOURCE: &str = include_str!("safety_adapter/observation_store.rs");
 const I2C_BUS_SOURCE: &str = include_str!("safety_adapter/i2c_bus.rs");
 const I2C_RETRY_SOURCE: &str = include_str!("safety_adapter/i2c_retry.rs");
@@ -16,14 +17,15 @@ const PRODUCTION_ASIC_WORKER_SOURCE: &str =
     include_str!("production_mining_session/asic_worker.rs");
 const SETTINGS_ADAPTER_SOURCE: &str = include_str!("settings_adapter.rs");
 const SETTINGS_PRODUCTION_SOURCE: &str = include_str!("settings_adapter/production.rs");
+const STARTUP_SOURCE: &str = include_str!("startup.rs");
 
 #[test]
 fn operator_sensor_runtime_is_the_single_normal_acquisition_caller() {
     // Arrange
     let required_calls = [
-        "safety_adapter::read_power_acquisition(&mut owner)",
-        "safety_adapter::read_asic_temperature_acquisition(&mut owner)",
-        "safety_adapter::read_tachometer_acquisition(&mut owner)",
+        "safety_adapter::read_power_acquisition(owner)",
+        "safety_adapter::read_asic_temperature_acquisition(owner)",
+        "safety_adapter::read_tachometer_acquisition(owner)",
     ];
 
     // Act / Assert
@@ -37,6 +39,28 @@ fn operator_sensor_runtime_is_the_single_normal_acquisition_caller() {
         );
         assert!(!PRODUCTION_SESSION_SOURCE.contains(required_call));
     }
+}
+
+#[test]
+fn core_voltage_adc_has_one_semantic_producer_and_exact_ultra205_configuration() {
+    // Arrange
+    let producer_call = "safety_adapter::read_core_voltage_acquisition";
+
+    // Act / Assert
+    assert_eq!(OPERATOR_SENSOR_RUNTIME_SOURCE.matches(producer_call).count(), 1);
+    assert_eq!(SAFETY_ADAPTER_SOURCE.matches("adc.read_millivolts()").count(), 1);
+    assert!(ADC_SOURCE.contains("ADCCH1"));
+    assert!(ADC_SOURCE.contains("Gpio2"));
+    assert!(ADC_SOURCE.contains("attenuation::DB_12"));
+    assert!(ADC_SOURCE.contains("resolution: Resolution::new()"));
+    assert!(ADC_SOURCE.contains("calibration: Calibration::Curve"));
+    assert_eq!(
+        STARTUP_SOURCE
+            .matches("Ultra205CoreVoltageAdc::new")
+            .count(),
+        1
+    );
+    assert!(!PRODUCTION_SESSION_SOURCE.contains(producer_call));
 }
 
 #[test]

@@ -1,3 +1,4 @@
+pub mod core_voltage_acquisition;
 pub mod effects;
 pub mod evidence;
 pub mod fault;

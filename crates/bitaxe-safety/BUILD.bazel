@@ -3,6 +3,7 @@ load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 rust_library(
     name = "bitaxe_safety",
     srcs = [
+        "src/core_voltage_acquisition.rs",
         "src/effects.rs",
         "src/evidence.rs",
         "src/fault.rs",

@@ -334,7 +334,7 @@ mod tests {
         assert_eq!(sample.timestamp, 123);
         assert_eq!(sample.asic_temp, 56.0);
         assert_eq!(sample.vr_temp, 45.0);
-        assert_eq!(sample.asic_voltage, 0);
+        assert_eq!(sample.asic_voltage, 1_198);
         assert_eq!(sample.voltage, 5.1);
         assert_eq!(sample.power, 11.5);
         assert_eq!(sample.current, 2.25);
@@ -367,6 +367,7 @@ mod tests {
             power_watts: fresh_f64(11.5, 1),
             bus_voltage_volts: fresh_f64(5.1, 2),
             current_amps: fresh_f64(2.25, 3),
+            core_voltage_actual_mv: fresh_f64(1_198.0, 7),
             chip_temp_celsius: fresh_f64(56.0, 4),
             vr_temp_celsius: fresh_f64(45.0, 5),
             fan_rpm: fresh_u16(3_200, 6),

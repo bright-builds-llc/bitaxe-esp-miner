@@ -173,6 +173,7 @@ pub enum UnavailableReason {
     ProducerUnavailable,
     UnsupportedOnBoard,
     PowerSampleUnavailable,
+    CoreVoltageUnavailable,
     ThermalReadingUnavailable,
     TachometerUnavailable,
 }
@@ -185,6 +186,7 @@ impl UnavailableReason {
             Self::ProducerUnavailable => "producer_unavailable",
             Self::UnsupportedOnBoard => "unsupported_on_board",
             Self::PowerSampleUnavailable => "power_sample_unavailable",
+            Self::CoreVoltageUnavailable => "core_voltage_unavailable",
             Self::ThermalReadingUnavailable => "thermal_reading_unavailable",
             Self::TachometerUnavailable => "tachometer_unavailable",
         }
@@ -197,6 +199,8 @@ pub enum FaultReason {
     ReadFailed,
     InvalidSample,
     UnsafeReading,
+    AdcReadFailed,
+    CoreVoltageReadingInvalid,
     Ina260ReadFailed,
     InputVoltageUnsafe,
     PowerLimitExceeded,
@@ -211,6 +215,8 @@ impl FaultReason {
             Self::ReadFailed => "read_failed",
             Self::InvalidSample => "invalid_sample",
             Self::UnsafeReading => "unsafe_reading",
+            Self::AdcReadFailed => "adc_read_failed",
+            Self::CoreVoltageReadingInvalid => "core_voltage_reading_invalid",
             Self::Ina260ReadFailed => "ina260_read_failed",
             Self::InputVoltageUnsafe => "input_voltage_unsafe",
             Self::PowerLimitExceeded => "power_limit_exceeded",

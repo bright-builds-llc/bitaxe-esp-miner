@@ -94,6 +94,8 @@ pub struct SystemInfoWire {
     pub core_voltage: u16,
     #[serde(rename = "coreVoltageActual")]
     pub core_voltage_actual: f64,
+    #[serde(rename = "coreVoltageActualStatus")]
+    pub core_voltage_actual_status: ObservationTruthWire,
     #[serde(rename = "power")]
     pub power: f64,
     #[serde(rename = "powerStatus")]
@@ -241,6 +243,7 @@ impl SystemInfoWire {
             actual_frequency: safe_telemetry.actual_frequency_mhz,
             core_voltage: config.asic_voltage_mv,
             core_voltage_actual: safe_telemetry.core_voltage_actual_mv,
+            core_voltage_actual_status: safe_telemetry.core_voltage_status,
             power: safe_telemetry.power_watts,
             power_status: safe_telemetry.power_status,
             voltage: safe_telemetry.voltage_volts,

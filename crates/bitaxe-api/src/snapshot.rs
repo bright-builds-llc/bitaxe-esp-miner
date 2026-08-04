@@ -244,6 +244,7 @@ pub struct SafeTelemetrySnapshot {
     pub power_status: ObservationTruthWire,
     pub voltage_status: ObservationTruthWire,
     pub current_status: ObservationTruthWire,
+    pub core_voltage_status: ObservationTruthWire,
     pub chip_temp_status: ObservationTruthWire,
     pub vr_temp_status: ObservationTruthWire,
     pub fan_rpm_status: ObservationTruthWire,
@@ -289,6 +290,9 @@ impl SafeTelemetrySnapshot {
         if !is_fresh_stamped(self.current_status) {
             self.current_amps = 0.0;
         }
+        if !is_fresh_stamped(self.core_voltage_status) {
+            self.core_voltage_actual_mv = 0.0;
+        }
         if !is_fresh_stamped(self.chip_temp_status) {
             self.chip_temp_celsius = 0.0;
         }
@@ -308,6 +312,7 @@ impl SafeTelemetrySnapshot {
         let supported_facts_fresh = observations.power_watts.is_fresh()
             && observations.bus_voltage_volts.is_fresh()
             && observations.current_amps.is_fresh()
+            && observations.core_voltage_actual_mv.is_fresh()
             && observations.chip_temp_celsius.is_fresh()
             && observations.fan_rpm.is_fresh();
 
@@ -323,12 +328,14 @@ impl SafeTelemetrySnapshot {
             power_watts: fresh_f64(&observations.power_watts),
             voltage_volts: fresh_f64(&observations.bus_voltage_volts),
             current_amps: fresh_f64(&observations.current_amps),
+            core_voltage_actual_mv: fresh_f64(&observations.core_voltage_actual_mv),
             chip_temp_celsius: fresh_f64(&observations.chip_temp_celsius),
             vr_temp_celsius: fresh_f64(&observations.vr_temp_celsius),
             fan_rpm: fresh_u16(&observations.fan_rpm),
             power_status: (&observations.power_watts).into(),
             voltage_status: (&observations.bus_voltage_volts).into(),
             current_status: (&observations.current_amps).into(),
+            core_voltage_status: (&observations.core_voltage_actual_mv).into(),
             chip_temp_status: (&observations.chip_temp_celsius).into(),
             vr_temp_status: (&observations.vr_temp_celsius).into(),
             fan_rpm_status: (&observations.fan_rpm).into(),
@@ -358,6 +365,7 @@ impl SafeTelemetrySnapshot {
             power_status: legacy_unavailable_truth(),
             voltage_status: legacy_unavailable_truth(),
             current_status: legacy_unavailable_truth(),
+            core_voltage_status: legacy_unavailable_truth(),
             chip_temp_status: legacy_unavailable_truth(),
             vr_temp_status: legacy_unavailable_truth(),
             fan_rpm_status: legacy_unavailable_truth(),

@@ -74,28 +74,45 @@ fn initialize_hardware(
         tx: pins.gpio17,
         rx: pins.gpio18,
     };
-    match safety_adapter::BitaxeI2cBus::new(peripherals.i2c0, pins.gpio47, pins.gpio48) {
-        Ok(bus) => initialize_operator_display(bus, startup_debug_text),
-        Err(error) => {
-            log::warn!("display_status=unavailable reason=i2c0_init_failed error={error:#}");
-            display_adapter::publish_runtime_display_input_boundary(
-                display_adapter::RuntimeDisplayMode::Unavailable,
-            );
-        }
-    }
+    let maybe_core_voltage_adc =
+        match safety_adapter::Ultra205CoreVoltageAdc::new(peripherals.adc1, pins.gpio2) {
+            Ok(adc) => {
+                log::info!("core_voltage_adc=available calibration=curve");
+                Some(adc)
+            }
+            Err(error) => {
+                log::warn!(
+                    "core_voltage_adc=unavailable reason=initialization_failed error={error:#}"
+                );
+                None
+            }
+        };
+    let maybe_i2c_bus =
+        match safety_adapter::BitaxeI2cBus::new(peripherals.i2c0, pins.gpio47, pins.gpio48) {
+            Ok(bus) => Some(bus),
+            Err(error) => {
+                log::warn!("display_status=unavailable reason=i2c0_init_failed error={error:#}");
+                display_adapter::publish_runtime_display_input_boundary(
+                    display_adapter::RuntimeDisplayMode::Unavailable,
+                );
+                None
+            }
+        };
+    initialize_operator_runtime(maybe_i2c_bus, maybe_core_voltage_adc, startup_debug_text);
     (
         asic_adapter::run_boot_gate_with_peripherals(boot_peripherals),
         Some(modem),
     )
 }
 
-fn initialize_operator_display(
-    mut bus: safety_adapter::BitaxeI2cBus<'static>,
+fn initialize_operator_runtime(
+    mut maybe_bus: Option<safety_adapter::BitaxeI2cBus<'static>>,
+    maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
     startup_debug_text: StartupDebugText,
 ) {
     let startup_frame = startup_debug_text.frame_at(runtime_uptime::millis());
-    let maybe_runtime_display =
-        match display_adapter::render_startup_debug_text(&mut bus, &startup_frame) {
+    let maybe_runtime_display = if let Some(bus) = maybe_bus.as_mut() {
+        match display_adapter::render_startup_debug_text(bus, &startup_frame) {
             Ok(()) => {
                 log::info!("operator_sensor_display=rendered");
                 Some(startup_debug_text)
@@ -106,9 +123,17 @@ fn initialize_operator_display(
                 );
                 None
             }
-        };
+        }
+    } else {
+        None
+    };
     let runtime_display_enabled = maybe_runtime_display.is_some();
-    if let Err(error) = operator_sensor_runtime::start(bus.into_runtime(), maybe_runtime_display) {
+    let maybe_runtime_owner = maybe_bus.map(safety_adapter::BitaxeI2cBus::into_runtime);
+    if let Err(error) = operator_sensor_runtime::start(
+        maybe_runtime_owner,
+        maybe_core_voltage_adc,
+        maybe_runtime_display,
+    ) {
         log::warn!(
             "operator_sensor_runtime=unavailable reason=thread_spawn_failed error={error:#}"
         );

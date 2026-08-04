@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use bitaxe_api::{project_observation, TelemetryObservations};
 use bitaxe_core::StartupDebugText;
 use bitaxe_safety::{
+    core_voltage_acquisition::CoreVoltageProducerState,
     observation::{BootSessionId, MonotonicMillis, UnavailableReason},
     sensor_acquisition::{
         reduce_sensor_sweep, AcquisitionOutcome, ProducerSensorState, ProducerSequences,
@@ -26,18 +27,32 @@ const PRODUCER_THREAD_NAME: &str = "operator-sensors";
 const PRODUCER_THREAD_STACK_BYTES: usize = 8 * 1024;
 
 pub fn start(
-    owner: RuntimeI2cOwner<'static>,
+    maybe_owner: Option<RuntimeI2cOwner<'static>>,
+    maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
     maybe_display_text: Option<StartupDebugText>,
 ) -> Result<()> {
-    let (actuation_registration, actuation_inbox) =
-        safety_adapter::prepare_safety_actuation_owner();
+    let (maybe_actuation_registration, maybe_actuation_inbox) = if maybe_owner.is_some() {
+        let (registration, inbox) = safety_adapter::prepare_safety_actuation_owner();
+        (Some(registration), Some(inbox))
+    } else {
+        (None, None)
+    };
     thread::Builder::new()
         .name(PRODUCER_THREAD_NAME.to_owned())
         .stack_size(PRODUCER_THREAD_STACK_BYTES)
-        .spawn(move || run(owner, maybe_display_text, actuation_inbox))
+        .spawn(move || {
+            run(
+                maybe_owner,
+                maybe_core_voltage_adc,
+                maybe_display_text,
+                maybe_actuation_inbox,
+            )
+        })
         .context("spawn operator sensor producer")?;
-    safety_adapter::publish_safety_actuation_owner(actuation_registration)
-        .context("publish operator sensor actuation owner")?;
+    if let Some(actuation_registration) = maybe_actuation_registration {
+        safety_adapter::publish_safety_actuation_owner(actuation_registration)
+            .context("publish operator sensor actuation owner")?;
+    }
     log::info!(
         "operator_sensor_runtime=started cadence_ms={SENSOR_SWEEP_CADENCE_MS} display_refresh_ms={DISPLAY_REFRESH_CADENCE_MS}"
     );
@@ -45,12 +60,14 @@ pub fn start(
 }
 
 fn run(
-    mut owner: RuntimeI2cOwner<'static>,
+    mut maybe_owner: Option<RuntimeI2cOwner<'static>>,
+    mut maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
     mut maybe_display_text: Option<StartupDebugText>,
-    actuation_inbox: SafetyActuationOwnerInbox,
+    maybe_actuation_inbox: Option<SafetyActuationOwnerInbox>,
 ) -> ! {
     let boot_session = new_boot_session_id();
     let mut state = ProducerSensorState::default();
+    let mut core_voltage_state = CoreVoltageProducerState::default();
     let mut sequences = ProducerSequences::default();
     let mut next_deadline_ms = crate::runtime_uptime::millis();
     let mut next_display_deadline_ms = next_deadline_ms.saturating_add(DISPLAY_REFRESH_CADENCE_MS);
@@ -62,12 +79,26 @@ fn run(
         let now_ms = crate::runtime_uptime::millis();
 
         if now_ms >= next_deadline_ms {
-            let power = safety_adapter::read_power_acquisition(&mut owner);
-            let asic_temperature_celsius =
-                safety_adapter::read_asic_temperature_acquisition(&mut owner);
+            let (power, asic_temperature_celsius, tachometer_rpm) =
+                if let Some(owner) = maybe_owner.as_mut() {
+                    (
+                        safety_adapter::read_power_acquisition(owner),
+                        safety_adapter::read_asic_temperature_acquisition(owner),
+                        safety_adapter::read_tachometer_acquisition(owner),
+                    )
+                } else {
+                    (
+                        AcquisitionOutcome::Unavailable(UnavailableReason::ProducerUnavailable),
+                        AcquisitionOutcome::Unavailable(UnavailableReason::ProducerUnavailable),
+                        AcquisitionOutcome::Unavailable(UnavailableReason::ProducerUnavailable),
+                    )
+                };
             let vr_temperature_celsius =
                 AcquisitionOutcome::Unavailable(UnavailableReason::UnsupportedOnBoard);
-            let tachometer_rpm = safety_adapter::read_tachometer_acquisition(&mut owner);
+            let core_voltage_millivolts = maybe_core_voltage_adc.as_mut().map_or(
+                AcquisitionOutcome::Unavailable(UnavailableReason::CoreVoltageUnavailable),
+                safety_adapter::read_core_voltage_acquisition,
+            );
             let acquired_at = MonotonicMillis::new(crate::runtime_uptime::millis());
             let outcomes = SensorSweepOutcomes {
                 power,
@@ -93,26 +124,49 @@ fn run(
                 }
             }
 
-            safety_adapter::replace_observations_from_producer(project_observations(state));
+            match core_voltage_state.record(core_voltage_millivolts, boot_session, acquired_at) {
+                Ok(next_state) => {
+                    core_voltage_state =
+                        next_state.mark_stale_at(acquired_at, SENSOR_STALE_AFTER_MS);
+                }
+                Err(_) => {
+                    log::warn!("core_voltage_adc=fault category=sequence_overflow");
+                }
+            }
+
+            safety_adapter::replace_observations_from_producer(project_observations(
+                state,
+                core_voltage_state,
+            ));
             next_deadline_ms = next_future_deadline(next_deadline_ms);
         }
 
         if now_ms >= next_display_deadline_ms {
-            refresh_display(
-                &mut owner,
-                &mut maybe_display_text,
-                &mut maybe_last_display_line,
-                now_ms,
-            );
+            if let Some(owner) = maybe_owner.as_mut() {
+                refresh_display(
+                    owner,
+                    &mut maybe_display_text,
+                    &mut maybe_last_display_line,
+                    now_ms,
+                );
+            }
             next_display_deadline_ms = now_ms.saturating_add(DISPLAY_REFRESH_CADENCE_MS);
         }
 
         let next_owner_deadline_ms = next_deadline_ms.min(next_display_deadline_ms);
         let wait = duration_until(next_owner_deadline_ms);
-        if safety_adapter::service_next_safety_actuation_request(&mut owner, &actuation_inbox, wait)
-            == SafetyActuationOwnerWait::Disconnected
-        {
-            sleep_until(next_owner_deadline_ms);
+        match (maybe_owner.as_mut(), maybe_actuation_inbox.as_ref()) {
+            (Some(owner), Some(actuation_inbox)) => {
+                if safety_adapter::service_next_safety_actuation_request(
+                    owner,
+                    actuation_inbox,
+                    wait,
+                ) == SafetyActuationOwnerWait::Disconnected
+                {
+                    sleep_until(next_owner_deadline_ms);
+                }
+            }
+            _ => sleep_until(next_owner_deadline_ms),
         }
     }
 }
@@ -144,7 +198,10 @@ fn refresh_display(
     *maybe_last_display_line = Some(alternating_line.to_owned());
 }
 
-fn project_observations(state: ProducerSensorState) -> TelemetryObservations {
+fn project_observations(
+    state: ProducerSensorState,
+    core_voltage_state: CoreVoltageProducerState,
+) -> TelemetryObservations {
     let power = state.power().truth();
     let temperature = state.thermal().temperature_truth();
     let vr_temperature = state.vr_temperature();
@@ -165,6 +222,11 @@ fn project_observations(state: ProducerSensorState) -> TelemetryObservations {
             power,
             |reading| Some((*reading).current_amps()),
             UnavailableReason::PowerSampleUnavailable,
+        ),
+        core_voltage_actual_mv: project_observation(
+            core_voltage_state.observation(),
+            |millivolts| Some(f64::from(*millivolts)),
+            UnavailableReason::CoreVoltageUnavailable,
         ),
         chip_temp_celsius: project_observation(
             temperature,

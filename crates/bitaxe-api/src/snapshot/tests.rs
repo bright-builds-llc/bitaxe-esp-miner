@@ -138,6 +138,7 @@ fn safety_telemetry_projection_preserves_mixed_independent_states() {
         power_watts: fresh_power,
         bus_voltage_volts: stale_voltage,
         current_amps: unavailable_current,
+        core_voltage_actual_mv: fresh_f64_observation(1_198.0, 5),
         chip_temp_celsius: fault_temperature,
         vr_temp_celsius: fresh_vr,
         fan_rpm: fresh_fan,
@@ -154,6 +155,10 @@ fn safety_telemetry_projection_preserves_mixed_independent_states() {
         ObservationStateWire::Unavailable
     );
     assert_eq!(
+        projection.core_voltage_status.state,
+        ObservationStateWire::Fresh
+    );
+    assert_eq!(
         projection.chip_temp_status.state,
         ObservationStateWire::Fault
     );
@@ -161,8 +166,43 @@ fn safety_telemetry_projection_preserves_mixed_independent_states() {
     assert_eq!(projection.fan_rpm_status.state, ObservationStateWire::Fresh);
     assert_eq!(projection.power_watts, 10.0);
     assert_eq!(projection.voltage_volts, 0.0);
+    assert_eq!(projection.core_voltage_actual_mv, 1_198.0);
     assert_eq!(projection.vr_temp_celsius, 42.0);
     assert_eq!(projection.fan_rpm, 3_200);
+}
+
+#[test]
+fn core_voltage_projection_suppresses_stale_and_fault_last_good_values() {
+    // Arrange
+    let fresh = fresh_f64_observation(1_198.0, 1);
+    let stale = fresh
+        .mark_stale(StaleReason::ProducerCadenceExpired)
+        .expect("fresh core voltage can become stale");
+    let fault = fresh.record_fault(FaultReason::AdcReadFailed);
+
+    // Act
+    let stale_projection = SafeTelemetrySnapshot::from_observations(&TelemetryObservations {
+        core_voltage_actual_mv: stale,
+        ..TelemetryObservations::default()
+    });
+    let fault_projection = SafeTelemetrySnapshot::from_observations(&TelemetryObservations {
+        core_voltage_actual_mv: fault,
+        ..TelemetryObservations::default()
+    });
+
+    // Assert
+    assert_eq!(stale_projection.core_voltage_actual_mv, 0.0);
+    assert_eq!(
+        stale_projection.core_voltage_status.state,
+        ObservationStateWire::Stale
+    );
+    assert!(stale_projection.core_voltage_status.stamp.is_some());
+    assert_eq!(fault_projection.core_voltage_actual_mv, 0.0);
+    assert_eq!(
+        fault_projection.core_voltage_status.state,
+        ObservationStateWire::Fault
+    );
+    assert!(fault_projection.core_voltage_status.stamp.is_some());
 }
 
 #[test]

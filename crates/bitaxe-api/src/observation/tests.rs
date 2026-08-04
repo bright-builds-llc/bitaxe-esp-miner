@@ -34,6 +34,7 @@ fn safe_mining_observations() -> TelemetryObservations {
         power_watts: fresh(15.0),
         bus_voltage_volts: fresh(5.5),
         current_amps: fresh(3.0),
+        core_voltage_actual_mv: fresh(1_200.0),
         chip_temp_celsius: fresh(74.0),
         vr_temp_celsius: fresh(45.0),
         fan_rpm: fresh_u16(0),
@@ -275,6 +276,7 @@ fn unstamped_legacy_source_cannot_publish_fresh_operator_truth() {
         observations.power_watts.state_label(),
         observations.bus_voltage_volts.state_label(),
         observations.current_amps.state_label(),
+        observations.core_voltage_actual_mv.state_label(),
         observations.chip_temp_celsius.state_label(),
         observations.vr_temp_celsius.state_label(),
         observations.fan_rpm.state_label(),
@@ -283,12 +285,13 @@ fn unstamped_legacy_source_cannot_publish_fresh_operator_truth() {
         observations.power_watts.maybe_last_good(),
         observations.bus_voltage_volts.maybe_last_good(),
         observations.current_amps.maybe_last_good(),
+        observations.core_voltage_actual_mv.maybe_last_good(),
         observations.chip_temp_celsius.maybe_last_good(),
         observations.vr_temp_celsius.maybe_last_good(),
     ];
 
     // Assert
-    assert_eq!(truths, ["unavailable"; 6]);
+    assert_eq!(truths, ["unavailable"; 7]);
     assert!(stamps.into_iter().all(|maybe_stamp| maybe_stamp.is_none()));
     assert!(observations.fan_rpm.maybe_last_good().is_none());
 }
@@ -300,6 +303,7 @@ fn projection_repeated_consumer_reads_leave_store_and_stamps_unchanged() {
         power_watts: fresh(10.0),
         bus_voltage_volts: fresh(5.0),
         current_amps: fresh(2.0),
+        core_voltage_actual_mv: fresh(1_198.0),
         chip_temp_celsius: fresh(55.0),
         vr_temp_celsius: fresh(42.0),
         fan_rpm: fresh_u16(3_200),
@@ -406,6 +410,7 @@ fn phase32_consumer_reads_preserve_failed_source_and_unaffected_fresh_facts() {
         power_watts: fresh(10.0),
         bus_voltage_volts: fresh(5.0),
         current_amps: fresh(2.0),
+        core_voltage_actual_mv: fresh(1_198.0),
         chip_temp_celsius: failed_temperature,
         vr_temp_celsius: Observation::unavailable(UnavailableReason::ThermalReadingUnavailable),
         fan_rpm: fresh_u16(3_200),
@@ -507,6 +512,7 @@ fn phase32_consumer_failure_isolation_covers_each_sensor_source() {
             power_watts,
             bus_voltage_volts,
             current_amps,
+            core_voltage_actual_mv: fresh(1_198.0),
             chip_temp_celsius,
             vr_temp_celsius,
             fan_rpm,

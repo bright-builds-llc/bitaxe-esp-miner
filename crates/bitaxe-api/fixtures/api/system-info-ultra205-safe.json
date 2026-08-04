@@ -88,6 +88,13 @@
   "actualFrequency": 0.0,
   "coreVoltage": 1200,
   "coreVoltageActual": 0.0,
+  "coreVoltageActualStatus": {
+    "state": "unavailable",
+    "reason": {
+      "kind": "unavailable",
+      "code": "producer_unavailable"
+    }
+  },
   "power": 0.0,
   "powerStatus": {
     "state": "unavailable",

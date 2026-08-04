@@ -155,7 +155,7 @@ fn retained_runtime_health_record_is_correlated_and_redacted() {
 }
 
 #[test]
-fn safety_telemetry_system_info_exposes_exact_six_truth_fields() {
+fn safety_telemetry_system_info_exposes_exact_seven_truth_fields() {
     // Arrange
     let snapshot = ApiSnapshot::safe_ultra_205();
 
@@ -164,6 +164,7 @@ fn safety_telemetry_system_info_exposes_exact_six_truth_fields() {
         .expect("system info should serialize");
     let status_fields = [
         "chipTempStatus",
+        "coreVoltageActualStatus",
         "currentStatus",
         "fanRpmStatus",
         "powerStatus",
@@ -294,6 +295,7 @@ fn fresh_telemetry_observations() -> TelemetryObservations {
         power_watts: fresh_f64(11.5, 1),
         bus_voltage_volts: fresh_f64(5.1, 2),
         current_amps: fresh_f64(2.25, 3),
+        core_voltage_actual_mv: fresh_f64(1_198.0, 7),
         chip_temp_celsius: fresh_f64(56.0, 4),
         vr_temp_celsius: fresh_f64(45.0, 5),
         fan_rpm: fresh_u16(3_200, 6),

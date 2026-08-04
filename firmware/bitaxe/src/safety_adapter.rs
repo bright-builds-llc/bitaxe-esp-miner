@@ -1,5 +1,6 @@
 //! Firmware safety observation and bounded actuation facade.
 
+mod adc;
 mod ds4432u;
 mod emc2101;
 mod i2c_bus;
@@ -28,6 +29,8 @@ use anyhow::{anyhow, Result};
 use bitaxe_safety::{power::Ina260RawSample, sensor_acquisition::AcquisitionOutcome};
 
 use request_queue::{enqueue, ActuationEnvelope, EnqueueOutcome};
+
+pub(crate) use adc::Ultra205CoreVoltageAdc;
 
 const ACTUATION_REQUEST_CAPACITY: usize = 4;
 const ACTUATION_REPLY_CAPACITY: usize = 1;
@@ -279,6 +282,18 @@ pub(crate) fn read_tachometer_acquisition(
     owner: &mut RuntimeI2cOwner<'_>,
 ) -> AcquisitionOutcome<u16> {
     emc2101::read_tachometer_acquisition(&mut owner.sensors())
+}
+
+pub(crate) fn read_core_voltage_acquisition(
+    adc: &mut Ultra205CoreVoltageAdc,
+) -> AcquisitionOutcome<u16> {
+    match adc.read_millivolts() {
+        Ok(millivolts) => AcquisitionOutcome::Success(millivolts),
+        Err(_) => {
+            log::warn!("core_voltage_adc=fault category=read_failed");
+            AcquisitionOutcome::ReadFailed
+        }
+    }
 }
 
 pub fn start_safety_supervisor() {
