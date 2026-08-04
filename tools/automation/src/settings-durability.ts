@@ -4,9 +4,8 @@ import path from "node:path";
 
 import { flashCommand, flashMonitorCommand, internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
 import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./device-session-projection.js";
-import { fetchJsonFromSameOrigin, sendSameOriginRequest, uniqueRuntimeOrigin } from "./http.js";
+import { fetchJsonFromSameOrigin, sendSameOriginRequest } from "./http.js";
 import type { ProcessPort, ProcessOutcome } from "./process.js";
-import { hasPassiveSafeState } from "./version-evidence.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
 export type SettingsDurabilityOptions = {
@@ -89,7 +88,7 @@ async function writePrivateJson(output: string, value: unknown): Promise<void> {
 }
 
 async function classifyBaseline(processPort: ProcessPort, classifierProgram: string, trace: string): Promise<JsonObject> {
-  const args = ["verify-settings-durability", "--trace", trace, "--mode", "baseline"];
+  const args = ["verify-settings-durability", "--trace", trace, "--mode", "terminal-baseline"];
   const outcome = await runChild(processPort, classifierProgram, args, "baseline classification");
   if (outcome.timedOut) throw failure("timeout", "baseline classification timed out");
   if (outcome.exitCode !== 0) throw failure("process_failed", "baseline settings classification failed");
@@ -211,12 +210,10 @@ export async function captureSettingsDurability(
   if (initial.timedOut) throw failure("timeout", "exact-package flash-monitor timed out");
   if (initial.exitCode !== 0) throw failure("process_failed", "exact-package flash-monitor failed");
   const initialTrace = path.join(initialRoot, "flash-monitor.classifier-input.log");
-  const initialDocument = await readFile(initialTrace, "utf8");
-  if (!hasPassiveSafeState(initialDocument)) throw failure("evidence_invalid", "initial boot lacks safe-state evidence");
   const baseline = await classifyBaseline(processPort, classifierProgram, initialTrace);
   const session = requiredString(baseline, "session", "baseline classification");
   const ordinal = requiredOrdinal(baseline, "boot_ordinal", "baseline classification");
-  const origin = uniqueRuntimeOrigin(initialDocument);
+  const origin = new URL(requiredString(baseline, "device_url", "baseline classification"));
   const originalHostname = await hostname(origin, path.join(privateRoot, "original.private.json"));
   const testHostname = originalHostname === "bitaxe-parity-205" ? "bitaxe-parity-alt" : "bitaxe-parity-205";
   let hostnameChanged = false;

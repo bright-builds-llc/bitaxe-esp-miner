@@ -33,6 +33,7 @@ pub(crate) fn run_phase33_classify_command(
 
     let classified = match args.mode {
         Phase33ClassifyMode::Baseline => classify_phase33_baseline(&text),
+        Phase33ClassifyMode::TerminalBaseline => classify_phase33_terminal_baseline(&text),
         Phase33ClassifyMode::Delivery => {
             let (session, ordinal) = expected()?;
             classify_phase33_delivery(&text, session, ordinal).map(|()| {

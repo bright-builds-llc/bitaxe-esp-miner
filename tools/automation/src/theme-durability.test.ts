@@ -10,7 +10,20 @@ import { captureThemeDurability, ThemeDurabilityError } from "./theme-durability
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
 const failed = (): ProcessOutcome => ({ exitCode: 1, stdout: "", stderr: "", timedOut: false });
 const trace = "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled\nruntime_origin session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa device_url=http://127.0.0.1:8080 redacted=true\n";
+const productionTrace = `runtime_boot_identity session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa boot_ordinal=3 reset_reason=software_cpu uptime_ms=10 redacted=true
+safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled
+runtime_origin session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa boot_ordinal=3 device_url=http://stale.invalid redacted=true
+runtime_boot_identity session=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb boot_ordinal=4 reset_reason=software_cpu uptime_ms=1 redacted=true
+safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled
+runtime_origin session=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb boot_ordinal=4 device_url=http://127.0.0.1:8080 redacted=true
+`;
 const nodeProgram = process.env["JS_BINARY__NODE_BINARY"] ?? process.execPath;
+
+function parityRunfile(): string {
+  const runfilesRoot = process.env["TEST_SRCDIR"];
+  assert.notEqual(runfilesRoot, undefined);
+  return path.join(String(runfilesRoot), process.env["TEST_WORKSPACE"] ?? "_main", "tools", "parity", "report");
+}
 
 const readyProjection = {
   schema_version: "esp-device-session-v1",
@@ -122,7 +135,12 @@ function fakePort(
       return ok();
     }
     if (command === "verify-settings-durability") {
-      return ok(JSON.stringify({ status: "passed", session: "a".repeat(32), boot_ordinal: 4 }));
+      return ok(JSON.stringify({
+        status: "passed",
+        session: "a".repeat(32),
+        boot_ordinal: 4,
+        device_url: "http://127.0.0.1:8080",
+      }));
     }
     if (command === "reboot-live") {
       if (configuration.omitProjection !== true) {
@@ -288,13 +306,21 @@ test("real child processes produce only the requested projection artifacts", asy
   await writeFile(child, `#!${nodeProgram}
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 const args = process.argv.slice(2);
 if (args[0] === "flash-monitor") {
   const root = args[args.indexOf("--evidence-dir") + 1];
   await mkdir(root, { recursive: true });
-  await writeFile(path.join(root, "flash-monitor.classifier-input.log"), ${JSON.stringify(trace)});
+  await writeFile(path.join(root, "flash-monitor.classifier-input.log"), ${JSON.stringify(productionTrace)});
 } else if (args[0] === "verify-settings-durability") {
-  process.stdout.write(JSON.stringify({ status: "passed", session: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", boot_ordinal: 4 }));
+  const result = spawnSync(${JSON.stringify(parityRunfile())}, args, {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: { ...process.env, BUILD_WORKSPACE_DIRECTORY: process.cwd() },
+  });
+  process.stdout.write(result.stdout ?? "");
+  process.stderr.write(result.stderr ?? "");
+  process.exitCode = result.status ?? 1;
 } else if (args[0] === "reboot-live") {
   const output = args[args.indexOf("--projection-output") + 1];
   await writeFile(output, JSON.stringify(${JSON.stringify(readyProjection)}));
@@ -307,7 +333,14 @@ if (args[0] === "flash-monitor") {
 
   try {
     // Act
-    await captureThemeDurability(value.root, options(value), processPort, child, child, child);
+    await captureThemeDurability(
+      value.root,
+      options(value),
+      processPort,
+      child,
+      child,
+      child,
+    );
 
     // Assert
     const projection = JSON.parse(await readFile(value.projection, "utf8")) as Record<string, unknown>;

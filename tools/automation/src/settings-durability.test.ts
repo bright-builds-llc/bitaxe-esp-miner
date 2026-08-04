@@ -127,6 +127,7 @@ function fakePort(
         status: "passed",
         session: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         boot_ordinal: 4,
+        device_url: "http://127.0.0.1:8080",
       }));
     }
     if (command === "reboot-live") {
@@ -346,7 +347,7 @@ if (args[0] === "flash-monitor") {
   await mkdir(root, { recursive: true });
   await writeFile(path.join(root, "flash-monitor.classifier-input.log"), ${JSON.stringify(trace)});
 } else if (args[0] === "verify-settings-durability") {
-  process.stdout.write(JSON.stringify({ status: "passed", session: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", boot_ordinal: 4 }));
+  process.stdout.write(JSON.stringify({ status: "passed", session: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", boot_ordinal: 4, device_url: "http://127.0.0.1:8080" }));
 } else if (args[0] === "reboot-live") {
   const output = args[args.indexOf("--projection-output") + 1];
   await writeFile(output, JSON.stringify(${JSON.stringify(readyProjection)}));

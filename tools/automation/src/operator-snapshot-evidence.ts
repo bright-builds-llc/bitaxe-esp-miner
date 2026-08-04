@@ -10,9 +10,8 @@ import {
   type OperatorSnapshotEpochEvidence,
   type OperatorSnapshotEvidence,
 } from "./contracts.generated.js";
-import { fetchJsonFromSameOrigin, fetchTextFromSameOrigin, uniqueRuntimeOrigin } from "./http.js";
+import { fetchJsonFromSameOrigin, fetchTextFromSameOrigin } from "./http.js";
 import type { ProcessOutcome, ProcessPort } from "./process.js";
-import { hasPassiveSafeState } from "./version-evidence.js";
 import { captureJsonWebSocketFrame, type WebSocketFactory } from "./websocket.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
@@ -136,7 +135,7 @@ async function classifyBaseline(processPort: ProcessPort, parityProgram: string,
   const outcome = await runChild(
     processPort,
     parityProgram,
-    ["verify-settings-durability", "--trace", trace, "--mode", "baseline"],
+    ["verify-settings-durability", "--trace", trace, "--mode", "terminal-baseline"],
     "baseline classifier",
   );
   if (outcome.timedOut) throw failure("timeout", "baseline classification timed out");
@@ -386,10 +385,8 @@ export async function captureOperatorSnapshotEvidence(
     if (initial.timedOut) throw failure("timeout", "exact-package flash-monitor timed out");
     if (initial.exitCode !== 0) throw failure("process_failed", "exact-package flash-monitor failed");
     const trace = path.join(initialRoot, "flash-monitor.classifier-input.log");
-    const monitor = await readFile(trace, "utf8");
-    if (!hasPassiveSafeState(monitor)) throw failure("evidence_invalid", "initial boot lacks safe-state evidence");
     const baselineClassification = await classifyBaseline(processPort, parityProgram, trace);
-    const origin = uniqueRuntimeOrigin(monitor);
+    const origin = new URL(string(baselineClassification, "device_url", "baseline classification"));
     const baseline = await captureEpoch(
       origin,
       path.join(privateRoot, "baseline-epoch"),

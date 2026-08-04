@@ -840,36 +840,10 @@ occurred before hostname/theme GET or POST, software restart, or settings
 mutation. The authorized exact-package flash was the sole device effect, and
 no recovery was required. No public evidence was emitted, `API-010` remains
 `implemented`, and no further hardware retry is authorized. The remaining gap
-is a host-side baseline-epoch admission defect, tracked separately below.
-
-### task-parity-api010-baseline-epoch-admission | 2026-08-04 | Close production multi-session baseline admission
-
-- [ ] Reproduce the production-shaped `baseline_multiple_sessions` failure at
-      the real flash-monitor/classifier orchestration seam without retaining or
-      exposing the private hardware trace.
-- [ ] Determine why the initial exact-package flash-monitor transcript contains
-      multiple boot epochs and design a closed selection/admission rule that
-      cannot accept stale, mixed-device, or ambiguous session evidence.
-- [ ] Implement the minimal root-cause fix with unit and real-child-process
-      coverage, including multiple-session, malformed, stale, and single-ready
-      epoch cases.
-- [ ] Run the complete mandatory verification sequence and review public output
-      for secrets before proposing any separately task-gated hardware attempt.
-
-Plan: `docs/parity/work-plans/20260804T192918Z-API-010/PLAN.md`. This follow-up
-continues from `docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md` without
-modifying that immutable file.
-
-Authorization: read-only inspection of committed code and private local
-attempt structure plus synthetic software tests only. Do not read, print,
-summarize, commit, or copy the private serial trace. No flash, monitor, HTTP,
-theme mutation, restart, hardware retry, credentials, mining, controls, OTA,
-recovery, direct UART, pins, or physical electrical action is authorized by
-this task.
-
-Verification: Pending.
-
-Completion review: Pending.
+was a host-side baseline-epoch admission defect; its completed software fix is
+recorded under `task-parity-api010-baseline-epoch-admission` in
+`TASKS.archive.md`. A new task-gated hardware contract is still required before
+any live retry.
 
 ## Future
 

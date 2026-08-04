@@ -8,6 +8,7 @@ use std::process::Command as ProcessCommand;
 use anyhow::{bail, Context, Result};
 use bitaxe_api::phase33_evidence::{
     classify_phase33_baseline, classify_phase33_delivery, classify_phase33_post_restart,
+    classify_phase33_terminal_baseline,
 };
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};

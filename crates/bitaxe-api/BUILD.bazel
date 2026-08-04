@@ -53,6 +53,7 @@ rust_library(
         "src/platform_identity.rs",
         "src/provisioning.rs",
         "src/phase33_evidence.rs",
+        "src/phase33_evidence/terminal.rs",
         "src/route_shell.rs",
         "src/route_shell/tests.rs",
         "src/runtime_boot_attestation.rs",

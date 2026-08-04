@@ -10,9 +10,8 @@ import {
   type ThemeDurabilityEvidence,
 } from "./contracts.generated.js";
 import { isDeviceSessionProjectionFailure, readClosedDeviceSession, type JsonObject } from "./device-session-projection.js";
-import { fetchJsonFromSameOrigin, sendSameOriginRequest, uniqueRuntimeOrigin } from "./http.js";
+import { fetchJsonFromSameOrigin, sendSameOriginRequest } from "./http.js";
 import type { ProcessOutcome, ProcessPort } from "./process.js";
-import { hasPassiveSafeState } from "./version-evidence.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
 export type ThemeDurabilityOptions = {
@@ -152,7 +151,7 @@ async function runChild(
 
 async function baseline(processPort: ProcessPort, classifierProgram: string, trace: string): Promise<JsonObject> {
   const outcome = await runChild(processPort, classifierProgram, [
-    "verify-settings-durability", "--trace", trace, "--mode", "baseline",
+    "verify-settings-durability", "--trace", trace, "--mode", "terminal-baseline",
   ], "baseline classification");
   if (outcome.timedOut) throw failure("timeout", "baseline classification timed out");
   if (outcome.exitCode !== 0) throw failure("process_failed", "baseline classification failed");
@@ -248,12 +247,10 @@ export async function captureThemeDurability(
   if (initial.timedOut) throw failure("timeout", "exact-package flash-monitor timed out");
   if (initial.exitCode !== 0) throw failure("process_failed", "exact-package flash-monitor failed");
   const tracePath = path.join(initialRoot, "flash-monitor.classifier-input.log");
-  const trace = await readFile(tracePath, "utf8");
-  if (!hasPassiveSafeState(trace)) throw failure("evidence_invalid", "initial boot lacks safe-state evidence");
   const baselineValue = await baseline(processPort, classifierProgram, tracePath);
   const session = requiredString(baselineValue, "session", "baseline classification");
   const ordinal = requiredOrdinal(baselineValue, "boot_ordinal", "baseline classification");
-  const origin = uniqueRuntimeOrigin(trace);
+  const origin = new URL(requiredString(baselineValue, "device_url", "baseline classification"));
   const hostname = await getHostname(origin, path.join(privateRoot, "system-info.private.json"));
   const original = await getTheme(origin, path.join(privateRoot, "original.private.json"));
   const alternate = alternateTheme(original);

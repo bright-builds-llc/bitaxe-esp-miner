@@ -100,6 +100,7 @@ pub(crate) struct TransitionItemArgs {
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub(crate) enum Phase33ClassifyMode {
     Baseline,
+    TerminalBaseline,
     Delivery,
     PostRestart,
 }

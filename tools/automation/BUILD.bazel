@@ -129,6 +129,7 @@ js_test(
         "//:automation_ci_contract_inputs",
         "//scripts:repository_guard_sources",
         "//firmware/bitaxe:static_provenance_assets",
+        "//tools/parity:report",
     ],
     entry_point = "test-dist/all.test.js",
 )

@@ -4904,3 +4904,44 @@ continuous inbox traffic. Live FreeRTOS timing under load, production mining,
 pool connectivity, ASIC traffic, accepted/rejected shares, hardware effects,
 fault injection, soak behavior, credentials, OTA, recovery, other boards,
 direct UART, and pins remain separate.
+
+### task-parity-api010-baseline-epoch-admission | 2026-08-04 | Close production multi-session baseline admission
+
+- [x] Reproduce the production-shaped `baseline_multiple_sessions` failure at
+      the real flash-monitor/classifier orchestration seam without retaining or
+      exposing the private hardware trace.
+- [x] Determine why the initial exact-package flash-monitor transcript contains
+      multiple boot epochs and design a closed selection/admission rule that
+      cannot accept stale, mixed-device, or ambiguous session evidence.
+- [x] Implement the minimal root-cause fix with unit and real-child-process
+      coverage, including multiple-session, malformed, stale, and single-ready
+      epoch cases.
+- [x] Run the complete mandatory verification sequence and review public output
+      for secrets before proposing any separately task-gated hardware attempt.
+
+Plan: `docs/parity/work-plans/20260804T192918Z-API-010/PLAN.md`. This follow-up
+continues from `docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md` without
+modifying that immutable file.
+
+Authorization: read-only inspection of committed code and private local
+attempt structure plus synthetic software tests only. Do not read, print,
+summarize, commit, or copy the private serial trace. No flash, monitor, HTTP,
+theme mutation, restart, hardware retry, credentials, mining, controls, OTA,
+recovery, direct UART, pins, or physical electrical action is authorized by
+this task.
+
+Verification: Complete. Seventeen focused Phase 33 tests, the real-child
+production-shaped two-epoch regression, strict Clippy, all-target/all-feature
+Cargo build and tests, Bright Builds with zero findings, all 34 Bazel tests,
+parity with no validation errors, progress, semantic redaction, pinned-reference
+cleanliness, immutable-plan comparison, sensitive-output review, and diff
+checks passed.
+
+Completion review: Completed the host-orchestration root-cause fix without
+reading the private hardware trace or touching hardware. Exact-package settings,
+theme, and operator-snapshot captures now admit only an independently complete,
+safe terminal epoch after a sequential stale prefix; malformed, mixed,
+interleaved, nonsequential, stale-only, and incomplete evidence fails closed.
+The original whole-trace classifier is unchanged, `API-010` remains
+`implemented`, no evidence was promoted, and any live retry requires a new
+task-gated hardware contract.

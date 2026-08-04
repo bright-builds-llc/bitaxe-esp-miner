@@ -123,7 +123,14 @@ function fakePort(
       ].join("\n"));
       return ok();
     }
-    if (command === "verify-settings-durability") return ok(JSON.stringify({ status: "passed", session: baselineSession, boot_ordinal: 4 }));
+    if (command === "verify-settings-durability") {
+      return ok(JSON.stringify({
+        status: "passed",
+        session: baselineSession,
+        boot_ordinal: 4,
+        device_url: "http://private-device.test",
+      }));
+    }
     if (command === "validate-operator-snapshot") return ok('{"status":"passed"}');
     if (command === "reboot-live") {
       if (configuration.omitProjection !== true) {
@@ -290,7 +297,7 @@ if (args[0] === "flash-monitor") {
   const root = args[args.indexOf("--evidence-dir") + 1];
   await writeFile(path.join(root, "flash-monitor.classifier-input.log"), ${JSON.stringify(`safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled\nruntime_origin session=${baselineSession} device_url=http://private-device.test redacted=true\n`)});
 } else if (args[0] === "verify-settings-durability") {
-  process.stdout.write(${JSON.stringify(JSON.stringify({ status: "passed", session: baselineSession, boot_ordinal: 4 }))});
+  process.stdout.write(${JSON.stringify(JSON.stringify({ status: "passed", session: baselineSession, boot_ordinal: 4, device_url: "http://private-device.test" }))});
 } else if (args[0] === "reboot-live") {
   await writeFile(args[args.indexOf("--projection-output") + 1], ${JSON.stringify(JSON.stringify(readyProjection))});
 } else if (args[0] !== "validate-operator-snapshot" && args.length !== 1) {

@@ -5,6 +5,10 @@ use std::collections::BTreeSet;
 use serde::Serialize;
 use thiserror::Error;
 
+mod terminal;
+
+pub use terminal::classify_phase33_terminal_baseline;
+
 /// Admissible boot identity and current-session origin for a Phase 33 proof stage.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Phase33BootEvidence {
@@ -264,6 +268,197 @@ mod tests {
 
     fn origin(session: &str, ordinal: u64, url: &str) -> String {
         format!("runtime_origin session={session} boot_ordinal={ordinal} device_url={url} redacted=true")
+    }
+
+    fn safe_state() -> &'static str {
+        "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled"
+    }
+
+    #[test]
+    fn terminal_baseline_accepts_one_complete_ready_epoch() {
+        // Arrange
+        let text = format!(
+            "{}\n{}\n{}",
+            identity(A, 7, "software_cpu", 10),
+            safe_state(),
+            origin(A, 7, "http://device")
+        );
+
+        // Act
+        let evidence = classify_phase33_terminal_baseline(&text).expect("epoch must pass");
+
+        // Assert
+        assert_eq!(evidence.session, A);
+        assert_eq!(evidence.boot_ordinal, 7);
+        assert_eq!(evidence.device_url, "http://device");
+    }
+
+    #[test]
+    fn terminal_baseline_selects_complete_epoch_after_ordered_stale_prefix() {
+        // Arrange
+        let text = format!(
+            "{}\n{}\n{}\n{}\n{}\n{}",
+            identity(A, 7, "software_cpu", 10),
+            safe_state(),
+            origin(A, 7, "http://stale"),
+            identity(B, 8, "software_cpu", 1),
+            safe_state(),
+            origin(B, 8, "http://current")
+        );
+
+        // Act
+        let evidence = classify_phase33_terminal_baseline(&text).expect("terminal epoch must pass");
+
+        // Assert
+        assert_eq!(evidence.session, B);
+        assert_eq!(evidence.boot_ordinal, 8);
+        assert_eq!(evidence.device_url, "http://current");
+    }
+
+    #[test]
+    fn terminal_baseline_rejects_reappearing_session() {
+        // Arrange
+        let text = format!(
+            "{}\n{}\n{}\n{}",
+            identity(A, 7, "software_cpu", 10),
+            identity(B, 8, "software_cpu", 1),
+            identity(A, 9, "software_cpu", 1),
+            safe_state()
+        );
+
+        // Act
+        let error = classify_phase33_terminal_baseline(&text).expect_err("interleaving must fail");
+
+        // Assert
+        assert_eq!(error.category, "terminal_epoch_ambiguous");
+    }
+
+    #[test]
+    fn terminal_baseline_rejects_ordinal_gap() {
+        // Arrange
+        let text = format!(
+            "{}\n{}\n{}",
+            identity(A, 7, "software_cpu", 10),
+            identity(B, 9, "software_cpu", 1),
+            safe_state()
+        );
+
+        // Act
+        let error = classify_phase33_terminal_baseline(&text).expect_err("gap must fail");
+
+        // Assert
+        assert_eq!(error.category, "terminal_epoch_nonsequential");
+    }
+
+    #[test]
+    fn terminal_baseline_rejects_malformed_prefix_identity() {
+        // Arrange
+        let text = format!(
+            "runtime_boot_identity broken\n{}\n{}\n{}",
+            identity(B, 8, "software_cpu", 1),
+            safe_state(),
+            origin(B, 8, "http://current")
+        );
+
+        // Act
+        let error =
+            classify_phase33_terminal_baseline(&text).expect_err("malformed prefix must fail");
+
+        // Assert
+        assert_eq!(error.category, "boot_identity_corrupt");
+    }
+
+    #[test]
+    fn terminal_baseline_rejects_malformed_stale_origin() {
+        // Arrange
+        let text = format!(
+            "{}\nruntime_origin broken\n{}\n{}\n{}",
+            identity(A, 7, "software_cpu", 10),
+            identity(B, 8, "software_cpu", 1),
+            safe_state(),
+            origin(B, 8, "http://current")
+        );
+
+        // Act
+        let error =
+            classify_phase33_terminal_baseline(&text).expect_err("malformed origin must fail");
+
+        // Assert
+        assert_eq!(error.category, "runtime_origin_corrupt");
+    }
+
+    #[test]
+    fn terminal_baseline_rejects_origin_without_a_known_epoch() {
+        // Arrange
+        let text = format!(
+            "{}\n{}\n{}\n{}",
+            identity(B, 8, "software_cpu", 1),
+            safe_state(),
+            origin(A, 7, "http://unknown"),
+            origin(B, 8, "http://current")
+        );
+
+        // Act
+        let error = classify_phase33_terminal_baseline(&text).expect_err("unknown epoch must fail");
+
+        // Assert
+        assert_eq!(error.category, "terminal_epoch_ambiguous");
+    }
+
+    #[test]
+    fn terminal_baseline_rejects_safe_state_only_in_stale_epoch() {
+        // Arrange
+        let text = format!(
+            "{}\n{}\n{}\n{}",
+            identity(A, 7, "software_cpu", 10),
+            safe_state(),
+            identity(B, 8, "software_cpu", 1),
+            origin(B, 8, "http://current")
+        );
+
+        // Act
+        let error = classify_phase33_terminal_baseline(&text).expect_err("stale safety must fail");
+
+        // Assert
+        assert_eq!(error.category, "terminal_safe_state_missing");
+    }
+
+    #[test]
+    fn terminal_baseline_rejects_stale_origin_after_terminal_identity() {
+        // Arrange
+        let text = format!(
+            "{}\n{}\n{}\n{}\n{}",
+            identity(A, 7, "software_cpu", 10),
+            origin(A, 7, "http://stale"),
+            identity(B, 8, "software_cpu", 1),
+            safe_state(),
+            origin(A, 7, "http://stale")
+        );
+
+        // Act
+        let error = classify_phase33_terminal_baseline(&text).expect_err("mixed tail must fail");
+
+        // Assert
+        assert_eq!(error.category, "runtime_origin_wrong_session");
+    }
+
+    #[test]
+    fn terminal_baseline_rejects_incomplete_terminal_epoch() {
+        // Arrange
+        let text = format!(
+            "{}\n{}\n{}\n{}",
+            identity(A, 7, "software_cpu", 10),
+            origin(A, 7, "http://stale"),
+            identity(B, 8, "software_cpu", 1),
+            safe_state()
+        );
+
+        // Act
+        let error =
+            classify_phase33_terminal_baseline(&text).expect_err("missing origin must fail");
+
+        // Assert
+        assert_eq!(error.category, "runtime_origin_missing");
     }
 
     #[test]
