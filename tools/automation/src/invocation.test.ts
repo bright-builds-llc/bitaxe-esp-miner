@@ -102,3 +102,24 @@ test("settings durability capture requires the complete capture surface", () => 
   assert.throws(() => parseInvocation([...complete, "--trace", "legacy.log"]));
   assert.throws(() => parseInvocation(["verify-settings-durability", "--mode", "baseline"]));
 });
+
+test("operator snapshot capture requires the detector-gated closed surface", () => {
+  // Arrange
+  const complete = [
+    "capture-operator-snapshot-evidence",
+    "--private-root", "scratch/snapshot",
+    "--package-manifest", "bazel-bin/package.json",
+    "--wifi-credentials", "wifi-credentials.json",
+    "--detector-output", "scratch/detector.stdout",
+    "--projection", "docs/evidence/snapshot.json",
+    "--capture-timeout-seconds", "360",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "capture-operator-snapshot-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});

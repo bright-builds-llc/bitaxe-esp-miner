@@ -19,7 +19,8 @@ export type AutomationCommand =
   | "capture-operator-evidence"
   | "verify-settings-durability"
   | "capture-correlated-runtime-evidence"
-  | "capture-version-evidence";
+  | "capture-version-evidence"
+  | "capture-operator-snapshot-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
 
@@ -74,12 +75,48 @@ export type VersionProjectionEvidence = {
   websocket_version_projection_matches_api: true;
 };
 
+export type OperatorSnapshotEpochEvidence = {
+  boot_session_sha256: string;
+  http_snapshot_observed: true;
+  websocket_snapshot_observed: true;
+  same_boot_session: true;
+  http_revision: number;
+  websocket_revision: number;
+  websocket_revision_not_earlier: true;
+  retained_log_marker_matches_http: true;
+  retained_log_marker_matches_websocket: true;
+  substantive_fields_present: true;
+  stable_fields_match: true;
+  safe_operator_state_confirmed: true;
+  substantive_projection_sha256: string;
+};
+
+export type DeviceSessionEvidence = Readonly<Record<string, unknown>>;
+
+export type OperatorSnapshotEvidence = {
+  schema_version: "bitaxe-operator-snapshot-evidence-v1";
+  board: 205;
+  source_commit: string;
+  reference_commit: string;
+  package_manifest_sha256: string;
+  workflow: WorkflowIdentity;
+  baseline_epoch: OperatorSnapshotEpochEvidence;
+  post_restart_epoch: OperatorSnapshotEpochEvidence;
+  distinct_boot_sessions: true;
+  restart_session: DeviceSessionEvidence;
+  mining_state: "disabled";
+  hardware_control_state: "disabled";
+  cleanup_complete: true;
+  redaction_status: "passed";
+};
+
 const automationCommands = new Set<AutomationCommand>([
   "doctor", "bootstrap-esp", "build-firmware", "package-firmware", "verify-reference",
   "verify-redaction", "verify-production-session", "observe-serial", "verify-flash-durability",
   "verify-firmware-ota", "verify-web-assets-ota", "verify-recovery", "verify-http-api",
   "verify-hardware-surface", "verify-mining", "capture-operator-evidence",
   "verify-settings-durability", "capture-correlated-runtime-evidence", "capture-version-evidence",
+  "capture-operator-snapshot-evidence",
 ]);
 const automationStatuses = new Set<AutomationStatus>(["succeeded", "failed", "blocked"]);
 const automationCategories = new Set<AutomationCategory>([

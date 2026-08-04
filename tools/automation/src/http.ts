@@ -1,16 +1,21 @@
-import { writeFile } from "node:fs/promises";
+import { chmod, writeFile } from "node:fs/promises";
 
-export async function fetchJsonFromSameOrigin(
-  origin: URL,
-  route: string,
-  privateOutput: string,
-): Promise<unknown> {
+function sameOriginTarget(origin: URL, route: string): URL {
   if (origin.username !== "" || origin.password !== "" || origin.pathname !== "/" || origin.search !== "" || origin.hash !== "") {
     throw new Error("device origin must be origin-only");
   }
   if (!route.startsWith("/") || route.startsWith("//")) throw new Error("API route must be same-origin relative");
   const target = new URL(route, origin);
   if (target.origin !== origin.origin) throw new Error("API target escaped the admitted origin");
+  return target;
+}
+
+export async function fetchJsonFromSameOrigin(
+  origin: URL,
+  route: string,
+  privateOutput: string,
+): Promise<unknown> {
+  const target = sameOriginTarget(origin, route);
   const response = await fetch(target, {
     method: "GET",
     redirect: "error",
@@ -26,6 +31,26 @@ export async function fetchJsonFromSameOrigin(
   return value;
 }
 
+export async function fetchTextFromSameOrigin(
+  origin: URL,
+  route: string,
+  privateOutput: string,
+): Promise<string> {
+  const target = sameOriginTarget(origin, route);
+  const response = await fetch(target, {
+    method: "GET",
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
+    headers: { accept: "text/plain" },
+  });
+  if (!response.ok) throw new Error(`same-origin API returned HTTP ${String(response.status)}`);
+  const body = await response.text();
+  if (Buffer.byteLength(body, "utf8") > 1024 * 1024) throw new Error("same-origin text response is too large");
+  await writeFile(privateOutput, body, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  await chmod(privateOutput, 0o600);
+  return body;
+}
+
 export async function sendSameOriginRequest(
   origin: URL,
   route: string,
@@ -33,12 +58,7 @@ export async function sendSameOriginRequest(
   privateOutput: string,
   maybeJsonBody?: unknown,
 ): Promise<void> {
-  if (origin.username !== "" || origin.password !== "" || origin.pathname !== "/" || origin.search !== "" || origin.hash !== "") {
-    throw new Error("device origin must be origin-only");
-  }
-  if (!route.startsWith("/") || route.startsWith("//")) throw new Error("API route must be same-origin relative");
-  const target = new URL(route, origin);
-  if (target.origin !== origin.origin) throw new Error("API target escaped the admitted origin");
+  const target = sameOriginTarget(origin, route);
   const response = await fetch(target, {
     method,
     redirect: "error",

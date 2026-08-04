@@ -67,3 +67,6 @@ capture-correlated-runtime-evidence *args:
 
 capture-version-evidence *args:
     bazel run //tools/automation:capture_version_evidence -- {{ args }}
+
+capture-operator-snapshot-evidence *args:
+    bazel run //tools/automation:capture_operator_snapshot_evidence -- {{ args }}

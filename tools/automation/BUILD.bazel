@@ -47,6 +47,7 @@ js_binary(
     data = [
         ":automation_ts",
         "//crates/bitaxe-automation-contracts:validate_version_evidence",
+        "//crates/bitaxe-automation-contracts:validate_operator_snapshot_evidence",
         "//tools/flash:flash",
         "//tools/device-session:device-session",
         "//tools/parity:report",
@@ -63,6 +64,7 @@ js_binary(
         data = [
             ":automation_ts",
             "//crates/bitaxe-automation-contracts:validate_version_evidence",
+            "//crates/bitaxe-automation-contracts:validate_operator_snapshot_evidence",
             "//tools/flash:flash",
             "//tools/device-session:device-session",
             "//tools/parity:report",
@@ -90,6 +92,7 @@ js_binary(
         "verify_settings_durability": "verify-settings-durability",
         "capture_correlated_runtime_evidence": "capture-correlated-runtime-evidence",
         "capture_version_evidence": "capture-version-evidence",
+        "capture_operator_snapshot_evidence": "capture-operator-snapshot-evidence",
     }.items()
 ]
 

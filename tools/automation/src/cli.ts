@@ -23,6 +23,7 @@ import {
   type ParsedInvocation,
 } from "./invocation.js";
 import { packageFirmware } from "./package.js";
+import { captureOperatorSnapshotEvidence, OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureSettingsDurability, SettingsDurabilityError } from "./settings-durability.js";
@@ -208,6 +209,7 @@ async function dispatchProcess(
     case "verify-redaction":
     case "verify-http-api":
     case "capture-version-evidence":
+    case "capture-operator-snapshot-evidence":
       throw new Error("specialized workflow reached generic dispatch");
   }
   if (spec.program.includes(path.sep)) await access(spec.program, constants.X_OK);
@@ -266,6 +268,17 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_version_evidence"));
+    } else if (invocation.command === "capture-operator-snapshot-evidence") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureOperatorSnapshotEvidence(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root), toolProgram(root, "tools/parity/report"), deviceSessionProgram(root),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_operator_snapshot_evidence"));
     } else if (invocation.command === "verify-settings-durability" && optionValue(invocation, "--mode") === "capture") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsDurability(root, {
@@ -289,11 +302,12 @@ async function main(): Promise<number> {
     const policyBlocked = error instanceof PolicyError;
     const invalid = error instanceof InvocationError;
     const settingsFailure = error instanceof SettingsDurabilityError;
+    const snapshotFailure = error instanceof OperatorSnapshotEvidenceError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure
+        : settingsFailure || snapshotFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";
@@ -307,7 +321,7 @@ async function main(): Promise<number> {
       invocation.command,
       status,
       category,
-      settingsFailure ? error.publicValue : undefined,
+      settingsFailure || snapshotFailure ? error.publicValue : undefined,
     ))}\n`);
     return exitCode;
   }

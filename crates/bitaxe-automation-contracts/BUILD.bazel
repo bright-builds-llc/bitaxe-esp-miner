@@ -4,7 +4,10 @@ package(default_visibility = ["//visibility:public"])
 
 rust_library(
     name = "bitaxe_automation_contracts",
-    srcs = ["src/lib.rs"],
+    srcs = [
+        "src/lib.rs",
+        "src/operator_snapshot_evidence.rs",
+    ],
     compile_data = ["typescript-contracts.ts"],
     crate_name = "bitaxe_automation_contracts",
     edition = "2021",
@@ -27,6 +30,17 @@ rust_binary(
     name = "validate_version_evidence",
     srcs = ["src/bin/validate_version_evidence.rs"],
     crate_name = "validate_version_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_operator_snapshot_evidence",
+    srcs = ["src/bin/validate_operator_snapshot_evidence.rs"],
+    crate_name = "validate_operator_snapshot_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

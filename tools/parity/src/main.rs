@@ -96,6 +96,9 @@ fn main() -> Result<()> {
         CliCommand::SafetyAllow(args) => run_safety_allow_command(args, &environment)?,
         CliCommand::MiningAllow(args) => run_mining_allow_command(args, &environment)?,
         CliCommand::OperatorEvidence(args) => run_operator_evidence_command(args, &environment)?,
+        CliCommand::ValidateOperatorSnapshot(args) => {
+            run_validate_operator_snapshot_command(&args)?
+        }
         CliCommand::VerifySettingsDurability(args) => {
             run_phase33_classify_command(args, &environment)?
         }
@@ -120,4 +123,26 @@ fn main() -> Result<()> {
     writeln!(stdout, "{output}")?;
 
     Ok(())
+}
+
+fn run_validate_operator_snapshot_command(args: &ValidateOperatorSnapshotArgs) -> Result<String> {
+    let api_document = fs::read_to_string(&args.api_document)
+        .context("failed to read private API snapshot document")?;
+    let websocket_document = fs::read_to_string(&args.websocket_document)
+        .context("failed to read private WebSocket snapshot document")?;
+    let retained_log = fs::read_to_string(&args.retained_log)
+        .context("failed to read private retained-log document")?;
+    let validation_errors = operator_snapshot_evidence::validate_operator_snapshot_documents(
+        &api_document,
+        &websocket_document,
+        &retained_log,
+    );
+    if !validation_errors.is_empty() {
+        bail!("operator snapshot evidence is invalid");
+    }
+    Ok(serde_json::json!({
+        "schema_version": "bitaxe-operator-snapshot-validation-v1",
+        "status": "passed",
+    })
+    .to_string())
 }

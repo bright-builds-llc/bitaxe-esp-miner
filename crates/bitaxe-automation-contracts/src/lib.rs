@@ -4,12 +4,19 @@ use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+mod operator_snapshot_evidence;
+
+pub use operator_snapshot_evidence::{
+    DeviceSessionEvidence, OperatorSnapshotEpochEvidence, OperatorSnapshotEvidence,
+};
+
 pub const CONTRACT_BUNDLE_SCHEMA: &str = "bitaxe-command-contract-v1";
 pub const RESULT_SCHEMA: &str = "bitaxe-automation-result-v1";
 pub const HARDWARE_ATTEMPT_SCHEMA: &str = "bitaxe-hardware-attempt-v1";
 pub const CORRELATED_EVIDENCE_SCHEMA: &str = "bitaxe-correlated-runtime-evidence-v1";
 pub const SUBSTANTIVE_EVIDENCE_SCHEMA: &str = "bitaxe-substantive-evidence-v1";
 pub const VERSION_EVIDENCE_SCHEMA: &str = "bitaxe-version-evidence-v1";
+pub const OPERATOR_SNAPSHOT_EVIDENCE_SCHEMA: &str = "bitaxe-operator-snapshot-evidence-v1";
 pub const MIGRATION_SCHEMA: &str = "bitaxe-automation-migration-v1";
 
 #[must_use]
@@ -39,6 +46,7 @@ pub enum AutomationCommand {
     VerifySettingsDurability,
     CaptureCorrelatedRuntimeEvidence,
     CaptureVersionEvidence,
+    CaptureOperatorSnapshotEvidence,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -173,6 +181,7 @@ pub struct ContractBundle {
     pub workflow_identity_schema: Value,
     pub hardware_attempt_schema: Value,
     pub version_evidence_schema: Value,
+    pub operator_snapshot_evidence_schema: Value,
     pub commands: Vec<AutomationCommand>,
     pub evidence_schemas: Vec<&'static str>,
 }
@@ -189,6 +198,10 @@ pub fn contract_bundle() -> ContractBundle {
             .expect("hardware attempt schema must serialize"),
         version_evidence_schema: serde_json::to_value(schema_for!(VersionEvidence))
             .expect("version evidence schema must serialize"),
+        operator_snapshot_evidence_schema: serde_json::to_value(schema_for!(
+            OperatorSnapshotEvidence
+        ))
+        .expect("operator snapshot evidence schema must serialize"),
         commands: vec![
             AutomationCommand::Doctor,
             AutomationCommand::BootstrapEsp,
@@ -209,12 +222,14 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::VerifySettingsDurability,
             AutomationCommand::CaptureCorrelatedRuntimeEvidence,
             AutomationCommand::CaptureVersionEvidence,
+            AutomationCommand::CaptureOperatorSnapshotEvidence,
         ],
         evidence_schemas: vec![
             HARDWARE_ATTEMPT_SCHEMA,
             CORRELATED_EVIDENCE_SCHEMA,
             SUBSTANTIVE_EVIDENCE_SCHEMA,
             VERSION_EVIDENCE_SCHEMA,
+            OPERATOR_SNAPSHOT_EVIDENCE_SCHEMA,
             MIGRATION_SCHEMA,
         ],
     }
@@ -271,6 +286,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn operator_snapshot_evidence_requires_two_complete_epochs_and_ready_restart() {
+        // Arrange
+        let valid = valid_operator_snapshot_evidence();
+        let mut invalid = valid.clone();
+        invalid.restart_session.request_attempt_count = 2;
+
+        // Act
+        let accepted = valid.validate();
+        let rejected = invalid.validate();
+
+        // Assert
+        assert_eq!(accepted, Ok(()));
+        assert_eq!(
+            rejected,
+            Err("operator snapshot restart transaction is incomplete")
+        );
+    }
+
     fn valid_version_evidence(
         version_projection: Option<VersionProjectionEvidence>,
     ) -> VersionEvidence {
@@ -302,6 +336,72 @@ mod tests {
             api_esp_idf_version_matches_manifest: true,
             websocket_same_boot_revision_observed: true,
             websocket_version_projection_matches_api: true,
+        }
+    }
+
+    fn valid_operator_snapshot_evidence() -> OperatorSnapshotEvidence {
+        let epoch = |session: char, projection: char| OperatorSnapshotEpochEvidence {
+            boot_session_sha256: session.to_string().repeat(64),
+            http_snapshot_observed: true,
+            websocket_snapshot_observed: true,
+            same_boot_session: true,
+            http_revision: 7,
+            websocket_revision: 8,
+            websocket_revision_not_earlier: true,
+            retained_log_marker_matches_http: true,
+            retained_log_marker_matches_websocket: true,
+            substantive_fields_present: true,
+            stable_fields_match: true,
+            safe_operator_state_confirmed: true,
+            substantive_projection_sha256: projection.to_string().repeat(64),
+        };
+        OperatorSnapshotEvidence {
+            schema_version: OPERATOR_SNAPSHOT_EVIDENCE_SCHEMA.to_owned(),
+            board: 205,
+            source_commit: "a".repeat(40),
+            reference_commit: "b".repeat(40),
+            package_manifest_sha256: "c".repeat(64),
+            workflow: WorkflowIdentity {
+                schema_version: "bitaxe-workflow-identity-v1".to_owned(),
+                command: AutomationCommand::CaptureOperatorSnapshotEvidence,
+                request_sha256: "d".repeat(64),
+            },
+            baseline_epoch: epoch('1', 'e'),
+            post_restart_epoch: epoch('2', 'f'),
+            distinct_boot_sessions: true,
+            restart_session: DeviceSessionEvidence {
+                schema_version: "esp-device-session-v1".to_owned(),
+                terminal_category: "ready".to_owned(),
+                platform_category: "macos".to_owned(),
+                board_category: "205".to_owned(),
+                same_physical_device: true,
+                stable_enumeration: true,
+                reenumerated: false,
+                reader_armed: true,
+                pre_restart_serial_delivery: true,
+                post_restart_serial_delivery: true,
+                serial_delivery: "correlated".to_owned(),
+                request_outcome: "response_received".to_owned(),
+                request_attempt_count: 1,
+                service_loss_observed: true,
+                trusted_origin_preserved: true,
+                application_recovered: true,
+                build_identity_matches: true,
+                boot_session_changed: true,
+                boot_ordinal_advanced_by_one: true,
+                software_reset_observed: true,
+                postcondition_matches: true,
+                cleanup_complete: true,
+                usb_disappearance_count: 0,
+                enumeration_change_count: 0,
+                serial_byte_count: 128,
+                http_observation_count: 3,
+                duration_millis: 1_000,
+            },
+            mining_state: "disabled".to_owned(),
+            hardware_control_state: "disabled".to_owned(),
+            cleanup_complete: true,
+            redaction_status: "passed".to_owned(),
         }
     }
 }

@@ -335,13 +335,13 @@ run.
 
 ### task-parity-v12-operator-snapshot-typed-capture | 2026-08-04 | Capture substantive two-epoch operator snapshots
 
-- [ ] Add a typed, private-first operator-snapshot capture that joins one HTTP
+- [x] Add a typed, private-first operator-snapshot capture that joins one HTTP
       snapshot, one later same-boot WebSocket snapshot, and the exact retained
       log marker in each of two boot epochs.
-- [ ] Reuse the live device-session reboot transaction to prove one normal
+- [x] Reuse the live device-session reboot transaction to prove one normal
       restart on the same physical Ultra 205 with exact build identity and
       boot ordinal `N+1`.
-- [ ] Add closed projection validation, redaction checks, behavior-focused
+- [x] Add closed projection validation, redaction checks, behavior-focused
       unit tests, and a real-child-process regression at the orchestration
       boundary.
 - [ ] Run every mandatory software gate on a clean pushed implementation, then
@@ -379,7 +379,12 @@ the repository hardware-attempt policy. Accepted terminal outcomes are
 `complete`, `stop_repeated_boundary`, `stop_hardware_blocker`,
 `stop_authority_boundary`, and `stop_impossible_contract`.
 
-Verification: Pending.
+Verification: Software implementation gates passed on the working tree:
+`cargo fmt --all`, strict Clippy, all-target/all-feature Cargo build and tests,
+managed Bright Builds checks with zero findings, all 28 Bazel test targets,
+`just parity` with no validation errors, `just parity-progress`, semantic
+redaction, reference cleanliness, and diff checks. Hardware capture remains
+pending until this exact implementation is committed and pushed.
 
 Completion review: Pending.
 

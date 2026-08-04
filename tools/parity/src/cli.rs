@@ -22,12 +22,25 @@ pub(crate) enum CliCommand {
     SafetyAllow(SafetyAllowArgs),
     MiningAllow(MiningAllowArgs),
     OperatorEvidence(OperatorEvidenceArgs),
+    ValidateOperatorSnapshot(ValidateOperatorSnapshotArgs),
     VerifySettingsDurability(VerifySettingsDurabilityArgs),
     ClassifyCorrelatedFlash(ClassifyCorrelatedFlashArgs),
     ClassifyCorrelatedHttp(ClassifyCorrelatedHttpArgs),
     ProbeCorrelatedHttp(ProbeCorrelatedHttpArgs),
     ValidateCorrelatedRuntimeEvidence(ValidateCorrelatedRuntimeEvidenceArgs),
     AdmitCorrelatedRuntimeEvidence(AdmitCorrelatedRuntimeEvidenceArgs),
+}
+
+#[derive(Debug, Parser)]
+pub(crate) struct ValidateOperatorSnapshotArgs {
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) api_document: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) websocket_document: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) retained_log: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
