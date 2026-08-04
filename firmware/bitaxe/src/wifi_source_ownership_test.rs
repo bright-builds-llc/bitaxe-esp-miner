@@ -27,10 +27,10 @@ fn configuration_network_has_exact_ap_shape_and_one_dns_owner() {
     assert!(WIFI_ADAPTER_SOURCE.contains("CONFIGURATION_AP_MAX_CONNECTIONS: u16 = 10"));
     assert!(WIFI_ADAPTER_SOURCE.contains("ssid_hidden: false"));
     assert!(WIFI_ADAPTER_SOURCE.contains("auth_method: AuthMethod::None"));
-    assert!(WIFI_ADAPTER_SOURCE.contains("Configuration::AccessPoint(ap_configuration)"));
+    assert!(WIFI_ADAPTER_SOURCE.contains("Configuration::AccessPoint(ap_configuration.clone())"));
     assert!(WIFI_ADAPTER_SOURCE.contains("Configuration::Mixed("));
-    assert_eq!(WIFI_ADAPTER_SOURCE.matches("captive_dns::start(").count(), 1);
-    assert_eq!(CAPTIVE_DNS_SOURCE.matches("pub(super) fn start(").count(), 1);
+    assert_eq!(WIFI_ADAPTER_SOURCE.matches("captive_dns::start_once(").count(), 2);
+    assert_eq!(CAPTIVE_DNS_SOURCE.matches("pub(super) fn start_once(").count(), 1);
     assert_eq!(CAPTIVE_DNS_SOURCE.matches("UdpSocket::bind(").count(), 1);
     assert_eq!(CAPTIVE_DNS_SOURCE.matches(".spawn(move || run").count(), 1);
 }
@@ -48,7 +48,7 @@ fn station_success_disables_ap_and_failures_retain_provisioning() {
         .find("ProvisioningReason::StationAdmissionFailed")
         .expect("station failure must retain provisioning");
     let client_only = WIFI_ADAPTER_SOURCE
-        .find("Configuration::Client(client_configuration)")
+        .find("Configuration::Client(client_configuration.clone())")
         .expect("station success must disable the AP");
 
     // Act / Assert
@@ -57,6 +57,37 @@ fn station_success_disables_ap_and_failures_retain_provisioning() {
     assert!(fallback < client_only);
     assert!(WIFI_ADAPTER_SOURCE.contains("ap_enabled: true"));
     assert!(WIFI_ADAPTER_SOURCE.contains("ap_enabled: false"));
+}
+
+#[test]
+fn long_press_toggle_retains_private_configuration_and_publishes_after_apply() {
+    // Arrange
+    let function = "pub fn toggle_configuration_ap()";
+    let start = WIFI_ADAPTER_SOURCE
+        .find(function)
+        .expect("typed configuration AP toggle");
+    let end = WIFI_ADAPTER_SOURCE[start..]
+        .find("fn configuration_ap(")
+        .map(|offset| start + offset)
+        .expect("toggle boundary");
+    let source = &WIFI_ADAPTER_SOURCE[start..end];
+
+    // Act
+    let apply = source
+        .find(".set_configuration(&configuration)")
+        .expect("ESP-IDF configuration apply");
+    let publish = source
+        .find("snapshot.ap_enabled = enabling_ap")
+        .expect("runtime publication");
+
+    // Assert
+    assert!(source.contains("configuration_ap_toggle_mode("));
+    assert!(source.contains("maybe_client_configuration"));
+    assert!(source.contains("ap_configuration.clone()"));
+    assert!(source.contains("ConfigurationApToggleError::SnapshotLockUnavailable"));
+    assert!(apply < publish);
+    assert!(!source.contains("ssid={"));
+    assert!(!source.contains("ipv4={"));
 }
 
 #[test]

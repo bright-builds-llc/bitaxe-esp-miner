@@ -4,6 +4,7 @@ use std::sync::{Mutex, OnceLock};
 
 use bitaxe_api::{configuration_ap_ssid, project_ipv6_address};
 use bitaxe_config::{reload_snapshot, LoadedValue, WifiPassword, WifiSsid};
+use bitaxe_core::input::{configuration_ap_toggle_mode, ConfigurationApMode};
 use esp_idf_svc::eventloop::{EspSystemEventLoop, EspSystemSubscription};
 use esp_idf_svc::hal::modem::Modem;
 use esp_idf_svc::handle::RawHandle;
@@ -29,8 +30,44 @@ type FirmwareWifi = BlockingWifi<EspWifi<'static>>;
 
 struct WifiOwner {
     wifi: FirmwareWifi,
+    ap_configuration: AccessPointConfiguration,
+    maybe_client_configuration: Option<ClientConfiguration>,
+    ap_ssid: String,
     _ipv6_subscription: Option<EspSystemSubscription<'static>>,
 }
+
+/// Closed configuration-AP toggle failures without private network values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfigurationApToggleError {
+    OwnerUnavailable,
+    OwnerLockUnavailable,
+    SnapshotLockUnavailable,
+    ApAddressUnavailable,
+    CaptiveDnsUnavailable,
+    ConfigurationRejected,
+}
+
+impl ConfigurationApToggleError {
+    /// Stable redaction-safe log category.
+    pub const fn category(self) -> &'static str {
+        match self {
+            Self::OwnerUnavailable => "owner_unavailable",
+            Self::OwnerLockUnavailable => "owner_lock_unavailable",
+            Self::SnapshotLockUnavailable => "snapshot_lock_unavailable",
+            Self::ApAddressUnavailable => "ap_address_unavailable",
+            Self::CaptiveDnsUnavailable => "captive_dns_unavailable",
+            Self::ConfigurationRejected => "configuration_rejected",
+        }
+    }
+}
+
+impl std::fmt::Display for ConfigurationApToggleError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.category())
+    }
+}
+
+impl std::error::Error for ConfigurationApToggleError {}
 
 /// API-visible Wi-Fi state collected by the firmware adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -128,16 +165,24 @@ pub fn start_wifi(modem: Modem<'static>) -> anyhow::Result<()> {
                 log::warn!("wifi_status=connection_failed fallback=configuration_ap");
                 return retain_provisioning(
                     wifi,
+                    ap_configuration,
+                    Some(client_configuration),
                     ap_mac,
                     credentials.ssid.as_str().to_owned(),
                     ProvisioningReason::StationAdmissionFailed,
                 );
             }
 
-            wifi.set_configuration(&Configuration::Client(client_configuration))?;
+            wifi.set_configuration(&Configuration::Client(client_configuration.clone()))?;
             publish_connected_wifi(&wifi, credentials.ssid.as_str())?;
             let ipv6_subscription = start_ipv6_reporting(&sysloop, &wifi);
-            install_wifi_owner(wifi, ipv6_subscription)
+            install_wifi_owner(
+                wifi,
+                ap_configuration,
+                Some(client_configuration),
+                ap_mac,
+                ipv6_subscription,
+            )
         }
     }
 }
@@ -152,6 +197,114 @@ pub fn current_wifi_snapshot() -> WifiRuntimeSnapshot {
     };
 
     snapshot.clone()
+}
+
+/// Toggles only the configuration AP mode retained by the sole Wi-Fi owner.
+pub fn toggle_configuration_ap() -> Result<bool, ConfigurationApToggleError> {
+    let owner = WIFI_OWNER
+        .get()
+        .ok_or(ConfigurationApToggleError::OwnerUnavailable)?;
+    let mut owner = owner
+        .lock()
+        .map_err(|_| ConfigurationApToggleError::OwnerLockUnavailable)?;
+    let mut snapshot = wifi_snapshot_cell()
+        .lock()
+        .map_err(|_| ConfigurationApToggleError::SnapshotLockUnavailable)?;
+    let next_mode = configuration_ap_toggle_mode(
+        snapshot.ap_enabled,
+        owner.maybe_client_configuration.is_some(),
+    );
+    let previous_mode = retained_configuration_mode(
+        snapshot.ap_enabled,
+        owner.maybe_client_configuration.is_some(),
+    );
+    let enabling_ap = matches!(
+        next_mode,
+        ConfigurationApMode::AccessPointOnly | ConfigurationApMode::StationAndAccessPoint
+    );
+    let configuration = configuration_for_mode(&owner, next_mode)?;
+    owner
+        .wifi
+        .set_configuration(&configuration)
+        .map_err(|_| ConfigurationApToggleError::ConfigurationRejected)?;
+    if enabling_ap {
+        let ap_ipv4 = match owner.wifi.wifi().ap_netif().get_ip_info() {
+            Ok(info) => info.ip,
+            Err(_) => {
+                restore_wifi_mode(&mut owner, previous_mode);
+                return Err(ConfigurationApToggleError::ApAddressUnavailable);
+            }
+        };
+        if captive_dns::start_once(ap_ipv4).is_err() {
+            restore_wifi_mode(&mut owner, previous_mode);
+            return Err(ConfigurationApToggleError::CaptiveDnsUnavailable);
+        }
+    }
+
+    snapshot.ap_enabled = enabling_ap;
+    snapshot.ap_ssid = if enabling_ap {
+        owner.ap_ssid.clone()
+    } else {
+        String::new()
+    };
+    drop(snapshot);
+    drop(owner);
+    if matches!(
+        crate::production_mining_session::notify(
+            bitaxe_stratum::v1::production_session::ProductionSessionWakeup::NetworkChanged,
+        ),
+        bitaxe_stratum::v1::production_session::ProductionSessionNotificationOutcome::OwnerUnavailable
+    ) {
+        log::warn!("wifi_ap_toggle=applied network_notification=owner_unavailable");
+    }
+    Ok(enabling_ap)
+}
+
+fn configuration_for_mode(
+    owner: &WifiOwner,
+    mode: ConfigurationApMode,
+) -> Result<Configuration, ConfigurationApToggleError> {
+    Ok(match mode {
+        ConfigurationApMode::None => Configuration::None,
+        ConfigurationApMode::StationOnly => Configuration::Client(
+            owner
+                .maybe_client_configuration
+                .clone()
+                .ok_or(ConfigurationApToggleError::ConfigurationRejected)?,
+        ),
+        ConfigurationApMode::AccessPointOnly => {
+            Configuration::AccessPoint(owner.ap_configuration.clone())
+        }
+        ConfigurationApMode::StationAndAccessPoint => Configuration::Mixed(
+            owner
+                .maybe_client_configuration
+                .clone()
+                .ok_or(ConfigurationApToggleError::ConfigurationRejected)?,
+            owner.ap_configuration.clone(),
+        ),
+    })
+}
+
+const fn retained_configuration_mode(
+    ap_enabled: bool,
+    station_configuration_available: bool,
+) -> ConfigurationApMode {
+    match (ap_enabled, station_configuration_available) {
+        (true, true) => ConfigurationApMode::StationAndAccessPoint,
+        (true, false) => ConfigurationApMode::AccessPointOnly,
+        (false, true) => ConfigurationApMode::StationOnly,
+        (false, false) => ConfigurationApMode::None,
+    }
+}
+
+fn restore_wifi_mode(owner: &mut WifiOwner, mode: ConfigurationApMode) {
+    let Ok(configuration) = configuration_for_mode(owner, mode) else {
+        log::warn!("wifi_ap_toggle=recovery_failed category=configuration_unavailable");
+        return;
+    };
+    if owner.wifi.set_configuration(&configuration).is_err() {
+        log::warn!("wifi_ap_toggle=recovery_failed category=configuration_rejected");
+    }
 }
 
 fn configuration_ap(ap_mac: [u8; 6]) -> anyhow::Result<AccessPointConfiguration> {
@@ -194,20 +347,22 @@ fn start_provisioning(
     station_ssid: String,
     reason: ProvisioningReason,
 ) -> anyhow::Result<()> {
-    wifi.set_configuration(&Configuration::AccessPoint(ap_configuration))?;
+    wifi.set_configuration(&Configuration::AccessPoint(ap_configuration.clone()))?;
     wifi.start()?;
     wifi.wait_netif_up()?;
-    retain_provisioning(wifi, ap_mac, station_ssid, reason)
+    retain_provisioning(wifi, ap_configuration, None, ap_mac, station_ssid, reason)
 }
 
 fn retain_provisioning(
     wifi: FirmwareWifi,
+    ap_configuration: AccessPointConfiguration,
+    maybe_client_configuration: Option<ClientConfiguration>,
     ap_mac: [u8; 6],
     station_ssid: String,
     reason: ProvisioningReason,
 ) -> anyhow::Result<()> {
     let ap_ipv4 = wifi.wifi().ap_netif().get_ip_info()?.ip;
-    captive_dns::start(ap_ipv4)?;
+    captive_dns::start_once(ap_ipv4)?;
     publish_wifi_state(WifiRuntimeSnapshot {
         wifi_status: reason.wifi_status().to_owned(),
         ssid: station_ssid,
@@ -222,7 +377,13 @@ fn retain_provisioning(
         "wifi_status={} ap_enabled=true captive_dns=started",
         reason.wifi_status()
     ));
-    install_wifi_owner(wifi, None)
+    install_wifi_owner(
+        wifi,
+        ap_configuration,
+        maybe_client_configuration,
+        ap_mac,
+        None,
+    )
 }
 
 fn publish_connected_wifi(
@@ -263,11 +424,17 @@ fn publish_connected_wifi(
 
 fn install_wifi_owner(
     wifi: FirmwareWifi,
+    ap_configuration: AccessPointConfiguration,
+    maybe_client_configuration: Option<ClientConfiguration>,
+    ap_mac: [u8; 6],
     ipv6_subscription: Option<EspSystemSubscription<'static>>,
 ) -> anyhow::Result<()> {
     WIFI_OWNER
         .set(Mutex::new(WifiOwner {
             wifi,
+            ap_configuration,
+            maybe_client_configuration,
+            ap_ssid: configuration_ap_ssid(ap_mac).as_str().to_owned(),
             _ipv6_subscription: ipv6_subscription,
         }))
         .map_err(|_| anyhow::anyhow!("Wi-Fi owner was already installed"))

@@ -1,6 +1,7 @@
 pub mod bap;
 pub mod display;
 pub mod hashrate;
+pub mod input;
 pub mod runtime_health;
 pub mod runtime_orchestration;
 pub mod screen;

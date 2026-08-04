@@ -247,6 +247,27 @@ pub fn apply_identify_mode_command(effect: IdentifyModeEffect) {
     });
 }
 
+/// Result of atomically testing and cancelling identify for a short click.
+pub enum ButtonIdentifyCancellation {
+    Cancelled,
+    Inactive,
+    StateUnavailable,
+}
+
+/// Atomically cancels identify only when it is active at this instant.
+pub fn cancel_identify_if_active_at(now_ms: u64) -> ButtonIdentifyCancellation {
+    mutate_command_visible_state_with_result(
+        ButtonIdentifyCancellation::StateUnavailable,
+        |state| {
+            if state.identify.mode_at(now_ms) != IdentifyMode::Active {
+                return ButtonIdentifyCancellation::Inactive;
+            }
+            apply_identify_mode_effect(&mut state.identify, IdentifyModeEffect::Disable, now_ms);
+            ButtonIdentifyCancellation::Cancelled
+        },
+    )
+}
+
 /// Applies an API-visible block-found dismiss command effect.
 pub fn apply_block_found_dismiss_command(effect: BlockFoundDismissEffect) {
     mutate_command_visible_state(|state| {

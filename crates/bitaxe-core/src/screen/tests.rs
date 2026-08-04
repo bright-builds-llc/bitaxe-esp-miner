@@ -287,6 +287,49 @@ fn high_monotonic_timestamps_do_not_wrap_deadlines() {
     assert_eq!(decision.page, ScreenPage::OpenSourceIntro);
 }
 
+#[test]
+fn admitted_short_click_uses_pinned_order_and_carousel_wrap() {
+    // Arrange
+    let snapshot = connected_snapshot();
+    let mut flow = ScreenFlow::new(0, &snapshot);
+
+    // Act / Assert
+    let expected = [
+        ScreenPage::OpenSourceIntro,
+        ScreenPage::Urls,
+        ScreenPage::Statistics,
+        ScreenPage::Mining,
+        ScreenPage::Wifi,
+        ScreenPage::Urls,
+    ];
+    for (index, expected_page) in expected.into_iter().enumerate() {
+        let now_ms = u64::try_from(index + 1).expect("small index") * 500;
+        let decision = flow
+            .advance_by_input(now_ms, &snapshot)
+            .expect("manual advance");
+        assert_eq!(decision.page, expected_page);
+    }
+}
+
+#[test]
+fn priority_reasserts_on_the_evaluation_after_manual_advance() {
+    // Arrange
+    let mut snapshot = connected_snapshot();
+    snapshot.overheat = true;
+    let mut flow = ScreenFlow::new(0, &snapshot);
+
+    // Act
+    let manual = flow
+        .advance_by_input(500, &snapshot)
+        .expect("manual successor");
+    let reasserted = flow.update(1_000, &snapshot).expect("priority");
+
+    // Assert
+    assert_eq!(manual.page, ScreenPage::AsicStatus);
+    assert_eq!(reasserted.page, ScreenPage::Overheat);
+    assert!(reasserted.priority_visible);
+}
+
 trait PrivateDecisionLine {
     fn private_frame_line(&self, index: usize) -> &str;
 }

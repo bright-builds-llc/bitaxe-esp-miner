@@ -37,29 +37,26 @@ pub(super) fn page_frame(
 ) -> ScreenFrame {
     let lines = match page {
         ScreenPage::SelfTest => {
-            let values = snapshot.maybe_self_test.as_ref().expect("priority page");
+            let values = snapshot.maybe_self_test.as_ref();
             [
                 "BITAXE SELF-TEST".to_owned(),
-                values[0].clone(),
-                values[1].clone(),
-                values[2].clone(),
+                values.map_or_else(String::new, |values| values[0].clone()),
+                values.map_or_else(String::new, |values| values[1].clone()),
+                values.map_or_else(String::new, |values| values[2].clone()),
             ]
         }
         ScreenPage::FirmwareUpdate => {
-            let values = snapshot
-                .maybe_firmware_update
-                .as_ref()
-                .expect("priority page");
+            let values = snapshot.maybe_firmware_update.as_ref();
             [
                 "Firmware update".to_owned(),
-                values[0].clone(),
-                values[1].clone(),
+                values.map_or_else(String::new, |values| values[0].clone()),
+                values.map_or_else(String::new, |values| values[1].clone()),
                 String::new(),
             ]
         }
         ScreenPage::AsicStatus => [
             "ASIC STATUS:".to_owned(),
-            snapshot.maybe_asic_status.clone().expect("priority page"),
+            snapshot.maybe_asic_status.clone().unwrap_or_default(),
             String::new(),
             String::new(),
         ],

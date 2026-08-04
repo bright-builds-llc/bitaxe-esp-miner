@@ -689,12 +689,12 @@ behavior remain separate evidence gaps.
 
 ### task-parity-ui003-boot-button | 2026-08-04 | Implement bounded Ultra 205 boot-button input
 
-- [ ] Add a pure active-low debounce and exact 2,000 ms short/long press
+- [x] Add a pure active-low debounce and exact 2,000 ms short/long press
       classifier with bounce, regression, and one-shot long-press coverage.
-- [ ] Retain one GPIO0 input owner and route normal short clicks to identify
+- [x] Retain one GPIO0 input owner and route normal short clicks to identify
       cancellation or screen advance, normal long presses to configuration-AP
       toggle, and self-test long presses to an explicit unavailable boundary.
-- [ ] Wake the display on admitted short input, preserve display/sensor/Wi-Fi
+- [x] Wake the display on admitted short input, preserve display/sensor/Wi-Fi
       failure isolation, and expose only redaction-safe input status categories.
 
 Plan: `docs/parity/work-plans/20260805T020000Z-UI-003/PLAN.md`
@@ -704,11 +704,18 @@ work only. No hardware attempt, physical button press, credentials, external
 service, mining, pool connection, frequency/voltage/fan/power effect, OTA,
 recovery, direct UART, pins, or physical electrical manipulation.
 
-Verification: Pending.
+Verification: Six focused pure input tests, fourteen screen-flow tests, both
+firmware display/Wi-Fi source-ownership targets, and the real ESP32-S3 firmware
+target pass. The mandatory ordered Rust sequence, Bright Builds checks, all 34
+Bazel test targets, parity validation/progress, redaction, reference
+cleanliness, immutable-plan, sensitive-log, and diff checks also pass.
 
-Completion review: Pending. Physical button observation, exact LVGL event
-timing, self-test cancellation, live configuration-AP toggling, and all
-hardware behavior remain below verified.
+Completion review: The bounded active-low classifier, retained GPIO0 pull-up
+owner, atomic identify cancellation, manual screen advance/display wake, and
+typed configuration-AP toggle are software-implemented with closed failure
+categories. Physical button observation, exact LVGL event timing, self-test
+cancellation, live configuration-AP toggling, and all hardware behavior remain
+below verified, so this implemented task remains active rather than archived.
 
 ## Future
 

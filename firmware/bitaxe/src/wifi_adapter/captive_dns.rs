@@ -1,5 +1,6 @@
 use std::{
     net::{Ipv4Addr, SocketAddrV4, UdpSocket},
+    sync::atomic::{AtomicBool, Ordering},
     thread,
 };
 
@@ -7,8 +8,23 @@ use bitaxe_api::{build_captive_dns_response, CAPTIVE_DNS_PACKET_BYTES, CAPTIVE_D
 
 const THREAD_STACK_BYTES: usize = 8 * 1024;
 const THREAD_NAME: &str = "captive-dns";
+static STARTED: AtomicBool = AtomicBool::new(false);
 
-pub(super) fn start(ap_ipv4: Ipv4Addr) -> anyhow::Result<()> {
+pub(super) fn start_once(ap_ipv4: Ipv4Addr) -> anyhow::Result<()> {
+    if STARTED
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return Ok(());
+    }
+    if let Err(error) = start(ap_ipv4) {
+        STARTED.store(false, Ordering::Release);
+        return Err(error);
+    }
+    Ok(())
+}
+
+fn start(ap_ipv4: Ipv4Addr) -> anyhow::Result<()> {
     let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, CAPTIVE_DNS_PORT))?;
     thread::Builder::new()
         .name(THREAD_NAME.to_owned())

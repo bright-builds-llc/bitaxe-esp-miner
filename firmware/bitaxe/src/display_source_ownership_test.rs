@@ -3,6 +3,7 @@ const ADAPTER_SOURCE: &str = include_str!("display_adapter.rs");
 const RUNTIME_SOURCE: &str = include_str!("operator_sensor_runtime.rs");
 const SNAPSHOT_SOURCE: &str = include_str!("runtime_snapshot.rs");
 const SCREEN_SNAPSHOT_SOURCE: &str = include_str!("runtime_snapshot/screen.rs");
+const INPUT_SOURCE: &str = include_str!("input_adapter.rs");
 
 #[test]
 fn confirmed_configuration_precedes_first_panel_initialization() {
@@ -81,7 +82,26 @@ fn runtime_uses_absolute_cadence_and_edge_only_power_service() {
     assert!(source.contains(".service_power(owner, uptime_ms, decision.priority_visible)"));
     assert!(source.contains("display.owner.render_runtime_screen(owner, &decision.frame)"));
     assert!(source.contains("display.maybe_last_frame.as_ref() == Some(&decision.frame)"));
+    assert!(source.contains("take_pending_screen_advances()"));
+    assert!(source.contains("display.owner.record_input_activity(uptime_ms)"));
     assert!(!source.contains("std::thread::Builder::new().name(\"display"));
+}
+
+#[test]
+fn gpio0_input_has_one_pullup_owner_and_closed_effect_logs() {
+    // Arrange / Act / Assert
+    assert_eq!(STARTUP_SOURCE.matches("input_adapter::start(pins.gpio0)").count(), 1);
+    assert!(INPUT_SOURCE.contains("PinDriver::input(pin, Pull::Up)"));
+    assert!(INPUT_SOURCE.contains("Duration::from_millis(BUTTON_SAMPLE_MS)"));
+    assert_eq!(INPUT_SOURCE.matches(".spawn(move || run(driver))").count(), 1);
+    assert!(INPUT_SOURCE.contains("ButtonSelfTestState::Inactive"));
+    assert!(INPUT_SOURCE.contains("cancel_identify_if_active_at(now_ms)"));
+    assert!(SNAPSHOT_SOURCE.contains("mutate_command_visible_state_with_result("));
+    assert!(SNAPSHOT_SOURCE.contains("ButtonIdentifyCancellation::StateUnavailable"));
+    assert!(INPUT_SOURCE.contains("effect=self_test_reset status=unavailable"));
+    assert!(!INPUT_SOURCE.contains("ssid="));
+    assert!(!INPUT_SOURCE.contains("ipv4="));
+    assert!(!INPUT_SOURCE.contains("password="));
 }
 
 #[test]

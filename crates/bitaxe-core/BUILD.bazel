@@ -21,6 +21,7 @@ rust_library(
         "src/display.rs",
         "src/hashrate.rs",
         "src/hashrate/tests.rs",
+        "src/input.rs",
         "src/lib.rs",
         "src/runtime_health.rs",
         "src/runtime_health/tests.rs",

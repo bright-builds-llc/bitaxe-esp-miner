@@ -234,14 +234,22 @@ fn service_display(
         return;
     };
     let snapshot = crate::runtime_snapshot::collect_screen_snapshot(uptime_ms);
-    let decision = match display.flow.update(uptime_ms, &snapshot) {
-        Ok(decision) => decision,
-        Err(error) => {
-            let error = anyhow::Error::new(error);
-            disable_runtime_display(maybe_display, "screen_flow_failed", &error);
+    let pending_advances = crate::input_adapter::take_pending_screen_advances();
+    let decision =
+        match next_screen_decision(&mut display.flow, uptime_ms, &snapshot, pending_advances) {
+            Ok(decision) => decision,
+            Err(error) => {
+                let error = anyhow::Error::new(error);
+                disable_runtime_display(maybe_display, "screen_flow_failed", &error);
+                return;
+            }
+        };
+    if pending_advances > 0 {
+        if let Err(error) = display.owner.record_input_activity(uptime_ms) {
+            disable_runtime_display(maybe_display, "input_activity_failed", &error);
             return;
         }
-    };
+    }
     if let Err(error) = display
         .owner
         .service_power(owner, uptime_ms, decision.priority_visible)
@@ -260,6 +268,22 @@ fn service_display(
     display.maybe_last_frame = Some(decision.frame);
 }
 
+fn next_screen_decision(
+    flow: &mut ScreenFlow,
+    uptime_ms: u64,
+    snapshot: &bitaxe_core::screen::ScreenSnapshot,
+    pending_advances: u8,
+) -> Result<bitaxe_core::screen::ScreenDecision, bitaxe_core::screen::ScreenFlowError> {
+    if pending_advances == 0 {
+        return flow.update(uptime_ms, snapshot);
+    }
+    let mut decision = flow.advance_by_input(uptime_ms, snapshot)?;
+    for _ in 1..pending_advances {
+        decision = flow.advance_by_input(uptime_ms, snapshot)?;
+    }
+    Ok(decision)
+}
+
 fn disable_runtime_display(
     maybe_display: &mut Option<RuntimeDisplay>,
     reason: &str,
@@ -268,6 +292,7 @@ fn disable_runtime_display(
     log::warn!("display_status=runtime_refresh_disabled reason={reason} error={error:#}");
     crate::display_adapter::publish_runtime_display_input_boundary(
         crate::display_adapter::RuntimeDisplayMode::Unavailable,
+        crate::input_adapter::is_available(),
     );
     *maybe_display = None;
 }

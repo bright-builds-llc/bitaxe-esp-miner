@@ -45,10 +45,15 @@ impl RuntimeDisplayMode {
     }
 }
 
-pub fn publish_runtime_display_input_boundary(mode: RuntimeDisplayMode) {
+pub fn publish_runtime_display_input_boundary(mode: RuntimeDisplayMode, input_available: bool) {
+    let input_runtime = if input_available {
+        "boot_button"
+    } else {
+        "unavailable"
+    };
     log::warn!(
-        "display_input_status=runtime_gap reason=input_parity_pending display_runtime={} input_runtime=unavailable",
-        mode.as_str()
+        "display_input_status=bounded display_runtime={} input_runtime={input_runtime}",
+        mode.as_str(),
     );
 }
 
@@ -92,6 +97,13 @@ impl RuntimeDisplayOwner {
             self.configuration,
             false,
         )
+    }
+
+    /// Records an admitted boot-button click as display activity.
+    pub fn record_input_activity(&mut self, now_ms: u64) -> Result<()> {
+        self.power_policy
+            .record_activity(now_ms)
+            .map_err(|error| anyhow::anyhow!("record display input activity: {error}"))
     }
 
     /// Applies only a changed on/off edge from the pure timeout policy.

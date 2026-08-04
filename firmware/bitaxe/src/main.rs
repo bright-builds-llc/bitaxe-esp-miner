@@ -6,6 +6,7 @@ mod boot_validation;
 mod display_adapter;
 mod filesystem;
 mod http_api;
+mod input_adapter;
 mod log_buffer;
 mod mining_actuation;
 mod mining_actuation_adapter;

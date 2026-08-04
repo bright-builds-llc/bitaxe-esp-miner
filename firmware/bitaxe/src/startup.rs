@@ -4,9 +4,9 @@ use esp_idf_svc::sys;
 
 use crate::{
     asic_adapter, boot_evidence, boot_validation, display_adapter, filesystem, http_api,
-    operator_sensor_runtime, production_mining_session, runtime_snapshot, runtime_uptime,
-    safety_adapter, scoreboard_adapter, settings_adapter, statistics_runtime, wifi_adapter,
-    BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
+    input_adapter, operator_sensor_runtime, production_mining_session, runtime_snapshot,
+    runtime_uptime, safety_adapter, scoreboard_adapter, settings_adapter, statistics_runtime,
+    wifi_adapter, BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
 };
 
 pub(crate) fn run() -> anyhow::Result<()> {
@@ -61,6 +61,7 @@ fn initialize_hardware(
             log::warn!("display_status=unavailable reason=peripherals_unavailable error={error}");
             display_adapter::publish_runtime_display_input_boundary(
                 display_adapter::RuntimeDisplayMode::Unavailable,
+                false,
             );
             return (
                 asic_adapter::run_boot_gate_without_peripherals("peripherals_unavailable"),
@@ -76,6 +77,13 @@ fn initialize_hardware(
         enable: pins.gpio10,
         tx: pins.gpio17,
         rx: pins.gpio18,
+    };
+    let input_available = match input_adapter::start(pins.gpio0) {
+        Ok(()) => true,
+        Err(error) => {
+            log::warn!("input_status=unavailable reason=initialization_failed error={error:#}");
+            false
+        }
     };
     let maybe_core_voltage_adc =
         match safety_adapter::Ultra205CoreVoltageAdc::new(peripherals.adc1, pins.gpio2) {
@@ -95,13 +103,12 @@ fn initialize_hardware(
             Ok(bus) => Some(bus),
             Err(error) => {
                 log::warn!("display_status=unavailable reason=i2c0_init_failed error={error:#}");
-                display_adapter::publish_runtime_display_input_boundary(
-                    display_adapter::RuntimeDisplayMode::Unavailable,
-                );
                 None
             }
         };
-    initialize_operator_runtime(maybe_i2c_bus, maybe_core_voltage_adc, startup_debug_text);
+    let display_mode =
+        initialize_operator_runtime(maybe_i2c_bus, maybe_core_voltage_adc, startup_debug_text);
+    display_adapter::publish_runtime_display_input_boundary(display_mode, input_available);
     (
         asic_adapter::run_boot_gate_with_peripherals(boot_peripherals),
         Some(modem),
@@ -112,7 +119,7 @@ fn initialize_operator_runtime(
     mut maybe_bus: Option<safety_adapter::BitaxeI2cBus<'static>>,
     maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
     startup_debug_text: StartupDebugText,
-) {
+) -> display_adapter::RuntimeDisplayMode {
     let display_started_at_ms = runtime_uptime::millis();
     let startup_frame = startup_debug_text.frame_at(display_started_at_ms);
     let confirmed_settings = settings_adapter::current_settings_snapshot();
@@ -154,17 +161,13 @@ fn initialize_operator_runtime(
         log::warn!(
             "operator_sensor_runtime=unavailable reason=thread_spawn_failed error={error:#}"
         );
-        display_adapter::publish_runtime_display_input_boundary(
-            display_adapter::RuntimeDisplayMode::Unavailable,
-        );
-        return;
+        return display_adapter::RuntimeDisplayMode::Unavailable;
     }
-    let mode = if runtime_display_enabled {
+    if runtime_display_enabled {
         display_adapter::RuntimeDisplayMode::ScreenFlow
     } else {
         display_adapter::RuntimeDisplayMode::Unavailable
-    };
-    display_adapter::publish_runtime_display_input_boundary(mode);
+    }
 }
 
 fn start_runtime_services(

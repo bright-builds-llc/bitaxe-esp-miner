@@ -216,6 +216,28 @@ impl ScreenFlow {
         })
     }
 
+    /// Advances once in pinned screen order for an admitted short click.
+    pub fn advance_by_input(
+        &mut self,
+        now_ms: u64,
+        snapshot: &ScreenSnapshot,
+    ) -> Result<ScreenDecision, ScreenFlowError> {
+        if now_ms < self.last_update_ms {
+            return Err(ScreenFlowError::ClockRegressed);
+        }
+        self.last_update_ms = now_ms;
+        self.page = manual_successor(self.page);
+        self.page_started_at_ms = now_ms;
+        self.intro_complete |= !self.page.is_intro();
+        self.maybe_priority_page = None;
+        self.block_pinned = false;
+        Ok(ScreenDecision {
+            page: self.page,
+            priority_visible: false,
+            frame: page_frame(self.page, snapshot, Notification::default()),
+        })
+    }
+
     fn advance_normal_pages(&mut self, now_ms: u64) -> Result<(), ScreenFlowError> {
         for _ in 0..2 {
             if !self.page.is_intro() {
@@ -275,6 +297,23 @@ impl ScreenFlow {
             work,
             paused: !accepted && !rejected && !work && snapshot.mining_paused,
         }
+    }
+}
+
+const fn manual_successor(page: ScreenPage) -> ScreenPage {
+    match page {
+        ScreenPage::SelfTest => ScreenPage::Overheat,
+        ScreenPage::Overheat => ScreenPage::AsicStatus,
+        ScreenPage::AsicStatus => ScreenPage::Welcome,
+        ScreenPage::Welcome => ScreenPage::FirmwareUpdate,
+        ScreenPage::FirmwareUpdate => ScreenPage::Connection,
+        ScreenPage::Connection => ScreenPage::BitaxeIntro,
+        ScreenPage::BitaxeIntro => ScreenPage::OpenSourceIntro,
+        ScreenPage::OpenSourceIntro => ScreenPage::Urls,
+        ScreenPage::Urls => ScreenPage::Statistics,
+        ScreenPage::Statistics => ScreenPage::Mining,
+        ScreenPage::Mining => ScreenPage::Wifi,
+        ScreenPage::Wifi => ScreenPage::Urls,
     }
 }
 
