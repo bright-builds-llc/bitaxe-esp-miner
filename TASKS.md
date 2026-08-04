@@ -465,6 +465,25 @@ because live SSID visibility, client association, DHCP, wildcard DNS, captive
 redirect, settings access, station handoff, and fallback behavior remain below
 verified and require separate detector-gated evidence.
 
+### task-parity-net003-scan-ipv6 | 2026-08-04 | Implement Wi-Fi scan and IPv6 reporting
+
+- [ ] Add the bounded 20-network scan response and explicit numeric auth-mode
+      plus link-local/global IPv6 projection contracts.
+- [ ] Retain one ESP-IDF Wi-Fi owner for exclusive scans, restore AP-only mode,
+      register the access-gated endpoint, and publish station-only IPv6 events.
+- [ ] Add focused/ownership regressions, build the real firmware, run every
+      mandatory gate, and transition only `NET-003` to `implemented`.
+
+Plan: `docs/parity/work-plans/20260804T170000Z-NET-003/PLAN.md`
+
+Authorization: local software and build work only. No hardware attempt,
+credentials, external network request, mining, ASIC traffic, voltage/fan/power
+effect, OTA, recovery, direct UART, or pins.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
