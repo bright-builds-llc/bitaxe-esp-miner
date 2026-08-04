@@ -856,9 +856,9 @@ is a host-side baseline-epoch admission defect, tracked separately below.
 - [ ] Run the complete mandatory verification sequence and review public output
       for secrets before proposing any separately task-gated hardware attempt.
 
-Plan: pending. Continue from
-`docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md` without modifying that
-immutable file; create a new immutable follow-up plan before implementation.
+Plan: `docs/parity/work-plans/20260804T192918Z-API-010/PLAN.md`. This follow-up
+continues from `docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md` without
+modifying that immutable file.
 
 Authorization: read-only inspection of committed code and private local
 attempt structure plus synthetic software tests only. Do not read, print,
