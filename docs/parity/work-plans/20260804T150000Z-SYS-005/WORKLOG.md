@@ -50,3 +50,32 @@
   documenting the existing owners.
 - Blocker or next safe action: Rerun the complete mandatory gate against the
   final implementation diff.
+
+## 2026-08-04T15:45:00Z | implementation commit and transition readiness
+
+- Source commit: `5c3866760830bf911a6be8eefe61bfc08ddfc99b`.
+- Actions: Committed the absolute owner scheduling contract and bound the final
+  result to that immutable implementation commit.
+- Verification: Focused tests, real ESP32-S3 firmware build, ordered Rust gate,
+  Bright Builds, all 29 Bazel test targets, parity/progress, redaction,
+  reference cleanliness, and diff checks passed.
+- Evidence: `RESULT.md`, deadline reducer tests, production-session lifecycle
+  and recovery tests, source-ownership regressions, and firmware ELF.
+- Outcome: `SYS-005` is eligible for `verified` with `unit,workflow` evidence;
+  every hardware, mining, and load-timing claim remains separate.
+- Blocker or next safe action: Apply the typed transition, synchronize progress,
+  archive the completed task record, run final metadata gates, commit, and push.
+
+## 2026-08-04T15:45:00Z | verified transition
+
+- Source commit: `5c3866760830bf911a6be8eefe61bfc08ddfc99b`.
+- Actions: Applied typed transition `20260804T154500Z-SYS-005`, synchronized the
+  hash-chained progress record, and archived the completed active task.
+- Verification: The transition validator accepted the exact checklist change;
+  progress is 39 verified of 94 active rows, 41.5 percent complete.
+- Evidence: Transition receipt, `RESULT.md`, implementation commit, focused
+  behavior/ownership tests, and synchronized progress record.
+- Outcome: `SYS-005` is `verified` with `unit,workflow`; no hardware or mining
+  evidence was inferred.
+- Blocker or next safe action: Run final metadata gates, commit, push, then
+  resume deterministic parity selection.

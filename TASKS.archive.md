@@ -4874,3 +4874,33 @@ Completion review: Completed and promoted only `STR-012` from `not-started` to
 no dependency or effectful path. Local owner addresses, configured-address
 integration, live payouts, mining, ASIC work, Stratum V2 keys, and hardware
 remain separate.
+
+### task-parity-sys005-runtime-orchestration | 2026-08-04 | Close runtime owner scheduling parity
+
+- [x] Centralize the pure periodic-deadline contract used by the safety,
+      operator-observation, and production-session owners.
+- [x] Bind work creation, bounded result consumption, authoritative readiness,
+      and fail-closed power/safety scheduling to explicit single-owner seams.
+- [x] Add behavioral and source-ownership regressions, build the real firmware,
+      run mandatory gates, and transition only `SYS-005` when its bounded
+      software orchestration contract is proven.
+
+Plan: `docs/parity/work-plans/20260804T150000Z-SYS-005/PLAN.md`
+
+Authorization: local software and build work only. No hardware attempt,
+credentials, external network request, mining, voltage/fan/power effect, OTA,
+recovery, direct UART, or pins.
+
+Verification: Complete. Four checked deadline tests, the strengthened
+result-before-submit lifecycle test, startup and bounded-owner source checks,
+and the real ESP32-S3 firmware build passed. The ordered Rust gate, Bright
+Builds, all 29 Bazel test targets, parity/progress, redaction, reference
+cleanliness, and diff checks passed on implementation commit `5c386676`.
+
+Completion review: Completed and promoted only `SYS-005` from `not-started` to
+`verified` under transition `20260804T154500Z-SYS-005`. Absolute deadlines now
+prevent observation/supervisor drift and production-readiness starvation under
+continuous inbox traffic. Live FreeRTOS timing under load, production mining,
+pool connectivity, ASIC traffic, accepted/rejected shares, hardware effects,
+fault injection, soak behavior, credentials, OTA, recovery, other boards,
+direct UART, and pins remain separate.

@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T154500Z-SYS-005",
+  "predecessor_sha256": "582bd8946297bb80024a9f11c0f95271f70fdaff03abcfff37333b19aeef941e",
+  "result_sha256": "4fc4167c3bd58407c4cbf8ec73a5b96c304302bfd2f115aead4a4adbf537200f",
+  "row_id": "SYS-005",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T150000Z-SYS-005/PLAN.md",
+  "plan_sha256": "6c31a03350d4469fdf651491fe4685cbecb8f078db82edb1e846f3674bff5e33",
+  "result_path": "docs/parity/work-plans/20260804T150000Z-SYS-005/RESULT.md",
+  "result_document_sha256": "22c9a97eb9eb1e9b6b2b1d161f860af2440a35fd51067217e7ec62d289f622b6",
+  "before_rust_owned_target": "`firmware/bitaxe`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/runtime_orchestration.rs`, `crates/bitaxe-stratum/src/v1/production_session`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `firmware/bitaxe/src/safety_adapter/watchdog.rs`",
+  "before_status": "not-started",
+  "after_status": "verified",
+  "before_evidence": "pending",
+  "after_evidence": "unit,workflow",
+  "before_notes": "Job creation, result consumption, and power-management scheduling remain explicit gaps. Internal task layout may differ if observable lifecycle, ordering, and failure behavior match.",
+  "after_notes": "Absolute deadlines and owner-seam tests prove bounded work dispatch, result consumption, authoritative rereads, startup order, and fail-closed scheduling; see docs/parity/work-plans/20260804T150000Z-SYS-005/RESULT.md. Live load timing, mining, ASIC traffic, and hardware effects remain separate."
+}
