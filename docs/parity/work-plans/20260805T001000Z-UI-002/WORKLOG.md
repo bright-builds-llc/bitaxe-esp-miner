@@ -55,3 +55,34 @@
 - Blocker or next safe action: Commit the implementation, bind that exact
   commit and the pinned reference in `RESULT.md`, then transition only UI-002
   from `in-progress` to `implemented` with `unit,workflow` evidence.
+
+## 2026-08-04T18:16:54Z | implemented transition checkpoint
+
+- Source commit: `9b2f37945b34a0e9fece56c8aa90703afda3ac63`.
+- Actions: Added the commit-bound `RESULT.md`, applied typed transition
+  `20260805T011000Z-UI-002`, and appended the derived progress record against
+  the exact implementation commit and immutable plan.
+- Verification: The transition receipt binds predecessor checklist digest
+  `52c226b8470d0b8982a0e56cdc5d821dcba1655faae5d27382b131def521a288`,
+  result checklist digest
+  `e20aabed3ad4a26b9e5ed6f1eaef54d65233bae05538203ded24a8957e70dc7c`,
+  the pinned reference, immutable plan, and commit-bound result.
+- Outcome: UI-002 is `implemented` with `unit,workflow`; no live panel,
+  physical input, exact LVGL bitmap/animation, mining, or hardware-control
+  claim was promoted.
+- Blocker or next safe action: Run the complete post-transition gates, commit
+  and push the metadata checkpoint, then invoke deterministic selection again.
+
+## 2026-08-04T18:19:49Z | post-transition gate checkpoint
+
+- Verification: The ordered full Rust sequence, Bright Builds checks, all 34
+  Bazel test targets, parity progress, redaction, reference cleanliness,
+  immutable-plan, and diff checks pass against the transitioned checklist.
+  The first parity-report invocation encountered transient macOS
+  `Resource temporarily unavailable (os error 35)` while emitting the large
+  report; one isolated retry completed successfully with `validation_errors:
+  none` and no repository change.
+- Outcome: The receipt, checklist, result, and progress chain is valid and
+  ready for its metadata commit.
+- Blocker or next safe action: Commit and push this checkpoint, verify remote
+  synchronization, then select the next deterministic row.

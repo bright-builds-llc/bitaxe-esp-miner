@@ -680,9 +680,12 @@ pass. The ordered full Rust sequence, Bright Builds checks, all 34 Bazel test
 targets, parity validation/progress, redaction, reference cleanliness,
 immutable-plan, and diff checks also pass.
 
-Completion review: Pending. UI-003 physical input, live screen content,
-animation/bitmap parity, mining, and hardware-control behavior remain below
-verified.
+Completion review: Implementation commit
+`9b2f37945b34a0e9fece56c8aa90703afda3ac63` and the commit-bound `RESULT.md`
+support the typed `implemented` transition with `unit,workflow` evidence. The
+task remains active because UI-002 is below `verified`; UI-003 physical input,
+live screen content, animation/bitmap parity, mining, and hardware-control
+behavior remain separate evidence gaps.
 
 ## Future
 

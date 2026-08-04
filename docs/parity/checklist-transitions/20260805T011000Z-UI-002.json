@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260805T011000Z-UI-002",
+  "predecessor_sha256": "52c226b8470d0b8982a0e56cdc5d821dcba1655faae5d27382b131def521a288",
+  "result_sha256": "e20aabed3ad4a26b9e5ed6f1eaef54d65233bae05538203ded24a8957e70dc7c",
+  "row_id": "UI-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260805T001000Z-UI-002/PLAN.md",
+  "plan_sha256": "ab7f208ca86f219383acb575068c3a8c3941b6f7c12dfbdacd2ba7710e818d94",
+  "result_path": "docs/parity/work-plans/20260805T001000Z-UI-002/RESULT.md",
+  "result_document_sha256": "2c2b141566f131b2e9486f205013e32118a4ec639978e7b15a3607b3a717f552",
+  "before_rust_owned_target": "`crates/bitaxe-core/src/lib.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/screen.rs`, `crates/bitaxe-core/src/screen/frame.rs`, `firmware/bitaxe/src/runtime_snapshot/screen.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "unit,workflow,hardware-smoke",
+  "after_evidence": "unit,workflow",
+  "before_notes": "The runtime display owner refreshes once per second, redraws on change, clears and transmits the complete 512-byte SSD1306 framebuffer, and isolates display failure from the 500 ms sensor cadence. Focused regressions and 2026-07-26 operator LCD UAT cover this bounded debug flow only; the upstream LVGL screen and task carousel remain below verified.",
+  "after_notes": "Bounded priority, identify/new-block overlays, one-shot intro, carousel, notification deltas, private runtime projection, absolute 500 ms scheduling, change-only rendering, and display-failure isolation are implemented; see docs/parity/work-plans/20260805T001000Z-UI-002/RESULT.md. Live panel content, exact LVGL bitmap/animation behavior, UI-003 input, mining, hardware-control effects, and verified status remain separate."
+}
