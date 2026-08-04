@@ -52,3 +52,34 @@
   `implemented` transition with `unit,workflow` evidence.
 - Blocker or next safe action: Commit the implementation, add a commit-bound
   result, transition only UI-003, run post-transition gates, and push.
+
+## 2026-08-04T18:46:08Z | implemented transition checkpoint
+
+- Source commit: `4c31650d8810d7749891b31c05ffc68e5c35dce4`.
+- Actions: Added the commit-bound `RESULT.md`, applied typed transition
+  `20260805T021000Z-UI-003`, and appended the derived progress record against
+  the exact implementation commit and immutable plan.
+- Verification: The transition receipt binds predecessor checklist digest
+  `e20aabed3ad4a26b9e5ed6f1eaef54d65233bae05538203ded24a8957e70dc7c`,
+  result checklist digest
+  `82df5dd6e5070ccbb44148e6357fabc696e7a2042727510d9245694d504e103b`,
+  the pinned reference, immutable plan, and commit-bound result.
+- Outcome: UI-003 is `implemented` with `unit,workflow`; no physical button,
+  exact LVGL timing, live AP, self-test, mining, or hardware-control claim was
+  promoted.
+- Blocker or next safe action: Run complete post-transition gates, commit and
+  push the metadata checkpoint, verify remote synchronization, then select the
+  next deterministic row.
+
+## 2026-08-04T18:51:20Z | post-transition gate checkpoint
+
+- Verification: The ordered full Rust sequence, Bright Builds checks, all 34
+  Bazel test targets, parity validation/progress, redaction, reference
+  cleanliness, immutable-plan, and diff checks pass against the transitioned
+  checklist. The macOS Rust doc-test compiler spent a prolonged interval in
+  uninterruptible I/O but completed successfully without a retry or repository
+  change.
+- Outcome: The receipt, checklist, result, worklog, and progress chain are
+  valid and ready for their metadata commit.
+- Blocker or next safe action: Commit and push this checkpoint, verify remote
+  synchronization, then invoke deterministic selection again.

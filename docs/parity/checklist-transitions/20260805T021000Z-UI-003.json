@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260805T021000Z-UI-003",
+  "predecessor_sha256": "e20aabed3ad4a26b9e5ed6f1eaef54d65233bae05538203ded24a8957e70dc7c",
+  "result_sha256": "82df5dd6e5070ccbb44148e6357fabc696e7a2042727510d9245694d504e103b",
+  "row_id": "UI-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260805T020000Z-UI-003/PLAN.md",
+  "plan_sha256": "7fc79cdeb8ff464ad196d3890b9018d3d55bf3933b1169a11846c445beeb9e46",
+  "result_path": "docs/parity/work-plans/20260805T020000Z-UI-003/RESULT.md",
+  "result_document_sha256": "0e479ff76b6af3204fe64f31ec98cedbb82d8f1cdc095970c9f1abafe9c69f5e",
+  "before_rust_owned_target": "`firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/startup.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/input.rs`, `crates/bitaxe-core/src/screen.rs`, `firmware/bitaxe/src/input_adapter.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `firmware/bitaxe/src/wifi_adapter.rs`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "workflow,hardware-smoke",
+  "after_evidence": "unit,workflow",
+  "before_notes": "The current runtime marker is `display_input_status=runtime_gap reason=full_parity_pending display_runtime=alternating_debug input_runtime=unavailable`. It reports the implemented bounded debug display separately from unavailable input; physical input and full runtime route behavior remain below verified and still require hardware regression before any promotion.",
+  "after_notes": "Bounded active-low debounce, exact short/long routing, retained GPIO0 ownership, atomic identify cancellation, manual screen advance/display wake, and typed configuration-AP toggling are implemented; see docs/parity/work-plans/20260805T020000Z-UI-003/RESULT.md. Physical button behavior, exact LVGL timing, live AP transitions, self-test effects, mining, hardware control, and verified status remain separate."
+}
