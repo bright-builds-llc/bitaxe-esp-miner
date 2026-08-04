@@ -14,11 +14,16 @@ filegroup(
 rust_library(
     name = "bitaxe_core",
     srcs = [
+        "src/bap.rs",
+        "src/bap/semantics.rs",
+        "src/bap/tests.rs",
+        "src/bap/wire.rs",
         "src/lib.rs",
         "src/runtime_health.rs",
         "src/runtime_health/tests.rs",
         "src/runtime_orchestration.rs",
     ],
+    compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_core",
     edition = "2021",
     visibility = ["//visibility:public"],

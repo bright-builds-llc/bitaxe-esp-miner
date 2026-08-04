@@ -1,0 +1,9 @@
+# schema: bitaxe-bap-protocol-golden-v1
+# provenance: independently encoded from pinned BAP token and XOR behavior; synthetic values only
+REQ|systemInfo|-|$BAP,REQ,systemInfo*3E\r\n
+SUB|hashrate|1000|$BAP,SUB,hashrate,1000*2A\r\n
+UNSUB|hashrate|-|$BAP,UNSUB,hashrate*1C\r\n
+SET|frequency|500.0|$BAP,SET,frequency,500.0*72\r\n
+ERR|frequency|invalid_range|$BAP,ERR,frequency,invalid_range*0F\r\n
+RES|shares|12/3|$BAP,RES,shares,12/3*3A\r\n
+SET|ssid|SyntheticNetwork|$BAP,SET,ssid,SyntheticNetwork*2D\r\n

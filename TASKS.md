@@ -494,9 +494,9 @@ detector-gated evidence.
 
 ### task-parity-bap002-protocol | 2026-08-04 | Implement the pure BAP protocol core
 
-- [ ] Add exact bounded BAP command/parameter framing, checksum, parsing, and
+- [x] Add exact bounded BAP command/parameter framing, checksum, parsing, and
       compatibility admission.
-- [ ] Add duplicate suppression plus pure request, subscription, and setting
+- [x] Add duplicate suppression plus pure request, subscription, and setting
       decisions without UART, persistence, restart, or hardware effects.
 - [ ] Add synthetic golden regressions, run every mandatory gate, and transition
       only `BAP-002` to `implemented`.
@@ -507,12 +507,17 @@ Authorization: local pure software and build work only. No accessory, hardware
 attempt, credentials, external request, UART, pins, persistence, restart,
 mining, ASIC traffic, frequency/voltage/fan/power effect, OTA, or recovery.
 
-Verification: Pending focused Cargo/Bazel BAP tests, synthetic golden cases,
-the ordered Rust sequence, Bright Builds, repository tests, parity/progress,
-redaction, reference cleanliness, sensitive-value scans, and diff checks.
+Verification: Twelve focused Cargo BAP tests and the `bitaxe-core` Bazel target
+pass, including synthetic golden frames, checksum compatibility, malformed
+input categories, exact request projections, AP errors, setting decisions, and
+diagnostic redaction. The ordered Rust sequence, Bright Builds, all 30 Bazel
+tests, parity/progress, redaction, reference cleanliness, sensitive-value
+review, file-size review, and diff checks also pass.
 
-Completion review: Pending. `BAP-001` continues to own the firmware UART and
-task lifecycle, and live accessory interoperability remains below verified.
+Completion review: The pure implementation and full repository gate are clean;
+exact source commit binding, the typed checklist transition, and final metadata
+publication remain. `BAP-001` continues to own the firmware UART and task
+lifecycle, and live accessory interoperability remains below verified.
 
 ## Future
 
