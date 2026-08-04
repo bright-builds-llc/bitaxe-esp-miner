@@ -92,6 +92,7 @@ js_binary(
         "verify_mining": "verify-mining",
         "capture_operator_evidence": "capture-operator-evidence",
         "verify_settings_durability": "verify-settings-durability",
+        "verify_theme_durability": "verify-theme-durability",
         "capture_correlated_runtime_evidence": "capture-correlated-runtime-evidence",
         "capture_version_evidence": "capture-version-evidence",
         "capture_operator_snapshot_evidence": "capture-operator-snapshot-evidence",

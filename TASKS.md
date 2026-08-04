@@ -719,13 +719,13 @@ below verified, so this implemented task remains active rather than archived.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
-- [ ] Add a typed private-first `/api/theme` capture that binds the exact
+- [x] Add a typed private-first `/api/theme` capture that binds the exact
       package, admitted Ultra 205, one normal software restart, and restored
       original appearance settings.
-- [ ] Require live GET/POST/readback, same-device reboot identity, post-restart
+- [x] Require live GET/POST/readback, same-device reboot identity, post-restart
       persistence, exact restoration, cleanup, and a closed redacted public
       projection before emitting evidence.
-- [ ] Add unit and real-child-process regressions, run every mandatory gate,
+- [x] Add unit and real-child-process regressions, run every mandatory gate,
       push the clean implementation, and execute at most one `attempt-001`.
 - [ ] Transition only `API-010` to `verified` if every acceptance fact passes;
       otherwise record the first typed terminal category and stop without retry.
@@ -762,7 +762,12 @@ detector failure, launch failure, timeout, malformed evidence, non-ready device
 session, restoration uncertainty, cleanup failure, privacy failure, or safety
 invariant violation. No unchanged retry is authorized.
 
-Verification: Pending.
+Verification: Focused generated-contract and automation tests pass, including
+the real child-process transaction. The ordered Rust checks, Bright Builds,
+all 34 Bazel test targets including the real firmware build, parity/progress,
+redaction, reference cleanliness, immutable-plan, and diff checks pass. The
+first `just parity` launch encountered transient host resource exhaustion after
+all tests passed; the bounded rerun completed with `validation_errors: none`.
 
 Completion review: Pending.
 

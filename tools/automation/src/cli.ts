@@ -28,6 +28,7 @@ import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureRuntimeHealthEvidence, RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
 import { captureSettingsDurability, SettingsDurabilityError } from "./settings-durability.js";
+import { captureThemeDurability, ThemeDurabilityError } from "./theme-durability.js";
 import { captureVersionEvidence } from "./version-evidence.js";
 import { executeCommandSpec } from "./workflow.js";
 import { assertWithinWorkspace } from "./workspace.js";
@@ -212,6 +213,7 @@ async function dispatchProcess(
     case "capture-version-evidence":
     case "capture-operator-snapshot-evidence":
     case "capture-runtime-health-evidence":
+    case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
   }
   if (spec.program.includes(path.sep)) await access(spec.program, constants.X_OK);
@@ -301,6 +303,16 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "tools/parity/report"), deviceSessionProgram(root));
+    } else if (invocation.command === "verify-theme-durability") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureThemeDurability(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root), toolProgram(root, "tools/parity/report"), deviceSessionProgram(root));
     } else if (invocation.command === "verify-redaction") {
       const evidenceRoot = assertWithinWorkspace(root, maybeOptionValue(invocation, "--evidence-root") ?? "docs/parity/evidence");
       publicValue = await verifySemanticEvidenceRedaction(evidenceRoot);
@@ -314,13 +326,14 @@ async function main(): Promise<number> {
     const policyBlocked = error instanceof PolicyError;
     const invalid = error instanceof InvocationError;
     const settingsFailure = error instanceof SettingsDurabilityError;
+    const themeFailure = error instanceof ThemeDurabilityError;
     const snapshotFailure = error instanceof OperatorSnapshotEvidenceError;
     const runtimeHealthFailure = error instanceof RuntimeHealthEvidenceError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || snapshotFailure || runtimeHealthFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

@@ -9,6 +9,7 @@ import "./repository-guard.test.js";
 import "./redaction.test.js";
 import "./runtime-health-evidence.test.js";
 import "./settings-durability.test.js";
+import "./theme-durability.test.js";
 import "./static-provenance.test.js";
 import "./static-ui.test.js";
 import "./workspace.test.js";

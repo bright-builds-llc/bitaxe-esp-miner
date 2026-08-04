@@ -13,3 +13,43 @@
 - Outcome: Immutable plan and one-attempt hardware contract ready.
 - Blocker or next safe action: Run planning gates, commit and push the task and
   plan, then implement without modifying `PLAN.md`.
+
+## 2026-08-04 | typed live theme durability implementation
+
+- Source commit: implementation based on planning commit `a1738e88`.
+- Actions: Added `verify-theme-durability`, a typed v1 public evidence
+  contract, exact-package flash-monitor admission, live theme GET/POST/readback,
+  canonical theme comparison, canonical device-session reboot, post-restart
+  persistence, exact restoration, and bounded exact-package recovery.
+- Verification: Focused TypeScript compilation plus automation and generated-
+  contract tests pass. Behavior coverage includes ready success, every closed
+  non-ready device-session category, malformed/missing projection, timeout,
+  launch failure, restoration/recovery precedence, sensitive-value denial,
+  file modes, and a real subprocess boundary.
+- Evidence: Public output is closed to identities, the closed reboot
+  projection, and safe booleans. Theme values, origins, hostnames, ports,
+  network identifiers, credentials, and raw traces remain private.
+- Outcome: Implementation and focused regressions are ready for the mandatory
+  repository gate.
+- Blocker or next safe action: Run the complete ordered gate, review the diff,
+  then commit and push the exact implementation before detector use.
+
+## 2026-08-04 | mandatory implementation gate
+
+- Source commit: implementation based on planning commit `a1738e88`.
+- Actions: Ran the complete ordered Rust, managed standards, Bazel, parity,
+  privacy, reference, immutable-plan, sensitive-output, and diff checks; then
+  reviewed the functional core, process shell, recovery precedence, and shared
+  projection-parser diff for unintended scope.
+- Verification: `cargo fmt --all`, strict Clippy, all-target/all-feature Cargo
+  build and tests, Bright Builds, all 34 Bazel test targets including the real
+  ESP-IDF firmware build, parity/progress, redaction, reference cleanliness,
+  immutable-plan comparison, and diff checks pass. The first parity launch hit
+  transient host `os error 35` after the test suite; one bounded rerun passed
+  with `validation_errors: none`.
+- Evidence: Focused tests continue to cover every typed terminal boundary and
+  public-output denial. The immutable `PLAN.md` is byte-identical to commit
+  `a1738e88`.
+- Outcome: Software implementation is clean and ready to commit and push.
+- Blocker or next safe action: Commit and push the exact implementation, then
+  run only the task-recorded package, detector, and `attempt-001` commands.

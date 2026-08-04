@@ -3,6 +3,7 @@ import { access, chmod, mkdir, readFile, stat, writeFile } from "node:fs/promise
 import path from "node:path";
 
 import { flashCommand, flashMonitorCommand, internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
+import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./device-session-projection.js";
 import { fetchJsonFromSameOrigin, sendSameOriginRequest, uniqueRuntimeOrigin } from "./http.js";
 import type { ProcessPort, ProcessOutcome } from "./process.js";
 import { hasPassiveSafeState } from "./version-evidence.js";
@@ -31,36 +32,6 @@ const noRecovery: RecoveryFacts = {
   recovery_flash_used: false,
   secondary_recovery_failure: false,
 };
-
-const deviceSessionFields = new Set([
-  "schema_version",
-  "terminal_category",
-  "platform_category",
-  "board_category",
-  "same_physical_device",
-  "stable_enumeration",
-  "reenumerated",
-  "reader_armed",
-  "pre_restart_serial_delivery",
-  "post_restart_serial_delivery",
-  "serial_delivery",
-  "request_outcome",
-  "request_attempt_count",
-  "service_loss_observed",
-  "trusted_origin_preserved",
-  "application_recovered",
-  "build_identity_matches",
-  "boot_session_changed",
-  "boot_ordinal_advanced_by_one",
-  "software_reset_observed",
-  "postcondition_matches",
-  "cleanup_complete",
-  "usb_disappearance_count",
-  "enumeration_change_count",
-  "serial_byte_count",
-  "http_observation_count",
-  "duration_millis",
-]);
 
 export class SettingsDurabilityError extends Error {
   public constructor(
@@ -158,96 +129,6 @@ async function runChild(
     return await processPort.run(internalCommandSpec(program, [...args], (value) => value));
   } catch {
     throw failure("process_failed", `${context} launch failed`);
-  }
-}
-
-function closedDeviceSession(value: unknown): JsonObject {
-  const projection = jsonObject(value, "device-session projection");
-  const keys = Object.keys(projection);
-  if (keys.length !== deviceSessionFields.size || keys.some((key) => !deviceSessionFields.has(key))) {
-    throw failure("evidence_invalid", "device-session projection fields are invalid");
-  }
-  if (projection["schema_version"] !== "esp-device-session-v1") {
-    throw failure("evidence_invalid", "device-session projection schema is invalid");
-  }
-  const terminalCategory = projection["terminal_category"];
-  if (typeof terminalCategory !== "string" || terminalCategory === "") {
-    throw failure("evidence_invalid", "device-session terminal category is invalid");
-  }
-  const requiredBooleans = [
-    "same_physical_device",
-    "stable_enumeration",
-    "reenumerated",
-    "reader_armed",
-    "pre_restart_serial_delivery",
-    "post_restart_serial_delivery",
-    "service_loss_observed",
-    "trusted_origin_preserved",
-    "application_recovered",
-    "build_identity_matches",
-    "boot_session_changed",
-    "boot_ordinal_advanced_by_one",
-    "software_reset_observed",
-    "postcondition_matches",
-    "cleanup_complete",
-  ];
-  const requiredCounts = [
-    "request_attempt_count",
-    "usb_disappearance_count",
-    "enumeration_change_count",
-    "serial_byte_count",
-    "http_observation_count",
-    "duration_millis",
-  ];
-  const validPlatform = ["macos", "linux", "windows", "other"].includes(String(projection["platform_category"]));
-  const validSerialDelivery = ["correlated", "silent", "reacquired", "failed"].includes(String(projection["serial_delivery"]));
-  const validCounts = requiredCounts.every((field) => {
-    const candidate = projection[field];
-    return typeof candidate === "number" && Number.isSafeInteger(candidate) && candidate >= 0;
-  });
-  if (
-    projection["board_category"] !== "205"
-    || !validPlatform
-    || !validSerialDelivery
-    || requiredBooleans.some((field) => typeof projection[field] !== "boolean")
-    || !validCounts
-  ) {
-    throw failure("evidence_invalid", "device-session projection values are invalid");
-  }
-  if (terminalCategory !== "ready") {
-    throw failure("hardware_blocked", "device-session did not become ready", { terminal_category: terminalCategory });
-  }
-  const requiredTrue = [
-    "same_physical_device",
-    "reader_armed",
-    "trusted_origin_preserved",
-    "application_recovered",
-    "build_identity_matches",
-    "boot_session_changed",
-    "boot_ordinal_advanced_by_one",
-    "software_reset_observed",
-    "postcondition_matches",
-    "cleanup_complete",
-  ];
-  const requestOutcome = projection["request_outcome"];
-  const validRequestOutcome = requestOutcome === "response_received" || requestOutcome === "response_missing";
-  if (
-    projection["platform_category"] !== "macos"
-    || projection["request_attempt_count"] !== 1
-    || !validRequestOutcome
-    || requiredTrue.some((field) => projection[field] !== true)
-  ) {
-    throw failure("evidence_invalid", "ready device-session projection is incomplete");
-  }
-  return projection;
-}
-
-async function readClosedDeviceSession(output: string): Promise<JsonObject> {
-  try {
-    return closedDeviceSession(JSON.parse(await readFile(output, "utf8")));
-  } catch (error) {
-    if (error instanceof SettingsDurabilityError) throw error;
-    throw failure("evidence_invalid", "device-session projection is missing or malformed");
   }
 }
 
@@ -378,7 +259,15 @@ export async function captureSettingsDurability(
       "--timeout-seconds", String(options.captureTimeoutSeconds),
     ], "device-session");
     if (sessionOutcome.timedOut) throw failure("timeout", "device-session timed out");
-    const sessionProjection = await readClosedDeviceSession(sessionProjectionPath);
+    let sessionProjection: JsonObject;
+    try {
+      sessionProjection = await readClosedDeviceSession(sessionProjectionPath);
+    } catch (error) {
+      if (isDeviceSessionProjectionFailure(error)) {
+        throw failure(error.category, error.message, error.facts);
+      }
+      throw failure("evidence_invalid", "device-session projection is invalid");
+    }
     if (sessionOutcome.exitCode !== 0) {
       throw failure("hardware_blocked", "device-session child failed after a ready projection");
     }

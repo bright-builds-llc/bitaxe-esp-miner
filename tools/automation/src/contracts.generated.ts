@@ -18,6 +18,7 @@ export type AutomationCommand =
   | "verify-mining"
   | "capture-operator-evidence"
   | "verify-settings-durability"
+  | "verify-theme-durability"
   | "capture-correlated-runtime-evidence"
   | "capture-version-evidence"
   | "capture-operator-snapshot-evidence"
@@ -94,6 +95,25 @@ export type OperatorSnapshotEpochEvidence = {
 
 export type DeviceSessionEvidence = Readonly<Record<string, unknown>>;
 
+export type ThemeDurabilityEvidence = {
+  schema_version: "bitaxe-theme-durability-evidence-v1";
+  board: 205;
+  source_commit: string;
+  reference_commit: string;
+  package_manifest_sha256: string;
+  workflow: WorkflowIdentity;
+  restart_session: DeviceSessionEvidence;
+  theme_get_observed: true;
+  theme_post_readback: true;
+  normal_restart_observed: true;
+  post_restart_persistence: true;
+  restoration_complete: true;
+  mining_state: "disabled";
+  hardware_control_state: "disabled";
+  cleanup_complete: true;
+  redaction_status: "passed";
+};
+
 export type OperatorSnapshotEvidence = {
   schema_version: "bitaxe-operator-snapshot-evidence-v1";
   board: 205;
@@ -133,7 +153,7 @@ const automationCommands = new Set<AutomationCommand>([
   "verify-redaction", "verify-production-session", "observe-serial", "verify-flash-durability",
   "verify-firmware-ota", "verify-web-assets-ota", "verify-recovery", "verify-http-api",
   "verify-hardware-surface", "verify-mining", "capture-operator-evidence",
-  "verify-settings-durability", "capture-correlated-runtime-evidence", "capture-version-evidence",
+  "verify-settings-durability", "verify-theme-durability", "capture-correlated-runtime-evidence", "capture-version-evidence",
   "capture-operator-snapshot-evidence",
   "capture-runtime-health-evidence",
 ]);

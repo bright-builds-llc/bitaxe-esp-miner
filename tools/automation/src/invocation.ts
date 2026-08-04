@@ -87,6 +87,14 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--projection": value(),
     "--capture-timeout-seconds": value({ positiveInteger: true }),
   },
+  "verify-theme-durability": {
+    "--private-root": value({ required: true }),
+    "--package-manifest": value({ required: true }),
+    "--wifi-credentials": value({ required: true }),
+    "--detector-output": value({ required: true }),
+    "--projection": value({ required: true }),
+    "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
+  },
   "capture-correlated-runtime-evidence": {
     "--root": value({ required: true }),
     "--staging": value({ required: true }),

@@ -61,6 +61,9 @@ capture-operator-evidence *args:
 verify-settings-durability *args:
     bazel run //tools/automation:verify_settings_durability -- {{ args }}
 
+verify-theme-durability *args:
+    bazel run //tools/automation:verify_theme_durability -- {{ args }}
+
 capture-correlated-runtime-evidence *args:
     bazel build //firmware/bitaxe:firmware_image
     bazel run //tools/automation:capture_correlated_runtime_evidence -- {{ args }}
