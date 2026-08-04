@@ -440,11 +440,11 @@ capture. No hardware, credentials, mining, controls, OTA, UART, or pins ran.
 
 ### task-parity-net002-provisioning-network | 2026-08-04 | Implement configuration AP and captive DNS
 
-- [ ] Add a pure bounded wildcard IN/A captive-DNS response contract matching
+- [x] Add a pure bounded wildcard IN/A captive-DNS response contract matching
       the pinned configuration-network behavior.
-- [ ] Configure the firmware AP-only/mixed-mode lifecycle and a single UDP/53
+- [x] Configure the firmware AP-only/mixed-mode lifecycle and a single UDP/53
       owner without exposing credentials or network identifiers.
-- [ ] Add focused and ownership regressions, build the real firmware, run all
+- [x] Add focused and ownership regressions, build the real firmware, run all
       mandatory gates, and transition only `NET-002` to `implemented`.
 
 Plan: `docs/parity/work-plans/20260804T160000Z-NET-002/PLAN.md`
@@ -453,9 +453,15 @@ Authorization: local software and build work only. No hardware attempt,
 credentials, external network request, mining, voltage/fan/power effect, OTA,
 recovery, direct UART, or pins.
 
-Verification: Pending.
+Verification: Eight focused DNS/SSID tests, four firmware source-ownership
+tests, the real ESP32-S3 firmware build, the ordered Rust gate, Bright Builds,
+all 30 Bazel test targets, parity/progress, redaction, reference cleanliness,
+and diff checks pass against the implementation tree.
 
-Completion review: Pending.
+Completion review: Implementation complete; checklist transition and final
+metadata binding pending. Live SSID visibility, client association, DHCP,
+wildcard DNS, captive redirect, settings access, station handoff, and fallback
+behavior remain below verified and require separate detector-gated evidence.
 
 ## Future
 

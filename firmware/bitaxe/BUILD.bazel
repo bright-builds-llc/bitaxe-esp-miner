@@ -296,6 +296,19 @@ rust_test(
 )
 
 rust_test(
+    name = "wifi_source_ownership_tests",
+    srcs = [
+        "src/startup.rs",
+        "src/wifi_adapter.rs",
+        "src/wifi_adapter/captive_dns.rs",
+        "src/wifi_source_ownership_test.rs",
+    ],
+    crate_name = "wifi_source_ownership_tests",
+    crate_root = "src/wifi_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "retained_pair_production_tests",
     srcs = [
         "src/log_buffer.rs",

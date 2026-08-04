@@ -17,6 +17,7 @@ pub mod operator_snapshot;
 pub mod operator_snapshot_publication;
 pub mod phase33_evidence;
 pub mod platform_identity;
+pub mod provisioning;
 pub mod route_shell;
 pub mod runtime_boot_attestation;
 pub mod runtime_projection;
@@ -66,6 +67,10 @@ pub use operator_snapshot_publication::{
 pub use platform_identity::{
     parse_static_asset_version, PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity,
     PlatformResetReason, PlatformUnavailableReason, StaticAssetVersionError,
+};
+pub use provisioning::{
+    build_captive_dns_response, configuration_ap_ssid, CaptiveDnsError, CAPTIVE_DNS_PACKET_BYTES,
+    CAPTIVE_DNS_PORT, CAPTIVE_DNS_TTL_SECONDS,
 };
 pub use route_shell::{
     maybe_origin_ip_from_header, normalize_peer_ipv4, origin_gate_from_header, phase05_routes,

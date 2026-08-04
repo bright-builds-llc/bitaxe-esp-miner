@@ -30,7 +30,7 @@ fn runtime_owner_startup_and_notification_order_is_explicit() {
         .find("production_mining_session::start()")
         .expect("startup must start the production owner");
     let network = STARTUP_SOURCE
-        .find("wifi_adapter::start_wifi_sta(modem)")
+        .find("wifi_adapter::start_wifi(modem)")
         .expect("startup must start the network owner");
     let network_wakeup = STARTUP_SOURCE
         .find("ProductionSessionWakeup::NetworkChanged")

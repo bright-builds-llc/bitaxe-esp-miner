@@ -170,7 +170,7 @@ fn start_runtime_services(
         );
     }
     let _network_ready = if let Some(modem) = maybe_modem {
-        match wifi_adapter::start_wifi_sta(modem) {
+        match wifi_adapter::start_wifi(modem) {
             Ok(()) => true,
             Err(error) => {
                 log::warn!("wifi_status=unavailable error={error:#}");
