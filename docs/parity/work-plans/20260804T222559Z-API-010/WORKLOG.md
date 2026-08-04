@@ -32,3 +32,23 @@
   without amendment.
 - Blocker or next safe action: Commit and push this checkpoint, then implement
   only the scoped observer stack budget and ownership regression.
+
+## 2026-08-04T22:33:54Z | observer stack remediation implemented
+
+- Source commit: `84ab62c47ed6f4a4e010ddf970863fd7be1bc499`.
+- Actions: Added the focused boot-evidence source-ownership target, observed it
+  fail against the 8 KiB stack contract, raised only the observer budget to
+  16 KiB, and reran the same target successfully.
+- Verification: The regression proves one explicit budget declaration, one
+  `.stack_size` use, one boot-lifetime observer spawn, and unchanged
+  10-second identity replay. The canonical ESP32-S3 firmware image builds.
+  Formatting, strict Clippy, all-target/all-feature build, all Cargo tests,
+  Bright Builds, all 35 Bazel tests, parity validation/progress, semantic
+  redaction, and pinned-reference cleanliness pass.
+- Evidence: Red/green host regression, public source diff, and successful
+  software build/gate outcomes only. No device or credential action occurred.
+- Outcome: The minimal source-level fix is software-clean; live evidence is
+  still required before the stack-overflow hypothesis or API-010 is verified.
+- Blocker or next safe action: Commit and push the clean implementation, then
+  run only the plan-recorded package, detector, and conditional attempt-006
+  capture.

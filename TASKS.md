@@ -1133,9 +1133,9 @@ exact admitted transaction.
 
 ### task-parity-api010-live-theme-durability-attempt-006 | 2026-08-04 | Fix boot-evidence replay stack overflow
 
-- [ ] Raise only the boot-evidence observer stack to 16 KiB and preserve its
+- [x] Raise only the boot-evidence observer stack to 16 KiB and preserve its
       single-owner, cadence, identity, attestation, and safe-state behavior.
-- [ ] Add a focused source-ownership regression and run the canonical firmware
+- [x] Add a focused source-ownership regression and run the canonical firmware
       build plus the complete ordered repository gate.
 - [ ] Commit and push the clean software fix before one fresh protected
       detector and conditional attempt-006 capture.
@@ -1161,7 +1161,13 @@ conditions, and promotion criteria are exact in the linked plan. Standing task
 authorization covers its single detector-gated attempt after the fix is clean,
 verified, committed, and pushed. No new manual electrical action is required.
 
-Verification: Pending.
+Verification: The focused ownership target failed red against the 8 KiB
+budget and passed green after the sole 16 KiB production change. It proves one
+budget declaration, one stack-size use, one observer spawn, and unchanged
+10-second identity replay. The canonical ESP32-S3 firmware builds; formatting,
+strict Clippy, all-target/all-feature build, all Cargo tests, Bright Builds,
+all 35 Bazel tests, parity validation/progress, semantic redaction, and
+pinned-reference cleanliness pass. Live attempt-006 evidence remains pending.
 
 Completion review: Pending. This task claims no network discovery, mining,
 ASIC, hardware-control, display-input, OTA, partition, recovery, other-board,

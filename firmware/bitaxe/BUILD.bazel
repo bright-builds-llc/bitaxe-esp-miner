@@ -224,6 +224,17 @@ rust_test(
 )
 
 rust_test(
+    name = "boot_evidence_source_ownership_tests",
+    srcs = [
+        "src/boot_evidence.rs",
+        "src/boot_evidence_source_ownership_test.rs",
+    ],
+    crate_name = "boot_evidence_source_ownership_tests",
+    crate_root = "src/boot_evidence_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "i2c_retry_tests",
     srcs = [
         "src/i2c_retry_host_test.rs",
