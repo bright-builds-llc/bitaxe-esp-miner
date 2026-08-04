@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T144300Z-API-010",
+  "predecessor_sha256": "f9447de38c690708f11beb2327374a2c05922428331d53962da9794675a09435",
+  "result_sha256": "778dc8a650fd41940dd0fcb11a3ac17df2c4626a313f4511ed52c2e5a6a945a0",
+  "row_id": "API-010",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T140400Z-API-010/PLAN.md",
+  "plan_sha256": "cef521b04d90a9a4b91e9b76935234d22aaa8251d800fe946718a2ec66cd0e92",
+  "result_path": "docs/parity/work-plans/20260804T140400Z-API-010/RESULT.md",
+  "result_document_sha256": "008b9d8cfc753972efa093a7621bb5159bdb98f5c1acbd6b6dd93b44686c31a1",
+  "before_rust_owned_target": "`crates/bitaxe-config/src/nvs/schema/misc.rs`, `crates/bitaxe-api/src/route_shell.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/theme.rs`, `firmware/bitaxe/src/http_api/theme.rs`, `firmware/bitaxe/src/settings_adapter.rs`, `crates/bitaxe-config/src/nvs/schema.rs`, `crates/bitaxe-api/src/route_shell.rs`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "unit",
+  "after_evidence": "unit,golden,api-compare",
+  "before_notes": "Theme NVS keys are modeled, but the `/api/theme` route, response/update behavior, persistence adapter, and AxeOS integration are incomplete and unverified.",
+  "after_notes": "Exact upstream defaults, typed GET/POST behavior, serialized confirmed NVS persistence, route ownership, and API comparison are implemented. Detector-gated live route/reboot durability and installed AxeOS browser behavior remain unverified."
+}

@@ -360,11 +360,11 @@ hardware evidence. No runtime selection or hardware behavior changed.
 
 ### task-parity-api010-theme-route | 2026-08-04 | Implement theme API persistence
 
-- [ ] Model upstream theme defaults, GET projection, and POST planning with
+- [x] Model upstream theme defaults, GET projection, and POST planning with
       bounded request handling and exact public response behavior.
-- [ ] Register firmware `/api/theme` GET/POST handlers and persist confirmed
+- [x] Register firmware `/api/theme` GET/POST handlers and persist confirmed
       theme writes through the existing serialized NVS snapshot owner.
-- [ ] Extend route/API comparison and golden regressions, run all mandatory
+- [x] Extend route/API comparison and golden regressions, run all mandatory
       gates, and transition only `API-010` to `implemented`.
 
 Plan: `docs/parity/work-plans/20260804T140400Z-API-010/PLAN.md`
@@ -373,9 +373,17 @@ Authorization: public upstream theme data and pure/local software only. No
 hardware, credentials, network requests, mining, controls, OTA, direct UART,
 or pins.
 
-Verification: Pending.
+Verification: Focused config/API, parity, API-compare, strict Clippy, and the
+real ESP-IDF firmware target passed. The mandatory ordered Rust sequence,
+Bright Builds checks, all 28 Bazel test targets, parity/progress, redaction,
+reference cleanliness, and diff checks passed on implementation commit
+`b65d19c2`.
 
-Completion review: Pending.
+Completion review: The bounded route and confirmed-persistence implementation
+is complete, and `API-010` is `implemented` with `unit,golden,api-compare`
+evidence. The task remains active and unarchived because detector-gated live
+route/reboot durability and installed AxeOS browser behavior remain unverified.
+No hardware, credentials, mining, controls, OTA, direct UART, or pins were used.
 
 ## Future
 
