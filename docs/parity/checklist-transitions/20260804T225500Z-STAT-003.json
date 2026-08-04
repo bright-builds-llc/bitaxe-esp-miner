@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T225500Z-STAT-003",
+  "predecessor_sha256": "a74504fb1ed7f387e946a3545613bd197a321af71348009db542089ee5eec751",
+  "result_sha256": "69369ba8ba623e9c3a17855883257bb4a65cc416603ce1dd3c6e83ec781b2d3b",
+  "row_id": "STAT-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T220000Z-STAT-003/PLAN.md",
+  "plan_sha256": "136e9f1a89d05d023c1562dfd7a04546d30c64128533fcfe2ef61491d2c9dd84",
+  "result_path": "docs/parity/work-plans/20260804T220000Z-STAT-003/RESULT.md",
+  "result_document_sha256": "c90e5e216cf53ea10d692fd9f63e291df07c503aabfd01bc5360ad2fe13d7eac",
+  "before_rust_owned_target": "`crates/bitaxe-api`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/scoreboard.rs`, `crates/bitaxe-api/src/scoreboard/owner.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/production_session/runtime/asic.rs`, `firmware/bitaxe/src/scoreboard_adapter.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "unit,api-compare",
+  "after_evidence": "unit,workflow,api-compare",
+  "before_notes": "Phase 05 implements scoreboard response shape and empty-array fixture. Phase 26 evidence in `docs/parity/evidence/phase-26-telemetry-and-parity-closure/summary.md`, `statistics-scoreboard.md`, and `redaction-review.md` records `scoreboard_status: empty_without_parsed_share_outcome`, `redaction_status: passed`, and exact_non_claims. Live scoreboard population remains pending until parsed-response-backed and redaction-allowed share outcome material exists.",
+  "after_notes": "Commit-bound production scoreboard result: docs/parity/work-plans/20260804T220000Z-STAT-003/RESULT.md. Live ASIC nonce difficulty, device persistence, device API and browser behavior, mining, accepted or rejected shares, pool interaction, safety controls, and release claims remain separate."
+}

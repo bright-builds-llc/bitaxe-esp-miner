@@ -624,10 +624,12 @@ firmware ownership tests, the complete Cargo suite, real firmware build, Bright
 Builds checks, all 33 Bazel tests, parity validation/progress, redaction,
 reference cleanliness, and diff checks passed on the implementation tree.
 
-Completion review: Software implementation is complete and awaiting exact
-commit binding plus the typed `implemented` transition. Live nonce difficulty,
-device persistence, API and browser behavior, mining, and accepted/rejected
-share outcomes remain below verified.
+Completion review: Software implementation is complete at
+`0f3d46a77f5b2492880921cf524bc052d2283bc4` and the typed transition
+`20260804T225500Z-STAT-003` records `implemented` with
+`unit,workflow,api-compare`. Live nonce difficulty, device persistence, API and
+browser behavior, mining, and accepted/rejected share outcomes remain below
+verified, so this task remains active rather than archived.
 
 ## Future
 

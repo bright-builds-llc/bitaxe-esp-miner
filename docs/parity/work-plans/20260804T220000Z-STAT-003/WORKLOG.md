@@ -41,3 +41,27 @@
 - Blocker or next safe action: Run the mandatory ordered Rust sequence on this
   checkpoint, commit the implementation, then create and validate the typed
   transition metadata against that exact commit.
+
+## 2026-08-04T17:19:42Z | implementation binding and transition checkpoint
+
+- Source commit: `0f3d46a77f5b2492880921cf524bc052d2283bc4`.
+- Actions: Committed the production scoreboard implementation, added its
+  commit-bound RESULT, transitioned only STAT-003 from `in-progress` to
+  `implemented`, and appended the typed progress record. The first generated
+  receipt used a wall-clock ID that sorted before the latest ledger entry; the
+  validator rejected it before acceptance, so the candidate checklist row and
+  receipt were restored from the receipt-recorded predecessor and regenerated
+  once with monotonic ID `20260804T225500Z-STAT-003`.
+- Verification: The final ordered Rust sequence, Bright Builds, all 33 Bazel
+  tests, parity validation/progress, redaction, reference cleanliness, immutable
+  plan, and diff checks passed. One chained parity print hit a transient host
+  `EAGAIN`; the separate retry completed with `validation_errors: none`.
+- Evidence: `RESULT.md`, transition
+  `docs/parity/checklist-transitions/20260804T225500Z-STAT-003.json`, checklist
+  digest `69369ba8ba623e9c3a17855883257bb4a65cc416603ce1dd3c6e83ec781b2d3b`,
+  and the appended progress record bound to the exact implementation commit.
+- Outcome: STAT-003 is `implemented` with `unit,workflow,api-compare`; no
+  hardware, live ASIC nonce, mining, pool, API-browser, or safety-control claim
+  was promoted.
+- Blocker or next safe action: Commit and push the metadata checkpoint, verify
+  remote synchronization, then run deterministic selection for the next row.
