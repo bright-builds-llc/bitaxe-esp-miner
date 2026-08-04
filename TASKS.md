@@ -1184,14 +1184,14 @@ transaction.
 
 ### task-parity-api010-live-theme-durability-attempt-007 | 2026-08-04 | Retry after normal-power remediation
 
-- [ ] Preserve the pushed 16 KiB observer fix and attempt-006 record, then
+- [x] Preserve the pushed 16 KiB observer fix and attempt-006 record, then
       commit and push the linked immutable attempt-007 plan.
-- [ ] After the user reports one full normal barrel/USB power cycle, build the
+- [x] After the user reports one full normal barrel/USB power cycle, build the
       exact pushed package and run one fresh protected detector.
-- [ ] Run the single bounded capture only if board-info admission objectively
+- [x] Run the single bounded capture only if board-info admission objectively
       proves the detector boundary changed; otherwise record the terminal
       outcome and stop.
-- [ ] Promote only `API-010` on complete typed evidence; otherwise preserve the
+- [x] Promote only `API-010` on complete typed evidence; otherwise preserve the
       earliest category, withhold evidence, keep `implemented`, and stop.
 
 Plan: `docs/parity/work-plans/20260804T224128Z-API-010/PLAN.md`. This immutable
@@ -1216,16 +1216,27 @@ Authorization, exact commands, private paths, recovery, retry bounds, stop
 conditions, and promotion criteria are defined in the linked plan. No hardware
 action is allowed before the reported occurrence.
 
-Verification: The focused observer ownership target and canonical firmware
-image pass. Formatting, strict Clippy, all-target/all-feature build, all Cargo
-tests, Bright Builds, all 35 Bazel tests, parity validation/progress, semantic
-redaction, and pinned-reference cleanliness also pass. The selector returns
-only the linked attempt-007 plan. No attempt-007 hardware action has occurred;
-the manual occurrence remains pending.
+Verification: The reported normal power cycle moved the bootloader boundary,
+the one detector passed, and the exact package flash completed. The bounded
+capture then closed `evidence_invalid`: terminal baseline classification was
+not admissible, with closed offline category `runtime_origin_missing`. Private
+trace reduction found 51 distinct panic-reset boot sessions and 52 stack
+overflows with no runtime-origin or Wi-Fi-state marker. Startup reaches the
+rendered operator display immediately before the overflow. Exact-package ELF
+disassembly shows the 8 KiB operator-sensor task enters with a 2 KiB frame and
+its startup screen collection reaches a 7,872-byte full API-snapshot frame.
+No theme mutation, restart, restoration, or recovery flash occurred; the
+public projection and `RESULT.md` remain absent and `API-010` remains
+`implemented`.
 
-Completion review: Pending. This task claims no network discovery, mining,
-ASIC, hardware-control, display-input, OTA, partition, recovery, other-board,
-or release parity beyond the exact admitted transaction.
+Completion review: Attempt-007 is truthfully closed without retry, evidence,
+or promotion. The earlier observer-stack hypothesis targeted the wrong thread;
+the new bounded evidence identifies the screen path's full API-snapshot
+dependency as the reproducible stack-budget violation. A new immutable plan
+and regression-backed narrow screen projection are required before another
+hardware attempt. This task claims no network discovery, mining, ASIC,
+hardware-control, display-input, OTA, partition, recovery, other-board, or
+release parity beyond the exact admitted transaction.
 
 ## Future
 

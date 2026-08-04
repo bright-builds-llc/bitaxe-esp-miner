@@ -33,3 +33,31 @@
 - Outcome: The immutable plan/task checkpoint is ready to commit and push.
 - Blocker or next safe action: Commit and push, then wait for the user to
   report the full normal barrel/USB power-cycle occurrence.
+
+## 2026-08-04T23:04:10Z | attempt-007 closed without promotion
+
+- Source commit: `9bc7e03dbe18f5b0d317d2763e0ee25fff88fe50`.
+- Actions: After the reported normal barrel/USB power cycle, built the exact
+  pushed package, consumed the sole protected detector, and ran the one
+  admitted capture. The detector passed and the exact-package flash completed;
+  no theme mutation, software restart, or recovery flash occurred.
+- Verification: The typed result is `evidence_invalid` at the
+  `theme_durability` stage because terminal baseline classification was not
+  admissible. Closed offline classification is `runtime_origin_missing`.
+  The private trace contains 51 distinct boot sessions, 51 panic reset
+  identities, 52 stack-overflow markers, and no runtime-origin or Wi-Fi-state
+  marker. Startup ordering reaches the rendered operator display immediately
+  before each overflow. ELF disassembly proves the operator-sensor runtime has
+  an 8 KiB task stack, its own frame is 2 KiB, and its startup screen path
+  reaches a full API-snapshot frame of 7,872 bytes before deeper calls.
+- Evidence: Only closed categories, bounded counts, stack-frame sizes, safe
+  booleans, and public source/ELF provenance are recorded. The detector,
+  device, port, USB/network/process identities, credentials, origins, theme
+  values, and raw traces remain private and untracked.
+- Outcome: Attempt-007 is consumed. The previous 16 KiB boot-observer change
+  targeted the wrong thread and did not affect the reproducible overflow.
+  Withhold `RESULT.md` and public evidence; keep `API-010` at `implemented`.
+- Blocker or next safe action: Do not retry this contract. Record and push the
+  stop, then use a new immutable plan to replace the full API-snapshot screen
+  dependency with a narrow screen-specific projection and a regression that
+  prevents the oversized call path before one separately gated attempt.
