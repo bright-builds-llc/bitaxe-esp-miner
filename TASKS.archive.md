@@ -4977,3 +4977,69 @@ only when every newer document directly references the immediately older
 backticked path; unlinked or cross-row ambiguity still fails closed. `API-010`
 remains `implemented`, no `RESULT.md` or parity evidence was created, no status
 was promoted, and no live retry or hardware interaction was authorized.
+
+### task-parity-api010-flash-monitor-child-diagnostics | 2026-08-04 | Preserve typed initial-child failure evidence
+
+- [x] Enable the existing private `phase36-effect-result-v1` contract on the
+      initial exact-package flash-monitor child and strictly parse its closed
+      device-effect state.
+- [x] Classify only allowlisted dual-evidence terminal markers from child
+      stderr, preserve the numeric exit/timeout facts, and expose no raw child
+      output or operational identifiers.
+- [x] Include `ThemeDurabilityError.publicValue` in the public automation
+      failure envelope and prove the behavior through real child processes.
+- [x] Run focused tests and the complete repository verification sequence,
+      review the diff for sensitive values, and push the implementation
+      checkpoint without changing `API-010` or authorizing hardware.
+
+Plan: `docs/parity/work-plans/20260804T200849Z-API-010/PLAN.md` remains the
+immutable open plan. This software-only follow-up addresses the distinct
+terminal boundary recorded by `attempt-003`; it does not reopen or alter that
+hardware ordinal.
+
+Diagnosis: `captureThemeDurability` held the initial flash-monitor child's
+stdout and stderr only in memory, collapsed every nonzero exit to the same
+`process_failed` message, and did not enable the flash tool's existing
+mode-`0600` `phase36-effect-result-v1` artifact. The CLI then excluded
+`ThemeDurabilityError.publicValue` from the otherwise shared typed failure
+envelope. Consequently the exhausted attempt proves where orchestration
+stopped but cannot distinguish no device effect, confirmed partial effect,
+completed flash followed by monitor failure, or the flash tool's closed
+dual-evidence terminal marker.
+
+Scope and privacy: modify only repository-owned automation/process contracts,
+the theme durability shell, and focused tests. The typed effect result stays
+under the supervisor-owned mode-`0700` private root as mode `0600`. Public
+failure facts may contain only the fixed stage, an allowlisted terminal marker,
+the existing closed effect status, a bounded numeric exit code, timeout state,
+and safe recovery booleans. They must never contain stdout/stderr text, command
+arguments, paths, origins, theme or hostname values, ports, USB/network
+identifiers, credentials, tokens, or raw traces.
+
+Hardware boundary: this task is software-only. Do not run detector, flash,
+monitor, restart, HTTP mutation, recovery, or any other device command. A new
+hardware ordinal requires a later task with its own exact command, evidence,
+recovery, retry, and stop contract after this fix is verified and pushed.
+
+Accepted outcome: focused unit and real-child-process tests prove the private
+effect artifact, closed marker classification, public theme failure facts,
+missing/malformed artifact handling, earliest-failure precedence, and sensitive
+value exclusion. `API-010` remains `implemented`; no checklist transition or
+progress synchronization is requested.
+
+Verification: Complete. `//tools/automation:automation_test` and
+`//tools/flash:tests` passed with unit and real-child-process coverage. The
+ordered formatting, strict Clippy, all-target/all-feature build and Cargo tests,
+Bright Builds, all 34 Bazel tests, parity validation, progress, semantic
+redaction, pinned-reference cleanliness, and diff checks passed on source
+commit `8c93b1b73a0e62ba4fecb1ae46604d30ac29916a`.
+
+Completion review: Completed the host diagnostic fix without hardware or
+private-value exposure. Initial flash-monitor failures now retain a strict
+mode-`0600` exact-package effect result and publish only the fixed stage,
+bounded exit/timeout facts, a closed dual-evidence marker, and completed,
+confirmed-partial, no-effect, missing, or invalid effect status. Launch and
+malformed-artifact failures preserve the primary category. The prior attempt's
+underlying child reason remains unrecoverable retroactively, `API-010` remains
+`implemented`, and a future hardware ordinal still requires a new complete
+task contract after this pushed fix.

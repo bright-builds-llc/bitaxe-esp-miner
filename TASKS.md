@@ -936,59 +936,6 @@ fresh progress-backed ordinal. This task does not claim installed AxeOS browser
 behavior or any networking, mining, ASIC, hardware-control, OTA, recovery,
 other-board, or release parity.
 
-### task-parity-api010-flash-monitor-child-diagnostics | 2026-08-04 | Preserve typed initial-child failure evidence
-
-- [x] Enable the existing private `phase36-effect-result-v1` contract on the
-      initial exact-package flash-monitor child and strictly parse its closed
-      device-effect state.
-- [x] Classify only allowlisted dual-evidence terminal markers from child
-      stderr, preserve the numeric exit/timeout facts, and expose no raw child
-      output or operational identifiers.
-- [x] Include `ThemeDurabilityError.publicValue` in the public automation
-      failure envelope and prove the behavior through real child processes.
-- [ ] Run focused tests and the complete repository verification sequence,
-      review the diff for sensitive values, and push the implementation
-      checkpoint without changing `API-010` or authorizing hardware.
-
-Plan: `docs/parity/work-plans/20260804T200849Z-API-010/PLAN.md` remains the
-immutable open plan. This software-only follow-up addresses the distinct
-terminal boundary recorded by `attempt-003`; it does not reopen or alter that
-hardware ordinal.
-
-Diagnosis: `captureThemeDurability` held the initial flash-monitor child's
-stdout and stderr only in memory, collapsed every nonzero exit to the same
-`process_failed` message, and did not enable the flash tool's existing
-mode-`0600` `phase36-effect-result-v1` artifact. The CLI then excluded
-`ThemeDurabilityError.publicValue` from the otherwise shared typed failure
-envelope. Consequently the exhausted attempt proves where orchestration
-stopped but cannot distinguish no device effect, confirmed partial effect,
-completed flash followed by monitor failure, or the flash tool's closed
-dual-evidence terminal marker.
-
-Scope and privacy: modify only repository-owned automation/process contracts,
-the theme durability shell, and focused tests. The typed effect result stays
-under the supervisor-owned mode-`0700` private root as mode `0600`. Public
-failure facts may contain only the fixed stage, an allowlisted terminal marker,
-the existing closed effect status, a bounded numeric exit code, timeout state,
-and safe recovery booleans. They must never contain stdout/stderr text, command
-arguments, paths, origins, theme or hostname values, ports, USB/network
-identifiers, credentials, tokens, or raw traces.
-
-Hardware boundary: this task is software-only. Do not run detector, flash,
-monitor, restart, HTTP mutation, recovery, or any other device command. A new
-hardware ordinal requires a later task with its own exact command, evidence,
-recovery, retry, and stop contract after this fix is verified and pushed.
-
-Accepted outcome: focused unit and real-child-process tests prove the private
-effect artifact, closed marker classification, public theme failure facts,
-missing/malformed artifact handling, earliest-failure precedence, and sensitive
-value exclusion. `API-010` remains `implemented`; no checklist transition or
-progress synchronization is requested.
-
-Verification: Pending.
-
-Completion review: Pending.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
