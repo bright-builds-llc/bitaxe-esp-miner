@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T135000Z-CFG-006",
+  "predecessor_sha256": "c36772bb9867529dce47738d388d264b3f71547690fcd80f3bac6b528224f963",
+  "result_sha256": "f9447de38c690708f11beb2327374a2c05922428331d53962da9794675a09435",
+  "row_id": "CFG-006",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T133030Z-CFG-006/PLAN.md",
+  "plan_sha256": "daa1a498dc8c20014e50f68a12347090d327ec9893590ace4a237a1d02d3ef00",
+  "result_path": "docs/parity/work-plans/20260804T133030Z-CFG-006/RESULT.md",
+  "result_document_sha256": "e62a5eca1d876e52e241c7763584490f1e5ac93034c12458e6f1c617d1ccb668",
+  "before_rust_owned_target": "`crates/bitaxe-config/src/catalog.rs`, `crates/bitaxe-config/src/defaults.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-config/src/defaults.rs`, `crates/bitaxe-config/src/defaults/matrix.rs`, `crates/bitaxe-config/fixtures/board-profile-defaults.json`, `crates/bitaxe-config/src/catalog.rs`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "unit,golden",
+  "after_evidence": "unit,golden",
+  "before_notes": "Ultra 205 defaults and the catalog are modeled. Exact defaults and device behavior for every other upstream profile remain incomplete and unverified; no non-205 hardware parity is claimed.",
+  "after_notes": "Typed golden evidence covers all 20 numbered board seeds plus the explicit non-selectable custom override and cross-checks catalog family, ASIC, frequency, voltage, and verification scope. Only Ultra 205 retains active hardware evidence; non-205 live device behavior remains unverified."
+}

@@ -335,11 +335,11 @@ run.
 
 ### task-parity-cfg006-defaults-matrix | 2026-08-04 | Complete board defaults matrix
 
-- [ ] Add typed exact defaults for all 20 numbered upstream board seeds and the
+- [x] Add typed exact defaults for all 20 numbered upstream board seeds and the
       explicit custom seed.
-- [ ] Bind every discriminator to a provenance-bearing golden fixture and the
+- [x] Bind every discriminator to a provenance-bearing golden fixture and the
       existing board catalog.
-- [ ] Run focused and mandatory gates, then transition only `CFG-006` to
+- [x] Run focused and mandatory gates, then transition only `CFG-006` to
       `implemented` while withholding every non-205 hardware claim.
 
 Plan: `docs/parity/work-plans/20260804T133030Z-CFG-006/PLAN.md`
@@ -347,9 +347,16 @@ Plan: `docs/parity/work-plans/20260804T133030Z-CFG-006/PLAN.md`
 Authorization: pure software and public upstream seed data only. No hardware,
 credentials, network, settings, mining, controls, OTA, direct UART, or pins.
 
-Verification: Pending.
+Verification: Focused strict Clippy, all 51 `bitaxe-config` tests through Cargo
+and Bazel, the mandatory Rust sequence, Bright Builds, all 28 Bazel test
+targets, parity/progress, redaction, reference cleanliness, and diff checks
+passed on implementation commit `1583feb3`.
 
-Completion review: Pending.
+Completion review: The bounded pure matrix implementation is complete and
+`CFG-006` is now `implemented` with `unit,golden` evidence. The task remains
+active and unarchived because the parity row is not verified: live seeded
+defaults and runtime behavior for non-205 profiles require separately admitted
+hardware evidence. No runtime selection or hardware behavior changed.
 
 ## Future
 

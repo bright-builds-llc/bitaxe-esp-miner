@@ -28,3 +28,16 @@
   behavior changed.
 - Blocker or next safe action: Commit the implementation, run the full
   mandatory gate, and transition only `CFG-006` to `implemented`.
+
+## 2026-08-04T13:50:00Z | accepted and transitioned
+
+- Source commit: `1583feb3966f32be73782ed22489b7a79a0dc248`.
+- Actions: Completed the mandatory Rust sequence, Bright Builds, all 28 Bazel
+  test targets, parity/progress, redaction, reference-cleanliness, and diff
+  checks; recorded the typed result; transitioned only `CFG-006`.
+- Verification: All gates passed with no parity validation errors and no
+  redaction or reference-cleanliness findings.
+- Evidence: Transition `20260804T135000Z-CFG-006`, `unit,golden`.
+- Outcome: `CFG-006` is `implemented`; verified count remains 38/94 (40.4%).
+- Blocker or next safe action: Non-205 seeded defaults and runtime behavior
+  remain unverified pending separately scoped, admitted hardware evidence.
