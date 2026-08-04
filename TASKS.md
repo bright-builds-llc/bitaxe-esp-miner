@@ -687,6 +687,29 @@ task remains active because UI-002 is below `verified`; UI-003 physical input,
 live screen content, animation/bitmap parity, mining, and hardware-control
 behavior remain separate evidence gaps.
 
+### task-parity-ui003-boot-button | 2026-08-04 | Implement bounded Ultra 205 boot-button input
+
+- [ ] Add a pure active-low debounce and exact 2,000 ms short/long press
+      classifier with bounce, regression, and one-shot long-press coverage.
+- [ ] Retain one GPIO0 input owner and route normal short clicks to identify
+      cancellation or screen advance, normal long presses to configuration-AP
+      toggle, and self-test long presses to an explicit unavailable boundary.
+- [ ] Wake the display on admitted short input, preserve display/sensor/Wi-Fi
+      failure isolation, and expose only redaction-safe input status categories.
+
+Plan: `docs/parity/work-plans/20260805T020000Z-UI-003/PLAN.md`
+
+Authorization: local software, synthetic input/runtime fixtures, and build
+work only. No hardware attempt, physical button press, credentials, external
+service, mining, pool connection, frequency/voltage/fan/power effect, OTA,
+recovery, direct UART, pins, or physical electrical manipulation.
+
+Verification: Pending.
+
+Completion review: Pending. Physical button observation, exact LVGL event
+timing, self-test cancellation, live configuration-AP toggling, and all
+hardware behavior remain below verified.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
