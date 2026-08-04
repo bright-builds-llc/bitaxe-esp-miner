@@ -37,7 +37,7 @@
 
 ## 2026-08-04T20:55:00Z | checklist transition and progress sync
 
-- Source commit: `f5bacf322306593269b5a92d57545cb4de59391f`.
+- Source commit: `e0c3b1e9043e033b24135b31a1293bf22afe8759`.
 - Actions: Bound `RESULT.md` to the exact implementation and pinned reference,
   transitioned only `STAT-001` from `not-started` to `implemented`, and
   synchronized deterministic progress.

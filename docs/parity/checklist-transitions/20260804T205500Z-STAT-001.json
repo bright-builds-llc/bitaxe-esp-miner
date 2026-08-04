@@ -8,7 +8,7 @@
   "plan_path": "docs/parity/work-plans/20260804T200000Z-STAT-001/PLAN.md",
   "plan_sha256": "0393070f904ef20aeee6fd1d588f4195200c07e2eb3c6e60db5bd25bbcf517b7",
   "result_path": "docs/parity/work-plans/20260804T200000Z-STAT-001/RESULT.md",
-  "result_document_sha256": "45d8788bd43f8fc3a05c31a7dfecc02c35b6ae27c3be7f623589d13a6fe1045f",
+  "result_document_sha256": "9393b4bb95a486db5b327271735ef1a510e7a3cf325b4374bf05d73044b5448f",
   "before_rust_owned_target": "`crates/bitaxe-core`, `firmware/bitaxe`",
   "after_rust_owned_target": "`crates/bitaxe-core/src/hashrate.rs`, `crates/bitaxe-stratum/src/v1/state.rs`, `crates/bitaxe-api/src/mining.rs`, `crates/bitaxe-api/src/wire.rs`, `firmware/bitaxe/src/production_mining_session/hashrate.rs`, `firmware/bitaxe/src/production_mining_session/asic_worker.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
   "before_status": "not-started",

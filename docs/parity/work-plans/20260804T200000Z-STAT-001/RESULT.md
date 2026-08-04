@@ -2,7 +2,7 @@
 
 - Parity row: `STAT-001`
 - Final status: `implemented`
-- Implementation commit: `f5bacf322306593269b5a92d57545cb4de59391f`
+- Implementation commit: `e0c3b1e9043e033b24135b31a1293bf22afe8759`
 - Reference commit: `c1915b0a63bfabebdb95a515cedfee05146c1d50`
 - Hardware attempts: none
 
