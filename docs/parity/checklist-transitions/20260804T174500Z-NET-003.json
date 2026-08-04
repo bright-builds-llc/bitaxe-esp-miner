@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260804T174500Z-NET-003",
+  "predecessor_sha256": "9a714e84dc7f297dc4131075796e5a208c5e2badda6d5bb26f5d05b4b3facd6c",
+  "result_sha256": "e9de0451c0d31cda29a2b34ae41fcba7aa5b34762a9c273752db9e25fd0a8f07",
+  "row_id": "NET-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260804T170000Z-NET-003/PLAN.md",
+  "plan_sha256": "901214f55baae45daf519633d5cd32bb3d557a7114762daa9e61deca0bca5dd7",
+  "result_path": "docs/parity/work-plans/20260804T170000Z-NET-003/RESULT.md",
+  "result_document_sha256": "e9b7ca79793509cc62a6f8ca709dfab4ce26a23ccd7681c5bc1a5551a68ebd1a",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/wifi_adapter.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/network.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/http_api.rs`, `firmware/bitaxe/src/wifi_adapter.rs`, `firmware/bitaxe/src/wifi_adapter/scan.rs`",
+  "before_status": "not-started",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,workflow,api-compare",
+  "before_notes": "The route contract is known, but scan execution, result parity, IPv6 link-local/global reporting, and hardware evidence are absent.",
+  "after_notes": "Bounded exclusive scan and station IPv6 reporting are implemented with synthetic API comparison; live scan, connection-preservation, and IPv6 evidence remain pending. Result: docs/parity/work-plans/20260804T170000Z-NET-003/RESULT.md."
+}

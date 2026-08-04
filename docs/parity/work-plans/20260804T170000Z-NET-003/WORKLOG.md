@@ -58,3 +58,20 @@
   `implemented` transition only. No live radio or IPv6 evidence was inferred.
 - Blocker or next safe action: Commit the implementation, bind `RESULT.md` to
   that exact commit, apply the typed `NET-003` transition, and publish metadata.
+
+## 2026-08-04T17:45:00Z | implementation committed and transitioned
+
+- Source commit: `9b6375c5102d9e1389c918318c8773e3975cc6ff`.
+- Actions: Bound `RESULT.md` to the exact implementation and reference commits,
+  applied typed transition `20260804T174500Z-NET-003`, and synchronized the
+  progress ledger from the same source commit.
+- Verification: The transition tool accepted the closed `implemented` status,
+  `unit,workflow,api-compare` evidence set, complete Rust ownership targets,
+  immutable plan, and commit-bound result. The progress ledger reports 39 of
+  94 active rows verified (41.5%).
+- Evidence: `RESULT.md`, the typed transition receipt, updated checklist, and
+  synchronized progress ledger.
+- Outcome: `NET-003` is implemented without a live-radio or IPv6 verification
+  claim. No hardware or sensitive network value was used or published.
+- Blocker or next safe action: Re-run the required commit gates for the metadata
+  tree, publish it, and resume deterministic parity selection.

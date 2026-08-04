@@ -471,7 +471,7 @@ verified and require separate detector-gated evidence.
       plus link-local/global IPv6 projection contracts.
 - [x] Retain one ESP-IDF Wi-Fi owner for exclusive scans, restore AP-only mode,
       register the access-gated endpoint, and publish station-only IPv6 events.
-- [ ] Add focused/ownership regressions, build the real firmware, run every
+- [x] Add focused/ownership regressions, build the real firmware, run every
       mandatory gate, and transition only `NET-003` to `implemented`.
 
 Plan: `docs/parity/work-plans/20260804T170000Z-NET-003/PLAN.md`
@@ -485,10 +485,12 @@ ownership tests, the synthetic route fixture, and the real ESP32-S3 build pass.
 The ordered Rust sequence, Bright Builds, all 30 Bazel targets, API compare,
 parity/progress, redaction, reference cleanliness, and diff checks also pass.
 
-Completion review: Implementation and verification are complete; exact commit
-binding, typed checklist transition, and final metadata publication remain.
-Live scan results, connection preservation, IPv6 assignment, and API behavior
-remain below verified and require separate detector-gated evidence.
+Completion review: The bounded scan and station IPv6 implementation is
+complete, and `NET-003` is `implemented` with `unit,workflow,api-compare`
+evidence under transition `20260804T174500Z-NET-003`. This task remains active
+and unarchived because live scan results, connection preservation, IPv6
+assignment, and API behavior remain below verified and require separate
+detector-gated evidence.
 
 ## Future
 
