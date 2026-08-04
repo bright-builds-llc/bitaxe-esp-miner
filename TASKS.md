@@ -633,11 +633,11 @@ verified, so this task remains active rather than archived.
 
 ### task-parity-ui001-display-behavior | 2026-08-04 | Complete Ultra 205 display driver behavior
 
-- [ ] Add the pure exact-panel, rotation, inversion, timeout, wake/priority,
+- [x] Add the pure exact-panel, rotation, inversion, timeout, wake/priority,
       and edge-triggered power contract with boundary regressions.
-- [ ] Load confirmed display settings with upstream defaults and fail closed on
+- [x] Load confirmed display settings with upstream defaults and fail closed on
       malformed or unsupported stored values.
-- [ ] Retain one configured firmware display owner across runtime frames and
+- [x] Retain one configured firmware display owner across runtime frames and
       prove configuration/render/power ordering plus sensor-failure isolation.
 
 Plan: `docs/parity/work-plans/20260804T230000Z-UI-001/PLAN.md`
@@ -647,11 +647,16 @@ work only. No hardware attempt, credentials, external service, mining, pool
 connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART,
 pins, or physical button interaction.
 
-Verification: Pending.
+Verification: Focused core/config tests, display adapter and ownership tests,
+the canonical firmware build, the mandatory Rust sequence, Bright Builds,
+`just test`, parity/progress, redaction, reference cleanliness, immutable-plan,
+and diff checks pass on the implementation tree.
 
-Completion review: Pending. UI-002 carousel content, UI-003 physical input,
-live panel orientation/inversion/timeout, and operator-visible behavior remain
-below verified.
+Completion review: The exact panel settings and runtime power behavior are
+software-implemented with closed configuration handling and one logical owner.
+UI-002 carousel content, UI-003 physical input, live panel
+orientation/inversion/timeout, and operator-visible behavior remain below
+verified, so this implemented task remains active rather than archived.
 
 ## Future
 

@@ -3,6 +3,7 @@ use bitaxe_core::{AsicTarget, BoardTarget};
 pub mod catalog;
 pub mod confirmed_snapshot;
 pub mod defaults;
+pub mod display;
 pub mod nvs;
 pub mod persistence;
 pub mod settings;
@@ -22,6 +23,7 @@ pub use defaults::{
     board_profile_defaults, ultra_205_defaults, BoardProfileDefaults, BoardProfileSeedKind,
     Ultra205Defaults,
 };
+pub use display::{load_ultra205_display_configuration, DisplaySettingsError};
 pub use nvs::{
     all_settings_schema, compatibility_writes_for_active, load_setting_value, migration_decisions,
     migration_rules, project_settings_schema, LoadedValue, MigrationDecision, MigrationRule,

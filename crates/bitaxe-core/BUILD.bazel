@@ -18,6 +18,7 @@ rust_library(
         "src/bap/semantics.rs",
         "src/bap/tests.rs",
         "src/bap/wire.rs",
+        "src/display.rs",
         "src/hashrate.rs",
         "src/hashrate/tests.rs",
         "src/lib.rs",

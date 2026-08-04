@@ -18,6 +18,7 @@ use bitaxe_safety::{
 };
 use esp_idf_svc::sys;
 
+use crate::display_adapter::RuntimeDisplayOwner;
 use crate::safety_adapter::{
     self, RuntimeI2cOwner, SafetyActuationOwnerInbox, SafetyActuationOwnerWait,
 };
@@ -32,7 +33,7 @@ const PRODUCER_THREAD_STACK_BYTES: usize = 8 * 1024;
 pub fn start(
     maybe_owner: Option<RuntimeI2cOwner<'static>>,
     maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
-    maybe_display_text: Option<StartupDebugText>,
+    maybe_display: Option<(RuntimeDisplayOwner, StartupDebugText)>,
 ) -> Result<()> {
     let (maybe_actuation_registration, maybe_actuation_inbox) = if maybe_owner.is_some() {
         let (registration, inbox) = safety_adapter::prepare_safety_actuation_owner();
@@ -47,7 +48,7 @@ pub fn start(
             run(
                 maybe_owner,
                 maybe_core_voltage_adc,
-                maybe_display_text,
+                maybe_display,
                 maybe_actuation_inbox,
             )
         })
@@ -65,7 +66,7 @@ pub fn start(
 fn run(
     mut maybe_owner: Option<RuntimeI2cOwner<'static>>,
     mut maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
-    mut maybe_display_text: Option<StartupDebugText>,
+    maybe_display: Option<(RuntimeDisplayOwner, StartupDebugText)>,
     maybe_actuation_inbox: Option<SafetyActuationOwnerInbox>,
 ) -> ! {
     let boot_session = new_boot_session_id();
@@ -75,10 +76,18 @@ fn run(
     let started_at_ms = crate::runtime_uptime::millis();
     let mut sensor_schedule = PeriodicDeadline::new(started_at_ms, SENSOR_SWEEP_CADENCE_MS)
         .expect("operator observation cadence is nonzero");
-    let mut next_display_deadline_ms = started_at_ms.saturating_add(DISPLAY_REFRESH_CADENCE_MS);
-    let mut maybe_last_display_line = maybe_display_text
-        .as_ref()
-        .map(|text| text.frame_at(0).lines()[2].to_owned());
+    let mut maybe_display = maybe_display.map(|(owner, text)| RuntimeDisplay {
+        owner,
+        last_alternating_line: text.frame_at(0).lines()[2].to_owned(),
+        text,
+    });
+    let mut maybe_display_schedule = maybe_display.as_ref().map(|_| {
+        let first_deadline_ms = started_at_ms
+            .checked_add(DISPLAY_REFRESH_CADENCE_MS)
+            .expect("runtime display deadline is representable");
+        PeriodicDeadline::new(first_deadline_ms, DISPLAY_REFRESH_CADENCE_MS)
+            .expect("runtime display cadence is nonzero")
+    });
 
     loop {
         let now_ms = crate::runtime_uptime::millis();
@@ -160,18 +169,33 @@ fn run(
             }
         }
 
-        if now_ms >= next_display_deadline_ms {
+        if maybe_display_schedule.is_some_and(|schedule| schedule.is_due(now_ms)) {
             if let Some(owner) = maybe_owner.as_mut() {
-                refresh_display(
-                    owner,
-                    &mut maybe_display_text,
-                    &mut maybe_last_display_line,
-                    now_ms,
-                );
+                service_display(owner, &mut maybe_display, now_ms);
             }
-            next_display_deadline_ms = now_ms.saturating_add(DISPLAY_REFRESH_CADENCE_MS);
+            if maybe_display.is_none() {
+                maybe_display_schedule = None;
+            }
+            if let Some(schedule) = maybe_display_schedule.as_mut() {
+                match schedule.advance_past(crate::runtime_uptime::millis()) {
+                    Ok(advance) if advance.missed_slots() > 0 => log::warn!(
+                        "display_runtime=overrun category=deadline_missed slots={}",
+                        advance.missed_slots()
+                    ),
+                    Ok(_) => {}
+                    Err(_) => {
+                        log::warn!(
+                            "display_status=runtime_refresh_disabled reason=deadline_overflow"
+                        );
+                        maybe_display = None;
+                        maybe_display_schedule = None;
+                    }
+                }
+            }
         }
 
+        let next_display_deadline_ms =
+            maybe_display_schedule.map_or(u64::MAX, PeriodicDeadline::next_deadline_ms);
         let next_owner_deadline_ms = sensor_schedule
             .next_deadline_ms()
             .min(next_display_deadline_ms);
@@ -192,31 +216,48 @@ fn run(
     }
 }
 
-fn refresh_display(
+struct RuntimeDisplay {
+    owner: RuntimeDisplayOwner,
+    text: StartupDebugText,
+    last_alternating_line: String,
+}
+
+fn service_display(
     owner: &mut RuntimeI2cOwner<'_>,
-    maybe_display_text: &mut Option<StartupDebugText>,
-    maybe_last_display_line: &mut Option<String>,
+    maybe_display: &mut Option<RuntimeDisplay>,
     uptime_ms: u64,
 ) {
-    let Some(display_text) = maybe_display_text.as_ref() else {
+    let Some(display) = maybe_display.as_mut() else {
         return;
     };
-    let frame = display_text.frame_at(uptime_ms);
-    let alternating_line = frame.lines()[2];
-    if maybe_last_display_line.as_deref() == Some(alternating_line) {
+    if let Err(error) = display.owner.service_power(owner, uptime_ms, false) {
+        disable_runtime_display(maybe_display, "power_command_failed", &error);
         return;
     }
 
-    if let Err(error) = crate::display_adapter::render_runtime_debug_text(owner, &frame) {
-        log::warn!("display_status=runtime_refresh_disabled reason=render_failed error={error:#}");
-        crate::display_adapter::publish_runtime_display_input_boundary(
-            crate::display_adapter::RuntimeDisplayMode::Unavailable,
-        );
-        *maybe_display_text = None;
-        *maybe_last_display_line = None;
+    let frame = display.text.frame_at(uptime_ms);
+    let alternating_line = frame.lines()[2];
+    if display.last_alternating_line == alternating_line {
         return;
     }
-    *maybe_last_display_line = Some(alternating_line.to_owned());
+
+    if let Err(error) = display.owner.render_runtime_debug_text(owner, &frame) {
+        disable_runtime_display(maybe_display, "render_failed", &error);
+        return;
+    }
+    display.last_alternating_line = alternating_line.to_owned();
+}
+
+fn disable_runtime_display(
+    maybe_display: &mut Option<RuntimeDisplay>,
+    reason: &str,
+    error: &anyhow::Error,
+) {
+    log::warn!("display_status=runtime_refresh_disabled reason={reason} error={error:#}");
+    crate::display_adapter::publish_runtime_display_input_boundary(
+        crate::display_adapter::RuntimeDisplayMode::Unavailable,
+    );
+    *maybe_display = None;
 }
 
 fn project_observations(

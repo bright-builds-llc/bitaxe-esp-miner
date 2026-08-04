@@ -113,12 +113,23 @@ fn initialize_operator_runtime(
     maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
     startup_debug_text: StartupDebugText,
 ) {
-    let startup_frame = startup_debug_text.frame_at(runtime_uptime::millis());
-    let maybe_runtime_display = if let Some(bus) = maybe_bus.as_mut() {
-        match display_adapter::render_startup_debug_text(bus, &startup_frame) {
-            Ok(()) => {
+    let display_started_at_ms = runtime_uptime::millis();
+    let startup_frame = startup_debug_text.frame_at(display_started_at_ms);
+    let confirmed_settings = settings_adapter::current_settings_snapshot();
+    let display_configuration =
+        bitaxe_config::load_ultra205_display_configuration(&confirmed_settings);
+    let maybe_runtime_display = if let (Some(bus), Ok(configuration)) =
+        (maybe_bus.as_mut(), display_configuration.as_ref())
+    {
+        match display_adapter::RuntimeDisplayOwner::initialize(
+            bus,
+            &startup_frame,
+            *configuration,
+            display_started_at_ms,
+        ) {
+            Ok(owner) => {
                 log::info!("operator_sensor_display=rendered");
-                Some(startup_debug_text)
+                Some(owner)
             }
             Err(error) => {
                 log::warn!(
@@ -128,10 +139,14 @@ fn initialize_operator_runtime(
             }
         }
     } else {
+        if let Err(error) = display_configuration {
+            log::warn!("display_status=unavailable reason=configuration_invalid category={error}");
+        }
         None
     };
     let runtime_display_enabled = maybe_runtime_display.is_some();
     let maybe_runtime_owner = maybe_bus.map(safety_adapter::BitaxeI2cBus::into_runtime);
+    let maybe_runtime_display = maybe_runtime_display.map(|owner| (owner, startup_debug_text));
     if let Err(error) = operator_sensor_runtime::start(
         maybe_runtime_owner,
         maybe_core_voltage_adc,
@@ -146,7 +161,7 @@ fn initialize_operator_runtime(
         return;
     }
     let mode = if runtime_display_enabled {
-        display_adapter::RuntimeDisplayMode::AlternatingDebug
+        display_adapter::RuntimeDisplayMode::ConfiguredDebug
     } else {
         display_adapter::RuntimeDisplayMode::Unavailable
     };

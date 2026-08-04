@@ -14,6 +14,7 @@ rust_library(
         "src/defaults.rs",
         "src/defaults/matrix.rs",
         "src/defaults/matrix/tests.rs",
+        "src/display.rs",
         "src/golden_tests.rs",
         "src/lib.rs",
         "src/nvs.rs",
