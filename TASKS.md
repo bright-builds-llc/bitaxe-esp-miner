@@ -603,6 +603,28 @@ Completion review: Implementation commit
 cadence, telemetry accuracy, long-duration retention, device API, and browser
 behavior remain below verified.
 
+### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
+
+- [ ] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
+      persistence codec with focused regression coverage.
+- [ ] Carry one redacted candidate from current-generation nonce correlation
+      through a typed production-session effect without changing submit policy.
+- [ ] Add transactional indexed-NVS ownership, boot load, read-only API
+      projection, production ownership tests, and every mandatory gate.
+
+Plan: `docs/parity/work-plans/20260804T220000Z-STAT-003/PLAN.md`
+
+Authorization: local software, synthetic nonce/work fixtures, and build work
+only. No hardware attempt, credentials, external service, mining campaign, pool
+connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART, or
+pins.
+
+Verification: Pending.
+
+Completion review: Pending. Live nonce difficulty, device persistence, API and
+browser behavior, mining, and accepted/rejected share outcomes remain below
+verified.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
