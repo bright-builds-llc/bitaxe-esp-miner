@@ -58,3 +58,25 @@
 - Blocker or next safe action: Commit and push this implementation, confirm a
   clean synchronized tree, then run the single contracted detector and
   conditional attempt-008 capture without retry.
+
+## 2026-08-04T23:28:41Z | attempt-008 stopped at detector admission
+
+- Source commit: `50287f62f7d04e09cad088798566edccb0663f2b`.
+- Actions: Confirmed a clean synchronized tree, built the exact package, and
+  ran the one protected attempt-008 detector. The conditional durability
+  capture was not launched because detector admission failed.
+- Verification: Packaging passed. Protected output reduced to the allowlisted
+  terminal category `bootloader_connect_failed`; the private wrapper root is
+  mode 0700, its detector output is mode 0600, and neither the private capture
+  root nor public projection exists. The complete final software gate passed;
+  one transient host resource error during the first parity invocation cleared
+  on the bounded read-only rerun.
+- Evidence: Only the exact source commit, package success, typed-safe terminal
+  category, file-mode facts, and absence booleans are public. Port, physical
+  identity, USB details, tool trace, and any device output remain private.
+- Outcome: No theme mutation, software restart, recovery action, public
+  evidence, `RESULT.md`, or checklist promotion occurred. `API-010` remains
+  `implemented`.
+- Blocker or next safe action: Stop without retry under the immutable plan.
+  A later attempt requires a new task and immutable contract after the USB
+  bootloader-connect condition is externally resolved.

@@ -1191,7 +1191,7 @@ transaction.
 - [x] Add a red/green source regression and canonical ELF entry-frame audit,
       then run the complete software gate.
 - [x] Commit and push the clean exact-package fix before hardware.
-- [ ] Run exactly one protected detector and conditional attempt-008 capture;
+- [x] Run exactly one protected detector and conditional attempt-008 capture;
       promote only `API-010` on complete typed evidence, otherwise withhold
       evidence, keep `implemented`, and stop.
 
@@ -1219,11 +1219,17 @@ for the screen collector, 3,008 bytes combined. Formatting, strict Clippy,
 all-target/all-feature build and tests, Bright Builds, all 35 Bazel tests,
 canonical firmware build/package, parity validation/progress, redaction,
 reference cleanliness, selector stability, immutable-plan, and diff checks
-passed.
+passed. Exact commit `50287f62` packaged successfully. The one protected
+attempt-008 detector then stopped as `bootloader_connect_failed`; no capture,
+theme mutation, restart, public projection, or promotion occurred.
 
-Completion review: Pending. This task claims no network discovery, mining,
-ASIC, hardware-control, display-input, OTA, partition, recovery, other-board,
-or release parity beyond the exact admitted transaction.
+Completion review: The physical-screen root cause is fixed and guarded in
+source and the real ELF, but the single authorized attempt did not pass device
+admission. `API-010` therefore remains `implemented`, the evidence and result
+remain withheld, and this task stays unresolved under the no-retry contract.
+This task claims no network discovery, mining, ASIC, hardware-control,
+display-input, OTA, partition, recovery, other-board, or release parity beyond
+the exact admitted transaction.
 
 ## Future
 
