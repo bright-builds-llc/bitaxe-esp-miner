@@ -333,6 +333,24 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
+### task-parity-cfg006-defaults-matrix | 2026-08-04 | Complete board defaults matrix
+
+- [ ] Add typed exact defaults for all 20 numbered upstream board seeds and the
+      explicit custom seed.
+- [ ] Bind every discriminator to a provenance-bearing golden fixture and the
+      existing board catalog.
+- [ ] Run focused and mandatory gates, then transition only `CFG-006` to
+      `implemented` while withholding every non-205 hardware claim.
+
+Plan: `docs/parity/work-plans/20260804T133030Z-CFG-006/PLAN.md`
+
+Authorization: pure software and public upstream seed data only. No hardware,
+credentials, network, settings, mining, controls, OTA, direct UART, or pins.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
