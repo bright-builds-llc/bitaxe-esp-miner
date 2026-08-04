@@ -1017,15 +1017,18 @@ OTA, recovery, other-board, or release parity.
 
 ### task-parity-api010-live-theme-durability-attempt-005 | 2026-08-04 | Continue after normal-power remediation
 
-- [ ] Preserve the pushed implementation and attempt-004 record, then commit
+- [x] Preserve the pushed implementation and attempt-004 record, then commit
       and push the linked immutable attempt-005 plan before any hardware action.
-- [ ] After the user reports one full normal barrel/USB power cycle, freeze the
+- [x] After the user reports one full normal barrel/USB power cycle, freeze the
       exact planning-commit package and run one fresh protected detector.
-- [ ] Run the single bounded capture only if board-info admission objectively
+- [x] Run the single bounded capture only if board-info admission objectively
       proves the detector boundary changed; otherwise record the terminal
       detector outcome and stop.
-- [ ] Promote only `API-010` on complete typed evidence; otherwise preserve the
+- [x] Promote only `API-010` on complete typed evidence; otherwise preserve the
       earliest category, withhold evidence, keep `implemented`, and stop.
+- [ ] Create a linked audited software-remediation plan for the protected
+      panic/stack-overflow reboot-loop classification before any attempt-006
+      hardware action.
 
 Plan: `docs/parity/work-plans/20260804T205704Z-API-010/PLAN.md`. This immutable
 plan directly continues
@@ -1096,11 +1099,37 @@ and redaction all pass. Otherwise record the closed category and safe recovery
 booleans, withhold `RESULT.md` and evidence, keep `API-010` at `implemented`,
 and stop.
 
-Verification: Pending.
+Attempt-005 outcome: the user reported the required normal-connector cycle and
+the one detector passed, objectively changing the attempt-004 boundary. The
+single capture completed the exact-package flash effect but stopped as
+`evidence_invalid` with no public projection, recovery flash, or secondary
+recovery failure. Protected offline classification reports
+`runtime_origin_missing`, 27 distinct sequential boot sessions and ordinals,
+27 panic resets, no runtime-origin or connected Wi-Fi marker, and only the
+allowlisted stack-overflow panic category. The workflow did not read or mutate
+the theme or request a software restart. Attempt-005 is consumed; evidence and
+`RESULT.md` remain withheld and `API-010` remains `implemented`.
 
-Completion review: Pending. This task claims no installed AxeOS browser,
-network discovery, mining, ASIC, hardware-control, OTA, recovery, other-board,
-or release parity beyond the exact admitted transaction.
+Next safe action: no hardware retry. Create and push a new immutable
+software-remediation plan that confirms and fixes the boot-evidence replay
+stack overflow before assigning attempt-006. The 10-second replay cadence, one
+identity per boot, and the source-owned 8 KiB background observer stack are the
+leading source-level hypothesis, not yet a verified root cause.
+
+Verification: The exact package and sole detector passed before the bounded
+capture produced the closed failure above. The ordered format, strict Clippy,
+all-target build, all-feature Cargo tests, Bright Builds, all Bazel tests,
+parity/progress, semantic redaction, pinned-reference cleanliness,
+immutable-plan, protected-mode, sensitive-output, and diff checks pass. The
+public projection remains absent and no scratch artifact is tracked.
+
+Completion review: Attempt-005 is truthfully closed without promotion or a
+hardware retry. The residual risk is the unverified 8 KiB boot-evidence
+observer stack hypothesis and the exact installed package remains in the panic
+loop until a separately planned software remediation is built and flashed.
+This task claims no installed AxeOS browser, network discovery, mining, ASIC,
+hardware-control, OTA, recovery, other-board, or release parity beyond the
+exact admitted transaction.
 
 ## Future
 

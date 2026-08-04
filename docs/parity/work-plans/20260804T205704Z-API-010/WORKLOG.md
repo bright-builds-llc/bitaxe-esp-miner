@@ -34,3 +34,31 @@
 - Blocker or next safe action: Commit and push the checkpoint, then wait for
   the user to report the full normal barrel/USB power cycle before running the
   task-recorded package and sole detector.
+
+## 2026-08-04T22:19:04Z | attempt-005 stopped on panic reboot loop
+
+- Actions: Accepted the user's reported normal barrel/USB power-cycle
+  occurrence, rebuilt the exact pushed package, and consumed the one protected
+  detector. Successful ESP32-S3 board-info admission objectively proved the
+  attempt-004 boundary changed, so the single bounded attempt-005 capture ran.
+- Verification: The exact-package flash effect completed, but the capture
+  closed as `evidence_invalid` and emitted no public projection. The closed
+  failure envelope reports no restoration attempt, no recovery flash, and no
+  secondary recovery failure. Protected offline classification reports
+  `runtime_origin_missing`; the trace contains 27 distinct sequential boot
+  sessions and ordinals, every reset is `panic`, no runtime-origin or connected
+  Wi-Fi marker is present, and each boot reaches the passive safe-state marker.
+  An allowlisted panic classifier found only the stack-overflow category.
+- Evidence: Only closed categories, booleans, and bounded counts were emitted.
+  The detector, serial trace, origin, device, port, USB/network/process
+  identities, credentials, theme/hostname values, and raw child material stay
+  under the mode-`0700` ignored private roots with mode-`0600` files.
+- Outcome: Attempt-005 is consumed. The exact package is installed, but the
+  loop prevents runtime-origin publication and the workflow never read or
+  changed the theme, requested a software restart, or used recovery. Withhold
+  `RESULT.md` and public evidence; keep `API-010` at `implemented`.
+- Blocker or next safe action: Do not retry hardware. Create a new audited
+  software-remediation plan for the boot-evidence replay stack overflow. The
+  10-second replay cadence and one identity per boot make the 8 KiB background
+  observer stack the leading source-level hypothesis; confirm and fix it with
+  deterministic tests before authorizing a fresh attempt ordinal.
