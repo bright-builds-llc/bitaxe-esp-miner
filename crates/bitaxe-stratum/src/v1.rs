@@ -11,6 +11,7 @@ mod line_framer;
 mod live_runtime;
 pub mod messages;
 pub mod mining;
+pub mod payout_address;
 pub mod production_session;
 pub mod production_work;
 pub mod queue;
