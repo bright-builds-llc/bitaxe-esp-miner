@@ -2,9 +2,9 @@ import { createHash } from "node:crypto";
 import { access, chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { flashCommand, flashMonitorCommand, internalCommandSpec, monitorCommand } from "./contracts.generated.js";
+import { flashCommand, flashMonitorCommand, internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
 import { fetchJsonFromSameOrigin, sendSameOriginRequest, uniqueRuntimeOrigin } from "./http.js";
-import type { ProcessPort, RunningProcess } from "./process.js";
+import type { ProcessPort, ProcessOutcome } from "./process.js";
 import { hasPassiveSafeState } from "./version-evidence.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
@@ -18,6 +18,64 @@ export type SettingsDurabilityOptions = {
 };
 
 type JsonObject = Readonly<Record<string, unknown>>;
+type SettingsFailureCategory = Extract<AutomationCategory, "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed">;
+
+type RecoveryFacts = {
+  readonly restoration_complete: boolean;
+  readonly recovery_flash_used: boolean;
+  readonly secondary_recovery_failure: boolean;
+};
+
+const noRecovery: RecoveryFacts = {
+  restoration_complete: false,
+  recovery_flash_used: false,
+  secondary_recovery_failure: false,
+};
+
+const deviceSessionFields = new Set([
+  "schema_version",
+  "terminal_category",
+  "platform_category",
+  "board_category",
+  "same_physical_device",
+  "stable_enumeration",
+  "reenumerated",
+  "reader_armed",
+  "pre_restart_serial_delivery",
+  "post_restart_serial_delivery",
+  "serial_delivery",
+  "request_outcome",
+  "request_attempt_count",
+  "service_loss_observed",
+  "trusted_origin_preserved",
+  "application_recovered",
+  "build_identity_matches",
+  "boot_session_changed",
+  "boot_ordinal_advanced_by_one",
+  "software_reset_observed",
+  "postcondition_matches",
+  "cleanup_complete",
+  "usb_disappearance_count",
+  "enumeration_change_count",
+  "serial_byte_count",
+  "http_observation_count",
+  "duration_millis",
+]);
+
+export class SettingsDurabilityError extends Error {
+  public constructor(
+    public readonly category: SettingsFailureCategory,
+    message: string,
+    public readonly publicValue: Readonly<Record<string, unknown>>,
+  ) {
+    super(message);
+    this.name = "SettingsDurabilityError";
+  }
+
+  public withRecovery(recovery: RecoveryFacts): SettingsDurabilityError {
+    return new SettingsDurabilityError(this.category, this.message, { ...this.publicValue, ...recovery });
+  }
+}
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -34,6 +92,14 @@ function requiredString(value: JsonObject, field: string, context: string): stri
   return candidate;
 }
 
+function requiredOrdinal(value: JsonObject, field: string, context: string): number {
+  const candidate = value[field];
+  if (typeof candidate !== "number" || !Number.isSafeInteger(candidate) || candidate < 1) {
+    throw new Error(`${context} ${field} must be a positive integer`);
+  }
+  return candidate;
+}
+
 async function requireAbsentPrivateRoot(privateRoot: string): Promise<void> {
   try {
     await stat(privateRoot);
@@ -46,27 +112,187 @@ async function requireAbsentPrivateRoot(privateRoot: string): Promise<void> {
   await chmod(privateRoot, 0o700);
 }
 
-async function classify(
-  processPort: ProcessPort,
-  classifierProgram: string,
-  trace: string,
-  mode: "baseline" | "post-restart",
-  maybeExpected?: { readonly session: string; readonly ordinal: number },
-): Promise<JsonObject> {
-  const args = ["verify-settings-durability", "--trace", trace, "--mode", mode];
-  if (maybeExpected !== undefined) {
-    args.push("--expected-session", maybeExpected.session, "--expected-ordinal", String(maybeExpected.ordinal));
+async function writePrivateJson(output: string, value: unknown): Promise<void> {
+  await writeFile(output, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", flag: "wx", mode: 0o600 });
+  await chmod(output, 0o600);
+}
+
+async function classifyBaseline(processPort: ProcessPort, classifierProgram: string, trace: string): Promise<JsonObject> {
+  const args = ["verify-settings-durability", "--trace", trace, "--mode", "baseline"];
+  const outcome = await runChild(processPort, classifierProgram, args, "baseline classification");
+  if (outcome.timedOut) throw failure("timeout", "baseline classification timed out");
+  if (outcome.exitCode !== 0) throw failure("process_failed", "baseline settings classification failed");
+  try {
+    const value = jsonObject(JSON.parse(outcome.stdout), "baseline classification");
+    if (value["status"] !== "passed") throw new Error("baseline settings evidence did not pass");
+    return value;
+  } catch {
+    throw failure("evidence_invalid", "baseline settings evidence is invalid");
   }
-  const outcome = await processPort.run(internalCommandSpec(classifierProgram, args, (value) => value));
-  if (outcome.exitCode !== 0) throw new Error(`${mode} settings classification failed`);
-  const value = jsonObject(JSON.parse(outcome.stdout), `${mode} classification`);
-  if (value["status"] !== "passed") throw new Error(`${mode} settings evidence did not pass`);
-  return value;
 }
 
 async function hostname(origin: URL, output: string): Promise<string> {
   const value = jsonObject(await fetchJsonFromSameOrigin(origin, "/api/system/info", output), "system info");
   return requiredString(value, "hostname", "system info");
+}
+
+function failure(
+  category: SettingsFailureCategory,
+  message: string,
+  facts: Readonly<Record<string, unknown>> = {},
+): SettingsDurabilityError {
+  return new SettingsDurabilityError(category, message, {
+    stage: "restart_session",
+    ...facts,
+    ...noRecovery,
+  });
+}
+
+async function runChild(
+  processPort: ProcessPort,
+  program: string,
+  args: readonly string[],
+  context: string,
+): Promise<ProcessOutcome> {
+  try {
+    return await processPort.run(internalCommandSpec(program, [...args], (value) => value));
+  } catch {
+    throw failure("process_failed", `${context} launch failed`);
+  }
+}
+
+function closedDeviceSession(value: unknown): JsonObject {
+  const projection = jsonObject(value, "device-session projection");
+  const keys = Object.keys(projection);
+  if (keys.length !== deviceSessionFields.size || keys.some((key) => !deviceSessionFields.has(key))) {
+    throw failure("evidence_invalid", "device-session projection fields are invalid");
+  }
+  if (projection["schema_version"] !== "esp-device-session-v1") {
+    throw failure("evidence_invalid", "device-session projection schema is invalid");
+  }
+  const terminalCategory = projection["terminal_category"];
+  if (typeof terminalCategory !== "string" || terminalCategory === "") {
+    throw failure("evidence_invalid", "device-session terminal category is invalid");
+  }
+  const requiredBooleans = [
+    "same_physical_device",
+    "stable_enumeration",
+    "reenumerated",
+    "reader_armed",
+    "pre_restart_serial_delivery",
+    "post_restart_serial_delivery",
+    "service_loss_observed",
+    "trusted_origin_preserved",
+    "application_recovered",
+    "build_identity_matches",
+    "boot_session_changed",
+    "boot_ordinal_advanced_by_one",
+    "software_reset_observed",
+    "postcondition_matches",
+    "cleanup_complete",
+  ];
+  const requiredCounts = [
+    "request_attempt_count",
+    "usb_disappearance_count",
+    "enumeration_change_count",
+    "serial_byte_count",
+    "http_observation_count",
+    "duration_millis",
+  ];
+  const validPlatform = ["macos", "linux", "windows", "other"].includes(String(projection["platform_category"]));
+  const validSerialDelivery = ["correlated", "silent", "reacquired", "failed"].includes(String(projection["serial_delivery"]));
+  const validCounts = requiredCounts.every((field) => {
+    const candidate = projection[field];
+    return typeof candidate === "number" && Number.isSafeInteger(candidate) && candidate >= 0;
+  });
+  if (
+    projection["board_category"] !== "205"
+    || !validPlatform
+    || !validSerialDelivery
+    || requiredBooleans.some((field) => typeof projection[field] !== "boolean")
+    || !validCounts
+  ) {
+    throw failure("evidence_invalid", "device-session projection values are invalid");
+  }
+  if (terminalCategory !== "ready") {
+    throw failure("hardware_blocked", "device-session did not become ready", { terminal_category: terminalCategory });
+  }
+  const requiredTrue = [
+    "same_physical_device",
+    "reader_armed",
+    "trusted_origin_preserved",
+    "application_recovered",
+    "build_identity_matches",
+    "boot_session_changed",
+    "boot_ordinal_advanced_by_one",
+    "software_reset_observed",
+    "postcondition_matches",
+    "cleanup_complete",
+  ];
+  const requestOutcome = projection["request_outcome"];
+  const validRequestOutcome = requestOutcome === "response_received" || requestOutcome === "response_missing";
+  if (
+    projection["platform_category"] !== "macos"
+    || projection["request_attempt_count"] !== 1
+    || !validRequestOutcome
+    || requiredTrue.some((field) => projection[field] !== true)
+  ) {
+    throw failure("evidence_invalid", "ready device-session projection is incomplete");
+  }
+  return projection;
+}
+
+async function readClosedDeviceSession(output: string): Promise<JsonObject> {
+  try {
+    return closedDeviceSession(JSON.parse(await readFile(output, "utf8")));
+  } catch (error) {
+    if (error instanceof SettingsDurabilityError) throw error;
+    throw failure("evidence_invalid", "device-session projection is missing or malformed");
+  }
+}
+
+async function recoverHostname(
+  processPort: ProcessPort,
+  flashProgram: string,
+  origin: URL,
+  privateRoot: string,
+  originalHostname: string,
+  options: SettingsDurabilityOptions,
+  manifestPath: string,
+  credentialsPath: string,
+): Promise<RecoveryFacts> {
+  try {
+    await sendSameOriginRequest(
+      origin,
+      "/api/system",
+      "PATCH",
+      path.join(privateRoot, "recovery-restore.private.txt"),
+      { hostname: originalHostname },
+    );
+    const restored = await hostname(origin, path.join(privateRoot, "recovery-readback.private.json"));
+    if (restored === originalHostname) return { ...noRecovery, restoration_complete: true };
+  } catch {
+    // The exact-package flash below is the bounded safe-state fallback.
+  }
+  try {
+    const recovery = await processPort.run(flashCommand(flashProgram, {
+      board: 205,
+      port: options.port,
+      manifest: manifestPath,
+      wifiCredentials: credentialsPath,
+    }));
+    return {
+      restoration_complete: false,
+      recovery_flash_used: true,
+      secondary_recovery_failure: recovery.timedOut || recovery.exitCode !== 0,
+    };
+  } catch {
+    return {
+      restoration_complete: false,
+      recovery_flash_used: true,
+      secondary_recovery_failure: true,
+    };
+  }
 }
 
 export async function captureSettingsDurability(
@@ -75,7 +301,7 @@ export async function captureSettingsDurability(
   processPort: ProcessPort,
   flashProgram: string,
   classifierProgram: string,
-  waitForMonitorReady: () => Promise<void> = () => new Promise((resolve) => setTimeout(resolve, 5_000)),
+  deviceSessionProgram: string,
 ): Promise<unknown> {
   const privateRoot = assertWithinWorkspace(workspaceRoot, options.privateRoot);
   const manifestPath = assertWithinWorkspace(workspaceRoot, options.packageManifest);
@@ -88,6 +314,7 @@ export async function captureSettingsDurability(
   const manifest = jsonObject(JSON.parse(manifestDocument), "package manifest");
   const sourceCommit = requiredString(manifest, "source_commit", "package manifest");
   const referenceCommit = requiredString(manifest, "reference_commit", "package manifest");
+  const appElfSha256 = requiredString(manifest, "app_elf_sha256", "package manifest");
   const manifestDigest = sha256(manifestDocument);
   const initialRoot = path.join(privateRoot, "initial");
   await mkdir(initialRoot, { mode: 0o700 });
@@ -100,99 +327,111 @@ export async function captureSettingsDurability(
     evidenceMode: "dual",
     evidenceDir: initialRoot,
   }));
-  if (initial.exitCode !== 0) throw new Error("exact-package flash-monitor failed");
+  if (initial.timedOut) throw failure("timeout", "exact-package flash-monitor timed out");
+  if (initial.exitCode !== 0) throw failure("process_failed", "exact-package flash-monitor failed");
   const initialTrace = path.join(initialRoot, "flash-monitor.classifier-input.log");
   const initialDocument = await readFile(initialTrace, "utf8");
-  if (!hasPassiveSafeState(initialDocument)) throw new Error("initial boot lacks safe-state evidence");
-  const baseline = await classify(processPort, classifierProgram, initialTrace, "baseline");
+  if (!hasPassiveSafeState(initialDocument)) throw failure("evidence_invalid", "initial boot lacks safe-state evidence");
+  const baseline = await classifyBaseline(processPort, classifierProgram, initialTrace);
   const session = requiredString(baseline, "session", "baseline classification");
-  const ordinalValue = baseline["boot_ordinal"];
-  if (typeof ordinalValue !== "number" || !Number.isSafeInteger(ordinalValue) || ordinalValue < 1) {
-    throw new Error("baseline boot ordinal is invalid");
-  }
-  let origin = uniqueRuntimeOrigin(initialDocument);
+  const ordinal = requiredOrdinal(baseline, "boot_ordinal", "baseline classification");
+  const origin = uniqueRuntimeOrigin(initialDocument);
   const originalHostname = await hostname(origin, path.join(privateRoot, "original.private.json"));
   const testHostname = originalHostname === "bitaxe-parity-205" ? "bitaxe-parity-alt" : "bitaxe-parity-205";
   let hostnameChanged = false;
-  let restorationComplete = false;
-  let maybePostMonitor: RunningProcess | undefined;
   try {
-    await sendSameOriginRequest(origin, "/api/system", "PATCH", path.join(privateRoot, "patch.private.txt"), { hostname: testHostname });
+    await sendSameOriginRequest(
+      origin,
+      "/api/system",
+      "PATCH",
+      path.join(privateRoot, "patch.private.txt"),
+      { hostname: testHostname },
+    );
     hostnameChanged = true;
     if (await hostname(origin, path.join(privateRoot, "immediate.private.json")) !== testHostname) {
-      throw new Error("immediate hostname readback mismatch");
+      throw failure("hardware_blocked", "immediate hostname readback mismatch");
     }
-    const postRoot = path.join(privateRoot, "post-restart");
-    await mkdir(postRoot, { mode: 0o700 });
-    maybePostMonitor = processPort.start(monitorCommand(flashProgram, {
-      board: 205,
-      port: options.port,
-      evidenceDir: postRoot,
-      captureTimeoutSeconds: options.captureTimeoutSeconds,
-    }));
-    await waitForMonitorReady();
-    await sendSameOriginRequest(origin, "/api/system/restart", "POST", path.join(privateRoot, "restart.private.txt"));
-    const postMonitor = await maybePostMonitor.wait();
-    maybePostMonitor = undefined;
-    if (postMonitor.exitCode !== 0) throw new Error("post-restart monitor failed");
-    const postTrace = path.join(postRoot, "flash-monitor.log");
-    const postDocument = await readFile(postTrace, "utf8");
-    if (!hasPassiveSafeState(postDocument)) throw new Error("post-restart boot lacks safe-state evidence");
-    await classify(processPort, classifierProgram, postTrace, "post-restart", { session, ordinal: ordinalValue });
-    origin = uniqueRuntimeOrigin(postDocument);
-    if (await hostname(origin, path.join(privateRoot, "post-restart.private.json")) !== testHostname) {
-      throw new Error("post-restart hostname readback mismatch");
+    const intentPath = path.join(privateRoot, "device-session-intent.private.json");
+    const sessionRoot = path.join(privateRoot, "device-session");
+    const sessionProjectionPath = path.join(privateRoot, "device-session-projection.private.json");
+    await mkdir(sessionRoot, { mode: 0o700 });
+    await chmod(sessionRoot, 0o700);
+    await writePrivateJson(intentPath, {
+      schema_version: "esp-device-session-reboot-intent-v1",
+      board_category: "205",
+      trusted_origin: origin.origin,
+      baseline: {
+        boot_session: session,
+        boot_ordinal: ordinal,
+        source_commit: sourceCommit,
+        reference_commit: referenceCommit,
+        app_elf_sha256: appElfSha256,
+      },
+      expected_postcondition: { hostname_sha256: sha256(testHostname) },
+    });
+    const sessionOutcome = await runChild(processPort, deviceSessionProgram, [
+      "reboot-live",
+      "--port", options.port,
+      "--intent-input", intentPath,
+      "--private-root", sessionRoot,
+      "--projection-output", sessionProjectionPath,
+      "--timeout-seconds", String(options.captureTimeoutSeconds),
+    ], "device-session");
+    if (sessionOutcome.timedOut) throw failure("timeout", "device-session timed out");
+    const sessionProjection = await readClosedDeviceSession(sessionProjectionPath);
+    if (sessionOutcome.exitCode !== 0) {
+      throw failure("hardware_blocked", "device-session child failed after a ready projection");
     }
-    await sendSameOriginRequest(origin, "/api/system", "PATCH", path.join(privateRoot, "restore.private.txt"), { hostname: originalHostname });
+    await sendSameOriginRequest(
+      origin,
+      "/api/system",
+      "PATCH",
+      path.join(privateRoot, "restore.private.txt"),
+      { hostname: originalHostname },
+    );
     if (await hostname(origin, path.join(privateRoot, "restored.private.json")) !== originalHostname) {
-      throw new Error("restored hostname readback mismatch");
+      throw failure("hardware_blocked", "restored hostname readback mismatch");
     }
-    restorationComplete = true;
     hostnameChanged = false;
+    const evidence = {
+      schema_version: "bitaxe-settings-durability-evidence-v2",
+      board: 205,
+      source_commit: sourceCommit,
+      reference_commit: referenceCommit,
+      package_manifest_sha256: manifestDigest,
+      workflow: {
+        schema_version: "bitaxe-workflow-identity-v1",
+        command: "verify-settings-durability",
+        request_sha256: sha256(JSON.stringify({ manifest: manifestDigest, timeout: options.captureTimeoutSeconds })),
+      },
+      restart_session: sessionProjection,
+      boot_observed: true,
+      hostname_patch_readback: true,
+      normal_restart_observed: true,
+      post_restart_persistence: true,
+      restoration_complete: true,
+      mining_state: "disabled",
+      hardware_control_state: "disabled",
+      redaction_status: "passed",
+    } as const;
+    await mkdir(path.dirname(projectionPath), { recursive: true });
+    await writeFile(projectionPath, `${JSON.stringify(evidence, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+    return evidence;
   } catch (error) {
-    if (maybePostMonitor !== undefined) {
-      maybePostMonitor.terminate();
-      await maybePostMonitor.wait();
-      maybePostMonitor = undefined;
-    }
-    if (hostnameChanged) {
-      try {
-        await sendSameOriginRequest(origin, "/api/system", "PATCH", path.join(privateRoot, "recovery-restore.private.txt"), { hostname: originalHostname });
-        restorationComplete = await hostname(origin, path.join(privateRoot, "recovery-readback.private.json")) === originalHostname;
-      } catch {
-        const recovery = await processPort.run(flashCommand(flashProgram, {
-          board: 205,
-          port: options.port,
-          manifest: manifestPath,
-          wifiCredentials: credentialsPath,
-        }));
-        if (recovery.exitCode !== 0) throw new Error("hostname restoration and exact-package recovery failed");
-      }
-    }
-    throw error;
+    const primary = error instanceof SettingsDurabilityError
+      ? error
+      : failure("process_failed", "settings durability orchestration failed");
+    if (!hostnameChanged) throw primary;
+    const recovery = await recoverHostname(
+      processPort,
+      flashProgram,
+      origin,
+      privateRoot,
+      originalHostname,
+      options,
+      manifestPath,
+      credentialsPath,
+    );
+    throw primary.withRecovery(recovery);
   }
-  if (!restorationComplete) throw new Error("hostname restoration was not confirmed");
-  const evidence = {
-    schema_version: "bitaxe-settings-durability-evidence-v1",
-    board: 205,
-    source_commit: sourceCommit,
-    reference_commit: referenceCommit,
-    package_manifest_sha256: manifestDigest,
-    workflow: {
-      schema_version: "bitaxe-workflow-identity-v1",
-      command: "verify-settings-durability",
-      request_sha256: sha256(JSON.stringify({ manifest: manifestDigest, port: options.port, timeout: options.captureTimeoutSeconds })),
-    },
-    boot_observed: true,
-    hostname_patch_readback: true,
-    normal_restart_observed: true,
-    post_restart_persistence: true,
-    restoration_complete: true,
-    mining_state: "disabled",
-    hardware_control_state: "disabled",
-    redaction_status: "passed",
-  } as const;
-  await mkdir(path.dirname(projectionPath), { recursive: true });
-  await writeFile(projectionPath, `${JSON.stringify(evidence, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
-  return evidence;
 }

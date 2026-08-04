@@ -61,3 +61,26 @@
   with the repository's typed device-session reboot transaction, prove the real
   process/file boundary, then use the one new-information attempt recorded in
   `task-parity-v12-hostname-device-session-retry`.
+
+## 2026-08-04T04:28:09Z | typed reboot correction passes software gates
+
+- Source commit: `647f9e26f35a` plus the pending implementation diff.
+- Actions: added the private `esp-device-session-reboot-intent-v1` contract and
+  `device-session reboot-live`; moved USB identity derivation inside that live
+  process; replaced the settings workflow's standalone monitor, fixed delay,
+  duplicate restart request, and invented log dependency with the closed typed
+  reboot projection; removed the unused long-running process API; and enrolled
+  v2 settings evidence in semantic redaction checks.
+- Verification: focused Rust and TypeScript tests pass, including a real child
+  process that emits production-shaped monitor behavior without creating a
+  monitor artifact. The complete mandatory Rust sequence, Bright Builds check,
+  `just test`, `just parity`, `just parity-progress`, `just verify-redaction`,
+  `just verify-reference`, and diff check pass. Projection admission now
+  requires the exact public field set and rejects unexpected identifying fields.
+- Evidence: software tests and source contracts only; no public hostname,
+  origin, USB identity, network identifier, port, credential, or raw trace was
+  produced.
+- Outcome: software correction ready to commit and push. `V12-HOSTNAME-205`
+  remains `implemented` and no final evidence exists yet.
+- Blocker or next safe action: commit and push the clean implementation, then
+  run exactly one detector-gated `attempt-003` under the active task contract.

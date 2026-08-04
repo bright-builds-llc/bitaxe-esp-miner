@@ -60,17 +60,3 @@ test("process adapter terminates a timed out child", async () => {
   assert.equal(outcome.timedOut, true, outcome.stderr);
   assert.notEqual(outcome.exitCode, 0);
 });
-
-test("process adapter can acquire a long-running process before awaiting it", async () => {
-  // Arrange
-  const processPort = createLocalProcessPort({ cwd: process.cwd(), timeoutMs: 5_000 });
-  const spec = internalCommandSpec(nodeProgram, ["-e", "setTimeout(() => process.stdout.write('done'), 25)"], (value) => value);
-
-  // Act
-  const running = processPort.start(spec);
-  const outcome = await running.wait();
-
-  // Assert
-  assert.equal(outcome.exitCode, 0);
-  assert.equal(outcome.stdout, "done");
-});

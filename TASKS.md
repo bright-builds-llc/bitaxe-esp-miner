@@ -396,11 +396,11 @@ mutation or hardware retry is authorized by this task.
 
 ### task-parity-v12-hostname-device-session-retry | 2026-08-03 | Replace the broken hostname restart observer
 
-- [ ] Add a private typed reboot intent and a live device-session adapter that
+- [x] Add a private typed reboot intent and a live device-session adapter that
       derives and binds the admitted Ultra 205 physical identity in-process.
-- [ ] Replace the settings workflow's invented monitor artifact and fixed
+- [x] Replace the settings workflow's invented monitor artifact and fixed
       readiness delay with the typed reboot transaction and closed projection.
-- [ ] Add unit and real-process regressions for the confirmed missing-artifact
+- [x] Add unit and real-process regressions for the confirmed missing-artifact
       defect, typed failures, restoration, recovery, and privacy boundaries.
 - [ ] Run all mandatory software gates, commit and push the clean fix, then run
       exactly one detector-gated `attempt-003` hardware capture.
@@ -432,7 +432,12 @@ postcondition failure, restoration failure, privacy failure, or cleanup
 failure. Direct UART, pins, mining, voltage/fan/power effects, OTA, erase, raw
 writes, discovery, and fault injection remain prohibited.
 
-Verification: Pending.
+Verification: The implementation passes the focused device-session and
+automation tests plus the mandatory Rust, Bright Builds, Bazel, parity,
+progress, redaction, reference-cleanliness, and diff gates. The first combined
+parity invocation encountered one transient host `Resource temporarily
+unavailable` error; isolated and final full-sequence reruns passed with no
+validation findings. Commit, push, and the single `attempt-003` remain pending.
 
 ## Future
 

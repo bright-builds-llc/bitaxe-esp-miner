@@ -22,6 +22,58 @@ fn postcondition() -> ExpectedPostcondition {
     }
 }
 
+fn reboot_intent() -> RebootIntent {
+    RebootIntent {
+        schema_version: REBOOT_INTENT_SCHEMA.to_owned(),
+        board_category: "205".to_owned(),
+        trusted_origin: "http://trusted-device".to_owned(),
+        baseline: baseline(),
+        expected_postcondition: postcondition(),
+    }
+}
+
+#[test]
+fn reboot_intent_binds_the_internally_admitted_device() {
+    // Arrange
+    let intent = reboot_intent();
+    let physical_identity_digest = digest('c');
+
+    // Act
+    let request = intent.bind_device("/dev/cu.usbmodem-test".to_owned(), physical_identity_digest);
+
+    // Assert
+    assert!(request.schema_is_valid());
+    assert_eq!(request.schema_version, REQUEST_SCHEMA);
+    assert_eq!(request.admitted_port, "/dev/cu.usbmodem-test");
+    assert_eq!(request.physical_identity_digest, digest('c'));
+}
+
+#[test]
+fn reboot_intent_rejects_an_external_device_identity_field() {
+    // Arrange
+    let mut value = serde_json::to_value(reboot_intent()).expect("intent must serialize");
+    value["physical_identity_digest"] = Value::String(digest('c'));
+
+    // Act
+    let result = serde_json::from_value::<RebootIntent>(value);
+
+    // Assert
+    assert!(result.is_err());
+}
+
+#[test]
+fn reboot_intent_rejects_an_invalid_contract() {
+    // Arrange
+    let mut intent = reboot_intent();
+    intent.board_category = "other".to_owned();
+
+    // Act
+    let valid = intent.schema_is_valid();
+
+    // Assert
+    assert!(!valid);
+}
+
 fn boot_b() -> PrivateBootB {
     PrivateBootB {
         boot_session: "boot-b".to_owned(),
@@ -211,6 +263,32 @@ fn second_restart_attempt_is_the_first_terminal_failure() {
         TerminalCategory::RestartAttributionAmbiguous
     );
     assert_eq!(state.projection().request_attempt_count, 2);
+}
+
+#[test]
+fn restart_request_requires_an_armed_reader_with_pre_restart_delivery() {
+    // Arrange
+    let mut state = SessionState::new(
+        baseline(),
+        postcondition(),
+        "http://trusted-device".to_owned(),
+    );
+    state.apply(SessionEvent::PlatformObserved {
+        category: PlatformCategory::Macos,
+    });
+    stable_samples(&mut state, DevicePhase::Initial, "enumeration-a");
+    state.apply(SessionEvent::BaselineConfirmed);
+
+    // Act
+    state.apply(SessionEvent::RestartRequestStarted);
+
+    // Assert
+    assert_eq!(
+        state.terminal_category(),
+        TerminalCategory::ObserverUnqualified
+    );
+    assert_eq!(state.projection().request_attempt_count, 1);
+    assert!(!state.projection().reader_armed);
 }
 
 #[test]

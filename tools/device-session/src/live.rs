@@ -4,8 +4,10 @@ use anyhow::Result;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
+use crate::macos::MacOsDeviceAdapter;
 use crate::{
-    PrivateBootB, SessionArtifacts, SessionEvent, SessionRequest, SessionState, TerminalCategory,
+    current_platform, PlatformCategory, PrivateBootB, RebootIntent, SessionArtifacts, SessionEvent,
+    SessionRequest, SessionState, TerminalCategory,
 };
 use bitaxe_http_transport::{ExchangeObservation, HttpResponse, RequestProgress};
 
@@ -14,6 +16,46 @@ const HTTP_POLL_INTERVAL: Duration = Duration::from_secs(1);
 mod session;
 
 pub use session::run_live_session;
+
+pub fn run_admitted_live_session(
+    intent: RebootIntent,
+    admitted_port: String,
+    artifacts: SessionArtifacts,
+    timeout: Duration,
+) -> Result<TerminalCategory> {
+    if !intent.schema_is_valid() {
+        anyhow::bail!("device-session reboot intent schema is invalid");
+    }
+    let platform = current_platform();
+    if platform != PlatformCategory::Macos {
+        return finish_unadmitted_intent(intent, artifacts, platform);
+    }
+    let maybe_snapshot = MacOsDeviceAdapter::maybe_exact_snapshot(&admitted_port)?;
+    let Some(snapshot) = maybe_snapshot else {
+        return finish_unadmitted_intent(intent, artifacts, platform);
+    };
+    let request = intent.bind_device(admitted_port, snapshot.physical_identity_digest);
+    run_live_session(request, artifacts, timeout)
+}
+
+fn finish_unadmitted_intent(
+    intent: RebootIntent,
+    mut artifacts: SessionArtifacts,
+    platform: PlatformCategory,
+) -> Result<TerminalCategory> {
+    let mut state = SessionState::new(
+        intent.baseline,
+        intent.expected_postcondition,
+        intent.trusted_origin,
+    );
+    apply_event(
+        &mut state,
+        &mut artifacts,
+        SessionEvent::PlatformObserved { category: platform },
+    )?;
+    apply_event(&mut state, &mut artifacts, SessionEvent::AdmissionRejected)?;
+    finish_failed_session(state, artifacts, Instant::now())
+}
 
 pub(super) fn finish_failed_session(
     mut state: SessionState,

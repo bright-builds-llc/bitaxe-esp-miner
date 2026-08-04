@@ -3,8 +3,8 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use bitaxe_device_session::{
-    run_fixture_session, run_live_session, validate_private_input, FixtureTranscript,
-    SessionArtifacts, SessionRequest, TerminalCategory,
+    run_admitted_live_session, run_fixture_session, run_live_session, validate_private_input,
+    FixtureTranscript, RebootIntent, SessionArtifacts, SessionRequest, TerminalCategory,
 };
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
@@ -20,6 +20,8 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     Reboot(RebootArgs),
+    #[command(name = "reboot-live")]
+    RebootLive(RebootLiveArgs),
 }
 
 #[derive(Debug, Args)]
@@ -35,6 +37,24 @@ struct RebootArgs {
 
     #[arg(long = "fixture-input")]
     fixture_input: Option<Utf8PathBuf>,
+
+    #[arg(long = "timeout-seconds", default_value_t = 360)]
+    timeout_seconds: u64,
+}
+
+#[derive(Debug, Args)]
+struct RebootLiveArgs {
+    #[arg(long)]
+    port: String,
+
+    #[arg(long = "private-root")]
+    private_root: Utf8PathBuf,
+
+    #[arg(long = "intent-input")]
+    intent_input: Utf8PathBuf,
+
+    #[arg(long = "projection-output")]
+    projection_output: Utf8PathBuf,
 
     #[arg(long = "timeout-seconds", default_value_t = 360)]
     timeout_seconds: u64,
@@ -61,13 +81,19 @@ fn run() -> Result<TerminalCategory> {
     let cli = Cli::parse();
     match cli.command {
         Command::Reboot(args) => run_reboot(args),
+        Command::RebootLive(args) => run_reboot_live(args),
     }
 }
 
-fn run_reboot(args: RebootArgs) -> Result<TerminalCategory> {
-    if args.timeout_seconds == 0 || args.timeout_seconds > 600 {
+fn validate_timeout(timeout_seconds: u64) -> Result<()> {
+    if timeout_seconds == 0 || timeout_seconds > 600 {
         anyhow::bail!("timeout-seconds must be between 1 and 600");
     }
+    Ok(())
+}
+
+fn run_reboot(args: RebootArgs) -> Result<TerminalCategory> {
+    validate_timeout(args.timeout_seconds)?;
     validate_private_input(&args.request_input)?;
     let request_bytes = fs::read(args.request_input.as_std_path())
         .context("failed to read private request input")?;
@@ -85,6 +111,22 @@ fn run_reboot(args: RebootArgs) -> Result<TerminalCategory> {
     let artifacts = SessionArtifacts::create(&args.private_root, &args.projection_output)?;
     run_live_session(
         request,
+        artifacts,
+        Duration::from_secs(args.timeout_seconds),
+    )
+}
+
+fn run_reboot_live(args: RebootLiveArgs) -> Result<TerminalCategory> {
+    validate_timeout(args.timeout_seconds)?;
+    validate_private_input(&args.intent_input)?;
+    let intent_bytes = fs::read(args.intent_input.as_std_path())
+        .context("failed to read private reboot intent")?;
+    let intent: RebootIntent = serde_json::from_slice(&intent_bytes)
+        .context("private reboot intent does not match the device-session schema")?;
+    let artifacts = SessionArtifacts::create(&args.private_root, &args.projection_output)?;
+    run_admitted_live_session(
+        intent,
+        args.port,
         artifacts,
         Duration::from_secs(args.timeout_seconds),
     )

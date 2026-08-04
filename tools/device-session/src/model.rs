@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 pub const PUBLIC_PROJECTION_SCHEMA: &str = "esp-device-session-v1";
 pub const PRIVATE_RESULT_SCHEMA: &str = "esp-device-session-private-result-v1";
 pub const REQUEST_SCHEMA: &str = "esp-device-session-reboot-request-v1";
+pub const REBOOT_INTENT_SCHEMA: &str = "esp-device-session-reboot-intent-v1";
 const REQUIRED_STABLE_SAMPLES: u8 = 3;
 const MAX_DURATION_MILLIS: u64 = 600_000;
 const MAX_REPORTED_SERIAL_BYTES: u64 = 16 * 1024 * 1024;
@@ -125,6 +126,46 @@ pub struct SessionRequest {
     pub trusted_origin: String,
     pub baseline: BaselineApplication,
     pub expected_postcondition: ExpectedPostcondition,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct RebootIntent {
+    pub schema_version: String,
+    pub board_category: String,
+    pub trusted_origin: String,
+    pub baseline: BaselineApplication,
+    pub expected_postcondition: ExpectedPostcondition,
+}
+
+impl RebootIntent {
+    #[must_use]
+    pub fn schema_is_valid(&self) -> bool {
+        self.schema_version == REBOOT_INTENT_SCHEMA
+            && self.board_category == "205"
+            && (self.trusted_origin.starts_with("http://")
+                || self.trusted_origin.starts_with("https://"))
+            && !self.baseline.boot_session.is_empty()
+            && is_sha256(&self.baseline.app_elf_sha256)
+            && is_sha256(&self.expected_postcondition.hostname_sha256)
+    }
+
+    #[must_use]
+    pub fn bind_device(
+        self,
+        admitted_port: String,
+        physical_identity_digest: String,
+    ) -> SessionRequest {
+        SessionRequest {
+            schema_version: REQUEST_SCHEMA.to_owned(),
+            board_category: self.board_category,
+            admitted_port,
+            physical_identity_digest,
+            trusted_origin: self.trusted_origin,
+            baseline: self.baseline,
+            expected_postcondition: self.expected_postcondition,
+        }
+    }
 }
 
 impl SessionRequest {

@@ -25,7 +25,7 @@ import {
 import { packageFirmware } from "./package.js";
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
-import { captureSettingsDurability } from "./settings-durability.js";
+import { captureSettingsDurability, SettingsDurabilityError } from "./settings-durability.js";
 import { captureVersionEvidence } from "./version-evidence.js";
 import { executeCommandSpec } from "./workflow.js";
 import { assertWithinWorkspace } from "./workspace.js";
@@ -76,6 +76,10 @@ function toolProgram(root: string, relative: string): string {
 
 function flashProgram(root: string): string {
   return toolProgram(root, "tools/flash/flash");
+}
+
+function deviceSessionProgram(root: string): string {
+  return toolProgram(root, "tools/device-session/device-session");
 }
 
 function stringNumber(value: string | undefined): number | undefined {
@@ -271,7 +275,7 @@ async function main(): Promise<number> {
         port,
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
-      }, processPort, flashProgram(root), toolProgram(root, "tools/parity/report"));
+      }, processPort, flashProgram(root), toolProgram(root, "tools/parity/report"), deviceSessionProgram(root));
     } else if (invocation.command === "verify-redaction") {
       const evidenceRoot = assertWithinWorkspace(root, maybeOptionValue(invocation, "--evidence-root") ?? "docs/parity/evidence");
       publicValue = await verifySemanticEvidenceRedaction(evidenceRoot);
@@ -284,18 +288,27 @@ async function main(): Promise<number> {
   } catch (error) {
     const policyBlocked = error instanceof PolicyError;
     const invalid = error instanceof InvocationError;
+    const settingsFailure = error instanceof SettingsDurabilityError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : "process_failed";
-    const status = policyBlocked ? "blocked" : "failed";
-    const exitCode = policyBlocked ? 3 : invalid ? 2 : 1;
+        : settingsFailure
+          ? error.category
+          : "process_failed";
+    const blocked = policyBlocked || category === "hardware_blocked";
+    const status = blocked ? "blocked" : "failed";
+    const exitCode = blocked ? 3 : invalid ? 2 : 1;
     const maybeSummary = safeErrorSummary(error);
     process.stderr.write(
-      `bitaxe-automation: ${invocation.command} ${policyBlocked ? "blocked by policy" : "failed"}${maybeSummary === undefined ? "" : `: ${maybeSummary}`}\n`,
+      `bitaxe-automation: ${invocation.command} ${blocked ? "blocked" : "failed"}${maybeSummary === undefined ? "" : `: ${maybeSummary}`}\n`,
     );
-    process.stdout.write(`${JSON.stringify(automationResult(invocation.command, status, category))}\n`);
+    process.stdout.write(`${JSON.stringify(automationResult(
+      invocation.command,
+      status,
+      category,
+      settingsFailure ? error.publicValue : undefined,
+    ))}\n`);
     return exitCode;
   }
 }
