@@ -5,6 +5,7 @@ use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use bitaxe_core::runtime_health::CheckpointObservation;
+use bitaxe_core::runtime_orchestration::{PeriodicDeadline, SAFETY_SUPERVISOR_CADENCE_MS};
 use bitaxe_safety::watchdog::{
     StepKind, StepProgress, StepSupervisor, WatchdogDecision, MAX_CONSECUTIVE_STEPS_BEFORE_YIELD,
     SAFETY_STEP_BUDGET_MS, WATCHDOG_YIELD_INTERVAL_MS,
@@ -54,13 +55,34 @@ pub fn start_safety_supervisor_thread() -> std::io::Result<()> {
 }
 
 fn safety_supervisor_loop() {
-    debug_assert_eq!(WATCHDOG_YIELD_INTERVAL_MS, 100);
-    log::info!("safety_supervisor=started thread=bitaxe-safety-supervisor cadence_ms=100");
+    debug_assert_eq!(
+        u64::from(WATCHDOG_YIELD_INTERVAL_MS),
+        SAFETY_SUPERVISOR_CADENCE_MS
+    );
+    log::info!(
+        "safety_supervisor=started thread=bitaxe-safety-supervisor cadence_ms={SAFETY_SUPERVISOR_CADENCE_MS}"
+    );
 
     let mut logged_yield = false;
+    let mut schedule =
+        PeriodicDeadline::new(current_monotonic_millis(), SAFETY_SUPERVISOR_CADENCE_MS)
+            .expect("safety supervisor cadence is nonzero");
     loop {
         run_supervisor_step(&mut logged_yield, current_monotonic_millis());
-        std::thread::sleep(Duration::from_millis(100));
+        let now_ms = current_monotonic_millis();
+        if schedule.advance_past(now_ms).is_err() {
+            log::error!("safety_supervisor=unavailable reason=deadline_overflow action=halt");
+            park_forever();
+        }
+        std::thread::sleep(Duration::from_millis(
+            schedule.next_deadline_ms().saturating_sub(now_ms),
+        ));
+    }
+}
+
+fn park_forever() -> ! {
+    loop {
+        std::thread::park();
     }
 }
 

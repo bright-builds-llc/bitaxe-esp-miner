@@ -10,6 +10,7 @@ use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
+use bitaxe_core::runtime_orchestration::{PeriodicDeadline, PRODUCTION_REREAD_CADENCE_MS};
 use bitaxe_safety::observation::{MonotonicMillis, Observation};
 use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
 use bitaxe_stratum::v1::production_session::{
@@ -25,8 +26,6 @@ use self::transport::{PoolTransportCommand, PoolTransportEvent, PoolTransportWor
 
 const OWNER_STACK_BYTES: usize = 16 * 1024;
 const NOTIFICATION_CAPACITY: usize = 16;
-const AUTHORITATIVE_REREAD_INTERVAL: Duration = Duration::from_secs(1);
-
 static NOTIFICATIONS: OnceLock<SyncSender<OwnerInboxMessage>> = OnceLock::new();
 
 enum OwnerInboxMessage {
@@ -75,9 +74,17 @@ fn run_owner(
     let mut session = ProductionMiningSession::new();
     let mut task_watchdog =
         watchdog::ProductionTaskWatchdog::subscribe(crate::runtime_uptime::millis());
+    let mut readiness_schedule = PeriodicDeadline::new(0, PRODUCTION_REREAD_CADENCE_MS)
+        .expect("production reread cadence is nonzero");
 
     loop {
-        let maybe_message = match receiver.recv_timeout(AUTHORITATIVE_REREAD_INTERVAL) {
+        let before_wait_ms = elapsed_millis(started_at);
+        let wait = Duration::from_millis(
+            readiness_schedule
+                .next_deadline_ms()
+                .saturating_sub(before_wait_ms),
+        );
+        let maybe_message = match receiver.recv_timeout(wait) {
             Ok(message) => Some(message),
             Err(mpsc::RecvTimeoutError::Timeout) => None,
             Err(mpsc::RecvTimeoutError::Disconnected) => Some(OwnerInboxMessage::Wake(
@@ -91,11 +98,27 @@ fn run_owner(
             ))
         );
         let now_ms = elapsed_millis(started_at);
-        let event = match maybe_message {
-            Some(message) => adapter.event_from_inbox(message, now_ms),
-            None => adapter.wake_event(None, now_ms),
-        };
-        drive_session(&mut session, &mut adapter, event, now_ms);
+        let message_reads_readiness = matches!(maybe_message, Some(OwnerInboxMessage::Wake(_)));
+        if let Some(message) = maybe_message {
+            let event = adapter.event_from_inbox(message, now_ms);
+            drive_session(&mut session, &mut adapter, event, now_ms);
+        }
+        if readiness_schedule.is_due(now_ms) {
+            if !message_reads_readiness {
+                let event = adapter.wake_event(None, now_ms);
+                drive_session(&mut session, &mut adapter, event, now_ms);
+            }
+            if readiness_schedule.advance_past(now_ms).is_err() {
+                log::error!(
+                    "production_mining_session=fail_closed reason=readiness_deadline_overflow"
+                );
+                let event =
+                    adapter.wake_event(Some(ProductionSessionWakeup::ShutdownRequested), now_ms);
+                drive_session(&mut session, &mut adapter, event, now_ms);
+                adapter.publish_campaign_status(&session.snapshot(), now_ms);
+                return;
+            }
+        }
         adapter.publish_campaign_status(&session.snapshot(), now_ms);
         task_watchdog.feed(crate::runtime_uptime::millis());
         if shutdown_requested {

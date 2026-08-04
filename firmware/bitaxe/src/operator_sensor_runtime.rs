@@ -4,7 +4,10 @@ use std::{thread, time::Duration};
 
 use anyhow::{Context, Result};
 use bitaxe_api::{project_observation, TelemetryObservations};
-use bitaxe_core::StartupDebugText;
+use bitaxe_core::{
+    runtime_orchestration::{PeriodicDeadline, OPERATOR_OBSERVATION_CADENCE_MS},
+    StartupDebugText,
+};
 use bitaxe_safety::{
     core_voltage_acquisition::CoreVoltageProducerState,
     observation::{BootSessionId, MonotonicMillis, UnavailableReason},
@@ -19,7 +22,7 @@ use crate::safety_adapter::{
     self, RuntimeI2cOwner, SafetyActuationOwnerInbox, SafetyActuationOwnerWait,
 };
 
-pub const SENSOR_SWEEP_CADENCE_MS: u64 = 500;
+pub const SENSOR_SWEEP_CADENCE_MS: u64 = OPERATOR_OBSERVATION_CADENCE_MS;
 pub const DISPLAY_REFRESH_CADENCE_MS: u64 = 1_000;
 const SENSOR_STALE_AFTER_MS: u64 = 1_000;
 const BOARD_POWER_TARGET_WATTS: f64 = 12.0;
@@ -69,8 +72,10 @@ fn run(
     let mut state = ProducerSensorState::default();
     let mut core_voltage_state = CoreVoltageProducerState::default();
     let mut sequences = ProducerSequences::default();
-    let mut next_deadline_ms = crate::runtime_uptime::millis();
-    let mut next_display_deadline_ms = next_deadline_ms.saturating_add(DISPLAY_REFRESH_CADENCE_MS);
+    let started_at_ms = crate::runtime_uptime::millis();
+    let mut sensor_schedule = PeriodicDeadline::new(started_at_ms, SENSOR_SWEEP_CADENCE_MS)
+        .expect("operator observation cadence is nonzero");
+    let mut next_display_deadline_ms = started_at_ms.saturating_add(DISPLAY_REFRESH_CADENCE_MS);
     let mut maybe_last_display_line = maybe_display_text
         .as_ref()
         .map(|text| text.frame_at(0).lines()[2].to_owned());
@@ -78,7 +83,7 @@ fn run(
     loop {
         let now_ms = crate::runtime_uptime::millis();
 
-        if now_ms >= next_deadline_ms {
+        if sensor_schedule.is_due(now_ms) {
             let (power, asic_temperature_celsius, tachometer_rpm) =
                 if let Some(owner) = maybe_owner.as_mut() {
                     (
@@ -138,7 +143,21 @@ fn run(
                 state,
                 core_voltage_state,
             ));
-            next_deadline_ms = next_future_deadline(next_deadline_ms);
+            let advance = match sensor_schedule.advance_past(crate::runtime_uptime::millis()) {
+                Ok(advance) => advance,
+                Err(_) => {
+                    log::error!(
+                        "operator_sensor_runtime=fault category=deadline_overflow action=halt"
+                    );
+                    park_forever();
+                }
+            };
+            if advance.missed_slots() > 0 {
+                log::warn!(
+                    "operator_sensor_runtime=overrun category=deadline_missed slots={}",
+                    advance.missed_slots()
+                );
+            }
         }
 
         if now_ms >= next_display_deadline_ms {
@@ -153,7 +172,9 @@ fn run(
             next_display_deadline_ms = now_ms.saturating_add(DISPLAY_REFRESH_CADENCE_MS);
         }
 
-        let next_owner_deadline_ms = next_deadline_ms.min(next_display_deadline_ms);
+        let next_owner_deadline_ms = sensor_schedule
+            .next_deadline_ms()
+            .min(next_display_deadline_ms);
         let wait = duration_until(next_owner_deadline_ms);
         match (maybe_owner.as_mut(), maybe_actuation_inbox.as_ref()) {
             (Some(owner), Some(actuation_inbox)) => {
@@ -246,23 +267,14 @@ fn project_observations(
     }
 }
 
-fn next_future_deadline(previous_deadline_ms: u64) -> u64 {
-    let now_ms = crate::runtime_uptime::millis();
-    let scheduled_ms = previous_deadline_ms.saturating_add(SENSOR_SWEEP_CADENCE_MS);
-    if scheduled_ms > now_ms {
-        return scheduled_ms;
-    }
-
-    let missed_slots = now_ms
-        .saturating_sub(scheduled_ms)
-        .saturating_div(SENSOR_SWEEP_CADENCE_MS)
-        .saturating_add(1);
-    log::warn!("operator_sensor_runtime=overrun category=deadline_missed slots={missed_slots}");
-    scheduled_ms.saturating_add(missed_slots.saturating_mul(SENSOR_SWEEP_CADENCE_MS))
-}
-
 fn sleep_until(deadline_ms: u64) {
     thread::sleep(duration_until(deadline_ms));
+}
+
+fn park_forever() -> ! {
+    loop {
+        thread::park();
+    }
 }
 
 fn duration_until(deadline_ms: u64) -> Duration {

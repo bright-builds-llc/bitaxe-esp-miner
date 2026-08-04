@@ -3,6 +3,7 @@ mod safety_request_queue;
 
 const OPERATOR_SENSOR_RUNTIME_SOURCE: &str = include_str!("operator_sensor_runtime.rs");
 const SAFETY_ADAPTER_SOURCE: &str = include_str!("safety_adapter.rs");
+const SAFETY_WATCHDOG_SOURCE: &str = include_str!("safety_adapter/watchdog.rs");
 const ADC_SOURCE: &str = include_str!("safety_adapter/adc.rs");
 const OBSERVATION_STORE_SOURCE: &str = include_str!("safety_adapter/observation_store.rs");
 const I2C_BUS_SOURCE: &str = include_str!("safety_adapter/i2c_bus.rs");
@@ -18,6 +19,56 @@ const PRODUCTION_ASIC_WORKER_SOURCE: &str =
 const SETTINGS_ADAPTER_SOURCE: &str = include_str!("settings_adapter.rs");
 const SETTINGS_PRODUCTION_SOURCE: &str = include_str!("settings_adapter/production.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
+
+#[test]
+fn runtime_owner_startup_and_notification_order_is_explicit() {
+    // Arrange
+    let safety = STARTUP_SOURCE
+        .find("safety_adapter::start_safety_supervisor();")
+        .expect("startup must start the safety supervisor");
+    let production = STARTUP_SOURCE
+        .find("production_mining_session::start()")
+        .expect("startup must start the production owner");
+    let network = STARTUP_SOURCE
+        .find("wifi_adapter::start_wifi_sta(modem)")
+        .expect("startup must start the network owner");
+    let network_wakeup = STARTUP_SOURCE
+        .find("ProductionSessionWakeup::NetworkChanged")
+        .expect("startup must notify the production owner after network admission");
+
+    // Act / Assert
+    assert!(safety < production);
+    assert!(production < network);
+    assert!(network < network_wakeup);
+    assert_eq!(STARTUP_SOURCE.matches("operator_sensor_runtime::start(").count(), 1);
+    assert_eq!(STARTUP_SOURCE.matches("production_mining_session::start()").count(), 1);
+    assert_eq!(STARTUP_SOURCE.matches("start_safety_supervisor();").count(), 1);
+}
+
+#[test]
+fn runtime_owners_use_bounded_shared_cadence_and_queue_contracts() {
+    // Arrange / Act / Assert
+    assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains(
+        "PeriodicDeadline::new(started_at_ms, SENSOR_SWEEP_CADENCE_MS)"
+    ));
+    assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains("advance.missed_slots()"));
+    assert!(!OPERATOR_SENSOR_RUNTIME_SOURCE.contains("fn next_future_deadline"));
+    assert!(SAFETY_WATCHDOG_SOURCE.contains(
+        "PeriodicDeadline::new(current_monotonic_millis(), SAFETY_SUPERVISOR_CADENCE_MS)"
+    ));
+    assert!(PRODUCTION_SESSION_SOURCE
+        .contains("PeriodicDeadline::new(0, PRODUCTION_REREAD_CADENCE_MS)"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("readiness_schedule.is_due(now_ms)"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("mpsc::sync_channel(NOTIFICATION_CAPACITY)"));
+    assert!(PRODUCTION_ASIC_WORKER_SOURCE.contains("mpsc::sync_channel(COMMAND_CAPACITY)"));
+    assert!(PRODUCTION_ASIC_WORKER_SOURCE.contains(
+        "executor.try_read_production_result(&valid_jobs, slice_ms)"
+    ));
+    assert!(PRODUCTION_ASIC_WORKER_SOURCE.contains(
+        "emit(AsicWorkerEvent::Result { generation, result })"
+    ));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("ProductionSessionEvent::AsicResult"));
+}
 
 #[test]
 fn operator_sensor_runtime_is_the_single_normal_acquisition_caller() {

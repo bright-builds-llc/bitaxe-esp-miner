@@ -287,6 +287,7 @@ rust_test(
         "src/safety_adapter/i2c_retry.rs",
         "src/safety_adapter/observation_store.rs",
         "src/safety_adapter/request_queue.rs",
+        "src/safety_adapter/watchdog.rs",
         "src/sensor_source_ownership_test.rs",
     ],
     crate_name = "sensor_source_ownership_tests",

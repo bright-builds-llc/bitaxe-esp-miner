@@ -440,9 +440,9 @@ capture. No hardware, credentials, mining, controls, OTA, UART, or pins ran.
 
 ### task-parity-sys005-runtime-orchestration | 2026-08-04 | Close runtime owner scheduling parity
 
-- [ ] Centralize the pure periodic-deadline contract used by the safety,
+- [x] Centralize the pure periodic-deadline contract used by the safety,
       operator-observation, and production-session owners.
-- [ ] Bind work creation, bounded result consumption, authoritative readiness,
+- [x] Bind work creation, bounded result consumption, authoritative readiness,
       and fail-closed power/safety scheduling to explicit single-owner seams.
 - [ ] Add behavioral and source-ownership regressions, build the real firmware,
       run mandatory gates, and transition only `SYS-005` when its bounded

@@ -71,12 +71,17 @@ fn admitted_lifecycle_frames_protocol_dispatches_and_accepts_share() {
     let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
     establish_active(&mut adapter);
     let observation = dispatched_observation(&adapter);
+    let writes_before_result = adapter.writes.len();
+    assert!(!adapter.writes[..writes_before_result]
+        .iter()
+        .any(|(_, line)| line.contains("mining.submit")));
 
     // Act
     adapter.drive(ProductionSessionEvent::AsicResult {
         observation,
         now_ms: 4,
     });
+    let writes_after_correlated_result = adapter.writes.len();
     adapter.bytes(
         ProductionPool::Primary,
         b"{\"id\":4,\"result\":true,\"error\":null}\n",
@@ -102,6 +107,11 @@ fn admitted_lifecycle_frames_protocol_dispatches_and_accepts_share() {
         .writes
         .iter()
         .any(|(_, line)| line.contains("mining.submit")));
+    assert!(
+        adapter.writes[writes_before_result..writes_after_correlated_result]
+            .iter()
+            .any(|(_, line)| line.contains("mining.submit"))
+    );
     assert_eq!(adapter.asic_commands.len(), 1);
     let snapshot = adapter.session.snapshot();
     assert_eq!(snapshot.phase, ProductionSessionPhase::RunningPrimary);
