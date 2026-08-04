@@ -1026,7 +1026,7 @@ OTA, recovery, other-board, or release parity.
       detector outcome and stop.
 - [x] Promote only `API-010` on complete typed evidence; otherwise preserve the
       earliest category, withhold evidence, keep `implemented`, and stop.
-- [ ] Create a linked audited software-remediation plan for the protected
+- [x] Create a linked audited software-remediation plan for the protected
       panic/stack-overflow reboot-loop classification before any attempt-006
       hardware action.
 
@@ -1130,6 +1130,42 @@ loop until a separately planned software remediation is built and flashed.
 This task claims no installed AxeOS browser, network discovery, mining, ASIC,
 hardware-control, OTA, recovery, other-board, or release parity beyond the
 exact admitted transaction.
+
+### task-parity-api010-live-theme-durability-attempt-006 | 2026-08-04 | Fix boot-evidence replay stack overflow
+
+- [ ] Raise only the boot-evidence observer stack to 16 KiB and preserve its
+      single-owner, cadence, identity, attestation, and safe-state behavior.
+- [ ] Add a focused source-ownership regression and run the canonical firmware
+      build plus the complete ordered repository gate.
+- [ ] Commit and push the clean software fix before one fresh protected
+      detector and conditional attempt-006 capture.
+- [ ] Promote only `API-010` on complete typed evidence; otherwise preserve the
+      earliest category, withhold evidence, keep `implemented`, and stop.
+
+Plan: `docs/parity/work-plans/20260804T222559Z-API-010/PLAN.md`. This immutable
+plan continues the pushed attempt-005 outcome at `dc2ea737` after protected
+classification proved a panic/stack-overflow reboot loop.
+
+Progress basis: the exact-package flash effect completed, 27 distinct
+sequential boot sessions and ordinals were observed, all 27 reset reasons were
+`panic`, no runtime-origin or connected Wi-Fi marker appeared, and the only
+allowlisted panic category was stack overflow. Each boot emitted one identity
+and safe-state marker before failing around the first 10-second identity
+replay. Source inspection shows that replay belongs to the sole 8 KiB
+boot-evidence observer, while the same emission succeeds during startup. The
+16 KiB budget already used by complex runtime owners is the minimal bounded
+remediation; hardware evidence must still verify the hypothesis.
+
+Authorization, commands, private paths, recovery, retry bounds, stop
+conditions, and promotion criteria are exact in the linked plan. Standing task
+authorization covers its single detector-gated attempt after the fix is clean,
+verified, committed, and pushed. No new manual electrical action is required.
+
+Verification: Pending.
+
+Completion review: Pending. This task claims no network discovery, mining,
+ASIC, hardware-control, display-input, OTA, partition, recovery, other-board,
+or release parity beyond the exact admitted transaction.
 
 ## Future
 
